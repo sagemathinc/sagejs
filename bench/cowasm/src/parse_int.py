@@ -1,7 +1,7 @@
 from bench import register, all
 
 
-def parse_int(S: str = '1' * 5*10**5, B: int = 10) -> int:
+def parse_int(S: str = "1" * 5 * 10**5, B: int = 10) -> int:
     """
     Parse string S as an integer in base B.   This is from
 
@@ -25,7 +25,8 @@ def parse_int(S: str = '1' * 5*10**5, B: int = 10) -> int:
     [l0] = l
     return l0
 
+
 register("parse_int", parse_int)
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     all()

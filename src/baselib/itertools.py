@@ -33,20 +33,17 @@ def _sum_exact_integer_range(iterable: Any, start: Any) -> Any:
 def _sum_modular_array(iterable: Any, start: Any) -> Any:
     """Accumulate a homogeneous prime-field or residue-ring array in BigInt."""
     first = iterable[0]
-    parent = getattr(first, '_parent', None)
+    parent = getattr(first, "_parent", None)
     if parent is None:
         return runtime.undefined
-    kind = getattr(parent, '_kind', None)
-    if kind != 'GF' and kind != 'ZMOD':
+    kind = getattr(parent, "_kind", None)
+    if kind != "GF" and kind != "ZMOD":
         return runtime.undefined
 
     start_type = runtime.jstype(start)
-    if (
-        (start_type == 'bigint' or start_type == 'number')
-        and start == 0
-    ):
+    if (start_type == "bigint" or start_type == "number") and start == 0:
         total = runtime.bigint(0)
-    elif getattr(start, '_parent', None) is parent:
+    elif getattr(start, "_parent", None) is parent:
         total = start._value
     else:
         return runtime.undefined
@@ -55,34 +52,20 @@ def _sum_modular_array(iterable: Any, start: Any) -> Any:
         # The first element established this optimized internal representation.
         # Direct field access keeps this loop at native JavaScript speed; null
         # and undefined are guarded because JavaScript cannot box them.
-        if (
-            value is None
-            or value is runtime.undefined
-            or value._parent is not parent
-        ):
+        if value is None or value is runtime.undefined or value._parent is not parent:
             return runtime.undefined
         total = runtime.native_add(total, value._value)
-    return runtime.reflect.apply(
-        parent, runtime.undefined, [total])
+    return runtime.reflect.apply(parent, runtime.undefined, [total])
 
 
 def sum(iterable: Iterable[Any], start: Any = 0) -> Any:
     start_type = runtime.jstype(start)
-    if (
-        getattr(iterable, '__sagejs_range__', False)
-        and (
-            start_type == 'bigint'
-            or (
-                start_type == 'number'
-                and runtime.number.isSafeInteger(start)
-            )
-        )
+    if getattr(iterable, "__sagejs_range__", False) and (
+        start_type == "bigint"
+        or (start_type == "number" and runtime.number.isSafeInteger(start))
     ):
         return _sum_exact_integer_range(iterable, start)
-    if (
-        runtime.array.isArray(iterable)
-        and runtime.reflect.get(iterable, 'length')
-    ):
+    if runtime.array.isArray(iterable) and runtime.reflect.get(iterable, "length"):
         modular_sum = _sum_modular_array(iterable, start)
         if modular_sum is not runtime.undefined:
             return modular_sum
@@ -95,12 +78,11 @@ def sum(iterable: Iterable[Any], start: Any = 0) -> Any:
 @runtime.native_method
 def _map_next(self: Any) -> Any:
     try:
-        return runtime.reflect.apply(
-            self.__map_native_next__, self, [])
+        return runtime.reflect.apply(self.__map_native_next__, self, [])
     except StopIteration as error:
         result = runtime.object.create(None)
-        runtime.reflect.set(result, 'value', error.value)
-        runtime.reflect.set(result, 'done', True)
+        runtime.reflect.set(result, "value", error.value)
+        runtime.reflect.set(result, "done", True)
         return result
 
 
@@ -135,10 +117,10 @@ def map(
     iterator = _map_generator(func, *iterables)
     runtime.reflect.set(
         iterator,
-        '__map_native_next__',
-        runtime.reflect.get(iterator, 'next'),
+        "__map_native_next__",
+        runtime.reflect.get(iterator, "next"),
     )
-    runtime.reflect.set(iterator, 'next', _map_next)
+    runtime.reflect.set(iterator, "next", _map_next)
     return iterator
 
 
@@ -155,11 +137,11 @@ def zip(
     *iterables: Iterable[Any],
     **options: Any,
 ) -> Iterator[Any]:
-    strict = runtime.reflect.get(options, 'strict')
+    strict = runtime.reflect.get(options, "strict")
     if strict is runtime.undefined:
         strict = False
     else:
-        runtime.reflect.deleteProperty(options, 'strict')
+        runtime.reflect.deleteProperty(options, "strict")
     option_names = runtime.object.keys(options)
     if option_names.length:
         name = option_names[0]
@@ -179,16 +161,20 @@ def zip(
                     break
                 if index:
                     raise ValueError(  # noqa: B904
-                        'zip() argument ' + str(index + 1)
-                        + ' is shorter than argument 1')
+                        "zip() argument "
+                        + str(index + 1)
+                        + " is shorter than argument 1"
+                    )
                 for later_index in range(1, len(iterators)):
                     try:
                         next(iterators[later_index])
                     except StopIteration:
                         continue
                     raise ValueError(  # noqa: B904
-                        'zip() argument ' + str(later_index + 1)
-                        + ' is longer than argument 1')
+                        "zip() argument "
+                        + str(later_index + 1)
+                        + " is longer than argument 1"
+                    )
                 done = True
                 break
         if not done:

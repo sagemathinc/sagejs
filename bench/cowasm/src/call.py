@@ -26,5 +26,5 @@ def object_function_call(n=10**6):
 
 register("dunder __call__ function call", object_function_call)
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     all()

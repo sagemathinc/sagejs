@@ -15,8 +15,11 @@ class AST:
     def __init__(self, *args, **kwargs):
         if len(args) > len(self._fields):
             raise TypeError(
-                self.__class__.__name__ + ' constructor takes at most '
-                + str(len(self._fields)) + ' positional arguments')
+                self.__class__.__name__
+                + " constructor takes at most "
+                + str(len(self._fields))
+                + " positional arguments"
+            )
         for name, value in zip(self._fields, args):
             setattr(self, name, value)
         for name, value in kwargs.items():
@@ -52,19 +55,25 @@ class expr_context(AST):
 
 
 class Module(AST):
-    _fields = ('body', 'type_ignores')
+    _fields = ("body", "type_ignores")
     __match_args__ = _fields
 
 
 class Expression(AST):
-    _fields = ('body',)
+    _fields = ("body",)
     __match_args__ = _fields
 
 
 class FunctionDef(stmt):
     _fields = (
-        'name', 'args', 'body', 'decorator_list', 'returns',
-        'type_comment', 'type_params')
+        "name",
+        "args",
+        "body",
+        "decorator_list",
+        "returns",
+        "type_comment",
+        "type_params",
+    )
     __match_args__ = _fields
 
 
@@ -73,128 +82,127 @@ class AsyncFunctionDef(FunctionDef):
 
 
 class ClassDef(stmt):
-    _fields = (
-        'name', 'bases', 'keywords', 'body', 'decorator_list', 'type_params')
+    _fields = ("name", "bases", "keywords", "body", "decorator_list", "type_params")
     __match_args__ = _fields
 
 
 class ExceptHandler(AST):
-    _fields = ('type', 'name', 'body')
+    _fields = ("type", "name", "body")
     __match_args__ = _fields
 
 
 class Assert(stmt):
-    _fields = ('test', 'msg')
+    _fields = ("test", "msg")
     __match_args__ = _fields
 
 
 class Assign(stmt):
-    _fields = ('targets', 'value', 'type_comment')
+    _fields = ("targets", "value", "type_comment")
     __match_args__ = _fields
 
 
 class Expr(stmt):
-    _fields = ('value',)
+    _fields = ("value",)
     __match_args__ = _fields
 
 
 class If(stmt):
-    _fields = ('test', 'body', 'orelse')
+    _fields = ("test", "body", "orelse")
     __match_args__ = _fields
 
 
 class Import(stmt):
-    _fields = ('names',)
+    _fields = ("names",)
     __match_args__ = _fields
 
 
 class ImportFrom(stmt):
-    _fields = ('module', 'names', 'level')
+    _fields = ("module", "names", "level")
     __match_args__ = _fields
 
 
 class Raise(stmt):
-    _fields = ('exc', 'cause')
+    _fields = ("exc", "cause")
     __match_args__ = _fields
 
 
 class BoolOp(expr):
-    _fields = ('op', 'values')
+    _fields = ("op", "values")
     __match_args__ = _fields
 
 
 class BinOp(expr):
-    _fields = ('left', 'op', 'right')
+    _fields = ("left", "op", "right")
     __match_args__ = _fields
 
 
 class UnaryOp(expr):
-    _fields = ('op', 'operand')
+    _fields = ("op", "operand")
     __match_args__ = _fields
 
 
 class NamedExpr(expr):
-    _fields = ('target', 'value')
+    _fields = ("target", "value")
     __match_args__ = _fields
 
 
 class IfExp(expr):
-    _fields = ('test', 'body', 'orelse')
+    _fields = ("test", "body", "orelse")
     __match_args__ = _fields
 
 
 class Dict(expr):
-    _fields = ('keys', 'values')
+    _fields = ("keys", "values")
     __match_args__ = _fields
 
 
 class List(expr):
-    _fields = ('elts', 'ctx')
+    _fields = ("elts", "ctx")
     __match_args__ = _fields
 
 
 class Tuple(expr):
-    _fields = ('elts', 'ctx')
+    _fields = ("elts", "ctx")
     __match_args__ = _fields
 
 
 class Constant(expr):
-    _fields = ('value', 'kind')
+    _fields = ("value", "kind")
     __match_args__ = _fields
 
 
 class Name(expr):
-    _fields = ('id', 'ctx')
+    _fields = ("id", "ctx")
     __match_args__ = _fields
 
 
 class Attribute(expr):
-    _fields = ('value', 'attr', 'ctx')
+    _fields = ("value", "attr", "ctx")
     __match_args__ = _fields
 
 
 class Starred(expr):
-    _fields = ('value', 'ctx')
+    _fields = ("value", "ctx")
     __match_args__ = _fields
 
 
 class Call(expr):
-    _fields = ('func', 'args', 'keywords')
+    _fields = ("func", "args", "keywords")
     __match_args__ = _fields
 
 
 class Compare(expr):
-    _fields = ('left', 'ops', 'comparators')
+    _fields = ("left", "ops", "comparators")
     __match_args__ = _fields
 
 
 class alias(AST):
-    _fields = ('name', 'asname')
+    _fields = ("name", "asname")
     __match_args__ = _fields
 
 
 class keyword(AST):
-    _fields = ('arg', 'value')
+    _fields = ("arg", "value")
     __match_args__ = _fields
 
 
@@ -348,8 +356,7 @@ def walk(node):
 
 class NodeVisitor:
     def visit(self, node):
-        visitor = getattr(
-            self, 'visit_' + node.__class__.__name__, self.generic_visit)
+        visitor = getattr(self, "visit_" + node.__class__.__name__, self.generic_visit)
         return visitor(node)
 
     def generic_visit(self, node):
@@ -358,7 +365,7 @@ class NodeVisitor:
 
 
 def copy_location(new_node, old_node):
-    for name in ('lineno', 'col_offset', 'end_lineno', 'end_col_offset'):
+    for name in ("lineno", "col_offset", "end_lineno", "end_col_offset"):
         if hasattr(old_node, name):
             setattr(new_node, name, getattr(old_node, name))
     return new_node
@@ -366,22 +373,30 @@ def copy_location(new_node, old_node):
 
 def fix_missing_locations(node):
     def fill(current, lineno=1, col_offset=0):
-        if not hasattr(current, 'lineno'):
+        if not hasattr(current, "lineno"):
             current.lineno = lineno
-        if not hasattr(current, 'col_offset'):
+        if not hasattr(current, "col_offset"):
             current.col_offset = col_offset
-        if not hasattr(current, 'end_lineno'):
+        if not hasattr(current, "end_lineno"):
             current.end_lineno = current.lineno
-        if not hasattr(current, 'end_col_offset'):
+        if not hasattr(current, "end_col_offset"):
             current.end_col_offset = current.col_offset
         for child in iter_child_nodes(current):
             fill(child, current.lineno, current.col_offset)
+
     fill(node)
     return node
 
 
-def parse(source, filename='<unknown>', mode='exec', *, type_comments=False,
-          feature_version=None, optimize=-1):
+def parse(
+    source,
+    filename="<unknown>",
+    mode="exec",
+    *,
+    type_comments=False,
+    feature_version=None,
+    optimize=-1,
+):
     """Return a location-bearing statement tree for source inspection.
 
     This intentionally does not promise CPython compiler nodes.  It supplies
@@ -390,14 +405,14 @@ def parse(source, filename='<unknown>', mode='exec', *, type_comments=False,
     phase.
     """
     del filename, type_comments, feature_version, optimize
-    if mode == 'eval':
+    if mode == "eval":
         return Expression(Constant(source))
-    if mode not in ('exec', 'single', 'func_type'):
-        raise ValueError('compile() mode must be exec, eval, single or func_type')
+    if mode not in ("exec", "single", "func_type"):
+        raise ValueError("compile() mode must be exec, eval, single or func_type")
     body = []
     for lineno, line in enumerate(source.splitlines(), 1):
         stripped = line.strip()
-        if not stripped or stripped.startswith('#'):
+        if not stripped or stripped.startswith("#"):
             continue
         node = Expr(Constant(stripped))
         node.lineno = lineno

@@ -9,27 +9,27 @@ class.
 import sagejs.runtime as runtime
 
 
-unidata_version = '16.0.0'
+unidata_version = "16.0.0"
 
 
 def _character(value):
     value = str(value)
     if len(value) != 1:
-        raise TypeError('argument must be a unicode character, not string')
+        raise TypeError("argument must be a unicode character, not string")
     return value
 
 
 def _matches(character, property_name):
     expression = runtime.regexp(
-        '^\\p{' + property_name + '}$',
-        'u',
+        "^\\p{" + property_name + "}$",
+        "u",
     )
     return bool(expression.test(character))
 
 
 def normalize(form, value):
-    if form not in ('NFC', 'NFD', 'NFKC', 'NFKD'):
-        raise ValueError('invalid normalization form')
+    if form not in ("NFC", "NFD", "NFKC", "NFKD"):
+        raise ValueError("invalid normalization form")
     return runtime.reflect.apply(
         runtime.string_class.prototype.normalize,
         str(value),
@@ -44,68 +44,91 @@ def is_normalized(form, value):
 def category(value):
     character = _character(value)
     categories = (
-        'Lu', 'Ll', 'Lt', 'Lm', 'Lo',
-        'Mn', 'Mc', 'Me',
-        'Nd', 'Nl', 'No',
-        'Pc', 'Pd', 'Ps', 'Pe', 'Pi', 'Pf', 'Po',
-        'Sm', 'Sc', 'Sk', 'So',
-        'Zs', 'Zl', 'Zp',
-        'Cc', 'Cf', 'Cs', 'Co', 'Cn',
+        "Lu",
+        "Ll",
+        "Lt",
+        "Lm",
+        "Lo",
+        "Mn",
+        "Mc",
+        "Me",
+        "Nd",
+        "Nl",
+        "No",
+        "Pc",
+        "Pd",
+        "Ps",
+        "Pe",
+        "Pi",
+        "Pf",
+        "Po",
+        "Sm",
+        "Sc",
+        "Sk",
+        "So",
+        "Zs",
+        "Zl",
+        "Zp",
+        "Cc",
+        "Cf",
+        "Cs",
+        "Co",
+        "Cn",
     )
     for candidate in categories:
         if _matches(character, candidate):
             return candidate
-    return 'Cn'
+    return "Cn"
 
 
 def combining(value):
-    return 230 if category(value) in ('Mn', 'Mc', 'Me') else 0
+    return 230 if category(value) in ("Mn", "Mc", "Me") else 0
 
 
 def bidirectional(value):
     character = _character(value)
     point = ord(character)
     kind = category(character)
-    if kind in ('Mn', 'Mc', 'Me'):
-        return 'NSM'
-    if character in ('\n', '\r'):
-        return 'B'
-    if character in ('\t', ' '):
-        return 'WS'
-    if '0' <= character <= '9':
-        return 'EN'
+    if kind in ("Mn", "Mc", "Me"):
+        return "NSM"
+    if character in ("\n", "\r"):
+        return "B"
+    if character in ("\t", " "):
+        return "WS"
+    if "0" <= character <= "9":
+        return "EN"
     if 0x0590 <= point <= 0x05FF:
-        return 'R'
+        return "R"
     if (
         0x0600 <= point <= 0x08FF
         or 0xFB50 <= point <= 0xFDFF
         or 0xFE70 <= point <= 0xFEFF
     ):
         if 0x0660 <= point <= 0x0669:
-            return 'AN'
-        return 'AL'
-    if kind[0] in ('L', 'N'):
-        return 'L'
-    return ''
+            return "AN"
+        return "AL"
+    if kind[0] in ("L", "N"):
+        return "L"
+    return ""
 
 
 def name(value, default=runtime.undefined):
     character = _character(value)
-    if _matches(character, 'Assigned'):
+    if _matches(character, "Assigned"):
         # ECMAScript does not expose the human-readable UCD name.  Callers
         # commonly use truthiness to distinguish assigned code points.
-        return 'U+' + hex(ord(character))[2:].upper().zfill(4)
+        return "U+" + hex(ord(character))[2:].upper().zfill(4)
     if default is not runtime.undefined:
         return default
-    raise ValueError('no such name')
+    raise ValueError("no such name")
 
 
 def decomposition(value):
     character = _character(value)
-    decomposed = normalize('NFD', character)
+    decomposed = normalize("NFD", character)
     if decomposed == character:
-        return ''
-    return ' '.join(hex(ord(item))[2:].upper().zfill(4) for item in decomposed)
+        return ""
+    return " ".join(hex(ord(item))[2:].upper().zfill(4) for item in decomposed)
 
 
 def mirrored(_value):
@@ -122,5 +145,5 @@ def east_asian_width(value):
         or 0xFE10 <= point <= 0xFE6F
         or 0xFF00 <= point <= 0xFF60
     ):
-        return 'W'
-    return 'Na'
+        return "W"
+    return "Na"

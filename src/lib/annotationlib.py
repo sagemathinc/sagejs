@@ -17,4 +17,4 @@ def get_annotations(
     format=Format.VALUE,
 ):
     del globals, locals, eval_str, format
-    return dict(getattr(obj, '__annotations__', {}))
+    return dict(getattr(obj, "__annotations__", {}))

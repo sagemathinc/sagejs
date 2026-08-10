@@ -12,7 +12,7 @@ import sagejs.runtime as runtime
 
 def _type_name(value: Any) -> str:
     name = type(value).__name__
-    if name.startswith('ρσ_'):
+    if name.startswith("ρσ_"):
         return name[3:]
     return name
 
@@ -25,21 +25,19 @@ def _as_index(value: Any, *, slice_bound: bool = False) -> int:
     except AttributeError:
         if slice_bound:
             raise TypeError(
-                'slice indices must be integers or have an __index__ method')
+                "slice indices must be integers or have an __index__ method"
+            )
         raise TypeError(
-            "'" + _type_name(value)
-            + "' object cannot be interpreted as an integer")
+            "'" + _type_name(value) + "' object cannot be interpreted as an integer"
+        )
     answer = method()
     if not (answer is True or answer is False or isinstance(answer, int)):
-        raise TypeError(
-            '__index__ returned non-int (type '
-            + _type_name(answer) + ')')
+        raise TypeError("__index__ returned non-int (type " + _type_name(answer) + ")")
     return int(answer)
 
 
 @runtime.sequence_class
 class deque:
-
     def __init__(
         self,
         iterable: Any = (),
@@ -47,10 +45,10 @@ class deque:
     ) -> None:
         if maxlen is not None:
             if not isinstance(maxlen, int):
-                raise TypeError('an integer is required')
+                raise TypeError("an integer is required")
             maxlen = int(maxlen)
             if maxlen < 0:
-                raise ValueError('maxlen must be non-negative')
+                raise ValueError("maxlen must be non-negative")
         self._maxlen = maxlen
         self._values = []
         self.extend(iterable)
@@ -70,7 +68,7 @@ class deque:
         if index < 0:
             index += len(self._values)
         if index < 0 or index >= len(self._values):
-            raise IndexError('deque index out of range')
+            raise IndexError("deque index out of range")
         return index
 
     def __getitem__(self, index: int) -> Any:
@@ -114,10 +112,10 @@ class deque:
 
     def __add__(self, other: Any) -> Any:
         if not isinstance(other, deque):
-            other_name = 'list' if isinstance(other, list) else _type_name(other)
+            other_name = "list" if isinstance(other, list) else _type_name(other)
             raise TypeError(
-                'can only concatenate deque (not "'
-                + other_name + '") to deque')
+                'can only concatenate deque (not "' + other_name + '") to deque'
+            )
         return type(self)(self._values + other._values, self.maxlen)
 
     def __mul__(self, count: Any) -> Any:
@@ -141,7 +139,7 @@ class deque:
         raise TypeError("bad operand type for unary ~: 'deque'")
 
     def slice(self, *_bounds: Any) -> None:
-        raise TypeError('sequence index must be integer, not slice')
+        raise TypeError("sequence index must be integer, not slice")
 
     def __setslice__(
         self,
@@ -149,7 +147,7 @@ class deque:
         _end: Any,
         _values: Any,
     ) -> None:
-        raise TypeError('sequence index must be integer, not slice')
+        raise TypeError("sequence index must be integer, not slice")
 
     def append(self, value: Any) -> None:
         if self.maxlen == 0:
@@ -179,12 +177,12 @@ class deque:
 
     def pop(self) -> Any:
         if len(self._values) == 0:
-            raise IndexError('pop from an empty deque')
+            raise IndexError("pop from an empty deque")
         return self._values.pypop()
 
     def popleft(self) -> Any:
         if len(self._values) == 0:
-            raise IndexError('pop from an empty deque')
+            raise IndexError("pop from an empty deque")
         return self._values.pypop(0)
 
     def clear(self) -> None:
@@ -216,11 +214,11 @@ class deque:
         for position in range(start, stop):
             if self._values[position] == value:
                 return position
-        raise ValueError(repr(value) + ' is not in deque')
+        raise ValueError(repr(value) + " is not in deque")
 
     def insert(self, index: int, value: Any) -> None:
         if self.maxlen is not None and len(self._values) >= self.maxlen:
-            raise IndexError('deque already at its maximum size')
+            raise IndexError("deque already at its maximum size")
         self._values.insert(_as_index(index), value)
 
     def remove(self, value: Any) -> None:
@@ -241,10 +239,10 @@ class deque:
         return type(self)(self._values, self.maxlen)
 
     def __repr__(self) -> str:
-        suffix = ''
+        suffix = ""
         if self.maxlen is not None:
-            suffix = ', maxlen=' + str(self.maxlen)
-        return 'deque(' + repr(self._values) + suffix + ')'
+            suffix = ", maxlen=" + str(self.maxlen)
+        return "deque(" + repr(self._values) + suffix + ")"
 
     __str__ = __repr__
     toString = __repr__
@@ -253,7 +251,6 @@ class deque:
 
 @runtime.sequence_class
 class OrderedDict:
-
     @classmethod
     def __class_getitem__(cls, _parameters):
         """Return the runtime origin for an erased generic alias."""
@@ -285,13 +282,10 @@ class OrderedDict:
 
     def __eq__(self, other: Any) -> Any:
         if isinstance(other, OrderedDict):
-            if (
-                self._order_sensitive_equality
-                and other._order_sensitive_equality
-            ):
+            if self._order_sensitive_equality and other._order_sensitive_equality:
                 return list(self.items()) == list(other.items())
             return self._data == other._data
-        if hasattr(other, 'items'):
+        if hasattr(other, "items"):
             return self._data == other
         return NotImplemented
 
@@ -330,8 +324,8 @@ class OrderedDict:
     def pop(self, key: Any, *fallback: Any) -> Any:
         if len(fallback) > 1:
             raise TypeError(
-                'pop() takes at most 2 arguments ('
-                + str(len(fallback) + 1) + ' given)')
+                "pop() takes at most 2 arguments (" + str(len(fallback) + 1) + " given)"
+            )
         if key in self._data:
             value = self._data.__getitem__(key)
             self._data.__delitem__(key)
@@ -352,7 +346,7 @@ class OrderedDict:
         **keywords: Any,
     ) -> None:
         if iterable is not runtime.undefined:
-            if hasattr(iterable, 'items'):
+            if hasattr(iterable, "items"):
                 iterable = iterable.items()
             for key, value in iterable:
                 self._data.__setitem__(key, value)
@@ -381,7 +375,7 @@ class OrderedDict:
 
     def popitem(self, last: bool = True) -> Any:
         if len(self._data) == 0:
-            raise KeyError('dictionary is empty')
+            raise KeyError("dictionary is empty")
         keys = list(self._data.keys())
         key = keys[-1] if last else keys[0]
         value = self._data.__getitem__(key)
@@ -399,7 +393,7 @@ class OrderedDict:
             self._data = dict([(key, value)] + list(self._data.items()))
 
     def __repr__(self) -> str:
-        return 'OrderedDict(' + repr(list(self._data.items())) + ')'
+        return "OrderedDict(" + repr(list(self._data.items())) + ")"
 
     __str__ = __repr__
     toString = __repr__
@@ -407,12 +401,13 @@ class OrderedDict:
 
 
 class defaultdict(OrderedDict):
-
     _order_sensitive_equality = False
 
-    def __init__(self, default_factory: Any = None, *args: Any, **keywords: Any) -> None:
+    def __init__(
+        self, default_factory: Any = None, *args: Any, **keywords: Any
+    ) -> None:
         if default_factory is not None and not callable(default_factory):
-            raise TypeError('first argument must be callable or None')
+            raise TypeError("first argument must be callable or None")
         self.default_factory = default_factory
         OrderedDict.__init__(self, *args, **keywords)
 
@@ -432,7 +427,9 @@ class defaultdict(OrderedDict):
         return type(self)(self.default_factory, self.items())
 
     def __repr__(self) -> str:
-        return 'defaultdict(' + repr(self.default_factory) + ', ' + repr(self._data) + ')'
+        return (
+            "defaultdict(" + repr(self.default_factory) + ", " + repr(self._data) + ")"
+        )
 
     __str__ = __repr__
     toString = __repr__
@@ -440,7 +437,6 @@ class defaultdict(OrderedDict):
 
 
 class Counter(OrderedDict):
-
     def __init__(self, iterable: Any = runtime.undefined, **keywords: Any) -> None:
         self._data = dict()
         if iterable is not runtime.undefined:
@@ -454,8 +450,8 @@ class Counter(OrderedDict):
     def fromkeys(cls, iterable: Any, value: Any = None) -> Any:
         del cls, iterable, value
         raise NotImplementedError(
-            'Counter.fromkeys() is undefined.  '
-            'Use Counter(iterable) instead.')
+            "Counter.fromkeys() is undefined.  Use Counter(iterable) instead."
+        )
 
     def __getitem__(self, key: Any) -> Any:
         if key in self._data:
@@ -509,7 +505,7 @@ class Counter(OrderedDict):
 
     def update(self, iterable: Any = runtime.undefined, **keywords: Any) -> None:
         if iterable is not runtime.undefined:
-            if hasattr(iterable, 'items'):
+            if hasattr(iterable, "items"):
                 for key, value in iterable.items():
                     self._data.__setitem__(key, self.__getitem__(key) + value)
             else:
@@ -520,7 +516,7 @@ class Counter(OrderedDict):
 
     def subtract(self, iterable: Any = runtime.undefined, **keywords: Any) -> None:
         if iterable is not runtime.undefined:
-            if hasattr(iterable, 'items'):
+            if hasattr(iterable, "items"):
                 for key, value in iterable.items():
                     self._data.__setitem__(key, self.__getitem__(key) - value)
             else:
@@ -541,14 +537,12 @@ class Counter(OrderedDict):
         pairs = list(self._data.items())
         pairs.sort(key=lambda pair: pair[1], reverse=True)
         if count is not None:
-            if (
-                count is not True
-                and count is not False
-                and not isinstance(count, int)
-            ):
+            if count is not True and count is not False and not isinstance(count, int):
                 raise TypeError(
-                    "'" + _type_name(count)
-                    + "' object cannot be interpreted as an integer")
+                    "'"
+                    + _type_name(count)
+                    + "' object cannot be interpreted as an integer"
+                )
             if count <= 0:
                 pairs = []
             else:
@@ -556,7 +550,7 @@ class Counter(OrderedDict):
         return [runtime.math_tuple([key, value]) for key, value in pairs]
 
     def __repr__(self) -> str:
-        return 'Counter(' + repr(self._data) + ')'
+        return "Counter(" + repr(self._data) + ")"
 
     __str__ = __repr__
     toString = __repr__
@@ -595,10 +589,7 @@ class Counter(OrderedDict):
         return self._combine(other, max)
 
     def _keep_positive(self) -> Any:
-        nonpositive = [
-            key for key, count in self._data.items()
-            if not count > 0
-        ]
+        nonpositive = [key for key, count in self._data.items() if not count > 0]
         for key in nonpositive:
             self._data.__delitem__(key)
         return self
@@ -643,7 +634,6 @@ class Counter(OrderedDict):
 
 
 class ChainMap:
-
     def __init__(self, *maps: Any) -> None:
         self.maps = list(maps) if len(maps) != 0 else [dict()]
 
@@ -668,8 +658,7 @@ class ChainMap:
 
     def __delitem__(self, key: Any) -> None:
         if key not in self.maps[0]:
-            raise KeyError(
-                'Key not found in the first mapping: ' + repr(key))
+            raise KeyError("Key not found in the first mapping: " + repr(key))
         self.maps[0].__delitem__(key)
 
     def __contains__(self, key: Any) -> bool:
@@ -705,13 +694,12 @@ class ChainMap:
         try:
             return self.maps[0].pop(key, *fallback)
         except KeyError:
-            raise KeyError(
-                'Key not found in the first mapping: ' + repr(key))
+            raise KeyError("Key not found in the first mapping: " + repr(key))
 
     def popitem(self) -> Any:
         mapping = self.maps[0]
         if len(mapping) == 0:
-            raise KeyError('No keys found in the first mapping.')
+            raise KeyError("No keys found in the first mapping.")
         key = list(mapping)[-1]
         value = mapping.__getitem__(key)
         mapping.__delitem__(key)
@@ -726,7 +714,7 @@ class ChainMap:
         **keywords: Any,
     ) -> None:
         if iterable is not runtime.undefined:
-            if hasattr(iterable, 'items'):
+            if hasattr(iterable, "items"):
                 iterable = iterable.items()
             for key, value in iterable:
                 self.__setitem__(key, value)
@@ -774,8 +762,10 @@ class ChainMap:
 
     def __repr__(self) -> str:
         return (
-            type(self).__name__ + '('
-            + ', '.join(repr(mapping) for mapping in self.maps) + ')'
+            type(self).__name__
+            + "("
+            + ", ".join(repr(mapping) for mapping in self.maps)
+            + ")"
         )
 
 
@@ -878,14 +868,14 @@ class UserString:
 
 def _normalize_field_names(field_names: Any) -> list[str]:
     if not isinstance(field_names, (list, tuple, str)):
-        raise TypeError('field_names must be a sequence')
+        raise TypeError("field_names must be a sequence")
     if isinstance(field_names, str):
-        parts = field_names.replace(',', ' ').split(' ')
+        parts = field_names.replace(",", " ").split(" ")
         field_names = [part for part in parts if part]
     answer = list(field_names)
     for name in answer:
         if not isinstance(name, str):
-            raise TypeError('field names must be strings')
+            raise TypeError("field names must be strings")
     return answer
 
 
@@ -894,20 +884,20 @@ def namedtuple(type_name: str, field_names: Any) -> Any:
 
     def collect_values(args: Any, keywords: Any) -> list[Any]:
         if len(args) > len(names):
-            raise TypeError('too many positional arguments')
+            raise TypeError("too many positional arguments")
         values = list(args)
         keyword_names = list(keywords)
         for index in range(len(args)):
             if names[index] in keyword_names:
-                raise TypeError('unexpected or duplicate keyword argument')
+                raise TypeError("unexpected or duplicate keyword argument")
         for index in range(len(args), len(names)):
             name = names[index]
             if name not in keyword_names:
-                raise TypeError('missing required argument: ' + name)
+                raise TypeError("missing required argument: " + name)
             values.append(keywords.__getitem__(name))
         for name in keyword_names:
             if name not in names:
-                raise TypeError('unexpected or duplicate keyword argument')
+                raise TypeError("unexpected or duplicate keyword argument")
         return values
 
     def tuple_class(*args: Any, **keywords: Any) -> Any:
@@ -929,7 +919,7 @@ def namedtuple(type_name: str, field_names: Any) -> Any:
     )
     runtime.reflect.set(
         tuple_class.prototype,
-        '__init__',
+        "__init__",
         runtime.native_method(tuple_init),
     )
     return tuple_class

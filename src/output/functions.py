@@ -2,22 +2,34 @@
 # License: BSD Copyright: 2016, Kovid Goyal <kovid at kovidgoyal.net>
 from __python__ import hash_literals
 
-from ast_types import (AST_Call, AST_Class, AST_ClassCall, AST_Dot, AST_Lambda,
-                       AST_Method, AST_New, AST_PropAccess, AST_Scope,
-                       AST_Seq, AST_SymbolRef, AST_Toplevel, has_calls,
-                       is_node_type)
+from ast_types import (
+    AST_Call,
+    AST_Class,
+    AST_ClassCall,
+    AST_Dot,
+    AST_Lambda,
+    AST_Method,
+    AST_New,
+    AST_PropAccess,
+    AST_Scope,
+    AST_Seq,
+    AST_SymbolRef,
+    AST_Toplevel,
+    has_calls,
+    is_node_type,
+)
 from output.stream import OutputStream
 from output.statements import print_bracketed
 from output.utils import create_doctring
 from output.operators import print_getattr
 
-anonfunc = 'ρσ_anonfunc'
-module_name = 'null'
+anonfunc = "ρσ_anonfunc"
+module_name = "null"
 
 
 def set_module_name(x):
     global module_name
-    module_name = '"' + x + '"' if x else 'null'
+    module_name = '"' + x + '"' if x else "null"
 
 
 def decorate(decorators, output, func):
@@ -37,11 +49,14 @@ def decorate(decorators, output, func):
 
 def function_args(argnames, output, strip_first):
     def f():
-        if argnames and argnames.length and (
-                argnames.is_simple_func is True
-                or argnames.is_simple_func is undefined):
-            for i, arg in enumerate(
-                (argnames.slice(1) if strip_first else argnames)):
+        if (
+            argnames
+            and argnames.length
+            and (
+                argnames.is_simple_func is True or argnames.is_simple_func is undefined
+            )
+        ):
+            for i, arg in enumerate((argnames.slice(1) if strip_first else argnames)):
                 if i:
                     output.comma()
                 arg.print(output)
@@ -54,10 +69,7 @@ def function_preamble(node, output, offset, javascript_name):
     a = node.argnames
     if not a:
         return
-    fname = (
-        javascript_name
-        or (node.name.name if node.name else anonfunc)
-    )
+    fname = javascript_name or (node.name.name if node.name else anonfunc)
     fname = output.make_name(fname)
 
     # Methods omit their first Python argument from the JavaScript formal
@@ -68,9 +80,9 @@ def function_preamble(node, output, offset, javascript_name):
     # This also makes ``C.method(instance, ...)`` behave like CPython.
     if offset and output.options.python_attributes:
         output.indent()
-        output.print('if ((this === globalThis || this == null) ')
-        output.print('&& arguments.length > 0) return arguments.callee.apply(')
-        output.print('arguments[0], Array.prototype.slice.call(arguments, 1))')
+        output.print("if ((this === globalThis || this == null) ")
+        output.print("&& arguments.length > 0) return arguments.callee.apply(")
+        output.print("arguments[0], Array.prototype.slice.call(arguments, 1))")
         output.end_statement()
 
     def validate_arguments():
@@ -78,49 +90,50 @@ def function_preamble(node, output, offset, javascript_name):
             return
         if a.starargs is undefined:
             output.indent()
-            output.print('if (arguments.length > ' + str(
-                a.length - offset))
-            output.print(' && !(arguments[arguments.length - 1] ')
-            output.print('&& arguments[arguments.length - 1]')
-            output.print('[ρσ_kwargs_symbol] === true)) ')
+            output.print("if (arguments.length > " + str(a.length - offset))
+            output.print(" && !(arguments[arguments.length - 1] ")
+            output.print("&& arguments[arguments.length - 1]")
+            output.print("[ρσ_kwargs_symbol] === true)) ")
             output.print(
-                'throw ρσ_function_argument_error('
-                '"too many positional arguments", ' + fname + ')')
+                "throw ρσ_function_argument_error("
+                '"too many positional arguments", ' + fname + ")"
+            )
             output.end_statement()
         for index, argument in enumerate(a):
             if index < offset:
                 continue
-            if not Object.prototype.hasOwnProperty.call(
-                a.defaults, argument.name
-            ):
+            if not Object.prototype.hasOwnProperty.call(a.defaults, argument.name):
                 output.indent()
-                output.print('if (typeof ')
+                output.print("if (typeof ")
                 argument.print(output)
                 output.print(' === "undefined") ')
                 output.print(
-                    'throw ρσ_function_argument_error('
-                    '"missing required argument: '
-                    + argument.name + '", ' + fname + ')')
+                    "throw ρσ_function_argument_error("
+                    '"missing required argument: ' + argument.name + '", ' + fname + ")"
+                )
                 output.end_statement()
         for argument in a.kwonly:
-            if not Object.prototype.hasOwnProperty.call(
-                a.defaults, argument.name
-            ):
+            if not Object.prototype.hasOwnProperty.call(a.defaults, argument.name):
                 output.indent()
-                output.print('if (typeof ')
+                output.print("if (typeof ")
                 argument.print(output)
                 output.print(' === "undefined") ')
                 output.print(
-                    'throw ρσ_function_argument_error('
+                    "throw ρσ_function_argument_error("
                     '"missing required keyword-only '
-                    + 'argument: ' + argument.name + '", ' + fname + ')')
+                    + "argument: "
+                    + argument.name
+                    + '", '
+                    + fname
+                    + ")"
+                )
                 output.end_statement()
 
     if a.is_simple_func:
         validate_arguments()
         return
     # If this function has optional parameters/*args/**kwargs declare it differently
-    kw = 'arguments[arguments.length-1]'
+    kw = "arguments[arguments.length-1]"
     # Define all formal parameters
     for c, arg in enumerate(a):
         i = c - offset
@@ -130,34 +143,90 @@ def function_preamble(node, output, offset, javascript_name):
             output.space()
             output.assign(arg)
             if Object.prototype.hasOwnProperty.call(a.defaults, arg.name):
-                output.spaced('(arguments[' + i + ']', '===', 'undefined',
-                              '||', '(', i, '===', 'arguments.length-1', '&&',
-                              kw, '!==', 'null', '&&', 'typeof', kw, '===',
-                              '"object"', '&&', kw, '[ρσ_kwargs_symbol]',
-                              '===', 'true))', '?', '')
-                output.print(
-                    fname + '.__defaults__[' + JSON.stringify(arg.name) + ']')
-                output.space(), output.print(':'), output.space()
+                output.spaced(
+                    "(arguments[" + i + "]",
+                    "===",
+                    "undefined",
+                    "||",
+                    "(",
+                    i,
+                    "===",
+                    "arguments.length-1",
+                    "&&",
+                    kw,
+                    "!==",
+                    "null",
+                    "&&",
+                    "typeof",
+                    kw,
+                    "===",
+                    '"object"',
+                    "&&",
+                    kw,
+                    "[ρσ_kwargs_symbol]",
+                    "===",
+                    "true))",
+                    "?",
+                    "",
+                )
+                output.print(fname + ".__defaults__[" + JSON.stringify(arg.name) + "]")
+                output.space(), output.print(":"), output.space()
             else:
-                output.spaced('(', i, '===', 'arguments.length-1', '&&', kw,
-                              '!==', 'null', '&&', 'typeof', kw, '===',
-                              '"object"', '&&', kw, '[ρσ_kwargs_symbol]',
-                              '===', 'true)', '?', 'undefined', ':', '')
-            output.print('arguments[' + i + ']')
+                output.spaced(
+                    "(",
+                    i,
+                    "===",
+                    "arguments.length-1",
+                    "&&",
+                    kw,
+                    "!==",
+                    "null",
+                    "&&",
+                    "typeof",
+                    kw,
+                    "===",
+                    '"object"',
+                    "&&",
+                    kw,
+                    "[ρσ_kwargs_symbol]",
+                    "===",
+                    "true)",
+                    "?",
+                    "undefined",
+                    ":",
+                    "",
+                )
+            output.print("arguments[" + i + "]")
             output.end_statement()
     if a.kwargs or a.has_defaults or a.kwonly.length:
         # Look for an options object
-        kw = 'ρσ_kwargs_obj'
+        kw = "ρσ_kwargs_obj"
         if a.kwargs:
             kw = output.make_name(a.kwargs.name)
         output.indent()
-        output.spaced('var', kw, '=', 'arguments[arguments.length-1]')
+        output.spaced("var", kw, "=", "arguments[arguments.length-1]")
         output.end_statement()
         # Ensure kwargs is the options object
         output.indent()
-        output.spaced('if', '(' + kw, '===', 'null', '||', 'typeof', kw, '!==',
-                      '"object"', '||', kw, '[ρσ_kwargs_symbol]', '!==',
-                      'true)', kw, '=', '{}')
+        output.spaced(
+            "if",
+            "(" + kw,
+            "===",
+            "null",
+            "||",
+            "typeof",
+            kw,
+            "!==",
+            '"object"',
+            "||",
+            kw,
+            "[ρσ_kwargs_symbol]",
+            "!==",
+            "true)",
+            kw,
+            "=",
+            "{}",
+        )
         output.end_statement()
         # Read values from the kwargs object for any formal parameters
         if a.has_defaults:
@@ -171,19 +240,22 @@ def function_preamble(node, output, offset, javascript_name):
                     continue
                 output.indent()
                 output.spaced(
-                    'if', '(Object.prototype.hasOwnProperty.call(' + kw + ',',
-                    '"' + dname + '"))')
+                    "if",
+                    "(Object.prototype.hasOwnProperty.call(" + kw + ",",
+                    '"' + dname + '"))',
+                )
 
                 def f():
                     output.indent()
                     output.spaced(
-                        output.make_name(dname), '=',
-                        kw + '[' + JSON.stringify(dname) + ']')
+                        output.make_name(dname),
+                        "=",
+                        kw + "[" + JSON.stringify(dname) + "]",
+                    )
                     output.end_statement()
                     if a.kwargs:
                         output.indent()
-                        output.spaced(
-                            'delete', kw + '[' + JSON.stringify(dname) + ']')
+                        output.spaced("delete", kw + "[" + JSON.stringify(dname) + "]")
                         output.end_statement()
 
                 output.with_block(f)
@@ -191,33 +263,34 @@ def function_preamble(node, output, offset, javascript_name):
 
         for argument in a.kwonly:
             output.indent()
-            output.print('var ')
+            output.print("var ")
             output.assign(argument)
-            if Object.prototype.hasOwnProperty.call(
-                a.defaults, argument.name
-            ):
+            if Object.prototype.hasOwnProperty.call(a.defaults, argument.name):
                 output.print(
-                    fname + '.__defaults__['
-                    + JSON.stringify(argument.name) + ']')
+                    fname + ".__defaults__[" + JSON.stringify(argument.name) + "]"
+                )
             else:
-                output.print('undefined')
+                output.print("undefined")
             output.end_statement()
             output.indent()
             output.print(
-                'if (Object.prototype.hasOwnProperty.call('
-                + kw + ', ' + JSON.stringify(argument.name) + '))')
+                "if (Object.prototype.hasOwnProperty.call("
+                + kw
+                + ", "
+                + JSON.stringify(argument.name)
+                + "))"
+            )
 
             def assign_keyword_only():
                 output.indent()
                 output.assign(argument)
-                output.print(kw + '[' + JSON.stringify(
-                    argument.name) + ']')
+                output.print(kw + "[" + JSON.stringify(argument.name) + "]")
                 output.end_statement()
                 if a.kwargs:
                     output.indent()
                     output.print(
-                        'delete ' + kw + '['
-                        + JSON.stringify(argument.name) + ']')
+                        "delete " + kw + "[" + JSON.stringify(argument.name) + "]"
+                    )
                     output.end_statement()
 
             output.with_block(assign_keyword_only)
@@ -228,27 +301,46 @@ def function_preamble(node, output, offset, javascript_name):
         nargs = a.length - offset
         output.indent()
         starargs_name = output.make_name(a.starargs.name)
-        output.spaced('var', starargs_name, '=',
-                      'Array.prototype.slice.call(arguments,', nargs + ')')
+        output.spaced(
+            "var",
+            starargs_name,
+            "=",
+            "Array.prototype.slice.call(arguments,",
+            nargs + ")",
+        )
         output.end_statement()
         # Remove the options object, if present
         output.indent()
-        output.spaced('if', '(' + kw, '!==', 'null', '&&', 'typeof', kw, '===',
-                      '"object"', '&&', kw, '[ρσ_kwargs_symbol]', '===',
-                      'true)', starargs_name)
-        output.print('.pop()')
+        output.spaced(
+            "if",
+            "(" + kw,
+            "!==",
+            "null",
+            "&&",
+            "typeof",
+            kw,
+            "===",
+            '"object"',
+            "&&",
+            kw,
+            "[ρσ_kwargs_symbol]",
+            "===",
+            "true)",
+            starargs_name,
+        )
+        output.print(".pop()")
         output.end_statement()
         if output.options.python_tuples:
             output.indent()
             output.assign(starargs_name)
-            output.print('ρσ_math_tuple(' + starargs_name + ')')
+            output.print("ρσ_math_tuple(" + starargs_name + ")")
             output.end_statement()
 
     if a.kwargs is not undefined and output.options.python_attributes:
         output.indent()
         kwargs_name = output.make_name(a.kwargs.name)
         output.assign(kwargs_name)
-        output.print('ρσ_dict(' + kwargs_name + ')')
+        output.print("ρσ_dict(" + kwargs_name + ")")
         output.end_statement()
 
     validate_arguments()
@@ -263,21 +355,15 @@ def has_annotations(self):
     for arg in self.argnames.kwonly:
         if arg.annotation:
             return True
-    if (
-        self.argnames.starargs is not undefined
-        and self.argnames.starargs.annotation
-    ):
+    if self.argnames.starargs is not undefined and self.argnames.starargs.annotation:
         return True
-    if (
-        self.argnames.kwargs is not undefined
-        and self.argnames.kwargs.annotation
-    ):
+    if self.argnames.kwargs is not undefined and self.argnames.kwargs.annotation:
         return True
     return False
 
 
 def print_annotation_text(self, output, strip_first):
-    output.print('{')
+    output.print("{")
     wrote = False
 
     def write_argument(arg):
@@ -286,10 +372,9 @@ def print_annotation_text(self, output, strip_first):
             if wrote:
                 output.comma()
             output.print(JSON.stringify(arg.name))
-            output.print(':')
+            output.print(":")
             output.space()
-            output.print(JSON.stringify(
-                arg.annotation_text or arg.name))
+            output.print(JSON.stringify(arg.annotation_text or arg.name))
             wrote = True
 
     for index, arg in enumerate(self.argnames):
@@ -306,9 +391,8 @@ def print_annotation_text(self, output, strip_first):
             output.comma()
         output.print('"return":')
         output.space()
-        output.print(JSON.stringify(
-            self.return_annotation_text or 'Any'))
-    output.print('}')
+        output.print(JSON.stringify(self.return_annotation_text or "Any"))
+    output.print("}")
 
 
 def function_annotation(self, output, strip_first, name):
@@ -319,8 +403,7 @@ def function_annotation(self, output, strip_first, name):
     # Function.name.  Decorators and method adapters may replace the underlying
     # function, while introspection should continue to see the source name.
     def python_name():
-        output.print(JSON.stringify(
-            self.name.name if self.name else '<lambda>'))
+        output.print(JSON.stringify(self.name.name if self.name else "<lambda>"))
 
     props.__name__ = python_name
     props.__qualname__ = python_name
@@ -334,15 +417,15 @@ def function_annotation(self, output, strip_first, name):
     if not compiling_baselib and not strip_first:
 
         def python_descriptor():
-            output.print('true')
+            output.print("true")
 
         props.__python_descriptor__ = python_descriptor
 
     if self.is_generator:
-        props.__is_generator__ = lambda: output.print('true')
+        props.__is_generator__ = lambda: output.print("true")
 
     if self.is_coroutine:
-        props.__is_coroutine__ = lambda: output.print('true')
+        props.__is_coroutine__ = lambda: output.print("true")
 
     # Keep the exact source spelling independently of runtime evaluation.
     # This powers help(), DocSpec, and the static reference manual even when
@@ -361,13 +444,13 @@ def function_annotation(self, output, strip_first, name):
 
         def annotations():
             if not compiling_baselib:
-                output.print('ρσ_dict(')
-            if self.annotations is 'future':
+                output.print("ρσ_dict(")
+            if self.annotations is "future":
                 print_annotation_text(self, output, strip_first)
                 if not compiling_baselib:
-                    output.print(')')
+                    output.print(")")
                 return
-            output.print('{')
+            output.print("{")
             wrote = False
 
             def write_evaluated(arg):
@@ -376,7 +459,7 @@ def function_annotation(self, output, strip_first, name):
                     if wrote:
                         output.comma()
                     output.print(JSON.stringify(arg.name))
-                    output.print(':'), output.space()
+                    output.print(":"), output.space()
                     arg.annotation.print(output)
                     wrote = True
 
@@ -392,11 +475,11 @@ def function_annotation(self, output, strip_first, name):
             if self.return_annotation:
                 if wrote:
                     output.comma()
-                output.print('return:'), output.space()
+                output.print("return:"), output.space()
                 self.return_annotation.print(output)
-            output.print('}')
+            output.print("}")
             if not compiling_baselib:
-                output.print(')')
+                output.print(")")
 
         props.__annotations__ = annotations
     else:
@@ -404,7 +487,8 @@ def function_annotation(self, output, strip_first, name):
         # even when it is empty.  functools.wraps and many package-level
         # decorators copy it unconditionally.
         props.__annotations__ = lambda: output.print(
-            '{}' if compiling_baselib else 'ρσ_dict()')
+            "{}" if compiling_baselib else "ρσ_dict()"
+        )
 
     # Create __defaults__
     defaults = self.argnames.defaults
@@ -412,47 +496,45 @@ def function_annotation(self, output, strip_first, name):
     if dkeys.length:
 
         def __defaults__():
-            output.print('{')
+            output.print("{")
             for i, k in enumerate(dkeys):
-                output.print(k + ':')
+                output.print(k + ":")
                 default_value = defaults[k]
                 if is_node_type(default_value, AST_Seq):
                     if output.options.python_tuples:
-                        output.print('ρσ_math_tuple([')
+                        output.print("ρσ_math_tuple([")
                     else:
-                        output.print('[')
+                        output.print("[")
                     default_value.print(output)
                     if output.options.python_tuples:
-                        output.print('])')
+                        output.print("])")
                     else:
-                        output.print(']')
+                        output.print("]")
                 else:
                     default_value.print(output)
                 if i is not dkeys.length - 1:
                     output.comma()
-            output.print('}')
+            output.print("}")
 
         props.__defaults__ = __defaults__
 
     kwdefault_names = []
     for argument in self.argnames.kwonly:
-        if Object.prototype.hasOwnProperty.call(
-            self.argnames.defaults, argument.name
-        ):
+        if Object.prototype.hasOwnProperty.call(self.argnames.defaults, argument.name):
             kwdefault_names.push(argument.name)
 
     def __kwdefaults__():
         if not kwdefault_names.length:
-            output.print('null')
+            output.print("null")
             return
-        output.print('{')
+        output.print("{")
         for index, name in enumerate(kwdefault_names):
             if index:
                 output.comma()
             output.print_string(name)
             output.colon()
             self.argnames.defaults[name].print(output)
-        output.print('}')
+        output.print("}")
 
     props.__kwdefaults__ = __kwdefaults__
 
@@ -460,7 +542,7 @@ def function_annotation(self, output, strip_first, name):
     if not self.argnames.is_simple_func:
 
         def handle():
-            output.print('true')
+            output.print("true")
 
         props.__handles_kwarg_interpolation__ = handle
 
@@ -468,7 +550,7 @@ def function_annotation(self, output, strip_first, name):
     # empty one.  Introspection must be able to distinguish ``*args``-only
     # functions from host JavaScript callables with no Python metadata.
     def argnames():
-        output.print('[')
+        output.print("[")
         emitted = False
         for i, arg in enumerate(self.argnames):
             if strip_first and i is 0:
@@ -477,7 +559,7 @@ def function_annotation(self, output, strip_first, name):
                 output.comma()
             output.print(JSON.stringify(arg.name))
             emitted = True
-        output.print(']')
+        output.print("]")
 
     props.__argnames__ = argnames
 
@@ -498,12 +580,12 @@ def function_annotation(self, output, strip_first, name):
     if self.argnames.kwonly.length:
 
         def kwonly():
-            output.print('[')
+            output.print("[")
             for index, argument in enumerate(self.argnames.kwonly):
                 if index:
                     output.comma()
                 output.print(JSON.stringify(argument.name))
-            output.print(']')
+            output.print("]")
 
         props.__kwonly__ = kwonly
 
@@ -519,7 +601,7 @@ def function_annotation(self, output, strip_first, name):
         # license to remove the Python function attribute.  Libraries such as
         # pyparsing copy ``__doc__`` from callbacks and correctly expect
         # undocumented functions to expose ``None``.
-        props.__doc__ = lambda: output.print('null')
+        props.__doc__ = lambda: output.print("null")
 
     def module():
         output.print(module_name)
@@ -531,20 +613,20 @@ def function_annotation(self, output, strip_first, name):
         props[name]()  # calling this prints it out
         output.end_statement()
 
-    if not compiling_baselib and module_name != 'null':
-        output.print('Object.defineProperty(' + fname)
+    if not compiling_baselib and module_name != "null":
+        output.print("Object.defineProperty(" + fname)
         output.comma()
         output.print('"__globals__"')
         output.comma()
-        output.print('{value:ρσ_live_scope_dict(ρσ_modules[')
+        output.print("{value:ρσ_live_scope_dict(ρσ_modules[")
         output.print(module_name)
-        output.print(']),writable:false})')
+        output.print("]),writable:false})")
         output.end_statement()
-        output.assign(fname + '.__code__')
-        output.print('ρσ_function_code(' + fname + ')')
+        output.assign(fname + ".__code__")
+        output.print("ρσ_function_code(" + fname + ")")
         output.end_statement()
-        output.assign(fname + '.__python_type__')
-        output.print('ρσ_function_type')
+        output.assign(fname + ".__python_type__")
+        output.print("ρσ_function_type")
         output.end_statement()
 
     output.print(
@@ -564,8 +646,8 @@ def function_definition(
     if as_expression:
         orig_indent = output.indentation()
         output.set_indentation(output.next_indent())
-        output.spaced('(function()', '{'), output.newline()
-        output.indent(), output.spaced('var', anonfunc, '='), output.space()
+        output.spaced("(function()", "{"), output.newline()
+        output.indent(), output.spaced("var", anonfunc, "="), output.space()
     output.print("function"), output.space()
     if self.name:
         if javascript_name:
@@ -582,7 +664,7 @@ def function_definition(
         )
 
     if self.is_generator:
-        output.print('()'), output.space()
+        output.print("()"), output.space()
 
         def output_generator():
             # Dynamically resolved methods are invoked like unbound Python
@@ -593,14 +675,12 @@ def function_definition(
             # generator as StopIteration.value instead of delegating to it.
             if strip_first and output.options.python_attributes:
                 output.indent()
-                output.print('if ((this === globalThis || this == null) ')
-                output.print(
-                    '&& arguments.length > 0) return arguments.callee.apply(')
-                output.print(
-                    'arguments[0], Array.prototype.slice.call(arguments, 1))')
+                output.print("if ((this === globalThis || this == null) ")
+                output.print("&& arguments.length > 0) return arguments.callee.apply(")
+                output.print("arguments[0], Array.prototype.slice.call(arguments, 1))")
                 output.end_statement()
             output.indent()
-            output.print('function* js_generator')
+            output.print("function* js_generator")
             function_args(self.argnames, output, strip_first)
             print_bracketed(
                 self,
@@ -611,54 +691,49 @@ def function_definition(
 
             output.newline()
             output.indent()
-            output.spaced('var', 'result', '=', 'js_generator.apply(this,',
-                          'arguments)')
+            output.spaced(
+                "var", "result", "=", "js_generator.apply(this,", "arguments)"
+            )
             output.end_statement()
             # Python's generator objects use a separate method to send data to the generator
             output.indent()
-            output.spaced(
-                'result.send', '=',
-                'ρσ_generator_send.bind(null, result)')
+            output.spaced("result.send", "=", "ρσ_generator_send.bind(null, result)")
             output.end_statement()
             output.indent()
-            output.assign('result.__started__')
-            output.print('false')
+            output.assign("result.__started__")
+            output.print("false")
             output.end_statement()
             output.indent()
-            output.assign('result.__native_throw__')
-            output.print('result.throw.bind(result)')
+            output.assign("result.__native_throw__")
+            output.print("result.throw.bind(result)")
             output.end_statement()
             output.indent()
-            output.spaced(
-                'result.throw', '=',
-                'ρσ_generator_throw.bind(null, result)')
+            output.spaced("result.throw", "=", "ρσ_generator_throw.bind(null, result)")
             output.end_statement()
             output.indent()
-            output.spaced(
-                'result.close', '=',
-                'ρσ_generator_close.bind(null, result)')
+            output.spaced("result.close", "=", "ρσ_generator_close.bind(null, result)")
             output.end_statement()
-            generator_name = (
-                self.name.name if self.name else '<lambda>')
+            generator_name = self.name.name if self.name else "<lambda>"
             output.indent()
-            output.assign('result.__name__')
+            output.assign("result.__name__")
             output.print(JSON.stringify(generator_name))
             output.end_statement()
             output.indent()
-            output.assign('result.__qualname__')
+            output.assign("result.__qualname__")
             output.print(JSON.stringify(generator_name))
             output.end_statement()
             output.indent()
-            output.spaced('return', 'result')
+            output.spaced("return", "result")
             output.end_statement()
 
         output.with_block(output_generator)
     else:
         function_args(self.argnames, output, strip_first)
+
         def python_implicit_return(output):
             if output.options.python_truthiness:
                 output.indent()
-                output.spaced('return', 'null')
+                output.spaced("return", "null")
                 output.end_statement()
 
         print_bracketed(
@@ -673,8 +748,7 @@ def function_definition(
     if as_expression:
         output.end_statement()
         function_annotation(self, output, strip_first, anonfunc)
-        output.indent(), output.spaced('return',
-                                       anonfunc), output.end_statement()
+        output.indent(), output.spaced("return", anonfunc), output.end_statement()
         output.set_indentation(orig_indent)
         output.indent(), output.print("})()")
 
@@ -719,7 +793,7 @@ def print_this(expression, output):
     if obj:
         obj.print(output)
     else:
-        output.print('this')
+        output.print("this")
 
 
 def print_function_call(self, output):
@@ -728,21 +802,18 @@ def print_function_call(self, output):
         for index in range(stack.length - 1, -1, -1):
             candidate = stack[index]
             if (
-                want_globals and is_node_type(
-                    candidate, AST_Toplevel)
-                or not want_globals and is_node_type(
-                    candidate, AST_Scope)
+                want_globals
+                and is_node_type(candidate, AST_Toplevel)
+                or not want_globals
+                and is_node_type(candidate, AST_Scope)
             ):
                 return candidate
 
     def print_namespace(scope, live_globals):
-        if (
-            live_globals
-            or is_node_type(scope, AST_Toplevel)
-        ):
-            output.print('ρσ_live_scope_dict(ρσ_modules[')
+        if live_globals or is_node_type(scope, AST_Toplevel):
+            output.print("ρσ_live_scope_dict(ρσ_modules[")
             output.print(JSON.stringify(scope.module_id))
-            output.print('])')
+            output.print("])")
             return
 
         names = []
@@ -766,7 +837,7 @@ def print_function_call(self, output):
                 for argument in scope.argnames:
                     add_name(argument.name)
 
-        output.print('ρσ_scope_dict({')
+        output.print("ρσ_scope_dict({")
         for index, name in enumerate(names):
             if index:
                 output.comma()
@@ -774,26 +845,21 @@ def print_function_call(self, output):
             output.colon()
             if is_node_type(scope, AST_Class):
                 scope.name.print(output)
-                output.print(
-                    '.prototype[' + JSON.stringify(name) + ']')
+                output.print(".prototype[" + JSON.stringify(name) + "]")
             else:
                 output.print_name(name)
-        output.print('})')
+        output.print("})")
 
     if (
         is_node_type(self.expression, AST_SymbolRef)
-        and self.expression.name in ('eval', 'exec')
+        and self.expression.name in ("eval", "exec")
         and self.args.length >= 1
         and self.args.length <= 3
         and not self.args.starargs
         and not self.args.kwargs.length
         and not self.args.kwarg_items.length
     ):
-        output.print(
-            'ρσ_eval'
-            if self.expression.name is 'eval'
-            else 'ρσ_exec'
-        )
+        output.print("ρσ_eval" if self.expression.name is "eval" else "ρσ_exec")
 
         def dynamic_args():
             for index, argument in enumerate(self.args):
@@ -802,38 +868,35 @@ def print_function_call(self, output):
                 argument.print(output)
             for _index in range(self.args.length, 3):
                 output.comma()
-                output.print('undefined')
+                output.print("undefined")
             output.comma()
-            print_namespace(
-                scope_for_namespace(True), True)
+            print_namespace(scope_for_namespace(True), True)
             output.comma()
-            print_namespace(
-                scope_for_namespace(False), False)
+            print_namespace(scope_for_namespace(False), False)
 
         output.with_parens(dynamic_args)
         return
 
     if (
         is_node_type(self.expression, AST_SymbolRef)
-        and self.expression.name in ('dir', 'locals', 'globals', 'vars')
-        and (
-            self.expression.name is not 'dir'
-            or output.options.python_attributes
-        )
+        and self.expression.name in ("dir", "locals", "globals", "vars")
+        and (self.expression.name is not "dir" or output.options.python_attributes)
         and self.args.length == 0
         and not self.args.starargs
         and not self.args.kwargs.length
         and not self.args.kwarg_items.length
     ):
-        want_globals = self.expression.name is 'globals'
-        want_dir = self.expression.name is 'dir'
+        want_globals = self.expression.name is "globals"
+        want_dir = self.expression.name is "dir"
         scope = None
         stack = output.stack()
         for index in range(stack.length - 1, -1, -1):
             candidate = stack[index]
             if (
-                want_globals and is_node_type(candidate, AST_Toplevel)
-                or not want_globals and is_node_type(candidate, AST_Scope)
+                want_globals
+                and is_node_type(candidate, AST_Toplevel)
+                or not want_globals
+                and is_node_type(candidate, AST_Scope)
             ):
                 scope = candidate
                 break
@@ -854,9 +917,7 @@ def print_function_call(self, output):
         elif scope:
             for symbol in scope.localvars:
                 add_name(symbol.name)
-            if want_globals or (
-                want_dir and is_node_type(scope, AST_Toplevel)
-            ):
+            if want_globals or (want_dir and is_node_type(scope, AST_Toplevel)):
                 for name in scope.nonlocalvars or []:
                     add_name(name.name if name.name else name)
                 for symbol in scope.exports or []:
@@ -864,31 +925,29 @@ def print_function_call(self, output):
             if is_node_type(scope, AST_Lambda):
                 for argument in scope.argnames:
                     add_name(argument.name)
-        if want_globals or (
-            want_dir and is_node_type(scope, AST_Toplevel)
-        ):
-            add_name('__name__')
-            add_name('__file__')
+        if want_globals or (want_dir and is_node_type(scope, AST_Toplevel)):
+            add_name("__name__")
+            add_name("__file__")
         if want_dir:
             # Sage.js exposes its interactive helpers as global names.
-            add_name('help')
+            add_name("help")
 
         if want_dir:
-            output.print('ρσ_list_decorate([')
+            output.print("ρσ_list_decorate([")
             for index, name in enumerate(names):
                 if index:
                     output.comma()
                 output.print(JSON.stringify(name))
-            output.print('])')
+            output.print("])")
             return
 
         if want_globals:
-            output.print('ρσ_live_scope_dict(ρσ_modules[')
+            output.print("ρσ_live_scope_dict(ρσ_modules[")
             output.print(JSON.stringify(scope.module_id))
-            output.print('])')
+            output.print("])")
             return
 
-        output.print('ρσ_scope_dict({')
+        output.print("ρσ_scope_dict({")
         for index, name in enumerate(names):
             if index:
                 output.comma()
@@ -896,10 +955,10 @@ def print_function_call(self, output):
             output.colon()
             if is_node_type(scope, AST_Class):
                 scope.name.print(output)
-                output.print('.prototype[' + JSON.stringify(name) + ']')
+                output.print(".prototype[" + JSON.stringify(name) + "]")
             else:
                 output.print_name(name)
-        output.print('})')
+        output.print("})")
         return
 
     if self.pooled_numeric_name:
@@ -912,15 +971,15 @@ def print_function_call(self, output):
         nonlocal is_prototype_call
         if is_node_type(self, AST_ClassCall):
             # class methods are called through the prototype unless static
-            if self['static']:
-                self['class'].print(output)
+            if self["static"]:
+                self["class"].print(output)
                 if self.classvar:
                     output.print(".prototype")
                 output.print(".")
                 output.print(self.method)
             else:
                 is_prototype_call = True
-                self['class'].print(output)
+                self["class"].print(output)
                 output.print(".prototype.")
                 output.print(self.method)
                 if not no_call:
@@ -928,34 +987,34 @@ def print_function_call(self, output):
         else:
             if not is_repeatable:
                 if is_node_type(self.expression, AST_Dot):
-                    output.print('ρσ_expr_temp')
+                    output.print("ρσ_expr_temp")
                     print_getattr(self.expression, output, True)
                 elif no_call and not self.direct_call:
                     output.print(
-                        '(ρσ_expr_temp?.__call__?.bind('
-                        'ρσ_expr_temp) ?? ρσ_expr_temp)'
+                        "(ρσ_expr_temp?.__call__?.bind(ρσ_expr_temp) ?? ρσ_expr_temp)"
                     )
                 else:
-                    output.print('ρσ_expr_temp')
-            elif (not is_new and not self.direct_call
-                  and is_node_type(self.expression, AST_SymbolRef)):
+                    output.print("ρσ_expr_temp")
+            elif (
+                not is_new
+                and not self.direct_call
+                and is_node_type(self.expression, AST_SymbolRef)
+            ):
                 # Resolve callable instances without allocating a fresh bound
                 # function on every ordinary Python function call.  The
                 # resolver immediately returns native functions and performs
                 # Python descriptor binding only for callable objects.
-                output.print('ρσ_resolve_callable(')
+                output.print("ρσ_resolve_callable(")
                 self.expression.print(output)
-                output.print(')')
+                output.print(")")
             else:
                 parenthesize_constructor = (
                     is_new
-                    and not is_node_type(
-                        self.expression, AST_SymbolRef)
-                    and not is_node_type(
-                        self.expression, AST_Dot)
+                    and not is_node_type(self.expression, AST_SymbolRef)
+                    and not is_node_type(self.expression, AST_Dot)
                 )
                 if parenthesize_constructor:
-                    output.print('(')
+                    output.print("(")
                 resolve_callable = (
                     not is_new
                     and not self.direct_call
@@ -969,66 +1028,70 @@ def print_function_call(self, output):
                     )
                 )
                 if resolve_callable:
-                    output.print('ρσ_resolve_callable(')
+                    output.print("ρσ_resolve_callable(")
                 self.expression.print(output)
                 if resolve_callable:
-                    output.print(')')
+                    output.print(")")
                 if parenthesize_constructor:
-                    output.print(')')
+                    output.print(")")
 
     def print_kwargs():
         output.print(
-            'ρσ_desugar_kwargs(['
+            "ρσ_desugar_kwargs(["
             if output.options.python_attributes
-            else 'ρσ_desugar_kwargs_legacy(['
+            else "ρσ_desugar_kwargs_legacy(["
         )
         if has_kwarg_items:
             for i, kwname in enumerate(self.args.kwarg_items):
                 if i > 0:
-                    output.print(',')
+                    output.print(",")
                     output.space()
                 kwname.print(output)
             if has_kwarg_formals:
-                output.print(',')
+                output.print(",")
                 output.space()
 
         if has_kwarg_formals:
-            output.print('{')
+            output.print("{")
             for i, pair in enumerate(self.args.kwargs):
-                if i: output.comma()
+                if i:
+                    output.comma()
                 # Keyword names are Python strings, not JavaScript
                 # identifiers.  In particular, ``default=...`` must remain
                 # the key ``default`` even though a local variable with that
                 # spelling has to be escaped for JavaScript.
                 output.print_string(pair[0].name)
-                output.print(':')
+                output.print(":")
                 output.space()
                 pair[1].print(output)
-            output.print('}')
-        output.print('])')
+            output.print("}")
+        output.print("])")
 
     def print_new(apply):
         output.print(
-            'ρσ_interpolate_kwargs_constructor('
+            "ρσ_interpolate_kwargs_constructor("
             if output.options.python_attributes
-            else 'ρσ_interpolate_kwargs_constructor_legacy('
+            else "ρσ_interpolate_kwargs_constructor_legacy("
         )
-        output.print('Object.create('), self.expression.print(
-            output), output.print('.prototype)')
+        (
+            output.print("Object.create("),
+            self.expression.print(output),
+            output.print(".prototype)"),
+        )
         output.comma()
-        output.print('true' if apply else 'false')
+        output.print("true" if apply else "false")
         output.comma()
 
     def do_print_this():
         if not is_repeatable:
-            output.print('ρσ_expr_temp')
-        elif is_node_type(self, AST_ClassCall) and self['static']:
+            output.print("ρσ_expr_temp")
+        elif is_node_type(self, AST_ClassCall) and self["static"]:
             # ``AST_ClassCall.static`` covers both static methods and class
             # methods.  Static methods ignore the receiver, while class
             # methods require the class object itself.  Using the ambient
             # JavaScript ``this`` accidentally bound class methods to a
             # decorator/hook object when frameworks invoked them indirectly.
-            self['class'].print(output)
+            self["class"].print(output)
         else:
             print_this(self.expression, output)
         output.comma()
@@ -1040,39 +1103,35 @@ def print_function_call(self, output):
             expr = self.args[i]
             is_first = i is 0
             if not is_first:
-                output.print('.concat(')
+                output.print(".concat(")
             if expr.is_array:
                 if output.options.python_attributes:
-                    output.print('Array.from(ρσ_Iterable(')
+                    output.print("Array.from(ρσ_Iterable(")
                     expr.print(output)
-                    output.print('))')
+                    output.print("))")
                 else:
                     expr.print(output)
                 i += 1
             else:
-                output.print('[')
+                output.print("[")
                 while i < self.args.length and not self.args[i].is_array:
                     self.args[i].print(output)
-                    if i + 1 < self.args.length and not self.args[i +
-                                                                  1].is_array:
-                        output.print(',')
+                    if i + 1 < self.args.length and not self.args[i + 1].is_array:
+                        output.print(",")
                         output.space()
                     i += 1
-                output.print(']')
+                output.print("]")
             if not is_first:
-                output.print(')')
+                output.print(")")
 
     has_kwarg_items = self.args.kwarg_items and self.args.kwarg_items.length
     has_kwarg_formals = self.args.kwargs and self.args.kwargs.length
     has_kwargs = has_kwarg_items or has_kwarg_formals
-    is_new = (
-        is_node_type(self, AST_New)
-        and not self.python_class
-    )
+    is_new = is_node_type(self, AST_New) and not self.python_class
     is_repeatable = True
 
     if is_new and not self.args.length and not has_kwargs and not self.args.starargs:
-        output.print('new'), output.space()
+        output.print("new"), output.space()
         print_function_name()
         return  # new A is the same as new A() in javascript
 
@@ -1085,24 +1144,27 @@ def print_function_call(self, output):
                 a.print(output)
 
         if is_new:
-            output.print('new'), output.space()
+            output.print("new"), output.space()
         print_function_name()
         output.with_parens(print_args)
         return
 
     is_repeatable = is_new or not has_calls(self.expression)
     if not is_repeatable:
-        output.assign('(ρσ_expr_temp'), print_this(self.expression,
-                                                   output), output.comma()
+        (
+            output.assign("(ρσ_expr_temp"),
+            print_this(self.expression, output),
+            output.comma(),
+        )
 
     if has_kwargs:
         if is_new:
             print_new(False)
         else:
             output.print(
-                'ρσ_interpolate_kwargs('
+                "ρσ_interpolate_kwargs("
                 if output.options.python_attributes
-                else 'ρσ_interpolate_kwargs_legacy('
+                else "ρσ_interpolate_kwargs_legacy("
             )
             do_print_this()
         print_function_name(True)
@@ -1114,7 +1176,7 @@ def print_function_call(self, output):
             output.comma()
         else:
             print_function_name(True)
-            output.print('.apply(')
+            output.print(".apply(")
             do_print_this()
 
     if is_prototype_call and self.args.length > 1:
@@ -1124,13 +1186,13 @@ def print_function_call(self, output):
 
     if has_kwargs:
         if self.args.length:
-            output.print('.concat(')
-        output.print('[')
+            output.print(".concat(")
+        output.print("[")
         print_kwargs()
-        output.print(']')
+        output.print("]")
         if self.args.length:
-            output.print(')')
+            output.print(")")
 
-    output.print(')')
+    output.print(")")
     if not is_repeatable:
-        output.print(')')
+        output.print(")")

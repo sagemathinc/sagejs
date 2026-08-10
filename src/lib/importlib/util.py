@@ -25,12 +25,12 @@ class ModuleSpec:
     def parent(self):
         if self.submodule_search_locations is not None:
             return self.name
-        return self.name.rpartition('.')[0]
+        return self.name.rpartition(".")[0]
 
 
 def spec_from_loader(name, loader, *, origin=None, is_package=None):
     if is_package is None and loader is not None:
-        method = getattr(loader, 'is_package', None)
+        method = getattr(loader, "is_package", None)
         if method is not None:
             is_package = method(name)
     return ModuleSpec(
@@ -60,7 +60,7 @@ def spec_from_file_location(
 
 
 def module_from_spec(spec):
-    creator = getattr(spec.loader, 'create_module', None)
+    creator = getattr(spec.loader, "create_module", None)
     if creator is not None:
         module = creator(spec)
         if module is not None:
@@ -69,22 +69,21 @@ def module_from_spec(spec):
 
 
 def resolve_name(name, package):
-    if not name.startswith('.'):
+    if not name.startswith("."):
         return name
     if not package:
-        raise ImportError('no package specified for relative import')
-    level = len(name) - len(name.lstrip('.'))
-    parts = package.split('.')
+        raise ImportError("no package specified for relative import")
+    level = len(name) - len(name.lstrip("."))
+    parts = package.split(".")
     if level > len(parts):
-        raise ImportError('attempted relative import beyond top-level package')
-    prefix = '.'.join(parts[:len(parts) - level + 1])
+        raise ImportError("attempted relative import beyond top-level package")
+    prefix = ".".join(parts[: len(parts) - level + 1])
     tail = name[level:]
-    return prefix + ('.' + tail if tail else '')
+    return prefix + ("." + tail if tail else "")
 
 
 def find_spec(name, package=None):
     module = sys.modules.get(name)
     if module is None:
         return None
-    return getattr(module, '__spec__', None)
-
+    return getattr(module, "__spec__", None)

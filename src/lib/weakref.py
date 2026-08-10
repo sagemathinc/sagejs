@@ -19,14 +19,13 @@ def _weakref_rejects(value: Any) -> bool:
     if isinstance(value, (bool, int, float, str, tuple, list, dict, set)):
         return True
     value_type = runtime.jstype(value)
-    return value_type != 'object' and value_type != 'function'
+    return value_type != "object" and value_type != "function"
 
 
 def _weakref_native(value: Any) -> Any:
     if _weakref_rejects(value):
-        raise TypeError('object does not support weak references')
-    return runtime.reflect.construct(
-        runtime.weak_ref_class, [value])
+        raise TypeError("object does not support weak references")
+    return runtime.reflect.construct(runtime.weak_ref_class, [value])
 
 
 def _weakref_callback(native_reference: Any) -> None:
@@ -40,9 +39,11 @@ def _finalize_callback(finalizer: Any) -> None:
 
 
 _reference_registry = runtime.reflect.construct(
-    runtime.finalization_registry_class, [_weakref_callback])
+    runtime.finalization_registry_class, [_weakref_callback]
+)
 _finalize_registry = runtime.reflect.construct(
-    runtime.finalization_registry_class, [_finalize_callback])
+    runtime.finalization_registry_class, [_finalize_callback]
+)
 
 
 class ReferenceType:
@@ -57,8 +58,7 @@ class ReferenceType:
         if self._registered:
             _reference_registry.register(
                 value,
-                runtime.reflect.construct(
-                    runtime.weak_ref_class, [self]),
+                runtime.reflect.construct(runtime.weak_ref_class, [self]),
                 self,
             )
 

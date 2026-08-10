@@ -8,7 +8,7 @@ import time
 from native_prime_field_source import source_prime_matmul, source_prime_rank
 
 
-size = int(os.environ.get('SAGEJS_NATIVE_PRIME_SOURCE_FALLBACK_SIZE', '12'))
+size = int(os.environ.get("SAGEJS_NATIVE_PRIME_SOURCE_FALLBACK_SIZE", "12"))
 prime = 65521
 field = GF(prime)
 left = matrix(
@@ -30,17 +30,17 @@ def measure(name, operation, check):
     answer = operation()
     elapsed = time.perf_counter() - started
     if not check(answer):
-        raise AssertionError(f'{name} returned an incorrect result')
-    print('RESULT', name, f'{elapsed:.12f}')
+        raise AssertionError(f"{name} returned an incorrect result")
+    print("RESULT", name, f"{elapsed:.12f}")
 
 
 measure(
-    'rank',
+    "rank",
     lambda: source_prime_rank(left),
     lambda answer: answer == left.rank(),
 )
 measure(
-    'matmul',
+    "matmul",
     lambda: source_prime_matmul(left, right),
     lambda answer: answer == left * right,
 )

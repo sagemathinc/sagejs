@@ -6,7 +6,6 @@ through the familiar :mod:`inspect` ``Signature`` API used by decorators and
 pure-Python frameworks.
 """
 
-
 _empty = object()
 
 
@@ -138,7 +137,8 @@ class Signature:
         return Signature(
             self.parameters.values() if parameters is None else parameters,
             self.return_annotation
-            if return_annotation is _empty else return_annotation,
+            if return_annotation is _empty
+            else return_annotation,
         )
 
     def bind(self, *args, **kwargs):
@@ -170,16 +170,18 @@ class Signature:
             if positional:
                 arguments[name] = positional.pop(0)
                 if name in remaining_keywords:
-                    raise TypeError(
-                        "multiple values for argument '" + name + "'")
+                    raise TypeError("multiple values for argument '" + name + "'")
                 continue
-            if parameter.kind != Parameter.POSITIONAL_ONLY and name in remaining_keywords:
+            if (
+                parameter.kind != Parameter.POSITIONAL_ONLY
+                and name in remaining_keywords
+            ):
                 arguments[name] = remaining_keywords.pop(name)
                 continue
             if not partial and parameter.default is _empty:
                 raise TypeError("missing a required argument: '" + name + "'")
         if positional:
-            raise TypeError('too many positional arguments')
+            raise TypeError("too many positional arguments")
         if remaining_keywords:
             name = next(iter(remaining_keywords))
             raise TypeError("got an unexpected keyword argument '" + name + "'")
@@ -196,38 +198,36 @@ def signature(
     annotation_format=None,
 ):
     del globals, locals, eval_str, annotation_format
-    explicit = getattr(callable, '__signature__', None)
+    explicit = getattr(callable, "__signature__", None)
     if explicit is not None:
         return explicit
     if follow_wrapped:
-        while hasattr(callable, '__wrapped__'):
+        while hasattr(callable, "__wrapped__"):
             callable = callable.__wrapped__
-    names = getattr(callable, '__argnames__', None)
+    names = getattr(callable, "__argnames__", None)
     if names is None:
-        call = getattr(callable, '__call__', None)
+        call = getattr(callable, "__call__", None)
         if call is None or call is callable:
-            raise ValueError('callable is not supported by signature')
+            raise ValueError("callable is not supported by signature")
         return signature(call, follow_wrapped=follow_wrapped)
     names = list(names)
     if (
-        getattr(
-            callable, '__sagejs_method_signature_excludes_self__', False
-        )
-        and getattr(callable, '__self__', None) is None
+        getattr(callable, "__sagejs_method_signature_excludes_self__", False)
+        and getattr(callable, "__self__", None) is None
     ):
         # Method code is emitted with JavaScript's receiver as ``self``, so
         # its fast-call metadata omits that source parameter.  An unbound
         # function exposed through ``bound_method.__func__`` must nevertheless
         # have CPython's introspection signature; libraries such as pluggy use
         # this distinction to discover hook arguments.
-        names.insert(0, 'self')
+        names.insert(0, "self")
     # Compiler metadata is intentionally stored as lightweight JavaScript
     # records.  Normalize it to Python mappings before using the public dict
     # API; third-party decorators should never have to know the distinction.
-    defaults = dict(getattr(callable, '__defaults__', {}))
-    annotations = dict(getattr(callable, '__annotations__', {}))
+    defaults = dict(getattr(callable, "__defaults__", {}))
+    annotations = dict(getattr(callable, "__annotations__", {}))
     parameters = []
-    positional_only = getattr(callable, '__positional_only__', 0)
+    positional_only = getattr(callable, "__positional_only__", 0)
     if positional_only is True:
         positional_only = len(names)
     for index, name in enumerate(names):
@@ -236,38 +236,50 @@ def signature(
             if index < positional_only
             else Parameter.POSITIONAL_OR_KEYWORD
         )
-        parameters.append(Parameter(
-            name,
-            kind,
-            defaults.get(name, _empty),
-            annotations.get(name, _empty),
-        ))
-    varargs = getattr(callable, '__varargs__', None)
+        parameters.append(
+            Parameter(
+                name,
+                kind,
+                defaults.get(name, _empty),
+                annotations.get(name, _empty),
+            )
+        )
+    varargs = getattr(callable, "__varargs__", None)
     if varargs is not None:
-        parameters.append(Parameter(
-            varargs, Parameter.VAR_POSITIONAL,
-            annotation=annotations.get(varargs, _empty)))
-    for name in getattr(callable, '__kwonly__', ()):
-        parameters.append(Parameter(
-            name,
-            Parameter.KEYWORD_ONLY,
-            defaults.get(name, _empty),
-            annotations.get(name, _empty),
-        ))
-    kwargs = getattr(callable, '__varkw__', None)
+        parameters.append(
+            Parameter(
+                varargs,
+                Parameter.VAR_POSITIONAL,
+                annotation=annotations.get(varargs, _empty),
+            )
+        )
+    for name in getattr(callable, "__kwonly__", ()):
+        parameters.append(
+            Parameter(
+                name,
+                Parameter.KEYWORD_ONLY,
+                defaults.get(name, _empty),
+                annotations.get(name, _empty),
+            )
+        )
+    kwargs = getattr(callable, "__varkw__", None)
     if kwargs is not None:
-        parameters.append(Parameter(
-            kwargs, Parameter.VAR_KEYWORD,
-            annotation=annotations.get(kwargs, _empty)))
-    return Signature(parameters, annotations.get('return', _empty))
+        parameters.append(
+            Parameter(
+                kwargs,
+                Parameter.VAR_KEYWORD,
+                annotation=annotations.get(kwargs, _empty),
+            )
+        )
+    return Signature(parameters, annotations.get("return", _empty))
 
 
 def isfunction(value):
-    return callable(value) and hasattr(value, '__argnames__')
+    return callable(value) and hasattr(value, "__argnames__")
 
 
 def ismethod(value):
-    return callable(value) and hasattr(value, '__self__')
+    return callable(value) and hasattr(value, "__self__")
 
 
 def isclass(value):
@@ -279,11 +291,11 @@ def isroutine(value):
 
 
 def isgeneratorfunction(value):
-    return bool(getattr(value, '__is_generator__', False))
+    return bool(getattr(value, "__is_generator__", False))
 
 
 def iscoroutinefunction(value):
-    return bool(getattr(value, '__is_coroutine__', False))
+    return bool(getattr(value, "__is_coroutine__", False))
 
 
 def isasyncgenfunction(value):
@@ -299,7 +311,7 @@ def getfullargspec(callable):
     defaults_by_name = {}
     kwonlyargs = []
     kwonlydefaults = {}
-    annotations = dict(getattr(callable, '__annotations__', {}))
+    annotations = dict(getattr(callable, "__annotations__", {}))
     for parameter in sig.parameters.values():
         if parameter.kind in (
             Parameter.POSITIONAL_ONLY,
@@ -336,7 +348,7 @@ def getfullargspec(callable):
 
 def get_annotations(obj, *, globals=None, locals=None, eval_str=False):
     del globals, locals, eval_str
-    return dict(getattr(obj, '__annotations__', {}))
+    return dict(getattr(obj, "__annotations__", {}))
 
 
 def unwrap(func, *, stop=None):
@@ -346,43 +358,44 @@ def unwrap(func, *, stop=None):
     link is followed. Wrapper cycles are rejected instead of looping.
     """
     seen = set()
-    while hasattr(func, '__wrapped__'):
+    while hasattr(func, "__wrapped__"):
         if stop is not None and stop(func):
             break
         marker = id(func)
         if marker in seen:
-            raise ValueError('wrapper loop when unwrapping ' + repr(func))
+            raise ValueError("wrapper loop when unwrapping " + repr(func))
         seen.add(marker)
         func = func.__wrapped__
     if id(func) in seen:
-        raise ValueError('wrapper loop when unwrapping ' + repr(func))
+        raise ValueError("wrapper loop when unwrapping " + repr(func))
     return func
 
 
 def getfile(obj):
     """Return the filename associated with a module, callable, or code object."""
-    filename = getattr(obj, 'co_filename', None)
+    filename = getattr(obj, "co_filename", None)
     if filename is not None:
         return filename
-    code = getattr(obj, '__code__', None)
-    filename = getattr(code, 'co_filename', None)
+    code = getattr(obj, "__code__", None)
+    filename = getattr(code, "co_filename", None)
     if filename is not None:
         return filename
-    filename = getattr(obj, '__file__', None)
+    filename = getattr(obj, "__file__", None)
     if filename is not None:
         return filename
     if isclass(obj):
         import sys
-        module = sys.modules.get(getattr(obj, '__module__', ''))
-        filename = getattr(module, '__file__', None)
+
+        module = sys.modules.get(getattr(obj, "__module__", ""))
+        filename = getattr(module, "__file__", None)
         if filename is not None:
             return filename
-    raise TypeError('source filename is not available')
+    raise TypeError("source filename is not available")
 
 
 def getsourcefile(obj):
     """Return the Python source filename for *obj* when it is available."""
     filename = getfile(obj)
-    if filename.endswith(('.pyc', '.pyo')):
+    if filename.endswith((".pyc", ".pyo")):
         return filename[:-1]
     return filename

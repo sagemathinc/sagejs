@@ -54,11 +54,13 @@ print(a[:, None, :][1, 0, ::2].tolist())
 scalar_array = np.squeeze(np.array([[[5]]]))
 print(scalar_array.shape, scalar_array.ndim, scalar_array.item())
 
+
 def error_name(function):
     try:
         function()
     except Exception as error:
         return type(error).__name__
+
 
 print(error_name(lambda: a[..., ..., None]))
 print(error_name(lambda: a[0, 0, 0]))

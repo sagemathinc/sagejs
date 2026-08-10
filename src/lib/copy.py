@@ -4,7 +4,7 @@ import sagejs.runtime as runtime
 
 
 def copy(value):
-    method = getattr(value, '__copy__', None)
+    method = getattr(value, "__copy__", None)
     if method is not None:
         return method()
     if isinstance(value, list):
@@ -29,7 +29,7 @@ def deepcopy(value, memo=None):
     identity = id(value)
     if identity in memo:
         return memo[identity]
-    method = getattr(value, '__deepcopy__', None)
+    method = getattr(value, "__deepcopy__", None)
     if method is not None:
         return method(memo)
     if isinstance(value, (str, bytes, int, float, bool, type(None))):

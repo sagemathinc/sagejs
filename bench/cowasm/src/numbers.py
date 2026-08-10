@@ -86,5 +86,5 @@ def sum_reversed(n=1000000):
 
 register("sum_reversed", sum_reversed)
 
-if __name__ == '__main__':
-    all('numbers')
+if __name__ == "__main__":
+    all("numbers")

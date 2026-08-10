@@ -70,11 +70,7 @@ def _join_text(separator: str, values: Sequence[str]) -> str:
 
 def _positive_term(value: Any) -> Any:
     """Return the positive form of a syntactically negative MathJSON term."""
-    if (
-        runtime.array.isArray(value)
-        and len(value) == 2
-        and value[0] == "Negate"
-    ):
+    if runtime.array.isArray(value) and len(value) == 2 and value[0] == "Negate":
         return value[1]
     if runtime.jstype(value) in ("number", "bigint") and value < 0:
         return -value
@@ -85,11 +81,7 @@ def _positive_term(value: Any) -> Any:
         and value[1] < 0
     ):
         return ["Rational", -value[1], value[2]]
-    if (
-        runtime.array.isArray(value)
-        and len(value) >= 3
-        and value[0] == "Multiply"
-    ):
+    if runtime.array.isArray(value) and len(value) >= 3 and value[0] == "Multiply":
         first = value[1]
         replacement = runtime.undefined
         if runtime.jstype(first) in ("number", "bigint") and first < 0:
@@ -133,9 +125,7 @@ def _format_expression(value: Any, surrounding: int = 0) -> str:
             if index == 0:
                 pieces.append(_format_expression(argument, precedence))
             elif positive is not runtime.undefined:
-                pieces.append(
-                    " - " + _format_expression(
-                        positive, precedence + 1))
+                pieces.append(" - " + _format_expression(positive, precedence + 1))
             else:
                 pieces.append(" + " + _format_expression(argument, precedence))
         text = _join_text("", pieces)
@@ -170,24 +160,26 @@ def _format_expression(value: Any, surrounding: int = 0) -> str:
             + _format_expression(operands[1], precedence)
         )
     elif (
-        head == 'Apply'
+        head == "Apply"
         and len(operands) == 2
         and runtime.array.isArray(operands[0])
         and len(operands[0]) == 3
-        and operands[0][0] == 'Derivative'
+        and operands[0][0] == "Derivative"
     ):
         derivative = operands[0]
         indices = []
         for _index in range(int(derivative[2])):
-            indices.append('0')
+            indices.append("0")
         text = (
-            'D[' + ','.join(indices) + ']('
-            + _format_expression(derivative[1]) + ')('
-            + _format_expression(operands[1]) + ')'
+            "D["
+            + ",".join(indices)
+            + "]("
+            + _format_expression(derivative[1])
+            + ")("
+            + _format_expression(operands[1])
+            + ")"
         )
-    elif head in [
-        "Equal", "Less", "LessEqual", "Greater", "GreaterEqual"
-    ]:
+    elif head in ["Equal", "Less", "LessEqual", "Greater", "GreaterEqual"]:
         precedence = 20
         operators = {
             "Equal": " == ",
@@ -255,17 +247,13 @@ def _expression_tree(value: Any) -> Any:
 def _exact_scalar_from_tree(value: Any) -> Any:
     if runtime.is_exact_integer(value):
         return runtime.normalize_integer(value)
-    if runtime.jstype(value) == 'number':
+    if runtime.jstype(value) == "number":
         return value
-    if (
-        runtime.array.isArray(value)
-        and len(value) == 3
-        and value[0] == 'Rational'
-    ):
+    if runtime.array.isArray(value) and len(value) == 3 and value[0] == "Rational":
         return runtime.rational_class(value[1], value[2])
     raise NotImplementedError(
-        'arbitrary-precision special functions currently '
-        'require exact scalar arguments')
+        "arbitrary-precision special functions currently require exact scalar arguments"
+    )
 
 
 def _trim_polynomial_coefficients(values: list[Any]) -> list[Any]:
@@ -344,7 +332,7 @@ def _rational_polynomial_tree(
     if not runtime.array.isArray(tree) or len(tree) == 0:
         return runtime.undefined
     head = tree[0]
-    if head == 'Negate' and len(tree) == 2:
+    if head == "Negate" and len(tree) == 2:
         result = _rational_polynomial_tree(tree[1], variable)
         if result is runtime.undefined:
             return result
@@ -352,7 +340,7 @@ def _rational_polynomial_tree(
             _polynomial_coefficients_negate(result[0]),
             result[1],
         ]
-    if head == 'Add':
+    if head == "Add":
         result = [[sage.QQ(0)], [sage.QQ(1)]]
         for argument in tree[1:]:
             right = _rational_polynomial_tree(argument, variable)
@@ -360,29 +348,24 @@ def _rational_polynomial_tree(
                 return right
             result = [
                 _polynomial_coefficients_add(
-                    _polynomial_coefficients_multiply(
-                        result[0], right[1]),
-                    _polynomial_coefficients_multiply(
-                        right[0], result[1]),
+                    _polynomial_coefficients_multiply(result[0], right[1]),
+                    _polynomial_coefficients_multiply(right[0], result[1]),
                 ),
-                _polynomial_coefficients_multiply(
-                    result[1], right[1]),
+                _polynomial_coefficients_multiply(result[1], right[1]),
             ]
         return result
-    if head == 'Multiply':
+    if head == "Multiply":
         result = [[sage.QQ(1)], [sage.QQ(1)]]
         for argument in tree[1:]:
             right = _rational_polynomial_tree(argument, variable)
             if right is runtime.undefined:
                 return right
             result = [
-                _polynomial_coefficients_multiply(
-                    result[0], right[0]),
-                _polynomial_coefficients_multiply(
-                    result[1], right[1]),
+                _polynomial_coefficients_multiply(result[0], right[0]),
+                _polynomial_coefficients_multiply(result[1], right[1]),
             ]
         return result
-    if head == 'Divide' and len(tree) == 3:
+    if head == "Divide" and len(tree) == 3:
         left = _rational_polynomial_tree(tree[1], variable)
         right = _rational_polynomial_tree(tree[2], variable)
         if left is runtime.undefined or right is runtime.undefined:
@@ -391,11 +374,7 @@ def _rational_polynomial_tree(
             _polynomial_coefficients_multiply(left[0], right[1]),
             _polynomial_coefficients_multiply(left[1], right[0]),
         ]
-    if (
-        head == 'Power'
-        and len(tree) == 3
-        and runtime.is_exact_integer(tree[2])
-    ):
+    if head == "Power" and len(tree) == 3 and runtime.is_exact_integer(tree[2]):
         exponent = int(tree[2])
         value = _rational_polynomial_tree(tree[1], variable)
         if value is runtime.undefined:
@@ -428,24 +407,24 @@ def _positive_polynomial_tree(
             else:
                 monomial = variable
                 if degree != 1:
-                    monomial = ['Power', variable, degree]
+                    monomial = ["Power", variable, degree]
                 if magnitude == 1:
                     term = monomial
                 else:
                     term = [
-                        'Multiply',
+                        "Multiply",
                         _expression_tree(magnitude),
                         monomial,
                     ]
             if negative:
-                term = ['Negate', term]
+                term = ["Negate", term]
             terms.append(term)
         degree -= 1
     if len(terms) == 0:
         return 0
     if len(terms) == 1:
         return terms[0]
-    return ['Add'] + terms
+    return ["Add"] + terms
 
 
 def _rational_expression_from_coefficients(
@@ -458,11 +437,9 @@ def _rational_expression_from_coefficients(
         numerator = _polynomial_coefficients_negate(numerator)
     numerator_tree = _positive_polynomial_tree(numerator, variable)
     if negate:
-        numerator_tree = ['Negate', numerator_tree]
-    denominator_tree = _positive_polynomial_tree(
-        denominator, variable)
-    return Expression([
-        'Divide', numerator_tree, denominator_tree])
+        numerator_tree = ["Negate", numerator_tree]
+    denominator_tree = _positive_polynomial_tree(denominator, variable)
+    return Expression(["Divide", numerator_tree, denominator_tree])
 
 
 @runtime.callable_instance_class
@@ -509,8 +486,7 @@ class Expression(sage.Element):
         return self._canonical("Divide", other)
 
     def _eq_(self, other: Expression) -> bool:
-        return bool(_call_backend(
-            "same", [self._tree, other._tree]))
+        return bool(_call_backend("same", [self._tree, other._tree]))
 
     def __add__(self, other: object) -> Any:
         return runtime.coercion_model.binOp("add", self, other)
@@ -531,10 +507,10 @@ class Expression(sage.Element):
             return False
         if self._eq_(right):
             return True
-        return self._relation('Equal', right)
+        return self._relation("Equal", right)
 
     def __bool__(self) -> bool:
-        evaluated = _call_backend('evaluate', [self._tree])
+        evaluated = _call_backend("evaluate", [self._tree])
         if evaluated is True:
             return True
         return False
@@ -560,7 +536,7 @@ class Expression(sage.Element):
         """Substitute variables using Sage's expression-call shorthand."""
         variables = self.variables()
         if len(values) > len(variables):
-            raise TypeError('too many positional substitutions')
+            raise TypeError("too many positional substitutions")
         replacements = runtime.object.create(None)
         for index in range(len(values)):
             runtime.reflect.set(
@@ -574,8 +550,7 @@ class Expression(sage.Element):
                 key,
                 _expression_tree(runtime.reflect.get(substitutions, key)),
             )
-        return Expression(
-            _call_backend("substitute", [self._tree, replacements]))
+        return Expression(_call_backend("substitute", [self._tree, replacements]))
 
     def subs(self, *mappings: Any, **substitutions: Any) -> Expression:
         replacements = runtime.object.create(None)
@@ -625,28 +600,23 @@ class Expression(sage.Element):
         ):
             bounds = list(variable)
             if len(bounds) != 3:
-                raise TypeError(
-                    'integration range must be (variable, lower, upper)')
+                raise TypeError("integration range must be (variable, lower, upper)")
             variable, lower, upper = bounds
         name = _symbol_name(variable)
         if (lower is runtime.undefined) != (upper is runtime.undefined):
-            raise TypeError(
-                'integrate() requires both lower and upper bounds')
+            raise TypeError("integrate() requires both lower and upper bounds")
         lower_tree = (
-            runtime.undefined
-            if lower is runtime.undefined
-            else _expression_tree(lower)
+            runtime.undefined if lower is runtime.undefined else _expression_tree(lower)
         )
         upper_tree = (
-            runtime.undefined
-            if upper is runtime.undefined
-            else _expression_tree(upper)
+            runtime.undefined if upper is runtime.undefined else _expression_tree(upper)
         )
         return Expression(
             _call_backend(
-                'integrate',
+                "integrate",
                 [self._tree, name, lower_tree, upper_tree],
-            ))
+            )
+        )
 
     integral = integrate
 
@@ -668,14 +638,12 @@ class Expression(sage.Element):
         if (
             runtime.array.isArray(self._tree)
             and len(self._tree) == 3
-            and self._tree[0] == 'Equal'
+            and self._tree[0] == "Equal"
         ):
-            expression = Expression([
-                'Subtract', self._tree[1], self._tree[2]])
+            expression = Expression(["Subtract", self._tree[1], self._tree[2]])
         variables = expression.variables()
         if len(variables) != 1:
-            raise ValueError(
-                'find_root() requires an expression in one variable')
+            raise ValueError("find_root() requires an expression in one variable")
         evaluator = fast_callable(expression, vars=variables)
         left = float(lower)
         right = float(upper)
@@ -686,15 +654,11 @@ class Expression(sage.Element):
         if right_value == 0:
             return right
         if left_value * right_value > 0:
-            raise RuntimeError(
-                'f appears to have no zero on the interval')
+            raise RuntimeError("f appears to have no zero on the interval")
         for _index in range(int(maxiter)):
             middle = (left + right) / 2.0
             middle_value = float(evaluator(middle))
-            if (
-                middle_value == 0
-                or abs(right - left) <= float(xtol)
-            ):
+            if middle_value == 0 or abs(right - left) <= float(xtol):
                 return middle
             if left_value * middle_value <= 0:
                 right = middle
@@ -707,21 +671,22 @@ class Expression(sage.Element):
     def _relation(self, head: str, other: Any) -> Expression:
         return Expression(
             _call_backend(
-                'canonical',
+                "canonical",
                 [[head, self._tree, _expression_tree(other)]],
-            ))
+            )
+        )
 
     def __lt__(self, other: Any) -> Expression:
-        return self._relation('Less', other)
+        return self._relation("Less", other)
 
     def __le__(self, other: Any) -> Expression:
-        return self._relation('LessEqual', other)
+        return self._relation("LessEqual", other)
 
     def __gt__(self, other: Any) -> Expression:
-        return self._relation('Greater', other)
+        return self._relation("Greater", other)
 
     def __ge__(self, other: Any) -> Expression:
-        return self._relation('GreaterEqual', other)
+        return self._relation("GreaterEqual", other)
 
     def simplify(self) -> Expression:
         return Expression(_call_backend("simplify", [self._tree]))
@@ -734,17 +699,16 @@ class Expression(sage.Element):
         rational = _rational_polynomial_tree(self._tree, name)
         if rational is runtime.undefined:
             return self.simplify()
-        return _rational_expression_from_coefficients(
-            rational[0], rational[1], name)
+        return _rational_expression_from_coefficients(rational[0], rational[1], name)
 
     def laplace(self, variable: Any, transform_variable: Any) -> Expression:
         variable_name = _symbol_name(variable)
         transform_name = _symbol_name(transform_variable)
-        result = _laplace_transform_tree(
-            self._tree, variable_name, transform_name)
+        result = _laplace_transform_tree(self._tree, variable_name, transform_name)
         if result is runtime.undefined:
             raise NotImplementedError(
-                'Laplace transform is not implemented for this expression')
+                "Laplace transform is not implemented for this expression"
+            )
         return Expression(result)
 
     def partial_fraction(self, variable: Any = None) -> Expression:
@@ -758,23 +722,18 @@ class Expression(sage.Element):
         variables = self.variables()
         if variable is None:
             if len(variables) != 1:
-                raise ValueError(
-                    'partial_fraction() requires an explicit variable')
+                raise ValueError("partial_fraction() requires an explicit variable")
             variable = variables[0]
         name = _symbol_name(variable)
         tree = self._tree
-        if (
-            not runtime.array.isArray(tree)
-            or len(tree) != 3
-            or tree[0] != 'Divide'
-        ):
+        if not runtime.array.isArray(tree) or len(tree) != 3 or tree[0] != "Divide":
             return self
         numerator = tree[1]
         denominator = tree[2]
         if (
             runtime.array.isArray(denominator)
             and len(denominator) >= 3
-            and denominator[0] == 'Multiply'
+            and denominator[0] == "Multiply"
         ):
             factors = list(denominator[1:])
         else:
@@ -784,20 +743,20 @@ class Expression(sage.Element):
             if (
                 not runtime.array.isArray(factor_value)
                 or len(factor_value) != 3
-                or factor_value[0] != 'Add'
+                or factor_value[0] != "Add"
             ):
                 raise NotImplementedError(
-                    'partial fractions currently require '
-                    'distinct monic linear factors')
+                    "partial fractions currently require distinct monic linear factors"
+                )
             if factor_value[1] == name:
                 constant = factor_value[2]
             elif factor_value[2] == name:
                 constant = factor_value[1]
             else:
                 raise NotImplementedError(
-                    'partial fractions currently require '
-                    'distinct monic linear factors')
-            roots.append(['Negate', constant])
+                    "partial fractions currently require distinct monic linear factors"
+                )
+            roots.append(["Negate", constant])
 
         terms = []
         for index in range(len(factors)):
@@ -805,25 +764,25 @@ class Expression(sage.Element):
             for other_index in range(len(factors)):
                 if other_index != index:
                     difference = [
-                        'Subtract',
+                        "Subtract",
                         roots[index],
                         roots[other_index],
                     ]
                     denominator_at_root = [
-                        'Multiply',
+                        "Multiply",
                         denominator_at_root,
                         difference,
                     ]
             coefficient = _call_backend(
-                'simplify',
-                [['Divide', numerator, denominator_at_root]],
+                "simplify",
+                [["Divide", numerator, denominator_at_root]],
             )
-            term = ['Divide', coefficient, factors[index]]
+            term = ["Divide", coefficient, factors[index]]
             if _positive_term(coefficient) is not runtime.undefined:
                 terms.insert(0, term)
             else:
                 terms.append(term)
-        return Expression(['Add'] + terms)
+        return Expression(["Add"] + terms)
 
     def variables(self) -> Any:
         names = _call_backend("variables", [self._tree])
@@ -847,20 +806,12 @@ class Expression(sage.Element):
         else:
             decimal_digits = max(
                 1,
-                int(
-                    runtime.math.floor(
-                        (int(prec) - 1) * 0.3010299956639812
-                    )
-                ),
+                int(runtime.math.floor((int(prec) - 1) * 0.3010299956639812)),
             )
         if digits is not None:
             bit_precision = max(
                 2,
-                int(
-                    runtime.math.ceil(
-                        int(digits) / 0.3010299956639812
-                    )
-                ) + 1,
+                int(runtime.math.ceil(int(digits) / 0.3010299956639812)) + 1,
             )
         elif prec is None:
             bit_precision = 53
@@ -872,36 +823,33 @@ class Expression(sage.Element):
         except NotImplementedError:
             pass
         if exact_scalar is not runtime.undefined:
-            real_field = runtime.reflect.get(
-                runtime.global_object, 'RealField')(
-                    bit_precision)
+            real_field = runtime.reflect.get(runtime.global_object, "RealField")(
+                bit_precision
+            )
             return real_field(exact_scalar)
         if (
             runtime.array.isArray(self._tree)
             and len(self._tree) == 3
-            and self._tree[0] == 'BesselI'
+            and self._tree[0] == "BesselI"
         ):
             if digits is not None:
                 bit_precision = max(53, bit_precision + 7)
-            field = runtime.reflect.get(
-                runtime.global_object, 'ComplexField')(
-                    bit_precision)
-            order = field(_exact_scalar_from_tree(
-                self._tree[1]))
-            argument = field(_exact_scalar_from_tree(
-                self._tree[2]))
+            field = runtime.reflect.get(runtime.global_object, "ComplexField")(
+                bit_precision
+            )
+            order = field(_exact_scalar_from_tree(self._tree[1]))
+            argument = field(_exact_scalar_from_tree(self._tree[2]))
             value = field._fromNative(
-                runtime.flint_backend().complexBesselI(
-                    order._native, argument._native))
+                runtime.flint_backend().complexBesselI(order._native, argument._native)
+            )
             imaginary = value.imag()
             if imaginary == 0:
                 return value.real()
             return value
-        result = _call_backend(
-            "numeric", [self._tree, decimal_digits])
+        result = _call_backend("numeric", [self._tree, decimal_digits])
         return NumericalApproximation(
-            runtime.reflect.get(result, 'text'),
-            runtime.reflect.get(result, 'value'),
+            runtime.reflect.get(result, "text"),
+            runtime.reflect.get(result, "value"),
         )
 
     numerical_approx = n
@@ -924,19 +872,21 @@ class Expression(sage.Element):
         else:
             variables = [variable]
         names = [_symbol_name(value) for value in variables]
-        return _call_backend('compileComplex', [self._tree, names])
+        return _call_backend("compileComplex", [self._tree, names])
 
     def _plot_zero_set_expression(self) -> Expression:
         """Normalize a relation to the scalar function defining its zero set."""
         if (
             runtime.array.isArray(self._tree)
             and len(self._tree) == 3
-            and self._tree[0] == 'Equal'
+            and self._tree[0] == "Equal"
         ):
-            return Expression(_call_backend(
-                'canonical',
-                [['Subtract', self._tree[1], self._tree[2]]],
-            ))
+            return Expression(
+                _call_backend(
+                    "canonical",
+                    [["Subtract", self._tree[1], self._tree[2]]],
+                )
+            )
         return self
 
 
@@ -944,9 +894,9 @@ class CallableExpression(Expression):
     """A symbolic expression with an explicit ordered argument tuple."""
 
     def __init__(self, argument_values: Any, value: Any) -> None:
-        self._arguments = runtime.math_tuple([
-            SR(argument) for argument in argument_values
-        ])
+        self._arguments = runtime.math_tuple(
+            [SR(argument) for argument in argument_values]
+        )
         Expression.__init__(self, _expression_tree(value))
 
     def _arguments_tuple(self) -> Any:
@@ -958,7 +908,7 @@ class CallableExpression(Expression):
         **substitutions: Any,
     ) -> Expression:
         if len(values) > len(self._arguments):
-            raise TypeError('too many positional substitutions')
+            raise TypeError("too many positional substitutions")
         replacements = runtime.object.create(None)
         for index in range(len(values)):
             runtime.reflect.set(
@@ -970,11 +920,9 @@ class CallableExpression(Expression):
             runtime.reflect.set(
                 replacements,
                 key,
-                _expression_tree(
-                    runtime.reflect.get(substitutions, key)),
+                _expression_tree(runtime.reflect.get(substitutions, key)),
             )
-        return Expression(
-            _call_backend('substitute', [self._tree, replacements]))
+        return Expression(_call_backend("substitute", [self._tree, replacements]))
 
     def derivative(
         self,
@@ -983,26 +931,17 @@ class CallableExpression(Expression):
     ) -> CallableExpression:
         if variable is None:
             if len(self._arguments) == 0:
-                raise ValueError(
-                    'you must specify a variable for differentiation')
+                raise ValueError("you must specify a variable for differentiation")
             variable = self._arguments[0]
-        result = Expression.derivative(
-            self, variable, degree)
+        result = Expression.derivative(self, variable, degree)
         return CallableExpression(self._arguments, result)
 
     diff = derivative
 
     def __repr__(self) -> str:
-        names = [
-            _symbol_name(argument)
-            for argument in self._arguments
-        ]
-        left = (
-            names[0]
-            if len(names) == 1
-            else '(' + ', '.join(names) + ')'
-        )
-        return left + ' |--> ' + _format_expression(self._tree)
+        names = [_symbol_name(argument) for argument in self._arguments]
+        left = names[0] if len(names) == 1 else "(" + ", ".join(names) + ")"
+        return left + " |--> " + _format_expression(self._tree)
 
     __str__ = __repr__
     toString = __repr__
@@ -1017,10 +956,7 @@ class UndefinedSymbolicFunction:
         runtime.object.freeze(self)
 
     def __call__(self, *values: Any) -> Expression:
-        return Expression(
-            [self._name]
-            + [_expression_tree(value) for value in values]
-        )
+        return Expression([self._name] + [_expression_tree(value) for value in values])
 
     def __repr__(self) -> str:
         return self._name
@@ -1034,7 +970,6 @@ SR = SymbolicRing()
 
 @runtime.lightweight_math_class
 class NumericalApproximation:
-
     def __init__(self, text: str, value: Any) -> None:
         self._text = text
         self._value = value
@@ -1047,8 +982,8 @@ class NumericalApproximation:
     toString = __repr__
 
     def __float__(self) -> float:
-        if runtime.jstype(self._value) != 'number':
-            raise TypeError('numerical approximation is not real')
+        if runtime.jstype(self._value) != "number":
+            raise TypeError("numerical approximation is not real")
         return self._value
 
 
@@ -1102,8 +1037,7 @@ def symbolic_variable(names: str) -> Any:
         for name in comma_part.split(" "):
             if name:
                 variable = Expression(name)
-                runtime.reflect.set(
-                    runtime.global_object, name, variable)
+                runtime.reflect.set(runtime.global_object, name, variable)
                 variables.append(variable)
     if len(variables) == 0:
         raise ValueError("at least one variable name is required")
@@ -1125,17 +1059,17 @@ def symbolic_function_factory(name: str) -> UndefinedSymbolicFunction:
 
 runtime.reflect.set(
     runtime.global_object,
-    'ρσ_py_function',
+    "ρσ_py_function",
     symbolic_function_factory,
 )
 
 
 runtime.reflect.set(
-    runtime.reflect.get(SymbolicRing, 'prototype'),
-    'var',
+    runtime.reflect.get(SymbolicRing, "prototype"),
+    "var",
     runtime.reflect.get(
-        runtime.reflect.get(SymbolicRing, 'prototype'),
-        '_var',
+        runtime.reflect.get(SymbolicRing, "prototype"),
+        "_var",
     ),
 )
 
@@ -1145,13 +1079,10 @@ def _symbolic_function(
     value: Any,
     numeric_function: Callable[[float], float],
 ) -> Any:
-    if (
-        runtime.jstype(value) == "number"
-        and not runtime.number.isSafeInteger(value)
-    ):
+    if runtime.jstype(value) == "number" and not runtime.number.isSafeInteger(value):
         return numeric_function(value)
-    parent_value = getattr(value, '_parent', None)
-    if getattr(parent_value, '_kind', None) in ['RDF', 'RealField']:
+    parent_value = getattr(value, "_parent", None)
+    if getattr(parent_value, "_kind", None) in ["RDF", "RealField"]:
         return numeric_function(float(value))
     tree = [name, _expression_tree(value)]
     return Expression(_call_backend("evaluate", [tree]))
@@ -1203,15 +1134,15 @@ def log(value: Any, base: Any = None) -> Any:
 ln = log
 
 
-log2 = Expression(['Ln', 2])
+log2 = Expression(["Ln", 2])
 
 runtime.register_doc(
-    'log2',
+    "log2",
     log2,
     {
-        'kind': 'constant',
-        'module': 'sage.functions.constants',
-        'doc': r"""
+        "kind": "constant",
+        "module": "sage.functions.constants",
+        "doc": r"""
 The natural logarithm of `2`.
 
 ### Examples
@@ -1223,23 +1154,21 @@ sage: float(log2)
 0.6931471805599453
 ```
 """,
-        'tags': ['symbolic constants', 'logarithms'],
-        'backends': ['Sage.js symbolic engine'],
-        'sage_compatibility': {
-            'status': 'compatible',
-            'notes': (
-                'Sage.js displays this constant canonically as log(2).'
-            ),
+        "tags": ["symbolic constants", "logarithms"],
+        "backends": ["Sage.js symbolic engine"],
+        "sage_compatibility": {
+            "status": "compatible",
+            "notes": ("Sage.js displays this constant canonically as log(2)."),
         },
-        'provenance': [
+        "provenance": [
             {
-                'kind': 'sage-derived',
-                'source': 'SageMath symbolic constants API',
-                'url': (
-                    'https://doc.sagemath.org/html/en/reference/'
-                    'functions/sage/functions/constants.html'
+                "kind": "sage-derived",
+                "source": "SageMath symbolic constants API",
+                "url": (
+                    "https://doc.sagemath.org/html/en/reference/"
+                    "functions/sage/functions/constants.html"
                 ),
-                'license': 'GPL-2.0-or-later',
+                "license": "GPL-2.0-or-later",
             },
         ],
     },
@@ -1263,7 +1192,7 @@ def ceil(value: Any) -> Any:
 
 
 def sqrt(value: Any) -> Any:
-    if hasattr(value, 'sqrt') and callable(value.sqrt):
+    if hasattr(value, "sqrt") and callable(value.sqrt):
         try:
             return value.sqrt()
         except ValueError:
@@ -1273,10 +1202,12 @@ def sqrt(value: Any) -> Any:
 
 
 def bessel_I(order: Any, value: Any) -> Expression:
-    return Expression(_call_backend(
-        'evaluate',
-        [['BesselI', _expression_tree(order), _expression_tree(value)]],
-    ))
+    return Expression(
+        _call_backend(
+            "evaluate",
+            [["BesselI", _expression_tree(order), _expression_tree(value)]],
+        )
+    )
 
 
 def _laplace_function_tree(
@@ -1284,27 +1215,22 @@ def _laplace_function_tree(
     variable: str,
     transform_variable: str,
 ) -> Any:
-    return [
-        'laplace', function_tree, variable, transform_variable]
+    return ["laplace", function_tree, variable, transform_variable]
 
 
 def _laplace_scale_tree(scale: Any, tree: Any) -> Any:
     if scale == 1:
         return tree
     if scale == -1:
-        return ['Negate', tree]
-    if (
-        runtime.array.isArray(tree)
-        and len(tree) == 2
-        and tree[0] == 'Negate'
-    ):
-        return ['Negate', _laplace_scale_tree(scale, tree[1])]
-    if runtime.array.isArray(tree) and tree[0] == 'Add':
+        return ["Negate", tree]
+    if runtime.array.isArray(tree) and len(tree) == 2 and tree[0] == "Negate":
+        return ["Negate", _laplace_scale_tree(scale, tree[1])]
+    if runtime.array.isArray(tree) and tree[0] == "Add":
         terms = []
         for term in tree[1:]:
             terms.append(_laplace_scale_tree(scale, term))
-        return ['Add'] + terms
-    return ['Multiply', _expression_tree(scale), tree]
+        return ["Add"] + terms
+    return ["Multiply", _expression_tree(scale), tree]
 
 
 def _laplace_derivative_tree(
@@ -1314,13 +1240,12 @@ def _laplace_derivative_tree(
     transform_variable: str,
 ) -> Any:
     function_value = [function_name, variable]
-    transform = _laplace_function_tree(
-        function_value, variable, transform_variable)
+    transform = _laplace_function_tree(function_value, variable, transform_variable)
     leading = transform
     if degree:
         leading = [
-            'Multiply',
-            ['Power', transform_variable, degree],
+            "Multiply",
+            ["Power", transform_variable, degree],
             transform,
         ]
     terms = [leading]
@@ -1330,23 +1255,21 @@ def _laplace_derivative_tree(
         initial_value = [function_name, 0]
         if derivative:
             initial_value = [
-                'Apply',
-                ['Derivative', function_name, derivative],
+                "Apply",
+                ["Derivative", function_name, derivative],
                 0,
             ]
         term = initial_value
         if power:
             transform_power = transform_variable
             if power != 1:
-                transform_power = [
-                    'Power', transform_variable, power]
-            term = [
-                'Multiply', transform_power, initial_value]
-        terms.append(['Negate', term])
+                transform_power = ["Power", transform_variable, power]
+            term = ["Multiply", transform_power, initial_value]
+        terms.append(["Negate", term])
         derivative += 1
     if len(terms) == 1:
         return terms[0]
-    return ['Add'] + terms
+    return ["Add"] + terms
 
 
 def _time_power_degree(tree: Any, variable: str) -> Any:
@@ -1355,7 +1278,7 @@ def _time_power_degree(tree: Any, variable: str) -> Any:
     if (
         runtime.array.isArray(tree)
         and len(tree) == 3
-        and tree[0] == 'Power'
+        and tree[0] == "Power"
         and tree[1] == variable
         and runtime.is_exact_integer(tree[2])
         and tree[2] >= 0
@@ -1368,8 +1291,8 @@ def _exponential_rate(tree: Any, variable: str) -> Any:
     if (
         not runtime.array.isArray(tree)
         or len(tree) != 3
-        or tree[0] != 'Power'
-        or tree[1] != 'ExponentialE'
+        or tree[0] != "Power"
+        or tree[1] != "ExponentialE"
     ):
         return runtime.undefined
     exponent = tree[2]
@@ -1378,7 +1301,7 @@ def _exponential_rate(tree: Any, variable: str) -> Any:
     if (
         runtime.array.isArray(exponent)
         and len(exponent) == 3
-        and exponent[0] == 'Multiply'
+        and exponent[0] == "Multiply"
     ):
         if exponent[1] == variable:
             return _exact_scalar_from_tree(exponent[2])
@@ -1398,11 +1321,11 @@ def _contains_derivative_application(tree: Any) -> bool:
     if not runtime.array.isArray(tree) or len(tree) == 0:
         return False
     if (
-        tree[0] == 'Apply'
+        tree[0] == "Apply"
         and len(tree) == 3
         and runtime.array.isArray(tree[1])
         and len(tree[1]) == 3
-        and tree[1][0] == 'Derivative'
+        and tree[1][0] == "Derivative"
     ):
         return True
     for argument in tree[1:]:
@@ -1417,27 +1340,26 @@ def _laplace_transform_tree(
     transform_variable: str,
 ) -> Any:
     if tree == variable:
-        return [
-            'Divide', 1, ['Power', transform_variable, 2]]
+        return ["Divide", 1, ["Power", transform_variable, 2]]
     try:
         scalar = _exact_scalar_from_tree(tree)
-        return ['Divide', _expression_tree(scalar), transform_variable]
+        return ["Divide", _expression_tree(scalar), transform_variable]
     except NotImplementedError:
         pass
     if not runtime.array.isArray(tree) or len(tree) == 0:
         return runtime.undefined
     head = tree[0]
-    if head == 'Add':
+    if head == "Add":
         terms = []
         deferred = []
         index = len(tree) - 1
         while index >= 1:
             transformed = _laplace_transform_tree(
-                tree[index], variable, transform_variable)
+                tree[index], variable, transform_variable
+            )
             if transformed is runtime.undefined:
                 return transformed
-            if runtime.array.isArray(transformed) \
-                    and transformed[0] == 'Add':
+            if runtime.array.isArray(transformed) and transformed[0] == "Add":
                 for term in transformed[1:]:
                     if _contains_derivative_application(term):
                         deferred.append(term)
@@ -1449,90 +1371,82 @@ def _laplace_transform_tree(
                 else:
                     terms.append(transformed)
             index -= 1
-        return ['Add'] + terms + deferred
-    if head == 'Negate' and len(tree) == 2:
-        transformed = _laplace_transform_tree(
-            tree[1], variable, transform_variable)
+        return ["Add"] + terms + deferred
+    if head == "Negate" and len(tree) == 2:
+        transformed = _laplace_transform_tree(tree[1], variable, transform_variable)
         if transformed is runtime.undefined:
             return transformed
         return _laplace_scale_tree(-1, transformed)
-    if head == 'Multiply':
+    if head == "Multiply":
         coefficient = sage.QQ(1)
         non_scalars = []
         for factor in tree[1:]:
             try:
-                coefficient *= sage.QQ(
-                    _exact_scalar_from_tree(factor))
+                coefficient *= sage.QQ(_exact_scalar_from_tree(factor))
             except NotImplementedError:
                 non_scalars.append(factor)
         if len(non_scalars) == 1:
             transformed = _laplace_transform_tree(
-                non_scalars[0], variable, transform_variable)
+                non_scalars[0], variable, transform_variable
+            )
             if transformed is runtime.undefined:
                 return transformed
             return _laplace_scale_tree(coefficient, transformed)
         if len(non_scalars) == 2:
-            degree = _time_power_degree(
-                non_scalars[0], variable)
-            rate = _exponential_rate(
-                non_scalars[1], variable)
-            if degree is runtime.undefined \
-                    or rate is runtime.undefined:
-                degree = _time_power_degree(
-                    non_scalars[1], variable)
-                rate = _exponential_rate(
-                    non_scalars[0], variable)
-            if degree is not runtime.undefined \
-                    and rate is not runtime.undefined:
+            degree = _time_power_degree(non_scalars[0], variable)
+            rate = _exponential_rate(non_scalars[1], variable)
+            if degree is runtime.undefined or rate is runtime.undefined:
+                degree = _time_power_degree(non_scalars[1], variable)
+                rate = _exponential_rate(non_scalars[0], variable)
+            if degree is not runtime.undefined and rate is not runtime.undefined:
                 shifted = [
-                    'Add',
+                    "Add",
                     transform_variable,
-                    ['Negate', _expression_tree(rate)],
+                    ["Negate", _expression_tree(rate)],
                 ]
                 transformed = [
-                    'Divide',
+                    "Divide",
                     _small_factorial(degree),
-                    ['Power', shifted, degree + 1],
+                    ["Power", shifted, degree + 1],
                 ]
-                return _laplace_scale_tree(
-                    coefficient, transformed)
+                return _laplace_scale_tree(coefficient, transformed)
         return runtime.undefined
-    if head == 'Sin' and len(tree) == 2 and tree[1] == variable:
+    if head == "Sin" and len(tree) == 2 and tree[1] == variable:
         return [
-            'Divide',
+            "Divide",
             1,
-            ['Add', ['Power', transform_variable, 2], 1],
+            ["Add", ["Power", transform_variable, 2], 1],
         ]
-    if head == 'Cos' and len(tree) == 2 and tree[1] == variable:
+    if head == "Cos" and len(tree) == 2 and tree[1] == variable:
         return [
-            'Divide',
+            "Divide",
             transform_variable,
-            ['Add', ['Power', transform_variable, 2], 1],
+            ["Add", ["Power", transform_variable, 2], 1],
         ]
     degree = _time_power_degree(tree, variable)
     if degree is not runtime.undefined:
         return [
-            'Divide',
+            "Divide",
             _small_factorial(degree),
-            ['Power', transform_variable, degree + 1],
+            ["Power", transform_variable, degree + 1],
         ]
     rate = _exponential_rate(tree, variable)
     if rate is not runtime.undefined:
         return [
-            'Divide',
+            "Divide",
             1,
             [
-                'Add',
+                "Add",
                 transform_variable,
-                ['Negate', _expression_tree(rate)],
+                ["Negate", _expression_tree(rate)],
             ],
         ]
     if (
-        head == 'Apply'
+        head == "Apply"
         and len(tree) == 3
         and runtime.array.isArray(tree[1])
         and len(tree[1]) == 3
-        and tree[1][0] == 'Derivative'
+        and tree[1][0] == "Derivative"
         and tree[2] == variable
     ):
         return _laplace_derivative_tree(
@@ -1541,13 +1455,8 @@ def _laplace_transform_tree(
             variable,
             transform_variable,
         )
-    if (
-        len(tree) == 2
-        and tree[1] == variable
-        and runtime.jstype(head) == 'string'
-    ):
-        return _laplace_function_tree(
-            tree, variable, transform_variable)
+    if len(tree) == 2 and tree[1] == variable and runtime.jstype(head) == "string":
+        return _laplace_function_tree(tree, variable, transform_variable)
     return runtime.undefined
 
 
@@ -1568,8 +1477,7 @@ def integral(
     lower: Any = runtime.undefined,
     upper: Any = runtime.undefined,
 ) -> Expression:
-    return SR(expression).integrate(
-        variable, lower, upper)
+    return SR(expression).integrate(variable, lower, upper)
 
 
 _GAUSS_KRONROD_21_ABSCISSAE = [
@@ -1624,32 +1532,24 @@ def _gauss_kronrod_21(
     center_value = float(function_value(center))
     kronrod_sum = _GAUSS_KRONROD_21_CENTER_WEIGHT * center_value
     gauss_sum = 0.0
-    absolute_sum = (
-        _GAUSS_KRONROD_21_CENTER_WEIGHT * abs(center_value))
+    absolute_sum = _GAUSS_KRONROD_21_CENTER_WEIGHT * abs(center_value)
     sampled_pairs = []
     for index in range(len(_GAUSS_KRONROD_21_ABSCISSAE)):
-        displacement = (
-            half_length * _GAUSS_KRONROD_21_ABSCISSAE[index])
+        displacement = half_length * _GAUSS_KRONROD_21_ABSCISSAE[index]
         left_value = float(function_value(center - displacement))
         right_value = float(function_value(center + displacement))
         sampled_pairs.append((left_value, right_value))
         pair_sum = left_value + right_value
         kronrod_sum += _GAUSS_KRONROD_21_WEIGHTS[index] * pair_sum
         gauss_sum += _GAUSS_10_WEIGHTS[index] * pair_sum
-        absolute_sum += (
-            _GAUSS_KRONROD_21_WEIGHTS[index]
-            * (abs(left_value) + abs(right_value))
+        absolute_sum += _GAUSS_KRONROD_21_WEIGHTS[index] * (
+            abs(left_value) + abs(right_value)
         )
     mean = kronrod_sum / 2.0
-    absolute_deviation = (
-        _GAUSS_KRONROD_21_CENTER_WEIGHT * abs(center_value - mean))
+    absolute_deviation = _GAUSS_KRONROD_21_CENTER_WEIGHT * abs(center_value - mean)
     for index in range(len(sampled_pairs)):
-        absolute_deviation += (
-            _GAUSS_KRONROD_21_WEIGHTS[index]
-            * (
-                abs(sampled_pairs[index][0] - mean)
-                + abs(sampled_pairs[index][1] - mean)
-            )
+        absolute_deviation += _GAUSS_KRONROD_21_WEIGHTS[index] * (
+            abs(sampled_pairs[index][0] - mean) + abs(sampled_pairs[index][1] - mean)
         )
     result = kronrod_sum * half_length
     gauss_result = gauss_sum * half_length
@@ -1677,8 +1577,7 @@ def _adaptive_numerical_integral(
     eps_rel: float,
     adaptive: bool,
 ) -> tuple[float, float]:
-    result, error = _gauss_kronrod_21(
-        function_value, lower, upper)
+    result, error = _gauss_kronrod_21(function_value, lower, upper)
     if not adaptive:
         return result, error
     intervals = [[lower, upper, result, error]]
@@ -1699,15 +1598,15 @@ def _adaptive_numerical_integral(
             intervals.append(current)
             break
         left_result, left_error = _gauss_kronrod_21(
-            function_value, current[0], midpoint)
+            function_value, current[0], midpoint
+        )
         right_result, right_error = _gauss_kronrod_21(
-            function_value, midpoint, current[1])
+            function_value, midpoint, current[1]
+        )
         result += left_result + right_result - current[2]
         error += left_error + right_error - current[3]
-        intervals.append([
-            current[0], midpoint, left_result, left_error])
-        intervals.append([
-            midpoint, current[1], right_result, right_error])
+        intervals.append([current[0], midpoint, left_result, left_error])
+        intervals.append([midpoint, current[1], right_result, right_error])
     return result, max(0.0, error)
 
 
@@ -1727,10 +1626,11 @@ def _numerical_integral_callable(
             return None
         if len(variables) != len(parameters) + 1:
             raise ValueError(
-                'The function to be integrated depends on '
-                + str(len(variables)) + ' variables '
+                "The function to be integrated depends on "
+                + str(len(variables))
+                + " variables "
                 + str(runtime.math_tuple(variables))
-                + ', and so cannot be integrated in one dimension. '
+                + ", and so cannot be integrated in one dimension. "
                 + "Please fix additional variables with the 'params' argument"
             )
         if len(parameters):
@@ -1741,12 +1641,15 @@ def _numerical_integral_callable(
                     _symbol_name(variables[index + 1]),
                     _expression_tree(parameters[index]),
                 )
-            function_value = Expression(_call_backend(
-                'substitute',
-                [function_value._tree, substitutions],
-            ))
+            function_value = Expression(
+                _call_backend(
+                    "substitute",
+                    [function_value._tree, substitutions],
+                )
+            )
         return fast_callable(function_value, vars=[variables[0]])
     if callable(function_value):
+
         def evaluate(value: float) -> float:
             evaluated = runtime.reflect.apply(
                 function_value,
@@ -1754,6 +1657,7 @@ def _numerical_integral_callable(
                 [value] + parameters,
             )
             return float(evaluated)
+
         return evaluate
     return None
 
@@ -1762,7 +1666,7 @@ def numerical_integral(
     function_value: Any,
     a: Any,
     b: Any = None,
-    algorithm: str = 'qag',
+    algorithm: str = "qag",
     max_points: int = 87,
     params: Any = None,
     eps_abs: float = 1e-6,
@@ -1780,21 +1684,21 @@ def numerical_integral(
     if b is None or isinstance(a, (list, tuple)):
         interval = list(a)
         if len(interval) != 2:
-            raise TypeError('integration interval must contain two endpoints')
+            raise TypeError("integration interval must contain two endpoints")
         a, b = interval
     lower = float(a)
     upper = float(b)
     if lower == upper:
         return runtime.math_tuple([0.0, 0.0])
     algorithm_name = str(algorithm)
-    if algorithm_name not in ('qag', 'qags', 'qng'):
-        raise TypeError('invalid integration algorithm')
+    if algorithm_name not in ("qag", "qags", "qng"):
+        raise TypeError("invalid integration algorithm")
     interval_limit = int(max_points)
     if interval_limit < 1:
-        raise ValueError('max_points must be positive')
+        raise ValueError("max_points must be positive")
     rule_number = int(rule)
     if rule_number < 1 or rule_number > 6:
-        raise ValueError('rule must be an integer from 1 through 6')
+        raise ValueError("rule must be an integer from 1 through 6")
     absolute_tolerance = float(eps_abs)
     relative_tolerance = float(eps_rel)
     if (
@@ -1802,18 +1706,20 @@ def numerical_integral(
         or relative_tolerance < 0.0
         or (absolute_tolerance == 0.0 and relative_tolerance == 0.0)
     ):
-        raise ValueError('integration tolerances must be nonnegative and nonzero')
+        raise ValueError("integration tolerances must be nonnegative and nonzero")
     evaluator = _numerical_integral_callable(function_value, params)
     if evaluator is None:
-        return runtime.math_tuple([
-            (upper - lower) * float(function_value),
-            0.0,
-        ])
+        return runtime.math_tuple(
+            [
+                (upper - lower) * float(function_value),
+                0.0,
+            ]
+        )
     finite_lower = runtime.number.isFinite(runtime.number(lower))
     finite_upper = runtime.number.isFinite(runtime.number(upper))
     if not finite_lower and not finite_upper:
         if lower >= 0.0 or upper <= 0.0:
-            raise ValueError('invalid infinite integration interval')
+            raise ValueError("invalid infinite integration interval")
 
         original_evaluator = evaluator
 
@@ -1827,27 +1733,27 @@ def numerical_integral(
         lower, upper = -1.0, 1.0
     elif not finite_upper:
         if upper < 0.0:
-            raise ValueError('invalid upper integration endpoint')
+            raise ValueError("invalid upper integration endpoint")
         original_evaluator = evaluator
         finite_start = lower
 
         def positive_infinite(value: float) -> float:
             denominator = 1.0 - value
             coordinate = finite_start + value / denominator
-            return float(original_evaluator(coordinate)) / (denominator ** 2)
+            return float(original_evaluator(coordinate)) / (denominator**2)
 
         evaluator = positive_infinite
         lower, upper = 0.0, 1.0
     elif not finite_lower:
         if lower > 0.0:
-            raise ValueError('invalid lower integration endpoint')
+            raise ValueError("invalid lower integration endpoint")
         original_evaluator = evaluator
         finite_end = upper
 
         def negative_infinite(value: float) -> float:
             denominator = 1.0 - value
             coordinate = finite_end - value / denominator
-            return float(original_evaluator(coordinate)) / (denominator ** 2)
+            return float(original_evaluator(coordinate)) / (denominator**2)
 
         evaluator = negative_infinite
         lower, upper = 0.0, 1.0
@@ -1858,7 +1764,7 @@ def numerical_integral(
         interval_limit,
         absolute_tolerance,
         relative_tolerance,
-        algorithm_name != 'qng',
+        algorithm_name != "qng",
     )
     return runtime.math_tuple([result, error])
 
@@ -1873,23 +1779,23 @@ def limit(
 ) -> Expression:
     """Return a symbolic limit using Sage-compatible argument forms."""
     dir = None
-    if runtime.reflect.has(kwargs, 'dir'):
-        dir = runtime.reflect.get(kwargs, 'dir')
-        runtime.reflect.deleteProperty(kwargs, 'dir')
+    if runtime.reflect.has(kwargs, "dir"):
+        dir = runtime.reflect.get(kwargs, "dir")
+        runtime.reflect.deleteProperty(kwargs, "dir")
     taylor = False
-    if runtime.reflect.has(kwargs, 'taylor'):
-        taylor = bool(runtime.reflect.get(kwargs, 'taylor'))
-        runtime.reflect.deleteProperty(kwargs, 'taylor')
-    algorithm = 'maxima'
-    if runtime.reflect.has(kwargs, 'algorithm'):
-        algorithm = str(runtime.reflect.get(kwargs, 'algorithm'))
-        runtime.reflect.deleteProperty(kwargs, 'algorithm')
+    if runtime.reflect.has(kwargs, "taylor"):
+        taylor = bool(runtime.reflect.get(kwargs, "taylor"))
+        runtime.reflect.deleteProperty(kwargs, "taylor")
+    algorithm = "maxima"
+    if runtime.reflect.has(kwargs, "algorithm"):
+        algorithm = str(runtime.reflect.get(kwargs, "algorithm"))
+        runtime.reflect.deleteProperty(kwargs, "algorithm")
     if taylor:
+        raise NotImplementedError("limit(..., taylor=True) is not implemented")
+    if algorithm not in ("maxima", "sagejs"):
         raise NotImplementedError(
-            'limit(..., taylor=True) is not implemented')
-    if algorithm not in ('maxima', 'sagejs'):
-        raise NotImplementedError(
-            "limit algorithm '" + str(algorithm) + "' is not implemented")
+            "limit algorithm '" + str(algorithm) + "' is not implemented"
+        )
     keyword_names = runtime.object.keys(kwargs)
     if len(args) == 2 and len(keyword_names) == 0:
         variable, point = args
@@ -1898,26 +1804,29 @@ def limit(
         point = runtime.reflect.get(kwargs, keyword_names[0])
     else:
         raise TypeError(
-            'limit() expects (expression, variable, point) or '
-            '(expression, variable=point)')
+            "limit() expects (expression, variable, point) or "
+            "(expression, variable=point)"
+        )
     direction = runtime.undefined
     if dir is not None:
         direction_name = str(dir).lower()
-        if direction_name in ('plus', '+', 'right', 'above'):
+        if direction_name in ("plus", "+", "right", "above"):
             direction = 1
-        elif direction_name in ('minus', '-', 'left', 'below'):
+        elif direction_name in ("minus", "-", "left", "below"):
             direction = -1
         else:
-            raise ValueError('direction must be plus, minus, left, or right')
-    return Expression(_call_backend(
-        'limit',
-        [
-            _expression_tree(expression),
-            _symbol_name(variable),
-            _expression_tree(point),
-            direction,
-        ],
-    ))
+            raise ValueError("direction must be plus, minus, left, or right")
+    return Expression(
+        _call_backend(
+            "limit",
+            [
+                _expression_tree(expression),
+                _symbol_name(variable),
+                _expression_tree(point),
+                direction,
+            ],
+        )
+    )
 
 
 def desolve(
@@ -1928,19 +1837,16 @@ def desolve(
     """Solve the scalar linear equations used by Sage's ODE tutorial."""
     if isinstance(dependent_and_variable, (list, tuple)):
         if len(dependent_and_variable) != 2:
-            raise TypeError('desolve() expects [dependent, variable]')
+            raise TypeError("desolve() expects [dependent, variable]")
         dependent = SR(dependent_and_variable[0])
         variable = _symbol_name(dependent_and_variable[1])
     else:
         dependent = SR(dependent_and_variable)
         dependent_tree = dependent._tree
-        if (
-            not runtime.array.isArray(dependent_tree)
-            or len(dependent_tree) != 2
-        ):
+        if not runtime.array.isArray(dependent_tree) or len(dependent_tree) != 2:
             raise TypeError(
-                'desolve() expects a dependent function or '
-                '[dependent, variable]')
+                "desolve() expects a dependent function or [dependent, variable]"
+            )
         variable = str(dependent_tree[1])
     dependent_tree = dependent._tree
     if (
@@ -1949,96 +1855,108 @@ def desolve(
         or dependent_tree[1] != variable
     ):
         raise NotImplementedError(
-            'desolve() currently requires a scalar function of one variable')
+            "desolve() currently requires a scalar function of one variable"
+        )
     function_name = str(dependent_tree[0])
     first_order = [
-        'Add',
+        "Add",
         [function_name, variable],
-        ['Apply', ['Derivative', function_name, 1], variable],
+        ["Apply", ["Derivative", function_name, 1], variable],
         -1,
     ]
     equation_tree = _expression_tree(equation)
-    if _call_backend('same', [equation_tree, first_order]):
+    if _call_backend("same", [equation_tree, first_order]):
         if ics is None:
-            return Expression([
-                'Multiply',
-                ['Add', '_C', ['Power', 'ExponentialE', variable]],
-                ['Power', 'ExponentialE', ['Negate', variable]],
-            ])
+            return Expression(
+                [
+                    "Multiply",
+                    ["Add", "_C", ["Power", "ExponentialE", variable]],
+                    ["Power", "ExponentialE", ["Negate", variable]],
+                ]
+            )
         initial = list(ics)
         if len(initial) != 2:
-            raise ValueError(
-                'first-order initial conditions must be [x0, y0]')
+            raise ValueError("first-order initial conditions must be [x0, y0]")
         x0, y0 = initial
         coefficient = y0 - 1
-        exponential = [
-            'Power', 'ExponentialE', _expression_tree(x0)]
+        exponential = ["Power", "ExponentialE", _expression_tree(x0)]
         if coefficient == 1:
             constant = exponential
         else:
-            constant = [
-                'Multiply', _expression_tree(coefficient), exponential]
-        return Expression([
-            'Multiply',
+            constant = ["Multiply", _expression_tree(coefficient), exponential]
+        return Expression(
             [
-                'Add', constant,
-                ['Power', 'ExponentialE', variable],
-            ],
-            ['Power', 'ExponentialE', ['Negate', variable]],
-        ])
+                "Multiply",
+                [
+                    "Add",
+                    constant,
+                    ["Power", "ExponentialE", variable],
+                ],
+                ["Power", "ExponentialE", ["Negate", variable]],
+            ]
+        )
     second_order = [
-        'Equal',
+        "Equal",
         [
-            'Add',
-            ['Negate', [function_name, variable]],
-            ['Apply', ['Derivative', function_name, 2], variable],
+            "Add",
+            ["Negate", [function_name, variable]],
+            ["Apply", ["Derivative", function_name, 2], variable],
         ],
         variable,
     ]
-    if _call_backend('same', [equation_tree, second_order]):
+    if _call_backend("same", [equation_tree, second_order]):
         if ics is None:
-            return Expression([
-                'Add',
+            return Expression(
                 [
-                    'Multiply', '_K2',
+                    "Add",
                     [
-                        'Power', 'ExponentialE',
-                        ['Negate', variable],
+                        "Multiply",
+                        "_K2",
+                        [
+                            "Power",
+                            "ExponentialE",
+                            ["Negate", variable],
+                        ],
                     ],
-                ],
-                [
-                    'Multiply', '_K1',
-                    ['Power', 'ExponentialE', variable],
-                ],
-                ['Negate', variable],
-            ])
+                    [
+                        "Multiply",
+                        "_K1",
+                        ["Power", "ExponentialE", variable],
+                    ],
+                    ["Negate", variable],
+                ]
+            )
         initial = list(ics)
         if len(initial) != 3:
-            raise ValueError(
-                'second-order initial conditions must be [x0, y0, y1]')
+            raise ValueError("second-order initial conditions must be [x0, y0, y1]")
         x0, y0, y1 = initial
         positive = runtime.rational_class(y0 + y1 + x0 + 1, 2)
         negative = runtime.rational_class(y0 - y1 + x0 - 1, 2)
-        return Expression([
-            'Add',
-            ['Negate', variable],
+        return Expression(
             [
-                'Multiply', _expression_tree(positive),
+                "Add",
+                ["Negate", variable],
                 [
-                    'Power', 'ExponentialE',
-                    ['Add', variable, ['Negate', _expression_tree(x0)]],
+                    "Multiply",
+                    _expression_tree(positive),
+                    [
+                        "Power",
+                        "ExponentialE",
+                        ["Add", variable, ["Negate", _expression_tree(x0)]],
+                    ],
                 ],
-            ],
-            [
-                'Multiply', _expression_tree(negative),
                 [
-                    'Power', 'ExponentialE',
-                    ['Add', ['Negate', variable], _expression_tree(x0)],
+                    "Multiply",
+                    _expression_tree(negative),
+                    [
+                        "Power",
+                        "ExponentialE",
+                        ["Add", ["Negate", variable], _expression_tree(x0)],
+                    ],
                 ],
-            ],
-        ])
-    raise NotImplementedError(
-        'desolve() currently supports y\' + y = 1 and y\'\' - y = x')
+            ]
+        )
+    raise NotImplementedError("desolve() currently supports y' + y = 1 and y'' - y = x")
 
 
 def _cosine_component_tree(
@@ -2048,8 +1966,8 @@ def _cosine_component_tree(
 ) -> Any:
     argument = variable
     if frequency != 1:
-        argument = ['Multiply', frequency, variable]
-    cosine = ['Cos', argument]
+        argument = ["Multiply", frequency, variable]
+    cosine = ["Cos", argument]
     return _laplace_scale_tree(coefficient, cosine)
 
 
@@ -2061,11 +1979,9 @@ def inverse_laplace(
     """Invert rational combinations of two cosine transforms."""
     transform_name = _symbol_name(transform_variable)
     variable_name = _symbol_name(variable)
-    rational = _rational_polynomial_tree(
-        _expression_tree(expression), transform_name)
+    rational = _rational_polynomial_tree(_expression_tree(expression), transform_name)
     if rational is runtime.undefined:
-        raise NotImplementedError(
-            'inverse_laplace() requires a rational expression')
+        raise NotImplementedError("inverse_laplace() requires a rational expression")
     numerator = _trim_polynomial_coefficients(rational[0])
     denominator = _trim_polynomial_coefficients(rational[1])
     if (
@@ -2076,52 +1992,41 @@ def inverse_laplace(
         or denominator[4] == 0
     ):
         raise NotImplementedError(
-            'inverse_laplace() currently supports two quadratic factors')
+            "inverse_laplace() currently supports two quadratic factors"
+        )
     leading = denominator[4]
     constant = denominator[0] / leading
     quadratic = denominator[2] / leading
     discriminant = quadratic * quadratic - 4 * constant
-    discriminant_root = int(
-        runtime.math.round(runtime.math.sqrt(float(discriminant))))
+    discriminant_root = int(runtime.math.round(runtime.math.sqrt(float(discriminant))))
     if discriminant_root * discriminant_root != discriminant:
         raise NotImplementedError(
-            'quadratic transform factors must have square frequencies')
-    first_square = (
-        quadratic - discriminant_root
-    ) / sage.QQ(2)
-    second_square = (
-        quadratic + discriminant_root
-    ) / sage.QQ(2)
-    first_frequency = int(runtime.math.round(
-        runtime.math.sqrt(float(first_square))))
-    second_frequency = int(runtime.math.round(
-        runtime.math.sqrt(float(second_square))))
+            "quadratic transform factors must have square frequencies"
+        )
+    first_square = (quadratic - discriminant_root) / sage.QQ(2)
+    second_square = (quadratic + discriminant_root) / sage.QQ(2)
+    first_frequency = int(runtime.math.round(runtime.math.sqrt(float(first_square))))
+    second_frequency = int(runtime.math.round(runtime.math.sqrt(float(second_square))))
     if (
         first_frequency * first_frequency != first_square
         or second_frequency * second_frequency != second_square
     ):
         raise NotImplementedError(
-            'quadratic transform factors must have square frequencies')
+            "quadratic transform factors must have square frequencies"
+        )
     linear = sage.QQ(0)
     cubic = sage.QQ(0)
     if len(numerator) > 1:
         linear = numerator[1] / leading
     if len(numerator) > 3:
         cubic = numerator[3] / leading
-    if (
-        len(numerator) > 2 and numerator[2] != 0
-    ) or numerator[0] != 0:
-        raise NotImplementedError(
-            'only odd rational cosine transforms are implemented')
-    first_coefficient = (
-        linear - cubic * first_square
-    ) / (second_square - first_square)
+    if (len(numerator) > 2 and numerator[2] != 0) or numerator[0] != 0:
+        raise NotImplementedError("only odd rational cosine transforms are implemented")
+    first_coefficient = (linear - cubic * first_square) / (second_square - first_square)
     second_coefficient = cubic - first_coefficient
-    high = _cosine_component_tree(
-        second_coefficient, second_frequency, variable_name)
-    low = _cosine_component_tree(
-        first_coefficient, first_frequency, variable_name)
-    return Expression(['Add', high, low])
+    high = _cosine_component_tree(second_coefficient, second_frequency, variable_name)
+    low = _cosine_component_tree(first_coefficient, first_frequency, variable_name)
+    return Expression(["Add", high, low])
 
 
 class MaximaExpression:
@@ -2140,39 +2045,43 @@ class MaximaExpression:
         variable: str,
         transform_variable: str,
     ) -> MaximaExpression:
-        compact = self._source.replace(
-            runtime.regexp(r'\s+', 'g'), '')
-        if compact != 'diff(y(t),t,2)+2*y(t)-2*x(t)':
+        compact = self._source.replace(runtime.regexp(r"\s+", "g"), "")
+        if compact != "diff(y(t),t,2)+2*y(t)-2*x(t)":
             raise NotImplementedError(
-                'the Maxima facade only translates supported expressions')
-        result = Expression([
-            'Add',
+                "the Maxima facade only translates supported expressions"
+            )
+        result = Expression(
             [
-                'Multiply',
-                ['Power', transform_variable, 2],
-                ['laplace', ['y', variable], variable, transform_variable],
-            ],
-            ['Negate', [
-                'Multiply', transform_variable, ['y', 0]]],
-            ['Negate', [
-                'Multiply',
-                2,
-                ['laplace', ['x', variable], variable, transform_variable],
-            ]],
-            [
-                'Multiply',
-                2,
-                ['laplace', ['y', variable], variable, transform_variable],
-            ],
-            ['Negate', [
-                'Apply', ['Derivative', 'y', 1], 0]],
-        ])
+                "Add",
+                [
+                    "Multiply",
+                    ["Power", transform_variable, 2],
+                    ["laplace", ["y", variable], variable, transform_variable],
+                ],
+                ["Negate", ["Multiply", transform_variable, ["y", 0]]],
+                [
+                    "Negate",
+                    [
+                        "Multiply",
+                        2,
+                        ["laplace", ["x", variable], variable, transform_variable],
+                    ],
+                ],
+                [
+                    "Multiply",
+                    2,
+                    ["laplace", ["y", variable], variable, transform_variable],
+                ],
+                ["Negate", ["Apply", ["Derivative", "y", 1], 0]],
+            ]
+        )
         return MaximaExpression(str(result), result)
 
     def sage(self) -> Expression:
         if self._sage_expression is runtime.undefined:
             raise NotImplementedError(
-                'this Maxima value has no Sage symbolic translation')
+                "this Maxima value has no Sage symbolic translation"
+            )
         return self._sage_expression
 
     def __repr__(self) -> str:
@@ -2193,41 +2102,38 @@ class MaximaInterface:
         return MaximaExpression(str(source))
 
     def evaluate(self, source: str) -> MaximaExpression:
-        compact = str(source).replace(
-            runtime.regexp(r'\s+', 'g'), '')
-        if compact == 'f:bessel_y(v,w)':
-            runtime.reflect.set(
-                self._bindings, 'f', 'bessel_y(v,w)')
-            return MaximaExpression('bessel_y(v,w)')
-        if compact == 'diff(f,w)' \
-                and runtime.reflect.get(
-                    self._bindings, 'f') == 'bessel_y(v,w)':
-            return MaximaExpression(
-                '(bessel_y(v-1,w)-bessel_y(v+1,w))/2')
-        raise NotImplementedError(
-            'the Maxima facade does not implement this command')
+        compact = str(source).replace(runtime.regexp(r"\s+", "g"), "")
+        if compact == "f:bessel_y(v,w)":
+            runtime.reflect.set(self._bindings, "f", "bessel_y(v,w)")
+            return MaximaExpression("bessel_y(v,w)")
+        if (
+            compact == "diff(f,w)"
+            and runtime.reflect.get(self._bindings, "f") == "bessel_y(v,w)"
+        ):
+            return MaximaExpression("(bessel_y(v-1,w)-bessel_y(v+1,w))/2")
+        raise NotImplementedError("the Maxima facade does not implement this command")
 
     def __repr__(self) -> str:
-        return 'Maxima'
+        return "Maxima"
 
     __str__ = __repr__
     toString = __repr__
 
 
 maxima = MaximaInterface()
-runtime.reflect.set(maxima, 'eval', maxima.evaluate)
+runtime.reflect.set(maxima, "eval", maxima.evaluate)
 
 
 def _solve_exact_number_tree(value: Any) -> Any:
-    if runtime.jstype(value) != 'number':
+    if runtime.jstype(value) != "number":
         return value
     text = str(value)
-    if '.' not in text or 'e' in text or 'E' in text:
+    if "." not in text or "e" in text or "E" in text:
         return value
-    negative = text.startswith('-')
+    negative = text.startswith("-")
     if negative:
         text = text[1:]
-    pieces = text.split('.')
+    pieces = text.split(".")
     numerator = int(pieces[0] + pieces[1])
     if negative:
         numerator = -numerator
@@ -2243,37 +2149,27 @@ def _solve_partial_relation(
         len(variables) != 1
         or not runtime.array.isArray(tree)
         or len(tree) != 3
-        or tree[0] != 'Equal'
+        or tree[0] != "Equal"
     ):
         return runtime.undefined
     left = tree[1]
     right = tree[2]
-    if (
-        not runtime.array.isArray(left)
-        or len(left) < 3
-        or left[0] != 'Multiply'
-    ):
+    if not runtime.array.isArray(left) or len(left) < 3 or left[0] != "Multiply":
         return runtime.undefined
     exact_right = _solve_exact_number_tree(right)
-    exact_right_is_number = (
-        runtime.jstype(exact_right) in ('number', 'bigint')
-        or (
-            runtime.array.isArray(exact_right)
-            and len(exact_right) == 3
-            and exact_right[0] == 'Rational'
-        )
+    exact_right_is_number = runtime.jstype(exact_right) in ("number", "bigint") or (
+        runtime.array.isArray(exact_right)
+        and len(exact_right) == 3
+        and exact_right[0] == "Rational"
     )
     if not exact_right_is_number:
         return runtime.undefined
-    if (
-        runtime.jstype(exact_right) in ('number', 'bigint')
-        and exact_right == 0
-    ):
+    if runtime.jstype(exact_right) in ("number", "bigint") and exact_right == 0:
         return runtime.undefined
     if (
         runtime.array.isArray(exact_right)
         and len(exact_right) == 3
-        and exact_right[0] == 'Rational'
+        and exact_right[0] == "Rational"
         and exact_right[1] == 0
     ):
         return runtime.undefined
@@ -2296,12 +2192,14 @@ def _solve_partial_relation(
     if len(remaining) == 1:
         denominator = remaining[0]
     else:
-        denominator = ['Multiply'] + remaining
-    return Expression([
-        'Equal',
-        left[selected],
-        ['Divide', exact_right, denominator],
-    ])
+        denominator = ["Multiply"] + remaining
+    return Expression(
+        [
+            "Equal",
+            left[selected],
+            ["Divide", exact_right, denominator],
+        ]
+    )
 
 
 def _symbol_power_matches(
@@ -2314,7 +2212,7 @@ def _symbol_power_matches(
     return (
         runtime.array.isArray(tree)
         and len(tree) == 3
-        and tree[0] == 'Power'
+        and tree[0] == "Power"
         and tree[1] == name
         and tree[2] == exponent
     )
@@ -2326,21 +2224,10 @@ def _weighted_term_matches(
     value: str,
     exponent: int,
 ) -> bool:
-    if (
-        not runtime.array.isArray(tree)
-        or len(tree) != 3
-        or tree[0] != 'Multiply'
-    ):
+    if not runtime.array.isArray(tree) or len(tree) != 3 or tree[0] != "Multiply":
         return False
-    return (
-        (
-            tree[1] == weight
-            and _symbol_power_matches(tree[2], value, exponent)
-        )
-        or (
-            tree[2] == weight
-            and _symbol_power_matches(tree[1], value, exponent)
-        )
+    return (tree[1] == weight and _symbol_power_matches(tree[2], value, exponent)) or (
+        tree[2] == weight and _symbol_power_matches(tree[1], value, exponent)
     )
 
 
@@ -2352,25 +2239,14 @@ def _weighted_moment_matches(
     second_value: str,
     exponent: int,
 ) -> bool:
-    if (
-        not runtime.array.isArray(tree)
-        or len(tree) != 3
-        or tree[0] != 'Add'
-    ):
+    if not runtime.array.isArray(tree) or len(tree) != 3 or tree[0] != "Add":
         return False
     return (
-        (
-            _weighted_term_matches(
-                tree[1], first_weight, first_value, exponent)
-            and _weighted_term_matches(
-                tree[2], second_weight, second_value, exponent)
-        )
-        or (
-            _weighted_term_matches(
-                tree[2], first_weight, first_value, exponent)
-            and _weighted_term_matches(
-                tree[1], second_weight, second_value, exponent)
-        )
+        _weighted_term_matches(tree[1], first_weight, first_value, exponent)
+        and _weighted_term_matches(tree[2], second_weight, second_value, exponent)
+    ) or (
+        _weighted_term_matches(tree[2], first_weight, first_value, exponent)
+        and _weighted_term_matches(tree[1], second_weight, second_value, exponent)
     )
 
 
@@ -2382,16 +2258,10 @@ def _two_weight_sum_matches(
     return (
         runtime.array.isArray(tree)
         and len(tree) == 3
-        and tree[0] == 'Add'
+        and tree[0] == "Add"
         and (
-            (
-                tree[1] == first_weight
-                and tree[2] == second_weight
-            )
-            or (
-                tree[1] == second_weight
-                and tree[2] == first_weight
-            )
+            (tree[1] == first_weight and tree[2] == second_weight)
+            or (tree[1] == second_weight and tree[2] == first_weight)
         )
     )
 
@@ -2413,18 +2283,16 @@ def _solve_two_point_moment_system(
     first_moment = runtime.undefined
     second_moment = runtime.undefined
     for tree in trees:
-        if (
-            not runtime.array.isArray(tree)
-            or len(tree) != 3
-            or tree[0] != 'Equal'
-        ):
+        if not runtime.array.isArray(tree) or len(tree) != 3 or tree[0] != "Equal":
             return runtime.undefined
         left = tree[1]
         right = _exact_scalar_from_tree(tree[2])
         if left == first_weight:
             first_weight_value = right
         elif _two_weight_sum_matches(
-            left, first_weight, second_weight,
+            left,
+            first_weight,
+            second_weight,
         ):
             total = right
         elif _weighted_moment_matches(
@@ -2455,23 +2323,15 @@ def _solve_two_point_moment_system(
     ):
         return runtime.undefined
     second_weight_value = total - first_weight_value
-    if (
-        total == 0
-        or first_weight_value == 0
-        or second_weight_value == 0
-    ):
+    if total == 0 or first_weight_value == 0 or second_weight_value == 0:
         return runtime.undefined
     mean = sage.QQ(first_moment) / sage.QQ(total)
     radicand = sage.QQ(
         total * second_moment - first_moment * first_moment,
     ) / sage.QQ(first_weight_value * second_weight_value)
     difference = sqrt(radicand)
-    first_offset = (
-        sage.QQ(second_weight_value) / sage.QQ(total)
-    ) * difference
-    second_offset = (
-        sage.QQ(first_weight_value) / sage.QQ(total)
-    ) * difference
+    first_offset = (sage.QQ(second_weight_value) / sage.QQ(total)) * difference
+    second_offset = (sage.QQ(first_weight_value) / sage.QQ(total)) * difference
     solution_values = [
         [
             SR(first_weight_value),
@@ -2496,11 +2356,15 @@ def _solve_two_point_moment_system(
         else:
             relations = []
             for index in range(len(variables)):
-                relations.append(Expression([
-                    'Equal',
-                    _expression_tree(variables[index]),
-                    values[index]._tree,
-                ]))
+                relations.append(
+                    Expression(
+                        [
+                            "Equal",
+                            _expression_tree(variables[index]),
+                            values[index]._tree,
+                        ]
+                    )
+                )
             answers.append(relations)
     return answers
 
@@ -2530,14 +2394,13 @@ def solve(
     mathematically misleading empty list.  Coupled nonlinear systems and many
     transcendental families remain outside the current supported surface.
     """
-    solution_option = runtime.reflect.get(
-        options, 'solution_dict')
+    solution_option = runtime.reflect.get(options, "solution_dict")
     solution_dict = False
     if solution_option is not runtime.undefined:
         solution_dict = bool(solution_option)
-    runtime.reflect.deleteProperty(options, 'solution_dict')
+    runtime.reflect.deleteProperty(options, "solution_dict")
     if len(runtime.object.keys(options)):
-        raise TypeError('unsupported solve() option')
+        raise TypeError("unsupported solve() option")
     if isinstance(equations, (list, tuple)):
         equation_values = list(equations)
     else:
@@ -2547,42 +2410,33 @@ def solve(
     trees = []
     for equation in equation_values:
         tree = _expression_tree(equation)
-        if (
-            not runtime.array.isArray(tree)
-            or len(tree) == 0
-            or tree[0] != 'Equal'
-        ):
-            tree = ['Equal', tree, 0]
+        if not runtime.array.isArray(tree) or len(tree) == 0 or tree[0] != "Equal":
+            tree = ["Equal", tree, 0]
         trees.append(tree)
     if len(trees) == 1:
         expression_tree = trees[0]
     else:
-        expression_tree = ['List'] + trees
-    if len(variables) == 1 and isinstance(
-        variables[0], (list, tuple)
-    ):
+        expression_tree = ["List"] + trees
+    if len(variables) == 1 and isinstance(variables[0], (list, tuple)):
         variables = runtime.math_tuple(list(variables[0]))
     if len(variables) == 0:
         variables = Expression(expression_tree).variables()
     names = [_symbol_name(variable) for variable in variables]
-    moment_solutions = _solve_two_point_moment_system(
-        trees, variables, solution_dict)
+    moment_solutions = _solve_two_point_moment_system(trees, variables, solution_dict)
     if moment_solutions is not runtime.undefined:
         return moment_solutions
-    result = _call_backend('solve', [expression_tree, names])
-    kind = runtime.reflect.get(result, 'kind')
-    values = runtime.reflect.get(result, 'values')
-    if kind == 'roots':
+    result = _call_backend("solve", [expression_tree, names])
+    kind = runtime.reflect.get(result, "kind")
+    values = runtime.reflect.get(result, "values")
+    if kind == "roots":
         if len(values) == 0:
-            partial = _solve_partial_relation(
-                expression_tree, variables)
+            partial = _solve_partial_relation(expression_tree, variables)
             if partial is not runtime.undefined:
                 return [partial]
             return [SR(equation_values[0])]
         answers = []
         for value in values:
-            relation = Expression([
-                'Equal', _expression_tree(variables[0]), value])
+            relation = Expression(["Equal", _expression_tree(variables[0]), value])
             if solution_dict:
                 mapping = {}
                 mapping[variables[0]] = Expression(value)
@@ -2590,7 +2444,7 @@ def solve(
             else:
                 answers.append(relation)
         return answers
-    if kind == 'mapping':
+    if kind == "mapping":
         mapping = {}
         relations = []
         for variable in variables:
@@ -2600,11 +2454,15 @@ def solve(
                 continue
             expression_value = Expression(value).simplify()
             mapping[variable] = expression_value
-            relations.append(Expression([
-                'Equal',
-                _expression_tree(variable),
-                expression_value._tree,
-            ]))
+            relations.append(
+                Expression(
+                    [
+                        "Equal",
+                        _expression_tree(variable),
+                        expression_value._tree,
+                    ]
+                )
+            )
         if solution_dict:
             return [mapping]
         return [relations]
@@ -2617,8 +2475,7 @@ def find_root(
     upper: Any,
     **options: Any,
 ) -> float:
-    return SR(expression).find_root(
-        lower, upper, **options)
+    return SR(expression).find_root(lower, upper, **options)
 
 
 def numerical_approx(
@@ -2628,9 +2485,8 @@ def numerical_approx(
 ) -> Any:
     if isinstance(value, Expression):
         return value.n(prec=prec, digits=digits)
-    if hasattr(value, 'numerical_approx'):
-        return value.numerical_approx(
-            prec=prec, digits=digits)
+    if hasattr(value, "numerical_approx"):
+        return value.numerical_approx(prec=prec, digits=digits)
     return SR(value).n(prec=prec, digits=digits)
 
 
@@ -2653,8 +2509,7 @@ pi = Expression("Pi")
 e = Expression("ExponentialE")
 _imaginary_unit = Expression("ImaginaryUnit")
 i = _imaginary_unit
-runtime.reflect.set(
-    runtime.global_object, 'I', _imaginary_unit)
+runtime.reflect.set(runtime.global_object, "I", _imaginary_unit)
 
 
 def assume(*conditions: Any) -> None:
@@ -2669,21 +2524,19 @@ def assume(*conditions: Any) -> None:
 
 def reset(name: Any = None) -> None:
     """Restore the small set of symbolic globals initialized by Sage.js."""
-    names = ['x', 'i'] if name is None else [str(name)]
+    names = ["x", "i"] if name is None else [str(name)]
     for current in names:
-        if current == 'x':
-            runtime.reflect.set(
-                runtime.global_object, 'x', Expression('x'))
-        elif current == 'i':
-            runtime.reflect.set(
-                runtime.global_object, 'i', _imaginary_unit)
+        if current == "x":
+            runtime.reflect.set(runtime.global_object, "x", Expression("x"))
+        elif current == "i":
+            runtime.reflect.set(runtime.global_object, "i", _imaginary_unit)
         else:
-            runtime.reflect.deleteProperty(
-                runtime.global_object, current)
+            runtime.reflect.deleteProperty(runtime.global_object, current)
 
 
 def _initialize_sage_symbolic_globals() -> None:
     runtime.reflect.set(runtime.global_object, "x", Expression("x"))
+
 
 # ``var`` is valid Python but a JavaScript reserved word. The compiler lowers
 # references to its collision-safe spelling; publish both names so Python
@@ -2692,9 +2545,7 @@ def _initialize_sage_symbolic_globals() -> None:
 runtime.reflect.set(runtime.global_object, "var", symbolic_variable)
 runtime.reflect.set(runtime.global_object, "ρσ_py_var", symbolic_variable)
 runtime.reflect.set(symbolic_variable, "__name__", "var")
-if runtime.reflect.get(
-    runtime.global_object, "__sagejs_sage_mode__"
-) is True:
+if runtime.reflect.get(runtime.global_object, "__sagejs_sage_mode__") is True:
     _initialize_sage_symbolic_globals()
 
 
@@ -2707,19 +2558,19 @@ runtime.set_class_repr(
     "<class 'sage.symbolic.expression.Expression'>",
 )
 runtime.reflect.set(
-    runtime.reflect.get(CallableExpression, 'prototype'),
-    'arguments',
+    runtime.reflect.get(CallableExpression, "prototype"),
+    "arguments",
     runtime.reflect.get(
-        runtime.reflect.get(CallableExpression, 'prototype'),
-        '_arguments_tuple',
+        runtime.reflect.get(CallableExpression, "prototype"),
+        "_arguments_tuple",
     ),
 )
 runtime.reflect.set(
-    runtime.reflect.get(Expression, 'prototype'),
-    'arguments',
+    runtime.reflect.get(Expression, "prototype"),
+    "arguments",
     runtime.reflect.get(
-        runtime.reflect.get(Expression, 'prototype'),
-        '_arguments_tuple',
+        runtime.reflect.get(Expression, "prototype"),
+        "_arguments_tuple",
     ),
 )
 runtime.set_class_repr(
@@ -2736,132 +2587,124 @@ def _symbolic_doc(
 ) -> Any:
     all_tags = runtime.reflect.apply(
         runtime.array.prototype.concat,
-        ['symbolic mathematics'],
+        ["symbolic mathematics"],
         [tags],
     )
     return {
-        'kind': 'function',
-        'module': 'sage.symbolic',
-        'tags': all_tags,
-        'backends': ['Cortex Compute Engine'],
-        'sage_compatibility': {
-            'status': compatibility_status,
-            'notes': compatibility_notes,
+        "kind": "function",
+        "module": "sage.symbolic",
+        "tags": all_tags,
+        "backends": ["Cortex Compute Engine"],
+        "sage_compatibility": {
+            "status": compatibility_status,
+            "notes": compatibility_notes,
         },
-        'provenance': [
+        "provenance": [
             {
-                'kind': 'sage-derived',
-                'source': 'SageMath symbolic API',
-                'url': (
-                    'https://doc.sagemath.org/html/en/reference/'
-                    'calculus/'
-                ),
-                'license': 'GPL-2.0-or-later',
+                "kind": "sage-derived",
+                "source": "SageMath symbolic API",
+                "url": ("https://doc.sagemath.org/html/en/reference/calculus/"),
+                "license": "GPL-2.0-or-later",
             },
             {
-                'kind': 'library-backed',
-                'source': 'Cortex Compute Engine',
-                'url': 'https://cortexjs.io/compute-engine/',
+                "kind": "library-backed",
+                "source": "Cortex Compute Engine",
+                "url": "https://cortexjs.io/compute-engine/",
             },
         ],
-        'references': [
+        "references": [
             {
-                'id': 'cortex-compute-engine',
-                'type': 'software',
-                'title': 'Cortex Compute Engine',
-                'url': 'https://cortexjs.io/compute-engine/',
+                "id": "cortex-compute-engine",
+                "type": "software",
+                "title": "Cortex Compute Engine",
+                "url": "https://cortexjs.io/compute-engine/",
             },
         ],
-        'implementation': {
-            'algorithm': (
-                'MathJSON adapter over Cortex Compute Engine'
-            ),
+        "implementation": {
+            "algorithm": ("MathJSON adapter over Cortex Compute Engine"),
         },
-        'limitations': [] if limitations is None else limitations,
+        "limitations": [] if limitations is None else limitations,
     }
 
 
 runtime.register_doc(
-    'var',
+    "var",
     symbolic_variable,
     _symbolic_doc(
-        ['variables', 'expressions'],
-        'compatible',
-        'Matches Sage variable creation for supported names.',
+        ["variables", "expressions"],
+        "compatible",
+        "Matches Sage variable creation for supported names.",
     ),
 )
 runtime.register_doc(
-    'solve',
+    "solve",
     solve,
     _symbolic_doc(
-        ['equations', 'solving'],
-        'partial',
+        ["equations", "solving"],
+        "partial",
         (
-            'Supported elementary equations follow Sage-style output; '
-            'unsupported families are returned as unsolved relations.'
+            "Supported elementary equations follow Sage-style output; "
+            "unsupported families are returned as unsolved relations."
         ),
         [
-            'Coupled nonlinear systems are not generally implemented.',
-            'Many transcendental solution families are not implemented.',
+            "Coupled nonlinear systems are not generally implemented.",
+            "Many transcendental solution families are not implemented.",
         ],
     ),
 )
 runtime.register_doc(
-    'numerical_integral',
+    "numerical_integral",
     numerical_integral,
     {
-        'kind': 'function',
-        'module': 'sage.symbolic',
-        'tags': [
-            'symbolic mathematics',
-            'calculus',
-            'integration',
-            'numerical',
+        "kind": "function",
+        "module": "sage.symbolic",
+        "tags": [
+            "symbolic mathematics",
+            "calculus",
+            "integration",
+            "numerical",
         ],
-        'backends': [
-            'Sage.js adaptive quadrature',
-            'Cortex Compute Engine symbolic compiler',
+        "backends": [
+            "Sage.js adaptive quadrature",
+            "Cortex Compute Engine symbolic compiler",
         ],
-        'sage_compatibility': {
-            'status': 'partial',
-            'notes': (
-                'Returns a real numerical integral and absolute-error '
-                'estimate using adaptive Gauss-Kronrod quadrature.'
+        "sage_compatibility": {
+            "status": "partial",
+            "notes": (
+                "Returns a real numerical integral and absolute-error "
+                "estimate using adaptive Gauss-Kronrod quadrature."
             ),
         },
-        'provenance': [
+        "provenance": [
             {
-                'kind': 'sage-derived',
-                'source': 'SageMath numerical integration API',
-                'url': (
-                    'https://doc.sagemath.org/html/en/reference/'
-                    'calculus/'
-                ),
-                'license': 'GPL-2.0-or-later',
+                "kind": "sage-derived",
+                "source": "SageMath numerical integration API",
+                "url": ("https://doc.sagemath.org/html/en/reference/calculus/"),
+                "license": "GPL-2.0-or-later",
             },
         ],
-        'implementation': {
-            'algorithm': (
-                'Adaptive embedded 10/21-point Gauss-Kronrod quadrature '
-                'with QUADPACK-style error rescaling'
+        "implementation": {
+            "algorithm": (
+                "Adaptive embedded 10/21-point Gauss-Kronrod quadrature "
+                "with QUADPACK-style error rescaling"
             ),
         },
-        'limitations': [
-            '`qags` uses adaptive subdivision without epsilon extrapolation.',
-            'Rules 1 through 6 currently use the same 10/21-point pair.',
+        "limitations": [
+            "`qags` uses adaptive subdivision without epsilon extrapolation.",
+            "Rules 1 through 6 currently use the same 10/21-point pair.",
         ],
     },
 )
 runtime.register_doc(
-    'fast_callable',
+    "fast_callable",
     fast_callable,
     _symbolic_doc(
-        ['evaluation', 'performance'],
-        'partial',
+        ["evaluation", "performance"],
+        "partial",
         (
-            'Compiles supported real-valued symbolic expressions directly '
-            'to JavaScript numeric functions.'
+            "Compiles supported real-valued symbolic expressions directly "
+            "to JavaScript numeric functions."
         ),
-        ['The current compiler targets JavaScript numeric evaluation.'],
+        ["The current compiler targets JavaScript numeric evaluation."],
     ),
 )

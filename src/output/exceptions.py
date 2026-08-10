@@ -9,17 +9,26 @@ def print_try(self, output):
     else_var_name = None
 
     def update_output_var(output):
-        output.indent(), output.assign(else_var_name), output.print(
-            'true'), output.end_statement()
+        (
+            output.indent(),
+            output.assign(else_var_name),
+            output.print("true"),
+            output.end_statement(),
+        )
 
     if self.belse:
         else_var_name = output.new_try_else_counter()
-        output.assign('var ' + else_var_name), output.print(
-            'false'), output.end_statement(), output.indent()
+        (
+            output.assign("var " + else_var_name),
+            output.print("false"),
+            output.end_statement(),
+            output.indent(),
+        )
     output.print("try")
     output.space()
-    print_bracketed(self, output, False, None, None,
-                    update_output_var if else_var_name else None)
+    print_bracketed(
+        self, output, False, None, None, update_output_var if else_var_name else None
+    )
     if self.bcatch:
         output.space()
         print_catch(self.bcatch, output)
@@ -44,15 +53,16 @@ def print_catch(self, output):
         output.print("ρσ_normalize_exception(ρσ_Exception)")
         output.end_statement()
         output.indent()
-        output.spaced('ρσ_last_exception', '=',
-                      'ρσ_Exception'), output.end_statement()
+        output.spaced("ρσ_last_exception", "=", "ρσ_Exception"), output.end_statement()
         # Lazy modules execute in separate JavaScript closures, so their
         # lexical ``ρσ_last_exception`` bindings are not visible to the
         # stdlib ``sys`` module.  Mirror the normalized exception on the
         # shared global object for ``sys.exc_info()`` and ``sys.exception()``.
         output.indent()
-        output.spaced('globalThis.__sagejs_last_exception__', '=',
-                      'ρσ_Exception'), output.end_statement()
+        (
+            output.spaced("globalThis.__sagejs_last_exception__", "=", "ρσ_Exception"),
+            output.end_statement(),
+        )
         output.indent()
         no_default = True
         for i, exception in enumerate(self.body):
@@ -71,18 +81,19 @@ def print_catch(self, output):
                             output.print("||")
                             output.space()
 
-                        if err.name is 'Exception':
+                        if err.name is "Exception":
                             output.print("ρσ_Exception")
                             output.space()
                             output.print("instanceof")
                             output.space()
-                            output.print('Error')
+                            output.print("Error")
                             output.space()
                             output.print("||")
                             output.space()
                             output.print(
-                                'Object.prototype.toString.call('
-                                'ρσ_Exception) === "[object Error]"')
+                                "Object.prototype.toString.call("
+                                'ρσ_Exception) === "[object Error]"'
+                            )
                         else:
                             # The exception expression may evaluate to either
                             # one class or a runtime tuple of classes (pytest
@@ -134,6 +145,6 @@ def print_finally(self, output, belse, else_var_name):
 
 
 def print_else(self, else_var_name, output):
-    output.indent(), output.spaced('if', '(' + else_var_name + ')')
+    output.indent(), output.spaced("if", "(" + else_var_name + ")")
     output.space()
     print_bracketed(self, output)

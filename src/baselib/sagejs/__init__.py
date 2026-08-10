@@ -22,7 +22,7 @@ from sagejs_bootstrap import (
     quotient_functor,
     rational_class,
     zz,
-    zero_division_error
+    zero_division_error,
 )
 
 AlgebraicExtensionFunctor = algebraic_extension_functor

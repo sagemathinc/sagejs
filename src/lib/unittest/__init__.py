@@ -54,18 +54,20 @@ class TestCase:
         self._testMethodName = methodName
 
     def __repr__(self):
-        return "<%s testMethod=%s>" % (
-            type(self).__name__, self._testMethodName
-        )
+        return "<%s testMethod=%s>" % (type(self).__name__, self._testMethodName)
 
     def __str__(self):
         return "%s (%s.%s)" % (
-            self._testMethodName, type(self).__module__, type(self).__name__
+            self._testMethodName,
+            type(self).__module__,
+            type(self).__name__,
         )
 
     def id(self):
         return "%s.%s.%s" % (
-            type(self).__module__, type(self).__name__, self._testMethodName
+            type(self).__module__,
+            type(self).__name__,
+            self._testMethodName,
         )
 
     def shortDescription(self):
@@ -103,21 +105,15 @@ class TestCase:
 
     def assertEqual(self, first, second, msg=None):
         if first != second:
-            self.fail(self._formatMessage(
-                msg, "%r != %r" % (first, second)
-            ))
+            self.fail(self._formatMessage(msg, "%r != %r" % (first, second)))
 
     def assertNotEqual(self, first, second, msg=None):
         if first == second:
-            self.fail(self._formatMessage(
-                msg, "%r == %r" % (first, second)
-            ))
+            self.fail(self._formatMessage(msg, "%r == %r" % (first, second)))
 
     def assertIs(self, first, second, msg=None):
         if first is not second:
-            self.fail(self._formatMessage(
-                msg, "%r is not %r" % (first, second)
-            ))
+            self.fail(self._formatMessage(msg, "%r is not %r" % (first, second)))
 
     def assertIsNot(self, first, second, msg=None):
         if first is second:
@@ -131,35 +127,41 @@ class TestCase:
 
     def assertIn(self, member, container, msg=None):
         if member not in container:
-            self.fail(self._formatMessage(
-                msg, "%r not found in %r" % (member, container)
-            ))
+            self.fail(
+                self._formatMessage(msg, "%r not found in %r" % (member, container))
+            )
 
     def assertNotIn(self, member, container, msg=None):
         if member in container:
-            self.fail(self._formatMessage(
-                msg, "%r unexpectedly found in %r" % (member, container)
-            ))
+            self.fail(
+                self._formatMessage(
+                    msg, "%r unexpectedly found in %r" % (member, container)
+                )
+            )
 
     def assertIsInstance(self, obj, cls, msg=None):
         if not isinstance(obj, cls):
-            self.fail(self._formatMessage(
-                msg, "%r is not an instance of %r" % (obj, cls)
-            ))
+            self.fail(
+                self._formatMessage(msg, "%r is not an instance of %r" % (obj, cls))
+            )
 
     def assertNotIsInstance(self, obj, cls, msg=None):
         if isinstance(obj, cls):
-            self.fail(self._formatMessage(
-                msg, "%r is an instance of %r" % (obj, cls)
-            ))
+            self.fail(self._formatMessage(msg, "%r is an instance of %r" % (obj, cls)))
 
     def assertGreater(self, first, second, msg=None):
         if not first > second:
-            self.fail(self._formatMessage(msg, "%r not greater than %r" % (first, second)))
+            self.fail(
+                self._formatMessage(msg, "%r not greater than %r" % (first, second))
+            )
 
     def assertGreaterEqual(self, first, second, msg=None):
         if not first >= second:
-            self.fail(self._formatMessage(msg, "%r not greater than or equal to %r" % (first, second)))
+            self.fail(
+                self._formatMessage(
+                    msg, "%r not greater than or equal to %r" % (first, second)
+                )
+            )
 
     def assertLess(self, first, second, msg=None):
         if not first < second:
@@ -167,19 +169,31 @@ class TestCase:
 
     def assertLessEqual(self, first, second, msg=None):
         if not first <= second:
-            self.fail(self._formatMessage(msg, "%r not less than or equal to %r" % (first, second)))
+            self.fail(
+                self._formatMessage(
+                    msg, "%r not less than or equal to %r" % (first, second)
+                )
+            )
 
     def assertAlmostEqual(self, first, second, places=7, msg=None, delta=None):
         difference = abs(first - second)
-        equal = difference <= delta if delta is not None else round(difference, places) == 0
+        equal = (
+            difference <= delta if delta is not None else round(difference, places) == 0
+        )
         if not equal:
-            self.fail(self._formatMessage(msg, "%r != %r within tolerance" % (first, second)))
+            self.fail(
+                self._formatMessage(msg, "%r != %r within tolerance" % (first, second))
+            )
 
     def assertNotAlmostEqual(self, first, second, places=7, msg=None, delta=None):
         difference = abs(first - second)
-        equal = difference <= delta if delta is not None else round(difference, places) == 0
+        equal = (
+            difference <= delta if delta is not None else round(difference, places) == 0
+        )
         if equal:
-            self.fail(self._formatMessage(msg, "%r == %r within tolerance" % (first, second)))
+            self.fail(
+                self._formatMessage(msg, "%r == %r within tolerance" % (first, second))
+            )
 
     def assertRaises(self, expected_exception, *args, **kwargs):
         msg = kwargs.pop("msg", None)

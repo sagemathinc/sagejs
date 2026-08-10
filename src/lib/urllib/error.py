@@ -8,7 +8,7 @@ class URLError(OSError):
         OSError.__init__(self, reason)
 
     def __str__(self):
-        return '<urlopen error ' + str(self.reason) + '>'
+        return "<urlopen error " + str(self.reason) + ">"
 
 
 class HTTPError(URLError):
@@ -22,7 +22,7 @@ class HTTPError(URLError):
         URLError.__init__(self, msg, url)
 
     def __str__(self):
-        return 'HTTP Error ' + str(self.code) + ': ' + self.msg
+        return "HTTP Error " + str(self.code) + ": " + self.msg
 
     def read(self, *values):
         return self.fp.read(*values)

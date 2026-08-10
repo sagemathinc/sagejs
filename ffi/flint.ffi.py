@@ -65,8 +65,7 @@ DirichletGroup = flint.resource(
     ),
     wasm=True,
 )
-def dirichlet_group(modulus: Min[uint64, 1]) -> DirichletGroup:
-    ...
+def dirichlet_group(modulus: Min[uint64, 1]) -> DirichletGroup: ...
 
 
 @flint.function(
@@ -78,8 +77,7 @@ def dirichlet_group(modulus: Min[uint64, 1]) -> DirichletGroup:
     result=Direct(),
     wasm=True,
 )
-def dirichlet_group_size(group: DirichletGroup) -> uint64:
-    ...
+def dirichlet_group_size(group: DirichletGroup) -> uint64: ...
 
 
 @flint.function(
@@ -91,8 +89,7 @@ def dirichlet_group_size(group: DirichletGroup) -> uint64:
     result=Direct(),
     wasm=True,
 )
-def dirichlet_group_num_primitive(group: DirichletGroup) -> uint64:
-    ...
+def dirichlet_group_num_primitive(group: DirichletGroup) -> uint64: ...
 
 
 @flint.function(
@@ -104,8 +101,7 @@ def dirichlet_group_num_primitive(group: DirichletGroup) -> uint64:
     result=Direct(),
     wasm=True,
 )
-def n_is_prime(value: uint64) -> bool:
-    ...
+def n_is_prime(value: uint64) -> bool: ...
 
 
 @flint.function(
@@ -121,8 +117,7 @@ def n_is_prime(value: uint64) -> bool:
     result=Direct(),
     wasm=True,
 )
-def fmpz_gcd(left: Integer, right: Integer) -> Integer:
-    ...
+def fmpz_gcd(left: Integer, right: Integer) -> Integer: ...
 
 
 @flint.function(
@@ -151,8 +146,7 @@ def fmpz_mat_rank(
     entries: IntegerBuffer,
     rows: uint64,
     columns: uint64,
-) -> uint64:
-    ...
+) -> uint64: ...
 
 
 @flint.function(
@@ -203,7 +197,9 @@ def fmpz_mat_rank(
         raises=[ValueError, OverflowError],
         writes=["output"],
     ),
-    result=Status(1, exception=ValueError, message="FLINT integer matrix multiplication failed"),
+    result=Status(
+        1, exception=ValueError, message="FLINT integer matrix multiplication failed"
+    ),
     wasm=True,
 )
 def fmpz_mat_mul(
@@ -213,8 +209,7 @@ def fmpz_mat_mul(
     left_rows: uint64,
     inner: uint64,
     right_columns: uint64,
-) -> bool:
-    ...
+) -> bool: ...
 
 
 @flint.function(
@@ -261,8 +256,7 @@ def fmpz_mat_det(
     source: IntegerBuffer,
     size: uint64,
     one: Min[uint64, 1],
-) -> bool:
-    ...
+) -> bool: ...
 
 
 @flint.function(
@@ -301,7 +295,11 @@ def fmpz_mat_det(
         raises=[ValueError, OverflowError],
         writes=["output"],
     ),
-    result=Status(1, exception=ValueError, message="FLINT integer characteristic polynomial failed"),
+    result=Status(
+        1,
+        exception=ValueError,
+        message="FLINT integer characteristic polynomial failed",
+    ),
     wasm=True,
 )
 def fmpz_mat_charpoly(
@@ -310,8 +308,7 @@ def fmpz_mat_charpoly(
     output_length: uint64,
     size: uint64,
     one: Min[uint64, 1],
-) -> bool:
-    ...
+) -> bool: ...
 
 
 @flint.function(
@@ -319,15 +316,46 @@ def fmpz_mat_charpoly(
     symbol="sagejs_flint_fmpz_mat_hnf",
     returns=int,
     abi=[
-        out("output", fmpz_mat_t, packed_fmpz_matrix(data="output", rows="rows", columns="columns", access="write", aliasing="allowed", transactional=True)),
-        in_("source", fmpz_mat_t, packed_fmpz_matrix(data="source", rows="rows", columns="columns", access="read", aliasing="allowed", transactional=False)),
+        out(
+            "output",
+            fmpz_mat_t,
+            packed_fmpz_matrix(
+                data="output",
+                rows="rows",
+                columns="columns",
+                access="write",
+                aliasing="allowed",
+                transactional=True,
+            ),
+        ),
+        in_(
+            "source",
+            fmpz_mat_t,
+            packed_fmpz_matrix(
+                data="source",
+                rows="rows",
+                columns="columns",
+                access="read",
+                aliasing="allowed",
+                transactional=False,
+            ),
+        ),
     ],
-    effects=Effects(pure=False, allocates=True, raises=[ValueError, OverflowError], writes=["output"]),
+    effects=Effects(
+        pure=False,
+        allocates=True,
+        raises=[ValueError, OverflowError],
+        writes=["output"],
+    ),
     result=Status(1, exception=ValueError, message="FLINT integer Hermite form failed"),
     wasm=True,
 )
-def fmpz_mat_hnf(output: Writable[IntegerBuffer], source: IntegerBuffer, rows: uint64, columns: uint64) -> bool:
-    ...
+def fmpz_mat_hnf(
+    output: Writable[IntegerBuffer],
+    source: IntegerBuffer,
+    rows: uint64,
+    columns: uint64,
+) -> bool: ...
 
 
 @flint.function(
@@ -335,16 +363,61 @@ def fmpz_mat_hnf(output: Writable[IntegerBuffer], source: IntegerBuffer, rows: u
     symbol="sagejs_flint_fmpz_mat_hnf_transform",
     returns=int,
     abi=[
-        out("output", fmpz_mat_t, packed_fmpz_matrix(data="output", rows="rows", columns="columns", access="write", aliasing="allowed", transactional=True)),
-        out("transform", fmpz_mat_t, packed_fmpz_matrix(data="transform", rows="rows", columns="rows", access="write", aliasing="allowed", transactional=True)),
-        in_("source", fmpz_mat_t, packed_fmpz_matrix(data="source", rows="rows", columns="columns", access="read", aliasing="allowed", transactional=False)),
+        out(
+            "output",
+            fmpz_mat_t,
+            packed_fmpz_matrix(
+                data="output",
+                rows="rows",
+                columns="columns",
+                access="write",
+                aliasing="allowed",
+                transactional=True,
+            ),
+        ),
+        out(
+            "transform",
+            fmpz_mat_t,
+            packed_fmpz_matrix(
+                data="transform",
+                rows="rows",
+                columns="rows",
+                access="write",
+                aliasing="allowed",
+                transactional=True,
+            ),
+        ),
+        in_(
+            "source",
+            fmpz_mat_t,
+            packed_fmpz_matrix(
+                data="source",
+                rows="rows",
+                columns="columns",
+                access="read",
+                aliasing="allowed",
+                transactional=False,
+            ),
+        ),
     ],
-    effects=Effects(pure=False, allocates=True, raises=[ValueError, OverflowError], writes=["output", "transform"]),
-    result=Status(1, exception=ValueError, message="FLINT integer Hermite transformation failed"),
+    effects=Effects(
+        pure=False,
+        allocates=True,
+        raises=[ValueError, OverflowError],
+        writes=["output", "transform"],
+    ),
+    result=Status(
+        1, exception=ValueError, message="FLINT integer Hermite transformation failed"
+    ),
     wasm=True,
 )
-def fmpz_mat_hnf_transform(output: Writable[IntegerBuffer], transform: Writable[IntegerBuffer], source: IntegerBuffer, rows: uint64, columns: uint64) -> bool:
-    ...
+def fmpz_mat_hnf_transform(
+    output: Writable[IntegerBuffer],
+    transform: Writable[IntegerBuffer],
+    source: IntegerBuffer,
+    rows: uint64,
+    columns: uint64,
+) -> bool: ...
 
 
 @flint.function(
@@ -352,17 +425,74 @@ def fmpz_mat_hnf_transform(output: Writable[IntegerBuffer], transform: Writable[
     symbol="sagejs_flint_fmpz_mat_snf_transform",
     returns=int,
     abi=[
-        out("output", fmpz_mat_t, packed_fmpz_matrix(data="output", rows="rows", columns="columns", access="write", aliasing="allowed", transactional=True)),
-        out("left_transform", fmpz_mat_t, packed_fmpz_matrix(data="left_transform", rows="rows", columns="rows", access="write", aliasing="allowed", transactional=True)),
-        out("right_transform", fmpz_mat_t, packed_fmpz_matrix(data="right_transform", rows="columns", columns="columns", access="write", aliasing="allowed", transactional=True)),
-        in_("source", fmpz_mat_t, packed_fmpz_matrix(data="source", rows="rows", columns="columns", access="read", aliasing="allowed", transactional=False)),
+        out(
+            "output",
+            fmpz_mat_t,
+            packed_fmpz_matrix(
+                data="output",
+                rows="rows",
+                columns="columns",
+                access="write",
+                aliasing="allowed",
+                transactional=True,
+            ),
+        ),
+        out(
+            "left_transform",
+            fmpz_mat_t,
+            packed_fmpz_matrix(
+                data="left_transform",
+                rows="rows",
+                columns="rows",
+                access="write",
+                aliasing="allowed",
+                transactional=True,
+            ),
+        ),
+        out(
+            "right_transform",
+            fmpz_mat_t,
+            packed_fmpz_matrix(
+                data="right_transform",
+                rows="columns",
+                columns="columns",
+                access="write",
+                aliasing="allowed",
+                transactional=True,
+            ),
+        ),
+        in_(
+            "source",
+            fmpz_mat_t,
+            packed_fmpz_matrix(
+                data="source",
+                rows="rows",
+                columns="columns",
+                access="read",
+                aliasing="allowed",
+                transactional=False,
+            ),
+        ),
     ],
-    effects=Effects(pure=False, allocates=True, raises=[ValueError, OverflowError], writes=["output", "left_transform", "right_transform"]),
-    result=Status(1, exception=ValueError, message="FLINT integer Smith transformation failed"),
+    effects=Effects(
+        pure=False,
+        allocates=True,
+        raises=[ValueError, OverflowError],
+        writes=["output", "left_transform", "right_transform"],
+    ),
+    result=Status(
+        1, exception=ValueError, message="FLINT integer Smith transformation failed"
+    ),
     wasm=True,
 )
-def fmpz_mat_snf_transform(output: Writable[IntegerBuffer], left_transform: Writable[IntegerBuffer], right_transform: Writable[IntegerBuffer], source: IntegerBuffer, rows: uint64, columns: uint64) -> bool:
-    ...
+def fmpz_mat_snf_transform(
+    output: Writable[IntegerBuffer],
+    left_transform: Writable[IntegerBuffer],
+    right_transform: Writable[IntegerBuffer],
+    source: IntegerBuffer,
+    rows: uint64,
+    columns: uint64,
+) -> bool: ...
 
 
 @flint.function(
@@ -370,15 +500,46 @@ def fmpz_mat_snf_transform(output: Writable[IntegerBuffer], left_transform: Writ
     symbol="sagejs_flint_fmpz_mat_right_kernel",
     returns=slong,
     abi=[
-        out("output", fmpz_mat_t, packed_fmpz_matrix(data="output", rows="columns", columns="columns", access="write", aliasing="allowed", transactional=True)),
-        in_("source", fmpz_mat_t, packed_fmpz_matrix(data="source", rows="rows", columns="columns", access="read", aliasing="allowed", transactional=False)),
+        out(
+            "output",
+            fmpz_mat_t,
+            packed_fmpz_matrix(
+                data="output",
+                rows="columns",
+                columns="columns",
+                access="write",
+                aliasing="allowed",
+                transactional=True,
+            ),
+        ),
+        in_(
+            "source",
+            fmpz_mat_t,
+            packed_fmpz_matrix(
+                data="source",
+                rows="rows",
+                columns="columns",
+                access="read",
+                aliasing="allowed",
+                transactional=False,
+            ),
+        ),
     ],
-    effects=Effects(pure=False, allocates=True, raises=[ValueError, OverflowError], writes=["output"]),
+    effects=Effects(
+        pure=False,
+        allocates=True,
+        raises=[ValueError, OverflowError],
+        writes=["output"],
+    ),
     result=Direct(),
     wasm=True,
 )
-def fmpz_mat_right_kernel(output: Writable[IntegerBuffer], source: IntegerBuffer, rows: uint64, columns: uint64) -> uint64:
-    ...
+def fmpz_mat_right_kernel(
+    output: Writable[IntegerBuffer],
+    source: IntegerBuffer,
+    rows: uint64,
+    columns: uint64,
+) -> uint64: ...
 
 
 @flint.function(
@@ -386,11 +547,46 @@ def fmpz_mat_right_kernel(output: Writable[IntegerBuffer], source: IntegerBuffer
     symbol="sagejs_flint_fmpq_mat_rank_parts",
     returns=int,
     abi=[
-        out("output_rank", fmpz_mat_t, packed_fmpz_matrix(data="rank", rows="one", columns="one", access="write", aliasing="allowed", transactional=True)),
-        in_("numerators", fmpz_mat_t, packed_fmpz_matrix(data="numerators", rows="rows", columns="columns", access="read", aliasing="allowed", transactional=False)),
-        in_("denominators", fmpz_mat_t, packed_fmpz_matrix(data="denominators", rows="rows", columns="columns", access="read", aliasing="allowed", transactional=False)),
+        out(
+            "output_rank",
+            fmpz_mat_t,
+            packed_fmpz_matrix(
+                data="rank",
+                rows="one",
+                columns="one",
+                access="write",
+                aliasing="allowed",
+                transactional=True,
+            ),
+        ),
+        in_(
+            "numerators",
+            fmpz_mat_t,
+            packed_fmpz_matrix(
+                data="numerators",
+                rows="rows",
+                columns="columns",
+                access="read",
+                aliasing="allowed",
+                transactional=False,
+            ),
+        ),
+        in_(
+            "denominators",
+            fmpz_mat_t,
+            packed_fmpz_matrix(
+                data="denominators",
+                rows="rows",
+                columns="columns",
+                access="read",
+                aliasing="allowed",
+                transactional=False,
+            ),
+        ),
     ],
-    effects=Effects(pure=False, allocates=True, raises=[ValueError, OverflowError], writes=["rank"]),
+    effects=Effects(
+        pure=False, allocates=True, raises=[ValueError, OverflowError], writes=["rank"]
+    ),
     result=Status(1, exception=ValueError, message="FLINT rational matrix rank failed"),
     wasm=True,
 )
@@ -401,8 +597,7 @@ def fmpq_mat_rank(
     rows: uint64,
     columns: uint64,
     one: Min[uint64, 1],
-) -> bool:
-    ...
+) -> bool: ...
 
 
 @flint.function(
@@ -410,15 +605,88 @@ def fmpq_mat_rank(
     symbol="sagejs_flint_fmpq_mat_mul_parts",
     returns=int,
     abi=[
-        out("output_numerators", fmpz_mat_t, packed_fmpz_matrix(data="output_numerators", rows="left_rows", columns="right_columns", access="write", aliasing="allowed", transactional=True)),
-        out("output_denominators", fmpz_mat_t, packed_fmpz_matrix(data="output_denominators", rows="left_rows", columns="right_columns", access="write", aliasing="allowed", transactional=True)),
-        in_("left_numerators", fmpz_mat_t, packed_fmpz_matrix(data="left_numerators", rows="left_rows", columns="inner", access="read", aliasing="allowed", transactional=False)),
-        in_("left_denominators", fmpz_mat_t, packed_fmpz_matrix(data="left_denominators", rows="left_rows", columns="inner", access="read", aliasing="allowed", transactional=False)),
-        in_("right_numerators", fmpz_mat_t, packed_fmpz_matrix(data="right_numerators", rows="inner", columns="right_columns", access="read", aliasing="allowed", transactional=False)),
-        in_("right_denominators", fmpz_mat_t, packed_fmpz_matrix(data="right_denominators", rows="inner", columns="right_columns", access="read", aliasing="allowed", transactional=False)),
+        out(
+            "output_numerators",
+            fmpz_mat_t,
+            packed_fmpz_matrix(
+                data="output_numerators",
+                rows="left_rows",
+                columns="right_columns",
+                access="write",
+                aliasing="allowed",
+                transactional=True,
+            ),
+        ),
+        out(
+            "output_denominators",
+            fmpz_mat_t,
+            packed_fmpz_matrix(
+                data="output_denominators",
+                rows="left_rows",
+                columns="right_columns",
+                access="write",
+                aliasing="allowed",
+                transactional=True,
+            ),
+        ),
+        in_(
+            "left_numerators",
+            fmpz_mat_t,
+            packed_fmpz_matrix(
+                data="left_numerators",
+                rows="left_rows",
+                columns="inner",
+                access="read",
+                aliasing="allowed",
+                transactional=False,
+            ),
+        ),
+        in_(
+            "left_denominators",
+            fmpz_mat_t,
+            packed_fmpz_matrix(
+                data="left_denominators",
+                rows="left_rows",
+                columns="inner",
+                access="read",
+                aliasing="allowed",
+                transactional=False,
+            ),
+        ),
+        in_(
+            "right_numerators",
+            fmpz_mat_t,
+            packed_fmpz_matrix(
+                data="right_numerators",
+                rows="inner",
+                columns="right_columns",
+                access="read",
+                aliasing="allowed",
+                transactional=False,
+            ),
+        ),
+        in_(
+            "right_denominators",
+            fmpz_mat_t,
+            packed_fmpz_matrix(
+                data="right_denominators",
+                rows="inner",
+                columns="right_columns",
+                access="read",
+                aliasing="allowed",
+                transactional=False,
+            ),
+        ),
     ],
-    effects=Effects(pure=False, allocates=True, raises=[ValueError, OverflowError], writes=["output_numerators", "output_denominators"]),
-    result=Status(1, exception=ValueError, message="FLINT rational matrix multiplication failed"),
+    effects=Effects(
+        pure=False,
+        allocates=True,
+        raises=[ValueError, OverflowError],
+        writes=["output_numerators", "output_denominators"],
+    ),
+    result=Status(
+        1, exception=ValueError, message="FLINT rational matrix multiplication failed"
+    ),
     wasm=True,
 )
 def fmpq_mat_mul(
@@ -431,8 +699,7 @@ def fmpq_mat_mul(
     left_rows: uint64,
     inner: uint64,
     right_columns: uint64,
-) -> bool:
-    ...
+) -> bool: ...
 
 
 @flint.function(
@@ -440,13 +707,73 @@ def fmpq_mat_mul(
     symbol="sagejs_flint_fmpq_mat_rref_parts",
     returns=int,
     abi=[
-        out("output_rank", fmpz_mat_t, packed_fmpz_matrix(data="rank", rows="one", columns="one", access="write", aliasing="allowed", transactional=True)),
-        out("output_numerators", fmpz_mat_t, packed_fmpz_matrix(data="output_numerators", rows="rows", columns="columns", access="write", aliasing="allowed", transactional=True)),
-        out("output_denominators", fmpz_mat_t, packed_fmpz_matrix(data="output_denominators", rows="rows", columns="columns", access="write", aliasing="allowed", transactional=True)),
-        in_("source_numerators", fmpz_mat_t, packed_fmpz_matrix(data="source_numerators", rows="rows", columns="columns", access="read", aliasing="allowed", transactional=False)),
-        in_("source_denominators", fmpz_mat_t, packed_fmpz_matrix(data="source_denominators", rows="rows", columns="columns", access="read", aliasing="allowed", transactional=False)),
+        out(
+            "output_rank",
+            fmpz_mat_t,
+            packed_fmpz_matrix(
+                data="rank",
+                rows="one",
+                columns="one",
+                access="write",
+                aliasing="allowed",
+                transactional=True,
+            ),
+        ),
+        out(
+            "output_numerators",
+            fmpz_mat_t,
+            packed_fmpz_matrix(
+                data="output_numerators",
+                rows="rows",
+                columns="columns",
+                access="write",
+                aliasing="allowed",
+                transactional=True,
+            ),
+        ),
+        out(
+            "output_denominators",
+            fmpz_mat_t,
+            packed_fmpz_matrix(
+                data="output_denominators",
+                rows="rows",
+                columns="columns",
+                access="write",
+                aliasing="allowed",
+                transactional=True,
+            ),
+        ),
+        in_(
+            "source_numerators",
+            fmpz_mat_t,
+            packed_fmpz_matrix(
+                data="source_numerators",
+                rows="rows",
+                columns="columns",
+                access="read",
+                aliasing="allowed",
+                transactional=False,
+            ),
+        ),
+        in_(
+            "source_denominators",
+            fmpz_mat_t,
+            packed_fmpz_matrix(
+                data="source_denominators",
+                rows="rows",
+                columns="columns",
+                access="read",
+                aliasing="allowed",
+                transactional=False,
+            ),
+        ),
     ],
-    effects=Effects(pure=False, allocates=True, raises=[ValueError, OverflowError], writes=["rank", "output_numerators", "output_denominators"]),
+    effects=Effects(
+        pure=False,
+        allocates=True,
+        raises=[ValueError, OverflowError],
+        writes=["rank", "output_numerators", "output_denominators"],
+    ),
     result=Status(1, exception=ValueError, message="FLINT rational matrix RREF failed"),
     wasm=True,
 )
@@ -459,8 +786,7 @@ def fmpq_mat_rref(
     rows: uint64,
     columns: uint64,
     one: Min[uint64, 1],
-) -> bool:
-    ...
+) -> bool: ...
 
 
 @flint.function(
@@ -468,12 +794,61 @@ def fmpq_mat_rref(
     symbol="sagejs_flint_fmpq_mat_inv_parts",
     returns=int,
     abi=[
-        out("output_numerators", fmpz_mat_t, packed_fmpz_matrix(data="output_numerators", rows="size", columns="size", access="write", aliasing="allowed", transactional=True)),
-        out("output_denominators", fmpz_mat_t, packed_fmpz_matrix(data="output_denominators", rows="size", columns="size", access="write", aliasing="allowed", transactional=True)),
-        in_("source_numerators", fmpz_mat_t, packed_fmpz_matrix(data="source_numerators", rows="size", columns="size", access="read", aliasing="allowed", transactional=False)),
-        in_("source_denominators", fmpz_mat_t, packed_fmpz_matrix(data="source_denominators", rows="size", columns="size", access="read", aliasing="allowed", transactional=False)),
+        out(
+            "output_numerators",
+            fmpz_mat_t,
+            packed_fmpz_matrix(
+                data="output_numerators",
+                rows="size",
+                columns="size",
+                access="write",
+                aliasing="allowed",
+                transactional=True,
+            ),
+        ),
+        out(
+            "output_denominators",
+            fmpz_mat_t,
+            packed_fmpz_matrix(
+                data="output_denominators",
+                rows="size",
+                columns="size",
+                access="write",
+                aliasing="allowed",
+                transactional=True,
+            ),
+        ),
+        in_(
+            "source_numerators",
+            fmpz_mat_t,
+            packed_fmpz_matrix(
+                data="source_numerators",
+                rows="size",
+                columns="size",
+                access="read",
+                aliasing="allowed",
+                transactional=False,
+            ),
+        ),
+        in_(
+            "source_denominators",
+            fmpz_mat_t,
+            packed_fmpz_matrix(
+                data="source_denominators",
+                rows="size",
+                columns="size",
+                access="read",
+                aliasing="allowed",
+                transactional=False,
+            ),
+        ),
     ],
-    effects=Effects(pure=False, allocates=True, raises=[ValueError, OverflowError], writes=["output_numerators", "output_denominators"]),
+    effects=Effects(
+        pure=False,
+        allocates=True,
+        raises=[ValueError, OverflowError],
+        writes=["output_numerators", "output_denominators"],
+    ),
     result=Status(1, exception=ValueError, message="matrix is singular"),
     wasm=True,
 )
@@ -483,8 +858,7 @@ def fmpq_mat_inv(
     source_numerators: IntegerBuffer,
     source_denominators: IntegerBuffer,
     size: uint64,
-) -> bool:
-    ...
+) -> bool: ...
 
 
 @flint.function(
@@ -492,14 +866,85 @@ def fmpq_mat_inv(
     symbol="sagejs_flint_fmpq_mat_solve_parts",
     returns=int,
     abi=[
-        out("output_numerators", fmpz_mat_t, packed_fmpz_matrix(data="output_numerators", rows="size", columns="right_columns", access="write", aliasing="allowed", transactional=True)),
-        out("output_denominators", fmpz_mat_t, packed_fmpz_matrix(data="output_denominators", rows="size", columns="right_columns", access="write", aliasing="allowed", transactional=True)),
-        in_("left_numerators", fmpz_mat_t, packed_fmpz_matrix(data="left_numerators", rows="size", columns="size", access="read", aliasing="allowed", transactional=False)),
-        in_("left_denominators", fmpz_mat_t, packed_fmpz_matrix(data="left_denominators", rows="size", columns="size", access="read", aliasing="allowed", transactional=False)),
-        in_("right_numerators", fmpz_mat_t, packed_fmpz_matrix(data="right_numerators", rows="size", columns="right_columns", access="read", aliasing="allowed", transactional=False)),
-        in_("right_denominators", fmpz_mat_t, packed_fmpz_matrix(data="right_denominators", rows="size", columns="right_columns", access="read", aliasing="allowed", transactional=False)),
+        out(
+            "output_numerators",
+            fmpz_mat_t,
+            packed_fmpz_matrix(
+                data="output_numerators",
+                rows="size",
+                columns="right_columns",
+                access="write",
+                aliasing="allowed",
+                transactional=True,
+            ),
+        ),
+        out(
+            "output_denominators",
+            fmpz_mat_t,
+            packed_fmpz_matrix(
+                data="output_denominators",
+                rows="size",
+                columns="right_columns",
+                access="write",
+                aliasing="allowed",
+                transactional=True,
+            ),
+        ),
+        in_(
+            "left_numerators",
+            fmpz_mat_t,
+            packed_fmpz_matrix(
+                data="left_numerators",
+                rows="size",
+                columns="size",
+                access="read",
+                aliasing="allowed",
+                transactional=False,
+            ),
+        ),
+        in_(
+            "left_denominators",
+            fmpz_mat_t,
+            packed_fmpz_matrix(
+                data="left_denominators",
+                rows="size",
+                columns="size",
+                access="read",
+                aliasing="allowed",
+                transactional=False,
+            ),
+        ),
+        in_(
+            "right_numerators",
+            fmpz_mat_t,
+            packed_fmpz_matrix(
+                data="right_numerators",
+                rows="size",
+                columns="right_columns",
+                access="read",
+                aliasing="allowed",
+                transactional=False,
+            ),
+        ),
+        in_(
+            "right_denominators",
+            fmpz_mat_t,
+            packed_fmpz_matrix(
+                data="right_denominators",
+                rows="size",
+                columns="right_columns",
+                access="read",
+                aliasing="allowed",
+                transactional=False,
+            ),
+        ),
     ],
-    effects=Effects(pure=False, allocates=True, raises=[ValueError, OverflowError], writes=["output_numerators", "output_denominators"]),
+    effects=Effects(
+        pure=False,
+        allocates=True,
+        raises=[ValueError, OverflowError],
+        writes=["output_numerators", "output_denominators"],
+    ),
     result=Status(1, exception=ValueError, message="matrix is singular"),
     wasm=True,
 )
@@ -512,8 +957,7 @@ def fmpq_mat_solve(
     right_denominators: IntegerBuffer,
     size: uint64,
     right_columns: uint64,
-) -> bool:
-    ...
+) -> bool: ...
 
 
 @flint.function(
@@ -521,12 +965,61 @@ def fmpq_mat_solve(
     symbol="sagejs_flint_fmpq_mat_det_parts",
     returns=int,
     abi=[
-        out("output_numerators", fmpz_mat_t, packed_fmpz_matrix(data="output_numerators", rows="one", columns="one", access="write", aliasing="allowed", transactional=True)),
-        out("output_denominators", fmpz_mat_t, packed_fmpz_matrix(data="output_denominators", rows="one", columns="one", access="write", aliasing="allowed", transactional=True)),
-        in_("source_numerators", fmpz_mat_t, packed_fmpz_matrix(data="source_numerators", rows="size", columns="size", access="read", aliasing="allowed", transactional=False)),
-        in_("source_denominators", fmpz_mat_t, packed_fmpz_matrix(data="source_denominators", rows="size", columns="size", access="read", aliasing="allowed", transactional=False)),
+        out(
+            "output_numerators",
+            fmpz_mat_t,
+            packed_fmpz_matrix(
+                data="output_numerators",
+                rows="one",
+                columns="one",
+                access="write",
+                aliasing="allowed",
+                transactional=True,
+            ),
+        ),
+        out(
+            "output_denominators",
+            fmpz_mat_t,
+            packed_fmpz_matrix(
+                data="output_denominators",
+                rows="one",
+                columns="one",
+                access="write",
+                aliasing="allowed",
+                transactional=True,
+            ),
+        ),
+        in_(
+            "source_numerators",
+            fmpz_mat_t,
+            packed_fmpz_matrix(
+                data="source_numerators",
+                rows="size",
+                columns="size",
+                access="read",
+                aliasing="allowed",
+                transactional=False,
+            ),
+        ),
+        in_(
+            "source_denominators",
+            fmpz_mat_t,
+            packed_fmpz_matrix(
+                data="source_denominators",
+                rows="size",
+                columns="size",
+                access="read",
+                aliasing="allowed",
+                transactional=False,
+            ),
+        ),
     ],
-    effects=Effects(pure=False, allocates=True, raises=[ValueError, OverflowError], writes=["output_numerators", "output_denominators"]),
+    effects=Effects(
+        pure=False,
+        allocates=True,
+        raises=[ValueError, OverflowError],
+        writes=["output_numerators", "output_denominators"],
+    ),
     result=Status(1, exception=ValueError, message="FLINT rational determinant failed"),
     wasm=True,
 )
@@ -537,8 +1030,7 @@ def fmpq_mat_det(
     source_denominators: IntegerBuffer,
     size: uint64,
     one: Min[uint64, 1],
-) -> bool:
-    ...
+) -> bool: ...
 
 
 @flint.function(
@@ -546,13 +1038,66 @@ def fmpq_mat_det(
     symbol="sagejs_flint_fmpq_mat_charpoly_parts",
     returns=int,
     abi=[
-        out("output_numerators", fmpz_mat_t, packed_fmpz_matrix(data="output_numerators", rows="one", columns="coefficient_count", access="write", aliasing="allowed", transactional=True)),
-        out("output_denominators", fmpz_mat_t, packed_fmpz_matrix(data="output_denominators", rows="one", columns="coefficient_count", access="write", aliasing="allowed", transactional=True)),
-        in_("source_numerators", fmpz_mat_t, packed_fmpz_matrix(data="source_numerators", rows="size", columns="size", access="read", aliasing="allowed", transactional=False)),
-        in_("source_denominators", fmpz_mat_t, packed_fmpz_matrix(data="source_denominators", rows="size", columns="size", access="read", aliasing="allowed", transactional=False)),
+        out(
+            "output_numerators",
+            fmpz_mat_t,
+            packed_fmpz_matrix(
+                data="output_numerators",
+                rows="one",
+                columns="coefficient_count",
+                access="write",
+                aliasing="allowed",
+                transactional=True,
+            ),
+        ),
+        out(
+            "output_denominators",
+            fmpz_mat_t,
+            packed_fmpz_matrix(
+                data="output_denominators",
+                rows="one",
+                columns="coefficient_count",
+                access="write",
+                aliasing="allowed",
+                transactional=True,
+            ),
+        ),
+        in_(
+            "source_numerators",
+            fmpz_mat_t,
+            packed_fmpz_matrix(
+                data="source_numerators",
+                rows="size",
+                columns="size",
+                access="read",
+                aliasing="allowed",
+                transactional=False,
+            ),
+        ),
+        in_(
+            "source_denominators",
+            fmpz_mat_t,
+            packed_fmpz_matrix(
+                data="source_denominators",
+                rows="size",
+                columns="size",
+                access="read",
+                aliasing="allowed",
+                transactional=False,
+            ),
+        ),
     ],
-    effects=Effects(pure=False, allocates=True, raises=[ValueError, OverflowError], writes=["output_numerators", "output_denominators"]),
-    result=Status(1, exception=ValueError, message="FLINT rational characteristic polynomial failed"),
+    effects=Effects(
+        pure=False,
+        allocates=True,
+        raises=[ValueError, OverflowError],
+        writes=["output_numerators", "output_denominators"],
+    ),
+    result=Status(
+        1,
+        exception=ValueError,
+        message="FLINT rational characteristic polynomial failed",
+    ),
     wasm=True,
 )
 def fmpq_mat_charpoly(
@@ -563,8 +1108,7 @@ def fmpq_mat_charpoly(
     coefficient_count: uint64,
     size: uint64,
     one: Min[uint64, 1],
-) -> bool:
-    ...
+) -> bool: ...
 
 
 @flint.function(
@@ -599,8 +1143,7 @@ def nmod_mat_rank(
     rows: uint64,
     columns: uint64,
     modulus: uint64,
-) -> uint64:
-    ...
+) -> uint64: ...
 
 
 @flint.function(
@@ -634,8 +1177,7 @@ def nmod_mat_det(
     source: UInt64Buffer,
     size: uint64,
     modulus: uint64,
-) -> uint64:
-    ...
+) -> uint64: ...
 
 
 @flint.function(
@@ -690,8 +1232,7 @@ def nmod_mat_charpoly(
     source_length: uint64,
     size: uint64,
     modulus: uint64,
-) -> bool:
-    ...
+) -> bool: ...
 
 
 @flint.function(
@@ -746,8 +1287,7 @@ def nmod_mat_minpoly(
     source_length: uint64,
     size: uint64,
     modulus: uint64,
-) -> bool:
-    ...
+) -> bool: ...
 
 
 @flint.function(
@@ -796,8 +1336,7 @@ def nmod_mat_inv(
     source: UInt64Buffer,
     size: uint64,
     modulus: uint64,
-) -> bool:
-    ...
+) -> bool: ...
 
 
 @flint.function(
@@ -847,8 +1386,7 @@ def nmod_mat_rref(
     rows: uint64,
     columns: uint64,
     modulus: uint64,
-) -> uint64:
-    ...
+) -> uint64: ...
 
 
 @flint.function(
@@ -917,8 +1455,7 @@ def nmod_mat_mul(
     inner: uint64,
     right_columns: uint64,
     modulus: uint64,
-) -> bool:
-    ...
+) -> bool: ...
 
 
 @flint.function(
@@ -968,8 +1505,7 @@ def nmod_mat_right_kernel(
     rows: uint64,
     columns: uint64,
     modulus: uint64,
-) -> uint64:
-    ...
+) -> uint64: ...
 
 
 @flint.function(
@@ -1033,8 +1569,7 @@ def nmod_mat_solve(
     size: uint64,
     right_columns: uint64,
     modulus: uint64,
-) -> bool:
-    ...
+) -> bool: ...
 
 
 @flint.function(
@@ -1101,5 +1636,4 @@ def nmod_poly_mul(
     left_length: uint64,
     right_length: uint64,
     modulus: uint64,
-) -> bool:
-    ...
+) -> bool: ...

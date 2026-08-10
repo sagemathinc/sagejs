@@ -30,8 +30,7 @@ def nbody_advance_energy(
                 dy = left[1] - right[1]
                 dz = left[2] - right[2]
                 distance_squared = dx * dx + dy * dy + dz * dz
-                magnitude = dt / (
-                    distance_squared * sqrt(distance_squared))
+                magnitude = dt / (distance_squared * sqrt(distance_squared))
                 left_mass_magnitude = left[6] * magnitude
                 right_mass_magnitude = right[6] * magnitude
                 left[3] -= dx * right_mass_magnitude
@@ -56,11 +55,9 @@ def nbody_advance_energy(
             dz = left[2] - right[2]
             distance_squared = dx * dx + dy * dy + dz * dz
             energy -= left[6] * right[6] / sqrt(distance_squared)
-        energy += left[6] * (
-            left[3] * left[3] +
-            left[4] * left[4] +
-            left[5] * left[5]
-        ) / 2.0
+        energy += (
+            left[6] * (left[3] * left[3] + left[4] * left[4] + left[5] * left[5]) / 2.0
+        )
     return energy
 
 
@@ -81,8 +78,7 @@ def matrix_multiply_repeated(
                 accumulator = 0.0
                 for index in range(size):
                     accumulator += (
-                        current[row * size + index] *
-                        right[index * size + column]
+                        current[row * size + index] * right[index * size + column]
                     )
                 target[row * size + column] = accumulator
         temporary = current

@@ -35,7 +35,7 @@ def heappush(heap, item):
 
 def heappop(heap):
     if not heap:
-        raise IndexError('index out of range')
+        raise IndexError("index out of range")
     last = heap.pypop()
     if not heap:
         return last
@@ -47,7 +47,7 @@ def heappop(heap):
 
 def heapreplace(heap, item):
     if not heap:
-        raise IndexError('index out of range')
+        raise IndexError("index out of range")
     answer = heap[0]
     heap[0] = item
     _siftdown(heap, 0)
@@ -97,9 +97,7 @@ def merge(*iterables, key=None, reverse=False):
         except StopIteration:
             continue
         key_value = value if key is None else key(value)
-        heappush(
-            heap,
-            _MergeEntry(value, key_value, order, iterator, reverse))
+        heappush(heap, _MergeEntry(value, key_value, order, iterator, reverse))
 
     while heap:
         entry = heap[0]

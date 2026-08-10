@@ -17,7 +17,7 @@ def simple_assignment(n=1000000):
     assert a == 1
 
 
-register('simple assignment', simple_assignment)
+register("simple assignment", simple_assignment)
 
 
 def augmented_assignment(n=1000000):
@@ -27,7 +27,7 @@ def augmented_assignment(n=1000000):
     assert a == n
 
 
-register('augmented_assignment', augmented_assignment)
+register("augmented_assignment", augmented_assignment)
 
 
 def augmented_assignment_and_list_append(n=100000):
@@ -39,8 +39,7 @@ def augmented_assignment_and_list_append(n=100000):
     assert len(t) == n
 
 
-register('augmented_assignment_and_list_append',
-         augmented_assignment_and_list_append)
+register("augmented_assignment_and_list_append", augmented_assignment_and_list_append)
 
 
 def simple_assignment_to_float(n=1000000):
@@ -49,7 +48,7 @@ def simple_assignment_to_float(n=1000000):
     assert a == 1.0
 
 
-register('simple_assignment_to_float', simple_assignment_to_float)
+register("simple_assignment_to_float", simple_assignment_to_float)
 
 
 def big_integers(n=10000):
@@ -58,7 +57,7 @@ def big_integers(n=10000):
         2**n
 
 
-register('big_integers', big_integers)
+register("big_integers", big_integers)
 
 
 def build_dictionary(n=1000000):
@@ -67,7 +66,7 @@ def build_dictionary(n=1000000):
     assert a == {0: 0}
 
 
-register('build_dictionary', build_dictionary)
+register("build_dictionary", build_dictionary)
 
 
 def build_dictionary_2(n=100000):
@@ -77,7 +76,7 @@ def build_dictionary_2(n=100000):
     assert len(d) == n
 
 
-register('build_dictionary_2', build_dictionary_2)
+register("build_dictionary_2", build_dictionary_2)
 
 
 def set_dictionary_item(n=1000000):
@@ -87,7 +86,7 @@ def set_dictionary_item(n=1000000):
     assert a == {0: n - 1}
 
 
-register('set_dictionary_item', set_dictionary_item)
+register("set_dictionary_item", set_dictionary_item)
 
 
 def build_set(n=1000000):
@@ -96,7 +95,7 @@ def build_set(n=1000000):
     assert a == {0, 2.7, "x"}
 
 
-register('build_set', build_set)
+register("build_set", build_set)
 
 
 def build_list(n=1000000):
@@ -139,10 +138,10 @@ register("integer_addition", integer_addition)
 
 
 def string_addition(n=1000000):
-    a, b, c = 'a', 'b', 'c'
+    a, b, c = "a", "b", "c"
     for i in range(n):
         a + b + c
-    assert a + b + c == 'abc'
+    assert a + b + c == "abc"
 
 
 register("string_addition", string_addition)
@@ -163,8 +162,7 @@ def create_function_without_arguments(n=1000000):
             pass
 
 
-register("create_function_without_arguments",
-         create_function_without_arguments)
+register("create_function_without_arguments", create_function_without_arguments)
 
 
 def create_function_single_positional_argument(n=1000000):
@@ -174,8 +172,10 @@ def create_function_single_positional_argument(n=1000000):
             pass
 
 
-register("create_function_single_positional_argument",
-         create_function_single_positional_argument)
+register(
+    "create_function_single_positional_argument",
+    create_function_single_positional_argument,
+)
 
 
 def create_function_complex_arguments(n=1000000):
@@ -185,8 +185,7 @@ def create_function_complex_arguments(n=1000000):
             pass
 
 
-register("create_function_complex_arguments",
-         create_function_complex_arguments)
+register("create_function_complex_arguments", create_function_complex_arguments)
 
 
 def function_call(n=1000000):
@@ -263,8 +262,7 @@ __repr__() { return "I am a class"; }
         A()
 
 
-register("create instance of simple jsclass",
-         create_instance_of_simple_jsclass)
+register("create instance of simple jsclass", create_instance_of_simple_jsclass)
 
 
 def create_instance_of_class_with_init(n=100000):
@@ -276,8 +274,7 @@ def create_instance_of_class_with_init(n=100000):
         A(i)
 
 
-register("create instance of class with init",
-         create_instance_of_class_with_init)
+register("create instance of class with init", create_instance_of_class_with_init)
 
 
 def call_instance_method(n=100000):
@@ -295,5 +292,5 @@ def call_instance_method(n=100000):
 
 register("call_instance_method", call_instance_method)
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     all()

@@ -56,7 +56,7 @@ def getdefaulttimeout():
 def setdefaulttimeout(value):
     global _default_timeout
     if value is not None and value < 0:
-        raise ValueError('Timeout value out of range')
+        raise ValueError("Timeout value out of range")
     _default_timeout = value
 
 
@@ -64,16 +64,16 @@ def gethostname():
     return os.uname().nodename
 
 
-def getfqdn(name=''):
+def getfqdn(name=""):
     return gethostname() if not name else name
 
 
 def _lookup(host, family=0):
     try:
-        result = os._host_call('dnsLookup', host, family)
+        result = os._host_call("dnsLookup", host, family)
     except OSError as exception:
         raise gaierror(str(exception))
-    return os._property(result, 'address'), os._property(result, 'family')
+    return os._property(result, "address"), os._property(result, "family")
 
 
 def gethostbyname(hostname):
@@ -101,9 +101,17 @@ def getaddrinfo(
     sockaddr = runtime.math_tuple([address, int(port)])
     if result_family == AF_INET6:
         sockaddr = runtime.math_tuple([address, int(port), 0, 0])
-    return [runtime.math_tuple([
-        result_family, socket_type, protocol, '', sockaddr,
-    ])]
+    return [
+        runtime.math_tuple(
+            [
+                result_family,
+                socket_type,
+                protocol,
+                "",
+                sockaddr,
+            ]
+        )
+    ]
 
 
 def getnameinfo(sockaddr, flags):
@@ -112,14 +120,14 @@ def getnameinfo(sockaddr, flags):
 
 
 def inet_aton(address):
-    parts = address.split('.')
+    parts = address.split(".")
     if len(parts) != 4:
-        raise OSError('illegal IP address string passed to inet_aton')
+        raise OSError("illegal IP address string passed to inet_aton")
     values = []
     for part in parts:
         value = int(part)
         if value < 0 or value > 255:
-            raise OSError('illegal IP address string passed to inet_aton')
+            raise OSError("illegal IP address string passed to inet_aton")
         values.append(value)
     return bytes(values)
 
@@ -127,8 +135,8 @@ def inet_aton(address):
 def inet_ntoa(packed_ip):
     data = bytes(packed_ip)
     if len(data) != 4:
-        raise OSError('packed IP wrong length for inet_ntoa')
-    return '.'.join(str(value) for value in data)
+        raise OSError("packed IP wrong length for inet_ntoa")
+    return ".".join(str(value) for value in data)
 
 
 def htons(value):
@@ -159,16 +167,16 @@ class socket:
         fileno=None,
     ):
         if fileno is not None:
-            raise NotImplementedError('fileno-based sockets are not supported')
+            raise NotImplementedError("fileno-based sockets are not supported")
         if type != SOCK_STREAM:
-            raise NotImplementedError('the initial socket backend supports SOCK_STREAM')
+            raise NotImplementedError("the initial socket backend supports SOCK_STREAM")
         self.family = family
         self.type = type
         self.proto = proto
         self._timeout = _default_timeout
         self._address = None
         self._outgoing = bytearray()
-        self._incoming = b''
+        self._incoming = b""
         self._closed = False
 
     def __enter__(self):
@@ -180,7 +188,7 @@ class socket:
 
     def _check(self):
         if self._closed:
-            raise OSError('Bad file descriptor')
+            raise OSError("Bad file descriptor")
 
     def connect(self, address):
         self._check()
@@ -191,20 +199,20 @@ class socket:
             self.connect(address)
             return 0
         except OSError as exception:
-            return getattr(exception, 'errno', 1) or 1
+            return getattr(exception, "errno", 1) or 1
 
     def getpeername(self):
         self._check()
         if self._address is None:
-            raise OSError('Transport endpoint is not connected')
+            raise OSError("Transport endpoint is not connected")
         return self._address
 
     def getsockname(self):
-        return runtime.math_tuple(['0.0.0.0', 0])
+        return runtime.math_tuple(["0.0.0.0", 0])
 
     def settimeout(self, value):
         if value is not None and value < 0:
-            raise ValueError('Timeout value out of range')
+            raise ValueError("Timeout value out of range")
         self._timeout = value
 
     def gettimeout(self):
@@ -228,12 +236,13 @@ class socket:
 
     def _exchange(self, maximum):
         if self._address is None:
-            raise OSError('Transport endpoint is not connected')
-        milliseconds = 30000 if self._timeout is None else max(
-            1, int(self._timeout * 1000))
+            raise OSError("Transport endpoint is not connected")
+        milliseconds = (
+            30000 if self._timeout is None else max(1, int(self._timeout * 1000))
+        )
         try:
             result = os._host_call(
-                'tcpExchange',
+                "tcpExchange",
                 self._address[0],
                 self._address[1],
                 list(self._outgoing),
@@ -241,11 +250,11 @@ class socket:
                 milliseconds,
             )
         except OSError as exception:
-            if getattr(exception, 'errno', None) == 110:
+            if getattr(exception, "errno", None) == 110:
                 raise timeout(str(exception))
             raise
         self._outgoing = bytearray()
-        self._incoming += base64.b64decode(os._property(result, 'body'))
+        self._incoming += base64.b64decode(os._property(result, "body"))
 
     def recv(self, bufsize, flags=0):
         del flags
@@ -264,7 +273,7 @@ class socket:
 
     def makefile(
         self,
-        mode='r',
+        mode="r",
         buffering=None,
         *,
         encoding=None,
@@ -274,12 +283,14 @@ class socket:
         del buffering, newline
         if not self._incoming:
             self._exchange(16 * 1024 * 1024)
-        if 'b' in mode:
+        if "b" in mode:
             return io.BytesIO(self._incoming)
-        return io.StringIO(self._incoming.decode(
-            'utf8' if encoding is None else encoding,
-            'strict' if errors is None else errors,
-        ))
+        return io.StringIO(
+            self._incoming.decode(
+                "utf8" if encoding is None else encoding,
+                "strict" if errors is None else errors,
+            )
+        )
 
     def shutdown(self, how):
         del how
@@ -288,7 +299,7 @@ class socket:
         self._closed = True
 
     def detach(self):
-        raise NotImplementedError('socket.detach is not supported')
+        raise NotImplementedError("socket.detach is not supported")
 
     def fileno(self):
         return -1
@@ -297,7 +308,9 @@ class socket:
 SocketType = socket
 
 
-def create_connection(address, timeout=_default_timeout, source_address=None, *, all_errors=False):
+def create_connection(
+    address, timeout=_default_timeout, source_address=None, *, all_errors=False
+):
     del source_address, all_errors
     result = socket(AF_INET, SOCK_STREAM)
     result.settimeout(timeout)

@@ -16,16 +16,12 @@ import sagejs as sage
 class MagmaIntrinsic:
     def __init__(self, name: str) -> None:
         self._name = name
-        self._methods: list[
-            tuple[tuple[type, ...], Callable[..., Any]]
-        ] = []
+        self._methods: list[tuple[tuple[type, ...], Callable[..., Any]]] = []
 
     def register(
         self, *signature: type
     ) -> Callable[[Callable[..., Any]], Callable[..., Any]]:
-        def add_method(
-            function: Callable[..., Any]
-        ) -> Callable[..., Any]:
+        def add_method(function: Callable[..., Any]) -> Callable[..., Any]:
             self._methods.append((signature, function))
             return function
 
@@ -42,24 +38,28 @@ class MagmaIntrinsic:
                     break
             if matches:
                 return function(*args, **kwargs)
-        types = ', '.join(type(value).__name__ for value in args)
+        types = ", ".join(type(value).__name__ for value in args)
         raise TypeError(
-            "no matching intrinsic '" + self._name +
-            "' for argument types (" + types + ")")
+            "no matching intrinsic '"
+            + self._name
+            + "' for argument types ("
+            + types
+            + ")"
+        )
 
     def __repr__(self) -> str:
         return "Magma intrinsic " + self._name
 
 
-Integers = MagmaIntrinsic('Integers')
-Rationals = MagmaIntrinsic('Rationals')
-PolynomialRing = MagmaIntrinsic('PolynomialRing')
-Factorization = MagmaIntrinsic('Factorization')
-IsPrime = MagmaIntrinsic('IsPrime')
-PrimeDivisors = MagmaIntrinsic('PrimeDivisors')
-Divisors = MagmaIntrinsic('Divisors')
-Parent = MagmaIntrinsic('Parent')
-Type = MagmaIntrinsic('Type')
+Integers = MagmaIntrinsic("Integers")
+Rationals = MagmaIntrinsic("Rationals")
+PolynomialRing = MagmaIntrinsic("PolynomialRing")
+Factorization = MagmaIntrinsic("Factorization")
+IsPrime = MagmaIntrinsic("IsPrime")
+PrimeDivisors = MagmaIntrinsic("PrimeDivisors")
+Divisors = MagmaIntrinsic("Divisors")
+Parent = MagmaIntrinsic("Parent")
+Type = MagmaIntrinsic("Type")
 
 
 @Integers.register()
@@ -74,7 +74,7 @@ def rationals_method() -> Any:
 
 @PolynomialRing.register(object)
 def polynomial_ring_default_method(base: Any) -> Any:
-    return sage.PolynomialRing(base, 'x')
+    return sage.PolynomialRing(base, "x")
 
 
 @PolynomialRing.register(object, str)
@@ -109,7 +109,7 @@ def parent_method(value: Any) -> Any:
 
 def _runtime_type_name(value: Any) -> str:
     name = type(value).__name__
-    if name.startswith('ρσ_'):
+    if name.startswith("ρσ_"):
         return name[3:]
     return name
 
@@ -119,28 +119,28 @@ def type_method(value: Any) -> str:
     """Return a Magma-style category for a shared evaluator object."""
 
     names = {
-        'bool': 'BoolElt',
-        'int': 'RngIntElt',
-        'Integer': 'RngIntElt',
-        'Rational': 'FldRatElt',
-        'float': 'FldReElt',
-        'RealLiteral': 'FldReElt',
-        'RealNumberElement': 'FldReElt',
-        'complex': 'FldComElt',
-        'PythonComplex': 'FldComElt',
-        'ComplexNumberElement': 'FldComElt',
-        'str': 'MonStgElt',
-        'list': 'SeqEnum',
-        'list_constructor': 'SeqEnum',
-        'tuple': 'Tup',
-        'set': 'SetEnum',
-        'dict': 'Assoc',
-        'ndarray': 'AlgMatElt',
-        'PolynomialRingParent': 'RngUPol',
-        'PolynomialElement': 'RngUPolElt',
-        'Expression': 'SymExpr',
-        'Graphics': 'GrphObj',
-        'Graphics3d': 'GrphObj',
+        "bool": "BoolElt",
+        "int": "RngIntElt",
+        "Integer": "RngIntElt",
+        "Rational": "FldRatElt",
+        "float": "FldReElt",
+        "RealLiteral": "FldReElt",
+        "RealNumberElement": "FldReElt",
+        "complex": "FldComElt",
+        "PythonComplex": "FldComElt",
+        "ComplexNumberElement": "FldComElt",
+        "str": "MonStgElt",
+        "list": "SeqEnum",
+        "list_constructor": "SeqEnum",
+        "tuple": "Tup",
+        "set": "SetEnum",
+        "dict": "Assoc",
+        "ndarray": "AlgMatElt",
+        "PolynomialRingParent": "RngUPol",
+        "PolynomialElement": "RngUPolElt",
+        "Expression": "SymExpr",
+        "Graphics": "GrphObj",
+        "Graphics3d": "GrphObj",
     }
     name = _runtime_type_name(value)
     return names[name] if name in names else name
@@ -150,7 +150,7 @@ def magma_range(start: int, stop: int, step: int = 1) -> list[int]:
     """Return Magma's inclusive integer range as an ordinary sequence."""
 
     if step == 0:
-        raise ValueError('Magma range step must not be zero')
+        raise ValueError("Magma range step must not be zero")
     boundary = stop + (1 if step > 0 else -1)
     return list(range(start, boundary, step))
 
@@ -159,5 +159,5 @@ def magma_getitem(value: Any, index: int) -> Any:
     """Apply Magma's one-based indexing convention."""
 
     if index == 0:
-        raise IndexError('Magma sequence indices start at 1')
+        raise IndexError("Magma sequence indices start at 1")
     return value[index - 1 if index > 0 else index]

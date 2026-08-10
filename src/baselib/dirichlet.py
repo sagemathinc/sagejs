@@ -34,11 +34,11 @@ def _native_field(value: Any, name: str) -> Any:
 def _analytic_precision(precision: Any) -> int:
     precision = runtime.normalize_integer(precision)
     if (
-        runtime.jstype(precision) != 'number'
+        runtime.jstype(precision) != "number"
         or not runtime.number.isSafeInteger(precision)
         or precision < 2
     ):
-        raise ValueError('precision must be at least 2 bits')
+        raise ValueError("precision must be at least 2 bits")
     return precision
 
 
@@ -46,14 +46,12 @@ def _complex_from_native(
     native_value: Any,
     precision: Any,
 ) -> Any:
-    complex_field = runtime.reflect.get(
-        runtime.global_object, 'ComplexField')
+    complex_field = runtime.reflect.get(runtime.global_object, "ComplexField")
     return complex_field(precision)._fromNative(native_value)
 
 
 def _qqbar_from_native(native_value: Any) -> Any:
-    algebraic_field = runtime.reflect.get(
-        runtime.global_object, 'QQbar')
+    algebraic_field = runtime.reflect.get(runtime.global_object, "QQbar")
     return algebraic_field._from_native(native_value)
 
 
@@ -66,8 +64,7 @@ def _format_cyclotomic_polynomial(
     while index >= 0:
         raw_coefficient = coefficients[index]
         if isinstance(raw_coefficient, (list, tuple)):
-            coefficient = sage.QQ(
-                raw_coefficient[0]) / sage.QQ(raw_coefficient[1])
+            coefficient = sage.QQ(raw_coefficient[0]) / sage.QQ(raw_coefficient[1])
         else:
             coefficient = sage.QQ(raw_coefficient)
         if coefficient != 0:
@@ -75,17 +72,14 @@ def _format_cyclotomic_polynomial(
             if index == 0:
                 body = str(absolute)
             else:
-                power = variable if index == 1 \
-                    else variable + '^' + str(index)
-                body = power if absolute == 1 \
-                    else str(absolute) + '*' + power
+                power = variable if index == 1 else variable + "^" + str(index)
+                body = power if absolute == 1 else str(absolute) + "*" + power
             if len(terms) == 0:
-                terms.append(('-' if coefficient < 0 else '') + body)
+                terms.append(("-" if coefficient < 0 else "") + body)
             else:
-                terms.append(
-                    (' - ' if coefficient < 0 else ' + ') + body)
+                terms.append((" - " if coefficient < 0 else " + ") + body)
         index -= 1
-    return ''.join(terms) if len(terms) else '0'
+    return "".join(terms) if len(terms) else "0"
 
 
 @runtime.lightweight_math_class
@@ -104,15 +98,14 @@ class CyclotomicElement(sage.Element):
             self._native = native_value
         elif exponent is None:
             self._native = runtime.flint_backend().qqbarFromRational(
-                runtime.bigint(0), runtime.bigint(1))
-        else:
-            normalized = (
-                runtime.integer_bigint(exponent)
-                % parent._order
+                runtime.bigint(0), runtime.bigint(1)
             )
+        else:
+            normalized = runtime.integer_bigint(exponent) % parent._order
             self._exponent = runtime.normalize_integer(normalized)
             self._native = runtime.flint_backend().qqbarRootOfUnity(
-                runtime.integer_bigint(normalized), parent._order)
+                runtime.integer_bigint(normalized), parent._order
+            )
         runtime.object.freeze(self)
 
     def _new_root(self, exponent: Any) -> CyclotomicElement:
@@ -122,73 +115,74 @@ class CyclotomicElement(sage.Element):
         return self._parent._from_native(native_value)
 
     def _add_(
-        self, other: CyclotomicElement,
+        self,
+        other: CyclotomicElement,
     ) -> CyclotomicElement:
         if self.is_zero():
             return other
         if other.is_zero():
             return self
-        return self._new(runtime.flint_backend().qqbarAdd(
-            self._native, other._native))
+        return self._new(runtime.flint_backend().qqbarAdd(self._native, other._native))
 
     def _sub_(
-        self, other: CyclotomicElement,
+        self,
+        other: CyclotomicElement,
     ) -> CyclotomicElement:
         if other.is_zero():
             return self
         if self._eq_(other):
             return self._parent.zero()
-        return self._new(runtime.flint_backend().qqbarSub(
-            self._native, other._native))
+        return self._new(runtime.flint_backend().qqbarSub(self._native, other._native))
 
     def _mul_(
-        self, other: CyclotomicElement,
+        self,
+        other: CyclotomicElement,
     ) -> CyclotomicElement:
         if self._exponent is not None and other._exponent is not None:
             return self._new_root(
                 runtime.integer_bigint(self._exponent)
-                + runtime.integer_bigint(other._exponent))
+                + runtime.integer_bigint(other._exponent)
+            )
         if self.is_zero() or other.is_zero():
             return self._parent.zero()
-        return self._new(runtime.flint_backend().qqbarMul(
-            self._native, other._native))
+        return self._new(runtime.flint_backend().qqbarMul(self._native, other._native))
 
     def _truediv_(
-        self, other: CyclotomicElement,
+        self,
+        other: CyclotomicElement,
     ) -> CyclotomicElement:
         if self._exponent is not None and other._exponent is not None:
             return self._new_root(
                 runtime.integer_bigint(self._exponent)
-                - runtime.integer_bigint(other._exponent))
+                - runtime.integer_bigint(other._exponent)
+            )
         if other.is_zero():
-            raise ZeroDivisionError('division by zero')
+            raise ZeroDivisionError("division by zero")
         if self.is_zero():
             return self
-        return self._new(runtime.flint_backend().qqbarDiv(
-            self._native, other._native))
+        return self._new(runtime.flint_backend().qqbarDiv(self._native, other._native))
 
     def _eq_(self, other: CyclotomicElement) -> bool:
-        return runtime.flint_backend().qqbarEqual(
-            self._native, other._native)
+        return runtime.flint_backend().qqbarEqual(self._native, other._native)
 
     def __add__(self, other: object) -> Any:
-        return runtime.coercion_model.binOp('add', self, other)
+        return runtime.coercion_model.binOp("add", self, other)
 
     def __radd__(self, other: object) -> Any:
-        return runtime.coercion_model.binOp('add', other, self)
+        return runtime.coercion_model.binOp("add", other, self)
 
     def __sub__(self, other: object) -> Any:
-        return runtime.coercion_model.binOp('sub', self, other)
+        return runtime.coercion_model.binOp("sub", self, other)
 
     def __rsub__(self, other: object) -> Any:
-        return runtime.coercion_model.binOp('sub', other, self)
+        return runtime.coercion_model.binOp("sub", other, self)
 
     def __mul__(self, other: object) -> Any:
         if isinstance(other, CyclotomicElement):
             if other._parent is not self._parent:
-                raise TypeError('incompatible cyclotomic fields')
+                raise TypeError("incompatible cyclotomic fields")
             return self._mul_(other)
-        return runtime.coercion_model.binOp('mul', self, other)
+        return runtime.coercion_model.binOp("mul", self, other)
 
     def __rmul__(self, other: object) -> Any:
         return self * other
@@ -196,9 +190,9 @@ class CyclotomicElement(sage.Element):
     def __truediv__(self, other: object) -> Any:
         if isinstance(other, CyclotomicElement):
             if other._parent is not self._parent:
-                raise TypeError('incompatible cyclotomic fields')
+                raise TypeError("incompatible cyclotomic fields")
             return self._truediv_(other)
-        return runtime.coercion_model.binOp('truediv', self, other)
+        return runtime.coercion_model.binOp("truediv", self, other)
 
     def __eq__(self, other: object) -> bool:
         if isinstance(other, CyclotomicElement):
@@ -209,52 +203,47 @@ class CyclotomicElement(sage.Element):
             return False
 
     def __neg__(self) -> CyclotomicElement:
-        if (
-            self._exponent is not None
-            and self._parent._order % runtime.bigint(2) == 0
-        ):
+        if self._exponent is not None and self._parent._order % runtime.bigint(2) == 0:
             return self._new_root(
                 runtime.integer_bigint(self._exponent)
-                + self._parent._order // runtime.bigint(2))
-        return self._new(
-            runtime.flint_backend().qqbarNeg(self._native))
+                + self._parent._order // runtime.bigint(2)
+            )
+        return self._new(runtime.flint_backend().qqbarNeg(self._native))
 
     def __pow__(self, exponent: Any) -> CyclotomicElement:
         exponent = runtime.integer_bigint(exponent)
         if self._exponent is not None:
-            return self._new_root(
-                runtime.integer_bigint(self._exponent) * exponent)
+            return self._new_root(runtime.integer_bigint(self._exponent) * exponent)
         if self.is_zero():
             if exponent < 0:
-                raise ZeroDivisionError(
-                    'zero cannot be raised to a negative power')
+                raise ZeroDivisionError("zero cannot be raised to a negative power")
             if exponent == 0:
                 return self._parent.one()
             return self
-        return self._new(runtime.flint_backend().qqbarPow(
-            self._native, exponent))
+        return self._new(runtime.flint_backend().qqbarPow(self._native, exponent))
 
     def is_zero(self) -> bool:
         return runtime.flint_backend().qqbarEqual(
-            self._native, self._parent.zero()._native)
+            self._native, self._parent.zero()._native
+        )
 
     def is_one(self) -> bool:
         return runtime.flint_backend().qqbarEqual(
-            self._native, self._parent.one()._native)
+            self._native, self._parent.one()._native
+        )
 
     def multiplicative_order(self) -> Any:
         if self.is_zero():
-            raise ArithmeticError(
-                'zero does not have a multiplicative order')
+            raise ArithmeticError("zero does not have a multiplicative order")
         if self._exponent is None:
             raise ArithmeticError(
-                'multiplicative order is only available for roots of unity')
+                "multiplicative order is only available for roots of unity"
+            )
         exponent = runtime.integer_bigint(self._exponent)
         if exponent == 0:
             return 1
         return runtime.normalize_integer(
-            self._parent._order
-            // runtime.bigint_gcd(self._parent._order, exponent)
+            self._parent._order // runtime.bigint_gcd(self._parent._order, exponent)
         )
 
     def n(
@@ -262,19 +251,14 @@ class CyclotomicElement(sage.Element):
         prec: int = 53,
         digits: Any = runtime.undefined,
     ) -> Any:
-        algebraic_field = runtime.reflect.get(
-            runtime.global_object, 'QQbar')
-        return algebraic_field._from_native(self._native).n(
-            prec, digits)
+        algebraic_field = runtime.reflect.get(runtime.global_object, "QQbar")
+        return algebraic_field._from_native(self._native).n(prec, digits)
 
     numerical_approx = n
 
-    def minpoly(self, variable: str = 'x') -> Any:
+    def minpoly(self, variable: str = "x") -> Any:
         ring = sage.PolynomialRing(sage.ZZ, variable)
-        coefficients = (
-            runtime.flint_backend().qqbarMinpolyCoefficients(
-                self._native)
-        )
+        coefficients = runtime.flint_backend().qqbarMinpolyCoefficients(self._native)
         generator = ring.gen()
         result = ring(0)
         for coefficient in reversed(coefficients):
@@ -284,13 +268,11 @@ class CyclotomicElement(sage.Element):
     minimal_polynomial = minpoly
 
     def __repr__(self) -> str:
-        coefficients = (
-            runtime.flint_backend().cyclotomicElementCoefficients(
-                self._native, self._parent._order,
-            )
+        coefficients = runtime.flint_backend().cyclotomicElementCoefficients(
+            self._native,
+            self._parent._order,
         )
-        return _format_cyclotomic_polynomial(
-            coefficients, self._parent._variable)
+        return _format_cyclotomic_polynomial(coefficients, self._parent._variable)
 
     __str__ = __repr__
     toString = __repr__
@@ -303,19 +285,20 @@ class CyclotomicFieldParent(sage.Parent):
     def __init__(self, order: Any) -> None:
         order = runtime.integer_bigint(order)
         if order <= 0:
-            raise ValueError('cyclotomic order must be positive')
+            raise ValueError("cyclotomic order must be positive")
         self._order = order
-        self._degree = runtime.integer_bigint(
-            _euler_phi(runtime.number(order)))
-        self._variable = 'zeta' + str(order)
-        self._kind = 'CyclotomicField'
+        self._degree = runtime.integer_bigint(_euler_phi(runtime.number(order)))
+        self._variable = "zeta" + str(order)
+        self._kind = "CyclotomicField"
         self._construction = {
-            'kind': 'CyclotomicField',
-            'order': runtime.normalize_integer(order),
+            "kind": "CyclotomicField",
+            "order": runtime.normalize_integer(order),
         }
         self._name = (
-            'Cyclotomic Field of order ' + str(order)
-            + ' and degree ' + str(self._degree)
+            "Cyclotomic Field of order "
+            + str(order)
+            + " and degree "
+            + str(self._degree)
         )
         self._roots = runtime.map()
         self._zero = CyclotomicElement(self, None)
@@ -323,12 +306,12 @@ class CyclotomicFieldParent(sage.Parent):
         runtime.coercion_model.register(sage.QQ, self, self)
 
     def _from_native(self, native_value: Any) -> CyclotomicElement:
-        return CyclotomicElement(
-            self, None, native_value=native_value)
+        return CyclotomicElement(self, None, native_value=native_value)
 
     def _root(self, exponent: Any) -> CyclotomicElement:
         exponent = runtime.normalize_integer(
-            runtime.integer_bigint(exponent) % self._order)
+            runtime.integer_bigint(exponent) % self._order
+        )
         cached = self._roots.get(exponent)
         if cached is runtime.undefined:
             cached = CyclotomicElement(self, exponent)
@@ -340,8 +323,8 @@ class CyclotomicFieldParent(sage.Parent):
             if value._parent is self:
                 return value
             return self._from_native(value._native)
-        if hasattr(value, '_native'):
-            return self._from_native(runtime.reflect.get(value, '_native'))
+        if hasattr(value, "_native"):
+            return self._from_native(runtime.reflect.get(value, "_native"))
         if isinstance(value, sage.Rational):
             if value._denominator == 1:
                 integer = value._numerator
@@ -353,7 +336,9 @@ class CyclotomicFieldParent(sage.Parent):
                     return self._root(self._order // runtime.bigint(2))
             return self._from_native(
                 runtime.flint_backend().qqbarFromRational(
-                    value._numerator, value._denominator))
+                    value._numerator, value._denominator
+                )
+            )
         if runtime.is_exact_integer(value):
             integer = runtime.integer_bigint(value)
             if integer == 0:
@@ -363,12 +348,13 @@ class CyclotomicFieldParent(sage.Parent):
             if integer == -1 and self._order % runtime.bigint(2) == 0:
                 return self._root(self._order // runtime.bigint(2))
             return self._from_native(
-                runtime.flint_backend().qqbarFromRational(
-                    integer, runtime.bigint(1)))
-        raise TypeError('unable to coerce value into ' + str(self))
+                runtime.flint_backend().qqbarFromRational(integer, runtime.bigint(1))
+            )
+        raise TypeError("unable to coerce value into " + str(self))
 
     def _from_coefficients(
-        self, coefficients: list[Any],
+        self,
+        coefficients: list[Any],
     ) -> CyclotomicElement:
         """Construct from power-basis coefficients in the cyclotomic generator."""
         result = self.zero()
@@ -376,32 +362,30 @@ class CyclotomicFieldParent(sage.Parent):
         for exponent, coefficient in enumerate(coefficients):
             rational = sage.QQ(coefficient)
             if rational != 0:
-                result += self(rational) * generator ** exponent
+                result += self(rational) * generator**exponent
         return result
 
     def _serialization_coefficients(
-        self, value: CyclotomicElement,
+        self,
+        value: CyclotomicElement,
     ) -> list[Any]:
         """Return canonical rational power-basis coordinates for storage."""
         pairs = runtime.flint_backend().cyclotomicElementCoefficients(
-            value._native, self._order)
-        return [
-            _untyped(sage.QQ)(pair[0], pair[1])
-            for pair in pairs
-        ]
+            value._native, self._order
+        )
+        return [_untyped(sage.QQ)(pair[0], pair[1]) for pair in pairs]
 
     def gen(self, index: int = 0) -> CyclotomicElement:
         if runtime.integer_bigint(index) != 0:
-            raise IndexError('only one cyclotomic generator')
+            raise IndexError("only one cyclotomic generator")
         return self._root(1)
 
     def _first_ngens(self, count: int) -> list[CyclotomicElement]:
         if runtime.integer_bigint(count) != 1:
-            raise ValueError(
-                'cyclotomic fields have exactly one generator')
+            raise ValueError("cyclotomic fields have exactly one generator")
         return [self.gen()]
 
-    def gens(self) -> 'tuple[Any, ...]':
+    def gens(self) -> "tuple[Any, ...]":
         return runtime.math_tuple([self.gen()])
 
     def zero(self) -> CyclotomicElement:
@@ -421,8 +405,7 @@ _cyclotomic_fields = runtime.map()
 
 
 def CyclotomicField(order: Any) -> CyclotomicFieldParent:
-    normalized = runtime.normalize_integer(
-        runtime.integer_bigint(order))
+    normalized = runtime.normalize_integer(runtime.integer_bigint(order))
     field = _cyclotomic_fields.get(normalized)
     if field is runtime.undefined:
         field = CyclotomicFieldParent(normalized)
@@ -441,7 +424,7 @@ class DirichletCharacter(sage.Element):
     ) -> None:
         index = runtime.integer_bigint(index)
         if index < 0 or index >= parent._size:
-            raise IndexError('Dirichlet character index out of range')
+            raise IndexError("Dirichlet character index out of range")
         self._parent = parent
         self._index = index
         self._data = runtime.undefined
@@ -451,7 +434,8 @@ class DirichletCharacter(sage.Element):
     def _native_data(self) -> Any:
         if self._data is runtime.undefined:
             self._data = runtime.flint_backend().dirichletCharacterData(
-                self._parent._native, self._index)
+                self._parent._native, self._index
+            )
         return self._data
 
     def _logs(self) -> list[int]:
@@ -459,22 +443,16 @@ class DirichletCharacter(sage.Element):
         answer = []
         for order in self._parent._orders:
             order_integer = runtime.integer_bigint(order)
-            answer.append(
-                runtime.normalize_integer(index % order_integer))
+            answer.append(runtime.normalize_integer(index % order_integer))
             index //= order_integer
         return answer
 
     def __call__(self, value: Any) -> Any:
-        residue = (
-            runtime.integer_bigint(value)
-            % self._parent._modulus
-        )
-        exponent = (
-            runtime.flint_backend().dirichletCharacterExponent(
-                self._parent._native,
-                self._index,
-                runtime.integer_bigint(residue),
-            )
+        residue = runtime.integer_bigint(value) % self._parent._modulus
+        exponent = runtime.flint_backend().dirichletCharacterExponent(
+            self._parent._native,
+            self._index,
+            runtime.integer_bigint(residue),
         )
         if exponent is None:
             return self._parent._zero()
@@ -486,28 +464,29 @@ class DirichletCharacter(sage.Element):
         return self._parent._root(scaled)
 
     def _mul_(
-        self, other: DirichletCharacter,
+        self,
+        other: DirichletCharacter,
     ) -> DirichletCharacter:
         left = self._logs()
         right = other._logs()
         result = []
         index = 0
         while index < len(left):
-            order = runtime.integer_bigint(
-                self._parent._orders[index])
+            order = runtime.integer_bigint(self._parent._orders[index])
             result.append(
                 runtime.normalize_integer(
                     (
                         runtime.integer_bigint(left[index])
                         + runtime.integer_bigint(right[index])
-                    ) % order
+                    )
+                    % order
                 )
             )
             index += 1
         return self._parent._from_logs(result)
 
     def __mul__(self, other: object) -> Any:
-        return runtime.coercion_model.binOp('mul', self, other)
+        return runtime.coercion_model.binOp("mul", self, other)
 
     def __pow__(self, exponent: Any) -> DirichletCharacter:
         exponent = runtime.integer_bigint(exponent)
@@ -515,12 +494,10 @@ class DirichletCharacter(sage.Element):
         logs = self._logs()
         index = 0
         while index < len(logs):
-            order = runtime.integer_bigint(
-                self._parent._orders[index])
+            order = runtime.integer_bigint(self._parent._orders[index])
             result.append(
                 runtime.normalize_integer(
-                    runtime.integer_bigint(logs[index])
-                    * exponent % order
+                    runtime.integer_bigint(logs[index]) * exponent % order
                 )
             )
             index += 1
@@ -536,9 +513,8 @@ class DirichletCharacter(sage.Element):
     def values(self) -> list[Any]:
         if self._values_cache is not runtime.undefined:
             return self._values_cache
-        raw_values = (
-            runtime.flint_backend().dirichletCharacterExponents(
-                self._parent._native, self._index)
+        raw_values = runtime.flint_backend().dirichletCharacterExponents(
+            self._parent._native, self._index
         )
         result = []
         for exponent in raw_values:
@@ -559,11 +535,11 @@ class DirichletCharacter(sage.Element):
 
     def conductor(self) -> Any:
         return runtime.normalize_integer(
-            _native_field(self._native_data(), 'conductor'))
+            _native_field(self._native_data(), "conductor")
+        )
 
     def order(self) -> Any:
-        return runtime.normalize_integer(
-            _native_field(self._native_data(), 'order'))
+        return runtime.normalize_integer(_native_field(self._native_data(), "order"))
 
     def _minimal_base_ring(self) -> Any:
         value_order = self.order()
@@ -572,33 +548,30 @@ class DirichletCharacter(sage.Element):
         return CyclotomicField(value_order)
 
     def is_primitive(self) -> bool:
-        return bool(_native_field(
-            self._native_data(), 'primitive'))
+        return bool(_native_field(self._native_data(), "primitive"))
 
     def is_principal(self) -> bool:
-        return bool(_native_field(
-            self._native_data(), 'principal'))
+        return bool(_native_field(self._native_data(), "principal"))
 
     is_trivial = is_principal
 
     def is_real(self) -> bool:
-        return bool(_native_field(self._native_data(), 'real'))
+        return bool(_native_field(self._native_data(), "real"))
 
     def is_even(self) -> bool:
-        return bool(_native_field(self._native_data(), 'even'))
+        return bool(_native_field(self._native_data(), "even"))
 
     def is_odd(self) -> bool:
         return not self.is_even()
 
     def conrey_number(self) -> Any:
         return runtime.normalize_integer(
-            _native_field(self._native_data(), 'conreyNumber'))
+            _native_field(self._native_data(), "conreyNumber")
+        )
 
     def gauss_sum(self, a: Any = 1) -> Any:
         """Return the exact Gauss sum in Sage.js's algebraic closure."""
-        additive_factor = (
-            runtime.integer_bigint(a) % self._parent._modulus
-        )
+        additive_factor = runtime.integer_bigint(a) % self._parent._modulus
         return _qqbar_from_native(
             runtime.flint_backend().dirichletGaussSumExact(
                 self._parent._native,
@@ -614,9 +587,7 @@ class DirichletCharacter(sage.Element):
     ) -> Any:
         """Return a FLINT/Arb approximation to the Gauss sum."""
         precision = _analytic_precision(prec)
-        additive_factor = (
-            runtime.integer_bigint(a) % self._parent._modulus
-        )
+        additive_factor = runtime.integer_bigint(a) % self._parent._modulus
         return _complex_from_native(
             runtime.flint_backend().dirichletGaussSum(
                 self._parent._native,
@@ -633,14 +604,10 @@ class DirichletCharacter(sage.Element):
         check: bool = True,
     ) -> Any:
         """Return the exact Jacobi sum in Sage.js's algebraic closure."""
-        if (
-            not isinstance(char, DirichletCharacter)
-            or char._parent is not self._parent
-        ):
-            raise TypeError(
-                'characters must belong to the same Dirichlet group')
+        if not isinstance(char, DirichletCharacter) or char._parent is not self._parent:
+            raise TypeError("characters must belong to the same Dirichlet group")
         if check and self.modulus() != char.modulus():
-            raise ValueError('characters must have the same modulus')
+            raise ValueError("characters must have the same modulus")
         return _qqbar_from_native(
             runtime.flint_backend().dirichletJacobiSumExact(
                 self._parent._native,
@@ -655,12 +622,8 @@ class DirichletCharacter(sage.Element):
         prec: int = 53,
     ) -> Any:
         """Return a FLINT/Arb approximation to the Jacobi sum."""
-        if (
-            not isinstance(char, DirichletCharacter)
-            or char._parent is not self._parent
-        ):
-            raise TypeError(
-                'characters must belong to the same Dirichlet group')
+        if not isinstance(char, DirichletCharacter) or char._parent is not self._parent:
+            raise TypeError("characters must belong to the same Dirichlet group")
         precision = _analytic_precision(prec)
         return _complex_from_native(
             runtime.flint_backend().dirichletJacobiSum(
@@ -675,8 +638,7 @@ class DirichletCharacter(sage.Element):
     def root_number(self, prec: int = 53) -> Any:
         """Return the root number of this primitive character."""
         if not self.is_primitive():
-            raise ValueError(
-                'root number requires a primitive character')
+            raise ValueError("root number requires a primitive character")
         precision = _analytic_precision(prec)
         return _complex_from_native(
             runtime.flint_backend().dirichletRootNumber(
@@ -690,34 +652,30 @@ class DirichletCharacter(sage.Element):
     def lfunction(
         self,
         prec: int = 53,
-        algorithm: str = 'flint',
+        algorithm: str = "flint",
     ) -> DirichletLFunction:
         """Return the FLINT/Arb analytic Dirichlet L-function."""
-        if algorithm not in ('flint', 'arb', 'pari'):
-            raise ValueError(
-                "algorithm must be 'flint', 'arb', or 'pari'")
-        return DirichletLFunction(
-            self, _analytic_precision(prec))
+        if algorithm not in ("flint", "arb", "pari"):
+            raise ValueError("algorithm must be 'flint', 'arb', or 'pari'")
+        return DirichletLFunction(self, _analytic_precision(prec))
 
     def bernoulli(
         self,
         k: Any,
-        algorithm: str = 'recurrence',
+        algorithm: str = "recurrence",
         cache: bool = True,
         **opts: Any,
     ) -> Any:
         """Return the exact generalized Bernoulli number ``B_(k,chi)``."""
         index = runtime.normalize_integer(k)
         if (
-            runtime.jstype(index) != 'number'
+            runtime.jstype(index) != "number"
             or not runtime.number.isSafeInteger(index)
             or index < 0
         ):
-            raise ValueError(
-                'Bernoulli index must be nonnegative')
-        if algorithm not in ('recurrence', 'definition', 'flint'):
-            raise ValueError(
-                'unsupported generalized Bernoulli algorithm')
+            raise ValueError("Bernoulli index must be nonnegative")
+        if algorithm not in ("recurrence", "definition", "flint"):
+            raise ValueError("unsupported generalized Bernoulli algorithm")
         cached = self._bernoulli_cache.get(index)
         if cache and cached is not runtime.undefined:
             return cached
@@ -740,7 +698,7 @@ class DirichletCharacter(sage.Element):
             if runtime.bigint_gcd(
                 exponent, self._parent._value_order
             ) == runtime.bigint(1):
-                character = self ** exponent
+                character = self**exponent
                 if not seen.has(character._index):
                     seen.set(character._index, True)
                     result.append(character)
@@ -760,26 +718,23 @@ class DirichletCharacter(sage.Element):
                     * runtime.number(value._exponent)
                     / runtime.number(value._parent._order)
                 )
-                real = runtime.math.round(
-                    runtime.math.cos(angle) * 1.0e12
-                ) / 1.0e12
-                imag = runtime.math.round(
-                    runtime.math.sin(angle) * 1.0e12
-                ) / 1.0e12
+                real = runtime.math.round(runtime.math.cos(angle) * 1.0e12) / 1.0e12
+                imag = runtime.math.round(runtime.math.sin(angle) * 1.0e12) / 1.0e12
                 key.extend([real, imag])
         return key
 
     def __repr__(self) -> str:
         text = (
-            'Dirichlet character modulo ' + str(self.modulus())
-            + ' of conductor ' + str(self.conductor())
+            "Dirichlet character modulo "
+            + str(self.modulus())
+            + " of conductor "
+            + str(self.conductor())
         )
         mappings = []
         for generator in self._parent._unit_generators:
-            mappings.append(
-                str(generator) + ' |--> ' + str(self(generator)))
+            mappings.append(str(generator) + " |--> " + str(self(generator)))
         if len(mappings):
-            text += ' mapping ' + ', '.join(mappings)
+            text += " mapping " + ", ".join(mappings)
         return text
 
     __str__ = __repr__
@@ -801,15 +756,14 @@ class DirichletLFunction:
     def _value(self, s: Any, derivative: Any) -> Any:
         derivative = runtime.normalize_integer(derivative)
         if (
-            runtime.jstype(derivative) != 'number'
+            runtime.jstype(derivative) != "number"
             or not runtime.number.isSafeInteger(derivative)
             or derivative < 0
         ):
-            raise ValueError(
-                'derivative order must be nonnegative')
-        complex_field = runtime.reflect.get(
-            runtime.global_object, 'ComplexField')(
-                self._precision)
+            raise ValueError("derivative order must be nonnegative")
+        complex_field = runtime.reflect.get(runtime.global_object, "ComplexField")(
+            self._precision
+        )
         argument = complex_field(s)
         return complex_field._fromNative(
             runtime.flint_backend().dirichletLValue(
@@ -839,10 +793,7 @@ class DirichletLFunction:
         return self._character.root_number(self._precision)
 
     def __repr__(self) -> str:
-        return (
-            'FLINT L-function associated to ' +
-            str(self._character)
-        )
+        return "FLINT L-function associated to " + str(self._character)
 
     __str__ = __repr__
     toString = __repr__
@@ -866,10 +817,8 @@ def _sort_dirichlet_characters(
     for character in characters:
         key = character._sort_key()
         position = 0
-        while (
-            position < len(result)
-            and not _float_key_less(
-                key, result[position]._sort_key())
+        while position < len(result) and not _float_key_less(
+            key, result[position]._sort_key()
         ):
             position += 1
         result.insert(position, character)
@@ -890,71 +839,68 @@ class DirichletGroup_class(sage.Parent):
     ) -> None:
         modulus = runtime.integer_bigint(modulus)
         if modulus <= 0:
-            raise ValueError('Dirichlet modulus must be positive')
+            raise ValueError("Dirichlet modulus must be positive")
         self._native = runtime.flint_backend().dirichletGroup(modulus)
         data = runtime.flint_backend().dirichletGroupData(self._native)
-        self._kind = 'DirichletGroup'
+        self._kind = "DirichletGroup"
         self._construction = {
-            'kind': 'DirichletGroup',
-            'modulus': runtime.normalize_integer(modulus),
+            "kind": "DirichletGroup",
+            "modulus": runtime.normalize_integer(modulus),
         }
         self._modulus = modulus
-        self._size = runtime.integer_bigint(
-            _native_field(data, 'size'))
-        self._native_exponent = runtime.integer_bigint(
-            _native_field(data, 'exponent'))
+        self._size = runtime.integer_bigint(_native_field(data, "size"))
+        self._native_exponent = runtime.integer_bigint(_native_field(data, "exponent"))
         self._orders = [
-            runtime.normalize_integer(value)
-            for value in _native_field(data, 'orders')
+            runtime.normalize_integer(value) for value in _native_field(data, "orders")
         ]
         self._unit_generators = [
             runtime.normalize_integer(value)
-            for value in _native_field(data, 'generators')
+            for value in _native_field(data, "generators")
         ]
         if value_order is None:
             value_order = self._native_exponent
         self._value_order = runtime.integer_bigint(value_order)
-        if (
-            self._value_order % self._native_exponent
-            != runtime.bigint(0)
-        ):
+        if self._value_order % self._native_exponent != runtime.bigint(0):
             raise ValueError(
-                'the value-field root order must be divisible '
-                'by the Dirichlet group exponent')
+                "the value-field root order must be divisible "
+                "by the Dirichlet group exponent"
+            )
         if value_field is None:
             value_field = CyclotomicField(self._value_order)
         if value_generator is None:
             value_generator = value_field.gen()
-        if (
-            not hasattr(value_field, 'zero')
-            or not hasattr(value_field, 'one')
-        ):
-            raise TypeError(
-                'a Dirichlet value field must provide zero and one')
+        if not hasattr(value_field, "zero") or not hasattr(value_field, "one"):
+            raise TypeError("a Dirichlet value field must provide zero and one")
         self._value_field = value_field
         self._value_generator = value_generator
         if describe_generator:
             self._name = (
-                'Group of Dirichlet characters modulo ' + str(modulus)
-                + ' with values in the group of order '
-                + str(self._value_order) + ' generated by '
-                + str(value_generator) + ' in ' + str(value_field)
+                "Group of Dirichlet characters modulo "
+                + str(modulus)
+                + " with values in the group of order "
+                + str(self._value_order)
+                + " generated by "
+                + str(value_generator)
+                + " in "
+                + str(value_field)
             )
         else:
             self._name = (
-                'Group of Dirichlet characters modulo ' + str(modulus)
-                + ' with values in ' + str(value_field)
+                "Group of Dirichlet characters modulo "
+                + str(modulus)
+                + " with values in "
+                + str(value_field)
             )
 
     def _zero(self) -> Any:
         return self._value_field.zero()
 
     def _root(self, exponent: Any) -> Any:
-        return self._value_generator ** exponent
+        return self._value_generator**exponent
 
     def _from_logs(self, logs: list[Any]) -> DirichletCharacter:
         if len(logs) != len(self._orders):
-            raise ValueError('wrong number of character components')
+            raise ValueError("wrong number of character components")
         index = runtime.bigint(0)
         multiplier = runtime.bigint(1)
         position = 0
@@ -962,8 +908,7 @@ class DirichletGroup_class(sage.Parent):
             order = runtime.integer_bigint(self._orders[position])
             value = runtime.integer_bigint(logs[position])
             if value < 0 or value >= order:
-                raise ValueError(
-                    'Dirichlet character component out of range')
+                raise ValueError("Dirichlet character component out of range")
             index += multiplier * value
             multiplier *= order
             position += 1
@@ -973,12 +918,12 @@ class DirichletGroup_class(sage.Parent):
         if isinstance(value, DirichletCharacter):
             if value._parent is self:
                 return value
-            raise TypeError('incompatible Dirichlet groups')
+            raise TypeError("incompatible Dirichlet groups")
         if runtime.integer_bigint(value) == 1:
             return DirichletCharacter(self, 0)
         raise NotImplementedError(
-            'constructing a character from a value vector '
-            'is not yet implemented')
+            "constructing a character from a value vector is not yet implemented"
+        )
 
     def __len__(self) -> int:
         return int(self._size)
@@ -1006,10 +951,10 @@ class DirichletGroup_class(sage.Parent):
     def modulus(self) -> Any:
         return runtime.normalize_integer(self._modulus)
 
-    def unit_gens(self) -> 'tuple[Any, ...]':
+    def unit_gens(self) -> "tuple[Any, ...]":
         return runtime.math_tuple(list(self._unit_generators))
 
-    def gens(self) -> 'tuple[Any, ...]':
+    def gens(self) -> "tuple[Any, ...]":
         result = []
         multiplier = runtime.bigint(1)
         for order in self._orders:
@@ -1021,16 +966,17 @@ class DirichletGroup_class(sage.Parent):
         generators = self.gens()
         index = int(index)
         if index < 0 or index >= len(generators):
-            raise IndexError('Dirichlet generator index out of range')
+            raise IndexError("Dirichlet generator index out of range")
         return generators[index]
 
     def _first_ngens(
-        self, count: int,
+        self,
+        count: int,
     ) -> list[DirichletCharacter]:
         count = int(count)
         generators = list(self.gens())
         if count > len(generators):
-            raise ValueError('too many Dirichlet generators requested')
+            raise ValueError("too many Dirichlet generators requested")
         return generators[:count]
 
     def zeta(self) -> Any:
@@ -1058,9 +1004,8 @@ class DirichletGroup_class(sage.Parent):
     def decomposition(self) -> list[DirichletGroup_class]:
         result = []
         for prime, exponent in sage.factor(self.modulus()):
-            prime_power = (
-                runtime.integer_bigint(prime)
-                ** runtime.integer_bigint(exponent)
+            prime_power = runtime.integer_bigint(prime) ** runtime.integer_bigint(
+                exponent
             )
             result.append(
                 DirichletGroup_class(
@@ -1102,17 +1047,15 @@ def DirichletGroup(
     root of unity whose order is divisible by the exponent of the character
     group.
     """
-    modulus = runtime.normalize_integer(
-        runtime.integer_bigint(modulus))
+    modulus = runtime.normalize_integer(runtime.integer_bigint(modulus))
     if base_ring is not None or zeta is not None:
         describe_generator = zeta is not None
         if base_ring is None:
             base_ring = runtime.coercion_model.parentOf(zeta)
         if zeta is None:
             zeta = base_ring.gen()
-        if not hasattr(zeta, 'multiplicative_order'):
-            raise TypeError(
-                'the custom Dirichlet generator must have finite order')
+        if not hasattr(zeta, "multiplicative_order"):
+            raise TypeError("the custom Dirichlet generator must have finite order")
         value_order = zeta.multiplicative_order()
         return DirichletGroup_class(
             modulus,
@@ -1139,67 +1082,65 @@ runtime.set_class_repr(
 )
 
 runtime.register_doc(
-    'DirichletGroup',
+    "DirichletGroup",
     DirichletGroup,
     {
-        'kind': 'function',
-        'module': 'sage.modular.dirichlet',
-        'tags': [
-            'number theory',
-            'Dirichlet characters',
-            'finite abelian groups',
-            'modular forms',
+        "kind": "function",
+        "module": "sage.modular.dirichlet",
+        "tags": [
+            "number theory",
+            "Dirichlet characters",
+            "finite abelian groups",
+            "modular forms",
         ],
-        'backends': ['FLINT', 'Sage.js native helpers'],
-        'sage_compatibility': {
-            'status': 'partial',
-            'notes': (
-                'Standard groups, generators, evaluation, parity, conductors, '
-                'Galois orbits, decomposition, and exact custom value fields '
-                'with a supplied root of unity are supported.'
+        "backends": ["FLINT", "Sage.js native helpers"],
+        "sage_compatibility": {
+            "status": "partial",
+            "notes": (
+                "Standard groups, generators, evaluation, parity, conductors, "
+                "Galois orbits, decomposition, and exact custom value fields "
+                "with a supplied root of unity are supported."
             ),
         },
-        'provenance': [
+        "provenance": [
             {
-                'kind': 'sage-derived',
-                'source': 'SageMath Dirichlet character API',
-                'url': (
-                    'https://doc.sagemath.org/html/en/reference/'
-                    'modfrm/sage/modular/dirichlet.html'
+                "kind": "sage-derived",
+                "source": "SageMath Dirichlet character API",
+                "url": (
+                    "https://doc.sagemath.org/html/en/reference/"
+                    "modfrm/sage/modular/dirichlet.html"
                 ),
-                'license': 'GPL-2.0-or-later',
+                "license": "GPL-2.0-or-later",
             },
             {
-                'kind': 'library-backed',
-                'source': 'FLINT Dirichlet characters',
-                'url': 'https://flintlib.org/doc/dirichlet.html',
+                "kind": "library-backed",
+                "source": "FLINT Dirichlet characters",
+                "url": "https://flintlib.org/doc/dirichlet.html",
             },
             {
-                'kind': 'sagejs-original',
-                'source': (
-                    'Sage.js parent/element and exact cyclotomic integration'
-                ),
+                "kind": "sagejs-original",
+                "source": ("Sage.js parent/element and exact cyclotomic integration"),
             },
         ],
-        'references': [
+        "references": [
             {
-                'id': 'flint-dirichlet',
-                'type': 'software',
-                'title': 'FLINT Dirichlet characters',
-                'authors': ['The FLINT contributors'],
-                'url': 'https://flintlib.org/doc/dirichlet.html',
+                "id": "flint-dirichlet",
+                "type": "software",
+                "title": "FLINT Dirichlet characters",
+                "authors": ["The FLINT contributors"],
+                "url": "https://flintlib.org/doc/dirichlet.html",
             },
         ],
-        'implementation': {
-            'algorithm': (
-                'FLINT unit-group decomposition and character evaluation '
-                'with Sage.js exact cyclotomic values'
+        "implementation": {
+            "algorithm": (
+                "FLINT unit-group decomposition and character evaluation "
+                "with Sage.js exact cyclotomic values"
             ),
         },
-        'limitations': [
+        "limitations": [
             (
-                'Analytic sums currently return values in QQbar rather than '
-                'coercing them back into a custom value field.'
+                "Analytic sums currently return values in QQbar rather than "
+                "coercing them back into a custom value field."
             ),
         ],
     },

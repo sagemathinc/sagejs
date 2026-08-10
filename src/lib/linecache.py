@@ -1,6 +1,5 @@
 """Source-line cache used by dynamically generated Python code."""
 
-
 cache = {}
 
 
@@ -13,7 +12,7 @@ def getline(filename, lineno, module_globals=None):
     lines = getlines(filename)
     if 1 <= lineno <= len(lines):
         return lines[lineno - 1]
-    return ''
+    return ""
 
 
 def getlines(filename, module_globals=None):
@@ -22,7 +21,7 @@ def getlines(filename, module_globals=None):
     if entry is not None:
         return entry[2]
     try:
-        with open(filename, encoding='utf-8') as source:
+        with open(filename, encoding="utf-8") as source:
             lines = source.readlines()
     except (OSError, IOError):
         return []

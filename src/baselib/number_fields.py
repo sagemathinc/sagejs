@@ -18,73 +18,64 @@ def _untyped(value: Any) -> Any:
 def _nf_global(name: str) -> Any:
     value = runtime.reflect.get(runtime.global_object, name)
     if value is runtime.undefined:
-        raise RuntimeError(name + ' is not available in this runtime')
+        raise RuntimeError(name + " is not available in this runtime")
     return value
 
 
 def _algebraic_from_tree(field: AlgebraicFieldParent, tree: Any) -> Any:
     if runtime.is_exact_integer(tree):
         return field(tree)
-    if runtime.jstype(tree) == 'number':
+    if runtime.jstype(tree) == "number":
         if runtime.number.isSafeInteger(tree):
             return field(tree)
-        raise TypeError(
-            'inexact numbers do not canonically define algebraic numbers')
-    if runtime.jstype(tree) == 'string':
-        if tree == 'ImaginaryUnit':
-            return field._from_native(
-                runtime.flint_backend().qqbarI())
-        raise TypeError(
-            'symbolic variables are not algebraic numbers')
+        raise TypeError("inexact numbers do not canonically define algebraic numbers")
+    if runtime.jstype(tree) == "string":
+        if tree == "ImaginaryUnit":
+            return field._from_native(runtime.flint_backend().qqbarI())
+        raise TypeError("symbolic variables are not algebraic numbers")
     if not runtime.array.isArray(tree) or len(tree) == 0:
-        raise TypeError('unsupported symbolic algebraic expression')
+        raise TypeError("unsupported symbolic algebraic expression")
 
     head = tree[0]
-    if head == 'Rational' and len(tree) == 3:
+    if head == "Rational" and len(tree) == 3:
         return field(runtime.rational_class(tree[1], tree[2]))
-    if head == 'Negate' and len(tree) == 2:
+    if head == "Negate" and len(tree) == 2:
         return -_algebraic_from_tree(field, tree[1])
-    if head == 'Add' and len(tree) >= 2:
+    if head == "Add" and len(tree) >= 2:
         result = field(0)
         for argument in tree[1:]:
             result = result + _algebraic_from_tree(field, argument)
         return result
-    if head == 'Subtract' and len(tree) == 3:
-        return (
-            _algebraic_from_tree(field, tree[1])
-            - _algebraic_from_tree(field, tree[2])
+    if head == "Subtract" and len(tree) == 3:
+        return _algebraic_from_tree(field, tree[1]) - _algebraic_from_tree(
+            field, tree[2]
         )
-    if head == 'Multiply' and len(tree) >= 2:
+    if head == "Multiply" and len(tree) >= 2:
         result = field(1)
         for argument in tree[1:]:
             result = result * _algebraic_from_tree(field, argument)
         return result
-    if head == 'Divide' and len(tree) == 3:
-        return (
-            _algebraic_from_tree(field, tree[1])
-            / _algebraic_from_tree(field, tree[2])
+    if head == "Divide" and len(tree) == 3:
+        return _algebraic_from_tree(field, tree[1]) / _algebraic_from_tree(
+            field, tree[2]
         )
-    if head == 'Sqrt' and len(tree) == 2:
+    if head == "Sqrt" and len(tree) == 2:
         return _algebraic_from_tree(field, tree[1]).sqrt()
-    if head == 'Power' and len(tree) == 3:
+    if head == "Power" and len(tree) == 3:
         exponent = tree[2]
         if (
             runtime.array.isArray(exponent)
             and len(exponent) == 3
-            and exponent[0] == 'Rational'
+            and exponent[0] == "Rational"
         ):
-            return (
-                _algebraic_from_tree(field, tree[1])
-                ** runtime.rational_class(
-                    exponent[1], exponent[2])
+            return _algebraic_from_tree(field, tree[1]) ** runtime.rational_class(
+                exponent[1], exponent[2]
             )
         if runtime.is_exact_integer(exponent):
-            return (
-                _algebraic_from_tree(field, tree[1])
-                ** runtime.normalize_integer(exponent)
+            return _algebraic_from_tree(field, tree[1]) ** runtime.normalize_integer(
+                exponent
             )
-    raise TypeError(
-        'unsupported symbolic algebraic expression: ' + str(tree))
+    raise TypeError("unsupported symbolic algebraic expression: " + str(tree))
 
 
 @runtime.lightweight_math_class
@@ -103,62 +94,59 @@ class AlgebraicNumberElement(sage.Element):
         runtime.object.freeze(self)
 
     def _new(self, native_value: Any) -> AlgebraicNumberElement:
-        if (
-            self._parent._kind == 'AA'
-            and not runtime.flint_backend().qqbarIsReal(native_value)
+        if self._parent._kind == "AA" and not runtime.flint_backend().qqbarIsReal(
+            native_value
         ):
             return QQbar._from_native(native_value)
         return self._parent._from_native(native_value)
 
     def _add_(
-        self, other: AlgebraicNumberElement,
+        self,
+        other: AlgebraicNumberElement,
     ) -> AlgebraicNumberElement:
-        return self._new(runtime.flint_backend().qqbarAdd(
-            self._native, other._native))
+        return self._new(runtime.flint_backend().qqbarAdd(self._native, other._native))
 
     def _sub_(
-        self, other: AlgebraicNumberElement,
+        self,
+        other: AlgebraicNumberElement,
     ) -> AlgebraicNumberElement:
-        return self._new(runtime.flint_backend().qqbarSub(
-            self._native, other._native))
+        return self._new(runtime.flint_backend().qqbarSub(self._native, other._native))
 
     def _mul_(
-        self, other: AlgebraicNumberElement,
+        self,
+        other: AlgebraicNumberElement,
     ) -> AlgebraicNumberElement:
-        return self._new(runtime.flint_backend().qqbarMul(
-            self._native, other._native))
+        return self._new(runtime.flint_backend().qqbarMul(self._native, other._native))
 
     def _truediv_(
-        self, other: AlgebraicNumberElement,
+        self,
+        other: AlgebraicNumberElement,
     ) -> AlgebraicNumberElement:
-        return self._new(runtime.flint_backend().qqbarDiv(
-            self._native, other._native))
+        return self._new(runtime.flint_backend().qqbarDiv(self._native, other._native))
 
     def _eq_(self, other: AlgebraicNumberElement) -> bool:
-        return runtime.flint_backend().qqbarEqual(
-            self._native, other._native)
+        return runtime.flint_backend().qqbarEqual(self._native, other._native)
 
     def __add__(self, other: object) -> Any:
-        return runtime.coercion_model.binOp('add', self, other)
+        return runtime.coercion_model.binOp("add", self, other)
 
     def __sub__(self, other: object) -> Any:
-        return runtime.coercion_model.binOp('sub', self, other)
+        return runtime.coercion_model.binOp("sub", self, other)
 
     def __mul__(self, other: object) -> Any:
-        return runtime.coercion_model.binOp('mul', self, other)
+        return runtime.coercion_model.binOp("mul", self, other)
 
     def __rmul__(self, other: object) -> Any:
-        return runtime.coercion_model.binOp('mul', other, self)
+        return runtime.coercion_model.binOp("mul", other, self)
 
     def __truediv__(self, other: object) -> Any:
-        return runtime.coercion_model.binOp('truediv', self, other)
+        return runtime.coercion_model.binOp("truediv", self, other)
 
     def __eq__(self, other: object) -> bool:
         return runtime.coercion_model.equals(self, other)
 
     def __neg__(self) -> AlgebraicNumberElement:
-        return self._new(
-            runtime.flint_backend().qqbarNeg(self._native))
+        return self._new(runtime.flint_backend().qqbarNeg(self._native))
 
     def __pow__(self, exponent: Any) -> AlgebraicNumberElement:
         if isinstance(exponent, sage.Rational):
@@ -169,22 +157,22 @@ class AlgebraicNumberElement(sage.Element):
                     exponent._denominator,
                 )
             )
-        return self._new(runtime.flint_backend().qqbarPow(
-            self._native, runtime.integer_bigint(exponent)))
+        return self._new(
+            runtime.flint_backend().qqbarPow(
+                self._native, runtime.integer_bigint(exponent)
+            )
+        )
 
     def _compare(self, other: Any) -> int:
         operands = runtime.coercion_model.coercePair(self, other)
-        if getattr(operands.parent, '_kind', None) == 'QQBAR':
-            if (
-                not runtime.flint_backend().qqbarIsReal(
-                    operands.left._native)
-                or not runtime.flint_backend().qqbarIsReal(
-                    operands.right._native)
-            ):
-                raise TypeError(
-                    'complex algebraic numbers are not ordered')
+        if getattr(operands.parent, "_kind", None) == "QQBAR":
+            if not runtime.flint_backend().qqbarIsReal(
+                operands.left._native
+            ) or not runtime.flint_backend().qqbarIsReal(operands.right._native):
+                raise TypeError("complex algebraic numbers are not ordered")
         return runtime.flint_backend().qqbarCompareReal(
-            operands.left._native, operands.right._native)
+            operands.left._native, operands.right._native
+        )
 
     def __lt__(self, other: Any) -> bool:
         return self._compare(other) < 0
@@ -199,8 +187,7 @@ class AlgebraicNumberElement(sage.Element):
         return self._compare(other) >= 0
 
     def sqrt(self) -> AlgebraicNumberElement:
-        return self._new(
-            runtime.flint_backend().qqbarSqrt(self._native))
+        return self._new(runtime.flint_backend().qqbarSqrt(self._native))
 
     def is_real(self) -> bool:
         return runtime.flint_backend().qqbarIsReal(self._native)
@@ -212,22 +199,18 @@ class AlgebraicNumberElement(sage.Element):
         return self == 1
 
     def real(self) -> AlgebraicNumberElement:
-        return AA._from_native(
-            runtime.flint_backend().qqbarReal(self._native))
+        return AA._from_native(runtime.flint_backend().qqbarReal(self._native))
 
     def imag(self) -> AlgebraicNumberElement:
-        return AA._from_native(
-            runtime.flint_backend().qqbarImag(self._native))
+        return AA._from_native(runtime.flint_backend().qqbarImag(self._native))
 
     def conjugate(self) -> AlgebraicNumberElement:
-        return self._new(
-            runtime.flint_backend().qqbarConjugate(self._native))
+        return self._new(runtime.flint_backend().qqbarConjugate(self._native))
 
     conj = conjugate
 
     def abs(self) -> AlgebraicNumberElement:
-        return AA._from_native(
-            runtime.flint_backend().qqbarAbs(self._native))
+        return AA._from_native(runtime.flint_backend().qqbarAbs(self._native))
 
     def __abs__(self) -> AlgebraicNumberElement:
         return self.abs()
@@ -235,12 +218,9 @@ class AlgebraicNumberElement(sage.Element):
     def degree(self) -> int:
         return runtime.flint_backend().qqbarDegree(self._native)
 
-    def minpoly(self, variable: str = 'x') -> Any:
+    def minpoly(self, variable: str = "x") -> Any:
         ring = sage.PolynomialRing(sage.ZZ, variable)
-        coefficients = (
-            runtime.flint_backend().qqbarMinpolyCoefficients(
-                self._native)
-        )
+        coefficients = runtime.flint_backend().qqbarMinpolyCoefficients(self._native)
         generator = ring.gen()
         result = ring(0)
         for coefficient in reversed(coefficients):
@@ -257,33 +237,28 @@ class AlgebraicNumberElement(sage.Element):
         if digits is not runtime.undefined:
             prec = max(
                 2,
-                int(runtime.math.ceil(
-                    runtime.number(digits) * 3.321928094887363
-                )) + 1,
+                int(runtime.math.ceil(runtime.number(digits) * 3.321928094887363)) + 1,
             )
-        complex_field = runtime.reflect.get(
-            runtime.global_object, 'ComplexField')
+        complex_field = runtime.reflect.get(runtime.global_object, "ComplexField")
         approximation = complex_field(prec)._fromNative(
-            runtime.flint_backend().qqbarApprox(
-                self._native, prec))
+            runtime.flint_backend().qqbarApprox(self._native, prec)
+        )
         return approximation.real() if self.is_real() else approximation
 
     numerical_approx = n
 
     def __float__(self) -> float:
         if not self.is_real():
-            raise TypeError(
-                'cannot convert a complex algebraic number to float')
+            raise TypeError("cannot convert a complex algebraic number to float")
         return float(self.n())
 
     def __repr__(self) -> str:
-        text = runtime.flint_backend().qqbarToString(
-            self._native, 16)
+        text = runtime.flint_backend().qqbarToString(self._native, 16)
         if runtime.flint_backend().qqbarIsRational(self._native):
             return text
-        if '.' not in text:
+        if "." not in text:
             return text
-        return text + '?'
+        return text + "?"
 
     __str__ = __repr__
     toString = __repr__
@@ -296,20 +271,16 @@ class AlgebraicFieldParent(sage.Parent):
     def __init__(self, real_only: bool) -> None:
         self._real_only = real_only
         if real_only:
-            self._name = 'Algebraic Real Field'
-            self._kind = 'AA'
+            self._name = "Algebraic Real Field"
+            self._kind = "AA"
         else:
-            self._name = 'Algebraic Field'
-            self._kind = 'QQBAR'
+            self._name = "Algebraic Field"
+            self._kind = "QQBAR"
         self._construction = runtime.undefined
 
     def _from_native(self, native_value: Any) -> AlgebraicNumberElement:
-        if (
-            self._real_only
-            and not runtime.flint_backend().qqbarIsReal(native_value)
-        ):
-            raise ValueError(
-                'cannot coerce a non-real algebraic number to AA')
+        if self._real_only and not runtime.flint_backend().qqbarIsReal(native_value):
+            raise ValueError("cannot coerce a non-real algebraic number to AA")
         return AlgebraicNumberElement(self, native_value)
 
     def __call__(self, value: Any = 0) -> AlgebraicNumberElement:
@@ -320,17 +291,20 @@ class AlgebraicFieldParent(sage.Parent):
         if isinstance(value, sage.Rational):
             return self._from_native(
                 runtime.flint_backend().qqbarFromRational(
-                    value._numerator, value._denominator))
+                    value._numerator, value._denominator
+                )
+            )
         if runtime.is_exact_integer(value):
             return self._from_native(
                 runtime.flint_backend().qqbarFromRational(
-                    runtime.integer_bigint(value), runtime.bigint(1)))
-        tree = runtime.reflect.get(value, '_tree')
+                    runtime.integer_bigint(value), runtime.bigint(1)
+                )
+            )
+        tree = runtime.reflect.get(value, "_tree")
         if tree is not runtime.undefined:
             result = _algebraic_from_tree(QQbar, tree)
             return self._from_native(result._native)
-        raise TypeError(
-            'unable to convert value to ' + str(self))
+        raise TypeError("unable to convert value to " + str(self))
 
     def __contains__(self, value: object) -> bool:
         try:
@@ -393,14 +367,13 @@ def _poly_mul_coefficients(
     for left_index in range(len(left)):
         for right_index in range(len(right)):
             result[left_index + right_index] = (
-                result[left_index + right_index]
-                + left[left_index] * right[right_index]
+                result[left_index + right_index] + left[left_index] * right[right_index]
             )
     return _trim_coefficients(result)
 
 
 def _symbolic_variable(tree: Any) -> Any:
-    if runtime.jstype(tree) == 'string':
+    if runtime.jstype(tree) == "string":
         return tree
     if runtime.array.isArray(tree):
         for item in tree[1:]:
@@ -416,25 +389,21 @@ def _symbolic_polynomial_coefficients(
 ) -> Any:
     if runtime.is_exact_integer(tree):
         return [sage.QQ(tree)]
-    if (
-        runtime.array.isArray(tree)
-        and len(tree) == 3
-        and tree[0] == 'Rational'
-    ):
+    if runtime.array.isArray(tree) and len(tree) == 3 and tree[0] == "Rational":
         return [_untyped(sage.QQ)(tree[1], tree[2])]
-    if runtime.jstype(tree) == 'string':
+    if runtime.jstype(tree) == "string":
         if tree == variable:
             return [sage.QQ(0), sage.QQ(1)]
         return runtime.undefined
     if not runtime.array.isArray(tree) or not len(tree):
         return runtime.undefined
     head = tree[0]
-    if head == 'Negate' and len(tree) == 2:
+    if head == "Negate" and len(tree) == 2:
         value = _symbolic_polynomial_coefficients(tree[1], variable)
         if value is runtime.undefined:
             return runtime.undefined
         return [sage.QQ(0) - coefficient for coefficient in value]
-    if head in ['Add', 'Subtract'] and len(tree) >= 3:
+    if head in ["Add", "Subtract"] and len(tree) >= 3:
         value = _symbolic_polynomial_coefficients(tree[1], variable)
         if value is runtime.undefined:
             return runtime.undefined
@@ -442,12 +411,12 @@ def _symbolic_polynomial_coefficients(
             right = _symbolic_polynomial_coefficients(item, variable)
             if right is runtime.undefined:
                 return runtime.undefined
-            if head == 'Add':
+            if head == "Add":
                 value = _poly_add_coefficients(value, right)
             else:
                 value = _poly_sub_coefficients(value, right)
         return value
-    if head == 'Multiply' and len(tree) >= 3:
+    if head == "Multiply" and len(tree) >= 3:
         value = [sage.QQ(1)]
         for item in tree[1:]:
             right = _symbolic_polynomial_coefficients(item, variable)
@@ -455,7 +424,7 @@ def _symbolic_polynomial_coefficients(
                 return runtime.undefined
             value = _poly_mul_coefficients(value, right)
         return value
-    if head == 'Power' and len(tree) == 3:
+    if head == "Power" and len(tree) == 3:
         base = _symbolic_polynomial_coefficients(tree[1], variable)
         if (
             base is runtime.undefined
@@ -472,7 +441,7 @@ def _symbolic_polynomial_coefficients(
             if exponent:
                 base = _poly_mul_coefficients(base, base)
         return answer
-    if head == 'Divide' and len(tree) == 3:
+    if head == "Divide" and len(tree) == 3:
         numerator = _symbolic_polynomial_coefficients(tree[1], variable)
         denominator = _symbolic_polynomial_coefficients(tree[2], variable)
         if (
@@ -481,30 +450,25 @@ def _symbolic_polynomial_coefficients(
             or len(denominator) != 1
         ):
             return runtime.undefined
-        return [
-            coefficient / denominator[0] for coefficient in numerator]
+        return [coefficient / denominator[0] for coefficient in numerator]
     return runtime.undefined
 
 
 def _number_field_polynomial(value: Any) -> Any:
-    if hasattr(value, 'univariate_polynomial'):
+    if hasattr(value, "univariate_polynomial"):
         return value.univariate_polynomial()
-    if hasattr(value, 'coefficients'):
+    if hasattr(value, "coefficients"):
         return value
-    tree = runtime.reflect.get(value, '_tree')
+    tree = runtime.reflect.get(value, "_tree")
     if tree is runtime.undefined:
-        raise TypeError(
-            'a number field needs a univariate exact polynomial')
+        raise TypeError("a number field needs a univariate exact polynomial")
     variable = _symbolic_variable(tree)
     if variable is runtime.undefined:
-        raise TypeError(
-            'a number field needs a nonconstant defining polynomial')
+        raise TypeError("a number field needs a nonconstant defining polynomial")
     coefficients = _symbolic_polynomial_coefficients(tree, variable)
     if coefficients is runtime.undefined:
-        raise TypeError(
-            'symbolic defining expression is not a rational polynomial')
-    polynomial_ring = runtime.reflect.get(
-        runtime.global_object, 'PolynomialRing')
+        raise TypeError("symbolic defining expression is not a rational polynomial")
+    polynomial_ring = runtime.reflect.get(runtime.global_object, "PolynomialRing")
     ring = polynomial_ring(sage.QQ, variable)
     generator = ring.gen()
     polynomial = ring(0)
@@ -541,9 +505,8 @@ def _integer_is_square(value: Any) -> bool:
 
 def _rational_is_square(value: Any) -> bool:
     rational = sage.QQ(value)
-    return (
-        _integer_is_square(rational._numerator)
-        and _integer_is_square(rational._denominator)
+    return _integer_is_square(rational._numerator) and _integer_is_square(
+        rational._denominator
     )
 
 
@@ -576,8 +539,7 @@ def _determinant(rows: list[list[Any]]) -> Any:
 def _polynomial_discriminant(coefficients: list[Any]) -> Any:
     degree = len(coefficients) - 1
     derivative = [
-        sage.QQ(index) * coefficients[index]
-        for index in range(1, len(coefficients))
+        sage.QQ(index) * coefficients[index] for index in range(1, len(coefficients))
     ]
     derivative_degree = len(derivative) - 1
     size = degree + derivative_degree
@@ -588,8 +550,7 @@ def _polynomial_discriminant(coefficients: list[Any]) -> Any:
         rows.append(
             [sage.QQ(0) for _index in range(shift)]
             + polynomial_high
-            + [sage.QQ(0) for _index in range(
-                derivative_degree - shift - 1)]
+            + [sage.QQ(0) for _index in range(derivative_degree - shift - 1)]
         )
     for shift in range(degree):
         rows.append(
@@ -598,7 +559,7 @@ def _polynomial_discriminant(coefficients: list[Any]) -> Any:
             + [sage.QQ(0) for _index in range(degree - shift - 1)]
         )
     if len(rows) != size:
-        raise ArithmeticError('invalid Sylvester matrix')
+        raise ArithmeticError("invalid Sylvester matrix")
     resultant = _determinant(rows)
     if (degree * (degree - 1) // 2) % 2:
         resultant = -resultant
@@ -606,18 +567,19 @@ def _polynomial_discriminant(coefficients: list[Any]) -> Any:
 
 
 def _quartic_resolvent(
-    coefficients: list[Any], variable: str,
+    coefficients: list[Any],
+    variable: str,
 ) -> Any:
     constant, linear, quadratic, cubic, _leading = coefficients
     ring = _untyped(sage.PolynomialRing)(sage.QQ, variable)
-    return ring._from_coefficients([
-        4 * quadratic * constant
-        - linear * linear
-        - cubic * cubic * constant,
-        cubic * linear - 4 * constant,
-        -quadratic,
-        sage.QQ(1),
-    ])
+    return ring._from_coefficients(
+        [
+            4 * quadratic * constant - linear * linear - cubic * cubic * constant,
+            cubic * linear - 4 * constant,
+            -quadratic,
+            sage.QQ(1),
+        ]
+    )
 
 
 def _quartic_resolvent_shape(resolvent: Any) -> tuple[list[int], Any]:
@@ -630,14 +592,14 @@ def _quartic_resolvent_shape(resolvent: Any) -> tuple[list[int], Any]:
         for _count in range(exponent):
             degrees.append(degree)
         if degree == 1:
-            rational_root = (
-                -factor_coefficients[0] / factor_coefficients[1])
+            rational_root = -factor_coefficients[0] / factor_coefficients[1]
     degrees.sort()
     return degrees, rational_root
 
 
 def _galois_group_data(
-    coefficients: list[Any], variable: str,
+    coefficients: list[Any],
+    variable: str,
 ) -> tuple[int, str, str, list[str]]:
     """Identify the transitive Galois group in degrees at most four.
 
@@ -647,51 +609,41 @@ def _galois_group_data(
     """
     degree = len(coefficients) - 1
     if degree == 1:
-        return 1, 'S1', 'S1', ['(1)']
+        return 1, "S1", "S1", ["(1)"]
     if degree == 2:
-        return 1, 'S2', 'S2', ['(1,2)']
+        return 1, "S2", "S2", ["(1,2)"]
 
     discriminant = _polynomial_discriminant(coefficients)
     discriminant_is_square = _rational_is_square(discriminant)
     if degree == 3:
         if discriminant_is_square:
-            return 1, 'A3', 'A3', ['(1,2,3)']
-        return 2, 'S3', 'S3', ['(1,2,3)', '(1,2)']
+            return 1, "A3", "A3", ["(1,2,3)"]
+        return 2, "S3", "S3", ["(1,2,3)", "(1,2)"]
 
     if degree != 4:
         raise NotImplementedError(
-            'native Galois groups currently support degrees at most 4')
+            "native Galois groups currently support degrees at most 4"
+        )
     resolvent = _quartic_resolvent(coefficients, variable)
     factor_degrees, rational_root = _quartic_resolvent_shape(resolvent)
     if factor_degrees == [3]:
         if discriminant_is_square:
-            return 4, 'A4', 'A4', [
-                '(1,2,3)', '(1,2)(3,4)']
-        return 5, 'S4', 'S4', ['(1,2,3,4)', '(1,2)']
+            return 4, "A4", "A4", ["(1,2,3)", "(1,2)(3,4)"]
+        return 5, "S4", "S4", ["(1,2,3,4)", "(1,2)"]
     if discriminant_is_square:
-        return 2, '2[x]2', 'E(4) = 2[x]2', [
-            '(1,2)(3,4)', '(1,3)(2,4)']
+        return 2, "2[x]2", "E(4) = 2[x]2", ["(1,2)(3,4)", "(1,3)(2,4)"]
     if rational_root is runtime.undefined:
-        raise ArithmeticError(
-            'reducible quartic resolvent has no rational root')
+        raise ArithmeticError("reducible quartic resolvent has no rational root")
 
     constant, _linear, quadratic, cubic, _leading = coefficients
-    first_test = (
-        rational_root * rational_root - 4 * constant
-    ) * discriminant
-    second_test = (
-        cubic * cubic - 4 * (quadratic - rational_root)
-    ) * discriminant
-    if (
-        _rational_is_square(first_test)
-        and _rational_is_square(second_test)
-    ):
-        return 1, '4', 'C(4) = 4', ['(1,2,3,4)']
-    return 3, 'D(4)', 'D(4)', ['(1,2,3,4)', '(1,3)']
+    first_test = (rational_root * rational_root - 4 * constant) * discriminant
+    second_test = (cubic * cubic - 4 * (quadratic - rational_root)) * discriminant
+    if _rational_is_square(first_test) and _rational_is_square(second_test):
+        return 1, "4", "C(4) = 4", ["(1,2,3,4)"]
+    return 3, "D(4)", "D(4)", ["(1,2,3,4)", "(1,3)"]
 
 
 class NumberFieldGaloisGroup:
-
     def __init__(
         self,
         field: NumberFieldParent,
@@ -705,16 +657,22 @@ class NumberFieldGaloisGroup:
         self._display_label = display_label
         self._pari_label = pari_label
         permutation_group = runtime.reflect.get(
-            runtime.global_object, 'PermutationGroup')
+            runtime.global_object, "PermutationGroup"
+        )
         natural_group = permutation_group(generators)
         self._group = natural_group._regular_action()
 
     def __repr__(self) -> str:
         return (
-            'Galois group ' + str(self._field.degree())
-            + 'T' + str(self._transitive_number)
-            + ' (' + self._display_label + ') with order '
-            + str(self.order()) + ' of '
+            "Galois group "
+            + str(self._field.degree())
+            + "T"
+            + str(self._transitive_number)
+            + " ("
+            + self._display_label
+            + ") with order "
+            + str(self.order())
+            + " of "
             + str(self._field.defining_polynomial())
         )
 
@@ -734,10 +692,7 @@ class NumberFieldGaloisGroup:
         return self._transitive_number
 
     def transitive_label(self) -> str:
-        return (
-            str(self._field.degree())
-            + 'T' + str(self._transitive_number)
-        )
+        return str(self._field.degree()) + "T" + str(self._transitive_number)
 
     def pari_label(self) -> str:
         return self._pari_label
@@ -778,17 +733,18 @@ class NumberFieldClassGroupElement(sage.Element):
         runtime.object.freeze(self)
 
     def _mul_(
-        self, other: NumberFieldClassGroupElement,
+        self,
+        other: NumberFieldClassGroupElement,
     ) -> NumberFieldClassGroupElement:
         if (
             not isinstance(other, NumberFieldClassGroupElement)
             or other._parent is not self._parent
         ):
-            raise TypeError('ideal classes must have the same parent')
+            raise TypeError("ideal classes must have the same parent")
         return self._parent._wrap(self._element * other._element)
 
     def __mul__(self, other: Any) -> Any:
-        return runtime.coercion_model.binOp('mul', self, other)
+        return runtime.coercion_model.binOp("mul", self, other)
 
     def _eq_(self, other: NumberFieldClassGroupElement) -> bool:
         return (
@@ -806,7 +762,7 @@ class NumberFieldClassGroupElement(sage.Element):
     inverse = __invert__
 
     def __pow__(self, exponent: Any) -> NumberFieldClassGroupElement:
-        return self._parent._wrap(self._element ** exponent)
+        return self._parent._wrap(self._element**exponent)
 
     def is_one(self) -> bool:
         return self._element.is_one()
@@ -833,11 +789,12 @@ class NumberFieldClassGroupElement(sage.Element):
 
     def __repr__(self) -> str:
         if self.is_one():
-            return 'Trivial principal fractional ideal class'
+            return "Trivial principal fractional ideal class"
         generators = self._mapped_generators()
         return (
-            'Fractional ideal class ('
-            + ', '.join([str(value) for value in generators]) + ')'
+            "Fractional ideal class ("
+            + ", ".join([str(value) for value in generators])
+            + ")"
         )
 
     __str__ = __repr__
@@ -882,19 +839,19 @@ class NumberFieldClassGroup:
     def one(self) -> NumberFieldClassGroupElement:
         if self._group is None:
             raise NotImplementedError(
-                'the tutorial class group does not expose ideal classes')
+                "the tutorial class group does not expose ideal classes"
+            )
         return self._wrap(self._group.one())
 
-    def invariants(self) -> 'tuple[Any, ...]':
+    def invariants(self) -> "tuple[Any, ...]":
         if self._group is None:
             return runtime.math_tuple([])
         return self._group.invariants()
 
-    def gens(self) -> 'tuple[Any, ...]':
+    def gens(self) -> "tuple[Any, ...]":
         if self._group is None:
             return runtime.math_tuple([])
-        return runtime.math_tuple([
-            self._wrap(value) for value in self._group.gens()])
+        return runtime.math_tuple([self._wrap(value) for value in self._group.gens()])
 
     def ngens(self) -> int:
         return len(self.gens())
@@ -902,21 +859,25 @@ class NumberFieldClassGroup:
     def gen(self, index: int = 0) -> NumberFieldClassGroupElement:
         generators = self.gens()
         if index < 0 or index >= len(generators):
-            raise IndexError('class-group generator index out of range')
+            raise IndexError("class-group generator index out of range")
         return generators[index]
 
     def number_field(self) -> NumberFieldParent:
         return self._field
 
     def __repr__(self) -> str:
-        structure = ''
+        structure = ""
         invariants = self.invariants()
         if len(invariants):
-            structure = ' with structure ' + ' x '.join([
-                'C' + str(value) for value in invariants])
+            structure = " with structure " + " x ".join(
+                ["C" + str(value) for value in invariants]
+            )
         return (
-            'Class group of order ' + str(self.order()) + structure
-            + ' of ' + str(self._field)
+            "Class group of order "
+            + str(self.order())
+            + structure
+            + " of "
+            + str(self._field)
         )
 
     __str__ = __repr__
@@ -924,16 +885,15 @@ class NumberFieldClassGroup:
 
 
 class NumberFieldPolynomialQuotient:
-
     def __init__(self, field: NumberFieldParent) -> None:
         self._field = field
-        self._kind = 'NumberFieldPolynomialQuotient'
+        self._kind = "NumberFieldPolynomialQuotient"
 
     def __repr__(self) -> str:
         return (
-            'Univariate Quotient Polynomial Ring in '
+            "Univariate Quotient Polynomial Ring in "
             + self._field.variable_name()
-            + ' over Rational Field with modulus '
+            + " over Rational Field with modulus "
             + str(self._field.defining_polynomial())
         )
 
@@ -951,30 +911,35 @@ class NumberFieldElement(sage.Element):
         coefficients: list[Any],
     ) -> None:
         self._parent = parent
-        self._coefficients = runtime.math_tuple(
-            parent._reduce(coefficients))
+        self._coefficients = runtime.math_tuple(parent._reduce(coefficients))
         runtime.object.freeze(self)
 
     def _new(self, coefficients: list[Any]) -> NumberFieldElement:
         return NumberFieldElement(self._parent, coefficients)
 
     def _add_(self, other: NumberFieldElement) -> NumberFieldElement:
-        return self._new(_poly_add_coefficients(
-            list(self._coefficients),
-            list(other._coefficients),
-        ))
+        return self._new(
+            _poly_add_coefficients(
+                list(self._coefficients),
+                list(other._coefficients),
+            )
+        )
 
     def _sub_(self, other: NumberFieldElement) -> NumberFieldElement:
-        return self._new(_poly_sub_coefficients(
-            list(self._coefficients),
-            list(other._coefficients),
-        ))
+        return self._new(
+            _poly_sub_coefficients(
+                list(self._coefficients),
+                list(other._coefficients),
+            )
+        )
 
     def _mul_(self, other: NumberFieldElement) -> NumberFieldElement:
-        return self._new(_poly_mul_coefficients(
-            list(self._coefficients),
-            list(other._coefficients),
-        ))
+        return self._new(
+            _poly_mul_coefficients(
+                list(self._coefficients),
+                list(other._coefficients),
+            )
+        )
 
     def _truediv_(self, other: NumberFieldElement) -> NumberFieldElement:
         return self * other.inverse()
@@ -983,23 +948,22 @@ class NumberFieldElement(sage.Element):
         return self._coefficients == other._coefficients
 
     def __add__(self, other: object) -> Any:
-        return runtime.coercion_model.binOp('add', self, other)
+        return runtime.coercion_model.binOp("add", self, other)
 
     def __sub__(self, other: object) -> Any:
-        return runtime.coercion_model.binOp('sub', self, other)
+        return runtime.coercion_model.binOp("sub", self, other)
 
     def __mul__(self, other: object) -> Any:
-        return runtime.coercion_model.binOp('mul', self, other)
+        return runtime.coercion_model.binOp("mul", self, other)
 
     def __truediv__(self, other: object) -> Any:
-        return runtime.coercion_model.binOp('truediv', self, other)
+        return runtime.coercion_model.binOp("truediv", self, other)
 
     def __eq__(self, other: object) -> bool:
         return runtime.coercion_model.equals(self, other)
 
     def __neg__(self) -> NumberFieldElement:
-        return self._new([
-            sage.QQ(0) - value for value in self._coefficients])
+        return self._new([sage.QQ(0) - value for value in self._coefficients])
 
     def __pow__(self, exponent: Any) -> NumberFieldElement:
         power = runtime.integer_bigint(exponent)
@@ -1019,10 +983,7 @@ class NumberFieldElement(sage.Element):
         return len(self._coefficients) == 0
 
     def is_one(self) -> bool:
-        return (
-            len(self._coefficients) == 1
-            and self._coefficients[0] == 1
-        )
+        return len(self._coefficients) == 1 and self._coefficients[0] == 1
 
     def list(self) -> list[Any]:
         return _nf_coordinates(self, self._parent.degree())
@@ -1037,53 +998,45 @@ class NumberFieldElement(sage.Element):
 
     def inverse(self) -> NumberFieldElement:
         if self.is_zero():
-            raise ZeroDivisionError('division by zero')
+            raise ZeroDivisionError("division by zero")
         degree = self._parent.degree()
         columns = []
         for exponent in range(degree):
             monomial = [sage.QQ(0) for _ in range(exponent)]
             monomial.append(sage.QQ(1))
-            columns.append(self._parent._reduce(
-                _poly_mul_coefficients(
-                    list(self._coefficients), monomial)))
+            columns.append(
+                self._parent._reduce(
+                    _poly_mul_coefficients(list(self._coefficients), monomial)
+                )
+            )
         rows = []
         for row_index in range(degree):
             row = []
             for column_index in range(degree):
                 column = columns[column_index]
-                row.append(
-                    column[row_index]
-                    if row_index < len(column)
-                    else sage.QQ(0)
-                )
+                row.append(column[row_index] if row_index < len(column) else sage.QQ(0))
             row.append(sage.QQ(1 if row_index == 0 else 0))
             rows.append(row)
 
         pivot_column = 0
         while pivot_column < degree:
             pivot_row = pivot_column
-            while (
-                pivot_row < degree
-                and rows[pivot_row][pivot_column] == 0
-            ):
+            while pivot_row < degree and rows[pivot_row][pivot_column] == 0:
                 pivot_row += 1
             if pivot_row == degree:
-                raise ZeroDivisionError(
-                    'element is not invertible in this quotient')
+                raise ZeroDivisionError("element is not invertible in this quotient")
             if pivot_row != pivot_column:
                 temporary = rows[pivot_column]
                 rows[pivot_column] = rows[pivot_row]
                 rows[pivot_row] = temporary
             pivot = rows[pivot_column][pivot_column]
-            rows[pivot_column] = [
-                value / pivot for value in rows[pivot_column]]
+            rows[pivot_column] = [value / pivot for value in rows[pivot_column]]
             for row_index in range(degree):
                 if row_index != pivot_column:
                     factor = rows[row_index][pivot_column]
                     if factor != 0:
                         rows[row_index] = [
-                            rows[row_index][index]
-                            - factor * rows[pivot_column][index]
+                            rows[row_index][index] - factor * rows[pivot_column][index]
                             for index in range(degree + 1)
                         ]
             pivot_column += 1
@@ -1091,42 +1044,39 @@ class NumberFieldElement(sage.Element):
 
     def multiplicative_order(self) -> Any:
         if self.is_zero():
-            raise ArithmeticError(
-                'zero does not have a multiplicative order')
+            raise ArithmeticError("zero does not have a multiplicative order")
         value = self._parent.one()
         for order in range(1, 1025):
             value = value * self
             if value.is_one():
                 return order
         raise NotImplementedError(
-            'multiplicative order exceeds the current search bound')
+            "multiplicative order exceeds the current search bound"
+        )
 
     def __repr__(self) -> str:
         if self.is_zero():
-            return '0'
+            return "0"
         terms = []
         variable = self._parent.variable_name()
         for exponent in range(len(self._coefficients) - 1, -1, -1):
             coefficient = self._coefficients[exponent]
             if coefficient == 0:
                 continue
-            negative = (
-                runtime.integer_bigint(coefficient._numerator) < 0)
-            magnitude = (
-                sage.QQ(0) - coefficient if negative else coefficient)
+            negative = runtime.integer_bigint(coefficient._numerator) < 0
+            magnitude = sage.QQ(0) - coefficient if negative else coefficient
             if exponent == 0:
                 body = str(magnitude)
             else:
-                monomial = variable if exponent == 1 else (
-                    variable + '^' + str(exponent))
-                body = monomial if magnitude == 1 else (
-                    str(magnitude) + '*' + monomial)
+                monomial = (
+                    variable if exponent == 1 else (variable + "^" + str(exponent))
+                )
+                body = monomial if magnitude == 1 else (str(magnitude) + "*" + monomial)
             if not len(terms):
-                terms.append(('-' if negative else '') + body)
+                terms.append(("-" if negative else "") + body)
             else:
-                terms.append(
-                    (' - ' if negative else ' + ') + body)
-        return ''.join(terms) if len(terms) else '0'
+                terms.append((" - " if negative else " + ") + body)
+        return "".join(terms) if len(terms) else "0"
 
     __str__ = __repr__
     toString = __repr__
@@ -1141,8 +1091,7 @@ def _nf_lcm(left: Any, right: Any) -> Any:
         right = -right
     if left == 0 or right == 0:
         return runtime.bigint(0)
-    quotient = runtime.native_div(
-        left, runtime.bigint_gcd(left, right))
+    quotient = runtime.native_div(left, runtime.bigint_gcd(left, right))
     return runtime.native_mul(quotient, right)
 
 
@@ -1159,7 +1108,8 @@ def _nf_valuation(value: Any, prime: int) -> int:
 
 
 def _nf_coordinates(
-    element: NumberFieldElement, degree: int,
+    element: NumberFieldElement,
+    degree: int,
 ) -> list[Any]:
     answer = list(element._coefficients)
     while len(answer) < degree:
@@ -1168,13 +1118,15 @@ def _nf_coordinates(
 
 
 def _nf_element_from_row(
-    field: NumberFieldParent, row: list[Any],
+    field: NumberFieldParent,
+    row: list[Any],
 ) -> NumberFieldElement:
     return field._from_coefficients([sage.QQ(value) for value in row])
 
 
 def _nf_canonical_lattice(
-    rows: list[list[Any]], degree: int,
+    rows: list[list[Any]],
+    degree: int,
 ) -> list[list[Any]]:
     if len(rows) == 0:
         return []
@@ -1187,42 +1139,39 @@ def _nf_canonical_lattice(
         padded = padded[:degree]
         rational_rows.append(padded)
         for value in padded:
-            denominator = _nf_lcm(
-                denominator, value._denominator)
+            denominator = _nf_lcm(denominator, value._denominator)
     integer_rows = []
     for row in rational_rows:
         integer_row = []
         for value in row:
             scaled = value * denominator
             if scaled._denominator != 1:
-                raise ArithmeticError(
-                    'failed to clear a lattice denominator')
+                raise ArithmeticError("failed to clear a lattice denominator")
             integer_row.append(scaled._numerator)
         integer_rows.append(integer_row)
-    integer_matrix = _nf_global('matrix')(sage.ZZ, integer_rows)
+    integer_matrix = _nf_global("matrix")(sage.ZZ, integer_rows)
     hermite = integer_matrix.hermite_form(include_zero_rows=False)
     return [
-        [
-            _untyped(sage.QQ)(value, denominator)
-            for value in row
-        ]
+        [_untyped(sage.QQ)(value, denominator) for value in row]
         for row in hermite.rows()
     ]
 
 
 def _nf_lattice_coordinates(
-    row: list[Any], basis_rows: list[list[Any]],
+    row: list[Any],
+    basis_rows: list[list[Any]],
 ) -> Any:
     if len(basis_rows) == 0:
         return [] if all(value == 0 for value in row) else None
-    basis_matrix = _nf_global('matrix')(sage.QQ, basis_rows)
-    row_vector = _nf_global('vector')(sage.QQ, row)
+    basis_matrix = _nf_global("matrix")(sage.QQ, basis_rows)
+    row_vector = _nf_global("vector")(sage.QQ, row)
     coordinates = row_vector * basis_matrix.inverse()
     return list(coordinates)
 
 
 def _nf_row_in_lattice(
-    row: list[Any], basis_rows: list[list[Any]],
+    row: list[Any],
+    basis_rows: list[list[Any]],
 ) -> bool:
     coordinates = _nf_lattice_coordinates(row, basis_rows)
     if coordinates is None:
@@ -1231,7 +1180,8 @@ def _nf_row_in_lattice(
 
 
 def _nf_trace(
-    field: NumberFieldParent, element: NumberFieldElement,
+    field: NumberFieldParent,
+    element: NumberFieldElement,
 ) -> Any:
     degree = field.degree()
     generator = field.gen()
@@ -1246,7 +1196,8 @@ def _nf_trace(
 
 
 def _nf_is_integral(
-    field: NumberFieldParent, element: NumberFieldElement,
+    field: NumberFieldParent,
+    element: NumberFieldElement,
 ) -> bool:
     # Newton's identities recover the monic characteristic polynomial from
     # exact power traces.  In characteristic zero an element is integral iff
@@ -1270,29 +1221,28 @@ def _nf_is_integral(
 
 
 def _nf_trace_matrix(
-    field: NumberFieldParent, basis: list[NumberFieldElement],
+    field: NumberFieldParent,
+    basis: list[NumberFieldElement],
 ) -> list[list[Any]]:
-    return [
-        [_nf_trace(field, left * right) for right in basis]
-        for left in basis
-    ]
+    return [[_nf_trace(field, left * right) for right in basis] for left in basis]
 
 
 def _nf_order_closure(
-    field: NumberFieldParent, rows: list[list[Any]],
+    field: NumberFieldParent,
+    rows: list[list[Any]],
 ) -> list[list[Any]]:
     degree = field.degree()
     basis_rows = _nf_canonical_lattice(rows, degree)
     while True:
         if len(basis_rows) != degree:
-            raise ValueError('an order lattice must have full rank')
-        basis = [
-            _nf_element_from_row(field, row) for row in basis_rows]
+            raise ValueError("an order lattice must have full rank")
+        basis = [_nf_element_from_row(field, row) for row in basis_rows]
         missing = runtime.undefined
         for left_index in range(degree):
             for right_index in range(left_index, degree):
                 product_row = _nf_coordinates(
-                    basis[left_index] * basis[right_index], degree)
+                    basis[left_index] * basis[right_index], degree
+                )
                 if not _nf_row_in_lattice(product_row, basis_rows):
                     missing = product_row
                     break
@@ -1300,18 +1250,18 @@ def _nf_order_closure(
                 break
         if missing is runtime.undefined:
             return basis_rows
-        basis_rows = _nf_canonical_lattice(
-            basis_rows + [missing], degree)
+        basis_rows = _nf_canonical_lattice(basis_rows + [missing], degree)
 
 
 def _nf_projective_vectors(
-    kernel_rows: list[list[int]], prime: int,
+    kernel_rows: list[list[int]],
+    prime: int,
 ) -> Any:
     dimension = len(kernel_rows)
     ambient_degree = len(kernel_rows[0]) if dimension else 0
     for leading in range(dimension):
         tail_length = dimension - leading - 1
-        total = prime ** tail_length
+        total = prime**tail_length
         for encoded in range(total):
             coefficients = [0 for _index in range(dimension)]
             coefficients[leading] = 1
@@ -1332,7 +1282,8 @@ def _nf_projective_vectors(
 
 
 def _nf_enlarge_order_at_prime(
-    order: NumberFieldOrder, prime: int,
+    order: NumberFieldOrder,
+    prime: int,
 ) -> Any:
     field = order.number_field()
     basis = order.basis()
@@ -1343,18 +1294,14 @@ def _nf_enlarge_order_at_prime(
         for value in row:
             if value._denominator != 1:
                 raise ArithmeticError(
-                    'an integral order has a nonintegral trace pairing')
+                    "an integral order has a nonintegral trace pairing"
+                )
             integer_row.append(value._numerator)
         integer_rows.append(integer_row)
-    residue_matrix = _nf_global('matrix')(
-        _nf_global('GF')(prime), integer_rows)
+    residue_matrix = _nf_global("matrix")(_nf_global("GF")(prime), integer_rows)
     kernel = residue_matrix.right_kernel_matrix()
     kernel_rows = [
-        [
-            runtime.number(value.lift())
-            for value in row
-        ]
-        for row in kernel.rows()
+        [runtime.number(value.lift()) for value in row] for row in kernel.rows()
     ]
     if len(kernel_rows) == 0:
         return None
@@ -1368,8 +1315,7 @@ def _nf_enlarge_order_at_prime(
             continue
         if not _nf_is_integral(field, candidate):
             continue
-        rows = order._basis_rows + [
-            _nf_coordinates(candidate, field.degree())]
+        rows = order._basis_rows + [_nf_coordinates(candidate, field.degree())]
         closed_rows = _nf_order_closure(field, rows)
         return NumberFieldOrder(field, closed_rows, False)
     return None
@@ -1379,14 +1325,15 @@ class NumberFieldIdeal:
     """An exact (possibly fractional) ideal stored as a rational HNF lattice."""
 
     def __init__(
-        self, order: NumberFieldOrder, rows: list[list[Any]],
+        self,
+        order: NumberFieldOrder,
+        rows: list[list[Any]],
     ) -> None:
         self._order = order
         self._field = order.number_field()
-        self._basis_rows = _nf_canonical_lattice(
-            rows, self._field.degree())
+        self._basis_rows = _nf_canonical_lattice(rows, self._field.degree())
         if len(self._basis_rows) not in [0, self._field.degree()]:
-            raise ValueError('a nonzero number-field ideal must have full rank')
+            raise ValueError("a nonzero number-field ideal must have full rank")
         if len(self._basis_rows):
             for order_element in order.basis():
                 for ideal_element in self.basis():
@@ -1396,7 +1343,8 @@ class NumberFieldIdeal:
                     )
                     if not _nf_row_in_lattice(row, self._basis_rows):
                         raise ValueError(
-                            'the specified lattice is not closed under the order')
+                            "the specified lattice is not closed under the order"
+                        )
 
     def ring(self) -> NumberFieldOrder:
         return self._order
@@ -1405,18 +1353,15 @@ class NumberFieldIdeal:
         return self._field
 
     def basis(self) -> list[NumberFieldElement]:
-        return [
-            _nf_element_from_row(self._field, row)
-            for row in self._basis_rows
-        ]
+        return [_nf_element_from_row(self._field, row) for row in self._basis_rows]
 
-    def gens_reduced(self) -> 'tuple[Any, ...]':
+    def gens_reduced(self) -> "tuple[Any, ...]":
         return runtime.math_tuple(self.basis())
 
     gens = gens_reduced
 
     def basis_matrix(self) -> Any:
-        return _nf_global('matrix')(sage.QQ, self._basis_rows)
+        return _nf_global("matrix")(sage.QQ, self._basis_rows)
 
     def __contains__(self, value: object) -> bool:
         try:
@@ -1435,10 +1380,7 @@ class NumberFieldIdeal:
     def norm(self) -> Any:
         if self.is_zero():
             return 0
-        relative = (
-            self.basis_matrix()
-            * self._order.basis_matrix().inverse()
-        )
+        relative = self.basis_matrix() * self._order.basis_matrix().inverse()
         determinant = relative.determinant()
         if determinant < 0:
             determinant = -determinant
@@ -1450,43 +1392,38 @@ class NumberFieldIdeal:
         if not isinstance(other, NumberFieldIdeal):
             return NotImplemented
         if other._order is not self._order:
-            raise TypeError('ideals must belong to the same order')
-        return NumberFieldIdeal(
-            self._order, self._basis_rows + other._basis_rows)
+            raise TypeError("ideals must belong to the same order")
+        return NumberFieldIdeal(self._order, self._basis_rows + other._basis_rows)
 
     def intersection(
-        self, other: NumberFieldIdeal,
+        self,
+        other: NumberFieldIdeal,
     ) -> NumberFieldIdeal:
         if other._order is not self._order:
-            raise TypeError('ideals must belong to the same order')
+            raise TypeError("ideals must belong to the same order")
         if self.is_zero() or other.is_zero():
             return NumberFieldIdeal(self._order, [])
         denominator = runtime.bigint(1)
         for row in self._basis_rows + other._basis_rows:
             for value in row:
-                denominator = _nf_lcm(
-                    denominator, value._denominator)
+                denominator = _nf_lcm(denominator, value._denominator)
         equations = []
         degree = self._field.degree()
         for column in range(degree):
             equation = []
             for row in self._basis_rows:
-                equation.append(
-                    (row[column] * denominator)._numerator)
+                equation.append((row[column] * denominator)._numerator)
             for row in other._basis_rows:
-                equation.append(
-                    -(row[column] * denominator)._numerator)
+                equation.append(-(row[column] * denominator)._numerator)
             equations.append(equation)
-        kernel = _nf_global('matrix')(
-            sage.ZZ, equations).right_kernel_matrix()
+        kernel = _nf_global("matrix")(sage.ZZ, equations).right_kernel_matrix()
         rows = []
         for relation in kernel.rows():
             row = [sage.QQ(0) for _index in range(degree)]
             for basis_index in range(degree):
                 for column in range(degree):
                     row[column] += (
-                        relation[basis_index]
-                        * self._basis_rows[basis_index][column]
+                        relation[basis_index] * self._basis_rows[basis_index][column]
                     )
             rows.append(row)
         return NumberFieldIdeal(self._order, rows)
@@ -1494,18 +1431,20 @@ class NumberFieldIdeal:
     def __mul__(self, other: Any) -> NumberFieldIdeal:
         if isinstance(other, NumberFieldIdeal):
             if other._order is not self._order:
-                raise TypeError('ideals must belong to the same order')
+                raise TypeError("ideals must belong to the same order")
             rows = []
             for left in self.basis():
                 for right in other.basis():
-                    rows.append(_nf_coordinates(
-                        left * right, self._field.degree()))
+                    rows.append(_nf_coordinates(left * right, self._field.degree()))
             return NumberFieldIdeal(self._order, rows)
         scalar = self._field(other)
-        return NumberFieldIdeal(self._order, [
-            _nf_coordinates(scalar * element, self._field.degree())
-            for element in self.basis()
-        ])
+        return NumberFieldIdeal(
+            self._order,
+            [
+                _nf_coordinates(scalar * element, self._field.degree())
+                for element in self.basis()
+            ],
+        )
 
     def __rmul__(self, scalar: Any) -> NumberFieldIdeal:
         return self * scalar
@@ -1513,8 +1452,7 @@ class NumberFieldIdeal:
     def __pow__(self, exponent: Any) -> NumberFieldIdeal:
         power = runtime.integer_bigint(exponent)
         if power < 0:
-            raise NotImplementedError(
-                'negative ideal powers require ideal inversion')
+            raise NotImplementedError("negative ideal powers require ideal inversion")
         answer = self._order.ideal(1)
         base = self
         while power:
@@ -1534,9 +1472,12 @@ class NumberFieldIdeal:
 
     def __repr__(self) -> str:
         if self.is_zero():
-            return 'Fractional ideal (0)'
-        return 'Fractional ideal (' + ', '.join([
-            str(element) for element in self.basis()]) + ')'
+            return "Fractional ideal (0)"
+        return (
+            "Fractional ideal ("
+            + ", ".join([str(element) for element in self.basis()])
+            + ")"
+        )
 
     __str__ = __repr__
     toString = __repr__
@@ -1555,7 +1496,7 @@ class NumberFieldOrder(sage.Parent):
         self._field = field
         self._basis_rows = _nf_order_closure(field, rows)
         self._is_maximal = is_maximal
-        self._kind = 'NumberFieldOrder'
+        self._kind = "NumberFieldOrder"
         self._construction = runtime.undefined
 
     def number_field(self) -> NumberFieldParent:
@@ -1564,15 +1505,12 @@ class NumberFieldOrder(sage.Parent):
     fraction_field = number_field
 
     def basis(self) -> list[NumberFieldElement]:
-        return [
-            _nf_element_from_row(self._field, row)
-            for row in self._basis_rows
-        ]
+        return [_nf_element_from_row(self._field, row) for row in self._basis_rows]
 
     integral_basis = basis
 
     def basis_matrix(self) -> Any:
-        return _nf_global('matrix')(sage.QQ, self._basis_rows)
+        return _nf_global("matrix")(sage.QQ, self._basis_rows)
 
     def degree(self) -> int:
         return self._field.degree()
@@ -1580,7 +1518,7 @@ class NumberFieldOrder(sage.Parent):
     def __call__(self, value: Any = 0) -> NumberFieldElement:
         element = self._field(value)
         if element not in self:
-            raise TypeError(str(element) + ' is not in this order')
+            raise TypeError(str(element) + " is not in this order")
         return element
 
     def __contains__(self, value: object) -> bool:
@@ -1589,14 +1527,16 @@ class NumberFieldOrder(sage.Parent):
         except Exception:
             return False
         return _nf_row_in_lattice(
-            _nf_coordinates(element, self.degree()), self._basis_rows)
+            _nf_coordinates(element, self.degree()), self._basis_rows
+        )
 
     def discriminant(self) -> Any:
-        trace_matrix = _nf_global('matrix')(
-            sage.QQ, _nf_trace_matrix(self._field, self.basis()))
+        trace_matrix = _nf_global("matrix")(
+            sage.QQ, _nf_trace_matrix(self._field, self.basis())
+        )
         value = trace_matrix.determinant()
         if value._denominator != 1:
-            raise ArithmeticError('an order has nonintegral discriminant')
+            raise ArithmeticError("an order has nonintegral discriminant")
         return runtime.normalize_integer(value._numerator)
 
     def is_maximal(self) -> bool:
@@ -1604,10 +1544,7 @@ class NumberFieldOrder(sage.Parent):
 
     def ideal(self, *generators: Any) -> NumberFieldIdeal:
         values = list(generators)
-        if (
-            len(values) == 1
-            and runtime.array.isArray(values[0])
-        ):
+        if len(values) == 1 and runtime.array.isArray(values[0]):
             values = list(values[0])
         if len(values) == 0:
             values = [0]
@@ -1617,8 +1554,7 @@ class NumberFieldOrder(sage.Parent):
         rows = []
         for generator in elements:
             for basis_element in self.basis():
-                rows.append(_nf_coordinates(
-                    generator * basis_element, self.degree()))
+                rows.append(_nf_coordinates(generator * basis_element, self.degree()))
         return NumberFieldIdeal(self, rows)
 
     def class_group(self) -> NumberFieldClassGroup:
@@ -1628,12 +1564,14 @@ class NumberFieldOrder(sage.Parent):
         return self._field.class_number()
 
     def __repr__(self) -> str:
-        label = 'Maximal Order' if self._is_maximal else 'Order'
+        label = "Maximal Order" if self._is_maximal else "Order"
         generators = self.basis()[1:]
         return (
-            label + ' generated by ['
-            + ', '.join([str(value) for value in generators])
-            + '] in ' + str(self._field)
+            label
+            + " generated by ["
+            + ", ".join([str(value) for value in generators])
+            + "] in "
+            + str(self._field)
         )
 
     __str__ = __repr__
@@ -1648,31 +1586,27 @@ class NumberFieldParent(sage.Parent):
         coefficients = [sage.QQ(value) for value in polynomial.coefficients()]
         coefficients = _trim_coefficients(coefficients)
         if len(coefficients) < 2:
-            raise ValueError(
-                'a number field needs a nonconstant defining polynomial')
+            raise ValueError("a number field needs a nonconstant defining polynomial")
         if not polynomial.is_irreducible():
             raise ValueError(
-                'defining polynomial (' + str(polynomial)
-                + ') must be irreducible')
+                "defining polynomial (" + str(polynomial) + ") must be irreducible"
+            )
         leading = coefficients[-1]
-        self._defining_coefficients = [
-            value / leading for value in coefficients]
+        self._defining_coefficients = [value / leading for value in coefficients]
         self._degree = len(self._defining_coefficients) - 1
         self._polynomial = polynomial
         self._variable = name
-        self._kind = 'NumberField'
+        self._kind = "NumberField"
         self._construction = {
-            'kind': 'NumberField',
-            'polynomial': polynomial,
-            'name': name,
+            "kind": "NumberField",
+            "polynomial": polynomial,
+            "name": name,
         }
         self._name = (
-            'Number Field in ' + name
-            + ' with defining polynomial ' + str(polynomial)
+            "Number Field in " + name + " with defining polynomial " + str(polynomial)
         )
         generator_coefficients = [sage.QQ(0), sage.QQ(1)]
-        self._generator = NumberFieldElement(
-            self, generator_coefficients)
+        self._generator = NumberFieldElement(self, generator_coefficients)
         self._equation_order_cache = runtime.undefined
         self._maximal_order_cache = runtime.undefined
         self._quadratic_backend_cache = runtime.undefined
@@ -1681,8 +1615,7 @@ class NumberFieldParent(sage.Parent):
         runtime.coercion_model.register(sage.QQ, self, self)
 
     def _reduce(self, coefficients: list[Any]) -> list[Any]:
-        result = _trim_coefficients([
-            sage.QQ(value) for value in coefficients])
+        result = _trim_coefficients([sage.QQ(value) for value in coefficients])
         while len(result) > self._degree:
             exponent = len(result) - 1
             leading = result[-1]
@@ -1691,8 +1624,7 @@ class NumberFieldParent(sage.Parent):
             for index in range(self._degree):
                 position = shift + index
                 result[position] = (
-                    result[position]
-                    - leading * self._defining_coefficients[index]
+                    result[position] - leading * self._defining_coefficients[index]
                 )
             result = _trim_coefficients(result)
         return result
@@ -1701,29 +1633,31 @@ class NumberFieldParent(sage.Parent):
         if isinstance(value, NumberFieldElement):
             if value._parent is self:
                 return value
-            raise TypeError('incompatible number fields')
-        if hasattr(value, 'coefficients'):
+            raise TypeError("incompatible number fields")
+        if hasattr(value, "coefficients"):
             return NumberFieldElement(
-                self, [sage.QQ(item) for item in value.coefficients()])
+                self, [sage.QQ(item) for item in value.coefficients()]
+            )
         return NumberFieldElement(self, [sage.QQ(value)])
 
     def _from_coefficients(
-        self, coefficients: list[Any],
+        self,
+        coefficients: list[Any],
     ) -> NumberFieldElement:
         """Construct an element from its canonical power-basis coordinates."""
         return NumberFieldElement(self, coefficients)
 
     def gen(self, index: int = 0) -> NumberFieldElement:
         if int(index) != 0:
-            raise IndexError('a simple number field has one generator')
+            raise IndexError("a simple number field has one generator")
         return self._generator
 
     def _first_ngens(self, count: int) -> list[NumberFieldElement]:
         if int(count) != 1:
-            raise ValueError('a simple number field has one generator')
+            raise ValueError("a simple number field has one generator")
         return [self.gen()]
 
-    def gens(self) -> 'tuple[Any, ...]':
+    def gens(self) -> "tuple[Any, ...]":
         return runtime.math_tuple([self.gen()])
 
     def zero(self) -> NumberFieldElement:
@@ -1748,10 +1682,7 @@ class NumberFieldParent(sage.Parent):
         return NumberFieldPolynomialQuotient(self)
 
     def _is_tutorial_cubic(self) -> bool:
-        return (
-            str(self._polynomial)
-            == 'x^3 + x^2 - 2*x + 8'
-        )
+        return str(self._polynomial) == "x^3 + x^2 - 2*x + 8"
 
     def _power_basis(self) -> list[NumberFieldElement]:
         basis = []
@@ -1772,8 +1703,7 @@ class NumberFieldParent(sage.Parent):
             for _index in range(self.degree()):
                 rows.append(_nf_coordinates(power, self.degree()))
                 power *= integral_generator
-            self._equation_order_cache = NumberFieldOrder(
-                self, rows, False)
+            self._equation_order_cache = NumberFieldOrder(self, rows, False)
         return self._equation_order_cache
 
     def order(self, *generators: Any) -> NumberFieldOrder:
@@ -1783,11 +1713,8 @@ class NumberFieldParent(sage.Parent):
         elements = [self.one()] + [self(value) for value in values]
         for element in elements:
             if not _nf_is_integral(self, element):
-                raise ValueError('order generators must be algebraic integers')
-        rows = [
-            _nf_coordinates(element, self.degree())
-            for element in elements
-        ]
+                raise ValueError("order generators must be algebraic integers")
+        rows = [_nf_coordinates(element, self.degree()) for element in elements]
         if len(rows) < self.degree():
             rows += self.equation_order()._basis_rows
         return NumberFieldOrder(self, rows, False)
@@ -1802,19 +1729,25 @@ class NumberFieldParent(sage.Parent):
             if exponent < 2:
                 continue
             prime = runtime.normalize_integer(prime_value)
-            if runtime.jstype(prime) != 'number':
+            if runtime.jstype(prime) != "number":
                 raise NotImplementedError(
-                    'maximal-order trace-radical enumeration currently '
-                    'requires machine-sized discriminant primes')
-            while _nf_valuation(
-                runtime.integer_bigint(order.discriminant()), prime,
-            ) >= 2:
+                    "maximal-order trace-radical enumeration currently "
+                    "requires machine-sized discriminant primes"
+                )
+            while (
+                _nf_valuation(
+                    runtime.integer_bigint(order.discriminant()),
+                    prime,
+                )
+                >= 2
+            ):
                 enlarged = _nf_enlarge_order_at_prime(order, prime)
                 if enlarged is None:
                     break
                 if abs(enlarged.discriminant()) >= abs(order.discriminant()):
                     raise ArithmeticError(
-                        'an order enlargement did not lower the discriminant')
+                        "an order enlargement did not lower the discriminant"
+                    )
                 order = enlarged
         order._is_maximal = True
         self._maximal_order_cache = order
@@ -1834,17 +1767,13 @@ class NumberFieldParent(sage.Parent):
             self._defining_coefficients,
             self._polynomial._parent.variable_name(),
         )
-        return NumberFieldGaloisGroup(
-            self, data[0], data[1], data[2], data[3])
+        return NumberFieldGaloisGroup(self, data[0], data[1], data[2], data[3])
 
-    def units(self) -> 'tuple[Any, ...]':
+    def units(self) -> "tuple[Any, ...]":
         if not self._is_tutorial_cubic():
-            raise NotImplementedError(
-                'general unit groups need a number-field backend')
+            raise NotImplementedError("general unit groups need a number-field backend")
         generator = self.gen()
-        unit = (
-            self(-3) * generator ** 2
-            - self(13) * generator - self(13))
+        unit = self(-3) * generator**2 - self(13) * generator - self(13)
         return runtime.math_tuple([unit])
 
     def discriminant(self) -> Any:
@@ -1860,7 +1789,8 @@ class NumberFieldParent(sage.Parent):
         """
         if self.degree() != 2:
             raise NotImplementedError(
-                'quadratic class groups require a degree-two number field')
+                "quadratic class groups require a degree-two number field"
+            )
         if self._quadratic_backend_cache is runtime.undefined:
             constant = self._defining_coefficients[0]
             linear = self._defining_coefficients[1]
@@ -1869,12 +1799,14 @@ class NumberFieldParent(sage.Parent):
             denominator = runtime.integer_bigint(discriminant._denominator)
             if numerator >= 0:
                 raise NotImplementedError(
-                    'native NumberField class groups currently require '
-                    'an imaginary quadratic field')
+                    "native NumberField class groups currently require "
+                    "an imaginary quadratic field"
+                )
             radicand = numerator * denominator
             backend = QuadraticField(radicand, self._variable)
-            self._quadratic_backend_cache = runtime.math_tuple([
-                backend, linear, denominator])
+            self._quadratic_backend_cache = runtime.math_tuple(
+                [backend, linear, denominator]
+            )
         return self._quadratic_backend_cache
 
     def _from_quadratic_backend(self, value: Any) -> NumberFieldElement:
@@ -1883,10 +1815,12 @@ class NumberFieldParent(sage.Parent):
         denominator = sage.QQ(backend_data[2])
         # sqrt(numerator*denominator)
         #     = denominator * (2*a + linear).
-        return self._from_coefficients([
-            value._real + value._imag * denominator * linear,
-            2 * value._imag * denominator,
-        ])
+        return self._from_coefficients(
+            [
+                value._real + value._imag * denominator * linear,
+                2 * value._imag * denominator,
+            ]
+        )
 
     def class_group(self) -> NumberFieldClassGroup:
         if self._class_group_cache is runtime.undefined:
@@ -1895,10 +1829,12 @@ class NumberFieldParent(sage.Parent):
             elif self.degree() == 2:
                 backend = self._quadratic_backend()[0]
                 self._class_group_cache = NumberFieldClassGroup(
-                    self, backend.class_group())
+                    self, backend.class_group()
+                )
             else:
                 raise NotImplementedError(
-                    'general class groups need a number-field backend')
+                    "general class groups need a number-field backend"
+                )
         return self._class_group_cache
 
     def class_number(self) -> int:
@@ -1906,8 +1842,7 @@ class NumberFieldParent(sage.Parent):
             return 1
         if self.degree() == 2:
             return self._quadratic_backend()[0].class_number()
-        raise NotImplementedError(
-            'general class numbers need a number-field backend')
+        raise NotImplementedError("general class numbers need a number-field backend")
 
 
 def NumberField(
@@ -1917,10 +1852,10 @@ def NumberField(
     """Construct the exact simple field `QQ[a]/(polynomial)`."""
     polynomial = _number_field_polynomial(polynomial)
     if names is None:
-        name = 'a'
+        name = "a"
     elif runtime.array.isArray(names):
         if len(names) != 1:
-            raise ValueError('a simple number field has one generator name')
+            raise ValueError("a simple number field has one generator name")
         name = str(names[0])
     else:
         name = str(names)
@@ -1953,16 +1888,18 @@ class QuadraticBinaryForm:
         self._c = runtime.integer_bigint(c)
 
     def coefficients(self) -> tuple[Any, Any, Any]:
-        return runtime.math_tuple([
-            runtime.normalize_integer(self._a),
-            runtime.normalize_integer(self._b),
-            runtime.normalize_integer(self._c),
-        ])
+        return runtime.math_tuple(
+            [
+                runtime.normalize_integer(self._a),
+                runtime.normalize_integer(self._b),
+                runtime.normalize_integer(self._c),
+            ]
+        )
 
     def discriminant(self) -> Any:
         return runtime.normalize_integer(
-            self._b * self._b
-            - runtime.bigint(4) * self._a * self._c)
+            self._b * self._b - runtime.bigint(4) * self._a * self._c
+        )
 
     def __eq__(self, other: object) -> bool:
         return (
@@ -1973,40 +1910,37 @@ class QuadraticBinaryForm:
         )
 
     def __repr__(self) -> str:
-        return 'BinaryQF([' + ', '.join([
-            str(self._a), str(self._b), str(self._c)]) + '])'
+        return (
+            "BinaryQF([" + ", ".join([str(self._a), str(self._b), str(self._c)]) + "])"
+        )
 
     __str__ = __repr__
     toString = __repr__
 
 
 def _quadratic_form_key(form: QuadraticBinaryForm) -> str:
-    return ','.join([str(form._a), str(form._b), str(form._c)])
+    return ",".join([str(form._a), str(form._b), str(form._c)])
 
 
 def _quadratic_reduce(
-    form: QuadraticBinaryForm, discriminant: Any,
+    form: QuadraticBinaryForm,
+    discriminant: Any,
 ) -> QuadraticBinaryForm:
     """Return the unique reduced representative of a positive form."""
     target = runtime.integer_bigint(discriminant)
     a, b, c = form._a, form._b, form._c
     while True:
-        quotient = runtime.integer_bigint(
-            (b + a) // (runtime.bigint(2) * a))
+        quotient = runtime.integer_bigint((b + a) // (runtime.bigint(2) * a))
         b -= runtime.bigint(2) * quotient * a
-        c = runtime.integer_bigint(
-            (b * b - target) // (runtime.bigint(4) * a))
+        c = runtime.integer_bigint((b * b - target) // (runtime.bigint(4) * a))
         if a > c:
             a, b, c = c, -b, a
             continue
         if (abs(b) == a or a == c) and b < 0:
             b = -b
         answer = QuadraticBinaryForm(a, b, c)
-        if (
-            answer._b * answer._b
-            - runtime.bigint(4) * answer._a * answer._c != target
-        ):
-            raise ArithmeticError('quadratic-form reduction changed discriminant')
+        if answer._b * answer._b - runtime.bigint(4) * answer._a * answer._c != target:
+            raise ArithmeticError("quadratic-form reduction changed discriminant")
         return answer
 
 
@@ -2018,12 +1952,9 @@ def _quadratic_compose_reference(
     """Compose forms by multiplying their rank-two integer ideal lattices."""
     target = runtime.integer_bigint(discriminant)
     parity = runtime.integer_bigint(target % runtime.bigint(2))
-    theta_norm = runtime.integer_bigint(
-        (parity * parity - target) // runtime.bigint(4))
-    left_t = runtime.integer_bigint(
-        (-left._b - parity) // runtime.bigint(2))
-    right_t = runtime.integer_bigint(
-        (-right._b - parity) // runtime.bigint(2))
+    theta_norm = runtime.integer_bigint((parity * parity - target) // runtime.bigint(4))
+    left_t = runtime.integer_bigint((-left._b - parity) // runtime.bigint(2))
+    right_t = runtime.integer_bigint((-right._b - parity) // runtime.bigint(2))
     vectors = [
         [left._a * right._a, runtime.bigint(0)],
         [left._a * right_t, left._a],
@@ -2038,12 +1969,12 @@ def _quadratic_compose_reference(
     lifted_x = runtime.bigint(0)
     for x_value, y_value in vectors:
         next_gcd, old_coefficient, new_coefficient = _quadratic_xgcd(
-            projection_gcd, y_value)
-        lifted_x = (
-            old_coefficient * lifted_x + new_coefficient * x_value)
+            projection_gcd, y_value
+        )
+        lifted_x = old_coefficient * lifted_x + new_coefficient * x_value
         projection_gcd = next_gcd
     if projection_gcd == 0:
-        raise ArithmeticError('quadratic ideal product has rank below two')
+        raise ArithmeticError("quadratic ideal product has rank below two")
 
     lattice_index = runtime.bigint(0)
     for left_index in range(len(vectors)):
@@ -2054,23 +1985,18 @@ def _quadratic_compose_reference(
             )
             lattice_index = runtime.bigint_gcd(lattice_index, minor)
     scale_square = projection_gcd * projection_gcd
-    if (
-        lattice_index % scale_square != 0
-        or lifted_x % projection_gcd != 0
-    ):
-        raise ArithmeticError(
-            'quadratic ideal product did not normalize integrally')
+    if lattice_index % scale_square != 0 or lifted_x % projection_gcd != 0:
+        raise ArithmeticError("quadratic ideal product did not normalize integrally")
 
     a = runtime.integer_bigint(lattice_index // scale_square)
-    t_value = runtime.integer_bigint(
-        (lifted_x // projection_gcd) % a)
+    t_value = runtime.integer_bigint((lifted_x // projection_gcd) % a)
     b = -runtime.bigint(2) * t_value - parity
     numerator = b * b - target
     if numerator % (runtime.bigint(4) * a) != 0:
-        raise ArithmeticError('quadratic ideal product has invalid norm')
+        raise ArithmeticError("quadratic ideal product has invalid norm")
     return _quadratic_reduce(
-        QuadraticBinaryForm(
-            a, b, numerator // (runtime.bigint(4) * a)), target)
+        QuadraticBinaryForm(a, b, numerator // (runtime.bigint(4) * a)), target
+    )
 
 
 def _quadratic_native_method(name: str) -> Any:
@@ -2091,8 +2017,8 @@ def _quadratic_compose(
     discriminant: Any,
 ) -> QuadraticBinaryForm:
     """Compose reduced forms with FLINT NUCOMP when it is available."""
-    native = _quadratic_native_method('qfbNucomp')
-    if runtime.jstype(native) == 'function':
+    native = _quadratic_native_method("qfbNucomp")
+    if runtime.jstype(native) == "function":
         data = native(
             runtime.integer_bigint(discriminant),
             _quadratic_form_data(left),
@@ -2106,12 +2032,11 @@ def _quadratic_reduced_forms_reference(
     discriminant: Any,
 ) -> list[QuadraticBinaryForm]:
     target = runtime.integer_bigint(discriminant)
-    if (
-        target >= 0
-        or target % runtime.bigint(4)
-        not in [runtime.bigint(0), runtime.bigint(1)]
-    ):
-        raise ValueError('a negative quadratic discriminant is required')
+    if target >= 0 or target % runtime.bigint(4) not in [
+        runtime.bigint(0),
+        runtime.bigint(1),
+    ]:
+        raise ValueError("a negative quadratic discriminant is required")
     forms = []
     a = runtime.bigint(1)
     while runtime.bigint(3) * a * a <= -target:
@@ -2122,13 +2047,12 @@ def _quadratic_reduced_forms_reference(
                 c = numerator // (runtime.bigint(4) * a)
                 if (
                     a <= c
-                    and not (
-                        (abs(b) == a or a == c) and b < 0
-                    )
+                    and not ((abs(b) == a or a == c) and b < 0)
                     and runtime.bigint_gcd(
                         runtime.bigint_gcd(a, b),
                         runtime.integer_bigint(c),
-                    ) == runtime.bigint(1)
+                    )
+                    == runtime.bigint(1)
                 ):
                     forms.append(QuadraticBinaryForm(a, b, c))
             b += runtime.bigint(1)
@@ -2138,10 +2062,7 @@ def _quadratic_reduced_forms_reference(
 
 def _quadratic_native_enumeration_supported(discriminant: Any) -> bool:
     target = runtime.integer_bigint(discriminant)
-    return (
-        target > -(runtime.bigint(2) ** runtime.bigint(63))
-        and target < 0
-    )
+    return target > -(runtime.bigint(2) ** runtime.bigint(63)) and target < 0
 
 
 def _quadratic_reduced_forms(
@@ -2149,15 +2070,11 @@ def _quadratic_reduced_forms(
 ) -> list[QuadraticBinaryForm]:
     """Enumerate reduced forms using FLINT's modular-root sieve."""
     target = runtime.integer_bigint(discriminant)
-    native = _quadratic_native_method('qfbReducedForms')
-    if (
-        runtime.jstype(native) == 'function'
-        and _quadratic_native_enumeration_supported(target)
+    native = _quadratic_native_method("qfbReducedForms")
+    if runtime.jstype(native) == "function" and _quadratic_native_enumeration_supported(
+        target
     ):
-        return [
-            _quadratic_form_from_data(data)
-            for data in native(target)
-        ]
+        return [_quadratic_form_from_data(data) for data in native(target)]
     return _quadratic_reduced_forms_reference(target)
 
 
@@ -2165,8 +2082,8 @@ def _quadratic_principal_form(discriminant: Any) -> QuadraticBinaryForm:
     target = runtime.integer_bigint(discriminant)
     middle = target % runtime.bigint(2)
     return QuadraticBinaryForm(
-        1, middle,
-        (middle * middle - target) // runtime.bigint(4))
+        1, middle, (middle * middle - target) // runtime.bigint(4)
+    )
 
 
 def _quadratic_form_power_reference(
@@ -2185,12 +2102,10 @@ def _quadratic_form_power_reference(
     base = form
     while power:
         if power % runtime.bigint(2):
-            answer = _quadratic_compose_reference(
-                answer, base, discriminant)
+            answer = _quadratic_compose_reference(answer, base, discriminant)
         power //= runtime.bigint(2)
         if power:
-            base = _quadratic_compose_reference(
-                base, base, discriminant)
+            base = _quadratic_compose_reference(base, base, discriminant)
     return answer
 
 
@@ -2207,8 +2122,8 @@ def _quadratic_form_power(
             discriminant,
         )
         power = -power
-    native = _quadratic_native_method('qfbPow')
-    if runtime.jstype(native) == 'function':
+    native = _quadratic_native_method("qfbPow")
+    if runtime.jstype(native) == "function":
         data = native(
             runtime.integer_bigint(discriminant),
             _quadratic_form_data(form),
@@ -2226,12 +2141,9 @@ def _quadratic_form_order(
     order = group_order
     for pair in _untyped(sage.factor)(group_order):
         prime = int(runtime.number(pair[0]))
-        while (
-            order % prime == 0
-            and _quadratic_form_power(
-                form, order // prime, discriminant
-            ) == _quadratic_principal_form(discriminant)
-        ):
+        while order % prime == 0 and _quadratic_form_power(
+            form, order // prime, discriminant
+        ) == _quadratic_principal_form(discriminant):
             order //= prime
     return order
 
@@ -2249,8 +2161,7 @@ def _quadratic_subgroup(
         current = elements[cursor]
         cursor += 1
         for generator in generators:
-            candidate = _quadratic_compose(
-                current, generator, discriminant)
+            candidate = _quadratic_compose(current, generator, discriminant)
             key = _quadratic_form_key(candidate)
             if not seen.has(key):
                 seen.set(key, True)
@@ -2264,8 +2175,8 @@ def _quadratic_squarefree_data(
     value = runtime.integer_bigint(radicand)
     if value >= 0:
         raise NotImplementedError(
-            'native quadratic class groups currently require '
-            'a negative radicand')
+            "native quadratic class groups currently require a negative radicand"
+        )
     squarefree = runtime.bigint(1)
     scale = runtime.bigint(1)
     factorization = runtime.flint_backend().factor(-value)
@@ -2298,11 +2209,10 @@ class GaussianInteger(sage.Element):
             return self._real
         if index == 1:
             return self._imag
-        raise IndexError('Gaussian integer index out of range')
+        raise IndexError("Gaussian integer index out of range")
 
     def __neg__(self) -> GaussianInteger:
-        return GaussianInteger(
-            self._parent, -self._real, -self._imag)
+        return GaussianInteger(self._parent, -self._real, -self._imag)
 
     def _add_(self, other: GaussianInteger) -> GaussianInteger:
         return GaussianInteger(
@@ -2330,34 +2240,25 @@ class GaussianInteger(sage.Element):
         return self * other.inverse()
 
     def _eq_(self, other: GaussianInteger) -> bool:
-        return (
-            self._real == other._real
-            and self._imag == other._imag
-        )
+        return self._real == other._real and self._imag == other._imag
 
     def __mul__(self, other: Any) -> Any:
-        return runtime.coercion_model.binOp(
-            'mul', self, other)
+        return runtime.coercion_model.binOp("mul", self, other)
 
     def __rmul__(self, other: Any) -> Any:
-        return runtime.coercion_model.binOp(
-            'mul', other, self)
+        return runtime.coercion_model.binOp("mul", other, self)
 
     def __add__(self, other: Any) -> Any:
-        return runtime.coercion_model.binOp(
-            'add', self, other)
+        return runtime.coercion_model.binOp("add", self, other)
 
     def __radd__(self, other: Any) -> Any:
-        return runtime.coercion_model.binOp(
-            'add', other, self)
+        return runtime.coercion_model.binOp("add", other, self)
 
     def __sub__(self, other: Any) -> Any:
-        return runtime.coercion_model.binOp(
-            'sub', self, other)
+        return runtime.coercion_model.binOp("sub", self, other)
 
     def __truediv__(self, other: Any) -> Any:
-        return runtime.coercion_model.binOp(
-            'truediv', self, other)
+        return runtime.coercion_model.binOp("truediv", self, other)
 
     def __eq__(self, other: object) -> bool:
         return runtime.coercion_model.equals(self, other)
@@ -2373,8 +2274,7 @@ class GaussianInteger(sage.Element):
 
     def norm(self) -> Any:
         return (
-            self._real * self._real
-            - self._parent._radicand * self._imag * self._imag
+            self._real * self._real - self._parent._radicand * self._imag * self._imag
         )
 
     def trace(self) -> Any:
@@ -2383,9 +2283,8 @@ class GaussianInteger(sage.Element):
     def inverse(self) -> GaussianInteger:
         norm = self.norm()
         if norm == 0:
-            raise ZeroDivisionError('division by zero')
-        return GaussianInteger(
-            self._parent, self._real / norm, -self._imag / norm)
+            raise ZeroDivisionError("division by zero")
+        return GaussianInteger(self._parent, self._real / norm, -self._imag / norm)
 
     def __pow__(self, exponent: Any) -> GaussianInteger:
         power = runtime.integer_bigint(exponent)
@@ -2406,11 +2305,10 @@ class GaussianInteger(sage.Element):
             return str(self._real)
         variable = self._parent.variable_name()
         if self._real == 0:
-            return str(self._imag) + '*' + variable
-        sign = '+' if self._imag._numerator > 0 else '-'
+            return str(self._imag) + "*" + variable
+        sign = "+" if self._imag._numerator > 0 else "-"
         return (
-            str(self._real) + ' ' + sign + ' ' +
-            str(abs(self._imag)) + '*' + variable
+            str(self._real) + " " + sign + " " + str(abs(self._imag)) + "*" + variable
         )
 
     __str__ = __repr__
@@ -2421,7 +2319,7 @@ class GaussianPrimeIdeal:
     """The principal prime ideal represented by one Gaussian prime."""
 
     def __init__(self, generator: GaussianInteger) -> None:
-        self._kind = 'GaussianPrimeIdeal'
+        self._kind = "GaussianPrimeIdeal"
         self._generator = generator
         self._parent = generator.parent()
 
@@ -2437,17 +2335,19 @@ class QuadraticIdeal:
         order: QuadraticIntegerRing,
         form: QuadraticBinaryForm,
     ) -> None:
-        self._kind = 'QuadraticIdeal'
+        self._kind = "QuadraticIdeal"
         self._parent = order
         self._order = order
         self._form = form
 
     def gens_reduced(self) -> tuple[GaussianInteger, GaussianInteger]:
         field = self._order.number_field()
-        return runtime.math_tuple([
-            field(self._form._a),
-            field._ideal_second_generator(self._form._b),
-        ])
+        return runtime.math_tuple(
+            [
+                field(self._form._a),
+                field._ideal_second_generator(self._form._b),
+            ]
+        )
 
     gens = gens_reduced
 
@@ -2462,8 +2362,7 @@ class QuadraticIdeal:
     def __repr__(self) -> str:
         generators = self.gens_reduced()
         return (
-            'Fractional ideal (' + str(generators[0])
-            + ', ' + str(generators[1]) + ')'
+            "Fractional ideal (" + str(generators[0]) + ", " + str(generators[1]) + ")"
         )
 
     __str__ = __repr__
@@ -2484,21 +2383,24 @@ class QuadraticClassGroupElement(sage.Element):
         runtime.object.freeze(self)
 
     def _mul_(
-        self, other: QuadraticClassGroupElement,
+        self,
+        other: QuadraticClassGroupElement,
     ) -> QuadraticClassGroupElement:
         if (
             not isinstance(other, QuadraticClassGroupElement)
             or other._parent is not self._parent
         ):
-            raise TypeError('ideal classes must have the same parent')
-        return self._parent._from_form(_quadratic_compose(
-            self._form,
-            other._form,
-            self._parent._discriminant,
-        ))
+            raise TypeError("ideal classes must have the same parent")
+        return self._parent._from_form(
+            _quadratic_compose(
+                self._form,
+                other._form,
+                self._parent._discriminant,
+            )
+        )
 
     def __mul__(self, other: Any) -> Any:
-        return runtime.coercion_model.binOp('mul', self, other)
+        return runtime.coercion_model.binOp("mul", self, other)
 
     def _eq_(self, other: QuadraticClassGroupElement) -> bool:
         return (
@@ -2511,17 +2413,19 @@ class QuadraticClassGroupElement(sage.Element):
         return runtime.coercion_model.equals(self, other)
 
     def __invert__(self) -> QuadraticClassGroupElement:
-        return self._parent._from_form(_quadratic_reduce(
-            QuadraticBinaryForm(
-                self._form._a, -self._form._b, self._form._c),
-            self._parent._discriminant,
-        ))
+        return self._parent._from_form(
+            _quadratic_reduce(
+                QuadraticBinaryForm(self._form._a, -self._form._b, self._form._c),
+                self._parent._discriminant,
+            )
+        )
 
     inverse = __invert__
 
     def __pow__(self, exponent: Any) -> QuadraticClassGroupElement:
-        return self._parent._from_form(_quadratic_form_power(
-            self._form, exponent, self._parent._discriminant))
+        return self._parent._from_form(
+            _quadratic_form_power(self._form, exponent, self._parent._discriminant)
+        )
 
     def is_one(self) -> bool:
         return self._form == self._parent._principal_form
@@ -2548,11 +2452,14 @@ class QuadraticClassGroupElement(sage.Element):
 
     def __repr__(self) -> str:
         if self.is_one():
-            return 'Trivial principal fractional ideal class'
+            return "Trivial principal fractional ideal class"
         generators = self.ideal().gens_reduced()
         return (
-            'Fractional ideal class (' + str(generators[0])
-            + ', ' + str(generators[1]) + ')'
+            "Fractional ideal class ("
+            + str(generators[0])
+            + ", "
+            + str(generators[1])
+            + ")"
         )
 
     __str__ = __repr__
@@ -2568,50 +2475,48 @@ class QuadraticClassGroup:
         self._forms = runtime.undefined
         self._order = runtime.undefined
         self._native_cyclic_generator = runtime.undefined
-        native = _quadratic_native_method('qfbClassGroupData')
-        if (
-            runtime.jstype(native) == 'function'
-            and _quadratic_native_enumeration_supported(
-                self._discriminant)
-        ):
+        native = _quadratic_native_method("qfbClassGroupData")
+        if runtime.jstype(
+            native
+        ) == "function" and _quadratic_native_enumeration_supported(self._discriminant):
             native_data = native(self._discriminant)
             if native_data is not None:
-                self._order = int(runtime.number(runtime.reflect.get(
-                    native_data, 'classNumber')))
-                generator_data = runtime.reflect.get(
-                    native_data, 'generator')
-                forms_data = runtime.reflect.get(native_data, 'forms')
+                self._order = int(
+                    runtime.number(runtime.reflect.get(native_data, "classNumber"))
+                )
+                generator_data = runtime.reflect.get(native_data, "generator")
+                forms_data = runtime.reflect.get(native_data, "forms")
                 if forms_data is not None:
                     self._forms = [
-                        _quadratic_form_from_data(data)
-                        for data in forms_data
+                        _quadratic_form_from_data(data) for data in forms_data
                     ]
                 if generator_data is not None:
-                    self._native_cyclic_generator = (
-                        _quadratic_form_from_data(generator_data))
+                    self._native_cyclic_generator = _quadratic_form_from_data(
+                        generator_data
+                    )
         if self._order is runtime.undefined:
             self._forms = _quadratic_reduced_forms(self._discriminant)
             self._order = len(self._forms)
         field._class_number = self._order
-        self._principal_form = _quadratic_principal_form(
-            self._discriminant)
+        self._principal_form = _quadratic_principal_form(self._discriminant)
         self._element_cache = runtime.map()
         self._elements = runtime.undefined
         structure = self._compute_structure()
         self._invariants = structure[0]
-        self._generators = [
-            self._from_form(form) for form in structure[1]]
+        self._generators = [self._from_form(form) for form in structure[1]]
 
     def _all_forms(self) -> list[QuadraticBinaryForm]:
         if self._forms is runtime.undefined:
             self._forms = _quadratic_reduced_forms(self._discriminant)
             if len(self._forms) != self.order():
                 raise ArithmeticError(
-                    'quadratic form enumeration changed the class number')
+                    "quadratic form enumeration changed the class number"
+                )
         return self._forms
 
     def _from_form(
-        self, form: QuadraticBinaryForm,
+        self,
+        form: QuadraticBinaryForm,
     ) -> QuadraticClassGroupElement:
         key = _quadratic_form_key(form)
         cached = self._element_cache.get(key)
@@ -2623,36 +2528,40 @@ class QuadraticClassGroup:
 
     def _all_elements(self) -> list[QuadraticClassGroupElement]:
         if self._elements is runtime.undefined:
-            self._elements = [
-                self._from_form(form) for form in self._all_forms()]
+            self._elements = [self._from_form(form) for form in self._all_forms()]
         return self._elements
 
     def _primary_basis(
-        self, prime: int, exponent: int,
+        self,
+        prime: int,
+        exponent: int,
     ) -> tuple[list[int], list[QuadraticBinaryForm]]:
-        primary_order = prime ** exponent
+        primary_order = prime**exponent
         projection_power = self.order() // primary_order
         primary_forms = []
         seen = runtime.map()
         for form in self._all_forms():
             projected = _quadratic_form_power(
-                form, projection_power, self._discriminant)
+                form, projection_power, self._discriminant
+            )
             key = _quadratic_form_key(projected)
             if not seen.has(key):
                 seen.set(key, True)
                 primary_forms.append(projected)
         if len(primary_forms) != primary_order:
             raise ArithmeticError(
-                'quadratic class-group primary projection has wrong order')
+                "quadratic class-group primary projection has wrong order"
+            )
 
         ranks = [0]
         for level in range(1, exponent + 1):
             killed = 0
-            bound = prime ** level
+            bound = prime**level
             for form in primary_forms:
-                if _quadratic_form_power(
-                    form, bound, self._discriminant
-                ) == self._principal_form:
+                if (
+                    _quadratic_form_power(form, bound, self._discriminant)
+                    == self._principal_form
+                ):
                     killed += 1
             rank = 0
             remaining = killed
@@ -2660,19 +2569,15 @@ class QuadraticClassGroup:
                 remaining //= prime
                 rank += 1
             if remaining != 1:
-                raise ArithmeticError(
-                    'quadratic class-group p-rank is inconsistent')
+                raise ArithmeticError("quadratic class-group p-rank is inconsistent")
             ranks.append(rank)
 
         factors = []
         for level in range(1, exponent + 1):
             at_least = ranks[level] - ranks[level - 1]
-            next_at_least = (
-                ranks[level + 1] - ranks[level]
-                if level < exponent else 0
-            )
+            next_at_least = ranks[level + 1] - ranks[level] if level < exponent else 0
             for _index in range(at_least - next_at_least):
-                factors.append(prime ** level)
+                factors.append(prime**level)
 
         selected = []
         subgroup = [self._principal_form]
@@ -2684,22 +2589,26 @@ class QuadraticClassGroup:
                         candidate,
                         self.order(),
                         self._discriminant,
-                    ) != target_order
+                    )
+                    != target_order
                 ):
                     continue
                 candidate_subgroup = _quadratic_subgroup(
-                    selected + [candidate], self._discriminant)
+                    selected + [candidate], self._discriminant
+                )
                 if len(candidate_subgroup) == len(subgroup) * target_order:
                     chosen = candidate
                     subgroup = candidate_subgroup
                     break
             if chosen is runtime.undefined:
                 raise ArithmeticError(
-                    'failed to find independent quadratic class generators')
+                    "failed to find independent quadratic class generators"
+                )
             selected.append(chosen)
         if len(subgroup) != primary_order:
             raise ArithmeticError(
-                'quadratic class generators do not span a primary part')
+                "quadratic class generators do not span a primary part"
+            )
         selected.reverse()
         return factors, selected
 
@@ -2711,9 +2620,14 @@ class QuadraticClassGroup:
         if self._native_cyclic_generator is not runtime.undefined:
             return [self.order()], [self._native_cyclic_generator]
         for form in self._all_forms():
-            if _quadratic_form_order(
-                form, self.order(), self._discriminant,
-            ) == self.order():
+            if (
+                _quadratic_form_order(
+                    form,
+                    self.order(),
+                    self._discriminant,
+                )
+                == self.order()
+            ):
                 return [self.order()], [form]
         component_orders = []
         component_generators = []
@@ -2743,11 +2657,10 @@ class QuadraticClassGroup:
                     )
             invariants.append(invariant)
             generators.append(generator)
-        if len(_quadratic_subgroup(
-            generators, self._discriminant
-        )) != self.order():
+        if len(_quadratic_subgroup(generators, self._discriminant)) != self.order():
             raise ArithmeticError(
-                'quadratic class-group invariant generators do not span')
+                "quadratic class-group invariant generators do not span"
+            )
         invariants.reverse()
         generators.reverse()
         return invariants, generators
@@ -2772,10 +2685,10 @@ class QuadraticClassGroup:
     def one(self) -> QuadraticClassGroupElement:
         return self._from_form(self._principal_form)
 
-    def invariants(self) -> 'tuple[Any, ...]':
+    def invariants(self) -> "tuple[Any, ...]":
         return runtime.math_tuple(list(self._invariants))
 
-    def gens(self) -> 'tuple[Any, ...]':
+    def gens(self) -> "tuple[Any, ...]":
         return runtime.math_tuple(list(self._generators))
 
     def ngens(self) -> int:
@@ -2783,20 +2696,24 @@ class QuadraticClassGroup:
 
     def gen(self, index: int = 0) -> QuadraticClassGroupElement:
         if index < 0 or index >= len(self._generators):
-            raise IndexError('class-group generator index out of range')
+            raise IndexError("class-group generator index out of range")
         return self._generators[index]
 
     def number_field(self) -> QuadraticField_class:
         return self._field
 
     def __repr__(self) -> str:
-        structure = ''
+        structure = ""
         if len(self._invariants):
-            structure = ' with structure ' + ' x '.join([
-                'C' + str(value) for value in self._invariants])
+            structure = " with structure " + " x ".join(
+                ["C" + str(value) for value in self._invariants]
+            )
         return (
-            'Class group of order ' + str(self.order()) + structure
-            + ' of ' + str(self._field)
+            "Class group of order "
+            + str(self.order())
+            + structure
+            + " of "
+            + str(self._field)
         )
 
     __str__ = __repr__
@@ -2809,15 +2726,14 @@ class QuadraticIntegerRing(sage.Parent):
 
     def __init__(self, field: QuadraticField_class) -> None:
         self._field = field
-        self._kind = 'QuadraticOrder'
+        self._kind = "QuadraticOrder"
         self._construction = runtime.undefined
-        self._name = 'Maximal Order in ' + str(field)
+        self._name = "Maximal Order in " + str(field)
 
     def __call__(self, value: Any = 0) -> GaussianInteger:
         element = self._field(value)
         if element not in self:
-            raise TypeError(
-                str(element) + ' is not integral in ' + str(self._field))
+            raise TypeError(str(element) + " is not integral in " + str(self._field))
         return element
 
     def __contains__(self, value: object) -> bool:
@@ -2832,10 +2748,7 @@ class QuadraticIntegerRing(sage.Parent):
         else:
             omega_coefficient = scale * element._imag
             constant = element._real
-        return (
-            constant._denominator == 1
-            and omega_coefficient._denominator == 1
-        )
+        return constant._denominator == 1 and omega_coefficient._denominator == 1
 
     def basis(self) -> list[GaussianInteger]:
         return self._field.integral_basis()
@@ -2845,10 +2758,10 @@ class QuadraticIntegerRing(sage.Parent):
     def gen(self, index: int = 0) -> GaussianInteger:
         basis = self.basis()
         if index < 0 or index >= len(basis):
-            raise IndexError('maximal-order basis index out of range')
+            raise IndexError("maximal-order basis index out of range")
         return basis[index]
 
-    def gens(self) -> 'tuple[Any, ...]':
+    def gens(self) -> "tuple[Any, ...]":
         return runtime.math_tuple(self.basis())
 
     def number_field(self) -> QuadraticField_class:
@@ -2878,7 +2791,7 @@ class QuadraticField_class(sage.Parent):
 
     def __init__(self, radicand: Any, name: str) -> None:
         if not runtime.is_exact_integer(radicand):
-            raise TypeError('a quadratic radicand must be an exact integer')
+            raise TypeError("a quadratic radicand must be an exact integer")
         original = runtime.integer_bigint(radicand)
         squarefree_data = _quadratic_squarefree_data(original)
         self._squarefree_radicand = squarefree_data[0]
@@ -2889,19 +2802,21 @@ class QuadraticField_class(sage.Parent):
             if self._squarefree_radicand % 4 == 1
             else runtime.bigint(4) * self._squarefree_radicand
         )
-        polynomial_ring = _untyped(sage.PolynomialRing)(sage.QQ, 'x')
+        polynomial_ring = _untyped(sage.PolynomialRing)(sage.QQ, "x")
         polynomial_generator = polynomial_ring.gen()
-        self._polynomial = polynomial_generator ** 2 - original
+        self._polynomial = polynomial_generator**2 - original
         self._variable = name
         self._name = (
-            'Number Field in ' + name + ' with defining polynomial '
+            "Number Field in "
+            + name
+            + " with defining polynomial "
             + str(self._polynomial)
         )
-        self._kind = 'QuadraticField'
+        self._kind = "QuadraticField"
         self._discriminant = runtime.normalize_integer(original)
         self._construction = {
-            'kind': 'QuadraticField',
-            'discriminant': self._discriminant,
+            "kind": "QuadraticField",
+            "discriminant": self._discriminant,
         }
         self._generator = GaussianInteger(self, 0, 1)
         self._integer_ring = runtime.undefined
@@ -2918,15 +2833,15 @@ class QuadraticField_class(sage.Parent):
         if isinstance(real, GaussianInteger):
             if real._parent is self and imag == 0:
                 return real
-            raise TypeError('incompatible quadratic fields')
+            raise TypeError("incompatible quadratic fields")
         return GaussianInteger(self, real, imag)
 
     def gen(self, index: int = 0) -> GaussianInteger:
         if index != 0:
-            raise IndexError('a quadratic field has one generator')
+            raise IndexError("a quadratic field has one generator")
         return self._generator
 
-    def gens(self) -> 'tuple[Any, ...]':
+    def gens(self) -> "tuple[Any, ...]":
         return runtime.math_tuple([self.gen()])
 
     def zero(self) -> GaussianInteger:
@@ -2958,8 +2873,7 @@ class QuadraticField_class(sage.Parent):
             return [
                 self(
                     _untyped(sage.QQ)(1, 2),
-                    _untyped(sage.QQ)(
-                        1, runtime.bigint(2) * self._root_scale),
+                    _untyped(sage.QQ)(1, runtime.bigint(2) * self._root_scale),
                 ),
                 self(0, _untyped(sage.QQ)(1, self._root_scale)),
             ]
@@ -2982,50 +2896,51 @@ class QuadraticField_class(sage.Parent):
 
     def class_number(self) -> Any:
         if self._class_number is runtime.undefined:
-            native = _quadratic_native_method('qfbClassNumber')
-            if (
-                runtime.jstype(native) == 'function'
-                and _quadratic_native_enumeration_supported(
-                    self._field_discriminant)
+            native = _quadratic_native_method("qfbClassNumber")
+            if runtime.jstype(
+                native
+            ) == "function" and _quadratic_native_enumeration_supported(
+                self._field_discriminant
             ):
                 self._class_number = runtime.normalize_integer(
-                    native(self._field_discriminant))
+                    native(self._field_discriminant)
+                )
             else:
                 self._class_number = len(
-                    _quadratic_reduced_forms_reference(
-                        self._field_discriminant))
+                    _quadratic_reduced_forms_reference(self._field_discriminant)
+                )
         return self._class_number
 
     def _ideal_second_generator(self, middle: Any) -> GaussianInteger:
         if self._squarefree_radicand % 4 == 1:
-            sqrt_discriminant_coefficient = _untyped(sage.QQ)(
-                1, self._root_scale)
+            sqrt_discriminant_coefficient = _untyped(sage.QQ)(1, self._root_scale)
         else:
-            sqrt_discriminant_coefficient = _untyped(sage.QQ)(
-                2, self._root_scale)
+            sqrt_discriminant_coefficient = _untyped(sage.QQ)(2, self._root_scale)
         return self(
             _untyped(sage.QQ)(-runtime.integer_bigint(middle), 2),
             sqrt_discriminant_coefficient / 2,
         )
 
     def _from_serialized_prime_ideal(
-        self, generator: GaussianInteger,
+        self,
+        generator: GaussianInteger,
     ) -> GaussianPrimeIdeal:
         return GaussianPrimeIdeal(self(generator))
 
     def _first_ngens(self, count: int) -> list[GaussianInteger]:
         if count != 1:
-            raise ValueError(
-                'this quadratic field has exactly one generator')
+            raise ValueError("this quadratic field has exactly one generator")
         return [self.gen()]
 
     def primes_of_bounded_norm(
-        self, bound: Any,
+        self,
+        bound: Any,
     ) -> list[GaussianPrimeIdeal]:
         if self._radicand != -1:
             raise NotImplementedError(
-                'primes_of_bounded_norm currently uses the Gaussian '
-                'prime enumeration and requires QuadraticField(-1)')
+                "primes_of_bounded_norm currently uses the Gaussian "
+                "prime enumeration and requires QuadraticField(-1)"
+            )
         limit = runtime.integer_bigint(bound)
         if limit <= 1:
             return []
@@ -3036,12 +2951,8 @@ class QuadraticField_class(sage.Parent):
         # have ideal norm p^2.
         candidate = runtime.bigint(3)
         while candidate * candidate <= limit:
-            if (
-                candidate % 4 == 3
-                and runtime.flint_backend().isPrime(candidate)
-            ):
-                generators.append(
-                    GaussianInteger(self, candidate, 0))
+            if candidate % 4 == 3 and runtime.flint_backend().isPrime(candidate):
+                generators.append(GaussianInteger(self, candidate, 0))
             candidate += 2
 
         # Split and ramified primes are represented by every first-quadrant
@@ -3051,15 +2962,9 @@ class QuadraticField_class(sage.Parent):
                 norm = real * real + imag * imag
                 if norm > limit:
                     break
-                if runtime.flint_backend().isPrime(
-                    runtime.bigint(norm)
-                ):
-                    generators.append(
-                        GaussianInteger(self, real, imag))
-        return [
-            GaussianPrimeIdeal(generator)
-            for generator in generators
-        ]
+                if runtime.flint_backend().isPrime(runtime.bigint(norm)):
+                    generators.append(GaussianInteger(self, real, imag))
+        return [GaussianPrimeIdeal(generator) for generator in generators]
 
 
 def QuadraticField(
@@ -3082,10 +2987,10 @@ def QuadraticField(
     ```
     """
     if names is None:
-        name = 'i' if radicand == -1 else 'a'
+        name = "i" if radicand == -1 else "a"
     elif runtime.array.isArray(names):
         if len(names) != 1:
-            raise ValueError('a quadratic field has one generator name')
+            raise ValueError("a quadratic field has one generator name")
         name = str(names[0])
     else:
         name = str(names)
@@ -3103,132 +3008,124 @@ runtime.set_class_repr(
 )
 
 runtime.register_doc(
-    'NumberField',
+    "NumberField",
     NumberField,
     {
-        'kind': 'function',
-        'module': 'sage.rings.number_field.number_field',
-        'tags': [
-            'number theory',
-            'number fields',
-            'algebraic numbers',
-            'exact arithmetic',
+        "kind": "function",
+        "module": "sage.rings.number_field.number_field",
+        "tags": [
+            "number theory",
+            "number fields",
+            "algebraic numbers",
+            "exact arithmetic",
         ],
-        'backends': ['Sage.js exact quotient arithmetic', 'FLINT polynomials'],
-        'sage_compatibility': {
-            'status': 'partial',
-            'notes': (
-                'Simple fields over QQ have exact arithmetic and Sage-style '
-                'generators, certified maximal orders, integral bases, field '
-                'discriminants, and exact HNF ideal lattices. Galois groups '
-                'are identified natively through degree four.'
+        "backends": ["Sage.js exact quotient arithmetic", "FLINT polynomials"],
+        "sage_compatibility": {
+            "status": "partial",
+            "notes": (
+                "Simple fields over QQ have exact arithmetic and Sage-style "
+                "generators, certified maximal orders, integral bases, field "
+                "discriminants, and exact HNF ideal lattices. Galois groups "
+                "are identified natively through degree four."
             ),
         },
-        'provenance': [
+        "provenance": [
             {
-                'kind': 'sage-derived',
-                'source': 'SageMath number field API',
-                'url': (
-                    'https://doc.sagemath.org/html/en/reference/'
-                    'number_fields/'
-                ),
-                'license': 'GPL-2.0-or-later',
+                "kind": "sage-derived",
+                "source": "SageMath number field API",
+                "url": ("https://doc.sagemath.org/html/en/reference/number_fields/"),
+                "license": "GPL-2.0-or-later",
             },
             {
-                'kind': 'library-backed',
-                'source': 'FLINT polynomial arithmetic',
-                'url': 'https://flintlib.org/doc/',
+                "kind": "library-backed",
+                "source": "FLINT polynomial arithmetic",
+                "url": "https://flintlib.org/doc/",
             },
             {
-                'kind': 'literature-implemented',
-                'source': (
-                    'Kappe--Warren criterion for quartic Galois groups'
-                ),
-                'url': 'https://doi.org/10.1016/j.aim.2020.107282',
+                "kind": "literature-implemented",
+                "source": ("Kappe--Warren criterion for quartic Galois groups"),
+                "url": "https://doi.org/10.1016/j.aim.2020.107282",
             },
             {
-                'kind': 'literature-implemented',
-                'source': (
-                    'Zassenhaus round-two maximal-order algorithm via exact '
-                    'trace radicals and integral overorder enumeration'
+                "kind": "literature-implemented",
+                "source": (
+                    "Zassenhaus round-two maximal-order algorithm via exact "
+                    "trace radicals and integral overorder enumeration"
                 ),
             },
         ],
-        'limitations': [
+        "limitations": [
             (
-                'General unit groups, nonquadratic class groups, and Galois '
-                'groups above degree four await further native number-field '
-                'algorithms.'
+                "General unit groups, nonquadratic class groups, and Galois "
+                "groups above degree four await further native number-field "
+                "algorithms."
             ),
             (
-                'Maximal-order overorder enumeration is correctness-first '
-                'and can be exponential in the dimension of a large trace '
-                'radical; machine-sized discriminant primes are currently '
-                'required.'
+                "Maximal-order overorder enumeration is correctness-first "
+                "and can be exponential in the dimension of a large trace "
+                "radical; machine-sized discriminant primes are currently "
+                "required."
             ),
         ],
     },
 )
 
 runtime.register_doc(
-    'QuadraticField',
+    "QuadraticField",
     QuadraticField,
     {
-        'kind': 'function',
-        'module': 'sage.rings.number_field.number_field',
-        'tags': [
-            'number theory',
-            'quadratic fields',
-            'rings of integers',
-            'ideal class groups',
-            'binary quadratic forms',
+        "kind": "function",
+        "module": "sage.rings.number_field.number_field",
+        "tags": [
+            "number theory",
+            "quadratic fields",
+            "rings of integers",
+            "ideal class groups",
+            "binary quadratic forms",
         ],
-        'backends': [
-            'Sage.js exact quadratic arithmetic',
-            'FLINT qfb reduced-form sieve and NUCOMP arithmetic',
+        "backends": [
+            "Sage.js exact quadratic arithmetic",
+            "FLINT qfb reduced-form sieve and NUCOMP arithmetic",
         ],
-        'sage_compatibility': {
-            'status': 'partial',
-            'notes': (
-                'Negative radicands have exact arithmetic, maximal orders, '
-                'integral bases, field discriminants, class numbers, and '
-                'composable finite class groups with Sage-ordered invariant '
-                'factors.'
+        "sage_compatibility": {
+            "status": "partial",
+            "notes": (
+                "Negative radicands have exact arithmetic, maximal orders, "
+                "integral bases, field discriminants, class numbers, and "
+                "composable finite class groups with Sage-ordered invariant "
+                "factors."
             ),
         },
-        'provenance': [
+        "provenance": [
             {
-                'kind': 'sage-derived',
-                'source': 'SageMath quadratic number-field and class-group API',
-                'url': (
-                    'https://doc.sagemath.org/html/en/reference/'
-                    'number_fields/'
-                ),
-                'license': 'GPL-2.0-or-later',
+                "kind": "sage-derived",
+                "source": "SageMath quadratic number-field and class-group API",
+                "url": ("https://doc.sagemath.org/html/en/reference/number_fields/"),
+                "license": "GPL-2.0-or-later",
             },
             {
-                'kind': 'literature-implemented',
-                'source': (
-                    'Gauss reduction and ideal-lattice composition of '
-                    'positive-definite binary quadratic forms'
+                "kind": "literature-implemented",
+                "source": (
+                    "Gauss reduction and ideal-lattice composition of "
+                    "positive-definite binary quadratic forms"
                 ),
             },
             {
-                'kind': 'library-backed',
-                'source': 'FLINT binary quadratic forms',
-                'url': 'https://flintlib.org/doc/qfb.html',
+                "kind": "library-backed",
+                "source": "FLINT binary quadratic forms",
+                "url": "https://flintlib.org/doc/qfb.html",
             },
         ],
-        'limitations': [
+        "limitations": [
             (
-                'Real quadratic fields and their unit/regulator algorithms '
-                'are not yet implemented by QuadraticField.'
+                "Real quadratic fields and their unit/regulator algorithms "
+                "are not yet implemented by QuadraticField."
             ),
             (
-                'Certified class numbers currently enumerate every reduced '
-                'form using FLINT\'s modular-root sieve, so very large '
-                'discriminants still need a non-enumerating or '
-                'subexponential backend.'
+                "Certified class numbers currently enumerate every reduced "
+                "form using FLINT's modular-root sieve, so very large "
+                "discriminants still need a non-enumerating or "
+                "subexponential backend."
             ),
         ],
     },

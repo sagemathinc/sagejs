@@ -38,6 +38,7 @@ class FileFinder:
     def path_hook(cls, *loader_details):
         def hook(path):
             return cls(path, *loader_details)
+
         return hook
 
 
@@ -50,7 +51,7 @@ class SourceFileLoader:
         return self.path
 
     def get_data(self, path):
-        with open(path, 'rb') as stream:
+        with open(path, "rb") as stream:
             return stream.read()
 
 
@@ -69,8 +70,8 @@ class NamespaceLoader:
         self.path_finder = path_finder
 
 
-SOURCE_SUFFIXES = ['.py']
-BYTECODE_SUFFIXES = ['.pyc']
+SOURCE_SUFFIXES = [".py"]
+BYTECODE_SUFFIXES = [".pyc"]
 EXTENSION_SUFFIXES = []
 DEBUG_BYTECODE_SUFFIXES = BYTECODE_SUFFIXES
 OPTIMIZED_BYTECODE_SUFFIXES = BYTECODE_SUFFIXES
@@ -78,8 +79,17 @@ all_suffixes = lambda: SOURCE_SUFFIXES + BYTECODE_SUFFIXES + EXTENSION_SUFFIXES
 
 
 __all__ = [
-    'ModuleSpec', 'BuiltinImporter', 'FrozenImporter', 'PathFinder',
-    'FileFinder', 'SourceFileLoader', 'SourcelessFileLoader',
-    'ExtensionFileLoader', 'NamespaceLoader', 'SOURCE_SUFFIXES',
-    'BYTECODE_SUFFIXES', 'EXTENSION_SUFFIXES', 'all_suffixes',
+    "ModuleSpec",
+    "BuiltinImporter",
+    "FrozenImporter",
+    "PathFinder",
+    "FileFinder",
+    "SourceFileLoader",
+    "SourcelessFileLoader",
+    "ExtensionFileLoader",
+    "NamespaceLoader",
+    "SOURCE_SUFFIXES",
+    "BYTECODE_SUFFIXES",
+    "EXTENSION_SUFFIXES",
+    "all_suffixes",
 ]

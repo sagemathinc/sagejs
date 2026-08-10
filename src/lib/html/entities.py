@@ -6,18 +6,18 @@ the full WHATWG table remains an explicitly measured standard-library gap.
 """
 
 name2codepoint = {
-    'amp': 38,
-    'apos': 39,
-    'cent': 162,
-    'copy': 169,
-    'euro': 8364,
-    'gt': 62,
-    'lt': 60,
-    'nbsp': 160,
-    'pound': 163,
-    'quot': 34,
-    'reg': 174,
-    'yen': 165,
+    "amp": 38,
+    "apos": 39,
+    "cent": 162,
+    "copy": 169,
+    "euro": 8364,
+    "gt": 62,
+    "lt": 60,
+    "nbsp": 160,
+    "pound": 163,
+    "quot": 34,
+    "reg": 174,
+    "yen": 165,
 }
 
 codepoint2name = {value: name for name, value in name2codepoint.items()}
@@ -28,5 +28,4 @@ entitydefs = {name: chr(value) for name, value in name2codepoint.items()}
 html5 = {}
 for _name, _value in entitydefs.items():
     html5[_name] = _value
-    html5[_name + ';'] = _value
-
+    html5[_name + ";"] = _value

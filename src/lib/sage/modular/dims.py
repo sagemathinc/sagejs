@@ -7,17 +7,15 @@ from typing import Any
 import sagejs.runtime as runtime
 
 _dimension_cusp_forms = runtime.reflect.get(
-    runtime.global_object, 'dimension_cusp_forms')
-_dimension_eis = runtime.reflect.get(
-    runtime.global_object, 'dimension_eis')
+    runtime.global_object, "dimension_cusp_forms"
+)
+_dimension_eis = runtime.reflect.get(runtime.global_object, "dimension_eis")
 _dimension_modular_forms = runtime.reflect.get(
-    runtime.global_object, 'dimension_modular_forms')
-_cohen_oesterle = runtime.reflect.get(
-    runtime.global_object, 'CohenOesterle')
-_co_delta = runtime.reflect.get(
-    runtime.global_object, 'CO_delta')
-_co_nu = runtime.reflect.get(
-    runtime.global_object, 'CO_nu')
+    runtime.global_object, "dimension_modular_forms"
+)
+_cohen_oesterle = runtime.reflect.get(runtime.global_object, "CohenOesterle")
+_co_delta = runtime.reflect.get(runtime.global_object, "CO_delta")
+_co_nu = runtime.reflect.get(runtime.global_object, "CO_nu")
 
 
 def dimension_cusp_forms(
@@ -54,8 +52,7 @@ def CO_delta(
     modulus: Any,
     character: Any,
 ) -> int:
-    return _co_delta(
-        exponent, prime, modulus, character)
+    return _co_delta(exponent, prime, modulus, character)
 
 
 def CO_nu(
@@ -64,5 +61,4 @@ def CO_nu(
     modulus: Any,
     character: Any,
 ) -> int:
-    return _co_nu(
-        exponent, prime, modulus, character)
+    return _co_nu(exponent, prime, modulus, character)

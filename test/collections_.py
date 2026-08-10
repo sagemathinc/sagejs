@@ -46,8 +46,8 @@ non_boolean_comparison = NonBooleanComparison()
 assrt.equal(non_boolean_comparison == object(), 123)
 assrt.equal(non_boolean_comparison != object(), -456)
 
-if jstype(Symbol) is 'function':
-    ss = Symbol('s')
+if jstype(Symbol) is "function":
+    ss = Symbol("s")
     sym = {ss: 1}
     assrt.equal(sym[ss], 1)
 
@@ -71,20 +71,20 @@ assrt.deepEqual(s, [8, 5, 2, 1, 2])
 
 # extended slices
 b = list(range(11))
-s = 'abcde'
+s = "abcde"
 assrt.deepEqual(b[::2], [0, 2, 4, 6, 8, 10])
 assrt.deepEqual(b[::-1], list(range(10, -1, -1)))
 assrt.deepEqual(b[7:0:-1], [7, 6, 5, 4, 3, 2, 1])
 assrt.deepEqual(b[7:1:-2], [7, 5, 3])
-assrt.equal(s[::2], 'ace')
-assrt.equal(s[::-1], 'edcba')
-assrt.equal(s[4:0:-1], 'edcb')
-assrt.equal(s[4:1:-2], 'ec')
-repeated = 'ab' * 3
-assrt.equal(repeated, 'ababab')
-assrt.equal(repeated[::-1], 'bababa')
-assrt.equal(3 * 'ab', repeated)
-assrt.equal('ab' * -1, '')
+assrt.equal(s[::2], "ace")
+assrt.equal(s[::-1], "edcba")
+assrt.equal(s[4:0:-1], "edcb")
+assrt.equal(s[4:1:-2], "ec")
+repeated = "ab" * 3
+assrt.equal(repeated, "ababab")
+assrt.equal(repeated[::-1], "bababa")
+assrt.equal(3 * "ab", repeated)
+assrt.equal("ab" * -1, "")
 
 # sorting
 a = [2, 1, 3]
@@ -114,18 +114,18 @@ assrt.ok("tes" in "this is a test")
 one = "one"
 two = "two"
 one, two = two, one
-[x, y, z] = 'x', 'y', 'z'
+[x, y, z] = "x", "y", "z"
 assrt.equal(one, "two")
 assrt.equal(two, "one")
-assrt.equal(x, 'x')
-assrt.equal(y, 'y')
-assrt.equal(z, 'z')
+assrt.equal(x, "x")
+assrt.equal(y, "y")
+assrt.equal(z, "z")
 
 # DICTIONARIES
 d0 = {
-    'a': 'b',
-    'c': 2,
-    'd': 'd',
+    "a": "b",
+    "c": 2,
+    "d": "d",
 }
 
 
@@ -137,21 +137,21 @@ def fun2(c):
     return c + 1
 
 
-d1 = {'foo': 1, "bar": "baz", "fun1": fun1, 'fun2': fun2}
-d2 = dict([[1, 2], [2, 3]], a='b')
+d1 = {"foo": 1, "bar": "baz", "fun1": fun1, "fun2": fun2}
+d2 = dict([[1, 2], [2, 3]], a="b")
 
 # access
-assrt.ok('foo' in d1)
-assrt.equal(d0.a, d0['a'])
-assrt.equal(d1['fun1'](), 5)
+assrt.ok("foo" in d1)
+assrt.equal(d0.a, d0["a"])
+assrt.equal(d1["fun1"](), 5)
 assrt.equal(d1.fun2(3), 4)
 assrt.equal(len(d0), 3)
 assrt.equal(d2.get(1), 2)
-assrt.equal(d2.get('a'), 'b')
+assrt.equal(d2.get("a"), "b")
 dict_get = d2.get
 assrt.equal(dict_get(1), 2)
 assrt.equal(dict_get.__self__, d2)
-assrt.equal(dict_get.__func__.__name__, 'get')
+assrt.equal(dict_get.__func__.__name__, "get")
 
 # assignment
 d1["bar"] += "!"
@@ -187,11 +187,11 @@ b = a
 assrt.ok(a == b)
 b = {1: 2}
 assrt.ok(a == b)
-assrt.ok(r'js% {1:2}' == r'js% {1:2}')
+assrt.ok(r"js% {1:2}" == r"js% {1:2}")
 
 # iterating over TypedArrays
 assrt.deepEqual(list(Uint8Array(2)), [0, 0])
 assrt.deepEqual(list(Int32Array([1, -1])), [1, -1])
 
 # list times number
-assrt.deepEqual([1, [2], 'a'] * 3, [1, [2], 'a', 1, [2], 'a', 1, [2], 'a'])
+assrt.deepEqual([1, [2], "a"] * 3, [1, [2], "a", 1, [2], "a", 1, [2], "a"])

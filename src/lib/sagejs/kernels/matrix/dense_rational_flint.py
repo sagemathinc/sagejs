@@ -48,8 +48,7 @@ def flint_dense_rational_matrix_rank(
     columns: uint64,
     one: uint64,
 ) -> bool:
-    return fmpq_mat_rank(
-        rank, numerators, denominators, rows, columns, one)
+    return fmpq_mat_rank(rank, numerators, denominators, rows, columns, one)
 
 
 @native

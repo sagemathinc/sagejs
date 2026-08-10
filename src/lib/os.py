@@ -12,26 +12,26 @@ import os.path as path
 
 
 _STRERROR = {
-    1: 'Operation not permitted',
-    2: 'No such file or directory',
-    5: 'Input/output error',
-    11: 'Resource temporarily unavailable',
-    13: 'Permission denied',
-    17: 'File exists',
-    20: 'Not a directory',
-    21: 'Is a directory',
-    22: 'Invalid argument',
-    28: 'No space left on device',
-    32: 'Broken pipe',
-    38: 'Function not implemented',
-    39: 'Directory not empty',
+    1: "Operation not permitted",
+    2: "No such file or directory",
+    5: "Input/output error",
+    11: "Resource temporarily unavailable",
+    13: "Permission denied",
+    17: "File exists",
+    20: "Not a directory",
+    21: "Is a directory",
+    22: "Invalid argument",
+    28: "No space left on device",
+    32: "Broken pipe",
+    38: "Function not implemented",
+    39: "Directory not empty",
 }
 
 
 def strerror(code):
     """Return a platform-neutral description for a Python errno value."""
     value = int(code)
-    return _STRERROR.get(value, 'Unknown error ' + str(value))
+    return _STRERROR.get(value, "Unknown error " + str(value))
 
 
 def _property(value, key, fallback=None):
@@ -42,22 +42,22 @@ def _property(value, key, fallback=None):
 
 
 def _host_object():
-    return runtime.reflect.get(runtime.global_object, '__sagejs_host__')
+    return runtime.reflect.get(runtime.global_object, "__sagejs_host__")
 
 
 def _raise_host_error(operation, error):
-    code = _property(error, 'code', 'EIO')
-    errno_value = _property(error, 'errno', None)
+    code = _property(error, "code", "EIO")
+    errno_value = _property(error, "errno", None)
     messages = {
-        'ENOENT': [2, 'No such file or directory', FileNotFoundError],
-        'EACCES': [13, 'Permission denied', PermissionError],
-        'EPERM': [13, 'Permission denied', PermissionError],
-        'EEXIST': [17, 'File exists', FileExistsError],
-        'ENOTDIR': [20, 'Not a directory', NotADirectoryError],
-        'EISDIR': [21, 'Is a directory', IsADirectoryError],
-        'EINVAL': [22, 'Invalid argument', OSError],
-        'ENOSYS': [38, 'Function not implemented', OSError],
-        'ENOTEMPTY': [39, 'Directory not empty', OSError],
+        "ENOENT": [2, "No such file or directory", FileNotFoundError],
+        "EACCES": [13, "Permission denied", PermissionError],
+        "EPERM": [13, "Permission denied", PermissionError],
+        "EEXIST": [17, "File exists", FileExistsError],
+        "ENOTDIR": [20, "Not a directory", NotADirectoryError],
+        "EISDIR": [21, "Is a directory", IsADirectoryError],
+        "EINVAL": [22, "Invalid argument", OSError],
+        "ENOSYS": [38, "Function not implemented", OSError],
+        "ENOTEMPTY": [39, "Directory not empty", OSError],
     }
     if code in messages:
         default_errno, message, exception_class = messages[code]
@@ -65,11 +65,15 @@ def _raise_host_error(operation, error):
         # Windows reports -4058 for ENOENT).  Python errno values are stable.
         errno_value = default_errno
     else:
-        default_errno, message, exception_class = (5, str(_property(error, 'message', code)), OSError)
+        default_errno, message, exception_class = (
+            5,
+            str(_property(error, "message", code)),
+            OSError,
+        )
         if errno_value is None:
             errno_value = default_errno
-    filename = _property(error, 'path', None)
-    destination = _property(error, 'dest', None)
+    filename = _property(error, "path", None)
+    destination = _property(error, "dest", None)
     raise exception_class(errno_value, message, filename, destination)
 
 
@@ -77,42 +81,42 @@ def _host_call(operation, *args):
     host = _host_object()
     if host is runtime.undefined:
         raise NotImplementedError(
-            'os.' + operation + '() is unavailable without a host filesystem capability'
+            "os." + operation + "() is unavailable without a host filesystem capability"
         )
-    method = runtime.reflect.get(host, 'call')
+    method = runtime.reflect.get(host, "call")
     result = runtime.reflect.apply(method, host, [operation, list(args)])
-    if not _property(result, 'ok', False):
-        _raise_host_error(operation, _property(result, 'error'))
-    return _property(result, 'value')
+    if not _property(result, "ok", False):
+        _raise_host_error(operation, _property(result, "error"))
+    return _property(result, "value")
 
 
 try:
-    _description = _host_call('describe')
+    _description = _host_call("describe")
 except NotImplementedError:
     _description = None
 
 if _description is None:
-    name = 'posix'
-    sep = '/'
+    name = "posix"
+    sep = "/"
     altsep = None
-    pathsep = ':'
-    linesep = '\n'
-    devnull = '/dev/null'
-    curdir = '.'
-    pardir = '..'
-    tempdir = '/tmp'
+    pathsep = ":"
+    linesep = "\n"
+    devnull = "/dev/null"
+    curdir = "."
+    pardir = ".."
+    tempdir = "/tmp"
 else:
-    name = _property(_description, 'name')
-    sep = _property(_description, 'sep')
-    altsep = _property(_description, 'altsep')
-    pathsep = _property(_description, 'pathsep')
-    linesep = _property(_description, 'linesep')
-    devnull = _property(_description, 'devnull')
-    curdir = _property(_description, 'curdir')
-    pardir = _property(_description, 'pardir')
-    tempdir = _property(_description, 'tempdir')
+    name = _property(_description, "name")
+    sep = _property(_description, "sep")
+    altsep = _property(_description, "altsep")
+    pathsep = _property(_description, "pathsep")
+    linesep = _property(_description, "linesep")
+    devnull = _property(_description, "devnull")
+    curdir = _property(_description, "curdir")
+    pardir = _property(_description, "pardir")
+    tempdir = _property(_description, "tempdir")
 
-extsep = '.'
+extsep = "."
 
 
 class PathLike:
@@ -129,9 +133,9 @@ def fspath(path):
     try:
         value = path.__fspath__()
     except AttributeError:
-        raise TypeError('expected str, bytes or os.PathLike object')
+        raise TypeError("expected str, bytes or os.PathLike object")
     if not isinstance(value, (str, bytes)):
-        raise TypeError('expected __fspath__() to return str or bytes')
+        raise TypeError("expected __fspath__() to return str or bytes")
     return value
 
 
@@ -139,29 +143,37 @@ class stat_result:
     """Result object returned by :func:`stat` and :func:`lstat`."""
 
     _fields = (
-        'st_mode', 'st_ino', 'st_dev', 'st_nlink', 'st_uid',
-        'st_gid', 'st_size', 'st_atime', 'st_mtime', 'st_ctime',
+        "st_mode",
+        "st_ino",
+        "st_dev",
+        "st_nlink",
+        "st_uid",
+        "st_gid",
+        "st_size",
+        "st_atime",
+        "st_mtime",
+        "st_ctime",
     )
 
     def __init__(self, value):
-        self.st_mode = _property(value, 'mode')
-        self.st_ino = _property(value, 'ino')
-        self.st_dev = _property(value, 'dev')
-        self.st_nlink = _property(value, 'nlink')
-        self.st_uid = _property(value, 'uid')
-        self.st_gid = _property(value, 'gid')
-        self.st_size = _property(value, 'size')
-        self.st_atime = _property(value, 'atime')
-        self.st_mtime = _property(value, 'mtime')
-        self.st_ctime = _property(value, 'ctime')
-        self.st_birthtime = _property(value, 'birthtime')
-        self.st_atime_ns = _property(value, 'atimeNs')
-        self.st_mtime_ns = _property(value, 'mtimeNs')
-        self.st_ctime_ns = _property(value, 'ctimeNs')
-        self.st_birthtime_ns = _property(value, 'birthtimeNs')
-        self._is_file = _property(value, 'isFile', False)
-        self._is_directory = _property(value, 'isDirectory', False)
-        self._is_symlink = _property(value, 'isSymbolicLink', False)
+        self.st_mode = _property(value, "mode")
+        self.st_ino = _property(value, "ino")
+        self.st_dev = _property(value, "dev")
+        self.st_nlink = _property(value, "nlink")
+        self.st_uid = _property(value, "uid")
+        self.st_gid = _property(value, "gid")
+        self.st_size = _property(value, "size")
+        self.st_atime = _property(value, "atime")
+        self.st_mtime = _property(value, "mtime")
+        self.st_ctime = _property(value, "ctime")
+        self.st_birthtime = _property(value, "birthtime")
+        self.st_atime_ns = _property(value, "atimeNs")
+        self.st_mtime_ns = _property(value, "mtimeNs")
+        self.st_ctime_ns = _property(value, "ctimeNs")
+        self.st_birthtime_ns = _property(value, "birthtimeNs")
+        self._is_file = _property(value, "isFile", False)
+        self._is_directory = _property(value, "isDirectory", False)
+        self._is_symlink = _property(value, "isSymbolicLink", False)
         self._values = tuple(getattr(self, field) for field in self._fields)
 
     def __len__(self):
@@ -176,19 +188,19 @@ class stat_result:
     def __repr__(self):
         values = []
         for field in self._fields:
-            values.append(field + '=' + repr(getattr(self, field)))
-        return 'os.stat_result(' + ', '.join(values) + ')'
+            values.append(field + "=" + repr(getattr(self, field)))
+        return "os.stat_result(" + ", ".join(values) + ")"
 
 
 class DirEntry:
     """Entry yielded by :func:`scandir`."""
 
     def __init__(self, directory, value):
-        self.name = _property(value, 'name')
+        self.name = _property(value, "name")
         self.path = path.join(directory, self.name)
-        self._is_file = _property(value, 'isFile', False)
-        self._is_directory = _property(value, 'isDirectory', False)
-        self._is_symlink = _property(value, 'isSymbolicLink', False)
+        self._is_file = _property(value, "isFile", False)
+        self._is_directory = _property(value, "isDirectory", False)
+        self._is_symlink = _property(value, "isSymbolicLink", False)
 
     def __fspath__(self):
         return self.path
@@ -241,14 +253,14 @@ class _ScandirIterator:
 
 def uname():
     """Return host identification using Python's five-field tuple contract."""
-    values = _host_call('uname')
-    fields = ['sysname', 'nodename', 'release', 'version', 'machine']
-    return runtime.named_tuple(values, 'posix.uname_result', fields)
+    values = _host_call("uname")
+    fields = ["sysname", "nodename", "release", "version", "machine"]
+    return runtime.named_tuple(values, "posix.uname_result", fields)
 
 
 def getcwd():
     """Return the current working directory for this Sage.js session."""
-    return _host_call('getcwd')
+    return _host_call("getcwd")
 
 
 def getcwdb():
@@ -258,25 +270,25 @@ def getcwdb():
 
 def chdir(pathname):
     """Change the current working directory for this Sage.js session."""
-    _host_call('chdir', fspath(pathname))
+    _host_call("chdir", fspath(pathname))
 
 
-def listdir(pathname='.'):
+def listdir(pathname="."):
     """Return a list containing the names of entries in a directory."""
-    return list(_host_call('listdir', fspath(pathname)))
+    return list(_host_call("listdir", fspath(pathname)))
 
 
-def scandir(pathname='.'):
+def scandir(pathname="."):
     """Return an iterator of DirEntry objects for a directory."""
     directory = fspath(pathname)
-    values = _host_call('scandir', directory)
+    values = _host_call("scandir", directory)
     return _ScandirIterator([DirEntry(directory, value) for value in values])
 
 
 def stat(pathname, *, dir_fd=None, follow_symlinks=True):
     if dir_fd is not None:
-        raise NotImplementedError('dir_fd is not supported')
-    operation = 'stat' if follow_symlinks else 'lstat'
+        raise NotImplementedError("dir_fd is not supported")
+    operation = "stat" if follow_symlinks else "lstat"
     return stat_result(_host_call(operation, fspath(pathname)))
 
 
@@ -286,13 +298,13 @@ def lstat(pathname, *, dir_fd=None):
 
 def mkdir(pathname, mode=0o777, *, dir_fd=None):
     if dir_fd is not None:
-        raise NotImplementedError('dir_fd is not supported')
-    _host_call('mkdir', fspath(pathname), mode)
+        raise NotImplementedError("dir_fd is not supported")
+    _host_call("mkdir", fspath(pathname), mode)
 
 
 def makedirs(name, mode=0o777, exist_ok=False):
     try:
-        _host_call('makedirs', fspath(name), mode)
+        _host_call("makedirs", fspath(name), mode)
     except FileExistsError:
         if not exist_ok or not path.isdir(name):
             raise
@@ -300,8 +312,8 @@ def makedirs(name, mode=0o777, exist_ok=False):
 
 def unlink(pathname, *, dir_fd=None):
     if dir_fd is not None:
-        raise NotImplementedError('dir_fd is not supported')
-    _host_call('unlink', fspath(pathname))
+        raise NotImplementedError("dir_fd is not supported")
+    _host_call("unlink", fspath(pathname))
 
 
 remove = unlink
@@ -309,63 +321,64 @@ remove = unlink
 
 def rmdir(pathname, *, dir_fd=None):
     if dir_fd is not None:
-        raise NotImplementedError('dir_fd is not supported')
-    _host_call('rmdir', fspath(pathname))
+        raise NotImplementedError("dir_fd is not supported")
+    _host_call("rmdir", fspath(pathname))
 
 
 def rename(src, dst, *, src_dir_fd=None, dst_dir_fd=None):
     if src_dir_fd is not None or dst_dir_fd is not None:
-        raise NotImplementedError('dir_fd is not supported')
-    _host_call('rename', fspath(src), fspath(dst))
+        raise NotImplementedError("dir_fd is not supported")
+    _host_call("rename", fspath(src), fspath(dst))
 
 
 def replace(src, dst, *, src_dir_fd=None, dst_dir_fd=None):
     if src_dir_fd is not None or dst_dir_fd is not None:
-        raise NotImplementedError('dir_fd is not supported')
-    _host_call('replace', fspath(src), fspath(dst))
+        raise NotImplementedError("dir_fd is not supported")
+    _host_call("replace", fspath(src), fspath(dst))
 
 
 def readlink(pathname, *, dir_fd=None):
     if dir_fd is not None:
-        raise NotImplementedError('dir_fd is not supported')
-    return _host_call('readlink', fspath(pathname))
+        raise NotImplementedError("dir_fd is not supported")
+    return _host_call("readlink", fspath(pathname))
 
 
 def symlink(src, dst, target_is_directory=False, *, dir_fd=None):
     if dir_fd is not None:
-        raise NotImplementedError('dir_fd is not supported')
-    kind = 'dir' if target_is_directory else 'file'
-    _host_call('symlink', fspath(src), fspath(dst), kind)
+        raise NotImplementedError("dir_fd is not supported")
+    kind = "dir" if target_is_directory else "file"
+    _host_call("symlink", fspath(src), fspath(dst), kind)
 
 
 def link(src, dst, *, src_dir_fd=None, dst_dir_fd=None, follow_symlinks=True):
     if src_dir_fd is not None or dst_dir_fd is not None or not follow_symlinks:
-        raise NotImplementedError('extended hard-link options are not supported')
-    _host_call('link', fspath(src), fspath(dst))
+        raise NotImplementedError("extended hard-link options are not supported")
+    _host_call("link", fspath(src), fspath(dst))
 
 
 def chmod(pathname, mode, *, dir_fd=None, follow_symlinks=True):
     if dir_fd is not None or not follow_symlinks:
-        raise NotImplementedError('extended chmod options are not supported')
-    _host_call('chmod', fspath(pathname), mode)
+        raise NotImplementedError("extended chmod options are not supported")
+    _host_call("chmod", fspath(pathname), mode)
 
 
 def utime(pathname, times=None, *, ns=None, dir_fd=None, follow_symlinks=True):
     if dir_fd is not None or not follow_symlinks:
-        raise NotImplementedError('extended utime options are not supported')
+        raise NotImplementedError("extended utime options are not supported")
     if times is not None and ns is not None:
-        raise ValueError('utime: you may specify either times or ns but not both')
+        raise ValueError("utime: you may specify either times or ns but not both")
     if ns is not None:
         times = (ns[0] / 1000000000, ns[1] / 1000000000)
     if times is None:
         import time
+
         current = time.time()
         times = (current, current)
-    _host_call('utime', fspath(pathname), times[0], times[1])
+    _host_call("utime", fspath(pathname), times[0], times[1])
 
 
 def _realpath(pathname):
-    return _host_call('realpath', fspath(pathname))
+    return _host_call("realpath", fspath(pathname))
 
 
 F_OK = 0
@@ -376,16 +389,16 @@ R_OK = 4
 
 def access(pathname, mode, *, dir_fd=None, effective_ids=False, follow_symlinks=True):
     if dir_fd is not None or effective_ids or not follow_symlinks:
-        raise NotImplementedError('extended access options are not supported')
+        raise NotImplementedError("extended access options are not supported")
     try:
-        _host_call('access', fspath(pathname), mode)
+        _host_call("access", fspath(pathname), mode)
         return True
     except OSError:
         return False
 
 
 def close(fd):
-    _host_call('closeFd', fd)
+    _host_call("closeFd", fd)
 
 
 def walk(top, topdown=True, onerror=None, followlinks=False):
@@ -422,17 +435,17 @@ class _Environ:
     def __init__(self):
         self._data = {}
         try:
-            entries = _host_call('environmentEntries')
+            entries = _host_call("environmentEntries")
         except NotImplementedError:
             entries = []
         for key, value in entries:
             self._data[self._key(key)] = [str(key), str(value)]
 
     def _key(self, key):
-        if runtime.jstype(key) != 'string':
-            raise TypeError('str expected, not ' + self._type_name(key))
+        if runtime.jstype(key) != "string":
+            raise TypeError("str expected, not " + self._type_name(key))
         value = str(key)
-        return value.upper() if name == 'nt' else value
+        return value.upper() if name == "nt" else value
 
     def __getitem__(self, key):
         normalized = self._key(key)
@@ -441,30 +454,30 @@ class _Environ:
         return self._data[normalized][1]
 
     def __setitem__(self, key, value):
-        if runtime.jstype(key) != 'string':
-            raise TypeError('str expected, not ' + self._type_name(key))
-        if runtime.jstype(value) != 'string':
-            raise TypeError('str expected, not ' + self._type_name(value))
+        if runtime.jstype(key) != "string":
+            raise TypeError("str expected, not " + self._type_name(key))
+        if runtime.jstype(value) != "string":
+            raise TypeError("str expected, not " + self._type_name(value))
         key = str(key)
         value = str(value)
-        _host_call('setEnv', key, value)
+        _host_call("setEnv", key, value)
         self._data[self._key(key)] = [key, value]
 
     def _type_name(self, value):
         kind = runtime.jstype(value)
-        if kind == 'number':
-            return 'int' if int(value) == value else 'float'
-        if kind == 'boolean':
-            return 'bool'
+        if kind == "number":
+            return "int" if int(value) == value else "float"
+        if kind == "boolean":
+            return "bool"
         if value is None:
-            return 'NoneType'
+            return "NoneType"
         return kind
 
     def __delitem__(self, key):
         normalized = self._key(key)
         if normalized not in self._data:
             raise KeyError(key)
-        _host_call('deleteEnv', self._data[normalized][0])
+        _host_call("deleteEnv", self._data[normalized][0])
         del self._data[normalized]
 
     def __contains__(self, key):
@@ -506,14 +519,14 @@ class _Environ:
 
     def update(self, other=None, **kwargs):
         if other is not None:
-            values = other.items() if hasattr(other, 'items') else other
+            values = other.items() if hasattr(other, "items") else other
             for key, value in values:
                 self[key] = value
         for key, value in kwargs.items():
             self[key] = value
 
     def __repr__(self):
-        return 'environ(' + repr(self.copy()) + ')'
+        return "environ(" + repr(self.copy()) + ")"
 
 
 environ = _Environ()
@@ -541,10 +554,10 @@ def umask(mask):
     """Set the process file-creation mask and return the previous value."""
     global _fallback_umask
     mask = int(mask)
-    process_object = runtime.reflect.get(runtime.global_object, 'process')
+    process_object = runtime.reflect.get(runtime.global_object, "process")
     if process_object is not runtime.undefined:
-        method = runtime.reflect.get(process_object, 'umask')
-        if runtime.strict_equal(runtime.jstype(method), 'function'):
+        method = runtime.reflect.get(process_object, "umask")
+        if runtime.strict_equal(runtime.jstype(method), "function"):
             return int(runtime.reflect.apply(method, process_object, [mask]))
     previous = _fallback_umask
     _fallback_umask = mask
@@ -552,29 +565,31 @@ def umask(mask):
 
 
 def getpid():
-    return _host_call('getpid')
+    return _host_call("getpid")
 
 
 def cpu_count():
-    return _host_call('cpuCount')
+    return _host_call("cpuCount")
 
 
 def urandom(size):
     if size < 0:
-        raise ValueError('negative argument not allowed')
-    return bytes(_host_call('urandom', size))
+        raise ValueError("negative argument not allowed")
+    return bytes(_host_call("urandom", size))
 
 
 def fsencode(filename):
     """Encode a path using the portable UTF-8 host boundary."""
     value = fspath(filename)
-    return value if isinstance(value, bytes) else value.encode('utf-8', 'surrogateescape')
+    return (
+        value if isinstance(value, bytes) else value.encode("utf-8", "surrogateescape")
+    )
 
 
 def fsdecode(filename):
     """Decode a path using the portable UTF-8 host boundary."""
     value = fspath(filename)
-    return value if isinstance(value, str) else value.decode('utf-8', 'surrogateescape')
+    return value if isinstance(value, str) else value.decode("utf-8", "surrogateescape")
 
 
 def removedirs(name):

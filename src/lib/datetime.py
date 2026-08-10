@@ -17,7 +17,7 @@ _DAYS_BEFORE_MONTH = [0, 0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334]
 def _check(name, value, minimum, maximum):
     value = int(value)
     if value < minimum or value > maximum:
-        raise ValueError(name + ' out of range')
+        raise ValueError(name + " out of range")
     return value
 
 
@@ -48,7 +48,7 @@ def _ymd_to_ordinal(year, month, day):
 
 def _ordinal_to_ymd(ordinal):
     if ordinal < 1 or ordinal > _ymd_to_ordinal(MAXYEAR, 12, 31):
-        raise ValueError('ordinal must be >= 1')
+        raise ValueError("ordinal must be >= 1")
     # The calendar repeats every 400 years (146097 days).  Decompose into a
     # nearby year, then finish with at most one short linear walk.
     zero_based = ordinal - 1
@@ -72,16 +72,16 @@ def _ordinal_to_ymd(ordinal):
 
 def _format_offset(offset):
     if offset is None:
-        return ''
+        return ""
     total = offset._total_microseconds
-    sign = '+' if total >= 0 else '-'
+    sign = "+" if total >= 0 else "-"
     total = abs(total)
     total_seconds = total // 1000000
     hours, remainder = divmod(total_seconds, 3600)
     minutes, seconds = divmod(remainder, 60)
-    answer = sign + str(hours).zfill(2) + ':' + str(minutes).zfill(2)
+    answer = sign + str(hours).zfill(2) + ":" + str(minutes).zfill(2)
     if seconds:
-        answer += ':' + str(seconds).zfill(2)
+        answer += ":" + str(seconds).zfill(2)
     return answer
 
 
@@ -113,16 +113,16 @@ class timedelta:
 
     def __add__(self, other):
         if isinstance(other, timedelta):
-            return timedelta(microseconds=(
-                self._total_microseconds + other._total_microseconds
-            ))
+            return timedelta(
+                microseconds=(self._total_microseconds + other._total_microseconds)
+            )
         return NotImplemented
 
     def __sub__(self, other):
         if isinstance(other, timedelta):
-            return timedelta(microseconds=(
-                self._total_microseconds - other._total_microseconds
-            ))
+            return timedelta(
+                microseconds=(self._total_microseconds - other._total_microseconds)
+            )
         return NotImplemented
 
     def __neg__(self):
@@ -165,28 +165,33 @@ class timedelta:
         return hash((self.days, self.seconds, self.microseconds))
 
     def __str__(self):
-        days = ''
+        days = ""
         if self.days:
-            suffix = ' day, ' if abs(self.days) == 1 else ' days, '
+            suffix = " day, " if abs(self.days) == 1 else " days, "
             days = str(self.days) + suffix
         hours, remainder = divmod(self.seconds, 3600)
         minutes, seconds = divmod(remainder, 60)
-        clock = str(hours) + ':' + str(minutes).zfill(2) + ':' + str(seconds).zfill(2)
+        clock = str(hours) + ":" + str(minutes).zfill(2) + ":" + str(seconds).zfill(2)
         if self.microseconds:
-            clock += '.' + str(self.microseconds).zfill(6)
+            clock += "." + str(self.microseconds).zfill(6)
         return days + clock
 
     def __repr__(self):
         return (
-            'datetime.timedelta(days=' + repr(self.days)
-            + ', seconds=' + repr(self.seconds)
-            + ', microseconds=' + repr(self.microseconds) + ')'
+            "datetime.timedelta(days="
+            + repr(self.days)
+            + ", seconds="
+            + repr(self.seconds)
+            + ", microseconds="
+            + repr(self.microseconds)
+            + ")"
         )
 
 
 timedelta.min = timedelta(days=-999999999)
-timedelta.max = timedelta(days=999999999, hours=23, minutes=59, seconds=59,
-                          microseconds=999999)
+timedelta.max = timedelta(
+    days=999999999, hours=23, minutes=59, seconds=59, microseconds=999999
+)
 timedelta.resolution = timedelta(microseconds=1)
 
 
@@ -202,19 +207,19 @@ class tzinfo:
 
     def fromutc(self, dt):
         if dt.tzinfo is not self:
-            raise ValueError('fromutc: dt.tzinfo is not self')
+            raise ValueError("fromutc: dt.tzinfo is not self")
         offset = self.utcoffset(dt)
         if offset is None:
-            raise ValueError('fromutc: utcoffset() returned None')
+            raise ValueError("fromutc: utcoffset() returned None")
         return dt + offset
 
 
 class timezone(tzinfo):
     def __init__(self, offset, name=None):
         if not isinstance(offset, timedelta):
-            raise TypeError('offset must be a timedelta')
+            raise TypeError("offset must be a timedelta")
         if abs(offset) >= timedelta(days=1):
-            raise ValueError('offset must be strictly between -24h and +24h')
+            raise ValueError("offset must be strictly between -24h and +24h")
         self._offset = offset
         self._name = name
 
@@ -230,23 +235,23 @@ class timezone(tzinfo):
         del dt
         if self._name is not None:
             return self._name
-        return 'UTC' + _format_offset(self._offset)
+        return "UTC" + _format_offset(self._offset)
 
     def __repr__(self):
         if self is timezone.utc:
-            return 'datetime.timezone.utc'
-        return 'datetime.timezone(' + repr(self._offset) + ')'
+            return "datetime.timezone.utc"
+        return "datetime.timezone(" + repr(self._offset) + ")"
 
 
-timezone.utc = timezone(timedelta(0), 'UTC')
+timezone.utc = timezone(timedelta(0), "UTC")
 
 
 class date:
     def __init__(self, year, month, day):
-        self.year = _check('year', year, MINYEAR, MAXYEAR)
-        self.month = _check('month', month, 1, 12)
+        self.year = _check("year", year, MINYEAR, MAXYEAR)
+        self.month = _check("month", month, 1, 12)
         maximum_day = _days_in_month(self.year, self.month)
-        self.day = _check('day', day, 1, maximum_day)
+        self.day = _check("day", day, 1, maximum_day)
 
     @classmethod
     def fromordinal(cls, ordinal):
@@ -270,8 +275,12 @@ class date:
 
     def isoformat(self):
         return (
-            str(self.year).zfill(4) + '-' + str(self.month).zfill(2)
-            + '-' + str(self.day).zfill(2))
+            str(self.year).zfill(4)
+            + "-"
+            + str(self.month).zfill(2)
+            + "-"
+            + str(self.day).zfill(2)
+        )
 
     def __add__(self, other):
         if isinstance(other, timedelta):
@@ -291,7 +300,10 @@ class date:
         return self.year, self.month, self.day
 
     def __eq__(self, other):
-        return isinstance(other, date) and self._comparison_key() == other._comparison_key()
+        return (
+            isinstance(other, date)
+            and self._comparison_key() == other._comparison_key()
+        )
 
     def __lt__(self, other):
         if not isinstance(other, date):
@@ -315,8 +327,14 @@ class date:
 
     def __repr__(self):
         return (
-            'datetime.date(' + str(self.year) + ', ' + str(self.month)
-            + ', ' + str(self.day) + ')')
+            "datetime.date("
+            + str(self.year)
+            + ", "
+            + str(self.month)
+            + ", "
+            + str(self.day)
+            + ")"
+        )
 
 
 date.min = date(MINYEAR, 1, 1)
@@ -326,15 +344,21 @@ date.resolution = timedelta(days=1)
 
 class time:
     def __init__(
-        self, hour=0, minute=0, second=0, microsecond=0,
-        tzinfo=None, *, fold=0,
+        self,
+        hour=0,
+        minute=0,
+        second=0,
+        microsecond=0,
+        tzinfo=None,
+        *,
+        fold=0,
     ):
-        self.hour = _check('hour', hour, 0, 23)
-        self.minute = _check('minute', minute, 0, 59)
-        self.second = _check('second', second, 0, 59)
-        self.microsecond = _check('microsecond', microsecond, 0, 999999)
+        self.hour = _check("hour", hour, 0, 23)
+        self.minute = _check("minute", minute, 0, 59)
+        self.second = _check("second", second, 0, 59)
+        self.microsecond = _check("microsecond", microsecond, 0, 999999)
         self.tzinfo = tzinfo
-        self.fold = _check('fold', fold, 0, 1)
+        self.fold = _check("fold", fold, 0, 1)
 
     def utcoffset(self):
         return None if self.tzinfo is None else self.tzinfo.utcoffset(None)
@@ -342,13 +366,17 @@ class time:
     def tzname(self):
         return None if self.tzinfo is None else self.tzinfo.tzname(None)
 
-    def isoformat(self, timespec='auto'):
+    def isoformat(self, timespec="auto"):
         del timespec
         answer = (
-            str(self.hour).zfill(2) + ':' + str(self.minute).zfill(2)
-            + ':' + str(self.second).zfill(2))
+            str(self.hour).zfill(2)
+            + ":"
+            + str(self.minute).zfill(2)
+            + ":"
+            + str(self.second).zfill(2)
+        )
         if self.microsecond:
-            answer += '.' + str(self.microsecond).zfill(6)
+            answer += "." + str(self.microsecond).zfill(6)
         return answer + _format_offset(self.utcoffset())
 
     __str__ = isoformat
@@ -356,16 +384,25 @@ class time:
 
 class datetime(date):
     def __init__(
-        self, year, month, day, hour=0, minute=0, second=0,
-        microsecond=0, tzinfo=None, *, fold=0,
+        self,
+        year,
+        month,
+        day,
+        hour=0,
+        minute=0,
+        second=0,
+        microsecond=0,
+        tzinfo=None,
+        *,
+        fold=0,
     ):
         date.__init__(self, year, month, day)
-        self.hour = _check('hour', hour, 0, 23)
-        self.minute = _check('minute', minute, 0, 59)
-        self.second = _check('second', second, 0, 59)
-        self.microsecond = _check('microsecond', microsecond, 0, 999999)
+        self.hour = _check("hour", hour, 0, 23)
+        self.minute = _check("minute", minute, 0, 59)
+        self.second = _check("second", second, 0, 59)
+        self.microsecond = _check("microsecond", microsecond, 0, 999999)
         self.tzinfo = tzinfo
-        self.fold = _check('fold', fold, 0, 1)
+        self.fold = _check("fold", fold, 0, 1)
 
     @classmethod
     def fromordinal(cls, ordinal):
@@ -385,9 +422,15 @@ class datetime(date):
         if tzinfo is None:
             tzinfo = time_value.tzinfo
         return cls(
-            date_value.year, date_value.month, date_value.day,
-            time_value.hour, time_value.minute, time_value.second,
-            time_value.microsecond, tzinfo, fold=time_value.fold,
+            date_value.year,
+            date_value.month,
+            date_value.day,
+            time_value.hour,
+            time_value.minute,
+            time_value.second,
+            time_value.microsecond,
+            tzinfo,
+            fold=time_value.fold,
         )
 
     def _wall_microseconds(self):
@@ -407,13 +450,29 @@ class datetime(date):
         minute, remainder = divmod(remainder, 60 * 1000000)
         second, microsecond = divmod(remainder, 1000000)
         return cls(
-            year, month, day, hour, minute, second, microsecond,
-            tzinfo, fold=fold,
+            year,
+            month,
+            day,
+            hour,
+            minute,
+            second,
+            microsecond,
+            tzinfo,
+            fold=fold,
         )
 
     def replace(
-        self, year=None, month=None, day=None, hour=None, minute=None,
-        second=None, microsecond=None, tzinfo=Ellipsis, *, fold=None,
+        self,
+        year=None,
+        month=None,
+        day=None,
+        hour=None,
+        minute=None,
+        second=None,
+        microsecond=None,
+        tzinfo=Ellipsis,
+        *,
+        fold=None,
     ):
         return type(self)(
             self.year if year is None else year,
@@ -438,12 +497,12 @@ class datetime(date):
 
     def astimezone(self, tz=None):
         if tz is None:
-            raise NotImplementedError('local host timezone is not available')
+            raise NotImplementedError("local host timezone is not available")
         if self.tzinfo is None:
-            raise ValueError('astimezone() cannot be applied to a naive datetime')
+            raise ValueError("astimezone() cannot be applied to a naive datetime")
         offset = self.utcoffset()
         if offset is None:
-            raise ValueError('utcoffset() returned None')
+            raise ValueError("utcoffset() returned None")
         utc = (self.replace(tzinfo=None) - offset).replace(tzinfo=tz)
         return tz.fromutc(utc)
 
@@ -488,28 +547,69 @@ class datetime(date):
             total -= offset._total_microseconds
         return total
 
-    def isoformat(self, sep='T', timespec='auto'):
+    def isoformat(self, sep="T", timespec="auto"):
         clock = time(
-            self.hour, self.minute, self.second, self.microsecond,
-            self.tzinfo, fold=self.fold)
+            self.hour,
+            self.minute,
+            self.second,
+            self.microsecond,
+            self.tzinfo,
+            fold=self.fold,
+        )
         return date.isoformat(self) + sep + clock.isoformat(timespec)
 
     def strftime(self, format_string):
         replacements = {
-            '%Y': str(self.year).zfill(4),
-            '%m': str(self.month).zfill(2),
-            '%d': str(self.day).zfill(2),
-            '%H': str(self.hour).zfill(2),
-            '%M': str(self.minute).zfill(2),
-            '%S': str(self.second).zfill(2),
-            '%f': str(self.microsecond).zfill(6),
-            '%a': ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][self.weekday()],
-            '%A': ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'][self.weekday()],
-            '%b': ['', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][self.month],
-            '%B': ['', 'January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'][self.month],
-            '%Z': self.tzname() or '',
-            '%z': _format_offset(self.utcoffset()).replace(':', ''),
-            '%%': '%',
+            "%Y": str(self.year).zfill(4),
+            "%m": str(self.month).zfill(2),
+            "%d": str(self.day).zfill(2),
+            "%H": str(self.hour).zfill(2),
+            "%M": str(self.minute).zfill(2),
+            "%S": str(self.second).zfill(2),
+            "%f": str(self.microsecond).zfill(6),
+            "%a": ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"][self.weekday()],
+            "%A": [
+                "Monday",
+                "Tuesday",
+                "Wednesday",
+                "Thursday",
+                "Friday",
+                "Saturday",
+                "Sunday",
+            ][self.weekday()],
+            "%b": [
+                "",
+                "Jan",
+                "Feb",
+                "Mar",
+                "Apr",
+                "May",
+                "Jun",
+                "Jul",
+                "Aug",
+                "Sep",
+                "Oct",
+                "Nov",
+                "Dec",
+            ][self.month],
+            "%B": [
+                "",
+                "January",
+                "February",
+                "March",
+                "April",
+                "May",
+                "June",
+                "July",
+                "August",
+                "September",
+                "October",
+                "November",
+                "December",
+            ][self.month],
+            "%Z": self.tzname() or "",
+            "%z": _format_offset(self.utcoffset()).replace(":", ""),
+            "%%": "%",
         }
         answer = str(format_string)
         for directive, value in replacements.items():
@@ -520,13 +620,18 @@ class datetime(date):
 
     def __repr__(self):
         values = [
-            str(self.year), str(self.month), str(self.day), str(self.hour),
-            str(self.minute), str(self.second), str(self.microsecond),
+            str(self.year),
+            str(self.month),
+            str(self.day),
+            str(self.hour),
+            str(self.minute),
+            str(self.second),
+            str(self.microsecond),
         ]
-        answer = 'datetime.datetime(' + ', '.join(values)
+        answer = "datetime.datetime(" + ", ".join(values)
         if self.tzinfo is not None:
-            answer += ', tzinfo=' + repr(self.tzinfo)
-        return answer + ')'
+            answer += ", tzinfo=" + repr(self.tzinfo)
+        return answer + ")"
 
 
 datetime.min = datetime(MINYEAR, 1, 1)

@@ -24,6 +24,7 @@ class ExceptHookArgs:
 def _default_excepthook(args):
     """Report an uncaught worker exception through the ordinary hook."""
     import sys
+
     sys.excepthook(args.exc_type, args.exc_value, args.exc_traceback)
 
 
@@ -42,7 +43,7 @@ class RLock:
 
     def release(self):
         if self._depth <= 0:
-            raise RuntimeError('cannot release un-acquired lock')
+            raise RuntimeError("cannot release un-acquired lock")
         self._depth -= 1
 
     def __enter__(self):
@@ -71,7 +72,7 @@ def get_ident():
 
 
 class _MainThread:
-    name = 'MainThread'
+    name = "MainThread"
     ident = 1
     daemon = False
 

@@ -114,6 +114,7 @@ assert identity ** (2**256) == identity
 assert identity._integer_capacity() == 1
 random_value = random_matrix(ZZ, 40)
 assert random_value.dimensions() == (40, 40)
+assert loads(dumps(A)) == A
 
 try:
     A._native

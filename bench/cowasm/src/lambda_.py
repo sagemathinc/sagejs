@@ -20,5 +20,5 @@ def speed_test_2(n=10**6):
 
 register("lambda speed test (2)", speed_test_2)
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     all()

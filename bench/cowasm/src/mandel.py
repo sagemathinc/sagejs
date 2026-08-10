@@ -2,6 +2,7 @@
 
 from bench import register, all
 
+
 # Want this to run on any Python without numpy.
 def arange(a, b, step):
     eps = 0.00000001
@@ -33,13 +34,36 @@ def mandelbrot(size=200):
     return pix
 
 
-register('mandelbrot', mandelbrot)
+register("mandelbrot", mandelbrot)
 
 # quick consistency check:
 assert mandelbrot(5) == [
-    2, 3, 3, 5, 4, 3, 4, 6, 199, 199, 5, 199, 199, 199, 199, 5, 199, 199, 199,
-    199, 3, 4, 6, 199, 199
+    2,
+    3,
+    3,
+    5,
+    4,
+    3,
+    4,
+    6,
+    199,
+    199,
+    5,
+    199,
+    199,
+    199,
+    199,
+    5,
+    199,
+    199,
+    199,
+    199,
+    3,
+    4,
+    6,
+    199,
+    199,
 ]
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     all()

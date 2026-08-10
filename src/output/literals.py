@@ -10,10 +10,10 @@ def print_array(self, output):
         for i, exp in enumerate(self.elements):
             if i:
                 output.comma()
-            if exp.operator is '*' and exp.expression is not undefined:
-                output.print('...Array.from(ρσ_Iterable(')
+            if exp.operator is "*" and exp.expression is not undefined:
+                output.print("...Array.from(ρσ_Iterable(")
                 exp.expression.print(output)
-                output.print('))')
+                output.print("))")
             else:
                 exp.print(output)
 
@@ -21,14 +21,14 @@ def print_array(self, output):
         output.with_square(f_native_array)
         return
     if output.options.python_tuples and self.is_tuple:
-        output.print('ρσ_math_tuple(')
+        output.print("ρσ_math_tuple(")
         # ``math_tuple`` installs the tuple prototype on this fresh array.
         # Decorating it as a mutable Python list first only installs another
         # prototype that is immediately replaced.
         output.with_square(f_native_array)
-        output.print(')')
+        output.print(")")
         return
-    output.print('ρσ_list_decorate')
+    output.print("ρσ_list_decorate")
 
     def f_list_decorate():
         def f_list_decorate0():
@@ -39,10 +39,10 @@ def print_array(self, output):
             for i, exp in enumerate(a):
                 if i:
                     output.comma()
-                if exp.operator is '*' and exp.expression is not undefined:
-                    output.print('...Array.from(ρσ_Iterable(')
+                if exp.operator is "*" and exp.expression is not undefined:
+                    output.print("...Array.from(ρσ_Iterable(")
                     exp.expression.print(output)
-                    output.print('))')
+                    output.print("))")
                 else:
                     exp.print(output)
             if len_ > 0:
@@ -55,42 +55,45 @@ def print_array(self, output):
 
 def print_obj_literal_slow(self, output):
     def f_obj_literal_slow():
-        output.print('function()')
+        output.print("function()")
 
         def f_obj_literal_slow0():
             output.indent()
             if self.is_pydict:
-                output.spaced.apply(output, 'var ρσ_d = ρσ_dict()'.split(' '))
+                output.spaced.apply(output, "var ρσ_d = ρσ_dict()".split(" "))
             else:
                 output.spaced(
-                    'var', 'ρσ_d', '=',
-                    ('Object.create(null)' if self.is_jshash else '{}'))
+                    "var",
+                    "ρσ_d",
+                    "=",
+                    ("Object.create(null)" if self.is_jshash else "{}"),
+                )
             output.end_statement()
             for i, prop in enumerate(self.properties):
                 output.indent()
                 if self.is_pydict:
-                    output.print('ρσ_d.set')
+                    output.print("ρσ_d.set")
 
                     def f_py_dict():
                         prop.key.print(output)
-                        output.print(','), output.space()
+                        output.print(","), output.space()
                         prop.value.print(output)
 
                     output.with_parens(f_py_dict)
                 else:
-                    output.print('ρσ_d')
+                    output.print("ρσ_d")
                     output.with_square(lambda: prop.key.print(output))
-                    output.space(), output.print('='), output.space()
+                    output.space(), output.print("="), output.space()
                     prop.value.print(output)
                 output.end_statement()
             output.indent()
-            output.spaced('return', 'ρσ_d')
+            output.spaced("return", "ρσ_d")
             output.end_statement()
 
         output.with_block(f_obj_literal_slow0)
 
     output.with_parens(f_obj_literal_slow)
-    output.print('.call(this)')
+    output.print(".call(this)")
 
 
 # This simple obj literal printer works fine for literals
@@ -105,8 +108,7 @@ def print_obj_literal(self, output):
         return
     output.print("{")
     for i, prop in enumerate(self.properties):
-        if is_node_type(prop.key, AST_Number) or is_node_type(
-                prop.key, AST_String):
+        if is_node_type(prop.key, AST_Number) or is_node_type(prop.key, AST_String):
             prop.key.print(output)
         else:
 
@@ -126,33 +128,30 @@ def print_object(self, output):
         if self.properties.length > 0:
             print_obj_literal(self, output)
         else:
-            output.print('ρσ_dict()')
+            output.print("ρσ_dict()")
     else:
         if self.properties.length > 0:
             print_obj_literal(self, output)
         else:
-            output.print("Object.create(null)" if self.is_jshash else '{}')
+            output.print("Object.create(null)" if self.is_jshash else "{}")
 
 
 def print_set(self, output):
     if self.items.length is 0:
-        output.print('ρσ_set()')
+        output.print("ρσ_set()")
         return
 
-    output.print('ρσ_set')
+    output.print("ρσ_set")
 
     def print_items():
         for index, item in enumerate(self.items):
             if index:
                 output.comma()
             value = item.value
-            if (
-                value.operator is '*'
-                and value.expression is not undefined
-            ):
-                output.print('...Array.from(ρσ_Iterable(')
+            if value.operator is "*" and value.expression is not undefined:
+                output.print("...Array.from(ρσ_Iterable(")
                 value.expression.print(output)
-                output.print('))')
+                output.print("))")
             else:
                 value.print(output)
 
@@ -165,6 +164,9 @@ def print_regexp(self, output):
         str_ = output.to_ascii(str_)
     output.print(str_)
     p = output.parent()
-    if is_node_type(p, AST_Binary) and RegExp(r"^in").test(
-            p.operator) and p.left is self:
+    if (
+        is_node_type(p, AST_Binary)
+        and RegExp(r"^in").test(p.operator)
+        and p.left is self
+    ):
         output.print(" ")

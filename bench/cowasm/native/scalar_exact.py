@@ -16,8 +16,8 @@ def extended_euclid(a: Integer, b: Integer) -> Tuple[Integer, Integer, Integer]:
     previous_y, y = 0, 1
     while b:
         quotient, remainder = divmod(a, b)
-        x, previous_x = previous_x - quotient*x, x
-        y, previous_y = previous_y - quotient*y, y
+        x, previous_x = previous_x - quotient * x, x
+        y, previous_y = previous_y - quotient * y, y
         a, b = b, remainder
     return a, previous_x, previous_y
 
@@ -26,9 +26,7 @@ def extended_euclid(a: Integer, b: Integer) -> Tuple[Integer, Integer, Integer]:
 def xgcd_loop(iterations: uint64 = 100000) -> Integer:
     total = 0
     for index in range(iterations):
-        gcd, coefficient, second_coefficient = extended_euclid(
-            92250, 922350 + index
-        )
+        gcd, coefficient, second_coefficient = extended_euclid(92250, 922350 + index)
         total += gcd
     return total
 

@@ -62,13 +62,9 @@ def iopub_until_idle(
     raise TimeoutError(f"execution {msg_id} did not become idle")
 
 
-def message_of_type(
-    messages: list[dict[str, Any]], msg_type: str
-) -> dict[str, Any]:
+def message_of_type(messages: list[dict[str, Any]], msg_type: str) -> dict[str, Any]:
     return next(
-        message
-        for message in messages
-        if message["header"]["msg_type"] == msg_type
+        message for message in messages if message["header"]["msg_type"] == msg_type
     )
 
 
@@ -126,17 +122,17 @@ def main(kernel_command: list[str]) -> None:
                 ]
                 == "144"
             )
-            assert matching_message(client, "shell", persistent_id)["content"][
-                "status"
-            ] == "ok"
-
-            matlab_create_id = client.execute(
-                "%%matlab\nA = [1 2; 3 4];"
+            assert (
+                matching_message(client, "shell", persistent_id)["content"]["status"]
+                == "ok"
             )
+
+            matlab_create_id = client.execute("%%matlab\nA = [1 2; 3 4];")
             iopub_until_idle(client, matlab_create_id)
-            assert matching_message(
-                client, "shell", matlab_create_id
-            )["content"]["status"] == "ok"
+            assert (
+                matching_message(client, "shell", matlab_create_id)["content"]["status"]
+                == "ok"
+            )
 
             shared_read_id = client.execute("%%sage\nA.tolist()")
             messages = iopub_until_idle(client, shared_read_id)
@@ -145,15 +141,17 @@ def main(kernel_command: list[str]) -> None:
                 "[[1, 2], [3, 4]]"
             )
             assert shared_result["metadata"]["sagejs"]["language"] == "sage"
-            assert matching_message(
-                client, "shell", shared_read_id
-            )["content"]["status"] == "ok"
+            assert (
+                matching_message(client, "shell", shared_read_id)["content"]["status"]
+                == "ok"
+            )
 
             mutate_id = client.execute("A[0, 0] = 9")
             iopub_until_idle(client, mutate_id)
-            assert matching_message(client, "shell", mutate_id)["content"][
-                "status"
-            ] == "ok"
+            assert (
+                matching_message(client, "shell", mutate_id)["content"]["status"]
+                == "ok"
+            )
 
             matlab_read_id = client.execute("%%matlab\nA(1,1)")
             messages = iopub_until_idle(client, matlab_read_id)
@@ -163,9 +161,10 @@ def main(kernel_command: list[str]) -> None:
                 ]
                 == "9"
             )
-            assert matching_message(
-                client, "shell", matlab_read_id
-            )["content"]["status"] == "ok"
+            assert (
+                matching_message(client, "shell", matlab_read_id)["content"]["status"]
+                == "ok"
+            )
 
             for language, source in (
                 ("magma", "A"),
@@ -174,21 +173,20 @@ def main(kernel_command: list[str]) -> None:
             ):
                 foreign_id = client.execute(f"%%{language}\n{source}")
                 messages = iopub_until_idle(client, foreign_id)
-                output = message_of_type(messages, "execute_result")[
-                    "content"
-                ]["data"]["text/plain"]
+                output = message_of_type(messages, "execute_result")["content"]["data"][
+                    "text/plain"
+                ]
                 assert "9, 2" in output
                 assert "3, 4" in output
-                assert matching_message(
-                    client, "shell", foreign_id
-                )["content"]["status"] == "ok"
+                assert (
+                    matching_message(client, "shell", foreign_id)["content"]["status"]
+                    == "ok"
+                )
 
-            magma_complete_id = client.is_complete(
-                "%%magma\nFactorization(2026)"
-            )
-            magma_complete = matching_message(
-                client, "shell", magma_complete_id
-            )["content"]
+            magma_complete_id = client.is_complete("%%magma\nFactorization(2026)")
+            magma_complete = matching_message(client, "shell", magma_complete_id)[
+                "content"
+            ]
             assert magma_complete == {"status": "complete"}
 
             python_id = client.execute("%%python\n2^3")
@@ -199,60 +197,57 @@ def main(kernel_command: list[str]) -> None:
                 ]
                 == "1"
             )
-            assert matching_message(client, "shell", python_id)["content"][
-                "status"
-            ] == "ok"
+            assert (
+                matching_message(client, "shell", python_id)["content"]["status"]
+                == "ok"
+            )
 
             polynomial_id = client.execute("R.<x> = QQ[]")
             iopub_until_idle(client, polynomial_id)
-            assert matching_message(client, "shell", polynomial_id)["content"][
-                "status"
-            ] == "ok"
+            assert (
+                matching_message(client, "shell", polynomial_id)["content"]["status"]
+                == "ok"
+            )
 
             plot_id = client.execute("plot(sin(x), (x, 0, 4*pi))")
             messages = iopub_until_idle(client, plot_id)
-            plot_data = message_of_type(messages, "execute_result")["content"][
-                "data"
-            ]
+            plot_data = message_of_type(messages, "execute_result")["content"]["data"]
             assert "text/plain" in plot_data
             assert "application/vnd.plotly.v1+json" in plot_data
             assert "text/html" in plot_data
             assert (
-                "https://cdn.jsdelivr.net/npm/"
-                "plotly.js-dist-min@3.7.0/plotly.min.js"
-            ) in (
-                plot_data["text/html"]
-            )
+                "https://cdn.jsdelivr.net/npm/plotly.js-dist-min@3.7.0/plotly.min.js"
+            ) in (plot_data["text/html"])
             assert "Plotly.newPlot" in plot_data["text/html"]
-            assert matching_message(client, "shell", plot_id)["content"][
-                "status"
-            ] == "ok"
-
-            wolfram_plot_id = client.execute(
-                "%%mathematica\nPlot[Sin[x^2],{x,0,Pi}]"
+            assert (
+                matching_message(client, "shell", plot_id)["content"]["status"] == "ok"
             )
+
+            wolfram_plot_id = client.execute("%%mathematica\nPlot[Sin[x^2],{x,0,Pi}]")
             messages = iopub_until_idle(client, wolfram_plot_id)
-            wolfram_plot_data = message_of_type(
-                messages, "execute_result"
-            )["content"]["data"]
+            wolfram_plot_data = message_of_type(messages, "execute_result")["content"][
+                "data"
+            ]
             assert "text/plain" in wolfram_plot_data
             assert "application/vnd.plotly.v1+json" in wolfram_plot_data
             assert "text/html" in wolfram_plot_data
-            assert matching_message(
-                client, "shell", wolfram_plot_id
-            )["content"]["status"] == "ok"
+            assert (
+                matching_message(client, "shell", wolfram_plot_id)["content"]["status"]
+                == "ok"
+            )
 
             wolfram_show_id = client.execute(
                 "%%mathematica\nShow[Plot[Sin[x^2],{x,0,Pi}]]"
             )
             messages = iopub_until_idle(client, wolfram_show_id)
-            wolfram_show_data = message_of_type(
-                messages, "execute_result"
-            )["content"]["data"]
+            wolfram_show_data = message_of_type(messages, "execute_result")["content"][
+                "data"
+            ]
             assert "application/vnd.plotly.v1+json" in wolfram_show_data
-            assert matching_message(
-                client, "shell", wolfram_show_id
-            )["content"]["status"] == "ok"
+            assert (
+                matching_message(client, "shell", wolfram_show_id)["content"]["status"]
+                == "ok"
+            )
 
             complete_id = client.complete("prime_p", 7)
             completion = matching_message(client, "shell", complete_id)["content"]
@@ -266,15 +261,13 @@ def main(kernel_command: list[str]) -> None:
                 magic_completion_source,
                 len(magic_completion_source),
             )
-            magic_completion = matching_message(
-                client, "shell", magic_complete_id
-            )["content"]
+            magic_completion = matching_message(client, "shell", magic_complete_id)[
+                "content"
+            ]
             assert magic_completion["status"] == "ok"
             assert "prime_pi" in magic_completion["matches"]
             assert magic_completion["cursor_start"] == len("%%sage\n")
-            assert magic_completion["cursor_end"] == len(
-                magic_completion_source
-            )
+            assert magic_completion["cursor_end"] == len(magic_completion_source)
 
             attribute_id = client.complete("QQ['x'].g", 9)
             attribute = matching_message(client, "shell", attribute_id)["content"]
@@ -293,35 +286,32 @@ def main(kernel_command: list[str]) -> None:
                 "b = EisensteinForms(389,2).basis(prec=5)[0]"
             )
             iopub_until_idle(client, docs_setup_id)
-            assert matching_message(
-                client, "shell", docs_setup_id
-            )["content"]["status"] == "ok"
+            assert (
+                matching_message(client, "shell", docs_setup_id)["content"]["status"]
+                == "ok"
+            )
 
             qmark_id = client.execute("b.q_expansion?")
             messages = iopub_until_idle(client, qmark_id)
             qmark_text = message_of_type(messages, "stream")["content"]["text"]
             assert "Help on method q_expansion" in qmark_text
             assert "FLINT" in qmark_text
-            assert matching_message(
-                client, "shell", qmark_id
-            )["content"]["status"] == "ok"
+            assert (
+                matching_message(client, "shell", qmark_id)["content"]["status"] == "ok"
+            )
 
             qexp_inspect_id = client.inspect("b.q_expansion", 13)
-            qexp_inspection = matching_message(
-                client, "shell", qexp_inspect_id
-            )["content"]
+            qexp_inspection = matching_message(client, "shell", qexp_inspect_id)[
+                "content"
+            ]
             assert qexp_inspection["found"]
             assert "absolute precision" in qexp_inspection["data"]["text/plain"]
 
             completeness_id = client.is_complete("for n in range(3):")
-            completeness = matching_message(
-                client, "shell", completeness_id
-            )["content"]
+            completeness = matching_message(client, "shell", completeness_id)["content"]
             assert completeness == {"status": "incomplete", "indent": "    "}
 
-            matlab_completeness_id = client.is_complete(
-                "%%matlab\nA = [1 2"
-            )
+            matlab_completeness_id = client.is_complete("%%matlab\nA = [1 2")
             matlab_completeness = matching_message(
                 client, "shell", matlab_completeness_id
             )["content"]
@@ -331,9 +321,10 @@ def main(kernel_command: list[str]) -> None:
             messages = iopub_until_idle(client, error_id)
             error = message_of_type(messages, "error")["content"]
             assert error["ename"] == "ZeroDivisionError"
-            assert matching_message(client, "shell", error_id)["content"][
-                "status"
-            ] == "error"
+            assert (
+                matching_message(client, "shell", error_id)["content"]["status"]
+                == "error"
+            )
 
             interrupt_id = client.execute("while True:\n    pass")
             while True:
@@ -351,16 +342,15 @@ def main(kernel_command: list[str]) -> None:
             assert interrupt_request is not None
             interrupt_request_id = interrupt_request["header"]["msg_id"]
             interrupted_messages = iopub_until_idle(client, interrupt_id)
-            interrupted = message_of_type(interrupted_messages, "error")[
-                "content"
-            ]
+            interrupted = message_of_type(interrupted_messages, "error")["content"]
             assert interrupted["ename"] == "KeyboardInterrupt"
-            assert matching_message(client, "shell", interrupt_id)["content"][
-                "status"
-            ] == "error"
-            assert matching_message(
-                client, "control", interrupt_request_id
-            )["content"] == {"status": "ok"}
+            assert (
+                matching_message(client, "shell", interrupt_id)["content"]["status"]
+                == "error"
+            )
+            assert matching_message(client, "control", interrupt_request_id)[
+                "content"
+            ] == {"status": "ok"}
 
             recovered_id = client.execute("factor(30)")
             recovered_messages = iopub_until_idle(client, recovered_id)
@@ -370,9 +360,10 @@ def main(kernel_command: list[str]) -> None:
                 ]["text/plain"]
                 == "2 * 3 * 5"
             )
-            assert matching_message(client, "shell", recovered_id)["content"][
-                "status"
-            ] == "ok"
+            assert (
+                matching_message(client, "shell", recovered_id)["content"]["status"]
+                == "ok"
+            )
 
             preserved_id = client.execute("value")
             preserved_messages = iopub_until_idle(client, preserved_id)
@@ -382,14 +373,13 @@ def main(kernel_command: list[str]) -> None:
                 ]["text/plain"]
                 == "12"
             )
-            assert matching_message(client, "shell", preserved_id)["content"][
-                "status"
-            ] == "ok"
+            assert (
+                matching_message(client, "shell", preserved_id)["content"]["status"]
+                == "ok"
+            )
 
             shutdown_id = client.shutdown(restart=False)
-            shutdown = matching_message(
-                client, "control", shutdown_id
-            )["content"]
+            shutdown = matching_message(client, "control", shutdown_id)["content"]
             assert shutdown == {"status": "ok", "restart": False}
             process.wait(timeout=10)
             assert process.returncode == 0

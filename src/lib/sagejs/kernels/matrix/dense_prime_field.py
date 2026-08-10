@@ -122,8 +122,7 @@ def dense_prime_field_matrix_transpose(
     if valid != 0:
         for row in range(rows):
             for column in range(columns):
-                output[column * rows + row] = source[
-                    row * columns + column]
+                output[column * rows + row] = source[row * columns + column]
     return valid != 0
 
 
@@ -245,11 +244,11 @@ def dense_prime_field_matrix_augment(
         for row in range(rows):
             output_offset = row * output_columns
             for column in range(left_columns):
-                output[output_offset + column] = (
-                    left[row * left_columns + column])
+                output[output_offset + column] = left[row * left_columns + column]
             for column in range(right_columns):
-                output[output_offset + left_columns + column] = (
-                    right[row * right_columns + column])
+                output[output_offset + left_columns + column] = right[
+                    row * right_columns + column
+                ]
     return valid != 0
 
 
@@ -274,8 +273,9 @@ def dense_prime_field_matrix_select_rows(
                 valid = 0
             else:
                 for column in range(columns):
-                    output[target_row * columns + column] = (
-                        source[source_row * columns + column])
+                    output[target_row * columns + column] = source[
+                        source_row * columns + column
+                    ]
     return valid != 0
 
 
@@ -300,8 +300,9 @@ def dense_prime_field_matrix_select_columns(
                 if source_column >= source_columns:
                     valid = 0
                 else:
-                    output[row * len(indices) + target_column] = (
-                        source[row * source_columns + source_column])
+                    output[row * len(indices) + target_column] = source[
+                        row * source_columns + source_column
+                    ]
     return valid != 0
 
 
@@ -363,19 +364,19 @@ def _dense_prime_field_matrix_blocked_full_rank(
                         temporary = entries[left_index]
                         entries[left_index] = entries[right_index]
                         entries[right_index] = temporary
-                inverse = prime_inverse(
-                    entries[pivot_row * size + pivot_row], modulus)
+                inverse = prime_inverse(entries[pivot_row * size + pivot_row], modulus)
                 for row in range(pivot_row + 1, size):
                     factor = prime_mul(
-                        entries[row * size + pivot_row], inverse, modulus)
+                        entries[row * size + pivot_row], inverse, modulus
+                    )
                     entries[row * size + pivot_row] = factor
                     for column in range(pivot_row + 1, panel_end):
                         target_index = row * size + column
                         source_index = pivot_row * size + column
-                        product = prime_mul(
-                            factor, entries[source_index], modulus)
+                        product = prime_mul(factor, entries[source_index], modulus)
                         entries[target_index] = prime_sub(
-                            entries[target_index], product, modulus)
+                            entries[target_index], product, modulus
+                        )
 
         if success != 0:
             for row in range(panel + 1, panel_end):
@@ -432,8 +433,7 @@ def _dense_prime_field_matrix_rank_inplace(
                     temporary = entries[left_index]
                     entries[left_index] = entries[right_index]
                     entries[right_index] = temporary
-            pivot_inverse = prime_inverse(
-                entries[rank * columns + column], modulus)
+            pivot_inverse = prime_inverse(entries[rank * columns + column], modulus)
             for row in range(rank + 1, rows):
                 factor = prime_mul(
                     entries[row * columns + column],
@@ -444,10 +444,10 @@ def _dense_prime_field_matrix_rank_inplace(
                 for target_column in range(column + 1, columns):
                     target_index = row * columns + target_column
                     pivot_index = rank * columns + target_column
-                    product = prime_mul(
-                        factor, entries[pivot_index], modulus)
+                    product = prime_mul(factor, entries[pivot_index], modulus)
                     entries[target_index] = prime_sub(
-                        entries[target_index], product, modulus)
+                        entries[target_index], product, modulus
+                    )
             rank += 1
     return rank
 
@@ -477,12 +477,12 @@ def _dense_prime_field_matrix_rref_inplace(
                     temporary = entries[left_index]
                     entries[left_index] = entries[right_index]
                     entries[right_index] = temporary
-            pivot_inverse = prime_inverse(
-                entries[rank * columns + column], modulus)
+            pivot_inverse = prime_inverse(entries[rank * columns + column], modulus)
             for target_column in range(column, columns):
                 pivot_index = rank * columns + target_column
                 entries[pivot_index] = prime_mul(
-                    entries[pivot_index], pivot_inverse, modulus)
+                    entries[pivot_index], pivot_inverse, modulus
+                )
             for row in range(rows):
                 if row != rank:
                     factor = entries[row * columns + column]
@@ -491,10 +491,10 @@ def _dense_prime_field_matrix_rref_inplace(
                         for target_column in range(column + 1, columns):
                             target_index = row * columns + target_column
                             pivot_index = rank * columns + target_column
-                            product = prime_mul(
-                                factor, entries[pivot_index], modulus)
+                            product = prime_mul(factor, entries[pivot_index], modulus)
                             entries[target_index] = prime_sub(
-                                entries[target_index], product, modulus)
+                                entries[target_index], product, modulus
+                            )
             rank += 1
     return rank
 
@@ -510,10 +510,10 @@ def dense_prime_field_matrix_rank(
     entries = source.entries
     modulus = source.modulus
     if rows > 4294967295 or columns > 4294967295:
-        raise ValueError('dense prime matrix dimensions are too large')
+        raise ValueError("dense prime matrix dimensions are too large")
     count = rows * columns
     if len(entries) != count or len(workspace) != count:
-        raise ValueError('dense prime rank buffer shape mismatch')
+        raise ValueError("dense prime rank buffer shape mismatch")
     for index in range(count):
         workspace[index] = entries[index]
     working = DensePrimeMatrix(workspace, rows, columns, modulus)
@@ -536,10 +536,10 @@ def dense_prime_field_matrix_rref(
     entries = source.entries
     modulus = source.modulus
     if rows > 4294967295 or columns > 4294967295:
-        raise ValueError('dense prime matrix dimensions are too large')
+        raise ValueError("dense prime matrix dimensions are too large")
     count = rows * columns
     if len(entries) != count or len(output) != count:
-        raise ValueError('dense prime RREF buffer shape mismatch')
+        raise ValueError("dense prime RREF buffer shape mismatch")
     for index in range(count):
         output[index] = entries[index]
     working = DensePrimeMatrix(output, rows, columns, modulus)
@@ -572,13 +572,13 @@ def dense_prime_field_matrix_right_kernel(
     entries = source.entries
     modulus = source.modulus
     if rows > 4294967295 or columns > 4294967295:
-        raise ValueError('dense prime matrix dimensions are too large')
+        raise ValueError("dense prime matrix dimensions are too large")
     source_count = rows * columns
     output_count = columns * columns
     if len(entries) != source_count or len(workspace) != source_count:
-        raise ValueError('dense prime right-kernel input shape mismatch')
+        raise ValueError("dense prime right-kernel input shape mismatch")
     if len(output) != output_count:
-        raise ValueError('dense prime right-kernel output shape mismatch')
+        raise ValueError("dense prime right-kernel output shape mismatch")
     rank = dense_prime_field_matrix_rref(source, workspace)
     nullity = columns - rank
     active = nullity * columns
@@ -608,7 +608,7 @@ def dense_prime_field_matrix_right_kernel(
     basis = DensePrimeMatrix(output, nullity, columns, modulus)
     normalized_rank = _dense_prime_field_matrix_rref_inplace(basis)
     if normalized_rank != nullity:
-        raise ValueError('internal right-kernel basis lost rank')
+        raise ValueError("internal right-kernel basis lost rank")
     return nullity
 
 
@@ -626,28 +626,29 @@ def dense_prime_field_matrix_solve(
     left_entries = left.entries
     right_entries = right.entries
     if size > 4294967295 or right_columns > 4294967295:
-        raise ValueError('dense prime solve dimensions are too large')
+        raise ValueError("dense prime solve dimensions are too large")
     if left.columns != size or right.rows != size:
-        raise ValueError('dense prime solve matrix dimensions disagree')
+        raise ValueError("dense prime solve matrix dimensions disagree")
     if right.modulus != modulus:
-        raise ValueError('dense prime solve moduli disagree')
+        raise ValueError("dense prime solve moduli disagree")
     left_count = size * size
     right_count = size * right_columns
     augmented_columns = size + right_columns
     workspace_count = size * augmented_columns
     if len(left_entries) != left_count or len(right_entries) != right_count:
-        raise ValueError('dense prime solve input shape mismatch')
+        raise ValueError("dense prime solve input shape mismatch")
     if len(workspace) != workspace_count or len(output) != right_count:
-        raise ValueError('dense prime solve output shape mismatch')
+        raise ValueError("dense prime solve output shape mismatch")
     for row in range(size):
         for column in range(size):
-            workspace[row * augmented_columns + column] = (
-                left_entries[row * size + column])
+            workspace[row * augmented_columns + column] = left_entries[
+                row * size + column
+            ]
         for column in range(right_columns):
-            workspace[row * augmented_columns + size + column] = (
-                right_entries[row * right_columns + column])
-    augmented = DensePrimeMatrix(
-        workspace, size, augmented_columns, modulus)
+            workspace[row * augmented_columns + size + column] = right_entries[
+                row * right_columns + column
+            ]
+    augmented = DensePrimeMatrix(workspace, size, augmented_columns, modulus)
     rank = _dense_prime_field_matrix_rref_inplace(augmented)
     if rank != size:
         return 0
@@ -661,14 +662,15 @@ def dense_prime_field_matrix_solve(
     for row in range(size):
         for column in range(right_columns):
             output[row * right_columns + column] = workspace[
-                row * augmented_columns + size + column]
+                row * augmented_columns + size + column
+            ]
     return 1
 
 
 __all__ = [
-    'DensePrimeMatrix',
-    'dense_prime_field_matrix_rank',
-    'dense_prime_field_matrix_rref',
-    'dense_prime_field_matrix_right_kernel',
-    'dense_prime_field_matrix_solve',
+    "DensePrimeMatrix",
+    "dense_prime_field_matrix_rank",
+    "dense_prime_field_matrix_rref",
+    "dense_prime_field_matrix_right_kernel",
+    "dense_prime_field_matrix_solve",
 ]

@@ -1,20 +1,20 @@
 # vim:fileencoding=utf-8
 global GLOBAL_SYMBOL
 
-'Module level ds1'
+"Module level ds1"
 
 
 def toplevel_func(a):
-    return a + 'toplevel'
+    return a + "toplevel"
 
 
 increment = lambda value: value + 1
 
 
-'''
+"""
 Module level ds2
 line2
-'''
+"""
 
 
 class TopLevel:
@@ -22,7 +22,7 @@ class TopLevel:
         self.a = a
 
 
-'Module level ds 3'
+"Module level ds 3"
 
 
 class AClass(TopLevel):
@@ -30,14 +30,14 @@ class AClass(TopLevel):
         self.a = a
 
 
-toplevel_var = 'foo'
+toplevel_var = "foo"
 
 if True:
-    true_var = 'true'
+    true_var = "true"
 else:
-    false_var = 'false'
+    false_var = "false"
 
-GLOBAL_SYMBOL = 'i am global'
+GLOBAL_SYMBOL = "i am global"
 
 from _import_two.other import other
 

@@ -1,0 +1,32 @@
+# Generated from tools/python-format.cjs; keep both in sync through
+# pnpm format:python:check.
+target-version = "py311"
+line-length = 88
+preview = false
+extend-exclude = [
+  "upstream-tests",
+  "src/baselib/graph_reference_data.py",
+  "src/lib/mpmath",
+  "test/aes_vectors.py",
+  "test/annotations.py",
+  "test/baselib.py",
+  "test/classes.py",
+  "test/decorators.py",
+  "test/docstrings.py",
+  "test/functions.py",
+  "test/generic.py",
+  "test/jsage.py",
+  "test/lint.py",
+  "test/loops.py",
+  "test/newlines.py",
+  "test/operator_overloading.py",
+  "test/regexp.py",
+  "test/starargs.py",
+  "test/str.py",
+]
+
+[format]
+quote-style = "double"
+indent-style = "space"
+skip-magic-trailing-comma = false
+line-ending = "lf"

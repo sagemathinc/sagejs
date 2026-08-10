@@ -14,7 +14,7 @@ from native_prime_field_matrix import (
 )
 
 
-size = int(os.environ.get('SAGEJS_NATIVE_PRIME_FIELD_FALLBACK_SIZE', '16'))
+size = int(os.environ.get("SAGEJS_NATIVE_PRIME_FIELD_FALLBACK_SIZE", "16"))
 prime = 65521
 field = GF(prime)
 
@@ -42,29 +42,29 @@ def measure(name, operation, check):
     answer = operation()
     elapsed = time.perf_counter() - started
     if not check(answer):
-        raise AssertionError(f'{name} returned an incorrect result')
-    print('RESULT', name, f'{elapsed:.12f}')
+        raise AssertionError(f"{name} returned an incorrect result")
+    print("RESULT", name, f"{elapsed:.12f}")
 
 
-measure('rank', lambda: prime_field_rank(source), lambda answer: answer == size)
+measure("rank", lambda: prime_field_rank(source), lambda answer: answer == size)
 measure(
-    'determinant',
+    "determinant",
     lambda: prime_field_determinant(source),
     lambda answer: answer != 0,
 )
 measure(
-    'echelon',
+    "echelon",
     lambda: prime_field_echelon(source),
     lambda answer: answer.rank() == size,
 )
 measure(
-    'solve-4',
+    "solve-4",
     lambda: prime_field_solve(source, right),
     lambda answer: source * answer == right,
 )
 decomposition = prime_field_factor(source)
 measure(
-    'solve-4-reuse',
+    "solve-4-reuse",
     lambda: decomposition.solve(right),
     lambda answer: source * answer == right,
 )

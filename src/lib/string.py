@@ -1,26 +1,25 @@
 """Common string constants and formatting helpers from Python's stdlib."""
 
-
-whitespace = ' \t\n\r\v\f'
-ascii_lowercase = 'abcdefghijklmnopqrstuvwxyz'
-ascii_uppercase = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
+whitespace = " \t\n\r\v\f"
+ascii_lowercase = "abcdefghijklmnopqrstuvwxyz"
+ascii_uppercase = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
 ascii_letters = ascii_lowercase + ascii_uppercase
-digits = '0123456789'
-hexdigits = digits + 'abcdef' + 'ABCDEF'
-octdigits = '01234567'
-punctuation = r'''!"#$%&'()*+,-./:;<=>?@[\]^_`{|}~'''
+digits = "0123456789"
+hexdigits = digits + "abcdef" + "ABCDEF"
+octdigits = "01234567"
+punctuation = r"""!"#$%&'()*+,-./:;<=>?@[\]^_`{|}~"""
 printable = digits + ascii_letters + punctuation + whitespace
 
 
 def capwords(value, sep=None):
-    return (sep or ' ').join(word.capitalize() for word in value.split(sep))
+    return (sep or " ").join(word.capitalize() for word in value.split(sep))
 
 
 class Template:
     """Perform ``$identifier`` and ``${identifier}`` substitutions."""
 
-    delimiter = '$'
-    idpattern = r'(?a:[_a-z][_a-z0-9]*)'
+    delimiter = "$"
+    idpattern = r"(?a:[_a-z][_a-z0-9]*)"
     braceidpattern = None
     flags = 0
 
@@ -29,7 +28,7 @@ class Template:
 
     def _substitute(self, mapping, safe):
         text = self.template
-        answer = ''
+        answer = ""
         index = 0
         while index < len(text):
             if text[index] != self.delimiter:
@@ -42,27 +41,25 @@ class Template:
                 answer += self.delimiter
                 index += 1
                 continue
-            braced = index < len(text) and text[index] == '{'
+            braced = index < len(text) and text[index] == "{"
             if braced:
                 index += 1
             name_start = index
-            while index < len(text) and (
-                text[index] == '_' or text[index].isalnum()
-            ):
+            while index < len(text) and (text[index] == "_" or text[index].isalnum()):
                 index += 1
             name = text[name_start:index]
             if braced:
-                if index >= len(text) or text[index] != '}':
+                if index >= len(text) or text[index] != "}":
                     if safe:
                         answer += text[start:index]
                         continue
-                    raise ValueError('Invalid placeholder in string')
+                    raise ValueError("Invalid placeholder in string")
                 index += 1
             if not name:
                 if safe:
                     answer += self.delimiter
                     continue
-                raise ValueError('Invalid placeholder in string')
+                raise ValueError("Invalid placeholder in string")
             try:
                 answer += str(mapping[name])
             except KeyError:
@@ -100,18 +97,16 @@ class Template:
             if index < len(text) and text[index] == self.delimiter:
                 index += 1
                 continue
-            braced = index < len(text) and text[index] == '{'
+            braced = index < len(text) and text[index] == "{"
             if braced:
                 index += 1
             start = index
-            while index < len(text) and (
-                text[index] == '_' or text[index].isalnum()
-            ):
+            while index < len(text) and (text[index] == "_" or text[index].isalnum()):
                 index += 1
             name = text[start:index]
             if name and name not in identifiers:
                 identifiers.append(name)
-            if braced and index < len(text) and text[index] == '}':
+            if braced and index < len(text) and text[index] == "}":
                 index += 1
         return identifiers
 
@@ -134,10 +129,10 @@ class Formatter:
         return format(value, format_spec)
 
     def convert_field(self, value, conversion):
-        if conversion == 's':
+        if conversion == "s":
             return str(value)
-        if conversion == 'r':
+        if conversion == "r":
             return repr(value)
-        if conversion == 'a':
+        if conversion == "a":
             return ascii(value)
-        raise ValueError('Unknown conversion specifier ' + str(conversion))
+        raise ValueError("Unknown conversion specifier " + str(conversion))

@@ -52,7 +52,9 @@ def p1_xgcd_left(left: int, right: int) -> Tuple[int, int]:
 
 @native
 def p1_normalize_with_scalar(
-    level: uint64, input_u: int, input_v: int,
+    level: uint64,
+    input_u: int,
+    input_v: int,
 ) -> Tuple[bool, int, int, int]:
     """Normalize a pair in ``P^1(Z/level Z)`` and return its unit scalar.
 
@@ -109,9 +111,7 @@ def p1_round_quotient(numerator: int, denominator: int) -> int:
     """Round a rational number to the nearest integer, away from zero on ties."""
     absolute_numerator = abs(numerator)
     absolute_denominator = abs(denominator)
-    quotient = (
-        absolute_numerator + absolute_denominator // 2
-    ) // absolute_denominator
+    quotient = (absolute_numerator + absolute_denominator // 2) // absolute_denominator
     if (numerator < 0) == (denominator < 0):
         return quotient
     return -quotient
@@ -200,7 +200,8 @@ def heilbronn_cremona_digest(
 
 @native
 def heilbronn_cremona_entry(
-    prime: uint64, target: uint64,
+    prime: uint64,
+    target: uint64,
 ) -> Tuple[bool, int, int, int, int]:
     """Return representative ``target`` without maintaining a second algorithm."""
     exact_prime = prime + 0
@@ -248,7 +249,8 @@ def heilbronn_cremona_entry(
 
 @native
 def heilbronn_cremona_fill(
-    prime: uint64, output: Int64Buffer,
+    prime: uint64,
+    output: Int64Buffer,
 ) -> int:
     """Write all Cremona representatives to a packed signed buffer.
 
@@ -361,7 +363,8 @@ def heilbronn_merel_digest(
 
 @native
 def heilbronn_merel_entry(
-    index: uint64, target: uint64,
+    index: uint64,
+    target: uint64,
 ) -> Tuple[bool, int, int, int, int]:
     """Return one Merel matrix using the source enumeration order."""
     exact_index = index + 0
@@ -391,7 +394,8 @@ def heilbronn_merel_entry(
 
 @native
 def heilbronn_merel_fill(
-    index: uint64, output: Int64Buffer,
+    index: uint64,
+    output: Int64Buffer,
 ) -> int:
     """Write Merel's determinant-``index`` representatives in source order."""
     exact_index = index + 0
@@ -507,9 +511,7 @@ def heilbronn_higher_weight_action_fill(
         for source_degree in range(0, width):
             for target_degree in range(0, width):
                 output_index = (
-                    matrix_index * width * width
-                    + source_degree * width
-                    + target_degree
+                    matrix_index * width * width + source_degree * width + target_degree
                 )
                 output[output_index] = p1_monomial_matrix_coefficient(
                     source_degree,
@@ -558,12 +560,17 @@ def p1_apply_packed(
 ) -> int:
     """Normalize a projective pair and return its packed-table index."""
     valid, normalized_u, normalized_v, _scalar = p1_normalize_with_scalar(
-        level, u, v,
+        level,
+        u,
+        v,
     )
     if not valid:
         return -1
     return p1_index_normalized_packed(
-        pairs, pair_count, normalized_u, normalized_v,
+        pairs,
+        pair_count,
+        normalized_u,
+        normalized_v,
     )
 
 
@@ -586,7 +593,11 @@ def heilbronn_coset_transport_fill(
             image_u = u * matrix[0] + v * matrix[2]
             image_v = u * matrix[1] + v * matrix[3]
             output[position] = p1_apply_packed(
-                level, pairs, pair_count, image_u, image_v,
+                level,
+                pairs,
+                pair_count,
+                image_u,
+                image_v,
             )
             position += 1
     return position
@@ -630,7 +641,11 @@ def heilbronn_transported_action_fill(
                 image_u = u * a + v * c
                 image_v = u * b + v * d
                 image_coset = p1_apply_packed(
-                    level, pairs, pair_count, image_u, image_v,
+                    level,
+                    pairs,
+                    pair_count,
+                    image_u,
+                    image_v,
                 )
                 for target_degree in range(0, width):
                     if image_coset < 0:
@@ -640,16 +655,14 @@ def heilbronn_transported_action_fill(
                         image_generators[position] = (
                             target_degree * pair_count + image_coset
                         )
-                        coefficients[position] = (
-                            p1_monomial_matrix_coefficient(
-                                source_degree,
-                                weight_degree,
-                                target_degree,
-                                a,
-                                b,
-                                c,
-                                d,
-                            )
+                        coefficients[position] = p1_monomial_matrix_coefficient(
+                            source_degree,
+                            weight_degree,
+                            target_degree,
+                            a,
+                            b,
+                            c,
+                            d,
                         )
                     position += 1
     return position
@@ -676,8 +689,7 @@ def p1_rational_add_scaled_at(
         denominator = old_denominator
     else:
         numerator = (
-            old_numerator * term_denominator
-            + scale * term_numerator * old_denominator
+            old_numerator * term_denominator + scale * term_numerator * old_denominator
         )
         denominator = old_denominator * term_denominator
     if numerator == 0:
@@ -800,7 +812,11 @@ def heilbronn_higher_weight_hecke_fill(
             image_u = u * a + v * c
             image_v = u * b + v * d
             image_coset = p1_apply_packed(
-                level, pairs, pair_count, image_u, image_v,
+                level,
+                pairs,
+                pair_count,
+                image_u,
+                image_v,
             )
             if image_coset >= 0:
                 for target_degree in range(0, width):
@@ -814,27 +830,19 @@ def heilbronn_higher_weight_hecke_fill(
                         d,
                     )
                     if coefficient != 0:
-                        image_generator = (
-                            target_degree * pair_count + image_coset
-                        )
+                        image_generator = target_degree * pair_count + image_coset
                         reduction_start = image_generator * dimension
                         for target in range(dimension):
                             reduction_index = reduction_start + target
-                            term_numerator = (
-                                reduction_numerators[reduction_index]
-                            )
+                            term_numerator = reduction_numerators[reduction_index]
                             if term_numerator != 0:
-                                _updated_numerator = (
-                                    p1_rational_add_scaled_at(
-                                        output_numerators,
-                                        output_denominators,
-                                        output_start + target,
-                                        term_numerator,
-                                        reduction_denominators[
-                                            reduction_index
-                                        ],
-                                        coefficient,
-                                    )
+                                _updated_numerator = p1_rational_add_scaled_at(
+                                    output_numerators,
+                                    output_denominators,
+                                    output_start + target,
+                                    term_numerator,
+                                    reduction_denominators[reduction_index],
+                                    coefficient,
                                 )
                                 contributions += 1
     return contributions

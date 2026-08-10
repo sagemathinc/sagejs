@@ -12,7 +12,7 @@ def compute_uuids(n=10**5):
         uuid4()
 
 
-register('compute_uuids', compute_uuids)
+register("compute_uuids", compute_uuids)
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     all()

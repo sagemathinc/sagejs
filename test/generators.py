@@ -33,7 +33,7 @@ assrt.deepEqual([x for x in A()], [1, 2, 3])
 
 g = g3()
 assrt.equal(g.next().value, 1)
-assrt.equal(g.next('a').value, 'a')
+assrt.equal(g.next("a").value, "a")
 
 a = (x for x in range(3))
 assrt.deepEqual(list(a), [0, 1, 2])

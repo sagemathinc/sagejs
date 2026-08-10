@@ -8,7 +8,7 @@ def list_times_number(n=100):
         [0] * 100000
 
 
-register('list_times_number', list_times_number)
+register("list_times_number", list_times_number)
 
 
 def list_times_number2(n=1000000):
@@ -16,7 +16,7 @@ def list_times_number2(n=1000000):
     len(v * n)
 
 
-register('list_times_number2', list_times_number2)
+register("list_times_number2", list_times_number2)
 
 
 def list_times_number3(n=1000000):
@@ -25,7 +25,7 @@ def list_times_number3(n=1000000):
         w * 3
 
 
-register('list_times_number3', list_times_number3)
+register("list_times_number3", list_times_number3)
 
 
 def list_to_string(n=10**5):
@@ -34,5 +34,5 @@ def list_to_string(n=10**5):
 
 register("list_to_string", list_to_string)
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     all()

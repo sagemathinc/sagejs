@@ -21,6 +21,7 @@ assrt.ok(not isinstance(a, dict))
 
 def f():
     from __python__ import dict_literals
+
     a = {1: 1}
     assrt.ok(isinstance(a, dict))
 

@@ -128,13 +128,13 @@ def islice(iterable, *args):
     elif len(args) == 3:
         start, stop, step = args
     else:
-        raise TypeError('islice expected 2 to 4 arguments')
+        raise TypeError("islice expected 2 to 4 arguments")
     if start is None:
         start = 0
     if step is None:
         step = 1
     if start < 0 or step <= 0 or (stop is not None and stop < 0):
-        raise ValueError('indices for islice() must be non-negative')
+        raise ValueError("indices for islice() must be non-negative")
     for index, value in enumerate(iterable):
         if stop is not None and index >= stop:
             break
@@ -176,7 +176,7 @@ def permutations(iterable, r=None):
         for offset in range(r - 1, -1, -1):
             cycles[offset] -= 1
             if cycles[offset] == 0:
-                indices[offset:] = indices[offset + 1:] + indices[offset:offset + 1]
+                indices[offset:] = indices[offset + 1 :] + indices[offset : offset + 1]
                 cycles[offset] = length - offset
             else:
                 swap = cycles[offset]

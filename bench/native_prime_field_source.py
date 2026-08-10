@@ -51,16 +51,15 @@ def source_prime_rank(source: PrimeFieldMatrix) -> uint64:
             pivot_inverse = prime_inverse(entries[pivot_index], modulus)
             for row in range(rank + 1, rows):
                 target_index = row * columns + column
-                factor = prime_mul(
-                    entries[target_index], pivot_inverse, modulus)
+                factor = prime_mul(entries[target_index], pivot_inverse, modulus)
                 entries[target_index] = factor
                 for target_column in range(column + 1, columns):
                     target_index = row * columns + target_column
                     pivot_index = rank * columns + target_column
-                    product = prime_mul(
-                        factor, entries[pivot_index], modulus)
+                    product = prime_mul(factor, entries[pivot_index], modulus)
                     entries[target_index] = prime_sub(
-                        entries[target_index], product, modulus)
+                        entries[target_index], product, modulus
+                    )
             rank += 1
     return rank
 
@@ -78,9 +77,9 @@ def source_prime_matmul(
     modulus = prime_modulus(left)
     right_modulus = prime_modulus(right)
     if inner != right_rows:
-        raise ValueError('matrix dimensions do not agree')
+        raise ValueError("matrix dimensions do not agree")
     if modulus != right_modulus:
-        raise ValueError('matrix base rings differ')
+        raise ValueError("matrix base rings differ")
     left_entries = prime_buffer(left)
     right_entries = prime_buffer(right)
     result = prime_zeros(rows * columns)

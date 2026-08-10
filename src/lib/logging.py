@@ -17,19 +17,23 @@ DEBUG = 10
 NOTSET = 0
 
 _levelToName = {
-    CRITICAL: 'CRITICAL', ERROR: 'ERROR', WARNING: 'WARNING',
-    INFO: 'INFO', DEBUG: 'DEBUG', NOTSET: 'NOTSET',
+    CRITICAL: "CRITICAL",
+    ERROR: "ERROR",
+    WARNING: "WARNING",
+    INFO: "INFO",
+    DEBUG: "DEBUG",
+    NOTSET: "NOTSET",
 }
 _nameToLevel = {name: level for level, name in _levelToName.items()}
-_nameToLevel['WARN'] = WARNING
-_nameToLevel['FATAL'] = CRITICAL
+_nameToLevel["WARN"] = WARNING
+_nameToLevel["FATAL"] = CRITICAL
 raiseExceptions = True
 
 
 def getLevelName(level):
     if isinstance(level, str):
-        return _nameToLevel.get(level, 'Level ' + level)
-    return _levelToName.get(level, 'Level ' + str(level))
+        return _nameToLevel.get(level, "Level " + level)
+    return _levelToName.get(level, "Level " + str(level))
 
 
 def addLevelName(level, name):
@@ -42,19 +46,30 @@ def _checkLevel(level):
         return level
     if isinstance(level, str) and level in _nameToLevel:
         return _nameToLevel[level]
-    raise ValueError('Unknown level: ' + repr(level))
+    raise ValueError("Unknown level: " + repr(level))
 
 
 class LogRecord:
-    def __init__(self, name, level, pathname, lineno, msg, args,
-                 exc_info=None, func=None, sinfo=None, **kwargs):
+    def __init__(
+        self,
+        name,
+        level,
+        pathname,
+        lineno,
+        msg,
+        args,
+        exc_info=None,
+        func=None,
+        sinfo=None,
+        **kwargs,
+    ):
         self.name = name
         self.msg = msg
         self.args = args
         self.levelname = getLevelName(level)
         self.levelno = level
         self.pathname = pathname
-        self.filename = os.path.basename(pathname) if pathname else ''
+        self.filename = os.path.basename(pathname) if pathname else ""
         self.module = os.path.splitext(self.filename)[0]
         self.exc_info = exc_info
         self.exc_text = None
@@ -79,19 +94,19 @@ class LogRecord:
 
 
 def makeLogRecord(values):
-    record = LogRecord(None, NOTSET, '', 0, '', (), None, None)
+    record = LogRecord(None, NOTSET, "", 0, "", (), None, None)
     record.__dict__.update(values)
     return record
 
 
 class Filter:
-    def __init__(self, name=''):
+    def __init__(self, name=""):
         self.name = name
 
     def filter(self, record):
         if not self.name:
             return True
-        return record.name == self.name or record.name.startswith(self.name + '.')
+        return record.name == self.name or record.name.startswith(self.name + ".")
 
 
 class Filterer:
@@ -108,22 +123,26 @@ class Filterer:
 
     def filter(self, record):
         for filter_ in self.filters:
-            result = filter_.filter(record) if hasattr(filter_, 'filter') else filter_(record)
+            result = (
+                filter_.filter(record)
+                if hasattr(filter_, "filter")
+                else filter_(record)
+            )
             if not result:
                 return False
         return True
 
 
 class PercentStyle:
-    default_format = '%(message)s'
-    asctime_format = '%(asctime)s'
+    default_format = "%(message)s"
+    asctime_format = "%(asctime)s"
 
     def __init__(self, fmt, defaults=None):
         self._fmt = fmt or self.default_format
         self._defaults = defaults
 
     def usesTime(self):
-        return '%(asctime)' in self._fmt
+        return "%(asctime)" in self._fmt
 
     def validate(self):
         return None
@@ -137,13 +156,12 @@ class PercentStyle:
 
 
 class Formatter:
-    default_time_format = '%Y-%m-%d %H:%M:%S'
-    default_msec_format = '%s,%03d'
+    default_time_format = "%Y-%m-%d %H:%M:%S"
+    default_msec_format = "%s,%03d"
     converter = staticmethod(time.localtime)
 
-    def __init__(self, fmt=None, datefmt=None, style='%', validate=True,
-                 defaults=None):
-        if style != '%':
+    def __init__(self, fmt=None, datefmt=None, style="%", validate=True, defaults=None):
+        if style != "%":
             raise ValueError("Only '%' logging format style is supported")
         self._style = PercentStyle(fmt, defaults=defaults)
         self._fmt = self._style._fmt
@@ -158,7 +176,7 @@ class Formatter:
 
     def formatException(self, exc_info):
         if exc_info is None:
-            return ''
+            return ""
         if isinstance(exc_info, tuple) and len(exc_info) > 1:
             return repr(exc_info[1])
         return repr(exc_info)
@@ -175,9 +193,9 @@ class Formatter:
             if not record.exc_text:
                 record.exc_text = self.formatException(record.exc_info)
             if record.exc_text:
-                text += '\n' + record.exc_text
+                text += "\n" + record.exc_text
         if record.stack_info:
-            text += '\n' + self.formatStack(record.stack_info)
+            text += "\n" + self.formatStack(record.stack_info)
         return text
 
 
@@ -210,8 +228,8 @@ class Handler(Filterer):
         raise NotImplementedError
 
     def flush(self):
-        stream = getattr(self, 'stream', None)
-        if stream is not None and hasattr(stream, 'flush'):
+        stream = getattr(self, "stream", None)
+        if stream is not None and hasattr(stream, "flush"):
             stream.flush()
 
     def close(self):
@@ -229,12 +247,13 @@ class Handler(Filterer):
 
 
 class StreamHandler(Handler):
-    terminator = '\n'
+    terminator = "\n"
 
     def __init__(self, stream=None):
         super().__init__()
         if stream is None:
             import sys
+
             stream = sys.stderr
         self.stream = stream
 
@@ -253,21 +272,24 @@ class StreamHandler(Handler):
 
 
 class FileHandler(StreamHandler):
-    def __init__(self, filename, mode='a', encoding=None, delay=False,
-                 errors=None):
+    def __init__(self, filename, mode="a", encoding=None, delay=False, errors=None):
         self.baseFilename = os.path.abspath(filename)
         self.mode = mode
         self.encoding = encoding
         self.errors = errors
         self.delay = delay
-        stream = None if delay else open(
-            self.baseFilename, mode, encoding=encoding, errors=errors)
+        stream = (
+            None
+            if delay
+            else open(self.baseFilename, mode, encoding=encoding, errors=errors)
+        )
         super().__init__(stream)
 
     def emit(self, record):
         if self.stream is None:
-            self.stream = open(self.baseFilename, self.mode,
-                               encoding=self.encoding, errors=self.errors)
+            self.stream = open(
+                self.baseFilename, self.mode, encoding=self.encoding, errors=self.errors
+            )
         super().emit(record)
 
     def close(self):
@@ -313,8 +335,11 @@ class Logger(Filterer):
         return NOTSET
 
     def isEnabledFor(self, level):
-        return (not self.disabled and level > self.manager.disable and
-                level >= self.getEffectiveLevel())
+        return (
+            not self.disabled
+            and level > self.manager.disable
+            and level >= self.getEffectiveLevel()
+        )
 
     def addHandler(self, handler):
         if handler not in self.handlers:
@@ -334,8 +359,19 @@ class Logger(Filterer):
             logger = logger.parent
         return False
 
-    def makeRecord(self, name, level, fn, line, msg, args, exc_info,
-                   func=None, extra=None, sinfo=None):
+    def makeRecord(
+        self,
+        name,
+        level,
+        fn,
+        line,
+        msg,
+        args,
+        exc_info,
+        func=None,
+        extra=None,
+        sinfo=None,
+    ):
         record = LogRecord(name, level, fn, line, msg, args, exc_info, func, sinfo)
         if extra:
             for key, value in extra.items():
@@ -356,11 +392,28 @@ class Logger(Filterer):
                 break
             logger = logger.parent
 
-    def _log(self, level, msg, args, exc_info=None, extra=None,
-             stack_info=False, stacklevel=1):
-        record = self.makeRecord(self.name, level, '', 0, msg, args,
-                                 exc_info, None, extra,
-                                 None if not stack_info else '')
+    def _log(
+        self,
+        level,
+        msg,
+        args,
+        exc_info=None,
+        extra=None,
+        stack_info=False,
+        stacklevel=1,
+    ):
+        record = self.makeRecord(
+            self.name,
+            level,
+            "",
+            0,
+            msg,
+            args,
+            exc_info,
+            None,
+            extra,
+            None if not stack_info else "",
+        )
         self.handle(record)
 
     def log(self, level, msg, *args, **kwargs):
@@ -383,7 +436,7 @@ class Logger(Filterer):
         self.log(ERROR, msg, *args, **kwargs)
 
     def exception(self, msg, *args, **kwargs):
-        kwargs['exc_info'] = True
+        kwargs["exc_info"] = True
         self.error(msg, *args, **kwargs)
 
     def critical(self, msg, *args, **kwargs):
@@ -391,12 +444,12 @@ class Logger(Filterer):
 
 
 manager = _Manager()
-root = Logger('root', WARNING)
+root = Logger("root", WARNING)
 root.manager = manager
 
 
 def getLogger(name=None):
-    if name is None or name == '' or name == 'root':
+    if name is None or name == "" or name == "root":
         return root
     if name not in manager.loggerDict:
         logger = Logger(name)
@@ -418,15 +471,15 @@ def shutdown():
 
 
 def basicConfig(**kwargs):
-    if root.handlers and not kwargs.get('force', False):
+    if root.handlers and not kwargs.get("force", False):
         return
-    if kwargs.get('force', False):
+    if kwargs.get("force", False):
         root.handlers.clear()
-    handler = StreamHandler(kwargs.get('stream'))
-    handler.setFormatter(Formatter(kwargs.get('format'), kwargs.get('datefmt')))
+    handler = StreamHandler(kwargs.get("stream"))
+    handler.setFormatter(Formatter(kwargs.get("format"), kwargs.get("datefmt")))
     root.addHandler(handler)
-    if kwargs.get('level') is not None:
-        root.setLevel(kwargs['level'])
+    if kwargs.get("level") is not None:
+        root.setLevel(kwargs["level"])
 
 
 def log(level, msg, *args, **kwargs):

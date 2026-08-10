@@ -9,18 +9,19 @@ import sys
 
 
 def import_module(name, package=None):
-    if name.startswith('.'):
+    if name.startswith("."):
         if not package:
             raise TypeError(
-                "the 'package' argument is required to perform a relative import")
-        level = len(name) - len(name.lstrip('.'))
+                "the 'package' argument is required to perform a relative import"
+            )
+        level = len(name) - len(name.lstrip("."))
         tail = name[level:]
-        parts = package.split('.')
+        parts = package.split(".")
         if level > len(parts):
-            raise ImportError('attempted relative import beyond top-level package')
-        prefix = '.'.join(parts[:len(parts) - level + 1])
-        name = prefix + ('.' + tail if tail else '')
-    return __import__(name, globals(), locals(), ['*'], 0)
+            raise ImportError("attempted relative import beyond top-level package")
+        prefix = ".".join(parts[: len(parts) - level + 1])
+        name = prefix + ("." + tail if tail else "")
+    return __import__(name, globals(), locals(), ["*"], 0)
 
 
 def invalidate_caches():
@@ -28,10 +29,9 @@ def invalidate_caches():
 
 
 def reload(module):
-    name = getattr(module, '__name__', None)
+    name = getattr(module, "__name__", None)
     if not name or name not in sys.modules:
-        raise ImportError('module must be in sys.modules')
+        raise ImportError("module must be in sys.modules")
     # Sage.js modules are live singleton namespaces.  A future loader protocol
     # can re-execute them; returning the registered identity is the safe core.
     return sys.modules[name]
-

@@ -109,6 +109,7 @@ assert zero_matrix(QQ, 50).is_zero()
 assert identity_matrix(QQ, 50).is_one()
 random_value = random_matrix(QQ, 40)
 assert random_value.dimensions() == (40, 40)
+assert loads(dumps(A)) == A
 try:
     A._native
     raise AssertionError('packed rational matrix exposed an N-API handle')

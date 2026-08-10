@@ -2,7 +2,7 @@
 # License: BSD
 # Copyright: 2015, Kovid Goyal <kovid at kovidgoyal.net>
 
-sub_var = 'sub'
+sub_var = "sub"
 
 
 def sub_func():

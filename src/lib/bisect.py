@@ -3,7 +3,7 @@
 
 def _type_name(value):
     name = type(value).__name__
-    if name.startswith('ρσ_'):
+    if name.startswith("ρσ_"):
         return name[3:]
     return name
 
@@ -16,31 +16,29 @@ def _as_index(value, argument):
     try:
         method = value.__index__
     except AttributeError:
-        if argument == 'hi':
+        if argument == "hi":
             raise TypeError(
-                "argument should be integer or None, not '"
-                + _type_name(value) + "'")
+                "argument should be integer or None, not '" + _type_name(value) + "'"
+            )
         raise TypeError(
-            "'" + _type_name(value)
-            + "' object cannot be interpreted as an integer")
+            "'" + _type_name(value) + "' object cannot be interpreted as an integer"
+        )
     answer = method()
     if not (answer is True or answer is False or isinstance(answer, int)):
-        raise TypeError(
-            '__index__ returned non-int (type '
-            + _type_name(answer) + ')')
+        raise TypeError("__index__ returned non-int (type " + _type_name(answer) + ")")
     return int(answer)
 
 
 def _coerce_bounds(lo, hi):
-    lo = _as_index(lo, 'lo')
+    lo = _as_index(lo, "lo")
     if hi is not None:
-        hi = _as_index(hi, 'hi')
+        hi = _as_index(hi, "hi")
     return lo, hi
 
 
 def _finish_bounds(values, lo, hi):
     if lo < 0:
-        raise ValueError('lo must be non-negative')
+        raise ValueError("lo must be non-negative")
     if hi is None:
         hi = len(values)
     return lo, hi

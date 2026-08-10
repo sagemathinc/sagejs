@@ -28,8 +28,7 @@ def _prime_field_echelon_data(
         if selected == rows:
             continue
         if selected != pivot_row:
-            values[selected], values[pivot_row] = (
-                values[pivot_row], values[selected])
+            values[selected], values[pivot_row] = (values[pivot_row], values[selected])
         pivot = values[pivot_row][pivot_column]
         for column in range(pivot_column, columns):
             values[pivot_row][column] /= pivot
@@ -55,7 +54,7 @@ def _prime_field_rank_fallback(source: Any) -> int:
 
 def _prime_field_determinant_fallback(source: Any) -> Any:
     if source.nrows() != source.ncols():
-        raise ValueError('determinant requires a square matrix')
+        raise ValueError("determinant requires a square matrix")
     values = _prime_field_rows(source)
     field = source.base_ring()
     size = source.nrows()
@@ -68,7 +67,9 @@ def _prime_field_determinant_fallback(source: Any) -> Any:
             return field(0)
         if selected != pivot_column:
             values[selected], values[pivot_column] = (
-                values[pivot_column], values[selected])
+                values[pivot_column],
+                values[selected],
+            )
             determinant = -determinant
         pivot = values[pivot_column][pivot_column]
         determinant *= pivot
@@ -78,15 +79,16 @@ def _prime_field_determinant_fallback(source: Any) -> Any:
             factor = values[row][pivot_column] / pivot
             values[row][pivot_column] = field(0)
             for column in range(pivot_column + 1, size):
-                values[row][column] -= (
-                    factor * values[pivot_column][column])
+                values[row][column] -= factor * values[pivot_column][column]
     return determinant
 
 
 def _prime_field_echelon_fallback(source: Any) -> Any:
     values, _rank = _prime_field_echelon_data(source)
     return matrix(
-        source.base_ring(), source.nrows(), source.ncols(),
+        source.base_ring(),
+        source.nrows(),
+        source.ncols(),
         [value for row in values for value in row],
     )
 
@@ -97,8 +99,7 @@ def _prime_field_solve_fallback(left: Any, right: Any) -> Any:
         or right.nrows() != left.nrows()
         or right.base_ring() is not left.base_ring()
     ):
-        raise ValueError(
-            'solve requires square compatible matrices over one field')
+        raise ValueError("solve requires square compatible matrices over one field")
     field = left.base_ring()
     size = left.nrows()
     right_columns = right.ncols()
@@ -108,13 +109,14 @@ def _prime_field_solve_fallback(left: Any, right: Any) -> Any:
     for row in range(size):
         augmented.append(left_rows[row] + right_rows[row])
     augmented_matrix = matrix(
-        field, size, size + right_columns,
+        field,
+        size,
+        size + right_columns,
         [value for row in augmented for value in row],
     )
-    values, rank = _prime_field_echelon_data(
-        augmented_matrix, size)
+    values, rank = _prime_field_echelon_data(augmented_matrix, size)
     if rank != size:
-        raise ValueError('matrix is singular')
+        raise ValueError("matrix is singular")
     answer = []
     for row in range(size):
         answer.extend(values[row][size:])
@@ -127,10 +129,12 @@ class _PrimeFieldDecompositionFallback:
     def __init__(self, source: Any) -> None:
         rows = _prime_field_rows(source)
         self.source = matrix(
-            source.base_ring(), source.nrows(), source.ncols(),
+            source.base_ring(),
+            source.nrows(),
+            source.ncols(),
             [value for row in rows for value in row],
         )
-        self.algorithm = 'python'
+        self.algorithm = "python"
 
     def rank(self) -> int:
         return _prime_field_rank_fallback(self.source)

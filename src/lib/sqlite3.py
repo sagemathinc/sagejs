@@ -18,10 +18,10 @@ from typing import Any, Iterator
 import sagejs.runtime as runtime
 
 
-apilevel = '2.0'
+apilevel = "2.0"
 threadsafety = 1
-paramstyle = 'qmark'
-version = '2.6.0-sagejs'
+paramstyle = "qmark"
+version = "2.6.0-sagejs"
 version_info = (2, 6, 0)
 
 
@@ -65,9 +65,9 @@ class NotSupportedError(DatabaseError):
     pass
 
 
-_sqlite = runtime.require_module('node:sqlite')
-_database_sync = runtime.reflect.get(_sqlite, 'DatabaseSync')
-_uint8_array = runtime.reflect.get(runtime.global_object, 'Uint8Array')
+_sqlite = runtime.require_module("node:sqlite")
+_database_sync = runtime.reflect.get(_sqlite, "DatabaseSync")
+_uint8_array = runtime.reflect.get(runtime.global_object, "Uint8Array")
 
 
 def _native_record(**values: Any) -> Any:
@@ -91,11 +91,9 @@ def _parameter(value: Any) -> Any:
         return 0
     if runtime.is_exact_integer(value):
         return runtime.integer_bigint(value)
-    if hasattr(value, '_bytes_values'):
-        return runtime.reflect.construct(
-            _uint8_array, [value._bytes_values()])
-    raise ProgrammingError(
-        'unsupported SQLite parameter type: ' + type(value).__name__)
+    if hasattr(value, "_bytes_values"):
+        return runtime.reflect.construct(_uint8_array, [value._bytes_values()])
+    raise ProgrammingError("unsupported SQLite parameter type: " + type(value).__name__)
 
 
 def _parameters(parameters: Any) -> list[Any]:
@@ -108,15 +106,14 @@ def _parameters(parameters: Any) -> list[Any]:
         return [named]
     if isinstance(parameters, (list, tuple)):
         return [_parameter(value) for value in parameters]
-    raise ProgrammingError('parameters must be a sequence or mapping')
+    raise ProgrammingError("parameters must be a sequence or mapping")
 
 
 def _value(value: Any) -> Any:
-    if runtime.jstype(value) == 'bigint':
+    if runtime.jstype(value) == "bigint":
         return runtime.normalize_integer(value)
-    if (
-        _uint8_array is not runtime.undefined
-        and runtime.instance_of(value, _uint8_array)
+    if _uint8_array is not runtime.undefined and runtime.instance_of(
+        value, _uint8_array
     ):
         return bytes([value[index] for index in range(len(value))])
     return value
@@ -124,12 +121,12 @@ def _value(value: Any) -> Any:
 
 def _statement_kind(sql: str) -> str:
     text = sql.lstrip()
-    while text.startswith('--'):
-        newline = text.find('\n')
+    while text.startswith("--"):
+        newline = text.find("\n")
         if newline < 0:
-            return ''
-        text = text[newline + 1:].lstrip()
-    return text.split(None, 1)[0].upper() if text else ''
+            return ""
+        text = text[newline + 1 :].lstrip()
+    return text.split(None, 1)[0].upper() if text else ""
 
 
 class Row:
@@ -151,7 +148,7 @@ class Row:
             for index, name in enumerate(self._names):
                 if name.lower() == lowered:
                     return self._values[index]
-            raise IndexError('No item with that key')
+            raise IndexError("No item with that key")
         return self._values[key]
 
     def keys(self) -> list[str]:
@@ -171,46 +168,53 @@ class Cursor:
 
     def _check(self) -> None:
         if self._closed:
-            raise ProgrammingError('Cannot operate on a closed cursor.')
+            raise ProgrammingError("Cannot operate on a closed cursor.")
         self.connection._check()
 
     def execute(self, sql: str, parameters: Any = None) -> Cursor:
         self._check()
         if not isinstance(sql, str):
-            raise TypeError('execute() argument 1 must be str')
+            raise TypeError("execute() argument 1 must be str")
         kind = _statement_kind(sql)
         self.connection._before_statement(kind)
         options = _native_record(readBigInts=True, returnArrays=True)
         try:
-            statement = _call(self.connection._database, 'prepare', [
-                sql, options])
-            columns = _call(statement, 'columns', [])
+            statement = _call(self.connection._database, "prepare", [sql, options])
+            columns = _call(statement, "columns", [])
             call_args = _parameters(parameters)
             self._rows = []
             self._position = 0
             if len(columns):
-                raw_rows = _call(statement, 'all', call_args)
-                self.description = tuple([
-                    (
-                        str(runtime.reflect.get(column, 'name')),
-                        None, None, None, None, None, None,
-                    )
-                    for column in columns
-                ])
+                raw_rows = _call(statement, "all", call_args)
+                self.description = tuple(
+                    [
+                        (
+                            str(runtime.reflect.get(column, "name")),
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                        )
+                        for column in columns
+                    ]
+                )
                 for raw_row in raw_rows:
                     values = tuple([_value(value) for value in raw_row])
                     factory = self.connection.row_factory
                     self._rows.append(
-                        values if factory is None else factory(self, values))
+                        values if factory is None else factory(self, values)
+                    )
                 self.rowcount = -1
                 self.lastrowid = None
             else:
-                result = _call(statement, 'run', call_args)
+                result = _call(statement, "run", call_args)
                 self.description = None
-                self.rowcount = int(runtime.number(runtime.reflect.get(
-                    result, 'changes')))
-                self.lastrowid = _value(runtime.reflect.get(
-                    result, 'lastInsertRowid'))
+                self.rowcount = int(
+                    runtime.number(runtime.reflect.get(result, "changes"))
+                )
+                self.lastrowid = _value(runtime.reflect.get(result, "lastInsertRowid"))
                 self.connection.total_changes += self.rowcount
             self.connection._after_statement(kind)
             return self
@@ -218,7 +222,7 @@ class Cursor:
             raise
         except Exception as error:
             message = str(error)
-            if 'constraint' in message.lower():
+            if "constraint" in message.lower():
                 raise IntegrityError(message)  # noqa: B904
             raise OperationalError(message)  # noqa: B904
 
@@ -229,8 +233,7 @@ class Cursor:
         for values in parameters:
             self.execute(sql, values)
             if self.description is not None:
-                raise ProgrammingError(
-                    'executemany() can only execute DML statements')
+                raise ProgrammingError("executemany() can only execute DML statements")
             total += self.rowcount
             lastrowid = self.lastrowid
         self.rowcount = total
@@ -241,7 +244,7 @@ class Cursor:
         self._check()
         self.connection.commit()
         try:
-            _call(self.connection._database, 'exec', [sql_script])
+            _call(self.connection._database, "exec", [sql_script])
         except Exception as error:
             raise OperationalError(str(error))  # noqa: B904
         self.description = None
@@ -254,7 +257,7 @@ class Cursor:
     def fetchone(self) -> Any:
         self._check()
         if self.description is None:
-            raise ProgrammingError('the last operation did not produce rows')
+            raise ProgrammingError("the last operation did not produce rows")
         if self._position >= len(self._rows):
             return None
         value = self._rows[self._position]
@@ -274,8 +277,8 @@ class Cursor:
     def fetchall(self) -> list[Any]:
         self._check()
         if self.description is None:
-            raise ProgrammingError('the last operation did not produce rows')
-        answer = self._rows[self._position:]
+            raise ProgrammingError("the last operation did not produce rows")
+        answer = self._rows[self._position :]
         self._position = len(self._rows)
         return answer
 
@@ -298,7 +301,7 @@ class Connection:
         self,
         database: Any,
         timeout: float = 5.0,
-        isolation_level: Any = '',
+        isolation_level: Any = "",
         **_keywords: Any,
     ) -> None:
         options = _native_record(
@@ -308,7 +311,8 @@ class Connection:
         )
         try:
             self._database = runtime.reflect.construct(
-                _database_sync, [str(database), options])
+                _database_sync, [str(database), options]
+            )
         except Exception as error:
             raise OperationalError(str(error))  # noqa: B904
         self.isolation_level = isolation_level
@@ -320,27 +324,27 @@ class Connection:
 
     def _check(self) -> None:
         if self._closed:
-            raise ProgrammingError('Cannot operate on a closed database.')
+            raise ProgrammingError("Cannot operate on a closed database.")
 
     def _before_statement(self, kind: str) -> None:
         if (
             self.isolation_level is not None
             and not self.in_transaction
-            and kind in ('INSERT', 'UPDATE', 'DELETE', 'REPLACE')
+            and kind in ("INSERT", "UPDATE", "DELETE", "REPLACE")
         ):
             mode = str(self.isolation_level).strip().upper()
-            if mode not in ('', 'DEFERRED', 'IMMEDIATE', 'EXCLUSIVE'):
+            if mode not in ("", "DEFERRED", "IMMEDIATE", "EXCLUSIVE"):
                 raise ValueError(
                     "isolation_level string must be '', 'DEFERRED', "
-                    "'IMMEDIATE', or 'EXCLUSIVE'")
-            _call(self._database, 'exec', [
-                'BEGIN' + ((' ' + mode) if mode else '')])
+                    "'IMMEDIATE', or 'EXCLUSIVE'"
+                )
+            _call(self._database, "exec", ["BEGIN" + ((" " + mode) if mode else "")])
             self.in_transaction = True
 
     def _after_statement(self, kind: str) -> None:
-        if kind in ('BEGIN', 'SAVEPOINT'):
+        if kind in ("BEGIN", "SAVEPOINT"):
             self.in_transaction = True
-        elif kind in ('COMMIT', 'END', 'ROLLBACK'):
+        elif kind in ("COMMIT", "END", "ROLLBACK"):
             self.in_transaction = False
 
     def cursor(self, factory: Any = None) -> Cursor:
@@ -360,18 +364,18 @@ class Connection:
     def commit(self) -> None:
         self._check()
         if self.in_transaction:
-            _call(self._database, 'exec', ['COMMIT'])
+            _call(self._database, "exec", ["COMMIT"])
             self.in_transaction = False
 
     def rollback(self) -> None:
         self._check()
         if self.in_transaction:
-            _call(self._database, 'exec', ['ROLLBACK'])
+            _call(self._database, "exec", ["ROLLBACK"])
             self.in_transaction = False
 
     def close(self) -> None:
         if not self._closed:
-            _call(self._database, 'close', [])
+            _call(self._database, "close", [])
             self._closed = True
             self.in_transaction = False
 
@@ -391,7 +395,7 @@ def connect(
     database: Any,
     timeout: float = 5.0,
     detect_types: int = 0,
-    isolation_level: Any = '',
+    isolation_level: Any = "",
     check_same_thread: bool = True,
     factory: Any = Connection,
     cached_statements: int = 128,
@@ -411,13 +415,12 @@ Binary = bytes
 
 
 def _sqlite_version() -> str:
-    connection = connect(':memory:')
+    connection = connect(":memory:")
     try:
-        return str(connection.execute('select sqlite_version()').fetchone()[0])
+        return str(connection.execute("select sqlite_version()").fetchone()[0])
     finally:
         connection.close()
 
 
 sqlite_version = _sqlite_version()
-sqlite_version_info = tuple([
-    int(part) for part in sqlite_version.split('.')])
+sqlite_version_info = tuple([int(part) for part in sqlite_version.split(".")])

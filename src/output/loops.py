@@ -2,7 +2,22 @@
 # License: BSD Copyright: 2016, Kovid Goyal <kovid at kovidgoyal.net>
 from __python__ import hash_literals
 
-from ast_types import AST_Array, AST_AsyncFor, AST_BaseCall, AST_Dot, AST_GeneratorComprehension, AST_ItemAccess, AST_ListComprehension, AST_Number, AST_Seq, AST_Splice, AST_SymbolRef, AST_Try, AST_Unary, is_node_type
+from ast_types import (
+    AST_Array,
+    AST_AsyncFor,
+    AST_BaseCall,
+    AST_Dot,
+    AST_GeneratorComprehension,
+    AST_ItemAccess,
+    AST_ListComprehension,
+    AST_Number,
+    AST_Seq,
+    AST_Splice,
+    AST_SymbolRef,
+    AST_Try,
+    AST_Unary,
+    is_node_type,
+)
 from output.stream import OutputStream
 from output.statements import force_statement, print_await_expression
 
@@ -10,54 +25,54 @@ from output.statements import force_statement, print_await_expression
 def print_unpack_pattern(node, output):
     """Emit the shape consumed by ``ρσ_unpack_nested`` for a target."""
     if is_node_type(node, AST_Seq):
-        node = AST_Array({'elements': node.to_array()})
+        node = AST_Array({"elements": node.to_array()})
     if is_node_type(node, AST_Array):
-        output.print('[')
+        output.print("[")
         for index, element in enumerate(node.elements):
             if index:
                 output.comma()
             print_unpack_pattern(element, output)
-        output.print(']')
+        output.print("]")
     else:
-        output.print('null')
+        output.print("null")
 
 
 def print_target_assignment(target, output, print_value):
     """Emit one Python assignment target using the appropriate runtime hook."""
     if is_node_type(target, AST_ItemAccess):
-        output.print('ρσ_setitem(')
+        output.print("ρσ_setitem(")
         target.expression.print(output)
         output.comma()
         target.property.print(output)
         output.comma()
         print_value()
-        output.print(')')
+        output.print(")")
         return
     if is_node_type(target, AST_Splice):
-        output.print('ρσ_splice(')
+        output.print("ρσ_splice(")
         target.expression.print(output)
         output.comma()
         print_value()
         output.comma()
-        target.property.print(output) if target.property else output.print('0')
+        target.property.print(output) if target.property else output.print("0")
         if target.property2:
             output.comma()
             target.property2.print(output)
-        output.print(')')
+        output.print(")")
         return
     if (
         output.options.python_attributes
         and is_node_type(target, AST_Dot)
-        and not target.property.startswith('ρσ_')
-        and '.' not in target.property
+        and not target.property.startswith("ρσ_")
+        and "." not in target.property
     ):
-        output.print('ρσ_setattr(')
+        output.print("ρσ_setattr(")
         target.expression.print(output)
         output.comma()
         output.print(JSON.stringify(target.property))
         output.comma()
         print_value()
-        output.print(')')
+        output.print(")")
         return
     output.assign(target)
     print_value()
@@ -88,10 +103,7 @@ def loop_can_catch_interrupt(output):
 
 def print_interrupt_check(output):
     output.indent()
-    output.print(
-        "if ((++ρσ_interrupt_counter & 255) === 0) "
-        "ρσ_check_interrupt()"
-    )
+    output.print("if ((++ρσ_interrupt_counter & 255) === 0) ρσ_check_interrupt()")
     output.end_statement()
     output.newline()
 
@@ -135,9 +147,9 @@ def print_while_loop(self, output):
 def prepare_loop_else(loop, output):
     if not loop.alternative:
         return
-    loop.else_flag = 'ρσ_LoopElse' + output.loop_else_counter
+    loop.else_flag = "ρσ_LoopElse" + output.loop_else_counter
     output.loop_else_counter += 1
-    output.print('var ' + loop.else_flag + ' = true')
+    output.print("var " + loop.else_flag + " = true")
     output.end_statement()
     output.indent()
 
@@ -147,7 +159,7 @@ def print_loop_else(loop, output):
         return
     output.newline()
     output.indent()
-    output.print('if')
+    output.print("if")
     output.space()
     output.with_parens(lambda: output.print(loop.else_flag))
     output.space()
@@ -156,38 +168,43 @@ def print_loop_else(loop, output):
 
 def is_simple_for_in(self):
     # return true if this loop can be simplified into a basic for (i in j) loop
-    if (is_node_type(self.object, AST_BaseCall)
-            and is_node_type(self.object.expression, AST_SymbolRef)
-            and self.object.expression.name is "dir"
-            and self.object.args.length is 1):
+    if (
+        is_node_type(self.object, AST_BaseCall)
+        and is_node_type(self.object.expression, AST_SymbolRef)
+        and self.object.expression.name is "dir"
+        and self.object.args.length is 1
+    ):
         return True
     return False
 
 
 def is_simple_for(self):
     # returns true if this loop can be simplified into a basic for(i=n;i<h;i++) loop
-    args = self.object.args if is_node_type(
-        self.object, AST_BaseCall) else None
+    args = self.object.args if is_node_type(self.object, AST_BaseCall) else None
     if args:
         for argument in args:
-            if is_node_type(
-                argument, AST_GeneratorComprehension
-            ):
+            if is_node_type(argument, AST_GeneratorComprehension):
                 return False
-    if (self.builtin_range is not False
-            and is_node_type(self.object, AST_BaseCall)
-            and is_node_type(self.object.expression, AST_SymbolRef)
-            and self.object.expression.name is "range"
-            and not args.starargs
-            and not (
-                args.kwarg_items and args.kwarg_items.length)
-            and not (args.kwargs and args.kwargs.length)
-            and not (is_node_type(self.init, AST_Array))):
+    if (
+        self.builtin_range is not False
+        and is_node_type(self.object, AST_BaseCall)
+        and is_node_type(self.object.expression, AST_SymbolRef)
+        and self.object.expression.name is "range"
+        and not args.starargs
+        and not (args.kwarg_items and args.kwarg_items.length)
+        and not (args.kwargs and args.kwargs.length)
+        and not (is_node_type(self.init, AST_Array))
+    ):
         a = args
         l = a.length
-        if l < 3 or (is_node_type(a[2], AST_Number) or
-                     (is_node_type(a[2], AST_Unary) and a[2].operator is '-'
-                      and is_node_type(a[2].expression, AST_Number))):
+        if l < 3 or (
+            is_node_type(a[2], AST_Number)
+            or (
+                is_node_type(a[2], AST_Unary)
+                and a[2].operator is "-"
+                and is_node_type(a[2].expression, AST_Number)
+            )
+        ):
             return True
     return False
 
@@ -204,11 +221,11 @@ def print_for_loop_body(output):
                 flat = self.init.flatten()
                 output.assign("ρσ_unpack")
                 if flat.length > self.init.elements.length:
-                    output.print('ρσ_unpack_nested(')
+                    output.print("ρσ_unpack_nested(")
                     print_unpack_pattern(self.init, output)
                     output.comma()
                     output.print(itervar)
-                    output.print(')')
+                    output.print(")")
                 else:
                     output.print(itervar)
                 output.end_statement()
@@ -238,13 +255,27 @@ def print_for_loop_body(output):
 def init_es6_itervar(output, itervar):
     output.indent()
     if output.options.python_attributes:
-        output.print(itervar + ' = ρσ_Iterable(' + itervar + ')')
+        output.print(itervar + " = ρσ_Iterable(" + itervar + ")")
         output.end_statement()
         return
-    output.spaced(itervar, '=', '((typeof', itervar + '[Symbol.iterator]',
-                  '===', '"function")', '?', '(' + itervar, 'instanceof',
-                  'Map', '?', itervar + '.keys()', ':', itervar + ')', ':',
-                  'Object.keys(' + itervar + '))')
+    output.spaced(
+        itervar,
+        "=",
+        "((typeof",
+        itervar + "[Symbol.iterator]",
+        "===",
+        '"function")',
+        "?",
+        "(" + itervar,
+        "instanceof",
+        "Map",
+        "?",
+        itervar + ".keys()",
+        ":",
+        itervar + ")",
+        ":",
+        "Object.keys(" + itervar + "))",
+    )
     output.end_statement()
 
 
@@ -253,7 +284,7 @@ def print_for_in(self, output):
 
     def write_object():
         if self.object.constructor is AST_Seq:
-            (AST_Array({'elements': self.object.to_array()})).print(output)
+            (AST_Array({"elements": self.object.to_array()})).print(output)
         else:
             self.object.print(output)
 
@@ -274,7 +305,7 @@ def print_for_in(self, output):
             increment = args[2]
         negative_increment = is_node_type(increment, AST_Unary)
 
-        self.simple_for_index = idx = 'ρσ_Index' + output.index_counter
+        self.simple_for_index = idx = "ρσ_Index" + output.index_counter
         output.index_counter += 1
 
         # A Python range object captures all of its arguments before the loop
@@ -282,41 +313,41 @@ def print_for_in(self, output):
         # shorten the loop.  Materialize user-supplied arguments in their
         # left-to-right evaluation order before emitting the optimized loop.
         if tmp_ >= 2:
-            start_name = 'ρσ_Start' + output.index_counter
+            start_name = "ρσ_Start" + output.index_counter
             output.index_counter += 1
-            output.print('var')
+            output.print("var")
             output.space()
             output.assign(start_name)
             start.print(output)
             output.end_statement()
             output.indent()
-            start = AST_SymbolRef({'name': start_name})
+            start = AST_SymbolRef({"name": start_name})
 
-        end_name = 'ρσ_End' + output.index_counter
+        end_name = "ρσ_End" + output.index_counter
         output.index_counter += 1
-        output.print('var')
+        output.print("var")
         output.space()
         output.assign(end_name)
         end.print(output)
         output.end_statement()
         output.indent()
-        end = AST_SymbolRef({'name': end_name})
+        end = AST_SymbolRef({"name": end_name})
 
         if tmp_ is 3:
-            increment_name = 'ρσ_Step' + output.index_counter
+            increment_name = "ρσ_Step" + output.index_counter
             output.index_counter += 1
-            output.print('var')
+            output.print("var")
             output.space()
             output.assign(increment_name)
             increment.print(output)
             output.end_statement()
             output.indent()
-            increment = AST_SymbolRef({'name': increment_name})
+            increment = AST_SymbolRef({"name": increment_name})
         output.print("for")
         output.space()
 
         def f_simple_for():
-            output.spaced('var', idx, '='), output.space()
+            output.spaced("var", idx, "="), output.space()
             start.print(output) if start.print else output.print(start)
             output.semicolon()
             output.space()
@@ -344,7 +375,7 @@ def print_for_in(self, output):
         def f_simple_for_in():
             self.init.print(output)
             output.space()
-            output.print('in')
+            output.print("in")
             output.space()
             self.object.args[0].print(output)
 
@@ -357,8 +388,9 @@ def print_for_in(self, output):
         output.end_statement()
         init_es6_itervar(output, itervar)
         output.indent()
-        output.spaced('for', '(var', 'ρσ_Index' + output.index_counter, 'of',
-                      itervar + ')')
+        output.spaced(
+            "for", "(var", "ρσ_Index" + output.index_counter, "of", itervar + ")"
+        )
 
     output.space()
     self._do_print_body(output)
@@ -367,28 +399,28 @@ def print_for_in(self, output):
 
 def print_async_for(self, output):
     prepare_loop_else(self, output)
-    iterator_name = 'ρσ_AsyncIter' + output.index_counter
+    iterator_name = "ρσ_AsyncIter" + output.index_counter
     output.index_counter += 1
-    value_name = 'ρσ_AsyncValue' + output.index_counter
+    value_name = "ρσ_AsyncValue" + output.index_counter
     output.index_counter += 1
 
-    output.print('var ')
+    output.print("var ")
     output.assign(iterator_name)
     self.object.print(output)
-    output.print('.__aiter__()')
+    output.print(".__aiter__()")
     output.end_statement()
     output.indent()
-    output.print('while (true)')
+    output.print("while (true)")
     output.space()
 
     def loop_body():
         if loop_can_catch_interrupt(output):
             print_interrupt_check(output)
         output.indent()
-        output.print('var ' + value_name)
+        output.print("var " + value_name)
         output.end_statement()
         output.indent()
-        output.print('try')
+        output.print("try")
         output.space()
 
         def next_value():
@@ -396,26 +428,21 @@ def print_async_for(self, output):
             output.assign(value_name)
             print_await_expression(
                 output,
-                lambda: output.print(
-                    iterator_name + '.__anext__()'
-                ),
+                lambda: output.print(iterator_name + ".__anext__()"),
             )
             output.end_statement()
 
         output.with_block(next_value)
         output.space()
-        output.print('catch (ρσ_AsyncError)')
+        output.print("catch (ρσ_AsyncError)")
         output.space()
 
         def stop_or_raise():
             output.indent()
-            output.print(
-                'if (ρσ_AsyncError instanceof StopAsyncIteration) '
-                'break'
-            )
+            output.print("if (ρσ_AsyncError instanceof StopAsyncIteration) break")
             output.end_statement()
             output.indent()
-            output.print('throw ρσ_AsyncError')
+            output.print("throw ρσ_AsyncError")
             output.end_statement()
 
         output.with_block(stop_or_raise)
@@ -436,25 +463,24 @@ def print_async_for(self, output):
 def print_list_comprehension(self, output):
     tname = self.constructor.name.slice(4)
     result_obj = {
-        'ListComprehension': '[]',
-        'DictComprehension':
-        ('Object.create(null)' if self.is_jshash else '{}'),
-        'SetComprehension': 'ρσ_set()'
+        "ListComprehension": "[]",
+        "DictComprehension": ("Object.create(null)" if self.is_jshash else "{}"),
+        "SetComprehension": "ρσ_set()",
     }[tname]
-    is_generator = tname is 'GeneratorComprehension'
+    is_generator = tname is "GeneratorComprehension"
     add_to_result = None
-    if tname is 'DictComprehension':
+    if tname is "DictComprehension":
         if self.is_pydict:
-            result_obj = 'ρσ_dict()'
+            result_obj = "ρσ_dict()"
 
             def add_to_result0(output):
                 output.indent()
-                output.print('ρσ_Result.set')
+                output.print("ρσ_Result.set")
 
                 def f_dict():
                     self.statement.print(output)
                     output.space()
-                    output.print(',')
+                    output.print(",")
                     output.space()
 
                     def f_dict0():
@@ -463,7 +489,8 @@ def print_list_comprehension(self, output):
                             and not output.options.python_tuples
                         ):
                             output.with_square(
-                                lambda: self.value_statement.print(output))
+                                lambda: self.value_statement.print(output)
+                            )
                         else:
                             self.value_statement.print(output)
 
@@ -478,17 +505,16 @@ def print_list_comprehension(self, output):
 
             def add_to_result0(output):
                 output.indent()
-                output.print('ρσ_Result')
+                output.print("ρσ_Result")
                 output.with_square(lambda: self.statement.print(output))
-                output.space(), output.print('='), output.space()
+                output.space(), output.print("="), output.space()
 
                 def f_result():
                     if (
                         self.value_statement.constructor is AST_Seq
                         and not output.options.python_tuples
                     ):
-                        output.with_square(
-                            lambda: self.value_statement.print(output))
+                        output.with_square(lambda: self.value_statement.print(output))
                     else:
                         self.value_statement.print(output)
 
@@ -498,9 +524,10 @@ def print_list_comprehension(self, output):
             add_to_result = add_to_result0
     else:
         push_func = "ρσ_Result." + (
-            'push' if self.constructor is AST_ListComprehension else 'add')
+            "push" if self.constructor is AST_ListComprehension else "add"
+        )
         if is_generator:
-            push_func = 'yield '
+            push_func = "yield "
 
         def add_to_result0(output):
             output.indent()
@@ -527,15 +554,20 @@ def print_list_comprehension(self, output):
 
         def f_body0():
             body_out = output
-            clauses = self.clauses or [{
-                'init': self.init,
-                'object': self.object,
-                'conditions': [self.condition] if self.condition else [],
-            }]
+            clauses = self.clauses or [
+                {
+                    "init": self.init,
+                    "object": self.object,
+                    "conditions": [self.condition] if self.condition else [],
+                }
+            ]
             if is_generator:
                 body_out.indent()
-                body_out.print('function* js_generator()'), body_out.space(
-                ), body_out.print('{')
+                (
+                    body_out.print("function* js_generator()"),
+                    body_out.space(),
+                    body_out.print("{"),
+                )
                 body_out.newline()
                 previous_indentation = output.indentation()
                 output.set_indentation(output.next_indent())
@@ -565,10 +597,10 @@ def print_list_comprehension(self, output):
 
             def print_clause(clause_index):
                 clause = clauses[clause_index]
-                iter_name = 'ρσ_Iter' + clause_index
-                index_name = 'ρσ_Index' + clause_index
+                iter_name = "ρσ_Iter" + clause_index
+                index_name = "ρσ_Index" + clause_index
                 body_out.indent()
-                body_out.assign('var ' + iter_name)
+                body_out.assign("var " + iter_name)
                 clause.object.print(body_out)
                 body_out.end_statement()
                 init_es6_itervar(body_out, iter_name)
@@ -576,8 +608,8 @@ def print_list_comprehension(self, output):
                 body_out.print("for")
                 body_out.space()
                 body_out.with_parens(
-                    lambda: body_out.spaced(
-                        'var', index_name, 'of', iter_name))
+                    lambda: body_out.spaced("var", index_name, "of", iter_name)
+                )
                 body_out.space()
 
                 def print_clause_body():
@@ -586,7 +618,7 @@ def print_list_comprehension(self, output):
                         flat = clause.init.flatten()
                         body_out.assign("ρσ_unpack")
                         if flat.length > clause.init.elements.length:
-                            body_out.print('ρσ_flatten(' + index_name + ')')
+                            body_out.print("ρσ_flatten(" + index_name + ")")
                         else:
                             body_out.print(index_name)
                         body_out.end_statement()
@@ -603,11 +635,13 @@ def print_list_comprehension(self, output):
                             body_out.space()
                             body_out.with_parens(
                                 lambda: body_out.print_truth_test(
-                                    clause.conditions[condition_index]))
+                                    clause.conditions[condition_index]
+                                )
+                            )
                             body_out.space()
                             body_out.with_block(
-                                lambda: print_filtered_body(
-                                    condition_index + 1))
+                                lambda: print_filtered_body(condition_index + 1)
+                            )
                         elif clause_index + 1 < clauses.length:
                             print_clause(clause_index + 1)
                         else:
@@ -621,8 +655,7 @@ def print_list_comprehension(self, output):
             print_clause(0)
             if self.constructor is AST_ListComprehension:
                 body_out.indent()
-                body_out.spaced('ρσ_Result', '=',
-                                'ρσ_list_constructor(ρσ_Result)')
+                body_out.spaced("ρσ_Result", "=", "ρσ_list_constructor(ρσ_Result)")
                 body_out.end_statement()
             if not is_generator:
                 body_out.indent()
@@ -630,17 +663,20 @@ def print_list_comprehension(self, output):
                 body_out.end_statement()
             if is_generator:
                 output.set_indentation(previous_indentation)
-                body_out.newline(), body_out.indent(), body_out.print(
-                    '}')  # end js_generator
+                (
+                    body_out.newline(),
+                    body_out.indent(),
+                    body_out.print("}"),
+                )  # end js_generator
                 output.newline(), output.indent()
-                output.spaced('var', 'result', '=', 'js_generator.call(this)')
+                output.spaced("var", "result", "=", "js_generator.call(this)")
                 output.end_statement()
                 # Python's generator objects use a separate method to send data to the generator
                 output.indent()
-                output.spaced('result.send', '=', 'result.next')
+                output.spaced("result.send", "=", "result.next")
                 output.end_statement()
                 output.indent()
-                output.spaced('return', 'result')
+                output.spaced("return", "result")
                 output.end_statement()
 
         output.with_block(f_body0)
@@ -650,8 +686,7 @@ def print_list_comprehension(self, output):
 
 
 def print_ellipses_range(self, output):
-    output.print("ρσ_ellipsis_iter(" if self.is_iterator else
-                 "ρσ_ellipsis_range(")
+    output.print("ρσ_ellipsis_iter(" if self.is_iterator else "ρσ_ellipsis_range(")
     for i, element in enumerate(self.elements):
         if i:
             output.comma()

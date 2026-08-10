@@ -17,7 +17,7 @@ class PurePath(os.PathLike):
     def __init__(self, *segments):
         path_module = self._module()
         if len(segments) == 0:
-            self._path = '.'
+            self._path = "."
         else:
             values = [_path_text(segment) for segment in segments]
             self._path = path_module.join(*values)
@@ -32,7 +32,7 @@ class PurePath(os.PathLike):
         return self._path
 
     def __repr__(self):
-        return type(self).__name__ + '(' + repr(self._path) + ')'
+        return type(self).__name__ + "(" + repr(self._path) + ")"
 
     def __bytes__(self):
         return self._path.encode()
@@ -43,16 +43,16 @@ class PurePath(os.PathLike):
     def __eq__(self, other):
         if not isinstance(other, PurePath):
             return False
-        return (
-            self._module() is other._module()
-            and self._module().normcase(self._path)
-            == other._module().normcase(str(other))
-        )
+        return self._module() is other._module() and self._module().normcase(
+            self._path
+        ) == other._module().normcase(str(other))
 
     def __lt__(self, other):
         if not isinstance(other, PurePath) or self._module() is not other._module():
             return NotImplemented
-        return self._module().normcase(self._path) < other._module().normcase(str(other))
+        return self._module().normcase(self._path) < other._module().normcase(
+            str(other)
+        )
 
     def __truediv__(self, key):
         return type(self)(self._path, key)
@@ -71,7 +71,7 @@ class PurePath(os.PathLike):
         separators = (self._module().sep,)
         if self._module().altsep is not None:
             separators += (self._module().altsep,)
-        return self._module().sep if tail.startswith(separators) else ''
+        return self._module().sep if tail.startswith(separators) else ""
 
     @property
     def anchor(self):
@@ -81,12 +81,22 @@ class PurePath(os.PathLike):
     def parts(self):
         module = self._module()
         drive, tail = module.splitdrive(module.normpath(self._path))
-        root = module.sep if tail.startswith((module.sep, module.altsep or module.sep)) else ''
+        root = (
+            module.sep
+            if tail.startswith((module.sep, module.altsep or module.sep))
+            else ""
+        )
         if root:
             tail = tail.lstrip(module.sep)
             if module.altsep is not None:
                 tail = tail.lstrip(module.altsep)
-        values = [value for value in tail.replace(module.altsep or module.sep, module.sep).split(module.sep) if value]
+        values = [
+            value
+            for value in tail.replace(module.altsep or module.sep, module.sep).split(
+                module.sep
+            )
+            if value
+        ]
         if drive or root:
             values.insert(0, drive + root)
         return tuple(values)
@@ -94,7 +104,7 @@ class PurePath(os.PathLike):
     @property
     def parent(self):
         parent = self._module().dirname(self._path)
-        return type(self)(parent if parent else '.')
+        return type(self)(parent if parent else ".")
 
     @property
     def parents(self):
@@ -115,19 +125,19 @@ class PurePath(os.PathLike):
     @property
     def suffix(self):
         name = self.name
-        if name in ('', '.', '..'):
-            return ''
+        if name in ("", ".", ".."):
+            return ""
         return self._module().splitext(name)[1]
 
     @property
     def suffixes(self):
         name = self.name
-        if name.endswith('.'):
+        if name.endswith("."):
             return []
         answer = []
         while True:
             stem, suffix = self._module().splitext(name)
-            if suffix == '':
+            if suffix == "":
                 break
             answer.insert(0, suffix)
             name = stem
@@ -138,25 +148,29 @@ class PurePath(os.PathLike):
         return self._module().splitext(self.name)[0]
 
     def as_posix(self):
-        if self._module().sep == '/':
+        if self._module().sep == "/":
             return self._path
-        answer = ''
+        answer = ""
         for character in self._path:
-            answer += '/' if character == self._module().sep else character
+            answer += "/" if character == self._module().sep else character
         return answer
 
     def as_uri(self):
         if not self.is_absolute():
-            raise ValueError('relative path cannot be expressed as a file URI')
+            raise ValueError("relative path cannot be expressed as a file URI")
         text = self.as_posix()
-        escaped = ''
-        safe = '/:ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~'
-        for byte in text.encode('utf8'):
+        escaped = ""
+        safe = "/:ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~"
+        for byte in text.encode("utf8"):
             character = chr(byte)
-            escaped += character if character in safe else '%' + hex(byte)[2:].upper().rjust(2, '0')
+            escaped += (
+                character
+                if character in safe
+                else "%" + hex(byte)[2:].upper().rjust(2, "0")
+            )
         if self._module() is ntpath:
-            return 'file:///' + escaped.lstrip('/')
-        return 'file://' + escaped
+            return "file:///" + escaped.lstrip("/")
+        return "file://" + escaped
 
     def is_absolute(self):
         return self._module().isabs(self._path)
@@ -164,11 +178,30 @@ class PurePath(os.PathLike):
     def is_reserved(self):
         if self._module() is not ntpath:
             return False
-        name = self.name.split('.')[0].upper()
+        name = self.name.split(".")[0].upper()
         return name in (
-            'CON', 'PRN', 'AUX', 'NUL',
-            'COM1', 'COM2', 'COM3', 'COM4', 'COM5', 'COM6', 'COM7', 'COM8', 'COM9',
-            'LPT1', 'LPT2', 'LPT3', 'LPT4', 'LPT5', 'LPT6', 'LPT7', 'LPT8', 'LPT9',
+            "CON",
+            "PRN",
+            "AUX",
+            "NUL",
+            "COM1",
+            "COM2",
+            "COM3",
+            "COM4",
+            "COM5",
+            "COM6",
+            "COM7",
+            "COM8",
+            "COM9",
+            "LPT1",
+            "LPT2",
+            "LPT3",
+            "LPT4",
+            "LPT5",
+            "LPT6",
+            "LPT7",
+            "LPT8",
+            "LPT9",
         )
 
     def joinpath(self, *other):
@@ -177,7 +210,7 @@ class PurePath(os.PathLike):
     def match(self, path_pattern, *, case_sensitive=None):
         pattern = _path_text(path_pattern)
         candidate = self.as_posix()
-        if '/' not in pattern and '\\' not in pattern:
+        if "/" not in pattern and "\\" not in pattern:
             candidate = self.name
         if case_sensitive is None:
             case_sensitive = self._module() is not ntpath
@@ -189,8 +222,12 @@ class PurePath(os.PathLike):
     def relative_to(self, other, *other_segments, walk_up=False):
         base = type(self)(other, *other_segments)
         relative = self._module().relpath(self._path, str(base))
-        if not walk_up and (relative == '..' or relative.startswith('..' + self._module().sep)):
-            raise ValueError(repr(self._path) + ' is not in the subpath of ' + repr(str(base)))
+        if not walk_up and (
+            relative == ".." or relative.startswith(".." + self._module().sep)
+        ):
+            raise ValueError(
+                repr(self._path) + " is not in the subpath of " + repr(str(base))
+            )
         return type(self)(relative)
 
     def is_relative_to(self, other, *other_segments):
@@ -202,17 +239,17 @@ class PurePath(os.PathLike):
 
     def with_name(self, name):
         if not name or self._module().basename(name) != name:
-            raise ValueError('Invalid name ' + repr(name))
-        if self.name == '':
-            raise ValueError('PurePath has an empty name')
+            raise ValueError("Invalid name " + repr(name))
+        if self.name == "":
+            raise ValueError("PurePath has an empty name")
         return type(self)(self._module().join(self._module().dirname(self._path), name))
 
     def with_stem(self, stem):
         return self.with_name(stem + self.suffix)
 
     def with_suffix(self, suffix):
-        if suffix and (not suffix.startswith('.') or suffix == '.'):
-            raise ValueError('Invalid suffix ' + repr(suffix))
+        if suffix and (not suffix.startswith(".") or suffix == "."):
+            raise ValueError("Invalid suffix " + repr(suffix))
         return self.with_name(self.stem + suffix)
 
 
@@ -231,9 +268,9 @@ class Path(PurePath):
 
     @classmethod
     def home(cls):
-        home = os.getenv('USERPROFILE') if os.name == 'nt' else os.getenv('HOME')
+        home = os.getenv("USERPROFILE") if os.name == "nt" else os.getenv("HOME")
         if not home:
-            raise RuntimeError('Could not determine home directory')
+            raise RuntimeError("Could not determine home directory")
         return cls(home)
 
     def stat(self, *, follow_symlinks=True):
@@ -266,7 +303,7 @@ class Path(PurePath):
 
     def open(
         self,
-        mode='r',
+        mode="r",
         buffering=-1,
         encoding=None,
         errors=None,
@@ -282,22 +319,22 @@ class Path(PurePath):
         )
 
     def read_bytes(self):
-        with self.open('rb') as source:
+        with self.open("rb") as source:
             return source.read()
 
     def read_text(self, encoding=None, errors=None):
-        with self.open('r', encoding=encoding, errors=errors) as source:
+        with self.open("r", encoding=encoding, errors=errors) as source:
             return source.read()
 
     def write_bytes(self, data):
-        with self.open('wb') as destination:
+        with self.open("wb") as destination:
             return destination.write(data)
 
     def write_text(self, data, encoding=None, errors=None, newline=None):
         if not isinstance(data, str):
-            raise TypeError('data must be str, not ' + type(data).__name__)
+            raise TypeError("data must be str, not " + type(data).__name__)
         with self.open(
-            'w', encoding=encoding, errors=errors, newline=newline
+            "w", encoding=encoding, errors=errors, newline=newline
         ) as destination:
             return destination.write(data)
 
@@ -308,14 +345,13 @@ class Path(PurePath):
     def glob(self, pattern, *, case_sensitive=None, recurse_symlinks=False):
         del case_sensitive, recurse_symlinks
         import glob
-        for name in glob.iglob(
-            os.fspath(pattern), root_dir=self, recursive=True
-        ):
+
+        for name in glob.iglob(os.fspath(pattern), root_dir=self, recursive=True):
             yield self / name
 
     def rglob(self, pattern, *, case_sensitive=None, recurse_symlinks=False):
         del case_sensitive, recurse_symlinks
-        return self.glob(os.path.join('**', os.fspath(pattern)))
+        return self.glob(os.path.join("**", os.fspath(pattern)))
 
     def walk(self, top_down=True, on_error=None, follow_symlinks=False):
         for entry in os.walk(
@@ -342,10 +378,10 @@ class Path(PurePath):
     def touch(self, mode=0o666, exist_ok=True):
         if self.exists():
             if not exist_ok:
-                raise FileExistsError(17, 'File exists', str(self))
+                raise FileExistsError(17, "File exists", str(self))
             os.utime(self)
             return
-        with open(self, 'xb'):
+        with open(self, "xb"):
             pass
         os.chmod(self, mode)
 
@@ -388,10 +424,10 @@ class Path(PurePath):
         return type(self)(self._module().realpath(self._path))
 
     def expanduser(self):
-        if not self._path.startswith('~'):
+        if not self._path.startswith("~"):
             return self
-        if self._path not in ('~',) and not self._path.startswith('~' + os.sep):
-            raise RuntimeError('Could not determine home directory')
+        if self._path not in ("~",) and not self._path.startswith("~" + os.sep):
+            raise RuntimeError("Could not determine home directory")
         return type(self)(str(type(self).home()) + self._path[1:])
 
     def samefile(self, other_path):
@@ -403,12 +439,8 @@ class Path(PurePath):
             parent = self.parent.stat()
         except OSError:
             return False
-        return (
-            current.st_dev != parent.st_dev
-            or (
-                current.st_ino == parent.st_ino
-                and current.st_dev == parent.st_dev
-            )
+        return current.st_dev != parent.st_dev or (
+            current.st_ino == parent.st_ino and current.st_dev == parent.st_dev
         )
 
 

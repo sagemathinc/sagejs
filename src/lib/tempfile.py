@@ -4,14 +4,14 @@ import os
 
 
 TMP_MAX = 10000
-template = 'tmp'
+template = "tmp"
 tempdir = None
 
 
 def gettempdir():
     if tempdir is not None:
         return tempdir
-    for variable in ('TMPDIR', 'TEMP', 'TMP'):
+    for variable in ("TMPDIR", "TEMP", "TMP"):
         value = os.getenv(variable)
         if value:
             return value
@@ -23,13 +23,13 @@ def gettempdirb():
 
 
 def _random_name():
-    alphabet = 'abcdefghijklmnopqrstuvwxyz0123456789_'
+    alphabet = "abcdefghijklmnopqrstuvwxyz0123456789_"
     data = os.urandom(8)
-    return ''.join(alphabet[byte % len(alphabet)] for byte in data)
+    return "".join(alphabet[byte % len(alphabet)] for byte in data)
 
 
 class _RandomNameSequence:
-    characters = 'abcdefghijklmnopqrstuvwxyz0123456789_'
+    characters = "abcdefghijklmnopqrstuvwxyz0123456789_"
 
     def __iter__(self):
         return self
@@ -45,7 +45,7 @@ def _get_candidate_names():
 def _candidate(suffix, prefix, directory):
     directory = gettempdir() if directory is None else os.fspath(directory)
     prefix = template if prefix is None else prefix
-    suffix = '' if suffix is None else suffix
+    suffix = "" if suffix is None else suffix
     return os.path.join(directory, prefix + _random_name() + suffix)
 
 
@@ -54,11 +54,11 @@ def mkstemp(suffix=None, prefix=None, dir=None, text=False):
     for _attempt in range(TMP_MAX):
         filename = _candidate(suffix, prefix, dir)
         try:
-            fd = os._host_call('openFd', filename, 'wx+', 0o600)
+            fd = os._host_call("openFd", filename, "wx+", 0o600)
             return fd, filename
         except FileExistsError:
             pass
-    raise FileExistsError('No usable temporary file name found')
+    raise FileExistsError("No usable temporary file name found")
 
 
 def mkdtemp(suffix=None, prefix=None, dir=None):
@@ -69,7 +69,7 @@ def mkdtemp(suffix=None, prefix=None, dir=None):
             return filename
         except FileExistsError:
             pass
-    raise FileExistsError('No usable temporary directory name found')
+    raise FileExistsError("No usable temporary directory name found")
 
 
 def mktemp(suffix=None, prefix=None, dir=None):
@@ -83,7 +83,7 @@ def mktemp(suffix=None, prefix=None, dir=None):
         filename = _candidate(suffix, prefix, dir)
         if not os.path.exists(filename):
             return filename
-    raise FileExistsError('No usable temporary file name found')
+    raise FileExistsError("No usable temporary file name found")
 
 
 class _TemporaryFileWrapper:
@@ -120,7 +120,7 @@ class _TemporaryFileWrapper:
 
 
 def NamedTemporaryFile(
-    mode='w+b',
+    mode="w+b",
     buffering=-1,
     encoding=None,
     newline=None,
@@ -132,11 +132,10 @@ def NamedTemporaryFile(
     delete_on_close=True,
     **keywords,
 ):
-    delete_value = keywords.pop(
-        'ρσ_py_delete', keywords.pop('delete', True))
+    delete_value = keywords.pop("ρσ_py_delete", keywords.pop("delete", True))
     if keywords:
-        raise TypeError('unexpected keyword argument: ' + next(iter(keywords)))
-    fd, name = mkstemp(suffix, prefix, dir, 'b' not in mode)
+        raise TypeError("unexpected keyword argument: " + next(iter(keywords)))
+    fd, name = mkstemp(suffix, prefix, dir, "b" not in mode)
     os.close(fd)
     try:
         fileobj = open(
@@ -150,12 +149,11 @@ def NamedTemporaryFile(
     except BaseException:
         os.unlink(name)
         raise
-    return _TemporaryFileWrapper(
-        fileobj, name, delete_value, delete_on_close)
+    return _TemporaryFileWrapper(fileobj, name, delete_value, delete_on_close)
 
 
 def TemporaryFile(
-    mode='w+b',
+    mode="w+b",
     buffering=-1,
     encoding=None,
     newline=None,
@@ -183,7 +181,7 @@ class SpooledTemporaryFile:
     def __init__(
         self,
         max_size=0,
-        mode='w+b',
+        mode="w+b",
         buffering=-1,
         encoding=None,
         newline=None,
@@ -195,7 +193,13 @@ class SpooledTemporaryFile:
     ):
         del max_size
         self._file = TemporaryFile(
-            mode, buffering, encoding, newline, suffix, prefix, dir,
+            mode,
+            buffering,
+            encoding,
+            newline,
+            suffix,
+            prefix,
+            dir,
             errors=errors,
         )
         self._rolled = True
@@ -226,10 +230,9 @@ class TemporaryDirectory:
         ignore_cleanup_errors=False,
         **keywords,
     ):
-        delete_value = keywords.pop(
-            'ρσ_py_delete', keywords.pop('delete', True))
+        delete_value = keywords.pop("ρσ_py_delete", keywords.pop("delete", True))
         if keywords:
-            raise TypeError('unexpected keyword argument: ' + next(iter(keywords)))
+            raise TypeError("unexpected keyword argument: " + next(iter(keywords)))
         self.name = mkdtemp(suffix, prefix, dir)
         self.ignore_cleanup_errors = ignore_cleanup_errors
         self.delete = delete_value
@@ -246,6 +249,7 @@ class TemporaryDirectory:
         if self._closed or not self.delete:
             return
         import shutil
+
         try:
             shutil.rmtree(self.name)
         except OSError:

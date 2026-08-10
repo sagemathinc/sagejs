@@ -8,7 +8,7 @@ from mpmath.tests import test_basic_ops
 tests = [
     (name, getattr(test_basic_ops, name))
     for name in sorted(dir(test_basic_ops))
-    if name.startswith('test_')
+    if name.startswith("test_")
 ]
 passed = 0
 failures = []
@@ -22,5 +22,5 @@ for name, test in tests:
 elapsed = perf_counter() - started
 
 for name, message in failures:
-    print('FAIL', name, message)
-print('RESULT', passed, len(failures), elapsed)
+    print("FAIL", name, message)
+print("RESULT", passed, len(failures), elapsed)

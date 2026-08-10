@@ -39,8 +39,7 @@ import sagejs.runtime as runtime
 def _hook(name: str) -> Any:
     hook = runtime.reflect.get(runtime.global_object, name)
     if hook is runtime.undefined:
-        raise RuntimeError(
-            'JavaScript modules are not available in this Sage.js host')
+        raise RuntimeError("JavaScript modules are not available in this Sage.js host")
     return hook
 
 
@@ -56,10 +55,13 @@ def is_available() -> bool:
         True
     ```
     """
-    return runtime.reflect.get(
-        runtime.global_object,
-        '__sagejs_javascript_require__',
-    ) is not runtime.undefined
+    return (
+        runtime.reflect.get(
+            runtime.global_object,
+            "__sagejs_javascript_require__",
+        )
+        is not runtime.undefined
+    )
 
 
 def require(specifier: str, directory: str | None = None) -> Any:
@@ -77,10 +79,9 @@ def require(specifier: str, directory: str | None = None) -> Any:
     ```
     """
     if not isinstance(specifier, str) or not specifier:
-        raise TypeError(
-            'JavaScript module specifier must be a non-empty string')
+        raise TypeError("JavaScript module specifier must be a non-empty string")
     return runtime.reflect.apply(
-        _hook('__sagejs_javascript_require__'),
+        _hook("__sagejs_javascript_require__"),
         runtime.undefined,
         [specifier, directory],
     )
@@ -96,10 +97,9 @@ def resolve(specifier: str, directory: str | None = None) -> str:
     ```
     """
     if not isinstance(specifier, str) or not specifier:
-        raise TypeError(
-            'JavaScript module specifier must be a non-empty string')
+        raise TypeError("JavaScript module specifier must be a non-empty string")
     return runtime.reflect.apply(
-        _hook('__sagejs_javascript_resolve__'),
+        _hook("__sagejs_javascript_resolve__"),
         runtime.undefined,
         [specifier, directory],
     )
@@ -114,13 +114,12 @@ def import_module(specifier: str, directory: str | None = None) -> Any:
     :func:`require` on supported Node releases.
     """
     if not isinstance(specifier, str) or not specifier:
-        raise TypeError(
-            'JavaScript module specifier must be a non-empty string')
+        raise TypeError("JavaScript module specifier must be a non-empty string")
     return runtime.reflect.apply(
-        _hook('__sagejs_javascript_import__'),
+        _hook("__sagejs_javascript_import__"),
         runtime.undefined,
         [specifier, directory],
     )
 
 
-__all__ = ['import_module', 'is_available', 'require', 'resolve']
+__all__ = ["import_module", "is_available", "require", "resolve"]

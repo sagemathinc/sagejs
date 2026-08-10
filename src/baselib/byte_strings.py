@@ -15,7 +15,7 @@ _Bool = bool
 _Int = int
 _Str = str
 
-_BYTE_WHITESPACE = ' \t\n\r\x0b\x0c'
+_BYTE_WHITESPACE = " \t\n\r\x0b\x0c"
 
 
 def _normalise_encoding(encoding: Any) -> _Str:
@@ -23,7 +23,7 @@ def _normalise_encoding(encoding: Any) -> _Str:
         runtime.string_class.prototype.toLowerCase,
         encoding,
         [],
-    ).replace('_', '-')
+    ).replace("_", "-")
 
 
 def _byte_values_from_binary_string(value: _Str) -> list[_Int]:
@@ -34,14 +34,14 @@ def _byte_values_from_binary_string(value: _Str) -> list[_Int]:
 
 
 def _encode_utf8(value: _Str) -> list[_Int]:
-    encoder_class = runtime.reflect.get(
-        runtime.global_object, 'TextEncoder')
+    encoder_class = runtime.reflect.get(runtime.global_object, "TextEncoder")
     if encoder_class is not runtime.undefined:
         encoder = runtime.reflect.construct(encoder_class, [])
         encoded = runtime.reflect.apply(
-            runtime.reflect.get(encoder, 'encode'), encoder, [value])
+            runtime.reflect.get(encoder, "encode"), encoder, [value]
+        )
         return runtime.reflect.apply(
-            runtime.reflect.get(runtime.array, 'from'),
+            runtime.reflect.get(runtime.array, "from"),
             runtime.array,
             [encoded],
         )
@@ -51,47 +51,52 @@ def _encode_utf8(value: _Str) -> list[_Int]:
         if code <= 0x7F:
             answer.append(code)
         elif code <= 0x7FF:
-            answer.extend([
-                0xC0 | (code >> 6),
-                0x80 | (code & 0x3F),
-            ])
+            answer.extend(
+                [
+                    0xC0 | (code >> 6),
+                    0x80 | (code & 0x3F),
+                ]
+            )
         elif code <= 0xFFFF:
-            answer.extend([
-                0xE0 | (code >> 12),
-                0x80 | ((code >> 6) & 0x3F),
-                0x80 | (code & 0x3F),
-            ])
+            answer.extend(
+                [
+                    0xE0 | (code >> 12),
+                    0x80 | ((code >> 6) & 0x3F),
+                    0x80 | (code & 0x3F),
+                ]
+            )
         else:
-            answer.extend([
-                0xF0 | (code >> 18),
-                0x80 | ((code >> 12) & 0x3F),
-                0x80 | ((code >> 6) & 0x3F),
-                0x80 | (code & 0x3F),
-            ])
+            answer.extend(
+                [
+                    0xF0 | (code >> 18),
+                    0x80 | ((code >> 12) & 0x3F),
+                    0x80 | ((code >> 6) & 0x3F),
+                    0x80 | (code & 0x3F),
+                ]
+            )
     return answer
 
 
 def _decode_utf8(values: list[_Int], errors: _Str) -> _Str:
-    decoder_class = runtime.reflect.get(
-        runtime.global_object, 'TextDecoder')
-    uint8_array = runtime.reflect.get(
-        runtime.global_object, 'Uint8Array')
+    decoder_class = runtime.reflect.get(runtime.global_object, "TextDecoder")
+    uint8_array = runtime.reflect.get(runtime.global_object, "Uint8Array")
     if (
         decoder_class is not runtime.undefined
         and uint8_array is not runtime.undefined
-        and errors in ('strict', 'replace')
+        and errors in ("strict", "replace")
     ):
         decoder = runtime.reflect.construct(
             decoder_class,
-            ['utf-8', {'fatal': errors == 'strict'}],
+            ["utf-8", {"fatal": errors == "strict"}],
         )
         encoded = runtime.reflect.construct(uint8_array, [values])
         try:
             return runtime.reflect.apply(
-                runtime.reflect.get(decoder, 'decode'), decoder, [encoded])
+                runtime.reflect.get(decoder, "decode"), decoder, [encoded]
+            )
         except Exception:
-            raise ValueError('invalid UTF-8 sequence')  # noqa: B904
-    answer = ''
+            raise ValueError("invalid UTF-8 sequence")  # noqa: B904
+    answer = ""
     index = 0
     while index < len(values):
         first = values[index]
@@ -128,13 +133,13 @@ def _decode_utf8(values: list[_Int], errors: _Str) -> _Str:
         if valid:
             answer += chr(code)
             index += width
-        elif errors == 'ignore':
+        elif errors == "ignore":
             index += 1
-        elif errors == 'replace':
-            answer += '\uFFFD'
+        elif errors == "replace":
+            answer += "\ufffd"
             index += 1
         else:
-            raise ValueError('invalid UTF-8 sequence')
+            raise ValueError("invalid UTF-8 sequence")
     return answer
 
 
@@ -143,15 +148,14 @@ def _coerce_index(value: Any) -> _Int:
         return 1
     if value is False:
         return 0
-    if runtime.strict_equal(runtime.jstype(value), 'bigint'):
+    if runtime.strict_equal(runtime.jstype(value), "bigint"):
         if value > 9007199254740991 or value < -9007199254740991:
-            raise OverflowError('Python int too large to convert to C ssize_t')
+            raise OverflowError("Python int too large to convert to C ssize_t")
         value = runtime.number(value)
-    if (
-        not runtime.strict_equal(runtime.jstype(value), 'number')
-        or not runtime.number.isInteger(value)
-    ):
-        raise TypeError('an integer is required')
+    if not runtime.strict_equal(
+        runtime.jstype(value), "number"
+    ) or not runtime.number.isInteger(value):
+        raise TypeError("an integer is required")
     return value
 
 
@@ -174,7 +178,6 @@ def _normalise_bound(
 
 @runtime.sequence_class
 class SageBytes:
-
     # Sequence instances are proxy-backed so dense byte storage can still use
     # Python indexing.  Resolve methods through that proxy as well, preserving
     # identity when an immutable operation returns ``self``.
@@ -196,18 +199,15 @@ class SageBytes:
         return iter(self._values)
 
     def __getitem__(self, index: Any) -> Any:
-        if hasattr(index, '__sagejs_slice__'):
+        if hasattr(index, "__sagejs_slice__"):
             start, stop, step = index.indices(len(self._values))
-            values = [
-                self._values[position]
-                for position in range(start, stop, step)
-            ]
+            values = [self._values[position] for position in range(start, stop, step)]
             return runtime.reflect.construct(type(self), [values])
         index = _coerce_index(index)
         if index < 0:
             index += len(self._values)
         if index < 0 or index >= len(self._values):
-            raise IndexError('index out of range')
+            raise IndexError("index out of range")
         return self._values[index]
 
     def __setitem__(self, _index: Any, _value: Any) -> None:
@@ -226,14 +226,14 @@ class SageBytes:
         return SageBytes(self._values[first:last])
 
     def __contains__(self, needle: Any) -> _Bool:
-        if hasattr(needle, '_bytes_values'):
+        if hasattr(needle, "_bytes_values"):
             needle = SageBytes(needle._bytes_values())
         if isinstance(needle, SageBytes):
             return self.find(needle) >= 0
         return _coerce_index(needle) in self._values
 
     def __add__(self, other: Any) -> SageBytes:
-        if hasattr(other, '_bytes_values'):
+        if hasattr(other, "_bytes_values"):
             other = SageBytes(other._bytes_values())
         if not isinstance(other, SageBytes):
             raise TypeError("can't concat bytes to this value")
@@ -270,29 +270,29 @@ class SageBytes:
                 index += 1
                 continue
             if index + 1 >= len(self._values):
-                raise ValueError('incomplete format')
+                raise ValueError("incomplete format")
             conversion = self._values[index + 1]
             index += 2
             if conversion == 37:
                 answer.append(37)
                 continue
             if value_index >= len(values):
-                raise TypeError('not enough arguments for format string')
+                raise TypeError("not enough arguments for format string")
             value = values[value_index]
             value_index += 1
             if conversion == 100:
                 replacement = str(value)
             elif conversion == 115:
                 if not isinstance(value, SageBytes):
-                    raise TypeError('%s requires a bytes-like object')
+                    raise TypeError("%s requires a bytes-like object")
                 replacement = value._binary_string()
             elif conversion == 114:
                 replacement = runtime.repr(value)
             else:
-                raise ValueError('unsupported format character')
+                raise ValueError("unsupported format character")
             answer.extend(_byte_values_from_binary_string(replacement))
         if value_index != len(values):
-            raise TypeError('not all arguments converted during bytes formatting')
+            raise TypeError("not all arguments converted during bytes formatting")
         return SageBytes(answer)
 
     def __eq__(self, other: object) -> _Bool:
@@ -319,7 +319,7 @@ class SageBytes:
         elif isinstance(other, SageBytes):
             other_values = other._values
         else:
-            raise TypeError('bytes values are only orderable with bytes')
+            raise TypeError("bytes values are only orderable with bytes")
         common = min(len(self._values), len(other_values))
         for index in range(common):
             if self._values[index] < other_values[index]:
@@ -348,7 +348,7 @@ class SageBytes:
         return self._binary_string()
 
     def _binary_string(self) -> _Str:
-        answer = ''
+        answer = ""
         for value in self._values:
             answer += chr(value)
         return answer
@@ -358,57 +358,53 @@ class SageBytes:
         separator: Any = runtime.undefined,
         bytes_per_separator: Any = 1,
     ) -> _Str:
-        digits = '0123456789abcdef'
+        digits = "0123456789abcdef"
         groups = []
         for value in self._values:
             groups.append(digits[value >> 4] + digits[value & 15])
         if separator is runtime.undefined:
-            return str.join('', groups)
+            return str.join("", groups)
         if (
-            not runtime.strict_equal(runtime.jstype(separator), 'string')
+            not runtime.strict_equal(runtime.jstype(separator), "string")
             or len(separator) != 1
         ):
-            raise TypeError('sep must be length 1')
+            raise TypeError("sep must be length 1")
         width = _coerce_index(bytes_per_separator)
         if width == 0:
-            raise ValueError('bytes_per_sep must not be zero')
+            raise ValueError("bytes_per_sep must not be zero")
         if width < 0:
             width = -width
             answer = []
             for index in range(0, len(groups), width):
-                answer.append(str.join('', groups[index:index + width]))
+                answer.append(str.join("", groups[index : index + width]))
             return str.join(separator, answer)
         first_width = len(groups) % width
         if first_width == 0:
             first_width = width
-        answer = [str.join('', groups[:first_width])]
+        answer = [str.join("", groups[:first_width])]
         for index in range(first_width, len(groups), width):
-            answer.append(str.join('', groups[index:index + width]))
+            answer.append(str.join("", groups[index : index + width]))
         return str.join(separator, answer)
 
     def __repr__(self) -> _Str:
         quote = 34 if 39 in self._values and 34 not in self._values else 39
-        answer = 'b' + chr(quote)
+        answer = "b" + chr(quote)
         for value in self._values:
             if value == 9:
-                answer += r'\t'
+                answer += r"\t"
             elif value == 10:
-                answer += r'\n'
+                answer += r"\n"
             elif value == 13:
-                answer += r'\r'
+                answer += r"\r"
             elif value == quote:
-                answer += '\\' + chr(quote)
+                answer += "\\" + chr(quote)
             elif value == 92:
-                answer += r'\\'
+                answer += r"\\"
             elif 32 <= value <= 126:
                 answer += chr(value)
             else:
-                digits = '0123456789abcdef'
-                answer += (
-                    r'\x'
-                    + digits[(value >> 4) & 15]
-                    + digits[value & 15]
-                )
+                digits = "0123456789abcdef"
+                answer += r"\x" + digits[(value >> 4) & 15] + digits[value & 15]
         return answer + chr(quote)
 
     __str__ = __repr__
@@ -421,32 +417,33 @@ class SageBytes:
         errors: Any = runtime.undefined,
     ) -> _Str:
         if encoding is runtime.undefined or encoding is None:
-            encoding = 'utf-8'
+            encoding = "utf-8"
         if errors is runtime.undefined or errors is None:
-            errors = 'strict'
+            errors = "strict"
         normalised = _normalise_encoding(encoding)
-        if normalised in ('utf-8', 'utf8'):
+        if normalised in ("utf-8", "utf8"):
             return _decode_utf8(self._values, errors)
-        if normalised in ('ascii', 'us-ascii'):
-            answer = ''
+        if normalised in ("ascii", "us-ascii"):
+            answer = ""
             for value in self._values:
                 if value <= 127:
                     answer += chr(value)
-                elif errors == 'ignore':
+                elif errors == "ignore":
                     continue
-                elif errors == 'replace':
-                    answer += '\uFFFD'
+                elif errors == "replace":
+                    answer += "\ufffd"
                 else:
-                    raise ValueError('ordinal not in range(128)')
+                    raise ValueError("ordinal not in range(128)")
             return answer
-        if normalised in ('latin-1', 'latin1', 'iso-8859-1'):
+        if normalised in ("latin-1", "latin1", "iso-8859-1"):
             return self._binary_string()
-        if normalised == 'punycode':
-            module = runtime.require_module('punycode')
-            decoder = runtime.reflect.get(module, 'decode')
+        if normalised == "punycode":
+            module = runtime.require_module("punycode")
+            decoder = runtime.reflect.get(module, "decode")
             return runtime.reflect.apply(
-                decoder, runtime.undefined, [self._binary_string()])
-        raise ValueError('unknown encoding: ' + encoding)
+                decoder, runtime.undefined, [self._binary_string()]
+            )
+        raise ValueError("unknown encoding: " + encoding)
 
     def find(
         self,
@@ -461,13 +458,13 @@ class SageBytes:
         else:
             byte = _coerce_index(needle)
             if byte < 0 or byte > 255:
-                raise ValueError('byte must be in range(0, 256)')
+                raise ValueError("byte must be in range(0, 256)")
             target = [byte]
         if len(target) == 0:
             return first if first <= last else -1
         stop = last - len(target)
         for index in range(first, stop + 1):
-            if self._values[index:index + len(target)] == target:
+            if self._values[index : index + len(target)] == target:
                 return index
         return -1
 
@@ -479,7 +476,7 @@ class SageBytes:
     ) -> _Int:
         answer = self.find(needle, start, end)
         if answer < 0:
-            raise ValueError('subsection not found')
+            raise ValueError("subsection not found")
         return answer
 
     def rfind(
@@ -495,12 +492,12 @@ class SageBytes:
         else:
             byte = _coerce_index(needle)
             if byte < 0 or byte > 255:
-                raise ValueError('byte must be in range(0, 256)')
+                raise ValueError("byte must be in range(0, 256)")
             target = [byte]
         if len(target) == 0:
             return last
         for index in range(last - len(target), first - 1, -1):
-            if self._values[index:index + len(target)] == target:
+            if self._values[index : index + len(target)] == target:
                 return index
         return -1
 
@@ -512,7 +509,7 @@ class SageBytes:
     ) -> _Int:
         answer = self.rfind(needle, start, end)
         if answer < 0:
-            raise ValueError('subsection not found')
+            raise ValueError("subsection not found")
         return answer
 
     def count(
@@ -526,7 +523,7 @@ class SageBytes:
         if not isinstance(needle, SageBytes):
             byte = _coerce_index(needle)
             if byte < 0 or byte > 255:
-                raise ValueError('byte must be in range(0, 256)')
+                raise ValueError("byte must be in range(0, 256)")
             target = [byte]
         else:
             target = needle._values
@@ -535,7 +532,7 @@ class SageBytes:
         answer = 0
         index = first
         while index + len(target) <= last:
-            if self._values[index:index + len(target)] == target:
+            if self._values[index : index + len(target)] == target:
                 answer += 1
                 index += len(target)
             else:
@@ -546,7 +543,7 @@ class SageBytes:
         width = _coerce_index(width)
         fill = SageBytes([32]) if fillbyte is runtime.undefined else fillbyte
         if not isinstance(fill, SageBytes) or len(fill) != 1:
-            raise TypeError('center() argument 2 must be a byte string of length 1')
+            raise TypeError("center() argument 2 must be a byte string of length 1")
         padding = max(width - len(self), 0)
         left = padding // 2
         right = padding - left
@@ -554,36 +551,41 @@ class SageBytes:
 
     def partition(self, separator: Any) -> Any:
         if not isinstance(separator, SageBytes):
-            raise TypeError('a bytes-like object is required')
+            raise TypeError("a bytes-like object is required")
         if len(separator) == 0:
-            raise ValueError('empty separator')
+            raise ValueError("empty separator")
         index = self.find(separator)
         if index < 0:
-            return runtime.math_tuple(
-                [self, SageBytes([]), SageBytes([])])
-        return runtime.math_tuple([
-            self.slice(0, index),
-            separator,
-            self.slice(index + len(separator)),
-        ])
+            return runtime.math_tuple([self, SageBytes([]), SageBytes([])])
+        return runtime.math_tuple(
+            [
+                self.slice(0, index),
+                separator,
+                self.slice(index + len(separator)),
+            ]
+        )
 
     def rpartition(self, separator: Any) -> Any:
         if not isinstance(separator, SageBytes):
-            raise TypeError('a bytes-like object is required')
+            raise TypeError("a bytes-like object is required")
         if len(separator) == 0:
-            raise ValueError('empty separator')
+            raise ValueError("empty separator")
         index = self.rfind(separator)
         if index < 0:
-            return runtime.math_tuple([
-                _new_bytes_like(self, []),
-                _new_bytes_like(self, []),
-                self,
-            ])
-        return runtime.math_tuple([
-            self.slice(0, index),
-            _new_bytes_like(self, separator._values),
-            self.slice(index + len(separator)),
-        ])
+            return runtime.math_tuple(
+                [
+                    _new_bytes_like(self, []),
+                    _new_bytes_like(self, []),
+                    self,
+                ]
+            )
+        return runtime.math_tuple(
+            [
+                self.slice(0, index),
+                _new_bytes_like(self, separator._values),
+                self.slice(index + len(separator)),
+            ]
+        )
 
     def replace(
         self,
@@ -591,11 +593,8 @@ class SageBytes:
         replacement: Any,
         count: Any = -1,
     ) -> SageBytes:
-        if (
-            not isinstance(old, SageBytes)
-            or not isinstance(replacement, SageBytes)
-        ):
-            raise TypeError('a bytes-like object is required')
+        if not isinstance(old, SageBytes) or not isinstance(replacement, SageBytes):
+            raise TypeError("a bytes-like object is required")
         if count is runtime.undefined:
             count = -1
         count = _coerce_index(count)
@@ -617,7 +616,7 @@ class SageBytes:
         while index < len(self._values):
             if (
                 replacements < limit
-                and self._values[index:index + len(old)] == old._values
+                and self._values[index : index + len(old)] == old._values
             ):
                 answer.extend(replacement._values)
                 replacements += 1
@@ -641,8 +640,7 @@ class SageBytes:
             splits = 0
             while index < len(self):
                 while (
-                    index < len(self)
-                    and chr(self._values[index]) in _BYTE_WHITESPACE
+                    index < len(self) and chr(self._values[index]) in _BYTE_WHITESPACE
                 ):
                     index += 1
                 if index >= len(self):
@@ -652,8 +650,7 @@ class SageBytes:
                     break
                 end = index
                 while (
-                    end < len(self)
-                    and chr(self._values[end]) not in _BYTE_WHITESPACE
+                    end < len(self) and chr(self._values[end]) not in _BYTE_WHITESPACE
                 ):
                     end += 1
                 parts.append(self.slice(index, end))
@@ -661,9 +658,9 @@ class SageBytes:
                 index = end
             return parts
         if not isinstance(separator, SageBytes):
-            raise TypeError('a bytes-like object is required')
+            raise TypeError("a bytes-like object is required")
         if len(separator) == 0:
-            raise ValueError('empty separator')
+            raise ValueError("empty separator")
         parts = []
         index = 0
         splits = 0
@@ -694,13 +691,11 @@ class SageBytes:
             ):
                 newline_end += 1
             end = newline_end if keepends else position
-            answer.append(_new_bytes_like(
-                self, self._values[start:end]))
+            answer.append(_new_bytes_like(self, self._values[start:end]))
             start = newline_end
             position = newline_end
         if start < len(self._values):
-            answer.append(_new_bytes_like(
-                self, self._values[start:]))
+            answer.append(_new_bytes_like(self, self._values[start:]))
         return answer
 
     def rsplit(
@@ -723,9 +718,9 @@ class SageBytes:
                 answer.append(_new_bytes_like(self, values))
             return answer
         if not isinstance(separator, SageBytes):
-            raise TypeError('a bytes-like object is required')
+            raise TypeError("a bytes-like object is required")
         if len(separator) == 0:
-            raise ValueError('empty separator')
+            raise ValueError("empty separator")
         if maxsplit is runtime.undefined:
             maxsplit = -1
         maxsplit = _coerce_index(maxsplit)
@@ -750,11 +745,12 @@ class SageBytes:
         end: Any = runtime.undefined,
     ) -> _Bool:
         if not isinstance(prefix, SageBytes):
-            raise TypeError('a bytes-like object is required')
+            raise TypeError("a bytes-like object is required")
         first = _normalise_bound(start, 0, len(self))
         last = _normalise_bound(end, len(self), len(self))
-        return self._values[first:first + len(prefix)] == prefix._values and (
-            first + len(prefix) <= last)
+        return self._values[first : first + len(prefix)] == prefix._values and (
+            first + len(prefix) <= last
+        )
 
     def endswith(
         self,
@@ -763,12 +759,12 @@ class SageBytes:
         end: Any = runtime.undefined,
     ) -> _Bool:
         if not isinstance(suffix, SageBytes):
-            raise TypeError('a bytes-like object is required')
+            raise TypeError("a bytes-like object is required")
         first = _normalise_bound(start, 0, len(self))
         last = _normalise_bound(end, len(self), len(self))
         return (
             last - len(suffix) >= first
-            and self._values[last - len(suffix):last] == suffix._values
+            and self._values[last - len(suffix) : last] == suffix._values
         )
 
     def lower(self) -> SageBytes:
@@ -784,25 +780,17 @@ class SageBytes:
         return _new_bytes_like(self, values)
 
     def isspace(self) -> _Bool:
-        return (
-            len(self) > 0
-            and all(chr(value) in _BYTE_WHITESPACE for value in self._values)
+        return len(self) > 0 and all(
+            chr(value) in _BYTE_WHITESPACE for value in self._values
         )
 
     def isalpha(self) -> _Bool:
-        return (
-            len(self) > 0
-            and all(
-                65 <= value <= 90 or 97 <= value <= 122
-                for value in self._values
-            )
+        return len(self) > 0 and all(
+            65 <= value <= 90 or 97 <= value <= 122 for value in self._values
         )
 
     def isdigit(self) -> _Bool:
-        return (
-            len(self) > 0
-            and all(48 <= value <= 57 for value in self._values)
-        )
+        return len(self) > 0 and all(48 <= value <= 57 for value in self._values)
 
     def isupper(self) -> _Bool:
         saw_cased = False
@@ -827,7 +815,7 @@ class SageBytes:
         first = True
         for part in iterable:
             if not isinstance(part, SageBytes):
-                raise TypeError('sequence item is not a bytes-like object')
+                raise TypeError("sequence item is not a bytes-like object")
             if not first:
                 answer.extend(self._values)
             answer.extend(part._values)
@@ -840,7 +828,7 @@ class SageBytes:
         elif isinstance(characters, SageBytes):
             strip_values = characters._values
         else:
-            raise TypeError('a bytes-like object is required')
+            raise TypeError("a bytes-like object is required")
         first = 0
         last = len(self)
         if left:
@@ -865,12 +853,11 @@ class SageBytes:
 
 @runtime.sequence_class
 class SageByteArray(SageBytes):
-
     def __init__(self, values: list[_Int]) -> None:
         self._values = values
 
     def __repr__(self) -> _Str:
-        return 'bytearray(' + SageBytes(self._values).__repr__() + ')'
+        return "bytearray(" + SageBytes(self._values).__repr__() + ")"
 
     __str__ = __repr__
     toString = __repr__
@@ -886,46 +873,38 @@ class SageByteArray(SageBytes):
         return SageByteArray(self._values[first:last])
 
     def __setitem__(self, index: Any, value: Any) -> None:
-        if hasattr(index, '__sagejs_slice__'):
+        if hasattr(index, "__sagejs_slice__"):
             start, stop, step = index.indices(len(self._values))
             if step == 1:
                 self.__setslice__(start, stop, value)
                 return
             if not isinstance(value, SageBytes):
                 value = ρσ_bytes(value)
-            positions = [
-                position
-                for position in range(start, stop, step)
-            ]
+            positions = [position for position in range(start, stop, step)]
             if len(positions) != len(value):
                 raise ValueError(
-                    'attempt to assign bytes of size '
+                    "attempt to assign bytes of size "
                     + str(len(value))
-                    + ' to extended slice of size '
+                    + " to extended slice of size "
                     + str(len(positions))
                 )
             for position_index in range(len(positions)):
-                self._values[positions[position_index]] = (
-                    value._values[position_index]
-                )
+                self._values[positions[position_index]] = value._values[position_index]
             return
         index = _coerce_index(index)
         value = _coerce_index(value)
         if value < 0 or value > 255:
-            raise ValueError('byte must be in range(0, 256)')
+            raise ValueError("byte must be in range(0, 256)")
         if index < 0:
             index += len(self._values)
         if index < 0 or index >= len(self._values):
-            raise IndexError('index out of range')
+            raise IndexError("index out of range")
         self._values[index] = value
 
     def __delitem__(self, index: Any) -> None:
-        if hasattr(index, '__sagejs_slice__'):
+        if hasattr(index, "__sagejs_slice__"):
             start, stop, step = index.indices(len(self._values))
-            positions = [
-                position
-                for position in range(start, stop, step)
-            ]
+            positions = [position for position in range(start, stop, step)]
             positions.sort()
             positions.reverse()
             for position in positions:
@@ -939,7 +918,7 @@ class SageByteArray(SageBytes):
         if index < 0:
             index += len(self._values)
         if index < 0 or index >= len(self._values):
-            raise IndexError('index out of range')
+            raise IndexError("index out of range")
         runtime.reflect.apply(
             runtime.array.prototype.splice,
             self._values,
@@ -966,8 +945,7 @@ class SageByteArray(SageBytes):
         return SageByteArray(self._values + other._values)
 
     def __mul__(self, count: Any) -> SageByteArray:
-        return SageByteArray(
-            SageBytes.__mul__(self, count)._values)
+        return SageByteArray(SageBytes.__mul__(self, count)._values)
 
     __rmul__ = __mul__
 
@@ -982,7 +960,7 @@ class SageByteArray(SageBytes):
     def append(self, value: Any) -> None:
         byte = _coerce_index(value)
         if byte < 0 or byte > 255:
-            raise ValueError('byte must be in range(0, 256)')
+            raise ValueError("byte must be in range(0, 256)")
         self._values.append(byte)
 
     def extend(self, values: Any) -> None:
@@ -997,8 +975,7 @@ class SageByteArray(SageBytes):
         width: Any,
         fillbyte: Any = runtime.undefined,
     ) -> SageByteArray:
-        return SageByteArray(
-            SageBytes.center(self, width, fillbyte)._values)
+        return SageByteArray(SageBytes.center(self, width, fillbyte)._values)
 
     def replace(
         self,
@@ -1006,20 +983,16 @@ class SageByteArray(SageBytes):
         replacement: Any,
         count: Any = runtime.undefined,
     ) -> SageByteArray:
-        return SageByteArray(
-            SageBytes.replace(self, old, replacement, count)._values)
+        return SageByteArray(SageBytes.replace(self, old, replacement, count)._values)
 
     def strip(self, characters: Any = runtime.undefined) -> SageByteArray:
-        return SageByteArray(
-            SageBytes.strip(self, characters)._values)
+        return SageByteArray(SageBytes.strip(self, characters)._values)
 
     def lstrip(self, characters: Any = runtime.undefined) -> SageByteArray:
-        return SageByteArray(
-            SageBytes.lstrip(self, characters)._values)
+        return SageByteArray(SageBytes.lstrip(self, characters)._values)
 
     def rstrip(self, characters: Any = runtime.undefined) -> SageByteArray:
-        return SageByteArray(
-            SageBytes.rstrip(self, characters)._values)
+        return SageByteArray(SageBytes.rstrip(self, characters)._values)
 
     def split(
         self,
@@ -1060,7 +1033,6 @@ def _memoryview_index_setter(
 
 @runtime.sequence_class
 class SageMemoryView:
-
     def __init__(
         self,
         source: Any,
@@ -1079,11 +1051,11 @@ class SageMemoryView:
             available = len(source) - start
             self._readonly = not isinstance(source, SageByteArray)
             self._itemsize = 1
-            self._format = 'B'
+            self._format = "B"
         elif (
-            hasattr(source, '_values')
-            and hasattr(source, 'itemsize')
-            and hasattr(source, 'typecode')
+            hasattr(source, "_values")
+            and hasattr(source, "itemsize")
+            and hasattr(source, "typecode")
         ):
             self._source = source
             self._offset = start
@@ -1093,7 +1065,7 @@ class SageMemoryView:
             self._format = source.typecode
         else:
             raise TypeError(
-                'memoryview: a bytes-like object is required, not '
+                "memoryview: a bytes-like object is required, not "
                 + runtime.jstype(source)
             )
         if isinstance(source, SageMemoryView):
@@ -1103,15 +1075,15 @@ class SageMemoryView:
             available if length is runtime.undefined else _coerce_index(length)
         )
         if self._length < 0 or self._length > available:
-            raise ValueError('memoryview length is out of range')
+            raise ValueError("memoryview length is out of range")
         for index in range(self._length):
             runtime.object.defineProperty(
                 self,
                 str(index),
                 {
-                    'get': _memoryview_index_getter(self, index),
-                    'set': _memoryview_index_setter(self, index),
-                    'enumerable': True,
+                    "get": _memoryview_index_getter(self, index),
+                    "set": _memoryview_index_setter(self, index),
+                    "enumerable": True,
                 },
             )
 
@@ -1132,12 +1104,10 @@ class SageMemoryView:
         return self._format
 
     def _values(self) -> list[_Int]:
-        return self._source._values[
-            self._offset:self._offset + self._length
-        ]
+        return self._source._values[self._offset : self._offset + self._length]
 
     def _binary_string(self) -> _Str:
-        answer = ''
+        answer = ""
         for value in self:
             answer += chr(value)
         return answer
@@ -1149,39 +1119,38 @@ class SageMemoryView:
         return iter(self._values())
 
     def __getitem__(self, index: Any) -> Any:
-        if hasattr(index, '__sagejs_slice__'):
+        if hasattr(index, "__sagejs_slice__"):
             start, stop, step = index.indices(self._length)
             if step == 1:
                 return SageMemoryView(self, start, stop - start)
             return SageMemoryView(
-                SageByteArray([
-                    self.__getitem__(position)
-                    for position in range(start, stop, step)
-                ])
+                SageByteArray(
+                    [
+                        self.__getitem__(position)
+                        for position in range(start, stop, step)
+                    ]
+                )
             )
         index = _coerce_index(index)
         if index < 0:
             index += self._length
         if index < 0 or index >= self._length:
-            raise IndexError('index out of bounds on dimension 1')
+            raise IndexError("index out of bounds on dimension 1")
         return self._source._values[self._offset + index]
 
     def __setitem__(self, index: Any, value: Any) -> None:
         if self._readonly:
-            raise TypeError('cannot modify read-only memory')
-        if hasattr(index, '__sagejs_slice__'):
+            raise TypeError("cannot modify read-only memory")
+        if hasattr(index, "__sagejs_slice__"):
             start, stop, step = index.indices(self._length)
             if step == 1:
                 self.__setslice__(start, stop, value)
                 return
             replacement = [item for item in value]
-            positions = [
-                position for position in range(start, stop, step)
-            ]
+            positions = [position for position in range(start, stop, step)]
             if len(replacement) != len(positions):
                 raise ValueError(
-                    'memoryview assignment: lvalue and rvalue have '
-                    'different structures'
+                    "memoryview assignment: lvalue and rvalue have different structures"
                 )
             for position_index in range(len(positions)):
                 self.__setitem__(
@@ -1193,48 +1162,40 @@ class SageMemoryView:
         if index < 0:
             index += self._length
         if index < 0 or index >= self._length:
-            raise IndexError('index out of bounds on dimension 1')
+            raise IndexError("index out of bounds on dimension 1")
         if isinstance(self._source, SageByteArray):
             value = _coerce_index(value)
             if value < 0 or value > 255:
-                raise ValueError('memoryview: invalid value for format B')
+                raise ValueError("memoryview: invalid value for format B")
         self._source.__setitem__(self._offset + index, value)
 
     def __setslice__(self, start: Any, end: Any, values: Any) -> None:
         if self._readonly:
-            raise TypeError('cannot modify read-only memory')
+            raise TypeError("cannot modify read-only memory")
         first = _normalise_bound(start, 0, self._length)
         last = _normalise_bound(end, self._length, self._length)
         replacement = []
-        if (
-            isinstance(values, SageMemoryView)
-            and (
-                values.itemsize != self.itemsize
-                or values.format != self.format
-            )
+        if isinstance(values, SageMemoryView) and (
+            values.itemsize != self.itemsize or values.format != self.format
         ):
             raise ValueError(
-                'memoryview assignment: lvalue and rvalue have different '
-                'structures'
+                "memoryview assignment: lvalue and rvalue have different structures"
             )
         for value in values:
             if isinstance(self._source, SageByteArray):
                 byte = _coerce_index(value)
                 if byte < 0 or byte > 255:
-                    raise ValueError(
-                        'memoryview: invalid value for format B')
+                    raise ValueError("memoryview: invalid value for format B")
                 replacement.append(byte)
             else:
                 replacement.append(value)
         if len(replacement) != last - first:
             raise ValueError(
-                'memoryview assignment: lvalue and rvalue have different '
-                'structures'
+                "memoryview assignment: lvalue and rvalue have different structures"
             )
         replacement = replacement[:]
         for index, value in enumerate(replacement):
-            self._source.__setitem__(
-                self._offset + first + index, value)
+            self._source.__setitem__(self._offset + first + index, value)
 
     def slice(
         self,
@@ -1255,12 +1216,10 @@ class SageMemoryView:
         return False
 
     def __add__(self, _other: Any) -> Any:
-        raise TypeError(
-            "unsupported operand type(s) for +: 'memoryview'")
+        raise TypeError("unsupported operand type(s) for +: 'memoryview'")
 
     def __iadd__(self, _other: Any) -> Any:
-        raise TypeError(
-            "unsupported operand type(s) for +=: 'memoryview'")
+        raise TypeError("unsupported operand type(s) for +=: 'memoryview'")
 
     def decode(
         self,
@@ -1274,21 +1233,18 @@ class SageMemoryView:
         separator: Any = runtime.undefined,
         bytes_per_separator: Any = 1,
     ) -> _Str:
-        return SageBytes(self._bytes_values()).hex(
-            separator, bytes_per_separator)
+        return SageBytes(self._bytes_values()).hex(separator, bytes_per_separator)
 
     def _bytes_values(self) -> list[_Int]:
-        if hasattr(self._source, '_bytes_values'):
-            return self._source._bytes_values(
-                self._offset, self._length)
+        if hasattr(self._source, "_bytes_values"):
+            return self._source._bytes_values(self._offset, self._length)
         return self._values()
 
     def __repr__(self) -> _Str:
-        return '<memory at 0x0>'
+        return "<memory at 0x0>"
 
     def __getattr__(self, name: _Str) -> Any:
-        raise AttributeError(
-            "'memoryview' object has no attribute '" + name + "'")
+        raise AttributeError("'memoryview' object has no attribute '" + name + "'")
 
     toString = __repr__
     inspect = __repr__
@@ -1307,95 +1263,100 @@ def _construct_bytes(
 ) -> SageBytes:
     if source is runtime.undefined:
         if encoding is not runtime.undefined or errors is not runtime.undefined:
-            raise TypeError('encoding without a string argument')
+            raise TypeError("encoding without a string argument")
         return SageBytes([])
     if isinstance(source, SageByteArray):
         if encoding is not runtime.undefined or errors is not runtime.undefined:
-            raise TypeError('encoding without a string argument')
+            raise TypeError("encoding without a string argument")
         return SageBytes(source._values[:])
     if isinstance(source, SageMemoryView):
         if encoding is not runtime.undefined or errors is not runtime.undefined:
-            raise TypeError('encoding without a string argument')
+            raise TypeError("encoding without a string argument")
         return SageBytes(source._values())
-    if hasattr(source, '_bytes_values'):
+    if hasattr(source, "_bytes_values"):
         if encoding is not runtime.undefined or errors is not runtime.undefined:
-            raise TypeError('encoding without a string argument')
+            raise TypeError("encoding without a string argument")
         return SageBytes(source._bytes_values())
     if isinstance(source, SageBytes):
         if encoding is not runtime.undefined or errors is not runtime.undefined:
-            raise TypeError('encoding without a string argument')
+            raise TypeError("encoding without a string argument")
         return source
-    uint8_array = runtime.reflect.get(
-        runtime.global_object, 'Uint8Array')
-    if (
-        uint8_array is not runtime.undefined
-        and runtime.instance_of(source, uint8_array)
+    uint8_array = runtime.reflect.get(runtime.global_object, "Uint8Array")
+    if uint8_array is not runtime.undefined and runtime.instance_of(
+        source, uint8_array
     ):
         if encoding is not runtime.undefined or errors is not runtime.undefined:
-            raise TypeError('encoding without a string argument')
+            raise TypeError("encoding without a string argument")
         # Preserve the dense typed array.  This is the zero-per-byte boundary
         # used by SagePack and native file/network APIs.
         return SageBytes(source)
-    if runtime.strict_equal(runtime.jstype(source), 'string'):
+    if runtime.strict_equal(runtime.jstype(source), "string"):
         if encoding is runtime.undefined:
-            raise TypeError('string argument without an encoding')
+            raise TypeError("string argument without an encoding")
         normalised = _normalise_encoding(encoding)
         if normalised not in (
-            'utf-8', 'utf8', 'ascii', 'latin-1', 'latin1', 'punycode'
+            "utf-8",
+            "utf8",
+            "ascii",
+            "latin-1",
+            "latin1",
+            "punycode",
         ):
-            raise ValueError('unknown encoding: ' + encoding)
-        if normalised in ('utf-8', 'utf8'):
+            raise ValueError("unknown encoding: " + encoding)
+        if normalised in ("utf-8", "utf8"):
             values = _encode_utf8(source)
-        elif normalised == 'punycode':
-            module = runtime.require_module('punycode')
-            encoder = runtime.reflect.get(module, 'encode')
-            encoded = runtime.reflect.apply(
-                encoder, runtime.undefined, [source])
+        elif normalised == "punycode":
+            module = runtime.require_module("punycode")
+            encoder = runtime.reflect.get(module, "encode")
+            encoded = runtime.reflect.apply(encoder, runtime.undefined, [source])
             values = _byte_values_from_binary_string(encoded)
-        elif normalised == 'ascii':
+        elif normalised == "ascii":
             values = []
             for character in source:
                 code = ord(character)
                 if code > 127:
-                    if errors == 'ignore':
+                    if errors == "ignore":
                         continue
-                    if errors == 'replace':
+                    if errors == "replace":
                         code = 63
                     else:
                         raise UnicodeEncodeError(
-                            'ascii', source, 0, len(source),
-                            'ordinal not in range(128)')
+                            "ascii", source, 0, len(source), "ordinal not in range(128)"
+                        )
                 values.append(code)
         else:
             values = []
             for character in source:
                 code = ord(character)
                 if code > 255:
-                    if errors == 'ignore':
+                    if errors == "ignore":
                         continue
-                    if errors == 'replace':
+                    if errors == "replace":
                         code = 63
                     else:
                         raise UnicodeEncodeError(
-                            'latin-1', source, 0, len(source),
-                            'ordinal not in range(256)')
+                            "latin-1",
+                            source,
+                            0,
+                            len(source),
+                            "ordinal not in range(256)",
+                        )
                 values.append(code)
         return SageBytes(values)
-    if (
-        runtime.strict_equal(runtime.jstype(source), 'number')
-        or runtime.strict_equal(runtime.jstype(source), 'bigint')
+    if runtime.strict_equal(runtime.jstype(source), "number") or runtime.strict_equal(
+        runtime.jstype(source), "bigint"
     ):
         count = _coerce_index(source)
         if count < 0:
-            raise ValueError('negative count')
+            raise ValueError("negative count")
         return SageBytes([0 for _unused in range(count)])
     if encoding is not runtime.undefined or errors is not runtime.undefined:
-        raise TypeError('encoding without a string argument')
+        raise TypeError("encoding without a string argument")
     values = []
     for value in iter(source):
         byte = _coerce_index(value)
         if byte < 0 or byte > 255:
-            raise ValueError('bytes must be in range(0, 256)')
+            raise ValueError("bytes must be in range(0, 256)")
         values.append(byte)
     return SageBytes(values)
 
@@ -1407,7 +1368,7 @@ def ρσ_bytes(
     *extra: Any,
 ) -> SageBytes:
     if len(extra):
-        raise TypeError('bytes() takes at most 3 arguments')
+        raise TypeError("bytes() takes at most 3 arguments")
     return _construct_bytes(source, encoding, errors)
 
 
@@ -1422,14 +1383,14 @@ def ρσ_bytearray(
     *extra: Any,
 ) -> SageByteArray:
     if len(extra):
-        raise TypeError('bytearray() takes at most 3 arguments')
+        raise TypeError("bytearray() takes at most 3 arguments")
     immutable = _construct_bytes(source, encoding, errors)
     return SageByteArray(immutable._values[:])
 
 
 def ρσ_memoryview(source: Any, *extra: Any) -> SageMemoryView:
     if len(extra):
-        raise TypeError('memoryview() takes exactly one argument')
+        raise TypeError("memoryview() takes exactly one argument")
     return SageMemoryView(source)
 
 
@@ -1445,9 +1406,9 @@ def _hex_digit_value(character: _Str) -> _Int:
 
 
 def _bytes_fromhex(text: Any) -> SageBytes:
-    if not runtime.strict_equal(runtime.jstype(text), 'string'):
-        raise TypeError('fromhex() argument must be str')
-    whitespace = ' \t\n\r\x0b\x0c'
+    if not runtime.strict_equal(runtime.jstype(text), "string"):
+        raise TypeError("fromhex() argument must be str")
+    whitespace = " \t\n\r\x0b\x0c"
     values = []
     index = 0
     while index < len(text):
@@ -1456,18 +1417,18 @@ def _bytes_fromhex(text: Any) -> SageBytes:
         if index >= len(text):
             break
         if index + 1 >= len(text):
-            raise ValueError('non-hexadecimal number found in fromhex()')
+            raise ValueError("non-hexadecimal number found in fromhex()")
         high = _hex_digit_value(text[index])
         low = _hex_digit_value(text[index + 1])
         if high < 0 or low < 0:
-            raise ValueError('non-hexadecimal number found in fromhex()')
+            raise ValueError("non-hexadecimal number found in fromhex()")
         values.append(high * 16 + low)
         index += 2
         if index < len(text) and text[index] not in whitespace:
             high = _hex_digit_value(text[index])
             if high >= 0:
                 continue
-            raise ValueError('non-hexadecimal number found in fromhex()')
+            raise ValueError("non-hexadecimal number found in fromhex()")
     return SageBytes(values)
 
 
@@ -1478,13 +1439,13 @@ def _bytearray_fromhex(text: Any) -> SageByteArray:
 def _int_to_bytes(
     self: Any,
     length: Any = 1,
-    byteorder: _Str = 'big',
+    byteorder: _Str = "big",
     signed: _Bool = False,
 ) -> SageBytes:
     byte_count = _coerce_index(length)
     if byte_count < 0:
-        raise ValueError('length argument must be non-negative')
-    if byteorder != 'little' and byteorder != 'big':
+        raise ValueError("length argument must be non-negative")
+    if byteorder != "little" and byteorder != "big":
         raise ValueError("byteorder must be either 'little' or 'big'")
 
     value = runtime.bigint(self)
@@ -1505,32 +1466,31 @@ def _int_to_bytes(
         minimum = runtime.bigint(0)
         maximum = runtime.native_sub(modulus, runtime.bigint(1))
     if value < minimum or value > maximum:
-        raise OverflowError('int too big to convert')
+        raise OverflowError("int too big to convert")
     if value < 0:
         value = runtime.native_add(value, modulus)
 
     values = []
     for _unused in range(byte_count):
-        values.append(runtime.number(
-            runtime.native_bitand(value, runtime.bigint(255))))
+        values.append(runtime.number(runtime.native_bitand(value, runtime.bigint(255))))
         value = runtime.native_rshift(value, runtime.bigint(8))
-    if byteorder == 'big':
+    if byteorder == "big":
         values.reverse()
     return SageBytes(values)
 
 
 def _int_from_bytes(
     source: Any,
-    byteorder: _Str = 'big',
+    byteorder: _Str = "big",
     signed: _Bool = False,
 ) -> Any:
-    if byteorder != 'little' and byteorder != 'big':
+    if byteorder != "little" and byteorder != "big":
         raise ValueError("byteorder must be either 'little' or 'big'")
     if (
         isinstance(source, SageBytes)
         or isinstance(source, SageByteArray)
         or isinstance(source, SageMemoryView)
-        or hasattr(source, '_bytes_values')
+        or hasattr(source, "_bytes_values")
     ):
         source = _construct_bytes(source)
         values = source._values[:]
@@ -1539,20 +1499,16 @@ def _int_from_bytes(
         for item in source:
             byte = _coerce_index(item)
             if byte < 0 or byte > 255:
-                raise ValueError('bytes must be in range(0, 256)')
+                raise ValueError("bytes must be in range(0, 256)")
             values.append(byte)
-    ordered = values[:] if byteorder == 'big' else values[::-1]
+    ordered = values[:] if byteorder == "big" else values[::-1]
     answer = runtime.bigint(0)
     for byte in ordered:
         answer = runtime.native_add(
             runtime.native_lshift(answer, runtime.bigint(8)),
             runtime.bigint(byte),
         )
-    if (
-        signed
-        and len(ordered) > 0
-        and ordered[0] & 128
-    ):
+    if signed and len(ordered) > 0 and ordered[0] & 128:
         answer = runtime.native_sub(
             answer,
             runtime.native_lshift(
@@ -1565,21 +1521,41 @@ def _int_from_bytes(
 
 runtime.reflect.set(
     ρσ_bytes,
-    'prototype',
-    runtime.reflect.get(SageBytes, 'prototype'),
+    "prototype",
+    runtime.reflect.get(SageBytes, "prototype"),
 )
 for _method_name in [
-    'center', 'count', 'decode', 'endswith', 'find', 'index',
-    'isalpha', 'isdigit', 'islower', 'isspace', 'isupper', 'join',
-    'lower', 'lstrip', 'partition', 'replace', 'rfind', 'rindex',
-    'rpartition', 'rsplit', 'rstrip', 'split', 'startswith',
-    'strip', 'upper',
+    "center",
+    "count",
+    "decode",
+    "endswith",
+    "find",
+    "index",
+    "isalpha",
+    "isdigit",
+    "islower",
+    "isspace",
+    "isupper",
+    "join",
+    "lower",
+    "lstrip",
+    "partition",
+    "replace",
+    "rfind",
+    "rindex",
+    "rpartition",
+    "rsplit",
+    "rstrip",
+    "split",
+    "startswith",
+    "strip",
+    "upper",
 ]:
     runtime.reflect.set(
         ρσ_bytes,
         _method_name,
         runtime.reflect.get(
-            runtime.reflect.get(SageBytes, 'prototype'),
+            runtime.reflect.get(SageBytes, "prototype"),
             _method_name,
         ),
     )
@@ -1590,16 +1566,16 @@ memoryview = ρσ_memoryview
 
 _int_to_bytes_native = runtime.native_method(_int_to_bytes)
 runtime.reflect.set(
-    runtime.reflect.get(runtime.number, 'prototype'),
-    'to_bytes',
+    runtime.reflect.get(runtime.number, "prototype"),
+    "to_bytes",
     _int_to_bytes_native,
 )
 runtime.reflect.set(
-    runtime.reflect.get(runtime.bigint, 'prototype'),
-    'to_bytes',
+    runtime.reflect.get(runtime.bigint, "prototype"),
+    "to_bytes",
     _int_to_bytes_native,
 )
-runtime.reflect.set(runtime.int_builtin, 'from_bytes', _int_from_bytes)
+runtime.reflect.set(runtime.int_builtin, "from_bytes", _int_from_bytes)
 
 runtime.set_class_repr(SageBytes, "<class 'bytes'>")
 runtime.set_class_repr(SageByteArray, "<class 'bytearray'>")
@@ -1607,29 +1583,51 @@ runtime.set_class_repr(SageMemoryView, "<class 'memoryview'>")
 
 runtime.reflect.set(
     ρσ_bytearray,
-    'prototype',
-    runtime.reflect.get(SageByteArray, 'prototype'),
+    "prototype",
+    runtime.reflect.get(SageByteArray, "prototype"),
 )
 for _bytearray_method_name in [
-    'append', 'center', 'count', 'decode', 'endswith', 'extend',
-    'find', 'index', 'isalpha', 'isdigit', 'islower', 'isspace',
-    'isupper', 'join', 'lower', 'lstrip', 'partition', 'replace',
-    'rfind', 'rindex', 'rpartition', 'rsplit', 'rstrip', 'split',
-    'startswith', 'strip', 'upper',
+    "append",
+    "center",
+    "count",
+    "decode",
+    "endswith",
+    "extend",
+    "find",
+    "index",
+    "isalpha",
+    "isdigit",
+    "islower",
+    "isspace",
+    "isupper",
+    "join",
+    "lower",
+    "lstrip",
+    "partition",
+    "replace",
+    "rfind",
+    "rindex",
+    "rpartition",
+    "rsplit",
+    "rstrip",
+    "split",
+    "startswith",
+    "strip",
+    "upper",
 ]:
     runtime.reflect.set(
         ρσ_bytearray,
         _bytearray_method_name,
         runtime.reflect.get(
-            runtime.reflect.get(SageByteArray, 'prototype'),
+            runtime.reflect.get(SageByteArray, "prototype"),
             _bytearray_method_name,
         ),
     )
 
-runtime.reflect.set(ρσ_bytes, 'fromhex', _bytes_fromhex)
-runtime.reflect.set(ρσ_bytearray, 'fromhex', _bytearray_fromhex)
+runtime.reflect.set(ρσ_bytes, "fromhex", _bytes_fromhex)
+runtime.reflect.set(ρσ_bytearray, "fromhex", _bytearray_fromhex)
 runtime.reflect.set(
     ρσ_memoryview,
-    'prototype',
-    runtime.reflect.get(SageMemoryView, 'prototype'),
+    "prototype",
+    runtime.reflect.get(SageMemoryView, "prototype"),
 )

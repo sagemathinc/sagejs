@@ -4,6 +4,6 @@ from typing import Any
 
 import sagejs.runtime as runtime
 
-Graph: Any = runtime.reflect.get(runtime.global_object, 'Graph')
+Graph: Any = runtime.reflect.get(runtime.global_object, "Graph")
 
-__all__ = ['Graph']
+__all__ = ["Graph"]

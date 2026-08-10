@@ -79,18 +79,31 @@ def S_ISSOCK(mode):
 
 def filemode(mode):
     kind = (
-        'd' if S_ISDIR(mode) else
-        'l' if S_ISLNK(mode) else
-        'c' if S_ISCHR(mode) else
-        'b' if S_ISBLK(mode) else
-        'p' if S_ISFIFO(mode) else
-        's' if S_ISSOCK(mode) else '-'
+        "d"
+        if S_ISDIR(mode)
+        else "l"
+        if S_ISLNK(mode)
+        else "c"
+        if S_ISCHR(mode)
+        else "b"
+        if S_ISBLK(mode)
+        else "p"
+        if S_ISFIFO(mode)
+        else "s"
+        if S_ISSOCK(mode)
+        else "-"
     )
-    bits = ''
+    bits = ""
     for mask, character in [
-        (S_IRUSR, 'r'), (S_IWUSR, 'w'), (S_IXUSR, 'x'),
-        (S_IRGRP, 'r'), (S_IWGRP, 'w'), (S_IXGRP, 'x'),
-        (S_IROTH, 'r'), (S_IWOTH, 'w'), (S_IXOTH, 'x'),
+        (S_IRUSR, "r"),
+        (S_IWUSR, "w"),
+        (S_IXUSR, "x"),
+        (S_IRGRP, "r"),
+        (S_IWGRP, "w"),
+        (S_IXGRP, "x"),
+        (S_IROTH, "r"),
+        (S_IWOTH, "w"),
+        (S_IXOTH, "x"),
     ]:
-        bits += character if int(mode) & mask else '-'
+        bits += character if int(mode) & mask else "-"
     return kind + bits

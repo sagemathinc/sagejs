@@ -23,12 +23,14 @@ class Bdb:
     def set_trace(self, frame=None):
         del frame
         raise NotImplementedError(
-            'interactive debugging requires Sage.js frame-debugging support')
+            "interactive debugging requires Sage.js frame-debugging support"
+        )
 
     def run(self, command, globals=None, locals=None):
         del command, globals, locals
         raise NotImplementedError(
-            'interactive debugging requires Sage.js frame-debugging support')
+            "interactive debugging requires Sage.js frame-debugging support"
+        )
 
     def runcall(self, function, *args, **kwargs):
         return function(*args, **kwargs)

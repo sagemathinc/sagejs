@@ -15,21 +15,19 @@ def _internal_get_member(value: Any, name: Any) -> Any:
     if value is None or value is runtime.undefined:
         return runtime.undefined
     member = runtime.native_get(value, name)
-    if _internal_get_member_raw(
-        member, '__sagejs_eager_bound_cache__'
-    ) is not True:
+    if _internal_get_member_raw(member, "__sagejs_eager_bound_cache__") is not True:
         return member
 
     # Eager method binding is an implementation cache, not an own Python
     # attribute.  Resolve it through the authoritative descriptor machinery:
     # a subclass may have overridden the method after the cache was created,
     # and an override may itself later have been deleted.
-    resolver = runtime.reflect.get(
-        runtime.global_object, 'ρσ_getattr_internal')
-    if not _internal_type_is(runtime.jstype(resolver), 'function'):
+    resolver = runtime.reflect.get(runtime.global_object, "ρσ_getattr_internal")
+    if not _internal_type_is(runtime.jstype(resolver), "function"):
         return member
     return runtime.reflect.apply(
-        resolver, runtime.undefined, [value, name, runtime.undefined])
+        resolver, runtime.undefined, [value, name, runtime.undefined]
+    )
 
 
 def _internal_get_member_raw(value: Any, name: Any) -> Any:
@@ -41,7 +39,7 @@ def _internal_get_member_raw(value: Any, name: Any) -> Any:
 def _internal_member_is_function(value: Any, name: Any) -> bool:
     return _internal_type_is(
         runtime.jstype(_internal_get_member(value, name)),
-        'function',
+        "function",
     )
 
 
@@ -51,55 +49,48 @@ def _internal_call_member(
     call_args: list[Any],
 ) -> Any:
     method = _internal_get_member(value, name)
-    if _internal_get_member(method, '__staticmethod__') is True:
-        return runtime.reflect.apply(
-            method, runtime.undefined, call_args)
-    if _internal_get_member(
-        method, '__python_descriptor__'
-    ) is True and _internal_get_member(
-        method, '__self__'
-    ) is runtime.undefined:
+    if _internal_get_member(method, "__staticmethod__") is True:
+        return runtime.reflect.apply(method, runtime.undefined, call_args)
+    if (
+        _internal_get_member(method, "__python_descriptor__") is True
+        and _internal_get_member(method, "__self__") is runtime.undefined
+    ):
         explicit_args = runtime.reflect.apply(
-            runtime.array.prototype.slice, call_args, [])
+            runtime.array.prototype.slice, call_args, []
+        )
         explicit_args.unshift(value)
-        return runtime.reflect.apply(
-            method, runtime.undefined, explicit_args)
+        return runtime.reflect.apply(method, runtime.undefined, explicit_args)
     return runtime.reflect.apply(method, value, call_args)
 
 
 def _internal_is_native_map(value: Any) -> bool:
     return (
         value is not None
-        and _internal_get_member(value, 'constructor')
-        is runtime.map_class
+        and _internal_get_member(value, "constructor") is runtime.map_class
     )
 
 
 def _internal_is_plain_object(value: Any) -> bool:
-    if not _internal_type_is(runtime.jstype(value), 'object'):
+    if not _internal_type_is(runtime.jstype(value), "object"):
         return False
     prototype = runtime.object.getPrototypeOf(value)
-    return (
-        prototype is None
-        or prototype is runtime.object.prototype
-    )
+    return prototype is None or prototype is runtime.object.prototype
 
 
 @runtime.native_method
 def ρσ_python_iterator_next(self: Any) -> Any:
     result = runtime.object.create(None)
     try:
-        value = _internal_call_member(self, '__next__', [])
-        runtime.reflect.set(result, 'value', value)
-        runtime.reflect.set(result, 'done', False)
+        value = _internal_call_member(self, "__next__", [])
+        runtime.reflect.set(result, "value", value)
+        runtime.reflect.set(result, "done", False)
     except StopIteration as error:
-        runtime.reflect.set(result, 'value', error.value)
-        runtime.reflect.set(result, 'done', True)
+        runtime.reflect.set(result, "value", error.value)
+        runtime.reflect.set(result, "done", True)
     return result
 
 
 class ρσ_yield_from_return(BaseException):
-
     def __init__(self, value: Any) -> None:
         BaseException.__init__(self, value)
         self.value = value
@@ -118,56 +109,52 @@ def ρσ_yield_from_impl(iterable: Any) -> Any:
         try:
             sent = yield yielded
         except GeneratorExit as error:
-            close_method = _internal_get_member(iterator, 'close')
-            if _internal_type_is(
-                runtime.jstype(close_method), 'function'
-            ):
+            close_method = _internal_get_member(iterator, "close")
+            if _internal_type_is(runtime.jstype(close_method), "function"):
                 runtime.reflect.apply(close_method, iterator, [])
             raise error  # noqa: B904
         except BaseException as error:
-            throw_method = _internal_get_member(iterator, 'throw')
-            if not _internal_type_is(
-                runtime.jstype(throw_method), 'function'
-            ):
+            throw_method = _internal_get_member(iterator, "throw")
+            if not _internal_type_is(runtime.jstype(throw_method), "function"):
                 if isinstance(error, runtime.non_exception_throw):
                     raise TypeError(  # noqa: B904
-                        'exceptions must derive from BaseException')
+                        "exceptions must derive from BaseException"
+                    )
                 raise error  # noqa: B904
             if isinstance(error, runtime.non_exception_throw):
-                throw_argument = _internal_get_member(error, 'value')
+                throw_argument = _internal_get_member(error, "value")
                 throw_arguments = [throw_argument]
             else:
                 throw_argument = _internal_get_member(
-                    error, '__sagejs_throw_original__')
+                    error, "__sagejs_throw_original__"
+                )
                 if throw_argument is runtime.undefined:
                     throw_argument = error
                 throw_arguments = [throw_argument]
-                original_args = _internal_get_member(
-                    error, '__sagejs_throw_args__')
+                original_args = _internal_get_member(error, "__sagejs_throw_args__")
                 if original_args is not runtime.undefined:
                     throw_arguments.extend(original_args)
             try:
-                yielded = runtime.reflect.apply(
-                    throw_method, iterator, throw_arguments)
+                yielded = runtime.reflect.apply(throw_method, iterator, throw_arguments)
             except StopIteration as stop:
                 raise ρσ_yield_from_return(  # noqa: B904
-                    stop.value)
+                    stop.value
+                )
         else:
             try:
                 if sent is None:
                     yielded = next(iterator)
                 else:
-                    send_method = _internal_get_member(iterator, 'send')
-                    if not _internal_type_is(
-                        runtime.jstype(send_method), 'function'
-                    ):
+                    send_method = _internal_get_member(iterator, "send")
+                    if not _internal_type_is(runtime.jstype(send_method), "function"):
                         raise AttributeError(
-                            "'iterator' object has no attribute 'send'")
-                    yielded = runtime.reflect.apply(
-                        send_method, iterator, [sent])
+                            "'iterator' object has no attribute 'send'"
+                        )
+                    yielded = runtime.reflect.apply(send_method, iterator, [sent])
             except StopIteration as stop:
                 raise ρσ_yield_from_return(  # noqa: B904
-                    stop.value)
+                    stop.value
+                )
 
 
 @runtime.sequence_class
@@ -185,8 +172,7 @@ class _PythonSequenceIterator:
         index = self._index
         self._index += 1
         try:
-            return _internal_call_member(
-                self._sequence, '__getitem__', [index])
+            return _internal_call_member(self._sequence, "__getitem__", [index])
         except IndexError:
             raise StopIteration  # noqa: B904
         except StopIteration:
@@ -195,9 +181,7 @@ class _PythonSequenceIterator:
 
 def ρσ_check_unbound(value: Any, name: str) -> Any:
     if value is runtime.undefined:
-        raise NameError(
-            "local variable '" + name +
-            "' referenced before assignment")
+        raise NameError("local variable '" + name + "' referenced before assignment")
     return value
 
 
@@ -212,12 +196,11 @@ def ρσ_eslice(
     start: Any,
     end: Any,
 ) -> Any:
-    is_string = (
-        _internal_type_is(runtime.jstype(array), 'string')
-        or runtime.instance_of(array, runtime.string_class)
-    )
+    is_string = _internal_type_is(
+        runtime.jstype(array), "string"
+    ) or runtime.instance_of(array, runtime.string_class)
     if is_string:
-        array = array.split('')
+        array = array.split("")
 
     if step < 0:
         step = -step
@@ -238,7 +221,7 @@ def ρσ_eslice(
             answer.append(value)
         index += 1
     if is_string:
-        return str.join('', answer)
+        return str.join("", answer)
     return answer
 
 
@@ -248,12 +231,11 @@ def ρσ_delslice(
     start: Any,
     end: Any,
 ) -> Any:
-    is_string = (
-        _internal_type_is(runtime.jstype(array), 'string')
-        or runtime.instance_of(array, runtime.string_class)
-    )
+    is_string = _internal_type_is(
+        runtime.jstype(array), "string"
+    ) or runtime.instance_of(array, runtime.string_class)
     if is_string:
-        array = array.split('')
+        array = array.split("")
     if step < 0:
         if start is runtime.undefined:
             start = array.length
@@ -275,7 +257,7 @@ def ρσ_delslice(
             array.splice(indices[position], 1)
 
     if is_string:
-        return array.join('')
+        return array.join("")
     return array
 
 
@@ -297,32 +279,26 @@ def ρσ_unpack_asarray(count: Any, iterable: Any) -> Any:
         # This is a compiler-internal staging vector, not a user-visible
         # Python list.  Starred assignment wraps its slice explicitly.
         answer = runtime.reflect.construct(runtime.array, [])
-        iterator_method = _internal_get_member(
-            iterable, runtime.iterator_symbol)
-        if _internal_type_is(runtime.jstype(iterator_method), 'function'):
+        iterator_method = _internal_get_member(iterable, runtime.iterator_symbol)
+        if _internal_type_is(runtime.jstype(iterator_method), "function"):
             if _internal_is_native_map(iterable):
                 iterator = iterable.keys()
             else:
-                iterator = runtime.reflect.apply(
-                    iterator_method, iterable, [])
+                iterator = runtime.reflect.apply(iterator_method, iterable, [])
             result = iterator.next()
-            while (
-                not result.done
-                and (
-                    count is runtime.number.POSITIVE_INFINITY
-                    or len(answer) <= count
-                )
+            while not result.done and (
+                count is runtime.number.POSITIVE_INFINITY or len(answer) <= count
             ):
                 answer.push(result.value)
                 result = iterator.next()
-    if (
-        count is not runtime.number.POSITIVE_INFINITY
-        and not runtime.strict_equal(len(answer), count)
+    if count is not runtime.number.POSITIVE_INFINITY and not runtime.strict_equal(
+        len(answer), count
     ):
         raise ValueError(
-            'not enough values to unpack'
+            "not enough values to unpack"
             if len(answer) < count
-            else 'too many values to unpack')
+            else "too many values to unpack"
+        )
     return answer
 
 
@@ -331,10 +307,9 @@ def ρσ_unpack_starred(
     trailing_count: int,
     iterable: Any,
 ) -> Any:
-    answer = ρσ_unpack_asarray(
-        runtime.number.POSITIVE_INFINITY, iterable)
+    answer = ρσ_unpack_asarray(runtime.number.POSITIVE_INFINITY, iterable)
     if len(answer) < leading_count + trailing_count:
-        raise ValueError('not enough values to unpack')
+        raise ValueError("not enough values to unpack")
     return answer
 
 
@@ -347,9 +322,7 @@ def ρσ_unpack_nested(pattern: Any, iterable: Any) -> list[Any]:
         if nested_pattern is None:
             answer.push(values[index])
         else:
-            for value in ρσ_unpack_nested(
-                nested_pattern, values[index]
-            ):
+            for value in ρσ_unpack_nested(nested_pattern, values[index]):
                 answer.push(value)
     return answer
 
@@ -365,20 +338,20 @@ def ρσ_validate_class_bases(bases: Any) -> None:
     for index in range(len(bases)):
         base = bases[index]
         if (
-            not runtime.strict_equal(runtime.jstype(base), 'function')
+            not runtime.strict_equal(runtime.jstype(base), "function")
             or base is runtime.function_class
         ):
-            raise TypeError('bases must be types')
+            raise TypeError("bases must be types")
         for previous_index in range(index):
             if base is bases[previous_index]:
-                raise TypeError('duplicate base class')
-        prototype = runtime.reflect.get(base, 'prototype')
+                raise TypeError("duplicate base class")
+        prototype = runtime.reflect.get(base, "prototype")
         if prototype is runtime.undefined:
-            raise TypeError('bases must be types')
-        if not runtime.reflect.has(prototype, '__bases__'):
+            raise TypeError("bases must be types")
+        if not runtime.reflect.has(prototype, "__bases__"):
             native_layouts += 1
     if native_layouts > 1:
-        raise TypeError('multiple bases have instance lay-out conflict')
+        raise TypeError("multiple bases have instance lay-out conflict")
 
 
 def ρσ_native_method(target_function: Any) -> Any:
@@ -391,49 +364,41 @@ def ρσ_strict_equal(left: Any, right: Any) -> bool:
 
 
 def ρσ_sequence_proxy(instance: Any) -> Any:
-    integer_property = runtime.regexp(r'^-?[0-9]+$')
-    integer_tuple_property = runtime.regexp(
-        r'^\[?-?[0-9]+(?:,\s*-?[0-9]+)+\]?$')
-    integer_tuple_cleanup = runtime.regexp(r'[\[\]\s]', 'g')
+    integer_property = runtime.regexp(r"^-?[0-9]+$")
+    integer_tuple_property = runtime.regexp(r"^\[?-?[0-9]+(?:,\s*-?[0-9]+)+\]?$")
+    integer_tuple_cleanup = runtime.regexp(r"[\[\]\s]", "g")
 
     def get_item(
         target: Any,
         property_name: Any,
         receiver: Any,
     ) -> Any:
-        if (
-            _internal_type_is(
-                runtime.jstype(property_name), 'string')
-            and integer_property.test(property_name)
-        ):
+        if _internal_type_is(
+            runtime.jstype(property_name), "string"
+        ) and integer_property.test(property_name):
             return target.__getitem__(runtime.number(property_name))
-        if (
-            _internal_type_is(
-                runtime.jstype(property_name), 'string')
-            and integer_tuple_property.test(property_name)
-        ):
+        if _internal_type_is(
+            runtime.jstype(property_name), "string"
+        ) and integer_tuple_property.test(property_name):
             property_name = runtime.reflect.apply(
                 runtime.string_class.prototype.replace,
                 property_name,
-                [integer_tuple_cleanup, ''],
+                [integer_tuple_cleanup, ""],
             )
             parts = runtime.reflect.apply(
                 runtime.string_class.prototype.split,
                 property_name,
-                [','],
+                [","],
             )
             indices = []
             for part in parts:
                 indices.append(runtime.number(part))
             return target.__getitem__(runtime.math_tuple(indices))
-        if runtime.strict_equal(property_name, 'length'):
+        if runtime.strict_equal(property_name, "length"):
             return target.__len__()
-        if runtime.strict_equal(property_name, 'slice'):
-            existing_slice = runtime.reflect.get(
-                target, property_name, receiver)
-            if _internal_type_is(
-                runtime.jstype(existing_slice), 'function'
-            ):
+        if runtime.strict_equal(property_name, "slice"):
+            existing_slice = runtime.reflect.get(target, property_name, receiver)
+            if _internal_type_is(runtime.jstype(existing_slice), "function"):
                 return existing_slice
 
             def slice_items(
@@ -457,10 +422,7 @@ def ρσ_sequence_proxy(instance: Any) -> Any:
                         stop = max(length + stop, 0)
                     else:
                         stop = min(stop, length)
-                return [
-                    target.__getitem__(index)
-                    for index in range(start, stop)
-                ]
+                return [target.__getitem__(index) for index in range(start, stop)]
 
             return slice_items
         value = runtime.reflect.get(target, property_name, receiver)
@@ -469,11 +431,11 @@ def ρσ_sequence_proxy(instance: Any) -> Any:
         # target; rebind that method to the public proxy so returning ``self``
         # preserves Python object identity.
         if (
-            _internal_type_is(runtime.jstype(value), 'function')
-            and runtime.reflect.get(value, '__self__') is target
+            _internal_type_is(runtime.jstype(value), "function")
+            and runtime.reflect.get(value, "__self__") is target
         ):
-            unbound = runtime.reflect.get(value, '__func__')
-            if _internal_type_is(runtime.jstype(unbound), 'function'):
+            unbound = runtime.reflect.get(value, "__func__")
+            if _internal_type_is(runtime.jstype(unbound), "function"):
                 value = runtime.reflect.apply(
                     runtime.function_class.prototype.bind,
                     unbound,
@@ -483,20 +445,16 @@ def ρσ_sequence_proxy(instance: Any) -> Any:
                     value,
                     runtime.reflect.get(target, property_name),
                 )
-                runtime.reflect.set(value, '__func__', unbound)
-                runtime.reflect.set(value, '__self__', receiver)
+                runtime.reflect.set(value, "__func__", unbound)
+                runtime.reflect.set(value, "__self__", receiver)
         if (
             value is runtime.undefined
-            and _internal_type_is(
-                runtime.jstype(property_name), 'string')
-            and runtime.string_find(property_name, '__') != 0
+            and _internal_type_is(runtime.jstype(property_name), "string")
+            and runtime.string_find(property_name, "__") != 0
         ):
-            getattr_method = runtime.reflect.get(target, '__getattr__')
-            if _internal_type_is(
-                runtime.jstype(getattr_method), 'function'
-            ):
-                return runtime.reflect.apply(
-                    getattr_method, target, [property_name])
+            getattr_method = runtime.reflect.get(target, "__getattr__")
+            if _internal_type_is(runtime.jstype(getattr_method), "function"):
+                return runtime.reflect.apply(getattr_method, target, [property_name])
         return value
 
     def set_item(
@@ -505,19 +463,16 @@ def ρσ_sequence_proxy(instance: Any) -> Any:
         value: Any,
         receiver: Any,
     ) -> bool:
-        if (
-            _internal_type_is(
-                runtime.jstype(property_name), 'string')
-            and integer_property.test(property_name)
-        ):
+        if _internal_type_is(
+            runtime.jstype(property_name), "string"
+        ) and integer_property.test(property_name):
             target.__setitem__(runtime.number(property_name), value)
             return True
-        return runtime.reflect.set(
-            target, property_name, value, receiver)
+        return runtime.reflect.set(target, property_name, value, receiver)
 
     handler = runtime.object.create(None)
-    runtime.reflect.set(handler, 'get', get_item)
-    runtime.reflect.set(handler, 'set', set_item)
+    runtime.reflect.set(handler, "get", get_item)
+    runtime.reflect.set(handler, "set", set_item)
     return runtime.reflect.construct(
         runtime.proxy_class,
         [instance, handler],
@@ -526,8 +481,7 @@ def ρσ_sequence_proxy(instance: Any) -> Any:
 
 def _internal_set_class_repr(wrapper: Any, target: Any) -> None:
     if (
-        runtime.object.getOwnPropertyDescriptor(
-            wrapper, '__repr__')
+        runtime.object.getOwnPropertyDescriptor(wrapper, "__repr__")
         is not runtime.undefined
     ):
         return
@@ -535,13 +489,12 @@ def _internal_set_class_repr(wrapper: Any, target: Any) -> None:
     def class_repr() -> str:
         return "<class '" + target.name + "'>"
 
-    runtime.reflect.set(
-        class_repr, '__sagejs_internal_class_repr__', True)
+    runtime.reflect.set(class_repr, "__sagejs_internal_class_repr__", True)
 
     descriptor = runtime.object.create(None)
-    runtime.reflect.set(descriptor, 'configurable', True)
-    runtime.reflect.set(descriptor, 'value', class_repr)
-    runtime.object.defineProperty(wrapper, '__repr__', descriptor)
+    runtime.reflect.set(descriptor, "configurable", True)
+    runtime.reflect.set(descriptor, "value", class_repr)
+    runtime.object.defineProperty(wrapper, "__repr__", descriptor)
 
 
 def ρσ_callable_sequence_class(target: Any) -> Any:
@@ -550,8 +503,7 @@ def ρσ_callable_sequence_class(target: Any) -> Any:
         _this_argument: Any,
         call_args: Any,
     ) -> Any:
-        return ρσ_sequence_proxy(
-            runtime.reflect.construct(target_class, call_args))
+        return ρσ_sequence_proxy(runtime.reflect.construct(target_class, call_args))
 
     def construct_class(
         target_class: Any,
@@ -559,13 +511,12 @@ def ρσ_callable_sequence_class(target: Any) -> Any:
         new_target: Any,
     ) -> Any:
         return ρσ_sequence_proxy(
-            runtime.reflect.construct(
-                target_class, call_args, new_target)
+            runtime.reflect.construct(target_class, call_args, new_target)
         )
 
     handler = runtime.object.create(None)
-    runtime.reflect.set(handler, 'apply', call_class)
-    runtime.reflect.set(handler, 'construct', construct_class)
+    runtime.reflect.set(handler, "apply", call_class)
+    runtime.reflect.set(handler, "construct", construct_class)
     wrapper = runtime.reflect.construct(
         runtime.proxy_class,
         [target, handler],
@@ -578,27 +529,23 @@ def ρσ_callable_sequence_class(target: Any) -> Any:
 def ρσ_callable_instance_class_adapter(target: Any) -> Any:
     def make_instance(target_class: Any, call_args: Any) -> Any:
         def callable_instance(*instance_args: Any) -> Any:
-            method = _internal_get_member(
-                callable_instance, '__call__')
-            return runtime.reflect.apply(
-                method, callable_instance, instance_args)
+            method = _internal_get_member(callable_instance, "__call__")
+            return runtime.reflect.apply(method, callable_instance, instance_args)
 
         # Host functions have configurable own ``name`` and ``length``
         # properties.  They are representation details here: retaining them
         # would shadow Python properties or attributes with those perfectly
         # ordinary names on callable instances (pytest's MarkDecorator uses
         # ``name`` directly).
-        runtime.reflect.deleteProperty(callable_instance, 'name')
-        runtime.reflect.deleteProperty(callable_instance, 'length')
-        runtime.object.setPrototypeOf(
-            callable_instance, target_class.prototype)
+        runtime.reflect.deleteProperty(callable_instance, "name")
+        runtime.reflect.deleteProperty(callable_instance, "length")
+        runtime.object.setPrototypeOf(callable_instance, target_class.prototype)
         # Callable Python instances are represented by host functions so that
         # ordinary positional calls stay cheap.  Keep an explicit marker: a
         # host ``typeof value === 'function'`` check alone cannot distinguish
         # these adapters from real Python functions when keyword arguments
         # must be matched against ``value.__call__``.
-        runtime.reflect.set(
-            callable_instance, '__sagejs_callable_instance__', True)
+        runtime.reflect.set(callable_instance, "__sagejs_callable_instance__", True)
         # A host function is only the representation of this Python object;
         # its Python type remains the callable class.  This makes ``type(x)``
         # and ``x.__class__(...)`` behave normally for objects such as
@@ -606,9 +553,8 @@ def ρσ_callable_instance_class_adapter(target: Any) -> Any:
         # JavaScript passes the Proxy's hidden target to apply/construct
         # traps, but Python identity must use the public class object.  This
         # preserves CPython's exact ``type(C()) is C`` guarantee.
-        runtime.reflect.set(
-            callable_instance, '__python_type__', wrapper)
-        for function_member in ['apply', 'bind', 'call']:
+        runtime.reflect.set(callable_instance, "__python_type__", wrapper)
+        for function_member in ["apply", "bind", "call"]:
             runtime.reflect.set(
                 callable_instance,
                 function_member,
@@ -617,39 +563,25 @@ def ρσ_callable_instance_class_adapter(target: Any) -> Any:
                     function_member,
                 ),
             )
-        bind_methods = _internal_get_member(
-            target_class.prototype, '__bind_methods__')
-        if _internal_type_is(
-            runtime.jstype(bind_methods), 'function'
-        ):
-            runtime.reflect.apply(
-                bind_methods, callable_instance, [])
-        initializer = _internal_get_member(
-            target_class.prototype, '__init__')
-        if _internal_type_is(
-            runtime.jstype(initializer), 'function'
-        ):
-            if _internal_get_member(
-                initializer, '__python_descriptor__'
-            ) is True:
+        bind_methods = _internal_get_member(target_class.prototype, "__bind_methods__")
+        if _internal_type_is(runtime.jstype(bind_methods), "function"):
+            runtime.reflect.apply(bind_methods, callable_instance, [])
+        initializer = _internal_get_member(target_class.prototype, "__init__")
+        if _internal_type_is(runtime.jstype(initializer), "function"):
+            if _internal_get_member(initializer, "__python_descriptor__") is True:
                 initializer_args = [callable_instance]
                 for argument in call_args:
                     initializer_args.append(argument)
-                runtime.reflect.apply(
-                    initializer, runtime.undefined, initializer_args)
+                runtime.reflect.apply(initializer, runtime.undefined, initializer_args)
             else:
-                runtime.reflect.apply(
-                    initializer, callable_instance, call_args)
+                runtime.reflect.apply(initializer, callable_instance, call_args)
         if (
             runtime.strict_equal(
-                _internal_get_member(
-                    callable_instance, '__sagejs_sequence_proxy__'),
+                _internal_get_member(callable_instance, "__sagejs_sequence_proxy__"),
                 True,
             )
-            and _internal_member_is_function(
-                callable_instance, '__getitem__')
-            and _internal_member_is_function(
-                callable_instance, '__len__')
+            and _internal_member_is_function(callable_instance, "__getitem__")
+            and _internal_member_is_function(callable_instance, "__len__")
         ):
             return ρσ_sequence_proxy(callable_instance)
         return callable_instance
@@ -669,42 +601,36 @@ def ρσ_callable_instance_class_adapter(target: Any) -> Any:
         return make_instance(target_class, call_args)
 
     handler = runtime.object.create(None)
-    runtime.reflect.set(handler, 'apply', call_class)
-    runtime.reflect.set(handler, 'construct', construct_class)
+    runtime.reflect.set(handler, "apply", call_class)
+    runtime.reflect.set(handler, "construct", construct_class)
     wrapper = runtime.reflect.construct(
         runtime.proxy_class,
         [target, handler],
     )
-    runtime.reflect.set(
-        wrapper, '__sagejs_callable_instance_class__', True)
+    runtime.reflect.set(wrapper, "__sagejs_callable_instance_class__", True)
     target.prototype.constructor = wrapper
     _internal_set_class_repr(wrapper, target)
     return wrapper
 
 
 def ρσ_in(value: Any, container: Any) -> bool:
-    if _internal_type_is(runtime.jstype(container), 'string'):
-        if not _internal_type_is(runtime.jstype(value), 'string'):
-            raise TypeError(
-                "'in <string>' requires string as left operand")
+    if _internal_type_is(runtime.jstype(container), "string"):
+        if not _internal_type_is(runtime.jstype(value), "string"):
+            raise TypeError("'in <string>' requires string as left operand")
         return container.indexOf(value) != -1
-    if _internal_member_is_function(container, '__contains__'):
-        return bool(_internal_call_member(
-            container, '__contains__', [value]))
-    if (
-        runtime.instance_of(container, runtime.map_class)
-        or runtime.instance_of(container, runtime.set_class)
+    if _internal_member_is_function(container, "__contains__"):
+        return bool(_internal_call_member(container, "__contains__", [value]))
+    if runtime.instance_of(container, runtime.map_class) or runtime.instance_of(
+        container, runtime.set_class
     ):
         return container.has(value)
     if runtime.arraylike(container):
-        return runtime.reflect.apply(
-            runtime.list_contains, container, [value])
+        return runtime.reflect.apply(runtime.list_contains, container, [value])
     container_type = runtime.jstype(container)
-    if (
-        not _internal_type_is(container_type, 'object')
-        and not _internal_type_is(container_type, 'function')
+    if not _internal_type_is(container_type, "object") and not _internal_type_is(
+        container_type, "function"
     ):
-        raise TypeError('argument is not iterable')
+        raise TypeError("argument is not iterable")
     return runtime.reflect.apply(
         runtime.object.prototype.hasOwnProperty,
         container,
@@ -715,54 +641,47 @@ def ρσ_in(value: Any, container: Any) -> bool:
 def ρσ_Iterable(iterable: Any) -> Any:
     """Return an ES iterable implementing Python's iteration protocol."""
     if runtime.arraylike(iterable):
-        python_iterator = _internal_get_member(iterable, '__iter__')
-        if _internal_get_member(
-            python_iterator, '__python_descriptor__'
-        ) is True:
-            return _internal_call_member(iterable, '__iter__', [])
+        python_iterator = _internal_get_member(iterable, "__iter__")
+        if _internal_get_member(python_iterator, "__python_descriptor__") is True:
+            return _internal_call_member(iterable, "__iter__", [])
         return iterable
-    python_iterator = _internal_get_member(iterable, '__iter__')
-    if _internal_get_member(
-        python_iterator, '__python_descriptor__'
-    ) is True:
-        return _internal_call_member(iterable, '__iter__', [])
-    iterator_method = _internal_get_member(
-        iterable, runtime.iterator_symbol)
-    if _internal_type_is(runtime.jstype(iterator_method), 'function'):
+    python_iterator = _internal_get_member(iterable, "__iter__")
+    if _internal_get_member(python_iterator, "__python_descriptor__") is True:
+        return _internal_call_member(iterable, "__iter__", [])
+    iterator_method = _internal_get_member(iterable, runtime.iterator_symbol)
+    if _internal_type_is(runtime.jstype(iterator_method), "function"):
         if _internal_is_native_map(iterable):
             return iterable.keys()
         # Let JavaScript's ``for of`` invoke the iterator method exactly
         # once.  Calling it here as well breaks self-iterating proxies and
         # generators used by the compiler itself.
         return iterable
-    if _internal_member_is_function(iterable, '__getitem__'):
+    if _internal_member_is_function(iterable, "__getitem__"):
         return _PythonSequenceIterator(iterable)
     # Keyword-argument dictionaries and a few legacy library mappings are
     # represented by null-prototype or ordinary JavaScript objects.
     if _internal_is_plain_object(iterable):
         return runtime.object.keys(iterable)
-    raise TypeError('object is not iterable')
+    raise TypeError("object is not iterable")
 
 
 def ρσ_desugar_kwargs(sources: Any) -> Any:
     answer = runtime.object.create(None)
     answer[runtime.kwargs_symbol] = True
     for source in sources:
-        if _internal_member_is_function(source, 'keys'):
-            keys = _internal_call_member(source, 'keys', [])
+        if _internal_member_is_function(source, "keys"):
+            keys = _internal_call_member(source, "keys", [])
         elif _internal_is_plain_object(source):
             keys = runtime.object.keys(source)
         else:
-            raise TypeError('argument after ** must be a mapping')
+            raise TypeError("argument after ** must be a mapping")
         for key in keys:
-            if not _internal_type_is(runtime.jstype(key), 'string'):
-                raise TypeError('keywords must be strings')
+            if not _internal_type_is(runtime.jstype(key), "string"):
+                raise TypeError("keywords must be strings")
             if _internal_has_own(answer, key):
-                raise TypeError(
-                    "multiple values for keyword argument '" + key + "'")
-            if _internal_member_is_function(source, '__getitem__'):
-                answer[key] = _internal_call_member(
-                    source, '__getitem__', [key])
+                raise TypeError("multiple values for keyword argument '" + key + "'")
+            if _internal_member_is_function(source, "__getitem__"):
+                answer[key] = _internal_call_member(source, "__getitem__", [key])
             else:
                 answer[key] = source[key]
     return answer
@@ -791,115 +710,86 @@ def ρσ_interpolate_kwargs(
     supplied_args: Any,
 ) -> Any:
     if (
-        not _internal_type_is(runtime.jstype(target_function), 'function')
-        or _internal_get_member(
-            target_function, '__sagejs_callable_instance__') is True
+        not _internal_type_is(runtime.jstype(target_function), "function")
+        or _internal_get_member(target_function, "__sagejs_callable_instance__") is True
     ):
         receiver = target_function
         target_function = runtime.reflect.apply(
-            runtime.reflect.get(runtime.global_object, 'ρσ_getattr'),
+            runtime.reflect.get(runtime.global_object, "ρσ_getattr"),
             runtime.undefined,
-            [target_function, '__call__'],
+            [target_function, "__call__"],
         )
     elif (
-        not _internal_get_member(target_function, '__argnames__')
-        and not _internal_get_member(target_function, '__kwonly__')
-        and _internal_get_member(
-            target_function, '__sagejs_callable_instance_class__') is not True
-        and not _internal_has_own(target_function, '__bases__')
+        not _internal_get_member(target_function, "__argnames__")
+        and not _internal_get_member(target_function, "__kwonly__")
+        and _internal_get_member(target_function, "__sagejs_callable_instance_class__")
+        is not True
+        and not _internal_has_own(target_function, "__bases__")
     ):
         # Descriptor lookup can expose a callable-instance adapter as another
         # host function (for example ``pytest.hookimpl``).  Such an adapter has
         # no meaningful signature of its own; its bound ``__call__`` method
         # carries the Python keyword metadata.
         callable_method = runtime.reflect.apply(
-            runtime.reflect.get(runtime.global_object, 'ρσ_getattr'),
+            runtime.reflect.get(runtime.global_object, "ρσ_getattr"),
             runtime.undefined,
-            [target_function, '__call__', None],
+            [target_function, "__call__", None],
         )
-        if (
-            callable_method is not None
-            and (
-                _internal_get_member(callable_method, '__argnames__')
-                or _internal_get_member(callable_method, '__kwonly__')
-            )
+        if callable_method is not None and (
+            _internal_get_member(callable_method, "__argnames__")
+            or _internal_get_member(callable_method, "__kwonly__")
         ):
             receiver = target_function
             target_function = callable_method
     keyword_object = supplied_args[-1]
     if (
-        _internal_get_member(
-            target_function, '__positional_only__')
+        _internal_get_member(target_function, "__positional_only__")
         and runtime.object.keys(keyword_object).length
     ):
-        raise TypeError(
-            'function takes no keyword arguments')
-    argnames = _internal_get_member(
-        target_function, '__argnames__')
-    keyword_only = _internal_get_member(
-        target_function, '__kwonly__')
+        raise TypeError("function takes no keyword arguments")
+    argnames = _internal_get_member(target_function, "__argnames__")
+    keyword_only = _internal_get_member(target_function, "__kwonly__")
     if not argnames and not keyword_only:
-        return runtime.reflect.apply(
-            target_function, receiver, supplied_args)
+        return runtime.reflect.apply(target_function, receiver, supplied_args)
     if not argnames:
         argnames = runtime.reflect.construct(runtime.array, [0])
 
     keyword_object = supplied_args.pop()
-    if _internal_get_member(
-        target_function, '__handles_kwarg_interpolation__'
-    ):
+    if _internal_get_member(target_function, "__handles_kwarg_interpolation__"):
         argument_count = max(supplied_args.length, argnames.length)
-        call_args = runtime.reflect.construct(
-            runtime.array, [argument_count + 1])
+        call_args = runtime.reflect.construct(runtime.array, [argument_count + 1])
         call_args[argument_count] = keyword_object
         for index in range(argument_count):
             if index < argnames.length:
                 property_name = argnames[index]
-                if _internal_has_own(
-                    keyword_object, property_name
-                ):
+                if _internal_has_own(keyword_object, property_name):
                     if index < supplied_args.length:
                         raise TypeError(
-                            "multiple values for argument '"
-                            + property_name + "'")
+                            "multiple values for argument '" + property_name + "'"
+                        )
                     call_args[index] = keyword_object[property_name]
-                    runtime.reflect.deleteProperty(
-                        keyword_object, property_name)
+                    runtime.reflect.deleteProperty(keyword_object, property_name)
                 elif index < supplied_args.length:
                     call_args[index] = supplied_args[index]
             else:
                 call_args[index] = supplied_args[index]
-        if not _internal_get_member(target_function, '__varkw__'):
+        if not _internal_get_member(target_function, "__varkw__"):
             for unexpected in runtime.object.keys(keyword_object):
-                if (
-                    not keyword_only
-                    or keyword_only.indexOf(unexpected) == -1
-                ):
-                    raise TypeError(
-                        "unexpected keyword argument '"
-                        + unexpected + "'")
-        return runtime.reflect.apply(
-            target_function, receiver, call_args)
+                if not keyword_only or keyword_only.indexOf(unexpected) == -1:
+                    raise TypeError("unexpected keyword argument '" + unexpected + "'")
+        return runtime.reflect.apply(target_function, receiver, call_args)
 
     for index in range(argnames.length):
         property_name = argnames[index]
         if _internal_has_own(keyword_object, property_name):
             if index < supplied_args.length:
-                raise TypeError(
-                    "multiple values for argument '"
-                    + property_name + "'")
+                raise TypeError("multiple values for argument '" + property_name + "'")
             supplied_args[index] = keyword_object[property_name]
-            runtime.reflect.deleteProperty(
-                keyword_object, property_name)
+            runtime.reflect.deleteProperty(keyword_object, property_name)
     for unexpected in runtime.object.keys(keyword_object):
-        if (
-            not keyword_only
-            or keyword_only.indexOf(unexpected) == -1
-        ):
-            raise TypeError(
-                "unexpected keyword argument '" + unexpected + "'")
-    return runtime.reflect.apply(
-        target_function, receiver, supplied_args)
+        if not keyword_only or keyword_only.indexOf(unexpected) == -1:
+            raise TypeError("unexpected keyword argument '" + unexpected + "'")
+    return runtime.reflect.apply(target_function, receiver, supplied_args)
 
 
 def ρσ_interpolate_kwargs_legacy(
@@ -908,70 +798,58 @@ def ρσ_interpolate_kwargs_legacy(
     supplied_args: Any,
 ) -> Any:
     if (
-        not _internal_type_is(runtime.jstype(target_function), 'function')
-        or _internal_get_member(
-            target_function, '__sagejs_callable_instance__') is True
+        not _internal_type_is(runtime.jstype(target_function), "function")
+        or _internal_get_member(target_function, "__sagejs_callable_instance__") is True
     ):
         receiver = target_function
         target_function = runtime.reflect.apply(
-            runtime.reflect.get(runtime.global_object, 'ρσ_getattr'),
+            runtime.reflect.get(runtime.global_object, "ρσ_getattr"),
             runtime.undefined,
-            [target_function, '__call__'],
+            [target_function, "__call__"],
         )
     elif (
-        not _internal_get_member(target_function, '__argnames__')
-        and _internal_get_member(
-            target_function, '__sagejs_callable_instance_class__') is not True
-        and not _internal_has_own(target_function, '__bases__')
+        not _internal_get_member(target_function, "__argnames__")
+        and _internal_get_member(target_function, "__sagejs_callable_instance_class__")
+        is not True
+        and not _internal_has_own(target_function, "__bases__")
     ):
         callable_method = runtime.reflect.apply(
-            runtime.reflect.get(runtime.global_object, 'ρσ_getattr'),
+            runtime.reflect.get(runtime.global_object, "ρσ_getattr"),
             runtime.undefined,
-            [target_function, '__call__', None],
+            [target_function, "__call__", None],
         )
-        if (
-            callable_method is not None
-            and _internal_get_member(callable_method, '__argnames__')
+        if callable_method is not None and _internal_get_member(
+            callable_method, "__argnames__"
         ):
             receiver = target_function
             target_function = callable_method
     keyword_object = supplied_args[-1]
-    argnames = _internal_get_member(
-        target_function, '__argnames__')
+    argnames = _internal_get_member(target_function, "__argnames__")
     if not argnames:
-        return runtime.reflect.apply(
-            target_function, receiver, supplied_args)
+        return runtime.reflect.apply(target_function, receiver, supplied_args)
 
     keyword_object = supplied_args.pop()
-    if _internal_get_member(
-        target_function, '__handles_kwarg_interpolation__'
-    ):
+    if _internal_get_member(target_function, "__handles_kwarg_interpolation__"):
         argument_count = max(supplied_args.length, argnames.length)
-        call_args = runtime.reflect.construct(
-            runtime.array, [argument_count + 1])
+        call_args = runtime.reflect.construct(runtime.array, [argument_count + 1])
         call_args[argument_count] = keyword_object
         for index in range(argument_count):
             if index < argnames.length:
                 property_name = argnames[index]
-                if _internal_has_own(
-                    keyword_object, property_name
-                ):
+                if _internal_has_own(keyword_object, property_name):
                     call_args[index] = keyword_object[property_name]
-                    runtime.reflect.deleteProperty(
-                        keyword_object, property_name)
+                    runtime.reflect.deleteProperty(keyword_object, property_name)
                 elif index < supplied_args.length:
                     call_args[index] = supplied_args[index]
             else:
                 call_args[index] = supplied_args[index]
-        return runtime.reflect.apply(
-            target_function, receiver, call_args)
+        return runtime.reflect.apply(target_function, receiver, call_args)
 
     for index in range(argnames.length):
         property_name = argnames[index]
         if _internal_has_own(keyword_object, property_name):
             supplied_args[index] = keyword_object[property_name]
-    return runtime.reflect.apply(
-        target_function, receiver, supplied_args)
+    return runtime.reflect.apply(target_function, receiver, supplied_args)
 
 
 def ρσ_interpolate_kwargs_constructor(
@@ -981,17 +859,15 @@ def ρσ_interpolate_kwargs_constructor(
     supplied_args: Any,
 ) -> Any:
     if use_apply:
-        result = runtime.reflect.apply(
-            target_function, receiver, supplied_args)
+        result = runtime.reflect.apply(target_function, receiver, supplied_args)
     else:
-        result = ρσ_interpolate_kwargs(
-            receiver, target_function, supplied_args)
+        result = ρσ_interpolate_kwargs(receiver, target_function, supplied_args)
     if (
         result is not None
         and result is not runtime.undefined
         and (
-            runtime.strict_equal(runtime.jstype(result), 'object')
-            or runtime.strict_equal(runtime.jstype(result), 'function')
+            runtime.strict_equal(runtime.jstype(result), "object")
+            or runtime.strict_equal(runtime.jstype(result), "function")
         )
     ):
         return result
@@ -1005,17 +881,15 @@ def ρσ_interpolate_kwargs_constructor_legacy(
     supplied_args: Any,
 ) -> Any:
     if use_apply:
-        result = runtime.reflect.apply(
-            target_function, receiver, supplied_args)
+        result = runtime.reflect.apply(target_function, receiver, supplied_args)
     else:
-        result = ρσ_interpolate_kwargs_legacy(
-            receiver, target_function, supplied_args)
+        result = ρσ_interpolate_kwargs_legacy(receiver, target_function, supplied_args)
     if (
         result is not None
         and result is not runtime.undefined
         and (
-            runtime.strict_equal(runtime.jstype(result), 'object')
-            or runtime.strict_equal(runtime.jstype(result), 'function')
+            runtime.strict_equal(runtime.jstype(result), "object")
+            or runtime.strict_equal(runtime.jstype(result), "function")
         )
     ):
         return result
@@ -1025,22 +899,22 @@ def ρσ_interpolate_kwargs_constructor_legacy(
 def _internal_native_getitem(value: Any, key: Any) -> Any:
     """Read a JavaScript property, boxing non-null primitives as JS does."""
     if value is None or value is runtime.undefined:
-        raise TypeError('object is not subscriptable')
+        raise TypeError("object is not subscriptable")
     return runtime.native_get(value, key)
 
 
 def ρσ_type_union(left: Any, right: Any) -> Any:
     union_values = []
     for value in [left, right]:
-        if _internal_get_member(value, '__sagejs_union_type__') is True:
-            for argument in _internal_get_member(value, '__args__'):
+        if _internal_get_member(value, "__sagejs_union_type__") is True:
+            for argument in _internal_get_member(value, "__args__"):
                 if argument not in union_values:
                     union_values.push(argument)  # type: ignore[attr-defined]
         elif value not in union_values:
             union_values.push(value)  # type: ignore[attr-defined]
     union = runtime.object.create(None)
-    runtime.reflect.set(union, '__sagejs_union_type__', True)
-    runtime.reflect.set(union, '__args__', runtime.math_tuple(union_values))
+    runtime.reflect.set(union, "__sagejs_union_type__", True)
+    runtime.reflect.set(union, "__args__", runtime.math_tuple(union_values))
 
     def union_or(other: Any) -> Any:
         return ρσ_type_union(union, other)
@@ -1048,8 +922,8 @@ def ρσ_type_union(left: Any, right: Any) -> Any:
     def union_ror(other: Any) -> Any:
         return ρσ_type_union(other, union)
 
-    runtime.reflect.set(union, '__or__', union_or)
-    runtime.reflect.set(union, '__ror__', union_ror)
+    runtime.reflect.set(union, "__or__", union_or)
+    runtime.reflect.set(union, "__ror__", union_ror)
     return union
 
 
@@ -1065,33 +939,32 @@ def ρσ_match_pattern(subject: Any, pattern: Any) -> Any:
 
     def merge(destination: Any, source: Any) -> None:
         for name in runtime.object.keys(source):
-            runtime.reflect.set(
-                destination, name, runtime.native_get(source, name))
+            runtime.reflect.set(destination, name, runtime.native_get(source, name))
 
     def match(value: Any, descriptor: Any, bindings: Any) -> bool:
         kind = descriptor[0]
-        if kind == 'wildcard':
+        if kind == "wildcard":
             return True
-        if kind == 'capture':
+        if kind == "capture":
             runtime.reflect.set(bindings, descriptor[1], value)
             return True
-        if kind == 'as':
+        if kind == "as":
             nested = {}
             if not match(value, descriptor[1], nested):
                 return False
             merge(bindings, nested)
             runtime.reflect.set(bindings, descriptor[2], value)
             return True
-        if kind == 'value':
+        if kind == "value":
             return value == descriptor[1]
-        if kind == 'or':
+        if kind == "or":
             for alternative in descriptor[1]:
                 nested = {}
                 if match(value, alternative, nested):
                     merge(bindings, nested)
                     return True
             return False
-        if kind == 'sequence':
+        if kind == "sequence":
             if not isinstance(value, (list, tuple)):
                 return False
             parts = descriptor[1]
@@ -1103,18 +976,19 @@ def ρσ_match_pattern(subject: Any, pattern: Any) -> Any:
                     return False
             merge(bindings, nested)
             return True
-        if kind == 'class':
+        if kind == "class":
             expected = descriptor[1]
             if not isinstance(value, expected):
                 return False
             positional = descriptor[2]
             keywords = descriptor[3]
-            match_args = getattr(expected, '__match_args__', ())
+            match_args = getattr(expected, "__match_args__", ())
             if len(positional) > len(match_args):
                 raise TypeError(
-                    f'{getattr(expected, "__name__", expected)!r} accepts '
-                    f'{len(match_args)} positional sub-patterns '
-                    f'({len(positional)} given)')
+                    f"{getattr(expected, '__name__', expected)!r} accepts "
+                    f"{len(match_args)} positional sub-patterns "
+                    f"({len(positional)} given)"
+                )
             nested = {}
             try:
                 for index in range(len(positional)):
@@ -1125,25 +999,23 @@ def ρσ_match_pattern(subject: Any, pattern: Any) -> Any:
                     ):
                         return False
                 for entry in keywords:
-                    if not match(
-                        getattr(value, entry[0]), entry[1], nested
-                    ):
+                    if not match(getattr(value, entry[0]), entry[1], nested):
                         return False
             except AttributeError:
                 return False
             merge(bindings, nested)
             return True
-        raise RuntimeError(f'unknown structural pattern kind {kind!r}')
+        raise RuntimeError(f"unknown structural pattern kind {kind!r}")
 
     return captures if match(subject, pattern, captures) else None
 
 
 def ρσ_generic_alias(origin: Any, type_arguments: Any) -> Any:
     alias = runtime.object.create(None)
-    runtime.reflect.set(alias, '__origin__', origin)
+    runtime.reflect.set(alias, "__origin__", origin)
     runtime.reflect.set(
         alias,
-        '__args__',
+        "__args__",
         type_arguments
         if runtime.array.isArray(type_arguments)
         else runtime.math_tuple([type_arguments]),
@@ -1155,8 +1027,8 @@ def ρσ_generic_alias(origin: Any, type_arguments: Any) -> Any:
     def alias_ror(other: Any) -> Any:
         return ρσ_type_union(other, alias)
 
-    runtime.reflect.set(alias, '__or__', alias_or)
-    runtime.reflect.set(alias, '__ror__', alias_ror)
+    runtime.reflect.set(alias, "__or__", alias_or)
+    runtime.reflect.set(alias, "__ror__", alias_ror)
     return alias
 
 
@@ -1166,10 +1038,10 @@ def ρσ_getitem(value: Any, key: Any) -> Any:
         or value is runtime.tuple_builtin
         or value is runtime.string_builtin
         or value is runtime.int_builtin
-        or value is runtime.reflect.get(runtime.global_object, 'ρσ_dict')
-        or value is runtime.reflect.get(runtime.global_object, 'ρσ_set')
-        or value is runtime.reflect.get(runtime.global_object, 'ρσ_frozenset')
-        or value is runtime.reflect.get(runtime.global_object, 'ρσ_type')
+        or value is runtime.reflect.get(runtime.global_object, "ρσ_dict")
+        or value is runtime.reflect.get(runtime.global_object, "ρσ_set")
+        or value is runtime.reflect.get(runtime.global_object, "ρσ_frozenset")
+        or value is runtime.reflect.get(runtime.global_object, "ρσ_type")
     ):
         return ρσ_generic_alias(value, key)
     # Native lists and tuples are JavaScript arrays.  Keep their overwhelmingly
@@ -1178,23 +1050,22 @@ def ρσ_getitem(value: Any, key: Any) -> Any:
     if runtime.array.isArray(value):
         key_type = runtime.jstype(key)
         integer_index = True
-        if _internal_type_is(key_type, 'boolean'):
+        if _internal_type_is(key_type, "boolean"):
             key = 1 if key else 0
-        elif _internal_type_is(key_type, 'bigint'):
+        elif _internal_type_is(key_type, "bigint"):
             if key < -value.length or key >= value.length:
-                raise IndexError('index out of range')
+                raise IndexError("index out of range")
             key = runtime.number(key)
-        elif _internal_type_is(key_type, 'number'):
+        elif _internal_type_is(key_type, "number"):
             if not runtime.number.isInteger(key):
-                raise TypeError(
-                    'sequence indices must be integers or slices')
+                raise TypeError("sequence indices must be integers or slices")
         else:
             integer_index = False
         if integer_index:
             if key < 0:
                 key += value.length
             if key < 0 or key >= value.length:
-                raise IndexError('index out of range')
+                raise IndexError("index out of range")
             return _internal_native_getitem(value, key)
     # ``__class_getitem__`` is commonly a classmethod inherited from an ABC.
     # Use Python descriptor lookup so the defining class does not accidentally
@@ -1202,22 +1073,17 @@ def ρσ_getitem(value: Any, key: Any) -> Any:
     # native list/tuple integer path: class subscription is rare, while tuple
     # indexing is one of the hottest operations in numerical Python code.
     class_getitem = None
-    if _internal_type_is(runtime.jstype(value), 'function'):
-        class_getitem = getattr(value, '__class_getitem__', None)
-    if _internal_type_is(runtime.jstype(class_getitem), 'function'):
-        bound_receiver = runtime.reflect.get(class_getitem, '__self__')
-        receiver = (
-            value
-            if bound_receiver is runtime.undefined
-            else bound_receiver
-        )
-        return runtime.reflect.apply(
-            class_getitem, receiver, [key])
-    if _internal_member_is_function(value, '__getitem__'):
-        return _internal_call_member(value, '__getitem__', [key])
-    if _internal_get_member(key, '__sagejs_slice__'):
+    if _internal_type_is(runtime.jstype(value), "function"):
+        class_getitem = getattr(value, "__class_getitem__", None)
+    if _internal_type_is(runtime.jstype(class_getitem), "function"):
+        bound_receiver = runtime.reflect.get(class_getitem, "__self__")
+        receiver = value if bound_receiver is runtime.undefined else bound_receiver
+        return runtime.reflect.apply(class_getitem, receiver, [key])
+    if _internal_member_is_function(value, "__getitem__"):
+        return _internal_call_member(value, "__getitem__", [key])
+    if _internal_get_member(key, "__sagejs_slice__"):
         indices = runtime.reflect.apply(
-            _internal_get_member(key, 'indices'),
+            _internal_get_member(key, "indices"),
             key,
             [value.length],
         )
@@ -1228,38 +1094,35 @@ def ρσ_getitem(value: Any, key: Any) -> Any:
                 answer,
                 [value[index]],
             )
-        if _internal_type_is(runtime.jstype(value), 'string'):
+        if _internal_type_is(runtime.jstype(value), "string"):
             return runtime.reflect.apply(
-                runtime.reflect.get(answer, 'join'), answer, [''])
-        if (
-            runtime.array.isArray(value)
-            and runtime.object.isFrozen(value)
-        ):
+                runtime.reflect.get(answer, "join"), answer, [""]
+            )
+        if runtime.array.isArray(value) and runtime.object.isFrozen(value):
             return runtime.math_tuple(answer)
         return answer
     if _internal_get_member(
-        value, 'ρσ_object_id'
+        value, "ρσ_object_id"
     ) is not runtime.undefined and not runtime.arraylike(value):
-        raise TypeError('object is not subscriptable')
+        raise TypeError("object is not subscriptable")
     if runtime.arraylike(value):
         key_type = runtime.jstype(key)
-        if _internal_type_is(key_type, 'boolean'):
+        if _internal_type_is(key_type, "boolean"):
             key = 1 if key else 0
-        elif _internal_type_is(key_type, 'bigint'):
+        elif _internal_type_is(key_type, "bigint"):
             if key < -value.length or key >= value.length:
-                raise IndexError('index out of range')
+                raise IndexError("index out of range")
             key = runtime.number(key)
-        elif (
-            not _internal_type_is(key_type, 'number')
-            or not runtime.number.isInteger(key)
+        elif not _internal_type_is(key_type, "number") or not runtime.number.isInteger(
+            key
         ):
-            raise TypeError('sequence indices must be integers or slices')
+            raise TypeError("sequence indices must be integers or slices")
         if key < 0:
             key += value.length
         if key < 0 or key >= value.length:
-            raise IndexError('index out of range')
+            raise IndexError("index out of range")
         return _internal_native_getitem(value, key)
-    if _internal_type_is(runtime.jstype(key), 'number') and key < 0:
+    if _internal_type_is(runtime.jstype(key), "number") and key < 0:
         key += value.length
     return _internal_native_getitem(value, key)
 
@@ -1269,33 +1132,30 @@ def ρσ_setitem(value: Any, key: Any, member: Any) -> None:
     # behavior (including JavaScript's frozen-array TypeError for tuples).
     if (
         runtime.array.isArray(value)
-        and _internal_type_is(runtime.jstype(key), 'number')
+        and _internal_type_is(runtime.jstype(key), "number")
         and runtime.number.isInteger(key)
     ):
         if runtime.object.isFrozen(value):
-            raise TypeError('tuple object does not support item assignment')
+            raise TypeError("tuple object does not support item assignment")
         if key < 0:
             key += value.length
         runtime.reflect.set(value, key, member)
         return
-    if _internal_member_is_function(value, '__setitem__'):
-        _internal_call_member(value, '__setitem__', [key, member])
+    if _internal_member_is_function(value, "__setitem__"):
+        _internal_call_member(value, "__setitem__", [key, member])
         return
-    if _internal_get_member(key, '__sagejs_slice__'):
-        if not _internal_member_is_function(value, 'splice'):
-            raise TypeError('object does not support slice assignment')
+    if _internal_get_member(key, "__sagejs_slice__"):
+        if not _internal_member_is_function(value, "splice"):
+            raise TypeError("object does not support slice assignment")
         indices = runtime.reflect.apply(
-            _internal_get_member(key, 'indices'),
+            _internal_get_member(key, "indices"),
             key,
             [value.length],
         )
-        if (
-            not runtime.arraylike(member)
-            and not _internal_member_is_function(
-                member, runtime.iterator_symbol)
+        if not runtime.arraylike(member) and not _internal_member_is_function(
+            member, runtime.iterator_symbol
         ):
-            raise TypeError(
-                'can only assign an iterable to a slice')
+            raise TypeError("can only assign an iterable to a slice")
         replacement = [item for item in member]
         if indices[2] == 1:
             splice_args = [
@@ -1304,63 +1164,55 @@ def ρσ_setitem(value: Any, key: Any, member: Any) -> None:
             ]
             splice_args.extend(replacement)
             runtime.reflect.apply(
-                _internal_get_member(value, 'splice'),
+                _internal_get_member(value, "splice"),
                 value,
                 splice_args,
             )
             return
-        positions = [
-            index for index in range(
-                indices[0], indices[1], indices[2])
-        ]
+        positions = [index for index in range(indices[0], indices[1], indices[2])]
         if len(positions) != len(replacement):
             raise ValueError(
-                'attempt to assign sequence of size '
+                "attempt to assign sequence of size "
                 + str(len(replacement))
-                + ' to extended slice of size '
+                + " to extended slice of size "
                 + str(len(positions))
             )
         for position_index in range(len(positions)):
-            value[positions[position_index]] = (
-                replacement[position_index]
-            )
+            value[positions[position_index]] = replacement[position_index]
         return
-    if _internal_type_is(runtime.jstype(key), 'number') and key < 0:
+    if _internal_type_is(runtime.jstype(key), "number") and key < 0:
         key += value.length
     runtime.reflect.set(value, key, member)
 
 
 def ρσ_delitem(value: Any, key: Any) -> None:
-    if _internal_member_is_function(value, '__delitem__'):
-        _internal_call_member(value, '__delitem__', [key])
+    if _internal_member_is_function(value, "__delitem__"):
+        _internal_call_member(value, "__delitem__", [key])
         return
-    if _internal_get_member(key, '__sagejs_slice__'):
-        if not _internal_member_is_function(value, 'splice'):
-            raise TypeError('object does not support slice deletion')
+    if _internal_get_member(key, "__sagejs_slice__"):
+        if not _internal_member_is_function(value, "splice"):
+            raise TypeError("object does not support slice deletion")
         indices = runtime.reflect.apply(
-            _internal_get_member(key, 'indices'),
+            _internal_get_member(key, "indices"),
             key,
             [value.length],
         )
-        positions = [
-            index for index in range(
-                indices[0], indices[1], indices[2])
-        ]
+        positions = [index for index in range(indices[0], indices[1], indices[2])]
         positions.sort()
         positions.reverse()
         for position in positions:
             value.splice(position, 1)
         return
-    if _internal_member_is_function(value, 'splice'):
+    if _internal_member_is_function(value, "splice"):
         value.splice(key, 1)
         return
-    if _internal_type_is(runtime.jstype(key), 'number') and key < 0:
+    if _internal_type_is(runtime.jstype(key), "number") and key < 0:
         key += value.length
     runtime.reflect.deleteProperty(value, key)
 
 
 def ρσ_bound_index(index: Any, array: Any) -> Any:
-    if _internal_type_is(runtime.jstype(index), 'number') and index < 0:
+    if _internal_type_is(runtime.jstype(index), "number") and index < 0:
         index += array.length
     return index
 
@@ -1379,9 +1231,9 @@ def ρσ_splice(
         end = array.length
     if end < 0:
         end += array.length
-    if _internal_member_is_function(array, '__setslice__'):
+    if _internal_member_is_function(array, "__setslice__"):
         runtime.reflect.apply(
-            _internal_get_member(array, '__setslice__'),
+            _internal_get_member(array, "__setslice__"),
             array,
             [start, end, values],
         )
@@ -1389,8 +1241,7 @@ def ρσ_splice(
     call_args = [start, end - start]
     for value in values:
         call_args.append(value)
-    runtime.reflect.apply(
-        runtime.array.prototype.splice, array, call_args)
+    runtime.reflect.apply(runtime.array.prototype.splice, array, call_args)
 
 
 def _internal_exists_not_null(expression: Any) -> bool:
@@ -1404,7 +1255,7 @@ def _internal_exists_default_object(expression: Any) -> Any:
 
 
 def _internal_exists_callable(expression: Any) -> Any:
-    if _internal_type_is(runtime.jstype(expression), 'function'):
+    if _internal_type_is(runtime.jstype(expression), "function"):
         return expression
 
     def undefined_function() -> Any:
@@ -1417,14 +1268,14 @@ def _internal_exists_getitem(expression: Any) -> Any:
     if (
         expression is not runtime.undefined
         and expression is not None
-        and _internal_member_is_function(expression, '__getitem__')
+        and _internal_member_is_function(expression, "__getitem__")
     ):
         return expression
 
     def undefined_getitem(_key: Any) -> Any:
         return runtime.undefined
 
-    return {'__getitem__': undefined_getitem}
+    return {"__getitem__": undefined_getitem}
 
 
 def _internal_exists_alternative(
@@ -1437,11 +1288,11 @@ def _internal_exists_alternative(
 
 
 ρσ_exists = {
-    'n': _internal_exists_not_null,
-    'd': _internal_exists_default_object,
-    'c': _internal_exists_callable,
-    'g': _internal_exists_getitem,
-    'e': _internal_exists_alternative,
+    "n": _internal_exists_not_null,
+    "d": _internal_exists_default_object,
+    "c": _internal_exists_callable,
+    "g": _internal_exists_getitem,
+    "e": _internal_exists_alternative,
 }
 
 
@@ -1449,7 +1300,7 @@ def ρσ_compute_mro(cls: Any, bases: Any) -> Any:
     """Return the C3 linearization for a newly created Python class."""
     sequences = []
     for base in bases:
-        inherited = _internal_get_member(base, '__mro__')
+        inherited = _internal_get_member(base, "__mro__")
         sequence = []
         if inherited is runtime.undefined:
             sequence.push(base)  # type: ignore[attr-defined]
@@ -1492,8 +1343,7 @@ def ρσ_compute_mro(cls: Any, bases: Any) -> Any:
                 break
 
         if candidate is runtime.undefined:
-            raise TypeError(
-                'Cannot create a consistent method resolution order (MRO)')
+            raise TypeError("Cannot create a consistent method resolution order (MRO)")
         result.push(candidate)  # type: ignore[attr-defined]
         for sequence in sequences:
             if sequence and sequence[0] is candidate:
@@ -1504,16 +1354,16 @@ def ρσ_mixin(*classes: Any) -> None:
     """Copy missing prototype members using the legacy Sage.js MRO."""
     seen = runtime.object.create(None)
     skipped = [
-        '__argnames__',
-        '__handles_kwarg_interpolation__',
-        '__init__',
-        '__annotations__',
-        '__doc__',
-        '__bind_methods__',
-        '__bases__',
-        '__mro__',
-        'constructor',
-        '__class__',
+        "__argnames__",
+        "__handles_kwarg_interpolation__",
+        "__init__",
+        "__annotations__",
+        "__doc__",
+        "__bind_methods__",
+        "__bases__",
+        "__mro__",
+        "constructor",
+        "__class__",
     ]
     for name in skipped:
         seen[name] = True
@@ -1521,18 +1371,16 @@ def ρσ_mixin(*classes: Any) -> None:
     resolved_properties = {}
     target = classes[0].prototype
     primary_prototype = runtime.object.getPrototypeOf(target)
-    python_type_prototype = _internal_get_member(type, 'prototype')
+    python_type_prototype = _internal_get_member(type, "prototype")
     for class_index in range(1, len(classes)):
-        secondary_prototype = _internal_get_member(
-            classes[class_index], 'prototype')
+        secondary_prototype = _internal_get_member(classes[class_index], "prototype")
         if secondary_prototype is runtime.undefined:
-            raise TypeError('bases must be types')
+            raise TypeError("bases must be types")
         if (
             classes[class_index] is runtime.tuple_builtin
             and primary_prototype is python_type_prototype
         ):
-            raise TypeError(
-                'multiple bases have instance lay-out conflict')
+            raise TypeError("multiple bases have instance lay-out conflict")
 
     def tuple_mixin_initializer(
         tuple_initializer: Any,
@@ -1543,8 +1391,7 @@ def ρσ_mixin(*classes: Any) -> None:
             *args: Any,
         ) -> Any:
             runtime.reflect.apply(tuple_initializer, self, args)
-            return runtime.reflect.apply(
-                original_initializer, self, args)
+            return runtime.reflect.apply(original_initializer, self, args)
 
         return runtime.native_method(initialize_tuple_mixin)
 
@@ -1555,13 +1402,13 @@ def ρσ_mixin(*classes: Any) -> None:
         tuple_initializer = classes[class_index].prototype.__init__
         original_initializer = target.__init__
         target.__init__ = tuple_mixin_initializer(
-            tuple_initializer, original_initializer)
+            tuple_initializer, original_initializer
+        )
         mixed_tuple_secondary = True
         break
     if not mixed_tuple_secondary:
         prototype = target
-        tuple_prototype = runtime.reflect.get(
-            runtime.tuple_builtin, 'prototype')
+        tuple_prototype = runtime.reflect.get(runtime.tuple_builtin, "prototype")
         primary_is_tuple = False
         while prototype and prototype is not runtime.object.prototype:
             if prototype is tuple_prototype:
@@ -1571,13 +1418,12 @@ def ρσ_mixin(*classes: Any) -> None:
         if primary_is_tuple:
             for class_index in range(1, len(classes)):
                 secondary_initializer = runtime.reflect.get(
-                    runtime.reflect.get(
-                        classes[class_index], 'prototype'),
-                    '__init__',
+                    runtime.reflect.get(classes[class_index], "prototype"),
+                    "__init__",
                 )
                 if runtime.strict_equal(
                     runtime.jstype(secondary_initializer),
-                    'function',
+                    "function",
                 ):
                     target.__init__ = tuple_mixin_initializer(
                         target.__init__,
@@ -1598,9 +1444,8 @@ def ρσ_mixin(*classes: Any) -> None:
                 if seen[name]:
                     continue
                 seen[name] = True
-                resolved_properties[name] = (
-                    runtime.object.getOwnPropertyDescriptor(
-                        prototype, name)
+                resolved_properties[name] = runtime.object.getOwnPropertyDescriptor(
+                    prototype, name
                 )
             prototype = runtime.object.getPrototypeOf(prototype)
     runtime.object.defineProperties(target, resolved_properties)
@@ -1611,36 +1456,31 @@ def ρσ_instanceof_one(value: Any, candidate: Any) -> bool:
     value_type = runtime.jstype(value)
     if (
         value is None
-        and _internal_get_member(
-            candidate, '__sagejs_none_type__') is True
+        and _internal_get_member(candidate, "__sagejs_none_type__") is True
     ):
         return True
     if (
-        _internal_type_is(value_type, 'object')
-        and _internal_get_member(value, '__sagejs_float__') is True
+        _internal_type_is(value_type, "object")
+        and _internal_get_member(value, "__sagejs_float__") is True
     ):
-        value_type = 'number'
-    if _internal_get_member(candidate, '__sagejs_union_type__') is True:
-        for nested_candidate in _internal_get_member(candidate, '__args__'):
+        value_type = "number"
+    if _internal_get_member(candidate, "__sagejs_union_type__") is True:
+        for nested_candidate in _internal_get_member(candidate, "__args__"):
             if ρσ_instanceof_one(value, nested_candidate):
                 return True
         return False
-    if (
-        runtime.array.isArray(candidate)
-        and runtime.object.isFrozen(candidate)
-    ):
+    if runtime.array.isArray(candidate) and runtime.object.isFrozen(candidate):
         for nested_candidate in candidate:
             if ρσ_instanceof_one(value, nested_candidate):
                 return True
         return False
-    if _internal_get_member(candidate, '__sagejs_module_type__') is True:
+    if _internal_get_member(candidate, "__sagejs_module_type__") is True:
         module_namespaces = runtime.reflect.get(
-            runtime.global_object, '__sagejs_module_namespaces__')
+            runtime.global_object, "__sagejs_module_namespaces__"
+        )
         if module_namespaces is not runtime.undefined:
-            has_module = runtime.reflect.get(module_namespaces, 'has')
-            if runtime.reflect.apply(
-                has_module, module_namespaces, [value]
-            ):
+            has_module = runtime.reflect.get(module_namespaces, "has")
+            if runtime.reflect.apply(has_module, module_namespaces, [value]):
                 return True
     # Check the native representations of Python's fundamental types before
     # inspecting constructors and prototype chains.  In particular, numeric
@@ -1654,46 +1494,33 @@ def ρσ_instanceof_one(value: Any, candidate: Any) -> bool:
             or candidate is runtime.tuple_builtin
         )
         and runtime.array.isArray(value)
-        and (
-            candidate is not runtime.tuple_builtin
-            or runtime.object.isFrozen(value)
-        )
+        and (candidate is not runtime.tuple_builtin or runtime.object.isFrozen(value))
     ):
         return True
-    if (
-        candidate is runtime.string_builtin
-        and (
-            _internal_type_is(value_type, 'string')
-            or runtime.instance_of(
-                value, runtime.string_class)
-        )
+    if candidate is runtime.string_builtin and (
+        _internal_type_is(value_type, "string")
+        or runtime.instance_of(value, runtime.string_class)
     ):
         return True
-    if (
-        candidate is runtime.bool_builtin
-        and _internal_type_is(value_type, 'boolean')
-    ):
+    if candidate is runtime.bool_builtin and _internal_type_is(value_type, "boolean"):
         return True
-    if (
-        candidate is runtime.int_builtin
-        and (
-            _internal_type_is(value_type, 'bigint')
-            or _internal_type_is(value_type, 'boolean')
-            or (
-                _internal_type_is(value_type, 'number')
-                and runtime.number.isSafeInteger(value)
-            )
+    if candidate is runtime.int_builtin and (
+        _internal_type_is(value_type, "bigint")
+        or _internal_type_is(value_type, "boolean")
+        or (
+            _internal_type_is(value_type, "number")
+            and runtime.number.isSafeInteger(value)
         )
     ):
         return True
     if (
         candidate is runtime.float_builtin
-        and _internal_type_is(value_type, 'number')
+        and _internal_type_is(value_type, "number")
         and not runtime.number.isSafeInteger(value)
     ):
         return True
     if (
-        _internal_type_is(runtime.jstype(candidate), 'function')
+        _internal_type_is(runtime.jstype(candidate), "function")
         and runtime.instance_of(value, candidate)
         # JavaScript represents both Python functions and Python classes
         # with native Function objects.  ``types.FunctionType`` is the
@@ -1703,11 +1530,11 @@ def ρσ_instanceof_one(value: Any, candidate: Any) -> bool:
         # would misclassify ordinary functions when that name is inherited.
         and not (
             candidate is runtime.function_class
-            and _internal_type_is(value_type, 'function')
+            and _internal_type_is(value_type, "function")
             and runtime.reflect.apply(
                 runtime.object.prototype.hasOwnProperty,
                 value,
-                ['__bases__'],
+                ["__bases__"],
             )
         )
     ):
@@ -1716,31 +1543,28 @@ def ρσ_instanceof_one(value: Any, candidate: Any) -> bool:
     # callable adapters rather than JavaScript constructors. Check their
     # explicit marker after the native class path, which handles ordinary
     # user-defined classes without another property lookup.
-    if candidate is _internal_get_member(value, '__python_type__'):
+    if candidate is _internal_get_member(value, "__python_type__"):
         return True
     if (
         candidate is type
-        and _internal_type_is(value_type, 'function')
+        and _internal_type_is(value_type, "function")
         and runtime.reflect.apply(
             runtime.object.prototype.hasOwnProperty,
             value,
-            ['__bases__'],
+            ["__bases__"],
         )
     ):
         return True
-    registry = _internal_get_member(candidate, '_abc_registry')
+    registry = _internal_get_member(candidate, "_abc_registry")
     if not runtime.array.isArray(registry):
-        candidate_prototype = _internal_get_member(candidate, 'prototype')
-        registry = _internal_get_member(
-            candidate_prototype, '_abc_registry')
+        candidate_prototype = _internal_get_member(candidate, "prototype")
+        registry = _internal_get_member(candidate_prototype, "_abc_registry")
     if not runtime.array.isArray(registry):
-        candidate_mro = _internal_get_member(candidate, '__mro__')
+        candidate_mro = _internal_get_member(candidate, "__mro__")
         if candidate_mro is not runtime.undefined:
             for candidate_base in candidate_mro:
-                base_prototype = _internal_get_member(
-                    candidate_base, 'prototype')
-                registry = _internal_get_member(
-                    base_prototype, '_abc_registry')
+                base_prototype = _internal_get_member(candidate_base, "prototype")
+                registry = _internal_get_member(base_prototype, "_abc_registry")
                 if runtime.array.isArray(registry):
                     break
     if runtime.array.isArray(registry):
@@ -1750,8 +1574,8 @@ def ρσ_instanceof_one(value: Any, candidate: Any) -> bool:
     # Only user-defined classes need the Python multiple-inheritance walk.
     # Deferring it until every direct test has failed avoids allocating a
     # temporary list and boxing primitives on the common path.
-    constructor = _internal_get_member(value, 'constructor')
-    prototype = _internal_get_member(constructor, 'prototype')
+    constructor = _internal_get_member(value, "constructor")
+    prototype = _internal_get_member(constructor, "prototype")
     if prototype is runtime.undefined:
         return False
     # The JavaScript prototype chain can represent only the primary base.
@@ -1759,12 +1583,12 @@ def ρσ_instanceof_one(value: Any, candidate: Any) -> bool:
     # ``prototype.__bases__`` less authoritative than Python's computed C3
     # linearization.  Use the class MRO first; this is precisely the semantic
     # relation that ``isinstance`` is required to answer.
-    mro = _internal_get_member(constructor, '__mro__')
+    mro = _internal_get_member(constructor, "__mro__")
     if mro is not runtime.undefined:
         for base in mro:
             if candidate is base:
                 return True
-    bases = _internal_get_member(prototype, '__bases__')
+    bases = _internal_get_member(prototype, "__bases__")
     if not bases:
         return False
     for base_index in range(1, len(bases)):
@@ -1772,8 +1596,7 @@ def ρσ_instanceof_one(value: Any, candidate: Any) -> bool:
         while base:
             if candidate is base:
                 return True
-            base_prototype = runtime.object.getPrototypeOf(
-                base.prototype)
+            base_prototype = runtime.object.getPrototypeOf(base.prototype)
             if not base_prototype:
                 break
             base = base_prototype.constructor

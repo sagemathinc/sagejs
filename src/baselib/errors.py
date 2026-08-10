@@ -14,19 +14,18 @@ NameError = runtime.reference_error
 
 
 def ρσ_exception_value(value: object) -> object:
-    if runtime.strict_equal(runtime.jstype(value), 'function'):
+    if runtime.strict_equal(runtime.jstype(value), "function"):
         value = runtime.reflect.construct(value, [])
     error_tag = runtime.reflect.apply(
         runtime.object.prototype.toString,
         value,
         [],
     )
-    if (
-        runtime.instance_of(value, runtime.error)
-        or runtime.string(error_tag).endswith('Error]')
+    if runtime.instance_of(value, runtime.error) or runtime.string(error_tag).endswith(
+        "Error]"
     ):
         return value
-    raise TypeError('exceptions must derive from BaseException')
+    raise TypeError("exceptions must derive from BaseException")
 
 
 def ρσ_function_argument_error(
@@ -35,20 +34,18 @@ def ρσ_function_argument_error(
 ) -> object:
     """Create an argument-binding error attributed to the Python call site."""
     error = runtime.type_error(message)
-    capture = runtime.reflect.get(runtime.error, 'captureStackTrace')
-    if runtime.strict_equal(runtime.jstype(capture), 'function'):
-        runtime.reflect.apply(
-            capture, runtime.error, [error, target_function])
-    runtime.reflect.set(error, '__sagejs_argument_error__', True)
+    capture = runtime.reflect.get(runtime.error, "captureStackTrace")
+    if runtime.strict_equal(runtime.jstype(capture), "function"):
+        runtime.reflect.apply(capture, runtime.error, [error, target_function])
+    runtime.reflect.set(error, "__sagejs_argument_error__", True)
     return error
 
 
 class BaseException(runtime.error):
-
     def __init__(self, *args: object) -> None:
         self.args = runtime.math_tuple(list(args))
         if len(args) == 0:
-            message = ''
+            message = ""
         elif len(args) == 1:
             message = runtime.string(args[0])
         else:
@@ -94,11 +91,13 @@ class BaseExceptionGroup(BaseException):
         values = tuple(exceptions)
         if len(values) == 0:
             raise ValueError(  # pyright: ignore[reportGeneralTypeIssues]
-                'exceptions must be a non-empty sequence')
+                "exceptions must be a non-empty sequence"
+            )
         for value in values:
             if not isinstance(value, BaseException):
                 raise TypeError(
-                    'exceptions must be a sequence of BaseException instances')
+                    "exceptions must be a sequence of BaseException instances"
+                )
         BaseException.__init__(self, message, values)
         self.message = message
         self.exceptions = values
@@ -114,13 +113,11 @@ class BaseExceptionGroup(BaseException):
 
 
 class ExceptionGroup(BaseExceptionGroup, Exception):
-
     def __init__(self, message: str, exceptions: Any) -> None:
         values = tuple(exceptions)
         for value in values:
             if not isinstance(value, Exception):
-                raise TypeError(
-                    'Cannot nest BaseExceptions in an ExceptionGroup')
+                raise TypeError("Cannot nest BaseExceptions in an ExceptionGroup")
         BaseExceptionGroup.__init__(self, message, values)
 
 
@@ -128,21 +125,20 @@ class ExceptionGroup(BaseExceptionGroup, Exception):
 # Keeping their native constructors means errors raised by the runtime itself
 # are caught by the corresponding Python ``except`` clauses.
 runtime.object.setPrototypeOf(
-    runtime.reflect.get(runtime.type_error, 'prototype'),
-    runtime.reflect.get(Exception, 'prototype'),
+    runtime.reflect.get(runtime.type_error, "prototype"),
+    runtime.reflect.get(Exception, "prototype"),
 )
 runtime.object.setPrototypeOf(
-    runtime.reflect.get(runtime.reference_error, 'prototype'),
-    runtime.reflect.get(Exception, 'prototype'),
+    runtime.reflect.get(runtime.reference_error, "prototype"),
+    runtime.reflect.get(Exception, "prototype"),
 )
 runtime.object.setPrototypeOf(
-    runtime.reflect.get(runtime.syntax_error, 'prototype'),
-    runtime.reflect.get(Exception, 'prototype'),
+    runtime.reflect.get(runtime.syntax_error, "prototype"),
+    runtime.reflect.get(Exception, "prototype"),
 )
 
 
 class SystemExit(BaseException):
-
     def __init__(self, *args: object) -> None:
         BaseException.__init__(self, *args)
         self.code = args[0] if len(args) > 0 else None
@@ -169,7 +165,6 @@ class IndexError(LookupError):
 
 
 class KeyError(LookupError):
-
     def __str__(self) -> str:
         if len(self.args) == 1:
             return runtime.repr(self.args[0])
@@ -237,7 +232,6 @@ class ResourceWarning(Warning):
 
 
 class OSError(Exception):
-
     def __init__(self, *args: object) -> None:
         Exception.__init__(self, *args)
         self.errno = args[0] if len(args) > 0 else None
@@ -245,11 +239,11 @@ class OSError(Exception):
         self.filename = args[2] if len(args) > 2 else None
         self.filename2 = args[3] if len(args) > 3 else None
         if self.errno is not None and self.strerror is not None:
-            message = '[Errno ' + str(self.errno) + '] ' + str(self.strerror)
+            message = "[Errno " + str(self.errno) + "] " + str(self.strerror)
             if self.filename is not None:
-                message += ': ' + runtime.repr(self.filename)
+                message += ": " + runtime.repr(self.filename)
             if self.filename2 is not None:
-                message += ' -> ' + runtime.repr(self.filename2)
+                message += " -> " + runtime.repr(self.filename2)
             self.message = message
 
 
@@ -328,7 +322,6 @@ class GeneratorExit(BaseException):
 
 
 class StopIteration(Exception):
-
     def __init__(self, *args: object) -> None:
         Exception.__init__(self, *args)
         self.value = args[0] if len(args) > 0 else None
@@ -339,7 +332,6 @@ class StopAsyncIteration(Exception):
 
 
 class ρσ_non_exception_throw(BaseException):
-
     def __init__(self, value: object) -> None:
         BaseException.__init__(self, value)
         self.value = value

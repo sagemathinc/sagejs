@@ -5,8 +5,12 @@ to one.  The implementation follows Python's :mod:`colorsys` module.
 """
 
 __all__ = [
-    'rgb_to_yiq', 'yiq_to_rgb', 'rgb_to_hls', 'hls_to_rgb',
-    'rgb_to_hsv', 'hsv_to_rgb',
+    "rgb_to_yiq",
+    "yiq_to_rgb",
+    "rgb_to_hls",
+    "hls_to_rgb",
+    "rgb_to_hsv",
+    "hsv_to_rgb",
 ]
 
 ONE_THIRD = 1.0 / 3.0

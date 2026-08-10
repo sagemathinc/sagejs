@@ -1,8 +1,13 @@
 from __python__ import hash_literals
 
 from ast_types import (
-    AST_AnnotatedAssignment, AST_Class, AST_Method,
-    AST_SymbolNonlocal, AST_SymbolRef, AST_Var, is_node_type
+    AST_AnnotatedAssignment,
+    AST_Class,
+    AST_Method,
+    AST_SymbolNonlocal,
+    AST_SymbolRef,
+    AST_Var,
+    is_node_type,
 )
 from output.functions import decorate, function_definition, function_annotation
 from output.utils import create_doctring
@@ -16,12 +21,11 @@ def print_class(output):
     # Runtime-loaded package modules do not participate in the compiler's
     # cross-module class metadata cache. Keep emission robust when an imported
     # base supplied only the minimal dynamic shell used during lowering.
-    self['static'] = self['static'] or {}
+    self["static"] = self["static"] or {}
     self.classmethods = self.classmethods or {}
     self.bound = self.bound or []
     self.shadowed_bound = self.shadowed_bound or []
-    self.bind_inherited_methods = (
-        self.bind_inherited_methods is not False)
+    self.bind_inherited_methods = self.bind_inherited_methods is not False
     self.dynamic_properties = self.dynamic_properties or {}
     self.classvars = self.classvars or {}
     self.bases = self.bases or []
@@ -34,47 +38,53 @@ def print_class(output):
         and not output.options.python_attributes
     )
     native_storage_parent = None
-    if (
-        is_node_type(self.parent, AST_SymbolRef)
-        and self.parent.name in [
-            'dict', 'int', 'list', 'map', 'str',
-            'ρσ_dict', 'ρσ_int', 'ρσ_list_constructor', 'ρσ_str']
-    ):
+    if is_node_type(self.parent, AST_SymbolRef) and self.parent.name in [
+        "dict",
+        "int",
+        "list",
+        "map",
+        "str",
+        "ρσ_dict",
+        "ρσ_int",
+        "ρσ_list_constructor",
+        "ρσ_str",
+    ]:
         native_storage_parent = self.parent.name
 
     def class_def(method, is_var):
         output.indent()
         self.name.print(output)
-        if not is_var and method and has_prop(self['static'], method):
+        if not is_var and method and has_prop(self["static"], method):
             output.assign("." + method)
         else:
             if is_var:
                 output.assign(".prototype[" + method + "]")
             else:
-                output.assign(".prototype" +
-                              (("." + method) if method else ""))
+                output.assign(".prototype" + (("." + method) if method else ""))
 
     def define_method(stmt, is_property):
         name = stmt.name.name
-        javascript_name = 'ρσ_method_' + name
+        javascript_name = "ρσ_method_" + name
         if not is_property:
             class_def(name)
         # only strip first argument if the method is static
-        is_static = has_prop(self['static'], name)
+        is_static = has_prop(self["static"], name)
         is_classmethod = has_prop(self.classmethods, name)
         strip_first = not is_static
 
         # decorate the method
         if stmt.decorators and stmt.decorators.length:
             decorate(
-                stmt.decorators, output,
+                stmt.decorators,
+                output,
                 lambda: function_definition(
                     stmt,
                     output,
                     strip_first,
                     True,
                     javascript_name,
-                ))
+                ),
+            )
             if not is_property:
                 output.end_statement()
         else:
@@ -87,79 +97,83 @@ def print_class(output):
             )
             if not is_property:
                 output.end_statement()
-                fname = output.make_name(self.name.name) + (
-                    '.' if is_static else '.prototype.'
-                ) + name
+                fname = (
+                    output.make_name(self.name.name)
+                    + ("." if is_static else ".prototype.")
+                    + name
+                )
                 function_annotation(stmt, output, strip_first, fname)
                 if is_static:
                     output.indent()
                     self.name.print(output)
-                    output.assign('.prototype.' + name)
+                    output.assign(".prototype." + name)
                     self.name.print(output)
-                    output.print('.' + name)
+                    output.print("." + name)
                     output.end_statement()
                     output.indent()
                     self.name.print(output)
-                    output.print('.' + name + '.__staticmethod__ = true')
+                    output.print("." + name + ".__staticmethod__ = true")
                     output.end_statement()
                 elif is_classmethod:
                     output.indent()
                     self.name.print(output)
-                    output.print(
-                        '.prototype.' + name + '.__classmethod__ = true')
+                    output.print(".prototype." + name + ".__classmethod__ = true")
                     output.end_statement()
-                if (
-                    is_classmethod
-                    or not is_static and not name.startswith('__')
-                ):
+                if is_classmethod or not is_static and not name.startswith("__"):
                     output.indent()
                     self.name.print(output)
-                    output.assign('.' + name)
+                    output.assign("." + name)
                     self.name.print(output)
-                    output.print('.prototype.' + name)
+                    output.print(".prototype." + name)
                     output.end_statement()
 
         if not is_property and not is_static:
             output.indent()
             self.name.print(output)
             output.print(
-                '.prototype.' + name
-                + '.__sagejs_method_signature_excludes_self__ = true')
+                ".prototype."
+                + name
+                + ".__sagejs_method_signature_excludes_self__ = true"
+            )
             output.end_statement()
 
     def define_default_method(name, body):
         class_def(name)
-        output.spaced('function', name, '()', '')
+        output.spaced("function", name, "()", "")
         output.with_block(lambda: [output.indent(), body()])
         output.end_statement()
 
     def add_hidden_property(name, proceed, writable=False):
-        output.indent(), output.print('Object.defineProperty(')
-        self.name.print(
-            output), output.print('.prototype'), output.comma(), output.print(
-                JSON.stringify(name)), output.comma()
-        output.spaced(
-            '{value:',
-            ''), proceed()
+        output.indent(), output.print("Object.defineProperty(")
+        (
+            self.name.print(output),
+            output.print(".prototype"),
+            output.comma(),
+            output.print(JSON.stringify(name)),
+            output.comma(),
+        )
+        output.spaced("{value:", ""), proceed()
         if writable:
-            output.print(', writable:true, configurable:true')
-        output.print('})'), output.end_statement()
+            output.print(", writable:true, configurable:true")
+        output.print("})"), output.end_statement()
 
     def add_hidden_class_property(name, proceed, writable=False):
-        output.indent(), output.print('Object.defineProperty(')
-        self.name.print(output), output.comma(), output.print(
-            JSON.stringify(name)), output.comma()
-        output.spaced(
-            '{value:',
-            ''), proceed()
+        output.indent(), output.print("Object.defineProperty(")
+        (
+            self.name.print(output),
+            output.comma(),
+            output.print(JSON.stringify(name)),
+            output.comma(),
+        )
+        output.spaced("{value:", ""), proceed()
         if writable:
-            output.print(', writable:true, configurable:true')
-        output.print('})'), output.end_statement()
+            output.print(", writable:true, configurable:true")
+        output.print("})"), output.end_statement()
 
     # generate constructor
     def write_constructor():
-        uses_python_new = has_prop(self['static'], '__new__')
-        instance_name = 'ρσ_python_instance' if uses_python_new else 'this'
+        uses_python_new = has_prop(self["static"], "__new__")
+        instance_name = "ρσ_python_instance" if uses_python_new else "this"
         output.print("function")
         output.space()
         self.name.print(output)
@@ -168,20 +182,20 @@ def print_class(output):
 
         def f_constructor():
             output.indent()
-            output.print('if (!(this instanceof ')
+            output.print("if (!(this instanceof ")
             self.name.print(output)
-            output.print('))')
+            output.print("))")
 
             def call_without_new():
                 output.indent()
-                output.print('var ρσ_allocated = Object.create(')
+                output.print("var ρσ_allocated = Object.create(")
                 self.name.print(output)
-                output.print('.prototype)')
+                output.print(".prototype)")
                 output.end_statement()
                 output.indent()
-                output.print('return Reflect.apply(')
+                output.print("return Reflect.apply(")
                 self.name.print(output)
-                output.print(', ρσ_allocated, arguments)')
+                output.print(", ρσ_allocated, arguments)")
                 output.end_statement()
 
             output.with_block(call_without_new)
@@ -192,112 +206,106 @@ def print_class(output):
             # the newly allocated Array/Map wrapper.
             if native_storage_parent and not uses_python_new:
                 output.indent()
-                if native_storage_parent in (
-                    'list', 'ρσ_list_constructor'
-                ):
-                    output.print('if (!Array.isArray(this))')
-                elif native_storage_parent in ('str', 'ρσ_str'):
+                if native_storage_parent in ("list", "ρσ_list_constructor"):
+                    output.print("if (!Array.isArray(this))")
+                elif native_storage_parent in ("str", "ρσ_str"):
                     output.print(
-                        'if (Object.prototype.toString.call(this)'
-                        ' !== "[object String]")')
-                elif native_storage_parent in ('int', 'ρσ_int'):
+                        "if (Object.prototype.toString.call(this)"
+                        ' !== "[object String]")'
+                    )
+                elif native_storage_parent in ("int", "ρσ_int"):
                     output.print(
-                        'if (Object.prototype.toString.call(this)'
-                        ' !== "[object Number]")')
-                elif native_storage_parent == 'map':
-                    output.print(
-                        'if (this.ρσ_native_map_subclass !== true)')
+                        "if (Object.prototype.toString.call(this)"
+                        ' !== "[object Number]")'
+                    )
+                elif native_storage_parent == "map":
+                    output.print("if (this.ρσ_native_map_subclass !== true)")
                 else:
                     output.print(
-                        'if (this.jsmap === undefined'
-                        ' || this.keymap === undefined)')
+                        "if (this.jsmap === undefined || this.keymap === undefined)"
+                    )
 
                 def f_native_storage():
                     output.indent()
-                    output.print('var ρσ_native_instance = ')
-                    if native_storage_parent in ('str', 'ρσ_str'):
-                        output.print(
-                            'Reflect.construct('
-                            'String, arguments, ')
+                    output.print("var ρσ_native_instance = ")
+                    if native_storage_parent in ("str", "ρσ_str"):
+                        output.print("Reflect.construct(String, arguments, ")
                         self.name.print(output)
-                        output.print(')')
-                    elif native_storage_parent in ('int', 'ρσ_int'):
-                        output.print(
-                            'Reflect.construct('
-                            'Number, arguments, ')
+                        output.print(")")
+                    elif native_storage_parent in ("int", "ρσ_int"):
+                        output.print("Reflect.construct(Number, arguments, ")
                         self.name.print(output)
-                        output.print(')')
-                    elif native_storage_parent == 'map':
-                        output.print(
-                            'map.apply(undefined, arguments)')
+                        output.print(")")
+                    elif native_storage_parent == "map":
+                        output.print("map.apply(undefined, arguments)")
                     else:
                         self.parent.print(output)
-                        output.print('()')
+                        output.print("()")
                     output.end_statement()
-                    if native_storage_parent == 'map':
+                    if native_storage_parent == "map":
                         output.indent()
                         output.print(
-                            'Object.setPrototypeOf('
-                            'map.prototype, '
-                            'Object.getPrototypeOf('
-                            'ρσ_native_instance))')
+                            "Object.setPrototypeOf("
+                            "map.prototype, "
+                            "Object.getPrototypeOf("
+                            "ρσ_native_instance))"
+                        )
                         output.end_statement()
                         output.indent()
                         output.print(
-                            'Object.defineProperty('
-                            'ρσ_native_instance, '
+                            "Object.defineProperty("
+                            "ρσ_native_instance, "
                             '"ρσ_native_map_subclass", '
-                            '{value: true})')
+                            "{value: true})"
+                        )
                         output.end_statement()
                     output.indent()
-                    output.print(
-                        'Object.setPrototypeOf('
-                        'ρσ_native_instance, ')
+                    output.print("Object.setPrototypeOf(ρσ_native_instance, ")
                     self.name.print(output)
-                    output.print('.prototype)')
+                    output.print(".prototype)")
                     output.end_statement()
                     output.indent()
                     self.name.print(output)
-                    output.print(
-                        '.apply(ρσ_native_instance, arguments)')
+                    output.print(".apply(ρσ_native_instance, arguments)")
                     output.end_statement()
                     output.indent()
-                    output.print('return ρσ_native_instance')
+                    output.print("return ρσ_native_instance")
                     output.end_statement()
 
                 output.with_block(f_native_storage)
             if uses_python_new:
                 output.indent()
-                output.print('var ' + instance_name + ' = ')
+                output.print("var " + instance_name + " = ")
                 self.name.print(output)
-                output.print(
-                    '.__new__.apply(undefined, [')
+                output.print(".__new__.apply(undefined, [")
                 self.name.print(output)
-                output.print(
-                    '].concat(Array.prototype.slice.call(arguments)))')
+                output.print("].concat(Array.prototype.slice.call(arguments)))")
                 output.end_statement()
                 output.indent()
-                output.print('if (!(' + instance_name + ' instanceof ')
+                output.print("if (!(" + instance_name + " instanceof ")
                 self.name.print(output)
-                output.print(')) return ' + instance_name)
+                output.print(")) return " + instance_name)
                 output.end_statement()
             if not self.lightweight:
                 output.indent()
                 output.spaced(
-                    'if',
-                    '(' + instance_name + '.ρσ_object_id',
-                    '===',
-                    'undefined)',
-                    'Object.defineProperty(' + instance_name + ',',
+                    "if",
+                    "(" + instance_name + ".ρσ_object_id",
+                    "===",
+                    "undefined)",
+                    "Object.defineProperty(" + instance_name + ",",
                     '"ρσ_object_id",',
                     '{"value":++ρσ_object_counter})',
                 )
                 output.end_statement()
             if self.bound.length or self.shadowed_bound.length:
                 output.indent()
-                self.name.print(output), output.print(
-                    ".prototype.__bind_methods__.call("
-                    + instance_name + ")")
+                (
+                    self.name.print(output),
+                    output.print(
+                        ".prototype.__bind_methods__.call(" + instance_name + ")"
+                    ),
+                )
                 output.end_statement()
             elif self.bind_inherited_methods and self.bases.length:
                 # A dynamically resolved base (for example ``Base[T]`` from
@@ -308,39 +316,39 @@ def print_class(output):
                 # lose their function metadata and are interpreted as a
                 # positional kwargs packet.
                 output.indent()
-                output.print('if (typeof ')
+                output.print("if (typeof ")
                 self.name.print(output)
-                output.print(
-                    '.prototype.__bind_methods__ === "function") ')
+                output.print('.prototype.__bind_methods__ === "function") ')
                 self.name.print(output)
-                output.print(
-                    '.prototype.__bind_methods__.call(' + instance_name + ')')
+                output.print(".prototype.__bind_methods__.call(" + instance_name + ")")
                 output.end_statement()
             output.indent()
-            output.print('var ρσ_init_result = ')
+            output.print("var ρσ_init_result = ")
             self.name.print(output)
-            output.print(
-                ".prototype.__init__.apply(" + instance_name
-            ), output.comma(
-            ), output.print('arguments)')
+            (
+                output.print(".prototype.__init__.apply(" + instance_name),
+                output.comma(),
+                output.print("arguments)"),
+            )
             output.end_statement()
             if not compiling_baselib:
                 output.indent()
                 output.print(
-                    'if (ρσ_init_result !== undefined'
-                    ' && ρσ_init_result !== null) '
-                    'throw new TypeError('
-                    '"__init__() should return None")')
+                    "if (ρσ_init_result !== undefined"
+                    " && ρσ_init_result !== null) "
+                    "throw new TypeError("
+                    '"__init__() should return None")'
+                )
                 output.end_statement()
             output.indent()
-            output.print('return ' + instance_name)
+            output.print("return " + instance_name)
             output.end_statement()
 
         output.with_block(f_constructor)
 
     decorators = self.decorators or []
     if decorators.length or self.sequential_definition:
-        output.print('var ')
+        output.print("var ")
         output.assign(self.name)
         write_constructor()
         output.semicolon()
@@ -349,68 +357,61 @@ def print_class(output):
     output.newline()
 
     add_hidden_class_property(
-        '__name__',
-        lambda: output.print(JSON.stringify(self.name.name)),
-        True)
+        "__name__", lambda: output.print(JSON.stringify(self.name.name)), True
+    )
     add_hidden_class_property(
-        '__qualname__',
-        lambda: output.print(JSON.stringify(self.name.name)),
-        True)
+        "__qualname__", lambda: output.print(JSON.stringify(self.name.name)), True
+    )
 
     def print_class_module():
         if self.module_id:
             output.print(JSON.stringify(self.module_id))
         else:
-            output.print(
-                '(typeof __name__ === "undefined" ? null : __name__)')
+            output.print('(typeof __name__ === "undefined" ? null : __name__)')
 
-    add_hidden_class_property(
-        '__module__',
-        print_class_module,
-        True)
+    add_hidden_class_property("__module__", print_class_module, True)
 
     class_annotations = []
     for statement in self.body:
         annotated = statement
         if not is_node_type(annotated, AST_AnnotatedAssignment):
-            annotated = getattr(statement, 'body', None)
-        if (
-            is_node_type(annotated, AST_AnnotatedAssignment)
-            and is_node_type(annotated.target, AST_SymbolRef)
+            annotated = getattr(statement, "body", None)
+        if is_node_type(annotated, AST_AnnotatedAssignment) and is_node_type(
+            annotated.target, AST_SymbolRef
         ):
             class_annotations.append(annotated)
     if class_annotations.length:
+
         def print_class_annotations():
             if compiling_baselib:
-                output.print('{')
+                output.print("{")
                 for index, annotated in enumerate(class_annotations):
                     if index:
                         output.comma()
                     output.print(JSON.stringify(annotated.target.name))
                     output.colon()
                     annotated.annotation.print(output)
-                output.print('}')
+                output.print("}")
                 return
-            output.print('(function(){var ρσ_annotations = ρσ_dict();')
+            output.print("(function(){var ρσ_annotations = ρσ_dict();")
             for annotated in class_annotations:
-                output.print('ρσ_annotations.set(')
+                output.print("ρσ_annotations.set(")
                 output.print(JSON.stringify(annotated.target.name))
                 output.comma()
                 annotated.annotation.print(output)
-                output.print(');')
-            output.print('return ρσ_annotations;})()')
+                output.print(");")
+            output.print("return ρσ_annotations;})()")
 
-        add_hidden_class_property(
-            '__annotations__', print_class_annotations, True)
+        add_hidden_class_property("__annotations__", print_class_annotations, True)
 
     if decorators.length:
         output.indent()
         self.name.print(output)
-        output.spaced('.ρσ_decorators', '=', '[')
+        output.spaced(".ρσ_decorators", "=", "[")
         num = decorators.length
         for i in range(num):
             decorators[i].expression.print(output)
-            output.spaced(',' if i < num - 1 else ']')
+            output.spaced("," if i < num - 1 else "]")
         output.semicolon()
         output.newline()
 
@@ -419,12 +420,12 @@ def print_class(output):
     # permit ``class C(type([].append))``.
     if self.bases.length:
         output.indent()
-        output.print('ρσ_validate_class_bases([')
+        output.print("ρσ_validate_class_bases([")
         for i, base in enumerate(self.bases):
             if i:
                 output.comma()
             base.print(output)
-        output.print('])')
+        output.print("])")
         output.end_statement()
 
     # inheritance
@@ -445,16 +446,21 @@ def print_class(output):
         seen_methods = Object.create(None)
 
         def f_bind_methods():
-            output.spaced('function', '()', '')
+            output.spaced("function", "()", "")
 
             def f_bases():
                 if self.bases.length:
                     for i in range(self.bases.length - 1, -1, -1):
                         base = self.bases[i]
-                        output.indent(), base.print(output), output.spaced(
-                            '.prototype.__bind_methods__', '&&', '')
-                        base.print(output), output.print(
-                            '.prototype.__bind_methods__.call(this)')
+                        (
+                            output.indent(),
+                            base.print(output),
+                            output.spaced(".prototype.__bind_methods__", "&&", ""),
+                        )
+                        (
+                            base.print(output),
+                            output.print(".prototype.__bind_methods__.call(this)"),
+                        )
                         output.end_statement()
                 # Base binders eagerly cache methods as own instance fields.
                 # A class-body value with the same name (including a runtime
@@ -463,7 +469,7 @@ def print_class(output):
                 # descriptor lookup observes the instance.
                 for bname in self.shadowed_bound:
                     output.indent()
-                    output.print('delete this.' + bname)
+                    output.print("delete this." + bname)
                     output.end_statement()
                 # Lightweight immutable mathematical values are often
                 # allocated millions of times.  Their own methods use lazy
@@ -477,89 +483,113 @@ def print_class(output):
                         is_classmethod = has_prop(self.classmethods, bname)
 
                         def f_bind_one():
-                            output.indent(), output.assign('this.' + bname)
+                            output.indent(), output.assign("this." + bname)
                             self.name.print(output)
+                            output.print(".prototype." + bname + ".bind(")
                             output.print(
-                                '.prototype.' + bname + '.bind(')
+                                "this.constructor" if is_classmethod else "this"
+                            )
+                            output.print(")")
+                            output.end_statement()
+                            (
+                                output.indent(),
+                                output.print("Object.assign(this." + bname + ", "),
+                            )
+                            (
+                                self.name.print(output),
+                                output.print(".prototype." + bname + ")"),
+                            )
+                            output.end_statement()
+                            (
+                                output.indent(),
+                                output.assign("this." + bname + ".__func__"),
+                            )
+                            self.name.print(output), output.print(".prototype." + bname)
+                            output.end_statement()
+                            (
+                                output.indent(),
+                                output.assign("this." + bname + ".__self__"),
+                            )
                             output.print(
-                                'this.constructor'
-                                if is_classmethod else 'this')
-                            output.print(')')
+                                "this.constructor" if is_classmethod else "this"
+                            )
                             output.end_statement()
-                            output.indent(), output.print(
-                                'Object.assign(this.' + bname + ', ')
-                            self.name.print(output), output.print(
-                                '.prototype.' + bname + ')')
-                            output.end_statement()
-                            output.indent(), output.assign(
-                                'this.' + bname + '.__func__')
-                            self.name.print(output), output.print(
-                                '.prototype.' + bname)
-                            output.end_statement()
-                            output.indent(), output.assign(
-                                'this.' + bname + '.__self__')
-                            output.print(
-                                'this.constructor'
-                                if is_classmethod else 'this')
-                            output.end_statement()
-                            output.indent(), output.assign(
-                                'this.' + bname + '.__name__')
+                            (
+                                output.indent(),
+                                output.assign("this." + bname + ".__name__"),
+                            )
                             output.print(JSON.stringify(bname))
                             output.end_statement()
-                            output.indent(), output.assign(
-                                'this.' + bname
-                                + '.__sagejs_eager_bound_cache__')
-                            output.print('true')
+                            (
+                                output.indent(),
+                                output.assign(
+                                    "this." + bname + ".__sagejs_eager_bound_cache__"
+                                ),
+                            )
+                            output.print("true")
                             output.end_statement()
 
                         output.indent()
-                        output.print('if (typeof ')
+                        output.print("if (typeof ")
                         self.name.print(output)
-                        output.print(
-                            '.prototype.' + bname
-                            + ' === "function")')
+                        output.print(".prototype." + bname + ' === "function")')
                         output.with_block(f_bind_one)
 
             output.with_block(f_bases)
 
-        add_hidden_property('__bind_methods__', f_bind_methods)
+        add_hidden_property("__bind_methods__", f_bind_methods)
 
     # dynamic properties
     property_names = Object.keys(self.dynamic_properties)
     if property_names.length:
         output.indent()
-        output.print('Object.defineProperties')
+        output.print("Object.defineProperties")
 
         def f_props():
             self.name.print(output)
-            output.print('.prototype')
+            output.print(".prototype")
             output.comma()
             output.space()
 
             def f_enum():
                 for name in property_names:
                     prop = self.dynamic_properties[name]
-                    output.indent(), output.print(JSON.stringify(name) +
-                                                  ':'), output.space()
+                    (
+                        output.indent(),
+                        output.print(JSON.stringify(name) + ":"),
+                        output.space(),
+                    )
 
                     def f_enum2():
-                        output.indent(), output.print(
-                            '"enumerable":'), output.space(), output.print(
-                                'true'), output.comma(), output.newline()
+                        (
+                            output.indent(),
+                            output.print('"enumerable":'),
+                            output.space(),
+                            output.print("true"),
+                            output.comma(),
+                            output.newline(),
+                        )
                         if prop.getter:
-                            output.indent(), output.print(
-                                '"get":'), output.space()
-                            define_method(
-                                prop.getter,
-                                True), output.comma(), output.newline()
+                            output.indent(), output.print('"get":'), output.space()
+                            (
+                                define_method(prop.getter, True),
+                                output.comma(),
+                                output.newline(),
+                            )
                         output.indent(), output.print('"set":'), output.space()
                         if prop.setter:
                             define_method(prop.setter, True), output.newline()
                         else:
-                            output.spaced(
-                                'function', '()', '{',
-                                '''throw new AttributeError("can't set attribute")''',
-                                '}'), output.newline()
+                            (
+                                output.spaced(
+                                    "function",
+                                    "()",
+                                    "{",
+                                    """throw new AttributeError("can't set attribute")""",
+                                    "}",
+                                ),
+                                output.newline(),
+                            )
 
                     output.with_block(f_enum2)
                     output.comma()
@@ -570,14 +600,14 @@ def print_class(output):
         output.with_parens(f_props)
         output.end_statement()
         output.indent()
-        output.print('ρσ_register_data_descriptor_names(')
+        output.print("ρσ_register_data_descriptor_names(")
         output.print(JSON.stringify(property_names))
-        output.print(')')
+        output.print(")")
         output.end_statement()
         for name in property_names:
             prop = self.dynamic_properties[name]
             if prop.deleter:
-                class_def('ρσ_property_deleter_' + name)
+                class_def("ρσ_property_deleter_" + name)
                 define_method(prop.deleter, True)
                 output.end_statement()
 
@@ -597,12 +627,9 @@ def print_class(output):
             early_statements.append(stmt)
 
     def print_class_statement(stmt):
-        if (
-            is_node_type(stmt, AST_Var)
-            and all(
-                is_node_type(definition.name, AST_SymbolNonlocal)
-                for definition in stmt.definitions
-            )
+        if is_node_type(stmt, AST_Var) and all(
+            is_node_type(definition.name, AST_SymbolNonlocal)
+            for definition in stmt.definitions
         ):
             return
         output.indent()
@@ -625,7 +652,7 @@ def print_class(output):
         def f_default():
             if self.parent:
                 self.parent.print(output)
-                output.spaced('.prototype.__init__', '&&')
+                output.spaced(".prototype.__init__", "&&")
                 output.space(), self.parent.print(output)
                 output.print(".prototype.__init__.apply")
 
@@ -637,11 +664,10 @@ def print_class(output):
                 output.with_parens(f_this_arguments)
                 output.end_statement()
 
-        define_default_method('__init__', f_default)
+        define_default_method("__init__", f_default)
         output.indent()
         self.name.print(output)
-        output.print(
-            '.prototype.__init__.__sagejs_synthetic_init__ = true')
+        output.print(".prototype.__init__.__sagejs_synthetic_init__ = true")
         output.end_statement()
 
     defined_methods = {}
@@ -661,32 +687,33 @@ def print_class(output):
                     stmt.name.name,
                 )
                 output.end_statement()
-                function_annotation(
-                    stmt, output, False, stmt.name.name)
+                function_annotation(stmt, output, False, stmt.name.name)
                 continue
             define_method(stmt)
             defined_methods[stmt.name.name] = True
             sname = stmt.name.name
-            if sname is '__init__':
+            if sname is "__init__":
                 # Copy argument handling data so that kwarg interpolation works when calling the constructor
                 for attr in [
-                        '.__argnames__',
-                        '.__defaults__',
-                        '.__handles_kwarg_interpolation__',
-                        '.__annotations__',
-                        '.__annotations_text__',
-                        '.__kwonly__',
-                        '.__varargs__',
-                        '.__varkw__',
+                    ".__argnames__",
+                    ".__defaults__",
+                    ".__handles_kwarg_interpolation__",
+                    ".__annotations__",
+                    ".__annotations_text__",
+                    ".__kwonly__",
+                    ".__varargs__",
+                    ".__varkw__",
                 ]:
-                    output.indent(), self.name.print(output), output.assign(
-                        attr)
-                    self.name.print(output), output.print(
-                        '.prototype.__init__' + attr), output.end_statement()
-            if sname is '__iter__':
-                class_def('ρσ_iterator_symbol', True)
+                    output.indent(), self.name.print(output), output.assign(attr)
+                    (
+                        self.name.print(output),
+                        output.print(".prototype.__init__" + attr),
+                        output.end_statement(),
+                    )
+            if sname is "__iter__":
+                class_def("ρσ_iterator_symbol", True)
                 self.name.print(output)
-                output.print('.prototype.' + stmt.name.name)
+                output.print(".prototype." + stmt.name.name)
                 output.end_statement()
 
         elif is_node_type(stmt, AST_Class):
@@ -703,26 +730,26 @@ def print_class(output):
             print_class_statement(stmt)
             emitted_statements.append(stmt)
 
-    if defined_methods['__next__']:
-        class_def('next', False)
+    if defined_methods["__next__"]:
+        class_def("next", False)
         # Built-in classes are emitted before the internal runtime adapter is
         # initialized.  Resolve it when iteration starts instead of capturing
         # its temporarily undefined value while the baselib is loading.
-        output.print(
-            'function(){return ρσ_python_iterator_next.call(this)}')
+        output.print("function(){return ρσ_python_iterator_next.call(this)}")
         output.end_statement()
 
-    native_list_parent = native_storage_parent in (
-        'list', 'ρσ_list_constructor')
+    native_list_parent = native_storage_parent in ("list", "ρσ_list_constructor")
 
-    if not defined_methods['__repr__'] and not native_list_parent:
+    if not defined_methods["__repr__"] and not native_list_parent:
 
         def f_repr():
             if self.parent:
-                output.print('if('), self.parent.print(output), output.spaced(
-                    '.prototype.__repr__)', 'return', self.parent)
-                output.print(
-                    '.prototype.__repr__.call(this)'), output.end_statement()
+                (
+                    output.print("if("),
+                    self.parent.print(output),
+                    output.spaced(".prototype.__repr__)", "return", self.parent),
+                )
+                output.print(".prototype.__repr__.call(this)"), output.end_statement()
             # A class can outlive (or be rendered outside) the JavaScript
             # scope which compiled its definition.  Derive the display name
             # from the class object instead of closing over the module's
@@ -730,66 +757,71 @@ def print_class(output):
             # this is essential for bootstrap classes whose defining scope
             # intentionally has no Python module globals.
             class_module = '(this.constructor.__module__ || "__main__")'
-            class_name = ('(this.constructor.__qualname__ || '
-                          'this.constructor.__name__ || '
-                          'this.constructor.name)')
-            output.indent(), output.spaced('return', '"<"', '+', class_module,
-                                           '+', '"."', '+', class_name, '')
-            output.spaced('+', '" #"', '+', 'this.ρσ_object_id', '+', '">"')
+            class_name = (
+                "(this.constructor.__qualname__ || "
+                "this.constructor.__name__ || "
+                "this.constructor.name)"
+            )
+            (
+                output.indent(),
+                output.spaced(
+                    "return", '"<"', "+", class_module, "+", '"."', "+", class_name, ""
+                ),
+            )
+            output.spaced("+", '" #"', "+", "this.ρσ_object_id", "+", '">"')
             output.end_statement()
 
-        define_default_method('__repr__', f_repr)
+        define_default_method("__repr__", f_repr)
         output.indent()
         self.name.print(output)
-        output.print(
-            '.prototype.__repr__.__sagejs_synthetic_method__ = true')
+        output.print(".prototype.__repr__.__sagejs_synthetic_method__ = true")
         output.end_statement()
 
-    if (
-        not defined_methods['__str__']
-        and (not native_list_parent or defined_methods['__repr__'])
+    if not defined_methods["__str__"] and (
+        not native_list_parent or defined_methods["__repr__"]
     ):
 
         def f_str():
             if self.parent:
-                output.print('if('), self.parent.print(output), output.spaced(
-                    '.prototype.__str__)', 'return', self.parent)
-                output.print(
-                    '.prototype.__str__.call(this)'), output.end_statement()
-            output.spaced('return', 'this.__repr__()')
+                (
+                    output.print("if("),
+                    self.parent.print(output),
+                    output.spaced(".prototype.__str__)", "return", self.parent),
+                )
+                output.print(".prototype.__str__.call(this)"), output.end_statement()
+            output.spaced("return", "this.__repr__()")
             output.end_statement()
 
-        define_default_method('__str__', f_str)
+        define_default_method("__str__", f_str)
         output.indent()
         self.name.print(output)
-        output.print(
-            '.prototype.__str__.__sagejs_synthetic_method__ = true')
+        output.print(".prototype.__str__.__sagejs_synthetic_method__ = true")
         output.end_statement()
 
     # Multiple inheritance
     def f_basis():
         if output.options.python_tuples:
-            output.print('ρσ_math_tuple(')
-        output.print('[')
+            output.print("ρσ_math_tuple(")
+        output.print("[")
         for i in range(len(self.bases)):
             self.bases[i].print(output)
             if i < self.bases.length - 1:
                 output.comma()
-        output.print(']')
+        output.print("]")
         if output.options.python_tuples:
-            output.print(')')
+            output.print(")")
 
-    add_hidden_property('__bases__', f_basis)
-    add_hidden_class_property('__bases__', f_basis)
+    add_hidden_property("__bases__", f_basis)
+    add_hidden_class_property("__bases__", f_basis)
 
     def f_mro():
-        output.print('ρσ_compute_mro(')
+        output.print("ρσ_compute_mro(")
         self.name.print(output)
         output.comma()
         f_basis()
-        output.print(')')
+        output.print(")")
 
-    add_hidden_class_property('__mro__', f_mro)
+    add_hidden_class_property("__mro__", f_mro)
 
     if self.bases.length > 1:
         output.indent()
@@ -798,20 +830,24 @@ def print_class(output):
         for i in range(1, len(self.bases)):
             output.comma()
             self.bases[i].print(output)
-        output.print(')'), output.end_statement()
+        output.print(")"), output.end_statement()
 
     # Every Python class has ``__doc__``.  Keep the attribute present with a
     # value of ``None`` even when the class has no docstring; introspection
     # libraries rely on the distinction between a missing attribute and an
     # undocumented class.
     def f_doc():
-        if self.docstrings and self.docstrings.length and output.options.keep_docstrings:
+        if (
+            self.docstrings
+            and self.docstrings.length
+            and output.options.keep_docstrings
+        ):
             output.print(JSON.stringify(create_doctring(self.docstrings)))
         else:
-            output.print('null')
+            output.print("null")
 
-    add_hidden_property('__doc__', f_doc, True)
-    add_hidden_class_property('__doc__', f_doc, True)
+    add_hidden_property("__doc__", f_doc, True)
+    add_hidden_class_property("__doc__", f_doc, True)
 
     # Other statements in the class context
     for stmt in self.statements:
@@ -835,102 +871,94 @@ def print_class(output):
                 # Leaving them as ordinary prototype functions lets hot
                 # calls such as ``left._mul_(right)`` preserve JavaScript's
                 # receiver without allocating a bound wrapper.
-                or (
-                    bname.startswith('_')
-                    and not bname.startswith('__')
-                )
+                or (bname.startswith("_") and not bname.startswith("__"))
             ):
                 continue
             seen_lazy_methods[bname] = True
             is_classmethod = has_prop(self.classmethods, bname)
             output.indent()
-            output.print('(function(ρσ_unbound_method, ρσ_prototype)')
+            output.print("(function(ρσ_unbound_method, ρσ_prototype)")
 
             def f_lazy_binding():
                 output.indent()
-                output.print('Object.defineProperty(ρσ_prototype, ')
+                output.print("Object.defineProperty(ρσ_prototype, ")
                 output.print(JSON.stringify(bname))
                 output.comma()
                 output.space()
-                output.print('{configurable: true, enumerable: true, ')
-                output.print('get: function()')
+                output.print("{configurable: true, enumerable: true, ")
+                output.print("get: function()")
 
                 def f_lazy_getter():
                     output.indent()
-                    output.print(
-                        'if (this === ρσ_prototype) '
-                        'return ρσ_unbound_method')
+                    output.print("if (this === ρσ_prototype) return ρσ_unbound_method")
                     output.end_statement()
                     output.indent()
-                    output.assign('var ρσ_receiver')
-                    output.print(
-                        'this.constructor'
-                        if is_classmethod else 'this')
+                    output.assign("var ρσ_receiver")
+                    output.print("this.constructor" if is_classmethod else "this")
                     output.end_statement()
                     output.indent()
-                    output.assign('var ρσ_bound_method')
-                    output.print(
-                        'ρσ_unbound_method.bind(ρσ_receiver)')
+                    output.assign("var ρσ_bound_method")
+                    output.print("ρσ_unbound_method.bind(ρσ_receiver)")
                     output.end_statement()
                     output.indent()
-                    output.print(
-                        'Object.assign(ρσ_bound_method, '
-                        'ρσ_unbound_method)')
+                    output.print("Object.assign(ρσ_bound_method, ρσ_unbound_method)")
                     output.end_statement()
                     output.indent()
-                    output.assign('ρσ_bound_method.__func__')
-                    output.print('ρσ_unbound_method')
+                    output.assign("ρσ_bound_method.__func__")
+                    output.print("ρσ_unbound_method")
                     output.end_statement()
                     output.indent()
-                    output.assign('ρσ_bound_method.__self__')
-                    output.print('ρσ_receiver')
+                    output.assign("ρσ_bound_method.__self__")
+                    output.print("ρσ_receiver")
                     output.end_statement()
                     output.indent()
-                    output.assign('ρσ_bound_method.__name__')
+                    output.assign("ρσ_bound_method.__name__")
                     output.print(JSON.stringify(bname))
                     output.end_statement()
                     output.indent()
                     # Immutable tuple-backed values can inherit lightweight
                     # Python methods, but cannot accept the usual per-instance
                     # bound-method cache.
-                    output.print('if (Object.isExtensible(this)) ')
-                    output.print('Object.defineProperty(this, ')
+                    output.print("if (Object.isExtensible(this)) ")
+                    output.print("Object.defineProperty(this, ")
                     output.print(JSON.stringify(bname))
                     output.comma()
                     output.space()
                     output.print(
-                        '{value: ρσ_bound_method, writable: true, '
-                        'configurable: true, enumerable: true})')
+                        "{value: ρσ_bound_method, writable: true, "
+                        "configurable: true, enumerable: true})"
+                    )
                     output.end_statement()
                     output.indent()
-                    output.print('return ρσ_bound_method')
+                    output.print("return ρσ_bound_method")
                     output.end_statement()
 
                 output.with_block(f_lazy_getter)
-                output.print(', set: function(ρσ_method_value)')
+                output.print(", set: function(ρσ_method_value)")
 
                 def f_lazy_setter():
                     output.indent()
-                    output.print('Object.defineProperty(this, ')
+                    output.print("Object.defineProperty(this, ")
                     output.print(JSON.stringify(bname))
                     output.comma()
                     output.space()
                     output.print(
-                        '{value: ρσ_method_value, writable: true, '
-                        'configurable: true, enumerable: true})')
+                        "{value: ρσ_method_value, writable: true, "
+                        "configurable: true, enumerable: true})"
+                    )
                     output.end_statement()
 
                 output.with_block(f_lazy_setter)
-                output.print('})')
+                output.print("})")
                 output.end_statement()
 
             output.with_block(f_lazy_binding)
-            output.print(')(')
+            output.print(")(")
             self.name.print(output)
-            output.print('.prototype.' + bname)
+            output.print(".prototype." + bname)
             output.comma()
             self.name.print(output)
-            output.print('.prototype)')
+            output.print(".prototype)")
             output.end_statement()
 
     # A property alias such as ``old_name = new_name`` is represented as a
@@ -939,44 +967,45 @@ def print_class(output):
     # class variable, and native properties have no Python ``__set_name__``
     # hook to call.
     classvar_names = [
-        name for name in Object.keys(self.classvars)
+        name
+        for name in Object.keys(self.classvars)
         if not self.dynamic_properties[name]
     ]
     for classvar_name in classvar_names:
         output.indent()
-        output.print('if (typeof ')
+        output.print("if (typeof ")
         self.name.print(output)
-        output.print('.prototype.' + classvar_name)
+        output.print(".prototype." + classvar_name)
         output.print(' !== "function") ')
         self.name.print(output)
-        output.assign('.' + classvar_name)
+        output.assign("." + classvar_name)
         self.name.print(output)
-        output.print('.prototype.' + classvar_name)
+        output.print(".prototype." + classvar_name)
         output.end_statement()
     if classvar_names.length:
         output.indent()
-        output.print('ρσ_call_set_names(')
+        output.print("ρσ_call_set_names(")
         self.name.print(output)
         output.comma()
         output.print(JSON.stringify(classvar_names))
         output.comma()
-        output.print('[')
+        output.print("[")
         for index in range(classvar_names.length):
             if index:
                 output.comma()
             self.name.print(output)
-            output.print(
-                '.prototype.' + classvar_names[index])
-        output.print('])')
+            output.print(".prototype." + classvar_names[index])
+        output.print("])")
         output.end_statement()
-    inherited_callable_names = Object.keys(self['static']).concat(
-        Object.keys(self.classmethods))
+    inherited_callable_names = Object.keys(self["static"]).concat(
+        Object.keys(self.classmethods)
+    )
     for method_name in inherited_callable_names:
         output.indent()
         self.name.print(output)
-        output.assign('.' + method_name)
+        output.assign("." + method_name)
         self.name.print(output)
-        output.print('.prototype.' + method_name)
+        output.print(".prototype." + method_name)
         output.end_statement()
 
     # An explicit Python 3 metaclass owns the final class object.  The native
@@ -986,7 +1015,7 @@ def print_class(output):
     if self.metaclass:
         output.indent()
         output.assign(self.name)
-        output.print('ρσ_apply_metaclass(')
+        output.print("ρσ_apply_metaclass(")
         self.metaclass.print(output)
         output.comma()
         output.print_string(self.name.name)
@@ -994,18 +1023,18 @@ def print_class(output):
         f_basis()
         output.comma()
         self.name.print(output)
-        output.print(')')
+        output.print(")")
         output.end_statement()
     elif self.bases.length:
         output.indent()
         output.assign(self.name)
-        output.print('ρσ_apply_inherited_metaclass(')
+        output.print("ρσ_apply_inherited_metaclass(")
         output.print_string(self.name.name)
         output.comma()
         f_basis()
         output.comma()
         self.name.print(output)
-        output.print(')')
+        output.print(")")
         output.end_statement()
 
     if decorators.length:
@@ -1013,32 +1042,32 @@ def print_class(output):
         output.assign(self.name)
         for di in range(decorators.length):
             self.name.print(output)
-            output.print(f'.ρσ_decorators[{di}](')
+            output.print(f".ρσ_decorators[{di}](")
         self.name.print(output)
-        output.print(')' * decorators.length)
+        output.print(")" * decorators.length)
         output.semicolon()
         output.newline()
         output.indent()
-        output.spaced('delete ')
+        output.spaced("delete ")
         self.name.print(output)
-        output.print('.ρσ_decorators')
+        output.print(".ρσ_decorators")
         output.semicolon()
         output.newline()
 
     if self.sequence_class:
         output.indent()
         output.assign(self.name)
-        output.print('ρσ_callable_sequence_class(')
+        output.print("ρσ_callable_sequence_class(")
         self.name.print(output)
-        output.print(')')
+        output.print(")")
         output.end_statement()
 
-    if self.callable_instance_class or defined_methods['__call__']:
+    if self.callable_instance_class or defined_methods["__call__"]:
         output.indent()
         output.assign(self.name)
-        output.print('ρσ_callable_instance_class_adapter(')
+        output.print("ρσ_callable_instance_class_adapter(")
         self.name.print(output)
-        output.print(')')
+        output.print(")")
         output.end_statement()
 
     # Python deliberately exposes class creation through a mutable builtin.
@@ -1048,18 +1077,19 @@ def print_class(output):
         output.indent()
         output.print(
             'if (typeof __build_class__ === "function" && '
-            '!__build_class__.__sagejs_default_build_class__)')
+            "!__build_class__.__sagejs_default_build_class__)"
+        )
 
         def call_build_class_hook():
             output.indent()
             output.assign(self.name)
-            output.print('__build_class__(function(){}, ')
+            output.print("__build_class__(function(){}, ")
             output.print_string(self.name.name)
             if not self.implicit_object_base:
                 for base in self.bases:
                     output.comma()
                     base.print(output)
-            output.print(')')
+            output.print(")")
             output.end_statement()
 
         output.with_block(call_build_class_hook)
@@ -1067,15 +1097,15 @@ def print_class(output):
     if self.namedtuple_fields.length:
         output.indent()
         output.assign(self.name)
-        output.print('ρσ_finalize_namedtuple_class(')
+        output.print("ρσ_finalize_namedtuple_class(")
         self.name.print(output)
         output.comma()
         output.print(JSON.stringify(self.namedtuple_fields))
-        output.print(')')
+        output.print(")")
         output.end_statement()
 
     # Definitions should not display their implementation object merely
     # because the class is the final statement entered in the REPL.
     output.indent()
-    output.print('undefined')
+    output.print("undefined")
     output.end_statement()

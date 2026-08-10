@@ -11,15 +11,15 @@ import sagejs.runtime as runtime
 
 
 filters = []
-defaultaction = 'default'
+defaultaction = "default"
 onceregistry = {}
 
 
 def filterwarnings(
     action,
-    message='',
+    message="",
     category=Warning,
-    module='',
+    module="",
     lineno=0,
     append=False,
 ):
@@ -54,11 +54,11 @@ def warn(message, category=None, stacklevel=1, source=None):
     else:
         text = str(message)
     action = _action_for(category)
-    if action == 'ignore':
+    if action == "ignore":
         return None
-    if action == 'error':
+    if action == "error":
         raise category(text)
-    process.emitWarning(text, {'type': category.__name__})
+    process.emitWarning(text, {"type": category.__name__})
     return None
 
 
@@ -93,6 +93,7 @@ class catch_warnings:
 
 def deprecated(message, *, category=DeprecationWarning, stacklevel=1):
     """Mark a function or class deprecated, following Python 3.13's API."""
+
     def decorate(value):
         if isinstance(value, type):
             original = value.__init__
@@ -111,4 +112,5 @@ def deprecated(message, *, category=DeprecationWarning, stacklevel=1):
             return value(*args, **kwargs)
 
         return wrapper
+
     return decorate

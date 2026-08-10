@@ -47,12 +47,7 @@ __version__ = "1.2"
 
 
 class Record:
-    def __init__(self,
-                 PtrComp=None,
-                 Discr=0,
-                 EnumComp=0,
-                 IntComp=0,
-                 StringComp=0):
+    def __init__(self, PtrComp=None, Discr=0, EnumComp=0, IntComp=0, StringComp=0):
         self.PtrComp = PtrComp
         self.Discr = Discr
         self.EnumComp = EnumComp
@@ -60,8 +55,9 @@ class Record:
         self.StringComp = StringComp
 
     def copy(self):
-        return Record(self.PtrComp, self.Discr, self.EnumComp, self.IntComp,
-                      self.StringComp)
+        return Record(
+            self.PtrComp, self.Discr, self.EnumComp, self.IntComp, self.StringComp
+        )
 
 
 TRUE = 1
@@ -78,8 +74,8 @@ def pystones(loops=LOOPS):
 
 IntGlob = 0
 BoolGlob = FALSE
-Char1Glob = '\0'
-Char2Glob = '\0'
+Char1Glob = "\0"
+Char2Glob = "\0"
 Array1Glob = [0] * 51
 Array2Glob = [x[:] for x in [Array1Glob] * 51]
 PtrGlb = None
@@ -127,9 +123,9 @@ def Proc0(loops=LOOPS):
             IntLoc1 = IntLoc1 + 1
         Proc8(Array1Glob, Array2Glob, IntLoc1, IntLoc3)
         PtrGlb = Proc1(PtrGlb)
-        CharIndex = 'A'
+        CharIndex = "A"
         while CharIndex <= Char2Glob:
-            if EnumLoc == Func1(CharIndex, 'C'):
+            if EnumLoc == Func1(CharIndex, "C"):
                 EnumLoc = Proc6(Ident1)
             CharIndex = chr(ord(CharIndex) + 1)
         IntLoc3 = IntLoc2 * IntLoc1
@@ -141,7 +137,7 @@ def Proc0(loops=LOOPS):
     if benchtime == 0.0:
         loopsPerBenchtime = 0.0
     else:
-        loopsPerBenchtime = (loops / benchtime)
+        loopsPerBenchtime = loops / benchtime
     return benchtime, loopsPerBenchtime
 
 
@@ -165,7 +161,7 @@ def Proc1(PtrParIn):
 def Proc2(IntParIO):
     IntLoc = IntParIO + 10
     while 1:
-        if Char1Glob == 'A':
+        if Char1Glob == "A":
             IntLoc = IntLoc - 1
             IntParIO = IntLoc - IntGlob
             EnumLoc = Ident1
@@ -188,16 +184,16 @@ def Proc3(PtrParOut):
 def Proc4():
     global Char2Glob
 
-    BoolLoc = Char1Glob == 'A'
+    BoolLoc = Char1Glob == "A"
     BoolLoc = BoolLoc or BoolGlob
-    Char2Glob = 'B'
+    Char2Glob = "B"
 
 
 def Proc5():
     global Char1Glob
     global BoolGlob
 
-    Char1Glob = 'A'
+    Char1Glob = "A"
     BoolGlob = FALSE
 
 
@@ -254,11 +250,11 @@ def Func2(StrParI1, StrParI2):
     IntLoc = 1
     while IntLoc <= 1:
         if Func1(StrParI1[IntLoc], StrParI2[IntLoc + 1]) == Ident1:
-            CharLoc = 'A'
+            CharLoc = "A"
             IntLoc = IntLoc + 1
-    if CharLoc >= 'W' and CharLoc <= 'Z':
+    if CharLoc >= "W" and CharLoc <= "Z":
         IntLoc = 7
-    if CharLoc == 'X':
+    if CharLoc == "X":
         return TRUE
     else:
         if StrParI1 > StrParI2:
@@ -270,7 +266,8 @@ def Func2(StrParI1, StrParI2):
 
 def Func3(EnumParIn):
     EnumLoc = EnumParIn
-    if EnumLoc == Ident3: return TRUE
+    if EnumLoc == Ident3:
+        return TRUE
     return FALSE
 
 
@@ -278,5 +275,5 @@ from bench import register, all
 
 register("Pystone", main)
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     all()

@@ -8,7 +8,7 @@ module.
 
 import sys
 
-if sys.platform == 'win32':
+if sys.platform == "win32":
     from ntpath import *  # noqa: F403
 else:
     from posixpath import *  # noqa: F403

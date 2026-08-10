@@ -14,17 +14,17 @@ from typing import Any, Iterator, Sequence
 
 import sagejs.runtime as runtime
 
-_GRAPHICS3D_PLOTLY_MIME = 'application/vnd.plotly.v1+json'
+_GRAPHICS3D_PLOTLY_MIME = "application/vnd.plotly.v1+json"
 _GRAPHICS3D_OPTION_NAMES = [
-    'aspect_ratio',
-    'axes',
-    'axes_labels',
-    'figsize',
-    'frame',
-    'projection',
-    'title',
-    'viewpoint',
-    'zoom',
+    "aspect_ratio",
+    "axes",
+    "axes_labels",
+    "figsize",
+    "frame",
+    "projection",
+    "title",
+    "viewpoint",
+    "zoom",
 ]
 _SPHERE_DEFAULT_CENTER = (0, 0, 0)
 
@@ -36,15 +36,14 @@ def _g3d_native_object() -> Any:
 def _g3d_native_record(**values: Any) -> Any:
     answer = _g3d_native_object()
     for key in runtime.object.keys(values):
-        runtime.reflect.set(
-            answer, key, runtime.reflect.get(values, key))
+        runtime.reflect.set(answer, key, runtime.reflect.get(values, key))
     return answer
 
 
 def _g3d_copy_options(options: Any) -> dict[str, Any]:
     answer = {}
-    items_method = runtime.reflect.get(options, 'items')
-    if runtime.jstype(items_method) == 'function':
+    items_method = runtime.reflect.get(options, "items")
+    if runtime.jstype(items_method) == "function":
         for pair in options.items():
             answer[pair[0]] = pair[1]
         return answer
@@ -85,8 +84,7 @@ def _g3d_option_pop(
 
 def _g3d_option_update(target: Any, source: Any) -> None:
     for name in runtime.object.keys(source):
-        runtime.reflect.set(
-            target, name, runtime.reflect.get(source, name))
+        runtime.reflect.set(target, name, runtime.reflect.get(source, name))
 
 
 def _g3d_color_value(color: Any) -> str:
@@ -99,13 +97,24 @@ def _g3d_color_value(color: Any) -> str:
             components.append(int(runtime.math.round(component * 255)))
         if len(components) == 4:
             return (
-                'rgba(' + str(components[0]) + ',' +
-                str(components[1]) + ',' + str(components[2]) + ',' +
-                str(float(color[3])) + ')'
+                "rgba("
+                + str(components[0])
+                + ","
+                + str(components[1])
+                + ","
+                + str(components[2])
+                + ","
+                + str(float(color[3]))
+                + ")"
             )
         return (
-            'rgb(' + str(components[0]) + ',' +
-            str(components[1]) + ',' + str(components[2]) + ')'
+            "rgb("
+            + str(components[0])
+            + ","
+            + str(components[1])
+            + ","
+            + str(components[2])
+            + ")"
         )
     return str(color)
 
@@ -123,10 +132,12 @@ def _g3d_colorscale(color: Any) -> Any:
         answer = []
         denominator = float(len(colors) - 1)
         for index in range(len(colors)):
-            answer.append([
-                float(index) / denominator,
-                _g3d_color_value(colors[index]),
-            ])
+            answer.append(
+                [
+                    float(index) / denominator,
+                    _g3d_color_value(colors[index]),
+                ]
+            )
         return answer
     normalized = _g3d_color_value(color)
     return [[0, normalized], [1, normalized]]
@@ -137,34 +148,35 @@ def _g3d_parse_figsize(figsize: Any) -> tuple[float, float]:
     if isinstance(figsize, (list, tuple)):
         if len(figsize) != 2:
             raise ValueError(
-                'figsize should be a positive number or a list of two '
-                'positive numbers, not ' + str(figsize))
+                "figsize should be a positive number or a list of two "
+                "positive numbers, not " + str(figsize)
+            )
         width = float(figsize[0])
         height = float(figsize[1])
         if width <= 0 or height <= 0:
             raise ValueError(
-                'figsize should be positive numbers, not ' +
-                str(width) + ' and ' + str(height))
+                "figsize should be positive numbers, not "
+                + str(width)
+                + " and "
+                + str(height)
+            )
         return width, height
     width = float(figsize)
     if width <= 0:
-        raise ValueError('figsize should be positive, not ' + str(width))
+        raise ValueError("figsize should be positive, not " + str(width))
     return width, 0.75 * width
 
 
 def _g3d_point(value: Any) -> tuple[float, float, float]:
     if isinstance(value, (list, tuple)):
         coordinates = list(value)
-    elif hasattr(value, '__iter__'):
+    elif hasattr(value, "__iter__"):
         coordinates = list(value)
     else:
-        raise ValueError(
-            'points must have exactly three coordinates')
+        raise ValueError("points must have exactly three coordinates")
     if len(coordinates) != 3:
-        raise ValueError('points must have exactly three coordinates')
-    return (
-        float(coordinates[0]), float(coordinates[1]),
-        float(coordinates[2]))
+        raise ValueError("points must have exactly three coordinates")
+    return (float(coordinates[0]), float(coordinates[1]), float(coordinates[2]))
 
 
 def _g3d_normalize_points(
@@ -203,10 +215,10 @@ def _g3d_range(value: Any) -> tuple[Any, float, float]:
         maximum = float(values[2])
     else:
         raise ValueError(
-            'plot range must contain two endpoints or a variable and two endpoints'
+            "plot range must contain two endpoints or a variable and two endpoints"
         )
     if maximum <= minimum:
-        raise ValueError('plot range must have minimum < maximum')
+        raise ValueError("plot range must have minimum < maximum")
     return variable, minimum, maximum
 
 
@@ -215,18 +227,17 @@ def _g3d_plot_points(
     default_value: int,
     dimensions: int,
 ) -> list[int]:
-    if value in ('automatic', None):
+    if value in ("automatic", None):
         values = [default_value for _index in range(dimensions)]
     elif isinstance(value, (list, tuple)):
         values = [int(item) for item in value]
         if len(values) != dimensions:
-            raise ValueError(
-                'plot_points must have one entry for each parameter')
+            raise ValueError("plot_points must have one entry for each parameter")
     else:
         values = [int(value) for _index in range(dimensions)]
     for count in values:
         if count < 2:
-            raise ValueError('plot_points must be at least 2')
+            raise ValueError("plot_points must be at least 2")
     return values
 
 
@@ -236,10 +247,7 @@ def _g3d_linspace(
     count: int,
 ) -> list[float]:
     delta = (maximum - minimum) / float(count - 1)
-    values = [
-        minimum + delta * index
-        for index in range(count)
-    ]
+    values = [minimum + delta * index for index in range(count)]
     values[count - 1] = maximum
     return values
 
@@ -248,37 +256,35 @@ def _g3d_finite_value(value: Any) -> float:
     numeric = float(value)
     native = runtime.number(numeric)
     if not runtime.number.isFinite(native):
-        raise ValueError('3D plot function returned a non-finite value')
+        raise ValueError("3D plot function returned a non-finite value")
     return native
 
 
 def _g3d_sin(value: Any) -> Any:
     if (
-        runtime.jstype(value) == 'number'
-        or runtime.native_get(value, '__sagejs_float__') is True
+        runtime.jstype(value) == "number"
+        or runtime.native_get(value, "__sagejs_float__") is True
     ):
         return runtime.math.sin(runtime.number(value))
-    function_value = runtime.reflect.get(runtime.global_object, 'sin')
-    return runtime.reflect.apply(
-        function_value, runtime.undefined, [value])
+    function_value = runtime.reflect.get(runtime.global_object, "sin")
+    return runtime.reflect.apply(function_value, runtime.undefined, [value])
 
 
 def _g3d_cos(value: Any) -> Any:
     if (
-        runtime.jstype(value) == 'number'
-        or runtime.native_get(value, '__sagejs_float__') is True
+        runtime.jstype(value) == "number"
+        or runtime.native_get(value, "__sagejs_float__") is True
     ):
         return runtime.math.cos(runtime.number(value))
-    function_value = runtime.reflect.get(runtime.global_object, 'cos')
-    return runtime.reflect.apply(
-        function_value, runtime.undefined, [value])
+    function_value = runtime.reflect.get(runtime.global_object, "cos")
+    return runtime.reflect.apply(function_value, runtime.undefined, [value])
 
 
 def _g3d_component_callable(
     component: Any,
     variables: Sequence[Any],
 ) -> Any:
-    if hasattr(component, '_plot_fast_callable'):
+    if hasattr(component, "_plot_fast_callable"):
         return component._plot_fast_callable(list(variables))
     if callable(component):
         return component
@@ -295,24 +301,19 @@ def _g3d_variables(
     range_variables: Sequence[Any],
     dimensions: int,
 ) -> list[Any]:
-    specified = [
-        variable
-        for variable in range_variables
-        if variable is not None
-    ]
+    specified = [variable for variable in range_variables if variable is not None]
     if len(specified) not in (0, dimensions):
-        raise ValueError(
-            'specify variables in every 3D plot range or in none of them')
+        raise ValueError("specify variables in every 3D plot range or in none of them")
     if len(specified) == dimensions:
         names = [str(variable) for variable in specified]
         if len(set(names)) != dimensions:
-            raise ValueError('range variables must be distinct')
+            raise ValueError("range variables must be distinct")
         return specified
 
     discovered = []
     seen = {}
     for component in components:
-        if not hasattr(component, 'variables'):
+        if not hasattr(component, "variables"):
             continue
         for variable in component.variables():
             name = str(variable)
@@ -320,30 +321,31 @@ def _g3d_variables(
                 seen[name] = True
                 discovered.append(variable)
     if len(discovered) > dimensions:
-        raise ValueError(
-            '3D plot expression has more variables than plot ranges')
+        raise ValueError("3D plot expression has more variables than plot ranges")
     return discovered
 
 
 class _Coordinates:
     """A Sage-compatible coordinate transformation for `plot3d`."""
 
-    coordinate_names = ('x', 'y', 'z')
-    coordinate_name = 'Coordinates'
+    coordinate_names = ("x", "y", "z")
+    coordinate_name = "Coordinates"
 
     def __init__(self, dep_var: Any, indep_vars: Any) -> None:
         self.dep_var = str(dep_var)
         self.indep_vars = [str(value) for value in indep_vars]
         if len(self.indep_vars) != 2:
             raise ValueError(
-                'a coordinate transformation needs two independent variables')
+                "a coordinate transformation needs two independent variables"
+            )
         supplied = set(self.indep_vars + [self.dep_var])
         expected = set(self.coordinate_names)
         if supplied != expected:
             difference = list(supplied.symmetric_difference(expected))
             raise ValueError(
-                'variables were specified incorrectly for this coordinate '
-                'system; incorrect variables were ' + str(difference))
+                "variables were specified incorrectly for this coordinate "
+                "system; incorrect variables were " + str(difference)
+            )
 
     def to_cartesian(
         self,
@@ -351,6 +353,7 @@ class _Coordinates:
         params: Any = None,
     ) -> Any:
         if callable(function_value):
+
             def component(index: int) -> Any:
                 def transformed(uvalue: Any, vvalue: Any) -> float:
                     function_result = runtime.reflect.apply(
@@ -363,29 +366,30 @@ class _Coordinates:
                         self.indep_vars[0]: float(uvalue),
                         self.indep_vars[1]: float(vvalue),
                     }
-                    transform_method = runtime.reflect.get(self, 'transform')
+                    transform_method = runtime.reflect.get(self, "transform")
                     return float(transform_method(**coordinates)[index])
 
                 return transformed
 
-            return runtime.math_tuple([
-                component(0), component(1), component(2)])
+            return runtime.math_tuple([component(0), component(1), component(2)])
         if params is None or len(params) != 2:
-            raise ValueError(
-                'symbolic coordinate transforms require two parameters')
+            raise ValueError("symbolic coordinate transforms require two parameters")
         coordinates = {
             self.dep_var: function_value,
             self.indep_vars[0]: params[0],
             self.indep_vars[1]: params[1],
         }
-        transform_method = runtime.reflect.get(self, 'transform')
+        transform_method = runtime.reflect.get(self, "transform")
         return transform_method(**coordinates)
 
     def __repr__(self) -> str:
         return (
-            self.coordinate_name + ' coordinate transform (' +
-            self.dep_var + ' in terms of ' +
-            ', '.join(self.indep_vars) + ')'
+            self.coordinate_name
+            + " coordinate transform ("
+            + self.dep_var
+            + " in terms of "
+            + ", ".join(self.indep_vars)
+            + ")"
         )
 
     __str__ = __repr__
@@ -395,8 +399,8 @@ class _Coordinates:
 class Spherical(_Coordinates):
     """Spherical coordinates using azimuth and polar inclination."""
 
-    coordinate_names = ('radius', 'azimuth', 'inclination')
-    coordinate_name = 'Spherical'
+    coordinate_names = ("radius", "azimuth", "inclination")
+    coordinate_name = "Spherical"
 
     def transform(
         self,
@@ -404,18 +408,20 @@ class Spherical(_Coordinates):
         azimuth: Any = None,
         inclination: Any = None,
     ) -> Any:
-        return runtime.math_tuple([
-            radius * _g3d_sin(inclination) * _g3d_cos(azimuth),
-            radius * _g3d_sin(inclination) * _g3d_sin(azimuth),
-            radius * _g3d_cos(inclination),
-        ])
+        return runtime.math_tuple(
+            [
+                radius * _g3d_sin(inclination) * _g3d_cos(azimuth),
+                radius * _g3d_sin(inclination) * _g3d_sin(azimuth),
+                radius * _g3d_cos(inclination),
+            ]
+        )
 
 
 class SphericalElevation(_Coordinates):
     """Spherical coordinates using azimuth and elevation."""
 
-    coordinate_names = ('radius', 'azimuth', 'elevation')
-    coordinate_name = 'SphericalElevation'
+    coordinate_names = ("radius", "azimuth", "elevation")
+    coordinate_name = "SphericalElevation"
 
     def transform(
         self,
@@ -423,18 +429,20 @@ class SphericalElevation(_Coordinates):
         azimuth: Any = None,
         elevation: Any = None,
     ) -> Any:
-        return runtime.math_tuple([
-            radius * _g3d_cos(elevation) * _g3d_cos(azimuth),
-            radius * _g3d_cos(elevation) * _g3d_sin(azimuth),
-            radius * _g3d_sin(elevation),
-        ])
+        return runtime.math_tuple(
+            [
+                radius * _g3d_cos(elevation) * _g3d_cos(azimuth),
+                radius * _g3d_cos(elevation) * _g3d_sin(azimuth),
+                radius * _g3d_sin(elevation),
+            ]
+        )
 
 
 class Cylindrical(_Coordinates):
     """Cylindrical coordinates using radius, azimuth, and height."""
 
-    coordinate_names = ('radius', 'azimuth', 'height')
-    coordinate_name = 'Cylindrical'
+    coordinate_names = ("radius", "azimuth", "height")
+    coordinate_name = "Cylindrical"
 
     def transform(
         self,
@@ -442,11 +450,13 @@ class Cylindrical(_Coordinates):
         azimuth: Any = None,
         height: Any = None,
     ) -> Any:
-        return runtime.math_tuple([
-            radius * _g3d_cos(azimuth),
-            radius * _g3d_sin(azimuth),
-            height,
-        ])
+        return runtime.math_tuple(
+            [
+                radius * _g3d_cos(azimuth),
+                radius * _g3d_sin(azimuth),
+                height,
+            ]
+        )
 
 
 class GraphicPrimitive3d:
@@ -459,11 +469,10 @@ class GraphicPrimitive3d:
         return _g3d_copy_options(self._options)
 
     def _plotly_traces(self) -> list[Any]:
-        raise NotImplementedError(
-            '3D graphics primitive has no Plotly renderer')
+        raise NotImplementedError("3D graphics primitive has no Plotly renderer")
 
     def __repr__(self) -> str:
-        return '3D graphics primitive'
+        return "3D graphics primitive"
 
     __str__ = __repr__
     toString = __repr__
@@ -472,10 +481,7 @@ class GraphicPrimitive3d:
 def _g3d_translated_values(values: Any, offset: float) -> Any:
     """Translate a flat or rectangular Plotly coordinate collection."""
     if isinstance(values, (list, tuple)):
-        return [
-            _g3d_translated_values(value, offset)
-            for value in values
-        ]
+        return [_g3d_translated_values(value, offset) for value in values]
     if values is None:
         return None
     return float(values) + offset
@@ -495,8 +501,8 @@ def _g3d_transform_coordinates(
         transformed_z = []
         for index in range(len(xvalues)):
             xpart, ypart, zpart = _g3d_transform_coordinates(
-                xvalues[index], yvalues[index], zvalues[index],
-                matrix, offset)
+                xvalues[index], yvalues[index], zvalues[index], matrix, offset
+            )
             transformed_x.append(xpart)
             transformed_y.append(ypart)
             transformed_z.append(zpart)
@@ -506,14 +512,22 @@ def _g3d_transform_coordinates(
     xvalue = float(xvalues)
     yvalue = float(yvalues)
     zvalue = float(zvalues)
-    return runtime.math_tuple([
-        matrix[0][0] * xvalue + matrix[0][1] * yvalue
-        + matrix[0][2] * zvalue + offset[0],
-        matrix[1][0] * xvalue + matrix[1][1] * yvalue
-        + matrix[1][2] * zvalue + offset[1],
-        matrix[2][0] * xvalue + matrix[2][1] * yvalue
-        + matrix[2][2] * zvalue + offset[2],
-    ])
+    return runtime.math_tuple(
+        [
+            matrix[0][0] * xvalue
+            + matrix[0][1] * yvalue
+            + matrix[0][2] * zvalue
+            + offset[0],
+            matrix[1][0] * xvalue
+            + matrix[1][1] * yvalue
+            + matrix[1][2] * zvalue
+            + offset[1],
+            matrix[2][0] * xvalue
+            + matrix[2][1] * yvalue
+            + matrix[2][2] * zvalue
+            + offset[2],
+        ]
+    )
 
 
 def _g3d_flatten_numeric(values: Any) -> list[float]:
@@ -529,31 +543,27 @@ def _g3d_flatten_numeric(values: Any) -> list[float]:
 
 def _g3d_camera(options: Any) -> Any:
     """Translate Sage's Three.js camera options to a Plotly camera."""
-    projection = str(_g3d_option_get(
-        options, 'projection', 'perspective')).lower()
-    if projection not in ('perspective', 'orthographic'):
-        raise ValueError(
-            "projection must be 'perspective' or 'orthographic'")
+    projection = str(_g3d_option_get(options, "projection", "perspective")).lower()
+    if projection not in ("perspective", "orthographic"):
+        raise ValueError("projection must be 'perspective' or 'orthographic'")
 
-    zoom = float(_g3d_option_get(options, 'zoom', 1))
+    zoom = float(_g3d_option_get(options, "zoom", 1))
     if zoom <= 0:
-        raise ValueError('zoom must be positive')
+        raise ValueError("zoom must be positive")
 
-    viewpoint = _g3d_option_get(options, 'viewpoint')
+    viewpoint = _g3d_option_get(options, "viewpoint")
     if viewpoint is None or viewpoint is False:
         eye = [1.25 / zoom, 1.25 / zoom, 1.25 / zoom]
     else:
         values = list(viewpoint)
         if len(values) != 2:
-            raise ValueError(
-                'viewpoint must be of the form [[x, y, z], angle]')
+            raise ValueError("viewpoint must be of the form [[x, y, z], angle]")
         axis = _g3d_point(values[0])
         length = runtime.math.sqrt(
-            axis[0] * axis[0]
-            + axis[1] * axis[1]
-            + axis[2] * axis[2])
+            axis[0] * axis[0] + axis[1] * axis[1] + axis[2] * axis[2]
+        )
         if length == 0:
-            raise ValueError('viewpoint axis must be nonzero')
+            raise ValueError("viewpoint axis must be nonzero")
         unit = [value / length for value in axis]
         # Sage's Three.js renderer applies the inverse axis-angle quaternion
         # to a camera on the positive z axis.  Rodrigues' formula with the
@@ -597,7 +607,7 @@ class TransformedPrimitive3d(GraphicPrimitive3d):
         self.offset = offset
 
     def __repr__(self) -> str:
-        return 'Transformed ' + repr(self.primitive)
+        return "Transformed " + repr(self.primitive)
 
     __str__ = __repr__
     toString = __repr__
@@ -606,35 +616,35 @@ class TransformedPrimitive3d(GraphicPrimitive3d):
         traces = self.primitive._plotly_traces()
         for trace in traces:
             if (
-                runtime.reflect.has(trace, 'x')
-                and runtime.reflect.has(trace, 'y')
-                and runtime.reflect.has(trace, 'z')
+                runtime.reflect.has(trace, "x")
+                and runtime.reflect.has(trace, "y")
+                and runtime.reflect.has(trace, "z")
             ):
                 transformed = _g3d_transform_coordinates(
-                    runtime.reflect.get(trace, 'x'),
-                    runtime.reflect.get(trace, 'y'),
-                    runtime.reflect.get(trace, 'z'),
+                    runtime.reflect.get(trace, "x"),
+                    runtime.reflect.get(trace, "y"),
+                    runtime.reflect.get(trace, "z"),
                     self.matrix,
                     self.offset,
                 )
-                runtime.reflect.set(trace, 'x', transformed[0])
-                runtime.reflect.set(trace, 'y', transformed[1])
-                runtime.reflect.set(trace, 'z', transformed[2])
+                runtime.reflect.set(trace, "x", transformed[0])
+                runtime.reflect.set(trace, "y", transformed[1])
+                runtime.reflect.set(trace, "z", transformed[2])
             if (
-                runtime.reflect.has(trace, 'u')
-                and runtime.reflect.has(trace, 'v')
-                and runtime.reflect.has(trace, 'w')
+                runtime.reflect.has(trace, "u")
+                and runtime.reflect.has(trace, "v")
+                and runtime.reflect.has(trace, "w")
             ):
                 transformed_vectors = _g3d_transform_coordinates(
-                    runtime.reflect.get(trace, 'u'),
-                    runtime.reflect.get(trace, 'v'),
-                    runtime.reflect.get(trace, 'w'),
+                    runtime.reflect.get(trace, "u"),
+                    runtime.reflect.get(trace, "v"),
+                    runtime.reflect.get(trace, "w"),
                     self.matrix,
                     (0, 0, 0),
                 )
-                runtime.reflect.set(trace, 'u', transformed_vectors[0])
-                runtime.reflect.set(trace, 'v', transformed_vectors[1])
-                runtime.reflect.set(trace, 'w', transformed_vectors[2])
+                runtime.reflect.set(trace, "u", transformed_vectors[0])
+                runtime.reflect.set(trace, "v", transformed_vectors[1])
+                runtime.reflect.set(trace, "w", transformed_vectors[2])
         return traces
 
 
@@ -651,14 +661,14 @@ class TranslatedPrimitive3d(GraphicPrimitive3d):
         self.offset = offset
 
     def __repr__(self) -> str:
-        return 'Translated ' + repr(self.primitive)
+        return "Translated " + repr(self.primitive)
 
     __str__ = __repr__
     toString = __repr__
 
     def _plotly_traces(self) -> list[Any]:
         traces = self.primitive._plotly_traces()
-        coordinate_names = ['x', 'y', 'z']
+        coordinate_names = ["x", "y", "z"]
         for trace in traces:
             for index in range(3):
                 name = coordinate_names[index]
@@ -694,14 +704,16 @@ class Line3d(GraphicPrimitive3d):
         return len(self.xdata)
 
     def __getitem__(self, index: int) -> tuple[float, float, float]:
-        return runtime.math_tuple([
-            self.xdata[index],
-            self.ydata[index],
-            self.zdata[index],
-        ])
+        return runtime.math_tuple(
+            [
+                self.xdata[index],
+                self.ydata[index],
+                self.zdata[index],
+            ]
+        )
 
     def __repr__(self) -> str:
-        return '3D line defined by ' + str(len(self.xdata)) + ' points'
+        return "3D line defined by " + str(len(self.xdata)) + " points"
 
     __str__ = __repr__
     toString = __repr__
@@ -709,24 +721,24 @@ class Line3d(GraphicPrimitive3d):
     def _plotly_traces(self) -> list[Any]:
         options = self._options
         color = _g3d_option_get(
-            options, 'rgbcolor',
-            _g3d_option_get(options, 'color', [0, 0, 1]))
-        legend_label = _g3d_option_get(options, 'legend_label')
+            options, "rgbcolor", _g3d_option_get(options, "color", [0, 0, 1])
+        )
+        legend_label = _g3d_option_get(options, "legend_label")
         trace = _g3d_native_record(
-            type='scatter3d',
-            mode='lines',
+            type="scatter3d",
+            mode="lines",
             x=self.xdata,
             y=self.ydata,
             z=self.zdata,
             line=_g3d_native_record(
                 color=_g3d_color_value(color),
-                width=float(_g3d_option_get(options, 'thickness', 2)),
+                width=float(_g3d_option_get(options, "thickness", 2)),
             ),
-            opacity=float(_g3d_option_get(options, 'opacity', 1)),
+            opacity=float(_g3d_option_get(options, "opacity", 1)),
             showlegend=legend_label is not None,
         )
         if legend_label is not None:
-            runtime.reflect.set(trace, 'name', str(legend_label))
+            runtime.reflect.set(trace, "name", str(legend_label))
         return [trace]
 
 
@@ -750,17 +762,16 @@ class Point3d(GraphicPrimitive3d):
         return len(self.xdata)
 
     def __getitem__(self, index: int) -> tuple[float, float, float]:
-        return runtime.math_tuple([
-            self.xdata[index],
-            self.ydata[index],
-            self.zdata[index],
-        ])
+        return runtime.math_tuple(
+            [
+                self.xdata[index],
+                self.ydata[index],
+                self.zdata[index],
+            ]
+        )
 
     def __repr__(self) -> str:
-        return (
-            '3D point set defined by ' +
-            str(len(self.xdata)) + ' point(s)'
-        )
+        return "3D point set defined by " + str(len(self.xdata)) + " point(s)"
 
     __str__ = __repr__
     toString = __repr__
@@ -768,26 +779,25 @@ class Point3d(GraphicPrimitive3d):
     def _plotly_traces(self) -> list[Any]:
         options = self._options
         color = _g3d_option_get(
-            options, 'rgbcolor',
-            _g3d_option_get(options, 'color', [0, 0, 1]))
-        legend_label = _g3d_option_get(options, 'legend_label')
+            options, "rgbcolor", _g3d_option_get(options, "color", [0, 0, 1])
+        )
+        legend_label = _g3d_option_get(options, "legend_label")
         trace = _g3d_native_record(
-            type='scatter3d',
-            mode='markers',
+            type="scatter3d",
+            mode="markers",
             x=self.xdata,
             y=self.ydata,
             z=self.zdata,
             marker=_g3d_native_record(
                 color=_g3d_color_value(color),
-                size=float(_g3d_option_get(options, 'size', 5)),
-                symbol=str(_g3d_option_get(
-                    options, 'marker', 'circle')),
+                size=float(_g3d_option_get(options, "size", 5)),
+                symbol=str(_g3d_option_get(options, "marker", "circle")),
             ),
-            opacity=float(_g3d_option_get(options, 'opacity', 1)),
+            opacity=float(_g3d_option_get(options, "opacity", 1)),
             showlegend=legend_label is not None,
         )
         if legend_label is not None:
-            runtime.reflect.set(trace, 'name', str(legend_label))
+            runtime.reflect.set(trace, "name", str(legend_label))
         return [trace]
 
 
@@ -806,8 +816,11 @@ class Mesh3d(GraphicPrimitive3d):
 
     def __repr__(self) -> str:
         return (
-            '3D mesh with ' + str(len(self.vertices)) + ' vertices and ' +
-            str(len(self.faces)) + ' faces'
+            "3D mesh with "
+            + str(len(self.vertices))
+            + " vertices and "
+            + str(len(self.faces))
+            + " faces"
         )
 
     __str__ = __repr__
@@ -829,17 +842,13 @@ class Mesh3d(GraphicPrimitive3d):
                 left = self.vertices[left_index]
                 right = self.vertices[right_index]
                 tangent_left = [
-                    left[coordinate] - origin[coordinate]
-                    for coordinate in range(3)
+                    left[coordinate] - origin[coordinate] for coordinate in range(3)
                 ]
                 tangent_right = [
-                    right[coordinate] - origin[coordinate]
-                    for coordinate in range(3)
+                    right[coordinate] - origin[coordinate] for coordinate in range(3)
                 ]
                 normal = _cross_product(tangent_left, tangent_right)
-                for vertex_index in (
-                    origin_index, left_index, right_index
-                ):
+                for vertex_index in (origin_index, left_index, right_index):
                     for coordinate in range(3):
                         normals[vertex_index][coordinate] += normal[coordinate]
             for index in range(len(face)):
@@ -847,7 +856,7 @@ class Mesh3d(GraphicPrimitive3d):
                 right_index = int(face[(index + 1) % len(face)])
                 lower = min(left_index, right_index)
                 upper = max(left_index, right_index)
-                key = str(lower) + ':' + str(upper)
+                key = str(lower) + ":" + str(upper)
                 if key not in edges:
                     edges[key] = [left_index, right_index]
 
@@ -855,26 +864,22 @@ class Mesh3d(GraphicPrimitive3d):
         maximum = list(self.vertices[0])
         for vertex in self.vertices:
             for coordinate in range(3):
-                minimum[coordinate] = min(
-                    minimum[coordinate], vertex[coordinate])
-                maximum[coordinate] = max(
-                    maximum[coordinate], vertex[coordinate])
-        diagonal = runtime.math.sqrt(sum(
-            (maximum[index] - minimum[index]) ** 2
-            for index in range(3)
-        ))
-        relative_offset = float(_g3d_option_get(
-            self._options, 'mesh_offset', 0.0001))
+                minimum[coordinate] = min(minimum[coordinate], vertex[coordinate])
+                maximum[coordinate] = max(maximum[coordinate], vertex[coordinate])
+        diagonal = runtime.math.sqrt(
+            sum((maximum[index] - minimum[index]) ** 2 for index in range(3))
+        )
+        relative_offset = float(_g3d_option_get(self._options, "mesh_offset", 0.0001))
         offset = relative_offset * (diagonal if diagonal > 0 else 1)
         for vertex_index in range(vertex_count):
             normal_length = runtime.math.sqrt(
-                _dot_product(normals[vertex_index], normals[vertex_index]))
+                _dot_product(normals[vertex_index], normals[vertex_index])
+            )
             if normal_length <= 1e-15:
                 normals[vertex_index] = [0, 0, 1]
             else:
                 normals[vertex_index] = [
-                    value / normal_length
-                    for value in normals[vertex_index]
+                    value / normal_length for value in normals[vertex_index]
                 ]
 
         mesh_x = []
@@ -913,20 +918,19 @@ class Mesh3d(GraphicPrimitive3d):
                 face_indices.append(face_index)
         options = self._options
         color = _g3d_option_get(
-            options, 'color',
-            _g3d_option_get(options, 'rgbcolor', [0, 0, 1]))
+            options, "color", _g3d_option_get(options, "rgbcolor", [0, 0, 1])
+        )
         trace = _g3d_native_record(
-            type='mesh3d',
+            type="mesh3d",
             x=xdata,
             y=ydata,
             z=zdata,
             i=triangles_i,
             j=triangles_j,
             k=triangles_k,
-            flatshading=bool(
-                _g3d_option_get(options, 'threejs_flat_shading', True)),
-            opacity=float(_g3d_option_get(options, 'opacity', 1)),
-            showlegend=_g3d_option_get(options, 'legend_label') is not None,
+            flatshading=bool(_g3d_option_get(options, "threejs_flat_shading", True)),
+            opacity=float(_g3d_option_get(options, "opacity", 1)),
+            showlegend=_g3d_option_get(options, "legend_label") is not None,
         )
         is_face_colors = (
             isinstance(color, (list, tuple))
@@ -937,39 +941,44 @@ class Mesh3d(GraphicPrimitive3d):
             colors = list(color)
             runtime.reflect.set(
                 trace,
-                'facecolor',
+                "facecolor",
                 [
                     _g3d_color_value(colors[index % len(colors)])
                     for index in face_indices
                 ],
             )
         else:
-            runtime.reflect.set(trace, 'color', _g3d_color_value(color))
-        legend_label = _g3d_option_get(options, 'legend_label')
+            runtime.reflect.set(trace, "color", _g3d_color_value(color))
+        legend_label = _g3d_option_get(options, "legend_label")
         if legend_label is not None:
-            runtime.reflect.set(trace, 'name', str(legend_label))
+            runtime.reflect.set(trace, "name", str(legend_label))
         traces = [trace]
-        if bool(_g3d_option_get(options, 'mesh', False)):
+        if bool(_g3d_option_get(options, "mesh", False)):
             wireframe = self._wireframe_coordinates()
-            traces.append(_g3d_native_record(
-                type='scatter3d',
-                mode='lines',
-                x=wireframe[0],
-                y=wireframe[1],
-                z=wireframe[2],
-                line=_g3d_native_record(
-                    color=_g3d_color_value(
-                        _g3d_option_get(options, 'mesh_color', 'black')),
-                    width=float(_g3d_option_get(
-                        options,
-                        'mesh_thickness',
-                        _g3d_option_get(options, 'thickness', 1),
-                    )),
-                ),
-                opacity=float(_g3d_option_get(options, 'opacity', 1)),
-                hoverinfo='skip',
-                showlegend=False,
-            ))
+            traces.append(
+                _g3d_native_record(
+                    type="scatter3d",
+                    mode="lines",
+                    x=wireframe[0],
+                    y=wireframe[1],
+                    z=wireframe[2],
+                    line=_g3d_native_record(
+                        color=_g3d_color_value(
+                            _g3d_option_get(options, "mesh_color", "black")
+                        ),
+                        width=float(
+                            _g3d_option_get(
+                                options,
+                                "mesh_thickness",
+                                _g3d_option_get(options, "thickness", 1),
+                            )
+                        ),
+                    ),
+                    opacity=float(_g3d_option_get(options, "opacity", 1)),
+                    hoverinfo="skip",
+                    showlegend=False,
+                )
+            )
         return traces
 
 
@@ -985,29 +994,28 @@ class ScatteredSurface3d(GraphicPrimitive3d):
         self.points = list(points)
 
     def __repr__(self) -> str:
-        return (
-            '3D surface triangulated from ' +
-            str(len(self.points)) + ' points'
-        )
+        return "3D surface triangulated from " + str(len(self.points)) + " points"
 
     __str__ = __repr__
     toString = __repr__
 
     def _plotly_traces(self) -> list[Any]:
         options = self._options
-        color = _g3d_option_get(options, 'color', 'steelblue')
-        return [_g3d_native_record(
-            type='mesh3d',
-            x=[point[0] for point in self.points],
-            y=[point[1] for point in self.points],
-            z=[point[2] for point in self.points],
-            alphahull=-1,
-            delaunayaxis='z',
-            color=_g3d_color_value(color),
-            opacity=float(_g3d_option_get(options, 'opacity', 1)),
-            flatshading=False,
-            showlegend=False,
-        )]
+        color = _g3d_option_get(options, "color", "steelblue")
+        return [
+            _g3d_native_record(
+                type="mesh3d",
+                x=[point[0] for point in self.points],
+                y=[point[1] for point in self.points],
+                z=[point[2] for point in self.points],
+                alphahull=-1,
+                delaunayaxis="z",
+                color=_g3d_color_value(color),
+                opacity=float(_g3d_option_get(options, "opacity", 1)),
+                flatshading=False,
+                showlegend=False,
+            )
+        ]
 
 
 class Text3d(GraphicPrimitive3d):
@@ -1031,21 +1039,23 @@ class Text3d(GraphicPrimitive3d):
 
     def _plotly_traces(self) -> list[Any]:
         options = self._options
-        color = _g3d_option_get(options, 'color', [0, 0, 1])
-        return [_g3d_native_record(
-            type='scatter3d',
-            mode='text',
-            x=[self.position[0]],
-            y=[self.position[1]],
-            z=[self.position[2]],
-            text=[self.string],
-            textfont=_g3d_native_record(
-                color=_g3d_color_value(color),
-                size=float(_g3d_option_get(options, 'fontsize', 14)),
-            ),
-            opacity=float(_g3d_option_get(options, 'opacity', 1)),
-            showlegend=False,
-        )]
+        color = _g3d_option_get(options, "color", [0, 0, 1])
+        return [
+            _g3d_native_record(
+                type="scatter3d",
+                mode="text",
+                x=[self.position[0]],
+                y=[self.position[1]],
+                z=[self.position[2]],
+                text=[self.string],
+                textfont=_g3d_native_record(
+                    color=_g3d_color_value(color),
+                    size=float(_g3d_option_get(options, "fontsize", 14)),
+                ),
+                opacity=float(_g3d_option_get(options, "opacity", 1)),
+                showlegend=False,
+            )
+        ]
 
 
 class Arrowhead3d(GraphicPrimitive3d):
@@ -1070,27 +1080,29 @@ class Arrowhead3d(GraphicPrimitive3d):
             return []
         options = self._options
         color = _g3d_option_get(
-            options, 'color',
-            _g3d_option_get(options, 'rgbcolor', [0, 0, 1]))
-        head_length = _g3d_option_get(options, 'head_len')
+            options, "color", _g3d_option_get(options, "rgbcolor", [0, 0, 1])
+        )
+        head_length = _g3d_option_get(options, "head_len")
         if head_length is None:
             head_length = 0.25 * length
-        return [_g3d_native_record(
-            type='cone',
-            x=[self.end[0]],
-            y=[self.end[1]],
-            z=[self.end[2]],
-            u=[dx / length],
-            v=[dy / length],
-            w=[dz / length],
-            anchor='tip',
-            sizemode='absolute',
-            sizeref=float(head_length),
-            colorscale=_g3d_colorscale(color),
-            showscale=False,
-            opacity=float(_g3d_option_get(options, 'opacity', 1)),
-            showlegend=False,
-        )]
+        return [
+            _g3d_native_record(
+                type="cone",
+                x=[self.end[0]],
+                y=[self.end[1]],
+                z=[self.end[2]],
+                u=[dx / length],
+                v=[dy / length],
+                w=[dz / length],
+                anchor="tip",
+                sizemode="absolute",
+                sizeref=float(head_length),
+                colorscale=_g3d_colorscale(color),
+                showscale=False,
+                opacity=float(_g3d_option_get(options, "opacity", 1)),
+                showlegend=False,
+            )
+        ]
 
 
 class VectorField3d(GraphicPrimitive3d):
@@ -1109,47 +1121,60 @@ class VectorField3d(GraphicPrimitive3d):
         self.magnitudes = list(magnitudes)
 
     def __repr__(self) -> str:
-        return (
-            '3D vector field with ' + str(len(self.points)) +
-            ' vectors'
-        )
+        return "3D vector field with " + str(len(self.points)) + " vectors"
 
     __str__ = __repr__
     toString = __repr__
 
     def _plotly_traces(self) -> list[Any]:
         options = self._options
-        colors = _g3d_option_get(options, 'colors', 'jet')
+        colors = _g3d_option_get(options, "colors", "jet")
         if isinstance(colors, str) and colors.lower() in {
-            'blackbody', 'bluered', 'blues', 'cividis', 'earth',
-            'electric', 'greens', 'greys', 'hot', 'jet', 'picnic',
-            'portland', 'rainbow', 'rdbu', 'reds', 'viridis',
-            'ylgnbu', 'ylorrd',
+            "blackbody",
+            "bluered",
+            "blues",
+            "cividis",
+            "earth",
+            "electric",
+            "greens",
+            "greys",
+            "hot",
+            "jet",
+            "picnic",
+            "portland",
+            "rainbow",
+            "rdbu",
+            "reds",
+            "viridis",
+            "ylgnbu",
+            "ylorrd",
         }:
             colorscale = colors
         else:
             colorscale = _g3d_colorscale(colors)
         anchor = (
-            'center'
-            if bool(_g3d_option_get(options, 'center_arrows', False))
-            else 'tail'
+            "center"
+            if bool(_g3d_option_get(options, "center_arrows", False))
+            else "tail"
         )
-        return [_g3d_native_record(
-            type='cone',
-            x=[point[0] for point in self.points],
-            y=[point[1] for point in self.points],
-            z=[point[2] for point in self.points],
-            u=[vector[0] for vector in self.vectors],
-            v=[vector[1] for vector in self.vectors],
-            w=[vector[2] for vector in self.vectors],
-            anchor=anchor,
-            sizemode='raw',
-            sizeref=float(_g3d_option_get(options, 'scale', 1)),
-            colorscale=colorscale,
-            showscale=bool(_g3d_option_get(options, 'colorbar', False)),
-            opacity=float(_g3d_option_get(options, 'opacity', 1)),
-            showlegend=False,
-        )]
+        return [
+            _g3d_native_record(
+                type="cone",
+                x=[point[0] for point in self.points],
+                y=[point[1] for point in self.points],
+                z=[point[2] for point in self.points],
+                u=[vector[0] for vector in self.vectors],
+                v=[vector[1] for vector in self.vectors],
+                w=[vector[2] for vector in self.vectors],
+                anchor=anchor,
+                sizemode="raw",
+                sizeref=float(_g3d_option_get(options, "scale", 1)),
+                colorscale=colorscale,
+                showscale=bool(_g3d_option_get(options, "colorbar", False)),
+                opacity=float(_g3d_option_get(options, "opacity", 1)),
+                showlegend=False,
+            )
+        ]
 
 
 class Surface3d(GraphicPrimitive3d):
@@ -1170,10 +1195,7 @@ class Surface3d(GraphicPrimitive3d):
     def __repr__(self) -> str:
         rows = len(self.zdata)
         columns = 0 if rows == 0 else len(self.zdata[0])
-        return (
-            '3D surface defined by a ' + str(rows) + ' x ' +
-            str(columns) + ' grid'
-        )
+        return "3D surface defined by a " + str(rows) + " x " + str(columns) + " grid"
 
     __str__ = __repr__
     toString = __repr__
@@ -1188,8 +1210,7 @@ class Surface3d(GraphicPrimitive3d):
         if row_count == 0 or column_count == 0:
             return runtime.math_tuple([mesh_x, mesh_y, mesh_z])
 
-        minimum = [
-            self.xdata[0][0], self.ydata[0][0], self.zdata[0][0]]
+        minimum = [self.xdata[0][0], self.ydata[0][0], self.zdata[0][0]]
         maximum = list(minimum)
         for row_index in range(row_count):
             for column_index in range(column_count):
@@ -1199,16 +1220,12 @@ class Surface3d(GraphicPrimitive3d):
                     self.zdata[row_index][column_index],
                 ]
                 for coordinate in range(3):
-                    minimum[coordinate] = min(
-                        minimum[coordinate], point[coordinate])
-                    maximum[coordinate] = max(
-                        maximum[coordinate], point[coordinate])
-        diagonal = runtime.math.sqrt(sum(
-            (maximum[index] - minimum[index]) ** 2
-            for index in range(3)
-        ))
-        relative_offset = float(_g3d_option_get(
-            self._options, 'mesh_offset', 0.0001))
+                    minimum[coordinate] = min(minimum[coordinate], point[coordinate])
+                    maximum[coordinate] = max(maximum[coordinate], point[coordinate])
+        diagonal = runtime.math.sqrt(
+            sum((maximum[index] - minimum[index]) ** 2 for index in range(3))
+        )
+        relative_offset = float(_g3d_option_get(self._options, "mesh_offset", 0.0001))
         offset = relative_offset * (diagonal if diagonal > 0 else 1)
 
         offset_x = []
@@ -1224,24 +1241,23 @@ class Surface3d(GraphicPrimitive3d):
                 before_column = max(0, column_index - 1)
                 after_column = min(column_count - 1, column_index + 1)
                 tangent_u = [
-                    self.xdata[row_index][after_column] -
-                    self.xdata[row_index][before_column],
-                    self.ydata[row_index][after_column] -
-                    self.ydata[row_index][before_column],
-                    self.zdata[row_index][after_column] -
-                    self.zdata[row_index][before_column],
+                    self.xdata[row_index][after_column]
+                    - self.xdata[row_index][before_column],
+                    self.ydata[row_index][after_column]
+                    - self.ydata[row_index][before_column],
+                    self.zdata[row_index][after_column]
+                    - self.zdata[row_index][before_column],
                 ]
                 tangent_v = [
-                    self.xdata[after_row][column_index] -
-                    self.xdata[before_row][column_index],
-                    self.ydata[after_row][column_index] -
-                    self.ydata[before_row][column_index],
-                    self.zdata[after_row][column_index] -
-                    self.zdata[before_row][column_index],
+                    self.xdata[after_row][column_index]
+                    - self.xdata[before_row][column_index],
+                    self.ydata[after_row][column_index]
+                    - self.ydata[before_row][column_index],
+                    self.zdata[after_row][column_index]
+                    - self.zdata[before_row][column_index],
                 ]
                 normal = _cross_product(tangent_u, tangent_v)
-                normal_length = runtime.math.sqrt(
-                    _dot_product(normal, normal))
+                normal_length = runtime.math.sqrt(_dot_product(normal, normal))
                 if normal_length <= 1e-15:
                     normal = [0, 0, 1]
                     normal_length = 1
@@ -1260,28 +1276,34 @@ class Surface3d(GraphicPrimitive3d):
             for row_index in range(row_count):
                 for column_index in range(column_count):
                     mesh_x.append(
-                        self.xdata[row_index][column_index] +
-                        sign * offset_x[row_index][column_index])
+                        self.xdata[row_index][column_index]
+                        + sign * offset_x[row_index][column_index]
+                    )
                     mesh_y.append(
-                        self.ydata[row_index][column_index] +
-                        sign * offset_y[row_index][column_index])
+                        self.ydata[row_index][column_index]
+                        + sign * offset_y[row_index][column_index]
+                    )
                     mesh_z.append(
-                        self.zdata[row_index][column_index] +
-                        sign * offset_z[row_index][column_index])
+                        self.zdata[row_index][column_index]
+                        + sign * offset_z[row_index][column_index]
+                    )
                 mesh_x.append(None)
                 mesh_y.append(None)
                 mesh_z.append(None)
             for column_index in range(column_count):
                 for row_index in range(row_count):
                     mesh_x.append(
-                        self.xdata[row_index][column_index] +
-                        sign * offset_x[row_index][column_index])
+                        self.xdata[row_index][column_index]
+                        + sign * offset_x[row_index][column_index]
+                    )
                     mesh_y.append(
-                        self.ydata[row_index][column_index] +
-                        sign * offset_y[row_index][column_index])
+                        self.ydata[row_index][column_index]
+                        + sign * offset_y[row_index][column_index]
+                    )
                     mesh_z.append(
-                        self.zdata[row_index][column_index] +
-                        sign * offset_z[row_index][column_index])
+                        self.zdata[row_index][column_index]
+                        + sign * offset_z[row_index][column_index]
+                    )
                 mesh_x.append(None)
                 mesh_y.append(None)
                 mesh_z.append(None)
@@ -1289,46 +1311,51 @@ class Surface3d(GraphicPrimitive3d):
 
     def _plotly_traces(self) -> list[Any]:
         options = self._options
-        color = _g3d_option_get(options, 'color', 'steelblue')
-        legend_label = _g3d_option_get(options, 'legend_label')
+        color = _g3d_option_get(options, "color", "steelblue")
+        legend_label = _g3d_option_get(options, "legend_label")
         trace = _g3d_native_record(
-            type='surface',
+            type="surface",
             x=self.xdata,
             y=self.ydata,
             z=self.zdata,
             colorscale=_g3d_colorscale(color),
-            showscale=bool(_g3d_option_get(options, 'colorbar', False)),
-            opacity=float(_g3d_option_get(options, 'opacity', 1)),
+            showscale=bool(_g3d_option_get(options, "colorbar", False)),
+            opacity=float(_g3d_option_get(options, "opacity", 1)),
             showlegend=legend_label is not None,
         )
         if legend_label is not None:
-            runtime.reflect.set(trace, 'name', str(legend_label))
+            runtime.reflect.set(trace, "name", str(legend_label))
         traces = [trace]
-        if bool(_g3d_option_get(options, 'mesh', False)):
+        if bool(_g3d_option_get(options, "mesh", False)):
             wireframe = self._wireframe_coordinates()
             mesh_x = wireframe[0]
             mesh_y = wireframe[1]
             mesh_z = wireframe[2]
-            traces.append(_g3d_native_record(
-                type='scatter3d',
-                mode='lines',
-                x=mesh_x,
-                y=mesh_y,
-                z=mesh_z,
-                line=_g3d_native_record(
-                    color=_g3d_color_value(
-                        _g3d_option_get(options, 'mesh_color', 'black')),
-                    width=float(_g3d_option_get(
-                        options,
-                        'mesh_thickness',
-                        _g3d_option_get(options, 'thickness', 1),
-                    )),
-                ),
-                opacity=float(_g3d_option_get(options, 'opacity', 1)),
-                hoverinfo='skip',
-                showlegend=False,
-            ))
-        if bool(_g3d_option_get(options, 'dots', False)):
+            traces.append(
+                _g3d_native_record(
+                    type="scatter3d",
+                    mode="lines",
+                    x=mesh_x,
+                    y=mesh_y,
+                    z=mesh_z,
+                    line=_g3d_native_record(
+                        color=_g3d_color_value(
+                            _g3d_option_get(options, "mesh_color", "black")
+                        ),
+                        width=float(
+                            _g3d_option_get(
+                                options,
+                                "mesh_thickness",
+                                _g3d_option_get(options, "thickness", 1),
+                            )
+                        ),
+                    ),
+                    opacity=float(_g3d_option_get(options, "opacity", 1)),
+                    hoverinfo="skip",
+                    showlegend=False,
+                )
+            )
+        if bool(_g3d_option_get(options, "dots", False)):
             flat_x = []
             flat_y = []
             flat_z = []
@@ -1337,22 +1364,23 @@ class Surface3d(GraphicPrimitive3d):
                     flat_x.append(self.xdata[row_index][column_index])
                     flat_y.append(self.ydata[row_index][column_index])
                     flat_z.append(self.zdata[row_index][column_index])
-            traces.append(_g3d_native_record(
-                type='scatter3d',
-                mode='markers',
-                x=flat_x,
-                y=flat_y,
-                z=flat_z,
-                marker=_g3d_native_record(
-                    color=_g3d_color_value(
-                        _g3d_option_get(
-                            options, 'dot_color', 'black')),
-                    size=float(_g3d_option_get(
-                        options, 'dot_size', 2)),
-                ),
-                opacity=float(_g3d_option_get(options, 'opacity', 1)),
-                showlegend=False,
-            ))
+            traces.append(
+                _g3d_native_record(
+                    type="scatter3d",
+                    mode="markers",
+                    x=flat_x,
+                    y=flat_y,
+                    z=flat_z,
+                    marker=_g3d_native_record(
+                        color=_g3d_color_value(
+                            _g3d_option_get(options, "dot_color", "black")
+                        ),
+                        size=float(_g3d_option_get(options, "dot_size", 2)),
+                    ),
+                    opacity=float(_g3d_option_get(options, "opacity", 1)),
+                    showlegend=False,
+                )
+            )
         return traces
 
 
@@ -1376,40 +1404,36 @@ class Isosurface3d(GraphicPrimitive3d):
         self.level = level
 
     def __repr__(self) -> str:
-        return (
-            '3D implicit surface sampled at ' +
-            str(len(self.values)) + ' points'
-        )
+        return "3D implicit surface sampled at " + str(len(self.values)) + " points"
 
     __str__ = __repr__
     toString = __repr__
 
     def _plotly_traces(self) -> list[Any]:
         options = self._options
-        tolerance = float(
-            _g3d_option_get(options, 'plot_tolerance', 1e-9))
-        color = _g3d_option_get(options, 'color', 'steelblue')
-        return [_g3d_native_record(
-            type='isosurface',
-            x=self.xdata,
-            y=self.ydata,
-            z=self.zdata,
-            value=self.values,
-            isomin=self.level - tolerance,
-            isomax=self.level + tolerance,
-            surface=_g3d_native_record(count=1, fill=1),
-            caps=_g3d_native_record(
-                x=_g3d_native_record(show=False),
-                y=_g3d_native_record(show=False),
-                z=_g3d_native_record(show=False),
-            ),
-            colorscale=_g3d_colorscale(color),
-            showscale=bool(
-                _g3d_option_get(options, 'colorbar', False)),
-            opacity=float(
-                _g3d_option_get(options, 'opacity', 1)),
-            showlegend=False,
-        )]
+        tolerance = float(_g3d_option_get(options, "plot_tolerance", 1e-9))
+        color = _g3d_option_get(options, "color", "steelblue")
+        return [
+            _g3d_native_record(
+                type="isosurface",
+                x=self.xdata,
+                y=self.ydata,
+                z=self.zdata,
+                value=self.values,
+                isomin=self.level - tolerance,
+                isomax=self.level + tolerance,
+                surface=_g3d_native_record(count=1, fill=1),
+                caps=_g3d_native_record(
+                    x=_g3d_native_record(show=False),
+                    y=_g3d_native_record(show=False),
+                    z=_g3d_native_record(show=False),
+                ),
+                colorscale=_g3d_colorscale(color),
+                showscale=bool(_g3d_option_get(options, "colorbar", False)),
+                opacity=float(_g3d_option_get(options, "opacity", 1)),
+                showlegend=False,
+            )
+        ]
 
 
 @runtime.sequence_class
@@ -1431,15 +1455,14 @@ class Graphics3d:
         return self._objects[index]
 
     def __repr__(self) -> str:
-        return 'Graphics3d Object'
+        return "Graphics3d Object"
 
     __str__ = __repr__
     toString = __repr__
 
     def add_primitive(self, primitive: GraphicPrimitive3d) -> None:
         self._objects.append(primitive)
-        if _g3d_option_get(
-            primitive.options(), 'legend_label') is not None:
+        if _g3d_option_get(primitive.options(), "legend_label") is not None:
             self._show_legend = True
 
     def set_extra_kwds(self, keywords: dict[str, Any]) -> None:
@@ -1451,7 +1474,7 @@ class Graphics3d:
 
     def __add__(self, other: object) -> Graphics3d:
         if not isinstance(other, Graphics3d):
-            raise TypeError('can only add Graphics3d to Graphics3d')
+            raise TypeError("can only add Graphics3d to Graphics3d")
         answer = Graphics3d()
         answer._objects = self._objects + other._objects
         answer.set_extra_kwds(self._extra_kwds)
@@ -1464,7 +1487,7 @@ class Graphics3d:
             return self
         if isinstance(other, Graphics3d):
             return other + self
-        raise TypeError('can only add Graphics3d to Graphics3d')
+        raise TypeError("can only add Graphics3d to Graphics3d")
 
     def translate(self, *offset: Any) -> Graphics3d:
         r"""
@@ -1492,13 +1515,12 @@ class Graphics3d:
         answer.set_extra_kwds(self._extra_kwds)
         answer._show_legend = self._show_legend
         for primitive in self._objects:
-            answer.add_primitive(
-                TranslatedPrimitive3d(primitive, vector))
+            answer.add_primitive(TranslatedPrimitive3d(primitive, vector))
         return answer
 
     def transform(self, **options: Any) -> Graphics3d:
         r"""Apply Sage's scale, rotation, and translation transformation."""
-        scale_value = _g3d_option_get(options, 'scale', (1, 1, 1))
+        scale_value = _g3d_option_get(options, "scale", (1, 1, 1))
         if isinstance(scale_value, (list, tuple)):
             if len(scale_value) == 1:
                 uniform_scale = float(scale_value[0])
@@ -1510,7 +1532,7 @@ class Graphics3d:
                     float(scale_value[2]),
                 ]
             else:
-                raise ValueError('scale must be a number or three coordinates')
+                raise ValueError("scale must be a number or three coordinates")
         else:
             uniform_scale = float(scale_value)
             scale = [uniform_scale, uniform_scale, uniform_scale]
@@ -1520,17 +1542,18 @@ class Graphics3d:
             [0.0, scale[1], 0.0],
             [0.0, 0.0, scale[2]],
         ]
-        rotation = _g3d_option_get(options, 'rot')
+        rotation = _g3d_option_get(options, "rot")
         if rotation is not None:
             if not isinstance(rotation, (list, tuple)) or len(rotation) != 4:
-                raise ValueError('rot must contain an axis and an angle')
+                raise ValueError("rot must contain an axis and an angle")
             axis_x = float(rotation[0])
             axis_y = float(rotation[1])
             axis_z = float(rotation[2])
             length = runtime.math.sqrt(
-                axis_x * axis_x + axis_y * axis_y + axis_z * axis_z)
+                axis_x * axis_x + axis_y * axis_y + axis_z * axis_z
+            )
             if length == 0:
-                raise ValueError('rotation axis must be nonzero')
+                raise ValueError("rotation axis must be nonzero")
             axis_x /= length
             axis_y /= length
             axis_z /= length
@@ -1556,21 +1579,25 @@ class Graphics3d:
                 ],
             ]
             matrix = [
-                [sum(rotation_matrix[row][inner] * matrix[inner][column]
-                     for inner in range(3))
-                 for column in range(3)]
+                [
+                    sum(
+                        rotation_matrix[row][inner] * matrix[inner][column]
+                        for inner in range(3)
+                    )
+                    for column in range(3)
+                ]
                 for row in range(3)
             ]
 
         translation = _g3d_option_get(
-            options, 'trans', _g3d_option_get(options, 'translation', (0, 0, 0)))
+            options, "trans", _g3d_option_get(options, "translation", (0, 0, 0))
+        )
         offset = _g3d_point(translation)
         answer = Graphics3d()
         answer.set_extra_kwds(self._extra_kwds)
         answer._show_legend = self._show_legend
         for primitive in self._objects:
-            answer.add_primitive(
-                TransformedPrimitive3d(primitive, matrix, offset))
+            answer.add_primitive(TransformedPrimitive3d(primitive, matrix, offset))
         return answer
 
     def scale(self, *factors: Any) -> Graphics3d:
@@ -1600,19 +1627,24 @@ class Graphics3d:
         coordinates = [[], [], []]
         for primitive in self._objects:
             for trace in primitive._plotly_traces():
-                for index, name in enumerate(('x', 'y', 'z')):
+                for index, name in enumerate(("x", "y", "z")):
                     if runtime.reflect.has(trace, name):
                         coordinates[index] += _g3d_flatten_numeric(
-                            runtime.reflect.get(trace, name))
+                            runtime.reflect.get(trace, name)
+                        )
         if any(len(values) == 0 for values in coordinates):
-            return runtime.math_tuple([
-                runtime.math_tuple([0.0, 0.0, 0.0]),
-                runtime.math_tuple([0.0, 0.0, 0.0]),
-            ])
-        return runtime.math_tuple([
-            runtime.math_tuple([min(values) for values in coordinates]),
-            runtime.math_tuple([max(values) for values in coordinates]),
-        ])
+            return runtime.math_tuple(
+                [
+                    runtime.math_tuple([0.0, 0.0, 0.0]),
+                    runtime.math_tuple([0.0, 0.0, 0.0]),
+                ]
+            )
+        return runtime.math_tuple(
+            [
+                runtime.math_tuple([min(values) for values in coordinates]),
+                runtime.math_tuple([max(values) for values in coordinates]),
+            ]
+        )
 
     def show(self, **options: Any) -> Graphics3d:
         """Apply display options and return this rich-display object."""
@@ -1628,7 +1660,7 @@ class Graphics3d:
             xaxis=xaxis,
             yaxis=yaxis,
             zaxis=zaxis,
-            dragmode='orbit',
+            dragmode="orbit",
             camera=_g3d_camera(options),
         )
         layout = _g3d_native_record(
@@ -1636,69 +1668,64 @@ class Graphics3d:
             showlegend=self._show_legend,
             scene=scene,
         )
-        title = _g3d_option_get(options, 'title')
+        title = _g3d_option_get(options, "title")
         if title is not None:
-            runtime.reflect.set(
-                layout, 'title', _g3d_native_record(text=str(title)))
+            runtime.reflect.set(layout, "title", _g3d_native_record(text=str(title)))
 
-        axes_labels = _g3d_option_get(options, 'axes_labels')
-        if (
-            isinstance(axes_labels, (list, tuple))
-            and len(axes_labels) == 3
-        ):
+        axes_labels = _g3d_option_get(options, "axes_labels")
+        if isinstance(axes_labels, (list, tuple)) and len(axes_labels) == 3:
             runtime.reflect.set(
-                xaxis, 'title',
-                _g3d_native_record(text=str(axes_labels[0])))
+                xaxis, "title", _g3d_native_record(text=str(axes_labels[0]))
+            )
             runtime.reflect.set(
-                yaxis, 'title',
-                _g3d_native_record(text=str(axes_labels[1])))
+                yaxis, "title", _g3d_native_record(text=str(axes_labels[1]))
+            )
             runtime.reflect.set(
-                zaxis, 'title',
-                _g3d_native_record(text=str(axes_labels[2])))
+                zaxis, "title", _g3d_native_record(text=str(axes_labels[2]))
+            )
 
-        visible = bool(_g3d_option_get(
-            options,
-            'frame',
-            _g3d_option_get(options, 'axes', True),
-        ))
+        visible = bool(
+            _g3d_option_get(
+                options,
+                "frame",
+                _g3d_option_get(options, "axes", True),
+            )
+        )
         for axis in (xaxis, yaxis, zaxis):
-            runtime.reflect.set(axis, 'visible', visible)
+            runtime.reflect.set(axis, "visible", visible)
 
-        ratio = _g3d_option_get(options, 'aspect_ratio', 'automatic')
-        if ratio in ('auto', 'automatic'):
-            runtime.reflect.set(scene, 'aspectmode', 'data')
+        ratio = _g3d_option_get(options, "aspect_ratio", "automatic")
+        if ratio in ("auto", "automatic"):
+            runtime.reflect.set(scene, "aspectmode", "data")
         elif isinstance(ratio, (list, tuple)):
             if len(ratio) != 3:
-                raise ValueError(
-                    '3D aspect_ratio must have exactly three entries')
+                raise ValueError("3D aspect_ratio must have exactly three entries")
             factors = [float(value) for value in ratio]
             if any(value <= 0 for value in factors):
-                raise ValueError('3D aspect_ratio entries must be positive')
+                raise ValueError("3D aspect_ratio entries must be positive")
             if factors[0] == factors[1] == factors[2]:
                 # Sage's ratio measures display units per coordinate unit.
                 # Plotly's ``data`` mode has precisely that interpretation;
                 # a manual (1,1,1) instead forces the whole bounding box into
                 # a cube and visibly distorts objects in unequal ranges.
-                runtime.reflect.set(scene, 'aspectmode', 'data')
+                runtime.reflect.set(scene, "aspectmode", "data")
             else:
                 bounds = self.bounding_box()
                 spans = [
-                    float(bounds[1][index] - bounds[0][index])
-                    for index in range(3)
+                    float(bounds[1][index] - bounds[0][index]) for index in range(3)
                 ]
                 positive_spans = [value for value in spans if value > 0]
-                fallback_span = (
-                    min(positive_spans) if len(positive_spans) else 1.0)
+                fallback_span = min(positive_spans) if len(positive_spans) else 1.0
                 lengths = [
                     (spans[index] if spans[index] > 0 else fallback_span)
                     * factors[index]
                     for index in range(3)
                 ]
                 scale = max(lengths)
-                runtime.reflect.set(scene, 'aspectmode', 'manual')
+                runtime.reflect.set(scene, "aspectmode", "manual")
                 runtime.reflect.set(
                     scene,
-                    'aspectratio',
+                    "aspectratio",
                     _g3d_native_record(
                         x=lengths[0] / scale,
                         y=lengths[1] / scale,
@@ -1708,25 +1735,21 @@ class Graphics3d:
         else:
             numeric_ratio = float(ratio)
             if numeric_ratio <= 0:
-                raise ValueError('3D aspect_ratio must be positive')
+                raise ValueError("3D aspect_ratio must be positive")
             bounds = self.bounding_box()
-            spans = [
-                float(bounds[1][index] - bounds[0][index])
-                for index in range(3)
-            ]
+            spans = [float(bounds[1][index] - bounds[0][index]) for index in range(3)]
             positive_spans = [value for value in spans if value > 0]
             fallback_span = min(positive_spans) if len(positive_spans) else 1.0
             lengths = [
                 spans[0] if spans[0] > 0 else fallback_span,
                 spans[1] if spans[1] > 0 else fallback_span,
-                (spans[2] if spans[2] > 0 else fallback_span)
-                * numeric_ratio,
+                (spans[2] if spans[2] > 0 else fallback_span) * numeric_ratio,
             ]
             scale = max(lengths)
-            runtime.reflect.set(scene, 'aspectmode', 'manual')
+            runtime.reflect.set(scene, "aspectmode", "manual")
             runtime.reflect.set(
                 scene,
-                'aspectratio',
+                "aspectratio",
                 _g3d_native_record(
                     x=lengths[0] / scale,
                     y=lengths[1] / scale,
@@ -1734,11 +1757,11 @@ class Graphics3d:
                 ),
             )
 
-        figsize = _g3d_option_get(options, 'figsize')
+        figsize = _g3d_option_get(options, "figsize")
         if figsize is not None:
             width, height = _g3d_parse_figsize(figsize)
-            runtime.reflect.set(layout, 'width', int(width * 100))
-            runtime.reflect.set(layout, 'height', int(height * 100))
+            runtime.reflect.set(layout, "width", int(width * 100))
+            runtime.reflect.set(layout, "height", int(height * 100))
         return layout
 
     def plotly(self) -> Any:
@@ -1768,10 +1791,12 @@ class Graphics3d:
     ) -> Graphics3d:
         """Save through the host graphics hook when one is installed."""
         hook = runtime.reflect.get(
-            runtime.global_object, '__sagejs_graphics_save_hook__')
+            runtime.global_object, "__sagejs_graphics_save_hook__"
+        )
         if hook is runtime.undefined:
             raise NotImplementedError(
-                'graphics file export is not available in this host')
+                "graphics file export is not available in this host"
+            )
         runtime.reflect.apply(
             hook,
             runtime.undefined,
@@ -1784,36 +1809,31 @@ def line3d(points: Any, **options: Any) -> Graphics3d:
     """Return a line through three-dimensional `points`."""
     options = _g3d_copy_options(options)
     normalized = _g3d_normalize_points(points)
-    arrow_head = bool(_g3d_option_pop(options, 'arrow_head', False))
+    arrow_head = bool(_g3d_option_pop(options, "arrow_head", False))
     defaults = {
-        'opacity': 1,
-        'rgbcolor': [0, 0, 1],
-        'thickness': 2,
-        'legend_label': None,
+        "opacity": 1,
+        "rgbcolor": [0, 0, 1],
+        "thickness": 2,
+        "legend_label": None,
     }
-    if (
-        _g3d_option_has(options, 'alpha')
-        and not _g3d_option_has(options, 'opacity')
-    ):
-        options['opacity'] = _g3d_option_pop(options, 'alpha')
-    if (
-        _g3d_option_has(options, 'color')
-        and not _g3d_option_has(options, 'rgbcolor')
-    ):
-        options['rgbcolor'] = _g3d_option_pop(options, 'color')
+    if _g3d_option_has(options, "alpha") and not _g3d_option_has(options, "opacity"):
+        options["opacity"] = _g3d_option_pop(options, "alpha")
+    if _g3d_option_has(options, "color") and not _g3d_option_has(options, "rgbcolor"):
+        options["rgbcolor"] = _g3d_option_pop(options, "color")
     _g3d_option_update(defaults, options)
     graphics_options = _g3d_graphics_options(defaults)
     graphic = Graphics3d()
     graphic.set_extra_kwds(graphics_options)
-    graphic.add_primitive(Line3d(
-        [value[0] for value in normalized],
-        [value[1] for value in normalized],
-        [value[2] for value in normalized],
-        defaults,
-    ))
+    graphic.add_primitive(
+        Line3d(
+            [value[0] for value in normalized],
+            [value[1] for value in normalized],
+            [value[2] for value in normalized],
+            defaults,
+        )
+    )
     if arrow_head and len(normalized) >= 2:
-        graphic.add_primitive(Arrowhead3d(
-            normalized[-2], normalized[-1], defaults))
+        graphic.add_primitive(Arrowhead3d(normalized[-2], normalized[-1], defaults))
     return graphic
 
 
@@ -1822,32 +1842,28 @@ def point3d(points: Any, **options: Any) -> Graphics3d:
     options = _g3d_copy_options(options)
     normalized = _g3d_normalize_points(points)
     defaults = {
-        'opacity': 1,
-        'rgbcolor': [0, 0, 1],
-        'size': 5,
-        'legend_label': None,
-        'marker': 'circle',
+        "opacity": 1,
+        "rgbcolor": [0, 0, 1],
+        "size": 5,
+        "legend_label": None,
+        "marker": "circle",
     }
-    if (
-        _g3d_option_has(options, 'alpha')
-        and not _g3d_option_has(options, 'opacity')
-    ):
-        options['opacity'] = _g3d_option_pop(options, 'alpha')
-    if (
-        _g3d_option_has(options, 'color')
-        and not _g3d_option_has(options, 'rgbcolor')
-    ):
-        options['rgbcolor'] = _g3d_option_pop(options, 'color')
+    if _g3d_option_has(options, "alpha") and not _g3d_option_has(options, "opacity"):
+        options["opacity"] = _g3d_option_pop(options, "alpha")
+    if _g3d_option_has(options, "color") and not _g3d_option_has(options, "rgbcolor"):
+        options["rgbcolor"] = _g3d_option_pop(options, "color")
     _g3d_option_update(defaults, options)
     graphics_options = _g3d_graphics_options(defaults)
     graphic = Graphics3d()
     graphic.set_extra_kwds(graphics_options)
-    graphic.add_primitive(Point3d(
-        [value[0] for value in normalized],
-        [value[1] for value in normalized],
-        [value[2] for value in normalized],
-        defaults,
-    ))
+    graphic.add_primitive(
+        Point3d(
+            [value[0] for value in normalized],
+            [value[1] for value in normalized],
+            [value[2] for value in normalized],
+            defaults,
+        )
+    )
     return graphic
 
 
@@ -1857,40 +1873,31 @@ def _g3d_mesh(
     **options: Any,
 ) -> Graphics3d:
     normalized = [_g3d_point(point_value) for point_value in points]
-    normalized_faces = [
-        [int(index) for index in face] for face in faces
-    ]
+    normalized_faces = [[int(index) for index in face] for face in faces]
     if len(normalized) == 0:
-        raise ValueError('a 3D mesh requires at least one vertex')
+        raise ValueError("a 3D mesh requires at least one vertex")
     for face in normalized_faces:
         if len(face) < 3:
-            raise ValueError('each 3D mesh face needs at least three vertices')
+            raise ValueError("each 3D mesh face needs at least three vertices")
         for index in face:
             if index < 0 or index >= len(normalized):
-                raise IndexError('3D mesh face index is out of range')
+                raise IndexError("3D mesh face index is out of range")
     options = _g3d_copy_options(options)
     defaults = {
-        'color': [0, 0, 1],
-        'opacity': 1,
-        'legend_label': None,
-        'threejs_flat_shading': True,
+        "color": [0, 0, 1],
+        "opacity": 1,
+        "legend_label": None,
+        "threejs_flat_shading": True,
     }
-    if (
-        _g3d_option_has(options, 'alpha')
-        and not _g3d_option_has(options, 'opacity')
-    ):
-        options['opacity'] = _g3d_option_pop(options, 'alpha')
-    if (
-        _g3d_option_has(options, 'rgbcolor')
-        and not _g3d_option_has(options, 'color')
-    ):
-        options['color'] = _g3d_option_pop(options, 'rgbcolor')
+    if _g3d_option_has(options, "alpha") and not _g3d_option_has(options, "opacity"):
+        options["opacity"] = _g3d_option_pop(options, "alpha")
+    if _g3d_option_has(options, "rgbcolor") and not _g3d_option_has(options, "color"):
+        options["color"] = _g3d_option_pop(options, "rgbcolor")
     _g3d_option_update(defaults, options)
     graphics_options = _g3d_graphics_options(defaults)
     graphic = Graphics3d()
     graphic.set_extra_kwds(graphics_options)
-    graphic.add_primitive(Mesh3d(
-        normalized, normalized_faces, defaults))
+    graphic.add_primitive(Mesh3d(normalized, normalized_faces, defaults))
     return graphic
 
 
@@ -1929,10 +1936,7 @@ class IndexFaceSet(Graphics3d):
                 indexed_face = []
                 for point_value in face:
                     point = _g3d_point(point_value)
-                    key = (
-                        str(point[0]) + ':' + str(point[1]) + ':' +
-                        str(point[2])
-                    )
+                    key = str(point[0]) + ":" + str(point[1]) + ":" + str(point[2])
                     if key not in point_indices:
                         point_indices[key] = len(vertices)
                         vertices.append(point)
@@ -1940,29 +1944,26 @@ class IndexFaceSet(Graphics3d):
                 indexed_faces.append(indexed_face)
         else:
             vertices = [_g3d_point(point) for point in point_list]
-            indexed_faces = [
-                [int(index) for index in face] for face in face_values
-            ]
+            indexed_faces = [[int(index) for index in face] for face in face_values]
         actual_options = _g3d_copy_options(options)
         self._texture_list = None
         if texture_list is not None:
             textures = list(texture_list)
             if len(textures) != len(indexed_faces):
-                raise ValueError(
-                    'texture_list must contain one texture for every face')
+                raise ValueError("texture_list must contain one texture for every face")
             face_colors = []
             for texture in textures:
                 color = texture
-                if hasattr(texture, 'color'):
+                if hasattr(texture, "color"):
                     color = texture.color
                     if callable(color):
                         color = color()
-                elif hasattr(texture, 'rgbcolor'):
+                elif hasattr(texture, "rgbcolor"):
                     color = texture.rgbcolor
                     if callable(color):
                         color = color()
                 face_colors.append(color)
-            actual_options['color'] = face_colors
+            actual_options["color"] = face_colors
             self._texture_list = face_colors
         built = _g3d_mesh(indexed_faces, vertices, **actual_options)
         Graphics3d.__init__(self)
@@ -1971,7 +1972,7 @@ class IndexFaceSet(Graphics3d):
             self.add_primitive(primitive)
         mesh = built[0]
         if not isinstance(mesh, Mesh3d):
-            raise RuntimeError('IndexFaceSet did not produce a mesh')
+            raise RuntimeError("IndexFaceSet did not produce a mesh")
         self._mesh = mesh
         self._enclosed = bool(enclosed)
 
@@ -1983,10 +1984,10 @@ class IndexFaceSet(Graphics3d):
         """Return every face as a list of three-dimensional vertices."""
         if render_params is not None:
             raise NotImplementedError(
-                'transformed IndexFaceSet render parameters are unsupported')
+                "transformed IndexFaceSet render parameters are unsupported"
+            )
         return [
-            [self._mesh.vertices[index] for index in face]
-            for face in self._mesh.faces
+            [self._mesh.vertices[index] for index in face] for face in self._mesh.faces
         ]
 
     def vertex_list(self) -> Any:
@@ -2008,12 +2009,14 @@ class IndexFaceSet(Graphics3d):
                 right = int(face[(position + 1) % len(face)])
                 lower = min(left, right)
                 upper = max(left, right)
-                key = str(lower) + ':' + str(upper)
+                key = str(lower) + ":" + str(upper)
                 if key not in edges:
-                    edges[key] = runtime.math_tuple([
-                        self._mesh.vertices[left],
-                        self._mesh.vertices[right],
-                    ])
+                    edges[key] = runtime.math_tuple(
+                        [
+                            self._mesh.vertices[left],
+                            self._mesh.vertices[right],
+                        ]
+                    )
         return [edges[key] for key in edges]
 
     def edges(self) -> Any:
@@ -2029,8 +2032,7 @@ class IndexFaceSet(Graphics3d):
 def polygon3d(points: Any, **options: Any) -> Graphics3d:
     """Draw a single polygon with vertices in three-dimensional space."""
     normalized = list(points)
-    return _g3d_mesh(
-        [list(range(len(normalized)))], normalized, **options)
+    return _g3d_mesh([list(range(len(normalized)))], normalized, **options)
 
 
 def polygons3d(
@@ -2049,27 +2051,20 @@ def text3d(
 ) -> Graphics3d:
     """Display text at a point in three-dimensional space."""
     defaults = {
-        'color': [0, 0, 1],
-        'opacity': 1,
-        'fontsize': 14,
+        "color": [0, 0, 1],
+        "opacity": 1,
+        "fontsize": 14,
     }
     options = _g3d_copy_options(options)
-    if (
-        _g3d_option_has(options, 'alpha')
-        and not _g3d_option_has(options, 'opacity')
-    ):
-        options['opacity'] = _g3d_option_pop(options, 'alpha')
-    if (
-        _g3d_option_has(options, 'rgbcolor')
-        and not _g3d_option_has(options, 'color')
-    ):
-        options['color'] = _g3d_option_pop(options, 'rgbcolor')
+    if _g3d_option_has(options, "alpha") and not _g3d_option_has(options, "opacity"):
+        options["opacity"] = _g3d_option_pop(options, "alpha")
+    if _g3d_option_has(options, "rgbcolor") and not _g3d_option_has(options, "color"):
+        options["color"] = _g3d_option_pop(options, "rgbcolor")
     _g3d_option_update(defaults, options)
     graphics_options = _g3d_graphics_options(defaults)
     graphic = Graphics3d()
     graphic.set_extra_kwds(graphics_options)
-    graphic.add_primitive(
-        Text3d(str(string), _g3d_point(position), defaults))
+    graphic.add_primitive(Text3d(str(string), _g3d_point(position), defaults))
     return graphic
 
 
@@ -2086,25 +2081,23 @@ def arrow3d(
     start_point = _g3d_point(start)
     end_point = _g3d_point(end)
     if start_point == end_point:
-        raise ValueError('an arrow must have distinct start and end points')
+        raise ValueError("an arrow must have distinct start and end points")
     options = _g3d_copy_options(options)
-    if not _g3d_option_has(options, 'thickness'):
-        options['thickness'] = float(width)
+    if not _g3d_option_has(options, "thickness"):
+        options["thickness"] = float(width)
     if radius is not None:
-        options['radius'] = float(radius)
+        options["radius"] = float(radius)
     if head_radius is not None:
-        options['head_radius'] = float(head_radius)
+        options["head_radius"] = float(head_radius)
     if head_len is not None:
-        options['head_len'] = float(head_len)
+        options["head_len"] = float(head_len)
     graphic = line3d([start_point, end_point], **options)
     head_options = _g3d_copy_options(options)
-    if (
-        _g3d_option_has(head_options, 'rgbcolor')
-        and not _g3d_option_has(head_options, 'color')
+    if _g3d_option_has(head_options, "rgbcolor") and not _g3d_option_has(
+        head_options, "color"
     ):
-        head_options['color'] = _g3d_option_get(head_options, 'rgbcolor')
-    graphic.add_primitive(
-        Arrowhead3d(start_point, end_point, head_options))
+        head_options["color"] = _g3d_option_get(head_options, "rgbcolor")
+    graphic.add_primitive(Arrowhead3d(start_point, end_point, head_options))
     return graphic
 
 
@@ -2127,14 +2120,12 @@ def bezier3d(path: Any, **options: Any) -> Graphics3d:
     """
     curves = [list(curve) for curve in path]
     if len(curves) == 0 or len(curves[0]) < 2:
-        raise ValueError(
-            'the first bezier3d curve requires at least two points')
-    plot_points = int(_g3d_option_pop(options, 'plot_points', 40))
+        raise ValueError("the first bezier3d curve requires at least two points")
+    plot_points = int(_g3d_option_pop(options, "plot_points", 40))
     if plot_points < 2:
-        raise ValueError('plot_points must be at least 2')
+        raise ValueError("plot_points must be at least 2")
     normalized = [
-        [_g3d_point(point_value) for point_value in curve]
-        for curve in curves
+        [_g3d_point(point_value) for point_value in curve] for curve in curves
     ]
 
     def cubic_point(
@@ -2149,13 +2140,13 @@ def bezier3d(path: Any, **options: Any) -> Graphics3d:
             complement * complement * complement,
             3.0 * parameter * complement * complement,
             3.0 * parameter * parameter * complement,
-            parameter * parameter * parameter
+            parameter * parameter * parameter,
         )
         values = [
-            coefficients[0] * start[index] +
-            coefficients[1] * control1[index] +
-            coefficients[2] * control2[index] +
-            coefficients[3] * end[index]
+            coefficients[0] * start[index]
+            + coefficients[1] * control1[index]
+            + coefficients[2] * control2[index]
+            + coefficients[3] * end[index]
             for index in range(3)
         ]
         return (values[0], values[1], values[2])
@@ -2170,7 +2161,7 @@ def bezier3d(path: Any, **options: Any) -> Graphics3d:
             end = curve[-1]
         else:
             if len(curve) == 0:
-                raise ValueError('a bezier3d curve may not be empty')
+                raise ValueError("a bezier3d curve may not be empty")
             start = previous
             controls = curve[:-1]
             end = curve[-1]
@@ -2178,13 +2169,11 @@ def bezier3d(path: Any, **options: Any) -> Graphics3d:
             segment = line3d([start, end], **options)
         else:
             if len(controls) > 2:
-                raise ValueError(
-                    'a bezier3d curve has at most two control points')
+                raise ValueError("a bezier3d curve has at most two control points")
             control1 = controls[0]
             control2 = controls[-1]
             points = [
-                tuple(cubic_point(
-                    start, control1, control2, end, parameter))
+                tuple(cubic_point(start, control1, control2, end, parameter))
                 for parameter in _g3d_linspace(0.0, 1.0, plot_points)
             ]
             segment = line3d(points, **options)
@@ -2199,7 +2188,7 @@ def plot_vector_field3d(
     yrange: Any,
     zrange: Any,
     plot_points: Any = 5,
-    colors: Any = 'jet',
+    colors: Any = "jet",
     center_arrows: bool = False,
     **options: Any,
 ) -> Graphics3d:
@@ -2221,18 +2210,15 @@ def plot_vector_field3d(
     """
     components = list(functions)
     if len(components) != 3:
-        raise ValueError(
-            'plot_vector_field3d requires exactly three components')
-    parsed_ranges = [
-        _g3d_range(xrange), _g3d_range(yrange), _g3d_range(zrange)]
+        raise ValueError("plot_vector_field3d requires exactly three components")
+    parsed_ranges = [_g3d_range(xrange), _g3d_range(yrange), _g3d_range(zrange)]
     variables = _g3d_variables(
         components,
         [range_value[0] for range_value in parsed_ranges],
         3,
     )
     callables = [
-        _g3d_component_callable(component, variables)
-        for component in components
+        _g3d_component_callable(component, variables) for component in components
     ]
     counts = _g3d_plot_points(plot_points, 5, 3)
     coordinates = [
@@ -2254,12 +2240,12 @@ def plot_vector_field3d(
                 vector_value = (
                     _g3d_finite_value(callables[0](*point_value)),
                     _g3d_finite_value(callables[1](*point_value)),
-                    _g3d_finite_value(callables[2](*point_value))
+                    _g3d_finite_value(callables[2](*point_value)),
                 )
                 magnitude = runtime.math.sqrt(
-                    vector_value[0] * vector_value[0] +
-                    vector_value[1] * vector_value[1] +
-                    vector_value[2] * vector_value[2]
+                    vector_value[0] * vector_value[0]
+                    + vector_value[1] * vector_value[1]
+                    + vector_value[2] * vector_value[2]
                 )
                 points.append(point_value)
                 vectors.append(vector_value)
@@ -2267,11 +2253,7 @@ def plot_vector_field3d(
                 maximum = max(maximum, magnitude)
     if maximum > 0:
         scaled_vectors = [
-            (
-                vector[0] / maximum,
-                vector[1] / maximum,
-                vector[2] / maximum
-            )
+            (vector[0] / maximum, vector[1] / maximum, vector[2] / maximum)
             for vector in vectors
         ]
         scaled_magnitudes = [value / maximum for value in magnitudes]
@@ -2281,26 +2263,24 @@ def plot_vector_field3d(
 
     options = _g3d_copy_options(options)
     defaults = {
-        'colors': colors,
-        'center_arrows': bool(center_arrows),
-        'opacity': 1,
-        'scale': 1,
-        'colorbar': False,
-        'aspect_ratio': [1, 1, 1],
+        "colors": colors,
+        "center_arrows": bool(center_arrows),
+        "opacity": 1,
+        "scale": 1,
+        "colorbar": False,
+        "aspect_ratio": [1, 1, 1],
     }
-    if (
-        _g3d_option_has(options, 'alpha')
-        and not _g3d_option_has(options, 'opacity')
-    ):
-        options['opacity'] = _g3d_option_pop(options, 'alpha')
-    if _g3d_option_has(options, 'color'):
-        defaults['colors'] = _g3d_option_pop(options, 'color')
+    if _g3d_option_has(options, "alpha") and not _g3d_option_has(options, "opacity"):
+        options["opacity"] = _g3d_option_pop(options, "alpha")
+    if _g3d_option_has(options, "color"):
+        defaults["colors"] = _g3d_option_pop(options, "color")
     _g3d_option_update(defaults, options)
     graphics_options = _g3d_graphics_options(defaults)
     graphic = Graphics3d()
     graphic.set_extra_kwds(graphics_options)
-    graphic.add_primitive(VectorField3d(
-        points, scaled_vectors, scaled_magnitudes, defaults))
+    graphic.add_primitive(
+        VectorField3d(points, scaled_vectors, scaled_magnitudes, defaults)
+    )
     return graphic
 
 
@@ -2316,18 +2296,24 @@ def frame3d(
     for xvalue in (lower[0], upper[0]):
         for yvalue in (lower[1], upper[1]):
             for zvalue in (lower[2], upper[2]):
-                vertices.append(runtime.math_tuple(
-                    [xvalue, yvalue, zvalue]))
+                vertices.append(runtime.math_tuple([xvalue, yvalue, zvalue]))
     edges = [
-        [0, 1], [0, 2], [0, 4],
-        [1, 3], [1, 5], [2, 3],
-        [2, 6], [3, 7], [4, 5],
-        [4, 6], [5, 7], [6, 7],
+        [0, 1],
+        [0, 2],
+        [0, 4],
+        [1, 3],
+        [1, 5],
+        [2, 3],
+        [2, 6],
+        [3, 7],
+        [4, 5],
+        [4, 6],
+        [5, 7],
+        [6, 7],
     ]
     answer = Graphics3d()
     for edge in edges:
-        answer = answer + line3d(
-            [vertices[edge[0]], vertices[edge[1]]], **options)
+        answer = answer + line3d([vertices[edge[0]], vertices[edge[1]]], **options)
     return answer
 
 
@@ -2346,12 +2332,13 @@ def frame_labels(
     label_upper = _g3d_point(label_upper_right)
     if any(label_upper[index] <= label_lower[index] for index in range(3)):
         raise ValueError(
-            'ensure the upper right labels are above and to the right of '
-            'the lower left labels')
+            "ensure the upper right labels are above and to the right of "
+            "the lower left labels"
+        )
     distance = float(eps)
-    color = _g3d_option_get(options, 'color', (0.3, 0.3, 0.3))
+    color = _g3d_option_get(options, "color", (0.3, 0.3, 0.3))
     text_options = _g3d_copy_options(options)
-    text_options['color'] = color
+    text_options["color"] = color
     answer = Graphics3d()
     for index in range(3):
         midpoint = (label_lower[index] + label_upper[index]) / 2.0
@@ -2367,8 +2354,7 @@ def frame_labels(
                 position = (upper[0] + distance, yvalue, lower[2])
             else:
                 position = (lower[0] - distance, lower[1], zvalue)
-            answer += text3d(str(values[position_index]), position,
-                             **text_options)
+            answer += text3d(str(values[position_index]), position, **text_options)
     return answer
 
 
@@ -2383,52 +2369,43 @@ def ruler(
 ) -> Graphics3d:
     """Draw a three-dimensional ruler with labeled major and minor ticks."""
     if ticks <= 0 or sub_ticks <= 0:
-        raise ValueError('ticks and sub_ticks must be positive')
+        raise ValueError("ticks and sub_ticks must be positive")
     start_point = list(_g3d_point(start))
     end_point = list(_g3d_point(end))
-    direction = [
-        end_point[index] - start_point[index]
-        for index in range(3)
-    ]
+    direction = [end_point[index] - start_point[index] for index in range(3)]
     distance = runtime.math.sqrt(sum(value * value for value in direction))
     if distance == 0:
-        raise ValueError('a ruler must have distinct start and end points')
+        raise ValueError("a ruler must have distinct start and end points")
     direction = [value / distance for value in direction]
     one_tick = distance / float(ticks) * 1.414
     unit = 10 ** runtime.math.floor(
-        runtime.math.log(distance / float(ticks)) / runtime.math.log(10))
+        runtime.math.log(distance / float(ticks)) / runtime.math.log(10)
+    )
     if unit * 5 < one_tick:
         unit *= 5
     elif unit * 2 < one_tick:
         unit *= 2
     if direction[0] != 0:
-        tick_vector = _cross_product(
-            direction, (0, 0, -distance / 30.0))
+        tick_vector = _cross_product(direction, (0, 0, -distance / 30.0))
     elif direction[1] != 0:
-        tick_vector = _cross_product(
-            direction, (0, 0, distance / 30.0))
+        tick_vector = _cross_product(direction, (0, 0, distance / 30.0))
     else:
         tick_vector = (distance / 30.0, 0, 0)
     if snap:
         for index in range(3):
             start_point[index] = unit * runtime.math.floor(
-                start_point[index] / unit + 1e-5)
-            end_point[index] = unit * runtime.math.ceil(
-                end_point[index] / unit - 1e-5)
-        direction = [
-            end_point[index] - start_point[index]
-            for index in range(3)
-        ]
-        distance = runtime.math.sqrt(
-            sum(value * value for value in direction))
+                start_point[index] / unit + 1e-5
+            )
+            end_point[index] = unit * runtime.math.ceil(end_point[index] / unit - 1e-5)
+        direction = [end_point[index] - start_point[index] for index in range(3)]
+        distance = runtime.math.sqrt(sum(value * value for value in direction))
         direction = [value / distance for value in direction]
     first_tick = 0.0
     offset = 0.0
     if absolute:
         nonzero = sum(1 for value in direction if abs(value) > 1e-12)
         if nonzero != 1:
-            raise ValueError(
-                'absolute rulers only valid for axis-aligned paths')
+            raise ValueError("absolute rulers only valid for axis-aligned paths")
         axis = max(range(3), key=lambda index: abs(direction[index]))
         offset = start_point[axis]
         first_tick = unit * runtime.math.ceil(offset / unit - 1e-5) - offset
@@ -2439,17 +2416,10 @@ def ruler(
             start_point[index] + direction[index] * current_distance
             for index in range(3)
         ]
-        tick_end = [
-            base[index] + tick_vector[index]
-            for index in range(3)
-        ]
+        tick_end = [base[index] + tick_vector[index] for index in range(3)]
         answer += line3d([base, tick_end], **options)
-        label_position = [
-            base[index] - tick_vector[index]
-            for index in range(3)
-        ]
-        answer += text3d(
-            str(current_distance + offset), label_position, **options)
+        label_position = [base[index] - tick_vector[index] for index in range(3)]
+        answer += text3d(str(current_distance + offset), label_position, **options)
         for minor_index in range(1, sub_ticks):
             minor_distance = current_distance + unit * minor_index / sub_ticks
             if minor_distance >= distance:
@@ -2459,8 +2429,7 @@ def ruler(
                 for index in range(3)
             ]
             minor_end = [
-                minor_base[index] + tick_vector[index] / 2.0
-                for index in range(3)
+                minor_base[index] + tick_vector[index] / 2.0 for index in range(3)
             ]
             answer += line3d([minor_base, minor_end], **options)
         current_distance += unit
@@ -2478,12 +2447,30 @@ def ruler_frame(
     lower = _g3d_point(lower_left)
     upper = _g3d_point(upper_right)
     return (
-        ruler(lower, (upper[0], lower[1], lower[2]),
-              ticks=ticks, sub_ticks=sub_ticks, absolute=True, **options)
-        + ruler(lower, (lower[0], upper[1], lower[2]),
-                ticks=ticks, sub_ticks=sub_ticks, absolute=True, **options)
-        + ruler(lower, (lower[0], lower[1], upper[2]),
-                ticks=ticks, sub_ticks=sub_ticks, absolute=True, **options)
+        ruler(
+            lower,
+            (upper[0], lower[1], lower[2]),
+            ticks=ticks,
+            sub_ticks=sub_ticks,
+            absolute=True,
+            **options,
+        )
+        + ruler(
+            lower,
+            (lower[0], upper[1], lower[2]),
+            ticks=ticks,
+            sub_ticks=sub_ticks,
+            absolute=True,
+            **options,
+        )
+        + ruler(
+            lower,
+            (lower[0], lower[1], upper[2]),
+            ticks=ticks,
+            sub_ticks=sub_ticks,
+            absolute=True,
+            **options,
+        )
     )
 
 
@@ -2512,17 +2499,19 @@ def _solid_mesh(
     center_point = _g3d_point(center)
     scale = float(size)
     if scale <= 0:
-        raise ValueError('solid size must be positive')
+        raise ValueError("solid size must be positive")
     transformed = [
-        runtime.math_tuple([
-            center_point[0] + scale * float(vertex[0]),
-            center_point[1] + scale * float(vertex[1]),
-            center_point[2] + scale * float(vertex[2]),
-        ])
+        runtime.math_tuple(
+            [
+                center_point[0] + scale * float(vertex[0]),
+                center_point[1] + scale * float(vertex[1]),
+                center_point[2] + scale * float(vertex[2]),
+            ]
+        )
         for vertex in vertices
     ]
-    if not _g3d_option_has(options, 'aspect_ratio'):
-        options['aspect_ratio'] = [1, 1, 1]
+    if not _g3d_option_has(options, "aspect_ratio"):
+        options["aspect_ratio"] = [1, 1, 1]
     return _g3d_mesh(faces, transformed, **options)
 
 
@@ -2554,35 +2543,46 @@ def cube(
 ) -> Graphics3d:
     """Return a cube centered at `center` with side length `size`."""
     vertices = [
-        [-0.5, -0.5, -0.5], [-0.5, -0.5, 0.5],
-        [-0.5, 0.5, -0.5], [-0.5, 0.5, 0.5],
-        [0.5, -0.5, -0.5], [0.5, -0.5, 0.5],
-        [0.5, 0.5, -0.5], [0.5, 0.5, 0.5],
+        [-0.5, -0.5, -0.5],
+        [-0.5, -0.5, 0.5],
+        [-0.5, 0.5, -0.5],
+        [-0.5, 0.5, 0.5],
+        [0.5, -0.5, -0.5],
+        [0.5, -0.5, 0.5],
+        [0.5, 0.5, -0.5],
+        [0.5, 0.5, 0.5],
     ]
     faces = [
-        [0, 1, 3, 2], [4, 6, 7, 5],
-        [0, 4, 5, 1], [2, 3, 7, 6],
-        [0, 2, 6, 4], [1, 5, 7, 3],
+        [0, 1, 3, 2],
+        [4, 6, 7, 5],
+        [0, 4, 5, 1],
+        [2, 3, 7, 6],
+        [0, 2, 6, 4],
+        [1, 5, 7, 3],
     ]
     if color is not None:
-        options['color'] = color
+        options["color"] = color
     answer = _solid_mesh(vertices, faces, center, size, **options)
     if float(frame_thickness) > 0:
         coordinates = _g3d_point(center)
         half = float(size) / 2.0
-        actual_frame_color = 'black'
+        actual_frame_color = "black"
         if frame_color is not None:
             actual_frame_color = frame_color
-        frame_lower = runtime.math_tuple([
-            coordinates[0] - half,
-            coordinates[1] - half,
-            coordinates[2] - half,
-        ])
-        frame_upper = runtime.math_tuple([
-            coordinates[0] + half,
-            coordinates[1] + half,
-            coordinates[2] + half,
-        ])
+        frame_lower = runtime.math_tuple(
+            [
+                coordinates[0] - half,
+                coordinates[1] - half,
+                coordinates[2] - half,
+            ]
+        )
+        frame_upper = runtime.math_tuple(
+            [
+                coordinates[0] + half,
+                coordinates[1] + half,
+                coordinates[2] + half,
+            ]
+        )
         answer = answer + frame3d(
             frame_lower,
             frame_upper,
@@ -2599,13 +2599,22 @@ def octahedron(
 ) -> Graphics3d:
     """Return a regular octahedron centered at `center`."""
     vertices = [
-        [1, 0, 0], [-1, 0, 0],
-        [0, 1, 0], [0, -1, 0],
-        [0, 0, 1], [0, 0, -1],
+        [1, 0, 0],
+        [-1, 0, 0],
+        [0, 1, 0],
+        [0, -1, 0],
+        [0, 0, 1],
+        [0, 0, -1],
     ]
     faces = [
-        [0, 2, 4], [2, 1, 4], [1, 3, 4], [3, 0, 4],
-        [2, 0, 5], [1, 2, 5], [3, 1, 5], [0, 3, 5],
+        [0, 2, 4],
+        [2, 1, 4],
+        [1, 3, 4],
+        [3, 0, 4],
+        [2, 0, 5],
+        [1, 2, 5],
+        [3, 1, 5],
+        [0, 3, 5],
     ]
     return _solid_mesh(vertices, faces, center, size, **options)
 
@@ -2614,12 +2623,18 @@ def _icosahedron_geometry() -> Any:
     golden_ratio = (1.0 + runtime.math.sqrt(5.0)) / 2.0
     normalization = runtime.math.sqrt(1.0 + golden_ratio * golden_ratio)
     raw_vertices = [
-        [-1, golden_ratio, 0], [1, golden_ratio, 0],
-        [-1, -golden_ratio, 0], [1, -golden_ratio, 0],
-        [0, -1, golden_ratio], [0, 1, golden_ratio],
-        [0, -1, -golden_ratio], [0, 1, -golden_ratio],
-        [golden_ratio, 0, -1], [golden_ratio, 0, 1],
-        [-golden_ratio, 0, -1], [-golden_ratio, 0, 1],
+        [-1, golden_ratio, 0],
+        [1, golden_ratio, 0],
+        [-1, -golden_ratio, 0],
+        [1, -golden_ratio, 0],
+        [0, -1, golden_ratio],
+        [0, 1, golden_ratio],
+        [0, -1, -golden_ratio],
+        [0, 1, -golden_ratio],
+        [golden_ratio, 0, -1],
+        [golden_ratio, 0, 1],
+        [-golden_ratio, 0, -1],
+        [-golden_ratio, 0, 1],
     ]
     vertices = [
         [
@@ -2630,10 +2645,26 @@ def _icosahedron_geometry() -> Any:
         for vertex in raw_vertices
     ]
     faces = [
-        [0, 11, 5], [0, 5, 1], [0, 1, 7], [0, 7, 10], [0, 10, 11],
-        [1, 5, 9], [5, 11, 4], [11, 10, 2], [10, 7, 6], [7, 1, 8],
-        [3, 9, 4], [3, 4, 2], [3, 2, 6], [3, 6, 8], [3, 8, 9],
-        [4, 9, 5], [2, 4, 11], [6, 2, 10], [8, 6, 7], [9, 8, 1],
+        [0, 11, 5],
+        [0, 5, 1],
+        [0, 1, 7],
+        [0, 7, 10],
+        [0, 10, 11],
+        [1, 5, 9],
+        [5, 11, 4],
+        [11, 10, 2],
+        [10, 7, 6],
+        [7, 1, 8],
+        [3, 9, 4],
+        [3, 4, 2],
+        [3, 2, 6],
+        [3, 6, 8],
+        [3, 8, 9],
+        [4, 9, 5],
+        [2, 4, 11],
+        [6, 2, 10],
+        [8, 6, 7],
+        [9, 8, 1],
     ]
     return [vertices, faces]
 
@@ -2645,8 +2676,7 @@ def icosahedron(
 ) -> Graphics3d:
     """Return a regular icosahedron centered at `center`."""
     geometry = _icosahedron_geometry()
-    return _solid_mesh(
-        geometry[0], geometry[1], center, size, **options)
+    return _solid_mesh(geometry[0], geometry[1], center, size, **options)
 
 
 def _cross_product(left: Any, right: Any) -> list[float]:
@@ -2658,10 +2688,7 @@ def _cross_product(left: Any, right: Any) -> list[float]:
 
 
 def _dot_product(left: Any, right: Any) -> float:
-    return (
-        left[0] * right[0] + left[1] * right[1] +
-        left[2] * right[2]
-    )
+    return left[0] * right[0] + left[1] * right[1] + left[2] * right[2]
 
 
 def dodecahedron(
@@ -2680,11 +2707,13 @@ def dodecahedron(
             for coordinate in range(3)
         ]
         length = runtime.math.sqrt(_dot_product(centroid, centroid))
-        vertices.append([
-            centroid[0] / length,
-            centroid[1] / length,
-            centroid[2] / length,
-        ])
+        vertices.append(
+            [
+                centroid[0] / length,
+                centroid[1] / length,
+                centroid[2] / length,
+            ]
+        )
     faces = []
     for vertex_index in range(len(ico_vertices)):
         adjacent = [
@@ -2724,7 +2753,7 @@ def _g3d_surface(
     uvariable, umin, umax = _g3d_range(urange)
     vvariable, vmin, vmax = _g3d_range(vrange)
     counts = _g3d_plot_points(
-        _g3d_option_pop(options, 'plot_points', 'automatic'),
+        _g3d_option_pop(options, "plot_points", "automatic"),
         40,
         2,
     )
@@ -2734,8 +2763,7 @@ def _g3d_surface(
         2,
     )
     functions = [
-        _g3d_component_callable(component, variables)
-        for component in components
+        _g3d_component_callable(component, variables) for component in components
     ]
     uvalues = _g3d_linspace(umin, umax, counts[0])
     vvalues = _g3d_linspace(vmin, vmax, counts[1])
@@ -2747,39 +2775,29 @@ def _g3d_surface(
         yrow = []
         zrow = []
         for uvalue in uvalues:
-            xrow.append(_g3d_finite_value(
-                functions[0](uvalue, vvalue)))
-            yrow.append(_g3d_finite_value(
-                functions[1](uvalue, vvalue)))
-            zrow.append(_g3d_finite_value(
-                functions[2](uvalue, vvalue)))
+            xrow.append(_g3d_finite_value(functions[0](uvalue, vvalue)))
+            yrow.append(_g3d_finite_value(functions[1](uvalue, vvalue)))
+            zrow.append(_g3d_finite_value(functions[2](uvalue, vvalue)))
         xdata.append(xrow)
         ydata.append(yrow)
         zdata.append(zrow)
 
     defaults = {
-        'color': 'steelblue',
-        'opacity': 1,
-        'mesh': False,
-        'dots': False,
-        'legend_label': None,
+        "color": "steelblue",
+        "opacity": 1,
+        "mesh": False,
+        "dots": False,
+        "legend_label": None,
     }
-    if (
-        _g3d_option_has(options, 'alpha')
-        and not _g3d_option_has(options, 'opacity')
-    ):
-        options['opacity'] = _g3d_option_pop(options, 'alpha')
-    if (
-        _g3d_option_has(options, 'rgbcolor')
-        and not _g3d_option_has(options, 'color')
-    ):
-        options['color'] = _g3d_option_pop(options, 'rgbcolor')
+    if _g3d_option_has(options, "alpha") and not _g3d_option_has(options, "opacity"):
+        options["opacity"] = _g3d_option_pop(options, "alpha")
+    if _g3d_option_has(options, "rgbcolor") and not _g3d_option_has(options, "color"):
+        options["color"] = _g3d_option_pop(options, "rgbcolor")
     _g3d_option_update(defaults, options)
     graphics_options = _g3d_graphics_options(defaults)
     graphic = Graphics3d()
     graphic.set_extra_kwds(graphics_options)
-    graphic.add_primitive(
-        Surface3d(xdata, ydata, zdata, defaults))
+    graphic.add_primitive(Surface3d(xdata, ydata, zdata, defaults))
     return graphic
 
 
@@ -2793,8 +2811,7 @@ def plot3d(
 ) -> Graphics3d:
     """Plot a function of two variables as a three-dimensional surface."""
     if adaptive:
-        raise NotImplementedError(
-            'adaptive plot3d refinement is not implemented yet')
+        raise NotImplementedError("adaptive plot3d refinement is not implemented yet")
     uvariable, _umin, _umax = _g3d_range(urange)
     vvariable, _vmin, _vmax = _g3d_range(vrange)
     variables = _g3d_variables(
@@ -2805,12 +2822,10 @@ def plot3d(
     evaluated = _g3d_component_callable(func, variables)
 
     if transformation is not None:
-        if not hasattr(transformation, 'to_cartesian'):
-            raise TypeError(
-                'transformation must be a Sage coordinate transformation')
+        if not hasattr(transformation, "to_cartesian"):
+            raise TypeError("transformation must be a Sage coordinate transformation")
         transformed = transformation.to_cartesian(evaluated, variables)
-        return _g3d_surface(
-            transformed, urange, vrange, **options)
+        return _g3d_surface(transformed, urange, vrange, **options)
 
     def first_coordinate(u: float, _v: float) -> float:
         return u
@@ -2819,11 +2834,7 @@ def plot3d(
         return v
 
     return _g3d_surface(
-        (
-            first_coordinate,
-            second_coordinate,
-            evaluated
-        ),
+        (first_coordinate, second_coordinate, evaluated),
         urange,
         vrange,
         **options,
@@ -2837,8 +2848,7 @@ def spherical_plot3d(
     **options: Any,
 ) -> Graphics3d:
     """Plot a radial function in spherical coordinates."""
-    transformation = Spherical(
-        'radius', ['azimuth', 'inclination'])
+    transformation = Spherical("radius", ["azimuth", "inclination"])
     return plot3d(
         function_value,
         urange,
@@ -2855,8 +2865,7 @@ def cylindrical_plot3d(
     **options: Any,
 ) -> Graphics3d:
     """Plot a radial function in cylindrical coordinates."""
-    transformation = Cylindrical(
-        'radius', ['azimuth', 'height'])
+    transformation = Cylindrical("radius", ["azimuth", "height"])
     return plot3d(
         function_value,
         urange,
@@ -2868,7 +2877,7 @@ def cylindrical_plot3d(
 
 def list_plot3d(
     values: Any,
-    interpolation_type: str = 'default',
+    interpolation_type: str = "default",
     point_list: Any = None,
     **options: Any,
 ) -> Graphics3d:
@@ -2882,8 +2891,7 @@ def list_plot3d(
     interpolation report that they are not implemented instead of silently
     returning a different surface.
     """
-    is_matrix = (
-        hasattr(values, 'nrows') and hasattr(values, 'ncols'))
+    is_matrix = hasattr(values, "nrows") and hasattr(values, "ncols")
     if is_matrix:
         row_count = int(values.nrows())
         column_count = int(values.ncols())
@@ -2910,33 +2918,30 @@ def list_plot3d(
                         and points[left_index][2] != points[right_index][2]
                     ):
                         raise ValueError(
-                            'points with same x,y coordinates and different '
-                            'z coordinates were given. Interpolation cannot '
-                            'handle this.')
-            if interpolation_type not in (
-                'default', 'linear', 'clough', 'spline'):
-                raise ValueError('unknown interpolation type')
-            if interpolation_type in ('clough', 'spline'):
+                            "points with same x,y coordinates and different "
+                            "z coordinates were given. Interpolation cannot "
+                            "handle this."
+                        )
+            if interpolation_type not in ("default", "linear", "clough", "spline"):
+                raise ValueError("unknown interpolation type")
+            if interpolation_type in ("clough", "spline"):
                 raise NotImplementedError(
-                    interpolation_type + ' list_plot3d interpolation is not '
-                    'implemented yet')
+                    interpolation_type + " list_plot3d interpolation is not "
+                    "implemented yet"
+                )
             defaults = {
-                'color': 'steelblue',
-                'opacity': 1,
+                "color": "steelblue",
+                "opacity": 1,
             }
             actual_options = _g3d_copy_options(options)
-            if (
-                _g3d_option_has(actual_options, 'alpha')
-                and not _g3d_option_has(actual_options, 'opacity')
+            if _g3d_option_has(actual_options, "alpha") and not _g3d_option_has(
+                actual_options, "opacity"
             ):
-                actual_options['opacity'] = _g3d_option_pop(
-                    actual_options, 'alpha')
-            if (
-                _g3d_option_has(actual_options, 'rgbcolor')
-                and not _g3d_option_has(actual_options, 'color')
+                actual_options["opacity"] = _g3d_option_pop(actual_options, "alpha")
+            if _g3d_option_has(actual_options, "rgbcolor") and not _g3d_option_has(
+                actual_options, "color"
             ):
-                actual_options['color'] = _g3d_option_pop(
-                    actual_options, 'rgbcolor')
+                actual_options["color"] = _g3d_option_pop(actual_options, "rgbcolor")
             _g3d_option_update(defaults, actual_options)
             graphics_options = _g3d_graphics_options(defaults)
             graphic = Graphics3d()
@@ -2948,47 +2953,40 @@ def list_plot3d(
         column_count = len(rows[0])
         for row in rows:
             if len(row) != column_count:
-                raise ValueError('all rows must have the same length')
-        rows = [
-            [float(value) for value in row]
-            for row in rows
-        ]
-    if interpolation_type not in ('default', 'linear'):
-        if interpolation_type in ('clough', 'spline'):
+                raise ValueError("all rows must have the same length")
+        rows = [[float(value) for value in row] for row in rows]
+    if interpolation_type not in ("default", "linear"):
+        if interpolation_type in ("clough", "spline"):
             raise NotImplementedError(
-                interpolation_type + ' list_plot3d interpolation is not '
-                'implemented yet')
-        raise ValueError('unknown interpolation type')
+                interpolation_type + " list_plot3d interpolation is not implemented yet"
+            )
+        raise ValueError("unknown interpolation type")
     if row_count == 0 or column_count == 0:
         return Graphics3d()
     if row_count == 1 and column_count == 1:
         return point3d((0, 0, rows[0][0]), **options)
     xdata = [
-        [float(row) for _column in range(column_count)]
-        for row in range(row_count)
+        [float(row) for _column in range(column_count)] for row in range(row_count)
     ]
     ydata = [
-        [float(column) for column in range(column_count)]
-        for _row in range(row_count)
+        [float(column) for column in range(column_count)] for _row in range(row_count)
     ]
     defaults = {
-        'color': 'steelblue',
-        'opacity': 1,
-        'mesh': False,
-        'dots': False,
-        'legend_label': None,
+        "color": "steelblue",
+        "opacity": 1,
+        "mesh": False,
+        "dots": False,
+        "legend_label": None,
     }
     actual_options = _g3d_copy_options(options)
-    if (
-        _g3d_option_has(actual_options, 'alpha')
-        and not _g3d_option_has(actual_options, 'opacity')
+    if _g3d_option_has(actual_options, "alpha") and not _g3d_option_has(
+        actual_options, "opacity"
     ):
-        actual_options['opacity'] = _g3d_option_pop(actual_options, 'alpha')
-    if (
-        _g3d_option_has(actual_options, 'rgbcolor')
-        and not _g3d_option_has(actual_options, 'color')
+        actual_options["opacity"] = _g3d_option_pop(actual_options, "alpha")
+    if _g3d_option_has(actual_options, "rgbcolor") and not _g3d_option_has(
+        actual_options, "color"
     ):
-        actual_options['color'] = _g3d_option_pop(actual_options, 'rgbcolor')
+        actual_options["color"] = _g3d_option_pop(actual_options, "rgbcolor")
     _g3d_option_update(defaults, actual_options)
     graphics_options = _g3d_graphics_options(defaults)
     graphic = Graphics3d()
@@ -3001,30 +2999,29 @@ def revolution_plot3d(
     curve: Any,
     trange: Any,
     phirange: Any = None,
-    parallel_axis: str = 'z',
+    parallel_axis: str = "z",
     axis: Any = None,
     print_vector: bool = False,
     show_curve: bool = False,
     **options: Any,
 ) -> Graphics3d:
     r"""Revolve a function or parametric curve around a coordinate axis."""
-    if parallel_axis not in ('x', 'y', 'z'):
+    if parallel_axis not in ("x", "y", "z"):
         raise ValueError("parallel_axis must be either 'x', 'y', or 'z'")
     tvariable, _tmin, _tmax = _g3d_range(trange)
     axis_values = [0, 0] if axis is None else list(axis)
     if len(axis_values) != 2:
-        raise ValueError('axis must contain exactly two coordinates')
+        raise ValueError("axis must contain exactly two coordinates")
     first_axis_coordinate = float(axis_values[0])
     second_axis_coordinate = float(axis_values[1])
     if phirange is None:
-        actual_phirange = runtime.math_tuple(
-            [0.0, 2.0 * runtime.math.PI])
+        actual_phirange = runtime.math_tuple([0.0, 2.0 * runtime.math.PI])
     else:
         phi_values = list(phirange)
         if len(phi_values) not in (2, 3):
             raise ValueError(
-                'phirange must contain two endpoints or a variable and two '
-                'endpoints')
+                "phirange must contain two endpoints or a variable and two endpoints"
+            )
         actual_phirange = phirange
     _phivariable, phimin, phimax = _g3d_range(actual_phirange)
     surface_trange = runtime.math_tuple([_tmin, _tmax])
@@ -3034,16 +3031,16 @@ def revolution_plot3d(
         if len(components) == 2:
             components = [components[0], 0, components[1]]
         elif len(components) != 3:
-            raise ValueError('curve must have two or three components')
+            raise ValueError("curve must have two or three components")
     else:
+
         def curve_parameter(value: Any) -> Any:
             return value
 
         components = [curve_parameter, 0, curve]
     variables = [] if tvariable is None else [tvariable]
     callables = [
-        _g3d_component_callable(component, variables)
-        for component in components
+        _g3d_component_callable(component, variables) for component in components
     ]
 
     def revolved_coordinate(index: int) -> Any:
@@ -3053,7 +3050,7 @@ def revolution_plot3d(
             zvalue = float(callables[2](tvalue))
             cosine = runtime.math.cos(float(phi))
             sine = runtime.math.sin(float(phi))
-            if parallel_axis == 'z':
+            if parallel_axis == "z":
                 dx = xvalue - first_axis_coordinate
                 dy = yvalue - second_axis_coordinate
                 transformed = [
@@ -3061,7 +3058,7 @@ def revolution_plot3d(
                     dx * sine + dy * cosine + second_axis_coordinate,
                     zvalue,
                 ]
-            elif parallel_axis == 'x':
+            elif parallel_axis == "x":
                 dy = yvalue - first_axis_coordinate
                 dz = zvalue - second_axis_coordinate
                 transformed = [
@@ -3088,10 +3085,12 @@ def revolution_plot3d(
     ]
     if print_vector:
         print(
-            'surface of revolution around the ' + parallel_axis +
-            '-parallel axis through ' + str(tuple(axis_values)))
-    answer = _g3d_surface(
-        parametrization, surface_trange, surface_phirange, **options)
+            "surface of revolution around the "
+            + parallel_axis
+            + "-parallel axis through "
+            + str(tuple(axis_values))
+        )
+    answer = _g3d_surface(parametrization, surface_trange, surface_phirange, **options)
     if show_curve:
         answer = answer + parametric_plot3d(
             components,
@@ -3106,16 +3105,15 @@ def parametric_plot3d(
     functions: Sequence[Any],
     urange: Any,
     vrange: Any = None,
-    plot_points: Any = 'automatic',
+    plot_points: Any = "automatic",
     **options: Any,
 ) -> Graphics3d:
     """Plot a parametric space curve or parametric surface."""
     components = list(functions)
     if len(components) != 3:
-        raise ValueError(
-            'parametric_plot3d requires exactly three components')
+        raise ValueError("parametric_plot3d requires exactly three components")
     if vrange is not None:
-        options['plot_points'] = plot_points
+        options["plot_points"] = plot_points
         return _g3d_surface(
             components,
             urange,
@@ -3126,18 +3124,19 @@ def parametric_plot3d(
     variable, minimum, maximum = _g3d_range(urange)
     variables = _g3d_variables(components, [variable], 1)
     callables = [
-        _g3d_component_callable(component, variables)
-        for component in components
+        _g3d_component_callable(component, variables) for component in components
     ]
     count = _g3d_plot_points(plot_points, 75, 1)[0]
     values = _g3d_linspace(minimum, maximum, count)
     points = []
     for value in values:
-        points.append((
-            _g3d_finite_value(callables[0](value)),
-            _g3d_finite_value(callables[1](value)),
-            _g3d_finite_value(callables[2](value))
-        ))
+        points.append(
+            (
+                _g3d_finite_value(callables[0](value)),
+                _g3d_finite_value(callables[1](value)),
+                _g3d_finite_value(callables[2](value)),
+            )
+        )
     return line3d(points, **options)
 
 
@@ -3169,9 +3168,8 @@ def implicit_plot3d(
     Plotly isosurface.  It does not yet implement Sage's adaptive marching
     cubes refinements.
     """
-    if hasattr(function_value, '_plot_zero_set_expression'):
-        function_value = (
-            function_value._plot_zero_set_expression())
+    if hasattr(function_value, "_plot_zero_set_expression"):
+        function_value = function_value._plot_zero_set_expression()
     xvariable, xmin, xmax = _g3d_range(xrange)
     yvariable, ymin, ymax = _g3d_range(yrange)
     zvariable, zmin, zmax = _g3d_range(zrange)
@@ -3180,10 +3178,9 @@ def implicit_plot3d(
         [xvariable, yvariable, zvariable],
         3,
     )
-    evaluated = _g3d_component_callable(
-        function_value, variables)
+    evaluated = _g3d_component_callable(function_value, variables)
     counts = _g3d_plot_points(
-        _g3d_option_pop(options, 'plot_points', 'automatic'),
+        _g3d_option_pop(options, "plot_points", "automatic"),
         20,
         3,
     )
@@ -3200,37 +3197,34 @@ def implicit_plot3d(
                 sampled_x.append(xvalue)
                 sampled_y.append(yvalue)
                 sampled_z.append(zvalue)
-                sampled_values.append(_g3d_finite_value(
-                    evaluated(xvalue, yvalue, zvalue)))
+                sampled_values.append(
+                    _g3d_finite_value(evaluated(xvalue, yvalue, zvalue))
+                )
     options = _g3d_copy_options(options)
     defaults = {
-        'color': 'steelblue',
-        'opacity': 1,
-        'colorbar': False,
-        'plot_tolerance': 1e-9,
+        "color": "steelblue",
+        "opacity": 1,
+        "colorbar": False,
+        "plot_tolerance": 1e-9,
     }
-    if (
-        _g3d_option_has(options, 'alpha')
-        and not _g3d_option_has(options, 'opacity')
-    ):
-        options['opacity'] = _g3d_option_pop(options, 'alpha')
-    if (
-        _g3d_option_has(options, 'rgbcolor')
-        and not _g3d_option_has(options, 'color')
-    ):
-        options['color'] = _g3d_option_pop(options, 'rgbcolor')
+    if _g3d_option_has(options, "alpha") and not _g3d_option_has(options, "opacity"):
+        options["opacity"] = _g3d_option_pop(options, "alpha")
+    if _g3d_option_has(options, "rgbcolor") and not _g3d_option_has(options, "color"):
+        options["color"] = _g3d_option_pop(options, "rgbcolor")
     _g3d_option_update(defaults, options)
     graphics_options = _g3d_graphics_options(defaults)
     graphic = Graphics3d()
     graphic.set_extra_kwds(graphics_options)
-    graphic.add_primitive(Isosurface3d(
-        sampled_x,
-        sampled_y,
-        sampled_z,
-        sampled_values,
-        0.0,
-        defaults,
-    ))
+    graphic.add_primitive(
+        Isosurface3d(
+            sampled_x,
+            sampled_y,
+            sampled_z,
+            sampled_values,
+            0.0,
+            defaults,
+        )
+    )
     return graphic
 
 
@@ -3243,16 +3237,14 @@ def sphere(
     coordinates = _g3d_point(center)
     radius = float(size)
     if radius <= 0:
-        raise ValueError('sphere size must be positive')
+        raise ValueError("sphere size must be positive")
     counts = _g3d_plot_points(
-        _g3d_option_pop(options, 'plot_points', [32, 17]),
+        _g3d_option_pop(options, "plot_points", [32, 17]),
         32,
         2,
     )
-    uvalues = _g3d_linspace(
-        0.0, 2.0 * runtime.math.PI, counts[0])
-    vvalues = _g3d_linspace(
-        0.0, runtime.math.PI, counts[1])
+    uvalues = _g3d_linspace(0.0, 2.0 * runtime.math.PI, counts[0])
+    vvalues = _g3d_linspace(0.0, runtime.math.PI, counts[1])
     xdata = []
     ydata = []
     zdata = []
@@ -3263,12 +3255,8 @@ def sphere(
         sine_v = runtime.math.sin(vvalue)
         cosine_v = runtime.math.cos(vvalue)
         for uvalue in uvalues:
-            xrow.append(
-                coordinates[0] +
-                radius * runtime.math.cos(uvalue) * sine_v)
-            yrow.append(
-                coordinates[1] +
-                radius * runtime.math.sin(uvalue) * sine_v)
+            xrow.append(coordinates[0] + radius * runtime.math.cos(uvalue) * sine_v)
+            yrow.append(coordinates[1] + radius * runtime.math.sin(uvalue) * sine_v)
             zrow.append(coordinates[2] + radius * cosine_v)
         xdata.append(xrow)
         ydata.append(yrow)
@@ -3276,86 +3264,71 @@ def sphere(
 
     options = _g3d_copy_options(options)
     defaults = {
-        'color': 'steelblue',
-        'opacity': 1,
-        'mesh': False,
-        'dots': False,
-        'legend_label': None,
-        'aspect_ratio': [1, 1, 1],
+        "color": "steelblue",
+        "opacity": 1,
+        "mesh": False,
+        "dots": False,
+        "legend_label": None,
+        "aspect_ratio": [1, 1, 1],
     }
-    if (
-        _g3d_option_has(options, 'alpha')
-        and not _g3d_option_has(options, 'opacity')
-    ):
-        options['opacity'] = _g3d_option_pop(options, 'alpha')
-    if (
-        _g3d_option_has(options, 'rgbcolor')
-        and not _g3d_option_has(options, 'color')
-    ):
-        options['color'] = _g3d_option_pop(options, 'rgbcolor')
+    if _g3d_option_has(options, "alpha") and not _g3d_option_has(options, "opacity"):
+        options["opacity"] = _g3d_option_pop(options, "alpha")
+    if _g3d_option_has(options, "rgbcolor") and not _g3d_option_has(options, "color"):
+        options["color"] = _g3d_option_pop(options, "rgbcolor")
     _g3d_option_update(defaults, options)
     graphics_options = _g3d_graphics_options(defaults)
     graphic = Graphics3d()
     graphic.set_extra_kwds(graphics_options)
-    graphic.add_primitive(
-        Surface3d(xdata, ydata, zdata, defaults))
+    graphic.add_primitive(Surface3d(xdata, ydata, zdata, defaults))
     return graphic
 
 
 runtime.register_doc(
-    'implicit_plot3d',
+    "implicit_plot3d",
     implicit_plot3d,
     {
-        'kind': 'function',
-        'module': 'sage.plot.plot3d.implicit_plot3d',
-        'tags': [
-            'graphics',
-            '3D graphics',
-            'implicit surfaces',
-            'symbolic equations',
+        "kind": "function",
+        "module": "sage.plot.plot3d.implicit_plot3d",
+        "tags": [
+            "graphics",
+            "3D graphics",
+            "implicit surfaces",
+            "symbolic equations",
         ],
-        'backends': ['Plotly', 'Sage.js rectangular sampler'],
-        'sage_compatibility': {
-            'status': 'partial',
-            'notes': (
-                'Sage expressions, equalities, ranges, and common options '
-                'are supported; adaptive meshing is not yet implemented.'
+        "backends": ["Plotly", "Sage.js rectangular sampler"],
+        "sage_compatibility": {
+            "status": "partial",
+            "notes": (
+                "Sage expressions, equalities, ranges, and common options "
+                "are supported; adaptive meshing is not yet implemented."
             ),
         },
-        'provenance': [
+        "provenance": [
             {
-                'kind': 'sage-derived',
-                'source': 'SageMath 3D plotting API',
-                'url': (
-                    'https://doc.sagemath.org/html/en/reference/'
-                    'plot3d/'
-                ),
-                'license': 'GPL-2.0-or-later',
+                "kind": "sage-derived",
+                "source": "SageMath 3D plotting API",
+                "url": ("https://doc.sagemath.org/html/en/reference/plot3d/"),
+                "license": "GPL-2.0-or-later",
             },
             {
-                'kind': 'library-backed',
-                'source': 'Plotly.js isosurface rendering',
-                'url': 'https://plotly.com/javascript/3d-isosurface-plots/',
+                "kind": "library-backed",
+                "source": "Plotly.js isosurface rendering",
+                "url": "https://plotly.com/javascript/3d-isosurface-plots/",
             },
         ],
-        'references': [
+        "references": [
             {
-                'id': 'plotly-js-isosurface',
-                'type': 'software',
-                'title': 'Plotly.js 3D Isosurface Plots',
-                'url': (
-                    'https://plotly.com/javascript/'
-                    '3d-isosurface-plots/'
-                ),
+                "id": "plotly-js-isosurface",
+                "type": "software",
+                "title": "Plotly.js 3D Isosurface Plots",
+                "url": ("https://plotly.com/javascript/3d-isosurface-plots/"),
             },
         ],
-        'implementation': {
-            'algorithm': (
-                'Rectangular scalar-field sampling and Plotly isosurface'
-            ),
+        "implementation": {
+            "algorithm": ("Rectangular scalar-field sampling and Plotly isosurface"),
         },
-        'limitations': [
-            'Adaptive marching-cubes refinement is not implemented.',
+        "limitations": [
+            "Adaptive marching-cubes refinement is not implemented.",
         ],
     },
 )
@@ -3363,68 +3336,61 @@ runtime.register_doc(
 
 def _graphics3d_doc(tags: list[str], notes: str) -> Any:
     return {
-        'kind': 'function',
-        'module': 'sage.plot.plot3d',
-        'tags': ['graphics', '3D graphics'] + tags,
-        'backends': ['Plotly', 'Sage.js rectangular sampler'],
-        'sage_compatibility': {
-            'status': 'partial',
-            'notes': notes,
+        "kind": "function",
+        "module": "sage.plot.plot3d",
+        "tags": ["graphics", "3D graphics"] + tags,
+        "backends": ["Plotly", "Sage.js rectangular sampler"],
+        "sage_compatibility": {
+            "status": "partial",
+            "notes": notes,
         },
-        'provenance': [
+        "provenance": [
             {
-                'kind': 'sage-derived',
-                'source': 'SageMath 3D plotting API and object model',
-                'url': (
-                    'https://doc.sagemath.org/html/en/reference/plot3d/'
-                ),
-                'license': 'GPL-2.0-or-later',
+                "kind": "sage-derived",
+                "source": "SageMath 3D plotting API and object model",
+                "url": ("https://doc.sagemath.org/html/en/reference/plot3d/"),
+                "license": "GPL-2.0-or-later",
             },
             {
-                'kind': 'library-backed',
-                'source': 'Plotly.js',
-                'url': 'https://plotly.com/javascript/3d-charts/',
+                "kind": "library-backed",
+                "source": "Plotly.js",
+                "url": "https://plotly.com/javascript/3d-charts/",
             },
         ],
-        'implementation': {
-            'algorithm': 'Semantic 3D primitives with Plotly rendering',
+        "implementation": {
+            "algorithm": "Semantic 3D primitives with Plotly rendering",
         },
-        'limitations': [],
+        "limitations": [],
     }
 
 
 for _doc_name, _doc_function, _doc_tags in [
-    ('IndexFaceSet', IndexFaceSet, ['polygons', 'meshes', 'data structures']),
-    ('line3d', line3d, ['lines']),
-    ('point3d', point3d, ['points']),
-    ('polygon3d', polygon3d, ['polygons', 'meshes']),
-    ('polygons3d', polygons3d, ['polygons', 'meshes']),
-    ('text3d', text3d, ['text']),
-    ('arrow3d', arrow3d, ['arrows']),
-    ('bezier3d', bezier3d, ['curves', 'Bézier paths']),
-    ('plot_vector_field3d', plot_vector_field3d,
-     ['vector fields']),
-    ('frame3d', frame3d, ['frames']),
-    ('frame_labels', frame_labels, ['frames', 'labels']),
-    ('ruler', ruler, ['frames', 'rulers']),
-    ('ruler_frame', ruler_frame, ['frames', 'rulers']),
-    ('axes', axes, ['axes', 'arrows']),
-    ('tetrahedron', tetrahedron, ['shapes', 'platonic solids']),
-    ('cube', cube, ['shapes', 'platonic solids']),
-    ('octahedron', octahedron, ['shapes', 'platonic solids']),
-    ('dodecahedron', dodecahedron, ['shapes', 'platonic solids']),
-    ('icosahedron', icosahedron, ['shapes', 'platonic solids']),
-    ('plot3d', plot3d, ['surfaces']),
-    ('spherical_plot3d', spherical_plot3d,
-     ['surfaces', 'coordinate transforms']),
-    ('cylindrical_plot3d', cylindrical_plot3d,
-     ['surfaces', 'coordinate transforms']),
-    ('list_plot3d', list_plot3d,
-     ['surfaces', 'data plots', 'interpolation']),
-    ('revolution_plot3d', revolution_plot3d,
-     ['surfaces', 'surfaces of revolution']),
-    ('parametric_plot3d', parametric_plot3d, ['parametric plots']),
-    ('sphere', sphere, ['shapes']),
+    ("IndexFaceSet", IndexFaceSet, ["polygons", "meshes", "data structures"]),
+    ("line3d", line3d, ["lines"]),
+    ("point3d", point3d, ["points"]),
+    ("polygon3d", polygon3d, ["polygons", "meshes"]),
+    ("polygons3d", polygons3d, ["polygons", "meshes"]),
+    ("text3d", text3d, ["text"]),
+    ("arrow3d", arrow3d, ["arrows"]),
+    ("bezier3d", bezier3d, ["curves", "Bézier paths"]),
+    ("plot_vector_field3d", plot_vector_field3d, ["vector fields"]),
+    ("frame3d", frame3d, ["frames"]),
+    ("frame_labels", frame_labels, ["frames", "labels"]),
+    ("ruler", ruler, ["frames", "rulers"]),
+    ("ruler_frame", ruler_frame, ["frames", "rulers"]),
+    ("axes", axes, ["axes", "arrows"]),
+    ("tetrahedron", tetrahedron, ["shapes", "platonic solids"]),
+    ("cube", cube, ["shapes", "platonic solids"]),
+    ("octahedron", octahedron, ["shapes", "platonic solids"]),
+    ("dodecahedron", dodecahedron, ["shapes", "platonic solids"]),
+    ("icosahedron", icosahedron, ["shapes", "platonic solids"]),
+    ("plot3d", plot3d, ["surfaces"]),
+    ("spherical_plot3d", spherical_plot3d, ["surfaces", "coordinate transforms"]),
+    ("cylindrical_plot3d", cylindrical_plot3d, ["surfaces", "coordinate transforms"]),
+    ("list_plot3d", list_plot3d, ["surfaces", "data plots", "interpolation"]),
+    ("revolution_plot3d", revolution_plot3d, ["surfaces", "surfaces of revolution"]),
+    ("parametric_plot3d", parametric_plot3d, ["parametric plots"]),
+    ("sphere", sphere, ["shapes"]),
 ]:
     runtime.register_doc(
         _doc_name,
@@ -3432,9 +3398,9 @@ for _doc_name, _doc_function, _doc_tags in [
         _graphics3d_doc(
             _doc_tags,
             (
-                'The Sage call form and core rendering semantics are '
-                'supported; remaining specialized options are tracked by '
-                'the graphics compatibility corpus.'
+                "The Sage call form and core rendering semantics are "
+                "supported; remaining specialized options are tracked by "
+                "the graphics compatibility corpus."
             ),
         ),
     )

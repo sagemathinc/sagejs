@@ -2,4 +2,4 @@
 
 from . import ElementTree
 
-__all__ = ['ElementTree']
+__all__ = ["ElementTree"]

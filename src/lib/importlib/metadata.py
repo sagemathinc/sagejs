@@ -12,12 +12,12 @@ class EntryPoint:
         self.group = group
 
     def load(self):
-        module_name, separator, attribute = self.value.partition(':')
-        module = __import__(module_name, globals(), locals(), ['*'], 0)
+        module_name, separator, attribute = self.value.partition(":")
+        module = __import__(module_name, globals(), locals(), ["*"], 0)
         if not separator:
             return module
         value = module
-        for name in attribute.split('.'):
+        for name in attribute.split("."):
             value = getattr(value, name)
         return value
 
@@ -25,9 +25,10 @@ class EntryPoint:
 class EntryPoints(list):
     def select(self, **params):
         return EntryPoints(
-            item for item in self
-            if all(getattr(item, name) == value
-                   for name, value in params.items()))
+            item
+            for item in self
+            if all(getattr(item, name) == value for name, value in params.items())
+        )
 
 
 class Distribution:

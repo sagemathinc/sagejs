@@ -21,6 +21,7 @@ class ContextDecorator:
         def inner(*args, **keywords):
             with self._recreate_cm():
                 return function(*args, **keywords)
+
         return inner
 
 
@@ -59,7 +60,7 @@ class ExitStack(AbstractContextManager):
         self._exit_callbacks = []
 
     def push(self, exit):
-        callback = exit.__exit__ if hasattr(exit, '__exit__') else exit
+        callback = exit.__exit__ if hasattr(exit, "__exit__") else exit
         self._exit_callbacks.append(callback)
         return exit
 
@@ -68,6 +69,7 @@ class ExitStack(AbstractContextManager):
             del exc_type, exc_value, traceback
             callback(*args, **kwargs)
             return False
+
         self._exit_callbacks.append(exit_callback)
         return callback
 
@@ -131,4 +133,5 @@ def contextmanager(function):
     @wraps(function)
     def helper(*args, **keywords):
         return _GeneratorContextManager(function, args, keywords)
+
     return helper

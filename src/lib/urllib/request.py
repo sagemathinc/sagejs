@@ -9,7 +9,7 @@ from urllib.parse import urlsplit, quote
 from urllib.error import URLError, HTTPError, ContentTooShortError
 
 
-__version__ = '3.14'
+__version__ = "3.14"
 
 
 class _Headers:
@@ -47,14 +47,14 @@ class _Headers:
         return [pair[1] for pair in self._pairs]
 
     def get_content_type(self):
-        return self.get('content-type', 'text/plain').split(';', 1)[0].strip().lower()
+        return self.get("content-type", "text/plain").split(";", 1)[0].strip().lower()
 
     def get_content_charset(self, failobj=None):
-        content_type = self.get('content-type', '')
-        for part in content_type.split(';')[1:]:
-            if '=' in part:
-                name, value = part.split('=', 1)
-                if name.strip().lower() == 'charset':
+        content_type = self.get("content-type", "")
+        for part in content_type.split(";")[1:]:
+            if "=" in part:
+                name, value = part.split("=", 1)
+                if name.strip().lower() == "charset":
                     return value.strip().strip('"').lower()
         return failobj
 
@@ -94,16 +94,16 @@ class Request:
     @property
     def selector(self):
         parsed = urlsplit(self.full_url)
-        answer = parsed.path or '/'
+        answer = parsed.path or "/"
         if parsed.query:
-            answer += '?' + parsed.query
+            answer += "?" + parsed.query
         return answer
 
     def get_full_url(self):
         return self.full_url
 
     def get_method(self):
-        return self.method or ('POST' if self.data is not None else 'GET')
+        return self.method or ("POST" if self.data is not None else "GET")
 
     def add_header(self, key, value):
         self.headers.__setitem__(str(key).capitalize(), str(value))
@@ -113,7 +113,10 @@ class Request:
 
     def has_header(self, header_name):
         normalized = header_name.lower()
-        return any(key.lower() == normalized for key in list(self.headers) + list(self.unredirected_hdrs))
+        return any(
+            key.lower() == normalized
+            for key in list(self.headers) + list(self.unredirected_hdrs)
+        )
 
     def get_header(self, header_name, fallback=None):
         normalized = header_name.lower()
@@ -159,7 +162,7 @@ class _HTTPResponse:
 
     def __next__(self):
         line = self.readline()
-        if line == b'':
+        if line == b"":
             raise StopIteration
         return line
 
@@ -177,7 +180,7 @@ class _HTTPResponse:
         total = 0
         while True:
             line = self.readline()
-            if line == b'':
+            if line == b"":
                 break
             answer.append(line)
             total += len(line)
@@ -206,21 +209,26 @@ class _HTTPResponse:
 
 
 def _open(url, data=None, timeout=60, headers=None, method=None, raise_errors=True):
-    request = url if isinstance(url, Request) else Request(
-        url, data=data, headers=headers, method=method)
+    request = (
+        url
+        if isinstance(url, Request)
+        else Request(url, data=data, headers=headers, method=method)
+    )
     if data is not None and isinstance(url, Request):
         request.data = data
     body = request.data
     if body is not None and not isinstance(body, (bytes, bytearray, memoryview)):
-        raise TypeError('POST data should be bytes, an iterable of bytes, or a file object')
+        raise TypeError(
+            "POST data should be bytes, an iterable of bytes, or a file object"
+        )
     header_items = request.header_items()
-    if not request.has_header('User-Agent'):
-        header_items.append(('User-Agent', 'Python-urllib/3.14 Sage.js'))
-    if body is not None and not request.has_header('Content-Length'):
-        header_items.append(('Content-Length', str(len(body))))
+    if not request.has_header("User-Agent"):
+        header_items.append(("User-Agent", "Python-urllib/3.14 Sage.js"))
+    if body is not None and not request.has_header("Content-Length"):
+        header_items.append(("Content-Length", str(len(body))))
     try:
         result = os._host_call(
-            'httpRequest',
+            "httpRequest",
             request.get_method(),
             request.full_url,
             [list(pair) for pair in header_items],
@@ -230,11 +238,11 @@ def _open(url, data=None, timeout=60, headers=None, method=None, raise_errors=Tr
     except OSError as exception:
         raise URLError(exception)
     response = _HTTPResponse(
-        base64.b64decode(os._property(result, 'body')),
-        os._property(result, 'url', request.full_url),
-        os._property(result, 'status', 0),
-        os._property(result, 'reason', ''),
-        os._property(result, 'headers', []),
+        base64.b64decode(os._property(result, "body")),
+        os._property(result, "url", request.full_url),
+        os._property(result, "status", 0),
+        os._property(result, "reason", ""),
+        os._property(result, "headers", []),
     )
     if raise_errors and response.status >= 400:
         raise HTTPError(
@@ -266,11 +274,11 @@ class HTTPPasswordMgr:
         self.passwd = dict()
 
     def add_password(self, realm, uri, user, passwd):
-        key = str(realm) + '\0' + str(uri)
+        key = str(realm) + "\0" + str(uri)
         self.passwd.__setitem__(key, (user, passwd))
 
     def find_user_password(self, realm, authuri):
-        key = str(realm) + '\0' + str(authuri)
+        key = str(realm) + "\0" + str(authuri)
         return self.passwd.get(key, (None, None))
 
 
@@ -282,13 +290,15 @@ class HTTPBasicAuthHandler(BaseHandler):
 class _OpenerDirector:
     def __init__(self, handlers=()):
         self.handlers = list(handlers)
-        self.addheaders = [('User-agent', 'Python-urllib/3.14 Sage.js')]
+        self.addheaders = [("User-agent", "Python-urllib/3.14 Sage.js")]
 
     def add_handler(self, handler):
         self.handlers.append(handler)
 
     def open(self, fullurl, data=None, timeout=60):
-        request = fullurl if isinstance(fullurl, Request) else Request(fullurl, data=data)
+        request = (
+            fullurl if isinstance(fullurl, Request) else Request(fullurl, data=data)
+        )
         for name, value in self.addheaders:
             if not request.has_header(name):
                 request.add_header(name, value)
@@ -316,7 +326,7 @@ def urlretrieve(url, filename=None, reporthook=None, data=None):
         descriptor, filename = tempfile.mkstemp()
         os.close(descriptor)
     content = response.read()
-    with open(filename, 'wb') as output:
+    with open(filename, "wb") as output:
         output.write(content)
     if reporthook is not None:
         reporthook(1, len(content), len(content))
@@ -329,4 +339,5 @@ def pathname2url(pathname):
 
 def url2pathname(pathname):
     from urllib.parse import unquote
+
     return unquote(pathname)

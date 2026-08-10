@@ -20,7 +20,7 @@ class _AutoValue:
         return False
 
     def __repr__(self):
-        return 'auto(' + repr(self.value) + ')'
+        return "auto(" + repr(self.value) + ")"
 
 
 def auto():
@@ -29,13 +29,12 @@ def auto():
 
 def _member_candidates(namespace):
     for name, value in namespace.items():
-        if name.startswith('_') or callable(value):
+        if name.startswith("_") or callable(value):
             continue
         yield name, value
 
 
 class EnumType(type):
-
     def __new__(metaclass, name, bases, namespace):
         cls = type.__new__(metaclass, name, bases, namespace)
         member_names = []
@@ -81,20 +80,21 @@ EnumMeta = EnumType
 
 
 class Enum(metaclass=EnumType):
-
     def __new__(cls, value):
         if isinstance(value, cls):
             return value
         for member in cls:
             if member.value == value:
                 return member
-        raise ValueError(repr(value) + ' is not a valid ' + cls.__name__)
+        raise ValueError(repr(value) + " is not a valid " + cls.__name__)
 
     def __repr__(self):
-        return '<' + type(self).__name__ + '.' + self.name + ': ' + repr(self.value) + '>'
+        return (
+            "<" + type(self).__name__ + "." + self.name + ": " + repr(self.value) + ">"
+        )
 
     def __str__(self):
-        return type(self).__name__ + '.' + self.name
+        return type(self).__name__ + "." + self.name
 
     def __hash__(self):
         return hash(self.name)
@@ -131,15 +131,15 @@ class IntFlag(Flag):
     pass
 
 
-KEEP = 'keep'
-CONFORM = 'conform'
-EJECT = 'eject'
-STRICT = 'strict'
+KEEP = "keep"
+CONFORM = "conform"
+EJECT = "eject"
+STRICT = "strict"
 
 
 def unique(cls):
     if len(cls.__members__) != len(cls._member_names_):
-        raise ValueError('duplicate values found in ' + cls.__name__)
+        raise ValueError("duplicate values found in " + cls.__name__)
     return cls
 
 

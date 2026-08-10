@@ -11,15 +11,17 @@ IDENTIFIER_CONTINUE = RegExp(r"^[$_\p{ID_Continue}]$", "u")
 def is_identifier_char(ch):
     return bool(ch) and IDENTIFIER_CONTINUE.test(ch)
 
+
 DANGEROUS = RegExp(
     r"[\u0000\u00ad\u0600-\u0604\u070f\u17b4\u17b5\u200c-\u200f\u2028-\u202f\u2060-\u206f\ufeff\ufff0-\uffff]",
-    "g")
+    "g",
+)
 
 
 def as_hex(code, sz):
     val = code.toString(16)
     if val.length < sz:
-        val = '0'.repeat(sz - val.length) + val
+        val = "0".repeat(sz - val.length) + val
     return val
 
 
@@ -29,14 +31,14 @@ def to_ascii(str_, identifier):
         if code.length <= 2 and not identifier:
             return "\\x" + as_hex(code, 2)
         else:
-            return '\\u' + as_hex(code, 4)
+            return "\\u" + as_hex(code, 4)
 
     return str_.replace(RegExp(r"[\u0080-\uffff]", "g"), f)
 
 
 def encode_string(str_):
     def f(a):
-        return '\\u' + as_hex(a.charCodeAt(0), 4)
+        return "\\u" + as_hex(a.charCodeAt(0), 4)
 
     return JSON.stringify(str_).replace(DANGEROUS, f)
 
@@ -48,38 +50,39 @@ JS_RESERVED_IDENTIFIERS = make_predicate(
     "export extends finally for function if import in instanceof new return "
     "super switch this throw try typeof var void while with yield enum "
     "implements static private package let public protected interface await "
-    "null true false")
+    "null true false"
+)
 
 output_stream_defaults = {
-    'indent_start': 0,
-    'indent_level': 4,
-    'quote_keys': False,
-    'space_colon': True,
-    'ascii_only': False,
-    'width': 80,
-    'max_line_len': 32000,
-    'ie_proof': True,
-    'beautify': False,
-    'source_map': None,
-    'bracketize': False,
-    'semicolons': True,
-    'comments': False,
-    'preserve_line': False,
-    'omit_baselib': False,
-    'baselib_plain': None,
-    'private_scope': True,
-    'keep_docstrings': False,
-    'discard_asserts': False,
-    'module_cache_dir': '',
-    'module_registry': '',
-    'write_name': True,
-    'exact_integers': False,
-    'rational_division': False,
-    'python_tuples': False,
-    'python_truthiness': False,
-    'python_attributes': False,
-    'pool_numeric_literals': False,
-    'numeric_literal_pool_prefix': '',
+    "indent_start": 0,
+    "indent_level": 4,
+    "quote_keys": False,
+    "space_colon": True,
+    "ascii_only": False,
+    "width": 80,
+    "max_line_len": 32000,
+    "ie_proof": True,
+    "beautify": False,
+    "source_map": None,
+    "bracketize": False,
+    "semicolons": True,
+    "comments": False,
+    "preserve_line": False,
+    "omit_baselib": False,
+    "baselib_plain": None,
+    "private_scope": True,
+    "keep_docstrings": False,
+    "discard_asserts": False,
+    "module_cache_dir": "",
+    "module_registry": "",
+    "write_name": True,
+    "exact_integers": False,
+    "rational_division": False,
+    "python_tuples": False,
+    "python_truthiness": False,
+    "python_attributes": False,
+    "pool_numeric_literals": False,
+    "numeric_literal_pool_prefix": "",
 }
 
 
@@ -104,27 +107,26 @@ class OutputStream:
 
     def new_try_else_counter(self):
         self.try_else_counter += 1
-        return 'ρσ_try_else_' + self.try_else_counter
+        return "ρσ_try_else_" + self.try_else_counter
 
     def new_time_counter(self):
         self.time_counter += 1
-        return 'ρσ_time_start_' + self.time_counter
+        return "ρσ_time_start_" + self.time_counter
 
     def print_truth_test(self, expression):
         if self.options.python_truthiness:
-            self.print('ρσ_bool(')
+            self.print("ρσ_bool(")
             expression.print(self)
-            self.print(')')
+            self.print(")")
         else:
             expression.print(self)
 
     def make_name(self, name):
         name = name.toString()
-        if (
-            JS_RESERVED_IDENTIFIERS[name]
-            and (name is not 'this' or self.options.python_attributes)
+        if JS_RESERVED_IDENTIFIERS[name] and (
+            name is not "this" or self.options.python_attributes
         ):
-            name = 'ρσ_py_' + name
+            name = "ρσ_py_" + name
         if self.options.ascii_only:
             name = to_ascii(name, True)
 
@@ -135,8 +137,11 @@ class OutputStream:
 
     def make_indent(self, back):
         return repeat_string(
-            " ", self.options.indent_start + self._indentation -
-            back * self.options.indent_level)
+            " ",
+            self.options.indent_start
+            + self._indentation
+            - back * self.options.indent_level,
+        )
 
     # -----[ beautification/minification ]-----
     def last_char(self):
@@ -150,8 +155,7 @@ class OutputStream:
         str_ = String(str_)
         ch = str_.charAt(0)
         if self.might_need_semicolon:
-            if (not ch or ";}".indexOf(ch) < 0) and not RegExp(r"[;]").test(
-                    self._last):
+            if (not ch or ";}".indexOf(ch) < 0) and not RegExp(r"[;]").test(self._last):
                 if self.options.semicolons or require_semi_colon_chars[ch]:
                     self.OUTPUT += ";"
                     self.current_col += 1
@@ -168,8 +172,11 @@ class OutputStream:
             self.might_need_semicolon = False
             self.maybe_newline()
 
-        if not self.options.beautify and self.options.preserve_line and self._stack[
-                self._stack.length - 1]:
+        if (
+            not self.options.beautify
+            and self.options.preserve_line
+            and self._stack[self._stack.length - 1]
+        ):
             target_line = self._stack[self._stack.length - 1].start.line
             while self.current_line < target_line:
                 self.OUTPUT += "\n"
@@ -180,9 +187,12 @@ class OutputStream:
 
         if self.might_need_space:
             prev = self.last_char()
-            if (is_identifier_char(prev) and
-                (is_identifier_char(ch) or ch is "\\")
-                    or RegExp(r"^[\+\-\/]$").test(ch) and ch is prev):
+            if (
+                is_identifier_char(prev)
+                and (is_identifier_char(ch) or ch is "\\")
+                or RegExp(r"^[\+\-\/]$").test(ch)
+                and ch is prev
+            ):
                 self.OUTPUT += " "
                 self.current_col += 1
                 self.current_pos += 1
@@ -203,7 +213,7 @@ class OutputStream:
 
     def space(self):
         if self.options.beautify:
-            self.print(' ')
+            self.print(" ")
         else:
             self.might_need_space = True
 
@@ -252,7 +262,7 @@ class OutputStream:
         for i in range(len(arguments)):
             if i > 0:
                 self.space()
-            if jstype(arguments[i].print) is 'function':
+            if jstype(arguments[i].print) is "function":
                 arguments[i].print(self)
             else:
                 self.print(arguments[i])
@@ -318,8 +328,7 @@ class OutputStream:
         return self.current_col - self._indentation
 
     def should_break(self):
-        return self.options.width and self.current_width(
-        ) >= self.options.width
+        return self.options.width and self.current_width() >= self.options.width
 
     def last(self):
         return self._last

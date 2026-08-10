@@ -42,64 +42,58 @@ def _get_member(value: Any, name: str) -> Any:
     if (
         member is None
         or member is runtime.undefined
-        or runtime.native_get(
-            member, '__sagejs_eager_bound_cache__') is not True
+        or runtime.native_get(member, "__sagejs_eager_bound_cache__") is not True
     ):
         return member
-    resolver = runtime.reflect.get(
-        runtime.global_object, 'ρσ_getattr_internal')
-    if runtime.strict_equal(runtime.jstype(resolver), 'function'):
+    resolver = runtime.reflect.get(runtime.global_object, "ρσ_getattr_internal")
+    if runtime.strict_equal(runtime.jstype(resolver), "function"):
         return runtime.reflect.apply(
-            resolver, runtime.undefined,
-            [value, name, runtime.undefined])
+            resolver, runtime.undefined, [value, name, runtime.undefined]
+        )
     return member
 
 
 def _call_member(value: Any, name: str, args: Any) -> Any:
     method = _get_member(value, name)
-    if _get_member(method, '__staticmethod__') is True:
+    if _get_member(method, "__staticmethod__") is True:
         return runtime.reflect.apply(method, runtime.undefined, args)
-    if _get_member(method, '__python_descriptor__') is True:
+    if _get_member(method, "__python_descriptor__") is True:
         explicit_args = [value]
         explicit_args.extend(args)
-        return runtime.reflect.apply(
-            method, runtime.undefined, explicit_args)
+        return runtime.reflect.apply(method, runtime.undefined, explicit_args)
     return runtime.reflect.apply(method, value, args)
 
 
 def _has_concrete_override(value: Any, name: Any) -> bool:
     """Return whether the concrete Python class owns ``name``."""
-    owner = runtime.native_get(value, '__class__')
+    owner = runtime.native_get(value, "__class__")
     if owner is None or owner is runtime.undefined:
-        owner = runtime.native_get(value, 'constructor')
+        owner = runtime.native_get(value, "constructor")
     if owner is None or owner is runtime.undefined:
         return False
-    prototype = runtime.native_get(owner, 'prototype')
+    prototype = runtime.native_get(owner, "prototype")
     if prototype is None or prototype is runtime.undefined:
         return False
-    return runtime.object.getOwnPropertyDescriptor(
-        prototype, name) is not runtime.undefined
+    return (
+        runtime.object.getOwnPropertyDescriptor(prototype, name)
+        is not runtime.undefined
+    )
 
 
 def _native_delete(container: Any, key: Any) -> bool:
     return runtime.reflect.apply(
-        runtime.reflect.get(container, 'delete'), container, [key])
+        runtime.reflect.get(container, "delete"), container, [key]
+    )
 
 
 def _is_boxed_float(value: Any) -> bool:
-    return (
-        value is not None
-        and _get_member(value, '__sagejs_float__') is True
-    )
+    return value is not None and _get_member(value, "__sagejs_float__") is True
 
 
 def _numeric_key(value: Any) -> Any:
     """Canonicalize equal Python integer and integral-float keys."""
     number = runtime.number(value)
-    if (
-        runtime.number.isInteger(number)
-        and not runtime.number.isSafeInteger(number)
-    ):
+    if runtime.number.isInteger(number) and not runtime.number.isSafeInteger(number):
         return runtime.normalize_integer(runtime.bigint(number))
     return number
 
@@ -113,162 +107,135 @@ def equals(left: Any, right: Any) -> Any:
     # number and bigint/bigint cases use only two type comparisons.  The old
     # symmetric predicate performed roughly nine comparisons before reaching
     # the same primitive identity check.
-    if runtime.strict_equal(left_type, 'number'):
-        if runtime.strict_equal(right_type, 'number'):
+    if runtime.strict_equal(left_type, "number"):
+        if runtime.strict_equal(right_type, "number"):
             return left is right
-        if runtime.strict_equal(right_type, 'bigint'):
-            return (
-                runtime.number.isInteger(left)
-                and runtime.bigint(left) is right
-            )
-        if runtime.strict_equal(right_type, 'boolean'):
+        if runtime.strict_equal(right_type, "bigint"):
+            return runtime.number.isInteger(left) and runtime.bigint(left) is right
+        if runtime.strict_equal(right_type, "boolean"):
             return left is (1 if right else 0)
-        if (
-            not runtime.strict_equal(right_type, 'object')
-            and not runtime.strict_equal(right_type, 'function')
+        if not runtime.strict_equal(right_type, "object") and not runtime.strict_equal(
+            right_type, "function"
         ):
             return False
-    elif runtime.strict_equal(left_type, 'bigint'):
-        if runtime.strict_equal(right_type, 'bigint'):
+    elif runtime.strict_equal(left_type, "bigint"):
+        if runtime.strict_equal(right_type, "bigint"):
             return left is right
-        if runtime.strict_equal(right_type, 'number'):
-            return (
-                runtime.number.isInteger(right)
-                and left is runtime.bigint(right)
-            )
-        if runtime.strict_equal(right_type, 'boolean'):
+        if runtime.strict_equal(right_type, "number"):
+            return runtime.number.isInteger(right) and left is runtime.bigint(right)
+        if runtime.strict_equal(right_type, "boolean"):
             return left is runtime.bigint(1 if right else 0)
-        if (
-            not runtime.strict_equal(right_type, 'object')
-            and not runtime.strict_equal(right_type, 'function')
+        if not runtime.strict_equal(right_type, "object") and not runtime.strict_equal(
+            right_type, "function"
         ):
             return False
-    elif runtime.strict_equal(left_type, 'string'):
-        if runtime.strict_equal(right_type, 'string'):
+    elif runtime.strict_equal(left_type, "string"):
+        if runtime.strict_equal(right_type, "string"):
             return left is right
-        if (
-            not runtime.strict_equal(right_type, 'object')
-            and not runtime.strict_equal(right_type, 'function')
+        if not runtime.strict_equal(right_type, "object") and not runtime.strict_equal(
+            right_type, "function"
         ):
             return False
-    elif runtime.strict_equal(left_type, 'boolean'):
+    elif runtime.strict_equal(left_type, "boolean"):
         numeric_left = 1 if left else 0
-        if runtime.strict_equal(right_type, 'boolean'):
+        if runtime.strict_equal(right_type, "boolean"):
             return left is right
-        if runtime.strict_equal(right_type, 'number'):
+        if runtime.strict_equal(right_type, "number"):
             return numeric_left is right
-        if runtime.strict_equal(right_type, 'bigint'):
+        if runtime.strict_equal(right_type, "bigint"):
             return runtime.bigint(numeric_left) is right
-        if (
-            not runtime.strict_equal(right_type, 'object')
-            and not runtime.strict_equal(right_type, 'function')
+        if not runtime.strict_equal(right_type, "object") and not runtime.strict_equal(
+            right_type, "function"
         ):
             return False
     elif (
-        not runtime.strict_equal(left_type, 'object')
-        and not runtime.strict_equal(left_type, 'function')
-        and not runtime.strict_equal(right_type, 'object')
-        and not runtime.strict_equal(right_type, 'function')
+        not runtime.strict_equal(left_type, "object")
+        and not runtime.strict_equal(left_type, "function")
+        and not runtime.strict_equal(right_type, "object")
+        and not runtime.strict_equal(right_type, "function")
     ):
         if runtime.strict_equal(left_type, right_type):
             return left is right
         return False
 
-    if (
-        runtime.strict_equal(left_type, 'object')
-        and _is_boxed_float(left)
-    ):
+    if runtime.strict_equal(left_type, "object") and _is_boxed_float(left):
         left = runtime.number(left)
-        left_type = 'number'
-    if (
-        runtime.strict_equal(right_type, 'object')
-        and _is_boxed_float(right)
-    ):
+        left_type = "number"
+    if runtime.strict_equal(right_type, "object") and _is_boxed_float(right):
         right = runtime.number(right)
-        right_type = 'number'
+        right_type = "number"
     if (
-        runtime.strict_equal(left_type, 'object')
+        runtime.strict_equal(left_type, "object")
         and runtime.reflect.apply(
             runtime.object.prototype.toString,
             left,
             [],
-        ) == '[object String]'
-        and runtime.object.getPrototypeOf(left)
-        is not runtime.string_class.prototype
+        )
+        == "[object String]"
+        and runtime.object.getPrototypeOf(left) is not runtime.string_class.prototype
     ):
         left = runtime.reflect.apply(
             runtime.string_class.prototype.valueOf,
             left,
             [],
         )
-        left_type = 'string'
+        left_type = "string"
     if (
-        runtime.strict_equal(right_type, 'object')
+        runtime.strict_equal(right_type, "object")
         and runtime.reflect.apply(
             runtime.object.prototype.toString,
             right,
             [],
-        ) == '[object String]'
-        and runtime.object.getPrototypeOf(right)
-        is not runtime.string_class.prototype
+        )
+        == "[object String]"
+        and runtime.object.getPrototypeOf(right) is not runtime.string_class.prototype
     ):
         right = runtime.reflect.apply(
             runtime.string_class.prototype.valueOf,
             right,
             [],
         )
-        right_type = 'string'
-    if runtime.strict_equal(left_type, 'boolean'):
+        right_type = "string"
+    if runtime.strict_equal(left_type, "boolean"):
         left = 1 if left else 0
-        left_type = 'number'
-    if runtime.strict_equal(right_type, 'boolean'):
+        left_type = "number"
+    if runtime.strict_equal(right_type, "boolean"):
         right = 1 if right else 0
-        right_type = 'number'
+        right_type = "number"
     if (
-        (
-            runtime.strict_equal(left_type, 'bigint')
-            and runtime.strict_equal(right_type, 'number')
-            and runtime.number.isInteger(right)
-        )
-        or (
-            runtime.strict_equal(right_type, 'bigint')
-            and runtime.strict_equal(left_type, 'number')
-            and runtime.number.isInteger(left)
-        )
+        runtime.strict_equal(left_type, "bigint")
+        and runtime.strict_equal(right_type, "number")
+        and runtime.number.isInteger(right)
+    ) or (
+        runtime.strict_equal(right_type, "bigint")
+        and runtime.strict_equal(left_type, "number")
+        and runtime.number.isInteger(left)
     ):
         return runtime.bigint(left) is runtime.bigint(right)
 
-    left_is_primitive = (
-        not runtime.strict_equal(left_type, 'object')
-        and not runtime.strict_equal(left_type, 'function')
-    )
-    right_is_primitive = (
-        not runtime.strict_equal(right_type, 'object')
-        and not runtime.strict_equal(right_type, 'function')
-    )
+    left_is_primitive = not runtime.strict_equal(
+        left_type, "object"
+    ) and not runtime.strict_equal(left_type, "function")
+    right_is_primitive = not runtime.strict_equal(
+        right_type, "object"
+    ) and not runtime.strict_equal(right_type, "function")
     if left_is_primitive and right_is_primitive:
         if runtime.strict_equal(left_type, right_type):
             return left is right
         return False
 
-    if (
-        left is not None
-        and runtime.strict_equal(
-            runtime.jstype(_get_member(left, '__eq__')),
-            'function',
-        )
+    if left is not None and runtime.strict_equal(
+        runtime.jstype(_get_member(left, "__eq__")),
+        "function",
     ):
-        result = _call_member(left, '__eq__', [right])
+        result = _call_member(left, "__eq__", [right])
         if result is not NotImplemented:
             return result
-    if (
-        right is not None
-        and runtime.strict_equal(
-            runtime.jstype(_get_member(right, '__eq__')),
-            'function',
-        )
+    if right is not None and runtime.strict_equal(
+        runtime.jstype(_get_member(right, "__eq__")),
+        "function",
     ):
-        result = _call_member(right, '__eq__', [left])
+        result = _call_member(right, "__eq__", [left])
         if result is not NotImplemented:
             return result
 
@@ -282,8 +249,7 @@ def equals(left: Any, right: Any) -> Any:
         if (
             runtime.array.isArray(left)
             and runtime.array.isArray(right)
-            and runtime.object.isFrozen(left)
-            is not runtime.object.isFrozen(right)
+            and runtime.object.isFrozen(left) is not runtime.object.isFrozen(right)
         ):
             return False
         if left.length != right.length:
@@ -296,14 +262,14 @@ def equals(left: Any, right: Any) -> Any:
     if (
         left is not None
         and right is not None
-        and runtime.strict_equal(left_type, 'object')
-        and runtime.strict_equal(right_type, 'object')
+        and runtime.strict_equal(left_type, "object")
+        and runtime.strict_equal(right_type, "object")
         and (
-            runtime.reflect.get(left, 'constructor') is runtime.object
+            runtime.reflect.get(left, "constructor") is runtime.object
             or runtime.object.getPrototypeOf(left) is None
         )
         and (
-            runtime.reflect.get(right, 'constructor') is runtime.object
+            runtime.reflect.get(right, "constructor") is runtime.object
             or runtime.object.getPrototypeOf(right) is None
         )
     ):
@@ -324,50 +290,38 @@ def not_equals(left: Any, right: Any) -> Any:
     left_type = runtime.jstype(left)
     right_type = runtime.jstype(right)
     if (
-        not runtime.strict_equal(left_type, 'object')
-        and not runtime.strict_equal(left_type, 'function')
-        and not runtime.strict_equal(right_type, 'object')
-        and not runtime.strict_equal(right_type, 'function')
+        not runtime.strict_equal(left_type, "object")
+        and not runtime.strict_equal(left_type, "function")
+        and not runtime.strict_equal(right_type, "object")
+        and not runtime.strict_equal(right_type, "function")
     ):
         return not equals(left, right)
-    if (
-        left is not None
-        and runtime.strict_equal(
-            runtime.jstype(_get_member(left, '__ne__')),
-            'function',
-        )
+    if left is not None and runtime.strict_equal(
+        runtime.jstype(_get_member(left, "__ne__")),
+        "function",
     ):
-        result = _call_member(left, '__ne__', [right])
+        result = _call_member(left, "__ne__", [right])
         if result is not NotImplemented:
             return result
-    if (
-        left is not None
-        and runtime.strict_equal(
-            runtime.jstype(_get_member(left, '__eq__')),
-            'function',
-        )
+    if left is not None and runtime.strict_equal(
+        runtime.jstype(_get_member(left, "__eq__")),
+        "function",
     ):
-        result = _call_member(left, '__eq__', [right])
+        result = _call_member(left, "__eq__", [right])
         if result is not NotImplemented:
             return not bool(result)
-    if (
-        right is not None
-        and runtime.strict_equal(
-            runtime.jstype(_get_member(right, '__ne__')),
-            'function',
-        )
+    if right is not None and runtime.strict_equal(
+        runtime.jstype(_get_member(right, "__ne__")),
+        "function",
     ):
-        result = _call_member(right, '__ne__', [left])
+        result = _call_member(right, "__ne__", [left])
         if result is not NotImplemented:
             return result
-    if (
-        right is not None
-        and runtime.strict_equal(
-            runtime.jstype(_get_member(right, '__eq__')),
-            'function',
-        )
+    if right is not None and runtime.strict_equal(
+        runtime.jstype(_get_member(right, "__eq__")),
+        "function",
     ):
-        result = _call_member(right, '__eq__', [left])
+        result = _call_member(right, "__eq__", [left])
         if result is not NotImplemented:
             return not bool(result)
     return not equals(left, right)
@@ -375,9 +329,8 @@ def not_equals(left: Any, right: Any) -> Any:
 
 @runtime.native_method
 def _list_extend(self: Any, iterable: Any) -> None:
-    if (
-        runtime.array.isArray(iterable)
-        or runtime.strict_equal(runtime.jstype(iterable), 'string')
+    if runtime.array.isArray(iterable) or runtime.strict_equal(
+        runtime.jstype(iterable), "string"
     ):
         start = self.length
         self.length += iterable.length
@@ -427,18 +380,18 @@ def _list_index(
     for index in range(start, min(stop, self.length)):
         if equals(self[index], value):
             return index
-    raise ValueError(runtime.string(value) + ' is not in list')
+    raise ValueError(runtime.string(value) + " is not in list")
 
 
 @runtime.native_method
 def _list_pop(self: Any, index: Any = runtime.undefined) -> Any:
     if self.length == 0:
-        raise IndexError('pop from empty list')
+        raise IndexError("pop from empty list")
     if index is runtime.undefined:
         index = -1
     answer = self.splice(index, 1)
     if answer.length == 0:
-        raise IndexError('pop index out of range')
+        raise IndexError("pop index out of range")
     return answer[0]
 
 
@@ -450,7 +403,7 @@ def _list_remove(self: Any, value: Any) -> None:
 
 @runtime.native_method
 def _list_to_string(self: Any) -> str:
-    return '[' + self.join(', ') + ']'
+    return "[" + self.join(", ") + "]"
 
 
 @runtime.native_method
@@ -478,17 +431,15 @@ def _list_append(
     *extra: Any,
 ) -> None:
     if value is _CONTAINERS_MISSING:
-        raise TypeError('append expected 1 argument')
+        raise TypeError("append expected 1 argument")
     if len(extra) != 0:
-        raise TypeError('append expected 1 argument')
-    runtime.reflect.apply(
-        runtime.array.prototype.push, self, [value])
+        raise TypeError("append expected 1 argument")
+    runtime.reflect.apply(runtime.array.prototype.push, self, [value])
 
 
 @runtime.native_method
 def _list_as_array(self: Any) -> Any:
-    return runtime.reflect.apply(
-        runtime.array.prototype.slice, self, [])
+    return runtime.reflect.apply(runtime.array.prototype.slice, self, [])
 
 
 @runtime.native_method
@@ -502,24 +453,21 @@ def _list_count(self: Any, value: Any) -> int:
 
 def _list_less_than(left: Any, right: Any) -> bool:
     if runtime.array.isArray(left) and runtime.array.isArray(right):
-        if (
-            runtime.object.isFrozen(left)
-            is not runtime.object.isFrozen(right)
-        ):
-            raise TypeError('cannot compare different sequence types')
+        if runtime.object.isFrozen(left) is not runtime.object.isFrozen(right):
+            raise TypeError("cannot compare different sequence types")
         common = min(left.length, right.length)
         for index in range(common):
             if equals(left[index], right[index]):
                 continue
             return _list_less_than(left[index], right[index])
         return left.length < right.length
-    method = _get_member(left, '__lt__')
-    if runtime.strict_equal(runtime.jstype(method), 'function'):
+    method = _get_member(left, "__lt__")
+    if runtime.strict_equal(runtime.jstype(method), "function"):
         answer = runtime.reflect.apply(method, left, [right])
         if answer is not NotImplemented:
             return answer
-    reflected = _get_member(right, '__gt__')
-    if runtime.strict_equal(runtime.jstype(reflected), 'function'):
+    reflected = _get_member(right, "__gt__")
+    if runtime.strict_equal(runtime.jstype(reflected), "function"):
         answer = runtime.reflect.apply(reflected, right, [left])
         if answer is not NotImplemented:
             return answer
@@ -558,31 +506,28 @@ def _list_python_sort(
     **keywords: Any,
 ) -> None:
     if len(positional_values) != 0:
-        raise TypeError('sort takes no positional arguments')
+        raise TypeError("sort takes no positional arguments")
     key = None
     reverse = False
     for name in runtime.object.keys(keywords):
-        if name == 'key':
+        if name == "key":
             key = runtime.reflect.get(keywords, name)
-        elif name == 'reverse':
+        elif name == "reverse":
             reverse = bool(runtime.reflect.get(keywords, name))
         else:
-            raise TypeError(
-                'sort got an unexpected keyword argument')
+            raise TypeError("sort got an unexpected keyword argument")
     runtime.reflect.apply(_list_sort, self, [key, reverse])
 
 
 @runtime.native_method
 def _list_concat(self: Any, *others: Any) -> Any:
-    answer = runtime.reflect.apply(
-        runtime.array.prototype.concat, self, others)
+    answer = runtime.reflect.apply(runtime.array.prototype.concat, self, others)
     return list_decorate(answer)
 
 
 @runtime.native_method
 def _list_slice(self: Any, *slice_args: Any) -> Any:
-    answer = runtime.reflect.apply(
-        runtime.array.prototype.slice, self, slice_args)
+    answer = runtime.reflect.apply(runtime.array.prototype.slice, self, slice_args)
     return list_decorate(answer)
 
 
@@ -603,11 +548,9 @@ def _list_contains(self: Any, value: Any) -> bool:
 def _list_eq(self: Any, other: Any) -> bool:
     if not runtime.arraylike(other):
         return False
-    if (
-        runtime.array.isArray(other)
-        and runtime.object.isFrozen(self)
-        is not runtime.object.isFrozen(other)
-    ):
+    if runtime.array.isArray(other) and runtime.object.isFrozen(
+        self
+    ) is not runtime.object.isFrozen(other):
         return False
     if self.length != other.length:
         return False
@@ -640,7 +583,8 @@ def _list_iadd(self: Any, other: Any) -> Any:
 @runtime.native_method
 def _list_iter(self: Any) -> Any:
     native_iterator = runtime.reflect.get(
-        runtime.array.prototype, runtime.iterator_symbol)
+        runtime.array.prototype, runtime.iterator_symbol
+    )
     return runtime.reflect.apply(native_iterator, self, [])
 
 
@@ -684,8 +628,7 @@ def _list_prototype() -> Any:
 
 def ρσ_list_decorate(answer: Any) -> Any:
     if runtime.object.isFrozen(answer):
-        answer = runtime.reflect.apply(
-            runtime.array.prototype.slice, answer, [])
+        answer = runtime.reflect.apply(runtime.array.prototype.slice, answer, [])
     prototype = _list_prototype_cache
     if prototype is runtime.undefined:
         prototype = _list_prototype()
@@ -697,63 +640,51 @@ def ρσ_list_constructor(iterable: Any = runtime.undefined) -> Any:
     python_iterator_override = (
         iterable is not runtime.undefined
         and runtime.arraylike(iterable)
-        and _has_concrete_override(iterable, '__iter__')
+        and _has_concrete_override(iterable, "__iter__")
     )
     if iterable is runtime.undefined:
         answer = _new_array()
-    elif (
-        runtime.arraylike(iterable)
-        and not python_iterator_override
-    ):
-        answer = runtime.reflect.apply(
-            runtime.array.prototype.slice, iterable, [])
+    elif runtime.arraylike(iterable) and not python_iterator_override:
+        answer = runtime.reflect.apply(runtime.array.prototype.slice, iterable, [])
     else:
-        native_iterator = _get_member(
-            iterable, runtime.iterator_symbol)
-        python_iterator = _get_member(iterable, '__iter__')
-        getitem = _get_member(iterable, '__getitem__')
-        if (
-            python_iterator_override
-            and runtime.strict_equal(
-                runtime.jstype(python_iterator), 'function')
+        native_iterator = _get_member(iterable, runtime.iterator_symbol)
+        python_iterator = _get_member(iterable, "__iter__")
+        getitem = _get_member(iterable, "__getitem__")
+        if python_iterator_override and runtime.strict_equal(
+            runtime.jstype(python_iterator), "function"
         ):
-            iterator = _call_member(iterable, '__iter__', [])
+            iterator = _call_member(iterable, "__iter__", [])
             answer = runtime.reflect.apply(
-                runtime.reflect.get(runtime.array, 'from'),
+                runtime.reflect.get(runtime.array, "from"),
                 runtime.array,
                 [iterator],
             )
-        elif runtime.strict_equal(
-            runtime.jstype(native_iterator), 'function'
-        ):
+        elif runtime.strict_equal(runtime.jstype(native_iterator), "function"):
             answer = runtime.reflect.apply(
-                runtime.reflect.get(runtime.array, 'from'),
+                runtime.reflect.get(runtime.array, "from"),
                 runtime.array,
                 [iterable],
             )
-        elif runtime.strict_equal(
-            runtime.jstype(python_iterator), 'function'
-        ):
-            iterator = _call_member(iterable, '__iter__', [])
+        elif runtime.strict_equal(runtime.jstype(python_iterator), "function"):
+            iterator = _call_member(iterable, "__iter__", [])
             answer = runtime.reflect.apply(
-                runtime.reflect.get(runtime.array, 'from'),
+                runtime.reflect.get(runtime.array, "from"),
                 runtime.array,
                 [iterator],
             )
-        elif runtime.strict_equal(runtime.jstype(getitem), 'function'):
+        elif runtime.strict_equal(runtime.jstype(getitem), "function"):
             answer = _new_array()
             index = 0
             while True:
                 try:
-                    answer.push(_call_member(
-                        iterable, '__getitem__', [index]))
+                    answer.push(_call_member(iterable, "__getitem__", [index]))
                 except IndexError:
                     break
                 except StopIteration:
                     break
                 index += 1
         else:
-            raise TypeError('object is not iterable')
+            raise TypeError("object is not iterable")
     return list_decorate(answer)
 
 
@@ -764,10 +695,10 @@ def _list_type_append(
 ) -> None:
     if not runtime.array.isArray(self):
         raise TypeError(
-            "descriptor 'append' for 'list' objects "
-            "doesn't apply to this object")
+            "descriptor 'append' for 'list' objects doesn't apply to this object"
+        )
     if value is _CONTAINERS_MISSING or len(extra) != 0:
-        raise TypeError('append expected 1 argument')
+        raise TypeError("append expected 1 argument")
     runtime.reflect.apply(_list_append, self, [value])
 
 
@@ -776,19 +707,15 @@ def _container_pop_keyword(
     name: str,
     default_value: Any,
 ) -> Any:
-    pop_method = _get_member(keywords, 'pop')
-    if runtime.strict_equal(runtime.jstype(pop_method), 'function'):
-        get_method = _get_member(keywords, 'get')
-        contains_method = _get_member(keywords, '__contains__')
-        if runtime.strict_equal(
-            runtime.jstype(contains_method), 'function'
-        ):
-            contains = runtime.reflect.apply(
-                contains_method, keywords, [name])
+    pop_method = _get_member(keywords, "pop")
+    if runtime.strict_equal(runtime.jstype(pop_method), "function"):
+        get_method = _get_member(keywords, "get")
+        contains_method = _get_member(keywords, "__contains__")
+        if runtime.strict_equal(runtime.jstype(contains_method), "function"):
+            contains = runtime.reflect.apply(contains_method, keywords, [name])
         else:
             contains = _has_own(keywords, name)
-        answer = runtime.reflect.apply(
-            get_method, keywords, [name, default_value])
+        answer = runtime.reflect.apply(get_method, keywords, [name, default_value])
         if contains:
             runtime.reflect.apply(pop_method, keywords, [name])
         return answer
@@ -805,19 +732,18 @@ def sorted(
     **keywords: Any,
 ) -> Any:
     if len(positional):
-        raise TypeError('sorted() takes 1 positional argument')
-    key = _container_pop_keyword(keywords, 'key', None)
-    reverse = _container_pop_keyword(keywords, 'reverse', False)
+        raise TypeError("sorted() takes 1 positional argument")
+    key = _container_pop_keyword(keywords, "key", None)
+    reverse = _container_pop_keyword(keywords, "reverse", False)
     if runtime.strict_equal(
-        runtime.jstype(_get_member(keywords, 'keys')),
-        'function',
+        runtime.jstype(_get_member(keywords, "keys")),
+        "function",
     ):
         remaining = list(keywords.keys())
     else:
         remaining = runtime.object.keys(keywords)
     if len(remaining):
-        raise TypeError(
-            "unexpected keyword argument '" + remaining[0] + "'")
+        raise TypeError("unexpected keyword argument '" + remaining[0] + "'")
     answer = list_constructor(iterable)
     answer.pysort(key, reverse)
     return answer
@@ -828,7 +754,7 @@ def _set_normalize_value(value: Any) -> Any:
         return int(value)
     if _is_boxed_float(value):
         return _numeric_key(value)
-    if runtime.strict_equal(runtime.jstype(value), 'number'):
+    if runtime.strict_equal(runtime.jstype(value), "number"):
         return _numeric_key(value)
     if runtime.is_exact_integer(value):
         return runtime.normalize_integer(runtime.bigint(value))
@@ -848,15 +774,13 @@ def _set_has_value(native_set: Any, value: Any) -> bool:
 
 def _set_delete_value(native_set: Any, value: Any) -> bool:
     normalized = _set_normalize_value(value)
-    delete_method = runtime.reflect.get(native_set, 'delete')
+    delete_method = runtime.reflect.get(native_set, "delete")
     if runtime.reflect.apply(delete_method, native_set, [normalized]):
         return True
     if runtime.strict_equal(normalized, 0):
-        return runtime.reflect.apply(
-            delete_method, native_set, [False])
+        return runtime.reflect.apply(delete_method, native_set, [False])
     if runtime.strict_equal(normalized, 1):
-        return runtime.reflect.apply(
-            delete_method, native_set, [True])
+        return runtime.reflect.apply(delete_method, native_set, [True])
     return False
 
 
@@ -870,7 +794,6 @@ def _set_add_value(native_set: Any, value: Any) -> None:
 
 
 class SageSet:
-
     def __init__(self, iterable: Any = runtime.undefined) -> None:
         self.jsset = _new_set()
         if runtime.array.isArray(iterable):
@@ -905,10 +828,8 @@ class SageSet:
         self.jsset.clear()
 
     def copy(self) -> SageSet:
-        answer = runtime.object.create(
-            runtime.object.getPrototypeOf(self))
-        answer.jsset = runtime.reflect.construct(
-            runtime.set_class, [self.jsset])
+        answer = runtime.object.create(runtime.object.getPrototypeOf(self))
+        answer.jsset = runtime.reflect.construct(runtime.set_class, [self.jsset])
         return answer
 
     def discard(self, value: Any) -> None:
@@ -916,20 +837,14 @@ class SageSet:
 
     @staticmethod
     def _from_iterable(other: Any) -> Any:
-        if (
-            isinstance(other, SageSet)
-            or isinstance(other, SageFrozenSet)
-        ):
+        if isinstance(other, SageSet) or isinstance(other, SageFrozenSet):
             return other
         return SageSet(other)
 
     @staticmethod
     def _require_set(other: Any) -> Any:
-        if (
-            not isinstance(other, SageSet)
-            and not isinstance(other, SageFrozenSet)
-        ):
-            raise TypeError('set operands must be sets')
+        if not isinstance(other, SageSet) and not isinstance(other, SageFrozenSet):
+            raise TypeError("set operands must be sets")
         return other
 
     def difference(self, *others: Any) -> SageSet:
@@ -980,7 +895,7 @@ class SageSet:
     def pop(self) -> Any:
         result = self.jsset.values().next()
         if result.done:
-            raise KeyError('pop from an empty set')
+            raise KeyError("pop from an empty set")
         _native_delete(self.jsset, result.value)
         return result.value
 
@@ -1036,21 +951,18 @@ class SageSet:
 
     def __repr__(self) -> str:
         if self.size == 0:
-            return 'set()'
+            return "set()"
         entries = list_constructor()
         for value in self:
             entries.push(runtime.repr(value))
-        return '{' + entries.join(', ') + '}'
+        return "{" + entries.join(", ") + "}"
 
     __str__ = __repr__
     toString = __repr__
     inspect = __repr__
 
     def __eq__(self, other: object) -> bool:
-        if (
-            not isinstance(other, SageSet)
-            and not isinstance(other, SageFrozenSet)
-        ):
+        if not isinstance(other, SageSet) and not isinstance(other, SageFrozenSet):
             return False
         if self.size != other.size:
             return False
@@ -1072,7 +984,6 @@ class SageSet:
 
 
 class SageFrozenSet:
-
     def __init__(self, iterable: Any = runtime.undefined) -> None:
         mutable = SageSet(iterable)
         self.jsset = mutable.jsset
@@ -1101,35 +1012,27 @@ class SageFrozenSet:
 
     @staticmethod
     def _from_iterable(other: Any) -> Any:
-        if (
-            isinstance(other, SageSet)
-            or isinstance(other, SageFrozenSet)
-        ):
+        if isinstance(other, SageSet) or isinstance(other, SageFrozenSet):
             return other
         return SageSet(other)
 
     @staticmethod
     def _require_set(other: Any) -> Any:
-        if (
-            not isinstance(other, SageSet)
-            and not isinstance(other, SageFrozenSet)
-        ):
-            raise TypeError('frozenset operands must be sets')
+        if not isinstance(other, SageSet) and not isinstance(other, SageFrozenSet):
+            raise TypeError("frozenset operands must be sets")
         return other
 
     def difference(self, *others: Any) -> SageFrozenSet:
         converted = [self._from_iterable(other) for other in others]
         values = [
-            value for value in self
-            if not any(other.has(value) for other in converted)
+            value for value in self if not any(other.has(value) for other in converted)
         ]
         return SageFrozenSet(values)
 
     def intersection(self, *others: Any) -> SageFrozenSet:
         converted = [self._from_iterable(other) for other in others]
         values = [
-            value for value in self
-            if all(other.has(value) for other in converted)
+            value for value in self if all(other.has(value) for other in converted)
         ]
         return SageFrozenSet(values)
 
@@ -1152,10 +1055,7 @@ class SageFrozenSet:
 
     def symmetric_difference(self, other: Any) -> SageFrozenSet:
         converted = self._from_iterable(other)
-        values = [
-            value for value in self
-            if not converted.has(value)
-        ]
+        values = [value for value in self if not converted.has(value)]
         for value in converted:
             if not self.has(value):
                 values.append(value)
@@ -1180,21 +1080,18 @@ class SageFrozenSet:
 
     def __repr__(self) -> str:
         if self.size == 0:
-            return 'frozenset()'
+            return "frozenset()"
         entries = list_constructor()
         for value in self:
             entries.push(runtime.repr(value))
-        return 'frozenset({' + entries.join(', ') + '})'
+        return "frozenset({" + entries.join(", ") + "})"
 
     __str__ = __repr__
     toString = __repr__
     inspect = __repr__
 
     def __eq__(self, other: object) -> bool:
-        if (
-            not isinstance(other, SageSet)
-            and not isinstance(other, SageFrozenSet)
-        ):
+        if not isinstance(other, SageSet) and not isinstance(other, SageFrozenSet):
             return False
         return self.size == other.size and self.issubset(other)
 
@@ -1240,14 +1137,12 @@ def _dict_normalize_key(key: Any) -> Any:
         return 0
     if _is_boxed_float(key):
         return _numeric_key(key)
-    if runtime.strict_equal(runtime.jstype(key), 'number'):
+    if runtime.strict_equal(runtime.jstype(key), "number"):
         return _numeric_key(key)
     if runtime.is_exact_integer(key):
         return runtime.normalize_integer(runtime.bigint(key))
-    structural_key = _get_member(key, '__sagejs_dict_key__')
-    if runtime.strict_equal(
-        runtime.jstype(structural_key), 'function'
-    ):
+    structural_key = _get_member(key, "__sagejs_dict_key__")
+    if runtime.strict_equal(runtime.jstype(structural_key), "function"):
         return structural_key()
     return key
 
@@ -1268,12 +1163,9 @@ def _dict_resolve_key(mapping: Any, key: Any) -> Any:
         return normalized_key
     key_type = runtime.jstype(key)
     if (
-        (
-            runtime.array.isArray(key)
-            and runtime.object.isFrozen(key)
-        )
-        or runtime.strict_equal(key_type, 'object')
-        or runtime.strict_equal(key_type, 'function')
+        (runtime.array.isArray(key) and runtime.object.isFrozen(key))
+        or runtime.strict_equal(key_type, "object")
+        or runtime.strict_equal(key_type, "function")
     ):
         for candidate in mapping.jsmap.keys():
             original = mapping.keymap.get(candidate)
@@ -1283,7 +1175,6 @@ def _dict_resolve_key(mapping: Any, key: Any) -> Any:
 
 
 class _DictView:
-
     def __init__(self, dictionary: SageDict, kind: str) -> None:
         self._dictionary = dictionary
         self._kind = kind
@@ -1292,16 +1183,19 @@ class _DictView:
         answer = list_constructor()
         for normalized_key in self._dictionary.jsmap.keys():
             key = self._dictionary.keymap.get(normalized_key)
-            if self._kind == 'keys':
+            if self._kind == "keys":
                 answer.push(key)
-            elif self._kind == 'values':
-                answer.push(
-                    self._dictionary.jsmap.get(normalized_key))
+            elif self._kind == "values":
+                answer.push(self._dictionary.jsmap.get(normalized_key))
             else:
-                answer.push(runtime.math_tuple([
-                    key,
-                    self._dictionary.jsmap.get(normalized_key),
-                ]))
+                answer.push(
+                    runtime.math_tuple(
+                        [
+                            key,
+                            self._dictionary.jsmap.get(normalized_key),
+                        ]
+                    )
+                )
         return answer
 
     def __len__(self) -> int:
@@ -1311,7 +1205,7 @@ class _DictView:
         return iter(self._snapshot())
 
     def __contains__(self, value: Any) -> bool:
-        if self._kind == 'keys':
+        if self._kind == "keys":
             return value in self._dictionary
         for item in self._snapshot():
             if equals(item, value):
@@ -1319,14 +1213,11 @@ class _DictView:
         return False
 
     def __add__(self, _other: Any) -> Any:
-        raise TypeError(
-            "unsupported operand type(s) for +: 'dict_" +
-            self._kind + "'")
+        raise TypeError("unsupported operand type(s) for +: 'dict_" + self._kind + "'")
 
     def _as_set(self) -> SageSet:
-        if self._kind == 'values':
-            raise TypeError(
-                "unsupported operand type for set operation: 'dict_values'")
+        if self._kind == "values":
+            raise TypeError("unsupported operand type for set operation: 'dict_values'")
         return SageSet(self)
 
     def __or__(self, other: Any) -> SageSet:
@@ -1354,16 +1245,12 @@ class _DictView:
         return SageSet(other).symmetric_difference(self)
 
     def __hash__(self) -> int:
-        if self._kind != 'values':
-            raise TypeError(
-                "unhashable type: 'dict_" + self._kind + "'")
+        if self._kind != "values":
+            raise TypeError("unhashable type: 'dict_" + self._kind + "'")
         return id(self)
 
     def __repr__(self) -> str:
-        return (
-            'dict_' + self._kind + '(' +
-            runtime.repr(self._snapshot()) + ')'
-        )
+        return "dict_" + self._kind + "(" + runtime.repr(self._snapshot()) + ")"
 
     __str__ = __repr__
     toString = __repr__
@@ -1412,7 +1299,7 @@ class SageDict:
         # Do not dispatch through ``self.keys()``: CPython's built-in dict
         # iterator continues to expose the underlying storage when invoked as
         # ``dict.__iter__(a_dict_subclass)``.
-        return iter(_DictView(self, 'keys'))
+        return iter(_DictView(self, "keys"))
 
     def __setitem__(self, key: Any, value: Any) -> None:
         _dict_storage_setitem(self, key, value)
@@ -1429,13 +1316,10 @@ class SageDict:
     def __getitem__(self, key: Any) -> Any:
         normalized_key = _dict_resolve_key(self, key)
         answer = self.jsmap.get(normalized_key)
-        if (
-            answer is runtime.undefined
-            and not self.jsmap.has(normalized_key)
-        ):
-            missing = _get_member(self, '__missing__')
+        if answer is runtime.undefined and not self.jsmap.has(normalized_key):
+            missing = _get_member(self, "__missing__")
             if missing is not runtime.undefined:
-                return _call_member(self, '__missing__', [key])
+                return _call_member(self, "__missing__", [key])
             raise KeyError(key)
         return answer
 
@@ -1444,22 +1328,19 @@ class SageDict:
         self.keymap.clear()
 
     def copy(self) -> SageDict:
-        answer = runtime.object.create(
-            runtime.object.getPrototypeOf(self))
-        answer.jsmap = runtime.reflect.construct(
-            runtime.map_class, [self.jsmap])
-        answer.keymap = runtime.reflect.construct(
-            runtime.map_class, [self.keymap])
+        answer = runtime.object.create(runtime.object.getPrototypeOf(self))
+        answer.jsmap = runtime.reflect.construct(runtime.map_class, [self.jsmap])
+        answer.keymap = runtime.reflect.construct(runtime.map_class, [self.keymap])
         return answer
 
     def keys(self) -> Any:
-        return _DictView(self, 'keys')
+        return _DictView(self, "keys")
 
     def values(self) -> Any:
-        return _DictView(self, 'values')
+        return _DictView(self, "values")
 
     def items(self) -> Any:
-        return _DictView(self, 'items')
+        return _DictView(self, "items")
 
     entries = items
 
@@ -1470,15 +1351,8 @@ class SageDict:
     ) -> Any:
         normalized_key = _dict_resolve_key(self, key)
         answer = self.jsmap.get(normalized_key)
-        if (
-            answer is runtime.undefined
-            and not self.jsmap.has(normalized_key)
-        ):
-            return (
-                None
-                if default_value is runtime.undefined
-                else default_value
-            )
+        if answer is runtime.undefined and not self.jsmap.has(normalized_key):
+            return None if default_value is runtime.undefined else default_value
         return answer
 
     def setdefault(
@@ -1513,10 +1387,7 @@ class SageDict:
     ) -> Any:
         normalized_key = _dict_resolve_key(self, key)
         answer = self.jsmap.get(normalized_key)
-        if (
-            answer is runtime.undefined
-            and not self.jsmap.has(normalized_key)
-        ):
+        if answer is runtime.undefined and not self.jsmap.has(normalized_key):
             if default_value is runtime.undefined:
                 raise KeyError(key)
             return default_value
@@ -1527,7 +1398,7 @@ class SageDict:
     def popitem(self) -> Any:
         result = self.jsmap.entries().next()
         if result.done:
-            raise KeyError('dict is empty')
+            raise KeyError("dict is empty")
         _native_delete(self.jsmap, result.value[0])
         key = self.keymap.get(result.value[0])
         _native_delete(self.keymap, result.value[0])
@@ -1546,46 +1417,37 @@ class SageDict:
             elif isinstance(iterable, runtime.map_class):
                 for pair in iterable.entries():
                     _dict_storage_setitem(self, pair[0], pair[1])
-            elif (
-                runtime.strict_equal(runtime.jstype(iterable), 'object')
-                and (
-                    runtime.reflect.get(iterable, 'constructor')
-                    is runtime.object
-                    or runtime.object.getPrototypeOf(iterable) is None
-                )
+            elif runtime.strict_equal(runtime.jstype(iterable), "object") and (
+                runtime.reflect.get(iterable, "constructor") is runtime.object
+                or runtime.object.getPrototypeOf(iterable) is None
             ):
                 # Native object literals are used as compact compiler
                 # metadata (notably function annotations).  Object.prototype
                 # also carries Python compatibility methods, so recognize the
                 # native mapping before the generic ``hasattr(items)`` path.
                 for key in runtime.object.keys(iterable):
-                    _dict_storage_setitem(
-                        self, key, runtime.native_get(iterable, key))
-            elif hasattr(iterable, 'items'):
+                    _dict_storage_setitem(self, key, runtime.native_get(iterable, key))
+            elif hasattr(iterable, "items"):
                 for pair in iterable.items():
                     _dict_storage_setitem(self, pair[0], pair[1])
             elif runtime.array.isArray(iterable):
                 for pair in iterable:
                     if len(pair) != 2:
                         raise ValueError(
-                            'dictionary update sequence element has '
-                            'length ' + str(len(pair)) + '; 2 is required')
-                    _dict_storage_setitem(self, pair[0], pair[1])
-            elif (
-                runtime.strict_equal(
-                    runtime.jstype(
-                        runtime.reflect.get(
-                            iterable, runtime.iterator_symbol
+                            "dictionary update sequence element has "
+                            "length " + str(len(pair)) + "; 2 is required"
                         )
-                    ),
-                    'function',
-                )
+                    _dict_storage_setitem(self, pair[0], pair[1])
+            elif runtime.strict_equal(
+                runtime.jstype(runtime.reflect.get(iterable, runtime.iterator_symbol)),
+                "function",
             ):
                 for pair in iterable:
                     if len(pair) != 2:
                         raise ValueError(
-                            'dictionary update sequence element has '
-                            'length ' + str(len(pair)) + '; 2 is required')
+                            "dictionary update sequence element has "
+                            "length " + str(len(pair)) + "; 2 is required"
+                        )
                     _dict_storage_setitem(self, pair[0], pair[1])
             else:
                 for key in runtime.object.keys(iterable):
@@ -1598,10 +1460,10 @@ class SageDict:
         for normalized_key in self.jsmap.keys():
             entries.push(
                 runtime.repr(self.keymap.get(normalized_key))
-                + ': ' + runtime.repr(
-                    self.jsmap.get(normalized_key))
+                + ": "
+                + runtime.repr(self.jsmap.get(normalized_key))
             )
-        return '{' + entries.join(', ') + '}'
+        return "{" + entries.join(", ") + "}"
 
     __str__ = __repr__
     toString = __repr__
@@ -1616,18 +1478,14 @@ class SageDict:
             normalized_key = _dict_resolve_key(self, pair[0])
             if not self.jsmap.has(normalized_key):
                 return False
-            if not equals(
-                self.jsmap.get(normalized_key), pair[1]
-            ):
+            if not equals(self.jsmap.get(normalized_key), pair[1]):
                 return False
         return True
 
     def as_object(self) -> Any:
         answer = runtime.object.create(None)
         for normalized_key in self.jsmap.keys():
-            answer[self.keymap.get(normalized_key)] = (
-                self.jsmap.get(normalized_key)
-            )
+            answer[self.keymap.get(normalized_key)] = self.jsmap.get(normalized_key)
         return answer
 
 
@@ -1637,9 +1495,7 @@ class _LiveScopeDict(SageDict):
     def __init__(self, scope: Any) -> None:
         SageDict.__init__(self)
         self._scope = scope
-        self._exports_to_global = (
-            runtime.reflect.get(scope, '__name__') == '__main__'
-        )
+        self._exports_to_global = runtime.reflect.get(scope, "__name__") == "__main__"
 
     def _refresh(self) -> None:
         self.jsmap.clear()
@@ -1664,12 +1520,11 @@ class _LiveScopeDict(SageDict):
         return self.jsmap.size
 
     def __contains__(self, key: Any) -> bool:
-        if not runtime.strict_equal(runtime.jstype(key), 'string'):
+        if not runtime.strict_equal(runtime.jstype(key), "string"):
             return False
         return (
             _has_own(self._scope, key)
-            and runtime.reflect.get(self._scope, key)
-            is not runtime.undefined
+            and runtime.reflect.get(self._scope, key) is not runtime.undefined
         )
 
     has = __contains__
@@ -1684,8 +1539,8 @@ class _LiveScopeDict(SageDict):
         return runtime.reflect.get(self._scope, key)
 
     def __setitem__(self, key: Any, value: Any) -> None:
-        if not runtime.strict_equal(runtime.jstype(key), 'string'):
-            raise TypeError('globals dictionary keys must be strings')
+        if not runtime.strict_equal(runtime.jstype(key), "string"):
+            raise TypeError("globals dictionary keys must be strings")
         runtime.reflect.set(self._scope, key, value)
         if self._exports_to_global:
             runtime.reflect.set(runtime.global_object, key, value)
@@ -1697,23 +1552,16 @@ class _LiveScopeDict(SageDict):
         self._refresh()
         if not SageDict.__contains__(self, key):
             raise KeyError(key)
-        descriptor = runtime.object.getOwnPropertyDescriptor(
-            self._scope, key)
-        if (
-            descriptor is not runtime.undefined
-            and runtime.strict_equal(
-                runtime.jstype(
-                    runtime.reflect.get(descriptor, 'set')),
-                'function',
-            )
+        descriptor = runtime.object.getOwnPropertyDescriptor(self._scope, key)
+        if descriptor is not runtime.undefined and runtime.strict_equal(
+            runtime.jstype(runtime.reflect.get(descriptor, "set")),
+            "function",
         ):
-            runtime.reflect.set(
-                self._scope, key, runtime.undefined)
+            runtime.reflect.set(self._scope, key, runtime.undefined)
         else:
             runtime.reflect.deleteProperty(self._scope, key)
         if self._exports_to_global:
-            runtime.reflect.deleteProperty(
-                runtime.global_object, key)
+            runtime.reflect.deleteProperty(runtime.global_object, key)
         SageDict.__delitem__(self, key)
 
     def clear(self) -> None:
@@ -1726,15 +1574,15 @@ class _LiveScopeDict(SageDict):
         **keywords: Any,
     ) -> None:
         if iterable is not runtime.undefined:
-            if hasattr(iterable, 'items'):
+            if hasattr(iterable, "items"):
                 for pair in iterable.items():
                     self.__setitem__(pair[0], pair[1])
             else:
                 for pair in iterable:
                     if len(pair) != 2:
                         raise ValueError(
-                            'dictionary update sequence element must have '
-                            'length 2')
+                            "dictionary update sequence element must have length 2"
+                        )
                     self.__setitem__(pair[0], pair[1])
         for key in keywords:
             self.__setitem__(key, keywords[key])
@@ -1766,11 +1614,7 @@ class _LiveScopeDict(SageDict):
         default_value: Any = runtime.undefined,
     ) -> Any:
         if not self.__contains__(key):
-            return (
-                None
-                if default_value is runtime.undefined
-                else default_value
-            )
+            return None if default_value is runtime.undefined else default_value
         return runtime.reflect.get(self._scope, key)
 
     def setdefault(
@@ -1802,7 +1646,7 @@ class _LiveScopeDict(SageDict):
         self._refresh()
         result = self.jsmap.entries().next()
         if result.done:
-            raise KeyError('dict is empty')
+            raise KeyError("dict is empty")
         key = self.keymap.get(result.value[0])
         value = result.value[1]
         self.__delitem__(key)
@@ -1849,7 +1693,7 @@ def ρσ_scope_dict(values: Any) -> SageDict:
 
 
 def ρσ_live_scope_dict(scope: Any) -> SageDict:
-    cache_name = '__sagejs_live_scope_dict__'
+    cache_name = "__sagejs_live_scope_dict__"
     cached = runtime.reflect.get(scope, cache_name)
     if cached is not runtime.undefined:
         return cached
@@ -1857,12 +1701,12 @@ def ρσ_live_scope_dict(scope: Any) -> SageDict:
     runtime.object.defineProperty(
         scope,
         cache_name,
-        {'value': answer},
+        {"value": answer},
     )
     return answer
 
 
-runtime.reflect.set(ρσ_dict, 'fromkeys', SageDict.fromkeys)
+runtime.reflect.set(ρσ_dict, "fromkeys", SageDict.fromkeys)
 
 
 def dict_wrap(native_map: Any) -> SageDict:
@@ -1881,43 +1725,39 @@ def dict_wrap(native_map: Any) -> SageDict:
 
 runtime.reflect.set(
     ρσ_set,
-    'prototype',
-    runtime.reflect.get(SageSet, 'prototype'),
+    "prototype",
+    runtime.reflect.get(SageSet, "prototype"),
 )
 runtime.reflect.set(
     ρσ_frozenset,
-    'prototype',
-    runtime.reflect.get(SageFrozenSet, 'prototype'),
+    "prototype",
+    runtime.reflect.get(SageFrozenSet, "prototype"),
 )
 runtime.reflect.set(
     ρσ_dict,
-    'prototype',
-    runtime.reflect.get(SageDict, 'prototype'),
+    "prototype",
+    runtime.reflect.get(SageDict, "prototype"),
 )
 runtime.reflect.set(
-    runtime.reflect.get(SageDict, 'prototype'),
-    '__python_type__',
+    runtime.reflect.get(SageDict, "prototype"),
+    "__python_type__",
     ρσ_dict,
 )
 runtime.reflect.set(
-    runtime.reflect.get(SageSet, 'prototype'),
-    '__python_type__',
+    runtime.reflect.get(SageSet, "prototype"),
+    "__python_type__",
     ρσ_set,
 )
 runtime.reflect.set(
-    runtime.reflect.get(SageFrozenSet, 'prototype'),
-    '__python_type__',
+    runtime.reflect.get(SageFrozenSet, "prototype"),
+    "__python_type__",
     ρσ_frozenset,
 )
 list_constructor = ρσ_list_constructor
-runtime.reflect.set(
-    list_constructor, 'prototype', _list_prototype())
-runtime.reflect.set(
-    list_constructor, '__init__', _list_static_init)
-runtime.reflect.set(
-    list_constructor, 'append', _list_type_append)
-runtime.reflect.set(
-    _list_prototype(), '__python_type__', list_constructor)
+runtime.reflect.set(list_constructor, "prototype", _list_prototype())
+runtime.reflect.set(list_constructor, "__init__", _list_static_init)
+runtime.reflect.set(list_constructor, "append", _list_type_append)
+runtime.reflect.set(_list_prototype(), "__python_type__", list_constructor)
 runtime.set_class_repr(ρσ_dict, "<class 'dict'>")
 runtime.set_class_repr(ρσ_set, "<class 'set'>")
 runtime.set_class_repr(ρσ_frozenset, "<class 'frozenset'>")

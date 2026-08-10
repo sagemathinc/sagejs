@@ -5,16 +5,43 @@ from __future__ import annotations
 import sys
 
 
-def pformat(value, indent=1, width=80, depth=None, *, compact=False, sort_dicts=True, underscore_numbers=False):
+def pformat(
+    value,
+    indent=1,
+    width=80,
+    depth=None,
+    *,
+    compact=False,
+    sort_dicts=True,
+    underscore_numbers=False,
+):
     return repr(value)
 
 
-def pprint(value, stream=None, indent=1, width=80, depth=None, *, compact=False, sort_dicts=True, underscore_numbers=False):
+def pprint(
+    value,
+    stream=None,
+    indent=1,
+    width=80,
+    depth=None,
+    *,
+    compact=False,
+    sort_dicts=True,
+    underscore_numbers=False,
+):
     target = sys.stdout if stream is None else stream
-    target.write(pformat(
-        value, indent=indent, width=width, depth=depth,
-        compact=compact, sort_dicts=sort_dicts,
-        underscore_numbers=underscore_numbers) + '\n')
+    target.write(
+        pformat(
+            value,
+            indent=indent,
+            width=width,
+            depth=depth,
+            compact=compact,
+            sort_dicts=sort_dicts,
+            underscore_numbers=underscore_numbers,
+        )
+        + "\n"
+    )
 
 
 def isreadable(value):
@@ -33,7 +60,17 @@ saferepr = repr
 
 
 class PrettyPrinter:
-    def __init__(self, indent=1, width=80, depth=None, stream=None, *, compact=False, sort_dicts=True, underscore_numbers=False):
+    def __init__(
+        self,
+        indent=1,
+        width=80,
+        depth=None,
+        stream=None,
+        *,
+        compact=False,
+        sort_dicts=True,
+        underscore_numbers=False,
+    ):
         self._stream = stream
         self._indent = indent
         self._width = width

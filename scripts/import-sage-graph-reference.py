@@ -98,9 +98,7 @@ def signature(function: ast.FunctionDef, public_name: str) -> str:
         pieces.append(part)
     elif function.args.kwonlyargs:
         pieces.append("*")
-    for argument, default in zip(
-        function.args.kwonlyargs, function.args.kw_defaults
-    ):
+    for argument, default in zip(function.args.kwonlyargs, function.args.kw_defaults):
         part = argument.arg
         if argument.annotation is not None:
             part += f": {source_text(argument.annotation)}"
@@ -122,7 +120,10 @@ def local_surface(filename: Path) -> list[dict[str, object]]:
     tree = ast.parse(filename.read_text(), filename=str(filename))
     records: list[dict[str, object]] = []
     for statement in tree.body:
-        if not isinstance(statement, ast.ClassDef) or statement.name not in PUBLIC_CLASSES:
+        if (
+            not isinstance(statement, ast.ClassDef)
+            or statement.name not in PUBLIC_CLASSES
+        ):
             continue
         functions = {
             item.name: item
@@ -259,7 +260,11 @@ def paragraph(doc: str) -> str:
 def section(doc: str, heading: str) -> str:
     lines = doc.splitlines()
     start = next(
-        (index + 1 for index, line in enumerate(lines) if line.strip() == f"{heading}:"),
+        (
+            index + 1
+            for index, line in enumerate(lines)
+            if line.strip() == f"{heading}:"
+        ),
         None,
     )
     if start is None:
@@ -292,13 +297,13 @@ def generated_records(
         if record["name"] == "graphs.RandomGNP":
             continue
         upstream = choose_upstream(record, docs)
-        key = f'{record["owner"]}.{record["attribute"]}'
+        key = f"{record['owner']}.{record['attribute']}"
         summary = (
             paragraph(upstream.doc)
             if upstream is not None
             else FALLBACK_SUMMARIES.get(
                 key,
-                f'Return the result of the Sage-compatible `{record["attribute"]}` graph operation.',
+                f"Return the result of the Sage-compatible `{record['attribute']}` graph operation.",
             )
         )
         parts = [summary]
@@ -389,9 +394,9 @@ def write_python(filename: Path, records: list[dict[str, object]]) -> None:
     # records contain no JSON null/boolean values, so JSON is also valid Python.
     body = json.dumps(runtime_records, ensure_ascii=False, indent=2)
     filename.write_text(
-        "\"\"\"Generated graph documentation data; do not edit manually.\n\n"
+        '"""Generated graph documentation data; do not edit manually.\n\n'
         "Regenerate with scripts/import-sage-graph-reference.py.\n"
-        "\"\"\"\n\n"
+        '"""\n\n'
         "from __future__ import annotations\n\n"
         f"_GRAPH_REFERENCE_RECORDS = {body}\n"
     )
@@ -409,8 +414,7 @@ def main() -> None:
     ).resolve()
     if not (sage / "src" / "sage" / "graphs").is_dir():
         parser.error(
-            f"Sage source not found at {sage}; pass --sage-root or set "
-            "SAGE_SOURCE_ROOT"
+            f"Sage source not found at {sage}; pass --sage-root or set SAGE_SOURCE_ROOT"
         )
     revision = git_revision(sage)
     local = local_surface(repository / "src" / "baselib" / "graphs.py")
@@ -430,7 +434,9 @@ def main() -> None:
             "publicNames": len(local),
             "generatedEntries": len(records),
             "preexistingEntries": len(local) - len(records),
-            "matchedUpstreamDocs": sum(item["upstream"] is not None for item in records),
+            "matchedUpstreamDocs": sum(
+                item["upstream"] is not None for item in records
+            ),
         },
         "entries": [
             {

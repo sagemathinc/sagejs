@@ -124,26 +124,27 @@ class _GraphicsDirective:
 
 
 def opacity(value: Any) -> _GraphicsDirective:
-    return _GraphicsDirective({
-        'opacity': float(value), 'alpha': float(value)})
+    return _GraphicsDirective({"opacity": float(value), "alpha": float(value)})
 
 
 def thickness(value: Any) -> _GraphicsDirective:
-    return _GraphicsDirective({'thickness': float(value)})
+    return _GraphicsDirective({"thickness": float(value)})
 
 
 def point_size(value: Any) -> _GraphicsDirective:
-    return _GraphicsDirective({'size': max(1.0, 100.0 * float(value))})
+    return _GraphicsDirective({"size": max(1.0, 100.0 * float(value))})
 
 
 def rgb_color(red: Any, green: Any, blue: Any, alpha: Any = 1) -> _GraphicsDirective:
     color = (float(red), float(green), float(blue))
-    return _GraphicsDirective({
-        'color': color,
-        'rgbcolor': color,
-        'opacity': float(alpha),
-        'alpha': float(alpha),
-    })
+    return _GraphicsDirective(
+        {
+            "color": color,
+            "rgbcolor": color,
+            "opacity": float(alpha),
+            "alpha": float(alpha),
+        }
+    )
 
 
 def gray_level(value: Any, alpha: Any = 1) -> _GraphicsDirective:
@@ -151,15 +152,18 @@ def gray_level(value: Any, alpha: Any = 1) -> _GraphicsDirective:
     return rgb_color(component, component, component, alpha)
 
 
-def hue_color(value: Any, saturation: Any = 1, brightness: Any = 1,
-              alpha: Any = 1) -> _GraphicsDirective:
+def hue_color(
+    value: Any, saturation: Any = 1, brightness: Any = 1, alpha: Any = 1
+) -> _GraphicsDirective:
     color = sage.hue(value, saturation, brightness)
-    return _GraphicsDirective({
-        'color': color,
-        'rgbcolor': color,
-        'opacity': float(alpha),
-        'alpha': float(alpha),
-    })
+    return _GraphicsDirective(
+        {
+            "color": color,
+            "rgbcolor": color,
+            "opacity": float(alpha),
+            "alpha": float(alpha),
+        }
+    )
 
 
 def directive(*values: Any) -> _GraphicsDirective:
@@ -169,8 +173,8 @@ def directive(*values: Any) -> _GraphicsDirective:
             for name in value.options:
                 options[name] = value.options[name]
         elif isinstance(value, str):
-            options['color'] = value
-            options['rgbcolor'] = value
+            options["color"] = value
+            options["rgbcolor"] = value
     return _GraphicsDirective(options)
 
 
@@ -180,10 +184,10 @@ def _style_graphic(graphic: Any, options: dict[str, Any]) -> Any:
     for primitive in graphic:
         target = primitive
         while target is not None:
-            if hasattr(target, '_options'):
+            if hasattr(target, "_options"):
                 for name in options:
                     target._options[name] = options[name]
-            if hasattr(target, 'primitive'):
+            if hasattr(target, "primitive"):
                 target = target.primitive
             else:
                 target = None
@@ -202,8 +206,8 @@ def _combine_graphics(items: Any) -> Any:
     style = {}
     for item in items:
         if isinstance(item, str):
-            style['color'] = item
-            style['rgbcolor'] = item
+            style["color"] = item
+            style["rgbcolor"] = item
             continue
         if isinstance(item, _GraphicsDirective):
             for name in item.options:
@@ -261,12 +265,14 @@ def wolfram_disk(center: Any = (0, 0), radius: Any = 1) -> Any:
 
 
 def wolfram_rectangle(lower: Any, upper: Any) -> Any:
-    return sage.polygon([
-        lower,
-        (upper[0], lower[1]),
-        upper,
-        (lower[0], upper[1]),
-    ])
+    return sage.polygon(
+        [
+            lower,
+            (upper[0], lower[1]),
+            upper,
+            (lower[0], upper[1]),
+        ]
+    )
 
 
 def wolfram_arrow(points: Any) -> Any:
@@ -312,8 +318,9 @@ def cylinder(bounds: Any = ((0, 0, 0), (0, 0, 1)), radius: Any = 1) -> Any:
         raise ValueError("Cylinder requires two endpoints")
     first = values[0]
     second = values[1]
-    length = math.sqrt(sum(
-        float(second[index] - first[index]) ** 2 for index in range(3)))
+    length = math.sqrt(
+        sum(float(second[index] - first[index]) ** 2 for index in range(3))
+    )
     radius_value = float(radius)
 
     def cylinder_x(u: float, _v: float) -> float:
@@ -335,10 +342,12 @@ def cylinder(bounds: Any = ((0, 0, 0), (0, 0, 1)), radius: Any = 1) -> Any:
     upper = []
     for index in range(32):
         angle = 2 * math.pi * index / 32.0
-        lower.append((float(radius) * math.cos(angle),
-                      float(radius) * math.sin(angle), 0))
-        upper.append((float(radius) * math.cos(angle),
-                      float(radius) * math.sin(angle), length))
+        lower.append(
+            (float(radius) * math.cos(angle), float(radius) * math.sin(angle), 0)
+        )
+        upper.append(
+            (float(radius) * math.cos(angle), float(radius) * math.sin(angle), length)
+        )
     surface += sage.polygon3d(lower)
     surface += sage.polygon3d(upper)
     return _oriented_surface(surface, first, second)
@@ -350,8 +359,9 @@ def cone(bounds: Any = ((0, 0, 0), (0, 0, 1)), radius: Any = 1) -> Any:
         raise ValueError("Cone requires two endpoints")
     first = values[0]
     second = values[1]
-    length = math.sqrt(sum(
-        float(second[index] - first[index]) ** 2 for index in range(3)))
+    length = math.sqrt(
+        sum(float(second[index] - first[index]) ** 2 for index in range(3))
+    )
     radius_value = float(radius)
 
     def cone_x(u: float, v: float) -> float:
@@ -372,8 +382,7 @@ def cone(bounds: Any = ((0, 0, 0), (0, 0, 1)), radius: Any = 1) -> Any:
     base = []
     for index in range(32):
         angle = 2 * math.pi * index / 32.0
-        base.append((radius_value * math.cos(angle),
-                     radius_value * math.sin(angle), 0))
+        base.append((radius_value * math.cos(angle), radius_value * math.sin(angle), 0))
     surface += sage.polygon3d(base)
     return _oriented_surface(surface, first, second)
 
@@ -414,11 +423,11 @@ def cuboid(bounds: Any = ((0, 0, 0), (1, 1, 1))) -> Any:
     widths = [float(upper[index] - lower[index]) for index in range(3)]
     if not (widths[0] == widths[1] and widths[1] == widths[2]):
         raise NotImplementedError(
-            "non-cubic Wolfram Cuboid dimensions are not implemented yet")
-    center = tuple([
-        (float(lower[index]) + float(upper[index])) / 2.0
-        for index in range(3)
-    ])
+            "non-cubic Wolfram Cuboid dimensions are not implemented yet"
+        )
+    center = tuple(
+        [(float(lower[index]) + float(upper[index])) / 2.0 for index in range(3)]
+    )
     return sage.cube(center, widths[0])
 
 

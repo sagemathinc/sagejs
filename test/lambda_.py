@@ -21,22 +21,22 @@ assert f(0) == 7 * 10
 
 # vargs
 f = lambda *args: args
-assert list(f(['hello'])) == [['hello']]
+assert list(f(["hello"])) == [["hello"]]
 
-assert list(f('hello', 'world')) == ['hello', 'world']
+assert list(f("hello", "world")) == ["hello", "world"]
 
 # varkwds
 
 f = lambda **kwds: kwds
-assert f(a=10) == {'a': 10}
+assert f(a=10) == {"a": 10}
 
 # both
 
 f = lambda *args, **kwds: [args, kwds]
 
-v = f('hello', world='there')
-assert list(v[0]) == ['hello']
-assert v[1] == {'world': 'there'}
+v = f("hello", world="there")
+assert list(v[0]) == ["hello"]
+assert v[1] == {"world": "there"}
 
 # Examples from people arguing about Python and lambda on Hacker News today
 #
@@ -47,8 +47,5 @@ assert v == [1, 4, 9]
 assert v == [x * x for x in [1, 2, 3, 4] if x * x < 10]
 
 
-n = (lambda x: x+1 if \
-     True \
-     else x+x)\
-     (10)
+n = (lambda x: x + 1 if True else x + x)(10)
 assert n == 11

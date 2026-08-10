@@ -31,8 +31,7 @@ def scale_first(vector: PrimeVector, scalar: uint64) -> uint64:
     """Mutate a borrowed buffer field to exercise staged host copy-back."""
     if vector.length == 0:
         return 0
-    vector.entries[0] = prime_mul(
-        vector.entries[0], scalar, vector.modulus)
+    vector.entries[0] = prime_mul(vector.entries[0], scalar, vector.modulus)
     return vector.entries[0]
 
 

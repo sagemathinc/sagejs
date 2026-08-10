@@ -36,14 +36,12 @@ def ρσ_set_class_repr(cls: type[Any], text: str) -> None:
     def class_repr() -> str:
         return text
 
-    runtime.object.defineProperty(
-        cls, '__repr__', {'value': class_repr})
+    runtime.object.defineProperty(cls, "__repr__", {"value": class_repr})
 
 
-@runtime.bigint_fields('_value')
+@runtime.bigint_fields("_value")
 @runtime.lightweight_math_class
 class FiniteFieldElement(sage.Element):
-
     def __init__(self, parent: Any, value: Any) -> None:
         if isinstance(value, FiniteFieldElement):
             # Explicit conversion lifts the canonical integer residue before
@@ -52,60 +50,54 @@ class FiniteFieldElement(sage.Element):
             value = value._value
 
         if isinstance(value, sage.Rational):
-            numerator = runtime.native_mod(
-                value._numerator, parent._modulus)
-            denominator = runtime.native_mod(
-                value._denominator, parent._modulus)
+            numerator = runtime.native_mod(value._numerator, parent._modulus)
+            denominator = runtime.native_mod(value._denominator, parent._modulus)
             if numerator < 0:
-                numerator = runtime.native_add(
-                    numerator, parent._modulus)
+                numerator = runtime.native_add(numerator, parent._modulus)
             if denominator < 0:
-                denominator = runtime.native_add(
-                    denominator, parent._modulus)
+                denominator = runtime.native_add(denominator, parent._modulus)
             residue = runtime.native_mul(
                 numerator,
-                runtime.modular_inverse(
-                    denominator, parent._modulus),
+                runtime.modular_inverse(denominator, parent._modulus),
             )
         else:
             residue = runtime.integer_bigint(value)
 
         residue = runtime.native_mod(residue, parent._modulus)
         if residue < 0:
-            residue = runtime.native_add(
-                residue, parent._modulus)
+            residue = runtime.native_add(residue, parent._modulus)
         self._parent = parent
         self._value = residue
         runtime.object.freeze(self)
 
     def _new_reduced(self, value: int) -> FiniteFieldElement:
-        answer = runtime.object.create(
-            _finite_field_element_prototype)
+        answer = runtime.object.create(_finite_field_element_prototype)
         answer._parent = self._parent
         answer._value = value
         runtime.object.freeze(answer)
         return answer
 
     def _add_(
-        self, other: FiniteFieldElement,
+        self,
+        other: FiniteFieldElement,
     ) -> FiniteFieldElement:
         value = runtime.native_add(self._value, other._value)
         if value >= self._parent._modulus:
-            value = runtime.native_sub(
-                value, self._parent._modulus)
+            value = runtime.native_sub(value, self._parent._modulus)
         return self._new_reduced(value)
 
     def _sub_(
-        self, other: FiniteFieldElement,
+        self,
+        other: FiniteFieldElement,
     ) -> FiniteFieldElement:
         value = runtime.native_sub(self._value, other._value)
         if value < 0:
-            value = runtime.native_add(
-                value, self._parent._modulus)
+            value = runtime.native_add(value, self._parent._modulus)
         return self._new_reduced(value)
 
     def _mul_(
-        self, other: FiniteFieldElement,
+        self,
+        other: FiniteFieldElement,
     ) -> FiniteFieldElement:
         return self._new_reduced(
             runtime.native_mod(
@@ -115,14 +107,14 @@ class FiniteFieldElement(sage.Element):
         )
 
     def _truediv_(
-        self, other: FiniteFieldElement,
+        self,
+        other: FiniteFieldElement,
     ) -> FiniteFieldElement:
         return self._new_reduced(
             runtime.native_mod(
                 runtime.native_mul(
                     self._value,
-                    runtime.modular_inverse(
-                        other._value, self._parent._modulus),
+                    runtime.modular_inverse(other._value, self._parent._modulus),
                 ),
                 self._parent._modulus,
             ),
@@ -132,16 +124,16 @@ class FiniteFieldElement(sage.Element):
         return self._value == other._value
 
     def __add__(self, other: object) -> Any:
-        return runtime.coercion_model.binOp('add', self, other)
+        return runtime.coercion_model.binOp("add", self, other)
 
     def __sub__(self, other: object) -> Any:
-        return runtime.coercion_model.binOp('sub', self, other)
+        return runtime.coercion_model.binOp("sub", self, other)
 
     def __mul__(self, other: object) -> Any:
-        return runtime.coercion_model.binOp('mul', self, other)
+        return runtime.coercion_model.binOp("mul", self, other)
 
     def __truediv__(self, other: object) -> Any:
-        return runtime.coercion_model.binOp('truediv', self, other)
+        return runtime.coercion_model.binOp("truediv", self, other)
 
     def __eq__(self, other: object) -> bool:
         return runtime.coercion_model.equals(self, other)
@@ -150,8 +142,7 @@ class FiniteFieldElement(sage.Element):
         if self._value == runtime.bigint(0):
             return self
         return self._new_reduced(
-            runtime.native_sub(
-                self._parent._modulus, self._value),
+            runtime.native_sub(self._parent._modulus, self._value),
         )
 
     def __pow__(self, exponent: int) -> FiniteFieldElement:
@@ -161,7 +152,8 @@ class FiniteFieldElement(sage.Element):
             value = runtime.modular_inverse(value, self._parent._modulus)
             exponent = -exponent
         return self._new_reduced(
-            runtime.modular_power(value, exponent, self._parent._modulus))
+            runtime.modular_power(value, exponent, self._parent._modulus)
+        )
 
     def lift(self) -> int:
         return runtime.normalize_integer(self._value)
@@ -182,17 +174,15 @@ class FiniteFieldElement(sage.Element):
         return self._value == runtime.bigint(1)
 
     def is_unit(self) -> bool:
-        return runtime.bigint_gcd(
-            self._value, self._parent._modulus
-        ) == runtime.bigint(1)
+        return runtime.bigint_gcd(self._value, self._parent._modulus) == runtime.bigint(
+            1
+        )
 
     def multiplicative_order(self) -> int:
         if not self.is_unit():
-            raise ArithmeticError(
-                'multiplicative order is only defined for units')
+            raise ArithmeticError("multiplicative order is only defined for units")
         if self._parent.is_field():
-            order = runtime.native_sub(
-                self._parent._modulus, runtime.bigint(1))
+            order = runtime.native_sub(self._parent._modulus, runtime.bigint(1))
         else:
             order = self._parent._modulus
             for prime, _exponent in sage.factor(order):
@@ -205,7 +195,7 @@ class FiniteFieldElement(sage.Element):
             prime = runtime.integer_bigint(prime)
             while runtime.native_mod(order, prime) == 0:
                 candidate = runtime.native_div(order, prime)
-                if self ** candidate != self._parent.one():
+                if self**candidate != self._parent.one():
                     break
                 order = candidate
         return runtime.normalize_integer(order)
@@ -216,20 +206,23 @@ class FiniteFieldElement(sage.Element):
         if not self._parent.is_field():
             candidate = runtime.bigint(0)
             while candidate < self._parent._modulus:
-                if runtime.native_mod(
-                    runtime.native_mul(candidate, candidate),
-                    self._parent._modulus,
-                ) == self._value:
+                if (
+                    runtime.native_mod(
+                        runtime.native_mul(candidate, candidate),
+                        self._parent._modulus,
+                    )
+                    == self._value
+                ):
                     return self._new_reduced(candidate)
                 candidate += runtime.bigint(1)
-            raise ValueError('not a square')
+            raise ValueError("not a square")
         prime = self._parent._modulus
         if self.is_zero():
             return self
         if prime == runtime.bigint(2):
             return self
         if not self.is_square():
-            raise ValueError('not a square')
+            raise ValueError("not a square")
         if runtime.native_mod(prime, runtime.bigint(4)) == 3:
             return self ** runtime.native_div(
                 runtime.native_add(prime, runtime.bigint(1)),
@@ -243,12 +236,12 @@ class FiniteFieldElement(sage.Element):
         nonresidue = self._parent(2)
         while nonresidue.is_square():
             nonresidue = nonresidue + 1
-        c = nonresidue ** odd_part
+        c = nonresidue**odd_part
         root = self ** runtime.native_div(
             runtime.native_add(odd_part, runtime.bigint(1)),
             runtime.bigint(2),
         )
-        remainder = self ** odd_part
+        remainder = self**odd_part
         active_power = power_of_two
         while not remainder.is_one():
             index = 1
@@ -257,8 +250,7 @@ class FiniteFieldElement(sage.Element):
                 square = square * square
                 index += 1
             adjustment = c ** (
-                runtime.bigint(1) << runtime.bigint(
-                    active_power - index - 1)
+                runtime.bigint(1) << runtime.bigint(active_power - index - 1)
             )
             root = root * adjustment
             c = adjustment * adjustment
@@ -273,9 +265,7 @@ class FiniteFieldElement(sage.Element):
         if self.is_zero():
             return True
         if self._parent.is_field():
-            exponent = (
-                self._parent._modulus - runtime.bigint(1)
-            ) // runtime.bigint(2)
+            exponent = (self._parent._modulus - runtime.bigint(1)) // runtime.bigint(2)
             return runtime.modular_power(
                 self._value,
                 exponent,
@@ -283,9 +273,7 @@ class FiniteFieldElement(sage.Element):
             ) == runtime.bigint(1)
         candidate = runtime.bigint(0)
         while candidate < self._parent._modulus:
-            if (
-                candidate * candidate
-            ) % self._parent._modulus == self._value:
+            if (candidate * candidate) % self._parent._modulus == self._value:
                 return True
             candidate += runtime.bigint(1)
         return False
@@ -294,22 +282,16 @@ class FiniteFieldElement(sage.Element):
         modulus = self._parent._modulus
         residue = self._value
         bound = runtime.bigint(
-            runtime.math.floor(
-                runtime.math.sqrt(
-                    runtime.number(modulus) / 2.0
-                )
-            )
+            runtime.math.floor(runtime.math.sqrt(runtime.number(modulus) / 2.0))
         )
         old_r, current_r = modulus, residue
         old_t, current_t = runtime.bigint(0), runtime.bigint(1)
         while current_r > bound:
             quotient = runtime.native_div(old_r, current_r)
-            next_r = runtime.native_sub(
-                old_r, runtime.native_mul(quotient, current_r))
+            next_r = runtime.native_sub(old_r, runtime.native_mul(quotient, current_r))
             old_r = current_r
             current_r = next_r
-            next_t = runtime.native_sub(
-                old_t, runtime.native_mul(quotient, current_t))
+            next_t = runtime.native_sub(old_t, runtime.native_mul(quotient, current_t))
             old_t = current_t
             current_t = next_t
         if current_t < 0:
@@ -318,19 +300,16 @@ class FiniteFieldElement(sage.Element):
         if (
             current_t == 0
             or current_t > bound
-            or runtime.bigint_gcd(current_r, current_t)
-                != runtime.bigint(1)
+            or runtime.bigint_gcd(current_r, current_t) != runtime.bigint(1)
         ):
-            raise ArithmeticError(
-                'rational reconstruction does not exist')
+            raise ArithmeticError("rational reconstruction does not exist")
         return runtime.rational_class(current_r, current_t)
 
     def inverse_of_unit(self) -> FiniteFieldElement:
         if not self.is_unit():
-            raise ArithmeticError('element is not a unit')
+            raise ArithmeticError("element is not a unit")
         return self._new_reduced(
-            runtime.modular_inverse(
-                self._value, self._parent._modulus),
+            runtime.modular_inverse(self._value, self._parent._modulus),
         )
 
     def __invert__(self) -> FiniteFieldElement:
@@ -343,50 +322,49 @@ class FiniteFieldElement(sage.Element):
     toString = __repr__
 
 
-_finite_field_element_prototype = runtime.reflect.get(
-    FiniteFieldElement, 'prototype')
+_finite_field_element_prototype = runtime.reflect.get(FiniteFieldElement, "prototype")
 
 
 def _new_prime_field_element(
-    parent: Any, value: Any,
+    parent: Any,
+    value: Any,
 ) -> FiniteFieldElement:
     if isinstance(value, FiniteFieldElement) and value._parent is parent:
         return value
     return FiniteFieldElement(parent, value)
 
 
-@runtime.bigint_fields('_value')
+@runtime.bigint_fields("_value")
 @runtime.lightweight_math_class
 class IntegerModElement(FiniteFieldElement):
-
     def _new_reduced(self, value: int) -> IntegerModElement:
-        answer = runtime.object.create(
-            _integer_mod_element_prototype)
+        answer = runtime.object.create(_integer_mod_element_prototype)
         answer._parent = self._parent
         answer._value = value
         runtime.object.freeze(answer)
         return answer
 
     def _add_(
-        self, other: FiniteFieldElement,
+        self,
+        other: FiniteFieldElement,
     ) -> IntegerModElement:
         value = runtime.native_add(self._value, other._value)
         if value >= self._parent._modulus:
-            value = runtime.native_sub(
-                value, self._parent._modulus)
+            value = runtime.native_sub(value, self._parent._modulus)
         return self._new_reduced(value)
 
     def _sub_(
-        self, other: FiniteFieldElement,
+        self,
+        other: FiniteFieldElement,
     ) -> IntegerModElement:
         value = runtime.native_sub(self._value, other._value)
         if value < 0:
-            value = runtime.native_add(
-                value, self._parent._modulus)
+            value = runtime.native_add(value, self._parent._modulus)
         return self._new_reduced(value)
 
     def _mul_(
-        self, other: FiniteFieldElement,
+        self,
+        other: FiniteFieldElement,
     ) -> IntegerModElement:
         return self._new_reduced(
             runtime.native_mod(
@@ -396,14 +374,14 @@ class IntegerModElement(FiniteFieldElement):
         )
 
     def _truediv_(
-        self, other: FiniteFieldElement,
+        self,
+        other: FiniteFieldElement,
     ) -> IntegerModElement:
         return self._new_reduced(
             runtime.native_mod(
                 runtime.native_mul(
                     self._value,
-                    runtime.modular_inverse(
-                        other._value, self._parent._modulus),
+                    runtime.modular_inverse(other._value, self._parent._modulus),
                 ),
                 self._parent._modulus,
             ),
@@ -413,38 +391,32 @@ class IntegerModElement(FiniteFieldElement):
         if self._value == runtime.bigint(0):
             return self
         return self._new_reduced(
-            runtime.native_sub(
-                self._parent._modulus, self._value),
+            runtime.native_sub(self._parent._modulus, self._value),
         )
 
     def __pow__(self, exponent: int) -> IntegerModElement:
         exponent = runtime.integer_bigint(exponent)
         value = self._value
         if exponent < 0:
-            value = runtime.modular_inverse(
-                value, self._parent._modulus)
+            value = runtime.modular_inverse(value, self._parent._modulus)
             exponent = -exponent
         return self._new_reduced(
-            runtime.modular_power(
-                value, exponent, self._parent._modulus),
+            runtime.modular_power(value, exponent, self._parent._modulus),
         )
 
     def inverse_of_unit(self) -> IntegerModElement:
         if not self.is_unit():
-            raise ArithmeticError('element is not a unit')
+            raise ArithmeticError("element is not a unit")
         return self._new_reduced(
-            runtime.modular_inverse(
-                self._value, self._parent._modulus),
+            runtime.modular_inverse(self._value, self._parent._modulus),
         )
 
 
-_integer_mod_element_prototype = runtime.reflect.get(
-    IntegerModElement, 'prototype')
+_integer_mod_element_prototype = runtime.reflect.get(IntegerModElement, "prototype")
 
 
 @runtime.lightweight_math_class
 class FiniteFieldExtensionElement(sage.Element):
-
     def __init__(self, parent: Any, native_value: Any) -> None:
         self._parent = parent
         self._native = native_value
@@ -454,45 +426,45 @@ class FiniteFieldExtensionElement(sage.Element):
         return _new_extension_field_element(self._parent, native_value)
 
     def _add_(
-        self, other: FiniteFieldExtensionElement,
+        self,
+        other: FiniteFieldExtensionElement,
     ) -> FiniteFieldExtensionElement:
-        return self._new(
-            runtime.flint_backend().fqAdd(self._native, other._native))
+        return self._new(runtime.flint_backend().fqAdd(self._native, other._native))
 
     def _sub_(
-        self, other: FiniteFieldExtensionElement,
+        self,
+        other: FiniteFieldExtensionElement,
     ) -> FiniteFieldExtensionElement:
-        return self._new(
-            runtime.flint_backend().fqSub(self._native, other._native))
+        return self._new(runtime.flint_backend().fqSub(self._native, other._native))
 
     def _mul_(
-        self, other: FiniteFieldExtensionElement,
+        self,
+        other: FiniteFieldExtensionElement,
     ) -> FiniteFieldExtensionElement:
-        return self._new(
-            runtime.flint_backend().fqMul(self._native, other._native))
+        return self._new(runtime.flint_backend().fqMul(self._native, other._native))
 
     def _truediv_(
-        self, other: FiniteFieldExtensionElement,
+        self,
+        other: FiniteFieldExtensionElement,
     ) -> FiniteFieldExtensionElement:
         if other.is_zero():
-            raise sage.ZeroDivisionError('finite field division by zero')
-        return self._new(
-            runtime.flint_backend().fqDiv(self._native, other._native))
+            raise sage.ZeroDivisionError("finite field division by zero")
+        return self._new(runtime.flint_backend().fqDiv(self._native, other._native))
 
     def _eq_(self, other: FiniteFieldExtensionElement) -> bool:
         return runtime.flint_backend().fqEqual(self._native, other._native)
 
     def __add__(self, other: object) -> Any:
-        return runtime.coercion_model.binOp('add', self, other)
+        return runtime.coercion_model.binOp("add", self, other)
 
     def __sub__(self, other: object) -> Any:
-        return runtime.coercion_model.binOp('sub', self, other)
+        return runtime.coercion_model.binOp("sub", self, other)
 
     def __mul__(self, other: object) -> Any:
-        return runtime.coercion_model.binOp('mul', self, other)
+        return runtime.coercion_model.binOp("mul", self, other)
 
     def __truediv__(self, other: object) -> Any:
-        return runtime.coercion_model.binOp('truediv', self, other)
+        return runtime.coercion_model.binOp("truediv", self, other)
 
     def __eq__(self, other: object) -> bool:
         return runtime.coercion_model.equals(self, other)
@@ -501,14 +473,13 @@ class FiniteFieldExtensionElement(sage.Element):
         return self._new(runtime.flint_backend().fqNeg(self._native))
 
     def __pow__(
-        self, exponent: int,
+        self,
+        exponent: int,
     ) -> FiniteFieldExtensionElement:
         exponent = runtime.integer_bigint(exponent)
         if exponent < 0 and self.is_zero():
-            raise sage.ZeroDivisionError(
-                'cannot invert zero in a finite field')
-        return self._new(
-            runtime.flint_backend().fqPow(self._native, exponent))
+            raise sage.ZeroDivisionError("cannot invert zero in a finite field")
+        return self._new(runtime.flint_backend().fqPow(self._native, exponent))
 
     def is_zero(self) -> bool:
         return runtime.flint_backend().fqIsZero(self._native)
@@ -518,33 +489,31 @@ class FiniteFieldExtensionElement(sage.Element):
 
     def __repr__(self) -> str:
         raw = runtime.flint_backend().fqToString(self._native)
-        return raw.replace(runtime.regexp(r'\+', 'g'), ' + ').replace(
-            runtime.regexp(r'([^-])-+', 'g'), '$1 - ')
+        return raw.replace(runtime.regexp(r"\+", "g"), " + ").replace(
+            runtime.regexp(r"([^-])-+", "g"), "$1 - "
+        )
 
     __str__ = __repr__
     toString = __repr__
 
 
 def _new_extension_field_element(
-    parent: Any, native_value: Any,
+    parent: Any,
+    native_value: Any,
 ) -> FiniteFieldExtensionElement:
-    return runtime.reflect.construct(
-        parent._elementType, [parent, native_value])
+    return runtime.reflect.construct(parent._elementType, [parent, native_value])
 
 
 @runtime.callable_instance_class
 class FiniteField_prime_modn(sage.Parent):
-
     def __init__(self, order: int, generator: int) -> None:
-        self._name = (
-            'Finite Field of size ' + runtime.string(order))
-        self._kind = 'GF'
+        self._name = "Finite Field of size " + runtime.string(order)
+        self._kind = "GF"
         self._elementType = FiniteFieldElement
         self._modulus = order
         self._order = order
         self._generator = generator
-        self._dict_keys = runtime.reflect.construct(
-            runtime.map_class, [])
+        self._dict_keys = runtime.reflect.construct(runtime.map_class, [])
 
     def __call__(self, value: Any = 0) -> FiniteFieldElement:
         return _new_prime_field_element(self, value)
@@ -576,19 +545,19 @@ class FiniteField_prime_modn(sage.Parent):
     def gen(self, index: int = 0) -> FiniteFieldElement:
         index = runtime.integer_bigint(index)
         if index != runtime.bigint(0):
-            raise IndexError('only one generator')
+            raise IndexError("only one generator")
         return _new_prime_field_element(self, self._generator)
 
     def random_element(self) -> FiniteFieldElement:
-        value = runtime.bigint(runtime.math.floor(
-            runtime.math.random() * runtime.number(self._order)))
+        value = runtime.bigint(
+            runtime.math.floor(runtime.math.random() * runtime.number(self._order))
+        )
         return self(value)
 
     def multiplicative_generator(self) -> FiniteFieldElement:
         if self._order == runtime.bigint(2):
             return self(1)
-        group_order = runtime.native_sub(
-            self._order, runtime.bigint(1))
+        group_order = runtime.native_sub(self._order, runtime.bigint(1))
         primes = [pair[0] for pair in sage.factor(group_order)]
         candidate = runtime.bigint(2)
         while candidate < self._order:
@@ -596,34 +565,34 @@ class FiniteField_prime_modn(sage.Parent):
             primitive = True
             for prime in primes:
                 if (
-                    element ** runtime.native_div(
-                        group_order, runtime.integer_bigint(prime))
+                    element
+                    ** runtime.native_div(group_order, runtime.integer_bigint(prime))
                 ).is_one():
                     primitive = False
                     break
             if primitive:
                 return element
             candidate += runtime.bigint(1)
-        raise ValueError('no multiplicative generator found')
+        raise ValueError("no multiplicative generator found")
 
     primitive_element = multiplicative_generator
 
     def _first_ngens(self, count: int) -> list[FiniteFieldElement]:
         count = runtime.integer_bigint(count)
         if count != runtime.bigint(1):
-            raise ValueError('prime fields have exactly one generator')
+            raise ValueError("prime fields have exactly one generator")
         return [self.gen()]
 
-    def gens(self) -> 'tuple[Any, ...]':
+    def gens(self) -> "tuple[Any, ...]":
         return runtime.math_tuple([self.gen()])
 
     def variable_name(self) -> str:
-        return 'x'
+        return "x"
 
-    def polynomial(self, variable: str = 'x') -> Any:
+    def polynomial(self, variable: str = "x") -> Any:
         return sage.PolynomialRing(self, variable).gen()
 
-    def construction(self) -> 'tuple[Any, ...]':
+    def construction(self) -> "tuple[Any, ...]":
         return runtime.math_tuple([sage.QuotientFunctor, sage.ZZ])
 
     def __iter__(self) -> Iterator[FiniteFieldElement]:
@@ -638,23 +607,17 @@ class FiniteField_prime_modn(sage.Parent):
 
 @runtime.callable_instance_class
 class IntegerModRing(sage.Parent):
-
     def __init__(self, order: int) -> None:
         order = runtime.integer_bigint(order)
-        self._name = (
-            'Ring of integers modulo ' + runtime.string(order))
-        self._kind = 'ZMOD'
+        self._name = "Ring of integers modulo " + runtime.string(order)
+        self._kind = "ZMOD"
         self._elementType = IntegerModElement
         self._modulus = order
         self._order = order
-        self._dict_keys = runtime.reflect.construct(
-            runtime.map_class, [])
+        self._dict_keys = runtime.reflect.construct(runtime.map_class, [])
 
     def __call__(self, value: Any = 0) -> IntegerModElement:
-        if (
-            isinstance(value, IntegerModElement)
-            and value._parent is self
-        ):
+        if isinstance(value, IntegerModElement) and value._parent is self:
             return value
         return IntegerModElement(self, value)
 
@@ -683,8 +646,9 @@ class IntegerModRing(sage.Parent):
         return IntegerModElement(self, runtime.bigint(1))
 
     def random_element(self) -> IntegerModElement:
-        value = runtime.bigint(runtime.math.floor(
-            runtime.math.random() * runtime.number(self._order)))
+        value = runtime.bigint(
+            runtime.math.floor(runtime.math.random() * runtime.number(self._order))
+        )
         return self(value)
 
     def unit_group(self) -> list[IntegerModElement]:
@@ -693,12 +657,10 @@ class IntegerModRing(sage.Parent):
 
     def multiplicative_generator(self) -> IntegerModElement:
         if not self.is_field():
-            raise ValueError(
-                'generators are currently implemented for prime moduli')
+            raise ValueError("generators are currently implemented for prime moduli")
         if self._order == runtime.bigint(2):
             return self(1)
-        group_order = runtime.native_sub(
-            self._order, runtime.bigint(1))
+        group_order = runtime.native_sub(self._order, runtime.bigint(1))
         primes = [pair[0] for pair in sage.factor(group_order)]
         candidate = runtime.bigint(2)
         while candidate < self._order:
@@ -706,15 +668,15 @@ class IntegerModRing(sage.Parent):
             primitive = True
             for prime in primes:
                 if (
-                    element ** runtime.native_div(
-                        group_order, runtime.integer_bigint(prime))
+                    element
+                    ** runtime.native_div(group_order, runtime.integer_bigint(prime))
                 ).is_one():
                     primitive = False
                     break
             if primitive:
                 return element
             candidate += runtime.bigint(1)
-        raise ValueError('no multiplicative generator found')
+        raise ValueError("no multiplicative generator found")
 
     def __iter__(self) -> Iterator[IntegerModElement]:
         value = runtime.bigint(0)
@@ -724,7 +686,6 @@ class IntegerModRing(sage.Parent):
 
 
 class FiniteFieldExtensionParent(sage.Parent):
-
     def __init__(
         self,
         order: int,
@@ -738,10 +699,14 @@ class FiniteFieldExtensionParent(sage.Parent):
         explicit_modulus: bool = False,
     ) -> None:
         self._name = (
-            'Finite Field in ' + variable + ' of size '
-            + runtime.string(prime) + '^' + runtime.string(degree)
+            "Finite Field in "
+            + variable
+            + " of size "
+            + runtime.string(prime)
+            + "^"
+            + runtime.string(degree)
         )
-        self._kind = 'GF_EXTENSION'
+        self._kind = "GF_EXTENSION"
         self._elementType = element_type
         self._nativeContext = native_context
         runtime.object.freeze(modulus_coefficients)
@@ -754,17 +719,16 @@ class FiniteFieldExtensionParent(sage.Parent):
         self._explicitModulus = explicit_modulus
 
     def __call__(
-        self, value: Any = 0,
+        self,
+        value: Any = 0,
     ) -> FiniteFieldExtensionElement:
         if isinstance(value, FiniteFieldExtensionElement):
             if value._parent is not self:
-                raise TypeError(
-                    'cannot convert between incompatible finite fields')
+                raise TypeError("cannot convert between incompatible finite fields")
             return value
         if isinstance(value, FiniteFieldElement):
             if value._parent is not self._primeSubfield:
-                raise TypeError(
-                    'finite-field characteristics do not match')
+                raise TypeError("finite-field characteristics do not match")
             value = value.lift()
         if isinstance(value, sage.Rational):
             numerator = self(value._numerator)
@@ -773,12 +737,12 @@ class FiniteFieldExtensionParent(sage.Parent):
         value = runtime.integer_bigint(value)
         return _new_extension_field_element(
             self,
-            runtime.flint_backend().fqFromBigInt(
-                self._nativeContext, value),
+            runtime.flint_backend().fqFromBigInt(self._nativeContext, value),
         )
 
     def _from_native(
-        self, native_value: Any,
+        self,
+        native_value: Any,
     ) -> FiniteFieldExtensionElement:
         return _new_extension_field_element(self, native_value)
 
@@ -811,19 +775,21 @@ class FiniteFieldExtensionParent(sage.Parent):
     def gen(self, index: int = 0) -> FiniteFieldExtensionElement:
         index = runtime.integer_bigint(index)
         if index != runtime.bigint(0):
-            raise IndexError('only one generator')
+            raise IndexError("only one generator")
         return _new_extension_field_element(
-            self, runtime.flint_backend().fqGen(self._nativeContext))
+            self, runtime.flint_backend().fqGen(self._nativeContext)
+        )
 
     def _first_ngens(
-        self, count: int,
+        self,
+        count: int,
     ) -> list[FiniteFieldExtensionElement]:
         count = runtime.integer_bigint(count)
         if count != runtime.bigint(1):
-            raise ValueError('finite fields have exactly one generator')
+            raise ValueError("finite fields have exactly one generator")
         return [self.gen()]
 
-    def gens(self) -> 'tuple[Any, ...]':
+    def gens(self) -> "tuple[Any, ...]":
         return runtime.math_tuple([self.gen()])
 
     def variable_name(self) -> str:
@@ -834,16 +800,16 @@ class FiniteFieldExtensionParent(sage.Parent):
 
     def modulus(self) -> Any:
         return _polynomial_from_coefficients(
-            self._primeSubfield, 'x', self._modulusCoefficients)
+            self._primeSubfield, "x", self._modulusCoefficients
+        )
 
     def polynomial(self) -> Any:
         return _polynomial_from_coefficients(
-            self._primeSubfield, self._variable,
-            self._modulusCoefficients)
+            self._primeSubfield, self._variable, self._modulusCoefficients
+        )
 
-    def construction(self) -> 'tuple[Any, ...]':
-        return runtime.math_tuple(
-            [sage.AlgebraicExtensionFunctor, self._primeSubfield])
+    def construction(self) -> "tuple[Any, ...]":
+        return runtime.math_tuple([sage.AlgebraicExtensionFunctor, self._primeSubfield])
 
     def __iter__(self) -> Iterator[FiniteFieldExtensionElement]:
         yield self.zero()
@@ -896,8 +862,7 @@ def _polynomial_from_coefficients(
     result = ring(0)
     index = len(coefficients) - 1
     while index >= 0:
-        result = result._mul_(generator)._add_(
-            ring(base(coefficients[index])))
+        result = result._mul_(generator)._add_(ring(base(coefficients[index])))
         index -= 1
     return result
 
@@ -907,23 +872,17 @@ def _finite_field_name(
     names: Any,
     degree: int,
 ) -> str:
-    variable = names if names is not runtime.undefined and names is not None \
-        else name
+    variable = names if names is not runtime.undefined and names is not None else name
     if isinstance(variable, list):
         if len(variable) != 1:
-            raise TypeError(
-                'a finite-field extension needs exactly one generator name')
+            raise TypeError("a finite-field extension needs exactly one generator name")
         variable = variable[0]
     if variable is runtime.undefined or variable is None:
-        variable = 'z' + runtime.string(degree)
-    if (
-        not isinstance(variable, str)
-        or not runtime.regexp(
-            r'^[A-Za-z_][A-Za-z0-9_]*$'
-        ).test(variable)
-    ):
-        raise TypeError(
-            'the finite-field generator must be a valid identifier')
+        variable = "z" + runtime.string(degree)
+    if not isinstance(variable, str) or not runtime.regexp(
+        r"^[A-Za-z_][A-Za-z0-9_]*$"
+    ).test(variable):
+        raise TypeError("the finite-field generator must be a valid identifier")
     return variable
 
 
@@ -953,41 +912,38 @@ def _make_extension_field(
     if (
         modulus is not runtime.undefined
         and modulus is not None
-        and modulus != 'primitive'
+        and modulus != "primitive"
     ):
-        if not hasattr(modulus, 'coefficients'):
-            raise TypeError('finite field modulus must be a polynomial')
+        if not hasattr(modulus, "coefficients"):
+            raise TypeError("finite field modulus must be a polynomial")
         raw_coefficients = modulus.coefficients()
         if len(raw_coefficients) != degree + 1:
             raise ValueError(
-                'the degree of the modulus does not equal the degree ' +
-                'of the field')
+                "the degree of the modulus does not equal the degree " + "of the field"
+            )
         field_coefficients = []
         for coefficient in raw_coefficients:
             if (
                 isinstance(coefficient, FiniteFieldElement)
                 and coefficient._parent is not prime_field
             ):
-                raise TypeError(
-                    'finite-field characteristics do not match')
+                raise TypeError("finite-field characteristics do not match")
             field_coefficients.append(prime_field(coefficient))
         leading = field_coefficients[degree]
         if leading.is_zero():
             raise ValueError(
-                'the degree of the modulus does not equal the degree ' +
-                'of the field')
-        leading_inverse = leading ** -1
+                "the degree of the modulus does not equal the degree " + "of the field"
+            )
+        leading_inverse = leading**-1
         coefficients = [
-            (coefficient * leading_inverse).lift()
-            for coefficient in field_coefficients
+            (coefficient * leading_inverse).lift() for coefficient in field_coefficients
         ]
 
-    key = runtime.string(order) + '|' + variable
+    key = runtime.string(order) + "|" + variable
     if coefficients is not None:
-        key += '|mod:' + ','.join([
-            runtime.string(coefficient)
-            for coefficient in coefficients
-        ])
+        key += "|mod:" + ",".join(
+            [runtime.string(coefficient) for coefficient in coefficients]
+        )
     field = _extension_fields.get(key)
     if field is not runtime.undefined:
         return field
@@ -1005,11 +961,10 @@ def _make_extension_field(
                 variable,
             )
     except Exception as error:
-        message = getattr(error, 'message', '')
-        if (
-            runtime.jstype(message) == 'string'
-            and runtime.regexp('Conway polynomial').test(message)
-        ):
+        message = getattr(error, "message", "")
+        if runtime.jstype(message) == "string" and runtime.regexp(
+            "Conway polynomial"
+        ).test(message):
             missing_conway = True
         elif coefficients is not None:
             raise ValueError(message)  # noqa: B904
@@ -1017,8 +972,9 @@ def _make_extension_field(
             raise
     if missing_conway:
         raise NotImplementedError(
-            'Sage-compatible pseudo-Conway polynomials are not ' +
-            'implemented for this finite field')
+            "Sage-compatible pseudo-Conway polynomials are not "
+            + "implemented for this finite field"
+        )
 
     modulus_coefficients = backend.fqContextModulus(context)
     if order < runtime.bigint(65536):
@@ -1079,9 +1035,8 @@ def GF(
     """
     order = runtime.integer_bigint(order)
     if order < runtime.bigint(2):
-        raise ValueError(
-            'the order of a finite field must be at least 2')
-    primitive = modulus == 'primitive'
+        raise ValueError("the order of a finite field must be at least 2")
+    primitive = modulus == "primitive"
     backend = runtime.flint_backend()
     order_is_prime = backend.isPrime(order)
     if (
@@ -1090,12 +1045,11 @@ def GF(
         and modulus is not None
         and not primitive
     ):
-        raise ValueError(
-            'a modulus polynomial is only valid for an extension field')
+        raise ValueError("a modulus polynomial is only valid for an extension field")
 
     key = runtime.string(order)
     if primitive:
-        key = key + '|primitive'
+        key = key + "|primitive"
     field = _prime_fields.get(key)
     if field is not runtime.undefined:
         return field
@@ -1103,12 +1057,10 @@ def GF(
     if not order_is_prime:
         decomposition = backend.factor(order)
         if len(decomposition.factors) != 1:
-            raise ValueError(
-                'the order of a finite field must be a prime power')
+            raise ValueError("the order of a finite field must be a prime power")
         prime_power = decomposition.factors[0]
         if prime_power[1] < 2:
-            raise ValueError(
-                'the order of a finite field must be a prime power')
+            raise ValueError("the order of a finite field must be a prime power")
         return _make_extension_field(
             order,
             prime_power[0],
@@ -1123,8 +1075,7 @@ def GF(
         generator = backend.wordPrimitiveRootPrime(order)
     field = FiniteField_prime_modn(order, generator)
     _prime_fields.set(key, field)
-    runtime.coercion_model.register(
-        sage.ZZ, field, _field_coercion(field))
+    runtime.coercion_model.register(sage.ZZ, field, _field_coercion(field))
     return field
 
 
@@ -1152,16 +1103,14 @@ def Zmod(order: Any) -> IntegerModRing:
     """
     order = runtime.integer_bigint(order)
     if order < runtime.bigint(2):
-        raise ValueError(
-            'the modulus must be at least 2')
+        raise ValueError("the modulus must be at least 2")
     key = runtime.string(order)
     ring = _residue_rings.get(key)
     if ring is not runtime.undefined:
         return ring
     ring = IntegerModRing(order)
     _residue_rings.set(key, ring)
-    runtime.coercion_model.register(
-        sage.ZZ, ring, _field_coercion(ring))
+    runtime.coercion_model.register(sage.ZZ, ring, _field_coercion(ring))
     return ring
 
 
@@ -1173,142 +1122,145 @@ def Mod(value: Any, modulus: Any) -> IntegerModElement:
     return Zmod(modulus)(value)
 
 
+runtime.set_class_repr(FiniteFieldElement, "<class 'FiniteFieldElement'>")
 runtime.set_class_repr(
-    FiniteFieldElement, "<class 'FiniteFieldElement'>")
-runtime.set_class_repr(
-    IntegerModElement,
-    "<class 'sage.rings.finite_rings.integer_mod.IntegerMod_int64'>")
+    IntegerModElement, "<class 'sage.rings.finite_rings.integer_mod.IntegerMod_int64'>"
+)
 runtime.set_class_repr(
     FiniteFieldExtensionElement,
-    "<class 'sage.rings.finite_rings.element_givaro." +
-    "FiniteField_givaroElement'>")
+    "<class 'sage.rings.finite_rings.element_givaro." + "FiniteField_givaroElement'>",
+)
 runtime.set_class_repr(
     FiniteField_prime_modn,
-    "<class 'sage.rings.finite_rings.finite_field_prime_modn." +
-    "FiniteField_prime_modn_with_category'>")
+    "<class 'sage.rings.finite_rings.finite_field_prime_modn."
+    + "FiniteField_prime_modn_with_category'>",
+)
 runtime.set_class_repr(
     IntegerModRing,
-    "<class 'sage.rings.finite_rings.integer_mod_ring." +
-    "IntegerModRing_generic_with_category'>")
+    "<class 'sage.rings.finite_rings.integer_mod_ring."
+    + "IntegerModRing_generic_with_category'>",
+)
 runtime.set_class_repr(
     FiniteField_givaro,
-    "<class 'sage.rings.finite_rings.finite_field_givaro." +
-    "FiniteField_givaro_with_category'>")
+    "<class 'sage.rings.finite_rings.finite_field_givaro."
+    + "FiniteField_givaro_with_category'>",
+)
 runtime.set_class_repr(
     FiniteField_givaroElement,
-    "<class 'sage.rings.finite_rings.element_givaro." +
-    "FiniteField_givaroElement'>")
+    "<class 'sage.rings.finite_rings.element_givaro." + "FiniteField_givaroElement'>",
+)
 runtime.set_class_repr(
     FiniteField_ntl_gf2e,
-    "<class 'sage.rings.finite_rings.finite_field_ntl_gf2e." +
-    "FiniteField_ntl_gf2e_with_category'>")
+    "<class 'sage.rings.finite_rings.finite_field_ntl_gf2e."
+    + "FiniteField_ntl_gf2e_with_category'>",
+)
 runtime.set_class_repr(
     FiniteField_ntl_gf2eElement,
-    "<class 'sage.rings.finite_rings.element_ntl_gf2e." +
-    "FiniteField_ntl_gf2eElement'>")
+    "<class 'sage.rings.finite_rings.element_ntl_gf2e."
+    + "FiniteField_ntl_gf2eElement'>",
+)
 runtime.set_class_repr(
     FiniteField_pari_ffelt,
-    "<class 'sage.rings.finite_rings.finite_field_pari_ffelt." +
-    "FiniteField_pari_ffelt_with_category'>")
+    "<class 'sage.rings.finite_rings.finite_field_pari_ffelt."
+    + "FiniteField_pari_ffelt_with_category'>",
+)
 runtime.set_class_repr(
     FiniteFieldElement_pari_ffelt,
-    "<class 'sage.rings.finite_rings.element_pari_ffelt." +
-    "FiniteFieldElement_pari_ffelt'>")
+    "<class 'sage.rings.finite_rings.element_pari_ffelt."
+    + "FiniteFieldElement_pari_ffelt'>",
+)
 
 
 def _finite_field_doc(
     module: str,
     tags: list[str],
-    compatibility_status: str = 'compatible',
-    compatibility_notes: str = '',
+    compatibility_status: str = "compatible",
+    compatibility_notes: str = "",
     limitations: Any = None,
 ) -> Any:
     all_tags = runtime.reflect.apply(
         runtime.array.prototype.concat,
-        ['rings', 'finite fields'],
+        ["rings", "finite fields"],
         [tags],
     )
     return {
-        'kind': 'function',
-        'module': module,
-        'tags': all_tags,
-        'backends': ['FLINT'],
-        'sage_compatibility': {
-            'status': compatibility_status,
-            'notes': compatibility_notes,
+        "kind": "function",
+        "module": module,
+        "tags": all_tags,
+        "backends": ["FLINT"],
+        "sage_compatibility": {
+            "status": compatibility_status,
+            "notes": compatibility_notes,
         },
-        'provenance': [
+        "provenance": [
             {
-                'kind': 'sage-derived',
-                'source': 'SageMath finite rings API',
-                'url': (
-                    'https://doc.sagemath.org/html/en/reference/'
-                    'finite_rings/'
-                ),
-                'license': 'GPL-2.0-or-later',
+                "kind": "sage-derived",
+                "source": "SageMath finite rings API",
+                "url": ("https://doc.sagemath.org/html/en/reference/finite_rings/"),
+                "license": "GPL-2.0-or-later",
             },
             {
-                'kind': 'library-backed',
-                'source': 'FLINT finite-field and modular arithmetic',
-                'url': 'https://flintlib.org/doc/',
+                "kind": "library-backed",
+                "source": "FLINT finite-field and modular arithmetic",
+                "url": "https://flintlib.org/doc/",
             },
         ],
-        'references': [
+        "references": [
             {
-                'id': 'flint',
-                'type': 'software',
-                'title': 'FLINT: Fast Library for Number Theory',
-                'authors': ['The FLINT contributors'],
-                'url': 'https://flintlib.org/',
+                "id": "flint",
+                "type": "software",
+                "title": "FLINT: Fast Library for Number Theory",
+                "authors": ["The FLINT contributors"],
+                "url": "https://flintlib.org/",
             },
         ],
-        'implementation': {
-            'algorithm': 'FLINT finite-field and modular arithmetic',
+        "implementation": {
+            "algorithm": "FLINT finite-field and modular arithmetic",
         },
-        'limitations': [] if limitations is None else limitations,
+        "limitations": [] if limitations is None else limitations,
     }
 
 
 runtime.register_doc(
-    'GF',
+    "GF",
     GF,
     _finite_field_doc(
-        'sage.rings.finite_rings.finite_field_constructor',
-        ['field construction', 'extension fields'],
-        'partial',
+        "sage.rings.finite_rings.finite_field_constructor",
+        ["field construction", "extension fields"],
+        "partial",
         (
-            'Prime-power construction and standard generator naming are '
-            'compatible, including explicit irreducible modulus '
-            'polynomials.'
+            "Prime-power construction and standard generator naming are "
+            "compatible, including explicit irreducible modulus "
+            "polynomials."
         ),
         [],
     ),
 )
 runtime.register_doc(
-    'Zmod',
+    "Zmod",
     Zmod,
     _finite_field_doc(
-        'sage.rings.finite_rings.integer_mod_ring',
-        ['residue rings', 'modular arithmetic'],
-        'partial',
+        "sage.rings.finite_rings.integer_mod_ring",
+        ["residue rings", "modular arithmetic"],
+        "partial",
         (
-            'The supported arithmetic is Sage-compatible; the current '
-            'constructor requires modulus at least 2.'
+            "The supported arithmetic is Sage-compatible; the current "
+            "constructor requires modulus at least 2."
         ),
-        ['Moduli 0 and 1 are not currently constructed.'],
+        ["Moduli 0 and 1 are not currently constructed."],
     ),
 )
 runtime.register_doc(
-    'Mod',
+    "Mod",
     Mod,
     _finite_field_doc(
-        'sage.rings.finite_rings.integer_mod',
-        ['residue rings', 'modular arithmetic', 'element construction'],
-        'partial',
+        "sage.rings.finite_rings.integer_mod",
+        ["residue rings", "modular arithmetic", "element construction"],
+        "partial",
         (
-            'The supported arithmetic is Sage-compatible; the current '
-            'constructor requires modulus at least 2.'
+            "The supported arithmetic is Sage-compatible; the current "
+            "constructor requires modulus at least 2."
         ),
-        ['Moduli 0 and 1 are not currently constructed.'],
+        ["Moduli 0 and 1 are not currently constructed."],
     ),
 )

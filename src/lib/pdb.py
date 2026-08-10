@@ -17,17 +17,20 @@ class Pdb(bdb.Bdb):
     def set_trace(self, frame=None):
         del frame
         raise NotImplementedError(
-            'interactive pdb requires Sage.js frame-debugging support')
+            "interactive pdb requires Sage.js frame-debugging support"
+        )
 
     def post_mortem(self, traceback=None):
         del traceback
         raise NotImplementedError(
-            'post-mortem pdb requires Sage.js frame-debugging support')
+            "post-mortem pdb requires Sage.js frame-debugging support"
+        )
 
     def interaction(self, frame, traceback):
         del frame, traceback
         raise NotImplementedError(
-            'interactive pdb requires Sage.js frame-debugging support')
+            "interactive pdb requires Sage.js frame-debugging support"
+        )
 
 
 def set_trace(*args, **kwargs):
@@ -40,13 +43,13 @@ def post_mortem(traceback=None):
 
 def pm():
     import sys
+
     return post_mortem(sys.exc_info()[2])
 
 
 def run(statement, globals=None, locals=None):
     del statement, globals, locals
-    raise NotImplementedError(
-        'pdb.run requires Sage.js frame-debugging support')
+    raise NotImplementedError("pdb.run requires Sage.js frame-debugging support")
 
 
 def runcall(function, *args, **kwargs):

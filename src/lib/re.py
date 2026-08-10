@@ -22,11 +22,11 @@ error = SyntaxError
 
 
 def _replace_all(source, old, replacement):
-    answer = ''
+    answer = ""
     while old in source:
         position = source.find(old)
         answer += source[:position] + replacement
-        source = source[position + len(old):]
+        source = source[position + len(old) :]
     return answer + source
 
 
@@ -36,32 +36,32 @@ def _property(value, name, fallback=None):
 
 
 def _verbose_source(source):
-    answer = ''
+    answer = ""
     in_class = False
     escaped = False
     comment = False
     for character in source:
         if comment:
-            if character == '\n':
+            if character == "\n":
                 comment = False
             continue
         if escaped:
             answer += character
             escaped = False
             continue
-        if character == '\\':
+        if character == "\\":
             answer += character
             escaped = True
             continue
-        if character == '[':
+        if character == "[":
             in_class = True
             answer += character
             continue
-        if character == ']':
+        if character == "]":
             in_class = False
             answer += character
             continue
-        if not in_class and character == '#':
+        if not in_class and character == "#":
             comment = True
             continue
         if not in_class and character.isspace():
@@ -82,55 +82,55 @@ def _transform(source, flags):
         if escaped:
             escaped = False
             continue
-        if character == '\\':
+        if character == "\\":
             escaped = True
             continue
-        if character == '[':
+        if character == "[":
             in_class = True
             continue
-        if character == ']':
+        if character == "]":
             in_class = False
             continue
-        if not in_class and source[position:position + 3] == '(?(':
-            raise error('conditional groups are not supported')
-    inline = {'i': IGNORECASE, 'm': MULTILINE, 's': DOTALL, 'x': VERBOSE}
-    if source.startswith('(?'):
-        close = source.find(')')
+        if not in_class and source[position : position + 3] == "(?(":
+            raise error("conditional groups are not supported")
+    inline = {"i": IGNORECASE, "m": MULTILINE, "s": DOTALL, "x": VERBOSE}
+    if source.startswith("(?"):
+        close = source.find(")")
         if close > 2:
             prefix = source[2:close]
             if all(character in inline for character in prefix):
                 for character in prefix:
                     flags |= inline[character]
-                source = source[close + 1:]
-    source = _replace_all(source, '(?P<', '(?<')
+                source = source[close + 1 :]
+    source = _replace_all(source, "(?P<", "(?<")
     # ECMAScript does not currently expose Python's scoped ASCII/Unicode mode
     # switch.  Its default Unicode behavior is the correct approximation for
     # these groups, and the surrounding non-capturing group preserves shape.
-    source = _replace_all(source, '(?a:', '(?:')
-    source = _replace_all(source, '(?u:', '(?:')
-    source = _replace_all(source, '[]]', '[\\]]')
-    source = _replace_all(source, '[^]]', '[^\\]]')
-    answer = ''
+    source = _replace_all(source, "(?a:", "(?:")
+    source = _replace_all(source, "(?u:", "(?:")
+    source = _replace_all(source, "[]]", "[\\]]")
+    source = _replace_all(source, "[^]]", "[^\\]]")
+    answer = ""
     position = 0
-    marker = '(?P='
+    marker = "(?P="
     while True:
         start = source.find(marker, position)
         if start < 0:
             answer += source[position:]
             break
-        answer += source[position:start] + '\\k<'
-        close = source.find(')', start + len(marker))
+        answer += source[position:start] + "\\k<"
+        close = source.find(")", start + len(marker))
         if close < 0:
-            raise error('named group back-reference is not closed')
-        answer += source[start + len(marker):close] + '>'
+            raise error("named group back-reference is not closed")
+        answer += source[start + len(marker) : close] + ">"
         position = close + 1
-    source = _replace_all(answer, '\\A', '^')
-    source = _replace_all(source, '\\Z', '$')
+    source = _replace_all(answer, "\\A", "^")
+    source = _replace_all(source, "\\Z", "$")
     # Python 3.11 possessive quantifiers have no ECMAScript spelling.  Dropping
     # the possessive suffix preserves the accepted language, though it may
     # permit additional backtracking.  Walk the pattern so escaped plus signs
     # and character classes remain untouched.
-    answer = ''
+    answer = ""
     in_class = False
     escaped = False
     for character in source:
@@ -138,19 +138,19 @@ def _transform(source, flags):
             answer += character
             escaped = False
             continue
-        if character == '\\':
+        if character == "\\":
             answer += character
             escaped = True
             continue
-        if character == '[':
+        if character == "[":
             in_class = True
-        elif character == ']':
+        elif character == "]":
             in_class = False
         if (
-            character == '+'
+            character == "+"
             and not in_class
             and len(answer) > 0
-            and answer[-1] in ('*', '+', '?', '}')
+            and answer[-1] in ("*", "+", "?", "}")
         ):
             continue
         answer += character
@@ -161,26 +161,26 @@ def _transform(source, flags):
 
 
 def _flag_text(flags, global_mode=True):
-    answer = 'd'
+    answer = "d"
     if global_mode:
-        answer += 'g'
+        answer += "g"
     if flags & IGNORECASE:
-        answer += 'i'
+        answer += "i"
     if flags & MULTILINE:
-        answer += 'm'
+        answer += "m"
     if flags & DOTALL:
-        answer += 's'
+        answer += "s"
     return answer
 
 
 class MatchObject:
     def __init__(self, regex, native_match, position, end_position):
         self.re = regex
-        self.string = str(_property(native_match, 'input', ''))
+        self.string = str(_property(native_match, "input", ""))
         self.pos = position
         self.endpos = end_position
         self._match = native_match
-        self._indices = _property(native_match, 'indices')
+        self._indices = _property(native_match, "indices")
         self.lastindex = None
         self.lastgroup = None
         for index in range(1, len(native_match)):
@@ -189,18 +189,18 @@ class MatchObject:
 
     def _resolve(self, group):
         if isinstance(group, str):
-            groups = _property(self._match, 'groups')
+            groups = _property(self._match, "groups")
             if groups is None or groups is runtime.undefined:
-                raise IndexError('no such group')
+                raise IndexError("no such group")
             value = _property(groups, group, runtime.undefined)
             if value is runtime.undefined:
-                raise IndexError('no such group')
-            indices = _property(self._indices, 'groups')
+                raise IndexError("no such group")
+            indices = _property(self._indices, "groups")
             pair = _property(indices, group, runtime.undefined)
             return value, pair
         index = int(group)
         if index < 0 or index >= len(self._match):
-            raise IndexError('no such group')
+            raise IndexError("no such group")
         value = self._match[index]
         pair = self._indices[index]
         return value, pair
@@ -212,9 +212,8 @@ class MatchObject:
         for group in groups:
             value, unused = self._resolve(group)
             values.append(
-                None
-                if value is None or value is runtime.undefined
-                else str(value))
+                None if value is None or value is runtime.undefined else str(value)
+            )
         return values[0] if len(values) == 1 else tuple(values)
 
     __getitem__ = group
@@ -224,13 +223,12 @@ class MatchObject:
         for index in range(1, len(self._match)):
             value = self._match[index]
             answer.append(
-                fallback
-                if value is None or value is runtime.undefined
-                else str(value))
+                fallback if value is None or value is runtime.undefined else str(value)
+            )
         return tuple(answer)
 
     def groupdict(self, fallback=None):
-        native = _property(self._match, 'groups')
+        native = _property(self._match, "groups")
         answer = {}
         if native is None or native is runtime.undefined:
             return answer
@@ -238,9 +236,8 @@ class MatchObject:
         for key in keys:
             value = runtime.reflect.get(native, key)
             answer[str(key)] = (
-                fallback
-                if value is None or value is runtime.undefined
-                else str(value))
+                fallback if value is None or value is runtime.undefined else str(value)
+            )
         return answer
 
     def start(self, group=0):
@@ -271,7 +268,8 @@ class RegexObject:
 
     def _native(self):
         return runtime.reflect.construct(
-            runtime.regexp, [self.pattern, _flag_text(self.flags)])
+            runtime.regexp, [self.pattern, _flag_text(self.flags)]
+        )
 
     def search(self, string, pos=0, endpos=None):
         text = str(string)
@@ -279,9 +277,10 @@ class RegexObject:
             endpos = len(text)
         target = text[:endpos]
         regex = self._native()
-        runtime.reflect.set(regex, 'lastIndex', pos)
+        runtime.reflect.set(regex, "lastIndex", pos)
         native = runtime.reflect.apply(
-            runtime.reflect.get(regex, 'exec'), regex, [target])
+            runtime.reflect.get(regex, "exec"), regex, [target]
+        )
         if native is None:
             return None
         return MatchObject(self, native, pos, endpos)
@@ -315,7 +314,7 @@ class RegexObject:
     def findall(self, string, pos=0, endpos=None):
         answer = []
         for match in self.finditer(string, pos, endpos):
-            groups = match.groups('')
+            groups = match.groups("")
             if len(groups) == 0:
                 answer.append(match.group())
             elif len(groups) == 1:
@@ -332,7 +331,7 @@ class RegexObject:
         for match in self.finditer(text):
             if maxsplit and splits >= maxsplit:
                 break
-            answer.append(text[position:match.start()])
+            answer.append(text[position : match.start()])
             answer.extend(match.groups())
             position = match.end()
             splits += 1
@@ -341,15 +340,18 @@ class RegexObject:
 
     def subn(self, replacement, string, count=0):
         text = str(string)
-        answer = ''
+        answer = ""
         position = 0
         replacements = 0
         for match in self.finditer(text):
             if count and replacements >= count:
                 break
-            answer += text[position:match.start()]
-            answer += str(replacement(match) if callable(replacement)
-                          else _expand(replacement, match))
+            answer += text[position : match.start()]
+            answer += str(
+                replacement(match)
+                if callable(replacement)
+                else _expand(replacement, match)
+            )
             position = match.end()
             replacements += 1
         answer += text[position:]
@@ -365,32 +367,36 @@ Match = MatchObject
 
 def _expand(template, match):
     source = str(template)
-    answer = ''
+    answer = ""
     position = 0
-    escapes = {'n': '\n', 'r': '\r', 't': '\t', 'f': '\f', 'v': '\v'}
+    escapes = {"n": "\n", "r": "\r", "t": "\t", "f": "\f", "v": "\v"}
     while position < len(source):
         character = source[position]
-        if character != '\\' or position + 1 >= len(source):
+        if character != "\\" or position + 1 >= len(source):
             answer += character
             position += 1
             continue
         following = source[position + 1]
-        if following == 'g' and position + 2 < len(source) and source[position + 2] == '<':
-            close = source.find('>', position + 3)
+        if (
+            following == "g"
+            and position + 2 < len(source)
+            and source[position + 2] == "<"
+        ):
+            close = source.find(">", position + 3)
             if close < 0:
-                raise error('missing > in group name')
-            name = source[position + 3:close]
+                raise error("missing > in group name")
+            name = source[position + 3 : close]
             group = int(name) if name.isdigit() else name
-            answer += match.group(group) or ''
+            answer += match.group(group) or ""
             position = close + 1
         elif following.isdigit():
             end = position + 1
             while end < len(source) and source[end].isdigit():
                 end += 1
-            answer += match.group(int(source[position + 1:end])) or ''
+            answer += match.group(int(source[position + 1 : end])) or ""
             position = end
-        elif following == '\\':
-            answer += '\\'
+        elif following == "\\":
+            answer += "\\"
             position += 2
         else:
             answer += escapes.get(following, following)
@@ -404,10 +410,10 @@ _cache = {}
 def compile(pattern, flags=0):
     if isinstance(pattern, RegexObject):
         if flags:
-            raise ValueError('cannot process flags argument with a compiled pattern')
+            raise ValueError("cannot process flags argument with a compiled pattern")
         return pattern
     if runtime.instance_of(pattern, runtime.regexp):
-        pattern = _property(pattern, 'source')
+        pattern = _property(pattern, "source")
     key = (str(pattern), int(flags))
     if key not in _cache:
         _cache[key] = RegexObject(pattern, flags)
@@ -447,9 +453,11 @@ def subn(pattern, replacement, string, count=0, flags=0):
 
 
 def escape(string):
-    special = set('.^$*+?{}[]\\|()')
-    return ''.join('\\' + character if character in special else character
-                   for character in str(string))
+    special = set(".^$*+?{}[]\\|()")
+    return "".join(
+        "\\" + character if character in special else character
+        for character in str(string)
+    )
 
 
 def purge():

@@ -923,13 +923,17 @@ function generatePythonModule(declaration) {
       `    \"\"\"Call declared ${library.id}:${fn.id}.\"\"\"\n` +
       `    return ${call}\n`;
   }).join("\n\n");
-  return `\"\"\"Generated safe FFI surface for ${library.id}; do not edit by hand.\"\"\"\n\n` +
+  const source = `\"\"\"Generated safe FFI surface for ${library.id}; do not edit by hand.\"\"\"\n\n` +
     `from __future__ import annotations\n\n` +
     `from typing import Any\n\n` +
     `import sagejs.runtime as _runtime\n` +
     `\n` +
     `__sagejs_ffi_declaration__ = ${JSON.stringify(declaration.identity)}\n\n\n` +
     `${resourceClasses}${resourceClasses ? "\n\n\n" : ""}${functions}`;
+  // Generated modules are committed first-party Python. Use the same pinned
+  // formatter as handwritten source so regeneration cannot introduce style
+  // drift or unreadable declaration wire data.
+  return require("../python-format.cjs").formatPythonSource(source);
 }
 
 function generatedModulePath(root, declaration) {

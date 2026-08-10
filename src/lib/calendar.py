@@ -14,13 +14,29 @@ SATURDAY = 5
 SUNDAY = 6
 
 day_name = [
-    'Monday', 'Tuesday', 'Wednesday', 'Thursday',
-    'Friday', 'Saturday', 'Sunday',
+    "Monday",
+    "Tuesday",
+    "Wednesday",
+    "Thursday",
+    "Friday",
+    "Saturday",
+    "Sunday",
 ]
 day_abbr = [name[:3] for name in day_name]
 month_name = [
-    '', 'January', 'February', 'March', 'April', 'May', 'June',
-    'July', 'August', 'September', 'October', 'November', 'December',
+    "",
+    "January",
+    "February",
+    "March",
+    "April",
+    "May",
+    "June",
+    "July",
+    "August",
+    "September",
+    "October",
+    "November",
+    "December",
 ]
 month_abbr = [name[:3] for name in month_name]
 
@@ -31,15 +47,13 @@ _firstweekday = MONDAY
 class IllegalMonthError(ValueError):
     def __init__(self, month):
         self.month = month
-        super().__init__('bad month number ' + repr(month) + '; must be 1-12')
+        super().__init__("bad month number " + repr(month) + "; must be 1-12")
 
 
 class IllegalWeekdayError(ValueError):
     def __init__(self, weekday_value):
         self.weekday = weekday_value
-        super().__init__(
-            'bad weekday number ' + repr(weekday_value) + '; must be 0-6'
-        )
+        super().__init__("bad weekday number " + repr(weekday_value) + "; must be 0-6")
 
 
 def isleap(year):
@@ -52,7 +66,8 @@ def leapdays(year1, year2):
     year1 -= 1
     year2 -= 1
     return (
-        year2 // 4 - year1 // 4
+        year2 // 4
+        - year1 // 4
         - (year2 // 100 - year1 // 100)
         + (year2 // 400 - year1 // 400)
     )
@@ -64,7 +79,7 @@ def weekday(year, month, day):
         raise IllegalMonthError(month)
     days = monthrange(year, month)[1]
     if day < 1 or day > days:
-        raise ValueError('day is out of range for month')
+        raise ValueError("day is out of range for month")
     # Sakamoto's Gregorian algorithm returns Sunday as zero.  Python modulo
     # gives this formula the desired proleptic behavior for all integer years.
     offsets = [0, 3, 2, 5, 0, 3, 5, 1, 4, 6, 2, 4]
@@ -118,13 +133,13 @@ def monthcalendar(year, month):
     padding = (first_day - _firstweekday) % 7
     values = [0] * padding + list(range(1, day_count + 1))
     values += [0] * ((-len(values)) % 7)
-    return [values[index:index + 7] for index in range(0, len(values), 7)]
+    return [values[index : index + 7] for index in range(0, len(values), 7)]
 
 
 def weekheader(width):
     """Return a header containing abbreviated weekday names."""
     if width < 1:
-        return ''
+        return ""
     names = day_name if width >= 9 else day_abbr
     ordered = names[_firstweekday:] + names[:_firstweekday]
-    return ' '.join(name[:width].center(width) for name in ordered)
+    return " ".join(name[:width].center(width) for name in ordered)

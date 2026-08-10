@@ -30,6 +30,7 @@ is_prime_function = is_prime
 parent_function = parent
 prime_divisors_function = prime_divisors
 
+
 def ρσ_native_method_adapter(target_function):
     return r"""%js (() => {
         function method(...args) {
@@ -619,8 +620,16 @@ def ρσ_documentation_registry():
 
 
 def ρσ_ffi_call(
-    declaration_identity, package_name, export_name, values, parameter_types,
-    return_type, result_domain, error_exception, error_message, constraints
+    declaration_identity,
+    package_name,
+    export_name,
+    values,
+    parameter_types,
+    return_type,
+    result_domain,
+    error_exception,
+    error_message,
+    constraints,
 ):
     """Marshal a checked declaration call to its ordinary dynamic backend."""
     return r"""%js (() => {
@@ -827,10 +836,17 @@ def ρσ_ffi_call(
 
 
 def ρσ_ffi_resource_create(
-    declaration_identity, resource_identity, package_name, create_export,
-    close_export, values, parameter_types, parameter_minimums,
-    error_policy, error_exception,
-    error_message
+    declaration_identity,
+    resource_identity,
+    package_name,
+    create_export,
+    close_export,
+    values,
+    parameter_types,
+    parameter_minimums,
+    error_policy,
+    error_exception,
+    error_message,
 ):
     """Create an opaque owned resource through a checked declaration."""
     return r"""%js (() => {
@@ -960,9 +976,17 @@ def ρσ_ffi_resource_borrow(token, resource_identity):
 
 
 def ρσ_ffi_view_create(
-    declaration_identity, view_identity, owner_identity, owner_token, package_name,
-    create_export, values, parameter_types, error_policy, error_exception,
-    error_message
+    declaration_identity,
+    view_identity,
+    owner_identity,
+    owner_token,
+    package_name,
+    create_export,
+    values,
+    parameter_types,
+    error_policy,
+    error_exception,
+    error_message,
 ):
     """Construct an opaque borrowed view which strongly retains its owner."""
     return r"""%js (() => {

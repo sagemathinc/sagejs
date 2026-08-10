@@ -132,8 +132,7 @@ def flint_dense_prime_field_matrix_right_kernel(
     columns: uint64,
     modulus: uint64,
 ) -> uint64:
-    return nmod_mat_right_kernel(
-        output, source, rows, columns, modulus)
+    return nmod_mat_right_kernel(output, source, rows, columns, modulus)
 
 
 @native
@@ -156,13 +155,13 @@ def flint_dense_prime_field_matrix_solve(
 
 
 __all__ = [
-    'flint_dense_prime_field_matrix_charpoly',
-    'flint_dense_prime_field_matrix_determinant',
-    'flint_dense_prime_field_matrix_inverse',
-    'flint_dense_prime_field_matrix_minpoly',
-    'flint_dense_prime_field_matrix_mul',
-    'flint_dense_prime_field_matrix_rank',
-    'flint_dense_prime_field_matrix_rref',
-    'flint_dense_prime_field_matrix_right_kernel',
-    'flint_dense_prime_field_matrix_solve',
+    "flint_dense_prime_field_matrix_charpoly",
+    "flint_dense_prime_field_matrix_determinant",
+    "flint_dense_prime_field_matrix_inverse",
+    "flint_dense_prime_field_matrix_minpoly",
+    "flint_dense_prime_field_matrix_mul",
+    "flint_dense_prime_field_matrix_rank",
+    "flint_dense_prime_field_matrix_rref",
+    "flint_dense_prime_field_matrix_right_kernel",
+    "flint_dense_prime_field_matrix_solve",
 ]

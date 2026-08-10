@@ -108,9 +108,7 @@ def tate_cubic_multiply_mod(
     product3 = left1 * right2 + left2 * right1
     product4 = left2 * right2
     result0 = (product0 - cubic_b * product3) % prime
-    result1 = (
-        product1 - cubic_a * product3 - cubic_b * product4
-    ) % prime
+    result1 = (product1 - cubic_a * product3 - cubic_b * product4) % prime
     result2 = (product2 - cubic_a * product4) % prime
     return result0, result1, result2
 
@@ -169,8 +167,7 @@ def tate_cubic_root_count(a_value: int, b_value: int, prime: int) -> int:
     """
     a_value %= prime
     b_value %= prime
-    power0, power1, power2 = tate_x_power_mod_cubic(
-        prime, a_value, b_value, prime)
+    power0, power1, power2 = tate_x_power_mod_cubic(prime, a_value, b_value, prime)
     remainder0 = power0
     remainder1 = (power1 - 1) % prime
     remainder2 = power2
@@ -199,9 +196,7 @@ def tate_cubic_root_count(a_value: int, b_value: int, prime: int) -> int:
         return 0
     inverse = tate_inverse_mod(linear_remainder, prime)
     root = (-constant_remainder * inverse) % prime
-    value = (
-        remainder2 * root * root + remainder1 * root + remainder0
-    ) % prime
+    value = (remainder2 * root * root + remainder1 * root + remainder0) % prime
     if value == 0:
         return 1
     return 0
@@ -233,8 +228,7 @@ def tate_large_prime_invariants(
                 return 1, 4 + j_denominator_valuation, 1
             return 1, 4 + j_denominator_valuation, 2
         if difference == 6:
-            residue = discriminant // tate_power(
-                prime, 6 + j_denominator_valuation)
+            residue = discriminant // tate_power(prime, 6 + j_denominator_valuation)
             if j_denominator_valuation % 2:
                 residue *= c6 // tate_power(prime, 3)
             tamagawa = 3 + tate_legendre(residue, prime)
@@ -247,21 +241,18 @@ def tate_large_prime_invariants(
         return 2, 3, 2
     if discriminant_valuation == 4:
         tamagawa = 2 + (
-            tate_legendre(-6, prime)
-            * tate_legendre(c6 // tate_power(prime, 2), prime)
+            tate_legendre(-6, prime) * tate_legendre(c6 // tate_power(prime, 2), prime)
         )
         return 2, 4, tamagawa
     if discriminant_valuation == 6:
         p2 = prime * prime
         cubic_linear = c4 // p2
         cubic_constant = c6 // (p2 * prime)
-        roots = tate_cubic_root_count(
-            -3 * cubic_linear, -2 * cubic_constant, prime)
+        roots = tate_cubic_root_count(-3 * cubic_linear, -2 * cubic_constant, prime)
         return 2, -1, 1 + roots
     if discriminant_valuation == 8:
         tamagawa = 2 + (
-            tate_legendre(-6, prime)
-            * tate_legendre(c6 // tate_power(prime, 4), prime)
+            tate_legendre(-6, prime) * tate_legendre(c6 // tate_power(prime, 4), prime)
         )
         return 2, -4, tamagawa
     if discriminant_valuation == 9:
@@ -284,23 +275,13 @@ def tate_large_prime(
     b2 = a1 * a1 + 4 * a2
     b4 = a1 * a3 + 2 * a4
     b6 = a3 * a3 + 4 * a6
-    b8 = (
-        a1 * a1 * a6
-        + 4 * a2 * a6
-        - a1 * a3 * a4
-        + a2 * a3 * a3
-        - a4 * a4
-    )
+    b8 = a1 * a1 * a6 + 4 * a2 * a6 - a1 * a3 * a4 + a2 * a3 * a3 - a4 * a4
     c4 = b2 * b2 - 24 * b4
     c6 = -b2 * b2 * b2 + 36 * b2 * b4 - 216 * b6
-    discriminant = (
-        -b2 * b2 * b8
-        - 8 * b4 * b4 * b4
-        - 27 * b6 * b6
-        + 9 * b2 * b4 * b6
-    )
+    discriminant = -b2 * b2 * b8 - 8 * b4 * b4 * b4 - 27 * b6 * b6 + 9 * b2 * b4 * b6
     conductor, kodaira, tamagawa = tate_large_prime_invariants(
-        c4, c6, discriminant, prime)
+        c4, c6, discriminant, prime
+    )
     return conductor, kodaira, tamagawa
 
 
@@ -332,6 +313,6 @@ def tate_invariant_boundary_probe(
     return 0, 1, 1
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     # 11a1 has multiplicative reduction at 11.
     print(tate_large_prime(0, -1, 1, -10, -20, 11))

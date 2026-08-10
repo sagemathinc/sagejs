@@ -12,7 +12,7 @@ _callbacks: list[Any] = []
 
 def register(func: Callable[..., Any], *args: Any, **kwargs: Any) -> Callable[..., Any]:
     if not callable(func):
-        raise TypeError('the first argument must be callable')
+        raise TypeError("the first argument must be callable")
     _callbacks.append((func, args, kwargs))
     return func
 
@@ -45,14 +45,15 @@ def _run_exitfuncs() -> None:
         raise last_error
 
 
-_process = runtime.reflect.get(runtime.global_object, 'process')
+_process = runtime.reflect.get(runtime.global_object, "process")
 if _process is not runtime.undefined:
-    _once = runtime.reflect.get(_process, 'once')
+    _once = runtime.reflect.get(_process, "once")
     if _once is not runtime.undefined:
+
         def _process_exit(*_args: Any) -> None:
             _run_exitfuncs()
 
-        runtime.reflect.apply(_once, _process, ['exit', _process_exit])
+        runtime.reflect.apply(_once, _process, ["exit", _process_exit])
 
 
-__all__ = ['register', 'unregister']
+__all__ = ["register", "unregister"]

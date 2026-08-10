@@ -28,79 +28,79 @@ class _PluralParser:
 
     def _conditional(self):
         condition = self._or()
-        if self._take('?'):
+        if self._take("?"):
             truthy = self._conditional()
-            if not self._take(':'):
-                raise ValueError('invalid plural expression')
+            if not self._take(":"):
+                raise ValueError("invalid plural expression")
             falsey = self._conditional()
             return truthy if condition else falsey
         return condition
 
     def _or(self):
         value = self._and()
-        while self._take('||'):
+        while self._take("||"):
             right = self._and()
             value = 1 if value or right else 0
         return value
 
     def _and(self):
         value = self._compare()
-        while self._take('&&'):
+        while self._take("&&"):
             right = self._compare()
             value = 1 if value and right else 0
         return value
 
     def _compare(self):
         value = self._modulo()
-        for token in ('==', '!=', '<=', '>=', '<', '>'):
+        for token in ("==", "!=", "<=", ">=", "<", ">"):
             if self._take(token):
                 right = self._modulo()
-                if token == '==':
+                if token == "==":
                     return 1 if value == right else 0
-                if token == '!=':
+                if token == "!=":
                     return 1 if value != right else 0
-                if token == '<=':
+                if token == "<=":
                     return 1 if value <= right else 0
-                if token == '>=':
+                if token == ">=":
                     return 1 if value >= right else 0
-                if token == '<':
+                if token == "<":
                     return 1 if value < right else 0
                 return 1 if value > right else 0
         return value
 
     def _modulo(self):
         value = self._atom()
-        while self._take('%'):
+        while self._take("%"):
             value %= self._atom()
         return value
 
     def _atom(self):
         self._space()
-        if self._take('!'):
+        if self._take("!"):
             return 0 if self._atom() else 1
-        if self._take('('):
+        if self._take("("):
             value = self._conditional()
-            if not self._take(')'):
-                raise ValueError('invalid plural expression')
+            if not self._take(")"):
+                raise ValueError("invalid plural expression")
             return value
-        if self._take('n'):
+        if self._take("n"):
             return self.number
         start = self.position
         while self.position < len(self.source) and self.source[self.position].isdigit():
             self.position += 1
         if start == self.position:
-            raise ValueError('invalid plural expression')
-        return int(self.source[start:self.position])
+            raise ValueError("invalid plural expression")
+        return int(self.source[start : self.position])
 
 
 def _plural_expression(description):
-    text = description or 'nplurals=2; plural=(n != 1);'
-    marker = 'plural='
+    text = description or "nplurals=2; plural=(n != 1);"
+    marker = "plural="
     start = text.find(marker)
     if start < 0:
-        raise ValueError('plural expression not found')
-    answer = text[start + len(marker):]
-    semicolon = answer.find(';')
+        raise ValueError("plural expression not found")
+    answer = text[start + len(marker) :]
+    semicolon = answer.find(";")
     return answer if semicolon < 0 else answer[:semicolon]
 
 
@@ -127,30 +127,34 @@ def ngettext(text, plural, number):
 
 class Translations:
     def __init__(self, translation_data=None):
-        data = translation_data or {'entries': {}}
-        self.language = data.get('language')
-        self.translations = [(
-            data,
-            _get_plural_forms_function(data.get('plural_forms')),
-        )]
+        data = translation_data or {"entries": {}}
+        self.language = data.get("language")
+        self.translations = [
+            (
+                data,
+                _get_plural_forms_function(data.get("plural_forms")),
+            )
+        ]
 
     def add_fallback(self, fallback=None):
-        data = fallback or {'entries': {}}
-        self.translations.append((
-            data,
-            _get_plural_forms_function(data.get('plural_forms')),
-        ))
+        data = fallback or {"entries": {}}
+        self.translations.append(
+            (
+                data,
+                _get_plural_forms_function(data.get("plural_forms")),
+            )
+        )
 
     def gettext(self, text):
         for data, unused in self.translations:
-            values = data.get('entries', {})
+            values = data.get("entries", {})
             if text in values:
                 return values[text][0]
         return text
 
     def ngettext(self, text, plural, number):
         for data, selector in self.translations:
-            values = data.get('entries', {})
+            values = data.get("entries", {})
             if text in values:
                 options = values[text]
                 index = selector(number)

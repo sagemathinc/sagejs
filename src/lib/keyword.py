@@ -9,14 +9,44 @@ from __future__ import annotations
 
 
 kwlist = [
-    'False', 'None', 'True', 'and', 'as', 'assert', 'async', 'await',
-    'break', 'class', 'continue', 'def', 'del', 'elif', 'else', 'except',
-    'finally', 'for', 'from', 'global', 'if', 'import', 'in', 'is',
-    'lambda', 'nonlocal', 'not', 'or', 'pass', 'raise', 'return', 'try',
-    'while', 'with', 'yield',
+    "False",
+    "None",
+    "True",
+    "and",
+    "as",
+    "assert",
+    "async",
+    "await",
+    "break",
+    "class",
+    "continue",
+    "def",
+    "del",
+    "elif",
+    "else",
+    "except",
+    "finally",
+    "for",
+    "from",
+    "global",
+    "if",
+    "import",
+    "in",
+    "is",
+    "lambda",
+    "nonlocal",
+    "not",
+    "or",
+    "pass",
+    "raise",
+    "return",
+    "try",
+    "while",
+    "with",
+    "yield",
 ]
 
-softkwlist = ['_', 'case', 'match', 'type']
+softkwlist = ["_", "case", "match", "type"]
 
 _keywords = frozenset(kwlist)
 _soft_keywords = frozenset(softkwlist)
@@ -32,4 +62,4 @@ def issoftkeyword(value: str) -> bool:
     return value in _soft_keywords
 
 
-__all__ = ['iskeyword', 'issoftkeyword', 'kwlist', 'softkwlist']
+__all__ = ["iskeyword", "issoftkeyword", "kwlist", "softkwlist"]

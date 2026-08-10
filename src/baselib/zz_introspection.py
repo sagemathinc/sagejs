@@ -13,22 +13,20 @@ import sagejs.runtime as runtime
 
 def _is_private_baselib_name(name: Any) -> bool:
     return (
-        runtime.jstype(name) == 'string'
-        and runtime.string_find(name, '_') == 0
-        and runtime.string_find(name, '__') != 0
+        runtime.jstype(name) == "string"
+        and runtime.string_find(name, "_") == 0
+        and runtime.string_find(name, "__") != 0
     )
 
 
 _private_baselib_names = []
-for _global_name in runtime.object.getOwnPropertyNames(
-    runtime.global_object
-):
+for _global_name in runtime.object.getOwnPropertyNames(runtime.global_object):
     if _is_private_baselib_name(_global_name):
         _private_baselib_names.append(_global_name)
 
 
 runtime.reflect.set(
     runtime.global_object,
-    '__sagejs_baselib_private_names__',
+    "__sagejs_baselib_private_names__",
     _private_baselib_names,
 )

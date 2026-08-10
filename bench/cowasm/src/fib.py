@@ -11,5 +11,5 @@ def rfib(n=30):
 
 register("recursive fibonacci", rfib)
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     all()

@@ -2,11 +2,23 @@
 # License: BSD Copyright: 2016, Kovid Goyal <kovid at kovidgoyal.net>
 from __python__ import hash_literals
 
-from ast_types import (AST_Definitions, AST_Scope, AST_Method, AST_Except,
-                       AST_EmptyStatement, AST_Statement, AST_Seq,
-                       AST_BaseCall, AST_Dot, AST_Sub, AST_ItemAccess,
-                       AST_Conditional, AST_Binary, AST_BlockStatement,
-                       is_node_type)
+from ast_types import (
+    AST_Definitions,
+    AST_Scope,
+    AST_Method,
+    AST_Except,
+    AST_EmptyStatement,
+    AST_Statement,
+    AST_Seq,
+    AST_BaseCall,
+    AST_Dot,
+    AST_Sub,
+    AST_ItemAccess,
+    AST_Conditional,
+    AST_Binary,
+    AST_BlockStatement,
+    is_node_type,
+)
 
 
 def force_statement(stat, output):
@@ -43,13 +55,22 @@ def first_in_statement(output):
     while i > 0:
         if is_node_type(p, AST_Statement) and p.body is node:
             return True
-        if (is_node_type(p, AST_Seq) and p.car is node
-                or is_node_type(p, AST_BaseCall) and p.expression is node
-                or is_node_type(p, AST_Dot) and p.expression is node
-                or is_node_type(p, AST_Sub) and p.expression is node
-                or is_node_type(p, AST_ItemAccess) and p.expression is node
-                or is_node_type(p, AST_Conditional) and p.condition is node
-                or is_node_type(p, AST_Binary) and p.left is node):
+        if (
+            is_node_type(p, AST_Seq)
+            and p.car is node
+            or is_node_type(p, AST_BaseCall)
+            and p.expression is node
+            or is_node_type(p, AST_Dot)
+            and p.expression is node
+            or is_node_type(p, AST_Sub)
+            and p.expression is node
+            or is_node_type(p, AST_ItemAccess)
+            and p.expression is node
+            or is_node_type(p, AST_Conditional)
+            and p.condition is node
+            or is_node_type(p, AST_Binary)
+            and p.left is node
+        ):
             node = p
             i -= 1
             p = a[i]
@@ -75,8 +96,9 @@ def declare_vars(vars, output):
 def display_body(body, is_toplevel, output):
     last = body.length - 1
     for i, stmt in enumerate(body):
-        if not (is_node_type(stmt, AST_EmptyStatement)) and not (is_node_type(
-                stmt, AST_Definitions)):
+        if not (is_node_type(stmt, AST_EmptyStatement)) and not (
+            is_node_type(stmt, AST_Definitions)
+        ):
             output.indent()
             stmt.print(output)
             if not (i is last and is_toplevel):
@@ -87,11 +109,7 @@ def display_complex_body(node, is_toplevel, output, function_preamble):
     offset = 0
     # argument offset
     # this is a method, add 'var self = this'
-    if (
-        is_node_type(node, AST_Method)
-        and not node['static']
-        and node.argnames.length
-    ):
+    if is_node_type(node, AST_Method) and not node["static"] and node.argnames.length:
         output.indent()
         output.print("var")
         output.space()
@@ -115,7 +133,7 @@ def display_complex_body(node, is_toplevel, output, function_preamble):
             output.semicolon()
             output.newline()
             output.indent()
-            output.print('try')
+            output.print("try")
             output.space()
 
             def handler_body():
@@ -123,13 +141,13 @@ def display_complex_body(node, is_toplevel, output, function_preamble):
 
             output.with_block(handler_body)
             output.space()
-            output.print('finally')
+            output.print("finally")
             output.space()
 
             def clear_exception_target():
                 output.indent()
                 output.assign(node.argname)
-                output.print('void 0')
+                output.print("void 0")
                 output.end_statement()
 
             output.with_block(clear_exception_target)
@@ -143,13 +161,10 @@ def display_lambda_body(node, output, function_preamble):
         function_preamble(node, output, 0)
     output.indent()
     output.print("return ")
-    if (
-        output.options.python_tuples
-        and is_node_type(node.body, AST_Seq)
-    ):
-        output.print('ρσ_math_tuple([')
+    if output.options.python_tuples and is_node_type(node.body, AST_Seq):
+        output.print("ρσ_math_tuple([")
         node.body.print(output)
-        output.print('])')
+        output.print("])")
     else:
         node.body.print(output)
     output.print(";")
@@ -162,8 +177,9 @@ def print_bracketed(node, output, complex, function_preamble, before, after):
             if before:
                 before(output)
             if node.is_lambda:
-                display_lambda_body(node, output,
-                                    function_preamble if complex else None)
+                display_lambda_body(
+                    node, output, function_preamble if complex else None
+                )
             elif complex:
                 display_complex_body(node, False, output, function_preamble)
             else:
@@ -189,50 +205,49 @@ def print_bracketed(node, output, complex, function_preamble, before, after):
 def print_await_expression(output, print_expression):
     """Emit generator-based ``await`` around an expression."""
     output.print(
-        '(yield* (function* () {'
-        'try { '
-        'var ρσ_await_iterator = ρσ_yield_from_impl('
+        "(yield* (function* () {try { var ρσ_await_iterator = ρσ_yield_from_impl("
     )
     print_expression()
     output.print(
-        ');'
-        'ρσ_await_iterator.throw = '
-        'ρσ_await_iterator.__native_throw__;'
-        'return yield* ρσ_await_iterator;'
-        '} catch (ρσ_await_error) {'
-        'if (ρσ_await_error instanceof ρσ_yield_from_return) '
-        'return ρσ_await_error.value;'
-        'throw ρσ_await_error;'
-        '} })())'
+        ");"
+        "ρσ_await_iterator.throw = "
+        "ρσ_await_iterator.__native_throw__;"
+        "return yield* ρσ_await_iterator;"
+        "} catch (ρσ_await_error) {"
+        "if (ρσ_await_error instanceof ρσ_yield_from_return) "
+        "return ρσ_await_error.value;"
+        "throw ρσ_await_error;"
+        "} })())"
     )
 
 
 def print_with(self, output):
     exits = []
-    output.assign('ρσ_with_exception'), output.print(
-        'undefined'), output.end_statement()
+    (
+        output.assign("ρσ_with_exception"),
+        output.print("undefined"),
+        output.end_statement(),
+    )
     for clause in self.clauses:
         output.with_counter += 1
-        clause_name = 'ρσ_with_clause_' + output.with_counter
+        clause_name = "ρσ_with_clause_" + output.with_counter
         exits.push(clause_name)
-        output.indent(), output.print('var '), output.assign(clause_name)
+        output.indent(), output.print("var "), output.assign(clause_name)
         clause.expression.print(output)
         output.end_statement()
         output.indent()
         if clause.alias:
             output.assign(clause.alias.name)
-        method_name = '__aenter__' if self.is_async else '__enter__'
+        method_name = "__aenter__" if self.is_async else "__enter__"
         if self.is_async:
             print_await_expression(
                 output,
-                lambda: output.print(
-                    clause_name + '.' + method_name + '()'
-                ),
+                lambda: output.print(clause_name + "." + method_name + "()"),
             )
         else:
-            output.print(clause_name + '.' + method_name + '()')
+            output.print(clause_name + "." + method_name + "()")
         output.end_statement()
-    output.indent(), output.print('try'), output.space()
+    output.indent(), output.print("try"), output.space()
 
     def f_body():
         output.indent()
@@ -241,12 +256,12 @@ def print_with(self, output):
 
     output.with_block(f_body)
 
-    output.space(), output.print('catch(e)')
+    output.space(), output.print("catch(e)")
 
     def f_with():
         output.indent()
-        output.assign('ρσ_with_exception')
-        output.print('e')
+        output.assign("ρσ_with_exception")
+        output.print("e")
         output.end_statement()
 
     output.with_block(f_with)
@@ -257,71 +272,73 @@ def print_with(self, output):
             if self.is_async:
                 print_await_expression(
                     output,
-                    lambda: output.print(
-                        clause + '.__aexit__(null, null, null)'
-                    ),
+                    lambda: output.print(clause + ".__aexit__(null, null, null)"),
                 )
             else:
-                output.print(
-                    clause + '.__exit__(null, null, null)')
+                output.print(clause + ".__exit__(null, null, null)")
             output.end_statement()
 
     def f_suppress():
-        output.indent(), output.assign('ρσ_with_suppress'), output.print(
-            'false'), output.end_statement()
+        (
+            output.indent(),
+            output.assign("ρσ_with_suppress"),
+            output.print("false"),
+            output.end_statement(),
+        )
         for clause in reversed(exits):
             output.indent()
-            output.print('ρσ_with_suppress |= ρσ_bool(')
+            output.print("ρσ_with_suppress |= ρσ_bool(")
             if self.is_async:
                 print_await_expression(
                     output,
                     lambda: output.print(
                         clause
-                        + '.__aexit__('
-                        + 'ρσ_type(ρσ_with_exception), '
-                        + 'ρσ_with_exception, '
-                        + 'ρσ_getattr_internal('
+                        + ".__aexit__("
+                        + "ρσ_type(ρσ_with_exception), "
+                        + "ρσ_with_exception, "
+                        + "ρσ_getattr_internal("
                         + 'ρσ_with_exception, "__traceback__", null))'
                     ),
                 )
             else:
                 output.print(
                     clause
-                    + '.__exit__(ρσ_type(ρσ_with_exception), '
-                    + 'ρσ_with_exception, '
-                    + 'ρσ_getattr_internal('
+                    + ".__exit__(ρσ_type(ρσ_with_exception), "
+                    + "ρσ_with_exception, "
+                    + "ρσ_getattr_internal("
                     + 'ρσ_with_exception, "__traceback__", null))'
                 )
-            output.print(')')
+            output.print(")")
             output.end_statement()
-        output.indent(), output.spaced(
-            'if', '(!ρσ_with_suppress)',
-            'throw ρσ_with_exception'), output.end_statement()
+        (
+            output.indent(),
+            output.spaced("if", "(!ρσ_with_suppress)", "throw ρσ_with_exception"),
+            output.end_statement(),
+        )
         # A suppressed inner exception must not remain visible to an enclosing
         # ``with`` statement, since compiler temporaries are function-scoped.
         # If suppression was false the preceding throw exits this block.
-        output.indent(), output.assign('ρσ_with_exception')
-        output.print('undefined'), output.end_statement()
+        output.indent(), output.assign("ρσ_with_exception")
+        output.print("undefined"), output.end_statement()
 
     def f_cleanup():
-        output.indent(), output.spaced(
-            'if', '(ρσ_with_exception', '===', 'undefined)')
+        output.indent(), output.spaced("if", "(ρσ_with_exception", "===", "undefined)")
         output.with_block(f_exit)
-        output.space(), output.print('else'), output.space()
+        output.space(), output.print("else"), output.space()
         output.with_block(f_suppress)
 
-    output.newline(), output.indent(), output.print('finally'), output.space()
+    output.newline(), output.indent(), output.print("finally"), output.space()
     output.with_block(f_cleanup)
 
 
 def print_assert(self, output):
     if output.options.discard_asserts:
         return
-    output.spaced('if', '(!(')
+    output.spaced("if", "(!(")
     output.print_truth_test(self.condition)
-    output.spaced('))', 'throw new AssertionError')
+    output.spaced("))", "throw new AssertionError")
     if self.message:
-        output.print('(')
+        output.print("(")
         self.message.print(output)
-        output.print(')')
+        output.print(")")
     output.end_statement()

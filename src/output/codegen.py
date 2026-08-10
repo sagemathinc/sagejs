@@ -6,35 +6,118 @@ from __python__ import hash_literals
 
 from utils import noop, make_predicate
 from ast_types import (
-    AST_AnnotatedAssignment, AST_Array, AST_Assign, AST_AsyncFor,
-    AST_BaseCall, AST_Binary,
+    AST_AnnotatedAssignment,
+    AST_Array,
+    AST_Assign,
+    AST_AsyncFor,
+    AST_BaseCall,
+    AST_Binary,
     AST_BlockStatement,
-    AST_Break, AST_Class, AST_Conditional, AST_Constant, AST_Continue,
-    AST_Debugger, AST_Definitions, AST_Directive, AST_Do, AST_Dot,
-    is_node_type, AST_EllipsesRange, AST_EmptyStatement, AST_Exit,
-    AST_ExpressiveObject, AST_ForIn, AST_ForJS, AST_Function, AST_Hole, AST_If,
-    AST_Imports, AST_Infinity, AST_Lambda, AST_ListComprehension,
-    AST_LoopControl, AST_NaN, AST_New, AST_Node, AST_Number, AST_Object,
-    AST_ObjectKeyVal, AST_ObjectProperty, AST_PropAccess, AST_RegExp,
-    AST_Return, AST_Set, AST_Seq, AST_SimpleStatement, AST_Splice,
-    AST_Statement, AST_StatementWithBody, AST_String, AST_Sub, AST_ItemAccess,
+    AST_Break,
+    AST_Class,
+    AST_Conditional,
+    AST_Constant,
+    AST_Continue,
+    AST_Debugger,
+    AST_Definitions,
+    AST_Directive,
+    AST_Do,
+    AST_Dot,
+    is_node_type,
+    AST_EllipsesRange,
+    AST_EmptyStatement,
+    AST_Exit,
+    AST_ExpressiveObject,
+    AST_ForIn,
+    AST_ForJS,
+    AST_Function,
+    AST_Hole,
+    AST_If,
+    AST_Imports,
+    AST_Infinity,
+    AST_Lambda,
+    AST_ListComprehension,
+    AST_LoopControl,
+    AST_NaN,
+    AST_New,
+    AST_Node,
+    AST_Number,
+    AST_Object,
+    AST_ObjectKeyVal,
+    AST_ObjectProperty,
+    AST_PropAccess,
+    AST_RegExp,
+    AST_Return,
+    AST_Set,
+    AST_Seq,
+    AST_SimpleStatement,
+    AST_Splice,
+    AST_Statement,
+    AST_StatementWithBody,
+    AST_String,
+    AST_Sub,
+    AST_ItemAccess,
     AST_TimedStatement,
-    AST_Scope, AST_Symbol, AST_SymbolRef, AST_This, AST_Throw, AST_Toplevel,
-    AST_Try, AST_Unary,
-    AST_UnaryPrefix, AST_Undefined, AST_Var, AST_VarDef, AST_Assert,
-    AST_Verbatim, AST_While, AST_With, AST_Yield, TreeWalker, AST_Existential)
+    AST_Scope,
+    AST_Symbol,
+    AST_SymbolRef,
+    AST_This,
+    AST_Throw,
+    AST_Toplevel,
+    AST_Try,
+    AST_Unary,
+    AST_UnaryPrefix,
+    AST_Undefined,
+    AST_Var,
+    AST_VarDef,
+    AST_Assert,
+    AST_Verbatim,
+    AST_While,
+    AST_With,
+    AST_Yield,
+    TreeWalker,
+    AST_Existential,
+)
 from output.exceptions import print_try
 from output.classes import print_class
-from output.literals import print_array, print_obj_literal, print_object, print_set, print_regexp
-from output.loops import print_async_for, print_do_loop, print_while_loop, print_for_loop_body, print_for_in, print_list_comprehension, print_ellipses_range
+from output.literals import (
+    print_array,
+    print_obj_literal,
+    print_object,
+    print_set,
+    print_regexp,
+)
+from output.loops import (
+    print_async_for,
+    print_do_loop,
+    print_while_loop,
+    print_for_loop_body,
+    print_for_in,
+    print_list_comprehension,
+    print_ellipses_range,
+)
 from output.modules import print_top_level, print_imports
 from output.comments import print_comments
-from output.operators import (print_getattr, print_getitem, print_rich_getitem,
-                              print_splice_assignment, print_unary_prefix,
-                              print_binary_op, print_assign, print_conditional,
-                              print_seq, print_existential)
+from output.operators import (
+    print_getattr,
+    print_getitem,
+    print_rich_getitem,
+    print_splice_assignment,
+    print_unary_prefix,
+    print_binary_op,
+    print_assign,
+    print_conditional,
+    print_seq,
+    print_existential,
+)
 from output.functions import print_function, print_function_call
-from output.statements import print_bracketed, first_in_statement, force_statement, print_with, print_assert
+from output.statements import (
+    print_bracketed,
+    first_in_statement,
+    force_statement,
+    print_with,
+    print_assert,
+)
 from output.utils import make_block, make_num
 
 
@@ -46,20 +129,28 @@ def operator_to_precedence(groups):
     return answer
 
 
-PRECEDENCE = operator_to_precedence([
-    ["||"], ["&&"],
-    ["==", "===", "!=", "!==", "<", ">", "<=", ">=", "in", "nin",
-     "instanceof"],
-    ["|"], ["^"], ["&"], [">>", "<<", ">>>"], ["+", "-"],
-    ["*", "@", "/", "//", "%"], ["**"],
-])
+PRECEDENCE = operator_to_precedence(
+    [
+        ["||"],
+        ["&&"],
+        ["==", "===", "!=", "!==", "<", ">", "<=", ">=", "in", "nin", "instanceof"],
+        ["|"],
+        ["^"],
+        ["&"],
+        [">>", "<<", ">>>"],
+        ["+", "-"],
+        ["*", "@", "/", "//", "%"],
+        ["**"],
+    ]
+)
 
 RESERVED_WORDS = make_predicate(
     "break case class catch const continue debugger default delete do else "
     "export extends finally for function if import in instanceof new return "
     "super switch this throw try typeof var void while with yield enum "
     "implements static private package let public protected interface await "
-    "null true false")
+    "null true false"
+)
 
 
 # -----[ code generators ]-----
@@ -113,9 +204,13 @@ def generate_code():
 
     def f_seq(output):
         p = output.parent()
-        return is_node_type(p, AST_Unary) or is_node_type(
-            p, AST_VarDef) or is_node_type(p, AST_Dot) or is_node_type(
-                p, AST_ObjectProperty) or is_node_type(p, AST_Conditional)
+        return (
+            is_node_type(p, AST_Unary)
+            or is_node_type(p, AST_VarDef)
+            or is_node_type(p, AST_Dot)
+            or is_node_type(p, AST_ObjectProperty)
+            or is_node_type(p, AST_Conditional)
+        )
 
     PARENS(AST_Seq, f_seq)
 
@@ -139,8 +234,12 @@ def generate_code():
             pp = PRECEDENCE[po]
             so = this.operator
             sp = PRECEDENCE[so]
-            if pp > sp or pp is sp and this is p.right and not (
-                    so is po and (so is "*" or so is "&&" or so is "||")):
+            if (
+                pp > sp
+                or pp is sp
+                and this is p.right
+                and not (so is po and (so is "*" or so is "&&" or so is "||"))
+            ):
                 return True
 
     PARENS(AST_Binary, f_binary)
@@ -174,9 +273,11 @@ def generate_code():
 
     def f_new(output):
         p = output.parent()
-        if this.args.length is 0 and (is_node_type(p, AST_PropAccess)
-                                      or is_node_type(p, AST_BaseCall)
-                                      and p.expression is this):
+        if this.args.length is 0 and (
+            is_node_type(p, AST_PropAccess)
+            or is_node_type(p, AST_BaseCall)
+            and p.expression is this
+        ):
             # (new foo)(bar)
             return True
 
@@ -184,8 +285,7 @@ def generate_code():
 
     def f_number(output):
         p = output.parent()
-        if this.value < 0 and is_node_type(
-                p, AST_PropAccess) and p.expression is this:
+        if this.value < 0 and is_node_type(p, AST_PropAccess) and p.expression is this:
             return True
 
     PARENS(AST_Number, f_number)
@@ -236,7 +336,8 @@ def generate_code():
     DEFPRINT(AST_Debugger, f_debugger)
 
     AST_StatementWithBody.prototype._do_print_body = lambda output: force_statement(
-        this.body, output)
+        this.body, output
+    )
 
     def f_statement(self, output):
         self.body.print(output)
@@ -259,8 +360,8 @@ def generate_code():
 
         def timed_body():
             output.indent()
-            output.assign('var ' + start_name)
-            output.print('Date.now()')
+            output.assign("var " + start_name)
+            output.print("Date.now()")
             output.end_statement()
             output.indent()
             self.body.print(output)
@@ -274,18 +375,19 @@ def generate_code():
         output.with_block(timed_body)
 
     DEFPRINT(AST_TimedStatement, print_timed_statement)
-    DEFPRINT(AST_BlockStatement,
-             lambda self, output: print_bracketed(self, output))
+    DEFPRINT(AST_BlockStatement, lambda self, output: print_bracketed(self, output))
 
     DEFPRINT(AST_EmptyStatement, lambda self, output: None)
 
     def print_annotated_assignment(self, output):
         if self.value:
-            assignment = AST_Assign({
-                'left': self.target,
-                'operator': '=',
-                'right': self.value,
-            })
+            assignment = AST_Assign(
+                {
+                    "left": self.target,
+                    "operator": "=",
+                    "right": self.value,
+                }
+            )
             assignment.print(output)
             output.semicolon()
 
@@ -351,9 +453,9 @@ def generate_code():
                 output.print(")")
             else:
                 self.value.print(output)
-        elif kind is 'return' and output.options.python_truthiness:
+        elif kind is "return" and output.options.python_truthiness:
             output.space()
-            output.print('null')
+            output.print("null")
 
         output.semicolon()
 
@@ -363,26 +465,28 @@ def generate_code():
         output.print("((")
         if self.is_yield_from:
             output.print(
-                'yield* (function* () {'
-                'try { '
-                'var ρσ_yield_from_iterator = ρσ_yield_from_impl(')
+                "yield* (function* () {"
+                "try { "
+                "var ρσ_yield_from_iterator = ρσ_yield_from_impl("
+            )
         else:
-            output.print('yield')
+            output.print("yield")
         if self.value:
             output.space()
             self.value.print(output)
         if self.is_yield_from:
             output.print(
-                ');'
-                'ρσ_yield_from_iterator.throw = '
-                'ρσ_yield_from_iterator.__native_throw__;'
-                'return yield* ρσ_yield_from_iterator;'
-                '} catch (ρσ_yield_from_error) {'
-                'if (ρσ_yield_from_error '
-                'instanceof ρσ_yield_from_return) '
-                'return ρσ_yield_from_error.value;'
-                'throw ρσ_yield_from_error;'
-                '} })()')
+                ");"
+                "ρσ_yield_from_iterator.throw = "
+                "ρσ_yield_from_iterator.__native_throw__;"
+                "return yield* ρσ_yield_from_iterator;"
+                "} catch (ρσ_yield_from_error) {"
+                "if (ρσ_yield_from_error "
+                "instanceof ρσ_yield_from_return) "
+                "return ρσ_yield_from_error.value;"
+                "throw ρσ_yield_from_error;"
+                "} })()"
+            )
         output.print(") ?? null)")
 
     DEFPRINT(AST_Yield, f_do_print_yield)
@@ -414,8 +518,7 @@ def generate_code():
 
     DEFPRINT(AST_Break, lambda self, output: self._do_print(output, "break"))
 
-    DEFPRINT(AST_Continue,
-             lambda self, output: self._do_print(output, "continue"))
+    DEFPRINT(AST_Continue, lambda self, output: self._do_print(output, "continue"))
 
     # -----[ if ]-----
     def make_then(self, output):
@@ -459,8 +562,7 @@ def generate_code():
     def f_if(self, output):
         output.print("if")
         output.space()
-        output.with_parens(
-            lambda: output.print_truth_test(self.condition))
+        output.with_parens(lambda: output.print_truth_test(self.condition))
         output.space()
         if self.alternative:
             make_then(self, output)
@@ -502,8 +604,7 @@ def generate_code():
                 # need to take some precautions here:
                 #    https://github.com/mishoo/RapydScript2/issues/60
                 def f_for_noin(node):
-                    if is_node_type(node,
-                                    AST_Binary) and node.operator is "in":
+                    if is_node_type(node, AST_Binary) and node.operator is "in":
                         raise output
 
                 node.walk(TreeWalker(f_for_noin))
@@ -574,11 +675,10 @@ def generate_code():
         name = self.name
         if def_:
             name = def_.mangled_name or def_.name
-        if (
-            RESERVED_WORDS[name]
-            and (name is not 'this' or output.options.python_attributes)
+        if RESERVED_WORDS[name] and (
+            name is not "this" or output.options.python_attributes
         ):
-            name = 'ρσ_py_' + name
+            name = "ρσ_py_" + name
 
         def contains_delete_target(target):
             if target is self:
@@ -616,7 +716,7 @@ def generate_code():
                     return False
                 if (
                     is_node_type(ancestor, AST_UnaryPrefix)
-                    and ancestor.operator is 'delete'
+                    and ancestor.operator is "delete"
                 ):
                     target = ancestor.expression
                     if contains_delete_target(target):
@@ -637,12 +737,8 @@ def generate_code():
             for index in range(stack.length - 2, -1, -1):
                 scope = stack[index]
                 if is_node_type(scope, AST_Scope):
-                    if (
-                        is_node_type(scope, AST_Class)
-                        and (
-                            scope.parent is self
-                            or scope.bases.indexOf(self) is not -1
-                        )
+                    if is_node_type(scope, AST_Class) and (
+                        scope.parent is self or scope.bases.indexOf(self) is not -1
                     ):
                         # Base expressions execute in the enclosing scope,
                         # before the class namespace exists.
@@ -659,10 +755,7 @@ def generate_code():
                         and scope.annotated_locals.indexOf(self.name) is not -1
                     )
                     module_name_fallback = (
-                        (
-                            is_node_type(scope, AST_Toplevel)
-                            and check_unbound
-                        )
+                        (is_node_type(scope, AST_Toplevel) and check_unbound)
                         or (
                             output.module_control_flow_names
                             and output.module_control_flow_names[self.name]
@@ -675,19 +768,19 @@ def generate_code():
                     )
                     break
         if class_namespace:
-            output.print('(')
+            output.print("(")
             class_namespace.name.print(output)
-            output.print('.prototype.hasOwnProperty(')
+            output.print(".prototype.hasOwnProperty(")
             output.print(JSON.stringify(self.name))
-            output.print(') ? ')
+            output.print(") ? ")
             class_namespace.name.print(output)
-            output.print('.prototype[')
+            output.print(".prototype[")
             output.print(JSON.stringify(self.name))
-            output.print('] : ρσ_modules[')
+            output.print("] : ρσ_modules[")
             output.print(JSON.stringify(class_namespace.module_id))
-            output.print('][')
+            output.print("][")
             output.print(JSON.stringify(self.name))
-            output.print('])')
+            output.print("])")
             return
         parent = output.parent()
         parenthesize_constructor = (
@@ -696,11 +789,11 @@ def generate_code():
             and parent.expression is self
         )
         if parenthesize_constructor:
-            output.print('(')
+            output.print("(")
         if check_unbound:
-            output.print('ρσ_check_unbound(')
+            output.print("ρσ_check_unbound(")
         if module_name_fallback:
-            output.print('ρσ_resolve_module_name(')
+            output.print("ρσ_resolve_module_name(")
         output.print_name(name)
         if module_name_fallback:
             output.comma()
@@ -708,13 +801,14 @@ def generate_code():
             output.comma()
             output.print(
                 '(typeof __builtins__ !== "undefined" ? __builtins__ : '
-                '(ρσ_modules.builtins || globalThis)))')
+                "(ρσ_modules.builtins || globalThis)))"
+            )
         if check_unbound:
             output.comma()
             output.print(JSON.stringify(self.name))
-            output.print(')')
+            output.print(")")
         if parenthesize_constructor:
-            output.print(')')
+            output.print(")")
 
     DEFPRINT(AST_Undefined, lambda self, output: output.print("void 0"))
     DEFPRINT(AST_Hole, noop)
@@ -725,6 +819,5 @@ def generate_code():
     DEFPRINT(AST_Constant, lambda self, output: output.print(self.value))
     DEFPRINT(AST_String, lambda self, output: output.print_string(self.value))
     DEFPRINT(AST_Verbatim, lambda self, output: output.print(self.value))
-    DEFPRINT(AST_Number,
-             lambda self, output: output.print(make_num(self.value)))
+    DEFPRINT(AST_Number, lambda self, output: output.print(make_num(self.value)))
     DEFPRINT(AST_RegExp, print_regexp)

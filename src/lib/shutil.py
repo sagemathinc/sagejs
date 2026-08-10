@@ -21,8 +21,8 @@ class ExecError(OSError):
 
 
 COPY_BUFSIZE = 1024 * 1024
-_ntuple_diskusage = namedtuple('usage', 'total used free')
-_ntuple_terminal_size = namedtuple('terminal_size', 'columns lines')
+_ntuple_diskusage = namedtuple("usage", "total used free")
+_ntuple_terminal_size = namedtuple("terminal_size", "columns lines")
 
 
 def get_terminal_size(fallback=(80, 24)):
@@ -33,13 +33,13 @@ def get_terminal_size(fallback=(80, 24)):
     terminal-oriented libraries deterministic in notebooks and CI.
     """
     columns, lines = fallback
-    value = os.environ.get('COLUMNS')
+    value = os.environ.get("COLUMNS")
     if value:
         try:
             columns = int(value)
         except ValueError:
             pass
-    value = os.environ.get('LINES')
+    value = os.environ.get("LINES")
     if value:
         try:
             lines = int(value)
@@ -52,15 +52,14 @@ def copyfileobj(fsrc, fdst, length=0):
     length = COPY_BUFSIZE if not length else length
     while True:
         block = fsrc.read(length)
-        if block == b'' or block == '':
+        if block == b"" or block == "":
             break
         fdst.write(block)
 
 
 def _samefile(src, dst):
-    return (
-        os.path.normcase(os.path.abspath(os.fspath(src)))
-        == os.path.normcase(os.path.abspath(os.fspath(dst)))
+    return os.path.normcase(os.path.abspath(os.fspath(src))) == os.path.normcase(
+        os.path.abspath(os.fspath(dst))
     )
 
 
@@ -68,12 +67,12 @@ def copyfile(src, dst, *, follow_symlinks=True):
     src = os.fspath(src)
     dst = os.fspath(dst)
     if _samefile(src, dst):
-        raise SameFileError(repr(src) + ' and ' + repr(dst) + ' are the same file')
+        raise SameFileError(repr(src) + " and " + repr(dst) + " are the same file")
     if not follow_symlinks and os.path.islink(src):
         os.symlink(os.readlink(src), dst)
         return dst
-    with open(src, 'rb') as source:
-        with open(dst, 'wb') as destination:
+    with open(src, "rb") as source:
+        with open(dst, "wb") as destination:
             copyfileobj(source, destination)
     return dst
 
@@ -112,10 +111,12 @@ def copy2(src, dst, *, follow_symlinks=True):
 def ignore_patterns(*patterns):
     def _ignore(_path, names):
         import fnmatch
+
         ignored = set()
         for pattern in patterns:
             ignored.update(fnmatch.filter(names, pattern))
         return ignored
+
     return _ignore
 
 
@@ -132,8 +133,9 @@ def copytree(
     dst = os.fspath(dst)
     os.makedirs(dst, exist_ok=dirs_exist_ok)
     entries = list(os.scandir(src))
-    ignored = set() if ignore is None else set(
-        ignore(src, [entry.name for entry in entries]))
+    ignored = (
+        set() if ignore is None else set(ignore(src, [entry.name for entry in entries]))
+    )
     errors = []
     for entry in entries:
         if entry.name in ignored:
@@ -163,7 +165,7 @@ def copytree(
                     else:
                         copy_function(source, destination)
                 elif not ignore_dangling_symlinks:
-                    raise Error('dangling symbolic link: ' + source)
+                    raise Error("dangling symbolic link: " + source)
             elif entry.is_dir():
                 copytree(
                     source,
@@ -189,11 +191,11 @@ def copytree(
 
 def rmtree(path, ignore_errors=False, onerror=None, *, onexc=None, dir_fd=None):
     if dir_fd is not None:
-        raise NotImplementedError('dir_fd is not supported')
+        raise NotImplementedError("dir_fd is not supported")
     path = os.fspath(path)
     try:
         if os.path.islink(path):
-            raise OSError('Cannot call rmtree on a symbolic link')
+            raise OSError("Cannot call rmtree on a symbolic link")
         for entry in os.scandir(path):
             try:
                 if entry.is_dir(follow_symlinks=False):
@@ -233,7 +235,7 @@ def move(src, dst, copy_function=copy2):
 
 
 def disk_usage(path):
-    value = os._host_call('statfs', os.fspath(path))
+    value = os._host_call("statfs", os.fspath(path))
     block_size = int(value.bsize)
     total = int(value.blocks) * block_size
     free = int(value.bavail) * block_size
@@ -246,12 +248,12 @@ def which(cmd, mode=os.F_OK | os.X_OK, path=None):
     if os.path.dirname(cmd):
         return cmd if os.path.isfile(cmd) and os.access(cmd, mode) else None
     if path is None:
-        path = os.getenv('PATH', os.defpath if hasattr(os, 'defpath') else '')
-    extensions = ['']
-    if os.name == 'nt':
-        extensions = os.getenv('PATHEXT', '.COM;.EXE;.BAT;.CMD').split(os.pathsep)
+        path = os.getenv("PATH", os.defpath if hasattr(os, "defpath") else "")
+    extensions = [""]
+    if os.name == "nt":
+        extensions = os.getenv("PATHEXT", ".COM;.EXE;.BAT;.CMD").split(os.pathsep)
         if any(cmd.lower().endswith(extension.lower()) for extension in extensions):
-            extensions.insert(0, '')
+            extensions.insert(0, "")
     seen = set()
     for directory in path.split(os.pathsep):
         directory = os.path.normcase(directory or os.curdir)

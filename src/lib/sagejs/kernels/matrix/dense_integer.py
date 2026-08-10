@@ -18,7 +18,9 @@ def dense_integer_matrix_get(source: IntegerBuffer, index: int) -> int:
 
 @native
 def dense_integer_matrix_set(
-    target: IntegerBuffer, index: int, value: int,
+    target: IntegerBuffer,
+    index: int,
+    value: int,
 ) -> bool:
     target[index] = value
     return True
@@ -26,7 +28,8 @@ def dense_integer_matrix_set(
 
 @native
 def dense_integer_matrix_copy(
-    output: IntegerBuffer, source: IntegerBuffer,
+    output: IntegerBuffer,
+    source: IntegerBuffer,
 ) -> bool:
     valid = len(output) == len(source)
     if valid:
@@ -63,7 +66,8 @@ def dense_integer_matrix_subtract(
 
 @native
 def dense_integer_matrix_negate(
-    output: IntegerBuffer, source: IntegerBuffer,
+    output: IntegerBuffer,
+    source: IntegerBuffer,
 ) -> bool:
     valid = len(output) == len(source)
     if valid:
@@ -104,7 +108,8 @@ def dense_integer_matrix_transpose(
 
 @native
 def dense_integer_matrix_equal(
-    left: IntegerBuffer, right: IntegerBuffer,
+    left: IntegerBuffer,
+    right: IntegerBuffer,
 ) -> bool:
     equal = len(left) == len(right)
     if equal:
@@ -125,7 +130,9 @@ def dense_integer_matrix_is_zero(source: IntegerBuffer) -> bool:
 
 @native
 def dense_integer_matrix_is_one(
-    source: IntegerBuffer, rows: uint64, columns: uint64,
+    source: IntegerBuffer,
+    rows: uint64,
+    columns: uint64,
 ) -> bool:
     answer = rows == columns and len(source) == rows * columns
     if answer:
@@ -193,9 +200,9 @@ def dense_integer_matrix_augment(
             for column in range(left_columns):
                 output[target + column] = left[row * left_columns + column]
             for column in range(right_columns):
-                output[target + left_columns + column] = (
-                    right[row * right_columns + column]
-                )
+                output[target + left_columns + column] = right[
+                    row * right_columns + column
+                ]
     return valid
 
 
@@ -217,9 +224,9 @@ def dense_integer_matrix_select_rows(
                 valid = False
             else:
                 for column in range(columns):
-                    output[target_row * columns + column] = (
-                        source[source_row * columns + column]
-                    )
+                    output[target_row * columns + column] = source[
+                        source_row * columns + column
+                    ]
     return valid
 
 
@@ -241,9 +248,9 @@ def dense_integer_matrix_select_columns(
                 if source_column >= source_columns:
                     valid = False
                 else:
-                    output[row * len(indices) + target_column] = (
-                        source[row * source_columns + source_column]
-                    )
+                    output[row * len(indices) + target_column] = source[
+                        row * source_columns + source_column
+                    ]
     return valid
 
 
@@ -302,23 +309,23 @@ def dense_integer_matrix_random_fill_default(
 
 
 __all__ = [
-    'dense_integer_matrix_add',
-    'dense_integer_matrix_augment',
-    'dense_integer_matrix_copy',
-    'dense_integer_matrix_equal',
-    'dense_integer_matrix_get',
-    'dense_integer_matrix_is_one',
-    'dense_integer_matrix_is_zero',
-    'dense_integer_matrix_negate',
-    'dense_integer_matrix_nonzero_count',
-    'dense_integer_matrix_random_fill',
-    'dense_integer_matrix_random_fill_default',
-    'dense_integer_matrix_scalar_multiply',
-    'dense_integer_matrix_select_columns',
-    'dense_integer_matrix_select_rows',
-    'dense_integer_matrix_stack',
-    'dense_integer_matrix_set',
-    'dense_integer_matrix_subtract',
-    'dense_integer_matrix_trace',
-    'dense_integer_matrix_transpose',
+    "dense_integer_matrix_add",
+    "dense_integer_matrix_augment",
+    "dense_integer_matrix_copy",
+    "dense_integer_matrix_equal",
+    "dense_integer_matrix_get",
+    "dense_integer_matrix_is_one",
+    "dense_integer_matrix_is_zero",
+    "dense_integer_matrix_negate",
+    "dense_integer_matrix_nonzero_count",
+    "dense_integer_matrix_random_fill",
+    "dense_integer_matrix_random_fill_default",
+    "dense_integer_matrix_scalar_multiply",
+    "dense_integer_matrix_select_columns",
+    "dense_integer_matrix_select_rows",
+    "dense_integer_matrix_stack",
+    "dense_integer_matrix_set",
+    "dense_integer_matrix_subtract",
+    "dense_integer_matrix_trace",
+    "dense_integer_matrix_transpose",
 ]

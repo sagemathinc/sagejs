@@ -31,8 +31,10 @@ class DefaultsError(ValueError):
     def __init__(self, name: str, defs: dict):
         ValueError.__init__(
             self,
-            name + ' is not a supported option. Supported options are: ' +
-            str(Object.keys(defs)))
+            name
+            + " is not a supported option. Supported options are: "
+            + str(Object.keys(defs)),
+        )
 
 
 def has_prop(value: object, name: str) -> bool:
@@ -88,14 +90,13 @@ def make_predicate(words: Union[str, list[str]]) -> dict[str, Literal[True]]:
 
 def cache_file_name(src: str, cache_dir: str) -> Union[None, str]:
     if cache_dir:
-        src = str.replace(src, '\\', '/')
+        src = str.replace(src, "\\", "/")
         # A cache key may contain an absolute Windows path.  Replace every
         # Win32-forbidden filename character before flattening directories;
         # in particular, do not leave the drive-letter colon in the key.
         for character in '<>:"|?*':
-            src = str.replace(src, character, '-')
-        return cache_dir + '/' + str.lstrip(
-            str.replace(src, '/', '-') + '.json', '-')
+            src = str.replace(src, character, "-")
+        return cache_dir + "/" + str.lstrip(str.replace(src, "/", "-") + ".json", "-")
     return None
 
 
@@ -105,7 +106,8 @@ def charAt(s: str, n: int) -> str:
     try:
         return s.charAt(n)  # type: ignore
     except:
-        if n < 0 or n >= len(s): return ''
+        if n < 0 or n >= len(s):
+            return ""
         return s[n]
 
 

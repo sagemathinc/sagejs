@@ -8,8 +8,8 @@ from __python__ import Object  # type: ignore
 def js_new(f, *args, **kwds):
     receiver = Object.create(f.prototype)
     supplied_args = args.concat([ρσ_desugar_kwargs([kwds])])
-    return ρσ_interpolate_kwargs_constructor(
-        receiver, False, f, supplied_args)
+    return ρσ_interpolate_kwargs_constructor(receiver, False, f, supplied_args)
+
 
 def js_instanceof(obj, cls):
     return r"%js obj instanceof cls"

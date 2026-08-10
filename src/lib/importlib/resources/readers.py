@@ -13,7 +13,7 @@ class FileReader(TraversableResources):
         return Path(self.loader.path).parent
 
     def open_resource(self, resource):
-        return self.files().joinpath(resource).open('rb')
+        return self.files().joinpath(resource).open("rb")
 
     def resource_path(self, resource):
         return str(self.files().joinpath(resource))

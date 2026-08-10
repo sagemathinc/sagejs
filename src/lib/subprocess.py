@@ -29,11 +29,19 @@ class CalledProcessError(SubprocessError):
     def __str__(self):
         if self.returncode < 0:
             return (
-                'Command ' + repr(self.cmd) + ' died with signal '
-                + str(-self.returncode) + '.')
+                "Command "
+                + repr(self.cmd)
+                + " died with signal "
+                + str(-self.returncode)
+                + "."
+            )
         return (
-            'Command ' + repr(self.cmd) + ' returned non-zero exit status '
-            + str(self.returncode) + '.')
+            "Command "
+            + repr(self.cmd)
+            + " returned non-zero exit status "
+            + str(self.returncode)
+            + "."
+        )
 
 
 class TimeoutExpired(SubprocessError):
@@ -46,8 +54,12 @@ class TimeoutExpired(SubprocessError):
 
     def __str__(self):
         return (
-            'Command ' + repr(self.cmd) + ' timed out after '
-            + str(self.timeout) + ' seconds')
+            "Command "
+            + repr(self.cmd)
+            + " timed out after "
+            + str(self.timeout)
+            + " seconds"
+        )
 
 
 class CompletedProcess:
@@ -59,17 +71,20 @@ class CompletedProcess:
 
     def __repr__(self):
         return (
-            'CompletedProcess(args=' + repr(self.args)
-            + ', returncode=' + repr(self.returncode)
-            + ('' if self.stdout is None else ', stdout=' + repr(self.stdout))
-            + ('' if self.stderr is None else ', stderr=' + repr(self.stderr))
-            + ')'
+            "CompletedProcess(args="
+            + repr(self.args)
+            + ", returncode="
+            + repr(self.returncode)
+            + ("" if self.stdout is None else ", stdout=" + repr(self.stdout))
+            + ("" if self.stderr is None else ", stderr=" + repr(self.stderr))
+            + ")"
         )
 
     def check_returncode(self):
         if self.returncode:
             raise CalledProcessError(
-                self.returncode, self.args, self.stdout, self.stderr)
+                self.returncode, self.args, self.stdout, self.stderr
+            )
 
 
 def _command(args, shell):
@@ -78,7 +93,10 @@ def _command(args, shell):
         if isinstance(text, bytes):
             text = text.decode()
         return [text] if not shell else [text]
-    return [os.fspath(value) if isinstance(value, os.PathLike) else str(value) for value in args]
+    return [
+        os.fspath(value) if isinstance(value, os.PathLike) else str(value)
+        for value in args
+    ]
 
 
 def _environment(env):
@@ -92,8 +110,8 @@ def _decode(data, text, encoding, errors):
     if not text:
         return value
     return value.decode(
-        'utf8' if encoding is None else encoding,
-        'strict' if errors is None else errors,
+        "utf8" if encoding is None else encoding,
+        "strict" if errors is None else errors,
     )
 
 
@@ -132,12 +150,24 @@ class Popen:
         **keywords,
     ):
         del (
-            bufsize, stdin, preexec_fn, close_fds, startupinfo,
-            creationflags, restore_signals, start_new_session, pass_fds,
-            user, group, extra_groups, umask, pipesize, process_group,
+            bufsize,
+            stdin,
+            preexec_fn,
+            close_fds,
+            startupinfo,
+            creationflags,
+            restore_signals,
+            start_new_session,
+            pass_fds,
+            user,
+            group,
+            extra_groups,
+            umask,
+            pipesize,
+            process_group,
         )
         if keywords:
-            raise TypeError('unexpected keyword argument: ' + next(iter(keywords)))
+            raise TypeError("unexpected keyword argument: " + next(iter(keywords)))
         self.args = args
         self._stdout_setting = stdout
         self._stderr_setting = stderr
@@ -164,13 +194,13 @@ class Popen:
         if input_data is not None:
             if isinstance(input_data, str):
                 input_bytes = input_data.encode(
-                    'utf8' if self._encoding is None else self._encoding,
-                    'strict' if self._errors is None else self._errors,
+                    "utf8" if self._encoding is None else self._encoding,
+                    "strict" if self._errors is None else self._errors,
                 )
             else:
                 input_bytes = bytes(input_data)
         result = os._host_call(
-            'subprocessRun',
+            "subprocessRun",
             _command(self.args, shell),
             None if cwd is None else os.fspath(cwd),
             _environment(env),
@@ -180,40 +210,45 @@ class Popen:
             executable,
             64 * 1024 * 1024,
         )
-        error_code = os._property(result, 'errorCode', None)
-        raw_stdout = os._property(result, 'stdout', [])
-        raw_stderr = os._property(result, 'stderr', [])
-        stdout_value = _decode(
-            raw_stdout, self._text, self._encoding, self._errors)
-        stderr_value = _decode(
-            raw_stderr, self._text, self._encoding, self._errors)
+        error_code = os._property(result, "errorCode", None)
+        raw_stdout = os._property(result, "stdout", [])
+        raw_stderr = os._property(result, "stderr", [])
+        stdout_value = _decode(raw_stdout, self._text, self._encoding, self._errors)
+        stderr_value = _decode(raw_stderr, self._text, self._encoding, self._errors)
         if self._stderr_setting == STDOUT:
             stdout_value += stderr_value
             stderr_value = None
-        self.pid = os._property(result, 'pid', None)
-        status = os._property(result, 'status', None)
-        signal = os._property(result, 'signal', None)
+        self.pid = os._property(result, "pid", None)
+        status = os._property(result, "status", None)
+        signal = os._property(result, "signal", None)
         self.returncode = status if status is not None else (-1 if signal else 1)
-        self._result = runtime.math_tuple([
-            stdout_value if self._stdout_setting == PIPE else None,
-            stderr_value if self._stderr_setting == PIPE else None,
-        ])
+        self._result = runtime.math_tuple(
+            [
+                stdout_value if self._stdout_setting == PIPE else None,
+                stderr_value if self._stderr_setting == PIPE else None,
+            ]
+        )
         if self._stdout_setting == PIPE:
-            self.stdout = io.StringIO(stdout_value) if self._text else io.BytesIO(stdout_value)
+            self.stdout = (
+                io.StringIO(stdout_value) if self._text else io.BytesIO(stdout_value)
+            )
         if self._stderr_setting == PIPE:
-            self.stderr = io.StringIO(stderr_value) if self._text else io.BytesIO(stderr_value)
-        if error_code == 'ETIMEDOUT':
+            self.stderr = (
+                io.StringIO(stderr_value) if self._text else io.BytesIO(stderr_value)
+            )
+        if error_code == "ETIMEDOUT":
             raise TimeoutExpired(self.args, timeout, stdout_value, stderr_value)
-        if error_code in ('ENOENT', 'EACCES'):
-            message = os._property(result, 'errorMessage', error_code)
-            if error_code == 'ENOENT':
+        if error_code in ("ENOENT", "EACCES"):
+            message = os._property(result, "errorMessage", error_code)
+            if error_code == "ENOENT":
                 raise FileNotFoundError(2, message, _command(self.args, shell)[0])
             raise PermissionError(13, message, _command(self.args, shell)[0])
 
     def communicate(self, input=None, timeout=None):
         if input is not None:
             raise ValueError(
-                'input must be supplied to subprocess.run in the eager backend')
+                "input must be supplied to subprocess.run in the eager backend"
+            )
         del timeout
         return self._result
 
@@ -227,7 +262,7 @@ class Popen:
     def send_signal(self, signal):
         del signal
         if self.returncode is None:
-            raise NotImplementedError('live process signaling is not available')
+            raise NotImplementedError("live process signaling is not available")
 
     def terminate(self):
         self.send_signal(15)
@@ -264,10 +299,12 @@ def run(
     **keywords,
 ):
     if input is not None and stdin is not None:
-        raise ValueError('stdin and input arguments may not both be used')
+        raise ValueError("stdin and input arguments may not both be used")
     if capture_output:
         if stdout is not None or stderr is not None:
-            raise ValueError('stdout and stderr arguments may not be used with capture_output')
+            raise ValueError(
+                "stdout and stderr arguments may not be used with capture_output"
+            )
         stdout = PIPE
         stderr = PIPE
     stdout_setting = stdout
@@ -318,8 +355,8 @@ def check_call(*popenargs, **keywords):
 
 
 def check_output(*popenargs, timeout=None, **keywords):
-    if 'stdout' in keywords:
-        raise ValueError('stdout argument not allowed, it will be overridden')
+    if "stdout" in keywords:
+        raise ValueError("stdout argument not allowed, it will be overridden")
     return run(
         *popenargs,
         stdout=PIPE,
@@ -339,7 +376,7 @@ def getstatusoutput(cmd, *, encoding=None, errors=None):
         encoding=encoding,
         errors=errors,
     )
-    output = result.stdout[:-1] if result.stdout.endswith('\n') else result.stdout
+    output = result.stdout[:-1] if result.stdout.endswith("\n") else result.stdout
     return result.returncode, output
 
 

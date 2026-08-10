@@ -4,7 +4,7 @@ from typing import Any
 
 import sagejs.runtime as runtime
 
-GraphDatabase: Any = runtime.reflect.get(runtime.global_object, 'GraphDatabase')
-GraphQuery: Any = runtime.reflect.get(runtime.global_object, 'GraphQuery')
+GraphDatabase: Any = runtime.reflect.get(runtime.global_object, "GraphDatabase")
+GraphQuery: Any = runtime.reflect.get(runtime.global_object, "GraphQuery")
 
-__all__ = ['GraphDatabase', 'GraphQuery']
+__all__ = ["GraphDatabase", "GraphQuery"]

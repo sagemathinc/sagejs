@@ -8,14 +8,17 @@ def p1_normalize(N, u, v, compute_s=False):
 
     u = u % N
     v = v % N
-    if u < 0: u = u + N
-    if v < 0: v = v + N
+    if u < 0:
+        u = u + N
+    if v < 0:
+        v = v + N
     if u == 0:
         return [0, 1 if gcd(v, N) == 1 else 0, v]
 
     [g, s, t] = xgcd(u, N)
     s = s % N
-    if s < 0: s = s + N
+    if s < 0:
+        s = s + N
     if gcd(g, v) != 1:
         return [0, 0, 0]
 
@@ -43,8 +46,10 @@ def p1_normalize(N, u, v, compute_s=False):
                 min_v = v
                 min_t = t
     v = min_v
-    if u < 0: u = u + N
-    if v < 0: v = v + N
+    if u < 0:
+        u = u + N
+    if v < 0:
+        v = v + N
     if compute_s:
         s = inverse_mod(s * min_t, N)
     else:
@@ -61,5 +66,5 @@ def p1_normalize_many_times(n=10**5):
 
 register("p1_normalize_many_times", p1_normalize_many_times)
 
-if __name__ == '__main__':
-    all('p1list')
+if __name__ == "__main__":
+    all("p1list")

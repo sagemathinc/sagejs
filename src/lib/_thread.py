@@ -22,7 +22,7 @@ class LockType:
 
     def release(self):
         if not self._locked:
-            raise RuntimeError('release unlocked lock')
+            raise RuntimeError("release unlocked lock")
         self._locked = False
 
     def locked(self):
@@ -51,7 +51,7 @@ def get_native_id():
 
 def stack_size(size=None):
     if size is not None and size != 0:
-        raise ValueError('custom thread stack sizes are not supported')
+        raise ValueError("custom thread stack sizes are not supported")
     return 0
 
 

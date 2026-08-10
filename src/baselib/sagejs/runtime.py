@@ -42,6 +42,7 @@ are the bootstrap implementation used by older checked-in compilers.
 # globals: ρσ_set_class_repr, ρσ_string_find, ρσ_string_primitive
 # globals: ρσ_strict_equal
 
+
 def jstype(value):
     return r"%js typeof value"
 
@@ -321,16 +322,14 @@ def ρσ_dynamic_eval(
 
 def register_doc(name, value, metadata=None):
     """Register a public runtime object and optional DocSpec metadata."""
-    registry = reflect.get(
-        global_object, '__sagejs_doc_registry__')
+    registry = reflect.get(global_object, "__sagejs_doc_registry__")
     if registry is undefined:
         registry = []
-        reflect.set(
-            global_object, '__sagejs_doc_registry__', registry)
+        reflect.set(global_object, "__sagejs_doc_registry__", registry)
     if metadata is None:
         metadata = object.create(None)
     reflect.apply(
-        reflect.get(registry, 'push'),
+        reflect.get(registry, "push"),
         registry,
         [[name, value, metadata]],
     )
@@ -338,8 +337,7 @@ def register_doc(name, value, metadata=None):
 
 def documentation_registry():
     """Return public names explicitly registered for documentation."""
-    registry = reflect.get(
-        global_object, '__sagejs_doc_registry__')
+    registry = reflect.get(global_object, "__sagejs_doc_registry__")
     if registry is undefined:
         return []
     return registry
@@ -379,7 +377,7 @@ is_exact_integer = ρσ_is_exact_integer
 is_math_element = ρσ_is_math_element
 is_nan = isNaN
 iterator_symbol = ρσ_iterator_symbol
-last_exception = r'%js ρσ_last_exception'
+last_exception = r"%js ρσ_last_exception"
 json = JSON
 kwargs_symbol = ρσ_kwargs_symbol
 lightweight_math_class = ρσ_lightweight_math_class

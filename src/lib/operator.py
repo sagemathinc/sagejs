@@ -4,15 +4,63 @@ import builtins
 
 
 __all__ = [
-    'abs', 'add', 'and_', 'attrgetter', 'call', 'concat', 'contains',
-    'countOf', 'delitem', 'eq', 'floordiv', 'ge', 'getitem', 'gt',
-    'iadd', 'iand', 'iconcat', 'ifloordiv', 'ilshift', 'imatmul',
-    'imod', 'imul', 'index', 'indexOf', 'inv', 'invert', 'ior',
-    'ipow', 'irshift', 'is_', 'is_none', 'is_not', 'is_not_none',
-    'isub', 'itemgetter', 'itruediv', 'ixor', 'le', 'length_hint',
-    'lshift', 'lt', 'matmul', 'methodcaller', 'mod', 'mul', 'ne',
-    'neg', 'not_', 'or_', 'pos', 'pow', 'rshift', 'setitem', 'sub',
-    'truediv', 'truth', 'xor',
+    "abs",
+    "add",
+    "and_",
+    "attrgetter",
+    "call",
+    "concat",
+    "contains",
+    "countOf",
+    "delitem",
+    "eq",
+    "floordiv",
+    "ge",
+    "getitem",
+    "gt",
+    "iadd",
+    "iand",
+    "iconcat",
+    "ifloordiv",
+    "ilshift",
+    "imatmul",
+    "imod",
+    "imul",
+    "index",
+    "indexOf",
+    "inv",
+    "invert",
+    "ior",
+    "ipow",
+    "irshift",
+    "is_",
+    "is_none",
+    "is_not",
+    "is_not_none",
+    "isub",
+    "itemgetter",
+    "itruediv",
+    "ixor",
+    "le",
+    "length_hint",
+    "lshift",
+    "lt",
+    "matmul",
+    "methodcaller",
+    "mod",
+    "mul",
+    "ne",
+    "neg",
+    "not_",
+    "or_",
+    "pos",
+    "pow",
+    "rshift",
+    "setitem",
+    "sub",
+    "truediv",
+    "truth",
+    "xor",
 ]
 
 
@@ -25,11 +73,11 @@ def _type_name(value):
     except AttributeError:
         rendered = repr(type(value))
         if rendered.startswith("<class '") and rendered.endswith("'>"):
-            return rendered[8:-2].rsplit('.', 1)[-1]
+            return rendered[8:-2].rsplit(".", 1)[-1]
         return rendered
-    if name == 'SageObject':
-        return 'object'
-    if name.startswith('ρσ_'):
+    if name == "SageObject":
+        return "object"
+    if name.startswith("ρσ_"):
         return name[3:]
     return name
 
@@ -105,13 +153,11 @@ def index(value):
         method = value.__index__
     except AttributeError:
         raise TypeError(
-            "'" + _type_name(value)
-            + "' object cannot be interpreted as an integer")
+            "'" + _type_name(value) + "' object cannot be interpreted as an integer"
+        )
     answer = method()
     if not isinstance(answer, int):
-        raise TypeError(
-            '__index__ returned non-int (type '
-            + _type_name(answer) + ')')
+        raise TypeError("__index__ returned non-int (type " + _type_name(answer) + ")")
     return int(answer)
 
 
@@ -151,7 +197,7 @@ def pos(value):
 
 
 def pow(left, right):
-    return left ** right
+    return left**right
 
 
 def rshift(left, right):
@@ -175,8 +221,7 @@ def xor(left, right):
 
 def concat(left, right):
     if isinstance(left, (bool, int, float, complex)):
-        raise TypeError(
-            "'" + type(left).__name__ + "' object can't be concatenated")
+        raise TypeError("'" + type(left).__name__ + "' object can't be concatenated")
     return left + right
 
 
@@ -204,7 +249,7 @@ def indexOf(iterable, value):
     for position, item in enumerate(iterable):
         if item is value or item == value:
             return position
-    raise ValueError('sequence.index(x): x not in sequence')
+    raise ValueError("sequence.index(x): x not in sequence")
 
 
 def setitem(container, key, value):
@@ -215,18 +260,20 @@ def length_hint(value, fallback=_missing, **keywords):
     if keywords:
         name = next(iter(keywords))
         raise TypeError(
-            "length_hint() got an unexpected keyword argument '"
-            + name + "'")
+            "length_hint() got an unexpected keyword argument '" + name + "'"
+        )
     if fallback is _missing:
         fallback = 0
     if not isinstance(fallback, int):
         raise TypeError(
-            "'" + type(fallback).__name__
-            + "' object cannot be interpreted as an integer")
-    if hasattr(value, '__len__'):
+            "'"
+            + type(fallback).__name__
+            + "' object cannot be interpreted as an integer"
+        )
+    if hasattr(value, "__len__"):
         return len(value)
     try:
-        hint = getattr(value, '__length_hint__')
+        hint = getattr(value, "__length_hint__")
     except AttributeError:
         return fallback
     try:
@@ -236,11 +283,9 @@ def length_hint(value, fallback=_missing, **keywords):
     if answer is NotImplemented:
         return fallback
     if not isinstance(answer, int):
-        raise TypeError(
-            '__length_hint__ must be integer, not '
-            + type(answer).__name__)
+        raise TypeError("__length_hint__ must be integer, not " + type(answer).__name__)
     if answer < 0:
-        raise ValueError('__length_hint__() should return >= 0')
+        raise ValueError("__length_hint__() should return >= 0")
     return answer
 
 
@@ -249,15 +294,14 @@ def call(function, *args, **keywords):
 
 
 class attrgetter:
-
     def __init__(self, attribute, *attributes):
         self._attributes = (attribute,) + attributes
         for name in self._attributes:
             if not isinstance(name, str):
-                raise TypeError('attribute name must be a string')
+                raise TypeError("attribute name must be a string")
 
     def _get(self, value, path):
-        for name in path.split('.'):
+        for name in path.split("."):
             value = getattr(value, name)
         return value
 
@@ -267,12 +311,11 @@ class attrgetter:
         return tuple(self._get(value, path) for path in self._attributes)
 
     def __repr__(self):
-        arguments = ', '.join(repr(value) for value in self._attributes)
-        return 'operator.attrgetter(' + arguments + ')'
+        arguments = ", ".join(repr(value) for value in self._attributes)
+        return "operator.attrgetter(" + arguments + ")"
 
 
 class itemgetter:
-
     def __init__(self, item, *items):
         self._items = (item,) + items
 
@@ -282,15 +325,14 @@ class itemgetter:
         return tuple(value[item] for item in self._items)
 
     def __repr__(self):
-        arguments = ', '.join(repr(value) for value in self._items)
-        return 'operator.itemgetter(' + arguments + ')'
+        arguments = ", ".join(repr(value) for value in self._items)
+        return "operator.itemgetter(" + arguments + ")"
 
 
 class methodcaller:
-
     def __init__(self, name, *args, **keywords):
         if not isinstance(name, str):
-            raise TypeError('method name must be a string')
+            raise TypeError("method name must be a string")
         self._name = name
         self._args = args
         self._keywords = keywords
@@ -302,9 +344,9 @@ class methodcaller:
         arguments = [repr(self._name)]
         arguments.extend(repr(value) for value in self._args)
         arguments.extend(
-            name + '=' + repr(value)
-            for name, value in self._keywords.items())
-        return 'operator.methodcaller(' + ', '.join(arguments) + ')'
+            name + "=" + repr(value) for name, value in self._keywords.items()
+        )
+        return "operator.methodcaller(" + ", ".join(arguments) + ")"
 
 
 def iadd(left, right):
@@ -319,8 +361,7 @@ def iand(left, right):
 
 def iconcat(left, right):
     if isinstance(left, (bool, int, float, complex)):
-        raise TypeError(
-            "'" + type(left).__name__ + "' object can't be concatenated")
+        raise TypeError("'" + type(left).__name__ + "' object can't be concatenated")
     left += right
     return left
 

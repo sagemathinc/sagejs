@@ -9839,6 +9839,10 @@ undefined;
                     (next?.__call__?.bind(next) ?? next)();
                     if ((is_?.__call__?.bind(is_) ?? is_)("punc", ",")) {
                         (next?.__call__?.bind(next) ?? next)();
+                        if (bracketed && (is_?.__call__?.bind(is_) ?? is_)("punc", ")")) {
+                            (next?.__call__?.bind(next) ?? next)();
+                            break;
+                        }
                     } else {
                         if (bracketed) {
                             if ((is_?.__call__?.bind(is_) ?? is_)("punc", ")")) {
@@ -9870,6 +9874,10 @@ undefined;
                     (next?.__call__?.bind(next) ?? next)();
                     if ((is_?.__call__?.bind(is_) ?? is_)("punc", ",")) {
                         (next?.__call__?.bind(next) ?? next)();
+                        if (bracketed && (is_?.__call__?.bind(is_) ?? is_)("punc", ")")) {
+                            (next?.__call__?.bind(next) ?? next)();
+                            break;
+                        }
                     } else {
                         if (bracketed) {
                             if ((is_?.__call__?.bind(is_) ?? is_)("punc", ")")) {
@@ -9963,6 +9971,10 @@ undefined;
                             argnames.push(aname);
                             if ((is_?.__call__?.bind(is_) ?? is_)("punc", ",")) {
                                 (next?.__call__?.bind(next) ?? next)();
+                                if (bracketed && (is_?.__call__?.bind(is_) ?? is_)("punc", ")")) {
+                                    (next?.__call__?.bind(next) ?? next)();
+                                    break;
+                                }
                             } else {
                                 if (bracketed) {
                                     if ((is_?.__call__?.bind(is_) ?? is_)("punc", ")")) {
@@ -10002,7 +10014,7 @@ import_.__module__ = "parse";
 undefined;
 
             function class_() {
-                var name, externaldecorator, class_details, bases, class_parent, a, docstrings, definition, descriptor, stmt, class_var_names, visitor;
+                var name, externaldecorator, class_details, bases, class_parent, a, docstrings, definition, descriptor, stmt, class_var_names, visitor, previous_parenthesized_expr;
                 name = (as_symbol?.__call__?.bind(as_symbol) ?? as_symbol)(AST_SymbolDefun);
                 if (!name) {
                     (unexpected?.__call__?.bind(unexpected) ?? unexpected)();
@@ -10012,11 +10024,12 @@ undefined;
                 bases = [];
                 class_parent = null;
                 if ((is_?.__call__?.bind(is_) ?? is_)("punc", "(")) {
+                    previous_parenthesized_expr = S.in_parenthesized_expr;
                     S.in_parenthesized_expr = true;
                     (next?.__call__?.bind(next) ?? next)();
                     while (true) {
                         if ((is_?.__call__?.bind(is_) ?? is_)("punc", ")")) {
-                            S.in_parenthesized_expr = false;
+                            S.in_parenthesized_expr = previous_parenthesized_expr;
                             (next?.__call__?.bind(next) ?? next)();
                             break;
                         }
@@ -10537,15 +10550,16 @@ nonlocal_.__module__ = "parse";
 undefined;
 
             function new_() {
-                var start, newexp, args;
+                var start, newexp, args, previous_parenthesized_expr;
                 start = S.token;
                 (expect_token?.__call__?.bind(expect_token) ?? expect_token)("operator", "new");
                 newexp = (expr_atom?.__call__?.bind(expr_atom) ?? expr_atom)(false);
                 if ((is_?.__call__?.bind(is_) ?? is_)("punc", "(")) {
+                    previous_parenthesized_expr = S.in_parenthesized_expr;
                     S.in_parenthesized_expr = true;
                     (next?.__call__?.bind(next) ?? next)();
                     args = (func_call_list?.__call__?.bind(func_call_list) ?? func_call_list)();
-                    S.in_parenthesized_expr = false;
+                    S.in_parenthesized_expr = previous_parenthesized_expr;
                 } else {
                     args = (func_call_list?.__call__?.bind(func_call_list) ?? func_call_list)(true);
                 }
@@ -10612,7 +10626,7 @@ as_atom_node.__module__ = "parse";
 undefined;
 
             function expr_atom(allow_calls) {
-                var start, tmp_, ex, ret, cls, func;
+                var start, tmp_, ex, ret, cls, func, previous_parenthesized_expr;
                 if ((is_?.__call__?.bind(is_) ?? is_)("operator", "new")) {
                     return (new_?.__call__?.bind(new_) ?? new_)();
                 }
@@ -10620,16 +10634,18 @@ undefined;
                 if ((is_?.__call__?.bind(is_) ?? is_)("punc")) {
                     tmp_ = start.value;
                     if (tmp_ === "(") {
+                        previous_parenthesized_expr = S.in_parenthesized_expr;
                         S.in_parenthesized_expr = true;
                         (next?.__call__?.bind(next) ?? next)();
                         if ((is_?.__call__?.bind(is_) ?? is_)("punc", ")")) {
                             (next?.__call__?.bind(next) ?? next)();
+                            S.in_parenthesized_expr = previous_parenthesized_expr;
                             return new AST_Array({"elements":ρσ_list_decorate([])});
                         }
                         ex = (expression?.__call__?.bind(expression) ?? expression)(true);
                         if ((is_?.__call__?.bind(is_) ?? is_)("keyword", "for")) {
                             ret = (read_comprehension?.__call__?.bind(read_comprehension) ?? read_comprehension)(new AST_GeneratorComprehension({"statement":ex}), ")");
-                            S.in_parenthesized_expr = false;
+                            S.in_parenthesized_expr = previous_parenthesized_expr;
                             return ret;
                         }
                         ex.start = start;
@@ -10643,7 +10659,7 @@ undefined;
                         if ((is_node_type?.__call__?.bind(is_node_type) ?? is_node_type)(ex, AST_UnaryPrefix)) {
                             ex.parenthesized = true;
                         }
-                        S.in_parenthesized_expr = false;
+                        S.in_parenthesized_expr = previous_parenthesized_expr;
                         return (subscripts?.__call__?.bind(subscripts) ?? subscripts)(ex, allow_calls);
                     } else if (tmp_ === "[") {
                         return (subscripts?.__call__?.bind(subscripts) ?? subscripts)((array_?.__call__?.bind(array_) ?? array_)(), allow_calls);
@@ -10907,11 +10923,12 @@ read_ellipses_range.__module__ = "parse";
 undefined;
 
             function read_comprehension(obj, terminator) {
-                var forloop;
+                var forloop, previous_parenthesized_expr;
                 if ((is_node_type?.__call__?.bind(is_node_type) ?? is_node_type)(obj, AST_GeneratorComprehension)) {
                     baselib_items["yield"] = true;
                 }
                 S.in_comprehension = true;
+                previous_parenthesized_expr = S.in_parenthesized_expr;
                 S.in_parenthesized_expr = false;
                 (expect_token?.__call__?.bind(expect_token) ?? expect_token)("keyword", "for");
                 forloop = (for_?.__call__?.bind(for_) ?? for_)(true);
@@ -10922,6 +10939,7 @@ undefined;
                 (expression?.__call__?.bind(expression) ?? expression)(true));
                 (expect?.__call__?.bind(expect) ?? expect)(terminator);
                 S.in_comprehension = false;
+                S.in_parenthesized_expr = previous_parenthesized_expr;
                 return obj;
             };
 read_comprehension.__argnames__ = ["obj", "terminator"];
@@ -11106,13 +11124,14 @@ getitem.__module__ = "parse";
 undefined;
 
             function call_(expr) {
-                var start, ret, c, funcname, tmp_, args;
+                var start, ret, c, funcname, tmp_, args, previous_parenthesized_expr;
                 start = expr.start;
+                previous_parenthesized_expr = S.in_parenthesized_expr;
                 S.in_parenthesized_expr = true;
                 (next?.__call__?.bind(next) ?? next)();
                 if (!expr.parens && (get_class_in_scope?.__call__?.bind(get_class_in_scope) ?? get_class_in_scope)(expr)) {
                     ret = (subscripts?.__call__?.bind(subscripts) ?? subscripts)(new AST_New({"start":start,"expression":expr,"args":(func_call_list?.__call__?.bind(func_call_list) ?? func_call_list)(),"end":(prev?.__call__?.bind(prev) ?? prev)()}), true);
-                    S.in_parenthesized_expr = false;
+                    S.in_parenthesized_expr = previous_parenthesized_expr;
                     return ret;
                 } else {
                     if ((is_node_type?.__call__?.bind(is_node_type) ?? is_node_type)(expr, AST_Dot)) {
@@ -11121,13 +11140,13 @@ undefined;
                     if (c) {
                         funcname = expr;
                         ret = (subscripts?.__call__?.bind(subscripts) ?? subscripts)(new AST_ClassCall({"start":start,"class":expr.expression,"method":funcname.property,"static":(is_static_method?.__call__?.bind(is_static_method) ?? is_static_method)(c, funcname.property),"args":(func_call_list?.__call__?.bind(func_call_list) ?? func_call_list)(),"end":(prev?.__call__?.bind(prev) ?? prev)()}), true);
-                        S.in_parenthesized_expr = false;
+                        S.in_parenthesized_expr = previous_parenthesized_expr;
                         return ret;
                     } else if ((is_node_type?.__call__?.bind(is_node_type) ?? is_node_type)(expr, AST_SymbolRef)) {
                         tmp_ = expr.name;
                         if (tmp_ === "jstype") {
                             ret = new AST_UnaryPrefix({"start":start,"operator":"typeof","expression":(func_call_list?.__call__?.bind(func_call_list) ?? func_call_list)()[0],"end":(prev?.__call__?.bind(prev) ?? prev)()});
-                            S.in_parenthesized_expr = false;
+                            S.in_parenthesized_expr = previous_parenthesized_expr;
                             return ret;
                         } else if (tmp_ === "isinstance") {
                             args = (func_call_list?.__call__?.bind(func_call_list) ?? func_call_list)();
@@ -11135,12 +11154,12 @@ undefined;
                                 (croak?.__call__?.bind(croak) ?? croak)("isinstance() must be called with exactly two arguments");
                             }
                             ret = new AST_Binary({"start":start,"left":args[0],"operator":"instanceof","right":args[1],"end":(prev?.__call__?.bind(prev) ?? prev)()});
-                            S.in_parenthesized_expr = false;
+                            S.in_parenthesized_expr = previous_parenthesized_expr;
                             return ret;
                         }
                     }
                     ret = (subscripts?.__call__?.bind(subscripts) ?? subscripts)(new AST_Call({"start":start,"expression":expr,"args":(func_call_list?.__call__?.bind(func_call_list) ?? func_call_list)(),"end":(prev?.__call__?.bind(prev) ?? prev)()}), true);
-                    S.in_parenthesized_expr = false;
+                    S.in_parenthesized_expr = previous_parenthesized_expr;
                     return ret;
                 }
             };
@@ -11370,6 +11389,9 @@ undefined;
                     left = [ expr ];
                     while ((is_?.__call__?.bind(is_) ?? is_)("punc", ",")) {
                         (next?.__call__?.bind(next) ?? next)();
+                        if (S.in_parenthesized_expr && (is_?.__call__?.bind(is_) ?? is_)("punc", ")")) {
+                            break;
+                        }
                         if ((is_node_type?.__call__?.bind(is_node_type) ?? is_node_type)(expr, AST_Assign)) {
                             left[left.length-1] = left[left.length-1].left;
                             return (create_assign?.__call__?.bind(create_assign) ?? create_assign)({"start":start,"left":(left.length === 1) ? left[0] : new AST_Array({"elements":left}),"operator":expr.operator,"right":new AST_Seq({"car":expr.right,"cdr":(expression?.__call__?.bind(expression) ?? expression)(true, no_in)}),"end":(peek?.__call__?.bind(peek) ?? peek)()});

@@ -20,38 +20,33 @@ def _untyped(value: Any) -> Any:
 
 
 def is_exact_integer(value: object) -> bool:
-    return (
-        runtime.jstype(value) == 'bigint'
-        or (
-            runtime.jstype(value) == 'number'
-            and runtime.number.isSafeInteger(value)
-        )
+    return runtime.jstype(value) == "bigint" or (
+        runtime.jstype(value) == "number" and runtime.number.isSafeInteger(value)
     )
 
 
 def normalize_integer(value: Any) -> Any:
     value_type = runtime.jstype(value)
-    if value_type == 'number':
+    if value_type == "number":
         if not runtime.number.isSafeInteger(value):
-            raise TypeError('expected an exact integer')
+            raise TypeError("expected an exact integer")
         return value
-    if value_type != 'bigint':
-        raise TypeError('expected an exact integer')
-    if (
-        value <= runtime.bigint(runtime.number.MAX_SAFE_INTEGER)
-        and value >= runtime.bigint(runtime.number.MIN_SAFE_INTEGER)
-    ):
+    if value_type != "bigint":
+        raise TypeError("expected an exact integer")
+    if value <= runtime.bigint(
+        runtime.number.MAX_SAFE_INTEGER
+    ) and value >= runtime.bigint(runtime.number.MIN_SAFE_INTEGER):
         return runtime.number(value)
     return value
 
 
 def integer_bigint(value: object) -> int:
     value_type = runtime.jstype(value)
-    if value_type == 'number':
+    if value_type == "number":
         if not runtime.number.isSafeInteger(value):
-            raise TypeError('expected an exact integer')
-    elif value_type != 'bigint':
-        raise TypeError('expected an exact integer')
+            raise TypeError("expected an exact integer")
+    elif value_type != "bigint":
+        raise TypeError("expected an exact integer")
     return runtime.bigint(value)
 
 
@@ -60,8 +55,7 @@ def new_map() -> Any:
 
 
 def string_primitive(value: object) -> str:
-    return runtime.reflect.apply(
-        runtime.string_class, runtime.undefined, [value])
+    return runtime.reflect.apply(runtime.string_class, runtime.undefined, [value])
 
 
 def string_find(value: str, needle: str) -> int:
@@ -83,7 +77,6 @@ def bigint_gcd(left: int, right: int) -> int:
 
 
 class Parent:
-
     def __init__(self, name: str) -> None:
         self._name = name
         self._construction = runtime.undefined
@@ -102,18 +95,26 @@ class Parent:
             and isinstance(variable[0], str)
         ):
             power_series_ring = runtime.reflect.get(
-                runtime.global_object, 'PowerSeriesRing')
+                runtime.global_object, "PowerSeriesRing"
+            )
             if power_series_ring is not runtime.undefined:
                 return power_series_ring(self, variable[0])
         return runtime.polynomial_ring(self, variable)
 
     def category(self) -> Category:
-        kind = getattr(self, '_kind', None)
-        if kind == 'ZZ':
+        kind = getattr(self, "_kind", None)
+        if kind == "ZZ":
             return _integer_ring_category
         if kind in [
-            'QQ', 'GF', 'GF_EXTENSION', 'RDF', 'CDF',
-            'RealField', 'ComplexField', 'AA', 'QQBAR',
+            "QQ",
+            "GF",
+            "GF_EXTENSION",
+            "RDF",
+            "CDF",
+            "RealField",
+            "ComplexField",
+            "AA",
+            "QQBAR",
         ]:
             return Fields()
         return Rings()
@@ -129,7 +130,6 @@ class Field(Ring):
 
 @runtime.lightweight_math_class
 class Element:
-
     def __init__(self, parent: Parent) -> None:
         self._parent = parent
 
@@ -143,22 +143,21 @@ class RingElement(Element):
 
 @runtime.callable_instance_class
 class IntegerRing(Ring):
-
-    def __init__(self, name: str = 'Integer Ring') -> None:
+    def __init__(self, name: str = "Integer Ring") -> None:
         Parent.__init__(self, name)
-        self._kind = 'ZZ'
+        self._kind = "ZZ"
 
     def __call__(self, value: object) -> Any:
         candidate = _untyped(value)
         if (
-            getattr(candidate, '_parent', None) is QQ
-            and hasattr(candidate, '_numerator')
-            and hasattr(candidate, '_denominator')
+            getattr(candidate, "_parent", None) is QQ
+            and hasattr(candidate, "_numerator")
+            and hasattr(candidate, "_denominator")
         ):
             if candidate._denominator != 1:
-                raise TypeError('not an integer')
+                raise TypeError("not an integer")
             value = candidate._numerator
-        if not is_exact_integer(value) and hasattr(value, 'lift'):
+        if not is_exact_integer(value) and hasattr(value, "lift"):
             lift = _untyped(value).lift
             if callable(lift):
                 value = lift()
@@ -167,10 +166,9 @@ class IntegerRing(Ring):
 
 @runtime.callable_instance_class
 class RationalField(Field):
-
-    def __init__(self, name: str = 'Rational Field') -> None:
+    def __init__(self, name: str = "Rational Field") -> None:
         Parent.__init__(self, name)
-        self._kind = 'QQ'
+        self._kind = "QQ"
 
     def __call__(
         self,
@@ -179,8 +177,8 @@ class RationalField(Field):
     ) -> Any:
         if (
             denominator is runtime.undefined
-            and runtime.jstype(numerator) == 'object'
-            and hasattr(numerator, '_parent')
+            and runtime.jstype(numerator) == "object"
+            and hasattr(numerator, "_parent")
             and numerator._parent is self
         ):
             return numerator
@@ -188,25 +186,25 @@ class RationalField(Field):
 
     def __contains__(self, value: object) -> bool:
         return (
-            getattr(value, '_parent', None) is self
+            getattr(value, "_parent", None) is self
             or runtime.is_exact_integer(value)
-            or runtime.jstype(value) == 'number'
+            or runtime.jstype(value) == "number"
             or getattr(
-                getattr(value, '_parent', None),
-                '_kind',
+                getattr(value, "_parent", None),
+                "_kind",
                 None,
-            ) in ['RDF', 'RealField']
+            )
+            in ["RDF", "RealField"]
         )
 
 
-ZZ = IntegerRing('Integer Ring')
-ZZ._kind = 'ZZ'
-QQ = RationalField('Rational Field')
-QQ._kind = 'QQ'
+ZZ = IntegerRing("Integer Ring")
+ZZ._kind = "ZZ"
+QQ = RationalField("Rational Field")
+QQ._kind = "QQ"
 
 
 class Category:
-
     def __init__(
         self,
         name: str,
@@ -224,7 +222,7 @@ class Category:
     toString = __repr__
 
     def __contains__(self, value: Any) -> bool:
-        kind = getattr(value, '_kind', None)
+        kind = getattr(value, "_kind", None)
         if kind in self._accepted_kinds:
             return True
         if self._is_field_category:
@@ -242,24 +240,41 @@ class Category:
 
 
 _field_kinds = [
-    'QQ', 'GF', 'GF_EXTENSION', 'RDF', 'CDF',
-    'RealField', 'ComplexField', 'AA', 'QQBAR',
+    "QQ",
+    "GF",
+    "GF_EXTENSION",
+    "RDF",
+    "CDF",
+    "RealField",
+    "ComplexField",
+    "AA",
+    "QQBAR",
 ]
 _ring_kinds = [
-    'QQ', 'GF', 'GF_EXTENSION', 'RDF', 'CDF',
-    'RealField', 'ComplexField', 'AA', 'QQBAR',
-    'ZZ', 'ZMOD', 'POLYNOMIAL', 'MULTIVARIATE_POLYNOMIAL',
-    'POWER_SERIES',
+    "QQ",
+    "GF",
+    "GF_EXTENSION",
+    "RDF",
+    "CDF",
+    "RealField",
+    "ComplexField",
+    "AA",
+    "QQBAR",
+    "ZZ",
+    "ZMOD",
+    "POLYNOMIAL",
+    "MULTIVARIATE_POLYNOMIAL",
+    "POWER_SERIES",
 ]
-_rings_category = Category('Category of rings', _ring_kinds)
-_fields_category = Category('Category of fields', _field_kinds, True)
+_rings_category = Category("Category of rings", _ring_kinds)
+_fields_category = Category("Category of fields", _field_kinds, True)
 _integer_ring_category = Category(
-    'Join of Category of Dedekind domains\n'
-    '    and Category of euclidean domains\n'
-    '    and Category of noetherian rings\n'
-    '    and Category of infinite enumerated sets\n'
-    '    and Category of metric spaces',
-    ['ZZ'],
+    "Join of Category of Dedekind domains\n"
+    "    and Category of euclidean domains\n"
+    "    and Category of noetherian rings\n"
+    "    and Category of infinite enumerated sets\n"
+    "    and Category of metric spaces",
+    ["ZZ"],
 )
 
 
@@ -292,7 +307,6 @@ def _truediv(left: Any, right: Any) -> Any:
 
 
 class CoercionPlan:
-
     def __init__(
         self,
         parent: Parent,
@@ -305,9 +319,11 @@ class CoercionPlan:
 
 
 class CoercedPair:
-
     def __init__(
-        self, parent: Parent, left: Any, right: Any,
+        self,
+        parent: Parent,
+        left: Any,
+        right: Any,
     ) -> None:
         self.parent = parent
         self.left = left
@@ -315,15 +331,14 @@ class CoercedPair:
 
 
 class CoercionModel:
-
     def __init__(self) -> None:
         self._maps = new_map()
         self._planCache = new_map()
         self._operations = new_map()
-        self._operations.set('add', _add)
-        self._operations.set('sub', _sub)
-        self._operations.set('mul', _mul)
-        self._operations.set('truediv', _truediv)
+        self._operations.set("add", _add)
+        self._operations.set("sub", _sub)
+        self._operations.set("mul", _mul)
+        self._operations.set("truediv", _truediv)
 
     def register(
         self,
@@ -358,18 +373,18 @@ class CoercionModel:
         return plan
 
     def resolveParents(
-        self, left: Parent, right: Parent,
+        self,
+        left: Parent,
+        right: Parent,
     ) -> CoercionPlan:
         rights = self._planCache.get(left)
-        if (
-            rights is not runtime.undefined
-            and rights.has(right)
-        ):
+        if rights is not runtime.undefined and rights.has(right):
             return rights.get(right)
 
         if left is right:
             return self._cache(
-                left, right,
+                left,
+                right,
                 CoercionPlan(left, _identity, _identity),
             )
 
@@ -380,7 +395,8 @@ class CoercionModel:
             and right_to_left is runtime.undefined
         ):
             return self._cache(
-                left, right,
+                left,
+                right,
                 CoercionPlan(right, left_to_right, _identity),
             )
         if (
@@ -388,7 +404,8 @@ class CoercionModel:
             and left_to_right is runtime.undefined
         ):
             return self._cache(
-                left, right,
+                left,
+                right,
                 CoercionPlan(left, _identity, right_to_left),
             )
 
@@ -405,10 +422,10 @@ class CoercionModel:
             if common:
                 target = common[0]
                 second = None
-                target_precision = getattr(target, '_precision', -1)
+                target_precision = getattr(target, "_precision", -1)
                 second_precision = -1
                 for candidate in common[1:]:
-                    precision = getattr(candidate, '_precision', -1)
+                    precision = getattr(candidate, "_precision", -1)
                     if precision > target_precision:
                         second = target
                         second_precision = target_precision
@@ -417,15 +434,13 @@ class CoercionModel:
                     elif precision > second_precision:
                         second = candidate
                         second_precision = precision
-                if (
-                    second is None
-                    or (
-                        target._kind == second._kind
-                        and target_precision != second_precision
-                    )
+                if second is None or (
+                    target._kind == second._kind
+                    and target_precision != second_precision
                 ):
                     return self._cache(
-                        left, right,
+                        left,
+                        right,
                         CoercionPlan(
                             target,
                             left_targets.get(target),
@@ -435,25 +450,22 @@ class CoercionModel:
 
         left_construction = left._construction
         right_construction = right._construction
-        series_kinds = ['power_series', 'laurent_series']
+        series_kinds = ["power_series", "laurent_series"]
         if (
             left_construction is not runtime.undefined
-            and left_construction['kind'] in series_kinds
+            and left_construction["kind"] in series_kinds
         ):
             if (
                 right_construction is not runtime.undefined
-                and right_construction['kind'] in series_kinds
+                and right_construction["kind"] in series_kinds
             ):
                 if (
-                    left_construction['base']
-                    is not right_construction['base']
-                    or left_construction['variable']
-                    != right_construction['variable']
+                    left_construction["base"] is not right_construction["base"]
+                    or left_construction["variable"] != right_construction["variable"]
                 ):
-                    raise TypeError(
-                        'no canonical coercion between these series rings')
+                    raise TypeError("no canonical coercion between these series rings")
                 target = left
-                if right_construction['kind'] == 'laurent_series':
+                if right_construction["kind"] == "laurent_series":
                     target = right
 
                 def coerce_left_series(value: Any) -> Any:
@@ -463,18 +475,19 @@ class CoercionModel:
                     return _untyped(target)(value)
 
                 return self._cache(
-                    left, right,
+                    left,
+                    right,
                     CoercionPlan(
                         target,
                         coerce_left_series,
                         coerce_right_series,
                     ),
                 )
-            base_plan = self.resolveParents(
-                left_construction['base'], right)
-            if base_plan.parent is not left_construction['base']:
+            base_plan = self.resolveParents(left_construction["base"], right)
+            if base_plan.parent is not left_construction["base"]:
                 raise TypeError(
-                    'constant does not canonically coerce to series base ring')
+                    "constant does not canonically coerce to series base ring"
+                )
 
             def coerce_left_series(value: Any) -> Any:
                 return _untyped(left)(value)
@@ -483,7 +496,8 @@ class CoercionModel:
                 return _untyped(left)(base_plan.rightMap(value))
 
             return self._cache(
-                left, right,
+                left,
+                right,
                 CoercionPlan(
                     left,
                     coerce_left_series,
@@ -492,13 +506,13 @@ class CoercionModel:
             )
         if (
             right_construction is not runtime.undefined
-            and right_construction['kind'] in series_kinds
+            and right_construction["kind"] in series_kinds
         ):
-            base_plan = self.resolveParents(
-                left, right_construction['base'])
-            if base_plan.parent is not right_construction['base']:
+            base_plan = self.resolveParents(left, right_construction["base"])
+            if base_plan.parent is not right_construction["base"]:
                 raise TypeError(
-                    'constant does not canonically coerce to series base ring')
+                    "constant does not canonically coerce to series base ring"
+                )
 
             def coerce_left_series_constant(value: Any) -> Any:
                 return _untyped(right)(base_plan.leftMap(value))
@@ -507,7 +521,8 @@ class CoercionModel:
                 return _untyped(right)(value)
 
             return self._cache(
-                left, right,
+                left,
+                right,
                 CoercionPlan(
                     right,
                     coerce_left_series_constant,
@@ -516,45 +531,49 @@ class CoercionModel:
             )
         if (
             left_construction is not runtime.undefined
-            and left_construction['kind'] == 'fraction_field'
+            and left_construction["kind"] == "fraction_field"
         ):
+
             def coerce_right_fraction(value: Any) -> Any:
                 return _untyped(left)(value)
 
             return self._cache(
-                left, right,
-                CoercionPlan(
-                    left, _identity, coerce_right_fraction),
+                left,
+                right,
+                CoercionPlan(left, _identity, coerce_right_fraction),
             )
         if (
             right_construction is not runtime.undefined
-            and right_construction['kind'] == 'fraction_field'
+            and right_construction["kind"] == "fraction_field"
         ):
+
             def coerce_left_fraction(value: Any) -> Any:
                 return _untyped(right)(value)
 
             return self._cache(
-                left, right,
-                CoercionPlan(
-                    right, coerce_left_fraction, _identity),
+                left,
+                right,
+                CoercionPlan(right, coerce_left_fraction, _identity),
             )
         if (
             left_construction is not runtime.undefined
-            and left_construction['kind'] == 'multivariate_polynomial'
+            and left_construction["kind"] == "multivariate_polynomial"
         ):
             if (
                 right_construction is not runtime.undefined
-                and right_construction['kind']
-                    == 'multivariate_polynomial'
+                and right_construction["kind"] == "multivariate_polynomial"
             ):
                 if left is not right:
                     raise TypeError(
-                        'no canonical coercion between these '
-                        + 'multivariate polynomial rings')
+                        "no canonical coercion between these "
+                        + "multivariate polynomial rings"
+                    )
                 return self._cache(
-                    left, right,
+                    left,
+                    right,
                     CoercionPlan(left, _identity, _identity),
                 )
+
             def coerce_left_mpolynomial(value: Any) -> Any:
                 return _untyped(left)._coercePolynomial(value)
 
@@ -562,7 +581,8 @@ class CoercionModel:
                 return _untyped(left)._constant(value)
 
             return self._cache(
-                left, right,
+                left,
+                right,
                 CoercionPlan(
                     left,
                     coerce_left_mpolynomial,
@@ -571,8 +591,9 @@ class CoercionModel:
             )
         if (
             right_construction is not runtime.undefined
-            and right_construction['kind'] == 'multivariate_polynomial'
+            and right_construction["kind"] == "multivariate_polynomial"
         ):
+
             def coerce_left_mconstant(value: Any) -> Any:
                 return _untyped(right)._constant(value)
 
@@ -580,7 +601,8 @@ class CoercionModel:
                 return _untyped(right)._coercePolynomial(value)
 
             return self._cache(
-                left, right,
+                left,
+                right,
                 CoercionPlan(
                     right,
                     coerce_left_mconstant,
@@ -589,28 +611,26 @@ class CoercionModel:
             )
         if (
             left_construction is not runtime.undefined
-            and left_construction['kind'] == 'polynomial'
+            and left_construction["kind"] == "polynomial"
         ):
             if (
                 right_construction is not runtime.undefined
-                and right_construction['kind'] == 'polynomial'
+                and right_construction["kind"] == "polynomial"
             ):
-                if (
-                    left_construction['variable']
-                    != right_construction['variable']
-                ):
+                if left_construction["variable"] != right_construction["variable"]:
                     raise TypeError(
-                        'no canonical coercion between polynomial rings in '
-                        + left_construction['variable'] + ' and '
-                        + right_construction['variable']
+                        "no canonical coercion between polynomial rings in "
+                        + left_construction["variable"]
+                        + " and "
+                        + right_construction["variable"]
                     )
                 base_plan = self.resolveParents(
-                    left_construction['base'],
-                    right_construction['base'],
+                    left_construction["base"],
+                    right_construction["base"],
                 )
                 polynomial_parent = runtime.polynomial_ring(
                     base_plan.parent,
-                    left_construction['variable'],
+                    left_construction["variable"],
                 )
 
                 def coerce_left_polynomial(value: Any) -> Any:
@@ -620,7 +640,8 @@ class CoercionModel:
                     return polynomial_parent._coercePolynomial(value)
 
                 return self._cache(
-                    left, right,
+                    left,
+                    right,
                     CoercionPlan(
                         polynomial_parent,
                         coerce_left_polynomial,
@@ -628,22 +649,21 @@ class CoercionModel:
                     ),
                 )
 
-            base_plan = self.resolveParents(
-                left_construction['base'], right)
+            base_plan = self.resolveParents(left_construction["base"], right)
             polynomial_parent = runtime.polynomial_ring(
                 base_plan.parent,
-                left_construction['variable'],
+                left_construction["variable"],
             )
 
             def coerce_left_polynomial(value: Any) -> Any:
                 return polynomial_parent._coercePolynomial(value)
 
             def coerce_right_constant(value: Any) -> Any:
-                return polynomial_parent._constant(
-                    base_plan.rightMap(value))
+                return polynomial_parent._constant(base_plan.rightMap(value))
 
             return self._cache(
-                left, right,
+                left,
+                right,
                 CoercionPlan(
                     polynomial_parent,
                     coerce_left_polynomial,
@@ -653,24 +673,23 @@ class CoercionModel:
 
         if (
             right_construction is not runtime.undefined
-            and right_construction['kind'] == 'polynomial'
+            and right_construction["kind"] == "polynomial"
         ):
-            base_plan = self.resolveParents(
-                left, right_construction['base'])
+            base_plan = self.resolveParents(left, right_construction["base"])
             polynomial_parent = runtime.polynomial_ring(
                 base_plan.parent,
-                right_construction['variable'],
+                right_construction["variable"],
             )
 
             def coerce_left_constant(value: Any) -> Any:
-                return polynomial_parent._constant(
-                    base_plan.leftMap(value))
+                return polynomial_parent._constant(base_plan.leftMap(value))
 
             def coerce_right_polynomial(value: Any) -> Any:
                 return polynomial_parent._coercePolynomial(value)
 
             return self._cache(
-                left, right,
+                left,
+                right,
                 CoercionPlan(
                     polynomial_parent,
                     coerce_left_constant,
@@ -683,31 +702,30 @@ class CoercionModel:
             and right_to_left is not runtime.undefined
         ):
             raise TypeError(
-                'ambiguous canonical coercion between '
-                + str(left) + ' and ' + str(right)
+                "ambiguous canonical coercion between "
+                + str(left)
+                + " and "
+                + str(right)
             )
         raise TypeError(
-            'no canonical coercion between '
-            + str(left) + ' and ' + str(right)
+            "no canonical coercion between " + str(left) + " and " + str(right)
         )
 
     def parentOf(self, value: Any) -> Parent:
         if is_exact_integer(value):
             return ZZ
-        if runtime.jstype(value) == 'number':
-            return runtime.reflect.get(runtime.global_object, 'RDF')
+        if runtime.jstype(value) == "number":
+            return runtime.reflect.get(runtime.global_object, "RDF")
         if (
             value is not None
-            and runtime.jstype(value) in ('object', 'function')
-            and runtime.reflect.get(
-                value, '_parent') is not runtime.undefined
+            and runtime.jstype(value) in ("object", "function")
+            and runtime.reflect.get(value, "_parent") is not runtime.undefined
         ):
             return value._parent
-        raise TypeError('value has no mathematical parent')
+        raise TypeError("value has no mathematical parent")
 
     def coercePair(self, left: Any, right: Any) -> CoercedPair:
-        plan = self.resolveParents(
-            self.parentOf(left), self.parentOf(right))
+        plan = self.resolveParents(self.parentOf(left), self.parentOf(right))
         return CoercedPair(
             plan.parent,
             plan.leftMap(left),
@@ -721,38 +739,34 @@ class CoercionModel:
         right: Any,
         parent: Parent,
     ) -> Any:
-        if runtime.strict_equal(parent._kind, 'RDF'):
-            if runtime.strict_equal(operator, 'add'):
+        if runtime.strict_equal(parent._kind, "RDF"):
+            if runtime.strict_equal(operator, "add"):
                 return runtime.native_add(left, right)
-            if runtime.strict_equal(operator, 'sub'):
+            if runtime.strict_equal(operator, "sub"):
                 return runtime.native_sub(left, right)
-            if runtime.strict_equal(operator, 'mul'):
+            if runtime.strict_equal(operator, "mul"):
                 return runtime.native_mul(left, right)
-            if runtime.strict_equal(operator, 'truediv'):
+            if runtime.strict_equal(operator, "truediv"):
                 return runtime.native_div(left, right)
         operation = self._operations.get(operator)
         if operation is runtime.undefined:
             raise TypeError(
-                'operation ' + operator
-                + ' is not defined in ' + str(parent)
+                "operation " + operator + " is not defined in " + str(parent)
             )
         return operation(left, right)
 
     def binOp(
-        self, operator: str, left: Any, right: Any,
+        self,
+        operator: str,
+        left: Any,
+        right: Any,
     ) -> Any:
         left_parent = runtime.undefined
         right_parent = runtime.undefined
-        if (
-            left is not None
-            and runtime.jstype(left) == 'object'
-        ):
-            left_parent = runtime.reflect.get(left, '_parent')
-        if (
-            right is not None
-            and runtime.jstype(right) == 'object'
-        ):
-            right_parent = runtime.reflect.get(right, '_parent')
+        if left is not None and runtime.jstype(left) == "object":
+            left_parent = runtime.reflect.get(left, "_parent")
+        if right is not None and runtime.jstype(right) == "object":
+            right_parent = runtime.reflect.get(right, "_parent")
 
         # Prime fields, extension fields, and residue rings are closed scalar
         # parents.  Same-parent operands need neither structured-action
@@ -763,19 +777,19 @@ class CoercionModel:
             and left_parent is not runtime.undefined
             and left_parent is right_parent
         ):
-            parent_kind = runtime.reflect.get(left_parent, '_kind')
+            parent_kind = runtime.reflect.get(left_parent, "_kind")
             if (
-                runtime.strict_equal(parent_kind, 'GF')
-                or runtime.strict_equal(parent_kind, 'GF_EXTENSION')
-                or runtime.strict_equal(parent_kind, 'ZMOD')
+                runtime.strict_equal(parent_kind, "GF")
+                or runtime.strict_equal(parent_kind, "GF_EXTENSION")
+                or runtime.strict_equal(parent_kind, "ZMOD")
             ):
-                if runtime.strict_equal(operator, 'add'):
+                if runtime.strict_equal(operator, "add"):
                     return left._add_(right)
-                if runtime.strict_equal(operator, 'sub'):
+                if runtime.strict_equal(operator, "sub"):
                     return left._sub_(right)
-                if runtime.strict_equal(operator, 'mul'):
+                if runtime.strict_equal(operator, "mul"):
                     return left._mul_(right)
-                if runtime.strict_equal(operator, 'truediv'):
+                if runtime.strict_equal(operator, "truediv"):
                     return left._truediv_(right)
 
         # Structured parents such as rectangular matrix spaces and vector
@@ -784,31 +798,17 @@ class CoercionModel:
         # action before applying the common-parent arithmetic model.
         left_action = runtime.undefined
         right_action = runtime.undefined
-        if (
-            left is not None
-            and runtime.jstype(left) == 'object'
-        ):
-            left_action = runtime.reflect.get(
-                left, '_sage_binop_')
-        if runtime.jstype(left_action) == 'function':
-            return runtime.reflect.apply(
-                left_action, left, [operator, right, False])
-        if (
-            right is not None
-            and runtime.jstype(right) == 'object'
-        ):
-            right_action = runtime.reflect.get(
-                right, '_sage_binop_')
-        if runtime.jstype(right_action) == 'function':
-            return runtime.reflect.apply(
-                right_action, right, [operator, left, True])
+        if left is not None and runtime.jstype(left) == "object":
+            left_action = runtime.reflect.get(left, "_sage_binop_")
+        if runtime.jstype(left_action) == "function":
+            return runtime.reflect.apply(left_action, left, [operator, right, False])
+        if right is not None and runtime.jstype(right) == "object":
+            right_action = runtime.reflect.get(right, "_sage_binop_")
+        if runtime.jstype(right_action) == "function":
+            return runtime.reflect.apply(right_action, right, [operator, left, True])
 
-        if (
-            left_parent is not runtime.undefined
-            and left_parent is right_parent
-        ):
-            return self._apply(
-                operator, left, right, left_parent)
+        if left_parent is not runtime.undefined and left_parent is right_parent:
+            return self._apply(operator, left, right, left_parent)
         operands = self.coercePair(left, right)
         return self._apply(
             operator,
@@ -821,32 +821,19 @@ class CoercionModel:
         try:
             left_parent = runtime.undefined
             right_parent = runtime.undefined
-            if (
-                left is not None
-                and runtime.jstype(left) == 'object'
-            ):
-                left_parent = runtime.reflect.get(
-                    left, '_parent')
-            if (
-                right is not None
-                and runtime.jstype(right) == 'object'
-            ):
-                right_parent = runtime.reflect.get(
-                    right, '_parent')
-            if (
-                left_parent is not runtime.undefined
-                and left_parent is right_parent
-            ):
-                method = runtime.reflect.get(left, '_eq_')
-                if runtime.jstype(method) == 'function':
+            if left is not None and runtime.jstype(left) == "object":
+                left_parent = runtime.reflect.get(left, "_parent")
+            if right is not None and runtime.jstype(right) == "object":
+                right_parent = runtime.reflect.get(right, "_parent")
+            if left_parent is not runtime.undefined and left_parent is right_parent:
+                method = runtime.reflect.get(left, "_eq_")
+                if runtime.jstype(method) == "function":
                     return method.call(left, right)
                 return left is right
             operands = self.coercePair(left, right)
-            method = runtime.reflect.get(
-                operands.left, '_eq_')
-            if runtime.jstype(method) == 'function':
-                return method.call(
-                    operands.left, operands.right)
+            method = runtime.reflect.get(operands.left, "_eq_")
+            if runtime.jstype(method) == "function":
+                return method.call(operands.left, operands.right)
             return operands.left is operands.right
         except Exception:
             return False
@@ -870,20 +857,16 @@ def modular_inverse(value: int, modulus: int) -> int:
     old_coefficient = runtime.bigint(1)
     coefficient = runtime.bigint(0)
     while remainder != 0:
-        quotient = runtime.bigint_divexact(
-            old_remainder, remainder)
-        next_remainder = (
-            old_remainder - quotient * remainder)
-        next_coefficient = (
-            old_coefficient - quotient * coefficient)
+        quotient = runtime.bigint_divexact(old_remainder, remainder)
+        next_remainder = old_remainder - quotient * remainder
+        next_coefficient = old_coefficient - quotient * coefficient
         old_remainder = remainder
         remainder = next_remainder
         old_coefficient = coefficient
         coefficient = next_coefficient
     if old_remainder != 1:
         raise runtime.zero_division_error(
-            'inverse of Mod(0, ' + str(modulus)
-            + ') does not exist'
+            "inverse of Mod(0, " + str(modulus) + ") does not exist"
         )
     old_coefficient = runtime.native_mod(old_coefficient, modulus)
     if old_coefficient < 0:
@@ -892,7 +875,9 @@ def modular_inverse(value: int, modulus: int) -> int:
 
 
 def modular_power(
-    value: int, exponent: int, modulus: int,
+    value: int,
+    exponent: int,
+    modulus: int,
 ) -> int:
     value = runtime.bigint(value)
     exponent = runtime.bigint(exponent)
@@ -900,12 +885,10 @@ def modular_power(
     result = runtime.bigint(1)
     while exponent > 0:
         if runtime.native_bitand(exponent, runtime.bigint(1)):
-            result = runtime.native_mod(
-                runtime.native_mul(result, value), modulus)
+            result = runtime.native_mod(runtime.native_mul(result, value), modulus)
         exponent = runtime.native_rshift(exponent, runtime.bigint(1))
         if exponent != 0:
-            value = runtime.native_mod(
-                runtime.native_mul(value, value), modulus)
+            value = runtime.native_mod(runtime.native_mul(value, value), modulus)
     return result
 
 
@@ -915,20 +898,16 @@ def _tuple_add(self: Any, other: Any) -> Any:
         if isinstance(other, runtime.tuple_builtin):
             other = other._tuple_values
         else:
-            raise TypeError('can only concatenate tuple to tuple')
+            raise TypeError("can only concatenate tuple to tuple")
     elif not runtime.object.isFrozen(other):
-        raise TypeError('can only concatenate tuple to tuple')
-    combined = runtime.reflect.apply(
-        runtime.array.prototype.concat, self, [other])
+        raise TypeError("can only concatenate tuple to tuple")
+    combined = runtime.reflect.apply(runtime.array.prototype.concat, self, [other])
     return math_tuple(combined)
 
 
 @runtime.native_method
 def _tuple_mul(self: Any, other: Any) -> Any:
-    if (
-        not runtime.is_exact_integer(other)
-        and hasattr(other, '__rmul__')
-    ):
+    if not runtime.is_exact_integer(other) and hasattr(other, "__rmul__"):
         return other.__rmul__(math_tuple(self))
     count = int(other)
     answer = runtime.list_constructor()
@@ -959,26 +938,24 @@ def _tuple_eq(self: Any, other: Any) -> bool:
 @runtime.native_method
 def _tuple_repr(self: Any) -> str:
     entries = [runtime.repr(value) for value in self]
-    suffix = ',' if len(self) == 1 else ''
+    suffix = "," if len(self) == 1 else ""
     entries_text = runtime.reflect.apply(
         runtime.array.prototype.join,
         entries,
-        [', '],
+        [", "],
     )
-    return '(' + entries_text + suffix + ')'
+    return "(" + entries_text + suffix + ")"
 
 
 @runtime.native_method
 def _tuple_append(self: Any, _value: Any) -> None:
-    raise AttributeError(
-        "'tuple' object has no attribute 'append'")
+    raise AttributeError("'tuple' object has no attribute 'append'")
 
 
 @runtime.native_method
 def _tuple_slice(self: Any, *slice_args: Any) -> Any:
     """Return a tuple when optimized subscripting delegates to JS ``slice``."""
-    values = runtime.reflect.apply(
-        runtime.array.prototype.slice, self, slice_args)
+    values = runtime.reflect.apply(runtime.array.prototype.slice, self, slice_args)
     return math_tuple(values)
 
 
@@ -1000,7 +977,7 @@ def _tuple_index(
     for index in range(start, stop):
         if runtime.equals(self[index], value):
             return index
-    raise ValueError('tuple.index(x): x not in tuple')
+    raise ValueError("tuple.index(x): x not in tuple")
 
 
 _tuple_array_prototype_cache = runtime.undefined
@@ -1016,20 +993,19 @@ def _tuple_array_prototype(
             if runtime.array.isArray(seed_values)
             else runtime.list_constructor()
         )
-        prototype = runtime.object.create(
-            runtime.object.getPrototypeOf(decorated))
+        prototype = runtime.object.create(runtime.object.getPrototypeOf(decorated))
         properties = {
-            '__add__': {'value': _tuple_add},
-            '__iadd__': {'value': _tuple_add},
-            '__eq__': {'value': _tuple_eq},
-            '__mul__': {'value': _tuple_mul},
-            '__rmul__': {'value': _tuple_mul},
-            '__repr__': {'value': _tuple_repr},
-            '__str__': {'value': _tuple_repr},
-            'append': {'value': _tuple_append},
-            'index': {'value': _tuple_index},
-            'slice': {'value': _tuple_slice},
-            'toString': {'value': _tuple_repr},
+            "__add__": {"value": _tuple_add},
+            "__iadd__": {"value": _tuple_add},
+            "__eq__": {"value": _tuple_eq},
+            "__mul__": {"value": _tuple_mul},
+            "__rmul__": {"value": _tuple_mul},
+            "__repr__": {"value": _tuple_repr},
+            "__str__": {"value": _tuple_repr},
+            "append": {"value": _tuple_append},
+            "index": {"value": _tuple_index},
+            "slice": {"value": _tuple_slice},
+            "toString": {"value": _tuple_repr},
         }
         runtime.object.defineProperties(prototype, properties)
         _tuple_array_prototype_cache = prototype
@@ -1046,9 +1022,9 @@ def _freeze_tuple(
         prototype = _tuple_array_prototype(values)
     if tuple_repr is not None or extra_properties is not None:
         properties = {
-            '__repr__': {'value': tuple_repr},
-            '__str__': {'value': tuple_repr},
-            'toString': {'value': tuple_repr},
+            "__repr__": {"value": tuple_repr},
+            "__str__": {"value": tuple_repr},
+            "toString": {"value": tuple_repr},
         }
         if extra_properties is not None:
             runtime.object.assign(properties, extra_properties)
@@ -1077,10 +1053,9 @@ def _install_type_tuple_metadata() -> None:
     """
     bases = math_tuple([object])
     mro = math_tuple([type, object])
-    runtime.reflect.set(type, '__bases__', bases)
-    runtime.reflect.set(type, '__mro__', mro)
-    runtime.reflect.set(
-        runtime.reflect.get(type, 'prototype'), '__bases__', bases)
+    runtime.reflect.set(type, "__bases__", bases)
+    runtime.reflect.set(type, "__mro__", mro)
+    runtime.reflect.set(runtime.reflect.get(type, "prototype"), "__bases__", bases)
 
 
 _install_type_tuple_metadata()
@@ -1098,14 +1073,13 @@ def named_tuple(
     def tuple_repr() -> str:
         entries = []
         for index in range(len(names)):
-            entries.append(
-                names[index] + '=' + runtime.repr(values[index]))
+            entries.append(names[index] + "=" + runtime.repr(values[index]))
         entries_text = runtime.reflect.apply(
             runtime.array.prototype.join,
             entries,
-            [', '],
+            [", "],
         )
-        return type_name + '(' + entries_text + ')'
+        return type_name + "(" + entries_text + ")"
 
     def asdict() -> Any:
         answer = dict()
@@ -1114,8 +1088,8 @@ def named_tuple(
         return answer
 
     properties = {
-        '_fields': {'value': math_tuple(names)},
-        '_asdict': {'value': asdict},
+        "_fields": {"value": math_tuple(names)},
+        "_asdict": {"value": asdict},
     }
 
     def make_field_getter(position: int) -> Any:
@@ -1129,15 +1103,14 @@ def named_tuple(
 
     for index in range(len(names)):
         properties[names[index]] = {
-            'enumerable': True,
-            'get': make_field_getter(index),
-            'set': immutable_field,
+            "enumerable": True,
+            "get": make_field_getter(index),
+            "set": immutable_field,
         }
     return _freeze_tuple(values, tuple_repr, properties)
 
 
 class _ConstructionFunctor:
-
     def __init__(self, name: str) -> None:
         self._name = name
 
@@ -1148,10 +1121,9 @@ class _ConstructionFunctor:
     toString = __repr__
 
 
-QuotientFunctor = _ConstructionFunctor('QuotientFunctor')
+QuotientFunctor = _ConstructionFunctor("QuotientFunctor")
 runtime.object.freeze(QuotientFunctor)
-AlgebraicExtensionFunctor = _ConstructionFunctor(
-    'AlgebraicExtensionFunctor')
+AlgebraicExtensionFunctor = _ConstructionFunctor("AlgebraicExtensionFunctor")
 runtime.object.freeze(AlgebraicExtensionFunctor)
 
 
@@ -1160,10 +1132,10 @@ def is_math_element(value: Any) -> bool:
     return (
         value is not None
         and (
-            runtime.strict_equal(value_type, 'object')
-            or runtime.strict_equal(value_type, 'function')
+            runtime.strict_equal(value_type, "object")
+            or runtime.strict_equal(value_type, "function")
         )
-        and runtime.reflect.has(value, '_parent')
+        and runtime.reflect.has(value, "_parent")
     )
 
 
@@ -1171,14 +1143,13 @@ def parent_of(value: Any) -> Parent:
     return coercion_model.parentOf(value)
 
 
-_flint_state = {'backend': None}
+_flint_state = {"backend": None}
 
 
 def flint_backend() -> Any:
-    if _flint_state['backend'] is None:
-        _flint_state['backend'] = runtime.require_module(
-            '@sagemath/sagejs-flint')
-    return _flint_state['backend']
+    if _flint_state["backend"] is None:
+        _flint_state["backend"] = runtime.require_module("@sagemath/sagejs-flint")
+    return _flint_state["backend"]
 
 
 # Stable generated-runtime names used by the compiler and by older baselib

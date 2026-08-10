@@ -39,16 +39,16 @@ register("mypyc - generators", generators)
 def str_slicing() -> None:
     a = []
     for i in range(1000):
-        a.append(f'Foobar-{i}')
-        a.append(f'{i} str')
+        a.append(f"Foobar-{i}")
+        a.append(f"{i} str")
 
     n = 0
     for i in range(1000):
         for s in a:
             n += len(s[2:-2])
-            if s[:3] == 'Foo':
+            if s[:3] == "Foo":
                 n += 1
-            if s[-2:] == '00':
+            if s[-2:] == "00":
                 n += 1
     assert n == 9789000, n
 
@@ -59,9 +59,9 @@ register("str_slicing", str_slicing)
 def ord_builtin() -> None:
     a = []
     for i in range(1000):
-        a.append(f'Foobar-{i}')
-        a.append(f'{i}-ab-asdfsdf-asdf')
-        a.append('yeah')
+        a.append(f"Foobar-{i}")
+        a.append(f"{i}-ab-asdfsdf-asdf")
+        a.append("yeah")
     n = 0
     for i in range(50):
         for s in a:
@@ -70,7 +70,7 @@ def ord_builtin() -> None:
                     n += 1
                 if is_upper_case_letter(s[j]):
                     n += 2
-                if s[j] == ord('a'):
+                if s[j] == ord("a"):
                     n += 3
     assert n == 1200000, n
 
@@ -79,7 +79,7 @@ def is_upper_case_letter(ch: str) -> bool:
     return 65 <= ord(ch) <= 90
 
 
-register('ord_builtin', ord_builtin)
+register("ord_builtin", ord_builtin)
 
 
 def matrix_multiply() -> None:
@@ -125,11 +125,11 @@ def int_to_float() -> None:
     assert x == 35000000.0, x
 
 
-register('int_to_float', int_to_float)
+register("int_to_float", int_to_float)
 
 
 def str_to_float() -> None:
-    a = ['1', '1.234567', '44324', '23.4', '-43.44e-4']
+    a = ["1", "1.234567", "44324", "23.4", "-43.44e-4"]
     x = 0.0
     for i in range(1000 * 1000):
         for n in a:
@@ -137,7 +137,7 @@ def str_to_float() -> None:
     assert is_close(x, 44349630223.26009), x
 
 
-register('str_to_float', str_to_float)
+register("str_to_float", str_to_float)
 
 
 def float_abs() -> None:
@@ -215,7 +215,7 @@ def int_bitwise_ops() -> None:
                 x = j >> 5
                 n += x
                 n += x << 1
-                n &= 0xffffff
+                n &= 0xFFFFFF
 
     assert n == 4867360, n
 
@@ -252,8 +252,8 @@ def list_of_dicts():
     for j in range(1000):
         d = {}
         for i in range(j % 10):
-            d[f'Foobar-{j}'] = j
-            d[f'{j} str'] = i
+            d[f"Foobar-{j}"] = j
+            d[f"{j} str"] = i
         # dict = so we get keys, values below in pylang
         a.append(dict(d))
     return a
@@ -266,16 +266,16 @@ def dict_iteration() -> None:
     for i in range(1000):
         for d in a:
             for k in d:
-                if k == '0 str':
+                if k == "0 str":
                     n += 1
             for k in d.keys():
-                if k == '0 str':
+                if k == "0 str":
                     n += 1
             for v in d.values():
                 if v == 0:
                     n += 1
             for k, v in d.items():
-                if v == 1 or k == '1 str':
+                if v == 1 or k == "1 str":
                     n += 1
     assert n == 202000, n
 
@@ -323,5 +323,5 @@ def dict_copy() -> None:
 
 register("dict_copy", dict_copy)
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     all()

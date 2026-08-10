@@ -10,14 +10,14 @@ Python so the same Windows semantics are available on every Sage.js host.
 import genericpath
 import sagejs.runtime as runtime
 
-curdir = '.'
-pardir = '..'
-extsep = '.'
-sep = '\\'
-pathsep = ';'
-defpath = '.;C:\\bin'
-altsep = '/'
-devnull = 'nul'
+curdir = "."
+pardir = ".."
+extsep = "."
+sep = "\\"
+pathsep = ";"
+defpath = ".;C:\\bin"
+altsep = "/"
+devnull = "nul"
 
 exists = genericpath.exists
 lexists = genericpath.lexists
@@ -33,10 +33,10 @@ samefile = genericpath.samefile
 
 
 def _environment(name):
-    process = runtime.reflect.get(runtime.global_object, 'process')
+    process = runtime.reflect.get(runtime.global_object, "process")
     if process is runtime.undefined:
         return None
-    environment = runtime.reflect.get(process, 'env')
+    environment = runtime.reflect.get(process, "env")
     value = runtime.reflect.get(environment, name)
     return None if value is runtime.undefined else value
 
@@ -47,9 +47,9 @@ def _path(path):
     try:
         value = path.__fspath__()
     except AttributeError:
-        raise TypeError('expected str, bytes or os.PathLike object')
+        raise TypeError("expected str, bytes or os.PathLike object")
     if not isinstance(value, (str, bytes)):
-        raise TypeError('expected __fspath__() to return str or bytes')
+        raise TypeError("expected __fspath__() to return str or bytes")
     return value
 
 
@@ -61,9 +61,9 @@ def normcase(path):
 def splitdrive(path):
     path = _path(path)
     normalized = path.replace(altsep, sep)
-    if len(normalized) >= 2 and normalized[1] == ':':
+    if len(normalized) >= 2 and normalized[1] == ":":
         return tuple([path[:2], path[2:]])
-    if normalized.startswith('\\\\'):
+    if normalized.startswith("\\\\"):
         index = normalized.find(sep, 2)
         if index == -1:
             return tuple([path, path[:0]])
@@ -99,7 +99,11 @@ def join(path, *paths):
         if result_path and not result_path.endswith((sep, altsep)):
             result_path += sep
         result_path += tail
-    if result_path and not result_path.startswith((sep, altsep)) and result_drive.endswith(':'):
+    if (
+        result_path
+        and not result_path.startswith((sep, altsep))
+        and result_drive.endswith(":")
+    ):
         return result_drive + result_path
     return result_drive + result_path
 
@@ -128,14 +132,14 @@ def dirname(path):
 
 def normpath(path):
     path = _path(path)
-    if path == '':
+    if path == "":
         return curdir
     path = path.replace(altsep, sep)
     drive, tail = splitdrive(path)
     rooted = tail.startswith(sep)
     components = []
     for component in tail.split(sep):
-        if component == '' or component == curdir:
+        if component == "" or component == curdir:
             continue
         if component == pardir:
             if components and components[-1] != pardir:
@@ -167,20 +171,20 @@ def realpath(path):
 
 def expanduser(path):
     path = _path(path)
-    if not isinstance(path, str) or not path.startswith('~'):
+    if not isinstance(path, str) or not path.startswith("~"):
         return path
     index = 1
     while index < len(path) and path[index] not in (sep, altsep):
         index += 1
     if index != 1:
         return path
-    home = _environment('USERPROFILE')
+    home = _environment("USERPROFILE")
     if home is None:
-        drive = _environment('HOMEDRIVE')
-        homepath = _environment('HOMEPATH')
+        drive = _environment("HOMEDRIVE")
+        homepath = _environment("HOMEPATH")
         home = None if drive is None or homepath is None else drive + homepath
     if home is None:
-        home = _environment('HOME')
+        home = _environment("HOME")
     return path if home is None else home.rstrip(sep + altsep) + path[index:]
 
 
@@ -190,31 +194,31 @@ def expandvars(path):
         return path
     # Windows accepts both ``%NAME%`` and the POSIX forms.  Reuse a compact
     # local scanner for percent variables, then handle dollar variables.
-    answer = ''
+    answer = ""
     index = 0
     while index < len(path):
-        if path[index] == '%':
-            end = path.find('%', index + 1)
+        if path[index] == "%":
+            end = path.find("%", index + 1)
             if end != -1:
-                name = path[index + 1:end]
+                name = path[index + 1 : end]
                 value = _environment(name)
-                answer += path[index:end + 1] if value is None else value
+                answer += path[index : end + 1] if value is None else value
                 index = end + 1
                 continue
         answer += path[index]
         index += 1
     path = answer
-    answer = ''
+    answer = ""
     index = 0
     while index < len(path):
-        if path[index] != '$':
+        if path[index] != "$":
             answer += path[index]
             index += 1
             continue
         end = index + 1
-        while end < len(path) and (path[end].isalnum() or path[end] == '_'):
+        while end < len(path) and (path[end].isalnum() or path[end] == "_"):
             end += 1
-        name = path[index + 1:end]
+        name = path[index + 1 : end]
         value = _environment(name)
         answer += path[index:end] if value is None else value
         index = end
@@ -224,7 +228,7 @@ def expandvars(path):
 def relpath(path, start=None):
     path = _path(path)
     if not path:
-        raise ValueError('no path specified')
+        raise ValueError("no path specified")
     if start is None:
         start = curdir
     else:
@@ -234,12 +238,14 @@ def relpath(path, start=None):
     start_drive, start_tail = splitdrive(start_abs)
     path_drive, path_tail = splitdrive(path_abs)
     if normcase(start_drive) != normcase(path_drive):
-        raise ValueError('path is on a different drive')
+        raise ValueError("path is on a different drive")
     start_list = [item for item in start_tail.split(sep) if item]
     path_list = [item for item in path_tail.split(sep) if item]
     common = 0
     maximum = min(len(start_list), len(path_list))
-    while common < maximum and normcase(start_list[common]) == normcase(path_list[common]):
+    while common < maximum and normcase(start_list[common]) == normcase(
+        path_list[common]
+    ):
         common += 1
     result = [pardir] * (len(start_list) - common) + path_list[common:]
     return join(*result) if result else curdir

@@ -6,8 +6,8 @@ import math
 pi = math.pi
 e = math.e
 tau = 2 * pi
-inf = float('inf')
-nan = float('nan')
+inf = float("inf")
+nan = float("nan")
 infj = complex(0, inf)
 nanj = complex(0, nan)
 
@@ -39,7 +39,7 @@ def exp(value):
 def log(value, base=None):
     value = _z(value)
     if value.real == 0 and value.imag == 0:
-        raise ValueError('math domain error')
+        raise ValueError("math domain error")
     answer = complex(math.log(abs(value)), phase(value))
     if base is not None:
         answer = answer / log(base)
@@ -137,8 +137,10 @@ def atanh(value):
 def isfinite(value):
     value = _z(value)
     return not (
-        math.isinf(value.real) or math.isnan(value.real)
-        or math.isinf(value.imag) or math.isnan(value.imag)
+        math.isinf(value.real)
+        or math.isnan(value.real)
+        or math.isinf(value.imag)
+        or math.isnan(value.imag)
     )
 
 
@@ -154,7 +156,7 @@ def isnan(value):
 
 def isclose(a, b, *, rel_tol=1e-09, abs_tol=0.0):
     if rel_tol < 0 or abs_tol < 0:
-        raise ValueError('tolerances must be non-negative')
+        raise ValueError("tolerances must be non-negative")
     difference = abs(_z(a) - _z(b))
     return difference <= max(
         rel_tol * max(abs(_z(a)), abs(_z(b))),

@@ -13,7 +13,7 @@ def reduce(function, iterable, initializer=_missing):
         try:
             value = next(iterator)
         except StopIteration:
-            raise TypeError('reduce() of empty iterable with no initial value')
+            raise TypeError("reduce() of empty iterable with no initial value")
     else:
         value = initializer
     for item in iterator:
@@ -24,17 +24,16 @@ def reduce(function, iterable, initializer=_missing):
 class partial:
     def __init__(self, function, *args, **keywords):
         if not callable(function):
-            raise TypeError('the first argument must be callable')
+            raise TypeError("the first argument must be callable")
         if isinstance(function, partial):
             args = function.args + tuple(args)
             combined = dict(function.keywords)
             combined.update(keywords)
             keywords = combined
             function = function.func
-        runtime.object.defineProperty(self, 'func', {'value': function})
-        runtime.object.defineProperty(self, 'args', {'value': tuple(args)})
-        runtime.object.defineProperty(
-            self, 'keywords', {'value': dict(keywords)})
+        runtime.object.defineProperty(self, "func", {"value": function})
+        runtime.object.defineProperty(self, "args", {"value": tuple(args)})
+        runtime.object.defineProperty(self, "keywords", {"value": dict(keywords)})
 
     def __call__(self, *args, **keywords):
         combined = dict(self.keywords)
@@ -42,10 +41,15 @@ class partial:
         return self.func(*self.args, *args, **combined)
 
     def __repr__(self):
-        return 'functools.partial(' + repr(self.func) + ')'
+        return "functools.partial(" + repr(self.func) + ")"
 
 
-def update_wrapper(wrapper, wrapped, assigned=('__module__', '__name__', '__qualname__', '__doc__', '__annotations__'), updated=('__dict__',)):
+def update_wrapper(
+    wrapper,
+    wrapped,
+    assigned=("__module__", "__name__", "__qualname__", "__doc__", "__annotations__"),
+    updated=("__dict__",),
+):
     for attribute in assigned:
         try:
             value = getattr(wrapped, attribute)
@@ -55,7 +59,7 @@ def update_wrapper(wrapper, wrapped, assigned=('__module__', '__name__', '__qual
             setattr(wrapper, attribute, value)
     for attribute in updated:
         source = getattr(wrapped, attribute, {})
-        if attribute == '__dict__':
+        if attribute == "__dict__":
             # Sage.js exposes object namespaces as snapshot dictionaries, so
             # update the destination object rather than the snapshot.
             for name, value in source.items():
@@ -66,13 +70,18 @@ def update_wrapper(wrapper, wrapped, assigned=('__module__', '__name__', '__qual
     return wrapper
 
 
-def wraps(wrapped, assigned=('__module__', '__name__', '__qualname__', '__doc__', '__annotations__'), updated=('__dict__',)):
+def wraps(
+    wrapped,
+    assigned=("__module__", "__name__", "__qualname__", "__doc__", "__annotations__"),
+    updated=("__dict__",),
+):
     def decorate(wrapper):
         return update_wrapper(wrapper, wrapped, assigned, updated)
+
     return decorate
 
 
-_CacheInfo = namedtuple('CacheInfo', 'hits misses maxsize currsize')
+_CacheInfo = namedtuple("CacheInfo", "hits misses maxsize currsize")
 
 
 def _same_call(left_args, left_keywords, right_args, right_keywords, typed):
@@ -81,7 +90,9 @@ def _same_call(left_args, left_keywords, right_args, right_keywords, typed):
     if list(left_keywords.items()) != list(right_keywords.items()):
         return False
     if typed:
-        if [type(value) for value in left_args] != [type(value) for value in right_args]:
+        if [type(value) for value in left_args] != [
+            type(value) for value in right_args
+        ]:
             return False
         return [type(value) for value in left_keywords.values()] == [
             type(value) for value in right_keywords.values()
@@ -94,8 +105,7 @@ def lru_cache(maxsize=128, typed=False):
         function = maxsize
         return lru_cache()(function)
     if maxsize is not None and not isinstance(maxsize, int):
-        raise TypeError(
-            'Expected first argument to be an integer, a callable, or None')
+        raise TypeError("Expected first argument to be an integer, a callable, or None")
     if maxsize is not None and maxsize < 0:
         maxsize = 0
 
@@ -130,7 +140,7 @@ def lru_cache(maxsize=128, typed=False):
 
         cached.cache_info = cache_info
         cached.cache_clear = cache_clear
-        cached.cache_parameters = lambda: {'maxsize': maxsize, 'typed': typed}
+        cached.cache_parameters = lambda: {"maxsize": maxsize, "typed": typed}
         return update_wrapper(cached, function)
 
     return decorate
@@ -146,9 +156,9 @@ class cached_property:
         # Imported descriptors do not yet receive __set_name__ consistently
         # from the Sage.js class builder, so retain the usual decorator name
         # as a fallback while tracking descriptor binding separately.
-        self.attrname = getattr(function, '__name__', None)
+        self.attrname = getattr(function, "__name__", None)
         self._bound_name = None
-        self.__doc__ = getattr(function, '__doc__', None)
+        self.__doc__ = getattr(function, "__doc__", None)
 
     def __set_name__(self, owner, name):
         del owner
@@ -157,7 +167,7 @@ class cached_property:
             self._bound_name = name
         elif name != self._bound_name:
             raise TypeError(
-                'Cannot assign the same cached_property to two different '
+                "Cannot assign the same cached_property to two different "
                 "names ('" + self._bound_name + "' and '" + name + "')."
             )
 
@@ -172,7 +182,7 @@ class cached_property:
         ):
             return runtime.reflect.get(instance, self.attrname)
         value = runtime.reflect.apply(
-            runtime.reflect.get(self, 'func'),
+            runtime.reflect.get(self, "func"),
             instance,
             [],
         )
@@ -290,38 +300,37 @@ def _lt_from_ge(self, other):
 
 
 _ORDERING_CONVERSIONS = {
-    '__lt__': (
-        ('__gt__', _gt_from_lt),
-        ('__le__', _le_from_lt),
-        ('__ge__', _ge_from_lt),
+    "__lt__": (
+        ("__gt__", _gt_from_lt),
+        ("__le__", _le_from_lt),
+        ("__ge__", _ge_from_lt),
     ),
-    '__le__': (
-        ('__ge__', _ge_from_le),
-        ('__lt__', _lt_from_le),
-        ('__gt__', _gt_from_le),
+    "__le__": (
+        ("__ge__", _ge_from_le),
+        ("__lt__", _lt_from_le),
+        ("__gt__", _gt_from_le),
     ),
-    '__gt__': (
-        ('__lt__', _lt_from_gt),
-        ('__ge__', _ge_from_gt),
-        ('__le__', _le_from_gt),
+    "__gt__": (
+        ("__lt__", _lt_from_gt),
+        ("__ge__", _ge_from_gt),
+        ("__le__", _le_from_gt),
     ),
-    '__ge__': (
-        ('__le__', _le_from_ge),
-        ('__gt__', _gt_from_ge),
-        ('__lt__', _lt_from_ge),
+    "__ge__": (
+        ("__le__", _le_from_ge),
+        ("__gt__", _gt_from_ge),
+        ("__lt__", _lt_from_ge),
     ),
 }
 
 
 def total_ordering(cls):
     roots = {
-        operation for operation in _ORDERING_CONVERSIONS
-        if getattr(cls, operation, None)
-        is not getattr(object, operation, None)
+        operation
+        for operation in _ORDERING_CONVERSIONS
+        if getattr(cls, operation, None) is not getattr(object, operation, None)
     }
     if not roots:
-        raise ValueError(
-            'must define at least one ordering operation: < > <= >=')
+        raise ValueError("must define at least one ordering operation: < > <= >=")
     root = max(roots)
     for operation, function in _ORDERING_CONVERSIONS[root]:
         if operation not in roots:

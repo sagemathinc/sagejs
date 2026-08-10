@@ -4,14 +4,16 @@
 
 
 def strings():
-    string_funcs = set((
-        'capitalize strip lstrip rstrip islower isupper isspace lower upper swapcase'
-        ' center count endswith startswith find rfind index rindex format join ljust rjust'
-        ' partition rpartition replace split rsplit splitlines zfill'
-    ).split(' '))
+    string_funcs = set(
+        (
+            "capitalize strip lstrip rstrip islower isupper isspace lower upper swapcase"
+            " center count endswith startswith find rfind index rindex format join ljust rjust"
+            " partition rpartition replace split rsplit splitlines zfill"
+        ).split(" ")
+    )
 
     if not arguments.length:
-        exclude = {'split', 'replace'}
+        exclude = {"split", "replace"}
     elif arguments[0]:
         exclude = Array.prototype.slice.call(arguments)
     else:

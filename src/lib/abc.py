@@ -1,6 +1,5 @@
 """Abstract-base-class helpers used by pure-Python libraries."""
 
-
 _abc_cache_token = 0
 
 
@@ -30,16 +29,16 @@ def _register(cls, subclass):
     # slot.  They are nevertheless valid classes and must be registrable by
     # collections.abc.  Non-callable instances remain invalid.
     if not callable(subclass):
-        raise TypeError('Can only register classes')
-    mro = getattr(cls, '__mro__', (cls,))
+        raise TypeError("Can only register classes")
+    mro = getattr(cls, "__mro__", (cls,))
     for base in mro:
         if base is object:
             continue
-        namespace = getattr(base, '__dict__', {})
-        registry = namespace.get('_abc_registry')
+        namespace = getattr(base, "__dict__", {})
+        registry = namespace.get("_abc_registry")
         if registry is None:
             registry = []
-            setattr(base, '_abc_registry', registry)
+            setattr(base, "_abc_registry", registry)
         if subclass not in registry:
             registry.append(subclass)
     _abc_cache_token += 1

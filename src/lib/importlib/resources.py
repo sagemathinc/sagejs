@@ -27,9 +27,7 @@ def open_binary(package, resource):
 
 
 def open_text(package, resource, encoding="utf-8", errors="strict"):
-    return files(package).joinpath(resource).open(
-        "r", encoding=encoding, errors=errors
-    )
+    return files(package).joinpath(resource).open("r", encoding=encoding, errors=errors)
 
 
 def read_binary(package, resource):
@@ -54,4 +52,3 @@ def contents(package):
 def as_file(path):
     """Yield filesystem-backed traversables unchanged."""
     yield path
-

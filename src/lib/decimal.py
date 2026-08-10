@@ -7,7 +7,7 @@ separate numerical-backend milestone.
 
 
 class Decimal:
-    def __init__(self, value='0'):
+    def __init__(self, value="0"):
         self._value = float(value)
 
     @classmethod

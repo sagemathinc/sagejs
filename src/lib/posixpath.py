@@ -10,14 +10,14 @@ operations work without a host filesystem, including in browser/WASM builds.
 import genericpath
 import sagejs.runtime as runtime
 
-curdir = '.'
-pardir = '..'
-extsep = '.'
-sep = '/'
-pathsep = ':'
-defpath = '/bin:/usr/bin'
+curdir = "."
+pardir = ".."
+extsep = "."
+sep = "/"
+pathsep = ":"
+defpath = "/bin:/usr/bin"
 altsep = None
-devnull = '/dev/null'
+devnull = "/dev/null"
 
 exists = genericpath.exists
 lexists = genericpath.lexists
@@ -33,10 +33,10 @@ samefile = genericpath.samefile
 
 
 def _environment(name):
-    process = runtime.reflect.get(runtime.global_object, 'process')
+    process = runtime.reflect.get(runtime.global_object, "process")
     if process is runtime.undefined:
         return None
-    environment = runtime.reflect.get(process, 'env')
+    environment = runtime.reflect.get(process, "env")
     value = runtime.reflect.get(environment, name)
     return None if value is runtime.undefined else value
 
@@ -47,9 +47,9 @@ def _path(path):
     try:
         value = path.__fspath__()
     except AttributeError:
-        raise TypeError('expected str, bytes or os.PathLike object')
+        raise TypeError("expected str, bytes or os.PathLike object")
     if not isinstance(value, (str, bytes)):
-        raise TypeError('expected __fspath__() to return str or bytes')
+        raise TypeError("expected __fspath__() to return str or bytes")
     return value
 
 
@@ -105,20 +105,18 @@ def dirname(path):
 
 def normpath(path):
     path = _path(path)
-    if path == '':
+    if path == "":
         return curdir
     initial_slashes = 1 if path.startswith(sep) else 0
-    if initial_slashes and path.startswith('//') and not path.startswith('///'):
+    if initial_slashes and path.startswith("//") and not path.startswith("///"):
         initial_slashes = 2
     components = path.split(sep)
     new_components = []
     for component in components:
-        if component == '' or component == curdir:
+        if component == "" or component == curdir:
             continue
         if component != pardir or (
-            not initial_slashes and (
-                not new_components or new_components[-1] == pardir
-            )
+            not initial_slashes and (not new_components or new_components[-1] == pardir)
         ):
             new_components.append(component)
         elif new_components:
@@ -146,14 +144,14 @@ def realpath(path):
 
 def expanduser(path):
     path = _path(path)
-    if not isinstance(path, str) or not path.startswith('~'):
+    if not isinstance(path, str) or not path.startswith("~"):
         return path
     separator = path.find(sep)
     if separator == -1:
         separator = len(path)
     if separator != 1:
         return path
-    home = _environment('HOME')
+    home = _environment("HOME")
     if home is None:
         return path
     return home.rstrip(sep) + path[separator:]
@@ -161,31 +159,29 @@ def expanduser(path):
 
 def expandvars(path):
     path = _path(path)
-    if not isinstance(path, str) or '$' not in path:
+    if not isinstance(path, str) or "$" not in path:
         return path
-    answer = ''
+    answer = ""
     index = 0
     while index < len(path):
-        if path[index] != '$':
+        if path[index] != "$":
             answer += path[index]
             index += 1
             continue
-        if index + 1 < len(path) and path[index + 1] == '{':
-            end = path.find('}', index + 2)
+        if index + 1 < len(path) and path[index + 1] == "{":
+            end = path.find("}", index + 2)
             if end == -1:
-                answer += '$'
+                answer += "$"
                 index += 1
                 continue
-            name = path[index + 2:end]
-            original = path[index:end + 1]
+            name = path[index + 2 : end]
+            original = path[index : end + 1]
             index = end + 1
         else:
             end = index + 1
-            while end < len(path) and (
-                path[end].isalnum() or path[end] == '_'
-            ):
+            while end < len(path) and (path[end].isalnum() or path[end] == "_"):
                 end += 1
-            name = path[index + 1:end]
+            name = path[index + 1 : end]
             original = path[index:end]
             index = end
         value = _environment(name)
@@ -196,7 +192,7 @@ def expandvars(path):
 def relpath(path, start=None):
     path = _path(path)
     if not path:
-        raise ValueError('no path specified')
+        raise ValueError("no path specified")
     if start is None:
         start = curdir
     else:
@@ -214,7 +210,7 @@ def relpath(path, start=None):
 def commonpath(paths):
     paths = [_path(path) for path in paths]
     if not paths:
-        raise ValueError('commonpath() arg is an empty sequence')
+        raise ValueError("commonpath() arg is an empty sequence")
     absolute = [isabs(path) for path in paths]
     if any(absolute) and not all(absolute):
         raise ValueError("Can't mix absolute and relative paths")

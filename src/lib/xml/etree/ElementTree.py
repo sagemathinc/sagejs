@@ -9,11 +9,11 @@ from __future__ import annotations
 
 
 def _escape_text(value):
-    return str(value).replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
+    return str(value).replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
 
 
 def _escape_attribute(value):
-    return _escape_text(value).replace('"', '&quot;')
+    return _escape_text(value).replace('"', "&quot;")
 
 
 class Element:
@@ -60,44 +60,48 @@ def SubElement(parent, tag, attrib=None, **extra):
 
 
 def _serialize(element, short_empty_elements=True):
-    attributes = ''.join(
-        ' ' + str(name) + '="' + _escape_attribute(value) + '"'
+    attributes = "".join(
+        " " + str(name) + '="' + _escape_attribute(value) + '"'
         for name, value in element.attrib.items()
     )
-    text = '' if element.text is None else _escape_text(element.text)
-    children = ''.join(
+    text = "" if element.text is None else _escape_text(element.text)
+    children = "".join(
         _serialize(child, short_empty_elements)
-        + ('' if child.tail is None else _escape_text(child.tail))
+        + ("" if child.tail is None else _escape_text(child.tail))
         for child in element
     )
     if not text and not children and short_empty_elements:
-        return '<' + str(element.tag) + attributes + ' />'
+        return "<" + str(element.tag) + attributes + " />"
     return (
-        '<' + str(element.tag) + attributes + '>'
-        + text + children + '</' + str(element.tag) + '>'
+        "<"
+        + str(element.tag)
+        + attributes
+        + ">"
+        + text
+        + children
+        + "</"
+        + str(element.tag)
+        + ">"
     )
 
 
 def tostring(
     element,
-    encoding='us-ascii',
-    method='xml',
+    encoding="us-ascii",
+    method="xml",
     *,
     xml_declaration=None,
     default_namespace=None,
     short_empty_elements=True,
 ):
     del default_namespace
-    if method != 'xml':
+    if method != "xml":
         raise ValueError("unknown method " + repr(method))
     answer = _serialize(element, short_empty_elements)
     if xml_declaration:
-        declared_encoding = 'utf-8' if encoding == 'unicode' else encoding
-        answer = (
-            "<?xml version='1.0' encoding='" + declared_encoding + "'?>\n"
-            + answer
-        )
-    if encoding == 'unicode':
+        declared_encoding = "utf-8" if encoding == "unicode" else encoding
+        answer = "<?xml version='1.0' encoding='" + declared_encoding + "'?>\n" + answer
+    if encoding == "unicode":
         return answer
     return answer.encode(encoding)
 
@@ -105,7 +109,7 @@ def tostring(
 class ElementTree:
     def __init__(self, element=None, file=None):
         if file is not None:
-            raise NotImplementedError('ElementTree parsing is not available')
+            raise NotImplementedError("ElementTree parsing is not available")
         self._root = element
 
     def getroot(self):
@@ -114,10 +118,10 @@ class ElementTree:
     def write(
         self,
         file_or_filename,
-        encoding='us-ascii',
+        encoding="us-ascii",
         xml_declaration=None,
         default_namespace=None,
-        method='xml',
+        method="xml",
         *,
         short_empty_elements=True,
     ):
@@ -129,12 +133,12 @@ class ElementTree:
             default_namespace=default_namespace,
             short_empty_elements=short_empty_elements,
         )
-        if hasattr(file_or_filename, 'write'):
+        if hasattr(file_or_filename, "write"):
             file_or_filename.write(data)
             return
-        mode = 'w' if encoding == 'unicode' else 'wb'
+        mode = "w" if encoding == "unicode" else "wb"
         with open(file_or_filename, mode) as output:
             output.write(data)
 
 
-__all__ = ['Element', 'ElementTree', 'SubElement', 'tostring']
+__all__ = ["Element", "ElementTree", "SubElement", "tostring"]

@@ -4,13 +4,13 @@ import os
 
 
 def _class_match(character, specification):
-    negate = specification.startswith('!') or specification.startswith('^')
+    negate = specification.startswith("!") or specification.startswith("^")
     if negate:
         specification = specification[1:]
     matched = False
     index = 0
     while index < len(specification):
-        if index + 2 < len(specification) and specification[index + 1] == '-':
+        if index + 2 < len(specification) and specification[index + 1] == "-":
             matched = matched or (
                 specification[index] <= character <= specification[index + 2]
             )
@@ -29,8 +29,8 @@ def _match(name, pattern, name_index=0, pattern_index=0, memo=None):
         return memo[key]
     while pattern_index < len(pattern):
         token = pattern[pattern_index]
-        if token == '*':
-            while pattern_index < len(pattern) and pattern[pattern_index] == '*':
+        if token == "*":
+            while pattern_index < len(pattern) and pattern[pattern_index] == "*":
                 pattern_index += 1
             if pattern_index == len(pattern):
                 memo.__setitem__(key, True)
@@ -44,16 +44,14 @@ def _match(name, pattern, name_index=0, pattern_index=0, memo=None):
         if name_index >= len(name):
             memo.__setitem__(key, False)
             return False
-        if token == '?':
+        if token == "?":
             name_index += 1
             pattern_index += 1
             continue
-        if token == '[':
-            end = pattern.find(']', pattern_index + 1)
+        if token == "[":
+            end = pattern.find("]", pattern_index + 1)
             if end >= 0:
-                if not _class_match(
-                    name[name_index], pattern[pattern_index + 1:end]
-                ):
+                if not _class_match(name[name_index], pattern[pattern_index + 1 : end]):
                     memo.__setitem__(key, False)
                     return False
                 name_index += 1
@@ -87,29 +85,28 @@ def filter(names, pat):
 
 
 def translate(pat):
-    special = '.^$+{}()|\\'
-    answer = '(?s:'
+    special = ".^$+{}()|\\"
+    answer = "(?s:"
     index = 0
     while index < len(pat):
         token = pat[index]
         index += 1
-        if token == '*':
-            answer += '.*'
-        elif token == '?':
-            answer += '.'
-        elif token == '[':
-            end = pat.find(']', index)
+        if token == "*":
+            answer += ".*"
+        elif token == "?":
+            answer += "."
+        elif token == "[":
+            end = pat.find("]", index)
             if end < 0:
-                answer += '\\['
+                answer += "\\["
             else:
                 specification = pat[index:end]
                 index = end + 1
-                if specification.startswith('!'):
-                    specification = '^' + specification[1:]
-                answer += '[' + specification + ']'
+                if specification.startswith("!"):
+                    specification = "^" + specification[1:]
+                answer += "[" + specification + "]"
         elif token in special:
-            answer += '\\' + token
+            answer += "\\" + token
         else:
             answer += token
-    return answer + ')\\z'
-
+    return answer + ")\\z"

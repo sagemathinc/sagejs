@@ -3,8 +3,7 @@ from __python__ import hash_literals, Error  # type: ignore
 
 
 class SyntaxError(Error):
-    def __init__(self, message, filename, line: int, col: int, pos: int,
-                 is_eof: bool):
+    def __init__(self, message, filename, line: int, col: int, pos: int, is_eof: bool):
         self.stack = Error().stack
         self.message = message
         self.line = line
@@ -17,9 +16,18 @@ class SyntaxError(Error):
         self.fileName = filename
 
     def toString(self):
-        ans = self.message + " (line: " + self.line + ", col: " + self.col + ", pos: " + self.pos + ")"
+        ans = (
+            self.message
+            + " (line: "
+            + self.line
+            + ", col: "
+            + self.col
+            + ", pos: "
+            + self.pos
+            + ")"
+        )
         if self.filename:
-            ans = self.filename + ':' + ans
+            ans = self.filename + ":" + ans
         if self.stack:
             ans += "\n\n" + self.stack
         return ans

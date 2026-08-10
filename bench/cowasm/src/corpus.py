@@ -61,10 +61,7 @@ def run_corpus():
     benchmarks = registered_benchmarks()
     selected = string_options("--only")
     if selected:
-        benchmarks = [
-            benchmark for benchmark in benchmarks
-            if benchmark[0] in selected
-        ]
+        benchmarks = [benchmark for benchmark in benchmarks if benchmark[0] in selected]
         if len(benchmarks) != len(set(selected)):
             raise ValueError("unknown or duplicate benchmark selection")
     print("SAGEJS_COWASM_CORPUS", FORMAT_VERSION)

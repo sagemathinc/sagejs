@@ -9,14 +9,14 @@ LC_CTYPE = 0
 
 
 def getencoding():
-    return 'UTF-8'
+    return "UTF-8"
 
 
 def getpreferredencoding(do_setlocale=True):
     del do_setlocale
-    return 'UTF-8'
+    return "UTF-8"
 
 
 def setlocale(category, locale=None):
     del category
-    return 'C.UTF-8' if locale is None else str(locale)
+    return "C.UTF-8" if locale is None else str(locale)

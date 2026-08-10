@@ -27,8 +27,7 @@ class ModuleType:
 # allocating ``ModuleType`` for every module.  Publish the Python class so the
 # builtin ``type``/``isinstance`` operations can preserve CPython semantics
 # for those native namespaces.
-runtime.reflect.set(
-    runtime.global_object, '__sagejs_module_type_class__', ModuleType)
+runtime.reflect.set(runtime.global_object, "__sagejs_module_type_class__", ModuleType)
 
 
 def MethodType(function, instance, cls=None):
@@ -40,7 +39,7 @@ def MethodType(function, instance, cls=None):
 def resolve_bases(bases):
     answer = []
     for base in bases:
-        resolver = getattr(base, '__mro_entries__', None)
+        resolver = getattr(base, "__mro_entries__", None)
         if resolver is None:
             answer.append(base)
         else:
@@ -86,7 +85,7 @@ class MappingProxyType:
         return self._mapping.copy()
 
     def __repr__(self):
-        return 'mappingproxy(' + repr(self._mapping) + ')'
+        return "mappingproxy(" + repr(self._mapping) + ")"
 
 
 FunctionType = type(lambda: None)
@@ -118,15 +117,13 @@ class SimpleNamespace:
         self.__dict__.update(kwargs)
 
     def __repr__(self):
-        values = ', '.join(
-            name + '=' + repr(value)
-            for name, value in sorted(self.__dict__.items()))
-        return 'namespace(' + values + ')'
+        values = ", ".join(
+            name + "=" + repr(value) for name, value in sorted(self.__dict__.items())
+        )
+        return "namespace(" + values + ")"
 
     def __eq__(self, other):
-        return (
-            isinstance(other, SimpleNamespace)
-            and self.__dict__ == other.__dict__)
+        return isinstance(other, SimpleNamespace) and self.__dict__ == other.__dict__
 
 
 def coroutine(function: Callable[..., Any]) -> Callable[..., Any]:

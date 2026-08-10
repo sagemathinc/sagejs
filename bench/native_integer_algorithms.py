@@ -44,7 +44,7 @@ def native_abs(value: int) -> int:
 @native
 def native_square(value: int) -> int:
     """Square with checked machine-word promotion."""
-    return value ** 2
+    return value**2
 
 
 @native

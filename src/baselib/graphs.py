@@ -21,13 +21,13 @@ import sagejs.runtime as runtime
 from sagejs.ffi.igraph import canonical_permutation as _canonical_permutation
 
 
-_PLOTLY_MIME = 'application/vnd.plotly.v1+json'
-_graph_native_state = {'attempted': False, 'backend': None}
+_PLOTLY_MIME = "application/vnd.plotly.v1+json"
+_graph_native_state = {"attempted": False, "backend": None}
 
 
 class _GraphPositiveInfinity:
     def __repr__(self) -> str:
-        return '+Infinity'
+        return "+Infinity"
 
     __str__ = __repr__
     toString = __repr__
@@ -66,19 +66,22 @@ def _native_record(**values: Any) -> Any:
 
 def _native_graph_backend() -> Any:
     """Load the optional igraph addon once, preserving portable fallbacks."""
-    if not _graph_native_state['attempted']:
-        _graph_native_state['attempted'] = True
+    if not _graph_native_state["attempted"]:
+        _graph_native_state["attempted"] = True
         try:
-            _graph_native_state['backend'] = runtime.require_module(
-                '@sagemath/sagejs-graph')
+            _graph_native_state["backend"] = runtime.require_module(
+                "@sagemath/sagejs-graph"
+            )
         except Exception:
-            _graph_native_state['backend'] = None
-    return _graph_native_state['backend']
+            _graph_native_state["backend"] = None
+    return _graph_native_state["backend"]
 
 
 def _record_get(record: Any, key: str, default_value: Any = None) -> Any:
     if runtime.reflect.apply(
-        runtime.object.prototype.hasOwnProperty, record, [key],
+        runtime.object.prototype.hasOwnProperty,
+        record,
+        [key],
     ):
         return runtime.reflect.get(record, key)
     return default_value
@@ -119,53 +122,60 @@ def _label_code(label: Any) -> str:
 
 
 def _html_escape(value: Any) -> str:
-    return str(value).replace(
-        '&', '&amp;').replace(
-        '<', '&lt;').replace(
-        '>', '&gt;').replace(
-        '"', '&quot;').replace(
-        "'", '&#39;')
+    return (
+        str(value)
+        .replace("&", "&amp;")
+        .replace("<", "&lt;")
+        .replace(">", "&gt;")
+        .replace('"', "&quot;")
+        .replace("'", "&#39;")
+    )
 
 
 def _json_text(value: Any) -> str:
-    stringify = runtime.reflect.get(runtime.json, 'stringify')
+    stringify = runtime.reflect.get(runtime.json, "stringify")
     text = str(runtime.reflect.apply(stringify, runtime.json, [value]))
-    return text.replace('<', '\\u003c')
+    return text.replace("<", "\\u003c")
 
 
 def _encode_order(order: int) -> str:
     if order < 0 or order >= 68719476736:
-        raise ValueError('graph6 order must be between 0 and 2^36-1')
+        raise ValueError("graph6 order must be between 0 and 2^36-1")
     if order <= 62:
         return chr(order + 63)
     if order <= 258047:
-        return ''.join([
+        return "".join(
+            [
+                chr(126),
+                chr(((order >> 12) & 63) + 63),
+                chr(((order >> 6) & 63) + 63),
+                chr((order & 63) + 63),
+            ]
+        )
+    return "".join(
+        [
             chr(126),
+            chr(126),
+            chr(((order >> 30) & 63) + 63),
+            chr(((order >> 24) & 63) + 63),
+            chr(((order >> 18) & 63) + 63),
             chr(((order >> 12) & 63) + 63),
             chr(((order >> 6) & 63) + 63),
             chr((order & 63) + 63),
-        ])
-    return ''.join([
-        chr(126), chr(126),
-        chr(((order >> 30) & 63) + 63),
-        chr(((order >> 24) & 63) + 63),
-        chr(((order >> 18) & 63) + 63),
-        chr(((order >> 12) & 63) + 63),
-        chr(((order >> 6) & 63) + 63),
-        chr((order & 63) + 63),
-    ])
+        ]
+    )
 
 
 def _decode_order(text: str) -> tuple[int, int]:
     if len(text) == 0:
-        raise ValueError('empty graph6 order')
+        raise ValueError("empty graph6 order")
     first = ord(text[0]) - 63
     if first < 0 or first > 63:
-        raise ValueError('invalid graph6 character')
+        raise ValueError("invalid graph6 character")
     if first < 63:
         return first, 1
     if len(text) < 4:
-        raise ValueError('truncated graph6 order')
+        raise ValueError("truncated graph6 order")
     second = ord(text[1]) - 63
     if second < 63:
         order = 0
@@ -173,7 +183,7 @@ def _decode_order(text: str) -> tuple[int, int]:
             order = (order << 6) | (ord(character) - 63)
         return order, 4
     if len(text) < 8:
-        raise ValueError('truncated graph6 order')
+        raise ValueError("truncated graph6 order")
     order = 0
     for character in text[2:8]:
         order = (order << 6) | (ord(character) - 63)
@@ -185,7 +195,7 @@ def _bits_from_text(text: str) -> list[int]:
     for character in text:
         value = ord(character) - 63
         if value < 0 or value > 63:
-            raise ValueError('invalid graph6 character')
+            raise ValueError("invalid graph6 character")
         for shift in range(5, -1, -1):
             answer.append((value >> shift) & 1)
     return answer
@@ -194,10 +204,10 @@ def _bits_from_text(text: str) -> list[int]:
 def _text_from_bits(bits: list[int]) -> str:
     while len(bits) % 6:
         bits.append(0)
-    answer = ''
+    answer = ""
     for offset in range(0, len(bits), 6):
         value = 0
-        for bit in bits[offset:offset + 6]:
+        for bit in bits[offset : offset + 6]:
             value = (value << 1) | bit
         answer += chr(value + 63)
     return answer
@@ -230,7 +240,8 @@ class GraphAutomorphism:
         answer = dict()
         for index in range(len(self._vertices)):
             answer.__setitem__(
-                self._vertices[index], self._vertices[self._images[index]])
+                self._vertices[index], self._vertices[self._images[index]]
+            )
         return answer
 
     def __repr__(self) -> str:
@@ -246,8 +257,8 @@ class GraphAutomorphism:
                 seen[current] = True
                 cycle.append(repr(self._vertices[current]))
                 current = self._images[current]
-            cycles.append('(' + ','.join(cycle) + ')')
-        return ''.join(cycles) if len(cycles) else '()'
+            cycles.append("(" + ",".join(cycle) + ")")
+        return "".join(cycles) if len(cycles) else "()"
 
     __str__ = __repr__
     toString = __repr__
@@ -265,10 +276,10 @@ class GraphAutomorphismGroup:
     ) -> None:
         self._vertices = list(vertices)
         self._generators = [list(mapping) for mapping in mappings]
-        self._mappings = None if generators_only else [
-            list(mapping) for mapping in mappings]
-        self._known_order = (
-            known_order if known_order is not None else len(mappings))
+        self._mappings = (
+            None if generators_only else [list(mapping) for mapping in mappings]
+        )
+        self._known_order = known_order if known_order is not None else len(mappings)
 
     def _enumerate_mappings(self) -> list[list[int]]:
         if self._mappings is not None:
@@ -281,8 +292,9 @@ class GraphAutomorphismGroup:
             current = mappings[cursor]
             cursor += 1
             for generator in self._generators:
-                composed = [current[generator[index]] for index in range(
-                    len(self._vertices))]
+                composed = [
+                    current[generator[index]] for index in range(len(self._vertices))
+                ]
                 code = repr(composed)
                 if code not in seen:
                     seen[code] = True
@@ -304,7 +316,7 @@ class GraphAutomorphismGroup:
     def __iter__(self) -> Iterator[GraphAutomorphism]:
         return iter(self.list())
 
-    def gens(self) -> 'tuple[GraphAutomorphism, ...]':
+    def gens(self) -> "tuple[GraphAutomorphism, ...]":
         identity = list(range(len(self._vertices)))
         generators = []
         for mapping in self._generators:
@@ -316,8 +328,11 @@ class GraphAutomorphismGroup:
 
     def __repr__(self) -> str:
         return (
-            'Automorphism group of order ' + str(self.order()) +
-            ' acting on ' + str(len(self._vertices)) + ' vertices'
+            "Automorphism group of order "
+            + str(self.order())
+            + " acting on "
+            + str(len(self._vertices))
+            + " vertices"
         )
 
     __str__ = __repr__
@@ -332,10 +347,10 @@ class GraphPlot:
         self._options = dict(options)
 
     def _positions(self) -> list[tuple[float, float]]:
-        if 'pos' in self._options:
-            supplied = self._options['pos']
-        elif 'layout' in self._options:
-            supplied = self._graph.layout(self._options['layout'])
+        if "pos" in self._options:
+            supplied = self._options["pos"]
+        elif "layout" in self._options:
+            supplied = self._graph.layout(self._options["layout"])
         else:
             supplied = self._graph.get_pos()
         if supplied is not None:
@@ -351,7 +366,7 @@ class GraphPlot:
         return [
             (
                 runtime.math.cos(2.0 * pi * index / count),
-                runtime.math.sin(2.0 * pi * index / count)
+                runtime.math.sin(2.0 * pi * index / count),
             )
             for index in range(count)
         ]
@@ -374,31 +389,37 @@ class GraphPlot:
             else:
                 edge_x.extend([source[0], target[0], None])
                 edge_y.extend([source[1], target[1], None])
-        edge_color = self._options.get('edge_color', '#777')
+        edge_color = self._options.get("edge_color", "#777")
         edge_trace = _native_record(
-            type='scatter', mode='lines', x=edge_x, y=edge_y,
+            type="scatter",
+            mode="lines",
+            x=edge_x,
+            y=edge_y,
             line=_native_record(
                 color=str(edge_color),
-                width=float(self._options.get('edge_thickness', 1.5)),
+                width=float(self._options.get("edge_thickness", 1.5)),
             ),
-            hoverinfo='skip', showlegend=False,
+            hoverinfo="skip",
+            showlegend=False,
         )
         labels = [str(vertex) for vertex in self._graph._vertices]
         vertex_trace = _native_record(
-            type='scatter', mode=(
-                'markers+text'
-                if bool(self._options.get('vertex_labels', True))
-                else 'markers'),
+            type="scatter",
+            mode=(
+                "markers+text"
+                if bool(self._options.get("vertex_labels", True))
+                else "markers"
+            ),
             x=[point[0] for point in positions],
             y=[point[1] for point in positions],
             text=labels,
-            textposition=str(self._options.get('label_pos', 'middle center')),
+            textposition=str(self._options.get("label_pos", "middle center")),
             hovertext=[repr(vertex) for vertex in self._graph._vertices],
-            hoverinfo='text',
+            hoverinfo="text",
             marker=_native_record(
-                color=self._options.get('vertex_color', '#377eb8'),
-                size=float(self._options.get('vertex_size', 28)),
-                line=_native_record(color='#ffffff', width=1.5),
+                color=self._options.get("vertex_color", "#377eb8"),
+                size=float(self._options.get("vertex_size", 28)),
+                line=_native_record(color="#ffffff", width=1.5),
             ),
             showlegend=False,
         )
@@ -409,23 +430,34 @@ class GraphPlot:
                     continue
                 source = positions[edge.source]
                 target = positions[edge.target]
-                annotations.append(_native_record(
-                    x=target[0], y=target[1], ax=source[0], ay=source[1],
-                    xref='x', yref='y', axref='x', ayref='y',
-                    showarrow=True, arrowhead=3, arrowsize=1,
-                    arrowwidth=1.2, arrowcolor=str(edge_color),
-                    opacity=0.8,
-                ))
+                annotations.append(
+                    _native_record(
+                        x=target[0],
+                        y=target[1],
+                        ax=source[0],
+                        ay=source[1],
+                        xref="x",
+                        yref="y",
+                        axref="x",
+                        ayref="y",
+                        showarrow=True,
+                        arrowhead=3,
+                        arrowsize=1,
+                        arrowwidth=1.2,
+                        arrowcolor=str(edge_color),
+                        opacity=0.8,
+                    )
+                )
         layout = _native_record(
-            title=str(self._options.get('title', self._graph.graph_name())),
-            showlegend=False, hovermode='closest',
+            title=str(self._options.get("title", self._graph.graph_name())),
+            showlegend=False,
+            hovermode="closest",
             margin=_native_record(l=20, r=20, b=20, t=45),
-            xaxis=_native_record(
-                visible=False, scaleanchor='y', scaleratio=1),
+            xaxis=_native_record(visible=False, scaleanchor="y", scaleratio=1),
             yaxis=_native_record(visible=False),
             annotations=annotations,
-            plot_bgcolor='rgba(0,0,0,0)',
-            paper_bgcolor='rgba(0,0,0,0)',
+            plot_bgcolor="rgba(0,0,0,0)",
+            paper_bgcolor="rgba(0,0,0,0)",
         )
         return _native_record(
             data=[edge_trace, vertex_trace],
@@ -436,16 +468,16 @@ class GraphPlot:
     def plot(self) -> Any:
         """Return this renderer as an ordinary composable ``Graphics``."""
         adapter = runtime.reflect.get(
-            runtime.global_object, '__sagejs_graphics_from_plotly__')
+            runtime.global_object, "__sagejs_graphics_from_plotly__"
+        )
         if adapter is runtime.undefined:
-            raise RuntimeError('the two-dimensional graphics layer is unavailable')
-        return runtime.reflect.apply(
-            adapter, runtime.undefined, [self.plotly()])
+            raise RuntimeError("the two-dimensional graphics layer is unavailable")
+        return runtime.reflect.apply(adapter, runtime.undefined, [self.plotly()])
 
     def _interactive_html(self) -> str:
         """Return a dependency-free SVG graph whose vertices are draggable."""
-        width = int(self._options.get('width', 800))
-        height = int(self._options.get('height', 500))
+        width = int(self._options.get("width", 800))
+        height = int(self._options.get("height", 500))
         positions = self._positions()
         if len(positions):
             minimum_x = min([point[0] for point in positions])
@@ -462,108 +494,143 @@ class GraphPlot:
             screen_positions = [
                 (
                     40 + (point[0] - minimum_x) * scale,
-                    height - 40 - (point[1] - minimum_y) * scale
+                    height - 40 - (point[1] - minimum_y) * scale,
                 )
                 for point in positions
             ]
         else:
             screen_positions = []
-        identifier = 'sagejs-graph-' + str(int(
-            runtime.math.random() * 1000000000000))
-        edge_color = _html_escape(self._options.get('edge_color', '#777'))
-        vertex_color = _html_escape(
-            self._options.get('vertex_color', '#377eb8'))
-        radius = float(self._options.get('vertex_size', 28)) / 2.0
+        identifier = "sagejs-graph-" + str(int(runtime.math.random() * 1000000000000))
+        edge_color = _html_escape(self._options.get("edge_color", "#777"))
+        vertex_color = _html_escape(self._options.get("vertex_color", "#377eb8"))
+        radius = float(self._options.get("vertex_size", 28)) / 2.0
         parts = [
             '<div id="' + identifier + '" class="sagejs-interactive-graph">',
-            '<svg viewBox="0 0 ' + str(width) + ' ' + str(height) + '" ',
-            'role="img" aria-label="' + _html_escape(
-                self._graph.graph_name() or 'Interactive graph') + '">',
+            '<svg viewBox="0 0 ' + str(width) + " " + str(height) + '" ',
+            'role="img" aria-label="'
+            + _html_escape(self._graph.graph_name() or "Interactive graph")
+            + '">',
             '<defs><marker id="' + identifier + '-arrow" markerWidth="8" ',
             'markerHeight="8" refX="7" refY="3" orient="auto" ',
             'markerUnits="strokeWidth"><path d="M0,0 L0,6 L8,3 z" ',
             'fill="' + edge_color + '"/></marker></defs>',
             '<g class="sagejs-edges" stroke="' + edge_color + '" ',
-            'stroke-width="' + str(self._options.get(
-                'edge_thickness', 1.5)) + '" fill="none">',
+            'stroke-width="'
+            + str(self._options.get("edge_thickness", 1.5))
+            + '" fill="none">',
         ]
         for index in range(len(self._graph._edges)):
             edge = self._graph._edges[index]
             source = screen_positions[edge.source]
             target = screen_positions[edge.target]
             common = (
-                ' data-source="' + str(edge.source) + '" data-target="' +
-                str(edge.target) + '"')
+                ' data-source="'
+                + str(edge.source)
+                + '" data-target="'
+                + str(edge.target)
+                + '"'
+            )
             if edge.source == edge.target:
                 parts.append(
-                    '<circle class="sagejs-edge sagejs-loop"' + common +
-                    ' cx="' + str(source[0]) + '" cy="' + str(
-                        source[1] - radius) + '" r="' + str(radius * 0.75) +
-                    '"/>')
+                    '<circle class="sagejs-edge sagejs-loop"'
+                    + common
+                    + ' cx="'
+                    + str(source[0])
+                    + '" cy="'
+                    + str(source[1] - radius)
+                    + '" r="'
+                    + str(radius * 0.75)
+                    + '"/>'
+                )
             else:
                 arrow = (
                     ' marker-end="url(#' + identifier + '-arrow)"'
-                    if self._graph.is_directed() else '')
+                    if self._graph.is_directed()
+                    else ""
+                )
                 parts.append(
-                    '<line class="sagejs-edge"' + common + arrow +
-                    ' x1="' + str(source[0]) + '" y1="' + str(source[1]) +
-                    '" x2="' + str(target[0]) + '" y2="' + str(
-                        target[1]) + '"/>')
+                    '<line class="sagejs-edge"'
+                    + common
+                    + arrow
+                    + ' x1="'
+                    + str(source[0])
+                    + '" y1="'
+                    + str(source[1])
+                    + '" x2="'
+                    + str(target[0])
+                    + '" y2="'
+                    + str(target[1])
+                    + '"/>'
+                )
         parts.append('</g><g class="sagejs-vertices">')
         for index in range(len(self._graph._vertices)):
             point = screen_positions[index]
-            parts.extend([
-                '<g class="sagejs-vertex" data-index="' + str(index) +
-                '" transform="translate(' + str(point[0]) + ' ' + str(
-                    point[1]) + ')">',
-                '<circle r="' + str(radius) + '" fill="' + vertex_color +
-                '" stroke="#fff" stroke-width="1.5"/>',
-                '<text text-anchor="middle" dominant-baseline="central">' +
-                _html_escape(self._graph._vertices[index]) + '</text></g>',
-            ])
-        parts.extend([
-            '</g></svg><div class="sagejs-graph-hint">Drag vertices to explore ',
-            'the layout.</div><style>',
-            '#' + identifier + '{max-width:100%;font-family:system-ui,sans-serif}',
-            '#' + identifier + ' svg{width:100%;height:auto;min-height:260px;',
-            'background:var(--jp-layout-color0,#fff);border:1px solid ',
-            'var(--jp-border-color2,#ddd);border-radius:8px;touch-action:none}',
-            '#' + identifier + ' .sagejs-vertex{cursor:grab}',
-            '#' + identifier + ' .sagejs-vertex:active{cursor:grabbing}',
-            '#' + identifier + ' text{fill:#fff;font-size:12px;',
-            'pointer-events:none;user-select:none}',
-            '#' + identifier + ' .sagejs-graph-hint{color:#666;font-size:12px;',
-            'margin-top:4px}</style><script>(()=>{',
-            'const root=document.getElementById(' + _json_text(identifier) + ');',
-            'if(!root)return;const svg=root.querySelector("svg");',
-            'const positions=' + _json_text(screen_positions) + ';',
-            'const edges=[...root.querySelectorAll(".sagejs-edge")];',
-            'const nodes=[...root.querySelectorAll(".sagejs-vertex")];',
-            'const update=()=>{nodes.forEach((node,i)=>node.setAttribute(',
-            '"transform",`translate(${positions[i][0]} ${positions[i][1]})`));',
-            'edges.forEach(edge=>{const s=+edge.dataset.source,t=+edge.dataset.target;',
-            'if(edge.classList.contains("sagejs-loop")){edge.setAttribute("cx",',
-            'positions[s][0]);edge.setAttribute("cy",positions[s][1]-' +
-            str(radius) + ');}else{edge.setAttribute("x1",positions[s][0]);',
-            'edge.setAttribute("y1",positions[s][1]);edge.setAttribute("x2",',
-            'positions[t][0]);edge.setAttribute("y2",positions[t][1]);}});};',
-            'const point=e=>{const box=svg.getBoundingClientRect();return[',
-            '(e.clientX-box.left)*' + str(width) + '/box.width,',
-            '(e.clientY-box.top)*' + str(height) + '/box.height];};',
-            'nodes.forEach((node,i)=>{node.addEventListener("pointerdown",e=>{',
-            'node.setPointerCapture(e.pointerId);e.preventDefault();});',
-            'node.addEventListener("pointermove",e=>{if(!node.hasPointerCapture(',
-            'e.pointerId))return;positions[i]=point(e);update();});});',
-            '})();</script></div>',
-        ])
-        return ''.join(parts)
+            parts.extend(
+                [
+                    '<g class="sagejs-vertex" data-index="'
+                    + str(index)
+                    + '" transform="translate('
+                    + str(point[0])
+                    + " "
+                    + str(point[1])
+                    + ')">',
+                    '<circle r="'
+                    + str(radius)
+                    + '" fill="'
+                    + vertex_color
+                    + '" stroke="#fff" stroke-width="1.5"/>',
+                    '<text text-anchor="middle" dominant-baseline="central">'
+                    + _html_escape(self._graph._vertices[index])
+                    + "</text></g>",
+                ]
+            )
+        parts.extend(
+            [
+                '</g></svg><div class="sagejs-graph-hint">Drag vertices to explore ',
+                "the layout.</div><style>",
+                "#" + identifier + "{max-width:100%;font-family:system-ui,sans-serif}",
+                "#" + identifier + " svg{width:100%;height:auto;min-height:260px;",
+                "background:var(--jp-layout-color0,#fff);border:1px solid ",
+                "var(--jp-border-color2,#ddd);border-radius:8px;touch-action:none}",
+                "#" + identifier + " .sagejs-vertex{cursor:grab}",
+                "#" + identifier + " .sagejs-vertex:active{cursor:grabbing}",
+                "#" + identifier + " text{fill:#fff;font-size:12px;",
+                "pointer-events:none;user-select:none}",
+                "#" + identifier + " .sagejs-graph-hint{color:#666;font-size:12px;",
+                "margin-top:4px}</style><script>(()=>{",
+                "const root=document.getElementById(" + _json_text(identifier) + ");",
+                'if(!root)return;const svg=root.querySelector("svg");',
+                "const positions=" + _json_text(screen_positions) + ";",
+                'const edges=[...root.querySelectorAll(".sagejs-edge")];',
+                'const nodes=[...root.querySelectorAll(".sagejs-vertex")];',
+                "const update=()=>{nodes.forEach((node,i)=>node.setAttribute(",
+                '"transform",`translate(${positions[i][0]} ${positions[i][1]})`));',
+                "edges.forEach(edge=>{const s=+edge.dataset.source,t=+edge.dataset.target;",
+                'if(edge.classList.contains("sagejs-loop")){edge.setAttribute("cx",',
+                'positions[s][0]);edge.setAttribute("cy",positions[s][1]-'
+                + str(radius)
+                + ');}else{edge.setAttribute("x1",positions[s][0]);',
+                'edge.setAttribute("y1",positions[s][1]);edge.setAttribute("x2",',
+                'positions[t][0]);edge.setAttribute("y2",positions[t][1]);}});};',
+                "const point=e=>{const box=svg.getBoundingClientRect();return[",
+                "(e.clientX-box.left)*" + str(width) + "/box.width,",
+                "(e.clientY-box.top)*" + str(height) + "/box.height];};",
+                'nodes.forEach((node,i)=>{node.addEventListener("pointerdown",e=>{',
+                "node.setPointerCapture(e.pointerId);e.preventDefault();});",
+                'node.addEventListener("pointermove",e=>{if(!node.hasPointerCapture(',
+                "e.pointerId))return;positions[i]=point(e);update();});});",
+                "})();</script></div>",
+            ]
+        )
+        return "".join(parts)
 
     def _rich_repr_(self) -> Any:
-        renderer = str(self._options.get('renderer', '')).lower()
-        if self._options.get('interactive', False) or renderer in (
-            'interactive', 'svg'
+        renderer = str(self._options.get("renderer", "")).lower()
+        if self._options.get("interactive", False) or renderer in (
+            "interactive",
+            "svg",
         ):
-            return _native_record(mime='text/html', data=self._interactive_html())
+            return _native_record(mime="text/html", data=self._interactive_html())
         return _native_record(mime=_PLOTLY_MIME, data=self.plotly())
 
     def show(self, **options: Any) -> GraphPlot:
@@ -571,7 +638,7 @@ class GraphPlot:
         return self
 
     def __repr__(self) -> str:
-        return 'GraphPlot object for ' + repr(self._graph)
+        return "GraphPlot object for " + repr(self._graph)
 
     __str__ = __repr__
     toString = __repr__
@@ -599,7 +666,7 @@ class GenericGraph:
         self._weighted = bool(weighted)
         self._name = name
         self._pos = pos
-        setattr(self, 'name', self.graph_name)  # noqa: B010
+        setattr(self, "name", self.graph_name)  # noqa: B010
         if data is not None:
             self._load_data(data)
 
@@ -608,12 +675,12 @@ class GenericGraph:
             answer = runtime.reflect.construct(DiGraph, [])
         else:
             answer = runtime.reflect.construct(Graph, [])
-        answer._loops = bool(_record_get(options, 'loops', False))
-        answer._multiedges = bool(_record_get(options, 'multiedges', False))
-        answer._weighted = bool(_record_get(options, 'weighted', False))
-        answer._name = _record_get(options, 'name')
-        answer._pos = _record_get(options, 'pos')
-        data = _record_get(options, 'data')
+        answer._loops = bool(_record_get(options, "loops", False))
+        answer._multiedges = bool(_record_get(options, "multiedges", False))
+        answer._weighted = bool(_record_get(options, "weighted", False))
+        answer._name = _record_get(options, "name")
+        answer._pos = _record_get(options, "pos")
+        data = _record_get(options, "data")
         if data is not None:
             answer._load_data(data)
         return answer
@@ -632,11 +699,11 @@ class GenericGraph:
             self.add_vertices(range(data))
             return
         if isinstance(data, str):
-            if data[:10] == '>>graph6<<':
+            if data[:10] == ">>graph6<<":
                 data = data[10:]
-            if data[:11] == '>>sparse6<<':
+            if data[:11] == ">>sparse6<<":
                 data = data[11:]
-            if data[:1] == ':':
+            if data[:1] == ":":
                 decoded = self._from_sparse6(data)
             else:
                 decoded = self._from_graph6(data)
@@ -655,11 +722,11 @@ class GenericGraph:
                     for target in targets:
                         self.add_edge(source, target)
             return
-        if hasattr(data, 'nrows') and hasattr(data, 'ncols'):
+        if hasattr(data, "nrows") and hasattr(data, "ncols"):
             rows = int(data.nrows())
             columns = int(data.ncols())
             if rows != columns:
-                raise ValueError('an adjacency matrix must be square')
+                raise ValueError("an adjacency matrix must be square")
             self.add_vertices(range(rows))
             for source in range(rows):
                 targets = range(columns) if self._directed else range(source, columns)
@@ -690,7 +757,7 @@ class GenericGraph:
         bits = _bits_from_text(text[offset:])
         needed = order * (order - 1) // 2
         if len(bits) < needed:
-            raise ValueError('truncated graph6 data')
+            raise ValueError("truncated graph6 data")
         answer = Graph(order)
         cursor = 0
         for target in range(1, order):
@@ -702,10 +769,10 @@ class GenericGraph:
 
     def _from_sparse6(self, text: str) -> Graph:
         text = text.strip()
-        if text[:1] != ':':
+        if text[:1] != ":":
             raise ValueError("sparse6 data must start with ':'")
         order, offset = _decode_order(text[1:])
-        bits = _bits_from_text(text[1 + offset:])
+        bits = _bits_from_text(text[1 + offset :])
         width = 1
         while (1 << width) < order:
             width += 1
@@ -764,7 +831,7 @@ class GenericGraph:
             self._name = str(value)
         if self._name is not None:
             return self._name
-        return ''
+        return ""
 
     def get_pos(self) -> Any:
         return self._pos
@@ -786,9 +853,9 @@ class GenericGraph:
         # Bliss canonical forms intentionally target simple graphs.  In
         # particular, igraph does not encode loop and parallel-edge semantics
         # in this API, so keep those cases on the exact portable path.
-        if self._multiedges or any([
-            edge.source == edge.target for edge in self._edges
-        ]):
+        if self._multiedges or any(
+            [edge.source == edge.target for edge in self._edges]
+        ):
             return None
         return _native_graph_backend()
 
@@ -807,33 +874,35 @@ class GenericGraph:
         """
         if layout is None and self._pos is not None:
             return dict(self._pos)
-        name = 'spring' if layout is None else str(layout).lower()
+        name = "spring" if layout is None else str(layout).lower()
         native_names = {
-            'spring': 'fr', 'fr': 'fr',
-            'kamada_kawai': 'kk', 'kk': 'kk',
-            'circular': 'circle', 'circle': 'circle',
-            'grid': 'grid',
+            "spring": "fr",
+            "fr": "fr",
+            "kamada_kawai": "kk",
+            "kk": "kk",
+            "circular": "circle",
+            "circle": "circle",
+            "grid": "grid",
         }
         if name not in native_names:
-            raise ValueError('unknown graph layout: ' + repr(layout))
+            raise ValueError("unknown graph layout: " + repr(layout))
         coordinates = None
         backend = self._native_simple_backend()
         if backend is not None:
             try:
-                native_function = runtime.reflect.get(backend, 'layout')
-                coordinates = runtime.reflect.apply(native_function, backend, [
-                    self._native_data(), native_names[name]])
+                native_function = runtime.reflect.get(backend, "layout")
+                coordinates = runtime.reflect.apply(
+                    native_function, backend, [self._native_data(), native_names[name]]
+                )
             except Exception:
                 coordinates = None
         if coordinates is None:
-            positions = self._circle_embedding(
-                self._vertices, return_dict=True)
+            positions = self._circle_embedding(self._vertices, return_dict=True)
         else:
             positions = {}
             for index in range(self.order()):
                 point = coordinates[index]
-                positions[self._vertices[index]] = (
-                    float(point[0]), float(point[1]))
+                positions[self._vertices[index]] = (float(point[0]), float(point[1]))
         if save_pos:
             self._pos = positions
         return positions
@@ -927,9 +996,8 @@ class GenericGraph:
     def _edge_matches(self, edge: _Edge, source: int, target: int) -> bool:
         if self._directed:
             return edge.source == source and edge.target == target
-        return (
-            (edge.source == source and edge.target == target)
-            or (edge.source == target and edge.target == source)
+        return (edge.source == source and edge.target == target) or (
+            edge.source == target and edge.target == source
         )
 
     def add_edge(self, *edge_data: Any) -> None:
@@ -938,7 +1006,7 @@ class GenericGraph:
         else:
             values = list(edge_data)
         if len(values) not in (2, 3):
-            raise ValueError('an edge must have two endpoints and an optional label')
+            raise ValueError("an edge must have two endpoints and an optional label")
         source_vertex = values[0]
         target_vertex = values[1]
         label = None if len(values) == 2 else values[2]
@@ -952,8 +1020,12 @@ class GenericGraph:
             target = len(self._vertices) - 1
         if source == target and not self._loops:
             raise ValueError(
-                'cannot add edge from ' + repr(source_vertex) + ' to ' +
-                repr(target_vertex) + ' in graph without loops')
+                "cannot add edge from "
+                + repr(source_vertex)
+                + " to "
+                + repr(target_vertex)
+                + " in graph without loops"
+            )
         if not self._multiedges:
             for edge in self._edges:
                 if self._edge_matches(edge, source, target):
@@ -988,7 +1060,7 @@ class GenericGraph:
     def delete_edge(self, *edge_data: Any) -> None:
         values = list(edge_data[0]) if len(edge_data) == 1 else list(edge_data)
         if len(values) < 2:
-            raise ValueError('an edge needs two endpoints')
+            raise ValueError("an edge needs two endpoints")
         source = self._vertex_index(values[0])
         target = self._vertex_index(values[1])
         label = values[2] if len(values) > 2 else runtime.undefined
@@ -999,7 +1071,7 @@ class GenericGraph:
             ):
                 self._edges.pop(index)
                 return
-        raise ValueError('edge is not in graph')
+        raise ValueError("edge is not in graph")
 
     def delete_edges(self, edges: Any) -> None:
         for edge in edges:
@@ -1008,7 +1080,7 @@ class GenericGraph:
     def delete_vertex(self, vertex: Any) -> None:
         index = self._vertex_index(vertex)
         if index < 0:
-            raise ValueError('vertex is not in graph')
+            raise ValueError("vertex is not in graph")
         self._vertices.pop(index)
         kept = []
         for edge in self._edges:
@@ -1025,7 +1097,9 @@ class GenericGraph:
         for vertex in list(vertices):
             self.delete_vertex(vertex)
 
-    def has_edge(self, source_vertex: Any, target_vertex: Any, label: Any = runtime.undefined) -> bool:
+    def has_edge(
+        self, source_vertex: Any, target_vertex: Any, label: Any = runtime.undefined
+    ) -> bool:
         source = self._vertex_index(source_vertex)
         target = self._vertex_index(target_vertex)
         if source < 0 or target < 0:
@@ -1041,28 +1115,33 @@ class GenericGraph:
         source = self._vertex_index(source_vertex)
         target = self._vertex_index(target_vertex)
         labels = [
-            edge.label for edge in self._edges
+            edge.label
+            for edge in self._edges
             if self._edge_matches(edge, source, target)
         ]
         if len(labels) == 0:
-            raise ValueError('edge is not in graph')
+            raise ValueError("edge is not in graph")
         return labels if self._multiedges else labels[0]
 
-    def set_edge_label(self, source_vertex: Any, target_vertex: Any, label: Any) -> None:
+    def set_edge_label(
+        self, source_vertex: Any, target_vertex: Any, label: Any
+    ) -> None:
         source = self._vertex_index(source_vertex)
         target = self._vertex_index(target_vertex)
         for edge in self._edges:
             if self._edge_matches(edge, source, target):
                 edge.label = label
                 return
-        raise ValueError('edge is not in graph')
+        raise ValueError("edge is not in graph")
 
     def vertices(self, sort: bool = False, **_options: Any) -> list[Any]:
         return _safe_sorted(self._vertices) if sort else list(self._vertices)
 
     vertex_iterator = vertices
 
-    def edges(self, labels: bool = True, sort: bool = False, **_options: Any) -> list[Any]:
+    def edges(
+        self, labels: bool = True, sort: bool = False, **_options: Any
+    ) -> list[Any]:
         answer = []
         for edge in self._edges:
             source = self._vertices[edge.source]
@@ -1074,8 +1153,7 @@ class GenericGraph:
                 except Exception:
                     pass
             if labels:
-                answer.append(runtime.math_tuple([
-                    source, target, edge.label]))
+                answer.append(runtime.math_tuple([source, target, edge.label]))
             else:
                 answer.append(runtime.math_tuple([source, target]))
         return _safe_sorted(answer) if sort else answer
@@ -1099,13 +1177,11 @@ class GenericGraph:
         return iter(self._vertices)
 
     def __repr__(self) -> str:
-        if self._name is not None and self._name != '':
-            noun = 'Digraph' if self._directed else 'Graph'
-            return (
-                self._name + ': ' + noun + ' on ' +
-                str(self.order()) + ' vertices')
-        noun = 'Digraph' if self._directed else 'Graph'
-        return noun + ' on ' + str(self.order()) + ' vertices'
+        if self._name is not None and self._name != "":
+            noun = "Digraph" if self._directed else "Graph"
+            return self._name + ": " + noun + " on " + str(self.order()) + " vertices"
+        noun = "Digraph" if self._directed else "Graph"
+        return noun + " on " + str(self.order()) + " vertices"
 
     __str__ = __repr__
     toString = __repr__
@@ -1113,7 +1189,7 @@ class GenericGraph:
     def neighbors(self, vertex: Any) -> list[Any]:
         index = self._vertex_index(vertex)
         if index < 0:
-            raise LookupError('vertex is not in graph')
+            raise LookupError("vertex is not in graph")
         answer = []
         for edge in self._edges:
             if edge.source == index:
@@ -1133,7 +1209,7 @@ class GenericGraph:
             return self.neighbors(vertex)
         index = self._vertex_index(vertex)
         if index < 0:
-            raise LookupError('vertex is not in graph')
+            raise LookupError("vertex is not in graph")
         answer = []
         for edge in self._edges:
             if edge.target == index:
@@ -1150,7 +1226,7 @@ class GenericGraph:
             return [self.degree(value) for value in self._vertices]
         index = self._vertex_index(vertex)
         if index < 0:
-            raise LookupError('vertex is not in graph')
+            raise LookupError("vertex is not in graph")
         degree = 0
         for edge in self._edges:
             if self._directed:
@@ -1181,7 +1257,9 @@ class GenericGraph:
         return len([edge for edge in self._edges if edge.target == index])
 
     def degree_sequence(self) -> list[int]:
-        return sorted([int(self.degree(vertex)) for vertex in self._vertices], reverse=True)
+        return sorted(
+            [int(self.degree(vertex)) for vertex in self._vertices], reverse=True
+        )
 
     def minimum_degree(self) -> int:
         return min(self.degree_sequence()) if self.order() else 0
@@ -1200,7 +1278,11 @@ class GenericGraph:
         if order < 2:
             return 0.0
         denominator = order * (order - 1)
-        return self.size() / denominator if self._directed else 2.0 * self.size() / denominator
+        return (
+            self.size() / denominator
+            if self._directed
+            else 2.0 * self.size() / denominator
+        )
 
     def _adjacent_indices(self, index: int, reverse: bool = False) -> list[int]:
         answer = []
@@ -1217,11 +1299,14 @@ class GenericGraph:
         return answer
 
     def breadth_first_search(
-        self, start: Any, distance: Any = None, **_options: Any,
+        self,
+        start: Any,
+        distance: Any = None,
+        **_options: Any,
     ) -> Iterator[Any]:
         source = self._vertex_index(start)
         if source < 0:
-            raise LookupError('vertex is not in graph')
+            raise LookupError("vertex is not in graph")
         seen = [False] * self.order()
         seen[source] = True
         queue = [(source, 0)]
@@ -1242,7 +1327,7 @@ class GenericGraph:
     def depth_first_search(self, start: Any, **_options: Any) -> Iterator[Any]:
         source = self._vertex_index(start)
         if source < 0:
-            raise LookupError('vertex is not in graph')
+            raise LookupError("vertex is not in graph")
         seen = [False] * self.order()
         stack = [source]
         answer = []
@@ -1281,6 +1366,7 @@ class GenericGraph:
                         queue.append(target)
             answer.append(_safe_sorted(component) if sort else component)
         if sort:
+
             def component_key(component: list[Any]) -> tuple[int, str]:
                 return -len(component), repr(component)
 
@@ -1293,7 +1379,7 @@ class GenericGraph:
         for component in self.connected_components():
             if _index_equal(component, vertex) >= 0:
                 return component
-        raise LookupError('vertex is not in graph')
+        raise LookupError("vertex is not in graph")
 
     def is_connected(self) -> bool:
         return self.order() == 0 or len(self.connected_components()) == 1
@@ -1318,19 +1404,19 @@ class GenericGraph:
         if u is runtime.undefined:
             raise TypeError(
                 "GenericGraph.shortest_path() missing 2 required positional "
-                "arguments: 'u' and 'v'")
+                "arguments: 'u' and 'v'"
+            )
         if v is runtime.undefined:
             raise TypeError(
                 "GenericGraph.shortest_path() missing 1 required positional "
-                "argument: 'v'")
+                "argument: 'v'"
+            )
         source = self._vertex_index(u)
         target = self._vertex_index(v)
         if source < 0:
-            raise ValueError(
-                "vertex '" + str(u) + "' is not in the (di)graph")
+            raise ValueError("vertex '" + str(u) + "' is not in the (di)graph")
         if target < 0:
-            raise ValueError(
-                "vertex '" + str(v) + "' is not in the (di)graph")
+            raise ValueError("vertex '" + str(v) + "' is not in the (di)graph")
         distances, parents = self._shortest_index_data(source)
         if distances[target] < 0:
             return []
@@ -1354,9 +1440,14 @@ class GenericGraph:
             distances, _parents = self._shortest_index_data(source)
             source_distances = dict()
             for target in range(self.order()):
-                source_distances.__setitem__(self._vertices[target], (
-                    _graph_positive_infinity
-                    if distances[target] < 0 else distances[target]))
+                source_distances.__setitem__(
+                    self._vertices[target],
+                    (
+                        _graph_positive_infinity
+                        if distances[target] < 0
+                        else distances[target]
+                    ),
+                )
             answer.__setitem__(self._vertices[source], source_distances)
         return answer
 
@@ -1365,7 +1456,7 @@ class GenericGraph:
             return [self.eccentricity(value) for value in self._vertices]
         source = self._vertex_index(vertex)
         if source < 0:
-            raise LookupError('vertex is not in graph')
+            raise LookupError("vertex is not in graph")
         distances, _parents = self._shortest_index_data(source)
         if -1 in distances:
             return _graph_positive_infinity
@@ -1381,13 +1472,21 @@ class GenericGraph:
 
     def center(self) -> list[Any]:
         radius = self.radius()
-        return [vertex for vertex in self._vertices if self.eccentricity(vertex) == radius]
+        return [
+            vertex for vertex in self._vertices if self.eccentricity(vertex) == radius
+        ]
 
     def is_tree(self) -> bool:
-        return not self._directed and self.is_connected() and self.size() == self.order() - 1
+        return (
+            not self._directed
+            and self.is_connected()
+            and self.size() == self.order() - 1
+        )
 
     def is_forest(self) -> bool:
-        return not self._directed and self.size() == self.order() - len(self.connected_components())
+        return not self._directed and self.size() == self.order() - len(
+            self.connected_components()
+        )
 
     def girth(self) -> Any:
         if self.has_loops():
@@ -1418,8 +1517,7 @@ class GenericGraph:
                         if target == source:
                             best = min(best, distances[current] + 1)
                     elif parents[current] != target:
-                        best = min(
-                            best, distances[current] + distances[target] + 1)
+                        best = min(best, distances[current] + distances[target] + 1)
         return _graph_positive_infinity if best > self.order() else best
 
     def is_eulerian(self) -> bool:
@@ -1432,16 +1530,16 @@ class GenericGraph:
             ):
                 return False
             nonisolated = [
-                vertex for vertex in self._vertices
-                if self.degree(vertex) > 0]
+                vertex for vertex in self._vertices if self.degree(vertex) > 0
+            ]
             if len(nonisolated) == 0:
                 return True
             component = self.subgraph(nonisolated)
             strongly_connected = getattr(  # noqa: B009
-                component, 'strongly_connected_components')
+                component, "strongly_connected_components"
+            )
             return len(strongly_connected()) == 1
-        nonisolated = [
-            vertex for vertex in self._vertices if self.degree(vertex) > 0]
+        nonisolated = [vertex for vertex in self._vertices if self.degree(vertex) > 0]
         if any([self.degree(vertex) % 2 for vertex in nonisolated]):
             return False
         if len(nonisolated) == 0:
@@ -1491,25 +1589,21 @@ class GenericGraph:
                                     break
                             left_stop = current_path.index(common)
                             right_stop = target_path.index(common)
-                            cycle_indices = (
-                                current_path[:left_stop + 1]
-                                + list(reversed(target_path[:right_stop])))
-                            cycle = [
-                                self._vertices[index]
-                                for index in cycle_indices]
+                            cycle_indices = current_path[: left_stop + 1] + list(
+                                reversed(target_path[:right_stop])
+                            )
+                            cycle = [self._vertices[index] for index in cycle_indices]
                             return runtime.math_tuple([False, cycle])
                         return False
         if certificate:
             color_dict = dict()
             for index in range(self.order()):
-                color_dict.__setitem__(
-                    self._vertices[index], 1 - colors[index])
+                color_dict.__setitem__(self._vertices[index], 1 - colors[index])
             return runtime.math_tuple([True, color_dict])
         return True
 
     def has_loops(self) -> bool:
-        return any([
-            edge.source == edge.target for edge in self._edges])
+        return any([edge.source == edge.target for edge in self._edges])
 
     def loop_edges(self, labels: bool = True) -> list[Any]:
         answer = []
@@ -1517,8 +1611,7 @@ class GenericGraph:
             if edge.source == edge.target:
                 vertex = self._vertices[edge.source]
                 if labels:
-                    answer.append(runtime.math_tuple([
-                        vertex, vertex, edge.label]))
+                    answer.append(runtime.math_tuple([vertex, vertex, edge.label]))
                 else:
                     answer.append(runtime.math_tuple([vertex, vertex]))
         return answer
@@ -1527,7 +1620,11 @@ class GenericGraph:
         answer = self._new()
         answer.add_vertices(self._vertices)
         for source in range(self.order()):
-            targets = range(self.order()) if self._directed else range(source + 1, self.order())
+            targets = (
+                range(self.order())
+                if self._directed
+                else range(source + 1, self.order())
+            )
             for target in targets:
                 if source != target and not self.has_edge(
                     self._vertices[source], self._vertices[target]
@@ -1535,11 +1632,13 @@ class GenericGraph:
                     answer.add_edge(self._vertices[source], self._vertices[target])
         return answer
 
-    def subgraph(self, vertices: Any = None, edges: Any = None, **_options: Any) -> GenericGraph:
+    def subgraph(
+        self, vertices: Any = None, edges: Any = None, **_options: Any
+    ) -> GenericGraph:
         selected = list(self._vertices) if vertices is None else list(vertices)
         answer = self._new(
-            loops=self._loops, multiedges=self._multiedges,
-            weighted=self._weighted)
+            loops=self._loops, multiedges=self._multiedges, weighted=self._weighted
+        )
         answer.add_vertices(selected)
         requested_edges = None if edges is None else list(edges)
         for edge in self._edges:
@@ -1554,7 +1653,8 @@ class GenericGraph:
                     if len(values) >= 2 and (
                         (_same(values[0], source) and _same(values[1], target))
                         or (
-                            not self._directed and _same(values[0], target)
+                            not self._directed
+                            and _same(values[0], target)
                             and _same(values[1], source)
                         )
                     ):
@@ -1572,7 +1672,7 @@ class GenericGraph:
             return answer
         source = 0 if starting_vertex is None else self._vertex_index(starting_vertex)
         if source < 0:
-            raise LookupError('vertex is not in graph')
+            raise LookupError("vertex is not in graph")
         seen = [False] * self.order()
         seen[source] = True
         queue = [source]
@@ -1586,14 +1686,14 @@ class GenericGraph:
                     queue.append(target)
                     answer.add_edge(self._vertices[current], self._vertices[target])
         if not all(seen):
-            raise ValueError('graph is disconnected')
+            raise ValueError("graph is disconnected")
         return answer
 
     min_spanning_tree = spanning_tree
 
     def bridges(self, labels: bool = True) -> list[Any]:
         if self._directed:
-            raise ValueError('bridges are defined here only for undirected graphs')
+            raise ValueError("bridges are defined here only for undirected graphs")
         answer = []
         original_components = len(self.connected_components())
         for edge_index in range(len(self._edges)):
@@ -1603,8 +1703,7 @@ class GenericGraph:
                 source = self._vertices[edge.source]
                 target = self._vertices[edge.target]
                 if labels:
-                    answer.append(runtime.math_tuple([
-                        source, target, edge.label]))
+                    answer.append(runtime.math_tuple([source, target, edge.label]))
                 else:
                     answer.append(runtime.math_tuple([source, target]))
         return answer
@@ -1631,13 +1730,13 @@ class GenericGraph:
         answer.add_vertices(self._vertices)
         for edge in self._edges:
             answer.add_edge(
-                self._vertices[edge.source], self._vertices[edge.target],
-                edge.label)
+                self._vertices[edge.source], self._vertices[edge.target], edge.label
+            )
         return answer
 
     def cartesian_product(self, other: GenericGraph) -> GenericGraph:
         if self._directed != other._directed:
-            raise TypeError('cartesian product needs graphs of the same kind')
+            raise TypeError("cartesian product needs graphs of the same kind")
         answer = self._new()
         for left in self._vertices:
             for right in other._vertices:
@@ -1646,39 +1745,48 @@ class GenericGraph:
             for right in other._vertices:
                 answer.add_edge(
                     (self._vertices[edge.source], right),
-                    (self._vertices[edge.target], right), edge.label)
+                    (self._vertices[edge.target], right),
+                    edge.label,
+                )
         for edge in other._edges:
             for left in self._vertices:
                 answer.add_edge(
                     (left, other._vertices[edge.source]),
-                    (left, other._vertices[edge.target]), edge.label)
+                    (left, other._vertices[edge.target]),
+                    edge.label,
+                )
         return answer
 
     def adjacency_matrix(self, **_options: Any) -> Any:
-        rows = [[0 for _target in range(self.order())] for _source in range(self.order())]
+        rows = [
+            [0 for _target in range(self.order())] for _source in range(self.order())
+        ]
         for edge in self._edges:
             rows[edge.source][edge.target] += 1
             if not self._directed and edge.source != edge.target:
                 rows[edge.target][edge.source] += 1
-        factory = runtime.reflect.get(runtime.global_object, 'matrix')
+        factory = runtime.reflect.get(runtime.global_object, "matrix")
         return runtime.reflect.apply(factory, runtime.undefined, [rows])
 
     def _edge_signature(self, source: int, target: int, edge_labels: bool) -> str:
         labels = []
         for edge in self._edges:
             if self._edge_matches(edge, source, target):
-                labels.append(_label_code(edge.label) if edge_labels else '*')
+                labels.append(_label_code(edge.label) if edge_labels else "*")
         labels.sort()
-        return '|'.join(labels)
+        return "|".join(labels)
 
     def _vertex_signature(self, index: int, edge_labels: bool) -> str:
         if self._directed:
-            prefix = str(self.in_degree(self._vertices[index])) + ':' + str(
-                self.out_degree(self._vertices[index]))
+            prefix = (
+                str(self.in_degree(self._vertices[index]))
+                + ":"
+                + str(self.out_degree(self._vertices[index]))
+            )
         else:
             prefix = str(self.degree(self._vertices[index]))
         loop = self._edge_signature(index, index, edge_labels)
-        return prefix + ';' + loop
+        return prefix + ";" + loop
 
     def _all_isomorphisms(
         self,
@@ -1693,8 +1801,12 @@ class GenericGraph:
         ):
             return []
         order = self.order()
-        left_signatures = [self._vertex_signature(index, edge_labels) for index in range(order)]
-        right_signatures = [other._vertex_signature(index, edge_labels) for index in range(order)]
+        left_signatures = [
+            self._vertex_signature(index, edge_labels) for index in range(order)
+        ]
+        right_signatures = [
+            other._vertex_signature(index, edge_labels) for index in range(order)
+        ]
         if sorted(left_signatures) != sorted(right_signatures):
             return []
         mapping = [-1] * order
@@ -1708,9 +1820,13 @@ class GenericGraph:
                 mapped_target = mapping[mapped_source]
                 if mapped_target < 0:
                     continue
-                if self._edge_signature(source, mapped_source, edge_labels) != other._edge_signature(target, mapped_target, edge_labels):
+                if self._edge_signature(
+                    source, mapped_source, edge_labels
+                ) != other._edge_signature(target, mapped_target, edge_labels):
                     return False
-                if self._directed and self._edge_signature(mapped_source, source, edge_labels) != other._edge_signature(mapped_target, target, edge_labels):
+                if self._directed and self._edge_signature(
+                    mapped_source, source, edge_labels
+                ) != other._edge_signature(mapped_target, target, edge_labels):
                     return False
             return True
 
@@ -1726,7 +1842,8 @@ class GenericGraph:
                 if mapping[source] >= 0:
                     continue
                 targets = [
-                    target for target in range(order)
+                    target
+                    for target in range(order)
                     if not used[target] and compatible(source, target)
                 ]
                 if len(targets) == 0:
@@ -1755,14 +1872,16 @@ class GenericGraph:
             return runtime.math_tuple([False, None]) if certificate else False
         if not certificate and not edge_labels:
             backend = _native_graph_backend()
-            if (
-                backend is not None
-                and self._directed == other._directed
-            ):
+            if backend is not None and self._directed == other._directed:
                 try:
-                    native_function = runtime.reflect.get(backend, 'isomorphic')
-                    return bool(runtime.reflect.apply(native_function, backend, [
-                        self._native_data(), other._native_data()]))
+                    native_function = runtime.reflect.get(backend, "isomorphic")
+                    return bool(
+                        runtime.reflect.apply(
+                            native_function,
+                            backend,
+                            [self._native_data(), other._native_data()],
+                        )
+                    )
                 except Exception:
                     pass
         mappings = self._all_isomorphisms(other, edge_labels, True)
@@ -1773,27 +1892,34 @@ class GenericGraph:
         mapping = dict()
         for index in range(self.order()):
             mapping.__setitem__(
-                self._vertices[index], other._vertices[mappings[0][index]])
+                self._vertices[index], other._vertices[mappings[0][index]]
+            )
         return runtime.math_tuple([True, mapping])
 
     def automorphism_group(
-        self, edge_labels: bool = False, **_options: Any,
+        self,
+        edge_labels: bool = False,
+        **_options: Any,
     ) -> GraphAutomorphismGroup:
         if not edge_labels:
             backend = self._native_simple_backend()
             if backend is not None:
                 try:
-                    native_function = runtime.reflect.get(
-                        backend, 'automorphismGroup')
+                    native_function = runtime.reflect.get(backend, "automorphismGroup")
                     data = runtime.reflect.apply(
-                        native_function, backend, [self._native_data()])
+                        native_function, backend, [self._native_data()]
+                    )
                     generators = [
-                        list(mapping) for mapping in
-                        runtime.reflect.get(data, 'generators')]
-                    order = int(str(runtime.reflect.get(data, 'order')))
+                        list(mapping)
+                        for mapping in runtime.reflect.get(data, "generators")
+                    ]
+                    order = int(str(runtime.reflect.get(data, "order")))
                     return GraphAutomorphismGroup(
-                        self._vertices, generators,
-                        known_order=order, generators_only=True)
+                        self._vertices,
+                        generators,
+                        known_order=order,
+                        generators_only=True,
+                    )
                 except Exception:
                     pass
         return GraphAutomorphismGroup(
@@ -1808,11 +1934,13 @@ class GenericGraph:
                 if not self._directed and target < source:
                     continue
                 pieces.append(self._edge_signature(source, target, edge_labels))
-                pieces.append(';')
-        return ''.join(pieces)
+                pieces.append(";")
+        return "".join(pieces)
 
     def _refine_partition(
-        self, partition: list[list[int]], edge_labels: bool,
+        self,
+        partition: list[list[int]],
+        edge_labels: bool,
     ) -> list[list[int]]:
         current = [list(cell) for cell in partition]
         changed = True
@@ -1837,7 +1965,7 @@ class GenericGraph:
                             ]
                             incoming.sort()
                             signature_parts.append(repr(incoming))
-                    signature = ':'.join(signature_parts)
+                    signature = ":".join(signature_parts)
                     if signature not in buckets:
                         buckets[signature] = []
                     buckets[signature].append(vertex)
@@ -1872,13 +2000,17 @@ class GenericGraph:
                         self._directed,
                     )
                     answer = self._new(
-                        loops=self._loops, multiedges=self._multiedges,
-                        weighted=self._weighted)
+                        loops=self._loops,
+                        multiedges=self._multiedges,
+                        weighted=self._weighted,
+                    )
                     answer.add_vertices(range(self.order()))
                     for edge in self._edges:
                         answer.add_edge(
                             permutation[edge.source],
-                            permutation[edge.target], edge.label)
+                            permutation[edge.target],
+                            edge.label,
+                        )
                     if certificate:
                         mapping = {}
                         for index in range(self.order()):
@@ -1889,7 +2021,9 @@ class GenericGraph:
                     pass
         del partition
         order = self.order()
-        signatures = [self._vertex_signature(index, edge_labels) for index in range(order)]
+        signatures = [
+            self._vertex_signature(index, edge_labels) for index in range(order)
+        ]
         buckets = {}
         for index in range(order):
             signature = signatures[index]
@@ -1897,8 +2031,8 @@ class GenericGraph:
                 buckets[signature] = []
             buckets[signature].append(index)
         initial_partition = [
-            buckets[key]
-            for key in sorted(list(runtime.object.keys(buckets)))]
+            buckets[key] for key in sorted(list(runtime.object.keys(buckets)))
+        ]
         best_order = None
         best_code = None
 
@@ -1917,10 +2051,13 @@ class GenericGraph:
                 split_index += 1
             split_cell = refined[split_index]
             for vertex in split_cell:
-                remainder = [candidate for candidate in split_cell if candidate != vertex]
+                remainder = [
+                    candidate for candidate in split_cell if candidate != vertex
+                ]
                 branch = (
-                    refined[:split_index] + [[vertex], remainder]
-                    + refined[split_index + 1:]
+                    refined[:split_index]
+                    + [[vertex], remainder]
+                    + refined[split_index + 1 :]
                 )
                 search(branch)
 
@@ -1931,8 +2068,8 @@ class GenericGraph:
         for new_index in range(order):
             inverse[best_order[new_index]] = new_index
         answer = self._new(
-            loops=self._loops, multiedges=self._multiedges,
-            weighted=self._weighted)
+            loops=self._loops, multiedges=self._multiedges, weighted=self._weighted
+        )
         answer.add_vertices(range(order))
         for edge in self._edges:
             answer.add_edge(inverse[edge.source], inverse[edge.target], edge.label)
@@ -1945,7 +2082,7 @@ class GenericGraph:
 
     def graph6_string(self) -> str:
         if self._directed or self._multiedges or self.has_loops():
-            raise ValueError('graph6 supports only simple undirected graphs')
+            raise ValueError("graph6 supports only simple undirected graphs")
         bits = []
         for target in range(1, self.order()):
             for source in range(target):
@@ -1954,7 +2091,7 @@ class GenericGraph:
 
     def sparse6_string(self) -> str:
         if self._directed:
-            raise ValueError('sparse6 supports only undirected graphs')
+            raise ValueError("sparse6 supports only undirected graphs")
         order = self.order()
         width = 1
         while (1 << width) < order:
@@ -1962,14 +2099,15 @@ class GenericGraph:
 
         def encoded(value: int) -> list[int]:
             return [
-                1 if value & (1 << (width - 1 - index)) else 0
-                for index in range(width)
+                1 if value & (1 << (width - 1 - index)) else 0 for index in range(width)
             ]
 
-        edge_pairs = sorted([
-            (max(edge.source, edge.target), min(edge.source, edge.target))
-            for edge in self._edges
-        ])
+        edge_pairs = sorted(
+            [
+                (max(edge.source, edge.target), min(edge.source, edge.target))
+                for edge in self._edges
+            ]
+        )
         bits = []
         current = 0
         for target, source in edge_pairs:
@@ -1987,12 +2125,17 @@ class GenericGraph:
                 bits.append(0)
                 bits.extend(encoded(source))
         padding = (-len(bits)) % 6
-        if width < 6 and order == (1 << width) and padding >= width and current < order - 1:
+        if (
+            width < 6
+            and order == (1 << width)
+            and padding >= width
+            and current < order - 1
+        ):
             bits.append(0)
             bits.extend([1] * ((-len(bits)) % 6))
         else:
             bits.extend([1] * padding)
-        return ':' + _encode_order(order) + _text_from_bits(bits)
+        return ":" + _encode_order(order) + _text_from_bits(bits)
 
     def relabel(self, perm: Any = None, inplace: bool = True, **_options: Any) -> Any:
         answer = self if inplace else self.copy()
@@ -2006,11 +2149,11 @@ class GenericGraph:
         else:
             values = list(perm)
             if len(values) != answer.order():
-                raise ValueError('relabeling has the wrong length')
+                raise ValueError("relabeling has the wrong length")
             new_vertices = values
         for first in range(len(new_vertices)):
             if _index_equal(new_vertices[:first], new_vertices[first]) >= 0:
-                raise ValueError('relabeling must be injective')
+                raise ValueError("relabeling must be injective")
         answer._vertices = new_vertices
         if inplace:
             return None
@@ -2018,7 +2161,7 @@ class GenericGraph:
 
     def _maximum_clique_indices(self) -> list[int]:
         if self._directed:
-            raise ValueError('cliques are defined here only for undirected graphs')
+            raise ValueError("cliques are defined here only for undirected graphs")
         best = []
 
         def expand(clique: list[int], candidates: list[int]) -> None:
@@ -2028,7 +2171,8 @@ class GenericGraph:
             while len(candidates):
                 vertex = candidates.pop()
                 next_candidates = [
-                    candidate for candidate in candidates
+                    candidate
+                    for candidate in candidates
                     if self._edge_signature(vertex, candidate, False)
                 ]
                 expand(clique + [vertex], next_candidates)
@@ -2051,7 +2195,9 @@ class GenericGraph:
 
     def vertex_cover(self, **_options: Any) -> list[Any]:
         independent = self.independent_set()
-        return [vertex for vertex in self._vertices if _index_equal(independent, vertex) < 0]
+        return [
+            vertex for vertex in self._vertices if _index_equal(independent, vertex) < 0
+        ]
 
     def coloring(self, hex_colors: bool = False, **_options: Any) -> Any:
         order = self.order()
@@ -2086,7 +2232,8 @@ class GenericGraph:
                     best_saturation = len(adjacent_colors)
                     best_degree = degree
             forbidden = [
-                colors[neighbor] for neighbor in self._adjacent_indices(vertex)
+                colors[neighbor]
+                for neighbor in self._adjacent_indices(vertex)
                 if colors[neighbor] >= 0
             ]
             for color in range(used_count + 1):
@@ -2102,7 +2249,7 @@ class GenericGraph:
             return dict()
         search(0, 0)
         classes = dict()
-        palette = ['#377eb8', '#e41a1c', '#4daf4a', '#984ea3', '#ff7f00', '#ffff33']
+        palette = ["#377eb8", "#e41a1c", "#4daf4a", "#984ea3", "#ff7f00", "#ffff33"]
         for index in range(order):
             key = palette[best[index] % len(palette)] if hex_colors else best[index]
             if key not in classes:
@@ -2122,9 +2269,9 @@ class GenericGraph:
         return self.graphplot(**options).plot()
 
     def show(self, **options: Any) -> Any:
-        if bool(_record_get(options, 'interactive', False)) or str(
-            _record_get(options, 'renderer', '')).lower() in (
-                'interactive', 'svg'):
+        if bool(_record_get(options, "interactive", False)) or str(
+            _record_get(options, "renderer", "")
+        ).lower() in ("interactive", "svg"):
             return self.graphplot(**options).show()
         return self.plot(**options).show()
 
@@ -2148,7 +2295,8 @@ class DiGraph(GenericGraph):
         answer.add_vertices(self._vertices)
         for edge in self._edges:
             answer.add_edge(
-                self._vertices[edge.target], self._vertices[edge.source], edge.label)
+                self._vertices[edge.target], self._vertices[edge.source], edge.label
+            )
         return answer
 
     def topological_sort(self, **_options: Any) -> list[Any]:
@@ -2165,7 +2313,7 @@ class DiGraph(GenericGraph):
                 if indegrees[target] == 0:
                     queue.append(target)
         if len(answer) != self.order():
-            raise TypeError('digraph is not acyclic')
+            raise TypeError("digraph is not acyclic")
         return answer
 
     def is_directed_acyclic(self) -> bool:
@@ -2215,11 +2363,11 @@ class GraphGenerators:
 
     def EmptyGraph(self, immutable: bool = False) -> Graph:
         del immutable
-        return Graph(name='Empty graph')
+        return Graph(name="Empty graph")
 
     def CompleteGraph(self, order: int, immutable: bool = False) -> Graph:
         del immutable
-        graph = Graph(order, name='Complete graph')
+        graph = Graph(order, name="Complete graph")
         graph.add_clique(range(order))
         if order == 1:
             graph.set_pos(_position_dict([[0, 0, 0]]))
@@ -2237,22 +2385,19 @@ class GraphGenerators:
     ) -> Graph:
         del immutable
         if left < 0 or right < 0:
-            raise ValueError('the part sizes must be nonnegative')
+            raise ValueError("the part sizes must be nonnegative")
         if name is None:
-            name = (
-                'Complete bipartite graph of order '
-                + str(left) + '+' + str(right))
+            name = "Complete bipartite graph of order " + str(left) + "+" + str(right)
         graph = Graph(left + right, name=name)
         for source in range(left):
             for target in range(left, left + right):
                 graph.add_edge(source, target)
         if set_position:
             width = max(left, right)
+            graph._line_embedding(range(left), first=(0, 1), last=(width, 1))
             graph._line_embedding(
-                range(left), first=(0, 1), last=(width, 1))
-            graph._line_embedding(
-                range(left, left + right),
-                first=(0, 0), last=(width, 0))
+                range(left, left + right), first=(0, 0), last=(width, 0)
+            )
         return graph
 
     def PathGraph(
@@ -2263,15 +2408,14 @@ class GraphGenerators:
         name: str | None = None,
     ) -> Graph:
         del immutable
-        graph = Graph(order, name='Path graph' if name is None else name)
+        graph = Graph(order, name="Path graph" if name is None else name)
         graph.add_path(range(order))
-        circle = pos == 'circle' or (pos != 'line' and 10 < order < 41)
+        circle = pos == "circle" or (pos != "line" and 10 < order < 41)
         if circle:
             if order == 1:
                 graph.set_pos(_position_dict([[0, 0, 0]]))
             else:
-                graph._circle_embedding(
-                    range(order), angle=3.141592653589793 / 2)
+                graph._circle_embedding(range(order), angle=3.141592653589793 / 2)
         else:
             positions = {}
             for index in range(order):
@@ -2285,41 +2429,38 @@ class GraphGenerators:
     def CycleGraph(self, order: int, immutable: bool = False) -> Graph:
         del immutable
         if order < 0:
-            raise ValueError('parameter n must be a positive integer')
-        graph = Graph(order, name='Cycle graph')
+            raise ValueError("parameter n must be a positive integer")
+        graph = Graph(order, name="Cycle graph")
         if order > 1:
             graph.add_cycle(range(order))
         if order == 1:
             graph.set_pos(_position_dict([[0, 0, 0]]))
         else:
-            graph._circle_embedding(
-                range(order), angle=3.141592653589793 / 2)
+            graph._circle_embedding(range(order), angle=3.141592653589793 / 2)
         return graph
 
     def StarGraph(self, leaves: int, immutable: bool = False) -> Graph:
         del immutable
-        graph = Graph(leaves + 1, name='Star graph')
+        graph = Graph(leaves + 1, name="Star graph")
         for vertex in range(1, leaves + 1):
             graph.add_edge(0, vertex)
         graph.set_pos(_position_dict([[0, 0, 0]]))
-        graph._circle_embedding(
-            range(1, leaves + 1), angle=3.141592653589793 / 2)
+        graph._circle_embedding(range(1, leaves + 1), angle=3.141592653589793 / 2)
         return graph
 
     def WheelGraph(self, order: int, immutable: bool = False) -> Graph:
         del immutable
         if order < 0:
-            raise ValueError('parameter n must be a positive integer')
+            raise ValueError("parameter n must be a positive integer")
         if order < 4:
             graph = self.CycleGraph(order)
-            graph.graph_name('Wheel graph')
+            graph.graph_name("Wheel graph")
             return graph
-        graph = Graph(order, name='Wheel graph')
+        graph = Graph(order, name="Wheel graph")
         graph.add_cycle(range(1, order))
         for vertex in range(1, order):
             graph.add_edge(0, vertex)
-        graph._circle_embedding(
-            range(1, order), angle=3.141592653589793 / 2)
+        graph._circle_embedding(range(1, order), angle=3.141592653589793 / 2)
         graph._pos[0] = (0, 0)
         return graph
 
@@ -2333,13 +2474,13 @@ class GraphGenerators:
     ) -> Graph:
         del immutable
         if rows <= 0 or columns <= 0:
-            raise ValueError('parameters p and q must be positive integers')
+            raise ValueError("parameters p and q must be positive integers")
         vertices = []
         for row in range(rows):
             for column in range(columns):
                 vertices.append(runtime.math_tuple([row, column]))
         if name is None:
-            name = '2D Grid Graph for [' + str(rows) + ', ' + str(columns) + ']'
+            name = "2D Grid Graph for [" + str(rows) + ", " + str(columns) + "]"
         graph = Graph(name=name)
         graph.add_vertices(vertices)
         for row in range(rows):
@@ -2372,150 +2513,235 @@ class GraphGenerators:
     ) -> Graph:
         del immutable
         if order < 3:
-            raise ValueError('n must be larger than 2')
+            raise ValueError("n must be larger than 2")
         if step < 1 or step > (order - 1) // 2:
-            raise ValueError('k must be in 1<= k <=floor((n-1)/2)')
+            raise ValueError("k must be in 1<= k <=floor((n-1)/2)")
         if name is None:
             name = (
-                'Generalized Petersen graph (n=' + str(order)
-                + ',k=' + str(step) + ')')
+                "Generalized Petersen graph (n=" + str(order) + ",k=" + str(step) + ")"
+            )
         graph = Graph(2 * order, name=name)
         for index in range(order):
             graph.add_edge(index, (index + 1) % order)
             graph.add_edge(index, index + order)
-            graph.add_edge(
-                index + order, order + (index + step) % order)
+            graph.add_edge(index + order, order + (index + step) % order)
+        graph._circle_embedding(range(order), radius=1, angle=3.141592653589793 / 2)
         graph._circle_embedding(
-            range(order), radius=1, angle=3.141592653589793 / 2)
-        graph._circle_embedding(
-            range(order, 2 * order),
-            radius=0.5, angle=3.141592653589793 / 2)
+            range(order, 2 * order), radius=0.5, angle=3.141592653589793 / 2
+        )
         return graph
 
     def PetersenGraph(self, immutable: bool = False) -> Graph:
         # Keep this internal call positional.  Besides avoiding unnecessary
         # keyword machinery in a hot constructor, it remains safe when a live
         # Jupyter worker straddles a compiler/bootstrap rebuild.
-        return self.GeneralizedPetersenGraph(
-            5, 2, immutable, 'Petersen graph')
+        return self.GeneralizedPetersenGraph(5, 2, immutable, "Petersen graph")
 
     def HouseGraph(self, immutable: bool = False) -> Graph:
         del immutable
         return Graph(
             [(0, 1), (0, 2), (1, 3), (2, 3), (2, 4), (3, 4)],
-            pos=_position_dict([
-                [0, -1, 0], [1, 1, 0], [2, -1, 1],
-                [3, 1, 1], [4, 0, 2],
-            ]),
-            name='House Graph')
+            pos=_position_dict(
+                [
+                    [0, -1, 0],
+                    [1, 1, 0],
+                    [2, -1, 1],
+                    [3, 1, 1],
+                    [4, 0, 2],
+                ]
+            ),
+            name="House Graph",
+        )
 
     def BullGraph(self, immutable: bool = False) -> Graph:
         del immutable
         return Graph(
             [(0, 1), (0, 2), (1, 2), (1, 3), (2, 4)],
-            pos=_position_dict([
-                [0, 0, 0], [1, -1, 1], [2, 1, 1],
-                [3, -2, 2], [4, 2, 2],
-            ]),
-            name='Bull graph')
+            pos=_position_dict(
+                [
+                    [0, 0, 0],
+                    [1, -1, 1],
+                    [2, 1, 1],
+                    [3, -2, 2],
+                    [4, 2, 2],
+                ]
+            ),
+            name="Bull graph",
+        )
 
     def DiamondGraph(self, immutable: bool = False) -> Graph:
         del immutable
         return Graph(
             [(0, 1), (0, 2), (1, 2), (1, 3), (2, 3)],
-            pos=_position_dict([
-                [0, 0, 1], [1, -1, 0],
-                [2, 1, 0], [3, 0, -1],
-            ]),
-            name='Diamond Graph')
+            pos=_position_dict(
+                [
+                    [0, 0, 1],
+                    [1, -1, 0],
+                    [2, 1, 0],
+                    [3, 0, -1],
+                ]
+            ),
+            name="Diamond Graph",
+        )
 
     def TetrahedralGraph(self, immutable: bool = False) -> Graph:
         del immutable
         pi = 3.141592653589793
         return Graph(
             [(0, 1), (0, 2), (0, 3), (1, 2), (1, 3), (2, 3)],
-            pos=_position_dict([
-                [0, 0, 0], [1, 0, 1],
-                [2, runtime.math.cos(3.5 * pi / 3),
-                    runtime.math.sin(3.5 * pi / 3)],
-                [3, runtime.math.cos(5.5 * pi / 3),
-                    runtime.math.sin(5.5 * pi / 3)],
-            ]),
-            name='Tetrahedron')
+            pos=_position_dict(
+                [
+                    [0, 0, 0],
+                    [1, 0, 1],
+                    [2, runtime.math.cos(3.5 * pi / 3), runtime.math.sin(3.5 * pi / 3)],
+                    [3, runtime.math.cos(5.5 * pi / 3), runtime.math.sin(5.5 * pi / 3)],
+                ]
+            ),
+            name="Tetrahedron",
+        )
 
     def HexahedralGraph(self, immutable: bool = False) -> Graph:
         del immutable
         return Graph(
             [
-                (0, 1), (0, 3), (0, 4), (1, 2), (1, 5), (2, 3),
-                (2, 6), (3, 7), (4, 5), (4, 7), (5, 6), (6, 7),
+                (0, 1),
+                (0, 3),
+                (0, 4),
+                (1, 2),
+                (1, 5),
+                (2, 3),
+                (2, 6),
+                (3, 7),
+                (4, 5),
+                (4, 7),
+                (5, 6),
+                (6, 7),
             ],
-            pos=_position_dict([
-                [0, 0, 0], [1, 1, 0], [3, 0, 1], [2, 1, 1],
-                [4, 0.5, 0.5], [5, 1.5, 0.5],
-                [7, 0.5, 1.5], [6, 1.5, 1.5],
-            ]),
-            name='Hexahedron')
+            pos=_position_dict(
+                [
+                    [0, 0, 0],
+                    [1, 1, 0],
+                    [3, 0, 1],
+                    [2, 1, 1],
+                    [4, 0.5, 0.5],
+                    [5, 1.5, 0.5],
+                    [7, 0.5, 1.5],
+                    [6, 1.5, 1.5],
+                ]
+            ),
+            name="Hexahedron",
+        )
 
     def OctahedralGraph(self, immutable: bool = False) -> Graph:
         del immutable
         graph = Graph(
             [
-                (0, 1), (0, 2), (0, 3), (0, 4),
-                (1, 2), (1, 3), (1, 5), (2, 4),
-                (2, 5), (3, 4), (3, 5), (4, 5),
+                (0, 1),
+                (0, 2),
+                (0, 3),
+                (0, 4),
+                (1, 2),
+                (1, 3),
+                (1, 5),
+                (2, 4),
+                (2, 5),
+                (3, 4),
+                (3, 5),
+                (4, 5),
             ],
-            name='Octahedron')
-        graph._circle_embedding(
-            [0, 1, 2], radius=5, angle=3.141592653589793 / 2)
-        graph._circle_embedding(
-            [4, 3, 5], radius=1, angle=3.141592653589793 / 6)
+            name="Octahedron",
+        )
+        graph._circle_embedding([0, 1, 2], radius=5, angle=3.141592653589793 / 2)
+        graph._circle_embedding([4, 3, 5], radius=1, angle=3.141592653589793 / 6)
         return graph
 
     def IcosahedralGraph(self, immutable: bool = False) -> Graph:
         del immutable
         graph = Graph(
             [
-                (0, 1), (0, 5), (0, 7), (0, 8), (0, 11),
-                (1, 2), (1, 5), (1, 6), (1, 8),
-                (2, 3), (2, 6), (2, 8), (2, 9),
-                (3, 4), (3, 6), (3, 9), (3, 10),
-                (4, 5), (4, 6), (4, 10), (4, 11),
-                (5, 6), (5, 11), (7, 8), (7, 9), (7, 10),
-                (7, 11), (8, 9), (9, 10), (10, 11),
+                (0, 1),
+                (0, 5),
+                (0, 7),
+                (0, 8),
+                (0, 11),
+                (1, 2),
+                (1, 5),
+                (1, 6),
+                (1, 8),
+                (2, 3),
+                (2, 6),
+                (2, 8),
+                (2, 9),
+                (3, 4),
+                (3, 6),
+                (3, 9),
+                (3, 10),
+                (4, 5),
+                (4, 6),
+                (4, 10),
+                (4, 11),
+                (5, 6),
+                (5, 11),
+                (7, 8),
+                (7, 9),
+                (7, 10),
+                (7, 11),
+                (8, 9),
+                (9, 10),
+                (10, 11),
             ],
-            name='Icosahedron')
+            name="Icosahedron",
+        )
         graph._circle_embedding(
-            [2, 8, 7, 11, 4, 6], radius=5,
-            angle=3.141592653589793 / 6)
+            [2, 8, 7, 11, 4, 6], radius=5, angle=3.141592653589793 / 6
+        )
         graph._circle_embedding(
-            [1, 9, 0, 10, 5, 3], radius=2,
-            angle=3.141592653589793 / 6)
+            [1, 9, 0, 10, 5, 3], radius=2, angle=3.141592653589793 / 6
+        )
         return graph
 
     def DodecahedralGraph(self, immutable: bool = False) -> Graph:
         del immutable
         graph = Graph(
             [
-                (0, 1), (0, 10), (0, 19), (1, 2), (1, 8),
-                (2, 3), (2, 6), (3, 4), (3, 19), (4, 5),
-                (4, 17), (5, 6), (5, 15), (6, 7), (7, 8),
-                (7, 14), (8, 9), (9, 10), (9, 13), (10, 11),
-                (11, 12), (11, 18), (12, 13), (12, 16),
-                (13, 14), (14, 15), (15, 16), (16, 17),
-                (17, 18), (18, 19),
+                (0, 1),
+                (0, 10),
+                (0, 19),
+                (1, 2),
+                (1, 8),
+                (2, 3),
+                (2, 6),
+                (3, 4),
+                (3, 19),
+                (4, 5),
+                (4, 17),
+                (5, 6),
+                (5, 15),
+                (6, 7),
+                (7, 8),
+                (7, 14),
+                (8, 9),
+                (9, 10),
+                (9, 13),
+                (10, 11),
+                (11, 12),
+                (11, 18),
+                (12, 13),
+                (12, 16),
+                (13, 14),
+                (14, 15),
+                (15, 16),
+                (16, 17),
+                (17, 18),
+                (18, 19),
             ],
-            name='Dodecahedron')
+            name="Dodecahedron",
+        )
         pi = 3.141592653589793
-        graph._circle_embedding(
-            [19, 0, 1, 2, 3], radius=7, angle=pi / 10)
-        graph._circle_embedding(
-            [18, 10, 8, 6, 4], radius=4.7, angle=pi / 10)
-        graph._circle_embedding(
-            [11, 9, 7, 5, 17], radius=3.8, angle=3 * pi / 10)
-        graph._circle_embedding(
-            [12, 13, 14, 15, 16], radius=1.5,
-            angle=3 * pi / 10)
+        graph._circle_embedding([19, 0, 1, 2, 3], radius=7, angle=pi / 10)
+        graph._circle_embedding([18, 10, 8, 6, 4], radius=4.7, angle=pi / 10)
+        graph._circle_embedding([11, 9, 7, 5, 17], radius=3.8, angle=3 * pi / 10)
+        graph._circle_embedding([12, 13, 14, 15, 16], radius=1.5, angle=3 * pi / 10)
         return graph
 
     def RandomGNP(
@@ -2524,7 +2750,7 @@ class GraphGenerators:
         p: float,
         seed: Any = None,
         fast: bool = True,
-        algorithm: str = 'Sage',
+        algorithm: str = "Sage",
         immutable: bool = False,
     ) -> Graph:
         r"""
@@ -2581,18 +2807,18 @@ class GraphGenerators:
         order = int(n)
         probability = float(p)
         if order < 0:
-            raise ValueError('The number of nodes must be positive or null.')
+            raise ValueError("The number of nodes must be positive or null.")
         if probability < 0 or probability > 1:
-            raise ValueError('The probability p must be in [0..1].')
-        if algorithm == 'networkx':
+            raise ValueError("The probability p must be in [0..1].")
+        if algorithm == "networkx":
             raise ImportError(
-                "algorithm='networkx' requires the optional networkx package")
-        if algorithm not in ('Sage', 'sage'):
-            raise ValueError(
-                "'algorithm' must be equal to 'networkx' or to 'Sage'")
+                "algorithm='networkx' requires the optional networkx package"
+            )
+        if algorithm not in ("Sage", "sage"):
+            raise ValueError("'algorithm' must be equal to 'networkx' or to 'Sage'")
         if probability == 1:
             return self.CompleteGraph(order)
-        graph = Graph(order, name='Random G(n,p) graph')
+        graph = Graph(order, name="Random G(n,p) graph")
         if probability == 0 or order < 2:
             return graph
 
@@ -2600,22 +2826,18 @@ class GraphGenerators:
         if seed is not None:
             local_state = 5381
             for character in str(seed):
-                local_state = (
-                    local_state * 33 + ord(character)
-                ) % 4294967296
+                local_state = (local_state * 33 + ord(character)) % 4294967296
             if local_state == 0:
                 local_state = 1
 
         def random_float() -> float:
             nonlocal local_state
             if local_state is None:
-                random_function = runtime.reflect.get(
-                    runtime.global_object, 'random')
-                return float(runtime.reflect.apply(
-                    random_function, runtime.undefined, []))
-            local_state = (
-                1664525 * local_state + 1013904223
-            ) % 4294967296
+                random_function = runtime.reflect.get(runtime.global_object, "random")
+                return float(
+                    runtime.reflect.apply(random_function, runtime.undefined, [])
+                )
+            local_state = (1664525 * local_state + 1013904223) % 4294967296
             return local_state / 4294967296
 
         if fast:
@@ -2628,8 +2850,9 @@ class GraphGenerators:
                 draw = random_float()
                 if draw == 0:
                     draw = 1.0 / 4294967296
-                target += 1 + int(runtime.math.floor(
-                    runtime.math.log(1.0 - draw) / log_not_p))
+                target += 1 + int(
+                    runtime.math.floor(runtime.math.log(1.0 - draw) / log_not_p)
+                )
                 while target >= source and source < order:
                     target -= source
                     source += 1
@@ -2643,6 +2866,7 @@ class GraphGenerators:
                     graph.add_edge(source, target)
         return graph
 
+
 graphs = GraphGenerators()
 
 
@@ -2650,17 +2874,17 @@ class DigraphGenerators:
     """Sage's ``digraphs`` namespace."""
 
     def Path(self, order: int) -> DiGraph:
-        graph = DiGraph(order, name='Path digraph')
+        graph = DiGraph(order, name="Path digraph")
         graph.add_path(range(order))
         return graph
 
     def Circuit(self, order: int) -> DiGraph:
-        graph = DiGraph(order, name='Circuit')
+        graph = DiGraph(order, name="Circuit")
         graph.add_cycle(range(order))
         return graph
 
     def Complete(self, order: int) -> DiGraph:
-        graph = DiGraph(order, name='Complete digraph')
+        graph = DiGraph(order, name="Complete digraph")
         for source in range(order):
             for target in range(order):
                 if source != target:
@@ -2672,52 +2896,84 @@ digraphs = DigraphGenerators()
 
 
 _GRAPH_DATABASE_TABLES = {
-    'graph_id': 'graph_data', 'graph6': 'graph_data',
-    'num_vertices': 'graph_data', 'num_edges': 'graph_data',
-    'num_cycles': 'graph_data', 'num_hamiltonian_cycles': 'graph_data',
-    'eulerian': 'graph_data', 'planar': 'graph_data',
-    'perfect': 'graph_data', 'lovasz_number': 'graph_data',
-    'complement_graph6': 'graph_data',
-    'degree_sequence': 'degrees', 'min_degree': 'degrees',
-    'max_degree': 'degrees', 'average_degree': 'degrees',
-    'degrees_sd': 'degrees', 'regular': 'degrees',
-    'aut_grp_size': 'aut_grp', 'num_orbits': 'aut_grp',
-    'num_fixed_points': 'aut_grp', 'vertex_transitive': 'aut_grp',
-    'edge_transitive': 'aut_grp',
-    'diameter': 'misc', 'radius': 'misc', 'girth': 'misc',
-    'num_components': 'misc', 'num_spanning_trees': 'misc',
-    'independence_number': 'misc', 'clique_number': 'misc',
-    'min_vertex_cover_size': 'misc', 'num_cut_vertices': 'misc',
-    'vertex_connectivity': 'misc', 'edge_connectivity': 'misc',
-    'energy': 'spectrum', 'max_eigenvalue': 'spectrum',
-    'min_eigenvalue': 'spectrum', 'eigenvalues_sd': 'spectrum',
+    "graph_id": "graph_data",
+    "graph6": "graph_data",
+    "num_vertices": "graph_data",
+    "num_edges": "graph_data",
+    "num_cycles": "graph_data",
+    "num_hamiltonian_cycles": "graph_data",
+    "eulerian": "graph_data",
+    "planar": "graph_data",
+    "perfect": "graph_data",
+    "lovasz_number": "graph_data",
+    "complement_graph6": "graph_data",
+    "degree_sequence": "degrees",
+    "min_degree": "degrees",
+    "max_degree": "degrees",
+    "average_degree": "degrees",
+    "degrees_sd": "degrees",
+    "regular": "degrees",
+    "aut_grp_size": "aut_grp",
+    "num_orbits": "aut_grp",
+    "num_fixed_points": "aut_grp",
+    "vertex_transitive": "aut_grp",
+    "edge_transitive": "aut_grp",
+    "diameter": "misc",
+    "radius": "misc",
+    "girth": "misc",
+    "num_components": "misc",
+    "num_spanning_trees": "misc",
+    "independence_number": "misc",
+    "clique_number": "misc",
+    "min_vertex_cover_size": "misc",
+    "num_cut_vertices": "misc",
+    "vertex_connectivity": "misc",
+    "edge_connectivity": "misc",
+    "energy": "spectrum",
+    "max_eigenvalue": "spectrum",
+    "min_eigenvalue": "spectrum",
+    "eigenvalues_sd": "spectrum",
 }
 
 
 def _graph_database_default_path() -> str:
-    process = runtime.reflect.get(runtime.global_object, 'process')
-    env = runtime.reflect.get(process, 'env')
-    configured = runtime.reflect.get(env, 'SAGEJS_GRAPH_DATABASE')
+    process = runtime.reflect.get(runtime.global_object, "process")
+    env = runtime.reflect.get(process, "env")
+    configured = runtime.reflect.get(env, "SAGEJS_GRAPH_DATABASE")
     if configured is not runtime.undefined and configured:
         return str(configured)
-    path_module = runtime.require_module('node:path')
-    fs_module = runtime.require_module('node:fs')
-    join_path = runtime.reflect.get(path_module, 'join')
-    dirname = runtime.reflect.get(path_module, 'dirname')
-    exists = runtime.reflect.get(fs_module, 'existsSync')
-    cwd = runtime.reflect.apply(
-        runtime.reflect.get(process, 'cwd'), process, [])
-    argv = runtime.reflect.get(process, 'argv')
+    path_module = runtime.require_module("node:path")
+    fs_module = runtime.require_module("node:fs")
+    join_path = runtime.reflect.get(path_module, "join")
+    dirname = runtime.reflect.get(path_module, "dirname")
+    exists = runtime.reflect.get(fs_module, "existsSync")
+    cwd = runtime.reflect.apply(runtime.reflect.get(process, "cwd"), process, [])
+    argv = runtime.reflect.get(process, "argv")
     candidates = [
-        runtime.reflect.apply(join_path, path_module, [
-            cwd, 'src', 'lib', 'sage', 'graphs', 'data', 'graphs.db']),
+        runtime.reflect.apply(
+            join_path,
+            path_module,
+            [cwd, "src", "lib", "sage", "graphs", "data", "graphs.db"],
+        ),
     ]
     if len(argv) > 1:
-        executable_dir = runtime.reflect.apply(
-            dirname, path_module, [argv[1]])
-        candidates.append(runtime.reflect.apply(join_path, path_module, [
-            executable_dir, '..', 'src', 'lib', 'sage', 'graphs',
-            'data', 'graphs.db']))
+        executable_dir = runtime.reflect.apply(dirname, path_module, [argv[1]])
+        candidates.append(
+            runtime.reflect.apply(
+                join_path,
+                path_module,
+                [
+                    executable_dir,
+                    "..",
+                    "src",
+                    "lib",
+                    "sage",
+                    "graphs",
+                    "data",
+                    "graphs.db",
+                ],
+            )
+        )
     for candidate in candidates:
         if runtime.reflect.apply(exists, fs_module, [candidate]):
             return str(candidate)
@@ -2749,31 +3005,34 @@ class GraphQuery:
             value = runtime.reflect.get(conditions, column)
             table = _record_get(_GRAPH_DATABASE_TABLES, column)
             if table is None:
-                raise ValueError('unknown graph database field: ' + column)
-            if table != 'graph_data' and table not in joins:
+                raise ValueError("unknown graph database field: " + column)
+            if table != "graph_data" and table not in joins:
                 joins.append(table)
-            operator = '='
+            operator = "="
             operand = value
             if isinstance(value, (list, tuple)) and len(value) == 2:
                 operator = str(value[0]).upper()
                 operand = value[1]
-                if operator not in ('=', '!=', '<', '<=', '>', '>=', 'LIKE'):
-                    raise ValueError(
-                        'unsupported graph query operator: ' + operator)
-            clauses.append(table + '.' + column + ' ' + operator + ' ?')
+                if operator not in ("=", "!=", "<", "<=", ">", ">=", "LIKE"):
+                    raise ValueError("unsupported graph query operator: " + operator)
+            clauses.append(table + "." + column + " " + operator + " ?")
             parameters.append(_graph_database_parameter(operand))
-        sql = 'SELECT graph_data.graph6 FROM graph_data '
+        sql = "SELECT graph_data.graph6 FROM graph_data "
         for table in joins:
             sql += (
-                'INNER JOIN ' + table + ' ON graph_data.graph_id = '
-                + table + '.graph_id ')
+                "INNER JOIN "
+                + table
+                + " ON graph_data.graph_id = "
+                + table
+                + ".graph_id "
+            )
         if len(clauses):
-            sql += 'WHERE ' + ' AND '.join(clauses) + ' '
-        sql += 'ORDER BY graph_data.graph6'
+            sql += "WHERE " + " AND ".join(clauses) + " "
+        sql += "ORDER BY graph_data.graph6"
         if limit is not None:
             if int(limit) < 0:
-                raise ValueError('query limit must be nonnegative')
-            sql += ' LIMIT ?'
+                raise ValueError("query limit must be nonnegative")
+            sql += " LIMIT ?"
             parameters.append(int(limit))
         self._sql = sql
         self._parameters = parameters
@@ -2782,12 +3041,12 @@ class GraphQuery:
         del immutable
         options = _native_record(readBigInts=True, returnArrays=True)
         statement = runtime.reflect.apply(
-            runtime.reflect.get(self._database, 'prepare'),
+            runtime.reflect.get(self._database, "prepare"),
             self._database,
             [self._sql, options],
         )
         rows = runtime.reflect.apply(
-            runtime.reflect.get(statement, 'all'),
+            runtime.reflect.get(statement, "all"),
             statement,
             self._parameters,
         )
@@ -2805,7 +3064,7 @@ class GraphQuery:
         return len(self.list())
 
     def __repr__(self) -> str:
-        return 'Graph database query: ' + self._sql
+        return "Graph database query: " + self._sql
 
     __str__ = __repr__
     toString = __repr__
@@ -2819,27 +3078,31 @@ class GraphDatabase:
             self.filename = _graph_database_default_path()
         else:
             self.filename = str(filename)
-        fs_module = runtime.require_module('node:fs')
-        exists = runtime.reflect.get(fs_module, 'existsSync')
-        sqlite_module = runtime.require_module('node:sqlite')
-        constructor = runtime.reflect.get(sqlite_module, 'DatabaseSync')
+        fs_module = runtime.require_module("node:fs")
+        exists = runtime.reflect.get(fs_module, "existsSync")
+        sqlite_module = runtime.require_module("node:sqlite")
+        constructor = runtime.reflect.get(sqlite_module, "DatabaseSync")
         if runtime.reflect.apply(exists, fs_module, [self.filename]):
             self._database = runtime.reflect.construct(
-                constructor, [self.filename, _native_record(readOnly=True)])
+                constructor, [self.filename, _native_record(readOnly=True)]
+            )
         else:
             resource_hook = runtime.reflect.get(
-                runtime.global_object, '__sagejs_graph_database_bytes__')
+                runtime.global_object, "__sagejs_graph_database_bytes__"
+            )
             if resource_hook is runtime.undefined:
                 raise FileNotFoundError(
-                    'Sage graph database not found at ' + self.filename +
-                    '; set SAGEJS_GRAPH_DATABASE to an installed graphs.db')
-            database_bytes = runtime.reflect.apply(
-                resource_hook, runtime.undefined, [])
-            self._database = runtime.reflect.construct(
-                constructor, [':memory:'])
+                    "Sage graph database not found at "
+                    + self.filename
+                    + "; set SAGEJS_GRAPH_DATABASE to an installed graphs.db"
+                )
+            database_bytes = runtime.reflect.apply(resource_hook, runtime.undefined, [])
+            self._database = runtime.reflect.construct(constructor, [":memory:"])
             runtime.reflect.apply(
-                runtime.reflect.get(self._database, 'deserialize'),
-                self._database, [database_bytes])
+                runtime.reflect.get(self._database, "deserialize"),
+                self._database,
+                [database_bytes],
+            )
 
     def query(
         self,
@@ -2852,11 +3115,9 @@ class GraphDatabase:
         merged = _native_object()
         if query_dict is not None:
             for key in runtime.object.keys(query_dict):
-                runtime.reflect.set(
-                    merged, key, runtime.reflect.get(query_dict, key))
+                runtime.reflect.set(merged, key, runtime.reflect.get(query_dict, key))
         for key in runtime.object.keys(conditions):
-            runtime.reflect.set(
-                merged, key, runtime.reflect.get(conditions, key))
+            runtime.reflect.set(merged, key, runtime.reflect.get(conditions, key))
         return GraphQuery(self._database, merged, limit)
 
     def graphs(self, **conditions: Any) -> list[Graph]:
@@ -2867,7 +3128,8 @@ class GraphDatabase:
 
     def close(self) -> None:
         runtime.reflect.apply(
-            runtime.reflect.get(self._database, 'close'), self._database, [])
+            runtime.reflect.get(self._database, "close"), self._database, []
+        )
 
     def __enter__(self) -> GraphDatabase:
         return self
@@ -2876,61 +3138,64 @@ class GraphDatabase:
         self.close()
 
     def __repr__(self) -> str:
-        return 'Sage graph database at ' + self.filename
+        return "Sage graph database at " + self.filename
 
     __str__ = __repr__
     toString = __repr__
 
 
 runtime.register_doc(
-    'graphs.RandomGNP',
+    "graphs.RandomGNP",
     graphs.RandomGNP,
     {
-        'kind': 'method',
-        'module': 'sage.graphs.generators.random',
-        'tags': [
-            'graph theory', 'random graphs', 'Erdos-Renyi', 'generators',
+        "kind": "method",
+        "module": "sage.graphs.generators.random",
+        "tags": [
+            "graph theory",
+            "random graphs",
+            "Erdos-Renyi",
+            "generators",
         ],
-        'backends': ['Sage.js graph algorithms'],
-        'sage_compatibility': {
-            'status': 'partial',
-            'notes': (
+        "backends": ["Sage.js graph algorithms"],
+        "sage_compatibility": {
+            "status": "partial",
+            "notes": (
                 "The Sage algorithm is implemented, including sparse and "
                 "quadratic paths. The optional networkx algorithm and "
                 "immutable graph representation are not bundled."
             ),
         },
-        'provenance': [
+        "provenance": [
             {
-                'kind': 'sage-derived',
-                'source': 'SageMath RandomGNP API and documentation',
-                'url': (
-                    'https://doc.sagemath.org/html/en/reference/graphs/'
-                    'sage/graphs/generators/random.html'
+                "kind": "sage-derived",
+                "source": "SageMath RandomGNP API and documentation",
+                "url": (
+                    "https://doc.sagemath.org/html/en/reference/graphs/"
+                    "sage/graphs/generators/random.html"
                 ),
-                'license': 'GPL-2.0-or-later',
+                "license": "GPL-2.0-or-later",
             },
             {
-                'kind': 'literature-implemented',
-                'source': 'Batagelj--Brandes sparse random graph algorithm',
+                "kind": "literature-implemented",
+                "source": "Batagelj--Brandes sparse random graph algorithm",
             },
         ],
-        'references': [
+        "references": [
             {
-                'id': 'batagelj-brandes-2005',
-                'type': 'paper',
-                'title': 'Efficient generation of large random networks',
-                'authors': ['Vladimir Batagelj', 'Ulrik Brandes'],
-                'year': 2005,
-                'url': 'https://doi.org/10.1103/PhysRevE.71.036113',
+                "id": "batagelj-brandes-2005",
+                "type": "paper",
+                "title": "Efficient generation of large random networks",
+                "authors": ["Vladimir Batagelj", "Ulrik Brandes"],
+                "year": 2005,
+                "url": "https://doi.org/10.1103/PhysRevE.71.036113",
             },
         ],
-        'implementation': {
-            'algorithm': 'Batagelj--Brandes skip sampling or Bernoulli scan',
+        "implementation": {
+            "algorithm": "Batagelj--Brandes skip sampling or Bernoulli scan",
         },
-        'limitations': [
+        "limitations": [
             "algorithm='networkx' requires an external backend.",
-            'immutable=True is accepted but does not yet freeze the graph.',
+            "immutable=True is accepted but does not yet freeze the graph.",
         ],
     },
 )
@@ -2945,31 +3210,31 @@ if bool(0):
 
 def _register_graph_reference(record: dict[str, Any]) -> None:
     owners = {
-        'GraphAutomorphism': GraphAutomorphism,
-        'GraphAutomorphismGroup': GraphAutomorphismGroup,
-        'GraphPlot': GraphPlot,
-        'GenericGraph': Graph,
-        'DiGraph': DiGraph,
-        'GraphGenerators': graphs,
-        'DigraphGenerators': digraphs,
-        'GraphQuery': GraphQuery,
-        'GraphDatabase': GraphDatabase,
+        "GraphAutomorphism": GraphAutomorphism,
+        "GraphAutomorphismGroup": GraphAutomorphismGroup,
+        "GraphPlot": GraphPlot,
+        "GenericGraph": Graph,
+        "DiGraph": DiGraph,
+        "GraphGenerators": graphs,
+        "DigraphGenerators": digraphs,
+        "GraphQuery": GraphQuery,
+        "GraphDatabase": GraphDatabase,
     }
-    owner = owners[record['owner']]
-    value = runtime.reflect.get(owner, record['attribute'])
+    owner = owners[record["owner"]]
+    value = runtime.reflect.get(owner, record["attribute"])
     runtime.register_doc(
-        record['name'],
+        record["name"],
         value,
         {
-            'kind': 'method',
-            'module': record['module'],
-            'signature': record['signature'],
-            'doc': record['doc'],
-            'tags': record['tags'],
-            'backends': record['backends'],
-            'sage_compatibility': record['sage_compatibility'],
-            'provenance': record['provenance'],
-            'limitations': record['limitations'],
+            "kind": "method",
+            "module": record["module"],
+            "signature": record["signature"],
+            "doc": record["doc"],
+            "tags": record["tags"],
+            "backends": record["backends"],
+            "sage_compatibility": record["sage_compatibility"],
+            "provenance": record["provenance"],
+            "limitations": record["limitations"],
         },
     )
 

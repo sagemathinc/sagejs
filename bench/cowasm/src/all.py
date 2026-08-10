@@ -8,7 +8,8 @@ import uuid_
 import fib
 import lambda_
 import call
-#import mandel
+
+# import mandel
 import mypyc_micro
 import parse_int
 
@@ -23,5 +24,5 @@ def run_all_benchmarks():
     print("Grand total time: ", int((time() - t) * 1000), "ms")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     run_all_benchmarks()

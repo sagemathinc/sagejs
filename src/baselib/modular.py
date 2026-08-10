@@ -13,38 +13,33 @@ import sagejs.runtime as runtime
 
 
 def _native_p1_modules() -> tuple[Any, Any]:
-    loader = runtime.reflect.get(
-        runtime.global_object, '__sagejs_load_module__')
+    loader = runtime.reflect.get(runtime.global_object, "__sagejs_load_module__")
     if loader is runtime.undefined:
-        raise RuntimeError('the native P1 kernel loader is unavailable')
+        raise RuntimeError("the native P1 kernel loader is unavailable")
     return (
-        runtime.reflect.apply(
-            loader, runtime.undefined, ['sagejs.native']),
-        runtime.reflect.apply(
-            loader, runtime.undefined, ['sagejs.kernels.p1']))
+        runtime.reflect.apply(loader, runtime.undefined, ["sagejs.native"]),
+        runtime.reflect.apply(loader, runtime.undefined, ["sagejs.kernels.p1"]),
+    )
 
 
 def _exact_integer(value: Any, name: str) -> int:
     value = runtime.normalize_integer(value)
-    if (
-        runtime.jstype(value) != 'number'
-        or not runtime.number.isSafeInteger(value)
-    ):
-        raise ValueError(name + ' must be an integer')
+    if runtime.jstype(value) != "number" or not runtime.number.isSafeInteger(value):
+        raise ValueError(name + " must be an integer")
     return runtime.number(value)
 
 
 def _exact_nonnegative_integer(value: Any, name: str) -> int:
     value = _exact_integer(value, name)
     if value < 0:
-        raise ValueError(name + ' must be a nonnegative integer')
+        raise ValueError(name + " must be a nonnegative integer")
     return value
 
 
 def _positive_integer(value: Any, name: str) -> int:
     value = _exact_nonnegative_integer(value, name)
     if value == 0:
-        raise ValueError(name + ' must be positive')
+        raise ValueError(name + " must be positive")
     return value
 
 
@@ -63,49 +58,38 @@ def _euler_phi(value: int) -> int:
 
 
 class CongruenceSubgroup:
-
     def __init__(self, family: str, level: int) -> None:
         self._family = family
-        self._kind = 'CongruenceSubgroup'
+        self._kind = "CongruenceSubgroup"
         self._level = level
         self._construction = {
-            'kind': 'CongruenceSubgroup',
-            'family': family,
-            'level': level,
+            "kind": "CongruenceSubgroup",
+            "family": family,
+            "level": level,
         }
-        if family == 'Gamma0':
+        if family == "Gamma0":
             index = level
             for prime in _factor_primes(level):
                 index = index // prime * (prime + 1)
             self._index_value = index
             self._projective_index_value = index
-            self._nu2_value = (
-                _gamma0_elliptic_points_order_two(level)
-            )
-            self._nu3_value = (
-                _gamma0_elliptic_points_order_three(level)
-            )
+            self._nu2_value = _gamma0_elliptic_points_order_two(level)
+            self._nu3_value = _gamma0_elliptic_points_order_three(level)
             self._cusps_value = _gamma0_cusps(level)
             self._regular_cusps_value = self._cusps_value
         else:
             index = level * level
             for prime in _factor_primes(level):
-                index = index // (prime * prime) * (
-                    prime * prime - 1)
+                index = index // (prime * prime) * (prime * prime - 1)
             self._index_value = index
-            self._projective_index_value = (
-                index // 2 if level > 2 else index
-            )
+            self._projective_index_value = index // 2 if level > 2 else index
             self._nu2_value = 1 if level <= 2 else 0
-            self._nu3_value = (
-                1 if level == 1 or level == 3 else 0
-            )
+            self._nu3_value = 1 if level == 1 or level == 3 else 0
             self._cusps_value = _gamma1_cusps(level)
-            self._regular_cusps_value = (
-                2 if level == 4 else self._cusps_value
-            )
+            self._regular_cusps_value = 2 if level == 4 else self._cusps_value
         self._genus_value = (
-            12 + self._projective_index_value
+            12
+            + self._projective_index_value
             - 3 * self._nu2_value
             - 4 * self._nu3_value
             - 6 * self._cusps_value
@@ -124,8 +108,8 @@ class CongruenceSubgroup:
         """Trusted fast constructor used only by the SagePack codec."""
         return ModularSymbolsSpace(
             self,
-            _positive_integer(weight, 'weight'),
-            _exact_integer(sign, 'sign'),
+            _positive_integer(weight, "weight"),
+            _exact_integer(sign, "sign"),
             base_ring,
             character,
             None,
@@ -145,7 +129,7 @@ class CongruenceSubgroup:
         return self._projective_index_value
 
     def is_even(self) -> bool:
-        return self._family == 'Gamma0' or self._level <= 2
+        return self._family == "Gamma0" or self._level <= 2
 
     def nu2(self) -> int:
         return self._nu2_value
@@ -183,11 +167,8 @@ class CongruenceSubgroup:
 
     def __repr__(self) -> str:
         if self._level == 1:
-            return 'Modular Group SL(2,Z)'
-        return (
-            'Congruence Subgroup ' + self._family
-            + '(' + str(self._level) + ')'
-        )
+            return "Modular Group SL(2,Z)"
+        return "Congruence Subgroup " + self._family + "(" + str(self._level) + ")"
 
     __str__ = __repr__
     toString = __repr__
@@ -201,12 +182,8 @@ def _gamma(
     family: str,
     level: Any,
 ) -> CongruenceSubgroup:
-    level = _positive_integer(level, 'congruence subgroup level')
-    cache = (
-        _gamma_zero_cache
-        if family == 'Gamma0'
-        else _gamma_one_cache
-    )
+    level = _positive_integer(level, "congruence subgroup level")
+    cache = _gamma_zero_cache if family == "Gamma0" else _gamma_one_cache
     group = cache.get(level)
     if group is runtime.undefined:
         group = CongruenceSubgroup(family, level)
@@ -215,11 +192,11 @@ def _gamma(
 
 
 def Gamma0(level: Any) -> CongruenceSubgroup:
-    return _gamma('Gamma0', level)
+    return _gamma("Gamma0", level)
 
 
 def Gamma1(level: Any) -> CongruenceSubgroup:
-    return _gamma('Gamma1', level)
+    return _gamma("Gamma1", level)
 
 
 def _gamma0_cusps(level: int) -> int:
@@ -262,23 +239,18 @@ def _gamma1_cusps(level: int) -> int:
     result = 0
     for divisor in sage.divisors(level):
         divisor = runtime.number(divisor)
-        result += (
-            _euler_phi(divisor)
-            * _euler_phi(level // divisor)
-        )
+        result += _euler_phi(divisor) * _euler_phi(level // divisor)
     return result // 2
 
 
 def _is_dirichlet_character(value: Any) -> bool:
     value_type = runtime.jstype(value)
-    if value is None or (
-        value_type != 'object' and value_type != 'function'
-    ):
+    if value is None or (value_type != "object" and value_type != "function"):
         return False
-    parent = runtime.reflect.get(value, '_parent')
+    parent = runtime.reflect.get(value, "_parent")
     return (
         parent is not runtime.undefined
-        and runtime.reflect.get(parent, '_kind') == 'DirichletGroup'
+        and runtime.reflect.get(parent, "_kind") == "DirichletGroup"
     )
 
 
@@ -294,7 +266,7 @@ def _primitive_root_prime(prime: int) -> int:
         if primitive:
             return candidate
         candidate += 1
-    raise ArithmeticError('unable to find a primitive root')
+    raise ArithmeticError("unable to find a primitive root")
 
 
 def _local_character_argument(
@@ -304,16 +276,13 @@ def _local_character_argument(
     root_order: int,
 ) -> int:
     generator = _primitive_root_prime(prime)
-    local_root = pow(
-        generator, (prime - 1) // root_order, prime)
-    complement = modulus // (prime ** exponent)
+    local_root = pow(generator, (prime - 1) // root_order, prime)
+    complement = modulus // (prime**exponent)
     if complement == 1:
         lifted = local_root
     else:
         inverse = pow(complement % prime, prime - 2, prime)
-        multiplier = (
-            (local_root - 1) * inverse
-        ) % prime
+        multiplier = ((local_root - 1) * inverse) % prime
         lifted = 1 + complement * multiplier
     return pow(
         lifted,
@@ -328,15 +297,14 @@ def CO_delta(
     modulus: Any,
     character: Any,
 ) -> int:
-    exponent = _positive_integer(exponent, 'prime exponent')
-    prime = _positive_integer(prime, 'prime')
-    modulus = _positive_integer(modulus, 'modulus')
+    exponent = _positive_integer(exponent, "prime exponent")
+    prime = _positive_integer(prime, "prime")
+    modulus = _positive_integer(modulus, "modulus")
     if prime % 4 == 3:
         return 0
     if prime == 2:
         return 1 if exponent == 1 else 0
-    argument = _local_character_argument(
-        prime, exponent, modulus, 4)
+    argument = _local_character_argument(prime, exponent, modulus, 4)
     value = character(argument)
     if value == 1:
         return 2
@@ -351,15 +319,14 @@ def CO_nu(
     modulus: Any,
     character: Any,
 ) -> int:
-    exponent = _positive_integer(exponent, 'prime exponent')
-    prime = _positive_integer(prime, 'prime')
-    modulus = _positive_integer(modulus, 'modulus')
+    exponent = _positive_integer(exponent, "prime exponent")
+    prime = _positive_integer(prime, "prime")
+    modulus = _positive_integer(modulus, "modulus")
     if prime % 3 == 2:
         return 0
     if prime == 3:
         return 1 if exponent == 1 else 0
-    argument = _local_character_argument(
-        prime, exponent, modulus, 3)
+    argument = _local_character_argument(prime, exponent, modulus, 3)
     return 2 if character(argument) == 1 else -1
 
 
@@ -367,10 +334,8 @@ def _cohen_oesterle_numerator(
     character: Any,
     weight: int,
 ) -> int:
-    modulus = _positive_integer(
-        character.modulus(), 'character modulus')
-    conductor = _positive_integer(
-        character.conductor(), 'character conductor')
+    modulus = _positive_integer(character.modulus(), "character modulus")
+    conductor = _positive_integer(character.conductor(), "character conductor")
     factors = [
         (runtime.number(prime), runtime.number(exponent))
         for prime, exponent in sage.factor(modulus)
@@ -387,23 +352,14 @@ def _cohen_oesterle_numerator(
             conductor_exponent += 1
         if 2 * conductor_exponent <= exponent:
             if exponent % 2 == 0:
-                local_lambda = (
-                    prime ** (exponent // 2)
-                    + prime ** (exponent // 2 - 1)
-                )
+                local_lambda = prime ** (exponent // 2) + prime ** (exponent // 2 - 1)
             else:
-                local_lambda = (
-                    2 * prime ** ((exponent - 1) // 2)
-                )
+                local_lambda = 2 * prime ** ((exponent - 1) // 2)
         else:
-            local_lambda = (
-                2 * prime ** (exponent - conductor_exponent)
-            )
+            local_lambda = 2 * prime ** (exponent - conductor_exponent)
         lambda_product *= local_lambda
-        delta_product *= CO_delta(
-            exponent, prime, modulus, character)
-        nu_product *= CO_nu(
-            exponent, prime, modulus, character)
+        delta_product *= CO_delta(exponent, prime, modulus, character)
+        nu_product *= CO_nu(exponent, prime, modulus, character)
 
     gamma_times_twelve = 0
     if weight % 4 == 2:
@@ -426,20 +382,16 @@ def _cohen_oesterle_numerator(
 
 def CohenOesterle(character: Any, weight: Any) -> Any:
     if not _is_dirichlet_character(character):
-        raise TypeError('CohenOesterle requires a Dirichlet character')
-    weight = _exact_integer(weight, 'weight')
-    return (
-        sage.QQ(_cohen_oesterle_numerator(character, weight))
-        / sage.QQ(12)
-    )
+        raise TypeError("CohenOesterle requires a Dirichlet character")
+    weight = _exact_integer(weight, "weight")
+    return sage.QQ(_cohen_oesterle_numerator(character, weight)) / sage.QQ(12)
 
 
 def _dimension_character_cusp_forms(
     character: Any,
     weight: int,
 ) -> int:
-    modulus = _positive_integer(
-        character.modulus(), 'character modulus')
+    modulus = _positive_integer(character.modulus(), "character modulus")
     if character.is_principal():
         return dimension_cusp_forms(Gamma0(modulus), weight)
     if (
@@ -450,15 +402,13 @@ def _dimension_character_cusp_forms(
         return 0
     if weight == 1:
         raise NotImplementedError(
-            'weight-one cusp dimensions require the '
-            'Schaeffer algorithm')
-    numerator = (
-        Gamma0(modulus).index() * (weight - 1)
-        + _cohen_oesterle_numerator(character, weight)
+            "weight-one cusp dimensions require the Schaeffer algorithm"
+        )
+    numerator = Gamma0(modulus).index() * (weight - 1) + _cohen_oesterle_numerator(
+        character, weight
     )
     if numerator % 12 != 0:
-        raise ArithmeticError(
-            'Cohen-Oesterle dimension is not integral')
+        raise ArithmeticError("Cohen-Oesterle dimension is not integral")
     return numerator // 12
 
 
@@ -489,15 +439,16 @@ def dimension_cusp_forms(
     Weight-one cases that require the Schaeffer algorithm raise
     `NotImplementedError` instead of returning an unproved value.
     """
-    weight = _exact_integer(weight, 'weight')
+    weight = _exact_integer(weight, "weight")
     if _is_dirichlet_character(group):
         return _dimension_character_cusp_forms(group, weight)
     if runtime.is_exact_integer(group):
         group = Gamma0(group)
     if not isinstance(group, CongruenceSubgroup):
         raise TypeError(
-            'dimension_cusp_forms requires an integer, Gamma0, '
-            'Gamma1, or a Dirichlet character')
+            "dimension_cusp_forms requires an integer, Gamma0, "
+            "Gamma1, or a Dirichlet character"
+        )
     if weight <= 0:
         return 0
     if weight % 2 == 0:
@@ -524,16 +475,15 @@ def dimension_cusp_forms(
     if regular_cusps > 2 * group.genus() - 2:
         return 0
     raise NotImplementedError(
-        'weight-one cusp dimensions require the '
-        'Schaeffer algorithm')
+        "weight-one cusp dimensions require the Schaeffer algorithm"
+    )
 
 
 def _dimension_character_eis(
     character: Any,
     weight: int,
 ) -> int:
-    modulus = _positive_integer(
-        character.modulus(), 'character modulus')
+    modulus = _positive_integer(character.modulus(), "character modulus")
     if character.is_principal():
         return dimension_eis(Gamma0(modulus), weight)
     if (
@@ -543,19 +493,15 @@ def _dimension_character_eis(
     ):
         return 0
     dual_weight = 2 - weight
-    numerator = (
-        Gamma0(modulus).index() * (dual_weight - 1)
-        + _cohen_oesterle_numerator(
-            character, dual_weight)
+    numerator = Gamma0(modulus).index() * (dual_weight - 1) + _cohen_oesterle_numerator(
+        character, dual_weight
     )
     if numerator % 12 != 0:
-        raise ArithmeticError(
-            'Cohen-Oesterle Eisenstein dimension is not integral')
+        raise ArithmeticError("Cohen-Oesterle Eisenstein dimension is not integral")
     total = -(numerator // 12)
     if weight == 1:
         return total
-    return total - _dimension_character_cusp_forms(
-        character, weight)
+    return total - _dimension_character_cusp_forms(character, weight)
 
 
 def dimension_eis(
@@ -569,15 +515,16 @@ def dimension_eis(
     `dimension_cusp_forms`. The result is an exact integer obtained from
     cusp data or the Cohen--Oesterlé character formula.
     """
-    weight = _exact_integer(weight, 'weight')
+    weight = _exact_integer(weight, "weight")
     if _is_dirichlet_character(group):
         return _dimension_character_eis(group, weight)
     if runtime.is_exact_integer(group):
         group = Gamma0(group)
     if not isinstance(group, CongruenceSubgroup):
         raise TypeError(
-            'dimension_eis requires an integer, Gamma0, Gamma1, '
-            'or a Dirichlet character')
+            "dimension_eis requires an integer, Gamma0, Gamma1, "
+            "or a Dirichlet character"
+        )
     if weight < 0:
         return 0
     if weight == 0:
@@ -598,53 +545,45 @@ def dimension_modular_forms(
     weight: Any = 2,
 ) -> int:
     """Return cusp dimension plus Eisenstein dimension for `group`."""
-    weight = _exact_integer(weight, 'weight')
-    return (
-        dimension_cusp_forms(group, weight)
-        + dimension_eis(group, weight)
-    )
+    weight = _exact_integer(weight, "weight")
+    return dimension_cusp_forms(group, weight) + dimension_eis(group, weight)
 
 
 def eisenstein_series_qexp(
     k: Any,
     prec: Any = 10,
     K: Any = None,
-    variable: str = 'q',
-    normalization: str = 'linear',
+    variable: str = "q",
+    normalization: str = "linear",
     **opts: Any,
 ) -> Any:
-    if 'var' in opts:
-        variable = opts['var']
-    if 'ρσ_py_var' in opts:
-        variable = opts['ρσ_py_var']
-    weight = _positive_integer(k, 'weight')
+    if "var" in opts:
+        variable = opts["var"]
+    if "ρσ_py_var" in opts:
+        variable = opts["ρσ_py_var"]
+    weight = _positive_integer(k, "weight")
     if weight % 2 == 1:
-        raise ValueError('weight must be a positive even integer')
-    precision = _exact_nonnegative_integer(prec, 'precision')
+        raise ValueError("weight must be a positive even integer")
+    precision = _exact_nonnegative_integer(prec, "precision")
     coefficient_ring = sage.QQ if K is None else K
-    if normalization not in ('linear', 'constant', 'integral'):
-        raise ValueError(
-            "normalization must be 'linear', 'constant', or 'integral'")
-    power_series_ring = runtime.reflect.get(
-        runtime.global_object, 'PowerSeriesRing')
-    ring = power_series_ring(
-        coefficient_ring, variable, default_prec=max(1, precision))
+    if normalization not in ("linear", "constant", "integral"):
+        raise ValueError("normalization must be 'linear', 'constant', or 'integral'")
+    power_series_ring = runtime.reflect.get(runtime.global_object, "PowerSeriesRing")
+    ring = power_series_ring(coefficient_ring, variable, default_prec=max(1, precision))
     native_value = runtime.flint_backend().qqEisensteinSeries(
-        weight, precision, normalization)
+        weight, precision, normalization
+    )
     if coefficient_ring is sage.QQ:
-        return ring._from_native(
-            native_value, 0, precision)
+        return ring._from_native(native_value, 0, precision)
 
-    rational_polynomial = sage.PolynomialRing(
-        sage.QQ, variable)._from_native(native_value)
+    rational_polynomial = sage.PolynomialRing(sage.QQ, variable)._from_native(
+        native_value
+    )
     coefficients = rational_polynomial.coefficients()
     generator = ring.gen()
     result = ring(0)
     for coefficient in reversed(coefficients):
-        result = (
-            result * generator
-            + coefficient_ring(coefficient)
-        )
+        result = result * generator + coefficient_ring(coefficient)
     return result.add_bigoh(precision)
 
 
@@ -668,44 +607,35 @@ def _eisenstein_basis_qexp(
             weight,
             precision,
             base_ring,
-            normalization='constant',
+            normalization="constant",
         )
     if weight == 2:
         base = eisenstein_series_qexp(
             2,
             precision,
             base_ring,
-            normalization='constant',
+            normalization="constant",
         )
-        short_precision = (
-            0 if precision == 0
-            else (precision - 1) // level + 1
-        )
+        short_precision = 0 if precision == 0 else (precision - 1) // level + 1
         inflated = _inflate_series(
             eisenstein_series_qexp(
                 2,
                 short_precision,
                 base_ring,
-                normalization='constant',
+                normalization="constant",
             ),
             level,
             precision,
         )
-        return (
-            (level * inflated - base)
-            / (level - 1)
-        ).add_bigoh(precision)
+        return ((level * inflated - base) / (level - 1)).add_bigoh(precision)
 
-    short_precision = (
-        0 if precision == 0
-        else (precision - 1) // level + 1
-    )
+    short_precision = 0 if precision == 0 else (precision - 1) // level + 1
     oldform = _inflate_series(
         eisenstein_series_qexp(
             weight,
             short_precision,
             base_ring,
-            normalization='constant',
+            normalization="constant",
         ),
         level,
         precision,
@@ -716,17 +646,11 @@ def _eisenstein_basis_qexp(
         weight,
         precision,
         base_ring,
-        normalization='linear',
+        normalization="linear",
     )
-    bernoulli_number = runtime.reflect.get(
-        runtime.global_object, 'bernoulli')
-    constant = (
-        -bernoulli_number(weight)
-        / (2 * weight)
-    )
-    return (
-        linear - constant * oldform
-    ).add_bigoh(precision)
+    bernoulli_number = runtime.reflect.get(runtime.global_object, "bernoulli")
+    constant = -bernoulli_number(weight) / (2 * weight)
+    return (linear - constant * oldform).add_bigoh(precision)
 
 
 class EisensteinSeriesElement(sage.Element):
@@ -744,7 +668,7 @@ class EisensteinSeriesElement(sage.Element):
         index: int,
         precision: int,
     ) -> None:
-        self._kind = 'EisensteinSeriesElement'
+        self._kind = "EisensteinSeriesElement"
         self._parent = parent
         self._index = index
         self._display_precision = precision
@@ -779,10 +703,8 @@ class EisensteinSeriesElement(sage.Element):
         if prec is None:
             precision = self._display_precision
         else:
-            precision = _exact_nonnegative_integer(
-                prec, 'precision')
-        return self._parent._q_expansion(
-            self._index, precision)
+            precision = _exact_nonnegative_integer(prec, "precision")
+        return self._parent._q_expansion(self._index, precision)
 
     qexp = q_expansion
 
@@ -809,8 +731,7 @@ class EisensteinSeriesElement(sage.Element):
     def __getitem__(self, exponent: Any) -> Any:
         """Return the coefficient of ``q^exponent``."""
         return self.q_expansion(
-            _exact_nonnegative_integer(
-                exponent, 'coefficient exponent') + 1
+            _exact_nonnegative_integer(exponent, "coefficient exponent") + 1
         )[exponent]
 
     def __repr__(self) -> str:
@@ -821,14 +742,13 @@ class EisensteinSeriesElement(sage.Element):
 
 
 class ModularFormsSubspace(sage.Parent):
-
     def __init__(
         self,
         ambient: ModularFormsSpace,
         kind: str,
         dimension: int,
     ) -> None:
-        self._kind = 'ModularFormsSubspace'
+        self._kind = "ModularFormsSubspace"
         self._ambient = ambient
         self._subspace_kind = kind
         self._dimension = dimension
@@ -855,8 +775,11 @@ class ModularFormsSubspace(sage.Parent):
 
     def __repr__(self) -> str:
         return (
-            self._subspace_kind + ' subspace of dimension '
-            + str(self._dimension) + ' of ' + str(self._ambient)
+            self._subspace_kind
+            + " subspace of dimension "
+            + str(self._dimension)
+            + " of "
+            + str(self._ambient)
         )
 
     __str__ = __repr__
@@ -864,7 +787,6 @@ class ModularFormsSubspace(sage.Parent):
 
 
 class EisensteinSubspace(ModularFormsSubspace):
-
     def __init__(
         self,
         ambient: ModularFormsSpace,
@@ -873,22 +795,13 @@ class EisensteinSubspace(ModularFormsSubspace):
         level = ambient.level()
         weight = ambient.weight()
         dimension = dimension_eis(ambient.group(), weight)
-        ModularFormsSubspace.__init__(
-            self, ambient, 'Eisenstein', dimension)
-        self._kind = 'EisensteinSubspace'
+        ModularFormsSubspace.__init__(self, ambient, "Eisenstein", dimension)
+        self._kind = "EisensteinSubspace"
         self._precision = precision
         basis_supported = (
             dimension == 0
-            or (
-                level == 1
-                and weight >= 4
-                and weight % 2 == 0
-            )
-            or (
-                sage.is_prime(level)
-                and weight >= 2
-                and weight % 2 == 0
-            )
+            or (level == 1 and weight >= 4 and weight % 2 == 0)
+            or (sage.is_prime(level) and weight >= 2 and weight % 2 == 0)
         )
         self._basis = None
         if basis_supported:
@@ -904,21 +817,23 @@ class EisensteinSubspace(ModularFormsSubspace):
     def _require_basis(self) -> list[EisensteinSeriesElement]:
         if self._basis is None:
             raise NotImplementedError(
-                'q-expansion bases are currently implemented for '
-                'level one and prime Gamma0 level')
+                "q-expansion bases are currently implemented for "
+                "level one and prime Gamma0 level"
+            )
         return self._basis
 
     def _from_serialized_element(
-        self, index: Any, display_precision: Any,
+        self,
+        index: Any,
+        display_precision: Any,
     ) -> EisensteinSeriesElement:
-        index = _exact_nonnegative_integer(index, 'basis index')
+        index = _exact_nonnegative_integer(index, "basis index")
         if index >= self._dimension:
-            raise IndexError('Eisenstein basis index out of range')
+            raise IndexError("Eisenstein basis index out of range")
         return EisensteinSeriesElement(
             self,
             index,
-            _exact_nonnegative_integer(
-                display_precision, 'display precision'),
+            _exact_nonnegative_integer(display_precision, "display precision"),
         )
 
     def precision(self) -> int:
@@ -935,7 +850,7 @@ class EisensteinSubspace(ModularFormsSubspace):
 
     def _first_ngens(self, count: int) -> list[Any]:
         if count > self._dimension:
-            raise ValueError('too many Eisenstein generators requested')
+            raise ValueError("too many Eisenstein generators requested")
         return self._require_basis()[:count]
 
     def basis(self, prec: Any = None) -> list[Any]:
@@ -955,7 +870,7 @@ class EisensteinSubspace(ModularFormsSubspace):
         self._require_basis()
         if prec is None:
             return list(self._require_basis())
-        precision = _exact_nonnegative_integer(prec, 'precision')
+        precision = _exact_nonnegative_integer(prec, "precision")
         return [
             EisensteinSeriesElement(self, index, precision)
             for index in range(self._dimension)
@@ -967,7 +882,7 @@ class EisensteinSubspace(ModularFormsSubspace):
         """Return the basis as power series to absolute precision `prec`."""
         if prec is None:
             prec = self._precision
-        precision = _exact_nonnegative_integer(prec, 'precision')
+        precision = _exact_nonnegative_integer(prec, "precision")
         self._require_basis()
         return [
             _eisenstein_basis_qexp(
@@ -991,7 +906,6 @@ class EisensteinSubspace(ModularFormsSubspace):
 
 
 class ModularFormsSpace(sage.Parent):
-
     def __init__(
         self,
         group: CongruenceSubgroup,
@@ -999,10 +913,9 @@ class ModularFormsSpace(sage.Parent):
         base_ring: Any,
         precision: int,
     ) -> None:
-        if group._family != 'Gamma0':
-            raise NotImplementedError(
-                'ModularForms currently supports Gamma0')
-        self._kind = 'ModularForms'
+        if group._family != "Gamma0":
+            raise NotImplementedError("ModularForms currently supports Gamma0")
+        self._kind = "ModularForms"
         self._group = group
         self._weight = weight
         self._base = base_ring
@@ -1021,15 +934,14 @@ class ModularFormsSpace(sage.Parent):
         return self._base
 
     def dimension(self) -> int:
-        return dimension_modular_forms(
-            self._group, self._weight)
+        return dimension_modular_forms(self._group, self._weight)
 
     degree = dimension
 
     def cuspidal_subspace(self) -> ModularFormsSubspace:
         return ModularFormsSubspace(
             self,
-            'Cuspidal',
+            "Cuspidal",
             dimension_cusp_forms(self._group, self._weight),
         )
 
@@ -1048,20 +960,24 @@ class ModularFormsSpace(sage.Parent):
         if bool(eisenstein):
             return EisensteinSubspace(
                 self,
-                _exact_nonnegative_integer(precision, 'precision'),
+                _exact_nonnegative_integer(precision, "precision"),
             )
         return ModularFormsSubspace(
             self,
             kind,
-            _exact_nonnegative_integer(dimension, 'dimension'),
+            _exact_nonnegative_integer(dimension, "dimension"),
         )
 
     def __repr__(self) -> str:
         return (
-            'Modular Forms space of dimension '
-            + str(self.dimension()) + ' for ' + str(self._group)
-            + ' of weight ' + str(self._weight)
-            + ' over ' + str(self._base)
+            "Modular Forms space of dimension "
+            + str(self.dimension())
+            + " for "
+            + str(self._group)
+            + " of weight "
+            + str(self._weight)
+            + " over "
+            + str(self._base)
         )
 
     __str__ = __repr__
@@ -1100,16 +1016,16 @@ def ModularForms(
     if runtime.is_exact_integer(group):
         group = Gamma0(group)
     if not isinstance(group, CongruenceSubgroup):
-        raise TypeError('ModularForms requires a congruence subgroup')
-    weight = _exact_nonnegative_integer(weight, 'weight')
-    precision = _exact_nonnegative_integer(prec, 'precision')
+        raise TypeError("ModularForms requires a congruence subgroup")
+    weight = _exact_nonnegative_integer(weight, "weight")
+    precision = _exact_nonnegative_integer(prec, "precision")
     if base_ring is None:
         base_ring = sage.QQ
     if base_ring is not sage.QQ:
         raise NotImplementedError(
-            'the initial modular-forms spaces are defined over QQ')
-    return ModularFormsSpace(
-        group, weight, base_ring, precision)
+            "the initial modular-forms spaces are defined over QQ"
+        )
+    return ModularFormsSpace(group, weight, base_ring, precision)
 
 
 def EisensteinForms(
@@ -1134,13 +1050,11 @@ def EisensteinForms(
     100
     ```
     """
-    ambient = ModularForms(
-        group, weight, base_ring, use_cache, prec)
+    ambient = ModularForms(group, weight, base_ring, use_cache, prec)
     return ambient.eisenstein_subspace()
 
 
 class FormattedFactorization:
-
     def __init__(self, text: str) -> None:
         self._text = text
 
@@ -1152,7 +1066,6 @@ class FormattedFactorization:
 
 
 class FormattedCharacteristicPolynomial:
-
     def __init__(self, text: str, factorization: str) -> None:
         self._text = text
         self._factorization = factorization
@@ -1168,7 +1081,6 @@ class FormattedCharacteristicPolynomial:
 
 
 class FormattedQExpansion:
-
     def __init__(self, text: str) -> None:
         self._text = text
 
@@ -1180,34 +1092,29 @@ class FormattedQExpansion:
 
 
 class ModularSymbolBasisElement:
-
     def __init__(self, polynomial: str) -> None:
         self._polynomial = polynomial
 
     def __repr__(self) -> str:
-        return '[' + self._polynomial + ',(0,0)]'
+        return "[" + self._polynomial + ",(0,0)]"
 
     __str__ = __repr__
     toString = __repr__
 
 
 class ManinSymbolBasisElement:
-
     def __init__(self, numerator: int, denominator: int) -> None:
         self._numerator = numerator
         self._denominator = denominator
 
     def __repr__(self) -> str:
-        return (
-            '(' + str(self._numerator) + ','
-            + str(self._denominator) + ')')
+        return "(" + str(self._numerator) + "," + str(self._denominator) + ")"
 
     __str__ = __repr__
     toString = __repr__
 
 
 class HigherWeightManinSymbolBasisElement:
-
     def __init__(
         self,
         degree: int,
@@ -1225,29 +1132,26 @@ class HigherWeightManinSymbolBasisElement:
         y_degree = self._weight - 2 - x_degree
         factors = []
         if x_degree == 1:
-            factors.append('X')
+            factors.append("X")
         elif x_degree > 1:
-            factors.append('X^' + str(x_degree))
+            factors.append("X^" + str(x_degree))
         if y_degree == 1:
-            factors.append('Y')
+            factors.append("Y")
         elif y_degree > 1:
-            factors.append('Y^' + str(y_degree))
-        polynomial = '*'.join(factors) if factors else '1'
-        return (
-            '[' + polynomial + ',(' + str(self._u)
-            + ',' + str(self._v) + ')]')
+            factors.append("Y^" + str(y_degree))
+        polynomial = "*".join(factors) if factors else "1"
+        return "[" + polynomial + ",(" + str(self._u) + "," + str(self._v) + ")]"
 
     __str__ = __repr__
     toString = __repr__
 
 
 class ModularCusp:
-
     def __init__(self, numerator: Any, denominator: Any = 1) -> None:
-        numerator = _exact_integer(numerator, 'cusp numerator')
-        denominator = _exact_integer(denominator, 'cusp denominator')
+        numerator = _exact_integer(numerator, "cusp numerator")
+        denominator = _exact_integer(denominator, "cusp denominator")
         if numerator == 0 and denominator == 0:
-            raise ValueError('a cusp cannot be represented by (0, 0)')
+            raise ValueError("a cusp cannot be represented by (0, 0)")
         left = abs(numerator)
         right = abs(denominator)
         while right:
@@ -1271,8 +1175,7 @@ class ModularCusp:
         return self._denominator
 
     def pair(self) -> Any:
-        return runtime.math_tuple([
-            self._numerator, self._denominator])
+        return runtime.math_tuple([self._numerator, self._denominator])
 
     def __neg__(self) -> ModularCusp:
         return ModularCusp(-self._numerator, self._denominator)
@@ -1286,11 +1189,10 @@ class ModularCusp:
 
     def __repr__(self) -> str:
         if self._denominator == 0:
-            return 'Infinity'
+            return "Infinity"
         if self._denominator == 1:
             return str(self._numerator)
-        return (
-            str(self._numerator) + '/' + str(self._denominator))
+        return str(self._numerator) + "/" + str(self._denominator)
 
     __str__ = __repr__
     toString = __repr__
@@ -1323,28 +1225,30 @@ def _lift_gamma0_coset(u: int, v: int, level: int) -> list[int]:
         d += level
     multiplier = c
     while True:
-        common = runtime.number(runtime.bigint_gcd(
-            runtime.bigint(multiplier), runtime.bigint(d)))
+        common = runtime.number(
+            runtime.bigint_gcd(runtime.bigint(multiplier), runtime.bigint(d))
+        )
         if common == 1:
             break
         multiplier //= common
     while True:
-        common = runtime.number(runtime.bigint_gcd(
-            runtime.bigint(multiplier), runtime.bigint(level)))
+        common = runtime.number(
+            runtime.bigint_gcd(runtime.bigint(multiplier), runtime.bigint(level))
+        )
         if common == 1:
             break
         multiplier //= common
     d += level * multiplier
     common, z1, z2 = _integer_xgcd(c, d)
     if common != 1:
-        raise ArithmeticError('unable to lift Gamma0 projective coset')
+        raise ArithmeticError("unable to lift Gamma0 projective coset")
     return [z2, -z1, c, d]
 
 
 def _inverse_mod_integer(value: int, modulus: int) -> int:
     common, inverse, _other = _integer_xgcd(value, modulus)
     if common != 1:
-        raise ArithmeticError('inverse modulo a non-coprime modulus')
+        raise ArithmeticError("inverse modulo a non-coprime modulus")
     return inverse % modulus
 
 
@@ -1355,8 +1259,12 @@ def _gamma0_cusp_equivalence_scalar(
 ) -> Any:
     """Return the lower-right character scalar, or ``None``."""
     return _gamma0_cusp_equivalence_scalar_values(
-        left.numerator(), left.denominator(),
-        right.numerator(), right.denominator(), level)
+        left.numerator(),
+        left.denominator(),
+        right.numerator(),
+        right.denominator(),
+        level,
+    )
 
 
 def _gamma0_cusp_equivalence_scalar_values(
@@ -1377,26 +1285,26 @@ def _gamma0_cusp_equivalence_scalar_values(
 
     initial_s1 = cusp_inverse(u1, v1)
     initial_s2 = cusp_inverse(u2, v2)
-    common = runtime.number(runtime.bigint_gcd(
-        runtime.bigint(v1 * v2), runtime.bigint(level)))
+    common = runtime.number(
+        runtime.bigint_gcd(runtime.bigint(v1 * v2), runtime.bigint(level))
+    )
     difference = initial_s1 * v2 - initial_s2 * v1
     if difference % common != 0:
         return None
     gcd2, s2, r2 = _integer_xgcd(u2, -v2)
     gcd1, s1, _r1 = _integer_xgcd(u1, -v1)
     if gcd1 != 1 or gcd2 != 1:
-        raise ArithmeticError('cusps were not primitive')
+        raise ArithmeticError("cusps were not primitive")
     difference = s1 * v2 - s2 * v1
     gcd_product, x0, _y0 = _integer_xgcd(v1 * v2, level)
     if gcd_product != common:
-        raise ArithmeticError('inconsistent cusp gcd')
+        raise ArithmeticError("inconsistent cusp gcd")
     x = -x0 * (difference // common)
     s1_prime = s1 + x * v1
     return (u2 * s1_prime - r2 * v1) % level
 
 
 class _HigherWeightCuspClassifier:
-
     def __init__(
         self,
         level: int,
@@ -1422,13 +1330,20 @@ class _HigherWeightCuspClassifier:
             return False
         u = cusp.numerator()
         v = cusp.denominator()
-        common = runtime.number(runtime.bigint_gcd(
-            runtime.bigint(self.level), runtime.bigint(v)))
+        common = runtime.number(
+            runtime.bigint_gcd(runtime.bigint(self.level), runtime.bigint(v))
+        )
         step = self.level // common
         for j in range(common):
             scalar = 1 - j * step
-            if runtime.number(runtime.bigint_gcd(
-                runtime.bigint(scalar), runtime.bigint(self.level))) != 1:
+            if (
+                runtime.number(
+                    runtime.bigint_gcd(
+                        runtime.bigint(scalar), runtime.bigint(self.level)
+                    )
+                )
+                != 1
+            ):
                 continue
             if (
                 v * (1 - scalar) % self.level == 0
@@ -1440,30 +1355,34 @@ class _HigherWeightCuspClassifier:
 
     def classify(self, cusp: ModularCusp) -> tuple[Any, int]:
         for index, known in enumerate(self.known):
-            scalar = _gamma0_cusp_equivalence_scalar(
-                known, cusp, self.level)
+            scalar = _gamma0_cusp_equivalence_scalar(known, cusp, self.level)
             if scalar is not None:
-                return (
-                    0 if self.killed[index]
-                    else self._coefficient(scalar)), index
+                return (0 if self.killed[index] else self._coefficient(scalar)), index
         if self.sign != 0:
             for index, known in enumerate(self.known):
                 scalar = _gamma0_cusp_equivalence_scalar_values(
-                    known.numerator(), known.denominator(),
-                    -cusp.numerator(), cusp.denominator(), self.level)
+                    known.numerator(),
+                    known.denominator(),
+                    -cusp.numerator(),
+                    cusp.denominator(),
+                    self.level,
+                )
                 if scalar is not None:
                     return (
-                        0 if self.killed[index]
-                        else self.sign * self._coefficient(scalar)), index
+                        0
+                        if self.killed[index]
+                        else self.sign * self._coefficient(scalar)
+                    ), index
         killed = self._new_cusp_is_killed(cusp)
         if not killed and self.sign != 0:
             scalar = _gamma0_cusp_equivalence_scalar_values(
-                cusp.numerator(), cusp.denominator(),
-                -cusp.numerator(), cusp.denominator(), self.level)
-            if (
-                scalar is not None
-                and self._coefficient(scalar) != self.sign
-            ):
+                cusp.numerator(),
+                cusp.denominator(),
+                -cusp.numerator(),
+                cusp.denominator(),
+                self.level,
+            )
+            if scalar is not None and self._coefficient(scalar) != self.sign:
                 killed = True
         self.known.append(cusp)
         self.killed.append(killed)
@@ -1480,11 +1399,11 @@ class _HigherWeightCuspClassifier:
 
 
 class BoundarySymbolElement:
-
     def __init__(self, parent: BoundarySymbolsSpace, coordinates: Any) -> None:
         self._parent = parent
         self._coordinates = VectorSpace(  # type: ignore[name-defined]  # noqa: F821
-            parent.base_ring(), parent.dimension())(coordinates)
+            parent.base_ring(), parent.dimension()
+        )(coordinates)
 
     def parent(self) -> BoundarySymbolsSpace:
         return self._parent
@@ -1510,11 +1429,11 @@ class BoundarySymbolElement:
             coefficient = self._coordinates[index]
             if coefficient != 0:
                 terms.append(
-                    str(coefficient) + '*['
-                    + str(self._parent.cusps()[index]) + ']')
+                    str(coefficient) + "*[" + str(self._parent.cusps()[index]) + "]"
+                )
         if len(terms) == 0:
-            return '0'
-        return ' + '.join(terms)
+            return "0"
+        return " + ".join(terms)
 
     __str__ = __repr__
     toString = __repr__
@@ -1522,7 +1441,6 @@ class BoundarySymbolElement:
 
 @runtime.callable_instance_class
 class BoundarySymbolsSpace(sage.Parent):
-
     def __init__(
         self,
         ambient: ModularSymbolsSpace,
@@ -1565,9 +1483,12 @@ class BoundarySymbolsSpace(sage.Parent):
 
     def __repr__(self) -> str:
         return (
-            'Space of Boundary Modular Symbols for Gamma_0('
-            + str(self.level()) + ') of weight '
-            + str(self.weight()) + ' over ' + str(self.base_ring())
+            "Space of Boundary Modular Symbols for Gamma_0("
+            + str(self.level())
+            + ") of weight "
+            + str(self.weight())
+            + " over "
+            + str(self.base_ring())
         )
 
     __str__ = __repr__
@@ -1575,7 +1496,6 @@ class BoundarySymbolsSpace(sage.Parent):
 
 
 class ModularSymbolElement(sage.Element):
-
     def __init__(
         self,
         parent: ModularSymbolsSpace,
@@ -1585,7 +1505,8 @@ class ModularSymbolElement(sage.Element):
         self._parent = parent
         ambient = parent.ambient_module()
         self._coordinates = VectorSpace(  # type: ignore[name-defined]  # noqa: F821
-            parent.base_ring(), ambient.dimension())(coordinates)
+            parent.base_ring(), ambient.dimension()
+        )(coordinates)
         self._label = label
 
     def parent(self) -> ModularSymbolsSpace:
@@ -1612,24 +1533,24 @@ class ModularSymbolElement(sage.Element):
         return self._parent.T(index)(self)
 
     def _compatible(
-        self, other: object,
+        self,
+        other: object,
     ) -> tuple[ModularSymbolElement, ModularSymbolElement]:
         if (
             not isinstance(other, ModularSymbolElement)
-            or self._parent.ambient_module()
-            is not other._parent.ambient_module()
+            or self._parent.ambient_module() is not other._parent.ambient_module()
         ):
-            raise TypeError(
-                'modular symbols must have the same ambient space')
+            raise TypeError("modular symbols must have the same ambient space")
         return self, other
 
     def __add__(self, other: object) -> ModularSymbolElement:
         left, right = self._compatible(other)
         parent = (
-            left._parent if left._parent is right._parent
-            else left._parent.ambient_module())
-        return ModularSymbolElement(
-            parent, left._coordinates + right._coordinates)
+            left._parent
+            if left._parent is right._parent
+            else left._parent.ambient_module()
+        )
+        return ModularSymbolElement(parent, left._coordinates + right._coordinates)
 
     def _add_(self, other: ModularSymbolElement) -> ModularSymbolElement:
         return self.__add__(other)
@@ -1637,10 +1558,11 @@ class ModularSymbolElement(sage.Element):
     def __sub__(self, other: object) -> ModularSymbolElement:
         left, right = self._compatible(other)
         parent = (
-            left._parent if left._parent is right._parent
-            else left._parent.ambient_module())
-        return ModularSymbolElement(
-            parent, left._coordinates - right._coordinates)
+            left._parent
+            if left._parent is right._parent
+            else left._parent.ambient_module()
+        )
+        return ModularSymbolElement(parent, left._coordinates - right._coordinates)
 
     def _sub_(self, other: ModularSymbolElement) -> ModularSymbolElement:
         return self.__sub__(other)
@@ -1652,8 +1574,7 @@ class ModularSymbolElement(sage.Element):
         return self.__neg__()
 
     def __mul__(self, scalar: object) -> ModularSymbolElement:
-        return ModularSymbolElement(
-            self._parent, self._coordinates * scalar)
+        return ModularSymbolElement(self._parent, self._coordinates * scalar)
 
     def __rmul__(self, scalar: object) -> ModularSymbolElement:
         return self.__mul__(scalar)
@@ -1670,36 +1591,33 @@ class ModularSymbolElement(sage.Element):
         other: object,
         reflected: bool,
     ) -> Any:
-        if operator == 'add' and not reflected:
+        if operator == "add" and not reflected:
             return self.__add__(other)
-        if operator == 'sub' and not reflected:
+        if operator == "sub" and not reflected:
             return self.__sub__(other)
-        if operator == 'mul':
+        if operator == "mul":
             if reflected:
                 return self.__rmul__(other)
             return self.__mul__(other)
-        raise TypeError(
-            'operation ' + operator + ' is not defined for modular symbols')
+        raise TypeError("operation " + operator + " is not defined for modular symbols")
 
     def __eq__(self, other: object) -> bool:
         return (
             isinstance(other, ModularSymbolElement)
-            and self._parent.ambient_module()
-            is other._parent.ambient_module()
+            and self._parent.ambient_module() is other._parent.ambient_module()
             and self._coordinates == other._coordinates
         )
 
     def __repr__(self) -> str:
         if self._label is not None:
             return str(self._label)
-        return 'Modular symbol ' + str(self._coordinates)
+        return "Modular symbol " + str(self._coordinates)
 
     __str__ = __repr__
     toString = __repr__
 
 
 class ModularSymbolsBoundaryMap:
-
     def __init__(
         self,
         domain: ModularSymbolsSpace,
@@ -1725,15 +1643,13 @@ class ModularSymbolsBoundaryMap:
         return self._codomain(image)
 
     def __repr__(self) -> str:
-        return (
-            'Boundary map defined by the matrix\n' + str(self._matrix))
+        return "Boundary map defined by the matrix\n" + str(self._matrix)
 
     __str__ = __repr__
     toString = __repr__
 
 
 class ModularSymbolsLinearOperator:
-
     def __init__(
         self,
         space: ModularSymbolsSpace,
@@ -1741,12 +1657,13 @@ class ModularSymbolsLinearOperator:
         name: str,
         ambient_matrix: Any = None,
     ) -> None:
-        self._kind = 'ModularSymbolsLinearOperator'
+        self._kind = "ModularSymbolsLinearOperator"
         self._space = space
         self._matrix = defining_matrix
         self._name = name
         self._ambient_matrix = (
-            defining_matrix if ambient_matrix is None else ambient_matrix)
+            defining_matrix if ambient_matrix is None else ambient_matrix
+        )
 
     def matrix(self) -> Any:
         return self._matrix
@@ -1757,14 +1674,13 @@ class ModularSymbolsLinearOperator:
         return self._space(ambient_image)
 
     def __repr__(self) -> str:
-        return self._name + ' on ' + str(self._space)
+        return self._name + " on " + str(self._space)
 
     __str__ = __repr__
     toString = __repr__
 
 
 class ModularSymbolsDegeneracyMap:
-
     def __init__(
         self,
         domain: ModularSymbolsSpace,
@@ -1793,13 +1709,11 @@ class ModularSymbolsDegeneracyMap:
 
     def kernel(self) -> ModularSymbolsSpace:
         local_basis = self._matrix.left_kernel_matrix()
-        return self._domain._subspace_from_local_basis(
-            local_basis, 'Kernel')
+        return self._domain._subspace_from_local_basis(local_basis, "Kernel")
 
     def image(self) -> ModularSymbolsSpace:
         local_basis = self._matrix.row_space().basis_matrix()
-        return self._codomain._subspace_from_local_basis(
-            local_basis, 'Image')
+        return self._codomain._subspace_from_local_basis(local_basis, "Image")
 
     def __call__(self, element: Any) -> ModularSymbolElement:
         symbol = self._domain(element)
@@ -1808,10 +1722,14 @@ class ModularSymbolsDegeneracyMap:
 
     def __repr__(self) -> str:
         return (
-            'Degeneracy map of index ' + str(self._index)
-            + ' defined by the matrix\n' + str(self._matrix)
-            + '\nDomain: ' + str(self._domain)
-            + '\nCodomain: ' + str(self._codomain)
+            "Degeneracy map of index "
+            + str(self._index)
+            + " defined by the matrix\n"
+            + str(self._matrix)
+            + "\nDomain: "
+            + str(self._domain)
+            + "\nCodomain: "
+            + str(self._codomain)
         )
 
     __str__ = __repr__
@@ -1830,49 +1748,54 @@ class ManinPresentation:
     def __init__(self, projective_line: P1List) -> None:
         self._projective_line = projective_line
         self._info = runtime.flint_backend().p1ListManinPresentationInfo(
-            projective_line._native)
+            projective_line._native
+        )
 
     def _number(self, name: str) -> int:
         return runtime.number(runtime.reflect.get(self._info, name))
 
     def level(self) -> int:
-        return self._number('level')
+        return self._number("level")
 
     def projective_cosets(self) -> int:
-        return self._number('projectiveCosets')
+        return self._number("projectiveCosets")
 
     def cusps(self) -> int:
-        return self._number('cusps')
+        return self._number("cusps")
 
     def interior_paths(self) -> int:
-        return self._number('interiorPaths')
+        return self._number("interiorPaths")
 
     def e1(self) -> int:
-        return self._number('e1')
+        return self._number("e1")
 
     def e2(self) -> int:
-        return self._number('e2')
+        return self._number("e2")
 
     def torsion2(self) -> int:
-        return self._number('torsion2')
+        return self._number("torsion2")
 
     def torsion3(self) -> int:
-        return self._number('torsion3')
+        return self._number("torsion3")
 
     def ngens(self) -> int:
-        return self._number('generators')
+        return self._number("generators")
 
     def nrelations(self) -> int:
-        return self._number('relations')
+        return self._number("relations")
 
     def dimension(self) -> int:
-        return self._number('dimension')
+        return self._number("dimension")
 
     def __repr__(self) -> str:
         return (
-            'Minimal weight-2 Manin presentation at level '
-            + str(self.level()) + ' with ' + str(self.ngens())
-            + ' generators and ' + str(self.nrelations()) + ' relations'
+            "Minimal weight-2 Manin presentation at level "
+            + str(self.level())
+            + " with "
+            + str(self.ngens())
+            + " generators and "
+            + str(self.nrelations())
+            + " relations"
         )
 
     __str__ = __repr__
@@ -1889,9 +1812,9 @@ class ManinRelations:
 
     def __init__(self, projective_line: P1List, modulus: Any) -> None:
         self._projective_line = projective_line
-        self._modulus = _positive_integer(modulus, 'relation modulus')
+        self._modulus = _positive_integer(modulus, "relation modulus")
         if not sage.is_prime(self._modulus):
-            raise ValueError('relation modulus must be prime')
+            raise ValueError("relation modulus must be prime")
         backend = runtime.flint_backend()
         self._native = backend.p1ListManinRelations(
             projective_line._native,
@@ -1907,33 +1830,36 @@ class ManinRelations:
         return self._modulus
 
     def nrows(self) -> int:
-        return runtime.number(runtime.reflect.get(self._info, 'rows'))
+        return runtime.number(runtime.reflect.get(self._info, "rows"))
 
     def ncols(self) -> int:
-        return runtime.number(runtime.reflect.get(self._info, 'generators'))
+        return runtime.number(runtime.reflect.get(self._info, "generators"))
 
     def nnz(self) -> int:
-        return runtime.number(runtime.reflect.get(self._info, 'nonzero'))
+        return runtime.number(runtime.reflect.get(self._info, "nonzero"))
 
     def s_relations(self) -> int:
-        return runtime.number(runtime.reflect.get(self._info, 'sRelations'))
+        return runtime.number(runtime.reflect.get(self._info, "sRelations"))
 
     def r_relations(self) -> int:
-        return runtime.number(runtime.reflect.get(self._info, 'rRelations'))
+        return runtime.number(runtime.reflect.get(self._info, "rRelations"))
 
     def checksum(self) -> str:
-        return runtime.reflect.get(self._info, 'checksum')
+        return runtime.reflect.get(self._info, "checksum")
 
     def row(self, index: Any) -> Any:
-        index = _exact_nonnegative_integer(index, 'relation row')
-        raw = runtime.flint_backend().maninRelationsRow(
-            self._native, index)
+        index = _exact_nonnegative_integer(index, "relation row")
+        raw = runtime.flint_backend().maninRelationsRow(self._native, index)
         entries = []
         for position in range(0, len(raw), 2):
-            entries.append(runtime.math_tuple([
-                runtime.number(raw[position]),
-                runtime.normalize_integer(raw[position + 1]),
-            ]))
+            entries.append(
+                runtime.math_tuple(
+                    [
+                        runtime.number(raw[position]),
+                        runtime.normalize_integer(raw[position + 1]),
+                    ]
+                )
+            )
         return runtime.math_tuple(entries)
 
     def rank(self) -> int:
@@ -1945,7 +1871,8 @@ class ManinRelations:
                 )
             else:
                 self._rank_cache = runtime.number(
-                    runtime.flint_backend().maninRelationsRank(self._native))
+                    runtime.flint_backend().maninRelationsRank(self._native)
+                )
         return self._rank_cache
 
     def quotient_dimension(self) -> int:
@@ -1955,10 +1882,13 @@ class ManinRelations:
 
     def __repr__(self) -> str:
         return (
-            'Sparse Manin relation matrix with '
-            + str(self.nrows()) + ' rows, ' + str(self.ncols())
-            + ' columns, and ' + str(self.nnz())
-            + ' nonzero entries over Finite Field of size '
+            "Sparse Manin relation matrix with "
+            + str(self.nrows())
+            + " rows, "
+            + str(self.ncols())
+            + " columns, and "
+            + str(self.nnz())
+            + " nonzero entries over Finite Field of size "
             + str(self._modulus)
         )
 
@@ -1983,12 +1913,11 @@ class HigherWeightManinPresentation:
         self._native = raw
         self._weight = weight
         self._sign = sign
-        self._generators = runtime.number(
-            runtime.reflect.get(raw, 'generators'))
-        self._dimension = runtime.number(
-            runtime.reflect.get(raw, 'dimension'))
+        self._generators = runtime.number(runtime.reflect.get(raw, "generators"))
+        self._dimension = runtime.number(runtime.reflect.get(raw, "dimension"))
         self._two_term_generators = runtime.number(
-            runtime.reflect.get(raw, 'twoTermGenerators'))
+            runtime.reflect.get(raw, "twoTermGenerators")
+        )
         self._base_ring = sage.QQ if base_ring is None else base_ring
         self._reduction = None
         self._lazy_reduction = lazy_reduction
@@ -1996,12 +1925,13 @@ class HigherWeightManinPresentation:
         if not lazy_reduction:
             self._reduction = Matrix(  # type: ignore[name-defined]  # noqa: F821
                 MatrixSpace(  # type: ignore[name-defined]  # noqa: F821
-                    self._base_ring, self._generators, self._dimension),
-                runtime.reflect.get(raw, 'reduction'),
+                    self._base_ring, self._generators, self._dimension
+                ),
+                runtime.reflect.get(raw, "reduction"),
             )
         self._basis_generators = [
             runtime.number(value)
-            for value in runtime.reflect.get(raw, 'basisGenerators')
+            for value in runtime.reflect.get(raw, "basisGenerators")
         ]
         self._native_kernel_data_cache = None
 
@@ -2021,13 +1951,16 @@ class HigherWeightManinPresentation:
         if self._reduction is None and self._lazy_reduction:
             if self._character_presentation:
                 raw = runtime.flint_backend().characterPresentationReduction(
-                    self._native)
+                    self._native
+                )
             else:
                 raw = runtime.flint_backend().higherWeightPresentationReduction(
-                    self._native)
+                    self._native
+                )
             self._reduction = Matrix(  # type: ignore[name-defined]  # noqa: F821
                 MatrixSpace(  # type: ignore[name-defined]  # noqa: F821
-                    self._base_ring, self._generators, self._dimension),
+                    self._base_ring, self._generators, self._dimension
+                ),
                 raw,
             )
         return self._reduction
@@ -2048,18 +1981,21 @@ class HigherWeightManinPresentation:
                 numerators.append(entry.numerator())
                 denominators.append(entry.denominator())
             self._native_kernel_data_cache = (
-                native_api.kernel_int64_buffer(
-                    kernel, self._basis_generators),
+                native_api.kernel_int64_buffer(kernel, self._basis_generators),
                 native_api.kernel_integer_buffer(kernel, numerators),
-                native_api.kernel_integer_buffer(kernel, denominators)
+                native_api.kernel_integer_buffer(kernel, denominators),
             )
         return self._native_kernel_data_cache
 
     def __repr__(self) -> str:
         return (
-            'Higher-weight Manin presentation with '
-            + str(self._generators) + ' triple generators and dimension '
-            + str(self._dimension) + ' over ' + str(self._base_ring))
+            "Higher-weight Manin presentation with "
+            + str(self._generators)
+            + " triple generators and dimension "
+            + str(self._dimension)
+            + " over "
+            + str(self._base_ring)
+        )
 
     __str__ = __repr__
     toString = __repr__
@@ -2085,7 +2021,7 @@ class P1List:
     """
 
     def __init__(self, level: Any) -> None:
-        self._level = _positive_integer(level, 'P1List level')
+        self._level = _positive_integer(level, "P1List level")
         self._native = runtime.flint_backend().p1List(self._level)
         self._manin_presentation_cache = None
         self._boundary_data_cache = None
@@ -2103,22 +2039,17 @@ class P1List:
         return self._level
 
     def __len__(self) -> int:
-        return runtime.number(
-            runtime.flint_backend().p1ListCount(self._native))
+        return runtime.number(runtime.flint_backend().p1ListCount(self._native))
 
     def __getitem__(self, index: Any) -> Any:
-        if hasattr(index, '__sagejs_slice__'):
+        if hasattr(index, "__sagejs_slice__"):
             start, stop, step = index.indices(len(self))
-            return [
-                self.__getitem__(position)
-                for position in range(start, stop, step)
-            ]
-        index = _exact_integer(index, 'P1List index')
+            return [self.__getitem__(position) for position in range(start, stop, step)]
+        index = _exact_integer(index, "P1List index")
         if index < 0:
             index += len(self)
         raw = runtime.flint_backend().p1ListEntry(self._native, index)
-        return runtime.math_tuple([
-            runtime.number(raw[0]), runtime.number(raw[1])])
+        return runtime.math_tuple([runtime.number(raw[0]), runtime.number(raw[1])])
 
     def list(self) -> list[Any]:
         return [self.__getitem__(index) for index in range(len(self))]
@@ -2137,73 +2068,80 @@ class P1List:
         return self._native_kernel_pairs_cache
 
     def _native_kernel_heilbronn(
-        self, prime: int,
+        self,
+        prime: int,
     ) -> tuple[int, list[int]]:
         key = str(prime)
         cached = self._native_kernel_heilbronn_cache.get(key)
         if cached is runtime.undefined:
             native_api, kernels = _native_p1_modules()
-            count = runtime.number(
-                kernels.heilbronn_cremona_count(prime))
+            count = runtime.number(kernels.heilbronn_cremona_count(prime))
             matrices = native_api.kernel_int64_zeros(
                 kernels.heilbronn_higher_weight_hecke_fill,
                 count * 4,
             )
-            written = runtime.number(
-                kernels.heilbronn_cremona_fill(prime, matrices))
+            written = runtime.number(kernels.heilbronn_cremona_fill(prime, matrices))
             if written != count:
                 raise ArithmeticError(
-                    'Heilbronn representative count changed during fill')
+                    "Heilbronn representative count changed during fill"
+                )
             cached = (count, matrices)
             self._native_kernel_heilbronn_cache.set(key, cached)
         return cached
 
     def normalize(self, u: Any, v: Any) -> Any:
-        u = _exact_integer(u, 'projective numerator')
-        v = _exact_integer(v, 'projective denominator')
-        raw = runtime.flint_backend().p1ListNormalize(
-            self._native, u, v, 0)
-        return runtime.math_tuple([
-            runtime.number(raw[0]), runtime.number(raw[1])])
+        u = _exact_integer(u, "projective numerator")
+        v = _exact_integer(v, "projective denominator")
+        raw = runtime.flint_backend().p1ListNormalize(self._native, u, v, 0)
+        return runtime.math_tuple([runtime.number(raw[0]), runtime.number(raw[1])])
 
     def normalize_with_scalar(self, u: Any, v: Any) -> Any:
-        u = _exact_integer(u, 'projective numerator')
-        v = _exact_integer(v, 'projective denominator')
-        raw = runtime.flint_backend().p1ListNormalize(
-            self._native, u, v, 1)
-        return runtime.math_tuple([
-            runtime.number(raw[0]),
-            runtime.number(raw[1]),
-            runtime.number(raw[2]),
-        ])
+        u = _exact_integer(u, "projective numerator")
+        v = _exact_integer(v, "projective denominator")
+        raw = runtime.flint_backend().p1ListNormalize(self._native, u, v, 1)
+        return runtime.math_tuple(
+            [
+                runtime.number(raw[0]),
+                runtime.number(raw[1]),
+                runtime.number(raw[2]),
+            ]
+        )
 
     def index(self, u: Any, v: Any) -> int:
-        u = _exact_integer(u, 'projective numerator')
-        v = _exact_integer(v, 'projective denominator')
-        return runtime.number(runtime.flint_backend().p1ListIndex(
-            self._native, u, v))
+        u = _exact_integer(u, "projective numerator")
+        v = _exact_integer(v, "projective denominator")
+        return runtime.number(runtime.flint_backend().p1ListIndex(self._native, u, v))
 
     def index_of_normalized_pair(self, u: Any, v: Any) -> int:
         return self.index(u, v)
 
     def _action_index(self, index: Any) -> int:
-        index = _exact_integer(index, 'P1List index')
+        index = _exact_integer(index, "P1List index")
         if index < 0:
             index += len(self)
         return index
 
     def apply_I(self, index: Any) -> int:
-        return runtime.number(runtime.flint_backend().p1ListApplyI(
-            self._native, self._action_index(index)))
+        return runtime.number(
+            runtime.flint_backend().p1ListApplyI(
+                self._native, self._action_index(index)
+            )
+        )
 
     def apply_S(self, index: Any) -> int:
-        return runtime.number(runtime.flint_backend().p1ListApplyS(
-            self._native, self._action_index(index)))
+        return runtime.number(
+            runtime.flint_backend().p1ListApplyS(
+                self._native, self._action_index(index)
+            )
+        )
 
     def apply_R(self, index: Any) -> int:
         """Apply the order-three matrix `R = S*T^-1`."""
-        return runtime.number(runtime.flint_backend().p1ListApplyR(
-            self._native, self._action_index(index)))
+        return runtime.number(
+            runtime.flint_backend().p1ListApplyR(
+                self._native, self._action_index(index)
+            )
+        )
 
     def apply_T(self, index: Any) -> int:
         """Apply SageMath's historical order-three `T` action."""
@@ -2211,8 +2149,11 @@ class P1List:
 
     def apply_translation(self, index: Any) -> int:
         """Apply the translation matrix `[[1,1],[0,1]]`."""
-        return runtime.number(runtime.flint_backend().p1ListApplyT(
-            self._native, self._action_index(index)))
+        return runtime.number(
+            runtime.flint_backend().p1ListApplyT(
+                self._native, self._action_index(index)
+            )
+        )
 
     def manin_relations(self, modulus: Any = 65521) -> ManinRelations:
         return ManinRelations(self, modulus)
@@ -2228,19 +2169,21 @@ class P1List:
         sign: Any = 0,
     ) -> Any:
         """Return the exact triple-Manin-symbol presentation over `QQ`."""
-        weight = _positive_integer(weight, 'modular-symbol weight')
+        weight = _positive_integer(weight, "modular-symbol weight")
         if weight < 2:
-            raise ValueError('modular-symbol weight must be at least 2')
-        sign = _exact_integer(sign, 'sign')
+            raise ValueError("modular-symbol weight must be at least 2")
+        sign = _exact_integer(sign, "sign")
         if sign not in [-1, 0, 1]:
-            raise ValueError('sign must be -1, 0, or 1')
-        key = str(weight) + ':' + str(sign)
+            raise ValueError("sign must be -1, 0, or 1")
+        key = str(weight) + ":" + str(sign)
         cached = self._higher_weight_presentation_cache.get(key)
         if cached is runtime.undefined:
             raw = runtime.flint_backend().p1ListHigherWeightPresentation(
-                self._native, weight, sign)
+                self._native, weight, sign
+            )
             cached = HigherWeightManinPresentation(
-                self, weight, sign, raw, lazy_reduction=True)
+                self, weight, sign, raw, lazy_reduction=True
+            )
             self._higher_weight_presentation_cache.set(key, cached)
         return cached
 
@@ -2251,39 +2194,41 @@ class P1List:
         prime: Any,
     ) -> Any:
         """Return `T_p` from the exact higher-weight Manin presentation."""
-        weight = _positive_integer(weight, 'modular-symbol weight')
-        sign = _exact_integer(sign, 'sign')
-        prime = _positive_integer(prime, 'Hecke prime')
+        weight = _positive_integer(weight, "modular-symbol weight")
+        sign = _exact_integer(sign, "sign")
+        prime = _positive_integer(prime, "Hecke prime")
         if not sage.is_prime(prime):
-            raise ValueError('Hecke index must be prime')
-        key = (
-            str(weight) + ':' + str(sign) + ':' + str(prime))
+            raise ValueError("Hecke index must be prime")
+        key = str(weight) + ":" + str(sign) + ":" + str(prime)
         cached = self._higher_weight_hecke_cache.get(key)
         if cached is not runtime.undefined:
             return cached
         presentation = self.higher_weight_presentation(weight, sign)
         native_api, kernels = _native_p1_modules()
         kernel = kernels.heilbronn_higher_weight_hecke_fill
-        if (
-            not native_api.is_compiled(kernel)
-            or not getattr(kernel, 'nativeAvailable', False)
+        if not native_api.is_compiled(kernel) or not getattr(
+            kernel, "nativeAvailable", False
         ):
             cached = self._higher_weight_hecke_matrix_flint(
-                weight, sign, prime, presentation)
+                weight, sign, prime, presentation
+            )
             self._higher_weight_hecke_cache.set(key, cached)
             return cached
         dimension = presentation.dimension()
         pairs = self._native_kernel_pairs()
         matrix_count, matrices = self._native_kernel_heilbronn(prime)
         basis, reduction_numerators, reduction_denominators = (
-            presentation._native_kernel_data())
+            presentation._native_kernel_data()
+        )
         output_length = dimension * dimension
         word_capacity = 16
         while True:
             output_numerators = native_api.kernel_integer_zeros(
-                kernel, output_length, word_capacity)
+                kernel, output_length, word_capacity
+            )
             output_denominators = native_api.kernel_integer_zeros(
-                kernel, output_length, word_capacity)
+                kernel, output_length, word_capacity
+            )
             try:
                 kernel(
                     weight,
@@ -2303,15 +2248,13 @@ class P1List:
             except Exception as error:
                 if (
                     not native_api.is_compiled(kernel)
-                    or 'word capacity exceeded' not in str(error)
+                    or "word capacity exceeded" not in str(error)
                     or word_capacity >= 65536
                 ):
                     raise
                 word_capacity *= 2
-        numerator_values = native_api.integer_buffer_values(
-            output_numerators)
-        denominator_values = native_api.integer_buffer_values(
-            output_denominators)
+        numerator_values = native_api.integer_buffer_values(output_numerators)
+        denominator_values = native_api.integer_buffer_values(output_denominators)
         rational_class = runtime.rational_class
         entries = [
             rational_class._from_reduced(
@@ -2321,7 +2264,8 @@ class P1List:
             for index in range(output_length)
         ]
         cached = MatrixSpace(  # type: ignore[name-defined]  # noqa: F821
-            sage.QQ, dimension, dimension)(entries)
+            sage.QQ, dimension, dimension
+        )(entries)
         self._higher_weight_hecke_cache.set(key, cached)
         return cached
 
@@ -2334,10 +2278,12 @@ class P1List:
     ) -> Any:
         dimension = presentation.dimension()
         native = runtime.flint_backend().p1ListHigherWeightHeckeMatrix(
-            self._native, weight, sign, prime, presentation._native)
+            self._native, weight, sign, prime, presentation._native
+        )
         return Matrix(  # type: ignore[name-defined]  # noqa: F821
             MatrixSpace(  # type: ignore[name-defined]  # noqa: F821
-                sage.QQ, dimension, dimension),
+                sage.QQ, dimension, dimension
+            ),
             native,
         )
 
@@ -2355,29 +2301,32 @@ class P1List:
         quotient both happen natively over ``QQ``.
         """
         if not isinstance(target, P1List):
-            raise TypeError('degeneracy-map target must be a P1List')
-        weight = _positive_integer(weight, 'modular-symbol weight')
-        sign = _exact_integer(sign, 'sign')
-        index = _positive_integer(index, 'degeneracy index')
+            raise TypeError("degeneracy-map target must be a P1List")
+        weight = _positive_integer(weight, "modular-symbol weight")
+        sign = _exact_integer(sign, "sign")
+        index = _positive_integer(index, "degeneracy index")
         if sign not in [-1, 0, 1]:
-            raise ValueError('sign must be -1, 0, or 1')
+            raise ValueError("sign must be -1, 0, or 1")
         if self.N() % target.N() != 0:
-            raise ValueError('target level must divide the source level')
+            raise ValueError("target level must divide the source level")
         quotient = self.N() // target.N()
         if quotient % index != 0:
-            raise ValueError(
-                'degeneracy index must divide the quotient of levels')
-        key = (
-            str(target.N()) + ':' + str(weight) + ':' + str(sign)
-            + ':' + str(index))
+            raise ValueError("degeneracy index must divide the quotient of levels")
+        key = str(target.N()) + ":" + str(weight) + ":" + str(sign) + ":" + str(index)
         cached = self._higher_weight_degeneracy_cache.get(key)
         if cached is not runtime.undefined:
             return cached
         source_presentation = self.higher_weight_presentation(weight, sign)
         target_presentation = target.higher_weight_presentation(weight, sign)
         native = runtime.flint_backend().p1ListHigherWeightDegeneracyMatrix(
-            self._native, target._native, weight, sign, index,
-            source_presentation._native, target_presentation._native)
+            self._native,
+            target._native,
+            weight,
+            sign,
+            index,
+            source_presentation._native,
+            target_presentation._native,
+        )
         cached = Matrix(  # type: ignore[name-defined]  # noqa: F821
             MatrixSpace(  # type: ignore[name-defined]  # noqa: F821
                 sage.QQ,
@@ -2397,20 +2346,27 @@ class P1List:
         base_ring: Any,
     ) -> Any:
         """Return the exact character-valued triple presentation."""
-        weight = _positive_integer(weight, 'modular-symbol weight')
-        sign = _exact_integer(sign, 'sign')
+        weight = _positive_integer(weight, "modular-symbol weight")
+        sign = _exact_integer(sign, "sign")
         if sign not in [-1, 0, 1]:
-            raise ValueError('sign must be -1, 0, or 1')
+            raise ValueError("sign must be -1, 0, or 1")
         key = (
-            str(weight) + ':' + str(sign) + ':'
-            + str(character._index) + ':' + str(base_ring))
+            str(weight)
+            + ":"
+            + str(sign)
+            + ":"
+            + str(character._index)
+            + ":"
+            + str(base_ring)
+        )
         cached = self._character_presentation_cache.get(key)
         if cached is runtime.undefined:
             raw = runtime.flint_backend().p1ListCharacterPresentation(
-                self._native, weight, sign,
-                character._parent._native, character._index)
+                self._native, weight, sign, character._parent._native, character._index
+            )
             cached = HigherWeightManinPresentation(
-                self, weight, sign, raw, base_ring, True, True)
+                self, weight, sign, raw, base_ring, True, True
+            )
             self._character_presentation_cache.set(key, cached)
         return cached
 
@@ -2423,28 +2379,40 @@ class P1List:
         prime: Any,
     ) -> Any:
         """Return `T_p` on a Dirichlet-character Manin presentation."""
-        weight = _positive_integer(weight, 'modular-symbol weight')
-        sign = _exact_integer(sign, 'sign')
-        prime = _positive_integer(prime, 'Hecke prime')
+        weight = _positive_integer(weight, "modular-symbol weight")
+        sign = _exact_integer(sign, "sign")
+        prime = _positive_integer(prime, "Hecke prime")
         if not sage.is_prime(prime):
-            raise ValueError('Hecke index must be prime')
+            raise ValueError("Hecke index must be prime")
         key = (
-            str(weight) + ':' + str(sign) + ':'
-            + str(character._index) + ':' + str(base_ring)
-            + ':' + str(prime))
+            str(weight)
+            + ":"
+            + str(sign)
+            + ":"
+            + str(character._index)
+            + ":"
+            + str(base_ring)
+            + ":"
+            + str(prime)
+        )
         cached = self._character_hecke_cache.get(key)
         if cached is not runtime.undefined:
             return cached
-        presentation = self.character_presentation(
-            weight, sign, character, base_ring)
+        presentation = self.character_presentation(weight, sign, character, base_ring)
         dimension = presentation.dimension()
         native = runtime.flint_backend().p1ListCharacterHeckeMatrix(
-            self._native, weight, sign, prime,
-            character._parent._native, character._index,
-            presentation._native)
+            self._native,
+            weight,
+            sign,
+            prime,
+            character._parent._native,
+            character._index,
+            presentation._native,
+        )
         cached = Matrix(  # type: ignore[name-defined]  # noqa: F821
             MatrixSpace(  # type: ignore[name-defined]  # noqa: F821
-                base_ring, dimension, dimension),
+                base_ring, dimension, dimension
+            ),
             native,
         )
         self._character_hecke_cache.set(key, cached)
@@ -2455,16 +2423,17 @@ class P1List:
         prime: Any,
         dimension: Any,
     ) -> Any:
-        prime = _positive_integer(prime, 'Hecke prime')
+        prime = _positive_integer(prime, "Hecke prime")
         if not sage.is_prime(prime):
-            raise ValueError('Hecke index must be prime')
-        dimension = _exact_nonnegative_integer(
-            dimension, 'known Hecke dimension')
+            raise ValueError("Hecke index must be prime")
+        dimension = _exact_nonnegative_integer(dimension, "known Hecke dimension")
         native = runtime.flint_backend().p1ListHeckeMatrix(
-            self._native, runtime.bigint(prime))
+            self._native, runtime.bigint(prime)
+        )
         return Matrix(  # type: ignore[name-defined]  # noqa: F821
             MatrixSpace(  # type: ignore[name-defined]  # noqa: F821
-                sage.ZZ, dimension, dimension),
+                sage.ZZ, dimension, dimension
+            ),
             native,
         )
 
@@ -2485,8 +2454,7 @@ class P1List:
         [ 1  0 -2]
         ```
         """
-        return self._hecke_matrix(
-            prime, self.manin_presentation().dimension())
+        return self._hecke_matrix(prime, self.manin_presentation().dimension())
 
     def degeneracy_matrix(
         self,
@@ -2500,21 +2468,22 @@ class P1List:
         target level.
         """
         if not isinstance(target, P1List):
-            raise TypeError('degeneracy-map target must be a P1List')
-        index = _positive_integer(index, 'degeneracy index')
+            raise TypeError("degeneracy-map target must be a P1List")
+        index = _positive_integer(index, "degeneracy index")
         if self.N() % target.N() != 0:
-            raise ValueError('target level must divide the source level')
+            raise ValueError("target level must divide the source level")
         quotient = self.N() // target.N()
         if quotient % index != 0:
-            raise ValueError(
-                'degeneracy index must divide the quotient of levels')
+            raise ValueError("degeneracy index must divide the quotient of levels")
         source_dimension = self.manin_presentation().dimension()
         target_dimension = target.manin_presentation().dimension()
         native = runtime.flint_backend().p1ListDegeneracyMatrix(
-            self._native, target._native, runtime.bigint(index))
+            self._native, target._native, runtime.bigint(index)
+        )
         column_action = Matrix(  # type: ignore[name-defined]  # noqa: F821
             MatrixSpace(  # type: ignore[name-defined]  # noqa: F821
-                sage.ZZ, target_dimension, source_dimension),
+                sage.ZZ, target_dimension, source_dimension
+            ),
             native,
         )
         return column_action.transpose()
@@ -2524,21 +2493,23 @@ class P1List:
         if self._boundary_data_cache is None:
             raw = runtime.flint_backend().p1ListBoundaryData(self._native)
             dimension = self.manin_presentation().dimension()
-            raw_matrix = runtime.reflect.get(raw, 'matrix')
-            raw_cusps = runtime.reflect.get(raw, 'cusps')
+            raw_matrix = runtime.reflect.get(raw, "matrix")
+            raw_cusps = runtime.reflect.get(raw, "cusps")
             defining_matrix = Matrix(  # type: ignore[name-defined]  # noqa: F821
                 MatrixSpace(  # type: ignore[name-defined]  # noqa: F821
-                    sage.ZZ, dimension, len(raw_cusps)),
+                    sage.ZZ, dimension, len(raw_cusps)
+                ),
                 raw_matrix,
             )
             cusps = []
             for pair in raw_cusps:
-                cusps.append(ModularCusp(
-                    runtime.normalize_integer(pair[0]),
-                    runtime.normalize_integer(pair[1]),
-                ))
-            self._boundary_data_cache = runtime.math_tuple([
-                defining_matrix, cusps])
+                cusps.append(
+                    ModularCusp(
+                        runtime.normalize_integer(pair[0]),
+                        runtime.normalize_integer(pair[1]),
+                    )
+                )
+            self._boundary_data_cache = runtime.math_tuple([defining_matrix, cusps])
         return self._boundary_data_cache
 
     def boundary_matrix(self) -> Any:
@@ -2550,11 +2521,11 @@ class P1List:
         if self._cuspidal_basis_cache is None:
             dimension = self.manin_presentation().dimension()
             rows = dimension - self.boundary_matrix().rank()
-            native = runtime.flint_backend().p1ListCuspidalBasis(
-                self._native)
+            native = runtime.flint_backend().p1ListCuspidalBasis(self._native)
             self._cuspidal_basis_cache = Matrix(  # type: ignore[name-defined]  # noqa: F821
                 MatrixSpace(  # type: ignore[name-defined]  # noqa: F821
-                    sage.ZZ, rows, dimension),
+                    sage.ZZ, rows, dimension
+                ),
                 native,
             )
         return self._cuspidal_basis_cache
@@ -2569,23 +2540,22 @@ class P1List:
         native = runtime.flint_backend().p1ListStarMatrix(self._native)
         return Matrix(  # type: ignore[name-defined]  # noqa: F821
             MatrixSpace(  # type: ignore[name-defined]  # noqa: F821
-                sage.ZZ, dimension, dimension),
+                sage.ZZ, dimension, dimension
+            ),
             native,
         )
 
     def star_eigenspace_basis(self, sign: Any) -> Any:
         """Return the native RREF basis for a star eigenspace over `QQ`."""
-        sign = _exact_integer(sign, 'star eigenspace sign')
+        sign = _exact_integer(sign, "star eigenspace sign")
         if sign not in [-1, 1]:
-            raise ValueError('star eigenspace sign must be -1 or 1')
+            raise ValueError("star eigenspace sign must be -1 or 1")
         cache_index = 0 if sign == -1 else 1
         cached = self._star_eigenspace_basis_cache[cache_index]
         if cached is None:
-            raw = runtime.flint_backend().p1ListStarEigenspaceBasis(
-                self._native, sign)
-            dimension = runtime.number(
-                runtime.reflect.get(raw, 'dimension'))
-            native = runtime.reflect.get(raw, 'matrix')
+            raw = runtime.flint_backend().p1ListStarEigenspaceBasis(self._native, sign)
+            dimension = runtime.number(runtime.reflect.get(raw, "dimension"))
+            native = runtime.reflect.get(raw, "matrix")
             cached = Matrix(  # type: ignore[name-defined]  # noqa: F821
                 MatrixSpace(  # type: ignore[name-defined]  # noqa: F821
                     sage.QQ,
@@ -2608,29 +2578,30 @@ class P1List:
         start_values = list(start)
         stop_values = list(stop)
         if len(start_values) != 2 or len(stop_values) != 2:
-            raise ValueError('path endpoints must be numerator/denominator pairs')
+            raise ValueError("path endpoints must be numerator/denominator pairs")
         values = [
-            _exact_integer(start_values[0], 'start numerator'),
-            _exact_integer(start_values[1], 'start denominator'),
-            _exact_integer(stop_values[0], 'stop numerator'),
-            _exact_integer(stop_values[1], 'stop denominator'),
+            _exact_integer(start_values[0], "start numerator"),
+            _exact_integer(start_values[1], "start denominator"),
+            _exact_integer(stop_values[0], "stop numerator"),
+            _exact_integer(stop_values[1], "stop denominator"),
         ]
         dimension = self.manin_presentation().dimension()
         native = runtime.flint_backend().p1ListReducePath(
             self._native,
-            values[0], values[1], values[2], values[3],
+            values[0],
+            values[1],
+            values[2],
+            values[3],
         )
         return Matrix(  # type: ignore[name-defined]  # noqa: F821
             MatrixSpace(  # type: ignore[name-defined]  # noqa: F821
-                sage.ZZ, dimension, 1),
+                sage.ZZ, dimension, 1
+            ),
             native,
         ).column(0)
 
     def __repr__(self) -> str:
-        return (
-            'The projective line over the integers modulo '
-            + str(self._level)
-        )
+        return "The projective line over the integers modulo " + str(self._level)
 
     __str__ = __repr__
     toString = __repr__
@@ -2641,64 +2612,59 @@ def _modular_symbols_matrix(rows: list[list[Any]]) -> Any:
 
 
 class HeckeOperator:
-
     def __init__(
         self,
         space: ModularSymbolsSpace,
         index: int,
     ) -> None:
-        self._kind = 'HeckeOperator'
+        self._kind = "HeckeOperator"
         self._space = space
         self._index = index
         self._matrix_cache = None
 
     def _compute_matrix(self) -> Any:
         key = self._space._model_key()
+        if key == "gamma0-1-12" and self._space.is_ambient() and self._index == 2:
+            return _modular_symbols_matrix(
+                [
+                    [-24, 0, 0],
+                    [0, -24, 0],
+                    [4860, 0, 2049],
+                ]
+            )
         if (
-            key == 'gamma0-1-12'
-            and self._space.is_ambient()
-            and self._index == 2
-        ):
-            return _modular_symbols_matrix([
-                [-24, 0, 0],
-                [0, -24, 0],
-                [4860, 0, 2049],
-            ])
-        if (
-            key == 'gamma0-11-2'
+            key == "gamma0-11-2"
             and self._space.is_ambient()
             and self._index in [2, 3, 5]
         ):
             cusp_eigenvalue = {2: -2, 3: -1, 5: 1}[self._index]
-            return _modular_symbols_matrix([
-                [self._index + 1, 0, -1],
-                [0, cusp_eigenvalue, 0],
-                [0, 0, cusp_eigenvalue],
-            ])
-        if (
-            key == 'gamma1-11-2-cusp'
-            and self._index == 2
-        ):
-            return _modular_symbols_matrix([
-                [-2, 0],
-                [0, -2],
-            ])
+            return _modular_symbols_matrix(
+                [
+                    [self._index + 1, 0, -1],
+                    [0, cusp_eigenvalue, 0],
+                    [0, 0, cusp_eigenvalue],
+                ]
+            )
+        if key == "gamma1-11-2-cusp" and self._index == 2:
+            return _modular_symbols_matrix(
+                [
+                    [-2, 0],
+                    [0, -2],
+                ]
+            )
         if (
             self._space._character is None
-            and self._space._group._family == 'Gamma0'
+            and self._space._group._family == "Gamma0"
             and self._space.weight() == 2
         ):
-            return self._space._native_weight2_hecke_matrix(
-                self._index)
+            return self._space._native_weight2_hecke_matrix(self._index)
         if self._space._supports_native_higher_weight():
-            return self._space._native_higher_weight_hecke_matrix(
-                self._index)
+            return self._space._native_higher_weight_hecke_matrix(self._index)
         if self._space._supports_native_character():
-            return self._space._native_character_hecke_matrix(
-                self._index)
+            return self._space._native_character_hecke_matrix(self._index)
         raise NotImplementedError(
-            'the requested Hecke matrix is not in the implemented '
-            'modular-symbol models')
+            "the requested Hecke matrix is not in the implemented modular-symbol models"
+        )
 
     def matrix(self) -> Any:
         if self._matrix_cache is None:
@@ -2711,66 +2677,92 @@ class HeckeOperator:
         image = symbol.vector() * ambient.hecke_matrix(self._index)
         return self._space(image)
 
-    def charpoly(self, variable: str = 'x') -> Any:
+    def charpoly(self, variable: str = "x") -> Any:
         key = self._space._model_key()
-        if key == 'gamma0-1-12' and self._index == 11:
+        if key == "gamma0-1-12" and self._index == 11:
             return FormattedCharacteristicPolynomial(
-                variable + '^3 - 285312739836*' + variable
-                + '^2 + 304982006808944*' + variable
-                + ' - 81446706196725772192',
-                '(' + variable + ' - 285311670612) * ('
-                + variable + ' - 534612)^2',
+                variable
+                + "^3 - 285312739836*"
+                + variable
+                + "^2 + 304982006808944*"
+                + variable
+                + " - 81446706196725772192",
+                "(" + variable + " - 285311670612) * (" + variable + " - 534612)^2",
             )
-        if key == 'gamma1-11-2' and self._index == 2:
+        if key == "gamma1-11-2" and self._index == 2:
             return FormattedCharacteristicPolynomial(
                 (
-                    variable + '^11 - 8*' + variable
-                    + '^10 + 20*' + variable + '^9 + 10*'
-                    + variable + '^8 - 145*' + variable
-                    + '^7 + 229*' + variable + '^6 + 58*'
-                    + variable + '^5 - 360*' + variable
-                    + '^4 + 70*' + variable + '^3 - 515*'
-                    + variable + '^2 + 1804*' + variable + ' - 1452'
+                    variable
+                    + "^11 - 8*"
+                    + variable
+                    + "^10 + 20*"
+                    + variable
+                    + "^9 + 10*"
+                    + variable
+                    + "^8 - 145*"
+                    + variable
+                    + "^7 + 229*"
+                    + variable
+                    + "^6 + 58*"
+                    + variable
+                    + "^5 - 360*"
+                    + variable
+                    + "^4 + 70*"
+                    + variable
+                    + "^3 - 515*"
+                    + variable
+                    + "^2 + 1804*"
+                    + variable
+                    + " - 1452"
                 ),
                 (
-                    '(' + variable + ' - 3) * (' + variable
-                    + ' + 2)^2 * (' + variable
-                    + '^4 - 7*' + variable + '^3 + 19*'
-                    + variable + '^2 - 23*' + variable
-                    + ' + 11) * (' + variable + '^4 - 2*'
-                    + variable + '^3 + 4*' + variable
-                    + '^2 + 2*' + variable + ' + 11)'
+                    "("
+                    + variable
+                    + " - 3) * ("
+                    + variable
+                    + " + 2)^2 * ("
+                    + variable
+                    + "^4 - 7*"
+                    + variable
+                    + "^3 + 19*"
+                    + variable
+                    + "^2 - 23*"
+                    + variable
+                    + " + 11) * ("
+                    + variable
+                    + "^4 - 2*"
+                    + variable
+                    + "^3 + 4*"
+                    + variable
+                    + "^2 + 2*"
+                    + variable
+                    + " + 11)"
                 ),
             )
-        if (
-            key == 'character-13-2'
-            and self._index == 2
-        ):
+        if key == "character-13-2" and self._index == 2:
             return FormattedCharacteristicPolynomial(
-                'characteristic polynomial of T_2',
+                "characteristic polynomial of T_2",
                 (
-                    '(' + variable + ' - zeta6 - 2) * ('
-                    + variable + ' - 2*zeta6 - 1) * ('
-                    + variable + ' + zeta6 + 1)^2'
+                    "("
+                    + variable
+                    + " - zeta6 - 2) * ("
+                    + variable
+                    + " - 2*zeta6 - 1) * ("
+                    + variable
+                    + " + zeta6 + 1)^2"
                 ),
             )
-        if (
-            key == 'character-13-2-cusp'
-            and self._index == 2
-        ):
+        if key == "character-13-2-cusp" and self._index == 2:
             return FormattedCharacteristicPolynomial(
-                'characteristic polynomial of T_2 on the cuspidal subspace',
-                '(' + variable + ' + zeta6 + 1)^2',
+                "characteristic polynomial of T_2 on the cuspidal subspace",
+                "(" + variable + " + zeta6 + 1)^2",
             )
         return self.matrix().charpoly(variable)
 
     characteristic_polynomial = charpoly
 
     def __repr__(self) -> str:
-        return (
-            'Hecke operator T_' + str(self._index)
-            + ' on ' + str(self._space)
-        )
+        return "Hecke operator T_" + str(self._index) + " on " + str(self._space)
 
     __str__ = __repr__
     toString = __repr__
@@ -2778,7 +2770,6 @@ class HeckeOperator:
 
 @runtime.callable_instance_class
 class ModularSymbolsSpace(sage.Parent):
-
     def __init__(
         self,
         group: Any,
@@ -2793,7 +2784,7 @@ class ModularSymbolsSpace(sage.Parent):
         serialized_is_cuspidal: Any = False,
     ) -> None:
         self._group = group
-        self._kind = 'ModularSymbols'
+        self._kind = "ModularSymbols"
         self._weight = weight
         self._sign = sign
         self._base = base_ring
@@ -2812,13 +2803,14 @@ class ModularSymbolsSpace(sage.Parent):
         self._decomposition_cache = runtime.map()
         if serialized_dimension is not None:
             self._dimension = _exact_nonnegative_integer(
-                serialized_dimension, 'serialized dimension')
+                serialized_dimension, "serialized dimension"
+            )
             self._is_cuspidal = bool(serialized_is_cuspidal)
         elif basis_matrix is not None:
             self._dimension = basis_matrix.nrows()
             self._is_cuspidal = (
-                subspace_kind is not None
-                and 'Cuspidal' in subspace_kind)
+                subspace_kind is not None and "Cuspidal" in subspace_kind
+            )
         elif ambient is None:
             if character is not None:
                 cusp_dimension = dimension_cusp_forms(character, weight)
@@ -2838,73 +2830,62 @@ class ModularSymbolsSpace(sage.Parent):
                 cusp_dimension = dimension_cusp_forms(character, weight)
             else:
                 cusp_dimension = dimension_cusp_forms(group, weight)
-            self._dimension = (
-                cusp_dimension if sign != 0 else 2 * cusp_dimension)
+            self._dimension = cusp_dimension if sign != 0 else 2 * cusp_dimension
             self._is_cuspidal = True
         if (
             serialized_dimension is None
             and ambient is None
-            and group._family == 'Gamma0'
+            and group._family == "Gamma0"
             and (
-                (
-                    character is None
-                    and weight > 2
-                    and base_ring is sage.QQ
-                )
+                (character is None and weight > 2 and base_ring is sage.QQ)
                 or character is not None
             )
-            and not (
-                group.level() == 1
-                and weight == 12
-                and sign == 0
-            )
+            and not (group.level() == 1 and weight == 12 and sign == 0)
         ):
             # In higher weight the Eisenstein symbols need not all have
             # positive star sign (nonsquarefree levels already show this).
             # The exact signed Manin presentation is authoritative.
             if character is None:
-                presentation = self.p1list().higher_weight_presentation(
-                    weight, sign)
+                presentation = self.p1list().higher_weight_presentation(weight, sign)
             else:
                 presentation = self.p1list().character_presentation(
-                    weight, sign, character, base_ring)
+                    weight, sign, character, base_ring
+                )
             self._dimension = presentation.dimension()
 
     def _model_key(self) -> str:
-        suffix = '-cusp' if self._is_cuspidal else ''
+        suffix = "-cusp" if self._is_cuspidal else ""
         if self._character is not None:
-            return (
-                'character-' + str(self.level()) + '-'
-                + str(self._weight) + suffix)
+            return "character-" + str(self.level()) + "-" + str(self._weight) + suffix
         return (
-            self._group._family.lower() + '-'
-            + str(self.level()) + '-' + str(self._weight) + suffix
+            self._group._family.lower()
+            + "-"
+            + str(self.level())
+            + "-"
+            + str(self._weight)
+            + suffix
         )
 
     def _supports_native_weight2(self) -> bool:
         return (
             self._character is None
-            and self._group._family == 'Gamma0'
+            and self._group._family == "Gamma0"
             and self._weight == 2
         )
 
     def _supports_native_higher_weight(self) -> bool:
         return (
             self._character is None
-            and self._group._family == 'Gamma0'
+            and self._group._family == "Gamma0"
             and self._weight > 2
             and self._base is sage.QQ
-            and not (
-                self.level() == 1
-                and self._weight == 12
-                and self._sign == 0
-            )
+            and not (self.level() == 1 and self._weight == 12 and self._sign == 0)
         )
 
     def _supports_native_character(self) -> bool:
         return (
             self._character is not None
-            and self._group._family == 'Gamma0'
+            and self._group._family == "Gamma0"
             and self._weight >= 2
         )
 
@@ -2912,10 +2893,14 @@ class ModularSymbolsSpace(sage.Parent):
         ambient = self.ambient_module()
         if ambient._supports_native_character():
             return ambient.p1list().character_presentation(
-                ambient.weight(), ambient.sign(),
-                ambient._character, ambient.base_ring())
+                ambient.weight(),
+                ambient.sign(),
+                ambient._character,
+                ambient.base_ring(),
+            )
         return ambient.p1list().higher_weight_presentation(
-            ambient.weight(), ambient.sign())
+            ambient.weight(), ambient.sign()
+        )
 
     def ambient_module(self) -> ModularSymbolsSpace:
         if self._ambient is None:
@@ -2930,18 +2915,21 @@ class ModularSymbolsSpace(sage.Parent):
     def _ambient_change_of_basis(self) -> Any:
         dimension = self.ambient_module().dimension()
         if self.level() == 11 and dimension == 3:
-            return _modular_symbols_matrix([
-                [1, 0, 0],
-                [sage.QQ(2) / sage.QQ(5), 1, 1],
-                [sage.QQ(2) / sage.QQ(5), 0, 1],
-            ])
+            return _modular_symbols_matrix(
+                [
+                    [1, 0, 0],
+                    [sage.QQ(2) / sage.QQ(5), 1, 1],
+                    [sage.QQ(2) / sage.QQ(5), 0, 1],
+                ]
+            )
         return None
 
     def basis_matrix(self) -> Any:
         if self._basis_matrix_cache is not None:
             return self._basis_matrix_cache
         self._basis_matrix_cache = identity_matrix(  # type: ignore[name-defined]  # noqa: F821
-            self.base_ring(), self.dimension())
+            self.base_ring(), self.dimension()
+        )
         return self._basis_matrix_cache
 
     def free_module(self) -> Any:
@@ -2967,7 +2955,8 @@ class ModularSymbolsSpace(sage.Parent):
         """Return the Dirichlet character defining this space."""
         if self._character is None:
             raise AttributeError(
-                'this modular-symbol space was not defined by a character')
+                "this modular-symbol space was not defined by a character"
+            )
         return self._character
 
     def base_ring(self) -> Any:
@@ -2975,17 +2964,23 @@ class ModularSymbolsSpace(sage.Parent):
 
     def diamond_bracket_matrix(self, value: Any) -> Any:
         """Return the scalar matrix of the diamond operator `<value>`."""
-        value = _exact_integer(value, 'diamond-bracket index')
+        value = _exact_integer(value, "diamond-bracket index")
         scalar = self.character()(value)
-        return identity_matrix(  # type: ignore[name-defined]  # noqa: F821
-            self.base_ring(), self.dimension()) * scalar
+        return (
+            identity_matrix(  # type: ignore[name-defined]  # noqa: F821
+                self.base_ring(), self.dimension()
+            )
+            * scalar
+        )
 
     def diamond_bracket_operator(self, value: Any) -> Any:
         """Return the diamond-bracket linear operator `<value>`."""
-        value = _exact_integer(value, 'diamond-bracket index')
+        value = _exact_integer(value, "diamond-bracket index")
         return ModularSymbolsLinearOperator(
-            self, self.diamond_bracket_matrix(value),
-            'Diamond bracket operator <' + str(value) + '>')
+            self,
+            self.diamond_bracket_matrix(value),
+            "Diamond bracket operator <" + str(value) + ">",
+        )
 
     def basis(self) -> Any:
         if self._supports_native_weight2():
@@ -3000,57 +2995,62 @@ class ModularSymbolsSpace(sage.Parent):
                         ManinSymbolBasisElement(1, 9),
                     ]
                     label = labels[index]
-                result.append(ModularSymbolElement(
-                    self, rows[index], label))
+                result.append(ModularSymbolElement(self, rows[index], label))
             return runtime.math_tuple(result)
         if (
-            self._supports_native_higher_weight()
-            or self._supports_native_character()
+            self._supports_native_higher_weight() or self._supports_native_character()
         ) and self.is_ambient():
             projective_line = self.p1list()
             presentation = self._native_triple_presentation()
             basis_generators = presentation.basis_generators()
             if len(basis_generators) != self.dimension():
                 raise ArithmeticError(
-                    'higher-weight presentation dimension disagrees '
-                    'with the modular-form dimension formula')
+                    "higher-weight presentation dimension disagrees "
+                    "with the modular-form dimension formula"
+                )
             result = []
             for index, generator in enumerate(basis_generators):
                 degree = generator // len(projective_line)
-                pair = projective_line.__getitem__(
-                    generator % len(projective_line))
+                pair = projective_line.__getitem__(generator % len(projective_line))
                 u = pair[0]
                 v = pair[1]
                 coordinates = [0 for _ in range(self.dimension())]
                 coordinates[index] = 1
-                result.append(ModularSymbolElement(
-                    self,
-                    coordinates,
-                    HigherWeightManinSymbolBasisElement(
-                        degree, self.weight(), u, v),
-                ))
+                result.append(
+                    ModularSymbolElement(
+                        self,
+                        coordinates,
+                        HigherWeightManinSymbolBasisElement(
+                            degree, self.weight(), u, v
+                        ),
+                    )
+                )
             return runtime.math_tuple(result)
         key = self._model_key()
-        if key == 'gamma0-1-12':
-            return runtime.math_tuple([
-                ModularSymbolBasisElement('X^8*Y^2'),
-                ModularSymbolBasisElement('X^9*Y'),
-                ModularSymbolBasisElement('X^10'),
-            ])
-        if key == 'gamma0-11-2':
-            return runtime.math_tuple([
-                ManinSymbolBasisElement(1, 0),
-                ManinSymbolBasisElement(1, 8),
-                ManinSymbolBasisElement(1, 9),
-            ])
+        if key == "gamma0-1-12":
+            return runtime.math_tuple(
+                [
+                    ModularSymbolBasisElement("X^8*Y^2"),
+                    ModularSymbolBasisElement("X^9*Y"),
+                    ModularSymbolBasisElement("X^10"),
+                ]
+            )
+        if key == "gamma0-11-2":
+            return runtime.math_tuple(
+                [
+                    ManinSymbolBasisElement(1, 0),
+                    ManinSymbolBasisElement(1, 8),
+                    ManinSymbolBasisElement(1, 9),
+                ]
+            )
         raise NotImplementedError(
-            'a canonical basis is not available for this '
-            'modular-symbol model')
+            "a canonical basis is not available for this modular-symbol model"
+        )
 
     gens = basis
 
     def gen(self, index: Any = 0) -> Any:
-        index = _exact_nonnegative_integer(index, 'basis index')
+        index = _exact_nonnegative_integer(index, "basis index")
         return self.basis()[index]
 
     def zero(self) -> ModularSymbolElement:
@@ -3062,19 +3062,22 @@ class ModularSymbolsSpace(sage.Parent):
     def __call__(self, value: Any = 0) -> ModularSymbolElement:
         if isinstance(value, ModularSymbolElement):
             if value.parent().ambient_module() is not self.ambient_module():
-                raise TypeError('modular symbol has a different ambient space')
+                raise TypeError("modular symbol has a different ambient space")
             coordinates = value.vector()
         elif runtime.is_exact_integer(value) and value == 0:
             return self.zero()
         else:
             coordinates = VectorSpace(  # type: ignore[name-defined]  # noqa: F821
-                self.base_ring(), self.ambient_module().dimension())(value)
+                self.base_ring(), self.ambient_module().dimension()
+            )(value)
         if not self.is_ambient() and coordinates not in self.free_module():
-            raise ValueError('modular symbol is not in this subspace')
+            raise ValueError("modular symbol is not in this subspace")
         return ModularSymbolElement(self, coordinates)
 
     def _from_serialized_element(
-        self, coordinates: Any, label: Any = None,
+        self,
+        coordinates: Any,
+        label: Any = None,
     ) -> ModularSymbolElement:
         """Reconstruct an element while retaining an optional basis label."""
         element = self(coordinates)
@@ -3082,7 +3085,9 @@ class ModularSymbolsSpace(sage.Parent):
         return element
 
     def _from_serialized_hecke_operator(
-        self, index: Any, matrix_value: Any = None,
+        self,
+        index: Any,
+        matrix_value: Any = None,
     ) -> HeckeOperator:
         operator = self.T(index)
         operator._matrix_cache = matrix_value
@@ -3094,13 +3099,11 @@ class ModularSymbolsSpace(sage.Parent):
         name: str,
         ambient_matrix: Any = None,
     ) -> ModularSymbolsLinearOperator:
-        return ModularSymbolsLinearOperator(
-            self, matrix_value, name, ambient_matrix)
+        return ModularSymbolsLinearOperator(self, matrix_value, name, ambient_matrix)
 
     def p1list(self) -> P1List:
-        if self._group._family != 'Gamma0':
-            raise NotImplementedError(
-                'native P1 lists currently model Gamma0 spaces')
+        if self._group._family != "Gamma0":
+            raise NotImplementedError("native P1 lists currently model Gamma0 spaces")
         if self._p1list_cache is None:
             self._p1list_cache = P1List(self.level())
         return self._p1list_cache
@@ -3108,26 +3111,23 @@ class ModularSymbolsSpace(sage.Parent):
     def manin_relations(self, modulus: Any = 65521) -> ManinRelations:
         if self._character is not None:
             raise NotImplementedError(
-                'the machine-word ManinRelations relation matrix models '
-                'trivial character only; use M.manin_presentation() for '
-                'the exact character presentation')
+                "the machine-word ManinRelations relation matrix models "
+                "trivial character only; use M.manin_presentation() for "
+                "the exact character presentation"
+            )
         if self.weight() != 2:
             raise NotImplementedError(
-                'higher-weight relations are represented by '
-                'M.manin_presentation()')
+                "higher-weight relations are represented by M.manin_presentation()"
+            )
         return self.p1list().manin_relations(modulus)
 
     def manin_presentation(self) -> Any:
         """Return the exact native presentation of this symbol space."""
-        if (
-            self._supports_native_higher_weight()
-            or self._supports_native_character()
-        ):
+        if self._supports_native_higher_weight() or self._supports_native_character():
             return self._native_triple_presentation()
         if self._supports_native_weight2():
             return self.p1list().manin_presentation()
-        raise NotImplementedError(
-            'an exact native Manin presentation is unavailable')
+        raise NotImplementedError("an exact native Manin presentation is unavailable")
 
     def _boundary_data(self) -> Any:
         ambient = self.ambient_module()
@@ -3140,8 +3140,9 @@ class ModularSymbolsSpace(sage.Parent):
             if change is not None:
                 defining_matrix = change.transpose() * defining_matrix
             boundary_space = BoundarySymbolsSpace(ambient, cusps)
-            ambient._boundary_data_cache = runtime.math_tuple([
-                defining_matrix, boundary_space])
+            ambient._boundary_data_cache = runtime.math_tuple(
+                [defining_matrix, boundary_space]
+            )
         return ambient._boundary_data_cache
 
     def _higher_weight_boundary_data(self) -> Any:
@@ -3153,40 +3154,48 @@ class ModularSymbolsSpace(sage.Parent):
         if ambient._character is not None:
             backend = runtime.flint_backend()
             boundary_function = runtime.reflect.get(
-                backend, 'characterPresentationBoundaryData')
+                backend, "characterPresentationBoundaryData"
+            )
             if boundary_function is not runtime.undefined:
-                raw = runtime.reflect.apply(boundary_function, backend, [
-                    projective_line._native,
-                    presentation._native,
-                    ambient._character._parent._native,
-                    ambient._character._index,
-                ])
-                raw_matrix = runtime.reflect.get(raw, 'matrix')
-                raw_cusps = runtime.reflect.get(raw, 'cusps')
+                raw = runtime.reflect.apply(
+                    boundary_function,
+                    backend,
+                    [
+                        projective_line._native,
+                        presentation._native,
+                        ambient._character._parent._native,
+                        ambient._character._index,
+                    ],
+                )
+                raw_matrix = runtime.reflect.get(raw, "matrix")
+                raw_cusps = runtime.reflect.get(raw, "cusps")
                 defining_matrix = Matrix(  # type: ignore[name-defined]  # noqa: F821
                     MatrixSpace(  # type: ignore[name-defined]  # noqa: F821
-                        ambient.base_ring(), ambient.dimension(),
-                        len(raw_cusps)),
+                        ambient.base_ring(), ambient.dimension(), len(raw_cusps)
+                    ),
                     raw_matrix,
                 )
                 cusps = []
                 for pair in raw_cusps:
-                    cusps.append(ModularCusp(
-                        runtime.normalize_integer(pair[0]),
-                        runtime.normalize_integer(pair[1]),
-                    ))
+                    cusps.append(
+                        ModularCusp(
+                            runtime.normalize_integer(pair[0]),
+                            runtime.normalize_integer(pair[1]),
+                        )
+                    )
                 boundary_space = BoundarySymbolsSpace(ambient, cusps)
-                ambient._boundary_data_cache = runtime.math_tuple([
-                    defining_matrix, boundary_space])
+                ambient._boundary_data_cache = runtime.math_tuple(
+                    [defining_matrix, boundary_space]
+                )
                 return ambient._boundary_data_cache
         classifier = _HigherWeightCuspClassifier(
-            ambient.level(), ambient.sign(), ambient._character)
+            ambient.level(), ambient.sign(), ambient._character
+        )
         sparse_rows = []
         weight_degree = ambient.weight() - 2
         for generator in presentation.basis_generators():
             degree = generator // len(projective_line)
-            pair = projective_line.__getitem__(
-                generator % len(projective_line))
+            pair = projective_line.__getitem__(generator % len(projective_line))
             lift = _lift_gamma0_coset(
                 runtime.number(pair[0]),
                 runtime.number(pair[1]),
@@ -3195,12 +3204,14 @@ class ModularSymbolsSpace(sage.Parent):
             row = []
             if degree == weight_degree:
                 coefficient, cusp_index = classifier.classify(
-                    ModularCusp(lift[0], lift[2]))
+                    ModularCusp(lift[0], lift[2])
+                )
                 if coefficient != 0:
                     row.append((cusp_index, coefficient))
             if degree == 0:
                 coefficient, cusp_index = classifier.classify(
-                    ModularCusp(lift[1], lift[3]))
+                    ModularCusp(lift[1], lift[3])
+                )
                 if coefficient != 0:
                     row.append((cusp_index, -coefficient))
             sparse_rows.append(row)
@@ -3214,10 +3225,12 @@ class ModularSymbolsSpace(sage.Parent):
                     row[new_index] += coefficient
             rows.append(row)
         defining_matrix = matrix(  # type: ignore[name-defined]  # noqa: F821
-            ambient.base_ring(), rows)
+            ambient.base_ring(), rows
+        )
         boundary_space = BoundarySymbolsSpace(ambient, cusps)
-        ambient._boundary_data_cache = runtime.math_tuple([
-            defining_matrix, boundary_space])
+        ambient._boundary_data_cache = runtime.math_tuple(
+            [defining_matrix, boundary_space]
+        )
         return ambient._boundary_data_cache
 
     def _boundary_matrix(self) -> Any:
@@ -3247,7 +3260,8 @@ class ModularSymbolsSpace(sage.Parent):
             else:
                 defining_matrix = self.basis_matrix() * self._boundary_matrix()
             self._boundary_map_cache = ModularSymbolsBoundaryMap(
-                self, self.boundary_space(), defining_matrix)
+                self, self.boundary_space(), defining_matrix
+            )
         return self._boundary_map_cache
 
     def degeneracy_map(
@@ -3269,7 +3283,7 @@ class ModularSymbolsSpace(sage.Parent):
         ((5, 2), 2)
         ```
         """
-        index = _positive_integer(index, 'degeneracy index')
+        index = _positive_integer(index, "degeneracy index")
         if runtime.is_exact_integer(codomain):
             target = ModularSymbols(  # type: ignore[name-defined]  # noqa: F821
                 codomain,
@@ -3281,48 +3295,49 @@ class ModularSymbolsSpace(sage.Parent):
             target = codomain
         else:
             raise TypeError(
-                'degeneracy-map codomain must be a level or modular-symbol '
-                'space')
+                "degeneracy-map codomain must be a level or modular-symbol space"
+            )
         if self._character is not None or target._character is not None:
             raise NotImplementedError(
-                'explicit degeneracy maps for character spaces are not yet '
-                'implemented')
+                "explicit degeneracy maps for character spaces are not yet implemented"
+            )
         if (
             self.weight() != target.weight()
             or self.sign() != target.sign()
             or self.base_ring() is not target.base_ring()
-            or self._group._family != 'Gamma0'
-            or target._group._family != 'Gamma0'
+            or self._group._family != "Gamma0"
+            or target._group._family != "Gamma0"
         ):
             raise ValueError(
-                'degeneracy-map domain and codomain must have matching '
-                'Gamma0 weight, sign, and base ring')
+                "degeneracy-map domain and codomain must have matching "
+                "Gamma0 weight, sign, and base ring"
+            )
         if self.level() % target.level() != 0:
             raise NotImplementedError(
-                'level-raising degeneracy maps are not yet implemented')
+                "level-raising degeneracy maps are not yet implemented"
+            )
         quotient = self.level() // target.level()
         if quotient % index != 0:
-            raise ValueError(
-                'degeneracy index must divide the quotient of levels')
+            raise ValueError("degeneracy index must divide the quotient of levels")
         source_ambient = self.ambient_module()
         target_ambient = target.ambient_module()
         if source_ambient._supports_native_weight2():
-            ambient_matrix = (
-                source_ambient._native_weight2_degeneracy_matrix(
-                    target_ambient, index))
+            ambient_matrix = source_ambient._native_weight2_degeneracy_matrix(
+                target_ambient, index
+            )
         elif source_ambient._supports_native_higher_weight():
-            ambient_matrix = (
-                source_ambient.p1list().higher_weight_degeneracy_matrix(
-                    target_ambient.p1list(), self.weight(), self.sign(),
-                    index))
+            ambient_matrix = source_ambient.p1list().higher_weight_degeneracy_matrix(
+                target_ambient.p1list(), self.weight(), self.sign(), index
+            )
         else:
             raise NotImplementedError(
-                'degeneracy maps require a native Gamma0 Manin '
-                'presentation over QQ')
+                "degeneracy maps require a native Gamma0 Manin presentation over QQ"
+            )
         images = self.basis_matrix()._sparse_left_multiply(ambient_matrix)
         defining_matrix = target.basis_matrix().solve_left(images)
         return ModularSymbolsDegeneracyMap(
-            self, target, defining_matrix, ambient_matrix, index)
+            self, target, defining_matrix, ambient_matrix, index
+        )
 
     def cusps(self) -> list[ModularCusp]:
         return self.boundary_space().cusps()
@@ -3341,23 +3356,21 @@ class ModularSymbolsSpace(sage.Parent):
         ambient = self.ambient_module()
         if ambient.weight() != 2:
             raise NotImplementedError(
-                'arbitrary-path reduction with polynomial coefficients '
-                'is not implemented yet')
+                "arbitrary-path reduction with polynomial coefficients "
+                "is not implemented yet"
+            )
         native_coordinates = ambient.p1list().reduce_path(start, stop)
         change = ambient._ambient_change_of_basis()
         if change is None:
             coordinates = native_coordinates
         else:
-            coordinates = (
-                change.inverse() * native_coordinates.column()
-            ).column(0)
+            coordinates = (change.inverse() * native_coordinates.column()).column(0)
         return self(ambient(coordinates))
 
     def _full_star_matrix(self) -> Any:
         ambient = self.ambient_module()
         if ambient._star_matrix_cache is None:
-            native = ambient.p1list().star_matrix().change_ring(
-                ambient.base_ring())
+            native = ambient.p1list().star_matrix().change_ring(ambient.base_ring())
             change = ambient._ambient_change_of_basis()
             if change is None:
                 ambient._star_matrix_cache = native.transpose()
@@ -3373,28 +3386,34 @@ class ModularSymbolsSpace(sage.Parent):
         basis = self.basis_matrix()
         pivot_columns = list(basis.pivots())
         return basis._sparse_left_multiply(
-            defining_matrix.matrix_from_columns(pivot_columns))
+            defining_matrix.matrix_from_columns(pivot_columns)
+        )
 
     def star_involution(self) -> ModularSymbolsLinearOperator:
         """Return complex conjugation on this modular-symbol space."""
         if (
-            self._supports_native_higher_weight()
-            or self._supports_native_character()
+            self._supports_native_higher_weight() or self._supports_native_character()
         ) and self.sign() != 0:
-            defining_matrix = identity_matrix(  # type: ignore[name-defined]  # noqa: F821
-                self.base_ring(), self.dimension()) * self.sign()
+            defining_matrix = (
+                identity_matrix(  # type: ignore[name-defined]  # noqa: F821
+                    self.base_ring(), self.dimension()
+                )
+                * self.sign()
+            )
             return ModularSymbolsLinearOperator(
-                self, defining_matrix, 'Star involution')
+                self, defining_matrix, "Star involution"
+            )
         if self._supports_native_character():
             raise NotImplementedError(
-                'construct a signed character space directly to obtain '
-                'its star eigenspace; the full sign-zero character star '
-                'matrix is not yet exposed')
+                "construct a signed character space directly to obtain "
+                "its star eigenspace; the full sign-zero character star "
+                "matrix is not yet exposed"
+            )
         ambient_matrix = self._full_star_matrix()
         return ModularSymbolsLinearOperator(
             self,
             self._restrict_ambient_matrix(ambient_matrix),
-            'Star involution',
+            "Star involution",
             ambient_matrix,
         )
 
@@ -3478,8 +3497,7 @@ class ModularSymbolsSpace(sage.Parent):
                 local_basis = factor_value(operator).left_kernel_matrix()
                 if local_basis.nrows() == 0:
                     continue
-                constituent = space._subspace_from_local_basis(
-                    local_basis, 'Hecke')
+                constituent = space._subspace_from_local_basis(local_basis, "Hecke")
                 if exponent == 1:
                     finished.append(constituent)
                 else:
@@ -3527,9 +3545,8 @@ class ModularSymbolsSpace(sage.Parent):
         if bound is None:
             decomposition_bound = self._default_decomposition_bound()
         else:
-            decomposition_bound = _positive_integer(
-                bound, 'decomposition bound')
-        key = str(decomposition_bound) + (':1' if anemic else ':0')
+            decomposition_bound = _positive_integer(bound, "decomposition bound")
+        key = str(decomposition_bound) + (":1" if anemic else ":0")
         cached = self._decomposition_cache.get(key)
         if cached is not runtime.undefined:
             return cached
@@ -3552,8 +3569,7 @@ class ModularSymbolsSpace(sage.Parent):
                     local_basis = factor_value(operator).left_kernel_matrix()
                     if local_basis.nrows() == 0:
                         continue
-                    constituent = space._subspace_from_local_basis(
-                        local_basis, 'Hecke')
+                    constituent = space._subspace_from_local_basis(local_basis, "Hecke")
                     if exponent == 1:
                         finished.append(constituent)
                     else:
@@ -3564,15 +3580,11 @@ class ModularSymbolsSpace(sage.Parent):
         answer = finished + active
         if not anemic:
             for prime in self._bad_hecke_primes():
-                answer = self._refine_decomposition_with_operator(
-                    answer, prime)
+                answer = self._refine_decomposition_with_operator(answer, prime)
         for index in range(1, len(answer)):
             item = answer[index]
             position = index
-            while (
-                position > 0
-                and answer[position - 1].dimension() > item.dimension()
-            ):
+            while position > 0 and answer[position - 1].dimension() > item.dimension():
                 answer[position] = answer[position - 1]
                 position -= 1
             answer[position] = item
@@ -3597,14 +3609,15 @@ class ModularSymbolsSpace(sage.Parent):
         [2, 2, 2, 2, 4, 4, 4, 4]
         ```
         """
-        selected = None if prime is None else _positive_integer(
-            prime, 'new-submodule prime')
+        selected = (
+            None if prime is None else _positive_integer(prime, "new-submodule prime")
+        )
         if selected is not None:
             if not sage.is_prime(selected):
-                raise ValueError('p must be prime')
+                raise ValueError("p must be prime")
             if self.level() % selected != 0:
-                raise ValueError('p must divide the level')
-        key = 'all' if selected is None else str(selected)
+                raise ValueError("p must divide the level")
+        key = "all" if selected is None else str(selected)
         cached = self._new_submodule_cache.get(key)
         if cached is not runtime.undefined:
             return cached
@@ -3612,30 +3625,25 @@ class ModularSymbolsSpace(sage.Parent):
         level = self.level()
         if self._supports_native_character():
             conductor = runtime.number(self._character.conductor())
-            if (
-                (selected is None and conductor == level)
-                or (
-                    selected is not None
-                    and (level // selected) % conductor != 0
-                )
+            if (selected is None and conductor == level) or (
+                selected is not None and (level // selected) % conductor != 0
             ):
                 self._new_submodule_cache.set(key, self)
                 return self
             raise NotImplementedError(
-                'imprimitive-character new submodules require exact '
-                'cyclotomic degeneracy matrices when the character descends '
-                'to a lower level')
-        if not (
-            (
-                self._supports_native_weight2()
-                or self._supports_native_higher_weight()
+                "imprimitive-character new submodules require exact "
+                "cyclotomic degeneracy matrices when the character descends "
+                "to a lower level"
             )
+        if not (
+            (self._supports_native_weight2() or self._supports_native_higher_weight())
             and self.base_ring() is sage.QQ
         ):
             raise NotImplementedError(
-                'new submodules currently require Gamma0, weight at least '
-                '2, and either rational trivial character or primitive '
-                'nebentypus')
+                "new submodules currently require Gamma0, weight at least "
+                "2, and either rational trivial character or primitive "
+                "nebentypus"
+            )
         if selected is None and sage.is_prime(level):
             self._new_submodule_cache.set(key, self)
             return self
@@ -3645,8 +3653,10 @@ class ModularSymbolsSpace(sage.Parent):
             return cusp
 
         primes = (
-            [selected] if selected is not None else
-            [runtime.number(value[0]) for value in sage.factor(level)])
+            [selected]
+            if selected is not None
+            else [runtime.number(value[0]) for value in sage.factor(level)]
+        )
         ambient = self.ambient_module()
         restricted_maps = []
         for lowering_prime in primes:
@@ -3654,21 +3664,21 @@ class ModularSymbolsSpace(sage.Parent):
             if ambient._supports_native_weight2():
                 lower = ModularSymbols(lower_level, 2)
             else:
-                lower = ModularSymbols(
-                    lower_level, self.weight(), sign=self.sign())
+                lower = ModularSymbols(lower_level, self.weight(), sign=self.sign())
             if lower.dimension() == 0:
                 continue
             for degeneracy_index in [1, lowering_prime]:
                 if ambient._supports_native_weight2():
                     ambient_map = ambient._native_weight2_degeneracy_matrix(
-                        lower.ambient_module(), degeneracy_index)
+                        lower.ambient_module(), degeneracy_index
+                    )
                 else:
-                    ambient_map = (
-                        ambient.p1list().higher_weight_degeneracy_matrix(
-                            lower.p1list(), self.weight(), self.sign(),
-                            degeneracy_index))
+                    ambient_map = ambient.p1list().higher_weight_degeneracy_matrix(
+                        lower.p1list(), self.weight(), self.sign(), degeneracy_index
+                    )
                 restricted_maps.append(
-                    cusp.basis_matrix()._sparse_left_multiply(ambient_map))
+                    cusp.basis_matrix()._sparse_left_multiply(ambient_map)
+                )
         if len(restricted_maps) == 0:
             answer = self if selected is not None else cusp
             self._new_submodule_cache.set(key, answer)
@@ -3677,19 +3687,22 @@ class ModularSymbolsSpace(sage.Parent):
         for defining_map in restricted_maps[1:]:
             combined = combined.augment(defining_map)
         coefficients = combined.left_kernel_matrix()
-        answer = cusp._subspace_from_local_basis(
-            coefficients, 'New', self)
+        answer = cusp._subspace_from_local_basis(coefficients, "New", self)
         self._new_submodule_cache.set(key, answer)
         return answer
 
     new_subspace = new_submodule
 
     def _intersect_basis(self, other_basis: Any) -> Any:
-        return self.basis_matrix().row_space().intersection(
-            other_basis.row_space()).basis_matrix()
+        return (
+            self.basis_matrix()
+            .row_space()
+            .intersection(other_basis.row_space())
+            .basis_matrix()
+        )
 
     def _star_submodule(self, sign: int) -> ModularSymbolsSpace:
-        cache_name = '_plus_cache' if sign == 1 else '_minus_cache'
+        cache_name = "_plus_cache" if sign == 1 else "_minus_cache"
         cached = runtime.reflect.get(self, cache_name)
         if cached is not None:
             return cached
@@ -3703,30 +3716,40 @@ class ModularSymbolsSpace(sage.Parent):
             if ambient.sign() == -sign:
                 return self._new_coordinate_subspace(
                     matrix(  # type: ignore[name-defined]  # noqa: F821
-                        self.base_ring(), 0, ambient.dimension()),
-                    'Plus' if sign == 1 else 'Minus',
+                        self.base_ring(), 0, ambient.dimension()
+                    ),
+                    "Plus" if sign == 1 else "Minus",
                     sign,
                 )
             raise NotImplementedError(
-                'construct the desired higher-weight sign directly with '
-                'ModularSymbols(N, k, sign=sign)')
+                "construct the desired higher-weight sign directly with "
+                "ModularSymbols(N, k, sign=sign)"
+            )
         change = ambient._ambient_change_of_basis()
         if self.is_ambient() and change is None:
-            basis = ambient.p1list().star_eigenspace_basis(
-                sign).change_ring(self.base_ring())
+            basis = (
+                ambient.p1list()
+                .star_eigenspace_basis(sign)
+                .change_ring(self.base_ring())
+            )
         elif self._is_cuspidal:
             basis = ambient._star_submodule(sign).cuspidal_submodule().basis_matrix()
         else:
-            relation = ambient._full_star_matrix() - identity_matrix(  # type: ignore[name-defined]  # noqa: F821
-                self.base_ring(), ambient.dimension()) * sign
+            relation = (
+                ambient._full_star_matrix()
+                - identity_matrix(  # type: ignore[name-defined]  # noqa: F821
+                    self.base_ring(), ambient.dimension()
+                )
+                * sign
+            )
             eigenspace = relation.left_kernel_matrix()
             basis = (
-                eigenspace if self.is_ambient()
-                else self._intersect_basis(eigenspace))
-        prefix = 'Cuspidal ' if self._is_cuspidal else ''
+                eigenspace if self.is_ambient() else self._intersect_basis(eigenspace)
+            )
+        prefix = "Cuspidal " if self._is_cuspidal else ""
         result = self._new_coordinate_subspace(
             basis,
-            prefix + ('Plus' if sign == 1 else 'Minus'),
+            prefix + ("Plus" if sign == 1 else "Minus"),
             sign,
         )
         runtime.reflect.set(self, cache_name, result)
@@ -3752,20 +3775,16 @@ class ModularSymbolsSpace(sage.Parent):
         for prime, exponent in sage.factor(index):
             p = runtime.number(prime)
             e = runtime.number(exponent)
-            prime_matrix = projective_line._hecke_matrix(
-                p, dimension)
+            prime_matrix = projective_line._hecke_matrix(p, dimension)
             if e == 1:
                 prime_power = prime_matrix
             elif ambient.level() % p == 0:
-                prime_power = prime_matrix ** e
+                prime_power = prime_matrix**e
             else:
-                previous = prime_matrix ** 0
+                previous = prime_matrix**0
                 current = prime_matrix
                 for _power in range(2, e + 1):
-                    following = (
-                        prime_matrix * current
-                        - previous * p
-                    )
+                    following = prime_matrix * current - previous * p
                     previous = current
                     current = following
                 prime_power = current
@@ -3774,18 +3793,13 @@ class ModularSymbolsSpace(sage.Parent):
             else:
                 result = result * prime_power
         if result is None:
-            result = projective_line._hecke_matrix(
-                2, dimension) ** 0
+            result = projective_line._hecke_matrix(2, dimension) ** 0
         result = result.change_ring(ambient.base_ring())
         change_of_basis = ambient._ambient_change_of_basis()
         if change_of_basis is None:
             result = result.transpose()
         else:
-            result = (
-                change_of_basis.inverse()
-                * result
-                * change_of_basis
-            ).transpose()
+            result = (change_of_basis.inverse() * result * change_of_basis).transpose()
         return self._restrict_ambient_matrix(result)
 
     def _native_weight2_degeneracy_matrix(
@@ -3796,8 +3810,11 @@ class ModularSymbolsSpace(sage.Parent):
         """Return a row-action lowering map in ambient space coordinates."""
         source = self.ambient_module()
         target = target.ambient_module()
-        result = source.p1list().degeneracy_matrix(
-            target.p1list(), index).change_ring(source.base_ring())
+        result = (
+            source.p1list()
+            .degeneracy_matrix(target.p1list(), index)
+            .change_ring(source.base_ring())
+        )
         source_change = source._ambient_change_of_basis()
         target_change = target._ambient_change_of_basis()
         if source_change is not None:
@@ -3813,31 +3830,29 @@ class ModularSymbolsSpace(sage.Parent):
             p = runtime.number(prime)
             e = runtime.number(exponent)
             prime_matrix = ambient.p1list().higher_weight_hecke_matrix(
-                ambient.weight(), ambient.sign(), p)
+                ambient.weight(), ambient.sign(), p
+            )
             if e == 1:
                 prime_power = prime_matrix
             elif ambient.level() % p == 0:
-                prime_power = prime_matrix ** e
+                prime_power = prime_matrix**e
             else:
-                previous = prime_matrix ** 0
+                previous = prime_matrix**0
                 current = prime_matrix
-                recurrence_coefficient = (
-                    sage.ZZ(p) ** (ambient.weight() - 1))
+                recurrence_coefficient = sage.ZZ(p) ** (ambient.weight() - 1)
                 for _power in range(2, e + 1):
                     following = (
-                        prime_matrix * current
-                        - previous * recurrence_coefficient
+                        prime_matrix * current - previous * recurrence_coefficient
                     )
                     previous = current
                     current = following
                 prime_power = current
-            result = (
-                prime_power if result is None
-                else result * prime_power)
+            result = prime_power if result is None else result * prime_power
         if result is None:
             prime_matrix = ambient.p1list().higher_weight_hecke_matrix(
-                ambient.weight(), ambient.sign(), 2)
-            result = prime_matrix ** 0
+                ambient.weight(), ambient.sign(), 2
+            )
+            result = prime_matrix**0
         return self._restrict_ambient_matrix(result)
 
     def _native_character_hecke_matrix(self, index: int) -> Any:
@@ -3847,34 +3862,39 @@ class ModularSymbolsSpace(sage.Parent):
             p = runtime.number(prime)
             e = runtime.number(exponent)
             prime_matrix = ambient.p1list().character_hecke_matrix(
-                ambient.weight(), ambient.sign(), ambient._character,
-                ambient.base_ring(), p)
+                ambient.weight(),
+                ambient.sign(),
+                ambient._character,
+                ambient.base_ring(),
+                p,
+            )
             if e == 1:
                 prime_power = prime_matrix
             elif ambient.level() % p == 0:
-                prime_power = prime_matrix ** e
+                prime_power = prime_matrix**e
             else:
-                previous = prime_matrix ** 0
+                previous = prime_matrix**0
                 current = prime_matrix
-                recurrence_coefficient = (
-                    ambient._character(p)
-                    * (sage.ZZ(p) ** (ambient.weight() - 1)))
+                recurrence_coefficient = ambient._character(p) * (
+                    sage.ZZ(p) ** (ambient.weight() - 1)
+                )
                 for _power in range(2, e + 1):
                     following = (
-                        prime_matrix * current
-                        - previous * recurrence_coefficient
+                        prime_matrix * current - previous * recurrence_coefficient
                     )
                     previous = current
                     current = following
                 prime_power = current
-            result = (
-                prime_power if result is None
-                else result * prime_power)
+            result = prime_power if result is None else result * prime_power
         if result is None:
             prime_matrix = ambient.p1list().character_hecke_matrix(
-                ambient.weight(), ambient.sign(), ambient._character,
-                ambient.base_ring(), 2)
-            result = prime_matrix ** 0
+                ambient.weight(),
+                ambient.sign(),
+                ambient._character,
+                ambient.base_ring(),
+                2,
+            )
+            result = prime_matrix**0
         return self._restrict_ambient_matrix(result)
 
     def hecke_matrix(self, index: Any) -> Any:
@@ -3896,8 +3916,7 @@ class ModularSymbolsSpace(sage.Parent):
         return self.T(index).matrix()
 
     def T(self, index: Any) -> HeckeOperator:
-        return HeckeOperator(
-            self, _positive_integer(index, 'Hecke index'))
+        return HeckeOperator(self, _positive_integer(index, "Hecke index"))
 
     hecke_operator = T
 
@@ -3912,76 +3931,70 @@ class ModularSymbolsSpace(sage.Parent):
                 if self.is_ambient():
                     if change is None:
                         basis = (
-                            ambient.p1list().cuspidal_basis_matrix()
-                            .change_ring(ambient.base_ring()))
+                            ambient.p1list()
+                            .cuspidal_basis_matrix()
+                            .change_ring(ambient.base_ring())
+                        )
                         # Fundamental cycles are emitted in reverse-greedy
                         # RREF.
                         basis._rref_cache = basis
                     else:
-                        basis = (
-                            ambient._boundary_matrix().left_kernel_matrix())
+                        basis = ambient._boundary_matrix().left_kernel_matrix()
                 else:
-                    restricted_boundary = (
-                        self.basis_matrix()._sparse_left_multiply(
-                            self.ambient_module()._boundary_matrix()))
-                    coefficients = (
-                        restricted_boundary.left_kernel_matrix())
-                    basis = coefficients._sparse_left_multiply(
-                        self.basis_matrix())
+                    restricted_boundary = self.basis_matrix()._sparse_left_multiply(
+                        self.ambient_module()._boundary_matrix()
+                    )
+                    coefficients = restricted_boundary.left_kernel_matrix()
+                    basis = coefficients._sparse_left_multiply(self.basis_matrix())
                     # RREF coefficient rows acting on an RREF row basis
                     # preserve the latter's ordered pivot columns.
                     basis._rref_cache = basis
-                kind = 'Cuspidal'
+                kind = "Cuspidal"
                 if self._sign == 1:
-                    kind += ' Plus'
+                    kind += " Plus"
                 elif self._sign == -1:
-                    kind += ' Minus'
-                self._cuspidal_cache = self._new_coordinate_subspace(
-                    basis, kind)
+                    kind += " Minus"
+                self._cuspidal_cache = self._new_coordinate_subspace(basis, kind)
             return self._cuspidal_cache
         if self._supports_native_higher_weight():
             if self._cuspidal_cache is None:
                 if self.is_ambient():
                     basis = (
-                        self.ambient_module()._boundary_matrix()
-                        .left_kernel_matrix())
+                        self.ambient_module()._boundary_matrix().left_kernel_matrix()
+                    )
                 else:
-                    restricted_boundary = (
-                        self.basis_matrix()._sparse_left_multiply(
-                            self.ambient_module()._boundary_matrix()))
+                    restricted_boundary = self.basis_matrix()._sparse_left_multiply(
+                        self.ambient_module()._boundary_matrix()
+                    )
                     coefficients = restricted_boundary.left_kernel_matrix()
-                    basis = coefficients._sparse_left_multiply(
-                        self.basis_matrix())
+                    basis = coefficients._sparse_left_multiply(self.basis_matrix())
                 basis._rref_cache = basis
-                kind = 'Cuspidal'
+                kind = "Cuspidal"
                 if self._sign == 1:
-                    kind += ' Plus'
+                    kind += " Plus"
                 elif self._sign == -1:
-                    kind += ' Minus'
-                self._cuspidal_cache = self._new_coordinate_subspace(
-                    basis, kind)
+                    kind += " Minus"
+                self._cuspidal_cache = self._new_coordinate_subspace(basis, kind)
             return self._cuspidal_cache
         if self._supports_native_character():
             if self._cuspidal_cache is None:
                 if self.is_ambient():
                     basis = (
-                        self.ambient_module()._boundary_matrix()
-                        .left_kernel_matrix())
+                        self.ambient_module()._boundary_matrix().left_kernel_matrix()
+                    )
                 else:
-                    restricted_boundary = (
-                        self.basis_matrix()._sparse_left_multiply(
-                            self.ambient_module()._boundary_matrix()))
+                    restricted_boundary = self.basis_matrix()._sparse_left_multiply(
+                        self.ambient_module()._boundary_matrix()
+                    )
                     coefficients = restricted_boundary.left_kernel_matrix()
-                    basis = coefficients._sparse_left_multiply(
-                        self.basis_matrix())
+                    basis = coefficients._sparse_left_multiply(self.basis_matrix())
                 basis._rref_cache = basis
-                kind = 'Cuspidal'
+                kind = "Cuspidal"
                 if self._sign == 1:
-                    kind += ' Plus'
+                    kind += " Plus"
                 elif self._sign == -1:
-                    kind += ' Minus'
-                self._cuspidal_cache = self._new_coordinate_subspace(
-                    basis, kind)
+                    kind += " Minus"
+                self._cuspidal_cache = self._new_coordinate_subspace(basis, kind)
             return self._cuspidal_cache
         return ModularSymbolsSpace(
             self._group,
@@ -3995,61 +4008,73 @@ class ModularSymbolsSpace(sage.Parent):
     cuspidal_subspace = cuspidal_submodule
 
     def q_expansion_basis(self, prec: Any = 6) -> list[Any]:
-        precision = _exact_nonnegative_integer(prec, 'precision')
+        precision = _exact_nonnegative_integer(prec, "precision")
         key = self._model_key()
-        if key == 'gamma1-11-2-cusp':
-            elliptic_curve = runtime.reflect.get(
-                runtime.global_object, 'EllipticCurve')
-            coefficients = elliptic_curve(
-                [0, -1, 1, -10, -20]).anlist(precision - 1)
+        if key == "gamma1-11-2-cusp":
+            elliptic_curve = runtime.reflect.get(runtime.global_object, "EllipticCurve")
+            coefficients = elliptic_curve([0, -1, 1, -10, -20]).anlist(precision - 1)
             power_series_ring = runtime.reflect.get(
-                runtime.global_object, 'PowerSeriesRing')
-            ring = power_series_ring(
-                sage.QQ, 'q', default_prec=max(1, precision))
+                runtime.global_object, "PowerSeriesRing"
+            )
+            ring = power_series_ring(sage.QQ, "q", default_prec=max(1, precision))
             generator = ring.gen()
             result = ring(0)
             for coefficient in reversed(coefficients):
                 result = result * generator + coefficient
             return [result.add_bigoh(precision)]
-        if key == 'character-13-2-cusp' and precision == 10:
-            return [FormattedQExpansion(
-                'q + (-zeta6 - 1)*q^2 + (2*zeta6 - 2)*q^3 '
-                '+ zeta6*q^4 + (-2*zeta6 + 1)*q^5 '
-                '+ (-2*zeta6 + 4)*q^6 + (2*zeta6 - 1)*q^8 '
-                '- zeta6*q^9 + O(q^10)'
-            )]
+        if key == "character-13-2-cusp" and precision == 10:
+            return [
+                FormattedQExpansion(
+                    "q + (-zeta6 - 1)*q^2 + (2*zeta6 - 2)*q^3 "
+                    "+ zeta6*q^4 + (-2*zeta6 + 1)*q^5 "
+                    "+ (-2*zeta6 + 4)*q^6 + (2*zeta6 - 1)*q^8 "
+                    "- zeta6*q^9 + O(q^10)"
+                )
+            ]
         raise NotImplementedError(
-            'q-expansion bases are not available for this '
-            'modular-symbol model')
+            "q-expansion bases are not available for this modular-symbol model"
+        )
 
     def __repr__(self) -> str:
         if not self.is_ambient():
-            kind = (
-                '' if self._subspace_kind is None
-                else self._subspace_kind + ' ')
+            kind = "" if self._subspace_kind is None else self._subspace_kind + " "
             return (
-                'Modular Symbols ' + kind + 'subspace of dimension '
-                + str(self._dimension) + ' of ' + str(self._ambient)
+                "Modular Symbols "
+                + kind
+                + "subspace of dimension "
+                + str(self._dimension)
+                + " of "
+                + str(self._ambient)
             )
         if self._character is not None:
             return (
-                'Modular Symbols space of dimension '
-                + str(self._dimension) + ' and level '
-                + str(self.level()) + ', weight ' + str(self._weight)
-                + ', character of order '
-                + str(self._character.order()) + ', sign '
+                "Modular Symbols space of dimension "
+                + str(self._dimension)
+                + " and level "
+                + str(self.level())
+                + ", weight "
+                + str(self._weight)
+                + ", character of order "
+                + str(self._character.order())
+                + ", sign "
                 + str(self._sign)
-                + ', over ' + str(self._base)
+                + ", over "
+                + str(self._base)
             )
-        family = (
-            'Gamma_0' if self._group._family == 'Gamma0'
-            else 'Gamma_1')
+        family = "Gamma_0" if self._group._family == "Gamma0" else "Gamma_1"
         return (
-            'Modular Symbols space of dimension '
-            + str(self._dimension) + ' for ' + family
-            + '(' + str(self.level()) + ') of weight '
-            + str(self._weight) + ' with sign ' + str(self._sign)
-            + ' over ' + str(self._base)
+            "Modular Symbols space of dimension "
+            + str(self._dimension)
+            + " for "
+            + family
+            + "("
+            + str(self.level())
+            + ") of weight "
+            + str(self._weight)
+            + " with sign "
+            + str(self._sign)
+            + " over "
+            + str(self._base)
         )
 
     __str__ = __repr__
@@ -4077,10 +4102,10 @@ def ModularSymbols(
     character normalization scalars, parity, sign relations, boundary maps,
     and the nebentypus factor in the Hecke recurrence.
     """
-    weight = _positive_integer(weight, 'weight')
-    sign = _exact_integer(sign, 'sign')
+    weight = _positive_integer(weight, "weight")
+    sign = _exact_integer(sign, "sign")
     if sign not in [-1, 0, 1]:
-        raise ValueError('sign must be -1, 0, or 1')
+        raise ValueError("sign must be -1, 0, or 1")
     character = None
     if _is_dirichlet_character(group):
         character = group
@@ -4091,29 +4116,26 @@ def ModularSymbols(
             else:
                 base_ring = group._minimal_base_ring()
     else:
-        congruence_group = (
-            Gamma0(group) if runtime.is_exact_integer(group) else group)
+        congruence_group = Gamma0(group) if runtime.is_exact_integer(group) else group
         if not isinstance(congruence_group, CongruenceSubgroup):
             raise TypeError(
-                'ModularSymbols needs a level, congruence subgroup, '
-                'or Dirichlet character')
+                "ModularSymbols needs a level, congruence subgroup, "
+                "or Dirichlet character"
+            )
     if base_ring is None:
         base_ring = sage.QQ
     if character is not None:
-        base_kind = getattr(base_ring, '_kind', None)
+        base_kind = getattr(base_ring, "_kind", None)
         if character.order() > 2 and base_ring is sage.QQ:
-            raise ValueError(
-                'the character values do not lie in Rational Field')
-        if (
-            base_ring is not sage.QQ
-            and base_kind not in ['CyclotomicField', 'QQBAR']
-        ):
+            raise ValueError("the character values do not lie in Rational Field")
+        if base_ring is not sage.QQ and base_kind not in ["CyclotomicField", "QQBAR"]:
             raise NotImplementedError(
-                'character modular symbols currently require QQ, QQbar, '
-                'or a cyclotomic field')
+                "character modular symbols currently require QQ, QQbar, "
+                "or a cyclotomic field"
+            )
     native_signed = (
         character is None
-        and congruence_group._family == 'Gamma0'
+        and congruence_group._family == "Gamma0"
         and weight == 2
         and sign != 0
     )
@@ -4132,122 +4154,118 @@ def ModularSymbols(
 
 
 _eisenstein_element_prototype = runtime.reflect.get(
-    EisensteinSeriesElement, 'prototype')
+    EisensteinSeriesElement, "prototype"
+)
 _eisenstein_q_expansion_method = runtime.reflect.get(
-    _eisenstein_element_prototype, 'q_expansion')
+    _eisenstein_element_prototype, "q_expansion"
+)
 runtime.reflect.set(
     _eisenstein_q_expansion_method,
-    '__module__',
-    'sage.modular.modform.element',
+    "__module__",
+    "sage.modular.modform.element",
 )
 runtime.register_doc(
-    'EisensteinSeriesElement.q_expansion',
+    "EisensteinSeriesElement.q_expansion",
     _eisenstein_q_expansion_method,
     {
-        'kind': 'method',
-        'module': 'sage.modular.modform.element',
-        'tags': [
-            'modular forms',
-            'Eisenstein series',
-            'q-expansions',
-            'power series',
+        "kind": "method",
+        "module": "sage.modular.modform.element",
+        "tags": [
+            "modular forms",
+            "Eisenstein series",
+            "q-expansions",
+            "power series",
         ],
-        'backends': ['FLINT', 'Sage.js native helpers'],
-        'sage_compatibility': {
-            'status': 'compatible',
-            'notes': (
-                'Returns an exact power series with Sage-style absolute '
-                'precision notation.'
+        "backends": ["FLINT", "Sage.js native helpers"],
+        "sage_compatibility": {
+            "status": "compatible",
+            "notes": (
+                "Returns an exact power series with Sage-style absolute "
+                "precision notation."
             ),
         },
-        'provenance': [
+        "provenance": [
             {
-                'kind': 'sage-derived',
-                'source': 'SageMath modular-form element API',
-                'url': (
-                    'https://doc.sagemath.org/html/en/reference/'
-                    'modfrm/sage/modular/modform/element.html'
+                "kind": "sage-derived",
+                "source": "SageMath modular-form element API",
+                "url": (
+                    "https://doc.sagemath.org/html/en/reference/"
+                    "modfrm/sage/modular/modform/element.html"
                 ),
-                'license': 'GPL-2.0-or-later',
+                "license": "GPL-2.0-or-later",
             },
             {
-                'kind': 'library-backed',
-                'source': 'FLINT exact arithmetic',
-                'url': 'https://flintlib.org/',
+                "kind": "library-backed",
+                "source": "FLINT exact arithmetic",
+                "url": "https://flintlib.org/",
             },
             {
-                'kind': 'sagejs-original',
-                'source': 'Native coefficient sieve and parent integration',
+                "kind": "sagejs-original",
+                "source": "Native coefficient sieve and parent integration",
             },
         ],
-        'references': [
+        "references": [
             {
-                'id': 'flint',
-                'type': 'software',
-                'title': 'FLINT: Fast Library for Number Theory',
-                'authors': ['The FLINT contributors'],
-                'url': 'https://flintlib.org/',
+                "id": "flint",
+                "type": "software",
+                "title": "FLINT: Fast Library for Number Theory",
+                "authors": ["The FLINT contributors"],
+                "url": "https://flintlib.org/",
             },
         ],
-        'implementation': {
-            'algorithm': (
-                'Native exact divisor-sum sieve and degeneracy maps'
-            ),
+        "implementation": {
+            "algorithm": ("Native exact divisor-sum sieve and degeneracy maps"),
         },
-        'limitations': [
+        "limitations": [
             (
-                'The currently constructed Eisenstein spaces cover the '
-                'implemented congruence-subgroup cases.'
+                "The currently constructed Eisenstein spaces cover the "
+                "implemented congruence-subgroup cases."
             ),
         ],
     },
 )
 runtime.register_doc(
-    'EisensteinSubspace.basis',
+    "EisensteinSubspace.basis",
     runtime.reflect.get(
-        runtime.reflect.get(
-            EisensteinSubspace, 'prototype'),
-        'basis',
+        runtime.reflect.get(EisensteinSubspace, "prototype"),
+        "basis",
     ),
     {
-        'kind': 'method',
-        'module': 'sage.modular.modform.eis_submodule',
-        'tags': [
-            'modular forms',
-            'Eisenstein series',
-            'basis',
-            'q-expansions',
+        "kind": "method",
+        "module": "sage.modular.modform.eis_submodule",
+        "tags": [
+            "modular forms",
+            "Eisenstein series",
+            "basis",
+            "q-expansions",
         ],
-        'backends': ['FLINT', 'Sage.js native helpers'],
-        'sage_compatibility': {
-            'status': 'extension',
-            'notes': (
-                'The basis is Sage-compatible; the optional prec keyword is '
-                'a Sage.js convenience extension.'
+        "backends": ["FLINT", "Sage.js native helpers"],
+        "sage_compatibility": {
+            "status": "extension",
+            "notes": (
+                "The basis is Sage-compatible; the optional prec keyword is "
+                "a Sage.js convenience extension."
             ),
         },
-        'provenance': [
+        "provenance": [
             {
-                'kind': 'sage-derived',
-                'source': 'SageMath Eisenstein subspace API',
-                'url': (
-                    'https://doc.sagemath.org/html/en/reference/'
-                    'modfrm/'
-                ),
-                'license': 'GPL-2.0-or-later',
+                "kind": "sage-derived",
+                "source": "SageMath Eisenstein subspace API",
+                "url": ("https://doc.sagemath.org/html/en/reference/modfrm/"),
+                "license": "GPL-2.0-or-later",
             },
             {
-                'kind': 'sagejs-original',
-                'source': 'Precision-aware retained-parent basis elements',
+                "kind": "sagejs-original",
+                "source": "Precision-aware retained-parent basis elements",
             },
         ],
-        'implementation': {
-            'algorithm': (
-                'Exact Eisenstein coefficient construction with lazy '
-                'precision extension'
+        "implementation": {
+            "algorithm": (
+                "Exact Eisenstein coefficient construction with lazy "
+                "precision extension"
             ),
         },
-        'limitations': [],
+        "limitations": [],
     },
 )
 
@@ -4255,60 +4273,56 @@ runtime.register_doc(
 def _modular_dimension_doc(tags: list[str]) -> Any:
     all_tags = runtime.reflect.apply(
         runtime.array.prototype.concat,
-        ['modular forms', 'dimensions'],
+        ["modular forms", "dimensions"],
         [tags],
     )
     return {
-        'kind': 'function',
-        'module': 'sage.modular.dims',
-        'tags': all_tags,
-        'backends': ['Sage.js exact arithmetic', 'FLINT'],
-        'sage_compatibility': {
-            'status': 'partial',
-            'notes': (
-                'Implemented Gamma0, Gamma1, and Dirichlet-character cases '
-                'match SageMath; unresolved weight-one Schaeffer cases raise '
-                'NotImplementedError.'
+        "kind": "function",
+        "module": "sage.modular.dims",
+        "tags": all_tags,
+        "backends": ["Sage.js exact arithmetic", "FLINT"],
+        "sage_compatibility": {
+            "status": "partial",
+            "notes": (
+                "Implemented Gamma0, Gamma1, and Dirichlet-character cases "
+                "match SageMath; unresolved weight-one Schaeffer cases raise "
+                "NotImplementedError."
             ),
         },
-        'provenance': [
+        "provenance": [
             {
-                'kind': 'sage-derived',
-                'source': 'SageMath modular dimension API',
-                'url': (
-                    'https://doc.sagemath.org/html/en/reference/'
-                    'modfrm/sage/modular/dims.html'
+                "kind": "sage-derived",
+                "source": "SageMath modular dimension API",
+                "url": (
+                    "https://doc.sagemath.org/html/en/reference/"
+                    "modfrm/sage/modular/dims.html"
                 ),
-                'license': 'GPL-2.0-or-later',
+                "license": "GPL-2.0-or-later",
             },
             {
-                'kind': 'literature-implemented',
-                'source': 'Riemann--Roch and Cohen--Oesterlé formulas',
+                "kind": "literature-implemented",
+                "source": "Riemann--Roch and Cohen--Oesterlé formulas",
             },
         ],
-        'references': [
+        "references": [
             {
-                'id': 'cohen-oesterle-1977',
-                'type': 'paper',
-                'title': (
-                    'Dimensions des espaces de formes modulaires'
-                ),
-                'authors': ['Henri Cohen', 'Joseph Oesterlé'],
-                'year': 1977,
-                'doi': '10.1007/BFb0065297',
-                'url': 'https://doi.org/10.1007/BFb0065297',
-                'relevant_sections': ['pages 69--78'],
+                "id": "cohen-oesterle-1977",
+                "type": "paper",
+                "title": ("Dimensions des espaces de formes modulaires"),
+                "authors": ["Henri Cohen", "Joseph Oesterlé"],
+                "year": 1977,
+                "doi": "10.1007/BFb0065297",
+                "url": "https://doi.org/10.1007/BFb0065297",
+                "relevant_sections": ["pages 69--78"],
             },
         ],
-        'implementation': {
-            'algorithm': (
-                'Exact Riemann--Roch and Cohen--Oesterlé dimension formulas'
-            ),
+        "implementation": {
+            "algorithm": ("Exact Riemann--Roch and Cohen--Oesterlé dimension formulas"),
         },
-        'limitations': [
+        "limitations": [
             (
-                'Some weight-one cusp dimensions requiring the Schaeffer '
-                'algorithm are not implemented.'
+                "Some weight-one cusp dimensions requiring the Schaeffer "
+                "algorithm are not implemented."
             ),
         ],
     }
@@ -4317,250 +4331,235 @@ def _modular_dimension_doc(tags: list[str]) -> Any:
 def _modular_space_doc(tags: list[str], extension: bool = False) -> Any:
     all_tags = runtime.reflect.apply(
         runtime.array.prototype.concat,
-        ['modular forms', 'spaces'],
+        ["modular forms", "spaces"],
         [tags],
     )
     return {
-        'kind': 'function',
-        'module': 'sage.modular.modform.constructor',
-        'tags': all_tags,
-        'backends': ['FLINT', 'Sage.js exact arithmetic'],
-        'sage_compatibility': {
-            'status': 'extension' if extension else 'partial',
-            'notes': (
-                'The supported exact space and q-expansion operations follow '
-                'SageMath; Sage.js does not yet implement the complete '
-                'Hecke-module surface.'
+        "kind": "function",
+        "module": "sage.modular.modform.constructor",
+        "tags": all_tags,
+        "backends": ["FLINT", "Sage.js exact arithmetic"],
+        "sage_compatibility": {
+            "status": "extension" if extension else "partial",
+            "notes": (
+                "The supported exact space and q-expansion operations follow "
+                "SageMath; Sage.js does not yet implement the complete "
+                "Hecke-module surface."
             ),
         },
-        'provenance': [
+        "provenance": [
             {
-                'kind': 'sage-derived',
-                'source': 'SageMath modular forms API',
-                'url': (
-                    'https://doc.sagemath.org/html/en/reference/'
-                    'modfrm/'
-                ),
-                'license': 'GPL-2.0-or-later',
+                "kind": "sage-derived",
+                "source": "SageMath modular forms API",
+                "url": ("https://doc.sagemath.org/html/en/reference/modfrm/"),
+                "license": "GPL-2.0-or-later",
             },
             {
-                'kind': 'library-backed',
-                'source': 'FLINT exact arithmetic',
-                'url': 'https://flintlib.org/',
+                "kind": "library-backed",
+                "source": "FLINT exact arithmetic",
+                "url": "https://flintlib.org/",
             },
             {
-                'kind': 'sagejs-original',
-                'source': (
-                    'Lightweight parent-aware modular-form implementation'
-                ),
+                "kind": "sagejs-original",
+                "source": ("Lightweight parent-aware modular-form implementation"),
             },
         ],
-        'references': [
+        "references": [
             {
-                'id': 'flint',
-                'type': 'software',
-                'title': 'FLINT: Fast Library for Number Theory',
-                'authors': ['The FLINT contributors'],
-                'url': 'https://flintlib.org/',
+                "id": "flint",
+                "type": "software",
+                "title": "FLINT: Fast Library for Number Theory",
+                "authors": ["The FLINT contributors"],
+                "url": "https://flintlib.org/",
             },
         ],
-        'implementation': {
-            'algorithm': (
-                'Exact dimension formulas and native Eisenstein '
-                'coefficient generation'
+        "implementation": {
+            "algorithm": (
+                "Exact dimension formulas and native Eisenstein coefficient generation"
             ),
         },
-        'limitations': [
-            'Only QQ is currently accepted as the ambient base ring.',
-            'General Hecke operators and cusp-form bases are not implemented.',
+        "limitations": [
+            "Only QQ is currently accepted as the ambient base ring.",
+            "General Hecke operators and cusp-form bases are not implemented.",
         ],
     }
 
 
-_p1list_prototype = runtime.reflect.get(P1List, 'prototype')
-_p1list_hecke_matrix_method = runtime.reflect.get(
-    _p1list_prototype, 'hecke_matrix')
+_p1list_prototype = runtime.reflect.get(P1List, "prototype")
+_p1list_hecke_matrix_method = runtime.reflect.get(_p1list_prototype, "hecke_matrix")
 runtime.register_doc(
-    'P1List.hecke_matrix',
+    "P1List.hecke_matrix",
     _p1list_hecke_matrix_method,
     {
-        'kind': 'method',
-        'module': 'sage.modular.modsym.p1list',
-        'tags': [
-            'number theory',
-            'modular symbols',
-            'Hecke operators',
-            'Manin symbols',
+        "kind": "method",
+        "module": "sage.modular.modsym.p1list",
+        "tags": [
+            "number theory",
+            "modular symbols",
+            "Hecke operators",
+            "Manin symbols",
         ],
-        'backends': [
-            'Sage.js portable C modular-symbol core',
-            'FLINT integer matrices',
+        "backends": [
+            "Sage.js portable C modular-symbol core",
+            "FLINT integer matrices",
         ],
-        'sage_compatibility': {
-            'status': 'extension',
-            'notes': (
-                'The matrix is expressed in Sage.js\'s minimal E1 Manin '
-                'basis; traces and characteristic polynomials agree with '
-                'SageMath and PARI.'
+        "sage_compatibility": {
+            "status": "extension",
+            "notes": (
+                "The matrix is expressed in Sage.js's minimal E1 Manin "
+                "basis; traces and characteristic polynomials agree with "
+                "SageMath and PARI."
             ),
         },
-        'provenance': [
+        "provenance": [
             {
-                'kind': 'software-derived',
-                'source': 'PARI/GP src/basemath/modsym.c',
-                'revision': '0f5a08ee7e',
-                'url': 'https://pari.math.u-bordeaux.fr/',
-                'license': 'GPL-2.0-or-later',
+                "kind": "software-derived",
+                "source": "PARI/GP src/basemath/modsym.c",
+                "revision": "0f5a08ee7e",
+                "url": "https://pari.math.u-bordeaux.fr/",
+                "license": "GPL-2.0-or-later",
             },
             {
-                'kind': 'sagejs-original',
-                'source': (
-                    'Portable preallocated path reducer and batched '
-                    'row-major Hecke assembler'
+                "kind": "sagejs-original",
+                "source": (
+                    "Portable preallocated path reducer and batched "
+                    "row-major Hecke assembler"
                 ),
             },
         ],
-        'implementation': {
-            'algorithm': (
-                'Pollack--Stevens fundamental domain, continued-fraction '
-                'Manin reduction, and standard Tp/Up representatives'
+        "implementation": {
+            "algorithm": (
+                "Pollack--Stevens fundamental domain, continued-fraction "
+                "Manin reduction, and standard Tp/Up representatives"
             ),
         },
-        'limitations': [
-            'The low-level method accepts prime indices only.',
-            'Use ModularSymbols(...).hecke_matrix(n) for composite indices.',
+        "limitations": [
+            "The low-level method accepts prime indices only.",
+            "Use ModularSymbols(...).hecke_matrix(n) for composite indices.",
         ],
     },
 )
 
-_modular_symbols_space_prototype = runtime.reflect.get(
-    ModularSymbolsSpace, 'prototype')
+_modular_symbols_space_prototype = runtime.reflect.get(ModularSymbolsSpace, "prototype")
 _modular_symbols_hecke_matrix_method = runtime.reflect.get(
-    _modular_symbols_space_prototype, 'hecke_matrix')
+    _modular_symbols_space_prototype, "hecke_matrix"
+)
 runtime.register_doc(
-    'ModularSymbolsSpace.hecke_matrix',
+    "ModularSymbolsSpace.hecke_matrix",
     _modular_symbols_hecke_matrix_method,
     {
-        'kind': 'method',
-        'module': 'sage.modular.modsym.space',
-        'tags': [
-            'number theory',
-            'modular symbols',
-            'Hecke operators',
-            'exact matrices',
+        "kind": "method",
+        "module": "sage.modular.modsym.space",
+        "tags": [
+            "number theory",
+            "modular symbols",
+            "Hecke operators",
+            "exact matrices",
         ],
-        'backends': [
-            'Sage.js portable C modular-symbol core',
-            'FLINT integer and rational matrices',
+        "backends": [
+            "Sage.js portable C modular-symbol core",
+            "FLINT integer and rational matrices",
         ],
-        'sage_compatibility': {
-            'status': 'compatible',
-            'notes': (
-                'Full weight-2 Gamma0 sign-zero spaces support exact T_n '
-                'matrices for every positive index. Higher-weight Gamma0 '
-                'spaces over QQ support all signs and exact T_n matrices.'
+        "sage_compatibility": {
+            "status": "compatible",
+            "notes": (
+                "Full weight-2 Gamma0 sign-zero spaces support exact T_n "
+                "matrices for every positive index. Higher-weight Gamma0 "
+                "spaces over QQ support all signs and exact T_n matrices."
             ),
         },
-        'provenance': [
+        "provenance": [
             {
-                'kind': 'literature-implemented',
-                'source': (
-                    'William Stein, Modular Forms: '
-                    'A Computational Approach'
-                ),
-                'url': 'https://wstein.org/books/modform/',
+                "kind": "literature-implemented",
+                "source": ("William Stein, Modular Forms: A Computational Approach"),
+                "url": "https://wstein.org/books/modform/",
             },
             {
-                'kind': 'software-derived',
-                'source': 'PARI/GP src/basemath/modsym.c',
-                'revision': '0f5a08ee7e',
-                'url': 'https://pari.math.u-bordeaux.fr/',
-                'license': 'GPL-2.0-or-later',
+                "kind": "software-derived",
+                "source": "PARI/GP src/basemath/modsym.c",
+                "revision": "0f5a08ee7e",
+                "url": "https://pari.math.u-bordeaux.fr/",
+                "license": "GPL-2.0-or-later",
             },
         ],
-        'implementation': {
-            'algorithm': (
-                'Native prime Hecke matrices, Cremona-Heilbronn '
-                'representatives, multiplicativity, Up powers, and the '
-                'weight-k good-prime recurrence'
+        "implementation": {
+            "algorithm": (
+                "Native prime Hecke matrices, Cremona-Heilbronn "
+                "representatives, multiplicativity, Up powers, and the "
+                "weight-k good-prime recurrence"
             ),
         },
-        'limitations': [
+        "limitations": [
             (
-                'The native engine currently requires Gamma0 spaces with '
-                'trivial character over QQ; ambient, cuspidal, and directly '
-                'constructed signed restrictions are supported.'
+                "The native engine currently requires Gamma0 spaces with "
+                "trivial character over QQ; ambient, cuspidal, and directly "
+                "constructed signed restrictions are supported."
             ),
         ],
     },
 )
 
 _p1list_higher_presentation_method = runtime.reflect.get(
-    _p1list_prototype, 'higher_weight_presentation')
+    _p1list_prototype, "higher_weight_presentation"
+)
 runtime.register_doc(
-    'P1List.higher_weight_presentation',
+    "P1List.higher_weight_presentation",
     _p1list_higher_presentation_method,
     {
-        'kind': 'method',
-        'module': 'sage.modular.modsym.manin_symbol_list',
-        'tags': [
-            'number theory',
-            'modular symbols',
-            'higher weight',
-            'Manin symbols',
-            'exact linear algebra',
+        "kind": "method",
+        "module": "sage.modular.modsym.manin_symbol_list",
+        "tags": [
+            "number theory",
+            "modular symbols",
+            "higher weight",
+            "Manin symbols",
+            "exact linear algebra",
         ],
-        'backends': [
-            'Sage.js native signed union-find',
-            'FLINT sparse rational matrices',
+        "backends": [
+            "Sage.js native signed union-find",
+            "FLINT sparse rational matrices",
         ],
-        'sage_compatibility': {
-            'status': 'extension',
-            'notes': (
-                'Exposes the internal exact quotient and reduction matrix '
-                'used by higher-weight Gamma0 modular symbols.'
+        "sage_compatibility": {
+            "status": "extension",
+            "notes": (
+                "Exposes the internal exact quotient and reduction matrix "
+                "used by higher-weight Gamma0 modular symbols."
             ),
         },
-        'provenance': [
+        "provenance": [
             {
-                'kind': 'literature-implemented',
-                'source': (
-                    'William Stein, Computing with Modular Symbols'
-                ),
-                'url': (
-                    'https://wstein.org/books/modform/modform/'
-                    'modular_symbols.html'
+                "kind": "literature-implemented",
+                "source": ("William Stein, Computing with Modular Symbols"),
+                "url": (
+                    "https://wstein.org/books/modform/modform/modular_symbols.html"
                 ),
             },
             {
-                'kind': 'sage-derived',
-                'source': (
-                    'SageMath manin_symbol_list and relation_matrix'
+                "kind": "sage-derived",
+                "source": ("SageMath manin_symbol_list and relation_matrix"),
+                "url": (
+                    "https://github.com/sagemath/sage/tree/develop/"
+                    "src/sage/modular/modsym"
                 ),
-                'url': (
-                    'https://github.com/sagemath/sage/tree/develop/'
-                    'src/sage/modular/modsym'
-                ),
-                'license': 'GPL-2.0-or-later',
+                "license": "GPL-2.0-or-later",
             },
             {
-                'kind': 'author-owned-reference',
-                'source': (
-                    'William Stein original Magma Geometry/ModSym '
-                    'implementation'
+                "kind": "author-owned-reference",
+                "source": (
+                    "William Stein original Magma Geometry/ModSym implementation"
                 ),
             },
         ],
-        'implementation': {
-            'algorithm': (
-                'Triple (i,u,v) generators; signed two-term union-find; '
-                'binomial order-three relations; exact sparse FLINT RREF'
+        "implementation": {
+            "algorithm": (
+                "Triple (i,u,v) generators; signed two-term union-find; "
+                "binomial order-three relations; exact sparse FLINT RREF"
             ),
         },
-        'limitations': [
+        "limitations": [
             (
-                'Very large presentations need the planned fully sparse '
-                'reduction-map representation to avoid dense output.'
+                "Very large presentations need the planned fully sparse "
+                "reduction-map representation to avoid dense output."
             ),
         ],
     },
@@ -4573,538 +4572,519 @@ def _modular_symbols_method_doc(
 ) -> Any:
     all_tags = runtime.reflect.apply(
         runtime.array.prototype.concat,
-        ['number theory', 'modular symbols'],
+        ["number theory", "modular symbols"],
         [tags],
     )
     return {
-        'kind': 'method',
-        'module': 'sage.modular.modsym.space',
-        'tags': all_tags,
-        'backends': [
-            'Sage.js portable C modular-symbol core',
-            'FLINT exact matrices',
+        "kind": "method",
+        "module": "sage.modular.modsym.space",
+        "tags": all_tags,
+        "backends": [
+            "Sage.js portable C modular-symbol core",
+            "FLINT exact matrices",
         ],
-        'sage_compatibility': {
-            'status': 'compatible',
-            'notes': (
-                'The weight-2 Gamma0 API follows SageMath matrix and '
-                'subspace conventions, including row-action operator '
-                'matrices.'
+        "sage_compatibility": {
+            "status": "compatible",
+            "notes": (
+                "The weight-2 Gamma0 API follows SageMath matrix and "
+                "subspace conventions, including row-action operator "
+                "matrices."
             ),
         },
-        'provenance': [
+        "provenance": [
             {
-                'kind': 'sage-derived',
-                'source': 'SageMath modular-symbol API',
-                'url': (
-                    'https://doc.sagemath.org/html/en/reference/'
-                    'modsym/'
-                ),
-                'license': 'GPL-2.0-or-later',
+                "kind": "sage-derived",
+                "source": "SageMath modular-symbol API",
+                "url": ("https://doc.sagemath.org/html/en/reference/modsym/"),
+                "license": "GPL-2.0-or-later",
             },
             {
-                'kind': 'software-derived',
-                'source': 'PARI/GP src/basemath/modsym.c',
-                'revision': '0f5a08ee7e',
-                'url': 'https://pari.math.u-bordeaux.fr/',
-                'license': 'GPL-2.0-or-later',
+                "kind": "software-derived",
+                "source": "PARI/GP src/basemath/modsym.c",
+                "revision": "0f5a08ee7e",
+                "url": "https://pari.math.u-bordeaux.fr/",
+                "license": "GPL-2.0-or-later",
             },
             {
-                'kind': 'sagejs-original',
-                'source': (
-                    'Portable preallocated coordinate and subspace adapter'
-                ),
+                "kind": "sagejs-original",
+                "source": ("Portable preallocated coordinate and subspace adapter"),
             },
         ],
-        'references': [
+        "references": [
             {
-                'id': 'stein-modform',
-                'type': 'book',
-                'title': 'Modular Forms: A Computational Approach',
-                'authors': ['William Stein'],
-                'url': 'https://wstein.org/books/modform/',
+                "id": "stein-modform",
+                "type": "book",
+                "title": "Modular Forms: A Computational Approach",
+                "authors": ["William Stein"],
+                "url": "https://wstein.org/books/modform/",
             },
             {
-                'id': 'cremona-algorithms',
-                'type': 'book',
-                'title': 'Algorithms for Modular Elliptic Curves',
-                'authors': ['John Cremona'],
-                'url': 'https://johncremona.github.io/book/fulltext/',
+                "id": "cremona-algorithms",
+                "type": "book",
+                "title": "Algorithms for Modular Elliptic Curves",
+                "authors": ["John Cremona"],
+                "url": "https://johncremona.github.io/book/fulltext/",
             },
         ],
-        'implementation': {'algorithm': algorithm},
-        'limitations': [
+        "implementation": {"algorithm": algorithm},
+        "limitations": [
             (
-                'This general native implementation currently covers '
-                'weight 2, Gamma0, and trivial character.'
+                "This general native implementation currently covers "
+                "weight 2, Gamma0, and trivial character."
             ),
         ],
     }
 
 
 runtime.register_doc(
-    'ModularSymbolsSpace.boundary_map',
-    runtime.reflect.get(_modular_symbols_space_prototype, 'boundary_map'),
+    "ModularSymbolsSpace.boundary_map",
+    runtime.reflect.get(_modular_symbols_space_prototype, "boundary_map"),
     _modular_symbols_method_doc(
-        ['boundary maps', 'cusps', 'exact linear algebra'],
-        'Cremona Gamma0 cusp equivalence and endpoint divisors',
+        ["boundary maps", "cusps", "exact linear algebra"],
+        "Cremona Gamma0 cusp equivalence and endpoint divisors",
     ),
 )
 
 runtime.register_doc(
-    'ModularSymbolsSpace.cuspidal_submodule',
-    runtime.reflect.get(
-        _modular_symbols_space_prototype, 'cuspidal_submodule'),
+    "ModularSymbolsSpace.cuspidal_submodule",
+    runtime.reflect.get(_modular_symbols_space_prototype, "cuspidal_submodule"),
     _modular_symbols_method_doc(
-        ['cuspidal subspaces', 'kernels', 'Hecke modules'],
-        'Exact FLINT kernel of the boundary matrix',
+        ["cuspidal subspaces", "kernels", "Hecke modules"],
+        "Exact FLINT kernel of the boundary matrix",
     ),
 )
 
 _modular_symbols_degeneracy_doc = _modular_symbols_method_doc(
-    ['degeneracy maps', 'oldforms', 'Hecke modules', 'exact linear algebra'],
-    'Native Merel-Heilbronn lowering followed by exact basis restriction',
+    ["degeneracy maps", "oldforms", "Hecke modules", "exact linear algebra"],
+    "Native Merel-Heilbronn lowering followed by exact basis restriction",
 )
-_modular_symbols_degeneracy_doc['sage_compatibility'] = {
-    'status': 'partial',
-    'notes': (
-        'Exact level-lowering Gamma0 maps over QQ follow SageMath in every '
-        'weight at least two and all three signs. Level raising and explicit '
-        'character-valued maps are not yet implemented.'
+_modular_symbols_degeneracy_doc["sage_compatibility"] = {
+    "status": "partial",
+    "notes": (
+        "Exact level-lowering Gamma0 maps over QQ follow SageMath in every "
+        "weight at least two and all three signs. Level raising and explicit "
+        "character-valued maps are not yet implemented."
     ),
 }
-_modular_symbols_degeneracy_doc['limitations'] = [
-    'Level-raising and character-valued degeneracy maps are not yet exposed.',
+_modular_symbols_degeneracy_doc["limitations"] = [
+    "Level-raising and character-valued degeneracy maps are not yet exposed.",
 ]
 runtime.register_doc(
-    'ModularSymbolsSpace.degeneracy_map',
-    runtime.reflect.get(_modular_symbols_space_prototype, 'degeneracy_map'),
+    "ModularSymbolsSpace.degeneracy_map",
+    runtime.reflect.get(_modular_symbols_space_prototype, "degeneracy_map"),
     _modular_symbols_degeneracy_doc,
 )
 
 _modular_symbols_new_doc = _modular_symbols_method_doc(
-    ['new subspaces', 'oldforms', 'Hecke modules', 'exact linear algebra'],
-    (
-        'One exact kernel of horizontally joined level-lowering '
-        'degeneracy matrices'
-    ),
+    ["new subspaces", "oldforms", "Hecke modules", "exact linear algebra"],
+    ("One exact kernel of horizontally joined level-lowering degeneracy matrices"),
 )
-_modular_symbols_new_doc['sage_compatibility'] = {
-    'status': 'partial',
-    'notes': (
-        'Gamma0 cuspidal new and individual p-new operations over QQ follow '
-        'SageMath in every weight at least two and all three signs. Primitive '
-        'nebentypus spaces, and p-new spaces where the character cannot '
-        'descend, are recognized over their exact character fields. At '
-        'composite trivial-character level, calling this on the full space '
-        'returns its cuspidal new part. Degeneracy matrices for imprimitive '
-        'characters that descend are not yet implemented.'
+_modular_symbols_new_doc["sage_compatibility"] = {
+    "status": "partial",
+    "notes": (
+        "Gamma0 cuspidal new and individual p-new operations over QQ follow "
+        "SageMath in every weight at least two and all three signs. Primitive "
+        "nebentypus spaces, and p-new spaces where the character cannot "
+        "descend, are recognized over their exact character fields. At "
+        "composite trivial-character level, calling this on the full space "
+        "returns its cuspidal new part. Degeneracy matrices for imprimitive "
+        "characters that descend are not yet implemented."
     ),
 }
-_modular_symbols_new_doc['backends'] = [
-    'Sage.js portable C modular-symbol core',
-    'FLINT exact matrices, native horizontal concatenation, and kernels',
+_modular_symbols_new_doc["backends"] = [
+    "Sage.js portable C modular-symbol core",
+    "FLINT exact matrices, native horizontal concatenation, and kernels",
 ]
-_modular_symbols_new_doc['provenance'].append({
-    'kind': 'sage-derived',
-    'source': 'SageMath degeneracy-lowering new-submodule algorithm',
-    'url': (
-        'https://github.com/sagemath/sage/blob/develop/src/sage/'
-        'modular/hecke/ambient_module.py'),
-    'license': 'GPL-2.0-or-later',
-})
-_modular_symbols_new_doc['limitations'] = [
+_modular_symbols_new_doc["provenance"].append(
+    {
+        "kind": "sage-derived",
+        "source": "SageMath degeneracy-lowering new-submodule algorithm",
+        "url": (
+            "https://github.com/sagemath/sage/blob/develop/src/sage/"
+            "modular/hecke/ambient_module.py"
+        ),
+        "license": "GPL-2.0-or-later",
+    }
+)
+_modular_symbols_new_doc["limitations"] = [
     (
-        'Imprimitive character spaces still need cyclotomic degeneracy '
-        'matrices when their character descends to a lower level.'
+        "Imprimitive character spaces still need cyclotomic degeneracy "
+        "matrices when their character descends to a lower level."
     ),
 ]
 runtime.register_doc(
-    'ModularSymbolsSpace.new_submodule',
-    runtime.reflect.get(_modular_symbols_space_prototype, 'new_submodule'),
+    "ModularSymbolsSpace.new_submodule",
+    runtime.reflect.get(_modular_symbols_space_prototype, "new_submodule"),
     _modular_symbols_new_doc,
 )
 
 _modular_symbols_decomposition_doc = _modular_symbols_method_doc(
-    ['decomposition', 'simple factors', 'Hecke modules', 'newforms'],
+    ["decomposition", "simple factors", "Hecke modules", "newforms"],
     (
-        'Successive good-prime Hecke characteristic-polynomial '
-        'factorization and exact factor kernels'
+        "Successive good-prime Hecke characteristic-polynomial "
+        "factorization and exact factor kernels"
     ),
 )
-_modular_symbols_decomposition_doc['sage_compatibility'] = {
-    'status': 'compatible',
-    'notes': (
-        'Anemic decomposition by good Hecke operators follows SageMath. '
-        'Passing anemic=False further refines repeated constituents by every '
-        'bad-prime U_p; diamond operators are scalar on fixed-character '
-        'spaces.'
+_modular_symbols_decomposition_doc["sage_compatibility"] = {
+    "status": "compatible",
+    "notes": (
+        "Anemic decomposition by good Hecke operators follows SageMath. "
+        "Passing anemic=False further refines repeated constituents by every "
+        "bad-prime U_p; diamond operators are scalar on fixed-character "
+        "spaces."
     ),
 }
-_modular_symbols_decomposition_doc['backends'] = [
-    'Sage.js portable C modular-symbol core',
+_modular_symbols_decomposition_doc["backends"] = [
+    "Sage.js portable C modular-symbol core",
     (
-        'FLINT exact matrices, characteristic polynomials, rational '
-        'factorization, and Trager number-field factorization'
+        "FLINT exact matrices, characteristic polynomials, rational "
+        "factorization, and Trager number-field factorization"
     ),
-    'Completely split-prime cyclotomic kernels with exact CRT certificates',
+    "Completely split-prime cyclotomic kernels with exact CRT certificates",
 ]
-_modular_symbols_decomposition_doc['limitations'] = [
+_modular_symbols_decomposition_doc["limitations"] = [
     (
-        'Correctness is certified by irreducible restricted characteristic '
-        'polynomials; unresolved repeated factors remain grouped if the '
-        'requested bound is too small.'
+        "Correctness is certified by irreducible restricted characteristic "
+        "polynomials; unresolved repeated factors remain grouped if the "
+        "requested bound is too small."
     ),
 ]
 runtime.register_doc(
-    'ModularSymbolsSpace.decomposition',
-    runtime.reflect.get(_modular_symbols_space_prototype, 'decomposition'),
+    "ModularSymbolsSpace.decomposition",
+    runtime.reflect.get(_modular_symbols_space_prototype, "decomposition"),
     _modular_symbols_decomposition_doc,
 )
 
 runtime.register_doc(
-    'ModularSymbolsSpace.star_involution',
-    runtime.reflect.get(
-        _modular_symbols_space_prototype, 'star_involution'),
+    "ModularSymbolsSpace.star_involution",
+    runtime.reflect.get(_modular_symbols_space_prototype, "star_involution"),
     _modular_symbols_method_doc(
-        ['star involution', 'complex conjugation', 'exact matrices'],
-        'Native endpoint negation and continued-fraction Manin reduction',
+        ["star involution", "complex conjugation", "exact matrices"],
+        "Native endpoint negation and continued-fraction Manin reduction",
     ),
 )
 
 runtime.register_doc(
-    'ModularSymbolsSpace.plus_submodule',
-    runtime.reflect.get(_modular_symbols_space_prototype, 'plus_submodule'),
+    "ModularSymbolsSpace.plus_submodule",
+    runtime.reflect.get(_modular_symbols_space_prototype, "plus_submodule"),
     _modular_symbols_method_doc(
-        ['star eigenspaces', 'plus subspaces', 'exact linear algebra'],
-        'Exact left kernel of star minus the identity',
+        ["star eigenspaces", "plus subspaces", "exact linear algebra"],
+        "Exact left kernel of star minus the identity",
     ),
 )
 
 runtime.register_doc(
-    'ModularSymbolsSpace.minus_submodule',
-    runtime.reflect.get(_modular_symbols_space_prototype, 'minus_submodule'),
+    "ModularSymbolsSpace.minus_submodule",
+    runtime.reflect.get(_modular_symbols_space_prototype, "minus_submodule"),
     _modular_symbols_method_doc(
-        ['star eigenspaces', 'minus subspaces', 'exact linear algebra'],
-        'Exact left kernel of star plus the identity',
+        ["star eigenspaces", "minus subspaces", "exact linear algebra"],
+        "Exact left kernel of star plus the identity",
     ),
 )
 
 runtime.register_doc(
-    'ModularSymbolsSpace.modular_symbol',
-    runtime.reflect.get(_modular_symbols_space_prototype, 'modular_symbol'),
+    "ModularSymbolsSpace.modular_symbol",
+    runtime.reflect.get(_modular_symbols_space_prototype, "modular_symbol"),
     _modular_symbols_method_doc(
-        ['elements', 'rational paths', 'continued fractions'],
-        'Native continued-fraction reduction into the minimal E1 basis',
+        ["elements", "rational paths", "continued fractions"],
+        "Native continued-fraction reduction into the minimal E1 basis",
     ),
 )
 
 
 runtime.register_doc(
-    'P1List',
+    "P1List",
     P1List,
     {
-        'kind': 'class',
-        'module': 'sage.modular.modsym.p1list',
-        'tags': [
-            'number theory',
-            'modular symbols',
-            'projective line',
-            'Manin relations',
+        "kind": "class",
+        "module": "sage.modular.modsym.p1list",
+        "tags": [
+            "number theory",
+            "modular symbols",
+            "projective line",
+            "Manin relations",
         ],
-        'backends': ['Sage.js native C', 'FLINT nmod_mat'],
-        'sage_compatibility': {
-            'status': 'compatible',
-            'notes': (
-                'Representative ordering, normalization, I, S, and the '
-                'historical order-three T action agree with SageMath. '
-                'apply_R and apply_translation are explicit extensions.'
+        "backends": ["Sage.js native C", "FLINT nmod_mat"],
+        "sage_compatibility": {
+            "status": "compatible",
+            "notes": (
+                "Representative ordering, normalization, I, S, and the "
+                "historical order-three T action agree with SageMath. "
+                "apply_R and apply_translation are explicit extensions."
             ),
         },
-        'provenance': [
+        "provenance": [
             {
-                'kind': 'sage-derived',
-                'source': 'SageMath P1List implementation',
-                'url': (
-                    'https://github.com/sagemath/sage/blob/develop/'
-                    'src/sage/modular/modsym/p1list.pyx'
+                "kind": "sage-derived",
+                "source": "SageMath P1List implementation",
+                "url": (
+                    "https://github.com/sagemath/sage/blob/develop/"
+                    "src/sage/modular/modsym/p1list.pyx"
                 ),
-                'license': 'GPL-2.0-or-later',
+                "license": "GPL-2.0-or-later",
             },
             {
-                'kind': 'sagejs-original',
-                'source': 'William Stein JSage Zig P1List',
-                'revision': '2582234b6f76f8a5e1cecae319ae1a098d9b3c50',
-                'url': (
-                    'https://github.com/sagemathinc/JSage/blob/'
-                    '2582234b6f76f8a5e1cecae319ae1a098d9b3c50/'
-                    'lib/src/modular/p1list.zig'
+                "kind": "sagejs-original",
+                "source": "William Stein JSage Zig P1List",
+                "revision": "2582234b6f76f8a5e1cecae319ae1a098d9b3c50",
+                "url": (
+                    "https://github.com/sagemathinc/JSage/blob/"
+                    "2582234b6f76f8a5e1cecae319ae1a098d9b3c50/"
+                    "lib/src/modular/p1list.zig"
                 ),
             },
         ],
-        'implementation': {
-            'algorithm': (
-                'Exact cardinality preallocation, canonical normalization, '
-                'lexicographic representatives, open-addressed indexing, '
-                'a preallocated Pollack--Stevens fundamental domain, and '
-                'batched exact path reduction for weight-2 Hecke matrices'
+        "implementation": {
+            "algorithm": (
+                "Exact cardinality preallocation, canonical normalization, "
+                "lexicographic representatives, open-addressed indexing, "
+                "a preallocated Pollack--Stevens fundamental domain, and "
+                "batched exact path reduction for weight-2 Hecke matrices"
             ),
         },
-        'limitations': [
-            'Levels are currently limited to signed 32-bit positive integers.',
+        "limitations": [
+            "Levels are currently limited to signed 32-bit positive integers.",
         ],
     },
 )
 runtime.register_doc(
-    'ManinPresentation',
+    "ManinPresentation",
     ManinPresentation,
     {
-        'kind': 'class',
-        'module': 'sage.modular.modsym.manin_symbol_list',
-        'tags': [
-            'number theory',
-            'modular symbols',
-            'fundamental domains',
-            'Manin relations',
+        "kind": "class",
+        "module": "sage.modular.modsym.manin_symbol_list",
+        "tags": [
+            "number theory",
+            "modular symbols",
+            "fundamental domains",
+            "Manin relations",
         ],
-        'backends': ['Sage.js native C'],
-        'sage_compatibility': {
-            'status': 'extension',
-            'notes': (
-                'This explicit presentation-inspection object is a Sage.js '
-                'API; its weight-2 dimension agrees with SageMath.'
+        "backends": ["Sage.js native C"],
+        "sage_compatibility": {
+            "status": "extension",
+            "notes": (
+                "This explicit presentation-inspection object is a Sage.js "
+                "API; its weight-2 dimension agrees with SageMath."
             ),
         },
-        'provenance': [
+        "provenance": [
             {
-                'kind': 'literature-implemented',
-                'source': (
-                    'Pollack and Stevens, Overconvergent modular symbols '
-                    'and p-adic L-functions'
+                "kind": "literature-implemented",
+                "source": (
+                    "Pollack and Stevens, Overconvergent modular symbols "
+                    "and p-adic L-functions"
                 ),
-                'url': (
-                    'https://doi.org/10.24033/asens.2139'
-                ),
+                "url": ("https://doi.org/10.24033/asens.2139"),
             },
             {
-                'kind': 'software-derived',
-                'source': 'PARI/GP src/basemath/modsym.c',
-                'revision': '0f5a08ee7e',
-                'url': 'https://pari.math.u-bordeaux.fr/',
-                'license': 'GPL-2.0-or-later',
+                "kind": "software-derived",
+                "source": "PARI/GP src/basemath/modsym.c",
+                "revision": "0f5a08ee7e",
+                "url": "https://pari.math.u-bordeaux.fr/",
+                "license": "GPL-2.0-or-later",
             },
             {
-                'kind': 'sagejs-original',
-                'source': (
-                    'Preallocated array-and-index fundamental-domain '
-                    'implementation'
+                "kind": "sagejs-original",
+                "source": (
+                    "Preallocated array-and-index fundamental-domain implementation"
                 ),
             },
         ],
-        'implementation': {
-            'algorithm': (
-                'Connected Farey-triangle fundamental domain with '
-                'structural elimination of F, E2, and T32 paths'
+        "implementation": {
+            "algorithm": (
+                "Connected Farey-triangle fundamental domain with "
+                "structural elimination of F, E2, and T32 paths"
             ),
         },
-        'limitations': [
+        "limitations": [
             (
-                'The public object exposes presentation metadata; the '
-                'retained paths and reductions are consumed internally by '
-                'the exact Hecke engine.'
+                "The public object exposes presentation metadata; the "
+                "retained paths and reductions are consumed internally by "
+                "the exact Hecke engine."
             ),
-            'Boundary maps and explicit modular-symbol elements remain future work.',
+            "Boundary maps and explicit modular-symbol elements remain future work.",
         ],
     },
 )
 runtime.register_doc(
-    'ManinRelations',
+    "ManinRelations",
     ManinRelations,
     {
-        'kind': 'class',
-        'module': 'sage.modular.modsym.manin_symbol_list',
-        'tags': [
-            'number theory',
-            'modular symbols',
-            'sparse matrices',
-            'finite fields',
+        "kind": "class",
+        "module": "sage.modular.modsym.manin_symbol_list",
+        "tags": [
+            "number theory",
+            "modular symbols",
+            "sparse matrices",
+            "finite fields",
         ],
-        'backends': [
-            'Sage.js native CSR',
-            'Sage.js minimal Manin presentation',
-            'FLINT nmod_mat',
+        "backends": [
+            "Sage.js native CSR",
+            "Sage.js minimal Manin presentation",
+            "FLINT nmod_mat",
         ],
-        'sage_compatibility': {
-            'status': 'extension',
-            'notes': (
-                'This explicit relation-matrix object is a Sage.js API. '
-                'Its quotient dimension agrees with weight-2 Gamma0 '
-                'modular symbols away from bad reduction characteristics.'
+        "sage_compatibility": {
+            "status": "extension",
+            "notes": (
+                "This explicit relation-matrix object is a Sage.js API. "
+                "Its quotient dimension agrees with weight-2 Gamma0 "
+                "modular symbols away from bad reduction characteristics."
             ),
         },
-        'provenance': [
+        "provenance": [
             {
-                'kind': 'literature-implemented',
-                'source': (
-                    'William Stein, Modular Forms: '
-                    'A Computational Approach'
-                ),
-                'url': 'https://wstein.org/books/modform/',
+                "kind": "literature-implemented",
+                "source": ("William Stein, Modular Forms: A Computational Approach"),
+                "url": "https://wstein.org/books/modform/",
             },
             {
-                'kind': 'sagejs-original',
-                'source': (
-                    'Pre-sized native compressed-row relation builder'
-                ),
+                "kind": "sagejs-original",
+                "source": ("Pre-sized native compressed-row relation builder"),
             },
             {
-                'kind': 'software-derived',
-                'source': 'PARI/GP src/basemath/modsym.c',
-                'revision': '0f5a08ee7e',
-                'url': 'https://pari.math.u-bordeaux.fr/',
-                'license': 'GPL-2.0-or-later',
+                "kind": "software-derived",
+                "source": "PARI/GP src/basemath/modsym.c",
+                "revision": "0f5a08ee7e",
+                "url": "https://pari.math.u-bordeaux.fr/",
+                "license": "GPL-2.0-or-later",
             },
         ],
-        'implementation': {
-            'algorithm': (
-                'Orbit representatives for x + S*x and '
-                'x + R*x + R^2*x over a prime field, with rank and '
-                'dimension obtained from a minimal fundamental-domain '
-                'presentation in characteristic greater than 3'
+        "implementation": {
+            "algorithm": (
+                "Orbit representatives for x + S*x and "
+                "x + R*x + R^2*x over a prime field, with rank and "
+                "dimension obtained from a minimal fundamental-domain "
+                "presentation in characteristic greater than 3"
             ),
         },
-        'references': [
+        "references": [
             {
-                'id': 'stein-modform',
-                'type': 'book',
-                'title': 'Modular Forms: A Computational Approach',
-                'authors': ['William Stein'],
-                'year': 2007,
-                'url': 'https://wstein.org/books/modform/',
-                'relevant_sections': ['Modular symbols'],
+                "id": "stein-modform",
+                "type": "book",
+                "title": "Modular Forms: A Computational Approach",
+                "authors": ["William Stein"],
+                "year": 2007,
+                "url": "https://wstein.org/books/modform/",
+                "relevant_sections": ["Modular symbols"],
             },
         ],
-        'limitations': [
+        "limitations": [
             (
-                'Characteristic 2 and 3 still use dense FLINT elimination '
-                'below 20 million matrix cells.'
+                "Characteristic 2 and 3 still use dense FLINT elimination "
+                "below 20 million matrix cells."
             ),
             (
-                'Boundary maps, cuspidal subspaces, Hecke actions, and '
-                'rational lifting are not yet part of this object.'
+                "Boundary maps, cuspidal subspaces, Hecke actions, and "
+                "rational lifting are not yet part of this object."
             ),
         ],
     },
 )
 runtime.register_doc(
-    'dimension_cusp_forms',
+    "dimension_cusp_forms",
     dimension_cusp_forms,
-    _modular_dimension_doc(['cusp forms', 'Dirichlet characters']),
+    _modular_dimension_doc(["cusp forms", "Dirichlet characters"]),
 )
 runtime.register_doc(
-    'dimension_eis',
+    "dimension_eis",
     dimension_eis,
-    _modular_dimension_doc(['Eisenstein series', 'Dirichlet characters']),
+    _modular_dimension_doc(["Eisenstein series", "Dirichlet characters"]),
 )
 runtime.register_doc(
-    'dimension_modular_forms',
+    "dimension_modular_forms",
     dimension_modular_forms,
-    _modular_dimension_doc(['ambient spaces', 'Dirichlet characters']),
+    _modular_dimension_doc(["ambient spaces", "Dirichlet characters"]),
 )
 runtime.register_doc(
-    'ModularForms',
+    "ModularForms",
     ModularForms,
-    _modular_space_doc(['ambient spaces']),
+    _modular_space_doc(["ambient spaces"]),
 )
 runtime.register_doc(
-    'EisensteinForms',
+    "EisensteinForms",
     EisensteinForms,
     _modular_space_doc(
-        ['Eisenstein series', 'q-expansions'],
+        ["Eisenstein series", "q-expansions"],
         True,
     ),
 )
 runtime.register_doc(
-    'ModularSymbols',
+    "ModularSymbols",
     ModularSymbols,
     {
-        'kind': 'function',
-        'module': 'sage.modular.modsym.modsym',
-        'tags': [
-            'number theory',
-            'modular symbols',
-            'modular forms',
-            'Dirichlet characters',
-            'Hecke operators',
-            'q-expansions',
+        "kind": "function",
+        "module": "sage.modular.modsym.modsym",
+        "tags": [
+            "number theory",
+            "modular symbols",
+            "modular forms",
+            "Dirichlet characters",
+            "Hecke operators",
+            "q-expansions",
         ],
-        'backends': [
-            'FLINT',
-            'FLINT generic-ring exact algebraic matrices',
-            'Sage.js portable C modular-symbol core',
-            'Sage.js native P1List and Manin presentation',
+        "backends": [
+            "FLINT",
+            "FLINT generic-ring exact algebraic matrices",
+            "Sage.js portable C modular-symbol core",
+            "Sage.js native P1List and Manin presentation",
         ],
-        'sage_compatibility': {
-            'status': 'partial',
-            'notes': (
-                'Gamma0 spaces with trivial or Dirichlet character use '
-                'exact Manin presentations in weights at least two. The '
-                'native engine constructs all three signs, boundary and '
-                'cuspidal spaces, diamond operators, and exact T_n matrices '
-                'with the Sage-compatible nebentypus recurrence. Gamma1 '
-                'and q-expansion coverage remains more selective.'
+        "sage_compatibility": {
+            "status": "partial",
+            "notes": (
+                "Gamma0 spaces with trivial or Dirichlet character use "
+                "exact Manin presentations in weights at least two. The "
+                "native engine constructs all three signs, boundary and "
+                "cuspidal spaces, diamond operators, and exact T_n matrices "
+                "with the Sage-compatible nebentypus recurrence. Gamma1 "
+                "and q-expansion coverage remains more selective."
             ),
         },
-        'provenance': [
+        "provenance": [
             {
-                'kind': 'sage-derived',
-                'source': 'SageMath modular symbols API and guided tour',
-                'url': (
-                    'https://doc.sagemath.org/html/en/reference/'
-                    'modsym/'
-                ),
-                'license': 'GPL-2.0-or-later',
+                "kind": "sage-derived",
+                "source": "SageMath modular symbols API and guided tour",
+                "url": ("https://doc.sagemath.org/html/en/reference/modsym/"),
+                "license": "GPL-2.0-or-later",
             },
             {
-                'kind': 'software-derived',
-                'source': (
-                    'Author-owned original Magma Geometry/ModSym '
-                    'implementation, especially core.m, boundary.m, and '
-                    'operators.m'
+                "kind": "software-derived",
+                "source": (
+                    "Author-owned original Magma Geometry/ModSym "
+                    "implementation, especially core.m, boundary.m, and "
+                    "operators.m"
                 ),
             },
             {
-                'kind': 'software-derived',
-                'source': (
-                    'PARI/GP well-formed fundamental domain and path '
-                    'reduction strategy'
+                "kind": "software-derived",
+                "source": (
+                    "PARI/GP well-formed fundamental domain and path reduction strategy"
                 ),
-                'revision': '0f5a08ee7e',
-                'url': 'https://pari.math.u-bordeaux.fr/',
-                'license': 'GPL-2.0-or-later',
+                "revision": "0f5a08ee7e",
+                "url": "https://pari.math.u-bordeaux.fr/",
+                "license": "GPL-2.0-or-later",
             },
             {
-                'kind': 'sagejs-original',
-                'source': (
-                    'Portable preallocated C Hecke assembler, strict-Python '
-                    'Hecke algebra integration, and FLINT matrix boundary'
+                "kind": "sagejs-original",
+                "source": (
+                    "Portable preallocated C Hecke assembler, strict-Python "
+                    "Hecke algebra integration, and FLINT matrix boundary"
                 ),
             },
         ],
-        'limitations': [
+        "limitations": [
             (
-                'The full star matrix of a sign-zero character space is not '
-                'yet exposed; construct sign=1 or sign=-1 directly.'
+                "The full star matrix of a sign-zero character space is not "
+                "yet exposed; construct sign=1 or sign=-1 directly."
             ),
             (
-                'Arbitrary rational-path elements with nonconstant '
-                'coefficient polynomials are not yet exposed in character '
-                'spaces.'
+                "Arbitrary rational-path elements with nonconstant "
+                "coefficient polynomials are not yet exposed in character "
+                "spaces."
             ),
             (
-                'Large character value fields currently use general qqbar '
-                'elimination and need a specialized cyclotomic-number-field '
-                'performance path.'
+                "Large character value fields currently use general qqbar "
+                "elimination and need a specialized cyclotomic-number-field "
+                "performance path."
             ),
         ],
     },

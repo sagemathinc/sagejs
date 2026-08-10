@@ -20,7 +20,7 @@ Z_FULL_FLUSH = 3
 Z_FINISH = 4
 Z_BLOCK = 5
 Z_TREES = 6
-ZLIB_VERSION = '1.3'
+ZLIB_VERSION = "1.3"
 ZLIB_RUNTIME_VERSION = ZLIB_VERSION
 
 
@@ -30,16 +30,17 @@ class error(Exception):
 
 def _format(wbits):
     if wbits < 0:
-        return 'deflateRaw'
+        return "deflateRaw"
     if wbits > MAX_WBITS:
-        return 'gzip'
-    return 'deflate'
+        return "gzip"
+    return "deflate"
 
 
 def compress(data, level=-1, wbits=MAX_WBITS):
     try:
-        return bytes(os._host_call(
-            'compressData', _format(wbits), list(bytes(data)), level))
+        return bytes(
+            os._host_call("compressData", _format(wbits), list(bytes(data)), level)
+        )
     except OSError as exception:
         raise error(str(exception))
 
@@ -47,8 +48,7 @@ def compress(data, level=-1, wbits=MAX_WBITS):
 def decompress(data, wbits=MAX_WBITS, bufsize=16384):
     del bufsize
     try:
-        return bytes(os._host_call(
-            'decompressData', _format(wbits), list(bytes(data))))
+        return bytes(os._host_call("decompressData", _format(wbits), list(bytes(data))))
     except OSError as exception:
         raise error(str(exception))
 
@@ -97,17 +97,17 @@ class _Compress:
 
     def compress(self, data):
         if self._finished:
-            raise error('inconsistent stream state')
+            raise error("inconsistent stream state")
         self._parts.append(bytes(data))
-        return b''
+        return b""
 
     def flush(self, mode=Z_FINISH):
         if self._finished:
-            return b''
+            return b""
         if mode != Z_FINISH:
-            return b''
+            return b""
         self._finished = True
-        return compress(b''.join(self._parts), self.level, self.wbits)
+        return compress(b"".join(self._parts), self.level, self.wbits)
 
     def copy(self):
         answer = _Compress(self.level, self.wbits)
@@ -119,22 +119,22 @@ class _Decompress:
     def __init__(self, wbits):
         self.wbits = wbits
         self._parts = []
-        self.unused_data = b''
-        self.unconsumed_tail = b''
+        self.unused_data = b""
+        self.unconsumed_tail = b""
         self.eof = False
 
     def decompress(self, data, max_length=0):
         self._parts.append(bytes(data))
         if max_length:
-            return b''
-        return b''
+            return b""
+        return b""
 
     def flush(self, length=16384):
         del length
         if self.eof:
-            return b''
+            return b""
         self.eof = True
-        return decompress(b''.join(self._parts), self.wbits)
+        return decompress(b"".join(self._parts), self.wbits)
 
     def copy(self):
         answer = _Decompress(self.wbits)
@@ -152,12 +152,11 @@ def compressobj(
 ):
     del method, memLevel, strategy
     if zdict is not None:
-        raise NotImplementedError('zdict is not supported')
+        raise NotImplementedError("zdict is not supported")
     return _Compress(level, wbits)
 
 
-def decompressobj(wbits=MAX_WBITS, zdict=b''):
+def decompressobj(wbits=MAX_WBITS, zdict=b""):
     if zdict:
-        raise NotImplementedError('zdict is not supported')
+        raise NotImplementedError("zdict is not supported")
     return _Decompress(wbits)
-

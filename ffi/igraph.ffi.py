@@ -68,8 +68,7 @@ IGraphEdges = igraph.resource(
     ),
     wasm=False,
 )
-def complete_graph(vertex_count: uint64, directed: bool, loops: bool) -> IGraph:
-    ...
+def complete_graph(vertex_count: uint64, directed: bool, loops: bool) -> IGraph: ...
 
 
 @igraph.function(
@@ -81,8 +80,7 @@ def complete_graph(vertex_count: uint64, directed: bool, loops: bool) -> IGraph:
     result=Direct(),
     wasm=False,
 )
-def vertex_count(graph: IGraph) -> uint64:
-    ...
+def vertex_count(graph: IGraph) -> uint64: ...
 
 
 @igraph.function(
@@ -102,8 +100,7 @@ def vertex_count(graph: IGraph) -> uint64:
     borrow_from="graph",
     wasm=False,
 )
-def edges(graph: IGraph) -> IGraphEdges:
-    ...
+def edges(graph: IGraph) -> IGraphEdges: ...
 
 
 @igraph.function(
@@ -115,8 +112,7 @@ def edges(graph: IGraph) -> IGraphEdges:
     result=Direct(),
     wasm=False,
 )
-def edge_count(edges: IGraphEdges) -> uint64:
-    ...
+def edge_count(edges: IGraphEdges) -> uint64: ...
 
 
 @igraph.function(
@@ -128,8 +124,7 @@ def edge_count(edges: IGraphEdges) -> uint64:
     result=Direct(),
     wasm=False,
 )
-def edge_checksum(edges: IGraphEdges) -> uint64:
-    ...
+def edge_checksum(edges: IGraphEdges) -> uint64: ...
 
 
 @igraph.function(
@@ -189,8 +184,7 @@ def canonical_permutation(
     vertex_count: uint64,
     edge_entries: uint64,
     directed: bool,
-) -> bool:
-    ...
+) -> bool: ...
 
 
 @igraph.function(
@@ -218,5 +212,4 @@ def canonical_permutation(
     ),
     wasm=False,
 )
-def first_edge_endpoint(edges: UInt64Buffer, edge_entries: uint64) -> uint64:
-    ...
+def first_edge_endpoint(edges: UInt64Buffer, edge_entries: uint64) -> uint64: ...

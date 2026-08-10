@@ -16,17 +16,16 @@ def _field_precision(precision: Any = runtime.undefined) -> int:
         precision = 53
     precision = runtime.normalize_integer(precision)
     if (
-        runtime.jstype(precision) != 'number'
+        runtime.jstype(precision) != "number"
         or not runtime.number.isSafeInteger(precision)
         or precision < 2
     ):
-        raise ValueError('precision must be at least 2')
+        raise ValueError("precision must be at least 2")
     return precision
 
 
 @runtime.lightweight_math_class
 class RealNumberElement(sage.Element):
-
     def __init__(self, parent: RealField_class, native_value: Any) -> None:
         self._parent = parent
         self._native = native_value
@@ -36,40 +35,31 @@ class RealNumberElement(sage.Element):
         return RealNumberElement(self._parent, native_value)
 
     def _add_(self, other: RealNumberElement) -> RealNumberElement:
-        return self._new(
-            runtime.flint_backend().realAdd(
-                self._native, other._native))
+        return self._new(runtime.flint_backend().realAdd(self._native, other._native))
 
     def _sub_(self, other: RealNumberElement) -> RealNumberElement:
-        return self._new(
-            runtime.flint_backend().realSub(
-                self._native, other._native))
+        return self._new(runtime.flint_backend().realSub(self._native, other._native))
 
     def _mul_(self, other: RealNumberElement) -> RealNumberElement:
-        return self._new(
-            runtime.flint_backend().realMul(
-                self._native, other._native))
+        return self._new(runtime.flint_backend().realMul(self._native, other._native))
 
     def _truediv_(self, other: RealNumberElement) -> RealNumberElement:
-        return self._new(
-            runtime.flint_backend().realDiv(
-                self._native, other._native))
+        return self._new(runtime.flint_backend().realDiv(self._native, other._native))
 
     def _eq_(self, other: RealNumberElement) -> bool:
-        return runtime.flint_backend().realEqual(
-            self._native, other._native)
+        return runtime.flint_backend().realEqual(self._native, other._native)
 
     def __add__(self, other: object) -> Any:
-        return runtime.coercion_model.binOp('add', self, other)
+        return runtime.coercion_model.binOp("add", self, other)
 
     def __sub__(self, other: object) -> Any:
-        return runtime.coercion_model.binOp('sub', self, other)
+        return runtime.coercion_model.binOp("sub", self, other)
 
     def __mul__(self, other: object) -> Any:
-        return runtime.coercion_model.binOp('mul', self, other)
+        return runtime.coercion_model.binOp("mul", self, other)
 
     def __truediv__(self, other: object) -> Any:
-        return runtime.coercion_model.binOp('truediv', self, other)
+        return runtime.coercion_model.binOp("truediv", self, other)
 
     def __eq__(self, other: object) -> bool:
         return runtime.coercion_model.equals(self, other)
@@ -87,14 +77,11 @@ class RealNumberElement(sage.Element):
         return float(self) >= float(other)
 
     def __neg__(self) -> RealNumberElement:
-        return self._new(
-            runtime.flint_backend().realNeg(self._native))
+        return self._new(runtime.flint_backend().realNeg(self._native))
 
     def __pow__(self, exponent: int) -> RealNumberElement:
         exponent = runtime.integer_bigint(exponent)
-        return self._new(
-            runtime.flint_backend().realPowInt(
-                self._native, exponent))
+        return self._new(runtime.flint_backend().realPowInt(self._native, exponent))
 
     def precision(self) -> int:
         return self._parent.precision()
@@ -111,7 +98,6 @@ class RealNumberElement(sage.Element):
 
 @runtime.lightweight_math_class
 class RealLiteral(RealNumberElement):
-
     def __init__(
         self,
         parent: RealField_class,
@@ -125,19 +111,16 @@ class RealLiteral(RealNumberElement):
         runtime.object.freeze(self)
 
     def __neg__(self) -> RealLiteral:
-        literal = (
-            self.literal[1:]
-            if self.literal[0] == '-'
-            else '-' + self.literal
-        )
+        literal = self.literal[1:] if self.literal[0] == "-" else "-" + self.literal
         return create_real_literal(literal)
 
 
 @runtime.lightweight_math_class
 class ComplexNumberElement(sage.Element):
-
     def __init__(
-        self, parent: ComplexField_class, native_value: Any,
+        self,
+        parent: ComplexField_class,
+        native_value: Any,
     ) -> None:
         self._parent = parent
         self._native = native_value
@@ -147,89 +130,90 @@ class ComplexNumberElement(sage.Element):
         return ComplexNumberElement(self._parent, native_value)
 
     def _add_(
-        self, other: ComplexNumberElement,
+        self,
+        other: ComplexNumberElement,
     ) -> ComplexNumberElement:
         return self._new(
-            runtime.flint_backend().complexAdd(
-                self._native, other._native))
+            runtime.flint_backend().complexAdd(self._native, other._native)
+        )
 
     def _sub_(
-        self, other: ComplexNumberElement,
+        self,
+        other: ComplexNumberElement,
     ) -> ComplexNumberElement:
         return self._new(
-            runtime.flint_backend().complexSub(
-                self._native, other._native))
+            runtime.flint_backend().complexSub(self._native, other._native)
+        )
 
     def _mul_(
-        self, other: ComplexNumberElement,
+        self,
+        other: ComplexNumberElement,
     ) -> ComplexNumberElement:
         return self._new(
-            runtime.flint_backend().complexMul(
-                self._native, other._native))
+            runtime.flint_backend().complexMul(self._native, other._native)
+        )
 
     def _truediv_(
-        self, other: ComplexNumberElement,
+        self,
+        other: ComplexNumberElement,
     ) -> ComplexNumberElement:
         return self._new(
-            runtime.flint_backend().complexDiv(
-                self._native, other._native))
+            runtime.flint_backend().complexDiv(self._native, other._native)
+        )
 
     def _eq_(self, other: ComplexNumberElement) -> bool:
-        return runtime.flint_backend().complexEqual(
-            self._native, other._native)
+        return runtime.flint_backend().complexEqual(self._native, other._native)
 
     def __add__(self, other: object) -> Any:
-        return runtime.coercion_model.binOp('add', self, other)
+        return runtime.coercion_model.binOp("add", self, other)
 
     def __sub__(self, other: object) -> Any:
-        return runtime.coercion_model.binOp('sub', self, other)
+        return runtime.coercion_model.binOp("sub", self, other)
 
     def __mul__(self, other: object) -> Any:
-        return runtime.coercion_model.binOp('mul', self, other)
+        return runtime.coercion_model.binOp("mul", self, other)
 
     def __truediv__(self, other: object) -> Any:
-        return runtime.coercion_model.binOp('truediv', self, other)
+        return runtime.coercion_model.binOp("truediv", self, other)
 
     def __eq__(self, other: object) -> bool:
         return runtime.coercion_model.equals(self, other)
 
     def __neg__(self) -> ComplexNumberElement:
-        return self._new(
-            runtime.flint_backend().complexNeg(self._native))
+        return self._new(runtime.flint_backend().complexNeg(self._native))
 
     def __pow__(self, exponent: int) -> ComplexNumberElement:
         exponent = runtime.integer_bigint(exponent)
-        return self._new(
-            runtime.flint_backend().complexPowInt(
-                self._native, exponent))
+        return self._new(runtime.flint_backend().complexPowInt(self._native, exponent))
 
     def precision(self) -> int:
         return self._parent.precision()
 
     def real(self) -> Any:
-        if self._parent._kind == 'ComplexDoubleField':
+        if self._parent._kind == "ComplexDoubleField":
             return runtime.flint_backend().complexRealDouble(self._native)
         return RealField(self._parent.precision())._fromNative(
-            runtime.flint_backend().complexReal(self._native))
+            runtime.flint_backend().complexReal(self._native)
+        )
 
     def imag(self) -> Any:
-        if self._parent._kind == 'ComplexDoubleField':
+        if self._parent._kind == "ComplexDoubleField":
             return runtime.flint_backend().complexImagDouble(self._native)
         return RealField(self._parent.precision())._fromNative(
-            runtime.flint_backend().complexImag(self._native))
+            runtime.flint_backend().complexImag(self._native)
+        )
 
     def __repr__(self) -> str:
-        if self._parent._kind == 'ComplexDoubleField':
+        if self._parent._kind == "ComplexDoubleField":
             real = self.real()
             imag = self.imag()
             if imag == 0:
                 return str(real)
             if real == 0:
-                return str(imag) + '*I'
-            sign = ' - ' if imag < 0 else ' + '
+                return str(imag) + "*I"
+            sign = " - " if imag < 0 else " + "
             magnitude = -imag if imag < 0 else imag
-            return (
-                str(real) + sign + str(magnitude) + '*I')
+            return str(real) + sign + str(magnitude) + "*I"
         return runtime.flint_backend().complexToString(self._native)
 
     __str__ = __repr__
@@ -238,17 +222,13 @@ class ComplexNumberElement(sage.Element):
 
 @runtime.callable_instance_class
 class RealDoubleField_class(sage.Parent):
-
     def __init__(self) -> None:
-        self._name = 'Real Double Field'
-        self._kind = 'RDF'
+        self._name = "Real Double Field"
+        self._kind = "RDF"
 
     def __call__(self, value: Any = 0) -> float:
         if isinstance(value, sage.Rational):
-            return (
-                runtime.number(value._numerator)
-                / runtime.number(value._denominator)
-            )
+            return runtime.number(value._numerator) / runtime.number(value._denominator)
         return runtime.number(value)
 
     def precision(self) -> int:
@@ -270,24 +250,19 @@ class RealDoubleField_class(sage.Parent):
 
 @runtime.callable_instance_class
 class RealField_class(sage.Parent):
-
     def __init__(self, precision: int) -> None:
         self._name = (
-            'Real Field with ' + runtime.string(precision) +
-            ' bits of precision')
-        self._kind = 'RealField'
+            "Real Field with " + runtime.string(precision) + " bits of precision"
+        )
+        self._kind = "RealField"
         self._precision = precision
 
     def __call__(self, value: Any = 0) -> RealNumberElement:
         return _real_field_element(self, value)
 
     def _fromNative(self, native_value: Any) -> RealNumberElement:
-        if (
-            runtime.flint_backend().realPrecision(native_value)
-            != self._precision
-        ):
-            raise ValueError(
-                'native real has the wrong precision for ' + str(self))
+        if runtime.flint_backend().realPrecision(native_value) != self._precision:
+            raise ValueError("native real has the wrong precision for " + str(self))
         return RealNumberElement(self, native_value)
 
     def precision(self) -> int:
@@ -309,12 +284,11 @@ class RealField_class(sage.Parent):
 
 @runtime.callable_instance_class
 class ComplexField_class(sage.Parent):
-
     def __init__(self, precision: int) -> None:
         self._name = (
-            'Complex Field with ' + runtime.string(precision) +
-            ' bits of precision')
-        self._kind = 'ComplexField'
+            "Complex Field with " + runtime.string(precision) + " bits of precision"
+        )
+        self._kind = "ComplexField"
         self._precision = precision
 
     def __call__(
@@ -325,12 +299,8 @@ class ComplexField_class(sage.Parent):
         return _complex_field_element(self, value, imag)
 
     def _fromNative(self, native_value: Any) -> ComplexNumberElement:
-        if (
-            runtime.flint_backend().complexPrecision(native_value)
-            != self._precision
-        ):
-            raise ValueError(
-                'native complex has the wrong precision for ' + str(self))
+        if runtime.flint_backend().complexPrecision(native_value) != self._precision:
+            raise ValueError("native complex has the wrong precision for " + str(self))
         return ComplexNumberElement(self, native_value)
 
     def precision(self) -> int:
@@ -355,10 +325,9 @@ class ComplexField_class(sage.Parent):
 
 @runtime.callable_instance_class
 class ComplexDoubleField_class(ComplexField_class):
-
     def __init__(self) -> None:
-        self._name = 'Complex Double Field'
-        self._kind = 'ComplexDoubleField'
+        self._name = "Complex Double Field"
+        self._kind = "ComplexDoubleField"
         self._precision = 53
 
 
@@ -370,7 +339,8 @@ runtime.coercion_model.register(sage.QQ, RDF, RDF)
 
 
 def _real_from_exact(
-    field: RealField_class, value: Any,
+    field: RealField_class,
+    value: Any,
 ) -> RealNumberElement:
     backend = runtime.flint_backend()
     if isinstance(value, sage.Rational):
@@ -384,13 +354,13 @@ def _real_from_exact(
         )
     return RealNumberElement(
         field,
-        backend.realFromBigInt(
-            runtime.integer_bigint(value), field._precision),
+        backend.realFromBigInt(runtime.integer_bigint(value), field._precision),
     )
 
 
 def _real_field_element(
-    field: RealField_class, value: Any,
+    field: RealField_class,
+    value: Any,
 ) -> RealNumberElement:
     backend = runtime.flint_backend()
     if isinstance(value, RealLiteral):
@@ -405,36 +375,28 @@ def _real_field_element(
             field,
             backend.realRound(value._native, field._precision),
         )
-    if (
-        isinstance(value, sage.Rational)
-        or runtime.is_exact_integer(value)
-    ):
+    if isinstance(value, sage.Rational) or runtime.is_exact_integer(value):
         return _real_from_exact(field, value)
     if (
-        runtime.jstype(value) == 'object'
+        runtime.jstype(value) == "object"
         and value is not None
-        and runtime.native_get(value, '__sagejs_float__') is True
+        and runtime.native_get(value, "__sagejs_float__") is True
     ):
         return RealNumberElement(
             field,
-            backend.realFromString(
-                str(float(value)), field._precision),
+            backend.realFromString(str(float(value)), field._precision),
         )
-    if (
-        runtime.jstype(value) == 'number'
-        or runtime.jstype(value) == 'string'
-    ):
+    if runtime.jstype(value) == "number" or runtime.jstype(value) == "string":
         return RealNumberElement(
             field,
             backend.realFromString(str(value), field._precision),
         )
-    if value is not None and hasattr(value, '__float__'):
+    if value is not None and hasattr(value, "__float__"):
         return RealNumberElement(
             field,
-            backend.realFromString(
-                str(float(value)), field._precision),
+            backend.realFromString(str(float(value)), field._precision),
         )
-    raise TypeError('unable to convert value to ' + str(field))
+    raise TypeError("unable to convert value to " + str(field))
 
 
 def _real_coercion(
@@ -467,11 +429,9 @@ def _register_real_field(field: RealField_class) -> None:
         if other is field:
             continue
         if other._precision >= field._precision:
-            runtime.coercion_model.register(
-                other, field, _real_coercion(field))
+            runtime.coercion_model.register(other, field, _real_coercion(field))
         if field._precision >= other._precision:
-            runtime.coercion_model.register(
-                field, other, _real_coercion(other))
+            runtime.coercion_model.register(field, other, _real_coercion(other))
     for complex_field in _complex_fields.values():
         _register_real_complex_maps(field, complex_field)
 
@@ -490,27 +450,17 @@ def RealField(
 
 
 def create_real_literal(text: str) -> RealLiteral:
-    text = str(text).replace(runtime.regexp('_', 'g'), '')
+    text = str(text).replace(runtime.regexp("_", "g"), "")
     precision = 53
     if len(text) > 15:
         exponent_index = max(
-            runtime.string_find(text, 'e'),
-            runtime.string_find(text, 'E'),
+            runtime.string_find(text, "e"),
+            runtime.string_find(text, "E"),
         )
-        mantissa = (
-            text
-            if exponent_index == -1
-            else text[:exponent_index]
-        )
-        significant = mantissa.replace(
-            runtime.regexp(r'^[-0.]*'), '')
-        significant_digits = (
-            len(significant)
-            - (
-                0
-                if runtime.string_find(significant, '.') == -1
-                else 1
-            )
+        mantissa = text if exponent_index == -1 else text[:exponent_index]
+        significant = mantissa.replace(runtime.regexp(r"^[-0.]*"), "")
+        significant_digits = len(significant) - (
+            0 if runtime.string_find(significant, ".") == -1 else 1
         )
         bits = int(3.321928094887363 * significant_digits) + 1
         precision = max(bits, 53)
@@ -528,10 +478,7 @@ def _complex_field_element(
     imag: Any = runtime.undefined,
 ) -> ComplexNumberElement:
     backend = runtime.flint_backend()
-    if (
-        imag is runtime.undefined
-        and isinstance(value, ComplexNumberElement)
-    ):
+    if imag is runtime.undefined and isinstance(value, ComplexNumberElement):
         if value._parent is field:
             return value
         return ComplexNumberElement(
@@ -539,18 +486,14 @@ def _complex_field_element(
             backend.complexRound(value._native, field._precision),
         )
     real_field = RealField(field._precision)
-    if (
-        imag is runtime.undefined
-        and getattr(value, '_tree', None) == 'ImaginaryUnit'
-    ):
+    if imag is runtime.undefined and getattr(value, "_tree", None) == "ImaginaryUnit":
         imag = 1
         value = 0
     real_part = real_field(value)
     imag_part = real_field(0 if imag is runtime.undefined else imag)
     return ComplexNumberElement(
         field,
-        backend.complexFromReals(
-            real_part._native, imag_part._native),
+        backend.complexFromReals(real_part._native, imag_part._native),
     )
 
 
@@ -574,11 +517,9 @@ def _register_complex_field(field: ComplexField_class) -> None:
         if other is field:
             continue
         if other._precision >= field._precision:
-            runtime.coercion_model.register(
-                other, field, _complex_coercion(field))
+            runtime.coercion_model.register(other, field, _complex_coercion(field))
         if field._precision >= other._precision:
-            runtime.coercion_model.register(
-                field, other, _complex_coercion(other))
+            runtime.coercion_model.register(field, other, _complex_coercion(other))
 
 
 def ComplexField(
@@ -610,17 +551,17 @@ def zeta_zeros(
 ) -> list[float]:
     if count is runtime.undefined:
         dataset_function = runtime.reflect.get(
-            runtime.global_object, 'odlyzko_zeta_zeros')
-        dataset = runtime.reflect.apply(
-            dataset_function, runtime.undefined, [])
+            runtime.global_object, "odlyzko_zeta_zeros"
+        )
+        dataset = runtime.reflect.apply(dataset_function, runtime.undefined, [])
         return dataset[:]
     count = runtime.normalize_integer(count)
     if (
-        runtime.jstype(count) != 'number'
+        runtime.jstype(count) != "number"
         or not runtime.number.isSafeInteger(count)
         or count < 0
     ):
-        raise ValueError('zeta-zero count must be a nonnegative integer')
+        raise ValueError("zeta-zero count must be a nonnegative integer")
     if count > len(_zeta_zero_cache):
         values = runtime.flint_backend().zetaZeros(count, 53)
         _zeta_zero_cache.clear()
@@ -629,20 +570,17 @@ def zeta_zeros(
 
 
 def Ei(value: Any) -> ComplexNumberElement:
-    complex_value = (
-        value
-        if isinstance(value, ComplexNumberElement)
-        else CC(value)
-    )
+    complex_value = value if isinstance(value, ComplexNumberElement) else CC(value)
     return complex_value._parent._fromNative(
-        runtime.flint_backend().complexEi(complex_value._native))
+        runtime.flint_backend().complexEi(complex_value._native)
+    )
 
 
 def Li(value: Any) -> float:
     """Numerically evaluate the logarithmic integral ``li(value)``."""
     real_value = float(value)
     if real_value <= 0:
-        raise ValueError('Li() currently requires a positive real argument')
+        raise ValueError("Li() currently requires a positive real argument")
     return Ei(CDF(runtime.math.log(real_value))).real()
 
 
@@ -667,11 +605,11 @@ def _python_complex_parts(
         return runtime.number(float(value)), 0.0
     complex_converter = None
     if convert_protocols:
-        complex_converter = getattr(value, '__complex__', None)
+        complex_converter = getattr(value, "__complex__", None)
     if complex_converter is not None:
         converted = complex_converter()
         if not isinstance(converted, PythonComplex):
-            raise TypeError('__complex__ returned non-complex')
+            raise TypeError("__complex__ returned non-complex")
         return converted._real, converted._imag
     if isinstance(value, RealNumberElement):
         return runtime.number(float(value)), 0.0
@@ -681,23 +619,23 @@ def _python_complex_parts(
                 runtime.number(value._numerator),
                 runtime.number(value._denominator),
             ),
-            0.0
+            0.0,
         )
     if (
-        runtime.jstype(value) == 'object'
-        and runtime.native_get(value, '__sagejs_float__') is True
+        runtime.jstype(value) == "object"
+        and runtime.native_get(value, "__sagejs_float__") is True
     ):
         return runtime.number(value), 0.0
     if runtime.is_exact_integer(value):
         return runtime.number(value), 0.0
-    if runtime.jstype(value) == 'number':
+    if runtime.jstype(value) == "number":
         return value, 0.0
     float_converter = None
     if convert_protocols:
-        float_converter = getattr(value, '__float__', None)
+        float_converter = getattr(value, "__float__", None)
     if float_converter is not None:
         return runtime.number(float_converter()), 0.0
-    raise TypeError('complex() argument must be a number')
+    raise TypeError("complex() argument must be a number")
 
 
 @runtime.lightweight_math_class
@@ -775,7 +713,7 @@ class PythonComplex:
             return NotImplemented
         if parts[1] == 0:
             if parts[0] == 0:
-                raise ZeroDivisionError('complex division by zero')
+                raise ZeroDivisionError("complex division by zero")
             # CPython's complex kernel takes this direct path.  Besides being
             # both faster and overflow-safe, it avoids the extra rounding of
             # ``(component * divisor) / divisor**2`` in numerical recurrences.
@@ -785,16 +723,10 @@ class PythonComplex:
             )
         denominator = parts[0] * parts[0] + parts[1] * parts[1]
         if denominator == 0:
-            raise ZeroDivisionError('complex division by zero')
+            raise ZeroDivisionError("complex division by zero")
         return PythonComplex(
-            (
-                self._real * parts[0]
-                + self._imag * parts[1]
-            ) / denominator,
-            (
-                self._imag * parts[0]
-                - self._real * parts[1]
-            ) / denominator,
+            (self._real * parts[0] + self._imag * parts[1]) / denominator,
+            (self._imag * parts[0] - self._real * parts[1]) / denominator,
         )
 
     def __rtruediv__(self, other: Any) -> Any:
@@ -802,21 +734,12 @@ class PythonComplex:
             parts = _python_complex_parts(other)
         except TypeError:
             return NotImplemented
-        denominator = (
-            self._real * self._real
-            + self._imag * self._imag
-        )
+        denominator = self._real * self._real + self._imag * self._imag
         if denominator == 0:
-            raise ZeroDivisionError('complex division by zero')
+            raise ZeroDivisionError("complex division by zero")
         return PythonComplex(
-            (
-                parts[0] * self._real
-                + parts[1] * self._imag
-            ) / denominator,
-            (
-                parts[1] * self._real
-                - parts[0] * self._imag
-            ) / denominator,
+            (parts[0] * self._real + parts[1] * self._imag) / denominator,
+            (parts[1] * self._real - parts[0] * self._imag) / denominator,
         )
 
     def __pow__(self, exponent: Any) -> Any:
@@ -851,17 +774,11 @@ class PythonComplex:
                 return PythonComplex(0, 0)
             if parts[1] == 0 and parts[0] == 0:
                 return PythonComplex(1, 0)
-            raise ZeroDivisionError(
-                '0.0 to a negative or complex power')
-        logarithm_real = runtime.math.log(
-            runtime.math.hypot(self._real, self._imag))
+            raise ZeroDivisionError("0.0 to a negative or complex power")
+        logarithm_real = runtime.math.log(runtime.math.hypot(self._real, self._imag))
         logarithm_imag = runtime.math.atan2(self._imag, self._real)
-        product_real = (
-            parts[0] * logarithm_real
-            - parts[1] * logarithm_imag)
-        product_imag = (
-            parts[0] * logarithm_imag
-            + parts[1] * logarithm_real)
+        product_real = parts[0] * logarithm_real - parts[1] * logarithm_imag
+        product_imag = parts[0] * logarithm_imag + parts[1] * logarithm_real
         magnitude = runtime.math.exp(product_real)
         return PythonComplex(
             magnitude * runtime.math.cos(product_imag),
@@ -897,20 +814,15 @@ class PythonComplex:
             # numeric classes (and would also break tuple membership, which
             # compares each stored item from the left).
             return NotImplemented
-        return (
-            self._real == parts[0]
-            and self._imag == parts[1]
-        )
+        return self._real == parts[0] and self._imag == parts[1]
 
     def __hash__(self) -> int:
-        answer = (
-            runtime.integer_bigint(hash(self._real))
-            + runtime.bigint(1000003)
-            * runtime.integer_bigint(hash(self._imag))
-        )
-        width = runtime.bigint('18446744073709551616')
+        answer = runtime.integer_bigint(hash(self._real)) + runtime.bigint(
+            1000003
+        ) * runtime.integer_bigint(hash(self._imag))
+        width = runtime.bigint("18446744073709551616")
         answer %= width
-        if answer >= runtime.bigint('9223372036854775808'):
+        if answer >= runtime.bigint("9223372036854775808"):
             answer -= width
         if answer == runtime.bigint(-1):
             answer = runtime.bigint(-2)
@@ -922,38 +834,31 @@ class PythonComplex:
     def __repr__(self) -> str:
         real_text = str(self._real)
         imag_text = str(abs(self._imag))
-        sign = '-' if self._imag < 0 else '+'
+        sign = "-" if self._imag < 0 else "+"
         if self._real == 0:
-            return (
-                '-' if self._imag < 0 else ''
-            ) + imag_text + 'j'
-        return '(' + real_text + sign + imag_text + 'j)'
+            return ("-" if self._imag < 0 else "") + imag_text + "j"
+        return "(" + real_text + sign + imag_text + "j)"
 
     __str__ = __repr__
     toString = __repr__
 
 
 complex = PythonComplex
-runtime.reflect.set(PythonComplex, '__name__', 'complex')
-runtime.reflect.set(PythonComplex, '__qualname__', 'complex')
-runtime.reflect.set(PythonComplex, '__module__', 'builtins')
+runtime.reflect.set(PythonComplex, "__name__", "complex")
+runtime.reflect.set(PythonComplex, "__qualname__", "complex")
+runtime.reflect.set(PythonComplex, "__module__", "builtins")
 runtime.set_class_repr(PythonComplex, "<class 'complex'>")
 
 
+runtime.set_class_repr(RealNumberElement, "<class 'RealNumber'>")
+runtime.set_class_repr(RealDoubleField_class, "<class 'RealDoubleField_class'>")
+runtime.set_class_repr(RealLiteral, "<class 'RealLiteral'>")
+runtime.set_class_repr(ComplexNumberElement, "<class 'ComplexNumber'>")
+runtime.set_class_repr(ComplexDoubleField_class, "<class 'ComplexDoubleField_class'>")
 runtime.set_class_repr(
-    RealNumberElement, "<class 'RealNumber'>")
-runtime.set_class_repr(
-    RealDoubleField_class, "<class 'RealDoubleField_class'>")
-runtime.set_class_repr(
-    RealLiteral, "<class 'RealLiteral'>")
-runtime.set_class_repr(
-    ComplexNumberElement, "<class 'ComplexNumber'>")
-runtime.set_class_repr(
-    ComplexDoubleField_class, "<class 'ComplexDoubleField_class'>")
-runtime.set_class_repr(
-    RealField_class,
-    "<class 'sage.rings.real_mpfr.RealField_class'>")
+    RealField_class, "<class 'sage.rings.real_mpfr.RealField_class'>"
+)
 runtime.set_class_repr(
     ComplexField_class,
-    "<class 'sage.rings.complex_mpfr." +
-    "ComplexField_class_with_category'>")
+    "<class 'sage.rings.complex_mpfr." + "ComplexField_class_with_category'>",
+)

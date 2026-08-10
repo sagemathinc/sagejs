@@ -12,9 +12,7 @@ def igraph_canonical_labels(
     edge_entries: uint64,
     directed: bool,
 ) -> bool:
-    return canonical_permutation(
-        output, edges, vertex_count, edge_entries, directed
-    )
+    return canonical_permutation(output, edges, vertex_count, edge_entries, directed)
 
 
 @native

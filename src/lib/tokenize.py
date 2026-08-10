@@ -36,7 +36,8 @@ class TokenInfo:
 _TOKEN = re.compile(
     r"[A-Za-z_]\w*|(?:\d+(?:\.\d*)?|\.\d+)|"
     r"(?:'(?:\\.|[^'\\])*'|\"(?:\\.|[^\"\\])*\")|"
-    r"==|!=|<=|>=|:=|->|\*\*|//|<<|>>|[^\s]")
+    r"==|!=|<=|>=|:=|->|\*\*|//|<<|>>|[^\s]"
+)
 
 
 def generate_tokens(readline):
@@ -47,47 +48,46 @@ def generate_tokens(readline):
         try:
             line = readline()
         except StopIteration:
-            line = ''
+            line = ""
         if not line:
             break
         lineno += 1
         if isinstance(line, bytes):
-            line = line.decode('utf-8')
-        content = line.rstrip('\r\n')
-        stripped = content.lstrip(' \t')
+            line = line.decode("utf-8")
+        content = line.rstrip("\r\n")
+        stripped = content.lstrip(" \t")
         indent = len(content) - len(stripped)
-        if stripped and not stripped.startswith('#'):
+        if stripped and not stripped.startswith("#"):
             if indent > indent_stack[-1]:
                 indent_stack.append(indent)
                 yield TokenInfo(
-                    INDENT, content[:indent], (lineno, 0),
-                    (lineno, indent), line)
+                    INDENT, content[:indent], (lineno, 0), (lineno, indent), line
+                )
             while indent < indent_stack[-1]:
                 indent_stack.pop()
-                yield TokenInfo(
-                    DEDENT, '', (lineno, indent), (lineno, indent), line)
+                yield TokenInfo(DEDENT, "", (lineno, indent), (lineno, indent), line)
         for match in _TOKEN.finditer(content):
             text = match.group(0)
-            if text[0].isalpha() or text[0] == '_':
+            if text[0].isalpha() or text[0] == "_":
                 kind = NAME
             elif text[0].isdigit() or (
-                text[0] == '.' and len(text) > 1 and text[1].isdigit()
+                text[0] == "." and len(text) > 1 and text[1].isdigit()
             ):
                 kind = NUMBER
-            elif text[0] in ('\'', '"'):
+            elif text[0] in ("'", '"'):
                 kind = STRING
             else:
                 kind = OP
             yield TokenInfo(
-                kind, text, (lineno, match.start()),
-                (lineno, match.end()), line)
+                kind, text, (lineno, match.start()), (lineno, match.end()), line
+            )
         yield TokenInfo(
-            NEWLINE, '\n', (lineno, len(content)),
-            (lineno, len(content) + 1), line)
+            NEWLINE, "\n", (lineno, len(content)), (lineno, len(content) + 1), line
+        )
     while len(indent_stack) > 1:
         indent_stack.pop()
-        yield TokenInfo(DEDENT, '', (lineno, 0), (lineno, 0), '')
-    yield TokenInfo(ENDMARKER, '', (lineno + 1, 0), (lineno + 1, 0), '')
+        yield TokenInfo(DEDENT, "", (lineno, 0), (lineno, 0), "")
+    yield TokenInfo(ENDMARKER, "", (lineno + 1, 0), (lineno + 1, 0), "")
 
 
 def tokenize(readline):
@@ -101,10 +101,10 @@ def tokenize(readline):
             return first
         return readline()
 
-    yield TokenInfo(ENCODING, 'utf-8', (0, 0), (0, 0), '')
+    yield TokenInfo(ENCODING, "utf-8", (0, 0), (0, 0), "")
     yield from generate_tokens(decoded_readline)
 
 
 def detect_encoding(readline):
     first = readline()
-    return 'utf-8', [first] if first else []
+    return "utf-8", [first] if first else []

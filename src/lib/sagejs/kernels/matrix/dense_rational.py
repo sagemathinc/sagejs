@@ -24,7 +24,8 @@ def dense_rational_matrix_gcd(left: int, right: int) -> int:
 
 @native
 def dense_rational_matrix_normalize(
-    numerator: int, denominator: int,
+    numerator: int,
+    denominator: int,
 ) -> tuple[int, int]:
     if denominator == 0:
         raise ZeroDivisionError
@@ -48,10 +49,7 @@ def dense_rational_matrix_add_pair(
     common = dense_rational_matrix_gcd(left_denominator, right_denominator)
     left_scale = left_denominator // common
     right_scale = right_denominator // common
-    numerator = (
-        left_numerator * right_scale
-        + right_numerator * left_scale
-    )
+    numerator = left_numerator * right_scale + right_numerator * left_scale
     if numerator == 0:
         return 0, 1
     remaining = dense_rational_matrix_gcd(numerator, common)
@@ -85,17 +83,11 @@ def dense_rational_matrix_multiply_pair(
     """Multiply canonical pairs with cross-cancellation before products."""
     if left_numerator == 0 or right_numerator == 0:
         return 0, 1
-    left_common = dense_rational_matrix_gcd(
-        left_numerator, right_denominator)
-    right_common = dense_rational_matrix_gcd(
-        right_numerator, left_denominator)
-    numerator = (
-        (left_numerator // left_common)
-        * (right_numerator // right_common)
-    )
-    denominator = (
-        (left_denominator // right_common)
-        * (right_denominator // left_common)
+    left_common = dense_rational_matrix_gcd(left_numerator, right_denominator)
+    right_common = dense_rational_matrix_gcd(right_numerator, left_denominator)
+    numerator = (left_numerator // left_common) * (right_numerator // right_common)
+    denominator = (left_denominator // right_common) * (
+        right_denominator // left_common
     )
     if denominator < 0:
         numerator = -numerator
@@ -120,8 +112,7 @@ def dense_rational_matrix_set(
     numerator: int,
     denominator: int,
 ) -> bool:
-    numerator, denominator = dense_rational_matrix_normalize(
-        numerator, denominator)
+    numerator, denominator = dense_rational_matrix_normalize(numerator, denominator)
     numerators[index] = numerator
     denominators[index] = denominator
     return True
@@ -270,7 +261,8 @@ def dense_rational_matrix_scalar_multiply(
     scalar_denominator: int,
 ) -> bool:
     scalar_numerator, scalar_denominator = dense_rational_matrix_normalize(
-        scalar_numerator, scalar_denominator)
+        scalar_numerator, scalar_denominator
+    )
     length = len(source_numerators)
     valid = len(source_denominators) == length
     if len(output_numerators) != length:
@@ -579,8 +571,7 @@ def dense_rational_matrix_kernel_from_rref(
             for scan_column in range(columns):
                 if (
                     pivot_column == columns
-                    and reduced_numerators[
-                        row * columns + scan_column] != 0
+                    and reduced_numerators[row * columns + scan_column] != 0
                 ):
                     pivot_column = scan_column
             if pivot_column == free_column:
@@ -592,8 +583,7 @@ def dense_rational_matrix_kernel_from_rref(
                 for scan_column in range(columns):
                     if (
                         pivot_column == columns
-                        and reduced_numerators[
-                            row * columns + scan_column] != 0
+                        and reduced_numerators[row * columns + scan_column] != 0
                     ):
                         pivot_column = scan_column
                 if pivot_column < columns:

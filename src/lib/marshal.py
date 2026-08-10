@@ -15,12 +15,12 @@ version = 4
 
 def dumps(value: Any, version: int = version) -> bytes:
     del value, version
-    raise NotImplementedError('CPython marshal serialization is not supported')
+    raise NotImplementedError("CPython marshal serialization is not supported")
 
 
 def loads(data: Any) -> Any:
     del data
-    raise NotImplementedError('CPython marshal deserialization is not supported')
+    raise NotImplementedError("CPython marshal deserialization is not supported")
 
 
 def dump(value: Any, file: Any, version: int = version) -> None:

@@ -86,7 +86,7 @@ def fsum(iterable):
                 partials[i] = lo
                 i += 1
             x = hi
-        #partials[i:] = [x]
+        # partials[i:] = [x]
         partials.splice(i, partials.length - i, x)
     return float(sum(partials))
 
@@ -123,7 +123,7 @@ def ldexp(x, i):
     # +/-Infinity and follows the overflow/underflow handling below.
     result = x * Math.pow(2, Number(i))
     if isFinite(x) and x != 0.0 and not isFinite(result):
-        raise OverflowError('math range error')
+        raise OverflowError("math range error")
     return float(result)
 
 
@@ -162,7 +162,7 @@ def log(x, base=e):
     def natural_log(value):
         if type(value) is int:
             if value <= 0:
-                raise ValueError('math domain error')
+                raise ValueError("math domain error")
             bits = value.bit_length()
             if bits > 53:
                 shift = bits - 53
@@ -170,7 +170,7 @@ def log(x, base=e):
                 return Math.log(leading) + shift * Math.LN2
         converted = float(value)
         if converted <= 0:
-            raise ValueError('math domain error')
+            raise ValueError("math domain error")
         return Math.log(converted)
 
     return float(natural_log(x) / natural_log(base))
@@ -179,14 +179,14 @@ def log(x, base=e):
 def log1p(x):
     x = float(x)
     if x <= -1:
-        raise ValueError('math domain error')
+        raise ValueError("math domain error")
     return float(Math.log1p(x))
 
 
 def log10(x):
     x = float(x)
     if x <= 0:
-        raise ValueError('math domain error')
+        raise ValueError("math domain error")
     return float(Math.log10(x))
 
 
@@ -194,7 +194,7 @@ def pow(x, y):
     x = float(x)
     y = float(y)
     if x < 0 and (not isfinite(y) or int(y) != y):
-        raise ValueError('math domain error')
+        raise ValueError("math domain error")
     if isnan(y) and x == 1:
         return float(1)
     return float(Math.pow(x, y))
@@ -257,7 +257,7 @@ def radians(x):
 def acosh(x):
     x = float(x)
     if x < 1:
-        raise ValueError('math domain error')
+        raise ValueError("math domain error")
     return float(Math.acosh(x))
 
 
@@ -269,7 +269,7 @@ def asinh(x):
 def atanh(x):
     x = float(x)
     if x <= -1 or x >= 1:
-        raise ValueError('math domain error')
+        raise ValueError("math domain error")
     return float(Math.atanh(x))
 
 
@@ -277,7 +277,7 @@ def cosh(x):
     x = float(x)
     answer = Math.cosh(x)
     if isfinite(x) and not isfinite(answer):
-        raise OverflowError('math range error')
+        raise OverflowError("math range error")
     return float(answer)
 
 
@@ -285,7 +285,7 @@ def sinh(x):
     x = float(x)
     answer = Math.sinh(x)
     if isfinite(x) and not isfinite(answer):
-        raise OverflowError('math range error')
+        raise OverflowError("math range error")
     return float(answer)
 
 
@@ -293,23 +293,23 @@ def tanh(x):
     return float(Math.tanh(x))
 
 
-#import stdlib
-#print(math.ceil(4.2))
-#print(math.floor(4.2))
-#print(math.fabs(-6))
-#print(math.copysign(-5, 7))
-#print(math.factorial(4))
-#print(math.fmod(-1e100, 1e100))
+# import stdlib
+# print(math.ceil(4.2))
+# print(math.floor(4.2))
+# print(math.fabs(-6))
+# print(math.copysign(-5, 7))
+# print(math.factorial(4))
+# print(math.fmod(-1e100, 1e100))
 #
-#d = [0.9999999, 1, 2, 3]
-#print(sum(d), math.fsum(d))
-#print(math.isinf(5), math.isinf(Infinity))
-#print(math.modf(5.5))
-#print(math.trunc(2.6), math.trunc(-2.6))
-#print(math.exp(1e-5), math.expm1(1e-5))
-#print(math.log(10), math.log(10, 1000))
-#print(math.log1p(1e-15), math.log1p(1))
-#print(math.log10(1000), math.log(1000, 10))
-#print(math.pow(1, 0), math.pow(1, NaN), math.pow(0, 0), math.pow(NaN, 0), math.pow(4,3), math.pow(100, -2))
-#print(math.hypot(3,4))
-#print(math.acosh(2), math.asinh(1), math.atanh(0.5), math.cosh(1), math.cosh(-1), math.sinh(1), math.tanh(1))
+# d = [0.9999999, 1, 2, 3]
+# print(sum(d), math.fsum(d))
+# print(math.isinf(5), math.isinf(Infinity))
+# print(math.modf(5.5))
+# print(math.trunc(2.6), math.trunc(-2.6))
+# print(math.exp(1e-5), math.expm1(1e-5))
+# print(math.log(10), math.log(10, 1000))
+# print(math.log1p(1e-15), math.log1p(1))
+# print(math.log10(1000), math.log(1000, 10))
+# print(math.pow(1, 0), math.pow(1, NaN), math.pow(0, 0), math.pow(NaN, 0), math.pow(4,3), math.pow(100, -2))
+# print(math.hypot(3,4))
+# print(math.acosh(2), math.asinh(1), math.atanh(0.5), math.cosh(1), math.cosh(-1), math.sinh(1), math.tanh(1))

@@ -25,7 +25,12 @@ def flint_dense_integer_matrix_mul(
     right_columns: uint64,
 ) -> bool:
     return fmpz_mat_mul(
-        output, left, right, left_rows, inner, right_columns,
+        output,
+        left,
+        right,
+        left_rows,
+        inner,
+        right_columns,
     )
 
 
@@ -52,7 +57,9 @@ def flint_dense_integer_matrix_charpoly(
 
 @native
 def flint_dense_integer_matrix_rank(
-    source: IntegerBuffer, rows: uint64, columns: uint64,
+    source: IntegerBuffer,
+    rows: uint64,
+    columns: uint64,
 ) -> uint64:
     return fmpz_mat_rank(source, rows, columns)
 
@@ -76,7 +83,11 @@ def flint_dense_integer_matrix_hnf_transform(
     columns: uint64,
 ) -> bool:
     return fmpz_mat_hnf_transform(
-        output, transform, source, rows, columns,
+        output,
+        transform,
+        source,
+        rows,
+        columns,
     )
 
 
@@ -110,12 +121,12 @@ def flint_dense_integer_matrix_right_kernel(
 
 
 __all__ = [
-    'flint_dense_integer_matrix_charpoly',
-    'flint_dense_integer_matrix_determinant',
-    'flint_dense_integer_matrix_hnf',
-    'flint_dense_integer_matrix_hnf_transform',
-    'flint_dense_integer_matrix_mul',
-    'flint_dense_integer_matrix_rank',
-    'flint_dense_integer_matrix_right_kernel',
-    'flint_dense_integer_matrix_snf_transform',
+    "flint_dense_integer_matrix_charpoly",
+    "flint_dense_integer_matrix_determinant",
+    "flint_dense_integer_matrix_hnf",
+    "flint_dense_integer_matrix_hnf_transform",
+    "flint_dense_integer_matrix_mul",
+    "flint_dense_integer_matrix_rank",
+    "flint_dense_integer_matrix_right_kernel",
+    "flint_dense_integer_matrix_snf_transform",
 ]

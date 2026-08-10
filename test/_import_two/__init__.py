@@ -2,7 +2,7 @@
 
 
 def toplevel_func2(a):
-    return a + 'toplevel2'
+    return a + "toplevel2"
 
 
 class TopLevel2:
@@ -10,4 +10,4 @@ class TopLevel2:
         self.a = a
 
 
-toplevel_var2 = 'foo2'
+toplevel_var2 = "foo2"
