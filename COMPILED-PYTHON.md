@@ -980,6 +980,35 @@ adapters, ownership/effect/error information, target capabilities, and
 differential tests. Arbitrary `dlopen` or pointer calls are not admitted inside
 mathematical kernels.
 
+### Can Magma, Mathematica, Maple, Macaulay2, or Matlab source be compiled?
+
+Not by the native compiler today. Sage.js can parse and execute useful subsets
+of several foreign mathematical notations, but `@native` currently accepts
+typed Python only. Foreign-language input does not silently become a native
+kernel merely because Sage.js can run it.
+
+It is technically possible. A future language frontend could lower a small,
+statically meaningful subset into the same typed IR and host-isolated kernel
+ABI, either directly or through source-mapped typed Python. It would still have
+to satisfy the normal native contract: a correct dynamic execution path,
+explicit types and effects, no callbacks after entering the isolated core,
+inspectable lowering, and differential tests.
+
+This must not be implemented as superficial syntax substitution. These
+languages disagree about important semantics: one-based indexing, inclusive
+ranges, scalar and matrix arithmetic, exact versus machine integers, coercion
+and parent systems, mutation, evaluation, symbolic expressions, and error
+behavior. Magma or Macaulay2 code should retain Magma or Macaulay2 semantics;
+Matlab code should retain Matlab array and numerical semantics. If those rules
+cannot be represented exactly, native compilation should reject the program.
+
+The likely architecture is therefore one shared optimizer and set of native
+backends with several deliberately small frontends—not five independent native
+compilers. Typed Python remains the first and canonical mathematical library
+language. Another notation should gain native lowering only when a compelling
+real corpus shows that doing so is clearer than translating the algorithm to
+maintained Python.
+
 ### Is generated code useful outside Sage.js?
 
 Potentially. The isolated core and header are designed to be standalone. A
