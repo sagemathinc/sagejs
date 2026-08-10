@@ -335,6 +335,121 @@ def ρσ_integer_buffer_from_packed_bytes(source, length):
     })()"""
 
 
+def ρσ_rational_buffers_from_packed_bytes(source, length):
+    """Decode interleaved rational magnitudes into normalized owned buffers."""
+    return r"""%js (() => {
+        if (!(source instanceof Uint8Array)) {
+            throw new TypeError("packed rational source must be a Uint8Array");
+        }
+        if (!Number.isSafeInteger(length) || length < 0) {
+            throw new RangeError("invalid packed rational entry count");
+        }
+        const view = new DataView(
+            source.buffer, source.byteOffset, source.byteLength
+        );
+        const numerators = new Array(length);
+        const denominators = new Array(length);
+        let offset = 0;
+        for (let index = 0; index < length; index += 1) {
+            const parts = [0n, 0n];
+            for (let part = 0; part < 2; part += 1) {
+                if (source.byteLength - offset < 4) {
+                    throw new RangeError("packed rational matrix is truncated");
+                }
+                const header = view.getUint32(offset, true);
+                offset += 4;
+                if (part === 1 && (header & 0x80000000) !== 0) {
+                    throw new RangeError(
+                        "packed rational denominator is negative");
+                }
+                const byteCount = header & 0x7fffffff;
+                if (byteCount > source.byteLength - offset) {
+                    throw new RangeError("packed rational matrix is truncated");
+                }
+                let magnitude = 0n;
+                for (let byte = byteCount - 1; byte >= 0; byte -= 1) {
+                    magnitude = (magnitude << 8n) |
+                        BigInt(source[offset + byte]);
+                }
+                parts[part] = part === 0 &&
+                    (header & 0x80000000) !== 0 ? -magnitude : magnitude;
+                offset += byteCount;
+            }
+            let numerator = parts[0];
+            let denominator = parts[1];
+            if (denominator === 0n) {
+                throw new RangeError("packed rational denominator is zero");
+            }
+            if (numerator === 0n) {
+                denominator = 1n;
+            } else {
+                let left = numerator < 0n ? -numerator : numerator;
+                let right = denominator;
+                while (right !== 0n) {
+                    const remainder = left % right;
+                    left = right;
+                    right = remainder;
+                }
+                numerator /= left;
+                denominator /= left;
+            }
+            numerators[index] = numerator;
+            denominators[index] = denominator;
+        }
+        if (offset !== source.byteLength) {
+            throw new RangeError("packed rational matrix has trailing data");
+        }
+        const pack = (values) => {
+            let capacity = 1;
+            for (const value of values) {
+                const magnitude = value < 0n ? -value : value;
+                const words = magnitude === 0n ? 0 :
+                    Math.ceil(magnitude.toString(2).length / 64);
+                capacity = Math.max(capacity, words);
+            }
+            if (length !== 0 &&
+                capacity > Math.floor(Number.MAX_SAFE_INTEGER / length)) {
+                throw new RangeError("invalid packed RationalBuffer dimensions");
+            }
+            const packed = {
+                sizes: new Int32Array(length),
+                limbs: new BigUint64Array(length * capacity),
+                length,
+                wordCapacity: capacity,
+            };
+            for (let index = 0; index < length; index += 1) {
+                const value = values[index];
+                const negative = value < 0n;
+                let magnitude = negative ? -value : value;
+                let words = 0;
+                while (magnitude !== 0n) {
+                    packed.limbs[index * capacity + words] =
+                        BigInt.asUintN(64, magnitude);
+                    magnitude >>= 64n;
+                    words += 1;
+                }
+                packed.sizes[index] = negative ? -words : words;
+            }
+            packed.toArray = () => {
+                const answer = new Array(length);
+                for (let index = 0; index < length; index += 1) {
+                    const signedSize = packed.sizes[index];
+                    let value = 0n;
+                    for (let word = Math.abs(signedSize) - 1;
+                        word >= 0; word -= 1) {
+                        value = (value << 64n) +
+                            packed.limbs[index * capacity + word];
+                    }
+                    answer[index] = signedSize < 0 ? -value : value;
+                }
+                return answer;
+            };
+            return packed;
+        };
+        return [pack(numerators), pack(denominators)];
+    })()"""
+
+
 def ρσ_integer_buffer_to_packed_bytes(source):
     """Encode owned IntegerBuffer storage as SagePack signed magnitudes."""
     return r"""%js (() => {

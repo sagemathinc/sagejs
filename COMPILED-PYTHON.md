@@ -169,6 +169,7 @@ they do not all mean “use the corresponding C primitive.”
 | `Float64Buffer` | Borrowed packed binary64 storage. |
 | `Int64Buffer` | Borrowed packed signed-64-bit exact storage; an unrepresentable write raises rather than truncates. |
 | `IntegerBuffer` | Packed arbitrary-precision exact integer storage with explicit capacity. |
+| `RationalBuffer` | Owned normalized exact-rational storage: parallel tagged `IntegerBuffer` numerators and positive denominators. |
 | `UInt64Buffer` | Borrowed packed unsigned-64-bit storage, commonly used at library boundaries. |
 | `NativeRecord` subclass | A fixed-layout value record containing checked scalars and borrowed buffers; the compiler owns its ABI layout. |
 
@@ -331,6 +332,16 @@ loop bounds.
 Ordinary lists are useful for the fallback and small calls. Long-running code
 should generally pack data once, reuse storage across calls, and avoid
 repeated object conversion.
+
+Exact rational aggregates use the same principle. A `RationalBuffer` owns two
+equal-length `IntegerBuffer` components, with coprime numerator/denominator
+pairs, positive denominators, and the unique zero representation `0/1`.
+Current structural kernels take the two component buffers as explicit
+arguments because composite rational records are not yet admitted in public
+kernel signatures. The surrounding mathematical object owns them as one
+aggregate, so growth and mutation cannot replace only one component. This is
+an exposed ABI staging choice, not a foreign `fmpq` pointer or a pair of
+unrelated caches.
 
 ### Group related values with compiler-owned records
 

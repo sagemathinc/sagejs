@@ -59,9 +59,24 @@ function ffiIntegerEntries(source, expected, name) {
   return answer;
 }
 
-function ffiWriteIntegers(output, values, name = "output") {
+function ffiPrepareIntegerWrite(output, values, name = "output") {
   const buffer = ffiIntegerBuffer(output, values.length, name);
   const staged = values.map((value) => BigInt(value));
+  if (buffer.packed) {
+    for (const value of staged) {
+      const magnitude = value < 0n ? -value : value;
+      const words = magnitude === 0n
+        ? 0 : Math.ceil(magnitude.toString(2).length / 64);
+      if (words > buffer.wordCapacity) {
+        throw new RangeError("IntegerBuffer word capacity exceeded");
+      }
+    }
+  }
+  return { buffer, staged, output, name };
+}
+
+function ffiCommitIntegerWrite(prepared) {
+  const { buffer, staged, output, name } = prepared;
   if (!buffer.packed) {
     for (let index = 0; index < staged.length; index += 1) {
       if (!Reflect.set(output, String(index), staged[index])) {
@@ -69,14 +84,6 @@ function ffiWriteIntegers(output, values, name = "output") {
       }
     }
     return;
-  }
-  for (const value of staged) {
-    const magnitude = value < 0n ? -value : value;
-    const words = magnitude === 0n
-      ? 0 : Math.ceil(magnitude.toString(2).length / 64);
-    if (words > buffer.wordCapacity) {
-      throw new RangeError("IntegerBuffer word capacity exceeded");
-    }
   }
   buffer.limbs.fill(0n);
   for (let index = 0; index < staged.length; index += 1) {
@@ -91,6 +98,10 @@ function ffiWriteIntegers(output, values, name = "output") {
     }
     buffer.sizes[index] = value < 0n ? -words : words;
   }
+}
+
+function ffiWriteIntegers(output, values, name = "output") {
+  ffiCommitIntegerWrite(ffiPrepareIntegerWrite(output, values, name));
 }
 
 function ffiFmpzMatrix(source, rows, columns, name) {
@@ -223,6 +234,229 @@ binding.ffiFmpzMatRightKernel = function ffiFmpzMatRightKernel(
   }
   ffiWriteIntegers(output, values);
   return BigInt(nullity);
+};
+
+function ffiFmpqMatrix(
+  numerators, denominators, rows, columns, name,
+) {
+  const count = rows * columns;
+  if (!Number.isSafeInteger(count)) throw new RangeError("matrix is too large");
+  const numeratorValues = ffiIntegerEntries(
+    numerators, count, `${name}_numerators`);
+  const denominatorValues = ffiIntegerEntries(
+    denominators, count, `${name}_denominators`);
+  return binding.qqMatrix(
+    rows,
+    columns,
+    numeratorValues.map((numerator, index) => [
+      numerator,
+      denominatorValues[index],
+    ]),
+  );
+}
+
+function ffiPrepareFmpqMatrixWrite(
+  outputNumerators, outputDenominators, matrix, rows, columns,
+) {
+  const numerators = [];
+  const denominators = [];
+  for (let row = 0; row < rows; row += 1) {
+    for (let column = 0; column < columns; column += 1) {
+      const value = binding.matrixEntry(matrix, row, column);
+      numerators.push(BigInt(value.numerator));
+      denominators.push(BigInt(value.denominator));
+    }
+  }
+  // Stage and preflight both components before either caller-owned buffer is
+  // modified.  This matches the isolated adapter's transactional contract.
+  return [ffiPrepareIntegerWrite(
+    outputNumerators, numerators, "output_numerators"),
+    ffiPrepareIntegerWrite(
+      outputDenominators, denominators, "output_denominators")];
+}
+
+function ffiCommitFmpqMatrixWrite(prepared) {
+  ffiCommitIntegerWrite(prepared[0]);
+  ffiCommitIntegerWrite(prepared[1]);
+}
+
+function ffiWriteFmpqMatrix(
+  outputNumerators, outputDenominators, matrix, rows, columns,
+) {
+  ffiCommitFmpqMatrixWrite(ffiPrepareFmpqMatrixWrite(
+    outputNumerators, outputDenominators, matrix, rows, columns));
+}
+
+binding.ffiFmpqMatRank = function ffiFmpqMatRank(
+  outputRank, numerators, denominators, rowsValue, columnsValue, oneValue,
+) {
+  const rows = ffiDimension(rowsValue, "rows");
+  const columns = ffiDimension(columnsValue, "columns");
+  const one = ffiDimension(oneValue, "one");
+  if (one !== 1) return false;
+  const rankWrite = ffiPrepareIntegerWrite(outputRank, [BigInt(
+    binding.matrixRank(ffiFmpqMatrix(
+      numerators, denominators, rows, columns, "source")),
+  )], "rank");
+  ffiCommitIntegerWrite(rankWrite);
+  return true;
+};
+
+binding.ffiFmpqMatMul = function ffiFmpqMatMul(
+  outputNumerators,
+  outputDenominators,
+  leftNumerators,
+  leftDenominators,
+  rightNumerators,
+  rightDenominators,
+  leftRowsValue,
+  innerValue,
+  rightColumnsValue,
+) {
+  const leftRows = ffiDimension(leftRowsValue, "left_rows");
+  const inner = ffiDimension(innerValue, "inner");
+  const rightColumns = ffiDimension(rightColumnsValue, "right_columns");
+  const product = binding.matrixMul(
+    ffiFmpqMatrix(
+      leftNumerators, leftDenominators, leftRows, inner, "left"),
+    ffiFmpqMatrix(
+      rightNumerators, rightDenominators, inner, rightColumns, "right"),
+  );
+  ffiWriteFmpqMatrix(
+    outputNumerators, outputDenominators,
+    product, leftRows, rightColumns,
+  );
+  return true;
+};
+
+binding.ffiFmpqMatRref = function ffiFmpqMatRref(
+  outputRank,
+  outputNumerators,
+  outputDenominators,
+  sourceNumerators,
+  sourceDenominators,
+  rowsValue,
+  columnsValue,
+  oneValue,
+) {
+  const rows = ffiDimension(rowsValue, "rows");
+  const columns = ffiDimension(columnsValue, "columns");
+  const one = ffiDimension(oneValue, "one");
+  if (one !== 1) return false;
+  const source = ffiFmpqMatrix(
+    sourceNumerators, sourceDenominators, rows, columns, "source");
+  const rank = binding.matrixRank(source);
+  const matrixWrite = ffiPrepareFmpqMatrixWrite(
+    outputNumerators, outputDenominators,
+    binding.matrixRref(source), rows, columns,
+  );
+  const rankWrite = ffiPrepareIntegerWrite(
+    outputRank, [BigInt(rank)], "rank");
+  ffiCommitFmpqMatrixWrite(matrixWrite);
+  ffiCommitIntegerWrite(rankWrite);
+  return true;
+};
+
+binding.ffiFmpqMatInv = function ffiFmpqMatInv(
+  outputNumerators,
+  outputDenominators,
+  sourceNumerators,
+  sourceDenominators,
+  sizeValue,
+) {
+  const size = ffiDimension(sizeValue, "size");
+  let inverse;
+  try {
+    inverse = binding.matrixInverse(ffiFmpqMatrix(
+      sourceNumerators, sourceDenominators, size, size, "source"));
+  } catch (error) {
+    if (String(error?.message || error).includes("singular")) return false;
+    throw error;
+  }
+  ffiWriteFmpqMatrix(
+    outputNumerators, outputDenominators, inverse, size, size);
+  return true;
+};
+
+binding.ffiFmpqMatSolve = function ffiFmpqMatSolve(
+  outputNumerators,
+  outputDenominators,
+  leftNumerators,
+  leftDenominators,
+  rightNumerators,
+  rightDenominators,
+  sizeValue,
+  rightColumnsValue,
+) {
+  const size = ffiDimension(sizeValue, "size");
+  const rightColumns = ffiDimension(rightColumnsValue, "right_columns");
+  let solution;
+  try {
+    solution = binding.matrixSolve(
+      ffiFmpqMatrix(
+        leftNumerators, leftDenominators, size, size, "left"),
+      ffiFmpqMatrix(
+        rightNumerators, rightDenominators,
+        size, rightColumns, "right"),
+    );
+  } catch (error) {
+    if (String(error?.message || error).includes("singular")) return false;
+    throw error;
+  }
+  ffiWriteFmpqMatrix(
+    outputNumerators, outputDenominators,
+    solution, size, rightColumns,
+  );
+  return true;
+};
+
+binding.ffiFmpqMatDet = function ffiFmpqMatDet(
+  outputNumerators,
+  outputDenominators,
+  sourceNumerators,
+  sourceDenominators,
+  sizeValue,
+  oneValue,
+) {
+  const size = ffiDimension(sizeValue, "size");
+  const one = ffiDimension(oneValue, "one");
+  if (one !== 1) return false;
+  const value = binding.matrixDet(ffiFmpqMatrix(
+    sourceNumerators, sourceDenominators, size, size, "source"));
+  const numeratorWrite = ffiPrepareIntegerWrite(
+    outputNumerators, [BigInt(value.numerator)], "output_numerators");
+  const denominatorWrite = ffiPrepareIntegerWrite(
+    outputDenominators, [BigInt(value.denominator)], "output_denominators");
+  ffiCommitIntegerWrite(numeratorWrite);
+  ffiCommitIntegerWrite(denominatorWrite);
+  return true;
+};
+
+binding.ffiFmpqMatCharpoly = function ffiFmpqMatCharpoly(
+  outputNumerators,
+  outputDenominators,
+  sourceNumerators,
+  sourceDenominators,
+  coefficientCountValue,
+  sizeValue,
+  oneValue,
+) {
+  const coefficientCount = ffiDimension(
+    coefficientCountValue, "coefficient_count");
+  const size = ffiDimension(sizeValue, "size");
+  const one = ffiDimension(oneValue, "one");
+  if (one !== 1 || coefficientCount !== size + 1) return false;
+  const coefficients = binding.matrixCharpoly(ffiFmpqMatrix(
+    sourceNumerators, sourceDenominators, size, size, "source"));
+  const numerators = coefficients.map((value) => BigInt(value.numerator));
+  const denominators = coefficients.map((value) => BigInt(value.denominator));
+  const numeratorWrite = ffiPrepareIntegerWrite(
+    outputNumerators, numerators, "output_numerators");
+  const denominatorWrite = ffiPrepareIntegerWrite(
+    outputDenominators, denominators, "output_denominators");
+  ffiCommitIntegerWrite(numeratorWrite);
+  ffiCommitIntegerWrite(denominatorWrite);
+  return true;
 };
 
 function ffiNmodMatrix(source, rows, columns, modulus, name) {
@@ -552,8 +786,10 @@ function ffiDirichletGroupNumPrimitive(group) {
 const forbidMatrixNapi = process.env.SAGEJS_FORBID_MATRIX_NAPI === "1";
 const forbidZzMatrixNapi =
   process.env.SAGEJS_FORBID_ZZ_MATRIX_NAPI === "1";
+const forbidQqMatrixNapi =
+  process.env.SAGEJS_FORBID_QQ_MATRIX_NAPI === "1";
 
-module.exports = forbidMatrixNapi || forbidZzMatrixNapi
+module.exports = forbidMatrixNapi || forbidZzMatrixNapi || forbidQqMatrixNapi
   ? new Proxy(Object.create(null), {
     has(_target, property) {
       return Reflect.has(binding, property);
@@ -566,6 +802,10 @@ module.exports = forbidMatrixNapi || forbidZzMatrixNapi
            (forbidZzMatrixNapi &&
             (property === "zzMatrix" || property === "zzMatrixPacked" ||
              property === "zzMatrixExportPacked" ||
+             property === "zzMatrixToQQ")) ||
+           (forbidQqMatrixNapi &&
+            (property === "qqMatrix" || property === "qqMatrixPacked" ||
+             property === "qqMatrixExportPacked" ||
              property === "zzMatrixToQQ")))) {
         return function forbiddenMatrixNapi() {
           throw new Error(`forbidden legacy matrix N-API call: ${property}`);

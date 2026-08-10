@@ -22,6 +22,7 @@ are the bootstrap implementation used by older checked-in compilers.
 # globals: ρσ_integer_bigint, ρσ_is_exact_integer, ρσ_is_math_element
 # globals: ρσ_integer_buffer, ρσ_integer_buffer_from_packed_bytes
 # globals: ρσ_integer_buffer_to_packed_bytes
+# globals: ρσ_rational_buffers_from_packed_bytes
 # globals: ρσ_integer_buffer_used_word_capacity
 # globals: ρσ_ffi_call, ρσ_ffi_resource_borrow, ρσ_ffi_resource_close
 # globals: ρσ_ffi_resource_closed, ρσ_ffi_resource_create
@@ -155,6 +156,11 @@ def integer_buffer_from_packed_bytes(source, length):
 def integer_buffer_to_packed_bytes(source):
     """Encode owned IntegerBuffer storage as SagePack signed magnitudes."""
     return ρσ_integer_buffer_to_packed_bytes(source)
+
+
+def rational_buffers_from_packed_bytes(source, length):
+    """Decode normalized rational pairs into two owned IntegerBuffers."""
+    return ρσ_rational_buffers_from_packed_bytes(source, length)
 
 
 def uint64_buffer_prefix(source, length):

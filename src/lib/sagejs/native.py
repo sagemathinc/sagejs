@@ -62,6 +62,56 @@ PrimeFieldModulus: TypeAlias = int
 _warned_fallback_sources: set[str] = set()
 
 
+class RationalBuffer:
+    """Owned normalized exact-rational storage for fallback execution.
+
+    Native hosts replace each component with the compiler's packed
+    ``IntegerBuffer`` representation.  Keeping the two spans explicit makes
+    the ownership and standalone ABI independent of Python, JavaScript, and
+    Node-API object layouts.  Every entry is reduced and has a positive
+    denominator; zero is represented as ``0/1``.
+
+    Source-transparent kernels currently receive the two component buffers
+    as ordinary ``IntegerBuffer`` parameters.  This makes every arithmetic
+    operation visible in their Python bodies while this class provides the
+    canonical aggregate at mathematical object boundaries.
+    """
+
+    def __init__(
+        self,
+        numerators: IntegerBuffer,
+        denominators: IntegerBuffer,
+    ) -> None:
+        if len(numerators) != len(denominators):
+            raise ValueError('rational buffer component lengths differ')
+        self.numerators = []
+        self.denominators = []
+        for index in range(len(numerators)):
+            numerator = int(numerators[index])
+            denominator = int(denominators[index])
+            if denominator == 0:
+                raise ZeroDivisionError('rational buffer denominator is zero')
+            if numerator == 0:
+                self.numerators.append(0)
+                self.denominators.append(1)
+                continue
+            if denominator < 0:
+                numerator = -numerator
+                denominator = -denominator
+            left = abs(numerator)
+            right = denominator
+            while right:
+                left, right = right, left % right
+            self.numerators.append(numerator // left)
+            self.denominators.append(denominator // left)
+
+    def __len__(self) -> int:
+        return len(self.numerators)
+
+    def __getitem__(self, index: int) -> tuple[int, int]:
+        return self.numerators[index], self.denominators[index]
+
+
 class NativeRecord:
     """A fixed-schema value record shared by fallback and native kernels.
 
@@ -501,6 +551,7 @@ __all__ = [
     'NativeRecord',
     'PrimeFieldMatrix',
     'PrimeFieldModulus',
+    'RationalBuffer',
     'UInt64Buffer',
     'uint64',
     'float64_buffer',

@@ -13,6 +13,8 @@ const BASELIB_STANDALONE_MODULES = Object.freeze([
   "sagejs.kernels.dense_integer_flint",
   "sagejs.kernels.dense_prime",
   "sagejs.kernels.dense_prime_flint",
+  "sagejs.kernels.dense_rational",
+  "sagejs.kernels.dense_rational_flint",
 ]);
 
 // Cache the complete static dependency closure as separate module artifacts.
@@ -28,6 +30,8 @@ const BASELIB_STANDALONE_CACHE_MODULES = Object.freeze([
   "sagejs.kernels.dense_integer_flint",
   "sagejs.kernels.dense_prime",
   "sagejs.kernels.dense_prime_flint",
+  "sagejs.kernels.dense_rational",
+  "sagejs.kernels.dense_rational_flint",
   "sagejs.native",
 ]);
 

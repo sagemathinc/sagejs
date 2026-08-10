@@ -1,0 +1,278 @@
+#!/usr/bin/env node
+"use strict";
+
+const assert = require("node:assert/strict");
+const {
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} = require("node:fs");
+const { tmpdir } = require("node:os");
+const { join } = require("node:path");
+const { spawnSync } = require("node:child_process");
+const { compile } = require("@sagemath/sagejs/native");
+
+const root = join(__dirname, "..");
+const sourcePath = join(
+  root, "src", "lib", "sagejs", "kernels", "dense_rational.py",
+);
+const flintSourcePath = join(
+  root, "src", "lib", "sagejs", "kernels", "dense_rational_flint.py",
+);
+const integerSourcePath = join(
+  root, "src", "lib", "sagejs", "kernels", "dense_integer.py",
+);
+const matrixSourcePath = join(root, "src", "baselib", "matrix.py");
+
+function runSage(source, environment) {
+  const directory = mkdtempSync(join(tmpdir(), "sagejs-dense-rational-script-"));
+  try {
+    const scriptPath = join(directory, "production.py");
+    writeFileSync(scriptPath, source);
+    const result = spawnSync(
+      process.execPath,
+      [join(root, "bin", "sagejs"), scriptPath],
+      {
+        cwd: root,
+        encoding: "utf8",
+        env: { ...process.env, ...environment },
+      },
+    );
+    if (result.error) throw result.error;
+    assert.equal(result.status, 0, result.stderr || result.stdout);
+    return result.stdout.trim();
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+}
+
+const productionScript = String.raw`
+from sagejs.native import RationalBuffer
+
+normalized = RationalBuffer([2, 0, -6], [-4, 9, -8])
+assert normalized.numerators == [-1, 0, 3]
+assert normalized.denominators == [2, 1, 4]
+
+large = 2**190
+A = matrix(QQ, 3, 3, [
+    QQ(large + 1)/3, -QQ(7)/5, 3,
+    QQ(5)/11, QQ(large - 2)/13, QQ(11)/17,
+    -QQ(13)/19, QQ(17)/23, QQ(19)/29,
+])
+B = matrix(QQ, 3, 3, range(9)) / 31
+
+assert A[0, 0] == QQ(large + 1)/3
+assert (A + B) - B == A
+assert -(-A) == A
+assert (QQ(3)/7)*A == A*(QQ(3)/7)
+assert A.transpose().transpose() == A
+assert A.matrix_from_rows([2, 0]).dimensions() == (2, 3)
+assert A.matrix_from_columns([2, 0]).dimensions() == (3, 2)
+assert A.stack(B).dimensions() == (6, 3)
+assert A.augment(B).dimensions() == (3, 6)
+
+C = matrix(QQ, 3, 3, [2, 4, 4, 6, 6, 12, 10, 4, 16]) / 7
+assert C.rank() == 3
+assert C.det() == QQ(48)/343
+assert C*C == matrix(QQ, 3, 3, [
+    68, 48, 120, 168, 108, 288, 204, 128, 344]) / 49
+assert C*(~C) == identity_matrix(QQ, 3)
+right = matrix(QQ, 3, 2, [
+    QQ(1)/2, QQ(2)/3, QQ(3)/5,
+    QQ(5)/7, QQ(7)/11, QQ(11)/13])
+assert C*C.solve_right(right) == right
+assert C.charpoly()(C).is_zero()
+eigen = matrix(QQ, [[0, 2], [1, 0]]).eigenvalues()
+assert eigen[0] > 0 and eigen[1] < 0
+assert eigen[0] * eigen[0] == 2
+assert eigen[1] * eigen[1] == 2
+
+wide = matrix(QQ, 2, 4, [1, 2, 3, 4, 2, 4, 6, 8]) / 5
+K = wide.right_kernel_matrix()
+assert K.nrows() == 3
+assert wide*K.transpose() == zero_matrix(QQ, 2, 3)
+
+mutable = matrix(QQ, 2, 2, [QQ(1)/2, QQ(2)/3, QQ(3)/4, QQ(4)/5])
+mutable[0, 1] = -QQ(2**320 + 9)/37
+assert mutable[0, 1] == -QQ(2**320 + 9)/37
+immutable = mutable.__copy__()
+immutable.set_immutable()
+try:
+    immutable[0, 0] = 7
+    raise AssertionError('immutable mutation unexpectedly succeeded')
+except ValueError:
+    pass
+
+assert zero_matrix(QQ, 50).is_zero()
+assert identity_matrix(QQ, 50).is_one()
+random_value = random_matrix(QQ, 40)
+assert random_value.dimensions() == (40, 40)
+try:
+    A._native
+    raise AssertionError('packed rational matrix exposed an N-API handle')
+except RuntimeError:
+    pass
+print('dense-rational-independent-ok')
+`;
+
+(async () => {
+  const temporary = mkdtempSync(join(tmpdir(), "sagejs-dense-rational-"));
+  try {
+    const matrixSource = readFileSync(matrixSourcePath, "utf8");
+    assert.match(
+      matrixSource,
+      /__import__\(\s*['"]sagejs\.kernels\.dense_rational['"]/,
+    );
+    assert.doesNotMatch(matrixSource, /\.qqMatrix\s*\(/);
+
+    const compiled = await compile({ sourcePath, cacheRoot: temporary });
+    const compiledFlint = await compile({
+      sourcePath: flintSourcePath,
+      cacheRoot: temporary,
+    });
+    await compile({ sourcePath: integerSourcePath, cacheRoot: temporary });
+    const kernel = require(compiled.modulePath);
+    const flintKernel = require(compiledFlint.modulePath);
+
+    const functions = new Map(
+      compiled.ir.functions.map((fn) => [fn.name, fn]),
+    );
+    assert.equal(
+      functions.get("dense_rational_add").analysis.backend.kind,
+      "tagged",
+    );
+    assert.equal(
+      functions.get("dense_rational_add").analysis
+        .taggedInteger.representation,
+      "tagged-int64-gmp",
+    );
+    assert.ok(functions.has("dense_rational_kernel_from_rref"));
+
+    for (const name of [
+      "flint_dense_rational_mul",
+      "flint_dense_rational_rank",
+      "flint_dense_rational_rref",
+      "flint_dense_rational_inverse",
+      "flint_dense_rational_solve",
+      "flint_dense_rational_determinant",
+      "flint_dense_rational_charpoly",
+    ]) {
+      const fn = compiledFlint.ir.functions.find((candidate) =>
+        candidate.name === name
+      );
+      assert.ok(fn, `missing ${name}`);
+      assert.match(fn.foreignDependencies[0], /^flint@[a-f0-9]{64}:fmpq_mat_/);
+      assert.equal(flintKernel[name].nativeAvailable, true);
+    }
+
+    for (const generated of [
+      readFileSync(compiled.coreSourcePath, "utf8"),
+      readFileSync(compiledFlint.coreSourcePath, "utf8"),
+    ]) {
+      assert.doesNotMatch(
+        generated,
+        /\b(?:napi_|node_api|PyObject|Py_|JSValue|v8::)/,
+      );
+    }
+
+    const pack = kernel.dense_rational_add.packIntegerBuffer;
+    const leftNumerators = pack([1n, 2n]);
+    const leftDenominators = pack([2n, 3n]);
+    const rightNumerators = pack([3n, -5n]);
+    const rightDenominators = pack([7n, 11n]);
+    const outputNumerators = kernel.createIntegerBuffer(2, 4);
+    const outputDenominators = kernel.createIntegerBuffer(2, 4);
+    assert.equal(kernel.dense_rational_add(
+      outputNumerators,
+      outputDenominators,
+      leftNumerators,
+      leftDenominators,
+      rightNumerators,
+      rightDenominators,
+    ), true);
+    assert.deepEqual(outputNumerators.toArray(), [13n, 7n]);
+    assert.deepEqual(outputDenominators.toArray(), [14n, 33n]);
+
+    // Paired rational output is one transaction: an undersized denominator
+    // component must not commit the already-valid numerator component.
+    const flintPack =
+      flintKernel.flint_dense_rational_mul.packIntegerBuffer;
+    const transactionalNumerator = flintPack([17n]);
+    const transactionalDenominator =
+      flintKernel.createIntegerBuffer(1, 1);
+    assert.throws(
+      () => flintKernel.flint_dense_rational_mul(
+        transactionalNumerator,
+        transactionalDenominator,
+        flintPack([1n]),
+        flintPack([1n << 80n]),
+        flintPack([1n]),
+        flintPack([1n << 80n]),
+        1n,
+        1n,
+        1n,
+      ),
+      /IntegerBuffer word capacity exceeded/,
+    );
+    assert.deepEqual(transactionalNumerator.toArray(), [17n]);
+    assert.deepEqual(transactionalDenominator.toArray(), [0n]);
+
+    // Rank and RREF use checked status plus explicit exact output storage;
+    // an invalid denominator cannot leak the C sentinel through uint64.
+    const checkedRank = flintKernel.createIntegerBuffer(1, 1);
+    assert.throws(
+      () => flintKernel.flint_dense_rational_rank(
+        checkedRank,
+        flintPack([1n]),
+        flintPack([0n]),
+        1n,
+        1n,
+        1n,
+      ),
+      /FLINT rational matrix rank failed/,
+    );
+    assert.deepEqual(checkedRank.toArray(), [0n]);
+
+    const requiredEnvironment = {
+      SAGEJS_NATIVE_CACHE_DIR: temporary,
+      SAGEJS_NATIVE_REQUIRED: "1",
+      SAGEJS_FORBID_QQ_MATRIX_NAPI: "1",
+    };
+    assert.equal(
+      runSage(productionScript, requiredEnvironment),
+      "dense-rational-independent-ok",
+    );
+    assert.equal(
+      runSage(productionScript, {
+        SAGEJS_NATIVE_CACHE_DIR: temporary,
+        SAGEJS_NATIVE_AUTOLOAD: "0",
+        SAGEJS_FORBID_QQ_MATRIX_NAPI: "1",
+      }),
+      "dense-rational-independent-ok",
+    );
+
+    const trace = runSage(String.raw`
+A = random_matrix(QQ, 4)
+A + A
+A * A
+A.det()
+print('trace-ok')
+`, {
+      ...requiredEnvironment,
+      SAGEJS_NATIVE_TRACE: "1",
+    });
+    assert.match(trace, /Matrix\.random_matrix QQ 4x4 -> typed-python-isolated/);
+    assert.match(trace, /Matrix\.add QQ 4x4 -> typed-python-isolated/);
+    assert.match(trace, /Matrix\.multiply QQ 4x4 -> declared-flint-isolated/);
+    assert.match(trace, /Matrix\.determinant QQ 4x4 -> declared-flint-isolated/);
+    assert.match(trace, /trace-ok/);
+
+    console.log("dense rational matrix migration tests passed");
+  } finally {
+    rmSync(temporary, { recursive: true, force: true });
+  }
+})().catch((error) => {
+  console.error(error.stack || error);
+  process.exitCode = 1;
+});

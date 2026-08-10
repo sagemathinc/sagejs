@@ -11,6 +11,9 @@ const root = resolve(__dirname, "..", "..");
 const prefix = resolve(
   process.env.SAGEJS_GRAPH_PREFIX || join(root, "packages", "graph", ".native", "prefix"),
 );
+const flintPrefix = resolve(
+  process.env.SAGEJS_FLINT_PREFIX || join(root, "packages", "flint", ".native", "prefix"),
+);
 const dynamicResult = dynamicLifecycleFuzz();
 
 function dynamicLifecycleFuzz() {
@@ -116,6 +119,77 @@ int main(void)
 }
 `;
 
+const rationalSource = String.raw`
+#include <stdint.h>
+#include <flint/fmpz_mat.h>
+#include <sagejs/ffi_algorithms.h>
+
+int main(void)
+{
+    for (slong round = 0; round < 500; round++) {
+        fmpz_mat_t left_num, left_den, right_num, right_den;
+        fmpz_mat_t output_num, output_den, scalar_num, scalar_den;
+        fmpz_mat_t polynomial_num, polynomial_den, rank;
+        fmpz_mat_init(left_num, 3, 3);
+        fmpz_mat_init(left_den, 3, 3);
+        fmpz_mat_init(right_num, 3, 3);
+        fmpz_mat_init(right_den, 3, 3);
+        fmpz_mat_init(output_num, 3, 3);
+        fmpz_mat_init(output_den, 3, 3);
+        fmpz_mat_init(scalar_num, 1, 1);
+        fmpz_mat_init(scalar_den, 1, 1);
+        fmpz_mat_init(polynomial_num, 1, 4);
+        fmpz_mat_init(polynomial_den, 1, 4);
+        fmpz_mat_init(rank, 1, 1);
+        for (slong row = 0; row < 3; row++)
+            for (slong column = 0; column < 3; column++) {
+                const slong index = 3 * row + column;
+                fmpz_set_si(fmpz_mat_entry(left_num, row, column),
+                    (round + 3 * index) % 29 - 14 + (row == column ? 17 : 0));
+                fmpz_set_ui(fmpz_mat_entry(left_den, row, column),
+                    (ulong) (1 + (round + index) % 7));
+                fmpz_set_si(fmpz_mat_entry(right_num, row, column),
+                    (2 * round + 5 * index) % 31 - 15);
+                fmpz_set_ui(fmpz_mat_entry(right_den, row, column),
+                    (ulong) (1 + (round + 2 * index) % 5));
+            }
+        if (!sagejs_flint_fmpq_mat_mul_parts(
+                output_num, output_den,
+                left_num, left_den, right_num, right_den))
+            return 2;
+        if (!sagejs_flint_fmpq_mat_rank_parts(
+                rank, left_num, left_den))
+            return 3;
+        if (!sagejs_flint_fmpq_mat_rref_parts(
+                rank, output_num, output_den, left_num, left_den))
+            return 4;
+        (void) sagejs_flint_fmpq_mat_inv_parts(
+            output_num, output_den, left_num, left_den);
+        (void) sagejs_flint_fmpq_mat_solve_parts(
+            output_num, output_den,
+            left_num, left_den, right_num, right_den);
+        if (!sagejs_flint_fmpq_mat_det_parts(
+                scalar_num, scalar_den, left_num, left_den))
+            return 5;
+        if (!sagejs_flint_fmpq_mat_charpoly_parts(
+                polynomial_num, polynomial_den, left_num, left_den))
+            return 6;
+        fmpz_mat_clear(rank);
+        fmpz_mat_clear(polynomial_den);
+        fmpz_mat_clear(polynomial_num);
+        fmpz_mat_clear(scalar_den);
+        fmpz_mat_clear(scalar_num);
+        fmpz_mat_clear(output_den);
+        fmpz_mat_clear(output_num);
+        fmpz_mat_clear(right_den);
+        fmpz_mat_clear(right_num);
+        fmpz_mat_clear(left_den);
+        fmpz_mat_clear(left_num);
+    }
+    return 0;
+}
+`;
+
 function run(command, args, options = {}) {
   const result = spawnSync(command, args, {
     cwd: options.cwd || root,
@@ -155,6 +229,25 @@ try {
       UBSAN_OPTIONS: "halt_on_error=1:print_stacktrace=1",
     },
   }).trim();
+  const rationalSourcePath = join(temporary, "rational-lifecycle.c");
+  const rationalExecutable = join(temporary, "rational-lifecycle");
+  writeFileSync(rationalSourcePath, rationalSource);
+  run(compiler, [
+    "-std=c11", "-O1", "-g", "-fno-omit-frame-pointer",
+    "-fsanitize=address,undefined",
+    `-I${join(root, "packages", "flint", "include")}`,
+    `-I${join(flintPrefix, "include")}`,
+    rationalSourcePath,
+    `-L${join(flintPrefix, "lib")}`,
+    "-lflint", "-lopenblas", "-lmpfr", "-lgmp", "-lm", "-lpthread",
+    "-o", rationalExecutable,
+  ]);
+  run(rationalExecutable, [], {
+    env: {
+      ASAN_OPTIONS: "detect_leaks=1:halt_on_error=1:strict_string_checks=1",
+      UBSAN_OPTIONS: "halt_on_error=1:print_stacktrace=1",
+    },
+  });
   process.stdout.write(JSON.stringify({
     schema: "sagejs.ffi/lifecycle-fuzz-v1",
     capability: "sanitizers",
@@ -162,6 +255,7 @@ try {
     compiler,
     dynamic: dynamicResult,
     result: output,
+    rationalResult: "rounds=500",
   }, null, 2) + "\n");
 } finally {
   rmSync(temporary, { recursive: true, force: true });

@@ -14,10 +14,10 @@
   },
   "counts": {
     "classified-native-file": 53,
-    "declared-ffi": 30,
+    "declared-ffi": 37,
     "declared-ffi-resource": 3,
     "napi-export": 292,
-    "runtime-intrinsic": 120,
+    "runtime-intrinsic": 121,
     "wasm-export": 46
   },
   "boundaries": [
@@ -85,6 +85,83 @@
       "dynamic_package": "@sagemath/sagejs-flint",
       "dynamic_export": "ffiDirichletGroupSize",
       "symbol": "dirichlet_group_size",
+      "disposition": "declared-safe-ffi"
+    },
+    {
+      "id": "ffi:flint:fmpq_mat_charpoly",
+      "kind": "declared-ffi",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "fmpq_mat_charpoly",
+      "dynamic_package": "@sagemath/sagejs-flint",
+      "dynamic_export": "ffiFmpqMatCharpoly",
+      "symbol": "sagejs_flint_fmpq_mat_charpoly_parts",
+      "disposition": "declared-safe-ffi"
+    },
+    {
+      "id": "ffi:flint:fmpq_mat_det",
+      "kind": "declared-ffi",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "fmpq_mat_det",
+      "dynamic_package": "@sagemath/sagejs-flint",
+      "dynamic_export": "ffiFmpqMatDet",
+      "symbol": "sagejs_flint_fmpq_mat_det_parts",
+      "disposition": "declared-safe-ffi"
+    },
+    {
+      "id": "ffi:flint:fmpq_mat_inv",
+      "kind": "declared-ffi",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "fmpq_mat_inv",
+      "dynamic_package": "@sagemath/sagejs-flint",
+      "dynamic_export": "ffiFmpqMatInv",
+      "symbol": "sagejs_flint_fmpq_mat_inv_parts",
+      "disposition": "declared-safe-ffi"
+    },
+    {
+      "id": "ffi:flint:fmpq_mat_mul",
+      "kind": "declared-ffi",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "fmpq_mat_mul",
+      "dynamic_package": "@sagemath/sagejs-flint",
+      "dynamic_export": "ffiFmpqMatMul",
+      "symbol": "sagejs_flint_fmpq_mat_mul_parts",
+      "disposition": "declared-safe-ffi"
+    },
+    {
+      "id": "ffi:flint:fmpq_mat_rank",
+      "kind": "declared-ffi",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "fmpq_mat_rank",
+      "dynamic_package": "@sagemath/sagejs-flint",
+      "dynamic_export": "ffiFmpqMatRank",
+      "symbol": "sagejs_flint_fmpq_mat_rank_parts",
+      "disposition": "declared-safe-ffi"
+    },
+    {
+      "id": "ffi:flint:fmpq_mat_rref",
+      "kind": "declared-ffi",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "fmpq_mat_rref",
+      "dynamic_package": "@sagemath/sagejs-flint",
+      "dynamic_export": "ffiFmpqMatRref",
+      "symbol": "sagejs_flint_fmpq_mat_rref_parts",
+      "disposition": "declared-safe-ffi"
+    },
+    {
+      "id": "ffi:flint:fmpq_mat_solve",
+      "kind": "declared-ffi",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "fmpq_mat_solve",
+      "dynamic_package": "@sagemath/sagejs-flint",
+      "dynamic_export": "ffiFmpqMatSolve",
+      "symbol": "sagejs_flint_fmpq_mat_solve_parts",
       "disposition": "declared-safe-ffi"
     },
     {
@@ -4469,6 +4546,14 @@
       "path": "tools/python/contract.ts",
       "export": "qq",
       "symbol": "QQ",
+      "disposition": "runtime-primitive"
+    },
+    {
+      "id": "runtime:rational_buffers_from_packed_bytes",
+      "kind": "runtime-intrinsic",
+      "path": "tools/python/contract.ts",
+      "export": "rational_buffers_from_packed_bytes",
+      "symbol": "ρσ_rational_buffers_from_packed_bytes",
       "disposition": "runtime-primitive"
     },
     {

@@ -6,7 +6,7 @@ from typing import Any
 
 import sagejs.runtime as _runtime
 
-__sagejs_ffi_declaration__ = "flint@e03417ef925780f23c2e4ebf71dae147d41fedf4fc5c24589666920cb809147d"
+__sagejs_ffi_declaration__ = "flint@1caef6d72fb3f99477eb4f6181ed5d3ebc83c01dea66d50a8b0a1c171fcbceef"
 
 
 class DirichletGroup:
@@ -24,7 +24,7 @@ class DirichletGroup:
 
     def _ffi_borrow(self) -> Any:
         return _runtime.ffi_resource_borrow(
-            self._token, "resource:flint@e03417ef925780f23c2e4ebf71dae147d41fedf4fc5c24589666920cb809147d:dirichlet_group"
+            self._token, "resource:flint@1caef6d72fb3f99477eb4f6181ed5d3ebc83c01dea66d50a8b0a1c171fcbceef:dirichlet_group"
         )
 
     def __enter__(self) -> DirichletGroup:
@@ -41,7 +41,7 @@ def dirichlet_group(modulus: int) -> DirichletGroup:
     """Call declared flint:dirichlet_group_init."""
     return DirichletGroup(_runtime.ffi_resource_create(
         __sagejs_ffi_declaration__ + ":dirichlet_group_init",
-        "resource:flint@e03417ef925780f23c2e4ebf71dae147d41fedf4fc5c24589666920cb809147d:dirichlet_group",
+        "resource:flint@1caef6d72fb3f99477eb4f6181ed5d3ebc83c01dea66d50a8b0a1c171fcbceef:dirichlet_group",
         "@sagemath/sagejs-flint",
         "ffiDirichletGroupCreate",
         "ffiDirichletGroupClose",
@@ -61,7 +61,7 @@ def dirichlet_group_size(group: DirichletGroup) -> int:
         "@sagemath/sagejs-flint",
         "ffiDirichletGroupSize",
         [group._ffi_borrow()],
-        ["resource:flint@e03417ef925780f23c2e4ebf71dae147d41fedf4fc5c24589666920cb809147d:dirichlet_group"],
+        ["resource:flint@1caef6d72fb3f99477eb4f6181ed5d3ebc83c01dea66d50a8b0a1c171fcbceef:dirichlet_group"],
         "uint64",
         ["direct", [], None],
         None,
@@ -77,7 +77,7 @@ def dirichlet_group_num_primitive(group: DirichletGroup) -> int:
         "@sagemath/sagejs-flint",
         "ffiDirichletGroupNumPrimitive",
         [group._ffi_borrow()],
-        ["resource:flint@e03417ef925780f23c2e4ebf71dae147d41fedf4fc5c24589666920cb809147d:dirichlet_group"],
+        ["resource:flint@1caef6d72fb3f99477eb4f6181ed5d3ebc83c01dea66d50a8b0a1c171fcbceef:dirichlet_group"],
         "uint64",
         ["direct", [], None],
         None,
@@ -243,6 +243,118 @@ def fmpz_mat_right_kernel(output: list[int], source: list[int], rows: int, colum
         None,
         None,
         [["buffer_length","output",["columns","columns"],["output","source","rows","columns"]],["buffer_length","source",["rows","columns"],["output","source","rows","columns"]]],
+    )
+
+
+def fmpq_mat_rank(rank: list[int], numerators: list[int], denominators: list[int], rows: int, columns: int, one: int) -> bool:
+    """Call declared flint:fmpq_mat_rank."""
+    return _runtime.ffi_call(
+        __sagejs_ffi_declaration__ + ":fmpq_mat_rank",
+        "@sagemath/sagejs-flint",
+        "ffiFmpqMatRank",
+        [rank, numerators, denominators, rows, columns, one],
+        ["IntegerBuffer", "IntegerBuffer", "IntegerBuffer", "uint64", "uint64", "uint64"],
+        "bool",
+        ["status", [1], None],
+        "ValueError",
+        "FLINT rational matrix rank failed",
+        [["buffer_length","rank",["one","one"],["rank","numerators","denominators","rows","columns","one"]],["buffer_length","numerators",["rows","columns"],["rank","numerators","denominators","rows","columns","one"]],["buffer_length","denominators",["rows","columns"],["rank","numerators","denominators","rows","columns","one"]]],
+    )
+
+
+def fmpq_mat_mul(output_numerators: list[int], output_denominators: list[int], left_numerators: list[int], left_denominators: list[int], right_numerators: list[int], right_denominators: list[int], left_rows: int, inner: int, right_columns: int) -> bool:
+    """Call declared flint:fmpq_mat_mul."""
+    return _runtime.ffi_call(
+        __sagejs_ffi_declaration__ + ":fmpq_mat_mul",
+        "@sagemath/sagejs-flint",
+        "ffiFmpqMatMul",
+        [output_numerators, output_denominators, left_numerators, left_denominators, right_numerators, right_denominators, left_rows, inner, right_columns],
+        ["IntegerBuffer", "IntegerBuffer", "IntegerBuffer", "IntegerBuffer", "IntegerBuffer", "IntegerBuffer", "uint64", "uint64", "uint64"],
+        "bool",
+        ["status", [1], None],
+        "ValueError",
+        "FLINT rational matrix multiplication failed",
+        [["buffer_length","output_numerators",["left_rows","right_columns"],["output_numerators","output_denominators","left_numerators","left_denominators","right_numerators","right_denominators","left_rows","inner","right_columns"]],["buffer_length","output_denominators",["left_rows","right_columns"],["output_numerators","output_denominators","left_numerators","left_denominators","right_numerators","right_denominators","left_rows","inner","right_columns"]],["buffer_length","left_numerators",["left_rows","inner"],["output_numerators","output_denominators","left_numerators","left_denominators","right_numerators","right_denominators","left_rows","inner","right_columns"]],["buffer_length","left_denominators",["left_rows","inner"],["output_numerators","output_denominators","left_numerators","left_denominators","right_numerators","right_denominators","left_rows","inner","right_columns"]],["buffer_length","right_numerators",["inner","right_columns"],["output_numerators","output_denominators","left_numerators","left_denominators","right_numerators","right_denominators","left_rows","inner","right_columns"]],["buffer_length","right_denominators",["inner","right_columns"],["output_numerators","output_denominators","left_numerators","left_denominators","right_numerators","right_denominators","left_rows","inner","right_columns"]]],
+    )
+
+
+def fmpq_mat_rref(rank: list[int], output_numerators: list[int], output_denominators: list[int], source_numerators: list[int], source_denominators: list[int], rows: int, columns: int, one: int) -> bool:
+    """Call declared flint:fmpq_mat_rref."""
+    return _runtime.ffi_call(
+        __sagejs_ffi_declaration__ + ":fmpq_mat_rref",
+        "@sagemath/sagejs-flint",
+        "ffiFmpqMatRref",
+        [rank, output_numerators, output_denominators, source_numerators, source_denominators, rows, columns, one],
+        ["IntegerBuffer", "IntegerBuffer", "IntegerBuffer", "IntegerBuffer", "IntegerBuffer", "uint64", "uint64", "uint64"],
+        "bool",
+        ["status", [1], None],
+        "ValueError",
+        "FLINT rational matrix RREF failed",
+        [["buffer_length","rank",["one","one"],["rank","output_numerators","output_denominators","source_numerators","source_denominators","rows","columns","one"]],["buffer_length","output_numerators",["rows","columns"],["rank","output_numerators","output_denominators","source_numerators","source_denominators","rows","columns","one"]],["buffer_length","output_denominators",["rows","columns"],["rank","output_numerators","output_denominators","source_numerators","source_denominators","rows","columns","one"]],["buffer_length","source_numerators",["rows","columns"],["rank","output_numerators","output_denominators","source_numerators","source_denominators","rows","columns","one"]],["buffer_length","source_denominators",["rows","columns"],["rank","output_numerators","output_denominators","source_numerators","source_denominators","rows","columns","one"]]],
+    )
+
+
+def fmpq_mat_inv(output_numerators: list[int], output_denominators: list[int], source_numerators: list[int], source_denominators: list[int], size: int) -> bool:
+    """Call declared flint:fmpq_mat_inv."""
+    return _runtime.ffi_call(
+        __sagejs_ffi_declaration__ + ":fmpq_mat_inv",
+        "@sagemath/sagejs-flint",
+        "ffiFmpqMatInv",
+        [output_numerators, output_denominators, source_numerators, source_denominators, size],
+        ["IntegerBuffer", "IntegerBuffer", "IntegerBuffer", "IntegerBuffer", "uint64"],
+        "bool",
+        ["status", [1], None],
+        "ValueError",
+        "matrix is singular",
+        [["buffer_length","output_numerators",["size","size"],["output_numerators","output_denominators","source_numerators","source_denominators","size"]],["buffer_length","output_denominators",["size","size"],["output_numerators","output_denominators","source_numerators","source_denominators","size"]],["buffer_length","source_numerators",["size","size"],["output_numerators","output_denominators","source_numerators","source_denominators","size"]],["buffer_length","source_denominators",["size","size"],["output_numerators","output_denominators","source_numerators","source_denominators","size"]]],
+    )
+
+
+def fmpq_mat_solve(output_numerators: list[int], output_denominators: list[int], left_numerators: list[int], left_denominators: list[int], right_numerators: list[int], right_denominators: list[int], size: int, right_columns: int) -> bool:
+    """Call declared flint:fmpq_mat_solve."""
+    return _runtime.ffi_call(
+        __sagejs_ffi_declaration__ + ":fmpq_mat_solve",
+        "@sagemath/sagejs-flint",
+        "ffiFmpqMatSolve",
+        [output_numerators, output_denominators, left_numerators, left_denominators, right_numerators, right_denominators, size, right_columns],
+        ["IntegerBuffer", "IntegerBuffer", "IntegerBuffer", "IntegerBuffer", "IntegerBuffer", "IntegerBuffer", "uint64", "uint64"],
+        "bool",
+        ["status", [1], None],
+        "ValueError",
+        "matrix is singular",
+        [["buffer_length","output_numerators",["size","right_columns"],["output_numerators","output_denominators","left_numerators","left_denominators","right_numerators","right_denominators","size","right_columns"]],["buffer_length","output_denominators",["size","right_columns"],["output_numerators","output_denominators","left_numerators","left_denominators","right_numerators","right_denominators","size","right_columns"]],["buffer_length","left_numerators",["size","size"],["output_numerators","output_denominators","left_numerators","left_denominators","right_numerators","right_denominators","size","right_columns"]],["buffer_length","left_denominators",["size","size"],["output_numerators","output_denominators","left_numerators","left_denominators","right_numerators","right_denominators","size","right_columns"]],["buffer_length","right_numerators",["size","right_columns"],["output_numerators","output_denominators","left_numerators","left_denominators","right_numerators","right_denominators","size","right_columns"]],["buffer_length","right_denominators",["size","right_columns"],["output_numerators","output_denominators","left_numerators","left_denominators","right_numerators","right_denominators","size","right_columns"]]],
+    )
+
+
+def fmpq_mat_det(output_numerators: list[int], output_denominators: list[int], source_numerators: list[int], source_denominators: list[int], size: int, one: int) -> bool:
+    """Call declared flint:fmpq_mat_det."""
+    return _runtime.ffi_call(
+        __sagejs_ffi_declaration__ + ":fmpq_mat_det",
+        "@sagemath/sagejs-flint",
+        "ffiFmpqMatDet",
+        [output_numerators, output_denominators, source_numerators, source_denominators, size, one],
+        ["IntegerBuffer", "IntegerBuffer", "IntegerBuffer", "IntegerBuffer", "uint64", "uint64"],
+        "bool",
+        ["status", [1], None],
+        "ValueError",
+        "FLINT rational determinant failed",
+        [["buffer_length","output_numerators",["one","one"],["output_numerators","output_denominators","source_numerators","source_denominators","size","one"]],["buffer_length","output_denominators",["one","one"],["output_numerators","output_denominators","source_numerators","source_denominators","size","one"]],["buffer_length","source_numerators",["size","size"],["output_numerators","output_denominators","source_numerators","source_denominators","size","one"]],["buffer_length","source_denominators",["size","size"],["output_numerators","output_denominators","source_numerators","source_denominators","size","one"]]],
+    )
+
+
+def fmpq_mat_charpoly(output_numerators: list[int], output_denominators: list[int], source_numerators: list[int], source_denominators: list[int], coefficient_count: int, size: int, one: int) -> bool:
+    """Call declared flint:fmpq_mat_charpoly."""
+    return _runtime.ffi_call(
+        __sagejs_ffi_declaration__ + ":fmpq_mat_charpoly",
+        "@sagemath/sagejs-flint",
+        "ffiFmpqMatCharpoly",
+        [output_numerators, output_denominators, source_numerators, source_denominators, coefficient_count, size, one],
+        ["IntegerBuffer", "IntegerBuffer", "IntegerBuffer", "IntegerBuffer", "uint64", "uint64", "uint64"],
+        "bool",
+        ["status", [1], None],
+        "ValueError",
+        "FLINT rational characteristic polynomial failed",
+        [["buffer_length","output_numerators",["one","coefficient_count"],["output_numerators","output_denominators","source_numerators","source_denominators","coefficient_count","size","one"]],["buffer_length","output_denominators",["one","coefficient_count"],["output_numerators","output_denominators","source_numerators","source_denominators","coefficient_count","size","one"]],["buffer_length","source_numerators",["size","size"],["output_numerators","output_denominators","source_numerators","source_denominators","coefficient_count","size","one"]],["buffer_length","source_denominators",["size","size"],["output_numerators","output_denominators","source_numerators","source_denominators","coefficient_count","size","one"]]],
     )
 
 

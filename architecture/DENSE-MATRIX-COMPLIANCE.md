@@ -89,6 +89,29 @@ The representation, performance evidence, and reproduction commands are
 recorded in
 [`../bench/DENSE-INTEGER-MIGRATION.md`](../bench/DENSE-INTEGER-MIGRATION.md).
 
+Dense matrices over `QQ` now own an aggregate `RationalBuffer`: parallel
+row-major `IntegerBuffer` components containing canonical coprime numerators
+and positive denominators. Zero is uniquely `0/1`; structural arithmetic uses
+source-transparent typed Python with GCD-aware addition and cross-cancelled
+multiplication, and each exact component retains tagged machine-word/GMP
+promotion. Construction, bulk random and identity fill, indexing, mutation,
+copying, serialization, arithmetic, scalar multiplication, equality,
+transpose, stacking, augmentation, selection, density, trace, predicates, and
+result construction do not construct or retain an N-API matrix.
+
+Multiplication, rank, RREF, inverse, solve, determinant, and characteristic
+polynomial cross declared packed rational-matrix FFI contracts. Generated
+adapters copy both integer components into lexical FLINT `fmpq_mat` values,
+preflight both output components before committing either, and clear all
+temporaries on every exit. Right-kernel bookkeeping is readable typed Python
+over a packed declared RREF result. Exact eigenvalues compose the declared
+characteristic polynomial with the existing exact polynomial-root boundary;
+their stable presentation ordering is ordinary Python rather than a hidden
+matrix callback. `SAGEJS_FORBID_QQ_MATRIX_NAPI=1` proves the complete vertical
+slice while native execution is required and while the declared dynamic
+fallback is forced. Its architecture and performance evidence is recorded in
+[`../bench/DENSE-RATIONAL-MIGRATION.md`](../bench/DENSE-RATIONAL-MIGRATION.md).
+
 ## Retained representation primitives
 
 `acbMatrix`, `matrixExportPacked`, `nmodMatrix`, `nmodMatrixPacked`,
@@ -97,13 +120,13 @@ recorded in
 `zzMatrix`, `zzMatrixExportPacked`, `zzMatrixPacked`, and `zzMatrixToQQ`.
 
 These functions own opaque Node-facing matrix storage or conversion. The `ZZ`
-variants are now retained only for differential tests, generated dynamic
-adapters, and the audited compatibility ingress for legacy mathematical
-producers that have not yet migrated. They are no longer production
-representation primitives. The remaining functions are legitimate native
-primitives during their migrations, but they are not the portable public
-mathematical ABI. New hosts should use packed storage contracts and their own
-thin adapters rather than emulate JavaScript object lifetimes.
+and `QQ` variants are now retained only for differential tests, generated
+dynamic adapters, and audited compatibility producers outside their completed
+vertical slices. They are no longer production representation primitives.
+The remaining functions are legitimate native primitives during their
+migrations, but they are not the portable public mathematical ABI. New hosts
+should use packed storage contracts and their own thin adapters rather than
+emulate JavaScript object lifetimes.
 
 ## Declaration migrations
 
@@ -136,9 +159,10 @@ bodies plus the packed numeric domains needed to compile those bodies well.
 
 The dense prime-field typed-Python kernels show that nested matrix loops can
 reach native performance and can share one storage contract with mature
-FLINT. They do not by themselves prove the
-cyclotomic, algebraic, approximate, rational, and residue-ring algorithms above
-are migrated, so this document does not claim that.
+FLINT. Dense integer and rational matrices now prove the same ownership model
+for tagged exact arithmetic. They do not by themselves prove the cyclotomic,
+algebraic, approximate, and residue-ring algorithms above are migrated, so
+this document does not claim that.
 
 ## Enforcement
 

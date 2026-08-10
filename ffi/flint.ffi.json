@@ -1343,6 +1343,1179 @@
       }
     },
     {
+      "id": "fmpq_mat_rank",
+      "python_name": "fmpq_mat_rank",
+      "signature": {
+        "parameters": [
+          {
+            "name": "rank",
+            "type": "IntegerBuffer",
+            "ownership": "borrowed_mut",
+            "mutability": "write",
+            "aliasing": "allowed"
+          },
+          {
+            "name": "numerators",
+            "type": "IntegerBuffer",
+            "ownership": "borrowed",
+            "mutability": "read",
+            "aliasing": "allowed"
+          },
+          {
+            "name": "denominators",
+            "type": "IntegerBuffer",
+            "ownership": "borrowed",
+            "mutability": "read",
+            "aliasing": "allowed"
+          },
+          {
+            "name": "rows",
+            "type": "uint64",
+            "ownership": "value",
+            "mutability": "value",
+            "aliasing": "not_applicable"
+          },
+          {
+            "name": "columns",
+            "type": "uint64",
+            "ownership": "value",
+            "mutability": "value",
+            "aliasing": "not_applicable"
+          },
+          {
+            "name": "one",
+            "type": "uint64",
+            "ownership": "value",
+            "mutability": "value",
+            "aliasing": "not_applicable",
+            "minimum": "1"
+          }
+        ],
+        "return_type": "bool",
+        "return_ownership": "value",
+        "borrow_from": null
+      },
+      "dynamic": {
+        "export": "ffiFmpqMatRank"
+      },
+      "native": {
+        "symbol": "sagejs_flint_fmpq_mat_rank_parts",
+        "return_type": "int",
+        "arguments": [
+          {
+            "source": "output_rank",
+            "abi_type": "fmpz_mat_t",
+            "direction": "out",
+            "adapter": {
+              "kind": "packed_fmpz_matrix",
+              "data": "rank",
+              "rows": "one",
+              "columns": "one",
+              "access": "write",
+              "aliasing": "allowed",
+              "transactional": true
+            }
+          },
+          {
+            "source": "numerators",
+            "abi_type": "fmpz_mat_t",
+            "direction": "in",
+            "adapter": {
+              "kind": "packed_fmpz_matrix",
+              "data": "numerators",
+              "rows": "rows",
+              "columns": "columns",
+              "access": "read",
+              "aliasing": "allowed",
+              "transactional": false
+            }
+          },
+          {
+            "source": "denominators",
+            "abi_type": "fmpz_mat_t",
+            "direction": "in",
+            "adapter": {
+              "kind": "packed_fmpz_matrix",
+              "data": "denominators",
+              "rows": "rows",
+              "columns": "columns",
+              "access": "read",
+              "aliasing": "allowed",
+              "transactional": false
+            }
+          }
+        ]
+      },
+      "effects": {
+        "pure": false,
+        "deterministic": true,
+        "thread_safe": true,
+        "may_allocate": true,
+        "may_raise": [
+          "ValueError",
+          "OverflowError"
+        ],
+        "writes": [
+          "rank"
+        ]
+      },
+      "result": {
+        "domain": "status",
+        "success": [
+          1
+        ],
+        "absence": null
+      },
+      "errors": {
+        "exception": "ValueError",
+        "message": "FLINT rational matrix rank failed"
+      },
+      "exceptions": {
+        "policy": "none",
+        "failure_status": null
+      },
+      "targets": {
+        "dynamic": true,
+        "native": true,
+        "wasm": true
+      }
+    },
+    {
+      "id": "fmpq_mat_mul",
+      "python_name": "fmpq_mat_mul",
+      "signature": {
+        "parameters": [
+          {
+            "name": "output_numerators",
+            "type": "IntegerBuffer",
+            "ownership": "borrowed_mut",
+            "mutability": "write",
+            "aliasing": "allowed"
+          },
+          {
+            "name": "output_denominators",
+            "type": "IntegerBuffer",
+            "ownership": "borrowed_mut",
+            "mutability": "write",
+            "aliasing": "allowed"
+          },
+          {
+            "name": "left_numerators",
+            "type": "IntegerBuffer",
+            "ownership": "borrowed",
+            "mutability": "read",
+            "aliasing": "allowed"
+          },
+          {
+            "name": "left_denominators",
+            "type": "IntegerBuffer",
+            "ownership": "borrowed",
+            "mutability": "read",
+            "aliasing": "allowed"
+          },
+          {
+            "name": "right_numerators",
+            "type": "IntegerBuffer",
+            "ownership": "borrowed",
+            "mutability": "read",
+            "aliasing": "allowed"
+          },
+          {
+            "name": "right_denominators",
+            "type": "IntegerBuffer",
+            "ownership": "borrowed",
+            "mutability": "read",
+            "aliasing": "allowed"
+          },
+          {
+            "name": "left_rows",
+            "type": "uint64",
+            "ownership": "value",
+            "mutability": "value",
+            "aliasing": "not_applicable"
+          },
+          {
+            "name": "inner",
+            "type": "uint64",
+            "ownership": "value",
+            "mutability": "value",
+            "aliasing": "not_applicable"
+          },
+          {
+            "name": "right_columns",
+            "type": "uint64",
+            "ownership": "value",
+            "mutability": "value",
+            "aliasing": "not_applicable"
+          }
+        ],
+        "return_type": "bool",
+        "return_ownership": "value",
+        "borrow_from": null
+      },
+      "dynamic": {
+        "export": "ffiFmpqMatMul"
+      },
+      "native": {
+        "symbol": "sagejs_flint_fmpq_mat_mul_parts",
+        "return_type": "int",
+        "arguments": [
+          {
+            "source": "output_numerators",
+            "abi_type": "fmpz_mat_t",
+            "direction": "out",
+            "adapter": {
+              "kind": "packed_fmpz_matrix",
+              "data": "output_numerators",
+              "rows": "left_rows",
+              "columns": "right_columns",
+              "access": "write",
+              "aliasing": "allowed",
+              "transactional": true
+            }
+          },
+          {
+            "source": "output_denominators",
+            "abi_type": "fmpz_mat_t",
+            "direction": "out",
+            "adapter": {
+              "kind": "packed_fmpz_matrix",
+              "data": "output_denominators",
+              "rows": "left_rows",
+              "columns": "right_columns",
+              "access": "write",
+              "aliasing": "allowed",
+              "transactional": true
+            }
+          },
+          {
+            "source": "left_numerators",
+            "abi_type": "fmpz_mat_t",
+            "direction": "in",
+            "adapter": {
+              "kind": "packed_fmpz_matrix",
+              "data": "left_numerators",
+              "rows": "left_rows",
+              "columns": "inner",
+              "access": "read",
+              "aliasing": "allowed",
+              "transactional": false
+            }
+          },
+          {
+            "source": "left_denominators",
+            "abi_type": "fmpz_mat_t",
+            "direction": "in",
+            "adapter": {
+              "kind": "packed_fmpz_matrix",
+              "data": "left_denominators",
+              "rows": "left_rows",
+              "columns": "inner",
+              "access": "read",
+              "aliasing": "allowed",
+              "transactional": false
+            }
+          },
+          {
+            "source": "right_numerators",
+            "abi_type": "fmpz_mat_t",
+            "direction": "in",
+            "adapter": {
+              "kind": "packed_fmpz_matrix",
+              "data": "right_numerators",
+              "rows": "inner",
+              "columns": "right_columns",
+              "access": "read",
+              "aliasing": "allowed",
+              "transactional": false
+            }
+          },
+          {
+            "source": "right_denominators",
+            "abi_type": "fmpz_mat_t",
+            "direction": "in",
+            "adapter": {
+              "kind": "packed_fmpz_matrix",
+              "data": "right_denominators",
+              "rows": "inner",
+              "columns": "right_columns",
+              "access": "read",
+              "aliasing": "allowed",
+              "transactional": false
+            }
+          }
+        ]
+      },
+      "effects": {
+        "pure": false,
+        "deterministic": true,
+        "thread_safe": true,
+        "may_allocate": true,
+        "may_raise": [
+          "ValueError",
+          "OverflowError"
+        ],
+        "writes": [
+          "output_numerators",
+          "output_denominators"
+        ]
+      },
+      "result": {
+        "domain": "status",
+        "success": [
+          1
+        ],
+        "absence": null
+      },
+      "errors": {
+        "exception": "ValueError",
+        "message": "FLINT rational matrix multiplication failed"
+      },
+      "exceptions": {
+        "policy": "none",
+        "failure_status": null
+      },
+      "targets": {
+        "dynamic": true,
+        "native": true,
+        "wasm": true
+      }
+    },
+    {
+      "id": "fmpq_mat_rref",
+      "python_name": "fmpq_mat_rref",
+      "signature": {
+        "parameters": [
+          {
+            "name": "rank",
+            "type": "IntegerBuffer",
+            "ownership": "borrowed_mut",
+            "mutability": "write",
+            "aliasing": "allowed"
+          },
+          {
+            "name": "output_numerators",
+            "type": "IntegerBuffer",
+            "ownership": "borrowed_mut",
+            "mutability": "write",
+            "aliasing": "allowed"
+          },
+          {
+            "name": "output_denominators",
+            "type": "IntegerBuffer",
+            "ownership": "borrowed_mut",
+            "mutability": "write",
+            "aliasing": "allowed"
+          },
+          {
+            "name": "source_numerators",
+            "type": "IntegerBuffer",
+            "ownership": "borrowed",
+            "mutability": "read",
+            "aliasing": "allowed"
+          },
+          {
+            "name": "source_denominators",
+            "type": "IntegerBuffer",
+            "ownership": "borrowed",
+            "mutability": "read",
+            "aliasing": "allowed"
+          },
+          {
+            "name": "rows",
+            "type": "uint64",
+            "ownership": "value",
+            "mutability": "value",
+            "aliasing": "not_applicable"
+          },
+          {
+            "name": "columns",
+            "type": "uint64",
+            "ownership": "value",
+            "mutability": "value",
+            "aliasing": "not_applicable"
+          },
+          {
+            "name": "one",
+            "type": "uint64",
+            "ownership": "value",
+            "mutability": "value",
+            "aliasing": "not_applicable",
+            "minimum": "1"
+          }
+        ],
+        "return_type": "bool",
+        "return_ownership": "value",
+        "borrow_from": null
+      },
+      "dynamic": {
+        "export": "ffiFmpqMatRref"
+      },
+      "native": {
+        "symbol": "sagejs_flint_fmpq_mat_rref_parts",
+        "return_type": "int",
+        "arguments": [
+          {
+            "source": "output_rank",
+            "abi_type": "fmpz_mat_t",
+            "direction": "out",
+            "adapter": {
+              "kind": "packed_fmpz_matrix",
+              "data": "rank",
+              "rows": "one",
+              "columns": "one",
+              "access": "write",
+              "aliasing": "allowed",
+              "transactional": true
+            }
+          },
+          {
+            "source": "output_numerators",
+            "abi_type": "fmpz_mat_t",
+            "direction": "out",
+            "adapter": {
+              "kind": "packed_fmpz_matrix",
+              "data": "output_numerators",
+              "rows": "rows",
+              "columns": "columns",
+              "access": "write",
+              "aliasing": "allowed",
+              "transactional": true
+            }
+          },
+          {
+            "source": "output_denominators",
+            "abi_type": "fmpz_mat_t",
+            "direction": "out",
+            "adapter": {
+              "kind": "packed_fmpz_matrix",
+              "data": "output_denominators",
+              "rows": "rows",
+              "columns": "columns",
+              "access": "write",
+              "aliasing": "allowed",
+              "transactional": true
+            }
+          },
+          {
+            "source": "source_numerators",
+            "abi_type": "fmpz_mat_t",
+            "direction": "in",
+            "adapter": {
+              "kind": "packed_fmpz_matrix",
+              "data": "source_numerators",
+              "rows": "rows",
+              "columns": "columns",
+              "access": "read",
+              "aliasing": "allowed",
+              "transactional": false
+            }
+          },
+          {
+            "source": "source_denominators",
+            "abi_type": "fmpz_mat_t",
+            "direction": "in",
+            "adapter": {
+              "kind": "packed_fmpz_matrix",
+              "data": "source_denominators",
+              "rows": "rows",
+              "columns": "columns",
+              "access": "read",
+              "aliasing": "allowed",
+              "transactional": false
+            }
+          }
+        ]
+      },
+      "effects": {
+        "pure": false,
+        "deterministic": true,
+        "thread_safe": true,
+        "may_allocate": true,
+        "may_raise": [
+          "ValueError",
+          "OverflowError"
+        ],
+        "writes": [
+          "rank",
+          "output_numerators",
+          "output_denominators"
+        ]
+      },
+      "result": {
+        "domain": "status",
+        "success": [
+          1
+        ],
+        "absence": null
+      },
+      "errors": {
+        "exception": "ValueError",
+        "message": "FLINT rational matrix RREF failed"
+      },
+      "exceptions": {
+        "policy": "none",
+        "failure_status": null
+      },
+      "targets": {
+        "dynamic": true,
+        "native": true,
+        "wasm": true
+      }
+    },
+    {
+      "id": "fmpq_mat_inv",
+      "python_name": "fmpq_mat_inv",
+      "signature": {
+        "parameters": [
+          {
+            "name": "output_numerators",
+            "type": "IntegerBuffer",
+            "ownership": "borrowed_mut",
+            "mutability": "write",
+            "aliasing": "allowed"
+          },
+          {
+            "name": "output_denominators",
+            "type": "IntegerBuffer",
+            "ownership": "borrowed_mut",
+            "mutability": "write",
+            "aliasing": "allowed"
+          },
+          {
+            "name": "source_numerators",
+            "type": "IntegerBuffer",
+            "ownership": "borrowed",
+            "mutability": "read",
+            "aliasing": "allowed"
+          },
+          {
+            "name": "source_denominators",
+            "type": "IntegerBuffer",
+            "ownership": "borrowed",
+            "mutability": "read",
+            "aliasing": "allowed"
+          },
+          {
+            "name": "size",
+            "type": "uint64",
+            "ownership": "value",
+            "mutability": "value",
+            "aliasing": "not_applicable"
+          }
+        ],
+        "return_type": "bool",
+        "return_ownership": "value",
+        "borrow_from": null
+      },
+      "dynamic": {
+        "export": "ffiFmpqMatInv"
+      },
+      "native": {
+        "symbol": "sagejs_flint_fmpq_mat_inv_parts",
+        "return_type": "int",
+        "arguments": [
+          {
+            "source": "output_numerators",
+            "abi_type": "fmpz_mat_t",
+            "direction": "out",
+            "adapter": {
+              "kind": "packed_fmpz_matrix",
+              "data": "output_numerators",
+              "rows": "size",
+              "columns": "size",
+              "access": "write",
+              "aliasing": "allowed",
+              "transactional": true
+            }
+          },
+          {
+            "source": "output_denominators",
+            "abi_type": "fmpz_mat_t",
+            "direction": "out",
+            "adapter": {
+              "kind": "packed_fmpz_matrix",
+              "data": "output_denominators",
+              "rows": "size",
+              "columns": "size",
+              "access": "write",
+              "aliasing": "allowed",
+              "transactional": true
+            }
+          },
+          {
+            "source": "source_numerators",
+            "abi_type": "fmpz_mat_t",
+            "direction": "in",
+            "adapter": {
+              "kind": "packed_fmpz_matrix",
+              "data": "source_numerators",
+              "rows": "size",
+              "columns": "size",
+              "access": "read",
+              "aliasing": "allowed",
+              "transactional": false
+            }
+          },
+          {
+            "source": "source_denominators",
+            "abi_type": "fmpz_mat_t",
+            "direction": "in",
+            "adapter": {
+              "kind": "packed_fmpz_matrix",
+              "data": "source_denominators",
+              "rows": "size",
+              "columns": "size",
+              "access": "read",
+              "aliasing": "allowed",
+              "transactional": false
+            }
+          }
+        ]
+      },
+      "effects": {
+        "pure": false,
+        "deterministic": true,
+        "thread_safe": true,
+        "may_allocate": true,
+        "may_raise": [
+          "ValueError",
+          "OverflowError"
+        ],
+        "writes": [
+          "output_numerators",
+          "output_denominators"
+        ]
+      },
+      "result": {
+        "domain": "status",
+        "success": [
+          1
+        ],
+        "absence": null
+      },
+      "errors": {
+        "exception": "ValueError",
+        "message": "matrix is singular"
+      },
+      "exceptions": {
+        "policy": "none",
+        "failure_status": null
+      },
+      "targets": {
+        "dynamic": true,
+        "native": true,
+        "wasm": true
+      }
+    },
+    {
+      "id": "fmpq_mat_solve",
+      "python_name": "fmpq_mat_solve",
+      "signature": {
+        "parameters": [
+          {
+            "name": "output_numerators",
+            "type": "IntegerBuffer",
+            "ownership": "borrowed_mut",
+            "mutability": "write",
+            "aliasing": "allowed"
+          },
+          {
+            "name": "output_denominators",
+            "type": "IntegerBuffer",
+            "ownership": "borrowed_mut",
+            "mutability": "write",
+            "aliasing": "allowed"
+          },
+          {
+            "name": "left_numerators",
+            "type": "IntegerBuffer",
+            "ownership": "borrowed",
+            "mutability": "read",
+            "aliasing": "allowed"
+          },
+          {
+            "name": "left_denominators",
+            "type": "IntegerBuffer",
+            "ownership": "borrowed",
+            "mutability": "read",
+            "aliasing": "allowed"
+          },
+          {
+            "name": "right_numerators",
+            "type": "IntegerBuffer",
+            "ownership": "borrowed",
+            "mutability": "read",
+            "aliasing": "allowed"
+          },
+          {
+            "name": "right_denominators",
+            "type": "IntegerBuffer",
+            "ownership": "borrowed",
+            "mutability": "read",
+            "aliasing": "allowed"
+          },
+          {
+            "name": "size",
+            "type": "uint64",
+            "ownership": "value",
+            "mutability": "value",
+            "aliasing": "not_applicable"
+          },
+          {
+            "name": "right_columns",
+            "type": "uint64",
+            "ownership": "value",
+            "mutability": "value",
+            "aliasing": "not_applicable"
+          }
+        ],
+        "return_type": "bool",
+        "return_ownership": "value",
+        "borrow_from": null
+      },
+      "dynamic": {
+        "export": "ffiFmpqMatSolve"
+      },
+      "native": {
+        "symbol": "sagejs_flint_fmpq_mat_solve_parts",
+        "return_type": "int",
+        "arguments": [
+          {
+            "source": "output_numerators",
+            "abi_type": "fmpz_mat_t",
+            "direction": "out",
+            "adapter": {
+              "kind": "packed_fmpz_matrix",
+              "data": "output_numerators",
+              "rows": "size",
+              "columns": "right_columns",
+              "access": "write",
+              "aliasing": "allowed",
+              "transactional": true
+            }
+          },
+          {
+            "source": "output_denominators",
+            "abi_type": "fmpz_mat_t",
+            "direction": "out",
+            "adapter": {
+              "kind": "packed_fmpz_matrix",
+              "data": "output_denominators",
+              "rows": "size",
+              "columns": "right_columns",
+              "access": "write",
+              "aliasing": "allowed",
+              "transactional": true
+            }
+          },
+          {
+            "source": "left_numerators",
+            "abi_type": "fmpz_mat_t",
+            "direction": "in",
+            "adapter": {
+              "kind": "packed_fmpz_matrix",
+              "data": "left_numerators",
+              "rows": "size",
+              "columns": "size",
+              "access": "read",
+              "aliasing": "allowed",
+              "transactional": false
+            }
+          },
+          {
+            "source": "left_denominators",
+            "abi_type": "fmpz_mat_t",
+            "direction": "in",
+            "adapter": {
+              "kind": "packed_fmpz_matrix",
+              "data": "left_denominators",
+              "rows": "size",
+              "columns": "size",
+              "access": "read",
+              "aliasing": "allowed",
+              "transactional": false
+            }
+          },
+          {
+            "source": "right_numerators",
+            "abi_type": "fmpz_mat_t",
+            "direction": "in",
+            "adapter": {
+              "kind": "packed_fmpz_matrix",
+              "data": "right_numerators",
+              "rows": "size",
+              "columns": "right_columns",
+              "access": "read",
+              "aliasing": "allowed",
+              "transactional": false
+            }
+          },
+          {
+            "source": "right_denominators",
+            "abi_type": "fmpz_mat_t",
+            "direction": "in",
+            "adapter": {
+              "kind": "packed_fmpz_matrix",
+              "data": "right_denominators",
+              "rows": "size",
+              "columns": "right_columns",
+              "access": "read",
+              "aliasing": "allowed",
+              "transactional": false
+            }
+          }
+        ]
+      },
+      "effects": {
+        "pure": false,
+        "deterministic": true,
+        "thread_safe": true,
+        "may_allocate": true,
+        "may_raise": [
+          "ValueError",
+          "OverflowError"
+        ],
+        "writes": [
+          "output_numerators",
+          "output_denominators"
+        ]
+      },
+      "result": {
+        "domain": "status",
+        "success": [
+          1
+        ],
+        "absence": null
+      },
+      "errors": {
+        "exception": "ValueError",
+        "message": "matrix is singular"
+      },
+      "exceptions": {
+        "policy": "none",
+        "failure_status": null
+      },
+      "targets": {
+        "dynamic": true,
+        "native": true,
+        "wasm": true
+      }
+    },
+    {
+      "id": "fmpq_mat_det",
+      "python_name": "fmpq_mat_det",
+      "signature": {
+        "parameters": [
+          {
+            "name": "output_numerators",
+            "type": "IntegerBuffer",
+            "ownership": "borrowed_mut",
+            "mutability": "write",
+            "aliasing": "allowed"
+          },
+          {
+            "name": "output_denominators",
+            "type": "IntegerBuffer",
+            "ownership": "borrowed_mut",
+            "mutability": "write",
+            "aliasing": "allowed"
+          },
+          {
+            "name": "source_numerators",
+            "type": "IntegerBuffer",
+            "ownership": "borrowed",
+            "mutability": "read",
+            "aliasing": "allowed"
+          },
+          {
+            "name": "source_denominators",
+            "type": "IntegerBuffer",
+            "ownership": "borrowed",
+            "mutability": "read",
+            "aliasing": "allowed"
+          },
+          {
+            "name": "size",
+            "type": "uint64",
+            "ownership": "value",
+            "mutability": "value",
+            "aliasing": "not_applicable"
+          },
+          {
+            "name": "one",
+            "type": "uint64",
+            "ownership": "value",
+            "mutability": "value",
+            "aliasing": "not_applicable",
+            "minimum": "1"
+          }
+        ],
+        "return_type": "bool",
+        "return_ownership": "value",
+        "borrow_from": null
+      },
+      "dynamic": {
+        "export": "ffiFmpqMatDet"
+      },
+      "native": {
+        "symbol": "sagejs_flint_fmpq_mat_det_parts",
+        "return_type": "int",
+        "arguments": [
+          {
+            "source": "output_numerators",
+            "abi_type": "fmpz_mat_t",
+            "direction": "out",
+            "adapter": {
+              "kind": "packed_fmpz_matrix",
+              "data": "output_numerators",
+              "rows": "one",
+              "columns": "one",
+              "access": "write",
+              "aliasing": "allowed",
+              "transactional": true
+            }
+          },
+          {
+            "source": "output_denominators",
+            "abi_type": "fmpz_mat_t",
+            "direction": "out",
+            "adapter": {
+              "kind": "packed_fmpz_matrix",
+              "data": "output_denominators",
+              "rows": "one",
+              "columns": "one",
+              "access": "write",
+              "aliasing": "allowed",
+              "transactional": true
+            }
+          },
+          {
+            "source": "source_numerators",
+            "abi_type": "fmpz_mat_t",
+            "direction": "in",
+            "adapter": {
+              "kind": "packed_fmpz_matrix",
+              "data": "source_numerators",
+              "rows": "size",
+              "columns": "size",
+              "access": "read",
+              "aliasing": "allowed",
+              "transactional": false
+            }
+          },
+          {
+            "source": "source_denominators",
+            "abi_type": "fmpz_mat_t",
+            "direction": "in",
+            "adapter": {
+              "kind": "packed_fmpz_matrix",
+              "data": "source_denominators",
+              "rows": "size",
+              "columns": "size",
+              "access": "read",
+              "aliasing": "allowed",
+              "transactional": false
+            }
+          }
+        ]
+      },
+      "effects": {
+        "pure": false,
+        "deterministic": true,
+        "thread_safe": true,
+        "may_allocate": true,
+        "may_raise": [
+          "ValueError",
+          "OverflowError"
+        ],
+        "writes": [
+          "output_numerators",
+          "output_denominators"
+        ]
+      },
+      "result": {
+        "domain": "status",
+        "success": [
+          1
+        ],
+        "absence": null
+      },
+      "errors": {
+        "exception": "ValueError",
+        "message": "FLINT rational determinant failed"
+      },
+      "exceptions": {
+        "policy": "none",
+        "failure_status": null
+      },
+      "targets": {
+        "dynamic": true,
+        "native": true,
+        "wasm": true
+      }
+    },
+    {
+      "id": "fmpq_mat_charpoly",
+      "python_name": "fmpq_mat_charpoly",
+      "signature": {
+        "parameters": [
+          {
+            "name": "output_numerators",
+            "type": "IntegerBuffer",
+            "ownership": "borrowed_mut",
+            "mutability": "write",
+            "aliasing": "allowed"
+          },
+          {
+            "name": "output_denominators",
+            "type": "IntegerBuffer",
+            "ownership": "borrowed_mut",
+            "mutability": "write",
+            "aliasing": "allowed"
+          },
+          {
+            "name": "source_numerators",
+            "type": "IntegerBuffer",
+            "ownership": "borrowed",
+            "mutability": "read",
+            "aliasing": "allowed"
+          },
+          {
+            "name": "source_denominators",
+            "type": "IntegerBuffer",
+            "ownership": "borrowed",
+            "mutability": "read",
+            "aliasing": "allowed"
+          },
+          {
+            "name": "coefficient_count",
+            "type": "uint64",
+            "ownership": "value",
+            "mutability": "value",
+            "aliasing": "not_applicable"
+          },
+          {
+            "name": "size",
+            "type": "uint64",
+            "ownership": "value",
+            "mutability": "value",
+            "aliasing": "not_applicable"
+          },
+          {
+            "name": "one",
+            "type": "uint64",
+            "ownership": "value",
+            "mutability": "value",
+            "aliasing": "not_applicable",
+            "minimum": "1"
+          }
+        ],
+        "return_type": "bool",
+        "return_ownership": "value",
+        "borrow_from": null
+      },
+      "dynamic": {
+        "export": "ffiFmpqMatCharpoly"
+      },
+      "native": {
+        "symbol": "sagejs_flint_fmpq_mat_charpoly_parts",
+        "return_type": "int",
+        "arguments": [
+          {
+            "source": "output_numerators",
+            "abi_type": "fmpz_mat_t",
+            "direction": "out",
+            "adapter": {
+              "kind": "packed_fmpz_matrix",
+              "data": "output_numerators",
+              "rows": "one",
+              "columns": "coefficient_count",
+              "access": "write",
+              "aliasing": "allowed",
+              "transactional": true
+            }
+          },
+          {
+            "source": "output_denominators",
+            "abi_type": "fmpz_mat_t",
+            "direction": "out",
+            "adapter": {
+              "kind": "packed_fmpz_matrix",
+              "data": "output_denominators",
+              "rows": "one",
+              "columns": "coefficient_count",
+              "access": "write",
+              "aliasing": "allowed",
+              "transactional": true
+            }
+          },
+          {
+            "source": "source_numerators",
+            "abi_type": "fmpz_mat_t",
+            "direction": "in",
+            "adapter": {
+              "kind": "packed_fmpz_matrix",
+              "data": "source_numerators",
+              "rows": "size",
+              "columns": "size",
+              "access": "read",
+              "aliasing": "allowed",
+              "transactional": false
+            }
+          },
+          {
+            "source": "source_denominators",
+            "abi_type": "fmpz_mat_t",
+            "direction": "in",
+            "adapter": {
+              "kind": "packed_fmpz_matrix",
+              "data": "source_denominators",
+              "rows": "size",
+              "columns": "size",
+              "access": "read",
+              "aliasing": "allowed",
+              "transactional": false
+            }
+          }
+        ]
+      },
+      "effects": {
+        "pure": false,
+        "deterministic": true,
+        "thread_safe": true,
+        "may_allocate": true,
+        "may_raise": [
+          "ValueError",
+          "OverflowError"
+        ],
+        "writes": [
+          "output_numerators",
+          "output_denominators"
+        ]
+      },
+      "result": {
+        "domain": "status",
+        "success": [
+          1
+        ],
+        "absence": null
+      },
+      "errors": {
+        "exception": "ValueError",
+        "message": "FLINT rational characteristic polynomial failed"
+      },
+      "exceptions": {
+        "policy": "none",
+        "failure_status": null
+      },
+      "targets": {
+        "dynamic": true,
+        "native": true,
+        "wasm": true
+      }
+    },
+    {
       "id": "nmod_mat_rank",
       "python_name": "nmod_mat_rank",
       "signature": {

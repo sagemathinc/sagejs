@@ -5,6 +5,9 @@
 
 #include <flint/nmod_poly.h>
 #include <flint/nmod_mat.h>
+#include <flint/fmpq.h>
+#include <flint/fmpq_mat.h>
+#include <flint/fmpq_poly.h>
 #include <flint/fmpz_mat.h>
 #include <flint/fmpz_poly.h>
 #include <flint/ulong_extras.h>
@@ -296,6 +299,287 @@ static inline slong sagejs_flint_fmpz_mat_right_kernel(
     fmpz_mat_clear(hermite);
     fmpz_mat_clear(transpose);
     return nullity;
+}
+
+/* Host-neutral rational matrices use two packed exact-integer matrices.
+ * The generated declaration adapter owns those buffers and the temporary
+ * fmpz_mat_t values.  These helpers alone construct lexical fmpq_mat_t
+ * values, so public mathematical objects never own a FLINT or Node-API
+ * handle. */
+static inline int sagejs_flint_fmpq_mat_set_parts(
+    fmpq_mat_t output,
+    const fmpz_mat_t numerators,
+    const fmpz_mat_t denominators)
+{
+    const slong rows = fmpq_mat_nrows(output);
+    const slong columns = fmpq_mat_ncols(output);
+    if (fmpz_mat_nrows(numerators) != rows ||
+        fmpz_mat_ncols(numerators) != columns ||
+        fmpz_mat_nrows(denominators) != rows ||
+        fmpz_mat_ncols(denominators) != columns)
+        return 0;
+    for (slong row = 0; row < rows; row++)
+        for (slong column = 0; column < columns; column++)
+        {
+            const fmpz *denominator =
+                fmpz_mat_entry(denominators, row, column);
+            if (fmpz_is_zero(denominator))
+                return 0;
+            fmpq_set_fmpz_frac(
+                fmpq_mat_entry(output, row, column),
+                fmpz_mat_entry(numerators, row, column),
+                denominator);
+            fmpq_canonicalise(fmpq_mat_entry(output, row, column));
+        }
+    return 1;
+}
+
+static inline int sagejs_flint_fmpq_mat_get_parts(
+    fmpz_mat_t numerators,
+    fmpz_mat_t denominators,
+    const fmpq_mat_t source)
+{
+    const slong rows = fmpq_mat_nrows(source);
+    const slong columns = fmpq_mat_ncols(source);
+    if (fmpz_mat_nrows(numerators) != rows ||
+        fmpz_mat_ncols(numerators) != columns ||
+        fmpz_mat_nrows(denominators) != rows ||
+        fmpz_mat_ncols(denominators) != columns)
+        return 0;
+    for (slong row = 0; row < rows; row++)
+        for (slong column = 0; column < columns; column++)
+        {
+            const fmpq *entry = fmpq_mat_entry(source, row, column);
+            fmpz_set(fmpz_mat_entry(numerators, row, column),
+                fmpq_numref(entry));
+            fmpz_set(fmpz_mat_entry(denominators, row, column),
+                fmpq_denref(entry));
+        }
+    return 1;
+}
+
+static inline int sagejs_flint_fmpq_mat_mul_parts(
+    fmpz_mat_t output_numerators,
+    fmpz_mat_t output_denominators,
+    const fmpz_mat_t left_numerators,
+    const fmpz_mat_t left_denominators,
+    const fmpz_mat_t right_numerators,
+    const fmpz_mat_t right_denominators)
+{
+    int success = 0;
+    fmpq_mat_t left, right, output;
+    fmpq_mat_init(left, fmpz_mat_nrows(left_numerators),
+        fmpz_mat_ncols(left_numerators));
+    fmpq_mat_init(right, fmpz_mat_nrows(right_numerators),
+        fmpz_mat_ncols(right_numerators));
+    fmpq_mat_init(output, fmpz_mat_nrows(output_numerators),
+        fmpz_mat_ncols(output_numerators));
+    if (!sagejs_flint_fmpq_mat_set_parts(
+            left, left_numerators, left_denominators) ||
+        !sagejs_flint_fmpq_mat_set_parts(
+            right, right_numerators, right_denominators) ||
+        fmpq_mat_nrows(output) != fmpq_mat_nrows(left) ||
+        fmpq_mat_ncols(left) != fmpq_mat_nrows(right) ||
+        fmpq_mat_ncols(output) != fmpq_mat_ncols(right))
+        goto cleanup;
+    fmpq_mat_mul(output, left, right);
+    success = sagejs_flint_fmpq_mat_get_parts(
+        output_numerators, output_denominators, output);
+cleanup:
+    fmpq_mat_clear(output);
+    fmpq_mat_clear(right);
+    fmpq_mat_clear(left);
+    return success;
+}
+
+static inline int sagejs_flint_fmpq_mat_rank_parts(
+    fmpz_mat_t output_rank,
+    const fmpz_mat_t numerators,
+    const fmpz_mat_t denominators)
+{
+    slong rank = -1;
+    fmpq_mat_t source, reduced;
+    if (fmpz_mat_nrows(output_rank) != 1 ||
+        fmpz_mat_ncols(output_rank) != 1)
+        return 0;
+    fmpq_mat_init(source, fmpz_mat_nrows(numerators),
+        fmpz_mat_ncols(numerators));
+    fmpq_mat_init(reduced, fmpz_mat_nrows(numerators),
+        fmpz_mat_ncols(numerators));
+    if (sagejs_flint_fmpq_mat_set_parts(
+            source, numerators, denominators))
+        rank = fmpq_mat_rref(reduced, source);
+    fmpq_mat_clear(reduced);
+    fmpq_mat_clear(source);
+    if (rank < 0)
+        return 0;
+    fmpz_set_si(fmpz_mat_entry(output_rank, 0, 0), rank);
+    return 1;
+}
+
+static inline int sagejs_flint_fmpq_mat_rref_parts(
+    fmpz_mat_t output_rank,
+    fmpz_mat_t output_numerators,
+    fmpz_mat_t output_denominators,
+    const fmpz_mat_t source_numerators,
+    const fmpz_mat_t source_denominators)
+{
+    slong rank = -1;
+    fmpq_mat_t source, output;
+    if (fmpz_mat_nrows(output_rank) != 1 ||
+        fmpz_mat_ncols(output_rank) != 1)
+        return 0;
+    fmpq_mat_init(source, fmpz_mat_nrows(source_numerators),
+        fmpz_mat_ncols(source_numerators));
+    fmpq_mat_init(output, fmpz_mat_nrows(output_numerators),
+        fmpz_mat_ncols(output_numerators));
+    if (sagejs_flint_fmpq_mat_set_parts(
+            source, source_numerators, source_denominators) &&
+        fmpq_mat_nrows(output) == fmpq_mat_nrows(source) &&
+        fmpq_mat_ncols(output) == fmpq_mat_ncols(source))
+    {
+        rank = fmpq_mat_rref(output, source);
+        if (!sagejs_flint_fmpq_mat_get_parts(
+                output_numerators, output_denominators, output))
+            rank = -1;
+    }
+    fmpq_mat_clear(output);
+    fmpq_mat_clear(source);
+    if (rank < 0)
+        return 0;
+    fmpz_set_si(fmpz_mat_entry(output_rank, 0, 0), rank);
+    return 1;
+}
+
+static inline int sagejs_flint_fmpq_mat_inv_parts(
+    fmpz_mat_t output_numerators,
+    fmpz_mat_t output_denominators,
+    const fmpz_mat_t source_numerators,
+    const fmpz_mat_t source_denominators)
+{
+    int success = 0;
+    fmpq_mat_t source, output;
+    fmpq_mat_init(source, fmpz_mat_nrows(source_numerators),
+        fmpz_mat_ncols(source_numerators));
+    fmpq_mat_init(output, fmpz_mat_nrows(output_numerators),
+        fmpz_mat_ncols(output_numerators));
+    if (sagejs_flint_fmpq_mat_set_parts(
+            source, source_numerators, source_denominators) &&
+        fmpq_mat_nrows(source) == fmpq_mat_ncols(source) &&
+        fmpq_mat_nrows(output) == fmpq_mat_nrows(source) &&
+        fmpq_mat_ncols(output) == fmpq_mat_ncols(source) &&
+        fmpq_mat_inv(output, source))
+        success = sagejs_flint_fmpq_mat_get_parts(
+            output_numerators, output_denominators, output);
+    fmpq_mat_clear(output);
+    fmpq_mat_clear(source);
+    return success;
+}
+
+static inline int sagejs_flint_fmpq_mat_solve_parts(
+    fmpz_mat_t output_numerators,
+    fmpz_mat_t output_denominators,
+    const fmpz_mat_t left_numerators,
+    const fmpz_mat_t left_denominators,
+    const fmpz_mat_t right_numerators,
+    const fmpz_mat_t right_denominators)
+{
+    int success = 0;
+    fmpq_mat_t left, right, output;
+    fmpq_mat_init(left, fmpz_mat_nrows(left_numerators),
+        fmpz_mat_ncols(left_numerators));
+    fmpq_mat_init(right, fmpz_mat_nrows(right_numerators),
+        fmpz_mat_ncols(right_numerators));
+    fmpq_mat_init(output, fmpz_mat_nrows(output_numerators),
+        fmpz_mat_ncols(output_numerators));
+    if (sagejs_flint_fmpq_mat_set_parts(
+            left, left_numerators, left_denominators) &&
+        sagejs_flint_fmpq_mat_set_parts(
+            right, right_numerators, right_denominators) &&
+        fmpq_mat_nrows(left) == fmpq_mat_ncols(left) &&
+        fmpq_mat_nrows(right) == fmpq_mat_nrows(left) &&
+        fmpq_mat_nrows(output) == fmpq_mat_ncols(left) &&
+        fmpq_mat_ncols(output) == fmpq_mat_ncols(right) &&
+        fmpq_mat_solve(output, left, right))
+        success = sagejs_flint_fmpq_mat_get_parts(
+            output_numerators, output_denominators, output);
+    fmpq_mat_clear(output);
+    fmpq_mat_clear(right);
+    fmpq_mat_clear(left);
+    return success;
+}
+
+static inline int sagejs_flint_fmpq_mat_det_parts(
+    fmpz_mat_t output_numerators,
+    fmpz_mat_t output_denominators,
+    const fmpz_mat_t source_numerators,
+    const fmpz_mat_t source_denominators)
+{
+    int success = 0;
+    fmpq_mat_t source;
+    fmpq_t determinant;
+    if (fmpz_mat_nrows(output_numerators) != 1 ||
+        fmpz_mat_ncols(output_numerators) != 1 ||
+        fmpz_mat_nrows(output_denominators) != 1 ||
+        fmpz_mat_ncols(output_denominators) != 1)
+        return 0;
+    fmpq_mat_init(source, fmpz_mat_nrows(source_numerators),
+        fmpz_mat_ncols(source_numerators));
+    fmpq_init(determinant);
+    if (sagejs_flint_fmpq_mat_set_parts(
+            source, source_numerators, source_denominators) &&
+        fmpq_mat_nrows(source) == fmpq_mat_ncols(source))
+    {
+        fmpq_mat_det(determinant, source);
+        fmpz_set(fmpz_mat_entry(output_numerators, 0, 0),
+            fmpq_numref(determinant));
+        fmpz_set(fmpz_mat_entry(output_denominators, 0, 0),
+            fmpq_denref(determinant));
+        success = 1;
+    }
+    fmpq_clear(determinant);
+    fmpq_mat_clear(source);
+    return success;
+}
+
+static inline int sagejs_flint_fmpq_mat_charpoly_parts(
+    fmpz_mat_t output_numerators,
+    fmpz_mat_t output_denominators,
+    const fmpz_mat_t source_numerators,
+    const fmpz_mat_t source_denominators)
+{
+    int success = 0;
+    const slong size = fmpz_mat_nrows(source_numerators);
+    fmpq_mat_t source;
+    fmpq_poly_t polynomial;
+    fmpq_t coefficient;
+    if (fmpz_mat_ncols(source_numerators) != size ||
+        fmpz_mat_nrows(output_numerators) != 1 ||
+        fmpz_mat_ncols(output_numerators) != size + 1 ||
+        fmpz_mat_nrows(output_denominators) != 1 ||
+        fmpz_mat_ncols(output_denominators) != size + 1)
+        return 0;
+    fmpq_mat_init(source, size, size);
+    fmpq_poly_init(polynomial);
+    fmpq_init(coefficient);
+    if (sagejs_flint_fmpq_mat_set_parts(
+            source, source_numerators, source_denominators))
+    {
+        fmpq_mat_charpoly(polynomial, source);
+        for (slong index = 0; index <= size; index++)
+        {
+            fmpq_poly_get_coeff_fmpq(coefficient, polynomial, index);
+            fmpz_set(fmpz_mat_entry(output_numerators, 0, index),
+                fmpq_numref(coefficient));
+            fmpz_set(fmpz_mat_entry(output_denominators, 0, index),
+                fmpq_denref(coefficient));
+        }
+        success = 1;
+    }
+    fmpq_clear(coefficient);
+    fmpq_poly_clear(polynomial);
+    fmpq_mat_clear(source);
+    return success;
 }
 
 #ifdef __cplusplus

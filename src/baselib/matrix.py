@@ -18,6 +18,8 @@ _dense_prime_kernel_module_cache = runtime.undefined
 _dense_prime_flint_module_cache = runtime.undefined
 _dense_integer_kernel_module_cache = runtime.undefined
 _dense_integer_flint_module_cache = runtime.undefined
+_dense_rational_kernel_module_cache = runtime.undefined
+_dense_rational_flint_module_cache = runtime.undefined
 
 
 class _PackedIntegerStorage:
@@ -25,6 +27,18 @@ class _PackedIntegerStorage:
 
     def __init__(self, entries: Any) -> None:
         self.entries = entries
+
+
+class _PackedRationalStorage:
+    """Compiler-owned normalized numerator and denominator buffers."""
+
+    def __init__(self, numerators: Any, denominators: Any) -> None:
+        if _integer_buffer_length(numerators) != _integer_buffer_length(
+            denominators
+        ):
+            raise ValueError('rational buffer component lengths differ')
+        self.numerators = numerators
+        self.denominators = denominators
 
 
 def _dense_integer_kernel_module() -> Any:
@@ -45,6 +59,26 @@ def _dense_integer_flint_module() -> Any:
             fromlist=['dense_integer_flint'],
         )
     return _dense_integer_flint_module_cache
+
+
+def _dense_rational_kernel_module() -> Any:
+    """Load source-transparent dense ``QQ`` structural kernels lazily."""
+    global _dense_rational_kernel_module_cache
+    if _dense_rational_kernel_module_cache is runtime.undefined:
+        _dense_rational_kernel_module_cache = __import__(
+            'sagejs.kernels.dense_rational', fromlist=['dense_rational'])
+    return _dense_rational_kernel_module_cache
+
+
+def _dense_rational_flint_module() -> Any:
+    """Load declared-FLINT packed rational algorithms lazily."""
+    global _dense_rational_flint_module_cache
+    if _dense_rational_flint_module_cache is runtime.undefined:
+        _dense_rational_flint_module_cache = __import__(
+            'sagejs.kernels.dense_rational_flint',
+            fromlist=['dense_rational_flint'],
+        )
+    return _dense_rational_flint_module_cache
 
 
 def _dense_prime_kernel_module() -> Any:
@@ -112,6 +146,21 @@ def _trace_dense_integer_selection(
     ) is True:
         print(
             f'[sagejs native] Matrix.{operation} ZZ '
+            f'{rows}x{columns} -> {implementation}')
+
+
+def _trace_dense_rational_selection(
+    operation: str,
+    implementation: str,
+    rows: int,
+    columns: int,
+) -> None:
+    if runtime.reflect.get(
+        runtime.global_object,
+        '__sagejs_native_trace_enabled__',
+    ) is True:
+        print(
+            f'[sagejs native] Matrix.{operation} QQ '
             f'{rows}x{columns} -> {implementation}')
 
 
@@ -254,6 +303,35 @@ def _run_integer_outputs(
             if capacity > 1048576:
                 raise OverflowError(  # noqa: B904
                     'integer matrix output requires excessive limb capacity'
+                )
+
+
+def _run_rational_output(
+    kernel_function: Any,
+    length: int,
+    invoke: Any,
+    initial_capacity: int,
+) -> _PackedRationalStorage:
+    """Retry a transactional rational result with wider component limbs."""
+    capacity = max(1, initial_capacity)
+    while True:
+        numerators = _dense_integer_zeros(
+            kernel_function, length, capacity)
+        denominators = _dense_integer_zeros(
+            kernel_function, length, capacity)
+        try:
+            invoke(numerators, denominators)
+            return _PackedRationalStorage(
+                _compact_integer_buffer(numerators),
+                _compact_integer_buffer(denominators),
+            )
+        except Exception as error:
+            if not _integer_capacity_error(error):
+                raise
+            capacity *= 2
+            if capacity > 1048576:
+                raise OverflowError(  # noqa: B904
+                    'rational matrix output requires excessive limb capacity'
                 )
 
 
@@ -430,14 +508,8 @@ def _native_matrix(
         raise RuntimeError(
             'dense ZZ matrices must use compiler-owned IntegerBuffer storage')
     if base is sage.QQ:
-        entries = []
-        for value in values:
-            rational = sage.QQ(value)
-            entries.append([
-                rational._numerator,
-                rational._denominator,
-            ])
-        return backend.qqMatrix(rows, cols, entries)
+        raise RuntimeError(
+            'dense QQ matrices must use compiler-owned RationalBuffer storage')
     if _is_algebraic_base(base):
         entries = []
         for value in values:
@@ -491,6 +563,56 @@ def _rational_result(value: Any) -> sage.Rational:
         runtime.reflect.get(value, 'numerator'),
         runtime.reflect.get(value, 'denominator'),
     )
+
+
+def _compare_exact_eigenvalues(left: Any, right: Any) -> int:
+    """Compare exact eigenvalues in Sage.js's presentation order.
+
+    Eigenvalues are roots of the declared packed characteristic polynomial.
+    Ordering is host-level presentation policy rather than part of the FLINT
+    matrix ABI: real values come first in decreasing order, followed by
+    complex values ordered by decreasing real part, increasing absolute
+    imaginary part, and then imaginary sign.
+    """
+    left_real = left.is_real()
+    right_real = right.is_real()
+    if left_real != right_real:
+        if left_real:
+            return -1
+        return 1
+    left_part = left.real()
+    right_part = right.real()
+    if left_part > right_part:
+        return -1
+    if left_part < right_part:
+        return 1
+    left_imaginary = left.imag()
+    right_imaginary = right.imag()
+    left_absolute = abs(left_imaginary)
+    right_absolute = abs(right_imaginary)
+    if left_absolute < right_absolute:
+        return -1
+    if left_absolute > right_absolute:
+        return 1
+    if left_imaginary < right_imaginary:
+        return -1
+    if left_imaginary > right_imaginary:
+        return 1
+    return 0
+
+
+def _order_exact_eigenvalues(values: list[Any]) -> list[Any]:
+    """Stable insertion sort for the small exact algebraic result list."""
+    answer = []
+    for value in values:
+        position = len(answer)
+        while (
+            position > 0
+            and _compare_exact_eigenvalues(value, answer[position - 1]) < 0
+        ):
+            position -= 1
+        answer.insert(position, value)
+    return answer
 
 
 def _entry_from_native(base: sage.Parent, value: Any) -> Any:
@@ -743,9 +865,9 @@ class MatrixSpaceParent(sage.Parent):
 
     def _from_native(self, native_value: Any) -> Matrix:
         """Construct an element from a trusted native matrix handle."""
-        if self._base is sage.ZZ:
+        if self._base is sage.ZZ or self._base is sage.QQ:
             raise RuntimeError(
-                'dense ZZ matrices cannot be constructed from N-API handles')
+                'dense exact matrices cannot be constructed from N-API handles')
         return Matrix(self, native_value)
 
     def _from_packed_residues(
@@ -854,10 +976,83 @@ class MatrixSpaceParent(sage.Parent):
 
     def _from_packed_rationals(self, entries: Any) -> Matrix:
         """Construct a rational matrix from packed numerator/denominator data."""
+        count = self._rows * self._cols
+        try:
+            buffers = runtime.rational_buffers_from_packed_bytes(
+                entries, count)
+        except Exception as error:
+            raise ValueError(str(error))  # noqa: B904
+        return self._from_canonical_rational_entries(
+            buffers[0], buffers[1])
+
+    def _from_rational_values(self, entries: Any) -> Matrix:
+        """Coerce and pack row-major entries for a dense ``QQ`` matrix."""
+        if self._base is not sage.QQ:
+            raise TypeError('rational storage requires QQ')
+        if len(entries) != self._rows * self._cols:
+            raise ValueError('matrix entry count does not match dimensions')
+        numerators = []
+        denominators = []
+        for entry in entries:
+            if runtime.is_exact_integer(entry):
+                numerators.append(entry)
+                denominators.append(1)
+            elif getattr(entry, '_parent', None) is sage.QQ:
+                numerators.append(_untyped(entry)._numerator)
+                denominators.append(_untyped(entry)._denominator)
+            else:
+                rational = sage.QQ(entry)
+                numerators.append(rational._numerator)
+                denominators.append(rational._denominator)
+        # Every path above produced a canonical pair.  Pack exactly once;
+        # routing back through ``_from_rational_parts`` would repeat 2n GCDs
+        # at the public construction boundary.
+        kernel = _dense_rational_kernel_module().dense_rational_copy
+        return self._from_canonical_rational_entries(
+            _dense_integer_buffer(kernel, numerators, 1),
+            _dense_integer_buffer(kernel, denominators, 1),
+        )
+
+    def _from_rational_parts(
+        self, numerators: Any, denominators: Any,
+    ) -> Matrix:
+        """Normalize and own explicit rational numerator/denominator parts."""
+        if self._base is not sage.QQ:
+            raise TypeError('rational storage requires QQ')
+        count = self._rows * self._cols
+        if len(numerators) != count or len(denominators) != count:
+            raise ValueError('rational matrix component lengths differ')
+        normalized_numerators = []
+        normalized_denominators = []
+        for index in range(count):
+            rational = _untyped(sage.QQ)(
+                numerators[index], denominators[index])
+            normalized_numerators.append(rational._numerator)
+            normalized_denominators.append(rational._denominator)
+        kernel = _dense_rational_kernel_module().dense_rational_copy
+        return self._from_canonical_rational_entries(
+            _dense_integer_buffer(kernel, normalized_numerators, 1),
+            _dense_integer_buffer(kernel, normalized_denominators, 1),
+        )
+
+    def _from_canonical_rational_entries(
+        self, numerators: Any, denominators: Any,
+    ) -> Matrix:
+        """Take ownership of trusted normalized rational component buffers."""
+        if self._base is not sage.QQ:
+            raise TypeError('rational storage requires QQ')
+        count = self._rows * self._cols
+        if (
+            _integer_buffer_length(numerators) != count
+            or _integer_buffer_length(denominators) != count
+        ):
+            raise ValueError('rational matrix component lengths differ')
         return Matrix(
             self,
-            runtime.flint_backend().qqMatrixPacked(
-                self._rows, self._cols, entries),
+            _PackedRationalStorage(
+                _compact_integer_buffer(numerators),
+                _compact_integer_buffer(denominators),
+            ),
         )
 
     def identity_matrix(self) -> Matrix:
@@ -911,6 +1106,16 @@ class MatrixSpaceParent(sage.Parent):
                 raise ValueError('matrix dimensions do not agree')
             return entries.change_ring(self._base)
         if runtime.is_exact_integer(entries) and entries == 0:
+            if self._base is sage.QQ:
+                kernel = (
+                    _dense_rational_kernel_module()
+                    .dense_rational_fill_denominator_one)
+                count = self._rows * self._cols
+                numerators = _dense_integer_zeros(kernel, count, 1)
+                denominators = _dense_integer_zeros(kernel, count, 1)
+                kernel(denominators)
+                return self._from_canonical_rational_entries(
+                    numerators, denominators)
             values = [0 for _ in range(self._rows * self._cols)]
         elif isinstance(entries, list):
             values = entries
@@ -937,6 +1142,8 @@ class MatrixSpaceParent(sage.Parent):
             return Matrix(self, storage)
         if self._base is sage.ZZ:
             return self._from_integer_values(values)
+        if self._base is sage.QQ:
+            return self._from_rational_values(values)
         coerced = _coerce_values(self._base, values)
         result = Matrix(
             self,
@@ -1425,6 +1632,20 @@ class Matrix(sage.Element):
                         source._integer_capacity(),
                     )
                 )
+            elif source._has_packed_rational_storage():
+                kernel = _dense_rational_kernel_module().dense_rational_copy
+                native_value = _PackedRationalStorage(
+                    _dense_integer_buffer(
+                        kernel,
+                        source._rational_numerators(),
+                        source._rational_capacity(),
+                    ),
+                    _dense_integer_buffer(
+                        kernel,
+                        source._rational_denominators(),
+                        source._rational_capacity(),
+                    ),
+                )
             else:
                 native_value = source._native
         if (
@@ -1440,14 +1661,35 @@ class Matrix(sage.Element):
             packed_entries = runtime.integer_buffer_from_packed_bytes(
                 packed_bytes, parent.nrows() * parent.ncols())
             native_value = _PackedIntegerStorage(packed_entries)
+        if (
+            parent.base_ring() is sage.QQ
+            and not isinstance(native_value, _PackedRationalStorage)
+        ):
+            # A few audited legacy producers (notably modular-symbol
+            # presentation builders) still return a temporary FLINT matrix.
+            # Pack it at this single compatibility ingress and immediately
+            # discard the handle.  The resulting public Matrix owns one
+            # RationalBuffer aggregate and can never recover the producer's
+            # host object.  New algorithms must return packed storage or use
+            # declared FFI instead of relying on this bridge.
+            packed_bytes = runtime.flint_backend().qqMatrixExportPacked(
+                native_value)
+            packed_matrix = parent._from_packed_rationals(packed_bytes)
+            native_value = _PackedRationalStorage(
+                packed_matrix._rational_numerators(),
+                packed_matrix._rational_denominators(),
+            )
         self._parent = parent
         self._native_handle: Any = runtime.undefined
         self._prime_residues_cache: Any = runtime.undefined
         self._integer_entries_cache: Any = runtime.undefined
+        self._rational_storage_cache: Any = runtime.undefined
         if _is_packed_uint64(native_value):
             self._prime_residues_cache = native_value
         elif isinstance(native_value, _PackedIntegerStorage):
             self._integer_entries_cache = native_value.entries
+        elif isinstance(native_value, _PackedRationalStorage):
+            self._rational_storage_cache = native_value
         else:
             self._native_handle = native_value
         self._immutable = False
@@ -1470,10 +1712,10 @@ class Matrix(sage.Element):
     def _native(self) -> Any:
         """Return a legacy handle only for matrix representations that own it.
 
-        Packed ``GF(p)`` and ``ZZ`` matrices deliberately have no conversion escape
-        hatch here.  Tests that compare with the former N-API implementation
-        construct a separate oracle explicitly; production code cannot
-        accidentally make a host object canonical again.
+        Packed ``GF(p)``, ``ZZ``, and ``QQ`` matrices deliberately have no
+        conversion escape hatch here. Tests that compare with the former
+        N-API implementation construct a separate oracle explicitly;
+        production code cannot accidentally make a host object canonical.
         """
         if self._has_packed_prime_storage():
             raise RuntimeError(
@@ -1481,6 +1723,9 @@ class Matrix(sage.Element):
         if self._has_packed_integer_storage():
             raise RuntimeError(
                 'packed ZZ matrices have no N-API matrix handle')
+        if self._has_packed_rational_storage():
+            raise RuntimeError(
+                'packed QQ matrices have no N-API matrix handle')
         return self._native_handle
 
     @_native.setter
@@ -1499,6 +1744,12 @@ class Matrix(sage.Element):
             and self._integer_entries_cache is not runtime.undefined
         )
 
+    def _has_packed_rational_storage(self) -> bool:
+        return (
+            self.base_ring() is sage.QQ
+            and self._rational_storage_cache is not runtime.undefined
+        )
+
     def _integer_entries(self) -> Any:
         if not self._has_packed_integer_storage():
             raise TypeError('packed exact storage requires a ZZ matrix')
@@ -1514,6 +1765,42 @@ class Matrix(sage.Element):
             if capacity is not runtime.undefined:
                 return entries
         return _integer_buffer_values(entries)
+
+    def _rational_numerators(self) -> Any:
+        if not self._has_packed_rational_storage():
+            raise TypeError('packed rational storage requires a QQ matrix')
+        return self._rational_storage_cache.numerators
+
+    def _rational_denominators(self) -> Any:
+        if not self._has_packed_rational_storage():
+            raise TypeError('packed rational storage requires a QQ matrix')
+        return self._rational_storage_cache.denominators
+
+    def _rational_capacity(self) -> int:
+        return max(
+            _integer_word_capacity(self._rational_numerators()),
+            _integer_word_capacity(self._rational_denominators()),
+        )
+
+    def _rational_kernel_parts(
+        self, kernel_function: Any,
+    ) -> tuple[Any, Any]:
+        numerators = self._rational_numerators()
+        denominators = self._rational_denominators()
+        if _native_kernel_available(kernel_function):
+            numerator_capacity = runtime.reflect.get(
+                numerators, 'wordCapacity')
+            denominator_capacity = runtime.reflect.get(
+                denominators, 'wordCapacity')
+            if (
+                numerator_capacity is not runtime.undefined
+                and denominator_capacity is not runtime.undefined
+            ):
+                return numerators, denominators
+        return (
+            _integer_buffer_values(numerators),
+            _integer_buffer_values(denominators)
+        )
 
     def _new(self, native_value: Any) -> Matrix:
         return Matrix(self._parent, native_value)
@@ -1578,7 +1865,36 @@ class Matrix(sage.Element):
 
     def _packed_rationals(self) -> Any:
         """Return QQ entries as packed numerator/denominator magnitudes."""
-        return runtime.flint_backend().qqMatrixExportPacked(self._native)
+        if not self._has_packed_rational_storage():
+            raise TypeError('packed rational export requires a QQ matrix')
+        numerators = _integer_buffer_values(self._rational_numerators())
+        denominators = _integer_buffer_values(self._rational_denominators())
+        byte_length = 0
+        for index in range(len(numerators)):
+            for value in [numerators[index], denominators[index]]:
+                magnitude = abs(int(value))
+                byte_length += 4 + (magnitude.bit_length() + 7) // 8
+        output = _packed_uint8(byte_length)
+        offset = 0
+        for index in range(len(numerators)):
+            for part, value in enumerate([
+                numerators[index], denominators[index],
+            ]):
+                exact = int(value)
+                magnitude = abs(exact)
+                byte_count = (magnitude.bit_length() + 7) // 8
+                header = byte_count
+                if part == 0 and exact < 0:
+                    header += 2147483648
+                for byte_index in range(4):
+                    output[offset + byte_index] = header % 256
+                    header //= 256
+                offset += 4
+                for byte_index in range(byte_count):
+                    output[offset + byte_index] = magnitude % 256
+                    magnitude //= 256
+                offset += byte_count
+        return output
 
     def base_ring(self) -> sage.Parent:
         return self._parent.base_ring()
@@ -1597,6 +1913,15 @@ class Matrix(sage.Element):
         return self.nrows() == self.ncols()
 
     def is_zero(self) -> bool:
+        if self._has_packed_rational_storage():
+            kernel = _dense_rational_kernel_module().dense_rational_is_zero
+            numerators, _denominators = self._rational_kernel_parts(kernel)
+            result = bool(kernel(numerators))
+            _trace_dense_rational_selection(
+                'is_zero', _typed_python_implementation(kernel),
+                self.nrows(), self.ncols(),
+            )
+            return result
         if self._has_packed_integer_storage():
             kernel = _dense_integer_kernel_module().dense_integer_is_zero
             result = bool(kernel(self._integer_kernel_buffer(kernel)))
@@ -1623,6 +1948,16 @@ class Matrix(sage.Element):
         return not self.is_zero()
 
     def is_one(self) -> bool:
+        if self._has_packed_rational_storage():
+            kernel = _dense_rational_kernel_module().dense_rational_is_one
+            numerators, denominators = self._rational_kernel_parts(kernel)
+            result = bool(kernel(
+                numerators, denominators, self.nrows(), self.ncols()))
+            _trace_dense_rational_selection(
+                'is_one', _typed_python_implementation(kernel),
+                self.nrows(), self.ncols(),
+            )
+            return result
         if self._has_packed_integer_storage():
             kernel = _dense_integer_kernel_module().dense_integer_is_one
             result = bool(kernel(
@@ -1675,6 +2010,15 @@ class Matrix(sage.Element):
                 row * self.ncols() + col,
             )
             return runtime.normalize_integer(value)
+        if self._has_packed_rational_storage():
+            kernel = _dense_rational_kernel_module().dense_rational_get
+            numerators, denominators = self._rational_kernel_parts(kernel)
+            parts = kernel(
+                numerators,
+                denominators,
+                row * self.ncols() + col,
+            )
+            return _untyped(sage.QQ)(parts[0], parts[1])
         backend = runtime.flint_backend()
         if _is_extension_field_base(self.base_ring()):
             native_value = backend.fqMatrixEntry(
@@ -1736,13 +2080,52 @@ class Matrix(sage.Element):
                     )
             self._clear_cache()
             return
+        if self._has_packed_rational_storage():
+            kernel = _dense_rational_kernel_module().dense_rational_set
+            rational = sage.QQ(value)
+            while True:
+                try:
+                    numerators, denominators = self._rational_kernel_parts(
+                        kernel)
+                    kernel(
+                        numerators,
+                        denominators,
+                        row * self.ncols() + col,
+                        rational._numerator,
+                        rational._denominator,
+                    )
+                    if not _native_kernel_available(kernel):
+                        self._rational_storage_cache = _PackedRationalStorage(
+                            numerators, denominators)
+                    break
+                except Exception as error:
+                    if not _integer_capacity_error(error):
+                        raise
+                    capacity = self._rational_capacity() * 2
+                    self._rational_storage_cache = _PackedRationalStorage(
+                        _dense_integer_buffer(
+                            kernel, self._rational_numerators(), capacity),
+                        _dense_integer_buffer(
+                            kernel, self._rational_denominators(), capacity),
+                    )
+            self._clear_cache()
+            return
         raise NotImplementedError(
-            'matrix mutation is currently implemented for packed GF(p) '
-            'matrices')
+            'matrix mutation is currently implemented for packed GF(p), '
+            'ZZ, and QQ matrices')
 
     def list(self) -> list[Any]:
         if self._has_packed_integer_storage():
             return _integer_buffer_values(self._integer_entries())
+        if self._has_packed_rational_storage():
+            numerators = _integer_buffer_values(self._rational_numerators())
+            denominators = _integer_buffer_values(
+                self._rational_denominators())
+            return [
+                _untyped(sage.QQ)(
+                    numerators[index], denominators[index])
+                for index in range(len(numerators))
+            ]
         answer = []
         for row in range(self.nrows()):
             for col in range(self.ncols()):
@@ -1792,6 +2175,33 @@ class Matrix(sage.Element):
         if base is self.base_ring():
             return self
         if base is sage.QQ and self.base_ring() is sage.ZZ:
+            if self._has_packed_integer_storage():
+                kernel = _dense_rational_kernel_module().dense_rational_copy
+                numerators = _dense_integer_buffer(
+                    kernel,
+                    self._integer_entries(),
+                    self._integer_capacity(),
+                )
+                denominators = _dense_integer_buffer(
+                    kernel,
+                    [1 for _index in range(self.nrows() * self.ncols())],
+                    1,
+                )
+                return MatrixSpace(
+                    base, self.nrows(), self.ncols(),
+                )._from_canonical_rational_entries(
+                    numerators, denominators)
+            return matrix(base, self.nrows(), self.ncols(), self.list())
+        if base is sage.ZZ and self.base_ring() is sage.QQ:
+            if self._has_packed_rational_storage():
+                denominators = _integer_buffer_values(
+                    self._rational_denominators())
+                if any(denominator != 1 for denominator in denominators):
+                    raise TypeError(
+                        'no conversion of this rational matrix to ZZ')
+                return MatrixSpace(
+                    base, self.nrows(), self.ncols(),
+                )._from_integer_values(self._rational_numerators())
             return matrix(base, self.nrows(), self.ncols(), self.list())
         if (
             self.base_ring() is sage.ZZ
@@ -1835,6 +2245,41 @@ class Matrix(sage.Element):
 
     def __add__(self, other: object) -> Matrix:
         left, right = self._pair(other)
+        if (
+            left._has_packed_rational_storage()
+            and right._has_packed_rational_storage()
+        ):
+            kernel = _dense_rational_kernel_module().dense_rational_add
+            left_numerators, left_denominators = (
+                left._rational_kernel_parts(kernel))
+            right_numerators, right_denominators = (
+                right._rational_kernel_parts(kernel))
+
+            def invoke_rational_add(
+                output_numerators: Any, output_denominators: Any,
+            ) -> None:
+                if not kernel(
+                    output_numerators,
+                    output_denominators,
+                    left_numerators,
+                    left_denominators,
+                    right_numerators,
+                    right_denominators,
+                ):
+                    raise RuntimeError('dense rational addition mismatch')
+
+            storage = _run_rational_output(
+                kernel,
+                left.nrows() * left.ncols(),
+                invoke_rational_add,
+                left._rational_capacity() + right._rational_capacity() + 1,
+            )
+            _trace_dense_rational_selection(
+                'add', _typed_python_implementation(kernel),
+                left.nrows(), left.ncols(),
+            )
+            return left._parent._from_canonical_rational_entries(
+                storage.numerators, storage.denominators)
         if (
             left._has_packed_integer_storage()
             and right._has_packed_integer_storage()
@@ -1896,6 +2341,41 @@ class Matrix(sage.Element):
     def __sub__(self, other: object) -> Matrix:
         left, right = self._pair(other)
         if (
+            left._has_packed_rational_storage()
+            and right._has_packed_rational_storage()
+        ):
+            kernel = _dense_rational_kernel_module().dense_rational_subtract
+            left_numerators, left_denominators = (
+                left._rational_kernel_parts(kernel))
+            right_numerators, right_denominators = (
+                right._rational_kernel_parts(kernel))
+
+            def invoke_rational_subtract(
+                output_numerators: Any, output_denominators: Any,
+            ) -> None:
+                if not kernel(
+                    output_numerators,
+                    output_denominators,
+                    left_numerators,
+                    left_denominators,
+                    right_numerators,
+                    right_denominators,
+                ):
+                    raise RuntimeError('dense rational subtraction mismatch')
+
+            storage = _run_rational_output(
+                kernel,
+                left.nrows() * left.ncols(),
+                invoke_rational_subtract,
+                left._rational_capacity() + right._rational_capacity() + 1,
+            )
+            _trace_dense_rational_selection(
+                'subtract', _typed_python_implementation(kernel),
+                left.nrows(), left.ncols(),
+            )
+            return left._parent._from_canonical_rational_entries(
+                storage.numerators, storage.denominators)
+        if (
             left._has_packed_integer_storage()
             and right._has_packed_integer_storage()
         ):
@@ -1954,6 +2434,34 @@ class Matrix(sage.Element):
         )
 
     def __neg__(self) -> Matrix:
+        if self._has_packed_rational_storage():
+            kernel = _dense_rational_kernel_module().dense_rational_negate
+            source_numerators, source_denominators = (
+                self._rational_kernel_parts(kernel))
+
+            def invoke_rational_negate(
+                output_numerators: Any, output_denominators: Any,
+            ) -> None:
+                if not kernel(
+                    output_numerators,
+                    output_denominators,
+                    source_numerators,
+                    source_denominators,
+                ):
+                    raise RuntimeError('dense rational negation mismatch')
+
+            storage = _run_rational_output(
+                kernel,
+                self.nrows() * self.ncols(),
+                invoke_rational_negate,
+                self._rational_capacity(),
+            )
+            _trace_dense_rational_selection(
+                'negate', _typed_python_implementation(kernel),
+                self.nrows(), self.ncols(),
+            )
+            return self._parent._from_canonical_rational_entries(
+                storage.numerators, storage.denominators)
         if self._has_packed_integer_storage():
             kernel = _dense_integer_kernel_module().dense_integer_negate
             entries = _dense_integer_zeros(
@@ -2083,6 +2591,43 @@ class Matrix(sage.Element):
                 self.nrows(), self.ncols(),
             )
             return self._parent._from_canonical_integer_entries(entries)
+        if self._has_packed_rational_storage():
+            rational = sage.QQ(scalar)
+            kernel = (
+                _dense_rational_kernel_module()
+                .dense_rational_scalar_multiply)
+            source_numerators, source_denominators = (
+                self._rational_kernel_parts(kernel))
+
+            def invoke_rational_scalar(
+                output_numerators: Any, output_denominators: Any,
+            ) -> None:
+                if not kernel(
+                    output_numerators,
+                    output_denominators,
+                    source_numerators,
+                    source_denominators,
+                    rational._numerator,
+                    rational._denominator,
+                ):
+                    raise RuntimeError(
+                        'dense rational scalar multiplication mismatch')
+
+            storage = _run_rational_output(
+                kernel,
+                self.nrows() * self.ncols(),
+                invoke_rational_scalar,
+                self._rational_capacity() + max(
+                    _integer_value_capacity(rational._numerator),
+                    _integer_value_capacity(rational._denominator),
+                ),
+            )
+            _trace_dense_rational_selection(
+                'scalar_multiply', _typed_python_implementation(kernel),
+                self.nrows(), self.ncols(),
+            )
+            return self._parent._from_canonical_rational_entries(
+                storage.numerators, storage.denominators)
         scalar_base, numerator, denominator = _matrix_scalar_parts(
             self.base_ring(), scalar)
         base = _common_base(self.base_ring(), scalar_base)
@@ -2180,6 +2725,55 @@ class Matrix(sage.Element):
                 return MatrixSpace(
                     base, left.nrows(), right.ncols(),
                 )._from_canonical_integer_entries(outputs[0])
+            if (
+                left._has_packed_rational_storage()
+                and right._has_packed_rational_storage()
+            ):
+                kernel = (
+                    _dense_rational_flint_module().flint_dense_rational_mul)
+                left_numerators, left_denominators = (
+                    left._rational_kernel_parts(kernel))
+                right_numerators, right_denominators = (
+                    right._rational_kernel_parts(kernel))
+
+                def invoke_rational_multiply(
+                    output_numerators: Any, output_denominators: Any,
+                ) -> None:
+                    kernel(
+                        output_numerators,
+                        output_denominators,
+                        left_numerators,
+                        left_denominators,
+                        right_numerators,
+                        right_denominators,
+                        left.nrows(),
+                        left.ncols(),
+                        right.ncols(),
+                    )
+
+                storage = _run_rational_output(
+                    kernel,
+                    left.nrows() * right.ncols(),
+                    invoke_rational_multiply,
+                    (
+                        left._rational_capacity()
+                        + right._rational_capacity()
+                        + 4
+                    ),
+                )
+                _trace_dense_rational_selection(
+                    'multiply',
+                    (
+                        'declared-flint-isolated'
+                        if _native_kernel_available(kernel)
+                        else 'declared-flint-adapter'
+                    ),
+                    left.nrows(), right.ncols(),
+                )
+                return MatrixSpace(
+                    base, left.nrows(), right.ncols(),
+                )._from_canonical_rational_entries(
+                    storage.numerators, storage.denominators)
             backend = runtime.flint_backend()
             if _is_extension_field_base(base):
                 native_value = backend.fqMatrixMul(
@@ -2208,7 +2802,7 @@ class Matrix(sage.Element):
             return self * other
         left = self.change_ring(base)
         right = other.change_ring(base)
-        if base is sage.ZZ:
+        if base is sage.ZZ or base is sage.QQ:
             return left * right
         native_value = runtime.flint_backend().matrixSparseLeftMul(
             left._native, right._native)
@@ -2296,6 +2890,41 @@ class Matrix(sage.Element):
             'the given exponent is not supported')
 
     def transpose(self) -> Matrix:
+        if self._has_packed_rational_storage():
+            kernel = _dense_rational_kernel_module().dense_rational_transpose
+            source_numerators, source_denominators = (
+                self._rational_kernel_parts(kernel))
+
+            def invoke_rational_transpose(
+                output_numerators: Any, output_denominators: Any,
+            ) -> None:
+                if not kernel(
+                    output_numerators,
+                    output_denominators,
+                    source_numerators,
+                    source_denominators,
+                    self.nrows(),
+                    self.ncols(),
+                ):
+                    raise RuntimeError('dense rational transpose mismatch')
+
+            storage = _run_rational_output(
+                kernel,
+                self.nrows() * self.ncols(),
+                invoke_rational_transpose,
+                self._rational_capacity(),
+            )
+            answer = MatrixSpace(
+                self.base_ring(), self.ncols(), self.nrows(),
+            )._from_canonical_rational_entries(
+                storage.numerators, storage.denominators)
+            answer._row_subdivisions = list(self._col_subdivisions)
+            answer._col_subdivisions = list(self._row_subdivisions)
+            _trace_dense_rational_selection(
+                'transpose', _typed_python_implementation(kernel),
+                self.nrows(), self.ncols(),
+            )
+            return answer
         if self._has_packed_integer_storage():
             kernel = _dense_integer_kernel_module().dense_integer_transpose
             entries = _dense_integer_zeros(
@@ -2381,6 +3010,45 @@ class Matrix(sage.Element):
             raise ValueError('unknown determinant algorithm')
         if self._determinant_cache is not runtime.undefined:
             return self._determinant_cache
+        if self._has_packed_rational_storage():
+            kernel = (
+                _dense_rational_flint_module()
+                .flint_dense_rational_determinant)
+            source_numerators, source_denominators = (
+                self._rational_kernel_parts(kernel))
+
+            def invoke_rational_determinant(
+                output_numerators: Any, output_denominators: Any,
+            ) -> None:
+                kernel(
+                    output_numerators,
+                    output_denominators,
+                    source_numerators,
+                    source_denominators,
+                    self.nrows(),
+                    1,
+                )
+
+            storage = _run_rational_output(
+                kernel,
+                1,
+                invoke_rational_determinant,
+                self._rational_capacity() + 1,
+            )
+            numerator = _integer_buffer_values(storage.numerators)[0]
+            denominator = _integer_buffer_values(storage.denominators)[0]
+            self._determinant_cache = _untyped(sage.QQ)(
+                numerator, denominator)
+            _trace_dense_rational_selection(
+                'determinant',
+                (
+                    'declared-flint-isolated'
+                    if _native_kernel_available(kernel)
+                    else 'declared-flint-adapter'
+                ),
+                self.nrows(), self.ncols(),
+            )
+            return self._determinant_cache
         if self._has_packed_integer_storage():
             kernel = (
                 _dense_integer_flint_module().flint_dense_integer_determinant)
@@ -2458,7 +3126,33 @@ class Matrix(sage.Element):
                 "algorithm must be one of 'modp', 'flint' or 'linbox'")
         if self._rank_cache is runtime.undefined:
             backend = runtime.flint_backend()
-            if self._has_packed_integer_storage():
+            if self._has_packed_rational_storage():
+                kernel_function = (
+                    _dense_rational_flint_module()
+                    .flint_dense_rational_rank)
+                numerators, denominators = self._rational_kernel_parts(
+                    kernel_function)
+                rank_output = _dense_integer_zeros(kernel_function, 1, 1)
+                kernel_function(
+                    rank_output,
+                    numerators,
+                    denominators,
+                    self.nrows(),
+                    self.ncols(),
+                    1,
+                )
+                self._rank_cache = runtime.number(
+                    _integer_buffer_values(rank_output)[0])
+                _trace_dense_rational_selection(
+                    'rank',
+                    (
+                        'declared-flint-isolated'
+                        if _native_kernel_available(kernel_function)
+                        else 'declared-flint-adapter'
+                    ),
+                    self.nrows(), self.ncols(),
+                )
+            elif self._has_packed_integer_storage():
                 kernel_function = (
                     _dense_integer_flint_module().flint_dense_integer_rank)
                 self._rank_cache = runtime.number(kernel_function(
@@ -2567,6 +3261,16 @@ class Matrix(sage.Element):
                 self.nrows(), self.ncols(),
             )
             return nonzero / (self.nrows() * self.ncols())
+        if self._has_packed_rational_storage():
+            kernel = (
+                _dense_rational_kernel_module().dense_rational_nonzero_count)
+            numerators, _denominators = self._rational_kernel_parts(kernel)
+            nonzero = runtime.number(kernel(numerators))
+            _trace_dense_rational_selection(
+                'density', _typed_python_implementation(kernel),
+                self.nrows(), self.ncols(),
+            )
+            return nonzero / (self.nrows() * self.ncols())
         nonzero = 0
         for value in self.list():
             if value != 0:
@@ -2583,6 +3287,51 @@ class Matrix(sage.Element):
             if self._has_packed_integer_storage():
                 self._rref_cache = self.change_ring(sage.QQ).rref(algorithm)
                 self._rref_cache.set_immutable()
+                return self._rref_cache
+            if self._has_packed_rational_storage():
+                kernel = (
+                    _dense_rational_flint_module()
+                    .flint_dense_rational_rref)
+                source_numerators, source_denominators = (
+                    self._rational_kernel_parts(kernel))
+                rank_output = _dense_integer_zeros(kernel, 1, 1)
+
+                def invoke_rational_rref(
+                    output_numerators: Any, output_denominators: Any,
+                ) -> None:
+                    kernel(
+                        rank_output,
+                        output_numerators,
+                        output_denominators,
+                        source_numerators,
+                        source_denominators,
+                        self.nrows(),
+                        self.ncols(),
+                        1,
+                    )
+
+                storage = _run_rational_output(
+                    kernel,
+                    self.nrows() * self.ncols(),
+                    invoke_rational_rref,
+                    self._rational_capacity() + 1,
+                )
+                self._rank_cache = runtime.number(
+                    _integer_buffer_values(rank_output)[0])
+                self._rref_cache = self._parent._from_canonical_rational_entries(
+                    storage.numerators, storage.denominators)
+                self._rref_cache._rank_cache = self._rank_cache
+                self._rref_cache._rref_cache = self._rref_cache
+                self._rref_cache.set_immutable()
+                _trace_dense_rational_selection(
+                    'rref',
+                    (
+                        'declared-flint-isolated'
+                        if _native_kernel_available(kernel)
+                        else 'declared-flint-adapter'
+                    ),
+                    self.nrows(), self.ncols(),
+                )
                 return self._rref_cache
             base = sage.QQ
             if _is_approximate_base(self.base_ring()):
@@ -2868,6 +3617,7 @@ class Matrix(sage.Element):
         if (
             echelon._has_packed_prime_storage()
             or echelon._has_packed_integer_storage()
+            or echelon._has_packed_rational_storage()
         ):
             pivots = []
             previous = -1
@@ -2946,6 +3696,60 @@ class Matrix(sage.Element):
                     ),
                     self.nrows(), self.ncols(),
                 )
+            elif self._has_packed_rational_storage():
+                columns = int(self.ncols())
+                reduced = self.rref()
+                kernel_function = (
+                    _dense_rational_kernel_module()
+                    .dense_rational_kernel_from_rref)
+                reduced_numerators, reduced_denominators = (
+                    reduced._rational_kernel_parts(kernel_function))
+                captured_nullity = [0]
+
+                def invoke_rational_kernel(
+                    output_numerators: Any,
+                    output_denominators: Any,
+                ) -> None:
+                    captured_nullity[0] = runtime.number(kernel_function(
+                        output_numerators,
+                        output_denominators,
+                        reduced_numerators,
+                        reduced_denominators,
+                        self.nrows(),
+                        columns,
+                        1,
+                    ))
+
+                storage = _run_rational_output(
+                    kernel_function,
+                    columns * columns,
+                    invoke_rational_kernel,
+                    reduced._rational_capacity() + 1,
+                )
+                nullity = captured_nullity[0]
+                self._rank_cache = columns - nullity
+                numerator_values = _integer_buffer_values(storage.numerators)
+                denominator_values = _integer_buffer_values(
+                    storage.denominators)
+                spanning = MatrixSpace(
+                    sage.QQ, nullity, columns,
+                )._from_rational_parts(
+                    numerator_values[:nullity * columns],
+                    denominator_values[:nullity * columns],
+                )
+                # The transparent kernel constructs the mathematically natural
+                # free-variable basis.  Canonicalize its row space through the
+                # same declared packed FLINT boundary as every other RREF.
+                basis = spanning.rref()
+                _trace_dense_rational_selection(
+                    'right_kernel',
+                    (
+                        'typed-python+declared-flint-isolated'
+                        if _native_kernel_available(kernel_function)
+                        else 'dynamic-python+declared-flint-adapter'
+                    ),
+                    self.nrows(), self.ncols(),
+                )
             elif self._has_packed_prime_storage():
                 columns = int(self.ncols())
                 ffi_module = _dense_prime_flint_module()
@@ -3013,6 +3817,7 @@ class Matrix(sage.Element):
             if (
                 not self._has_packed_prime_storage()
                 and not self._has_packed_integer_storage()
+                and not self._has_packed_rational_storage()
             ):
                 basis = Matrix(
                     MatrixSpace(
@@ -3097,14 +3902,13 @@ class Matrix(sage.Element):
                 'eigenvalues with extend=False are not available yet')
         if self._has_packed_integer_storage():
             return self.change_ring(sage.QQ).eigenvalues(extend)
-        native_values = runtime.flint_backend().matrixExactEigenvalues(
-            self._native)
         algebraic_field = runtime.reflect.get(
             runtime.global_object, 'QQbar')
-        return [
-            algebraic_field._from_native(value)
-            for value in native_values
-        ]
+        values = []
+        for value, multiplicity in self.charpoly().roots(algebraic_field):
+            for _ in range(multiplicity):
+                values.append(value)
+        return _order_exact_eigenvalues(values)
 
     def _exact_eigenspaces_data(
         self,
@@ -3338,6 +4142,52 @@ class Matrix(sage.Element):
         if cached is not runtime.undefined:
             return cached
         ring = sage.PolynomialRing(self.base_ring(), variable)
+        if self._has_packed_rational_storage():
+            kernel = (
+                _dense_rational_flint_module()
+                .flint_dense_rational_charpoly)
+            coefficient_count = self.nrows() + 1
+            source_numerators, source_denominators = (
+                self._rational_kernel_parts(kernel))
+
+            def invoke_rational_charpoly(
+                output_numerators: Any,
+                output_denominators: Any,
+            ) -> None:
+                kernel(
+                    output_numerators,
+                    output_denominators,
+                    source_numerators,
+                    source_denominators,
+                    coefficient_count,
+                    self.nrows(),
+                    1,
+                )
+
+            storage = _run_rational_output(
+                kernel,
+                coefficient_count,
+                invoke_rational_charpoly,
+                self._rational_capacity() + 1,
+            )
+            numerators = _integer_buffer_values(storage.numerators)
+            denominators = _integer_buffer_values(storage.denominators)
+            answer = ring._from_coefficients([
+                _untyped(sage.QQ)(
+                    numerators[index], denominators[index])
+                for index in range(coefficient_count)
+            ])
+            self._charpoly_cache.set(variable, answer)
+            _trace_dense_rational_selection(
+                'charpoly',
+                (
+                    'declared-flint-isolated'
+                    if _native_kernel_available(kernel)
+                    else 'declared-flint-adapter'
+                ),
+                self.nrows(), self.ncols(),
+            )
+            return answer
         if self._has_packed_integer_storage():
             kernel = (
                 _dense_integer_flint_module().flint_dense_integer_charpoly)
@@ -3536,6 +4386,47 @@ class Matrix(sage.Element):
             raise ArithmeticError('matrix must be square')
         if self._inverse_cache is not runtime.undefined:
             return self._inverse_cache
+        if self._has_packed_rational_storage():
+            kernel = (
+                _dense_rational_flint_module()
+                .flint_dense_rational_inverse)
+            source_numerators, source_denominators = (
+                self._rational_kernel_parts(kernel))
+
+            def invoke_rational_inverse(
+                output_numerators: Any, output_denominators: Any,
+            ) -> None:
+                kernel(
+                    output_numerators,
+                    output_denominators,
+                    source_numerators,
+                    source_denominators,
+                    self.nrows(),
+                )
+
+            try:
+                storage = _run_rational_output(
+                    kernel,
+                    self.nrows() * self.ncols(),
+                    invoke_rational_inverse,
+                    self._rational_capacity() + 1,
+                )
+            except Exception:
+                raise ZeroDivisionError(  # noqa: B904
+                    'matrix must be nonsingular')
+            self._inverse_cache = (
+                self._parent._from_canonical_rational_entries(
+                    storage.numerators, storage.denominators))
+            _trace_dense_rational_selection(
+                'inverse',
+                (
+                    'declared-flint-isolated'
+                    if _native_kernel_available(kernel)
+                    else 'declared-flint-adapter'
+                ),
+                self.nrows(), self.ncols(),
+            )
+            return self._inverse_cache
         if self._has_packed_integer_storage():
             self._inverse_cache = self.change_ring(sage.QQ).inverse()
             return self._inverse_cache
@@ -3627,6 +4518,61 @@ class Matrix(sage.Element):
         left_matrix = self.change_ring(base)
         right_matrix = right_matrix.change_ring(base)
         if (
+            left_matrix._has_packed_rational_storage()
+            and right_matrix._has_packed_rational_storage()
+            and left_matrix.is_square()
+        ):
+            kernel = (
+                _dense_rational_flint_module()
+                .flint_dense_rational_solve)
+            left_numerators, left_denominators = (
+                left_matrix._rational_kernel_parts(kernel))
+            right_numerators, right_denominators = (
+                right_matrix._rational_kernel_parts(kernel))
+
+            def invoke_rational_solve(
+                output_numerators: Any, output_denominators: Any,
+            ) -> None:
+                kernel(
+                    output_numerators,
+                    output_denominators,
+                    left_numerators,
+                    left_denominators,
+                    right_numerators,
+                    right_denominators,
+                    left_matrix.nrows(),
+                    right_matrix.ncols(),
+                )
+
+            try:
+                storage = _run_rational_output(
+                    kernel,
+                    left_matrix.ncols() * right_matrix.ncols(),
+                    invoke_rational_solve,
+                    max(
+                        left_matrix._rational_capacity(),
+                        right_matrix._rational_capacity(),
+                    ) + 1,
+                )
+                solution = MatrixSpace(
+                    base,
+                    left_matrix.ncols(),
+                    right_matrix.ncols(),
+                )._from_canonical_rational_entries(
+                    storage.numerators, storage.denominators)
+                _trace_dense_rational_selection(
+                    'solve_right',
+                    (
+                        'declared-flint-isolated'
+                        if _native_kernel_available(kernel)
+                        else 'declared-flint-adapter'
+                    ),
+                    left_matrix.nrows(), right_matrix.ncols(),
+                )
+                return solution.column(0) if vector_result else solution
+            except Exception:
+                pass
+        if (
             left_matrix._has_packed_prime_storage()
             and right_matrix._has_packed_prime_storage()
             and left_matrix.is_square()
@@ -3666,6 +4612,7 @@ class Matrix(sage.Element):
         if (
             not left_matrix._has_packed_prime_storage()
             and not left_matrix._has_packed_integer_storage()
+            and not left_matrix._has_packed_rational_storage()
         ):
             try:
                 backend = runtime.flint_backend()
@@ -3759,6 +4706,46 @@ class Matrix(sage.Element):
             self.base_ring(), other.base_ring())
         top = self.change_ring(base)
         bottom = other.change_ring(base)
+        if (
+            top._has_packed_rational_storage()
+            and bottom._has_packed_rational_storage()
+        ):
+            kernel = _dense_rational_kernel_module().dense_rational_stack
+            top_numerators, top_denominators = (
+                top._rational_kernel_parts(kernel))
+            bottom_numerators, bottom_denominators = (
+                bottom._rational_kernel_parts(kernel))
+
+            def invoke_rational_stack(
+                output_numerators: Any, output_denominators: Any,
+            ) -> None:
+                if not kernel(
+                    output_numerators,
+                    output_denominators,
+                    top_numerators,
+                    top_denominators,
+                    bottom_numerators,
+                    bottom_denominators,
+                ):
+                    raise RuntimeError('dense rational stack mismatch')
+
+            storage = _run_rational_output(
+                kernel,
+                (top.nrows() + bottom.nrows()) * top.ncols(),
+                invoke_rational_stack,
+                max(top._rational_capacity(), bottom._rational_capacity()),
+            )
+            answer = MatrixSpace(
+                base, top.nrows() + bottom.nrows(), top.ncols(),
+            )._from_canonical_rational_entries(
+                storage.numerators, storage.denominators)
+            if subdivide:
+                answer._row_subdivisions = [top.nrows()]
+            _trace_dense_rational_selection(
+                'stack', _typed_python_implementation(kernel),
+                answer.nrows(), answer.ncols(),
+            )
+            return answer
         if (
             top._has_packed_integer_storage()
             and bottom._has_packed_integer_storage()
@@ -3855,6 +4842,49 @@ class Matrix(sage.Element):
             self.base_ring(), other.base_ring())
         left = self.change_ring(base)
         right = other.change_ring(base)
+        if (
+            left._has_packed_rational_storage()
+            and right._has_packed_rational_storage()
+        ):
+            kernel = _dense_rational_kernel_module().dense_rational_augment
+            left_numerators, left_denominators = (
+                left._rational_kernel_parts(kernel))
+            right_numerators, right_denominators = (
+                right._rational_kernel_parts(kernel))
+
+            def invoke_rational_augment(
+                output_numerators: Any, output_denominators: Any,
+            ) -> None:
+                if not kernel(
+                    output_numerators,
+                    output_denominators,
+                    left_numerators,
+                    left_denominators,
+                    right_numerators,
+                    right_denominators,
+                    left.nrows(),
+                    left.ncols(),
+                    right.ncols(),
+                ):
+                    raise RuntimeError('dense rational augment mismatch')
+
+            storage = _run_rational_output(
+                kernel,
+                left.nrows() * (left.ncols() + right.ncols()),
+                invoke_rational_augment,
+                max(left._rational_capacity(), right._rational_capacity()),
+            )
+            answer = MatrixSpace(
+                base, left.nrows(), left.ncols() + right.ncols(),
+            )._from_canonical_rational_entries(
+                storage.numerators, storage.denominators)
+            if subdivide:
+                answer._col_subdivisions = [left.ncols()]
+            _trace_dense_rational_selection(
+                'augment', _typed_python_implementation(kernel),
+                answer.nrows(), answer.ncols(),
+            )
+            return answer
         if (
             left._has_packed_integer_storage()
             and right._has_packed_integer_storage()
@@ -3963,6 +4993,43 @@ class Matrix(sage.Element):
 
     def matrix_from_rows(self, rows: Any) -> Matrix:
         indices = [int(index) for index in rows]
+        if self._has_packed_rational_storage():
+            indices = [
+                _normalize_index(row, self.nrows()) for row in indices]
+            kernel = (
+                _dense_rational_kernel_module().dense_rational_select_rows)
+            source_numerators, source_denominators = (
+                self._rational_kernel_parts(kernel))
+            index_buffer = _dense_integer_buffer(kernel, indices, 1)
+
+            def invoke_rational_rows(
+                output_numerators: Any, output_denominators: Any,
+            ) -> None:
+                if not kernel(
+                    output_numerators,
+                    output_denominators,
+                    source_numerators,
+                    source_denominators,
+                    index_buffer,
+                    self.nrows(),
+                    self.ncols(),
+                ):
+                    raise RuntimeError('dense rational row selection mismatch')
+
+            storage = _run_rational_output(
+                kernel,
+                len(indices) * self.ncols(),
+                invoke_rational_rows,
+                self._rational_capacity(),
+            )
+            _trace_dense_rational_selection(
+                'matrix_from_rows', _typed_python_implementation(kernel),
+                len(indices), self.ncols(),
+            )
+            return MatrixSpace(
+                self.base_ring(), len(indices), self.ncols(),
+            )._from_canonical_rational_entries(
+                storage.numerators, storage.denominators)
         if self._has_packed_integer_storage():
             indices = [
                 _normalize_index(row, self.nrows()) for row in indices]
@@ -4024,6 +5091,47 @@ class Matrix(sage.Element):
 
     def matrix_from_columns(self, columns: Any) -> Matrix:
         indices = [int(index) for index in columns]
+        if self._has_packed_rational_storage():
+            indices = [
+                _normalize_index(column, self.ncols())
+                for column in indices
+            ]
+            kernel = (
+                _dense_rational_kernel_module()
+                .dense_rational_select_columns)
+            source_numerators, source_denominators = (
+                self._rational_kernel_parts(kernel))
+            index_buffer = _dense_integer_buffer(kernel, indices, 1)
+
+            def invoke_rational_columns(
+                output_numerators: Any, output_denominators: Any,
+            ) -> None:
+                if not kernel(
+                    output_numerators,
+                    output_denominators,
+                    source_numerators,
+                    source_denominators,
+                    index_buffer,
+                    self.nrows(),
+                    self.ncols(),
+                ):
+                    raise RuntimeError(
+                        'dense rational column selection mismatch')
+
+            storage = _run_rational_output(
+                kernel,
+                self.nrows() * len(indices),
+                invoke_rational_columns,
+                self._rational_capacity(),
+            )
+            _trace_dense_rational_selection(
+                'matrix_from_columns', _typed_python_implementation(kernel),
+                self.nrows(), len(indices),
+            )
+            return MatrixSpace(
+                self.base_ring(), self.nrows(), len(indices),
+            )._from_canonical_rational_entries(
+                storage.numerators, storage.denominators)
         if self._has_packed_integer_storage():
             indices = [
                 _normalize_index(column, self.ncols())
@@ -4118,6 +5226,34 @@ class Matrix(sage.Element):
                 self.nrows(), self.ncols(),
             )
             return runtime.normalize_integer(value)
+        if self._has_packed_rational_storage():
+            kernel = _dense_rational_kernel_module().dense_rational_trace
+            source_numerators, source_denominators = (
+                self._rational_kernel_parts(kernel))
+
+            def invoke_rational_trace(
+                output_numerators: Any, output_denominators: Any,
+            ) -> None:
+                if not kernel(
+                    output_numerators,
+                    output_denominators,
+                    source_numerators,
+                    source_denominators,
+                    self.nrows(),
+                ):
+                    raise RuntimeError('dense rational trace mismatch')
+
+            storage = _run_rational_output(
+                kernel, 1, invoke_rational_trace,
+                self._rational_capacity() + 1,
+            )
+            numerator = _integer_buffer_values(storage.numerators)[0]
+            denominator = _integer_buffer_values(storage.denominators)[0]
+            _trace_dense_rational_selection(
+                'trace', _typed_python_implementation(kernel),
+                self.nrows(), self.ncols(),
+            )
+            return _untyped(sage.QQ)(numerator, denominator)
         return sum(self.diagonal(), self.base_ring()(0))
 
     def __eq__(self, other: object) -> bool:
@@ -4142,6 +5278,26 @@ class Matrix(sage.Element):
             return False
         left = self.change_ring(base)
         right = other.change_ring(base)
+        if (
+            left._has_packed_rational_storage()
+            and right._has_packed_rational_storage()
+        ):
+            kernel = _dense_rational_kernel_module().dense_rational_equal
+            left_numerators, left_denominators = (
+                left._rational_kernel_parts(kernel))
+            right_numerators, right_denominators = (
+                right._rational_kernel_parts(kernel))
+            result = bool(kernel(
+                left_numerators,
+                left_denominators,
+                right_numerators,
+                right_denominators,
+            ))
+            _trace_dense_rational_selection(
+                'equal', _typed_python_implementation(kernel),
+                left.nrows(), left.ncols(),
+            )
+            return result
         if (
             left._has_packed_integer_storage()
             and right._has_packed_integer_storage()
@@ -4179,6 +5335,33 @@ class Matrix(sage.Element):
         return backend.matrixEqual(left._native, right._native)
 
     def __copy__(self) -> Matrix:
+        if self._has_packed_rational_storage():
+            kernel = _dense_rational_kernel_module().dense_rational_copy
+            source_numerators, source_denominators = (
+                self._rational_kernel_parts(kernel))
+
+            def invoke_rational_copy(
+                output_numerators: Any, output_denominators: Any,
+            ) -> None:
+                if not kernel(
+                    output_numerators,
+                    output_denominators,
+                    source_numerators,
+                    source_denominators,
+                ):
+                    raise RuntimeError('dense rational copy mismatch')
+
+            storage = _run_rational_output(
+                kernel,
+                self.nrows() * self.ncols(),
+                invoke_rational_copy,
+                self._rational_capacity(),
+            )
+            answer = self._parent._from_canonical_rational_entries(
+                storage.numerators, storage.denominators)
+            answer._row_subdivisions = list(self._row_subdivisions)
+            answer._col_subdivisions = list(self._col_subdivisions)
+            return answer
         if self._has_packed_integer_storage():
             kernel = _dense_integer_kernel_module().dense_integer_copy
             entries = _dense_integer_buffer(
@@ -4583,6 +5766,15 @@ def zero_matrix(
 
 
 def identity_matrix(base: sage.Parent, size: int) -> Matrix:
+    if base is sage.QQ:
+        kernel = _dense_rational_kernel_module().dense_rational_identity
+        numerators = _dense_integer_zeros(kernel, size * size, 1)
+        denominators = _dense_integer_zeros(kernel, size * size, 1)
+        if not kernel(numerators, denominators, size):
+            raise RuntimeError('dense rational identity buffer mismatch')
+        return MatrixSpace(
+            sage.QQ, size, size,
+        )._from_canonical_rational_entries(numerators, denominators)
     entries = []
     for row in range(size):
         for col in range(size):
@@ -4934,6 +6126,43 @@ def random_matrix(
         return MatrixSpace(
             sage.ZZ, rows, cols,
         )._from_canonical_integer_entries(storage)
+
+    if (
+        base is sage.QQ
+        and density == 1
+        and lower is None
+        and distribution is None
+    ):
+        numerator_kernel = (
+            _dense_integer_kernel_module().dense_integer_random_fill_default)
+        denominator_kernel = (
+            _dense_rational_kernel_module()
+            .dense_rational_fill_denominator_one)
+        numerators = _dense_integer_zeros(
+            numerator_kernel, rows * cols, 1)
+        denominators = _dense_integer_zeros(
+            denominator_kernel, rows * cols, 1)
+        if rows * cols != 0:
+            state = _random_int(0, 4294967295)
+            final_state = numerator_kernel(
+                numerators,
+                state,
+                runtime.bigint(4294967296),
+                runtime.bigint(858993459),
+                runtime.bigint(2147483648),
+                runtime.bigint(1664525),
+                runtime.bigint(1013904223),
+            )
+            _set_random_word_state(final_state)
+            denominator_kernel(denominators)
+        _trace_dense_rational_selection(
+            'random_matrix',
+            _typed_python_implementation(denominator_kernel),
+            rows, cols,
+        )
+        return MatrixSpace(
+            sage.QQ, rows, cols,
+        )._from_canonical_rational_entries(numerators, denominators)
 
     values = [0 for _ in range(rows * cols)]
     if density == 1:

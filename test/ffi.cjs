@@ -76,6 +76,9 @@ test("FFI declarations are strict and generated modules are current", () => {
       "fmpz_mat_rank", "fmpz_mat_mul", "fmpz_mat_det",
       "fmpz_mat_charpoly", "fmpz_mat_hnf", "fmpz_mat_hnf_transform",
       "fmpz_mat_snf_transform", "fmpz_mat_right_kernel",
+      "fmpq_mat_rank", "fmpq_mat_mul", "fmpq_mat_rref",
+      "fmpq_mat_inv", "fmpq_mat_solve", "fmpq_mat_det",
+      "fmpq_mat_charpoly",
       "nmod_mat_rank", "nmod_mat_det", "nmod_mat_charpoly",
       "nmod_mat_minpoly", "nmod_mat_inv", "nmod_mat_rref",
       "nmod_mat_mul", "nmod_mat_right_kernel", "nmod_mat_solve",
@@ -106,7 +109,7 @@ test("FFI declarations are strict and generated modules are current", () => {
     { resource: "graph", ownership: "owned", owner: null, root: "graph" },
     { resource: "edges", ownership: "borrowed", owner: "graph", root: "graph" },
   ]);
-  assert.match(runSage(["ffi", "check"]), /30 function\(s\)/);
+  assert.match(runSage(["ffi", "check"]), /37 function\(s\)/);
   const inspection = JSON.parse(
     runSage(["ffi", "explain", "flint", "--json"]),
   );
@@ -209,7 +212,7 @@ test("native-boundary audit is a reviewed exact ratchet", () => {
   const current = boundaryAudit.validateBoundarySnapshot(snapshot, { root });
   assert.ok(current.counts["napi-export"] >= 280);
   assert.ok(current.counts["runtime-intrinsic"] >= 100);
-  assert.equal(current.counts["declared-ffi"], 30);
+  assert.equal(current.counts["declared-ffi"], 37);
   assert.equal(current.counts["declared-ffi-resource"], 3);
   assert.match(runSage(["ffi", "audit"]), /inventoried native boundaries/);
   assert.equal(

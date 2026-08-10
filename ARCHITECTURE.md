@@ -177,7 +177,10 @@ exact integer promotion, dense prime-field computation, packed binary64
 storage, compiler-owned value records, mutable signed exact-integer record
 views, and packed arbitrary-precision integer vectors. Compiler changes
 preserve their same-source fallback,
-provenance, introspection, differential tests, and benchmarks.
+provenance, introspection, differential tests, and benchmarks. Dense exact
+rational matrices use an owned normalized pair of packed tagged-integer spans;
+structural arithmetic is typed Python and mature `fmpq_mat` algorithms cross
+only generated declaration-driven copy-in/copy-out boundaries.
 
 Every successful native compilation emits a host-independent `kernel_core.c`
 and `kernel_core.h` as its canonical mathematical artifact.  The core owns the
