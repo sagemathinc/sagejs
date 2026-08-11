@@ -4,7 +4,7 @@
   "id": "dense-prime-structural",
   "title": "Dense Prime Structural Boundaries",
   "lane": "arithmetic-algebra",
-  "status": "active",
+  "status": "complete",
   "owner": "codex",
   "objective": "Wire canonical dense GF(p) matrix packed import/export and unsubdivided default formatting to the checked bulk uint64 runtime primitives, eliminate interpreted per-entry cliffs, and add correctness plus representative performance ratchets",
   "base_commit": "7ecd75efdb4497d173aa40e82e6b48a46823bc5d",
@@ -72,14 +72,43 @@
       "commit": "7ecd75efdb4497d173aa40e82e6b48a46823bc5d",
       "workspace_fingerprint": "f0a7e4ed7c948722c72e81385a36911e7926ddbf8df436ee5ac6e0a8de0dee00",
       "platform": "linux-x64"
+    },
+    {
+      "command": "node test/dense-prime-structural.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 12.14,
+      "started_at": "2026-08-11T10:53:12.088Z",
+      "commit": "5b075ae58c2297366df78965b3f7beb086eff903",
+      "workspace_fingerprint": "ef10d7114fd54230c00845e4d06363cbe0507da5fe4682ad4405cdeb350baa6d",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 13.096,
+      "started_at": "2026-08-11T10:53:24.927Z",
+      "commit": "5b075ae58c2297366df78965b3f7beb086eff903",
+      "workspace_fingerprint": "ef10d7114fd54230c00845e4d06363cbe0507da5fe4682ad4405cdeb350baa6d",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 11.367,
+      "started_at": "2026-08-11T10:53:38.602Z",
+      "commit": "5b075ae58c2297366df78965b3f7beb086eff903",
+      "workspace_fingerprint": "ef10d7114fd54230c00845e4d06363cbe0507da5fe4682ad4405cdeb350baa6d",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {
     "summary": "Dense small-prime matrices now use checked bulk runtime primitives for packed little-endian import/export and ordinary unsubdivided formatting. Trusted canonical BigUint64Array transfer remains zero-copy, while untrusted packed input is decoded and normalized modulo p. Focused tests cover every width, exact endian alignment, rectangular and empty shapes, invalid lengths and widths, overflow, trusted ownership, formatting, subdivisions, previous-loop differential oracles, and representative absolute, relative, and linear performance gates.",
     "risks": [
       "Subdivided display intentionally retains the semantic Python formatter and is not accelerated by this change.",
-      "The private packed-import boundary now requires the checked Uint8Array representation; all repository callers obtain that representation from packed export or serialization.",
-      "The full pnpm test:native command is red at the base commit because packages/flint/test/dirichlet.cjs expects a second resource close to throw, while the generated close operation is idempotent. All native compiler, dense-prime migration, and finite-matrix performance portions relevant to this lane pass."
+      "The private packed-import boundary now requires the checked Uint8Array representation; all repository callers obtain that representation from packed export or serialization."
     ],
     "next_steps": [
       "Integrate after the uint64 structural runtime dependency and retain the focused test in the integration tier.",
