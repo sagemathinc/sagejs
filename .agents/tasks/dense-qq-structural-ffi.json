@@ -4,7 +4,7 @@
   "id": "dense-qq-structural-ffi",
   "title": "Dense QQ structural generated FFI",
   "lane": "integration",
-  "status": "review",
+  "status": "complete",
   "owner": "user",
   "objective": "Add generated FmpqMatrix structural resource operations for selection, block assignment, stacking, augmentation, and nonzero queries without public Matrix routing",
   "base_commit": "46fb2b755c34faf3bb5dad41e6710f88cfe1b0f6",

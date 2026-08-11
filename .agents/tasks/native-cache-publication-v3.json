@@ -4,7 +4,7 @@
   "id": "native-cache-publication-v3",
   "title": "Native Cache Publication V3",
   "lane": "integration",
-  "status": "review",
+  "status": "complete",
   "owner": "user",
   "objective": "Publish v3 native-kernel compatibility metadata and reject source-identical artifacts with stale FFI declarations",
   "base_commit": "d413e60cc92bca194db23fdfc5b5c96c59e76bc3",

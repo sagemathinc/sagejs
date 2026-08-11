@@ -4,7 +4,7 @@
   "id": "dense-zz-ffi",
   "title": "Complete Dense ZZ Resource FFI",
   "lane": "integration",
-  "status": "active",
+  "status": "complete",
   "owner": "codex",
   "objective": "Complete generated dense integer matrix resources and prove source-transparent borrowed traversal and deterministic random construction directly over those resources",
   "base_commit": "4db221d00e38896bb9830ec5ff694e6d688497e6",

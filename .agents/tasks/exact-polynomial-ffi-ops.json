@@ -4,7 +4,7 @@
   "id": "exact-polynomial-ffi-ops",
   "title": "Exact Polynomial Resource Equality",
   "lane": "integration",
-  "status": "review",
+  "status": "complete",
   "owner": "user",
   "objective": "Add checked generated FLINT equality for owned exact polynomial resources",
   "base_commit": "41c677eeb039938f762d18cc27b9fadc03827c7b",

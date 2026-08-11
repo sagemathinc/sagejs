@@ -4,7 +4,7 @@
   "id": "fmpq-right-kernel-resource",
   "title": "Generated rational matrix right kernel resource",
   "lane": "integration",
-  "status": "active",
+  "status": "complete",
   "owner": "user",
   "objective": "Add a generated FmpqMatrix-to-FmpqMatrix right-kernel operation that computes and canonicalizes the rational kernel entirely inside FLINT-owned storage, with deterministic lifecycle, no packed RationalBuffer conversion, and scaling competitive with Sage.",
   "base_commit": "ceaa79eedd8ff8ab5083d02a87edeba7ffba62c0",

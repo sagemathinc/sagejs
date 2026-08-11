@@ -4,7 +4,7 @@
   "id": "exact-polynomial-bulk-io",
   "title": "Bulk exact polynomial I/O",
   "lane": "integration",
-  "status": "review",
+  "status": "complete",
   "owner": "user",
   "objective": "Replace per-coefficient generated FFI calls for exact univariate polynomial construction and coefficient export with one stable bulk resource boundary while preserving portable fallbacks and skew exact values",
   "base_commit": "e41690a0459c75d6bd3c2319192778b10631e070",

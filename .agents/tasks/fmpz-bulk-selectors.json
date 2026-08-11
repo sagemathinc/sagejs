@@ -4,7 +4,7 @@
   "id": "fmpz-bulk-selectors",
   "title": "Generated FmpzMatrix bulk selectors",
   "lane": "integration",
-  "status": "review",
+  "status": "complete",
   "owner": "user",
   "objective": "Add generated FmpzMatrix row and column selectors with checked duplicate-preserving semantics, lifecycle fuzzing, architecture ratchets, and competitive benchmarks",
   "base_commit": "869047cb5037301b40a0a02722703b9182243c97",

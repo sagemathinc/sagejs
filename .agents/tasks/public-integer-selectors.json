@@ -4,7 +4,7 @@
   "id": "public-integer-selectors",
   "title": "Public dense integer selectors",
   "lane": "arithmetic-algebra",
-  "status": "review",
+  "status": "complete",
   "owner": "user",
   "objective": "Route public dense ZZ row and column selection through generated bulk FmpzMatrix selectors with Sage-compatible semantics, focused regressions, and a tight performance ratchet",
   "base_commit": "abeca3df694d64682af8b2e3abc134c4d1400b30",

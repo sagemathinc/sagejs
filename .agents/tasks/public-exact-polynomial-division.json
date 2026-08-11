@@ -4,7 +4,7 @@
   "id": "public-exact-polynomial-division",
   "title": "Public exact polynomial resource division",
   "lane": "arithmetic-algebra",
-  "status": "active",
+  "status": "complete",
   "owner": "user",
   "objective": "Route public ZZ[x] and QQ[x] exact division directly from canonical generated FLINT resources to generated quotient resources, eliminating packed compatibility materialization and capacity retries while preserving exact-division semantics and portable fallbacks.",
   "base_commit": "ceaa79eedd8ff8ab5083d02a87edeba7ffba62c0",

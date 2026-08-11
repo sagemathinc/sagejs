@@ -4,7 +4,7 @@
   "id": "exact-polynomial-division-ffi",
   "title": "Exact Polynomial Division Ffi",
   "lane": "integration",
-  "status": "review",
+  "status": "complete",
   "owner": "user",
   "objective": "Add generated resource-to-resource exact division for sealed FmpzPolynomial and FmpqPolynomial resources using FLINT, with safe failure cleanup, lifecycle tests, and direct-resource performance evidence",
   "base_commit": "6f002299d7bad03759cf242e4c48bb2015f91813",

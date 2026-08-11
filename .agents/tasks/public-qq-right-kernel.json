@@ -4,7 +4,7 @@
   "id": "public-qq-right-kernel",
   "title": "Public dense QQ right kernel",
   "lane": "arithmetic-algebra",
-  "status": "review",
+  "status": "complete",
   "owner": "user",
   "objective": "Route public dense QQ right_kernel through the generated one-elimination FLINT resource with canonical semantics, no packed materialization, and a measured performance gate",
   "base_commit": "e41690a0459c75d6bd3c2319192778b10631e070",

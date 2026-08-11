@@ -4,7 +4,7 @@
   "id": "integer-solve-via-rational-resource",
   "title": "Resource-direct exact integer matrix solve",
   "lane": "arithmetic-algebra",
-  "status": "review",
+  "status": "complete",
   "owner": "user",
   "objective": "For square dense ZZ resource systems, promote coefficient and right-hand matrices once to generated FmpqMatrix resources and delegate to fmpq_matrix_solve, eliminating augment-RREF and scalar extraction while preserving rational solution semantics and portable fallback.",
   "base_commit": "0418430d5092921211fc90b12b74334ef1471e98",

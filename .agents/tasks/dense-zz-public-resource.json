@@ -4,7 +4,7 @@
   "id": "dense-zz-public-resource",
   "title": "Public dense ZZ generated-resource cutover",
   "lane": "arithmetic-algebra",
-  "status": "review",
+  "status": "complete",
   "owner": "dense_zz_public_resource",
   "objective": "Make public dense ZZ matrices canonically own generated FmpzMatrix resources and route all supported structural and algebraic operations through declared resources with Sage-compatible semantics and competitive performance",
   "base_commit": "46fb2b755c34faf3bb5dad41e6710f88cfe1b0f6",
@@ -41,6 +41,7 @@
     "node test/fmpz-matrix-resource-ffi.cjs",
     "node scripts/run-sage-doctests.cjs upstream-tests/sage/matrix/matrix_integer_dense_core.doctests.json --expectations upstream-tests/sage/matrix/matrix_integer_dense_core.expectations.json",
     "pnpm test:baselib:strict",
+    "pnpm test:native",
     "pnpm architecture:check",
     "SAGEJS_INTEGER_MATRIX_SAMPLES=3 pnpm test:matrix:integer-performance",
     "node bench/dense-integer-public-resources.cjs"

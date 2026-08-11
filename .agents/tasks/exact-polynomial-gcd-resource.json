@@ -4,7 +4,7 @@
   "id": "exact-polynomial-gcd-resource",
   "title": "Generated exact polynomial GCD resources",
   "lane": "integration",
-  "status": "review",
+  "status": "complete",
   "owner": "user",
   "objective": "Add generated FLINT resource operations for gcd over ZZ[x] and QQ[x], route ordinary PolynomialElement.gcd through them, preserve Sage normalization and portable fallback semantics, and prove that a fresh substantial operation requires declarations/adapters/tests but no native-compiler changes.",
   "base_commit": "c0bfe8c3bcf170f0f0519e4f43f0fcd38d770024",

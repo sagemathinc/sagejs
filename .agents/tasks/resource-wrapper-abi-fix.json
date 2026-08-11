@@ -4,7 +4,7 @@
   "id": "resource-wrapper-abi-fix",
   "title": "Resource Wrapper Abi Fix",
   "lane": "compiler-runtime",
-  "status": "active",
+  "status": "complete",
   "owner": "user",
   "objective": "Fix public @native wrapper ABI for borrowed generated resources plus UInt64Buffer aggregates, including owned resource returns",
   "base_commit": "46fb2b755c34faf3bb5dad41e6710f88cfe1b0f6",

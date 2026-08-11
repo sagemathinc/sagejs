@@ -4,7 +4,7 @@
   "id": "ffi-resource-aggregate",
   "title": "FFI Resource Aggregate Composition",
   "lane": "compiler-runtime",
-  "status": "active",
+  "status": "complete",
   "owner": "user",
   "objective": "Prove safe declaration, native lowering, generated host-wrapper, and dynamic fallback composition for an owned opaque FmpzMatrix resource with a checked read-only UInt64Buffer index slice, without exposing raw pointers or broadening unproved alias semantics",
   "base_commit": "78f9f66c2f82a8be5e0c3128e08c0ddf66492ffe",
@@ -37,6 +37,7 @@
   "validation": [
     "pnpm build",
     "pnpm test:compiler",
+    "pnpm test:integration",
     "pnpm test:unit",
     "pnpm architecture:check",
     "node test/native-kernel.cjs",

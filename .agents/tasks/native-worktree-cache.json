@@ -4,7 +4,7 @@
   "id": "native-worktree-cache",
   "title": "Shared native worktree cache",
   "lane": "integration",
-  "status": "review",
+  "status": "complete",
   "owner": "user",
   "objective": "Make fresh parallel worktrees reuse content-addressed immutable native dependency and addon builds safely, so required validation does not rebuild GMP, FLINT, OpenBLAS, and graph or fail because an addon is absent.",
   "base_commit": "5cf61ded2cddb25ea099f1939a90b6b66c40c325",

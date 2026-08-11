@@ -4,7 +4,7 @@
   "id": "exact-matrix-bulk-construction",
   "title": "Bulk exact matrix construction",
   "lane": "integration",
-  "status": "review",
+  "status": "complete",
   "owner": "user",
   "objective": "Construct and deserialize dense ZZ and QQ generated FLINT resources through one variable-length bulk boundary from ordinary Python entries and SagePack payloads, eliminating uniform-limb staging and per-entry FFI while preserving exact coercion and portable fallbacks.",
   "base_commit": "662fc85dd5e1c665614d586669062fd62caab759",

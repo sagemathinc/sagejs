@@ -4,7 +4,7 @@
   "id": "exact-matrix-bulk-host-views",
   "title": "Bulk exact matrix host views",
   "lane": "arithmetic-algebra",
-  "status": "review",
+  "status": "complete",
   "owner": "user",
   "objective": "Make dense ZZ and QQ matrix list, row, rows, column, columns, diagonal, and pivots cross generated FLINT resources through canonical variable-length bulk storage without uniform IntegerBuffer compatibility materialization or scalar FFI proportional to matrix size; preserve Sage semantics, ownership, native-disabled behavior, and uniformly competitive measured performance.",
   "base_commit": "c0bfe8c3bcf170f0f0519e4f43f0fcd38d770024",

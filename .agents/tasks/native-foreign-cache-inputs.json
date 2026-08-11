@@ -4,7 +4,7 @@
   "id": "native-foreign-cache-inputs",
   "title": "Content-address declared native headers",
   "lane": "native-compiler",
-  "status": "review",
+  "status": "complete",
   "owner": "user",
   "objective": "Make native kernel cache identities include the actual declared foreign headers and linked library inputs used by generated FFI adapters, so editing a host-neutral adapter header cannot reuse stale compiled code.",
   "base_commit": "96db09018fc54c0e9254e704558d565258ebb0e9",
