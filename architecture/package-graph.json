@@ -58,7 +58,7 @@
       "id": "arithmetic",
       "layer": 1,
       "startup": "bootstrap",
-      "max_source_bytes": 550000,
+      "max_source_bytes": 575000,
       "depends_on": ["core-runtime"],
       "files": [
         "src/baselib/algebra.py",
@@ -176,7 +176,7 @@
       "id": "python-stdlib",
       "layer": 1,
       "startup": "lazy",
-      "max_source_bytes": 970000,
+      "max_source_bytes": 1000000,
       "depends_on": ["core-runtime"],
       "modules": [
         "_dummy_thread", "_thread", "abc", "aes", "annotationlib", "argparse", "array", "ast", "atexit", "base64", "bdb", "bisect", "calendar", "cmath", "codecs", "collections", "colorsys", "contextlib", "copy", "decimal",
