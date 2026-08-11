@@ -4,7 +4,7 @@
   "id": "fflas-worktree-cache",
   "title": "Fflas Worktree Cache",
   "lane": "integration",
-  "status": "review",
+  "status": "active",
   "owner": "user",
   "objective": "Share immutable content-addressed GMP, Givaro, FFLAS-FFPACK, and OpenBLAS dependency artifacts across worktrees without redundant builds or full copies, with concurrency-safe publication and focused disk/build verification",
   "base_commit": "b21b652c83afe6867ef17da61b691abf40ab6f9f",
