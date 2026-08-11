@@ -39,7 +39,48 @@
     "pnpm test:compiler",
     "pnpm test:integration"
   ],
-  "runs": [],
+  "runs": [
+    {
+      "command": "pnpm build",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 149.846,
+      "started_at": "2026-08-11T16:24:04.756Z",
+      "commit": "3f96f74bdba4bbeec4414d1a3e6ba24c9ea0e1c6",
+      "workspace_fingerprint": "dbfd93390f2c2eb6bdfad94f978b77c0999b755209a248a124f65340fecc23e0",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:compiler",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 80.043,
+      "started_at": "2026-08-11T16:26:38.813Z",
+      "commit": "3f96f74bdba4bbeec4414d1a3e6ba24c9ea0e1c6",
+      "workspace_fingerprint": "dbfd93390f2c2eb6bdfad94f978b77c0999b755209a248a124f65340fecc23e0",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:compiler",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 78.809,
+      "started_at": "2026-08-11T16:28:09.730Z",
+      "commit": "3f96f74bdba4bbeec4414d1a3e6ba24c9ea0e1c6",
+      "workspace_fingerprint": "dbfd93390f2c2eb6bdfad94f978b77c0999b755209a248a124f65340fecc23e0",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:integration",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 171.25,
+      "started_at": "2026-08-11T16:29:34.910Z",
+      "commit": "3f96f74bdba4bbeec4414d1a3e6ba24c9ea0e1c6",
+      "workspace_fingerprint": "dbfd93390f2c2eb6bdfad94f978b77c0999b755209a248a124f65340fecc23e0",
+      "platform": "linux-x64"
+    }
+  ],
   "handoff": {
     "summary": "Python container truth testing is now the safe compiler default, including reentrant operand-preserving boolean expressions, while an explicit JavaScript escape hatch remains available. Self-hosted baselib generation uses Python truth outside the bootstrap primitive, numeric protocols no longer depend on operand truth, ordering is an independent representation policy, and keyword interpolation resolves builtins through the lexical module registry. CPython-differential regressions cover containers, custom truth protocols, control-flow consumers, short-circuit behavior, comprehensions, and falsey numeric protocols.",
     "risks": [
