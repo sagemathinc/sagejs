@@ -151,3 +151,31 @@ pnpm test:matrix:performance
 Override `SAGEJS_DENSE_PRIME_SIZES`, `SAGEJS_DENSE_PRIME_SAMPLES`, and
 `SAGEJS_DENSE_PRIME_MODULUS` for larger or cross-platform measurements. Add
 `--json` for the full core/production/FFI/legacy-N-API result.
+
+## Structural serialization and display boundary
+
+The canonical `BigUint64Array` matrix representation also removes interpreted
+entry loops from packed little-endian serialization, deserialization, and the
+ordinary unsubdivided `.str()` path. These operations use checked shared
+runtime primitives. Packed input still validates the physical width and exact
+byte length, normalizes untrusted residues modulo the field characteristic,
+and reports values that do not fit the requested output width. Subdivided
+formatting retains the ordinary semantic Python path.
+
+On the development Linux x64 host with Node 26.7.0, a 500-by-500 matrix over
+`GF(65521)` and four-byte packed residues measured as follows. Each figure is
+the best of three samples after one warmup; the comparison column runs the
+exact previous Python loop in the same process.
+
+| boundary | checked bulk primitive | previous loop | speedup |
+|---|---:|---:|---:|
+| packed export | 25.2 ms | 1306.3 ms | 51.8x |
+| packed import and normalization | 11.6 ms | 1240.2 ms | 106.9x |
+| default full formatting | 16.4 ms | 2586.4 ms | 157.7x |
+
+`test/dense-prime-structural.cjs` checks every supported physical width,
+rectangular and empty shapes, little-endian alignment, invalid and truncated
+payloads, overflow, normalization, zero-copy trusted storage transfer, exact
+formatting, and subdivided fallback behavior. Its absolute and same-process
+relative timing gates prevent these structural boundaries from silently
+returning to per-entry interpreted execution.
