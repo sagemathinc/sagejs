@@ -222,23 +222,8 @@ def _integer_zeros(length: int, word_capacity: int) -> Any:
 
 
 def _flint_byte_region_bytes(region: Any) -> Any:
-    """Consume an owned variable-size FLINT result into a `Uint8Array`."""
-    ffi = _flint_ffi_module()
-    kernel = _packed_polynomial_flint_module().flint_byte_region_copy
-    try:
-        length = runtime.number(ffi.flint_byte_region_length(region))
-        output = _integer_kernel_output(kernel, length, 1)
-        if not kernel(region, output, length):
-            raise RuntimeError("FLINT byte-region copy failed")
-        word_capacity = runtime.reflect.get(output, "wordCapacity")
-        limbs = runtime.reflect.get(output, "limbs")
-        if word_capacity is runtime.undefined:
-            return runtime.uint64_pack_le(runtime.uint64_buffer(output), 1)
-        if runtime.number(word_capacity) != 1 or limbs is runtime.undefined:
-            raise RuntimeError("FLINT byte-region copy used an invalid word capacity")
-        return runtime.uint64_pack_le(limbs, 1)
-    finally:
-        region.close()
+    """Consume an owned variable-size FFI result in one checked host copy."""
+    return region.take_bytes()
 
 
 def _trim_integer_buffer(source: Any) -> Any:
