@@ -916,15 +916,21 @@ class MatrixSpaceParent(sage.Parent):
         """Construct an integer matrix from packed signed magnitudes."""
         if self._base is not sage.ZZ:
             raise TypeError("packed integer storage requires ZZ")
+        ffi = _flint_ffi_module()
+        region = ffi.FlintByteRegion.from_bytes(entries)
         try:
-            packed = runtime.integer_buffer_from_packed_bytes(
-                entries, self._rows * self._cols
+            resource = ffi.fmpz_matrix_deserialize_entries(
+                region,
+                self._rows,
+                self._cols,
             )
-        except Exception:
-            packed = runtime.undefined
-        if packed is runtime.undefined:
-            raise ValueError("invalid packed integer matrix data")
-        return self._from_canonical_integer_entries(packed)
+            try:
+                return Matrix(self, _FmpzMatrixResourceStorage(resource))
+            except Exception:
+                resource.close()
+                raise
+        finally:
+            region.close()
 
     def _from_integer_values(self, entries: Any) -> Matrix:
         """Coerce row-major entries into an owned `FmpzMatrix` resource."""
@@ -932,17 +938,17 @@ class MatrixSpaceParent(sage.Parent):
             raise TypeError("integer storage requires ZZ")
         if len(entries) != self._rows * self._cols:
             raise ValueError("matrix entry count does not match dimensions")
-        storage = runtime.undefined
+        values = runtime.undefined
         try:
-            storage = _owned_integer_buffer(entries, 1)
+            packed = runtime.exact_integer_values_to_packed_bytes(entries)
         except Exception:
             # General Sage coercion remains the semantic fallback for
             # rationals, ring elements, and arbitrary iterable entries.
-            storage = runtime.undefined
-        if storage is runtime.undefined:
+            packed = runtime.undefined
+        if packed is runtime.undefined:
             values = [sage.ZZ(entries[index]) for index in range(len(entries))]
-            storage = _owned_integer_buffer(values, 1)
-        return self._from_canonical_integer_entries(storage)
+            packed = runtime.exact_integer_values_to_packed_bytes(values)
+        return self._from_packed_integers(packed)
 
     def _from_canonical_integer_entries(self, entries: Any) -> Matrix:
         """Bulk-import trusted exact entries into an owned FLINT resource."""
@@ -993,12 +999,23 @@ class MatrixSpaceParent(sage.Parent):
 
     def _from_packed_rationals(self, entries: Any) -> Matrix:
         """Construct a rational matrix from packed numerator/denominator data."""
-        count = self._rows * self._cols
+        if self._base is not sage.QQ:
+            raise TypeError("packed rational storage requires QQ")
+        ffi = _flint_ffi_module()
+        region = ffi.FlintByteRegion.from_bytes(entries)
         try:
-            buffers = runtime.rational_buffers_from_packed_bytes(entries, count)
-        except Exception as error:
-            raise ValueError(str(error))  # noqa: B904
-        return self._from_canonical_rational_entries(buffers[0], buffers[1])
+            resource = ffi.fmpq_matrix_deserialize(
+                region,
+                self._rows,
+                self._cols,
+            )
+            try:
+                return Matrix(self, _FmpqMatrixResourceStorage(resource))
+            except Exception:
+                resource.close()
+                raise
+        finally:
+            region.close()
 
     def _from_rational_values(self, entries: Any) -> Matrix:
         """Coerce and pack row-major entries for a dense `QQ` matrix."""
@@ -1006,25 +1023,20 @@ class MatrixSpaceParent(sage.Parent):
             raise TypeError("rational storage requires QQ")
         if len(entries) != self._rows * self._cols:
             raise ValueError("matrix entry count does not match dimensions")
-        numerators = []
-        denominators = []
+        parts = []
         for entry in entries:
             if runtime.is_exact_integer(entry):
-                numerators.append(entry)
-                denominators.append(1)
+                parts.append(entry)
+                parts.append(1)
             elif getattr(entry, "_parent", None) is sage.QQ:
-                numerators.append(_untyped(entry)._numerator)
-                denominators.append(_untyped(entry)._denominator)
+                parts.append(_untyped(entry)._numerator)
+                parts.append(_untyped(entry)._denominator)
             else:
                 rational = sage.QQ(entry)
-                numerators.append(rational._numerator)
-                denominators.append(rational._denominator)
-        # Every path above produced a canonical pair.  Pack exactly once;
-        # routing back through ``_from_rational_parts`` would repeat 2n GCDs
-        # at the public construction boundary.
-        return self._from_canonical_rational_entries(
-            numerators,
-            denominators,
+                parts.append(rational._numerator)
+                parts.append(rational._denominator)
+        return self._from_packed_rationals(
+            runtime.exact_integer_values_to_packed_bytes(parts)
         )
 
     def _from_rational_parts(
@@ -1038,15 +1050,13 @@ class MatrixSpaceParent(sage.Parent):
         count = self._rows * self._cols
         if len(numerators) != count or len(denominators) != count:
             raise ValueError("rational matrix component lengths differ")
-        normalized_numerators = []
-        normalized_denominators = []
+        parts = []
         for index in range(count):
             rational = _untyped(sage.QQ)(numerators[index], denominators[index])
-            normalized_numerators.append(rational._numerator)
-            normalized_denominators.append(rational._denominator)
-        return self._from_canonical_rational_entries(
-            normalized_numerators,
-            normalized_denominators,
+            parts.append(rational._numerator)
+            parts.append(rational._denominator)
+        return self._from_packed_rationals(
+            runtime.exact_integer_values_to_packed_bytes(parts)
         )
 
     def _from_canonical_rational_entries(

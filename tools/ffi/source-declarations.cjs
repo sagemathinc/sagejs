@@ -208,7 +208,7 @@ function parseResource(filename, callNode, libraryVariable, pythonName) {
     required: ["id", "abi", "ownership", "wasm"],
     keywords: [
       "id", "abi", "ownership", "owner", "close", "clear", "size",
-      "host_transfer", "wasm",
+      "host_transfer", "host_ingress", "wasm",
     ],
   });
   const ownership = requiredString(filename, call, "ownership");
@@ -217,6 +217,7 @@ function parseResource(filename, callNode, libraryVariable, pythonName) {
   const clear = keywordLiteral(filename, call, "clear", { default: null });
   const size = keywordLiteral(filename, call, "size", { default: null });
   const hostTransferNode = call.keywords.get("host_transfer");
+  const hostIngressNode = call.keywords.get("host_ingress");
   const abi = keywordLiteral(filename, call, "abi", { names: true });
   expect(filename, call.node, typeof abi === "string", "resource abi must be a name");
   for (const [label, value] of [
@@ -245,6 +246,25 @@ function parseResource(filename, callNode, libraryVariable, pythonName) {
       },
     };
   }
+  let hostIngress;
+  if (hostIngressNode !== undefined) {
+    const ingress = callParts(filename, hostIngressNode, "copied_bytes", {
+      positional: [0],
+      required: ["dynamic", "init", "wasm"],
+      keywords: ["dynamic", "init", "wasm"],
+    });
+    hostIngress = {
+      kind: "copied_bytes",
+      dynamic: { export: requiredString(filename, ingress, "dynamic") },
+      native: {
+        init_symbol: requiredString(filename, ingress, "init"),
+      },
+      targets: {
+        dynamic: true,
+        wasm: requiredBoolean(filename, ingress, "wasm"),
+      },
+    };
+  }
   return {
     id: requiredString(filename, call, "id"),
     python_name: pythonName,
@@ -257,6 +277,7 @@ function parseResource(filename, callNode, libraryVariable, pythonName) {
       ...(size === null ? {} : { size_symbol: size }),
     },
     ...(hostTransfer === undefined ? {} : { host_transfer: hostTransfer }),
+    ...(hostIngress === undefined ? {} : { host_ingress: hostIngress }),
     targets: {
       dynamic: true,
       native: true,

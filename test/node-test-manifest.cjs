@@ -45,6 +45,7 @@ const integration = [
   "test/dense-integer-migration.cjs",
   "test/dense-integer-public-resource.cjs",
   "test/exact-matrix-bulk-host-views.cjs",
+  "test/exact-matrix-bulk-construction.cjs",
   "test/dense-integer-solve-resource.cjs",
   "test/fmpz-matrix-resource-kernels.cjs",
   "test/fmpz-matrix-resource-selectors.cjs",

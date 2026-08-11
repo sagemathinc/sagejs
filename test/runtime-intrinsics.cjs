@@ -229,7 +229,7 @@ try {
     codecPath,
     [
       "import sagejs.runtime as runtime",
-      "values = [0, 1, -1, 2**53 + 1, -(2**4097 + 17)]",
+      "values = [0, 1, -1, 2**53 + 1, -(2**65537 + 17)]",
       "packed = runtime.exact_integer_values_to_packed_bytes(values)",
       "restored = runtime.list_constructor(",
       "    runtime.exact_integer_values_from_packed_bytes(packed, len(values))",

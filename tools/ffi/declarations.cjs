@@ -73,7 +73,7 @@ function validateResource(filename, resource, ids, pythonNames, abiNames) {
   knownKeys(filename, resource, [
     "id", "python_name", "abi_type", "ownership", "owner", "dynamic",
     "native", "targets",
-  ], ["host_transfer"], `resource ${resource.id || "?"}`);
+  ], ["host_transfer", "host_ingress"], `resource ${resource.id || "?"}`);
   if (!identifier(resource.id) || ids.has(resource.id)) {
     fail(filename, `invalid or duplicate resource id ${resource.id}`);
   }
@@ -154,6 +154,38 @@ function validateResource(filename, resource, ids, pythonNames, abiNames) {
         typeof resource.host_transfer.targets.wasm !== "boolean") {
       fail(filename,
         `${resource.id} byte-copy transfer requires dynamic and boolean wasm targets`);
+    }
+  }
+  if (resource.host_ingress !== undefined) {
+    // Ingress initializers are status-returning constructors. A false result
+    // must leave no allocation or other owned state behind: generated hosts
+    // cannot safely clear a resource-specific partial value.
+    if (resource.ownership !== "owned") {
+      fail(filename, `${resource.id} host ingress requires ownership`);
+    }
+    exactKeys(filename, resource.host_ingress,
+      ["kind", "dynamic", "native", "targets"],
+      `${resource.id}.host_ingress`);
+    if (resource.host_ingress.kind !== "copied_bytes") {
+      fail(filename, `${resource.id} has unsupported host ingress ` +
+        `${resource.host_ingress.kind}`);
+    }
+    exactKeys(filename, resource.host_ingress.dynamic, ["export"],
+      `${resource.id}.host_ingress.dynamic`);
+    if (!identifier(resource.host_ingress.dynamic.export)) {
+      fail(filename, `${resource.id} byte-ingress export must be an identifier`);
+    }
+    exactKeys(filename, resource.host_ingress.native, ["init_symbol"],
+      `${resource.id}.host_ingress.native`);
+    if (!identifier(resource.host_ingress.native.init_symbol)) {
+      fail(filename, `${resource.id} byte-ingress init_symbol must be an identifier`);
+    }
+    exactKeys(filename, resource.host_ingress.targets, ["dynamic", "wasm"],
+      `${resource.id}.host_ingress.targets`);
+    if (resource.host_ingress.targets.dynamic !== true ||
+        typeof resource.host_ingress.targets.wasm !== "boolean") {
+      fail(filename,
+        `${resource.id} byte ingress requires dynamic and boolean wasm targets`);
     }
   }
   exactKeys(filename, resource.targets, ["dynamic", "native", "wasm"],
@@ -922,6 +954,25 @@ function generatePythonModule(declaration) {
       : resourcesByType.has(type) ? type : "int";
   const resourceClasses = declaration.resources.map((resource) => {
     const identity = resourceIdentity(resource);
+    const hostIngress = resource.host_ingress?.kind === "copied_bytes"
+      ? `    @classmethod\n` +
+        `    def from_bytes(cls, source: Any) -> ${resource.python_name}:\n` +
+        `        \"\"\"Copy host bytes into a newly owned resource.\"\"\"\n` +
+        `        return cls(_runtime.ffi_resource_create(\n` +
+        `            __sagejs_ffi_declaration__ + ` +
+          `${JSON.stringify(`:__resource_${resource.id}_from_bytes`)},\n` +
+        `            ${JSON.stringify(identity)},\n` +
+        `            ${JSON.stringify(library.dynamic.package)},\n` +
+        `            ${JSON.stringify(resource.host_ingress.dynamic.export)},\n` +
+        `            ${JSON.stringify(resource.dynamic.close_export)},\n` +
+        `            [source],\n` +
+        `            [\"ByteBuffer\"],\n` +
+        `            [None],\n` +
+        `            \"none\",\n` +
+        `            \"ValueError\",\n` +
+        `            \"unable to copy bytes into FFI resource\",\n` +
+        `        ))\n\n`
+      : "";
     const lifetime = resource.ownership === "owned"
       ? `    @property\n` +
         `    def closed(self) -> bool:\n` +
@@ -959,6 +1010,7 @@ function generatePythonModule(declaration) {
       `    \"\"\"Opaque ${resource.ownership} ${library.id}:` +
       `${resource.id} ${resource.ownership === "owned" ? "resource" : "view"}.` +
       `\"\"\"\n\n` +
+      hostIngress +
       `    def __init__(self, token: Any) -> None:\n` +
       `        self._token = token\n\n` +
       lifetime +

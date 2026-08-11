@@ -871,7 +871,8 @@ fail:
 
 static inline size_t sagejs_fmpz_serialized_bytes(const fmpz_t value)
 {
-    return (size_t) ((fmpz_bits(value) + 7) / 8);
+    return fmpz_is_zero(value)
+        ? 0 : (size_t) ((fmpz_bits(value) + 7) / 8);
 }
 
 static inline int sagejs_fmpq_matrix_serialize(
@@ -948,6 +949,111 @@ static inline int sagejs_fmpq_matrix_serialize(
     }
     fmpz_clear(magnitude);
     free(words);
+    return 1;
+}
+
+static inline uint32_t sagejs_fmpq_matrix_read_u32(
+    const unsigned char *data, size_t offset)
+{
+    uint32_t result = 0;
+    for (size_t byte = 0; byte < 4; byte++)
+        result |= (uint32_t) data[offset + byte] << (8 * byte);
+    return result;
+}
+
+static inline int sagejs_fmpq_matrix_deserialize(
+    sagejs_fmpq_matrix_t result, const sagejs_flint_byte_region_t source,
+    uint64_t rows, uint64_t columns)
+{
+    const unsigned char *data = source->data;
+    const size_t length = source->length;
+    if (data == NULL || rows > (uint64_t) WORD_MAX ||
+        columns > (uint64_t) WORD_MAX ||
+        (rows != 0 && columns > (uint64_t) SIZE_MAX / rows))
+        return 0;
+    const size_t count = (size_t) rows * (size_t) columns;
+    if (count > length / 8)
+        return 0;
+
+    size_t offset = 0;
+    size_t maximum_bytes = 0;
+    for (size_t index = 0; index < count; index++)
+    {
+        for (size_t part = 0; part < 2; part++)
+        {
+            if (length - offset < 4)
+                return 0;
+            const uint32_t header =
+                sagejs_fmpq_matrix_read_u32(data, offset);
+            offset += 4;
+            const int negative =
+                (header & UINT32_C(0x80000000)) != 0;
+            const size_t byte_count =
+                (size_t) (header & UINT32_C(0x7fffffff));
+            if (byte_count > length - offset ||
+                (byte_count == 0 && negative) ||
+                (byte_count != 0 && data[offset + byte_count - 1] == 0) ||
+                (part == 1 && (negative || byte_count == 0)))
+                return 0;
+            if (byte_count > maximum_bytes)
+                maximum_bytes = byte_count;
+            offset += byte_count;
+        }
+    }
+    if (offset != length)
+        return 0;
+
+    /* This is one reusable decode workspace, not uniform matrix capacity.
+       FLINT owns independently sized numerator and denominator values. */
+    const size_t maximum_words =
+        (maximum_bytes + sizeof(ulong) - 1) / sizeof(ulong);
+    ulong *words = maximum_words == 0 ? NULL :
+        (ulong *) calloc(maximum_words, sizeof(ulong));
+    if (maximum_words != 0 && words == NULL)
+        return 0;
+    if (!sagejs_fmpq_matrix_init(result, rows, columns))
+    {
+        free(words);
+        return 0;
+    }
+
+    offset = 0;
+    for (size_t index = 0; index < count; index++)
+    {
+        fmpq *entry = fmpq_mat_entry(result->value,
+            (slong) (index / (size_t) columns),
+            (slong) (index % (size_t) columns));
+        fmpz *parts[2] = {fmpq_numref(entry), fmpq_denref(entry)};
+        for (size_t part = 0; part < 2; part++)
+        {
+            const uint32_t header =
+                sagejs_fmpq_matrix_read_u32(data, offset);
+            offset += 4;
+            const int negative =
+                (header & UINT32_C(0x80000000)) != 0;
+            const size_t byte_count =
+                (size_t) (header & UINT32_C(0x7fffffff));
+            const size_t word_count =
+                (byte_count + sizeof(ulong) - 1) / sizeof(ulong);
+            if (word_count != 0)
+                memset(words, 0, word_count * sizeof(ulong));
+            for (size_t byte = 0; byte < byte_count; byte++)
+                words[byte / sizeof(ulong)] |=
+                    (ulong) data[offset + byte] <<
+                    (8 * (byte % sizeof(ulong)));
+            if (word_count == 0)
+                fmpz_zero(parts[part]);
+            else
+                fmpz_set_ui_array(parts[part], words, (slong) word_count);
+            if (negative)
+                fmpz_neg(parts[part], parts[part]);
+            offset += byte_count;
+        }
+        fmpq_canonicalise(entry);
+    }
+    free(words);
+    result->known_rank = -1;
+    sagejs_fmpq_matrix_recompute_allocated_bytes(result);
     return 1;
 }
 
