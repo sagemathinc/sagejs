@@ -64,6 +64,15 @@ jobs:
           key: linux-x64-graph-${{ hashFiles('packages/graph/scripts/build-deps.cjs', 'packages/graph/package.json') }}
           restore-keys: linux-x64-graph-
 
+      - name: Cache downloaded and compiled FFLAS dependencies
+        uses: actions/cache@v6
+        with:
+          path: |
+            packages/fflas/.native/downloads
+            packages/fflas/.native/prefix
+          key: linux-x64-fflas-${{ hashFiles('packages/fflas/scripts/build-deps.cjs', 'packages/fflas/scripts/native-prefix.cjs', 'packages/fflas/package.json', 'packages/flint/scripts/build-deps.cjs', 'packages/flint/package.json', 'packages/flint/binding.gyp') }}
+          restore-keys: linux-x64-fflas-
+
       - name: Bootstrap the complete native system
         env:
           SAGEJS_BUILD_JOBS: "8"
@@ -226,6 +235,15 @@ jobs:
           key: linux-arm64-graph-${{ hashFiles('packages/graph/scripts/build-deps.cjs', 'packages/graph/package.json') }}
           restore-keys: linux-arm64-graph-
 
+      - name: Cache downloaded and compiled FFLAS dependencies
+        uses: actions/cache@v6
+        with:
+          path: |
+            packages/fflas/.native/downloads
+            packages/fflas/.native/prefix
+          key: linux-arm64-fflas-${{ hashFiles('packages/fflas/scripts/build-deps.cjs', 'packages/fflas/scripts/native-prefix.cjs', 'packages/fflas/package.json', 'packages/flint/scripts/build-deps.cjs', 'packages/flint/package.json', 'packages/flint/binding.gyp') }}
+          restore-keys: linux-arm64-fflas-
+
       - name: Bootstrap the complete native system
         env:
           SAGEJS_BUILD_JOBS: "8"
@@ -370,6 +388,8 @@ jobs:
         run: |
           pnpm --dir packages/flint build
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          pnpm --dir packages/fflas build
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           pnpm --dir packages/graph build
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           pnpm build
@@ -501,11 +521,21 @@ jobs:
           key: macos-arm64-graph-${{ hashFiles('packages/graph/scripts/build-deps.cjs', 'packages/graph/package.json') }}
           restore-keys: macos-arm64-graph-
 
+      - name: Cache downloaded and compiled FFLAS dependencies
+        uses: actions/cache@v6
+        with:
+          path: |
+            packages/fflas/.native/downloads
+            packages/fflas/.native/prefix
+          key: macos-arm64-fflas-${{ hashFiles('packages/fflas/scripts/build-deps.cjs', 'packages/fflas/scripts/native-prefix.cjs', 'packages/fflas/package.json', 'packages/flint/scripts/build-deps.cjs', 'packages/flint/package.json', 'packages/flint/binding.gyp') }}
+          restore-keys: macos-arm64-fflas-
+
       - name: Build the compiler and native mathematics stack
         env:
           SAGEJS_BUILD_JOBS: "6"
         run: |
           pnpm --dir packages/flint build
+          pnpm --dir packages/fflas build
           pnpm --dir packages/graph build
           pnpm build
 

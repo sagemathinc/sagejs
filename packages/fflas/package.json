@@ -1,0 +1,27 @@
+{
+  "name": "@sagemath/sagejs-fflas",
+  "version": "0.0.1",
+  "description": "Optional FFLAS/FFPACK accelerators for Sage.js",
+  "license": "GPL-3.0-only",
+  "private": true,
+  "type": "commonjs",
+  "main": "index.cjs",
+  "engines": {
+    "node": ">=22.22.2"
+  },
+  "files": [
+    "build/generated-ffi/sagejs_fflas_ffi.node",
+    "build/generated-ffi/manifest.json",
+    "generated/ffi_host.py",
+    "include",
+    "index.cjs",
+    "README.md"
+  ],
+  "scripts": {
+    "install": "node scripts/install.cjs",
+    "build:deps": "node scripts/build-deps.cjs",
+    "build:ffi": "node ../../scripts/build-ffi-host-adapter.cjs fflas",
+    "build": "pnpm run build:deps && pnpm run build:ffi",
+    "test": "node --test --test-reporter=spec test/test.cjs"
+  }
+}

@@ -24,8 +24,12 @@ const RUNTIME_BOOTSTRAP_PREFIX = "runtime-cache/runtime-bootstrap-";
 const TASK_RUNTIME_ASSET = "compiler/task-runtime.js";
 const FLINT_ASSET = "native/sagejs_flint.node";
 const FLINT_FFI_ASSET = "native/sagejs_flint_ffi.node";
+const FLINT_FFI_MANIFEST_ASSET = "native/sagejs_flint_ffi_manifest.json";
 const GRAPH_ASSET = "native/sagejs_graph.node";
 const GRAPH_FFI_ASSET = "native/sagejs_igraph_ffi.node";
+const GRAPH_FFI_MANIFEST_ASSET = "native/sagejs_igraph_ffi_manifest.json";
+const FFLAS_FFI_ASSET = "native/sagejs_fflas_ffi.node";
+const FFLAS_FFI_MANIFEST_ASSET = "native/sagejs_fflas_ffi_manifest.json";
 const ZEROMQ_ASSET = "native/zeromq.node";
 const PLOTLY_ASSET = "vendor/plotly.min.js";
 const KERNEL_WORKER_ASSET = "worker/kernel-worker.cjs";
@@ -35,6 +39,7 @@ const NATIVE_KERNEL_ASSET_PREFIX = "native-kernels/";
 
 let flintModule: unknown;
 let graphModule: unknown;
+let fflasModule: unknown;
 let zeroMQModule: unknown;
 const runtimeModuleCache = new Map<string, unknown>();
 let nativeTemporaryDirectory: string | undefined;
@@ -55,6 +60,30 @@ function assetText(key: string): string {
 
 function assetBytes(key: string): Uint8Array {
   return new Uint8Array(getAsset(key));
+}
+
+function attachEmbeddedFfiManifest(
+  binding: Record<PropertyKey, unknown>,
+  asset: string,
+  library: string,
+): void {
+  if (!hasAsset(asset)) {
+    throw new Error(
+      `This Sage.js executable is missing its generated ${library} FFI manifest`,
+    );
+  }
+  const manifest = JSON.parse(assetText(asset));
+  if (
+    manifest === null ||
+    typeof manifest !== "object" ||
+    typeof manifest.library !== "string"
+  ) {
+    throw new Error(`The embedded ${library} FFI manifest is invalid`);
+  }
+  Object.defineProperty(binding, "__sagejs_ffi_manifest__", {
+    value: Object.freeze(manifest),
+    enumerable: false,
+  });
 }
 
 function assetKeyForVirtualPath(filename: string): string | undefined {
@@ -305,6 +334,7 @@ function loadEmbeddedFlint(): unknown {
       combined[name] = Reflect.get(source as object, name);
     }
   }
+  attachEmbeddedFfiManifest(combined, FLINT_FFI_MANIFEST_ASSET, "FLINT");
   flintModule = combined;
   return flintModule;
 }
@@ -345,8 +375,37 @@ function loadEmbeddedGraph(): unknown {
       combined[name] = Reflect.get(source as object, name);
     }
   }
+  attachEmbeddedFfiManifest(combined, GRAPH_FFI_MANIFEST_ASSET, "igraph");
   graphModule = combined;
   return graphModule;
+}
+
+function loadEmbeddedFflas(): unknown {
+  if (fflasModule !== undefined) return fflasModule;
+  if (!hasAsset(FFLAS_FFI_ASSET)) {
+    throw new Error(
+      "This Sage.js executable was built without the optional FFLAS backend",
+    );
+  }
+  if (!nativeTemporaryDirectory) {
+    nativeTemporaryDirectory = mkdtempSync(join(tmpdir(), "sagejs-sea-"));
+  }
+  const addonFilename = join(
+    nativeTemporaryDirectory,
+    basename(FFLAS_FFI_ASSET),
+  );
+  writeFileSync(addonFilename, Buffer.from(getAsset(FFLAS_FFI_ASSET)), {
+    mode: 0o700,
+  });
+  const nativeModule = { exports: {} as Record<PropertyKey, unknown> };
+  process.dlopen(nativeModule, addonFilename);
+  attachEmbeddedFfiManifest(
+    nativeModule.exports,
+    FFLAS_FFI_MANIFEST_ASSET,
+    "FFLAS",
+  );
+  fflasModule = nativeModule.exports;
+  return fflasModule;
 }
 
 function loadEmbeddedZeroMQ(): unknown {
@@ -417,6 +476,8 @@ export function runtimeRequire(name: string): unknown {
   let module: unknown;
   if (isSea() && name === "@sagemath/sagejs-flint") {
     module = loadEmbeddedFlint();
+  } else if (isSea() && name === "@sagemath/sagejs-fflas") {
+    module = loadEmbeddedFflas();
   } else if (isSea() && name === "@sagemath/sagejs-graph") {
     module = loadEmbeddedGraph();
   } else if (isSea() && name === "zeromq") {

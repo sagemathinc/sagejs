@@ -16,6 +16,7 @@ import sagejs.runtime as runtime
 
 _dense_prime_kernel_module_cache = runtime.undefined
 _dense_prime_flint_module_cache = runtime.undefined
+_dense_prime_fflas_module_cache = runtime.undefined
 _dense_integer_flint_module_cache = runtime.undefined
 _dense_rational_kernel_module_cache = runtime.undefined
 _dense_rational_flint_module_cache = runtime.undefined
@@ -119,6 +120,17 @@ def _dense_prime_flint_module() -> Any:
     return _dense_prime_flint_module_cache
 
 
+def _dense_prime_fflas_module() -> Any:
+    """Load optional declared-FFLAS packed matrix accelerators lazily."""
+    global _dense_prime_fflas_module_cache
+    if _dense_prime_fflas_module_cache is runtime.undefined:
+        _dense_prime_fflas_module_cache = __import__(
+            "sagejs.kernels.matrix.dense_prime_field_fflas",
+            fromlist=["dense_prime_field_fflas"],
+        )
+    return _dense_prime_fflas_module_cache
+
+
 def _native_kernel_available(kernel_function: Any) -> bool:
     return bool(getattr(kernel_function, "nativeAvailable", False))
 
@@ -132,7 +144,42 @@ def _declared_ffi_kernel(kernel_function: Any) -> bool:
     requires the same packed buffers in both native and dynamic execution.
     """
     module = str(getattr(kernel_function, "__module__", ""))
-    return module.startswith("sagejs.kernels.matrix.") and module.endswith("_flint")
+    return module.startswith("sagejs.kernels.matrix.") and (
+        module.endswith("_flint") or module.endswith("_fflas")
+    )
+
+
+def _fflas_small_prime_available(modulus: int) -> bool:
+    """Return whether generated FFLAS kernels support this prime field."""
+    if modulus >= 256:
+        return False
+    try:
+        kernel = _dense_prime_fflas_module().fflas_dense_prime_field_available
+        return bool(kernel())
+    except Exception:
+        return False
+
+
+def _use_fflas_matrix_mul(
+    left_rows: int,
+    inner: int,
+    right_columns: int,
+    modulus: int,
+) -> bool:
+    """Select FFLAS only beyond its measured small-prime crossover."""
+    return min(left_rows, inner, right_columns) >= 32 and _fflas_small_prime_available(
+        modulus
+    )
+
+
+def _use_fflas_matrix_rref(rows: int, columns: int, modulus: int) -> bool:
+    """Select FFPACK only beyond its measured small-prime crossover."""
+    return min(rows, columns) >= 32 and _fflas_small_prime_available(modulus)
+
+
+def _use_fflas_matrix_rank(rows: int, columns: int, modulus: int) -> bool:
+    """Select FFPACK rank only beyond its measured crossover with FLINT."""
+    return min(rows, columns) >= 64 and _fflas_small_prime_available(modulus)
 
 
 def _typed_python_implementation(kernel_function: Any) -> str:
@@ -2899,8 +2946,27 @@ class Matrix(sage.Element):
             left = self.change_ring(base)
             right = other.change_ring(base)
             if left._has_packed_prime_storage() and right._has_packed_prime_storage():
-                ffi_module = _dense_prime_flint_module()
-                kernel_function = ffi_module.flint_dense_prime_field_matrix_mul
+                modulus = int(_untyped(base).characteristic())
+                if _use_fflas_matrix_mul(
+                    left.nrows(), left.ncols(), right.ncols(), modulus
+                ):
+                    kernel_function = (
+                        _dense_prime_fflas_module().fflas_dense_prime_field_matrix_mul
+                    )
+                    implementation = (
+                        "declared-fflas-isolated"
+                        if _native_kernel_available(kernel_function)
+                        else "declared-fflas-adapter"
+                    )
+                else:
+                    kernel_function = (
+                        _dense_prime_flint_module().flint_dense_prime_field_matrix_mul
+                    )
+                    implementation = (
+                        "declared-flint-isolated"
+                        if _native_kernel_available(kernel_function)
+                        else "declared-flint-adapter"
+                    )
                 output = _dense_prime_zeros(
                     kernel_function,
                     left.nrows() * right.ncols(),
@@ -2912,18 +2978,14 @@ class Matrix(sage.Element):
                     left.nrows(),
                     left.ncols(),
                     right.ncols(),
-                    int(_untyped(base).characteristic()),
+                    modulus,
                 )
                 _trace_dense_prime_selection(
                     "multiply",
-                    (
-                        "declared-flint-isolated"
-                        if _native_kernel_available(kernel_function)
-                        else "declared-flint-adapter"
-                    ),
+                    implementation,
                     left.nrows(),
                     right.ncols(),
-                    int(_untyped(base).characteristic()),
+                    modulus,
                 )
                 return MatrixSpace(
                     base,
@@ -3388,8 +3450,12 @@ class Matrix(sage.Element):
         self._column_vectors_cache = runtime.undefined
 
     def rank(self, algorithm: Any = None) -> int:
-        if algorithm not in [None, "flint", "linbox", "modp"]:
-            raise ValueError("algorithm must be one of 'modp', 'flint' or 'linbox'")
+        if algorithm not in [None, "fflas", "flint", "linbox", "modp"]:
+            raise ValueError(
+                "algorithm must be one of 'fflas', 'modp', 'flint' or 'linbox'"
+            )
+        if algorithm == "fflas" and not self._has_packed_prime_storage():
+            raise ValueError("FFLAS rank requires a dense matrix over GF(p)")
         if self._rank_cache is runtime.undefined:
             backend = runtime.flint_backend()
             if self._has_packed_rational_storage():
@@ -3441,26 +3507,54 @@ class Matrix(sage.Element):
                     self.ncols(),
                 )
             elif self._has_packed_prime_storage() and algorithm != "modp":
-                ffi_module = _dense_prime_flint_module()
-                kernel_function = ffi_module.flint_dense_prime_field_matrix_rank
-                self._rank_cache = runtime.number(
+                modulus = int(_untyped(self.base_ring()).characteristic())
+                if algorithm == "fflas" or (
+                    algorithm is None
+                    and _use_fflas_matrix_rank(self.nrows(), self.ncols(), modulus)
+                ):
+                    if not _fflas_small_prime_available(modulus):
+                        raise ValueError(
+                            "FFLAS rank requires an available backend and p < 256"
+                        )
+                    kernel_function = (
+                        _dense_prime_fflas_module().fflas_dense_prime_field_matrix_rank
+                    )
+                    implementation = (
+                        "declared-fflas-isolated"
+                        if _native_kernel_available(kernel_function)
+                        else "declared-fflas-adapter"
+                    )
+                    rank_output = _dense_prime_zeros(kernel_function, 1)
                     kernel_function(
+                        rank_output,
                         self._prime_kernel_buffer(kernel_function),
                         self.nrows(),
                         self.ncols(),
-                        int(_untyped(self.base_ring()).characteristic()),
+                        modulus,
                     )
-                )
-                _trace_dense_prime_selection(
-                    "rank",
-                    (
+                    self._rank_cache = runtime.number(rank_output[0])
+                else:
+                    ffi_module = _dense_prime_flint_module()
+                    kernel_function = ffi_module.flint_dense_prime_field_matrix_rank
+                    implementation = (
                         "declared-flint-isolated"
                         if _native_kernel_available(kernel_function)
                         else "declared-flint-adapter"
-                    ),
+                    )
+                    self._rank_cache = runtime.number(
+                        kernel_function(
+                            self._prime_kernel_buffer(kernel_function),
+                            self.nrows(),
+                            self.ncols(),
+                            modulus,
+                        )
+                    )
+                _trace_dense_prime_selection(
+                    "rank",
+                    implementation,
                     self.nrows(),
                     self.ncols(),
-                    int(_untyped(self.base_ring()).characteristic()),
+                    modulus,
                 )
             elif _is_extension_field_base(self.base_ring()):
                 self._rank_cache = backend.fqMatrixRank(self._native)
@@ -3569,8 +3663,10 @@ class Matrix(sage.Element):
         return False
 
     def rref(self, algorithm: Any = None) -> Matrix:
-        if algorithm not in [None, "flint", "modp"]:
-            raise ValueError("algorithm must be 'flint' or 'modp'")
+        if algorithm not in [None, "fflas", "flint", "modp"]:
+            raise ValueError("algorithm must be 'fflas', 'flint', or 'modp'")
+        if algorithm == "fflas" and not self._has_packed_prime_storage():
+            raise ValueError("FFLAS RREF requires a dense matrix over GF(p)")
         if self._rref_cache is runtime.undefined:
             if self._has_integer_storage():
                 self._rref_cache = self.change_ring(sage.QQ).rref(algorithm)
@@ -3648,6 +3744,7 @@ class Matrix(sage.Element):
                 base = self.base_ring()
             backend = runtime.flint_backend()
             if self._has_packed_prime_storage():
+                modulus = int(_untyped(self.base_ring()).characteristic())
                 if algorithm == "modp":
                     kernel_module = _dense_prime_kernel_module()
                     kernel_function = kernel_module.dense_prime_field_matrix_rref
@@ -3664,9 +3761,38 @@ class Matrix(sage.Element):
                         source,
                         self.nrows(),
                         self.ncols(),
-                        int(_untyped(self.base_ring()).characteristic()),
+                        modulus,
                     )
                     rank = runtime.number(kernel_function(source_record, output))
+                elif algorithm == "fflas" or (
+                    algorithm is None
+                    and _use_fflas_matrix_rref(self.nrows(), self.ncols(), modulus)
+                ):
+                    if not _fflas_small_prime_available(modulus):
+                        raise ValueError(
+                            "FFLAS RREF requires an available backend and p < 256"
+                        )
+                    kernel_function = (
+                        _dense_prime_fflas_module().fflas_dense_prime_field_matrix_rref
+                    )
+                    implementation = (
+                        "declared-fflas-isolated"
+                        if _native_kernel_available(kernel_function)
+                        else "declared-fflas-adapter"
+                    )
+                    output = _dense_prime_zeros(
+                        kernel_function, self.nrows() * self.ncols()
+                    )
+                    rank_output = _dense_prime_zeros(kernel_function, 1)
+                    kernel_function(
+                        output,
+                        rank_output,
+                        self._prime_kernel_buffer(kernel_function),
+                        self.nrows(),
+                        self.ncols(),
+                        modulus,
+                    )
+                    rank = runtime.number(rank_output[0])
                 else:
                     ffi_module = _dense_prime_flint_module()
                     kernel_function = ffi_module.flint_dense_prime_field_matrix_rref
@@ -3684,7 +3810,7 @@ class Matrix(sage.Element):
                             self._prime_kernel_buffer(kernel_function),
                             self.nrows(),
                             self.ncols(),
-                            int(_untyped(self.base_ring()).characteristic()),
+                            modulus,
                         )
                     )
                 self._rank_cache = rank

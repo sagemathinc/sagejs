@@ -1,0 +1,156 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "fflas-dense-prime-v1",
+  "title": "FFLAS dense prime accelerator",
+  "lane": "integration",
+  "status": "review",
+  "owner": "user",
+  "objective": "Add a generated FFLAS/FFPACK accelerator for small-prime dense matrix multiplication and canonical RREF/rank with exact FLINT fallback, platform capability handling, differential tests, and public performance gates",
+  "base_commit": "c96946ddd92812c9fc198ea23589b8e640eb98e3",
+  "claims": [
+    ".agents/lanes.json",
+    "ffi/fflas.ffi.py",
+    "ffi/fflas.ffi.json",
+    "src/baselib/matrix.py",
+    "src/baselib/sagejs/ffi/",
+    "src/lib/sagejs/ffi/",
+    "src/lib/sagejs/kernels/matrix/dense_prime_field_fflas.py",
+    "packages/fflas/",
+    "architecture/",
+    "package.json",
+    "pnpm-lock.yaml",
+    "pnpm-workspace.yaml",
+    "pyrightconfig.json",
+    "scripts/native-worktree-cache.cjs",
+    "scripts/bootstrap.cjs",
+    "scripts/build.cjs",
+    "scripts/build-sea.cjs",
+    "scripts/parallel-development.cjs",
+    "scripts/check-finite-matrix-budget.cjs",
+    "test/fflas-dense-prime.cjs",
+    "test/ffi.cjs",
+    "test/node-test-manifest.cjs",
+    "test/parallel-development.cjs",
+    "test/sea-smoke.cjs",
+    "bench/fflas-dense-prime.cjs",
+    "ARCHITECTURE.md",
+    "FFI.md",
+    "tools/native-kernel/compiler.cjs",
+    "tools/native-kernel/c-backend.cjs",
+    "tools/native-kernel/ffi-codegen.cjs",
+    "tools/ffi/declarations.cjs",
+    "tools/standalone-library.cjs",
+    "tools/resources.ts",
+    ".github/workflows/ci.yml",
+    "licenses/FFLAS-FFPACK-LGPL-2.1-NOTICE.md",
+    "licenses/GIVARO-CECILL-B-NOTICE.md"
+  ],
+  "dependencies": [],
+  "references": [
+    "/home/user/cowasm/sagemath/sagelite/build/wasi-sdk/src/sage/matrix/matrix_modn_dense_template.pxi"
+  ],
+  "architecture": {
+    "strategy": "external-library",
+    "fallback": "tested-capability",
+    "oracles": [
+      "Existing declared FLINT dense GF(p) multiplication and canonical RREF"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "fallback",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm architecture:check",
+    "pnpm test:portable",
+    "pnpm test:baselib:strict"
+  ],
+  "runs": [
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 12.504,
+      "started_at": "2026-08-11T21:24:56.210Z",
+      "commit": "c96946ddd92812c9fc198ea23589b8e640eb98e3",
+      "workspace_fingerprint": "5347da48e61107d5bed36200d65546b3c2bf3a42ab3195cd47c52c8404eb61d9",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 12.031,
+      "started_at": "2026-08-11T21:25:12.120Z",
+      "commit": "c96946ddd92812c9fc198ea23589b8e640eb98e3",
+      "workspace_fingerprint": "5347da48e61107d5bed36200d65546b3c2bf3a42ab3195cd47c52c8404eb61d9",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm --dir packages/fflas test",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.74,
+      "started_at": "2026-08-11T21:25:28.374Z",
+      "commit": "c96946ddd92812c9fc198ea23589b8e640eb98e3",
+      "workspace_fingerprint": "5347da48e61107d5bed36200d65546b3c2bf3a42ab3195cd47c52c8404eb61d9",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/fflas-dense-prime.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.839,
+      "started_at": "2026-08-11T21:25:37.724Z",
+      "commit": "c96946ddd92812c9fc198ea23589b8e640eb98e3",
+      "workspace_fingerprint": "5347da48e61107d5bed36200d65546b3c2bf3a42ab3195cd47c52c8404eb61d9",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm bench:fflas:dense-prime:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.384,
+      "started_at": "2026-08-11T21:25:45.448Z",
+      "commit": "c96946ddd92812c9fc198ea23589b8e640eb98e3",
+      "workspace_fingerprint": "5347da48e61107d5bed36200d65546b3c2bf3a42ab3195cd47c52c8404eb61d9",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node test/sea-smoke.cjs --fflas-only",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.496,
+      "started_at": "2026-08-11T21:25:52.018Z",
+      "commit": "c96946ddd92812c9fc198ea23589b8e640eb98e3",
+      "workspace_fingerprint": "5347da48e61107d5bed36200d65546b3c2bf3a42ab3195cd47c52c8404eb61d9",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 35.63,
+      "started_at": "2026-08-11T21:26:02.391Z",
+      "commit": "c96946ddd92812c9fc198ea23589b8e640eb98e3",
+      "workspace_fingerprint": "5347da48e61107d5bed36200d65546b3c2bf3a42ab3195cd47c52c8404eb61d9",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Added an optional generated FFLAS-FFPACK backend for dense GF(p), p < 256, with direct multiplication, rank, and canonical RREF; measured automatic crossovers; exact FLINT fallback; isolated-native and dynamic-adapter execution; production and standalone-executable integration; deterministic declarations; differential, transactional, performance, and architecture tests; and the compiler/runtime fixes required by the generated C++ boundary.",
+    "risks": [
+      "Windows intentionally reports FFLAS unavailable and uses the tested FLINT fallback until a native FFLAS toolchain is established.",
+      "The FFLAS declarations currently have no WASM lowering; browser builds continue to use the exact portable/FLINT fallback.",
+      "Automatic crossovers were measured on the current Linux host and are conservative, but future platform-specific calibration may improve them."
+    ],
+    "next_steps": [
+      "Integrate this reviewed branch and preserve the focused performance gate in CI.",
+      "Establish native Windows and WASM capability only when those toolchains can pass the same differential and transactional tests."
+    ]
+  }
+}

@@ -32,13 +32,15 @@ function shieldedFunctions(ir) {
     if (value.kind === "ffi.call" &&
         value.foreign?.function?.exceptions?.policy === "cxx_to_status") {
       const fn = value.foreign.function;
-      functions.set(fn.declaration_id, fn);
+      functions.set(fn.call_plan.declaration_id, fn);
     }
     for (const item of Array.isArray(value) ? value : Object.values(value)) visit(item);
   }
   visit(ir.functions);
   return Array.from(functions.values()).sort((left, right) =>
-    left.declaration_id.localeCompare(right.declaration_id));
+    left.call_plan.declaration_id.localeCompare(
+      right.call_plan.declaration_id,
+    ));
 }
 
 function shieldParameter(argument) {

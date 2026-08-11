@@ -33,6 +33,9 @@ importers:
       '@astral-sh/ruff-wasm-nodejs':
         specifier: 0.16.0
         version: 0.16.0
+      '@sagemath/sagejs-fflas':
+        specifier: workspace:*
+        version: link:packages/fflas
       '@sagemath/sagejs-flint':
         specifier: workspace:*
         version: link:packages/flint
@@ -76,6 +79,8 @@ importers:
       '@sagemath/sagejs-win32-x64':
         specifier: workspace:*
         version: link:packages/native-win32-x64
+
+  packages/fflas: {}
 
   packages/flint:
     devDependencies:

@@ -108,7 +108,12 @@ test("FFI declarations are strict and generated modules are current", () => {
   const registry = declarations.loadRegistry({ root });
   assert.equal(registry.schema, "sagejs.ffi/declaration-v6");
   assert.equal(registry.catalog.schema, "sagejs.ffi/abi-catalog-v2");
-  assert.equal(registry.libraries.length, 2);
+  assert.equal(registry.libraries.length, 3);
+  const fflas = registry.byId.get("fflas");
+  assert.doesNotMatch(
+    declarations.generatePythonModule(fflas),
+    /from typing import Any/,
+  );
   const flint = registry.byId.get("flint");
   assert.equal(flint.library.python_module, "sagejs.ffi.flint");
   assert.deepEqual(
@@ -225,6 +230,10 @@ test("FFI declarations are strict and generated modules are current", () => {
   });
   assert.match(flint.identity, /^flint@[0-9a-f]{64}$/);
   const generated = declarations.generatedModulePath(root, flint);
+  assert.match(
+    declarations.generatePythonModule(flint),
+    /from typing import Any/,
+  );
   assert.equal(
     readFileSync(generated, "utf8"),
     declarations.generatePythonModule(flint),
@@ -251,7 +260,7 @@ test("FFI declarations are strict and generated modules are current", () => {
     { resource: "graph", ownership: "owned", owner: null, root: "graph" },
     { resource: "edges", ownership: "borrowed", owner: "graph", root: "graph" },
   ]);
-  assert.match(runSage(["ffi", "check"]), /174 function\(s\)/);
+  assert.match(runSage(["ffi", "check"]), /178 function\(s\)/);
   const inspection = JSON.parse(
     runSage(["ffi", "explain", "flint", "--json"]),
   );
@@ -299,10 +308,11 @@ test("generated host adapters cover values and safe owned resources", async () =
     assert.equal(readFileSync(filename, "utf8"), source);
     assert.match(source, /whose core calls the declared foreign symbols/);
     assert.doesNotMatch(source, /sagejs\.runtime|ffi_call/);
-    assert.equal(
-      functions.length,
-      declaration.library.id === "flint" ? 167 : 2,
-    );
+    assert.equal(functions.length, {
+      fflas: 4,
+      flint: 167,
+      igraph: 2,
+    }[declaration.library.id]);
     if (declaration.library.id === "flint") {
       const ir = await lowerSource(source, filename);
       const adapter = generateC(ir);
@@ -326,6 +336,7 @@ test("generated host adapters cover values and safe owned resources", async () =
 test("packages make generated host adapters canonical and retain handwritten oracles", () => {
   for (const [packagePath, expected] of [
     ["../packages/flint", 168],
+    ["../packages/fflas", 4],
     ["../packages/graph", 2],
   ]) {
     const backend = require(packagePath);
@@ -409,7 +420,7 @@ test("FFI v7 Python declarations lower deterministically to the checked JSON IR"
   assert.equal(sourceRegistry.schema, "sagejs.ffi/source-declaration-v1");
   assert.deepEqual(
     sourceRegistry.sources.map((source) => source.document.library.id),
-    ["flint", "igraph"],
+    ["fflas", "flint", "igraph"],
   );
   for (const source of sourceRegistry.sources) {
     const id = source.document.library.id;
@@ -472,7 +483,7 @@ test("native-boundary audit is a reviewed exact ratchet", () => {
   const current = boundaryAudit.validateBoundarySnapshot(snapshot, { root });
   assert.ok(current.counts["napi-export"] >= 280);
   assert.ok(current.counts["runtime-intrinsic"] >= 100);
-  assert.equal(current.counts["declared-ffi"], 174);
+  assert.equal(current.counts["declared-ffi"], 178);
   assert.equal(current.counts["declared-ffi-resource"], 10);
   assert.match(runSage(["ffi", "audit"]), /inventoried native boundaries/);
   assert.equal(
@@ -1671,30 +1682,52 @@ test("generated C++ shields convert actual exceptions to declared status", (t) =
       }],
     },
   };
+  const second = {
+    ...fn,
+    declaration_id: "witness:may_throw_too",
+    call_plan: {
+      ...fn.call_plan,
+      declaration_id: "witness:may_throw_too",
+      symbol: "sagejs_ffi_shield_witness_may_throw_too",
+      foreign_symbol: "witness_may_throw_too",
+    },
+  };
+  fn.call_plan.declaration_id = fn.declaration_id;
   const ir = {
     foreignLibraries: [{ native: { headers: ["witness.hpp"] } }],
     functions: [{
-      body: [{ kind: "ffi.call", foreign: { function: fn } }],
+      body: [
+        { kind: "ffi.call", foreign: { function: fn } },
+        { kind: "ffi.call", foreign: { function: second } },
+      ],
     }],
   };
   const generated = generateExceptionShims(ir);
   assert.ok(generated);
+  assert.equal(generated.functions.length, 2);
   const temporary = mkdtempSync(join(tmpdir(), "sagejs-ffi-shield-"));
   try {
     writeFileSync(join(temporary, "ffi_shims.h"), generated.header);
     writeFileSync(join(temporary, "ffi_shims.cc"), generated.source);
     writeFileSync(join(temporary, "witness.hpp"),
-      "#include <stdint.h>\nextern \"C\" int witness_may_throw(uint64_t);\n");
+      "#include <stdint.h>\n" +
+      "extern \"C\" int witness_may_throw(uint64_t);\n" +
+      "extern \"C\" int witness_may_throw_too(uint64_t);\n");
     writeFileSync(join(temporary, "witness.cc"),
       "#include <stdexcept>\n#include \"witness.hpp\"\n" +
       "extern \"C\" int witness_may_throw(uint64_t value) {\n" +
       "  if (value == 7) throw std::runtime_error(\"witness\");\n" +
+      "  return 1;\n}\n" +
+      "extern \"C\" int witness_may_throw_too(uint64_t value) {\n" +
+      "  if (value == 8) throw std::runtime_error(\"second witness\");\n" +
       "  return 1;\n}\n");
     writeFileSync(join(temporary, "main.cc"),
       "#include \"ffi_shims.h\"\n" +
       "int main() {\n" +
       "  if (sagejs_ffi_shield_witness_may_throw(2) != 1) return 1;\n" +
       "  if (sagejs_ffi_shield_witness_may_throw(7) != -7) return 2;\n" +
+      "  if (sagejs_ffi_shield_witness_may_throw_too(3) != 1) return 3;\n" +
+      "  if (sagejs_ffi_shield_witness_may_throw_too(8) != -7) return 4;\n" +
       "  return 0;\n}\n");
     const executable = join(temporary, "shield-test");
     const build = spawnSync(compiler, [
@@ -1720,6 +1753,20 @@ test("compiled packed slices agree with fallbacks and commit outputs transaction
     const graph = require(graphResult.modulePath);
     assert.ok(existsSync(graphResult.shimSourcePath));
     assert.ok(existsSync(graphResult.shimHeaderPath));
+    if (process.platform !== "win32") {
+      const binding = JSON.parse(readFileSync(
+        join(graphResult.outputPath, "binding.gyp"),
+        "utf8",
+      ));
+      assert.deepEqual(
+        binding.targets[0]["cflags_cc!"],
+        ["-fno-exceptions", "-fno-rtti"],
+      );
+      assert.deepEqual(
+        binding.targets[0].cflags_cc,
+        ["-fexceptions", "-frtti"],
+      );
+    }
     assert.match(readFileSync(graphResult.shimSourcePath, "utf8"),
       /catch \(\.\.\.\)/);
     assert.match(readFileSync(graphResult.shimSourcePath, "utf8"),
