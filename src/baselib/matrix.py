@@ -3781,6 +3781,23 @@ class Matrix(sage.Element):
                     self.nrows(),
                     self.ncols(),
                 )
+            elif self._has_fmpq_matrix_resource():
+                columns = int(self.ncols())
+                ffi = _flint_ffi_module()
+                resource = ffi.fmpq_matrix_right_kernel(self._rational_resource())
+                nullity = runtime.number(ffi.fmpq_matrix_nrows(resource))
+                self._rank_cache = columns - nullity
+                basis = MatrixSpace(
+                    sage.QQ,
+                    nullity,
+                    columns,
+                )._from_fmpq_matrix_resource(resource)
+                _trace_dense_rational_selection(
+                    "right_kernel",
+                    "generated-flint-resource",
+                    self.nrows(),
+                    self.ncols(),
+                )
             elif self._has_packed_rational_storage():
                 columns = int(self.ncols())
                 reduced = self.rref()
@@ -3825,7 +3842,7 @@ class Matrix(sage.Element):
                     denominator_values[: nullity * columns],
                 )
                 # The transparent kernel constructs the mathematically natural
-                # free-variable basis.  Canonicalize its row space through the
+                # free-variable basis. Canonicalize its row space through the
                 # same declared packed FLINT boundary as every other RREF.
                 basis = spanning.rref()
                 _trace_dense_rational_selection(

@@ -103,7 +103,11 @@ const cases = [
   { name: "inverse_40", expression: "_rational_inverse.__copy__().inverse()", budget: 80 },
   { name: "solve_40x8", expression: "_rational_inverse.solve_right(_rational_rhs)", budget: 80 },
   { name: "charpoly_35", expression: "_rational_polynomial.__copy__().charpoly()", budget: 80 },
-  { name: "right_kernel_30x45", expression: "_rational_kernel.__copy__().right_kernel_matrix()", budget: 90 },
+  {
+    name: "right_kernel_60x90",
+    expression: "_rational_wide.__copy__().right_kernel_matrix()",
+    budget: 35,
+  },
   {
     name: "negate_300_cold_resource",
     expression: "-_rational_cold_negate[sample_index]",
@@ -318,7 +322,6 @@ async function run(environment = process.env) {
         "_rational_inverse = random_matrix(QQ, 40) + identity_matrix(QQ, 40)",
         "_rational_rhs = random_matrix(QQ, 40, 8) / 17",
         "_rational_polynomial = random_matrix(QQ, 35) / 19",
-        "_rational_kernel = random_matrix(QQ, 30, 45) / 23",
         "_rational_warm = random_matrix(QQ, 300)",
         "_rational_warm_equal = _rational_warm.__copy__()",
         "_rational_warm_unequal = _rational_warm + identity_matrix(QQ, 300)",

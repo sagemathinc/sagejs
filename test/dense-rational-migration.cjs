@@ -439,6 +439,7 @@ A.matrix_from_columns([3, 1, 3])
 A.stack(I)
 A.augment(I)
 A.density()
+A.right_kernel_matrix()
 print('trace-ok')
 `, {
       ...requiredEnvironment,
@@ -464,6 +465,7 @@ print('trace-ok')
     assert.match(trace, /Matrix\.stack QQ 8x4 -> generated-flint-resource/);
     assert.match(trace, /Matrix\.augment QQ 4x8 -> generated-flint-resource/);
     assert.match(trace, /Matrix\.density QQ 4x4 -> generated-flint-resource/);
+    assert.match(trace, /Matrix\.right_kernel QQ 4x4 -> generated-flint-resource/);
     assert.match(trace, /trace-ok/);
 
     console.log("dense rational matrix migration tests passed");

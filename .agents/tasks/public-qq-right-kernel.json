@@ -1,0 +1,147 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "public-qq-right-kernel",
+  "title": "Public dense QQ right kernel",
+  "lane": "arithmetic-algebra",
+  "status": "review",
+  "owner": "user",
+  "objective": "Route public dense QQ right_kernel through the generated one-elimination FLINT resource with canonical semantics, no packed materialization, and a measured performance gate",
+  "base_commit": "e41690a0459c75d6bd3c2319192778b10631e070",
+  "claims": [
+    "src/baselib/matrix.py",
+    "scripts/check-rational-matrix-budget.cjs",
+    "test/dense-rational-migration.cjs",
+    "test/rational-right-kernel-resource-public.cjs",
+    "test/node-test-manifest.cjs"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "external-library",
+    "fallback": "tested-capability",
+    "oracles": [
+      "existing typed packed implementation",
+      "SageMath canonical right-kernel basis"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "fallback",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "node test/rational-right-kernel-resource-public.cjs",
+    "node test/dense-rational-migration.cjs",
+    "node scripts/check-rational-matrix-budget.cjs",
+    "pnpm test:baselib:strict",
+    "pnpm architecture:check",
+    "pnpm test:native"
+  ],
+  "runs": [
+    {
+      "command": "node test/rational-right-kernel-resource-public.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 4.573,
+      "started_at": "2026-08-11T14:15:44.019Z",
+      "commit": "e41690a0459c75d6bd3c2319192778b10631e070",
+      "workspace_fingerprint": "b7ca61133ec8016ecc249723c9125a1815b2b676f3c89555c309861280f9d071",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node test/dense-rational-migration.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 14.802,
+      "started_at": "2026-08-11T14:15:55.221Z",
+      "commit": "e41690a0459c75d6bd3c2319192778b10631e070",
+      "workspace_fingerprint": "b7ca61133ec8016ecc249723c9125a1815b2b676f3c89555c309861280f9d071",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 12.754,
+      "started_at": "2026-08-11T14:16:23.322Z",
+      "commit": "e41690a0459c75d6bd3c2319192778b10631e070",
+      "workspace_fingerprint": "b7ca61133ec8016ecc249723c9125a1815b2b676f3c89555c309861280f9d071",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 11.95,
+      "started_at": "2026-08-11T14:16:39.359Z",
+      "commit": "e41690a0459c75d6bd3c2319192778b10631e070",
+      "workspace_fingerprint": "b7ca61133ec8016ecc249723c9125a1815b2b676f3c89555c309861280f9d071",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:native",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 5.162,
+      "started_at": "2026-08-11T14:17:04.085Z",
+      "commit": "e41690a0459c75d6bd3c2319192778b10631e070",
+      "workspace_fingerprint": "b7ca61133ec8016ecc249723c9125a1815b2b676f3c89555c309861280f9d071",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:native",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 43.342,
+      "started_at": "2026-08-11T14:17:41.740Z",
+      "commit": "e41690a0459c75d6bd3c2319192778b10631e070",
+      "workspace_fingerprint": "b7ca61133ec8016ecc249723c9125a1815b2b676f3c89555c309861280f9d071",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:native",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 92.169,
+      "started_at": "2026-08-11T14:19:02.161Z",
+      "commit": "e41690a0459c75d6bd3c2319192778b10631e070",
+      "workspace_fingerprint": "b7ca61133ec8016ecc249723c9125a1815b2b676f3c89555c309861280f9d071",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:native",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 220.239,
+      "started_at": "2026-08-11T14:20:57.387Z",
+      "commit": "e41690a0459c75d6bd3c2319192778b10631e070",
+      "workspace_fingerprint": "b7ca61133ec8016ecc249723c9125a1815b2b676f3c89555c309861280f9d071",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node scripts/check-rational-matrix-budget.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 16.991,
+      "started_at": "2026-08-11T14:28:06.268Z",
+      "commit": "e41690a0459c75d6bd3c2319192778b10631e070",
+      "workspace_fingerprint": "b7ca61133ec8016ecc249723c9125a1815b2b676f3c89555c309861280f9d071",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Routes public dense QQ right_kernel() and right_kernel_matrix() through the generated one-elimination FmpqMatrix resource operation on Node. The result remains a canonically reduced, immutable, independently owned rational matrix resource; rank and kernel caches preserve Sage semantics. The packed typed-Python implementation remains the portable capability fallback. Focused tests prohibit rational N-API and packed materialization, cover native-disabled execution, randomized rectangular and degenerate matrices, 4097-bit coefficient skew, mutation invalidation, cache identity, and independent RREF verification. The quiet-host rational matrix gate measures the public 60x90 right kernel at 13.40 ms, essentially the cost of its single 13.53 ms RREF and well below the new 35 ms budget.",
+    "risks": [
+      "Generated FmpqMatrix resources remain declared wasm=false. Browser and other portable targets continue through the existing tested packed typed-Python fallback, so this lane does not yet prove opaque-resource WebAssembly lowering.",
+      "The public route depends on the generated fmpq_matrix_right_kernel operation and its sanitizer-backed lifecycle tests from the shared base; this lane adds public ownership, cache, and no-materialization coverage rather than duplicating the low-level sanitizer harness."
+    ],
+    "next_steps": [
+      "Prove generated FmpqMatrix resource lowering on WebAssembly while retaining the same public Matrix API and portable packed semantics.",
+      "After integration, consider adding an explicit left-kernel performance case; left_kernel() already reaches this resource route through transpose().right_kernel().",
+      "Continue routing remaining public dense QQ algorithms through generated resource operations without packed compatibility materialization."
+    ]
+  }
+}
