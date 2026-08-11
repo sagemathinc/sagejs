@@ -10,6 +10,7 @@
 #include <flint/fmpq.h>
 #include <flint/fmpq_mat.h>
 #include <flint/fmpz.h>
+#include <flint/fmpz_extras.h>
 
 /*
  * Host-neutral resource ABI for dense rational matrices.
@@ -23,6 +24,7 @@ typedef struct
 {
     fmpq_mat_t value;
     slong known_rank;
+    size_t retained_bytes;
 } sagejs_fmpq_matrix_struct;
 
 typedef sagejs_fmpq_matrix_struct sagejs_fmpq_matrix_t[1];
@@ -37,6 +39,78 @@ typedef struct
 
 typedef sagejs_flint_byte_region_struct sagejs_flint_byte_region_t[1];
 
+static inline size_t sagejs_retained_size_add(
+    size_t left, size_t right)
+{
+    return left > SIZE_MAX - right ? SIZE_MAX : left + right;
+}
+
+static inline size_t sagejs_retained_size_multiply(
+    size_t left, size_t right)
+{
+    return left != 0 && right > SIZE_MAX / left ? SIZE_MAX : left * right;
+}
+
+static inline size_t sagejs_fmpz_retained_bytes(const fmpz_t value)
+{
+    const slong allocated = fmpz_allocated_bytes(value);
+    return allocated > 0 ? (size_t) allocated : 0;
+}
+
+static inline size_t sagejs_fmpq_retained_bytes(const fmpq *value)
+{
+    return sagejs_retained_size_add(
+        sagejs_fmpz_retained_bytes(fmpq_numref(value)),
+        sagejs_fmpz_retained_bytes(fmpq_denref(value)));
+}
+
+static inline size_t sagejs_fmpq_matrix_structural_bytes(
+    uint64_t rows, uint64_t columns)
+{
+    const size_t entries = sagejs_retained_size_multiply(
+        (size_t) rows, (size_t) columns);
+    return sagejs_retained_size_add(
+        sizeof(sagejs_fmpq_matrix_struct),
+        sagejs_retained_size_multiply(entries, sizeof(fmpq)));
+}
+
+static inline void sagejs_fmpq_matrix_recompute_allocated_bytes(
+    sagejs_fmpq_matrix_t matrix)
+{
+    const slong rows = fmpq_mat_nrows(matrix->value);
+    const slong columns = fmpq_mat_ncols(matrix->value);
+    size_t retained = sagejs_fmpq_matrix_structural_bytes(
+        (uint64_t) rows, (uint64_t) columns);
+    for (slong row = 0; row < rows; row++)
+        for (slong column = 0; column < columns; column++)
+            retained = sagejs_retained_size_add(retained,
+                sagejs_fmpq_retained_bytes(
+                    fmpq_mat_entry(matrix->value, row, column)));
+    matrix->retained_bytes = retained;
+}
+
+static inline size_t sagejs_fmpq_matrix_allocated_bytes(
+    const sagejs_fmpq_matrix_t matrix)
+{
+    return matrix->retained_bytes;
+}
+
+static inline size_t sagejs_fmpq_value_allocated_bytes(
+    const sagejs_fmpq_value_t value)
+{
+    return sagejs_retained_size_add(
+        sizeof(fmpq), sagejs_fmpq_retained_bytes(value));
+}
+
+static inline size_t sagejs_flint_byte_region_allocated_bytes(
+    const sagejs_flint_byte_region_t region)
+{
+    const size_t data_bytes = region->data == NULL
+        ? 0 : (region->length == 0 ? 1 : region->length);
+    return sagejs_retained_size_add(
+        sizeof(sagejs_flint_byte_region_struct), data_bytes);
+}
+
 static inline int sagejs_fmpq_matrix_init(
     sagejs_fmpq_matrix_t result, uint64_t rows, uint64_t columns)
 {
@@ -45,6 +119,8 @@ static inline int sagejs_fmpq_matrix_init(
         return 0;
     fmpq_mat_init(result->value, (slong) rows, (slong) columns);
     result->known_rank = -1;
+    result->retained_bytes =
+        sagejs_fmpq_matrix_structural_bytes(rows, columns);
     return 1;
 }
 
@@ -52,6 +128,7 @@ static inline void sagejs_fmpq_matrix_clear(sagejs_fmpq_matrix_t matrix)
 {
     fmpq_mat_clear(matrix->value);
     matrix->known_rank = -1;
+    matrix->retained_bytes = 0;
 }
 
 static inline int sagejs_fmpq_matrix_randbits(
@@ -70,6 +147,7 @@ static inline int sagejs_fmpq_matrix_randbits(
     fmpq_mat_randbits(result->value, state, (flint_bitcnt_t) bits);
     flint_rand_clear(state);
     result->known_rank = -1;
+    sagejs_fmpq_matrix_recompute_allocated_bytes(result);
     return 1;
 }
 
@@ -81,9 +159,22 @@ static inline int sagejs_fmpq_matrix_set_entry(
         column >= (uint64_t) fmpq_mat_ncols(matrix->value) ||
         fmpz_is_zero(denominator))
         return 0;
-    fmpq_set_fmpz_frac(
-        fmpq_mat_entry(matrix->value, (slong) row, (slong) column),
-        numerator, denominator);
+    fmpq *entry = fmpq_mat_entry(
+        matrix->value, (slong) row, (slong) column);
+    const size_t previous = sagejs_fmpq_retained_bytes(entry);
+    fmpq_set_fmpz_frac(entry, numerator, denominator);
+    const size_t current = sagejs_fmpq_retained_bytes(entry);
+    if (matrix->retained_bytes != SIZE_MAX)
+    {
+        if (previous <= matrix->retained_bytes)
+        {
+            matrix->retained_bytes -= previous;
+            matrix->retained_bytes = sagejs_retained_size_add(
+                matrix->retained_bytes, current);
+        }
+        else
+            sagejs_fmpq_matrix_recompute_allocated_bytes(matrix);
+    }
     matrix->known_rank = -1;
     return 1;
 }
@@ -139,6 +230,7 @@ static inline int sagejs_fmpq_matrix_init_set(
 {
     fmpq_mat_init_set(result->value, source->value);
     result->known_rank = source->known_rank;
+    sagejs_fmpq_matrix_recompute_allocated_bytes(result);
     return 1;
 }
 
@@ -149,6 +241,7 @@ static inline int sagejs_fmpq_matrix_neg(
         fmpq_mat_nrows(source->value), fmpq_mat_ncols(source->value));
     fmpq_mat_neg(result->value, source->value);
     result->known_rank = source->known_rank;
+    sagejs_fmpq_matrix_recompute_allocated_bytes(result);
     return 1;
 }
 
@@ -166,6 +259,7 @@ static inline int sagejs_fmpq_matrix_scalar_mul(
     fmpq_mat_scalar_mul_fmpq(result->value, source->value, scalar);
     result->known_rank = fmpq_is_zero(scalar) ? 0 : source->known_rank;
     fmpq_clear(scalar);
+    sagejs_fmpq_matrix_recompute_allocated_bytes(result);
     return 1;
 }
 
@@ -200,6 +294,7 @@ static inline int sagejs_fmpq_matrix_add(
         fmpq_mat_nrows(left->value), fmpq_mat_ncols(left->value));
     fmpq_mat_add(result->value, left->value, right->value);
     result->known_rank = -1;
+    sagejs_fmpq_matrix_recompute_allocated_bytes(result);
     return 1;
 }
 
@@ -214,6 +309,7 @@ static inline int sagejs_fmpq_matrix_sub(
         fmpq_mat_nrows(left->value), fmpq_mat_ncols(left->value));
     fmpq_mat_sub(result->value, left->value, right->value);
     result->known_rank = -1;
+    sagejs_fmpq_matrix_recompute_allocated_bytes(result);
     return 1;
 }
 
@@ -224,6 +320,7 @@ static inline int sagejs_fmpq_matrix_transpose(
         fmpq_mat_ncols(source->value), fmpq_mat_nrows(source->value));
     fmpq_mat_transpose(result->value, source->value);
     result->known_rank = source->known_rank;
+    sagejs_fmpq_matrix_recompute_allocated_bytes(result);
     return 1;
 }
 
@@ -237,6 +334,7 @@ static inline int sagejs_fmpq_matrix_mul(
         fmpq_mat_nrows(left->value), fmpq_mat_ncols(right->value));
     fmpq_mat_mul(result->value, left->value, right->value);
     result->known_rank = -1;
+    sagejs_fmpq_matrix_recompute_allocated_bytes(result);
     return 1;
 }
 
@@ -251,9 +349,11 @@ static inline int sagejs_fmpq_matrix_inv(
     {
         fmpq_mat_clear(result->value);
         result->known_rank = -1;
+        result->retained_bytes = 0;
         return 0;
     }
     result->known_rank = rows;
+    sagejs_fmpq_matrix_recompute_allocated_bytes(result);
     return 1;
 }
 
@@ -269,9 +369,11 @@ static inline int sagejs_fmpq_matrix_solve(
     {
         fmpq_mat_clear(result->value);
         result->known_rank = -1;
+        result->retained_bytes = 0;
         return 0;
     }
     result->known_rank = -1;
+    sagejs_fmpq_matrix_recompute_allocated_bytes(result);
     return 1;
 }
 
@@ -281,6 +383,7 @@ static inline int sagejs_fmpq_matrix_rref(
     fmpq_mat_init(result->value,
         fmpq_mat_nrows(source->value), fmpq_mat_ncols(source->value));
     result->known_rank = fmpq_mat_rref(result->value, source->value);
+    sagejs_fmpq_matrix_recompute_allocated_bytes(result);
     return 1;
 }
 

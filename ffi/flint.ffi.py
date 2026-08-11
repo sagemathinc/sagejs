@@ -45,6 +45,7 @@ FmpqMatrix = flint.resource(
     ownership="owned",
     close="ffiFmpqMatrixClose",
     clear="sagejs_fmpq_matrix_clear",
+    size="sagejs_fmpq_matrix_allocated_bytes",
     wasm=False,
 )
 
@@ -55,6 +56,7 @@ FmpqValue = flint.resource(
     ownership="owned",
     close="ffiFmpqValueClose",
     clear="sagejs_fmpq_value_clear",
+    size="sagejs_fmpq_value_allocated_bytes",
     wasm=False,
 )
 
@@ -65,6 +67,7 @@ FlintByteRegion = flint.resource(
     ownership="owned",
     close="ffiFlintByteRegionClose",
     clear="sagejs_flint_byte_region_clear",
+    size="sagejs_flint_byte_region_allocated_bytes",
     wasm=False,
 )
 

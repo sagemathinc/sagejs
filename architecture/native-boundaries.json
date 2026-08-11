@@ -30,6 +30,7 @@
       "abi_type": "sagejs_flint_byte_region_t",
       "close_export": "ffiFlintByteRegionClose",
       "clear_symbol": "sagejs_flint_byte_region_clear",
+      "size_symbol": "sagejs_flint_byte_region_allocated_bytes",
       "disposition": "declared-owned-ffi-resource"
     },
     {
@@ -52,6 +53,7 @@
       "abi_type": "sagejs_fmpq_matrix_t",
       "close_export": "ffiFmpqMatrixClose",
       "clear_symbol": "sagejs_fmpq_matrix_clear",
+      "size_symbol": "sagejs_fmpq_matrix_allocated_bytes",
       "disposition": "declared-owned-ffi-resource"
     },
     {
@@ -63,6 +65,7 @@
       "abi_type": "sagejs_fmpq_value_t",
       "close_export": "ffiFmpqValueClose",
       "clear_symbol": "sagejs_fmpq_value_clear",
+      "size_symbol": "sagejs_fmpq_value_allocated_bytes",
       "disposition": "declared-owned-ffi-resource"
     },
     {
