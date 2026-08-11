@@ -120,12 +120,15 @@ function workspacePath(workspace, requestedPath, { allowLeafSymlink = true } = {
   return absolute;
 }
 
-function walkPath(workspace, requestedPath) {
+function walkPath(workspace, requestedPath, options = {}) {
   const path = safeRelativePath(requestedPath);
   const absolute = workspacePath(workspace, path);
   const metadata = pathMetadata(absolute);
   if (metadata === null) return [{ path, type: "missing" }];
   if (metadata.isSymbolicLink()) {
+    if (options.rejectSymlinks) {
+      throw new Error(`native-cache input cannot be a symlink: ${path}`);
+    }
     return [{ path, type: "symlink", target: readlinkSync(absolute) }];
   }
   if (metadata.isFile()) {
@@ -143,11 +146,11 @@ function walkPath(workspace, requestedPath) {
   }
   const entries = readdirSync(absolute).sort();
   if (entries.length === 0) return [{ path, type: "directory" }];
-  return entries.flatMap((name) => walkPath(workspace, join(path, name)));
+  return entries.flatMap((name) => walkPath(workspace, join(path, name), options));
 }
 
-function snapshot(workspace, paths) {
-  const entries = paths.flatMap((path) => walkPath(workspace, path));
+function snapshot(workspace, paths, options = {}) {
+  const entries = paths.flatMap((path) => walkPath(workspace, path, options));
   entries.sort((left, right) => left.path.localeCompare(right.path));
   return entries;
 }
@@ -197,7 +200,7 @@ function validateNativeArtifactSpec(spec) {
 
 function assertInputsCurrent(workspace, spec) {
   validateNativeArtifactSpec(spec);
-  const current = snapshot(workspace, spec.inputPaths);
+  const current = snapshot(workspace, spec.inputPaths, { rejectSymlinks: true });
   if (JSON.stringify(current) !== JSON.stringify(spec.inputs)) {
     throw new Error(`native-cache inputs changed while preparing ${spec.id}`);
   }
@@ -432,7 +435,9 @@ function nativeArtifactSpecs(workspace, overrides = {}) {
     },
   };
   return Object.entries(descriptions).flatMap(([packageId, description]) => {
-    const dependencyInputs = snapshot(workspace, description.dependencyInputs);
+    const dependencyInputs = snapshot(workspace, description.dependencyInputs, {
+      rejectSymlinks: true,
+    });
     // Node's addon ABI cannot affect static GMP/FLINT/igraph archives. Keeping
     // it out of this stage avoids rebuilding mature dependencies after an
     // otherwise compatible Node upgrade; the addon stage below includes it.
@@ -444,7 +449,9 @@ function nativeArtifactSpecs(workspace, overrides = {}) {
       schema: nativeCacheSchema,
       stage: "dependencies",
     })));
-    const addonInputs = snapshot(workspace, description.addonInputs);
+    const addonInputs = snapshot(workspace, description.addonInputs, {
+      rejectSymlinks: true,
+    });
     const addonKey = sha256(JSON.stringify(stableJson({
       dependencyKey,
       identity,

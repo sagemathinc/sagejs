@@ -447,7 +447,11 @@ test("destructive provisioning rejects symlinked ancestors and preserves sentine
       build: buildNativeCacheFixture({ count: 0 }),
     });
     rmSync(join(workspace, "build"), { recursive: true, force: true });
-    symlinkSync(outside, join(workspace, "build"), "dir");
+    symlinkSync(
+      outside,
+      join(workspace, "build"),
+      process.platform === "win32" ? "junction" : "dir",
+    );
     assert.throws(
       () => restoreNativeArtifact(workspace, cacheRoot, spec),
       /symlinked ancestor/,
@@ -462,9 +466,51 @@ test("destructive provisioning rejects symlinked ancestors and preserves sentine
 
     rmSync(join(workspace, "build"), { force: true });
     rmSync(join(workspace, "source"), { recursive: true, force: true });
-    symlinkSync(outside, join(workspace, "source"), "dir");
+    symlinkSync(
+      outside,
+      join(workspace, "source"),
+      process.platform === "win32" ? "junction" : "dir",
+    );
     assert.throws(() => snapshot(workspace, ["source/input.c"]), /symlinked ancestor/);
     assert.equal(readFileSync(join(outside, "sentinel.txt"), "utf8"), "preserve me\n");
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+test("declared input leaves reject symlinks before building or publishing", () => {
+  const { directory, workspace, cacheRoot } = nativeCacheFixture();
+  const counter = { count: 0 };
+  try {
+    const spec = nativeCacheSpec(workspace);
+    const input = join(workspace, "source", "input.c");
+    const referent = process.platform === "win32"
+      ? join(directory, "referent-directory")
+      : join(directory, "referent.c");
+    rmSync(input);
+    if (process.platform === "win32") {
+      mkdirSync(referent);
+      writeFileSync(join(referent, "contents"), "first\n");
+      symlinkSync(referent, input, "junction");
+    } else {
+      writeFileSync(referent, "first\n");
+      symlinkSync(referent, input, "file");
+    }
+    for (const contents of ["first\n", "mutated\n"]) {
+      if (process.platform === "win32") {
+        writeFileSync(join(referent, "contents"), contents);
+      } else {
+        writeFileSync(referent, contents);
+      }
+      assert.throws(
+        () => prepareNativeArtifact(workspace, cacheRoot, spec, {
+          build: buildNativeCacheFixture(counter),
+        }),
+        /input cannot be a symlink/,
+      );
+    }
+    assert.equal(counter.count, 0);
+    assert.equal(existsSync(join(cacheRoot, spec.id, spec.key)), false);
   } finally {
     rmSync(directory, { recursive: true, force: true });
   }
