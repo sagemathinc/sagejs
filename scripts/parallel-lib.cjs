@@ -363,11 +363,11 @@ function validationCommandsForFiles(files) {
     add("pnpm", "test:integration");
   }
   if (has("packages/flint/")) {
-    add("pnpm", "--dir", "packages/flint", "build");
+    add("pnpm", "parallel:cache", "--", "prepare", "--package", "flint");
     add("pnpm", "test:native");
   }
   if (has("packages/graph/")) {
-    add("pnpm", "--dir", "packages/graph", "build");
+    add("pnpm", "parallel:cache", "--", "prepare", "--package", "graph");
     add("pnpm", "test:native");
   }
   if (has("packages/flint-wasm/")) add("pnpm", "test:wasm");
