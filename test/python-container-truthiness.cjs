@@ -233,6 +233,16 @@ test("JavaScript truth testing remains an explicit escape hatch", async () => {
   assert.doesNotMatch(javascript, /while \(ρσ_bool\(right\)\)/);
 });
 
+test("the truth primitive exception cannot be selected by a user name", async () => {
+  const javascript = await compileWithDefaultTruthiness(
+    "def ρσ_bool(value):\n    if value:\n        return 1\n    return 0\n",
+    { omit_baselib: true },
+  );
+  const userFunction = generatedFunctionBody(javascript, "ρσ_bool");
+  assert.match(userFunction, /if \(ρσ_bool\(value\)\)/);
+  assert.doesNotMatch(userFunction, /if \(value\)/);
+});
+
 test("truth testing and rich ordering are independent policies", async () => {
   const program = "left = []\nright = [1]\nif left < right:\n    print('ordered')\n";
   const richOrdering = await compileWithDefaultTruthiness(program, {
