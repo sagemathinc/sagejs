@@ -14,7 +14,7 @@
   },
   "counts": {
     "classified-native-file": 56,
-    "declared-ffi": 146,
+    "declared-ffi": 153,
     "declared-ffi-resource": 9,
     "napi-export": 292,
     "runtime-intrinsic": 125,
@@ -303,6 +303,17 @@
       "disposition": "declared-safe-ffi"
     },
     {
+      "id": "ffi:flint:fmpq_matrix_augment",
+      "kind": "declared-ffi",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "fmpq_matrix_augment",
+      "dynamic_package": "@sagemath/sagejs-flint",
+      "dynamic_export": "ffiFmpqMatrixAugment",
+      "symbol": "sagejs_fmpq_matrix_augment",
+      "disposition": "declared-safe-ffi"
+    },
+    {
       "id": "ffi:flint:fmpq_matrix_copy",
       "kind": "declared-ffi",
       "path": "ffi/flint.ffi.json",
@@ -457,6 +468,17 @@
       "disposition": "declared-safe-ffi"
     },
     {
+      "id": "ffi:flint:fmpq_matrix_nonzero_count",
+      "kind": "declared-ffi",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "fmpq_matrix_nonzero_count",
+      "dynamic_package": "@sagemath/sagejs-flint",
+      "dynamic_export": "ffiFmpqMatrixNonzeroCount",
+      "symbol": "sagejs_fmpq_matrix_nonzero_count",
+      "disposition": "declared-safe-ffi"
+    },
+    {
       "id": "ffi:flint:fmpq_matrix_nrows",
       "kind": "declared-ffi",
       "path": "ffi/flint.ffi.json",
@@ -512,6 +534,28 @@
       "disposition": "declared-safe-ffi"
     },
     {
+      "id": "ffi:flint:fmpq_matrix_select_columns",
+      "kind": "declared-ffi",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "fmpq_matrix_select_columns",
+      "dynamic_package": "@sagemath/sagejs-flint",
+      "dynamic_export": "ffiFmpqMatrixSelectColumns",
+      "symbol": "sagejs_fmpq_matrix_select_columns",
+      "disposition": "declared-safe-ffi"
+    },
+    {
+      "id": "ffi:flint:fmpq_matrix_select_rows",
+      "kind": "declared-ffi",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "fmpq_matrix_select_rows",
+      "dynamic_package": "@sagemath/sagejs-flint",
+      "dynamic_export": "ffiFmpqMatrixSelectRows",
+      "symbol": "sagejs_fmpq_matrix_select_rows",
+      "disposition": "declared-safe-ffi"
+    },
+    {
       "id": "ffi:flint:fmpq_matrix_serialize",
       "kind": "declared-ffi",
       "path": "ffi/flint.ffi.json",
@@ -520,6 +564,17 @@
       "dynamic_package": "@sagemath/sagejs-flint",
       "dynamic_export": "ffiFmpqMatrixSerialize",
       "symbol": "sagejs_fmpq_matrix_serialize",
+      "disposition": "declared-safe-ffi"
+    },
+    {
+      "id": "ffi:flint:fmpq_matrix_set_block",
+      "kind": "declared-ffi",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "fmpq_matrix_set_block",
+      "dynamic_package": "@sagemath/sagejs-flint",
+      "dynamic_export": "ffiFmpqMatrixSetBlock",
+      "symbol": "sagejs_fmpq_matrix_set_block",
       "disposition": "declared-safe-ffi"
     },
     {
@@ -545,6 +600,17 @@
       "disposition": "declared-safe-ffi"
     },
     {
+      "id": "ffi:flint:fmpq_matrix_stack",
+      "kind": "declared-ffi",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "fmpq_matrix_stack",
+      "dynamic_package": "@sagemath/sagejs-flint",
+      "dynamic_export": "ffiFmpqMatrixStack",
+      "symbol": "sagejs_fmpq_matrix_stack",
+      "disposition": "declared-safe-ffi"
+    },
+    {
       "id": "ffi:flint:fmpq_matrix_sub",
       "kind": "declared-ffi",
       "path": "ffi/flint.ffi.json",
@@ -553,6 +619,17 @@
       "dynamic_package": "@sagemath/sagejs-flint",
       "dynamic_export": "ffiFmpqMatrixSub",
       "symbol": "sagejs_fmpq_matrix_sub",
+      "disposition": "declared-safe-ffi"
+    },
+    {
+      "id": "ffi:flint:fmpq_matrix_submatrix",
+      "kind": "declared-ffi",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "fmpq_matrix_submatrix",
+      "dynamic_package": "@sagemath/sagejs-flint",
+      "dynamic_export": "ffiFmpqMatrixSubmatrix",
+      "symbol": "sagejs_fmpq_matrix_submatrix",
       "disposition": "declared-safe-ffi"
     },
     {

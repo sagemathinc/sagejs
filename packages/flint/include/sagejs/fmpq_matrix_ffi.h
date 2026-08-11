@@ -421,6 +421,201 @@ static inline int sagejs_fmpq_matrix_trace(
     return 1;
 }
 
+static inline int sagejs_fmpq_matrix_submatrix(
+    sagejs_fmpq_matrix_t result, const sagejs_fmpq_matrix_t source,
+    uint64_t row_start, uint64_t row_stop,
+    uint64_t column_start, uint64_t column_stop)
+{
+    const uint64_t rows = (uint64_t) fmpq_mat_nrows(source->value);
+    const uint64_t columns = (uint64_t) fmpq_mat_ncols(source->value);
+    if (row_start > row_stop || row_stop > rows ||
+        column_start > column_stop || column_stop > columns ||
+        !sagejs_fmpq_matrix_init(
+            result, row_stop - row_start, column_stop - column_start))
+        return 0;
+    for (uint64_t row = row_start; row < row_stop; row++)
+        for (uint64_t column = column_start;
+             column < column_stop; column++)
+            fmpq_set(fmpq_mat_entry(result->value,
+                    (slong) (row - row_start),
+                    (slong) (column - column_start)),
+                fmpq_mat_entry(source->value,
+                    (slong) row, (slong) column));
+    result->known_rank = -1;
+    sagejs_fmpq_matrix_recompute_allocated_bytes(result);
+    return 1;
+}
+
+/*
+ * Index selections preserve order and permit duplicates.  Validate every
+ * borrowed index before initializing the owned result, so a rejected call
+ * never leaves a partially initialized resource for its generated adapter.
+ */
+static inline int sagejs_fmpq_matrix_select_rows(
+    sagejs_fmpq_matrix_t result, const sagejs_fmpq_matrix_t source,
+    const uint64_t *selected_rows, uint64_t count)
+{
+    const uint64_t rows = (uint64_t) fmpq_mat_nrows(source->value);
+    const uint64_t columns = (uint64_t) fmpq_mat_ncols(source->value);
+    if ((count != 0 && selected_rows == NULL) ||
+        count > (uint64_t) WORD_MAX ||
+        (count != 0 && columns > (uint64_t) SIZE_MAX / count))
+        return 0;
+    for (uint64_t index = 0; index < count; index++)
+        if (selected_rows[index] >= rows)
+            return 0;
+    if (!sagejs_fmpq_matrix_init(result, count, columns))
+        return 0;
+    for (uint64_t row = 0; row < count; row++)
+        for (uint64_t column = 0; column < columns; column++)
+            fmpq_set(fmpq_mat_entry(result->value,
+                    (slong) row, (slong) column),
+                fmpq_mat_entry(source->value,
+                    (slong) selected_rows[row], (slong) column));
+    result->known_rank = -1;
+    sagejs_fmpq_matrix_recompute_allocated_bytes(result);
+    return 1;
+}
+
+static inline int sagejs_fmpq_matrix_select_columns(
+    sagejs_fmpq_matrix_t result, const sagejs_fmpq_matrix_t source,
+    const uint64_t *selected_columns, uint64_t count)
+{
+    const uint64_t rows = (uint64_t) fmpq_mat_nrows(source->value);
+    const uint64_t columns = (uint64_t) fmpq_mat_ncols(source->value);
+    if ((count != 0 && selected_columns == NULL) ||
+        count > (uint64_t) WORD_MAX ||
+        (rows != 0 && count > (uint64_t) SIZE_MAX / rows))
+        return 0;
+    for (uint64_t index = 0; index < count; index++)
+        if (selected_columns[index] >= columns)
+            return 0;
+    if (!sagejs_fmpq_matrix_init(result, rows, count))
+        return 0;
+    for (uint64_t row = 0; row < rows; row++)
+        for (uint64_t column = 0; column < count; column++)
+            fmpq_set(fmpq_mat_entry(result->value,
+                    (slong) row, (slong) column),
+                fmpq_mat_entry(source->value,
+                    (slong) row, (slong) selected_columns[column]));
+    result->known_rank = -1;
+    sagejs_fmpq_matrix_recompute_allocated_bytes(result);
+    return 1;
+}
+
+static inline int sagejs_fmpq_matrix_set_block(
+    sagejs_fmpq_matrix_t target, uint64_t target_row,
+    uint64_t target_column, const sagejs_fmpq_matrix_t source)
+{
+    const uint64_t target_rows =
+        (uint64_t) fmpq_mat_nrows(target->value);
+    const uint64_t target_columns =
+        (uint64_t) fmpq_mat_ncols(target->value);
+    const uint64_t source_rows =
+        (uint64_t) fmpq_mat_nrows(source->value);
+    const uint64_t source_columns =
+        (uint64_t) fmpq_mat_ncols(source->value);
+    if (target == source || target_row > target_rows ||
+        source_rows > target_rows - target_row ||
+        target_column > target_columns ||
+        source_columns > target_columns - target_column)
+        return 0;
+    for (uint64_t row = 0; row < source_rows; row++)
+        for (uint64_t column = 0; column < source_columns; column++)
+            fmpq_set(fmpq_mat_entry(target->value,
+                    (slong) (target_row + row),
+                    (slong) (target_column + column)),
+                fmpq_mat_entry(source->value,
+                    (slong) row, (slong) column));
+    target->known_rank = -1;
+    sagejs_fmpq_matrix_recompute_allocated_bytes(target);
+    return 1;
+}
+
+static inline int sagejs_fmpq_matrix_dimension_add(
+    uint64_t *result, uint64_t left, uint64_t right)
+{
+    if (left > UINT64_MAX - right)
+        return 0;
+    *result = left + right;
+    return 1;
+}
+
+static inline int sagejs_fmpq_matrix_stack(
+    sagejs_fmpq_matrix_t result, const sagejs_fmpq_matrix_t top,
+    const sagejs_fmpq_matrix_t bottom)
+{
+    const uint64_t top_rows = (uint64_t) fmpq_mat_nrows(top->value);
+    const uint64_t bottom_rows = (uint64_t) fmpq_mat_nrows(bottom->value);
+    const uint64_t columns = (uint64_t) fmpq_mat_ncols(top->value);
+    uint64_t rows;
+    if (fmpq_mat_ncols(top->value) != fmpq_mat_ncols(bottom->value) ||
+        !sagejs_fmpq_matrix_dimension_add(&rows, top_rows, bottom_rows) ||
+        !sagejs_fmpq_matrix_init(result, rows, columns))
+        return 0;
+    for (uint64_t row = 0; row < top_rows; row++)
+        for (uint64_t column = 0; column < columns; column++)
+            fmpq_set(fmpq_mat_entry(result->value,
+                    (slong) row, (slong) column),
+                fmpq_mat_entry(top->value,
+                    (slong) row, (slong) column));
+    for (uint64_t row = 0; row < bottom_rows; row++)
+        for (uint64_t column = 0; column < columns; column++)
+            fmpq_set(fmpq_mat_entry(result->value,
+                    (slong) (top_rows + row), (slong) column),
+                fmpq_mat_entry(bottom->value,
+                    (slong) row, (slong) column));
+    result->known_rank = -1;
+    sagejs_fmpq_matrix_recompute_allocated_bytes(result);
+    return 1;
+}
+
+static inline int sagejs_fmpq_matrix_augment(
+    sagejs_fmpq_matrix_t result, const sagejs_fmpq_matrix_t left,
+    const sagejs_fmpq_matrix_t right)
+{
+    const uint64_t rows = (uint64_t) fmpq_mat_nrows(left->value);
+    const uint64_t left_columns =
+        (uint64_t) fmpq_mat_ncols(left->value);
+    const uint64_t right_columns =
+        (uint64_t) fmpq_mat_ncols(right->value);
+    uint64_t columns;
+    if (fmpq_mat_nrows(left->value) != fmpq_mat_nrows(right->value) ||
+        !sagejs_fmpq_matrix_dimension_add(
+            &columns, left_columns, right_columns) ||
+        !sagejs_fmpq_matrix_init(result, rows, columns))
+        return 0;
+    for (uint64_t row = 0; row < rows; row++)
+    {
+        for (uint64_t column = 0; column < left_columns; column++)
+            fmpq_set(fmpq_mat_entry(result->value,
+                    (slong) row, (slong) column),
+                fmpq_mat_entry(left->value,
+                    (slong) row, (slong) column));
+        for (uint64_t column = 0; column < right_columns; column++)
+            fmpq_set(fmpq_mat_entry(result->value,
+                    (slong) row, (slong) (left_columns + column)),
+                fmpq_mat_entry(right->value,
+                    (slong) row, (slong) column));
+    }
+    result->known_rank = -1;
+    sagejs_fmpq_matrix_recompute_allocated_bytes(result);
+    return 1;
+}
+
+static inline uint64_t sagejs_fmpq_matrix_nonzero_count(
+    const sagejs_fmpq_matrix_t source)
+{
+    const slong rows = fmpq_mat_nrows(source->value);
+    const slong columns = fmpq_mat_ncols(source->value);
+    uint64_t count = 0;
+    for (slong row = 0; row < rows; row++)
+        for (slong column = 0; column < columns; column++)
+            count += !fmpz_is_zero(
+                fmpq_mat_entry_num(source->value, row, column));
+    return count;
+}
+
 static inline void sagejs_fmpq_value_clear(sagejs_fmpq_value_t value)
 {
     fmpq_clear(value);

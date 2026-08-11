@@ -152,6 +152,10 @@ test("FFI declarations are strict and generated modules are current", () => {
       "fmpq_matrix_transpose", "fmpq_matrix_mul", "fmpq_matrix_inv",
       "fmpq_matrix_solve", "fmpq_matrix_rref",
       "fmpq_matrix_rank", "fmpq_matrix_det", "fmpq_matrix_trace",
+      "fmpq_matrix_submatrix", "fmpq_matrix_select_rows",
+      "fmpq_matrix_select_columns", "fmpq_matrix_set_block",
+      "fmpq_matrix_stack", "fmpq_matrix_augment",
+      "fmpq_matrix_nonzero_count",
       "fmpq_value_numerator",
       "fmpq_value_denominator", "fmpq_matrix_format",
       "fmpq_matrix_serialize", "flint_byte_region_length",
@@ -200,7 +204,7 @@ test("FFI declarations are strict and generated modules are current", () => {
     { resource: "graph", ownership: "owned", owner: null, root: "graph" },
     { resource: "edges", ownership: "borrowed", owner: "graph", root: "graph" },
   ]);
-  assert.match(runSage(["ffi", "check"]), /146 function\(s\)/);
+  assert.match(runSage(["ffi", "check"]), /153 function\(s\)/);
   const inspection = JSON.parse(
     runSage(["ffi", "explain", "flint", "--json"]),
   );
@@ -250,14 +254,14 @@ test("generated host adapters cover values and safe owned resources", () => {
     assert.doesNotMatch(source, /sagejs\.runtime|ffi_call/);
     assert.equal(
       functions.length,
-      declaration.library.id === "flint" ? 139 : 2,
+      declaration.library.id === "flint" ? 146 : 2,
     );
   }
 });
 
 test("packages make generated host adapters canonical and retain handwritten oracles", () => {
   for (const [packagePath, expected] of [
-    ["../packages/flint", 139],
+    ["../packages/flint", 146],
     ["../packages/graph", 2],
   ]) {
     const backend = require(packagePath);
@@ -404,7 +408,7 @@ test("native-boundary audit is a reviewed exact ratchet", () => {
   const current = boundaryAudit.validateBoundarySnapshot(snapshot, { root });
   assert.ok(current.counts["napi-export"] >= 280);
   assert.ok(current.counts["runtime-intrinsic"] >= 100);
-  assert.equal(current.counts["declared-ffi"], 146);
+  assert.equal(current.counts["declared-ffi"], 153);
   assert.equal(current.counts["declared-ffi-resource"], 9);
   assert.match(runSage(["ffi", "audit"]), /inventoried native boundaries/);
   assert.equal(
@@ -964,6 +968,206 @@ test("generated rational matrix resources execute direct FLINT operations", () =
     for (const result of results.reverse()) flint.ffiFmpqMatrixClose(result);
     flint.ffiFmpqMatrixClose(right);
     flint.ffiFmpqMatrixClose(left);
+  }
+});
+
+test("generated rational matrix resources provide structural operations", () => {
+  const flint = require("../packages/flint");
+  const resources = [];
+
+  function create(rows, columns, entries = []) {
+    const result = flint.ffiFmpqMatrixCreate(BigInt(rows), BigInt(columns));
+    resources.push(result);
+    for (let index = 0; index < entries.length; index += 1) {
+      const [numerator, denominator] = entries[index];
+      assert.equal(flint.ffiFmpqMatrixSetEntry(
+        result,
+        BigInt(Math.floor(index / columns)),
+        BigInt(index % columns),
+        numerator,
+        denominator,
+      ), true);
+    }
+    return result;
+  }
+
+  function remember(result) {
+    resources.push(result);
+    return result;
+  }
+
+  function shape(matrix) {
+    return [
+      Number(flint.ffiFmpqMatrixNrows(matrix)),
+      Number(flint.ffiFmpqMatrixNcols(matrix)),
+    ];
+  }
+
+  function entry(matrix, row, column) {
+    return [
+      flint.ffiFmpqMatrixEntryNumerator(
+        matrix, BigInt(row), BigInt(column),
+      ),
+      flint.ffiFmpqMatrixEntryDenominator(
+        matrix, BigInt(row), BigInt(column),
+      ),
+    ];
+  }
+
+  function entries(matrix) {
+    const [rows, columns] = shape(matrix);
+    return Array.from({ length: rows * columns }, (_, index) =>
+      entry(matrix, Math.floor(index / columns), index % columns));
+  }
+
+  function selectedEntries(source, selectedRows, selectedColumns) {
+    return selectedRows.flatMap((row) =>
+      selectedColumns.map((column) => entry(source, row, column)));
+  }
+
+  try {
+    const source = create(3, 4, [
+      [1n, 2n], [0n, 1n], [3n, 4n], [5n, 6n],
+      [-7n, 8n], [9n, 10n], [11n, 12n], [13n, 14n],
+      [15n, 16n], [-17n, 18n], [19n, 20n], [21n, 22n],
+    ]);
+    const original = entries(source);
+    assert.equal(flint.ffiFmpqMatrixNonzeroCount(source), 11n);
+
+    const submatrix = remember(
+      flint.ffiFmpqMatrixSubmatrix(source, 1n, 3n, 1n, 4n),
+    );
+    assert.deepEqual(shape(submatrix), [2, 3]);
+    assert.deepEqual(
+      entries(submatrix),
+      selectedEntries(source, [1, 2], [1, 2, 3]),
+    );
+
+    const selectedRows = remember(flint.ffiFmpqMatrixSelectRows(
+      source, new BigUint64Array([2n, 0n, 2n]), 3n,
+    ));
+    assert.deepEqual(shape(selectedRows), [3, 4]);
+    assert.deepEqual(
+      entries(selectedRows),
+      selectedEntries(source, [2, 0, 2], [0, 1, 2, 3]),
+    );
+
+    const selectedColumns = remember(flint.ffiFmpqMatrixSelectColumns(
+      source, new BigUint64Array([3n, 1n, 3n, 0n]), 4n,
+    ));
+    assert.deepEqual(shape(selectedColumns), [3, 4]);
+    assert.deepEqual(
+      entries(selectedColumns),
+      selectedEntries(source, [0, 1, 2], [3, 1, 3, 0]),
+    );
+
+    const top = remember(flint.ffiFmpqMatrixSelectRows(
+      source, new BigUint64Array([2n, 0n]), 2n,
+    ));
+    const bottom = remember(flint.ffiFmpqMatrixSelectRows(
+      source, new BigUint64Array([1n]), 1n,
+    ));
+    const stacked = remember(flint.ffiFmpqMatrixStack(top, bottom));
+    assert.deepEqual(shape(stacked), [3, 4]);
+    assert.deepEqual(
+      entries(stacked),
+      selectedEntries(source, [2, 0, 1], [0, 1, 2, 3]),
+    );
+
+    const left = remember(flint.ffiFmpqMatrixSelectColumns(
+      source, new BigUint64Array([3n, 1n]), 2n,
+    ));
+    const right = remember(flint.ffiFmpqMatrixSelectColumns(
+      source, new BigUint64Array([0n]), 1n,
+    ));
+    const augmented = remember(flint.ffiFmpqMatrixAugment(left, right));
+    assert.deepEqual(shape(augmented), [3, 3]);
+    assert.deepEqual(
+      entries(augmented),
+      selectedEntries(source, [0, 1, 2], [3, 1, 0]),
+    );
+
+    const blockTarget = create(4, 5);
+    assert.equal(
+      flint.ffiFmpqMatrixSetBlock(blockTarget, 1n, 1n, submatrix), true,
+    );
+    for (let row = 0; row < 4; row += 1) {
+      for (let column = 0; column < 5; column += 1) {
+        const expected = row >= 1 && row < 3 && column >= 1 && column < 4
+          ? entry(submatrix, row - 1, column - 1)
+          : [0n, 1n];
+        assert.deepEqual(entry(blockTarget, row, column), expected);
+      }
+    }
+    const blockBeforeFailure = entries(blockTarget);
+    assert.throws(
+      () => flint.ffiFmpqMatrixSetBlock(blockTarget, 3n, 3n, submatrix),
+      /block bounds or aliases are invalid/,
+    );
+    assert.deepEqual(entries(blockTarget), blockBeforeFailure);
+    assert.throws(
+      () => flint.ffiFmpqMatrixSetBlock(source, 0n, 0n, source),
+      /block bounds or aliases are invalid/,
+    );
+    assert.deepEqual(entries(source), original);
+
+    assert.throws(
+      () => flint.ffiFmpqMatrixSubmatrix(source, 2n, 1n, 0n, 1n),
+      /submatrix bounds are invalid/,
+    );
+    assert.throws(
+      () => flint.ffiFmpqMatrixSelectRows(
+        source, new BigUint64Array([3n]), 1n,
+      ),
+      /row selection contains an invalid index/,
+    );
+    assert.throws(
+      () => flint.ffiFmpqMatrixSelectColumns(
+        source, new BigUint64Array([4n]), 1n,
+      ),
+      /column selection contains an invalid index/,
+    );
+    assert.throws(
+      () => flint.ffiFmpqMatrixSelectRows(
+        source, new BigUint64Array([0n, 1n]), 1n,
+      ),
+      /packed slice length does not match/,
+    );
+    const wrongColumns = create(1, 3);
+    const wrongRows = create(2, 1);
+    assert.throws(
+      () => flint.ffiFmpqMatrixStack(source, wrongColumns),
+      /same number of columns/,
+    );
+    assert.throws(
+      () => flint.ffiFmpqMatrixAugment(source, wrongRows),
+      /same number of rows/,
+    );
+
+    const noRows = create(0, 4);
+    const noColumns = create(3, 0);
+    const emptyRows = remember(flint.ffiFmpqMatrixSelectRows(
+      noRows, new BigUint64Array(0), 0n,
+    ));
+    const columnsOfNoRows = remember(flint.ffiFmpqMatrixSelectColumns(
+      noRows, new BigUint64Array([3n, 1n]), 2n,
+    ));
+    const rowsOfNoColumns = remember(flint.ffiFmpqMatrixSelectRows(
+      noColumns, new BigUint64Array([2n, 0n]), 2n,
+    ));
+    const emptyColumns = remember(flint.ffiFmpqMatrixSelectColumns(
+      noColumns, new BigUint64Array(0), 0n,
+    ));
+    assert.deepEqual(shape(emptyRows), [0, 4]);
+    assert.deepEqual(shape(columnsOfNoRows), [0, 2]);
+    assert.deepEqual(shape(rowsOfNoColumns), [2, 0]);
+    assert.deepEqual(shape(emptyColumns), [3, 0]);
+    assert.equal(flint.ffiFmpqMatrixNonzeroCount(emptyRows), 0n);
+    assert.equal(flint.ffiFmpqMatrixNonzeroCount(emptyColumns), 0n);
+  } finally {
+    for (const resource of resources.reverse()) {
+      flint.ffiFmpqMatrixClose(resource);
+    }
   }
 });
 

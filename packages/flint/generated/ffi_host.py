@@ -108,6 +108,13 @@ from sagejs.ffi.flint import (
     fmpq_matrix_rank as _ffi_fmpq_matrix_rank,
     fmpq_matrix_det as _ffi_fmpq_matrix_det,
     fmpq_matrix_trace as _ffi_fmpq_matrix_trace,
+    fmpq_matrix_submatrix as _ffi_fmpq_matrix_submatrix,
+    fmpq_matrix_select_rows as _ffi_fmpq_matrix_select_rows,
+    fmpq_matrix_select_columns as _ffi_fmpq_matrix_select_columns,
+    fmpq_matrix_set_block as _ffi_fmpq_matrix_set_block,
+    fmpq_matrix_stack as _ffi_fmpq_matrix_stack,
+    fmpq_matrix_augment as _ffi_fmpq_matrix_augment,
+    fmpq_matrix_nonzero_count as _ffi_fmpq_matrix_nonzero_count,
     fmpq_value_numerator as _ffi_fmpq_value_numerator,
     fmpq_value_denominator as _ffi_fmpq_value_denominator,
     fmpq_matrix_format as _ffi_fmpq_matrix_format,
@@ -1133,6 +1140,95 @@ def ffiFmpqMatrixTrace(
     source: FmpqMatrix,
 ) -> FmpqValue:
     return _ffi_fmpq_matrix_trace(
+        source,
+    )
+
+
+@native
+def ffiFmpqMatrixSubmatrix(
+    source: FmpqMatrix,
+    row_start: uint64,
+    row_stop: uint64,
+    column_start: uint64,
+    column_stop: uint64,
+) -> FmpqMatrix:
+    return _ffi_fmpq_matrix_submatrix(
+        source,
+        row_start,
+        row_stop,
+        column_start,
+        column_stop,
+    )
+
+
+@native
+def ffiFmpqMatrixSelectRows(
+    source: FmpqMatrix,
+    indices: UInt64Buffer,
+    count: uint64,
+) -> FmpqMatrix:
+    return _ffi_fmpq_matrix_select_rows(
+        source,
+        indices,
+        count,
+    )
+
+
+@native
+def ffiFmpqMatrixSelectColumns(
+    source: FmpqMatrix,
+    indices: UInt64Buffer,
+    count: uint64,
+) -> FmpqMatrix:
+    return _ffi_fmpq_matrix_select_columns(
+        source,
+        indices,
+        count,
+    )
+
+
+@native
+def ffiFmpqMatrixSetBlock(
+    target: FmpqMatrix,
+    target_row: uint64,
+    target_column: uint64,
+    source: FmpqMatrix,
+) -> bool:
+    return _ffi_fmpq_matrix_set_block(
+        target,
+        target_row,
+        target_column,
+        source,
+    )
+
+
+@native
+def ffiFmpqMatrixStack(
+    top: FmpqMatrix,
+    bottom: FmpqMatrix,
+) -> FmpqMatrix:
+    return _ffi_fmpq_matrix_stack(
+        top,
+        bottom,
+    )
+
+
+@native
+def ffiFmpqMatrixAugment(
+    left: FmpqMatrix,
+    right: FmpqMatrix,
+) -> FmpqMatrix:
+    return _ffi_fmpq_matrix_augment(
+        left,
+        right,
+    )
+
+
+@native
+def ffiFmpqMatrixNonzeroCount(
+    source: FmpqMatrix,
+) -> uint64:
+    return _ffi_fmpq_matrix_nonzero_count(
         source,
     )
 
