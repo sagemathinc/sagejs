@@ -11,6 +11,23 @@ def _internal_type_is(actual: Any, expected: str) -> bool:
     return runtime.strict_equal(actual, expected)
 
 
+def _internal_builtin(name: str) -> Any:
+    """Resolve one compiler builtin through its lexical module namespace."""
+    baselib_modules = runtime.reflect.get(
+        runtime.global_object,
+        "__sagejs_baselib_modules__",
+    )
+    if baselib_modules is runtime.undefined:
+        return runtime.undefined
+    builtins_module = runtime.reflect.get(
+        baselib_modules,
+        "sagejs._baselib.builtins",
+    )
+    if builtins_module is runtime.undefined:
+        return runtime.undefined
+    return runtime.reflect.get(builtins_module, name)
+
+
 def _internal_get_member(value: Any, name: Any) -> Any:
     if value is None or value is runtime.undefined:
         return runtime.undefined
@@ -671,7 +688,7 @@ def ρσ_interpolate_kwargs(
     ):
         receiver = target_function
         target_function = runtime.reflect.apply(
-            runtime.reflect.get(runtime.global_object, "ρσ_getattr"),
+            _internal_builtin("ρσ_getattr"),
             runtime.undefined,
             [target_function, "__call__"],
         )
@@ -687,7 +704,7 @@ def ρσ_interpolate_kwargs(
         # no meaningful signature of its own; its bound ``__call__`` method
         # carries the Python keyword metadata.
         callable_method = runtime.reflect.apply(
-            runtime.reflect.get(runtime.global_object, "ρσ_getattr"),
+            _internal_builtin("ρσ_getattr"),
             runtime.undefined,
             [target_function, "__call__", None],
         )
@@ -759,7 +776,7 @@ def ρσ_interpolate_kwargs_legacy(
     ):
         receiver = target_function
         target_function = runtime.reflect.apply(
-            runtime.reflect.get(runtime.global_object, "ρσ_getattr"),
+            _internal_builtin("ρσ_getattr"),
             runtime.undefined,
             [target_function, "__call__"],
         )
@@ -770,7 +787,7 @@ def ρσ_interpolate_kwargs_legacy(
         and not _internal_has_own(target_function, "__bases__")
     ):
         callable_method = runtime.reflect.apply(
-            runtime.reflect.get(runtime.global_object, "ρσ_getattr"),
+            _internal_builtin("ρσ_getattr"),
             runtime.undefined,
             [target_function, "__call__", None],
         )

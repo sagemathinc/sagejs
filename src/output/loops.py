@@ -571,6 +571,10 @@ def print_list_comprehension(self, output):
                 body_out.newline()
                 previous_indentation = output.indentation()
                 output.set_indentation(output.next_indent())
+            if body_out.uses_python_truthiness():
+                body_out.indent()
+                body_out.print("var ρσ_cond_temp")
+                body_out.end_statement()
             body_out.indent()
             body_out.print("var")
             body_out.space()

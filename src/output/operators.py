@@ -266,7 +266,7 @@ def print_unary_prefix(self, output):
     op = self.operator
     if op is "delete":
         return print_delete(self.expression, output)
-    if op is "!" and output.options.python_truthiness:
+    if op is "!" and output.uses_python_truthiness():
         output.print("!")
         output.print_truth_test(self.expression)
         return
@@ -383,7 +383,7 @@ def print_arithmetic_call(output, name):
 def print_binary_op(self, output):
     if self.native_operator:
         output.spaced(self.left, self.operator, self.right)
-    elif output.options.python_truthiness and (
+    elif output.uses_python_truthiness() and (
         self.operator is "&&" or self.operator is "||"
     ):
         output.print("(ρσ_cond_temp = ")
@@ -495,7 +495,7 @@ def print_binary_op(self, output):
         self.right.print(output)
     elif self.operator is "==" or self.operator is "!=":
         write_smart_equality(self, output)
-    elif output.options.python_truthiness and self.operator in ("<", "<=", ">", ">="):
+    elif output.options.python_ordering and self.operator in ("<", "<=", ">", ">="):
         output.print(
             "ρσ_operator_"
             + {
