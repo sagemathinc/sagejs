@@ -592,17 +592,17 @@
       "actual": "[[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]]\n"
     },
     {
-      "id": "src/baselib/matrix.py:6041",
+      "id": "src/baselib/matrix.py:6109",
       "status": "pass",
       "actual": ""
     },
     {
-      "id": "src/baselib/matrix.py:6042",
+      "id": "src/baselib/matrix.py:6110",
       "status": "pass",
       "actual": "-2\n"
     },
     {
-      "id": "src/baselib/matrix.py:6044",
+      "id": "src/baselib/matrix.py:6112",
       "status": "pass",
       "actual": "[1 0]\n[0 1]\n"
     },
@@ -832,17 +832,17 @@
       "actual": "(3,)\n"
     },
     {
-      "id": "src/baselib/matrix.py:6383",
+      "id": "src/baselib/matrix.py:6451",
       "status": "pass",
       "actual": ""
     },
     {
-      "id": "src/baselib/matrix.py:6384",
+      "id": "src/baselib/matrix.py:6452",
       "status": "pass",
       "actual": "(3, 5, Integer Ring)\n"
     },
     {
-      "id": "src/baselib/matrix.py:6386",
+      "id": "src/baselib/matrix.py:6454",
       "status": "pass",
       "actual": "True\n"
     },
@@ -857,12 +857,12 @@
       "actual": "276595200\n"
     },
     {
-      "id": "src/baselib/matrix.py:6140",
+      "id": "src/baselib/matrix.py:6208",
       "status": "pass",
       "actual": ""
     },
     {
-      "id": "src/baselib/matrix.py:6146",
+      "id": "src/baselib/matrix.py:6214",
       "status": "pass",
       "actual": "(5, 1, 3, 6, 8, 7, 2, 4, 9)\n"
     },

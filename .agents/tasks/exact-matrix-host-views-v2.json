@@ -4,7 +4,7 @@
   "id": "exact-matrix-host-views-v2",
   "title": "Exact Matrix Host Views v2",
   "lane": "integration",
-  "status": "review",
+  "status": "complete",
   "owner": "user",
   "objective": "Implement Sage-compatible cached immutable row and column views for dense ZZ and QQ matrices, bulk strided row column and diagonal export from generated exact resources, offset-aware exact decoding, reduced rational bulk construction, centralized successful-mutation cache invalidation, and representative semantic and performance gates without scalar host-boundary loops",
   "base_commit": "2e22ac7dd38f22a3a4d50dc5be218b4e71025077",
