@@ -1,0 +1,60 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "dense-qq-structural-ffi",
+  "title": "Dense QQ structural generated FFI",
+  "lane": "integration",
+  "status": "review",
+  "owner": "user",
+  "objective": "Add generated FmpqMatrix structural resource operations for selection, block assignment, stacking, augmentation, and nonzero queries without public Matrix routing",
+  "base_commit": "46fb2b755c34faf3bb5dad41e6710f88cfe1b0f6",
+  "claims": [
+    "ffi/flint.ffi.py",
+    "ffi/flint.ffi.json",
+    "packages/flint/include/sagejs/fmpq_matrix_ffi.h",
+    "packages/flint/generated/ffi_host.py",
+    "src/lib/sagejs/ffi/flint.py",
+    "src/baselib/sagejs/ffi/flint.py",
+    "architecture/native-boundaries.json",
+    "architecture/package-graph.json",
+    "test/ffi.cjs",
+    "test/fmpq-resource-ops-lifecycle.cjs"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "external-library",
+    "fallback": "tested-capability",
+    "oracles": [
+      "FLINT fmpq_mat semantics and direct entry-level differential checks"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "node --test test/ffi.cjs",
+    "node test/fmpq-resource-ops-lifecycle.cjs",
+    "pnpm architecture:check",
+    "pnpm test:portable",
+    "pnpm test:baselib:strict"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "Adds generated FmpqMatrix structural resource operations for contiguous submatrices, ordered duplicate-preserving row and column selection through checked read-only UInt64Buffer slices, transactional block mutation, vertical stacking, horizontal augmentation, and native nonzero counts. Every owned result is exact-shaped and callee-owned, mutated resources refresh external-memory accounting, dimension sums are overflow-checked, and invalid bounds or aliases fail before mutation. Dynamic differential tests cover skew rational entries, ordering, duplicates, failures, and all zero-dimensional orientations; the lifecycle harness exercises 200 dynamic and 500 ASan/UBSan rounds.",
+    "risks": [
+      "FmpqMatrix resources remain wasm=False, so portable public code must retain its existing tested capability fallback until opaque-resource WebAssembly lowering is implemented.",
+      "Row and column selection are separate one-buffer operations so each is directly compatible with the narrow resource-plus-UInt64Buffer compiler aggregate. Selecting both arbitrary row and column sets composes two owned resources; a measured need could justify a single combined-index declaration later without changing public semantics.",
+      "The shared base contains several integrated task contracts still marked active or review, so pnpm parallel:check cannot identify exactly one live task in this worktree; all task-specific, strict, portable, sanitizer, and architecture validation nevertheless passes."
+    ],
+    "next_steps": [
+      "Route public dense QQ matrix selection, set_block, stack, augment, and nonzero operations through these generated resources and delete their packed whole-matrix materializations.",
+      "Differentially benchmark the public resource routes against SageMath and the retained legacy oracle after matrix.py integration.",
+      "Prove the same generated resource declarations under the future WebAssembly resource lowering."
+    ]
+  }
+}

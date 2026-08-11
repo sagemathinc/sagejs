@@ -1944,6 +1944,194 @@ def fmpq_matrix_trace(source: FmpqMatrix) -> FmpqValue: ...
 
 
 @flint.function(
+    dynamic="ffiFmpqMatrixSubmatrix",
+    symbol="sagejs_fmpq_matrix_submatrix",
+    returns=int,
+    abi=[
+        out("result", sagejs_fmpq_matrix_t),
+        in_("source", sagejs_fmpq_matrix_t),
+        in_("row_start", uint64_t),
+        in_("row_stop", uint64_t),
+        in_("column_start", uint64_t),
+        in_("column_stop", uint64_t),
+    ],
+    effects=Effects(pure=False, allocates=True, raises=[ValueError]),
+    result=Status(
+        1,
+        exception=ValueError,
+        message="rational matrix submatrix bounds are invalid",
+    ),
+    wasm=False,
+)
+def fmpq_matrix_submatrix(
+    source: FmpqMatrix,
+    row_start: uint64,
+    row_stop: uint64,
+    column_start: uint64,
+    column_stop: uint64,
+) -> FmpqMatrix: ...
+
+
+@flint.function(
+    dynamic="ffiFmpqMatrixSelectRows",
+    symbol="sagejs_fmpq_matrix_select_rows",
+    returns=int,
+    abi=[
+        out("result", sagejs_fmpq_matrix_t),
+        in_("source", sagejs_fmpq_matrix_t),
+        in_(
+            "selected_rows",
+            uint64_t_ptr,
+            packed_slice(
+                data="indices",
+                length="count",
+                access="read",
+                aliasing="allowed",
+                transactional=False,
+            ),
+        ),
+        in_("count", uint64_t),
+    ],
+    effects=Effects(pure=False, allocates=True, raises=[ValueError]),
+    result=Status(
+        1,
+        exception=ValueError,
+        message="rational matrix row selection contains an invalid index",
+    ),
+    wasm=False,
+)
+def fmpq_matrix_select_rows(
+    source: FmpqMatrix,
+    indices: UInt64Buffer,
+    count: uint64,
+) -> FmpqMatrix: ...
+
+
+@flint.function(
+    dynamic="ffiFmpqMatrixSelectColumns",
+    symbol="sagejs_fmpq_matrix_select_columns",
+    returns=int,
+    abi=[
+        out("result", sagejs_fmpq_matrix_t),
+        in_("source", sagejs_fmpq_matrix_t),
+        in_(
+            "selected_columns",
+            uint64_t_ptr,
+            packed_slice(
+                data="indices",
+                length="count",
+                access="read",
+                aliasing="allowed",
+                transactional=False,
+            ),
+        ),
+        in_("count", uint64_t),
+    ],
+    effects=Effects(pure=False, allocates=True, raises=[ValueError]),
+    result=Status(
+        1,
+        exception=ValueError,
+        message="rational matrix column selection contains an invalid index",
+    ),
+    wasm=False,
+)
+def fmpq_matrix_select_columns(
+    source: FmpqMatrix,
+    indices: UInt64Buffer,
+    count: uint64,
+) -> FmpqMatrix: ...
+
+
+@flint.function(
+    dynamic="ffiFmpqMatrixSetBlock",
+    symbol="sagejs_fmpq_matrix_set_block",
+    returns=int,
+    abi=[
+        in_("target", sagejs_fmpq_matrix_t),
+        in_("target_row", uint64_t),
+        in_("target_column", uint64_t),
+        in_("source", sagejs_fmpq_matrix_t),
+    ],
+    effects=Effects(
+        pure=False,
+        allocates=True,
+        raises=[ValueError],
+        writes=["target"],
+    ),
+    result=Status(
+        1,
+        exception=ValueError,
+        message="rational matrix block bounds or aliases are invalid",
+    ),
+    wasm=False,
+)
+def fmpq_matrix_set_block(
+    target: Writable[FmpqMatrix],
+    target_row: uint64,
+    target_column: uint64,
+    source: FmpqMatrix,
+) -> bool: ...
+
+
+@flint.function(
+    dynamic="ffiFmpqMatrixStack",
+    symbol="sagejs_fmpq_matrix_stack",
+    returns=int,
+    abi=[
+        out("result", sagejs_fmpq_matrix_t),
+        in_("top", sagejs_fmpq_matrix_t),
+        in_("bottom", sagejs_fmpq_matrix_t),
+    ],
+    effects=Effects(pure=False, allocates=True, raises=[ValueError]),
+    result=Status(
+        1,
+        exception=ValueError,
+        message="stacked rational matrices must have the same number of columns",
+    ),
+    wasm=False,
+)
+def fmpq_matrix_stack(
+    top: FmpqMatrix,
+    bottom: FmpqMatrix,
+) -> FmpqMatrix: ...
+
+
+@flint.function(
+    dynamic="ffiFmpqMatrixAugment",
+    symbol="sagejs_fmpq_matrix_augment",
+    returns=int,
+    abi=[
+        out("result", sagejs_fmpq_matrix_t),
+        in_("left", sagejs_fmpq_matrix_t),
+        in_("right", sagejs_fmpq_matrix_t),
+    ],
+    effects=Effects(pure=False, allocates=True, raises=[ValueError]),
+    result=Status(
+        1,
+        exception=ValueError,
+        message="augmented rational matrices must have the same number of rows",
+    ),
+    wasm=False,
+)
+def fmpq_matrix_augment(
+    left: FmpqMatrix,
+    right: FmpqMatrix,
+) -> FmpqMatrix: ...
+
+
+@flint.function(
+    dynamic="ffiFmpqMatrixNonzeroCount",
+    symbol="sagejs_fmpq_matrix_nonzero_count",
+    returns=uint64_t,
+    abi=[in_("source", sagejs_fmpq_matrix_t)],
+    effects=Effects(pure=True),
+    result=Direct(),
+    wasm=False,
+)
+def fmpq_matrix_nonzero_count(source: FmpqMatrix) -> uint64: ...
+
+
+@flint.function(
     dynamic="ffiFmpqValueNumerator",
     symbol="sagejs_fmpq_value_numerator",
     returns=void,

@@ -46,12 +46,30 @@ function dynamicLifecycleFuzz() {
     const transposed = flint.ffiFmpqMatrixTranspose(left);
     const inverse = flint.ffiFmpqMatrixInv(left);
     const solution = flint.ffiFmpqMatrixSolve(left, right);
+    const submatrix = flint.ffiFmpqMatrixSubmatrix(left, 1n, 3n, 0n, 2n);
+    const selectedRows = flint.ffiFmpqMatrixSelectRows(
+      left, new BigUint64Array([2n, 0n]), 2n,
+    );
+    const selectedColumns = flint.ffiFmpqMatrixSelectColumns(
+      left, new BigUint64Array([2n, 0n]), 2n,
+    );
+    const stacked = flint.ffiFmpqMatrixStack(selectedRows, selectedRows);
+    const augmented = flint.ffiFmpqMatrixAugment(
+      selectedColumns, selectedColumns,
+    );
+    const blockTarget = flint.ffiFmpqMatrixCreate(3n, 3n);
+    assert.equal(
+      flint.ffiFmpqMatrixSetBlock(blockTarget, 1n, 1n, submatrix), true,
+    );
     const trace = flint.ffiFmpqMatrixTrace(left);
     assert.equal(flint.ffiFmpqMatrixEqual(left, difference), true);
     assert.equal(flint.ffiFmpqMatrixIsZero(left), false);
     assert.equal(flint.ffiFmpqMatrixIsOne(left), false);
     assert.equal(flint.ffiFmpqMatrixRank(left), 3n);
     assert.equal(flint.ffiFmpqMatrixRank(left), 3n);
+    assert.equal(flint.ffiFmpqMatrixNonzeroCount(left), 6n);
+    assert.equal(flint.ffiFmpqMatrixNrows(stacked), 4n);
+    assert.equal(flint.ffiFmpqMatrixNcols(augmented), 4n);
     for (let index = 0; index < 9; index += 1) {
       const row = BigInt(Math.floor(index / 3));
       const column = BigInt(index % 3);
@@ -65,6 +83,12 @@ function dynamicLifecycleFuzz() {
       );
     }
     flint.ffiFmpqValueClose(trace);
+    flint.ffiFmpqMatrixClose(blockTarget);
+    flint.ffiFmpqMatrixClose(augmented);
+    flint.ffiFmpqMatrixClose(stacked);
+    flint.ffiFmpqMatrixClose(selectedColumns);
+    flint.ffiFmpqMatrixClose(selectedRows);
+    flint.ffiFmpqMatrixClose(submatrix);
     flint.ffiFmpqMatrixClose(solution);
     flint.ffiFmpqMatrixClose(inverse);
     flint.ffiFmpqMatrixClose(transposed);
@@ -93,6 +117,16 @@ function dynamicLifecycleFuzz() {
       () => flint.ffiFmpqMatrixTrace(inconsistent),
       /trace requires a square rational matrix/,
     );
+    assert.throws(
+      () => flint.ffiFmpqMatrixSelectRows(
+        singular, new BigUint64Array([2n]), 1n,
+      ),
+      /row selection contains an invalid index/,
+    );
+    assert.throws(
+      () => flint.ffiFmpqMatrixSetBlock(singular, 0n, 0n, singular),
+      /block bounds or aliases are invalid/,
+    );
     flint.ffiFmpqMatrixClose(inconsistent);
     flint.ffiFmpqMatrixClose(singular);
   }
@@ -119,14 +153,25 @@ const source = String.raw`
 int main(void)
 {
     fmpz_t numerator, denominator;
+    uint64_t dimension_sum = 0;
+    if (sagejs_fmpq_matrix_dimension_add(
+            &dimension_sum, UINT64_MAX, UINT64_C(1)) ||
+        !sagejs_fmpq_matrix_dimension_add(
+            &dimension_sum, UINT64_MAX - UINT64_C(1), UINT64_C(1)) ||
+        dimension_sum != UINT64_MAX)
+        return 1;
     fmpz_init(numerator);
     fmpz_init(denominator);
     for (slong round = 0; round < 500; round++)
     {
         sagejs_fmpq_matrix_t left, right, sum, difference;
         sagejs_fmpq_matrix_t negated, scaled, transposed, inverse, solution;
+        sagejs_fmpq_matrix_t submatrix, selected_rows, selected_columns;
+        sagejs_fmpq_matrix_t stacked, augmented, block_target;
         sagejs_fmpq_matrix_t singular, inconsistent, failed;
         sagejs_fmpq_value_t trace, failed_value;
+        const uint64_t selected[2] = {2, 0};
+        const uint64_t invalid[1] = {2};
         if (!sagejs_fmpq_matrix_init(left, 3, 3) ||
             !sagejs_fmpq_matrix_randbits(
                 right, 3, 3, 4, (uint64_t) round + UINT64_C(1),
@@ -157,12 +202,28 @@ int main(void)
             !sagejs_fmpq_matrix_transpose(transposed, left) ||
             !sagejs_fmpq_matrix_inv(inverse, left) ||
             !sagejs_fmpq_matrix_solve(solution, left, right) ||
+            !sagejs_fmpq_matrix_submatrix(
+                submatrix, left, 1, 3, 0, 2) ||
+            !sagejs_fmpq_matrix_select_rows(
+                selected_rows, left, selected, 2) ||
+            !sagejs_fmpq_matrix_select_columns(
+                selected_columns, left, selected, 2) ||
+            !sagejs_fmpq_matrix_stack(
+                stacked, selected_rows, selected_rows) ||
+            !sagejs_fmpq_matrix_augment(
+                augmented, selected_columns, selected_columns) ||
+            !sagejs_fmpq_matrix_init(block_target, 3, 3) ||
+            !sagejs_fmpq_matrix_set_block(
+                block_target, 1, 1, submatrix) ||
             !sagejs_fmpq_matrix_trace(trace, left) ||
             !sagejs_fmpq_matrix_equal(left, difference) ||
             sagejs_fmpq_matrix_is_zero(left) ||
             sagejs_fmpq_matrix_is_one(left) ||
             sagejs_fmpq_matrix_rank(left) != 3 ||
-            sagejs_fmpq_matrix_rank(left) != 3)
+            sagejs_fmpq_matrix_rank(left) != 3 ||
+            sagejs_fmpq_matrix_nonzero_count(left) != 6 ||
+            sagejs_fmpq_matrix_nrows(stacked) != 4 ||
+            sagejs_fmpq_matrix_ncols(augmented) != 4)
             return 4;
         for (slong row = 0; row < 3; row++)
             for (slong column = 0; column < 3; column++)
@@ -184,10 +245,21 @@ int main(void)
             sagejs_fmpq_matrix_sub(failed, left, singular) ||
             sagejs_fmpq_matrix_scalar_mul(
                 failed, singular, numerator, denominator) ||
+            sagejs_fmpq_matrix_select_rows(
+                failed, singular, NULL, 1) ||
+            sagejs_fmpq_matrix_select_rows(
+                failed, singular, invalid, 1) ||
+            sagejs_fmpq_matrix_set_block(singular, 0, 0, singular) ||
             sagejs_fmpq_matrix_trace(failed_value, inconsistent))
             return 6;
         sagejs_fmpq_matrix_clear(inconsistent);
         sagejs_fmpq_matrix_clear(singular);
+        sagejs_fmpq_matrix_clear(block_target);
+        sagejs_fmpq_matrix_clear(augmented);
+        sagejs_fmpq_matrix_clear(stacked);
+        sagejs_fmpq_matrix_clear(selected_columns);
+        sagejs_fmpq_matrix_clear(selected_rows);
+        sagejs_fmpq_matrix_clear(submatrix);
         sagejs_fmpq_matrix_clear(solution);
         sagejs_fmpq_matrix_clear(inverse);
         sagejs_fmpq_matrix_clear(transposed);
@@ -198,6 +270,38 @@ int main(void)
         sagejs_fmpq_matrix_clear(right);
         sagejs_fmpq_matrix_clear(left);
         sagejs_fmpq_value_clear(trace);
+    }
+    {
+        sagejs_fmpq_matrix_t no_rows, no_columns;
+        sagejs_fmpq_matrix_t empty_rows, columns_of_no_rows;
+        sagejs_fmpq_matrix_t rows_of_no_columns, empty_columns;
+        const uint64_t two_columns[2] = {3, 1};
+        const uint64_t two_rows[2] = {2, 0};
+        if (!sagejs_fmpq_matrix_init(no_rows, 0, 4) ||
+            !sagejs_fmpq_matrix_init(no_columns, 3, 0) ||
+            !sagejs_fmpq_matrix_select_rows(
+                empty_rows, no_rows, NULL, 0) ||
+            !sagejs_fmpq_matrix_select_columns(
+                columns_of_no_rows, no_rows, two_columns, 2) ||
+            !sagejs_fmpq_matrix_select_rows(
+                rows_of_no_columns, no_columns, two_rows, 2) ||
+            !sagejs_fmpq_matrix_select_columns(
+                empty_columns, no_columns, NULL, 0) ||
+            sagejs_fmpq_matrix_nrows(empty_rows) != 0 ||
+            sagejs_fmpq_matrix_ncols(empty_rows) != 4 ||
+            sagejs_fmpq_matrix_nrows(columns_of_no_rows) != 0 ||
+            sagejs_fmpq_matrix_ncols(columns_of_no_rows) != 2 ||
+            sagejs_fmpq_matrix_nrows(rows_of_no_columns) != 2 ||
+            sagejs_fmpq_matrix_ncols(rows_of_no_columns) != 0 ||
+            sagejs_fmpq_matrix_nrows(empty_columns) != 3 ||
+            sagejs_fmpq_matrix_ncols(empty_columns) != 0)
+            return 7;
+        sagejs_fmpq_matrix_clear(empty_columns);
+        sagejs_fmpq_matrix_clear(rows_of_no_columns);
+        sagejs_fmpq_matrix_clear(columns_of_no_rows);
+        sagejs_fmpq_matrix_clear(empty_rows);
+        sagejs_fmpq_matrix_clear(no_columns);
+        sagejs_fmpq_matrix_clear(no_rows);
     }
     fmpz_clear(denominator);
     fmpz_clear(numerator);
