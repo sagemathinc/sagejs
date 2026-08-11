@@ -14,6 +14,8 @@ _packed_integer_polynomial_module_cache = runtime.undefined
 _packed_rational_polynomial_module_cache = runtime.undefined
 _packed_prime_polynomial_module_cache = runtime.undefined
 _packed_polynomial_flint_module_cache = runtime.undefined
+_flint_ffi_module_cache = runtime.undefined
+_generated_flint_resources_available_cache = runtime.undefined
 
 
 class _PackedIntegerPolynomialStorage:
@@ -31,6 +33,55 @@ class _PackedRationalPolynomialStorage:
             raise ValueError("rational polynomial component lengths differ")
         self.numerators = numerators
         self.denominators = denominators
+
+
+class _FmpzPolynomialResourceStorage:
+    """Own one sealed generated FLINT polynomial and a lazy packed oracle."""
+
+    def __init__(self, resource: Any) -> None:
+        self.resource = resource
+        self.coefficients: Any = runtime.undefined
+
+
+class _FmpqPolynomialResourceStorage:
+    """Own one sealed generated FLINT polynomial and lazy packed components."""
+
+    def __init__(self, resource: Any) -> None:
+        self.resource = resource
+        self.numerators: Any = runtime.undefined
+        self.denominators: Any = runtime.undefined
+
+
+def _flint_ffi_module() -> Any:
+    """Load generated safe FLINT resources without exposing package handles."""
+    global _flint_ffi_module_cache
+    if _flint_ffi_module_cache is runtime.undefined:
+        _flint_ffi_module_cache = __import__("sagejs.ffi.flint", fromlist=["flint"])
+    return _flint_ffi_module_cache
+
+
+def _generated_flint_resources_available() -> bool:
+    """Return whether this host can own generated native FLINT resources.
+
+    A native Node process is an explicit capability, not a failed-call
+    heuristic: missing or broken generated bindings must fail loudly there.
+    Browsers and other portable hosts retain the compiler-owned packed path.
+    """
+    global _generated_flint_resources_available_cache
+    if _generated_flint_resources_available_cache is runtime.undefined:
+        process = runtime.reflect.get(runtime.global_object, "process")
+        versions = (
+            runtime.undefined
+            if process is runtime.undefined
+            else runtime.reflect.get(process, "versions")
+        )
+        node = (
+            runtime.undefined
+            if versions is runtime.undefined
+            else runtime.reflect.get(versions, "node")
+        )
+        _generated_flint_resources_available_cache = node is not runtime.undefined
+    return bool(_generated_flint_resources_available_cache)
 
 
 def _packed_integer_polynomial_module() -> Any:
@@ -237,16 +288,82 @@ class PolynomialElement(sage.Element):
         value: Any,
     ) -> None:
         self._parent = parent
+        self._storage: Any = runtime.undefined
         if _packed_polynomial_kind(parent.base_ring()) == "legacy":
             self._native = value
-            self._storage = runtime.undefined
         else:
             self._native = runtime.undefined
-            self._storage = _normalize_packed_storage(parent.base_ring(), value)
+            if isinstance(
+                value,
+                (_FmpzPolynomialResourceStorage, _FmpqPolynomialResourceStorage),
+            ):
+                self._storage = value
+            else:
+                self._storage = _normalize_packed_storage(parent.base_ring(), value)
         runtime.object.freeze(self)
 
     def _new(self, value: Any) -> PolynomialElement:
         return PolynomialElement(self._parent, value)
+
+    def _publish_exact_packed_storage(self, storage: Any) -> PolynomialElement:
+        """Publish temporary packed exact output in the canonical host form.
+
+        Packed integer and rational buffers remain useful compatibility
+        scratch space for operations which have not yet migrated to direct
+        resource-to-resource FLINT calls.  On Node, however, they must never
+        become the persistent representation of a new exact polynomial.  The
+        mathematical parent re-ingests the values into a sealed generated
+        resource before the result escapes this operation.  Portable hosts
+        keep the same packed output without an unnecessary conversion.
+        """
+        if not _generated_flint_resources_available():
+            return self._new(storage)
+        base = self._parent.base_ring()
+        if base is sage.ZZ:
+            return self._parent._from_coefficients(
+                _integer_buffer_values(storage.coefficients)
+            )
+        if base is sage.QQ:
+            numerators = _integer_buffer_values(storage.numerators)
+            denominators = _integer_buffer_values(storage.denominators)
+            return self._parent._from_coefficients(
+                [
+                    _untyped(base)(numerators[index], denominators[index])
+                    for index in range(len(numerators))
+                ]
+            )
+        raise TypeError("packed exact publication requires ZZ or QQ")
+
+    def _has_fmpz_polynomial_resource(self) -> bool:
+        return isinstance(self._storage, _FmpzPolynomialResourceStorage)
+
+    def _has_fmpq_polynomial_resource(self) -> bool:
+        return isinstance(self._storage, _FmpqPolynomialResourceStorage)
+
+    def _exact_polynomial_resource(self) -> Any:
+        if not (
+            self._has_fmpz_polynomial_resource() or self._has_fmpq_polynomial_resource()
+        ):
+            raise TypeError("polynomial does not own an exact FLINT resource")
+        return self._storage.resource
+
+    def _materialize_exact_compatibility_storage(self) -> None:
+        """Build packed buffers only for an audited not-yet-migrated operation."""
+        if self._has_fmpz_polynomial_resource():
+            if self._storage.coefficients is runtime.undefined:
+                self._storage.coefficients = runtime.integer_buffer(
+                    self.coefficients(), 1
+                )
+            return
+        if self._has_fmpq_polynomial_resource():
+            if self._storage.numerators is runtime.undefined:
+                values = self.coefficients()
+                self._storage.numerators = runtime.integer_buffer(
+                    [value._numerator for value in values], 1
+                )
+                self._storage.denominators = runtime.integer_buffer(
+                    [value._denominator for value in values], 1
+                )
 
     def _legacy_polynomial_oracle_input(self) -> Any:
         """Build a temporary legacy polynomial for an audited old consumer.
@@ -291,6 +408,20 @@ class PolynomialElement(sage.Element):
         base = self._parent.base_ring()
         kind = _packed_polynomial_kind(base)
         if kind == "ZZ":
+            if (
+                self._has_fmpz_polynomial_resource()
+                and other._has_fmpz_polynomial_resource()
+            ):
+                return self._new(
+                    _FmpzPolynomialResourceStorage(
+                        _flint_ffi_module().fmpz_polynomial_add(
+                            self._exact_polynomial_resource(),
+                            other._exact_polynomial_resource(),
+                        )
+                    )
+                )
+            self._materialize_exact_compatibility_storage()
+            other._materialize_exact_compatibility_storage()
             kernel = _packed_integer_polynomial_module().packed_integer_polynomial_add
             length = max(
                 _buffer_length(self._storage.coefficients),
@@ -310,12 +441,26 @@ class PolynomialElement(sage.Element):
                 _integer_kernel_input(kernel, other._storage.coefficients),
             ):
                 raise RuntimeError("packed integer polynomial add failed")
-            return self._new(
+            return self._publish_exact_packed_storage(
                 _PackedIntegerPolynomialStorage(
                     _canonical_integer_output(output, capacity)
                 )
             )
         if kind == "QQ":
+            if (
+                self._has_fmpq_polynomial_resource()
+                and other._has_fmpq_polynomial_resource()
+            ):
+                return self._new(
+                    _FmpqPolynomialResourceStorage(
+                        _flint_ffi_module().fmpq_polynomial_add(
+                            self._exact_polynomial_resource(),
+                            other._exact_polynomial_resource(),
+                        )
+                    )
+                )
+            self._materialize_exact_compatibility_storage()
+            other._materialize_exact_compatibility_storage()
             kernel = _packed_rational_polynomial_module().packed_rational_polynomial_add
             length = max(
                 _buffer_length(self._storage.numerators),
@@ -342,7 +487,7 @@ class PolynomialElement(sage.Element):
                 _integer_kernel_input(kernel, other._storage.denominators),
             ):
                 raise RuntimeError("packed rational polynomial add failed")
-            return self._new(
+            return self._publish_exact_packed_storage(
                 _PackedRationalPolynomialStorage(
                     _canonical_integer_output(numerators, capacity),
                     _canonical_integer_output(denominators, capacity),
@@ -370,6 +515,20 @@ class PolynomialElement(sage.Element):
         base = self._parent.base_ring()
         kind = _packed_polynomial_kind(base)
         if kind == "ZZ":
+            if (
+                self._has_fmpz_polynomial_resource()
+                and other._has_fmpz_polynomial_resource()
+            ):
+                return self._new(
+                    _FmpzPolynomialResourceStorage(
+                        _flint_ffi_module().fmpz_polynomial_sub(
+                            self._exact_polynomial_resource(),
+                            other._exact_polynomial_resource(),
+                        )
+                    )
+                )
+            self._materialize_exact_compatibility_storage()
+            other._materialize_exact_compatibility_storage()
             kernel = (
                 _packed_integer_polynomial_module().packed_integer_polynomial_subtract
             )
@@ -391,12 +550,26 @@ class PolynomialElement(sage.Element):
                 _integer_kernel_input(kernel, other._storage.coefficients),
             ):
                 raise RuntimeError("packed integer polynomial subtract failed")
-            return self._new(
+            return self._publish_exact_packed_storage(
                 _PackedIntegerPolynomialStorage(
                     _canonical_integer_output(output, capacity)
                 )
             )
         if kind == "QQ":
+            if (
+                self._has_fmpq_polynomial_resource()
+                and other._has_fmpq_polynomial_resource()
+            ):
+                return self._new(
+                    _FmpqPolynomialResourceStorage(
+                        _flint_ffi_module().fmpq_polynomial_sub(
+                            self._exact_polynomial_resource(),
+                            other._exact_polynomial_resource(),
+                        )
+                    )
+                )
+            self._materialize_exact_compatibility_storage()
+            other._materialize_exact_compatibility_storage()
             kernel = (
                 _packed_rational_polynomial_module().packed_rational_polynomial_subtract
             )
@@ -425,7 +598,7 @@ class PolynomialElement(sage.Element):
                 _integer_kernel_input(kernel, other._storage.denominators),
             ):
                 raise RuntimeError("packed rational polynomial subtract failed")
-            return self._new(
+            return self._publish_exact_packed_storage(
                 _PackedRationalPolynomialStorage(
                     _canonical_integer_output(numerators, capacity),
                     _canonical_integer_output(denominators, capacity),
@@ -462,6 +635,20 @@ class PolynomialElement(sage.Element):
             else left_length + right_length - 1
         )
         if kind == "ZZ":
+            if (
+                self._has_fmpz_polynomial_resource()
+                and other._has_fmpz_polynomial_resource()
+            ):
+                return self._new(
+                    _FmpzPolynomialResourceStorage(
+                        _flint_ffi_module().fmpz_polynomial_mul(
+                            self._exact_polynomial_resource(),
+                            other._exact_polynomial_resource(),
+                        )
+                    )
+                )
+            self._materialize_exact_compatibility_storage()
+            other._materialize_exact_compatibility_storage()
             use_flint = left_length * right_length >= 256
             kernel = (
                 _packed_polynomial_flint_module().flint_packed_integer_polynomial_multiply
@@ -506,12 +693,26 @@ class PolynomialElement(sage.Element):
                     if not _integer_capacity_error(error):
                         raise
                     capacity *= 2
-            return self._new(
+            return self._publish_exact_packed_storage(
                 _PackedIntegerPolynomialStorage(
                     _canonical_integer_output(output, capacity)
                 )
             )
         if kind == "QQ":
+            if (
+                self._has_fmpq_polynomial_resource()
+                and other._has_fmpq_polynomial_resource()
+            ):
+                return self._new(
+                    _FmpqPolynomialResourceStorage(
+                        _flint_ffi_module().fmpq_polynomial_mul(
+                            self._exact_polynomial_resource(),
+                            other._exact_polynomial_resource(),
+                        )
+                    )
+                )
+            self._materialize_exact_compatibility_storage()
+            other._materialize_exact_compatibility_storage()
             use_flint = left_length * right_length >= 64
             kernel = (
                 _packed_polynomial_flint_module().flint_packed_rational_polynomial_multiply
@@ -572,7 +773,7 @@ class PolynomialElement(sage.Element):
                     if not _integer_capacity_error(error):
                         raise
                     capacity *= 2
-            return self._new(
+            return self._publish_exact_packed_storage(
                 _PackedRationalPolynomialStorage(
                     _canonical_integer_output(numerators, capacity),
                     _canonical_integer_output(denominators, capacity),
@@ -638,6 +839,15 @@ class PolynomialElement(sage.Element):
         base = self._parent.base_ring()
         kind = _packed_polynomial_kind(base)
         if kind == "ZZ":
+            if self._has_fmpz_polynomial_resource():
+                return self._new(
+                    _FmpzPolynomialResourceStorage(
+                        _flint_ffi_module().fmpz_polynomial_neg(
+                            self._exact_polynomial_resource()
+                        )
+                    )
+                )
+            self._materialize_exact_compatibility_storage()
             kernel = (
                 _packed_integer_polynomial_module().packed_integer_polynomial_negate
             )
@@ -649,12 +859,21 @@ class PolynomialElement(sage.Element):
                 output,
                 _integer_kernel_input(kernel, self._storage.coefficients),
             )
-            return self._new(
+            return self._publish_exact_packed_storage(
                 _PackedIntegerPolynomialStorage(
                     _canonical_integer_output(output, capacity)
                 )
             )
         if kind == "QQ":
+            if self._has_fmpq_polynomial_resource():
+                return self._new(
+                    _FmpqPolynomialResourceStorage(
+                        _flint_ffi_module().fmpq_polynomial_neg(
+                            self._exact_polynomial_resource()
+                        )
+                    )
+                )
+            self._materialize_exact_compatibility_storage()
             kernel = (
                 _packed_rational_polynomial_module().packed_rational_polynomial_negate
             )
@@ -672,7 +891,7 @@ class PolynomialElement(sage.Element):
                 _integer_kernel_input(kernel, self._storage.numerators),
                 _integer_kernel_input(kernel, self._storage.denominators),
             )
-            return self._new(
+            return self._publish_exact_packed_storage(
                 _PackedRationalPolynomialStorage(
                     _canonical_integer_output(output_numerators, numerator_capacity),
                     _canonical_integer_output(
@@ -699,6 +918,22 @@ class PolynomialElement(sage.Element):
         exponent = runtime.integer_bigint(exponent)
         if exponent < 0:
             raise ValueError("negative polynomial exponent")
+        if self._has_fmpz_polynomial_resource():
+            return self._new(
+                _FmpzPolynomialResourceStorage(
+                    _flint_ffi_module().fmpz_polynomial_pow(
+                        self._exact_polynomial_resource(), exponent
+                    )
+                )
+            )
+        if self._has_fmpq_polynomial_resource():
+            return self._new(
+                _FmpqPolynomialResourceStorage(
+                    _flint_ffi_module().fmpq_polynomial_pow(
+                        self._exact_polynomial_resource(), exponent
+                    )
+                )
+            )
         if _packed_polynomial_kind(self._parent.base_ring()) != "legacy":
             answer = self._parent(1)
             power = self
@@ -722,6 +957,8 @@ class PolynomialElement(sage.Element):
         left_length = operands.left._coefficient_length()
         right_length = operands.right._coefficient_length()
         if kind == "ZZ":
+            operands.left._materialize_exact_compatibility_storage()
+            operands.right._materialize_exact_compatibility_storage()
             kernel = _packed_polynomial_flint_module().flint_packed_integer_polynomial_divexact
             capacity = max(
                 1,
@@ -740,12 +977,16 @@ class PolynomialElement(sage.Element):
                         right_length,
                         1,
                     )
-                    return operands.left._new(_PackedIntegerPolynomialStorage(output))
+                    return operands.left._publish_exact_packed_storage(
+                        _PackedIntegerPolynomialStorage(output)
+                    )
                 except Exception as error:
                     if not _integer_capacity_error(error):
                         raise
                     capacity *= 2
         if kind == "QQ":
+            operands.left._materialize_exact_compatibility_storage()
+            operands.right._materialize_exact_compatibility_storage()
             kernel = _packed_polynomial_flint_module().flint_packed_rational_polynomial_divexact
             capacity = max(
                 2,
@@ -770,7 +1011,7 @@ class PolynomialElement(sage.Element):
                         right_length,
                         1,
                     )
-                    return operands.left._new(
+                    return operands.left._publish_exact_packed_storage(
                         _PackedRationalPolynomialStorage(numerators, denominators)
                     )
                 except Exception as error:
@@ -804,12 +1045,16 @@ class PolynomialElement(sage.Element):
         base = self._parent.base_ring()
         kind = _packed_polynomial_kind(base)
         if kind == "ZZ":
+            self._materialize_exact_compatibility_storage()
+            other._materialize_exact_compatibility_storage()
             kernel = _packed_integer_polynomial_module().packed_integer_polynomial_equal
             return kernel(
                 _integer_kernel_input(kernel, self._storage.coefficients),
                 _integer_kernel_input(kernel, other._storage.coefficients),
             )
         if kind == "QQ":
+            self._materialize_exact_compatibility_storage()
+            other._materialize_exact_compatibility_storage()
             kernel = (
                 _packed_rational_polynomial_module().packed_rational_polynomial_equal
             )
@@ -838,8 +1083,20 @@ class PolynomialElement(sage.Element):
     def _coefficient_length(self) -> int:
         kind = _packed_polynomial_kind(self._parent.base_ring())
         if kind == "ZZ":
+            if self._has_fmpz_polynomial_resource():
+                return runtime.number(
+                    _flint_ffi_module().fmpz_polynomial_length(
+                        self._exact_polynomial_resource()
+                    )
+                )
             return _buffer_length(self._storage.coefficients)
         if kind == "QQ":
+            if self._has_fmpq_polynomial_resource():
+                return runtime.number(
+                    _flint_ffi_module().fmpq_polynomial_length(
+                        self._exact_polynomial_resource()
+                    )
+                )
             return _buffer_length(self._storage.numerators)
         if kind == "GF":
             return _buffer_length(self._storage)
@@ -947,6 +1204,7 @@ class PolynomialElement(sage.Element):
                 )
             return sage.Factorization(factors, base(unit_output[0]), False, True, False)
 
+        self._materialize_exact_compatibility_storage()
         source = (
             self._storage.coefficients if base is sage.ZZ else self._storage.numerators
         )
@@ -1106,8 +1364,25 @@ class PolynomialElement(sage.Element):
         base = self._parent.base_ring()
         kind = _packed_polynomial_kind(base)
         if kind == "ZZ":
+            if self._has_fmpz_polynomial_resource():
+                ffi = _flint_ffi_module()
+                resource = self._exact_polynomial_resource()
+                return [
+                    ffi.fmpz_polynomial_coefficient(resource, index)
+                    for index in range(self._coefficient_length())
+                ]
             return _integer_buffer_values(self._storage.coefficients)
         if kind == "QQ":
+            if self._has_fmpq_polynomial_resource():
+                ffi = _flint_ffi_module()
+                resource = self._exact_polynomial_resource()
+                return [
+                    _untyped(sage.Rational)._from_reduced(
+                        ffi.fmpq_polynomial_coefficient_numerator(resource, index),
+                        ffi.fmpq_polynomial_coefficient_denominator(resource, index),
+                    )
+                    for index in range(self._coefficient_length())
+                ]
             numerators = _integer_buffer_values(self._storage.numerators)
             denominators = _integer_buffer_values(self._storage.denominators)
             return [
@@ -1138,13 +1413,49 @@ class PolynomialElement(sage.Element):
         return answer
 
     def __call__(self, value: Any) -> Any:
-        coefficients = self.coefficients()
         if hasattr(value, "nrows") and hasattr(value, "ncols") and value.is_square():
+            coefficients = self.coefficients()
             answer = value.parent().zero()
             identity = value.parent().one()
             for coefficient in reversed(coefficients):
                 answer = answer * value + coefficient * identity
             return answer
+        if self._has_fmpz_polynomial_resource():
+            ffi = _flint_ffi_module()
+            resource = self._exact_polynomial_resource()
+            if runtime.is_exact_integer(value):
+                return ffi.fmpz_polynomial_evaluate(
+                    resource, runtime.integer_bigint(value)
+                )
+            if isinstance(value, sage.Rational):
+                result = ffi.fmpz_polynomial_evaluate_rational(
+                    resource, value._numerator, value._denominator
+                )
+                try:
+                    return _untyped(sage.Rational)._from_reduced(
+                        ffi.fmpq_value_numerator(result),
+                        ffi.fmpq_value_denominator(result),
+                    )
+                finally:
+                    result.close()
+        if self._has_fmpq_polynomial_resource() and (
+            runtime.is_exact_integer(value) or isinstance(value, sage.Rational)
+        ):
+            rational = _untyped(sage.QQ)(value)
+            ffi = _flint_ffi_module()
+            result = ffi.fmpq_polynomial_evaluate(
+                self._exact_polynomial_resource(),
+                rational._numerator,
+                rational._denominator,
+            )
+            try:
+                return _untyped(sage.Rational)._from_reduced(
+                    ffi.fmpq_value_numerator(result),
+                    ffi.fmpq_value_denominator(result),
+                )
+            finally:
+                result.close()
+        coefficients = self.coefficients()
         answer = self._parent.base_ring()(0)
         for coefficient in reversed(coefficients):
             answer = answer * value + coefficient
@@ -1268,6 +1579,22 @@ class PolynomialRingParent(sage.Parent):
                 coefficients.append(coefficient)
         return self._from_coefficients(coefficients)
 
+    def _from_fmpz_polynomial_resource(self, resource: Any) -> PolynomialElement:
+        """Take ownership of a checked sealed `ZZ[x]` resource."""
+        if self._base is not sage.ZZ:
+            resource.close()
+            raise TypeError("integer polynomial resource requires ZZ")
+        _flint_ffi_module().fmpz_polynomial_length(resource)
+        return PolynomialElement(self, _FmpzPolynomialResourceStorage(resource))
+
+    def _from_fmpq_polynomial_resource(self, resource: Any) -> PolynomialElement:
+        """Take ownership of a checked sealed `QQ[x]` resource."""
+        if self._base is not sage.QQ:
+            resource.close()
+            raise TypeError("rational polynomial resource requires QQ")
+        _flint_ffi_module().fmpq_polynomial_length(resource)
+        return PolynomialElement(self, _FmpqPolynomialResourceStorage(resource))
+
     def _from_coefficients(
         self,
         coefficients: list[Any],
@@ -1283,6 +1610,19 @@ class PolynomialRingParent(sage.Parent):
             values = [
                 runtime.integer_bigint(self._base(value)) for value in coefficients
             ]
+            if _generated_flint_resources_available():
+                ffi = _flint_ffi_module()
+                resource = ffi.fmpz_polynomial(len(values))
+                try:
+                    for index in range(len(values)):
+                        ffi.fmpz_polynomial_set_coefficient(
+                            resource, index, values[index]
+                        )
+                    ffi.fmpz_polynomial_seal(resource)
+                    return self._from_fmpz_polynomial_resource(resource)
+                except Exception:
+                    resource.close()
+                    raise
             return PolynomialElement(
                 self,
                 _PackedIntegerPolynomialStorage(runtime.integer_buffer(values, 1)),
@@ -1294,6 +1634,22 @@ class PolynomialRingParent(sage.Parent):
                 rational = self._base(value)
                 numerators.append(rational._numerator)
                 denominators.append(rational._denominator)
+            if _generated_flint_resources_available():
+                ffi = _flint_ffi_module()
+                resource = ffi.fmpq_polynomial(len(numerators))
+                try:
+                    for index in range(len(numerators)):
+                        ffi.fmpq_polynomial_set_coefficient(
+                            resource,
+                            index,
+                            numerators[index],
+                            denominators[index],
+                        )
+                    ffi.fmpq_polynomial_seal(resource)
+                    return self._from_fmpq_polynomial_resource(resource)
+                except Exception:
+                    resource.close()
+                    raise
             return PolynomialElement(
                 self,
                 _PackedRationalPolynomialStorage(
