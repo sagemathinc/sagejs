@@ -58,6 +58,7 @@ const cases = [
   { name: "copy_500", expression: "_integer_left.__copy__()", budget: 12 },
   { name: "trace_500", expression: "_integer_left.trace()", budget: 6 },
   { name: "density_500", expression: "_integer_left.density()", budget: 8 },
+  { name: "str_50", expression: "_integer_string.str()", budget: 15 },
   { name: "multiply_150", expression: "_integer_square*_integer_square", budget: 30 },
   {
     name: "determinant_150",
@@ -186,6 +187,7 @@ async function run(environment = process.env) {
         "_integer_left = random_matrix(ZZ, 500, x=-100, y=101)",
         "_integer_right = random_matrix(ZZ, 500, x=-100, y=101)",
         "_integer_equal = _integer_left.__copy__()",
+        "_integer_string = random_matrix(ZZ, 50)",
         "_integer_square = random_matrix(ZZ, 150, x=-10, y=11)",
         "_integer_polynomial = random_matrix(ZZ, 60, x=-10, y=11)",
         "_integer_normal = random_matrix(ZZ, 35, x=-10, y=11)",

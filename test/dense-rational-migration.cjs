@@ -64,6 +64,12 @@ A = matrix(QQ, 3, 3, [
 B = matrix(QQ, 3, 3, range(9)) / 31
 
 assert A[0, 0] == QQ(large + 1)/3
+display = matrix(QQ, 2, 3, [QQ(1)/2, -7, 0, QQ(11)/13, -QQ(2)/3, QQ(5)/17])
+assert display.str() == '[  1/2    -7     0]\n[11/13  -2/3  5/17]'
+display.subdivide(1, 1)
+assert display.str() == (
+    '[  1/2|   -7     0]\n[-----------------]\n[11/13| -2/3  5/17]'
+)
 assert (A + B) - B == A
 assert -(-A) == A
 assert (QQ(3)/7)*A == A*(QQ(3)/7)

@@ -5415,13 +5415,44 @@ class Matrix(sage.Element):
             return "[]"
         text_rows = []
         width = 0
-        for row in range(self.nrows()):
-            text_row = []
-            for col in range(self.ncols()):
-                text = str(self._entry(row, col))
-                text_row.append(text)
-                width = max(width, len(text))
-            text_rows.append(text_row)
+        if self._has_packed_rational_storage():
+            # The buffers already contain normalized pairs. Decode each one
+            # once instead of crossing a kernel boundary and allocating a
+            # Rational object for every displayed entry.
+            numerators = _integer_buffer_values(self._rational_numerators())
+            denominators = _integer_buffer_values(self._rational_denominators())
+            for row in range(self.nrows()):
+                text_row = []
+                for col in range(self.ncols()):
+                    index = row * self.ncols() + col
+                    numerator_text = str(numerators[index])
+                    denominator = denominators[index]
+                    text = (
+                        numerator_text
+                        if denominator == 1
+                        else numerator_text + "/" + str(denominator)
+                    )
+                    text_row.append(text)
+                    width = max(width, len(text))
+                text_rows.append(text_row)
+        elif self._has_packed_integer_storage():
+            # As above, bulk decoding avoids one kernel call per entry.
+            values = _integer_buffer_values(self._integer_entries())
+            for row in range(self.nrows()):
+                text_row = []
+                for col in range(self.ncols()):
+                    text = str(values[row * self.ncols() + col])
+                    text_row.append(text)
+                    width = max(width, len(text))
+                text_rows.append(text_row)
+        else:
+            for row in range(self.nrows()):
+                text_row = []
+                for col in range(self.ncols()):
+                    text = str(self._entry(row, col))
+                    text_row.append(text)
+                    width = max(width, len(text))
+                text_rows.append(text_row)
         lines = []
         for row, text_row in enumerate(text_rows):
             if row in self._row_subdivisions:
