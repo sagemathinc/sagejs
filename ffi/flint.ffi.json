@@ -56,7 +56,8 @@
         "close_export": "ffiFmpqMatrixClose"
       },
       "native": {
-        "clear_symbol": "sagejs_fmpq_matrix_clear"
+        "clear_symbol": "sagejs_fmpq_matrix_clear",
+        "size_symbol": "sagejs_fmpq_matrix_allocated_bytes"
       },
       "targets": {
         "dynamic": true,
@@ -74,7 +75,8 @@
         "close_export": "ffiFmpqValueClose"
       },
       "native": {
-        "clear_symbol": "sagejs_fmpq_value_clear"
+        "clear_symbol": "sagejs_fmpq_value_clear",
+        "size_symbol": "sagejs_fmpq_value_allocated_bytes"
       },
       "targets": {
         "dynamic": true,
@@ -92,7 +94,8 @@
         "close_export": "ffiFlintByteRegionClose"
       },
       "native": {
-        "clear_symbol": "sagejs_flint_byte_region_clear"
+        "clear_symbol": "sagejs_flint_byte_region_clear",
+        "size_symbol": "sagejs_flint_byte_region_allocated_bytes"
       },
       "targets": {
         "dynamic": true,

@@ -273,6 +273,18 @@ borrows fail before entering the addon. `FinalizationRegistry` is a leak
 safety net, not the primary lifetime protocol. The dynamic package adapter
 performs the actual library-specific close exactly once.
 
+Owned resources may also declare a host-neutral retained-size callback. The
+generated Node holder reports that size through `napi_adjust_external_memory`
+when ownership transfers to JavaScript, refreshes it after declared writes,
+and balances the reported amount on explicit close or finalization. This is a
+V8 garbage-collection pressure signal; it is not the `external` field reported
+by `process.memoryUsage()`. Node-API finalizers may be deferred until the
+current JavaScript stack yields, even when external pressure has already
+triggered a collection. Code performing a synchronous bulk operation must
+therefore close temporary resources lexically. Unreachable long-lived
+resources are reclaimed after the event loop regains control, without an
+explicit `global.gc()` call.
+
 Inside `@native`, owned resources are deliberately narrower. They are lexical
 locals only: they cannot be public parameters or results, are currently
 constructed only in the top-level function block, and cannot escape. The compiler emits the concrete ABI
