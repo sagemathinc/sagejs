@@ -1,0 +1,77 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "public-integer-selectors",
+  "title": "Public dense integer selectors",
+  "lane": "arithmetic-algebra",
+  "status": "review",
+  "owner": "user",
+  "objective": "Route public dense ZZ row and column selection through generated bulk FmpzMatrix selectors with Sage-compatible semantics, focused regressions, and a tight performance ratchet",
+  "base_commit": "abeca3df694d64682af8b2e3abc134c4d1400b30",
+  "claims": [
+    "src/baselib/matrix.py",
+    "scripts/check-integer-matrix-budget.cjs",
+    "test/dense-integer-public-resource.cjs",
+    "test/dense-integer-migration.cjs"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "external-library",
+    "fallback": "tested-capability",
+    "oracles": [
+      "cpython",
+      "javascript"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "pnpm test:native"
+  ],
+  "runs": [
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 12.336,
+      "started_at": "2026-08-11T13:31:43.136Z",
+      "commit": "abeca3df694d64682af8b2e3abc134c4d1400b30",
+      "workspace_fingerprint": "40f70317c35a04ee2df23050bdffa5055292e4aec607f54664874c8a7282e88d",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:native",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 5.094,
+      "started_at": "2026-08-11T13:31:58.922Z",
+      "commit": "abeca3df694d64682af8b2e3abc134c4d1400b30",
+      "workspace_fingerprint": "40f70317c35a04ee2df23050bdffa5055292e4aec607f54664874c8a7282e88d",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:native",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 213.926,
+      "started_at": "2026-08-11T13:32:42.205Z",
+      "commit": "abeca3df694d64682af8b2e3abc134c4d1400b30",
+      "workspace_fingerprint": "40f70317c35a04ee2df23050bdffa5055292e4aec607f54664874c8a7282e88d",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Public dense ZZ row and column selection now normalizes and packs indices once, then returns the result of one generated FmpzMatrix selector call. Focused tests cover resource-only huge/skew matrices, duplicates, negative and invalid indices, empty shapes, source immutability, native-required and native-disabled N-API-forbidden execution, and generated-resource traces. The 500x500 public performance ratchet selects 250 rows or columns in about 1.8-2.1 ms raw with a 3 ms normalized ceiling, replacing the former 12-21 ms incremental resource route.",
+    "risks": [],
+    "next_steps": [
+      "Integrate this branch after the generated FmpzMatrix selector declarations already present on dense-qq-resources."
+    ]
+  }
+}
