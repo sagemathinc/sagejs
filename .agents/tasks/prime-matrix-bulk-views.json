@@ -1,0 +1,109 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "prime-matrix-bulk-views",
+  "title": "Bulk GF(p) Matrix Host Views v1",
+  "lane": "arithmetic-algebra",
+  "status": "review",
+  "owner": "user",
+  "objective": "Build dense prime-field matrix list, row, and column views from one canonical packed bulk scalar decode, preserving Sage copy/cache semantics and adding semantic and warm performance gates",
+  "base_commit": "db010e7aa64292a713b1106b79bace62e2caf322",
+  "claims": [
+    "src/baselib/matrix.py",
+    "test/prime-matrix-bulk-views-v1.cjs",
+    "bench/prime-matrix-bulk-views-v1.cjs"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "dynamic-python",
+    "fallback": "same-source",
+    "oracles": [
+      "Sage-compatible Matrix list, row, and column semantics",
+      "Existing dense GF(p) algebra and native-disabled fallback"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "node --test test/prime-matrix-bulk-views-v1.cjs",
+    "pnpm test:baselib:strict",
+    "pnpm test:native"
+  ],
+  "runs": [
+    {
+      "command": "node --test test/prime-matrix-bulk-views-v1.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 7.338,
+      "started_at": "2026-08-11T22:56:56.237Z",
+      "commit": "db010e7aa64292a713b1106b79bace62e2caf322",
+      "workspace_fingerprint": "a118ed412bd4722a2f6ba4a642968a0d21f47e52de42ef86b36f4ee79b8fc50d",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 12.711,
+      "started_at": "2026-08-11T22:57:08.785Z",
+      "commit": "db010e7aa64292a713b1106b79bace62e2caf322",
+      "workspace_fingerprint": "a118ed412bd4722a2f6ba4a642968a0d21f47e52de42ef86b36f4ee79b8fc50d",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:native",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 393.471,
+      "started_at": "2026-08-11T22:57:25.572Z",
+      "commit": "db010e7aa64292a713b1106b79bace62e2caf322",
+      "workspace_fingerprint": "a118ed412bd4722a2f6ba4a642968a0d21f47e52de42ef86b36f4ee79b8fc50d",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/prime-matrix-bulk-views-v1.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 7.245,
+      "started_at": "2026-08-11T23:04:33.303Z",
+      "commit": "db010e7aa64292a713b1106b79bace62e2caf322",
+      "workspace_fingerprint": "256380ef578668bf0e55be4a19398677dc54bee43719ac843579f740ddddb0cb",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 12.096,
+      "started_at": "2026-08-11T23:04:41.161Z",
+      "commit": "db010e7aa64292a713b1106b79bace62e2caf322",
+      "workspace_fingerprint": "256380ef578668bf0e55be4a19398677dc54bee43719ac843579f740ddddb0cb",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:native",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 392.076,
+      "started_at": "2026-08-11T23:04:57.997Z",
+      "commit": "db010e7aa64292a713b1106b79bace62e2caf322",
+      "workspace_fingerprint": "256380ef578668bf0e55be4a19398677dc54bee43719ac843579f740ddddb0cb",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Dense packed GF(p) matrices now materialize one frozen same-parent scalar per canonical row-major residue through the shared uint64 structural primitive. list(), rows(), and columns() reuse those scalar references with Sage-compatible outer-list and immutable-vector caches; row() and column() remain fresh and avoid whole-matrix materialization until a bulk view exists. Successful mutation invalidates the scalar and orientation caches while preserving earlier snapshots. Focused native-disabled, extension-field, residue-ring, empty-dimension, identity, and warm performance coverage accompanies a reproducible 512x512 benchmark. On the audited host, first list improved from 3127 ms to 71.0 ms, first rows from 3328 ms to 63.0 ms, first columns from 2687 ms to 47.4 ms, fresh row stayed at 8.3 ms, and addition remained fast at 0.94 ms.",
+    "risks": [
+      "The new host test is intentionally not added to the shared node-test manifest in this arithmetic-algebra lane; pnpm test:changed therefore stops at the manifest completeness gate until integration adds it."
+    ],
+    "next_steps": [
+      "Add test/prime-matrix-bulk-views-v1.cjs to test/node-test-manifest.cjs in the integration lane."
+    ]
+  }
+}

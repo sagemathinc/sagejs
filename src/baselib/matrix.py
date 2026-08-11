@@ -1746,6 +1746,7 @@ class Matrix(sage.Element):
         self._parent = parent
         self._native_handle: Any = runtime.undefined
         self._prime_residues_cache: Any = runtime.undefined
+        self._prime_host_values_cache: Any = runtime.undefined
         self._integer_entries_cache: Any = runtime.undefined
         self._integer_storage_cache: Any = runtime.undefined
         self._rational_storage_cache: Any = runtime.undefined
@@ -1940,6 +1941,19 @@ class Matrix(sage.Element):
             )
         return self._prime_residues_cache
 
+    def _prime_host_values(self) -> list[Any]:
+        """Materialize ordinary immutable field elements once per matrix."""
+        if not self._has_packed_prime_storage():
+            raise TypeError("bulk prime-field host views require packed storage")
+        if self._prime_host_values_cache is runtime.undefined:
+            base = self.base_ring()
+            self._prime_host_values_cache = runtime.uint64_residue_elements(
+                self._prime_residues(),
+                base,
+                runtime.reflect.get(base, "_elementType"),
+            )
+        return self._prime_host_values_cache
+
     def _prime_kernel_buffer(self, kernel_function: Any) -> Any:
         """Materialize canonical packed storage once per matrix."""
         return _dense_prime_buffer(kernel_function, self._prime_residues())
@@ -2053,7 +2067,16 @@ class Matrix(sage.Element):
         """Return the canonical cached immutable row vectors."""
         if self._row_vectors_cache is runtime.undefined:
             if self._column_vectors_cache is runtime.undefined:
-                if self._has_fmpz_matrix_resource() or self._has_fmpq_matrix_resource():
+                if self._has_packed_prime_storage():
+                    values = self._prime_host_values()
+                    width = self.ncols()
+                    nested = [
+                        values[row * width : (row + 1) * width]
+                        for row in range(self.nrows())
+                    ]
+                elif (
+                    self._has_fmpz_matrix_resource() or self._has_fmpq_matrix_resource()
+                ):
                     values = self._exact_host_values()
                     width = self.ncols()
                     nested = [
@@ -2082,7 +2105,16 @@ class Matrix(sage.Element):
         """Return the canonical cached immutable column vectors."""
         if self._column_vectors_cache is runtime.undefined:
             if self._row_vectors_cache is runtime.undefined:
-                if self._has_fmpz_matrix_resource() or self._has_fmpq_matrix_resource():
+                if self._has_packed_prime_storage():
+                    values = self._prime_host_values()
+                    width = self.ncols()
+                    nested_rows = [
+                        values[row * width : (row + 1) * width]
+                        for row in range(self.nrows())
+                    ]
+                elif (
+                    self._has_fmpz_matrix_resource() or self._has_fmpq_matrix_resource()
+                ):
                     values = self._exact_host_values()
                     width = self.ncols()
                     nested_rows = [
@@ -2389,6 +2421,8 @@ class Matrix(sage.Element):
         )
 
     def list(self) -> list[Any]:
+        if self._has_packed_prime_storage():
+            return list(self._prime_host_values())
         if self._has_fmpz_matrix_resource() or self._has_fmpq_matrix_resource():
             if self._row_vectors_cache is not runtime.undefined:
                 return runtime.reference_matrix_flatten(
@@ -2422,7 +2456,14 @@ class Matrix(sage.Element):
         from_list: bool = False,
     ) -> Any:
         index = _normalize_named_index(index, self.nrows(), "row")
-        if self._has_fmpz_matrix_resource() or self._has_fmpq_matrix_resource():
+        if (
+            self._has_packed_prime_storage()
+            and self._prime_host_values_cache is not runtime.undefined
+        ):
+            start = index * self.ncols()
+            entries = self._prime_host_values()[start : start + self.ncols()]
+            answer = Vector(VectorSpace(self.base_ring(), self.ncols()), entries)
+        elif self._has_fmpz_matrix_resource() or self._has_fmpq_matrix_resource():
             entries = self._exact_host_sequence(index * self.ncols(), 1, self.ncols())
             answer = Vector(VectorSpace(self.base_ring(), self.ncols()), entries)
         else:
@@ -2450,7 +2491,16 @@ class Matrix(sage.Element):
         from_list: bool = False,
     ) -> Any:
         index = _normalize_named_index(index, self.ncols(), "column")
-        if self._has_fmpz_matrix_resource() or self._has_fmpq_matrix_resource():
+        if (
+            self._has_packed_prime_storage()
+            and self._prime_host_values_cache is not runtime.undefined
+        ):
+            values = self._prime_host_values()
+            entries = [
+                values[row * self.ncols() + index] for row in range(self.nrows())
+            ]
+            answer = Vector(VectorSpace(self.base_ring(), self.nrows()), entries)
+        elif self._has_fmpz_matrix_resource() or self._has_fmpq_matrix_resource():
             entries = self._exact_host_sequence(index, self.ncols(), self.nrows())
             answer = Vector(VectorSpace(self.base_ring(), self.nrows()), entries)
         else:
@@ -3446,6 +3496,7 @@ class Matrix(sage.Element):
         self._left_kernel_cache = runtime.undefined
         self._charpoly_cache = runtime.map()
         self._minpoly_cache = runtime.map()
+        self._prime_host_values_cache = runtime.undefined
         self._row_vectors_cache = runtime.undefined
         self._column_vectors_cache = runtime.undefined
 
