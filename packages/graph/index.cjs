@@ -67,4 +67,32 @@ function ffiFirstEdgeEndpointPacked(edges, edgeEntriesValue) {
   return edgeEntries === 0 ? null : BigInt(packed[0]);
 };
 
-module.exports = binding;
+const generatedFfiManifest = require("./build/generated-ffi/manifest.json");
+const generatedFfi = require(
+  `./build/generated-ffi/${generatedFfiManifest.addon}`,
+);
+const publicBinding = Object.create(null);
+for (const name of Reflect.ownKeys(binding)) {
+  publicBinding[name] = binding[name];
+}
+const declaredFfiOracles = Object.create(null);
+for (const item of generatedFfiManifest.functions) {
+  const name = item.export;
+  if (typeof publicBinding[name] === "function") {
+    declaredFfiOracles[name] = publicBinding[name];
+  }
+  if (typeof generatedFfi[name] !== "function") {
+    throw new Error(`generated igraph FFI adapter is missing ${name}`);
+  }
+  publicBinding[name] = generatedFfi[name];
+}
+Object.defineProperty(publicBinding, "__sagejs_ffi_oracles__", {
+  value: Object.freeze(declaredFfiOracles),
+  enumerable: false,
+});
+Object.defineProperty(publicBinding, "__sagejs_ffi_manifest__", {
+  value: Object.freeze(generatedFfiManifest),
+  enumerable: false,
+});
+
+module.exports = publicBinding;

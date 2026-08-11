@@ -19,6 +19,7 @@ const sourceDeclarations = require("../tools/ffi/source-declarations.cjs");
 const boundaryAudit = require("../tools/ffi/boundary-audit.cjs");
 const nativeExportAudit = require("../tools/ffi/native-export-audit.cjs");
 const nativeExportPolicy = require("../tools/ffi/native-export-policy.cjs");
+const hostAdapters = require("../tools/ffi/host-adapters.cjs");
 const { compileKernel } = require("../tools/native-kernel/compiler.cjs");
 const { generateHostCore } = require("../tools/native-kernel/c-backend.cjs");
 const {
@@ -61,6 +62,45 @@ function runSageDiagnostic(args, input) {
   return `${result.stdout}\n${result.stderr}`;
 }
 
+function packedIntegerBuffer(values, wordCapacity = undefined) {
+  const exact = values.map((value) => BigInt(value));
+  const required = exact.reduce((maximum, value) => {
+    let magnitude = value < 0n ? -value : value;
+    let words = 0;
+    while (magnitude !== 0n) {
+      words += 1;
+      magnitude >>= 64n;
+    }
+    return Math.max(maximum, words);
+  }, 1);
+  const capacity = Math.max(required, wordCapacity ?? required);
+  const sizes = new Int32Array(exact.length);
+  const limbs = new BigUint64Array(exact.length * capacity);
+  for (let index = 0; index < exact.length; index += 1) {
+    let magnitude = exact[index] < 0n ? -exact[index] : exact[index];
+    let words = 0;
+    while (magnitude !== 0n) {
+      limbs[index * capacity + words] = magnitude & 0xffffffffffffffffn;
+      magnitude >>= 64n;
+      words += 1;
+    }
+    sizes[index] = exact[index] < 0n ? -words : words;
+  }
+  return { sizes, limbs, length: exact.length, wordCapacity: capacity };
+}
+
+function unpackIntegerBuffer(buffer) {
+  return Array.from({ length: buffer.length }, (_, index) => {
+    const signedSize = buffer.sizes[index];
+    let magnitude = 0n;
+    for (let word = Math.abs(signedSize) - 1; word >= 0; word -= 1) {
+      magnitude = (magnitude << 64n) |
+        buffer.limbs[index * buffer.wordCapacity + word];
+    }
+    return signedSize < 0 ? -magnitude : magnitude;
+  });
+}
+
 test("FFI declarations are strict and generated modules are current", () => {
   const registry = declarations.loadRegistry({ root });
   assert.equal(registry.schema, "sagejs.ffi/declaration-v6");
@@ -82,7 +122,10 @@ test("FFI declarations are strict and generated modules are current", () => {
       "nmod_mat_rank", "nmod_mat_det", "nmod_mat_charpoly",
       "nmod_mat_minpoly", "nmod_mat_inv", "nmod_mat_rref",
       "nmod_mat_mul", "nmod_mat_right_kernel", "nmod_mat_solve",
-      "nmod_poly_mul",
+      "fmpz_poly_mul", "fmpq_poly_mul", "nmod_poly_mul",
+      "nmod_poly_divexact", "fmpz_poly_divexact", "fmpq_poly_divexact",
+      "nmod_poly_gcd", "nmod_poly_is_irreducible", "nmod_poly_factor",
+      "nmod_poly_roots", "fmpz_poly_factor", "fmpq_poly_factor",
     ],
   );
   assert.deepEqual(
@@ -109,7 +152,7 @@ test("FFI declarations are strict and generated modules are current", () => {
     { resource: "graph", ownership: "owned", owner: null, root: "graph" },
     { resource: "edges", ownership: "borrowed", owner: "graph", root: "graph" },
   ]);
-  assert.match(runSage(["ffi", "check"]), /37 function\(s\)/);
+  assert.match(runSage(["ffi", "check"]), /48 function\(s\)/);
   const inspection = JSON.parse(
     runSage(["ffi", "explain", "flint", "--json"]),
   );
@@ -141,6 +184,113 @@ test("FFI declarations are strict and generated modules are current", () => {
   assert.equal(nullable.result.domain, "nullable");
   assert.equal(nullable.call_plan.native_return_c_type, "const uint64_t *");
   assert.equal(inspection.resources[0].native.clear_symbol, "dirichlet_group_clear");
+});
+
+test("generated host adapters are current and cover every value-only declaration", () => {
+  const registry = declarations.loadRegistry({ root });
+  for (const declaration of registry.libraries) {
+    const filename = hostAdapters.generatedHostAdapterPath(root, declaration);
+    const source = hostAdapters.generatedHostAdapterSource(declaration);
+    const functions = hostAdapters.generatedHostFunctions(declaration);
+    assert.equal(readFileSync(filename, "utf8"), source);
+    assert.match(source, /whose core calls the declared foreign symbols/);
+    assert.doesNotMatch(source, /sagejs\.runtime|ffi_call/);
+    assert.equal(
+      functions.length,
+      declaration.library.id === "flint" ? 38 : 2,
+    );
+    assert.equal(
+      functions.length,
+      declaration.functions.length - declaration.functions.filter((fn) =>
+        fn.signature.parameters.some((parameter) =>
+          declaration.resources.some((resource) =>
+            resource.python_name === parameter.type,
+          ),
+        ) || declaration.resources.some((resource) =>
+          resource.python_name === fn.signature.return_type,
+        ),
+      ).length,
+    );
+  }
+});
+
+test("packages make generated host adapters canonical and retain handwritten oracles", () => {
+  for (const [packagePath, expected] of [
+    ["../packages/flint", 38],
+    ["../packages/graph", 2],
+  ]) {
+    const backend = require(packagePath);
+    const manifest = backend.__sagejs_ffi_manifest__;
+    const oracles = backend.__sagejs_ffi_oracles__;
+    assert.equal(manifest.schema, "sagejs.ffi/generated-host-adapter-v1");
+    assert.equal(manifest.functions.length, expected);
+    assert.equal(manifest.host_isolation.callbacks_inside_core, 0);
+    for (const item of manifest.functions) {
+      assert.equal(typeof backend[item.export], "function");
+      assert.equal(typeof oracles[item.export], "function");
+      assert.notEqual(backend[item.export], oracles[item.export]);
+    }
+  }
+
+  const flint = require("../packages/flint");
+  const left = BigUint64Array.from([1n, 2n, 3n]);
+  const right = BigUint64Array.from([4n, 5n, 6n]);
+  const generated = new BigUint64Array(5);
+  const oracle = new BigUint64Array(5);
+  assert.equal(
+    flint.ffiNmodPolyMul(generated, left, right, 5n, 3n, 3n, 101n),
+    true,
+  );
+  assert.equal(
+    flint.__sagejs_ffi_oracles__.ffiNmodPolyMul(
+      oracle,
+      left,
+      right,
+      5n,
+      3n,
+      3n,
+      101n,
+    ),
+    true,
+  );
+  assert.deepEqual(Array.from(generated), Array.from(oracle));
+
+  for (const [name, sourceNumerators, sourceDenominators] of [
+    ["ffiFmpzPolyFactor", [2n, -3n, 0n, 1n], null],
+    ["ffiFmpqPolyFactor", [3n, -9n, 0n, 3n], [5n, 10n, 1n, 10n]],
+  ]) {
+    const run = (callable) => {
+      const factorCoefficients = packedIntegerBuffer(Array(6).fill(0n), 4);
+      const offsets = new BigUint64Array(4);
+      const exponents = new BigUint64Array(4);
+      const factorCount = new BigUint64Array(1);
+      const unitNumerator = packedIntegerBuffer([0n], 4);
+      const unitDenominator = packedIntegerBuffer([0n], 4);
+      const args = [
+        factorCoefficients,
+        offsets,
+        exponents,
+        factorCount,
+        unitNumerator,
+        unitDenominator,
+        packedIntegerBuffer(sourceNumerators, 4),
+      ];
+      if (sourceDenominators !== null) {
+        args.push(packedIntegerBuffer(sourceDenominators, 4));
+      }
+      args.push(6n, 4n, 1n);
+      assert.equal(Reflect.apply(callable, flint, args), true);
+      return {
+        coefficients: unpackIntegerBuffer(factorCoefficients),
+        offsets: Array.from(offsets),
+        exponents: Array.from(exponents),
+        factorCount: Array.from(factorCount),
+        unitNumerator: unpackIntegerBuffer(unitNumerator),
+        unitDenominator: unpackIntegerBuffer(unitDenominator),
+      };
+    };
+    assert.deepEqual(run(flint[name]), run(flint.__sagejs_ffi_oracles__[name]));
+  }
 });
 
 test("FFI v7 Python declarations lower deterministically to the checked JSON IR", async () => {
@@ -212,7 +362,7 @@ test("native-boundary audit is a reviewed exact ratchet", () => {
   const current = boundaryAudit.validateBoundarySnapshot(snapshot, { root });
   assert.ok(current.counts["napi-export"] >= 280);
   assert.ok(current.counts["runtime-intrinsic"] >= 100);
-  assert.equal(current.counts["declared-ffi"], 37);
+  assert.equal(current.counts["declared-ffi"], 48);
   assert.equal(current.counts["declared-ffi-resource"], 3);
   assert.match(runSage(["ffi", "audit"]), /inventoried native boundaries/);
   assert.equal(
@@ -459,15 +609,20 @@ test("packed FLINT matrix declarations work in ordinary Sage.js", () => {
     1n,
   );
   const output = runSage(["--python"], [
-    "from sagejs.ffi.flint import nmod_mat_rank, nmod_mat_inv",
-    "print(nmod_mat_rank([1, 2, 3, 4], 2, 2, 5))",
-    "out = [0, 0, 0, 0]",
-    "print(nmod_mat_inv(out, [1, 2, 3, 4], 2, 5), out)",
-    "try:",
-    "    nmod_mat_inv([0, 0, 0, 0], [1, 2, 2, 4], 2, 5)",
-    "except ValueError as error:",
-    "    print(type(error).__name__, str(error))",
+    "def exercise_packed_matrices():",
+    "    from sagejs.ffi.flint import nmod_mat_rank, nmod_mat_inv",
+    "    import sagejs.runtime as runtime",
+    "    source = runtime.uint64_buffer([1, 2, 3, 4])",
+    "    print(nmod_mat_rank(source, 2, 2, 5))",
+    "    out = runtime.uint64_buffer(4)",
+    "    print(nmod_mat_inv(out, source, 2, 5), list(out))",
+    "    try:",
+    "        singular = runtime.uint64_buffer([1, 2, 2, 4])",
+    "        nmod_mat_inv(runtime.uint64_buffer(4), singular, 2, 5)",
+    "    except ValueError as error:",
+    "        print(type(error).__name__, str(error))",
     "",
+    "exercise_packed_matrices()",
   ].join("\n"));
   assert.equal(
     output.trim(),
@@ -477,25 +632,78 @@ test("packed FLINT matrix declarations work in ordinary Sage.js", () => {
 
 test("packed-slice declarations work through both ordinary dynamic adapters", () => {
   const output = runSage(["--python"], [
-    "from sagejs.ffi.igraph import canonical_permutation, first_edge_endpoint",
-    "from sagejs.ffi.flint import nmod_poly_mul",
-    "labels = [99] * 6",
-    "edges = [0,1,1,2,2,3,3,4,4,5,5,0]",
-    "print(canonical_permutation(labels, edges, 6, 12, False), labels)",
-    "print(first_edge_endpoint(edges, 12))",
-    "try:",
-    "    first_edge_endpoint([], 0)",
-    "except ValueError as error:",
-    "    print(type(error).__name__, str(error))",
-    "product = [99] * 5",
-    "print(nmod_poly_mul(product, [1,2,3], [4,5,6], 5, 3, 3, 101), product)",
+    "def exercise_packed_slices():",
+    "    from sagejs.ffi.igraph import canonical_permutation, first_edge_endpoint",
+    "    from sagejs.ffi.flint import nmod_poly_mul",
+    "    import sagejs.runtime as runtime",
+    "    labels = runtime.uint64_buffer([99] * 6)",
+    "    edges = runtime.uint64_buffer([0,1,1,2,2,3,3,4,4,5,5,0])",
+    "    print(canonical_permutation(labels, edges, 6, 12, False), list(labels))",
+    "    print(first_edge_endpoint(edges, 12))",
+    "    try:",
+    "        first_edge_endpoint(runtime.uint64_buffer(0), 0)",
+    "    except ValueError as error:",
+    "        print(type(error).__name__, str(error))",
+    "    product = runtime.uint64_buffer([99] * 5)",
+    "    left = runtime.uint64_buffer([1,2,3])",
+    "    right = runtime.uint64_buffer([4,5,6])",
+    "    print(nmod_poly_mul(product, left, right, 5, 3, 3, 101), list(product))",
     "",
+    "exercise_packed_slices()",
   ].join("\n"));
   assert.equal(
     output.trim(),
     "True [3, 4, 2, 5, 1, 0]\n0\n" +
       "ValueError graph has no edge endpoints\nTrue [4, 13, 28, 27, 18]",
   );
+});
+
+test("packed univariate polynomials are independent of legacy N-API objects", () => {
+  const source = [
+    "R = PolynomialRing(ZZ, 'x'); x = R.gen()",
+    "f = (x - 1)**3 * (x + 2)",
+    "assert (f // (x - 1)) * (x - 1) == f",
+    "assert f.factor().value() == f",
+    "large = ((2**200) * x + 1) * (x - 3)",
+    "assert large.factor().value() == large",
+    "assert R([1, 2, 3]) == 1 + 2*x + 3*x**2",
+    "S = PolynomialRing(QQ, 'y'); y = S.gen()",
+    "g = QQ(3) / QQ(10) * (y - 1)**2 * (y + 2)",
+    "assert (g // (y - 1)) * (y - 1) == g",
+    "assert g.factor().value() == g",
+    "large_q = (QQ(1) / (2**180)) * ((2**170) * y + 3) * (y - 5)",
+    "assert large_q.factor().value() == large_q",
+    "stress_q = S([QQ(i % 17 - 8) / (i % 7 + 1) for i in range(128)])",
+    "assert len(stress_q.coefficients()) == 127",
+    "T = PolynomialRing(GF(5), 'z'); z = T.gen()",
+    "h = (z - 1)**2 * (z + 2)",
+    "assert (h // (z - 1)) * (z - 1) == h",
+    "assert gcd(h, (z - 1)**4) == z**2 + 3*z + 1",
+    "assert h.factor().value() == h",
+    "assert h.roots() == [(T(3), 1), (T(1), 2)]",
+    "assert (z**2 + z + 1).is_irreducible()",
+    "print('packed-polynomial-independent')",
+    "",
+  ].join("\n");
+  for (const nativeDisabled of [false, true]) {
+    const result = spawnSync(
+      process.execPath,
+      [join(root, "bin", "sagejs"), "--python"],
+      {
+        cwd: root,
+        encoding: "utf8",
+        input: source,
+        env: {
+          ...process.env,
+          SAGEJS_FORBID_POLYNOMIAL_NAPI: "1",
+          ...(nativeDisabled ? { SAGEJS_NATIVE_DISABLE: "1" } : {}),
+        },
+      },
+    );
+    assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`);
+    assert.equal(result.stdout.trim(), "packed-polynomial-independent");
+    assert.doesNotMatch(result.stderr, /forbidden legacy mathematical N-API/);
+  }
 });
 
 test("generated opaque FLINT resources close deterministically", () => {
@@ -697,11 +905,11 @@ test("compiled packed matrix FFI agrees with fallback and supports aliasing", as
     const alias = module.createUInt64Buffer([1n, 2n, 3n, 4n]);
     assert.equal(module.flint_nmod_inverse(alias, alias, 2n, 5n), true);
     assert.deepEqual(Array.from(alias), [3n, 1n, 4n, 2n]);
-    const dynamicOutput = [0n, 0n, 0n, 0n];
+    const dynamicOutput = module.createUInt64Buffer(4);
     assert.equal(module.flint_nmod_inverse.javascript(
-      dynamicOutput, [1n, 2n, 3n, 4n], 2n, 5n,
+      dynamicOutput, source, 2n, 5n,
     ), true);
-    assert.deepEqual(dynamicOutput, [3n, 1n, 4n, 2n]);
+    assert.deepEqual(Array.from(dynamicOutput), [3n, 1n, 4n, 2n]);
     const singular = module.createUInt64Buffer([1n, 2n, 2n, 4n]);
     const failedOutput = module.createUInt64Buffer([9n, 9n, 9n, 9n]);
     assert.throws(
@@ -828,19 +1036,19 @@ test("compiled packed slices agree with fallbacks and commit outputs transaction
     ]);
     const labels = graph.createUInt64Buffer(6);
     assert.equal(graph.igraph_canonical_labels(labels, edges, 6n, 12n, false), true);
-    const dynamicLabels = [0n, 0n, 0n, 0n, 0n, 0n];
+    const dynamicLabels = graph.createUInt64Buffer(6);
     assert.equal(graph.igraph_canonical_labels.javascript(
-      dynamicLabels, Array.from(edges), 6n, 12n, false,
+      dynamicLabels, edges, 6n, 12n, false,
     ), true);
-    assert.deepEqual(Array.from(labels), dynamicLabels);
+    assert.deepEqual(Array.from(labels), Array.from(dynamicLabels));
     assert.equal(graph.igraph_first_endpoint(edges, 12n), 0n);
     assert.equal(graph.igraph_first_endpoint.javascript(
-      Array.from(edges), 12n,
+      edges, 12n,
     ), 0n);
     const noEdges = graph.createUInt64Buffer(0);
     assert.throws(() => graph.igraph_first_endpoint(noEdges, 0n),
       /graph has no edge endpoints/);
-    assert.throws(() => graph.igraph_first_endpoint.javascript([], 0n),
+    assert.throws(() => graph.igraph_first_endpoint.javascript(noEdges, 0n),
       /graph has no edge endpoints/);
     const failedLabels = graph.createUInt64Buffer([
       91n, 92n, 93n, 94n, 95n, 96n,

@@ -21,6 +21,7 @@ are the bootstrap implementation used by older checked-in compilers.
 # globals: ρσ_coercion_model, ρσ_equals, ρσ_factor_pair, ρσ_flint_backend
 # globals: ρσ_integer_bigint, ρσ_is_exact_integer, ρσ_is_math_element
 # globals: ρσ_integer_buffer, ρσ_integer_buffer_from_packed_bytes
+# globals: ρσ_integer_buffer_prefix
 # globals: ρσ_integer_buffer_to_packed_bytes
 # globals: ρσ_rational_buffers_from_packed_bytes
 # globals: ρσ_integer_buffer_used_word_capacity
@@ -186,6 +187,11 @@ def uint64_buffer_prefix(source, length):
         const stop = start + length * BigUint64Array.BYTES_PER_ELEMENT;
         return new BigUint64Array(source.buffer.slice(start, stop));
     })()"""
+
+
+def integer_buffer_prefix(source, length):
+    """Copy a packed exact-integer prefix without materializing integers."""
+    return ρσ_integer_buffer_prefix(source, length)
 
 
 def integer_buffer_used_word_capacity(source):

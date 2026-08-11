@@ -11,6 +11,9 @@
   },
   "files": [
     "build/Release/sagejs_flint.node",
+    "build/generated-ffi/sagejs_flint_ffi.node",
+    "build/generated-ffi/manifest.json",
+    "generated/ffi_host.py",
     "include",
     "index.cjs",
     "README.md"
@@ -19,7 +22,8 @@
     "install": "node scripts/install.cjs",
     "build:deps": "node scripts/build-deps.cjs",
     "build:addon": "node-gyp rebuild",
-    "build": "pnpm run build:deps && pnpm run build:addon",
+    "build:ffi": "node ../../scripts/build-ffi-host-adapter.cjs flint",
+    "build": "pnpm run build:deps && pnpm run build:addon && pnpm run build:ffi",
     "test": "node --expose-gc --test --test-concurrency=3 --test-reporter=spec test/test.cjs test/dirichlet.cjs test/modular.cjs test/extension-field-lifecycle.cjs test/lazy-factor.cjs",
     "bench": "node bench/benchmark.cjs"
   },

@@ -438,26 +438,78 @@ function emitPackedNmodCall(operation, context, indent) {
 function emitPackedFmpzCall(operation, context, indent) {
   const fn = operation.foreign.function;
   const arguments_ = nativeArguments(fn);
-  const adapters = arguments_.filter((argument) =>
-    argument.adapter?.kind === "packed_fmpz_matrix"
-  );
-  if (adapters.length !== arguments_.length) {
-    throw new Error(
-      `${operation.foreign.declarationId} mixes packed fmpz matrices and direct arguments`,
-    );
-  }
   const declarations = [];
   const validation = [];
   const initialization = [];
   const copyInput = [];
   const outputAdapters = [];
+  const sliceStages = [];
+  const sliceOutputs = [];
   const cleanup = [];
   const callArguments = [];
   const parameter = (name) => context.value(argumentBySource(operation, name).name);
   declarations.push(`${indent}    mpz_t sagejs_ffi_integer_scratch;`);
   initialization.push(`${indent}    mpz_init(sagejs_ffi_integer_scratch);`);
   cleanup.unshift(`${indent}    mpz_clear(sagejs_ffi_integer_scratch);`);
-  for (const [index, argument] of adapters.entries()) {
+  for (const [index, argument] of arguments_.entries()) {
+    if (argument.adapter?.kind === "packed_slice") {
+      const adapter = argument.adapter;
+      const data = parameter(adapter.data);
+      const length = parameter(adapter.length);
+      validation.push(
+        `${indent}    if (${length} > (uint64_t) SIZE_MAX ||`,
+        `${indent}        ${data}.length != (size_t) ${length})`,
+        `${indent}    {`,
+        `${indent}        sagejs_native_status_set(status, SAGEJS_NATIVE_RANGE_ERROR, ` +
+          `"packed slice length does not match its declaration");`,
+        `${indent}        ${context.failure}`,
+        `${indent}    }`,
+      );
+      if (adapter.access === "read") {
+        callArguments.push(`${data}.data`);
+      } else {
+        const stage = `sagejs_ffi_${cName(operation.target)}_${index}_stage`;
+        declarations.push(`${indent}    uint64_t *${stage} = NULL;`);
+        sliceStages.push({ stage, length });
+        sliceOutputs.push({ stage, length, data });
+        cleanup.unshift(`${indent}    free(${stage});`);
+        callArguments.push(stage);
+      }
+      continue;
+    }
+    if (argument.lowering.kind === "record") {
+      const record = `sagejs_ffi_${cName(operation.target)}_${index}_record`;
+      declarations.push(`${indent}    ${argument.lowering.c_type} ${record};`);
+      for (const field of argument.lowering.record_fields) {
+        const sourceName = argument.lowering.fields[field.name];
+        const source = argumentBySource(operation, sourceName);
+        validation.push(
+          `${indent}    ${record}.${field.name} = ` +
+            `(${field.c_type}) ${context.value(source.name)};`,
+        );
+      }
+      callArguments.push(`&${record}`);
+      continue;
+    }
+    if (argument.adapter === null) {
+      const source = argumentBySource(operation, argument.source);
+      if (argument.abi_type === "ulong" || argument.abi_type === "uint64_t") {
+        callArguments.push(`(${argument.abi_type}) ${context.value(source.name)}`);
+      } else if (argument.abi_type === "int") {
+        callArguments.push(`(int) ${context.value(source.name)}`);
+      } else {
+        throw new Error(
+          `${operation.foreign.declarationId} uses unsupported mixed fmpz ABI ` +
+          `${argument.abi_type}`,
+        );
+      }
+      continue;
+    }
+    if (argument.adapter?.kind !== "packed_fmpz_matrix") {
+      throw new Error(
+        `${operation.foreign.declarationId} mixes incompatible ABI adapters`,
+      );
+    }
     const adapter = argument.adapter;
     const prefix = `sagejs_ffi_${cName(operation.target)}_${index}`;
     const matrix = `${prefix}_matrix`;
@@ -512,6 +564,20 @@ function emitPackedFmpzCall(operation, context, indent) {
   }
   const raw = `sagejs_ffi_${cName(operation.target)}_result`;
   declarations.push(`${indent}    ${nativeReturnType(fn)} ${raw};`);
+  const allocation = sliceStages.flatMap(({ stage, length }) => [
+    `${indent}    if (${length} != 0)`,
+    `${indent}    {`,
+    `${indent}        ${stage} = (uint64_t *) calloc(` +
+      `(size_t) ${length}, sizeof(uint64_t));`,
+    `${indent}        if (${stage} == NULL)`,
+    `${indent}        {`,
+    ...cleanup.map((line) => line.replace(`${indent}    `, `${indent}            `)),
+    `${indent}            sagejs_native_status_set(status, ` +
+      `SAGEJS_NATIVE_ERROR, "unable to stage FFI output");`,
+    `${indent}            ${context.failure}`,
+    `${indent}        }`,
+    `${indent}    }`,
+  ]);
   const checked = failureLines(fn, raw, cleanup, context, `${indent}    `);
   const preflight = outputAdapters.flatMap(({ matrix, data, columns, count }) => [
     `${indent}    for (size_t sagejs_index = 0; sagejs_index < ${count}; ` +
@@ -545,6 +611,11 @@ function emitPackedFmpzCall(operation, context, indent) {
       `sagejs_index, sagejs_ffi_integer_scratch);`,
     `${indent}    }`,
   ]);
+  const copySliceOutput = sliceOutputs.flatMap(({ stage, length, data }) => [
+    `${indent}    if (${length} != 0)`,
+    `${indent}        memcpy(${data}.data, ${stage}, ` +
+      `(size_t) ${length} * sizeof(uint64_t));`,
+  ]);
   const result = assignRawResult(
     fn, raw, context.result(operation.target), `${indent}    `,
   );
@@ -554,10 +625,12 @@ function emitPackedFmpzCall(operation, context, indent) {
     ...validation,
     ...initialization,
     ...copyInput,
+    ...allocation,
     `${indent}    ${raw} = ${nativeSymbol(fn)}(${callArguments.join(", ")});`,
     ...checked,
     ...preflight,
     ...copyOutput,
+    ...copySliceOutput,
     ...cleanup,
     result,
     `${indent}}`,
@@ -839,12 +912,32 @@ function sagejsFfiCall(
     }
     if (type === "IntegerBuffer" && value !== null &&
         (typeof value === "object" || typeof value === "function")) {
+      // Exact-kernel JavaScript lowering normalizes an IntegerBuffer to a
+      // checked view before it reaches a direct FFI call.  A whole-buffer view
+      // can cross the declared host boundary without repacking; preserve the
+      // original packed object so transactional output writes remain visible
+      // to the caller.
+      const packedView = Reflect.get(value, "packed");
+      const viewOffset = Reflect.get(value, "offset");
+      const viewLength = Reflect.get(value, "length");
+      if (packedView !== undefined && viewOffset === 0 &&
+          viewLength === Reflect.get(packedView, "length")) {
+        value = packedView;
+      }
       const length = Number(Reflect.get(value, "length"));
       if (Number.isSafeInteger(length) && length >= 0) {
         const sizes = Reflect.get(value, "sizes");
         const limbs = Reflect.get(value, "limbs");
         const capacity = Number(Reflect.get(value, "wordCapacity"));
-        if (sizes instanceof Int32Array && limbs instanceof BigUint64Array &&
+        // Compiled kernel modules and an embedded Sage.js runtime can inhabit
+        // different V8 realms. An instanceof check rejects genuine typed arrays from
+        // the other realm, whereas the intrinsic view test and builtin tag are
+        // realm-independent. The generated N-API shell validates them again.
+        const sizesTag = Object.prototype.toString.call(sizes);
+        const limbsTag = Object.prototype.toString.call(limbs);
+        if (ArrayBuffer.isView(sizes) && ArrayBuffer.isView(limbs) &&
+            sizesTag === "[object Int32Array]" &&
+            limbsTag === "[object BigUint64Array]" &&
             Number.isSafeInteger(capacity) && capacity > 0 &&
             sizes.length === length && limbs.length === length * capacity) {
           return value;
@@ -877,7 +970,18 @@ function sagejsFfiCall(
         "packed buffer length does not match its declared dimensions");
     }
   }
-  const result = Reflect.apply(fn, library, marshalled);
+  let result;
+  try {
+    result = Reflect.apply(fn, library, marshalled);
+  } catch (error) {
+    if (typeof errors.exception === "string") {
+      nativeRaise(
+        errors.exception,
+        typeof error?.message === "string" ? error.message : errors.message,
+      );
+    }
+    throw error;
+  }
   if (resultDomain.domain === "status" && result === false) {
     nativeRaise(errors.exception, errors.message);
   }

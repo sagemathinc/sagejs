@@ -24,6 +24,11 @@ const boundaryAudit = require("../../tools/ffi/boundary-audit.cjs") as {
     snapshot: Record<string, unknown>, options?: { root?: string },
   ): Record<string, unknown>;
 };
+const hostAdapters = require("../../tools/ffi/host-adapters.cjs") as {
+  generatedHostAdapterPath(root: string, declaration: FfiDeclaration): string;
+  generatedHostAdapterSource(declaration: FfiDeclaration): string;
+  generatedHostFunctions(declaration: FfiDeclaration): FfiFunction[];
+};
 
 interface FfiFunction {
   id: string;
@@ -154,6 +159,19 @@ function checkGenerated(registry: FfiRegistry, libraries: FfiDeclaration[]) {
           `generated FFI module is stale: ${filename}; run sagejs ffi generate`,
         );
       }
+    }
+    const hostPath = hostAdapters.generatedHostAdapterPath(
+      registry.root, declaration,
+    );
+    const hostSource = hostAdapters.generatedHostAdapterSource(declaration);
+    if (!existsSync(hostPath)) {
+      throw new Error(`generated FFI host adapter is missing: ${hostPath}`);
+    }
+    if (readFileSync(hostPath, "utf8") !== hostSource) {
+      throw new Error(
+        `generated FFI host adapter is stale: ${hostPath}; ` +
+        "run sagejs ffi generate",
+      );
     }
   }
 }
@@ -299,6 +317,15 @@ export async function runFfiCompilerCli(argv: FfiCliArguments): Promise<void> {
         writeFileSync(filename, declarations.generatePythonModule(declaration));
         process.stdout.write(`${relative(registry.root, filename)}\n`);
       }
+      const hostPath = hostAdapters.generatedHostAdapterPath(
+        registry.root, declaration,
+      );
+      mkdirSync(dirname(hostPath), { recursive: true });
+      writeFileSync(
+        hostPath,
+        hostAdapters.generatedHostAdapterSource(declaration),
+      );
+      process.stdout.write(`${relative(registry.root, hostPath)}\n`);
     }
     return;
   }

@@ -2041,6 +2041,13 @@ except Exception as error:
     }),
     ["3", "True", "(3, 2)", "False", "True", "True"],
   );
+  assert.deepEqual(
+    runSage(primeFieldSourceScript, {
+      ...primeFieldSourceEnvironment,
+      SAGEJS_NATIVE_DISABLE: "1",
+    }),
+    ["3", "True", "(3, 2)", "False", "True", "True"],
+  );
   const integerCache = join(temporary, "integer-cache");
   const integerKernel = await nativeApi.compile({
     sourcePath: integerSourcePath,

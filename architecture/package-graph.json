@@ -57,7 +57,7 @@
       "id": "arithmetic",
       "layer": 1,
       "startup": "bootstrap",
-      "max_source_bytes": 500000,
+      "max_source_bytes": 535000,
       "depends_on": ["core-runtime"],
       "files": [
         "src/baselib/algebra.py",
@@ -175,7 +175,7 @@
       "id": "python-stdlib",
       "layer": 1,
       "startup": "lazy",
-      "max_source_bytes": 665000,
+      "max_source_bytes": 800000,
       "depends_on": ["core-runtime"],
       "modules": [
         "_dummy_thread", "_thread", "abc", "aes", "annotationlib", "argparse", "array", "ast", "atexit", "base64", "bdb", "bisect", "calendar", "cmath", "codecs", "collections", "colorsys", "contextlib", "copy", "decimal",
@@ -188,6 +188,9 @@
         "tokenize", "traceback", "types", "unicodedata", "unittest", "urllib", "uuid", "warnings", "weakref", "xml", "zlib"
       ],
       "files": [
+        "src/baselib/sagejs/ffi/__init__.py",
+        "src/baselib/sagejs/ffi/flint.py",
+        "src/baselib/sagejs/ffi/igraph.py",
         "src/lib/_dummy_thread.py", "src/lib/_thread.py", "src/lib/abc.py", "src/lib/aes.py", "src/lib/annotationlib.py", "src/lib/argparse.py", "src/lib/array.py", "src/lib/ast.py", "src/lib/atexit.py", "src/lib/base64.py", "src/lib/bdb.py", "src/lib/calendar.py", "src/lib/cmath.py", "src/lib/colorsys.py", "src/lib/copy.py", "src/lib/datetime.py", "src/lib/decimal.py", "src/lib/enum.py",
         "src/lib/codecs.py",
         "src/lib/bisect.py", "src/lib/collections.py", "src/lib/contextlib.py",

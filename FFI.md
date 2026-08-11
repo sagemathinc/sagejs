@@ -9,8 +9,8 @@ signature, concrete C ABI, ownership, effects, error policy, dynamic adapter,
 native link requirements, and supported targets for each callable function.
 
 The first declaration is [`ffi/flint.ffi.py`](ffi/flint.ffi.py), lowered to
-[`ffi/flint.ffi.json`](ffi/flint.ffi.json). It
-exports eight deliberately different witnesses:
+[`ffi/flint.ffi.json`](ffi/flint.ffi.json). It now covers several deliberately
+different families; representative declarations include:
 
 - `dirichlet_group(uint64) -> DirichletGroup`, a generated opaque owned
   resource with explicit `close`, context-manager support, and finalization;
@@ -25,8 +25,11 @@ exports eight deliberately different witnesses:
 - `nmod_mat_inv(output, source, size, modulus) -> bool`, whose caller-owned
   output is copied back only after success and whose zero status becomes
   `ValueError("matrix is singular")`. Input and output may alias safely.
-- `nmod_poly_mul(output, left, right, ...) -> bool`, a substantial mature
-  FLINT algorithm reached through reusable packed-slice declarations.
+- the `fmpz_poly`, `fmpq_poly`, and `nmod_poly` multiplication, exact
+  division, gcd, irreducibility, factorization, and roots families. They use
+  caller-owned packed coefficients throughout. Variable-length factorizations
+  cross as flattened coefficient buffers plus offsets, exponents, a count,
+  and a unit; no FLINT polynomial or factor object escapes the call.
 - `fmpz_mat_det`, `fmpz_mat_hnf_transform`, and their dense integer matrix
   family, whose `IntegerBuffer` arguments become lexical `fmpz_mat_t` values;
   generated code preflights every signed-limb result before transactional
@@ -58,10 +61,27 @@ assert fmpz_gcd(18, 30) == 6
 
 The generated functions use the checked `sagejs.runtime.ffi_call` boundary.
 That boundary loads the declared package, performs semantic-type marshalling,
-validates the return value, and invokes only the generated wrapper's declared
-dynamic export. It contains no mathematical algorithm. The low-level runtime
-intrinsic is privileged plumbing: architecture checks prohibit mathematical
-modules from calling it directly.
+validates the return value, and invokes only the declaration's dynamic export.
+That export is itself generated: `sagejs ffi generate` writes
+`packages/<library>/generated/ffi_host.py`, and the package build compiles its
+actual typed Python bodies into a host-isolated addon. The generated addon
+contains the N-API marshalling shell and a canonical C core that calls the
+declared foreign symbols without a host callback. It contains no mathematical
+algorithm.
+
+The old handwritten dynamic implementations are temporarily retained behind
+the non-public `__sagejs_ffi_oracles__` property for differential tests. They
+are not the production export. Functions involving opaque foreign resources
+remain omitted from generated host adapters until generated resource
+marshalling lands; package manifests state the exact omitted count. Thus the
+remaining handwritten surface is explicit and shrinking, not an invisible
+second implementation.
+
+The low-level runtime intrinsic is privileged plumbing: architecture checks
+prohibit mathematical modules from calling it directly. Direct FFI users must
+also honor semantic storage types: a `UInt64Buffer` is an actual packed buffer,
+not an arbitrary Python list. Use `sagejs.runtime.uint64_buffer` outside an
+`@native` signature.
 
 The same import is valid inside source-transparent typed Python:
 
@@ -112,8 +132,9 @@ schema, verifies byte-for-byte deterministic JSON lowering, and rejects stale
 generated Python. `ffi emit-json` writes the normalized document to standard
 output without changing the repository. `ffi diff` compares source lowering
 with the checked JSON artifact and reports the first changed line. `ffi
-generate` is the only normal command that rewrites lowered JSON and safe Python
-surfaces.
+generate` is the only normal command that rewrites lowered JSON, safe Python
+surfaces, and generated package-host Python sources. Package builds reject a
+missing or stale generated host source before compiling it.
 `architecture:check` runs the same registry and drift checks, so an agent
 cannot quietly add an unchecked native call.
 
@@ -202,6 +223,14 @@ stages mutable output in temporary native memory. A `record` adapter maps named
 semantic parameters to every field of a cataloged C struct; generated C
 performs the casts, initializes the aggregate, and passes it according to its
 declared ABI.
+
+Mixed call plans are supported: one foreign function may combine lexical
+`fmpz_mat_t` storage, caller-owned `IntegerBuffer` output, transactional
+`UInt64Buffer` metadata, and direct scalar dimensions. This is how exact
+polynomial factorization returns arbitrary-precision flattened coefficients
+and machine-word offsets without exposing a pointer-bearing FLINT factor
+structure. All staged components are preflighted before any caller-owned
+buffer is committed.
 
 Results have one of three explicit domains:
 
@@ -300,7 +329,8 @@ compiler branches for individual symbols.
 2. Declare semantic and ABI types, argument direction/order, ownership,
    effects, error policy, targets, headers, and link dependencies.
 3. Run `sagejs ffi diff <library>`, then `sagejs ffi generate <library>` and
-   inspect the normalized JSON and generated safe module.
+   inspect the normalized JSON, generated safe module, and generated package
+   host source.
 4. Add dynamic and host-isolated native differential tests.
 5. Inspect `native ir` and `native emit-core-c`; ensure the core has no host
    callbacks.

@@ -21,7 +21,9 @@ const BASELIB_ASSET = "compiler/baselib-plain-pretty.js";
 const RUNTIME_BOOTSTRAP_PREFIX = "runtime-cache/runtime-bootstrap-";
 const TASK_RUNTIME_ASSET = "compiler/task-runtime.js";
 const FLINT_ASSET = "native/sagejs_flint.node";
+const FLINT_FFI_ASSET = "native/sagejs_flint_ffi.node";
 const GRAPH_ASSET = "native/sagejs_graph.node";
+const GRAPH_FFI_ASSET = "native/sagejs_igraph_ffi.node";
 const ZEROMQ_ASSET = "native/zeromq.node";
 const PLOTLY_ASSET = "vendor/plotly.min.js";
 const KERNEL_WORKER_ASSET = "worker/kernel-worker.cjs";
@@ -226,7 +228,27 @@ function loadEmbeddedFlint(): unknown {
 
   const nativeModule = { exports: {} };
   process.dlopen(nativeModule, addonFilename);
-  flintModule = nativeModule.exports;
+  if (!hasAsset(FLINT_FFI_ASSET)) {
+    throw new Error(
+      "This Sage.js executable is missing its generated FLINT FFI host adapter",
+    );
+  }
+  const ffiAddonFilename = join(
+    nativeTemporaryDirectory,
+    basename(FLINT_FFI_ASSET),
+  );
+  writeFileSync(ffiAddonFilename, Buffer.from(getAsset(FLINT_FFI_ASSET)), {
+    mode: 0o700,
+  });
+  const ffiModule = { exports: {} };
+  process.dlopen(ffiModule, ffiAddonFilename);
+  const combined = Object.create(null) as Record<PropertyKey, unknown>;
+  for (const source of [nativeModule.exports, ffiModule.exports]) {
+    for (const name of Reflect.ownKeys(source as object)) {
+      combined[name] = Reflect.get(source as object, name);
+    }
+  }
+  flintModule = combined;
   return flintModule;
 }
 
@@ -246,7 +268,27 @@ function loadEmbeddedGraph(): unknown {
   });
   const nativeModule = { exports: {} };
   process.dlopen(nativeModule, addonFilename);
-  graphModule = nativeModule.exports;
+  if (!hasAsset(GRAPH_FFI_ASSET)) {
+    throw new Error(
+      "This Sage.js executable is missing its generated igraph FFI host adapter",
+    );
+  }
+  const ffiAddonFilename = join(
+    nativeTemporaryDirectory,
+    basename(GRAPH_FFI_ASSET),
+  );
+  writeFileSync(ffiAddonFilename, Buffer.from(getAsset(GRAPH_FFI_ASSET)), {
+    mode: 0o700,
+  });
+  const ffiModule = { exports: {} };
+  process.dlopen(ffiModule, ffiAddonFilename);
+  const combined = Object.create(null) as Record<PropertyKey, unknown>;
+  for (const source of [nativeModule.exports, ffiModule.exports]) {
+    for (const name of Reflect.ownKeys(source as object)) {
+      combined[name] = Reflect.get(source as object, name);
+    }
+  }
+  graphModule = combined;
   return graphModule;
 }
 

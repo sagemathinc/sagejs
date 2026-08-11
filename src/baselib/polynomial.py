@@ -10,6 +10,207 @@ from typing import Any
 import sagejs as sage
 import sagejs.runtime as runtime
 
+_packed_integer_polynomial_module_cache = runtime.undefined
+_packed_rational_polynomial_module_cache = runtime.undefined
+_packed_prime_polynomial_module_cache = runtime.undefined
+_packed_polynomial_flint_module_cache = runtime.undefined
+
+
+class _PackedIntegerPolynomialStorage:
+    """Owned normalized low-to-high `IntegerBuffer` coefficients."""
+
+    def __init__(self, coefficients: Any) -> None:
+        self.coefficients = coefficients
+
+
+class _PackedRationalPolynomialStorage:
+    """Owned normalized low-to-high rational coefficient components."""
+
+    def __init__(self, numerators: Any, denominators: Any) -> None:
+        if _buffer_length(numerators) != _buffer_length(denominators):
+            raise ValueError("rational polynomial component lengths differ")
+        self.numerators = numerators
+        self.denominators = denominators
+
+
+def _packed_integer_polynomial_module() -> Any:
+    global _packed_integer_polynomial_module_cache
+    if _packed_integer_polynomial_module_cache is runtime.undefined:
+        _packed_integer_polynomial_module_cache = __import__(
+            "sagejs.kernels.polynomial.packed_integer",
+            fromlist=["packed_integer"],
+        )
+    return _packed_integer_polynomial_module_cache
+
+
+def _packed_rational_polynomial_module() -> Any:
+    global _packed_rational_polynomial_module_cache
+    if _packed_rational_polynomial_module_cache is runtime.undefined:
+        _packed_rational_polynomial_module_cache = __import__(
+            "sagejs.kernels.polynomial.packed_rational",
+            fromlist=["packed_rational"],
+        )
+    return _packed_rational_polynomial_module_cache
+
+
+def _packed_prime_polynomial_module() -> Any:
+    global _packed_prime_polynomial_module_cache
+    if _packed_prime_polynomial_module_cache is runtime.undefined:
+        _packed_prime_polynomial_module_cache = __import__(
+            "sagejs.kernels.polynomial.packed_prime_field",
+            fromlist=["packed_prime_field"],
+        )
+    return _packed_prime_polynomial_module_cache
+
+
+def _packed_polynomial_flint_module() -> Any:
+    global _packed_polynomial_flint_module_cache
+    if _packed_polynomial_flint_module_cache is runtime.undefined:
+        _packed_polynomial_flint_module_cache = __import__(
+            "sagejs.kernels.polynomial.packed_flint",
+            fromlist=["packed_flint"],
+        )
+    return _packed_polynomial_flint_module_cache
+
+
+def _integer_capacity_error(error: Exception) -> bool:
+    return "IntegerBuffer word capacity exceeded" in str(error)
+
+
+def _buffer_length(source: Any) -> int:
+    length = runtime.reflect.get(source, "length")
+    return len(source) if length is runtime.undefined else int(length)
+
+
+def _integer_buffer_values(source: Any) -> list[Any]:
+    converter = runtime.reflect.get(source, "toArray")
+    if runtime.jstype(converter) == "function":
+        values = runtime.reflect.apply(converter, source, [])
+    else:
+        values = list(source)
+    return [runtime.normalize_integer(value) for value in values]
+
+
+def _native_kernel_available(kernel_function: Any) -> bool:
+    return bool(getattr(kernel_function, "nativeAvailable", False))
+
+
+def _integer_kernel_input(kernel_function: Any, source: Any) -> Any:
+    if _native_kernel_available(kernel_function):
+        return source
+    return _integer_buffer_values(source)
+
+
+def _integer_kernel_output(
+    kernel_function: Any,
+    length: int,
+    word_capacity: int,
+) -> Any:
+    if _native_kernel_available(kernel_function):
+        return _integer_zeros(length, word_capacity)
+    return [0 for _index in range(length)]
+
+
+def _canonical_integer_output(source: Any, word_capacity: int) -> Any:
+    if runtime.reflect.get(source, "wordCapacity") is not runtime.undefined:
+        return source
+    return runtime.integer_buffer(source, word_capacity)
+
+
+def _uint64_kernel_input(kernel_function: Any, source: Any) -> Any:
+    if _native_kernel_available(kernel_function):
+        return source
+    return [source[index] for index in range(_buffer_length(source))]
+
+
+def _uint64_kernel_output(kernel_function: Any, length: int) -> Any:
+    if _native_kernel_available(kernel_function):
+        return runtime.uint64_buffer(length)
+    return [0 for _index in range(length)]
+
+
+def _canonical_uint64_output(source: Any) -> Any:
+    constructor = runtime.reflect.get(runtime.global_object, "BigUint64Array")
+    if runtime.instance_of(source, constructor):
+        return source
+    return runtime.uint64_buffer(source)
+
+
+def _integer_word_capacity(source: Any) -> int:
+    # Capacity is an allocation property, not a value-size bound.  Reusing it
+    # as the next result estimate makes repeated rational additions double the
+    # allocation on every step even when every coefficient is one machine
+    # word.  Packed IntegerBuffer sizes are exact signed limb counts, so base
+    # estimates on live values and leave spare-capacity growth local to the
+    # operation which actually needs it.
+    sizes = runtime.reflect.get(source, "sizes")
+    if sizes is not runtime.undefined:
+        maximum = 1
+        for index in range(_buffer_length(source)):
+            maximum = max(maximum, abs(int(sizes[index])))
+        return maximum
+    capacity = runtime.reflect.get(source, "wordCapacity")
+    if capacity is not runtime.undefined and _buffer_length(source) == 0:
+        return 1
+    maximum = 1
+    for value in source:
+        magnitude = abs(int(value))
+        maximum = max(maximum, max(1, (magnitude.bit_length() + 63) // 64))
+    return maximum
+
+
+def _integer_zeros(length: int, word_capacity: int) -> Any:
+    return runtime.integer_buffer([0 for _index in range(length)], word_capacity)
+
+
+def _trim_integer_buffer(source: Any) -> Any:
+    values = _integer_buffer_values(source)
+    length = len(values)
+    while length > 0 and values[length - 1] == 0:
+        length -= 1
+    if length == _buffer_length(source):
+        return source
+    return runtime.integer_buffer_prefix(source, length)
+
+
+def _trim_uint64_buffer(source: Any) -> Any:
+    length = _buffer_length(source)
+    while length > 0 and source[length - 1] == 0:
+        length -= 1
+    if length == _buffer_length(source):
+        return source
+    return runtime.uint64_buffer_prefix(source, length)
+
+
+def _packed_polynomial_kind(base: sage.Parent) -> str:
+    if base is sage.ZZ:
+        return "ZZ"
+    if base is sage.QQ:
+        return "QQ"
+    if (
+        getattr(base, "_kind", None) == "GF"
+        and int(_untyped(base).characteristic()) <= 0xFFFFFFFF
+    ):
+        return "GF"
+    return "legacy"
+
+
+def _normalize_packed_storage(base: sage.Parent, storage: Any) -> Any:
+    kind = _packed_polynomial_kind(base)
+    if kind == "ZZ":
+        coefficients = storage.coefficients
+        return _PackedIntegerPolynomialStorage(_trim_integer_buffer(coefficients))
+    if kind == "QQ":
+        numerators = _trim_integer_buffer(storage.numerators)
+        length = _buffer_length(numerators)
+        denominators = storage.denominators
+        if length != _buffer_length(denominators):
+            denominators = runtime.integer_buffer_prefix(denominators, length)
+        return _PackedRationalPolynomialStorage(numerators, denominators)
+    if kind == "GF":
+        return _trim_uint64_buffer(storage)
+    return storage
+
 
 def _untyped(value: Any) -> Any:
     return value
@@ -33,31 +234,383 @@ class PolynomialElement(sage.Element):
     def __init__(
         self,
         parent: PolynomialRingParent,
-        native_value: Any,
+        value: Any,
     ) -> None:
         self._parent = parent
-        self._native = native_value
+        if _packed_polynomial_kind(parent.base_ring()) == "legacy":
+            self._native = value
+            self._storage = runtime.undefined
+        else:
+            self._native = runtime.undefined
+            self._storage = _normalize_packed_storage(parent.base_ring(), value)
         runtime.object.freeze(self)
 
-    def _new(self, native_value: Any) -> PolynomialElement:
-        return PolynomialElement(self._parent, native_value)
+    def _new(self, value: Any) -> PolynomialElement:
+        return PolynomialElement(self._parent, value)
+
+    def _legacy_polynomial_oracle_input(self) -> Any:
+        """Build a temporary legacy polynomial for an audited old consumer.
+
+        Exact algebraic roots still return an opaque `QQbar` resource graph,
+        and the older power-series family still owns FLINT polynomial state.
+        Neither exception may become a route back into production polynomial
+        storage: callers consume this temporary object immediately.
+        """
+        backend = runtime.flint_backend()
+        base = self._parent.base_ring()
+        result = None
+        generator = None
+        if base is sage.ZZ:
+            result = backend.zzPolyConstant(runtime.integer_bigint(0))
+            generator = backend.zzPolyGen()
+        elif base is sage.QQ:
+            result = backend.qqPolyConstant(
+                runtime.integer_bigint(0), runtime.integer_bigint(1)
+            )
+            generator = backend.qqPolyGen()
+        elif base._kind == "GF":
+            result = backend.nmodPolyConstant(runtime.integer_bigint(0), base._modulus)
+            generator = backend.nmodPolyGen(base._modulus)
+        else:
+            raise TypeError("legacy polynomial bridge requires ZZ, QQ, or GF(p)")
+        for coefficient in reversed(self.coefficients()):
+            result = backend.polyMul(result, generator)
+            if base is sage.ZZ:
+                constant = backend.zzPolyConstant(runtime.integer_bigint(coefficient))
+            elif base is sage.QQ:
+                constant = backend.qqPolyConstant(
+                    runtime.integer_bigint(coefficient._numerator),
+                    runtime.integer_bigint(coefficient._denominator),
+                )
+            else:
+                constant = backend.nmodPolyConstant(coefficient._value, base._modulus)
+            result = backend.polyAdd(result, constant)
+        return result
 
     def _add_(self, other: PolynomialElement) -> PolynomialElement:
-        if self._parent.base_ring()._kind == "GF_EXTENSION":
+        base = self._parent.base_ring()
+        kind = _packed_polynomial_kind(base)
+        if kind == "ZZ":
+            kernel = _packed_integer_polynomial_module().packed_integer_polynomial_add
+            length = max(
+                _buffer_length(self._storage.coefficients),
+                _buffer_length(other._storage.coefficients),
+            )
+            capacity = (
+                max(
+                    _integer_word_capacity(self._storage.coefficients),
+                    _integer_word_capacity(other._storage.coefficients),
+                )
+                + 1
+            )
+            output = _integer_kernel_output(kernel, length, capacity)
+            if not kernel(
+                output,
+                _integer_kernel_input(kernel, self._storage.coefficients),
+                _integer_kernel_input(kernel, other._storage.coefficients),
+            ):
+                raise RuntimeError("packed integer polynomial add failed")
+            return self._new(
+                _PackedIntegerPolynomialStorage(
+                    _canonical_integer_output(output, capacity)
+                )
+            )
+        if kind == "QQ":
+            kernel = _packed_rational_polynomial_module().packed_rational_polynomial_add
+            length = max(
+                _buffer_length(self._storage.numerators),
+                _buffer_length(other._storage.numerators),
+            )
+            capacity = (
+                2
+                * max(
+                    _integer_word_capacity(self._storage.numerators),
+                    _integer_word_capacity(self._storage.denominators),
+                    _integer_word_capacity(other._storage.numerators),
+                    _integer_word_capacity(other._storage.denominators),
+                )
+                + 2
+            )
+            numerators = _integer_kernel_output(kernel, length, capacity)
+            denominators = _integer_kernel_output(kernel, length, capacity)
+            if not kernel(
+                numerators,
+                denominators,
+                _integer_kernel_input(kernel, self._storage.numerators),
+                _integer_kernel_input(kernel, self._storage.denominators),
+                _integer_kernel_input(kernel, other._storage.numerators),
+                _integer_kernel_input(kernel, other._storage.denominators),
+            ):
+                raise RuntimeError("packed rational polynomial add failed")
+            return self._new(
+                _PackedRationalPolynomialStorage(
+                    _canonical_integer_output(numerators, capacity),
+                    _canonical_integer_output(denominators, capacity),
+                )
+            )
+        if kind == "GF":
+            kernel = _packed_prime_polynomial_module().packed_prime_field_polynomial_add
+            length = max(_buffer_length(self._storage), _buffer_length(other._storage))
+            output = _uint64_kernel_output(kernel, length)
+            if not kernel(
+                output,
+                _uint64_kernel_input(kernel, self._storage),
+                _uint64_kernel_input(kernel, other._storage),
+                base._modulus,
+            ):
+                raise RuntimeError("packed prime polynomial add failed")
+            return self._new(_canonical_uint64_output(output))
+        if base._kind == "GF_EXTENSION":
             return self._new(
                 runtime.flint_backend().fqPolyAdd(self._native, other._native)
             )
         return self._new(runtime.flint_backend().polyAdd(self._native, other._native))
 
     def _sub_(self, other: PolynomialElement) -> PolynomialElement:
-        if self._parent.base_ring()._kind == "GF_EXTENSION":
+        base = self._parent.base_ring()
+        kind = _packed_polynomial_kind(base)
+        if kind == "ZZ":
+            kernel = (
+                _packed_integer_polynomial_module().packed_integer_polynomial_subtract
+            )
+            length = max(
+                _buffer_length(self._storage.coefficients),
+                _buffer_length(other._storage.coefficients),
+            )
+            capacity = (
+                max(
+                    _integer_word_capacity(self._storage.coefficients),
+                    _integer_word_capacity(other._storage.coefficients),
+                )
+                + 1
+            )
+            output = _integer_kernel_output(kernel, length, capacity)
+            if not kernel(
+                output,
+                _integer_kernel_input(kernel, self._storage.coefficients),
+                _integer_kernel_input(kernel, other._storage.coefficients),
+            ):
+                raise RuntimeError("packed integer polynomial subtract failed")
+            return self._new(
+                _PackedIntegerPolynomialStorage(
+                    _canonical_integer_output(output, capacity)
+                )
+            )
+        if kind == "QQ":
+            kernel = (
+                _packed_rational_polynomial_module().packed_rational_polynomial_subtract
+            )
+            length = max(
+                _buffer_length(self._storage.numerators),
+                _buffer_length(other._storage.numerators),
+            )
+            capacity = (
+                2
+                * max(
+                    _integer_word_capacity(self._storage.numerators),
+                    _integer_word_capacity(self._storage.denominators),
+                    _integer_word_capacity(other._storage.numerators),
+                    _integer_word_capacity(other._storage.denominators),
+                )
+                + 2
+            )
+            numerators = _integer_kernel_output(kernel, length, capacity)
+            denominators = _integer_kernel_output(kernel, length, capacity)
+            if not kernel(
+                numerators,
+                denominators,
+                _integer_kernel_input(kernel, self._storage.numerators),
+                _integer_kernel_input(kernel, self._storage.denominators),
+                _integer_kernel_input(kernel, other._storage.numerators),
+                _integer_kernel_input(kernel, other._storage.denominators),
+            ):
+                raise RuntimeError("packed rational polynomial subtract failed")
+            return self._new(
+                _PackedRationalPolynomialStorage(
+                    _canonical_integer_output(numerators, capacity),
+                    _canonical_integer_output(denominators, capacity),
+                )
+            )
+        if kind == "GF":
+            kernel = (
+                _packed_prime_polynomial_module().packed_prime_field_polynomial_subtract
+            )
+            length = max(_buffer_length(self._storage), _buffer_length(other._storage))
+            output = _uint64_kernel_output(kernel, length)
+            if not kernel(
+                output,
+                _uint64_kernel_input(kernel, self._storage),
+                _uint64_kernel_input(kernel, other._storage),
+                base._modulus,
+            ):
+                raise RuntimeError("packed prime polynomial subtract failed")
+            return self._new(_canonical_uint64_output(output))
+        if base._kind == "GF_EXTENSION":
             return self._new(
                 runtime.flint_backend().fqPolySub(self._native, other._native)
             )
         return self._new(runtime.flint_backend().polySub(self._native, other._native))
 
     def _mul_(self, other: PolynomialElement) -> PolynomialElement:
-        if self._parent.base_ring()._kind == "GF_EXTENSION":
+        base = self._parent.base_ring()
+        kind = _packed_polynomial_kind(base)
+        left_length = self._coefficient_length()
+        right_length = other._coefficient_length()
+        length = (
+            0
+            if left_length == 0 or right_length == 0
+            else left_length + right_length - 1
+        )
+        if kind == "ZZ":
+            use_flint = left_length * right_length >= 256
+            kernel = (
+                _packed_polynomial_flint_module().flint_packed_integer_polynomial_multiply
+                if use_flint
+                else _packed_integer_polynomial_module().packed_integer_polynomial_multiply
+            )
+            accumulation = max(
+                1, (min(left_length, right_length).bit_length() + 63) // 64
+            )
+            capacity = (
+                _integer_word_capacity(self._storage.coefficients)
+                + _integer_word_capacity(other._storage.coefficients)
+                + accumulation
+            )
+            while True:
+                output = (
+                    _integer_zeros(length, capacity)
+                    if use_flint
+                    else _integer_kernel_output(kernel, length, capacity)
+                )
+                try:
+                    if use_flint:
+                        valid = kernel(
+                            output,
+                            self._storage.coefficients,
+                            other._storage.coefficients,
+                            length,
+                            left_length,
+                            right_length,
+                            1,
+                        )
+                    else:
+                        valid = kernel(
+                            output,
+                            _integer_kernel_input(kernel, self._storage.coefficients),
+                            _integer_kernel_input(kernel, other._storage.coefficients),
+                        )
+                    if not valid:
+                        raise RuntimeError("packed integer polynomial multiply failed")
+                    break
+                except Exception as error:
+                    if not _integer_capacity_error(error):
+                        raise
+                    capacity *= 2
+            return self._new(
+                _PackedIntegerPolynomialStorage(
+                    _canonical_integer_output(output, capacity)
+                )
+            )
+        if kind == "QQ":
+            use_flint = left_length * right_length >= 64
+            kernel = (
+                _packed_polynomial_flint_module().flint_packed_rational_polynomial_multiply
+                if use_flint
+                else _packed_rational_polynomial_module().packed_rational_polynomial_multiply
+            )
+            accumulation = max(
+                1, (min(left_length, right_length).bit_length() + 63) // 64
+            )
+            capacity = 2 * (
+                _integer_word_capacity(self._storage.numerators)
+                + _integer_word_capacity(self._storage.denominators)
+                + _integer_word_capacity(other._storage.numerators)
+                + _integer_word_capacity(other._storage.denominators)
+                + accumulation
+            )
+            while True:
+                numerators = (
+                    _integer_zeros(length, capacity)
+                    if use_flint
+                    else _integer_kernel_output(kernel, length, capacity)
+                )
+                denominators = (
+                    _integer_zeros(length, capacity)
+                    if use_flint
+                    else _integer_kernel_output(kernel, length, capacity)
+                )
+                try:
+                    left_numerators = self._storage.numerators
+                    left_denominators = self._storage.denominators
+                    right_numerators = other._storage.numerators
+                    right_denominators = other._storage.denominators
+                    if not use_flint:
+                        left_numerators = _integer_kernel_input(kernel, left_numerators)
+                        left_denominators = _integer_kernel_input(
+                            kernel, left_denominators
+                        )
+                        right_numerators = _integer_kernel_input(
+                            kernel, right_numerators
+                        )
+                        right_denominators = _integer_kernel_input(
+                            kernel, right_denominators
+                        )
+                    kernel_arguments = [
+                        numerators,
+                        denominators,
+                        left_numerators,
+                        left_denominators,
+                        right_numerators,
+                        right_denominators,
+                    ]
+                    if use_flint:
+                        kernel_arguments.extend([length, left_length, right_length, 1])
+                    if not kernel(*kernel_arguments):
+                        raise RuntimeError("packed rational polynomial multiply failed")
+                    break
+                except Exception as error:
+                    if not _integer_capacity_error(error):
+                        raise
+                    capacity *= 2
+            return self._new(
+                _PackedRationalPolynomialStorage(
+                    _canonical_integer_output(numerators, capacity),
+                    _canonical_integer_output(denominators, capacity),
+                )
+            )
+        if kind == "GF":
+            use_flint = left_length * right_length >= 4096
+            kernel = (
+                _packed_polynomial_flint_module().flint_packed_prime_field_polynomial_multiply
+                if use_flint
+                else _packed_prime_polynomial_module().packed_prime_field_polynomial_multiply
+            )
+            output = (
+                runtime.uint64_buffer(length)
+                if use_flint
+                else _uint64_kernel_output(kernel, length)
+            )
+            if use_flint:
+                valid = kernel(
+                    output,
+                    self._storage,
+                    other._storage,
+                    length,
+                    left_length,
+                    right_length,
+                    base._modulus,
+                )
+            else:
+                valid = kernel(
+                    output,
+                    _uint64_kernel_input(kernel, self._storage),
+                    _uint64_kernel_input(kernel, other._storage),
+                    base._modulus,
+                )
+            if not valid:
+                raise RuntimeError("packed prime polynomial multiply failed")
+            return self._new(_canonical_uint64_output(output))
+        if base._kind == "GF_EXTENSION":
             return self._new(
                 runtime.flint_backend().fqPolyMul(self._native, other._native)
             )
@@ -82,7 +635,63 @@ class PolynomialElement(sage.Element):
         return runtime.coercion_model.binOp("truediv", self, other)
 
     def __neg__(self) -> PolynomialElement:
-        if self._parent.base_ring()._kind == "GF_EXTENSION":
+        base = self._parent.base_ring()
+        kind = _packed_polynomial_kind(base)
+        if kind == "ZZ":
+            kernel = (
+                _packed_integer_polynomial_module().packed_integer_polynomial_negate
+            )
+            capacity = _integer_word_capacity(self._storage.coefficients) + 1
+            output = _integer_kernel_output(
+                kernel, self._coefficient_length(), capacity
+            )
+            kernel(
+                output,
+                _integer_kernel_input(kernel, self._storage.coefficients),
+            )
+            return self._new(
+                _PackedIntegerPolynomialStorage(
+                    _canonical_integer_output(output, capacity)
+                )
+            )
+        if kind == "QQ":
+            kernel = (
+                _packed_rational_polynomial_module().packed_rational_polynomial_negate
+            )
+            numerator_capacity = _integer_word_capacity(self._storage.numerators) + 1
+            denominator_capacity = _integer_word_capacity(self._storage.denominators)
+            output_numerators = _integer_kernel_output(
+                kernel, self._coefficient_length(), numerator_capacity
+            )
+            output_denominators = _integer_kernel_output(
+                kernel, self._coefficient_length(), denominator_capacity
+            )
+            kernel(
+                output_numerators,
+                output_denominators,
+                _integer_kernel_input(kernel, self._storage.numerators),
+                _integer_kernel_input(kernel, self._storage.denominators),
+            )
+            return self._new(
+                _PackedRationalPolynomialStorage(
+                    _canonical_integer_output(output_numerators, numerator_capacity),
+                    _canonical_integer_output(
+                        output_denominators, denominator_capacity
+                    ),
+                )
+            )
+        if kind == "GF":
+            kernel = (
+                _packed_prime_polynomial_module().packed_prime_field_polynomial_negate
+            )
+            output = _uint64_kernel_output(kernel, self._coefficient_length())
+            kernel(
+                output,
+                _uint64_kernel_input(kernel, self._storage),
+                base._modulus,
+            )
+            return self._new(_canonical_uint64_output(output))
+        if base._kind == "GF_EXTENSION":
             return self._new(runtime.flint_backend().fqPolyNeg(self._native))
         return self._new(runtime.flint_backend().polyNeg(self._native))
 
@@ -90,6 +699,16 @@ class PolynomialElement(sage.Element):
         exponent = runtime.integer_bigint(exponent)
         if exponent < 0:
             raise ValueError("negative polynomial exponent")
+        if _packed_polynomial_kind(self._parent.base_ring()) != "legacy":
+            answer = self._parent(1)
+            power = self
+            while exponent:
+                if exponent % 2:
+                    answer = answer._mul_(power)
+                exponent //= 2
+                if exponent:
+                    power = power._mul_(power)
+            return answer
         if self._parent.base_ring()._kind == "GF_EXTENSION":
             return self._new(runtime.flint_backend().fqPolyPow(self._native, exponent))
         return self._new(runtime.flint_backend().polyPow(self._native, exponent))
@@ -98,23 +717,133 @@ class PolynomialElement(sage.Element):
         operands = runtime.coercion_model.coercePair(self, other)
         if not isinstance(operands.left, PolynomialElement):
             raise TypeError("polynomial division requires polynomials")
-        if operands.parent.base_ring()._kind == "GF_EXTENSION":
+        base = operands.parent.base_ring()
+        kind = _packed_polynomial_kind(base)
+        left_length = operands.left._coefficient_length()
+        right_length = operands.right._coefficient_length()
+        if kind == "ZZ":
+            kernel = _packed_polynomial_flint_module().flint_packed_integer_polynomial_divexact
+            capacity = max(
+                1,
+                _integer_word_capacity(operands.left._storage.coefficients)
+                + _integer_word_capacity(operands.right._storage.coefficients),
+            )
+            while True:
+                output = _integer_zeros(left_length, capacity)
+                try:
+                    kernel(
+                        output,
+                        operands.left._storage.coefficients,
+                        operands.right._storage.coefficients,
+                        left_length,
+                        left_length,
+                        right_length,
+                        1,
+                    )
+                    return operands.left._new(_PackedIntegerPolynomialStorage(output))
+                except Exception as error:
+                    if not _integer_capacity_error(error):
+                        raise
+                    capacity *= 2
+        if kind == "QQ":
+            kernel = _packed_polynomial_flint_module().flint_packed_rational_polynomial_divexact
+            capacity = max(
+                2,
+                _integer_word_capacity(operands.left._storage.numerators)
+                + _integer_word_capacity(operands.left._storage.denominators)
+                + _integer_word_capacity(operands.right._storage.numerators)
+                + _integer_word_capacity(operands.right._storage.denominators),
+            )
+            while True:
+                numerators = _integer_zeros(left_length, capacity)
+                denominators = _integer_zeros(left_length, capacity)
+                try:
+                    kernel(
+                        numerators,
+                        denominators,
+                        operands.left._storage.numerators,
+                        operands.left._storage.denominators,
+                        operands.right._storage.numerators,
+                        operands.right._storage.denominators,
+                        left_length,
+                        left_length,
+                        right_length,
+                        1,
+                    )
+                    return operands.left._new(
+                        _PackedRationalPolynomialStorage(numerators, denominators)
+                    )
+                except Exception as error:
+                    if not _integer_capacity_error(error):
+                        raise
+                    capacity *= 2
+        if kind == "GF":
+            output = runtime.uint64_buffer(left_length)
+            _packed_polynomial_flint_module().flint_packed_prime_field_polynomial_divexact(
+                output,
+                operands.left._storage,
+                operands.right._storage,
+                left_length,
+                left_length,
+                right_length,
+                base._modulus,
+            )
+            return operands.left._new(output)
+        if base._kind == "GF_EXTENSION":
             native_value = runtime.flint_backend().fqPolyDivExact(
                 operands.left._native, operands.right._native
             )
         else:
             native_value = runtime.flint_backend().polyDivExact(
-                operands.left._native, operands.right._native
+                operands.left._native,
+                operands.right._native,
             )
-        return PolynomialElement(operands.parent, native_value)
+        return operands.parent._from_legacy_native(native_value)
 
     def _eq_(self, other: PolynomialElement) -> bool:
-        if self._parent.base_ring()._kind == "GF_EXTENSION":
+        base = self._parent.base_ring()
+        kind = _packed_polynomial_kind(base)
+        if kind == "ZZ":
+            kernel = _packed_integer_polynomial_module().packed_integer_polynomial_equal
+            return kernel(
+                _integer_kernel_input(kernel, self._storage.coefficients),
+                _integer_kernel_input(kernel, other._storage.coefficients),
+            )
+        if kind == "QQ":
+            kernel = (
+                _packed_rational_polynomial_module().packed_rational_polynomial_equal
+            )
+            return kernel(
+                _integer_kernel_input(kernel, self._storage.numerators),
+                _integer_kernel_input(kernel, self._storage.denominators),
+                _integer_kernel_input(kernel, other._storage.numerators),
+                _integer_kernel_input(kernel, other._storage.denominators),
+            )
+        if kind == "GF":
+            kernel = (
+                _packed_prime_polynomial_module().packed_prime_field_polynomial_equal
+            )
+            return kernel(
+                _uint64_kernel_input(kernel, self._storage),
+                _uint64_kernel_input(kernel, other._storage),
+                base._modulus,
+            )
+        if base._kind == "GF_EXTENSION":
             return runtime.flint_backend().fqPolyEqual(self._native, other._native)
         return runtime.flint_backend().polyEqual(self._native, other._native)
 
     def __eq__(self, other: object) -> bool:
         return runtime.coercion_model.equals(self, other)
+
+    def _coefficient_length(self) -> int:
+        kind = _packed_polynomial_kind(self._parent.base_ring())
+        if kind == "ZZ":
+            return _buffer_length(self._storage.coefficients)
+        if kind == "QQ":
+            return _buffer_length(self._storage.numerators)
+        if kind == "GF":
+            return _buffer_length(self._storage)
+        return len(self.coefficients())
 
     def gcd(self, other: object) -> PolynomialElement:
         operands = runtime.coercion_model.coercePair(self, other)
@@ -129,16 +858,31 @@ class PolynomialElement(sage.Element):
                 operands.left._native, operands.right._native
             )
         else:
-            native_value = runtime.flint_backend().nmodPolyGcd(
-                operands.left._native, operands.right._native
+            left_length = operands.left._coefficient_length()
+            right_length = operands.right._coefficient_length()
+            output_length = max(left_length, right_length)
+            output = runtime.uint64_buffer(output_length)
+            _packed_polynomial_flint_module().flint_packed_prime_field_polynomial_gcd(
+                output,
+                operands.left._storage,
+                operands.right._storage,
+                output_length,
+                left_length,
+                right_length,
+                operands.parent.base_ring()._modulus,
             )
-        return PolynomialElement(operands.parent, native_value)
+            return operands.left._new(output)
+        return operands.parent._from_legacy_native(native_value)
 
     def is_irreducible(self) -> bool:
         if self._parent.base_ring()._kind == "GF_EXTENSION":
             return runtime.flint_backend().fqPolyIsIrreducible(self._native)
         if self._parent.base_ring()._kind == "GF":
-            return runtime.flint_backend().nmodPolyIsIrreducible(self._native)
+            return _packed_polynomial_flint_module().flint_packed_prime_field_polynomial_is_irreducible(
+                self._storage,
+                self._coefficient_length(),
+                self._parent.base_ring()._modulus,
+            )
         factors = _untyped(self.factor())
         return (
             len(factors) == 1
@@ -155,21 +899,117 @@ class PolynomialElement(sage.Element):
         base = parent.base_ring()
         if base._kind == "GF_EXTENSION":
             result = runtime.flint_backend().fqPolyFactor(self._native)
-        else:
-            result = runtime.flint_backend().polyFactor(self._native)
-
-        def make_factor(pair: list[Any]) -> list[Any]:
-            return [PolynomialElement(parent, pair[0]), pair[1]]
-
-        factors = result.factors.map(make_factor)
-        if base._kind == "GF_EXTENSION":
+            factors = [
+                [parent._from_legacy_native(pair[0]), pair[1]]
+                for pair in result.factors
+            ]
             unit = base._from_native(result.unit)
-        elif base._kind == "GF":
-            unit = base(result.unit)
-        elif base is sage.ZZ:
-            unit = base(result.unitNumerator)
-        else:
-            unit = base(result.unitNumerator, result.unitDenominator)
+            return sage.Factorization(factors, unit, False, True, False)
+
+        source_length = self._coefficient_length()
+        degree = max(0, source_length - 1)
+        factor_coefficients_length = 2 * degree
+        offsets = runtime.uint64_buffer(source_length)
+        exponents = runtime.uint64_buffer(source_length)
+        factor_count = runtime.uint64_buffer(1)
+        if base._kind == "GF":
+            field_exponents = runtime.uint64_buffer(degree)
+            factor_coefficients = runtime.uint64_buffer(factor_coefficients_length)
+            unit_output = runtime.uint64_buffer(1)
+            _packed_polynomial_flint_module().flint_packed_prime_field_polynomial_factor(
+                factor_coefficients,
+                offsets,
+                field_exponents,
+                factor_count,
+                unit_output,
+                self._storage,
+                factor_coefficients_length,
+                source_length,
+                degree,
+                1,
+                1,
+                source_length,
+                base._modulus,
+            )
+            factors = []
+            count = int(factor_count[0])
+            for index in range(count):
+                start = int(offsets[index])
+                stop = int(offsets[index + 1])
+                coefficients = [
+                    factor_coefficients[item] for item in range(start, stop)
+                ]
+                factors.append(
+                    [
+                        parent._from_coefficients(coefficients),
+                        runtime.number(field_exponents[index]),
+                    ]
+                )
+            return sage.Factorization(factors, base(unit_output[0]), False, True, False)
+
+        source = (
+            self._storage.coefficients if base is sage.ZZ else self._storage.numerators
+        )
+        capacity = max(1, 2 * _integer_word_capacity(source))
+        unit_numerator = _integer_zeros(1, capacity)
+        unit_denominator = _integer_zeros(1, capacity)
+        while True:
+            factor_coefficients = _integer_zeros(factor_coefficients_length, capacity)
+            try:
+                if base is sage.ZZ:
+                    _packed_polynomial_flint_module().flint_packed_integer_polynomial_factor(
+                        factor_coefficients,
+                        offsets,
+                        exponents,
+                        factor_count,
+                        unit_numerator,
+                        unit_denominator,
+                        self._storage.coefficients,
+                        factor_coefficients_length,
+                        source_length,
+                        1,
+                    )
+                else:
+                    _packed_polynomial_flint_module().flint_packed_rational_polynomial_factor(
+                        factor_coefficients,
+                        offsets,
+                        exponents,
+                        factor_count,
+                        unit_numerator,
+                        unit_denominator,
+                        self._storage.numerators,
+                        self._storage.denominators,
+                        factor_coefficients_length,
+                        source_length,
+                        1,
+                    )
+                break
+            except Exception as error:
+                if not _integer_capacity_error(error):
+                    raise
+                capacity *= 2
+                unit_numerator = _integer_zeros(1, capacity)
+                unit_denominator = _integer_zeros(1, capacity)
+        values = _integer_buffer_values(factor_coefficients)
+        factors = []
+        count = int(factor_count[0])
+        for index in range(count):
+            start = int(offsets[index])
+            stop = int(offsets[index + 1])
+            coefficients = [values[item] for item in range(start, stop)]
+            factors.append(
+                [
+                    parent._from_coefficients(coefficients),
+                    runtime.number(exponents[index]),
+                ]
+            )
+        unit_values = _integer_buffer_values(unit_numerator)
+        denominator_values = _integer_buffer_values(unit_denominator)
+        unit = (
+            base(unit_values[0])
+            if base is sage.ZZ
+            else base(unit_values[0], denominator_values[0])
+        )
         return sage.Factorization(factors, unit, False, True, False)
 
     def divisors(self) -> list[PolynomialElement]:
@@ -201,7 +1041,9 @@ class PolynomialElement(sage.Element):
                     "exact algebraic roots require a polynomial over "
                     "ZZ or QQ and target ring AA or QQbar"
                 )
-            raw_roots = runtime.flint_backend().polyExactRoots(self._native)
+            raw_roots = runtime.flint_backend().polyExactRoots(
+                self._legacy_polynomial_oracle_input()
+            )
             answer = []
             for native_root, count in raw_roots:
                 if target_kind == "AA" and not runtime.flint_backend().qqbarIsReal(
@@ -223,7 +1065,33 @@ class PolynomialElement(sage.Element):
         if field._kind == "GF_EXTENSION":
             raw_roots = runtime.flint_backend().fqPolyRoots(self._native)
         else:
-            raw_roots = runtime.flint_backend().nmodPolyRoots(self._native)
+            source_length = self._coefficient_length()
+            capacity = max(0, source_length - 1)
+            root_values = runtime.uint64_buffer(capacity)
+            multiplicity_values = runtime.uint64_buffer(capacity)
+            root_count = runtime.uint64_buffer(1)
+            _packed_polynomial_flint_module().flint_packed_prime_field_polynomial_roots(
+                root_values,
+                multiplicity_values,
+                root_count,
+                self._storage,
+                capacity,
+                capacity,
+                1,
+                source_length,
+                field._modulus,
+            )
+            answer = []
+            for index in range(int(root_count[0])):
+                root = field(root_values[index])
+                answer.append(
+                    runtime.factor_pair(
+                        root, runtime.number(multiplicity_values[index])
+                    )
+                    if multiplicities
+                    else root
+                )
+            return answer
 
         def make_root(pair: list[Any]) -> Any:
             if field._kind == "GF_EXTENSION":
@@ -236,6 +1104,18 @@ class PolynomialElement(sage.Element):
 
     def coefficients(self) -> list[Any]:
         base = self._parent.base_ring()
+        kind = _packed_polynomial_kind(base)
+        if kind == "ZZ":
+            return _integer_buffer_values(self._storage.coefficients)
+        if kind == "QQ":
+            numerators = _integer_buffer_values(self._storage.numerators)
+            denominators = _integer_buffer_values(self._storage.denominators)
+            return [
+                base(numerators[index], denominators[index])
+                for index in range(len(numerators))
+            ]
+        if kind == "GF":
+            return [base(self._storage[index]) for index in range(len(self._storage))]
         if base._kind == "GF_EXTENSION":
             raw = runtime.flint_backend().fqPolyCoefficients(self._native)
         else:
@@ -271,7 +1151,42 @@ class PolynomialElement(sage.Element):
         return answer
 
     def __repr__(self) -> str:
-        if self._parent.base_ring()._kind == "GF_EXTENSION":
+        base = self._parent.base_ring()
+        if _packed_polynomial_kind(base) != "legacy":
+            coefficients = self.coefficients()
+            if len(coefficients) == 0:
+                return "0"
+            variable = self._parent.variable_name()
+            zero = base(0)
+            one = base(1)
+            pieces = []
+            for exponent in range(len(coefficients) - 1, -1, -1):
+                coefficient = coefficients[exponent]
+                if coefficient == zero:
+                    continue
+                negative = False
+                if base in [sage.ZZ, sage.QQ] and coefficient < zero:
+                    negative = True
+                    coefficient = -coefficient
+                if exponent == 0:
+                    term = str(coefficient)
+                else:
+                    monomial = (
+                        variable if exponent == 1 else variable + "^" + str(exponent)
+                    )
+                    term = (
+                        monomial
+                        if coefficient == one
+                        else str(coefficient) + "*" + monomial
+                    )
+                if len(pieces) == 0:
+                    pieces.append(("-" if negative else "") + term)
+                elif negative:
+                    pieces.append(" - " + term)
+                else:
+                    pieces.append(" + " + term)
+            return "".join(pieces) if pieces else "0"
+        if base._kind == "GF_EXTENSION":
             raw = runtime.flint_backend().fqPolyToString(
                 self._native, self._parent.variable_name()
             )
@@ -331,7 +1246,27 @@ class PolynomialRingParent(sage.Parent):
         return self._variable
 
     def _from_native(self, native_value: Any) -> PolynomialElement:
-        return PolynomialElement(self, native_value)
+        if _packed_polynomial_kind(self._base) == "legacy":
+            return PolynomialElement(self, native_value)
+        return self._from_legacy_native(native_value)
+
+    def _from_legacy_native(self, native_value: Any) -> PolynomialElement:
+        """Decode a transitional opaque result immediately into owned storage."""
+        if _packed_polynomial_kind(self._base) == "legacy":
+            return PolynomialElement(self, native_value)
+        raw = runtime.flint_backend().polyCoefficients(native_value)
+        coefficients = []
+        for coefficient in raw:
+            if self._base is sage.QQ:
+                coefficients.append(
+                    _untyped(self._base)(
+                        runtime.reflect.get(coefficient, "numerator"),
+                        runtime.reflect.get(coefficient, "denominator"),
+                    )
+                )
+            else:
+                coefficients.append(coefficient)
+        return self._from_coefficients(coefficients)
 
     def _from_coefficients(
         self,
@@ -343,6 +1278,36 @@ class PolynomialRingParent(sage.Parent):
         backend-specific native representation.  Portable codecs use it to
         restore exact polynomials and series.
         """
+        kind = _packed_polynomial_kind(self._base)
+        if kind == "ZZ":
+            values = [
+                runtime.integer_bigint(self._base(value)) for value in coefficients
+            ]
+            return PolynomialElement(
+                self,
+                _PackedIntegerPolynomialStorage(runtime.integer_buffer(values, 1)),
+            )
+        if kind == "QQ":
+            numerators = []
+            denominators = []
+            for value in coefficients:
+                rational = self._base(value)
+                numerators.append(rational._numerator)
+                denominators.append(rational._denominator)
+            return PolynomialElement(
+                self,
+                _PackedRationalPolynomialStorage(
+                    runtime.integer_buffer(numerators, 1),
+                    runtime.integer_buffer(denominators, 1),
+                ),
+            )
+        if kind == "GF":
+            packed = runtime.uint64_residue_buffer(coefficients, self._base._modulus)
+            if packed is runtime.undefined:
+                packed = runtime.uint64_buffer(
+                    [self._base(value)._value for value in coefficients]
+                )
+            return PolynomialElement(self, packed)
         result = self(0)
         generator = self.gen()
         for coefficient in reversed(coefficients):
@@ -350,6 +1315,8 @@ class PolynomialRingParent(sage.Parent):
         return result
 
     def gen(self) -> PolynomialElement:
+        if _packed_polynomial_kind(self._base) != "legacy":
+            return self._from_coefficients([self._base(0), self._base(1)])
         backend = runtime.flint_backend()
         if self._base is sage.ZZ:
             native_value = backend.zzPolyGen()
@@ -406,6 +1373,11 @@ class PolynomialRingParent(sage.Parent):
         return answer
 
     def _constant(self, value: Any) -> PolynomialElement:
+        if _packed_polynomial_kind(self._base) != "legacy":
+            coefficient = self._base(value)
+            if coefficient == self._base(0):
+                return self._from_coefficients([])
+            return self._from_coefficients([coefficient])
         backend = runtime.flint_backend()
         if self._base is sage.ZZ:
             return PolynomialElement(
@@ -462,9 +1434,7 @@ class PolynomialRingParent(sage.Parent):
                 result = result._mul_(generator)._add_(self(coefficient))
             return result
         if source.base_ring() is sage.ZZ and self._base is sage.QQ:
-            return PolynomialElement(
-                self, runtime.flint_backend().zzPolyToQQ(value._native)
-            )
+            return self._from_coefficients(value.coefficients())
         if source.base_ring() is sage.ZZ and self._base._kind in [
             "GF",
             "GF_EXTENSION",
@@ -482,18 +1452,10 @@ class PolynomialRingParent(sage.Parent):
                     index -= 1
                 return result
             if self._base._kind == "ZMOD":
-                return PolynomialElement(
-                    self,
-                    runtime.flint_backend().zzPolyToZmod(
-                        value._native, self._base._modulus
-                    ),
+                return self._from_coefficients(
+                    [self._base(coefficient) for coefficient in value.coefficients()]
                 )
-            return PolynomialElement(
-                self,
-                runtime.flint_backend().zzPolyToNmod(
-                    value._native, self._base._modulus
-                ),
-            )
+            return self._from_coefficients(value.coefficients())
         raise TypeError(
             "unsupported polynomial coefficient coercion from "
             + str(source.base_ring())
@@ -504,6 +1466,8 @@ class PolynomialRingParent(sage.Parent):
     def __call__(self, value: Any = 0) -> PolynomialElement:
         if isinstance(value, PolynomialElement):
             return self._coercePolynomial(value)
+        if isinstance(value, (list, tuple)):
+            return self._from_coefficients(list(value))
         plan = runtime.coercion_model.resolveParents(
             runtime.coercion_model.parentOf(value), self._base
         )

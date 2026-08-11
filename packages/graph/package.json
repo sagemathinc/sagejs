@@ -11,6 +11,9 @@
   },
   "files": [
     "build/Release/sagejs_graph.node",
+    "build/generated-ffi/sagejs_igraph_ffi.node",
+    "build/generated-ffi/manifest.json",
+    "generated/ffi_host.py",
     "include",
     "index.cjs",
     "README.md"
@@ -19,7 +22,8 @@
     "install": "node scripts/install.cjs",
     "build:deps": "node scripts/build-deps.cjs",
     "build:addon": "node-gyp rebuild",
-    "build": "pnpm run build:deps && pnpm run build:addon",
+    "build:ffi": "node ../../scripts/build-ffi-host-adapter.cjs igraph",
+    "build": "pnpm run build:deps && pnpm run build:addon && pnpm run build:ffi",
     "test": "node --test --test-reporter=spec test/test.cjs"
   },
   "devDependencies": {

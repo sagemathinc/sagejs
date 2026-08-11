@@ -13,7 +13,11 @@ import { createPythonCompilerFrontend } from "./python/compiler-frontend";
 import { colored } from "./utils";
 import { tmpdir } from "os";
 import { standardLibraryCacheDirectory } from "./resources";
-import { baselibStandaloneImportPrelude } from "./standalone-library.cjs";
+import {
+  BASELIB_STANDALONE_MODULES,
+  POLYNOMIAL_STANDALONE_MODULES,
+  baselibStandaloneImportPrelude,
+} from "./standalone-library.cjs";
 
 export interface CompilerTestResult {
   durationMs: number;
@@ -61,13 +65,19 @@ export async function createCompilerTestHarness(
         skipReason: disabled ? "disabled" : "stage-zero-only",
       };
     }
-    // The historical matrix fixture exercises baselib operations whose
+    // These historical whole-baselib fixtures exercise operations whose
     // implementation now lives in public, host-independent kernel modules.
-    // Keep those dependencies explicit for that vertical-slice fixture; do
+    // Keep those dependencies explicit for the affected vertical slices; do
     // not make every unrelated compiler fixture initialize them eagerly.
-    const standalonePrelude = basename(filename) === "matrix.py"
-      ? baselibStandaloneImportPrelude()
-      : "";
+    const fixture = basename(filename);
+    const standaloneModules = fixture === "matrix.py"
+      ? BASELIB_STANDALONE_MODULES
+      : new Set(["algebra.py", "polynomial.py", "series.py"]).has(fixture)
+        ? POLYNOMIAL_STANDALONE_MODULES
+        : undefined;
+    const standalonePrelude = standaloneModules === undefined
+      ? ""
+      : baselibStandaloneImportPrelude(standaloneModules);
     const parseOptions: Record<string, unknown> = {
       filename,
       toplevel: undefined,

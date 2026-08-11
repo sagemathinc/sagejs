@@ -10,6 +10,8 @@
 #include <flint/fmpq_poly.h>
 #include <flint/fmpz_mat.h>
 #include <flint/fmpz_poly.h>
+#include <flint/fmpz_poly_factor.h>
+#include <flint/nmod_poly_factor.h>
 #include <flint/ulong_extras.h>
 
 #ifdef __cplusplus
@@ -58,6 +60,539 @@ static inline int sagejs_flint_nmod_poly_mul_packed(
     nmod_poly_clear(right_poly);
     nmod_poly_clear(left_poly);
     return 1;
+}
+
+static inline int sagejs_flint_fmpz_poly_mul_packed(
+    fmpz_mat_t output,
+    const fmpz_mat_t left,
+    const fmpz_mat_t right)
+{
+    fmpz_poly_t left_poly, right_poly, product;
+    const slong output_length = fmpz_mat_ncols(output);
+    const slong left_length = fmpz_mat_ncols(left);
+    const slong right_length = fmpz_mat_ncols(right);
+    const slong expected = left_length == 0 || right_length == 0
+        ? 0 : left_length + right_length - 1;
+    if (fmpz_mat_nrows(output) != 1 || fmpz_mat_nrows(left) != 1 ||
+        fmpz_mat_nrows(right) != 1 || output_length != expected)
+        return 0;
+    fmpz_poly_init(left_poly);
+    fmpz_poly_init(right_poly);
+    fmpz_poly_init(product);
+    for (slong index = 0; index < left_length; index++)
+        fmpz_poly_set_coeff_fmpz(
+            left_poly, index, fmpz_mat_entry(left, 0, index));
+    for (slong index = 0; index < right_length; index++)
+        fmpz_poly_set_coeff_fmpz(
+            right_poly, index, fmpz_mat_entry(right, 0, index));
+    fmpz_poly_mul(product, left_poly, right_poly);
+    for (slong index = 0; index < output_length; index++)
+        fmpz_poly_get_coeff_fmpz(
+            fmpz_mat_entry(output, 0, index), product, index);
+    fmpz_poly_clear(product);
+    fmpz_poly_clear(right_poly);
+    fmpz_poly_clear(left_poly);
+    return 1;
+}
+
+static inline int sagejs_flint_fmpq_poly_set_parts(
+    fmpq_poly_t output,
+    const fmpz_mat_t numerators,
+    const fmpz_mat_t denominators)
+{
+    fmpq_t coefficient;
+    const slong length = fmpz_mat_ncols(numerators);
+    if (fmpz_mat_nrows(numerators) != 1 ||
+        fmpz_mat_nrows(denominators) != 1 ||
+        fmpz_mat_ncols(denominators) != length)
+        return 0;
+    fmpq_init(coefficient);
+    for (slong index = 0; index < length; index++)
+    {
+        if (fmpz_is_zero(fmpz_mat_entry(denominators, 0, index)))
+        {
+            fmpq_clear(coefficient);
+            return 0;
+        }
+        fmpq_set_fmpz_frac(
+            coefficient,
+            fmpz_mat_entry(numerators, 0, index),
+            fmpz_mat_entry(denominators, 0, index));
+        fmpq_canonicalise(coefficient);
+        fmpq_poly_set_coeff_fmpq(output, index, coefficient);
+    }
+    fmpq_clear(coefficient);
+    return 1;
+}
+
+static inline int sagejs_flint_fmpq_poly_get_parts(
+    fmpz_mat_t numerators,
+    fmpz_mat_t denominators,
+    const fmpq_poly_t source)
+{
+    fmpq_t coefficient;
+    const slong length = fmpz_mat_ncols(numerators);
+    if (fmpz_mat_nrows(numerators) != 1 ||
+        fmpz_mat_nrows(denominators) != 1 ||
+        fmpz_mat_ncols(denominators) != length)
+        return 0;
+    fmpq_init(coefficient);
+    for (slong index = 0; index < length; index++)
+    {
+        fmpq_poly_get_coeff_fmpq(coefficient, source, index);
+        fmpz_set(fmpz_mat_entry(numerators, 0, index), fmpq_numref(coefficient));
+        fmpz_set(
+            fmpz_mat_entry(denominators, 0, index), fmpq_denref(coefficient));
+    }
+    fmpq_clear(coefficient);
+    return 1;
+}
+
+static inline int sagejs_flint_fmpq_poly_mul_packed(
+    fmpz_mat_t output_numerators,
+    fmpz_mat_t output_denominators,
+    const fmpz_mat_t left_numerators,
+    const fmpz_mat_t left_denominators,
+    const fmpz_mat_t right_numerators,
+    const fmpz_mat_t right_denominators)
+{
+    int success = 0;
+    fmpq_poly_t left, right, product;
+    const slong left_length = fmpz_mat_ncols(left_numerators);
+    const slong right_length = fmpz_mat_ncols(right_numerators);
+    const slong output_length = fmpz_mat_ncols(output_numerators);
+    const slong expected = left_length == 0 || right_length == 0
+        ? 0 : left_length + right_length - 1;
+    if (fmpz_mat_nrows(output_numerators) != 1 ||
+        fmpz_mat_nrows(output_denominators) != 1 ||
+        fmpz_mat_ncols(output_denominators) != output_length ||
+        output_length != expected)
+        return 0;
+    fmpq_poly_init(left);
+    fmpq_poly_init(right);
+    fmpq_poly_init(product);
+    if (sagejs_flint_fmpq_poly_set_parts(
+            left, left_numerators, left_denominators) &&
+        sagejs_flint_fmpq_poly_set_parts(
+            right, right_numerators, right_denominators))
+    {
+        fmpq_poly_mul(product, left, right);
+        success = sagejs_flint_fmpq_poly_get_parts(
+            output_numerators, output_denominators, product);
+    }
+    fmpq_poly_clear(product);
+    fmpq_poly_clear(right);
+    fmpq_poly_clear(left);
+    return success;
+}
+
+static inline void sagejs_flint_nmod_poly_set_packed(
+    nmod_poly_t output,
+    const uint64_t *source,
+    uint64_t length,
+    uint64_t modulus)
+{
+    for (uint64_t index = 0; index < length; index++)
+        nmod_poly_set_coeff_ui(
+            output, (slong) index, (ulong) (source[index] % modulus));
+}
+
+static inline void sagejs_flint_nmod_poly_get_packed(
+    uint64_t *output,
+    uint64_t capacity,
+    const nmod_poly_t source)
+{
+    const slong length = nmod_poly_length(source);
+    for (uint64_t index = 0; index < capacity; index++)
+        output[index] = index < (uint64_t) length
+            ? (uint64_t) nmod_poly_get_coeff_ui(source, (slong) index) : 0;
+}
+
+static inline void sagejs_flint_fmpz_poly_set_packed(
+    fmpz_poly_t output,
+    const fmpz_mat_t source)
+{
+    const slong length = fmpz_mat_ncols(source);
+    for (slong index = 0; index < length; index++)
+        fmpz_poly_set_coeff_fmpz(
+            output, index, fmpz_mat_entry(source, 0, index));
+}
+
+static inline void sagejs_flint_fmpz_poly_get_packed(
+    fmpz_mat_t output,
+    const fmpz_poly_t source)
+{
+    const slong capacity = fmpz_mat_ncols(output);
+    const slong length = fmpz_poly_length(source);
+    for (slong index = 0; index < capacity; index++)
+    {
+        if (index < length)
+            fmpz_poly_get_coeff_fmpz(
+                fmpz_mat_entry(output, 0, index), source, index);
+        else
+            fmpz_zero(fmpz_mat_entry(output, 0, index));
+    }
+}
+
+static inline int sagejs_flint_nmod_poly_divexact_packed(
+    uint64_t *output,
+    uint64_t *left,
+    uint64_t *right,
+    uint64_t output_length,
+    uint64_t left_length,
+    uint64_t right_length,
+    uint64_t modulus)
+{
+    int divides;
+    nmod_poly_t left_poly, right_poly, quotient;
+    if (modulus < 2 || !n_is_prime((ulong) modulus) ||
+        left_length > (uint64_t) WORD_MAX ||
+        right_length > (uint64_t) WORD_MAX ||
+        output_length != left_length || right_length == 0)
+        return 0;
+    nmod_poly_init(left_poly, (ulong) modulus);
+    nmod_poly_init(right_poly, (ulong) modulus);
+    nmod_poly_init(quotient, (ulong) modulus);
+    sagejs_flint_nmod_poly_set_packed(
+        left_poly, left, left_length, modulus);
+    sagejs_flint_nmod_poly_set_packed(
+        right_poly, right, right_length, modulus);
+    divides = nmod_poly_divides(quotient, left_poly, right_poly);
+    if (divides)
+        sagejs_flint_nmod_poly_get_packed(output, output_length, quotient);
+    nmod_poly_clear(quotient);
+    nmod_poly_clear(right_poly);
+    nmod_poly_clear(left_poly);
+    return divides;
+}
+
+static inline int sagejs_flint_fmpz_poly_divexact_packed(
+    fmpz_mat_t output,
+    const fmpz_mat_t left,
+    const fmpz_mat_t right)
+{
+    int divides;
+    fmpz_poly_t left_poly, right_poly, quotient;
+    if (fmpz_mat_nrows(output) != 1 || fmpz_mat_nrows(left) != 1 ||
+        fmpz_mat_nrows(right) != 1 ||
+        fmpz_mat_ncols(output) != fmpz_mat_ncols(left) ||
+        fmpz_mat_ncols(right) == 0)
+        return 0;
+    fmpz_poly_init(left_poly);
+    fmpz_poly_init(right_poly);
+    fmpz_poly_init(quotient);
+    sagejs_flint_fmpz_poly_set_packed(left_poly, left);
+    sagejs_flint_fmpz_poly_set_packed(right_poly, right);
+    divides = fmpz_poly_divides(quotient, left_poly, right_poly);
+    if (divides)
+        sagejs_flint_fmpz_poly_get_packed(output, quotient);
+    fmpz_poly_clear(quotient);
+    fmpz_poly_clear(right_poly);
+    fmpz_poly_clear(left_poly);
+    return divides;
+}
+
+static inline int sagejs_flint_fmpq_poly_divexact_packed(
+    fmpz_mat_t output_numerators,
+    fmpz_mat_t output_denominators,
+    const fmpz_mat_t left_numerators,
+    const fmpz_mat_t left_denominators,
+    const fmpz_mat_t right_numerators,
+    const fmpz_mat_t right_denominators)
+{
+    int divides = 0;
+    fmpq_poly_t left, right, quotient;
+    const slong output_length = fmpz_mat_ncols(output_numerators);
+    if (fmpz_mat_nrows(output_numerators) != 1 ||
+        fmpz_mat_nrows(output_denominators) != 1 ||
+        fmpz_mat_ncols(output_denominators) != output_length ||
+        output_length != fmpz_mat_ncols(left_numerators) ||
+        fmpz_mat_ncols(right_numerators) == 0)
+        return 0;
+    fmpq_poly_init(left);
+    fmpq_poly_init(right);
+    fmpq_poly_init(quotient);
+    if (sagejs_flint_fmpq_poly_set_parts(
+            left, left_numerators, left_denominators) &&
+        sagejs_flint_fmpq_poly_set_parts(
+            right, right_numerators, right_denominators))
+    {
+        divides = fmpq_poly_divides(quotient, left, right);
+        if (divides)
+            divides = sagejs_flint_fmpq_poly_get_parts(
+                output_numerators, output_denominators, quotient);
+    }
+    fmpq_poly_clear(quotient);
+    fmpq_poly_clear(right);
+    fmpq_poly_clear(left);
+    return divides;
+}
+
+static inline int sagejs_flint_nmod_poly_gcd_packed(
+    uint64_t *output,
+    uint64_t *left,
+    uint64_t *right,
+    uint64_t output_length,
+    uint64_t left_length,
+    uint64_t right_length,
+    uint64_t modulus)
+{
+    nmod_poly_t left_poly, right_poly, gcd;
+    if (modulus < 2 || !n_is_prime((ulong) modulus) ||
+        output_length < left_length || output_length < right_length ||
+        output_length > (uint64_t) WORD_MAX)
+        return 0;
+    nmod_poly_init(left_poly, (ulong) modulus);
+    nmod_poly_init(right_poly, (ulong) modulus);
+    nmod_poly_init(gcd, (ulong) modulus);
+    sagejs_flint_nmod_poly_set_packed(
+        left_poly, left, left_length, modulus);
+    sagejs_flint_nmod_poly_set_packed(
+        right_poly, right, right_length, modulus);
+    nmod_poly_gcd(gcd, left_poly, right_poly);
+    sagejs_flint_nmod_poly_get_packed(output, output_length, gcd);
+    nmod_poly_clear(gcd);
+    nmod_poly_clear(right_poly);
+    nmod_poly_clear(left_poly);
+    return 1;
+}
+
+static inline int sagejs_flint_nmod_poly_is_irreducible_packed(
+    uint64_t *source,
+    uint64_t source_length,
+    uint64_t modulus)
+{
+    int result;
+    nmod_poly_t polynomial;
+    if (modulus < 2 || !n_is_prime((ulong) modulus) ||
+        source_length > (uint64_t) WORD_MAX)
+        return 0;
+    nmod_poly_init(polynomial, (ulong) modulus);
+    sagejs_flint_nmod_poly_set_packed(
+        polynomial, source, source_length, modulus);
+    result = nmod_poly_is_irreducible(polynomial);
+    nmod_poly_clear(polynomial);
+    return result;
+}
+
+/* Factorization outputs use a compact caller-owned encoding.  The coefficient
+ * buffer stores every factor consecutively; offsets delimit those factors;
+ * exponents and factor_count carry the remaining metadata. */
+static inline int sagejs_flint_nmod_poly_factor_packed(
+    uint64_t *factor_coefficients,
+    uint64_t *offsets,
+    uint64_t *exponents,
+    uint64_t *factor_count,
+    uint64_t *unit_output,
+    uint64_t *source,
+    uint64_t factor_coefficients_length,
+    uint64_t offsets_length,
+    uint64_t exponents_length,
+    uint64_t factor_count_length,
+    uint64_t unit_length,
+    uint64_t source_length,
+    uint64_t modulus)
+{
+    uint64_t cursor = 0;
+    ulong unit;
+    nmod_poly_t polynomial;
+    nmod_poly_factor_t factors;
+    if (modulus < 2 || !n_is_prime((ulong) modulus) ||
+        source_length == 0 || source_length > (uint64_t) WORD_MAX ||
+        factor_count_length != 1 || unit_length != 1 ||
+        offsets_length != source_length ||
+        exponents_length + 1 != source_length)
+        return 0;
+    nmod_poly_init(polynomial, (ulong) modulus);
+    sagejs_flint_nmod_poly_set_packed(
+        polynomial, source, source_length, modulus);
+    if (nmod_poly_is_zero(polynomial))
+    {
+        nmod_poly_clear(polynomial);
+        return 0;
+    }
+    nmod_poly_factor_init(factors);
+    unit = nmod_poly_factor(factors, polynomial);
+    if ((uint64_t) factors->num > exponents_length)
+        goto fail;
+    offsets[0] = 0;
+    for (slong factor_index = 0; factor_index < factors->num; factor_index++)
+    {
+        const slong length = nmod_poly_length(factors->p + factor_index);
+        if (length < 0 || (uint64_t) length > factor_coefficients_length - cursor)
+            goto fail;
+        for (slong index = 0; index < length; index++)
+            factor_coefficients[cursor + (uint64_t) index] =
+                (uint64_t) nmod_poly_get_coeff_ui(
+                    factors->p + factor_index, index);
+        cursor += (uint64_t) length;
+        offsets[factor_index + 1] = cursor;
+        exponents[factor_index] = (uint64_t) factors->exp[factor_index];
+    }
+    factor_count[0] = (uint64_t) factors->num;
+    unit_output[0] = (uint64_t) unit;
+    nmod_poly_factor_clear(factors);
+    nmod_poly_clear(polynomial);
+    return 1;
+fail:
+    nmod_poly_factor_clear(factors);
+    nmod_poly_clear(polynomial);
+    return 0;
+}
+
+static inline int sagejs_flint_nmod_poly_roots_packed(
+    uint64_t *root_values,
+    uint64_t *multiplicities,
+    uint64_t *root_count,
+    uint64_t *source,
+    uint64_t root_values_length,
+    uint64_t multiplicities_length,
+    uint64_t root_count_length,
+    uint64_t source_length,
+    uint64_t modulus)
+{
+    nmod_poly_t polynomial;
+    nmod_poly_factor_t roots;
+    if (modulus < 2 || !n_is_prime((ulong) modulus) ||
+        source_length == 0 || source_length > (uint64_t) WORD_MAX ||
+        root_values_length + 1 != source_length ||
+        multiplicities_length != root_values_length ||
+        root_count_length != 1)
+        return 0;
+    nmod_poly_init(polynomial, (ulong) modulus);
+    sagejs_flint_nmod_poly_set_packed(
+        polynomial, source, source_length, modulus);
+    if (nmod_poly_is_zero(polynomial))
+    {
+        nmod_poly_clear(polynomial);
+        return 0;
+    }
+    nmod_poly_factor_init(roots);
+    nmod_poly_roots(roots, polynomial, 1);
+    if ((uint64_t) roots->num > root_values_length)
+        goto fail_roots;
+    for (slong index = 0; index < roots->num; index++)
+    {
+        const ulong constant = nmod_poly_get_coeff_ui(roots->p + index, 0);
+        root_values[index] = constant == 0 ? 0 : modulus - constant;
+        multiplicities[index] = (uint64_t) roots->exp[index];
+    }
+    root_count[0] = (uint64_t) roots->num;
+    nmod_poly_factor_clear(roots);
+    nmod_poly_clear(polynomial);
+    return 1;
+fail_roots:
+    nmod_poly_factor_clear(roots);
+    nmod_poly_clear(polynomial);
+    return 0;
+}
+
+static inline int sagejs_flint_fmpz_poly_factor_parts_packed(
+    fmpz_mat_t factor_coefficients,
+    uint64_t *offsets,
+    uint64_t *exponents,
+    uint64_t *factor_count,
+    fmpz_mat_t unit_numerator,
+    fmpz_mat_t unit_denominator,
+    const fmpz_poly_t numerator,
+    const fmpz_t denominator)
+{
+    slong cursor = 0;
+    fmpz_poly_factor_t factors;
+    const slong coefficient_capacity = fmpz_mat_ncols(factor_coefficients);
+    const uint64_t offsets_length = (uint64_t) fmpz_poly_length(numerator);
+    if (fmpz_poly_is_zero(numerator) ||
+        fmpz_mat_nrows(factor_coefficients) != 1 ||
+        fmpz_mat_nrows(unit_numerator) != 1 ||
+        fmpz_mat_ncols(unit_numerator) != 1 ||
+        fmpz_mat_nrows(unit_denominator) != 1 ||
+        fmpz_mat_ncols(unit_denominator) != 1)
+        return 0;
+    fmpz_poly_factor_init(factors);
+    fmpz_poly_factor(factors, numerator);
+    if ((uint64_t) factors->num + 1 > offsets_length)
+        goto fail_fmpz_factor;
+    offsets[0] = 0;
+    for (slong factor_index = 0; factor_index < factors->num; factor_index++)
+    {
+        const slong length = fmpz_poly_length(factors->p + factor_index);
+        if (length > coefficient_capacity - cursor)
+            goto fail_fmpz_factor;
+        for (slong index = 0; index < length; index++)
+            fmpz_poly_get_coeff_fmpz(
+                fmpz_mat_entry(factor_coefficients, 0, cursor + index),
+                factors->p + factor_index,
+                index);
+        cursor += length;
+        offsets[factor_index + 1] = (uint64_t) cursor;
+        exponents[factor_index] = (uint64_t) factors->exp[factor_index];
+    }
+    factor_count[0] = (uint64_t) factors->num;
+    fmpz_set(fmpz_mat_entry(unit_numerator, 0, 0), &factors->c);
+    fmpz_set(fmpz_mat_entry(unit_denominator, 0, 0), denominator);
+    fmpz_poly_factor_clear(factors);
+    return 1;
+fail_fmpz_factor:
+    fmpz_poly_factor_clear(factors);
+    return 0;
+}
+
+static inline int sagejs_flint_fmpz_poly_factor_packed(
+    fmpz_mat_t factor_coefficients,
+    uint64_t *offsets,
+    uint64_t *exponents,
+    uint64_t *factor_count,
+    fmpz_mat_t unit_numerator,
+    fmpz_mat_t unit_denominator,
+    const fmpz_mat_t source)
+{
+    int success;
+    fmpz_t denominator;
+    fmpz_poly_t polynomial;
+    if (fmpz_mat_nrows(source) != 1)
+        return 0;
+    fmpz_init(denominator);
+    fmpz_one(denominator);
+    fmpz_poly_init(polynomial);
+    sagejs_flint_fmpz_poly_set_packed(polynomial, source);
+    success = sagejs_flint_fmpz_poly_factor_parts_packed(
+        factor_coefficients, offsets, exponents, factor_count,
+        unit_numerator, unit_denominator, polynomial, denominator);
+    fmpz_poly_clear(polynomial);
+    fmpz_clear(denominator);
+    return success;
+}
+
+static inline int sagejs_flint_fmpq_poly_factor_packed(
+    fmpz_mat_t factor_coefficients,
+    uint64_t *offsets,
+    uint64_t *exponents,
+    uint64_t *factor_count,
+    fmpz_mat_t unit_numerator,
+    fmpz_mat_t unit_denominator,
+    const fmpz_mat_t source_numerators,
+    const fmpz_mat_t source_denominators)
+{
+    int success = 0;
+    fmpz_t denominator;
+    fmpz_poly_t numerator;
+    fmpq_poly_t polynomial;
+    fmpz_init(denominator);
+    fmpz_poly_init(numerator);
+    fmpq_poly_init(polynomial);
+    if (sagejs_flint_fmpq_poly_set_parts(
+            polynomial, source_numerators, source_denominators))
+    {
+        fmpq_poly_get_numerator(numerator, polynomial);
+        fmpq_poly_get_denominator(denominator, polynomial);
+        success = sagejs_flint_fmpz_poly_factor_parts_packed(
+            factor_coefficients, offsets, exponents, factor_count,
+            unit_numerator, unit_denominator, numerator, denominator);
+    }
+    fmpq_poly_clear(polynomial);
+    fmpz_poly_clear(numerator);
+    fmpz_clear(denominator);
+    return success;
 }
 
 /* Host-neutral characteristic polynomial adapter.  Both buffers have a

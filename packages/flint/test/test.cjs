@@ -1489,29 +1489,35 @@ assert.equal(
   true,
 );
 
-const packedProduct = Array(5).fill(99n);
-const packedFiniteSource = [1n, 2n, 3n, 4n];
+const packedProduct = new BigUint64Array(5).fill(99n);
+const packedFiniteSource = BigUint64Array.from([1n, 2n, 3n, 4n]);
 assert.equal(flint.ffiNmodMatDet(
   packedFiniteSource, 2n, 5n,
 ), 3n);
-const packedCharpoly = Array(3).fill(99n);
+const packedCharpoly = new BigUint64Array(3).fill(99n);
 assert.equal(flint.ffiNmodMatCharpoly(
   packedCharpoly, packedFiniteSource, 3n, 4n, 2n, 5n,
 ), true);
-assert.deepEqual(packedCharpoly, [3n, 0n, 1n]);
-const packedMinpoly = Array(3).fill(99n);
+assert.deepEqual(Array.from(packedCharpoly), [3n, 0n, 1n]);
+const packedMinpoly = new BigUint64Array(3).fill(99n);
 assert.equal(flint.ffiNmodMatMinpoly(
   packedMinpoly, packedFiniteSource, 3n, 4n, 2n, 5n,
 ), true);
-assert.deepEqual(packedMinpoly, [3n, 0n, 1n]);
+assert.deepEqual(Array.from(packedMinpoly), [3n, 0n, 1n]);
 assert.equal(flint.ffiNmodPolyMul(
-  packedProduct, [1n, 2n, 3n], [4n, 5n, 6n], 5n, 3n, 3n, 101n,
+  packedProduct,
+  BigUint64Array.from([1n, 2n, 3n]),
+  BigUint64Array.from([4n, 5n, 6n]),
+  5n, 3n, 3n, 101n,
 ), true);
-assert.deepEqual(packedProduct, [4n, 13n, 28n, 27n, 18n]);
-const rejectedProduct = [91n, 92n, 93n, 94n];
-assert.equal(flint.ffiNmodPolyMul(
-  rejectedProduct, [1n, 2n, 3n], [4n, 5n, 6n], 4n, 3n, 3n, 101n,
-), false);
-assert.deepEqual(rejectedProduct, [91n, 92n, 93n, 94n]);
+assert.deepEqual(Array.from(packedProduct), [4n, 13n, 28n, 27n, 18n]);
+const rejectedProduct = BigUint64Array.from([91n, 92n, 93n, 94n]);
+assert.throws(() => flint.ffiNmodPolyMul(
+  rejectedProduct,
+  BigUint64Array.from([1n, 2n, 3n]),
+  BigUint64Array.from([4n, 5n, 6n]),
+  4n, 3n, 3n, 101n,
+), /invalid packed polynomial multiplication/);
+assert.deepEqual(Array.from(rejectedProduct), [91n, 92n, 93n, 94n]);
 
 });

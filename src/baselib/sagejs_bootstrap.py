@@ -538,6 +538,48 @@ def ρσ_uint64_buffer_prefix(source, length):
     })()"""
 
 
+def ρσ_integer_buffer_prefix(source, length):
+    """Copy a validated packed exact-integer prefix without decoding."""
+    return r"""%js (() => {
+        const sizes = Reflect.get(source, "sizes");
+        const limbs = Reflect.get(source, "limbs");
+        const sourceLength = Number(Reflect.get(source, "length"));
+        const wordCapacity = Number(Reflect.get(source, "wordCapacity"));
+        if (!(sizes instanceof Int32Array) ||
+            !(limbs instanceof BigUint64Array) ||
+            !Number.isSafeInteger(sourceLength) || sourceLength < 0 ||
+            !Number.isSafeInteger(wordCapacity) || wordCapacity <= 0 ||
+            sizes.length !== sourceLength ||
+            limbs.length !== sourceLength * wordCapacity) {
+            throw new TypeError("source must be a packed IntegerBuffer");
+        }
+        if (!Number.isSafeInteger(length) || length < 0 ||
+            length > sourceLength) {
+            throw new RangeError("invalid IntegerBuffer prefix length");
+        }
+        const packed = {
+            sizes: sizes.slice(0, length),
+            limbs: limbs.slice(0, length * wordCapacity),
+            length,
+            wordCapacity,
+        };
+        packed.toArray = () => {
+            const answer = new Array(length);
+            for (let index = 0; index < length; index += 1) {
+                const signedSize = packed.sizes[index];
+                let value = 0n;
+                for (let word = Math.abs(signedSize) - 1; word >= 0; word--) {
+                    value = (value << 64n) +
+                        packed.limbs[index * wordCapacity + word];
+                }
+                answer[index] = signedSize < 0 ? -value : value;
+            }
+            return answer;
+        };
+        return packed;
+    })()"""
+
+
 def ρσ_integer_buffer_used_word_capacity(source):
     """Scan packed signed-limb metadata in the host representation layer."""
     return r"""%js (() => {
@@ -792,7 +834,33 @@ def ρσ_ffi_call(
                 );
             }
         }
-        const result = Reflect.apply(callable_value, backend, marshalled);
+        const exception_classes = {
+            OverflowError, RuntimeError, TypeError, ValueError
+        };
+        const exception_class = exception_classes[error_exception];
+        if (
+            error_exception !== null
+            && typeof exception_class !== "function"
+        ) {
+            throw new RuntimeError(
+                `unsupported FFI exception ${error_exception}`
+            );
+        }
+        let result;
+        try {
+            result = Reflect.apply(callable_value, backend, marshalled);
+        } catch (error) {
+            // Generated host adapters translate a failed isolated-core status
+            // before returning to JavaScript.  Re-enter the declaration's
+            // semantic exception domain instead of leaking a generic host
+            // Error through the safe Python surface.
+            if (typeof exception_class === "function") {
+                const message = typeof error?.message === "string"
+                    ? error.message : error_message;
+                throw new exception_class(message);
+            }
+            throw error;
+        }
         if (
             !Array.isArray(result_domain)
             || result_domain.length !== 3
@@ -805,15 +873,6 @@ def ρσ_ffi_call(
             || (result_domain[0] === "nullable" && result == null)
         );
         if (failed) {
-            const exception_classes = {
-                OverflowError, RuntimeError, TypeError, ValueError
-            };
-            const exception_class = exception_classes[error_exception];
-            if (typeof exception_class !== "function") {
-                throw new RuntimeError(
-                    `unsupported FFI exception ${error_exception}`
-                );
-            }
             throw new exception_class(error_message);
         }
         if (return_type === "bool" && typeof result === "boolean") {

@@ -55,10 +55,10 @@ test("canonical labeling is a permutation", () => {
 
 test("declarative packed canonical labeling commits a uint64 output", () => {
   const graphInput = cycle(12);
-  const output = Array(12).fill(99n);
+  const output = new BigUint64Array(12).fill(99n);
   assert.equal(graph.ffiCanonicalPermutationPacked(
     output,
-    graphInput.edges.map(BigInt),
+    BigUint64Array.from(graphInput.edges.map(BigInt)),
     12n,
     BigInt(graphInput.edges.length),
     false,

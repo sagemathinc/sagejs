@@ -181,6 +181,15 @@ provenance, introspection, differential tests, and benchmarks. Dense exact
 rational matrices use an owned normalized pair of packed tagged-integer spans;
 structural arithmetic is typed Python and mature `fmpq_mat` algorithms cross
 only generated declaration-driven copy-in/copy-out boundaries.
+Univariate polynomials over `ZZ`, `QQ`, and small prime fields likewise own
+normalized packed coefficient storage. Construction and structural arithmetic
+are host-independent typed Python; mature FLINT multiplication, exact division,
+finite-field gcd and roots, irreducibility, and factorization cross only
+generated declared FFI using caller-owned buffers. Pointer-bearing FLINT
+polynomial and factor objects are differential oracles, never production
+`PolynomialElement` state. Exact algebraic roots and the not-yet-migrated
+power-series family retain narrow audited bridges until their result/resource
+representations become packed.
 
 Every successful native compilation emits a host-independent `kernel_core.c`
 and `kernel_core.h` as its canonical mathematical artifact.  The core owns the

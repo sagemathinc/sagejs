@@ -242,6 +242,20 @@ export function runRuntimeBootstrap(
     { sourceHash: string; functions: Record<string, unknown> }
   >();
   const nativeSourceHashes = new Map<string, string>();
+  const usableNativeCandidate = (candidate: unknown): boolean => {
+    if (typeof candidate !== "function") return false;
+    // Source-transparent prime-field kernels currently have a native core but
+    // no portable typed-IR JavaScript emitter.  When the native addon is
+    // deliberately disabled, retain the original Python function instead of
+    // installing an artifact whose public wrapper can only throw.  This keeps
+    // `SAGEJS_NATIVE_DISABLE=1` a correct dynamic-fallback mode while making
+    // the missing portable emitter explicit and local to the compiler.
+    return !(
+      Reflect.get(candidate, "sourceTransparent") === true &&
+      Reflect.get(candidate, "nativeAvailable") !== true &&
+      typeof Reflect.get(candidate, "javascript") !== "function"
+    );
+  };
   const nativeSourceHash = (filename: string): string | undefined => {
     const cached = nativeSourceHashes.get(filename);
     if (cached !== undefined) return cached;
@@ -296,7 +310,7 @@ export function runRuntimeBootstrap(
     const registered = nativeModules.get(sourcePath);
     if (registered?.sourceHash === sourceHash) {
       const candidate = Reflect.get(registered.functions, name);
-      if (typeof candidate === "function") return candidate;
+      if (usableNativeCandidate(candidate)) return candidate;
     }
 
     // An explicit cache directory is an override, not an additional search
@@ -323,7 +337,7 @@ export function runRuntimeBootstrap(
         const modulePath = join(cacheRoot, record.cacheKey, "index.cjs");
         const loaded = Reflect.apply(internalRequire, undefined, [modulePath]);
         const candidate = Reflect.get(loaded, name);
-        if (typeof candidate !== "function") continue;
+        if (!usableNativeCandidate(candidate)) continue;
         registerNativeModule(sourcePath, sourceHash, loaded);
         return candidate;
       } catch (error) {

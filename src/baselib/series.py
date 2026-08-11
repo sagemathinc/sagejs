@@ -28,6 +28,17 @@ def _native_valuation(native_value: Any) -> int:
     return int(runtime.flint_backend().polyValuation(native_value))
 
 
+def _legacy_series_polynomial(polynomial: Any) -> Any:
+    """Construct the series family's transitional FLINT polynomial state.
+
+    Canonical univariate polynomial elements own packed host-independent
+    coefficients. Series have not migrated yet, so this audited ingress builds
+    their private legacy representation without making it observable through
+    the polynomial API.
+    """
+    return polynomial._legacy_polynomial_oracle_input()
+
+
 @runtime.sequence_class
 @runtime.lightweight_math_class
 class SeriesElement(sage.Element):
@@ -369,7 +380,7 @@ class SeriesRingParent(sage.Parent):
         if valuation < 0:
             return SeriesElement(
                 self,
-                self._polynomial_ring(0)._native,
+                _legacy_series_polynomial(self._polynomial_ring(0)),
                 0,
                 precision,
             )
@@ -383,7 +394,7 @@ class SeriesRingParent(sage.Parent):
             if length <= 0:
                 return SeriesElement(
                     self,
-                    self._polynomial_ring(0)._native,
+                    _legacy_series_polynomial(self._polynomial_ring(0)),
                     0,
                     precision,
                 )
@@ -394,7 +405,7 @@ class SeriesRingParent(sage.Parent):
             if valuation < 0:
                 return SeriesElement(
                     self,
-                    self._polynomial_ring(0)._native,
+                    _legacy_series_polynomial(self._polynomial_ring(0)),
                     0,
                     precision,
                 )
@@ -422,12 +433,14 @@ class SeriesRingParent(sage.Parent):
         precision: Any,
     ) -> SeriesElement:
         polynomial = self._polynomial_ring._from_coefficients(coefficients)
-        return self._from_native(polynomial._native, int(shift), precision)
+        return self._from_native(
+            _legacy_series_polynomial(polynomial), int(shift), precision
+        )
 
     def _bigoh(self, precision: int) -> SeriesElement:
         return SeriesElement(
             self,
-            self._polynomial_ring(0)._native,
+            _legacy_series_polynomial(self._polynomial_ring(0)),
             0,
             int(precision),
         )
@@ -461,10 +474,10 @@ class SeriesRingParent(sage.Parent):
                 )
             raise TypeError("incompatible series rings")
         polynomial = self._polynomial_ring(value)
-        return self._from_native(polynomial._native)
+        return self._from_native(_legacy_series_polynomial(polynomial))
 
     def gen(self) -> SeriesElement:
-        return self._from_native(self._polynomial_ring.gen()._native)
+        return self._from_native(_legacy_series_polynomial(self._polynomial_ring.gen()))
 
     def gens(self) -> Any:
         return runtime.math_tuple([self.gen()])

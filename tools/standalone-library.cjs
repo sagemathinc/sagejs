@@ -8,13 +8,25 @@
  * authoritative module resolver embeds one host-independent dependency set.
  */
 
-const BASELIB_STANDALONE_MODULES = Object.freeze([
+const MATRIX_STANDALONE_MODULES = Object.freeze([
   "sagejs.kernels.matrix.dense_integer",
   "sagejs.kernels.matrix.dense_integer_flint",
   "sagejs.kernels.matrix.dense_prime_field",
   "sagejs.kernels.matrix.dense_prime_field_flint",
   "sagejs.kernels.matrix.dense_rational",
   "sagejs.kernels.matrix.dense_rational_flint",
+]);
+
+const POLYNOMIAL_STANDALONE_MODULES = Object.freeze([
+  "sagejs.kernels.polynomial.packed_integer",
+  "sagejs.kernels.polynomial.packed_flint",
+  "sagejs.kernels.polynomial.packed_prime_field",
+  "sagejs.kernels.polynomial.packed_rational",
+]);
+
+const BASELIB_STANDALONE_MODULES = Object.freeze([
+  ...MATRIX_STANDALONE_MODULES,
+  ...POLYNOMIAL_STANDALONE_MODULES,
 ]);
 
 // Cache the complete static dependency closure as separate module artifacts.
@@ -33,11 +45,16 @@ const BASELIB_STANDALONE_CACHE_MODULES = Object.freeze([
   "sagejs.kernels.matrix.dense_prime_field_flint",
   "sagejs.kernels.matrix.dense_rational",
   "sagejs.kernels.matrix.dense_rational_flint",
+  "sagejs.kernels.polynomial",
+  "sagejs.kernels.polynomial.packed_integer",
+  "sagejs.kernels.polynomial.packed_flint",
+  "sagejs.kernels.polynomial.packed_prime_field",
+  "sagejs.kernels.polynomial.packed_rational",
   "sagejs.native",
 ]);
 
-function baselibStandaloneImportPrelude() {
-  return BASELIB_STANDALONE_MODULES
+function baselibStandaloneImportPrelude(modules = BASELIB_STANDALONE_MODULES) {
+  return modules
     .map((name) => `import ${name}\n`)
     .join("");
 }
@@ -45,5 +62,7 @@ function baselibStandaloneImportPrelude() {
 module.exports = {
   BASELIB_STANDALONE_CACHE_MODULES,
   BASELIB_STANDALONE_MODULES,
+  MATRIX_STANDALONE_MODULES,
+  POLYNOMIAL_STANDALONE_MODULES,
   baselibStandaloneImportPrelude,
 };

@@ -1090,10 +1090,15 @@ const float64BufferViewTag = Symbol("sagejs.native.Float64BufferView");
 const int64BufferViewTag = Symbol("sagejs.native.Int64BufferView");
 const integerBufferViewTag = Symbol("sagejs.native.IntegerBufferView");
 
+function isTypedArrayKind(value, name) {
+  return ArrayBuffer.isView(value) &&
+    Object.prototype.toString.call(value) === "[object " + name + "]";
+}
+
 function isPackedIntegerBuffer(value) {
   return value !== null && typeof value === "object" &&
-    value.sizes instanceof Int32Array &&
-    value.limbs instanceof BigUint64Array &&
+    isTypedArrayKind(value.sizes, "Int32Array") &&
+    isTypedArrayKind(value.limbs, "BigUint64Array") &&
     Number.isSafeInteger(value.length) && value.length >= 0 &&
     Number.isSafeInteger(value.wordCapacity) && value.wordCapacity > 0 &&
     value.sizes.length >= value.length &&
@@ -1244,7 +1249,7 @@ function createUInt64Buffer(source) {
 }
 
 function asUInt64Buffer(source) {
-  return source instanceof BigUint64Array
+  return isTypedArrayKind(source, "BigUint64Array")
     ? source : createUInt64Buffer(source);
 }
 
@@ -1259,7 +1264,7 @@ function uint64BufferView(value, argument = "buffer") {
   }
   // BigUint64Array is already a complete representation/range proof.  Do not
   // turn a constant-time packed ABI check into a full matrix scan.
-  if (value instanceof BigUint64Array) return value;
+  if (isTypedArrayKind(value, "BigUint64Array")) return value;
   for (let index = 0; index < length; index += 1) {
     const entry = Reflect.get(value, String(index));
     const exact = typeof entry === "bigint"
@@ -1273,7 +1278,7 @@ function uint64BufferView(value, argument = "buffer") {
 
 function uint64NativeBuffer(value, argument) {
   const view = uint64BufferView(value, argument);
-  if (view instanceof BigUint64Array) {
+  if (isTypedArrayKind(view, "BigUint64Array")) {
     return { typed: view, copyBack() {} };
   }
   const typed = new BigUint64Array(view.length);

@@ -73,7 +73,9 @@ assert.deepEqual(polynomial.stdout.trim().split("\n"), [
   "y + 1/3",
   "incompatible variables rejected",
 ]);
-assert.equal(polynomial.stderr.match(new RegExp(marker, "g"))?.length, 1);
+// Construction and structural arithmetic over ZZ and QQ are now entirely
+// host-independent packed operations.  They must not load FLINT at all.
+assert.doesNotMatch(polynomial.stderr, new RegExp(marker));
 
 const finiteFields = run(
   [

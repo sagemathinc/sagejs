@@ -2094,7 +2094,8 @@
         "src/baselib/finite_fields.py",
         "src/baselib/modular.py",
         "src/baselib/number_fields.py",
-        "src/baselib/polynomial.py"
+        "src/baselib/polynomial.py",
+        "test/ffi.cjs"
       ],
       "declared_ffi": null
     },
@@ -7075,6 +7076,7 @@
         "FLINT"
       ],
       "consumers": [
+        "packages/flint/index.cjs",
         "packages/flint/test/test.cjs"
       ],
       "declared_ffi": null
@@ -7112,8 +7114,8 @@
         "FLINT"
       ],
       "consumers": [
-        "packages/flint/test/test.cjs",
-        "src/baselib/polynomial.py"
+        "packages/flint/index.cjs",
+        "packages/flint/test/test.cjs"
       ],
       "declared_ffi": null
     },
@@ -7188,8 +7190,8 @@
         "FLINT"
       ],
       "consumers": [
-        "packages/flint/test/test.cjs",
-        "src/baselib/polynomial.py"
+        "packages/flint/index.cjs",
+        "packages/flint/test/test.cjs"
       ],
       "declared_ffi": null
     },
@@ -7233,8 +7235,8 @@
         "FLINT"
       ],
       "consumers": [
-        "packages/flint/test/test.cjs",
-        "src/baselib/polynomial.py"
+        "packages/flint/index.cjs",
+        "packages/flint/test/test.cjs"
       ],
       "declared_ffi": null
     },
@@ -8420,6 +8422,7 @@
         "FLINT"
       ],
       "consumers": [
+        "packages/flint/index.cjs",
         "packages/flint/test/test.cjs",
         "src/baselib/polynomial.py"
       ],
@@ -8567,8 +8570,8 @@
         "FLINT"
       ],
       "consumers": [
-        "packages/flint/test/test.cjs",
-        "src/baselib/polynomial.py"
+        "packages/flint/index.cjs",
+        "packages/flint/test/test.cjs"
       ],
       "declared_ffi": null
     },
@@ -10611,6 +10614,7 @@
       ],
       "consumers": [
         "packages/flint-wasm/test/factor.test.mjs",
+        "packages/flint/index.cjs",
         "packages/flint/test/test.cjs",
         "src/baselib/polynomial.py"
       ],
@@ -10648,6 +10652,7 @@
       ],
       "consumers": [
         "packages/flint-wasm/test/factor.test.mjs",
+        "packages/flint/index.cjs",
         "packages/flint/test/test.cjs",
         "src/baselib/polynomial.py"
       ],
@@ -11755,6 +11760,7 @@
       ],
       "consumers": [
         "packages/flint-wasm/test/factor.test.mjs",
+        "packages/flint/index.cjs",
         "packages/flint/test/test.cjs",
         "src/baselib/polynomial.py"
       ],
@@ -11791,6 +11797,7 @@
         "FLINT"
       ],
       "consumers": [
+        "packages/flint/index.cjs",
         "packages/flint/test/test.cjs",
         "src/baselib/polynomial.py"
       ],
@@ -11833,8 +11840,7 @@
         "FLINT"
       ],
       "consumers": [
-        "packages/flint/test/test.cjs",
-        "src/baselib/polynomial.py"
+        "packages/flint/test/test.cjs"
       ],
       "declared_ffi": null
     },
@@ -11870,8 +11876,7 @@
       ],
       "consumers": [
         "packages/flint-wasm/test/factor.test.mjs",
-        "packages/flint/test/test.cjs",
-        "src/baselib/polynomial.py"
+        "packages/flint/test/test.cjs"
       ],
       "declared_ffi": null
     },
@@ -11911,9 +11916,7 @@
         "Sage.js JavaScript fallback",
         "FLINT"
       ],
-      "consumers": [
-        "src/baselib/polynomial.py"
-      ],
+      "consumers": [],
       "declared_ffi": null
     },
     {

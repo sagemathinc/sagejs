@@ -1,0 +1,789 @@
+"""Generated checked host adapters for flint.
+
+This file is derived from the CPython-parseable declaration source.  Do not
+edit it directly; run `sagejs ffi generate flint`.
+The native compiler lowers these actual typed bodies into one host adapter
+whose core calls the declared foreign symbols without a host callback.
+"""
+
+from __future__ import annotations
+
+from sagejs.ffi.flint import (
+    n_is_prime as _ffi_n_is_prime,
+    fmpz_gcd as _ffi_fmpz_gcd,
+    fmpz_mat_rank as _ffi_fmpz_mat_rank,
+    fmpz_mat_mul as _ffi_fmpz_mat_mul,
+    fmpz_mat_det as _ffi_fmpz_mat_det,
+    fmpz_mat_charpoly as _ffi_fmpz_mat_charpoly,
+    fmpz_mat_hnf as _ffi_fmpz_mat_hnf,
+    fmpz_mat_hnf_transform as _ffi_fmpz_mat_hnf_transform,
+    fmpz_mat_snf_transform as _ffi_fmpz_mat_snf_transform,
+    fmpz_mat_right_kernel as _ffi_fmpz_mat_right_kernel,
+    fmpq_mat_rank as _ffi_fmpq_mat_rank,
+    fmpq_mat_mul as _ffi_fmpq_mat_mul,
+    fmpq_mat_rref as _ffi_fmpq_mat_rref,
+    fmpq_mat_inv as _ffi_fmpq_mat_inv,
+    fmpq_mat_solve as _ffi_fmpq_mat_solve,
+    fmpq_mat_det as _ffi_fmpq_mat_det,
+    fmpq_mat_charpoly as _ffi_fmpq_mat_charpoly,
+    nmod_mat_rank as _ffi_nmod_mat_rank,
+    nmod_mat_det as _ffi_nmod_mat_det,
+    nmod_mat_charpoly as _ffi_nmod_mat_charpoly,
+    nmod_mat_minpoly as _ffi_nmod_mat_minpoly,
+    nmod_mat_inv as _ffi_nmod_mat_inv,
+    nmod_mat_rref as _ffi_nmod_mat_rref,
+    nmod_mat_mul as _ffi_nmod_mat_mul,
+    nmod_mat_right_kernel as _ffi_nmod_mat_right_kernel,
+    nmod_mat_solve as _ffi_nmod_mat_solve,
+    fmpz_poly_mul as _ffi_fmpz_poly_mul,
+    fmpq_poly_mul as _ffi_fmpq_poly_mul,
+    nmod_poly_mul as _ffi_nmod_poly_mul,
+    nmod_poly_divexact as _ffi_nmod_poly_divexact,
+    fmpz_poly_divexact as _ffi_fmpz_poly_divexact,
+    fmpq_poly_divexact as _ffi_fmpq_poly_divexact,
+    nmod_poly_gcd as _ffi_nmod_poly_gcd,
+    nmod_poly_is_irreducible as _ffi_nmod_poly_is_irreducible,
+    nmod_poly_factor as _ffi_nmod_poly_factor,
+    nmod_poly_roots as _ffi_nmod_poly_roots,
+    fmpz_poly_factor as _ffi_fmpz_poly_factor,
+    fmpq_poly_factor as _ffi_fmpq_poly_factor,
+)
+from sagejs.native import Integer, IntegerBuffer, UInt64Buffer, native, uint64
+
+
+@native
+def wordIsPrime(
+    value: uint64,
+) -> bool:
+    return _ffi_n_is_prime(
+        value,
+    )
+
+
+@native
+def gcd(
+    left: Integer,
+    right: Integer,
+) -> Integer:
+    return _ffi_fmpz_gcd(
+        left,
+        right,
+    )
+
+
+@native
+def ffiFmpzMatRank(
+    entries: IntegerBuffer,
+    rows: uint64,
+    columns: uint64,
+) -> uint64:
+    return _ffi_fmpz_mat_rank(
+        entries,
+        rows,
+        columns,
+    )
+
+
+@native
+def ffiFmpzMatMul(
+    output: IntegerBuffer,
+    left: IntegerBuffer,
+    right: IntegerBuffer,
+    left_rows: uint64,
+    inner: uint64,
+    right_columns: uint64,
+) -> bool:
+    return _ffi_fmpz_mat_mul(
+        output,
+        left,
+        right,
+        left_rows,
+        inner,
+        right_columns,
+    )
+
+
+@native
+def ffiFmpzMatDet(
+    output: IntegerBuffer,
+    source: IntegerBuffer,
+    size: uint64,
+    one: uint64,
+) -> bool:
+    return _ffi_fmpz_mat_det(
+        output,
+        source,
+        size,
+        one,
+    )
+
+
+@native
+def ffiFmpzMatCharpoly(
+    output: IntegerBuffer,
+    source: IntegerBuffer,
+    output_length: uint64,
+    size: uint64,
+    one: uint64,
+) -> bool:
+    return _ffi_fmpz_mat_charpoly(
+        output,
+        source,
+        output_length,
+        size,
+        one,
+    )
+
+
+@native
+def ffiFmpzMatHnf(
+    output: IntegerBuffer,
+    source: IntegerBuffer,
+    rows: uint64,
+    columns: uint64,
+) -> bool:
+    return _ffi_fmpz_mat_hnf(
+        output,
+        source,
+        rows,
+        columns,
+    )
+
+
+@native
+def ffiFmpzMatHnfTransform(
+    output: IntegerBuffer,
+    transform: IntegerBuffer,
+    source: IntegerBuffer,
+    rows: uint64,
+    columns: uint64,
+) -> bool:
+    return _ffi_fmpz_mat_hnf_transform(
+        output,
+        transform,
+        source,
+        rows,
+        columns,
+    )
+
+
+@native
+def ffiFmpzMatSnfTransform(
+    output: IntegerBuffer,
+    left_transform: IntegerBuffer,
+    right_transform: IntegerBuffer,
+    source: IntegerBuffer,
+    rows: uint64,
+    columns: uint64,
+) -> bool:
+    return _ffi_fmpz_mat_snf_transform(
+        output,
+        left_transform,
+        right_transform,
+        source,
+        rows,
+        columns,
+    )
+
+
+@native
+def ffiFmpzMatRightKernel(
+    output: IntegerBuffer,
+    source: IntegerBuffer,
+    rows: uint64,
+    columns: uint64,
+) -> uint64:
+    return _ffi_fmpz_mat_right_kernel(
+        output,
+        source,
+        rows,
+        columns,
+    )
+
+
+@native
+def ffiFmpqMatRank(
+    rank: IntegerBuffer,
+    numerators: IntegerBuffer,
+    denominators: IntegerBuffer,
+    rows: uint64,
+    columns: uint64,
+    one: uint64,
+) -> bool:
+    return _ffi_fmpq_mat_rank(
+        rank,
+        numerators,
+        denominators,
+        rows,
+        columns,
+        one,
+    )
+
+
+@native
+def ffiFmpqMatMul(
+    output_numerators: IntegerBuffer,
+    output_denominators: IntegerBuffer,
+    left_numerators: IntegerBuffer,
+    left_denominators: IntegerBuffer,
+    right_numerators: IntegerBuffer,
+    right_denominators: IntegerBuffer,
+    left_rows: uint64,
+    inner: uint64,
+    right_columns: uint64,
+) -> bool:
+    return _ffi_fmpq_mat_mul(
+        output_numerators,
+        output_denominators,
+        left_numerators,
+        left_denominators,
+        right_numerators,
+        right_denominators,
+        left_rows,
+        inner,
+        right_columns,
+    )
+
+
+@native
+def ffiFmpqMatRref(
+    rank: IntegerBuffer,
+    output_numerators: IntegerBuffer,
+    output_denominators: IntegerBuffer,
+    source_numerators: IntegerBuffer,
+    source_denominators: IntegerBuffer,
+    rows: uint64,
+    columns: uint64,
+    one: uint64,
+) -> bool:
+    return _ffi_fmpq_mat_rref(
+        rank,
+        output_numerators,
+        output_denominators,
+        source_numerators,
+        source_denominators,
+        rows,
+        columns,
+        one,
+    )
+
+
+@native
+def ffiFmpqMatInv(
+    output_numerators: IntegerBuffer,
+    output_denominators: IntegerBuffer,
+    source_numerators: IntegerBuffer,
+    source_denominators: IntegerBuffer,
+    size: uint64,
+) -> bool:
+    return _ffi_fmpq_mat_inv(
+        output_numerators,
+        output_denominators,
+        source_numerators,
+        source_denominators,
+        size,
+    )
+
+
+@native
+def ffiFmpqMatSolve(
+    output_numerators: IntegerBuffer,
+    output_denominators: IntegerBuffer,
+    left_numerators: IntegerBuffer,
+    left_denominators: IntegerBuffer,
+    right_numerators: IntegerBuffer,
+    right_denominators: IntegerBuffer,
+    size: uint64,
+    right_columns: uint64,
+) -> bool:
+    return _ffi_fmpq_mat_solve(
+        output_numerators,
+        output_denominators,
+        left_numerators,
+        left_denominators,
+        right_numerators,
+        right_denominators,
+        size,
+        right_columns,
+    )
+
+
+@native
+def ffiFmpqMatDet(
+    output_numerators: IntegerBuffer,
+    output_denominators: IntegerBuffer,
+    source_numerators: IntegerBuffer,
+    source_denominators: IntegerBuffer,
+    size: uint64,
+    one: uint64,
+) -> bool:
+    return _ffi_fmpq_mat_det(
+        output_numerators,
+        output_denominators,
+        source_numerators,
+        source_denominators,
+        size,
+        one,
+    )
+
+
+@native
+def ffiFmpqMatCharpoly(
+    output_numerators: IntegerBuffer,
+    output_denominators: IntegerBuffer,
+    source_numerators: IntegerBuffer,
+    source_denominators: IntegerBuffer,
+    coefficient_count: uint64,
+    size: uint64,
+    one: uint64,
+) -> bool:
+    return _ffi_fmpq_mat_charpoly(
+        output_numerators,
+        output_denominators,
+        source_numerators,
+        source_denominators,
+        coefficient_count,
+        size,
+        one,
+    )
+
+
+@native
+def ffiNmodMatRank(
+    entries: UInt64Buffer,
+    rows: uint64,
+    columns: uint64,
+    modulus: uint64,
+) -> uint64:
+    return _ffi_nmod_mat_rank(
+        entries,
+        rows,
+        columns,
+        modulus,
+    )
+
+
+@native
+def ffiNmodMatDet(
+    source: UInt64Buffer,
+    size: uint64,
+    modulus: uint64,
+) -> uint64:
+    return _ffi_nmod_mat_det(
+        source,
+        size,
+        modulus,
+    )
+
+
+@native
+def ffiNmodMatCharpoly(
+    output: UInt64Buffer,
+    source: UInt64Buffer,
+    output_length: uint64,
+    source_length: uint64,
+    size: uint64,
+    modulus: uint64,
+) -> bool:
+    return _ffi_nmod_mat_charpoly(
+        output,
+        source,
+        output_length,
+        source_length,
+        size,
+        modulus,
+    )
+
+
+@native
+def ffiNmodMatMinpoly(
+    output: UInt64Buffer,
+    source: UInt64Buffer,
+    output_length: uint64,
+    source_length: uint64,
+    size: uint64,
+    modulus: uint64,
+) -> bool:
+    return _ffi_nmod_mat_minpoly(
+        output,
+        source,
+        output_length,
+        source_length,
+        size,
+        modulus,
+    )
+
+
+@native
+def ffiNmodMatInv(
+    output: UInt64Buffer,
+    source: UInt64Buffer,
+    size: uint64,
+    modulus: uint64,
+) -> bool:
+    return _ffi_nmod_mat_inv(
+        output,
+        source,
+        size,
+        modulus,
+    )
+
+
+@native
+def ffiNmodMatRref(
+    output: UInt64Buffer,
+    source: UInt64Buffer,
+    rows: uint64,
+    columns: uint64,
+    modulus: uint64,
+) -> uint64:
+    return _ffi_nmod_mat_rref(
+        output,
+        source,
+        rows,
+        columns,
+        modulus,
+    )
+
+
+@native
+def ffiNmodMatMul(
+    output: UInt64Buffer,
+    left: UInt64Buffer,
+    right: UInt64Buffer,
+    left_rows: uint64,
+    inner: uint64,
+    right_columns: uint64,
+    modulus: uint64,
+) -> bool:
+    return _ffi_nmod_mat_mul(
+        output,
+        left,
+        right,
+        left_rows,
+        inner,
+        right_columns,
+        modulus,
+    )
+
+
+@native
+def ffiNmodMatRightKernel(
+    output: UInt64Buffer,
+    source: UInt64Buffer,
+    rows: uint64,
+    columns: uint64,
+    modulus: uint64,
+) -> uint64:
+    return _ffi_nmod_mat_right_kernel(
+        output,
+        source,
+        rows,
+        columns,
+        modulus,
+    )
+
+
+@native
+def ffiNmodMatSolve(
+    output: UInt64Buffer,
+    left: UInt64Buffer,
+    right: UInt64Buffer,
+    size: uint64,
+    right_columns: uint64,
+    modulus: uint64,
+) -> bool:
+    return _ffi_nmod_mat_solve(
+        output,
+        left,
+        right,
+        size,
+        right_columns,
+        modulus,
+    )
+
+
+@native
+def ffiFmpzPolyMul(
+    output: IntegerBuffer,
+    left: IntegerBuffer,
+    right: IntegerBuffer,
+    output_length: uint64,
+    left_length: uint64,
+    right_length: uint64,
+    one: uint64,
+) -> bool:
+    return _ffi_fmpz_poly_mul(
+        output,
+        left,
+        right,
+        output_length,
+        left_length,
+        right_length,
+        one,
+    )
+
+
+@native
+def ffiFmpqPolyMul(
+    output_numerators: IntegerBuffer,
+    output_denominators: IntegerBuffer,
+    left_numerators: IntegerBuffer,
+    left_denominators: IntegerBuffer,
+    right_numerators: IntegerBuffer,
+    right_denominators: IntegerBuffer,
+    output_length: uint64,
+    left_length: uint64,
+    right_length: uint64,
+    one: uint64,
+) -> bool:
+    return _ffi_fmpq_poly_mul(
+        output_numerators,
+        output_denominators,
+        left_numerators,
+        left_denominators,
+        right_numerators,
+        right_denominators,
+        output_length,
+        left_length,
+        right_length,
+        one,
+    )
+
+
+@native
+def ffiNmodPolyMul(
+    output: UInt64Buffer,
+    left: UInt64Buffer,
+    right: UInt64Buffer,
+    output_length: uint64,
+    left_length: uint64,
+    right_length: uint64,
+    modulus: uint64,
+) -> bool:
+    return _ffi_nmod_poly_mul(
+        output,
+        left,
+        right,
+        output_length,
+        left_length,
+        right_length,
+        modulus,
+    )
+
+
+@native
+def ffiNmodPolyDivExact(
+    output: UInt64Buffer,
+    left: UInt64Buffer,
+    right: UInt64Buffer,
+    output_length: uint64,
+    left_length: uint64,
+    right_length: uint64,
+    modulus: uint64,
+) -> bool:
+    return _ffi_nmod_poly_divexact(
+        output,
+        left,
+        right,
+        output_length,
+        left_length,
+        right_length,
+        modulus,
+    )
+
+
+@native
+def ffiFmpzPolyDivExact(
+    output: IntegerBuffer,
+    left: IntegerBuffer,
+    right: IntegerBuffer,
+    output_length: uint64,
+    left_length: uint64,
+    right_length: uint64,
+    one: uint64,
+) -> bool:
+    return _ffi_fmpz_poly_divexact(
+        output,
+        left,
+        right,
+        output_length,
+        left_length,
+        right_length,
+        one,
+    )
+
+
+@native
+def ffiFmpqPolyDivExact(
+    output_numerators: IntegerBuffer,
+    output_denominators: IntegerBuffer,
+    left_numerators: IntegerBuffer,
+    left_denominators: IntegerBuffer,
+    right_numerators: IntegerBuffer,
+    right_denominators: IntegerBuffer,
+    output_length: uint64,
+    left_length: uint64,
+    right_length: uint64,
+    one: uint64,
+) -> bool:
+    return _ffi_fmpq_poly_divexact(
+        output_numerators,
+        output_denominators,
+        left_numerators,
+        left_denominators,
+        right_numerators,
+        right_denominators,
+        output_length,
+        left_length,
+        right_length,
+        one,
+    )
+
+
+@native
+def ffiNmodPolyGcd(
+    output: UInt64Buffer,
+    left: UInt64Buffer,
+    right: UInt64Buffer,
+    output_length: uint64,
+    left_length: uint64,
+    right_length: uint64,
+    modulus: uint64,
+) -> bool:
+    return _ffi_nmod_poly_gcd(
+        output,
+        left,
+        right,
+        output_length,
+        left_length,
+        right_length,
+        modulus,
+    )
+
+
+@native
+def ffiNmodPolyIsIrreducible(
+    source: UInt64Buffer,
+    source_length: uint64,
+    modulus: uint64,
+) -> bool:
+    return _ffi_nmod_poly_is_irreducible(
+        source,
+        source_length,
+        modulus,
+    )
+
+
+@native
+def ffiNmodPolyFactor(
+    factor_coefficients: UInt64Buffer,
+    offsets: UInt64Buffer,
+    exponents: UInt64Buffer,
+    factor_count: UInt64Buffer,
+    unit_output: UInt64Buffer,
+    source: UInt64Buffer,
+    factor_coefficients_length: uint64,
+    offsets_length: uint64,
+    exponents_length: uint64,
+    factor_count_length: uint64,
+    unit_length: uint64,
+    source_length: uint64,
+    modulus: uint64,
+) -> bool:
+    return _ffi_nmod_poly_factor(
+        factor_coefficients,
+        offsets,
+        exponents,
+        factor_count,
+        unit_output,
+        source,
+        factor_coefficients_length,
+        offsets_length,
+        exponents_length,
+        factor_count_length,
+        unit_length,
+        source_length,
+        modulus,
+    )
+
+
+@native
+def ffiNmodPolyRoots(
+    root_values: UInt64Buffer,
+    multiplicities: UInt64Buffer,
+    root_count: UInt64Buffer,
+    source: UInt64Buffer,
+    root_values_length: uint64,
+    multiplicities_length: uint64,
+    root_count_length: uint64,
+    source_length: uint64,
+    modulus: uint64,
+) -> bool:
+    return _ffi_nmod_poly_roots(
+        root_values,
+        multiplicities,
+        root_count,
+        source,
+        root_values_length,
+        multiplicities_length,
+        root_count_length,
+        source_length,
+        modulus,
+    )
+
+
+@native
+def ffiFmpzPolyFactor(
+    factor_coefficients: IntegerBuffer,
+    offsets: UInt64Buffer,
+    exponents: UInt64Buffer,
+    factor_count: UInt64Buffer,
+    unit_numerator: IntegerBuffer,
+    unit_denominator: IntegerBuffer,
+    source: IntegerBuffer,
+    factor_coefficients_length: uint64,
+    source_length: uint64,
+    one: uint64,
+) -> bool:
+    return _ffi_fmpz_poly_factor(
+        factor_coefficients,
+        offsets,
+        exponents,
+        factor_count,
+        unit_numerator,
+        unit_denominator,
+        source,
+        factor_coefficients_length,
+        source_length,
+        one,
+    )
+
+
+@native
+def ffiFmpqPolyFactor(
+    factor_coefficients: IntegerBuffer,
+    offsets: UInt64Buffer,
+    exponents: UInt64Buffer,
+    factor_count: UInt64Buffer,
+    unit_numerator: IntegerBuffer,
+    unit_denominator: IntegerBuffer,
+    source_numerators: IntegerBuffer,
+    source_denominators: IntegerBuffer,
+    factor_coefficients_length: uint64,
+    source_length: uint64,
+    one: uint64,
+) -> bool:
+    return _ffi_fmpq_poly_factor(
+        factor_coefficients,
+        offsets,
+        exponents,
+        factor_count,
+        unit_numerator,
+        unit_denominator,
+        source_numerators,
+        source_denominators,
+        factor_coefficients_length,
+        source_length,
+        one,
+    )

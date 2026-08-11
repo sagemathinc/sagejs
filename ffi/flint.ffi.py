@@ -1573,6 +1573,177 @@ def nmod_mat_solve(
 
 
 @flint.function(
+    dynamic="ffiFmpzPolyMul",
+    symbol="sagejs_flint_fmpz_poly_mul_packed",
+    returns=int,
+    abi=[
+        out(
+            "output",
+            fmpz_mat_t,
+            packed_fmpz_matrix(
+                data="output",
+                rows="one",
+                columns="output_length",
+                access="write",
+                aliasing="allowed",
+                transactional=True,
+            ),
+        ),
+        in_(
+            "left",
+            fmpz_mat_t,
+            packed_fmpz_matrix(
+                data="left",
+                rows="one",
+                columns="left_length",
+                access="read",
+                aliasing="allowed",
+                transactional=False,
+            ),
+        ),
+        in_(
+            "right",
+            fmpz_mat_t,
+            packed_fmpz_matrix(
+                data="right",
+                rows="one",
+                columns="right_length",
+                access="read",
+                aliasing="allowed",
+                transactional=False,
+            ),
+        ),
+    ],
+    effects=Effects(
+        pure=False,
+        allocates=True,
+        raises=[ValueError, OverflowError],
+        writes=["output"],
+    ),
+    result=Status(
+        1,
+        exception=ValueError,
+        message="FLINT integer polynomial multiplication failed",
+    ),
+    wasm=True,
+)
+def fmpz_poly_mul(
+    output: Writable[IntegerBuffer],
+    left: IntegerBuffer,
+    right: IntegerBuffer,
+    output_length: uint64,
+    left_length: uint64,
+    right_length: uint64,
+    one: Min[uint64, 1],
+) -> bool: ...
+
+
+@flint.function(
+    dynamic="ffiFmpqPolyMul",
+    symbol="sagejs_flint_fmpq_poly_mul_packed",
+    returns=int,
+    abi=[
+        out(
+            "output_numerators",
+            fmpz_mat_t,
+            packed_fmpz_matrix(
+                data="output_numerators",
+                rows="one",
+                columns="output_length",
+                access="write",
+                aliasing="allowed",
+                transactional=True,
+            ),
+        ),
+        out(
+            "output_denominators",
+            fmpz_mat_t,
+            packed_fmpz_matrix(
+                data="output_denominators",
+                rows="one",
+                columns="output_length",
+                access="write",
+                aliasing="allowed",
+                transactional=True,
+            ),
+        ),
+        in_(
+            "left_numerators",
+            fmpz_mat_t,
+            packed_fmpz_matrix(
+                data="left_numerators",
+                rows="one",
+                columns="left_length",
+                access="read",
+                aliasing="allowed",
+                transactional=False,
+            ),
+        ),
+        in_(
+            "left_denominators",
+            fmpz_mat_t,
+            packed_fmpz_matrix(
+                data="left_denominators",
+                rows="one",
+                columns="left_length",
+                access="read",
+                aliasing="allowed",
+                transactional=False,
+            ),
+        ),
+        in_(
+            "right_numerators",
+            fmpz_mat_t,
+            packed_fmpz_matrix(
+                data="right_numerators",
+                rows="one",
+                columns="right_length",
+                access="read",
+                aliasing="allowed",
+                transactional=False,
+            ),
+        ),
+        in_(
+            "right_denominators",
+            fmpz_mat_t,
+            packed_fmpz_matrix(
+                data="right_denominators",
+                rows="one",
+                columns="right_length",
+                access="read",
+                aliasing="allowed",
+                transactional=False,
+            ),
+        ),
+    ],
+    effects=Effects(
+        pure=False,
+        allocates=True,
+        raises=[ValueError, OverflowError],
+        writes=["output_numerators", "output_denominators"],
+    ),
+    result=Status(
+        1,
+        exception=ValueError,
+        message="FLINT rational polynomial multiplication failed",
+    ),
+    wasm=True,
+)
+def fmpq_poly_mul(
+    output_numerators: Writable[IntegerBuffer],
+    output_denominators: Writable[IntegerBuffer],
+    left_numerators: IntegerBuffer,
+    left_denominators: IntegerBuffer,
+    right_numerators: IntegerBuffer,
+    right_denominators: IntegerBuffer,
+    output_length: uint64,
+    left_length: uint64,
+    right_length: uint64,
+    one: Min[uint64, 1],
+) -> bool: ...
+
+
+@flint.function(
     dynamic="ffiNmodPolyMul",
     symbol="sagejs_flint_nmod_poly_mul_packed",
     returns=int,
@@ -1636,4 +1807,786 @@ def nmod_poly_mul(
     left_length: uint64,
     right_length: uint64,
     modulus: uint64,
+) -> bool: ...
+
+
+@flint.function(
+    dynamic="ffiNmodPolyDivExact",
+    symbol="sagejs_flint_nmod_poly_divexact_packed",
+    returns=int,
+    abi=[
+        out(
+            "quotient",
+            uint64_t_ptr,
+            packed_slice(
+                data="output",
+                length="output_length",
+                access="write",
+                aliasing="allowed",
+                transactional=True,
+            ),
+        ),
+        in_(
+            "left_data",
+            uint64_t_ptr,
+            packed_slice(
+                data="left",
+                length="left_length",
+                access="read",
+                aliasing="allowed",
+                transactional=False,
+            ),
+        ),
+        in_(
+            "right_data",
+            uint64_t_ptr,
+            packed_slice(
+                data="right",
+                length="right_length",
+                access="read",
+                aliasing="allowed",
+                transactional=False,
+            ),
+        ),
+        in_("output_length", uint64_t),
+        in_("left_length", uint64_t),
+        in_("right_length", uint64_t),
+        in_("modulus", uint64_t),
+    ],
+    effects=Effects(
+        pure=False,
+        allocates=True,
+        raises=[ValueError],
+        writes=["output"],
+    ),
+    result=Status(
+        1,
+        exception=ValueError,
+        message="polynomial division is not exact",
+    ),
+    wasm=True,
+)
+def nmod_poly_divexact(
+    output: Writable[UInt64Buffer],
+    left: UInt64Buffer,
+    right: UInt64Buffer,
+    output_length: uint64,
+    left_length: uint64,
+    right_length: uint64,
+    modulus: uint64,
+) -> bool: ...
+
+
+@flint.function(
+    dynamic="ffiFmpzPolyDivExact",
+    symbol="sagejs_flint_fmpz_poly_divexact_packed",
+    returns=int,
+    abi=[
+        out(
+            "quotient",
+            fmpz_mat_t,
+            packed_fmpz_matrix(
+                data="output",
+                rows="one",
+                columns="output_length",
+                access="write",
+                aliasing="allowed",
+                transactional=True,
+            ),
+        ),
+        in_(
+            "left",
+            fmpz_mat_t,
+            packed_fmpz_matrix(
+                data="left",
+                rows="one",
+                columns="left_length",
+                access="read",
+                aliasing="allowed",
+                transactional=False,
+            ),
+        ),
+        in_(
+            "right",
+            fmpz_mat_t,
+            packed_fmpz_matrix(
+                data="right",
+                rows="one",
+                columns="right_length",
+                access="read",
+                aliasing="allowed",
+                transactional=False,
+            ),
+        ),
+    ],
+    effects=Effects(
+        pure=False,
+        allocates=True,
+        raises=[ValueError, OverflowError],
+        writes=["output"],
+    ),
+    result=Status(
+        1,
+        exception=ValueError,
+        message="polynomial division is not exact",
+    ),
+    wasm=True,
+)
+def fmpz_poly_divexact(
+    output: Writable[IntegerBuffer],
+    left: IntegerBuffer,
+    right: IntegerBuffer,
+    output_length: uint64,
+    left_length: uint64,
+    right_length: uint64,
+    one: Min[uint64, 1],
+) -> bool: ...
+
+
+@flint.function(
+    dynamic="ffiFmpqPolyDivExact",
+    symbol="sagejs_flint_fmpq_poly_divexact_packed",
+    returns=int,
+    abi=[
+        out(
+            "output_numerators",
+            fmpz_mat_t,
+            packed_fmpz_matrix(
+                data="output_numerators",
+                rows="one",
+                columns="output_length",
+                access="write",
+                aliasing="allowed",
+                transactional=True,
+            ),
+        ),
+        out(
+            "output_denominators",
+            fmpz_mat_t,
+            packed_fmpz_matrix(
+                data="output_denominators",
+                rows="one",
+                columns="output_length",
+                access="write",
+                aliasing="allowed",
+                transactional=True,
+            ),
+        ),
+        in_(
+            "left_numerators",
+            fmpz_mat_t,
+            packed_fmpz_matrix(
+                data="left_numerators",
+                rows="one",
+                columns="left_length",
+                access="read",
+                aliasing="allowed",
+                transactional=False,
+            ),
+        ),
+        in_(
+            "left_denominators",
+            fmpz_mat_t,
+            packed_fmpz_matrix(
+                data="left_denominators",
+                rows="one",
+                columns="left_length",
+                access="read",
+                aliasing="allowed",
+                transactional=False,
+            ),
+        ),
+        in_(
+            "right_numerators",
+            fmpz_mat_t,
+            packed_fmpz_matrix(
+                data="right_numerators",
+                rows="one",
+                columns="right_length",
+                access="read",
+                aliasing="allowed",
+                transactional=False,
+            ),
+        ),
+        in_(
+            "right_denominators",
+            fmpz_mat_t,
+            packed_fmpz_matrix(
+                data="right_denominators",
+                rows="one",
+                columns="right_length",
+                access="read",
+                aliasing="allowed",
+                transactional=False,
+            ),
+        ),
+    ],
+    effects=Effects(
+        pure=False,
+        allocates=True,
+        raises=[ValueError, OverflowError],
+        writes=["output_numerators", "output_denominators"],
+    ),
+    result=Status(
+        1,
+        exception=ValueError,
+        message="polynomial division is not exact",
+    ),
+    wasm=True,
+)
+def fmpq_poly_divexact(
+    output_numerators: Writable[IntegerBuffer],
+    output_denominators: Writable[IntegerBuffer],
+    left_numerators: IntegerBuffer,
+    left_denominators: IntegerBuffer,
+    right_numerators: IntegerBuffer,
+    right_denominators: IntegerBuffer,
+    output_length: uint64,
+    left_length: uint64,
+    right_length: uint64,
+    one: Min[uint64, 1],
+) -> bool: ...
+
+
+@flint.function(
+    dynamic="ffiNmodPolyGcd",
+    symbol="sagejs_flint_nmod_poly_gcd_packed",
+    returns=int,
+    abi=[
+        out(
+            "gcd",
+            uint64_t_ptr,
+            packed_slice(
+                data="output",
+                length="output_length",
+                access="write",
+                aliasing="allowed",
+                transactional=True,
+            ),
+        ),
+        in_(
+            "left_data",
+            uint64_t_ptr,
+            packed_slice(
+                data="left",
+                length="left_length",
+                access="read",
+                aliasing="allowed",
+                transactional=False,
+            ),
+        ),
+        in_(
+            "right_data",
+            uint64_t_ptr,
+            packed_slice(
+                data="right",
+                length="right_length",
+                access="read",
+                aliasing="allowed",
+                transactional=False,
+            ),
+        ),
+        in_("output_length", uint64_t),
+        in_("left_length", uint64_t),
+        in_("right_length", uint64_t),
+        in_("modulus", uint64_t),
+    ],
+    effects=Effects(
+        pure=False,
+        allocates=True,
+        raises=[ValueError],
+        writes=["output"],
+    ),
+    result=Status(1, exception=ValueError, message="polynomial gcd failed"),
+    wasm=True,
+)
+def nmod_poly_gcd(
+    output: Writable[UInt64Buffer],
+    left: UInt64Buffer,
+    right: UInt64Buffer,
+    output_length: uint64,
+    left_length: uint64,
+    right_length: uint64,
+    modulus: uint64,
+) -> bool: ...
+
+
+@flint.function(
+    dynamic="ffiNmodPolyIsIrreducible",
+    symbol="sagejs_flint_nmod_poly_is_irreducible_packed",
+    returns=int,
+    abi=[
+        in_(
+            "source_data",
+            uint64_t_ptr,
+            packed_slice(
+                data="source",
+                length="source_length",
+                access="read",
+                aliasing="allowed",
+                transactional=False,
+            ),
+        ),
+        in_("source_length", uint64_t),
+        in_("modulus", uint64_t),
+    ],
+    effects=Effects(pure=True, allocates=True, raises=[ValueError]),
+    result=Direct(),
+    wasm=True,
+)
+def nmod_poly_is_irreducible(
+    source: UInt64Buffer,
+    source_length: uint64,
+    modulus: uint64,
+) -> bool: ...
+
+
+@flint.function(
+    dynamic="ffiNmodPolyFactor",
+    symbol="sagejs_flint_nmod_poly_factor_packed",
+    returns=int,
+    abi=[
+        out(
+            "factor_coefficients",
+            uint64_t_ptr,
+            packed_slice(
+                data="factor_coefficients",
+                length="factor_coefficients_length",
+                access="write",
+                aliasing="allowed",
+                transactional=True,
+            ),
+        ),
+        out(
+            "offsets",
+            uint64_t_ptr,
+            packed_slice(
+                data="offsets",
+                length="offsets_length",
+                access="write",
+                aliasing="allowed",
+                transactional=True,
+            ),
+        ),
+        out(
+            "exponents",
+            uint64_t_ptr,
+            packed_slice(
+                data="exponents",
+                length="exponents_length",
+                access="write",
+                aliasing="allowed",
+                transactional=True,
+            ),
+        ),
+        out(
+            "factor_count",
+            uint64_t_ptr,
+            packed_slice(
+                data="factor_count",
+                length="factor_count_length",
+                access="write",
+                aliasing="allowed",
+                transactional=True,
+            ),
+        ),
+        out(
+            "unit_output",
+            uint64_t_ptr,
+            packed_slice(
+                data="unit_output",
+                length="unit_length",
+                access="write",
+                aliasing="allowed",
+                transactional=True,
+            ),
+        ),
+        in_(
+            "source_data",
+            uint64_t_ptr,
+            packed_slice(
+                data="source",
+                length="source_length",
+                access="read",
+                aliasing="allowed",
+                transactional=False,
+            ),
+        ),
+        in_("factor_coefficients_length", uint64_t),
+        in_("offsets_length", uint64_t),
+        in_("exponents_length", uint64_t),
+        in_("factor_count_length", uint64_t),
+        in_("unit_length", uint64_t),
+        in_("source_length", uint64_t),
+        in_("modulus", uint64_t),
+    ],
+    effects=Effects(
+        pure=False,
+        allocates=True,
+        raises=[ValueError],
+        writes=[
+            "factor_coefficients",
+            "offsets",
+            "exponents",
+            "factor_count",
+            "unit_output",
+        ],
+    ),
+    result=Status(
+        1,
+        exception=ValueError,
+        message="factorization of 0 is not defined",
+    ),
+    wasm=True,
+)
+def nmod_poly_factor(
+    factor_coefficients: Writable[UInt64Buffer],
+    offsets: Writable[UInt64Buffer],
+    exponents: Writable[UInt64Buffer],
+    factor_count: Writable[UInt64Buffer],
+    unit_output: Writable[UInt64Buffer],
+    source: UInt64Buffer,
+    factor_coefficients_length: uint64,
+    offsets_length: uint64,
+    exponents_length: uint64,
+    factor_count_length: uint64,
+    unit_length: uint64,
+    source_length: uint64,
+    modulus: uint64,
+) -> bool: ...
+
+
+@flint.function(
+    dynamic="ffiNmodPolyRoots",
+    symbol="sagejs_flint_nmod_poly_roots_packed",
+    returns=int,
+    abi=[
+        out(
+            "root_values",
+            uint64_t_ptr,
+            packed_slice(
+                data="root_values",
+                length="root_values_length",
+                access="write",
+                aliasing="allowed",
+                transactional=True,
+            ),
+        ),
+        out(
+            "multiplicities",
+            uint64_t_ptr,
+            packed_slice(
+                data="multiplicities",
+                length="multiplicities_length",
+                access="write",
+                aliasing="allowed",
+                transactional=True,
+            ),
+        ),
+        out(
+            "root_count",
+            uint64_t_ptr,
+            packed_slice(
+                data="root_count",
+                length="root_count_length",
+                access="write",
+                aliasing="allowed",
+                transactional=True,
+            ),
+        ),
+        in_(
+            "source_data",
+            uint64_t_ptr,
+            packed_slice(
+                data="source",
+                length="source_length",
+                access="read",
+                aliasing="allowed",
+                transactional=False,
+            ),
+        ),
+        in_("root_values_length", uint64_t),
+        in_("multiplicities_length", uint64_t),
+        in_("root_count_length", uint64_t),
+        in_("source_length", uint64_t),
+        in_("modulus", uint64_t),
+    ],
+    effects=Effects(
+        pure=False,
+        allocates=True,
+        raises=[ValueError],
+        writes=["root_values", "multiplicities", "root_count"],
+    ),
+    result=Status(
+        1,
+        exception=ValueError,
+        message="roots of the zero polynomial are not defined",
+    ),
+    wasm=True,
+)
+def nmod_poly_roots(
+    root_values: Writable[UInt64Buffer],
+    multiplicities: Writable[UInt64Buffer],
+    root_count: Writable[UInt64Buffer],
+    source: UInt64Buffer,
+    root_values_length: uint64,
+    multiplicities_length: uint64,
+    root_count_length: uint64,
+    source_length: uint64,
+    modulus: uint64,
+) -> bool: ...
+
+
+@flint.function(
+    dynamic="ffiFmpzPolyFactor",
+    symbol="sagejs_flint_fmpz_poly_factor_packed",
+    returns=int,
+    abi=[
+        out(
+            "factor_coefficients",
+            fmpz_mat_t,
+            packed_fmpz_matrix(
+                data="factor_coefficients",
+                rows="one",
+                columns="factor_coefficients_length",
+                access="write",
+                aliasing="allowed",
+                transactional=True,
+            ),
+        ),
+        out(
+            "offsets",
+            uint64_t_ptr,
+            packed_slice(
+                data="offsets",
+                length="source_length",
+                access="write",
+                aliasing="allowed",
+                transactional=True,
+            ),
+        ),
+        out(
+            "exponents",
+            uint64_t_ptr,
+            packed_slice(
+                data="exponents",
+                length="source_length",
+                access="write",
+                aliasing="allowed",
+                transactional=True,
+            ),
+        ),
+        out(
+            "factor_count",
+            uint64_t_ptr,
+            packed_slice(
+                data="factor_count",
+                length="one",
+                access="write",
+                aliasing="allowed",
+                transactional=True,
+            ),
+        ),
+        out(
+            "unit_numerator",
+            fmpz_mat_t,
+            packed_fmpz_matrix(
+                data="unit_numerator",
+                rows="one",
+                columns="one",
+                access="write",
+                aliasing="allowed",
+                transactional=True,
+            ),
+        ),
+        out(
+            "unit_denominator",
+            fmpz_mat_t,
+            packed_fmpz_matrix(
+                data="unit_denominator",
+                rows="one",
+                columns="one",
+                access="write",
+                aliasing="allowed",
+                transactional=True,
+            ),
+        ),
+        in_(
+            "source",
+            fmpz_mat_t,
+            packed_fmpz_matrix(
+                data="source",
+                rows="one",
+                columns="source_length",
+                access="read",
+                aliasing="allowed",
+                transactional=False,
+            ),
+        ),
+    ],
+    effects=Effects(
+        pure=False,
+        allocates=True,
+        raises=[ValueError, OverflowError],
+        writes=[
+            "factor_coefficients",
+            "offsets",
+            "exponents",
+            "factor_count",
+            "unit_numerator",
+            "unit_denominator",
+        ],
+    ),
+    result=Status(
+        1,
+        exception=ValueError,
+        message="factorization of 0 is not defined",
+    ),
+    wasm=True,
+)
+def fmpz_poly_factor(
+    factor_coefficients: Writable[IntegerBuffer],
+    offsets: Writable[UInt64Buffer],
+    exponents: Writable[UInt64Buffer],
+    factor_count: Writable[UInt64Buffer],
+    unit_numerator: Writable[IntegerBuffer],
+    unit_denominator: Writable[IntegerBuffer],
+    source: IntegerBuffer,
+    factor_coefficients_length: uint64,
+    source_length: uint64,
+    one: Min[uint64, 1],
+) -> bool: ...
+
+
+@flint.function(
+    dynamic="ffiFmpqPolyFactor",
+    symbol="sagejs_flint_fmpq_poly_factor_packed",
+    returns=int,
+    abi=[
+        out(
+            "factor_coefficients",
+            fmpz_mat_t,
+            packed_fmpz_matrix(
+                data="factor_coefficients",
+                rows="one",
+                columns="factor_coefficients_length",
+                access="write",
+                aliasing="allowed",
+                transactional=True,
+            ),
+        ),
+        out(
+            "offsets",
+            uint64_t_ptr,
+            packed_slice(
+                data="offsets",
+                length="source_length",
+                access="write",
+                aliasing="allowed",
+                transactional=True,
+            ),
+        ),
+        out(
+            "exponents",
+            uint64_t_ptr,
+            packed_slice(
+                data="exponents",
+                length="source_length",
+                access="write",
+                aliasing="allowed",
+                transactional=True,
+            ),
+        ),
+        out(
+            "factor_count",
+            uint64_t_ptr,
+            packed_slice(
+                data="factor_count",
+                length="one",
+                access="write",
+                aliasing="allowed",
+                transactional=True,
+            ),
+        ),
+        out(
+            "unit_numerator",
+            fmpz_mat_t,
+            packed_fmpz_matrix(
+                data="unit_numerator",
+                rows="one",
+                columns="one",
+                access="write",
+                aliasing="allowed",
+                transactional=True,
+            ),
+        ),
+        out(
+            "unit_denominator",
+            fmpz_mat_t,
+            packed_fmpz_matrix(
+                data="unit_denominator",
+                rows="one",
+                columns="one",
+                access="write",
+                aliasing="allowed",
+                transactional=True,
+            ),
+        ),
+        in_(
+            "source_numerators",
+            fmpz_mat_t,
+            packed_fmpz_matrix(
+                data="source_numerators",
+                rows="one",
+                columns="source_length",
+                access="read",
+                aliasing="allowed",
+                transactional=False,
+            ),
+        ),
+        in_(
+            "source_denominators",
+            fmpz_mat_t,
+            packed_fmpz_matrix(
+                data="source_denominators",
+                rows="one",
+                columns="source_length",
+                access="read",
+                aliasing="allowed",
+                transactional=False,
+            ),
+        ),
+    ],
+    effects=Effects(
+        pure=False,
+        allocates=True,
+        raises=[ValueError, OverflowError],
+        writes=[
+            "factor_coefficients",
+            "offsets",
+            "exponents",
+            "factor_count",
+            "unit_numerator",
+            "unit_denominator",
+        ],
+    ),
+    result=Status(
+        1,
+        exception=ValueError,
+        message="factorization of 0 is not defined",
+    ),
+    wasm=True,
+)
+def fmpq_poly_factor(
+    factor_coefficients: Writable[IntegerBuffer],
+    offsets: Writable[UInt64Buffer],
+    exponents: Writable[UInt64Buffer],
+    factor_count: Writable[UInt64Buffer],
+    unit_numerator: Writable[IntegerBuffer],
+    unit_denominator: Writable[IntegerBuffer],
+    source_numerators: IntegerBuffer,
+    source_denominators: IntegerBuffer,
+    factor_coefficients_length: uint64,
+    source_length: uint64,
+    one: Min[uint64, 1],
 ) -> bool: ...

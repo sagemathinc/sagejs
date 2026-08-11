@@ -111,6 +111,18 @@ def _native_kernel_available(kernel_function: Any) -> bool:
     return bool(getattr(kernel_function, "nativeAvailable", False))
 
 
+def _declared_ffi_kernel(kernel_function: Any) -> bool:
+    """Return whether a same-source fallback still crosses the packed FFI.
+
+    Structural kernels intentionally use ordinary lists when machine code is
+    unavailable. Declared-library wrappers are different: their Python body
+    merely forwards to the checked FFI declaration, whose semantic contract
+    requires the same packed buffers in both native and dynamic execution.
+    """
+    module = str(getattr(kernel_function, "__module__", ""))
+    return module.startswith("sagejs.kernels.matrix.") and module.endswith("_flint")
+
+
 def _typed_python_implementation(kernel_function: Any) -> str:
     return (
         "typed-python-isolated"
@@ -200,6 +212,8 @@ def _dense_prime_buffer(kernel_function: Any, source: Any) -> Any:
         factory = getattr(kernel_function, "createUInt64Buffer", None)
         if callable(factory):
             return factory(source)
+    if _declared_ffi_kernel(kernel_function):
+        return runtime.uint64_buffer(source)
     return list(source)
 
 
@@ -209,10 +223,12 @@ def _dense_prime_zeros(kernel_function: Any, length: int) -> Any:
         factory = getattr(kernel_function, "createUInt64Buffer", None)
         if callable(factory):
             return factory(length)
+    if _declared_ffi_kernel(kernel_function):
+        return runtime.uint64_buffer(length)
     return [0 for _index in range(length)]
 
 
-def _integer_word_capacity(source: Any) -> int:
+def _matrix_integer_word_capacity(source: Any) -> int:
     capacity = runtime.reflect.get(source, "wordCapacity")
     if capacity is not runtime.undefined:
         return int(capacity)
@@ -228,7 +244,7 @@ def _integer_used_word_capacity(source: Any) -> int:
     """Return the largest limb count actually occupied by any entry."""
     sizes = runtime.reflect.get(source, "sizes")
     if sizes is runtime.undefined:
-        return _integer_word_capacity(source)
+        return _matrix_integer_word_capacity(source)
     return runtime.integer_buffer_used_word_capacity(source)
 
 
@@ -249,6 +265,8 @@ def _dense_integer_buffer(
 ) -> Any:
     """Return the representation expected by this kernel implementation."""
     if _native_kernel_available(kernel_function):
+        return runtime.integer_buffer(source, minimum_word_capacity)
+    if _declared_ffi_kernel(kernel_function):
         return runtime.integer_buffer(source, minimum_word_capacity)
     return [int(value) for value in _integer_buffer_values(source)]
 
@@ -277,6 +295,8 @@ def _dense_integer_zeros(
                     word_capacity,
                 ],
             )
+    if _declared_ffi_kernel(kernel_function):
+        return runtime.integer_buffer([0 for _index in range(length)], word_capacity)
     return [0 for _index in range(length)]
 
 
@@ -1693,11 +1713,13 @@ class Matrix(sage.Element):
         return self._integer_entries_cache
 
     def _integer_capacity(self) -> int:
-        return _integer_word_capacity(self._integer_entries())
+        return _matrix_integer_word_capacity(self._integer_entries())
 
     def _integer_kernel_buffer(self, kernel_function: Any) -> Any:
         entries = self._integer_entries()
-        if _native_kernel_available(kernel_function):
+        if _native_kernel_available(kernel_function) or _declared_ffi_kernel(
+            kernel_function
+        ):
             capacity = runtime.reflect.get(entries, "wordCapacity")
             if capacity is not runtime.undefined:
                 return entries
@@ -1715,8 +1737,8 @@ class Matrix(sage.Element):
 
     def _rational_capacity(self) -> int:
         return max(
-            _integer_word_capacity(self._rational_numerators()),
-            _integer_word_capacity(self._rational_denominators()),
+            _matrix_integer_word_capacity(self._rational_numerators()),
+            _matrix_integer_word_capacity(self._rational_denominators()),
         )
 
     def _rational_kernel_parts(
@@ -1725,7 +1747,9 @@ class Matrix(sage.Element):
     ) -> tuple[Any, Any]:
         numerators = self._rational_numerators()
         denominators = self._rational_denominators()
-        if _native_kernel_available(kernel_function):
+        if _native_kernel_available(kernel_function) or _declared_ffi_kernel(
+            kernel_function
+        ):
             numerator_capacity = runtime.reflect.get(numerators, "wordCapacity")
             denominator_capacity = runtime.reflect.get(denominators, "wordCapacity")
             if (
@@ -2012,6 +2036,13 @@ class Matrix(sage.Element):
         if self._has_packed_integer_storage():
             kernel = _dense_integer_kernel_module().dense_integer_matrix_set
             exact = sage.ZZ(value)
+            required_capacity = _integer_value_capacity(exact)
+            if self._integer_capacity() < required_capacity:
+                self._integer_entries_cache = _dense_integer_buffer(
+                    kernel,
+                    self._integer_entries(),
+                    required_capacity,
+                )
             while True:
                 try:
                     target = self._integer_kernel_buffer(kernel)
@@ -2026,16 +2057,38 @@ class Matrix(sage.Element):
                 except Exception as error:
                     if not _integer_capacity_error(error):
                         raise
+                    capacity = self._integer_capacity() * 2
+                    if capacity > 1048576:
+                        raise OverflowError(  # noqa: B904
+                            "integer matrix entry requires excessive limb capacity"
+                        )
                     self._integer_entries_cache = _dense_integer_buffer(
                         kernel,
                         self._integer_entries(),
-                        self._integer_capacity() * 2,
+                        capacity,
                     )
             self._clear_cache()
             return
         if self._has_packed_rational_storage():
             kernel = _dense_rational_kernel_module().dense_rational_matrix_set
             rational = sage.QQ(value)
+            required_capacity = max(
+                _integer_value_capacity(rational._numerator),
+                _integer_value_capacity(rational._denominator),
+            )
+            if self._rational_capacity() < required_capacity:
+                self._rational_storage_cache = _PackedRationalStorage(
+                    _dense_integer_buffer(
+                        kernel,
+                        self._rational_numerators(),
+                        required_capacity,
+                    ),
+                    _dense_integer_buffer(
+                        kernel,
+                        self._rational_denominators(),
+                        required_capacity,
+                    ),
+                )
             while True:
                 try:
                     numerators, denominators = self._rational_kernel_parts(kernel)
@@ -2055,6 +2108,10 @@ class Matrix(sage.Element):
                     if not _integer_capacity_error(error):
                         raise
                     capacity = self._rational_capacity() * 2
+                    if capacity > 1048576:
+                        raise OverflowError(  # noqa: B904
+                            "rational matrix entry requires excessive limb capacity"
+                        )
                     self._rational_storage_cache = _PackedRationalStorage(
                         _dense_integer_buffer(
                             kernel, self._rational_numerators(), capacity

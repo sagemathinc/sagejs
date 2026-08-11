@@ -131,6 +131,85 @@
       "platforms": ["linux-x64", "linux-arm64", "windows-x64", "macos-arm64"]
     },
     {
+      "id": "packed-integer-polynomial-production",
+      "source": "src/lib/sagejs/kernels/polynomial/packed_integer.py",
+      "functions": [
+        "packed_integer_polynomial_add",
+        "packed_integer_polynomial_subtract",
+        "packed_integer_polynomial_negate",
+        "packed_integer_polynomial_multiply",
+        "packed_integer_polynomial_equal",
+        "packed_integer_polynomial_shift_left"
+      ],
+      "semantic_domain": "production normalized ZZ[x] coefficient arithmetic over compiler-owned IntegerBuffer storage",
+      "fallback": "same-source",
+      "host_isolation": "certified",
+      "oracles": ["cpython", "javascript", "flint", "legacy-napi"],
+      "benchmark": "test:polynomial:performance",
+      "platforms": ["linux-x64", "linux-arm64", "windows-x64", "macos-arm64"]
+    },
+    {
+      "id": "packed-rational-polynomial-production",
+      "source": "src/lib/sagejs/kernels/polynomial/packed_rational.py",
+      "functions": [
+        "packed_rational_polynomial_gcd",
+        "packed_rational_polynomial_add_pair",
+        "packed_rational_polynomial_multiply_pair",
+        "packed_rational_polynomial_add",
+        "packed_rational_polynomial_subtract",
+        "packed_rational_polynomial_negate",
+        "packed_rational_polynomial_multiply",
+        "packed_rational_polynomial_equal"
+      ],
+      "semantic_domain": "production normalized QQ[x] numerator and denominator arithmetic over compiler-owned IntegerBuffer storage",
+      "fallback": "same-source",
+      "host_isolation": "certified",
+      "oracles": ["cpython", "javascript", "flint", "legacy-napi"],
+      "benchmark": "test:polynomial:performance",
+      "platforms": ["linux-x64", "linux-arm64", "windows-x64", "macos-arm64"]
+    },
+    {
+      "id": "packed-prime-polynomial-production",
+      "source": "src/lib/sagejs/kernels/polynomial/packed_prime_field.py",
+      "functions": [
+        "packed_prime_field_polynomial_add",
+        "packed_prime_field_polynomial_subtract",
+        "packed_prime_field_polynomial_negate",
+        "packed_prime_field_polynomial_multiply",
+        "packed_prime_field_polynomial_equal"
+      ],
+      "semantic_domain": "production normalized GF(p)[x] coefficient arithmetic over compiler-owned UInt64Buffer storage",
+      "fallback": "same-source",
+      "host_isolation": "certified",
+      "oracles": ["cpython", "javascript", "flint", "legacy-napi"],
+      "benchmark": "test:polynomial:performance",
+      "platforms": ["linux-x64", "linux-arm64", "windows-x64", "macos-arm64"]
+    },
+    {
+      "id": "packed-polynomial-flint-production",
+      "source": "src/lib/sagejs/kernels/polynomial/packed_flint.py",
+      "functions": [
+        "flint_packed_integer_polynomial_multiply",
+        "flint_packed_rational_polynomial_multiply",
+        "flint_packed_prime_field_polynomial_multiply",
+        "flint_packed_integer_polynomial_divexact",
+        "flint_packed_rational_polynomial_divexact",
+        "flint_packed_prime_field_polynomial_divexact",
+        "flint_packed_prime_field_polynomial_gcd",
+        "flint_packed_prime_field_polynomial_is_irreducible",
+        "flint_packed_prime_field_polynomial_factor",
+        "flint_packed_prime_field_polynomial_roots",
+        "flint_packed_integer_polynomial_factor",
+        "flint_packed_rational_polynomial_factor"
+      ],
+      "semantic_domain": "mature FLINT polynomial algorithms over caller-owned packed ZZ, QQ, and GF(p) coefficient storage through declared FFI",
+      "fallback": "same-source",
+      "host_isolation": "certified",
+      "oracles": ["cpython", "javascript", "flint", "legacy-napi"],
+      "benchmark": "test:polynomial:performance",
+      "platforms": ["linux-x64", "linux-arm64", "windows-x64", "macos-arm64"]
+    },
+    {
       "id": "compiler-owned-record-witness",
       "source": "bench/native_record_witness.py",
       "functions": ["scaled_sum", "scale_first", "scaled_sum_constructed"],

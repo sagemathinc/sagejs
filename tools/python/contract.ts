@@ -155,6 +155,7 @@ export const SAGEJS_RUNTIME_INTRINSICS: Record<string, string> = {
   integer_buffer_used_word_capacity: "ρσ_integer_buffer_used_word_capacity",
   uint64_buffer: "ρσ_uint64_buffer",
   uint64_buffer_prefix: "ρσ_uint64_buffer_prefix",
+  integer_buffer_prefix: "ρσ_integer_buffer_prefix",
   uint64_residue_buffer: "ρσ_uint64_residue_buffer",
   undefined: "undefined",
   wall_time: "ρσ_wall_time",

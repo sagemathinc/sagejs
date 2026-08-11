@@ -30,6 +30,14 @@ const flintAddon = join(
   "Release",
   "sagejs_flint.node",
 );
+const flintFfiAddon = join(
+  root,
+  "packages",
+  "flint",
+  "build",
+  "generated-ffi",
+  "sagejs_flint_ffi.node",
+);
 const graphAddon = join(
   root,
   "packages",
@@ -37,6 +45,14 @@ const graphAddon = join(
   "build",
   "Release",
   "sagejs_graph.node",
+);
+const graphFfiAddon = join(
+  root,
+  "packages",
+  "graph",
+  "build",
+  "generated-ffi",
+  "sagejs_igraph_ffi.node",
 );
 
 const args = new Set(process.argv.slice(2));
@@ -211,10 +227,22 @@ function buildExecutable(name, withFlint) {
         "`pnpm --dir packages/flint build` first",
     );
   }
+  if (withFlint && !existsSync(flintFfiAddon)) {
+    throw new Error(
+      `generated FLINT FFI addon not found at ${relative(root, flintFfiAddon)}; ` +
+        "run `pnpm --dir packages/flint build` first",
+    );
+  }
   if (withFlint && !existsSync(graphAddon)) {
     throw new Error(
       `igraph addon not found at ${relative(root, graphAddon)}; run ` +
         "`pnpm --dir packages/graph build` first",
+    );
+  }
+  if (withFlint && !existsSync(graphFfiAddon)) {
+    throw new Error(
+      `generated igraph FFI addon not found at ${relative(root, graphFfiAddon)}; ` +
+        "run `pnpm --dir packages/graph build` first",
     );
   }
   const output = join(outputDirectory, name);
@@ -323,7 +351,9 @@ function buildExecutable(name, withFlint) {
   };
   if (withFlint) {
     assets["native/sagejs_flint.node"] = flintAddon;
+    assets["native/sagejs_flint_ffi.node"] = flintFfiAddon;
     assets["native/sagejs_graph.node"] = graphAddon;
+    assets["native/sagejs_igraph_ffi.node"] = graphFfiAddon;
   }
 
   writeFileSync(

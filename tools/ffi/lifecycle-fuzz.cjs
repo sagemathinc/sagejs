@@ -33,9 +33,13 @@ function dynamicLifecycleFuzz() {
       for (let index = 0; index < cycleVertices; index += 1) {
         edges.push(BigInt(index), BigInt((index + 1) % cycleVertices));
       }
-      const labels = Array(cycleVertices).fill(0n);
+      const labels = new BigUint64Array(cycleVertices);
       assert.equal(graph.ffiCanonicalPermutationPacked(
-        labels, edges, BigInt(cycleVertices), BigInt(edges.length), false,
+        labels,
+        BigUint64Array.from(edges),
+        BigInt(cycleVertices),
+        BigInt(edges.length),
+        false,
       ), true);
       assert.deepEqual([...labels].sort((a, b) => Number(a - b)),
         Array.from({ length: cycleVertices }, (_, index) => BigInt(index)));

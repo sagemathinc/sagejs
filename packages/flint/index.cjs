@@ -733,6 +733,90 @@ function ffiNmodPolynomial(coefficients, modulus) {
   return result;
 }
 
+function ffiFmpzPolynomial(coefficients) {
+  const x = binding.zzPolyGen();
+  let result = binding.zzPolyConstant(0n);
+  for (let index = coefficients.length - 1; index >= 0; index -= 1) {
+    result = binding.polyAdd(
+      binding.polyMul(result, x),
+      binding.zzPolyConstant(coefficients[index]),
+    );
+  }
+  return result;
+}
+
+function ffiFmpqPolynomial(numerators, denominators) {
+  const x = binding.qqPolyGen();
+  let result = binding.qqPolyConstant(0n, 1n);
+  for (let index = numerators.length - 1; index >= 0; index -= 1) {
+    result = binding.polyAdd(
+      binding.polyMul(result, x),
+      binding.qqPolyConstant(numerators[index], denominators[index]),
+    );
+  }
+  return result;
+}
+
+binding.ffiFmpzPolyMul = function ffiFmpzPolyMul(
+  output, left, right, outputLengthValue, leftLengthValue, rightLengthValue,
+  oneValue,
+) {
+  const outputLength = ffiDimension(outputLengthValue, "output_length");
+  const leftLength = ffiDimension(leftLengthValue, "left_length");
+  const rightLength = ffiDimension(rightLengthValue, "right_length");
+  const one = ffiDimension(oneValue, "one");
+  const expected = leftLength === 0 || rightLength === 0
+    ? 0 : leftLength + rightLength - 1;
+  if (!Number.isSafeInteger(expected) || one !== 1 ||
+      outputLength !== expected) return false;
+  const product = binding.polyMul(
+    ffiFmpzPolynomial(ffiIntegerEntries(left, leftLength, "left")),
+    ffiFmpzPolynomial(ffiIntegerEntries(right, rightLength, "right")),
+  );
+  const coefficients = binding.polyCoefficients(product);
+  ffiWriteIntegers(output, Array.from(
+    { length: outputLength }, (_, index) => BigInt(coefficients[index] ?? 0n),
+  ));
+  return true;
+};
+
+binding.ffiFmpqPolyMul = function ffiFmpqPolyMul(
+  outputNumerators, outputDenominators,
+  leftNumerators, leftDenominators,
+  rightNumerators, rightDenominators,
+  outputLengthValue, leftLengthValue, rightLengthValue, oneValue,
+) {
+  const outputLength = ffiDimension(outputLengthValue, "output_length");
+  const leftLength = ffiDimension(leftLengthValue, "left_length");
+  const rightLength = ffiDimension(rightLengthValue, "right_length");
+  const one = ffiDimension(oneValue, "one");
+  const expected = leftLength === 0 || rightLength === 0
+    ? 0 : leftLength + rightLength - 1;
+  if (!Number.isSafeInteger(expected) || one !== 1 ||
+      outputLength !== expected) return false;
+  const product = binding.polyMul(
+    ffiFmpqPolynomial(
+      ffiIntegerEntries(leftNumerators, leftLength, "left_numerators"),
+      ffiIntegerEntries(leftDenominators, leftLength, "left_denominators"),
+    ),
+    ffiFmpqPolynomial(
+      ffiIntegerEntries(rightNumerators, rightLength, "right_numerators"),
+      ffiIntegerEntries(rightDenominators, rightLength, "right_denominators"),
+    ),
+  );
+  const coefficients = binding.polyCoefficients(product);
+  const numerators = [];
+  const denominators = [];
+  for (let index = 0; index < outputLength; index += 1) {
+    const coefficient = coefficients[index];
+    numerators.push(BigInt(coefficient?.numerator ?? 0n));
+    denominators.push(BigInt(coefficient?.denominator ?? 1n));
+  }
+  ffiWriteIntegers(outputNumerators, numerators, "output_numerators");
+  ffiWriteIntegers(outputDenominators, denominators, "output_denominators");
+  return true;
+};
+
 /* A second substantial FLINT migration through the generic packed-slice ABI.
  * The dynamic path deliberately uses existing safe polynomial objects as its
  * differential oracle; native kernels call the packed host-neutral adapter. */
@@ -766,6 +850,280 @@ binding.ffiNmodPolyMul = function ffiNmodPolyMul(
   return true;
 };
 
+function ffiWriteResidues(output, values, name = "output") {
+  ffiEntries(output, values.length, name);
+  for (let index = 0; index < values.length; index += 1) {
+    if (!Reflect.set(output, String(index), BigInt(values[index]))) {
+      throw new TypeError(`${name} buffer is not writable`);
+    }
+  }
+}
+
+binding.ffiNmodPolyDivExact = function ffiNmodPolyDivExact(
+  output, left, right, outputLengthValue, leftLengthValue, rightLengthValue,
+  modulusValue,
+) {
+  const outputLength = ffiDimension(outputLengthValue, "output_length");
+  const leftLength = ffiDimension(leftLengthValue, "left_length");
+  const rightLength = ffiDimension(rightLengthValue, "right_length");
+  const modulus = BigInt(modulusValue);
+  if (outputLength !== leftLength || rightLength === 0) return false;
+  let quotient;
+  try {
+    quotient = binding.polyDivExact(
+      ffiNmodPolynomial(ffiEntries(left, leftLength, "left"), modulus),
+      ffiNmodPolynomial(ffiEntries(right, rightLength, "right"), modulus),
+    );
+  } catch (error) {
+    if (String(error?.message || error).includes("not exact")) return false;
+    throw error;
+  }
+  const coefficients = binding.polyCoefficients(quotient);
+  ffiWriteResidues(output, Array.from(
+    { length: outputLength }, (_, index) => coefficients[index] ?? 0n,
+  ));
+  return true;
+};
+
+binding.ffiFmpzPolyDivExact = function ffiFmpzPolyDivExact(
+  output, left, right, outputLengthValue, leftLengthValue, rightLengthValue,
+  oneValue,
+) {
+  const outputLength = ffiDimension(outputLengthValue, "output_length");
+  const leftLength = ffiDimension(leftLengthValue, "left_length");
+  const rightLength = ffiDimension(rightLengthValue, "right_length");
+  if (ffiDimension(oneValue, "one") !== 1 ||
+      outputLength !== leftLength || rightLength === 0) return false;
+  let quotient;
+  try {
+    quotient = binding.polyDivExact(
+      ffiFmpzPolynomial(ffiIntegerEntries(left, leftLength, "left")),
+      ffiFmpzPolynomial(ffiIntegerEntries(right, rightLength, "right")),
+    );
+  } catch (error) {
+    if (String(error?.message || error).includes("not exact")) return false;
+    throw error;
+  }
+  const coefficients = binding.polyCoefficients(quotient);
+  ffiWriteIntegers(output, Array.from(
+    { length: outputLength }, (_, index) => coefficients[index] ?? 0n,
+  ));
+  return true;
+};
+
+binding.ffiFmpqPolyDivExact = function ffiFmpqPolyDivExact(
+  outputNumerators, outputDenominators,
+  leftNumerators, leftDenominators, rightNumerators, rightDenominators,
+  outputLengthValue, leftLengthValue, rightLengthValue, oneValue,
+) {
+  const outputLength = ffiDimension(outputLengthValue, "output_length");
+  const leftLength = ffiDimension(leftLengthValue, "left_length");
+  const rightLength = ffiDimension(rightLengthValue, "right_length");
+  if (ffiDimension(oneValue, "one") !== 1 ||
+      outputLength !== leftLength || rightLength === 0) return false;
+  let quotient;
+  try {
+    quotient = binding.polyDivExact(
+      ffiFmpqPolynomial(
+        ffiIntegerEntries(leftNumerators, leftLength, "left_numerators"),
+        ffiIntegerEntries(leftDenominators, leftLength, "left_denominators"),
+      ),
+      ffiFmpqPolynomial(
+        ffiIntegerEntries(rightNumerators, rightLength, "right_numerators"),
+        ffiIntegerEntries(rightDenominators, rightLength, "right_denominators"),
+      ),
+    );
+  } catch (error) {
+    if (String(error?.message || error).includes("not exact")) return false;
+    throw error;
+  }
+  const coefficients = binding.polyCoefficients(quotient);
+  const numerators = [];
+  const denominators = [];
+  for (let index = 0; index < outputLength; index += 1) {
+    const coefficient = coefficients[index];
+    numerators.push(BigInt(coefficient?.numerator ?? 0n));
+    denominators.push(BigInt(coefficient?.denominator ?? 1n));
+  }
+  ffiWriteIntegers(outputNumerators, numerators, "output_numerators");
+  ffiWriteIntegers(outputDenominators, denominators, "output_denominators");
+  return true;
+};
+
+binding.ffiNmodPolyGcd = function ffiNmodPolyGcd(
+  output, left, right, outputLengthValue, leftLengthValue, rightLengthValue,
+  modulusValue,
+) {
+  const outputLength = ffiDimension(outputLengthValue, "output_length");
+  const leftLength = ffiDimension(leftLengthValue, "left_length");
+  const rightLength = ffiDimension(rightLengthValue, "right_length");
+  const modulus = BigInt(modulusValue);
+  if (outputLength < leftLength || outputLength < rightLength) return false;
+  const gcd = binding.nmodPolyGcd(
+    ffiNmodPolynomial(ffiEntries(left, leftLength, "left"), modulus),
+    ffiNmodPolynomial(ffiEntries(right, rightLength, "right"), modulus),
+  );
+  const coefficients = binding.polyCoefficients(gcd);
+  ffiWriteResidues(output, Array.from(
+    { length: outputLength }, (_, index) => coefficients[index] ?? 0n,
+  ));
+  return true;
+};
+
+binding.ffiNmodPolyIsIrreducible = function ffiNmodPolyIsIrreducible(
+  source, sourceLengthValue, modulusValue,
+) {
+  const sourceLength = ffiDimension(sourceLengthValue, "source_length");
+  return binding.nmodPolyIsIrreducible(ffiNmodPolynomial(
+    ffiEntries(source, sourceLength, "source"), BigInt(modulusValue),
+  ));
+};
+
+binding.ffiNmodPolyFactor = function ffiNmodPolyFactor(
+  factorCoefficients, offsets, exponents, factorCount, unitOutput, source,
+  factorCoefficientsLengthValue, offsetsLengthValue, exponentsLengthValue,
+  factorCountLengthValue, unitLengthValue, sourceLengthValue, modulusValue,
+) {
+  const factorCoefficientsLength = ffiDimension(
+    factorCoefficientsLengthValue, "factor_coefficients_length",
+  );
+  const offsetsLength = ffiDimension(offsetsLengthValue, "offsets_length");
+  const exponentsLength = ffiDimension(
+    exponentsLengthValue, "exponents_length",
+  );
+  const sourceLength = ffiDimension(sourceLengthValue, "source_length");
+  if (ffiDimension(factorCountLengthValue, "factor_count_length") !== 1 ||
+      ffiDimension(unitLengthValue, "unit_length") !== 1 ||
+      offsetsLength !== sourceLength || exponentsLength + 1 !== sourceLength) {
+    return false;
+  }
+  const result = binding.nmodPolyFactor(ffiNmodPolynomial(
+    ffiEntries(source, sourceLength, "source"), BigInt(modulusValue),
+  ));
+  const flattened = [];
+  const factorOffsets = [0n];
+  const factorExponents = Array(exponentsLength).fill(0n);
+  for (let index = 0; index < result.factors.length; index += 1) {
+    flattened.push(...binding.polyCoefficients(result.factors[index][0]));
+    factorOffsets.push(BigInt(flattened.length));
+    factorExponents[index] = BigInt(result.factors[index][1]);
+  }
+  if (flattened.length > factorCoefficientsLength) return false;
+  ffiWriteResidues(factorCoefficients, [
+    ...flattened,
+    ...Array(factorCoefficientsLength - flattened.length).fill(0n),
+  ], "factor_coefficients");
+  ffiWriteResidues(offsets, [
+    ...factorOffsets,
+    ...Array(offsetsLength - factorOffsets.length).fill(0n),
+  ], "offsets");
+  ffiWriteResidues(exponents, factorExponents, "exponents");
+  ffiWriteResidues(factorCount, [BigInt(result.factors.length)], "factor_count");
+  ffiWriteResidues(unitOutput, [BigInt(result.unit)], "unit_output");
+  return true;
+};
+
+binding.ffiNmodPolyRoots = function ffiNmodPolyRoots(
+  rootValues, multiplicities, rootCount, source,
+  rootValuesLengthValue, multiplicitiesLengthValue, rootCountLengthValue,
+  sourceLengthValue, modulusValue,
+) {
+  const rootValuesLength = ffiDimension(
+    rootValuesLengthValue, "root_values_length",
+  );
+  const multiplicitiesLength = ffiDimension(
+    multiplicitiesLengthValue, "multiplicities_length",
+  );
+  const sourceLength = ffiDimension(sourceLengthValue, "source_length");
+  if (ffiDimension(rootCountLengthValue, "root_count_length") !== 1 ||
+      rootValuesLength + 1 !== sourceLength ||
+      multiplicitiesLength !== rootValuesLength) return false;
+  const roots = binding.nmodPolyRoots(ffiNmodPolynomial(
+    ffiEntries(source, sourceLength, "source"), BigInt(modulusValue),
+  ));
+  ffiWriteResidues(rootValues, [
+    ...roots.map((pair) => BigInt(pair[0])),
+    ...Array(rootValuesLength - roots.length).fill(0n),
+  ], "root_values");
+  ffiWriteResidues(multiplicities, [
+    ...roots.map((pair) => BigInt(pair[1])),
+    ...Array(multiplicitiesLength - roots.length).fill(0n),
+  ], "multiplicities");
+  ffiWriteResidues(rootCount, [BigInt(roots.length)], "root_count");
+  return true;
+};
+
+function ffiWriteFmpzFactorization(
+  result, factorCoefficients, offsets, exponents, factorCount,
+  unitNumerator, unitDenominator, factorCoefficientsLength, sourceLength,
+) {
+  const flattened = [];
+  const factorOffsets = [0n];
+  const factorExponents = Array(sourceLength).fill(0n);
+  for (let index = 0; index < result.factors.length; index += 1) {
+    const coefficients = binding.polyCoefficients(result.factors[index][0]);
+    flattened.push(...coefficients.map((coefficient) =>
+      BigInt(coefficient?.numerator ?? coefficient)));
+    factorOffsets.push(BigInt(flattened.length));
+    factorExponents[index] = BigInt(result.factors[index][1]);
+  }
+  if (flattened.length > factorCoefficientsLength) return false;
+  ffiWriteIntegers(factorCoefficients, [
+    ...flattened,
+    ...Array(factorCoefficientsLength - flattened.length).fill(0n),
+  ], "factor_coefficients");
+  ffiWriteResidues(offsets, [
+    ...factorOffsets,
+    ...Array(sourceLength - factorOffsets.length).fill(0n),
+  ], "offsets");
+  ffiWriteResidues(exponents, factorExponents, "exponents");
+  ffiWriteResidues(factorCount, [BigInt(result.factors.length)], "factor_count");
+  ffiWriteIntegers(unitNumerator, [BigInt(result.unitNumerator)], "unit_numerator");
+  ffiWriteIntegers(
+    unitDenominator, [BigInt(result.unitDenominator)], "unit_denominator",
+  );
+  return true;
+}
+
+binding.ffiFmpzPolyFactor = function ffiFmpzPolyFactor(
+  factorCoefficients, offsets, exponents, factorCount,
+  unitNumerator, unitDenominator, source,
+  factorCoefficientsLengthValue, sourceLengthValue, oneValue,
+) {
+  const factorCoefficientsLength = ffiDimension(
+    factorCoefficientsLengthValue, "factor_coefficients_length",
+  );
+  const sourceLength = ffiDimension(sourceLengthValue, "source_length");
+  if (ffiDimension(oneValue, "one") !== 1) return false;
+  const result = binding.polyFactor(ffiFmpzPolynomial(
+    ffiIntegerEntries(source, sourceLength, "source"),
+  ));
+  return ffiWriteFmpzFactorization(
+    result, factorCoefficients, offsets, exponents, factorCount,
+    unitNumerator, unitDenominator, factorCoefficientsLength, sourceLength,
+  );
+};
+
+binding.ffiFmpqPolyFactor = function ffiFmpqPolyFactor(
+  factorCoefficients, offsets, exponents, factorCount,
+  unitNumerator, unitDenominator, sourceNumerators, sourceDenominators,
+  factorCoefficientsLengthValue, sourceLengthValue, oneValue,
+) {
+  const factorCoefficientsLength = ffiDimension(
+    factorCoefficientsLengthValue, "factor_coefficients_length",
+  );
+  const sourceLength = ffiDimension(sourceLengthValue, "source_length");
+  if (ffiDimension(oneValue, "one") !== 1) return false;
+  const result = binding.polyFactor(ffiFmpqPolynomial(
+    ffiIntegerEntries(sourceNumerators, sourceLength, "source_numerators"),
+    ffiIntegerEntries(sourceDenominators, sourceLength, "source_denominators"),
+  ));
+  return ffiWriteFmpzFactorization(
+    result, factorCoefficients, offsets, exponents, factorCount,
+    unitNumerator, unitDenominator, factorCoefficientsLength, sourceLength,
+  );
+};
+
 /* Generated-resource adapters keep the public declaration surface independent
  * of the older high-level package naming.  Only the close adapter owns a
  * lifetime transition; borrowed queries never retain the handle.
@@ -780,6 +1138,38 @@ function ffiDirichletGroupNumPrimitive(group) {
   return BigInt(binding.dirichletGroupData(group).numberPrimitive);
 };
 
+/* Every non-resource declaration is compiled into this addon from the
+ * generated typed-Python bodies in generated/ffi_host.py.  Save the old
+ * handwritten implementations as differential oracles, then make the
+ * compiler-generated boundary canonical. */
+const generatedFfiManifest = require("./build/generated-ffi/manifest.json");
+const generatedFfi = require(
+  `./build/generated-ffi/${generatedFfiManifest.addon}`,
+);
+const publicBinding = Object.create(null);
+for (const name of Reflect.ownKeys(binding)) {
+  publicBinding[name] = binding[name];
+}
+const declaredFfiOracles = Object.create(null);
+for (const item of generatedFfiManifest.functions) {
+  const name = item.export;
+  if (typeof publicBinding[name] === "function") {
+    declaredFfiOracles[name] = publicBinding[name];
+  }
+  if (typeof generatedFfi[name] !== "function") {
+    throw new Error(`generated FLINT FFI adapter is missing ${name}`);
+  }
+  publicBinding[name] = generatedFfi[name];
+}
+Object.defineProperty(publicBinding, "__sagejs_ffi_oracles__", {
+  value: Object.freeze(declaredFfiOracles),
+  enumerable: false,
+});
+Object.defineProperty(publicBinding, "__sagejs_ffi_manifest__", {
+  value: Object.freeze(generatedFfiManifest),
+  enumerable: false,
+});
+
 /* A diagnostic hard boundary for the packed-matrix architecture tests.  The
  * proxy leaves declared FFI exports available but makes any accidental use of
  * the historical high-level N-API matrix surface fail at its first call. */
@@ -788,11 +1178,14 @@ const forbidZzMatrixNapi =
   process.env.SAGEJS_FORBID_ZZ_MATRIX_NAPI === "1";
 const forbidQqMatrixNapi =
   process.env.SAGEJS_FORBID_QQ_MATRIX_NAPI === "1";
+const forbidPolynomialNapi =
+  process.env.SAGEJS_FORBID_POLYNOMIAL_NAPI === "1";
 
-module.exports = forbidMatrixNapi || forbidZzMatrixNapi || forbidQqMatrixNapi
+module.exports = forbidMatrixNapi || forbidZzMatrixNapi || forbidQqMatrixNapi ||
+    forbidPolynomialNapi
   ? new Proxy(Object.create(null), {
     has(_target, property) {
-      return Reflect.has(binding, property);
+      return Reflect.has(publicBinding, property);
     },
     get(_target, property) {
       if (typeof property === "string" &&
@@ -806,12 +1199,15 @@ module.exports = forbidMatrixNapi || forbidZzMatrixNapi || forbidQqMatrixNapi
            (forbidQqMatrixNapi &&
             (property === "qqMatrix" || property === "qqMatrixPacked" ||
              property === "qqMatrixExportPacked" ||
-             property === "zzMatrixToQQ")))) {
-        return function forbiddenMatrixNapi() {
-          throw new Error(`forbidden legacy matrix N-API call: ${property}`);
+             property === "zzMatrixToQQ")) ||
+           (forbidPolynomialNapi &&
+            (/^(?:zz|qq|nmod)Poly[A-Z]/.test(property) ||
+             /^poly[A-Z]/.test(property))))) {
+        return function forbiddenLegacyNapi() {
+          throw new Error(`forbidden legacy mathematical N-API call: ${property}`);
         };
       }
-      return Reflect.get(binding, property);
+      return Reflect.get(publicBinding, property);
     },
   })
-  : binding;
+  : publicBinding;
