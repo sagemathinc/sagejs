@@ -10,6 +10,7 @@ from __future__ import annotations
 
 from sagejs.ffi.flint import (
     DirichletGroup,
+    ExactPolynomialFactorization,
     FlintByteRegion,
     FmpqMatrix,
     FmpqPolynomial,
@@ -27,6 +28,7 @@ from sagejs.ffi.flint import (
     fmpz_polynomial_neg as _ffi_fmpz_polynomial_neg,
     fmpz_polynomial_mul as _ffi_fmpz_polynomial_mul,
     fmpz_polynomial_gcd as _ffi_fmpz_polynomial_gcd,
+    fmpz_polynomial_factor_resource as _ffi_fmpz_polynomial_factor_resource,
     fmpz_polynomial_divexact as _ffi_fmpz_polynomial_divexact,
     fmpz_polynomial_pow as _ffi_fmpz_polynomial_pow,
     fmpz_polynomial_evaluate as _ffi_fmpz_polynomial_evaluate,
@@ -45,6 +47,13 @@ from sagejs.ffi.flint import (
     fmpq_polynomial_neg as _ffi_fmpq_polynomial_neg,
     fmpq_polynomial_mul as _ffi_fmpq_polynomial_mul,
     fmpq_polynomial_gcd as _ffi_fmpq_polynomial_gcd,
+    fmpq_polynomial_factor_resource as _ffi_fmpq_polynomial_factor_resource,
+    exact_polynomial_factorization_count as _ffi_exact_polynomial_factorization_count,
+    exact_polynomial_factorization_exponent as _ffi_exact_polynomial_factorization_exponent,
+    exact_polynomial_factorization_unit_numerator as _ffi_exact_polynomial_factorization_unit_numerator,
+    exact_polynomial_factorization_unit_denominator as _ffi_exact_polynomial_factorization_unit_denominator,
+    exact_polynomial_factorization_fmpz_factor as _ffi_exact_polynomial_factorization_fmpz_factor,
+    exact_polynomial_factorization_fmpq_factor as _ffi_exact_polynomial_factorization_fmpq_factor,
     fmpq_polynomial_divexact as _ffi_fmpq_polynomial_divexact,
     fmpq_polynomial_pow as _ffi_fmpq_polynomial_pow,
     fmpq_polynomial_evaluate as _ffi_fmpq_polynomial_evaluate,
@@ -291,6 +300,15 @@ def ffiFmpzPolynomialGcd(
 
 
 @native
+def ffiFmpzPolynomialFactorResource(
+    source: FmpzPolynomial,
+) -> ExactPolynomialFactorization:
+    return _ffi_fmpz_polynomial_factor_resource(
+        source,
+    )
+
+
+@native
 def ffiFmpzPolynomialDivExact(
     dividend: FmpzPolynomial,
     divisor: FmpzPolynomial,
@@ -481,6 +499,75 @@ def ffiFmpqPolynomialGcd(
     return _ffi_fmpq_polynomial_gcd(
         left,
         right,
+    )
+
+
+@native
+def ffiFmpqPolynomialFactorResource(
+    source: FmpqPolynomial,
+) -> ExactPolynomialFactorization:
+    return _ffi_fmpq_polynomial_factor_resource(
+        source,
+    )
+
+
+@native
+def ffiExactPolynomialFactorizationCount(
+    factorization: ExactPolynomialFactorization,
+) -> Integer:
+    return _ffi_exact_polynomial_factorization_count(
+        factorization,
+    )
+
+
+@native
+def ffiExactPolynomialFactorizationExponent(
+    factorization: ExactPolynomialFactorization,
+    index: uint64,
+) -> Integer:
+    return _ffi_exact_polynomial_factorization_exponent(
+        factorization,
+        index,
+    )
+
+
+@native
+def ffiExactPolynomialFactorizationUnitNumerator(
+    factorization: ExactPolynomialFactorization,
+) -> Integer:
+    return _ffi_exact_polynomial_factorization_unit_numerator(
+        factorization,
+    )
+
+
+@native
+def ffiExactPolynomialFactorizationUnitDenominator(
+    factorization: ExactPolynomialFactorization,
+) -> Integer:
+    return _ffi_exact_polynomial_factorization_unit_denominator(
+        factorization,
+    )
+
+
+@native
+def ffiExactPolynomialFactorizationFmpzFactor(
+    factorization: ExactPolynomialFactorization,
+    index: uint64,
+) -> FmpzPolynomial:
+    return _ffi_exact_polynomial_factorization_fmpz_factor(
+        factorization,
+        index,
+    )
+
+
+@native
+def ffiExactPolynomialFactorizationFmpqFactor(
+    factorization: ExactPolynomialFactorization,
+    index: uint64,
+) -> FmpqPolynomial:
+    return _ffi_exact_polynomial_factorization_fmpq_factor(
+        factorization,
+        index,
     )
 
 

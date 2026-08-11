@@ -73,6 +73,11 @@ const cases = [
     budget: 10,
   },
   {
+    name: "factor_ZZ_80",
+    expression: "exact_z.factor()",
+    budget: 50,
+  },
+  {
     name: "factor_QQ_60",
     expression: "exact_q.factor()",
     budget: 50,

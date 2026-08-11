@@ -1,0 +1,96 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "exact-polynomial-factorization-resource",
+  "title": "Owned exact polynomial factorization resources",
+  "lane": "integration",
+  "status": "review",
+  "owner": "codex",
+  "objective": "Replace packed capacity-retry factorization of ZZ[x] and QQ[x] with generated callee-owned FLINT factorization resources that compute once, expose unit factors and exponents safely, preserve Sage semantics and portable fallback behavior, and require no operation-specific compiler changes",
+  "base_commit": "7fefa63e8ec4cff952789b2f37a1b950d9a1f762",
+  "claims": [
+    "ARCHITECTURE.md",
+    "ffi/flint.ffi.py",
+    "ffi/flint.ffi.json",
+    "packages/flint/generated/",
+    "packages/flint/include/sagejs/",
+    "src/lib/sagejs/ffi/",
+    "src/baselib/sagejs/ffi/",
+    "src/baselib/polynomial.py",
+    "architecture/",
+    "test/node-test-manifest.cjs",
+    "test/ffi.cjs",
+    "test/exact-polynomial-factorization-resource.cjs",
+    "bench/exact-polynomial-factorization-resource.cjs",
+    "scripts/check-polynomial-budget.cjs"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "external-library",
+    "fallback": "tested-capability",
+    "oracles": [
+      "FLINT upstream exact factorization",
+      "existing ordinary-Python and Sage-compatible factorization semantics"
+    ],
+    "exceptions": [
+      "This coherent migration spans declarations, generated resource ownership, public polynomial routing, lifecycle tests, and performance ratchets; splitting it would leave an unverified partial ABI."
+    ]
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm architecture:check",
+    "pnpm test:portable",
+    "pnpm test:baselib:strict"
+  ],
+  "runs": [
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 12.254,
+      "started_at": "2026-08-11T18:23:14.687Z",
+      "commit": "7fefa63e8ec4cff952789b2f37a1b950d9a1f762",
+      "workspace_fingerprint": "f731d17360d1eb8b8806c8642e80e1d4a4bd9e91ff2be9c3b64595503346c15d",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 35.521,
+      "started_at": "2026-08-11T18:23:33.630Z",
+      "commit": "7fefa63e8ec4cff952789b2f37a1b950d9a1f762",
+      "workspace_fingerprint": "f731d17360d1eb8b8806c8642e80e1d4a4bd9e91ff2be9c3b64595503346c15d",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 12.251,
+      "started_at": "2026-08-11T18:24:20.164Z",
+      "commit": "7fefa63e8ec4cff952789b2f37a1b950d9a1f762",
+      "workspace_fingerprint": "f731d17360d1eb8b8806c8642e80e1d4a4bd9e91ff2be9c3b64595503346c15d",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "ZZ[x] and QQ[x] now factor once into a generated callee-owned ExactPolynomialFactorization resource. Public Node factorization queries the unit, exponents, and factor count as scalars, copies each variable-size FLINT factor directly into an independent sealed polynomial resource, and closes the owner in finally; it never materializes packed compatibility storage, chooses a uniform limb capacity, retries computation, loops over coefficients, or calls legacy N-API. Existing packed factorization remains the tested portable capability fallback. Focused tests cover public and direct generated adapters, native-disabled and forced-portable execution, constants and zero, 65,537-bit skew, owner/factor lifetime independence, wrong/closed resources, injected failures, idempotent close, external-memory accounting, and ASan/UBSan lifecycle fuzzing. A five-sample skew benchmark measured 2.59 ms median over ZZ and 3.29 ms over QQ on this host, and the repository polynomial performance budget gained a ZZ factorization ratchet.",
+    "risks": [
+      "The new owned factorization declaration is currently wasm=False; browser execution deliberately retains the existing packed declared-FLINT fallback until generated resource ownership has a Wasm host adapter.",
+      "Physical retained-size accounting reads the pinned FLINT fmpz_poly_factor layout, so a future FLINT ABI upgrade must revalidate the accounting header and sanitizer harness.",
+      "Only linux-x64 was exercised locally; generated declarations preserve the required Windows, macOS, and arm64 policy, whose CI remains the platform oracle."
+    ],
+    "next_steps": [
+      "Independently review generated ownership, retained-size accounting, and Sage-compatible unit normalization before integration.",
+      "Add generated Wasm lowering for owned factorization resources, then route the portable browser path through the same callee-owned protocol when supported.",
+      "Keep packed exact factorization only as the explicit portable interchange fallback; remove it once every supported host can own generated FLINT resources."
+    ]
+  }
+}
