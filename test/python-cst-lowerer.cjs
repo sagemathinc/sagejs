@@ -13,6 +13,10 @@ const {
 const {
   comparePythonFrontends,
 } = require("../dist/tools/python/differential.js");
+const {
+  installTimingHooks,
+  measureInitialization,
+} = require("../dist/tools/timing.js");
 
 const parserOptions = {
   filename: "<cst-lowering>",
@@ -182,6 +186,70 @@ test("Sage percent-time is represented and emitted by the compiler", async () =>
     assert.match(output.get(), /performance\.now\(\)/);
     assert.doesNotThrow(() => new Script(output.get()));
   } finally {
+    frontend.close();
+  }
+});
+
+test("compiler-emitted timing closes its collector when execution raises", async () => {
+  const compiler = createCompiler();
+  const frontend = await createPythonCompilerFrontend(compiler, "sage");
+  const previousBoom = Object.getOwnPropertyDescriptor(globalThis, "boom");
+  const previousResolveCallable = Object.getOwnPropertyDescriptor(
+    globalThis,
+    "ρσ_resolve_callable",
+  );
+  const reports = [];
+  const uninstallTimingHooks = installTimingHooks(globalThis, (text) =>
+    reports.push(text),
+  );
+  const installedStart = globalThis.__sagejs_timing_start__;
+  const installedFinish = globalThis.__sagejs_timing_finish__;
+  let token;
+  let completedTiming;
+  globalThis.__sagejs_timing_start__ = () => {
+    token = installedStart();
+    return token;
+  };
+  globalThis.__sagejs_timing_finish__ = (candidate) => {
+    completedTiming = installedFinish(candidate);
+    return completedTiming;
+  };
+  const failure = new Error("timed failure");
+  globalThis.boom = () => {
+    throw failure;
+  };
+  globalThis.ρσ_resolve_callable = (value) => value;
+  try {
+    const ast = frontend.parse("%time boom()\n", parserOptions);
+    const output = new compiler.OutputStream(outputOptions);
+    ast.print(output);
+
+    assert.throws(
+      () => new Script(output.get()).runInThisContext(),
+      (error) => error === failure,
+    );
+    measureInitialization("unrelated later initialization", () => undefined);
+
+    assert.equal(token.finished, true);
+    assert.deepEqual(completedTiming.initialization, []);
+    assert.equal(reports.length, 1);
+  } finally {
+    if (token && !token.finished) installedFinish(token);
+    uninstallTimingHooks();
+    if (previousBoom) {
+      Object.defineProperty(globalThis, "boom", previousBoom);
+    } else {
+      delete globalThis.boom;
+    }
+    if (previousResolveCallable) {
+      Object.defineProperty(
+        globalThis,
+        "ρσ_resolve_callable",
+        previousResolveCallable,
+      );
+    } else {
+      delete globalThis.ρσ_resolve_callable;
+    }
     frontend.close();
   }
 });

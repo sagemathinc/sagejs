@@ -201,13 +201,44 @@
       "commit": "b21b652c83afe6867ef17da61b691abf40ab6f9f",
       "workspace_fingerprint": "ce4ffe372dfc90895d407048cbb79c55766a039d1090fe3eb9ac81aae02c3cc8",
       "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm build",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 150.691,
+      "started_at": "2026-08-11T23:48:10.428Z",
+      "commit": "9f0985f875ddff5e60459b9f82305db89f9c045c",
+      "workspace_fingerprint": "1b9faf61404e84a4b374c8055488678fe7ee607c0734bce9d3982bc2aad1434d",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:compiler",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 77.276,
+      "started_at": "2026-08-11T23:50:44.811Z",
+      "commit": "9f0985f875ddff5e60459b9f82305db89f9c045c",
+      "workspace_fingerprint": "1b9faf61404e84a4b374c8055488678fe7ee607c0734bce9d3982bc2aad1434d",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:integration",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 178.517,
+      "started_at": "2026-08-11T23:52:06.138Z",
+      "commit": "9f0985f875ddff5e60459b9f82305db89f9c045c",
+      "workspace_fingerprint": "1b9faf61404e84a4b374c8055488678fe7ee607c0734bce9d3982bc2aad1434d",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {
-    "summary": "Added one high-resolution execution-timing core shared by the REPL, embeddable kernel, and compiler-emitted timed statements. Compilation completes before the measured boundary and result formatting happens afterward. Node reports process CPU user/system/total plus wall time; hosts without process.cpuUsage report wall time only. Cold Python imports and native module loads appear as a nested Initialization tree, while warm repeats omit that section. Representative output is `CPU times: user 4.741ms, sys: 0.000ms, total: 4.741ms`, `Wall time: 4.010ms`, `Initialization: 3.018ms`, `  import colorsys: 3.018ms`. Focused timing/CST/kernel tests, a clean production build, compiler tests, the 262-test integration tier, strict Python, and architecture checks pass.",
+    "summary": "Added one high-resolution execution-timing core shared by the REPL, embeddable kernel, and compiler-emitted timed statements. Compilation completes before the measured boundary and result formatting happens afterward. Node reports process CPU user/system/total plus wall time; hosts without process.cpuUsage report wall time only. Cold Python imports and native module loads appear as a nested Initialization tree, while warm repeats omit that section. Compiler-emitted timing now retains its selected finish hook and closes it from `finally`, so exceptions and other abrupt control flow cannot leave an active collector that captures later initialization. Representative output is `CPU times: user 4.741ms, sys: 0.000ms, total: 4.741ms`, `Wall time: 4.010ms`, `Initialization: 3.018ms`, `  import colorsys: 3.018ms`. Focused timing/CST/kernel tests, a clean production build, compiler tests, the 262-test integration tier, strict Python, and architecture checks pass.",
     "risks": [
       "Node CPU measurements use process.cpuUsage and are therefore process-wide; concurrent host work in the same process can contribute CPU time even though the wall boundary is exact.",
-      "Initialization attribution currently names Python module imports and first native/runtime requires. Future lazy caches should use the same timing span API when their cost is important to expose."
+      "Initialization attribution currently names Python module imports and first native/runtime requires. Future lazy caches should use the same timing span API when their cost is important to expose.",
+      "`pnpm test:changed` selected broad inherited native work and passed build, architecture, unit, strict Python, compiler, integration, and most native checks before an unrelated dense-GF(p) `multiply_300` performance sample exceeded its normalized budget (19.41ms versus 15ms). The timing lane does not change matrix or native code; all exact contract validation commands were rerun with fresh passing receipts."
     ],
     "next_steps": [
       "Integrate this lane, then implement `%timeit` as a separate statistical benchmarking feature built on the shared execution boundary.",
