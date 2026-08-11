@@ -220,6 +220,30 @@ function collectJsonCacheAssets(directoryName) {
   return assets;
 }
 
+function collectNativeKernelAssets() {
+  const directory = join(root, "dist", "native-kernels");
+  if (!existsSync(directory)) return {};
+  const assets = {};
+  const visit = (current, prefix = "") => {
+    for (const entry of readdirSync(current, { withFileTypes: true })) {
+      const relativeName = prefix ? `${prefix}/${entry.name}` : entry.name;
+      const filename = join(current, entry.name);
+      if (entry.isDirectory()) {
+        visit(filename, relativeName);
+      } else if (
+        entry.isFile() &&
+        (relativeName === "index.json" ||
+          relativeName.endsWith("/index.cjs") ||
+          relativeName.endsWith("/sagejs_native_kernel.node"))
+      ) {
+        assets[`native-kernels/${relativeName}`] = filename;
+      }
+    }
+  };
+  visit(directory);
+  return assets;
+}
+
 function buildExecutable(name, withFlint) {
   if (withFlint && !existsSync(flintAddon)) {
     throw new Error(
@@ -354,6 +378,7 @@ function buildExecutable(name, withFlint) {
     assets["native/sagejs_flint_ffi.node"] = flintFfiAddon;
     assets["native/sagejs_graph.node"] = graphAddon;
     assets["native/sagejs_igraph_ffi.node"] = graphFfiAddon;
+    Object.assign(assets, collectNativeKernelAssets());
   }
 
   writeFileSync(

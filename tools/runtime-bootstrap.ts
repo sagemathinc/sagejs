@@ -20,7 +20,9 @@ import {
 } from "./javascript-modules";
 import type { PythonCompilerFrontend } from "./python/compiler-frontend";
 import {
+  loadPrecompiledNativeKernel,
   precompiledLazyModuleCacheDirectory,
+  precompiledNativeKernelCacheDirectory,
   readBaselibSource,
   readResourceText,
   readRuntimeBootstrapCachedData,
@@ -252,6 +254,12 @@ export function runRuntimeBootstrap(
     { sourceHash: string; functions: Record<string, unknown> }
   >();
   const nativeSourceHashes = new Map<string, string>();
+  const nativeLogicalSourceKey = (filename: string): string | undefined => {
+    const normalized = filename.replaceAll("\\", "/");
+    const marker = "/sagejs/kernels/";
+    const index = normalized.lastIndexOf(marker);
+    return index < 0 ? undefined : normalized.slice(index + 1);
+  };
   const usableNativeCandidate = (candidate: unknown): boolean => {
     if (typeof candidate !== "function") return false;
     // Source-transparent prime-field kernels currently have a native core but
@@ -329,23 +337,40 @@ export function runRuntimeBootstrap(
     // artifact next to the source.
     const cacheRoots = process.env.SAGEJS_NATIVE_CACHE_DIR
       ? [process.env.SAGEJS_NATIVE_CACHE_DIR]
-      : [join(dirname(sourcePath), ".sagejs-native-kernels")];
+      : [
+          precompiledNativeKernelCacheDirectory(
+            join(__dirname, "..", "native-kernels"),
+          ),
+          join(dirname(sourcePath), ".sagejs-native-kernels"),
+        ];
     for (const cacheRootValue of new Set(cacheRoots)) {
       const cacheRoot = resolve(cacheRootValue);
+      let index: any;
       try {
-        const index = JSON.parse(
+        index = JSON.parse(
           readResourceText(join(cacheRoot, "index.json")),
         );
-        const record = index?.sources?.[sourcePath];
-        if (
-          index?.schema !== "sagejs.native-cache/v1" ||
-          record?.sourceHash !== sourceHash ||
-          !/^[a-f0-9]{64}$/.test(record?.cacheKey ?? "")
-        ) {
-          continue;
-        }
+      } catch (_error) {
+        continue;
+      }
+      const logicalSourceKey = nativeLogicalSourceKey(sourcePath);
+      const record = index?.sources?.[sourcePath] ??
+        (logicalSourceKey === undefined
+          ? undefined
+          : index?.logicalSources?.[logicalSourceKey]);
+      if (
+        !["sagejs.native-cache/v1", "sagejs.native-cache/v2"].includes(
+          index?.schema,
+        ) ||
+        record?.sourceHash !== sourceHash ||
+        !/^[a-f0-9]{64}$/.test(record?.cacheKey ?? "")
+      ) {
+        continue;
+      }
+      try {
         const modulePath = join(cacheRoot, record.cacheKey, "index.cjs");
-        const loaded = Reflect.apply(internalRequire, undefined, [modulePath]);
+        const loaded = loadPrecompiledNativeKernel(modulePath) as
+          Record<string, unknown>;
         const candidate = Reflect.get(loaded, name);
         if (!usableNativeCandidate(candidate)) continue;
         registerNativeModule(sourcePath, sourceHash, loaded);

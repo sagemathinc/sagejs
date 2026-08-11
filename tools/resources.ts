@@ -5,13 +5,15 @@
 
 import {
   existsSync,
+  mkdirSync,
   mkdtempSync,
   readFileSync,
   rmSync,
   writeFileSync,
 } from "fs";
 import { tmpdir } from "os";
-import { basename, join, normalize } from "path";
+import { createRequire } from "module";
+import { basename, dirname, join, normalize } from "path";
 import { getAsset, getAssetKeys, isSea } from "node:sea";
 
 const VIRTUAL_ROOT = normalize("/__sagejs_sea__");
@@ -29,6 +31,7 @@ const PLOTLY_ASSET = "vendor/plotly.min.js";
 const KERNEL_WORKER_ASSET = "worker/kernel-worker.cjs";
 const MULTIPROCESSING_WORKER_ASSET = "worker/multiprocessing-worker.cjs";
 const VENDOR_ASSET_PREFIX = "vendor/";
+const NATIVE_KERNEL_ASSET_PREFIX = "native-kernels/";
 
 let flintModule: unknown;
 let graphModule: unknown;
@@ -37,6 +40,7 @@ const runtimeModuleCache = new Map<string, unknown>();
 let nativeTemporaryDirectory: string | undefined;
 let kernelWorkerFilename: string | undefined;
 let multiprocessingWorkerFilename: string | undefined;
+const nativeKernelModules = new Map<string, unknown>();
 let seaAssetKeys: Set<string> | undefined;
 
 function hasAsset(key: string): boolean {
@@ -89,6 +93,58 @@ export function precompiledLazyModuleCacheDirectory(
 
 export function precompiledDynamicCacheDirectory(fallback: string): string {
   return isSea() ? join(VIRTUAL_ROOT, "dynamic-cache") : fallback;
+}
+
+export function precompiledNativeKernelCacheDirectory(
+  fallback: string,
+): string {
+  return isSea() ? join(VIRTUAL_ROOT, "native-kernels") : fallback;
+}
+
+/** Load a published native-kernel wrapper from disk or an embedded SEA asset. */
+export function loadPrecompiledNativeKernel(
+  moduleFilename: string,
+): unknown {
+  if (!isSea()) return require(moduleFilename);
+  const key = assetKeyForVirtualPath(moduleFilename);
+  if (
+    key === undefined ||
+    !key.startsWith(NATIVE_KERNEL_ASSET_PREFIX) ||
+    !key.endsWith("/index.cjs") ||
+    !hasAsset(key)
+  ) {
+    throw new Error(`native kernel module is not embedded: ${moduleFilename}`);
+  }
+  const cached = nativeKernelModules.get(key);
+  if (cached !== undefined) return cached;
+  const relativeModule = key.slice(NATIVE_KERNEL_ASSET_PREFIX.length);
+  const cacheKey = relativeModule.slice(0, -"/index.cjs".length);
+  if (!/^[a-f0-9]{64}$/.test(cacheKey)) {
+    throw new Error(`invalid embedded native kernel key ${cacheKey}`);
+  }
+  const addonKey =
+    `${NATIVE_KERNEL_ASSET_PREFIX}${cacheKey}/build/Release/` +
+    "sagejs_native_kernel.node";
+  if (!hasAsset(addonKey)) {
+    throw new Error(`native kernel addon is not embedded: ${addonKey}`);
+  }
+  if (!nativeTemporaryDirectory) {
+    nativeTemporaryDirectory = mkdtempSync(join(tmpdir(), "sagejs-sea-"));
+  }
+  const outputDirectory = join(nativeTemporaryDirectory, "native-kernels", cacheKey);
+  const outputModule = join(outputDirectory, "index.cjs");
+  const outputAddon = join(
+    outputDirectory,
+    "build",
+    "Release",
+    "sagejs_native_kernel.node",
+  );
+  mkdirSync(dirname(outputAddon), { recursive: true });
+  writeFileSync(outputModule, Buffer.from(getAsset(key)), { mode: 0o700 });
+  writeFileSync(outputAddon, Buffer.from(getAsset(addonKey)), { mode: 0o700 });
+  const loaded = createRequire(outputModule)(outputModule);
+  nativeKernelModules.set(key, loaded);
+  return loaded;
 }
 
 export function readResourceText(filename: string): string {
@@ -378,6 +434,7 @@ export function runtimeRequire(name: string): unknown {
 
 export function cleanNativeResources(): void {
   runtimeModuleCache.clear();
+  nativeKernelModules.clear();
   if (!nativeTemporaryDirectory || !existsSync(nativeTemporaryDirectory)) return;
   try {
     rmSync(nativeTemporaryDirectory, { recursive: true, force: true });

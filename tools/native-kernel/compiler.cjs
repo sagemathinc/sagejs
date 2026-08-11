@@ -51,23 +51,45 @@ function sha256(value) {
   return createHash("sha256").update(value).digest("hex");
 }
 
-function writeDiscoveryIndex(cacheRoot, sourcePath, sourceHash, cacheKey) {
+function writeDiscoveryIndex(
+  cacheRoot,
+  sourcePath,
+  sourceHash,
+  cacheKey,
+  sourceKey,
+) {
   const indexPath = join(cacheRoot, "index.json");
   let index = {
-    schema: "sagejs.native-cache/v1",
+    schema: "sagejs.native-cache/v2",
     sources: {},
+    logicalSources: {},
   };
   try {
     const current = JSON.parse(readFileSync(indexPath, "utf8"));
     if (
-      current?.schema === index.schema &&
+      ["sagejs.native-cache/v1", index.schema].includes(current?.schema) &&
       current.sources !== null &&
       typeof current.sources === "object"
     ) {
-      index = current;
+      index.sources = current.sources;
+      if (
+        current.logicalSources !== null &&
+        typeof current.logicalSources === "object"
+      ) {
+        index.logicalSources = current.logicalSources;
+      }
     }
   } catch (_error) {}
   index.sources[sourcePath] = { cacheKey, sourceHash };
+  if (sourceKey !== undefined) {
+    if (
+      typeof sourceKey !== "string" ||
+      !/^[A-Za-z0-9_.-]+(?:\/[A-Za-z0-9_.-]+)*$/.test(sourceKey)
+    ) {
+      throw new TypeError(`invalid native kernel source key ${sourceKey}`);
+    }
+    index.logicalSources[sourceKey] = { cacheKey, sourceHash };
+  }
   writeFileSync(indexPath, `${JSON.stringify(index, null, 2)}\n`);
 }
 
@@ -312,6 +334,7 @@ function bindingGyp(ir, sourceBoundsChecked, hasExceptionShims = false) {
 
 async function compileKernel(options) {
   const sourcePath = resolve(options.sourcePath);
+  const sourceKey = options.sourceKey;
   const source = readFileSync(sourcePath, "utf8");
   const sourceHash = sha256(source);
   const ir = await lowerSource(source, sourcePath, {
@@ -371,7 +394,13 @@ async function compileKernel(options) {
     (exceptionShims === null ||
       (existsSync(shimSourcePath) && existsSync(shimHeaderPath)))
   ) {
-    writeDiscoveryIndex(cacheRoot, sourcePath, sourceHash, cacheKey);
+    writeDiscoveryIndex(
+      cacheRoot,
+      sourcePath,
+      sourceHash,
+      cacheKey,
+      sourceKey,
+    );
     return {
       addonPath,
       cacheKey,
@@ -457,7 +486,13 @@ async function compileKernel(options) {
     process.stderr.write(build.stderr);
     throw new Error(`node-gyp exited with status ${build.status}`);
   }
-  writeDiscoveryIndex(cacheRoot, sourcePath, sourceHash, cacheKey);
+  writeDiscoveryIndex(
+    cacheRoot,
+    sourcePath,
+    sourceHash,
+    cacheKey,
+    sourceKey,
+  );
   return {
     addonPath,
     cacheKey,

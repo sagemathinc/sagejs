@@ -1,6 +1,6 @@
 "use strict";
 
-const { cpSync, mkdirSync, rmSync } = require("node:fs");
+const { cpSync, existsSync, mkdirSync, rmSync } = require("node:fs");
 const { join } = require("node:path");
 const { spawnSync } = require("node:child_process");
 
@@ -39,3 +39,23 @@ run(process.execPath, [join(root, "bin", "sagejs"), "self", "--complete"]);
 run(process.execPath, [join(root, "scripts", "build-task-runtime.cjs")]);
 run(process.execPath, [join(root, "scripts", "build-module-cache.cjs")]);
 run(process.execPath, [join(root, "scripts", "build-runtime-cache.cjs")]);
+
+const generatedFlintAdapter = join(
+  root,
+  "packages",
+  "flint",
+  "build",
+  "generated-ffi",
+  "sagejs_flint_ffi.node",
+);
+if (existsSync(generatedFlintAdapter)) {
+  run(process.execPath, [
+    join(root, "scripts", "build-production-native-kernels.cjs"),
+  ]);
+} else {
+  process.stdout.write(
+    "Skipping production native kernels because the generated FLINT " +
+      "adapter is unavailable; run `pnpm bootstrap` for a complete native " +
+      "runtime.\n",
+  );
+}

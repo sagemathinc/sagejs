@@ -1,5 +1,7 @@
 export interface NativeCompileOptions {
   sourcePath: string;
+  /** Stable package-relative identity used by shipped native artifacts. */
+  sourceKey?: string;
   cacheRoot?: string;
   functions?: string[];
 }

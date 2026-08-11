@@ -2051,6 +2051,7 @@ except Exception as error:
   const integerCache = join(temporary, "integer-cache");
   const integerKernel = await nativeApi.compile({
     sourcePath: integerSourcePath,
+    sourceKey: "fixtures/native-integer-buffer.py",
     cacheRoot: integerCache,
   });
   assert.equal(typeof integerKernel.coreSourcePath, "string");
@@ -2665,10 +2666,14 @@ print(kernel.pi(1000))
   const integerIndex = JSON.parse(
     readFileSync(join(integerCache, "index.json"), "utf8"),
   );
-  assert.equal(integerIndex.schema, "sagejs.native-cache/v1");
+  assert.equal(integerIndex.schema, "sagejs.native-cache/v2");
   assert.equal(
     integerIndex.sources[integerSourcePath].cacheKey,
     integerKernel.cacheKey,
+  );
+  assert.deepEqual(
+    integerIndex.logicalSources["fixtures/native-integer-buffer.py"],
+    integerIndex.sources[integerSourcePath],
   );
   const harmonicAddon = require(mpmathKernel.addonPath);
   assert.match(

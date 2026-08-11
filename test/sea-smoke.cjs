@@ -205,11 +205,14 @@ try {
         "from multiprocessing import Pool",
         "from pathlib import Path",
         "from sagejs_serialization import dumps, loads",
+        "from sagejs.kernels.polynomial.packed_flint import flint_byte_region_copy",
+        "from sagejs.kernels.matrix.dense_integer_flint import flint_dense_integer_resource_random_fill",
         "def phi(n):",
         "    return euler_phi(n)",
         "def modular_dimension(n):",
         "    return str(dimension_modular_forms(n, 8))",
         "print(factor(2026))",
+        "print(flint_byte_region_copy.nativeAvailable, flint_dense_integer_resource_random_fill.nativeAvailable)",
         "P = graphs.PetersenGraph()",
         "A = P.automorphism_group()",
         "print(A.order(), len(A.gens()), len(A.list()), len(P.layout('spring')))",
@@ -237,6 +240,7 @@ try {
     assert.equal(
       run(mathExecutable, mathProgram),
       "2 * 1013\n" +
+        "True True\n" +
         "120 3 120 10\n" +
         "3.1250000000000000000000000000\n" +
         "x\n" +

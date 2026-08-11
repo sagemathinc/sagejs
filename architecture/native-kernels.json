@@ -63,6 +63,27 @@
       "platforms": ["linux-x64", "linux-arm64", "windows-x64", "macos-arm64"]
     },
     {
+      "id": "dense-prime-flint-production",
+      "source": "src/lib/sagejs/kernels/matrix/dense_prime_field_flint.py",
+      "functions": [
+        "flint_dense_prime_field_matrix_determinant",
+        "flint_dense_prime_field_matrix_charpoly",
+        "flint_dense_prime_field_matrix_minpoly",
+        "flint_dense_prime_field_matrix_mul",
+        "flint_dense_prime_field_matrix_inverse",
+        "flint_dense_prime_field_matrix_rank",
+        "flint_dense_prime_field_matrix_rref",
+        "flint_dense_prime_field_matrix_right_kernel",
+        "flint_dense_prime_field_matrix_solve"
+      ],
+      "semantic_domain": "production mature FLINT algorithms over canonical packed compiler-owned GF(p) matrix records through declared FFI",
+      "fallback": "same-source",
+      "host_isolation": "certified",
+      "oracles": ["cpython", "javascript", "flint", "legacy-napi"],
+      "benchmark": "bench:native:dense-prime",
+      "platforms": ["linux-x64", "linux-arm64", "windows-x64", "macos-arm64"]
+    },
+    {
       "id": "dense-integer-production",
       "source": "src/lib/sagejs/kernels/matrix/dense_integer.py",
       "functions": [
@@ -87,6 +108,30 @@
         "dense_integer_matrix_random_fill_default"
       ],
       "semantic_domain": "production dense ZZ objects over canonical compiler-owned signed-limb storage with tagged machine-word/GMP structural arithmetic",
+      "fallback": "same-source",
+      "host_isolation": "certified",
+      "oracles": ["cpython", "javascript", "flint", "legacy-napi"],
+      "benchmark": "test:matrix:integer-performance",
+      "platforms": ["linux-x64", "linux-arm64", "windows-x64", "macos-arm64"]
+    },
+    {
+      "id": "dense-integer-flint-production",
+      "source": "src/lib/sagejs/kernels/matrix/dense_integer_flint.py",
+      "functions": [
+        "flint_dense_integer_matrix_mul",
+        "flint_dense_integer_matrix_determinant",
+        "flint_dense_integer_matrix_charpoly",
+        "flint_dense_integer_matrix_rank",
+        "flint_dense_integer_matrix_hnf",
+        "flint_dense_integer_matrix_hnf_transform",
+        "flint_dense_integer_matrix_snf_transform",
+        "flint_dense_integer_matrix_right_kernel",
+        "flint_dense_integer_resource_import",
+        "flint_dense_integer_resource_random_fill",
+        "flint_dense_integer_resource_random_fill_default",
+        "flint_dense_integer_resource_nonzero_count"
+      ],
+      "semantic_domain": "production dense ZZ FLINT algorithms and typed resource construction/traversal through generated owned FmpzMatrix declarations",
       "fallback": "same-source",
       "host_isolation": "certified",
       "oracles": ["cpython", "javascript", "flint", "legacy-napi"],
@@ -123,7 +168,29 @@
         "dense_rational_matrix_select_columns",
         "dense_rational_matrix_kernel_from_rref"
       ],
-      "semantic_domain": "production dense QQ objects over canonical compiler-owned normalized numerator and denominator IntegerBuffer storage with tagged machine-word/GMP structural arithmetic",
+      "semantic_domain": "portable dense QQ compatibility arithmetic over normalized numerator and denominator IntegerBuffer storage",
+      "fallback": "same-source",
+      "host_isolation": "certified",
+      "oracles": ["cpython", "javascript", "flint", "legacy-napi"],
+      "benchmark": "test:matrix:rational-performance",
+      "platforms": ["linux-x64", "linux-arm64", "windows-x64", "macos-arm64"]
+    },
+    {
+      "id": "dense-rational-flint-production",
+      "source": "src/lib/sagejs/kernels/matrix/dense_rational_flint.py",
+      "functions": [
+        "flint_dense_rational_matrix_import",
+        "flint_dense_rational_matrix_nonzero_count",
+        "flint_byte_region_copy",
+        "flint_dense_rational_matrix_mul",
+        "flint_dense_rational_matrix_rank",
+        "flint_dense_rational_matrix_rref",
+        "flint_dense_rational_matrix_inverse",
+        "flint_dense_rational_matrix_solve",
+        "flint_dense_rational_matrix_determinant",
+        "flint_dense_rational_matrix_charpoly"
+      ],
+      "semantic_domain": "production dense QQ construction, traversal, serialization, and mature FLINT algorithms over generated owned FmpqMatrix resources",
       "fallback": "same-source",
       "host_isolation": "certified",
       "oracles": ["cpython", "javascript", "flint", "legacy-napi"],
