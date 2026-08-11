@@ -16,7 +16,7 @@
     {
       "id": "arithmetic-algebra",
       "description": "Exact arithmetic, fields, polynomials, matrices, and coercion",
-      "allowed_claims": ["src/baselib/algebra.py", "src/baselib/exact_rational.py", "src/baselib/factorization.py", "src/baselib/finite_fields.py", "src/baselib/matrix.py", "src/baselib/number_fields.py", "src/baselib/padics.py", "src/baselib/polynomial.py", "src/baselib/real_complex.py", "src/baselib/series.py", "packages/flint/src/algebraic", "packages/flint/src/extension_field", "packages/flint/src/floating", "packages/flint/src/matrix", "packages/flint/src/multivariate", "packages/flint/src/number_field_factor", "packages/flint/src/sparse_rational"],
+      "allowed_claims": ["src/baselib/algebra.py", "src/baselib/exact_rational.py", "src/baselib/factorization.py", "src/baselib/finite_fields.py", "src/baselib/matrix.py", "src/baselib/number_fields.py", "src/baselib/padics.py", "src/baselib/polynomial.py", "src/baselib/real_complex.py", "src/baselib/series.py", "src/lib/sagejs/kernels/matrix/", "src/lib/sagejs/kernels/polynomial/", "packages/flint/src/algebraic", "packages/flint/src/extension_field", "packages/flint/src/floating", "packages/flint/src/matrix", "packages/flint/src/multivariate", "packages/flint/src/number_field_factor", "packages/flint/src/sparse_rational"],
       "required_checks": ["pnpm test:baselib:strict", "pnpm test:native"]
     },
     {
