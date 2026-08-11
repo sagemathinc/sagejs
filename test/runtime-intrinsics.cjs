@@ -2,7 +2,8 @@
 
 const assert = require("node:assert/strict");
 const { spawnSync } = require("node:child_process");
-const { readFileSync } = require("node:fs");
+const { mkdtempSync, readFileSync, rmSync, writeFileSync } = require("node:fs");
+const { tmpdir } = require("node:os");
 const { join } = require("node:path");
 const createCompiler = require("..");
 const {
@@ -131,6 +132,20 @@ assert.match(
   /frozen = ρσ_native_freeze_tuple\(values, prototype\)/,
 );
 
+const exactValueCodec = compile(
+  "import sagejs.runtime as runtime\n" +
+    "packed = runtime.exact_integer_values_to_packed_bytes(values)\n" +
+    "restored = runtime.exact_integer_values_from_packed_bytes(packed, count)\n",
+);
+assert.match(
+  exactValueCodec,
+  /packed = ρσ_exact_integer_values_to_packed_bytes\(values\)/,
+);
+assert.match(
+  exactValueCodec,
+  /restored = ρσ_exact_integer_values_from_packed_bytes\(packed, count\)/,
+);
+
 const instanceChecks = compile(
   "one = isinstance(value, candidate)\n" +
     "many = isinstance(value, (first_type, second_type))\n",
@@ -205,6 +220,54 @@ const lint = spawnSync(
 );
 assert.equal(lint.status, 0, lint.stderr);
 assert.equal(lint.stdout, "");
+
+const codecDirectory = mkdtempSync(join(tmpdir(), "sagejs-exact-codec-"));
+const codecPath = join(codecDirectory, "codec.py");
+let codecExecution;
+try {
+  writeFileSync(
+    codecPath,
+    [
+      "import sagejs.runtime as runtime",
+      "values = [0, 1, -1, 2**53 + 1, -(2**4097 + 17)]",
+      "packed = runtime.exact_integer_values_to_packed_bytes(values)",
+      "restored = runtime.list_constructor(",
+      "    runtime.exact_integer_values_from_packed_bytes(packed, len(values))",
+      ")",
+      "negative_zero = runtime.exact_integer_values_to_packed_bytes([0])",
+      "negative_zero[3] = 128",
+      "noncanonical = runtime.exact_integer_values_to_packed_bytes([1])",
+      "noncanonical[4] = 0",
+      "failures = 0",
+      "for count in [len(values) - 1, len(values) + 1]:",
+      "    try:",
+      "        runtime.exact_integer_values_from_packed_bytes(packed, count)",
+      "    except:",
+      "        failures += 1",
+      "for malformed in [negative_zero, noncanonical]:",
+      "    try:",
+      "        runtime.exact_integer_values_from_packed_bytes(malformed, 1)",
+      "    except:",
+      "        failures += 1",
+      "try:",
+      "    runtime.exact_integer_values_to_packed_bytes([1.5])",
+      "except:",
+      "    failures += 1",
+      "print(restored == values, failures, len(packed))",
+      "",
+    ].join("\n"),
+  );
+  codecExecution = spawnSync(
+    process.execPath,
+    [join(root, "bin", "sagejs"), codecPath],
+    { cwd: root, encoding: "utf8" },
+  );
+} finally {
+  rmSync(codecDirectory, { recursive: true, force: true });
+}
+assert.equal(codecExecution.status, 0, codecExecution.stderr);
+assert.equal(codecExecution.stderr, "");
+assert.match(codecExecution.stdout, /True 5 [1-9][0-9]*/);
 
 console.log("Sage.js runtime intrinsic lowering passed.");
 frontend.close();

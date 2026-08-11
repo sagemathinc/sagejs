@@ -17,7 +17,7 @@
     "declared-ffi": 158,
     "declared-ffi-resource": 9,
     "napi-export": 292,
-    "runtime-intrinsic": 126,
+    "runtime-intrinsic": 128,
     "wasm-export": 46
   },
   "boundaries": [
@@ -5380,6 +5380,22 @@
       "path": "tools/python/contract.ts",
       "export": "error",
       "symbol": "Error",
+      "disposition": "runtime-primitive"
+    },
+    {
+      "id": "runtime:exact_integer_values_from_packed_bytes",
+      "kind": "runtime-intrinsic",
+      "path": "tools/python/contract.ts",
+      "export": "exact_integer_values_from_packed_bytes",
+      "symbol": "ρσ_exact_integer_values_from_packed_bytes",
+      "disposition": "runtime-primitive"
+    },
+    {
+      "id": "runtime:exact_integer_values_to_packed_bytes",
+      "kind": "runtime-intrinsic",
+      "path": "tools/python/contract.ts",
+      "export": "exact_integer_values_to_packed_bytes",
+      "symbol": "ρσ_exact_integer_values_to_packed_bytes",
       "disposition": "runtime-primitive"
     },
     {

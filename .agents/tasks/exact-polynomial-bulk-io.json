@@ -1,0 +1,149 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "exact-polynomial-bulk-io",
+  "title": "Bulk exact polynomial I/O",
+  "lane": "integration",
+  "status": "review",
+  "owner": "user",
+  "objective": "Replace per-coefficient generated FFI calls for exact univariate polynomial construction and coefficient export with one stable bulk resource boundary while preserving portable fallbacks and skew exact values",
+  "base_commit": "e41690a0459c75d6bd3c2319192778b10631e070",
+  "claims": [
+    ".agents/lanes.json",
+    "src/baselib/polynomial.py",
+    "src/baselib/sagejs_bootstrap.py",
+    "src/baselib/sagejs/runtime.py",
+    "src/baselib/sagejs/runtime.pyi",
+    "tools/python/contract.ts",
+    "architecture/native-boundaries.json",
+    "test/exact-polynomial-resource-ffi.cjs",
+    "test/node-test-manifest.cjs",
+    "test/runtime-intrinsics.cjs",
+    "bench/exact-polynomial-bulk-io.cjs"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "external-library",
+    "fallback": "tested-capability",
+    "oracles": [
+      "existing scalar generated FFI construction and coefficient access",
+      "SageMath exact polynomial semantics"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "fallback",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm architecture:check",
+    "pnpm test:portable",
+    "pnpm test:baselib:strict",
+    "pnpm test:native"
+  ],
+  "runs": [
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 12.197,
+      "started_at": "2026-08-11T14:34:13.777Z",
+      "commit": "e41690a0459c75d6bd3c2319192778b10631e070",
+      "workspace_fingerprint": "0c3899381aca6a3d4238f783594aaf0a8ff1c2739226090dba829f8b8731b001",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:native",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 208.507,
+      "started_at": "2026-08-11T14:34:31.228Z",
+      "commit": "e41690a0459c75d6bd3c2319192778b10631e070",
+      "workspace_fingerprint": "1403d07f3b76b3b49a8c38916f3040461526bc7754ec79076ab1733e8a618664",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 11.957,
+      "started_at": "2026-08-11T14:38:25.738Z",
+      "commit": "e41690a0459c75d6bd3c2319192778b10631e070",
+      "workspace_fingerprint": "1403d07f3b76b3b49a8c38916f3040461526bc7754ec79076ab1733e8a618664",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 12.045,
+      "started_at": "2026-08-11T14:38:45.099Z",
+      "commit": "e41690a0459c75d6bd3c2319192778b10631e070",
+      "workspace_fingerprint": "1403d07f3b76b3b49a8c38916f3040461526bc7754ec79076ab1733e8a618664",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 30.394,
+      "started_at": "2026-08-11T14:39:00.521Z",
+      "commit": "e41690a0459c75d6bd3c2319192778b10631e070",
+      "workspace_fingerprint": "1403d07f3b76b3b49a8c38916f3040461526bc7754ec79076ab1733e8a618664",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 30.328,
+      "started_at": "2026-08-11T14:40:42.802Z",
+      "commit": "e41690a0459c75d6bd3c2319192778b10631e070",
+      "workspace_fingerprint": "5d0220579e9f35e07cde293e1fbfd5e5cf1bb8b889a82b18dfb658b21158f049",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 11.724,
+      "started_at": "2026-08-11T14:41:24.085Z",
+      "commit": "e41690a0459c75d6bd3c2319192778b10631e070",
+      "workspace_fingerprint": "5d0220579e9f35e07cde293e1fbfd5e5cf1bb8b889a82b18dfb658b21158f049",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 12.124,
+      "started_at": "2026-08-11T14:41:36.412Z",
+      "commit": "e41690a0459c75d6bd3c2319192778b10631e070",
+      "workspace_fingerprint": "5d0220579e9f35e07cde293e1fbfd5e5cf1bb8b889a82b18dfb658b21158f049",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:native",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 207.13,
+      "started_at": "2026-08-11T14:41:51.811Z",
+      "commit": "e41690a0459c75d6bd3c2319192778b10631e070",
+      "workspace_fingerprint": "5d0220579e9f35e07cde293e1fbfd5e5cf1bb8b889a82b18dfb658b21158f049",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Exact ZZ[x] and QQ[x] resource construction and coefficient export now use one canonical variable-length SJPZ/SJPQ payload instead of one generated FFI call per coefficient. New symmetric runtime codecs preserve arbitrary per-entry skew, canonical signs, trailing-zero normalization, native-disabled behavior, and malformed-input rejection. The focused benchmark measures degree-20000 ZZ construction/export at 6.0/0.94 ms and degree-10000 QQ at 13.4/12.5 ms on the handoff host, versus scalar-boundary baselines of 118/107 ms and 59/99 ms. The integration also minimally registers the pre-existing dense integer solve resource test in the host-test manifest, repairing the unrelated portable-tier inventory drift exposed by final validation.",
+    "risks": [
+      "The existing deserialize ABI transports the complete byte stream through one nonnegative exact Integer, requiring a linear byte copy and BigInt conversion; a future declared byte-region input could remove that transport copy without changing the canonical SJP representation."
+    ],
+    "next_steps": [
+      "Integrate bench/exact-polynomial-bulk-io.cjs into the central benchmark catalog or performance runner from the integration lane.",
+      "Consider a generated read-only byte-region input ABI when boundary-copy profiles show it is worthwhile."
+    ]
+  }
+}

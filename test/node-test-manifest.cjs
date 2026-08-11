@@ -43,6 +43,7 @@ const integration = [
   "test/dense-prime-structural.cjs",
   "test/dense-integer-migration.cjs",
   "test/dense-integer-public-resource.cjs",
+  "test/dense-integer-solve-resource.cjs",
   "test/fmpz-matrix-resource-kernels.cjs",
   "test/fmpz-matrix-resource-selectors.cjs",
   "test/fmpz-matrix-selector-lifecycle.cjs",
