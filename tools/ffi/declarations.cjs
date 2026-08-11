@@ -103,7 +103,7 @@ function validateResource(filename, resource, ids, pythonNames, abiNames) {
     fail(filename,
       `${resource.id} close export is required only for owned resources`);
   }
-  exactKeys(filename, resource.native, ["clear_symbol"],
+  knownKeys(filename, resource.native, ["clear_symbol"], ["size_symbol"],
     `${resource.id}.native`);
   if (resource.native.clear_symbol !== null &&
       !identifier(resource.native.clear_symbol)) {
@@ -113,6 +113,14 @@ function validateResource(filename, resource, ids, pythonNames, abiNames) {
       (resource.native.clear_symbol !== null)) {
     fail(filename,
       `${resource.id} clear symbol is required only for owned resources`);
+  }
+  if (resource.native.size_symbol !== undefined &&
+      !identifier(resource.native.size_symbol)) {
+    fail(filename, `${resource.id}.native.size_symbol must be a C identifier`);
+  }
+  if (resource.ownership !== "owned" &&
+      resource.native.size_symbol !== undefined) {
+    fail(filename, `${resource.id} native size callback requires ownership`);
   }
   exactKeys(filename, resource.targets, ["dynamic", "native", "wasm"],
     `${resource.id}.targets`);

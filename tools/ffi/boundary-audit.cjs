@@ -144,6 +144,8 @@ function declaredResources(registry) {
       abi_type: resource.abi_type,
       close_export: resource.dynamic.close_export,
       clear_symbol: resource.native.clear_symbol,
+      ...(resource.native.size_symbol === undefined
+        ? {} : { size_symbol: resource.native.size_symbol }),
       disposition: "declared-owned-ffi-resource",
     }))
   );
