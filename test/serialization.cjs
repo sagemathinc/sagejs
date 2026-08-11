@@ -53,12 +53,12 @@ test("serialization v1 preserves graphs, exact integers, and binary blocks", () 
   );
 });
 
-test("exact polynomial compact bytes reject noncanonical magnitudes", () => {
-  function polynomialBytes(magic, parts) {
+test("exact polynomial compact bytes reject noncanonical values", () => {
+  function polynomialBytes(magic, parts, count = 1) {
     return Uint8Array.from([
       ...Buffer.from(magic, "ascii"),
       1, 0, 0, 0,
-      1, 0, 0, 0, 0, 0, 0, 0,
+      count & 0xff, (count >> 8) & 0xff, 0, 0, 0, 0, 0, 0,
       ...parts,
     ]);
   }
@@ -82,6 +82,11 @@ test("exact polynomial compact bytes reject noncanonical magnitudes", () => {
     decode(polynomialBytes("SJPZ", [1, 0, 0, 128, 1])),
     [-1n],
   );
+  assert.deepEqual(decode(polynomialBytes("SJPZ", [], 0)), []);
+  assert.deepEqual(
+    decode(polynomialBytes("SJPZ", [0, 0, 0, 0, 1, 0, 0, 0, 1], 2)),
+    [0n, 1n],
+  );
   assert.throws(
     () => decode(polynomialBytes("SJPZ", [2, 0, 0, 0, 1, 0])),
     /magnitude is not canonical/,
@@ -95,7 +100,7 @@ test("exact polynomial compact bytes reject noncanonical magnitudes", () => {
     /integer is truncated/,
   );
   assert.throws(
-    () => decode(polynomialBytes("SJPZ", [0, 0, 0, 0, 7])),
+    () => decode(polynomialBytes("SJPZ", [1, 0, 0, 0, 1, 7])),
     /trailing bytes/,
   );
   assert.throws(
@@ -105,6 +110,62 @@ test("exact polynomial compact bytes reject noncanonical magnitudes", () => {
     ),
     /denominator is not positive/,
   );
+  assert.throws(
+    () => decode(
+      polynomialBytes("SJPQ", [1, 0, 0, 0, 2, 1, 0, 0, 0, 4]),
+      "fmpq-poly-le-v1",
+    ),
+    /rational coefficient is not reduced/,
+  );
+  assert.throws(
+    () => decode(
+      polynomialBytes("SJPQ", [0, 0, 0, 0, 1, 0, 0, 0, 2]),
+      "fmpq-poly-le-v1",
+    ),
+    /rational coefficient is not reduced/,
+  );
+  assert.throws(
+    () => decode(polynomialBytes("SJPZ", [0, 0, 0, 0])),
+    /leading coefficient is zero/,
+  );
+  assert.throws(
+    () => decode(
+      polynomialBytes("SJPQ", [0, 0, 0, 0, 1, 0, 0, 0, 1]),
+      "fmpq-poly-le-v1",
+    ),
+    /leading coefficient is zero/,
+  );
+
+  const previousQQ = globalThis.QQ;
+  globalThis.QQ = (numerator, denominator) => ({ numerator, denominator });
+  try {
+    assert.deepEqual(
+      decode(
+        polynomialBytes(
+          "SJPQ",
+          [
+            0, 0, 0, 0,
+            1, 0, 0, 0, 1,
+            1, 0, 0, 128, 2,
+            1, 0, 0, 0, 3,
+          ],
+          2,
+        ),
+        "fmpq-poly-le-v1",
+      ),
+      [
+        { numerator: 0n, denominator: 1n },
+        { numerator: -2n, denominator: 3n },
+      ],
+    );
+    assert.deepEqual(
+      decode(polynomialBytes("SJPQ", [], 0), "fmpq-poly-le-v1"),
+      [],
+    );
+  } finally {
+    if (previousQQ === undefined) delete globalThis.QQ;
+    else globalThis.QQ = previousQQ;
+  }
 });
 
 test("worker packets move codec-owned buffers but copy caller-owned bytes", () => {

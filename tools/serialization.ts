@@ -1225,9 +1225,21 @@ function unpackExactPolynomial(
     return magnitude;
   }
   const coefficients = new Array<unknown>(count);
-  const rationals = rational ? Reflect.get(globalThis, "QQ") : undefined;
+  const rationalParts = new Array<[bigint, bigint]>(rational ? count : 0);
+  function greatestCommonDivisor(left: bigint, right: bigint): bigint {
+    left = left < 0n ? -left : left;
+    right = right < 0n ? -right : right;
+    while (right !== 0n) {
+      const remainder = left % right;
+      left = right;
+      right = remainder;
+    }
+    return left;
+  }
+  let finalNumerator = 0n;
   for (let index = 0; index < count; index += 1) {
     const numerator = readInteger();
+    finalNumerator = numerator;
     if (!rational) {
       coefficients[index] = numerator;
       continue;
@@ -1238,10 +1250,26 @@ function unpackExactPolynomial(
         "exact polynomial denominator is not positive",
       );
     }
-    coefficients[index] = callPython(rationals, [numerator, denominator]);
+    if (greatestCommonDivisor(numerator, denominator) !== 1n) {
+      throw new SageSerializationError(
+        "exact polynomial rational coefficient is not reduced",
+      );
+    }
+    rationalParts[index] = [numerator, denominator];
+  }
+  if (count > 0 && finalNumerator === 0n) {
+    throw new SageSerializationError(
+      "exact polynomial leading coefficient is zero",
+    );
   }
   if (offset !== bytes.byteLength) {
     throw new SageSerializationError("exact polynomial data has trailing bytes");
+  }
+  if (rational) {
+    const rationals = Reflect.get(globalThis, "QQ");
+    for (let index = 0; index < count; index += 1) {
+      coefficients[index] = callPython(rationals, rationalParts[index]);
+    }
   }
   return coefficients;
 }
