@@ -70,10 +70,10 @@ function safeStrings(filename, value, label, pattern) {
 }
 
 function validateResource(filename, resource, ids, pythonNames, abiNames) {
-  exactKeys(filename, resource, [
+  knownKeys(filename, resource, [
     "id", "python_name", "abi_type", "ownership", "owner", "dynamic",
     "native", "targets",
-  ], `resource ${resource.id || "?"}`);
+  ], ["host_transfer"], `resource ${resource.id || "?"}`);
   if (!identifier(resource.id) || ids.has(resource.id)) {
     fail(filename, `invalid or duplicate resource id ${resource.id}`);
   }
@@ -121,6 +121,40 @@ function validateResource(filename, resource, ids, pythonNames, abiNames) {
   if (resource.ownership !== "owned" &&
       resource.native.size_symbol !== undefined) {
     fail(filename, `${resource.id} native size callback requires ownership`);
+  }
+  if (resource.host_transfer !== undefined) {
+    if (resource.ownership !== "owned") {
+      fail(filename, `${resource.id} host transfer requires ownership`);
+    }
+    exactKeys(filename, resource.host_transfer,
+      ["kind", "dynamic", "native", "targets"],
+      `${resource.id}.host_transfer`);
+    if (resource.host_transfer.kind !== "copied_bytes") {
+      fail(filename, `${resource.id} has unsupported host transfer ` +
+        `${resource.host_transfer.kind}`);
+    }
+    exactKeys(filename, resource.host_transfer.dynamic, ["export"],
+      `${resource.id}.host_transfer.dynamic`);
+    if (!identifier(resource.host_transfer.dynamic.export)) {
+      fail(filename, `${resource.id} byte-copy export must be an identifier`);
+    }
+    exactKeys(filename, resource.host_transfer.native,
+      ["data_symbol", "length_symbol"],
+      `${resource.id}.host_transfer.native`);
+    for (const [name, symbol] of Object.entries(
+      resource.host_transfer.native,
+    )) {
+      if (!identifier(symbol)) {
+        fail(filename, `${resource.id} byte-copy ${name} must be an identifier`);
+      }
+    }
+    exactKeys(filename, resource.host_transfer.targets, ["dynamic", "wasm"],
+      `${resource.id}.host_transfer.targets`);
+    if (resource.host_transfer.targets.dynamic !== true ||
+        typeof resource.host_transfer.targets.wasm !== "boolean") {
+      fail(filename,
+        `${resource.id} byte-copy transfer requires dynamic and boolean wasm targets`);
+    }
   }
   exactKeys(filename, resource.targets, ["dynamic", "native", "wasm"],
     `${resource.id}.targets`);
@@ -906,6 +940,21 @@ function generatePythonModule(declaration) {
         `        self.close()\n` +
         `        return False\n`
       : "";
+    const hostTransfer = resource.host_transfer?.kind === "copied_bytes"
+      ? `\n    def copy_bytes(self) -> Any:\n` +
+        `        \"\"\"Copy this resource's byte payload into host-owned storage.\"\"\"\n` +
+        `        return _runtime.ffi_resource_copy_bytes(\n` +
+        `            self._token,\n` +
+        `            ${JSON.stringify(identity)},\n` +
+        `            ${JSON.stringify(resource.host_transfer.dynamic.export)},\n` +
+        `        )\n\n` +
+        `    def take_bytes(self) -> Any:\n` +
+        `        \"\"\"Copy the byte payload and deterministically close this resource.\"\"\"\n` +
+        `        try:\n` +
+        `            return self.copy_bytes()\n` +
+        `        finally:\n` +
+        `            self.close()\n`
+      : "";
     return `class ${resource.python_name}:\n` +
       `    \"\"\"Opaque ${resource.ownership} ${library.id}:` +
       `${resource.id} ${resource.ownership === "owned" ? "resource" : "view"}.` +
@@ -916,7 +965,7 @@ function generatePythonModule(declaration) {
       `    def _ffi_borrow(self) -> Any:\n` +
       `        return _runtime.ffi_resource_borrow(\n` +
       `            self._token, ${JSON.stringify(identity)}\n` +
-      `        )\n` + contextManager;
+      `        )\n` + contextManager + hostTransfer;
   }).join("\n\n");
   const functions = declaration.functions.map((fn) => {
     const resultWire = [fn.result.domain, [...fn.result.success], fn.result.absence];

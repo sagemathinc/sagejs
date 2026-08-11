@@ -184,6 +184,16 @@ test("FFI declarations are strict and generated modules are current", () => {
       "FmpzPolynomial", "FmpqPolynomial", "DirichletGroup",
     ],
   );
+  const byteRegion = flint.byResourceType.get("FlintByteRegion");
+  assert.deepEqual(byteRegion.host_transfer, {
+    kind: "copied_bytes",
+    dynamic: { export: "ffiFlintByteRegionCopyBytes" },
+    native: {
+      data_symbol: "sagejs_flint_byte_region_data",
+      length_symbol: "sagejs_flint_byte_region_length",
+    },
+    targets: { dynamic: true, wasm: false },
+  });
   assert.match(flint.identity, /^flint@[0-9a-f]{64}$/);
   const generated = declarations.generatedModulePath(root, flint);
   assert.equal(
@@ -198,6 +208,10 @@ test("FFI declarations are strict and generated modules are current", () => {
   assert.match(
     readFileSync(generated, "utf8"),
     /_runtime\.ffi_call\(\n\s+__sagejs_ffi_declaration__ \+ ":n_is_prime"/,
+  );
+  assert.match(
+    readFileSync(generated, "utf8"),
+    /def take_bytes\(self\).*?finally:\n\s+self\.close\(\)/s,
   );
   const igraph = registry.byId.get("igraph");
   assert.deepEqual(igraph.ownershipGraph, [
@@ -561,6 +575,22 @@ test("FFI declarations reject incompatible ownership and ABI mappings", () => {
       document.resources[0].native.clear_symbol = "not a C symbol";
     },
     /clear_symbol must be a C identifier/,
+  );
+  invalid(
+    (document) => {
+      document.resources.find(
+        (resource) => resource.id === "byte_region",
+      ).host_transfer.kind = "borrow_pointer";
+    },
+    /unsupported host transfer borrow_pointer/,
+  );
+  invalid(
+    (document) => {
+      document.resources.find(
+        (resource) => resource.id === "byte_region",
+      ).host_transfer.native.data_symbol = "region->data";
+    },
+    /byte-copy data_symbol must be an identifier/,
   );
   invalid(
     (document) => {

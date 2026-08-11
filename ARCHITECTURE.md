@@ -177,6 +177,15 @@ Resource construction inside control-flow blocks still fails compilation. A
 compiler change MUST NOT silently turn a resource into a raw pointer or host
 callback.
 
+An owned resource MAY declare a contiguous copied-byte host transfer by naming
+opaque data and length accessors. The generated host adapter validates the
+resource and complete range, then copies once into host-owned byte storage; it
+never exposes the foreign address. A non-consuming copy leaves ownership
+unchanged, while the generated consuming helper closes in `finally`. Wasm must
+perform the corresponding checked copy from linear memory before resource
+mutation, memory growth, or close; zero-copy views require a separate explicit
+ownership contract and are not inferred from this transfer.
+
 Borrowed foreign views form a declaration-validated acyclic ownership graph.
 Every view names its immediate owner and computed owned root. Ordinary
 execution strongly retains that owner and rejects every view operation after

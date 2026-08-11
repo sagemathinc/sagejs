@@ -146,6 +146,17 @@ function declaredResources(registry) {
       clear_symbol: resource.native.clear_symbol,
       ...(resource.native.size_symbol === undefined
         ? {} : { size_symbol: resource.native.size_symbol }),
+      ...(resource.host_transfer === undefined
+        ? {}
+        : {
+          host_transfer: {
+            kind: resource.host_transfer.kind,
+            dynamic_export: resource.host_transfer.dynamic.export,
+            data_symbol: resource.host_transfer.native.data_symbol,
+            length_symbol: resource.host_transfer.native.length_symbol,
+            wasm: resource.host_transfer.targets.wasm,
+          },
+        }),
       disposition: "declared-owned-ffi-resource",
     }))
   );

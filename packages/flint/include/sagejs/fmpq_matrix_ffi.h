@@ -830,6 +830,12 @@ static inline uint64_t sagejs_flint_byte_region_length(
     return (uint64_t) region->length;
 }
 
+static inline const unsigned char *sagejs_flint_byte_region_data(
+    const sagejs_flint_byte_region_t region)
+{
+    return region->data;
+}
+
 static inline uint64_t sagejs_flint_byte_region_get(
     const sagejs_flint_byte_region_t region, uint64_t index)
 {

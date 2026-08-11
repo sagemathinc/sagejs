@@ -865,6 +865,10 @@ function resourceRefreshName(resource) {
   return `sagejs_resource_${resourceCName(resource)}_refresh_external_memory`;
 }
 
+function resourceCopyBytesName(resource) {
+  return `sagejs_resource_${resourceCName(resource)}_copy_bytes`;
+}
+
 function functionResource(fn, type) {
   return resourceForFunctionType(fn, type);
 }
@@ -2037,9 +2041,12 @@ function generateOwnedResourceNodeSupport(resource) {
   const wrap = resourceWrapName(resource);
   const close = resourceCloseName(resource);
   const refresh = resourceRefreshName(resource);
+  const copyBytes = resourceCopyBytesName(resource);
   const [tagHigh, tagLow] = resourceTagWords(resource);
   const tag = `sagejs_resource_${resourceCName(resource)}_type_tag`;
   const sized = resource.native.size_symbol !== undefined;
+  const byteTransfer = resource.host_transfer?.kind === "copied_bytes"
+    ? resource.host_transfer : null;
   const refreshSupport = sized ? `
 static napi_status ${refresh}(napi_env env, ${holder} *holder)
 {
@@ -2069,6 +2076,41 @@ static napi_status ${refresh}(napi_env env, ${holder} *holder)
         (void) sagejs_native_check_napi(env, accounting_status);
         return NULL;
     }` : "";
+  const byteTransferSupport = byteTransfer === null ? "" : `
+static napi_value ${copyBytes}(napi_env env, napi_callback_info info)
+{
+    napi_value argument;
+    napi_value result = NULL;
+    size_t argc = 1;
+    ${holder} *holder = NULL;
+    if (!sagejs_native_check_napi(env,
+            napi_get_cb_info(env, info, &argc, &argument, NULL, NULL)))
+        return NULL;
+    if (argc != 1 || !${unwrap}(env, argument, &holder))
+        return NULL;
+    const uint64_t length64 =
+        ${byteTransfer.native.length_symbol}(holder->value);
+    if (length64 > (uint64_t) SIZE_MAX)
+    {
+        napi_throw_range_error(env, NULL,
+            "FFI byte payload is too large for this host");
+        return NULL;
+    }
+    const size_t length = (size_t) length64;
+    const unsigned char *data =
+        ${byteTransfer.native.data_symbol}(holder->value);
+    if (length != 0 && data == NULL)
+    {
+        napi_throw_error(env, NULL,
+            "FFI byte payload has nonzero length but no data");
+        return NULL;
+    }
+    const void *source = length == 0 ? (const void *) "" : data;
+    if (!sagejs_native_check_napi(env,
+            napi_create_buffer_copy(env, length, source, NULL, &result)))
+        return NULL;
+    return result;
+}`;
   return `
 #define ${holder}_MAGIC UINT64_C(0x${tagHigh})
 
@@ -2177,7 +2219,8 @@ static napi_value ${close}(napi_env env, napi_callback_info info)
     if (!sagejs_native_check_napi(env, napi_get_undefined(env, &result)))
         return NULL;
     return result;
-}`;
+}
+${byteTransferSupport}`;
 }
 
 function generateResourceMemoryInspection(resources) {
@@ -2686,6 +2729,15 @@ static int get_precision(
     ...publicResources.map((resource) =>
       `        {${cString(resource.dynamic.close_export)}, NULL, ` +
         `${resourceCloseName(resource)}, NULL, NULL, NULL, napi_default, NULL}`
+    ),
+    ...publicResources.flatMap((resource) =>
+      resource.host_transfer?.kind === "copied_bytes"
+        ? [
+          `        {${cString(resource.host_transfer.dynamic.export)}, NULL, ` +
+            `${resourceCopyBytesName(resource)}, NULL, NULL, NULL, ` +
+            `napi_default, NULL}`,
+        ]
+        : []
     ),
     ...(publicResources.length === 0 ? [] : [
       `        {"__sagejsFfiResourceExternalMemory", NULL, ` +

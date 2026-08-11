@@ -7,6 +7,7 @@ from sagejs.ffi.declare import (
     Min,
     Status,
     Writable,
+    copied_bytes,
     in_,
     out,
     packed_fmpz_matrix,
@@ -81,6 +82,12 @@ FlintByteRegion = flint.resource(
     close="ffiFlintByteRegionClose",
     clear="sagejs_flint_byte_region_clear",
     size="sagejs_flint_byte_region_allocated_bytes",
+    host_transfer=copied_bytes(
+        dynamic="ffiFlintByteRegionCopyBytes",
+        data="sagejs_flint_byte_region_data",
+        length="sagejs_flint_byte_region_length",
+        wasm=False,
+    ),
     wasm=False,
 )
 

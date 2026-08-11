@@ -118,6 +118,20 @@
         "clear_symbol": "sagejs_flint_byte_region_clear",
         "size_symbol": "sagejs_flint_byte_region_allocated_bytes"
       },
+      "host_transfer": {
+        "kind": "copied_bytes",
+        "dynamic": {
+          "export": "ffiFlintByteRegionCopyBytes"
+        },
+        "native": {
+          "data_symbol": "sagejs_flint_byte_region_data",
+          "length_symbol": "sagejs_flint_byte_region_length"
+        },
+        "targets": {
+          "dynamic": true,
+          "wasm": false
+        }
+      },
       "targets": {
         "dynamic": true,
         "native": true,
