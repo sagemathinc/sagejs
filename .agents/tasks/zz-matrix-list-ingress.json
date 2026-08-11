@@ -1,0 +1,129 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "zz-matrix-list-ingress",
+  "title": "Zz Matrix List Ingress",
+  "lane": "integration",
+  "status": "review",
+  "owner": "user",
+  "objective": "Avoid redundant copying for exact built-in list input in matrix(ZZ, n, values), preserve iterable and list-subclass semantics, prove non-aliasing, and enforce a public performance budget",
+  "base_commit": "b21b652c83afe6867ef17da61b691abf40ab6f9f",
+  "claims": [
+    "src/baselib/matrix.py",
+    "test/exact-matrix-bulk-construction.cjs",
+    "bench/exact-matrix-bulk-construction.cjs"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "dynamic-python",
+    "fallback": "same-source",
+    "oracles": [
+      "existing explicit-shape matrix constructor",
+      "Sage-compatible matrix construction semantics"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm architecture:check",
+    "pnpm test:portable",
+    "pnpm test:baselib:strict"
+  ],
+  "runs": [
+    {
+      "command": "node test/exact-matrix-bulk-construction.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 3.195,
+      "started_at": "2026-08-11T22:19:29.324Z",
+      "commit": "b21b652c83afe6867ef17da61b691abf40ab6f9f",
+      "workspace_fingerprint": "44d226e04b758e101c4e3c6a9f9b2e38d6aa8736856259914f2afa155ad46af9",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 12.989,
+      "started_at": "2026-08-11T22:19:41.261Z",
+      "commit": "b21b652c83afe6867ef17da61b691abf40ab6f9f",
+      "workspace_fingerprint": "44d226e04b758e101c4e3c6a9f9b2e38d6aa8736856259914f2afa155ad46af9",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 12.318,
+      "started_at": "2026-08-11T22:19:54.860Z",
+      "commit": "b21b652c83afe6867ef17da61b691abf40ab6f9f",
+      "workspace_fingerprint": "44d226e04b758e101c4e3c6a9f9b2e38d6aa8736856259914f2afa155ad46af9",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 36.871,
+      "started_at": "2026-08-11T22:20:11.449Z",
+      "commit": "b21b652c83afe6867ef17da61b691abf40ab6f9f",
+      "workspace_fingerprint": "44d226e04b758e101c4e3c6a9f9b2e38d6aa8736856259914f2afa155ad46af9",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/exact-matrix-bulk-construction.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.649,
+      "started_at": "2026-08-11T22:21:31.369Z",
+      "commit": "b21b652c83afe6867ef17da61b691abf40ab6f9f",
+      "workspace_fingerprint": "98fb3418c1a30c076f12e5221e89b141ca3f6792f70340646add7e6dfce16110",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 11.871,
+      "started_at": "2026-08-11T22:21:54.979Z",
+      "commit": "b21b652c83afe6867ef17da61b691abf40ab6f9f",
+      "workspace_fingerprint": "98fb3418c1a30c076f12e5221e89b141ca3f6792f70340646add7e6dfce16110",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 12.184,
+      "started_at": "2026-08-11T22:22:07.477Z",
+      "commit": "b21b652c83afe6867ef17da61b691abf40ab6f9f",
+      "workspace_fingerprint": "98fb3418c1a30c076f12e5221e89b141ca3f6792f70340646add7e6dfce16110",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 37.523,
+      "started_at": "2026-08-11T22:22:24.170Z",
+      "commit": "b21b652c83afe6867ef17da61b691abf40ab6f9f",
+      "workspace_fingerprint": "98fb3418c1a30c076f12e5221e89b141ca3f6792f70340646add7e6dfce16110",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "The rows-plus-flat-list matrix constructor now reuses an exact built-in list during dimension inference instead of copying it before MatrixSpace performs its owned FLINT import. Matrix ownership remains independent of the source list, while list subclasses and general iterables retain observable iteration semantics. The public benchmark now compares rows-only construction with the established explicit-shape no-copy form: warm 500x500 medians were 16.92 ms and 14.31 ms in the recorded run. A separate interleaved diagnostic measured the removed copy directly at 16.90 ms versus 8.61 ms for 500x500 and 70.29 ms versus 40.19 ms for 1000x1000.",
+    "risks": [
+      "Absolute microbenchmark times remain sensitive to host contention, so the benchmark combines generous absolute ceilings with a rows-only versus explicit-shape parity check."
+    ],
+    "next_steps": [
+      "Cherry-pick this commit into the integration branch and run the combined matrix suite with the shared native artifacts."
+    ]
+  }
+}

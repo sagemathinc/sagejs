@@ -6262,7 +6262,14 @@ def matrix(*args: Any) -> Matrix:
             cols = int(values[1])
             entries = [0 for _ in range(rows * cols)]
         else:
-            entries = list(values[1])
+            source = values[1]
+            # An exact built-in list is already the canonical materialized
+            # row-major input. MatrixSpace copies it into owned storage, so a
+            # second host-list copy here only increases construction time and
+            # peak memory. Keep list subclasses and general iterables on the
+            # normal `list()` path: their iteration may have observable
+            # Python semantics that must not be bypassed.
+            entries = source if type(source) is list else list(source)
             if rows == 0:
                 cols = 0
             elif len(entries) % rows != 0:
