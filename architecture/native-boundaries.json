@@ -14,7 +14,7 @@
   },
   "counts": {
     "classified-native-file": 57,
-    "declared-ffi": 178,
+    "declared-ffi": 179,
     "declared-ffi-resource": 10,
     "napi-export": 292,
     "runtime-intrinsic": 133,
@@ -1689,6 +1689,17 @@
       "dynamic_package": "@sagemath/sagejs-flint",
       "dynamic_export": "ffiFmpzPolynomialCoefficient",
       "symbol": "sagejs_fmpz_polynomial_coefficient",
+      "disposition": "declared-safe-ffi"
+    },
+    {
+      "id": "ffi:flint:fmpz_polynomial_cyclotomic",
+      "kind": "declared-ffi",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "fmpz_polynomial_cyclotomic",
+      "dynamic_package": "@sagemath/sagejs-flint",
+      "dynamic_export": "ffiFmpzPolynomialCyclotomic",
+      "symbol": "sagejs_fmpz_polynomial_cyclotomic",
       "disposition": "declared-safe-ffi"
     },
     {

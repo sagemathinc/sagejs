@@ -2111,6 +2111,12 @@ class PolynomialRingParent(sage.Parent):
         n = int(degree)
         if n < 1:
             raise ValueError("cyclotomic polynomial degree must be positive")
+        if self._base is sage.ZZ and _generated_flint_resources_available():
+            if n >= (1 << 64):
+                raise OverflowError("cyclotomic polynomial degree is too large")
+            return self._from_fmpz_polynomial_resource(
+                _flint_ffi_module().fmpz_polynomial_cyclotomic(n)
+            )
         generator = self.gen()
         answer = generator**n - 1
         for divisor in sage.divisors(n):
@@ -3976,6 +3982,29 @@ def gen(parent: Any, index: int = 0) -> Any:
 
 def polygen(base: sage.Parent, name: str = "x") -> Any:
     return PolynomialRing(base, name).gen()
+
+
+def cyclotomic_polynomial(
+    n: Any,
+    *args: Any,
+    **kwds: Any,
+) -> PolynomialElement:
+    """Return the `n`-th cyclotomic polynomial over `ZZ`.
+
+    This is Sage's convenient global spelling for
+    `ZZ[var].cyclotomic_polynomial(n)`.
+    """
+    if len(args) > 1:
+        raise TypeError("cyclotomic_polynomial() accepts at most two arguments")
+    variable = args[0] if len(args) == 1 else "x"
+    if runtime.reflect.has(kwds, "var"):
+        if len(args) != 0:
+            raise TypeError("cyclotomic_polynomial() got multiple values for 'var'")
+        variable = runtime.reflect.get(kwds, "var")
+        runtime.reflect.deleteProperty(kwds, "var")
+    if len(runtime.object.keys(kwds)) != 0:
+        raise TypeError("cyclotomic_polynomial() got an unexpected keyword argument")
+    return PolynomialRing(sage.ZZ, variable).cyclotomic_polynomial(n)
 
 
 def chebyshev_U(degree: Any, value: Any) -> Any:

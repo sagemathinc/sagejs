@@ -432,6 +432,25 @@ def fmpz_polynomial_pow(
 
 
 @flint.function(
+    dynamic="ffiFmpzPolynomialCyclotomic",
+    symbol="sagejs_fmpz_polynomial_cyclotomic",
+    returns=int,
+    abi=[
+        out("result", sagejs_fmpz_polynomial_t),
+        in_("order", uint64_t),
+    ],
+    effects=Effects(pure=False, allocates=True, raises=[ValueError]),
+    result=Status(
+        1,
+        exception=ValueError,
+        message="cyclotomic polynomial degree must be positive",
+    ),
+    wasm=False,
+)
+def fmpz_polynomial_cyclotomic(order: uint64) -> FmpzPolynomial: ...
+
+
+@flint.function(
     dynamic="ffiFmpzPolynomialEvaluate",
     symbol="sagejs_fmpz_polynomial_evaluate",
     returns=int,

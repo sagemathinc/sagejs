@@ -176,7 +176,7 @@
       "id": "python-stdlib",
       "layer": 1,
       "startup": "lazy",
-      "max_source_bytes": 1020000,
+      "max_source_bytes": 1025000,
       "depends_on": ["core-runtime"],
       "modules": [
         "_dummy_thread", "_thread", "abc", "aes", "annotationlib", "argparse", "array", "ast", "atexit", "base64", "bdb", "bisect", "calendar", "cmath", "codecs", "collections", "colorsys", "contextlib", "copy", "decimal",

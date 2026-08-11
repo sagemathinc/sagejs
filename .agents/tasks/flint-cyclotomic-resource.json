@@ -1,0 +1,112 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "flint-cyclotomic-resource",
+  "title": "Direct FLINT cyclotomic polynomial resources",
+  "lane": "integration",
+  "status": "review",
+  "owner": "user",
+  "objective": "Route ZZ[x] cyclotomic construction through one declared generated FmpzPolynomial resource operation with exact Sage semantics, ordinary Python fallback, lifecycle coverage, and representative performance gates",
+  "base_commit": "f7a8a71668e4328c15f685e2d502ced7fae0ce27",
+  "claims": [
+    "ffi/flint.ffi.py",
+    "ffi/flint.ffi.json",
+    "architecture/native-boundaries.json",
+    "architecture/package-graph.json",
+    "packages/flint/include/sagejs/exact_polynomial_ffi.h",
+    "packages/flint/generated/ffi_host.py",
+    "src/baselib/sagejs/ffi/flint.py",
+    "src/lib/sagejs/ffi/flint.py",
+    "src/baselib/polynomial.py",
+    "test/exact-polynomial-cyclotomic-resource.cjs",
+    "test/node-test-manifest.cjs",
+    "bench/exact-polynomial-cyclotomic-resource.cjs"
+  ],
+  "dependencies": [],
+  "references": [
+    "FLINT fmpz_poly_cyclotomic"
+  ],
+  "architecture": {
+    "strategy": "external-library",
+    "fallback": "tested-capability",
+    "oracles": [
+      "ordinary Python divisor-product implementation",
+      "SageMath cyclotomic polynomial coefficients"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm architecture:check",
+    "pnpm test:portable",
+    "pnpm test:baselib:strict"
+  ],
+  "runs": [
+    {
+      "command": "node test/exact-polynomial-cyclotomic-resource.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.312,
+      "started_at": "2026-08-11T22:54:36.857Z",
+      "commit": "f7a8a71668e4328c15f685e2d502ced7fae0ce27",
+      "workspace_fingerprint": "cfe1f9adb84e95a1f96e34ed18a66e69ab75a4d1e947a1127780290671bc2d3e",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/exact-polynomial-cyclotomic-resource.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.545,
+      "started_at": "2026-08-11T22:54:38.904Z",
+      "commit": "f7a8a71668e4328c15f685e2d502ced7fae0ce27",
+      "workspace_fingerprint": "cfe1f9adb84e95a1f96e34ed18a66e69ab75a4d1e947a1127780290671bc2d3e",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 11.918,
+      "started_at": "2026-08-11T22:54:40.097Z",
+      "commit": "f7a8a71668e4328c15f685e2d502ced7fae0ce27",
+      "workspace_fingerprint": "cfe1f9adb84e95a1f96e34ed18a66e69ab75a4d1e947a1127780290671bc2d3e",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 12.377,
+      "started_at": "2026-08-11T22:54:52.690Z",
+      "commit": "f7a8a71668e4328c15f685e2d502ced7fae0ce27",
+      "workspace_fingerprint": "cfe1f9adb84e95a1f96e34ed18a66e69ab75a4d1e947a1127780290671bc2d3e",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 36.732,
+      "started_at": "2026-08-11T22:55:09.647Z",
+      "commit": "f7a8a71668e4328c15f685e2d502ced7fae0ce27",
+      "workspace_fingerprint": "cfe1f9adb84e95a1f96e34ed18a66e69ab75a4d1e947a1127780290671bc2d3e",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Added one declared fmpz_poly_cyclotomic operation which returns a sealed generated FmpzPolynomial resource, routed ZZ[x] parent construction and Sage's global cyclotomic_polynomial(n, var='x') spelling through it, retained the ordinary divisor-product fallback on portable hosts and non-ZZ rings, and covered exact coefficients, errors, ownership, closed-resource behavior, composition, and representative performance. Warm orders 10000 and 30030 construct in about 0.25 ms and 0.21 ms respectively on the validation host, compared with 1427 ms and 3630 ms for the previous ordinary fallback baselines; first use was about 52 ms including lazy initialization.",
+    "risks": [
+      "The direct FLINT declaration is currently wasm=False; browser and other portable hosts use the tested ordinary Python fallback.",
+      "Only linux-x64 executed in this worktree; the generated adapter remains subject to required Windows, macOS, and Linux arm64 CI.",
+      "The broad test:changed run passed build, architecture, unit, and strict gates before an unrelated compiler/algebra.py fixture exceeded its fixed 30-second subprocess timeout under shared-host load; the same fixture completed successfully in 32.1 seconds when run directly."
+    ],
+    "next_steps": [
+      "Run the generated adapter on required cross-platform CI and enable its Wasm declaration once generated FLINT resource lowering is available there."
+    ]
+  }
+}

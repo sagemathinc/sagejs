@@ -87,6 +87,7 @@ const integration = [
   "test/graphics-export.cjs",
   "test/approximate-polynomial.cjs",
   "test/exact-polynomial-resources.cjs",
+  "test/exact-polynomial-cyclotomic-resource.cjs",
   "test/exact-polynomial-factorization-resource.cjs",
   "test/polynomial-prime-evaluate.cjs",
   "test/padics.cjs",
