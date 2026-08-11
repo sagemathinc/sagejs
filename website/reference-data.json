@@ -11073,16 +11073,16 @@
         "name": "AffineSpace",
         "qualified": "AffineSpace",
         "path": "src/baselib/polynomial.py",
-        "line": 3438,
+        "line": 3493,
         "excerpt": {
-          "start_line": 3426,
+          "start_line": 3481,
           "text": "    def __repr__(self) -> str:\n        return (\n            \"Affine Space of dimension \"\n            + str(self._dimension)\n            + \" over \"\n            + str(self._base)\n        )\n\n    __str__ = __repr__\n    toString = __repr__\n\n\ndef AffineSpace(\n    dimension: int,\n    base: sage.Parent,\n    names: Any = \"x\",\n) -> AffineSpaceParent:\n    \"\"\"\n    Construct affine space with the requested coordinate names.\n\n    ### Example\n\n    ```sage\n    sage: A = AffineSpace(2, QQ, 'xy')\n    sage: A"
         }
       },
       "examples": [
         {
-          "id": "src/baselib/polynomial.py:3449",
-          "line": 3449,
+          "id": "src/baselib/polynomial.py:3504",
+          "line": 3504,
           "source": "A = AffineSpace(2, QQ, 'xy')",
           "want": "",
           "tags": [],
@@ -11091,14 +11091,14 @@
           "origin": "sagejs",
           "language": "sage",
           "verification": {
-            "id": "src/baselib/polynomial.py:3449",
+            "id": "src/baselib/polynomial.py:3504",
             "status": "pass",
             "actual": ""
           }
         },
         {
-          "id": "src/baselib/polynomial.py:3450",
-          "line": 3450,
+          "id": "src/baselib/polynomial.py:3505",
+          "line": 3505,
           "source": "A",
           "want": "Affine Space of dimension 2 over Rational Field\n",
           "tags": [],
@@ -11107,14 +11107,14 @@
           "origin": "sagejs",
           "language": "sage",
           "verification": {
-            "id": "src/baselib/polynomial.py:3450",
+            "id": "src/baselib/polynomial.py:3505",
             "status": "pass",
             "actual": "Affine Space of dimension 2 over Rational Field\n"
           }
         },
         {
-          "id": "src/baselib/polynomial.py:3452",
-          "line": 3452,
+          "id": "src/baselib/polynomial.py:3507",
+          "line": 3507,
           "source": "A.gens()",
           "want": "(x, y)\n",
           "tags": [],
@@ -11123,7 +11123,7 @@
           "origin": "sagejs",
           "language": "sage",
           "verification": {
-            "id": "src/baselib/polynomial.py:3452",
+            "id": "src/baselib/polynomial.py:3507",
             "status": "pass",
             "actual": "(x, y)\n"
           }
@@ -12209,16 +12209,16 @@
         "name": "Curve",
         "qualified": "Curve",
         "path": "src/baselib/polynomial.py",
-        "line": 3598,
+        "line": 3653,
         "excerpt": {
-          "start_line": 3586,
+          "start_line": 3641,
           "text": "    def __repr__(self) -> str:\n        return (\n            \"Affine Plane Curve over \"\n            + str(self._polynomial._parent.base_ring())\n            + \" defined by\\n   \"\n            + repr(self._polynomial)\n        )\n\n    __str__ = __repr__\n    toString = __repr__\n\n\ndef Curve(polynomial: Any) -> AffinePlaneCurve:\n    \"\"\"\n    Construct an affine plane curve from a multivariate polynomial.\n\n    ### Example\n\n    ```sage\n    sage: x, y = AffineSpace(2, QQ, 'xy').gens()\n    sage: C = Curve((x^2 + y^2 - 1) * (x^3 + y^3 - 1))\n    sage: C.irreducible_components()\n    [Closed subscheme of Affine Space of dimension 2 over Rational Field defined by:\n      x^2 + y^2 - 1, Closed subscheme of Affine Space of dimension 2 over Rational Field defined by:\n      x^3 + y^3 - 1]"
         }
       },
       "examples": [
         {
-          "id": "src/baselib/polynomial.py:3605",
-          "line": 3605,
+          "id": "src/baselib/polynomial.py:3660",
+          "line": 3660,
           "source": "x, y = AffineSpace(2, QQ, 'xy').gens()",
           "want": "",
           "tags": [],
@@ -12227,14 +12227,14 @@
           "origin": "sagejs",
           "language": "sage",
           "verification": {
-            "id": "src/baselib/polynomial.py:3605",
+            "id": "src/baselib/polynomial.py:3660",
             "status": "pass",
             "actual": ""
           }
         },
         {
-          "id": "src/baselib/polynomial.py:3606",
-          "line": 3606,
+          "id": "src/baselib/polynomial.py:3661",
+          "line": 3661,
           "source": "C = Curve((x^2 + y^2 - 1) * (x^3 + y^3 - 1))",
           "want": "",
           "tags": [],
@@ -12243,14 +12243,14 @@
           "origin": "sagejs",
           "language": "sage",
           "verification": {
-            "id": "src/baselib/polynomial.py:3606",
+            "id": "src/baselib/polynomial.py:3661",
             "status": "pass",
             "actual": ""
           }
         },
         {
-          "id": "src/baselib/polynomial.py:3607",
-          "line": 3607,
+          "id": "src/baselib/polynomial.py:3662",
+          "line": 3662,
           "source": "C.irreducible_components()",
           "want": "[Closed subscheme of Affine Space of dimension 2 over Rational Field defined by:\n  x^2 + y^2 - 1, Closed subscheme of Affine Space of dimension 2 over Rational Field defined by:\n  x^3 + y^3 - 1]\n",
           "tags": [],
@@ -12259,7 +12259,7 @@
           "origin": "sagejs",
           "language": "sage",
           "verification": {
-            "id": "src/baselib/polynomial.py:3607",
+            "id": "src/baselib/polynomial.py:3662",
             "status": "pass",
             "actual": "[Closed subscheme of Affine Space of dimension 2 over Rational Field defined by:\n  x^2 + y^2 - 1, Closed subscheme of Affine Space of dimension 2 over Rational Field defined by:\n  x^3 + y^3 - 1]\n"
           }
@@ -25785,16 +25785,16 @@
         "name": "matrix",
         "qualified": "matrix",
         "path": "src/baselib/matrix.py",
-        "line": 6003,
+        "line": 6030,
         "excerpt": {
-          "start_line": 5991,
+          "start_line": 6018,
           "text": "        return 1, len(rows), rows\n    first = list(rows[0])\n    cols = len(first)\n    values = []\n    for row in rows:\n        entries = list(row)\n        if len(entries) != cols:\n            raise ValueError(\"matrix rows must all have the same length\")\n        values.extend(entries)\n    return len(rows), cols, values\n\n\ndef matrix(*args: Any) -> Matrix:\n    r\"\"\"\n    Construct a dense matrix, optionally over an explicit base ring.\n\n    Sage's common row-list, flat-list, dimension, and entry-function forms are\n    supported. Exact matrices use FLINT on native hosts; `RDF`/`CDF` and\n    arbitrary-precision real/complex matrices use FLINT, Arb, and ACB.\n\n    ### Examples\n\n    ```sage\n    sage: A = matrix(ZZ, 2, [1, 2, 3, 4])\n    sage: A.det()"
         }
       },
       "examples": [
         {
-          "id": "src/baselib/matrix.py:6014",
-          "line": 6014,
+          "id": "src/baselib/matrix.py:6041",
+          "line": 6041,
           "source": "A = matrix(ZZ, 2, [1, 2, 3, 4])",
           "want": "",
           "tags": [],
@@ -25803,14 +25803,14 @@
           "origin": "sagejs",
           "language": "sage",
           "verification": {
-            "id": "src/baselib/matrix.py:6014",
+            "id": "src/baselib/matrix.py:6041",
             "status": "pass",
             "actual": ""
           }
         },
         {
-          "id": "src/baselib/matrix.py:6015",
-          "line": 6015,
+          "id": "src/baselib/matrix.py:6042",
+          "line": 6042,
           "source": "A.det()",
           "want": "-2\n",
           "tags": [],
@@ -25819,14 +25819,14 @@
           "origin": "sagejs",
           "language": "sage",
           "verification": {
-            "id": "src/baselib/matrix.py:6015",
+            "id": "src/baselib/matrix.py:6042",
             "status": "pass",
             "actual": "-2\n"
           }
         },
         {
-          "id": "src/baselib/matrix.py:6017",
-          "line": 6017,
+          "id": "src/baselib/matrix.py:6044",
+          "line": 6044,
           "source": "A.rref()",
           "want": "[1 0]\n[0 1]\n",
           "tags": [],
@@ -25835,7 +25835,7 @@
           "origin": "sagejs",
           "language": "sage",
           "verification": {
-            "id": "src/baselib/matrix.py:6017",
+            "id": "src/baselib/matrix.py:6044",
             "status": "pass",
             "actual": "[1 0]\n[0 1]\n"
           }
@@ -29239,16 +29239,16 @@
         "name": "PolynomialRing",
         "qualified": "PolynomialRing",
         "path": "src/baselib/polynomial.py",
-        "line": 3814,
+        "line": 3869,
         "excerpt": {
-          "start_line": 3802,
+          "start_line": 3857,
           "text": "        ρσ_polynomial_ring_cache.set(base, by_variable)\n    cache_key = \",\".join(variables) + \"|multivariate|\" + order\n    parent = by_variable.get(cache_key)\n    if parent is runtime.undefined:\n        if approximate:\n            parent = ApproximatePolynomialRingParent(base, variables, order)\n        else:\n            parent = MultivariatePolynomialRingParent(base, variables, order)\n        by_variable.set(cache_key, parent)\n    return parent\n\n\ndef PolynomialRing(\n    base: sage.Parent,\n    variable: Any = None,\n    names: Any = None,\n    sparse: bool = False,\n    implementation: Any = None,\n    order: str = \"degrevlex\",\n) -> Any:\n    r\"\"\"\n    Construct a univariate or multivariate polynomial ring.\n\n    Coefficient rings currently include `ZZ`, `QQ`, prime and extension\n    finite fields, `Zmod(n)`, exact algebraic fields, and approximate real"
         }
       },
       "examples": [
         {
-          "id": "src/baselib/polynomial.py:3834",
-          "line": 3834,
+          "id": "src/baselib/polynomial.py:3889",
+          "line": 3889,
           "source": "R.<x> = QQ[]",
           "want": "",
           "tags": [],
@@ -29257,14 +29257,14 @@
           "origin": "sagejs",
           "language": "sage",
           "verification": {
-            "id": "src/baselib/polynomial.py:3834",
+            "id": "src/baselib/polynomial.py:3889",
             "status": "pass",
             "actual": ""
           }
         },
         {
-          "id": "src/baselib/polynomial.py:3835",
-          "line": 3835,
+          "id": "src/baselib/polynomial.py:3890",
+          "line": 3890,
           "source": "(x^4 - 1).factor()",
           "want": "(x + 1) * (x - 1) * (x^2 + 1)\n",
           "tags": [],
@@ -29273,14 +29273,14 @@
           "origin": "sagejs",
           "language": "sage",
           "verification": {
-            "id": "src/baselib/polynomial.py:3835",
+            "id": "src/baselib/polynomial.py:3890",
             "status": "pass",
             "actual": "(x + 1) * (x - 1) * (x^2 + 1)\n"
           }
         },
         {
-          "id": "src/baselib/polynomial.py:3837",
-          "line": 3837,
+          "id": "src/baselib/polynomial.py:3892",
+          "line": 3892,
           "source": "S.<x,y> = GF(4, 'a')[]",
           "want": "",
           "tags": [],
@@ -29289,14 +29289,14 @@
           "origin": "sagejs",
           "language": "sage",
           "verification": {
-            "id": "src/baselib/polynomial.py:3837",
+            "id": "src/baselib/polynomial.py:3892",
             "status": "pass",
             "actual": ""
           }
         },
         {
-          "id": "src/baselib/polynomial.py:3838",
-          "line": 3838,
+          "id": "src/baselib/polynomial.py:3893",
+          "line": 3893,
           "source": "(x + y)^3",
           "want": "x^3 + x^2*y + x*y^2 + y^3\n",
           "tags": [],
@@ -29305,7 +29305,7 @@
           "origin": "sagejs",
           "language": "sage",
           "verification": {
-            "id": "src/baselib/polynomial.py:3838",
+            "id": "src/baselib/polynomial.py:3893",
             "status": "pass",
             "actual": "x^3 + x^2*y + x*y^2 + y^3\n"
           }
@@ -29795,16 +29795,16 @@
         "name": "random_matrix",
         "qualified": "random_matrix",
         "path": "src/baselib/matrix.py",
-        "line": 6334,
+        "line": 6361,
         "excerpt": {
-          "start_line": 6322,
+          "start_line": 6349,
           "text": "        power = base(1)\n        degree = _untyped(base).degree()\n        characteristic = _untyped(base).characteristic()\n        generator = _untyped(base).gen()\n        for _index in range(degree):\n            coefficient = _random_int(0, characteristic - 1)\n            value += base(coefficient) * power\n            power *= generator\n        if not nonzero or not value.is_zero():\n            return value\n\n\ndef random_matrix(\n    base: sage.Parent,\n    nrows: int,\n    ncols: Any = None,\n    algorithm: str = \"randomize\",\n    implementation: Any = None,\n    *args: Any,\n    **kwds: Any,\n) -> Matrix:\n    r\"\"\"\n    Construct a random dense matrix over `base`.\n\n    The dimensions are `nrows` by `ncols`; omitting `ncols` constructs"
         }
       },
       "examples": [
         {
-          "id": "src/baselib/matrix.py:6356",
-          "line": 6356,
+          "id": "src/baselib/matrix.py:6383",
+          "line": 6383,
           "source": "A = random_matrix(ZZ, 3, 5, x=-10, y=11)",
           "want": "",
           "tags": [],
@@ -29813,14 +29813,14 @@
           "origin": "sagejs",
           "language": "sage",
           "verification": {
-            "id": "src/baselib/matrix.py:6356",
+            "id": "src/baselib/matrix.py:6383",
             "status": "pass",
             "actual": ""
           }
         },
         {
-          "id": "src/baselib/matrix.py:6357",
-          "line": 6357,
+          "id": "src/baselib/matrix.py:6384",
+          "line": 6384,
           "source": "A.nrows(), A.ncols(), A.base_ring()",
           "want": "(3, 5, Integer Ring)\n",
           "tags": [],
@@ -29829,14 +29829,14 @@
           "origin": "sagejs",
           "language": "sage",
           "verification": {
-            "id": "src/baselib/matrix.py:6357",
+            "id": "src/baselib/matrix.py:6384",
             "status": "pass",
             "actual": "(3, 5, Integer Ring)\n"
           }
         },
         {
-          "id": "src/baselib/matrix.py:6359",
-          "line": 6359,
+          "id": "src/baselib/matrix.py:6386",
+          "line": 6386,
           "source": "random_matrix(GF(9, 'a'), 2).base_ring() is GF(9, 'a')",
           "want": "True\n",
           "tags": [],
@@ -29845,7 +29845,7 @@
           "origin": "sagejs",
           "language": "sage",
           "verification": {
-            "id": "src/baselib/matrix.py:6359",
+            "id": "src/baselib/matrix.py:6386",
             "status": "pass",
             "actual": "True\n"
           }
@@ -30645,16 +30645,16 @@
         "name": "sudoku",
         "qualified": "sudoku",
         "path": "src/baselib/matrix.py",
-        "line": 6102,
+        "line": 6129,
         "excerpt": {
-          "start_line": 6090,
+          "start_line": 6117,
           "text": "    elif len(values) == 1:\n        entries = list(values[0])\n    else:\n        raise TypeError(\"unsupported vector() constructor signature\")\n    if isinstance(values[0], Vector):\n        source = values[0]\n        return source if base is None else source.change_ring(base)\n    if base is None:\n        base = _base_for_values(entries)\n    return VectorSpace(base, len(entries))(entries)\n\n\ndef sudoku(puzzle: Matrix) -> Matrix:\n    r\"\"\"\n    Solve a 9-by-9 Sudoku puzzle represented by a matrix.\n\n    Entries from 1 through 9 are fixed clues and zero denotes an empty cell.\n    The input matrix is not modified.  A `ValueError` is raised if the clues\n    are inconsistent or the puzzle has no solution.\n\n    ### Examples\n\n    ```sage\n    sage: A = matrix(ZZ, 9, [\n    ....:     5,0,0,0,8,0,0,4,9, 0,0,0,5,0,0,0,3,0,"
         }
       },
       "examples": [
         {
-          "id": "src/baselib/matrix.py:6113",
-          "line": 6113,
+          "id": "src/baselib/matrix.py:6140",
+          "line": 6140,
           "source": "A = matrix(ZZ, 9, [\n    5,0,0,0,8,0,0,4,9, 0,0,0,5,0,0,0,3,0,\n    0,6,7,3,0,0,0,0,1, 1,5,0,0,0,0,0,0,0,\n    0,0,0,2,0,8,0,0,0, 0,0,0,0,0,0,0,1,8,\n    7,0,0,0,0,4,1,5,0, 0,3,0,0,0,2,0,0,0,\n    4,9,0,0,5,0,0,0,3])",
           "want": "",
           "tags": [],
@@ -30663,14 +30663,14 @@
           "origin": "sagejs",
           "language": "sage",
           "verification": {
-            "id": "src/baselib/matrix.py:6113",
+            "id": "src/baselib/matrix.py:6140",
             "status": "pass",
             "actual": ""
           }
         },
         {
-          "id": "src/baselib/matrix.py:6119",
-          "line": 6119,
+          "id": "src/baselib/matrix.py:6146",
+          "line": 6146,
           "source": "sudoku(A)[0]",
           "want": "(5, 1, 3, 6, 8, 7, 2, 4, 9)\n",
           "tags": [],
@@ -30679,7 +30679,7 @@
           "origin": "sagejs",
           "language": "sage",
           "verification": {
-            "id": "src/baselib/matrix.py:6119",
+            "id": "src/baselib/matrix.py:6146",
             "status": "pass",
             "actual": "(5, 1, 3, 6, 8, 7, 2, 4, 9)\n"
           }
