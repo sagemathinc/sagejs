@@ -1564,7 +1564,6 @@
         "FLINT"
       ],
       "consumers": [
-        "packages/flint/index.cjs",
         "packages/flint/test/dirichlet.cjs",
         "packages/flint/test/modular.cjs",
         "src/baselib/dirichlet.py"
@@ -1604,9 +1603,7 @@
         "Sage.js JavaScript fallback",
         "FLINT"
       ],
-      "consumers": [
-        "packages/flint/index.cjs"
-      ],
+      "consumers": [],
       "declared_ffi": null
     },
     {
@@ -1645,7 +1642,6 @@
         "FLINT"
       ],
       "consumers": [
-        "packages/flint/index.cjs",
         "packages/flint/test/dirichlet.cjs",
         "src/baselib/dirichlet.py"
       ],
@@ -4487,7 +4483,6 @@
         "packages/flint-wasm/index.mjs",
         "packages/flint-wasm/test/factor.test.mjs",
         "packages/flint-wasm/test/matrix.test.mjs",
-        "packages/flint/index.cjs",
         "packages/flint/test/test.cjs",
         "src/baselib/matrix.py"
       ],
@@ -4550,7 +4545,6 @@
       "consumers": [
         "packages/flint-wasm/test/factor.test.mjs",
         "packages/flint-wasm/test/matrix.test.mjs",
-        "packages/flint/index.cjs",
         "packages/flint/test/test.cjs",
         "src/baselib/matrix.py",
         "test/native-kernel.cjs"
@@ -4605,7 +4599,6 @@
       "consumers": [
         "packages/flint-wasm/test/factor.test.mjs",
         "packages/flint-wasm/test/matrix.test.mjs",
-        "packages/flint/index.cjs",
         "packages/flint/test/test.cjs",
         "src/baselib/matrix.py",
         "test/ffi.cjs",
@@ -4755,7 +4748,6 @@
         "FLINT"
       ],
       "consumers": [
-        "packages/flint/index.cjs",
         "packages/flint/test/test.cjs",
         "src/baselib/matrix.py"
       ],
@@ -4797,7 +4789,6 @@
       ],
       "consumers": [
         "packages/flint-wasm/test/matrix.test.mjs",
-        "packages/flint/index.cjs",
         "packages/flint/test/test.cjs"
       ],
       "declared_ffi": null
@@ -4842,7 +4833,6 @@
       ],
       "consumers": [
         "packages/flint-wasm/test/matrix.test.mjs",
-        "packages/flint/index.cjs",
         "packages/flint/test/test.cjs"
       ],
       "declared_ffi": null
@@ -4940,7 +4930,6 @@
       "consumers": [
         "packages/flint-wasm/test/factor.test.mjs",
         "packages/flint-wasm/test/matrix.test.mjs",
-        "packages/flint/index.cjs",
         "packages/flint/test/test.cjs",
         "src/baselib/matrix.py",
         "test/ffi.cjs"
@@ -5027,7 +5016,6 @@
         "FLINT"
       ],
       "consumers": [
-        "packages/flint/index.cjs",
         "packages/flint/test/test.cjs"
       ],
       "declared_ffi": null
@@ -5063,7 +5051,6 @@
         "packages/flint-wasm/test/factor.test.mjs",
         "packages/flint-wasm/test/matrix.test.mjs",
         "packages/flint/bench/benchmark.cjs",
-        "packages/flint/index.cjs",
         "packages/flint/test/test.cjs",
         "src/baselib/matrix.py",
         "test/dense-prime-migration.cjs",
@@ -5255,7 +5242,6 @@
       "consumers": [
         "packages/flint-wasm/test/factor.test.mjs",
         "packages/flint-wasm/test/matrix.test.mjs",
-        "packages/flint/index.cjs",
         "packages/flint/test/modular.cjs",
         "packages/flint/test/test.cjs",
         "src/baselib/matrix.py",
@@ -5347,7 +5333,6 @@
         "packages/flint-wasm/index.mjs",
         "packages/flint-wasm/test/factor.test.mjs",
         "packages/flint-wasm/test/matrix.test.mjs",
-        "packages/flint/index.cjs",
         "packages/flint/test/test.cjs",
         "src/baselib/matrix.py",
         "test/dense-prime-migration.cjs"
@@ -5404,7 +5389,6 @@
       ],
       "consumers": [
         "packages/flint-wasm/test/matrix.test.mjs",
-        "packages/flint/index.cjs",
         "packages/flint/test/test.cjs",
         "src/baselib/matrix.py",
         "test/dense-prime-migration.cjs",
@@ -5573,7 +5557,6 @@
       ],
       "consumers": [
         "packages/flint-wasm/test/matrix.test.mjs",
-        "packages/flint/index.cjs",
         "packages/flint/test/test.cjs"
       ],
       "declared_ffi": null
@@ -5629,7 +5612,6 @@
       ],
       "consumers": [
         "packages/flint-wasm/test/matrix.test.mjs",
-        "packages/flint/index.cjs",
         "src/baselib/matrix.py",
         "test/dense-prime-migration.cjs",
         "test/ffi.cjs",
@@ -6931,7 +6913,6 @@
         "FLINT"
       ],
       "consumers": [
-        "packages/flint/index.cjs",
         "packages/flint/test/test.cjs",
         "src/baselib/matrix.py",
         "test/dense-prime-migration.cjs",
@@ -6967,7 +6948,6 @@
         "FLINT"
       ],
       "consumers": [
-        "packages/flint/index.cjs",
         "packages/flint/test/test.cjs",
         "src/baselib/matrix.py"
       ],
@@ -7045,7 +7025,6 @@
       ],
       "consumers": [
         "packages/flint-wasm/test/factor.test.mjs",
-        "packages/flint/index.cjs",
         "packages/flint/test/test.cjs",
         "src/baselib/polynomial.py"
       ],
@@ -7086,7 +7065,6 @@
         "FLINT"
       ],
       "consumers": [
-        "packages/flint/index.cjs",
         "packages/flint/test/test.cjs"
       ],
       "declared_ffi": null
@@ -7124,7 +7102,6 @@
         "FLINT"
       ],
       "consumers": [
-        "packages/flint/index.cjs",
         "packages/flint/test/test.cjs"
       ],
       "declared_ffi": null
@@ -7162,7 +7139,6 @@
       ],
       "consumers": [
         "packages/flint-wasm/test/factor.test.mjs",
-        "packages/flint/index.cjs",
         "packages/flint/test/test.cjs",
         "src/baselib/polynomial.py"
       ],
@@ -7200,7 +7176,6 @@
         "FLINT"
       ],
       "consumers": [
-        "packages/flint/index.cjs",
         "packages/flint/test/test.cjs"
       ],
       "declared_ffi": null
@@ -7245,7 +7220,6 @@
         "FLINT"
       ],
       "consumers": [
-        "packages/flint/index.cjs",
         "packages/flint/test/test.cjs"
       ],
       "declared_ffi": null
@@ -8334,7 +8308,6 @@
       ],
       "consumers": [
         "packages/flint-wasm/test/factor.test.mjs",
-        "packages/flint/index.cjs",
         "packages/flint/test/test.cjs",
         "src/baselib/polynomial.py",
         "src/baselib/series.py"
@@ -8390,7 +8363,6 @@
       ],
       "consumers": [
         "packages/flint-wasm/test/factor.test.mjs",
-        "packages/flint/index.cjs",
         "packages/flint/test/modular.cjs",
         "packages/flint/test/test.cjs",
         "src/baselib/polynomial.py"
@@ -8432,7 +8404,6 @@
         "FLINT"
       ],
       "consumers": [
-        "packages/flint/index.cjs",
         "packages/flint/test/test.cjs",
         "src/baselib/polynomial.py"
       ],
@@ -8580,7 +8551,6 @@
         "FLINT"
       ],
       "consumers": [
-        "packages/flint/index.cjs",
         "packages/flint/test/test.cjs"
       ],
       "declared_ffi": null
@@ -8704,7 +8674,6 @@
       ],
       "consumers": [
         "packages/flint-wasm/test/factor.test.mjs",
-        "packages/flint/index.cjs",
         "packages/flint/test/test.cjs",
         "src/baselib/polynomial.py",
         "src/baselib/series.py"
@@ -10470,7 +10439,6 @@
         "packages/flint-wasm/index.mjs",
         "packages/flint-wasm/test/factor.test.mjs",
         "packages/flint-wasm/test/matrix.test.mjs",
-        "packages/flint/index.cjs",
         "packages/flint/test/test.cjs",
         "test/ffi.cjs"
       ],
@@ -10625,7 +10593,6 @@
       ],
       "consumers": [
         "packages/flint-wasm/test/factor.test.mjs",
-        "packages/flint/index.cjs",
         "packages/flint/test/test.cjs",
         "src/baselib/polynomial.py"
       ],
@@ -10663,7 +10630,6 @@
       ],
       "consumers": [
         "packages/flint-wasm/test/factor.test.mjs",
-        "packages/flint/index.cjs",
         "packages/flint/test/test.cjs",
         "src/baselib/polynomial.py"
       ],
@@ -11291,7 +11257,6 @@
       ],
       "consumers": [
         "bench/compare-native-ffi.cjs",
-        "packages/flint/index.cjs",
         "packages/flint/test/test.cjs"
       ],
       "declared_ffi": "flint:n_is_prime"
@@ -11588,7 +11553,6 @@
       "consumers": [
         "packages/flint-wasm/index.mjs",
         "packages/flint-wasm/test/matrix.test.mjs",
-        "packages/flint/index.cjs",
         "packages/flint/test/test.cjs"
       ],
       "declared_ffi": null
@@ -11771,7 +11735,6 @@
       ],
       "consumers": [
         "packages/flint-wasm/test/factor.test.mjs",
-        "packages/flint/index.cjs",
         "packages/flint/test/test.cjs",
         "src/baselib/polynomial.py"
       ],
@@ -11808,7 +11771,6 @@
         "FLINT"
       ],
       "consumers": [
-        "packages/flint/index.cjs",
         "packages/flint/test/test.cjs",
         "src/baselib/polynomial.py"
       ],

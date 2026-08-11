@@ -83,14 +83,14 @@ contains the N-API marshalling shell and a canonical C core that calls the
 declared foreign symbols without a host callback. It contains no mathematical
 algorithm.
 
-The old handwritten dynamic implementations are temporarily retained behind
-the non-public `__sagejs_ffi_oracles__` property for differential tests. They
-are not the production export. Generated host adapters support opaque owned
-resources, including type-tagged borrow, deterministic close, external-memory
-accounting, and declared host transfers. Package manifests state the exact
-generated surface and any omitted borrowed-view operations. Thus the remaining
-handwritten surface is explicit and shrinking, not an invisible second
-implementation.
+Handwritten implementations of declared dynamic operations are not retained:
+the generated adapters are the production exports. Generated host adapters
+support opaque owned resources, including type-tagged borrow, deterministic
+close, external-memory accounting, and declared host transfers. Package
+manifests state the exact generated surface and any omitted borrowed-view
+operations. A package may still expose explicitly classified legacy N-API for
+unmigrated mathematical families or independent differential oracles, but that
+compatibility surface is separate from the declaration system.
 
 The low-level runtime intrinsic is privileged plumbing: architecture checks
 prohibit mathematical modules from calling it directly. Direct FFI users must

@@ -4,7 +4,7 @@
   "id": "generated-wasm-resource-smoke-v1",
   "title": "Generated Wasm Resource Smoke v1",
   "lane": "integration",
-  "status": "active",
+  "status": "complete",
   "owner": "user",
   "objective": "Generate and execute a target-filtered Wasm adapter for the declared FLINT DirichletGroup resource, covering construction, one borrowed operation, deterministic close, generation-safe handles, inspectable artifacts, and fail-closed unsupported marshalling",
   "base_commit": "f7a8a71668e4328c15f685e2d502ced7fae0ce27",
@@ -70,15 +70,12 @@
     }
   ],
   "handoff": {
-    "summary": "Added a declaration-driven Wasm resource adapter generator and builder, then compiled and executed the declared FLINT DirichletGroup surface against the real CoWasm FLINT toolchain. The generated boundary constructs an owned resource, validates backend-local unforgeable handles, safely borrows it for size and primitive-count operations, rejects stale and cross-instance generations, and deterministically clears FLINT state. Unsupported resources, ownership transfers, target surfaces, exception shields, and marshalling shapes fail during generation instead of falling through. The same selected declarations produce an inspectable C adapter, JavaScript backend, host Python adapter, and manifest without any Dirichlet-specific compiler branch.",
+    "summary": "Added a declaration-driven Wasm resource adapter generator and builder, then compiled and executed the declared FLINT DirichletGroup surface against the real CoWasm FLINT toolchain. The generated boundary constructs an owned resource, validates backend-local unforgeable handles, safely borrows it for size and primitive-count operations, rejects stale and cross-instance generations, and deterministically clears FLINT state. Unsupported resources, ownership transfers, target surfaces, exception shields, and marshalling shapes fail during generation instead of falling through. The same selected declarations produce an inspectable C adapter, JavaScript backend, host Python adapter, and manifest without any Dirichlet-specific compiler branch. Root integration registered the smoke in the authoritative test manifest and passed the real CoWasm smoke, architecture checks, strict Python checks, and all 117 portable tests.",
     "risks": [
       "This bounded smoke proves explicit backend close and generation-safe Wasm ownership. The ordinary Sage.js resource wrapper already supplies FinalizationRegistry cleanup, but this branch does not yet execute the generated backend through that outer browser/runtime path.",
-      "The first generic subset intentionally supports independently owned resources, status constructors, borrowed resource operations, and uint64/bool scalar values only. More complex records, packed buffers, views, exception shields, and resource-returning operations remain fail-closed until separately designed.",
-      "The isolated worktree lacks the complete generated native FLINT artifacts expected by the portable tier. A post-build portable run reached 114 passing tests, then failed the two FLINT-dependent tests for the missing generated manifest and the runner-manifest audit because the shared test manifest is reserved for root integration."
+      "The first generic subset intentionally supports independently owned resources, status constructors, borrowed resource operations, and uint64/bool scalar values only. More complex records, packed buffers, views, exception shields, and resource-returning operations remain fail-closed until separately designed."
     ],
     "next_steps": [
-      "Add test/ffi-wasm-resource.cjs to the integration tier in test/node-test-manifest.cjs from the root integration lane.",
-      "Run pnpm test:portable and the integration tier in the complete root worktree after the shared runner-manifest update.",
       "Connect a generated Wasm backend through the ordinary Sage.js package loader in a browser smoke and force GC when available to verify the existing outer FinalizationRegistry path end to end."
     ]
   }

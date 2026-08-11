@@ -1,17 +1,19 @@
 # TODO
 
-- Generate host adapters for declared opaque resources. Value-only FLINT and
-  igraph declarations already compile from generated typed Python and are
-  shared by ordinary Node and the SEA. Reduce `packages/flint/index.cjs` to a
-  tiny loader and delete it after its final resource adapter and legacy N-API
-  oracle consumer have migrated.
+- Separate generated production backends from explicitly named legacy
+  compatibility/oracle backends. Production package loaders must not retain
+  handwritten implementations of declared operations.
 - Migrate remaining mathematical N-API families to ordinary Python,
   source-transparent `@native` kernels, or declared external-library FFI. Keep
   each old native path only as a differential oracle until deletion.
 - Make every declared FFI dynamic fallback behave identically in a source
   checkout, the SEA, future CPython adapters, and WebAssembly-capable hosts.
-- Continue expanding packed compiler-owned mathematical objects only through
-  complete, fast, host-independent vertical slices with explicit ownership.
+- Extend the generated WebAssembly resource adapter from its real
+  `DirichletGroup` lifecycle smoke to `FmpqMatrix` plus copied byte regions,
+  then verify the package-loader and `FinalizationRegistry` path in a browser.
+- Use compiler-owned packed mathematical objects where they give a complete,
+  fast host-independent vertical slice; use generated opaque resources for
+  mature exact libraries and copy only at explicit representation boundaries.
 - Give compiled baselib modules lexical top-level namespaces instead of the
   current shared bootstrap scope, then ratchet duplicate private helper names.
   Until then, prefix module-private helpers that differ semantically; a matrix

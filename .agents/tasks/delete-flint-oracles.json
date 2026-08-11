@@ -4,7 +4,7 @@
   "id": "delete-flint-oracles",
   "title": "Delete Flint Oracles",
   "lane": "distribution",
-  "status": "review",
+  "status": "complete",
   "owner": "user",
   "objective": "Delete the dormant handwritten FLINT oracle layer, retain generated production bindings, and preserve independent correctness tests",
   "base_commit": "b21b652c83afe6867ef17da61b691abf40ab6f9f",
@@ -97,15 +97,12 @@
     }
   ],
   "handoff": {
-    "summary": "Shrank packages/flint/index.cjs from 1,231 to 75 lines by deleting every handwritten declaration implementation and the hidden __sagejs_ffi_oracles__ table. The loader now publishes the legacy compatibility addon, overrides every declared function/resource/transfer with its generated adapter, exposes the generated manifest, and enforces the existing diagnostic N-API boundaries. Tests use static polynomial results, mathematical right-kernel verification, or the explicitly loaded legacy N-API addon as independent oracles.",
+    "summary": "Shrank packages/flint/index.cjs from 1,231 to 75 lines by deleting every handwritten declaration implementation and the hidden __sagejs_ffi_oracles__ table. The loader now publishes the legacy compatibility addon, overrides every declared function/resource/transfer with its generated adapter, exposes the generated manifest, and enforces the existing diagnostic N-API boundaries. Tests use static polynomial results, mathematical right-kernel verification, or the explicitly loaded legacy N-API addon as independent oracles. Integration regenerated and reviewed all 292 N-API classifications, updated the FFI guide and TODO, and passed the 33-test FFI suite, FLINT package suite, resource/lifecycle/performance test, and architecture checks.",
     "risks": [
-      "The reviewed native-export inventory intentionally drifts only because packages/flint/index.cjs disappeared from 35 N-API consumer lists; counts, decisions, definitions, and hashes are unchanged. The integration lane must regenerate that shared file.",
-      "The full native gate reaches the expected shared native-export inventory drift after all preceding package and FFI tests pass. The SEA gate independently reaches an existing `from mpmath import mp` smoke-test failure after successfully rebuilding FLINT, FFLAS, igraph, both executables, and their generated adapters."
+      "The lane's SEA gate reached an existing `from mpmath import mp` smoke-test failure after successfully rebuilding FLINT, FFLAS, igraph, both executables, and their generated adapters."
     ],
     "next_steps": [
-      "In the integration lane, regenerate and review architecture/native-exports.json, then run pnpm architecture:check.",
-      "Update FFI.md to remove the statement that handwritten dynamic implementations remain behind __sagejs_ffi_oracles__.",
-      "Replace the completed packages/flint/index.cjs TODO with the next separation step for generated production and explicitly named legacy compatibility backends."
+      "Separate generated production backends from explicitly named legacy compatibility/oracle backends so the loader no longer overlays both namespaces."
     ]
   }
 }
