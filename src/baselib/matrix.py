@@ -1257,6 +1257,7 @@ class Vector(sage.Element):
     ) -> None:
         self._parent = parent
         self._entries = entries
+        self._immutable = False
 
     def base_ring(self) -> sage.Parent:
         return self._parent.base_ring()
@@ -1275,6 +1276,20 @@ class Vector(sage.Element):
 
     def __getitem__(self, index: int) -> Any:
         return self._entries[index]
+
+    def __setitem__(self, index: int, value: Any) -> None:
+        if self._immutable:
+            raise ValueError("vector is immutable; change a copy instead")
+        self._entries[index] = self.base_ring()(value)
+
+    def is_immutable(self) -> bool:
+        return self._immutable
+
+    def is_mutable(self) -> bool:
+        return not self._immutable
+
+    def set_immutable(self) -> None:
+        self._immutable = True
 
     def list(self) -> list[Any]:
         return list(self._entries)
@@ -1712,6 +1727,8 @@ class Matrix(sage.Element):
         self._left_kernel_cache = runtime.undefined
         self._charpoly_cache = runtime.map()
         self._minpoly_cache = runtime.map()
+        self._row_vectors_cache: Any = runtime.undefined
+        self._column_vectors_cache: Any = runtime.undefined
 
     @property
     def _native(self) -> Any:
@@ -1942,9 +1959,9 @@ class Matrix(sage.Element):
         """
         count = self.nrows() * self.ncols()
         if self._has_fmpz_matrix_resource():
+            region = _flint_ffi_module().fmpz_matrix_serialize(self._integer_resource())
             values = runtime.exact_integer_values_from_packed_bytes(
-                self._packed_integers(),
-                count,
+                region.take_bytes(), count, 24
             )
             return [runtime.normalize_integer(value) for value in values]
         if self._has_fmpq_matrix_resource():
@@ -1952,67 +1969,95 @@ class Matrix(sage.Element):
                 self._packed_rationals(),
                 2 * count,
             )
-            rational_class = _untyped(sage.Rational)
-            return [
-                rational_class._from_reduced(
-                    parts[2 * index],
-                    parts[2 * index + 1],
-                )
-                for index in range(count)
-            ]
+            return runtime.reduced_rational_values_from_parts(
+                parts, _untyped(sage.Rational), sage.QQ
+            )
         raise TypeError("bulk exact host views require a generated matrix resource")
 
-    def _selected_exact_host_values(self, index: int, rows: bool) -> list[Any]:
-        """Select and decode one exact row or column through owned resources."""
+    def _exact_host_sequence(
+        self,
+        start: int,
+        stride: int,
+        count: int,
+    ) -> list[Any]:
+        """Decode one affine entry sequence through a generated bulk export."""
         ffi = _flint_ffi_module()
-        indices = _packed_uint64([index])
         if self._has_fmpz_matrix_resource():
-            if rows:
-                resource = ffi.fmpz_matrix_select_rows(
-                    self._integer_resource(), indices, 1
-                )
-                count = self.ncols()
-            else:
-                resource = ffi.fmpz_matrix_select_columns(
-                    self._integer_resource(), indices, 1
-                )
-                count = self.nrows()
-            try:
-                region = ffi.fmpz_matrix_serialize(resource)
-                values = runtime.exact_integer_values_from_packed_bytes(
-                    _packed_uint8_suffix(region.take_bytes(), 24),
-                    count,
-                )
-                return [runtime.normalize_integer(value) for value in values]
-            finally:
-                resource.close()
+            region = ffi.fmpz_matrix_serialize_sequence(
+                self._integer_resource(), start, stride, count
+            )
+            values = runtime.exact_integer_values_from_packed_bytes(
+                region.take_bytes(), count
+            )
+            return [runtime.normalize_integer(value) for value in values]
         if self._has_fmpq_matrix_resource():
-            if rows:
-                resource = ffi.fmpq_matrix_select_rows(
-                    self._rational_resource(), indices, 1
-                )
-                count = self.ncols()
-            else:
-                resource = ffi.fmpq_matrix_select_columns(
-                    self._rational_resource(), indices, 1
-                )
-                count = self.nrows()
-            try:
-                parts = runtime.exact_integer_values_from_packed_bytes(
-                    ffi.fmpq_matrix_serialize(resource).take_bytes(),
-                    2 * count,
-                )
-                rational_class = _untyped(sage.Rational)
-                return [
-                    rational_class._from_reduced(
-                        parts[2 * position],
-                        parts[2 * position + 1],
-                    )
-                    for position in range(count)
-                ]
-            finally:
-                resource.close()
+            region = ffi.fmpq_matrix_serialize_sequence(
+                self._rational_resource(), start, stride, count
+            )
+            parts = runtime.exact_integer_values_from_packed_bytes(
+                region.take_bytes(), 2 * count
+            )
+            return runtime.reduced_rational_values_from_parts(
+                parts, _untyped(sage.Rational), sage.QQ
+            )
         raise TypeError("bulk exact selection requires a generated matrix resource")
+
+    def _cached_row_vectors(self) -> list[Vector]:
+        """Return the canonical cached immutable row vectors."""
+        if self._row_vectors_cache is runtime.undefined:
+            if self._column_vectors_cache is runtime.undefined:
+                if self._has_fmpz_matrix_resource() or self._has_fmpq_matrix_resource():
+                    values = self._exact_host_values()
+                    width = self.ncols()
+                    nested = [
+                        values[row * width : (row + 1) * width]
+                        for row in range(self.nrows())
+                    ]
+                else:
+                    nested = [
+                        [self._entry(row, column) for column in range(self.ncols())]
+                        for row in range(self.nrows())
+                    ]
+            else:
+                nested = runtime.reference_matrix_transpose(
+                    [value._entries for value in self._column_vectors_cache],
+                    self.ncols(),
+                    self.nrows(),
+                )
+            parent = VectorSpace(self.base_ring(), self.ncols())
+            vectors = [Vector(parent, entries) for entries in nested]
+            for value in vectors:
+                value.set_immutable()
+            self._row_vectors_cache = vectors
+        return self._row_vectors_cache
+
+    def _cached_column_vectors(self) -> list[Vector]:
+        """Return the canonical cached immutable column vectors."""
+        if self._column_vectors_cache is runtime.undefined:
+            if self._row_vectors_cache is runtime.undefined:
+                if self._has_fmpz_matrix_resource() or self._has_fmpq_matrix_resource():
+                    values = self._exact_host_values()
+                    width = self.ncols()
+                    nested_rows = [
+                        values[row * width : (row + 1) * width]
+                        for row in range(self.nrows())
+                    ]
+                else:
+                    nested_rows = [
+                        [self._entry(row, column) for column in range(self.ncols())]
+                        for row in range(self.nrows())
+                    ]
+            else:
+                nested_rows = [value._entries for value in self._row_vectors_cache]
+            nested = runtime.reference_matrix_transpose(
+                nested_rows, self.nrows(), self.ncols()
+            )
+            parent = VectorSpace(self.base_ring(), self.nrows())
+            vectors = [Vector(parent, entries) for entries in nested]
+            for value in vectors:
+                value.set_immutable()
+            self._column_vectors_cache = vectors
+        return self._column_vectors_cache
 
     def base_ring(self) -> sage.Parent:
         return self._parent.base_ring()
@@ -2298,6 +2343,18 @@ class Matrix(sage.Element):
 
     def list(self) -> list[Any]:
         if self._has_fmpz_matrix_resource() or self._has_fmpq_matrix_resource():
+            if self._row_vectors_cache is not runtime.undefined:
+                return runtime.reference_matrix_flatten(
+                    [row._entries for row in self._row_vectors_cache],
+                    self.nrows(),
+                    self.ncols(),
+                )
+            if self._column_vectors_cache is not runtime.undefined:
+                return runtime.reference_matrix_flatten(
+                    [row._entries for row in self._cached_row_vectors()],
+                    self.nrows(),
+                    self.ncols(),
+                )
             return self._exact_host_values()
         if self._has_packed_rational_storage():
             numerators = _integer_buffer_values(self._rational_numerators())
@@ -2319,27 +2376,26 @@ class Matrix(sage.Element):
     ) -> Any:
         index = _normalize_named_index(index, self.nrows(), "row")
         if self._has_fmpz_matrix_resource() or self._has_fmpq_matrix_resource():
-            entries = self._selected_exact_host_values(index, True)
+            entries = self._exact_host_sequence(index * self.ncols(), 1, self.ncols())
             answer = Vector(VectorSpace(self.base_ring(), self.ncols()), entries)
         else:
             answer = vector(
                 self.base_ring(),
                 [self._entry(index, col) for col in range(self.ncols())],
             )
-        if from_list:
+        if (
+            from_list
+            and self.base_ring() is not sage.ZZ
+            and self.base_ring() is not sage.QQ
+        ):
             return runtime.math_tuple(answer.list())
         return answer
 
-    def rows(self) -> list[Vector]:
-        if self._has_fmpz_matrix_resource() or self._has_fmpq_matrix_resource():
-            entries = self._exact_host_values()
-            columns = self.ncols()
-            parent = VectorSpace(self.base_ring(), columns)
-            return [
-                Vector(parent, entries[row * columns : (row + 1) * columns])
-                for row in range(self.nrows())
-            ]
-        return [self.row(index) for index in range(self.nrows())]
+    def rows(self, copy: bool = True) -> list[Vector]:
+        if copy not in [True, False]:
+            raise ValueError("'copy' must be True or False")
+        cached = self._cached_row_vectors()
+        return list(cached) if copy else cached
 
     def column(
         self,
@@ -2348,31 +2404,26 @@ class Matrix(sage.Element):
     ) -> Any:
         index = _normalize_named_index(index, self.ncols(), "column")
         if self._has_fmpz_matrix_resource() or self._has_fmpq_matrix_resource():
-            entries = self._selected_exact_host_values(index, False)
+            entries = self._exact_host_sequence(index, self.ncols(), self.nrows())
             answer = Vector(VectorSpace(self.base_ring(), self.nrows()), entries)
         else:
             answer = vector(
                 self.base_ring(),
                 [self._entry(row, index) for row in range(self.nrows())],
             )
-        if from_list:
+        if (
+            from_list
+            and self.base_ring() is not sage.ZZ
+            and self.base_ring() is not sage.QQ
+        ):
             return runtime.math_tuple(answer.list())
         return answer
 
-    def columns(self) -> list[Vector]:
-        if self._has_fmpz_matrix_resource() or self._has_fmpq_matrix_resource():
-            entries = self._exact_host_values()
-            rows = self.nrows()
-            columns = self.ncols()
-            parent = VectorSpace(self.base_ring(), rows)
-            return [
-                Vector(
-                    parent,
-                    [entries[row * columns + column] for row in range(rows)],
-                )
-                for column in range(columns)
-            ]
-        return [self.column(index) for index in range(self.ncols())]
+    def columns(self, copy: bool = True) -> list[Vector]:
+        if copy not in [True, False]:
+            raise ValueError("'copy' must be True or False")
+        cached = self._cached_column_vectors()
+        return list(cached) if copy else cached
 
     def change_ring(self, base: sage.Parent) -> Matrix:
         base = _canonical_base(base)
@@ -3333,6 +3384,8 @@ class Matrix(sage.Element):
         self._left_kernel_cache = runtime.undefined
         self._charpoly_cache = runtime.map()
         self._minpoly_cache = runtime.map()
+        self._row_vectors_cache = runtime.undefined
+        self._column_vectors_cache = runtime.undefined
 
     def rank(self, algorithm: Any = None) -> int:
         if algorithm not in [None, "flint", "linbox", "modp"]:
@@ -5327,6 +5380,9 @@ class Matrix(sage.Element):
         row_lines: Any = None,
         col_lines: Any = None,
     ) -> None:
+        if self._immutable:
+            raise ValueError("matrix is immutable; change a copy instead")
+
         def lines(value: Any) -> list[int]:
             if value is None:
                 return []
@@ -5334,8 +5390,11 @@ class Matrix(sage.Element):
                 return [int(value)]
             return [int(index) for index in value]
 
-        self._row_subdivisions = lines(row_lines)
-        self._col_subdivisions = lines(col_lines)
+        row_values = lines(row_lines)
+        column_values = lines(col_lines)
+        self._row_subdivisions = row_values
+        self._col_subdivisions = column_values
+        self._clear_cache()
 
     def matrix_from_rows(self, rows: Any) -> Matrix:
         indices = [int(index) for index in rows]
@@ -5551,11 +5610,20 @@ class Matrix(sage.Element):
             native,
         )
 
-    def diagonal(self) -> list[Any]:
-        return [
-            self._entry(index, index)
-            for index in range(min(self.nrows(), self.ncols()))
-        ]
+    def diagonal(self, offset: int = 0) -> list[Any]:
+        offset = int(offset)
+        if offset >= 0:
+            count = min(self.nrows(), max(0, self.ncols() - offset))
+            start = offset if count != 0 else 0
+        else:
+            start_row = -offset
+            count = min(max(0, self.nrows() - start_row), self.ncols())
+            start = start_row * self.ncols() if count != 0 else 0
+        if self._has_fmpz_matrix_resource() or self._has_fmpq_matrix_resource():
+            return self._exact_host_sequence(start, self.ncols() + 1, count)
+        if offset >= 0:
+            return [self._entry(index, index + offset) for index in range(count)]
+        return [self._entry(index - offset, index) for index in range(count)]
 
     def trace(self) -> Any:
         if not self.is_square():

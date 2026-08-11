@@ -1774,6 +1774,33 @@ def fmpz_matrix_serialize(source: FmpzMatrix) -> FlintByteRegion: ...
 
 
 @flint.function(
+    dynamic="ffiFmpzMatrixSerializeSequence",
+    symbol="sagejs_fmpz_matrix_serialize_sequence",
+    returns=int,
+    abi=[
+        out("result", sagejs_flint_byte_region_t),
+        in_("source", sagejs_fmpz_matrix_t),
+        in_("start", uint64_t),
+        in_("stride", uint64_t),
+        in_("count", uint64_t),
+    ],
+    effects=Effects(pure=False, allocates=True, raises=[ValueError, OverflowError]),
+    result=Status(
+        1,
+        exception=ValueError,
+        message="invalid integer matrix entry sequence",
+    ),
+    wasm=False,
+)
+def fmpz_matrix_serialize_sequence(
+    source: FmpzMatrix,
+    start: uint64,
+    stride: uint64,
+    count: uint64,
+) -> FlintByteRegion: ...
+
+
+@flint.function(
     dynamic="ffiFlintByteRegionCreate",
     symbol="sagejs_flint_byte_region_init",
     returns=int,
@@ -2614,6 +2641,33 @@ def fmpq_matrix_format(source: FmpqMatrix) -> FlintByteRegion: ...
     wasm=False,
 )
 def fmpq_matrix_serialize(source: FmpqMatrix) -> FlintByteRegion: ...
+
+
+@flint.function(
+    dynamic="ffiFmpqMatrixSerializeSequence",
+    symbol="sagejs_fmpq_matrix_serialize_sequence",
+    returns=int,
+    abi=[
+        out("result", sagejs_flint_byte_region_t),
+        in_("source", sagejs_fmpq_matrix_t),
+        in_("start", uint64_t),
+        in_("stride", uint64_t),
+        in_("count", uint64_t),
+    ],
+    effects=Effects(pure=False, allocates=True, raises=[ValueError, OverflowError]),
+    result=Status(
+        1,
+        exception=ValueError,
+        message="invalid rational matrix entry sequence",
+    ),
+    wasm=False,
+)
+def fmpq_matrix_serialize_sequence(
+    source: FmpqMatrix,
+    start: uint64,
+    stride: uint64,
+    count: uint64,
+) -> FlintByteRegion: ...
 
 
 @flint.function(

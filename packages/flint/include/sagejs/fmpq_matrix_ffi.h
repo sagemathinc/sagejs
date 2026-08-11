@@ -952,6 +952,99 @@ static inline int sagejs_fmpq_matrix_serialize(
     return 1;
 }
 
+/* Serialize an affine row-major entry sequence without a temporary matrix. */
+static inline int sagejs_fmpq_matrix_serialize_sequence(
+    sagejs_flint_byte_region_t result, const sagejs_fmpq_matrix_t source,
+    uint64_t start, uint64_t stride, uint64_t count)
+{
+    const uint64_t rows = (uint64_t) fmpq_mat_nrows(source->value);
+    const uint64_t columns = (uint64_t) fmpq_mat_ncols(source->value);
+    if (rows != 0 && columns > UINT64_MAX / rows)
+        return 0;
+    const uint64_t total = rows * columns;
+    result->data = NULL;
+    result->length = 0;
+    if (count != 0)
+    {
+        if (start >= total ||
+            ((count - 1) != 0 &&
+             stride > (UINT64_MAX - start) / (count - 1)) ||
+            start + (count - 1) * stride >= total)
+            return 0;
+    }
+
+    size_t length = 0;
+    size_t maximum_bytes = 0;
+    for (uint64_t index = 0; index < count; index++)
+    {
+        const uint64_t linear = start + index * stride;
+        const fmpq *entry = fmpq_mat_entry(source->value,
+            (slong) (linear / columns), (slong) (linear % columns));
+        const size_t numerator_bytes =
+            sagejs_fmpz_serialized_bytes(fmpq_numref(entry));
+        const size_t denominator_bytes =
+            sagejs_fmpz_serialized_bytes(fmpq_denref(entry));
+        if (numerator_bytes > UINT32_MAX / 2 ||
+            denominator_bytes > UINT32_MAX ||
+            !sagejs_size_add(&length, 8) ||
+            !sagejs_size_add(&length, numerator_bytes) ||
+            !sagejs_size_add(&length, denominator_bytes))
+            return 0;
+        if (numerator_bytes > maximum_bytes)
+            maximum_bytes = numerator_bytes;
+        if (denominator_bytes > maximum_bytes)
+            maximum_bytes = denominator_bytes;
+    }
+    result->data = (unsigned char *) malloc(length == 0 ? 1 : length);
+    if (result->data == NULL)
+        return 0;
+    result->length = length;
+    const size_t maximum_words =
+        (maximum_bytes + sizeof(ulong) - 1) / sizeof(ulong);
+    ulong *words = maximum_words == 0 ? NULL :
+        (ulong *) calloc(maximum_words, sizeof(ulong));
+    if (maximum_words != 0 && words == NULL)
+    {
+        sagejs_flint_byte_region_clear(result);
+        return 0;
+    }
+    fmpz_t magnitude;
+    fmpz_init(magnitude);
+    size_t offset = 0;
+    for (uint64_t index = 0; index < count; index++)
+    {
+        const uint64_t linear = start + index * stride;
+        const fmpq *entry = fmpq_mat_entry(source->value,
+            (slong) (linear / columns), (slong) (linear % columns));
+        const fmpz *parts[2] = {fmpq_numref(entry), fmpq_denref(entry)};
+        for (size_t part = 0; part < 2; part++)
+        {
+            const size_t byte_count = sagejs_fmpz_serialized_bytes(parts[part]);
+            uint32_t header = (uint32_t) byte_count;
+            if (part == 0 && fmpz_sgn(parts[part]) < 0)
+                header |= UINT32_C(0x80000000);
+            for (size_t byte = 0; byte < 4; byte++)
+                result->data[offset++] =
+                    (unsigned char) (header >> (8 * byte));
+            if (byte_count != 0)
+            {
+                const slong word_count = (slong)
+                    ((byte_count + sizeof(ulong) - 1) / sizeof(ulong));
+                memset(words, 0, (size_t) word_count * sizeof(ulong));
+                fmpz_abs(magnitude, parts[part]);
+                fmpz_get_ui_array(words, word_count, magnitude);
+                for (size_t byte = 0; byte < byte_count; byte++)
+                    result->data[offset++] = (unsigned char)
+                        (words[byte / sizeof(ulong)] >>
+                         (8 * (byte % sizeof(ulong))));
+            }
+        }
+    }
+    fmpz_clear(magnitude);
+    free(words);
+    return 1;
+}
+
 static inline uint32_t sagejs_fmpq_matrix_read_u32(
     const unsigned char *data, size_t offset)
 {

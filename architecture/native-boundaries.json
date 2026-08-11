@@ -14,10 +14,10 @@
   },
   "counts": {
     "classified-native-file": 56,
-    "declared-ffi": 172,
+    "declared-ffi": 174,
     "declared-ffi-resource": 10,
     "napi-export": 292,
-    "runtime-intrinsic": 128,
+    "runtime-intrinsic": 131,
     "wasm-export": 46
   },
   "boundaries": [
@@ -699,6 +699,17 @@
       "dynamic_package": "@sagemath/sagejs-flint",
       "dynamic_export": "ffiFmpqMatrixSerialize",
       "symbol": "sagejs_fmpq_matrix_serialize",
+      "disposition": "declared-safe-ffi"
+    },
+    {
+      "id": "ffi:flint:fmpq_matrix_serialize_sequence",
+      "kind": "declared-ffi",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "fmpq_matrix_serialize_sequence",
+      "dynamic_package": "@sagemath/sagejs-flint",
+      "dynamic_export": "ffiFmpqMatrixSerializeSequence",
+      "symbol": "sagejs_fmpq_matrix_serialize_sequence",
       "disposition": "declared-safe-ffi"
     },
     {
@@ -1458,6 +1469,17 @@
       "dynamic_package": "@sagemath/sagejs-flint",
       "dynamic_export": "ffiFmpzMatrixSerialize",
       "symbol": "sagejs_fmpz_matrix_serialize",
+      "disposition": "declared-safe-ffi"
+    },
+    {
+      "id": "ffi:flint:fmpz_matrix_serialize_sequence",
+      "kind": "declared-ffi",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "fmpz_matrix_serialize_sequence",
+      "dynamic_package": "@sagemath/sagejs-flint",
+      "dynamic_export": "ffiFmpzMatrixSerializeSequence",
+      "symbol": "sagejs_fmpz_matrix_serialize_sequence",
       "disposition": "declared-safe-ffi"
     },
     {
@@ -6211,11 +6233,35 @@
       "disposition": "runtime-primitive"
     },
     {
+      "id": "runtime:reduced_rational_values_from_parts",
+      "kind": "runtime-intrinsic",
+      "path": "tools/python/contract.ts",
+      "export": "reduced_rational_values_from_parts",
+      "symbol": "ρσ_reduced_rational_values_from_parts",
+      "disposition": "runtime-primitive"
+    },
+    {
       "id": "runtime:reference_error",
       "kind": "runtime-intrinsic",
       "path": "tools/python/contract.ts",
       "export": "reference_error",
       "symbol": "ReferenceError",
+      "disposition": "runtime-primitive"
+    },
+    {
+      "id": "runtime:reference_matrix_flatten",
+      "kind": "runtime-intrinsic",
+      "path": "tools/python/contract.ts",
+      "export": "reference_matrix_flatten",
+      "symbol": "ρσ_reference_matrix_flatten",
+      "disposition": "runtime-primitive"
+    },
+    {
+      "id": "runtime:reference_matrix_transpose",
+      "kind": "runtime-intrinsic",
+      "path": "tools/python/contract.ts",
+      "export": "reference_matrix_transpose",
+      "symbol": "ρσ_reference_matrix_transpose",
       "disposition": "runtime-primitive"
     },
     {

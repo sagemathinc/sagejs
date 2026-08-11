@@ -156,7 +156,8 @@ test("FFI declarations are strict and generated modules are current", () => {
       "fmpz_matrix_select_rows", "fmpz_matrix_select_columns",
       "fmpz_matrix_set_block", "fmpz_matrix_stack",
       "fmpz_matrix_augment", "fmpz_matrix_nonzero_count",
-      "fmpz_matrix_format", "fmpz_matrix_serialize", "flint_byte_region",
+      "fmpz_matrix_format", "fmpz_matrix_serialize",
+      "fmpz_matrix_serialize_sequence", "flint_byte_region",
       "flint_byte_region_set", "fmpz_matrix_deserialize",
       "fmpz_matrix_deserialize_entries",
       "fmpq_matrix", "fmpq_matrix_randbits", "fmpq_matrix_nrows",
@@ -177,7 +178,8 @@ test("FFI declarations are strict and generated modules are current", () => {
       "fmpq_matrix_nonzero_count",
       "fmpq_value_numerator",
       "fmpq_value_denominator", "fmpq_matrix_format",
-      "fmpq_matrix_serialize", "fmpq_matrix_deserialize",
+      "fmpq_matrix_serialize", "fmpq_matrix_serialize_sequence",
+      "fmpq_matrix_deserialize",
       "flint_byte_region_length",
       "flint_byte_region_get",
       "dirichlet_group_init", "dirichlet_group_size",
@@ -249,7 +251,7 @@ test("FFI declarations are strict and generated modules are current", () => {
     { resource: "graph", ownership: "owned", owner: null, root: "graph" },
     { resource: "edges", ownership: "borrowed", owner: "graph", root: "graph" },
   ]);
-  assert.match(runSage(["ffi", "check"]), /172 function\(s\)/);
+  assert.match(runSage(["ffi", "check"]), /174 function\(s\)/);
   const inspection = JSON.parse(
     runSage(["ffi", "explain", "flint", "--json"]),
   );
@@ -299,7 +301,7 @@ test("generated host adapters cover values and safe owned resources", async () =
     assert.doesNotMatch(source, /sagejs\.runtime|ffi_call/);
     assert.equal(
       functions.length,
-      declaration.library.id === "flint" ? 165 : 2,
+      declaration.library.id === "flint" ? 167 : 2,
     );
     if (declaration.library.id === "flint") {
       const ir = await lowerSource(source, filename);
@@ -323,7 +325,7 @@ test("generated host adapters cover values and safe owned resources", async () =
 
 test("packages make generated host adapters canonical and retain handwritten oracles", () => {
   for (const [packagePath, expected] of [
-    ["../packages/flint", 166],
+    ["../packages/flint", 168],
     ["../packages/graph", 2],
   ]) {
     const backend = require(packagePath);
@@ -470,7 +472,7 @@ test("native-boundary audit is a reviewed exact ratchet", () => {
   const current = boundaryAudit.validateBoundarySnapshot(snapshot, { root });
   assert.ok(current.counts["napi-export"] >= 280);
   assert.ok(current.counts["runtime-intrinsic"] >= 100);
-  assert.equal(current.counts["declared-ffi"], 172);
+  assert.equal(current.counts["declared-ffi"], 174);
   assert.equal(current.counts["declared-ffi-resource"], 10);
   assert.match(runSage(["ffi", "audit"]), /inventoried native boundaries/);
   assert.equal(

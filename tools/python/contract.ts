@@ -73,6 +73,10 @@ export const SAGEJS_RUNTIME_INTRINSICS: Record<string, string> = {
   integer_buffer_to_packed_bytes: "ρσ_integer_buffer_to_packed_bytes",
   exact_integer_values_from_packed_bytes:
     "ρσ_exact_integer_values_from_packed_bytes",
+  reduced_rational_values_from_parts:
+    "ρσ_reduced_rational_values_from_parts",
+  reference_matrix_transpose: "ρσ_reference_matrix_transpose",
+  reference_matrix_flatten: "ρσ_reference_matrix_flatten",
   exact_integer_values_to_packed_bytes:
     "ρσ_exact_integer_values_to_packed_bytes",
   rational_buffers_from_packed_bytes: "ρσ_rational_buffers_from_packed_bytes",

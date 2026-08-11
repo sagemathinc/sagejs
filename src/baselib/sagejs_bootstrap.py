@@ -633,23 +633,28 @@ def ρσ_exact_integer_values_to_packed_bytes(values):
     })()"""
 
 
-def ρσ_exact_integer_values_from_packed_bytes(source, count):
-    """Decode canonical variable-length magnitudes as ordinary exact values."""
+def ρσ_exact_integer_values_from_packed_bytes(source, count, start=0):
+    """Decode canonical magnitudes from a validated byte offset."""
     return r"""%js (() => {
         if (!(source instanceof Uint8Array)) {
             throw new TypeError("packed exact integer source must be a Uint8Array");
         }
+        if (start === undefined) start = 0;
         if (!Number.isSafeInteger(count) || count < 0) {
             throw new RangeError("invalid packed exact integer entry count");
         }
-        if (count > Math.floor(source.byteLength / 4)) {
+        if (!Number.isSafeInteger(start) || start < 0 ||
+            start > source.byteLength) {
+            throw new RangeError("invalid packed exact integer byte offset");
+        }
+        if (count > Math.floor((source.byteLength - start) / 4)) {
             throw new RangeError("packed exact integer source is truncated");
         }
         const view = new DataView(
             source.buffer, source.byteOffset, source.byteLength
         );
         const values = new Array(count);
-        let offset = 0;
+        let offset = start;
         function digit(value) {
             return value.toString(16).padStart(2, "0");
         }
@@ -696,6 +701,82 @@ def ρσ_exact_integer_values_from_packed_bytes(source, count):
         }
         if (offset !== source.byteLength) {
             throw new RangeError("packed exact integer source has trailing data");
+        }
+        return values;
+    })()"""
+
+
+def ρσ_reduced_rational_values_from_parts(parts, rational_class, parent):
+    """Construct immutable rationals from trusted reduced interleaved parts."""
+    return r"""%js (() => {
+        if (!Array.isArray(parts) || parts.length % 2 !== 0) {
+            throw new TypeError("reduced rational parts must be an even array");
+        }
+        const prototype = Reflect.get(rational_class, "prototype");
+        const values = new Array(parts.length / 2);
+        for (let index = 0; index < values.length; index += 1) {
+            const numerator = BigInt(parts[2 * index]);
+            const denominator = BigInt(parts[2 * index + 1]);
+            if (denominator <= 0n) {
+                throw new RangeError(
+                    "a reduced rational must have positive denominator"
+                );
+            }
+            const value = Object.create(prototype);
+            Reflect.set(value, "_numerator", numerator);
+            Reflect.set(value, "_denominator", denominator);
+            Reflect.set(value, "_parent", parent);
+            Object.freeze(value);
+            values[index] = value;
+        }
+        return values;
+    })()"""
+
+
+def ρσ_reference_matrix_transpose(rows, row_count, column_count):
+    """Transpose nested host arrays while preserving scalar identities."""
+    return r"""%js (() => {
+        if (!Array.isArray(rows) || !Number.isSafeInteger(row_count) ||
+            row_count < 0 || !Number.isSafeInteger(column_count) ||
+            column_count < 0 || rows.length !== row_count) {
+            throw new RangeError("invalid reference-matrix dimensions");
+        }
+        const columns = new Array(column_count);
+        for (let column = 0; column < column_count; column += 1) {
+            columns[column] = new Array(row_count);
+        }
+        for (let row = 0; row < row_count; row += 1) {
+            const entries = rows[row];
+            if (!Array.isArray(entries) || entries.length !== column_count) {
+                throw new RangeError("invalid reference-matrix row");
+            }
+            for (let column = 0; column < column_count; column += 1) {
+                columns[column][row] = entries[column];
+            }
+        }
+        return columns;
+    })()"""
+
+
+def ρσ_reference_matrix_flatten(rows, row_count, column_count):
+    """Flatten nested host arrays while preserving scalar identities."""
+    return r"""%js (() => {
+        if (!Array.isArray(rows) || !Number.isSafeInteger(row_count) ||
+            row_count < 0 || !Number.isSafeInteger(column_count) ||
+            column_count < 0 || rows.length !== row_count ||
+            (row_count !== 0 &&
+             column_count > Math.floor(Number.MAX_SAFE_INTEGER / row_count))) {
+            throw new RangeError("invalid reference-matrix dimensions");
+        }
+        const values = new Array(row_count * column_count);
+        for (let row = 0; row < row_count; row += 1) {
+            const entries = rows[row];
+            if (!Array.isArray(entries) || entries.length !== column_count) {
+                throw new RangeError("invalid reference-matrix row");
+            }
+            for (let column = 0; column < column_count; column += 1) {
+                values[row * column_count + column] = entries[column];
+            }
         }
         return values;
     })()"""
