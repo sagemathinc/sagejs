@@ -327,6 +327,32 @@ def fmpz_polynomial_mul(
 
 
 @flint.function(
+    dynamic="ffiFmpzPolynomialDivExact",
+    symbol="sagejs_fmpz_polynomial_divexact",
+    returns=int,
+    abi=[
+        out("result", sagejs_fmpz_polynomial_t),
+        in_("dividend", sagejs_fmpz_polynomial_t),
+        in_("divisor", sagejs_fmpz_polynomial_t),
+    ],
+    effects=Effects(pure=False, allocates=True, raises=[ValueError]),
+    result=Status(
+        1,
+        exception=ValueError,
+        message=(
+            "integer polynomial exact division requires sealed resources, "
+            "a nonzero divisor, and an exact quotient"
+        ),
+    ),
+    wasm=False,
+)
+def fmpz_polynomial_divexact(
+    dividend: FmpzPolynomial,
+    divisor: FmpzPolynomial,
+) -> FmpzPolynomial: ...
+
+
+@flint.function(
     dynamic="ffiFmpzPolynomialPow",
     symbol="sagejs_fmpz_polynomial_pow",
     returns=int,
@@ -659,6 +685,32 @@ def fmpq_polynomial_neg(source: FmpqPolynomial) -> FmpqPolynomial: ...
 def fmpq_polynomial_mul(
     left: FmpqPolynomial,
     right: FmpqPolynomial,
+) -> FmpqPolynomial: ...
+
+
+@flint.function(
+    dynamic="ffiFmpqPolynomialDivExact",
+    symbol="sagejs_fmpq_polynomial_divexact",
+    returns=int,
+    abi=[
+        out("result", sagejs_fmpq_polynomial_t),
+        in_("dividend", sagejs_fmpq_polynomial_t),
+        in_("divisor", sagejs_fmpq_polynomial_t),
+    ],
+    effects=Effects(pure=False, allocates=True, raises=[ValueError]),
+    result=Status(
+        1,
+        exception=ValueError,
+        message=(
+            "rational polynomial exact division requires sealed resources, "
+            "a nonzero divisor, and an exact quotient"
+        ),
+    ),
+    wasm=False,
+)
+def fmpq_polynomial_divexact(
+    dividend: FmpqPolynomial,
+    divisor: FmpqPolynomial,
 ) -> FmpqPolynomial: ...
 
 

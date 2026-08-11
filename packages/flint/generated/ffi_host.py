@@ -26,6 +26,7 @@ from sagejs.ffi.flint import (
     fmpz_polynomial_sub as _ffi_fmpz_polynomial_sub,
     fmpz_polynomial_neg as _ffi_fmpz_polynomial_neg,
     fmpz_polynomial_mul as _ffi_fmpz_polynomial_mul,
+    fmpz_polynomial_divexact as _ffi_fmpz_polynomial_divexact,
     fmpz_polynomial_pow as _ffi_fmpz_polynomial_pow,
     fmpz_polynomial_evaluate as _ffi_fmpz_polynomial_evaluate,
     fmpz_polynomial_evaluate_rational as _ffi_fmpz_polynomial_evaluate_rational,
@@ -42,6 +43,7 @@ from sagejs.ffi.flint import (
     fmpq_polynomial_sub as _ffi_fmpq_polynomial_sub,
     fmpq_polynomial_neg as _ffi_fmpq_polynomial_neg,
     fmpq_polynomial_mul as _ffi_fmpq_polynomial_mul,
+    fmpq_polynomial_divexact as _ffi_fmpq_polynomial_divexact,
     fmpq_polynomial_pow as _ffi_fmpq_polynomial_pow,
     fmpq_polynomial_evaluate as _ffi_fmpq_polynomial_evaluate,
     fmpq_polynomial_serialize as _ffi_fmpq_polynomial_serialize,
@@ -273,6 +275,17 @@ def ffiFmpzPolynomialMul(
 
 
 @native
+def ffiFmpzPolynomialDivExact(
+    dividend: FmpzPolynomial,
+    divisor: FmpzPolynomial,
+) -> FmpzPolynomial:
+    return _ffi_fmpz_polynomial_divexact(
+        dividend,
+        divisor,
+    )
+
+
+@native
 def ffiFmpzPolynomialPow(
     source: FmpzPolynomial,
     exponent: uint64,
@@ -441,6 +454,17 @@ def ffiFmpqPolynomialMul(
     return _ffi_fmpq_polynomial_mul(
         left,
         right,
+    )
+
+
+@native
+def ffiFmpqPolynomialDivExact(
+    dividend: FmpqPolynomial,
+    divisor: FmpqPolynomial,
+) -> FmpqPolynomial:
+    return _ffi_fmpq_polynomial_divexact(
+        dividend,
+        divisor,
     )
 
 

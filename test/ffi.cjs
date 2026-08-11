@@ -116,7 +116,8 @@ test("FFI declarations are strict and generated modules are current", () => {
       "fmpz_polynomial_equal", "fmpz_polynomial_coefficient",
       "fmpz_polynomial_add", "fmpz_polynomial_sub",
       "fmpz_polynomial_neg", "fmpz_polynomial_mul",
-      "fmpz_polynomial_pow", "fmpz_polynomial_evaluate",
+      "fmpz_polynomial_divexact", "fmpz_polynomial_pow",
+      "fmpz_polynomial_evaluate",
       "fmpz_polynomial_evaluate_rational", "fmpz_polynomial_serialize",
       "fmpz_polynomial_deserialize",
       "fmpq_polynomial", "fmpq_polynomial_set_coefficient",
@@ -124,7 +125,8 @@ test("FFI declarations are strict and generated modules are current", () => {
       "fmpq_polynomial_equal", "fmpq_polynomial_coefficient_numerator",
       "fmpq_polynomial_coefficient_denominator", "fmpq_polynomial_add",
       "fmpq_polynomial_sub", "fmpq_polynomial_neg",
-      "fmpq_polynomial_mul", "fmpq_polynomial_pow",
+      "fmpq_polynomial_mul", "fmpq_polynomial_divexact",
+      "fmpq_polynomial_pow",
       "fmpq_polynomial_evaluate", "fmpq_polynomial_serialize",
       "fmpq_polynomial_deserialize",
       "fmpz_matrix", "fmpz_matrix_nrows", "fmpz_matrix_ncols",
@@ -219,7 +221,7 @@ test("FFI declarations are strict and generated modules are current", () => {
     { resource: "graph", ownership: "owned", owner: null, root: "graph" },
     { resource: "edges", ownership: "borrowed", owner: "graph", root: "graph" },
   ]);
-  assert.match(runSage(["ffi", "check"]), /155 function\(s\)/);
+  assert.match(runSage(["ffi", "check"]), /157 function\(s\)/);
   const inspection = JSON.parse(
     runSage(["ffi", "explain", "flint", "--json"]),
   );
@@ -269,14 +271,14 @@ test("generated host adapters cover values and safe owned resources", () => {
     assert.doesNotMatch(source, /sagejs\.runtime|ffi_call/);
     assert.equal(
       functions.length,
-      declaration.library.id === "flint" ? 148 : 2,
+      declaration.library.id === "flint" ? 150 : 2,
     );
   }
 });
 
 test("packages make generated host adapters canonical and retain handwritten oracles", () => {
   for (const [packagePath, expected] of [
-    ["../packages/flint", 148],
+    ["../packages/flint", 150],
     ["../packages/graph", 2],
   ]) {
     const backend = require(packagePath);
@@ -423,7 +425,7 @@ test("native-boundary audit is a reviewed exact ratchet", () => {
   const current = boundaryAudit.validateBoundarySnapshot(snapshot, { root });
   assert.ok(current.counts["napi-export"] >= 280);
   assert.ok(current.counts["runtime-intrinsic"] >= 100);
-  assert.equal(current.counts["declared-ffi"], 155);
+  assert.equal(current.counts["declared-ffi"], 157);
   assert.equal(current.counts["declared-ffi-resource"], 9);
   assert.match(runSage(["ffi", "audit"]), /inventoried native boundaries/);
   assert.equal(

@@ -223,6 +223,25 @@ static inline int sagejs_fmpz_polynomial_mul(
     return 1;
 }
 
+static inline int sagejs_fmpz_polynomial_divexact(
+    sagejs_fmpz_polynomial_t result,
+    const sagejs_fmpz_polynomial_t dividend,
+    const sagejs_fmpz_polynomial_t divisor)
+{
+    if (!dividend->sealed || !divisor->sealed ||
+        fmpz_poly_is_zero(divisor->value))
+        return 0;
+    fmpz_poly_init(result->value);
+    if (!fmpz_poly_divides(result->value, dividend->value, divisor->value))
+    {
+        fmpz_poly_clear(result->value);
+        memset(result, 0, sizeof(*result));
+        return 0;
+    }
+    sagejs_fmpz_polynomial_finish_result(result);
+    return 1;
+}
+
 static inline int sagejs_fmpz_polynomial_pow(
     sagejs_fmpz_polynomial_t result,
     const sagejs_fmpz_polynomial_t source, uint64_t exponent)
@@ -476,6 +495,25 @@ SAGEJS_FMPQ_POLYNOMIAL_BINARY(
     sagejs_fmpq_polynomial_mul, fmpq_poly_mul)
 
 #undef SAGEJS_FMPQ_POLYNOMIAL_BINARY
+
+static inline int sagejs_fmpq_polynomial_divexact(
+    sagejs_fmpq_polynomial_t result,
+    const sagejs_fmpq_polynomial_t dividend,
+    const sagejs_fmpq_polynomial_t divisor)
+{
+    if (!dividend->sealed || !divisor->sealed ||
+        fmpq_poly_is_zero(divisor->value))
+        return 0;
+    fmpq_poly_init(result->value);
+    if (!fmpq_poly_divides(result->value, dividend->value, divisor->value))
+    {
+        fmpq_poly_clear(result->value);
+        memset(result, 0, sizeof(*result));
+        return 0;
+    }
+    sagejs_fmpq_polynomial_finish_result(result);
+    return 1;
+}
 
 static inline int sagejs_fmpq_polynomial_neg(
     sagejs_fmpq_polynomial_t result,

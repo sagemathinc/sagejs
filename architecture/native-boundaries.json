@@ -14,7 +14,7 @@
   },
   "counts": {
     "classified-native-file": 56,
-    "declared-ffi": 155,
+    "declared-ffi": 157,
     "declared-ffi-resource": 9,
     "napi-export": 292,
     "runtime-intrinsic": 126,
@@ -750,6 +750,17 @@
       "disposition": "declared-safe-ffi"
     },
     {
+      "id": "ffi:flint:fmpq_polynomial_divexact",
+      "kind": "declared-ffi",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "fmpq_polynomial_divexact",
+      "dynamic_package": "@sagemath/sagejs-flint",
+      "dynamic_export": "ffiFmpqPolynomialDivExact",
+      "symbol": "sagejs_fmpq_polynomial_divexact",
+      "disposition": "declared-safe-ffi"
+    },
+    {
       "id": "ffi:flint:fmpq_polynomial_equal",
       "kind": "declared-ffi",
       "path": "ffi/flint.ffi.json",
@@ -1462,6 +1473,17 @@
       "dynamic_package": "@sagemath/sagejs-flint",
       "dynamic_export": "ffiFmpzPolynomialDeserialize",
       "symbol": "sagejs_fmpz_polynomial_deserialize_packed",
+      "disposition": "declared-safe-ffi"
+    },
+    {
+      "id": "ffi:flint:fmpz_polynomial_divexact",
+      "kind": "declared-ffi",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "fmpz_polynomial_divexact",
+      "dynamic_package": "@sagemath/sagejs-flint",
+      "dynamic_export": "ffiFmpzPolynomialDivExact",
+      "symbol": "sagejs_fmpz_polynomial_divexact",
       "disposition": "declared-safe-ffi"
     },
     {
