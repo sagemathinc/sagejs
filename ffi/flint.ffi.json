@@ -3427,7 +3427,7 @@
       },
       "errors": {
         "exception": "ValueError",
-        "message": "integer matrix power requires a square matrix"
+        "message": "integer matrix power requires a square matrix and a FLINT-word exponent"
       },
       "exceptions": {
         "policy": "none",
@@ -3537,7 +3537,7 @@
         ]
       },
       "effects": {
-        "pure": false,
+        "pure": true,
         "deterministic": true,
         "thread_safe": true,
         "may_allocate": true,
@@ -3901,6 +3901,236 @@
       "errors": {
         "exception": "OverflowError",
         "message": "integer matrix serialization is too large"
+      },
+      "exceptions": {
+        "policy": "none",
+        "failure_status": null
+      },
+      "targets": {
+        "dynamic": true,
+        "native": true,
+        "wasm": false
+      }
+    },
+    {
+      "id": "flint_byte_region",
+      "python_name": "flint_byte_region",
+      "signature": {
+        "parameters": [
+          {
+            "name": "length",
+            "type": "uint64",
+            "ownership": "value",
+            "mutability": "value",
+            "aliasing": "not_applicable"
+          }
+        ],
+        "return_type": "FlintByteRegion",
+        "return_ownership": "owned",
+        "borrow_from": null
+      },
+      "dynamic": {
+        "export": "ffiFlintByteRegionCreate"
+      },
+      "native": {
+        "symbol": "sagejs_flint_byte_region_init",
+        "return_type": "int",
+        "arguments": [
+          {
+            "source": "result",
+            "abi_type": "sagejs_flint_byte_region_t",
+            "direction": "out",
+            "adapter": null
+          },
+          {
+            "source": "length",
+            "abi_type": "uint64_t",
+            "direction": "in",
+            "adapter": null
+          }
+        ]
+      },
+      "effects": {
+        "pure": false,
+        "deterministic": true,
+        "thread_safe": true,
+        "may_allocate": true,
+        "may_raise": [
+          "OverflowError"
+        ],
+        "writes": []
+      },
+      "result": {
+        "domain": "status",
+        "success": [
+          1
+        ],
+        "absence": null
+      },
+      "errors": {
+        "exception": "OverflowError",
+        "message": "FLINT byte-region length is too large"
+      },
+      "exceptions": {
+        "policy": "none",
+        "failure_status": null
+      },
+      "targets": {
+        "dynamic": true,
+        "native": true,
+        "wasm": false
+      }
+    },
+    {
+      "id": "flint_byte_region_set",
+      "python_name": "flint_byte_region_set",
+      "signature": {
+        "parameters": [
+          {
+            "name": "region",
+            "type": "FlintByteRegion",
+            "ownership": "borrowed_mut",
+            "mutability": "write",
+            "aliasing": "allowed"
+          },
+          {
+            "name": "index",
+            "type": "uint64",
+            "ownership": "value",
+            "mutability": "value",
+            "aliasing": "not_applicable"
+          },
+          {
+            "name": "value",
+            "type": "uint64",
+            "ownership": "value",
+            "mutability": "value",
+            "aliasing": "not_applicable"
+          }
+        ],
+        "return_type": "bool",
+        "return_ownership": "value",
+        "borrow_from": null
+      },
+      "dynamic": {
+        "export": "ffiFlintByteRegionSet"
+      },
+      "native": {
+        "symbol": "sagejs_flint_byte_region_set",
+        "return_type": "int",
+        "arguments": [
+          {
+            "source": "region",
+            "abi_type": "sagejs_flint_byte_region_t",
+            "direction": "in",
+            "adapter": null
+          },
+          {
+            "source": "index",
+            "abi_type": "uint64_t",
+            "direction": "in",
+            "adapter": null
+          },
+          {
+            "source": "value",
+            "abi_type": "uint64_t",
+            "direction": "in",
+            "adapter": null
+          }
+        ]
+      },
+      "effects": {
+        "pure": false,
+        "deterministic": true,
+        "thread_safe": true,
+        "may_allocate": false,
+        "may_raise": [
+          "IndexError",
+          "ValueError"
+        ],
+        "writes": [
+          "region"
+        ]
+      },
+      "result": {
+        "domain": "status",
+        "success": [
+          1
+        ],
+        "absence": null
+      },
+      "errors": {
+        "exception": "ValueError",
+        "message": "FLINT byte-region index or byte value is out of bounds"
+      },
+      "exceptions": {
+        "policy": "none",
+        "failure_status": null
+      },
+      "targets": {
+        "dynamic": true,
+        "native": true,
+        "wasm": false
+      }
+    },
+    {
+      "id": "fmpz_matrix_deserialize",
+      "python_name": "fmpz_matrix_deserialize",
+      "signature": {
+        "parameters": [
+          {
+            "name": "source",
+            "type": "FlintByteRegion",
+            "ownership": "borrowed",
+            "mutability": "read",
+            "aliasing": "allowed"
+          }
+        ],
+        "return_type": "FmpzMatrix",
+        "return_ownership": "owned",
+        "borrow_from": null
+      },
+      "dynamic": {
+        "export": "ffiFmpzMatrixDeserialize"
+      },
+      "native": {
+        "symbol": "sagejs_fmpz_matrix_deserialize",
+        "return_type": "int",
+        "arguments": [
+          {
+            "source": "result",
+            "abi_type": "sagejs_fmpz_matrix_t",
+            "direction": "out",
+            "adapter": null
+          },
+          {
+            "source": "source",
+            "abi_type": "sagejs_flint_byte_region_t",
+            "direction": "in",
+            "adapter": null
+          }
+        ]
+      },
+      "effects": {
+        "pure": false,
+        "deterministic": true,
+        "thread_safe": true,
+        "may_allocate": true,
+        "may_raise": [
+          "ValueError"
+        ],
+        "writes": []
+      },
+      "result": {
+        "domain": "status",
+        "success": [
+          1
+        ],
+        "absence": null
+      },
+      "errors": {
+        "exception": "ValueError",
+        "message": "invalid SJZM v1 integer matrix serialization"
       },
       "exceptions": {
         "policy": "none",

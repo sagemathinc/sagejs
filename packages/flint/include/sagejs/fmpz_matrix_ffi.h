@@ -64,14 +64,21 @@ static inline size_t sagejs_fmpz_matrix_allocated_bytes(
     return matrix->retained_bytes;
 }
 
+static inline int sagejs_fmpz_matrix_dimensions_fit(
+    uint64_t rows, uint64_t columns)
+{
+    return rows <= (uint64_t) WORD_MAX &&
+        columns <= (uint64_t) WORD_MAX &&
+        (rows == 0 || columns <= (uint64_t) SIZE_MAX / rows) &&
+        rows <= (uint64_t) SIZE_MAX / sizeof(fmpz *) &&
+        sagejs_retained_size_multiply((size_t) rows, (size_t) columns) <=
+            SIZE_MAX / sizeof(fmpz);
+}
+
 static inline int sagejs_fmpz_matrix_init(
     sagejs_fmpz_matrix_t result, uint64_t rows, uint64_t columns)
 {
-    if (rows > (uint64_t) WORD_MAX || columns > (uint64_t) WORD_MAX ||
-        (rows != 0 && columns > (uint64_t) SIZE_MAX / rows) ||
-        rows > (uint64_t) SIZE_MAX / sizeof(fmpz *) ||
-        sagejs_retained_size_multiply((size_t) rows, (size_t) columns) >
-            SIZE_MAX / sizeof(fmpz))
+    if (!sagejs_fmpz_matrix_dimensions_fit(rows, columns))
         return 0;
     fmpz_mat_init(result->value, (slong) rows, (slong) columns);
     result->retained_bytes = sagejs_fmpz_matrix_structural_bytes(rows, columns);
@@ -243,7 +250,7 @@ static inline int sagejs_fmpz_matrix_pow(
 {
     const slong rows = fmpz_mat_nrows(source->value);
     if (rows != fmpz_mat_ncols(source->value) ||
-        exponent > (uint64_t) ULONG_MAX)
+        exponent > (uint64_t) UWORD_MAX)
         return 0;
     fmpz_mat_init(result->value, rows, rows);
     fmpz_mat_pow(result->value, source->value, (ulong) exponent);
@@ -391,11 +398,44 @@ fail:
     return 0;
 }
 
+/*
+ * Stable SJZM v1 integer-matrix serialization:
+ *
+ *   bytes 0..3    ASCII "SJZM"
+ *   byte 4        version 1
+ *   bytes 5..7    zero (reserved)
+ *   bytes 8..15   row count, unsigned 64-bit little-endian
+ *   bytes 16..23  column count, unsigned 64-bit little-endian
+ *   remaining     row-major entries
+ *
+ * Each entry starts with an unsigned 32-bit little-endian header.  Bit 31 is
+ * the sign and bits 0..30 are the magnitude byte count.  Magnitudes are
+ * unsigned little-endian without leading zero bytes; zero has a zero length
+ * and a clear sign bit.  Readers must reject noncanonical encodings.
+ */
 static inline void sagejs_fmpz_matrix_write_u64(
     unsigned char *data, size_t offset, uint64_t value)
 {
     for (size_t byte = 0; byte < 8; byte++)
         data[offset + byte] = (unsigned char) (value >> (8 * byte));
+}
+
+static inline uint32_t sagejs_fmpz_matrix_read_u32(
+    const unsigned char *data, size_t offset)
+{
+    uint32_t result = 0;
+    for (size_t byte = 0; byte < 4; byte++)
+        result |= (uint32_t) data[offset + byte] << (8 * byte);
+    return result;
+}
+
+static inline uint64_t sagejs_fmpz_matrix_read_u64(
+    const unsigned char *data, size_t offset)
+{
+    uint64_t result = 0;
+    for (size_t byte = 0; byte < 8; byte++)
+        result |= (uint64_t) data[offset + byte] << (8 * byte);
+    return result;
 }
 
 static inline void sagejs_fmpz_matrix_write_entry(
@@ -471,6 +511,130 @@ static inline int sagejs_fmpz_matrix_serialize(
                 magnitude, words);
     fmpz_clear(magnitude);
     free(words);
+    return 1;
+}
+
+/*
+ * Constructing a byte region is intentionally part of the resource ABI.
+ * It gives hosts a safe, pointer-free way to supply persisted SJZM data to
+ * the deserializer.  Bulk byte-buffer lowering can later optimize this
+ * boundary without changing the stable serialization format.
+ */
+static inline int sagejs_flint_byte_region_init(
+    sagejs_flint_byte_region_t result, uint64_t length)
+{
+    result->data = NULL;
+    result->length = 0;
+    if (length > (uint64_t) SIZE_MAX)
+        return 0;
+    const size_t size = (size_t) length;
+    result->data = (unsigned char *) calloc(size == 0 ? 1 : size, 1);
+    if (result->data == NULL)
+        return 0;
+    result->length = size;
+    return 1;
+}
+
+static inline int sagejs_flint_byte_region_set(
+    sagejs_flint_byte_region_t region, uint64_t index, uint64_t value)
+{
+    if (index >= (uint64_t) region->length || value > UINT8_MAX)
+        return 0;
+    region->data[(size_t) index] = (unsigned char) value;
+    return 1;
+}
+
+/*
+ * Decode the stable SJZM v1 representation emitted above.
+ *
+ * The parser validates the complete byte stream before initializing the
+ * result, so every rejected input leaves no partially owned FLINT object.
+ * Integer magnitudes are canonical unsigned little-endian byte strings:
+ * zero has length zero, nonzero values have a nonzero final byte, and the
+ * sign bit may not encode negative zero.
+ */
+static inline int sagejs_fmpz_matrix_deserialize(
+    sagejs_fmpz_matrix_t result, const sagejs_flint_byte_region_t source)
+{
+    const unsigned char *data = source->data;
+    const size_t length = source->length;
+    if (data == NULL || length < 24 || memcmp(data, "SJZM", 4) != 0 ||
+        data[4] != 1 || data[5] != 0 || data[6] != 0 || data[7] != 0)
+        return 0;
+
+    const uint64_t rows = sagejs_fmpz_matrix_read_u64(data, 8);
+    const uint64_t columns = sagejs_fmpz_matrix_read_u64(data, 16);
+    if (!sagejs_fmpz_matrix_dimensions_fit(rows, columns))
+        return 0;
+    const size_t count = (size_t) rows * (size_t) columns;
+    if (count > (length - 24) / 4)
+        return 0;
+
+    size_t offset = 24;
+    size_t maximum_bytes = 0;
+    for (size_t index = 0; index < count; index++)
+    {
+        if (offset > length - 4)
+            return 0;
+        const uint32_t header = sagejs_fmpz_matrix_read_u32(data, offset);
+        offset += 4;
+        const int negative = (header & UINT32_C(0x80000000)) != 0;
+        const size_t byte_count =
+            (size_t) (header & UINT32_C(0x7fffffff));
+        if (byte_count > length - offset ||
+            (byte_count == 0 && negative) ||
+            (byte_count != 0 && data[offset + byte_count - 1] == 0))
+            return 0;
+        if (byte_count > maximum_bytes)
+            maximum_bytes = byte_count;
+        offset += byte_count;
+    }
+    if (offset != length)
+        return 0;
+
+    const size_t maximum_words =
+        (maximum_bytes + sizeof(ulong) - 1) / sizeof(ulong);
+    ulong *words = maximum_words == 0 ? NULL :
+        (ulong *) calloc(maximum_words, sizeof(ulong));
+    if (maximum_words != 0 && words == NULL)
+        return 0;
+    if (!sagejs_fmpz_matrix_init(result, rows, columns))
+    {
+        free(words);
+        return 0;
+    }
+
+    offset = 24;
+    for (size_t index = 0; index < count; index++)
+    {
+        const uint32_t header = sagejs_fmpz_matrix_read_u32(data, offset);
+        offset += 4;
+        const int negative = (header & UINT32_C(0x80000000)) != 0;
+        const size_t byte_count =
+            (size_t) (header & UINT32_C(0x7fffffff));
+        const size_t word_count =
+            (byte_count + sizeof(ulong) - 1) / sizeof(ulong);
+        if (word_count != 0)
+            memset(words, 0, word_count * sizeof(ulong));
+        for (size_t byte = 0; byte < byte_count; byte++)
+            words[byte / sizeof(ulong)] |=
+                (ulong) data[offset + byte] <<
+                (8 * (byte % sizeof(ulong)));
+        fmpz *entry = fmpz_mat_entry(result->value,
+            (slong) (index / (size_t) columns),
+            (slong) (index % (size_t) columns));
+        if (word_count == 0)
+            fmpz_zero(entry);
+        else
+        {
+            fmpz_set_ui_array(entry, words, (slong) word_count);
+            if (negative)
+                fmpz_neg(entry, entry);
+        }
+        offset += byte_count;
+    }
+    free(words);
+    sagejs_fmpz_matrix_finish_result(result);
     return 1;
 }
 

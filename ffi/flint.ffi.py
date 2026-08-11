@@ -937,7 +937,9 @@ def fmpz_matrix_mul(left: FmpzMatrix, right: FmpzMatrix) -> FmpzMatrix: ...
     result=Status(
         1,
         exception=ValueError,
-        message="integer matrix power requires a square matrix",
+        message=(
+            "integer matrix power requires a square matrix and a FLINT-word exponent"
+        ),
     ),
     wasm=False,
 )
@@ -967,7 +969,7 @@ def fmpz_matrix_rank(matrix: FmpzMatrix) -> uint64: ...
         out("result", fmpz_t),
         in_("source", sagejs_fmpz_matrix_t),
     ],
-    effects=Effects(pure=False, allocates=True, raises=[ValueError]),
+    effects=Effects(pure=True, allocates=True, raises=[ValueError]),
     result=Status(
         1,
         exception=ValueError,
@@ -1059,6 +1061,72 @@ def fmpz_matrix_format(source: FmpzMatrix) -> FlintByteRegion: ...
     wasm=False,
 )
 def fmpz_matrix_serialize(source: FmpzMatrix) -> FlintByteRegion: ...
+
+
+@flint.function(
+    dynamic="ffiFlintByteRegionCreate",
+    symbol="sagejs_flint_byte_region_init",
+    returns=int,
+    abi=[
+        out("result", sagejs_flint_byte_region_t),
+        in_("length", uint64_t),
+    ],
+    effects=Effects(pure=False, allocates=True, raises=[OverflowError]),
+    result=Status(
+        1,
+        exception=OverflowError,
+        message="FLINT byte-region length is too large",
+    ),
+    wasm=False,
+)
+def flint_byte_region(length: uint64) -> FlintByteRegion: ...
+
+
+@flint.function(
+    dynamic="ffiFlintByteRegionSet",
+    symbol="sagejs_flint_byte_region_set",
+    returns=int,
+    abi=[
+        in_("region", sagejs_flint_byte_region_t),
+        in_("index", uint64_t),
+        in_("value", uint64_t),
+    ],
+    effects=Effects(
+        pure=False,
+        writes=["region"],
+        raises=[IndexError, ValueError],
+    ),
+    result=Status(
+        1,
+        exception=ValueError,
+        message="FLINT byte-region index or byte value is out of bounds",
+    ),
+    wasm=False,
+)
+def flint_byte_region_set(
+    region: Writable[FlintByteRegion],
+    index: uint64,
+    value: uint64,
+) -> bool: ...
+
+
+@flint.function(
+    dynamic="ffiFmpzMatrixDeserialize",
+    symbol="sagejs_fmpz_matrix_deserialize",
+    returns=int,
+    abi=[
+        out("result", sagejs_fmpz_matrix_t),
+        in_("source", sagejs_flint_byte_region_t),
+    ],
+    effects=Effects(pure=False, allocates=True, raises=[ValueError]),
+    result=Status(
+        1,
+        exception=ValueError,
+        message="invalid SJZM v1 integer matrix serialization",
+    ),
+    wasm=False,
+)
+def fmpz_matrix_deserialize(source: FlintByteRegion) -> FmpzMatrix: ...
 
 
 @flint.function(

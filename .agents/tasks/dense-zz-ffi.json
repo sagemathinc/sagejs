@@ -84,13 +84,94 @@
       "commit": "890edf68e95e9d54b0c98d2cb0c00f5dfc73fe5e",
       "workspace_fingerprint": "49a64aab6a89102d30db0495774e616ab949364998009a90b00679d6412b637a",
       "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 11.826,
+      "started_at": "2026-08-11T10:36:32.669Z",
+      "commit": "3d1e4a81fa625c05db91b76b683703af1126814b",
+      "workspace_fingerprint": "6d8fb1d9e2682bf2a2e6616db4d39624895a6076fd56f3d3b98e4df4870f2610",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 11.984,
+      "started_at": "2026-08-11T10:36:45.122Z",
+      "commit": "3d1e4a81fa625c05db91b76b683703af1126814b",
+      "workspace_fingerprint": "6d8fb1d9e2682bf2a2e6616db4d39624895a6076fd56f3d3b98e4df4870f2610",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 28.7,
+      "started_at": "2026-08-11T10:37:08.687Z",
+      "commit": "3d1e4a81fa625c05db91b76b683703af1126814b",
+      "workspace_fingerprint": "6d8fb1d9e2682bf2a2e6616db4d39624895a6076fd56f3d3b98e4df4870f2610",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node test/fmpz-matrix-resource-ffi.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.623,
+      "started_at": "2026-08-11T10:37:40.200Z",
+      "commit": "3d1e4a81fa625c05db91b76b683703af1126814b",
+      "workspace_fingerprint": "6d8fb1d9e2682bf2a2e6616db4d39624895a6076fd56f3d3b98e4df4870f2610",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 11.439,
+      "started_at": "2026-08-11T10:38:02.664Z",
+      "commit": "3d1e4a81fa625c05db91b76b683703af1126814b",
+      "workspace_fingerprint": "f32a7dc09c3c17b1b91354aa3cd0a965b3721020a4b97b76d0a2763af81f1844",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 12.286,
+      "started_at": "2026-08-11T10:38:14.719Z",
+      "commit": "3d1e4a81fa625c05db91b76b683703af1126814b",
+      "workspace_fingerprint": "f32a7dc09c3c17b1b91354aa3cd0a965b3721020a4b97b76d0a2763af81f1844",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 28.537,
+      "started_at": "2026-08-11T10:38:40.972Z",
+      "commit": "3d1e4a81fa625c05db91b76b683703af1126814b",
+      "workspace_fingerprint": "f32a7dc09c3c17b1b91354aa3cd0a965b3721020a4b97b76d0a2763af81f1844",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node test/fmpz-matrix-resource-ffi.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.587,
+      "started_at": "2026-08-11T10:39:13.017Z",
+      "commit": "3d1e4a81fa625c05db91b76b683703af1126814b",
+      "workspace_fingerprint": "f32a7dc09c3c17b1b91354aa3cd0a965b3721020a4b97b76d0a2763af81f1844",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {
-    "summary": "Adds a generated, externally-accounted FmpzMatrix resource with always-valid zero-filled construction and checked mutation; direct copy, add/subtract/negate/scalar multiply, transpose, multiply, power, predicates, trace, rank, determinant, HNF, SNF, aligned formatting, and self-describing signed-magnitude serialization; and randomized, skew-memory, lifecycle-sanitizer, and cold/steady performance coverage.",
+    "summary": "Adds a generated, externally-accounted FmpzMatrix resource with always-valid zero-filled construction and checked mutation; structural arithmetic and exact FLINT algorithms; aligned formatting; and strict, canonical SJZM v1 serialization/deserialization. The follow-up fixes FLINT-word exponent portability, covers empty and rectangular normal forms plus malformed serialization and failure cleanup under sanitizers, and compares a warmed non-diagonal workload against both legacy FLINT resources and the packed boundary with result equivalence.",
     "risks": [
       "The resource target is intentionally wasm=False until the generated opaque-resource host adapter has a proven WebAssembly lowering.",
-      "HNF and SNF expose direct FLINT canonical forms but transformation matrices are deferred to a later multi-result resource protocol."
+      "HNF and SNF expose direct FLINT canonical forms but transformation matrices are deferred to a later multi-result resource protocol.",
+      "The current declaration result model has one failure domain per call, so allocation exhaustion and dimension overflow cannot yet be reported separately; FLINT allocation itself may abort rather than return a recoverable status."
     ],
     "next_steps": [
       "Migrate dense ZZ public Matrix storage and operations to FmpzMatrix while retaining the packed implementation as the portable fallback and differential oracle.",

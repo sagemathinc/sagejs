@@ -18,6 +18,7 @@ const generatedDirectory = join(
 const manifest = require(join(generatedDirectory, "manifest.json"));
 const flint = require(join(generatedDirectory, manifest.addon));
 const oracle = require(join(root, "packages", "flint"));
+const packedOracle = oracle.__sagejs_ffi_oracles__;
 const accounted = flint.__sagejsFfiResourceExternalMemory;
 
 assert.equal(typeof accounted, "function");
@@ -66,6 +67,26 @@ function bytes(region) {
   );
 }
 
+function byteRegion(source) {
+  const result = flint.ffiFlintByteRegionCreate(BigInt(source.length));
+  try {
+    for (let index = 0; index < source.length; index += 1) {
+      assert.equal(
+        flint.ffiFlintByteRegionSet(
+          result,
+          BigInt(index),
+          BigInt(source[index]),
+        ),
+        true,
+      );
+    }
+    return result;
+  } catch (error) {
+    flint.ffiFlintByteRegionClose(result);
+    throw error;
+  }
+}
+
 function readU32(source, offset) {
   return (source[offset] |
     (source[offset + 1] << 8) |
@@ -79,6 +100,12 @@ function readU64(source, offset) {
     result = (result << 8n) | BigInt(source[offset + byte]);
   }
   return result;
+}
+
+function writeU64(target, offset, value) {
+  for (let byte = 0; byte < 8; byte += 1) {
+    target[offset + byte] = Number((value >> BigInt(8 * byte)) & 0xffn);
+  }
 }
 
 function readInteger(source, state) {
@@ -173,6 +200,10 @@ function oracleEntries(resource, rows, columns) {
       columns: 2,
       entries: leftValues,
     });
+    const deserialized = flint.ffiFmpzMatrixDeserialize(serialized);
+    assert.deepEqual(entries(deserialized), leftValues);
+    assert.equal(flint.ffiFmpzMatrixEqual(left, deserialized), true);
+    closeTwice(deserialized, flint.ffiFmpzMatrixClose);
     closeTwice(serialized, flint.ffiFlintByteRegionClose);
 
     const formatSource = matrix(2, 3, [
@@ -200,15 +231,102 @@ for (const [rows, columns, expected] of [
   const source = matrix(rows, columns, []);
   const formatted = flint.ffiFmpzMatrixFormat(source);
   const serialized = flint.ffiFmpzMatrixSerialize(source);
+  const deserialized = flint.ffiFmpzMatrixDeserialize(serialized);
   assert.equal(text(formatted), expected);
   assert.deepEqual(decodeMatrix(bytes(serialized)), {
     rows,
     columns,
     entries: [],
   });
+  assert.equal(flint.ffiFmpzMatrixNrows(deserialized), BigInt(rows));
+  assert.equal(flint.ffiFmpzMatrixNcols(deserialized), BigInt(columns));
+  assert.deepEqual(entries(deserialized), []);
+  closeTwice(deserialized, flint.ffiFmpzMatrixClose);
   closeTwice(serialized, flint.ffiFlintByteRegionClose);
   closeTwice(formatted, flint.ffiFlintByteRegionClose);
   closeTwice(source, flint.ffiFmpzMatrixClose);
+}
+
+{
+  const zero = matrix(1, 1, [0n]);
+  const one = matrix(1, 1, [1n]);
+  const zeroSerialized = flint.ffiFmpzMatrixSerialize(zero);
+  const oneSerialized = flint.ffiFmpzMatrixSerialize(one);
+  const zeroBytes = bytes(zeroSerialized);
+  const oneBytes = bytes(oneSerialized);
+  const malformed = [];
+
+  malformed.push(new Uint8Array());
+  malformed.push(zeroBytes.subarray(0, 23));
+
+  const badMagic = zeroBytes.slice();
+  badMagic[0] ^= 0xff;
+  malformed.push(badMagic);
+
+  const badVersion = zeroBytes.slice();
+  badVersion[4] = 2;
+  malformed.push(badVersion);
+
+  const badReserved = zeroBytes.slice();
+  badReserved[7] = 1;
+  malformed.push(badReserved);
+
+  const oversizedDimensions = zeroBytes.slice();
+  writeU64(oversizedDimensions, 8, (1n << 64n) - 1n);
+  malformed.push(oversizedDimensions);
+
+  const impossibleProduct = zeroBytes.slice();
+  writeU64(impossibleProduct, 8, 1n << 32n);
+  writeU64(impossibleProduct, 16, 1n << 32n);
+  malformed.push(impossibleProduct);
+
+  const negativeZero = zeroBytes.slice();
+  negativeZero[27] = 0x80;
+  malformed.push(negativeZero);
+
+  const leadingZero = oneBytes.slice();
+  leadingZero[28] = 0;
+  malformed.push(leadingZero);
+
+  const truncatedMagnitude = oneBytes.slice(0, -1);
+  malformed.push(truncatedMagnitude);
+
+  const invalidLength = zeroBytes.slice();
+  invalidLength[24] = 0xff;
+  invalidLength[25] = 0xff;
+  invalidLength[26] = 0xff;
+  invalidLength[27] = 0x7f;
+  malformed.push(invalidLength);
+
+  const trailingBytes = new Uint8Array(zeroBytes.length + 1);
+  trailingBytes.set(zeroBytes);
+  trailingBytes[trailingBytes.length - 1] = 17;
+  malformed.push(trailingBytes);
+
+  for (const source of malformed) {
+    const region = byteRegion(source);
+    assert.throws(
+      () => flint.ffiFmpzMatrixDeserialize(region),
+      /invalid SJZM v1/,
+    );
+    closeTwice(region, flint.ffiFlintByteRegionClose);
+  }
+
+  const region = byteRegion(new Uint8Array([0]));
+  assert.throws(
+    () => flint.ffiFlintByteRegionSet(region, 1n, 0n),
+    /out of bounds/,
+  );
+  assert.throws(
+    () => flint.ffiFlintByteRegionSet(region, 0n, 256n),
+    /out of bounds/,
+  );
+  closeTwice(region, flint.ffiFlintByteRegionClose);
+
+  closeTwice(oneSerialized, flint.ffiFlintByteRegionClose);
+  closeTwice(zeroSerialized, flint.ffiFlintByteRegionClose);
+  closeTwice(one, flint.ffiFmpzMatrixClose);
+  closeTwice(zero, flint.ffiFmpzMatrixClose);
 }
 
 {
@@ -271,6 +389,53 @@ for (const [rows, columns, expected] of [
   closeTwice(diagonal, flint.ffiFmpzMatrixClose);
 }
 
+for (const [rows, columns, values] of [
+  [0, 0, []],
+  [0, 3, []],
+  [3, 0, []],
+  [2, 3, [2n, 4n, 4n, -6n, 6n, 12n]],
+  [3, 2, [2n, 4n, 4n, -6n, 6n, 12n]],
+]) {
+  const source = matrix(rows, columns, values);
+  const hnf = flint.ffiFmpzMatrixHnf(source);
+  const snf = flint.ffiFmpzMatrixSnf(source);
+  try {
+    assert.equal(flint.ffiFmpzMatrixNrows(hnf), BigInt(rows));
+    assert.equal(flint.ffiFmpzMatrixNcols(hnf), BigInt(columns));
+    assert.equal(flint.ffiFmpzMatrixNrows(snf), BigInt(rows));
+    assert.equal(flint.ffiFmpzMatrixNcols(snf), BigInt(columns));
+    if (rows !== 0 && columns !== 0) {
+      const oracleSource = oracle.zzMatrix(rows, columns, values);
+      assert.deepEqual(
+        entries(hnf),
+        oracleEntries(oracle.matrixHermite(oracleSource), rows, columns),
+      );
+      assert.deepEqual(
+        entries(snf),
+        oracleEntries(oracle.matrixSmith(oracleSource)[0], rows, columns),
+      );
+    } else {
+      assert.deepEqual(entries(hnf), []);
+      assert.deepEqual(entries(snf), []);
+    }
+  } finally {
+    closeTwice(snf, flint.ffiFmpzMatrixClose);
+    closeTwice(hnf, flint.ffiFmpzMatrixClose);
+    closeTwice(source, flint.ffiFmpzMatrixClose);
+  }
+}
+
+{
+  // FLINT's ulong is unsigned long long under FLINT_LONG_LONG on LLP64.
+  // This exponent therefore fits on 64-bit Windows even though C ULONG_MAX
+  // there is only 2^32 - 1.
+  const identity = matrix(1, 1, [1n]);
+  const power = flint.ffiFmpzMatrixPow(identity, (1n << 64n) - 1n);
+  assert.deepEqual(entries(power), [1n]);
+  closeTwice(power, flint.ffiFmpzMatrixClose);
+  closeTwice(identity, flint.ffiFmpzMatrixClose);
+}
+
 {
   const skew = flint.ffiFmpzMatrixCreate(1n, 100_000n);
   const before = accounted(skew);
@@ -323,35 +488,149 @@ for (const [rows, columns, expected] of [
 }
 
 function median(values) {
-  return [...values].sort((left, right) => left - right)[1];
+  const sorted = [...values].sort((left, right) => left - right);
+  return sorted[Math.floor(sorted.length / 2)];
 }
 
-function timedOperation(size) {
-  const left = flint.ffiFmpzMatrixCreate(BigInt(size), BigInt(size));
-  const right = flint.ffiFmpzMatrixCreate(BigInt(size), BigInt(size));
-  for (let index = 0; index < size; index += 1) {
-    flint.ffiFmpzMatrixSetEntry(left, BigInt(index), BigInt(index), 2n);
-    flint.ffiFmpzMatrixSetEntry(right, BigInt(index), BigInt(index), 3n);
+function measure(operation, dispose, warmupCount, sampleCount) {
+  for (let index = 0; index < warmupCount; index += 1) {
+    dispose(operation());
   }
-  const started = process.hrtime.bigint();
-  const sum = flint.ffiFmpzMatrixAdd(left, right);
-  const product = flint.ffiFmpzMatrixMul(left, right);
-  const elapsed = Number(process.hrtime.bigint() - started) / 1e6;
-  flint.ffiFmpzMatrixClose(product);
-  flint.ffiFmpzMatrixClose(sum);
-  flint.ffiFmpzMatrixClose(right);
-  flint.ffiFmpzMatrixClose(left);
-  return elapsed;
+  return Array.from({ length: sampleCount }, () => {
+    const started = process.hrtime.bigint();
+    const result = operation();
+    const elapsed = Number(process.hrtime.bigint() - started) / 1e6;
+    dispose(result);
+    return elapsed;
+  });
 }
 
-const cold = timedOperation(120);
-const steady = median([
-  timedOperation(120),
-  timedOperation(120),
-  timedOperation(120),
-]);
-assert.ok(cold < 250, `cold resource operations took ${cold.toFixed(2)} ms`);
-assert.ok(steady < 100, `steady resource operations took ${steady.toFixed(2)} ms`);
+const performanceSize = 96;
+const performanceWarmups = 2;
+const performanceSamples = 7;
+const leftValues = Array.from(
+  { length: performanceSize * performanceSize },
+  (_, index) => {
+    const row = Math.floor(index / performanceSize);
+    const column = index % performanceSize;
+    return BigInt(((17 * row + 31 * column + 7 * row * column) % 101) - 50);
+  },
+);
+const rightValues = Array.from(
+  { length: performanceSize * performanceSize },
+  (_, index) => {
+    const row = Math.floor(index / performanceSize);
+    const column = index % performanceSize;
+    return BigInt(((29 * row + 11 * column + 3 * row * column) % 103) - 51);
+  },
+);
+const resourceLeft = matrix(performanceSize, performanceSize, leftValues);
+const resourceRight = matrix(performanceSize, performanceSize, rightValues);
+const oracleLeft = oracle.zzMatrix(
+  performanceSize,
+  performanceSize,
+  leftValues,
+);
+const oracleRight = oracle.zzMatrix(
+  performanceSize,
+  performanceSize,
+  rightValues,
+);
+const resourceSum = flint.ffiFmpzMatrixAdd(resourceLeft, resourceRight);
+const resourceProduct = flint.ffiFmpzMatrixMul(resourceLeft, resourceRight);
+const oracleSum = oracle.matrixAdd(oracleLeft, oracleRight);
+const oracleProduct = oracle.matrixMul(oracleLeft, oracleRight);
+assert.deepEqual(
+  entries(resourceSum),
+  oracleEntries(oracleSum, performanceSize, performanceSize),
+);
+const expectedProduct = oracleEntries(
+  oracleProduct,
+  performanceSize,
+  performanceSize,
+);
+assert.deepEqual(entries(resourceProduct), expectedProduct);
+const packedProduct = Array(performanceSize * performanceSize).fill(0n);
+assert.equal(
+  packedOracle.ffiFmpzMatMul(
+    packedProduct,
+    leftValues,
+    rightValues,
+    BigInt(performanceSize),
+    BigInt(performanceSize),
+    BigInt(performanceSize),
+  ),
+  true,
+);
+assert.deepEqual(packedProduct, expectedProduct);
+closeTwice(resourceProduct, flint.ffiFmpzMatrixClose);
+closeTwice(resourceSum, flint.ffiFmpzMatrixClose);
+
+const closeResource = (resource) => flint.ffiFmpzMatrixClose(resource);
+const ignoreLegacyResource = () => {};
+const generatedAddSamples = measure(
+  () => flint.ffiFmpzMatrixAdd(resourceLeft, resourceRight),
+  closeResource,
+  performanceWarmups,
+  performanceSamples,
+);
+const legacyAddSamples = measure(
+  () => oracle.matrixAdd(oracleLeft, oracleRight),
+  ignoreLegacyResource,
+  performanceWarmups,
+  performanceSamples,
+);
+const generatedMulSamples = measure(
+  () => flint.ffiFmpzMatrixMul(resourceLeft, resourceRight),
+  closeResource,
+  performanceWarmups,
+  performanceSamples,
+);
+const legacyMulSamples = measure(
+  () => oracle.matrixMul(oracleLeft, oracleRight),
+  ignoreLegacyResource,
+  performanceWarmups,
+  performanceSamples,
+);
+const packedMulSamples = measure(
+  () => {
+    const output = Array(performanceSize * performanceSize).fill(0n);
+    assert.equal(
+      packedOracle.ffiFmpzMatMul(
+        output,
+        leftValues,
+        rightValues,
+        BigInt(performanceSize),
+        BigInt(performanceSize),
+        BigInt(performanceSize),
+      ),
+      true,
+    );
+    return output;
+  },
+  ignoreLegacyResource,
+  performanceWarmups,
+  performanceSamples,
+);
+const generatedAdd = median(generatedAddSamples);
+const legacyAdd = median(legacyAddSamples);
+const generatedMul = median(generatedMulSamples);
+const legacyMul = median(legacyMulSamples);
+const packedMul = median(packedMulSamples);
+assert.ok(
+  generatedAdd <= legacyAdd * 3 + 5,
+  `generated add ${generatedAdd.toFixed(2)} ms vs legacy ${legacyAdd.toFixed(2)} ms`,
+);
+assert.ok(
+  generatedMul <= legacyMul * 3 + 5,
+  `generated mul ${generatedMul.toFixed(2)} ms vs legacy ${legacyMul.toFixed(2)} ms`,
+);
+assert.ok(
+  generatedMul < 500,
+  `generated non-diagonal multiplication took ${generatedMul.toFixed(2)} ms`,
+);
+closeTwice(resourceRight, flint.ffiFmpzMatrixClose);
+closeTwice(resourceLeft, flint.ffiFmpzMatrixClose);
 
 if (process.platform !== "win32") {
   const source = String.raw`
@@ -368,6 +647,7 @@ int main(void)
     {
         sagejs_fmpz_matrix_t left, right, sum, difference, negated;
         sagejs_fmpz_matrix_t scaled, transposed, product, power, hnf, snf;
+        sagejs_fmpz_matrix_t decoded, rejected;
         sagejs_flint_byte_region_t formatted, serialized;
         if (!sagejs_fmpz_matrix_init(left, 4, 4) ||
             !sagejs_fmpz_matrix_init(right, 4, 4))
@@ -399,12 +679,19 @@ int main(void)
             !sagejs_fmpz_matrix_trace(trace, left) ||
             !sagejs_fmpz_matrix_format(formatted, left) ||
             !sagejs_fmpz_matrix_serialize(serialized, left) ||
+            !sagejs_fmpz_matrix_deserialize(decoded, serialized) ||
+            !sagejs_fmpz_matrix_equal(left, decoded) ||
             !sagejs_fmpz_matrix_equal(left, difference))
             return 5;
         if (sagejs_fmpz_matrix_allocated_bytes(left) == 0 ||
             sagejs_flint_byte_region_length(formatted) == 0 ||
             sagejs_flint_byte_region_length(serialized) < 24)
             return 6;
+        serialized->data[0] = 'X';
+        if (sagejs_fmpz_matrix_deserialize(rejected, serialized))
+            return 9;
+        serialized->data[0] = 'S';
+        sagejs_fmpz_matrix_clear(decoded);
         sagejs_flint_byte_region_clear(serialized);
         sagejs_flint_byte_region_clear(formatted);
         sagejs_fmpz_matrix_clear(snf);
@@ -428,6 +715,15 @@ int main(void)
         sagejs_fmpz_matrix_allocated_bytes(skew) >= 2 * 1024 * 1024)
         return 8;
     sagejs_fmpz_matrix_clear(skew);
+    sagejs_flint_byte_region_t byte_region;
+    sagejs_fmpz_matrix_t malformed_result;
+    if (!sagejs_flint_byte_region_init(byte_region, 24) ||
+        !sagejs_flint_byte_region_set(byte_region, 0, 'X') ||
+        sagejs_flint_byte_region_set(byte_region, 24, 0) ||
+        sagejs_flint_byte_region_set(byte_region, 0, 256) ||
+        sagejs_fmpz_matrix_deserialize(malformed_result, byte_region))
+        return 10;
+    sagejs_flint_byte_region_clear(byte_region);
     fmpz_clear(trace);
     fmpz_clear(determinant);
     fmpz_clear(entry);
@@ -477,6 +773,35 @@ process.stdout.write(JSON.stringify({
   schema: "sagejs.ffi/fmpz-matrix-resource-v1",
   randomizedRounds: 30,
   lifecycleRounds: process.platform === "win32" ? 0 : 300,
-  coldMilliseconds: cold,
-  steadyMilliseconds: steady,
+  performance: {
+    host: {
+      node: process.version,
+      platform: process.platform,
+      arch: process.arch,
+    },
+    workload: {
+      operation: "dense non-diagonal exact integer matrix add/multiply",
+      size: performanceSize,
+      warmups: performanceWarmups,
+      samples: performanceSamples,
+      constructionExcluded: true,
+      resultEquivalenceChecked: true,
+    },
+    generatedResource: {
+      addMedianMilliseconds: generatedAdd,
+      mulMedianMilliseconds: generatedMul,
+      addSamplesMilliseconds: generatedAddSamples,
+      mulSamplesMilliseconds: generatedMulSamples,
+    },
+    legacyFlintOracle: {
+      addMedianMilliseconds: legacyAdd,
+      mulMedianMilliseconds: legacyMul,
+      addSamplesMilliseconds: legacyAddSamples,
+      mulSamplesMilliseconds: legacyMulSamples,
+    },
+    packedDynamicBoundary: {
+      mulMedianMilliseconds: packedMul,
+      mulSamplesMilliseconds: packedMulSamples,
+    },
+  },
 }) + "\n");

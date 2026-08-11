@@ -14,7 +14,7 @@
   },
   "counts": {
     "classified-native-file": 56,
-    "declared-ffi": 127,
+    "declared-ffi": 130,
     "declared-ffi-resource": 9,
     "napi-export": 292,
     "runtime-intrinsic": 125,
@@ -160,6 +160,17 @@
       "disposition": "declared-safe-ffi"
     },
     {
+      "id": "ffi:flint:flint_byte_region",
+      "kind": "declared-ffi",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "flint_byte_region",
+      "dynamic_package": "@sagemath/sagejs-flint",
+      "dynamic_export": "ffiFlintByteRegionCreate",
+      "symbol": "sagejs_flint_byte_region_init",
+      "disposition": "declared-safe-ffi"
+    },
+    {
       "id": "ffi:flint:flint_byte_region_get",
       "kind": "declared-ffi",
       "path": "ffi/flint.ffi.json",
@@ -179,6 +190,17 @@
       "dynamic_package": "@sagemath/sagejs-flint",
       "dynamic_export": "ffiFlintByteRegionLength",
       "symbol": "sagejs_flint_byte_region_length",
+      "disposition": "declared-safe-ffi"
+    },
+    {
+      "id": "ffi:flint:flint_byte_region_set",
+      "kind": "declared-ffi",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "flint_byte_region_set",
+      "dynamic_package": "@sagemath/sagejs-flint",
+      "dynamic_export": "ffiFlintByteRegionSet",
+      "symbol": "sagejs_flint_byte_region_set",
       "disposition": "declared-safe-ffi"
     },
     {
@@ -872,6 +894,17 @@
       "dynamic_package": "@sagemath/sagejs-flint",
       "dynamic_export": "ffiFmpzMatrixCopy",
       "symbol": "sagejs_fmpz_matrix_init_set",
+      "disposition": "declared-safe-ffi"
+    },
+    {
+      "id": "ffi:flint:fmpz_matrix_deserialize",
+      "kind": "declared-ffi",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "fmpz_matrix_deserialize",
+      "dynamic_package": "@sagemath/sagejs-flint",
+      "dynamic_export": "ffiFmpzMatrixDeserialize",
+      "symbol": "sagejs_fmpz_matrix_deserialize",
       "disposition": "declared-safe-ffi"
     },
     {
