@@ -1,0 +1,159 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "exact-polynomial-ffi-ops",
+  "title": "Exact Polynomial Resource Equality",
+  "lane": "integration",
+  "status": "active",
+  "owner": "user",
+  "objective": "Add checked generated FLINT equality for owned exact polynomial resources",
+  "base_commit": "890edf68e95e9d54b0c98d2cb0c00f5dfc73fe5e",
+  "claims": [
+    "ffi/flint.ffi.py",
+    "ffi/flint.ffi.json",
+    "src/lib/sagejs/ffi/flint.py",
+    "src/baselib/sagejs/ffi/flint.py",
+    "packages/flint/generated/ffi_host.py",
+    "packages/flint/include/sagejs/exact_polynomial_ffi.h",
+    "architecture/native-boundaries.json",
+    "test/exact-polynomial-resource-equality.cjs",
+    "test/test-manifest.test.cjs"
+  ],
+  "dependencies": [
+    "exact-polynomial-ffi"
+  ],
+  "references": [],
+  "architecture": {
+    "strategy": "external-library",
+    "fallback": "tested-capability",
+    "oracles": [
+      "FLINT exact polynomial equality"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "fallback",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "env SAGEJS_FLINT_PREFIX=/home/user/sagejs/packages/flint/.native/prefix node test/exact-polynomial-resource-equality.cjs",
+    "pnpm architecture:check",
+    "pnpm test:portable",
+    "pnpm test:baselib:strict"
+  ],
+  "runs": [
+    {
+      "command": "env SAGEJS_FLINT_PREFIX=/home/user/sagejs/packages/flint/.native/prefix node test/exact-polynomial-resource-equality.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.045,
+      "started_at": "2026-08-11T10:10:22.696Z",
+      "commit": "115f8dc6c9eac4f32f57aa72526646014c1a403b",
+      "workspace_fingerprint": "783e7e0f93bddd7879370f13ba49592306251df4305e4322f4daf07fd4120dd8",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 11.553,
+      "started_at": "2026-08-11T10:10:25.616Z",
+      "commit": "115f8dc6c9eac4f32f57aa72526646014c1a403b",
+      "workspace_fingerprint": "783e7e0f93bddd7879370f13ba49592306251df4305e4322f4daf07fd4120dd8",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 11.142,
+      "started_at": "2026-08-11T10:10:42.750Z",
+      "commit": "115f8dc6c9eac4f32f57aa72526646014c1a403b",
+      "workspace_fingerprint": "783e7e0f93bddd7879370f13ba49592306251df4305e4322f4daf07fd4120dd8",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 4.876,
+      "started_at": "2026-08-11T10:10:56.829Z",
+      "commit": "115f8dc6c9eac4f32f57aa72526646014c1a403b",
+      "workspace_fingerprint": "783e7e0f93bddd7879370f13ba49592306251df4305e4322f4daf07fd4120dd8",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 4.761,
+      "started_at": "2026-08-11T10:11:57.543Z",
+      "commit": "7649fc70e6ed362eafcc31109b4dc7450dc0e2a0",
+      "workspace_fingerprint": "ba32178c9477f712f7c2307f5132a77f7d2836e15115cf17d6a6af3d7c5a9f9c",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 4.753,
+      "started_at": "2026-08-11T10:12:47.662Z",
+      "commit": "7649fc70e6ed362eafcc31109b4dc7450dc0e2a0",
+      "workspace_fingerprint": "ba32178c9477f712f7c2307f5132a77f7d2836e15115cf17d6a6af3d7c5a9f9c",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 4.991,
+      "started_at": "2026-08-11T10:13:33.118Z",
+      "commit": "7649fc70e6ed362eafcc31109b4dc7450dc0e2a0",
+      "workspace_fingerprint": "ba32178c9477f712f7c2307f5132a77f7d2836e15115cf17d6a6af3d7c5a9f9c",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "env SAGEJS_FLINT_PREFIX=/home/user/sagejs/packages/flint/.native/prefix node test/exact-polynomial-resource-equality.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.041,
+      "started_at": "2026-08-11T10:14:10.487Z",
+      "commit": "7649fc70e6ed362eafcc31109b4dc7450dc0e2a0",
+      "workspace_fingerprint": "ba32178c9477f712f7c2307f5132a77f7d2836e15115cf17d6a6af3d7c5a9f9c",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 11.398,
+      "started_at": "2026-08-11T10:14:13.955Z",
+      "commit": "7649fc70e6ed362eafcc31109b4dc7450dc0e2a0",
+      "workspace_fingerprint": "ba32178c9477f712f7c2307f5132a77f7d2836e15115cf17d6a6af3d7c5a9f9c",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 11.786,
+      "started_at": "2026-08-11T10:14:28.354Z",
+      "commit": "7649fc70e6ed362eafcc31109b4dc7450dc0e2a0",
+      "workspace_fingerprint": "ba32178c9477f712f7c2307f5132a77f7d2836e15115cf17d6a6af3d7c5a9f9c",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Generated checked equality for sealed FmpzPolynomial and FmpqPolynomial resources, returning exact 0/1 results without coefficient materialization and rejecting mutable builders.",
+    "risks": [
+      "The resource declarations remain Node-only until the generated WASM resource lowering is implemented.",
+      "The portable tier reached all source-level tests but the isolated worktree could not regenerate compatible module/runtime caches; focused, architecture, and strict suites pass."
+    ],
+    "next_steps": [
+      "Use direct resource equality in canonical Node ZZ[x] and QQ[x] PolynomialElement storage.",
+      "Rerun the portable tier after integration into a worktree with current generated runtime caches."
+    ]
+  }
+}
