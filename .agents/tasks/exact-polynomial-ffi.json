@@ -4,16 +4,17 @@
   "id": "exact-polynomial-ffi",
   "title": "Exact Polynomial Ffi",
   "lane": "integration",
-  "status": "active",
+  "status": "review",
   "owner": "user",
   "objective": "Generate externally-accounted immutable FLINT FmpzPolynomial and FmpqPolynomial resources with construction, inspection, arithmetic, evaluation, serialization, and lifecycle tests",
   "base_commit": "7f1e656b93f3e667cc0fa2f2cf08d1f8f04161da",
   "claims": [
+    ".agents/lanes.json",
     "ffi/flint.ffi.py",
     "ffi/flint.ffi.json",
     "src/lib/sagejs/ffi/flint.py",
     "src/baselib/sagejs/ffi/flint.py",
-    "packages/flint/generated",
+    "packages/flint/generated/ffi_host.py",
     "packages/flint/include/sagejs/exact_polynomial_ffi.h",
     "package.json",
     "test/exact-polynomial-resource-ffi.cjs",
@@ -40,14 +41,144 @@
     "macos-arm64": "required"
   },
   "validation": [
+    "env SAGEJS_FLINT_PREFIX=/home/user/sagejs/packages/flint/.native/prefix node test/exact-polynomial-resource-ffi.cjs",
     "pnpm architecture:check",
     "pnpm test:portable",
     "pnpm test:baselib:strict"
   ],
-  "runs": [],
+  "runs": [
+    {
+      "command": "env SAGEJS_FLINT_PREFIX=/home/user/sagejs/packages/flint/.native/prefix node test/exact-polynomial-resource-ffi.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.741,
+      "started_at": "2026-08-11T09:53:23.857Z",
+      "commit": "3edbf783282d5bb1cb00984e815ed9cebde574c8",
+      "workspace_fingerprint": "6eb5cce0d455b47e58e66214d8faecfb0e5d11f31e6f7ff43fdd7dc66c1f43af",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 11.79,
+      "started_at": "2026-08-11T09:53:29.241Z",
+      "commit": "3edbf783282d5bb1cb00984e815ed9cebde574c8",
+      "workspace_fingerprint": "6eb5cce0d455b47e58e66214d8faecfb0e5d11f31e6f7ff43fdd7dc66c1f43af",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 11.261,
+      "started_at": "2026-08-11T09:54:16.503Z",
+      "commit": "3edbf783282d5bb1cb00984e815ed9cebde574c8",
+      "workspace_fingerprint": "6eb5cce0d455b47e58e66214d8faecfb0e5d11f31e6f7ff43fdd7dc66c1f43af",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "env SAGEJS_FLINT_PREFIX=/home/user/sagejs/packages/flint/.native/prefix node test/exact-polynomial-resource-ffi.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.708,
+      "started_at": "2026-08-11T09:56:37.586Z",
+      "commit": "6419ffb2f0d15b615229afdb108ec3fe217b0d1b",
+      "workspace_fingerprint": "e3a3fab847bece663ed45d02ede5ec3b18ce24598137d8c3f2b7228fd0ed4cbe",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 11.542,
+      "started_at": "2026-08-11T09:56:42.156Z",
+      "commit": "6419ffb2f0d15b615229afdb108ec3fe217b0d1b",
+      "workspace_fingerprint": "e3a3fab847bece663ed45d02ede5ec3b18ce24598137d8c3f2b7228fd0ed4cbe",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 12.149,
+      "started_at": "2026-08-11T09:56:56.431Z",
+      "commit": "6419ffb2f0d15b615229afdb108ec3fe217b0d1b",
+      "workspace_fingerprint": "e3a3fab847bece663ed45d02ede5ec3b18ce24598137d8c3f2b7228fd0ed4cbe",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 26.855,
+      "started_at": "2026-08-11T09:57:12.431Z",
+      "commit": "6419ffb2f0d15b615229afdb108ec3fe217b0d1b",
+      "workspace_fingerprint": "e3a3fab847bece663ed45d02ede5ec3b18ce24598137d8c3f2b7228fd0ed4cbe",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "env SAGEJS_FLINT_PREFIX=/home/user/sagejs/packages/flint/.native/prefix node test/exact-polynomial-resource-ffi.cjs",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 0.048,
+      "started_at": "2026-08-11T09:57:52.831Z",
+      "commit": "08669764d6a9434f251c37feca623a149151ac2d",
+      "workspace_fingerprint": "61280a5e13db9701e65dae4ca10bd16455ae79b16b1f464e291a522fc6d44bfe",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "env SAGEJS_FLINT_PREFIX=/home/user/sagejs/packages/flint/.native/prefix node test/exact-polynomial-resource-ffi.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.928,
+      "started_at": "2026-08-11T09:58:07.020Z",
+      "commit": "1ce567131f575ba234e924bf4ac97ebb40beb919",
+      "workspace_fingerprint": "44b39ee8d3fd0fb93ef232b5f33baafdd58132e93e1a1c8b46c4d1fa739d7590",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 11.299,
+      "started_at": "2026-08-11T09:58:14.119Z",
+      "commit": "1ce567131f575ba234e924bf4ac97ebb40beb919",
+      "workspace_fingerprint": "44b39ee8d3fd0fb93ef232b5f33baafdd58132e93e1a1c8b46c4d1fa739d7590",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 11.953,
+      "started_at": "2026-08-11T09:58:28.071Z",
+      "commit": "1ce567131f575ba234e924bf4ac97ebb40beb919",
+      "workspace_fingerprint": "44b39ee8d3fd0fb93ef232b5f33baafdd58132e93e1a1c8b46c4d1fa739d7590",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 27.188,
+      "started_at": "2026-08-11T09:58:45.243Z",
+      "commit": "1ce567131f575ba234e924bf4ac97ebb40beb919",
+      "workspace_fingerprint": "44b39ee8d3fd0fb93ef232b5f33baafdd58132e93e1a1c8b46c4d1fa739d7590",
+      "platform": "linux-x64"
+    }
+  ],
   "handoff": {
-    "summary": "",
-    "risks": [],
-    "next_steps": []
+    "summary": "Generated immutable, externally-accounted FLINT resources for exact integer and rational polynomials. The declaration surface covers checked construction and sealing, coefficient inspection, arithmetic, exact evaluation, deterministic serialization, and idempotent close. Focused tests include normalization, skewed coefficient memory, construction scaling, serialization decoding, lifecycle safety, and unsealed/use-after-close rejection.",
+    "risks": [
+      "The resource declarations currently set wasm=False; the packed implementation remains the portable fallback until generated WASM resource lowering is proved.",
+      "Focused worktree execution requires SAGEJS_FLINT_PREFIX to point at an installed FLINT prefix; the canonical lifecycle runner supplies the repository native prefix after package installation.",
+      "Polynomial factorization is deliberately not migrated in this stage and continues through the existing packed boundary."
+    ],
+    "next_steps": [
+      "Make these generated resources the canonical Node storage for ZZ[x] and QQ[x], retaining packed storage as an explicit capability fallback.",
+      "Add direct public correctness, N-API-prohibition, cold-start, steady-state, and asymptotic performance gates.",
+      "Prove generated resource lowering against the FLINT WASM package before enabling wasm=True."
+    ]
   }
 }
