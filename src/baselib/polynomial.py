@@ -964,13 +964,26 @@ class PolynomialElement(sage.Element):
         operands = runtime.coercion_model.coercePair(self, other)
         if not isinstance(operands.left, PolynomialElement):
             raise TypeError("polynomial division requires polynomials")
+        left = operands.left
+        right = operands.right
         base = operands.parent.base_ring()
         kind = _packed_polynomial_kind(base)
-        left_length = operands.left._coefficient_length()
-        right_length = operands.right._coefficient_length()
         if kind == "ZZ":
-            operands.left._materialize_exact_compatibility_storage()
-            operands.right._materialize_exact_compatibility_storage()
+            if (
+                left._has_fmpz_polynomial_resource()
+                and right._has_fmpz_polynomial_resource()
+            ):
+                return left._new(
+                    _FmpzPolynomialResourceStorage(
+                        _flint_ffi_module().fmpz_polynomial_divexact(
+                            left._storage.resource, right._storage.resource
+                        )
+                    )
+                )
+            left_length = left._coefficient_length()
+            right_length = right._coefficient_length()
+            left._materialize_exact_compatibility_storage()
+            right._materialize_exact_compatibility_storage()
             kernel = _packed_polynomial_flint_module().flint_packed_integer_polynomial_divexact
             capacity = max(
                 1,
@@ -982,14 +995,14 @@ class PolynomialElement(sage.Element):
                 try:
                     kernel(
                         output,
-                        operands.left._storage.coefficients,
-                        operands.right._storage.coefficients,
+                        left._storage.coefficients,
+                        right._storage.coefficients,
                         left_length,
                         left_length,
                         right_length,
                         1,
                     )
-                    return operands.left._publish_exact_packed_storage(
+                    return left._publish_exact_packed_storage(
                         _PackedIntegerPolynomialStorage(output)
                     )
                 except Exception as error:
@@ -997,8 +1010,21 @@ class PolynomialElement(sage.Element):
                         raise
                     capacity *= 2
         if kind == "QQ":
-            operands.left._materialize_exact_compatibility_storage()
-            operands.right._materialize_exact_compatibility_storage()
+            if (
+                left._has_fmpq_polynomial_resource()
+                and right._has_fmpq_polynomial_resource()
+            ):
+                return left._new(
+                    _FmpqPolynomialResourceStorage(
+                        _flint_ffi_module().fmpq_polynomial_divexact(
+                            left._storage.resource, right._storage.resource
+                        )
+                    )
+                )
+            left_length = left._coefficient_length()
+            right_length = right._coefficient_length()
+            left._materialize_exact_compatibility_storage()
+            right._materialize_exact_compatibility_storage()
             kernel = _packed_polynomial_flint_module().flint_packed_rational_polynomial_divexact
             capacity = max(
                 2,
@@ -1014,16 +1040,16 @@ class PolynomialElement(sage.Element):
                     kernel(
                         numerators,
                         denominators,
-                        operands.left._storage.numerators,
-                        operands.left._storage.denominators,
-                        operands.right._storage.numerators,
-                        operands.right._storage.denominators,
+                        left._storage.numerators,
+                        left._storage.denominators,
+                        right._storage.numerators,
+                        right._storage.denominators,
                         left_length,
                         left_length,
                         right_length,
                         1,
                     )
-                    return operands.left._publish_exact_packed_storage(
+                    return left._publish_exact_packed_storage(
                         _PackedRationalPolynomialStorage(numerators, denominators)
                     )
                 except Exception as error:
@@ -1031,17 +1057,19 @@ class PolynomialElement(sage.Element):
                         raise
                     capacity *= 2
         if kind == "GF":
+            left_length = left._coefficient_length()
+            right_length = right._coefficient_length()
             output = runtime.uint64_buffer(left_length)
             _packed_polynomial_flint_module().flint_packed_prime_field_polynomial_divexact(
                 output,
-                operands.left._storage,
-                operands.right._storage,
+                left._storage,
+                right._storage,
                 left_length,
                 left_length,
                 right_length,
                 base._modulus,
             )
-            return operands.left._new(output)
+            return left._new(output)
         if base._kind == "GF_EXTENSION":
             native_value = runtime.flint_backend().fqPolyDivExact(
                 operands.left._native, operands.right._native

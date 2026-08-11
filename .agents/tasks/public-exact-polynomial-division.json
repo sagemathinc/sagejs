@@ -1,0 +1,116 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "public-exact-polynomial-division",
+  "title": "Public exact polynomial resource division",
+  "lane": "arithmetic-algebra",
+  "status": "active",
+  "owner": "user",
+  "objective": "Route public ZZ[x] and QQ[x] exact division directly from canonical generated FLINT resources to generated quotient resources, eliminating packed compatibility materialization and capacity retries while preserving exact-division semantics and portable fallbacks.",
+  "base_commit": "ceaa79eedd8ff8ab5083d02a87edeba7ffba62c0",
+  "claims": [
+    "src/baselib/polynomial.py",
+    "scripts/check-polynomial-budget.cjs",
+    "test/exact-polynomial-resources.cjs",
+    "bench/public-exact-polynomial-division.cjs"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "external-library",
+    "fallback": "tested-capability",
+    "oracles": [
+      "existing packed exact division fallback",
+      "CPython/Sage mathematical exact quotient behavior",
+      "generated direct-resource FFI tests"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "fallback",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "pnpm test:native",
+    "pnpm architecture:check",
+    "pnpm test:portable",
+    "node test/exact-polynomial-resources.cjs",
+    "env SAGEJS_POLYNOMIAL_SAMPLES=3 pnpm test:polynomial:performance"
+  ],
+  "runs": [
+    {
+      "command": "node test/exact-polynomial-resources.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.657,
+      "started_at": "2026-08-11T13:52:57.579Z",
+      "commit": "ceaa79eedd8ff8ab5083d02a87edeba7ffba62c0",
+      "workspace_fingerprint": "071193d94b27d08b18f5d123d3e721f671dc29c418660e1fb20f9813c9b3cdd0",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/public-exact-polynomial-division.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.948,
+      "started_at": "2026-08-11T13:53:03.371Z",
+      "commit": "ceaa79eedd8ff8ab5083d02a87edeba7ffba62c0",
+      "workspace_fingerprint": "071193d94b27d08b18f5d123d3e721f671dc29c418660e1fb20f9813c9b3cdd0",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "env SAGEJS_POLYNOMIAL_SAMPLES=3 pnpm test:polynomial:performance",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 11.501,
+      "started_at": "2026-08-11T13:53:12.417Z",
+      "commit": "ceaa79eedd8ff8ab5083d02a87edeba7ffba62c0",
+      "workspace_fingerprint": "071193d94b27d08b18f5d123d3e721f671dc29c418660e1fb20f9813c9b3cdd0",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 12.316,
+      "started_at": "2026-08-11T13:53:27.179Z",
+      "commit": "ceaa79eedd8ff8ab5083d02a87edeba7ffba62c0",
+      "workspace_fingerprint": "071193d94b27d08b18f5d123d3e721f671dc29c418660e1fb20f9813c9b3cdd0",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 12.284,
+      "started_at": "2026-08-11T13:53:42.716Z",
+      "commit": "ceaa79eedd8ff8ab5083d02a87edeba7ffba62c0",
+      "workspace_fingerprint": "071193d94b27d08b18f5d123d3e721f671dc29c418660e1fb20f9813c9b3cdd0",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 31.974,
+      "started_at": "2026-08-11T13:54:01.324Z",
+      "commit": "ceaa79eedd8ff8ab5083d02a87edeba7ffba62c0",
+      "workspace_fingerprint": "071193d94b27d08b18f5d123d3e721f671dc29c418660e1fb20f9813c9b3cdd0",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Public exact ZZ[x] and QQ[x] floor division now preserves canonical generated FLINT resources end to end. Resource operands call generated fmpz_polynomial_divexact or fmpq_polynomial_divexact directly and publish the returned owned resource before any coefficient-length query or compatibility materialization. The packed portable and finite-field paths remain unchanged. Focused tests forbid legacy polynomial N-API, replace compatibility materialization with a throwing sentinel, exercise native-disabled execution, and cover exact and zero quotients, nonexact and zero-divisor failures, 4096-bit skew, source immutability, and resource-backed results. Degree-5000 by degree-1000 performance gates measure about 0.65 ms over ZZ and 0.71 ms over QQ; the direct public route is 46-79 times faster than deliberately restoring the former compatibility path on the benchmark workload.",
+    "risks": [
+      "Generated exact polynomial resources currently declare wasm=False, so browser hosts continue through the retained packed fallback until resource lowering exists.",
+      "The arithmetic bootstrap source budget has only 162 bytes of headroom and should be deliberately rebalanced before more polynomial surface growth."
+    ],
+    "next_steps": [
+      "Integrate the lane commit and rerun the focused public polynomial test against the merged generated FFI declarations.",
+      "Migrate exact polynomial factorization to an owned generated factorization resource so it no longer materializes packed coefficient storage."
+    ]
+  }
+}
