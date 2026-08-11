@@ -96,6 +96,11 @@ const cases = [
     expression: "_integer_wide.__copy__().right_kernel_matrix()",
     budget: 50,
   },
+  {
+    name: "solve_right_40x8",
+    expression: "_integer_solve_left.solve_right(_integer_solve_right)",
+    budget: 8,
+  },
 ];
 
 const structural = [
@@ -211,6 +216,8 @@ async function run(environment = process.env) {
         "_integer_normal = random_matrix(ZZ, 35, x=-10, y=11)",
         "_integer_smith = random_matrix(ZZ, 25, x=-10, y=11)",
         "_integer_wide = random_matrix(ZZ, 40, 60, x=-10, y=11)",
+        "_integer_solve_left = matrix(ZZ, 40, 40, [100 if row == column else ((17*row + 29*column) % 3 - 1) for row in range(40) for column in range(40)])",
+        "_integer_solve_right = matrix(ZZ, 40, 8, [((31*row + 43*column) % 101 - 50) for row in range(40) for column in range(8)])",
         ...definitions,
       ].join("\n"));
 

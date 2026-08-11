@@ -4607,6 +4607,47 @@ class Matrix(sage.Element):
             vector_result = True
         if right_matrix.nrows() != self.nrows():
             raise ValueError("matrix and right side dimensions disagree")
+        if (
+            self.base_ring() is sage.ZZ
+            and right_matrix.base_ring() is sage.ZZ
+            and self._has_fmpz_matrix_resource()
+            and right_matrix._has_fmpz_matrix_resource()
+            and self.is_square()
+        ):
+            ffi = _flint_ffi_module()
+            rational_left = runtime.undefined
+            rational_right = runtime.undefined
+            try:
+                rational_left = ffi.fmpq_matrix_from_fmpz(self._integer_resource())
+                rational_right = ffi.fmpq_matrix_from_fmpz(
+                    right_matrix._integer_resource()
+                )
+                try:
+                    resource = ffi.fmpq_matrix_solve(
+                        rational_left,
+                        rational_right,
+                    )
+                except ValueError:
+                    raise ValueError(  # noqa: B904
+                        "matrix equation has no solutions"
+                    )
+                solution = MatrixSpace(
+                    sage.QQ,
+                    self.ncols(),
+                    right_matrix.ncols(),
+                )._from_fmpq_matrix_resource(resource)
+                _trace_dense_integer_selection(
+                    "solve_right",
+                    "generated-flint-resource",
+                    self.nrows(),
+                    right_matrix.ncols(),
+                )
+                return solution.column(0) if vector_result else solution
+            finally:
+                if rational_left is not runtime.undefined:
+                    rational_left.close()
+                if rational_right is not runtime.undefined:
+                    rational_right.close()
         base = _common_base(self.base_ring(), right_matrix.base_ring())
         left_matrix = self.change_ring(base)
         right_matrix = right_matrix.change_ring(base)
