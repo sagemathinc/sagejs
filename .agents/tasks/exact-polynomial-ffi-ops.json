@@ -7,7 +7,7 @@
   "status": "active",
   "owner": "user",
   "objective": "Add checked generated FLINT equality for owned exact polynomial resources",
-  "base_commit": "890edf68e95e9d54b0c98d2cb0c00f5dfc73fe5e",
+  "base_commit": "41c677e",
   "claims": [
     "ffi/flint.ffi.py",
     "ffi/flint.ffi.json",

@@ -227,7 +227,7 @@ static inline int sagejs_fmpz_polynomial_pow(
     sagejs_fmpz_polynomial_t result,
     const sagejs_fmpz_polynomial_t source, uint64_t exponent)
 {
-    if (!source->sealed || exponent > (uint64_t) ULONG_MAX)
+    if (!source->sealed || exponent > (uint64_t) UWORD_MAX)
         return 0;
     fmpz_poly_init(result->value);
     fmpz_poly_pow(result->value, source->value, (ulong) exponent);
@@ -493,7 +493,7 @@ static inline int sagejs_fmpq_polynomial_pow(
     sagejs_fmpq_polynomial_t result,
     const sagejs_fmpq_polynomial_t source, uint64_t exponent)
 {
-    if (!source->sealed || exponent > (uint64_t) ULONG_MAX)
+    if (!source->sealed || exponent > (uint64_t) UWORD_MAX)
         return 0;
     fmpq_poly_init(result->value);
     fmpq_poly_pow(result->value, source->value, (ulong) exponent);

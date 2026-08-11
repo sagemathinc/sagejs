@@ -20,6 +20,7 @@ from sagejs.ffi.flint import (
     fmpz_polynomial_set_coefficient as _ffi_fmpz_polynomial_set_coefficient,
     fmpz_polynomial_seal as _ffi_fmpz_polynomial_seal,
     fmpz_polynomial_length as _ffi_fmpz_polynomial_length,
+    fmpz_polynomial_equal as _ffi_fmpz_polynomial_equal,
     fmpz_polynomial_coefficient as _ffi_fmpz_polynomial_coefficient,
     fmpz_polynomial_add as _ffi_fmpz_polynomial_add,
     fmpz_polynomial_sub as _ffi_fmpz_polynomial_sub,
@@ -33,6 +34,7 @@ from sagejs.ffi.flint import (
     fmpq_polynomial_set_coefficient as _ffi_fmpq_polynomial_set_coefficient,
     fmpq_polynomial_seal as _ffi_fmpq_polynomial_seal,
     fmpq_polynomial_length as _ffi_fmpq_polynomial_length,
+    fmpq_polynomial_equal as _ffi_fmpq_polynomial_equal,
     fmpq_polynomial_coefficient_numerator as _ffi_fmpq_polynomial_coefficient_numerator,
     fmpq_polynomial_coefficient_denominator as _ffi_fmpq_polynomial_coefficient_denominator,
     fmpq_polynomial_add as _ffi_fmpq_polynomial_add,
@@ -184,6 +186,17 @@ def ffiFmpzPolynomialLength(
 
 
 @native
+def ffiFmpzPolynomialEqual(
+    left: FmpzPolynomial,
+    right: FmpzPolynomial,
+) -> Integer:
+    return _ffi_fmpz_polynomial_equal(
+        left,
+        right,
+    )
+
+
+@native
 def ffiFmpzPolynomialCoefficient(
     polynomial: FmpzPolynomial,
     index: uint64,
@@ -319,6 +332,17 @@ def ffiFmpqPolynomialLength(
 ) -> Integer:
     return _ffi_fmpq_polynomial_length(
         polynomial,
+    )
+
+
+@native
+def ffiFmpqPolynomialEqual(
+    left: FmpqPolynomial,
+    right: FmpqPolynomial,
+) -> Integer:
+    return _ffi_fmpq_polynomial_equal(
+        left,
+        right,
     )
 
 
