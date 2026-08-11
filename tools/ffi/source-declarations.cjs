@@ -206,15 +206,20 @@ function parseResource(filename, callNode, libraryVariable, pythonName) {
   const call = callParts(filename, callNode, `${libraryVariable}.resource`, {
     positional: [0],
     required: ["id", "abi", "ownership", "wasm"],
-    keywords: ["id", "abi", "ownership", "owner", "close", "clear", "wasm"],
+    keywords: [
+      "id", "abi", "ownership", "owner", "close", "clear", "size", "wasm",
+    ],
   });
   const ownership = requiredString(filename, call, "ownership");
   const owner = keywordLiteral(filename, call, "owner", { default: null });
   const close = keywordLiteral(filename, call, "close", { default: null });
   const clear = keywordLiteral(filename, call, "clear", { default: null });
+  const size = keywordLiteral(filename, call, "size", { default: null });
   const abi = keywordLiteral(filename, call, "abi", { names: true });
   expect(filename, call.node, typeof abi === "string", "resource abi must be a name");
-  for (const [label, value] of [["owner", owner], ["close", close], ["clear", clear]]) {
+  for (const [label, value] of [
+    ["owner", owner], ["close", close], ["clear", clear], ["size", size],
+  ]) {
     expect(filename, call.node, value === null || typeof value === "string",
       `resource ${label} must be None or a string`);
   }
@@ -225,7 +230,10 @@ function parseResource(filename, callNode, libraryVariable, pythonName) {
     ownership,
     owner,
     dynamic: { close_export: close },
-    native: { clear_symbol: clear },
+    native: {
+      clear_symbol: clear,
+      ...(size === null ? {} : { size_symbol: size }),
+    },
     targets: {
       dynamic: true,
       native: true,

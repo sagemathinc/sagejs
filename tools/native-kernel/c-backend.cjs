@@ -853,12 +853,46 @@ function resourceFinalizeName(resource) {
   return `sagejs_resource_${resourceCName(resource)}_finalize`;
 }
 
+function resourceReleaseName(resource) {
+  return `sagejs_resource_${resourceCName(resource)}_release`;
+}
+
 function resourceCloseName(resource) {
   return `sagejs_resource_${resourceCName(resource)}_close`;
 }
 
+function resourceRefreshName(resource) {
+  return `sagejs_resource_${resourceCName(resource)}_refresh_external_memory`;
+}
+
 function functionResource(fn, type) {
   return resourceForFunctionType(fn, type);
+}
+
+function writtenSizedResourceParameters(fn) {
+  const written = new Set(fn.analysis?.effects?.externalWrites || []);
+  return fn.params.flatMap((parameter) => {
+    const resource = functionResource(fn, parameter.type);
+    return written.has(parameter.name) &&
+      resource?.native.size_symbol !== undefined
+      ? [{ parameter, resource }]
+      : [];
+  });
+}
+
+function resourceRefreshStatements(fn) {
+  return writtenSizedResourceParameters(fn).flatMap(({ parameter, resource }) => [
+    `    if (!sagejs_native_check_napi(env, ` +
+      `${resourceRefreshName(resource)}(env, ${wrapperValue(parameter)})))`,
+    "        goto fail;",
+  ]);
+}
+
+function resourceFailureRefreshStatements(fn) {
+  return writtenSizedResourceParameters(fn).map(({ parameter, resource }) =>
+    `        (void) ${resourceRefreshName(resource)}(env, ` +
+      `${wrapperValue(parameter)});`
+  );
 }
 
 function emitTaggedWrapper(fn) {
@@ -938,6 +972,7 @@ function emitTaggedWrapper(fn) {
     throw new Error("native resource tuple returns are not supported");
   }
   const resultArguments = [];
+  const resultInitialization = [];
   const resultCreation = [];
   resultTypes.forEach((type, index) => {
     const suffix = tupleResult ? `_${index}` : "";
@@ -962,12 +997,11 @@ function emitTaggedWrapper(fn) {
         `        ${resourceFinalizeName(resource)}(env, ${value}, NULL);`,
       );
       resultArguments.push(`${value}->value`);
+      resultInitialization.push(`    ${value}->initialized = 1;`);
       resultCreation.push(
-        `    ${value}->initialized = 1;`,
-        `    result = ${resourceWrapName(resource)}(env, ${value});`,
+        `    result = ${resourceWrapName(resource)}(env, &${value});`,
         "    if (result == NULL)",
         "        goto fail;",
-        `    ${value} = NULL;`,
       );
     } else if (type === "Integer") {
       declarations.push(`    sagejs_tagged_int ${value};`);
@@ -1020,6 +1054,8 @@ function emitTaggedWrapper(fn) {
     `${resultArguments.join(", ")}` +
     `${argumentsList.length ? `, ${argumentsList.join(", ")}` : ""}))\n` +
     "    {\n" +
+    `${resourceFailureRefreshStatements(fn).join("\n")}` +
+    `${resourceFailureRefreshStatements(fn).length ? "\n" : ""}` +
     "        sagejs_native_throw_status(env, &sagejs_wrapper_status);\n" +
     "        goto fail;\n" +
     "    }";
@@ -1042,6 +1078,8 @@ ${declarations.join("\n")}
 ${initialization.join("\n")}
 ${parsing.join("\n")}
 ${execution}
+${resultInitialization.join("\n")}
+${resourceRefreshStatements(fn).join("\n")}
 ${resultCreation.join("\n")}
 ${cleanup.join("\n")}
     return result;
@@ -1126,6 +1164,7 @@ function emitExactWrapper(fn) {
     throw new Error("native resource tuple returns are not supported");
   }
   const resultArguments = [];
+  const resultInitialization = [];
   const resultCreation = [];
   resultTypes.forEach((type, index) => {
     const suffix = tupleResult ? `_${index}` : "";
@@ -1150,12 +1189,11 @@ function emitExactWrapper(fn) {
         `        ${resourceFinalizeName(resource)}(env, ${value}, NULL);`,
       );
       resultArguments.push(`${value}->value`);
+      resultInitialization.push(`    ${value}->initialized = 1;`);
       resultCreation.push(
-        `    ${value}->initialized = 1;`,
-        `    result = ${resourceWrapName(resource)}(env, ${value});`,
+        `    result = ${resourceWrapName(resource)}(env, &${value});`,
         "    if (result == NULL)",
         "        goto fail;",
-        `    ${value} = NULL;`,
       );
     } else if (type === "Integer") {
       declarations.push(`    mpz_t ${value};`, `    int ${value}_initialized = 0;`);
@@ -1205,6 +1243,8 @@ function emitExactWrapper(fn) {
   const execution = `    if (!native_${fn.name}(&sagejs_wrapper_status, ${resultArguments.join(", ")}` +
     `${argumentsList.length ? `, ${argumentsList.join(", ")}` : ""}))\n` +
     "    {\n" +
+    `${resourceFailureRefreshStatements(fn).join("\n")}` +
+    `${resourceFailureRefreshStatements(fn).length ? "\n" : ""}` +
     "        sagejs_native_throw_status(env, &sagejs_wrapper_status);\n" +
     "        goto fail;\n" +
     "    }";
@@ -1227,6 +1267,8 @@ ${declarations.join("\n")}
 ${initialization.join("\n")}
 ${parsing.join("\n")}
 ${execution}
+${resultInitialization.join("\n")}
+${resourceRefreshStatements(fn).join("\n")}
 ${resultCreation.join("\n")}
 ${cleanup.join("\n")}
     return result;
@@ -1990,11 +2032,43 @@ function generateOwnedResourceNodeSupport(resource) {
   }
   const holder = resourceHolderName(resource);
   const finalize = resourceFinalizeName(resource);
+  const release = resourceReleaseName(resource);
   const unwrap = resourceUnwrapName(resource);
   const wrap = resourceWrapName(resource);
   const close = resourceCloseName(resource);
+  const refresh = resourceRefreshName(resource);
   const [tagHigh, tagLow] = resourceTagWords(resource);
   const tag = `sagejs_resource_${resourceCName(resource)}_type_tag`;
+  const sized = resource.native.size_symbol !== undefined;
+  const refreshSupport = sized ? `
+static napi_status ${refresh}(napi_env env, ${holder} *holder)
+{
+    const size_t measured = ${resource.native.size_symbol}(holder->value);
+    const int64_t retained = measured > (size_t) INT64_MAX
+        ? INT64_MAX : (int64_t) measured;
+    const int64_t change = retained - holder->accounted_bytes;
+    int64_t adjusted = 0;
+    if (change == 0)
+        return napi_ok;
+    const napi_status status =
+        napi_adjust_external_memory(env, change, &adjusted);
+    if (status != napi_ok)
+        return status;
+    holder->accounted_bytes = retained;
+    return napi_ok;
+}
+` : "";
+  const initialAccounting = sized ? `
+    const napi_status accounting_status = ${refresh}(env, holder);
+    if (accounting_status != napi_ok)
+    {
+        void *removed = NULL;
+        if (napi_remove_wrap(env, object, &removed) == napi_ok &&
+            removed == holder)
+            ${finalize}(env, holder, NULL);
+        (void) sagejs_native_check_napi(env, accounting_status);
+        return NULL;
+    }` : "";
   return `
 #define ${holder}_MAGIC UINT64_C(0x${tagHigh})
 
@@ -2002,6 +2076,7 @@ typedef struct
 {
     uint64_t magic;
     int initialized;
+    int64_t accounted_bytes;
     ${resource.abi_type} value;
 } ${holder};
 
@@ -2009,16 +2084,28 @@ static const napi_type_tag ${tag} = {
     UINT64_C(0x${tagHigh}), UINT64_C(0x${tagLow})
 };
 
-static void ${finalize}(napi_env env, void *data, void *hint)
+${refreshSupport}
+static void ${release}(napi_env env, ${holder} *holder)
 {
-    ${holder} *holder = (${holder} *) data;
-    (void) env;
-    (void) hint;
-    if (holder == NULL || holder->magic != ${holder}_MAGIC)
-        return;
     if (holder->initialized)
         ${resource.native.clear_symbol}(holder->value);
     holder->initialized = 0;
+    const int64_t accounted = holder->accounted_bytes;
+    holder->accounted_bytes = 0;
+    if (env != NULL && accounted != 0)
+    {
+        int64_t adjusted = 0;
+        (void) napi_adjust_external_memory(env, -accounted, &adjusted);
+    }
+}
+
+static void ${finalize}(napi_env env, void *data, void *hint)
+{
+    ${holder} *holder = (${holder} *) data;
+    (void) hint;
+    if (holder == NULL || holder->magic != ${holder}_MAGIC)
+        return;
+    ${release}(env, holder);
     holder->magic = 0;
     free(holder);
 }
@@ -2048,15 +2135,18 @@ static int ${unwrap}(
     return 1;
 }
 
-static napi_value ${wrap}(napi_env env, ${holder} *holder)
+static napi_value ${wrap}(napi_env env, ${holder} **holder_address)
 {
     napi_value object = NULL;
+    ${holder} *holder = *holder_address;
     if (!sagejs_native_check_napi(env, napi_create_object(env, &object)) ||
         !sagejs_native_check_napi(env,
-            napi_type_tag_object(env, object, &${tag})) ||
-        !sagejs_native_check_napi(env,
+            napi_type_tag_object(env, object, &${tag})))
+        return NULL;
+    if (!sagejs_native_check_napi(env,
             napi_wrap(env, object, holder, ${finalize}, NULL, NULL)))
         return NULL;
+    *holder_address = NULL;${initialAccounting}
     return object;
 }
 
@@ -2065,19 +2155,74 @@ static napi_value ${close}(napi_env env, napi_callback_info info)
     napi_value argument;
     napi_value result = NULL;
     size_t argc = 1;
+    bool tagged = false;
     ${holder} *holder = NULL;
     if (!sagejs_native_check_napi(env,
             napi_get_cb_info(env, info, &argc, &argument, NULL, NULL)))
         return NULL;
-    if (argc != 1 || !${unwrap}(env, argument, &holder))
+    if (argc != 1 ||
+        !sagejs_native_check_napi(env,
+            napi_check_object_type_tag(env, argument, &${tag}, &tagged)) ||
+        !tagged ||
+        !sagejs_native_check_napi(env,
+            napi_unwrap(env, argument, (void **) &holder)) ||
+        holder == NULL || holder->magic != ${holder}_MAGIC)
+    {
+        if (!tagged)
+            napi_throw_type_error(env, NULL,
+                "expected declared ${resource.python_name} resource");
         return NULL;
-    if (!sagejs_native_check_napi(env,
-            napi_remove_wrap(env, argument, (void **) &holder)))
-        return NULL;
-    ${finalize}(env, holder, NULL);
+    }
+    ${release}(env, holder);
     if (!sagejs_native_check_napi(env, napi_get_undefined(env, &result)))
         return NULL;
     return result;
+}`;
+}
+
+function generateResourceMemoryInspection(resources) {
+  if (resources.length === 0) return "";
+  const probes = resources.map((resource) => {
+    const holder = resourceHolderName(resource);
+    const tag = `sagejs_resource_${resourceCName(resource)}_type_tag`;
+    return `    tagged = false;
+    if (!sagejs_native_check_napi(env,
+            napi_check_object_type_tag(env, argument, &${tag}, &tagged)))
+        return NULL;
+    if (tagged)
+    {
+        ${holder} *holder = NULL;
+        if (!sagejs_native_check_napi(env,
+                napi_unwrap(env, argument, (void **) &holder)) ||
+            holder == NULL || holder->magic !=
+                ${resourceHolderName(resource)}_MAGIC)
+            return NULL;
+        if (!sagejs_native_check_napi(env,
+                napi_create_bigint_int64(
+                    env, holder->accounted_bytes, &result)))
+            return NULL;
+        return result;
+    }`;
+  }).join("\n");
+  return `
+static napi_value sagejs_resource_external_memory(
+    napi_env env, napi_callback_info info)
+{
+    napi_value argument;
+    napi_value result = NULL;
+    size_t argc = 1;
+    bool tagged = false;
+    if (!sagejs_native_check_napi(env,
+            napi_get_cb_info(env, info, &argc, &argument, NULL, NULL)))
+        return NULL;
+    if (argc != 1)
+    {
+        napi_throw_type_error(env, NULL, "expected one FFI resource");
+        return NULL;
+    }
+${probes}
+    napi_throw_type_error(env, NULL, "expected declared owned FFI resource");
+    return NULL;
 }`;
 }
 
@@ -2542,6 +2687,11 @@ static int get_precision(
       `        {${cString(resource.dynamic.close_export)}, NULL, ` +
         `${resourceCloseName(resource)}, NULL, NULL, NULL, napi_default, NULL}`
     ),
+    ...(publicResources.length === 0 ? [] : [
+      `        {"__sagejsFfiResourceExternalMemory", NULL, ` +
+        "sagejs_resource_external_memory, NULL, NULL, NULL, " +
+        "napi_default, NULL}",
+    ]),
   ].join(",\n");
   return `/* Generated by Sage.js Native Kernel v21.
  * Node adapter only; mathematical execution lives in kernel_core.c.
@@ -2570,6 +2720,8 @@ ${helpers}
 ${bufferAdapters}
 
 ${publicResources.map(generateOwnedResourceNodeSupport).join("\n\n")}
+
+${generateResourceMemoryInspection(publicResources)}
 
 ${floatBuffers ? generateFloat64BufferNodeAdapter() : ""}
 

@@ -76,6 +76,8 @@ async function main() {
           id: resource.id,
           python_type: resource.python_name,
           close_export: resource.dynamic.close_export,
+          ...(resource.native.size_symbol === undefined
+            ? {} : { size_symbol: resource.native.size_symbol }),
         })),
       omitted_resources: declaration.functions.length - functions.length,
       host_isolation: {
