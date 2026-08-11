@@ -27,6 +27,7 @@ flint = Library(
         "flint/ulong_extras.h",
         "sagejs/exact_polynomial_ffi.h",
         "sagejs/ffi_algorithms.h",
+        "sagejs/fmpz_matrix_ffi.h",
         "sagejs/fmpq_matrix_ffi.h",
     ],
     link_unix=["libflint.a", "libopenblas.a"],
@@ -37,6 +38,17 @@ flint = Library(
     windows_default="packages/flint/.native/vcpkg-installed/x64-windows-static-md-release",
     include_dirs=["include"],
     source_include_dirs=["packages/flint/include"],
+)
+
+
+FmpzMatrix = flint.resource(
+    id="fmpz_matrix",
+    abi=sagejs_fmpz_matrix_t,
+    ownership="owned",
+    close="ffiFmpzMatrixClose",
+    clear="sagejs_fmpz_matrix_clear",
+    size="sagejs_fmpz_matrix_allocated_bytes",
+    wasm=False,
 )
 
 
@@ -639,6 +651,414 @@ def fmpq_polynomial_evaluate(
     wasm=False,
 )
 def fmpq_polynomial_serialize(source: FmpqPolynomial) -> FlintByteRegion: ...
+
+
+@flint.function(
+    dynamic="ffiFmpzMatrixCreate",
+    symbol="sagejs_fmpz_matrix_init",
+    returns=int,
+    abi=[
+        out("result", sagejs_fmpz_matrix_t),
+        in_("rows", uint64_t),
+        in_("columns", uint64_t),
+    ],
+    effects=Effects(pure=False, allocates=True, raises=[OverflowError]),
+    result=Status(
+        1,
+        exception=OverflowError,
+        message="integer matrix dimensions are too large",
+    ),
+    wasm=False,
+)
+def fmpz_matrix(rows: uint64, columns: uint64) -> FmpzMatrix: ...
+
+
+@flint.function(
+    dynamic="ffiFmpzMatrixNrows",
+    symbol="sagejs_fmpz_matrix_nrows",
+    returns=uint64_t,
+    abi=[in_("matrix", sagejs_fmpz_matrix_t)],
+    effects=Effects(pure=True),
+    result=Direct(),
+    wasm=False,
+)
+def fmpz_matrix_nrows(matrix: FmpzMatrix) -> uint64: ...
+
+
+@flint.function(
+    dynamic="ffiFmpzMatrixNcols",
+    symbol="sagejs_fmpz_matrix_ncols",
+    returns=uint64_t,
+    abi=[in_("matrix", sagejs_fmpz_matrix_t)],
+    effects=Effects(pure=True),
+    result=Direct(),
+    wasm=False,
+)
+def fmpz_matrix_ncols(matrix: FmpzMatrix) -> uint64: ...
+
+
+@flint.function(
+    dynamic="ffiFmpzMatrixSetEntry",
+    symbol="sagejs_fmpz_matrix_set_entry",
+    returns=int,
+    abi=[
+        in_("matrix", sagejs_fmpz_matrix_t),
+        in_("row", uint64_t),
+        in_("column", uint64_t),
+        in_("entry", fmpz_t),
+    ],
+    effects=Effects(
+        pure=False,
+        allocates=True,
+        raises=[ValueError],
+        writes=["matrix"],
+    ),
+    result=Status(
+        1,
+        exception=ValueError,
+        message="integer matrix entry is out of bounds",
+    ),
+    wasm=False,
+)
+def fmpz_matrix_set_entry(
+    matrix: Writable[FmpzMatrix],
+    row: uint64,
+    column: uint64,
+    entry: Integer,
+) -> bool: ...
+
+
+@flint.function(
+    dynamic="ffiFmpzMatrixEntry",
+    symbol="sagejs_fmpz_matrix_entry",
+    returns=int,
+    abi=[
+        out("result", fmpz_t),
+        in_("matrix", sagejs_fmpz_matrix_t),
+        in_("row", uint64_t),
+        in_("column", uint64_t),
+    ],
+    effects=Effects(pure=True, allocates=True, raises=[ValueError]),
+    result=Status(
+        1,
+        exception=ValueError,
+        message="integer matrix entry is out of bounds",
+    ),
+    wasm=False,
+)
+def fmpz_matrix_entry(
+    matrix: FmpzMatrix,
+    row: uint64,
+    column: uint64,
+) -> Integer: ...
+
+
+@flint.function(
+    dynamic="ffiFmpzMatrixCopy",
+    symbol="sagejs_fmpz_matrix_init_set",
+    returns=int,
+    abi=[
+        out("result", sagejs_fmpz_matrix_t),
+        in_("source", sagejs_fmpz_matrix_t),
+    ],
+    effects=Effects(pure=False, allocates=True, raises=[RuntimeError]),
+    result=Status(1, exception=RuntimeError, message="integer matrix copy failed"),
+    wasm=False,
+)
+def fmpz_matrix_copy(source: FmpzMatrix) -> FmpzMatrix: ...
+
+
+@flint.function(
+    dynamic="ffiFmpzMatrixNeg",
+    symbol="sagejs_fmpz_matrix_neg",
+    returns=int,
+    abi=[
+        out("result", sagejs_fmpz_matrix_t),
+        in_("source", sagejs_fmpz_matrix_t),
+    ],
+    effects=Effects(pure=False, allocates=True, raises=[RuntimeError]),
+    result=Status(1, exception=RuntimeError, message="integer matrix negation failed"),
+    wasm=False,
+)
+def fmpz_matrix_neg(source: FmpzMatrix) -> FmpzMatrix: ...
+
+
+@flint.function(
+    dynamic="ffiFmpzMatrixScalarMul",
+    symbol="sagejs_fmpz_matrix_scalar_mul",
+    returns=int,
+    abi=[
+        out("result", sagejs_fmpz_matrix_t),
+        in_("source", sagejs_fmpz_matrix_t),
+        in_("scalar", fmpz_t),
+    ],
+    effects=Effects(pure=False, allocates=True, raises=[RuntimeError]),
+    result=Status(
+        1,
+        exception=RuntimeError,
+        message="integer matrix scalar multiplication failed",
+    ),
+    wasm=False,
+)
+def fmpz_matrix_scalar_mul(
+    source: FmpzMatrix,
+    scalar: Integer,
+) -> FmpzMatrix: ...
+
+
+@flint.function(
+    dynamic="ffiFmpzMatrixEqual",
+    symbol="sagejs_fmpz_matrix_equal",
+    returns=int,
+    abi=[
+        in_("left", sagejs_fmpz_matrix_t),
+        in_("right", sagejs_fmpz_matrix_t),
+    ],
+    effects=Effects(pure=True),
+    result=Direct(),
+    wasm=False,
+)
+def fmpz_matrix_equal(left: FmpzMatrix, right: FmpzMatrix) -> bool: ...
+
+
+@flint.function(
+    dynamic="ffiFmpzMatrixIsZero",
+    symbol="sagejs_fmpz_matrix_is_zero",
+    returns=int,
+    abi=[in_("matrix", sagejs_fmpz_matrix_t)],
+    effects=Effects(pure=True),
+    result=Direct(),
+    wasm=False,
+)
+def fmpz_matrix_is_zero(matrix: FmpzMatrix) -> bool: ...
+
+
+@flint.function(
+    dynamic="ffiFmpzMatrixIsOne",
+    symbol="sagejs_fmpz_matrix_is_one",
+    returns=int,
+    abi=[in_("matrix", sagejs_fmpz_matrix_t)],
+    effects=Effects(pure=True),
+    result=Direct(),
+    wasm=False,
+)
+def fmpz_matrix_is_one(matrix: FmpzMatrix) -> bool: ...
+
+
+@flint.function(
+    dynamic="ffiFmpzMatrixAdd",
+    symbol="sagejs_fmpz_matrix_add",
+    returns=int,
+    abi=[
+        out("result", sagejs_fmpz_matrix_t),
+        in_("left", sagejs_fmpz_matrix_t),
+        in_("right", sagejs_fmpz_matrix_t),
+    ],
+    effects=Effects(pure=False, allocates=True, raises=[ValueError]),
+    result=Status(
+        1,
+        exception=ValueError,
+        message="integer matrix dimensions are incompatible",
+    ),
+    wasm=False,
+)
+def fmpz_matrix_add(left: FmpzMatrix, right: FmpzMatrix) -> FmpzMatrix: ...
+
+
+@flint.function(
+    dynamic="ffiFmpzMatrixSub",
+    symbol="sagejs_fmpz_matrix_sub",
+    returns=int,
+    abi=[
+        out("result", sagejs_fmpz_matrix_t),
+        in_("left", sagejs_fmpz_matrix_t),
+        in_("right", sagejs_fmpz_matrix_t),
+    ],
+    effects=Effects(pure=False, allocates=True, raises=[ValueError]),
+    result=Status(
+        1,
+        exception=ValueError,
+        message="integer matrix dimensions are incompatible",
+    ),
+    wasm=False,
+)
+def fmpz_matrix_sub(left: FmpzMatrix, right: FmpzMatrix) -> FmpzMatrix: ...
+
+
+@flint.function(
+    dynamic="ffiFmpzMatrixTranspose",
+    symbol="sagejs_fmpz_matrix_transpose",
+    returns=int,
+    abi=[
+        out("result", sagejs_fmpz_matrix_t),
+        in_("source", sagejs_fmpz_matrix_t),
+    ],
+    effects=Effects(pure=False, allocates=True, raises=[RuntimeError]),
+    result=Status(
+        1,
+        exception=RuntimeError,
+        message="integer matrix transpose failed",
+    ),
+    wasm=False,
+)
+def fmpz_matrix_transpose(source: FmpzMatrix) -> FmpzMatrix: ...
+
+
+@flint.function(
+    dynamic="ffiFmpzMatrixMul",
+    symbol="sagejs_fmpz_matrix_mul",
+    returns=int,
+    abi=[
+        out("result", sagejs_fmpz_matrix_t),
+        in_("left", sagejs_fmpz_matrix_t),
+        in_("right", sagejs_fmpz_matrix_t),
+    ],
+    effects=Effects(pure=False, allocates=True, raises=[ValueError]),
+    result=Status(
+        1,
+        exception=ValueError,
+        message="integer matrix dimensions are incompatible",
+    ),
+    wasm=False,
+)
+def fmpz_matrix_mul(left: FmpzMatrix, right: FmpzMatrix) -> FmpzMatrix: ...
+
+
+@flint.function(
+    dynamic="ffiFmpzMatrixPow",
+    symbol="sagejs_fmpz_matrix_pow",
+    returns=int,
+    abi=[
+        out("result", sagejs_fmpz_matrix_t),
+        in_("source", sagejs_fmpz_matrix_t),
+        in_("exponent", uint64_t),
+    ],
+    effects=Effects(pure=False, allocates=True, raises=[ValueError]),
+    result=Status(
+        1,
+        exception=ValueError,
+        message="integer matrix power requires a square matrix",
+    ),
+    wasm=False,
+)
+def fmpz_matrix_pow(
+    source: FmpzMatrix,
+    exponent: uint64,
+) -> FmpzMatrix: ...
+
+
+@flint.function(
+    dynamic="ffiFmpzMatrixRank",
+    symbol="sagejs_fmpz_matrix_rank",
+    returns=uint64_t,
+    abi=[in_("matrix", sagejs_fmpz_matrix_t)],
+    effects=Effects(pure=True, allocates=True),
+    result=Direct(),
+    wasm=False,
+)
+def fmpz_matrix_rank(matrix: FmpzMatrix) -> uint64: ...
+
+
+@flint.function(
+    dynamic="ffiFmpzMatrixDet",
+    symbol="sagejs_fmpz_matrix_det",
+    returns=int,
+    abi=[
+        out("result", fmpz_t),
+        in_("source", sagejs_fmpz_matrix_t),
+    ],
+    effects=Effects(pure=False, allocates=True, raises=[ValueError]),
+    result=Status(
+        1,
+        exception=ValueError,
+        message="determinant requires a square integer matrix",
+    ),
+    wasm=False,
+)
+def fmpz_matrix_det(source: FmpzMatrix) -> Integer: ...
+
+
+@flint.function(
+    dynamic="ffiFmpzMatrixTrace",
+    symbol="sagejs_fmpz_matrix_trace",
+    returns=int,
+    abi=[
+        out("result", fmpz_t),
+        in_("source", sagejs_fmpz_matrix_t),
+    ],
+    effects=Effects(pure=True, allocates=True, raises=[ValueError]),
+    result=Status(
+        1,
+        exception=ValueError,
+        message="trace requires a square integer matrix",
+    ),
+    wasm=False,
+)
+def fmpz_matrix_trace(source: FmpzMatrix) -> Integer: ...
+
+
+@flint.function(
+    dynamic="ffiFmpzMatrixHnf",
+    symbol="sagejs_fmpz_matrix_hnf",
+    returns=int,
+    abi=[
+        out("result", sagejs_fmpz_matrix_t),
+        in_("source", sagejs_fmpz_matrix_t),
+    ],
+    effects=Effects(pure=False, allocates=True, raises=[RuntimeError]),
+    result=Status(1, exception=RuntimeError, message="integer matrix HNF failed"),
+    wasm=False,
+)
+def fmpz_matrix_hnf(source: FmpzMatrix) -> FmpzMatrix: ...
+
+
+@flint.function(
+    dynamic="ffiFmpzMatrixSnf",
+    symbol="sagejs_fmpz_matrix_snf",
+    returns=int,
+    abi=[
+        out("result", sagejs_fmpz_matrix_t),
+        in_("source", sagejs_fmpz_matrix_t),
+    ],
+    effects=Effects(pure=False, allocates=True, raises=[RuntimeError]),
+    result=Status(1, exception=RuntimeError, message="integer matrix SNF failed"),
+    wasm=False,
+)
+def fmpz_matrix_snf(source: FmpzMatrix) -> FmpzMatrix: ...
+
+
+@flint.function(
+    dynamic="ffiFmpzMatrixFormat",
+    symbol="sagejs_fmpz_matrix_format",
+    returns=int,
+    abi=[
+        out("result", sagejs_flint_byte_region_t),
+        in_("source", sagejs_fmpz_matrix_t),
+    ],
+    effects=Effects(pure=False, allocates=True, raises=[RuntimeError]),
+    result=Status(1, exception=RuntimeError, message="integer matrix format failed"),
+    wasm=False,
+)
+def fmpz_matrix_format(source: FmpzMatrix) -> FlintByteRegion: ...
+
+
+@flint.function(
+    dynamic="ffiFmpzMatrixSerialize",
+    symbol="sagejs_fmpz_matrix_serialize",
+    returns=int,
+    abi=[
+        out("result", sagejs_flint_byte_region_t),
+        in_("source", sagejs_fmpz_matrix_t),
+    ],
+    effects=Effects(pure=False, allocates=True, raises=[OverflowError]),
+    result=Status(
+        1,
+        exception=OverflowError,
+        message="integer matrix serialization is too large",
+    ),
+    wasm=False,
+)
+def fmpz_matrix_serialize(source: FmpzMatrix) -> FlintByteRegion: ...
 
 
 @flint.function(

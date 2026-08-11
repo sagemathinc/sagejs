@@ -14,6 +14,7 @@ from sagejs.ffi.flint import (
     FmpqMatrix,
     FmpqPolynomial,
     FmpqValue,
+    FmpzMatrix,
     FmpzPolynomial,
     fmpz_polynomial as _ffi_fmpz_polynomial,
     fmpz_polynomial_set_coefficient as _ffi_fmpz_polynomial_set_coefficient,
@@ -41,6 +42,29 @@ from sagejs.ffi.flint import (
     fmpq_polynomial_pow as _ffi_fmpq_polynomial_pow,
     fmpq_polynomial_evaluate as _ffi_fmpq_polynomial_evaluate,
     fmpq_polynomial_serialize as _ffi_fmpq_polynomial_serialize,
+    fmpz_matrix as _ffi_fmpz_matrix,
+    fmpz_matrix_nrows as _ffi_fmpz_matrix_nrows,
+    fmpz_matrix_ncols as _ffi_fmpz_matrix_ncols,
+    fmpz_matrix_set_entry as _ffi_fmpz_matrix_set_entry,
+    fmpz_matrix_entry as _ffi_fmpz_matrix_entry,
+    fmpz_matrix_copy as _ffi_fmpz_matrix_copy,
+    fmpz_matrix_neg as _ffi_fmpz_matrix_neg,
+    fmpz_matrix_scalar_mul as _ffi_fmpz_matrix_scalar_mul,
+    fmpz_matrix_equal as _ffi_fmpz_matrix_equal,
+    fmpz_matrix_is_zero as _ffi_fmpz_matrix_is_zero,
+    fmpz_matrix_is_one as _ffi_fmpz_matrix_is_one,
+    fmpz_matrix_add as _ffi_fmpz_matrix_add,
+    fmpz_matrix_sub as _ffi_fmpz_matrix_sub,
+    fmpz_matrix_transpose as _ffi_fmpz_matrix_transpose,
+    fmpz_matrix_mul as _ffi_fmpz_matrix_mul,
+    fmpz_matrix_pow as _ffi_fmpz_matrix_pow,
+    fmpz_matrix_rank as _ffi_fmpz_matrix_rank,
+    fmpz_matrix_det as _ffi_fmpz_matrix_det,
+    fmpz_matrix_trace as _ffi_fmpz_matrix_trace,
+    fmpz_matrix_hnf as _ffi_fmpz_matrix_hnf,
+    fmpz_matrix_snf as _ffi_fmpz_matrix_snf,
+    fmpz_matrix_format as _ffi_fmpz_matrix_format,
+    fmpz_matrix_serialize as _ffi_fmpz_matrix_serialize,
     fmpq_matrix as _ffi_fmpq_matrix,
     fmpq_matrix_randbits as _ffi_fmpq_matrix_randbits,
     fmpq_matrix_nrows as _ffi_fmpq_matrix_nrows,
@@ -388,6 +412,237 @@ def ffiFmpqPolynomialSerialize(
     source: FmpqPolynomial,
 ) -> FlintByteRegion:
     return _ffi_fmpq_polynomial_serialize(
+        source,
+    )
+
+
+@native
+def ffiFmpzMatrixCreate(
+    rows: uint64,
+    columns: uint64,
+) -> FmpzMatrix:
+    return _ffi_fmpz_matrix(
+        rows,
+        columns,
+    )
+
+
+@native
+def ffiFmpzMatrixNrows(
+    matrix: FmpzMatrix,
+) -> uint64:
+    return _ffi_fmpz_matrix_nrows(
+        matrix,
+    )
+
+
+@native
+def ffiFmpzMatrixNcols(
+    matrix: FmpzMatrix,
+) -> uint64:
+    return _ffi_fmpz_matrix_ncols(
+        matrix,
+    )
+
+
+@native
+def ffiFmpzMatrixSetEntry(
+    matrix: FmpzMatrix,
+    row: uint64,
+    column: uint64,
+    entry: Integer,
+) -> bool:
+    return _ffi_fmpz_matrix_set_entry(
+        matrix,
+        row,
+        column,
+        entry,
+    )
+
+
+@native
+def ffiFmpzMatrixEntry(
+    matrix: FmpzMatrix,
+    row: uint64,
+    column: uint64,
+) -> Integer:
+    return _ffi_fmpz_matrix_entry(
+        matrix,
+        row,
+        column,
+    )
+
+
+@native
+def ffiFmpzMatrixCopy(
+    source: FmpzMatrix,
+) -> FmpzMatrix:
+    return _ffi_fmpz_matrix_copy(
+        source,
+    )
+
+
+@native
+def ffiFmpzMatrixNeg(
+    source: FmpzMatrix,
+) -> FmpzMatrix:
+    return _ffi_fmpz_matrix_neg(
+        source,
+    )
+
+
+@native
+def ffiFmpzMatrixScalarMul(
+    source: FmpzMatrix,
+    scalar: Integer,
+) -> FmpzMatrix:
+    return _ffi_fmpz_matrix_scalar_mul(
+        source,
+        scalar,
+    )
+
+
+@native
+def ffiFmpzMatrixEqual(
+    left: FmpzMatrix,
+    right: FmpzMatrix,
+) -> bool:
+    return _ffi_fmpz_matrix_equal(
+        left,
+        right,
+    )
+
+
+@native
+def ffiFmpzMatrixIsZero(
+    matrix: FmpzMatrix,
+) -> bool:
+    return _ffi_fmpz_matrix_is_zero(
+        matrix,
+    )
+
+
+@native
+def ffiFmpzMatrixIsOne(
+    matrix: FmpzMatrix,
+) -> bool:
+    return _ffi_fmpz_matrix_is_one(
+        matrix,
+    )
+
+
+@native
+def ffiFmpzMatrixAdd(
+    left: FmpzMatrix,
+    right: FmpzMatrix,
+) -> FmpzMatrix:
+    return _ffi_fmpz_matrix_add(
+        left,
+        right,
+    )
+
+
+@native
+def ffiFmpzMatrixSub(
+    left: FmpzMatrix,
+    right: FmpzMatrix,
+) -> FmpzMatrix:
+    return _ffi_fmpz_matrix_sub(
+        left,
+        right,
+    )
+
+
+@native
+def ffiFmpzMatrixTranspose(
+    source: FmpzMatrix,
+) -> FmpzMatrix:
+    return _ffi_fmpz_matrix_transpose(
+        source,
+    )
+
+
+@native
+def ffiFmpzMatrixMul(
+    left: FmpzMatrix,
+    right: FmpzMatrix,
+) -> FmpzMatrix:
+    return _ffi_fmpz_matrix_mul(
+        left,
+        right,
+    )
+
+
+@native
+def ffiFmpzMatrixPow(
+    source: FmpzMatrix,
+    exponent: uint64,
+) -> FmpzMatrix:
+    return _ffi_fmpz_matrix_pow(
+        source,
+        exponent,
+    )
+
+
+@native
+def ffiFmpzMatrixRank(
+    matrix: FmpzMatrix,
+) -> uint64:
+    return _ffi_fmpz_matrix_rank(
+        matrix,
+    )
+
+
+@native
+def ffiFmpzMatrixDet(
+    source: FmpzMatrix,
+) -> Integer:
+    return _ffi_fmpz_matrix_det(
+        source,
+    )
+
+
+@native
+def ffiFmpzMatrixTrace(
+    source: FmpzMatrix,
+) -> Integer:
+    return _ffi_fmpz_matrix_trace(
+        source,
+    )
+
+
+@native
+def ffiFmpzMatrixHnf(
+    source: FmpzMatrix,
+) -> FmpzMatrix:
+    return _ffi_fmpz_matrix_hnf(
+        source,
+    )
+
+
+@native
+def ffiFmpzMatrixSnf(
+    source: FmpzMatrix,
+) -> FmpzMatrix:
+    return _ffi_fmpz_matrix_snf(
+        source,
+    )
+
+
+@native
+def ffiFmpzMatrixFormat(
+    source: FmpzMatrix,
+) -> FlintByteRegion:
+    return _ffi_fmpz_matrix_format(
+        source,
+    )
+
+
+@native
+def ffiFmpzMatrixSerialize(
+    source: FmpzMatrix,
+) -> FlintByteRegion:
+    return _ffi_fmpz_matrix_serialize(
         source,
     )
 

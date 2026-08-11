@@ -19,6 +19,7 @@ test("every host test belongs to a runner tier", () => {
     "exact-polynomial-resource-ffi.cjs",
     "ffi-resource-accounting-codegen.cjs",
     "ffi-resource-memory.cjs",
+    "fmpz-matrix-resource-ffi.cjs",
     "fmpq-resource-ops-lifecycle.cjs",
     "native-kernel-addon-child.cjs",
     "native-kernel.cjs",

@@ -1,0 +1,101 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "dense-zz-ffi",
+  "title": "Dense ZZ Resource FFI",
+  "lane": "integration",
+  "status": "review",
+  "owner": "codex",
+  "objective": "Generate externally-accounted owned FLINT FmpzMatrix resources with safe construction, inspection, structural arithmetic, advanced exact algorithms, stable serialization, and lifecycle/performance tests",
+  "base_commit": "890edf68e95e9d54b0c98d2cb0c00f5dfc73fe5e",
+  "claims": [
+    "ffi/flint.ffi.py",
+    "ffi/flint.ffi.json",
+    "src/lib/sagejs/ffi/flint.py",
+    "src/baselib/sagejs/ffi/flint.py",
+    "packages/flint/generated/",
+    "packages/flint/include/sagejs/fmpz_matrix_ffi.h",
+    "package.json",
+    "test/fmpz-matrix-resource-ffi.cjs",
+    "test/test-manifest.test.cjs",
+    "architecture/native-boundaries.json",
+    "architecture/native-code.json",
+    "architecture/package-graph.json"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "external-library",
+    "fallback": "tested-capability",
+    "oracles": [
+      "current packed dense ZZ matrix implementation",
+      "FLINT upstream semantics"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "fallback",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm architecture:check",
+    "pnpm test:portable",
+    "pnpm test:baselib:strict"
+  ],
+  "runs": [
+    {
+      "command": "node test/fmpz-matrix-resource-ffi.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.37,
+      "started_at": "2026-08-11T10:15:51.070Z",
+      "commit": "890edf68e95e9d54b0c98d2cb0c00f5dfc73fe5e",
+      "workspace_fingerprint": "49a64aab6a89102d30db0495774e616ab949364998009a90b00679d6412b637a",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 11.446,
+      "started_at": "2026-08-11T10:15:58.415Z",
+      "commit": "890edf68e95e9d54b0c98d2cb0c00f5dfc73fe5e",
+      "workspace_fingerprint": "49a64aab6a89102d30db0495774e616ab949364998009a90b00679d6412b637a",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 11.698,
+      "started_at": "2026-08-11T10:16:13.452Z",
+      "commit": "890edf68e95e9d54b0c98d2cb0c00f5dfc73fe5e",
+      "workspace_fingerprint": "49a64aab6a89102d30db0495774e616ab949364998009a90b00679d6412b637a",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 27.897,
+      "started_at": "2026-08-11T10:16:28.715Z",
+      "commit": "890edf68e95e9d54b0c98d2cb0c00f5dfc73fe5e",
+      "workspace_fingerprint": "49a64aab6a89102d30db0495774e616ab949364998009a90b00679d6412b637a",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Adds a generated, externally-accounted FmpzMatrix resource with always-valid zero-filled construction and checked mutation; direct copy, add/subtract/negate/scalar multiply, transpose, multiply, power, predicates, trace, rank, determinant, HNF, SNF, aligned formatting, and self-describing signed-magnitude serialization; and randomized, skew-memory, lifecycle-sanitizer, and cold/steady performance coverage.",
+    "risks": [
+      "The resource target is intentionally wasm=False until the generated opaque-resource host adapter has a proven WebAssembly lowering.",
+      "HNF and SNF expose direct FLINT canonical forms but transformation matrices are deferred to a later multi-result resource protocol."
+    ],
+    "next_steps": [
+      "Migrate dense ZZ public Matrix storage and operations to FmpzMatrix while retaining the packed implementation as the portable fallback and differential oracle.",
+      "Design right-kernel resource semantics together with the public lattice-basis normalization contract instead of freezing an incidental basis at this ABI layer.",
+      "Add a typed-Python borrowed traversal witness when the public dense ZZ migration establishes its kernel-facing API."
+    ]
+  }
+}

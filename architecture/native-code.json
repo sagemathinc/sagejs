@@ -67,6 +67,13 @@
       "rationale": "Host-neutral generated owned-resource ABI over FLINT exact univariate polynomials, including immutable sealing, retained-size accounting, structural arithmetic, exact evaluation, and stable serialization."
     },
     {
+      "path": "packages/flint/include/sagejs/fmpz_matrix_ffi.h",
+      "category": "external-library-bridge",
+      "review_status": "accepted",
+      "lane": "integration",
+      "rationale": "Host-neutral generated owned-resource ABI over FLINT dense integer matrices, with physical retained-size accounting, structural arithmetic, exact algorithms, formatting, and stable serialization."
+    },
+    {
       "path": "packages/flint/include/sagejs/ffi_algorithms.h",
       "category": "external-library-bridge",
       "review_status": "accepted",
