@@ -138,6 +138,7 @@ test("FFI declarations are strict and generated modules are current", () => {
       "fmpz_matrix_right_kernel", "fmpz_matrix_charpoly",
       "fmpz_matrix_minpoly", "fmpq_matrix_from_fmpz",
       "fmpz_matrix_from_fmpq_integral", "fmpz_matrix_submatrix",
+      "fmpz_matrix_select_rows", "fmpz_matrix_select_columns",
       "fmpz_matrix_set_block", "fmpz_matrix_stack",
       "fmpz_matrix_augment", "fmpz_matrix_nonzero_count",
       "fmpz_matrix_format", "fmpz_matrix_serialize", "flint_byte_region",
@@ -218,7 +219,7 @@ test("FFI declarations are strict and generated modules are current", () => {
     { resource: "graph", ownership: "owned", owner: null, root: "graph" },
     { resource: "edges", ownership: "borrowed", owner: "graph", root: "graph" },
   ]);
-  assert.match(runSage(["ffi", "check"]), /153 function\(s\)/);
+  assert.match(runSage(["ffi", "check"]), /155 function\(s\)/);
   const inspection = JSON.parse(
     runSage(["ffi", "explain", "flint", "--json"]),
   );
@@ -268,14 +269,14 @@ test("generated host adapters cover values and safe owned resources", () => {
     assert.doesNotMatch(source, /sagejs\.runtime|ffi_call/);
     assert.equal(
       functions.length,
-      declaration.library.id === "flint" ? 146 : 2,
+      declaration.library.id === "flint" ? 148 : 2,
     );
   }
 });
 
 test("packages make generated host adapters canonical and retain handwritten oracles", () => {
   for (const [packagePath, expected] of [
-    ["../packages/flint", 146],
+    ["../packages/flint", 148],
     ["../packages/graph", 2],
   ]) {
     const backend = require(packagePath);
@@ -422,7 +423,7 @@ test("native-boundary audit is a reviewed exact ratchet", () => {
   const current = boundaryAudit.validateBoundarySnapshot(snapshot, { root });
   assert.ok(current.counts["napi-export"] >= 280);
   assert.ok(current.counts["runtime-intrinsic"] >= 100);
-  assert.equal(current.counts["declared-ffi"], 153);
+  assert.equal(current.counts["declared-ffi"], 155);
   assert.equal(current.counts["declared-ffi-resource"], 9);
   assert.match(runSage(["ffi", "audit"]), /inventoried native boundaries/);
   assert.equal(
