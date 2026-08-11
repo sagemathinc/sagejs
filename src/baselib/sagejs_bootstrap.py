@@ -8,7 +8,7 @@ has no source-level spelling for.
 
 # globals: AlgebraicExtensionFunctor, Atomics, Date, Element, Factorization
 # globals: FiniteFieldElement, Int32Array, Number, Parent, PolynomialRing
-# globals: QQ, QuotientFunctor
+# globals: QQ, QuotientFunctor, BigUint64Array, Uint8Array
 # globals: BigInt, Rational, Reflect, RuntimeError, SharedArrayBuffer, TypeError
 # globals: ZZ, ZeroDivisionError, __sagejs_runtime_require__
 # globals: divisors, factor, is_prime, parent, prime_divisors
@@ -551,6 +551,111 @@ def ρσ_uint64_buffer_prefix(source, length):
         const start = source.byteOffset;
         const stop = start + length * BigUint64Array.BYTES_PER_ELEMENT;
         return new BigUint64Array(source.buffer.slice(start, stop));
+    })()"""
+
+
+def ρσ_uint64_pack_le(source, width):
+    """Pack unsigned 64-bit entries into portable little-endian bytes."""
+    return r"""%js (() => {
+        if (!(source instanceof BigUint64Array)) {
+            throw new TypeError("source must be a BigUint64Array");
+        }
+        if (width !== 1 && width !== 2 && width !== 4 && width !== 8) {
+            throw new RangeError("uint64 packed width must be 1, 2, 4, or 8");
+        }
+        if (source.length > Math.floor(Number.MAX_SAFE_INTEGER / width)) {
+            throw new RangeError("packed uint64 byte length is too large");
+        }
+        const output = new Uint8Array(source.length * width);
+        const maximum = width === 8
+            ? 0xffffffffffffffffn
+            : (1n << BigInt(width * 8)) - 1n;
+        for (let index = 0; index < source.length; index += 1) {
+            let value = source[index];
+            if (value > maximum) {
+                throw new RangeError(
+                    "uint64 entry does not fit the requested packed width"
+                );
+            }
+            const offset = index * width;
+            for (let byte = 0; byte < width; byte += 1) {
+                output[offset + byte] = Number(value & 0xffn);
+                value >>= 8n;
+            }
+        }
+        return output;
+    })()"""
+
+
+def ρσ_uint64_unpack_le(source, width, length):
+    """Unpack exact-length portable little-endian uint64 storage."""
+    return r"""%js (() => {
+        if (!(source instanceof Uint8Array)) {
+            throw new TypeError("source must be a Uint8Array");
+        }
+        if (width !== 1 && width !== 2 && width !== 4 && width !== 8) {
+            throw new RangeError("uint64 packed width must be 1, 2, 4, or 8");
+        }
+        if (!Number.isSafeInteger(length) || length < 0) {
+            throw new RangeError("invalid unpacked uint64 length");
+        }
+        if (length > Math.floor(Number.MAX_SAFE_INTEGER / width)) {
+            throw new RangeError("packed uint64 byte length is too large");
+        }
+        const byteLength = length * width;
+        if (source.byteLength !== byteLength) {
+            throw new RangeError(
+                "packed uint64 byte length does not match entry count"
+            );
+        }
+        const output = new BigUint64Array(length);
+        for (let index = 0; index < length; index += 1) {
+            const offset = index * width;
+            let value = 0n;
+            for (let byte = width - 1; byte >= 0; byte -= 1) {
+                value = (value << 8n) + BigInt(source[offset + byte]);
+            }
+            output[index] = value;
+        }
+        return output;
+    })()"""
+
+
+def ρσ_uint64_matrix_format(source, rows, columns):
+    """Format a row-major uint64 matrix using default Sage alignment."""
+    return r"""%js (() => {
+        if (!(source instanceof BigUint64Array)) {
+            throw new TypeError("source must be a BigUint64Array");
+        }
+        if (!Number.isSafeInteger(rows) || rows < 0 ||
+            !Number.isSafeInteger(columns) || columns < 0 ||
+            (rows !== 0 &&
+                columns > Math.floor(Number.MAX_SAFE_INTEGER / rows))) {
+            throw new RangeError("invalid uint64 matrix dimensions");
+        }
+        if (source.length !== rows * columns) {
+            throw new RangeError(
+                "uint64 matrix entry count does not match dimensions"
+            );
+        }
+        if (rows === 0) return "[]";
+        const entries = new Array(source.length);
+        let width = 0;
+        for (let index = 0; index < source.length; index += 1) {
+            const text = source[index].toString();
+            entries[index] = text;
+            if (text.length > width) width = text.length;
+        }
+        const lines = new Array(rows);
+        for (let row = 0; row < rows; row += 1) {
+            const fields = new Array(columns);
+            const offset = row * columns;
+            for (let column = 0; column < columns; column += 1) {
+                fields[column] = entries[offset + column].padStart(width, " ");
+            }
+            lines[row] = "[" + fields.join(" ") + "]";
+        }
+        return lines.join("\n");
     })()"""
 
 
