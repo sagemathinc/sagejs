@@ -226,6 +226,88 @@ def _flint_byte_region_bytes(region: Any) -> Any:
     return region.take_bytes()
 
 
+def _packed_uint8(length: int) -> Any:
+    """Allocate host-owned bytes without naming a host constructor directly."""
+    constructor = runtime.reflect.get(runtime.global_object, "Uint8Array")
+    return runtime.reflect.construct(constructor, [length])
+
+
+def _packed_uint8_suffix(source: Any, offset: int) -> Any:
+    """Return a copied byte suffix through the host's typed-array primitive."""
+    subarray = runtime.reflect.get(source, "subarray")
+    view = runtime.reflect.apply(subarray, source, [offset])
+    constructor = runtime.reflect.get(runtime.global_object, "Uint8Array")
+    return runtime.reflect.construct(constructor, [view])
+
+
+def _little_endian_bytes_payload(source: Any) -> Any:
+    """Lower stable bytes to the declared nonnegative `Integer` transport.
+
+    This is an ABI transport conversion, not a polynomial representation.
+    Generated exact-polynomial deserializers currently accept one exact integer
+    plus its significant byte length. Node's byte buffer converts the complete
+    stream through hexadecimal in linear time, avoiding repeated growth of one
+    enormous integer while the variable-length stream is assembled.
+    """
+    buffer = runtime.reflect.get(runtime.global_object, "Buffer")
+    from_bytes = runtime.reflect.get(buffer, "from")
+    if runtime.jstype(from_bytes) != "function":
+        raise RuntimeError("the exact polynomial byte transport is unavailable")
+    copy = runtime.reflect.apply(from_bytes, buffer, [source])
+    runtime.reflect.apply(runtime.reflect.get(copy, "reverse"), copy, [])
+    hexadecimal = runtime.reflect.apply(
+        runtime.reflect.get(copy, "toString"), copy, ["hex"]
+    )
+    if len(hexadecimal) == 0:
+        return runtime.bigint(0)
+    return runtime.bigint("0x" + hexadecimal)
+
+
+def _exact_polynomial_payload(
+    parts: list[Any],
+    coefficient_count: int,
+    rational: bool,
+) -> tuple[Any, int]:
+    """Add the SJP envelope and lower its bytes to one declared argument."""
+    body = runtime.exact_integer_values_to_packed_bytes(parts)
+    output = _packed_uint8(16 + _buffer_length(body))
+    magic = [83, 74, 80, 81 if rational else 90]
+    for index in range(4):
+        output[index] = magic[index]
+    output[4] = 1
+    output[5] = 0
+    output[6] = 0
+    output[7] = 0
+    count = coefficient_count
+    for byte_index in range(8):
+        output[8 + byte_index] = count % 256
+        count //= 256
+    runtime.reflect.apply(runtime.reflect.get(output, "set"), output, [body, 16])
+    return _little_endian_bytes_payload(output), _buffer_length(output)
+
+
+def _decode_exact_polynomial_bytes(source: Any, base: Any) -> list[Any]:
+    """Decode trusted resource serialization without scalar FFI crossings."""
+    rational = base is sage.QQ
+    count = 0
+    for byte_index in range(7, -1, -1):
+        count = count * 256 + int(source[8 + byte_index])
+    part_count = 2 * count if rational else count
+    parts = runtime.exact_integer_values_from_packed_bytes(
+        _packed_uint8_suffix(source, 16), part_count
+    )
+    if not rational:
+        return runtime.list_constructor(parts)
+    answer = []
+    for index in range(count):
+        answer.append(
+            _untyped(sage.Rational)._from_reduced(
+                parts[2 * index], parts[2 * index + 1]
+            )
+        )
+    return answer
+
+
 def _trim_integer_buffer(source: Any) -> Any:
     values = _integer_buffer_values(source)
     length = len(values)
@@ -1426,23 +1508,22 @@ class PolynomialElement(sage.Element):
         if kind == "ZZ":
             if self._has_fmpz_polynomial_resource():
                 ffi = _flint_ffi_module()
-                resource = self._exact_polynomial_resource()
-                return [
-                    ffi.fmpz_polynomial_coefficient(resource, index)
-                    for index in range(self._coefficient_length())
-                ]
+                return _decode_exact_polynomial_bytes(
+                    _flint_byte_region_bytes(
+                        ffi.fmpz_polynomial_serialize(self._exact_polynomial_resource())
+                    ),
+                    base,
+                )
             return _integer_buffer_values(self._storage.coefficients)
         if kind == "QQ":
             if self._has_fmpq_polynomial_resource():
                 ffi = _flint_ffi_module()
-                resource = self._exact_polynomial_resource()
-                return [
-                    _untyped(sage.Rational)._from_reduced(
-                        ffi.fmpq_polynomial_coefficient_numerator(resource, index),
-                        ffi.fmpq_polynomial_coefficient_denominator(resource, index),
-                    )
-                    for index in range(self._coefficient_length())
-                ]
+                return _decode_exact_polynomial_bytes(
+                    _flint_byte_region_bytes(
+                        ffi.fmpq_polynomial_serialize(self._exact_polynomial_resource())
+                    ),
+                    base,
+                )
             numerators = _integer_buffer_values(self._storage.numerators)
             denominators = _integer_buffer_values(self._storage.denominators)
             return [
@@ -1734,24 +1815,43 @@ class PolynomialRingParent(sage.Parent):
         kind = _packed_polynomial_kind(self._base)
         if kind == "ZZ":
             values = [
-                runtime.integer_bigint(self._base(value)) for value in coefficients
+                runtime.integer_bigint(
+                    value if runtime.is_exact_integer(value) else self._base(value)
+                )
+                for value in coefficients
             ]
             if _generated_flint_resources_available():
+                length = len(values)
+                while length > 0 and values[length - 1] == 0:
+                    length -= 1
+                if length != len(values):
+                    values = values[:length]
                 ffi = _flint_ffi_module()
-                resource = ffi.fmpz_polynomial(len(values))
-                try:
-                    for index in range(len(values)):
-                        ffi.fmpz_polynomial_set_coefficient(
-                            resource, index, values[index]
-                        )
-                    ffi.fmpz_polynomial_seal(resource)
-                    return self._from_fmpz_polynomial_resource(resource)
-                except Exception:
-                    resource.close()
-                    raise
+                payload, byte_length = _exact_polynomial_payload(values, length, False)
+                return self._from_fmpz_polynomial_resource(
+                    ffi.fmpz_polynomial_deserialize(payload, byte_length)
+                )
             return PolynomialElement(
                 self,
                 _PackedIntegerPolynomialStorage(runtime.integer_buffer(values, 1)),
+            )
+        if kind == "QQ" and _generated_flint_resources_available():
+            parts = []
+            for value in coefficients:
+                rational = (
+                    value if isinstance(value, sage.Rational) else self._base(value)
+                )
+                parts.append(rational._numerator)
+                parts.append(rational._denominator)
+            length = len(parts) // 2
+            while length > 0 and parts[2 * length - 2] == 0:
+                length -= 1
+            if 2 * length != len(parts):
+                parts = parts[: 2 * length]
+            ffi = _flint_ffi_module()
+            payload, byte_length = _exact_polynomial_payload(parts, length, True)
+            return self._from_fmpq_polynomial_resource(
+                ffi.fmpq_polynomial_deserialize(payload, byte_length)
             )
         if kind == "QQ":
             numerators = []
@@ -1760,22 +1860,6 @@ class PolynomialRingParent(sage.Parent):
                 rational = self._base(value)
                 numerators.append(rational._numerator)
                 denominators.append(rational._denominator)
-            if _generated_flint_resources_available():
-                ffi = _flint_ffi_module()
-                resource = ffi.fmpq_polynomial(len(numerators))
-                try:
-                    for index in range(len(numerators)):
-                        ffi.fmpq_polynomial_set_coefficient(
-                            resource,
-                            index,
-                            numerators[index],
-                            denominators[index],
-                        )
-                    ffi.fmpq_polynomial_seal(resource)
-                    return self._from_fmpq_polynomial_resource(resource)
-                except Exception:
-                    resource.close()
-                    raise
             return PolynomialElement(
                 self,
                 _PackedRationalPolynomialStorage(

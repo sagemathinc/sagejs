@@ -683,6 +683,69 @@ for (const rational of [false, true]) {
   );
 }
 
+const publicBulkSource = [
+  "import sagejs.ffi.flint as flint",
+  "def forbidden_scalar(*values):",
+  "    raise RuntimeError('coefficient-at-a-time FFI is forbidden')",
+  "flint.fmpz_polynomial = forbidden_scalar",
+  "flint.fmpz_polynomial_set_coefficient = forbidden_scalar",
+  "flint.fmpz_polynomial_seal = forbidden_scalar",
+  "flint.fmpz_polynomial_coefficient = forbidden_scalar",
+  "flint.fmpq_polynomial = forbidden_scalar",
+  "flint.fmpq_polynomial_set_coefficient = forbidden_scalar",
+  "flint.fmpq_polynomial_seal = forbidden_scalar",
+  "flint.fmpq_polynomial_coefficient_numerator = forbidden_scalar",
+  "flint.fmpq_polynomial_coefficient_denominator = forbidden_scalar",
+  "huge_numerator = 2**65537 + 17",
+  "huge_denominator = 2**32771 + 9",
+  "R = PolynomialRing(ZZ, 'x')",
+  "z = R([1, -2, 0, huge_numerator, 0, 0])",
+  "zero_z = R([0, 0, 0])",
+  "S = PolynomialRing(QQ, 'y')",
+  "q = S([QQ(2) / QQ(4), QQ(-6) / QQ(-8), QQ(-huge_numerator) / QQ(huge_denominator), 0, 0])",
+  "zero_q = S([0, 0])",
+  "assert z.coefficients() == [1, -2, 0, huge_numerator]",
+  "assert zero_z.coefficients() == []",
+  "assert q.coefficients() == [QQ(1) / QQ(2), QQ(3) / QQ(4), QQ(-huge_numerator) / QQ(huge_denominator)]",
+  "assert zero_q.coefficients() == []",
+  "assert z._has_fmpz_polynomial_resource()",
+  "assert q._has_fmpq_polynomial_resource()",
+  "print(len(z.coefficients()), len(q.coefficients()), z._has_fmpz_polynomial_resource(), q._has_fmpq_polynomial_resource())",
+  "",
+].join("\n");
+
+for (const nativeDisabled of [false, true]) {
+  const publicDirectory = mkdtempSync(join(tmpdir(), "sagejs-poly-bulk-"));
+  const publicPath = join(publicDirectory, "bulk.py");
+  let publicBulk;
+  try {
+    writeFileSync(publicPath, publicBulkSource);
+    publicBulk = spawnSync(
+      process.execPath,
+      [join(root, "bin", "sagejs"), publicPath],
+      {
+        cwd: root,
+        encoding: "utf8",
+        env: {
+          ...process.env,
+          SAGEJS_FORBID_POLYNOMIAL_NAPI: "1",
+          ...(nativeDisabled ? { SAGEJS_NATIVE_DISABLE: "1" } : {}),
+        },
+        timeout: 60_000,
+      },
+    );
+  } finally {
+    rmSync(publicDirectory, { recursive: true, force: true });
+  }
+  assert.equal(
+    publicBulk.status,
+    0,
+    `${publicBulk.stdout}\n${publicBulk.stderr}`,
+  );
+  assert.equal(publicBulk.stderr, "");
+  assert.equal(publicBulk.stdout.trim(), "4 3 True True");
+}
+
 if (process.platform !== "win32") {
   const source = String.raw`
 #include <stdint.h>

@@ -535,6 +535,123 @@ def ρσ_integer_buffer_to_packed_bytes(source):
     })()"""
 
 
+def ρσ_exact_integer_values_to_packed_bytes(values):
+    """Encode ordinary exact values as canonical variable-length magnitudes."""
+    return r"""%js (() => {
+        const source = Array.from(values);
+        const hexadecimal = new Array(source.length);
+        const headers = new Uint32Array(source.length);
+        let byteLength = 0;
+        for (let index = 0; index < source.length; index += 1) {
+            const input = source[index];
+            if (typeof input !== "bigint" && !Number.isSafeInteger(input)) {
+                throw new TypeError("exact integer values must be integers");
+            }
+            const exact = typeof input === "bigint" ? input : BigInt(input);
+            const negative = exact < 0n;
+            const magnitude = negative ? -exact : exact;
+            let text = magnitude === 0n ? "" : magnitude.toString(16);
+            if (text.length % 2 !== 0) text = `0${text}`;
+            const bytes = text.length / 2;
+            if (bytes > 0x7fffffff) {
+                throw new RangeError("exact integer magnitude is too large");
+            }
+            if (byteLength > Number.MAX_SAFE_INTEGER - 4 - bytes) {
+                throw new RangeError("packed exact integer output is too large");
+            }
+            hexadecimal[index] = text;
+            headers[index] = bytes + (negative ? 0x80000000 : 0);
+            byteLength += 4 + bytes;
+        }
+        const output = new Uint8Array(byteLength);
+        const view = new DataView(output.buffer);
+        let offset = 0;
+        function digit(code) {
+            return code <= 57 ? code - 48 : code - 87;
+        }
+        for (let index = 0; index < source.length; index += 1) {
+            view.setUint32(offset, headers[index], true);
+            offset += 4;
+            const text = hexadecimal[index];
+            for (let position = text.length - 2; position >= 0; position -= 2) {
+                output[offset] =
+                    16 * digit(text.charCodeAt(position)) +
+                    digit(text.charCodeAt(position + 1));
+                offset += 1;
+            }
+        }
+        return output;
+    })()"""
+
+
+def ρσ_exact_integer_values_from_packed_bytes(source, count):
+    """Decode canonical variable-length magnitudes as ordinary exact values."""
+    return r"""%js (() => {
+        if (!(source instanceof Uint8Array)) {
+            throw new TypeError("packed exact integer source must be a Uint8Array");
+        }
+        if (!Number.isSafeInteger(count) || count < 0) {
+            throw new RangeError("invalid packed exact integer entry count");
+        }
+        if (count > Math.floor(source.byteLength / 4)) {
+            throw new RangeError("packed exact integer source is truncated");
+        }
+        const view = new DataView(
+            source.buffer, source.byteOffset, source.byteLength
+        );
+        const values = new Array(count);
+        let offset = 0;
+        function digit(value) {
+            return value.toString(16).padStart(2, "0");
+        }
+        for (let index = 0; index < count; index += 1) {
+            if (source.byteLength - offset < 4) {
+                throw new RangeError("packed exact integer source is truncated");
+            }
+            const header = view.getUint32(offset, true);
+            offset += 4;
+            const negative = (header & 0x80000000) !== 0;
+            const bytes = header & 0x7fffffff;
+            if (bytes > source.byteLength - offset) {
+                throw new RangeError("packed exact integer source is truncated");
+            }
+            if ((bytes === 0 && negative) ||
+                (bytes > 0 && source[offset + bytes - 1] === 0)) {
+                throw new RangeError(
+                    "packed exact integer magnitude is not canonical"
+                );
+            }
+            let magnitude;
+            if (bytes <= 6) {
+                magnitude = 0;
+                for (let byte = bytes - 1; byte >= 0; byte -= 1) {
+                    magnitude = 256 * magnitude + source[offset + byte];
+                }
+                values[index] = negative ? -magnitude : magnitude;
+            } else if (bytes <= 32) {
+                magnitude = 0n;
+                for (let byte = bytes - 1; byte >= 0; byte -= 1) {
+                    magnitude = (magnitude << 8n) +
+                        BigInt(source[offset + byte]);
+                }
+                values[index] = negative ? -magnitude : magnitude;
+            } else {
+                const text = new Array(bytes);
+                for (let byte = 0; byte < bytes; byte += 1) {
+                    text[byte] = digit(source[offset + bytes - byte - 1]);
+                }
+                magnitude = BigInt(`0x${text.join("")}`);
+                values[index] = negative ? -magnitude : magnitude;
+            }
+            offset += bytes;
+        }
+        if (offset !== source.byteLength) {
+            throw new RangeError("packed exact integer source has trailing data");
+        }
+        return values;
+    })()"""
+
+
 def ρσ_uint64_buffer_prefix(source, length):
     """Copy a validated packed prefix into independently owned storage."""
     return r"""%js (() => {
