@@ -19,6 +19,7 @@ const {
   readFileSync,
   readdirSync,
   readlinkSync,
+  realpathSync,
   renameSync,
   rmSync,
   statSync,
@@ -26,7 +27,12 @@ const {
   writeFileSync,
 } = require("node:fs");
 const { createHash, randomUUID } = require("node:crypto");
-const { EOL, homedir, release: operatingSystemRelease } = require("node:os");
+const {
+  EOL,
+  homedir,
+  hostname,
+  release: operatingSystemRelease,
+} = require("node:os");
 const {
   dirname,
   isAbsolute,
@@ -57,23 +63,68 @@ function stableJson(value) {
 }
 
 function safeRelativePath(path) {
+  if (typeof path !== "string") {
+    throw new Error(`native-cache path must be a string: ${path}`);
+  }
   const normalized = path.replaceAll("\\", "/").replace(/^\.\//, "");
+  const components = normalized.split("/");
   if (
     normalized === "" ||
     isAbsolute(path) ||
     /^[A-Za-z]:\//.test(normalized) ||
-    normalized.split("/").includes("..")
+    components.some((component) => component === "" || component === "." || component === "..")
   ) {
     throw new Error(`unsafe native-cache path: ${path}`);
   }
   return normalized;
 }
 
+function pathMetadata(path) {
+  try {
+    return lstatSync(path);
+  } catch (error) {
+    if (error.code === "ENOENT") return null;
+    throw error;
+  }
+}
+
+function resolvedWorkspaceRoot(workspace) {
+  const root = realpathSync(resolve(workspace));
+  if (!statSync(root).isDirectory()) {
+    throw new Error(`native-cache workspace is not a directory: ${workspace}`);
+  }
+  return root;
+}
+
+function workspacePath(workspace, requestedPath, { allowLeafSymlink = true } = {}) {
+  const root = resolvedWorkspaceRoot(workspace);
+  const path = safeRelativePath(requestedPath);
+  const components = path.split("/");
+  let current = root;
+  for (let index = 0; index < components.length; index += 1) {
+    current = join(current, components[index]);
+    const metadata = pathMetadata(current);
+    if (metadata === null) break;
+    const leaf = index === components.length - 1;
+    if (metadata.isSymbolicLink() && (!leaf || !allowLeafSymlink)) {
+      throw new Error(`native-cache path has symlinked ancestor: ${path}`);
+    }
+    if (!leaf && !metadata.isDirectory()) {
+      throw new Error(`native-cache path has non-directory ancestor: ${path}`);
+    }
+  }
+  const absolute = join(root, path);
+  if (!pathIsWithin(absolute.replaceAll("\\", "/"), root.replaceAll("\\", "/"))) {
+    throw new Error(`native-cache path escapes workspace: ${path}`);
+  }
+  return absolute;
+}
+
 function walkPath(workspace, requestedPath) {
   const path = safeRelativePath(requestedPath);
-  const absolute = join(workspace, path);
-  if (!existsSync(absolute)) return [{ path, type: "missing" }];
-  const metadata = lstatSync(absolute);
+  const absolute = workspacePath(workspace, path);
+  const metadata = pathMetadata(absolute);
+  if (metadata === null) return [{ path, type: "missing" }];
   if (metadata.isSymbolicLink()) {
     return [{ path, type: "symlink", target: readlinkSync(absolute) }];
   }
@@ -99,6 +150,57 @@ function snapshot(workspace, paths) {
   const entries = paths.flatMap((path) => walkPath(workspace, path));
   entries.sort((left, right) => left.path.localeCompare(right.path));
   return entries;
+}
+
+function validateNativeArtifactSpec(spec) {
+  if (spec === null || typeof spec !== "object") {
+    throw new Error("native-cache artifact spec must be an object");
+  }
+  if (!/^[a-z0-9][a-z0-9-]*$/.test(spec.id || "")) {
+    throw new Error(`invalid native-cache artifact id: ${spec.id}`);
+  }
+  if (!/^[a-f0-9]{64}$/.test(spec.key || "")) {
+    throw new Error(`invalid native-cache artifact key for ${spec.id}`);
+  }
+  for (const name of ["inputPaths", "inputs", "outputRoots", "requiredOutputs"]) {
+    if (!Array.isArray(spec[name])) {
+      throw new Error(`native-cache ${spec.id} ${name} must be an array`);
+    }
+  }
+  if (spec.inputPaths.length === 0 || spec.outputRoots.length === 0) {
+    throw new Error(`native-cache ${spec.id} needs input and output roots`);
+  }
+  const inputPaths = spec.inputPaths.map(safeRelativePath);
+  const outputRoots = spec.outputRoots.map(safeRelativePath);
+  if (new Set(inputPaths).size !== inputPaths.length) {
+    throw new Error(`native-cache ${spec.id} has duplicate input paths`);
+  }
+  if (new Set(outputRoots).size !== outputRoots.length) {
+    throw new Error(`native-cache ${spec.id} has duplicate output roots`);
+  }
+  for (let left = 0; left < outputRoots.length; left += 1) {
+    for (let right = left + 1; right < outputRoots.length; right += 1) {
+      if (
+        pathIsWithin(outputRoots[left], outputRoots[right]) ||
+        pathIsWithin(outputRoots[right], outputRoots[left])
+      ) {
+        throw new Error(`native-cache ${spec.id} has overlapping output roots`);
+      }
+    }
+  }
+  for (const required of spec.requiredOutputs.map(safeRelativePath)) {
+    if (!outputRoots.some((root) => pathIsWithin(required, root))) {
+      throw new Error(`native-cache ${spec.id} required output is outside its roots`);
+    }
+  }
+}
+
+function assertInputsCurrent(workspace, spec) {
+  validateNativeArtifactSpec(spec);
+  const current = snapshot(workspace, spec.inputPaths);
+  if (JSON.stringify(current) !== JSON.stringify(spec.inputs)) {
+    throw new Error(`native-cache inputs changed while preparing ${spec.id}`);
+  }
 }
 
 function snapshotHash(entries) {
@@ -127,13 +229,16 @@ function toolIdentity(command, args = ["--version"]) {
   };
 }
 
-function archiveIdentity(name) {
-  const path = process.env[name];
-  if (!path) return null;
+function fileIdentity(path) {
   const absolute = resolve(path);
   if (!existsSync(absolute)) return { path: absolute, state: "missing" };
   const contents = readFileSync(absolute);
   return { path: absolute, size: contents.length, sha256: sha256(contents) };
+}
+
+function archiveIdentity(name) {
+  const path = process.env[name];
+  return path ? fileIdentity(path) : null;
 }
 
 function nativeBuildIdentity(workspace, overrides = {}) {
@@ -201,6 +306,18 @@ function nativeBuildIdentity(workspace, overrides = {}) {
       cxx: toolIdentity(process.env.CXX || "c++"),
       make: toolIdentity("make"),
     };
+  const externalVcpkgPath = process.env.VCPKG_ROOT
+    ? join(
+      process.env.VCPKG_ROOT,
+      process.platform === "win32" ? "vcpkg.exe" : "vcpkg",
+    )
+    : null;
+  const externalVcpkg = externalVcpkgPath
+    ? {
+      file: fileIdentity(externalVcpkgPath),
+      tool: toolIdentity(externalVcpkgPath, ["version"]),
+    }
+    : null;
   let packageManager = null;
   try {
     packageManager = JSON.parse(
@@ -212,6 +329,10 @@ function nativeBuildIdentity(workspace, overrides = {}) {
   return stableJson({
     native: {
       archives,
+      archiver: toolIdentity(
+        process.env.AR || (process.platform === "win32" ? "lib" : "ar"),
+        process.platform === "win32" ? [] : ["--version"],
+      ),
       compilers,
       environment: selectedEnvironment,
       linker: process.platform === "win32"
@@ -223,6 +344,7 @@ function nativeBuildIdentity(workspace, overrides = {}) {
         platform: process.platform,
       },
       python: toolIdentity(process.env.PYTHON || "python3"),
+      vcpkg: externalVcpkg,
     },
     node: {
       abi: process.versions.modules,
@@ -338,6 +460,7 @@ function nativeArtifactSpecs(workspace, overrides = {}) {
         stage: "dependencies",
         key: dependencyKey,
         identity,
+        inputPaths: description.dependencyInputs,
         inputs: dependencyInputs,
         outputRoots: [dependencyPrefix(packageId)],
         requiredOutputs: packageId === "flint"
@@ -366,6 +489,7 @@ function nativeArtifactSpecs(workspace, overrides = {}) {
         stage: "addon",
         key: addonKey,
         identity,
+        inputPaths: description.addonInputs,
         inputs: addonInputs,
         outputRoots: description.addonOutputs,
         requiredOutputs: description.requiredAddonOutputs,
@@ -410,6 +534,7 @@ function pathIsWithin(path, root) {
 
 function validCacheEntry(entry, spec) {
   try {
+    validateNativeArtifactSpec(spec);
     const manifest = manifestForEntry(entry);
     if (
       manifest?.schema !== nativeCacheSchema ||
@@ -426,6 +551,9 @@ function validCacheEntry(entry, spec) {
     }));
     const paths = new Set(files.map(({ path }) => path));
     if (paths.size !== files.length) return false;
+    for (const root of outputRoots) {
+      if (!files.some(({ path }) => pathIsWithin(path, root))) return false;
+    }
     for (const required of spec.requiredOutputs) {
       if (!paths.has(safeRelativePath(required))) return false;
     }
@@ -490,8 +618,10 @@ function quarantineCacheEntry(entry) {
 }
 
 function publishNativeArtifact(workspace, cacheRoot, spec) {
+  assertInputsCurrent(workspace, spec);
+  const workspaceRoot = resolvedWorkspaceRoot(workspace);
   for (const path of spec.requiredOutputs) {
-    if (!existsSync(join(workspace, path))) {
+    if (!existsSync(workspacePath(workspaceRoot, path))) {
       throw new Error(`${spec.id} did not produce required output ${path}`);
     }
   }
@@ -502,11 +632,14 @@ function publishNativeArtifact(workspace, cacheRoot, spec) {
   mkdirSync(parent, { recursive: true });
   const temporary = mkdtempSync(join(parent, `.publish-${spec.key}-`));
   try {
-    const files = snapshot(workspace, spec.outputRoots).filter(
+    for (const outputRoot of spec.outputRoots) {
+      workspacePath(workspaceRoot, outputRoot, { allowLeafSymlink: false });
+    }
+    const files = snapshot(workspaceRoot, spec.outputRoots).filter(
       ({ type }) => type !== "missing",
     );
     for (const file of files) {
-      copySnapshotEntry(workspace, join(temporary, "payload"), file);
+      copySnapshotEntry(workspaceRoot, join(temporary, "payload"), file);
     }
     const manifest = {
       schema: nativeCacheSchema,
@@ -517,6 +650,10 @@ function publishNativeArtifact(workspace, cacheRoot, spec) {
       files,
     };
     writeFileSync(join(temporary, "manifest.json"), `${JSON.stringify(manifest, null, 2)}${EOL}`);
+    assertInputsCurrent(workspaceRoot, spec);
+    if (!validCacheEntry(temporary, spec)) {
+      throw new Error(`native-cache refused invalid publication for ${spec.id}`);
+    }
     try {
       renameSync(temporary, entry);
     } catch (error) {
@@ -533,20 +670,28 @@ function publishNativeArtifact(workspace, cacheRoot, spec) {
   }
 }
 
-function restoreNativeArtifact(workspace, cacheRoot, spec) {
+function restoreNativeArtifact(workspace, cacheRoot, spec, options = {}) {
+  assertInputsCurrent(workspace, spec);
+  const workspaceRoot = resolvedWorkspaceRoot(workspace);
   const entry = cacheEntry(cacheRoot, spec);
   if (!validCacheEntry(entry, spec)) {
     if (existsSync(entry)) quarantineCacheEntry(entry);
     return { status: "miss", entry };
   }
   const manifest = manifestForEntry(entry);
-  const currentFiles = snapshot(workspace, spec.outputRoots).filter(
+  for (const outputRoot of spec.outputRoots) {
+    workspacePath(workspaceRoot, outputRoot, { allowLeafSymlink: false });
+  }
+  const currentFiles = snapshot(workspaceRoot, spec.outputRoots).filter(
     ({ type }) => type !== "missing",
   );
   if (JSON.stringify(currentFiles) === JSON.stringify(manifest.files)) {
+    assertInputsCurrent(workspaceRoot, spec);
     return { status: "present", entry };
   }
-  const temporary = mkdtempSync(join(workspace, ".sagejs-native-restore-"));
+  const temporary = mkdtempSync(join(workspaceRoot, ".sagejs-native-restore-"));
+  const transaction = [];
+  let committed = false;
   try {
     for (const file of manifest.files) {
       copySnapshotEntry(join(entry, "payload"), temporary, file);
@@ -554,27 +699,67 @@ function restoreNativeArtifact(workspace, cacheRoot, spec) {
     for (const requestedRoot of spec.outputRoots) {
       const outputRoot = safeRelativePath(requestedRoot);
       const staged = join(temporary, outputRoot);
-      if (!existsSync(staged)) continue;
-      const target = join(workspace, outputRoot);
+      if (!existsSync(staged)) {
+        throw new Error(`native-cache entry is missing output root ${outputRoot}`);
+      }
+      const target = workspacePath(workspaceRoot, outputRoot, {
+        allowLeafSymlink: false,
+      });
       const backup = `${target}.sagejs-cache-backup-${process.pid}-${randomUUID()}`;
       mkdirSync(dirname(target), { recursive: true });
-      let backedUp = false;
-      try {
-        if (existsSync(target)) {
-          renameSync(target, backup);
-          backedUp = true;
-        }
-        renameSync(staged, target);
-        if (backedUp) rmSync(backup, { recursive: true, force: true });
-      } catch (error) {
-        if (!existsSync(target) && backedUp && existsSync(backup)) {
-          renameSync(backup, target);
-        }
-        throw error;
+      transaction.push({
+        backup,
+        backedUp: false,
+        installed: false,
+        outputRoot,
+        staged,
+        target,
+      });
+    }
+    assertInputsCurrent(workspaceRoot, spec);
+    for (const root of transaction) {
+      workspacePath(workspaceRoot, root.outputRoot, {
+        allowLeafSymlink: false,
+      });
+      if (existsSync(root.target)) {
+        renameSync(root.target, root.backup);
+        root.backedUp = true;
       }
     }
+    for (let index = 0; index < transaction.length; index += 1) {
+      const root = transaction[index];
+      options.beforeCommitRoot?.(index, root);
+      renameSync(root.staged, root.target);
+      root.installed = true;
+    }
+    assertInputsCurrent(workspaceRoot, spec);
+    committed = true;
+  } catch (error) {
+    for (const root of [...transaction].reverse()) {
+      try {
+        if (root.installed && existsSync(root.target)) {
+          rmSync(root.target, { recursive: true, force: true });
+        }
+        if (root.backedUp && existsSync(root.backup)) {
+          renameSync(root.backup, root.target);
+        }
+      } catch (rollbackError) {
+        error.rollbackError ??= rollbackError;
+      }
+    }
+    throw error;
   } finally {
+    if (!committed) {
+      for (const root of transaction) {
+        if (existsSync(root.backup) && !existsSync(root.target)) {
+          renameSync(root.backup, root.target);
+        }
+      }
+    }
     rmSync(temporary, { recursive: true, force: true });
+  }
+  for (const root of transaction) {
+    if (root.backedUp) rmSync(root.backup, { recursive: true, force: true });
   }
   return { status: "restored", entry };
 }
@@ -583,48 +768,72 @@ function wait(milliseconds) {
   Atomics.wait(nativeCacheSleep, 0, 0, milliseconds);
 }
 
+function readNativeCacheLockOwner(lock) {
+  try {
+    const owner = JSON.parse(readFileSync(join(lock, "owner.json"), "utf8"));
+    if (
+      !Number.isInteger(owner.pid) || owner.pid <= 0 ||
+      typeof owner.hostname !== "string" || owner.hostname === "" ||
+      typeof owner.token !== "string" || owner.token === ""
+    ) return null;
+    return owner;
+  } catch {
+    return null;
+  }
+}
+
+function heartbeatNativeCacheLock(lock, token) {
+  const owner = readNativeCacheLockOwner(lock);
+  if (owner?.token !== token) {
+    throw new Error(`native-cache lock ownership changed: ${lock}`);
+  }
+  writeFileSync(join(lock, "heartbeat"), `${new Date().toISOString()}${EOL}`);
+}
+
 function acquireNativeCacheLock(lock, options = {}) {
   const waitMilliseconds = options.waitMilliseconds ?? 60 * 60 * 1000;
   const staleMilliseconds = options.staleMilliseconds ?? 2 * 60 * 60 * 1000;
   const started = Date.now();
   while (true) {
     const token = randomUUID();
+    const candidate = `${lock}.candidate-${process.pid}-${token}`;
     try {
-      mkdirSync(lock, { recursive: false });
-      writeFileSync(join(lock, "owner.json"), `${JSON.stringify({
+      mkdirSync(candidate, { recursive: false });
+      writeFileSync(join(candidate, "owner.json"), `${JSON.stringify({
+        hostname: hostname(),
         pid: process.pid,
         started_at: new Date().toISOString(),
         token,
       })}${EOL}`);
+      writeFileSync(join(candidate, "heartbeat"), `${new Date().toISOString()}${EOL}`);
+      renameSync(candidate, lock);
       return token;
     } catch (error) {
-      if (error.code !== "EEXIST") throw error;
+      rmSync(candidate, { recursive: true, force: true });
+      if (!existsSync(lock)) throw error;
     }
-    let abandoned = false;
-    const owner = join(lock, "owner.json");
-    if (existsSync(owner)) {
+    const owner = readNativeCacheLockOwner(lock);
+    let recover = owner === null;
+    if (owner !== null && owner.hostname === hostname()) {
       try {
-        const { pid } = JSON.parse(readFileSync(owner, "utf8"));
-        if (Number.isInteger(pid) && pid > 0) {
-          try {
-            process.kill(pid, 0);
-          } catch (error) {
-            abandoned = error.code === "ESRCH";
-          }
-        }
-      } catch {
-        // A lock owner may be between mkdir and its atomic-sized metadata write.
+        process.kill(owner.pid, 0);
+        // A positively live local owner is never displaced based on age.
+      } catch (error) {
+        recover = error.code === "ESRCH";
       }
+    } else if (owner !== null) {
+      const heartbeat = pathMetadata(join(lock, "heartbeat"));
+      recover = heartbeat === null || Date.now() - heartbeat.mtimeMs > staleMilliseconds;
     }
-    try {
-      if (abandoned || Date.now() - statSync(lock).mtimeMs > staleMilliseconds) {
+    if (recover) {
+      try {
         const stale = `${lock}.stale-${process.pid}-${randomUUID()}`;
         renameSync(lock, stale);
         rmSync(stale, { recursive: true, force: true });
         continue;
+      } catch {
+        continue;
       }
-    } catch {
-      continue;
     }
     if (Date.now() - started > waitMilliseconds) {
       throw new Error(`timed out waiting for native cache lock ${lock}`);
@@ -635,8 +844,8 @@ function acquireNativeCacheLock(lock, options = {}) {
 
 function releaseNativeCacheLock(lock, token) {
   try {
-    const owner = JSON.parse(readFileSync(join(lock, "owner.json"), "utf8"));
-    if (owner.token !== token) return;
+    const owner = readNativeCacheLockOwner(lock);
+    if (owner?.token !== token) return;
     const released = `${lock}.released-${process.pid}-${token}`;
     renameSync(lock, released);
     rmSync(released, { recursive: true, force: true });
@@ -667,7 +876,9 @@ function runBuildCommands(workspace, spec, runner = runCommand) {
 }
 
 function prepareNativeArtifact(workspace, cacheRoot, spec, options = {}) {
-  const restored = restoreNativeArtifact(workspace, cacheRoot, spec);
+  assertInputsCurrent(workspace, spec);
+  const workspaceRoot = resolvedWorkspaceRoot(workspace);
+  const restored = restoreNativeArtifact(workspaceRoot, cacheRoot, spec, options);
   if (["present", "restored"].includes(restored.status)) return restored;
   const entry = cacheEntry(cacheRoot, spec);
   const lock = `${entry}.lock`;
@@ -679,26 +890,33 @@ function prepareNativeArtifact(workspace, cacheRoot, spec, options = {}) {
       break;
     } catch (error) {
       if (validCacheEntry(entry, spec)) {
-        return restoreNativeArtifact(workspace, cacheRoot, spec);
+        return restoreNativeArtifact(workspaceRoot, cacheRoot, spec, options);
       }
       throw error;
     }
   }
   try {
-    const afterLock = restoreNativeArtifact(workspace, cacheRoot, spec);
+    const afterLock = restoreNativeArtifact(workspaceRoot, cacheRoot, spec, options);
     if (["present", "restored"].includes(afterLock.status)) return afterLock;
     // A cache key attests to the toolchain recorded in `spec`. Do not publish
     // an unverified package-local build that may have been produced by an
     // older compiler or a different set of build flags.
     for (const outputRoot of spec.outputRoots) {
-      rmSync(join(workspace, safeRelativePath(outputRoot)), {
+      const target = workspacePath(workspaceRoot, outputRoot, {
+        allowLeafSymlink: false,
+      });
+      rmSync(target, {
         recursive: true,
         force: true,
       });
     }
-    if (typeof options.build === "function") options.build(workspace, spec);
-    else runBuildCommands(workspace, spec, options.runner);
-    const publication = publishNativeArtifact(workspace, cacheRoot, spec);
+    assertInputsCurrent(workspaceRoot, spec);
+    heartbeatNativeCacheLock(lock, lockToken);
+    if (typeof options.build === "function") options.build(workspaceRoot, spec);
+    else runBuildCommands(workspaceRoot, spec, options.runner);
+    assertInputsCurrent(workspaceRoot, spec);
+    heartbeatNativeCacheLock(lock, lockToken);
+    const publication = publishNativeArtifact(workspaceRoot, cacheRoot, spec);
     return { status: "built", entry: publication.entry };
   } finally {
     releaseNativeCacheLock(lock, lockToken);
@@ -739,11 +957,20 @@ function prepareNativePackages(workspace, packageIds, options = {}) {
 
 function restoreNativePackages(workspace, packageIds, options = {}) {
   const cacheRoot = options.cacheRoot || defaultNativeCacheRoot(workspace);
-  if (!packageIds.every(nativePackageCacheable)) return [];
-  return selectedNativeSpecs(workspace, packageIds, options).map((spec) => ({
-    id: spec.id,
-    ...restoreNativeArtifact(workspace, cacheRoot, spec),
-  }));
+  const results = [];
+  for (const packageId of packageIds) {
+    if (!nativePackageCacheable(packageId)) {
+      results.push({ id: packageId, status: "skipped-custom-prefix" });
+      continue;
+    }
+    for (const spec of selectedNativeSpecs(workspace, [packageId], options)) {
+      results.push({
+        id: spec.id,
+        ...restoreNativeArtifact(workspace, cacheRoot, spec, options),
+      });
+    }
+  }
+  return results;
 }
 
 module.exports = {

@@ -5,13 +5,16 @@ const test = require("node:test");
 const { createHash } = require("node:crypto");
 const { execFileSync, spawn } = require("node:child_process");
 const {
+  chmodSync,
+  existsSync,
   mkdirSync,
   mkdtempSync,
   readFileSync,
   rmSync,
+  symlinkSync,
   writeFileSync,
 } = require("node:fs");
-const { tmpdir } = require("node:os");
+const { hostname, tmpdir } = require("node:os");
 const { join, resolve } = require("node:path");
 
 const {
@@ -32,6 +35,8 @@ const {
 const {
   nativeArtifactSpecs,
   prepareNativeArtifact,
+  restoreNativeArtifact,
+  restoreNativePackages,
   snapshot,
   validCacheEntry,
 } = require("../scripts/native-worktree-cache.cjs");
@@ -256,6 +261,7 @@ function nativeCacheSpec(workspace, identity = "toolchain-a") {
   return {
     id: "fixture-addon",
     key: nativeCacheHash(JSON.stringify({ identity, inputs })),
+    inputPaths: ["source"],
     inputs,
     outputRoots: ["build/native"],
     requiredOutputs: ["build/native/addon.node"],
@@ -315,6 +321,50 @@ test("native artifact cache builds cold and restores immutable warm snapshots", 
   }
 });
 
+test("multi-root restore rolls every root back after a later commit failure", () => {
+  const { directory, workspace, cacheRoot } = nativeCacheFixture();
+  const inputs = snapshot(workspace, ["source"]);
+  const spec = {
+    id: "transaction-addon",
+    key: nativeCacheHash(JSON.stringify(inputs)),
+    inputPaths: ["source"],
+    inputs,
+    outputRoots: ["build/one", "build/two"],
+    requiredOutputs: ["build/one/value", "build/two/value"],
+    buildCommands: [],
+  };
+  try {
+    prepareNativeArtifact(workspace, cacheRoot, spec, {
+      build(current) {
+        mkdirSync(join(current, "build", "one"), { recursive: true });
+        mkdirSync(join(current, "build", "two"), { recursive: true });
+        writeFileSync(join(current, "build", "one", "value"), "cached one\n");
+        writeFileSync(join(current, "build", "two", "value"), "cached two\n");
+      },
+    });
+    writeFileSync(join(workspace, "build", "one", "value"), "local one\n");
+    writeFileSync(join(workspace, "build", "two", "value"), "local two\n");
+    assert.throws(
+      () => restoreNativeArtifact(workspace, cacheRoot, spec, {
+        beforeCommitRoot(index) {
+          if (index === 1) throw new Error("injected second-root failure");
+        },
+      }),
+      /injected second-root failure/,
+    );
+    assert.equal(
+      readFileSync(join(workspace, "build", "one", "value"), "utf8"),
+      "local one\n",
+    );
+    assert.equal(
+      readFileSync(join(workspace, "build", "two", "value"), "utf8"),
+      "local two\n",
+    );
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+
 test("source and toolchain identities invalidate native artifacts", () => {
   const { directory, workspace, cacheRoot } = nativeCacheFixture();
   const counter = { count: 0 };
@@ -339,6 +389,82 @@ test("source and toolchain identities invalidate native artifacts", () => {
       build: buildNativeCacheFixture(counter, "toolchain rebuild\n"),
     });
     assert.equal(counter.count, 3);
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+test("source mutation during a build can never publish under a stale key", () => {
+  const { directory, workspace, cacheRoot } = nativeCacheFixture();
+  try {
+    const spec = nativeCacheSpec(workspace);
+    assert.throws(
+      () => prepareNativeArtifact(workspace, cacheRoot, spec, {
+        build(current) {
+          mkdirSync(join(current, "build", "native"), { recursive: true });
+          writeFileSync(join(current, "build", "native", "addon.node"), "stale\n");
+          writeFileSync(join(current, "source", "input.c"), "mutated\n");
+        },
+      }),
+      /inputs changed while preparing fixture-addon/,
+    );
+    assert.equal(validCacheEntry(join(cacheRoot, spec.id, spec.key), spec), false);
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+test("generic artifact ids, keys, roots, and input paths fail closed", () => {
+  const { directory, workspace, cacheRoot } = nativeCacheFixture();
+  try {
+    const valid = nativeCacheSpec(workspace);
+    for (const invalid of [
+      { ...valid, id: "../escape" },
+      { ...valid, key: "not-a-content-key" },
+      { ...valid, inputPaths: ["../outside"] },
+      { ...valid, outputRoots: ["build", "build/native"] },
+    ]) {
+      assert.throws(
+        () => prepareNativeArtifact(workspace, cacheRoot, invalid, {
+          build: buildNativeCacheFixture({ count: 0 }),
+        }),
+        /native-cache/,
+      );
+    }
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+test("destructive provisioning rejects symlinked ancestors and preserves sentinels", () => {
+  const { directory, workspace, cacheRoot } = nativeCacheFixture();
+  const outside = join(directory, "outside");
+  try {
+    mkdirSync(outside, { recursive: true });
+    writeFileSync(join(outside, "sentinel.txt"), "preserve me\n");
+    const spec = nativeCacheSpec(workspace);
+    prepareNativeArtifact(workspace, cacheRoot, spec, {
+      build: buildNativeCacheFixture({ count: 0 }),
+    });
+    rmSync(join(workspace, "build"), { recursive: true, force: true });
+    symlinkSync(outside, join(workspace, "build"), "dir");
+    assert.throws(
+      () => restoreNativeArtifact(workspace, cacheRoot, spec),
+      /symlinked ancestor/,
+    );
+    assert.throws(
+      () => prepareNativeArtifact(workspace, cacheRoot, spec, {
+        build: buildNativeCacheFixture({ count: 0 }),
+      }),
+      /symlinked ancestor/,
+    );
+    assert.equal(readFileSync(join(outside, "sentinel.txt"), "utf8"), "preserve me\n");
+
+    rmSync(join(workspace, "build"), { force: true });
+    rmSync(join(workspace, "source"), { recursive: true, force: true });
+    symlinkSync(outside, join(workspace, "source"), "dir");
+    assert.throws(() => snapshot(workspace, ["source/input.c"]), /symlinked ancestor/);
+    assert.equal(readFileSync(join(outside, "sentinel.txt"), "utf8"), "preserve me\n");
   } finally {
     rmSync(directory, { recursive: true, force: true });
   }
@@ -420,6 +546,66 @@ test("native keys ignore invocation-only pnpm lifecycle variables", () => {
   }
 });
 
+test("dependency keys include explicit archivers and external vcpkg executables", () => {
+  const workspace = resolve(__dirname, "..");
+  const directory = mkdtempSync(join(tmpdir(), "sagejs-native-tools-test-"));
+  const vcpkg = join(directory, process.platform === "win32" ? "vcpkg.exe" : "vcpkg");
+  const previousAr = process.env.AR;
+  const previousVcpkg = process.env.VCPKG_ROOT;
+  try {
+    delete process.env.AR;
+    delete process.env.VCPKG_ROOT;
+    const baseline = nativeArtifactSpecs(workspace)
+      .find(({ id }) => id === "flint-dependencies").key;
+    process.env.AR = join(directory, "different-ar");
+    const archiverChanged = nativeArtifactSpecs(workspace)
+      .find(({ id }) => id === "flint-dependencies").key;
+    assert.notEqual(archiverChanged, baseline);
+
+    delete process.env.AR;
+    writeFileSync(vcpkg, "#!/bin/sh\necho vcpkg test\n");
+    chmodSync(vcpkg, 0o755);
+    process.env.VCPKG_ROOT = directory;
+    const vcpkgFirst = nativeArtifactSpecs(workspace)
+      .find(({ id }) => id === "flint-dependencies").key;
+    writeFileSync(vcpkg, "#!/bin/sh\necho changed vcpkg test\n");
+    const vcpkgChanged = nativeArtifactSpecs(workspace)
+      .find(({ id }) => id === "flint-dependencies").key;
+    assert.notEqual(vcpkgChanged, vcpkgFirst);
+  } finally {
+    if (previousAr === undefined) delete process.env.AR;
+    else process.env.AR = previousAr;
+    if (previousVcpkg === undefined) delete process.env.VCPKG_ROOT;
+    else process.env.VCPKG_ROOT = previousVcpkg;
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+test("a custom prefix skips only its package during cache restore", () => {
+  const directory = mkdtempSync(join(tmpdir(), "sagejs-native-prefix-test-"));
+  const previous = process.env.SAGEJS_FLINT_PREFIX;
+  try {
+    process.env.SAGEJS_FLINT_PREFIX = join(directory, "external-flint");
+    const results = restoreNativePackages(
+      resolve(__dirname, ".."),
+      ["flint", "graph"],
+      { cacheRoot: join(directory, "cache") },
+    );
+    assert.deepEqual(
+      results.map(({ id, status }) => ({ id, status })),
+      [
+        { id: "flint", status: "skipped-custom-prefix" },
+        { id: "graph-dependencies", status: "miss" },
+        { id: "graph-addon", status: "miss" },
+      ],
+    );
+  } finally {
+    if (previous === undefined) delete process.env.SAGEJS_FLINT_PREFIX;
+    else process.env.SAGEJS_FLINT_PREFIX = previous;
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+
 test("corrupt native cache entries fail closed and rebuild", () => {
   const { directory, workspace, cacheRoot } = nativeCacheFixture();
   const counter = { count: 0 };
@@ -473,7 +659,7 @@ test("native cache manifests cannot restore outside declared output roots", () =
   }
 });
 
-test("abandoned native cache locks are recovered without a long timeout", () => {
+test("malformed native cache locks are recovered without a long timeout", () => {
   const { directory, workspace, cacheRoot } = nativeCacheFixture();
   const counter = { count: 0 };
   try {
@@ -490,6 +676,54 @@ test("abandoned native cache locks are recovered without a long timeout", () => 
     });
     assert.equal(result.status, "built");
     assert.equal(counter.count, 1);
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+test("ownerless native cache locks are recovered promptly", () => {
+  const { directory, workspace, cacheRoot } = nativeCacheFixture();
+  const counter = { count: 0 };
+  try {
+    const spec = nativeCacheSpec(workspace);
+    mkdirSync(join(cacheRoot, spec.id, `${spec.key}.lock`), { recursive: true });
+    const started = Date.now();
+    const result = prepareNativeArtifact(workspace, cacheRoot, spec, {
+      build: buildNativeCacheFixture(counter),
+      waitMilliseconds: 1000,
+    });
+    assert.equal(result.status, "built");
+    assert.equal(counter.count, 1);
+    assert.ok(Date.now() - started < 1000);
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+test("an old lock with a positively live local owner is never stolen", () => {
+  const { directory, workspace, cacheRoot } = nativeCacheFixture();
+  const counter = { count: 0 };
+  try {
+    const spec = nativeCacheSpec(workspace);
+    const lock = join(cacheRoot, spec.id, `${spec.key}.lock`);
+    mkdirSync(lock, { recursive: true });
+    writeFileSync(join(lock, "owner.json"), JSON.stringify({
+      hostname: hostname(),
+      pid: process.pid,
+      started_at: "2000-01-01T00:00:00.000Z",
+      token: "still-live",
+    }));
+    writeFileSync(join(lock, "heartbeat"), "2000-01-01T00:00:00.000Z\n");
+    assert.throws(
+      () => prepareNativeArtifact(workspace, cacheRoot, spec, {
+        build: buildNativeCacheFixture(counter),
+        staleMilliseconds: 0,
+        waitMilliseconds: 150,
+      }),
+      /timed out waiting for native cache lock/,
+    );
+    assert.equal(counter.count, 0);
+    assert.equal(existsSync(lock), true);
   } finally {
     rmSync(directory, { recursive: true, force: true });
   }
@@ -519,17 +753,19 @@ test("concurrent native cache misses build once and publish atomically", async (
   const workspaces = [join(directory, "left"), join(directory, "right")];
   try {
     for (const workspace of workspaces) mkdirSync(workspace, { recursive: true });
+    for (const workspace of workspaces) writeFileSync(join(workspace, "source.c"), "same");
     const source = String.raw`
       const { appendFileSync, mkdirSync, writeFileSync } = require("node:fs");
       const { join } = require("node:path");
-      const { prepareNativeArtifact } = require(${JSON.stringify(parallelDevelopmentModule)});
+      const { prepareNativeArtifact, snapshot } = require(${JSON.stringify(parallelDevelopmentModule)});
       const workspace = process.argv[1];
       const cacheRoot = process.argv[2];
       const marker = process.argv[3];
       const spec = {
         id: "concurrent-addon",
         key: "${"a".repeat(64)}",
-        inputs: [{ path: "source.c", type: "file", sha256: "same", size: 4, mode: 420 }],
+        inputPaths: ["source.c"],
+        inputs: snapshot(workspace, ["source.c"]),
         outputRoots: ["build/native"],
         requiredOutputs: ["build/native/addon.node"],
         buildCommands: [],
