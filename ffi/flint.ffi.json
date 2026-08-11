@@ -970,6 +970,88 @@
       }
     },
     {
+      "id": "fmpz_polynomial_divexact",
+      "python_name": "fmpz_polynomial_divexact",
+      "signature": {
+        "parameters": [
+          {
+            "name": "dividend",
+            "type": "FmpzPolynomial",
+            "ownership": "borrowed",
+            "mutability": "read",
+            "aliasing": "allowed"
+          },
+          {
+            "name": "divisor",
+            "type": "FmpzPolynomial",
+            "ownership": "borrowed",
+            "mutability": "read",
+            "aliasing": "allowed"
+          }
+        ],
+        "return_type": "FmpzPolynomial",
+        "return_ownership": "owned",
+        "borrow_from": null
+      },
+      "dynamic": {
+        "export": "ffiFmpzPolynomialDivExact"
+      },
+      "native": {
+        "symbol": "sagejs_fmpz_polynomial_divexact",
+        "return_type": "int",
+        "arguments": [
+          {
+            "source": "result",
+            "abi_type": "sagejs_fmpz_polynomial_t",
+            "direction": "out",
+            "adapter": null
+          },
+          {
+            "source": "dividend",
+            "abi_type": "sagejs_fmpz_polynomial_t",
+            "direction": "in",
+            "adapter": null
+          },
+          {
+            "source": "divisor",
+            "abi_type": "sagejs_fmpz_polynomial_t",
+            "direction": "in",
+            "adapter": null
+          }
+        ]
+      },
+      "effects": {
+        "pure": false,
+        "deterministic": true,
+        "thread_safe": true,
+        "may_allocate": true,
+        "may_raise": [
+          "ValueError"
+        ],
+        "writes": []
+      },
+      "result": {
+        "domain": "status",
+        "success": [
+          1
+        ],
+        "absence": null
+      },
+      "errors": {
+        "exception": "ValueError",
+        "message": "integer polynomial exact division requires sealed resources, a nonzero divisor, and an exact quotient"
+      },
+      "exceptions": {
+        "policy": "none",
+        "failure_status": null
+      },
+      "targets": {
+        "dynamic": true,
+        "native": true,
+        "wasm": false
+      }
+    },
+    {
       "id": "fmpz_polynomial_pow",
       "python_name": "fmpz_polynomial_pow",
       "signature": {
@@ -2236,6 +2318,88 @@
       "errors": {
         "exception": "ValueError",
         "message": "rational polynomial is unsealed"
+      },
+      "exceptions": {
+        "policy": "none",
+        "failure_status": null
+      },
+      "targets": {
+        "dynamic": true,
+        "native": true,
+        "wasm": false
+      }
+    },
+    {
+      "id": "fmpq_polynomial_divexact",
+      "python_name": "fmpq_polynomial_divexact",
+      "signature": {
+        "parameters": [
+          {
+            "name": "dividend",
+            "type": "FmpqPolynomial",
+            "ownership": "borrowed",
+            "mutability": "read",
+            "aliasing": "allowed"
+          },
+          {
+            "name": "divisor",
+            "type": "FmpqPolynomial",
+            "ownership": "borrowed",
+            "mutability": "read",
+            "aliasing": "allowed"
+          }
+        ],
+        "return_type": "FmpqPolynomial",
+        "return_ownership": "owned",
+        "borrow_from": null
+      },
+      "dynamic": {
+        "export": "ffiFmpqPolynomialDivExact"
+      },
+      "native": {
+        "symbol": "sagejs_fmpq_polynomial_divexact",
+        "return_type": "int",
+        "arguments": [
+          {
+            "source": "result",
+            "abi_type": "sagejs_fmpq_polynomial_t",
+            "direction": "out",
+            "adapter": null
+          },
+          {
+            "source": "dividend",
+            "abi_type": "sagejs_fmpq_polynomial_t",
+            "direction": "in",
+            "adapter": null
+          },
+          {
+            "source": "divisor",
+            "abi_type": "sagejs_fmpq_polynomial_t",
+            "direction": "in",
+            "adapter": null
+          }
+        ]
+      },
+      "effects": {
+        "pure": false,
+        "deterministic": true,
+        "thread_safe": true,
+        "may_allocate": true,
+        "may_raise": [
+          "ValueError"
+        ],
+        "writes": []
+      },
+      "result": {
+        "domain": "status",
+        "success": [
+          1
+        ],
+        "absence": null
+      },
+      "errors": {
+        "exception": "ValueError",
+        "message": "rational polynomial exact division requires sealed resources, a nonzero divisor, and an exact quotient"
       },
       "exceptions": {
         "policy": "none",
