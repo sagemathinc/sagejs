@@ -222,17 +222,67 @@
       "commit": "2a853330207e80a2c01f771c4625ee75809a053d",
       "workspace_fingerprint": "829b94bb878a4bdfaf337d2762a6649b1c2f75e83f5c2d705a79d5ca83be0da3",
       "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/parallel-development.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 7.071,
+      "started_at": "2026-08-11T23:07:38.995Z",
+      "commit": "8fef71da6bdfbba32e91087b4eb191c5c4675bb4",
+      "workspace_fingerprint": "a5a0fcfabf7aba9aaf5421b35cd7d58571081882b1d8358725839dcfaa1b564b",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm --dir packages/fflas test",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.719,
+      "started_at": "2026-08-11T23:07:46.671Z",
+      "commit": "8fef71da6bdfbba32e91087b4eb191c5c4675bb4",
+      "workspace_fingerprint": "a5a0fcfabf7aba9aaf5421b35cd7d58571081882b1d8358725839dcfaa1b564b",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 13.212,
+      "started_at": "2026-08-11T23:07:51.779Z",
+      "commit": "8fef71da6bdfbba32e91087b4eb191c5c4675bb4",
+      "workspace_fingerprint": "a5a0fcfabf7aba9aaf5421b35cd7d58571081882b1d8358725839dcfaa1b564b",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 14.278,
+      "started_at": "2026-08-11T23:08:05.696Z",
+      "commit": "8fef71da6bdfbba32e91087b4eb191c5c4675bb4",
+      "workspace_fingerprint": "a5a0fcfabf7aba9aaf5421b35cd7d58571081882b1d8358725839dcfaa1b564b",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 40.455,
+      "started_at": "2026-08-11T23:08:24.317Z",
+      "commit": "8fef71da6bdfbba32e91087b4eb191c5c4675bb4",
+      "workspace_fingerprint": "a5a0fcfabf7aba9aaf5421b35cd7d58571081882b1d8358725839dcfaa1b564b",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {
-    "summary": "FFLAS dependency builds now publish one immutable, content-addressed GMP/Givaro/FFLAS-FFPACK/OpenBLAS prefix and materialize it in Unix worktrees as a read-only symlink. Publication remains lock-safe, transient downloads and sources are removed, and direct package builds route through the cache. Fresh worktrees bootstrap only the TypeScript compiler plus Python/Sage parser assets before generated add-ons need them; unrelated foreign-language grammar submodules are not a precondition. A clean-worktree smoke restored the FLINT prerequisite and shared FFLAS prefix, built the missing generated adapter, and passed the FFLAS package tests. Windows retains the existing copy materialization fallback. Focused tests cover concurrent publication, shared identity, immutability, cleanup, compiler ordering, and external-prefix bypasses.",
+    "summary": "FFLAS dependency builds now publish one immutable, content-addressed GMP/Givaro/FFLAS-FFPACK/OpenBLAS prefix and materialize it in Unix worktrees as a read-only symlink. Installed config and pkg-config metadata is relocatable and path-bearing libtool archives are omitted. Fresh worktrees bootstrap only the TypeScript compiler plus Python/Sage parser assets; a content stamp and addon input identity reject stale compiler outputs. Publication uses process-birth ownership and a live helper heartbeat during synchronous builds. On bench-1, a fully empty clone completed FLINT plus FFLAS preparation in 5m25s; the hardened FFLAS generation built cold in 1m16s over the retained FLINT cache, and an identical warm prepare took 3.07s. After deleting the builder outputs, a detached worktree restored all four FLINT/FFLAS stages, traversed the relocated config prefix, and passed the FFLAS tests. Windows retains copy materialization.",
     "risks": [
       "Shared Unix materializations are absolute symlinks into the repository-common cache, so manually relocating only a worktree without its common Git directory breaks the link.",
       "Old content-addressed cache generations are retained indefinitely; a future concurrency-safe garbage collector should reclaim versions no live worktree or build references.",
       "Windows uses copied prefixes because developer-mode symlink capability is not guaranteed, so it receives build reuse but not the same disk deduplication."
     ],
     "next_steps": [
-      "Integrate the lane and exercise the clean-worktree/cache-hit smoke test on CI platforms.",
+      "Integrate the lane and exercise the cache-hit smoke test on native Windows and macOS CI.",
       "Design conservative cache garbage collection after shared materialization has accumulated real-world usage."
     ]
   }
