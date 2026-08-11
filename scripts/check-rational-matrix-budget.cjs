@@ -68,6 +68,24 @@ const cases = [
   { name: "rank_300_steady", expression: "_rational_rank.rank()", budget: 2 },
   { name: "density_300", expression: "_rational_left.density()", budget: 8 },
   {
+    name: "list_300",
+    expression: "_rational_left.list()",
+    precheck: ["_rational_left"],
+    budget: 175,
+  },
+  {
+    name: "rows_300",
+    expression: "_rational_left.rows()",
+    precheck: ["_rational_left"],
+    budget: 200,
+  },
+  {
+    name: "columns_300",
+    expression: "_rational_left.columns()",
+    precheck: ["_rational_left"],
+    budget: 250,
+  },
+  {
     name: "select_rows_300",
     expression: "_rational_left.matrix_from_rows(_rational_structural_indices)",
     precheck: ["_rational_left"],
