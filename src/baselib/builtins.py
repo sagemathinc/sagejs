@@ -3692,10 +3692,11 @@ class _Range:
         raise AttributeError("readonly attribute 'step'")
 
     def __iter__(self) -> Iterator[_Int]:
-        value = self.start
-        for _index in range(self._length):
-            yield value
-            value += self.step
+        return runtime.exact_integer_range_iterator(
+            self.start,
+            self.step,
+            self._length,
+        )
 
     def __len__(self) -> _Int:
         return self._length
@@ -3836,6 +3837,59 @@ class _EllipsisType:
 Ellipsis = _EllipsisType()
 
 
+def _builtins_native_exact_ellipsis(specification: Any) -> Any:
+    """Materialize the common exact one- and two-start ellipsis forms."""
+    size = len(specification)
+    if size != 3 and size != 4:
+        return runtime.undefined
+    if specification[size - 2] is not Ellipsis:
+        return runtime.undefined
+    prefix_size = size - 2
+    first = specification[0]
+    endpoint = specification[size - 1]
+    if (
+        first is True
+        or first is False
+        or endpoint is True
+        or endpoint is False
+        or not _builtins_exact_integer_primitive(first)
+        or not _builtins_exact_integer_primitive(endpoint)
+    ):
+        return runtime.undefined
+    last = first
+    if prefix_size == 2:
+        last = specification[1]
+        if last is True or last is False or not _builtins_exact_integer_primitive(last):
+            return runtime.undefined
+        step = ρσ_operator_sub_exact(last, first)
+    elif runtime.strict_equal(runtime.jstype(first), "bigint"):
+        step = runtime.bigint(1)
+    else:
+        step = 1
+    if step == 0:
+        raise ValueError("ellipsis range step must not be zero")
+
+    calculation_last = last
+    calculation_endpoint = endpoint
+    calculation_step = step
+    if (
+        runtime.strict_equal(runtime.jstype(last), "bigint")
+        or runtime.strict_equal(runtime.jstype(endpoint), "bigint")
+        or runtime.strict_equal(runtime.jstype(step), "bigint")
+    ):
+        calculation_last = runtime.bigint(last)
+        calculation_endpoint = runtime.bigint(endpoint)
+        calculation_step = runtime.bigint(step)
+
+    tail_size = 0
+    if calculation_step > 0 and calculation_endpoint >= calculation_last:
+        tail_size = (calculation_endpoint - calculation_last) // calculation_step
+    elif calculation_step < 0 and calculation_endpoint <= calculation_last:
+        tail_size = (calculation_last - calculation_endpoint) // (-calculation_step)
+    total_size = ρσ_operator_add_exact(prefix_size, tail_size)
+    return list(runtime.exact_integer_range_values(first, step, total_size))
+
+
 class SageProperty:
     def __init__(
         self,
@@ -3894,6 +3948,9 @@ def ρσ_property(
 
 
 def ρσ_ellipsis_range(*specification: Any) -> list[Any]:
+    native = _builtins_native_exact_ellipsis(specification)
+    if native is not runtime.undefined:
+        return native
     result = []
     saw_ellipsis = False
     for value in specification:

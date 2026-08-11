@@ -146,6 +146,20 @@ assert.match(
   /restored = ρσ_exact_integer_values_from_packed_bytes\(packed, count\)/,
 );
 
+const exactRangeMaterialization = compile(
+  "import sagejs.runtime as runtime\n" +
+    "values = runtime.exact_integer_range_values(start, step, length)\n" +
+    "iterator = runtime.exact_integer_range_iterator(start, step, length)\n",
+);
+assert.match(
+  exactRangeMaterialization,
+  /values = ρσ_exact_integer_range_values\(start, step, length\)/,
+);
+assert.match(
+  exactRangeMaterialization,
+  /iterator = ρσ_exact_integer_range_iterator\(start, step, length\)/,
+);
+
 const instanceChecks = compile(
   "one = isinstance(value, candidate)\n" +
     "many = isinstance(value, (first_type, second_type))\n",

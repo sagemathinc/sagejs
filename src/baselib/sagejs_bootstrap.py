@@ -633,6 +633,109 @@ def ρσ_exact_integer_values_to_packed_bytes(values):
     })()"""
 
 
+def ρσ_exact_integer_range_values(start, step, length):
+    """Materialize a trusted exact range into a preallocated native array."""
+    return r"""%js (() => {
+        function exactInteger(value) {
+            return typeof value === "bigint" || Number.isSafeInteger(value);
+        }
+        function exactAdd(left, right) {
+            if (typeof left === "bigint" || typeof right === "bigint") {
+                return BigInt(left) + BigInt(right);
+            }
+            const answer = left + right;
+            return Number.isSafeInteger(answer)
+                ? answer
+                : BigInt(left) + BigInt(right);
+        }
+        if (!exactInteger(start) || !exactInteger(step)) {
+            throw new TypeError("exact range start and step must be integers");
+        }
+        if (step === 0 || step === 0n) {
+            throw new RangeError("exact range step must not be zero");
+        }
+        let size;
+        if (typeof length === "bigint") {
+            if (length < 0n || length > 0xffffffffn) {
+                throw new RangeError("exact range is too large to materialize");
+            }
+            size = Number(length);
+        } else {
+            if (!Number.isSafeInteger(length) || length < 0 ||
+                length > 0xffffffff) {
+                throw new RangeError("invalid exact range length");
+            }
+            size = length;
+        }
+        const answer = new Array(size);
+        if (size === 0) return answer;
+        if (typeof start === "number" && typeof step === "number") {
+            const last = start + step * (size - 1);
+            if (Number.isSafeInteger(last)) {
+                let current = start;
+                for (let index = 0; index < size; index += 1) {
+                    answer[index] = current;
+                    current += step;
+                }
+                return answer;
+            }
+        }
+        let current = start;
+        for (let index = 0; index < size; index += 1) {
+            answer[index] = current;
+            current = exactAdd(current, step);
+        }
+        return answer;
+    })()"""
+
+
+def ρσ_exact_integer_range_iterator(start, step, length):
+    """Return a lazy native iterator over a trusted exact integer range."""
+    return r"""%js (() => {
+        function exactInteger(value) {
+            return typeof value === "bigint" || Number.isSafeInteger(value);
+        }
+        function exactAdd(left, right) {
+            if (typeof left === "bigint" || typeof right === "bigint") {
+                return BigInt(left) + BigInt(right);
+            }
+            const answer = left + right;
+            return Number.isSafeInteger(answer)
+                ? answer
+                : BigInt(left) + BigInt(right);
+        }
+        if (!exactInteger(start) || !exactInteger(step)) {
+            throw new TypeError("exact range start and step must be integers");
+        }
+        if (step === 0 || step === 0n) {
+            throw new RangeError("exact range step must not be zero");
+        }
+        if ((typeof length === "bigint" && length < 0n) ||
+            (typeof length !== "bigint" &&
+                (!Number.isSafeInteger(length) || length < 0))) {
+            throw new RangeError("invalid exact range length");
+        }
+        let current = start;
+        let remaining = length;
+        const zero = typeof remaining === "bigint" ? 0n : 0;
+        const one = typeof remaining === "bigint" ? 1n : 1;
+        return {
+            next() {
+                if (remaining === zero) {
+                    return { done: true, value: undefined };
+                }
+                const value = current;
+                current = exactAdd(current, step);
+                remaining -= one;
+                return { done: false, value };
+            },
+            [Symbol.iterator]() {
+                return this;
+            },
+        };
+    })()"""
+
+
 def ρσ_exact_integer_values_from_packed_bytes(source, count, start=0):
     """Decode canonical magnitudes from a validated byte offset."""
     return r"""%js (() => {

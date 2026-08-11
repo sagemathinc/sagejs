@@ -79,6 +79,8 @@ export const SAGEJS_RUNTIME_INTRINSICS: Record<string, string> = {
   reference_matrix_flatten: "ρσ_reference_matrix_flatten",
   exact_integer_values_to_packed_bytes:
     "ρσ_exact_integer_values_to_packed_bytes",
+  exact_integer_range_iterator: "ρσ_exact_integer_range_iterator",
+  exact_integer_range_values: "ρσ_exact_integer_range_values",
   rational_buffers_from_packed_bytes: "ρσ_rational_buffers_from_packed_bytes",
   integer_factorization: "IntegerFactorization",
   instance_of: "ρσ_native_instanceof",
