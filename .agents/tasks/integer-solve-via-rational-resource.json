@@ -4,7 +4,7 @@
   "id": "integer-solve-via-rational-resource",
   "title": "Resource-direct exact integer matrix solve",
   "lane": "arithmetic-algebra",
-  "status": "active",
+  "status": "review",
   "owner": "user",
   "objective": "For square dense ZZ resource systems, promote coefficient and right-hand matrices once to generated FmpqMatrix resources and delegate to fmpq_matrix_solve, eliminating augment-RREF and scalar extraction while preserving rational solution semantics and portable fallback.",
   "base_commit": "0418430d5092921211fc90b12b74334ef1471e98",
@@ -36,10 +36,63 @@
     "pnpm test:baselib:strict",
     "pnpm test:native"
   ],
-  "runs": [],
+  "runs": [
+    {
+      "command": "node test/dense-integer-solve-resource.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.05,
+      "started_at": "2026-08-11T13:52:38.356Z",
+      "commit": "7a366a141ae1e251ea0b575041926b8902d585f1",
+      "workspace_fingerprint": "a6e556ddb31f8670ecf1e8febcc347b6584360d0b5c7cd571e89f5f3c273e6a6",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "env SAGEJS_INTEGER_MATRIX_SAMPLES=3 node scripts/check-integer-matrix-budget.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 11.159,
+      "started_at": "2026-08-11T13:52:41.040Z",
+      "commit": "7a366a141ae1e251ea0b575041926b8902d585f1",
+      "workspace_fingerprint": "a6e556ddb31f8670ecf1e8febcc347b6584360d0b5c7cd571e89f5f3c273e6a6",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 12.658,
+      "started_at": "2026-08-11T13:52:52.794Z",
+      "commit": "7a366a141ae1e251ea0b575041926b8902d585f1",
+      "workspace_fingerprint": "a6e556ddb31f8670ecf1e8febcc347b6584360d0b5c7cd571e89f5f3c273e6a6",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 11.93,
+      "started_at": "2026-08-11T13:53:06.304Z",
+      "commit": "7a366a141ae1e251ea0b575041926b8902d585f1",
+      "workspace_fingerprint": "a6e556ddb31f8670ecf1e8febcc347b6584360d0b5c7cd571e89f5f3c273e6a6",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:native",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 209.436,
+      "started_at": "2026-08-11T13:53:21.890Z",
+      "commit": "7a366a141ae1e251ea0b575041926b8902d585f1",
+      "workspace_fingerprint": "a6e556ddb31f8670ecf1e8febcc347b6584360d0b5c7cd571e89f5f3c273e6a6",
+      "platform": "linux-x64"
+    }
+  ],
   "handoff": {
-    "summary": "",
+    "summary": "Square dense ZZ resource systems now promote the coefficient and right-hand matrices exactly once through generated fmpq_matrix_from_fmpz, solve once through generated fmpq_matrix_solve, deterministically close both temporary promotions, and return canonical QQ resource storage. Rectangular, mixed-ring, portable, and legacy representations retain their previous paths. Focused tests cover matrix and vector right sides, nonintegral solutions, singular consistent and inconsistent systems, rectangular free-variable semantics, dimension errors, huge skew integers, source immutability, native-disabled and N-API-forbidden execution, and generated-resource trace provenance. The 40x40 solve with eight right-hand sides measures 0.63-0.76 ms for solve itself and 1.35 ms including verification multiplication, down from about 88 ms and below the reported Sage result of about 4 ms.",
     "risks": [],
-    "next_steps": []
+    "next_steps": [
+      "Integrate this branch into dense-qq-resources; no FFI declarations or compiler changes are required."
+    ]
   }
 }
