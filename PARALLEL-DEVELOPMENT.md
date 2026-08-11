@@ -43,13 +43,19 @@ shared Git directory. `parallel:new` restores matching artifacts automatically,
 and `pnpm parallel:cache -- prepare` builds and atomically publishes misses.
 On a fresh checkout, `prepare` builds the Sage.js compiler before attempting
 the first generated native addon; callers do not need to memorize a separate
-bootstrap ordering.
+bootstrap ordering. A content stamp ties those compiler outputs and every
+addon key to the complete compiler/tool source snapshot, so pre-existing
+`dist/` files cannot silently compile a new cache entry after their sources
+change.
 Large dependency prefixes that are declared immutable, currently the pinned
 FFLAS/Givaro/GMP/OpenBLAS prefix, are mounted read-only from that store instead
 of copied into every worktree. Addons remain independent snapshots because
 their keys include the Node ABI and generated adapter inputs. Override the
 store with `SAGEJS_PARALLEL_NATIVE_CACHE` when the Git directory is on a small
-filesystem.
+filesystem. Cold publishers hold a process-birth-identified lease whose
+heartbeat advances even while a synchronous compiler or linker is running;
+concurrent worktrees therefore wait without mistaking a long build for a dead
+owner, while crashed or rebooted owners are recoverable.
 
 Use `--no-install` when an external provisioning system will prepare the
 worktree. Run `pnpm parallel:new -- --help` for all options.

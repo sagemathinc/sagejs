@@ -7,6 +7,7 @@ const {
   existsSync,
   mkdirSync,
   readFileSync,
+  readdirSync,
   rmSync,
   writeFileSync,
 } = require("node:fs");
@@ -164,6 +165,49 @@ function copyOpenBlas() {
   }
 }
 
+function makeFflasPrefixRelocatable(targetPrefix = prefix) {
+  const replaceInstalledPrefix = (filename, transform) => {
+    if (!existsSync(filename)) return;
+    const before = readFileSync(filename, "utf8");
+    const after = transform(before);
+    if (after.includes(targetPrefix)) {
+      throw new Error(`FFLAS metadata still embeds its build prefix: ${filename}`);
+    }
+    writeFileSync(filename, after);
+  };
+  for (const name of ["fflas-ffpack-config", "givaro-config"]) {
+    replaceInstalledPrefix(join(targetPrefix, "bin", name), (contents) =>
+      contents
+        .replaceAll(targetPrefix, "${prefix}")
+        .replace(
+          /^prefix=.*$/m,
+          'prefix=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd -P)',
+        )
+    );
+  }
+  const pkgconfig = join(targetPrefix, "lib", "pkgconfig");
+  if (existsSync(pkgconfig)) {
+    for (const name of readdirSync(pkgconfig).filter((entry) => entry.endsWith(".pc"))) {
+      replaceInstalledPrefix(join(pkgconfig, name), (contents) =>
+        contents
+          .replaceAll(targetPrefix, "${prefix}")
+          .replace(/^prefix=.*$/m, "prefix=${pcfiledir}/../..")
+          .replace(/^exec_prefix=.*$/m, "exec_prefix=${prefix}")
+          .replace(/^libdir=.*$/m, "libdir=${prefix}/lib")
+          .replace(/^includedir=.*$/m, "includedir=${prefix}/include")
+      );
+    }
+  }
+  const library = join(targetPrefix, "lib");
+  if (existsSync(library)) {
+    for (const name of readdirSync(library).filter((entry) => entry.endsWith(".la"))) {
+      // Libtool archives encode absolute installation paths and are not used
+      // by the generated adapter, which links the static archives directly.
+      rmSync(join(library, name), { force: true });
+    }
+  }
+}
+
 function buildGmp(source) {
   const configure = [
     `--prefix=${prefix}`,
@@ -295,6 +339,7 @@ async function buildDependencies() {
   buildGivaro(source("givaro"));
   buildFflasFfpack(source("fflas-ffpack"));
   installHeader();
+  makeFflasPrefixRelocatable();
   writeFileSync(stampPath, `${JSON.stringify(expectedStamp, null, 2)}\n`);
   process.stdout.write(`FFLAS dependencies installed in ${prefix}\n`);
 }
@@ -333,7 +378,11 @@ async function main() {
   await buildDependencies();
 }
 
-main().catch((error) => {
-  process.stderr.write(`${error.stack || error}\n`);
-  process.exitCode = 1;
-});
+if (require.main === module) {
+  main().catch((error) => {
+    process.stderr.write(`${error.stack || error}\n`);
+    process.exitCode = 1;
+  });
+}
+
+module.exports = { makeFflasPrefixRelocatable };
