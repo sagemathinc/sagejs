@@ -4,11 +4,14 @@
   "id": "exact-polynomial-storage",
   "title": "Exact Polynomial Storage",
   "lane": "arithmetic-algebra",
-  "status": "active",
+  "status": "review",
   "owner": "user",
   "objective": "Make Node ZZ[x] and QQ[x] PolynomialElement storage canonical sealed generated FLINT resources with packed capability fallback and differential performance gates",
-  "base_commit": "890edf635c04666c2ff96fb8a6173c7cb1f04e90",
+  "base_commit": "4db221db2a73731ef908c7b31149f07ca850fe17",
   "claims": [
+    "ARCHITECTURE.md",
+    "COMPILED-PYTHON.md",
+    "architecture/package-graph.json",
     "src/baselib/polynomial.py",
     "src/lib/sagejs/kernels/polynomial/packed_flint.py",
     "tools/serialization.ts",
@@ -18,7 +21,9 @@
     "bench/exact-polynomial-resources.cjs"
   ],
   "dependencies": [
-    "exact-polynomial-ffi"
+    "exact-polynomial-ffi",
+    "exact-polynomial-ffi-ops",
+    "uint64-structural"
   ],
   "references": [],
   "architecture": {
@@ -37,13 +42,27 @@
     "macos-arm64": "required"
   },
   "validation": [
+    "node test/exact-polynomial-resources.cjs",
+    "node --test test/serialization.cjs",
+    "pnpm architecture:check",
     "pnpm test:baselib:strict",
-    "pnpm test:native"
+    "pnpm test:polynomial:performance",
+    "node bench/exact-polynomial-resources.cjs"
   ],
   "runs": [],
   "handoff": {
-    "summary": "",
-    "risks": [],
-    "next_steps": []
+    "summary": "Makes Node ZZ[x] and QQ[x] PolynomialElement values canonically own sealed generated FLINT resources. Construction, coefficient access, equality, arithmetic, powers, evaluation, formatting, and stable bulk SagePack serialization avoid legacy polynomial N-API and uniform per-coefficient limb capacity; the portable tier retains normalized packed storage. Published exact division and factorization results are re-ingested into resources. Direct resource equality and bulk byte-region serialization remove the last measured ordinary-operation materializations, while focused public tests and performance gates cover skewed exact coefficients, persistence, quotient rings, factors, and lifecycle invariants.",
+    "risks": [
+      "Generated exact polynomial resources remain wasm=False; the portable packed implementation is tested, but opaque-resource WebAssembly lowering is still unproved.",
+      "Exact division and factorization still use audited packed compatibility materializations internally, including their existing capacity-retry protocol, although no packed value escapes as public Node storage.",
+      "SagePack deserialization currently parses the compact stable stream in TypeScript and inserts coefficients through the generated builder; a generated resource deserializer could reduce the remaining roughly 260 ms load time for a 625875-byte QQ polynomial payload.",
+      "The shared base contains three integrated task contracts still marked review, so pnpm parallel:check cannot identify exactly one live task in this worktree; all task-specific and architecture validation nevertheless passes."
+    ],
+    "next_steps": [
+      "Generate direct resource exact-division and factorization operations, including resource-backed factor collections, then delete the audited packed compatibility paths.",
+      "Prove generated opaque-resource lowering on WebAssembly while retaining the same declaration and portable packed semantics.",
+      "Add a direct generated resource deserializer if persistence benchmarks show the current builder path matters in applications.",
+      "Integrate this branch on top of 4db221db2a73731ef908c7b31149f07ca850fe17 and rerun the combined project validation."
+    ]
   }
 }

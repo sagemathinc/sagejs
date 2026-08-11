@@ -350,6 +350,20 @@ it. Results such as RREF are computed once into a new callee-owned resource.
 Packed `RationalBuffer` data is produced only when serialization or a legacy
 compatibility algorithm explicitly asks to leave that representation.
 
+Node uses the same ownership model for exact univariate polynomials.
+`ZZ[x]` and `QQ[x]` elements canonically own sealed generated `FmpzPolynomial`
+and `FmpqPolynomial` resources, so coefficient sizes may vary independently
+without a uniform limb-capacity guess. Ordinary arithmetic, equality,
+evaluation, formatting, and stable serialization operate directly on that
+resource; Python and JavaScript never receive a raw FLINT pointer. The portable
+host canonically uses normalized packed coefficients, which also serve as the
+interchange format. A few compatibility algorithms—notably exact division and
+factorization—still materialize packed coefficients under explicit audit, then
+re-ingest every public Node result into a sealed resource. Requesting
+`.coefficients()` likewise materializes scalar values because the caller asked
+to leave the aggregate representation. Small-prime polynomials instead retain
+compiler-managed packed `UInt64Buffer` storage.
+
 ### Group related values with compiler-owned records
 
 Small mathematical data structures should not force every helper to accept a
