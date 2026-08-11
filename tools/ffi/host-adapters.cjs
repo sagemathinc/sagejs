@@ -6,7 +6,7 @@ function resourceTypes(declaration) {
   return new Set(declaration.resources.map((resource) => resource.python_name));
 }
 
-function generatedHostFunctions(declaration) {
+function generatedHostFunctions(declaration, options = {}) {
   const resources = new Map(
     declaration.resources.map((resource) => [resource.python_name, resource]),
   );
@@ -15,7 +15,7 @@ function generatedHostFunctions(declaration) {
       .filter((resource) => resource.owner !== null)
       .map((resource) => resource.owner),
   );
-  return declaration.functions.filter((fn) => [
+  const eligible = declaration.functions.filter((fn) => [
     fn.signature.return_type,
     ...fn.signature.parameters.map((parameter) => parameter.type),
   ].every((type) => {
@@ -23,6 +23,26 @@ function generatedHostFunctions(declaration) {
     return resource === undefined ||
       (resource.ownership === "owned" && !viewOwners.has(resource.id));
   }));
+  if (options.functionIds === undefined) return eligible;
+  if (!Array.isArray(options.functionIds)) {
+    throw new TypeError("functionIds must be an array");
+  }
+  const selected = new Set(options.functionIds);
+  const known = new Set(declaration.functions.map((fn) => fn.id));
+  for (const id of selected) {
+    if (!known.has(id)) {
+      throw new Error(`unknown ${declaration.library.id} FFI function ${id}`);
+    }
+  }
+  const result = eligible.filter((fn) => selected.has(fn.id));
+  if (result.length !== selected.size) {
+    const generated = new Set(result.map((fn) => fn.id));
+    const unsupported = Array.from(selected).filter((id) => !generated.has(id));
+    throw new Error(
+      `selected FFI functions cannot use generated host adapters: ${unsupported.join(", ")}`,
+    );
+  }
+  return result;
 }
 
 function generatedHostAdapterPath(root, declaration) {
@@ -31,8 +51,8 @@ function generatedHostAdapterPath(root, declaration) {
   return join(root, "packages", packageName, "generated", "ffi_host.py");
 }
 
-function generatedHostAdapterSource(declaration) {
-  const functions = generatedHostFunctions(declaration);
+function generatedHostAdapterSource(declaration, options = {}) {
+  const functions = generatedHostFunctions(declaration, options);
   const moduleName = declaration.library.python_module;
   const resources = resourceTypes(declaration);
   const referencedResources = Array.from(new Set(functions.flatMap((fn) => [
