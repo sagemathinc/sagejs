@@ -73,9 +73,10 @@ assert.deepEqual(polynomial.stdout.trim().split("\n"), [
   "y + 1/3",
   "incompatible variables rejected",
 ]);
-// Construction and structural arithmetic over ZZ and QQ are now entirely
-// host-independent packed operations.  They must not load FLINT at all.
-assert.doesNotMatch(polynomial.stderr, new RegExp(marker));
+// Exact ZZ and QQ polynomials now canonically own generated FLINT resources.
+// Creating the first resource loads the replaceable FLINT host adapter lazily;
+// all subsequent construction and structural arithmetic reuse that one load.
+assert.equal(polynomial.stderr.match(new RegExp(marker, "g"))?.length, 1);
 
 const finiteFields = run(
   [
