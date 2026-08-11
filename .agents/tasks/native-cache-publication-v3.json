@@ -1,0 +1,130 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "native-cache-publication-v3",
+  "title": "Native Cache Publication V3",
+  "lane": "integration",
+  "status": "review",
+  "owner": "user",
+  "objective": "Publish v3 native-kernel compatibility metadata and reject source-identical artifacts with stale FFI declarations",
+  "base_commit": "d413e60cc92bca194db23fdfc5b5c96c59e76bc3",
+  "claims": [
+    "scripts/build-production-native-kernels.cjs",
+    "test/production-native-kernels.cjs",
+    "test/node-test-manifest.cjs"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "compiler-infrastructure",
+    "fallback": "same-source",
+    "oracles": [
+      "production native cache stale-declaration subprocess regression"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "node --test test/production-native-kernels.cjs",
+    "pnpm architecture:check",
+    "pnpm test:portable",
+    "pnpm test:baselib:strict"
+  ],
+  "runs": [
+    {
+      "command": "node --test test/production-native-kernels.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.885,
+      "started_at": "2026-08-11T12:07:20.390Z",
+      "commit": "d413e60cc92bca194db23fdfc5b5c96c59e76bc3",
+      "workspace_fingerprint": "c4acf2b4b7391652109a44bd1f3413893bcd9ae5197910fb58f21f4b2c0c0063",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 12.802,
+      "started_at": "2026-08-11T12:07:26.655Z",
+      "commit": "d413e60cc92bca194db23fdfc5b5c96c59e76bc3",
+      "workspace_fingerprint": "c4acf2b4b7391652109a44bd1f3413893bcd9ae5197910fb58f21f4b2c0c0063",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 29.94,
+      "started_at": "2026-08-11T12:07:45.057Z",
+      "commit": "d413e60cc92bca194db23fdfc5b5c96c59e76bc3",
+      "workspace_fingerprint": "c4acf2b4b7391652109a44bd1f3413893bcd9ae5197910fb58f21f4b2c0c0063",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 12.032,
+      "started_at": "2026-08-11T12:08:17.929Z",
+      "commit": "d413e60cc92bca194db23fdfc5b5c96c59e76bc3",
+      "workspace_fingerprint": "c4acf2b4b7391652109a44bd1f3413893bcd9ae5197910fb58f21f4b2c0c0063",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 29.659,
+      "started_at": "2026-08-11T12:10:28.085Z",
+      "commit": "d413e60cc92bca194db23fdfc5b5c96c59e76bc3",
+      "workspace_fingerprint": "dd048d891ca841bbd74b293e867ffd5f8bcfa3208ce4d3c4fd7bb13ec1f2f0e1",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/production-native-kernels.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.734,
+      "started_at": "2026-08-11T12:11:08.706Z",
+      "commit": "d413e60cc92bca194db23fdfc5b5c96c59e76bc3",
+      "workspace_fingerprint": "dd048d891ca841bbd74b293e867ffd5f8bcfa3208ce4d3c4fd7bb13ec1f2f0e1",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 11.812,
+      "started_at": "2026-08-11T12:11:15.222Z",
+      "commit": "d413e60cc92bca194db23fdfc5b5c96c59e76bc3",
+      "workspace_fingerprint": "dd048d891ca841bbd74b293e867ffd5f8bcfa3208ce4d3c4fd7bb13ec1f2f0e1",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 12.106,
+      "started_at": "2026-08-11T12:11:29.956Z",
+      "commit": "d413e60cc92bca194db23fdfc5b5c96c59e76bc3",
+      "workspace_fingerprint": "dd048d891ca841bbd74b293e867ffd5f8bcfa3208ce4d3c4fd7bb13ec1f2f0e1",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Publishes native compiler ABI and exact FFI declaration identities in every schema-v3 production kernel record. The production suite ratchets the duplicated runtime and C-backend ABI constants, verifies index/wrapper metadata agreement and current resource-kernel autoload, and proves that source-identical artifacts forged with stale FFI or compiler ABI metadata fail closed before native registration in permissive and required modes.",
+    "risks": [
+      "Schema-v1 and schema-v2 native cache indexes intentionally invalidate and fall back or rebuild after this compatibility boundary changes.",
+      "Schema-v3 records require backends used by declared compiled kernels to publish the generated __sagejs_ffi_manifest__ declaration identity."
+    ],
+    "next_steps": [
+      "Rebuild and republish production native artifacts whenever the compiler ABI or an imported FFI declaration identity changes."
+    ]
+  }
+}

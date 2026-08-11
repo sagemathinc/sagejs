@@ -107,6 +107,8 @@ async function main() {
       sourceHash: createHash("sha256")
         .update(readFileSync(absoluteSource))
         .digest("hex"),
+      nativeAbi: compiled.nativeAbi,
+      foreignDeclarations: compiled.foreignDeclarations,
       outputPath: compiled.outputPath,
     });
     process.stdout.write(
@@ -121,7 +123,7 @@ async function main() {
   rmSync(options.outputRoot, { recursive: true, force: true });
   mkdirSync(options.outputRoot, { recursive: true });
   const index = {
-    schema: "sagejs.native-cache/v2",
+    schema: "sagejs.native-cache/v3",
     sources: {},
     logicalSources: {},
   };
@@ -129,6 +131,8 @@ async function main() {
     const sourceRecord = {
       cacheKey: item.cacheKey,
       sourceHash: item.sourceHash,
+      nativeAbi: item.nativeAbi,
+      foreignDeclarations: item.foreignDeclarations,
     };
     index.sources[item.absoluteSource] = sourceRecord;
     index.logicalSources[item.logicalSource] = sourceRecord;
