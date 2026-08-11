@@ -223,6 +223,72 @@ function callPlan(library, fn, catalog, resourcesByType) {
   });
 }
 
+function validateResourceAggregateComposition(
+  filename, fn, resourcesByType, returnResource,
+) {
+  const adapters = fn.native.arguments.filter((argument) =>
+    argument.adapter !== null
+  );
+  const resourceParameters = fn.signature.parameters.filter((parameter) =>
+    resourcesByType.has(parameter.type)
+  );
+  if (adapters.length === 0 ||
+      (resourceParameters.length === 0 && returnResource === undefined)) {
+    return;
+  }
+
+  const reject = (detail) => fail(
+    filename,
+    `${fn.id} resource/aggregate composition ${detail}; only one borrowed ` +
+      "read-only owned resource and one read-only UInt64Buffer packed slice " +
+      "are currently supported",
+  );
+  if (adapters.length !== 1 || resourceParameters.length !== 1) {
+    reject("has an unsupported number of resources or adapters");
+  }
+  const resourceParameter = resourceParameters[0];
+  const resource = resourcesByType.get(resourceParameter.type);
+  if (resource.ownership !== "owned" ||
+      resourceParameter.ownership !== "borrowed" ||
+      resourceParameter.mutability !== "read" ||
+      resourceParameter.aliasing !== "allowed") {
+    reject("requires a mutable or borrowed-view resource");
+  }
+  const nativeArgument = adapters[0];
+  const adapter = nativeArgument.adapter;
+  const data = fn.signature.parameters.find((parameter) =>
+    parameter.name === adapter.data
+  );
+  const length = fn.signature.parameters.find((parameter) =>
+    parameter.name === adapter.length
+  );
+  if (adapter.kind !== "packed_slice" || nativeArgument.direction !== "in" ||
+      nativeArgument.abi_type !== "uint64_t_ptr" ||
+      adapter.access !== "read" || adapter.aliasing !== "allowed" ||
+      adapter.transactional !== false || data?.type !== "UInt64Buffer" ||
+      data.ownership !== "borrowed" || data.mutability !== "read" ||
+      length?.type !== "uint64") {
+    reject("uses an unsupported aggregate adapter");
+  }
+  const consumed = new Set([resourceParameter.name, data.name, length.name]);
+  if (fn.signature.parameters.some((parameter) =>
+    !consumed.has(parameter.name) && parameter.type !== "uint64"
+  )) {
+    reject("has a non-word auxiliary parameter");
+  }
+  if (fn.effects.writes.length !== 0) {
+    reject("declares mutation");
+  }
+  if (returnResource !== undefined) {
+    if (returnResource.ownership !== "owned" ||
+        returnResource.id !== resource.id) {
+      reject("returns an unrelated or borrowed resource");
+    }
+  } else if (!new Set(["bool", "uint64"]).has(fn.signature.return_type)) {
+    reject("returns an unsupported value type");
+  }
+}
+
 function validateFunction(
   filename, library, fn, ids, pythonNames, resourcesByType, catalog,
 ) {
@@ -479,13 +545,6 @@ function validateFunction(
   const result = fn.native.arguments.find((argument) =>
     argument.source === "result"
   );
-  const usesForeignResource = returnResource !== undefined ||
-    fn.signature.parameters.some((parameter) =>
-      resourcesByType.has(parameter.type));
-  if (usesForeignResource && fn.native.arguments.some((argument) =>
-    argument.adapter !== null)) {
-    fail(filename, `${fn.id} cannot yet mix resource and aggregate adapters`);
-  }
   if (returnResource !== undefined) {
     if (fn.native.return_type !== "int" || resultArguments !== 1 ||
         result?.abi_type !== returnResource.abi_type) {
@@ -606,6 +665,10 @@ function validateFunction(
   if (!fn.targets.dynamic || !fn.targets.native) {
     fail(filename, `${fn.id} must provide dynamic and native implementations`);
   }
+
+  validateResourceAggregateComposition(
+    filename, fn, resourcesByType, returnResource,
+  );
 
   const enriched = {
     ...fn,
