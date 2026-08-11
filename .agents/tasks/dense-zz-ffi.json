@@ -2,12 +2,12 @@
   "$schema": "../task.schema.json",
   "schema_version": 2,
   "id": "dense-zz-ffi",
-  "title": "Dense ZZ Resource FFI",
+  "title": "Complete Dense ZZ Resource FFI",
   "lane": "integration",
-  "status": "review",
+  "status": "active",
   "owner": "codex",
-  "objective": "Generate externally-accounted owned FLINT FmpzMatrix resources with safe construction, inspection, structural arithmetic, advanced exact algorithms, stable serialization, and lifecycle/performance tests",
-  "base_commit": "890edf68e95e9d54b0c98d2cb0c00f5dfc73fe5e",
+  "objective": "Complete generated dense integer matrix resources with exact transforms, kernels, polynomial invariants, ring conversion, structural operations, and lifecycle and performance evidence",
+  "base_commit": "4db221d00e38896bb9830ec5ff694e6d688497e6",
   "claims": [
     "ffi/flint.ffi.py",
     "ffi/flint.ffi.json",
@@ -15,20 +15,29 @@
     "src/baselib/sagejs/ffi/flint.py",
     "packages/flint/generated/",
     "packages/flint/include/sagejs/fmpz_matrix_ffi.h",
+    "packages/flint/include/sagejs/fmpq_matrix_ffi.h",
+    "packages/flint/include/sagejs/exact_polynomial_ffi.h",
     "package.json",
+    "test/ffi.cjs",
     "test/fmpz-matrix-resource-ffi.cjs",
     "test/test-manifest.test.cjs",
     "architecture/native-boundaries.json",
     "architecture/native-code.json",
     "architecture/package-graph.json"
   ],
-  "dependencies": [],
-  "references": [],
+  "dependencies": [
+    "exact-polynomial-ffi",
+    "exact-polynomial-ffi-ops"
+  ],
+  "references": [
+    "ARCHITECTURE.md"
+  ],
   "architecture": {
     "strategy": "external-library",
     "fallback": "tested-capability",
     "oracles": [
       "current packed dense ZZ matrix implementation",
+      "legacy N-API FLINT matrix resources",
       "FLINT upstream semantics"
     ],
     "exceptions": []
@@ -40,143 +49,85 @@
     "macos-arm64": "required"
   },
   "validation": [
+    "node test/fmpz-matrix-resource-ffi.cjs",
+    "node --test --test-reporter=spec test/ffi.cjs",
     "pnpm architecture:check",
     "pnpm test:portable",
     "pnpm test:baselib:strict"
   ],
   "runs": [
     {
-      "command": "node test/fmpz-matrix-resource-ffi.cjs",
+      "command": "pnpm --dir packages/flint run build:ffi",
       "result": "pass",
       "exit_code": 0,
-      "seconds": 1.37,
-      "started_at": "2026-08-11T10:15:51.070Z",
-      "commit": "890edf68e95e9d54b0c98d2cb0c00f5dfc73fe5e",
-      "workspace_fingerprint": "49a64aab6a89102d30db0495774e616ab949364998009a90b00679d6412b637a",
-      "platform": "linux-x64"
-    },
-    {
-      "command": "pnpm architecture:check",
-      "result": "pass",
-      "exit_code": 0,
-      "seconds": 11.446,
-      "started_at": "2026-08-11T10:15:58.415Z",
-      "commit": "890edf68e95e9d54b0c98d2cb0c00f5dfc73fe5e",
-      "workspace_fingerprint": "49a64aab6a89102d30db0495774e616ab949364998009a90b00679d6412b637a",
-      "platform": "linux-x64"
-    },
-    {
-      "command": "pnpm test:baselib:strict",
-      "result": "pass",
-      "exit_code": 0,
-      "seconds": 11.698,
-      "started_at": "2026-08-11T10:16:13.452Z",
-      "commit": "890edf68e95e9d54b0c98d2cb0c00f5dfc73fe5e",
-      "workspace_fingerprint": "49a64aab6a89102d30db0495774e616ab949364998009a90b00679d6412b637a",
-      "platform": "linux-x64"
-    },
-    {
-      "command": "pnpm test:portable",
-      "result": "pass",
-      "exit_code": 0,
-      "seconds": 27.897,
-      "started_at": "2026-08-11T10:16:28.715Z",
-      "commit": "890edf68e95e9d54b0c98d2cb0c00f5dfc73fe5e",
-      "workspace_fingerprint": "49a64aab6a89102d30db0495774e616ab949364998009a90b00679d6412b637a",
-      "platform": "linux-x64"
-    },
-    {
-      "command": "pnpm architecture:check",
-      "result": "pass",
-      "exit_code": 0,
-      "seconds": 11.826,
-      "started_at": "2026-08-11T10:36:32.669Z",
-      "commit": "3d1e4a81fa625c05db91b76b683703af1126814b",
-      "workspace_fingerprint": "6d8fb1d9e2682bf2a2e6616db4d39624895a6076fd56f3d3b98e4df4870f2610",
-      "platform": "linux-x64"
-    },
-    {
-      "command": "pnpm test:baselib:strict",
-      "result": "pass",
-      "exit_code": 0,
-      "seconds": 11.984,
-      "started_at": "2026-08-11T10:36:45.122Z",
-      "commit": "3d1e4a81fa625c05db91b76b683703af1126814b",
-      "workspace_fingerprint": "6d8fb1d9e2682bf2a2e6616db4d39624895a6076fd56f3d3b98e4df4870f2610",
-      "platform": "linux-x64"
-    },
-    {
-      "command": "pnpm test:portable",
-      "result": "pass",
-      "exit_code": 0,
-      "seconds": 28.7,
-      "started_at": "2026-08-11T10:37:08.687Z",
-      "commit": "3d1e4a81fa625c05db91b76b683703af1126814b",
-      "workspace_fingerprint": "6d8fb1d9e2682bf2a2e6616db4d39624895a6076fd56f3d3b98e4df4870f2610",
+      "seconds": 0.987,
+      "started_at": "2026-08-11T11:02:08.901Z",
+      "commit": "4db221d00e38896bb9830ec5ff694e6d688497e6",
+      "workspace_fingerprint": "42947ed3dfd630cd1abe0230f8d362160704b1d17ea412703cdf6c869938eb07",
       "platform": "linux-x64"
     },
     {
       "command": "node test/fmpz-matrix-resource-ffi.cjs",
       "result": "pass",
       "exit_code": 0,
-      "seconds": 1.623,
-      "started_at": "2026-08-11T10:37:40.200Z",
-      "commit": "3d1e4a81fa625c05db91b76b683703af1126814b",
-      "workspace_fingerprint": "6d8fb1d9e2682bf2a2e6616db4d39624895a6076fd56f3d3b98e4df4870f2610",
+      "seconds": 2.105,
+      "started_at": "2026-08-11T11:02:10.509Z",
+      "commit": "4db221d00e38896bb9830ec5ff694e6d688497e6",
+      "workspace_fingerprint": "42947ed3dfd630cd1abe0230f8d362160704b1d17ea412703cdf6c869938eb07",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test --test-reporter=spec test/ffi.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 32.755,
+      "started_at": "2026-08-11T11:02:13.214Z",
+      "commit": "4db221d00e38896bb9830ec5ff694e6d688497e6",
+      "workspace_fingerprint": "42947ed3dfd630cd1abe0230f8d362160704b1d17ea412703cdf6c869938eb07",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test --test-reporter=spec test/ffi.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 33.585,
+      "started_at": "2026-08-11T11:02:48.030Z",
+      "commit": "4db221d00e38896bb9830ec5ff694e6d688497e6",
+      "workspace_fingerprint": "42947ed3dfd630cd1abe0230f8d362160704b1d17ea412703cdf6c869938eb07",
       "platform": "linux-x64"
     },
     {
       "command": "pnpm architecture:check",
       "result": "pass",
       "exit_code": 0,
-      "seconds": 11.439,
-      "started_at": "2026-08-11T10:38:02.664Z",
-      "commit": "3d1e4a81fa625c05db91b76b683703af1126814b",
-      "workspace_fingerprint": "f32a7dc09c3c17b1b91354aa3cd0a965b3721020a4b97b76d0a2763af81f1844",
+      "seconds": 11.484,
+      "started_at": "2026-08-11T11:03:25.546Z",
+      "commit": "4db221d00e38896bb9830ec5ff694e6d688497e6",
+      "workspace_fingerprint": "42947ed3dfd630cd1abe0230f8d362160704b1d17ea412703cdf6c869938eb07",
       "platform": "linux-x64"
     },
     {
       "command": "pnpm test:baselib:strict",
       "result": "pass",
       "exit_code": 0,
-      "seconds": 12.286,
-      "started_at": "2026-08-11T10:38:14.719Z",
-      "commit": "3d1e4a81fa625c05db91b76b683703af1126814b",
-      "workspace_fingerprint": "f32a7dc09c3c17b1b91354aa3cd0a965b3721020a4b97b76d0a2763af81f1844",
-      "platform": "linux-x64"
-    },
-    {
-      "command": "pnpm test:portable",
-      "result": "pass",
-      "exit_code": 0,
-      "seconds": 28.537,
-      "started_at": "2026-08-11T10:38:40.972Z",
-      "commit": "3d1e4a81fa625c05db91b76b683703af1126814b",
-      "workspace_fingerprint": "f32a7dc09c3c17b1b91354aa3cd0a965b3721020a4b97b76d0a2763af81f1844",
-      "platform": "linux-x64"
-    },
-    {
-      "command": "node test/fmpz-matrix-resource-ffi.cjs",
-      "result": "pass",
-      "exit_code": 0,
-      "seconds": 1.587,
-      "started_at": "2026-08-11T10:39:13.017Z",
-      "commit": "3d1e4a81fa625c05db91b76b683703af1126814b",
-      "workspace_fingerprint": "f32a7dc09c3c17b1b91354aa3cd0a965b3721020a4b97b76d0a2763af81f1844",
+      "seconds": 12.226,
+      "started_at": "2026-08-11T11:03:40.337Z",
+      "commit": "4db221d00e38896bb9830ec5ff694e6d688497e6",
+      "workspace_fingerprint": "42947ed3dfd630cd1abe0230f8d362160704b1d17ea412703cdf6c869938eb07",
       "platform": "linux-x64"
     }
   ],
   "handoff": {
-    "summary": "Adds a generated, externally-accounted FmpzMatrix resource with always-valid zero-filled construction and checked mutation; structural arithmetic and exact FLINT algorithms; aligned formatting; and strict, canonical SJZM v1 serialization/deserialization. The follow-up fixes FLINT-word exponent portability, covers empty and rectangular normal forms plus malformed serialization and failure cleanup under sanitizers, and compares a warmed non-diagonal workload against both legacy FLINT resources and the packed boundary with result equivalence.",
+    "summary": "Added generated FmpzMatrix HNF/SNF transforms, exact-shaped right kernel, characteristic and minimal polynomial resources, direct Fmpz/Fmpq matrix conversions, contiguous submatrices, transactional block writes, stack, augment, and nonzero count. Extended lifecycle, external-memory, malformed-input, differential, edge-shape, transform-identity, and performance coverage. The representative 48x64 exact right kernel measures about 0.52 ms through the owned resource versus 1.67 ms through the packed boundary.",
     "risks": [
-      "The resource target is intentionally wasm=False until the generated opaque-resource host adapter has a proven WebAssembly lowering.",
-      "HNF and SNF expose direct FLINT canonical forms but transformation matrices are deferred to a later multi-result resource protocol.",
-      "The current declaration result model has one failure domain per call, so allocation exhaustion and dimension overflow cannot yet be reported separately; FLINT allocation itself may abort rather than return a recoverable status."
+      "These owned FLINT matrix resources remain Node-only declarations with wasm=False; WASM resource lowering is a separate architecture lane.",
+      "Arbitrary indexed row or column selection is not declared because the current declaration compiler rejects mixing a resource with an aggregate UInt64Buffer adapter; contiguous slicing and typed traversal remain available without an operation-specific host adapter.",
+      "pnpm test:portable is not clean on base 4db221d after rebuilding the self-hosted compiler: unrelated compiled-module-isolation/bootstrap assertions fail in files outside this lane. Focused FFI, sanitizer, architecture, and strict-baselib gates pass."
     ],
     "next_steps": [
-      "Migrate dense ZZ public Matrix storage and operations to FmpzMatrix while retaining the packed implementation as the portable fallback and differential oracle.",
-      "Design right-kernel resource semantics together with the public lattice-basis normalization contract instead of freezing an incidental basis at this ABI layer.",
-      "Add a typed-Python borrowed traversal witness when the public dense ZZ migration establishes its kernel-facing API."
+      "Integrate these generated operations into the public dense ZZ Matrix representation without touching packed limb capacities.",
+      "Add the typed-Python resource structural kernels for construction, random fill, traversal, and public result assembly.",
+      "Decide whether arbitrary indexed selection merits a focused resource-plus-aggregate declaration compiler feature or should remain typed traversal."
     ]
   }
 }

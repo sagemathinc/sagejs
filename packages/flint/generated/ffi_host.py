@@ -65,6 +65,18 @@ from sagejs.ffi.flint import (
     fmpz_matrix_trace as _ffi_fmpz_matrix_trace,
     fmpz_matrix_hnf as _ffi_fmpz_matrix_hnf,
     fmpz_matrix_snf as _ffi_fmpz_matrix_snf,
+    fmpz_matrix_hnf_transform as _ffi_fmpz_matrix_hnf_transform,
+    fmpz_matrix_snf_transform as _ffi_fmpz_matrix_snf_transform,
+    fmpz_matrix_right_kernel as _ffi_fmpz_matrix_right_kernel,
+    fmpz_matrix_charpoly as _ffi_fmpz_matrix_charpoly,
+    fmpz_matrix_minpoly as _ffi_fmpz_matrix_minpoly,
+    fmpq_matrix_from_fmpz as _ffi_fmpq_matrix_from_fmpz,
+    fmpz_matrix_from_fmpq_integral as _ffi_fmpz_matrix_from_fmpq_integral,
+    fmpz_matrix_submatrix as _ffi_fmpz_matrix_submatrix,
+    fmpz_matrix_set_block as _ffi_fmpz_matrix_set_block,
+    fmpz_matrix_stack as _ffi_fmpz_matrix_stack,
+    fmpz_matrix_augment as _ffi_fmpz_matrix_augment,
+    fmpz_matrix_nonzero_count as _ffi_fmpz_matrix_nonzero_count,
     fmpz_matrix_format as _ffi_fmpz_matrix_format,
     fmpz_matrix_serialize as _ffi_fmpz_matrix_serialize,
     flint_byte_region as _ffi_flint_byte_region,
@@ -652,6 +664,142 @@ def ffiFmpzMatrixSnf(
     source: FmpzMatrix,
 ) -> FmpzMatrix:
     return _ffi_fmpz_matrix_snf(
+        source,
+    )
+
+
+@native
+def ffiFmpzMatrixHnfTransform(
+    hermite: FmpzMatrix,
+    transform: FmpzMatrix,
+    source: FmpzMatrix,
+) -> bool:
+    return _ffi_fmpz_matrix_hnf_transform(
+        hermite,
+        transform,
+        source,
+    )
+
+
+@native
+def ffiFmpzMatrixSnfTransform(
+    smith: FmpzMatrix,
+    left_transform: FmpzMatrix,
+    right_transform: FmpzMatrix,
+    source: FmpzMatrix,
+) -> bool:
+    return _ffi_fmpz_matrix_snf_transform(
+        smith,
+        left_transform,
+        right_transform,
+        source,
+    )
+
+
+@native
+def ffiFmpzMatrixRightKernel(
+    source: FmpzMatrix,
+) -> FmpzMatrix:
+    return _ffi_fmpz_matrix_right_kernel(
+        source,
+    )
+
+
+@native
+def ffiFmpzMatrixCharpoly(
+    source: FmpzMatrix,
+) -> FmpzPolynomial:
+    return _ffi_fmpz_matrix_charpoly(
+        source,
+    )
+
+
+@native
+def ffiFmpzMatrixMinpoly(
+    source: FmpzMatrix,
+) -> FmpzPolynomial:
+    return _ffi_fmpz_matrix_minpoly(
+        source,
+    )
+
+
+@native
+def ffiFmpqMatrixFromFmpz(
+    source: FmpzMatrix,
+) -> FmpqMatrix:
+    return _ffi_fmpq_matrix_from_fmpz(
+        source,
+    )
+
+
+@native
+def ffiFmpzMatrixFromFmpqIntegral(
+    source: FmpqMatrix,
+) -> FmpzMatrix:
+    return _ffi_fmpz_matrix_from_fmpq_integral(
+        source,
+    )
+
+
+@native
+def ffiFmpzMatrixSubmatrix(
+    source: FmpzMatrix,
+    row_start: uint64,
+    row_stop: uint64,
+    column_start: uint64,
+    column_stop: uint64,
+) -> FmpzMatrix:
+    return _ffi_fmpz_matrix_submatrix(
+        source,
+        row_start,
+        row_stop,
+        column_start,
+        column_stop,
+    )
+
+
+@native
+def ffiFmpzMatrixSetBlock(
+    target: FmpzMatrix,
+    target_row: uint64,
+    target_column: uint64,
+    source: FmpzMatrix,
+) -> bool:
+    return _ffi_fmpz_matrix_set_block(
+        target,
+        target_row,
+        target_column,
+        source,
+    )
+
+
+@native
+def ffiFmpzMatrixStack(
+    top: FmpzMatrix,
+    bottom: FmpzMatrix,
+) -> FmpzMatrix:
+    return _ffi_fmpz_matrix_stack(
+        top,
+        bottom,
+    )
+
+
+@native
+def ffiFmpzMatrixAugment(
+    left: FmpzMatrix,
+    right: FmpzMatrix,
+) -> FmpzMatrix:
+    return _ffi_fmpz_matrix_augment(
+        left,
+        right,
+    )
+
+
+@native
+def ffiFmpzMatrixNonzeroCount(
+    source: FmpzMatrix,
+) -> uint64:
+    return _ffi_fmpz_matrix_nonzero_count(
         source,
     )
 
