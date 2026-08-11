@@ -33,6 +33,16 @@ const cases = [
   { name: "multiply_QQ_128", expression: "fq * gq", budget: 20 },
   { name: "multiply_GF_512", expression: "fp * gp", budget: 12 },
   {
+    name: "sagepack_dump_GF_20000",
+    expression: "_serialization_dumps(_gf_serialization_value)",
+    budget: 100,
+  },
+  {
+    name: "sagepack_load_GF_20000",
+    expression: "_serialization_loads(_gf_serialization_data)",
+    budget: 100,
+  },
+  {
     name: "divexact_ZZ_80",
     expression: "exact_z // (xz - 1)**20",
     budget: 20,
@@ -109,6 +119,7 @@ async function run(environment = process.env) {
       ]);
       const setup = await session.evaluate([
         "import sagejs.runtime as _polynomial_budget_runtime",
+        "from sagejs_serialization import dumps as _serialization_dumps, loads as _serialization_loads",
         "Rz = PolynomialRing(ZZ, 'xz'); xz = Rz.gen()",
         "Rq = PolynomialRing(QQ, 'xq'); xq = Rq.gen()",
         "Rf = PolynomialRing(GF(65521), 'xf'); xf = Rf.gen()",
@@ -118,6 +129,8 @@ async function run(environment = process.env) {
         "fz = Rz(_zz_values[:256]); gz = Rz(_zz_values[31:287])",
         "fq = Rq(_qq_values[:128]); gq = Rq(_qq_values[17:145])",
         "fp = Rf(_gf_values[:512]); gp = Rf(_gf_values[29:541])",
+        "_gf_serialization_value = Rf([(index*37 + 11) % 65521 for index in range(20000)])",
+        "_gf_serialization_data = _serialization_dumps(_gf_serialization_value)",
         "exact_z = (xz - 1)**20 * (xz + 2)**60",
         "exact_q = (QQ(3)/10) * (xq - 1)**40 * (xq + 2)**20",
         "exact_f = (xf - 1)**40 * (xf + 2)**20",

@@ -168,6 +168,130 @@ test("exact polynomial compact bytes reject noncanonical values", () => {
   }
 });
 
+test("small-prime polynomial codec uses canonical packed residues", () => {
+  const base = { _kind: "GF", _order: 257n };
+  const parent = {
+    _construction: {
+      kind: "polynomial",
+      base,
+      variable: "z",
+      sparse: false,
+    },
+    base_ring() {
+      return base;
+    },
+    _from_coefficients(coefficients) {
+      return coefficients;
+    },
+  };
+  const value = {
+    _parent: parent,
+    _storage: new BigUint64Array([0n, 1n, 256n, 0n, 0n]),
+    coefficients() {
+      throw new Error("packed polynomial serialization materialized coefficients");
+    },
+  };
+  let transferred;
+  const payload = serialization.sageArithmeticElementCodec.encode(value, {
+    encode: (item) => item,
+    buffer: () => {
+      throw new Error("nested packet encoding is not used by this codec test");
+    },
+    transferable: (bytes) => {
+      transferred = bytes;
+      return bytes;
+    },
+  });
+  assert.equal(payload.coefficientEncoding, "prime-field-poly-le-v1");
+  assert.equal(payload.coefficientWidth, 2);
+  assert.equal(payload.coefficientCount, 3);
+  assert.equal(payload.coefficients, transferred);
+  assert.deepEqual([...payload.coefficients], [0, 0, 1, 0, 0, 1]);
+  assert.equal(
+    crypto.createHash("sha256").update(serialization.pack(value)).digest("hex"),
+    "103d69f7a17511743796ddae7bd0f37080efc09c9c7ecb3d1a6637d06a289d38",
+    "packed prime-field polynomials are byte-for-byte deterministic",
+  );
+
+  const decode = (changes = {}) => serialization.sageArithmeticElementCodec.decode(
+    null,
+    {
+      decode: () => ({ ...payload, parent, ...changes }),
+    },
+  );
+  assert.deepEqual(decode(), [0, 1, 256]);
+  assert.deepEqual(
+    decode({ coefficients: new Uint8Array(), coefficientCount: 0 }),
+    [],
+  );
+  assert.deepEqual(
+    serialization.sageArithmeticElementCodec.decode(null, {
+      decode: () => ({ kind: "polynomial", parent, coefficients: [7, 11] }),
+    }),
+    [7, 11],
+    "already-produced generic coefficient payloads remain readable",
+  );
+  assert.throws(
+    () => decode({ coefficientWidth: 4 }),
+    /residue width is noncanonical/,
+  );
+  assert.throws(
+    () => decode({ coefficientCount: -1 }),
+    /length is invalid/,
+  );
+  assert.throws(
+    () => decode({ coefficientCount: "3" }),
+    /length is invalid/,
+  );
+  assert.throws(
+    () => decode({ coefficientWidth: "2" }),
+    /residue width is invalid/,
+  );
+  assert.throws(
+    () => decode({ coefficientCount: 2 }),
+    /coefficient buffer is invalid/,
+  );
+  assert.throws(
+    () => decode({ coefficients: new Uint8Array([1, 1]), coefficientCount: 1 }),
+    /residue is outside its field/,
+  );
+  assert.throws(
+    () => decode({ coefficients: new Uint8Array([0, 0]), coefficientCount: 1 }),
+    /trailing zero coefficient/,
+  );
+});
+
+test("large small-prime polynomials have compact linear SagePack payloads", async (t) => {
+  const session = await createSage({ mode: "sage" });
+  t.after(() => session.close());
+  const result = await session.evaluate([
+    "from sagejs_serialization import dumps, loads",
+    "from time import time",
+    "R.<sagepack_variable> = GF(65521)[]",
+    "f = R([(index*37 + 11) % 65521 for index in range(20000)])",
+    "started = time()",
+    "data = dumps(f)",
+    "dump_ms = (time() - started) * 1000",
+    "started = time()",
+    "answer = loads(data)",
+    "load_ms = (time() - started) * 1000",
+    "print(len(data) < 60000, dump_ms < 500, load_ms < 500)",
+    "print(answer == f, answer.parent() is R, R.variable_name())",
+    "print(dumps(R(0)) == dumps(loads(dumps(R(0)))))",
+    "print(dumps(R([1, 2, 0, 0])) == dumps(R([1, 2])))",
+    "print(len(data), dump_ms, load_ms)",
+  ].join("\n"));
+  const lines = result.stdout.trim().split("\n");
+  assert.equal(lines[0], "True True True");
+  assert.equal(lines[1], "True True sagepack_variable");
+  assert.equal(lines[2], "True");
+  assert.equal(lines[3], "True");
+  const [length, dumpMs, loadMs] = lines[4].split(" ").map(Number);
+  assert.ok(length < 60000, `compact GF(p)[x] payload used ${length} bytes`);
+  assert.ok(dumpMs < 500, `compact GF(p)[x] dump took ${dumpMs} ms`);
+  assert.ok(loadMs < 500, `compact GF(p)[x] load took ${loadMs} ms`);
+});
+
 test("worker packets move codec-owned buffers but copy caller-owned bytes", () => {
   class OwnedPayload {
     constructor(bytes) {

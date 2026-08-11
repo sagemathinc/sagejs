@@ -930,22 +930,81 @@ function compactResidues(entries: unknown[], modulus: unknown): {
   width: number;
   bytes: Uint8Array;
 } | undefined {
+  return compactResidueValues(
+    entries.length,
+    (index) => Reflect.get(Object(entries[index]), "_value"),
+    modulus,
+  );
+}
+
+function compactResidueWidth(modulus: unknown): number | undefined {
   const modulusNumber = Number(modulus);
-  if (!Number.isSafeInteger(modulusNumber) || modulusNumber < 2 || modulusNumber > 0xffff_ffff) {
-    return undefined;
+  if (
+    !Number.isSafeInteger(modulusNumber) || modulusNumber < 2 ||
+    modulusNumber > 0xffff_ffff
+  ) return undefined;
+  return modulusNumber <= 0x100 ? 1 : modulusNumber <= 0x1_0000 ? 2 : 4;
+}
+
+function canonicalResidue(value: unknown, modulus: number): number | undefined {
+  if (typeof value === "bigint") {
+    if (value < 0n || value >= BigInt(modulus)) return undefined;
+    return Number(value);
   }
-  const width = modulusNumber <= 0x100 ? 1 : modulusNumber <= 0x1_0000 ? 2 : 4;
-  const bytes = new Uint8Array(entries.length * width);
+  const result = Number(value);
+  return Number.isInteger(result) && result >= 0 && result < modulus
+    ? result
+    : undefined;
+}
+
+function compactResidueValues(
+  count: number,
+  valueAt: (index: number) => unknown,
+  modulus: unknown,
+): { width: number; bytes: Uint8Array } | undefined {
+  const modulusNumber = Number(modulus);
+  const width = compactResidueWidth(modulus);
+  if (width === undefined) return undefined;
+  const bytes = new Uint8Array(count * width);
   const view = new DataView(bytes.buffer);
-  for (let index = 0; index < entries.length; index += 1) {
-    const raw = Reflect.get(Object(entries[index]), "_value");
-    const value = Number(raw);
-    if (!Number.isInteger(value) || value < 0 || value >= modulusNumber) return undefined;
+  for (let index = 0; index < count; index += 1) {
+    const value = canonicalResidue(valueAt(index), modulusNumber);
+    if (value === undefined) return undefined;
     if (width === 1) view.setUint8(index, value);
     else if (width === 2) view.setUint16(index * 2, value, true);
     else view.setUint32(index * 4, value, true);
   }
   return { width, bytes };
+}
+
+function compactPrimePolynomialNative(value: unknown, base: unknown): {
+  width: number;
+  bytes: Uint8Array;
+  count: number;
+} | undefined {
+  const storage = Reflect.get(Object(value), "_storage");
+  if (Object.prototype.toString.call(storage) !== "[object BigUint64Array]") {
+    return undefined;
+  }
+  const modulus = Reflect.get(Object(base), "_order");
+  const modulusNumber = Number(modulus);
+  if (compactResidueWidth(modulus) === undefined) return undefined;
+  let count = Number(Reflect.get(Object(storage), "length"));
+  while (count > 0) {
+    const finalValue = canonicalResidue(
+      Reflect.get(Object(storage), String(count - 1)),
+      modulusNumber,
+    );
+    if (finalValue === undefined) return undefined;
+    if (finalValue !== 0) break;
+    count -= 1;
+  }
+  const compact = compactResidueValues(
+    count,
+    (index) => Reflect.get(Object(storage), String(index)),
+    modulus,
+  );
+  return compact === undefined ? undefined : { ...compact, count };
 }
 
 function compactMatrixNative(value: unknown, base: unknown): {
@@ -1071,6 +1130,20 @@ function encodeElement(value: unknown, context: EncodeContext): WireValue {
   if (kind === "polynomial") {
     const base = callMethod(parent, "base_ring");
     const baseKind = parentKind(base);
+    const compactPrime = baseKind === "GF"
+      ? compactPrimePolynomialNative(value, base)
+      : undefined;
+    if (compactPrime !== undefined) {
+      context.transferable(compactPrime.bytes);
+      return context.encode({
+        kind,
+        parent,
+        coefficients: compactPrime.bytes,
+        coefficientEncoding: "prime-field-poly-le-v1",
+        coefficientWidth: compactPrime.width,
+        coefficientCount: compactPrime.count,
+      });
+    }
     const packedMethod = Reflect.get(Object(value), "_packed_exact_polynomial");
     const packed = ["ZZ", "QQ"].includes(baseKind ?? "") &&
         typeof packedMethod === "function"
@@ -1341,6 +1414,50 @@ function unpackResidues(bytes: Uint8Array, width: number, count: number): number
   return entries;
 }
 
+function unpackPrimePolynomialResidues(
+  parent: unknown,
+  bytes: Uint8Array,
+  widthValue: unknown,
+  countValue: unknown,
+): number[] {
+  if (typeof countValue !== "number" || !Number.isSafeInteger(countValue) ||
+      countValue < 0) {
+    throw new SageSerializationError("compact polynomial length is invalid");
+  }
+  if (typeof widthValue !== "number" || !Number.isInteger(widthValue)) {
+    throw new SageSerializationError("compact polynomial residue width is invalid");
+  }
+  const width = widthValue;
+  const count = countValue;
+  const base = callMethod(parent, "base_ring");
+  if (parentKind(base) !== "GF") {
+    throw new SageSerializationError(
+      "compact polynomial residues require a prime-field parent",
+    );
+  }
+  const modulus = Number(Reflect.get(Object(base), "_order"));
+  const expectedWidth = compactResidueWidth(modulus);
+  if (expectedWidth === undefined || width !== expectedWidth) {
+    throw new SageSerializationError("compact polynomial residue width is noncanonical");
+  }
+  if (
+    count > Math.floor(bytes.byteLength / width) ||
+    bytes.byteLength !== count * width
+  ) {
+    throw new SageSerializationError("compact polynomial coefficient buffer is invalid");
+  }
+  const values = unpackResidues(bytes, width, count);
+  for (const value of values) {
+    if (value >= modulus) {
+      throw new SageSerializationError("compact polynomial residue is outside its field");
+    }
+  }
+  if (count > 0 && values[count - 1] === 0) {
+    throw new SageSerializationError("compact polynomial has a trailing zero coefficient");
+  }
+  return values;
+}
+
 function unpackIntegers(bytes: Uint8Array, count: number): bigint[] {
   const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
   const entries = new Array<bigint>(count);
@@ -1414,6 +1531,20 @@ function decodeElement(payload: WireValue, context: DecodeContext): unknown {
   }
   if (data.kind === "residue") return callPython(data.parent, [data.value]);
   if (data.kind === "polynomial") {
+    if (
+      data.coefficients instanceof Uint8Array &&
+      data.coefficientEncoding === "prime-field-poly-le-v1"
+    ) {
+      return polynomialFromCoefficients(
+        data.parent,
+        unpackPrimePolynomialResidues(
+          data.parent,
+          data.coefficients,
+          data.coefficientWidth,
+          data.coefficientCount,
+        ),
+      );
+    }
     if (data.coefficients instanceof Uint8Array) {
       const direct = polynomialFromExactResource(
         data.parent,
