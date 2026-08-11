@@ -230,9 +230,12 @@ def _flint_byte_region_bytes(region: Any) -> Any:
         output = _integer_kernel_output(kernel, length, 1)
         if not kernel(region, output, length):
             raise RuntimeError("FLINT byte-region copy failed")
-        if runtime.number(runtime.reflect.get(output, "wordCapacity")) != 1:
-            raise RuntimeError("FLINT byte-region copy used an invalid word capacity")
+        word_capacity = runtime.reflect.get(output, "wordCapacity")
         limbs = runtime.reflect.get(output, "limbs")
+        if word_capacity is runtime.undefined:
+            return runtime.uint64_pack_le(runtime.uint64_buffer(output), 1)
+        if runtime.number(word_capacity) != 1 or limbs is runtime.undefined:
+            raise RuntimeError("FLINT byte-region copy used an invalid word capacity")
         return runtime.uint64_pack_le(limbs, 1)
     finally:
         region.close()
@@ -1069,6 +1072,16 @@ class PolynomialElement(sage.Element):
         base = self._parent.base_ring()
         kind = _packed_polynomial_kind(base)
         if kind == "ZZ":
+            if (
+                self._has_fmpz_polynomial_resource()
+                and other._has_fmpz_polynomial_resource()
+            ):
+                return bool(
+                    _flint_ffi_module().fmpz_polynomial_equal(
+                        self._exact_polynomial_resource(),
+                        other._exact_polynomial_resource(),
+                    )
+                )
             self._materialize_exact_compatibility_storage()
             other._materialize_exact_compatibility_storage()
             kernel = _packed_integer_polynomial_module().packed_integer_polynomial_equal
@@ -1077,6 +1090,16 @@ class PolynomialElement(sage.Element):
                 _integer_kernel_input(kernel, other._storage.coefficients),
             )
         if kind == "QQ":
+            if (
+                self._has_fmpq_polynomial_resource()
+                and other._has_fmpq_polynomial_resource()
+            ):
+                return bool(
+                    _flint_ffi_module().fmpq_polynomial_equal(
+                        self._exact_polynomial_resource(),
+                        other._exact_polynomial_resource(),
+                    )
+                )
             self._materialize_exact_compatibility_storage()
             other._materialize_exact_compatibility_storage()
             kernel = (

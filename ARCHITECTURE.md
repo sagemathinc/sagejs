@@ -219,15 +219,21 @@ Explicitly scoped temporary resources close deterministically; long-lived
 matrix resources have idempotent close plus a tracing-GC finalizer fallback.
 Native allocation accounting remains required before this representation is
 considered production-mature under sustained memory pressure.
-Univariate polynomials over `ZZ`, `QQ`, and small prime fields likewise own
-normalized packed coefficient storage. Construction and structural arithmetic
-are host-independent typed Python; mature FLINT multiplication, exact division,
-finite-field gcd and roots, irreducibility, and factorization cross only
-generated declared FFI using caller-owned buffers. Pointer-bearing FLINT
-polynomial and factor objects are differential oracles, never production
-`PolynomialElement` state. Exact algebraic roots and the not-yet-migrated
-power-series family retain narrow audited bridges until their result/resource
-representations become packed.
+On Node, univariate polynomials over `ZZ` and `QQ` canonically own sealed,
+generated `FmpzPolynomial` and `FmpqPolynomial` resources. The checked wrapper
+owns the FLINT object without exposing its pointer; construction, coefficient
+access, equality, arithmetic, powers, evaluation, formatting, and stable bulk
+serialization stay resource-to-resource or resource-to-scalar. The portable
+host keeps normalized packed coefficients as its canonical fallback, and those
+packed forms are also the explicit interchange representation. Exact division
+and factorization still use narrow audited packed materializations; every exact
+result is re-ingested into a sealed resource before it becomes public Node
+state. Polynomials over small prime fields continue to own compiler-managed
+packed `UInt64Buffer` coefficients and reach mature FLINT algorithms only
+through generated declared FFI. Legacy polynomial and factor handles are
+differential oracles, never production `PolynomialElement` state. Exact
+algebraic roots and the not-yet-migrated power-series family retain narrow
+audited bridges until their result and ownership models are migrated.
 
 Every successful native compilation emits a host-independent `kernel_core.c`
 and `kernel_core.h` as its canonical mathematical artifact.  The core owns the

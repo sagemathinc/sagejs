@@ -58,7 +58,7 @@
       "id": "arithmetic",
       "layer": 1,
       "startup": "bootstrap",
-      "max_source_bytes": 535000,
+      "max_source_bytes": 550000,
       "depends_on": ["core-runtime"],
       "files": [
         "src/baselib/algebra.py",
