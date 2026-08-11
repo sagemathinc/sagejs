@@ -274,6 +274,14 @@ function fmpqPolynomial(coefficients) {
     () => flint.ffiFmpzPolynomialLength(unsealed),
     /unsealed/,
   );
+  assert.throws(
+    () => flint.ffiFmpzPolynomialCoefficient(unsealed, 0n),
+    /out of bounds/,
+  );
+  assert.throws(
+    () => flint.ffiFmpzPolynomialSerialize(unsealed),
+    /unsealed/,
+  );
   assert.equal(flint.ffiFmpzPolynomialSeal(unsealed), true);
   assert.throws(
     () => flint.ffiFmpzPolynomialSetCoefficient(unsealed, 0n, 1n),
