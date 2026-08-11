@@ -53,6 +53,16 @@ const cases = [
     budget: 20,
   },
   {
+    name: "divexact_ZZ_5000_1000",
+    expression: "_large_z_dividend // _large_z_divisor",
+    budget: 15,
+  },
+  {
+    name: "divexact_QQ_5000_1000",
+    expression: "_large_q_dividend // _large_q_divisor",
+    budget: 30,
+  },
+  {
     name: "factor_QQ_60",
     expression: "exact_q.factor()",
     budget: 50,
@@ -140,6 +150,12 @@ async function run(environment = process.env) {
         "exact_z = (xz - 1)**20 * (xz + 2)**60",
         "exact_q = (QQ(3)/10) * (xq - 1)**40 * (xq + 2)**20",
         "exact_f = (xf - 1)**40 * (xf + 2)**20",
+        "_large_z_divisor = xz**1000 + 1",
+        "_large_z_quotient = Rz([index % 17 - 8 for index in range(4001)])",
+        "_large_z_dividend = _large_z_divisor * _large_z_quotient",
+        "_large_q_divisor = xq**1000 + QQ(2)/3",
+        "_large_q_quotient = Rq([QQ(index % 17 - 8)/(index % 7 + 1) for index in range(4001)])",
+        "_large_q_dividend = _large_q_divisor * _large_q_quotient",
         ...definitions,
       ].join("\n"));
       if (setup.stderr !== undefined) throw new Error(setup.stderr);
