@@ -167,6 +167,8 @@ export const SAGEJS_RUNTIME_INTRINSICS: Record<string, string> = {
   uint64_buffer: "ρσ_uint64_buffer",
   uint64_buffer_prefix: "ρσ_uint64_buffer_prefix",
   uint64_matrix_format: "ρσ_uint64_matrix_format",
+  uint64_polynomial_format: "ρσ_uint64_polynomial_format",
+  uint64_residue_elements: "ρσ_uint64_residue_elements",
   uint64_pack_le: "ρσ_uint64_pack_le",
   uint64_unpack_le: "ρσ_uint64_unpack_le",
   integer_buffer_prefix: "ρσ_integer_buffer_prefix",
