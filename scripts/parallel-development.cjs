@@ -4,10 +4,15 @@
 const {
   existsSync,
   mkdirSync,
-  readFileSync,
   writeFileSync,
 } = require("node:fs");
-const { basename, dirname, join, relative, resolve } = require("node:path");
+const {
+  basename,
+  dirname,
+  join,
+  relative,
+  resolve,
+} = require("node:path");
 const { spawnSync } = require("node:child_process");
 const {
   changedFiles,
@@ -23,6 +28,12 @@ const {
   validationCommandsForFiles,
   workspaceFingerprint,
 } = require("./parallel-lib.cjs");
+const {
+  defaultNativeCacheRoot,
+  nativeCachePackages,
+  prepareNativePackages,
+  restoreNativePackages,
+} = require("./native-worktree-cache.cjs");
 
 function usage(exitCode = 0) {
   process.stdout.write(`Usage:
@@ -30,6 +41,7 @@ function usage(exitCode = 0) {
   pnpm parallel:check -- [--task ID | --all] [--json]
   pnpm parallel:status -- [--json]
   pnpm parallel:run -- ID -- COMMAND [ARG ...]
+  pnpm parallel:cache -- [prepare|restore] [--package flint|graph]
   pnpm test:changed -- [--base REF] [--list]
 
 Run a subcommand with --help for details. Lane names:
@@ -225,6 +237,12 @@ Options:
   );
   run("git", ["submodule", "update", "--init", "--recursive"], worktree);
   if (!noInstall) run("pnpm", ["install", "--frozen-lockfile"], worktree);
+  if (!noInstall) {
+    const restored = restoreNativePackages(worktree, [...nativeCachePackages]);
+    for (const result of restored) {
+      process.stdout.write(`Native cache ${result.id}: ${result.status}\n`);
+    }
+  }
   process.stdout.write(`\nParallel project ready:
   task:      ${id}
   lane:      ${laneId}
@@ -238,6 +256,11 @@ Next:
 `);
 }
 
+function taskForBranch(entries, branch) {
+  const matches = entries.filter(({ task }) => branch === `agent/${task.id}`);
+  return matches.length === 1 ? matches[0] : undefined;
+}
+
 function currentTask(taskId) {
   const entries = readTasks(join(root, ".agents", "tasks"));
   if (taskId) {
@@ -248,6 +271,15 @@ function currentTask(taskId) {
   const live = entries.filter(({ task }) =>
     ["active", "review", "blocked"].includes(task.status),
   );
+  if (live.length > 1) {
+    try {
+      const branch = git(["branch", "--show-current"]);
+      const branchTask = taskForBranch(live, branch);
+      if (branchTask !== undefined) return branchTask;
+    } catch {
+      // Detached worktrees still require an explicit --task when ambiguous.
+    }
+  }
   if (live.length !== 1) {
     throw new Error(
       `expected exactly one live task in this worktree; found ${live.length}`,
@@ -457,20 +489,57 @@ function changedChecks(rawArgs) {
   for (const command of commands) run(command[0], command.slice(1), root);
 }
 
-const invocation = process.argv.slice(2);
-if (invocation[0] === "--") invocation.shift();
-const subcommand = invocation.shift();
-if (invocation[0] === "--") invocation.shift();
-const args = invocation;
+function nativeCacheCommand(rawArgs) {
+  const args = [...rawArgs];
+  if (flag(args, "--help")) {
+    process.stdout.write(`Usage: pnpm parallel:cache -- [prepare|restore] [options]
 
-try {
-  if (subcommand === "new") createProject(args);
-  else if (subcommand === "check") checkProjects(args);
-  else if (subcommand === "status") projectStatus(args);
-  else if (subcommand === "run") recordRun(args);
-  else if (subcommand === "changed") changedChecks(args);
-  else usage(subcommand ? 2 : 0);
-} catch (error) {
-  process.stderr.write(`${error.stack || error.message}\n`);
-  process.exitCode = 1;
+Options:
+  --package ID          flint or graph; repeatable (defaults to both)
+  --cache-root PATH     override the shared content-addressed cache
+
+prepare restores a valid artifact or builds and atomically publishes a cache
+miss. restore never builds and is used automatically by parallel:new.
+`);
+    return;
+  }
+  const action = args.shift() || "prepare";
+  const requested = values(args, "--package");
+  const packageIds = requested.length > 0 ? requested : [...nativeCachePackages];
+  const cacheRoot = resolve(value(args, "--cache-root", defaultNativeCacheRoot(root)));
+  if (args.length) throw new Error(`unknown arguments: ${args.join(" ")}`);
+  const results = action === "prepare"
+    ? prepareNativePackages(root, packageIds, { cacheRoot })
+    : action === "restore"
+      ? restoreNativePackages(root, packageIds, { cacheRoot })
+      : null;
+  if (results === null) throw new Error(`unknown native cache action: ${action}`);
+  for (const result of results) {
+    process.stdout.write(`Native cache ${result.id}: ${result.status}\n`);
+  }
 }
+
+if (require.main === module) {
+  const invocation = process.argv.slice(2);
+  if (invocation[0] === "--") invocation.shift();
+  const subcommand = invocation.shift();
+  if (invocation[0] === "--") invocation.shift();
+  const args = invocation;
+
+  try {
+    if (subcommand === "new") createProject(args);
+    else if (subcommand === "check") checkProjects(args);
+    else if (subcommand === "status") projectStatus(args);
+    else if (subcommand === "run") recordRun(args);
+    else if (subcommand === "changed") changedChecks(args);
+    else if (subcommand === "cache") nativeCacheCommand(args);
+    else usage(subcommand ? 2 : 0);
+  } catch (error) {
+    process.stderr.write(`${error.stack || error.message}\n`);
+    process.exitCode = 1;
+  }
+}
+
+module.exports = {
+  taskForBranch,
+};

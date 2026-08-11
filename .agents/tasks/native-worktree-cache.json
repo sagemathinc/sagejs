@@ -1,0 +1,84 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "native-worktree-cache",
+  "title": "Shared native worktree cache",
+  "lane": "integration",
+  "status": "review",
+  "owner": "user",
+  "objective": "Make fresh parallel worktrees reuse content-addressed immutable native dependency and addon builds safely, so required validation does not rebuild GMP, FLINT, OpenBLAS, and graph or fail because an addon is absent.",
+  "base_commit": "5cf61ded2cddb25ea099f1939a90b6b66c40c325",
+  "claims": [
+    "scripts/parallel-development.cjs",
+    "scripts/native-worktree-cache.cjs",
+    "scripts/parallel-lib.cjs",
+    "test/parallel-development.cjs",
+    "package.json"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "compiler-infrastructure",
+    "fallback": "not-applicable",
+    "oracles": [
+      "fresh-worktree integration test",
+      "existing parallel-development tests"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm architecture:check",
+    "pnpm test:portable",
+    "pnpm test:baselib:strict"
+  ],
+  "runs": [
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 12.021,
+      "started_at": "2026-08-11T15:58:21.880Z",
+      "commit": "5cf61ded2cddb25ea099f1939a90b6b66c40c325",
+      "workspace_fingerprint": "a15ba217456bfe96110ed17715adb3e46ac046484aec71d4e8ba191a58e17c23",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 30.094,
+      "started_at": "2026-08-11T15:58:37.796Z",
+      "commit": "5cf61ded2cddb25ea099f1939a90b6b66c40c325",
+      "workspace_fingerprint": "a15ba217456bfe96110ed17715adb3e46ac046484aec71d4e8ba191a58e17c23",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 12.001,
+      "started_at": "2026-08-11T15:59:14.220Z",
+      "commit": "5cf61ded2cddb25ea099f1939a90b6b66c40c325",
+      "workspace_fingerprint": "a15ba217456bfe96110ed17715adb3e46ac046484aec71d4e8ba191a58e17c23",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Added a verified content-addressed cache for FLINT and graph dependency prefixes and ABI-specific addons, shared through the Git common directory and restored automatically by parallel:new. Native validation now provisions through the cache and builds the root distribution before testing; changed-file checks use the same path. Cache publication, corruption handling, stale-lock recovery, local-copy isolation, key invalidation, and real process concurrency have focused coverage. A real Linux x64 cold build took 6m45s, while a complete warm restore took 1.5s; the retained cache is 212 MiB.",
+    "risks": [
+      "Windows x64, Linux arm64, and macOS arm64 behavior is designed into keying, path handling, pnpm invocation, and atomic replacement, but the corresponding CI runners remain the final platform oracle.",
+      "The cache has no pruning policy yet, so distinct valid toolchain and source identities accumulate until removed manually.",
+      "Filesystems without copy-on-write clone support receive independent physical copies, trading extra disk space for the same isolation and correctness."
+    ],
+    "next_steps": [
+      "Merge the integration lane and let each required platform seed its own native cache on the first cold validation.",
+      "Add cache status and pruning commands if normal development produces enough historical identities to make growth material."
+    ]
+  }
+}
