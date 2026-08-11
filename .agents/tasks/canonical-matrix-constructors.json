@@ -4,7 +4,7 @@
   "id": "canonical-matrix-constructors",
   "title": "Canonical Matrix Constructors",
   "lane": "arithmetic-algebra",
-  "status": "review",
+  "status": "complete",
   "owner": "user",
   "objective": "Eliminate per-entry and full-square host construction for dense matrix random, identity, and diagonal constructors over ZZ, QQ, and canonical small GF(p), preserving Sage semantics and fallbacks",
   "base_commit": "db010e7aa64292a713b1106b79bace62e2caf322",
@@ -115,16 +115,11 @@
     }
   ],
   "handoff": {
-    "summary": "Full-density MatrixSpace random elements, identity matrices, and diagonal matrices over ZZ, QQ, and canonical small GF(p) now construct canonical storage through compiled bulk kernels or generated FLINT resources. Full-density random construction preserves the former per-entry RNG stream exactly, including density draws and rejection sampling. Five-sample warm medians for 500x500 random elements were 8.20 ms (ZZ), 9.75 ms (QQ), and 1.01 ms (GF(97)); 1000x1000 identities were 3.32 ms, 9.00 ms, and 0.71 ms; length-1000 diagonals were 3.66 ms, 5.52 ms, and 1.03 ms. Focused native-enabled/native-disabled semantics and isolation tests, strict Python checking, the 380.72-second full native suite, and the direct native architecture ratchet pass. The deterministic changed-file unit tier otherwise passed 117 of 119 checks and stopped only on the two integration-owned shared-file updates listed below.",
+    "summary": "Full-density MatrixSpace random elements, identity matrices, and diagonal matrices over ZZ, QQ, and canonical small GF(p) now construct canonical storage through compiled bulk kernels or generated FLINT resources. Full-density random construction preserves the former per-entry RNG stream exactly, including density draws and rejection sampling. Five-sample warm medians for 500x500 random elements were 8.20 ms (ZZ), 9.75 ms (QQ), and 1.01 ms (GF(97)); 1000x1000 identities were 3.32 ms, 9.00 ms, and 0.71 ms; length-1000 diagonals were 3.66 ms, 5.52 ms, and 1.03 ms. Focused native-enabled/native-disabled semantics and isolation tests, strict Python checking, the 380.72-second full native suite, and the direct native architecture ratchet pass. Root integration registered the regression and raised the combined measured linear-algebra source budget to 352000 bytes.",
     "risks": [
-      "The integration lane must raise architecture/package-graph.json's linear-algebra source budget from 342000 bytes to cover the measured 349418 bytes; until then pnpm architecture:check and test/package-graph.cjs fail.",
-      "The integration lane must register test/canonical-matrix-constructors-v1.cjs in test/node-test-manifest.cjs; until then test/test-manifest.test.cjs fails.",
       "The native-disabled ZZ/QQ diagonal fallback intentionally uses O(n) declared scalar writes for correctness; production uses the isolated compiled resource kernels.",
       "The full-density ZZ/QQ random specialization covers integral intervals spanning at most one 32-bit word; wider and nonintegral cases deliberately retain the general fallback."
     ],
-    "next_steps": [
-      "Apply the shared package-budget and Node test-manifest updates in the integration lane after cherry-picking this commit.",
-      "Run pnpm architecture:check and pnpm test:changed after those two integration updates; pnpm run architecture:native already passes with the current 718-entry boundary ratchet, so architecture/native-boundaries.json needs no regeneration."
-    ]
+    "next_steps": []
   }
 }
