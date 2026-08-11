@@ -45,7 +45,8 @@
     "summary": "Python container truth testing is now the safe compiler default, including reentrant operand-preserving boolean expressions, while an explicit JavaScript escape hatch remains available. Self-hosted baselib generation uses Python truth outside the bootstrap primitive, numeric protocols no longer depend on operand truth, ordering is an independent representation policy, and keyword interpolation resolves builtins through the lexical module registry. CPython-differential regressions cover containers, custom truth protocols, control-flow consumers, short-circuit behavior, comprehensions, and falsey numeric protocols.",
     "risks": [
       "Other pre-existing baselib reads from globalThis may be latent module-isolation defects; this lane corrected only the four truthiness-exposed ρσ_getattr reads.",
-      "Generated compiler, baselib, and native-kernel artifacts are ignored and must be rebuilt after integration."
+      "Generated compiler, baselib, and native-kernel artifacts are ignored and must be rebuilt after integration.",
+      "The full integration tier has one inherited failure on the clean base: generated API documentation is missing the recently added random rational matrix paragraph."
     ],
     "next_steps": [
       "Audit the remaining intentional-looking baselib globalThis reads against lexical module isolation in a separate lane.",

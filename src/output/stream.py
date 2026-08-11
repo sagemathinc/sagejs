@@ -130,6 +130,8 @@ class OutputStream:
         # or let its shared short-circuit temporary clobber the caller's
         # temporary.  Keep this exact function-level bootstrap exception
         # inspectable; every neighboring function still gets Python truth.
+        if self.options.baselib_module_id is not "sagejs._baselib.builtins":
+            return False
         for node in self._stack:
             name = node.name
             if name and name.name is "ρσ_bool":
