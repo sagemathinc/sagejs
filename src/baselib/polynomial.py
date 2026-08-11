@@ -1661,6 +1661,35 @@ class PolynomialRingParent(sage.Parent):
         _flint_ffi_module().fmpq_polynomial_length(resource)
         return PolynomialElement(self, _FmpqPolynomialResourceStorage(resource))
 
+    def _supports_exact_polynomial_resource_deserialization(
+        self,
+        encoding: Any,
+    ) -> bool:
+        """Report whether SagePack can restore this parent as one resource."""
+        if not _generated_flint_resources_available():
+            return False
+        return (self._base is sage.ZZ and encoding == "fmpz-poly-le-v1") or (
+            self._base is sage.QQ and encoding == "fmpq-poly-le-v1"
+        )
+
+    def _from_exact_polynomial_serialization(
+        self,
+        payload: Any,
+        byte_length: int,
+        encoding: Any,
+    ) -> PolynomialElement:
+        """Restore one canonical SagePack stream through generated FLINT FFI."""
+        if not self._supports_exact_polynomial_resource_deserialization(encoding):
+            raise ValueError("exact polynomial resource deserialization is unavailable")
+        ffi = _flint_ffi_module()
+        if self._base is sage.ZZ:
+            return self._from_fmpz_polynomial_resource(
+                ffi.fmpz_polynomial_deserialize(payload, byte_length)
+            )
+        return self._from_fmpq_polynomial_resource(
+            ffi.fmpq_polynomial_deserialize(payload, byte_length)
+        )
+
     def _from_coefficients(
         self,
         coefficients: list[Any],
