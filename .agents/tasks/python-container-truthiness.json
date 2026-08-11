@@ -7,9 +7,8 @@
   "status": "review",
   "owner": "user",
   "objective": "Fix compiled Python condition lowering so empty and nonempty built-in containers obey Python truthiness in if, while, conditional expressions, boolean operators, not, and bool without JavaScript object-truthiness leaks; add CPython-differential regressions including the empty-list loop that exposed the bug.",
-  "base_commit": "c0bfe8c3bcf170f0f0519e4f43f0fcd38d770024",
+  "base_commit": "939cfc40b64d475c420636cd013128b4191a3429",
   "claims": [
-    ".agents/lanes.json",
     "src/output/",
     "src/baselib/builtins.py",
     "src/baselib/internal.py",
