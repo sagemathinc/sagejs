@@ -421,6 +421,7 @@ function nativeArtifactSpecs(workspace, overrides = {}) {
   const commonAddonInputs = [
     ...nativeCompilerInputPaths,
     "scripts/build-ffi-host-adapter.cjs",
+    "ffi/abi-types.json",
   ];
   const descriptions = {
     flint: {
@@ -439,7 +440,7 @@ function nativeArtifactSpecs(workspace, overrides = {}) {
         "packages/flint/scripts/native-prefix.cjs",
         "packages/flint/scripts/windows-clang-builtins.cjs",
         "ffi/flint.ffi.py",
-        "ffi/flint.json",
+        "ffi/flint.ffi.json",
         ...commonAddonInputs,
       ],
       addonOutputs: [
@@ -520,7 +521,7 @@ function nativeArtifactSpecs(workspace, overrides = {}) {
         "packages/graph/generated/ffi_host.py",
         "packages/graph/scripts/native-prefix.cjs",
         "ffi/igraph.ffi.py",
-        "ffi/igraph.json",
+        "ffi/igraph.ffi.json",
         ...commonAddonInputs,
       ],
       addonOutputs: [

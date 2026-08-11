@@ -759,6 +759,68 @@ test("native production keys separate dependency and addon invalidation", () => 
   }
 });
 
+test("native addon keys include shared ABI types and package FFI descriptors", () => {
+  const directory = mkdtempSync(join(tmpdir(), "sagejs-native-ffi-key-test-"));
+  const identity = {
+    native: { toolchain: "one" },
+    node: { abi: "one" },
+  };
+  const descriptorPackages = [
+    ["flint", "flint.ffi.json"],
+    ["fflas", "fflas.ffi.json"],
+    ["graph", "igraph.ffi.json"],
+  ];
+  const keysById = () => new Map(
+    nativeArtifactSpecs(directory, { identity }).map(({ id, key }) => [id, key]),
+  );
+  try {
+    mkdirSync(join(directory, "ffi"), { recursive: true });
+    writeFileSync(join(directory, "ffi", "abi-types.json"), "abi types v1\n");
+    for (const [, descriptor] of descriptorPackages) {
+      writeFileSync(join(directory, "ffi", descriptor), `${descriptor} v1\n`);
+    }
+
+    let baseline = keysById();
+    writeFileSync(join(directory, "ffi", "abi-types.json"), "abi types v2\n");
+    let changed = keysById();
+    for (const [packageId] of descriptorPackages) {
+      assert.equal(
+        changed.get(`${packageId}-dependencies`),
+        baseline.get(`${packageId}-dependencies`),
+      );
+      assert.notEqual(
+        changed.get(`${packageId}-addon`),
+        baseline.get(`${packageId}-addon`),
+      );
+    }
+
+    for (const [packageId, descriptor] of descriptorPackages) {
+      baseline = changed;
+      writeFileSync(join(directory, "ffi", descriptor), `${descriptor} v2\n`);
+      changed = keysById();
+      for (const [candidateId] of descriptorPackages) {
+        assert.equal(
+          changed.get(`${candidateId}-dependencies`),
+          baseline.get(`${candidateId}-dependencies`),
+        );
+        if (candidateId === packageId) {
+          assert.notEqual(
+            changed.get(`${candidateId}-addon`),
+            baseline.get(`${candidateId}-addon`),
+          );
+        } else {
+          assert.equal(
+            changed.get(`${candidateId}-addon`),
+            baseline.get(`${candidateId}-addon`),
+          );
+        }
+      }
+    }
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+
 test("native keys ignore invocation-only pnpm lifecycle variables", () => {
   const workspace = resolve(__dirname, "..");
   const savedExecPath = process.env.npm_execpath;
