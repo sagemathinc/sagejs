@@ -78,7 +78,9 @@ test("declared Dirichlet resource adapter closes its native handle", () => {
   assert.equal(flint.ffiDirichletGroupNumPrimitive(group), 3n);
   assert.equal(flint.ffiDirichletGroupClose(group), undefined);
   assert.throws(() => flint.ffiDirichletGroupSize(group));
-  assert.throws(() => flint.ffiDirichletGroupClose(group));
+  // Generated owned-resource close is idempotent. The raw host adapter keeps
+  // that invariant as well, so cleanup remains safe after partial failures.
+  assert.equal(flint.ffiDirichletGroupClose(group), undefined);
 });
 
 test("native Dirichlet analytic functions use exact qqbar and Arb", () => {
