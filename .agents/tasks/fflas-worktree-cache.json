@@ -171,6 +171,56 @@
       "commit": "b21b652c83afe6867ef17da61b691abf40ab6f9f",
       "workspace_fingerprint": "af9a744659ab5ae6df157f700967c603f63d2008fddc92ef49a5c8241cdde1ef",
       "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/parallel-development.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 4.717,
+      "started_at": "2026-08-11T22:45:57.682Z",
+      "commit": "2a853330207e80a2c01f771c4625ee75809a053d",
+      "workspace_fingerprint": "829b94bb878a4bdfaf337d2762a6649b1c2f75e83f5c2d705a79d5ca83be0da3",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm --dir packages/fflas test",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.732,
+      "started_at": "2026-08-11T22:46:07.066Z",
+      "commit": "2a853330207e80a2c01f771c4625ee75809a053d",
+      "workspace_fingerprint": "829b94bb878a4bdfaf337d2762a6649b1c2f75e83f5c2d705a79d5ca83be0da3",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 12.181,
+      "started_at": "2026-08-11T22:46:20.033Z",
+      "commit": "2a853330207e80a2c01f771c4625ee75809a053d",
+      "workspace_fingerprint": "829b94bb878a4bdfaf337d2762a6649b1c2f75e83f5c2d705a79d5ca83be0da3",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 14.287,
+      "started_at": "2026-08-11T22:46:35.523Z",
+      "commit": "2a853330207e80a2c01f771c4625ee75809a053d",
+      "workspace_fingerprint": "829b94bb878a4bdfaf337d2762a6649b1c2f75e83f5c2d705a79d5ca83be0da3",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 35.829,
+      "started_at": "2026-08-11T22:46:53.615Z",
+      "commit": "2a853330207e80a2c01f771c4625ee75809a053d",
+      "workspace_fingerprint": "829b94bb878a4bdfaf337d2762a6649b1c2f75e83f5c2d705a79d5ca83be0da3",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {
