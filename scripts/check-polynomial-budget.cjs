@@ -38,6 +38,16 @@ const cases = [
     budget: 5,
   },
   {
+    name: "coefficients_GF_20000",
+    expression: "_gf_serialization_value.coefficients()",
+    budget: 40,
+  },
+  {
+    name: "repr_GF_20000",
+    expression: "repr(_gf_serialization_value)",
+    budget: 40,
+  },
+  {
     name: "sagepack_dump_GF_20000",
     expression: "_serialization_dumps(_gf_serialization_value)",
     budget: 100,

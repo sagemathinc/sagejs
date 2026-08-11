@@ -1009,6 +1009,69 @@ def ρσ_uint64_matrix_format(source, rows, columns):
     })()"""
 
 
+def ρσ_uint64_polynomial_format(source, variable):
+    """Format canonical low-to-high prime-field polynomial residues."""
+    return r"""%js (() => {
+        if (!(source instanceof BigUint64Array)) {
+            throw new TypeError("source must be a BigUint64Array");
+        }
+        if (typeof variable !== "string") {
+            throw new TypeError("polynomial variable must be a string");
+        }
+        const pieces = [];
+        for (let exponent = source.length - 1; exponent >= 0; exponent -= 1) {
+            const coefficient = source[exponent];
+            if (coefficient === 0n) continue;
+            if (exponent === 0) {
+                pieces.push(coefficient.toString());
+                continue;
+            }
+            const monomial = exponent === 1
+                ? variable
+                : variable + "^" + exponent.toString();
+            pieces.push(
+                coefficient === 1n
+                    ? monomial
+                    : coefficient.toString() + "*" + monomial
+            );
+        }
+        return pieces.length === 0 ? "0" : pieces.join(" + ");
+    })()"""
+
+
+def ρσ_uint64_residue_elements(source, parent, element_type):
+    """Materialize immutable prime-field elements from canonical residues."""
+    return r"""%js (() => {
+        if (!(source instanceof BigUint64Array)) {
+            throw new TypeError("source must be a BigUint64Array");
+        }
+        if (typeof element_type !== "function" ||
+            Reflect.get(parent, "_elementType") !== element_type) {
+            throw new TypeError("invalid uint64 residue element type");
+        }
+        const prototype = Reflect.get(element_type, "prototype");
+        if (prototype === null || typeof prototype !== "object") {
+            throw new TypeError("invalid uint64 residue element prototype");
+        }
+        const modulus = BigInt(Reflect.get(parent, "_modulus"));
+        if (modulus <= 0n || modulus > 0xffffffffffffffffn) {
+            throw new RangeError("invalid uint64 residue modulus");
+        }
+        const output = new Array(source.length);
+        for (let index = 0; index < source.length; index += 1) {
+            const residue = source[index];
+            if (residue >= modulus) {
+                throw new RangeError("noncanonical uint64 residue");
+            }
+            const value = Object.create(prototype);
+            value._parent = parent;
+            value._value = residue;
+            output[index] = Object.freeze(value);
+        }
+        return ρσ_list_decorate(output);
+    })()"""
+
+
 def ρσ_integer_buffer_prefix(source, length):
     """Copy a validated packed exact-integer prefix without decoding."""
     return r"""%js (() => {

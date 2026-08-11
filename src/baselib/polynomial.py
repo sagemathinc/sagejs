@@ -1711,7 +1711,11 @@ class PolynomialElement(sage.Element):
                 for index in range(len(numerators))
             ]
         if kind == "GF":
-            return [base(self._storage[index]) for index in range(len(self._storage))]
+            return runtime.uint64_residue_elements(
+                self._storage,
+                base,
+                base._elementType,
+            )
         if base._kind == "GF_EXTENSION":
             raw = runtime.flint_backend().fqPolyCoefficients(self._native)
         else:
@@ -1821,7 +1825,13 @@ class PolynomialElement(sage.Element):
 
     def __repr__(self) -> str:
         base = self._parent.base_ring()
-        if _packed_polynomial_kind(base) != "legacy":
+        kind = _packed_polynomial_kind(base)
+        if kind == "GF":
+            return runtime.uint64_polynomial_format(
+                self._storage,
+                self._parent.variable_name(),
+            )
+        if kind != "legacy":
             coefficients = self.coefficients()
             if len(coefficients) == 0:
                 return "0"
