@@ -60,6 +60,7 @@ export const SAGEJS_RUNTIME_INTRINSICS: Record<string, string> = {
   ffi_resource_borrow: "ρσ_ffi_resource_borrow",
   ffi_resource_close: "ρσ_ffi_resource_close",
   ffi_resource_closed: "ρσ_ffi_resource_closed",
+  ffi_resource_copy_bytes: "ρσ_ffi_resource_copy_bytes",
   ffi_resource_create: "ρσ_ffi_resource_create",
   ffi_view_create: "ρσ_ffi_view_create",
   ffi_view_valid: "ρσ_ffi_view_valid",

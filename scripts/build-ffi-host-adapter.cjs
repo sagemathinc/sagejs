@@ -78,6 +78,15 @@ async function main() {
           close_export: resource.dynamic.close_export,
           ...(resource.native.size_symbol === undefined
             ? {} : { size_symbol: resource.native.size_symbol }),
+          ...(resource.host_transfer === undefined
+            ? {}
+            : {
+              host_transfer: {
+                kind: resource.host_transfer.kind,
+                export: resource.host_transfer.dynamic.export,
+                wasm: resource.host_transfer.targets.wasm,
+              },
+            }),
         })),
       omitted_resources: declaration.functions.length - functions.length,
       host_isolation: {

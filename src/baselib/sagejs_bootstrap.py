@@ -1169,6 +1169,39 @@ def ρσ_ffi_resource_borrow(token, resource_identity):
     })()"""
 
 
+def ρσ_ffi_resource_copy_bytes(token, resource_identity, copy_export):
+    """Copy an owned resource's declared byte payload into host storage."""
+    return r"""%js (() => {
+        const tag = globalThis.__sagejs_ffi_resource_tag__;
+        const state = tag === undefined ? undefined : token?.[tag];
+        if (state === undefined || state.identity !== resource_identity) {
+            throw new TypeError(`expected ${resource_identity}`);
+        }
+        if (state.borrowed) {
+            throw new TypeError("borrowed FFI views have no owned byte payload");
+        }
+        if (state.closed) throw new ValueError("FFI resource is closed");
+        const copy = Reflect.get(state.backend, copy_export);
+        if (typeof copy !== "function") {
+            throw new RuntimeError(
+                `FFI resource backend lacks ${copy_export}`
+            );
+        }
+        const result = Reflect.apply(copy, state.backend, [state.handle]);
+        const tagName = Object.prototype.toString.call(result);
+        if (
+            !ArrayBuffer.isView(result)
+            || tagName !== "[object Uint8Array]"
+            || result.BYTES_PER_ELEMENT !== 1
+        ) {
+            throw new TypeError(
+                `FFI resource transfer ${copy_export} did not return bytes`
+            );
+        }
+        return result;
+    })()"""
+
+
 def ρσ_ffi_view_create(
     declaration_identity,
     view_identity,

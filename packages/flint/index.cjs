@@ -1167,6 +1167,17 @@ for (const resource of generatedFfiManifest.resources || []) {
     throw new Error(`generated FLINT FFI adapter is missing ${name}`);
   }
   publicBinding[name] = generatedFfi[name];
+  const transfer = resource.host_transfer;
+  if (transfer !== undefined) {
+    if (transfer.kind !== "copied_bytes" ||
+        typeof generatedFfi[transfer.export] !== "function") {
+      throw new Error(
+        `generated FLINT FFI adapter is missing host transfer ` +
+        `${transfer.export}`,
+      );
+    }
+    publicBinding[transfer.export] = generatedFfi[transfer.export];
+  }
 }
 Object.defineProperty(publicBinding, "__sagejs_ffi_oracles__", {
   value: Object.freeze(declaredFfiOracles),

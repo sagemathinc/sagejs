@@ -17,7 +17,7 @@ const allowedImports = new Set([
   "CxxToStatus", "Direct", "Effects", "Library", "Min", "Nullable",
   "Status", "Writable", "in_", "out", "packed_fmpz_matrix",
   "packed_nmod_matrix",
-  "packed_slice", "record",
+  "packed_slice", "record", "copied_bytes",
 ]);
 
 function nodeType(node) {
@@ -207,7 +207,8 @@ function parseResource(filename, callNode, libraryVariable, pythonName) {
     positional: [0],
     required: ["id", "abi", "ownership", "wasm"],
     keywords: [
-      "id", "abi", "ownership", "owner", "close", "clear", "size", "wasm",
+      "id", "abi", "ownership", "owner", "close", "clear", "size",
+      "host_transfer", "wasm",
     ],
   });
   const ownership = requiredString(filename, call, "ownership");
@@ -215,6 +216,7 @@ function parseResource(filename, callNode, libraryVariable, pythonName) {
   const close = keywordLiteral(filename, call, "close", { default: null });
   const clear = keywordLiteral(filename, call, "clear", { default: null });
   const size = keywordLiteral(filename, call, "size", { default: null });
+  const hostTransferNode = call.keywords.get("host_transfer");
   const abi = keywordLiteral(filename, call, "abi", { names: true });
   expect(filename, call.node, typeof abi === "string", "resource abi must be a name");
   for (const [label, value] of [
@@ -222,6 +224,26 @@ function parseResource(filename, callNode, libraryVariable, pythonName) {
   ]) {
     expect(filename, call.node, value === null || typeof value === "string",
       `resource ${label} must be None or a string`);
+  }
+  let hostTransfer;
+  if (hostTransferNode !== undefined) {
+    const transfer = callParts(filename, hostTransferNode, "copied_bytes", {
+      positional: [0],
+      required: ["dynamic", "data", "length", "wasm"],
+      keywords: ["dynamic", "data", "length", "wasm"],
+    });
+    hostTransfer = {
+      kind: "copied_bytes",
+      dynamic: { export: requiredString(filename, transfer, "dynamic") },
+      native: {
+        data_symbol: requiredString(filename, transfer, "data"),
+        length_symbol: requiredString(filename, transfer, "length"),
+      },
+      targets: {
+        dynamic: true,
+        wasm: requiredBoolean(filename, transfer, "wasm"),
+      },
+    };
   }
   return {
     id: requiredString(filename, call, "id"),
@@ -234,6 +256,7 @@ function parseResource(filename, callNode, libraryVariable, pythonName) {
       clear_symbol: clear,
       ...(size === null ? {} : { size_symbol: size }),
     },
+    ...(hostTransfer === undefined ? {} : { host_transfer: hostTransfer }),
     targets: {
       dynamic: true,
       native: true,

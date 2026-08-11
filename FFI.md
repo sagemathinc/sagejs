@@ -71,11 +71,12 @@ algorithm.
 
 The old handwritten dynamic implementations are temporarily retained behind
 the non-public `__sagejs_ffi_oracles__` property for differential tests. They
-are not the production export. Functions involving opaque foreign resources
-remain omitted from generated host adapters until generated resource
-marshalling lands; package manifests state the exact omitted count. Thus the
-remaining handwritten surface is explicit and shrinking, not an invisible
-second implementation.
+are not the production export. Generated host adapters support opaque owned
+resources, including type-tagged borrow, deterministic close, external-memory
+accounting, and declared host transfers. Package manifests state the exact
+generated surface and any omitted borrowed-view operations. Thus the remaining
+handwritten surface is explicit and shrinking, not an invisible second
+implementation.
 
 The low-level runtime intrinsic is privileged plumbing: architecture checks
 prohibit mathematical modules from calling it directly. Direct FFI users must
@@ -284,6 +285,43 @@ triggered a collection. Code performing a synchronous bulk operation must
 therefore close temporary resources lexically. Unreachable long-lived
 resources are reclaimed after the event loop regains control, without an
 explicit `global.gc()` call.
+
+An owned resource containing a contiguous variable-length byte payload may opt
+into the reusable `copied_bytes(...)` host transfer:
+
+```python
+FlintByteRegion = flint.resource(
+    id="byte_region",
+    abi=sagejs_flint_byte_region_t,
+    ownership="owned",
+    close="ffiFlintByteRegionClose",
+    clear="sagejs_flint_byte_region_clear",
+    host_transfer=copied_bytes(
+        dynamic="ffiFlintByteRegionCopyBytes",
+        data="sagejs_flint_byte_region_data",
+        length="sagejs_flint_byte_region_length",
+        wasm=False,
+    ),
+    wasm=False,
+)
+```
+
+The generated Node adapter validates the resource type tag and live state,
+checks that the declared 64-bit length fits the host `size_t`, rejects a null
+pointer for a nonempty payload, and performs one `napi_create_buffer_copy` into
+a new Node `Buffer` (also a `Uint8Array`). `copy_bytes()` leaves the resource
+live and the returned bytes never alias foreign storage. `take_bytes()` copies
+the same payload and closes the resource in `finally`. This is host
+marshalling, not a mathematical kernel or an exposed pointer.
+
+The Wasm lowering is intentionally specified before being enabled. The same
+declaration will export its data offset and length from the Wasm module; the
+host must check the complete `[offset, offset + length)` interval against the
+current linear memory and copy it into a fresh `Uint8Array` before the resource
+can mutate, grow memory, or close. A zero-copy view is prohibited until a
+separate ownership-transfer and memory-growth contract exists. The FLINT byte
+resource keeps `wasm=False` until that generated adapter is executed in CI;
+the Node implementation does not overstate browser support.
 
 Inside `@native`, owned resources are deliberately narrower. They are lexical
 locals only: they cannot be public parameters or results, are currently

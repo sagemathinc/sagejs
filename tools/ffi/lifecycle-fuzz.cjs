@@ -70,6 +70,16 @@ function dynamicLifecycleFuzz() {
     const serialized = flint.ffiFmpqMatrixSerialize(matrix);
     assert.ok(flint.ffiFlintByteRegionLength(formatted) > 0n);
     assert.ok(flint.ffiFlintByteRegionLength(serialized) > 0n);
+    const formattedCopy = flint.ffiFlintByteRegionCopyBytes(formatted);
+    const serializedCopy = flint.ffiFlintByteRegionCopyBytes(serialized);
+    assert.equal(
+      BigInt(formattedCopy.length),
+      flint.ffiFlintByteRegionLength(formatted),
+    );
+    assert.equal(
+      BigInt(serializedCopy.length),
+      flint.ffiFlintByteRegionLength(serialized),
+    );
     flint.ffiFlintByteRegionClose(serialized);
     flint.ffiFlintByteRegionClose(formatted);
     flint.ffiFmpqValueClose(determinant);
@@ -231,6 +241,11 @@ int main(void)
             !sagejs_fmpq_matrix_format(formatted, reduced) ||
             !sagejs_fmpq_matrix_serialize(serialized, matrix))
             return 10;
+        if (sagejs_flint_byte_region_data(formatted) == NULL ||
+            sagejs_flint_byte_region_data(serialized) == NULL ||
+            sagejs_flint_byte_region_length(formatted) == 0 ||
+            sagejs_flint_byte_region_length(serialized) == 0)
+            return 11;
         sagejs_flint_byte_region_clear(serialized);
         sagejs_flint_byte_region_clear(formatted);
         sagejs_fmpq_value_clear(determinant);
