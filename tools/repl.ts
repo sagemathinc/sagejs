@@ -37,6 +37,11 @@ import {
 } from "./foreign";
 import { rewriteQuestionMarkHelp } from "./polyglot";
 import type { PythonCompilerFrontend } from "./python/compiler-frontend";
+import {
+  formatExecutionTiming,
+  installTimingHooks,
+  measureExecution,
+} from "./timing";
 
 const DEFAULT_HISTORY_SIZE = 1000;
 const HOME =
@@ -300,6 +305,7 @@ export default async function Repl(
     global.require = runtimeRequire;
     global.__sagejs_graph_database_bytes__ = () =>
       readResourceBytes(join(importPath, "sage", "graphs", "data", "graphs.db"));
+    installTimingHooks(globalThis, (text) => options.console.log(text));
     installNodeGraphicsSaveHook();
     installNodeHost(globalThis, options.sage ? "sage" : "python");
     runRuntimeBootstrap(
@@ -338,7 +344,7 @@ export default async function Repl(
     }
   }
 
-  function runJS(js: string, noPrint: boolean): void {
+  function runJS(js: string, noPrint: boolean, timed: boolean): void {
     if (runInThisContext("show_js")) {
       options.console.log(
         colorize("---------- Compiled JavaScript ---------", "green", true)
@@ -348,26 +354,30 @@ export default async function Repl(
         colorize("---------- Running JavaScript ---------", "green", true)
       );
     }
-    let result;
-    try {
-      global.console = options.console;
-      result = runInThisContext(js);
-    } catch (err) {
-      if (err?.name === "SystemExit") {
-        const code = err.code;
-        if (code === undefined || code === null) process.exit(0);
-        if (typeof code === "number" || typeof code === "bigint") {
-          process.exit(Number(code));
+    global.console = options.console;
+    const execute = () => {
+      try {
+        return runInThisContext(js);
+      } catch (err) {
+        if (err?.name === "SystemExit") {
+          const code = err.code;
+          if (code === undefined || code === null) process.exit(0);
+          if (typeof code === "number" || typeof code === "bigint") {
+            process.exit(Number(code));
+          }
+          options.console.error(String(code));
+          process.exit(1);
         }
-        options.console.error(String(code));
-        process.exit(1);
+        if (err?.stack) {
+          options.console.error(err?.stack);
+        } else {
+          options.console.error(err);
+        }
+        return undefined;
       }
-      if (err?.stack) {
-        options.console.error(err?.stack);
-      } else {
-        options.console.error(err);
-      }
-    }
+    };
+    const measured = timed ? measureExecution(execute) : undefined;
+    const result = measured ? measured.value : execute();
 
     if (!noPrint && result != null && global.ρσ_print != null) {
       // We just print out the last result using normal Python printing.
@@ -381,6 +391,7 @@ export default async function Repl(
         }
       }
     }
+    if (measured) options.console.log(formatExecutionTiming(measured.timing));
   }
 
   function stripCopiedPrompt(line: string): string {
@@ -456,9 +467,9 @@ export default async function Repl(
         return false;
       }
     }
-    let time: number | undefined = undefined;
+    let timed = false;
     if (source.startsWith("%time ") || source.startsWith("time ")) {
-      time = 0;
+      timed = true;
       source = source.slice(5).trimLeft();
     }
     if (foreignFrontend) {
@@ -545,13 +556,7 @@ export default async function Repl(
       !!foreignFrontend ||
       source.trimRight().endsWith(";") ||
       finalStatementIsAssignment;
-    if (time != null) {
-      time = new Date().valueOf();
-    }
-    runJS(output, noPrint);
-    if (time) {
-      console.log(`Wall time: ${new Date().valueOf() - time}ms`);
-    }
+    runJS(output, noPrint, timed);
     return false;
   }
 

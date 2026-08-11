@@ -20,6 +20,11 @@ import {
   PythonCompilerFrontend,
 } from "./python/compiler-frontend";
 import { PYTHON_KEYWORDS } from "./python/contract";
+import {
+  formatExecutionTiming,
+  installTimingHooks,
+  measureExecution,
+} from "./timing";
 
 export type SageLanguageMode = "sage" | "python";
 
@@ -219,6 +224,10 @@ export function createKernelEvaluator({
     onOutput(String(text));
   };
   global.__sagejs_interrupt_state__ = interruptState;
+  const uninstallTimingHooks = installTimingHooks(
+    globalThis,
+    (text) => onOutput(`${text}\n`),
+  );
   runRuntimeBootstrap(
     compiler,
     mode,
@@ -391,7 +400,6 @@ export function createKernelEvaluator({
         suppressResult?: boolean;
       } = {},
     ): KernelEvaluation {
-      const started = performance.now();
       let timed = false;
       const timingMatch =
         source.match(/^[ \t]*%time[ \t]+/) ??
@@ -403,17 +411,19 @@ export function createKernelEvaluator({
         source = source.slice(timingMatch[0].length);
       }
       const javascript = compile(source, filename, language);
-      if (interruptState) Atomics.store(interruptState, 1, 1);
-      let value: unknown;
-      try {
-        global.ρσ_check_interrupt();
-        value = runInThisContext(javascript, {
-          filename,
-          breakOnSigint: true,
-        });
-      } finally {
-        if (interruptState) Atomics.store(interruptState, 1, 0);
-      }
+      const execution = measureExecution(() => {
+        if (interruptState) Atomics.store(interruptState, 1, 1);
+        try {
+          global.ρσ_check_interrupt();
+          return runInThisContext(javascript, {
+            filename,
+            breakOnSigint: true,
+          });
+        } finally {
+          if (interruptState) Atomics.store(interruptState, 1, 0);
+        }
+      });
+      const value = execution.value;
       const publishResult =
         !suppressResult &&
         !finalStatementIsAssignment &&
@@ -426,8 +436,8 @@ export function createKernelEvaluator({
           : String(global.ρσ_repr(value));
       const display = publishResult ? richDisplay(value) : undefined;
       if (publishResult) global._ = value;
-      const durationMs = performance.now() - started;
-      if (timed) onOutput(`Wall time: ${durationMs.toFixed(3)}ms\n`);
+      const durationMs = execution.timing.wallMs;
+      if (timed) onOutput(`${formatExecutionTiming(execution.timing)}\n`);
       return {
         repr,
         durationMs,
@@ -518,6 +528,7 @@ export function createKernelEvaluator({
       for (const frontend of compilerFrontends.values()) {
         frontend.close();
       }
+      uninstallTimingHooks();
       uninstallNodeHost();
       delete global.__sagejs_output_write__;
       delete global.__sagejs_interrupt_state__;

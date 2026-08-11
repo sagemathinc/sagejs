@@ -2,6 +2,7 @@
 
 const assert = require("node:assert/strict");
 const test = require("node:test");
+const { Script } = require("node:vm");
 
 const { default: createCompiler, createBootstrapCompiler } = require(
   "../dist/tools/compiler.js"
@@ -176,8 +177,10 @@ test("Sage percent-time is represented and emitted by the compiler", async () =>
     assert.equal(ast.body[0].constructor.name, "AST_TimedStatement");
     const output = new compiler.OutputStream(outputOptions);
     ast.print(output);
-    assert.match(output.get(), /Wall time:/);
-    assert.match(output.get(), /Date\.now\(\)/);
+    assert.match(output.get(), /__sagejs_timing_start__/);
+    assert.match(output.get(), /__sagejs_timing_finish__/);
+    assert.match(output.get(), /performance\.now\(\)/);
+    assert.doesNotThrow(() => new Script(output.get()));
   } finally {
     frontend.close();
   }

@@ -16,6 +16,8 @@ import { createRequire } from "module";
 import { basename, dirname, join, normalize } from "path";
 import { getAsset, getAssetKeys, isSea } from "node:sea";
 
+import { measureInitialization } from "./timing";
+
 const VIRTUAL_ROOT = normalize("/__sagejs_sea__");
 const COMPILER_ASSET = "compiler/compiler.js";
 const COMPILER_CACHE_ASSET = "runtime-cache/compiler.bin";
@@ -473,24 +475,26 @@ function loadEmbeddedZeroMQ(): unknown {
 
 export function runtimeRequire(name: string): unknown {
   if (runtimeModuleCache.has(name)) return runtimeModuleCache.get(name);
-  let module: unknown;
-  if (isSea() && name === "@sagemath/sagejs-flint") {
-    module = loadEmbeddedFlint();
-  } else if (isSea() && name === "@sagemath/sagejs-fflas") {
-    module = loadEmbeddedFflas();
-  } else if (isSea() && name === "@sagemath/sagejs-graph") {
-    module = loadEmbeddedGraph();
-  } else if (isSea() && name === "zeromq") {
-    module = loadEmbeddedZeroMQ();
-  } else if (name === "numpy-ts") {
-    module = require("../vendor/numpy-ts.cjs");
-  } else if (name === "@sagemath/sagejs-symbolic") {
-    module = require("../vendor/symbolic-backend.cjs");
-  } else {
-    module = require(name);
-  }
-  runtimeModuleCache.set(name, module);
-  return module;
+  return measureInitialization(`require ${name}`, () => {
+    let module: unknown;
+    if (isSea() && name === "@sagemath/sagejs-flint") {
+      module = loadEmbeddedFlint();
+    } else if (isSea() && name === "@sagemath/sagejs-fflas") {
+      module = loadEmbeddedFflas();
+    } else if (isSea() && name === "@sagemath/sagejs-graph") {
+      module = loadEmbeddedGraph();
+    } else if (isSea() && name === "zeromq") {
+      module = loadEmbeddedZeroMQ();
+    } else if (name === "numpy-ts") {
+      module = require("../vendor/numpy-ts.cjs");
+    } else if (name === "@sagemath/sagejs-symbolic") {
+      module = require("../vendor/symbolic-backend.cjs");
+    } else {
+      module = require(name);
+    }
+    runtimeModuleCache.set(name, module);
+    return module;
+  });
 }
 
 export function cleanNativeResources(): void {

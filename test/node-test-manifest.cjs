@@ -7,6 +7,7 @@ const unit = [
   "test/module-cache.cjs",
   "test/runtime-cache.cjs",
   "test/startup-budget.cjs",
+  "test/timing-core.cjs",
   "test/typed-math-lowering.cjs",
   "test/runtime-intrinsics.cjs",
   "test/exact-integer-range-v1.cjs",

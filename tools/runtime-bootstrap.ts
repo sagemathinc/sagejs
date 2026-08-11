@@ -30,6 +30,10 @@ import {
   standardLibraryCacheDirectory,
 } from "./resources";
 import { getImportDirs, importPath, libraryPath, sha1sum } from "./utils";
+import {
+  beginInitializationTiming,
+  finishInitializationTiming,
+} from "./timing";
 
 export type RuntimeBootstrapMode = "sage" | "python";
 
@@ -590,6 +594,7 @@ export function runRuntimeBootstrap(
     Reflect.set(registry, name, namespace);
     if (parent && childName) Reflect.set(parent, childName, namespace);
     loading.add(name);
+    const initializationTiming = beginInitializationTiming(`import ${name}`);
     try {
       // Installed modules are ordinary Python regardless of whether their
       // importer is a Sage worksheet. This also lets both host modes share a
@@ -750,6 +755,7 @@ export function runRuntimeBootstrap(
       if (parent && childName) Reflect.deleteProperty(parent, childName);
       throw error;
     } finally {
+      finishInitializationTiming(initializationTiming);
       loading.delete(name);
     }
     if (!Object.prototype.hasOwnProperty.call(registry, name)) {
