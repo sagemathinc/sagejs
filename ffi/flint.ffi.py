@@ -2283,6 +2283,44 @@ def fmpq_matrix_right_kernel(source: FmpqMatrix) -> FmpqMatrix: ...
 
 
 @flint.function(
+    dynamic="ffiFmpqMatrixCharpoly",
+    symbol="sagejs_fmpq_matrix_charpoly_resource",
+    returns=int,
+    abi=[
+        out("result", sagejs_fmpq_polynomial_t),
+        in_("source", sagejs_fmpq_matrix_t),
+    ],
+    effects=Effects(pure=False, allocates=True, raises=[ValueError]),
+    result=Status(
+        1,
+        exception=ValueError,
+        message="characteristic polynomial requires a square rational matrix",
+    ),
+    wasm=False,
+)
+def fmpq_matrix_charpoly(source: FmpqMatrix) -> FmpqPolynomial: ...
+
+
+@flint.function(
+    dynamic="ffiFmpqMatrixMinpoly",
+    symbol="sagejs_fmpq_matrix_minpoly_resource",
+    returns=int,
+    abi=[
+        out("result", sagejs_fmpq_polynomial_t),
+        in_("source", sagejs_fmpq_matrix_t),
+    ],
+    effects=Effects(pure=False, allocates=True, raises=[ValueError]),
+    result=Status(
+        1,
+        exception=ValueError,
+        message="minimal polynomial requires a square rational matrix",
+    ),
+    wasm=False,
+)
+def fmpq_matrix_minpoly(source: FmpqMatrix) -> FmpqPolynomial: ...
+
+
+@flint.function(
     dynamic="ffiFmpqMatrixRank",
     symbol="sagejs_fmpq_matrix_rank",
     returns=uint64_t,

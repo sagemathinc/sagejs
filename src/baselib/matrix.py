@@ -4382,6 +4382,19 @@ class Matrix(sage.Element):
                 self.ncols(),
             )
             return answer
+        if self._has_fmpq_matrix_resource():
+            resource = _flint_ffi_module().fmpq_matrix_charpoly(
+                self._rational_resource()
+            )
+            answer = ring._from_fmpq_polynomial_resource(resource)
+            self._charpoly_cache.set(variable, answer)
+            _trace_dense_rational_selection(
+                "charpoly",
+                "generated-flint-resource",
+                self.nrows(),
+                self.ncols(),
+            )
+            return answer
         if self._has_packed_rational_storage():
             kernel = _dense_rational_flint_module().flint_dense_rational_matrix_charpoly
             coefficient_count = self.nrows() + 1
@@ -4496,6 +4509,20 @@ class Matrix(sage.Element):
             answer = ring._from_fmpz_polynomial_resource(resource)
             self._minpoly_cache.set(variable, answer)
             _trace_dense_integer_selection(
+                "minpoly",
+                "generated-flint-resource",
+                self.nrows(),
+                self.ncols(),
+            )
+            return answer
+        if self._has_fmpq_matrix_resource():
+            ring = sage.PolynomialRing(sage.QQ, variable)
+            resource = _flint_ffi_module().fmpq_matrix_minpoly(
+                self._rational_resource()
+            )
+            answer = ring._from_fmpq_polynomial_resource(resource)
+            self._minpoly_cache.set(variable, answer)
+            _trace_dense_rational_selection(
                 "minpoly",
                 "generated-flint-resource",
                 self.nrows(),

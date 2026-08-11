@@ -14,7 +14,7 @@
   },
   "counts": {
     "classified-native-file": 56,
-    "declared-ffi": 170,
+    "declared-ffi": 172,
     "declared-ffi-resource": 10,
     "napi-export": 292,
     "runtime-intrinsic": 128,
@@ -405,6 +405,17 @@
       "disposition": "declared-safe-ffi"
     },
     {
+      "id": "ffi:flint:fmpq_matrix_charpoly",
+      "kind": "declared-ffi",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "fmpq_matrix_charpoly",
+      "dynamic_package": "@sagemath/sagejs-flint",
+      "dynamic_export": "ffiFmpqMatrixCharpoly",
+      "symbol": "sagejs_fmpq_matrix_charpoly_resource",
+      "disposition": "declared-safe-ffi"
+    },
+    {
       "id": "ffi:flint:fmpq_matrix_copy",
       "kind": "declared-ffi",
       "path": "ffi/flint.ffi.json",
@@ -534,6 +545,17 @@
       "dynamic_package": "@sagemath/sagejs-flint",
       "dynamic_export": "ffiFmpqMatrixIsZero",
       "symbol": "sagejs_fmpq_matrix_is_zero",
+      "disposition": "declared-safe-ffi"
+    },
+    {
+      "id": "ffi:flint:fmpq_matrix_minpoly",
+      "kind": "declared-ffi",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "fmpq_matrix_minpoly",
+      "dynamic_package": "@sagemath/sagejs-flint",
+      "dynamic_export": "ffiFmpqMatrixMinpoly",
+      "symbol": "sagejs_fmpq_matrix_minpoly_resource",
       "disposition": "declared-safe-ffi"
     },
     {

@@ -1,0 +1,57 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "exact-rational-matrix-polynomials",
+  "title": "Direct rational matrix characteristic and minimal polynomials",
+  "lane": "integration",
+  "status": "active",
+  "owner": "codex",
+  "objective": "Route dense QQ characteristic_polynomial and minimal_polynomial directly from canonical FmpqMatrix resources to generated owned FmpqPolynomial resources through FLINT, eliminating packed compatibility and generic relation-search paths while preserving Sage semantics, portable fallbacks, lifecycle safety, and competitive performance",
+  "base_commit": "f021194faa412ac6e08e2fc15a77101d4d272a76",
+  "claims": [
+    "ffi/flint.ffi.py",
+    "ffi/flint.ffi.json",
+    "packages/flint/generated/",
+    "packages/flint/include/sagejs/",
+    "src/lib/sagejs/ffi/",
+    "src/baselib/sagejs/ffi/",
+    "src/baselib/matrix.py",
+    "ARCHITECTURE.md",
+    "architecture/",
+    "test/node-test-manifest.cjs",
+    "test/ffi.cjs",
+    "test/exact-rational-matrix-polynomials.cjs",
+    "bench/exact-rational-matrix-polynomials.cjs",
+    "scripts/check-rational-matrix-budget.cjs"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "external-library",
+    "fallback": "tested-capability",
+    "oracles": [
+      "FLINT fmpq_mat characteristic and minimal polynomial semantics",
+      "SageMath and current generic exact algorithms"
+    ],
+    "exceptions": [
+      "The coherent resource-to-resource migration spans declarations, generated adapters, public routing, lifecycle tests, and performance ratchets; splitting it would leave a partial unverified ABI."
+    ]
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm architecture:check",
+    "pnpm test:portable",
+    "pnpm test:baselib:strict"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "",
+    "risks": [],
+    "next_steps": []
+  }
+}

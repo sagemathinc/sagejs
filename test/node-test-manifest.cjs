@@ -52,6 +52,7 @@ const integration = [
   "test/fmpz-matrix-resource-selectors.cjs",
   "test/fmpz-matrix-selector-lifecycle.cjs",
   "test/dense-rational-migration.cjs",
+  "test/exact-rational-matrix-polynomials.cjs",
   "test/math-module.cjs",
   "test/datetime-module.cjs",
   "test/calendar-module.cjs",
