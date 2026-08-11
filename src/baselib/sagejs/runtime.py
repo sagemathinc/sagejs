@@ -25,6 +25,7 @@ are the bootstrap implementation used by older checked-in compilers.
 # globals: ρσ_integer_buffer_to_packed_bytes
 # globals: ρσ_exact_integer_values_from_packed_bytes
 # globals: ρσ_exact_integer_values_to_packed_bytes
+# globals: ρσ_exact_integer_range_iterator, ρσ_exact_integer_range_values
 # globals: ρσ_reduced_rational_values_from_parts, ρσ_reference_matrix_flatten
 # globals: ρσ_reference_matrix_transpose
 # globals: ρσ_rational_buffers_from_packed_bytes
@@ -173,6 +174,16 @@ def exact_integer_values_to_packed_bytes(values):
 def exact_integer_values_from_packed_bytes(source, count, start=0):
     """Decode canonical signed magnitudes at a byte offset."""
     return ρσ_exact_integer_values_from_packed_bytes(source, count, start)
+
+
+def exact_integer_range_values(start, step, length):
+    """Materialize trusted exact range values into a native array."""
+    return ρσ_exact_integer_range_values(start, step, length)
+
+
+def exact_integer_range_iterator(start, step, length):
+    """Return a lazy native iterator over trusted exact range values."""
+    return ρσ_exact_integer_range_iterator(start, step, length)
 
 
 def reduced_rational_values_from_parts(parts, rational_class, parent):
