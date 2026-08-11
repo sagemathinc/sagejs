@@ -2,8 +2,11 @@
 
 const assert = require("node:assert/strict");
 const {
+  copyFileSync,
+  cpSync,
   existsSync,
   mkdtempSync,
+  mkdirSync,
   readFileSync,
   rmSync,
   statSync,
@@ -897,6 +900,73 @@ function runSage(script, env = {}) {
   return result.stdout.trim().split("\n");
 }
 
+function runForeignCacheWitness(prefix, cacheRoot, source) {
+  const program = `
+const fs = require("node:fs");
+const { compileKernel } = require(${JSON.stringify(
+    join(root, "tools", "native-kernel", "compiler.cjs"),
+  )});
+(async () => {
+  const result = await compileKernel({
+    sourcePath: ${JSON.stringify(source)},
+    functions: [
+      "foreign_cache_adapter_create",
+      "foreign_cache_adapter_rows",
+    ],
+    cacheRoot: ${JSON.stringify(cacheRoot)},
+  });
+  const addon = require(result.addonPath);
+  const matrix = addon.foreign_cache_adapter_create(2n, 3n);
+  const manifest = JSON.parse(fs.readFileSync(
+    result.outputPath + "/manifest.json", "utf8"
+  ));
+  process.stdout.write(JSON.stringify({
+    cacheKey: result.cacheKey,
+    cached: result.cached,
+    value: Number(addon.foreign_cache_adapter_rows(matrix)),
+    foreignInputs: result.foreignInputs,
+    manifestForeignInputs: manifest.foreignInputs,
+  }));
+})().catch((error) => {
+  console.error(error && error.stack || error);
+  process.exit(1);
+});
+`;
+  const result = spawnSync(process.execPath, ["-e", program], {
+    cwd: root,
+    encoding: "utf8",
+    env: { ...process.env, SAGEJS_FLINT_PREFIX: prefix },
+  });
+  if (result.status !== 0) {
+    throw new Error(result.stderr || `cache witness exited ${result.status}`);
+  }
+  return JSON.parse(result.stdout);
+}
+
+function copyForeignCacheWitnessPrefix(source, target) {
+  cpSync(join(source, "include"), join(target, "include"), { recursive: true });
+  mkdirSync(join(target, "lib"), { recursive: true });
+  const names = process.platform === "win32"
+    ? [
+      "flint.lib",
+      "openblas.lib",
+      "pthreadVC3.lib",
+      "mpc.lib",
+      "mpfr.lib",
+      "gmp.lib",
+    ]
+    : [
+      "libflint.a",
+      "libopenblas.a",
+      "libmpc.a",
+      "libmpfr.a",
+      "libgmp.a",
+    ];
+  for (const name of names) {
+    copyFileSync(join(source, "lib", name), join(target, "lib", name));
+  }
+}
+
 try {
   const options = {
     sourcePath,
@@ -908,6 +978,162 @@ try {
   assert.equal(second.cached, true);
   assert.equal(first.cacheKey, second.cacheKey);
   assert.equal(first.modulePath, second.modulePath);
+
+  const installedForeignPrefix = process.env.SAGEJS_FLINT_PREFIX || join(
+    root,
+    "packages",
+    "flint",
+    ".native",
+    process.platform === "win32"
+      ? join("vcpkg-installed", "x64-windows-static-md-release")
+      : "prefix",
+  );
+  const foreignWitnessPrefix = join(temporary, "foreign-input-prefix");
+  const foreignWitnessCache = join(temporary, "foreign-input-cache");
+  copyForeignCacheWitnessPrefix(installedForeignPrefix, foreignWitnessPrefix);
+  cpSync(
+    join(root, "packages", "flint", "include", "sagejs"),
+    join(foreignWitnessPrefix, "include", "sagejs"),
+    { recursive: true },
+  );
+  const foreignWitnessSource = join(temporary, "foreign-cache-adapter.py");
+  writeFileSync(
+    foreignWitnessSource,
+    "from sagejs.ffi.flint import (\n" +
+      "    FmpqMatrix,\n" +
+      "    fmpq_matrix,\n" +
+      "    fmpq_matrix_nrows,\n" +
+      ")\n" +
+      "from sagejs.native import native, uint64\n\n" +
+      "@native\n" +
+      "def foreign_cache_adapter_create(\n" +
+      "    rows: uint64, columns: uint64\n" +
+      ") -> FmpqMatrix:\n" +
+      "    return fmpq_matrix(rows, columns)\n\n" +
+      "@native\n" +
+      "def foreign_cache_adapter_rows(matrix: FmpqMatrix) -> uint64:\n" +
+      "    return fmpq_matrix_nrows(matrix)\n",
+  );
+  const initialForeignWitness = runForeignCacheWitness(
+    foreignWitnessPrefix,
+    foreignWitnessCache,
+    foreignWitnessSource,
+  );
+  assert.equal(initialForeignWitness.cached, false);
+  assert.equal(initialForeignWitness.value, 2);
+  assert.deepEqual(
+    initialForeignWitness.foreignInputs,
+    initialForeignWitness.manifestForeignInputs,
+  );
+  const initialFlintInputs = initialForeignWitness.foreignInputs[0];
+  assert.equal(initialFlintInputs.id, "flint");
+  assert.match(initialFlintInputs.fingerprint, /^[a-f0-9]{64}$/);
+  const initialHeader = initialFlintInputs.headers.find(
+    (input) => input.name === "sagejs/fmpq_matrix_ffi.h",
+  );
+  assert.match(initialHeader.sha256, /^[a-f0-9]{64}$/);
+  assert.equal(
+    initialHeader.path,
+    join(
+      foreignWitnessPrefix,
+      "include",
+      "sagejs",
+      "fmpq_matrix_ffi.h",
+    ).replaceAll("\\", "/"),
+  );
+  assert.equal(
+    initialForeignWitness.foreignInputs[0].libraries.length,
+    process.platform === "win32" ? 3 : 2,
+  );
+
+  const cachedForeignWitness = runForeignCacheWitness(
+    foreignWitnessPrefix,
+    foreignWitnessCache,
+    foreignWitnessSource,
+  );
+  assert.equal(cachedForeignWitness.cached, true);
+  assert.equal(cachedForeignWitness.cacheKey, initialForeignWitness.cacheKey);
+  writeFileSync(join(foreignWitnessPrefix, "unrelated.txt"), "unrelated\n");
+  const unrelatedForeignWitness = runForeignCacheWitness(
+    foreignWitnessPrefix,
+    foreignWitnessCache,
+    foreignWitnessSource,
+  );
+  assert.equal(unrelatedForeignWitness.cached, true);
+  assert.equal(unrelatedForeignWitness.cacheKey, initialForeignWitness.cacheKey);
+
+  const witnessHeaderPath = join(
+    foreignWitnessPrefix,
+    "include",
+    "sagejs",
+    "fmpq_matrix_ffi.h",
+  );
+  writeFileSync(
+    witnessHeaderPath,
+    readFileSync(witnessHeaderPath, "utf8") +
+      "\n#undef sagejs_fmpq_matrix_nrows\n" +
+      "#define sagejs_fmpq_matrix_nrows(matrix) ((uint64_t) 123)\n",
+  );
+  const changedForeignWitness = runForeignCacheWitness(
+    foreignWitnessPrefix,
+    foreignWitnessCache,
+    foreignWitnessSource,
+  );
+  assert.equal(changedForeignWitness.cached, false);
+  assert.equal(changedForeignWitness.value, 123);
+  assert.notEqual(changedForeignWitness.cacheKey, initialForeignWitness.cacheKey);
+  assert.notEqual(
+    changedForeignWitness.foreignInputs[0].fingerprint,
+    initialFlintInputs.fingerprint,
+  );
+  assert.notEqual(
+    changedForeignWitness.foreignInputs[0].headers.find(
+      (input) => input.name === "sagejs/fmpq_matrix_ffi.h",
+    ).sha256,
+    initialHeader.sha256,
+  );
+  assert.deepEqual(
+    changedForeignWitness.foreignInputs[0].libraries,
+    initialFlintInputs.libraries,
+  );
+
+  const missingHeaderPath = join(
+    foreignWitnessPrefix,
+    "include",
+    "flint",
+    "ulong_extras.h",
+  );
+  rmSync(missingHeaderPath);
+  const missingHeaderProgram = `
+const { compileKernel } = require(${JSON.stringify(
+    join(root, "tools", "native-kernel", "compiler.cjs"),
+  )});
+compileKernel({
+  sourcePath: ${JSON.stringify(foreignWitnessSource)},
+  functions: [
+    "foreign_cache_adapter_create",
+    "foreign_cache_adapter_rows",
+  ],
+  cacheRoot: ${JSON.stringify(foreignWitnessCache)},
+}).then(() => process.exit(0)).catch((error) => {
+  console.error(error && error.message || error);
+  process.exit(2);
+});
+`;
+  const missingHeader = spawnSync(
+    process.execPath,
+    ["-e", missingHeaderProgram],
+    {
+      cwd: root,
+      encoding: "utf8",
+      env: {
+        ...process.env,
+        SAGEJS_FLINT_PREFIX: foreignWitnessPrefix,
+      },
+    },
+  );
+  assert.equal(missingHeader.status, 2);
+  assert.match(missingHeader.stderr, /declared native header.*does not resolve/);
 
   const scalarFloatKernel = await compileKernel({
     sourcePath: scalarFloatPath,

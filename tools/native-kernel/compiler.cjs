@@ -2,9 +2,15 @@
 
 const { createHash } = require("node:crypto");
 const {
+  closeSync,
   existsSync,
+  openSync,
   mkdirSync,
+  readSync,
   readFileSync,
+  realpathSync,
+  rmSync,
+  statSync,
   writeFileSync,
 } = require("node:fs");
 const { dirname, join, resolve } = require("node:path");
@@ -49,6 +55,134 @@ const nativeFlintLibrary = join(
 
 function sha256(value) {
   return createHash("sha256").update(value).digest("hex");
+}
+
+function sha256File(filename) {
+  const digest = createHash("sha256");
+  const buffer = Buffer.allocUnsafe(1024 * 1024);
+  const descriptor = openSync(filename, "r");
+  try {
+    for (;;) {
+      const length = readSync(descriptor, buffer, 0, buffer.length, null);
+      if (length === 0) break;
+      digest.update(buffer.subarray(0, length));
+    }
+  } finally {
+    closeSync(descriptor);
+  }
+  return digest.digest("hex");
+}
+
+const foreignInputDigestCache = new Map();
+const foreignInputDigestStores = new Map();
+
+function portablePath(filename) {
+  return resolve(filename).replaceAll("\\", "/");
+}
+
+function statIdentity(stat) {
+  return [
+    stat.dev,
+    stat.ino,
+    stat.size,
+    stat.mtimeNs,
+    stat.ctimeNs,
+  ].map((value) => String(value)).join(":");
+}
+
+function foreignInputDigestStore(cacheRoot) {
+  const filename = join(cacheRoot, "foreign-input-digests.json");
+  const cached = foreignInputDigestStores.get(filename);
+  if (cached !== undefined) return cached;
+  let files = {};
+  try {
+    const current = JSON.parse(readFileSync(filename, "utf8"));
+    if (current?.schema === "sagejs.foreign-input-digests/v1" &&
+        current.files !== null && typeof current.files === "object") {
+      files = current.files;
+    }
+  } catch (_error) {}
+  const store = {
+    filename,
+    files,
+    dirty: false,
+    save() {
+      if (!this.dirty) return;
+      mkdirSync(dirname(this.filename), { recursive: true });
+      writeFileSync(this.filename, `${JSON.stringify({
+        schema: "sagejs.foreign-input-digests/v1",
+        files: this.files,
+      }, null, 2)}\n`);
+      this.dirty = false;
+    },
+  };
+  foreignInputDigestStores.set(filename, store);
+  return store;
+}
+
+function contentAddressedFile(filename, description, digestStore) {
+  const absolute = resolve(filename);
+  let before;
+  try {
+    before = statSync(absolute, { bigint: true });
+  } catch (error) {
+    throw new Error(
+      `unable to resolve ${description} at ${portablePath(absolute)}: ` +
+        (error?.message || String(error)),
+    );
+  }
+  if (!before.isFile()) {
+    throw new Error(`${description} is not a file: ${portablePath(absolute)}`);
+  }
+  const resolved = realpathSync(absolute);
+  const identity = statIdentity(before);
+  const cached = foreignInputDigestCache.get(resolved);
+  if (cached?.identity === identity) return cached.value;
+  const persisted = digestStore?.files[portablePath(resolved)];
+  const persistedDigest = persisted?.identity === identity &&
+      typeof persisted.sha256 === "string" &&
+      /^[a-f0-9]{64}$/.test(persisted.sha256)
+    ? persisted.sha256
+    : undefined;
+  const digest = persistedDigest || sha256File(absolute);
+  const after = statSync(absolute, { bigint: true });
+  if (statIdentity(after) !== identity) {
+    throw new Error(
+      `${description} changed while its native cache identity was computed: ` +
+        portablePath(absolute),
+    );
+  }
+  const value = Object.freeze({
+    path: portablePath(absolute),
+    resolvedPath: portablePath(resolved),
+    bytes: String(before.size),
+    sha256: digest,
+  });
+  foreignInputDigestCache.set(resolved, { identity, value });
+  if (digestStore !== undefined && persistedDigest === undefined) {
+    digestStore.files[portablePath(resolved)] = {
+      identity,
+      bytes: String(before.size),
+      sha256: digest,
+    };
+    digestStore.dirty = true;
+  }
+  return value;
+}
+
+function uniquePaths(paths) {
+  const seen = new Set();
+  const answer = [];
+  for (const filename of paths) {
+    const absolute = resolve(filename);
+    const key = process.platform === "win32"
+      ? absolute.toLowerCase()
+      : absolute;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    answer.push(absolute);
+  }
+  return answer;
 }
 
 function writeDiscoveryIndex(
@@ -100,18 +234,26 @@ function writeDiscoveryIndex(
   writeFileSync(indexPath, `${JSON.stringify(index, null, 2)}\n`);
 }
 
-function nativeCompatibility(ir) {
+function nativeCompatibility(ir, foreignInputs) {
+  const inputsByLibrary = new Map(
+    foreignInputs.map((input) => [input.id, input]),
+  );
   return Object.freeze({
     nativeAbi: NATIVE_ABI_VERSION,
     foreignDeclarations: Object.freeze(
       (ir.foreignLibraries || [])
-        .map((library) => Object.freeze({
-          id: library.id,
-          declarationIdentity: library.declarationIdentity,
-          dynamicPackage: library.dynamic.package,
-        }))
+        .map((library) => {
+          const input = inputsByLibrary.get(library.id);
+          return Object.freeze({
+            id: library.id,
+            declarationIdentity: library.declarationIdentity,
+            dynamicPackage: library.dynamic.package,
+            nativeInputFingerprint: input.fingerprint,
+          });
+        })
         .sort((left, right) => left.id.localeCompare(right.id)),
     ),
+    foreignInputs,
   });
 }
 
@@ -215,6 +357,121 @@ function foreignPrefix(library) {
   );
 }
 
+function foreignIncludeDirectories(ir) {
+  return uniquePaths(
+    (ir.foreignLibraries || []).flatMap((library) => {
+      const prefix = foreignPrefix(library);
+      return [
+        ...library.native.toolchain.source_include_dirs.map((directory) =>
+          join(root, directory)),
+        ...library.native.toolchain.include_dirs.map((directory) =>
+          join(prefix, directory)),
+      ];
+    }),
+  );
+}
+
+function compilationIncludeDirectories(ir) {
+  return uniquePaths([
+    join(nativePrefix, "include"),
+    nativeInclude,
+    ...foreignIncludeDirectories(ir),
+  ]);
+}
+
+function foreignLinkedLibraries(library) {
+  const prefix = foreignPrefix(library);
+  return library.native.link[
+    process.platform === "win32" ? "windows" : "unix"
+  ].map((name) => ({ name, path: join(prefix, "lib", name) }));
+}
+
+function resolveDeclaredHeader(
+  library,
+  name,
+  includeDirectories,
+  digestStore,
+) {
+  if (typeof name !== "string" || name.length === 0 || name.includes("\0")) {
+    throw new Error(`${library.id} declares an invalid native header name`);
+  }
+  for (const directory of includeDirectories) {
+    const candidate = join(directory, name);
+    try {
+      if (statSync(candidate).isFile()) {
+        return {
+          name,
+          ...contentAddressedFile(
+            candidate,
+            `${library.id} declared native header ${name}`,
+            digestStore,
+          ),
+        };
+      }
+    } catch (error) {
+      if (error?.code !== "ENOENT" && error?.code !== "ENOTDIR") throw error;
+    }
+  }
+  throw new Error(
+    `${library.id} declared native header ${name} does not resolve in ` +
+      `compiler include order: ` +
+      includeDirectories.map(portablePath).join(", "),
+  );
+}
+
+function resolveForeignCompilationInputs(ir, digestStore) {
+  const includeDirectories = compilationIncludeDirectories(ir);
+  return Object.freeze(
+    (ir.foreignLibraries || [])
+      .map((library) => {
+        const headers = Object.freeze(
+          [...library.native.headers]
+            .sort()
+            .map((name) => Object.freeze(
+              resolveDeclaredHeader(
+                library,
+                name,
+                includeDirectories,
+                digestStore,
+              ),
+            )),
+        );
+        const libraries = Object.freeze(
+          foreignLinkedLibraries(library)
+            .map(({ name, path }) => Object.freeze({
+              name,
+              ...contentAddressedFile(
+                path,
+                `${library.id} declared native library ${name}`,
+                digestStore,
+              ),
+            })),
+        );
+        const value = {
+          id: library.id,
+          prefix: portablePath(foreignPrefix(library)),
+          includeOrder: Object.freeze(includeDirectories.map(portablePath)),
+          headers,
+          libraries,
+        };
+        return Object.freeze({
+          ...value,
+          fingerprint: sha256(JSON.stringify(value)),
+        });
+      })
+      .sort((left, right) => left.id.localeCompare(right.id)),
+  );
+}
+
+function foreignCompilationInputs(ir, options = {}) {
+  const digestStore = options.cacheRoot === undefined
+    ? undefined
+    : foreignInputDigestStore(resolve(options.cacheRoot));
+  const inputs = resolveForeignCompilationInputs(ir, digestStore);
+  digestStore?.save();
+  return inputs;
+}
+
 function bindingGyp(ir, sourceBoundsChecked, hasExceptionShims = false) {
   const usesPrimeField = ir.functions.some(
     (fn) => ["prime-field-matrix", "prime-field-source"].includes(fn.kernelKind),
@@ -234,32 +491,16 @@ function bindingGyp(ir, sourceBoundsChecked, hasExceptionShims = false) {
   );
   const tuning = usesSpecializedPrimeField ? primeFieldTuning() : null;
   const foreignLibraries = Array.from(new Set(
-    (ir.foreignLibraries || []).flatMap((library) => {
-      const prefix = foreignPrefix(library);
-      return library.native.link[
-        process.platform === "win32" ? "windows" : "unix"
-      ].map((name) => join(prefix, "lib", name));
-    }),
-  ));
-  const foreignIncludes = Array.from(new Set(
-    (ir.foreignLibraries || []).flatMap((library) => {
-      const prefix = foreignPrefix(library);
-      return [
-        ...library.native.toolchain.source_include_dirs.map((directory) =>
-          join(root, directory)),
-        ...library.native.toolchain.include_dirs.map((directory) =>
-          join(prefix, directory)),
-      ];
-    }),
+    (ir.foreignLibraries || []).flatMap((library) =>
+      foreignLinkedLibraries(library).map(({ path }) => path)
+    ),
   ));
   const usesForeignLibraries = foreignLibraries.length > 0;
   const target = {
     target_name: "sagejs_native_kernel",
     win_delay_load_hook: "false",
     sources: ["kernel.c", ...(hasExceptionShims ? ["ffi_shims.cc"] : [])],
-    include_dirs: [
-      join(nativePrefix, "include"), nativeInclude, ...foreignIncludes,
-    ],
+    include_dirs: compilationIncludeDirectories(ir),
     defines: [
       "NAPI_VERSION=8",
       ...(usesSpecializedPrimeField
@@ -359,10 +600,15 @@ async function compileKernel(options) {
   const sourceKey = options.sourceKey;
   const source = readFileSync(sourcePath, "utf8");
   const sourceHash = sha256(source);
+  const cacheRoot = resolve(
+    options.cacheRoot ||
+      join(dirname(sourcePath), ".sagejs-native-kernels"),
+  );
   const ir = await lowerSource(source, sourcePath, {
     functions: options.functions,
   });
-  const compatibility = nativeCompatibility(ir);
+  const foreignInputs = foreignCompilationInputs(ir, { cacheRoot });
+  const compatibility = nativeCompatibility(ir, foreignInputs);
   const usesSpecializedPrimeField = ir.functions.some(
     (fn) => fn.kernelKind === "prime-field-matrix",
   );
@@ -385,16 +631,13 @@ async function compileKernel(options) {
       id: library.id,
       prefix: foreignPrefix(library),
     })),
+    foreignInputs,
     primeFieldTuning: tuning,
     sourceBoundsChecked,
     mpfr: "4.2.2",
     mpc: mpcVersion,
   };
   const cacheKey = sha256(JSON.stringify(identity));
-  const cacheRoot = resolve(
-    options.cacheRoot ||
-      join(dirname(sourcePath), ".sagejs-native-kernels"),
-  );
   const outputPath = join(cacheRoot, cacheKey);
   const addonPath = join(
     outputPath,
@@ -417,6 +660,13 @@ async function compileKernel(options) {
     (exceptionShims === null ||
       (existsSync(shimSourcePath) && existsSync(shimHeaderPath)))
   ) {
+    const currentForeignInputs = foreignCompilationInputs(ir, { cacheRoot });
+    if (JSON.stringify(currentForeignInputs) !== JSON.stringify(foreignInputs)) {
+      throw new Error(
+        "declared foreign compilation inputs changed while resolving a " +
+          "cached native kernel; retry compilation",
+      );
+    }
     writeDiscoveryIndex(
       cacheRoot,
       sourcePath,
@@ -438,6 +688,7 @@ async function compileKernel(options) {
       shimHeaderPath: exceptionShims === null ? null : shimHeaderPath,
       nativeAbi: compatibility.nativeAbi,
       foreignDeclarations: compatibility.foreignDeclarations,
+      foreignInputs,
     };
   }
 
@@ -489,6 +740,7 @@ async function compileKernel(options) {
         nativeAbi: NATIVE_ABI_VERSION,
         sourceHash,
         foreignDeclarations: compatibility.foreignDeclarations,
+        foreignInputs,
         primeFieldTuning: tuning,
         sourceBoundsChecked,
         sourcePath,
@@ -516,6 +768,14 @@ async function compileKernel(options) {
     process.stderr.write(build.stderr);
     throw new Error(`node-gyp exited with status ${build.status}`);
   }
+  const currentForeignInputs = foreignCompilationInputs(ir, { cacheRoot });
+  if (JSON.stringify(currentForeignInputs) !== JSON.stringify(foreignInputs)) {
+    rmSync(outputPath, { recursive: true, force: true });
+    throw new Error(
+      "declared foreign compilation inputs changed during native compilation; " +
+        "discarded the inconsistent artifact; retry compilation",
+    );
+  }
   writeDiscoveryIndex(
     cacheRoot,
     sourcePath,
@@ -537,10 +797,12 @@ async function compileKernel(options) {
     shimHeaderPath: exceptionShims === null ? null : shimHeaderPath,
     nativeAbi: compatibility.nativeAbi,
     foreignDeclarations: compatibility.foreignDeclarations,
+    foreignInputs,
   };
 }
 
 module.exports = {
   NATIVE_ABI_VERSION,
   compileKernel,
+  foreignCompilationInputs,
 };

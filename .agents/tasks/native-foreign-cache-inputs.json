@@ -1,0 +1,82 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "native-foreign-cache-inputs",
+  "title": "Content-address declared native headers",
+  "lane": "native-compiler",
+  "status": "review",
+  "owner": "user",
+  "objective": "Make native kernel cache identities include the actual declared foreign headers and linked library inputs used by generated FFI adapters, so editing a host-neutral adapter header cannot reuse stale compiled code.",
+  "base_commit": "96db09018fc54c0e9254e704558d565258ebb0e9",
+  "claims": [
+    "tools/native-kernel/compiler.cjs",
+    "test/native-kernel.cjs",
+    "bench/native-foreign-cache-inputs.cjs"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "compiler-infrastructure",
+    "fallback": "not-applicable",
+    "oracles": [
+      "same source/declaration with changed included adapter header produces distinct cache key and behavior",
+      "unchanged foreign inputs produce a cache hit"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm architecture:check",
+    "pnpm test:baselib:strict",
+    "pnpm test:native"
+  ],
+  "runs": [
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 13.029,
+      "started_at": "2026-08-11T14:23:46.101Z",
+      "commit": "96db09018fc54c0e9254e704558d565258ebb0e9",
+      "workspace_fingerprint": "352ca6999a64c123aa8cb2575504efb60c7401dc128e7fa3e37b58f7f0bd91e5",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 13.157,
+      "started_at": "2026-08-11T14:23:59.770Z",
+      "commit": "96db09018fc54c0e9254e704558d565258ebb0e9",
+      "workspace_fingerprint": "352ca6999a64c123aa8cb2575504efb60c7401dc128e7fa3e37b58f7f0bd91e5",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:native",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 217.465,
+      "started_at": "2026-08-11T14:24:15.749Z",
+      "commit": "96db09018fc54c0e9254e704558d565258ebb0e9",
+      "workspace_fingerprint": "352ca6999a64c123aa8cb2575504efb60c7401dc128e7fa3e37b58f7f0bd91e5",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Native kernel cache identities now content-address every directly declared foreign header selected by the compiler include order and every linked foreign archive. Fingerprint evidence is returned by compileKernel, embedded in artifact manifests, and summarized in compatibility metadata. The compiler rechecks inputs after a build and rejects unresolved headers. A resource-kernel regression changes only a copied sagejs/fmpq_matrix_ffi.h and proves distinct keys, artifacts, and behavior; unchanged and unrelated inputs retain cache hits. Cold fingerprinting measured 144.8 ms for nine FLINT headers plus libflint/libopenblas, with 1.2 ms same-process and 2.9 ms new-process persistent reuse.",
+    "risks": [
+      "The fingerprint covers declaration-listed headers, not an arbitrary compiler-generated transitive include dependency graph. FLINT currently declares every project adapter header, including all local quoted transitive headers; future declaration authors must preserve that completeness invariant or add dependency scanning.",
+      "Persistent archive digest reuse trusts realpath plus device, inode, size, mtimeNs, and ctimeNs. Ordinary rewrites invalidate it; deliberately forged filesystem metadata or an externally corrupted cache directory is outside this cache's integrity boundary.",
+      "Windows path normalization and archive names are implemented and the regression builds portable prefix fixtures, but final Windows execution remains a CI responsibility."
+    ],
+    "next_steps": [
+      "After integration, rebuild production native kernels so existing artifacts acquire nativeInputFingerprint metadata and keys based on their actual adapter headers and archives.",
+      "If foreign declarations become less explicit, extend fingerprinting with compiler dependency-file scanning rather than relying on undeclared transitive headers."
+    ]
+  }
+}
