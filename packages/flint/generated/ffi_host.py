@@ -150,7 +150,7 @@ def ffiFmpzPolynomialSeal(
 @native
 def ffiFmpzPolynomialLength(
     polynomial: FmpzPolynomial,
-) -> uint64:
+) -> Integer:
     return _ffi_fmpz_polynomial_length(
         polynomial,
     )
@@ -289,7 +289,7 @@ def ffiFmpqPolynomialSeal(
 @native
 def ffiFmpqPolynomialLength(
     polynomial: FmpqPolynomial,
-) -> uint64:
+) -> Integer:
     return _ffi_fmpq_polynomial_length(
         polynomial,
     )

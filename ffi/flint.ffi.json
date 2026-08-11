@@ -400,8 +400,8 @@
             "aliasing": "allowed"
           }
         ],
-        "return_type": "uint64",
-        "return_ownership": "value",
+        "return_type": "Integer",
+        "return_ownership": "owned",
         "borrow_from": null
       },
       "dynamic": {
@@ -409,8 +409,14 @@
       },
       "native": {
         "symbol": "sagejs_fmpz_polynomial_length",
-        "return_type": "uint64_t",
+        "return_type": "int",
         "arguments": [
+          {
+            "source": "result",
+            "abi_type": "fmpz_t",
+            "direction": "out",
+            "adapter": null
+          },
           {
             "source": "polynomial",
             "abi_type": "sagejs_fmpz_polynomial_t",
@@ -423,18 +429,22 @@
         "pure": true,
         "deterministic": true,
         "thread_safe": true,
-        "may_allocate": false,
-        "may_raise": [],
+        "may_allocate": true,
+        "may_raise": [
+          "ValueError"
+        ],
         "writes": []
       },
       "result": {
-        "domain": "direct",
-        "success": [],
+        "domain": "status",
+        "success": [
+          1
+        ],
         "absence": null
       },
       "errors": {
-        "exception": null,
-        "message": null
+        "exception": "ValueError",
+        "message": "integer polynomial is unsealed"
       },
       "exceptions": {
         "policy": "none",
@@ -1422,8 +1432,8 @@
             "aliasing": "allowed"
           }
         ],
-        "return_type": "uint64",
-        "return_ownership": "value",
+        "return_type": "Integer",
+        "return_ownership": "owned",
         "borrow_from": null
       },
       "dynamic": {
@@ -1431,8 +1441,14 @@
       },
       "native": {
         "symbol": "sagejs_fmpq_polynomial_length",
-        "return_type": "uint64_t",
+        "return_type": "int",
         "arguments": [
+          {
+            "source": "result",
+            "abi_type": "fmpz_t",
+            "direction": "out",
+            "adapter": null
+          },
           {
             "source": "polynomial",
             "abi_type": "sagejs_fmpq_polynomial_t",
@@ -1445,18 +1461,22 @@
         "pure": true,
         "deterministic": true,
         "thread_safe": true,
-        "may_allocate": false,
-        "may_raise": [],
+        "may_allocate": true,
+        "may_raise": [
+          "ValueError"
+        ],
         "writes": []
       },
       "result": {
-        "domain": "direct",
-        "success": [],
+        "domain": "status",
+        "success": [
+          1
+        ],
         "absence": null
       },
       "errors": {
-        "exception": null,
-        "message": null
+        "exception": "ValueError",
+        "message": "rational polynomial is unsealed"
       },
       "exceptions": {
         "policy": "none",

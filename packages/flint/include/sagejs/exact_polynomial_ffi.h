@@ -134,11 +134,13 @@ static inline int sagejs_fmpz_polynomial_seal(
     return 1;
 }
 
-static inline uint64_t sagejs_fmpz_polynomial_length(
-    const sagejs_fmpz_polynomial_t polynomial)
+static inline int sagejs_fmpz_polynomial_length(
+    fmpz_t result, const sagejs_fmpz_polynomial_t polynomial)
 {
-    return polynomial->sealed
-        ? (uint64_t) fmpz_poly_length(polynomial->value) : 0;
+    if (!polynomial->sealed)
+        return 0;
+    fmpz_set_ui(result, (ulong) fmpz_poly_length(polynomial->value));
+    return 1;
 }
 
 static inline int sagejs_fmpz_polynomial_coefficient(
@@ -381,11 +383,13 @@ static inline int sagejs_fmpq_polynomial_seal(
     return 1;
 }
 
-static inline uint64_t sagejs_fmpq_polynomial_length(
-    const sagejs_fmpq_polynomial_t polynomial)
+static inline int sagejs_fmpq_polynomial_length(
+    fmpz_t result, const sagejs_fmpq_polynomial_t polynomial)
 {
-    return polynomial->sealed
-        ? (uint64_t) fmpq_poly_length(polynomial->value) : 0;
+    if (!polynomial->sealed)
+        return 0;
+    fmpz_set_ui(result, (ulong) fmpq_poly_length(polynomial->value));
+    return 1;
 }
 
 static inline int sagejs_fmpq_polynomial_coefficient_numerator(
