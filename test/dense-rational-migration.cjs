@@ -123,8 +123,14 @@ except ValueError:
 
 assert zero_matrix(QQ, 50).is_zero()
 assert identity_matrix(QQ, 50).is_one()
+set_random_seed(20260811)
 random_value = random_matrix(QQ, 40)
 assert random_value.dimensions() == (40, 40)
+set_random_seed(20260811)
+assert random_matrix(QQ, 40) == random_value
+for entry in random_value.list():
+    assert 1 <= abs(entry.numerator()) <= 3
+    assert 1 <= entry.denominator() <= 3
 assert loads(dumps(A)) == A
 try:
     A._native
@@ -280,7 +286,7 @@ print('trace-ok')
       ...requiredEnvironment,
       SAGEJS_NATIVE_TRACE: "1",
     });
-    assert.match(trace, /Matrix\.random_matrix QQ 4x4 -> typed-python-isolated/);
+    assert.match(trace, /Matrix\.random_matrix QQ 4x4 -> generated-flint-resource/);
     assert.match(trace, /Matrix\.add QQ 4x4 -> typed-python-isolated/);
     assert.match(trace, /Matrix\.multiply QQ 4x4 -> generated-flint-resource/);
     assert.match(trace, /Matrix\.determinant QQ 4x4 -> generated-flint-resource/);

@@ -67,6 +67,13 @@
       "rationale": "Host-neutral packed-slice adapter to mature FLINT polynomial algorithms for declaration-generated kernels."
     },
     {
+      "path": "packages/flint/include/sagejs/fmpq_matrix_ffi.h",
+      "category": "external-library-bridge",
+      "review_status": "accepted",
+      "lane": "native-compiler",
+      "rationale": "Host-neutral owned-resource ABI over variable-size FLINT rational matrices for declaration-generated kernels and replaceable host adapters."
+    },
+    {
       "path": "packages/flint/include/sagejs/native.h",
       "category": "public-abi",
       "review_status": "accepted",

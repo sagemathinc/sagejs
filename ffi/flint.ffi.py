@@ -100,6 +100,35 @@ def fmpq_matrix(rows: uint64, columns: uint64) -> FmpqMatrix: ...
 
 
 @flint.function(
+    dynamic="ffiFmpqMatrixRandbits",
+    symbol="sagejs_fmpq_matrix_randbits",
+    returns=int,
+    abi=[
+        out("result", sagejs_fmpq_matrix_t),
+        in_("rows", uint64_t),
+        in_("columns", uint64_t),
+        in_("bits", uint64_t),
+        in_("seed1", uint64_t),
+        in_("seed2", uint64_t),
+    ],
+    effects=Effects(pure=False, allocates=True, raises=[OverflowError]),
+    result=Status(
+        1,
+        exception=OverflowError,
+        message="rational random matrix parameters are too large",
+    ),
+    wasm=False,
+)
+def fmpq_matrix_randbits(
+    rows: uint64,
+    columns: uint64,
+    bits: Min[uint64, 1],
+    seed1: uint64,
+    seed2: uint64,
+) -> FmpqMatrix: ...
+
+
+@flint.function(
     dynamic="ffiFmpqMatrixNrows",
     symbol="sagejs_fmpq_matrix_nrows",
     returns=uint64_t,

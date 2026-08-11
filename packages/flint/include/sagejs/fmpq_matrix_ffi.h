@@ -54,6 +54,25 @@ static inline void sagejs_fmpq_matrix_clear(sagejs_fmpq_matrix_t matrix)
     matrix->known_rank = -1;
 }
 
+static inline int sagejs_fmpq_matrix_randbits(
+    sagejs_fmpq_matrix_t result, uint64_t rows, uint64_t columns,
+    uint64_t bits, uint64_t seed1, uint64_t seed2)
+{
+    if (bits == 0 || bits > (uint64_t) ULONG_MAX ||
+        seed1 > (uint64_t) ULONG_MAX || seed2 > (uint64_t) ULONG_MAX ||
+        !sagejs_fmpq_matrix_init(result, rows, columns))
+        return 0;
+    flint_rand_t state;
+    flint_rand_init(state);
+    if (seed1 == 0 && seed2 == 0)
+        seed2 = 1;
+    flint_rand_set_seed(state, (ulong) seed1, (ulong) seed2);
+    fmpq_mat_randbits(result->value, state, (flint_bitcnt_t) bits);
+    flint_rand_clear(state);
+    result->known_rank = -1;
+    return 1;
+}
+
 static inline int sagejs_fmpq_matrix_set_entry(
     sagejs_fmpq_matrix_t matrix, uint64_t row, uint64_t column,
     const fmpz_t numerator, const fmpz_t denominator)

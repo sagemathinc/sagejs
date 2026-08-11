@@ -6144,7 +6144,10 @@ def random_matrix(
 
     The dimensions are `nrows` by `ncols`; omitting `ncols` constructs
     a square matrix. The common Sage keywords `density`, `x`, `y`, and
-    `distribution='uniform'` are supported where meaningful.
+    `distribution='uniform'` are supported where meaningful. Full-density
+    matrices over `QQ` use FLINT's two-bit rational distribution and are
+    constructed directly in their owned FLINT resource. This intentionally
+    differs from SageMath's bounded default rational distribution.
 
     ### Examples
 
@@ -6342,38 +6345,20 @@ def random_matrix(
         )._from_canonical_integer_entries(storage)
 
     if base is sage.QQ and density == 1 and lower is None and distribution is None:
-        numerator_kernel = (
-            _dense_integer_kernel_module().dense_integer_matrix_random_fill_default
-        )
-        denominator_kernel = (
-            _dense_rational_kernel_module().dense_rational_matrix_fill_denominator_one
-        )
-        numerators = _dense_integer_zeros(numerator_kernel, rows * cols, 1)
-        denominators = _dense_integer_zeros(denominator_kernel, rows * cols, 1)
-        if rows * cols != 0:
-            state = _random_int(0, 4294967295)
-            final_state = numerator_kernel(
-                numerators,
-                state,
-                runtime.bigint(4294967296),
-                runtime.bigint(858993459),
-                runtime.bigint(2147483648),
-                runtime.bigint(1664525),
-                runtime.bigint(1013904223),
-            )
-            _set_random_word_state(final_state)
-            denominator_kernel(denominators)
+        ffi = _flint_ffi_module()
+        if rows * cols == 0:
+            resource = ffi.fmpq_matrix(rows, cols)
+        else:
+            seed1 = _random_int(0, 4294967295)
+            seed2 = _random_int(0, 4294967295)
+            resource = ffi.fmpq_matrix_randbits(rows, cols, 2, seed1, seed2)
         _trace_dense_rational_selection(
             "random_matrix",
-            _typed_python_implementation(denominator_kernel),
+            "generated-flint-resource",
             rows,
             cols,
         )
-        return MatrixSpace(
-            sage.QQ,
-            rows,
-            cols,
-        )._from_canonical_rational_entries(numerators, denominators)
+        return MatrixSpace(sage.QQ, rows, cols)._from_fmpq_matrix_resource(resource)
 
     values = [0 for _ in range(rows * cols)]
     if density == 1:

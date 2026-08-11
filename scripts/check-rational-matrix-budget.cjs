@@ -44,7 +44,7 @@ function nativeReference(size, seed) {
 }
 
 const cases = [
-  { name: "random_500", expression: "random_matrix(QQ, 500)", budget: 30 },
+  { name: "random_1000", expression: "random_matrix(QQ, 1000)", budget: 100 },
   {
     name: "construct_300",
     expression: "matrix(QQ, 300, 300, _rational_budget_values)",

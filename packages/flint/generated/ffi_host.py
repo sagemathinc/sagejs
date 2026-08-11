@@ -14,6 +14,7 @@ from sagejs.ffi.flint import (
     FmpqMatrix,
     FmpqValue,
     fmpq_matrix as _ffi_fmpq_matrix,
+    fmpq_matrix_randbits as _ffi_fmpq_matrix_randbits,
     fmpq_matrix_nrows as _ffi_fmpq_matrix_nrows,
     fmpq_matrix_ncols as _ffi_fmpq_matrix_ncols,
     fmpq_matrix_set_entry as _ffi_fmpq_matrix_set_entry,
@@ -84,6 +85,23 @@ def ffiFmpqMatrixCreate(
     return _ffi_fmpq_matrix(
         rows,
         columns,
+    )
+
+
+@native
+def ffiFmpqMatrixRandbits(
+    rows: uint64,
+    columns: uint64,
+    bits: uint64,
+    seed1: uint64,
+    seed2: uint64,
+) -> FmpqMatrix:
+    return _ffi_fmpq_matrix_randbits(
+        rows,
+        columns,
+        bits,
+        seed1,
+        seed2,
     )
 
 
