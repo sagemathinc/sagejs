@@ -271,6 +271,65 @@ def fmpq_matrix_copy(source: FmpqMatrix) -> FmpqMatrix: ...
 
 
 @flint.function(
+    dynamic="ffiFmpqMatrixAdd",
+    symbol="sagejs_fmpq_matrix_add",
+    returns=int,
+    abi=[
+        out("result", sagejs_fmpq_matrix_t),
+        in_("left", sagejs_fmpq_matrix_t),
+        in_("right", sagejs_fmpq_matrix_t),
+    ],
+    effects=Effects(pure=False, allocates=True, raises=[ValueError]),
+    result=Status(
+        1,
+        exception=ValueError,
+        message="rational matrix dimensions are incompatible",
+    ),
+    wasm=False,
+)
+def fmpq_matrix_add(left: FmpqMatrix, right: FmpqMatrix) -> FmpqMatrix: ...
+
+
+@flint.function(
+    dynamic="ffiFmpqMatrixSub",
+    symbol="sagejs_fmpq_matrix_sub",
+    returns=int,
+    abi=[
+        out("result", sagejs_fmpq_matrix_t),
+        in_("left", sagejs_fmpq_matrix_t),
+        in_("right", sagejs_fmpq_matrix_t),
+    ],
+    effects=Effects(pure=False, allocates=True, raises=[ValueError]),
+    result=Status(
+        1,
+        exception=ValueError,
+        message="rational matrix dimensions are incompatible",
+    ),
+    wasm=False,
+)
+def fmpq_matrix_sub(left: FmpqMatrix, right: FmpqMatrix) -> FmpqMatrix: ...
+
+
+@flint.function(
+    dynamic="ffiFmpqMatrixTranspose",
+    symbol="sagejs_fmpq_matrix_transpose",
+    returns=int,
+    abi=[
+        out("result", sagejs_fmpq_matrix_t),
+        in_("source", sagejs_fmpq_matrix_t),
+    ],
+    effects=Effects(pure=False, allocates=True, raises=[RuntimeError]),
+    result=Status(
+        1,
+        exception=RuntimeError,
+        message="rational matrix transpose failed",
+    ),
+    wasm=False,
+)
+def fmpq_matrix_transpose(source: FmpqMatrix) -> FmpqMatrix: ...
+
+
+@flint.function(
     dynamic="ffiFmpqMatrixMul",
     symbol="sagejs_fmpq_matrix_mul",
     returns=int,
@@ -288,6 +347,41 @@ def fmpq_matrix_copy(source: FmpqMatrix) -> FmpqMatrix: ...
     wasm=False,
 )
 def fmpq_matrix_mul(left: FmpqMatrix, right: FmpqMatrix) -> FmpqMatrix: ...
+
+
+@flint.function(
+    dynamic="ffiFmpqMatrixInv",
+    symbol="sagejs_fmpq_matrix_inv",
+    returns=int,
+    abi=[
+        out("result", sagejs_fmpq_matrix_t),
+        in_("source", sagejs_fmpq_matrix_t),
+    ],
+    effects=Effects(pure=False, allocates=True, raises=[ValueError]),
+    result=Status(1, exception=ValueError, message="rational matrix is singular"),
+    wasm=False,
+)
+def fmpq_matrix_inv(source: FmpqMatrix) -> FmpqMatrix: ...
+
+
+@flint.function(
+    dynamic="ffiFmpqMatrixSolve",
+    symbol="sagejs_fmpq_matrix_solve",
+    returns=int,
+    abi=[
+        out("result", sagejs_fmpq_matrix_t),
+        in_("left", sagejs_fmpq_matrix_t),
+        in_("right", sagejs_fmpq_matrix_t),
+    ],
+    effects=Effects(pure=False, allocates=True, raises=[ValueError]),
+    result=Status(
+        1,
+        exception=ValueError,
+        message="rational matrix equation has no solutions",
+    ),
+    wasm=False,
+)
+def fmpq_matrix_solve(left: FmpqMatrix, right: FmpqMatrix) -> FmpqMatrix: ...
 
 
 @flint.function(

@@ -50,6 +50,7 @@ function runSage(source, environment) {
 
 const productionScript = String.raw`
 from sagejs.native import RationalBuffer
+import sagejs.runtime as runtime
 
 normalized = RationalBuffer([2, 0, -6], [-4, 9, -8])
 assert normalized.numerators == [-1, 0, 3]
@@ -64,6 +65,62 @@ A = matrix(QQ, 3, 3, [
 B = matrix(QQ, 3, 3, range(9)) / 31
 
 assert A[0, 0] == QQ(large + 1)/3
+resource_left = matrix(QQ, 2, 2, [
+    QQ(2**521 + 17)/97, -QQ(13)/(2**257 + 93),
+    QQ(5)/7, QQ(2**1024 + 3)/11,
+])
+resource_right = matrix(QQ, 2, 2, [
+    -QQ(2**509 + 29)/89, QQ(2**333 + 1)/3,
+    -QQ(19)/23, QQ(17)/(2**311 + 9),
+])
+left_before = resource_left.__copy__()
+right_before = resource_right.__copy__()
+resource_sum = resource_left + resource_right
+resource_difference = resource_sum - resource_right
+resource_transpose = resource_left.transpose()
+resource_inverse = resource_left.inverse()
+resource_solution = resource_left.solve_right(resource_right)
+for resource_value in [
+    resource_left, resource_right, resource_sum, resource_difference,
+    resource_transpose, resource_inverse, resource_solution,
+]:
+    resource_storage = resource_value._rational_storage_cache
+    assert runtime.reflect.get(resource_storage, 'numerators') is runtime.undefined
+    assert runtime.reflect.get(resource_storage, 'denominators') is runtime.undefined
+assert resource_difference == resource_left
+assert resource_transpose.transpose() == resource_left
+assert resource_left*resource_inverse == identity_matrix(QQ, 2)
+assert resource_left*resource_solution == resource_right
+assert resource_left == left_before and resource_right == right_before
+
+try:
+    matrix(QQ, 2, 3, range(6)).inverse()
+    raise AssertionError('nonsquare inverse unexpectedly succeeded')
+except ArithmeticError:
+    pass
+singular = matrix(QQ, 2, 2, [1, 2, 2, 4])
+try:
+    singular.inverse()
+    raise AssertionError('singular inverse unexpectedly succeeded')
+except ZeroDivisionError:
+    pass
+consistent_right = matrix(QQ, 2, 1, [3, 6])
+consistent_solution = singular.solve_right(consistent_right)
+consistent_storage = consistent_solution._rational_storage_cache
+assert runtime.reflect.get(consistent_storage, 'numerators') is runtime.undefined
+assert runtime.reflect.get(consistent_storage, 'denominators') is runtime.undefined
+assert singular*consistent_solution == consistent_right
+try:
+    singular.solve_right(vector(QQ, [0, 1]))
+    raise AssertionError('inconsistent system unexpectedly solved')
+except ValueError:
+    pass
+try:
+    resource_left.solve_right(matrix(QQ, 3, 1, [1, 2, 3]))
+    raise AssertionError('dimension-mismatched system unexpectedly solved')
+except ValueError:
+    pass
+
 display = matrix(QQ, 2, 3, [QQ(1)/2, -7, 0, QQ(11)/13, -QQ(2)/3, QQ(5)/17])
 assert display.str() == '[  1/2    -7     0]\n[11/13  -2/3  5/17]'
 display.subdivide(1, 1)
@@ -278,8 +335,14 @@ print('dense-rational-independent-ok')
 
     const trace = runSage(String.raw`
 A = random_matrix(QQ, 4)
+I = identity_matrix(QQ, 4)
+R = random_matrix(QQ, 4, 2)
 A + A
+A - A
+A.transpose()
 A * A
+I.inverse()
+I.solve_right(R)
 A.det()
 print('trace-ok')
 `, {
@@ -287,8 +350,12 @@ print('trace-ok')
       SAGEJS_NATIVE_TRACE: "1",
     });
     assert.match(trace, /Matrix\.random_matrix QQ 4x4 -> generated-flint-resource/);
-    assert.match(trace, /Matrix\.add QQ 4x4 -> typed-python-isolated/);
+    assert.match(trace, /Matrix\.add QQ 4x4 -> generated-flint-resource/);
+    assert.match(trace, /Matrix\.subtract QQ 4x4 -> generated-flint-resource/);
+    assert.match(trace, /Matrix\.transpose QQ 4x4 -> generated-flint-resource/);
     assert.match(trace, /Matrix\.multiply QQ 4x4 -> generated-flint-resource/);
+    assert.match(trace, /Matrix\.inverse QQ 4x4 -> generated-flint-resource/);
+    assert.match(trace, /Matrix\.solve_right QQ 4x2 -> generated-flint-resource/);
     assert.match(trace, /Matrix\.determinant QQ 4x4 -> generated-flint-resource/);
     assert.match(trace, /trace-ok/);
 
