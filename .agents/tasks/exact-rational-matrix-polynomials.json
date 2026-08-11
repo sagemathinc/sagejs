@@ -4,7 +4,7 @@
   "id": "exact-rational-matrix-polynomials",
   "title": "Direct rational matrix characteristic and minimal polynomials",
   "lane": "integration",
-  "status": "review",
+  "status": "complete",
   "owner": "codex",
   "objective": "Route dense QQ characteristic_polynomial and minimal_polynomial directly from canonical FmpqMatrix resources to generated owned FmpqPolynomial resources through FLINT, eliminating packed compatibility and generic relation-search paths while preserving Sage semantics, portable fallbacks, lifecycle safety, and competitive performance",
   "base_commit": "f021194faa412ac6e08e2fc15a77101d4d272a76",
