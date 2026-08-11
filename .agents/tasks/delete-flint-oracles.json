@@ -1,0 +1,111 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "delete-flint-oracles",
+  "title": "Delete Flint Oracles",
+  "lane": "distribution",
+  "status": "review",
+  "owner": "user",
+  "objective": "Delete the dormant handwritten FLINT oracle layer, retain generated production bindings, and preserve independent correctness tests",
+  "base_commit": "b21b652c83afe6867ef17da61b691abf40ab6f9f",
+  "claims": [
+    "packages/flint/index.cjs",
+    "test/ffi.cjs",
+    "test/fmpz-matrix-resource-ffi.cjs"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "external-library",
+    "fallback": "tested-capability",
+    "oracles": [
+      "legacy N-API or static expected results"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "fallback",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:portable",
+    "pnpm test:native",
+    "pnpm test:sea"
+  ],
+  "runs": [
+    {
+      "command": "node --test --test-name-pattern=packages publish every generated host adapter test/ffi.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.298,
+      "started_at": "2026-08-11T22:22:23.623Z",
+      "commit": "b21b652c83afe6867ef17da61b691abf40ab6f9f",
+      "workspace_fingerprint": "1f89a8491b2d5d13af1e5a8807d76b0241356259d44673a98b91524baf359c34",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node test/fmpz-matrix-resource-ffi.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.289,
+      "started_at": "2026-08-11T22:22:24.585Z",
+      "commit": "b21b652c83afe6867ef17da61b691abf40ab6f9f",
+      "workspace_fingerprint": "1f89a8491b2d5d13af1e5a8807d76b0241356259d44673a98b91524baf359c34",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm --dir packages/flint test",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 4.579,
+      "started_at": "2026-08-11T22:22:27.561Z",
+      "commit": "b21b652c83afe6867ef17da61b691abf40ab6f9f",
+      "workspace_fingerprint": "1f89a8491b2d5d13af1e5a8807d76b0241356259d44673a98b91524baf359c34",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 36.992,
+      "started_at": "2026-08-11T22:22:58.494Z",
+      "commit": "b21b652c83afe6867ef17da61b691abf40ab6f9f",
+      "workspace_fingerprint": "1f89a8491b2d5d13af1e5a8807d76b0241356259d44673a98b91524baf359c34",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:native",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 1.979,
+      "started_at": "2026-08-11T22:23:38.857Z",
+      "commit": "b21b652c83afe6867ef17da61b691abf40ab6f9f",
+      "workspace_fingerprint": "1f89a8491b2d5d13af1e5a8807d76b0241356259d44673a98b91524baf359c34",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 34.636,
+      "started_at": "2026-08-11T22:39:45.343Z",
+      "commit": "b21b652c83afe6867ef17da61b691abf40ab6f9f",
+      "workspace_fingerprint": "1f89a8491b2d5d13af1e5a8807d76b0241356259d44673a98b91524baf359c34",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Shrank packages/flint/index.cjs from 1,231 to 75 lines by deleting every handwritten declaration implementation and the hidden __sagejs_ffi_oracles__ table. The loader now publishes the legacy compatibility addon, overrides every declared function/resource/transfer with its generated adapter, exposes the generated manifest, and enforces the existing diagnostic N-API boundaries. Tests use static polynomial results, mathematical right-kernel verification, or the explicitly loaded legacy N-API addon as independent oracles.",
+    "risks": [
+      "The reviewed native-export inventory intentionally drifts only because packages/flint/index.cjs disappeared from 35 N-API consumer lists; counts, decisions, definitions, and hashes are unchanged. The integration lane must regenerate that shared file.",
+      "The full native gate reaches the expected shared native-export inventory drift after all preceding package and FFI tests pass. The SEA gate independently reaches an existing `from mpmath import mp` smoke-test failure after successfully rebuilding FLINT, FFLAS, igraph, both executables, and their generated adapters."
+    ],
+    "next_steps": [
+      "In the integration lane, regenerate and review architecture/native-exports.json, then run pnpm architecture:check.",
+      "Update FFI.md to remove the statement that handwritten dynamic implementations remain behind __sagejs_ffi_oracles__.",
+      "Replace the completed packages/flint/index.cjs TODO with the next separation step for generated production and explicitly named legacy compatibility backends."
+    ]
+  }
+}

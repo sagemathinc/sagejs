@@ -17,8 +17,14 @@ const generatedDirectory = join(
 );
 const manifest = require(join(generatedDirectory, "manifest.json"));
 const flint = require(join(generatedDirectory, manifest.addon));
-const oracle = require(join(root, "packages", "flint"));
-const packedOracle = oracle.__sagejs_ffi_oracles__;
+const legacyNapi = require(join(
+  root,
+  "packages",
+  "flint",
+  "build",
+  "Release",
+  "sagejs_flint.node",
+));
 const accounted = flint.__sagejsFfiResourceExternalMemory;
 
 assert.equal(typeof accounted, "function");
@@ -165,9 +171,9 @@ function text(region) {
   return new TextDecoder().decode(bytes(region));
 }
 
-function oracleEntries(resource, rows, columns) {
+function legacyEntries(resource, rows, columns) {
   return Array.from({ length: rows * columns }, (_, index) =>
-    BigInt(oracle.matrixEntry(
+    BigInt(legacyNapi.matrixEntry(
       resource,
       Math.floor(index / columns),
       index % columns,
@@ -366,29 +372,29 @@ for (const [rows, columns, expected] of [
     const rightValues = Array.from({ length: 9 }, randomWord);
     const left = matrix(3, 3, leftValues);
     const right = matrix(3, 3, rightValues);
-    const oracleLeft = oracle.zzMatrix(3, 3, leftValues);
-    const oracleRight = oracle.zzMatrix(3, 3, rightValues);
+    const legacyLeft = legacyNapi.zzMatrix(3, 3, leftValues);
+    const legacyRight = legacyNapi.zzMatrix(3, 3, rightValues);
     const results = [
       [flint.ffiFmpzMatrixAdd(left, right),
-        oracle.matrixAdd(oracleLeft, oracleRight)],
+        legacyNapi.matrixAdd(legacyLeft, legacyRight)],
       [flint.ffiFmpzMatrixSub(left, right),
-        oracle.matrixSub(oracleLeft, oracleRight)],
+        legacyNapi.matrixSub(legacyLeft, legacyRight)],
       [flint.ffiFmpzMatrixMul(left, right),
-        oracle.matrixMul(oracleLeft, oracleRight)],
+        legacyNapi.matrixMul(legacyLeft, legacyRight)],
       [flint.ffiFmpzMatrixTranspose(left),
-        oracle.matrixTranspose(oracleLeft)],
+        legacyNapi.matrixTranspose(legacyLeft)],
     ];
     try {
       for (const [actual, expected] of results) {
-        assert.deepEqual(entries(actual), oracleEntries(expected, 3, 3));
+        assert.deepEqual(entries(actual), legacyEntries(expected, 3, 3));
       }
       assert.equal(
         flint.ffiFmpzMatrixRank(left),
-        BigInt(oracle.matrixRank(oracleLeft)),
+        BigInt(legacyNapi.matrixRank(legacyLeft)),
       );
       assert.equal(
         flint.ffiFmpzMatrixDet(left),
-        BigInt(oracle.matrixDet(oracleLeft)),
+        BigInt(legacyNapi.matrixDet(legacyLeft)),
       );
     } finally {
       for (const [resource] of results.reverse()) {
@@ -655,14 +661,18 @@ for (const [rows, columns, values] of [
     assert.equal(flint.ffiFmpzMatrixNrows(snf), BigInt(rows));
     assert.equal(flint.ffiFmpzMatrixNcols(snf), BigInt(columns));
     if (rows !== 0 && columns !== 0) {
-      const oracleSource = oracle.zzMatrix(rows, columns, values);
+      const legacySource = legacyNapi.zzMatrix(rows, columns, values);
       assert.deepEqual(
         entries(hnf),
-        oracleEntries(oracle.matrixHermite(oracleSource), rows, columns),
+        legacyEntries(
+          legacyNapi.matrixHermite(legacySource), rows, columns,
+        ),
       );
       assert.deepEqual(
         entries(snf),
-        oracleEntries(oracle.matrixSmith(oracleSource)[0], rows, columns),
+        legacyEntries(
+          legacyNapi.matrixSmith(legacySource)[0], rows, columns,
+        ),
       );
     } else {
       assert.deepEqual(entries(hnf), []);
@@ -794,43 +804,30 @@ const rightValues = Array.from(
 );
 const resourceLeft = matrix(performanceSize, performanceSize, leftValues);
 const resourceRight = matrix(performanceSize, performanceSize, rightValues);
-const oracleLeft = oracle.zzMatrix(
+const legacyLeft = legacyNapi.zzMatrix(
   performanceSize,
   performanceSize,
   leftValues,
 );
-const oracleRight = oracle.zzMatrix(
+const legacyRight = legacyNapi.zzMatrix(
   performanceSize,
   performanceSize,
   rightValues,
 );
 const resourceSum = flint.ffiFmpzMatrixAdd(resourceLeft, resourceRight);
 const resourceProduct = flint.ffiFmpzMatrixMul(resourceLeft, resourceRight);
-const oracleSum = oracle.matrixAdd(oracleLeft, oracleRight);
-const oracleProduct = oracle.matrixMul(oracleLeft, oracleRight);
+const legacySum = legacyNapi.matrixAdd(legacyLeft, legacyRight);
+const legacyProduct = legacyNapi.matrixMul(legacyLeft, legacyRight);
 assert.deepEqual(
   entries(resourceSum),
-  oracleEntries(oracleSum, performanceSize, performanceSize),
+  legacyEntries(legacySum, performanceSize, performanceSize),
 );
-const expectedProduct = oracleEntries(
-  oracleProduct,
+const expectedProduct = legacyEntries(
+  legacyProduct,
   performanceSize,
   performanceSize,
 );
 assert.deepEqual(entries(resourceProduct), expectedProduct);
-const packedProduct = Array(performanceSize * performanceSize).fill(0n);
-assert.equal(
-  packedOracle.ffiFmpzMatMul(
-    packedProduct,
-    leftValues,
-    rightValues,
-    BigInt(performanceSize),
-    BigInt(performanceSize),
-    BigInt(performanceSize),
-  ),
-  true,
-);
-assert.deepEqual(packedProduct, expectedProduct);
 closeTwice(resourceProduct, flint.ffiFmpzMatrixClose);
 closeTwice(resourceSum, flint.ffiFmpzMatrixClose);
 
@@ -843,7 +840,7 @@ const generatedAddSamples = measure(
   performanceSamples,
 );
 const legacyAddSamples = measure(
-  () => oracle.matrixAdd(oracleLeft, oracleRight),
+  () => legacyNapi.matrixAdd(legacyLeft, legacyRight),
   ignoreLegacyResource,
   performanceWarmups,
   performanceSamples,
@@ -855,27 +852,7 @@ const generatedMulSamples = measure(
   performanceSamples,
 );
 const legacyMulSamples = measure(
-  () => oracle.matrixMul(oracleLeft, oracleRight),
-  ignoreLegacyResource,
-  performanceWarmups,
-  performanceSamples,
-);
-const packedMulSamples = measure(
-  () => {
-    const output = Array(performanceSize * performanceSize).fill(0n);
-    assert.equal(
-      packedOracle.ffiFmpzMatMul(
-        output,
-        leftValues,
-        rightValues,
-        BigInt(performanceSize),
-        BigInt(performanceSize),
-        BigInt(performanceSize),
-      ),
-      true,
-    );
-    return output;
-  },
+  () => legacyNapi.matrixMul(legacyLeft, legacyRight),
   ignoreLegacyResource,
   performanceWarmups,
   performanceSamples,
@@ -884,7 +861,6 @@ const generatedAdd = median(generatedAddSamples);
 const legacyAdd = median(legacyAddSamples);
 const generatedMul = median(generatedMulSamples);
 const legacyMul = median(legacyMulSamples);
-const packedMul = median(packedMulSamples);
 assert.ok(
   generatedAdd <= legacyAdd * 3 + 5,
   `generated add ${generatedAdd.toFixed(2)} ms vs legacy ${legacyAdd.toFixed(2)} ms`,
@@ -913,19 +889,20 @@ const kernelValues = Array.from(
 );
 const kernelSource = matrix(kernelRows, kernelColumns, kernelValues);
 const resourceKernel = flint.ffiFmpzMatrixRightKernel(kernelSource);
-const packedKernel = Array(kernelColumns * kernelColumns).fill(0n);
-const packedNullity = Number(packedOracle.ffiFmpzMatRightKernel(
-  packedKernel,
-  kernelValues,
-  BigInt(kernelRows),
-  BigInt(kernelColumns),
-));
-assert.equal(flint.ffiFmpzMatrixNrows(resourceKernel), BigInt(packedNullity));
+const kernelNullity = kernelColumns - kernelRows;
+assert.equal(flint.ffiFmpzMatrixNrows(resourceKernel), BigInt(kernelNullity));
 assert.equal(flint.ffiFmpzMatrixNcols(resourceKernel), BigInt(kernelColumns));
-assert.deepEqual(
-  entries(resourceKernel),
-  packedKernel.slice(0, packedNullity * kernelColumns),
-);
+const kernelBasis = entries(resourceKernel);
+for (let basisRow = 0; basisRow < kernelNullity; basisRow += 1) {
+  for (let sourceRow = 0; sourceRow < kernelRows; sourceRow += 1) {
+    let product = 0n;
+    for (let column = 0; column < kernelColumns; column += 1) {
+      product += kernelValues[sourceRow * kernelColumns + column] *
+        kernelBasis[basisRow * kernelColumns + column];
+    }
+    assert.equal(product, 0n);
+  }
+}
 closeTwice(resourceKernel, flint.ffiFmpzMatrixClose);
 const generatedKernelSamples = measure(
   () => flint.ffiFmpzMatrixRightKernel(kernelSource),
@@ -933,28 +910,7 @@ const generatedKernelSamples = measure(
   performanceWarmups,
   performanceSamples,
 );
-const packedKernelSamples = measure(
-  () => {
-    const output = Array(kernelColumns * kernelColumns).fill(0n);
-    packedOracle.ffiFmpzMatRightKernel(
-      output,
-      kernelValues,
-      BigInt(kernelRows),
-      BigInt(kernelColumns),
-    );
-    return output;
-  },
-  ignoreLegacyResource,
-  performanceWarmups,
-  performanceSamples,
-);
 const generatedKernel = median(generatedKernelSamples);
-const packedKernelBoundary = median(packedKernelSamples);
-assert.ok(
-  generatedKernel <= packedKernelBoundary * 3 + 5,
-  `generated kernel ${generatedKernel.toFixed(2)} ms vs packed ` +
-    `${packedKernelBoundary.toFixed(2)} ms`,
-);
 assert.ok(
   generatedKernel < 500,
   `generated exact right kernel took ${generatedKernel.toFixed(2)} ms`,
@@ -1165,25 +1121,19 @@ process.stdout.write(JSON.stringify({
       addSamplesMilliseconds: generatedAddSamples,
       mulSamplesMilliseconds: generatedMulSamples,
     },
-    legacyFlintOracle: {
+    legacyNapiBaseline: {
       addMedianMilliseconds: legacyAdd,
       mulMedianMilliseconds: legacyMul,
       addSamplesMilliseconds: legacyAddSamples,
       mulSamplesMilliseconds: legacyMulSamples,
-    },
-    packedDynamicBoundary: {
-      mulMedianMilliseconds: packedMul,
-      mulSamplesMilliseconds: packedMulSamples,
     },
     exactRightKernel: {
       rows: kernelRows,
       columns: kernelColumns,
       generatedMedianMilliseconds: generatedKernel,
       generatedSamplesMilliseconds: generatedKernelSamples,
-      packedBoundaryMedianMilliseconds: packedKernelBoundary,
-      packedBoundarySamplesMilliseconds: packedKernelSamples,
       exactShapeChecked: true,
-      resultEquivalenceChecked: true,
+      annihilationChecked: true,
     },
   },
 }) + "\n");

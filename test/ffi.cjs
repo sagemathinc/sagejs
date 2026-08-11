@@ -333,7 +333,7 @@ test("generated host adapters cover values and safe owned resources", async () =
   }
 });
 
-test("packages make generated host adapters canonical and retain handwritten oracles", () => {
+test("packages publish every generated host adapter as the canonical export", () => {
   for (const [packagePath, expected] of [
     ["../packages/flint", 168],
     ["../packages/fflas", 4],
@@ -341,44 +341,33 @@ test("packages make generated host adapters canonical and retain handwritten ora
   ]) {
     const backend = require(packagePath);
     const manifest = backend.__sagejs_ffi_manifest__;
-    const oracles = backend.__sagejs_ffi_oracles__;
     assert.equal(manifest.schema, "sagejs.ffi/generated-host-adapter-v1");
     assert.equal(manifest.functions.length, expected);
     assert.equal(manifest.host_isolation.callbacks_inside_core, 0);
     for (const item of manifest.functions) {
       assert.equal(typeof backend[item.export], "function");
-      if (typeof oracles[item.export] === "function") {
-        assert.notEqual(backend[item.export], oracles[item.export]);
-      }
     }
   }
 
   const flint = require("../packages/flint");
+  assert.equal(flint.__sagejs_ffi_oracles__, undefined);
   const left = BigUint64Array.from([1n, 2n, 3n]);
   const right = BigUint64Array.from([4n, 5n, 6n]);
   const generated = new BigUint64Array(5);
-  const oracle = new BigUint64Array(5);
   assert.equal(
     flint.ffiNmodPolyMul(generated, left, right, 5n, 3n, 3n, 101n),
     true,
   );
-  assert.equal(
-    flint.__sagejs_ffi_oracles__.ffiNmodPolyMul(
-      oracle,
-      left,
-      right,
-      5n,
-      3n,
-      3n,
-      101n,
-    ),
-    true,
-  );
-  assert.deepEqual(Array.from(generated), Array.from(oracle));
+  assert.deepEqual(Array.from(generated), [4n, 13n, 28n, 27n, 18n]);
 
-  for (const [name, sourceNumerators, sourceDenominators] of [
-    ["ffiFmpzPolyFactor", [2n, -3n, 0n, 1n], null],
-    ["ffiFmpqPolyFactor", [3n, -9n, 0n, 3n], [5n, 10n, 1n, 10n]],
+  for (const [name, sourceNumerators, sourceDenominators, expectedUnit] of [
+    ["ffiFmpzPolyFactor", [2n, -3n, 0n, 1n], null, [1n, 1n]],
+    [
+      "ffiFmpqPolyFactor",
+      [3n, -9n, 0n, 3n],
+      [5n, 10n, 1n, 10n],
+      [3n, 10n],
+    ],
   ]) {
     const run = (callable) => {
       const factorCoefficients = packedIntegerBuffer(Array(6).fill(0n), 4);
@@ -410,7 +399,14 @@ test("packages make generated host adapters canonical and retain handwritten ora
         unitDenominator: unpackIntegerBuffer(unitDenominator),
       };
     };
-    assert.deepEqual(run(flint[name]), run(flint.__sagejs_ffi_oracles__[name]));
+    assert.deepEqual(run(flint[name]), {
+      coefficients: [2n, 1n, -1n, 1n, 0n, 0n],
+      offsets: [0n, 2n, 4n, 0n],
+      exponents: [1n, 2n, 0n, 0n],
+      factorCount: [2n],
+      unitNumerator: [expectedUnit[0]],
+      unitDenominator: [expectedUnit[1]],
+    });
   }
 });
 
