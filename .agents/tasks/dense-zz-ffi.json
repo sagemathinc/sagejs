@@ -6,9 +6,10 @@
   "lane": "integration",
   "status": "active",
   "owner": "codex",
-  "objective": "Complete generated dense integer matrix resources with exact transforms, kernels, polynomial invariants, ring conversion, structural operations, and lifecycle and performance evidence",
+  "objective": "Complete generated dense integer matrix resources and prove source-transparent borrowed traversal and deterministic random construction directly over those resources",
   "base_commit": "4db221d00e38896bb9830ec5ff694e6d688497e6",
   "claims": [
+    ".agents/lanes.json",
     "ffi/flint.ffi.py",
     "ffi/flint.ffi.json",
     "src/lib/sagejs/ffi/flint.py",
@@ -17,9 +18,12 @@
     "packages/flint/include/sagejs/fmpz_matrix_ffi.h",
     "packages/flint/include/sagejs/fmpq_matrix_ffi.h",
     "packages/flint/include/sagejs/exact_polynomial_ffi.h",
+    "src/lib/sagejs/kernels/matrix/dense_integer_flint.py",
     "package.json",
     "test/ffi.cjs",
     "test/fmpz-matrix-resource-ffi.cjs",
+    "test/fmpz-matrix-resource-kernels.cjs",
+    "test/node-test-manifest.cjs",
     "test/test-manifest.test.cjs",
     "architecture/native-boundaries.json",
     "architecture/native-code.json",
@@ -115,18 +119,49 @@
       "commit": "4db221d00e38896bb9830ec5ff694e6d688497e6",
       "workspace_fingerprint": "42947ed3dfd630cd1abe0230f8d362160704b1d17ea412703cdf6c869938eb07",
       "platform": "linux-x64"
+    },
+    {
+      "command": "node test/fmpz-matrix-resource-kernels.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 8.703,
+      "started_at": "2026-08-11T11:21:59.505Z",
+      "commit": "4a7e2b774501060164b4adb769723755855b919b",
+      "workspace_fingerprint": "6100b50123960f32956b7c8f073297f80ab813deba89640dd842fe3b682fd7e6",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 11.794,
+      "started_at": "2026-08-11T11:22:11.800Z",
+      "commit": "4a7e2b774501060164b4adb769723755855b919b",
+      "workspace_fingerprint": "6100b50123960f32956b7c8f073297f80ab813deba89640dd842fe3b682fd7e6",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 11.885,
+      "started_at": "2026-08-11T11:22:24.217Z",
+      "commit": "4a7e2b774501060164b4adb769723755855b919b",
+      "workspace_fingerprint": "6100b50123960f32956b7c8f073297f80ab813deba89640dd842fe3b682fd7e6",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {
-    "summary": "Added generated FmpzMatrix HNF/SNF transforms, exact-shaped right kernel, characteristic and minimal polynomial resources, direct Fmpz/Fmpq matrix conversions, contiguous submatrices, transactional block writes, stack, augment, and nonzero count. Extended lifecycle, external-memory, malformed-input, differential, edge-shape, transform-identity, and performance coverage. The representative 48x64 exact right kernel measures about 0.52 ms through the owned resource versus 1.67 ms through the packed boundary.",
+    "summary": "Completed the generated FmpzMatrix operation family, then added source-transparent typed-Python kernels which borrow the resource for packed import, deterministic range and default random fill, and exact nonzero traversal. Native and dynamic fallback streams agree for large exact values, empty and skew shapes, and invalid checked parameters. On the development host, 300x300 resource random fill measures about 1.41 ms versus 0.77 ms for a packed IntegerBuffer and 32.22 ms for host-per-entry mutation; packed resource import measures about 0.95 ms versus 29.61 ms host-per-entry.",
     "risks": [
       "These owned FLINT matrix resources remain Node-only declarations with wasm=False; WASM resource lowering is a separate architecture lane.",
       "Arbitrary indexed row or column selection is not declared because the current declaration compiler rejects mixing a resource with an aggregate UInt64Buffer adapter; contiguous slicing and typed traversal remain available without an operation-specific host adapter.",
-      "pnpm test:portable is not clean on base 4db221d after rebuilding the self-hosted compiler: unrelated compiled-module-isolation/bootstrap assertions fail in files outside this lane. Focused FFI, sanitizer, architecture, and strict-baselib gates pass."
+      "Native kernels cannot yet raise ValueError directly, so random parameter validation returns a checked (valid, final_state) tuple and leaves the target unchanged on failure.",
+      "pnpm test:changed reached the pre-existing compiler runner after passing build, architecture, unit, and strict checks, then the compiler test process ended with signal 143 and a pending-promise diagnostic. Focused resource kernels, dense integer migration, architecture, and strict baselib gates pass."
     ],
     "next_steps": [
-      "Integrate these generated operations into the public dense ZZ Matrix representation without touching packed limb capacities.",
-      "Add the typed-Python resource structural kernels for construction, random fill, traversal, and public result assembly.",
+      "Integrate these generated operations and resource kernels into the public dense ZZ Matrix representation without touching packed limb capacities.",
+      "Use flint_dense_integer_resource_import for all bulk exact ingress rather than host-per-entry resource mutation.",
       "Decide whether arbitrary indexed selection merits a focused resource-plus-aggregate declaration compiler feature or should remain typed traversal."
     ]
   }

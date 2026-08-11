@@ -39,6 +39,7 @@ const integration = [
   "test/dense-prime-migration.cjs",
   "test/dense-prime-structural.cjs",
   "test/dense-integer-migration.cjs",
+  "test/fmpz-matrix-resource-kernels.cjs",
   "test/dense-rational-migration.cjs",
   "test/math-module.cjs",
   "test/datetime-module.cjs",
