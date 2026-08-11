@@ -103,6 +103,30 @@ assert loads(dumps(zlarge)) == zlarge
 assert loads(dumps(qlarge)) == qlarge
 assert all(region.closed for region in created_regions)
 
+# The public rows-plus-flat-list form may reuse an exact built-in list while
+# importing it, but the resulting FLINT resource must never alias that list.
+owned_source = [1, 2, 3, 4, 5, 6]
+owned = matrix(ZZ, 2, owned_source)
+owned_source[0] = 999
+owned_source.append(7)
+assert owned.dimensions() == (2, 3)
+assert owned.list() == [1, 2, 3, 4, 5, 6]
+
+# A list subclass is an arbitrary Python iterable: its iteration semantics
+# remain observable and therefore must not take the exact-built-in-list path.
+class RewritingList(list):
+    def __iter__(self):
+        return iter([11, 12, 13, 14])
+
+rewritten = RewritingList([1, 2, 3, 4])
+assert matrix(ZZ, 2, rewritten).list() == [11, 12, 13, 14]
+
+def generated_entries():
+    for entry in [21, 22, 23, 24]:
+        yield entry
+
+assert matrix(ZZ, 2, generated_entries()).list() == [21, 22, 23, 24]
+
 print('bulk-exact-matrix-construction', len(created_regions))
 `;
 

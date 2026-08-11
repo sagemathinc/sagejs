@@ -32,6 +32,7 @@ async function main() {
       "import sagejs.runtime as _ingress_runtime",
       "from sagejs_serialization import dumps as _ingress_dumps, loads as _ingress_loads",
       "_ingress_zvalues = [index % 201 - 100 for index in range(500*500)]",
+      "_ingress_zsequence = [1..500*500]",
       "_ingress_qvalues = [QQ(index % 101 - 50, index % 13 + 1) for index in range(300*300)]",
       "_ingress_z = matrix(ZZ, 500, 500, _ingress_zvalues)",
       "_ingress_q = matrix(QQ, 300, 300, _ingress_qvalues)",
@@ -44,6 +45,8 @@ async function main() {
       "        raise RuntimeError('bulk ingress returned None')",
       "    return (_ingress_runtime.wall_time() - started) * 1000",
       "def _ingress_z_construct(): return matrix(ZZ, 500, 500, _ingress_zvalues)",
+      "def _ingress_z_rows_list(): return matrix(ZZ, 500, _ingress_zsequence)",
+      "def _ingress_z_explicit_list(): return matrix(ZZ, 500, 500, _ingress_zsequence)",
       "def _ingress_q_construct(): return matrix(QQ, 300, 300, _ingress_qvalues)",
       "def _ingress_z_load(): return _ingress_loads(_ingress_zpack)",
       "def _ingress_q_load(): return _ingress_loads(_ingress_qpack)",
@@ -54,8 +57,11 @@ async function main() {
       ["QQ 300x300 entries", "_ingress_q_construct", 140],
       ["ZZ 500x500 SagePack", "_ingress_z_load", 30],
       ["QQ 300x300 SagePack", "_ingress_q_load", 30],
+      ["ZZ rows + exact list", "_ingress_z_rows_list", 35],
+      ["ZZ explicit exact list", "_ingress_z_explicit_list", 35],
     ];
     const failures = [];
+    const measurements = new Map();
     console.log(`Exact matrix bulk ingress (${samples} warm samples)`);
     for (const [name, functionName, budget] of cases) {
       await session.evaluate(`${functionName}()`);
@@ -67,11 +73,17 @@ async function main() {
         timings.push(Number(result.repr));
       }
       const elapsed = median(timings);
+      measurements.set(functionName, elapsed);
       const limit = budget * scale;
       console.log(
         `  ${name.padEnd(24)} ${elapsed.toFixed(2)} ms / ${limit.toFixed(2)} ms`,
       );
       if (!(elapsed > 0 && elapsed <= limit)) failures.push(name);
+    }
+    const rowsList = measurements.get("_ingress_z_rows_list");
+    const explicitList = measurements.get("_ingress_z_explicit_list");
+    if (!(rowsList <= explicitList * 1.5 + 2)) {
+      failures.push("ZZ rows-list no-copy parity");
     }
     if (failures.length !== 0) {
       throw new Error(`exact matrix ingress budget exceeded: ${failures.join(", ")}`);
