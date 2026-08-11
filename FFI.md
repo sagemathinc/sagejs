@@ -48,6 +48,20 @@ generated C++ exception shield; `first_edge_endpoint` is the small executable
 witness for a nullable pointer result which is copied immediately and never
 exposed to Python.
 
+[`ffi/fflas.ffi.py`](ffi/fflas.ffi.py) is a second independent numerical
+toolchain and the first optional accelerator selected by measured crossover.
+It declares packed small-prime matrix multiplication, direct rank, and
+canonical RREF over Sage.js-owned `UInt64Buffer` storage. The generated C++ shield converts one
+whole matrix operation to `Givaro::Modular<float>`, invokes FFLAS/FFPACK, and
+transactionally exports canonical residues. No FFLAS object or pointer escapes
+the call. Supported Unix hosts use it for primes below 256 once each matrix
+dimension reaches its measured crossover (32 for multiplication/RREF and 64
+for direct rank); FLINT remains the exact declared fallback, and native
+Windows reports the capability unavailable rather than silently changing the
+ABI. This package demonstrates that a new accelerator needs declarations, a
+narrow foreign façade, differential tests, and a benchmark—not an
+algorithm-specific compiler branch or handwritten N-API.
+
 ## One declaration, two execution paths
 
 Ordinary code imports a generated, safe Python surface:
@@ -356,9 +370,10 @@ emits view ABI storage without cleanup and keeps the lexical owned root live
 until every exit has run its generated destructor.
 
 Declarations also make native toolchain roots and source headers per-library data.
-`SAGEJS_FLINT_PREFIX` and `SAGEJS_GRAPH_PREFIX` can independently select
-installed artifacts; headers and archives are never accidentally resolved
-through FLINT's prefix merely because FLINT was the first adapter.
+`SAGEJS_FLINT_PREFIX`, `SAGEJS_FFLAS_PREFIX`, and `SAGEJS_GRAPH_PREFIX` can
+independently select installed artifacts; headers and archives are never
+accidentally resolved through FLINT's prefix merely because FLINT was the first
+adapter.
 
 Run `pnpm ffi:lifecycle:fuzz` to compile and execute a deterministic igraph
 owner/view lifecycle corpus with ASan, UBSan, and leak detection on Unix. The

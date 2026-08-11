@@ -84,6 +84,22 @@
       "platforms": ["linux-x64", "linux-arm64", "windows-x64", "macos-arm64"]
     },
     {
+      "id": "dense-prime-fflas-production",
+      "source": "src/lib/sagejs/kernels/matrix/dense_prime_field_fflas.py",
+      "functions": [
+        "fflas_dense_prime_field_available",
+        "fflas_dense_prime_field_matrix_mul",
+        "fflas_dense_prime_field_matrix_rank",
+        "fflas_dense_prime_field_matrix_rref"
+      ],
+      "semantic_domain": "optional production FFLAS/FFPACK acceleration over canonical packed compiler-owned GF(p) matrix records for primes below 256",
+      "fallback": "same-source",
+      "host_isolation": "certified",
+      "oracles": ["cpython", "javascript", "flint"],
+      "benchmark": "bench:fflas:dense-prime",
+      "platforms": ["linux-x64", "linux-arm64", "windows-x64", "macos-arm64"]
+    },
+    {
       "id": "dense-integer-production",
       "source": "src/lib/sagejs/kernels/matrix/dense_integer.py",
       "functions": [

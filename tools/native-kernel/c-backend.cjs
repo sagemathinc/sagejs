@@ -108,7 +108,8 @@ function emitOperation(operation, locals, indent) {
     ].join("\n");
   }
   if (operation.kind === "uint64.constant") {
-    return `${indent}${target} = UINT64_C(${operation.value});`;
+    return `${indent}${nativeValue(locals.get(operation.target))} = ` +
+      `UINT64_C(${operation.value});`;
   }
   if (operation.kind === "real.constant") {
     const target = locals.get(operation.target);
@@ -274,6 +275,9 @@ function emitExactOperation(operation, context, indent) {
       `${indent}    goto fail;`,
       `${indent}}`,
     ].join("\n");
+  }
+  if (operation.kind === "uint64.constant") {
+    return `${indent}${target} = UINT64_C(${operation.value});`;
   }
   if (operation.kind === "bool.constant") {
     return `${indent}${target} = ${operation.value ? 1 : 0};`;

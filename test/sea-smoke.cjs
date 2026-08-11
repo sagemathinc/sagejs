@@ -29,6 +29,7 @@ const mathExecutable = join(
   `sagejs${executableSuffix}`,
 );
 const pythonOnly = process.argv.includes("--python-only");
+const fflasOnly = process.argv.includes("--fflas-only");
 const temporaryDirectory = mkdtempSync(join(tmpdir(), "sagejs-sea-test-"));
 
 function run(executable, filename, extraArguments = []) {
@@ -47,6 +48,67 @@ function runArguments(executable, arguments_) {
   });
   assert.equal(result.status, 0, result.stderr);
   return result.stdout.trim();
+}
+
+function testFflasSea() {
+  if (process.platform === "win32") return;
+  const fflasProgram = join(temporaryDirectory, "fflas-sea.sage");
+  writeFileSync(
+    fflasProgram,
+    [
+      "field = GF(97)",
+      "size = 64",
+      "source = identity_matrix(field, size)",
+      "assert source * source == source",
+      "assert source.rank() == size",
+      "assert source.rref() == source",
+      "print('fflas sea ok')",
+      "",
+    ].join("\n"),
+  );
+  for (const [disabled, expectedPath] of [
+    [false, "isolated"],
+    [true, "adapter"],
+  ]) {
+    const result = spawnSync(mathExecutable, [fflasProgram], {
+      cwd: temporaryDirectory,
+      encoding: "utf8",
+      env: {
+        ...process.env,
+        SAGEJS_NATIVE_TRACE: "1",
+        ...(disabled
+          ? { SAGEJS_NATIVE_DISABLE: "1" }
+          : { SAGEJS_NATIVE_REQUIRED: "1" }),
+      },
+    });
+    if (result.error) throw result.error;
+    assert.equal(
+      result.status,
+      0,
+      result.stderr || result.stdout || `SEA terminated by ${result.signal}`,
+    );
+    for (const operation of ["multiply", "rank", "rref"]) {
+      assert.match(
+        result.stdout,
+        new RegExp(
+          `Matrix\\.${operation} GF\\(97\\) 64x64 -> ` +
+          `declared-fflas-${expectedPath}`,
+        ),
+      );
+    }
+    assert.match(result.stdout, /fflas sea ok/);
+  }
+}
+
+if (fflasOnly) {
+  try {
+    if (process.platform !== "win32") chmodSync(mathExecutable, 0o755);
+    testFflasSea();
+  } finally {
+    rmSync(temporaryDirectory, { recursive: true, force: true });
+  }
+  console.log("Sage.js FFLAS single-executable paths passed.");
+  process.exit(0);
 }
 
 try {
@@ -252,6 +314,8 @@ try {
         "[1008, 1012, 1018]\n" +
         "['3', '5', '5']",
     );
+
+    testFflasSea();
   }
 } finally {
   rmSync(temporaryDirectory, { recursive: true, force: true });

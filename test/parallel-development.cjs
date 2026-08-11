@@ -34,6 +34,7 @@ const {
 } = require("../scripts/parallel-development.cjs");
 const {
   nativeArtifactSpecs,
+  nativeCachePackages,
   prepareNativeArtifact,
   restoreNativeArtifact,
   restoreNativePackages,
@@ -650,6 +651,10 @@ test("a custom prefix skips only its package during cache restore", () => {
     else process.env.SAGEJS_FLINT_PREFIX = previous;
     rmSync(directory, { recursive: true, force: true });
   }
+});
+
+test("native package cache builds FLINT before its FFLAS dependent", () => {
+  assert.deepEqual([...nativeCachePackages], ["flint", "fflas", "graph"]);
 });
 
 test("corrupt native cache entries fail closed and rebuild", () => {

@@ -44,7 +44,7 @@ const { git } = require("./parallel-lib.cjs");
 const { pnpmInvocation } = require("./pnpm-invocation.cjs");
 
 const nativeCacheSchema = "sagejs.parallel-native-artifact-cache-v1";
-const nativeCachePackages = new Set(["flint", "graph"]);
+const nativeCachePackages = new Set(["flint", "fflas", "graph"]);
 const nativeCacheSleep = new Int32Array(new SharedArrayBuffer(4));
 
 function sha256(contents) {
@@ -286,8 +286,10 @@ function nativeBuildIdentity(workspace, overrides = {}) {
   for (const name of [
     "SAGEJS_CLANG_BUILTINS",
     "SAGEJS_FFPOLY_TARBALL",
+    "SAGEJS_FFLAS_FFPACK_TARBALL",
     "SAGEJS_FLINT_TARBALL",
     "SAGEJS_GMP_TARBALL",
+    "SAGEJS_GIVARO_TARBALL",
     "SAGEJS_IGRAPH_TARBALL",
     "SAGEJS_MPC_TARBALL",
     "SAGEJS_MPFR_TARBALL",
@@ -406,6 +408,55 @@ function nativeArtifactSpecs(workspace, overrides = {}) {
         "packages/flint/build/generated-ffi/sagejs_flint_ffi.node",
         "packages/flint/build/generated-ffi/manifest.json",
       ],
+      requiredDependencyOutputs: process.platform === "win32"
+        ? [
+          `${dependencyPrefix("flint")}/lib/flint.lib`,
+          `${dependencyPrefix("flint")}/lib/openblas.lib`,
+        ]
+        : [
+          `${dependencyPrefix("flint")}/lib/libflint.a`,
+          `${dependencyPrefix("flint")}/lib/libgmp.a`,
+          `${dependencyPrefix("flint")}/lib/libopenblas.a`,
+          `${dependencyPrefix("flint")}/.sagejs-flint-dependencies.json`,
+        ],
+    },
+    fflas: {
+      dependencyInputs: [
+        "packages/fflas/package.json",
+        "packages/fflas/scripts/build-deps.cjs",
+        "packages/fflas/include/sagejs/fflas_matrix_ffi.h",
+        "packages/flint/scripts/build-deps.cjs",
+      ],
+      addonInputs: [
+        "packages/fflas/package.json",
+        "packages/fflas/include",
+        "packages/fflas/generated/ffi_host.py",
+        "packages/fflas/scripts/native-prefix.cjs",
+        "ffi/fflas.ffi.py",
+        "ffi/fflas.ffi.json",
+        ...commonAddonInputs,
+      ],
+      addonOutputs: [
+        "packages/fflas/build/generated-ffi",
+      ],
+      requiredAddonOutputs: [
+        "packages/fflas/build/generated-ffi/sagejs_fflas_ffi.node",
+        "packages/fflas/build/generated-ffi/manifest.json",
+      ],
+      requiredDependencyOutputs: process.platform === "win32"
+        ? [
+          `${dependencyPrefix("fflas")}/.sagejs-fflas-dependencies.json`,
+          `${dependencyPrefix("fflas")}/include/sagejs/fflas_matrix_ffi.h`,
+        ]
+        : [
+          `${dependencyPrefix("fflas")}/lib/libgmpxx.a`,
+          `${dependencyPrefix("fflas")}/lib/libgivaro.a`,
+          `${dependencyPrefix("fflas")}/lib/libopenblas.a`,
+          `${dependencyPrefix("fflas")}/.sagejs-fflas-dependencies.json`,
+        ],
+      addonBuildCommands: [
+        ["pnpm", ["--dir", "packages/fflas", "run", "build:ffi"]],
+      ],
     },
     graph: {
       dependencyInputs: [
@@ -431,6 +482,12 @@ function nativeArtifactSpecs(workspace, overrides = {}) {
         "packages/graph/build/Release/sagejs_graph.node",
         "packages/graph/build/generated-ffi/sagejs_igraph_ffi.node",
         "packages/graph/build/generated-ffi/manifest.json",
+      ],
+      requiredDependencyOutputs: [
+        process.platform === "win32"
+          ? `${dependencyPrefix("graph")}/lib/igraph.lib`
+          : `${dependencyPrefix("graph")}/lib/libigraph.a`,
+        `${dependencyPrefix("graph")}/.sagejs-igraph-1.0.1`,
       ],
     },
   };
@@ -470,24 +527,7 @@ function nativeArtifactSpecs(workspace, overrides = {}) {
         inputPaths: description.dependencyInputs,
         inputs: dependencyInputs,
         outputRoots: [dependencyPrefix(packageId)],
-        requiredOutputs: packageId === "flint"
-          ? process.platform === "win32"
-            ? [
-              `${dependencyPrefix(packageId)}/lib/flint.lib`,
-              `${dependencyPrefix(packageId)}/lib/openblas.lib`,
-            ]
-            : [
-              `${dependencyPrefix(packageId)}/lib/libflint.a`,
-              `${dependencyPrefix(packageId)}/lib/libgmp.a`,
-              `${dependencyPrefix(packageId)}/lib/libopenblas.a`,
-              `${dependencyPrefix(packageId)}/.sagejs-flint-dependencies.json`,
-            ]
-          : [
-            process.platform === "win32"
-              ? `${dependencyPrefix(packageId)}/lib/igraph.lib`
-              : `${dependencyPrefix(packageId)}/lib/libigraph.a`,
-            `${dependencyPrefix(packageId)}/.sagejs-igraph-1.0.1`,
-          ],
+        requiredOutputs: description.requiredDependencyOutputs,
         buildCommands: [["pnpm", ["--dir", `packages/${packageId}`, "run", "build:deps"]]],
       },
       {
@@ -500,7 +540,7 @@ function nativeArtifactSpecs(workspace, overrides = {}) {
         inputs: addonInputs,
         outputRoots: description.addonOutputs,
         requiredOutputs: description.requiredAddonOutputs,
-        buildCommands: [
+        buildCommands: description.addonBuildCommands || [
           ["pnpm", ["--dir", `packages/${packageId}`, "run", "build:addon"]],
           ["pnpm", ["--dir", `packages/${packageId}`, "run", "build:ffi"]],
         ],

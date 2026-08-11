@@ -13,8 +13,8 @@
     "new_boundaries_require": "explicit-regeneration-and-review"
   },
   "counts": {
-    "classified-native-file": 56,
-    "declared-ffi": 174,
+    "classified-native-file": 57,
+    "declared-ffi": 178,
     "declared-ffi-resource": 10,
     "napi-export": 292,
     "runtime-intrinsic": 131,
@@ -150,6 +150,50 @@
       "close_export": "ffiGraphClose",
       "clear_symbol": "sagejs_igraph_graph_clear",
       "disposition": "declared-owned-ffi-resource"
+    },
+    {
+      "id": "ffi:fflas:modular_float_available",
+      "kind": "declared-ffi",
+      "path": "ffi/fflas.ffi.json",
+      "library": "fflas",
+      "export": "modular_float_available",
+      "dynamic_package": "@sagemath/sagejs-fflas",
+      "dynamic_export": "ffiFflasModularFloatAvailable",
+      "symbol": "sagejs_fflas_modular_float_available",
+      "disposition": "declared-safe-ffi"
+    },
+    {
+      "id": "ffi:fflas:modular_float_mul",
+      "kind": "declared-ffi",
+      "path": "ffi/fflas.ffi.json",
+      "library": "fflas",
+      "export": "modular_float_mul",
+      "dynamic_package": "@sagemath/sagejs-fflas",
+      "dynamic_export": "ffiFflasModularFloatMul",
+      "symbol": "sagejs_fflas_modular_float_mul",
+      "disposition": "declared-safe-ffi"
+    },
+    {
+      "id": "ffi:fflas:modular_float_rank",
+      "kind": "declared-ffi",
+      "path": "ffi/fflas.ffi.json",
+      "library": "fflas",
+      "export": "modular_float_rank",
+      "dynamic_package": "@sagemath/sagejs-fflas",
+      "dynamic_export": "ffiFflasModularFloatRank",
+      "symbol": "sagejs_fflas_modular_float_rank",
+      "disposition": "declared-safe-ffi"
+    },
+    {
+      "id": "ffi:fflas:modular_float_rref",
+      "kind": "declared-ffi",
+      "path": "ffi/fflas.ffi.json",
+      "library": "fflas",
+      "export": "modular_float_rref",
+      "dynamic_package": "@sagemath/sagejs-fflas",
+      "dynamic_export": "ffiFflasModularFloatRref",
+      "symbol": "sagejs_fflas_modular_float_rref",
+      "disposition": "declared-safe-ffi"
     },
     {
       "id": "ffi:flint:dirichlet_group_init",
@@ -5015,6 +5059,14 @@
       "disposition": "benchmark-reference",
       "review_status": "accepted",
       "lane": "native-compiler"
+    },
+    {
+      "id": "native-file:packages/fflas/include/sagejs/fflas_matrix_ffi.h",
+      "kind": "classified-native-file",
+      "path": "packages/fflas/include/sagejs/fflas_matrix_ffi.h",
+      "disposition": "external-library-bridge",
+      "review_status": "accepted",
+      "lane": "integration"
     },
     {
       "id": "native-file:packages/flint-wasm/src/factor.c",

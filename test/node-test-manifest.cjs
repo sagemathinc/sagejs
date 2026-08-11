@@ -42,6 +42,7 @@ const integration = [
   "test/rational-right-kernel-resource-public.cjs",
   "test/production-native-kernels.cjs",
   "test/dense-prime-migration.cjs",
+  "test/fflas-dense-prime.cjs",
   "test/dense-prime-structural.cjs",
   "test/dense-integer-migration.cjs",
   "test/dense-integer-public-resource.cjs",

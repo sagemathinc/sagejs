@@ -1099,9 +1099,12 @@ function generatePythonModule(declaration) {
       `    \"\"\"Call declared ${library.id}:${fn.id}.\"\"\"\n` +
       `    return ${call}\n`;
   }).join("\n\n");
+  const typingImport = declaration.resources.length === 0
+    ? ""
+    : "from typing import Any\n\n";
   const source = `\"\"\"Generated safe FFI surface for ${library.id}; do not edit by hand.\"\"\"\n\n` +
     `from __future__ import annotations\n\n` +
-    `from typing import Any\n\n` +
+    typingImport +
     `import sagejs.runtime as _runtime\n` +
     `\n` +
     `__sagejs_ffi_declaration__ = ${JSON.stringify(declaration.identity)}\n\n\n` +

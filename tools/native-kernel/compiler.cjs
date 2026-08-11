@@ -547,7 +547,9 @@ function bindingGyp(ir, sourceBoundsChecked, hasExceptionShims = false) {
       VCCLCompilerTool: {
         Optimization: 3,
         WarningLevel: 3,
-        ...(hasExceptionShims ? { ExceptionHandling: 1 } : {}),
+        ...(hasExceptionShims
+          ? { ExceptionHandling: 1, RuntimeTypeInfo: true }
+          : {}),
       },
     };
   } else {
@@ -573,14 +575,19 @@ function bindingGyp(ir, sourceBoundsChecked, hasExceptionShims = false) {
       "-fdata-sections",
     ];
     if (hasExceptionShims) {
-      target["cflags_cc!"] = ["-fno-exceptions"];
-      target.cflags_cc = ["-fexceptions"];
+      target["cflags_cc!"] = ["-fno-exceptions", "-fno-rtti"];
+      target.cflags_cc = ["-fexceptions", "-frtti"];
     }
     if (process.platform === "darwin") {
       target.xcode_settings = {
         GCC_OPTIMIZATION_LEVEL: "3",
         MACOSX_DEPLOYMENT_TARGET: "13.0",
-        ...(hasExceptionShims ? { GCC_ENABLE_CPP_EXCEPTIONS: "YES" } : {}),
+        ...(hasExceptionShims
+          ? {
+            GCC_ENABLE_CPP_EXCEPTIONS: "YES",
+            GCC_ENABLE_CPP_RTTI: "YES",
+          }
+          : {}),
       };
     } else {
       target.ldflags = [
@@ -748,7 +755,7 @@ async function compileKernel(options) {
         coreSourceMap,
         hostIsolation: artifacts.hostIsolation,
         exceptionShields: exceptionShims === null ? [] :
-          exceptionShims.functions.map((fn) => fn.declaration_id),
+          exceptionShims.functions.map((fn) => fn.call_plan.declaration_id),
         ir,
       },
       null,

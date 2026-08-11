@@ -41,7 +41,7 @@ function usage(exitCode = 0) {
   pnpm parallel:check -- [--task ID | --all] [--json]
   pnpm parallel:status -- [--json]
   pnpm parallel:run -- ID -- COMMAND [ARG ...]
-  pnpm parallel:cache -- [prepare|restore] [--package flint|graph]
+  pnpm parallel:cache -- [prepare|restore] [--package flint|fflas|graph]
   pnpm test:changed -- [--base REF] [--list]
 
 Run a subcommand with --help for details. Lane names:
@@ -495,7 +495,7 @@ function nativeCacheCommand(rawArgs) {
     process.stdout.write(`Usage: pnpm parallel:cache -- [prepare|restore] [options]
 
 Options:
-  --package ID          flint or graph; repeatable (defaults to both)
+  --package ID          flint, fflas, or graph; repeatable (defaults to all)
   --cache-root PATH     override the shared content-addressed cache
 
 prepare restores a valid artifact or builds and atomically publishes a cache

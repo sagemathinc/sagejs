@@ -258,6 +258,16 @@ differential oracles, never production `PolynomialElement` state. Exact
 algebraic roots and the not-yet-migrated power-series family retain narrow
 audited bridges until their result and ownership models are migrated.
 
+Dense matrices over primes below 256 may additionally use FFLAS/FFPACK after a
+measured dimension crossover. This is an optional generated accelerator, not a
+new canonical representation: the public matrix still owns row-major
+`UInt64Buffer` residues, the complete operation crosses one declared boundary,
+and the output is transactionally copied back. FLINT remains the exact declared
+fallback and differential oracle. The FFLAS package has its own dependency
+prefix and generated C++ exception shields, while the compiler contains no
+FFLAS symbol-specific logic. Capability and crossover selection happen at the
+public matrix layer and are visible through native tracing.
+
 Every successful native compilation emits a host-independent `kernel_core.c`
 and `kernel_core.h` as its canonical mathematical artifact.  The core owns the
 entire lowered transitive call graph; a generated Node addon is only one host
