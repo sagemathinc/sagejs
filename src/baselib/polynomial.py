@@ -133,6 +133,101 @@ def _buffer_length(source: Any) -> int:
     return len(source) if length is runtime.undefined else int(length)
 
 
+def _trim_polynomial_coefficients(values: list[Any]) -> list[Any]:
+    """Remove trailing zero coefficients from a mutable coefficient list."""
+    while len(values) != 0 and values[-1] == 0:
+        values.pop()
+    return values
+
+
+def _rational_polynomial_remainder(
+    dividend: list[Any], divisor: list[Any]
+) -> list[Any]:
+    """Return the ordinary dense remainder over `QQ`.
+
+    This deliberately small dynamic algorithm is the portable oracle for the
+    generated FLINT resource operation. Node uses the resource-to-resource
+    call and never enters this coefficient loop.
+    """
+    remainder = list(dividend)
+    divisor_degree = len(divisor) - 1
+    divisor_leading = divisor[-1]
+    while len(remainder) >= len(divisor):
+        shift = len(remainder) - len(divisor)
+        factor = remainder[-1] / divisor_leading
+        for index in range(divisor_degree + 1):
+            remainder[index + shift] -= factor * divisor[index]
+        _trim_polynomial_coefficients(remainder)
+    return remainder
+
+
+def _monic_rational_polynomial_gcd(left: list[Any], right: list[Any]) -> list[Any]:
+    """Compute the monic Euclidean GCD of two dense `QQ` polynomials."""
+    left = _trim_polynomial_coefficients([sage.QQ(value) for value in left])
+    right = _trim_polynomial_coefficients([sage.QQ(value) for value in right])
+    while len(right) != 0:
+        left, right = right, _rational_polynomial_remainder(left, right)
+    if len(left) == 0:
+        return []
+    leading = left[-1]
+    return [coefficient / leading for coefficient in left]
+
+
+def _integer_polynomial_content(coefficients: list[Any]) -> int:
+    """Return the nonnegative content of dense integer coefficients."""
+    content = runtime.bigint(0)
+    for coefficient in coefficients:
+        content = runtime.bigint_gcd(content, runtime.integer_bigint(coefficient))
+    return content
+
+
+def _dynamic_exact_polynomial_gcd(
+    left: PolynomialElement, right: PolynomialElement
+) -> PolynomialElement:
+    """Portable exact-polynomial GCD with Sage's canonical normalization."""
+    base = left.parent().base_ring()
+    left_coefficients = left.coefficients()
+    right_coefficients = right.coefficients()
+    rational_gcd = _monic_rational_polynomial_gcd(left_coefficients, right_coefficients)
+    if base is sage.QQ:
+        return left.parent()._from_coefficients(rational_gcd)
+    if len(rational_gcd) == 0:
+        return left.parent()._from_coefficients([])
+
+    common_denominator = runtime.bigint(1)
+    for coefficient in rational_gcd:
+        denominator = runtime.integer_bigint(coefficient._denominator)
+        common_denominator = (
+            runtime.bigint_divexact(
+                common_denominator,
+                runtime.bigint_gcd(common_denominator, denominator),
+            )
+            * denominator
+        )
+    integer_coefficients = [
+        runtime.integer_bigint(coefficient._numerator)
+        * runtime.bigint_divexact(
+            common_denominator,
+            runtime.integer_bigint(coefficient._denominator),
+        )
+        for coefficient in rational_gcd
+    ]
+    primitive_content = _integer_polynomial_content(integer_coefficients)
+    integer_coefficients = [
+        runtime.bigint_divexact(coefficient, primitive_content)
+        for coefficient in integer_coefficients
+    ]
+    if integer_coefficients[-1] < 0:
+        integer_coefficients = [-coefficient for coefficient in integer_coefficients]
+    content = runtime.bigint_gcd(
+        _integer_polynomial_content(left_coefficients),
+        _integer_polynomial_content(right_coefficients),
+    )
+    return left.parent()._from_coefficients(
+        [content * coefficient for coefficient in integer_coefficients]
+    )
+
+
 def _integer_buffer_values(source: Any) -> list[Any]:
     converter = runtime.reflect.get(source, "toArray")
     if runtime.jstype(converter) == "function":
@@ -1246,17 +1341,43 @@ class PolynomialElement(sage.Element):
 
     def gcd(self, other: object) -> PolynomialElement:
         operands = runtime.coercion_model.coercePair(self, other)
-        if not isinstance(
-            operands.left, PolynomialElement
-        ) or operands.parent.base_ring()._kind not in ["GF", "GF_EXTENSION"]:
-            raise TypeError(
-                "polynomial gcd is currently implemented over finite fields"
-            )
-        if operands.parent.base_ring()._kind == "GF_EXTENSION":
+        if not isinstance(operands.left, PolynomialElement):
+            raise TypeError("polynomial gcd requires polynomials")
+        base = operands.parent.base_ring()
+        kind = _packed_polynomial_kind(base)
+        if kind == "ZZ":
+            if (
+                operands.left._has_fmpz_polynomial_resource()
+                and operands.right._has_fmpz_polynomial_resource()
+            ):
+                return operands.left._new(
+                    _FmpzPolynomialResourceStorage(
+                        _flint_ffi_module().fmpz_polynomial_gcd(
+                            operands.left._exact_polynomial_resource(),
+                            operands.right._exact_polynomial_resource(),
+                        )
+                    )
+                )
+            return _dynamic_exact_polynomial_gcd(operands.left, operands.right)
+        if kind == "QQ":
+            if (
+                operands.left._has_fmpq_polynomial_resource()
+                and operands.right._has_fmpq_polynomial_resource()
+            ):
+                return operands.left._new(
+                    _FmpqPolynomialResourceStorage(
+                        _flint_ffi_module().fmpq_polynomial_gcd(
+                            operands.left._exact_polynomial_resource(),
+                            operands.right._exact_polynomial_resource(),
+                        )
+                    )
+                )
+            return _dynamic_exact_polynomial_gcd(operands.left, operands.right)
+        if base._kind == "GF_EXTENSION":
             native_value = runtime.flint_backend().fqPolyGcd(
                 operands.left._native, operands.right._native
             )
-        else:
+        elif kind == "GF":
             left_length = operands.left._coefficient_length()
             right_length = operands.right._coefficient_length()
             output_length = max(left_length, right_length)
@@ -1271,6 +1392,10 @@ class PolynomialElement(sage.Element):
                 operands.parent.base_ring()._modulus,
             )
             return operands.left._new(output)
+        else:
+            raise TypeError(
+                "polynomial gcd is implemented over ZZ, QQ, and finite fields"
+            )
         return operands.parent._from_legacy_native(native_value)
 
     def is_irreducible(self) -> bool:

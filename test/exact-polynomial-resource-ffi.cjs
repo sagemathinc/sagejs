@@ -173,6 +173,7 @@ function fmpqPolynomial(coefficients) {
   const difference = flint.ffiFmpzPolynomialSub(left, right);
   const negated = flint.ffiFmpzPolynomialNeg(left);
   const product = flint.ffiFmpzPolynomialMul(left, right);
+  const common = flint.ffiFmpzPolynomialGcd(product, left);
   const quotient = flint.ffiFmpzPolynomialDivExact(product, left);
   const zero = fmpzPolynomial([]);
   const zeroQuotient = flint.ffiFmpzPolynomialDivExact(zero, right);
@@ -194,6 +195,8 @@ function fmpqPolynomial(coefficients) {
     [-1n, 1n, 2n],
   );
   assert.equal(flint.ffiFmpzPolynomialEqual(quotient, right), 1n);
+  assert.equal(flint.ffiFmpzPolynomialEqual(common, left), 1n);
+  assert.ok(accounted(common) > 0n);
   assert.ok(accounted(quotient) > 0n);
   assert.equal(flint.ffiFmpzPolynomialLength(zeroQuotient), 0n);
   assert.throws(
@@ -239,6 +242,7 @@ function fmpqPolynomial(coefficients) {
   closeTwice(zeroQuotient, flint.ffiFmpzPolynomialClose);
   closeTwice(zero, flint.ffiFmpzPolynomialClose);
   closeTwice(quotient, flint.ffiFmpzPolynomialClose);
+  closeTwice(common, flint.ffiFmpzPolynomialClose);
   closeTwice(product, flint.ffiFmpzPolynomialClose);
   closeTwice(negated, flint.ffiFmpzPolynomialClose);
   closeTwice(difference, flint.ffiFmpzPolynomialClose);
@@ -254,6 +258,7 @@ function fmpqPolynomial(coefficients) {
   const difference = flint.ffiFmpqPolynomialSub(left, right);
   const negated = flint.ffiFmpqPolynomialNeg(left);
   const product = flint.ffiFmpqPolynomialMul(left, right);
+  const common = flint.ffiFmpqPolynomialGcd(product, left);
   const quotient = flint.ffiFmpqPolynomialDivExact(product, left);
   const zero = fmpqPolynomial([]);
   const zeroQuotient = flint.ffiFmpqPolynomialDivExact(zero, right);
@@ -287,6 +292,9 @@ function fmpqPolynomial(coefficients) {
   );
   assert.equal(flint.ffiFmpqPolynomialLength(product), 3n);
   assert.equal(flint.ffiFmpqPolynomialEqual(quotient, right), 1n);
+  const monicLeft = fmpqPolynomial([[3n, 2n], [1n, 1n]]);
+  assert.equal(flint.ffiFmpqPolynomialEqual(common, monicLeft), 1n);
+  assert.ok(accounted(common) > 0n);
   assert.ok(accounted(quotient) > 0n);
   assert.equal(flint.ffiFmpqPolynomialLength(zeroQuotient), 0n);
   assert.throws(
@@ -330,6 +338,8 @@ function fmpqPolynomial(coefficients) {
   closeTwice(zeroQuotient, flint.ffiFmpqPolynomialClose);
   closeTwice(zero, flint.ffiFmpqPolynomialClose);
   closeTwice(quotient, flint.ffiFmpqPolynomialClose);
+  closeTwice(monicLeft, flint.ffiFmpqPolynomialClose);
+  closeTwice(common, flint.ffiFmpqPolynomialClose);
   closeTwice(product, flint.ffiFmpqPolynomialClose);
   closeTwice(negated, flint.ffiFmpqPolynomialClose);
   closeTwice(difference, flint.ffiFmpqPolynomialClose);
@@ -373,6 +383,78 @@ function fmpqPolynomial(coefficients) {
   closeTwice(rational, flint.ffiFmpqPolynomialClose);
   closeTwice(integerZeroPower, flint.ffiFmpzPolynomialClose);
   closeTwice(integerZero, flint.ffiFmpzPolynomialClose);
+}
+
+{
+  const integerZero = fmpzPolynomial([]);
+  const integerNegative = fmpzPolynomial([4n, -2n]);
+  const integerLeft = fmpzPolynomial([6n, 6n]);
+  const integerRight = fmpzPolynomial([9n, 9n]);
+  const integerConstant = fmpzPolynomial([4n]);
+  const integerLinear = fmpzPolynomial([0n, 2n]);
+  const zeroZero = flint.ffiFmpzPolynomialGcd(integerZero, integerZero);
+  const zeroNegative = flint.ffiFmpzPolynomialGcd(
+    integerZero, integerNegative,
+  );
+  const content = flint.ffiFmpzPolynomialGcd(integerLeft, integerRight);
+  const constant = flint.ffiFmpzPolynomialGcd(integerLinear, integerConstant);
+  assert.equal(flint.ffiFmpzPolynomialLength(zeroZero), 0n);
+  assert.deepEqual(
+    [0n, 1n].map((index) =>
+      flint.ffiFmpzPolynomialCoefficient(zeroNegative, index)),
+    [-4n, 2n],
+  );
+  assert.deepEqual(
+    [0n, 1n].map((index) =>
+      flint.ffiFmpzPolynomialCoefficient(content, index)),
+    [3n, 3n],
+  );
+  assert.equal(flint.ffiFmpzPolynomialCoefficient(constant, 0n), 2n);
+  for (const value of [
+    constant, content, zeroNegative, zeroZero, integerLinear,
+    integerConstant, integerRight, integerLeft, integerNegative, integerZero,
+  ]) closeTwice(value, flint.ffiFmpzPolynomialClose);
+
+  const rationalZero = fmpqPolynomial([]);
+  const rationalNegative = fmpqPolynomial([[4n, 1n], [-2n, 1n]]);
+  const rationalLeft = fmpqPolynomial([[6n, 1n], [6n, 1n]]);
+  const rationalRight = fmpqPolynomial([[9n, 1n], [9n, 1n]]);
+  const rationalConstant = fmpqPolynomial([[4n, 1n]]);
+  const rationalZeroZero = flint.ffiFmpqPolynomialGcd(
+    rationalZero, rationalZero,
+  );
+  const rationalMonic = flint.ffiFmpqPolynomialGcd(
+    rationalZero, rationalNegative,
+  );
+  const rationalContent = flint.ffiFmpqPolynomialGcd(
+    rationalLeft, rationalRight,
+  );
+  const rationalUnit = flint.ffiFmpqPolynomialGcd(
+    rationalLeft, rationalConstant,
+  );
+  assert.equal(flint.ffiFmpqPolynomialLength(rationalZeroZero), 0n);
+  assert.deepEqual(
+    [0n, 1n].flatMap((index) => [
+      flint.ffiFmpqPolynomialCoefficientNumerator(rationalMonic, index),
+      flint.ffiFmpqPolynomialCoefficientDenominator(rationalMonic, index),
+    ]),
+    [-2n, 1n, 1n, 1n],
+  );
+  assert.deepEqual(
+    [0n, 1n].flatMap((index) => [
+      flint.ffiFmpqPolynomialCoefficientNumerator(rationalContent, index),
+      flint.ffiFmpqPolynomialCoefficientDenominator(rationalContent, index),
+    ]),
+    [1n, 1n, 1n, 1n],
+  );
+  assert.equal(
+    flint.ffiFmpqPolynomialCoefficientNumerator(rationalUnit, 0n), 1n,
+  );
+  for (const value of [
+    rationalUnit, rationalContent, rationalMonic, rationalZeroZero,
+    rationalConstant, rationalRight, rationalLeft, rationalNegative,
+    rationalZero,
+  ]) closeTwice(value, flint.ffiFmpqPolynomialClose);
 }
 
 {
@@ -496,6 +578,10 @@ function fmpqPolynomial(coefficients) {
     /exact division requires sealed resources/,
   );
   assert.throws(
+    () => flint.ffiFmpzPolynomialGcd(sealedInteger, unsealed),
+    /integer polynomial is unsealed/,
+  );
+  assert.throws(
     () => flint.ffiFmpzPolynomialLength(unsealed),
     /unsealed/,
   );
@@ -522,6 +608,10 @@ function fmpqPolynomial(coefficients) {
     () => flint.ffiFmpzPolynomialDivExact(sealedInteger, unsealed),
     /closed|invalid resource/i,
   );
+  assert.throws(
+    () => flint.ffiFmpzPolynomialGcd(sealedInteger, unsealed),
+    /closed|invalid resource/i,
+  );
   closeTwice(sealedInteger, flint.ffiFmpzPolynomialClose);
 
   const rational = flint.ffiFmpqPolynomialCreate(1n);
@@ -529,6 +619,10 @@ function fmpqPolynomial(coefficients) {
   assert.throws(
     () => flint.ffiFmpqPolynomialDivExact(sealedRational, rational),
     /exact division requires sealed resources/,
+  );
+  assert.throws(
+    () => flint.ffiFmpqPolynomialGcd(sealedRational, rational),
+    /rational polynomial is unsealed/,
   );
   assert.throws(
     () => flint.ffiFmpqPolynomialLength(rational),
@@ -545,6 +639,10 @@ function fmpqPolynomial(coefficients) {
   );
   assert.throws(
     () => flint.ffiFmpqPolynomialDivExact(sealedRational, rational),
+    /closed|invalid resource/i,
+  );
+  assert.throws(
+    () => flint.ffiFmpqPolynomialGcd(sealedRational, rational),
     /closed|invalid resource/i,
   );
   closeTwice(sealedRational, flint.ffiFmpqPolynomialClose);
@@ -570,10 +668,12 @@ function fmpqPolynomial(coefficients) {
     3n,
   ]);
   const integerProduct = flint.ffiFmpzPolynomialMul(integer, integerFactor);
+  const integerGcd = flint.ffiFmpzPolynomialGcd(integer, integer);
   const integerQuotient = flint.ffiFmpzPolynomialDivExact(
     integerProduct, integerFactor,
   );
   assert.equal(flint.ffiFmpzPolynomialEqual(integerQuotient, integer), 1n);
+  assert.equal(flint.ffiFmpzPolynomialEqual(integerGcd, integer), 1n);
   const integerBytes = flint.ffiFmpzPolynomialSerialize(integer);
   const restoredInteger = deserializeInteger(bytes(integerBytes));
   assert.equal(
@@ -601,10 +701,24 @@ function fmpqPolynomial(coefficients) {
     [-7n, 11n],
   ]);
   const rationalProduct = flint.ffiFmpqPolynomialMul(rational, rationalFactor);
+  const rationalGcd = flint.ffiFmpqPolynomialGcd(rational, rational);
   const rationalQuotient = flint.ffiFmpqPolynomialDivExact(
     rationalProduct, rationalFactor,
   );
   assert.equal(flint.ffiFmpqPolynomialEqual(rationalQuotient, rational), 1n);
+  assert.equal(flint.ffiFmpqPolynomialLength(rationalGcd), BigInt(length));
+  assert.equal(
+    flint.ffiFmpqPolynomialCoefficientNumerator(
+      rationalGcd, BigInt(length - 1),
+    ),
+    1n,
+  );
+  assert.equal(
+    flint.ffiFmpqPolynomialCoefficientDenominator(
+      rationalGcd, BigInt(length - 1),
+    ),
+    1n,
+  );
   const rationalBytes = flint.ffiFmpqPolynomialSerialize(rational);
   const restoredRational = deserializeRational(bytes(rationalBytes));
   assert.equal(
@@ -623,11 +737,13 @@ function fmpqPolynomial(coefficients) {
   closeTwice(restoredRational, flint.ffiFmpqPolynomialClose);
   closeTwice(rationalBytes, flint.ffiFlintByteRegionClose);
   closeTwice(rationalQuotient, flint.ffiFmpqPolynomialClose);
+  closeTwice(rationalGcd, flint.ffiFmpqPolynomialClose);
   closeTwice(rationalProduct, flint.ffiFmpqPolynomialClose);
   closeTwice(rationalFactor, flint.ffiFmpqPolynomialClose);
   closeTwice(restoredInteger, flint.ffiFmpzPolynomialClose);
   closeTwice(integerBytes, flint.ffiFlintByteRegionClose);
   closeTwice(integerQuotient, flint.ffiFmpzPolynomialClose);
+  closeTwice(integerGcd, flint.ffiFmpzPolynomialClose);
   closeTwice(integerProduct, flint.ffiFmpzPolynomialClose);
   closeTwice(integerFactor, flint.ffiFmpzPolynomialClose);
   closeTwice(rational, flint.ffiFmpqPolynomialClose);
@@ -783,8 +899,8 @@ int main(void)
     fmpz_init(qpayload);
     for (slong round = 0; round < 300; round++)
     {
-        sagejs_fmpz_polynomial_t z, zsum, zproduct, zquotient, zpower;
-        sagejs_fmpq_polynomial_t q, qsum, qproduct, qquotient, qpower;
+        sagejs_fmpz_polynomial_t z, zsum, zproduct, zquotient, zgcd, zpower;
+        sagejs_fmpq_polynomial_t q, qsum, qproduct, qquotient, qgcd, qpower;
         sagejs_fmpz_polynomial_t zrejected, zzero;
         sagejs_fmpq_polynomial_t qrejected, qzero;
         sagejs_fmpz_polynomial_t zdecoded;
@@ -809,9 +925,11 @@ int main(void)
             !sagejs_fmpq_polynomial_seal(q) ||
             !sagejs_fmpz_polynomial_add(zsum, z, z) ||
             !sagejs_fmpz_polynomial_mul(zproduct, z, zsum) ||
+            !sagejs_fmpz_polynomial_gcd(zgcd, zproduct, z) ||
             !sagejs_fmpz_polynomial_pow(zpower, z, 3) ||
             !sagejs_fmpq_polynomial_add(qsum, q, q) ||
             !sagejs_fmpq_polynomial_mul(qproduct, q, qsum) ||
+            !sagejs_fmpq_polynomial_gcd(qgcd, qproduct, q) ||
             !sagejs_fmpq_polynomial_pow(qpower, q, 3))
             return 5;
         fmpz_poly_t z_before, zproduct_before;
@@ -883,6 +1001,7 @@ int main(void)
         sagejs_fmpq_value_clear(qvalue);
         sagejs_fmpq_polynomial_clear(qzero);
         sagejs_fmpq_polynomial_clear(qpower);
+        sagejs_fmpq_polynomial_clear(qgcd);
         sagejs_fmpq_polynomial_clear(qquotient);
         sagejs_fmpq_polynomial_clear(qproduct);
         sagejs_fmpq_polynomial_clear(qsum);
@@ -890,6 +1009,7 @@ int main(void)
         fmpq_poly_clear(qproduct_before);
         fmpq_poly_clear(q_before);
         sagejs_fmpz_polynomial_clear(zpower);
+        sagejs_fmpz_polynomial_clear(zgcd);
         sagejs_fmpz_polynomial_clear(zzero);
         sagejs_fmpz_polynomial_clear(zquotient);
         sagejs_fmpz_polynomial_clear(zproduct);

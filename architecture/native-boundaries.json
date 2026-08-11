@@ -14,7 +14,7 @@
   },
   "counts": {
     "classified-native-file": 56,
-    "declared-ffi": 158,
+    "declared-ffi": 160,
     "declared-ffi-resource": 9,
     "napi-export": 292,
     "runtime-intrinsic": 128,
@@ -794,6 +794,17 @@
       "disposition": "declared-safe-ffi"
     },
     {
+      "id": "ffi:flint:fmpq_polynomial_gcd",
+      "kind": "declared-ffi",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "fmpq_polynomial_gcd",
+      "dynamic_package": "@sagemath/sagejs-flint",
+      "dynamic_export": "ffiFmpqPolynomialGcd",
+      "symbol": "sagejs_fmpq_polynomial_gcd",
+      "disposition": "declared-safe-ffi"
+    },
+    {
       "id": "ffi:flint:fmpq_polynomial_length",
       "kind": "declared-ffi",
       "path": "ffi/flint.ffi.json",
@@ -1528,6 +1539,17 @@
       "dynamic_package": "@sagemath/sagejs-flint",
       "dynamic_export": "ffiFmpzPolynomialEvaluateRational",
       "symbol": "sagejs_fmpz_polynomial_evaluate_rational",
+      "disposition": "declared-safe-ffi"
+    },
+    {
+      "id": "ffi:flint:fmpz_polynomial_gcd",
+      "kind": "declared-ffi",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "fmpz_polynomial_gcd",
+      "dynamic_package": "@sagemath/sagejs-flint",
+      "dynamic_export": "ffiFmpzPolynomialGcd",
+      "symbol": "sagejs_fmpz_polynomial_gcd",
       "disposition": "declared-safe-ffi"
     },
     {
