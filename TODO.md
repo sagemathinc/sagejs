@@ -40,3 +40,10 @@
 - Finish the `matrix(ZZ, n, [1..n^2])` construction slice by avoiding the
   redundant copy of an already-materialized built-in list. Exact range
   materialization is now fast; keep a public end-to-end performance gate.
+
+## Development infrastructure
+
+- Add bounded cleanup for `~/.cache/sagejs/modules`. Compiler-versioned module
+  caches are disposable, but rapid compiler development currently leaves every
+  obsolete version behind. Preserve active/current versions, expose a safe
+  explicit prune command, and add a conservative size/age retention policy.

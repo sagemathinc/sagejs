@@ -46,6 +46,7 @@ const integration = [
   "test/dense-prime-migration.cjs",
   "test/fflas-dense-prime.cjs",
   "test/dense-prime-structural.cjs",
+  "test/prime-matrix-bulk-views-v1.cjs",
   "test/dense-integer-migration.cjs",
   "test/dense-integer-public-resource.cjs",
   "test/exact-matrix-bulk-host-views.cjs",

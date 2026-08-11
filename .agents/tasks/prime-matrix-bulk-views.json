@@ -4,7 +4,7 @@
   "id": "prime-matrix-bulk-views",
   "title": "Bulk GF(p) Matrix Host Views v1",
   "lane": "arithmetic-algebra",
-  "status": "review",
+  "status": "complete",
   "owner": "user",
   "objective": "Build dense prime-field matrix list, row, and column views from one canonical packed bulk scalar decode, preserving Sage copy/cache semantics and adding semantic and warm performance gates",
   "base_commit": "db010e7aa64292a713b1106b79bace62e2caf322",
@@ -98,12 +98,8 @@
     }
   ],
   "handoff": {
-    "summary": "Dense packed GF(p) matrices now materialize one frozen same-parent scalar per canonical row-major residue through the shared uint64 structural primitive. list(), rows(), and columns() reuse those scalar references with Sage-compatible outer-list and immutable-vector caches; row() and column() remain fresh and avoid whole-matrix materialization until a bulk view exists. Successful mutation invalidates the scalar and orientation caches while preserving earlier snapshots. Focused native-disabled, extension-field, residue-ring, empty-dimension, identity, and warm performance coverage accompanies a reproducible 512x512 benchmark. On the audited host, first list improved from 3127 ms to 71.0 ms, first rows from 3328 ms to 63.0 ms, first columns from 2687 ms to 47.4 ms, fresh row stayed at 8.3 ms, and addition remained fast at 0.94 ms.",
-    "risks": [
-      "The new host test is intentionally not added to the shared node-test manifest in this arithmetic-algebra lane; pnpm test:changed therefore stops at the manifest completeness gate until integration adds it."
-    ],
-    "next_steps": [
-      "Add test/prime-matrix-bulk-views-v1.cjs to test/node-test-manifest.cjs in the integration lane."
-    ]
+    "summary": "Dense packed GF(p) matrices now materialize one frozen same-parent scalar per canonical row-major residue through the shared uint64 structural primitive. list(), rows(), and columns() reuse those scalar references with Sage-compatible outer-list and immutable-vector caches; row() and column() remain fresh and avoid whole-matrix materialization until a bulk view exists. Successful mutation invalidates the scalar and orientation caches while preserving earlier snapshots. Focused native-disabled, extension-field, residue-ring, empty-dimension, identity, and warm performance coverage accompanies a reproducible 512x512 benchmark. On the audited host, first list improved from 3127 ms to 71.0 ms, first rows from 3328 ms to 63.0 ms, first columns from 2687 ms to 47.4 ms, fresh row stayed at 8.3 ms, and addition remained fast at 0.94 ms. Root integration registered the regression in the authoritative host-test manifest.",
+    "risks": [],
+    "next_steps": []
   }
 }
