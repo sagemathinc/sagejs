@@ -50,6 +50,10 @@ async function main() {
   copyFileSync(compiled.coreSourcePath, join(outputDirectory, "kernel_core.c"));
   copyFileSync(compiled.coreHeaderPath, join(outputDirectory, "kernel_core.h"));
   const functions = generatedHostFunctions(declaration);
+  const generatedResourceTypes = new Set(functions.flatMap((fn) => [
+    fn.signature.return_type,
+    ...fn.signature.parameters.map((parameter) => parameter.type),
+  ]));
   writeFileSync(
     join(outputDirectory, "manifest.json"),
     `${JSON.stringify({
@@ -63,6 +67,16 @@ async function main() {
         export: fn.dynamic.export,
         symbol: fn.native.symbol,
       })),
+      resources: declaration.resources
+        .filter((resource) =>
+          resource.ownership === "owned" &&
+          generatedResourceTypes.has(resource.python_name)
+        )
+        .map((resource) => ({
+          id: resource.id,
+          python_type: resource.python_name,
+          close_export: resource.dynamic.close_export,
+        })),
       omitted_resources: declaration.functions.length - functions.length,
       host_isolation: {
         boundary: "packed-c-abi",

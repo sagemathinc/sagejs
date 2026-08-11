@@ -18,6 +18,7 @@ const dynamicResult = dynamicLifecycleFuzz();
 
 function dynamicLifecycleFuzz() {
   const graph = require(join(root, "packages", "graph"));
+  const flint = require(join(root, "packages", "flint"));
   let checksum = 0n;
   for (let round = 0; round < 2000; round += 1) {
     const vertices = BigInt((round * 17) % 48);
@@ -48,7 +49,32 @@ function dynamicLifecycleFuzz() {
     graph.ffiGraphClose(owner);
     assert.throws(() => graph.ffiGraphEdgeCount(view), /closed/);
   }
-  return { rounds: 2000, checksum: checksum.toString() };
+  for (let round = 0; round < 200; round += 1) {
+    const matrix = flint.ffiFmpqMatrixCreate(3n, 3n);
+    for (let index = 0; index < 9; index += 1) {
+      assert.equal(flint.ffiFmpqMatrixSetEntry(
+        matrix,
+        BigInt(Math.floor(index / 3)),
+        BigInt(index % 3),
+        BigInt(round + 3 * index + (index % 4 === 0 ? 11 : 0)),
+        BigInt(1 + (round + index) % 7),
+      ), true);
+    }
+    const copy = flint.ffiFmpqMatrixCopy(matrix);
+    const reduced = flint.ffiFmpqMatrixRref(copy);
+    const determinant = flint.ffiFmpqMatrixDet(matrix);
+    const formatted = flint.ffiFmpqMatrixFormat(reduced);
+    const serialized = flint.ffiFmpqMatrixSerialize(matrix);
+    assert.ok(flint.ffiFlintByteRegionLength(formatted) > 0n);
+    assert.ok(flint.ffiFlintByteRegionLength(serialized) > 0n);
+    flint.ffiFlintByteRegionClose(serialized);
+    flint.ffiFlintByteRegionClose(formatted);
+    flint.ffiFmpqValueClose(determinant);
+    flint.ffiFmpqMatrixClose(reduced);
+    flint.ffiFmpqMatrixClose(copy);
+    flint.ffiFmpqMatrixClose(matrix);
+  }
+  return { rounds: 2000, rationalRounds: 200, checksum: checksum.toString() };
 }
 
 if (process.platform === "win32") {
@@ -127,6 +153,7 @@ const rationalSource = String.raw`
 #include <stdint.h>
 #include <flint/fmpz_mat.h>
 #include <sagejs/ffi_algorithms.h>
+#include <sagejs/fmpq_matrix_ffi.h>
 
 int main(void)
 {
@@ -178,6 +205,30 @@ int main(void)
         if (!sagejs_flint_fmpq_mat_charpoly_parts(
                 polynomial_num, polynomial_den, left_num, left_den))
             return 6;
+        sagejs_fmpq_matrix_t matrix, copy, reduced;
+        sagejs_fmpq_value_t determinant;
+        sagejs_flint_byte_region_t formatted, serialized;
+        if (!sagejs_fmpq_matrix_init(matrix, 3, 3))
+            return 7;
+        for (slong row = 0; row < 3; row++)
+            for (slong column = 0; column < 3; column++)
+                if (!sagejs_fmpq_matrix_set_entry(
+                        matrix, (uint64_t) row, (uint64_t) column,
+                        fmpz_mat_entry(left_num, row, column),
+                        fmpz_mat_entry(left_den, row, column)))
+                    return 8;
+        if (!sagejs_fmpq_matrix_init_set(copy, matrix) ||
+            !sagejs_fmpq_matrix_rref(reduced, copy) ||
+            !sagejs_fmpq_matrix_det(determinant, matrix) ||
+            !sagejs_fmpq_matrix_format(formatted, reduced) ||
+            !sagejs_fmpq_matrix_serialize(serialized, matrix))
+            return 9;
+        sagejs_flint_byte_region_clear(serialized);
+        sagejs_flint_byte_region_clear(formatted);
+        sagejs_fmpq_value_clear(determinant);
+        sagejs_fmpq_matrix_clear(reduced);
+        sagejs_fmpq_matrix_clear(copy);
+        sagejs_fmpq_matrix_clear(matrix);
         fmpz_mat_clear(rank);
         fmpz_mat_clear(polynomial_den);
         fmpz_mat_clear(polynomial_num);

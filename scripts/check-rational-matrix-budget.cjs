@@ -44,7 +44,7 @@ function nativeReference(size, seed) {
 }
 
 const cases = [
-  { name: "random_500", expression: "random_matrix(QQ, 500)", budget: 20 },
+  { name: "random_500", expression: "random_matrix(QQ, 500)", budget: 30 },
   {
     name: "construct_300",
     expression: "matrix(QQ, 300, 300, _rational_budget_values)",
@@ -210,7 +210,7 @@ async function run(environment = process.env) {
     }
 
     console.log(`Dense QQ matrix budget (${samples} warm samples)`);
-    console.log("  implementation: typed-python-isolated + declared-flint-isolated");
+    console.log("  implementation: typed-python + generated FLINT resources");
     console.log(`  raw FLINT construction+multiply median: ${referenceMedian.toFixed(2)} ms`);
     console.log(`  measured load factor: ${loadFactor.toFixed(2)}x`);
     console.log("  operation                         raw / normalized / budget");

@@ -85,7 +85,7 @@
       "id": "linear-algebra",
       "layer": 2,
       "startup": "bootstrap",
-      "max_source_bytes": 305000,
+      "max_source_bytes": 315000,
       "depends_on": ["core-runtime", "arithmetic"],
       "files": [
         "src/baselib/matrix.py",
@@ -176,7 +176,7 @@
       "id": "python-stdlib",
       "layer": 1,
       "startup": "lazy",
-      "max_source_bytes": 800000,
+      "max_source_bytes": 825000,
       "depends_on": ["core-runtime"],
       "modules": [
         "_dummy_thread", "_thread", "abc", "aes", "annotationlib", "argparse", "array", "ast", "atexit", "base64", "bdb", "bisect", "calendar", "cmath", "codecs", "collections", "colorsys", "contextlib", "copy", "decimal",

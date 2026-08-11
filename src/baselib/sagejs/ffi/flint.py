@@ -7,8 +7,92 @@ from typing import Any
 import sagejs.runtime as _runtime
 
 __sagejs_ffi_declaration__ = (
-    "flint@76eec914ab6eb50cc9698633df7e5a6c1ba4cf5a6c5f35b084443b1c67081a1f"
+    "flint@27c678b132faeaa0043f72dbf7dbd13d92c876663ad941172428cd3365882cd7"
 )
+
+
+class FmpqMatrix:
+    """Opaque owned flint:fmpq_matrix resource."""
+
+    def __init__(self, token: Any) -> None:
+        self._token = token
+
+    @property
+    def closed(self) -> bool:
+        return _runtime.ffi_resource_closed(self._token)
+
+    def close(self) -> None:
+        _runtime.ffi_resource_close(self._token)
+
+    def _ffi_borrow(self) -> Any:
+        return _runtime.ffi_resource_borrow(
+            self._token,
+            "resource:flint@27c678b132faeaa0043f72dbf7dbd13d92c876663ad941172428cd3365882cd7:fmpq_matrix",
+        )
+
+    def __enter__(self) -> FmpqMatrix:
+        self._ffi_borrow()
+        return self
+
+    def __exit__(self, exception_type: Any, exception: Any, traceback: Any) -> bool:
+        self.close()
+        return False
+
+
+class FmpqValue:
+    """Opaque owned flint:fmpq_value resource."""
+
+    def __init__(self, token: Any) -> None:
+        self._token = token
+
+    @property
+    def closed(self) -> bool:
+        return _runtime.ffi_resource_closed(self._token)
+
+    def close(self) -> None:
+        _runtime.ffi_resource_close(self._token)
+
+    def _ffi_borrow(self) -> Any:
+        return _runtime.ffi_resource_borrow(
+            self._token,
+            "resource:flint@27c678b132faeaa0043f72dbf7dbd13d92c876663ad941172428cd3365882cd7:fmpq_value",
+        )
+
+    def __enter__(self) -> FmpqValue:
+        self._ffi_borrow()
+        return self
+
+    def __exit__(self, exception_type: Any, exception: Any, traceback: Any) -> bool:
+        self.close()
+        return False
+
+
+class FlintByteRegion:
+    """Opaque owned flint:byte_region resource."""
+
+    def __init__(self, token: Any) -> None:
+        self._token = token
+
+    @property
+    def closed(self) -> bool:
+        return _runtime.ffi_resource_closed(self._token)
+
+    def close(self) -> None:
+        _runtime.ffi_resource_close(self._token)
+
+    def _ffi_borrow(self) -> Any:
+        return _runtime.ffi_resource_borrow(
+            self._token,
+            "resource:flint@27c678b132faeaa0043f72dbf7dbd13d92c876663ad941172428cd3365882cd7:byte_region",
+        )
+
+    def __enter__(self) -> FlintByteRegion:
+        self._ffi_borrow()
+        return self
+
+    def __exit__(self, exception_type: Any, exception: Any, traceback: Any) -> bool:
+        self.close()
+        return False
 
 
 class DirichletGroup:
@@ -27,7 +111,7 @@ class DirichletGroup:
     def _ffi_borrow(self) -> Any:
         return _runtime.ffi_resource_borrow(
             self._token,
-            "resource:flint@76eec914ab6eb50cc9698633df7e5a6c1ba4cf5a6c5f35b084443b1c67081a1f:dirichlet_group",
+            "resource:flint@27c678b132faeaa0043f72dbf7dbd13d92c876663ad941172428cd3365882cd7:dirichlet_group",
         )
 
     def __enter__(self) -> DirichletGroup:
@@ -39,12 +123,369 @@ class DirichletGroup:
         return False
 
 
+def fmpq_matrix(rows: int, columns: int) -> FmpqMatrix:
+    """Call declared flint:fmpq_matrix."""
+    return FmpqMatrix(
+        _runtime.ffi_resource_create(
+            __sagejs_ffi_declaration__ + ":fmpq_matrix",
+            "resource:flint@27c678b132faeaa0043f72dbf7dbd13d92c876663ad941172428cd3365882cd7:fmpq_matrix",
+            "@sagemath/sagejs-flint",
+            "ffiFmpqMatrixCreate",
+            "ffiFmpqMatrixClose",
+            [rows, columns],
+            ["uint64", "uint64"],
+            [None, None],
+            "zero_is_error",
+            "OverflowError",
+            "rational matrix dimensions are too large",
+        )
+    )
+
+
+def fmpq_matrix_nrows(matrix: FmpqMatrix) -> int:
+    """Call declared flint:fmpq_matrix_nrows."""
+    return _runtime.ffi_call(
+        __sagejs_ffi_declaration__ + ":fmpq_matrix_nrows",
+        "@sagemath/sagejs-flint",
+        "ffiFmpqMatrixNrows",
+        [matrix._ffi_borrow()],
+        [
+            "resource:flint@27c678b132faeaa0043f72dbf7dbd13d92c876663ad941172428cd3365882cd7:fmpq_matrix"
+        ],
+        "uint64",
+        ["direct", [], None],
+        None,
+        None,
+        [],
+    )
+
+
+def fmpq_matrix_ncols(matrix: FmpqMatrix) -> int:
+    """Call declared flint:fmpq_matrix_ncols."""
+    return _runtime.ffi_call(
+        __sagejs_ffi_declaration__ + ":fmpq_matrix_ncols",
+        "@sagemath/sagejs-flint",
+        "ffiFmpqMatrixNcols",
+        [matrix._ffi_borrow()],
+        [
+            "resource:flint@27c678b132faeaa0043f72dbf7dbd13d92c876663ad941172428cd3365882cd7:fmpq_matrix"
+        ],
+        "uint64",
+        ["direct", [], None],
+        None,
+        None,
+        [],
+    )
+
+
+def fmpq_matrix_set_entry(
+    matrix: FmpqMatrix, row: int, column: int, numerator: int, denominator: int
+) -> bool:
+    """Call declared flint:fmpq_matrix_set_entry."""
+    return _runtime.ffi_call(
+        __sagejs_ffi_declaration__ + ":fmpq_matrix_set_entry",
+        "@sagemath/sagejs-flint",
+        "ffiFmpqMatrixSetEntry",
+        [matrix._ffi_borrow(), row, column, numerator, denominator],
+        [
+            "resource:flint@27c678b132faeaa0043f72dbf7dbd13d92c876663ad941172428cd3365882cd7:fmpq_matrix",
+            "uint64",
+            "uint64",
+            "Integer",
+            "Integer",
+        ],
+        "bool",
+        ["status", [1], None],
+        "ValueError",
+        "invalid rational matrix entry",
+        [],
+    )
+
+
+def fmpq_matrix_entry_numerator(matrix: FmpqMatrix, row: int, column: int) -> int:
+    """Call declared flint:fmpq_matrix_entry_numerator."""
+    return _runtime.ffi_call(
+        __sagejs_ffi_declaration__ + ":fmpq_matrix_entry_numerator",
+        "@sagemath/sagejs-flint",
+        "ffiFmpqMatrixEntryNumerator",
+        [matrix._ffi_borrow(), row, column],
+        [
+            "resource:flint@27c678b132faeaa0043f72dbf7dbd13d92c876663ad941172428cd3365882cd7:fmpq_matrix",
+            "uint64",
+            "uint64",
+        ],
+        "Integer",
+        ["status", [1], None],
+        "ValueError",
+        "rational matrix entry is out of bounds",
+        [],
+    )
+
+
+def fmpq_matrix_entry_denominator(matrix: FmpqMatrix, row: int, column: int) -> int:
+    """Call declared flint:fmpq_matrix_entry_denominator."""
+    return _runtime.ffi_call(
+        __sagejs_ffi_declaration__ + ":fmpq_matrix_entry_denominator",
+        "@sagemath/sagejs-flint",
+        "ffiFmpqMatrixEntryDenominator",
+        [matrix._ffi_borrow(), row, column],
+        [
+            "resource:flint@27c678b132faeaa0043f72dbf7dbd13d92c876663ad941172428cd3365882cd7:fmpq_matrix",
+            "uint64",
+            "uint64",
+        ],
+        "Integer",
+        ["status", [1], None],
+        "ValueError",
+        "rational matrix entry is out of bounds",
+        [],
+    )
+
+
+def fmpq_matrix_entry_is_zero(matrix: FmpqMatrix, row: int, column: int) -> bool:
+    """Call declared flint:fmpq_matrix_entry_is_zero."""
+    return _runtime.ffi_call(
+        __sagejs_ffi_declaration__ + ":fmpq_matrix_entry_is_zero",
+        "@sagemath/sagejs-flint",
+        "ffiFmpqMatrixEntryIsZero",
+        [matrix._ffi_borrow(), row, column],
+        [
+            "resource:flint@27c678b132faeaa0043f72dbf7dbd13d92c876663ad941172428cd3365882cd7:fmpq_matrix",
+            "uint64",
+            "uint64",
+        ],
+        "bool",
+        ["direct", [], None],
+        None,
+        None,
+        [],
+    )
+
+
+def fmpq_matrix_copy(source: FmpqMatrix) -> FmpqMatrix:
+    """Call declared flint:fmpq_matrix_copy."""
+    return FmpqMatrix(
+        _runtime.ffi_resource_create(
+            __sagejs_ffi_declaration__ + ":fmpq_matrix_copy",
+            "resource:flint@27c678b132faeaa0043f72dbf7dbd13d92c876663ad941172428cd3365882cd7:fmpq_matrix",
+            "@sagemath/sagejs-flint",
+            "ffiFmpqMatrixCopy",
+            "ffiFmpqMatrixClose",
+            [source._ffi_borrow()],
+            [
+                "resource:flint@27c678b132faeaa0043f72dbf7dbd13d92c876663ad941172428cd3365882cd7:fmpq_matrix"
+            ],
+            [None],
+            "zero_is_error",
+            "RuntimeError",
+            "rational matrix copy failed",
+        )
+    )
+
+
+def fmpq_matrix_mul(left: FmpqMatrix, right: FmpqMatrix) -> FmpqMatrix:
+    """Call declared flint:fmpq_matrix_mul."""
+    return FmpqMatrix(
+        _runtime.ffi_resource_create(
+            __sagejs_ffi_declaration__ + ":fmpq_matrix_mul",
+            "resource:flint@27c678b132faeaa0043f72dbf7dbd13d92c876663ad941172428cd3365882cd7:fmpq_matrix",
+            "@sagemath/sagejs-flint",
+            "ffiFmpqMatrixMul",
+            "ffiFmpqMatrixClose",
+            [left._ffi_borrow(), right._ffi_borrow()],
+            [
+                "resource:flint@27c678b132faeaa0043f72dbf7dbd13d92c876663ad941172428cd3365882cd7:fmpq_matrix",
+                "resource:flint@27c678b132faeaa0043f72dbf7dbd13d92c876663ad941172428cd3365882cd7:fmpq_matrix",
+            ],
+            [None, None],
+            "zero_is_error",
+            "ValueError",
+            "rational matrix dimensions are incompatible",
+        )
+    )
+
+
+def fmpq_matrix_rref(source: FmpqMatrix) -> FmpqMatrix:
+    """Call declared flint:fmpq_matrix_rref."""
+    return FmpqMatrix(
+        _runtime.ffi_resource_create(
+            __sagejs_ffi_declaration__ + ":fmpq_matrix_rref",
+            "resource:flint@27c678b132faeaa0043f72dbf7dbd13d92c876663ad941172428cd3365882cd7:fmpq_matrix",
+            "@sagemath/sagejs-flint",
+            "ffiFmpqMatrixRref",
+            "ffiFmpqMatrixClose",
+            [source._ffi_borrow()],
+            [
+                "resource:flint@27c678b132faeaa0043f72dbf7dbd13d92c876663ad941172428cd3365882cd7:fmpq_matrix"
+            ],
+            [None],
+            "zero_is_error",
+            "RuntimeError",
+            "rational matrix RREF failed",
+        )
+    )
+
+
+def fmpq_matrix_rank(matrix: FmpqMatrix) -> int:
+    """Call declared flint:fmpq_matrix_rank."""
+    return _runtime.ffi_call(
+        __sagejs_ffi_declaration__ + ":fmpq_matrix_rank",
+        "@sagemath/sagejs-flint",
+        "ffiFmpqMatrixRank",
+        [matrix._ffi_borrow()],
+        [
+            "resource:flint@27c678b132faeaa0043f72dbf7dbd13d92c876663ad941172428cd3365882cd7:fmpq_matrix"
+        ],
+        "uint64",
+        ["direct", [], None],
+        None,
+        None,
+        [],
+    )
+
+
+def fmpq_matrix_det(source: FmpqMatrix) -> FmpqValue:
+    """Call declared flint:fmpq_matrix_det."""
+    return FmpqValue(
+        _runtime.ffi_resource_create(
+            __sagejs_ffi_declaration__ + ":fmpq_matrix_det",
+            "resource:flint@27c678b132faeaa0043f72dbf7dbd13d92c876663ad941172428cd3365882cd7:fmpq_value",
+            "@sagemath/sagejs-flint",
+            "ffiFmpqMatrixDet",
+            "ffiFmpqValueClose",
+            [source._ffi_borrow()],
+            [
+                "resource:flint@27c678b132faeaa0043f72dbf7dbd13d92c876663ad941172428cd3365882cd7:fmpq_matrix"
+            ],
+            [None],
+            "zero_is_error",
+            "ValueError",
+            "determinant requires a square rational matrix",
+        )
+    )
+
+
+def fmpq_value_numerator(value: FmpqValue) -> int:
+    """Call declared flint:fmpq_value_numerator."""
+    return _runtime.ffi_call(
+        __sagejs_ffi_declaration__ + ":fmpq_value_numerator",
+        "@sagemath/sagejs-flint",
+        "ffiFmpqValueNumerator",
+        [value._ffi_borrow()],
+        [
+            "resource:flint@27c678b132faeaa0043f72dbf7dbd13d92c876663ad941172428cd3365882cd7:fmpq_value"
+        ],
+        "Integer",
+        ["direct", [], None],
+        None,
+        None,
+        [],
+    )
+
+
+def fmpq_value_denominator(value: FmpqValue) -> int:
+    """Call declared flint:fmpq_value_denominator."""
+    return _runtime.ffi_call(
+        __sagejs_ffi_declaration__ + ":fmpq_value_denominator",
+        "@sagemath/sagejs-flint",
+        "ffiFmpqValueDenominator",
+        [value._ffi_borrow()],
+        [
+            "resource:flint@27c678b132faeaa0043f72dbf7dbd13d92c876663ad941172428cd3365882cd7:fmpq_value"
+        ],
+        "Integer",
+        ["direct", [], None],
+        None,
+        None,
+        [],
+    )
+
+
+def fmpq_matrix_format(source: FmpqMatrix) -> FlintByteRegion:
+    """Call declared flint:fmpq_matrix_format."""
+    return FlintByteRegion(
+        _runtime.ffi_resource_create(
+            __sagejs_ffi_declaration__ + ":fmpq_matrix_format",
+            "resource:flint@27c678b132faeaa0043f72dbf7dbd13d92c876663ad941172428cd3365882cd7:byte_region",
+            "@sagemath/sagejs-flint",
+            "ffiFmpqMatrixFormat",
+            "ffiFlintByteRegionClose",
+            [source._ffi_borrow()],
+            [
+                "resource:flint@27c678b132faeaa0043f72dbf7dbd13d92c876663ad941172428cd3365882cd7:fmpq_matrix"
+            ],
+            [None],
+            "zero_is_error",
+            "RuntimeError",
+            "rational matrix format failed",
+        )
+    )
+
+
+def fmpq_matrix_serialize(source: FmpqMatrix) -> FlintByteRegion:
+    """Call declared flint:fmpq_matrix_serialize."""
+    return FlintByteRegion(
+        _runtime.ffi_resource_create(
+            __sagejs_ffi_declaration__ + ":fmpq_matrix_serialize",
+            "resource:flint@27c678b132faeaa0043f72dbf7dbd13d92c876663ad941172428cd3365882cd7:byte_region",
+            "@sagemath/sagejs-flint",
+            "ffiFmpqMatrixSerialize",
+            "ffiFlintByteRegionClose",
+            [source._ffi_borrow()],
+            [
+                "resource:flint@27c678b132faeaa0043f72dbf7dbd13d92c876663ad941172428cd3365882cd7:fmpq_matrix"
+            ],
+            [None],
+            "zero_is_error",
+            "OverflowError",
+            "rational matrix serialization is too large",
+        )
+    )
+
+
+def flint_byte_region_length(region: FlintByteRegion) -> int:
+    """Call declared flint:flint_byte_region_length."""
+    return _runtime.ffi_call(
+        __sagejs_ffi_declaration__ + ":flint_byte_region_length",
+        "@sagemath/sagejs-flint",
+        "ffiFlintByteRegionLength",
+        [region._ffi_borrow()],
+        [
+            "resource:flint@27c678b132faeaa0043f72dbf7dbd13d92c876663ad941172428cd3365882cd7:byte_region"
+        ],
+        "uint64",
+        ["direct", [], None],
+        None,
+        None,
+        [],
+    )
+
+
+def flint_byte_region_get(region: FlintByteRegion, index: int) -> int:
+    """Call declared flint:flint_byte_region_get."""
+    return _runtime.ffi_call(
+        __sagejs_ffi_declaration__ + ":flint_byte_region_get",
+        "@sagemath/sagejs-flint",
+        "ffiFlintByteRegionGet",
+        [region._ffi_borrow(), index],
+        [
+            "resource:flint@27c678b132faeaa0043f72dbf7dbd13d92c876663ad941172428cd3365882cd7:byte_region",
+            "uint64",
+        ],
+        "uint64",
+        ["direct", [], None],
+        None,
+        None,
+        [],
+    )
+
+
 def dirichlet_group(modulus: int) -> DirichletGroup:
     """Call declared flint:dirichlet_group_init."""
     return DirichletGroup(
         _runtime.ffi_resource_create(
             __sagejs_ffi_declaration__ + ":dirichlet_group_init",
-            "resource:flint@76eec914ab6eb50cc9698633df7e5a6c1ba4cf5a6c5f35b084443b1c67081a1f:dirichlet_group",
+            "resource:flint@27c678b132faeaa0043f72dbf7dbd13d92c876663ad941172428cd3365882cd7:dirichlet_group",
             "@sagemath/sagejs-flint",
             "ffiDirichletGroupCreate",
             "ffiDirichletGroupClose",
@@ -66,7 +507,7 @@ def dirichlet_group_size(group: DirichletGroup) -> int:
         "ffiDirichletGroupSize",
         [group._ffi_borrow()],
         [
-            "resource:flint@76eec914ab6eb50cc9698633df7e5a6c1ba4cf5a6c5f35b084443b1c67081a1f:dirichlet_group"
+            "resource:flint@27c678b132faeaa0043f72dbf7dbd13d92c876663ad941172428cd3365882cd7:dirichlet_group"
         ],
         "uint64",
         ["direct", [], None],
@@ -84,7 +525,7 @@ def dirichlet_group_num_primitive(group: DirichletGroup) -> int:
         "ffiDirichletGroupNumPrimitive",
         [group._ffi_borrow()],
         [
-            "resource:flint@76eec914ab6eb50cc9698633df7e5a6c1ba4cf5a6c5f35b084443b1c67081a1f:dirichlet_group"
+            "resource:flint@27c678b132faeaa0043f72dbf7dbd13d92c876663ad941172428cd3365882cd7:dirichlet_group"
         ],
         "uint64",
         ["direct", [], None],

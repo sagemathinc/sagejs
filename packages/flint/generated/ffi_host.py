@@ -9,6 +9,31 @@ whose core calls the declared foreign symbols without a host callback.
 from __future__ import annotations
 
 from sagejs.ffi.flint import (
+    DirichletGroup,
+    FlintByteRegion,
+    FmpqMatrix,
+    FmpqValue,
+    fmpq_matrix as _ffi_fmpq_matrix,
+    fmpq_matrix_nrows as _ffi_fmpq_matrix_nrows,
+    fmpq_matrix_ncols as _ffi_fmpq_matrix_ncols,
+    fmpq_matrix_set_entry as _ffi_fmpq_matrix_set_entry,
+    fmpq_matrix_entry_numerator as _ffi_fmpq_matrix_entry_numerator,
+    fmpq_matrix_entry_denominator as _ffi_fmpq_matrix_entry_denominator,
+    fmpq_matrix_entry_is_zero as _ffi_fmpq_matrix_entry_is_zero,
+    fmpq_matrix_copy as _ffi_fmpq_matrix_copy,
+    fmpq_matrix_mul as _ffi_fmpq_matrix_mul,
+    fmpq_matrix_rref as _ffi_fmpq_matrix_rref,
+    fmpq_matrix_rank as _ffi_fmpq_matrix_rank,
+    fmpq_matrix_det as _ffi_fmpq_matrix_det,
+    fmpq_value_numerator as _ffi_fmpq_value_numerator,
+    fmpq_value_denominator as _ffi_fmpq_value_denominator,
+    fmpq_matrix_format as _ffi_fmpq_matrix_format,
+    fmpq_matrix_serialize as _ffi_fmpq_matrix_serialize,
+    flint_byte_region_length as _ffi_flint_byte_region_length,
+    flint_byte_region_get as _ffi_flint_byte_region_get,
+    dirichlet_group as _ffi_dirichlet_group,
+    dirichlet_group_size as _ffi_dirichlet_group_size,
+    dirichlet_group_num_primitive as _ffi_dirichlet_group_num_primitive,
     n_is_prime as _ffi_n_is_prime,
     fmpz_gcd as _ffi_fmpz_gcd,
     fmpz_mat_rank as _ffi_fmpz_mat_rank,
@@ -49,6 +74,221 @@ from sagejs.ffi.flint import (
     fmpq_poly_factor as _ffi_fmpq_poly_factor,
 )
 from sagejs.native import Integer, IntegerBuffer, UInt64Buffer, native, uint64
+
+
+@native
+def ffiFmpqMatrixCreate(
+    rows: uint64,
+    columns: uint64,
+) -> FmpqMatrix:
+    return _ffi_fmpq_matrix(
+        rows,
+        columns,
+    )
+
+
+@native
+def ffiFmpqMatrixNrows(
+    matrix: FmpqMatrix,
+) -> uint64:
+    return _ffi_fmpq_matrix_nrows(
+        matrix,
+    )
+
+
+@native
+def ffiFmpqMatrixNcols(
+    matrix: FmpqMatrix,
+) -> uint64:
+    return _ffi_fmpq_matrix_ncols(
+        matrix,
+    )
+
+
+@native
+def ffiFmpqMatrixSetEntry(
+    matrix: FmpqMatrix,
+    row: uint64,
+    column: uint64,
+    numerator: Integer,
+    denominator: Integer,
+) -> bool:
+    return _ffi_fmpq_matrix_set_entry(
+        matrix,
+        row,
+        column,
+        numerator,
+        denominator,
+    )
+
+
+@native
+def ffiFmpqMatrixEntryNumerator(
+    matrix: FmpqMatrix,
+    row: uint64,
+    column: uint64,
+) -> Integer:
+    return _ffi_fmpq_matrix_entry_numerator(
+        matrix,
+        row,
+        column,
+    )
+
+
+@native
+def ffiFmpqMatrixEntryDenominator(
+    matrix: FmpqMatrix,
+    row: uint64,
+    column: uint64,
+) -> Integer:
+    return _ffi_fmpq_matrix_entry_denominator(
+        matrix,
+        row,
+        column,
+    )
+
+
+@native
+def ffiFmpqMatrixEntryIsZero(
+    matrix: FmpqMatrix,
+    row: uint64,
+    column: uint64,
+) -> bool:
+    return _ffi_fmpq_matrix_entry_is_zero(
+        matrix,
+        row,
+        column,
+    )
+
+
+@native
+def ffiFmpqMatrixCopy(
+    source: FmpqMatrix,
+) -> FmpqMatrix:
+    return _ffi_fmpq_matrix_copy(
+        source,
+    )
+
+
+@native
+def ffiFmpqMatrixMul(
+    left: FmpqMatrix,
+    right: FmpqMatrix,
+) -> FmpqMatrix:
+    return _ffi_fmpq_matrix_mul(
+        left,
+        right,
+    )
+
+
+@native
+def ffiFmpqMatrixRref(
+    source: FmpqMatrix,
+) -> FmpqMatrix:
+    return _ffi_fmpq_matrix_rref(
+        source,
+    )
+
+
+@native
+def ffiFmpqMatrixRank(
+    matrix: FmpqMatrix,
+) -> uint64:
+    return _ffi_fmpq_matrix_rank(
+        matrix,
+    )
+
+
+@native
+def ffiFmpqMatrixDet(
+    source: FmpqMatrix,
+) -> FmpqValue:
+    return _ffi_fmpq_matrix_det(
+        source,
+    )
+
+
+@native
+def ffiFmpqValueNumerator(
+    value: FmpqValue,
+) -> Integer:
+    return _ffi_fmpq_value_numerator(
+        value,
+    )
+
+
+@native
+def ffiFmpqValueDenominator(
+    value: FmpqValue,
+) -> Integer:
+    return _ffi_fmpq_value_denominator(
+        value,
+    )
+
+
+@native
+def ffiFmpqMatrixFormat(
+    source: FmpqMatrix,
+) -> FlintByteRegion:
+    return _ffi_fmpq_matrix_format(
+        source,
+    )
+
+
+@native
+def ffiFmpqMatrixSerialize(
+    source: FmpqMatrix,
+) -> FlintByteRegion:
+    return _ffi_fmpq_matrix_serialize(
+        source,
+    )
+
+
+@native
+def ffiFlintByteRegionLength(
+    region: FlintByteRegion,
+) -> uint64:
+    return _ffi_flint_byte_region_length(
+        region,
+    )
+
+
+@native
+def ffiFlintByteRegionGet(
+    region: FlintByteRegion,
+    index: uint64,
+) -> uint64:
+    return _ffi_flint_byte_region_get(
+        region,
+        index,
+    )
+
+
+@native
+def ffiDirichletGroupCreate(
+    modulus: uint64,
+) -> DirichletGroup:
+    return _ffi_dirichlet_group(
+        modulus,
+    )
+
+
+@native
+def ffiDirichletGroupSize(
+    group: DirichletGroup,
+) -> uint64:
+    return _ffi_dirichlet_group_size(
+        group,
+    )
+
+
+@native
+def ffiDirichletGroupNumPrimitive(
+    group: DirichletGroup,
+) -> uint64:
+    return _ffi_dirichlet_group_num_primitive(
+        group,
+    )
 
 
 @native

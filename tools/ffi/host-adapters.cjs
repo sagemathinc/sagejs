@@ -7,13 +7,22 @@ function resourceTypes(declaration) {
 }
 
 function generatedHostFunctions(declaration) {
-  const resources = resourceTypes(declaration);
-  return declaration.functions.filter((fn) =>
-    !resources.has(fn.signature.return_type) &&
-    fn.signature.parameters.every((parameter) =>
-      !resources.has(parameter.type)
-    )
+  const resources = new Map(
+    declaration.resources.map((resource) => [resource.python_name, resource]),
   );
+  const viewOwners = new Set(
+    declaration.resources
+      .filter((resource) => resource.owner !== null)
+      .map((resource) => resource.owner),
+  );
+  return declaration.functions.filter((fn) => [
+    fn.signature.return_type,
+    ...fn.signature.parameters.map((parameter) => parameter.type),
+  ].every((type) => {
+    const resource = resources.get(type);
+    return resource === undefined ||
+      (resource.ownership === "owned" && !viewOwners.has(resource.id));
+  }));
 }
 
 function generatedHostAdapterPath(root, declaration) {
@@ -25,17 +34,27 @@ function generatedHostAdapterPath(root, declaration) {
 function generatedHostAdapterSource(declaration) {
   const functions = generatedHostFunctions(declaration);
   const moduleName = declaration.library.python_module;
-  const imported = functions.map((fn) =>
-    `    ${fn.python_name} as _ffi_${fn.python_name},`
-  ).join("\n");
+  const resources = resourceTypes(declaration);
+  const referencedResources = Array.from(new Set(functions.flatMap((fn) => [
+    fn.signature.return_type,
+    ...fn.signature.parameters.map((parameter) => parameter.type),
+  ]).filter((type) => resources.has(type)))).sort();
+  const imported = [
+    ...referencedResources.map((name) => `    ${name},`),
+    ...functions.map((fn) =>
+      `    ${fn.python_name} as _ffi_${fn.python_name},`
+    ),
+  ].join("\n");
   const types = new Set(["native"]);
   for (const fn of functions) {
     for (const parameter of fn.signature.parameters) {
+      if (resources.has(parameter.type)) continue;
       if (["Integer", "IntegerBuffer", "UInt64Buffer", "uint64"].includes(
         parameter.type,
       )) types.add(parameter.type);
     }
-    if (["Integer", "IntegerBuffer", "UInt64Buffer", "uint64"].includes(
+    if (!resources.has(fn.signature.return_type) &&
+      ["Integer", "IntegerBuffer", "UInt64Buffer", "uint64"].includes(
       fn.signature.return_type,
     )) types.add(fn.signature.return_type);
   }

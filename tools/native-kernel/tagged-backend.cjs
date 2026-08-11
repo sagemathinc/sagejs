@@ -53,33 +53,40 @@ function scalarType(type, fn) {
   throw new Error(`unsupported tagged scalar type ${type}`);
 }
 
-function taggedResults(type) {
+function taggedResults(fn, type) {
   const tuple = tupleElementTypes(type) || [type];
   return tuple.map((element, index) => {
     if (element === "Integer") {
       return `sagejs_tagged_int *sagejs_tagged_output_${index}`;
     }
-    return `${scalarType(element)} *sagejs_tagged_output_${index}`;
+    const resource = resourceForFunctionType(fn, element);
+    if (resource !== undefined) {
+      return `${resource.abi_type} sagejs_tagged_output_${index}`;
+    }
+    return `${scalarType(element, fn)} *sagejs_tagged_output_${index}`;
   });
 }
 
-function taggedParameter(param) {
+function taggedParameter(fn, param) {
   if (param.type === "Integer") {
     return `sagejs_tagged_int *sagejs_tagged_arg_${param.name}`;
   }
-  return `${scalarType(param.type)} sagejs_tagged_arg_${param.name}`;
+  return `${scalarType(param.type, fn)} sagejs_tagged_arg_${param.name}`;
 }
 
 function taggedSignature(fn, prototype = false) {
   const parameters = [
     "sagejs_native_status *status",
-    ...taggedResults(fn.returnType),
-    ...fn.params.map(taggedParameter),
+    ...taggedResults(fn, fn.returnType),
+    ...fn.params.map((param) => taggedParameter(fn, param)),
   ].join(", ");
   return `static int tagged_${fn.name}(${parameters})${prototype ? ";" : ""}`;
 }
 
 function taggedValue(name, context) {
+  if (context.resourceParameters?.has(name)) {
+    return `sagejs_tagged_arg_${name}`;
+  }
   if (context.types.get(name) === "Integer") {
     return context.tagLocals.has(name)
       ? `&${taggedName(name)}`
@@ -550,6 +557,13 @@ function emitTaggedStatements(statements, context, indent) {
       } else if (statement.type === "Integer") {
         lines.push(`${indent}sagejs_tagged_copy(sagejs_tagged_output_0, ` +
           `${taggedValue(statement.value, context)});`);
+      } else if (context.resourceForType(statement.type) !== undefined) {
+        const resource = context.resourceForType(statement.type);
+        lines.push(
+          `${indent}memcpy(sagejs_tagged_output_0, ` +
+            `${taggedValue(statement.value, context)}, sizeof(${resource.abi_type}));`,
+          `${indent}${context.resourceInitialized(statement.value)} = 0;`,
+        );
       } else {
         lines.push(`${indent}*sagejs_tagged_output_0 = ` +
           `${taggedValue(statement.value, context)};`);
@@ -599,6 +613,7 @@ function emitTaggedFunction(fn, functions) {
   }
   for (const param of fn.params) {
     if (param.type === "Integer") continue;
+    if (resourceForFunctionType(fn, param.type) !== undefined) continue;
     declarations.push(
       `    ${scalarType(param.type, fn)} ${taggedName(param.name)} = ` +
         `sagejs_tagged_arg_${param.name};`,
@@ -639,6 +654,14 @@ function emitTaggedFunction(fn, functions) {
     storage,
     tagLocals,
     types,
+    resourceParameters: new Set(
+      fn.params
+        .filter((param) => resourceForFunctionType(fn, param.type) !== undefined)
+        .map((param) => param.name),
+    ),
+    resourceForType(type) {
+      return resourceForFunctionType(fn, type);
+    },
     resourceInitialized(name) {
       return `${taggedName(name)}_initialized`;
     },
@@ -658,10 +681,17 @@ function emitTaggedFunction(fn, functions) {
       const resultTypes = tupleElementTypes(statement.type) || [statement.type];
       const lines = resultTypes.map((type, index) => {
         const source = values[index];
-        return type === "Integer"
-          ? `${indent}sagejs_tagged_set_small(` +
-            `sagejs_tagged_output_${index}, ${wordName(source)});`
-          : `${indent}*sagejs_tagged_output_${index} = ${taggedName(source)};`;
+        if (type === "Integer") {
+          return `${indent}sagejs_tagged_set_small(` +
+            `sagejs_tagged_output_${index}, ${wordName(source)});`;
+        }
+        const resource = resourceForFunctionType(fn, type);
+        if (resource !== undefined) {
+          return `${indent}memcpy(sagejs_tagged_output_${index}, ` +
+            `${taggedName(source)}, sizeof(${resource.abi_type}));\n` +
+            `${indent}${taggedName(source)}_initialized = 0;`;
+        }
+        return `${indent}*sagejs_tagged_output_${index} = ${taggedName(source)};`;
       });
       lines.push(`${indent}return 1;`);
       return lines.join("\n");
@@ -672,7 +702,13 @@ function emitTaggedFunction(fn, functions) {
     },
   };
   const integerParams = fn.params.filter((param) => param.type === "Integer");
-  const fastGuard = integerParams.length === 0
+  const hasPublicResource = [
+    fn.returnType,
+    ...fn.params.map((param) => param.type),
+  ].some((type) => resourceForFunctionType(fn, type) !== undefined);
+  const fastGuard = hasPublicResource
+    ? "0"
+    : integerParams.length === 0
     ? "1"
     : integerParams
       .map((param) => `!sagejs_tagged_arg_${param.name}->is_big`)

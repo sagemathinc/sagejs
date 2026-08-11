@@ -33,6 +33,7 @@ const VENDOR_ASSET_PREFIX = "vendor/";
 let flintModule: unknown;
 let graphModule: unknown;
 let zeroMQModule: unknown;
+const runtimeModuleCache = new Map<string, unknown>();
 let nativeTemporaryDirectory: string | undefined;
 let kernelWorkerFilename: string | undefined;
 let multiprocessingWorkerFilename: string | undefined;
@@ -356,23 +357,27 @@ function loadEmbeddedZeroMQ(): unknown {
 }
 
 export function runtimeRequire(name: string): unknown {
+  if (runtimeModuleCache.has(name)) return runtimeModuleCache.get(name);
+  let module: unknown;
   if (isSea() && name === "@sagemath/sagejs-flint") {
-    return loadEmbeddedFlint();
+    module = loadEmbeddedFlint();
+  } else if (isSea() && name === "@sagemath/sagejs-graph") {
+    module = loadEmbeddedGraph();
+  } else if (isSea() && name === "zeromq") {
+    module = loadEmbeddedZeroMQ();
+  } else if (name === "numpy-ts") {
+    module = require("../vendor/numpy-ts.cjs");
+  } else if (name === "@sagemath/sagejs-symbolic") {
+    module = require("../vendor/symbolic-backend.cjs");
+  } else {
+    module = require(name);
   }
-  if (isSea() && name === "@sagemath/sagejs-graph") {
-    return loadEmbeddedGraph();
-  }
-  if (isSea() && name === "zeromq") return loadEmbeddedZeroMQ();
-  if (name === "numpy-ts") {
-    return require("../vendor/numpy-ts.cjs");
-  }
-  if (name === "@sagemath/sagejs-symbolic") {
-    return require("../vendor/symbolic-backend.cjs");
-  }
-  return require(name);
+  runtimeModuleCache.set(name, module);
+  return module;
 }
 
 export function cleanNativeResources(): void {
+  runtimeModuleCache.clear();
   if (!nativeTemporaryDirectory || !existsSync(nativeTemporaryDirectory)) return;
   try {
     rmSync(nativeTemporaryDirectory, { recursive: true, force: true });

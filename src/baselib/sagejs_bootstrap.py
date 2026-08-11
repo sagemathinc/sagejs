@@ -954,6 +954,20 @@ def ρσ_ffi_resource_create(
         }
         const marshalled = values.map((value, index) => {
             const type = parameter_types[index];
+            if (type.startsWith("resource:")) {
+                const tag = globalThis.__sagejs_ffi_resource_tag__;
+                const state = tag === undefined ? undefined : value?.[tag];
+                if (
+                    state === undefined
+                    || state.identity !== type
+                    || (state.root ?? state).closed
+                ) {
+                    throw new TypeError(
+                        `invalid dynamic FFI resource argument for ${type}`
+                    );
+                }
+                return state.handle;
+            }
             if (type === "Integer") {
                 if (typeof value === "bigint") return value;
                 if (Number.isSafeInteger(value)) return BigInt(value);

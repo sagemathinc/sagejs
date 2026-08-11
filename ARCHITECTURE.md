@@ -168,11 +168,14 @@ Owned foreign resources follow the same rule. The declaration, rather than
 mathematical source, specifies the ABI storage, constructor, close operation,
 and scalar preconditions. Ordinary execution uses a generated opaque wrapper
 with deterministic idempotent close and a finalizer fallback. Native execution
-currently admits owned resources only as non-escaping lexical locals and emits
-initialization flags plus all-exit cleanup in the isolated core. Resource
-construction inside control-flow blocks and resources in public kernel signatures fail
-compilation until a future ownership model proves them safe. A compiler change
-MUST NOT silently turn such a resource into a raw pointer or host callback.
+admits owned resources as non-escaping lexical locals and emits initialization
+flags plus all-exit cleanup in the isolated core. A public kernel signature may
+borrow an owned resource synchronously: generated adapters validate a stable
+type tag, retain its root for the call, and pass only its ABI value into the
+isolated core. A resource result must transfer a newly constructed owned local.
+Resource construction inside control-flow blocks still fails compilation. A
+compiler change MUST NOT silently turn a resource into a raw pointer or host
+callback.
 
 Borrowed foreign views form a declaration-validated acyclic ownership graph.
 Every view names its immediate owner and computed owned root. Ordinary
@@ -204,9 +207,18 @@ storage, compiler-owned value records, mutable signed exact-integer record
 views, and packed arbitrary-precision integer vectors. Compiler changes
 preserve their same-source fallback,
 provenance, introspection, differential tests, and benchmarks. Dense exact
-rational matrices use an owned normalized pair of packed tagged-integer spans;
-structural arithmetic is typed Python and mature `fmpq_mat` algorithms cross
-only generated declaration-driven copy-in/copy-out boundaries.
+rational matrices are the first complete hybrid resource slice: a generated,
+type-tagged owner holds FLINT's variable-size `fmpq_mat` representation behind
+the checked FFI lifecycle. Construction uses one compiled typed-Python import,
+ordinary entry reads and mutations are declared operations, and copy,
+multiplication, RREF, determinant, formatting, and variable-size serialization
+return callee-owned generated resources. A typed-Python witness safely borrows
+and traverses the matrix with no host callback. Packed rational buffers remain
+an explicit compatibility/serialization format, not canonical matrix state.
+Explicitly scoped temporary resources close deterministically; long-lived
+matrix resources have idempotent close plus a tracing-GC finalizer fallback.
+Native allocation accounting remains required before this representation is
+considered production-mature under sustained memory pressure.
 Univariate polynomials over `ZZ`, `QQ`, and small prime fields likewise own
 normalized packed coefficient storage. Construction and structural arithmetic
 are host-independent typed Python; mature FLINT multiplication, exact division,

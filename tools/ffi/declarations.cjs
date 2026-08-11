@@ -267,7 +267,7 @@ function validateFunction(
     const resourceType = resourcesByType.get(parameter.type);
     const semanticType = catalog.semanticTypes.get(parameter.type);
     const expectedOwnership = resourceType !== undefined
-      ? "borrowed"
+      ? parameter.mutability === "write" ? "borrowed_mut" : "borrowed"
       : semanticType.kind === "buffer" && parameter.mutability === "write"
         ? "borrowed_mut" : semanticType.input_ownership;
     if (parameter.ownership !== expectedOwnership) {
@@ -275,7 +275,8 @@ function validateFunction(
         `${fn.id}.${parameter.name} ${parameter.type} inputs must use ` +
         `${expectedOwnership} ownership`);
     }
-    const expectedMutability = resourceType !== undefined ? "read"
+    const expectedMutability = resourceType !== undefined
+      ? parameter.ownership === "borrowed_mut" ? "write" : "read"
       : semanticType.kind === "buffer" && parameter.ownership === "borrowed_mut"
         ? "write" : semanticType.input_mutability;
     if (parameter.mutability !== expectedMutability) {
@@ -494,13 +495,16 @@ function validateFunction(
     const returnedAbi = catalog.abiTypes.get(fn.native.return_type);
     const nullableWord = returnedAbi?.kind === "pointer" &&
       returnedAbi.pointee === "uint64_t" && fn.signature.return_type === "uint64";
-    if (resultArguments !== 0 || !(nullableWord ||
+    const checkedInteger = fn.result.domain === "status" &&
+      fn.native.return_type === "int" && resultArguments === 1 &&
+      fn.signature.return_type === "Integer" && result?.abi_type === "fmpz_t";
+    if (!checkedInteger && (resultArguments !== 0 || !(nullableWord ||
       (fn.native.return_type === "int" && fn.signature.return_type === "bool") ||
       (new Set(["slong", "ulong", "uint64_t"]).has(fn.native.return_type) &&
-        fn.signature.return_type === "uint64"))) {
+        fn.signature.return_type === "uint64")))) {
       fail(filename,
-        `${fn.id} direct ABI requires int/bool, word/uint64, or ` +
-        `nullable uint64 pointer result`);
+        `${fn.id} ABI requires int/bool, word/uint64, nullable uint64 ` +
+        `pointer, or checked Integer/fmpz_t output`);
     }
   }
 

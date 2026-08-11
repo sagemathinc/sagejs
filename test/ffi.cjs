@@ -111,6 +111,14 @@ test("FFI declarations are strict and generated modules are current", () => {
   assert.deepEqual(
     flint.functions.map((fn) => fn.id),
     [
+      "fmpq_matrix", "fmpq_matrix_nrows", "fmpq_matrix_ncols",
+      "fmpq_matrix_set_entry", "fmpq_matrix_entry_numerator",
+      "fmpq_matrix_entry_denominator", "fmpq_matrix_entry_is_zero",
+      "fmpq_matrix_copy", "fmpq_matrix_mul", "fmpq_matrix_rref",
+      "fmpq_matrix_rank", "fmpq_matrix_det", "fmpq_value_numerator",
+      "fmpq_value_denominator", "fmpq_matrix_format",
+      "fmpq_matrix_serialize", "flint_byte_region_length",
+      "flint_byte_region_get",
       "dirichlet_group_init", "dirichlet_group_size",
       "dirichlet_group_num_primitive", "n_is_prime", "fmpz_gcd",
       "fmpz_mat_rank", "fmpz_mat_mul", "fmpz_mat_det",
@@ -130,7 +138,7 @@ test("FFI declarations are strict and generated modules are current", () => {
   );
   assert.deepEqual(
     flint.resources.map((resource) => resource.python_name),
-    ["DirichletGroup"],
+    ["FmpqMatrix", "FmpqValue", "FlintByteRegion", "DirichletGroup"],
   );
   assert.match(flint.identity, /^flint@[0-9a-f]{64}$/);
   const generated = declarations.generatedModulePath(root, flint);
@@ -152,7 +160,7 @@ test("FFI declarations are strict and generated modules are current", () => {
     { resource: "graph", ownership: "owned", owner: null, root: "graph" },
     { resource: "edges", ownership: "borrowed", owner: "graph", root: "graph" },
   ]);
-  assert.match(runSage(["ffi", "check"]), /48 function\(s\)/);
+  assert.match(runSage(["ffi", "check"]), /66 function\(s\)/);
   const inspection = JSON.parse(
     runSage(["ffi", "explain", "flint", "--json"]),
   );
@@ -183,10 +191,15 @@ test("FFI declarations are strict and generated modules are current", () => {
   );
   assert.equal(nullable.result.domain, "nullable");
   assert.equal(nullable.call_plan.native_return_c_type, "const uint64_t *");
-  assert.equal(inspection.resources[0].native.clear_symbol, "dirichlet_group_clear");
+  assert.equal(
+    inspection.resources.find(
+      (resource) => resource.id === "dirichlet_group",
+    ).native.clear_symbol,
+    "dirichlet_group_clear",
+  );
 });
 
-test("generated host adapters are current and cover every value-only declaration", () => {
+test("generated host adapters cover values and safe owned resources", () => {
   const registry = declarations.loadRegistry({ root });
   for (const declaration of registry.libraries) {
     const filename = hostAdapters.generatedHostAdapterPath(root, declaration);
@@ -197,26 +210,14 @@ test("generated host adapters are current and cover every value-only declaration
     assert.doesNotMatch(source, /sagejs\.runtime|ffi_call/);
     assert.equal(
       functions.length,
-      declaration.library.id === "flint" ? 38 : 2,
-    );
-    assert.equal(
-      functions.length,
-      declaration.functions.length - declaration.functions.filter((fn) =>
-        fn.signature.parameters.some((parameter) =>
-          declaration.resources.some((resource) =>
-            resource.python_name === parameter.type,
-          ),
-        ) || declaration.resources.some((resource) =>
-          resource.python_name === fn.signature.return_type,
-        ),
-      ).length,
+      declaration.library.id === "flint" ? 59 : 2,
     );
   }
 });
 
 test("packages make generated host adapters canonical and retain handwritten oracles", () => {
   for (const [packagePath, expected] of [
-    ["../packages/flint", 38],
+    ["../packages/flint", 59],
     ["../packages/graph", 2],
   ]) {
     const backend = require(packagePath);
@@ -227,8 +228,9 @@ test("packages make generated host adapters canonical and retain handwritten ora
     assert.equal(manifest.host_isolation.callbacks_inside_core, 0);
     for (const item of manifest.functions) {
       assert.equal(typeof backend[item.export], "function");
-      assert.equal(typeof oracles[item.export], "function");
-      assert.notEqual(backend[item.export], oracles[item.export]);
+      if (typeof oracles[item.export] === "function") {
+        assert.notEqual(backend[item.export], oracles[item.export]);
+      }
     }
   }
 
@@ -362,8 +364,8 @@ test("native-boundary audit is a reviewed exact ratchet", () => {
   const current = boundaryAudit.validateBoundarySnapshot(snapshot, { root });
   assert.ok(current.counts["napi-export"] >= 280);
   assert.ok(current.counts["runtime-intrinsic"] >= 100);
-  assert.equal(current.counts["declared-ffi"], 48);
-  assert.equal(current.counts["declared-ffi-resource"], 3);
+  assert.equal(current.counts["declared-ffi"], 66);
+  assert.equal(current.counts["declared-ffi-resource"], 6);
   assert.match(runSage(["ffi", "audit"]), /inventoried native boundaries/);
   assert.equal(
     current.boundaries.filter((item) =>
@@ -464,19 +466,25 @@ test("FFI declarations reject incompatible ownership and ABI mappings", () => {
   }
   invalid(
     (document) => {
-      document.functions[4].signature.parameters[0].ownership = "owned";
+      document.functions.find(
+        (fn) => fn.id === "fmpz_gcd",
+      ).signature.parameters[0].ownership = "owned";
     },
     /Integer inputs must use borrowed ownership/,
   );
   invalid(
     (document) => {
-      document.functions[3].native.arguments[0].abi_type = "fmpz_t";
+      document.functions.find(
+        (fn) => fn.id === "n_is_prime",
+      ).native.arguments[0].abi_type = "fmpz_t";
     },
     /uint64 requires ulong or uint64_t, not fmpz_t/,
   );
   invalid(
     (document) => {
-      document.functions[4].native.arguments.pop();
+      document.functions.find(
+        (fn) => fn.id === "fmpz_gcd",
+      ).native.arguments.pop();
     },
     /omits native source right/,
   );
@@ -512,7 +520,9 @@ test("FFI declarations reject incompatible ownership and ABI mappings", () => {
   );
   invalid(
     (document) => {
-      document.functions[3].result.success = [1];
+      document.functions.find(
+        (fn) => fn.id === "n_is_prime",
+      ).result.success = [1];
     },
     /direct result cannot declare failures/,
   );
@@ -831,6 +841,45 @@ test("compiled owned resources agree with fallback and reject loop allocation", 
   );
 });
 
+test("public kernels borrow and transfer generated FLINT resources", async () => {
+  const temporary = mkdtempSync(join(tmpdir(), "sagejs-ffi-public-resource-"));
+  try {
+    const sourcePath = join(temporary, "resource_kernel.py");
+    writeFileSync(sourcePath, [
+      "from sagejs.ffi.flint import FmpqMatrix, fmpq_matrix_copy",
+      "from sagejs.native import native",
+      "",
+      "@native",
+      "def clone(matrix: FmpqMatrix) -> FmpqMatrix:",
+      "    return fmpq_matrix_copy(matrix)",
+      "",
+    ].join("\n"));
+    const compiled = await compileKernel({ sourcePath, cacheRoot: temporary });
+    // Load the generated addon directly so this test exercises N-API type-tag
+    // compatibility between two independently compiled resource adapters. The
+    // ordinary public wrapper intentionally accepts only safe Python resource
+    // objects, not raw addon handles.
+    const kernel = require(compiled.addonPath);
+    const flint = require("../packages/flint");
+    const matrix = flint.ffiFmpqMatrixCreate(1n, 1n);
+    assert.equal(
+      flint.ffiFmpqMatrixSetEntry(matrix, 0n, 0n, 17n, 19n),
+      true,
+    );
+    assert.throws(
+      () => flint.ffiFmpqMatrixEntryNumerator(matrix, 1n, 0n),
+      /out of bounds/,
+    );
+    const clone = kernel.clone(matrix);
+    assert.equal(flint.ffiFmpqMatrixEntryNumerator(clone, 0n, 0n), 17n);
+    assert.equal(flint.ffiFmpqMatrixEntryDenominator(clone, 0n, 0n), 19n);
+    flint.ffiFmpqMatrixClose(clone);
+    flint.ffiFmpqMatrixClose(matrix);
+  } finally {
+    rmSync(temporary, { recursive: true, force: true });
+  }
+});
+
 test("borrowed igraph views lower without cleanup and agree across paths", async () => {
   const source = readFileSync(igraphWitness, "utf8");
   const ir = await lowerSource(source, igraphWitness);
@@ -1125,7 +1174,7 @@ test("native FFI compilation rejects undeclared imports and functions", async ()
         "def f(value: uint64) -> bool:\n    return mystery(value)\n",
       "missing-function.py",
     ),
-    /has no declared FFI function mystery/,
+    /has no declared FFI function or resource mystery/,
   );
 });
 

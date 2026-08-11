@@ -52,6 +52,9 @@
   "abi_types": {
     "fmpz_t": {"kind": "exact_integer", "c_type": "fmpz_t", "return": false},
     "fmpz_mat_t": {"kind": "aggregate", "c_type": "fmpz_mat_t", "return": false},
+    "sagejs_fmpq_matrix_t": {"kind": "aggregate", "c_type": "sagejs_fmpq_matrix_t", "return": false},
+    "sagejs_fmpq_value_t": {"kind": "aggregate", "c_type": "sagejs_fmpq_value_t", "return": false},
+    "sagejs_flint_byte_region_t": {"kind": "aggregate", "c_type": "sagejs_flint_byte_region_t", "return": false},
     "int": {"kind": "scalar", "c_type": "int", "return": true},
     "nmod_mat_t": {"kind": "aggregate", "c_type": "nmod_mat_t", "return": false},
     "slong": {"kind": "scalar", "c_type": "slong", "return": true},

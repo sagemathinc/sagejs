@@ -689,7 +689,8 @@ function supportedModulePreamble(statement) {
 
 function ffiImports(topLevel, filename) {
   const registry = loadFfiRegistry();
-  const imports = new Map();
+  const functions = new Map();
+  const resources = new Map();
   for (const statement of topLevel) {
     if (nodeType(statement) !== "AST_Imports") continue;
     for (const item of array(statement.imports)) {
@@ -703,17 +704,31 @@ function ffiImports(topLevel, filename) {
       );
       expect(!item.star, "native FFI imports may not use star imports");
       for (const imported of array(item.argnames)) {
+        const localName = imported.alias?.name || imported.name;
+        const resource = library.byResourceType.get(imported.name);
+        if (resource !== undefined) {
+          expect(
+            !resources.has(localName) && !functions.has(localName),
+            `duplicate native FFI import name ${localName}`,
+          );
+          resources.set(localName, Object.freeze({
+            ...resource,
+            compiler_type: localName,
+            declaration_identity: library.identity,
+            library: library.library,
+          }));
+          continue;
+        }
         const declaration = library.byPythonName.get(imported.name);
         expect(
           declaration !== undefined,
-          `${moduleName} has no declared FFI function ${imported.name}`,
+          `${moduleName} has no declared FFI function or resource ${imported.name}`,
         );
-        const localName = imported.alias?.name || imported.name;
         expect(
-          !imports.has(localName),
+          !functions.has(localName) && !resources.has(localName),
           `duplicate native FFI import name ${localName}`,
         );
-        imports.set(localName, Object.freeze({
+        functions.set(localName, Object.freeze({
           declarationId: declaration.declaration_id,
           declarationIdentity: declaration.declaration_identity,
           declarationHash: declaration.declaration_hash,
@@ -741,7 +756,7 @@ function ffiImports(topLevel, filename) {
       }
     }
   }
-  return imports;
+  return { functions, resources };
 }
 
 async function lowerSource(source, filename, options = {}) {
@@ -759,7 +774,9 @@ async function lowerSource(source, filename, options = {}) {
 
   const topLevel = array(toplevel.body);
   const records = nativeRecordSchemas(topLevel, filename);
-  const foreignFunctions = ffiImports(topLevel, filename);
+  const foreignImports = ffiImports(topLevel, filename);
+  const foreignFunctions = foreignImports.functions;
+  const foreignResources = foreignImports.resources;
   const definitions = topLevel.filter(
     (statement) => nodeType(statement) === "AST_Function",
   );
@@ -805,9 +822,13 @@ async function lowerSource(source, filename, options = {}) {
   // be compiled into the same native dependency graph rather than becoming
   // an unresolved call or a name-based intrinsic.
   for (const fn of definitions) {
-    const returnType = canonicalType(fn.return_annotation, records);
+    const returnType = canonicalType(
+      fn.return_annotation,
+      records,
+      foreignResources,
+    );
     const paramTypes = array(fn.argnames).map((arg) =>
-      canonicalType(arg.annotation, records)
+      canonicalType(arg.annotation, records, foreignResources)
     );
     const legacyFieldSignature = [
       fn.return_annotation,
@@ -831,14 +852,22 @@ async function lowerSource(source, filename, options = {}) {
       )
     );
     if (completeSignature || partiallyTypedSelected) {
-      const signature = signatureFromFunction(fn, filename, records);
+      const signature = signatureFromFunction(
+        fn,
+        filename,
+        records,
+        foreignResources,
+      );
       expect(
         !signature.returnType.startsWith("Record:"),
         `${fn.name.name}: compiler-owned records are borrowed values and ` +
           "may not be returned from a native kernel",
       );
       expect(
-        isIntegerSignature(signature) || isFloat64Signature(signature) ||
+        isIntegerSignature(signature) ||
+          [signature.returnType, ...signature.params.map((param) => param.type)]
+            .some((type) => foreignResources.has(type)) ||
+          isFloat64Signature(signature) ||
           isPrimeFieldSignature(signature),
         `${fn.name.name} is not a supported native signature`,
       );
@@ -883,6 +912,7 @@ async function lowerSource(source, filename, options = {}) {
             signature,
             signatures,
             foreignFunctions,
+            foreignResources,
             filename,
             decoratedMode,
           );

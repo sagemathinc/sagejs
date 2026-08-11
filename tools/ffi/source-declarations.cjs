@@ -405,16 +405,14 @@ function semanticParameter(filename, argument, resourcesByType, catalog) {
   const semantic = catalog.semanticTypes.get(declared.type);
   expect(filename, argument, resource !== undefined || semantic !== undefined,
     `unknown semantic type ${declared.type}`);
-  expect(filename, argument, !(declared.writable && resource !== undefined),
-    "foreign resources cannot use Writable");
   expect(filename, argument,
-    !(declared.writable && semantic?.kind !== "buffer"),
-    "Writable is only valid for a buffer type");
+    !(declared.writable && resource === undefined && semantic?.kind !== "buffer"),
+    "Writable is only valid for a buffer or foreign resource type");
   const parameter = resource !== undefined ? {
     name: argument.name,
     type: declared.type,
-    ownership: "borrowed",
-    mutability: "read",
+    ownership: declared.writable ? "borrowed_mut" : "borrowed",
+    mutability: declared.writable ? "write" : "read",
     aliasing: "allowed",
   } : {
     name: argument.name,

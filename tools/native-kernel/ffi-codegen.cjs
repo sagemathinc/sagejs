@@ -113,13 +113,13 @@ function resourceForType(operation, type) {
 
 function isForeignResourceType(fn, type) {
   return (fn.foreignResources || []).some(
-    (resource) => resource.python_name === type,
+    (resource) => (resource.compiler_type || resource.python_name) === type,
   );
 }
 
 function resourceForFunctionType(fn, type) {
   return (fn.foreignResources || []).find(
-    (resource) => resource.python_name === type,
+    (resource) => (resource.compiler_type || resource.python_name) === type,
   );
 }
 
@@ -177,13 +177,40 @@ function assignRawResult(fn, raw, target, indent) {
   throw new Error(`unsupported declared FFI result ${semantic}`);
 }
 
-function emitResourceCall(operation, context, indent) {
+function emitResourceCall(operation, context, indent, tagged) {
   const fn = operation.foreign.function;
-  const native = fn.native;
   const callArguments = nativeArguments(fn);
   const returned = resourceForType(operation, fn.signature.return_type);
-  const args = callArguments.map((argument) => {
-    if (argument.source === "result") return context.result(operation.target);
+  const prefix = `sagejs_ffi_${cName(operation.target)}`;
+  const declarations = [];
+  const setup = [];
+  const cleanup = [];
+  let exactResult;
+  const args = callArguments.map((argument, index) => {
+    if (argument.source === "result" && returned !== undefined) {
+      return context.result(operation.target);
+    }
+    if (argument.abi_type === "fmpz_t") {
+      const variable = `${prefix}_${cName(argument.source)}_${index}`;
+      declarations.push(`${indent}    fmpz_t ${variable};`);
+      setup.push(`${indent}    fmpz_init(${variable});`);
+      cleanup.unshift(`${indent}    fmpz_clear(${variable});`);
+      if (argument.source === "result") {
+        exactResult = variable;
+      } else {
+        const source = argumentBySource(operation, argument.source);
+        const sourceValue = context.value(source.name);
+        if (tagged) {
+          setup.push(`${indent}    sagejs_tagged_make_big(${sourceValue});`);
+          setup.push(
+            `${indent}    fmpz_set_mpz(${variable}, (${sourceValue})->big);`,
+          );
+        } else {
+          setup.push(`${indent}    fmpz_set_mpz(${variable}, ${sourceValue});`);
+        }
+      }
+      return variable;
+    }
     const source = argumentBySource(operation, argument.source);
     const resource = resourceForType(operation, source.type);
     if (resource !== undefined) return context.value(source.name);
@@ -198,37 +225,71 @@ function emitResourceCall(operation, context, indent) {
       `${argument.abi_type}`,
     );
   });
-  if (returned !== undefined) {
-    const validation = fn.signature.parameters.flatMap((parameter, index) => {
-      if (parameter.minimum === undefined) return [];
-      const source = operation.arguments[index];
-      return [
-        `${indent}if (${context.value(source.name)} < ` +
-          `UINT64_C(${parameter.minimum}))`,
-        `${indent}{`,
-        `${indent}    sagejs_native_status_set(status, ` +
-          `SAGEJS_NATIVE_RANGE_ERROR, "FFI resource argument is below minimum ` +
-          `${parameter.minimum}");`,
-        `${indent}    ${context.failure}`,
-        `${indent}}`,
-      ];
-    });
+  const validation = fn.signature.parameters.flatMap((parameter, index) => {
+    if (parameter.minimum === undefined) return [];
+    const source = operation.arguments[index];
     return [
-      ...validation,
-      `${indent}if (!(${successCondition(fn,
-        `${nativeSymbol(fn)}(${args.join(", ")})`)}))`,
-      `${indent}{`,
-      `${indent}    sagejs_native_status_set(status, SAGEJS_NATIVE_ERROR, ` +
-        `${JSON.stringify(fn.errors.message)});`,
-      `${indent}    ${context.failure}`,
-      `${indent}}`,
-      ...(returned.ownership === "owned"
-        ? [`${indent}${context.resourceInitialized(operation.target)} = 1;`]
-        : []),
-    ].join("\n");
+      `${indent}    if (${context.value(source.name)} < ` +
+        `UINT64_C(${parameter.minimum}))`,
+      `${indent}    {`,
+      `${indent}        sagejs_native_status_set(status, ` +
+        `SAGEJS_NATIVE_RANGE_ERROR, "FFI resource argument is below minimum ` +
+        `${parameter.minimum}");`,
+      `${indent}        ${context.failure}`,
+      `${indent}    }`,
+    ];
+  });
+  const raw = `${prefix}_result`;
+  const needsRaw = fn.native.return_type !== "void";
+  if (needsRaw) {
+    declarations.push(`${indent}    ${nativeReturnType(fn)} ${raw};`);
   }
-  return `${indent}${context.result(operation.target)} = ` +
-    `${nativeSymbol(fn)}(${args.join(", ")});`;
+  const call = `${nativeSymbol(fn)}(${args.join(", ")})`;
+  const invoke = needsRaw
+    ? `${indent}    ${raw} = ${call};`
+    : `${indent}    ${call};`;
+  const checked = needsRaw
+    ? failureLines(fn, raw, cleanup, context, `${indent}    `)
+    : [];
+  const result = [];
+  if (returned !== undefined) {
+    if (returned.ownership === "owned") {
+      result.push(
+        `${indent}    ${context.resourceInitialized(operation.target)} = 1;`,
+      );
+    }
+  } else if (fn.signature.return_type === "Integer") {
+    if (exactResult === undefined) {
+      throw new Error(`${operation.foreign.declarationId} lacks its result adapter`);
+    }
+    const output = context.result(operation.target);
+    if (tagged) {
+      result.push(
+        `${indent}    sagejs_tagged_make_big(${output});`,
+        `${indent}    fmpz_get_mpz((${output})->big, ${exactResult});`,
+      );
+    } else {
+      result.push(`${indent}    fmpz_get_mpz(${output}, ${exactResult});`);
+    }
+  } else if (needsRaw) {
+    result.push(assignRawResult(
+      fn,
+      raw,
+      context.result(operation.target),
+      `${indent}    `,
+    ));
+  }
+  return [
+    `${indent}{`,
+    ...declarations,
+    ...validation,
+    ...setup,
+    invoke,
+    ...checked,
+    ...result,
+    ...cleanup,
+    `${indent}}`,
+  ].join("\n");
 }
 
 function usesResource(operation) {
@@ -751,7 +812,9 @@ function usesFmpz(operation) {
 }
 
 function emitExactForeignCall(operation, context, indent) {
-  if (usesResource(operation)) return emitResourceCall(operation, context, indent);
+  if (usesResource(operation)) {
+    return emitResourceCall(operation, context, indent, false);
+  }
   if (nativeArguments(operation.foreign.function).some((argument) =>
     argument.adapter?.kind === "packed_fmpz_matrix"
   )) return emitPackedFmpzCall(operation, context, indent);
@@ -767,7 +830,9 @@ function emitExactForeignCall(operation, context, indent) {
 }
 
 function emitTaggedForeignCall(operation, context, indent) {
-  if (usesResource(operation)) return emitResourceCall(operation, context, indent);
+  if (usesResource(operation)) {
+    return emitResourceCall(operation, context, indent, true);
+  }
   if (nativeArguments(operation.foreign.function).some((argument) =>
     argument.adapter?.kind === "packed_fmpz_matrix"
   )) return emitPackedFmpzCall(operation, context, indent);
@@ -844,7 +909,27 @@ function javascriptForeignCall(operation, indent) {
 function javascriptRuntime(ir) {
   if (foreignLibraries(ir).length === 0) return "";
   return `
-const sagejsFfiLibraries = new Map();
+const sagejsFfiLibraries = (
+  globalThis.__sagejs_ffi_library_cache__ ??= new Map()
+);
+
+function sagejsFfiPublicResource(value, identity, argument) {
+  const borrow = value === null || value === undefined
+    ? undefined : Reflect.get(value, "_ffi_borrow");
+  if (typeof borrow !== "function") {
+    throw new TypeError(argument + " must be a declared FFI resource");
+  }
+  const token = Reflect.apply(borrow, value, []);
+  const tag = globalThis.__sagejs_ffi_resource_tag__;
+  const state = tag === undefined ? undefined : token?.[tag];
+  if (state === undefined || state.identity !== identity) {
+    throw new TypeError(argument + " has the wrong FFI resource type");
+  }
+  if ((state.root || state).closed) {
+    nativeRaise("ValueError", "FFI resource is closed");
+  }
+  return state;
+}
 
 function sagejsFfiCall(
   packageName, exportName, args, parameterTypes, returnType, resultDomain, errors,

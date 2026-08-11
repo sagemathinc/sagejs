@@ -1,5 +1,7 @@
 "use strict";
 
+const { createHash } = require("node:crypto");
+
 const {
   isTupleType,
   tupleElementTypes,
@@ -210,10 +212,11 @@ function exactValue(name, context) {
   if (context.storage.borrowedParameters.includes(name)) {
     return `sagejs_arg_${name}`;
   }
+  if (context.resourceParameters?.has(name)) return `sagejs_arg_${name}`;
   return cName(name);
 }
 
-function internalArgument(param) {
+function internalArgument(fn, param) {
   const name = `sagejs_arg_${param.name}`;
   if (param.type === "Integer") return `const mpz_t ${name}`;
   if (param.type === "uint64") return `uint64_t ${name}`;
@@ -221,10 +224,12 @@ function internalArgument(param) {
   if (isInt64BufferType(param.type)) return `sagejs_int64_buffer ${name}`;
   if (isUInt64BufferType(param.type)) return `sagejs_uint64_buffer ${name}`;
   if (isIntegerBufferType(param.type)) return `sagejs_integer_buffer ${name}`;
+  const resource = resourceForFunctionType(fn, param.type);
+  if (resource !== undefined) return `${resource.abi_type} ${name}`;
   throw new Error(`unsupported exact native parameter ${param.type}`);
 }
 
-function internalResults(type) {
+function internalResults(fn, type) {
   const tuple = tupleElementTypes(type);
   if (tuple !== undefined) {
     return tuple.map((elementType, index) => {
@@ -243,14 +248,18 @@ function internalResults(type) {
   if (type === "Integer") return ["mpz_t sagejs_native_output"];
   if (type === "uint64") return ["uint64_t *sagejs_native_output"];
   if (type === "bool") return ["int *sagejs_native_output"];
+  const resource = resourceForFunctionType(fn, type);
+  if (resource !== undefined) {
+    return [`${resource.abi_type} sagejs_native_output`];
+  }
   throw new Error(`unsupported exact native return ${type}`);
 }
 
 function internalSignature(fn, prototype = false) {
   const argumentsList = [
     "sagejs_native_status *status",
-    ...internalResults(fn.returnType),
-    ...fn.params.map(internalArgument),
+    ...internalResults(fn, fn.returnType),
+    ...fn.params.map((param) => internalArgument(fn, param)),
   ].join(", ");
   return `static int native_${fn.name}(${argumentsList})${prototype ? ";" : ""}`;
 }
@@ -700,6 +709,13 @@ function emitExactStatements(statements, context, indent) {
       } else if (statement.type === "Integer") {
         lines.push(`${indent}mpz_set(sagejs_native_output, ` +
           `${exactValue(statement.value, context)});`);
+      } else if (context.resourceForType(statement.type) !== undefined) {
+        const resource = context.resourceForType(statement.type);
+        lines.push(
+          `${indent}memcpy(sagejs_native_output, ` +
+            `${exactValue(statement.value, context)}, sizeof(${resource.abi_type}));`,
+          `${indent}${context.resourceInitialized(statement.value)} = 0;`,
+        );
       } else {
         lines.push(`${indent}*sagejs_native_output = ` +
           `${exactValue(statement.value, context)};`);
@@ -731,6 +747,7 @@ function exactDeclarations(fn) {
   }
   for (const param of fn.params) {
     if (param.type === "Integer") continue;
+    if (resourceForFunctionType(fn, param.type) !== undefined) continue;
     const type = param.type === "uint64"
       ? "uint64_t"
       : exactBufferCType(param.type) !== undefined
@@ -767,6 +784,15 @@ function exactDeclarations(fn) {
   }
   const context = {
     storage,
+    resourceParameters: new Set(
+      fn.params
+        .filter((param) => resourceForFunctionType(fn, param.type) !== undefined)
+        .map((param) => param.name),
+    ),
+    resourceAliases: fn.resourceAliases || {},
+    resourceForType(type) {
+      return resourceForFunctionType(fn, type);
+    },
     resourceInitialized(name) {
       return `${cName(name)}_initialized`;
     },
@@ -806,6 +832,35 @@ function wrapperValue(param) {
   return `sagejs_wrapper_${param.name}`;
 }
 
+function resourceCName(resource) {
+  return String(resource.compiler_type || resource.python_name)
+    .replace(/[^A-Za-z0-9_]/g, "_");
+}
+
+function resourceHolderName(resource) {
+  return `sagejs_resource_${resourceCName(resource)}_holder`;
+}
+
+function resourceUnwrapName(resource) {
+  return `sagejs_resource_${resourceCName(resource)}_unwrap`;
+}
+
+function resourceWrapName(resource) {
+  return `sagejs_resource_${resourceCName(resource)}_wrap`;
+}
+
+function resourceFinalizeName(resource) {
+  return `sagejs_resource_${resourceCName(resource)}_finalize`;
+}
+
+function resourceCloseName(resource) {
+  return `sagejs_resource_${resourceCName(resource)}_close`;
+}
+
+function functionResource(fn, type) {
+  return resourceForFunctionType(fn, type);
+}
+
 function emitTaggedWrapper(fn) {
   const declarations = ["    sagejs_native_status sagejs_wrapper_status = {0, NULL};"];
   const initialization = [];
@@ -818,7 +873,12 @@ function emitTaggedWrapper(fn) {
     const value = wrapperValue(param);
     let parse;
     let defaultValue;
-    if (param.type === "Integer") {
+    const resource = functionResource(fn, param.type);
+    if (resource !== undefined) {
+      declarations.push(`    ${resourceHolderName(resource)} *${value} = NULL;`);
+      parse = `if (!${resourceUnwrapName(resource)}(env, args[${index}], ` +
+        `&${value}))\n            goto fail;`;
+    } else if (param.type === "Integer") {
       declarations.push(`    sagejs_tagged_int ${value};`);
       initialization.push(`    sagejs_tagged_init(&${value});`);
       parse = `if (!get_tagged_integer(env, args[${index}], &${value}))\n` +
@@ -873,12 +933,43 @@ function emitTaggedWrapper(fn) {
   }
   const resultTypes = tupleElementTypes(fn.returnType) || [fn.returnType];
   const tupleResult = isTupleType(fn.returnType);
+  const returnedResource = functionResource(fn, fn.returnType);
+  if (returnedResource !== undefined && tupleResult) {
+    throw new Error("native resource tuple returns are not supported");
+  }
   const resultArguments = [];
   const resultCreation = [];
   resultTypes.forEach((type, index) => {
     const suffix = tupleResult ? `_${index}` : "";
     const value = `sagejs_wrapper_result${suffix}`;
-    if (type === "Integer") {
+    const resource = functionResource(fn, type);
+    if (resource !== undefined) {
+      declarations.push(
+        `    ${resourceHolderName(resource)} *${value} = NULL;`,
+      );
+      initialization.push(
+        `    ${value} = (${resourceHolderName(resource)} *) ` +
+          `calloc(1, sizeof(*${value}));`,
+        `    if (${value} == NULL)`,
+        "    {",
+        '        napi_throw_error(env, NULL, "unable to allocate FFI resource");',
+        "        goto fail;",
+        "    }",
+        `    ${value}->magic = ${resourceHolderName(resource)}_MAGIC;`,
+      );
+      cleanup.push(
+        `    if (${value} != NULL)`,
+        `        ${resourceFinalizeName(resource)}(env, ${value}, NULL);`,
+      );
+      resultArguments.push(`${value}->value`);
+      resultCreation.push(
+        `    ${value}->initialized = 1;`,
+        `    result = ${resourceWrapName(resource)}(env, ${value});`,
+        "    if (result == NULL)",
+        "        goto fail;",
+        `    ${value} = NULL;`,
+      );
+    } else if (type === "Integer") {
       declarations.push(`    sagejs_tagged_int ${value};`);
       initialization.push(`    sagejs_tagged_init(&${value});`);
       cleanup.push(`    sagejs_tagged_clear(&${value});`);
@@ -919,7 +1010,9 @@ function emitTaggedWrapper(fn) {
     declarations.push("    napi_value sagejs_wrapper_item = NULL;");
   }
   const argumentsList = fn.params.map((param) =>
-    param.type === "Integer"
+    functionResource(fn, param.type) !== undefined
+      ? `${wrapperValue(param)}->value`
+      : param.type === "Integer"
       ? `&${wrapperValue(param)}`
       : wrapperValue(param)
   );
@@ -971,7 +1064,12 @@ function emitExactWrapper(fn) {
     const value = wrapperValue(param);
     let parse;
     let defaultValue;
-    if (param.type === "Integer") {
+    const resource = functionResource(fn, param.type);
+    if (resource !== undefined) {
+      declarations.push(`    ${resourceHolderName(resource)} *${value} = NULL;`);
+      parse = `if (!${resourceUnwrapName(resource)}(env, args[${index}], ` +
+        `&${value}))\n            goto fail;`;
+    } else if (param.type === "Integer") {
       declarations.push(`    mpz_t ${value};`, `    int ${value}_initialized = 0;`);
       initialization.push(`    mpz_init(${value});`, `    ${value}_initialized = 1;`);
       parse = `if (!get_integer(env, args[${index}], ${value}))\n` +
@@ -1023,12 +1121,43 @@ function emitExactWrapper(fn) {
   }
   const resultTypes = tupleElementTypes(fn.returnType) || [fn.returnType];
   const tupleResult = isTupleType(fn.returnType);
+  const returnedResource = functionResource(fn, fn.returnType);
+  if (returnedResource !== undefined && tupleResult) {
+    throw new Error("native resource tuple returns are not supported");
+  }
   const resultArguments = [];
   const resultCreation = [];
   resultTypes.forEach((type, index) => {
     const suffix = tupleResult ? `_${index}` : "";
     const value = `sagejs_wrapper_result${suffix}`;
-    if (type === "Integer") {
+    const resource = functionResource(fn, type);
+    if (resource !== undefined) {
+      declarations.push(
+        `    ${resourceHolderName(resource)} *${value} = NULL;`,
+      );
+      initialization.push(
+        `    ${value} = (${resourceHolderName(resource)} *) ` +
+          `calloc(1, sizeof(*${value}));`,
+        `    if (${value} == NULL)`,
+        "    {",
+        '        napi_throw_error(env, NULL, "unable to allocate FFI resource");',
+        "        goto fail;",
+        "    }",
+        `    ${value}->magic = ${resourceHolderName(resource)}_MAGIC;`,
+      );
+      cleanup.push(
+        `    if (${value} != NULL)`,
+        `        ${resourceFinalizeName(resource)}(env, ${value}, NULL);`,
+      );
+      resultArguments.push(`${value}->value`);
+      resultCreation.push(
+        `    ${value}->initialized = 1;`,
+        `    result = ${resourceWrapName(resource)}(env, ${value});`,
+        "    if (result == NULL)",
+        "        goto fail;",
+        `    ${value} = NULL;`,
+      );
+    } else if (type === "Integer") {
       declarations.push(`    mpz_t ${value};`, `    int ${value}_initialized = 0;`);
       initialization.push(`    mpz_init(${value});`, `    ${value}_initialized = 1;`);
       cleanup.push(`    if (${value}_initialized)`, `        mpz_clear(${value});`);
@@ -1068,7 +1197,11 @@ function emitExactWrapper(fn) {
     );
     declarations.push("    napi_value sagejs_wrapper_item = NULL;");
   }
-  const argumentsList = fn.params.map(wrapperValue);
+  const argumentsList = fn.params.map((param) =>
+    functionResource(fn, param.type) !== undefined
+      ? `${wrapperValue(param)}->value`
+      : wrapperValue(param)
+  );
   const execution = `    if (!native_${fn.name}(&sagejs_wrapper_status, ${resultArguments.join(", ")}` +
     `${argumentsList.length ? `, ${argumentsList.join(", ")}` : ""}))\n` +
     "    {\n" +
@@ -1842,6 +1975,112 @@ static int sagejs_native_get_integer_buffer(
 }`;
 }
 
+function resourceTagWords(resource) {
+  const identity = `${resource.declaration_identity || ""}:` +
+    `${resource.id}:${resource.abi_type}`;
+  const digest = createHash("sha256").update(identity).digest("hex");
+  return [digest.slice(0, 16), digest.slice(16, 32)];
+}
+
+function generateOwnedResourceNodeSupport(resource) {
+  if (resource.ownership !== "owned") {
+    throw new Error(
+      `public native resource ${resource.python_name} must be owned`,
+    );
+  }
+  const holder = resourceHolderName(resource);
+  const finalize = resourceFinalizeName(resource);
+  const unwrap = resourceUnwrapName(resource);
+  const wrap = resourceWrapName(resource);
+  const close = resourceCloseName(resource);
+  const [tagHigh, tagLow] = resourceTagWords(resource);
+  const tag = `sagejs_resource_${resourceCName(resource)}_type_tag`;
+  return `
+#define ${holder}_MAGIC UINT64_C(0x${tagHigh})
+
+typedef struct
+{
+    uint64_t magic;
+    int initialized;
+    ${resource.abi_type} value;
+} ${holder};
+
+static const napi_type_tag ${tag} = {
+    UINT64_C(0x${tagHigh}), UINT64_C(0x${tagLow})
+};
+
+static void ${finalize}(napi_env env, void *data, void *hint)
+{
+    ${holder} *holder = (${holder} *) data;
+    (void) env;
+    (void) hint;
+    if (holder == NULL || holder->magic != ${holder}_MAGIC)
+        return;
+    if (holder->initialized)
+        ${resource.native.clear_symbol}(holder->value);
+    holder->initialized = 0;
+    holder->magic = 0;
+    free(holder);
+}
+
+static int ${unwrap}(
+    napi_env env, napi_value object, ${holder} **result)
+{
+    bool tagged = false;
+    ${holder} *holder = NULL;
+    if (!sagejs_native_check_napi(env,
+            napi_check_object_type_tag(env, object, &${tag}, &tagged)) ||
+        !tagged ||
+        !sagejs_native_check_napi(env,
+            napi_unwrap(env, object, (void **) &holder)) ||
+        holder == NULL || holder->magic != ${holder}_MAGIC ||
+        !holder->initialized)
+    {
+        if (!tagged)
+            napi_throw_type_error(env, NULL,
+                "expected declared ${resource.python_name} resource");
+        else if (holder == NULL || holder->magic != ${holder}_MAGIC ||
+                 !holder->initialized)
+            napi_throw_error(env, NULL, "FFI resource is closed");
+        return 0;
+    }
+    *result = holder;
+    return 1;
+}
+
+static napi_value ${wrap}(napi_env env, ${holder} *holder)
+{
+    napi_value object = NULL;
+    if (!sagejs_native_check_napi(env, napi_create_object(env, &object)) ||
+        !sagejs_native_check_napi(env,
+            napi_type_tag_object(env, object, &${tag})) ||
+        !sagejs_native_check_napi(env,
+            napi_wrap(env, object, holder, ${finalize}, NULL, NULL)))
+        return NULL;
+    return object;
+}
+
+static napi_value ${close}(napi_env env, napi_callback_info info)
+{
+    napi_value argument;
+    napi_value result = NULL;
+    size_t argc = 1;
+    ${holder} *holder = NULL;
+    if (!sagejs_native_check_napi(env,
+            napi_get_cb_info(env, info, &argc, &argument, NULL, NULL)))
+        return NULL;
+    if (argc != 1 || !${unwrap}(env, argument, &holder))
+        return NULL;
+    if (!sagejs_native_check_napi(env,
+            napi_remove_wrap(env, argument, (void **) &holder)))
+        return NULL;
+    ${finalize}(env, holder, NULL);
+    if (!sagejs_native_check_napi(env, napi_get_undefined(env, &result)))
+        return NULL;
+    return result;
+}`;
+}
+
 function exactFunctions(ir) {
   return ir.functions.filter((fn) => fn.kernelKind === "integer");
 }
@@ -1849,8 +2088,8 @@ function exactFunctions(ir) {
 function publicCoreSignature(fn, prototype = false) {
   const parameters = [
     "sagejs_native_status *status",
-    ...internalResults(fn.returnType),
-    ...fn.params.map(internalArgument),
+    ...internalResults(fn, fn.returnType),
+    ...fn.params.map((param) => internalArgument(fn, param)),
   ].join(", ");
   return `int sagejs_kernel_${fn.name}(${parameters})${prototype ? ";" : ""}`;
 }
@@ -2091,7 +2330,11 @@ function generateHostCore(ir) {
   );
   const functionMap = new Map(exact.map((fn) => [fn.name, fn]));
   const tagged = generateTaggedFunctions(exact);
-  const word = generateWordFunctions(exact);
+  const word = generateWordFunctions(exact.filter((fn) =>
+    ![fn.returnType, ...fn.params.map((param) => param.type)].some((type) =>
+      resourceForFunctionType(fn, type) !== undefined
+    )
+  ));
   const usesInt64Buffers = exact.some((fn) =>
     fn.params.some((param) => isInt64BufferType(param.type)) ||
     fn.locals.some((local) => isInt64BufferType(local.type))
@@ -2188,6 +2431,14 @@ function generateNodeAdapter(ir) {
   const primeFields = functions.filter((fn) =>
     fn.kernelKind === "prime-field-matrix"
   );
+  const publicResources = Array.from(new Map(exact.flatMap((fn) =>
+    [fn.returnType, ...fn.params.map((param) => param.type)].flatMap((type) => {
+      const resource = resourceForFunctionType(fn, type);
+      return resource === undefined
+        ? []
+        : [[resource.compiler_type || resource.python_name, resource]];
+    })
+  )).values());
   let helpers = exact.length > 0
     ? generateExactNodeHelpers()
     : `static int get_uint64(
@@ -2274,7 +2525,8 @@ static int get_precision(
     ...primeSources.map(emitPrimeSourceNodeAdapter),
     ...primeFields.map(emitPrimeFieldNodeAdapter),
   ].join("\n\n");
-  const properties = functions.flatMap((fn) => {
+  const properties = [
+    ...functions.flatMap((fn) => {
     const ordinary =
       `        {${cString(fn.name)}, NULL, compiled_${fn.name}, ` +
       "NULL, NULL, NULL, napi_default, NULL}";
@@ -2285,7 +2537,12 @@ static int get_precision(
           `compiled_${fn.name}_gmp, NULL, NULL, NULL, napi_default, NULL}`,
       ]
       : [ordinary];
-  }).join(",\n");
+    }),
+    ...publicResources.map((resource) =>
+      `        {${cString(resource.dynamic.close_export)}, NULL, ` +
+        `${resourceCloseName(resource)}, NULL, NULL, NULL, napi_default, NULL}`
+    ),
+  ].join(",\n");
   return `/* Generated by Sage.js Native Kernel v21.
  * Node adapter only; mathematical execution lives in kernel_core.c.
  */
@@ -2311,6 +2568,8 @@ ${generateNodeStatusAdapter()}
 ${helpers}
 
 ${bufferAdapters}
+
+${publicResources.map(generateOwnedResourceNodeSupport).join("\n\n")}
 
 ${floatBuffers ? generateFloat64BufferNodeAdapter() : ""}
 

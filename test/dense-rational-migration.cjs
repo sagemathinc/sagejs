@@ -103,6 +103,16 @@ assert wide*K.transpose() == zero_matrix(QQ, 2, 3)
 mutable = matrix(QQ, 2, 2, [QQ(1)/2, QQ(2)/3, QQ(3)/4, QQ(4)/5])
 mutable[0, 1] = -QQ(2**320 + 9)/37
 assert mutable[0, 1] == -QQ(2**320 + 9)/37
+
+# Exact entries are independently variable-sized.  One enormous value must not
+# force a uniform per-entry limb capacity or prevent the compact values beside
+# it from round-tripping through the public serialization boundary.
+skewed = matrix(QQ, 2, 2, [1, 2, 3, QQ(2**20000 + 1)/97])
+assert skewed[0, 0] == 1
+assert skewed[1, 1] == QQ(2**20000 + 1)/97
+assert loads(dumps(skewed)) == skewed
+assert str(2**20000 + 1) in skewed.str()
+
 immutable = mutable.__copy__()
 immutable.set_immutable()
 try:
@@ -272,8 +282,8 @@ print('trace-ok')
     });
     assert.match(trace, /Matrix\.random_matrix QQ 4x4 -> typed-python-isolated/);
     assert.match(trace, /Matrix\.add QQ 4x4 -> typed-python-isolated/);
-    assert.match(trace, /Matrix\.multiply QQ 4x4 -> declared-flint-isolated/);
-    assert.match(trace, /Matrix\.determinant QQ 4x4 -> declared-flint-isolated/);
+    assert.match(trace, /Matrix\.multiply QQ 4x4 -> generated-flint-resource/);
+    assert.match(trace, /Matrix\.determinant QQ 4x4 -> generated-flint-resource/);
     assert.match(trace, /trace-ok/);
 
     console.log("dense rational matrix migration tests passed");

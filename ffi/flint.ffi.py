@@ -26,6 +26,7 @@ flint = Library(
         "flint/nmod_mat.h",
         "flint/ulong_extras.h",
         "sagejs/ffi_algorithms.h",
+        "sagejs/fmpq_matrix_ffi.h",
     ],
     link_unix=["libflint.a", "libopenblas.a"],
     link_windows=["flint.lib", "openblas.lib", "pthreadVC3.lib"],
@@ -38,6 +39,36 @@ flint = Library(
 )
 
 
+FmpqMatrix = flint.resource(
+    id="fmpq_matrix",
+    abi=sagejs_fmpq_matrix_t,
+    ownership="owned",
+    close="ffiFmpqMatrixClose",
+    clear="sagejs_fmpq_matrix_clear",
+    wasm=False,
+)
+
+
+FmpqValue = flint.resource(
+    id="fmpq_value",
+    abi=sagejs_fmpq_value_t,
+    ownership="owned",
+    close="ffiFmpqValueClose",
+    clear="sagejs_fmpq_value_clear",
+    wasm=False,
+)
+
+
+FlintByteRegion = flint.resource(
+    id="byte_region",
+    abi=sagejs_flint_byte_region_t,
+    ownership="owned",
+    close="ffiFlintByteRegionClose",
+    clear="sagejs_flint_byte_region_clear",
+    wasm=False,
+)
+
+
 DirichletGroup = flint.resource(
     id="dirichlet_group",
     abi=dirichlet_group_t,
@@ -46,6 +77,316 @@ DirichletGroup = flint.resource(
     clear="dirichlet_group_clear",
     wasm=True,
 )
+
+
+@flint.function(
+    dynamic="ffiFmpqMatrixCreate",
+    symbol="sagejs_fmpq_matrix_init",
+    returns=int,
+    abi=[
+        out("result", sagejs_fmpq_matrix_t),
+        in_("rows", uint64_t),
+        in_("columns", uint64_t),
+    ],
+    effects=Effects(pure=False, allocates=True, raises=[OverflowError]),
+    result=Status(
+        1,
+        exception=OverflowError,
+        message="rational matrix dimensions are too large",
+    ),
+    wasm=False,
+)
+def fmpq_matrix(rows: uint64, columns: uint64) -> FmpqMatrix: ...
+
+
+@flint.function(
+    dynamic="ffiFmpqMatrixNrows",
+    symbol="sagejs_fmpq_matrix_nrows",
+    returns=uint64_t,
+    abi=[in_("matrix", sagejs_fmpq_matrix_t)],
+    effects=Effects(pure=True),
+    result=Direct(),
+    wasm=False,
+)
+def fmpq_matrix_nrows(matrix: FmpqMatrix) -> uint64: ...
+
+
+@flint.function(
+    dynamic="ffiFmpqMatrixNcols",
+    symbol="sagejs_fmpq_matrix_ncols",
+    returns=uint64_t,
+    abi=[in_("matrix", sagejs_fmpq_matrix_t)],
+    effects=Effects(pure=True),
+    result=Direct(),
+    wasm=False,
+)
+def fmpq_matrix_ncols(matrix: FmpqMatrix) -> uint64: ...
+
+
+@flint.function(
+    dynamic="ffiFmpqMatrixSetEntry",
+    symbol="sagejs_fmpq_matrix_set_entry",
+    returns=int,
+    abi=[
+        in_("matrix", sagejs_fmpq_matrix_t),
+        in_("row", uint64_t),
+        in_("column", uint64_t),
+        in_("numerator", fmpz_t),
+        in_("denominator", fmpz_t),
+    ],
+    effects=Effects(
+        pure=False,
+        allocates=True,
+        raises=[ValueError],
+        writes=["matrix"],
+    ),
+    result=Status(
+        1,
+        exception=ValueError,
+        message="invalid rational matrix entry",
+    ),
+    wasm=False,
+)
+def fmpq_matrix_set_entry(
+    matrix: Writable[FmpqMatrix],
+    row: uint64,
+    column: uint64,
+    numerator: Integer,
+    denominator: Integer,
+) -> bool: ...
+
+
+@flint.function(
+    dynamic="ffiFmpqMatrixEntryNumerator",
+    symbol="sagejs_fmpq_matrix_entry_numerator",
+    returns=int,
+    abi=[
+        out("result", fmpz_t),
+        in_("matrix", sagejs_fmpq_matrix_t),
+        in_("row", uint64_t),
+        in_("column", uint64_t),
+    ],
+    effects=Effects(pure=True, allocates=True, raises=[ValueError]),
+    result=Status(
+        1,
+        exception=ValueError,
+        message="rational matrix entry is out of bounds",
+    ),
+    wasm=False,
+)
+def fmpq_matrix_entry_numerator(
+    matrix: FmpqMatrix,
+    row: uint64,
+    column: uint64,
+) -> Integer: ...
+
+
+@flint.function(
+    dynamic="ffiFmpqMatrixEntryDenominator",
+    symbol="sagejs_fmpq_matrix_entry_denominator",
+    returns=int,
+    abi=[
+        out("result", fmpz_t),
+        in_("matrix", sagejs_fmpq_matrix_t),
+        in_("row", uint64_t),
+        in_("column", uint64_t),
+    ],
+    effects=Effects(pure=True, allocates=True, raises=[ValueError]),
+    result=Status(
+        1,
+        exception=ValueError,
+        message="rational matrix entry is out of bounds",
+    ),
+    wasm=False,
+)
+def fmpq_matrix_entry_denominator(
+    matrix: FmpqMatrix,
+    row: uint64,
+    column: uint64,
+) -> Integer: ...
+
+
+@flint.function(
+    dynamic="ffiFmpqMatrixEntryIsZero",
+    symbol="sagejs_fmpq_matrix_entry_is_zero",
+    returns=int,
+    abi=[
+        in_("matrix", sagejs_fmpq_matrix_t),
+        in_("row", uint64_t),
+        in_("column", uint64_t),
+    ],
+    effects=Effects(pure=True),
+    result=Direct(),
+    wasm=False,
+)
+def fmpq_matrix_entry_is_zero(
+    matrix: FmpqMatrix,
+    row: uint64,
+    column: uint64,
+) -> bool: ...
+
+
+@flint.function(
+    dynamic="ffiFmpqMatrixCopy",
+    symbol="sagejs_fmpq_matrix_init_set",
+    returns=int,
+    abi=[
+        out("result", sagejs_fmpq_matrix_t),
+        in_("source", sagejs_fmpq_matrix_t),
+    ],
+    effects=Effects(pure=False, allocates=True, raises=[RuntimeError]),
+    result=Status(1, exception=RuntimeError, message="rational matrix copy failed"),
+    wasm=False,
+)
+def fmpq_matrix_copy(source: FmpqMatrix) -> FmpqMatrix: ...
+
+
+@flint.function(
+    dynamic="ffiFmpqMatrixMul",
+    symbol="sagejs_fmpq_matrix_mul",
+    returns=int,
+    abi=[
+        out("result", sagejs_fmpq_matrix_t),
+        in_("left", sagejs_fmpq_matrix_t),
+        in_("right", sagejs_fmpq_matrix_t),
+    ],
+    effects=Effects(pure=False, allocates=True, raises=[ValueError]),
+    result=Status(
+        1,
+        exception=ValueError,
+        message="rational matrix dimensions are incompatible",
+    ),
+    wasm=False,
+)
+def fmpq_matrix_mul(left: FmpqMatrix, right: FmpqMatrix) -> FmpqMatrix: ...
+
+
+@flint.function(
+    dynamic="ffiFmpqMatrixRref",
+    symbol="sagejs_fmpq_matrix_rref",
+    returns=int,
+    abi=[
+        out("result", sagejs_fmpq_matrix_t),
+        in_("source", sagejs_fmpq_matrix_t),
+    ],
+    effects=Effects(pure=False, allocates=True, raises=[RuntimeError]),
+    result=Status(1, exception=RuntimeError, message="rational matrix RREF failed"),
+    wasm=False,
+)
+def fmpq_matrix_rref(source: FmpqMatrix) -> FmpqMatrix: ...
+
+
+@flint.function(
+    dynamic="ffiFmpqMatrixRank",
+    symbol="sagejs_fmpq_matrix_rank",
+    returns=uint64_t,
+    abi=[in_("matrix", sagejs_fmpq_matrix_t)],
+    effects=Effects(pure=True, allocates=True),
+    result=Direct(),
+    wasm=False,
+)
+def fmpq_matrix_rank(matrix: FmpqMatrix) -> uint64: ...
+
+
+@flint.function(
+    dynamic="ffiFmpqMatrixDet",
+    symbol="sagejs_fmpq_matrix_det",
+    returns=int,
+    abi=[
+        out("result", sagejs_fmpq_value_t),
+        in_("source", sagejs_fmpq_matrix_t),
+    ],
+    effects=Effects(pure=False, allocates=True, raises=[ValueError]),
+    result=Status(
+        1,
+        exception=ValueError,
+        message="determinant requires a square rational matrix",
+    ),
+    wasm=False,
+)
+def fmpq_matrix_det(source: FmpqMatrix) -> FmpqValue: ...
+
+
+@flint.function(
+    dynamic="ffiFmpqValueNumerator",
+    symbol="sagejs_fmpq_value_numerator",
+    returns=void,
+    abi=[out("result", fmpz_t), in_("value", sagejs_fmpq_value_t)],
+    effects=Effects(pure=True, allocates=True),
+    result=Direct(),
+    wasm=False,
+)
+def fmpq_value_numerator(value: FmpqValue) -> Integer: ...
+
+
+@flint.function(
+    dynamic="ffiFmpqValueDenominator",
+    symbol="sagejs_fmpq_value_denominator",
+    returns=void,
+    abi=[out("result", fmpz_t), in_("value", sagejs_fmpq_value_t)],
+    effects=Effects(pure=True, allocates=True),
+    result=Direct(),
+    wasm=False,
+)
+def fmpq_value_denominator(value: FmpqValue) -> Integer: ...
+
+
+@flint.function(
+    dynamic="ffiFmpqMatrixFormat",
+    symbol="sagejs_fmpq_matrix_format",
+    returns=int,
+    abi=[
+        out("result", sagejs_flint_byte_region_t),
+        in_("source", sagejs_fmpq_matrix_t),
+    ],
+    effects=Effects(pure=False, allocates=True, raises=[RuntimeError]),
+    result=Status(1, exception=RuntimeError, message="rational matrix format failed"),
+    wasm=False,
+)
+def fmpq_matrix_format(source: FmpqMatrix) -> FlintByteRegion: ...
+
+
+@flint.function(
+    dynamic="ffiFmpqMatrixSerialize",
+    symbol="sagejs_fmpq_matrix_serialize",
+    returns=int,
+    abi=[
+        out("result", sagejs_flint_byte_region_t),
+        in_("source", sagejs_fmpq_matrix_t),
+    ],
+    effects=Effects(pure=False, allocates=True, raises=[OverflowError]),
+    result=Status(
+        1,
+        exception=OverflowError,
+        message="rational matrix serialization is too large",
+    ),
+    wasm=False,
+)
+def fmpq_matrix_serialize(source: FmpqMatrix) -> FlintByteRegion: ...
+
+
+@flint.function(
+    dynamic="ffiFlintByteRegionLength",
+    symbol="sagejs_flint_byte_region_length",
+    returns=uint64_t,
+    abi=[in_("region", sagejs_flint_byte_region_t)],
+    effects=Effects(pure=True),
+    result=Direct(),
+    wasm=False,
+)
+def flint_byte_region_length(region: FlintByteRegion) -> uint64: ...
+
+
+@flint.function(
+    dynamic="ffiFlintByteRegionGet",
+    symbol="sagejs_flint_byte_region_get",
+    returns=uint64_t,
+    abi=[in_("region", sagejs_flint_byte_region_t), in_("index", uint64_t)],
+    effects=Effects(pure=True),
+    result=Direct(),
+    wasm=False,
+)
+def flint_byte_region_get(region: FlintByteRegion, index: uint64) -> uint64: ...
 
 
 @flint.function(

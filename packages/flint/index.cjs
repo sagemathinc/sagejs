@@ -1161,6 +1161,13 @@ for (const item of generatedFfiManifest.functions) {
   }
   publicBinding[name] = generatedFfi[name];
 }
+for (const resource of generatedFfiManifest.resources || []) {
+  const name = resource.close_export;
+  if (typeof generatedFfi[name] !== "function") {
+    throw new Error(`generated FLINT FFI adapter is missing ${name}`);
+  }
+  publicBinding[name] = generatedFfi[name];
+}
 Object.defineProperty(publicBinding, "__sagejs_ffi_oracles__", {
   value: Object.freeze(declaredFfiOracles),
   enumerable: false,

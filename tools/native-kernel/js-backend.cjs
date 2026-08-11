@@ -453,6 +453,10 @@ function exactReturn(fn, expression) {
 }
 
 function exactValidation(param) {
+  if (param.resourceIdentity !== undefined) {
+    return `  sagejsFfiPublicResource(${param.name}, ` +
+      `${jsString(param.resourceIdentity)}, ${jsString(param.name)});`;
+  }
   if (param.type === "Integer") {
     return `  if (!(typeof ${param.name} === "bigint" || ` +
       `Number.isSafeInteger(${param.name}))) {\n` +
@@ -486,6 +490,10 @@ function uint64Validation(name) {
 }
 
 function normalizedArgument(param) {
+  if (param.resourceIdentity !== undefined) {
+    return `sagejsFfiPublicResource(${param.name}, ` +
+      `${jsString(param.resourceIdentity)}, ${jsString(param.name)})`;
+  }
   if (param.type === "Integer") return `BigInt(${param.name})`;
   if (param.type === "Int64Buffer" || param.type === "Int64Record") {
     return `int64BufferView(${param.name}, ${jsString(param.name)})`;
@@ -533,7 +541,9 @@ function exactNativeExpression(fn, backend) {
   );
   if (buffers.length === 0) {
     const args = fn.params.map((param) =>
-      `sagejs_native_${param.name}`
+      param.resourceIdentity === undefined
+        ? `sagejs_native_${param.name}`
+        : `sagejs_native_${param.name}.handle`
     ).join(", ");
     return `nativeExactCall(${jsString(fn.name)}, [${args}], ${backend}, ` +
       `${ffiErrors})`;
@@ -552,7 +562,9 @@ function exactNativeExpression(fn, backend) {
         ? `sagejs_native_descriptor_${param.name}.typed`
       : param.type === "IntegerBuffer"
         ? `sagejs_native_descriptor_${param.name}.packed`
-      : `sagejs_native_${param.name}`
+      : param.resourceIdentity === undefined
+        ? `sagejs_native_${param.name}`
+        : `sagejs_native_${param.name}.handle`
   ).join(", ");
   const copies = buffers
     .filter((param) => fn.analysis.effects.externalWrites.includes(param.name))

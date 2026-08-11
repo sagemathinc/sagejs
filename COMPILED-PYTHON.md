@@ -333,15 +333,22 @@ Ordinary lists are useful for the fallback and small calls. Long-running code
 should generally pack data once, reuse storage across calls, and avoid
 repeated object conversion.
 
-Exact rational aggregates use the same principle. A `RationalBuffer` owns two
+Exact rational aggregates can use the same principle. A `RationalBuffer` owns two
 equal-length `IntegerBuffer` components, with coprime numerator/denominator
 pairs, positive denominators, and the unique zero representation `0/1`.
-Current structural kernels take the two component buffers as explicit
-arguments because composite rational records are not yet admitted in public
-kernel signatures. The surrounding mathematical object owns them as one
-aggregate, so growth and mutation cannot replace only one component. This is
-an exposed ABI staging choice, not a foreign `fmpq` pointer or a pair of
-unrelated caches.
+Structural kernels can take the two component buffers as explicit arguments.
+The aggregate owns both components, so growth and mutation cannot replace only
+one component.
+
+Dense `QQ` matrices deliberately use a different physical representation.
+Exact output sizes are highly skewed and cannot generally be predicted, so a
+uniform limb capacity would either waste memory or force expensive retries.
+Their public `Matrix` state therefore owns a generated `FmpqMatrix` resource.
+Python never sees its pointer: a compiled function may synchronously borrow the
+checked resource, and the isolated core may call declared FLINT operations on
+it. Results such as RREF are computed once into a new callee-owned resource.
+Packed `RationalBuffer` data is produced only when serialization or a legacy
+compatibility algorithm explicitly asks to leave that representation.
 
 ### Group related values with compiler-owned records
 

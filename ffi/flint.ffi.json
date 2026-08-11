@@ -13,7 +13,8 @@
         "flint/fmpz_mat.h",
         "flint/nmod_mat.h",
         "flint/ulong_extras.h",
-        "sagejs/ffi_algorithms.h"
+        "sagejs/ffi_algorithms.h",
+        "sagejs/fmpq_matrix_ffi.h"
       ],
       "link": {
         "unix": [
@@ -46,6 +47,60 @@
   },
   "resources": [
     {
+      "id": "fmpq_matrix",
+      "python_name": "FmpqMatrix",
+      "abi_type": "sagejs_fmpq_matrix_t",
+      "ownership": "owned",
+      "owner": null,
+      "dynamic": {
+        "close_export": "ffiFmpqMatrixClose"
+      },
+      "native": {
+        "clear_symbol": "sagejs_fmpq_matrix_clear"
+      },
+      "targets": {
+        "dynamic": true,
+        "native": true,
+        "wasm": false
+      }
+    },
+    {
+      "id": "fmpq_value",
+      "python_name": "FmpqValue",
+      "abi_type": "sagejs_fmpq_value_t",
+      "ownership": "owned",
+      "owner": null,
+      "dynamic": {
+        "close_export": "ffiFmpqValueClose"
+      },
+      "native": {
+        "clear_symbol": "sagejs_fmpq_value_clear"
+      },
+      "targets": {
+        "dynamic": true,
+        "native": true,
+        "wasm": false
+      }
+    },
+    {
+      "id": "byte_region",
+      "python_name": "FlintByteRegion",
+      "abi_type": "sagejs_flint_byte_region_t",
+      "ownership": "owned",
+      "owner": null,
+      "dynamic": {
+        "close_export": "ffiFlintByteRegionClose"
+      },
+      "native": {
+        "clear_symbol": "sagejs_flint_byte_region_clear"
+      },
+      "targets": {
+        "dynamic": true,
+        "native": true,
+        "wasm": false
+      }
+    },
+    {
       "id": "dirichlet_group",
       "python_name": "DirichletGroup",
       "abi_type": "dirichlet_group_t",
@@ -65,6 +120,1345 @@
     }
   ],
   "functions": [
+    {
+      "id": "fmpq_matrix",
+      "python_name": "fmpq_matrix",
+      "signature": {
+        "parameters": [
+          {
+            "name": "rows",
+            "type": "uint64",
+            "ownership": "value",
+            "mutability": "value",
+            "aliasing": "not_applicable"
+          },
+          {
+            "name": "columns",
+            "type": "uint64",
+            "ownership": "value",
+            "mutability": "value",
+            "aliasing": "not_applicable"
+          }
+        ],
+        "return_type": "FmpqMatrix",
+        "return_ownership": "owned",
+        "borrow_from": null
+      },
+      "dynamic": {
+        "export": "ffiFmpqMatrixCreate"
+      },
+      "native": {
+        "symbol": "sagejs_fmpq_matrix_init",
+        "return_type": "int",
+        "arguments": [
+          {
+            "source": "result",
+            "abi_type": "sagejs_fmpq_matrix_t",
+            "direction": "out",
+            "adapter": null
+          },
+          {
+            "source": "rows",
+            "abi_type": "uint64_t",
+            "direction": "in",
+            "adapter": null
+          },
+          {
+            "source": "columns",
+            "abi_type": "uint64_t",
+            "direction": "in",
+            "adapter": null
+          }
+        ]
+      },
+      "effects": {
+        "pure": false,
+        "deterministic": true,
+        "thread_safe": true,
+        "may_allocate": true,
+        "may_raise": [
+          "OverflowError"
+        ],
+        "writes": []
+      },
+      "result": {
+        "domain": "status",
+        "success": [
+          1
+        ],
+        "absence": null
+      },
+      "errors": {
+        "exception": "OverflowError",
+        "message": "rational matrix dimensions are too large"
+      },
+      "exceptions": {
+        "policy": "none",
+        "failure_status": null
+      },
+      "targets": {
+        "dynamic": true,
+        "native": true,
+        "wasm": false
+      }
+    },
+    {
+      "id": "fmpq_matrix_nrows",
+      "python_name": "fmpq_matrix_nrows",
+      "signature": {
+        "parameters": [
+          {
+            "name": "matrix",
+            "type": "FmpqMatrix",
+            "ownership": "borrowed",
+            "mutability": "read",
+            "aliasing": "allowed"
+          }
+        ],
+        "return_type": "uint64",
+        "return_ownership": "value",
+        "borrow_from": null
+      },
+      "dynamic": {
+        "export": "ffiFmpqMatrixNrows"
+      },
+      "native": {
+        "symbol": "sagejs_fmpq_matrix_nrows",
+        "return_type": "uint64_t",
+        "arguments": [
+          {
+            "source": "matrix",
+            "abi_type": "sagejs_fmpq_matrix_t",
+            "direction": "in",
+            "adapter": null
+          }
+        ]
+      },
+      "effects": {
+        "pure": true,
+        "deterministic": true,
+        "thread_safe": true,
+        "may_allocate": false,
+        "may_raise": [],
+        "writes": []
+      },
+      "result": {
+        "domain": "direct",
+        "success": [],
+        "absence": null
+      },
+      "errors": {
+        "exception": null,
+        "message": null
+      },
+      "exceptions": {
+        "policy": "none",
+        "failure_status": null
+      },
+      "targets": {
+        "dynamic": true,
+        "native": true,
+        "wasm": false
+      }
+    },
+    {
+      "id": "fmpq_matrix_ncols",
+      "python_name": "fmpq_matrix_ncols",
+      "signature": {
+        "parameters": [
+          {
+            "name": "matrix",
+            "type": "FmpqMatrix",
+            "ownership": "borrowed",
+            "mutability": "read",
+            "aliasing": "allowed"
+          }
+        ],
+        "return_type": "uint64",
+        "return_ownership": "value",
+        "borrow_from": null
+      },
+      "dynamic": {
+        "export": "ffiFmpqMatrixNcols"
+      },
+      "native": {
+        "symbol": "sagejs_fmpq_matrix_ncols",
+        "return_type": "uint64_t",
+        "arguments": [
+          {
+            "source": "matrix",
+            "abi_type": "sagejs_fmpq_matrix_t",
+            "direction": "in",
+            "adapter": null
+          }
+        ]
+      },
+      "effects": {
+        "pure": true,
+        "deterministic": true,
+        "thread_safe": true,
+        "may_allocate": false,
+        "may_raise": [],
+        "writes": []
+      },
+      "result": {
+        "domain": "direct",
+        "success": [],
+        "absence": null
+      },
+      "errors": {
+        "exception": null,
+        "message": null
+      },
+      "exceptions": {
+        "policy": "none",
+        "failure_status": null
+      },
+      "targets": {
+        "dynamic": true,
+        "native": true,
+        "wasm": false
+      }
+    },
+    {
+      "id": "fmpq_matrix_set_entry",
+      "python_name": "fmpq_matrix_set_entry",
+      "signature": {
+        "parameters": [
+          {
+            "name": "matrix",
+            "type": "FmpqMatrix",
+            "ownership": "borrowed_mut",
+            "mutability": "write",
+            "aliasing": "allowed"
+          },
+          {
+            "name": "row",
+            "type": "uint64",
+            "ownership": "value",
+            "mutability": "value",
+            "aliasing": "not_applicable"
+          },
+          {
+            "name": "column",
+            "type": "uint64",
+            "ownership": "value",
+            "mutability": "value",
+            "aliasing": "not_applicable"
+          },
+          {
+            "name": "numerator",
+            "type": "Integer",
+            "ownership": "borrowed",
+            "mutability": "read",
+            "aliasing": "allowed"
+          },
+          {
+            "name": "denominator",
+            "type": "Integer",
+            "ownership": "borrowed",
+            "mutability": "read",
+            "aliasing": "allowed"
+          }
+        ],
+        "return_type": "bool",
+        "return_ownership": "value",
+        "borrow_from": null
+      },
+      "dynamic": {
+        "export": "ffiFmpqMatrixSetEntry"
+      },
+      "native": {
+        "symbol": "sagejs_fmpq_matrix_set_entry",
+        "return_type": "int",
+        "arguments": [
+          {
+            "source": "matrix",
+            "abi_type": "sagejs_fmpq_matrix_t",
+            "direction": "in",
+            "adapter": null
+          },
+          {
+            "source": "row",
+            "abi_type": "uint64_t",
+            "direction": "in",
+            "adapter": null
+          },
+          {
+            "source": "column",
+            "abi_type": "uint64_t",
+            "direction": "in",
+            "adapter": null
+          },
+          {
+            "source": "numerator",
+            "abi_type": "fmpz_t",
+            "direction": "in",
+            "adapter": null
+          },
+          {
+            "source": "denominator",
+            "abi_type": "fmpz_t",
+            "direction": "in",
+            "adapter": null
+          }
+        ]
+      },
+      "effects": {
+        "pure": false,
+        "deterministic": true,
+        "thread_safe": true,
+        "may_allocate": true,
+        "may_raise": [
+          "ValueError"
+        ],
+        "writes": [
+          "matrix"
+        ]
+      },
+      "result": {
+        "domain": "status",
+        "success": [
+          1
+        ],
+        "absence": null
+      },
+      "errors": {
+        "exception": "ValueError",
+        "message": "invalid rational matrix entry"
+      },
+      "exceptions": {
+        "policy": "none",
+        "failure_status": null
+      },
+      "targets": {
+        "dynamic": true,
+        "native": true,
+        "wasm": false
+      }
+    },
+    {
+      "id": "fmpq_matrix_entry_numerator",
+      "python_name": "fmpq_matrix_entry_numerator",
+      "signature": {
+        "parameters": [
+          {
+            "name": "matrix",
+            "type": "FmpqMatrix",
+            "ownership": "borrowed",
+            "mutability": "read",
+            "aliasing": "allowed"
+          },
+          {
+            "name": "row",
+            "type": "uint64",
+            "ownership": "value",
+            "mutability": "value",
+            "aliasing": "not_applicable"
+          },
+          {
+            "name": "column",
+            "type": "uint64",
+            "ownership": "value",
+            "mutability": "value",
+            "aliasing": "not_applicable"
+          }
+        ],
+        "return_type": "Integer",
+        "return_ownership": "owned",
+        "borrow_from": null
+      },
+      "dynamic": {
+        "export": "ffiFmpqMatrixEntryNumerator"
+      },
+      "native": {
+        "symbol": "sagejs_fmpq_matrix_entry_numerator",
+        "return_type": "int",
+        "arguments": [
+          {
+            "source": "result",
+            "abi_type": "fmpz_t",
+            "direction": "out",
+            "adapter": null
+          },
+          {
+            "source": "matrix",
+            "abi_type": "sagejs_fmpq_matrix_t",
+            "direction": "in",
+            "adapter": null
+          },
+          {
+            "source": "row",
+            "abi_type": "uint64_t",
+            "direction": "in",
+            "adapter": null
+          },
+          {
+            "source": "column",
+            "abi_type": "uint64_t",
+            "direction": "in",
+            "adapter": null
+          }
+        ]
+      },
+      "effects": {
+        "pure": true,
+        "deterministic": true,
+        "thread_safe": true,
+        "may_allocate": true,
+        "may_raise": [
+          "ValueError"
+        ],
+        "writes": []
+      },
+      "result": {
+        "domain": "status",
+        "success": [
+          1
+        ],
+        "absence": null
+      },
+      "errors": {
+        "exception": "ValueError",
+        "message": "rational matrix entry is out of bounds"
+      },
+      "exceptions": {
+        "policy": "none",
+        "failure_status": null
+      },
+      "targets": {
+        "dynamic": true,
+        "native": true,
+        "wasm": false
+      }
+    },
+    {
+      "id": "fmpq_matrix_entry_denominator",
+      "python_name": "fmpq_matrix_entry_denominator",
+      "signature": {
+        "parameters": [
+          {
+            "name": "matrix",
+            "type": "FmpqMatrix",
+            "ownership": "borrowed",
+            "mutability": "read",
+            "aliasing": "allowed"
+          },
+          {
+            "name": "row",
+            "type": "uint64",
+            "ownership": "value",
+            "mutability": "value",
+            "aliasing": "not_applicable"
+          },
+          {
+            "name": "column",
+            "type": "uint64",
+            "ownership": "value",
+            "mutability": "value",
+            "aliasing": "not_applicable"
+          }
+        ],
+        "return_type": "Integer",
+        "return_ownership": "owned",
+        "borrow_from": null
+      },
+      "dynamic": {
+        "export": "ffiFmpqMatrixEntryDenominator"
+      },
+      "native": {
+        "symbol": "sagejs_fmpq_matrix_entry_denominator",
+        "return_type": "int",
+        "arguments": [
+          {
+            "source": "result",
+            "abi_type": "fmpz_t",
+            "direction": "out",
+            "adapter": null
+          },
+          {
+            "source": "matrix",
+            "abi_type": "sagejs_fmpq_matrix_t",
+            "direction": "in",
+            "adapter": null
+          },
+          {
+            "source": "row",
+            "abi_type": "uint64_t",
+            "direction": "in",
+            "adapter": null
+          },
+          {
+            "source": "column",
+            "abi_type": "uint64_t",
+            "direction": "in",
+            "adapter": null
+          }
+        ]
+      },
+      "effects": {
+        "pure": true,
+        "deterministic": true,
+        "thread_safe": true,
+        "may_allocate": true,
+        "may_raise": [
+          "ValueError"
+        ],
+        "writes": []
+      },
+      "result": {
+        "domain": "status",
+        "success": [
+          1
+        ],
+        "absence": null
+      },
+      "errors": {
+        "exception": "ValueError",
+        "message": "rational matrix entry is out of bounds"
+      },
+      "exceptions": {
+        "policy": "none",
+        "failure_status": null
+      },
+      "targets": {
+        "dynamic": true,
+        "native": true,
+        "wasm": false
+      }
+    },
+    {
+      "id": "fmpq_matrix_entry_is_zero",
+      "python_name": "fmpq_matrix_entry_is_zero",
+      "signature": {
+        "parameters": [
+          {
+            "name": "matrix",
+            "type": "FmpqMatrix",
+            "ownership": "borrowed",
+            "mutability": "read",
+            "aliasing": "allowed"
+          },
+          {
+            "name": "row",
+            "type": "uint64",
+            "ownership": "value",
+            "mutability": "value",
+            "aliasing": "not_applicable"
+          },
+          {
+            "name": "column",
+            "type": "uint64",
+            "ownership": "value",
+            "mutability": "value",
+            "aliasing": "not_applicable"
+          }
+        ],
+        "return_type": "bool",
+        "return_ownership": "value",
+        "borrow_from": null
+      },
+      "dynamic": {
+        "export": "ffiFmpqMatrixEntryIsZero"
+      },
+      "native": {
+        "symbol": "sagejs_fmpq_matrix_entry_is_zero",
+        "return_type": "int",
+        "arguments": [
+          {
+            "source": "matrix",
+            "abi_type": "sagejs_fmpq_matrix_t",
+            "direction": "in",
+            "adapter": null
+          },
+          {
+            "source": "row",
+            "abi_type": "uint64_t",
+            "direction": "in",
+            "adapter": null
+          },
+          {
+            "source": "column",
+            "abi_type": "uint64_t",
+            "direction": "in",
+            "adapter": null
+          }
+        ]
+      },
+      "effects": {
+        "pure": true,
+        "deterministic": true,
+        "thread_safe": true,
+        "may_allocate": false,
+        "may_raise": [],
+        "writes": []
+      },
+      "result": {
+        "domain": "direct",
+        "success": [],
+        "absence": null
+      },
+      "errors": {
+        "exception": null,
+        "message": null
+      },
+      "exceptions": {
+        "policy": "none",
+        "failure_status": null
+      },
+      "targets": {
+        "dynamic": true,
+        "native": true,
+        "wasm": false
+      }
+    },
+    {
+      "id": "fmpq_matrix_copy",
+      "python_name": "fmpq_matrix_copy",
+      "signature": {
+        "parameters": [
+          {
+            "name": "source",
+            "type": "FmpqMatrix",
+            "ownership": "borrowed",
+            "mutability": "read",
+            "aliasing": "allowed"
+          }
+        ],
+        "return_type": "FmpqMatrix",
+        "return_ownership": "owned",
+        "borrow_from": null
+      },
+      "dynamic": {
+        "export": "ffiFmpqMatrixCopy"
+      },
+      "native": {
+        "symbol": "sagejs_fmpq_matrix_init_set",
+        "return_type": "int",
+        "arguments": [
+          {
+            "source": "result",
+            "abi_type": "sagejs_fmpq_matrix_t",
+            "direction": "out",
+            "adapter": null
+          },
+          {
+            "source": "source",
+            "abi_type": "sagejs_fmpq_matrix_t",
+            "direction": "in",
+            "adapter": null
+          }
+        ]
+      },
+      "effects": {
+        "pure": false,
+        "deterministic": true,
+        "thread_safe": true,
+        "may_allocate": true,
+        "may_raise": [
+          "RuntimeError"
+        ],
+        "writes": []
+      },
+      "result": {
+        "domain": "status",
+        "success": [
+          1
+        ],
+        "absence": null
+      },
+      "errors": {
+        "exception": "RuntimeError",
+        "message": "rational matrix copy failed"
+      },
+      "exceptions": {
+        "policy": "none",
+        "failure_status": null
+      },
+      "targets": {
+        "dynamic": true,
+        "native": true,
+        "wasm": false
+      }
+    },
+    {
+      "id": "fmpq_matrix_mul",
+      "python_name": "fmpq_matrix_mul",
+      "signature": {
+        "parameters": [
+          {
+            "name": "left",
+            "type": "FmpqMatrix",
+            "ownership": "borrowed",
+            "mutability": "read",
+            "aliasing": "allowed"
+          },
+          {
+            "name": "right",
+            "type": "FmpqMatrix",
+            "ownership": "borrowed",
+            "mutability": "read",
+            "aliasing": "allowed"
+          }
+        ],
+        "return_type": "FmpqMatrix",
+        "return_ownership": "owned",
+        "borrow_from": null
+      },
+      "dynamic": {
+        "export": "ffiFmpqMatrixMul"
+      },
+      "native": {
+        "symbol": "sagejs_fmpq_matrix_mul",
+        "return_type": "int",
+        "arguments": [
+          {
+            "source": "result",
+            "abi_type": "sagejs_fmpq_matrix_t",
+            "direction": "out",
+            "adapter": null
+          },
+          {
+            "source": "left",
+            "abi_type": "sagejs_fmpq_matrix_t",
+            "direction": "in",
+            "adapter": null
+          },
+          {
+            "source": "right",
+            "abi_type": "sagejs_fmpq_matrix_t",
+            "direction": "in",
+            "adapter": null
+          }
+        ]
+      },
+      "effects": {
+        "pure": false,
+        "deterministic": true,
+        "thread_safe": true,
+        "may_allocate": true,
+        "may_raise": [
+          "ValueError"
+        ],
+        "writes": []
+      },
+      "result": {
+        "domain": "status",
+        "success": [
+          1
+        ],
+        "absence": null
+      },
+      "errors": {
+        "exception": "ValueError",
+        "message": "rational matrix dimensions are incompatible"
+      },
+      "exceptions": {
+        "policy": "none",
+        "failure_status": null
+      },
+      "targets": {
+        "dynamic": true,
+        "native": true,
+        "wasm": false
+      }
+    },
+    {
+      "id": "fmpq_matrix_rref",
+      "python_name": "fmpq_matrix_rref",
+      "signature": {
+        "parameters": [
+          {
+            "name": "source",
+            "type": "FmpqMatrix",
+            "ownership": "borrowed",
+            "mutability": "read",
+            "aliasing": "allowed"
+          }
+        ],
+        "return_type": "FmpqMatrix",
+        "return_ownership": "owned",
+        "borrow_from": null
+      },
+      "dynamic": {
+        "export": "ffiFmpqMatrixRref"
+      },
+      "native": {
+        "symbol": "sagejs_fmpq_matrix_rref",
+        "return_type": "int",
+        "arguments": [
+          {
+            "source": "result",
+            "abi_type": "sagejs_fmpq_matrix_t",
+            "direction": "out",
+            "adapter": null
+          },
+          {
+            "source": "source",
+            "abi_type": "sagejs_fmpq_matrix_t",
+            "direction": "in",
+            "adapter": null
+          }
+        ]
+      },
+      "effects": {
+        "pure": false,
+        "deterministic": true,
+        "thread_safe": true,
+        "may_allocate": true,
+        "may_raise": [
+          "RuntimeError"
+        ],
+        "writes": []
+      },
+      "result": {
+        "domain": "status",
+        "success": [
+          1
+        ],
+        "absence": null
+      },
+      "errors": {
+        "exception": "RuntimeError",
+        "message": "rational matrix RREF failed"
+      },
+      "exceptions": {
+        "policy": "none",
+        "failure_status": null
+      },
+      "targets": {
+        "dynamic": true,
+        "native": true,
+        "wasm": false
+      }
+    },
+    {
+      "id": "fmpq_matrix_rank",
+      "python_name": "fmpq_matrix_rank",
+      "signature": {
+        "parameters": [
+          {
+            "name": "matrix",
+            "type": "FmpqMatrix",
+            "ownership": "borrowed",
+            "mutability": "read",
+            "aliasing": "allowed"
+          }
+        ],
+        "return_type": "uint64",
+        "return_ownership": "value",
+        "borrow_from": null
+      },
+      "dynamic": {
+        "export": "ffiFmpqMatrixRank"
+      },
+      "native": {
+        "symbol": "sagejs_fmpq_matrix_rank",
+        "return_type": "uint64_t",
+        "arguments": [
+          {
+            "source": "matrix",
+            "abi_type": "sagejs_fmpq_matrix_t",
+            "direction": "in",
+            "adapter": null
+          }
+        ]
+      },
+      "effects": {
+        "pure": true,
+        "deterministic": true,
+        "thread_safe": true,
+        "may_allocate": true,
+        "may_raise": [],
+        "writes": []
+      },
+      "result": {
+        "domain": "direct",
+        "success": [],
+        "absence": null
+      },
+      "errors": {
+        "exception": null,
+        "message": null
+      },
+      "exceptions": {
+        "policy": "none",
+        "failure_status": null
+      },
+      "targets": {
+        "dynamic": true,
+        "native": true,
+        "wasm": false
+      }
+    },
+    {
+      "id": "fmpq_matrix_det",
+      "python_name": "fmpq_matrix_det",
+      "signature": {
+        "parameters": [
+          {
+            "name": "source",
+            "type": "FmpqMatrix",
+            "ownership": "borrowed",
+            "mutability": "read",
+            "aliasing": "allowed"
+          }
+        ],
+        "return_type": "FmpqValue",
+        "return_ownership": "owned",
+        "borrow_from": null
+      },
+      "dynamic": {
+        "export": "ffiFmpqMatrixDet"
+      },
+      "native": {
+        "symbol": "sagejs_fmpq_matrix_det",
+        "return_type": "int",
+        "arguments": [
+          {
+            "source": "result",
+            "abi_type": "sagejs_fmpq_value_t",
+            "direction": "out",
+            "adapter": null
+          },
+          {
+            "source": "source",
+            "abi_type": "sagejs_fmpq_matrix_t",
+            "direction": "in",
+            "adapter": null
+          }
+        ]
+      },
+      "effects": {
+        "pure": false,
+        "deterministic": true,
+        "thread_safe": true,
+        "may_allocate": true,
+        "may_raise": [
+          "ValueError"
+        ],
+        "writes": []
+      },
+      "result": {
+        "domain": "status",
+        "success": [
+          1
+        ],
+        "absence": null
+      },
+      "errors": {
+        "exception": "ValueError",
+        "message": "determinant requires a square rational matrix"
+      },
+      "exceptions": {
+        "policy": "none",
+        "failure_status": null
+      },
+      "targets": {
+        "dynamic": true,
+        "native": true,
+        "wasm": false
+      }
+    },
+    {
+      "id": "fmpq_value_numerator",
+      "python_name": "fmpq_value_numerator",
+      "signature": {
+        "parameters": [
+          {
+            "name": "value",
+            "type": "FmpqValue",
+            "ownership": "borrowed",
+            "mutability": "read",
+            "aliasing": "allowed"
+          }
+        ],
+        "return_type": "Integer",
+        "return_ownership": "owned",
+        "borrow_from": null
+      },
+      "dynamic": {
+        "export": "ffiFmpqValueNumerator"
+      },
+      "native": {
+        "symbol": "sagejs_fmpq_value_numerator",
+        "return_type": "void",
+        "arguments": [
+          {
+            "source": "result",
+            "abi_type": "fmpz_t",
+            "direction": "out",
+            "adapter": null
+          },
+          {
+            "source": "value",
+            "abi_type": "sagejs_fmpq_value_t",
+            "direction": "in",
+            "adapter": null
+          }
+        ]
+      },
+      "effects": {
+        "pure": true,
+        "deterministic": true,
+        "thread_safe": true,
+        "may_allocate": true,
+        "may_raise": [],
+        "writes": []
+      },
+      "result": {
+        "domain": "direct",
+        "success": [],
+        "absence": null
+      },
+      "errors": {
+        "exception": null,
+        "message": null
+      },
+      "exceptions": {
+        "policy": "none",
+        "failure_status": null
+      },
+      "targets": {
+        "dynamic": true,
+        "native": true,
+        "wasm": false
+      }
+    },
+    {
+      "id": "fmpq_value_denominator",
+      "python_name": "fmpq_value_denominator",
+      "signature": {
+        "parameters": [
+          {
+            "name": "value",
+            "type": "FmpqValue",
+            "ownership": "borrowed",
+            "mutability": "read",
+            "aliasing": "allowed"
+          }
+        ],
+        "return_type": "Integer",
+        "return_ownership": "owned",
+        "borrow_from": null
+      },
+      "dynamic": {
+        "export": "ffiFmpqValueDenominator"
+      },
+      "native": {
+        "symbol": "sagejs_fmpq_value_denominator",
+        "return_type": "void",
+        "arguments": [
+          {
+            "source": "result",
+            "abi_type": "fmpz_t",
+            "direction": "out",
+            "adapter": null
+          },
+          {
+            "source": "value",
+            "abi_type": "sagejs_fmpq_value_t",
+            "direction": "in",
+            "adapter": null
+          }
+        ]
+      },
+      "effects": {
+        "pure": true,
+        "deterministic": true,
+        "thread_safe": true,
+        "may_allocate": true,
+        "may_raise": [],
+        "writes": []
+      },
+      "result": {
+        "domain": "direct",
+        "success": [],
+        "absence": null
+      },
+      "errors": {
+        "exception": null,
+        "message": null
+      },
+      "exceptions": {
+        "policy": "none",
+        "failure_status": null
+      },
+      "targets": {
+        "dynamic": true,
+        "native": true,
+        "wasm": false
+      }
+    },
+    {
+      "id": "fmpq_matrix_format",
+      "python_name": "fmpq_matrix_format",
+      "signature": {
+        "parameters": [
+          {
+            "name": "source",
+            "type": "FmpqMatrix",
+            "ownership": "borrowed",
+            "mutability": "read",
+            "aliasing": "allowed"
+          }
+        ],
+        "return_type": "FlintByteRegion",
+        "return_ownership": "owned",
+        "borrow_from": null
+      },
+      "dynamic": {
+        "export": "ffiFmpqMatrixFormat"
+      },
+      "native": {
+        "symbol": "sagejs_fmpq_matrix_format",
+        "return_type": "int",
+        "arguments": [
+          {
+            "source": "result",
+            "abi_type": "sagejs_flint_byte_region_t",
+            "direction": "out",
+            "adapter": null
+          },
+          {
+            "source": "source",
+            "abi_type": "sagejs_fmpq_matrix_t",
+            "direction": "in",
+            "adapter": null
+          }
+        ]
+      },
+      "effects": {
+        "pure": false,
+        "deterministic": true,
+        "thread_safe": true,
+        "may_allocate": true,
+        "may_raise": [
+          "RuntimeError"
+        ],
+        "writes": []
+      },
+      "result": {
+        "domain": "status",
+        "success": [
+          1
+        ],
+        "absence": null
+      },
+      "errors": {
+        "exception": "RuntimeError",
+        "message": "rational matrix format failed"
+      },
+      "exceptions": {
+        "policy": "none",
+        "failure_status": null
+      },
+      "targets": {
+        "dynamic": true,
+        "native": true,
+        "wasm": false
+      }
+    },
+    {
+      "id": "fmpq_matrix_serialize",
+      "python_name": "fmpq_matrix_serialize",
+      "signature": {
+        "parameters": [
+          {
+            "name": "source",
+            "type": "FmpqMatrix",
+            "ownership": "borrowed",
+            "mutability": "read",
+            "aliasing": "allowed"
+          }
+        ],
+        "return_type": "FlintByteRegion",
+        "return_ownership": "owned",
+        "borrow_from": null
+      },
+      "dynamic": {
+        "export": "ffiFmpqMatrixSerialize"
+      },
+      "native": {
+        "symbol": "sagejs_fmpq_matrix_serialize",
+        "return_type": "int",
+        "arguments": [
+          {
+            "source": "result",
+            "abi_type": "sagejs_flint_byte_region_t",
+            "direction": "out",
+            "adapter": null
+          },
+          {
+            "source": "source",
+            "abi_type": "sagejs_fmpq_matrix_t",
+            "direction": "in",
+            "adapter": null
+          }
+        ]
+      },
+      "effects": {
+        "pure": false,
+        "deterministic": true,
+        "thread_safe": true,
+        "may_allocate": true,
+        "may_raise": [
+          "OverflowError"
+        ],
+        "writes": []
+      },
+      "result": {
+        "domain": "status",
+        "success": [
+          1
+        ],
+        "absence": null
+      },
+      "errors": {
+        "exception": "OverflowError",
+        "message": "rational matrix serialization is too large"
+      },
+      "exceptions": {
+        "policy": "none",
+        "failure_status": null
+      },
+      "targets": {
+        "dynamic": true,
+        "native": true,
+        "wasm": false
+      }
+    },
+    {
+      "id": "flint_byte_region_length",
+      "python_name": "flint_byte_region_length",
+      "signature": {
+        "parameters": [
+          {
+            "name": "region",
+            "type": "FlintByteRegion",
+            "ownership": "borrowed",
+            "mutability": "read",
+            "aliasing": "allowed"
+          }
+        ],
+        "return_type": "uint64",
+        "return_ownership": "value",
+        "borrow_from": null
+      },
+      "dynamic": {
+        "export": "ffiFlintByteRegionLength"
+      },
+      "native": {
+        "symbol": "sagejs_flint_byte_region_length",
+        "return_type": "uint64_t",
+        "arguments": [
+          {
+            "source": "region",
+            "abi_type": "sagejs_flint_byte_region_t",
+            "direction": "in",
+            "adapter": null
+          }
+        ]
+      },
+      "effects": {
+        "pure": true,
+        "deterministic": true,
+        "thread_safe": true,
+        "may_allocate": false,
+        "may_raise": [],
+        "writes": []
+      },
+      "result": {
+        "domain": "direct",
+        "success": [],
+        "absence": null
+      },
+      "errors": {
+        "exception": null,
+        "message": null
+      },
+      "exceptions": {
+        "policy": "none",
+        "failure_status": null
+      },
+      "targets": {
+        "dynamic": true,
+        "native": true,
+        "wasm": false
+      }
+    },
+    {
+      "id": "flint_byte_region_get",
+      "python_name": "flint_byte_region_get",
+      "signature": {
+        "parameters": [
+          {
+            "name": "region",
+            "type": "FlintByteRegion",
+            "ownership": "borrowed",
+            "mutability": "read",
+            "aliasing": "allowed"
+          },
+          {
+            "name": "index",
+            "type": "uint64",
+            "ownership": "value",
+            "mutability": "value",
+            "aliasing": "not_applicable"
+          }
+        ],
+        "return_type": "uint64",
+        "return_ownership": "value",
+        "borrow_from": null
+      },
+      "dynamic": {
+        "export": "ffiFlintByteRegionGet"
+      },
+      "native": {
+        "symbol": "sagejs_flint_byte_region_get",
+        "return_type": "uint64_t",
+        "arguments": [
+          {
+            "source": "region",
+            "abi_type": "sagejs_flint_byte_region_t",
+            "direction": "in",
+            "adapter": null
+          },
+          {
+            "source": "index",
+            "abi_type": "uint64_t",
+            "direction": "in",
+            "adapter": null
+          }
+        ]
+      },
+      "effects": {
+        "pure": true,
+        "deterministic": true,
+        "thread_safe": true,
+        "may_allocate": false,
+        "may_raise": [],
+        "writes": []
+      },
+      "result": {
+        "domain": "direct",
+        "success": [],
+        "absence": null
+      },
+      "errors": {
+        "exception": null,
+        "message": null
+      },
+      "exceptions": {
+        "policy": "none",
+        "failure_status": null
+      },
+      "targets": {
+        "dynamic": true,
+        "native": true,
+        "wasm": false
+      }
+    },
     {
       "id": "dirichlet_group_init",
       "python_name": "dirichlet_group",

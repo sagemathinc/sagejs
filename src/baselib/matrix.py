@@ -20,6 +20,7 @@ _dense_integer_kernel_module_cache = runtime.undefined
 _dense_integer_flint_module_cache = runtime.undefined
 _dense_rational_kernel_module_cache = runtime.undefined
 _dense_rational_flint_module_cache = runtime.undefined
+_flint_ffi_module_cache = runtime.undefined
 
 
 class _PackedIntegerStorage:
@@ -37,6 +38,15 @@ class _PackedRationalStorage:
             raise ValueError("rational buffer component lengths differ")
         self.numerators = numerators
         self.denominators = denominators
+
+
+class _FmpqMatrixResourceStorage:
+    """Own one generated FLINT resource and optional compatibility buffers."""
+
+    def __init__(self, resource: Any) -> None:
+        self.resource = resource
+        self.numerators: Any = runtime.undefined
+        self.denominators: Any = runtime.undefined
 
 
 def _dense_integer_kernel_module() -> Any:
@@ -79,6 +89,14 @@ def _dense_rational_flint_module() -> Any:
             fromlist=["dense_rational_flint"],
         )
     return _dense_rational_flint_module_cache
+
+
+def _flint_ffi_module() -> Any:
+    """Load generated safe FLINT resources without exposing package handles."""
+    global _flint_ffi_module_cache
+    if _flint_ffi_module_cache is runtime.undefined:
+        _flint_ffi_module_cache = __import__("sagejs.ffi.flint", fromlist=["flint"])
+    return _flint_ffi_module_cache
 
 
 def _dense_prime_kernel_module() -> Any:
@@ -376,6 +394,28 @@ def _run_rational_output(
                 raise OverflowError(  # noqa: B904
                     "rational matrix output requires excessive limb capacity"
                 )
+
+
+def _flint_byte_region_bytes(region: Any) -> Any:
+    """Consume an owned variable-size FLINT result into a `Uint8Array`."""
+    ffi = _flint_ffi_module()
+    kernel = _dense_rational_flint_module().flint_byte_region_copy
+    try:
+        length = runtime.number(ffi.flint_byte_region_length(region))
+        output = (
+            _dense_integer_zeros(kernel, length, 1)
+            if _native_kernel_available(kernel)
+            else [0 for _index in range(length)]
+        )
+        if not kernel(region, output, length):
+            raise RuntimeError("FLINT byte-region copy failed")
+        values = _integer_buffer_values(output)
+        packed = _packed_uint8(length)
+        for index in range(length):
+            packed[index] = values[index]
+        return packed
+    finally:
+        region.close()
 
 
 def _packed_uint64(source: Any) -> Any:
@@ -1044,13 +1084,42 @@ class MatrixSpaceParent(sage.Parent):
             or _integer_buffer_length(denominators) != count
         ):
             raise ValueError("rational matrix component lengths differ")
-        return Matrix(
-            self,
-            _PackedRationalStorage(
-                _compact_integer_buffer(_owned_integer_buffer(numerators)),
-                _compact_integer_buffer(_owned_integer_buffer(denominators)),
-            ),
-        )
+        ffi = _flint_ffi_module()
+        kernel = _dense_rational_flint_module().flint_dense_rational_matrix_import
+        resource = ffi.fmpq_matrix(self._rows, self._cols)
+        try:
+            if _native_kernel_available(kernel):
+                numerator_buffer = _dense_integer_buffer(kernel, numerators, 1)
+                denominator_buffer = _dense_integer_buffer(kernel, denominators, 1)
+            else:
+                numerator_buffer = _integer_buffer_values(numerators)
+                denominator_buffer = _integer_buffer_values(denominators)
+            if not kernel(
+                resource,
+                numerator_buffer,
+                denominator_buffer,
+                self._rows,
+                self._cols,
+            ):
+                raise ValueError("invalid rational matrix component data")
+            return Matrix(self, _FmpqMatrixResourceStorage(resource))
+        except Exception:
+            resource.close()
+            raise
+
+    def _from_fmpq_matrix_resource(self, resource: Any) -> Matrix:
+        """Take ownership of a checked generated FLINT matrix resource."""
+        if self._base is not sage.QQ:
+            resource.close()
+            raise TypeError("FLINT rational matrix storage requires QQ")
+        ffi = _flint_ffi_module()
+        if (
+            runtime.number(ffi.fmpq_matrix_nrows(resource)) != self._rows
+            or runtime.number(ffi.fmpq_matrix_ncols(resource)) != self._cols
+        ):
+            resource.close()
+            raise ValueError("rational matrix resource dimensions do not agree")
+        return Matrix(self, _FmpqMatrixResourceStorage(resource))
 
     def identity_matrix(self) -> Matrix:
         if self._rows != self._cols:
@@ -1097,12 +1166,9 @@ class MatrixSpaceParent(sage.Parent):
             return entries.change_ring(self._base)
         if runtime.is_exact_integer(entries) and entries == 0:
             if self._base is sage.QQ:
-                kernel = _dense_rational_kernel_module().dense_rational_matrix_fill_denominator_one
-                count = self._rows * self._cols
-                numerators = _dense_integer_zeros(kernel, count, 1)
-                denominators = _dense_integer_zeros(kernel, count, 1)
-                kernel(denominators)
-                return self._from_canonical_rational_entries(numerators, denominators)
+                return self._from_fmpq_matrix_resource(
+                    _flint_ffi_module().fmpq_matrix(self._rows, self._cols)
+                )
             values = [0 for _ in range(self._rows * self._cols)]
         elif isinstance(entries, list):
             values = entries
@@ -1596,18 +1662,8 @@ class Matrix(sage.Element):
                     )
                 )
             elif source._has_packed_rational_storage():
-                kernel = _dense_rational_kernel_module().dense_rational_matrix_copy
-                native_value = _PackedRationalStorage(
-                    _dense_integer_buffer(
-                        kernel,
-                        source._rational_numerators(),
-                        source._rational_capacity(),
-                    ),
-                    _dense_integer_buffer(
-                        kernel,
-                        source._rational_denominators(),
-                        source._rational_capacity(),
-                    ),
+                native_value = _FmpqMatrixResourceStorage(
+                    _flint_ffi_module().fmpq_matrix_copy(source._rational_resource())
                 )
             else:
                 native_value = source._native
@@ -1624,20 +1680,18 @@ class Matrix(sage.Element):
             )
             native_value = _PackedIntegerStorage(packed_entries)
         if parent.base_ring() is sage.QQ and not isinstance(
-            native_value, _PackedRationalStorage
+            native_value, (_PackedRationalStorage, _FmpqMatrixResourceStorage)
         ):
             # A few audited legacy producers (notably modular-symbol
             # presentation builders) still return a temporary FLINT matrix.
-            # Pack it at this single compatibility ingress and immediately
-            # discard the handle.  The resulting public Matrix owns one
-            # RationalBuffer aggregate and can never recover the producer's
-            # host object.  New algorithms must return packed storage or use
-            # declared FFI instead of relying on this bridge.
+            # Serialize it at this single compatibility ingress, reconstruct a
+            # generated resource, and immediately discard the legacy handle.
+            # New algorithms must return generated resources directly instead
+            # of relying on this bridge.
             packed_bytes = runtime.flint_backend().qqMatrixExportPacked(native_value)
             packed_matrix = parent._from_packed_rationals(packed_bytes)
-            native_value = _PackedRationalStorage(
-                packed_matrix._rational_numerators(),
-                packed_matrix._rational_denominators(),
+            native_value = _FmpqMatrixResourceStorage(
+                _flint_ffi_module().fmpq_matrix_copy(packed_matrix._rational_resource())
             )
         self._parent = parent
         self._native_handle: Any = runtime.undefined
@@ -1649,6 +1703,8 @@ class Matrix(sage.Element):
         elif isinstance(native_value, _PackedIntegerStorage):
             self._integer_entries_cache = native_value.entries
         elif isinstance(native_value, _PackedRationalStorage):
+            self._rational_storage_cache = native_value
+        elif isinstance(native_value, _FmpqMatrixResourceStorage):
             self._rational_storage_cache = native_value
         else:
             self._native_handle = native_value
@@ -1672,7 +1728,7 @@ class Matrix(sage.Element):
     def _native(self) -> Any:
         """Return a legacy handle only for matrix representations that own it.
 
-        Packed `GF(p)`, `ZZ`, and `QQ` matrices deliberately have no
+        Packed `GF(p)` and `ZZ` matrices and generated `QQ` resources have no
         conversion escape hatch here. Tests that compare with the former
         N-API implementation construct a separate oracle explicitly;
         production code cannot accidentally make a host object canonical.
@@ -1682,7 +1738,7 @@ class Matrix(sage.Element):
         if self._has_packed_integer_storage():
             raise RuntimeError("packed ZZ matrices have no N-API matrix handle")
         if self._has_packed_rational_storage():
-            raise RuntimeError("packed QQ matrices have no N-API matrix handle")
+            raise RuntimeError("QQ matrices expose no N-API matrix handle")
         return self._native_handle
 
     @_native.setter
@@ -1707,6 +1763,31 @@ class Matrix(sage.Element):
             and self._rational_storage_cache is not runtime.undefined
         )
 
+    def _has_fmpq_matrix_resource(self) -> bool:
+        return isinstance(
+            self._rational_storage_cache,
+            _FmpqMatrixResourceStorage,
+        )
+
+    def _rational_resource(self) -> Any:
+        if not self._has_fmpq_matrix_resource():
+            raise TypeError("rational matrix does not own a FLINT resource")
+        return self._rational_storage_cache.resource
+
+    def _materialize_rational_compatibility_buffers(self) -> None:
+        """Decode a variable-size export only for legacy packed algorithms."""
+        if not self._has_fmpq_matrix_resource():
+            return
+        storage = self._rational_storage_cache
+        if storage.numerators is not runtime.undefined:
+            return
+        buffers = runtime.rational_buffers_from_packed_bytes(
+            self._packed_rationals(),
+            self.nrows() * self.ncols(),
+        )
+        storage.numerators = buffers[0]
+        storage.denominators = buffers[1]
+
     def _integer_entries(self) -> Any:
         if not self._has_packed_integer_storage():
             raise TypeError("packed exact storage requires a ZZ matrix")
@@ -1728,11 +1809,13 @@ class Matrix(sage.Element):
     def _rational_numerators(self) -> Any:
         if not self._has_packed_rational_storage():
             raise TypeError("packed rational storage requires a QQ matrix")
+        self._materialize_rational_compatibility_buffers()
         return self._rational_storage_cache.numerators
 
     def _rational_denominators(self) -> Any:
         if not self._has_packed_rational_storage():
             raise TypeError("packed rational storage requires a QQ matrix")
+        self._materialize_rational_compatibility_buffers()
         return self._rational_storage_cache.denominators
 
     def _rational_capacity(self) -> int:
@@ -1825,6 +1908,11 @@ class Matrix(sage.Element):
         """Return QQ entries as packed numerator/denominator magnitudes."""
         if not self._has_packed_rational_storage():
             raise TypeError("packed rational export requires a QQ matrix")
+        if self._has_fmpq_matrix_resource():
+            region = _flint_ffi_module().fmpq_matrix_serialize(
+                self._rational_resource()
+            )
+            return _flint_byte_region_bytes(region)
         numerators = _integer_buffer_values(self._rational_numerators())
         denominators = _integer_buffer_values(self._rational_denominators())
         byte_length = 0
@@ -1987,6 +2075,15 @@ class Matrix(sage.Element):
             )
             return runtime.normalize_integer(value)
         if self._has_packed_rational_storage():
+            if self._has_fmpq_matrix_resource():
+                ffi = _flint_ffi_module()
+                numerator = ffi.fmpq_matrix_entry_numerator(
+                    self._rational_resource(), row, col
+                )
+                denominator = ffi.fmpq_matrix_entry_denominator(
+                    self._rational_resource(), row, col
+                )
+                return _untyped(sage.QQ)(numerator, denominator)
             kernel = _dense_rational_kernel_module().dense_rational_matrix_get
             numerators, denominators = self._rational_kernel_parts(kernel)
             parts = kernel(
@@ -2070,6 +2167,19 @@ class Matrix(sage.Element):
             self._clear_cache()
             return
         if self._has_packed_rational_storage():
+            if self._has_fmpq_matrix_resource():
+                rational = sage.QQ(value)
+                _flint_ffi_module().fmpq_matrix_set_entry(
+                    self._rational_resource(),
+                    row,
+                    col,
+                    rational._numerator,
+                    rational._denominator,
+                )
+                self._rational_storage_cache.numerators = runtime.undefined
+                self._rational_storage_cache.denominators = runtime.undefined
+                self._clear_cache()
+                return
             kernel = _dense_rational_kernel_module().dense_rational_matrix_set
             rational = sage.QQ(value)
             required_capacity = max(
@@ -2723,6 +2833,25 @@ class Matrix(sage.Element):
                 left._has_packed_rational_storage()
                 and right._has_packed_rational_storage()
             ):
+                if (
+                    left._has_fmpq_matrix_resource()
+                    and right._has_fmpq_matrix_resource()
+                ):
+                    resource = _flint_ffi_module().fmpq_matrix_mul(
+                        left._rational_resource(),
+                        right._rational_resource(),
+                    )
+                    _trace_dense_rational_selection(
+                        "multiply",
+                        "generated-flint-resource",
+                        left.nrows(),
+                        right.ncols(),
+                    )
+                    return MatrixSpace(
+                        base,
+                        left.nrows(),
+                        right.ncols(),
+                    )._from_fmpq_matrix_resource(resource)
                 kernel = _dense_rational_flint_module().flint_dense_rational_matrix_mul
                 left_numerators, left_denominators = left._rational_kernel_parts(kernel)
                 right_numerators, right_denominators = right._rational_kernel_parts(
@@ -3010,6 +3139,25 @@ class Matrix(sage.Element):
         if self._determinant_cache is not runtime.undefined:
             return self._determinant_cache
         if self._has_packed_rational_storage():
+            if self._has_fmpq_matrix_resource():
+                ffi = _flint_ffi_module()
+                value = ffi.fmpq_matrix_det(self._rational_resource())
+                try:
+                    numerator = ffi.fmpq_value_numerator(value)
+                    denominator = ffi.fmpq_value_denominator(value)
+                finally:
+                    value.close()
+                self._determinant_cache = _untyped(sage.QQ)(
+                    numerator,
+                    denominator,
+                )
+                _trace_dense_rational_selection(
+                    "determinant",
+                    "generated-flint-resource",
+                    self.nrows(),
+                    self.ncols(),
+                )
+                return self._determinant_cache
             kernel = (
                 _dense_rational_flint_module().flint_dense_rational_matrix_determinant
             )
@@ -3273,6 +3421,22 @@ class Matrix(sage.Element):
             )
             return nonzero / (self.nrows() * self.ncols())
         if self._has_packed_rational_storage():
+            if self._has_fmpq_matrix_resource():
+                kernel = _dense_rational_flint_module().flint_dense_rational_matrix_nonzero_count
+                nonzero = runtime.number(
+                    kernel(
+                        self._rational_resource(),
+                        self.nrows(),
+                        self.ncols(),
+                    )
+                )
+                _trace_dense_rational_selection(
+                    "density",
+                    _typed_python_implementation(kernel),
+                    self.nrows(),
+                    self.ncols(),
+                )
+                return nonzero / (self.nrows() * self.ncols())
             kernel = _dense_rational_kernel_module().dense_rational_matrix_nonzero_count
             numerators, _denominators = self._rational_kernel_parts(kernel)
             nonzero = runtime.number(kernel(numerators))
@@ -3301,6 +3465,21 @@ class Matrix(sage.Element):
                 self._rref_cache.set_immutable()
                 return self._rref_cache
             if self._has_packed_rational_storage():
+                if self._has_fmpq_matrix_resource():
+                    ffi = _flint_ffi_module()
+                    resource = ffi.fmpq_matrix_rref(self._rational_resource())
+                    self._rank_cache = runtime.number(ffi.fmpq_matrix_rank(resource))
+                    self._rref_cache = self._parent._from_fmpq_matrix_resource(resource)
+                    self._rref_cache._rank_cache = self._rank_cache
+                    self._rref_cache._rref_cache = self._rref_cache
+                    self._rref_cache.set_immutable()
+                    _trace_dense_rational_selection(
+                        "rref",
+                        "generated-flint-resource",
+                        self.nrows(),
+                        self.ncols(),
+                    )
+                    return self._rref_cache
                 kernel = _dense_rational_flint_module().flint_dense_rational_matrix_rref
                 source_numerators, source_denominators = self._rational_kernel_parts(
                     kernel
@@ -5359,6 +5538,13 @@ class Matrix(sage.Element):
 
     def __copy__(self) -> Matrix:
         if self._has_packed_rational_storage():
+            if self._has_fmpq_matrix_resource():
+                answer = self._parent._from_fmpq_matrix_resource(
+                    _flint_ffi_module().fmpq_matrix_copy(self._rational_resource())
+                )
+                answer._row_subdivisions = list(self._row_subdivisions)
+                answer._col_subdivisions = list(self._col_subdivisions)
+                return answer
             kernel = _dense_rational_kernel_module().dense_rational_matrix_copy
             source_numerators, source_denominators = self._rational_kernel_parts(kernel)
 
@@ -5416,6 +5602,15 @@ class Matrix(sage.Element):
         text_rows = []
         width = 0
         if self._has_packed_rational_storage():
+            if (
+                self._has_fmpq_matrix_resource()
+                and len(self._row_subdivisions) == 0
+                and len(self._col_subdivisions) == 0
+            ):
+                region = _flint_ffi_module().fmpq_matrix_format(
+                    self._rational_resource()
+                )
+                return bytes(_flint_byte_region_bytes(region)).decode("ascii")
             # The buffers already contain normalized pairs. Decode each one
             # once instead of crossing a kernel boundary and allocating a
             # Rational object for every displayed entry.

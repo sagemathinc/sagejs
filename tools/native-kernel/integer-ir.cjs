@@ -112,9 +112,14 @@ function isTupleType(type) {
   return tupleElementTypes(type) !== undefined;
 }
 
-function canonicalType(annotation, recordTypes = new Map()) {
+function canonicalType(
+  annotation,
+  recordTypes = new Map(),
+  foreignResourceTypes = new Map(),
+) {
   const raw = rawAnnotationName(annotation);
   if (recordTypes.has(raw)) return `Record:${raw}`;
+  if (foreignResourceTypes.has(raw)) return raw;
   const scalar = TYPE_ALIASES.get(raw);
   if (scalar !== undefined) return scalar;
   // ``from __future__ import annotations`` deliberately stores annotations as
@@ -178,7 +183,12 @@ function booleanLiteral(node) {
   return undefined;
 }
 
-function signatureFromFunction(fn, filename, recordTypes = new Map()) {
+function signatureFromFunction(
+  fn,
+  filename,
+  recordTypes = new Map(),
+  foreignResourceTypes = new Map(),
+) {
   const context = { filename, functionName: fn.name?.name || "<function>" };
   expect(
     context,
@@ -194,7 +204,11 @@ function signatureFromFunction(fn, filename, recordTypes = new Map()) {
       arg.annotation !== undefined && arg.annotation !== null,
       `parameter ${arg.name} requires a native type annotation`,
     );
-    const type = canonicalType(arg.annotation, recordTypes);
+    const type = canonicalType(
+      arg.annotation,
+      recordTypes,
+      foreignResourceTypes,
+    );
     expect(
       context,
       arg,
@@ -247,7 +261,11 @@ function signatureFromFunction(fn, filename, recordTypes = new Map()) {
     }
     return { name: arg.name, type, default: defaultValue };
   });
-  const returnType = canonicalType(fn.return_annotation, recordTypes);
+  const returnType = canonicalType(
+    fn.return_annotation,
+    recordTypes,
+    foreignResourceTypes,
+  );
   expect(
     context,
     fn.return_annotation ?? fn,
@@ -281,6 +299,7 @@ function createContext(
   signature,
   signatures,
   foreignFunctions,
+  importedForeignResources,
   filename,
   decorated,
 ) {
@@ -292,6 +311,17 @@ function createContext(
     for (const resource of foreign.resources || []) {
       foreignResources.set(resource.python_name, resource);
     }
+  }
+  for (const [name, resource] of importedForeignResources) {
+    foreignResources.set(name, resource);
+  }
+  const usedForeignResources = new Map();
+  for (const type of [
+    signature.returnType,
+    ...signature.params.map((parameter) => parameter.type),
+  ]) {
+    const resource = foreignResources.get(type);
+    if (resource !== undefined) usedForeignResources.set(type, resource);
   }
   return {
     decorated,
@@ -312,7 +342,7 @@ function createContext(
     sequenceConstants: new Map(),
     signatures,
     symbolAliases: new Map(),
-    usedForeignResources: new Map(),
+    usedForeignResources,
     variables,
     fn,
   };
@@ -1497,6 +1527,16 @@ function lowerStatements(statements, context) {
         value.type === context.returnType,
         `return expects ${context.returnType}, got ${value.type}`,
       );
+      const returnedResource = context.foreignResources.get(value.type);
+      if (returnedResource !== undefined) {
+        expect(
+          context,
+          statement,
+          returnedResource.ownership === "owned" &&
+            context.locals.has(value.name),
+          "native resource returns must transfer a newly owned local resource",
+        );
+      }
       operations.push(isTupleType(value.type) ? {
         kind: "return",
         values: value.elements.map((element) => element.name),
@@ -1664,6 +1704,7 @@ function lowerIntegerFunction(
   signature,
   signatures,
   foreignFunctions,
+  importedForeignResources,
   filename,
   decorated,
 ) {
@@ -1672,17 +1713,26 @@ function lowerIntegerFunction(
     signature,
     signatures,
     foreignFunctions,
+    importedForeignResources,
     filename,
     decorated,
   );
   const body = lowerStatements(array(fn.body), context);
   expect(context, fn, containsReturn(body), "function has no return");
+  const publicParams = signature.params.map((param) => {
+    const resource = context.foreignResources.get(param.type);
+    if (resource === undefined) return param;
+    return {
+      ...param,
+      resourceIdentity: `resource:${resource.declaration_identity}:${resource.id}`,
+    };
+  });
   return {
     name: signature.name,
     decorated,
     kernelKind: "integer",
     sourceTransparent: true,
-    params: signature.params,
+    params: publicParams,
     returnType: signature.returnType,
     locals: Array.from(context.locals, ([name, type]) => ({ name, type })),
     body,
