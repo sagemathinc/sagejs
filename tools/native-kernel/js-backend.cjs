@@ -176,7 +176,7 @@ ${fn.name}.javascript = javascript_${fn.name};
 ${fn.name}.nativeAvailable = nativeAddon !== null;`;
 }
 
-function emitExactStatement(operation, indent) {
+function emitExactStatement(operation, indent, resourceStack = null) {
   if (operation.kind === "uint64.constant") {
     return `${indent}${operation.target} = ${operation.value};`;
   }
@@ -311,7 +311,7 @@ function emitExactStatement(operation, indent) {
       `${indent}${operation.target} = ${operation.left};`,
       `${indent}if (${test}) {`,
       ...operation.right.operations.map((item) =>
-        emitExactStatement(item, `${indent}  `)
+        emitExactStatement(item, `${indent}  `, resourceStack)
       ),
       `${indent}  ${operation.target} = ${operation.right.value};`,
       `${indent}}`,
@@ -339,17 +339,19 @@ function emitExactStatement(operation, indent) {
   if (operation.kind === "if") {
     const lines = [
       ...operation.condition.operations.map((item) =>
-        emitExactStatement(item, indent)
+        emitExactStatement(item, indent, resourceStack)
       ),
       `${indent}if (${operation.condition.value}) {`,
-      ...operation.body.map((item) => emitExactStatement(item, `${indent}  `)),
+      ...operation.body.map((item) =>
+        emitExactStatement(item, `${indent}  `, resourceStack)
+      ),
       `${indent}}`,
     ];
     if (operation.alternative.length > 0) {
       lines[lines.length - 1] = `${indent}} else {`;
       lines.push(
         ...operation.alternative.map((item) =>
-          emitExactStatement(item, `${indent}  `)
+          emitExactStatement(item, `${indent}  `, resourceStack)
         ),
         `${indent}}`,
       );
@@ -360,11 +362,11 @@ function emitExactStatement(operation, indent) {
     return [
       `${indent}while (true) {`,
       ...operation.condition.operations.map((item) =>
-        emitExactStatement(item, `${indent}  `)
+        emitExactStatement(item, `${indent}  `, resourceStack)
       ),
       `${indent}  if (!${operation.condition.value}) break;`,
       ...operation.body.map((item) =>
-        emitExactStatement(item, `${indent}  `)
+        emitExactStatement(item, `${indent}  `, resourceStack)
       ),
       `${indent}}`,
     ].join("\n");
@@ -378,7 +380,7 @@ function emitExactStatement(operation, indent) {
         `${condition}; ` +
         `${operation.index} += ${operation.step || 1}) {`,
       ...operation.body.map((item) =>
-        emitExactStatement(item, `${indent}  `)
+        emitExactStatement(item, `${indent}  `, resourceStack)
       ),
       `${indent}}`,
     ].join("\n");
@@ -389,7 +391,7 @@ function emitExactStatement(operation, indent) {
         `${operation.index} < ${operation.stop}; ` +
         `${operation.index} += 1n) {`,
       ...operation.body.map((item) =>
-        emitExactStatement(item, `${indent}  `)
+        emitExactStatement(item, `${indent}  `, resourceStack)
       ),
       `${indent}}`,
     ].join("\n");
@@ -398,7 +400,10 @@ function emitExactStatement(operation, indent) {
     if (isTupleType(operation.type)) {
       return `${indent}return [${operation.values.join(", ")}];`;
     }
-    return `${indent}return ${operation.value};`;
+    return resourceStack === null
+      ? `${indent}return ${operation.value};`
+      : `${indent}return sagejsFfiTransferResource(` +
+        `${operation.value}, ${resourceStack});`;
   }
   if (operation.kind === "raise") {
     return `${indent}nativeRaise(${jsString(operation.exception)}, ` +
@@ -422,8 +427,10 @@ function emitExactFallback(fn) {
         ? "uint64BufferView" : "int64BufferView"}(` +
       `${param.name}, ${jsString(param.name)});`)
     .join("\n");
+  const resourceStack = fn.foreignResources?.length
+    ? "sagejsFfiResources" : null;
   const body = fn.body.map((item) => emitExactStatement(
-    item, fn.foreignResources?.length ? "    " : "  ",
+    item, resourceStack === null ? "  " : "    ", resourceStack,
   )).join("\n");
   const resources = fn.foreignResources?.length
     ? `  const sagejsFfiResources = [];\n  try {\n${body}\n` +

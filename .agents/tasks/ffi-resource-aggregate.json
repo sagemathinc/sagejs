@@ -1,0 +1,112 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "ffi-resource-aggregate",
+  "title": "FFI Resource Aggregate Composition",
+  "lane": "compiler-runtime",
+  "status": "active",
+  "owner": "user",
+  "objective": "Prove safe declaration, native lowering, generated host-wrapper, and dynamic fallback composition for an owned opaque FmpzMatrix resource with a checked read-only UInt64Buffer index slice, without exposing raw pointers or broadening unproved alias semantics",
+  "base_commit": "78f9f66c2f82a8be5e0c3128e08c0ddf66492ffe",
+  "claims": [
+    "tools/ffi/declarations.cjs",
+    "tools/ffi/host-adapters.cjs",
+    "tools/native-kernel/ffi-codegen.cjs",
+    "tools/native-kernel/js-backend.cjs",
+    "tools/native-kernel/c-backend.cjs",
+    "test/ffi-resource-aggregate.cjs",
+    "test/node-test-manifest.cjs"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "compiler-infrastructure",
+    "fallback": "same-source",
+    "oracles": [
+      "javascript",
+      "generated-native"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm build",
+    "pnpm test:compiler",
+    "pnpm test:unit",
+    "pnpm architecture:check",
+    "node test/native-kernel.cjs",
+    "node --test test/ffi-resource-aggregate.cjs"
+  ],
+  "runs": [
+    {
+      "command": "node --test test/ffi-resource-aggregate.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.997,
+      "started_at": "2026-08-11T11:09:15.103Z",
+      "commit": "78f9f66c2f82a8be5e0c3128e08c0ddf66492ffe",
+      "workspace_fingerprint": "37e1195b8d4664b67a56c4cf8bd865d626d48656cdbb83f54afb3ddf8ce164d9",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 11.852,
+      "started_at": "2026-08-11T11:09:26.779Z",
+      "commit": "78f9f66c2f82a8be5e0c3128e08c0ddf66492ffe",
+      "workspace_fingerprint": "37e1195b8d4664b67a56c4cf8bd865d626d48656cdbb83f54afb3ddf8ce164d9",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node test/native-kernel.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 57.588,
+      "started_at": "2026-08-11T11:09:42.049Z",
+      "commit": "78f9f66c2f82a8be5e0c3128e08c0ddf66492ffe",
+      "workspace_fingerprint": "37e1195b8d4664b67a56c4cf8bd865d626d48656cdbb83f54afb3ddf8ce164d9",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm build",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 123.151,
+      "started_at": "2026-08-11T11:10:42.953Z",
+      "commit": "78f9f66c2f82a8be5e0c3128e08c0ddf66492ffe",
+      "workspace_fingerprint": "37e1195b8d4664b67a56c4cf8bd865d626d48656cdbb83f54afb3ddf8ce164d9",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:compiler",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 57.944,
+      "started_at": "2026-08-11T11:12:56.303Z",
+      "commit": "78f9f66c2f82a8be5e0c3128e08c0ddf66492ffe",
+      "workspace_fingerprint": "37e1195b8d4664b67a56c4cf8bd865d626d48656cdbb83f54afb3ddf8ce164d9",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:unit",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 29.239,
+      "started_at": "2026-08-11T11:14:02.136Z",
+      "commit": "78f9f66c2f82a8be5e0c3128e08c0ddf66492ffe",
+      "workspace_fingerprint": "37e1195b8d4664b67a56c4cf8bd865d626d48656cdbb83f54afb3ddf8ce164d9",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "",
+    "risks": [],
+    "next_steps": []
+  }
+}

@@ -35,6 +35,7 @@ const integration = [
   "test/native-launcher.cjs",
   "test/cli-smoke.cjs",
   "test/ffi.cjs",
+  "test/ffi-resource-aggregate.cjs",
   "test/dense-prime-migration.cjs",
   "test/dense-prime-structural.cjs",
   "test/dense-integer-migration.cjs",

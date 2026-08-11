@@ -185,6 +185,7 @@ function emitResourceCall(operation, context, indent, tagged) {
   const declarations = [];
   const setup = [];
   const cleanup = [];
+  const aggregateValidation = [];
   let exactResult;
   const args = callArguments.map((argument, index) => {
     if (argument.source === "result" && returned !== undefined) {
@@ -210,6 +211,34 @@ function emitResourceCall(operation, context, indent, tagged) {
         }
       }
       return variable;
+    }
+    if (argument.adapter?.kind === "packed_slice") {
+      if (argument.adapter.access !== "read") {
+        throw new Error(
+          `${operation.foreign.declarationId} uses a mutable resource slice`,
+        );
+      }
+      const dataSource = argumentBySource(operation, argument.adapter.data);
+      const lengthSource = argumentBySource(operation, argument.adapter.length);
+      const data = context.value(dataSource.name);
+      const length = context.value(lengthSource.name);
+      aggregateValidation.push(
+        `${indent}    if (${length} > (uint64_t) SIZE_MAX ||`,
+        `${indent}        ${data}.length != (size_t) ${length})`,
+        `${indent}    {`,
+        `${indent}        sagejs_native_status_set(status, ` +
+          `SAGEJS_NATIVE_RANGE_ERROR, ` +
+          `"packed slice length does not match its declaration");`,
+        `${indent}        ${context.failure}`,
+        `${indent}    }`,
+      );
+      return `${data}.data`;
+    }
+    if (argument.adapter !== null) {
+      throw new Error(
+        `${operation.foreign.declarationId} uses unsupported resource adapter ` +
+        `${argument.adapter.kind}`,
+      );
     }
     const source = argumentBySource(operation, argument.source);
     const resource = resourceForType(operation, source.type);
@@ -283,6 +312,7 @@ function emitResourceCall(operation, context, indent, tagged) {
     `${indent}{`,
     ...declarations,
     ...validation,
+    ...aggregateValidation,
     ...setup,
     invoke,
     ...checked,
@@ -1120,6 +1150,15 @@ function sagejsFfiCloseResources(resources) {
     resource.closed = true;
     resource.handle = null;
   }
+}
+
+function sagejsFfiTransferResource(value, resources) {
+  if (value === null || (typeof value !== "object" &&
+      typeof value !== "function")) return value;
+  const root = value.root || value;
+  const index = resources.lastIndexOf(root);
+  if (index >= 0) resources.splice(index, 1);
+  return value;
 }
 `;
 }
