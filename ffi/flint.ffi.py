@@ -25,6 +25,7 @@ flint = Library(
         "flint/fmpz_mat.h",
         "flint/nmod_mat.h",
         "flint/ulong_extras.h",
+        "sagejs/exact_polynomial_ffi.h",
         "sagejs/ffi_algorithms.h",
         "sagejs/fmpq_matrix_ffi.h",
     ],
@@ -72,6 +73,28 @@ FlintByteRegion = flint.resource(
 )
 
 
+FmpzPolynomial = flint.resource(
+    id="fmpz_polynomial",
+    abi=sagejs_fmpz_polynomial_t,
+    ownership="owned",
+    close="ffiFmpzPolynomialClose",
+    clear="sagejs_fmpz_polynomial_clear",
+    size="sagejs_fmpz_polynomial_allocated_bytes",
+    wasm=False,
+)
+
+
+FmpqPolynomial = flint.resource(
+    id="fmpq_polynomial",
+    abi=sagejs_fmpq_polynomial_t,
+    ownership="owned",
+    close="ffiFmpqPolynomialClose",
+    clear="sagejs_fmpq_polynomial_clear",
+    size="sagejs_fmpq_polynomial_allocated_bytes",
+    wasm=False,
+)
+
+
 DirichletGroup = flint.resource(
     id="dirichlet_group",
     abi=dirichlet_group_t,
@@ -80,6 +103,536 @@ DirichletGroup = flint.resource(
     clear="dirichlet_group_clear",
     wasm=True,
 )
+
+
+@flint.function(
+    dynamic="ffiFmpzPolynomialCreate",
+    symbol="sagejs_fmpz_polynomial_init",
+    returns=int,
+    abi=[
+        out("result", sagejs_fmpz_polynomial_t),
+        in_("length", uint64_t),
+    ],
+    effects=Effects(pure=False, allocates=True, raises=[OverflowError]),
+    result=Status(
+        1,
+        exception=OverflowError,
+        message="integer polynomial length is too large",
+    ),
+    wasm=False,
+)
+def fmpz_polynomial(length: uint64) -> FmpzPolynomial: ...
+
+
+@flint.function(
+    dynamic="ffiFmpzPolynomialSetCoefficient",
+    symbol="sagejs_fmpz_polynomial_set_coefficient",
+    returns=int,
+    abi=[
+        in_("polynomial", sagejs_fmpz_polynomial_t),
+        in_("index", uint64_t),
+        in_("coefficient", fmpz_t),
+    ],
+    effects=Effects(
+        pure=False,
+        allocates=True,
+        raises=[ValueError],
+        writes=["polynomial"],
+    ),
+    result=Status(
+        1,
+        exception=ValueError,
+        message="integer polynomial builder is sealed or index is out of bounds",
+    ),
+    wasm=False,
+)
+def fmpz_polynomial_set_coefficient(
+    polynomial: Writable[FmpzPolynomial],
+    index: uint64,
+    coefficient: Integer,
+) -> bool: ...
+
+
+@flint.function(
+    dynamic="ffiFmpzPolynomialSeal",
+    symbol="sagejs_fmpz_polynomial_seal",
+    returns=int,
+    abi=[in_("polynomial", sagejs_fmpz_polynomial_t)],
+    effects=Effects(
+        pure=False,
+        allocates=True,
+        raises=[ValueError],
+        writes=["polynomial"],
+    ),
+    result=Status(
+        1,
+        exception=ValueError,
+        message="integer polynomial builder is already sealed",
+    ),
+    wasm=False,
+)
+def fmpz_polynomial_seal(polynomial: Writable[FmpzPolynomial]) -> bool: ...
+
+
+@flint.function(
+    dynamic="ffiFmpzPolynomialLength",
+    symbol="sagejs_fmpz_polynomial_length",
+    returns=uint64_t,
+    abi=[in_("polynomial", sagejs_fmpz_polynomial_t)],
+    effects=Effects(pure=True),
+    result=Direct(),
+    wasm=False,
+)
+def fmpz_polynomial_length(polynomial: FmpzPolynomial) -> uint64: ...
+
+
+@flint.function(
+    dynamic="ffiFmpzPolynomialCoefficient",
+    symbol="sagejs_fmpz_polynomial_coefficient",
+    returns=int,
+    abi=[
+        out("result", fmpz_t),
+        in_("polynomial", sagejs_fmpz_polynomial_t),
+        in_("index", uint64_t),
+    ],
+    effects=Effects(pure=True, allocates=True, raises=[ValueError]),
+    result=Status(
+        1,
+        exception=ValueError,
+        message="integer polynomial coefficient is out of bounds",
+    ),
+    wasm=False,
+)
+def fmpz_polynomial_coefficient(
+    polynomial: FmpzPolynomial,
+    index: uint64,
+) -> Integer: ...
+
+
+@flint.function(
+    dynamic="ffiFmpzPolynomialAdd",
+    symbol="sagejs_fmpz_polynomial_add",
+    returns=int,
+    abi=[
+        out("result", sagejs_fmpz_polynomial_t),
+        in_("left", sagejs_fmpz_polynomial_t),
+        in_("right", sagejs_fmpz_polynomial_t),
+    ],
+    effects=Effects(pure=False, allocates=True, raises=[ValueError]),
+    result=Status(1, exception=ValueError, message="integer polynomial is unsealed"),
+    wasm=False,
+)
+def fmpz_polynomial_add(
+    left: FmpzPolynomial,
+    right: FmpzPolynomial,
+) -> FmpzPolynomial: ...
+
+
+@flint.function(
+    dynamic="ffiFmpzPolynomialSub",
+    symbol="sagejs_fmpz_polynomial_sub",
+    returns=int,
+    abi=[
+        out("result", sagejs_fmpz_polynomial_t),
+        in_("left", sagejs_fmpz_polynomial_t),
+        in_("right", sagejs_fmpz_polynomial_t),
+    ],
+    effects=Effects(pure=False, allocates=True, raises=[ValueError]),
+    result=Status(1, exception=ValueError, message="integer polynomial is unsealed"),
+    wasm=False,
+)
+def fmpz_polynomial_sub(
+    left: FmpzPolynomial,
+    right: FmpzPolynomial,
+) -> FmpzPolynomial: ...
+
+
+@flint.function(
+    dynamic="ffiFmpzPolynomialNeg",
+    symbol="sagejs_fmpz_polynomial_neg",
+    returns=int,
+    abi=[
+        out("result", sagejs_fmpz_polynomial_t),
+        in_("source", sagejs_fmpz_polynomial_t),
+    ],
+    effects=Effects(pure=False, allocates=True, raises=[ValueError]),
+    result=Status(1, exception=ValueError, message="integer polynomial is unsealed"),
+    wasm=False,
+)
+def fmpz_polynomial_neg(source: FmpzPolynomial) -> FmpzPolynomial: ...
+
+
+@flint.function(
+    dynamic="ffiFmpzPolynomialMul",
+    symbol="sagejs_fmpz_polynomial_mul",
+    returns=int,
+    abi=[
+        out("result", sagejs_fmpz_polynomial_t),
+        in_("left", sagejs_fmpz_polynomial_t),
+        in_("right", sagejs_fmpz_polynomial_t),
+    ],
+    effects=Effects(pure=False, allocates=True, raises=[ValueError]),
+    result=Status(1, exception=ValueError, message="integer polynomial is unsealed"),
+    wasm=False,
+)
+def fmpz_polynomial_mul(
+    left: FmpzPolynomial,
+    right: FmpzPolynomial,
+) -> FmpzPolynomial: ...
+
+
+@flint.function(
+    dynamic="ffiFmpzPolynomialPow",
+    symbol="sagejs_fmpz_polynomial_pow",
+    returns=int,
+    abi=[
+        out("result", sagejs_fmpz_polynomial_t),
+        in_("source", sagejs_fmpz_polynomial_t),
+        in_("exponent", uint64_t),
+    ],
+    effects=Effects(pure=False, allocates=True, raises=[OverflowError]),
+    result=Status(
+        1,
+        exception=OverflowError,
+        message="integer polynomial exponent is too large",
+    ),
+    wasm=False,
+)
+def fmpz_polynomial_pow(
+    source: FmpzPolynomial,
+    exponent: uint64,
+) -> FmpzPolynomial: ...
+
+
+@flint.function(
+    dynamic="ffiFmpzPolynomialEvaluate",
+    symbol="sagejs_fmpz_polynomial_evaluate",
+    returns=int,
+    abi=[
+        out("result", fmpz_t),
+        in_("source", sagejs_fmpz_polynomial_t),
+        in_("argument", fmpz_t),
+    ],
+    effects=Effects(pure=True, allocates=True, raises=[ValueError]),
+    result=Status(1, exception=ValueError, message="integer polynomial is unsealed"),
+    wasm=False,
+)
+def fmpz_polynomial_evaluate(
+    source: FmpzPolynomial,
+    argument: Integer,
+) -> Integer: ...
+
+
+@flint.function(
+    dynamic="ffiFmpzPolynomialEvaluateRational",
+    symbol="sagejs_fmpz_polynomial_evaluate_rational",
+    returns=int,
+    abi=[
+        out("result", sagejs_fmpq_value_t),
+        in_("source", sagejs_fmpz_polynomial_t),
+        in_("numerator", fmpz_t),
+        in_("denominator", fmpz_t),
+    ],
+    effects=Effects(pure=False, allocates=True, raises=[ValueError]),
+    result=Status(
+        1,
+        exception=ValueError,
+        message="invalid rational argument for integer polynomial evaluation",
+    ),
+    wasm=False,
+)
+def fmpz_polynomial_evaluate_rational(
+    source: FmpzPolynomial,
+    numerator: Integer,
+    denominator: Integer,
+) -> FmpqValue: ...
+
+
+@flint.function(
+    dynamic="ffiFmpzPolynomialSerialize",
+    symbol="sagejs_fmpz_polynomial_serialize",
+    returns=int,
+    abi=[
+        out("result", sagejs_flint_byte_region_t),
+        in_("source", sagejs_fmpz_polynomial_t),
+    ],
+    effects=Effects(pure=False, allocates=True, raises=[OverflowError]),
+    result=Status(
+        1,
+        exception=OverflowError,
+        message="integer polynomial serialization is too large",
+    ),
+    wasm=False,
+)
+def fmpz_polynomial_serialize(source: FmpzPolynomial) -> FlintByteRegion: ...
+
+
+@flint.function(
+    dynamic="ffiFmpqPolynomialCreate",
+    symbol="sagejs_fmpq_polynomial_init",
+    returns=int,
+    abi=[
+        out("result", sagejs_fmpq_polynomial_t),
+        in_("length", uint64_t),
+    ],
+    effects=Effects(pure=False, allocates=True, raises=[OverflowError]),
+    result=Status(
+        1,
+        exception=OverflowError,
+        message="rational polynomial length is too large",
+    ),
+    wasm=False,
+)
+def fmpq_polynomial(length: uint64) -> FmpqPolynomial: ...
+
+
+@flint.function(
+    dynamic="ffiFmpqPolynomialSetCoefficient",
+    symbol="sagejs_fmpq_polynomial_set_coefficient",
+    returns=int,
+    abi=[
+        in_("polynomial", sagejs_fmpq_polynomial_t),
+        in_("index", uint64_t),
+        in_("numerator", fmpz_t),
+        in_("denominator", fmpz_t),
+    ],
+    effects=Effects(
+        pure=False,
+        allocates=True,
+        raises=[ValueError],
+        writes=["polynomial"],
+    ),
+    result=Status(
+        1,
+        exception=ValueError,
+        message="invalid rational polynomial builder coefficient",
+    ),
+    wasm=False,
+)
+def fmpq_polynomial_set_coefficient(
+    polynomial: Writable[FmpqPolynomial],
+    index: uint64,
+    numerator: Integer,
+    denominator: Integer,
+) -> bool: ...
+
+
+@flint.function(
+    dynamic="ffiFmpqPolynomialSeal",
+    symbol="sagejs_fmpq_polynomial_seal",
+    returns=int,
+    abi=[in_("polynomial", sagejs_fmpq_polynomial_t)],
+    effects=Effects(
+        pure=False,
+        allocates=True,
+        raises=[ValueError],
+        writes=["polynomial"],
+    ),
+    result=Status(
+        1,
+        exception=ValueError,
+        message="rational polynomial builder is already sealed",
+    ),
+    wasm=False,
+)
+def fmpq_polynomial_seal(polynomial: Writable[FmpqPolynomial]) -> bool: ...
+
+
+@flint.function(
+    dynamic="ffiFmpqPolynomialLength",
+    symbol="sagejs_fmpq_polynomial_length",
+    returns=uint64_t,
+    abi=[in_("polynomial", sagejs_fmpq_polynomial_t)],
+    effects=Effects(pure=True),
+    result=Direct(),
+    wasm=False,
+)
+def fmpq_polynomial_length(polynomial: FmpqPolynomial) -> uint64: ...
+
+
+@flint.function(
+    dynamic="ffiFmpqPolynomialCoefficientNumerator",
+    symbol="sagejs_fmpq_polynomial_coefficient_numerator",
+    returns=int,
+    abi=[
+        out("result", fmpz_t),
+        in_("polynomial", sagejs_fmpq_polynomial_t),
+        in_("index", uint64_t),
+    ],
+    effects=Effects(pure=True, allocates=True, raises=[ValueError]),
+    result=Status(
+        1,
+        exception=ValueError,
+        message="rational polynomial coefficient is out of bounds",
+    ),
+    wasm=False,
+)
+def fmpq_polynomial_coefficient_numerator(
+    polynomial: FmpqPolynomial,
+    index: uint64,
+) -> Integer: ...
+
+
+@flint.function(
+    dynamic="ffiFmpqPolynomialCoefficientDenominator",
+    symbol="sagejs_fmpq_polynomial_coefficient_denominator",
+    returns=int,
+    abi=[
+        out("result", fmpz_t),
+        in_("polynomial", sagejs_fmpq_polynomial_t),
+        in_("index", uint64_t),
+    ],
+    effects=Effects(pure=True, allocates=True, raises=[ValueError]),
+    result=Status(
+        1,
+        exception=ValueError,
+        message="rational polynomial coefficient is out of bounds",
+    ),
+    wasm=False,
+)
+def fmpq_polynomial_coefficient_denominator(
+    polynomial: FmpqPolynomial,
+    index: uint64,
+) -> Integer: ...
+
+
+@flint.function(
+    dynamic="ffiFmpqPolynomialAdd",
+    symbol="sagejs_fmpq_polynomial_add",
+    returns=int,
+    abi=[
+        out("result", sagejs_fmpq_polynomial_t),
+        in_("left", sagejs_fmpq_polynomial_t),
+        in_("right", sagejs_fmpq_polynomial_t),
+    ],
+    effects=Effects(pure=False, allocates=True, raises=[ValueError]),
+    result=Status(1, exception=ValueError, message="rational polynomial is unsealed"),
+    wasm=False,
+)
+def fmpq_polynomial_add(
+    left: FmpqPolynomial,
+    right: FmpqPolynomial,
+) -> FmpqPolynomial: ...
+
+
+@flint.function(
+    dynamic="ffiFmpqPolynomialSub",
+    symbol="sagejs_fmpq_polynomial_sub",
+    returns=int,
+    abi=[
+        out("result", sagejs_fmpq_polynomial_t),
+        in_("left", sagejs_fmpq_polynomial_t),
+        in_("right", sagejs_fmpq_polynomial_t),
+    ],
+    effects=Effects(pure=False, allocates=True, raises=[ValueError]),
+    result=Status(1, exception=ValueError, message="rational polynomial is unsealed"),
+    wasm=False,
+)
+def fmpq_polynomial_sub(
+    left: FmpqPolynomial,
+    right: FmpqPolynomial,
+) -> FmpqPolynomial: ...
+
+
+@flint.function(
+    dynamic="ffiFmpqPolynomialNeg",
+    symbol="sagejs_fmpq_polynomial_neg",
+    returns=int,
+    abi=[
+        out("result", sagejs_fmpq_polynomial_t),
+        in_("source", sagejs_fmpq_polynomial_t),
+    ],
+    effects=Effects(pure=False, allocates=True, raises=[ValueError]),
+    result=Status(1, exception=ValueError, message="rational polynomial is unsealed"),
+    wasm=False,
+)
+def fmpq_polynomial_neg(source: FmpqPolynomial) -> FmpqPolynomial: ...
+
+
+@flint.function(
+    dynamic="ffiFmpqPolynomialMul",
+    symbol="sagejs_fmpq_polynomial_mul",
+    returns=int,
+    abi=[
+        out("result", sagejs_fmpq_polynomial_t),
+        in_("left", sagejs_fmpq_polynomial_t),
+        in_("right", sagejs_fmpq_polynomial_t),
+    ],
+    effects=Effects(pure=False, allocates=True, raises=[ValueError]),
+    result=Status(1, exception=ValueError, message="rational polynomial is unsealed"),
+    wasm=False,
+)
+def fmpq_polynomial_mul(
+    left: FmpqPolynomial,
+    right: FmpqPolynomial,
+) -> FmpqPolynomial: ...
+
+
+@flint.function(
+    dynamic="ffiFmpqPolynomialPow",
+    symbol="sagejs_fmpq_polynomial_pow",
+    returns=int,
+    abi=[
+        out("result", sagejs_fmpq_polynomial_t),
+        in_("source", sagejs_fmpq_polynomial_t),
+        in_("exponent", uint64_t),
+    ],
+    effects=Effects(pure=False, allocates=True, raises=[OverflowError]),
+    result=Status(
+        1,
+        exception=OverflowError,
+        message="rational polynomial exponent is too large",
+    ),
+    wasm=False,
+)
+def fmpq_polynomial_pow(
+    source: FmpqPolynomial,
+    exponent: uint64,
+) -> FmpqPolynomial: ...
+
+
+@flint.function(
+    dynamic="ffiFmpqPolynomialEvaluate",
+    symbol="sagejs_fmpq_polynomial_evaluate",
+    returns=int,
+    abi=[
+        out("result", sagejs_fmpq_value_t),
+        in_("source", sagejs_fmpq_polynomial_t),
+        in_("numerator", fmpz_t),
+        in_("denominator", fmpz_t),
+    ],
+    effects=Effects(pure=False, allocates=True, raises=[ValueError]),
+    result=Status(
+        1,
+        exception=ValueError,
+        message="invalid rational polynomial evaluation",
+    ),
+    wasm=False,
+)
+def fmpq_polynomial_evaluate(
+    source: FmpqPolynomial,
+    numerator: Integer,
+    denominator: Integer,
+) -> FmpqValue: ...
+
+
+@flint.function(
+    dynamic="ffiFmpqPolynomialSerialize",
+    symbol="sagejs_fmpq_polynomial_serialize",
+    returns=int,
+    abi=[
+        out("result", sagejs_flint_byte_region_t),
+        in_("source", sagejs_fmpq_polynomial_t),
+    ],
+    effects=Effects(pure=False, allocates=True, raises=[OverflowError]),
+    result=Status(
+        1,
+        exception=OverflowError,
+        message="rational polynomial serialization is too large",
+    ),
+    wasm=False,
+)
+def fmpq_polynomial_serialize(source: FmpqPolynomial) -> FlintByteRegion: ...
 
 
 @flint.function(
