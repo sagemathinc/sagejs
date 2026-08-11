@@ -280,7 +280,7 @@ function fmpqPolynomial(coefficients) {
   );
   assert.throws(
     () => flint.ffiFmpzPolynomialSerialize(unsealed),
-    /unsealed/,
+    /serialization/,
   );
   assert.equal(flint.ffiFmpzPolynomialSeal(unsealed), true);
   assert.throws(
