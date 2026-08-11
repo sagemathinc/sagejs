@@ -10,6 +10,7 @@
 #include <flint/fmpq_poly.h>
 #include <flint/fmpz.h>
 #include <flint/fmpz_poly.h>
+#include <flint/fmpz_poly_factor.h>
 
 #include "sagejs/fmpq_matrix_ffi.h"
 
@@ -42,6 +43,24 @@ typedef struct
 } sagejs_fmpq_polynomial_struct;
 
 typedef sagejs_fmpq_polynomial_struct sagejs_fmpq_polynomial_t[1];
+
+/*
+ * A completed exact factorization owns FLINT's variable-size factor array.
+ * The same representation serves ZZ[x] and QQ[x]: FLINT factors the primitive
+ * integer numerator, while denominator records the rational unit denominator.
+ * No coefficient capacity is chosen by the caller and factorization is never
+ * repeated merely to export a larger result.
+ */
+
+typedef struct
+{
+    fmpz_poly_factor_t value;
+    fmpz_t denominator;
+    size_t retained_bytes;
+} sagejs_exact_polynomial_factorization_struct;
+
+typedef sagejs_exact_polynomial_factorization_struct
+    sagejs_exact_polynomial_factorization_t[1];
 
 static inline void sagejs_exact_polynomial_adjust_retained_bytes(
     size_t *retained, size_t previous, size_t current)
@@ -293,6 +312,139 @@ static inline int sagejs_fmpz_polynomial_evaluate_rational(
     return 1;
 }
 
+static inline void sagejs_exact_polynomial_factorization_recompute_allocated_bytes(
+    sagejs_exact_polynomial_factorization_t factorization)
+{
+    size_t retained = sizeof(sagejs_exact_polynomial_factorization_struct);
+    retained = sagejs_retained_size_add(retained,
+        sagejs_retained_size_multiply(
+            (size_t) factorization->value->alloc,
+            sizeof(fmpz_poly_struct)));
+    retained = sagejs_retained_size_add(retained,
+        sagejs_retained_size_multiply(
+            (size_t) factorization->value->alloc, sizeof(slong)));
+    retained = sagejs_retained_size_add(retained,
+        sagejs_fmpz_retained_bytes(&factorization->value->c));
+    retained = sagejs_retained_size_add(retained,
+        sagejs_fmpz_retained_bytes(factorization->denominator));
+    for (slong factor_index = 0;
+         factor_index < factorization->value->alloc; factor_index++)
+    {
+        const fmpz_poly_struct *factor =
+            factorization->value->p + factor_index;
+        retained = sagejs_retained_size_add(retained,
+            sagejs_retained_size_multiply(
+                (size_t) factor->alloc, sizeof(fmpz)));
+        for (slong coefficient = 0;
+             coefficient < factor->alloc; coefficient++)
+            retained = sagejs_retained_size_add(retained,
+                sagejs_fmpz_retained_bytes(
+                    factor->coeffs + coefficient));
+    }
+    factorization->retained_bytes = retained;
+}
+
+static inline size_t sagejs_exact_polynomial_factorization_allocated_bytes(
+    const sagejs_exact_polynomial_factorization_t factorization)
+{
+    return factorization->retained_bytes;
+}
+
+static inline void sagejs_exact_polynomial_factorization_clear(
+    sagejs_exact_polynomial_factorization_t factorization)
+{
+    fmpz_poly_factor_clear(factorization->value);
+    fmpz_clear(factorization->denominator);
+    factorization->retained_bytes = 0;
+}
+
+static inline void sagejs_exact_polynomial_factorization_finish(
+    sagejs_exact_polynomial_factorization_t result)
+{
+    sagejs_exact_polynomial_factorization_recompute_allocated_bytes(result);
+}
+
+static inline int sagejs_fmpz_polynomial_factor_resource(
+    sagejs_exact_polynomial_factorization_t result,
+    const sagejs_fmpz_polynomial_t source)
+{
+    if (!source->sealed || fmpz_poly_is_zero(source->value))
+        return 0;
+    fmpz_poly_factor_init(result->value);
+    fmpz_init(result->denominator);
+    fmpz_one(result->denominator);
+    fmpz_poly_factor(result->value, source->value);
+    sagejs_exact_polynomial_factorization_finish(result);
+    return 1;
+}
+
+static inline int sagejs_fmpq_polynomial_factor_resource(
+    sagejs_exact_polynomial_factorization_t result,
+    const sagejs_fmpq_polynomial_t source)
+{
+    if (!source->sealed || fmpq_poly_is_zero(source->value))
+        return 0;
+    fmpz_poly_t numerator;
+    fmpz_poly_init(numerator);
+    fmpq_poly_get_numerator(numerator, source->value);
+    fmpz_poly_factor_init(result->value);
+    fmpz_init(result->denominator);
+    fmpq_poly_get_denominator(result->denominator, source->value);
+    fmpz_poly_factor(result->value, numerator);
+    fmpz_poly_clear(numerator);
+    sagejs_exact_polynomial_factorization_finish(result);
+    return 1;
+}
+
+static inline int sagejs_exact_polynomial_factorization_count(
+    fmpz_t result,
+    const sagejs_exact_polynomial_factorization_t factorization)
+{
+    fmpz_set_ui(result, (ulong) factorization->value->num);
+    return 1;
+}
+
+static inline int sagejs_exact_polynomial_factorization_exponent(
+    fmpz_t result,
+    const sagejs_exact_polynomial_factorization_t factorization,
+    uint64_t index)
+{
+    if (index >= (uint64_t) factorization->value->num)
+        return 0;
+    fmpz_set_si(result, factorization->value->exp[(slong) index]);
+    return 1;
+}
+
+static inline int sagejs_exact_polynomial_factorization_unit_numerator(
+    fmpz_t result,
+    const sagejs_exact_polynomial_factorization_t factorization)
+{
+    fmpz_set(result, &factorization->value->c);
+    return 1;
+}
+
+static inline int sagejs_exact_polynomial_factorization_unit_denominator(
+    fmpz_t result,
+    const sagejs_exact_polynomial_factorization_t factorization)
+{
+    fmpz_set(result, factorization->denominator);
+    return 1;
+}
+
+static inline int sagejs_exact_polynomial_factorization_fmpz_factor(
+    sagejs_fmpz_polynomial_t result,
+    const sagejs_exact_polynomial_factorization_t factorization,
+    uint64_t index)
+{
+    if (index >= (uint64_t) factorization->value->num)
+        return 0;
+    fmpz_poly_init(result->value);
+    fmpz_poly_set(result->value,
+        factorization->value->p + (slong) index);
+    sagejs_fmpz_polynomial_finish_result(result);
+    return 1;
+}
+
 static inline size_t sagejs_fmpq_builder_structural_bytes(slong length)
 {
     return sagejs_retained_size_add(
@@ -484,6 +636,20 @@ static inline void sagejs_fmpq_polynomial_finish_result(
     result->builder_length = 0;
     result->sealed = 1;
     sagejs_fmpq_polynomial_recompute_allocated_bytes(result);
+}
+
+static inline int sagejs_exact_polynomial_factorization_fmpq_factor(
+    sagejs_fmpq_polynomial_t result,
+    const sagejs_exact_polynomial_factorization_t factorization,
+    uint64_t index)
+{
+    if (index >= (uint64_t) factorization->value->num)
+        return 0;
+    fmpq_poly_init(result->value);
+    fmpq_poly_set_fmpz_poly(result->value,
+        factorization->value->p + (slong) index);
+    sagejs_fmpq_polynomial_finish_result(result);
+    return 1;
 }
 
 #define SAGEJS_FMPQ_POLYNOMIAL_BINARY(name, operation)                    \

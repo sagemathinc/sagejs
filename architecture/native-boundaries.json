@@ -14,8 +14,8 @@
   },
   "counts": {
     "classified-native-file": 56,
-    "declared-ffi": 162,
-    "declared-ffi-resource": 9,
+    "declared-ffi": 170,
+    "declared-ffi-resource": 10,
     "napi-export": 292,
     "runtime-intrinsic": 128,
     "wasm-export": 46
@@ -55,6 +55,18 @@
       "abi_type": "dirichlet_group_t",
       "close_export": "ffiDirichletGroupClose",
       "clear_symbol": "dirichlet_group_clear",
+      "disposition": "declared-owned-ffi-resource"
+    },
+    {
+      "id": "ffi-resource:flint:exact_polynomial_factorization",
+      "kind": "declared-ffi-resource",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "ExactPolynomialFactorization",
+      "abi_type": "sagejs_exact_polynomial_factorization_t",
+      "close_export": "ffiExactPolynomialFactorizationClose",
+      "clear_symbol": "sagejs_exact_polynomial_factorization_clear",
+      "size_symbol": "sagejs_exact_polynomial_factorization_allocated_bytes",
       "disposition": "declared-owned-ffi-resource"
     },
     {
@@ -170,6 +182,72 @@
       "dynamic_package": "@sagemath/sagejs-flint",
       "dynamic_export": "ffiDirichletGroupSize",
       "symbol": "dirichlet_group_size",
+      "disposition": "declared-safe-ffi"
+    },
+    {
+      "id": "ffi:flint:exact_polynomial_factorization_count",
+      "kind": "declared-ffi",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "exact_polynomial_factorization_count",
+      "dynamic_package": "@sagemath/sagejs-flint",
+      "dynamic_export": "ffiExactPolynomialFactorizationCount",
+      "symbol": "sagejs_exact_polynomial_factorization_count",
+      "disposition": "declared-safe-ffi"
+    },
+    {
+      "id": "ffi:flint:exact_polynomial_factorization_exponent",
+      "kind": "declared-ffi",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "exact_polynomial_factorization_exponent",
+      "dynamic_package": "@sagemath/sagejs-flint",
+      "dynamic_export": "ffiExactPolynomialFactorizationExponent",
+      "symbol": "sagejs_exact_polynomial_factorization_exponent",
+      "disposition": "declared-safe-ffi"
+    },
+    {
+      "id": "ffi:flint:exact_polynomial_factorization_fmpq_factor",
+      "kind": "declared-ffi",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "exact_polynomial_factorization_fmpq_factor",
+      "dynamic_package": "@sagemath/sagejs-flint",
+      "dynamic_export": "ffiExactPolynomialFactorizationFmpqFactor",
+      "symbol": "sagejs_exact_polynomial_factorization_fmpq_factor",
+      "disposition": "declared-safe-ffi"
+    },
+    {
+      "id": "ffi:flint:exact_polynomial_factorization_fmpz_factor",
+      "kind": "declared-ffi",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "exact_polynomial_factorization_fmpz_factor",
+      "dynamic_package": "@sagemath/sagejs-flint",
+      "dynamic_export": "ffiExactPolynomialFactorizationFmpzFactor",
+      "symbol": "sagejs_exact_polynomial_factorization_fmpz_factor",
+      "disposition": "declared-safe-ffi"
+    },
+    {
+      "id": "ffi:flint:exact_polynomial_factorization_unit_denominator",
+      "kind": "declared-ffi",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "exact_polynomial_factorization_unit_denominator",
+      "dynamic_package": "@sagemath/sagejs-flint",
+      "dynamic_export": "ffiExactPolynomialFactorizationUnitDenominator",
+      "symbol": "sagejs_exact_polynomial_factorization_unit_denominator",
+      "disposition": "declared-safe-ffi"
+    },
+    {
+      "id": "ffi:flint:exact_polynomial_factorization_unit_numerator",
+      "kind": "declared-ffi",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "exact_polynomial_factorization_unit_numerator",
+      "dynamic_package": "@sagemath/sagejs-flint",
+      "dynamic_export": "ffiExactPolynomialFactorizationUnitNumerator",
+      "symbol": "sagejs_exact_polynomial_factorization_unit_numerator",
       "disposition": "declared-safe-ffi"
     },
     {
@@ -808,6 +886,17 @@
       "dynamic_package": "@sagemath/sagejs-flint",
       "dynamic_export": "ffiFmpqPolynomialEvaluate",
       "symbol": "sagejs_fmpq_polynomial_evaluate",
+      "disposition": "declared-safe-ffi"
+    },
+    {
+      "id": "ffi:flint:fmpq_polynomial_factor_resource",
+      "kind": "declared-ffi",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "fmpq_polynomial_factor_resource",
+      "dynamic_package": "@sagemath/sagejs-flint",
+      "dynamic_export": "ffiFmpqPolynomialFactorResource",
+      "symbol": "sagejs_fmpq_polynomial_factor_resource",
       "disposition": "declared-safe-ffi"
     },
     {
@@ -1567,6 +1656,17 @@
       "dynamic_package": "@sagemath/sagejs-flint",
       "dynamic_export": "ffiFmpzPolynomialEvaluateRational",
       "symbol": "sagejs_fmpz_polynomial_evaluate_rational",
+      "disposition": "declared-safe-ffi"
+    },
+    {
+      "id": "ffi:flint:fmpz_polynomial_factor_resource",
+      "kind": "declared-ffi",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "fmpz_polynomial_factor_resource",
+      "dynamic_package": "@sagemath/sagejs-flint",
+      "dynamic_export": "ffiFmpzPolynomialFactorResource",
+      "symbol": "sagejs_fmpz_polynomial_factor_resource",
       "disposition": "declared-safe-ffi"
     },
     {

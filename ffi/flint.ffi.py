@@ -119,6 +119,17 @@ FmpqPolynomial = flint.resource(
 )
 
 
+ExactPolynomialFactorization = flint.resource(
+    id="exact_polynomial_factorization",
+    abi=sagejs_exact_polynomial_factorization_t,
+    ownership="owned",
+    close="ffiExactPolynomialFactorizationClose",
+    clear="sagejs_exact_polynomial_factorization_clear",
+    size="sagejs_exact_polynomial_factorization_allocated_bytes",
+    wasm=False,
+)
+
+
 DirichletGroup = flint.resource(
     id="dirichlet_group",
     abi=dirichlet_group_t,
@@ -348,6 +359,27 @@ def fmpz_polynomial_gcd(
     left: FmpzPolynomial,
     right: FmpzPolynomial,
 ) -> FmpzPolynomial: ...
+
+
+@flint.function(
+    dynamic="ffiFmpzPolynomialFactorResource",
+    symbol="sagejs_fmpz_polynomial_factor_resource",
+    returns=int,
+    abi=[
+        out("result", sagejs_exact_polynomial_factorization_t),
+        in_("source", sagejs_fmpz_polynomial_t),
+    ],
+    effects=Effects(pure=False, allocates=True, raises=[ValueError]),
+    result=Status(
+        1,
+        exception=ValueError,
+        message="factorization of 0 is not defined",
+    ),
+    wasm=False,
+)
+def fmpz_polynomial_factor_resource(
+    source: FmpzPolynomial,
+) -> ExactPolynomialFactorization: ...
 
 
 @flint.function(
@@ -728,6 +760,147 @@ def fmpq_polynomial_mul(
 def fmpq_polynomial_gcd(
     left: FmpqPolynomial,
     right: FmpqPolynomial,
+) -> FmpqPolynomial: ...
+
+
+@flint.function(
+    dynamic="ffiFmpqPolynomialFactorResource",
+    symbol="sagejs_fmpq_polynomial_factor_resource",
+    returns=int,
+    abi=[
+        out("result", sagejs_exact_polynomial_factorization_t),
+        in_("source", sagejs_fmpq_polynomial_t),
+    ],
+    effects=Effects(pure=False, allocates=True, raises=[ValueError]),
+    result=Status(
+        1,
+        exception=ValueError,
+        message="factorization of 0 is not defined",
+    ),
+    wasm=False,
+)
+def fmpq_polynomial_factor_resource(
+    source: FmpqPolynomial,
+) -> ExactPolynomialFactorization: ...
+
+
+@flint.function(
+    dynamic="ffiExactPolynomialFactorizationCount",
+    symbol="sagejs_exact_polynomial_factorization_count",
+    returns=int,
+    abi=[
+        out("result", fmpz_t),
+        in_("factorization", sagejs_exact_polynomial_factorization_t),
+    ],
+    effects=Effects(pure=True, allocates=True, raises=[ValueError]),
+    result=Status(1, exception=ValueError, message="invalid factorization"),
+    wasm=False,
+)
+def exact_polynomial_factorization_count(
+    factorization: ExactPolynomialFactorization,
+) -> Integer: ...
+
+
+@flint.function(
+    dynamic="ffiExactPolynomialFactorizationExponent",
+    symbol="sagejs_exact_polynomial_factorization_exponent",
+    returns=int,
+    abi=[
+        out("result", fmpz_t),
+        in_("factorization", sagejs_exact_polynomial_factorization_t),
+        in_("index", uint64_t),
+    ],
+    effects=Effects(pure=True, allocates=True, raises=[ValueError]),
+    result=Status(
+        1,
+        exception=ValueError,
+        message="factor index is out of bounds",
+    ),
+    wasm=False,
+)
+def exact_polynomial_factorization_exponent(
+    factorization: ExactPolynomialFactorization,
+    index: uint64,
+) -> Integer: ...
+
+
+@flint.function(
+    dynamic="ffiExactPolynomialFactorizationUnitNumerator",
+    symbol="sagejs_exact_polynomial_factorization_unit_numerator",
+    returns=int,
+    abi=[
+        out("result", fmpz_t),
+        in_("factorization", sagejs_exact_polynomial_factorization_t),
+    ],
+    effects=Effects(pure=True, allocates=True, raises=[ValueError]),
+    result=Status(1, exception=ValueError, message="invalid factorization"),
+    wasm=False,
+)
+def exact_polynomial_factorization_unit_numerator(
+    factorization: ExactPolynomialFactorization,
+) -> Integer: ...
+
+
+@flint.function(
+    dynamic="ffiExactPolynomialFactorizationUnitDenominator",
+    symbol="sagejs_exact_polynomial_factorization_unit_denominator",
+    returns=int,
+    abi=[
+        out("result", fmpz_t),
+        in_("factorization", sagejs_exact_polynomial_factorization_t),
+    ],
+    effects=Effects(pure=True, allocates=True, raises=[ValueError]),
+    result=Status(1, exception=ValueError, message="invalid factorization"),
+    wasm=False,
+)
+def exact_polynomial_factorization_unit_denominator(
+    factorization: ExactPolynomialFactorization,
+) -> Integer: ...
+
+
+@flint.function(
+    dynamic="ffiExactPolynomialFactorizationFmpzFactor",
+    symbol="sagejs_exact_polynomial_factorization_fmpz_factor",
+    returns=int,
+    abi=[
+        out("result", sagejs_fmpz_polynomial_t),
+        in_("factorization", sagejs_exact_polynomial_factorization_t),
+        in_("index", uint64_t),
+    ],
+    effects=Effects(pure=False, allocates=True, raises=[ValueError]),
+    result=Status(
+        1,
+        exception=ValueError,
+        message="factor index is out of bounds",
+    ),
+    wasm=False,
+)
+def exact_polynomial_factorization_fmpz_factor(
+    factorization: ExactPolynomialFactorization,
+    index: uint64,
+) -> FmpzPolynomial: ...
+
+
+@flint.function(
+    dynamic="ffiExactPolynomialFactorizationFmpqFactor",
+    symbol="sagejs_exact_polynomial_factorization_fmpq_factor",
+    returns=int,
+    abi=[
+        out("result", sagejs_fmpq_polynomial_t),
+        in_("factorization", sagejs_exact_polynomial_factorization_t),
+        in_("index", uint64_t),
+    ],
+    effects=Effects(pure=False, allocates=True, raises=[ValueError]),
+    result=Status(
+        1,
+        exception=ValueError,
+        message="factor index is out of bounds",
+    ),
+    wasm=False,
+)
+def exact_polynomial_factorization_fmpq_factor(
+    factorization: ExactPolynomialFactorization,
+    index: uint64,
 ) -> FmpqPolynomial: ...
 
 

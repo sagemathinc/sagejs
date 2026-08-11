@@ -235,9 +235,11 @@ access, equality, arithmetic, powers, evaluation, formatting, and stable bulk
 serialization stay resource-to-resource or resource-to-scalar. The portable
 host keeps normalized packed coefficients as its canonical fallback, and those
 packed forms are also the explicit interchange representation. Exact division
-and factorization still use narrow audited packed materializations; every exact
-result is re-ingested into a sealed resource before it becomes public Node
-state. Polynomials over small prime fields continue to own compiler-managed
+stays resource-to-resource. Exact factorization computes once into a generated,
+callee-owned factorization resource whose FLINT-owned variable-size factors are
+copied directly into sealed polynomial resources; callers never select a limb
+capacity, retry the factorization, or export coefficients individually.
+Polynomials over small prime fields continue to own compiler-managed
 packed `UInt64Buffer` coefficients and reach mature FLINT algorithms only
 through generated declared FFI. Legacy polynomial and factor handles are
 differential oracles, never production `PolynomialElement` state. Exact

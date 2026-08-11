@@ -1430,6 +1430,61 @@ class PolynomialElement(sage.Element):
             unit = base._from_native(result.unit)
             return sage.Factorization(factors, unit, False, True, False)
 
+        if base is sage.ZZ and self._has_fmpz_polynomial_resource():
+            ffi = _flint_ffi_module()
+            factorization = ffi.fmpz_polynomial_factor_resource(
+                self._exact_polynomial_resource()
+            )
+            try:
+                count = int(ffi.exact_polynomial_factorization_count(factorization))
+                factors = []
+                for index in range(count):
+                    factor = parent._from_fmpz_polynomial_resource(
+                        ffi.exact_polynomial_factorization_fmpz_factor(
+                            factorization, index
+                        )
+                    )
+                    exponent = runtime.number(
+                        ffi.exact_polynomial_factorization_exponent(
+                            factorization, index
+                        )
+                    )
+                    factors.append([factor, exponent])
+                unit = base(
+                    ffi.exact_polynomial_factorization_unit_numerator(factorization)
+                )
+                return sage.Factorization(factors, unit, False, True, False)
+            finally:
+                factorization.close()
+
+        if base is sage.QQ and self._has_fmpq_polynomial_resource():
+            ffi = _flint_ffi_module()
+            factorization = ffi.fmpq_polynomial_factor_resource(
+                self._exact_polynomial_resource()
+            )
+            try:
+                count = int(ffi.exact_polynomial_factorization_count(factorization))
+                factors = []
+                for index in range(count):
+                    factor = parent._from_fmpq_polynomial_resource(
+                        ffi.exact_polynomial_factorization_fmpq_factor(
+                            factorization, index
+                        )
+                    )
+                    exponent = runtime.number(
+                        ffi.exact_polynomial_factorization_exponent(
+                            factorization, index
+                        )
+                    )
+                    factors.append([factor, exponent])
+                unit = base(
+                    ffi.exact_polynomial_factorization_unit_numerator(factorization),
+                    ffi.exact_polynomial_factorization_unit_denominator(factorization),
+                )
+                return sage.Factorization(factors, unit, False, True, False)
+            finally:
+                factorization.close()
+
         source_length = self._coefficient_length()
         degree = max(0, source_length - 1)
         factor_coefficients_length = 2 * degree
