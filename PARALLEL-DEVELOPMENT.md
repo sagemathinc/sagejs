@@ -38,6 +38,19 @@ CPython/JavaScript oracles. `native-primitive` and `mixed` work requires an
 explicit exception explaining why the implementation order in
 [`ARCHITECTURE.md`](ARCHITECTURE.md) is insufficient.
 
+Native dependency builds use a content-addressed store in the repository's
+shared Git directory. `parallel:new` restores matching artifacts automatically,
+and `pnpm parallel:cache -- prepare` builds and atomically publishes misses.
+On a fresh checkout, `prepare` builds the Sage.js compiler before attempting
+the first generated native addon; callers do not need to memorize a separate
+bootstrap ordering.
+Large dependency prefixes that are declared immutable, currently the pinned
+FFLAS/Givaro/GMP/OpenBLAS prefix, are mounted read-only from that store instead
+of copied into every worktree. Addons remain independent snapshots because
+their keys include the Node ABI and generated adapter inputs. Override the
+store with `SAGEJS_PARALLEL_NATIVE_CACHE` when the Git directory is on a small
+filesystem.
+
 Use `--no-install` when an external provisioning system will prepare the
 worktree. Run `pnpm parallel:new -- --help` for all options.
 

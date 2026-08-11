@@ -238,7 +238,7 @@ function buildFflasFfpack(source) {
   run("make", ["install"], { cwd: source });
 }
 
-async function main() {
+async function buildDependencies() {
   installHeader();
   const stampPath = join(prefix, ".sagejs-fflas-dependencies.json");
   const expectedStamp = {
@@ -297,6 +297,40 @@ async function main() {
   installHeader();
   writeFileSync(stampPath, `${JSON.stringify(expectedStamp, null, 2)}\n`);
   process.stdout.write(`FFLAS dependencies installed in ${prefix}\n`);
+}
+
+async function main() {
+  const arguments_ = process.argv.slice(2);
+  const cacheBuild = arguments_.length === 1 && arguments_[0] === "--cache-build";
+  if (arguments_.length !== 0 && !cacheBuild) {
+    throw new Error(`unknown FFLAS dependency build option: ${arguments_.join(" ")}`);
+  }
+  if (
+    !cacheBuild &&
+    process.env.SAGEJS_FFLAS_PREFIX === undefined &&
+    process.env.SAGEJS_FLINT_PREFIX === undefined
+  ) {
+    const {
+      prepareNativeDependencies,
+      restoreNativeDependencies,
+    } = require("../../../scripts/native-worktree-cache.cjs");
+    const restored = restoreNativeDependencies(repositoryRoot, ["fflas"]);
+    if (restored.every(({ status }) => ["present", "restored"].includes(status))) {
+      for (const result of restored) {
+        process.stdout.write(`Native cache ${result.id}: ${result.status}\n`);
+      }
+      return;
+    }
+    const results = prepareNativeDependencies(
+      repositoryRoot,
+      ["flint", "fflas"],
+    );
+    for (const result of results) {
+      process.stdout.write(`Native cache ${result.id}: ${result.status}\n`);
+    }
+    return;
+  }
+  await buildDependencies();
 }
 
 main().catch((error) => {

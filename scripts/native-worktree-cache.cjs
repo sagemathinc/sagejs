@@ -4,13 +4,15 @@
 // Native dependencies and addons are expensive, immutable products of source,
 // platform, toolchain, and build options. Keep one verified snapshot in the
 // repository's shared Git directory, then provision each worktree with an
-// independent copy (a copy-on-write clone where the filesystem supports it).
+// independent copy (a copy-on-write clone where the filesystem supports it)
+// or a read-only link for artifacts explicitly declared safe to share.
 // Dependency and addon stages have separate keys so a Node ABI or adapter
 // change never forces a rebuild of mature static libraries.
 
 const {
   chmodSync,
   constants,
+  cpSync,
   copyFileSync,
   existsSync,
   lstatSync,
@@ -173,8 +175,28 @@ function validateNativeArtifactSpec(spec) {
   if (spec.inputPaths.length === 0 || spec.outputRoots.length === 0) {
     throw new Error(`native-cache ${spec.id} needs input and output roots`);
   }
+  if (spec.cleanupRoots !== undefined && !Array.isArray(spec.cleanupRoots)) {
+    throw new Error(`native-cache ${spec.id} cleanupRoots must be an array`);
+  }
+  if (
+    spec.materialization !== undefined &&
+    !["copy", "shared-readonly"].includes(spec.materialization)
+  ) {
+    throw new Error(
+      `invalid native-cache materialization for ${spec.id}: ${spec.materialization}`,
+    );
+  }
+  if (
+    process.platform === "win32" &&
+    spec.materialization === "shared-readonly"
+  ) {
+    throw new Error(
+      `native-cache ${spec.id} cannot enforce shared read-only storage on Windows`,
+    );
+  }
   const inputPaths = spec.inputPaths.map(safeRelativePath);
   const outputRoots = spec.outputRoots.map(safeRelativePath);
+  const cleanupRoots = (spec.cleanupRoots || []).map(safeRelativePath);
   if (new Set(inputPaths).size !== inputPaths.length) {
     throw new Error(`native-cache ${spec.id} has duplicate input paths`);
   }
@@ -194,6 +216,20 @@ function validateNativeArtifactSpec(spec) {
   for (const required of spec.requiredOutputs.map(safeRelativePath)) {
     if (!outputRoots.some((root) => pathIsWithin(required, root))) {
       throw new Error(`native-cache ${spec.id} required output is outside its roots`);
+    }
+  }
+  for (const cleanupRoot of cleanupRoots) {
+    if (
+      inputPaths.some((input) =>
+        pathIsWithin(input, cleanupRoot) || pathIsWithin(cleanupRoot, input)
+      ) ||
+      outputRoots.some((output) =>
+        pathIsWithin(output, cleanupRoot) || pathIsWithin(cleanupRoot, output)
+      )
+    ) {
+      throw new Error(
+        `native-cache ${spec.id} cleanup root overlaps inputs or outputs: ${cleanupRoot}`,
+      );
     }
   }
 }
@@ -421,6 +457,9 @@ function nativeArtifactSpecs(workspace, overrides = {}) {
         ],
     },
     fflas: {
+      dependencyMaterialization: process.platform === "win32"
+        ? "copy"
+        : "shared-readonly",
       dependencyInputs: [
         "packages/fflas/package.json",
         "packages/fflas/scripts/build-deps.cjs",
@@ -456,6 +495,9 @@ function nativeArtifactSpecs(workspace, overrides = {}) {
         ],
       addonBuildCommands: [
         ["pnpm", ["--dir", "packages/fflas", "run", "build:ffi"]],
+      ],
+      dependencyBuildCommands: [
+        ["node", ["packages/fflas/scripts/build-deps.cjs", "--cache-build"]],
       ],
     },
     graph: {
@@ -502,6 +544,7 @@ function nativeArtifactSpecs(workspace, overrides = {}) {
     const dependencyKey = sha256(JSON.stringify(stableJson({
       identity: dependencyIdentity,
       inputs: dependencyInputs,
+      materialization: description.dependencyMaterialization,
       packageId,
       schema: nativeCacheSchema,
       stage: "dependencies",
@@ -527,8 +570,15 @@ function nativeArtifactSpecs(workspace, overrides = {}) {
         inputPaths: description.dependencyInputs,
         inputs: dependencyInputs,
         outputRoots: [dependencyPrefix(packageId)],
+        cleanupRoots: [
+          `packages/${packageId}/.native/downloads`,
+          `packages/${packageId}/.native/sources`,
+        ],
         requiredOutputs: description.requiredDependencyOutputs,
-        buildCommands: [["pnpm", ["--dir", `packages/${packageId}`, "run", "build:deps"]]],
+        buildCommands: description.dependencyBuildCommands || [
+          ["pnpm", ["--dir", `packages/${packageId}`, "run", "build:deps"]],
+        ],
+        materialization: description.dependencyMaterialization || "copy",
       },
       {
         id: `${packageId}-addon`,
@@ -575,6 +625,10 @@ function manifestForEntry(entry) {
   }
 }
 
+function materializationForSpec(spec) {
+  return spec.materialization || "copy";
+}
+
 function pathIsWithin(path, root) {
   return path === root || path.startsWith(`${root}/`);
 }
@@ -589,6 +643,7 @@ function validCacheEntry(entry, spec) {
       manifest.key !== spec.key ||
       manifest.input_hash !== snapshotHash(spec.inputs) ||
       JSON.stringify(manifest.output_roots) !== JSON.stringify(spec.outputRoots) ||
+      (manifest.materialization || "copy") !== materializationForSpec(spec) ||
       !Array.isArray(manifest.files)
     ) return false;
     const outputRoots = spec.outputRoots.map(safeRelativePath);
@@ -607,6 +662,10 @@ function validCacheEntry(entry, spec) {
     const symlinks = new Set(
       files.filter(({ type }) => type === "symlink").map(({ path }) => path),
     );
+    if (
+      materializationForSpec(spec) === "shared-readonly" &&
+      symlinks.size !== 0
+    ) return false;
     for (const file of files) {
       if (!outputRoots.some((root) => pathIsWithin(file.path, root))) return false;
       const components = file.path.split("/");
@@ -628,6 +687,10 @@ function validCacheEntry(entry, spec) {
         return false;
       }
     }
+    if (
+      materializationForSpec(spec) === "shared-readonly" &&
+      !treeIsReadonly(join(entry, "payload"))
+    ) return false;
     return true;
   } catch {
     // A concurrent quarantine can remove an invalid entry during inspection.
@@ -653,12 +716,46 @@ function copySnapshotEntry(sourceRoot, destinationRoot, entry) {
   }
 }
 
+function makeTreeWritable(path) {
+  const metadata = pathMetadata(path);
+  if (metadata === null || metadata.isSymbolicLink()) return;
+  chmodSync(path, metadata.mode | (metadata.isDirectory() ? 0o700 : 0o200));
+  if (metadata.isDirectory()) {
+    for (const name of readdirSync(path)) makeTreeWritable(join(path, name));
+  }
+}
+
+function treeIsReadonly(path) {
+  const metadata = pathMetadata(path);
+  if (metadata === null) return false;
+  if (metadata.isSymbolicLink()) return true;
+  if ((metadata.mode & 0o222) !== 0) return false;
+  return !metadata.isDirectory() || readdirSync(path).every(
+    (name) => treeIsReadonly(join(path, name)),
+  );
+}
+
+function freezeSharedPayload(path) {
+  const metadata = pathMetadata(path);
+  if (metadata === null || metadata.isSymbolicLink()) return;
+  if (metadata.isDirectory()) {
+    for (const name of readdirSync(path)) freezeSharedPayload(join(path, name));
+  }
+  chmodSync(path, metadata.mode & ~0o222);
+}
+
+function removeCacheTree(path) {
+  if (!existsSync(path)) return;
+  makeTreeWritable(path);
+  rmSync(path, { recursive: true, force: true });
+}
+
 function quarantineCacheEntry(entry) {
   if (!existsSync(entry)) return;
   const quarantine = `${entry}.corrupt-${process.pid}-${randomUUID()}`;
   try {
     renameSync(entry, quarantine);
-    rmSync(quarantine, { recursive: true, force: true });
+    removeCacheTree(quarantine);
   } catch {
     // Another publisher or reader won the race. Treat this lookup as a miss.
   }
@@ -694,9 +791,13 @@ function publishNativeArtifact(workspace, cacheRoot, spec) {
       key: spec.key,
       output_roots: spec.outputRoots,
       input_hash: snapshotHash(spec.inputs),
+      materialization: materializationForSpec(spec),
       files,
     };
     writeFileSync(join(temporary, "manifest.json"), `${JSON.stringify(manifest, null, 2)}${EOL}`);
+    if (materializationForSpec(spec) === "shared-readonly") {
+      freezeSharedPayload(join(temporary, "payload"));
+    }
     assertInputsCurrent(workspaceRoot, spec);
     if (!validCacheEntry(temporary, spec)) {
       throw new Error(`native-cache refused invalid publication for ${spec.id}`);
@@ -705,16 +806,28 @@ function publishNativeArtifact(workspace, cacheRoot, spec) {
       renameSync(temporary, entry);
     } catch (error) {
       if (validCacheEntry(entry, spec)) {
-        rmSync(temporary, { recursive: true, force: true });
+        removeCacheTree(temporary);
         return { status: "concurrent-publication", entry };
       }
       throw error;
     }
     return { status: "published", entry };
   } catch (error) {
-    rmSync(temporary, { recursive: true, force: true });
+    removeCacheTree(temporary);
     throw error;
   }
+}
+
+function sharedOutputRootsPresent(workspaceRoot, entry, spec) {
+  if (materializationForSpec(spec) !== "shared-readonly") return false;
+  return spec.outputRoots.every((outputRoot) => {
+    const target = workspacePath(workspaceRoot, outputRoot);
+    const metadata = pathMetadata(target);
+    if (metadata === null || !metadata.isSymbolicLink()) return false;
+    const actual = resolve(dirname(target), readlinkSync(target));
+    const expected = resolve(entry, "payload", outputRoot);
+    return actual === expected;
+  });
 }
 
 function restoreNativeArtifact(workspace, cacheRoot, spec, options = {}) {
@@ -727,21 +840,39 @@ function restoreNativeArtifact(workspace, cacheRoot, spec, options = {}) {
   }
   const manifest = manifestForEntry(entry);
   for (const outputRoot of spec.outputRoots) {
-    workspacePath(workspaceRoot, outputRoot, { allowLeafSymlink: false });
+    workspacePath(workspaceRoot, outputRoot);
   }
-  const currentFiles = snapshot(workspaceRoot, spec.outputRoots).filter(
-    ({ type }) => type !== "missing",
-  );
-  if (JSON.stringify(currentFiles) === JSON.stringify(manifest.files)) {
+  if (sharedOutputRootsPresent(workspaceRoot, entry, spec)) {
     assertInputsCurrent(workspaceRoot, spec);
     return { status: "present", entry };
+  }
+  if (materializationForSpec(spec) === "copy") {
+    const currentFiles = snapshot(workspaceRoot, spec.outputRoots).filter(
+      ({ type }) => type !== "missing",
+    );
+    if (JSON.stringify(currentFiles) === JSON.stringify(manifest.files)) {
+      assertInputsCurrent(workspaceRoot, spec);
+      return { status: "present", entry };
+    }
   }
   const temporary = mkdtempSync(join(workspaceRoot, ".sagejs-native-restore-"));
   const transaction = [];
   let committed = false;
   try {
-    for (const file of manifest.files) {
-      copySnapshotEntry(join(entry, "payload"), temporary, file);
+    if (materializationForSpec(spec) === "shared-readonly") {
+      for (const outputRoot of spec.outputRoots) {
+        const staged = join(temporary, outputRoot);
+        mkdirSync(dirname(staged), { recursive: true });
+        symlinkSync(
+          join(entry, "payload", outputRoot),
+          staged,
+          process.platform === "win32" ? "junction" : "dir",
+        );
+      }
+    } else {
+      for (const file of manifest.files) {
+        copySnapshotEntry(join(entry, "payload"), temporary, file);
+      }
     }
     for (const requestedRoot of spec.outputRoots) {
       const outputRoot = safeRelativePath(requestedRoot);
@@ -750,7 +881,7 @@ function restoreNativeArtifact(workspace, cacheRoot, spec, options = {}) {
         throw new Error(`native-cache entry is missing output root ${outputRoot}`);
       }
       const target = workspacePath(workspaceRoot, outputRoot, {
-        allowLeafSymlink: false,
+        allowLeafSymlink: true,
       });
       const backup = `${target}.sagejs-cache-backup-${process.pid}-${randomUUID()}`;
       mkdirSync(dirname(target), { recursive: true });
@@ -766,9 +897,9 @@ function restoreNativeArtifact(workspace, cacheRoot, spec, options = {}) {
     assertInputsCurrent(workspaceRoot, spec);
     for (const root of transaction) {
       workspacePath(workspaceRoot, root.outputRoot, {
-        allowLeafSymlink: false,
+        allowLeafSymlink: true,
       });
-      if (existsSync(root.target)) {
+      if (pathMetadata(root.target) !== null) {
         renameSync(root.target, root.backup);
         root.backedUp = true;
       }
@@ -784,10 +915,10 @@ function restoreNativeArtifact(workspace, cacheRoot, spec, options = {}) {
   } catch (error) {
     for (const root of [...transaction].reverse()) {
       try {
-        if (root.installed && existsSync(root.target)) {
+        if (root.installed && pathMetadata(root.target) !== null) {
           rmSync(root.target, { recursive: true, force: true });
         }
-        if (root.backedUp && existsSync(root.backup)) {
+        if (root.backedUp && pathMetadata(root.backup) !== null) {
           renameSync(root.backup, root.target);
         }
       } catch (rollbackError) {
@@ -798,7 +929,10 @@ function restoreNativeArtifact(workspace, cacheRoot, spec, options = {}) {
   } finally {
     if (!committed) {
       for (const root of transaction) {
-        if (existsSync(root.backup) && !existsSync(root.target)) {
+        if (
+          pathMetadata(root.backup) !== null &&
+          pathMetadata(root.target) === null
+        ) {
           renameSync(root.backup, root.target);
         }
       }
@@ -922,6 +1056,48 @@ function runBuildCommands(workspace, spec, runner = runCommand) {
   for (const [command, args] of spec.buildCommands) runner(command, args, workspace);
 }
 
+function ensureNativeCompiler(workspace, options = {}) {
+  const required = [
+    join(workspace, "dist", "compiler", "compiler.js"),
+    join(workspace, "dist", "tools", "compiler.js"),
+    join(workspace, "dist", "tools", "python", "compiler-frontend.js"),
+    join(workspace, "dist", "vendor", "web-tree-sitter.wasm"),
+    join(workspace, "dist", "vendor", "tree-sitter-python.wasm"),
+    join(workspace, "dist", "vendor", "tree-sitter-sage.wasm"),
+  ];
+  const compiler = required[1];
+  if (required.every((path) => existsSync(path))) {
+    return { status: "present", compiler };
+  }
+  if (typeof options.buildCompiler === "function") {
+    options.buildCompiler(workspace, required);
+  } else {
+    mkdirSync(join(workspace, "dist", "compiler"), { recursive: true });
+    cpSync(
+      join(workspace, "bootstrap"),
+      join(workspace, "dist", "compiler"),
+      { recursive: true },
+    );
+    runCommand(process.execPath, [
+      join(workspace, "node_modules", "typescript", "bin", "tsc"),
+      "--project",
+      join(workspace, "tsconfig.json"),
+    ], workspace);
+    runCommand(process.execPath, [
+      join(workspace, "scripts", "build-vendor.cjs"),
+      "--compiler",
+    ], workspace);
+  }
+  const missing = required.filter((path) => !existsSync(path));
+  if (missing.length !== 0) {
+    throw new Error(
+      "native-cache addon preparation requires the compiled Python frontend; " +
+        `the compiler build omitted ${missing.join(", ")}`,
+    );
+  }
+  return { status: "built", compiler };
+}
+
 function prepareNativeArtifact(workspace, cacheRoot, spec, options = {}) {
   assertInputsCurrent(workspace, spec);
   const workspaceRoot = resolvedWorkspaceRoot(workspace);
@@ -950,7 +1126,7 @@ function prepareNativeArtifact(workspace, cacheRoot, spec, options = {}) {
     // older compiler or a different set of build flags.
     for (const outputRoot of spec.outputRoots) {
       const target = workspacePath(workspaceRoot, outputRoot, {
-        allowLeafSymlink: false,
+        allowLeafSymlink: true,
       });
       rmSync(target, {
         recursive: true,
@@ -964,6 +1140,23 @@ function prepareNativeArtifact(workspace, cacheRoot, spec, options = {}) {
     assertInputsCurrent(workspaceRoot, spec);
     heartbeatNativeCacheLock(lock, lockToken);
     const publication = publishNativeArtifact(workspaceRoot, cacheRoot, spec);
+    if (materializationForSpec(spec) === "shared-readonly") {
+      const linked = restoreNativeArtifact(
+        workspaceRoot,
+        cacheRoot,
+        spec,
+        options,
+      );
+      if (linked.status !== "restored") {
+        throw new Error(`native-cache failed to link shared artifact ${spec.id}`);
+      }
+    }
+    for (const cleanupRoot of spec.cleanupRoots || []) {
+      const target = workspacePath(workspaceRoot, cleanupRoot, {
+        allowLeafSymlink: false,
+      });
+      rmSync(target, { recursive: true, force: true });
+    }
     return { status: "built", entry: publication.entry };
   } finally {
     releaseNativeCacheLock(lock, lockToken);
@@ -983,20 +1176,82 @@ function selectedNativeSpecs(workspace, packageIds, options = {}) {
 }
 
 function nativePackageCacheable(packageId) {
-  return process.env[`SAGEJS_${packageId.toUpperCase()}_PREFIX`] === undefined;
+  if (process.env[`SAGEJS_${packageId.toUpperCase()}_PREFIX`] !== undefined) {
+    return false;
+  }
+  // FFLAS copies the exact OpenBLAS archive selected by the FLINT prefix.
+  // An externally managed FLINT prefix has no content identity in this cache.
+  return packageId !== "fflas" || process.env.SAGEJS_FLINT_PREFIX === undefined;
 }
 
 function prepareNativePackages(workspace, packageIds, options = {}) {
   const cacheRoot = options.cacheRoot || defaultNativeCacheRoot(workspace);
   const results = [];
+  const preparedSpecs = new Set();
+  const prepareSpec = (spec) => {
+    if (preparedSpecs.has(spec.id)) return;
+    if (spec.stage === "addon") ensureNativeCompiler(workspace, options);
+    results.push({
+      id: spec.id,
+      ...prepareNativeArtifact(workspace, cacheRoot, spec, options),
+    });
+    preparedSpecs.add(spec.id);
+  };
   for (const packageId of packageIds) {
+    if (packageId === "fflas" && nativePackageCacheable("flint")) {
+      const flintPrerequisites = selectedNativeSpecs(
+        workspace,
+        ["flint"],
+        options,
+      );
+      for (const prerequisite of flintPrerequisites) prepareSpec(prerequisite);
+    }
     if (!nativePackageCacheable(packageId)) {
+      ensureNativeCompiler(workspace, options);
       runCommand("pnpm", ["--dir", `packages/${packageId}`, "build"], workspace);
       results.push({ id: packageId, status: "built-uncached-custom-prefix" });
       continue;
     }
     for (const spec of selectedNativeSpecs(workspace, [packageId], options)) {
-      results.push({ id: spec.id, ...prepareNativeArtifact(workspace, cacheRoot, spec, options) });
+      prepareSpec(spec);
+    }
+  }
+  return results;
+}
+
+function prepareNativeDependencies(workspace, packageIds, options = {}) {
+  const cacheRoot = options.cacheRoot || defaultNativeCacheRoot(workspace);
+  const results = [];
+  for (const packageId of packageIds) {
+    if (!nativePackageCacheable(packageId)) {
+      results.push({ id: packageId, status: "skipped-custom-prefix" });
+      continue;
+    }
+    for (const spec of selectedNativeSpecs(workspace, [packageId], options)) {
+      if (spec.stage !== "dependencies") continue;
+      results.push({
+        id: spec.id,
+        ...prepareNativeArtifact(workspace, cacheRoot, spec, options),
+      });
+    }
+  }
+  return results;
+}
+
+function restoreNativeDependencies(workspace, packageIds, options = {}) {
+  const cacheRoot = options.cacheRoot || defaultNativeCacheRoot(workspace);
+  const results = [];
+  for (const packageId of packageIds) {
+    if (!nativePackageCacheable(packageId)) {
+      results.push({ id: packageId, status: "skipped-custom-prefix" });
+      continue;
+    }
+    for (const spec of selectedNativeSpecs(workspace, [packageId], options)) {
+      if (spec.stage !== "dependencies") continue;
+      results.push({
+        id: spec.id,
+        ...restoreNativeArtifact(workspace, cacheRoot, spec, options),
+      });
     }
   }
   return results;
@@ -1022,12 +1277,15 @@ function restoreNativePackages(workspace, packageIds, options = {}) {
 
 module.exports = {
   defaultNativeCacheRoot,
+  ensureNativeCompiler,
   nativeArtifactSpecs,
   nativeCachePackages,
   prepareNativeArtifact,
+  prepareNativeDependencies,
   prepareNativePackages,
   publishNativeArtifact,
   restoreNativeArtifact,
+  restoreNativeDependencies,
   restoreNativePackages,
   snapshot,
   validCacheEntry,
