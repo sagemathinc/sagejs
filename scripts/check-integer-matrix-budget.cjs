@@ -58,6 +58,9 @@ const cases = [
   { name: "copy_500", expression: "_integer_left.__copy__()", budget: 12 },
   { name: "trace_500", expression: "_integer_left.trace()", budget: 6 },
   { name: "density_500", expression: "_integer_left.density()", budget: 8 },
+  { name: "list_500", expression: "_integer_left.list()", budget: 50 },
+  { name: "rows_500", expression: "_integer_left.rows()", budget: 75 },
+  { name: "columns_500", expression: "_integer_left.columns()", budget: 180 },
   {
     name: "select_rows_500",
     expression: "_integer_left.matrix_from_rows(_integer_selection_indices)",

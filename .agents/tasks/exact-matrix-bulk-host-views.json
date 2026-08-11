@@ -1,0 +1,138 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "exact-matrix-bulk-host-views",
+  "title": "Bulk exact matrix host views",
+  "lane": "arithmetic-algebra",
+  "status": "review",
+  "owner": "user",
+  "objective": "Make dense ZZ and QQ matrix list, row, rows, column, columns, diagonal, and pivots cross generated FLINT resources through canonical variable-length bulk storage without uniform IntegerBuffer compatibility materialization or scalar FFI proportional to matrix size; preserve Sage semantics, ownership, native-disabled behavior, and uniformly competitive measured performance.",
+  "base_commit": "c0bfe8c3bcf170f0f0519e4f43f0fcd38d770024",
+  "claims": [
+    "src/baselib/matrix.py",
+    "test/exact-matrix-bulk-host-views.cjs",
+    "test/node-test-manifest.cjs",
+    "scripts/check-integer-matrix-budget.cjs",
+    "scripts/check-rational-matrix-budget.cjs",
+    "bench/exact-matrix-bulk-host-views.cjs"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "external-library",
+    "fallback": "tested-capability",
+    "oracles": [
+      "Current Sage.js semantics, generated resource scalar access, and SageMath"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "node test/exact-matrix-bulk-host-views.cjs",
+    "node bench/exact-matrix-bulk-host-views.cjs",
+    "node scripts/check-integer-matrix-budget.cjs",
+    "node scripts/check-rational-matrix-budget.cjs",
+    "pnpm test:baselib:strict",
+    "pnpm test:native"
+  ],
+  "runs": [
+    {
+      "command": "node test/exact-matrix-bulk-host-views.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.838,
+      "started_at": "2026-08-11T15:09:43.512Z",
+      "commit": "c0bfe8c3bcf170f0f0519e4f43f0fcd38d770024",
+      "workspace_fingerprint": "77b92f14ffa35b99f134c1e371d2b0109db0c897656e96bc7d251c51b2599707",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/exact-matrix-bulk-host-views.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.267,
+      "started_at": "2026-08-11T15:09:45.950Z",
+      "commit": "c0bfe8c3bcf170f0f0519e4f43f0fcd38d770024",
+      "workspace_fingerprint": "77b92f14ffa35b99f134c1e371d2b0109db0c897656e96bc7d251c51b2599707",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node scripts/check-integer-matrix-budget.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 12.73,
+      "started_at": "2026-08-11T15:09:51.036Z",
+      "commit": "c0bfe8c3bcf170f0f0519e4f43f0fcd38d770024",
+      "workspace_fingerprint": "77b92f14ffa35b99f134c1e371d2b0109db0c897656e96bc7d251c51b2599707",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node scripts/check-rational-matrix-budget.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 17.944,
+      "started_at": "2026-08-11T15:10:04.378Z",
+      "commit": "c0bfe8c3bcf170f0f0519e4f43f0fcd38d770024",
+      "workspace_fingerprint": "77b92f14ffa35b99f134c1e371d2b0109db0c897656e96bc7d251c51b2599707",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 12.864,
+      "started_at": "2026-08-11T15:10:26.124Z",
+      "commit": "c0bfe8c3bcf170f0f0519e4f43f0fcd38d770024",
+      "workspace_fingerprint": "77b92f14ffa35b99f134c1e371d2b0109db0c897656e96bc7d251c51b2599707",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 2.705,
+      "started_at": "2026-08-11T15:10:39.603Z",
+      "commit": "c0bfe8c3bcf170f0f0519e4f43f0fcd38d770024",
+      "workspace_fingerprint": "77b92f14ffa35b99f134c1e371d2b0109db0c897656e96bc7d251c51b2599707",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:native",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 5.149,
+      "started_at": "2026-08-11T15:10:57.350Z",
+      "commit": "c0bfe8c3bcf170f0f0519e4f43f0fcd38d770024",
+      "workspace_fingerprint": "77b92f14ffa35b99f134c1e371d2b0109db0c897656e96bc7d251c51b2599707",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:native",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 224.3,
+      "started_at": "2026-08-11T15:11:26.376Z",
+      "commit": "c0bfe8c3bcf170f0f0519e4f43f0fcd38d770024",
+      "workspace_fingerprint": "77b92f14ffa35b99f134c1e371d2b0109db0c897656e96bc7d251c51b2599707",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Dense generated ZZ and QQ resources now expose list/rows/columns through one canonical variable-length serialization and one bulk exact decode without populating uniform compatibility buffers. Single row/column access uses generated FLINT selectors, serializes only the selected slice, and closes temporary resources deterministically. Exact pivots scan one bulk echelon export. Structural tests forbid scalar entry FFI and old uniform decoders, cover native-disabled execution, empty shapes, mutation/vector-copy semantics, negative indices, and entries up to 65K bits. The 200x200 benchmark measured 7.6-43x ZZ and 2.5-10.8x QQ speedups over the previous compatibility boundaries; 500x500 ZZ list/rows/columns are 15.5/25.4/101.3ms and 300x300 QQ are 107.5/112.0/147.1ms in the full native gate.",
+    "risks": [
+      "The readable matrix.py implementation raises the linear-algebra package from 325000 to 327608 bytes; integration must explicitly ratchet that budget to 330000 and rerun architecture:check.",
+      "QQ host-view time is now dominated by constructing ordinary immutable Rational objects rather than FFI crossings; further improvement belongs in a generic rational host-object/runtime path, not a return to uniform matrix storage.",
+      "diagonal remains a scalar resource operation because exporting the whole matrix for O(min(rows, columns)) entries would be a regression without a declared diagonal selector."
+    ],
+    "next_steps": [
+      "Raise the linear-algebra package budget to 330000 in the integration lane and run pnpm architecture:check.",
+      "Consider a generated exact diagonal selector and a generic bulk rational-object constructor if profiles justify them.",
+      "Use the same variable-length bulk host boundary for exact matrix construction/import so native-disabled construction no longer needs scalar fallback calls."
+    ]
+  }
+}
