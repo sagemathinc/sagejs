@@ -2023,6 +2023,25 @@ def fmpq_matrix_rref(source: FmpqMatrix) -> FmpqMatrix: ...
 
 
 @flint.function(
+    dynamic="ffiFmpqMatrixRightKernel",
+    symbol="sagejs_fmpq_matrix_right_kernel",
+    returns=int,
+    abi=[
+        out("result", sagejs_fmpq_matrix_t),
+        in_("source", sagejs_fmpq_matrix_t),
+    ],
+    effects=Effects(pure=False, allocates=True, raises=[RuntimeError]),
+    result=Status(
+        1,
+        exception=RuntimeError,
+        message="rational matrix right kernel failed",
+    ),
+    wasm=False,
+)
+def fmpq_matrix_right_kernel(source: FmpqMatrix) -> FmpqMatrix: ...
+
+
+@flint.function(
     dynamic="ffiFmpqMatrixRank",
     symbol="sagejs_fmpq_matrix_rank",
     returns=uint64_t,

@@ -154,6 +154,7 @@ test("FFI declarations are strict and generated modules are current", () => {
       "fmpq_matrix_add", "fmpq_matrix_sub",
       "fmpq_matrix_transpose", "fmpq_matrix_mul", "fmpq_matrix_inv",
       "fmpq_matrix_solve", "fmpq_matrix_rref",
+      "fmpq_matrix_right_kernel",
       "fmpq_matrix_rank", "fmpq_matrix_det", "fmpq_matrix_trace",
       "fmpq_matrix_submatrix", "fmpq_matrix_select_rows",
       "fmpq_matrix_select_columns", "fmpq_matrix_set_block",
@@ -221,7 +222,7 @@ test("FFI declarations are strict and generated modules are current", () => {
     { resource: "graph", ownership: "owned", owner: null, root: "graph" },
     { resource: "edges", ownership: "borrowed", owner: "graph", root: "graph" },
   ]);
-  assert.match(runSage(["ffi", "check"]), /157 function\(s\)/);
+  assert.match(runSage(["ffi", "check"]), /158 function\(s\)/);
   const inspection = JSON.parse(
     runSage(["ffi", "explain", "flint", "--json"]),
   );
@@ -271,14 +272,14 @@ test("generated host adapters cover values and safe owned resources", () => {
     assert.doesNotMatch(source, /sagejs\.runtime|ffi_call/);
     assert.equal(
       functions.length,
-      declaration.library.id === "flint" ? 150 : 2,
+      declaration.library.id === "flint" ? 151 : 2,
     );
   }
 });
 
 test("packages make generated host adapters canonical and retain handwritten oracles", () => {
   for (const [packagePath, expected] of [
-    ["../packages/flint", 150],
+    ["../packages/flint", 151],
     ["../packages/graph", 2],
   ]) {
     const backend = require(packagePath);
@@ -425,7 +426,7 @@ test("native-boundary audit is a reviewed exact ratchet", () => {
   const current = boundaryAudit.validateBoundarySnapshot(snapshot, { root });
   assert.ok(current.counts["napi-export"] >= 280);
   assert.ok(current.counts["runtime-intrinsic"] >= 100);
-  assert.equal(current.counts["declared-ffi"], 157);
+  assert.equal(current.counts["declared-ffi"], 158);
   assert.equal(current.counts["declared-ffi-resource"], 9);
   assert.match(runSage(["ffi", "audit"]), /inventoried native boundaries/);
   assert.equal(
@@ -1109,6 +1110,7 @@ test("generated rational matrix resources execute direct FLINT operations", () =
       () => flint.ffiFmpqMatrixIsOne(closed),
       () => flint.ffiFmpqMatrixTrace(closed),
       () => flint.ffiFmpqMatrixRank(closed),
+      () => flint.ffiFmpqMatrixRightKernel(closed),
     ]) {
       assert.throws(operation, /resource is closed|Invalid argument/);
     }

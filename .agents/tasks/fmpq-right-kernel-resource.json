@@ -1,0 +1,133 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "fmpq-right-kernel-resource",
+  "title": "Generated rational matrix right kernel resource",
+  "lane": "integration",
+  "status": "active",
+  "owner": "user",
+  "objective": "Add a generated FmpqMatrix-to-FmpqMatrix right-kernel operation that computes and canonicalizes the rational kernel entirely inside FLINT-owned storage, with deterministic lifecycle, no packed RationalBuffer conversion, and scaling competitive with Sage.",
+  "base_commit": "ceaa79eedd8ff8ab5083d02a87edeba7ffba62c0",
+  "claims": [
+    "ffi/flint.ffi.py",
+    "ffi/flint.ffi.json",
+    "packages/flint/include/sagejs/fmpq_matrix_ffi.h",
+    "packages/flint/generated/ffi_host.py",
+    "src/baselib/sagejs/ffi/flint.py",
+    "src/lib/sagejs/ffi/flint.py",
+    "architecture/native-boundaries.json",
+    "test/ffi.cjs",
+    "test/node-test-manifest.cjs",
+    "test/fmpq-matrix-right-kernel-resource.cjs",
+    "test/fmpq-resource-ops-lifecycle.cjs",
+    "bench/fmpq-matrix-right-kernel-resource.cjs"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "external-library",
+    "fallback": "tested-capability",
+    "oracles": [
+      "current typed-Python rational kernel from RREF",
+      "SageMath right_kernel_matrix",
+      "A*K.transpose() equals zero and basis is canonical RREF"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "fallback",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm architecture:check",
+    "pnpm test:portable",
+    "pnpm test:baselib:strict"
+  ],
+  "runs": [
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 11.892,
+      "started_at": "2026-08-11T13:57:19.433Z",
+      "commit": "ceaa79eedd8ff8ab5083d02a87edeba7ffba62c0",
+      "workspace_fingerprint": "dd44600f6f2d7cc3f88b521617e0e34ff83f41d20b90dc738197557fb0d28b61",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/fmpq-matrix-right-kernel-resource.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.347,
+      "started_at": "2026-08-11T13:57:35.123Z",
+      "commit": "ceaa79eedd8ff8ab5083d02a87edeba7ffba62c0",
+      "workspace_fingerprint": "dd44600f6f2d7cc3f88b521617e0e34ff83f41d20b90dc738197557fb0d28b61",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "env SAGEJS_FLINT_PREFIX=/home/user/sagejs/packages/flint/.native/prefix node test/fmpq-resource-ops-lifecycle.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.821,
+      "started_at": "2026-08-11T13:57:45.965Z",
+      "commit": "ceaa79eedd8ff8ab5083d02a87edeba7ffba62c0",
+      "workspace_fingerprint": "dd44600f6f2d7cc3f88b521617e0e34ff83f41d20b90dc738197557fb0d28b61",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/ffi.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 34.708,
+      "started_at": "2026-08-11T13:58:35.577Z",
+      "commit": "ceaa79eedd8ff8ab5083d02a87edeba7ffba62c0",
+      "workspace_fingerprint": "dd44600f6f2d7cc3f88b521617e0e34ff83f41d20b90dc738197557fb0d28b61",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 2.65,
+      "started_at": "2026-08-11T13:59:13.461Z",
+      "commit": "ceaa79eedd8ff8ab5083d02a87edeba7ffba62c0",
+      "workspace_fingerprint": "dd44600f6f2d7cc3f88b521617e0e34ff83f41d20b90dc738197557fb0d28b61",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 30.282,
+      "started_at": "2026-08-11T13:59:18.824Z",
+      "commit": "ceaa79eedd8ff8ab5083d02a87edeba7ffba62c0",
+      "workspace_fingerprint": "dd44600f6f2d7cc3f88b521617e0e34ff83f41d20b90dc738197557fb0d28b61",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "env SAGE_BIN=/home/user/sagelite/sage node bench/fmpq-matrix-right-kernel-resource.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 92.506,
+      "started_at": "2026-08-11T13:59:59.299Z",
+      "commit": "ceaa79eedd8ff8ab5083d02a87edeba7ffba62c0",
+      "workspace_fingerprint": "dd44600f6f2d7cc3f88b521617e0e34ff83f41d20b90dc738197557fb0d28b61",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Added a generated declared FmpqMatrix-to-FmpqMatrix right-kernel operation. The host adapter reverses source columns, performs exactly one FLINT RREF, and constructs the reversed free-variable basis directly in canonical row-RREF form. This avoids packed RationalBuffer conversion, uniform limb capacity, repeated elimination, and hidden FLINT-to-FLINT copying. Exact differential tests cover randomized rank profiles, degenerate dimensions, 4097-bit skew entries, source preservation, canonicality, closed resources, deterministic cleanup, and sanitizer-backed lifecycle fuzzing. On deterministic 60x90, 80x120, and 120x180 rational matrices, generated-resource medians were 22.28 ms, 63.80 ms, and 229.82 ms versus current-public 816.67 ms, 3781.20 ms, and 38621.09 ms, and SageMath 46.56 ms, 101.08 ms, and 411.10 ms.",
+    "risks": [
+      "The generated native-host compilation cache does not currently include transitive C header contents in its key. Reproduction: build packages/flint generated FFI, modify only packages/flint/include/sagejs/fmpq_matrix_ffi.h, then rerun SAGEJS_FLINT_PREFIX=/home/user/sagejs/packages/flint/.native/prefix pnpm --dir packages/flint build:ffi; the cached addon is reused until packages/flint/.native/ffi-host-cache is moved aside. This belongs in a compiler-infrastructure lane.",
+      "pnpm architecture:check and pnpm test:portable reach the package-graph check and fail only because python-stdlib owns 971105 source bytes against the shared 970000-byte lazy budget. package-graph.json is intentionally outside this lane's claims and must be handled deliberately by integration.",
+      "The FmpqMatrix resource target remains wasm=False. The ownership and mathematical operation are host-independent at the declaration level, but browser lowering is not established in this lane."
+    ],
+    "next_steps": [
+      "Route the public rational Matrix.right_kernel implementation through the generated resource and benchmark end-to-end construction and result ownership.",
+      "Fix the generated native-host cache key to include transitive headers, then add a regression proving header-only adapter changes rebuild the addon.",
+      "Integrate the package-size budget explicitly rather than shrinking generated readable wrappers or weakening the ratchet."
+    ]
+  }
+}
