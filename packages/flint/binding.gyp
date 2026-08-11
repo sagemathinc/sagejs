@@ -14,6 +14,7 @@
         "src/dirichlet.c",
         "src/extension_field.c",
         "src/floating.c",
+        "src/fmpq_rref_result.c",
         "src/matrix.c",
         "src/modsym_core.c",
         "src/number_field_factor.c",

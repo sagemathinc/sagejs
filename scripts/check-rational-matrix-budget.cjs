@@ -64,6 +64,12 @@ const cases = [
   { name: "determinant_60", expression: "_rational_det.__copy__().det()", budget: 80 },
   { name: "rank_80", expression: "_rational_square.__copy__().rank()", budget: 35 },
   { name: "rref_60x90", expression: "_rational_wide.__copy__().rref()", budget: 70 },
+  {
+    name: "rref_200x300",
+    expression: "_rational_large_wide.__copy__().rref()",
+    budget: 1100,
+    hardLimit: 1600,
+  },
   { name: "inverse_40", expression: "_rational_inverse.__copy__().inverse()", budget: 80 },
   { name: "solve_40x8", expression: "_rational_inverse.solve_right(_rational_rhs)", budget: 80 },
   { name: "charpoly_35", expression: "_rational_polynomial.__copy__().charpoly()", budget: 80 },
@@ -177,6 +183,7 @@ async function run(environment = process.env) {
         "_rational_square = random_matrix(QQ, 80) / 7",
         "_rational_det = random_matrix(QQ, 60) / 11",
         "_rational_wide = random_matrix(QQ, 60, 90) / 13",
+        "_rational_large_wide = random_matrix(QQ, 200, 300)",
         "_rational_inverse = random_matrix(QQ, 40) + identity_matrix(QQ, 40)",
         "_rational_rhs = random_matrix(QQ, 40, 8) / 17",
         "_rational_polynomial = random_matrix(QQ, 35) / 19",
@@ -222,7 +229,10 @@ async function run(environment = process.env) {
         `${result.normalized.toFixed(2).padStart(7)} / ` +
         `${result.scaledBudget.toFixed(2).padStart(7)} ms`,
       );
-      if (result.normalized > result.scaledBudget || result.raw > hardLimit) {
+      if (
+        result.normalized > result.scaledBudget ||
+        result.raw > (result.hardLimit ?? hardLimit)
+      ) {
         failures.push(result.name);
       }
     }

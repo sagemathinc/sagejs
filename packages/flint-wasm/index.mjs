@@ -1,6 +1,7 @@
 import { createWasiHost } from "./dist/wasi-runtime.mjs";
 import { createPortablePolynomialBackend } from "./portable-polynomial.mjs";
 import { createPortableMatrixBackend } from "./portable-matrix.mjs";
+import { createPortableRrefResourceBackend } from "./portable-rref-resource.mjs";
 
 const encoder = new TextEncoder();
 const decoder = new TextDecoder();
@@ -46,6 +47,7 @@ export async function instantiateFlintFactor(source) {
   wasi.initialize(instance);
   const polynomialBackend = createPortablePolynomialBackend();
   const matrixBackend = createPortableMatrixBackend();
+  const rrefResourceBackend = createPortableRrefResourceBackend(matrixBackend);
 
   // WebAssembly i32 results reach JavaScript as signed numbers even when the
   // C declaration is uint32_t/size_t. Normalize handles, pointers, and sizes.
@@ -507,6 +509,7 @@ export async function instantiateFlintFactor(source) {
     p1ListReducePath,
     ...polynomialBackend,
     ...matrixBackend,
+    ...rrefResourceBackend,
     matrixCharpoly,
   });
 }

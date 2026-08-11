@@ -31,6 +31,9 @@ const root = join(__dirname, "..");
 const witness = join(root, "bench", "native-ffi-flint.py");
 const matrixWitness = join(root, "bench", "native-ffi-flint-matrix.py");
 const resourceWitness = join(root, "bench", "native-ffi-flint-resource.py");
+const rrefResourceWitness = join(
+  root, "bench", "native-ffi-flint-rref-resource.py",
+);
 const igraphWitness = join(root, "bench", "native-ffi-igraph.py");
 const igraphCanonicalWitness = join(
   root, "bench", "native-ffi-igraph-canonical.py",
@@ -116,7 +119,11 @@ test("FFI declarations are strict and generated modules are current", () => {
       "fmpz_mat_rank", "fmpz_mat_mul", "fmpz_mat_det",
       "fmpz_mat_charpoly", "fmpz_mat_hnf", "fmpz_mat_hnf_transform",
       "fmpz_mat_snf_transform", "fmpz_mat_right_kernel",
-      "fmpq_mat_rank", "fmpq_mat_mul", "fmpq_mat_rref",
+      "fmpq_mat_rank", "fmpq_mat_mul", "fmpq_rref_result",
+      "fmpq_rref_result_compute", "fmpq_rref_result_rank",
+      "fmpq_rref_result_numerator_word_capacity",
+      "fmpq_rref_result_denominator_word_capacity",
+      "fmpq_rref_result_export", "fmpq_mat_rref",
       "fmpq_mat_inv", "fmpq_mat_solve", "fmpq_mat_det",
       "fmpq_mat_charpoly",
       "nmod_mat_rank", "nmod_mat_det", "nmod_mat_charpoly",
@@ -130,7 +137,7 @@ test("FFI declarations are strict and generated modules are current", () => {
   );
   assert.deepEqual(
     flint.resources.map((resource) => resource.python_name),
-    ["DirichletGroup"],
+    ["DirichletGroup", "FmpqRrefResult"],
   );
   assert.match(flint.identity, /^flint@[0-9a-f]{64}$/);
   const generated = declarations.generatedModulePath(root, flint);
@@ -152,7 +159,7 @@ test("FFI declarations are strict and generated modules are current", () => {
     { resource: "graph", ownership: "owned", owner: null, root: "graph" },
     { resource: "edges", ownership: "borrowed", owner: "graph", root: "graph" },
   ]);
-  assert.match(runSage(["ffi", "check"]), /48 function\(s\)/);
+  assert.match(runSage(["ffi", "check"]), /54 function\(s\)/);
   const inspection = JSON.parse(
     runSage(["ffi", "explain", "flint", "--json"]),
   );
@@ -362,8 +369,8 @@ test("native-boundary audit is a reviewed exact ratchet", () => {
   const current = boundaryAudit.validateBoundarySnapshot(snapshot, { root });
   assert.ok(current.counts["napi-export"] >= 280);
   assert.ok(current.counts["runtime-intrinsic"] >= 100);
-  assert.equal(current.counts["declared-ffi"], 48);
-  assert.equal(current.counts["declared-ffi-resource"], 3);
+  assert.equal(current.counts["declared-ffi"], 54);
+  assert.equal(current.counts["declared-ffi-resource"], 4);
   assert.match(runSage(["ffi", "audit"]), /inventoried native boundaries/);
   assert.equal(
     current.boundaries.filter((item) =>
@@ -386,9 +393,9 @@ test("every N-API export has an exact symbol-level architecture decision", () =>
     JSON.parse(readFileSync(filename, "utf8")), { root },
   );
   assert.equal(inventory.schema, "sagejs.native-export-inventory/v1");
-  assert.equal(inventory.exports.length, 292);
+  assert.equal(inventory.exports.length, 299);
   assert.equal(inventory.exports.filter((item) =>
-    item.family.startsWith("dense-matrix")).length, 50);
+    item.family.startsWith("dense-matrix")).length, 57);
   assert.equal(inventory.exports.filter((item) =>
     item.implementation.path === "packages/flint/src/matrix.c").length, 50);
   assert.ok(inventory.exports.every((item) =>
@@ -630,6 +637,56 @@ test("packed FLINT matrix declarations work in ordinary Sage.js", () => {
   );
 });
 
+test("retained RREF resources export dynamically and transactionally", () => {
+  const output = runSage(["--python"], [
+    "from sagejs.ffi.flint import (",
+    "    fmpq_rref_result, fmpq_rref_result_compute,",
+    "    fmpq_rref_result_numerator_word_capacity,",
+    "    fmpq_rref_result_denominator_word_capacity,",
+    "    fmpq_rref_result_export,",
+    ")",
+    "import sagejs.runtime as runtime",
+    "large_numerator = 2**130 + 1",
+    "large_denominator = 2**258 + 93",
+    "def values(buffer):",
+    "    converter = runtime.reflect.get(buffer, 'toArray')",
+    "    return runtime.reflect.apply(converter, buffer, [])",
+    "def exercise_rref_resource():",
+    "    result = fmpq_rref_result(1, 2)",
+    "    try:",
+    "        fmpq_rref_result_compute(",
+    "            result,",
+    "            runtime.integer_buffer([1, large_numerator], 3),",
+    "            runtime.integer_buffer([1, large_denominator], 5),",
+    "            1, 2,",
+    "        )",
+    "        print(fmpq_rref_result_numerator_word_capacity(result))",
+    "        print(fmpq_rref_result_denominator_word_capacity(result))",
+    "        numerators = runtime.integer_buffer([7, 8], 3)",
+    "        denominators = runtime.integer_buffer([11, 12], 1)",
+    "        try:",
+    "            fmpq_rref_result_export(numerators, denominators, result, 1, 2)",
+    "        except Exception as error:",
+    "            print(type(error).__name__)",
+    "            print(values(numerators), values(denominators))",
+    "        denominators = runtime.integer_buffer([0, 0], 5)",
+    "        fmpq_rref_result_export(numerators, denominators, result, 1, 2)",
+    "        print(values(numerators))",
+    "        print(values(denominators))",
+    "    finally:",
+    "        result.close()",
+    "exercise_rref_resource()",
+  ].join("\n"));
+  assert.equal(output.trim(), [
+    "3",
+    "5",
+    "ValueError",
+    "[7, 8] [11, 12]",
+    `[1, ${(1n << 130n) + 1n}]`,
+    `[1, ${(1n << 258n) + 93n}]`,
+  ].join("\n"));
+});
+
 test("packed-slice declarations work through both ordinary dynamic adapters", () => {
   const output = runSage(["--python"], [
     "def exercise_packed_slices():",
@@ -829,6 +886,69 @@ test("compiled owned resources agree with fallback and reject loop allocation", 
     ),
     /owned FFI resources must be created in the top-level native block/,
   );
+});
+
+test("retained RREF resources mix safely with packed matrix adapters", async () => {
+  const source = readFileSync(rrefResourceWitness, "utf8");
+  const ir = await lowerSource(source, rrefResourceWitness);
+  const core = generateHostCore(ir);
+  assert.equal(core.audit.isolated, true);
+  assert.equal(core.audit.hostCallbacks, 0);
+  assert.match(core.source, /sagejs_flint_fmpq_rref_result_init\(/);
+  assert.match(core.source, /sagejs_flint_fmpq_rref_result_compute\(/);
+  assert.match(
+    core.source,
+    /sagejs_flint_fmpq_rref_result_numerator_word_capacity\(/,
+  );
+  assert.match(core.source, /sagejs_flint_fmpq_rref_result_export\(/);
+  assert.match(core.source, /sagejs_flint_fmpq_rref_result_clear\(/);
+  assert.doesNotMatch(core.source, /\b(?:napi_|PyObject|JSValue|v8::)/);
+
+  const temporary = mkdtempSync(join(tmpdir(), "sagejs-ffi-rref-resource-"));
+  try {
+    const result = await compileKernel({
+      sourcePath: rrefResourceWitness,
+      cacheRoot: temporary,
+    });
+    const module = require(result.modulePath);
+    const fn = module.retained_rref_summary;
+    const pack = fn.packIntegerBuffer;
+    const largeNumerator = (1n << 190n) + 1n;
+    const largeDenominator = (1n << 258n) + 93n;
+    const sourceNumerators = pack([
+      1n, 0n, largeNumerator,
+      0n, 1n, 1n,
+    ]);
+    const sourceDenominators = pack([
+      1n, 1n, 3n,
+      1n, 1n, largeDenominator,
+    ]);
+    for (const implementation of [fn, fn.javascript]) {
+      const outputNumerators = fn.createIntegerBuffer(6, 3);
+      const outputDenominators = fn.createIntegerBuffer(6, 5);
+      assert.deepEqual(
+        implementation(
+          outputNumerators,
+          outputDenominators,
+          sourceNumerators,
+          sourceDenominators,
+          2n,
+          3n,
+        ),
+        [2n, 3n, 5n],
+      );
+      assert.deepEqual(outputNumerators.toArray(), [
+        1n, 0n, largeNumerator,
+        0n, 1n, 1n,
+      ]);
+      assert.deepEqual(outputDenominators.toArray(), [
+        1n, 1n, 3n,
+        1n, 1n, largeDenominator,
+      ]);
+    }
+  } finally {
+    rmSync(temporary, { recursive: true, force: true });
+  }
 });
 
 test("borrowed igraph views lower without cleanup and agree across paths", async () => {

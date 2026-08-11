@@ -7,7 +7,7 @@ from typing import Any
 import sagejs.runtime as _runtime
 
 __sagejs_ffi_declaration__ = (
-    "flint@76eec914ab6eb50cc9698633df7e5a6c1ba4cf5a6c5f35b084443b1c67081a1f"
+    "flint@8f051b786e45088b2d84855a5ee49ec5ee92dcc90c27c71548a47d957dfba51d"
 )
 
 
@@ -27,10 +27,38 @@ class DirichletGroup:
     def _ffi_borrow(self) -> Any:
         return _runtime.ffi_resource_borrow(
             self._token,
-            "resource:flint@76eec914ab6eb50cc9698633df7e5a6c1ba4cf5a6c5f35b084443b1c67081a1f:dirichlet_group",
+            "resource:flint@8f051b786e45088b2d84855a5ee49ec5ee92dcc90c27c71548a47d957dfba51d:dirichlet_group",
         )
 
     def __enter__(self) -> DirichletGroup:
+        self._ffi_borrow()
+        return self
+
+    def __exit__(self, exception_type: Any, exception: Any, traceback: Any) -> bool:
+        self.close()
+        return False
+
+
+class FmpqRrefResult:
+    """Opaque owned flint:fmpq_rref_result resource."""
+
+    def __init__(self, token: Any) -> None:
+        self._token = token
+
+    @property
+    def closed(self) -> bool:
+        return _runtime.ffi_resource_closed(self._token)
+
+    def close(self) -> None:
+        _runtime.ffi_resource_close(self._token)
+
+    def _ffi_borrow(self) -> Any:
+        return _runtime.ffi_resource_borrow(
+            self._token,
+            "resource:flint@8f051b786e45088b2d84855a5ee49ec5ee92dcc90c27c71548a47d957dfba51d:fmpq_rref_result",
+        )
+
+    def __enter__(self) -> FmpqRrefResult:
         self._ffi_borrow()
         return self
 
@@ -44,7 +72,7 @@ def dirichlet_group(modulus: int) -> DirichletGroup:
     return DirichletGroup(
         _runtime.ffi_resource_create(
             __sagejs_ffi_declaration__ + ":dirichlet_group_init",
-            "resource:flint@76eec914ab6eb50cc9698633df7e5a6c1ba4cf5a6c5f35b084443b1c67081a1f:dirichlet_group",
+            "resource:flint@8f051b786e45088b2d84855a5ee49ec5ee92dcc90c27c71548a47d957dfba51d:dirichlet_group",
             "@sagemath/sagejs-flint",
             "ffiDirichletGroupCreate",
             "ffiDirichletGroupClose",
@@ -66,7 +94,7 @@ def dirichlet_group_size(group: DirichletGroup) -> int:
         "ffiDirichletGroupSize",
         [group._ffi_borrow()],
         [
-            "resource:flint@76eec914ab6eb50cc9698633df7e5a6c1ba4cf5a6c5f35b084443b1c67081a1f:dirichlet_group"
+            "resource:flint@8f051b786e45088b2d84855a5ee49ec5ee92dcc90c27c71548a47d957dfba51d:dirichlet_group"
         ],
         "uint64",
         ["direct", [], None],
@@ -84,7 +112,7 @@ def dirichlet_group_num_primitive(group: DirichletGroup) -> int:
         "ffiDirichletGroupNumPrimitive",
         [group._ffi_borrow()],
         [
-            "resource:flint@76eec914ab6eb50cc9698633df7e5a6c1ba4cf5a6c5f35b084443b1c67081a1f:dirichlet_group"
+            "resource:flint@8f051b786e45088b2d84855a5ee49ec5ee92dcc90c27c71548a47d957dfba51d:dirichlet_group"
         ],
         "uint64",
         ["direct", [], None],
@@ -625,6 +653,161 @@ def fmpq_mat_mul(
                     "inner",
                     "right_columns",
                 ],
+            ],
+        ],
+    )
+
+
+def fmpq_rref_result(rows: int, columns: int) -> FmpqRrefResult:
+    """Call declared flint:fmpq_rref_result."""
+    return FmpqRrefResult(
+        _runtime.ffi_resource_create(
+            __sagejs_ffi_declaration__ + ":fmpq_rref_result",
+            "resource:flint@8f051b786e45088b2d84855a5ee49ec5ee92dcc90c27c71548a47d957dfba51d:fmpq_rref_result",
+            "@sagemath/sagejs-flint",
+            "ffiFmpqRrefResultCreate",
+            "ffiFmpqRrefResultClose",
+            [rows, columns],
+            ["uint64", "uint64"],
+            [None, None],
+            "zero_is_error",
+            "ValueError",
+            "FLINT could not allocate an RREF result",
+        )
+    )
+
+
+def fmpq_rref_result_compute(
+    rref: FmpqRrefResult,
+    source_numerators: list[int],
+    source_denominators: list[int],
+    rows: int,
+    columns: int,
+) -> bool:
+    """Call declared flint:fmpq_rref_result_compute."""
+    return _runtime.ffi_call(
+        __sagejs_ffi_declaration__ + ":fmpq_rref_result_compute",
+        "@sagemath/sagejs-flint",
+        "ffiFmpqRrefResultCompute",
+        [rref._ffi_borrow(), source_numerators, source_denominators, rows, columns],
+        [
+            "resource:flint@8f051b786e45088b2d84855a5ee49ec5ee92dcc90c27c71548a47d957dfba51d:fmpq_rref_result",
+            "IntegerBuffer",
+            "IntegerBuffer",
+            "uint64",
+            "uint64",
+        ],
+        "bool",
+        ["status", [1], None],
+        "ValueError",
+        "FLINT rational matrix RREF failed",
+        [
+            [
+                "buffer_length",
+                "source_numerators",
+                ["rows", "columns"],
+                ["rref", "source_numerators", "source_denominators", "rows", "columns"],
+            ],
+            [
+                "buffer_length",
+                "source_denominators",
+                ["rows", "columns"],
+                ["rref", "source_numerators", "source_denominators", "rows", "columns"],
+            ],
+        ],
+    )
+
+
+def fmpq_rref_result_rank(rref: FmpqRrefResult) -> int:
+    """Call declared flint:fmpq_rref_result_rank."""
+    return _runtime.ffi_call(
+        __sagejs_ffi_declaration__ + ":fmpq_rref_result_rank",
+        "@sagemath/sagejs-flint",
+        "ffiFmpqRrefResultRank",
+        [rref._ffi_borrow()],
+        [
+            "resource:flint@8f051b786e45088b2d84855a5ee49ec5ee92dcc90c27c71548a47d957dfba51d:fmpq_rref_result"
+        ],
+        "uint64",
+        ["direct", [], None],
+        None,
+        None,
+        [],
+    )
+
+
+def fmpq_rref_result_numerator_word_capacity(rref: FmpqRrefResult) -> int:
+    """Call declared flint:fmpq_rref_result_numerator_word_capacity."""
+    return _runtime.ffi_call(
+        __sagejs_ffi_declaration__ + ":fmpq_rref_result_numerator_word_capacity",
+        "@sagemath/sagejs-flint",
+        "ffiFmpqRrefResultNumeratorWordCapacity",
+        [rref._ffi_borrow()],
+        [
+            "resource:flint@8f051b786e45088b2d84855a5ee49ec5ee92dcc90c27c71548a47d957dfba51d:fmpq_rref_result"
+        ],
+        "uint64",
+        ["direct", [], None],
+        None,
+        None,
+        [],
+    )
+
+
+def fmpq_rref_result_denominator_word_capacity(rref: FmpqRrefResult) -> int:
+    """Call declared flint:fmpq_rref_result_denominator_word_capacity."""
+    return _runtime.ffi_call(
+        __sagejs_ffi_declaration__ + ":fmpq_rref_result_denominator_word_capacity",
+        "@sagemath/sagejs-flint",
+        "ffiFmpqRrefResultDenominatorWordCapacity",
+        [rref._ffi_borrow()],
+        [
+            "resource:flint@8f051b786e45088b2d84855a5ee49ec5ee92dcc90c27c71548a47d957dfba51d:fmpq_rref_result"
+        ],
+        "uint64",
+        ["direct", [], None],
+        None,
+        None,
+        [],
+    )
+
+
+def fmpq_rref_result_export(
+    output_numerators: list[int],
+    output_denominators: list[int],
+    rref: FmpqRrefResult,
+    rows: int,
+    columns: int,
+) -> bool:
+    """Call declared flint:fmpq_rref_result_export."""
+    return _runtime.ffi_call(
+        __sagejs_ffi_declaration__ + ":fmpq_rref_result_export",
+        "@sagemath/sagejs-flint",
+        "ffiFmpqRrefResultExport",
+        [output_numerators, output_denominators, rref._ffi_borrow(), rows, columns],
+        [
+            "IntegerBuffer",
+            "IntegerBuffer",
+            "resource:flint@8f051b786e45088b2d84855a5ee49ec5ee92dcc90c27c71548a47d957dfba51d:fmpq_rref_result",
+            "uint64",
+            "uint64",
+        ],
+        "bool",
+        ["status", [1], None],
+        "ValueError",
+        "FLINT RREF export failed",
+        [
+            [
+                "buffer_length",
+                "output_numerators",
+                ["rows", "columns"],
+                ["output_numerators", "output_denominators", "rref", "rows", "columns"],
+            ],
+            [
+                "buffer_length",
+                "output_denominators",
+                ["rows", "columns"],
+                ["output_numerators", "output_denominators", "rref", "rows", "columns"],
             ],
         ],
     )

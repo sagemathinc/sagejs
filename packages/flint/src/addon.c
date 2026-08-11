@@ -37,6 +37,7 @@
 #include "dirichlet.h"
 #include "extension_field.h"
 #include "floating.h"
+#include "fmpq_rref_result.h"
 #include "matrix.h"
 #include "multivariate.h"
 #include "number_field_factor.h"
@@ -4006,6 +4007,22 @@ static napi_value initialize(napi_env env, napi_value exports)
         {"qqMatrixPacked", NULL, sagejs_qq_matrix_packed,
             NULL, NULL, NULL, napi_default, NULL},
         {"qqMatrixExportPacked", NULL, sagejs_qq_matrix_export_packed,
+            NULL, NULL, NULL, napi_default, NULL},
+        {"fmpqRrefResultCreate", NULL, sagejs_fmpq_rref_result_create,
+            NULL, NULL, NULL, napi_default, NULL},
+        {"fmpqRrefResultClose", NULL, sagejs_fmpq_rref_result_close,
+            NULL, NULL, NULL, napi_default, NULL},
+        {"fmpqRrefResultCompute", NULL, sagejs_fmpq_rref_result_compute,
+            NULL, NULL, NULL, napi_default, NULL},
+        {"fmpqRrefResultRank", NULL, sagejs_fmpq_rref_result_rank,
+            NULL, NULL, NULL, napi_default, NULL},
+        {"fmpqRrefResultNumeratorWordCapacity", NULL,
+            sagejs_fmpq_rref_result_numerator_word_capacity,
+            NULL, NULL, NULL, napi_default, NULL},
+        {"fmpqRrefResultDenominatorWordCapacity", NULL,
+            sagejs_fmpq_rref_result_denominator_word_capacity,
+            NULL, NULL, NULL, napi_default, NULL},
+        {"fmpqRrefResultExport", NULL, sagejs_fmpq_rref_result_export,
             NULL, NULL, NULL, napi_default, NULL},
         {"nmodMatrixRandom", NULL, sagejs_nmod_matrix_random,
             NULL, NULL, NULL, napi_default, NULL},

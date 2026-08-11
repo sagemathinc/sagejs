@@ -493,7 +493,11 @@ function emitPackedFmpzCall(operation, context, indent) {
     }
     if (argument.adapter === null) {
       const source = argumentBySource(operation, argument.source);
-      if (argument.abi_type === "ulong" || argument.abi_type === "uint64_t") {
+      const resource = resourceForType(operation, source.type);
+      if (resource !== undefined) {
+        callArguments.push(context.value(source.name));
+      } else if (argument.abi_type === "ulong" ||
+          argument.abi_type === "uint64_t") {
         callArguments.push(`(${argument.abi_type}) ${context.value(source.name)}`);
       } else if (argument.abi_type === "int") {
         callArguments.push(`(int) ${context.value(source.name)}`);
@@ -751,10 +755,10 @@ function usesFmpz(operation) {
 }
 
 function emitExactForeignCall(operation, context, indent) {
-  if (usesResource(operation)) return emitResourceCall(operation, context, indent);
   if (nativeArguments(operation.foreign.function).some((argument) =>
     argument.adapter?.kind === "packed_fmpz_matrix"
   )) return emitPackedFmpzCall(operation, context, indent);
+  if (usesResource(operation)) return emitResourceCall(operation, context, indent);
   if (nativeArguments(operation.foreign.function).some((argument) =>
     argument.adapter?.kind === "packed_nmod_matrix"
   )) return emitPackedNmodCall(operation, context, indent);
@@ -767,10 +771,10 @@ function emitExactForeignCall(operation, context, indent) {
 }
 
 function emitTaggedForeignCall(operation, context, indent) {
-  if (usesResource(operation)) return emitResourceCall(operation, context, indent);
   if (nativeArguments(operation.foreign.function).some((argument) =>
     argument.adapter?.kind === "packed_fmpz_matrix"
   )) return emitPackedFmpzCall(operation, context, indent);
+  if (usesResource(operation)) return emitResourceCall(operation, context, indent);
   if (nativeArguments(operation.foreign.function).some((argument) =>
     argument.adapter?.kind === "packed_nmod_matrix"
   )) return emitPackedNmodCall(operation, context, indent);

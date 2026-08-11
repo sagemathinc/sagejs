@@ -48,6 +48,16 @@ DirichletGroup = flint.resource(
 )
 
 
+FmpqRrefResult = flint.resource(
+    id="fmpq_rref_result",
+    abi=sagejs_flint_fmpq_rref_result_t,
+    ownership="owned",
+    close="ffiFmpqRrefResultClose",
+    clear="sagejs_flint_fmpq_rref_result_clear",
+    wasm=True,
+)
+
+
 @flint.function(
     id="dirichlet_group_init",
     dynamic="ffiDirichletGroupCreate",
@@ -699,6 +709,165 @@ def fmpq_mat_mul(
     left_rows: uint64,
     inner: uint64,
     right_columns: uint64,
+) -> bool: ...
+
+
+@flint.function(
+    dynamic="ffiFmpqRrefResultCreate",
+    symbol="sagejs_flint_fmpq_rref_result_init",
+    returns=int,
+    abi=[
+        out("result", sagejs_flint_fmpq_rref_result_t),
+        in_("rows", ulong),
+        in_("columns", ulong),
+    ],
+    effects=Effects(
+        pure=False,
+        allocates=True,
+        raises=[ValueError, OverflowError],
+    ),
+    result=Status(
+        1, exception=ValueError, message="FLINT could not allocate an RREF result"
+    ),
+    wasm=True,
+)
+def fmpq_rref_result(rows: uint64, columns: uint64) -> FmpqRrefResult: ...
+
+
+@flint.function(
+    dynamic="ffiFmpqRrefResultCompute",
+    symbol="sagejs_flint_fmpq_rref_result_compute",
+    returns=int,
+    abi=[
+        in_("rref", sagejs_flint_fmpq_rref_result_t),
+        in_(
+            "source_numerators",
+            fmpz_mat_t,
+            packed_fmpz_matrix(
+                data="source_numerators",
+                rows="rows",
+                columns="columns",
+                access="read",
+                aliasing="allowed",
+                transactional=False,
+            ),
+        ),
+        in_(
+            "source_denominators",
+            fmpz_mat_t,
+            packed_fmpz_matrix(
+                data="source_denominators",
+                rows="rows",
+                columns="columns",
+                access="read",
+                aliasing="allowed",
+                transactional=False,
+            ),
+        ),
+    ],
+    effects=Effects(
+        pure=False,
+        allocates=True,
+        raises=[ValueError, OverflowError],
+    ),
+    result=Status(1, exception=ValueError, message="FLINT rational matrix RREF failed"),
+    wasm=True,
+)
+def fmpq_rref_result_compute(
+    rref: FmpqRrefResult,
+    source_numerators: IntegerBuffer,
+    source_denominators: IntegerBuffer,
+    rows: uint64,
+    columns: uint64,
+) -> bool: ...
+
+
+@flint.function(
+    dynamic="ffiFmpqRrefResultRank",
+    symbol="sagejs_flint_fmpq_rref_result_rank",
+    returns=ulong,
+    abi=[in_("rref", sagejs_flint_fmpq_rref_result_t)],
+    effects=Effects(pure=True, raises=[ValueError]),
+    result=Direct(),
+    wasm=True,
+)
+def fmpq_rref_result_rank(rref: FmpqRrefResult) -> uint64: ...
+
+
+@flint.function(
+    dynamic="ffiFmpqRrefResultNumeratorWordCapacity",
+    symbol="sagejs_flint_fmpq_rref_result_numerator_word_capacity",
+    returns=ulong,
+    abi=[in_("rref", sagejs_flint_fmpq_rref_result_t)],
+    effects=Effects(pure=True, raises=[ValueError]),
+    result=Direct(),
+    wasm=True,
+)
+def fmpq_rref_result_numerator_word_capacity(
+    rref: FmpqRrefResult,
+) -> uint64: ...
+
+
+@flint.function(
+    dynamic="ffiFmpqRrefResultDenominatorWordCapacity",
+    symbol="sagejs_flint_fmpq_rref_result_denominator_word_capacity",
+    returns=ulong,
+    abi=[in_("rref", sagejs_flint_fmpq_rref_result_t)],
+    effects=Effects(pure=True, raises=[ValueError]),
+    result=Direct(),
+    wasm=True,
+)
+def fmpq_rref_result_denominator_word_capacity(
+    rref: FmpqRrefResult,
+) -> uint64: ...
+
+
+@flint.function(
+    dynamic="ffiFmpqRrefResultExport",
+    symbol="sagejs_flint_fmpq_rref_result_export",
+    returns=int,
+    abi=[
+        out(
+            "output_numerators",
+            fmpz_mat_t,
+            packed_fmpz_matrix(
+                data="output_numerators",
+                rows="rows",
+                columns="columns",
+                access="write",
+                aliasing="allowed",
+                transactional=True,
+            ),
+        ),
+        out(
+            "output_denominators",
+            fmpz_mat_t,
+            packed_fmpz_matrix(
+                data="output_denominators",
+                rows="rows",
+                columns="columns",
+                access="write",
+                aliasing="allowed",
+                transactional=True,
+            ),
+        ),
+        in_("rref", sagejs_flint_fmpq_rref_result_t),
+    ],
+    effects=Effects(
+        pure=False,
+        allocates=True,
+        raises=[ValueError, OverflowError],
+        writes=["output_numerators", "output_denominators"],
+    ),
+    result=Status(1, exception=ValueError, message="FLINT RREF export failed"),
+    wasm=True,
+)
+def fmpq_rref_result_export(
+    output_numerators: Writable[IntegerBuffer],
+    output_denominators: Writable[IntegerBuffer],
+    rref: FmpqRrefResult,
+    rows: uint64,
+    columns: uint64,
 ) -> bool: ...
 
 

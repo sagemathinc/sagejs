@@ -34,6 +34,12 @@ different families; representative declarations include:
   family, whose `IntegerBuffer` arguments become lexical `fmpz_mat_t` values;
   generated code preflights every signed-limb result before transactional
   copyback and clears all FLINT storage on every exit.
+- rational RREF's `FmpqRrefResult`, a short-lived owned resource which retains
+  one completed FLINT reduction while callers query numerator and denominator
+  limb capacities independently, allocate exact packed outputs, and export
+  transactionally. This is the variable-size exact-output pattern: it avoids
+  both worst-case preallocation and recomputing an expensive result after a
+  capacity miss.
 
 [`ffi/igraph.ffi.py`](ffi/igraph.ffi.py), lowered to
 [`ffi/igraph.ffi.json`](ffi/igraph.ffi.json), is the first independent library
@@ -218,7 +224,11 @@ mutable or immutable `UInt64Buffer` and `IntegerBuffer` semantics. In addition
 to scalar `ulong`, `slong`, `int`, and `fmpz_t` adapters, reusable
 `packed_nmod_matrix` and `packed_fmpz_matrix` adapters declare the data, shape,
 access, aliasing, initialization, and cleanup of lexical FLINT matrices. A
-reusable `packed_slice` adapter relates typed storage to an explicit length and
+borrowed reference to an owned resource may accompany `packed_fmpz_matrix`
+adapters; the resource remains caller-owned while generated code initializes
+and clears only its lexical matrix copies. Resource constructors still accept
+scalar inputs only. A reusable `packed_slice` adapter relates typed storage to
+an explicit length and
 stages mutable output in temporary native memory. A `record` adapter maps named
 semantic parameters to every field of a cataloged C struct; generated C
 performs the casts, initializes the aggregate, and passes it according to its

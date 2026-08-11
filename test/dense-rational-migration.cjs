@@ -82,6 +82,7 @@ assert A.augment(B).dimensions() == (3, 6)
 C = matrix(QQ, 3, 3, [2, 4, 4, 6, 6, 12, 10, 4, 16]) / 7
 assert C.rank() == 3
 assert C.det() == QQ(48)/343
+assert C.rref() == identity_matrix(QQ, 3)
 assert C*C == matrix(QQ, 3, 3, [
     68, 48, 120, 168, 108, 288, 204, 128, 344]) / 49
 assert C*(~C) == identity_matrix(QQ, 3)
@@ -99,6 +100,17 @@ wide = matrix(QQ, 2, 4, [1, 2, 3, 4, 2, 4, 6, 8]) / 5
 K = wide.right_kernel_matrix()
 assert K.nrows() == 3
 assert wide*K.transpose() == zero_matrix(QQ, 2, 3)
+
+large_rref_numerator = 2**510 + 1
+large_rref_denominator = 2**770 + 3
+structured_rref = matrix(QQ, 2, 3, [
+    1, 0, QQ(large_rref_numerator)/3,
+    0, 1, QQ(1)/large_rref_denominator,
+])
+reduced_structured = structured_rref.rref()
+assert reduced_structured == structured_rref
+assert reduced_structured._rational_numerators().wordCapacity == 8
+assert reduced_structured._rational_denominators().wordCapacity == 13
 
 mutable = matrix(QQ, 2, 2, [QQ(1)/2, QQ(2)/3, QQ(3)/4, QQ(4)/5])
 mutable[0, 1] = -QQ(2**320 + 9)/37
@@ -265,6 +277,7 @@ A = random_matrix(QQ, 4)
 A + A
 A * A
 A.det()
+A.rref()
 print('trace-ok')
 `, {
       ...requiredEnvironment,
@@ -274,6 +287,10 @@ print('trace-ok')
     assert.match(trace, /Matrix\.add QQ 4x4 -> typed-python-isolated/);
     assert.match(trace, /Matrix\.multiply QQ 4x4 -> declared-flint-isolated/);
     assert.match(trace, /Matrix\.determinant QQ 4x4 -> declared-flint-isolated/);
+    assert.match(
+      trace,
+      /Matrix\.rref QQ 4x4 -> declared-flint-retained-adapter/,
+    );
     assert.match(trace, /trace-ok/);
 
     console.log("dense rational matrix migration tests passed");

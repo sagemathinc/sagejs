@@ -62,6 +62,24 @@
         "native": true,
         "wasm": true
       }
+    },
+    {
+      "id": "fmpq_rref_result",
+      "python_name": "FmpqRrefResult",
+      "abi_type": "sagejs_flint_fmpq_rref_result_t",
+      "ownership": "owned",
+      "owner": null,
+      "dynamic": {
+        "close_export": "ffiFmpqRrefResultClose"
+      },
+      "native": {
+        "clear_symbol": "sagejs_flint_fmpq_rref_result_clear"
+      },
+      "targets": {
+        "dynamic": true,
+        "native": true,
+        "wasm": true
+      }
     }
   ],
   "functions": [
@@ -1670,6 +1688,515 @@
       "errors": {
         "exception": "ValueError",
         "message": "FLINT rational matrix multiplication failed"
+      },
+      "exceptions": {
+        "policy": "none",
+        "failure_status": null
+      },
+      "targets": {
+        "dynamic": true,
+        "native": true,
+        "wasm": true
+      }
+    },
+    {
+      "id": "fmpq_rref_result",
+      "python_name": "fmpq_rref_result",
+      "signature": {
+        "parameters": [
+          {
+            "name": "rows",
+            "type": "uint64",
+            "ownership": "value",
+            "mutability": "value",
+            "aliasing": "not_applicable"
+          },
+          {
+            "name": "columns",
+            "type": "uint64",
+            "ownership": "value",
+            "mutability": "value",
+            "aliasing": "not_applicable"
+          }
+        ],
+        "return_type": "FmpqRrefResult",
+        "return_ownership": "owned",
+        "borrow_from": null
+      },
+      "dynamic": {
+        "export": "ffiFmpqRrefResultCreate"
+      },
+      "native": {
+        "symbol": "sagejs_flint_fmpq_rref_result_init",
+        "return_type": "int",
+        "arguments": [
+          {
+            "source": "result",
+            "abi_type": "sagejs_flint_fmpq_rref_result_t",
+            "direction": "out",
+            "adapter": null
+          },
+          {
+            "source": "rows",
+            "abi_type": "ulong",
+            "direction": "in",
+            "adapter": null
+          },
+          {
+            "source": "columns",
+            "abi_type": "ulong",
+            "direction": "in",
+            "adapter": null
+          }
+        ]
+      },
+      "effects": {
+        "pure": false,
+        "deterministic": true,
+        "thread_safe": true,
+        "may_allocate": true,
+        "may_raise": [
+          "ValueError",
+          "OverflowError"
+        ],
+        "writes": []
+      },
+      "result": {
+        "domain": "status",
+        "success": [
+          1
+        ],
+        "absence": null
+      },
+      "errors": {
+        "exception": "ValueError",
+        "message": "FLINT could not allocate an RREF result"
+      },
+      "exceptions": {
+        "policy": "none",
+        "failure_status": null
+      },
+      "targets": {
+        "dynamic": true,
+        "native": true,
+        "wasm": true
+      }
+    },
+    {
+      "id": "fmpq_rref_result_compute",
+      "python_name": "fmpq_rref_result_compute",
+      "signature": {
+        "parameters": [
+          {
+            "name": "rref",
+            "type": "FmpqRrefResult",
+            "ownership": "borrowed",
+            "mutability": "read",
+            "aliasing": "allowed"
+          },
+          {
+            "name": "source_numerators",
+            "type": "IntegerBuffer",
+            "ownership": "borrowed",
+            "mutability": "read",
+            "aliasing": "allowed"
+          },
+          {
+            "name": "source_denominators",
+            "type": "IntegerBuffer",
+            "ownership": "borrowed",
+            "mutability": "read",
+            "aliasing": "allowed"
+          },
+          {
+            "name": "rows",
+            "type": "uint64",
+            "ownership": "value",
+            "mutability": "value",
+            "aliasing": "not_applicable"
+          },
+          {
+            "name": "columns",
+            "type": "uint64",
+            "ownership": "value",
+            "mutability": "value",
+            "aliasing": "not_applicable"
+          }
+        ],
+        "return_type": "bool",
+        "return_ownership": "value",
+        "borrow_from": null
+      },
+      "dynamic": {
+        "export": "ffiFmpqRrefResultCompute"
+      },
+      "native": {
+        "symbol": "sagejs_flint_fmpq_rref_result_compute",
+        "return_type": "int",
+        "arguments": [
+          {
+            "source": "rref",
+            "abi_type": "sagejs_flint_fmpq_rref_result_t",
+            "direction": "in",
+            "adapter": null
+          },
+          {
+            "source": "source_numerators",
+            "abi_type": "fmpz_mat_t",
+            "direction": "in",
+            "adapter": {
+              "kind": "packed_fmpz_matrix",
+              "data": "source_numerators",
+              "rows": "rows",
+              "columns": "columns",
+              "access": "read",
+              "aliasing": "allowed",
+              "transactional": false
+            }
+          },
+          {
+            "source": "source_denominators",
+            "abi_type": "fmpz_mat_t",
+            "direction": "in",
+            "adapter": {
+              "kind": "packed_fmpz_matrix",
+              "data": "source_denominators",
+              "rows": "rows",
+              "columns": "columns",
+              "access": "read",
+              "aliasing": "allowed",
+              "transactional": false
+            }
+          }
+        ]
+      },
+      "effects": {
+        "pure": false,
+        "deterministic": true,
+        "thread_safe": true,
+        "may_allocate": true,
+        "may_raise": [
+          "ValueError",
+          "OverflowError"
+        ],
+        "writes": []
+      },
+      "result": {
+        "domain": "status",
+        "success": [
+          1
+        ],
+        "absence": null
+      },
+      "errors": {
+        "exception": "ValueError",
+        "message": "FLINT rational matrix RREF failed"
+      },
+      "exceptions": {
+        "policy": "none",
+        "failure_status": null
+      },
+      "targets": {
+        "dynamic": true,
+        "native": true,
+        "wasm": true
+      }
+    },
+    {
+      "id": "fmpq_rref_result_rank",
+      "python_name": "fmpq_rref_result_rank",
+      "signature": {
+        "parameters": [
+          {
+            "name": "rref",
+            "type": "FmpqRrefResult",
+            "ownership": "borrowed",
+            "mutability": "read",
+            "aliasing": "allowed"
+          }
+        ],
+        "return_type": "uint64",
+        "return_ownership": "value",
+        "borrow_from": null
+      },
+      "dynamic": {
+        "export": "ffiFmpqRrefResultRank"
+      },
+      "native": {
+        "symbol": "sagejs_flint_fmpq_rref_result_rank",
+        "return_type": "ulong",
+        "arguments": [
+          {
+            "source": "rref",
+            "abi_type": "sagejs_flint_fmpq_rref_result_t",
+            "direction": "in",
+            "adapter": null
+          }
+        ]
+      },
+      "effects": {
+        "pure": true,
+        "deterministic": true,
+        "thread_safe": true,
+        "may_allocate": false,
+        "may_raise": [
+          "ValueError"
+        ],
+        "writes": []
+      },
+      "result": {
+        "domain": "direct",
+        "success": [],
+        "absence": null
+      },
+      "errors": {
+        "exception": null,
+        "message": null
+      },
+      "exceptions": {
+        "policy": "none",
+        "failure_status": null
+      },
+      "targets": {
+        "dynamic": true,
+        "native": true,
+        "wasm": true
+      }
+    },
+    {
+      "id": "fmpq_rref_result_numerator_word_capacity",
+      "python_name": "fmpq_rref_result_numerator_word_capacity",
+      "signature": {
+        "parameters": [
+          {
+            "name": "rref",
+            "type": "FmpqRrefResult",
+            "ownership": "borrowed",
+            "mutability": "read",
+            "aliasing": "allowed"
+          }
+        ],
+        "return_type": "uint64",
+        "return_ownership": "value",
+        "borrow_from": null
+      },
+      "dynamic": {
+        "export": "ffiFmpqRrefResultNumeratorWordCapacity"
+      },
+      "native": {
+        "symbol": "sagejs_flint_fmpq_rref_result_numerator_word_capacity",
+        "return_type": "ulong",
+        "arguments": [
+          {
+            "source": "rref",
+            "abi_type": "sagejs_flint_fmpq_rref_result_t",
+            "direction": "in",
+            "adapter": null
+          }
+        ]
+      },
+      "effects": {
+        "pure": true,
+        "deterministic": true,
+        "thread_safe": true,
+        "may_allocate": false,
+        "may_raise": [
+          "ValueError"
+        ],
+        "writes": []
+      },
+      "result": {
+        "domain": "direct",
+        "success": [],
+        "absence": null
+      },
+      "errors": {
+        "exception": null,
+        "message": null
+      },
+      "exceptions": {
+        "policy": "none",
+        "failure_status": null
+      },
+      "targets": {
+        "dynamic": true,
+        "native": true,
+        "wasm": true
+      }
+    },
+    {
+      "id": "fmpq_rref_result_denominator_word_capacity",
+      "python_name": "fmpq_rref_result_denominator_word_capacity",
+      "signature": {
+        "parameters": [
+          {
+            "name": "rref",
+            "type": "FmpqRrefResult",
+            "ownership": "borrowed",
+            "mutability": "read",
+            "aliasing": "allowed"
+          }
+        ],
+        "return_type": "uint64",
+        "return_ownership": "value",
+        "borrow_from": null
+      },
+      "dynamic": {
+        "export": "ffiFmpqRrefResultDenominatorWordCapacity"
+      },
+      "native": {
+        "symbol": "sagejs_flint_fmpq_rref_result_denominator_word_capacity",
+        "return_type": "ulong",
+        "arguments": [
+          {
+            "source": "rref",
+            "abi_type": "sagejs_flint_fmpq_rref_result_t",
+            "direction": "in",
+            "adapter": null
+          }
+        ]
+      },
+      "effects": {
+        "pure": true,
+        "deterministic": true,
+        "thread_safe": true,
+        "may_allocate": false,
+        "may_raise": [
+          "ValueError"
+        ],
+        "writes": []
+      },
+      "result": {
+        "domain": "direct",
+        "success": [],
+        "absence": null
+      },
+      "errors": {
+        "exception": null,
+        "message": null
+      },
+      "exceptions": {
+        "policy": "none",
+        "failure_status": null
+      },
+      "targets": {
+        "dynamic": true,
+        "native": true,
+        "wasm": true
+      }
+    },
+    {
+      "id": "fmpq_rref_result_export",
+      "python_name": "fmpq_rref_result_export",
+      "signature": {
+        "parameters": [
+          {
+            "name": "output_numerators",
+            "type": "IntegerBuffer",
+            "ownership": "borrowed_mut",
+            "mutability": "write",
+            "aliasing": "allowed"
+          },
+          {
+            "name": "output_denominators",
+            "type": "IntegerBuffer",
+            "ownership": "borrowed_mut",
+            "mutability": "write",
+            "aliasing": "allowed"
+          },
+          {
+            "name": "rref",
+            "type": "FmpqRrefResult",
+            "ownership": "borrowed",
+            "mutability": "read",
+            "aliasing": "allowed"
+          },
+          {
+            "name": "rows",
+            "type": "uint64",
+            "ownership": "value",
+            "mutability": "value",
+            "aliasing": "not_applicable"
+          },
+          {
+            "name": "columns",
+            "type": "uint64",
+            "ownership": "value",
+            "mutability": "value",
+            "aliasing": "not_applicable"
+          }
+        ],
+        "return_type": "bool",
+        "return_ownership": "value",
+        "borrow_from": null
+      },
+      "dynamic": {
+        "export": "ffiFmpqRrefResultExport"
+      },
+      "native": {
+        "symbol": "sagejs_flint_fmpq_rref_result_export",
+        "return_type": "int",
+        "arguments": [
+          {
+            "source": "output_numerators",
+            "abi_type": "fmpz_mat_t",
+            "direction": "out",
+            "adapter": {
+              "kind": "packed_fmpz_matrix",
+              "data": "output_numerators",
+              "rows": "rows",
+              "columns": "columns",
+              "access": "write",
+              "aliasing": "allowed",
+              "transactional": true
+            }
+          },
+          {
+            "source": "output_denominators",
+            "abi_type": "fmpz_mat_t",
+            "direction": "out",
+            "adapter": {
+              "kind": "packed_fmpz_matrix",
+              "data": "output_denominators",
+              "rows": "rows",
+              "columns": "columns",
+              "access": "write",
+              "aliasing": "allowed",
+              "transactional": true
+            }
+          },
+          {
+            "source": "rref",
+            "abi_type": "sagejs_flint_fmpq_rref_result_t",
+            "direction": "in",
+            "adapter": null
+          }
+        ]
+      },
+      "effects": {
+        "pure": false,
+        "deterministic": true,
+        "thread_safe": true,
+        "may_allocate": true,
+        "may_raise": [
+          "ValueError",
+          "OverflowError"
+        ],
+        "writes": [
+          "output_numerators",
+          "output_denominators"
+        ]
+      },
+      "result": {
+        "domain": "status",
+        "success": [
+          1
+        ],
+        "absence": null
+      },
+      "errors": {
+        "exception": "ValueError",
+        "message": "FLINT RREF export failed"
       },
       "exceptions": {
         "policy": "none",

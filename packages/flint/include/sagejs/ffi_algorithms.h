@@ -893,6 +893,130 @@ static inline int sagejs_flint_fmpq_mat_get_parts(
     return 1;
 }
 
+/* A variable-size exact result must survive the capacity query which follows
+ * its computation.  Keep that short lifetime behind the declared-resource
+ * boundary: callers can inspect scalar metadata and copy the same result into
+ * exactly sized packed buffers, but no FLINT pointer enters mathematical
+ * source. */
+typedef struct
+{
+    fmpq_mat_t matrix;
+    slong rank;
+    int initialized;
+    int computed;
+} sagejs_flint_fmpq_rref_result_struct;
+
+typedef sagejs_flint_fmpq_rref_result_struct
+    sagejs_flint_fmpq_rref_result_t[1];
+
+static inline int sagejs_flint_fmpq_rref_result_init(
+    sagejs_flint_fmpq_rref_result_t result,
+    ulong rows,
+    ulong columns)
+{
+    result->rank = 0;
+    result->initialized = 0;
+    result->computed = 0;
+    if (rows > (ulong) WORD_MAX || columns > (ulong) WORD_MAX ||
+        (rows != 0 && (size_t) columns > SIZE_MAX / (size_t) rows))
+        return 0;
+    fmpq_mat_init(result->matrix, (slong) rows, (slong) columns);
+    result->initialized = 1;
+    return 1;
+}
+
+static inline void sagejs_flint_fmpq_rref_result_clear(
+    sagejs_flint_fmpq_rref_result_t result)
+{
+    if (result->initialized)
+    {
+        fmpq_mat_clear(result->matrix);
+        result->initialized = 0;
+    }
+    result->computed = 0;
+    result->rank = 0;
+}
+
+static inline int sagejs_flint_fmpq_rref_result_compute(
+    sagejs_flint_fmpq_rref_result_t result,
+    const fmpz_mat_t source_numerators,
+    const fmpz_mat_t source_denominators)
+{
+    int success = 0;
+    fmpq_mat_t source;
+    result->computed = 0;
+    if (!result->initialized ||
+        fmpz_mat_nrows(source_numerators) !=
+            fmpq_mat_nrows(result->matrix) ||
+        fmpz_mat_ncols(source_numerators) !=
+            fmpq_mat_ncols(result->matrix))
+        return 0;
+    fmpq_mat_init(source,
+        fmpz_mat_nrows(source_numerators),
+        fmpz_mat_ncols(source_numerators));
+    if (sagejs_flint_fmpq_mat_set_parts(
+            source, source_numerators, source_denominators))
+    {
+        result->rank = fmpq_mat_rref(result->matrix, source);
+        result->computed = 1;
+        success = 1;
+    }
+    fmpq_mat_clear(source);
+    return success;
+}
+
+static inline ulong sagejs_flint_fmpq_rref_result_rank(
+    const sagejs_flint_fmpq_rref_result_t result)
+{
+    return result->computed ? (ulong) result->rank : 0;
+}
+
+static inline ulong sagejs_flint_fmpq_rref_result_component_word_capacity(
+    const sagejs_flint_fmpq_rref_result_t result,
+    int denominator)
+{
+    ulong maximum = 1;
+    if (!result->computed)
+        return 0;
+    for (slong row = 0; row < fmpq_mat_nrows(result->matrix); row++)
+        for (slong column = 0;
+             column < fmpq_mat_ncols(result->matrix);
+             column++)
+        {
+            const fmpq *entry = fmpq_mat_entry(
+                result->matrix, row, column);
+            const fmpz *part = denominator
+                ? fmpq_denref(entry) : fmpq_numref(entry);
+            const ulong words = (ulong) ((fmpz_bits(part) + 63) / 64);
+            if (words > maximum)
+                maximum = words;
+        }
+    return maximum;
+}
+
+static inline ulong sagejs_flint_fmpq_rref_result_numerator_word_capacity(
+    const sagejs_flint_fmpq_rref_result_t result)
+{
+    return sagejs_flint_fmpq_rref_result_component_word_capacity(
+        result, 0);
+}
+
+static inline ulong sagejs_flint_fmpq_rref_result_denominator_word_capacity(
+    const sagejs_flint_fmpq_rref_result_t result)
+{
+    return sagejs_flint_fmpq_rref_result_component_word_capacity(
+        result, 1);
+}
+
+static inline int sagejs_flint_fmpq_rref_result_export(
+    fmpz_mat_t output_numerators,
+    fmpz_mat_t output_denominators,
+    const sagejs_flint_fmpq_rref_result_t result)
+{
+    return result->computed && sagejs_flint_fmpq_mat_get_parts(
+        output_numerators, output_denominators, result->matrix);
+}
+
 static inline int sagejs_flint_fmpq_mat_mul_parts(
     fmpz_mat_t output_numerators,
     fmpz_mat_t output_denominators,

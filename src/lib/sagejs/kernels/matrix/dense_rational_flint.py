@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import sagejs.runtime as runtime
 from sagejs.ffi.flint import (
     fmpq_mat_charpoly,
     fmpq_mat_det,
@@ -10,6 +11,12 @@ from sagejs.ffi.flint import (
     fmpq_mat_rank,
     fmpq_mat_rref,
     fmpq_mat_solve,
+    fmpq_rref_result,
+    fmpq_rref_result_compute,
+    fmpq_rref_result_denominator_word_capacity,
+    fmpq_rref_result_export,
+    fmpq_rref_result_numerator_word_capacity,
+    fmpq_rref_result_rank,
 )
 from sagejs.native import IntegerBuffer, native, uint64
 
@@ -72,6 +79,48 @@ def flint_dense_rational_matrix_rref(
         columns,
         one,
     )
+
+
+def flint_dense_rational_matrix_rref_retained(
+    source_numerators: IntegerBuffer,
+    source_denominators: IntegerBuffer,
+    rows: uint64,
+    columns: uint64,
+) -> tuple[int, IntegerBuffer, IntegerBuffer]:
+    """Compute once, then export the retained RREF at its measured size."""
+    count = runtime.number(rows * columns)
+    result = fmpq_rref_result(rows, columns)
+    try:
+        fmpq_rref_result_compute(
+            result,
+            source_numerators,
+            source_denominators,
+            rows,
+            columns,
+        )
+        numerator_capacity = runtime.number(
+            fmpq_rref_result_numerator_word_capacity(result)
+        )
+        denominator_capacity = runtime.number(
+            fmpq_rref_result_denominator_word_capacity(result)
+        )
+        output_numerators = runtime.integer_buffer(
+            [0 for _index in range(count)], numerator_capacity
+        )
+        output_denominators = runtime.integer_buffer(
+            [0 for _index in range(count)], denominator_capacity
+        )
+        fmpq_rref_result_export(
+            output_numerators,
+            output_denominators,
+            result,
+            rows,
+            columns,
+        )
+        rank = runtime.number(fmpq_rref_result_rank(result))
+        return rank, output_numerators, output_denominators
+    finally:
+        result.close()
 
 
 @native

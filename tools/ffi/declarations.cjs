@@ -473,9 +473,16 @@ function validateFunction(
   const usesForeignResource = returnResource !== undefined ||
     fn.signature.parameters.some((parameter) =>
       resourcesByType.has(parameter.type));
-  if (usesForeignResource && fn.native.arguments.some((argument) =>
-    argument.adapter !== null)) {
-    fail(filename, `${fn.id} cannot yet mix resource and aggregate adapters`);
+  const aggregateArguments = fn.native.arguments.filter((argument) =>
+    argument.adapter !== null);
+  if (returnResource !== undefined && aggregateArguments.length !== 0) {
+    fail(filename,
+      `${fn.id} resource constructors cannot yet consume aggregate adapters`);
+  }
+  if (usesForeignResource && aggregateArguments.some((argument) =>
+    argument.adapter.kind !== "packed_fmpz_matrix")) {
+    fail(filename,
+      `${fn.id} resources can currently mix only with packed fmpz matrices`);
   }
   if (returnResource !== undefined) {
     if (fn.native.return_type !== "int" || resultArguments !== 1 ||

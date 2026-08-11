@@ -13,10 +13,10 @@
     "new_boundaries_require": "explicit-regeneration-and-review"
   },
   "counts": {
-    "classified-native-file": 53,
-    "declared-ffi": 48,
-    "declared-ffi-resource": 3,
-    "napi-export": 292,
+    "classified-native-file": 55,
+    "declared-ffi": 54,
+    "declared-ffi-resource": 4,
+    "napi-export": 299,
     "runtime-intrinsic": 122,
     "wasm-export": 46
   },
@@ -30,6 +30,17 @@
       "abi_type": "dirichlet_group_t",
       "close_export": "ffiDirichletGroupClose",
       "clear_symbol": "dirichlet_group_clear",
+      "disposition": "declared-owned-ffi-resource"
+    },
+    {
+      "id": "ffi-resource:flint:fmpq_rref_result",
+      "kind": "declared-ffi-resource",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "FmpqRrefResult",
+      "abi_type": "sagejs_flint_fmpq_rref_result_t",
+      "close_export": "ffiFmpqRrefResultClose",
+      "clear_symbol": "sagejs_flint_fmpq_rref_result_clear",
       "disposition": "declared-owned-ffi-resource"
     },
     {
@@ -195,6 +206,72 @@
       "dynamic_package": "@sagemath/sagejs-flint",
       "dynamic_export": "ffiFmpqPolyMul",
       "symbol": "sagejs_flint_fmpq_poly_mul_packed",
+      "disposition": "declared-safe-ffi"
+    },
+    {
+      "id": "ffi:flint:fmpq_rref_result",
+      "kind": "declared-ffi",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "fmpq_rref_result",
+      "dynamic_package": "@sagemath/sagejs-flint",
+      "dynamic_export": "ffiFmpqRrefResultCreate",
+      "symbol": "sagejs_flint_fmpq_rref_result_init",
+      "disposition": "declared-safe-ffi"
+    },
+    {
+      "id": "ffi:flint:fmpq_rref_result_compute",
+      "kind": "declared-ffi",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "fmpq_rref_result_compute",
+      "dynamic_package": "@sagemath/sagejs-flint",
+      "dynamic_export": "ffiFmpqRrefResultCompute",
+      "symbol": "sagejs_flint_fmpq_rref_result_compute",
+      "disposition": "declared-safe-ffi"
+    },
+    {
+      "id": "ffi:flint:fmpq_rref_result_denominator_word_capacity",
+      "kind": "declared-ffi",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "fmpq_rref_result_denominator_word_capacity",
+      "dynamic_package": "@sagemath/sagejs-flint",
+      "dynamic_export": "ffiFmpqRrefResultDenominatorWordCapacity",
+      "symbol": "sagejs_flint_fmpq_rref_result_denominator_word_capacity",
+      "disposition": "declared-safe-ffi"
+    },
+    {
+      "id": "ffi:flint:fmpq_rref_result_export",
+      "kind": "declared-ffi",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "fmpq_rref_result_export",
+      "dynamic_package": "@sagemath/sagejs-flint",
+      "dynamic_export": "ffiFmpqRrefResultExport",
+      "symbol": "sagejs_flint_fmpq_rref_result_export",
+      "disposition": "declared-safe-ffi"
+    },
+    {
+      "id": "ffi:flint:fmpq_rref_result_numerator_word_capacity",
+      "kind": "declared-ffi",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "fmpq_rref_result_numerator_word_capacity",
+      "dynamic_package": "@sagemath/sagejs-flint",
+      "dynamic_export": "ffiFmpqRrefResultNumeratorWordCapacity",
+      "symbol": "sagejs_flint_fmpq_rref_result_numerator_word_capacity",
+      "disposition": "declared-safe-ffi"
+    },
+    {
+      "id": "ffi:flint:fmpq_rref_result_rank",
+      "kind": "declared-ffi",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "fmpq_rref_result_rank",
+      "dynamic_package": "@sagemath/sagejs-flint",
+      "dynamic_export": "ffiFmpqRrefResultRank",
+      "symbol": "sagejs_flint_fmpq_rref_result_rank",
       "disposition": "declared-safe-ffi"
     },
     {
@@ -1061,6 +1138,76 @@
       "symbol": "fibonacci",
       "disposition": "migrate-to-declared-ffi",
       "family": "exact-arithmetic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:fmpqRrefResultClose",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "fmpqRrefResultClose",
+      "symbol": "sagejs_fmpq_rref_result_close",
+      "disposition": "retain-host-adapter",
+      "family": "dense-matrix-storage"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:fmpqRrefResultCompute",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "fmpqRrefResultCompute",
+      "symbol": "sagejs_fmpq_rref_result_compute",
+      "disposition": "retain-host-adapter",
+      "family": "dense-matrix-algorithms"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:fmpqRrefResultCreate",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "fmpqRrefResultCreate",
+      "symbol": "sagejs_fmpq_rref_result_create",
+      "disposition": "retain-host-adapter",
+      "family": "dense-matrix-storage"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:fmpqRrefResultDenominatorWordCapacity",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "fmpqRrefResultDenominatorWordCapacity",
+      "symbol": "sagejs_fmpq_rref_result_denominator_word_capacity",
+      "disposition": "retain-host-adapter",
+      "family": "dense-matrix-storage"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:fmpqRrefResultExport",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "fmpqRrefResultExport",
+      "symbol": "sagejs_fmpq_rref_result_export",
+      "disposition": "retain-host-adapter",
+      "family": "dense-matrix-storage"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:fmpqRrefResultNumeratorWordCapacity",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "fmpqRrefResultNumeratorWordCapacity",
+      "symbol": "sagejs_fmpq_rref_result_numerator_word_capacity",
+      "disposition": "retain-host-adapter",
+      "family": "dense-matrix-storage"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:fmpqRrefResultRank",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "fmpqRrefResultRank",
+      "symbol": "sagejs_fmpq_rref_result_rank",
+      "disposition": "retain-host-adapter",
+      "family": "dense-matrix-storage"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:fqAdd",
@@ -3673,6 +3820,22 @@
       "id": "native-file:packages/flint/src/floating.h",
       "kind": "classified-native-file",
       "path": "packages/flint/src/floating.h",
+      "disposition": "public-abi",
+      "review_status": "accepted",
+      "lane": "arithmetic-algebra"
+    },
+    {
+      "id": "native-file:packages/flint/src/fmpq_rref_result.c",
+      "kind": "classified-native-file",
+      "path": "packages/flint/src/fmpq_rref_result.c",
+      "disposition": "host-adapter",
+      "review_status": "accepted",
+      "lane": "arithmetic-algebra"
+    },
+    {
+      "id": "native-file:packages/flint/src/fmpq_rref_result.h",
+      "kind": "classified-native-file",
+      "path": "packages/flint/src/fmpq_rref_result.h",
       "disposition": "public-abi",
       "review_status": "accepted",
       "lane": "arithmetic-algebra"

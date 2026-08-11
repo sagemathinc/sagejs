@@ -159,6 +159,13 @@ borrow checker: unsupported ownership patterns fail schema validation or
 compilation. Unix native CI exercises real resource/view schedules under
 AddressSanitizer, UndefinedBehaviorSanitizer, and leak detection.
 
+Expensive variable-size exact outputs use the same narrow ownership protocol.
+The foreign computation may return a short-lived owned result, expose only
+scalar size metadata, and transactionally export into caller-owned packed
+buffers allocated from those measurements. The result is then closed. This
+two-phase pattern is preferred to guessing a worst-case limb bound or rerunning
+the mathematical computation after a fixed output buffer proves too small.
+
 Compiler-owned records are fixed-layout value aggregates declared by an
 ordinary CPython-parseable `NativeRecord` subclass. Their schema—not a host
 object layout—defines the isolated ABI. Record fields are checked scalars or

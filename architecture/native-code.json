@@ -165,6 +165,20 @@
       "rationale": "Declarations for native floating-point operations."
     },
     {
+      "path": "packages/flint/src/fmpq_rref_result.c",
+      "category": "host-adapter",
+      "review_status": "accepted",
+      "lane": "arithmetic-algebra",
+      "rationale": "Node-API ownership and packed-buffer adapter for one retained FLINT rational RREF result."
+    },
+    {
+      "path": "packages/flint/src/fmpq_rref_result.h",
+      "category": "public-abi",
+      "review_status": "accepted",
+      "lane": "arithmetic-algebra",
+      "rationale": "Declarations for the retained rational RREF host adapter."
+    },
+    {
       "path": "packages/flint/src/matrix.c",
       "category": "mixed-native",
       "review_status": "audited",

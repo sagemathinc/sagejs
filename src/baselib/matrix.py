@@ -3301,36 +3301,21 @@ class Matrix(sage.Element):
                 self._rref_cache.set_immutable()
                 return self._rref_cache
             if self._has_packed_rational_storage():
-                kernel = _dense_rational_flint_module().flint_dense_rational_matrix_rref
+                kernel = _dense_rational_flint_module().flint_dense_rational_matrix_rref_retained
                 source_numerators, source_denominators = self._rational_kernel_parts(
                     kernel
                 )
-                rank_output = _dense_integer_zeros(kernel, 1, 1)
-
-                def invoke_rational_rref(
-                    output_numerators: Any,
-                    output_denominators: Any,
-                ) -> None:
-                    kernel(
-                        rank_output,
-                        output_numerators,
-                        output_denominators,
-                        source_numerators,
-                        source_denominators,
-                        self.nrows(),
-                        self.ncols(),
-                        1,
-                    )
-
-                storage = _run_rational_output(
-                    kernel,
-                    self.nrows() * self.ncols(),
-                    invoke_rational_rref,
-                    self._rational_capacity() + 1,
+                rank, output_numerators, output_denominators = kernel(
+                    source_numerators,
+                    source_denominators,
+                    self.nrows(),
+                    self.ncols(),
                 )
-                self._rank_cache = runtime.number(
-                    _integer_buffer_values(rank_output)[0]
+                storage = _PackedRationalStorage(
+                    output_numerators,
+                    output_denominators,
                 )
+                self._rank_cache = runtime.number(rank)
                 self._rref_cache = self._parent._from_canonical_rational_entries(
                     storage.numerators, storage.denominators
                 )
@@ -3339,11 +3324,7 @@ class Matrix(sage.Element):
                 self._rref_cache.set_immutable()
                 _trace_dense_rational_selection(
                     "rref",
-                    (
-                        "declared-flint-isolated"
-                        if _native_kernel_available(kernel)
-                        else "declared-flint-adapter"
-                    ),
+                    "declared-flint-retained-adapter",
                     self.nrows(),
                     self.ncols(),
                 )

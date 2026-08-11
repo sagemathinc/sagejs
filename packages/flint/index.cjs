@@ -1138,6 +1138,16 @@ function ffiDirichletGroupNumPrimitive(group) {
   return BigInt(binding.dirichletGroupData(group).numberPrimitive);
 };
 
+binding.ffiFmpqRrefResultCreate = binding.fmpqRrefResultCreate;
+binding.ffiFmpqRrefResultClose = binding.fmpqRrefResultClose;
+binding.ffiFmpqRrefResultCompute = binding.fmpqRrefResultCompute;
+binding.ffiFmpqRrefResultRank = binding.fmpqRrefResultRank;
+binding.ffiFmpqRrefResultNumeratorWordCapacity =
+  binding.fmpqRrefResultNumeratorWordCapacity;
+binding.ffiFmpqRrefResultDenominatorWordCapacity =
+  binding.fmpqRrefResultDenominatorWordCapacity;
+binding.ffiFmpqRrefResultExport = binding.fmpqRrefResultExport;
+
 /* Every non-resource declaration is compiled into this addon from the
  * generated typed-Python bodies in generated/ffi_host.py.  Save the old
  * handwritten implementations as differential oracles, then make the

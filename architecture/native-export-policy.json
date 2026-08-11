@@ -689,6 +689,41 @@
       "decision": "migrate-to-declared-ffi"
     },
     {
+      "id": "napi:@sagemath/sagejs-flint:fmpqRrefResultClose",
+      "family": "dense-matrix-storage",
+      "decision": "retain-host-adapter"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:fmpqRrefResultCompute",
+      "family": "dense-matrix-algorithms",
+      "decision": "retain-host-adapter"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:fmpqRrefResultCreate",
+      "family": "dense-matrix-storage",
+      "decision": "retain-host-adapter"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:fmpqRrefResultDenominatorWordCapacity",
+      "family": "dense-matrix-storage",
+      "decision": "retain-host-adapter"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:fmpqRrefResultExport",
+      "family": "dense-matrix-storage",
+      "decision": "retain-host-adapter"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:fmpqRrefResultNumeratorWordCapacity",
+      "family": "dense-matrix-storage",
+      "decision": "retain-host-adapter"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:fmpqRrefResultRank",
+      "family": "dense-matrix-storage",
+      "decision": "retain-host-adapter"
+    },
+    {
       "id": "napi:@sagemath/sagejs-flint:gcd",
       "family": "exact-arithmetic",
       "decision": "declared-ffi"
