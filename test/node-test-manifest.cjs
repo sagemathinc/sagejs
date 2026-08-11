@@ -19,6 +19,7 @@ const unit = [
   "test/foreign-languages.cjs",
   "test/python-syntax-frontend.cjs",
   "test/python-cst-lowerer.cjs",
+  "test/python-container-truthiness.cjs",
   "test/browser-compiler-frontend.cjs",
   "test/parallel-development.cjs",
   "test/package-graph.cjs",

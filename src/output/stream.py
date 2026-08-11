@@ -79,7 +79,15 @@ output_stream_defaults = {
     "exact_integers": False,
     "rational_division": False,
     "python_tuples": False,
-    "python_truthiness": False,
+    # OutputStream compiles Python unless a specialized caller explicitly
+    # requests JavaScript condition semantics.  A false default is unsafe:
+    # any missed option silently treats empty arrays and other Python
+    # containers as truthy JavaScript objects.
+    "python_truthiness": True,
+    # Keep ordering dispatch independent from condition truth testing.  Some
+    # compiler/bootstrap sources operate on native JavaScript representations
+    # and opt out of rich ordering without giving up Python container truth.
+    "python_ordering": True,
     "python_attributes": False,
     "pool_numeric_literals": False,
     "numeric_literal_pool_prefix": "",
@@ -114,8 +122,28 @@ class OutputStream:
         self.time_counter += 1
         return "ρσ_time_start_" + self.time_counter
 
+    def in_truth_primitive_implementation(self):
+        # `ρσ_bool` is the bootstrap truth primitive itself.  Its body is
+        # deliberately written in terms of native type tests, identity
+        # checks, Array.isArray, and helper predicates returning booleans.
+        # Python truth lowering here would either recurse through `ρσ_bool`
+        # or let its shared short-circuit temporary clobber the caller's
+        # temporary.  Keep this exact function-level bootstrap exception
+        # inspectable; every neighboring function still gets Python truth.
+        for node in self._stack:
+            name = node.name
+            if name and name.name is "ρσ_bool":
+                return True
+        return False
+
+    def uses_python_truthiness(self):
+        return (
+            self.options.python_truthiness
+            and not self.in_truth_primitive_implementation()
+        )
+
     def print_truth_test(self, expression):
-        if self.options.python_truthiness:
+        if self.uses_python_truthiness():
             self.print("ρσ_bool(")
             expression.print(self)
             self.print(")")

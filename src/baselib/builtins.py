@@ -2142,15 +2142,13 @@ def ρσ_int(value: Any = 0, base: Any = runtime.undefined) -> Any:
         return value
     elif runtime.strict_equal(runtime.jstype(value), "string"):
         return _builtins_parse_integer(value, base)
-    elif (
-        value
-        and _builtins_member_is_function(value, "decode")
-        and _builtins_member_is_function(value, "__len__")
+    elif _builtins_member_is_function(value, "decode") and _builtins_member_is_function(
+        value, "__len__"
     ):
         return _builtins_parse_integer(
             _builtins_call_member(value, "decode", ["ascii"]), base
         )
-    elif value and _builtins_member_is_function(value, "__int__"):
+    elif _builtins_member_is_function(value, "__int__"):
         if base is not runtime.undefined:
             raise TypeError("int() can't convert non-string with explicit base")
         answer = _builtins_call_member(value, "__int__", [])
@@ -2202,15 +2200,13 @@ def ρσ_float(value: Any = 0) -> Any:
         # Number() rejects trailing junk which JavaScript parseFloat accepts.
         answer = runtime.number(value)
         reject_nan = True
-    elif (
-        value
-        and _builtins_member_is_function(value, "decode")
-        and _builtins_member_is_function(value, "__len__")
+    elif _builtins_member_is_function(value, "decode") and _builtins_member_is_function(
+        value, "__len__"
     ):
         return ρσ_float(_builtins_call_member(value, "decode", ["ascii"]))
-    elif value and _builtins_member_is_function(value, "__float__"):
+    elif _builtins_member_is_function(value, "__float__"):
         answer = _builtins_call_member(value, "__float__", [])
-    elif value and _builtins_member_is_function(value, "__index__"):
+    elif _builtins_member_is_function(value, "__index__"):
         answer = runtime.number(_builtins_call_member(value, "__index__", []))
     else:
         raise TypeError(

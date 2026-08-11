@@ -17,6 +17,13 @@ var {
 } = require("./baselib-modules.cjs");
 
 async function compile_baselib(PyLang, src_path) {
+  let supportsPythonOrdering = false;
+  try {
+    // The immutable stage-zero compiler predates this independently
+    // configurable lowering policy.
+    new PyLang.OutputStream({ python_ordering: false });
+    supportsPythonOrdering = true;
+  } catch (_error) {}
   const { createPythonCompilerFrontend } = require("./python/compiler-frontend");
   const frontend = PyLang.AST_AnnotatedAssignment
     ? await createPythonCompilerFrontend(PyLang, "python")
@@ -190,7 +197,20 @@ async function compile_baselib(PyLang, src_path) {
         write_name: false,
         private_scope: false,
         omit_baselib: true,
+        // This first module supplies class/MRO primitives which execute
+        // before builtins.py defines ρσ_bool.  It deliberately uses native
+        // JavaScript arrays and `.length`; every ordinary baselib module uses
+        // OutputStream's Python-truthiness default.
+        python_truthiness:
+          module.moduleId !== "sagejs._baselib.runtime_primitives",
       };
+      if (supportsPythonOrdering) {
+        // Baselib's representation layer historically uses explicit native
+        // ordering.  Truth testing is independently Python-aware; separating
+        // these policies prevents a truthiness correction from silently
+        // changing symbolic and graphics ordering dispatch.
+        outputOptions.python_ordering = false;
+      }
       outputOptions.baselib_module_id = module.moduleId;
       var output = new PyLang.OutputStream(outputOptions);
       module.ast.print(output);
@@ -322,7 +342,25 @@ async function compile(src_path, lib_path, sources, source_hash, profile) {
   } catch (e) {
     if (e.code != "EEXIST") throw e;
   }
-  output_options = { beautify: true, baselib_plain: compiled_baselib.pretty };
+  // The compiler implementation is bootstrap infrastructure written against
+  // native JavaScript objects.  Keep this sole whole-program escape hatch
+  // explicit; generated Python and ordinary baselib modules default to Python
+  // truth testing.
+  output_options = {
+    beautify: true,
+    baselib_plain: compiled_baselib.pretty,
+  };
+  try {
+    // The immutable stage-zero compiler predates this option and already
+    // emits native JavaScript conditions.  Once the current OutputStream is
+    // available, make the compiler-only exception explicit.
+    new PyLang.OutputStream({ python_truthiness: false });
+    output_options.python_truthiness = false;
+  } catch (_error) {}
+  try {
+    new PyLang.OutputStream({ python_ordering: false });
+    output_options.python_ordering = false;
+  } catch (_error) {}
 
   var raw = sources[file],
     toplevel;

@@ -1,0 +1,55 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "python-container-truthiness",
+  "title": "Python container truthiness semantics",
+  "lane": "compiler-runtime",
+  "status": "review",
+  "owner": "user",
+  "objective": "Fix compiled Python condition lowering so empty and nonempty built-in containers obey Python truthiness in if, while, conditional expressions, boolean operators, not, and bool without JavaScript object-truthiness leaks; add CPython-differential regressions including the empty-list loop that exposed the bug.",
+  "base_commit": "c0bfe8c3bcf170f0f0519e4f43f0fcd38d770024",
+  "claims": [
+    ".agents/lanes.json",
+    "src/output/",
+    "src/baselib/builtins.py",
+    "src/baselib/internal.py",
+    "tools/self.js",
+    "test/python-runtime-hotpaths.cjs",
+    "test/python-cst-lowerer.cjs",
+    "test/node-test-manifest.cjs",
+    "test/python-container-truthiness.cjs"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "compiler-infrastructure",
+    "fallback": "not-applicable",
+    "oracles": [
+      "CPython 3.11 truthiness semantics"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm build",
+    "pnpm test:compiler",
+    "pnpm test:integration"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "Python container truth testing is now the safe compiler default, including reentrant operand-preserving boolean expressions, while an explicit JavaScript escape hatch remains available. Self-hosted baselib generation uses Python truth outside the bootstrap primitive, numeric protocols no longer depend on operand truth, ordering is an independent representation policy, and keyword interpolation resolves builtins through the lexical module registry. CPython-differential regressions cover containers, custom truth protocols, control-flow consumers, short-circuit behavior, comprehensions, and falsey numeric protocols.",
+    "risks": [
+      "Other pre-existing baselib reads from globalThis may be latent module-isolation defects; this lane corrected only the four truthiness-exposed ρσ_getattr reads.",
+      "Generated compiler, baselib, and native-kernel artifacts are ignored and must be rebuilt after integration."
+    ],
+    "next_steps": [
+      "Audit the remaining intentional-looking baselib globalThis reads against lexical module isolation in a separate lane.",
+      "Refresh the pre-existing stale generated API documentation on the integration branch."
+    ]
+  }
+}

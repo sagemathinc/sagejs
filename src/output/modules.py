@@ -738,6 +738,7 @@ def print_module(self, output):
                                     "write_name": False,
                                     "discard_asserts": output.options.discard_asserts,
                                     "python_truthiness": output.options.python_truthiness,
+                                    "python_ordering": output.options.python_ordering,
                                     "python_tuples": output.options.python_tuples,
                                     "python_attributes": output.options.python_attributes,
                                 }

@@ -93,6 +93,18 @@ def declare_vars(vars, output):
         output.newline()
 
 
+def declare_truth_temp(output):
+    # Python `and`/`or` must return an operand, so their lowering retains the
+    # left operand while `ρσ_bool` decides whether to evaluate the right.
+    # The retained value must be local to each Python function invocation:
+    # truth testing may call arbitrary Python `__bool__`/`__len__` methods,
+    # including recursive code containing its own short-circuit expressions.
+    if output.uses_python_truthiness():
+        output.indent()
+        output.print("var ρσ_cond_temp")
+        output.end_statement()
+
+
 def display_body(body, is_toplevel, output):
     last = body.length - 1
     for i, stmt in enumerate(body):
@@ -121,6 +133,7 @@ def display_complex_body(node, is_toplevel, output, function_preamble):
 
     if is_node_type(node, AST_Scope):
         function_preamble(node, output, offset)
+        declare_truth_temp(output)
         declare_vars(node.localvars, output)
 
     elif is_node_type(node, AST_Except):
@@ -159,6 +172,7 @@ def display_complex_body(node, is_toplevel, output, function_preamble):
 def display_lambda_body(node, output, function_preamble):
     if function_preamble is not None:
         function_preamble(node, output, 0)
+    declare_truth_temp(output)
     output.indent()
     output.print("return ")
     if output.options.python_tuples and is_node_type(node.body, AST_Seq):
