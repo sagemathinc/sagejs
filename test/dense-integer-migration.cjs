@@ -291,6 +291,8 @@ A = random_matrix(ZZ, 4)
 A + A
 A * A
 A.det()
+A.matrix_from_rows([3, 1])
+A.matrix_from_columns([2, 0])
 print('trace-ok')
 `, {
       SAGEJS_NATIVE_CACHE_DIR: temporary,
@@ -302,6 +304,14 @@ print('trace-ok')
     assert.match(trace, /Matrix\.add ZZ 4x4 -> generated-flint-resource/);
     assert.match(trace, /Matrix\.multiply ZZ 4x4 -> generated-flint-resource/);
     assert.match(trace, /Matrix\.determinant ZZ 4x4 -> generated-flint-resource/);
+    assert.match(
+      trace,
+      /Matrix\.matrix_from_rows ZZ 2x4 -> generated-flint-resource/,
+    );
+    assert.match(
+      trace,
+      /Matrix\.matrix_from_columns ZZ 4x2 -> generated-flint-resource/,
+    );
     assert.match(trace, /trace-ok/);
 
     console.log("dense integer matrix migration tests passed");

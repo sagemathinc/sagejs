@@ -67,6 +67,49 @@ assert A.stack(B).matrix_from_rows([4, 0]).list() == B.row(1).list() + A.row(0).
 assert A.augment(B).matrix_from_columns([4, 0]).list() == [
     B[0, 1], A[0, 0], B[1, 1], A[1, 0], B[2, 1], A[2, 0]
 ]
+
+# Selection is one generated resource operation. It preserves order,
+# duplicates, Python negative indices, skewed exact values, empty dimensions,
+# and the source matrix.
+huge = 2**4096 + 12345
+skew = matrix(ZZ, 3, 4, [
+    huge, 2, 3, -huge,
+    5, -(2**521 + 7), 7, 8,
+    9, 10, 2**257 + 11, 12,
+])
+skew_before = skew.__copy__()
+skew._packed_integers = packed_forbidden
+selected_rows = skew.matrix_from_rows([2, -3, 2])
+assert selected_rows._has_fmpz_matrix_resource()
+assert selected_rows.dimensions() == (3, 4)
+assert selected_rows.list() == skew.row(2).list() + skew.row(0).list() + skew.row(2).list()
+selected_columns = skew.matrix_from_columns([-1, 0, -1])
+assert selected_columns._has_fmpz_matrix_resource()
+assert selected_columns.dimensions() == (3, 3)
+assert selected_columns.list() == [
+    skew[0, 3], skew[0, 0], skew[0, 3],
+    skew[1, 3], skew[1, 0], skew[1, 3],
+    skew[2, 3], skew[2, 0], skew[2, 3],
+]
+empty_rows = skew.matrix_from_rows([])
+empty_columns = skew.matrix_from_columns([])
+assert empty_rows._has_fmpz_matrix_resource()
+assert empty_columns._has_fmpz_matrix_resource()
+assert empty_rows.dimensions() == (0, 4)
+assert empty_columns.dimensions() == (3, 0)
+for invalid_rows in ([3], [-4]):
+    try:
+        skew.matrix_from_rows(invalid_rows)
+        raise AssertionError('invalid row selection unexpectedly succeeded')
+    except IndexError:
+        pass
+for invalid_columns in ([4], [-5]):
+    try:
+        skew.matrix_from_columns(invalid_columns)
+        raise AssertionError('invalid column selection unexpectedly succeeded')
+    except IndexError:
+        pass
+assert skew == skew_before
 assert A.str() == '[ 2  4  4]\n[ 6  6 12]\n[10  4 16]'
 assert A.change_ring(QQ).change_ring(ZZ) == A
 

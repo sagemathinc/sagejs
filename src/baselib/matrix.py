@@ -5183,24 +5183,11 @@ class Matrix(sage.Element):
             )._from_canonical_rational_entries(storage.numerators, storage.denominators)
         if self._has_integer_storage():
             indices = [_normalize_index(row, self.nrows()) for row in indices]
-            ffi = _flint_ffi_module()
-            target = ffi.fmpz_matrix(len(indices), self.ncols())
-            try:
-                for target_row in range(len(indices)):
-                    source_row = ffi.fmpz_matrix_submatrix(
-                        self._integer_resource(),
-                        indices[target_row],
-                        indices[target_row] + 1,
-                        0,
-                        self.ncols(),
-                    )
-                    try:
-                        ffi.fmpz_matrix_set_block(target, target_row, 0, source_row)
-                    finally:
-                        source_row.close()
-            except Exception:
-                target.close()
-                raise
+            target = _flint_ffi_module().fmpz_matrix_select_rows(
+                self._integer_resource(),
+                _packed_uint64(indices),
+                len(indices),
+            )
             _trace_dense_integer_selection(
                 "matrix_from_rows",
                 "generated-flint-resource",
@@ -5303,26 +5290,11 @@ class Matrix(sage.Element):
             )._from_canonical_rational_entries(storage.numerators, storage.denominators)
         if self._has_integer_storage():
             indices = [_normalize_index(column, self.ncols()) for column in indices]
-            ffi = _flint_ffi_module()
-            target = ffi.fmpz_matrix(self.nrows(), len(indices))
-            try:
-                for target_column in range(len(indices)):
-                    source_column = ffi.fmpz_matrix_submatrix(
-                        self._integer_resource(),
-                        0,
-                        self.nrows(),
-                        indices[target_column],
-                        indices[target_column] + 1,
-                    )
-                    try:
-                        ffi.fmpz_matrix_set_block(
-                            target, 0, target_column, source_column
-                        )
-                    finally:
-                        source_column.close()
-            except Exception:
-                target.close()
-                raise
+            target = _flint_ffi_module().fmpz_matrix_select_columns(
+                self._integer_resource(),
+                _packed_uint64(indices),
+                len(indices),
+            )
             _trace_dense_integer_selection(
                 "matrix_from_columns",
                 "generated-flint-resource",
