@@ -10,7 +10,11 @@
   "base_commit": "890edf635c04666c2ff96fb8a6173c7cb1f04e90",
   "claims": [
     "src/baselib/polynomial.py",
+    "src/lib/sagejs/kernels/polynomial/packed_flint.py",
+    "tools/serialization.ts",
+    "pyrightconfig.json",
     "test/exact-polynomial-resources.cjs",
+    "test/serialization.cjs",
     "bench/exact-polynomial-resources.cjs"
   ],
   "dependencies": [

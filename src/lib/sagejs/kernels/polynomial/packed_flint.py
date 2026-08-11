@@ -3,6 +3,9 @@
 from __future__ import annotations
 
 from sagejs.ffi.flint import (
+    FlintByteRegion,
+    flint_byte_region_get,
+    flint_byte_region_length,
     fmpq_poly_divexact,
     fmpq_poly_factor,
     fmpq_poly_mul,
@@ -17,6 +20,20 @@ from sagejs.ffi.flint import (
     nmod_poly_roots,
 )
 from sagejs.native import IntegerBuffer, UInt64Buffer, native, uint64
+
+
+@native
+def flint_byte_region_copy(
+    region: FlintByteRegion,
+    output: IntegerBuffer,
+    length: uint64,
+) -> bool:
+    """Copy an owned variable-size FLINT result through a checked boundary."""
+    if flint_byte_region_length(region) != length:
+        return False
+    for index in range(length):
+        output[index] = flint_byte_region_get(region, index)
+    return True
 
 
 @native

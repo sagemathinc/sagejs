@@ -189,6 +189,7 @@
       "id": "packed-polynomial-flint-production",
       "source": "src/lib/sagejs/kernels/polynomial/packed_flint.py",
       "functions": [
+        "flint_byte_region_copy",
         "flint_packed_integer_polynomial_multiply",
         "flint_packed_rational_polynomial_multiply",
         "flint_packed_prime_field_polynomial_multiply",

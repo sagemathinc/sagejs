@@ -53,6 +53,60 @@ test("serialization v1 preserves graphs, exact integers, and binary blocks", () 
   );
 });
 
+test("exact polynomial compact bytes reject noncanonical magnitudes", () => {
+  function polynomialBytes(magic, parts) {
+    return Uint8Array.from([
+      ...Buffer.from(magic, "ascii"),
+      1, 0, 0, 0,
+      1, 0, 0, 0, 0, 0, 0, 0,
+      ...parts,
+    ]);
+  }
+  const parent = {
+    _from_coefficients(coefficients) {
+      return coefficients;
+    },
+  };
+  function decode(bytes, encoding = "fmpz-poly-le-v1") {
+    return serialization.sageArithmeticElementCodec.decode(null, {
+      decode: () => ({
+        kind: "polynomial",
+        parent,
+        coefficients: bytes,
+        coefficientEncoding: encoding,
+      }),
+    });
+  }
+
+  assert.deepEqual(
+    decode(polynomialBytes("SJPZ", [1, 0, 0, 128, 1])),
+    [-1n],
+  );
+  assert.throws(
+    () => decode(polynomialBytes("SJPZ", [2, 0, 0, 0, 1, 0])),
+    /magnitude is not canonical/,
+  );
+  assert.throws(
+    () => decode(polynomialBytes("SJPZ", [0, 0, 0, 128])),
+    /negative zero/,
+  );
+  assert.throws(
+    () => decode(polynomialBytes("SJPZ", [1, 0, 0, 0])),
+    /integer is truncated/,
+  );
+  assert.throws(
+    () => decode(polynomialBytes("SJPZ", [0, 0, 0, 0, 7])),
+    /trailing bytes/,
+  );
+  assert.throws(
+    () => decode(
+      polynomialBytes("SJPQ", [0, 0, 0, 0, 0, 0, 0, 0]),
+      "fmpq-poly-le-v1",
+    ),
+    /denominator is not positive/,
+  );
+});
+
 test("worker packets move codec-owned buffers but copy caller-owned bytes", () => {
   class OwnedPayload {
     constructor(bytes) {
