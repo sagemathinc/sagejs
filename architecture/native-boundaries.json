@@ -17,7 +17,7 @@
     "declared-ffi": 104,
     "declared-ffi-resource": 8,
     "napi-export": 292,
-    "runtime-intrinsic": 122,
+    "runtime-intrinsic": 125,
     "wasm-export": 46
   },
   "boundaries": [
@@ -5554,11 +5554,35 @@
       "disposition": "runtime-primitive"
     },
     {
+      "id": "runtime:uint64_matrix_format",
+      "kind": "runtime-intrinsic",
+      "path": "tools/python/contract.ts",
+      "export": "uint64_matrix_format",
+      "symbol": "ρσ_uint64_matrix_format",
+      "disposition": "runtime-primitive"
+    },
+    {
+      "id": "runtime:uint64_pack_le",
+      "kind": "runtime-intrinsic",
+      "path": "tools/python/contract.ts",
+      "export": "uint64_pack_le",
+      "symbol": "ρσ_uint64_pack_le",
+      "disposition": "runtime-primitive"
+    },
+    {
       "id": "runtime:uint64_residue_buffer",
       "kind": "runtime-intrinsic",
       "path": "tools/python/contract.ts",
       "export": "uint64_residue_buffer",
       "symbol": "ρσ_uint64_residue_buffer",
+      "disposition": "runtime-primitive"
+    },
+    {
+      "id": "runtime:uint64_unpack_le",
+      "kind": "runtime-intrinsic",
+      "path": "tools/python/contract.ts",
+      "export": "uint64_unpack_le",
+      "symbol": "ρσ_uint64_unpack_le",
       "disposition": "runtime-primitive"
     },
     {

@@ -4,7 +4,7 @@
   "id": "uint64-structural",
   "title": "Packed UInt64 Structural Primitives",
   "lane": "compiler-runtime",
-  "status": "review",
+  "status": "complete",
   "owner": "codex",
   "objective": "Add checked bulk uint64 residue pack/unpack and dense-matrix default formatting runtime primitives with deterministic tests and linear performance gates",
   "base_commit": "a6750517de37c1ca32f51cde277bcb2cb89c7f5c",
