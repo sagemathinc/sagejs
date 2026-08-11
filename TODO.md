@@ -23,3 +23,18 @@
 - Migrate exact power and Laurent series from private FLINT polynomial state to
   compiler-owned packed coefficients, then delete their audited polynomial
   reconstruction ingress.
+
+## Measurement and performance ergonomics
+
+- Make `time` report user, system, total CPU, and wall time. Instrument and
+  separately report lazy initialization performed inside the timed statement,
+  with an optional breakdown of module, addon, and native-kernel loading.
+- Implement `%timeit` with compilation once, automatic loop calibration,
+  warmup, high-resolution timing, current-scope semantics, suppressed result
+  printing, and the familiar `-n` and `-r` controls.
+- Ratchet cold production-kernel loading separately from warm mathematical
+  execution, and never silently compile a missing production kernel in an
+  ordinary installed session.
+- Finish the `matrix(ZZ, n, [1..n^2])` construction slice by avoiding the
+  redundant copy of an already-materialized built-in list. Exact range
+  materialization is now fast; keep a public end-to-end performance gate.

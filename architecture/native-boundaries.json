@@ -17,7 +17,7 @@
     "declared-ffi": 178,
     "declared-ffi-resource": 10,
     "napi-export": 292,
-    "runtime-intrinsic": 131,
+    "runtime-intrinsic": 133,
     "wasm-export": 46
   },
   "boundaries": [
@@ -5626,6 +5626,22 @@
       "path": "tools/python/contract.ts",
       "export": "error",
       "symbol": "Error",
+      "disposition": "runtime-primitive"
+    },
+    {
+      "id": "runtime:exact_integer_range_iterator",
+      "kind": "runtime-intrinsic",
+      "path": "tools/python/contract.ts",
+      "export": "exact_integer_range_iterator",
+      "symbol": "ρσ_exact_integer_range_iterator",
+      "disposition": "runtime-primitive"
+    },
+    {
+      "id": "runtime:exact_integer_range_values",
+      "kind": "runtime-intrinsic",
+      "path": "tools/python/contract.ts",
+      "export": "exact_integer_range_values",
+      "symbol": "ρσ_exact_integer_range_values",
       "disposition": "runtime-primitive"
     },
     {

@@ -9,6 +9,7 @@ const unit = [
   "test/startup-budget.cjs",
   "test/typed-math-lowering.cjs",
   "test/runtime-intrinsics.cjs",
+  "test/exact-integer-range-v1.cjs",
   "test/uint64-structural-runtime.cjs",
   "test/lint-authoritative.cjs",
   "test/baselib-boundaries.cjs",

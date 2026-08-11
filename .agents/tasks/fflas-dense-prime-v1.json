@@ -4,7 +4,7 @@
   "id": "fflas-dense-prime-v1",
   "title": "FFLAS dense prime accelerator",
   "lane": "integration",
-  "status": "review",
+  "status": "complete",
   "owner": "user",
   "objective": "Add a generated FFLAS/FFPACK accelerator for small-prime dense matrix multiplication and canonical RREF/rank with exact FLINT fallback, platform capability handling, differential tests, and public performance gates",
   "base_commit": "c96946ddd92812c9fc198ea23589b8e640eb98e3",
