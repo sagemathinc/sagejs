@@ -33,6 +33,11 @@ const cases = [
   { name: "multiply_QQ_128", expression: "fq * gq", budget: 20 },
   { name: "multiply_GF_512", expression: "fp * gp", budget: 12 },
   {
+    name: "evaluate_GF_20000",
+    expression: "_gf_serialization_value(_gf_evaluation_point)",
+    budget: 5,
+  },
+  {
     name: "sagepack_dump_GF_20000",
     expression: "_serialization_dumps(_gf_serialization_value)",
     budget: 100,
@@ -130,6 +135,7 @@ async function run(environment = process.env) {
         "fq = Rq(_qq_values[:128]); gq = Rq(_qq_values[17:145])",
         "fp = Rf(_gf_values[:512]); gp = Rf(_gf_values[29:541])",
         "_gf_serialization_value = Rf([(index*37 + 11) % 65521 for index in range(20000)])",
+        "_gf_evaluation_point = Rf.base_ring()(12345)",
         "_gf_serialization_data = _serialization_dumps(_gf_serialization_value)",
         "exact_z = (xz - 1)**20 * (xz + 2)**60",
         "exact_q = (QQ(3)/10) * (xq - 1)**40 * (xq + 2)**20",

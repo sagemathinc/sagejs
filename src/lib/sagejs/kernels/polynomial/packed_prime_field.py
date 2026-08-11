@@ -6,8 +6,10 @@ from sagejs.native import (
     PrimeFieldModulus,
     UInt64Buffer,
     native,
+    prime_add,
     prime_mul,
     prime_sub,
+    uint64,
 )
 
 
@@ -108,3 +110,20 @@ def packed_prime_field_polynomial_equal(
             if left[index] != right[index]:
                 equal = False
     return equal
+
+
+@native
+def packed_prime_field_polynomial_evaluate(
+    coefficients: UInt64Buffer,
+    value: uint64,
+    modulus: PrimeFieldModulus,
+) -> uint64:
+    """Evaluate low-to-high coefficients by modular Horner iteration."""
+    result = 0
+    length = len(coefficients)
+    for offset in range(length):
+        index = length - offset - 1
+        result = prime_add(
+            prime_mul(result, value, modulus), coefficients[index], modulus
+        )
+    return result

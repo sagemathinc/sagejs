@@ -1,0 +1,147 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "prime-polynomial-evaluate",
+  "title": "Prime Polynomial Evaluate",
+  "lane": "arithmetic-algebra",
+  "status": "review",
+  "owner": "user",
+  "objective": "Implement source-transparent fast scalar evaluation for canonical small-prime GF(p)[x] polynomials with differential semantics and a degree-19999 performance ratchet",
+  "base_commit": "74572fe5431a72f32a43c3f8686294c4c56b0a33",
+  "claims": [
+    "src/lib/sagejs/kernels/polynomial/packed_prime_field.py",
+    "src/baselib/polynomial.py",
+    "test/polynomial-prime-evaluate.cjs",
+    "bench/polynomial-prime-evaluate.cjs",
+    "scripts/check-polynomial-budget.cjs"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "source-transparent-native",
+    "fallback": "same-source",
+    "oracles": [
+      "cpython",
+      "javascript",
+      "SageMath GF(p)[x] scalar evaluation semantics"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "pnpm test:native",
+    "node --test test/polynomial-prime-evaluate.cjs",
+    "node scripts/check-polynomial-budget.cjs",
+    "pnpm architecture:check"
+  ],
+  "runs": [
+    {
+      "command": "node --test test/polynomial-prime-evaluate.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 3.571,
+      "started_at": "2026-08-11T13:04:34.434Z",
+      "commit": "bc98c6d9e47ee39a9bd421890369cd76686802b5",
+      "workspace_fingerprint": "d7f03fb1bbdcf30845d64fbc0235b8d1d293648fb072fab98f08f1271382b9ab",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node scripts/check-polynomial-budget.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 9.89,
+      "started_at": "2026-08-11T13:04:42.577Z",
+      "commit": "bc98c6d9e47ee39a9bd421890369cd76686802b5",
+      "workspace_fingerprint": "d7f03fb1bbdcf30845d64fbc0235b8d1d293648fb072fab98f08f1271382b9ab",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 11.953,
+      "started_at": "2026-08-11T13:04:55.542Z",
+      "commit": "bc98c6d9e47ee39a9bd421890369cd76686802b5",
+      "workspace_fingerprint": "d7f03fb1bbdcf30845d64fbc0235b8d1d293648fb072fab98f08f1271382b9ab",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 12.05,
+      "started_at": "2026-08-11T13:05:10.758Z",
+      "commit": "bc98c6d9e47ee39a9bd421890369cd76686802b5",
+      "workspace_fingerprint": "d7f03fb1bbdcf30845d64fbc0235b8d1d293648fb072fab98f08f1271382b9ab",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/polynomial-prime-evaluate.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 3.613,
+      "started_at": "2026-08-11T13:05:44.359Z",
+      "commit": "869047cb5037301b40a0a02722703b9182243c97",
+      "workspace_fingerprint": "4b4efd53a5c6d10c2d7b1e77eb5ccc81caa6cce685b5936c3da479ac77ccaed4",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node scripts/check-polynomial-budget.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 10.064,
+      "started_at": "2026-08-11T13:05:51.092Z",
+      "commit": "869047cb5037301b40a0a02722703b9182243c97",
+      "workspace_fingerprint": "4b4efd53a5c6d10c2d7b1e77eb5ccc81caa6cce685b5936c3da479ac77ccaed4",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 12.166,
+      "started_at": "2026-08-11T13:06:04.270Z",
+      "commit": "869047cb5037301b40a0a02722703b9182243c97",
+      "workspace_fingerprint": "4b4efd53a5c6d10c2d7b1e77eb5ccc81caa6cce685b5936c3da479ac77ccaed4",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 11.876,
+      "started_at": "2026-08-11T13:06:21.411Z",
+      "commit": "869047cb5037301b40a0a02722703b9182243c97",
+      "workspace_fingerprint": "4b4efd53a5c6d10c2d7b1e77eb5ccc81caa6cce685b5936c3da479ac77ccaed4",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:native",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 4.921,
+      "started_at": "2026-08-11T13:06:38.773Z",
+      "commit": "869047cb5037301b40a0a02722703b9182243c97",
+      "workspace_fingerprint": "4b4efd53a5c6d10c2d7b1e77eb5ccc81caa6cce685b5936c3da479ac77ccaed4",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Adds an ordinary CPython-parseable modular Horner kernel over canonical UInt64Buffer coefficients and routes only same-parent small-prime field elements and exact Integer inputs through its source-transparent isolated core. Differential coverage includes deterministic random polynomials, zero and constant polynomials, negative and huge integers, a prime near 2^32, native-required/native-disabled execution, CPython fallback, incompatible-parent coercion errors, and matrix, extension-field, and general-ring evaluation. The degree-19999 public call has an invoked 5 ms budget and measures about 0.2 ms native versus 22.5 ms for the same-source dynamic fallback, down from the audited 49-66 ms object-level path.",
+    "risks": [
+      "The fast route is deliberately narrow: incompatible prime fields, nonintegral scalars, extension fields, matrices, and general coefficient rings retain the coercion-aware fallback.",
+      "The existing prime-field source backend uses FLINT nmod internally, so native builds retain the established FLINT toolchain requirement even though the Python kernel and its CPython/JavaScript fallback are host-independent.",
+      "The inherited branch contains nine integrated task contracts still marked active or review, so pnpm parallel:check cannot select exactly one live task. Focused native/dynamic/CPython tests, the invoked performance budget, strict Python, architecture checks, production publication, and the standalone native compiler suite pass. After provisioning both isolated native packages, the aggregate pnpm test:native run passed FLINT, graph, both integrations, and 26 of 27 early FFI/production tests before it was intentionally interrupted at the parent lane's request for immediate integration; its long remaining tail was not rerun."
+    ],
+    "next_steps": [
+      "Integrate the commit, rebuild published production kernels, and retain evaluate_GF_20000 in the invoked polynomial performance gate.",
+      "Add multipoint or extension-field evaluation only as separate measured features with their own coercion and storage contracts."
+    ]
+  }
+}
