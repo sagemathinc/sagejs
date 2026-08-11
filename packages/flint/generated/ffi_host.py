@@ -122,6 +122,8 @@ from sagejs.ffi.flint import (
     fmpq_matrix_solve as _ffi_fmpq_matrix_solve,
     fmpq_matrix_rref as _ffi_fmpq_matrix_rref,
     fmpq_matrix_right_kernel as _ffi_fmpq_matrix_right_kernel,
+    fmpq_matrix_charpoly as _ffi_fmpq_matrix_charpoly,
+    fmpq_matrix_minpoly as _ffi_fmpq_matrix_minpoly,
     fmpq_matrix_rank as _ffi_fmpq_matrix_rank,
     fmpq_matrix_det as _ffi_fmpq_matrix_det,
     fmpq_matrix_trace as _ffi_fmpq_matrix_trace,
@@ -1301,6 +1303,24 @@ def ffiFmpqMatrixRightKernel(
     source: FmpqMatrix,
 ) -> FmpqMatrix:
     return _ffi_fmpq_matrix_right_kernel(
+        source,
+    )
+
+
+@native
+def ffiFmpqMatrixCharpoly(
+    source: FmpqMatrix,
+) -> FmpqPolynomial:
+    return _ffi_fmpq_matrix_charpoly(
+        source,
+    )
+
+
+@native
+def ffiFmpqMatrixMinpoly(
+    source: FmpqMatrix,
+) -> FmpqPolynomial:
+    return _ffi_fmpq_matrix_minpoly(
         source,
     )
 

@@ -638,6 +638,37 @@ static inline void sagejs_fmpq_polynomial_finish_result(
     sagejs_fmpq_polynomial_recompute_allocated_bytes(result);
 }
 
+/*
+ * Keep exact matrix polynomials resource-to-resource. FLINT owns every
+ * variable-size coefficient while it computes, and the generated adapter
+ * publishes the completed polynomial as one sealed owner. The caller never
+ * predicts coefficient sizes or materializes a packed matrix.
+ */
+
+static inline int sagejs_fmpq_matrix_charpoly_resource(
+    sagejs_fmpq_polynomial_t result,
+    const sagejs_fmpq_matrix_t source)
+{
+    if (fmpq_mat_nrows(source->value) != fmpq_mat_ncols(source->value))
+        return 0;
+    fmpq_poly_init(result->value);
+    fmpq_mat_charpoly(result->value, source->value);
+    sagejs_fmpq_polynomial_finish_result(result);
+    return 1;
+}
+
+static inline int sagejs_fmpq_matrix_minpoly_resource(
+    sagejs_fmpq_polynomial_t result,
+    const sagejs_fmpq_matrix_t source)
+{
+    if (fmpq_mat_nrows(source->value) != fmpq_mat_ncols(source->value))
+        return 0;
+    fmpq_poly_init(result->value);
+    fmpq_mat_minpoly(result->value, source->value);
+    sagejs_fmpq_polynomial_finish_result(result);
+    return 1;
+}
+
 static inline int sagejs_exact_polynomial_factorization_fmpq_factor(
     sagejs_fmpq_polynomial_t result,
     const sagejs_exact_polynomial_factorization_t factorization,

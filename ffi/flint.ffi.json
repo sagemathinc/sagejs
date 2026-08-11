@@ -8467,6 +8467,144 @@
       }
     },
     {
+      "id": "fmpq_matrix_charpoly",
+      "python_name": "fmpq_matrix_charpoly",
+      "signature": {
+        "parameters": [
+          {
+            "name": "source",
+            "type": "FmpqMatrix",
+            "ownership": "borrowed",
+            "mutability": "read",
+            "aliasing": "allowed"
+          }
+        ],
+        "return_type": "FmpqPolynomial",
+        "return_ownership": "owned",
+        "borrow_from": null
+      },
+      "dynamic": {
+        "export": "ffiFmpqMatrixCharpoly"
+      },
+      "native": {
+        "symbol": "sagejs_fmpq_matrix_charpoly_resource",
+        "return_type": "int",
+        "arguments": [
+          {
+            "source": "result",
+            "abi_type": "sagejs_fmpq_polynomial_t",
+            "direction": "out",
+            "adapter": null
+          },
+          {
+            "source": "source",
+            "abi_type": "sagejs_fmpq_matrix_t",
+            "direction": "in",
+            "adapter": null
+          }
+        ]
+      },
+      "effects": {
+        "pure": false,
+        "deterministic": true,
+        "thread_safe": true,
+        "may_allocate": true,
+        "may_raise": [
+          "ValueError"
+        ],
+        "writes": []
+      },
+      "result": {
+        "domain": "status",
+        "success": [
+          1
+        ],
+        "absence": null
+      },
+      "errors": {
+        "exception": "ValueError",
+        "message": "characteristic polynomial requires a square rational matrix"
+      },
+      "exceptions": {
+        "policy": "none",
+        "failure_status": null
+      },
+      "targets": {
+        "dynamic": true,
+        "native": true,
+        "wasm": false
+      }
+    },
+    {
+      "id": "fmpq_matrix_minpoly",
+      "python_name": "fmpq_matrix_minpoly",
+      "signature": {
+        "parameters": [
+          {
+            "name": "source",
+            "type": "FmpqMatrix",
+            "ownership": "borrowed",
+            "mutability": "read",
+            "aliasing": "allowed"
+          }
+        ],
+        "return_type": "FmpqPolynomial",
+        "return_ownership": "owned",
+        "borrow_from": null
+      },
+      "dynamic": {
+        "export": "ffiFmpqMatrixMinpoly"
+      },
+      "native": {
+        "symbol": "sagejs_fmpq_matrix_minpoly_resource",
+        "return_type": "int",
+        "arguments": [
+          {
+            "source": "result",
+            "abi_type": "sagejs_fmpq_polynomial_t",
+            "direction": "out",
+            "adapter": null
+          },
+          {
+            "source": "source",
+            "abi_type": "sagejs_fmpq_matrix_t",
+            "direction": "in",
+            "adapter": null
+          }
+        ]
+      },
+      "effects": {
+        "pure": false,
+        "deterministic": true,
+        "thread_safe": true,
+        "may_allocate": true,
+        "may_raise": [
+          "ValueError"
+        ],
+        "writes": []
+      },
+      "result": {
+        "domain": "status",
+        "success": [
+          1
+        ],
+        "absence": null
+      },
+      "errors": {
+        "exception": "ValueError",
+        "message": "minimal polynomial requires a square rational matrix"
+      },
+      "exceptions": {
+        "policy": "none",
+        "failure_status": null
+      },
+      "targets": {
+        "dynamic": true,
+        "native": true,
+        "wasm": false
+      }
+    },
+    {
       "id": "fmpq_matrix_rank",
       "python_name": "fmpq_matrix_rank",
       "signature": {

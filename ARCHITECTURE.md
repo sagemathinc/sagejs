@@ -224,6 +224,10 @@ multiplication, RREF, determinant, formatting, and variable-size serialization
 return callee-owned generated resources. A typed-Python witness safely borrows
 and traverses the matrix with no host callback. Packed rational buffers remain
 an explicit compatibility/serialization format, not canonical matrix state.
+Characteristic and minimal polynomials pass the canonical matrix resource
+directly to FLINT and publish a sealed `FmpqPolynomial` resource. They do not
+export matrix entries, predict coefficient sizes, or recover a relation by
+constructing a host-side sequence of matrix powers.
 Explicitly scoped temporary resources close deterministically; long-lived
 matrix resources have idempotent close plus a tracing-GC finalizer fallback.
 Native allocation accounting remains required before this representation is
