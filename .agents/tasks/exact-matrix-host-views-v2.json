@@ -4,7 +4,7 @@
   "id": "exact-matrix-host-views-v2",
   "title": "Exact Matrix Host Views v2",
   "lane": "integration",
-  "status": "active",
+  "status": "review",
   "owner": "user",
   "objective": "Implement Sage-compatible cached immutable row and column views for dense ZZ and QQ matrices, bulk strided row column and diagonal export from generated exact resources, offset-aware exact decoding, reduced rational bulk construction, centralized successful-mutation cache invalidation, and representative semantic and performance gates without scalar host-boundary loops",
   "base_commit": "2e22ac7dd38f22a3a4d50dc5be218b4e71025077",
@@ -21,6 +21,7 @@
     "packages/flint/include/sagejs/",
     "tools/python/contract.ts",
     "tools/ffi/",
+    "ARCHITECTURE.md",
     "architecture/",
     "scripts/check-integer-matrix-budget.cjs",
     "scripts/check-rational-matrix-budget.cjs",
@@ -55,10 +56,61 @@
     "pnpm test:portable",
     "pnpm test:baselib:strict"
   ],
-  "runs": [],
+  "runs": [
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 12.069,
+      "started_at": "2026-08-11T19:57:09.921Z",
+      "commit": "ce7ede49284c24b916cd027b973415b5e08db941",
+      "workspace_fingerprint": "46449af357312c33ca31e15b42b6c9224fb107fb1d6474e66a4afec9eaa476dd",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 35.571,
+      "started_at": "2026-08-11T19:57:28.514Z",
+      "commit": "ce7ede49284c24b916cd027b973415b5e08db941",
+      "workspace_fingerprint": "46449af357312c33ca31e15b42b6c9224fb107fb1d6474e66a4afec9eaa476dd",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 35.147,
+      "started_at": "2026-08-11T19:58:27.826Z",
+      "commit": "ce7ede49284c24b916cd027b973415b5e08db941",
+      "workspace_fingerprint": "46449af357312c33ca31e15b42b6c9224fb107fb1d6474e66a4afec9eaa476dd",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 11.69,
+      "started_at": "2026-08-11T19:59:08.739Z",
+      "commit": "ce7ede49284c24b916cd027b973415b5e08db941",
+      "workspace_fingerprint": "46449af357312c33ca31e15b42b6c9224fb107fb1d6474e66a4afec9eaa476dd",
+      "platform": "linux-x64"
+    }
+  ],
   "handoff": {
-    "summary": "",
-    "risks": [],
-    "next_steps": []
+    "summary": "Dense ZZ and QQ resources now expose generated affine sequence serialization for rows, columns, and diagonals without constructing temporary FLINT matrices, assuming uniform limb capacities, or crossing the host boundary once per scalar. Exact decoding accepts byte offsets and builds reduced rational scalars in bulk. Matrix rows and columns use Sage-compatible stable cached immutable vectors: the first orientation bulk-materializes once, the opposite orientation transposes the same scalar references, copy=True returns a fresh outer list, and copy=False returns the stable cache. Singular row and column calls remain fresh mutable vectors; list() remains fresh and reuses cached references when available; only successful mutation or subdivision invalidates caches. Native and native-disabled semantic tests cover ZZ, QQ, generic matrices, zero dimensions, cache identity and invalidation, diagonal offsets, copy/from_list behavior, failed mutation, 65,537-bit skew, invalid affine paths, closed/wrong resources, and forbidden scalar boundary calls. Sanitizer-backed lifecycle fuzzing, all native matrix migrations, and all matrix/polynomial performance budgets pass. On representative 300x300 matrices, first rows() materialization was about 29 ms for ZZ and 57 ms for QQ in the independent review run; cached rows()/columns() are about 0.04-0.06 ms, opposite-orientation reference transpose about 3-4 ms, row/column/diagonal about 0.2-0.4 ms, and list() from cache about 0.4-0.8 ms.",
+    "risks": [
+      "The two affine resource declarations remain wasm=False. Native-disabled Node preserves correct fallback behavior, but direct generated WebAssembly resource lowering is still unproved.",
+      "First exact scalar materialization remains slower than SageMath and varies with host load; the large gain is that cached presentation operations become sub-millisecond and never reserialize or cross scalar boundaries.",
+      "The affine format uses 32-bit per-integer byte lengths. It handles heavily skewed practical entries and is lifecycle-fuzzed, but a 32-bit/Wasm lowering must explicitly audit address-space limits before accepting theoretical multi-gigabyte individual entries.",
+      "The broad changed-file suite passed build, architecture, unit, strict, compiler, integration, native, sanitizer, and all performance tiers, then stopped at the inherited stale generated-reference documentation check recorded by the preceding matrix-polynomial lane; generated docs were outside this task's claims."
+    ],
+    "next_steps": [
+      "Merge the branch and regenerate reference documentation once the integration lane owns the accumulated matrix.py source-location changes.",
+      "Add a generated WebAssembly lowering for exact matrix resources and affine byte-region exports, then run the same semantic and lifecycle suite in the browser host.",
+      "Profile and, if worthwhile, fuse initial QQ byte decoding and Rational construction while preserving the current variable-size format and reference-sharing semantics.",
+      "Use this bulk host-view pattern for other exact resource-backed containers instead of adding scalar entry loops or temporary foreign objects."
+    ]
   }
 }
