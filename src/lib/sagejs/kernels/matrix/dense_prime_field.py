@@ -333,6 +333,56 @@ def dense_prime_field_matrix_random_fill(
 
 
 @native
+def dense_prime_field_matrix_identity(
+    target: UInt64Buffer,
+    size: uint64,
+    modulus: PrimeFieldModulus,
+) -> bool:
+    """Set the diagonal of a newly zeroed packed matrix to one."""
+    if len(target) != size * size:
+        return False
+    for index in range(size):
+        target[index * size + index] = 1 % modulus
+    return True
+
+
+@native
+def dense_prime_field_matrix_set_diagonal(
+    target: UInt64Buffer,
+    diagonal: UInt64Buffer,
+    size: uint64,
+    modulus: PrimeFieldModulus,
+) -> bool:
+    """Set a newly zeroed packed matrix from its canonical diagonal."""
+    if len(target) != size * size or len(diagonal) != size:
+        return False
+    for index in range(size):
+        target[index * size + index] = diagonal[index] % modulus
+    return True
+
+
+@native
+def dense_prime_field_matrix_space_random_fill(
+    target: UInt64Buffer,
+    modulus: PrimeFieldModulus,
+    initial_state: uint64,
+) -> uint64:
+    """Fill packed storage with `MatrixSpace.random_element` semantics."""
+    word_base = 4294967296
+    limit = word_base - word_base % modulus
+    state = initial_state
+    count = len(target)
+    for index in range(count):
+        state = (1664525 * state + 1013904223) % word_base
+        while state >= limit:
+            state = (1664525 * state + 1013904223) % word_base
+        target[index] = state % modulus
+        if index + 1 < count:
+            state = (1664525 * state + 1013904223) % word_base
+    return state
+
+
+@native
 def _dense_prime_field_matrix_blocked_full_rank(
     matrix: DensePrimeMatrix,
 ) -> uint64:
@@ -669,7 +719,10 @@ def dense_prime_field_matrix_solve(
 
 __all__ = [
     "DensePrimeMatrix",
+    "dense_prime_field_matrix_identity",
     "dense_prime_field_matrix_rank",
+    "dense_prime_field_matrix_set_diagonal",
+    "dense_prime_field_matrix_space_random_fill",
     "dense_prime_field_matrix_rref",
     "dense_prime_field_matrix_right_kernel",
     "dense_prime_field_matrix_solve",
