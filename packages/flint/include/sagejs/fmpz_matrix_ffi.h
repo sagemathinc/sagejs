@@ -10,6 +10,7 @@
 #include <flint/fmpz.h>
 #include <flint/fmpz_mat.h>
 
+#include "sagejs/exact_polynomial_ffi.h"
 #include "sagejs/fmpq_matrix_ffi.h"
 
 /*
@@ -303,6 +304,283 @@ static inline int sagejs_fmpz_matrix_snf(
     fmpz_mat_snf(result->value, source->value);
     sagejs_fmpz_matrix_finish_result(result);
     return 1;
+}
+
+/*
+ * Multi-result transforms write into caller-owned matrix resources.  Every
+ * fallible precondition is checked before FLINT can mutate an output, so a
+ * rejected call is transactional.  Aliasing is rejected because FLINT does
+ * not promise that these transform routines support overlapping matrices.
+ */
+static inline int sagejs_fmpz_matrix_hnf_transform(
+    sagejs_fmpz_matrix_t hermite, sagejs_fmpz_matrix_t transform,
+    const sagejs_fmpz_matrix_t source)
+{
+    const slong rows = fmpz_mat_nrows(source->value);
+    const slong columns = fmpz_mat_ncols(source->value);
+    if (hermite == transform || hermite == source || transform == source ||
+        fmpz_mat_nrows(hermite->value) != rows ||
+        fmpz_mat_ncols(hermite->value) != columns ||
+        fmpz_mat_nrows(transform->value) != rows ||
+        fmpz_mat_ncols(transform->value) != rows)
+        return 0;
+    fmpz_mat_hnf_transform(hermite->value, transform->value, source->value);
+    sagejs_fmpz_matrix_finish_result(hermite);
+    sagejs_fmpz_matrix_finish_result(transform);
+    return 1;
+}
+
+static inline int sagejs_fmpz_matrix_snf_transform(
+    sagejs_fmpz_matrix_t smith, sagejs_fmpz_matrix_t left_transform,
+    sagejs_fmpz_matrix_t right_transform,
+    const sagejs_fmpz_matrix_t source)
+{
+    const slong rows = fmpz_mat_nrows(source->value);
+    const slong columns = fmpz_mat_ncols(source->value);
+    if (smith == left_transform || smith == right_transform ||
+        smith == source || left_transform == right_transform ||
+        left_transform == source || right_transform == source ||
+        fmpz_mat_nrows(smith->value) != rows ||
+        fmpz_mat_ncols(smith->value) != columns ||
+        fmpz_mat_nrows(left_transform->value) != rows ||
+        fmpz_mat_ncols(left_transform->value) != rows ||
+        fmpz_mat_nrows(right_transform->value) != columns ||
+        fmpz_mat_ncols(right_transform->value) != columns)
+        return 0;
+    fmpz_mat_snf_transform(smith->value, left_transform->value,
+        right_transform->value, source->value);
+    sagejs_fmpz_matrix_finish_result(smith);
+    sagejs_fmpz_matrix_finish_result(left_transform);
+    sagejs_fmpz_matrix_finish_result(right_transform);
+    return 1;
+}
+
+/*
+ * Return the canonical row-HNF basis of the integral right kernel.  The
+ * result owns exactly nullity * ncols entries; no caller-selected limb or
+ * matrix capacity is involved.
+ */
+static inline int sagejs_fmpz_matrix_right_kernel(
+    sagejs_fmpz_matrix_t result, const sagejs_fmpz_matrix_t source)
+{
+    const slong rows = fmpz_mat_nrows(source->value);
+    const slong columns = fmpz_mat_ncols(source->value);
+    const slong rank = fmpz_mat_rank(source->value);
+    const slong nullity = columns - rank;
+    if (!sagejs_fmpz_matrix_init(
+            result, (uint64_t) nullity, (uint64_t) columns))
+        return 0;
+    if (nullity == 0)
+        return 1;
+    if (rows == 0)
+    {
+        fmpz_mat_one(result->value);
+        sagejs_fmpz_matrix_finish_result(result);
+        return 1;
+    }
+
+    fmpz_mat_t transpose;
+    fmpz_mat_t hermite;
+    fmpz_mat_t transform;
+    fmpz_mat_t basis;
+    fmpz_mat_t answer;
+    fmpz_mat_init(transpose, columns, rows);
+    fmpz_mat_init(hermite, columns, rows);
+    fmpz_mat_init(transform, columns, columns);
+    fmpz_mat_init(basis, nullity, columns);
+    fmpz_mat_init(answer, nullity, columns);
+    fmpz_mat_transpose(transpose, source->value);
+    fmpz_mat_hnf_transform(hermite, transform, transpose);
+    for (slong row = 0; row < nullity; row++)
+        for (slong column = 0; column < columns; column++)
+            fmpz_set(fmpz_mat_entry(basis, row, column),
+                fmpz_mat_entry(transform, rank + row, column));
+    fmpz_mat_hnf(answer, basis);
+    fmpz_mat_set(result->value, answer);
+    fmpz_mat_clear(answer);
+    fmpz_mat_clear(basis);
+    fmpz_mat_clear(transform);
+    fmpz_mat_clear(hermite);
+    fmpz_mat_clear(transpose);
+    sagejs_fmpz_matrix_finish_result(result);
+    return 1;
+}
+
+static inline int sagejs_fmpz_matrix_charpoly(
+    sagejs_fmpz_polynomial_t result, const sagejs_fmpz_matrix_t source)
+{
+    if (fmpz_mat_nrows(source->value) != fmpz_mat_ncols(source->value))
+        return 0;
+    fmpz_poly_init(result->value);
+    fmpz_mat_charpoly(result->value, source->value);
+    sagejs_fmpz_polynomial_finish_result(result);
+    return 1;
+}
+
+static inline int sagejs_fmpz_matrix_minpoly(
+    sagejs_fmpz_polynomial_t result, const sagejs_fmpz_matrix_t source)
+{
+    if (fmpz_mat_nrows(source->value) != fmpz_mat_ncols(source->value))
+        return 0;
+    fmpz_poly_init(result->value);
+    fmpz_mat_minpoly(result->value, source->value);
+    sagejs_fmpz_polynomial_finish_result(result);
+    return 1;
+}
+
+static inline int sagejs_fmpq_matrix_from_fmpz(
+    sagejs_fmpq_matrix_t result, const sagejs_fmpz_matrix_t source)
+{
+    const uint64_t rows = (uint64_t) fmpz_mat_nrows(source->value);
+    const uint64_t columns = (uint64_t) fmpz_mat_ncols(source->value);
+    if (!sagejs_fmpq_matrix_init(result, rows, columns))
+        return 0;
+    fmpq_mat_set_fmpz_mat(result->value, source->value);
+    sagejs_fmpq_matrix_recompute_allocated_bytes(result);
+    return 1;
+}
+
+static inline int sagejs_fmpz_matrix_from_fmpq_integral(
+    sagejs_fmpz_matrix_t result, const sagejs_fmpq_matrix_t source)
+{
+    const slong rows = fmpq_mat_nrows(source->value);
+    const slong columns = fmpq_mat_ncols(source->value);
+    for (slong row = 0; row < rows; row++)
+        for (slong column = 0; column < columns; column++)
+            if (!fmpz_is_one(
+                    fmpq_mat_entry_den(source->value, row, column)))
+                return 0;
+    if (!sagejs_fmpz_matrix_init(
+            result, (uint64_t) rows, (uint64_t) columns))
+        return 0;
+    if (!fmpq_mat_get_fmpz_mat(result->value, source->value))
+    {
+        sagejs_fmpz_matrix_clear(result);
+        return 0;
+    }
+    sagejs_fmpz_matrix_finish_result(result);
+    return 1;
+}
+
+static inline int sagejs_fmpz_matrix_submatrix(
+    sagejs_fmpz_matrix_t result, const sagejs_fmpz_matrix_t source,
+    uint64_t row_start, uint64_t row_stop,
+    uint64_t column_start, uint64_t column_stop)
+{
+    const uint64_t rows = (uint64_t) fmpz_mat_nrows(source->value);
+    const uint64_t columns = (uint64_t) fmpz_mat_ncols(source->value);
+    if (row_start > row_stop || row_stop > rows ||
+        column_start > column_stop || column_stop > columns ||
+        !sagejs_fmpz_matrix_init(
+            result, row_stop - row_start, column_stop - column_start))
+        return 0;
+    for (uint64_t row = row_start; row < row_stop; row++)
+        for (uint64_t column = column_start;
+             column < column_stop; column++)
+            fmpz_set(fmpz_mat_entry(result->value,
+                    (slong) (row - row_start),
+                    (slong) (column - column_start)),
+                fmpz_mat_entry(source->value,
+                    (slong) row, (slong) column));
+    sagejs_fmpz_matrix_finish_result(result);
+    return 1;
+}
+
+static inline int sagejs_fmpz_matrix_set_block(
+    sagejs_fmpz_matrix_t target, uint64_t target_row,
+    uint64_t target_column, const sagejs_fmpz_matrix_t source)
+{
+    const uint64_t target_rows =
+        (uint64_t) fmpz_mat_nrows(target->value);
+    const uint64_t target_columns =
+        (uint64_t) fmpz_mat_ncols(target->value);
+    const uint64_t source_rows =
+        (uint64_t) fmpz_mat_nrows(source->value);
+    const uint64_t source_columns =
+        (uint64_t) fmpz_mat_ncols(source->value);
+    if (target == source || target_row > target_rows ||
+        source_rows > target_rows - target_row ||
+        target_column > target_columns ||
+        source_columns > target_columns - target_column)
+        return 0;
+    for (uint64_t row = 0; row < source_rows; row++)
+        for (uint64_t column = 0; column < source_columns; column++)
+            fmpz_set(fmpz_mat_entry(target->value,
+                    (slong) (target_row + row),
+                    (slong) (target_column + column)),
+                fmpz_mat_entry(source->value,
+                    (slong) row, (slong) column));
+    sagejs_fmpz_matrix_finish_result(target);
+    return 1;
+}
+
+static inline int sagejs_fmpz_matrix_stack(
+    sagejs_fmpz_matrix_t result, const sagejs_fmpz_matrix_t top,
+    const sagejs_fmpz_matrix_t bottom)
+{
+    const uint64_t top_rows = (uint64_t) fmpz_mat_nrows(top->value);
+    const uint64_t bottom_rows = (uint64_t) fmpz_mat_nrows(bottom->value);
+    const uint64_t columns = (uint64_t) fmpz_mat_ncols(top->value);
+    if (fmpz_mat_ncols(top->value) != fmpz_mat_ncols(bottom->value) ||
+        !sagejs_fmpz_matrix_init(result, top_rows + bottom_rows, columns))
+        return 0;
+    for (uint64_t row = 0; row < top_rows; row++)
+        for (uint64_t column = 0; column < columns; column++)
+            fmpz_set(fmpz_mat_entry(result->value,
+                    (slong) row, (slong) column),
+                fmpz_mat_entry(top->value,
+                    (slong) row, (slong) column));
+    for (uint64_t row = 0; row < bottom_rows; row++)
+        for (uint64_t column = 0; column < columns; column++)
+            fmpz_set(fmpz_mat_entry(result->value,
+                    (slong) (top_rows + row), (slong) column),
+                fmpz_mat_entry(bottom->value,
+                    (slong) row, (slong) column));
+    sagejs_fmpz_matrix_finish_result(result);
+    return 1;
+}
+
+static inline int sagejs_fmpz_matrix_augment(
+    sagejs_fmpz_matrix_t result, const sagejs_fmpz_matrix_t left,
+    const sagejs_fmpz_matrix_t right)
+{
+    const uint64_t rows = (uint64_t) fmpz_mat_nrows(left->value);
+    const uint64_t left_columns =
+        (uint64_t) fmpz_mat_ncols(left->value);
+    const uint64_t right_columns =
+        (uint64_t) fmpz_mat_ncols(right->value);
+    if (fmpz_mat_nrows(left->value) != fmpz_mat_nrows(right->value) ||
+        !sagejs_fmpz_matrix_init(
+            result, rows, left_columns + right_columns))
+        return 0;
+    for (uint64_t row = 0; row < rows; row++)
+    {
+        for (uint64_t column = 0; column < left_columns; column++)
+            fmpz_set(fmpz_mat_entry(result->value,
+                    (slong) row, (slong) column),
+                fmpz_mat_entry(left->value,
+                    (slong) row, (slong) column));
+        for (uint64_t column = 0; column < right_columns; column++)
+            fmpz_set(fmpz_mat_entry(result->value,
+                    (slong) row, (slong) (left_columns + column)),
+                fmpz_mat_entry(right->value,
+                    (slong) row, (slong) column));
+    }
+    sagejs_fmpz_matrix_finish_result(result);
+    return 1;
+}
+
+static inline uint64_t sagejs_fmpz_matrix_nonzero_count(
+    const sagejs_fmpz_matrix_t source)
+{
+    const slong rows = fmpz_mat_nrows(source->value);
+    const slong columns = fmpz_mat_ncols(source->value);
+    uint64_t count = 0;
+    for (slong row = 0; row < rows; row++)
+        for (slong column = 0; column < columns; column++)
+            count += !fmpz_is_zero(
+                fmpz_mat_entry(source->value, row, column));
+    return count;
 }
 
 static inline int sagejs_fmpz_matrix_format(

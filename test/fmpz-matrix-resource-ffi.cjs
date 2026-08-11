@@ -59,6 +59,32 @@ function entries(resource) {
     ));
 }
 
+function polynomialCoefficients(resource) {
+  const length = Number(flint.ffiFmpzPolynomialLength(resource));
+  return Array.from({ length }, (_, index) =>
+    flint.ffiFmpzPolynomialCoefficient(resource, BigInt(index)));
+}
+
+function rationalMatrix(rows, columns, values) {
+  const result = flint.ffiFmpqMatrixCreate(BigInt(rows), BigInt(columns));
+  try {
+    for (let index = 0; index < values.length; index += 1) {
+      const [numerator, denominator] = values[index];
+      assert.equal(flint.ffiFmpqMatrixSetEntry(
+        result,
+        BigInt(Math.floor(index / columns)),
+        BigInt(index % columns),
+        BigInt(numerator),
+        BigInt(denominator),
+      ), true);
+    }
+    return result;
+  } catch (error) {
+    flint.ffiFmpqMatrixClose(result);
+    throw error;
+  }
+}
+
 function bytes(region) {
   const length = Number(flint.ffiFlintByteRegionLength(region));
   return Uint8Array.from(
@@ -389,6 +415,230 @@ for (const [rows, columns, expected] of [
   closeTwice(diagonal, flint.ffiFmpzMatrixClose);
 }
 
+{
+  const sourceValues = [2n, 4n, 4n, -6n, 6n, 12n];
+  const source = matrix(2, 3, sourceValues);
+  const hermite = matrix(2, 3, [0n, 0n, 0n, 0n, 0n, 0n]);
+  const hermiteTransform = matrix(2, 2, [0n, 0n, 0n, 0n]);
+  const smith = matrix(2, 3, [0n, 0n, 0n, 0n, 0n, 0n]);
+  const leftTransform = matrix(2, 2, [0n, 0n, 0n, 0n]);
+  const rightTransform = matrix(3, 3, Array(9).fill(0n));
+  const resources = [];
+  try {
+    assert.equal(flint.ffiFmpzMatrixHnfTransform(
+      hermite, hermiteTransform, source,
+    ), true);
+    const transformedHermite = flint.ffiFmpzMatrixMul(
+      hermiteTransform, source,
+    );
+    resources.push(transformedHermite);
+    assert.deepEqual(entries(transformedHermite), entries(hermite));
+
+    assert.equal(flint.ffiFmpzMatrixSnfTransform(
+      smith, leftTransform, rightTransform, source,
+    ), true);
+    const leftProduct = flint.ffiFmpzMatrixMul(leftTransform, source);
+    const transformedSmith = flint.ffiFmpzMatrixMul(
+      leftProduct, rightTransform,
+    );
+    resources.push(leftProduct, transformedSmith);
+    assert.deepEqual(entries(transformedSmith), entries(smith));
+    assert.deepEqual(entries(smith), [2n, 0n, 0n, 0n, 6n, 0n]);
+
+    const wrong = matrix(1, 1, [91n]);
+    resources.push(wrong);
+    const hermiteBefore = entries(hermite);
+    const transformBefore = entries(hermiteTransform);
+    assert.throws(
+      () => flint.ffiFmpzMatrixHnfTransform(
+        wrong, hermiteTransform, source,
+      ),
+      /dimensions or aliases/,
+    );
+    assert.deepEqual(entries(wrong), [91n]);
+    assert.deepEqual(entries(hermiteTransform), transformBefore);
+    assert.throws(
+      () => flint.ffiFmpzMatrixHnfTransform(
+        hermite, hermiteTransform, hermite,
+      ),
+      /dimensions or aliases/,
+    );
+    assert.deepEqual(entries(hermite), hermiteBefore);
+    assert.deepEqual(entries(hermiteTransform), transformBefore);
+
+    const smithBefore = entries(smith);
+    const leftBefore = entries(leftTransform);
+    const rightBefore = entries(rightTransform);
+    assert.throws(
+      () => flint.ffiFmpzMatrixSnfTransform(
+        smith, leftTransform, wrong, source,
+      ),
+      /dimensions or aliases/,
+    );
+    assert.deepEqual(entries(smith), smithBefore);
+    assert.deepEqual(entries(leftTransform), leftBefore);
+    assert.deepEqual(entries(wrong), [91n]);
+    assert.deepEqual(entries(rightTransform), rightBefore);
+  } finally {
+    for (const resource of resources.reverse()) {
+      flint.ffiFmpzMatrixClose(resource);
+    }
+    closeTwice(rightTransform, flint.ffiFmpzMatrixClose);
+    closeTwice(leftTransform, flint.ffiFmpzMatrixClose);
+    closeTwice(smith, flint.ffiFmpzMatrixClose);
+    closeTwice(hermiteTransform, flint.ffiFmpzMatrixClose);
+    closeTwice(hermite, flint.ffiFmpzMatrixClose);
+    closeTwice(source, flint.ffiFmpzMatrixClose);
+  }
+}
+
+{
+  const source = matrix(2, 3, [1n, 2n, 3n, 2n, 4n, 6n]);
+  const kernel = flint.ffiFmpzMatrixRightKernel(source);
+  const kernelTranspose = flint.ffiFmpzMatrixTranspose(kernel);
+  const zero = flint.ffiFmpzMatrixMul(source, kernelTranspose);
+  assert.equal(flint.ffiFmpzMatrixNrows(kernel), 2n);
+  assert.equal(flint.ffiFmpzMatrixNcols(kernel), 3n);
+  assert.deepEqual(entries(kernel), [1n, 1n, -1n, 0n, 3n, -2n]);
+  assert.equal(flint.ffiFmpzMatrixIsZero(zero), true);
+  closeTwice(zero, flint.ffiFmpzMatrixClose);
+  closeTwice(kernelTranspose, flint.ffiFmpzMatrixClose);
+  closeTwice(kernel, flint.ffiFmpzMatrixClose);
+  closeTwice(source, flint.ffiFmpzMatrixClose);
+
+  const zeroRows = matrix(0, 3, []);
+  const fullKernel = flint.ffiFmpzMatrixRightKernel(zeroRows);
+  assert.equal(flint.ffiFmpzMatrixNrows(fullKernel), 3n);
+  assert.deepEqual(entries(fullKernel), [
+    1n, 0n, 0n,
+    0n, 1n, 0n,
+    0n, 0n, 1n,
+  ]);
+  closeTwice(fullKernel, flint.ffiFmpzMatrixClose);
+  closeTwice(zeroRows, flint.ffiFmpzMatrixClose);
+
+  const zeroColumns = matrix(3, 0, []);
+  const trivialKernel = flint.ffiFmpzMatrixRightKernel(zeroColumns);
+  assert.equal(flint.ffiFmpzMatrixNrows(trivialKernel), 0n);
+  assert.equal(flint.ffiFmpzMatrixNcols(trivialKernel), 0n);
+  closeTwice(trivialKernel, flint.ffiFmpzMatrixClose);
+  closeTwice(zeroColumns, flint.ffiFmpzMatrixClose);
+}
+
+{
+  const source = matrix(2, 2, [1n, 2n, 3n, 4n]);
+  const characteristic = flint.ffiFmpzMatrixCharpoly(source);
+  const minimal = flint.ffiFmpzMatrixMinpoly(source);
+  assert.deepEqual(polynomialCoefficients(characteristic), [-2n, -5n, 1n]);
+  assert.deepEqual(polynomialCoefficients(minimal), [-2n, -5n, 1n]);
+  closeTwice(minimal, flint.ffiFmpzPolynomialClose);
+  closeTwice(characteristic, flint.ffiFmpzPolynomialClose);
+  closeTwice(source, flint.ffiFmpzMatrixClose);
+
+  const rectangular = matrix(2, 3, Array(6).fill(0n));
+  assert.throws(
+    () => flint.ffiFmpzMatrixCharpoly(rectangular),
+    /requires a square/,
+  );
+  assert.throws(
+    () => flint.ffiFmpzMatrixMinpoly(rectangular),
+    /requires a square/,
+  );
+  closeTwice(rectangular, flint.ffiFmpzMatrixClose);
+
+  const empty = matrix(0, 0, []);
+  const emptyCharacteristic = flint.ffiFmpzMatrixCharpoly(empty);
+  const emptyMinimal = flint.ffiFmpzMatrixMinpoly(empty);
+  assert.deepEqual(polynomialCoefficients(emptyCharacteristic), [1n]);
+  assert.deepEqual(polynomialCoefficients(emptyMinimal), [1n]);
+  closeTwice(emptyMinimal, flint.ffiFmpzPolynomialClose);
+  closeTwice(emptyCharacteristic, flint.ffiFmpzPolynomialClose);
+  closeTwice(empty, flint.ffiFmpzMatrixClose);
+}
+
+{
+  const sourceValues = [1n << 300n, -7n, 11n, 0n, 5n, 19n];
+  const source = matrix(2, 3, sourceValues);
+  const rational = flint.ffiFmpqMatrixFromFmpz(source);
+  for (let index = 0; index < sourceValues.length; index += 1) {
+    const row = BigInt(Math.floor(index / 3));
+    const column = BigInt(index % 3);
+    assert.equal(
+      flint.ffiFmpqMatrixEntryNumerator(rational, row, column),
+      sourceValues[index],
+    );
+    assert.equal(
+      flint.ffiFmpqMatrixEntryDenominator(rational, row, column),
+      1n,
+    );
+  }
+  const roundTrip = flint.ffiFmpzMatrixFromFmpqIntegral(rational);
+  assert.deepEqual(entries(roundTrip), sourceValues);
+  closeTwice(roundTrip, flint.ffiFmpzMatrixClose);
+  closeTwice(rational, flint.ffiFmpqMatrixClose);
+  closeTwice(source, flint.ffiFmpzMatrixClose);
+
+  const nonintegral = rationalMatrix(1, 2, [[3n, 2n], [7n, 1n]]);
+  assert.throws(
+    () => flint.ffiFmpzMatrixFromFmpqIntegral(nonintegral),
+    /nonintegral entry/,
+  );
+  closeTwice(nonintegral, flint.ffiFmpqMatrixClose);
+}
+
+{
+  const source = matrix(3, 4, [
+    1n, 2n, 3n, 4n,
+    5n, 0n, 7n, 8n,
+    9n, 10n, 11n, 0n,
+  ]);
+  const submatrix = flint.ffiFmpzMatrixSubmatrix(
+    source, 1n, 3n, 1n, 4n,
+  );
+  assert.deepEqual(entries(submatrix), [0n, 7n, 8n, 10n, 11n, 0n]);
+  assert.equal(flint.ffiFmpzMatrixNonzeroCount(source), 10n);
+
+  const top = matrix(1, 2, [1n, 2n]);
+  const bottom = matrix(2, 2, [3n, 4n, 5n, 6n]);
+  const stacked = flint.ffiFmpzMatrixStack(top, bottom);
+  assert.deepEqual(entries(stacked), [1n, 2n, 3n, 4n, 5n, 6n]);
+
+  const left = matrix(2, 1, [1n, 2n]);
+  const right = matrix(2, 2, [3n, 4n, 5n, 6n]);
+  const augmented = flint.ffiFmpzMatrixAugment(left, right);
+  assert.deepEqual(entries(augmented), [1n, 3n, 4n, 2n, 5n, 6n]);
+
+  const target = matrix(4, 5, Array(20).fill(-1n));
+  const block = matrix(2, 3, [1n, 2n, 3n, 4n, 5n, 6n]);
+  assert.equal(flint.ffiFmpzMatrixSetBlock(target, 1n, 1n, block), true);
+  const targetBeforeFailure = entries(target);
+  assert.throws(
+    () => flint.ffiFmpzMatrixSetBlock(target, 3n, 3n, block),
+    /bounds or aliases/,
+  );
+  assert.deepEqual(entries(target), targetBeforeFailure);
+  assert.throws(
+    () => flint.ffiFmpzMatrixSetBlock(target, 0n, 0n, target),
+    /bounds or aliases/,
+  );
+  assert.deepEqual(entries(target), targetBeforeFailure);
+  assert.throws(
+    () => flint.ffiFmpzMatrixSubmatrix(source, 2n, 1n, 0n, 1n),
+    /bounds are invalid/,
+  );
+
+  closeTwice(block, flint.ffiFmpzMatrixClose);
+  closeTwice(target, flint.ffiFmpzMatrixClose);
+  closeTwice(augmented, flint.ffiFmpzMatrixClose);
+  closeTwice(right, flint.ffiFmpzMatrixClose);
+  closeTwice(left, flint.ffiFmpzMatrixClose);
+  closeTwice(stacked, flint.ffiFmpzMatrixClose);
+  closeTwice(bottom, flint.ffiFmpzMatrixClose);
+  closeTwice(top, flint.ffiFmpzMatrixClose);
+  closeTwice(submatrix, flint.ffiFmpzMatrixClose);
+  closeTwice(source, flint.ffiFmpzMatrixClose);
+}
+
 for (const [rows, columns, values] of [
   [0, 0, []],
   [0, 3, []],
@@ -448,6 +698,24 @@ for (const [rows, columns, values] of [
     `skew matrix retained ${accounted(skew)} bytes`,
   );
   closeTwice(skew, flint.ffiFmpzMatrixClose);
+}
+
+{
+  const huge = 1n << 32768n;
+  const source = matrix(2, 2, [1n, huge, 0n, 1n]);
+  const hermite = matrix(2, 2, [0n, 0n, 0n, 0n]);
+  const transform = matrix(2, 2, [0n, 0n, 0n, 0n]);
+  const before = accounted(transform);
+  assert.equal(flint.ffiFmpzMatrixHnfTransform(
+    hermite, transform, source,
+  ), true);
+  assert.ok(accounted(transform) > before + 4000n);
+  const transformed = flint.ffiFmpzMatrixMul(transform, source);
+  assert.deepEqual(entries(transformed), entries(hermite));
+  closeTwice(transformed, flint.ffiFmpzMatrixClose);
+  closeTwice(transform, flint.ffiFmpzMatrixClose);
+  closeTwice(hermite, flint.ffiFmpzMatrixClose);
+  closeTwice(source, flint.ffiFmpzMatrixClose);
 }
 
 {
@@ -632,6 +900,67 @@ assert.ok(
 closeTwice(resourceRight, flint.ffiFmpzMatrixClose);
 closeTwice(resourceLeft, flint.ffiFmpzMatrixClose);
 
+const kernelRows = 48;
+const kernelColumns = 64;
+const kernelValues = Array.from(
+  { length: kernelRows * kernelColumns },
+  (_, index) => {
+    const row = Math.floor(index / kernelColumns);
+    const column = index % kernelColumns;
+    if (column < kernelRows) return row === column ? 1n : 0n;
+    return BigInt(((17 * row + 29 * column + 5) % 13) - 6);
+  },
+);
+const kernelSource = matrix(kernelRows, kernelColumns, kernelValues);
+const resourceKernel = flint.ffiFmpzMatrixRightKernel(kernelSource);
+const packedKernel = Array(kernelColumns * kernelColumns).fill(0n);
+const packedNullity = Number(packedOracle.ffiFmpzMatRightKernel(
+  packedKernel,
+  kernelValues,
+  BigInt(kernelRows),
+  BigInt(kernelColumns),
+));
+assert.equal(flint.ffiFmpzMatrixNrows(resourceKernel), BigInt(packedNullity));
+assert.equal(flint.ffiFmpzMatrixNcols(resourceKernel), BigInt(kernelColumns));
+assert.deepEqual(
+  entries(resourceKernel),
+  packedKernel.slice(0, packedNullity * kernelColumns),
+);
+closeTwice(resourceKernel, flint.ffiFmpzMatrixClose);
+const generatedKernelSamples = measure(
+  () => flint.ffiFmpzMatrixRightKernel(kernelSource),
+  closeResource,
+  performanceWarmups,
+  performanceSamples,
+);
+const packedKernelSamples = measure(
+  () => {
+    const output = Array(kernelColumns * kernelColumns).fill(0n);
+    packedOracle.ffiFmpzMatRightKernel(
+      output,
+      kernelValues,
+      BigInt(kernelRows),
+      BigInt(kernelColumns),
+    );
+    return output;
+  },
+  ignoreLegacyResource,
+  performanceWarmups,
+  performanceSamples,
+);
+const generatedKernel = median(generatedKernelSamples);
+const packedKernelBoundary = median(packedKernelSamples);
+assert.ok(
+  generatedKernel <= packedKernelBoundary * 3 + 5,
+  `generated kernel ${generatedKernel.toFixed(2)} ms vs packed ` +
+    `${packedKernelBoundary.toFixed(2)} ms`,
+);
+assert.ok(
+  generatedKernel < 500,
+  `generated exact right kernel took ${generatedKernel.toFixed(2)} ms`,
+);
+closeTwice(kernelSource, flint.ffiFmpzMatrixClose);
+
 if (process.platform !== "win32") {
   const source = String.raw`
 #include <stdint.h>
@@ -647,10 +976,22 @@ int main(void)
     {
         sagejs_fmpz_matrix_t left, right, sum, difference, negated;
         sagejs_fmpz_matrix_t scaled, transposed, product, power, hnf, snf;
+        sagejs_fmpz_matrix_t hnf_transform, hnf_transformed;
+        sagejs_fmpz_matrix_t snf_transform, snf_left, snf_right;
+        sagejs_fmpz_matrix_t kernel, rational_round_trip, submatrix;
+        sagejs_fmpz_matrix_t stacked, augmented, block_target;
         sagejs_fmpz_matrix_t decoded, rejected;
+        sagejs_fmpq_matrix_t rational;
+        sagejs_fmpz_polynomial_t characteristic, minimal;
         sagejs_flint_byte_region_t formatted, serialized;
         if (!sagejs_fmpz_matrix_init(left, 4, 4) ||
-            !sagejs_fmpz_matrix_init(right, 4, 4))
+            !sagejs_fmpz_matrix_init(right, 4, 4) ||
+            !sagejs_fmpz_matrix_init(hnf_transform, 4, 4) ||
+            !sagejs_fmpz_matrix_init(hnf_transformed, 4, 4) ||
+            !sagejs_fmpz_matrix_init(snf_transform, 4, 4) ||
+            !sagejs_fmpz_matrix_init(snf_left, 4, 4) ||
+            !sagejs_fmpz_matrix_init(snf_right, 4, 4) ||
+            !sagejs_fmpz_matrix_init(block_target, 6, 6))
             return 2;
         for (slong row = 0; row < 4; row++)
             for (slong column = 0; column < 4; column++)
@@ -675,13 +1016,30 @@ int main(void)
             !sagejs_fmpz_matrix_pow(power, left, 3) ||
             !sagejs_fmpz_matrix_hnf(hnf, left) ||
             !sagejs_fmpz_matrix_snf(snf, left) ||
+            !sagejs_fmpz_matrix_hnf_transform(
+                hnf_transformed, hnf_transform, left) ||
+            !sagejs_fmpz_matrix_snf_transform(
+                snf_transform, snf_left, snf_right, left) ||
+            !sagejs_fmpz_matrix_right_kernel(kernel, left) ||
+            !sagejs_fmpz_matrix_charpoly(characteristic, left) ||
+            !sagejs_fmpz_matrix_minpoly(minimal, left) ||
+            !sagejs_fmpq_matrix_from_fmpz(rational, left) ||
+            !sagejs_fmpz_matrix_from_fmpq_integral(
+                rational_round_trip, rational) ||
+            !sagejs_fmpz_matrix_submatrix(
+                submatrix, left, 1, 3, 1, 4) ||
+            !sagejs_fmpz_matrix_stack(stacked, left, right) ||
+            !sagejs_fmpz_matrix_augment(augmented, left, right) ||
+            !sagejs_fmpz_matrix_set_block(block_target, 1, 1, left) ||
             !sagejs_fmpz_matrix_det(determinant, left) ||
             !sagejs_fmpz_matrix_trace(trace, left) ||
             !sagejs_fmpz_matrix_format(formatted, left) ||
             !sagejs_fmpz_matrix_serialize(serialized, left) ||
             !sagejs_fmpz_matrix_deserialize(decoded, serialized) ||
             !sagejs_fmpz_matrix_equal(left, decoded) ||
-            !sagejs_fmpz_matrix_equal(left, difference))
+            !sagejs_fmpz_matrix_equal(left, difference) ||
+            !sagejs_fmpz_matrix_equal(left, rational_round_trip) ||
+            sagejs_fmpz_matrix_nonzero_count(left) > 16)
             return 5;
         if (sagejs_fmpz_matrix_allocated_bytes(left) == 0 ||
             sagejs_flint_byte_region_length(formatted) == 0 ||
@@ -694,6 +1052,20 @@ int main(void)
         sagejs_fmpz_matrix_clear(decoded);
         sagejs_flint_byte_region_clear(serialized);
         sagejs_flint_byte_region_clear(formatted);
+        sagejs_fmpz_matrix_clear(augmented);
+        sagejs_fmpz_matrix_clear(stacked);
+        sagejs_fmpz_matrix_clear(submatrix);
+        sagejs_fmpz_matrix_clear(rational_round_trip);
+        sagejs_fmpq_matrix_clear(rational);
+        sagejs_fmpz_polynomial_clear(minimal);
+        sagejs_fmpz_polynomial_clear(characteristic);
+        sagejs_fmpz_matrix_clear(kernel);
+        sagejs_fmpz_matrix_clear(block_target);
+        sagejs_fmpz_matrix_clear(snf_right);
+        sagejs_fmpz_matrix_clear(snf_left);
+        sagejs_fmpz_matrix_clear(snf_transform);
+        sagejs_fmpz_matrix_clear(hnf_transformed);
+        sagejs_fmpz_matrix_clear(hnf_transform);
         sagejs_fmpz_matrix_clear(snf);
         sagejs_fmpz_matrix_clear(hnf);
         sagejs_fmpz_matrix_clear(power);
@@ -802,6 +1174,16 @@ process.stdout.write(JSON.stringify({
     packedDynamicBoundary: {
       mulMedianMilliseconds: packedMul,
       mulSamplesMilliseconds: packedMulSamples,
+    },
+    exactRightKernel: {
+      rows: kernelRows,
+      columns: kernelColumns,
+      generatedMedianMilliseconds: generatedKernel,
+      generatedSamplesMilliseconds: generatedKernelSamples,
+      packedBoundaryMedianMilliseconds: packedKernelBoundary,
+      packedBoundarySamplesMilliseconds: packedKernelSamples,
+      exactShapeChecked: true,
+      resultEquivalenceChecked: true,
     },
   },
 }) + "\n");
