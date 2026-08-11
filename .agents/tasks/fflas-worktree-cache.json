@@ -1,0 +1,188 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "fflas-worktree-cache",
+  "title": "Fflas Worktree Cache",
+  "lane": "integration",
+  "status": "review",
+  "owner": "user",
+  "objective": "Share immutable content-addressed GMP, Givaro, FFLAS-FFPACK, and OpenBLAS dependency artifacts across worktrees without redundant builds or full copies, with concurrency-safe publication and focused disk/build verification",
+  "base_commit": "b21b652c83afe6867ef17da61b691abf40ab6f9f",
+  "claims": [
+    "scripts/native-worktree-cache.cjs",
+    "scripts/build-vendor.cjs",
+    "scripts/parallel-development.cjs",
+    "test/parallel-development.cjs",
+    "packages/fflas/scripts/build-deps.cjs",
+    "packages/fflas/README.md",
+    "PARALLEL-DEVELOPMENT.md",
+    ".agents/tasks/fflas-worktree-cache.json"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "compiler-infrastructure",
+    "fallback": "tested-capability",
+    "oracles": [
+      "Concurrent native-cache fixture tests and real FFLAS clean-worktree restore/build timings"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "fallback",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "node --test test/parallel-development.cjs",
+    "pnpm --dir packages/fflas test",
+    "pnpm architecture:check",
+    "pnpm test:portable",
+    "pnpm test:baselib:strict"
+  ],
+  "runs": [
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 12.863,
+      "started_at": "2026-08-11T22:25:36.956Z",
+      "commit": "b21b652c83afe6867ef17da61b691abf40ab6f9f",
+      "workspace_fingerprint": "cb5065aa63c14f2cf3247a858c6a636cdb23c4aa368cfab069b92665275ca665",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 13.106,
+      "started_at": "2026-08-11T22:25:50.485Z",
+      "commit": "b21b652c83afe6867ef17da61b691abf40ab6f9f",
+      "workspace_fingerprint": "cb5065aa63c14f2cf3247a858c6a636cdb23c4aa368cfab069b92665275ca665",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 36.302,
+      "started_at": "2026-08-11T22:26:04.184Z",
+      "commit": "b21b652c83afe6867ef17da61b691abf40ab6f9f",
+      "workspace_fingerprint": "cb5065aa63c14f2cf3247a858c6a636cdb23c4aa368cfab069b92665275ca665",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 13.34,
+      "started_at": "2026-08-11T22:38:16.735Z",
+      "commit": "b21b652c83afe6867ef17da61b691abf40ab6f9f",
+      "workspace_fingerprint": "a1e5ffe1eb31b08078f4f9390f4d9ab5d22f0d5945ccfb9856f52f9efe096ad2",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 11.833,
+      "started_at": "2026-08-11T22:38:37.395Z",
+      "commit": "b21b652c83afe6867ef17da61b691abf40ab6f9f",
+      "workspace_fingerprint": "a1e5ffe1eb31b08078f4f9390f4d9ab5d22f0d5945ccfb9856f52f9efe096ad2",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 35.599,
+      "started_at": "2026-08-11T22:38:53.120Z",
+      "commit": "b21b652c83afe6867ef17da61b691abf40ab6f9f",
+      "workspace_fingerprint": "a1e5ffe1eb31b08078f4f9390f4d9ab5d22f0d5945ccfb9856f52f9efe096ad2",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/parallel-development.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 5.364,
+      "started_at": "2026-08-11T22:43:00.520Z",
+      "commit": "b21b652c83afe6867ef17da61b691abf40ab6f9f",
+      "workspace_fingerprint": "a1e5ffe1eb31b08078f4f9390f4d9ab5d22f0d5945ccfb9856f52f9efe096ad2",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm --dir packages/fflas test",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.776,
+      "started_at": "2026-08-11T22:43:12.931Z",
+      "commit": "b21b652c83afe6867ef17da61b691abf40ab6f9f",
+      "workspace_fingerprint": "a1e5ffe1eb31b08078f4f9390f4d9ab5d22f0d5945ccfb9856f52f9efe096ad2",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/parallel-development.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 4.9,
+      "started_at": "2026-08-11T22:43:50.747Z",
+      "commit": "b21b652c83afe6867ef17da61b691abf40ab6f9f",
+      "workspace_fingerprint": "af9a744659ab5ae6df157f700967c603f63d2008fddc92ef49a5c8241cdde1ef",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm --dir packages/fflas test",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.706,
+      "started_at": "2026-08-11T22:44:00.645Z",
+      "commit": "b21b652c83afe6867ef17da61b691abf40ab6f9f",
+      "workspace_fingerprint": "af9a744659ab5ae6df157f700967c603f63d2008fddc92ef49a5c8241cdde1ef",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 13.926,
+      "started_at": "2026-08-11T22:44:10.820Z",
+      "commit": "b21b652c83afe6867ef17da61b691abf40ab6f9f",
+      "workspace_fingerprint": "af9a744659ab5ae6df157f700967c603f63d2008fddc92ef49a5c8241cdde1ef",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 14.426,
+      "started_at": "2026-08-11T22:44:29.335Z",
+      "commit": "b21b652c83afe6867ef17da61b691abf40ab6f9f",
+      "workspace_fingerprint": "af9a744659ab5ae6df157f700967c603f63d2008fddc92ef49a5c8241cdde1ef",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 38.813,
+      "started_at": "2026-08-11T22:44:47.758Z",
+      "commit": "b21b652c83afe6867ef17da61b691abf40ab6f9f",
+      "workspace_fingerprint": "af9a744659ab5ae6df157f700967c603f63d2008fddc92ef49a5c8241cdde1ef",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "FFLAS dependency builds now publish one immutable, content-addressed GMP/Givaro/FFLAS-FFPACK/OpenBLAS prefix and materialize it in Unix worktrees as a read-only symlink. Publication remains lock-safe, transient downloads and sources are removed, and direct package builds route through the cache. Fresh worktrees bootstrap only the TypeScript compiler plus Python/Sage parser assets before generated add-ons need them; unrelated foreign-language grammar submodules are not a precondition. A clean-worktree smoke restored the FLINT prerequisite and shared FFLAS prefix, built the missing generated adapter, and passed the FFLAS package tests. Windows retains the existing copy materialization fallback. Focused tests cover concurrent publication, shared identity, immutability, cleanup, compiler ordering, and external-prefix bypasses.",
+    "risks": [
+      "Shared Unix materializations are absolute symlinks into the repository-common cache, so manually relocating only a worktree without its common Git directory breaks the link.",
+      "Old content-addressed cache generations are retained indefinitely; a future concurrency-safe garbage collector should reclaim versions no live worktree or build references.",
+      "Windows uses copied prefixes because developer-mode symlink capability is not guaranteed, so it receives build reuse but not the same disk deduplication."
+    ],
+    "next_steps": [
+      "Integrate the lane and exercise the clean-worktree/cache-hit smoke test on CI platforms.",
+      "Design conservative cache garbage collection after shared materialization has accumulated real-world usage."
+    ]
+  }
+}

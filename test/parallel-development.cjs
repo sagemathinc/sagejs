@@ -7,15 +7,18 @@ const { execFileSync, spawn } = require("node:child_process");
 const {
   chmodSync,
   existsSync,
+  lstatSync,
   mkdirSync,
   mkdtempSync,
+  readdirSync,
+  readlinkSync,
   readFileSync,
   rmSync,
   symlinkSync,
   writeFileSync,
 } = require("node:fs");
 const { hostname, tmpdir } = require("node:os");
-const { join, resolve } = require("node:path");
+const { dirname, join, resolve } = require("node:path");
 
 const {
   claimCovers,
@@ -33,6 +36,7 @@ const {
   taskForBranch,
 } = require("../scripts/parallel-development.cjs");
 const {
+  ensureNativeCompiler,
   nativeArtifactSpecs,
   nativeCachePackages,
   prepareNativeArtifact,
@@ -278,6 +282,18 @@ function buildNativeCacheFixture(counter, contents = "native artifact\n") {
   };
 }
 
+function makeFixtureWritable(path) {
+  if (!existsSync(path)) return;
+  const metadata = lstatSync(path);
+  if (metadata.isSymbolicLink()) return;
+  chmodSync(path, metadata.mode | (metadata.isDirectory() ? 0o700 : 0o200));
+  if (metadata.isDirectory()) {
+    for (const name of readdirSync(path)) {
+      makeFixtureWritable(join(path, name));
+    }
+  }
+}
+
 test("native artifact cache builds cold and restores immutable warm snapshots", () => {
   const { directory, workspace, cacheRoot } = nativeCacheFixture();
   const counter = { count: 0 };
@@ -318,6 +334,90 @@ test("native artifact cache builds cold and restores immutable warm snapshots", 
       "native artifact\n",
     );
   } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+test("native addon preparation builds the compiler once in a fresh workspace", () => {
+  const directory = mkdtempSync(join(tmpdir(), "sagejs-native-compiler-test-"));
+  let builds = 0;
+  try {
+    const options = {
+      buildCompiler(workspace, required) {
+        builds += 1;
+        for (const output of required) {
+          mkdirSync(dirname(output), { recursive: true });
+          writeFileSync(output, "compiler\n");
+        }
+        assert.equal(workspace, directory);
+      },
+    };
+    assert.equal(ensureNativeCompiler(directory, options).status, "built");
+    assert.equal(ensureNativeCompiler(directory, options).status, "present");
+    assert.equal(builds, 1);
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+test("shared native dependencies link one read-only content-addressed payload", {
+  skip: process.platform === "win32",
+}, () => {
+  const { directory, workspace, cacheRoot } = nativeCacheFixture();
+  const secondWorkspace = join(directory, "second-workspace");
+  const counter = { count: 0 };
+  try {
+    const spec = {
+      ...nativeCacheSpec(workspace),
+      cleanupRoots: ["scratch/downloads"],
+      id: "fixture-dependencies",
+      materialization: "shared-readonly",
+    };
+    spec.key = nativeCacheHash(JSON.stringify({
+      inputs: spec.inputs,
+      materialization: spec.materialization,
+    }));
+    const cold = prepareNativeArtifact(workspace, cacheRoot, spec, {
+      build(current) {
+        buildNativeCacheFixture(counter)(current);
+        mkdirSync(join(current, "scratch", "downloads"), { recursive: true });
+        writeFileSync(join(current, "scratch", "downloads", "archive"), "tarball\n");
+      },
+    });
+    const firstOutput = join(workspace, "build", "native");
+    const payload = join(cold.entry, "payload", "build", "native");
+    assert.equal(cold.status, "built");
+    assert.equal(counter.count, 1);
+    assert.equal(existsSync(join(workspace, "scratch", "downloads")), false);
+    assert.equal(lstatSync(firstOutput).isSymbolicLink(), true);
+    assert.equal(resolve(dirname(firstOutput), readlinkSync(firstOutput)), payload);
+    assert.equal(lstatSync(payload).mode & 0o222, 0);
+    assert.equal(lstatSync(join(payload, "addon.node")).mode & 0o222, 0);
+    assert.throws(
+      () => writeFileSync(join(firstOutput, "addon.node"), "mutation\n"),
+      /EACCES|EPERM/,
+    );
+
+    mkdirSync(join(secondWorkspace, "source"), { recursive: true });
+    writeFileSync(join(secondWorkspace, "source", "input.c"), "first\n");
+    const secondSpec = {
+      ...spec,
+      inputPaths: ["source"],
+      inputs: snapshot(secondWorkspace, ["source"]),
+    };
+    const warm = prepareNativeArtifact(secondWorkspace, cacheRoot, secondSpec, {
+      build: buildNativeCacheFixture(counter, "must not build\n"),
+    });
+    const secondOutput = join(secondWorkspace, "build", "native");
+    assert.equal(warm.status, "restored");
+    assert.equal(counter.count, 1);
+    assert.equal(lstatSync(secondOutput).isSymbolicLink(), true);
+    assert.equal(
+      resolve(dirname(secondOutput), readlinkSync(secondOutput)),
+      payload,
+    );
+  } finally {
+    makeFixtureWritable(cacheRoot);
     rmSync(directory, { recursive: true, force: true });
   }
 });
@@ -424,6 +524,8 @@ test("generic artifact ids, keys, roots, and input paths fail closed", () => {
       { ...valid, key: "not-a-content-key" },
       { ...valid, inputPaths: ["../outside"] },
       { ...valid, outputRoots: ["build", "build/native"] },
+      { ...valid, cleanupRoots: "scratch" },
+      { ...valid, cleanupRoots: ["build"] },
     ]) {
       assert.throws(
         () => prepareNativeArtifact(workspace, cacheRoot, invalid, {
@@ -635,13 +737,14 @@ test("a custom prefix skips only its package during cache restore", () => {
     process.env.SAGEJS_FLINT_PREFIX = join(directory, "external-flint");
     const results = restoreNativePackages(
       resolve(__dirname, ".."),
-      ["flint", "graph"],
+      ["flint", "fflas", "graph"],
       { cacheRoot: join(directory, "cache") },
     );
     assert.deepEqual(
       results.map(({ id, status }) => ({ id, status })),
       [
         { id: "flint", status: "skipped-custom-prefix" },
+        { id: "fflas", status: "skipped-custom-prefix" },
         { id: "graph-dependencies", status: "miss" },
         { id: "graph-addon", status: "miss" },
       ],
@@ -653,7 +756,7 @@ test("a custom prefix skips only its package during cache restore", () => {
   }
 });
 
-test("native package cache builds FLINT before its FFLAS dependent", () => {
+test("native package cache orders FLINT before its FFLAS dependent", () => {
   assert.deepEqual([...nativeCachePackages], ["flint", "fflas", "graph"]);
 });
 

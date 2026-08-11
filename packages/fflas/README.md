@@ -13,3 +13,19 @@ adapter.
 The first capability covers prime moduli below 256 on supported Unix hosts.
 Windows and portable builds retain the declared FLINT implementation as their
 tested fallback.
+
+## Native dependencies
+
+`pnpm --dir packages/fflas build` obtains the pinned GMP, Givaro,
+FFLAS-FFPACK, and OpenBLAS prefix through Sage.js's content-addressed native
+artifact cache. On supported Unix hosts the cache publishes that prefix once,
+makes it read-only, and links every Git worktree to the same immutable payload.
+Concurrent cold builds serialize on the artifact key, so only one worktree
+performs the dependency build. Generated Node adapters remain separate cached
+artifacts because they also depend on the Node ABI and current declarations.
+Downloaded archives and extracted build trees are discarded after successful
+publication; they are never replicated across warm worktrees.
+
+Set `SAGEJS_PARALLEL_NATIVE_CACHE` to move the shared artifact store. Setting
+`SAGEJS_FFLAS_PREFIX` or `SAGEJS_FLINT_PREFIX` opts out because an externally
+managed prefix has no cache content identity.
