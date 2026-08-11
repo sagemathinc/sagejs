@@ -37,6 +37,7 @@ const integration = [
   "test/ffi.cjs",
   "test/ffi-byte-region-bulk.cjs",
   "test/ffi-resource-aggregate.cjs",
+  "test/fmpq-matrix-right-kernel-resource.cjs",
   "test/production-native-kernels.cjs",
   "test/dense-prime-migration.cjs",
   "test/dense-prime-structural.cjs",

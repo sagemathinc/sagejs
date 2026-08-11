@@ -387,6 +387,133 @@ static inline int sagejs_fmpq_matrix_rref(
     return 1;
 }
 
+/*
+ * Return the canonical RREF row basis of the rational right kernel.
+ *
+ * The source is reduced exactly once, with its columns reversed.  Those
+ * pivots are the lexicographically latest independent source columns, so
+ * their complement is the lexicographically earliest kernel pivot set.
+ * Reversing the constructed columns and basis-row order therefore produces
+ * Sage's canonical RREF basis directly, without a second elimination.  No
+ * caller-selected limb capacity or packed intermediate is involved.
+ */
+static inline int sagejs_fmpq_matrix_right_kernel(
+    sagejs_fmpq_matrix_t result, const sagejs_fmpq_matrix_t source)
+{
+    const slong rows = fmpq_mat_nrows(source->value);
+    const slong columns = fmpq_mat_ncols(source->value);
+    if (columns == 0)
+        return sagejs_fmpq_matrix_init(result, 0, 0);
+    if (rows == 0)
+    {
+        if (!sagejs_fmpq_matrix_init(
+                result, (uint64_t) columns, (uint64_t) columns))
+            return 0;
+        fmpq_mat_one(result->value);
+        result->known_rank = columns;
+        sagejs_fmpq_matrix_recompute_allocated_bytes(result);
+        return 1;
+    }
+
+    fmpq_mat_t reversed;
+    fmpq_mat_t reduced;
+    fmpq_mat_init(reversed, rows, columns);
+    fmpq_mat_init(reduced, rows, columns);
+    for (slong row = 0; row < rows; row++)
+        for (slong column = 0; column < columns; column++)
+            fmpq_set(fmpq_mat_entry(reversed, row, column),
+                fmpq_mat_entry(source->value,
+                    row, columns - column - 1));
+    const slong rank = fmpq_mat_rref(reduced, reversed);
+    fmpq_mat_clear(reversed);
+    const slong nullity = columns - rank;
+    if (!sagejs_fmpq_matrix_init(
+            result, (uint64_t) nullity, (uint64_t) columns))
+    {
+        fmpq_mat_clear(reduced);
+        return 0;
+    }
+    if (nullity == 0)
+    {
+        fmpq_mat_clear(reduced);
+        result->known_rank = 0;
+        return 1;
+    }
+    if (rank == 0)
+    {
+        fmpq_mat_one(result->value);
+        fmpq_mat_clear(reduced);
+        result->known_rank = nullity;
+        sagejs_fmpq_matrix_recompute_allocated_bytes(result);
+        return 1;
+    }
+
+    if ((size_t) rank > SIZE_MAX / sizeof(slong))
+    {
+        fmpq_mat_clear(reduced);
+        goto fail_result;
+    }
+    slong *pivot_columns = (slong *) malloc((size_t) rank * sizeof(slong));
+    if (pivot_columns == NULL)
+    {
+        fmpq_mat_clear(reduced);
+        goto fail_result;
+    }
+    for (slong row = 0; row < rank; row++)
+    {
+        slong pivot_column = 0;
+        while (pivot_column < columns &&
+               fmpq_is_zero(fmpq_mat_entry(reduced, row, pivot_column)))
+            pivot_column++;
+        if (pivot_column >= columns ||
+            (row > 0 && pivot_column <= pivot_columns[row - 1]))
+        {
+            free(pivot_columns);
+            fmpq_mat_clear(reduced);
+            goto fail_result;
+        }
+        pivot_columns[row] = pivot_column;
+    }
+
+    slong pivot_row = 0;
+    slong basis_row = 0;
+    for (slong column = 0; column < columns; column++)
+    {
+        const int is_pivot =
+            pivot_row < rank && pivot_columns[pivot_row] == column;
+        if (is_pivot)
+        {
+            pivot_row++;
+            continue;
+        }
+        const slong result_row = nullity - basis_row - 1;
+        const slong result_column = columns - column - 1;
+        fmpq_one(
+            fmpq_mat_entry(result->value, result_row, result_column));
+        for (slong row = 0; row < rank; row++)
+            fmpq_neg(
+                fmpq_mat_entry(
+                    result->value, result_row,
+                    columns - pivot_columns[row] - 1),
+                fmpq_mat_entry(reduced, row, column));
+        basis_row++;
+    }
+    free(pivot_columns);
+    fmpq_mat_clear(reduced);
+    if (pivot_row != rank || basis_row != nullity)
+        goto fail_result;
+
+    result->known_rank = nullity;
+    sagejs_fmpq_matrix_recompute_allocated_bytes(result);
+    return 1;
+
+fail_result:
+    fmpq_mat_clear(result->value);
+    result->known_rank = -1;
+    result->retained_bytes = 0;
+    return 0;
+}
+
 static inline uint64_t sagejs_fmpq_matrix_rank(
     sagejs_fmpq_matrix_t matrix)
 {
