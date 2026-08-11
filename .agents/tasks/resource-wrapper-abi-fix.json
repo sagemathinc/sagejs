@@ -1,0 +1,47 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "resource-wrapper-abi-fix",
+  "title": "Resource Wrapper Abi Fix",
+  "lane": "compiler-runtime",
+  "status": "active",
+  "owner": "user",
+  "objective": "Fix public @native wrapper ABI for borrowed generated resources plus UInt64Buffer aggregates, including owned resource returns",
+  "base_commit": "46fb2b755c34faf3bb5dad41e6710f88cfe1b0f6",
+  "claims": [
+    "tools/native-kernel/",
+    "tools/runtime-bootstrap.ts",
+    "test/ffi-resource-aggregate.cjs",
+    "test/fmpz-matrix-resource-kernels.cjs",
+    "test/native-kernel.cjs"
+  ],
+  "dependencies": [],
+  "references": [
+    "generated FmpzMatrix public wrapper regression"
+  ],
+  "architecture": {
+    "strategy": "compiler-infrastructure",
+    "fallback": "same-source",
+    "oracles": [
+      "dynamic and native generated FmpzMatrix wrappers"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm build",
+    "pnpm test:compiler",
+    "pnpm test:integration"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "",
+    "risks": [],
+    "next_steps": []
+  }
+}

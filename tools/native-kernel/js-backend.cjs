@@ -1717,6 +1717,14 @@ ${ir.functions.map((fn) =>
   ).join("\n\n")}
 
 const nativeFunctions = { ${exports} };
+const nativeCompatibility = Object.freeze({
+  cacheKey: ${jsString(options.cacheKey || "")},
+  sourceHash: ${jsString(options.sourceHash || "")},
+  nativeAbi: ${Number(options.nativeAbi || 0)},
+  foreignDeclarations: Object.freeze(${JSON.stringify(
+    options.foreignDeclarations || [],
+  )}.map((declaration) => Object.freeze(declaration))),
+});
 const compiledExecutionMode = nativeAddon === null
   ? "javascript"
   : requestedNativeMode === "native"
@@ -1740,6 +1748,7 @@ if (typeof nativeRegister === "function") {
     ${jsString(options.sourcePath || "")},
     ${jsString(options.sourceHash || "")},
     nativeFunctions,
+    nativeCompatibility,
   );
 }
 
@@ -1748,7 +1757,10 @@ module.exports = {
   createIntegerBuffer,
   createFloat64Buffer,
   createUInt64Buffer,
-  cacheKey: ${jsString(options.cacheKey || "")},
+  cacheKey: nativeCompatibility.cacheKey,
+  sourceHash: nativeCompatibility.sourceHash,
+  nativeAbi: nativeCompatibility.nativeAbi,
+  foreignDeclarations: nativeCompatibility.foreignDeclarations,
   executionMode: compiledExecutionMode,
   nativeAvailable: nativeAddon !== null,
   primeFieldTuning: Object.freeze(${JSON.stringify(
