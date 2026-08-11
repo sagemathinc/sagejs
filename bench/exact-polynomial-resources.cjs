@@ -66,7 +66,7 @@ assert.ok(qqPow < 250, `QQ[x] pow took ${qqPow} ms`);
 assert.ok(qqEval < 100, `QQ[x] evaluation took ${qqEval} ms`);
 assert.ok(qqStr < 1_000, `QQ[x] formatting took ${qqStr} ms`);
 assert.ok(qqDump < 250, `QQ[x] SagePack encoding took ${qqDump} ms`);
-assert.ok(qqLoad < 750, `QQ[x] SagePack decoding took ${qqLoad} ms`);
+assert.ok(qqLoad < 100, `QQ[x] SagePack decoding took ${qqLoad} ms`);
 assert.ok(skewConstruct < 1_000, `skewed construction took ${skewConstruct} ms`);
 
 console.log(JSON.stringify({

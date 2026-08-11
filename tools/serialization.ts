@@ -1274,6 +1274,57 @@ function unpackExactPolynomial(
   return coefficients;
 }
 
+function exactPolynomialPayload(bytes: Uint8Array): bigint {
+  const buffer = Reflect.get(globalThis, "Buffer");
+  const from = Reflect.get(Object(buffer), "from");
+  if (typeof from === "function") {
+    const copy = invoke(from, buffer, [bytes]);
+    callMethod(copy, "reverse");
+    const hexadecimal = String(callMethod(copy, "toString", ["hex"]));
+    return hexadecimal.length === 0 ? 0n : BigInt(`0x${hexadecimal}`);
+  }
+
+  // Generated exact resources are currently Node-only. Keep a portable
+  // implementation here so the stable codec does not accidentally depend on
+  // Buffer if another host gains the same declared resource capability.
+  const hexadecimal = new Array<string>(bytes.byteLength);
+  for (let index = 0; index < bytes.byteLength; index += 1) {
+    hexadecimal[index] = bytes[bytes.byteLength - index - 1]
+      .toString(16).padStart(2, "0");
+  }
+  const text = hexadecimal.join("");
+  return text.length === 0 ? 0n : BigInt(`0x${text}`);
+}
+
+function polynomialFromExactResource(
+  parent: unknown,
+  bytes: Uint8Array,
+  encoding: unknown,
+): unknown {
+  const supports = Reflect.get(
+    Object(parent),
+    "_supports_exact_polynomial_resource_deserialization",
+  );
+  const restore = Reflect.get(
+    Object(parent),
+    "_from_exact_polynomial_serialization",
+  );
+  if (typeof supports !== "function" || typeof restore !== "function" ||
+      !invoke(supports, parent, [encoding])) {
+    return undefined;
+  }
+  try {
+    return invoke(restore, parent, [
+      exactPolynomialPayload(bytes),
+      bytes.byteLength,
+      encoding,
+    ]);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    throw new SageSerializationError(message);
+  }
+}
+
 function unpackResidues(bytes: Uint8Array, width: number, count: number): number[] {
   if (![1, 2, 4].includes(width) || bytes.byteLength !== width * count) {
     throw new SageSerializationError("compact matrix entry buffer is invalid");
@@ -1363,6 +1414,14 @@ function decodeElement(payload: WireValue, context: DecodeContext): unknown {
   }
   if (data.kind === "residue") return callPython(data.parent, [data.value]);
   if (data.kind === "polynomial") {
+    if (data.coefficients instanceof Uint8Array) {
+      const direct = polynomialFromExactResource(
+        data.parent,
+        data.coefficients,
+        data.coefficientEncoding,
+      );
+      if (direct !== undefined) return direct;
+    }
     const coefficients = data.coefficients instanceof Uint8Array
       ? unpackExactPolynomial(data.coefficients, data.coefficientEncoding)
       : data.coefficients as unknown[];

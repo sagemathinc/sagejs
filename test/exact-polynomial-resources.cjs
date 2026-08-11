@@ -48,7 +48,10 @@ const correctness = run([
   "assert q(3) == QQ(13)/QQ(2)",
   "assert q(QQ(-3)/QQ(2)) == QQ(5)/QQ(4)",
   "assert str(q) == '7/9*y^2 - 1/2'",
-  "assert loads(dumps(f)) == f and loads(dumps(q)) == q",
+  "restored_f = loads(dumps(f)); restored_q = loads(dumps(q))",
+  "assert restored_f == f and restored_q == q",
+  "assert restored_f._has_fmpz_polynomial_resource()",
+  "assert restored_q._has_fmpq_polynomial_resource()",
   "print('exact-polynomial-resources-ok')",
   "",
 ].join("\n"));

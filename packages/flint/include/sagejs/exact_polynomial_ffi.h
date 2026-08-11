@@ -670,4 +670,352 @@ static inline int sagejs_fmpq_polynomial_serialize(
     return 1;
 }
 
+/*
+ * Decode the stable SJPZ/SJPQ v1 stream from one nonnegative exact-integer
+ * transport token. The public serialization is still an exact byte stream;
+ * the generated exact-integer adapter merely moves its little-endian bytes
+ * across the host boundary in one checked call.
+ *
+ * Validation is transactional. No member of result is initialized until a
+ * complete canonical polynomial has been constructed in a temporary owner.
+ * In particular, rational coefficients must already be reduced, zero must be
+ * 0/1, and a positive-length stream may not end in a zero coefficient.
+ */
+
+static inline unsigned char sagejs_exact_polynomial_packed_byte(
+    const ulong *words, size_t index)
+{
+    return (unsigned char) (
+        words[index / sizeof(ulong)] >>
+        (8 * (index % sizeof(ulong))));
+}
+
+static inline uint32_t sagejs_exact_polynomial_read_packed_u32(
+    const ulong *words, size_t offset)
+{
+    uint32_t result = 0;
+    for (size_t byte = 0; byte < 4; byte++)
+        result |= (uint32_t) sagejs_exact_polynomial_packed_byte(
+            words, offset + byte) << (8 * byte);
+    return result;
+}
+
+static inline uint64_t sagejs_exact_polynomial_read_packed_u64(
+    const ulong *words, size_t offset)
+{
+    uint64_t result = 0;
+    for (size_t byte = 0; byte < 8; byte++)
+        result |= (uint64_t) sagejs_exact_polynomial_packed_byte(
+            words, offset + byte) << (8 * byte);
+    return result;
+}
+
+static inline int sagejs_exact_polynomial_validate_packed_integer(
+    const ulong *words, size_t length, size_t *offset,
+    size_t *byte_count, int *negative, size_t *maximum_bytes)
+{
+    if (*offset > length || length - *offset < 4)
+        return 0;
+    const uint32_t header = sagejs_exact_polynomial_read_packed_u32(
+        words, *offset);
+    *offset += 4;
+    *byte_count = (size_t) (header & UINT32_C(0x7fffffff));
+    *negative = (header & UINT32_C(0x80000000)) != 0;
+    if (*byte_count > length - *offset ||
+        (*byte_count != 0 &&
+         sagejs_exact_polynomial_packed_byte(
+             words, *offset + *byte_count - 1) == 0) ||
+        (*negative && *byte_count == 0))
+        return 0;
+    if (*byte_count > *maximum_bytes)
+        *maximum_bytes = *byte_count;
+    *offset += *byte_count;
+    return 1;
+}
+
+static inline int sagejs_exact_polynomial_validate_packed(
+    const ulong *words, size_t word_count, size_t length,
+    const char magic[4], int rational,
+    slong *coefficient_count, size_t *maximum_bytes)
+{
+    const size_t required_words =
+        length / sizeof(ulong) + (length % sizeof(ulong) != 0);
+    if (words == NULL || length < 16 || word_count != required_words)
+        return 0;
+    const size_t remainder = length % sizeof(ulong);
+    if (remainder != 0 &&
+        (words[word_count - 1] >> (8 * remainder)) != 0)
+        return 0;
+    for (size_t index = 0; index < 4; index++)
+        if (sagejs_exact_polynomial_packed_byte(words, index) !=
+            (unsigned char) magic[index])
+            return 0;
+    if (sagejs_exact_polynomial_packed_byte(words, 4) != 1 ||
+        sagejs_exact_polynomial_packed_byte(words, 5) != 0 ||
+        sagejs_exact_polynomial_packed_byte(words, 6) != 0 ||
+        sagejs_exact_polynomial_packed_byte(words, 7) != 0)
+        return 0;
+    const uint64_t count_value =
+        sagejs_exact_polynomial_read_packed_u64(words, 8);
+    if (count_value > (uint64_t) WORD_MAX ||
+        count_value > (uint64_t) SIZE_MAX)
+        return 0;
+    const size_t count = (size_t) count_value;
+    const size_t minimum_coefficient_bytes = rational ? 8 : 4;
+    if (count > (length - 16) / minimum_coefficient_bytes)
+        return 0;
+    size_t offset = 16;
+    *maximum_bytes = 0;
+    for (size_t index = 0; index < count; index++)
+    {
+        size_t numerator_bytes;
+        int numerator_negative;
+        if (!sagejs_exact_polynomial_validate_packed_integer(
+                words, length, &offset, &numerator_bytes,
+                &numerator_negative, maximum_bytes))
+            return 0;
+        if (rational)
+        {
+            size_t denominator_bytes;
+            int denominator_negative;
+            if (!sagejs_exact_polynomial_validate_packed_integer(
+                    words, length, &offset, &denominator_bytes,
+                    &denominator_negative, maximum_bytes) ||
+                denominator_negative || denominator_bytes == 0)
+                return 0;
+        }
+        if (index + 1 == count && numerator_bytes == 0)
+            return 0;
+    }
+    if (offset != length)
+        return 0;
+    *coefficient_count = (slong) count;
+    return 1;
+}
+
+static inline void sagejs_exact_polynomial_read_packed_fmpz(
+    fmpz_t result, const ulong *source, size_t *offset,
+    ulong *words, size_t word_capacity)
+{
+    const uint32_t header = sagejs_exact_polynomial_read_packed_u32(
+        source, *offset);
+    *offset += 4;
+    const size_t byte_count =
+        (size_t) (header & UINT32_C(0x7fffffff));
+    const size_t word_count =
+        (byte_count + sizeof(ulong) - 1) / sizeof(ulong);
+    if (word_capacity != 0)
+        memset(words, 0, word_capacity * sizeof(ulong));
+    for (size_t byte = 0; byte < byte_count; byte++)
+        words[byte / sizeof(ulong)] |=
+            (ulong) sagejs_exact_polynomial_packed_byte(
+                source, *offset + byte) <<
+            (8 * (byte % sizeof(ulong)));
+    if (word_count == 0)
+        fmpz_zero(result);
+    else
+        fmpz_set_ui_array(result, words, (slong) word_count);
+    if ((header & UINT32_C(0x80000000)) != 0)
+        fmpz_neg(result, result);
+    *offset += byte_count;
+}
+
+static inline ulong *sagejs_exact_polynomial_decode_words(
+    size_t maximum_bytes, size_t *word_capacity)
+{
+    *word_capacity =
+        (maximum_bytes + sizeof(ulong) - 1) / sizeof(ulong);
+    if (*word_capacity == 0)
+        return NULL;
+    if (*word_capacity > SIZE_MAX / sizeof(ulong))
+        return NULL;
+    return (ulong *) calloc(*word_capacity, sizeof(ulong));
+}
+
+static inline ulong *sagejs_exact_polynomial_transport_words(
+    const fmpz_t payload, uint64_t byte_length_value,
+    size_t *byte_length, size_t *word_count)
+{
+    *byte_length = 0;
+    *word_count = 0;
+    if (fmpz_sgn(payload) < 0 ||
+        byte_length_value > (uint64_t) SIZE_MAX)
+        return NULL;
+    const size_t length = (size_t) byte_length_value;
+    if (length < 16)
+        return NULL;
+    const size_t count =
+        length / sizeof(ulong) + (length % sizeof(ulong) != 0);
+    if (count > SIZE_MAX / sizeof(ulong))
+        return NULL;
+    const size_t payload_bytes = fmpz_is_zero(payload) ? 0 :
+        sagejs_fmpz_serialized_bytes(payload);
+    /*
+     * Every nonzero canonical polynomial stream ends in the nonzero high
+     * magnitude byte of its leading coefficient. Thus only the 16-byte zero
+     * polynomial header may legitimately contain high zero transport bytes.
+     * Reject inconsistent lengths before allocating attacker-controlled
+     * storage.
+     */
+    if (payload_bytes > length ||
+        (length != 16 && payload_bytes != length))
+        return NULL;
+    ulong *words = (ulong *) calloc(count, sizeof(ulong));
+    if (words == NULL)
+        return NULL;
+    const size_t payload_words =
+        payload_bytes / sizeof(ulong) +
+        (payload_bytes % sizeof(ulong) != 0);
+    if (payload_words > (size_t) WORD_MAX)
+    {
+        free(words);
+        return NULL;
+    }
+    if (payload_words != 0)
+        fmpz_get_ui_array(words, (slong) payload_words, payload);
+    *byte_length = length;
+    *word_count = count;
+    return words;
+}
+
+static inline int sagejs_fmpz_polynomial_deserialize_packed(
+    sagejs_fmpz_polynomial_t result, const fmpz_t payload,
+    uint64_t byte_length_value)
+{
+    size_t byte_length;
+    size_t source_word_count;
+    ulong *source = sagejs_exact_polynomial_transport_words(
+        payload, byte_length_value, &byte_length, &source_word_count);
+    if (source == NULL)
+        return 0;
+    slong count;
+    size_t maximum_bytes;
+    if (!sagejs_exact_polynomial_validate_packed(
+            source, source_word_count, byte_length, "SJPZ", 0,
+            &count, &maximum_bytes))
+    {
+        free(source);
+        return 0;
+    }
+    size_t word_capacity;
+    ulong *words = sagejs_exact_polynomial_decode_words(
+        maximum_bytes, &word_capacity);
+    if (word_capacity != 0 && words == NULL)
+    {
+        free(source);
+        return 0;
+    }
+    sagejs_fmpz_polynomial_t temporary;
+    memset(temporary, 0, sizeof(temporary));
+    if (!sagejs_fmpz_polynomial_init(temporary, (uint64_t) count))
+    {
+        free(words);
+        free(source);
+        return 0;
+    }
+    fmpz_t coefficient;
+    fmpz_init(coefficient);
+    size_t offset = 16;
+    for (slong index = 0; index < count; index++)
+    {
+        sagejs_exact_polynomial_read_packed_fmpz(
+            coefficient, source, &offset, words, word_capacity);
+        if (!sagejs_fmpz_polynomial_set_coefficient(
+                temporary, (uint64_t) index, coefficient))
+        {
+            fmpz_clear(coefficient);
+            sagejs_fmpz_polynomial_clear(temporary);
+            free(words);
+            free(source);
+            return 0;
+        }
+    }
+    fmpz_clear(coefficient);
+    free(words);
+    free(source);
+    if (!sagejs_fmpz_polynomial_seal(temporary))
+    {
+        sagejs_fmpz_polynomial_clear(temporary);
+        return 0;
+    }
+    result[0] = temporary[0];
+    return 1;
+}
+
+static inline int sagejs_fmpq_polynomial_deserialize_packed(
+    sagejs_fmpq_polynomial_t result, const fmpz_t payload,
+    uint64_t byte_length_value)
+{
+    size_t byte_length;
+    size_t source_word_count;
+    ulong *source = sagejs_exact_polynomial_transport_words(
+        payload, byte_length_value, &byte_length, &source_word_count);
+    if (source == NULL)
+        return 0;
+    slong count;
+    size_t maximum_bytes;
+    if (!sagejs_exact_polynomial_validate_packed(
+            source, source_word_count, byte_length, "SJPQ", 1,
+            &count, &maximum_bytes))
+    {
+        free(source);
+        return 0;
+    }
+    size_t word_capacity;
+    ulong *words = sagejs_exact_polynomial_decode_words(
+        maximum_bytes, &word_capacity);
+    if (word_capacity != 0 && words == NULL)
+    {
+        free(source);
+        return 0;
+    }
+    sagejs_fmpq_polynomial_t temporary;
+    memset(temporary, 0, sizeof(temporary));
+    if (!sagejs_fmpq_polynomial_init(temporary, (uint64_t) count))
+    {
+        free(words);
+        free(source);
+        return 0;
+    }
+    fmpz_t numerator;
+    fmpz_t denominator;
+    fmpz_t divisor;
+    fmpz_init(numerator);
+    fmpz_init(denominator);
+    fmpz_init(divisor);
+    size_t offset = 16;
+    for (slong index = 0; index < count; index++)
+    {
+        sagejs_exact_polynomial_read_packed_fmpz(
+            numerator, source, &offset, words, word_capacity);
+        sagejs_exact_polynomial_read_packed_fmpz(
+            denominator, source, &offset, words, word_capacity);
+        fmpz_gcd(divisor, numerator, denominator);
+        if (!fmpz_is_one(divisor) ||
+            !sagejs_fmpq_polynomial_set_coefficient(
+                temporary, (uint64_t) index, numerator, denominator))
+        {
+            fmpz_clear(divisor);
+            fmpz_clear(denominator);
+            fmpz_clear(numerator);
+            sagejs_fmpq_polynomial_clear(temporary);
+            free(words);
+            free(source);
+            return 0;
+        }
+    }
+    fmpz_clear(divisor);
+    fmpz_clear(denominator);
+    fmpz_clear(numerator);
+    free(words);
+    free(source);
+    if (!sagejs_fmpq_polynomial_seal(temporary))
+    {
+        sagejs_fmpq_polynomial_clear(temporary);
+        return 0;
+    }
+    result[0] = temporary[0];
+    return 1;
+}
+
 #endif

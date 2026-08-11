@@ -30,6 +30,7 @@ from sagejs.ffi.flint import (
     fmpz_polynomial_evaluate as _ffi_fmpz_polynomial_evaluate,
     fmpz_polynomial_evaluate_rational as _ffi_fmpz_polynomial_evaluate_rational,
     fmpz_polynomial_serialize as _ffi_fmpz_polynomial_serialize,
+    fmpz_polynomial_deserialize as _ffi_fmpz_polynomial_deserialize,
     fmpq_polynomial as _ffi_fmpq_polynomial,
     fmpq_polynomial_set_coefficient as _ffi_fmpq_polynomial_set_coefficient,
     fmpq_polynomial_seal as _ffi_fmpq_polynomial_seal,
@@ -44,6 +45,7 @@ from sagejs.ffi.flint import (
     fmpq_polynomial_pow as _ffi_fmpq_polynomial_pow,
     fmpq_polynomial_evaluate as _ffi_fmpq_polynomial_evaluate,
     fmpq_polynomial_serialize as _ffi_fmpq_polynomial_serialize,
+    fmpq_polynomial_deserialize as _ffi_fmpq_polynomial_deserialize,
     fmpz_matrix as _ffi_fmpz_matrix,
     fmpz_matrix_nrows as _ffi_fmpz_matrix_nrows,
     fmpz_matrix_ncols as _ffi_fmpz_matrix_ncols,
@@ -294,6 +296,17 @@ def ffiFmpzPolynomialSerialize(
 
 
 @native
+def ffiFmpzPolynomialDeserialize(
+    payload: Integer,
+    byte_length: uint64,
+) -> FmpzPolynomial:
+    return _ffi_fmpz_polynomial_deserialize(
+        payload,
+        byte_length,
+    )
+
+
+@native
 def ffiFmpqPolynomialCreate(
     length: uint64,
 ) -> FmpqPolynomial:
@@ -440,6 +453,17 @@ def ffiFmpqPolynomialSerialize(
 ) -> FlintByteRegion:
     return _ffi_fmpq_polynomial_serialize(
         source,
+    )
+
+
+@native
+def ffiFmpqPolynomialDeserialize(
+    payload: Integer,
+    byte_length: uint64,
+) -> FmpqPolynomial:
+    return _ffi_fmpq_polynomial_deserialize(
+        payload,
+        byte_length,
     )
 
 

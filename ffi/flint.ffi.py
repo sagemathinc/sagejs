@@ -406,6 +406,29 @@ def fmpz_polynomial_serialize(source: FmpzPolynomial) -> FlintByteRegion: ...
 
 
 @flint.function(
+    dynamic="ffiFmpzPolynomialDeserialize",
+    symbol="sagejs_fmpz_polynomial_deserialize_packed",
+    returns=int,
+    abi=[
+        out("result", sagejs_fmpz_polynomial_t),
+        in_("payload", fmpz_t),
+        in_("byte_length", uint64_t),
+    ],
+    effects=Effects(pure=False, allocates=True, raises=[ValueError]),
+    result=Status(
+        1,
+        exception=ValueError,
+        message="invalid SJPZ v1 integer polynomial serialization",
+    ),
+    wasm=False,
+)
+def fmpz_polynomial_deserialize(
+    payload: Integer,
+    byte_length: uint64,
+) -> FmpzPolynomial: ...
+
+
+@flint.function(
     dynamic="ffiFmpqPolynomialCreate",
     symbol="sagejs_fmpq_polynomial_init",
     returns=int,
@@ -697,6 +720,29 @@ def fmpq_polynomial_evaluate(
     wasm=False,
 )
 def fmpq_polynomial_serialize(source: FmpqPolynomial) -> FlintByteRegion: ...
+
+
+@flint.function(
+    dynamic="ffiFmpqPolynomialDeserialize",
+    symbol="sagejs_fmpq_polynomial_deserialize_packed",
+    returns=int,
+    abi=[
+        out("result", sagejs_fmpq_polynomial_t),
+        in_("payload", fmpz_t),
+        in_("byte_length", uint64_t),
+    ],
+    effects=Effects(pure=False, allocates=True, raises=[ValueError]),
+    result=Status(
+        1,
+        exception=ValueError,
+        message="invalid SJPQ v1 rational polynomial serialization",
+    ),
+    wasm=False,
+)
+def fmpq_polynomial_deserialize(
+    payload: Integer,
+    byte_length: uint64,
+) -> FmpqPolynomial: ...
 
 
 @flint.function(

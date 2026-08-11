@@ -36,6 +36,52 @@ function bytes(region) {
   );
 }
 
+function payload(source) {
+  const hexadecimal = Buffer.from(source).reverse().toString("hex");
+  return hexadecimal.length === 0 ? 0n : BigInt(`0x${hexadecimal}`);
+}
+
+function deserializeInteger(source) {
+  return flint.ffiFmpzPolynomialDeserialize(
+    payload(source), BigInt(source.byteLength),
+  );
+}
+
+function deserializeRational(source) {
+  return flint.ffiFmpqPolynomialDeserialize(
+    payload(source), BigInt(source.byteLength),
+  );
+}
+
+function polynomialBytes(magic, coefficients) {
+  const body = [];
+  for (const coefficient of coefficients) {
+    const parts = Array.isArray(coefficient) ? coefficient : [coefficient];
+    for (const part of parts) {
+      const negative = part < 0n;
+      let magnitude = negative ? -part : part;
+      const encoded = [];
+      while (magnitude !== 0n) {
+        encoded.push(Number(magnitude & 255n));
+        magnitude >>= 8n;
+      }
+      const header = encoded.length | (negative ? 0x8000_0000 : 0);
+      body.push(
+        header & 255,
+        (header >>> 8) & 255,
+        (header >>> 16) & 255,
+        (header >>> 24) & 255,
+        ...encoded,
+      );
+    }
+  }
+  const header = Buffer.alloc(16);
+  header.write(magic, 0, "ascii");
+  header[4] = 1;
+  header.writeBigUInt64LE(BigInt(coefficients.length), 8);
+  return Uint8Array.from([...header, ...body]);
+}
+
 function readU32(source, offset) {
   return source[offset] |
     (source[offset + 1] << 8) |
@@ -155,8 +201,16 @@ function fmpqPolynomial(coefficients) {
     /invalid rational argument/,
   );
   const serialized = flint.ffiFmpzPolynomialSerialize(product);
-  assert.deepEqual(decodePolynomial(bytes(serialized), false), [-1n, 1n, 2n]);
+  const serializedBytes = bytes(serialized);
+  assert.deepEqual(decodePolynomial(serializedBytes, false), [-1n, 1n, 2n]);
+  const restored = deserializeInteger(serializedBytes);
+  assert.deepEqual(
+    [0n, 1n, 2n].map((index) =>
+      flint.ffiFmpzPolynomialCoefficient(restored, index)),
+    [-1n, 1n, 2n],
+  );
   assert.ok(accounted(product) > 0n);
+  closeTwice(restored, flint.ffiFmpzPolynomialClose);
   closeTwice(serialized, flint.ffiFlintByteRegionClose);
   closeTwice(rationalValue, flint.ffiFmpqValueClose);
   closeTwice(power, flint.ffiFmpzPolynomialClose);
@@ -209,10 +263,20 @@ function fmpqPolynomial(coefficients) {
   assert.equal(flint.ffiFmpqValueNumerator(value), 1n);
   assert.equal(flint.ffiFmpqValueDenominator(value), 1n);
   const serialized = flint.ffiFmpqPolynomialSerialize(product);
+  const serializedBytes = bytes(serialized);
   assert.deepEqual(
-    decodePolynomial(bytes(serialized), true),
+    decodePolynomial(serializedBytes, true),
     [[-1n, 5n], [17n, 210n], [1n, 7n]],
   );
+  const restored = deserializeRational(serializedBytes);
+  assert.deepEqual(
+    [0n, 1n, 2n].flatMap((index) => [
+      flint.ffiFmpqPolynomialCoefficientNumerator(restored, index),
+      flint.ffiFmpqPolynomialCoefficientDenominator(restored, index),
+    ]),
+    [-1n, 5n, 17n, 210n, 1n, 7n],
+  );
+  closeTwice(restored, flint.ffiFmpqPolynomialClose);
   closeTwice(serialized, flint.ffiFlintByteRegionClose);
   closeTwice(value, flint.ffiFmpqValueClose);
   closeTwice(power, flint.ffiFmpqPolynomialClose);
@@ -239,6 +303,22 @@ function fmpqPolynomial(coefficients) {
   assert.equal(flint.ffiFmpqValueNumerator(rationalValue), -1n);
   assert.equal(flint.ffiFmpqValueDenominator(rationalValue), 2n);
 
+  const integerZeroBytes = flint.ffiFmpzPolynomialSerialize(integerZero);
+  const restoredIntegerZero = deserializeInteger(bytes(integerZeroBytes));
+  assert.equal(flint.ffiFmpzPolynomialLength(restoredIntegerZero), 0n);
+  const rationalBytes = flint.ffiFmpqPolynomialSerialize(rational);
+  const restoredRational = deserializeRational(bytes(rationalBytes));
+  assert.equal(
+    flint.ffiFmpqPolynomialCoefficientNumerator(restoredRational, 0n), -1n,
+  );
+  assert.equal(
+    flint.ffiFmpqPolynomialCoefficientDenominator(restoredRational, 0n), 2n,
+  );
+
+  closeTwice(restoredRational, flint.ffiFmpqPolynomialClose);
+  closeTwice(rationalBytes, flint.ffiFlintByteRegionClose);
+  closeTwice(restoredIntegerZero, flint.ffiFmpzPolynomialClose);
+  closeTwice(integerZeroBytes, flint.ffiFlintByteRegionClose);
   closeTwice(rationalValue, flint.ffiFmpqValueClose);
   closeTwice(rational, flint.ffiFmpqPolynomialClose);
   closeTwice(integerZeroPower, flint.ffiFmpzPolynomialClose);
@@ -253,6 +333,10 @@ function fmpqPolynomial(coefficients) {
     decodePolynomial(bytes(integerBytes), false),
     [0n, -huge, 9n],
   );
+  const restoredInteger = deserializeInteger(bytes(integerBytes));
+  assert.equal(
+    flint.ffiFmpzPolynomialCoefficient(restoredInteger, 1n), -huge,
+  );
   const rational = fmpqPolynomial([
     [huge, 3n],
     [-5n, (1n << 83n) + 9n],
@@ -262,10 +346,96 @@ function fmpqPolynomial(coefficients) {
     decodePolynomial(bytes(rationalBytes), true),
     [[huge, 3n], [-5n, (1n << 83n) + 9n]],
   );
+  const restoredRational = deserializeRational(bytes(rationalBytes));
+  assert.equal(
+    flint.ffiFmpqPolynomialCoefficientNumerator(restoredRational, 0n), huge,
+  );
+  assert.equal(
+    flint.ffiFmpqPolynomialCoefficientDenominator(restoredRational, 1n),
+    (1n << 83n) + 9n,
+  );
+  closeTwice(restoredRational, flint.ffiFmpqPolynomialClose);
+  closeTwice(restoredInteger, flint.ffiFmpzPolynomialClose);
   closeTwice(rationalBytes, flint.ffiFlintByteRegionClose);
   closeTwice(rational, flint.ffiFmpqPolynomialClose);
   closeTwice(integerBytes, flint.ffiFlintByteRegionClose);
   closeTwice(integer, flint.ffiFmpzPolynomialClose);
+}
+
+{
+  const invalidInteger = [];
+  const validInteger = polynomialBytes("SJPZ", [1n]);
+  const wrongMagic = Uint8Array.from(validInteger);
+  wrongMagic[0] = 0;
+  invalidInteger.push(wrongMagic);
+  const wrongVersion = Uint8Array.from(validInteger);
+  wrongVersion[4] = 2;
+  invalidInteger.push(wrongVersion);
+  const nonzeroReserved = Uint8Array.from(validInteger);
+  nonzeroReserved[5] = 1;
+  invalidInteger.push(nonzeroReserved);
+  invalidInteger.push(validInteger.subarray(0, validInteger.length - 1));
+  invalidInteger.push(Uint8Array.from([...validInteger, 0]));
+  invalidInteger.push(Uint8Array.from([
+    ...polynomialBytes("SJPZ", []), 2, 0, 0, 0, 1, 0,
+  ]));
+  const negativeZero = polynomialBytes("SJPZ", [0n]);
+  negativeZero[19] = 0x80;
+  invalidInteger.push(negativeZero);
+  invalidInteger.push(polynomialBytes("SJPZ", [1n, 0n]));
+
+  for (const source of invalidInteger) {
+    assert.throws(
+      () => deserializeInteger(source),
+      /invalid SJPZ v1 integer polynomial serialization/,
+    );
+  }
+  assert.throws(
+    () => flint.ffiFmpzPolynomialDeserialize(-1n, 16n),
+    /invalid SJPZ v1 integer polynomial serialization/,
+  );
+  assert.throws(
+    () => flint.ffiFmpzPolynomialDeserialize(
+      1n << BigInt(8 * validInteger.length), BigInt(validInteger.length),
+    ),
+    /invalid SJPZ v1 integer polynomial serialization/,
+  );
+  assert.throws(
+    () => flint.ffiFmpzPolynomialDeserialize(payload(validInteger), 2n ** 64n - 1n),
+    /invalid SJPZ v1 integer polynomial serialization/,
+  );
+
+  const invalidRational = [
+    polynomialBytes("SJPQ", [[1n, 0n]]),
+    polynomialBytes("SJPQ", [[1n, -2n]]),
+    polynomialBytes("SJPQ", [[2n, 4n]]),
+    polynomialBytes("SJPQ", [[0n, 2n]]),
+    polynomialBytes("SJPQ", [[1n, 2n], [0n, 1n]]),
+  ];
+  for (const source of invalidRational) {
+    assert.throws(
+      () => deserializeRational(source),
+      /invalid SJPQ v1 rational polynomial serialization/,
+    );
+  }
+
+  // Fuzz the full validation path while preserving an independently-invalid
+  // magic byte, so no mutated input can accidentally become canonical.
+  let state = 0x5a17_9d3b;
+  for (let iteration = 0; iteration < 256; iteration += 1) {
+    const source = Uint8Array.from(
+      iteration % 2 === 0 ? validInteger : polynomialBytes("SJPQ", [[1n, 2n]]),
+    );
+    state = (Math.imul(state, 1664525) + 1013904223) >>> 0;
+    source[state % source.length] ^= (state >>> 8) & 255;
+    source[0] = 0;
+    assert.throws(
+      () => iteration % 2 === 0
+        ? deserializeInteger(source)
+        : deserializeRational(source),
+      /invalid SJP[ZQ] v1/,
+    );
+  }
 }
 
 {
@@ -324,6 +494,15 @@ function fmpqPolynomial(coefficients) {
     accounted(integer) < 1024n * 1024n,
     `skew integer polynomial retained ${accounted(integer)} bytes`,
   );
+  const integerBytes = flint.ffiFmpzPolynomialSerialize(integer);
+  const restoredInteger = deserializeInteger(bytes(integerBytes));
+  assert.equal(
+    flint.ffiFmpzPolynomialCoefficient(
+      restoredInteger, BigInt(length - 1),
+    ),
+    huge,
+  );
+  assert.ok(accounted(restoredInteger) < 1024n * 1024n);
 
   const rational = flint.ffiFmpqPolynomialCreate(BigInt(length));
   const rationalBefore = accounted(rational);
@@ -336,6 +515,25 @@ function fmpqPolynomial(coefficients) {
     accounted(rational) < 1024n * 1024n,
     `skew rational polynomial retained ${accounted(rational)} bytes`,
   );
+  const rationalBytes = flint.ffiFmpqPolynomialSerialize(rational);
+  const restoredRational = deserializeRational(bytes(rationalBytes));
+  assert.equal(
+    flint.ffiFmpqPolynomialCoefficientNumerator(
+      restoredRational, BigInt(length - 1),
+    ),
+    huge,
+  );
+  assert.equal(
+    flint.ffiFmpqPolynomialCoefficientDenominator(
+      restoredRational, BigInt(length - 1),
+    ),
+    (1n << 4096n) + 1n,
+  );
+  assert.ok(accounted(restoredRational) < 1024n * 1024n);
+  closeTwice(restoredRational, flint.ffiFmpqPolynomialClose);
+  closeTwice(rationalBytes, flint.ffiFlintByteRegionClose);
+  closeTwice(restoredInteger, flint.ffiFmpzPolynomialClose);
+  closeTwice(integerBytes, flint.ffiFlintByteRegionClose);
   closeTwice(rational, flint.ffiFmpqPolynomialClose);
   closeTwice(integer, flint.ffiFmpzPolynomialClose);
 }
@@ -394,17 +592,42 @@ if (process.platform !== "win32") {
 #include <stdint.h>
 #include <sagejs/exact_polynomial_ffi.h>
 
+static int region_payload(
+    fmpz_t result, const sagejs_flint_byte_region_t region)
+{
+    const size_t word_count =
+        region->length / sizeof(ulong) +
+        (region->length % sizeof(ulong) != 0);
+    if (word_count > (size_t) WORD_MAX ||
+        word_count > SIZE_MAX / sizeof(ulong))
+        return 0;
+    ulong *words = (ulong *) calloc(word_count, sizeof(ulong));
+    if (words == NULL)
+        return 0;
+    for (size_t byte = 0; byte < region->length; byte++)
+        words[byte / sizeof(ulong)] |=
+            (ulong) region->data[byte] <<
+            (8 * (byte % sizeof(ulong)));
+    fmpz_set_ui_array(result, words, (slong) word_count);
+    free(words);
+    return 1;
+}
+
 int main(void)
 {
-    fmpz_t coefficient, denominator, argument, result;
+    fmpz_t coefficient, denominator, argument, result, zpayload, qpayload;
     fmpz_init(coefficient);
     fmpz_init(denominator);
     fmpz_init(argument);
     fmpz_init(result);
+    fmpz_init(zpayload);
+    fmpz_init(qpayload);
     for (slong round = 0; round < 300; round++)
     {
         sagejs_fmpz_polynomial_t z, zsum, zproduct, zpower;
         sagejs_fmpq_polynomial_t q, qsum, qproduct, qpower;
+        sagejs_fmpz_polynomial_t zdecoded;
+        sagejs_fmpq_polynomial_t qdecoded;
         sagejs_fmpq_value_t qvalue, zqvalue;
         sagejs_flint_byte_region_t zbytes, qbytes;
         if (!sagejs_fmpz_polynomial_init(z, 32) ||
@@ -440,11 +663,29 @@ int main(void)
             !sagejs_fmpz_polynomial_serialize(zbytes, zpower) ||
             !sagejs_fmpq_polynomial_serialize(qbytes, qpower))
             return 6;
+        if (!region_payload(zpayload, zbytes) ||
+            !region_payload(qpayload, qbytes) ||
+            !sagejs_fmpz_polynomial_deserialize_packed(
+                zdecoded, zpayload, (uint64_t) zbytes->length) ||
+            !sagejs_fmpq_polynomial_deserialize_packed(
+                qdecoded, qpayload, (uint64_t) qbytes->length) ||
+            !fmpz_poly_equal(zdecoded->value, zpower->value) ||
+            !fmpq_poly_equal(qdecoded->value, qpower->value))
+            return 10;
         if (sagejs_fmpz_polynomial_allocated_bytes(z) == 0 ||
             sagejs_fmpq_polynomial_allocated_bytes(q) == 0 ||
             sagejs_flint_byte_region_length(zbytes) < 16 ||
             sagejs_flint_byte_region_length(qbytes) < 16)
             return 7;
+        sagejs_fmpq_polynomial_clear(qdecoded);
+        sagejs_fmpz_polynomial_clear(zdecoded);
+        zbytes->data[0] = 0;
+        if (!region_payload(zpayload, zbytes))
+            return 11;
+        sagejs_fmpz_polynomial_t rejected;
+        if (sagejs_fmpz_polynomial_deserialize_packed(
+                rejected, zpayload, (uint64_t) zbytes->length))
+            return 12;
         sagejs_flint_byte_region_clear(qbytes);
         sagejs_flint_byte_region_clear(zbytes);
         sagejs_fmpq_value_clear(zqvalue);
@@ -476,6 +717,8 @@ int main(void)
         return 9;
     sagejs_fmpq_polynomial_clear(skew_q);
     sagejs_fmpz_polynomial_clear(skew_z);
+    fmpz_clear(qpayload);
+    fmpz_clear(zpayload);
     fmpz_clear(result);
     fmpz_clear(argument);
     fmpz_clear(denominator);
