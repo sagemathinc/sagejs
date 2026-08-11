@@ -1,0 +1,62 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "uint64-structural",
+  "title": "Packed UInt64 Structural Primitives",
+  "lane": "compiler-runtime",
+  "status": "review",
+  "owner": "codex",
+  "objective": "Add checked bulk uint64 residue pack/unpack and dense-matrix default formatting runtime primitives with deterministic tests and linear performance gates",
+  "base_commit": "a6750517de37c1ca32f51cde277bcb2cb89c7f5c",
+  "claims": [
+    "src/baselib/sagejs/runtime.py",
+    "src/baselib/sagejs_bootstrap.py",
+    "tools/python/contract.ts",
+    "test/uint64-structural-runtime.cjs",
+    "test/node-test-manifest.cjs"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "compiler-infrastructure",
+    "fallback": "same-source",
+    "oracles": [
+      "existing dense GF(p) matrix serialization and default formatting semantics"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm build",
+    "pnpm test:compiler",
+    "pnpm test:integration"
+  ],
+  "runs": [
+    {
+      "command": "pnpm build",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 122.683,
+      "started_at": "2026-08-11T10:27:58.910Z",
+      "commit": "a6750517de37c1ca32f51cde277bcb2cb89c7f5c",
+      "workspace_fingerprint": "33578cb412bf94a77069927b57922960fb1f83991b0513ca6a9ac55656806719",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Added checked endian-independent uint64 pack/unpack primitives and a narrow row-major aligned uint64 matrix formatter. Randomized differential tests cover widths 1, 2, 4, and 8 plus overflow, exact byte length, rectangular, and empty-matrix semantics. On the validation host, 500x500 pack+unpack took 48-50 ms and formatting took 24-29 ms.",
+    "risks": [
+      "The integration-owned native-boundary inventory must be regenerated after cherry-pick because the three new runtime intrinsics are intentionally outside this compiler-runtime lane's claims.",
+      "The full integration tier is not green at the base commit: exact-polynomial resource counts expect 71 adapters while the integrated declaration emits 97, and graph native dependencies are not provisioned in this worktree."
+    ],
+    "next_steps": [
+      "Run `node bin/sagejs ffi audit --write` in the integration lane and classify the three new runtime boundaries.",
+      "Use the primitives from Matrix packed residue import/export and default unsubdivided GF(p) formatting in a separate arithmetic-algebra lane."
+    ]
+  }
+}
