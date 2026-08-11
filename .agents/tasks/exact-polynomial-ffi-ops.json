@@ -4,10 +4,10 @@
   "id": "exact-polynomial-ffi-ops",
   "title": "Exact Polynomial Resource Equality",
   "lane": "integration",
-  "status": "active",
+  "status": "review",
   "owner": "user",
   "objective": "Add checked generated FLINT equality for owned exact polynomial resources",
-  "base_commit": "41c677e",
+  "base_commit": "41c677eeb039938f762d18cc27b9fadc03827c7b",
   "claims": [
     "ffi/flint.ffi.py",
     "ffi/flint.ffi.json",
@@ -146,14 +146,14 @@
     }
   ],
   "handoff": {
-    "summary": "Generated checked equality for sealed FmpzPolynomial and FmpqPolynomial resources, returning exact 0/1 results without coefficient materialization and rejecting mutable builders.",
+    "summary": "Generated checked equality for sealed FmpzPolynomial and FmpqPolynomial resources on the combined dense-ZZ FFI base, returning exact 0/1 results without coefficient materialization and rejecting mutable builders. Corrected polynomial exponent guards to FLINT UWORD_MAX with a 2^32 LLP64 regression.",
     "risks": [
       "The resource declarations remain Node-only until the generated WASM resource lowering is implemented.",
       "The portable tier reached all source-level tests but the isolated worktree could not regenerate compatible module/runtime caches; focused, architecture, and strict suites pass."
     ],
     "next_steps": [
       "Use direct resource equality in canonical Node ZZ[x] and QQ[x] PolynomialElement storage.",
-      "Rerun the portable tier after integration into a worktree with current generated runtime caches."
+      "Rerun the portable tier after integration into the shared worktree with current generated runtime caches."
     ]
   }
 }
