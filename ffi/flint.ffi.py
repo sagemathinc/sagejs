@@ -202,6 +202,29 @@ def fmpz_polynomial_length(polynomial: FmpzPolynomial) -> Integer: ...
 
 
 @flint.function(
+    dynamic="ffiFmpzPolynomialEqual",
+    symbol="sagejs_fmpz_polynomial_equal",
+    returns=int,
+    abi=[
+        out("result", fmpz_t),
+        in_("left", sagejs_fmpz_polynomial_t),
+        in_("right", sagejs_fmpz_polynomial_t),
+    ],
+    effects=Effects(pure=True, allocates=True, raises=[ValueError]),
+    result=Status(
+        1,
+        exception=ValueError,
+        message="integer polynomial equality requires sealed resources",
+    ),
+    wasm=False,
+)
+def fmpz_polynomial_equal(
+    left: FmpzPolynomial,
+    right: FmpzPolynomial,
+) -> Integer: ...
+
+
+@flint.function(
     dynamic="ffiFmpzPolynomialCoefficient",
     symbol="sagejs_fmpz_polynomial_coefficient",
     returns=int,
@@ -466,6 +489,29 @@ def fmpq_polynomial_seal(polynomial: Writable[FmpqPolynomial]) -> bool: ...
     wasm=False,
 )
 def fmpq_polynomial_length(polynomial: FmpqPolynomial) -> Integer: ...
+
+
+@flint.function(
+    dynamic="ffiFmpqPolynomialEqual",
+    symbol="sagejs_fmpq_polynomial_equal",
+    returns=int,
+    abi=[
+        out("result", fmpz_t),
+        in_("left", sagejs_fmpq_polynomial_t),
+        in_("right", sagejs_fmpq_polynomial_t),
+    ],
+    effects=Effects(pure=True, allocates=True, raises=[ValueError]),
+    result=Status(
+        1,
+        exception=ValueError,
+        message="rational polynomial equality requires sealed resources",
+    ),
+    wasm=False,
+)
+def fmpq_polynomial_equal(
+    left: FmpqPolynomial,
+    right: FmpqPolynomial,
+) -> Integer: ...
 
 
 @flint.function(
