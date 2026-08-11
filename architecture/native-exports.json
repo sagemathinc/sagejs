@@ -4658,6 +4658,7 @@
         "packages/flint/test/test.cjs",
         "src/baselib/matrix.py",
         "test/dense-prime-migration.cjs",
+        "test/ffi.cjs",
         "test/native-kernel.cjs"
       ],
       "declared_ffi": null
@@ -5157,7 +5158,8 @@
         "FLINT"
       ],
       "consumers": [
-        "src/baselib/matrix.py"
+        "src/baselib/matrix.py",
+        "test/ffi.cjs"
       ],
       "declared_ffi": null
     },
@@ -5258,6 +5260,7 @@
         "packages/flint/test/test.cjs",
         "src/baselib/matrix.py",
         "test/dense-prime-migration.cjs",
+        "test/ffi.cjs",
         "test/native-kernel.cjs"
       ],
       "declared_ffi": null
@@ -5458,7 +5461,8 @@
       ],
       "consumers": [
         "packages/flint-wasm/test/factor.test.mjs",
-        "src/baselib/matrix.py"
+        "src/baselib/matrix.py",
+        "test/ffi.cjs"
       ],
       "declared_ffi": null
     },

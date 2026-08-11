@@ -142,6 +142,53 @@ static inline int sagejs_fmpq_matrix_init_set(
     return 1;
 }
 
+static inline int sagejs_fmpq_matrix_neg(
+    sagejs_fmpq_matrix_t result, const sagejs_fmpq_matrix_t source)
+{
+    fmpq_mat_init(result->value,
+        fmpq_mat_nrows(source->value), fmpq_mat_ncols(source->value));
+    fmpq_mat_neg(result->value, source->value);
+    result->known_rank = source->known_rank;
+    return 1;
+}
+
+static inline int sagejs_fmpq_matrix_scalar_mul(
+    sagejs_fmpq_matrix_t result, const sagejs_fmpq_matrix_t source,
+    const fmpz_t numerator, const fmpz_t denominator)
+{
+    fmpq_t scalar;
+    if (fmpz_is_zero(denominator))
+        return 0;
+    fmpq_init(scalar);
+    fmpq_set_fmpz_frac(scalar, numerator, denominator);
+    fmpq_mat_init(result->value,
+        fmpq_mat_nrows(source->value), fmpq_mat_ncols(source->value));
+    fmpq_mat_scalar_mul_fmpq(result->value, source->value, scalar);
+    result->known_rank = fmpq_is_zero(scalar) ? 0 : source->known_rank;
+    fmpq_clear(scalar);
+    return 1;
+}
+
+static inline int sagejs_fmpq_matrix_equal(
+    const sagejs_fmpq_matrix_t left, const sagejs_fmpq_matrix_t right)
+{
+    return fmpq_mat_equal(left->value, right->value);
+}
+
+static inline int sagejs_fmpq_matrix_is_zero(
+    const sagejs_fmpq_matrix_t matrix)
+{
+    return fmpq_mat_is_zero(matrix->value);
+}
+
+static inline int sagejs_fmpq_matrix_is_one(
+    const sagejs_fmpq_matrix_t matrix)
+{
+    if (fmpq_mat_nrows(matrix->value) != fmpq_mat_ncols(matrix->value))
+        return 0;
+    return fmpq_mat_is_one(matrix->value);
+}
+
 static inline int sagejs_fmpq_matrix_add(
     sagejs_fmpq_matrix_t result, const sagejs_fmpq_matrix_t left,
     const sagejs_fmpq_matrix_t right)
@@ -238,7 +285,7 @@ static inline int sagejs_fmpq_matrix_rref(
 }
 
 static inline uint64_t sagejs_fmpq_matrix_rank(
-    const sagejs_fmpq_matrix_t matrix)
+    sagejs_fmpq_matrix_t matrix)
 {
     if (matrix->known_rank >= 0)
         return (uint64_t) matrix->known_rank;
@@ -247,6 +294,7 @@ static inline uint64_t sagejs_fmpq_matrix_rank(
         fmpq_mat_nrows(matrix->value), fmpq_mat_ncols(matrix->value));
     const slong rank = fmpq_mat_rref(reduced, matrix->value);
     fmpq_mat_clear(reduced);
+    matrix->known_rank = rank;
     return (uint64_t) rank;
 }
 
@@ -257,6 +305,16 @@ static inline int sagejs_fmpq_matrix_det(
         return 0;
     fmpq_init(result);
     fmpq_mat_det(result, source->value);
+    return 1;
+}
+
+static inline int sagejs_fmpq_matrix_trace(
+    sagejs_fmpq_value_t result, const sagejs_fmpq_matrix_t source)
+{
+    if (fmpq_mat_nrows(source->value) != fmpq_mat_ncols(source->value))
+        return 0;
+    fmpq_init(result);
+    fmpq_mat_trace(result, source->value);
     return 1;
 }
 

@@ -22,6 +22,11 @@ from sagejs.ffi.flint import (
     fmpq_matrix_entry_denominator as _ffi_fmpq_matrix_entry_denominator,
     fmpq_matrix_entry_is_zero as _ffi_fmpq_matrix_entry_is_zero,
     fmpq_matrix_copy as _ffi_fmpq_matrix_copy,
+    fmpq_matrix_neg as _ffi_fmpq_matrix_neg,
+    fmpq_matrix_scalar_mul as _ffi_fmpq_matrix_scalar_mul,
+    fmpq_matrix_equal as _ffi_fmpq_matrix_equal,
+    fmpq_matrix_is_zero as _ffi_fmpq_matrix_is_zero,
+    fmpq_matrix_is_one as _ffi_fmpq_matrix_is_one,
     fmpq_matrix_add as _ffi_fmpq_matrix_add,
     fmpq_matrix_sub as _ffi_fmpq_matrix_sub,
     fmpq_matrix_transpose as _ffi_fmpq_matrix_transpose,
@@ -31,6 +36,7 @@ from sagejs.ffi.flint import (
     fmpq_matrix_rref as _ffi_fmpq_matrix_rref,
     fmpq_matrix_rank as _ffi_fmpq_matrix_rank,
     fmpq_matrix_det as _ffi_fmpq_matrix_det,
+    fmpq_matrix_trace as _ffi_fmpq_matrix_trace,
     fmpq_value_numerator as _ffi_fmpq_value_numerator,
     fmpq_value_denominator as _ffi_fmpq_value_denominator,
     fmpq_matrix_format as _ffi_fmpq_matrix_format,
@@ -194,6 +200,57 @@ def ffiFmpqMatrixCopy(
 
 
 @native
+def ffiFmpqMatrixNeg(
+    source: FmpqMatrix,
+) -> FmpqMatrix:
+    return _ffi_fmpq_matrix_neg(
+        source,
+    )
+
+
+@native
+def ffiFmpqMatrixScalarMul(
+    source: FmpqMatrix,
+    numerator: Integer,
+    denominator: Integer,
+) -> FmpqMatrix:
+    return _ffi_fmpq_matrix_scalar_mul(
+        source,
+        numerator,
+        denominator,
+    )
+
+
+@native
+def ffiFmpqMatrixEqual(
+    left: FmpqMatrix,
+    right: FmpqMatrix,
+) -> bool:
+    return _ffi_fmpq_matrix_equal(
+        left,
+        right,
+    )
+
+
+@native
+def ffiFmpqMatrixIsZero(
+    matrix: FmpqMatrix,
+) -> bool:
+    return _ffi_fmpq_matrix_is_zero(
+        matrix,
+    )
+
+
+@native
+def ffiFmpqMatrixIsOne(
+    matrix: FmpqMatrix,
+) -> bool:
+    return _ffi_fmpq_matrix_is_one(
+        matrix,
+    )
+
+
+@native
 def ffiFmpqMatrixAdd(
     left: FmpqMatrix,
     right: FmpqMatrix,
@@ -278,6 +335,15 @@ def ffiFmpqMatrixDet(
     source: FmpqMatrix,
 ) -> FmpqValue:
     return _ffi_fmpq_matrix_det(
+        source,
+    )
+
+
+@native
+def ffiFmpqMatrixTrace(
+    source: FmpqMatrix,
+) -> FmpqValue:
+    return _ffi_fmpq_matrix_trace(
         source,
     )
 

@@ -34,9 +34,17 @@ function dynamicLifecycleFuzz() {
     }
     const sum = flint.ffiFmpqMatrixAdd(left, right);
     const difference = flint.ffiFmpqMatrixSub(sum, right);
+    const negated = flint.ffiFmpqMatrixNeg(left);
+    const scaled = flint.ffiFmpqMatrixScalarMul(left, -17n, 19n);
     const transposed = flint.ffiFmpqMatrixTranspose(left);
     const inverse = flint.ffiFmpqMatrixInv(left);
     const solution = flint.ffiFmpqMatrixSolve(left, right);
+    const trace = flint.ffiFmpqMatrixTrace(left);
+    assert.equal(flint.ffiFmpqMatrixEqual(left, difference), true);
+    assert.equal(flint.ffiFmpqMatrixIsZero(left), false);
+    assert.equal(flint.ffiFmpqMatrixIsOne(left), false);
+    assert.equal(flint.ffiFmpqMatrixRank(left), 3n);
+    assert.equal(flint.ffiFmpqMatrixRank(left), 3n);
     for (let index = 0; index < 9; index += 1) {
       const row = BigInt(Math.floor(index / 3));
       const column = BigInt(index % 3);
@@ -49,9 +57,12 @@ function dynamicLifecycleFuzz() {
         flint.ffiFmpqMatrixEntryDenominator(left, row, column),
       );
     }
+    flint.ffiFmpqValueClose(trace);
     flint.ffiFmpqMatrixClose(solution);
     flint.ffiFmpqMatrixClose(inverse);
     flint.ffiFmpqMatrixClose(transposed);
+    flint.ffiFmpqMatrixClose(scaled);
+    flint.ffiFmpqMatrixClose(negated);
     flint.ffiFmpqMatrixClose(difference);
     flint.ffiFmpqMatrixClose(sum);
     flint.ffiFmpqMatrixClose(right);
@@ -66,6 +77,14 @@ function dynamicLifecycleFuzz() {
     assert.throws(
       () => flint.ffiFmpqMatrixSolve(singular, inconsistent),
       /no solutions/,
+    );
+    assert.throws(
+      () => flint.ffiFmpqMatrixScalarMul(singular, 1n, 0n),
+      /invalid rational matrix scalar/,
+    );
+    assert.throws(
+      () => flint.ffiFmpqMatrixTrace(inconsistent),
+      /trace requires a square rational matrix/,
     );
     flint.ffiFmpqMatrixClose(inconsistent);
     flint.ffiFmpqMatrixClose(singular);
@@ -98,8 +117,9 @@ int main(void)
     for (slong round = 0; round < 500; round++)
     {
         sagejs_fmpq_matrix_t left, right, sum, difference;
-        sagejs_fmpq_matrix_t transposed, inverse, solution;
+        sagejs_fmpq_matrix_t negated, scaled, transposed, inverse, solution;
         sagejs_fmpq_matrix_t singular, inconsistent, failed;
+        sagejs_fmpq_value_t trace, failed_value;
         if (!sagejs_fmpq_matrix_init(left, 3, 3) ||
             !sagejs_fmpq_matrix_randbits(
                 right, 3, 3, 4, (uint64_t) round + UINT64_C(1),
@@ -124,9 +144,18 @@ int main(void)
             }
         if (!sagejs_fmpq_matrix_add(sum, left, right) ||
             !sagejs_fmpq_matrix_sub(difference, sum, right) ||
+            !sagejs_fmpq_matrix_neg(negated, left) ||
+            !sagejs_fmpq_matrix_scalar_mul(
+                scaled, left, numerator, denominator) ||
             !sagejs_fmpq_matrix_transpose(transposed, left) ||
             !sagejs_fmpq_matrix_inv(inverse, left) ||
-            !sagejs_fmpq_matrix_solve(solution, left, right))
+            !sagejs_fmpq_matrix_solve(solution, left, right) ||
+            !sagejs_fmpq_matrix_trace(trace, left) ||
+            !sagejs_fmpq_matrix_equal(left, difference) ||
+            sagejs_fmpq_matrix_is_zero(left) ||
+            sagejs_fmpq_matrix_is_one(left) ||
+            sagejs_fmpq_matrix_rank(left) != 3 ||
+            sagejs_fmpq_matrix_rank(left) != 3)
             return 4;
         for (slong row = 0; row < 3; row++)
             for (slong column = 0; column < 3; column++)
@@ -139,21 +168,29 @@ int main(void)
         if (!sagejs_fmpq_matrix_init(singular, 2, 2) ||
             !sagejs_fmpq_matrix_init(inconsistent, 2, 1) ||
             !sagejs_fmpq_matrix_set_entry(
-                inconsistent, 0, 0, numerator, denominator) ||
-            sagejs_fmpq_matrix_inv(failed, singular) ||
+                inconsistent, 0, 0, numerator, denominator))
+            return 6;
+        fmpz_zero(denominator);
+        if (sagejs_fmpq_matrix_inv(failed, singular) ||
             sagejs_fmpq_matrix_solve(failed, singular, inconsistent) ||
             sagejs_fmpq_matrix_add(failed, left, singular) ||
-            sagejs_fmpq_matrix_sub(failed, left, singular))
+            sagejs_fmpq_matrix_sub(failed, left, singular) ||
+            sagejs_fmpq_matrix_scalar_mul(
+                failed, singular, numerator, denominator) ||
+            sagejs_fmpq_matrix_trace(failed_value, inconsistent))
             return 6;
         sagejs_fmpq_matrix_clear(inconsistent);
         sagejs_fmpq_matrix_clear(singular);
         sagejs_fmpq_matrix_clear(solution);
         sagejs_fmpq_matrix_clear(inverse);
         sagejs_fmpq_matrix_clear(transposed);
+        sagejs_fmpq_matrix_clear(scaled);
+        sagejs_fmpq_matrix_clear(negated);
         sagejs_fmpq_matrix_clear(difference);
         sagejs_fmpq_matrix_clear(sum);
         sagejs_fmpq_matrix_clear(right);
         sagejs_fmpq_matrix_clear(left);
+        sagejs_fmpq_value_clear(trace);
     }
     fmpz_clear(denominator);
     fmpz_clear(numerator);

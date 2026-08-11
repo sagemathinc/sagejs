@@ -57,12 +57,15 @@ const cases = [
   },
   { name: "add_300", expression: "_rational_left + _rational_right", budget: 20 },
   { name: "subtract_300", expression: "_rational_left - _rational_right", budget: 20 },
-  { name: "negate_300", expression: "-_rational_left", budget: 15 },
-  { name: "scalar_300", expression: "(QQ(17)/19)*_rational_left", budget: 20 },
+  { name: "negate_300_steady", expression: "-_rational_left", budget: 15 },
+  { name: "scalar_300_steady", expression: "(QQ(17)/19)*_rational_left", budget: 20 },
   { name: "transpose_300", expression: "_rational_left.transpose()", budget: 15 },
-  { name: "equal_300", expression: "_rational_left == _rational_equal", budget: 10 },
+  { name: "equal_300_steady", expression: "_rational_left == _rational_equal", budget: 10 },
+  { name: "is_zero_300_steady", expression: "_rational_zero.is_zero()", budget: 8 },
+  { name: "is_one_300_steady", expression: "_rational_one.is_one()", budget: 8 },
   { name: "copy_300", expression: "_rational_left.__copy__()", budget: 15 },
-  { name: "trace_300", expression: "_rational_left.trace()", budget: 8 },
+  { name: "trace_300_steady", expression: "_rational_left.trace()", budget: 8 },
+  { name: "rank_300_steady", expression: "_rational_rank.rank()", budget: 2 },
   { name: "density_300", expression: "_rational_left.density()", budget: 8 },
   { name: "str_50", expression: "_rational_string.str()", budget: 20 },
   { name: "multiply_80", expression: "_rational_square*_rational_square", budget: 40 },
@@ -73,6 +76,90 @@ const cases = [
   { name: "solve_40x8", expression: "_rational_inverse.solve_right(_rational_rhs)", budget: 80 },
   { name: "charpoly_35", expression: "_rational_polynomial.__copy__().charpoly()", budget: 80 },
   { name: "right_kernel_30x45", expression: "_rational_kernel.__copy__().right_kernel_matrix()", budget: 90 },
+  {
+    name: "negate_300_cold_resource",
+    expression: "-_rational_cold_negate[sample_index]",
+    warmExpression: "-_rational_warm",
+    precheck: ["_rational_cold_negate[sample_index]"],
+    postcheck: ["_rational_cold_negate[sample_index]", "result"],
+    budget: 15,
+    cold: true,
+  },
+  {
+    name: "scalar_300_cold_resource",
+    expression: "(QQ(-17)/19)*_rational_cold_scalar[sample_index]",
+    warmExpression: "(QQ(-17)/19)*_rational_warm",
+    precheck: ["_rational_cold_scalar[sample_index]"],
+    postcheck: ["_rational_cold_scalar[sample_index]", "result"],
+    budget: 25,
+    cold: true,
+  },
+  {
+    name: "equal_300_cold_resource",
+    expression: "_rational_cold_equal_left[sample_index] == _rational_cold_equal_right[sample_index]",
+    warmExpression: "_rational_warm == _rational_warm_equal",
+    precheck: [
+      "_rational_cold_equal_left[sample_index]",
+      "_rational_cold_equal_right[sample_index]",
+    ],
+    postcheck: [
+      "_rational_cold_equal_left[sample_index]",
+      "_rational_cold_equal_right[sample_index]",
+    ],
+    budget: 10,
+    cold: true,
+  },
+  {
+    name: "unequal_300_cold_resource",
+    expression: "_rational_cold_unequal_left[sample_index] != _rational_cold_unequal_right[sample_index]",
+    warmExpression: "_rational_warm != _rational_warm_unequal",
+    precheck: [
+      "_rational_cold_unequal_left[sample_index]",
+      "_rational_cold_unequal_right[sample_index]",
+    ],
+    postcheck: [
+      "_rational_cold_unequal_left[sample_index]",
+      "_rational_cold_unequal_right[sample_index]",
+    ],
+    budget: 10,
+    cold: true,
+  },
+  {
+    name: "is_zero_300_cold_resource",
+    expression: "_rational_cold_zero[sample_index].is_zero()",
+    warmExpression: "_rational_warm_zero.is_zero()",
+    precheck: ["_rational_cold_zero[sample_index]"],
+    postcheck: ["_rational_cold_zero[sample_index]"],
+    budget: 8,
+    cold: true,
+  },
+  {
+    name: "is_one_300_cold_resource",
+    expression: "_rational_cold_one[sample_index].is_one()",
+    warmExpression: "_rational_warm_one.is_one()",
+    precheck: ["_rational_cold_one[sample_index]"],
+    postcheck: ["_rational_cold_one[sample_index]"],
+    budget: 8,
+    cold: true,
+  },
+  {
+    name: "trace_300_cold_resource",
+    expression: "_rational_cold_trace[sample_index].trace()",
+    warmExpression: "_rational_warm.trace()",
+    precheck: ["_rational_cold_trace[sample_index]"],
+    postcheck: ["_rational_cold_trace[sample_index]"],
+    budget: 8,
+    cold: true,
+  },
+  {
+    name: "rank_300_cold_resource",
+    expression: "_rational_cold_rank[sample_index].rank()",
+    warmExpression: "_rational_warm_rank.rank()",
+    precheck: ["_rational_cold_rank[sample_index]"],
+    postcheck: ["_rational_cold_rank[sample_index]"],
+    budget: 200,
+    cold: true,
+  },
 ];
 
 const structural = [
@@ -164,21 +251,37 @@ async function run(environment = process.env) {
       }
 
       const definitions = cases.flatMap((testCase) => [
-        `def _rational_surface_${testCase.name}():`,
+        `def _rational_surface_${testCase.name}(sample_index=0):`,
+        ...(testCase.precheck || []).map((value) =>
+          `    _rational_assert_resource_direct(${value})`
+        ),
         "    started = _rational_budget_runtime.wall_time()",
         `    result = ${testCase.expression}`,
+        "    elapsed = (_rational_budget_runtime.wall_time() - started) * 1000",
         "    if result is None:",
         "        raise RuntimeError('rational matrix operation returned None')",
-        "    return (_rational_budget_runtime.wall_time() - started) * 1000",
+        ...(testCase.postcheck || []).map((value) =>
+          `    _rational_assert_resource_direct(${value})`
+        ),
+        "    return elapsed",
       ]);
       await session.evaluate([
         "import sagejs.runtime as _rational_budget_runtime",
+        "def _rational_assert_resource_direct(value):",
+        "    storage = value._rational_storage_cache",
+        "    if _rational_budget_runtime.reflect.get(storage, 'numerators') is not _rational_budget_runtime.undefined:",
+        "        raise RuntimeError('rational resource materialized numerator compatibility storage')",
+        "    if _rational_budget_runtime.reflect.get(storage, 'denominators') is not _rational_budget_runtime.undefined:",
+        "        raise RuntimeError('rational resource materialized denominator compatibility storage')",
         "set_random_seed(20260810)",
         "_rational_budget_values = [QQ(index % 201 - 100)/(index % 13 + 1) for index in range(300*300)]",
         "_rational_large = random_matrix(QQ, 1000)",
         "_rational_left = random_matrix(QQ, 300) / 7",
         "_rational_right = random_matrix(QQ, 300) / 11",
         "_rational_equal = _rational_left.__copy__()",
+        "_rational_zero = zero_matrix(QQ, 300)",
+        "_rational_one = identity_matrix(QQ, 300)",
+        "_rational_rank = identity_matrix(QQ, 300)",
         "_rational_string = random_matrix(QQ, 50)",
         "_rational_square = random_matrix(QQ, 80) / 7",
         "_rational_det = random_matrix(QQ, 60) / 11",
@@ -187,15 +290,35 @@ async function run(environment = process.env) {
         "_rational_rhs = random_matrix(QQ, 40, 8) / 17",
         "_rational_polynomial = random_matrix(QQ, 35) / 19",
         "_rational_kernel = random_matrix(QQ, 30, 45) / 23",
+        "_rational_warm = random_matrix(QQ, 300)",
+        "_rational_warm_equal = _rational_warm.__copy__()",
+        "_rational_warm_unequal = _rational_warm + identity_matrix(QQ, 300)",
+        "_rational_warm_zero = zero_matrix(QQ, 300)",
+        "_rational_warm_one = identity_matrix(QQ, 300)",
+        "_rational_warm_rank = identity_matrix(QQ, 300)",
+        `_rational_cold_negate = [random_matrix(QQ, 300) for _index in range(${samples})]`,
+        `_rational_cold_scalar = [random_matrix(QQ, 300) for _index in range(${samples})]`,
+        `_rational_cold_equal_left = [random_matrix(QQ, 300) for _index in range(${samples})]`,
+        "_rational_cold_equal_right = [value.__copy__() for value in _rational_cold_equal_left]",
+        `_rational_cold_unequal_left = [random_matrix(QQ, 300) for _index in range(${samples})]`,
+        "_rational_cold_unequal_right = [value + identity_matrix(QQ, 300) for value in _rational_cold_unequal_left]",
+        `_rational_cold_zero = [zero_matrix(QQ, 300) for _index in range(${samples})]`,
+        `_rational_cold_one = [identity_matrix(QQ, 300) for _index in range(${samples})]`,
+        `_rational_cold_trace = [random_matrix(QQ, 300) for _index in range(${samples})]`,
+        `_rational_cold_rank = [identity_matrix(QQ, 300) for _index in range(${samples})]`,
         ...definitions,
       ].join("\n"));
 
       for (const testCase of cases) {
-        await session.evaluate(`_rational_surface_${testCase.name}()`);
+        if (testCase.cold) {
+          await session.evaluate(`_rational_warm_result = ${testCase.warmExpression}`);
+        } else {
+          await session.evaluate(`_rational_surface_${testCase.name}()`);
+        }
         const times = [];
         for (let index = 0; index < samples; index += 1) {
           const sample = await session.evaluate(
-            `_rational_surface_${testCase.name}()`,
+            `_rational_surface_${testCase.name}(${testCase.cold ? index : 0})`,
           );
           const elapsed = Number(sample.repr);
           if (!Number.isFinite(elapsed) || elapsed <= 0) {
@@ -215,8 +338,9 @@ async function run(environment = process.env) {
       session.close();
     }
 
-    console.log(`Dense QQ matrix budget (${samples} warm samples)`);
+    console.log(`Dense QQ matrix budget (${samples} samples per case)`);
     console.log("  implementation: typed-python + generated FLINT resources");
+    console.log("  warmup: sacrificial operands; cold-resource inputs are preconstructed and unmaterialized");
     console.log(`  raw FLINT construction+multiply median: ${referenceMedian.toFixed(2)} ms`);
     console.log(`  measured load factor: ${loadFactor.toFixed(2)}x`);
     console.log("  operation                         raw / normalized / budget");
