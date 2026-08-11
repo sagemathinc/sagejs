@@ -1,0 +1,217 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "timing-core-v1",
+  "title": "Timing Core v1",
+  "lane": "compiler-runtime",
+  "status": "review",
+  "owner": "user",
+  "objective": "Unify interactive time measurement around high-resolution execution-only boundaries, report Node CPU and wall time, provide browser wall-only parity, and instrument nested lazy initialization spans.",
+  "base_commit": "b21b652c83afe6867ef17da61b691abf40ab6f9f",
+  "claims": [
+    "tools/timing.ts",
+    "tools/repl.ts",
+    "tools/kernel-evaluator.ts",
+    "tools/runtime-bootstrap.ts",
+    "tools/resources.ts",
+    "src/output/codegen.py",
+    "test/timing-core.cjs",
+    "test/node-test-manifest.cjs",
+    "test/kernel.cjs",
+    "test/python-cst-lowerer.cjs"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "compiler-infrastructure",
+    "fallback": "not-applicable",
+    "oracles": [
+      "SageMath time output semantics and differential first-versus-second lazy initialization behavior"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm build",
+    "pnpm test:compiler",
+    "pnpm test:integration"
+  ],
+  "runs": [
+    {
+      "command": "pnpm build",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 142.975,
+      "started_at": "2026-08-11T22:18:44.774Z",
+      "commit": "b21b652c83afe6867ef17da61b691abf40ab6f9f",
+      "workspace_fingerprint": "2643ae6d6b15edd6c511d28a5addecac459ab80adb382c2e3d7ba02f38e25206",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:compiler",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 79.658,
+      "started_at": "2026-08-11T22:21:11.305Z",
+      "commit": "b21b652c83afe6867ef17da61b691abf40ab6f9f",
+      "workspace_fingerprint": "2643ae6d6b15edd6c511d28a5addecac459ab80adb382c2e3d7ba02f38e25206",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:integration",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 202.225,
+      "started_at": "2026-08-11T22:22:53.350Z",
+      "commit": "b21b652c83afe6867ef17da61b691abf40ab6f9f",
+      "workspace_fingerprint": "2643ae6d6b15edd6c511d28a5addecac459ab80adb382c2e3d7ba02f38e25206",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm build",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 138.425,
+      "started_at": "2026-08-11T22:35:32.219Z",
+      "commit": "b21b652c83afe6867ef17da61b691abf40ab6f9f",
+      "workspace_fingerprint": "937f5cf0078e4e41c2ed81fb712b9c70e941ba1d0fecf0ac0689b72b4863a456",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm build",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 147.997,
+      "started_at": "2026-08-11T22:38:14.771Z",
+      "commit": "b21b652c83afe6867ef17da61b691abf40ab6f9f",
+      "workspace_fingerprint": "937f5cf0078e4e41c2ed81fb712b9c70e941ba1d0fecf0ac0689b72b4863a456",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:compiler",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 75.985,
+      "started_at": "2026-08-11T22:40:46.499Z",
+      "commit": "b21b652c83afe6867ef17da61b691abf40ab6f9f",
+      "workspace_fingerprint": "937f5cf0078e4e41c2ed81fb712b9c70e941ba1d0fecf0ac0689b72b4863a456",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:integration",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 205.484,
+      "started_at": "2026-08-11T22:42:06.926Z",
+      "commit": "b21b652c83afe6867ef17da61b691abf40ab6f9f",
+      "workspace_fingerprint": "937f5cf0078e4e41c2ed81fb712b9c70e941ba1d0fecf0ac0689b72b4863a456",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm build",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 141.247,
+      "started_at": "2026-08-11T22:46:45.911Z",
+      "commit": "b21b652c83afe6867ef17da61b691abf40ab6f9f",
+      "workspace_fingerprint": "3aaa837bbe23aa13c40fac3ba4999a57142f60c515953f451313abb2f51a6812",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:compiler",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 77.136,
+      "started_at": "2026-08-11T22:49:12.293Z",
+      "commit": "b21b652c83afe6867ef17da61b691abf40ab6f9f",
+      "workspace_fingerprint": "3aaa837bbe23aa13c40fac3ba4999a57142f60c515953f451313abb2f51a6812",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:integration",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 189.89,
+      "started_at": "2026-08-11T22:50:32.654Z",
+      "commit": "b21b652c83afe6867ef17da61b691abf40ab6f9f",
+      "workspace_fingerprint": "3aaa837bbe23aa13c40fac3ba4999a57142f60c515953f451313abb2f51a6812",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm build",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 145.643,
+      "started_at": "2026-08-11T22:54:03.002Z",
+      "commit": "b21b652c83afe6867ef17da61b691abf40ab6f9f",
+      "workspace_fingerprint": "d20c9c6cb75e01845845b517d14344f085f61031dac64bd3e8cbccfb4f686b20",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:compiler",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 78.098,
+      "started_at": "2026-08-11T22:56:38.237Z",
+      "commit": "b21b652c83afe6867ef17da61b691abf40ab6f9f",
+      "workspace_fingerprint": "d20c9c6cb75e01845845b517d14344f085f61031dac64bd3e8cbccfb4f686b20",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:integration",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 182.832,
+      "started_at": "2026-08-11T22:57:59.778Z",
+      "commit": "b21b652c83afe6867ef17da61b691abf40ab6f9f",
+      "workspace_fingerprint": "d20c9c6cb75e01845845b517d14344f085f61031dac64bd3e8cbccfb4f686b20",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm build",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 147.678,
+      "started_at": "2026-08-11T23:02:21.691Z",
+      "commit": "b21b652c83afe6867ef17da61b691abf40ab6f9f",
+      "workspace_fingerprint": "ce4ffe372dfc90895d407048cbb79c55766a039d1090fe3eb9ac81aae02c3cc8",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:compiler",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 78.686,
+      "started_at": "2026-08-11T23:04:53.000Z",
+      "commit": "b21b652c83afe6867ef17da61b691abf40ab6f9f",
+      "workspace_fingerprint": "ce4ffe372dfc90895d407048cbb79c55766a039d1090fe3eb9ac81aae02c3cc8",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:integration",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 182.31,
+      "started_at": "2026-08-11T23:06:15.618Z",
+      "commit": "b21b652c83afe6867ef17da61b691abf40ab6f9f",
+      "workspace_fingerprint": "ce4ffe372dfc90895d407048cbb79c55766a039d1090fe3eb9ac81aae02c3cc8",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Added one high-resolution execution-timing core shared by the REPL, embeddable kernel, and compiler-emitted timed statements. Compilation completes before the measured boundary and result formatting happens afterward. Node reports process CPU user/system/total plus wall time; hosts without process.cpuUsage report wall time only. Cold Python imports and native module loads appear as a nested Initialization tree, while warm repeats omit that section. Representative output is `CPU times: user 4.741ms, sys: 0.000ms, total: 4.741ms`, `Wall time: 4.010ms`, `Initialization: 3.018ms`, `  import colorsys: 3.018ms`. Focused timing/CST/kernel tests, a clean production build, compiler tests, the 262-test integration tier, strict Python, and architecture checks pass.",
+    "risks": [
+      "Node CPU measurements use process.cpuUsage and are therefore process-wide; concurrent host work in the same process can contribute CPU time even though the wall boundary is exact.",
+      "Initialization attribution currently names Python module imports and first native/runtime requires. Future lazy caches should use the same timing span API when their cost is important to expose."
+    ],
+    "next_steps": [
+      "Integrate this lane, then implement `%timeit` as a separate statistical benchmarking feature built on the shared execution boundary.",
+      "Add additional named initialization spans only at measured lazy-loading choke points so ordinary execution output stays concise."
+    ]
+  }
+}

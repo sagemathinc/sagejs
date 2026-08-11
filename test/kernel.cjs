@@ -77,7 +77,15 @@ async function main(t) {
   assert.equal((await session.evaluate("_")).repr, "17");
   const timed = await session.evaluate("%time timed_value = 2^20");
   assert.equal(timed.repr, "");
-  assert.match(timed.stdout, /^Wall time: [0-9.]+ms\n$/);
+  assert.match(
+    timed.stdout,
+    /^CPU times: user [\d.]+ms, sys: [\d.]+ms, total: [\d.]+ms\nWall time: [\d.]+ms\n$/,
+  );
+  const coldImport = await session.evaluate("%time import colorsys");
+  assert.match(coldImport.stdout, /\nInitialization: [\d.]+ms\n/);
+  assert.match(coldImport.stdout, /\n  import colorsys: [\d.]+ms\n/);
+  const warmImport = await session.evaluate("%time import colorsys");
+  assert.doesNotMatch(warmImport.stdout, /\nInitialization:/);
   assert.match(
     (await session.evaluate("search_doc('natural logarithm')")).stdout,
     /log2 -- The natural logarithm of `2`\./,

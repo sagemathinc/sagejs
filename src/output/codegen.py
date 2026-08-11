@@ -357,19 +357,34 @@ def generate_code():
 
     def print_timed_statement(self, output):
         start_name = output.new_time_counter()
+        timing_hooks = (
+            'typeof globalThis.__sagejs_timing_start__ === "function" && '
+            'typeof globalThis.__sagejs_timing_finish__ === "function"'
+        )
+        wall_clock = (
+            "(globalThis.performance && "
+            'typeof globalThis.performance.now === "function" '
+            "? globalThis.performance.now() : Date.now())"
+        )
 
         def timed_body():
             output.indent()
             output.assign("var " + start_name)
-            output.print("Date.now()")
+            output.print("(" + timing_hooks + " ? ")
+            output.print("globalThis.__sagejs_timing_start__() : ")
+            output.print(wall_clock + ")")
             output.end_statement()
             output.indent()
             self.body.print(output)
             output.newline()
             output.indent()
-            output.print('console.log("Wall time: " + (Date.now() - ')
-            output.print(start_name)
-            output.print(') + "ms")')
+            output.print("if (" + timing_hooks + ") ")
+            output.print("globalThis.__sagejs_timing_finish__(")
+            output.print(start_name + ")")
+            output.print("; else ")
+            output.print('console.log("Wall time: " + (')
+            output.print(wall_clock + " - " + start_name)
+            output.print(').toFixed(3) + "ms")')
             output.end_statement()
 
         output.with_block(timed_body)
