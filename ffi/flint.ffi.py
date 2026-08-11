@@ -327,6 +327,25 @@ def fmpz_polynomial_mul(
 
 
 @flint.function(
+    dynamic="ffiFmpzPolynomialGcd",
+    symbol="sagejs_fmpz_polynomial_gcd",
+    returns=int,
+    abi=[
+        out("result", sagejs_fmpz_polynomial_t),
+        in_("left", sagejs_fmpz_polynomial_t),
+        in_("right", sagejs_fmpz_polynomial_t),
+    ],
+    effects=Effects(pure=False, allocates=True, raises=[ValueError]),
+    result=Status(1, exception=ValueError, message="integer polynomial is unsealed"),
+    wasm=False,
+)
+def fmpz_polynomial_gcd(
+    left: FmpzPolynomial,
+    right: FmpzPolynomial,
+) -> FmpzPolynomial: ...
+
+
+@flint.function(
     dynamic="ffiFmpzPolynomialDivExact",
     symbol="sagejs_fmpz_polynomial_divexact",
     returns=int,
@@ -683,6 +702,25 @@ def fmpq_polynomial_neg(source: FmpqPolynomial) -> FmpqPolynomial: ...
     wasm=False,
 )
 def fmpq_polynomial_mul(
+    left: FmpqPolynomial,
+    right: FmpqPolynomial,
+) -> FmpqPolynomial: ...
+
+
+@flint.function(
+    dynamic="ffiFmpqPolynomialGcd",
+    symbol="sagejs_fmpq_polynomial_gcd",
+    returns=int,
+    abi=[
+        out("result", sagejs_fmpq_polynomial_t),
+        in_("left", sagejs_fmpq_polynomial_t),
+        in_("right", sagejs_fmpq_polynomial_t),
+    ],
+    effects=Effects(pure=False, allocates=True, raises=[ValueError]),
+    result=Status(1, exception=ValueError, message="rational polynomial is unsealed"),
+    wasm=False,
+)
+def fmpq_polynomial_gcd(
     left: FmpqPolynomial,
     right: FmpqPolynomial,
 ) -> FmpqPolynomial: ...

@@ -1,0 +1,181 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "exact-polynomial-gcd-resource",
+  "title": "Generated exact polynomial GCD resources",
+  "lane": "integration",
+  "status": "review",
+  "owner": "user",
+  "objective": "Add generated FLINT resource operations for gcd over ZZ[x] and QQ[x], route ordinary PolynomialElement.gcd through them, preserve Sage normalization and portable fallback semantics, and prove that a fresh substantial operation requires declarations/adapters/tests but no native-compiler changes.",
+  "base_commit": "c0bfe8c3bcf170f0f0519e4f43f0fcd38d770024",
+  "claims": [
+    "ffi/flint.ffi.py",
+    "ffi/flint.ffi.json",
+    "packages/flint/include/sagejs/exact_polynomial_ffi.h",
+    "packages/flint/generated/ffi_host.py",
+    "src/baselib/sagejs/ffi/flint.py",
+    "src/lib/sagejs/ffi/flint.py",
+    "src/baselib/polynomial.py",
+    "architecture/native-boundaries.json",
+    "test/exact-polynomial-resource-ffi.cjs",
+    "test/exact-polynomial-resources.cjs",
+    "test/ffi.cjs",
+    "scripts/check-polynomial-budget.cjs",
+    "bench/exact-polynomial-resource-gcd.cjs"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "external-library",
+    "fallback": "tested-capability",
+    "oracles": [
+      "FLINT upstream semantics, dynamic packed fallback, and SageMath"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm architecture:check",
+    "pnpm test:portable",
+    "pnpm test:baselib:strict",
+    "pnpm test:native"
+  ],
+  "runs": [
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 12.181,
+      "started_at": "2026-08-11T15:08:01.789Z",
+      "commit": "c0bfe8c3bcf170f0f0519e4f43f0fcd38d770024",
+      "workspace_fingerprint": "8a7ae1a210825c62181b8de92c6373daf1a51f39019850ee28cf384d1a494118",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 12.204,
+      "started_at": "2026-08-11T15:08:17.236Z",
+      "commit": "c0bfe8c3bcf170f0f0519e4f43f0fcd38d770024",
+      "workspace_fingerprint": "8a7ae1a210825c62181b8de92c6373daf1a51f39019850ee28cf384d1a494118",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 31.019,
+      "started_at": "2026-08-11T15:08:40.503Z",
+      "commit": "c0bfe8c3bcf170f0f0519e4f43f0fcd38d770024",
+      "workspace_fingerprint": "8a7ae1a210825c62181b8de92c6373daf1a51f39019850ee28cf384d1a494118",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:native",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 4.849,
+      "started_at": "2026-08-11T15:09:14.517Z",
+      "commit": "c0bfe8c3bcf170f0f0519e4f43f0fcd38d770024",
+      "workspace_fingerprint": "8a7ae1a210825c62181b8de92c6373daf1a51f39019850ee28cf384d1a494118",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 11.894,
+      "started_at": "2026-08-11T15:15:39.403Z",
+      "commit": "c0bfe8c3bcf170f0f0519e4f43f0fcd38d770024",
+      "workspace_fingerprint": "55e94e3b1c54e79efcf24cee4bd52b2b4eddfbb58da4b006cef324719f31eaba",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 14.772,
+      "started_at": "2026-08-11T15:15:54.859Z",
+      "commit": "c0bfe8c3bcf170f0f0519e4f43f0fcd38d770024",
+      "workspace_fingerprint": "55e94e3b1c54e79efcf24cee4bd52b2b4eddfbb58da4b006cef324719f31eaba",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 30.77,
+      "started_at": "2026-08-11T15:16:13.164Z",
+      "commit": "c0bfe8c3bcf170f0f0519e4f43f0fcd38d770024",
+      "workspace_fingerprint": "55e94e3b1c54e79efcf24cee4bd52b2b4eddfbb58da4b006cef324719f31eaba",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:native",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 42.699,
+      "started_at": "2026-08-11T15:16:46.568Z",
+      "commit": "c0bfe8c3bcf170f0f0519e4f43f0fcd38d770024",
+      "workspace_fingerprint": "55e94e3b1c54e79efcf24cee4bd52b2b4eddfbb58da4b006cef324719f31eaba",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:native",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 215.078,
+      "started_at": "2026-08-11T15:20:17.321Z",
+      "commit": "c0bfe8c3bcf170f0f0519e4f43f0fcd38d770024",
+      "workspace_fingerprint": "bd9548027dbbe8de9c87e719dbe6103c0fc54d90205c2b6e23e914b45b375cc0",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 12.429,
+      "started_at": "2026-08-11T15:23:59.754Z",
+      "commit": "c0bfe8c3bcf170f0f0519e4f43f0fcd38d770024",
+      "workspace_fingerprint": "bd9548027dbbe8de9c87e719dbe6103c0fc54d90205c2b6e23e914b45b375cc0",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 12.258,
+      "started_at": "2026-08-11T15:24:17.267Z",
+      "commit": "c0bfe8c3bcf170f0f0519e4f43f0fcd38d770024",
+      "workspace_fingerprint": "bd9548027dbbe8de9c87e719dbe6103c0fc54d90205c2b6e23e914b45b375cc0",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 30.336,
+      "started_at": "2026-08-11T15:24:36.537Z",
+      "commit": "c0bfe8c3bcf170f0f0519e4f43f0fcd38d770024",
+      "workspace_fingerprint": "bd9548027dbbe8de9c87e719dbe6103c0fc54d90205c2b6e23e914b45b375cc0",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Generated FLINT resources now implement canonical gcd for ZZ[x] and QQ[x] through two ordinary declarations and the existing resource ABI, with no native-compiler or handwritten N-API changes. PolynomialElement.gcd selects one resource-to-resource call on Node and retains a small ordinary-Python Euclidean oracle for portable hosts. Tests cover Sage-compatible zero, constant, content, sign, and monic normalization; deterministic varied inputs; 8193-bit coefficient skew; closed and unsealed handles; native-disabled execution; forced portable storage; no compatibility materialization; and sanitizer-backed lifecycle cleanup. The focused generated-resource benchmark measures degree-4000 ZZ at 74.92 ms with a 4097-bit coefficient and degree-2000 QQ at 12.82 ms; the central small-coefficient performance ratchet measures 0.32 ms and 0.22 ms respectively.",
+    "risks": [
+      "The correct portable ZZ fallback computes a monic gcd over QQ and clears denominators, so coefficient swell can make it much slower than FLINT on large inputs; Node always selects the generated FLINT resource operation.",
+      "Exact polynomial resources still declare wasm=False; browser execution uses the tested ordinary-Python packed fallback until generated Wasm resource ownership is implemented."
+    ],
+    "next_steps": [
+      "Use the same declaration-only pattern for resultant, extended gcd, and squarefree decomposition when those public operations are added.",
+      "Enable the existing exact-polynomial resource ABI for Wasm so browser hosts can select FLINT instead of the portable oracle."
+    ]
+  }
+}

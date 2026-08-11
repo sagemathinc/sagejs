@@ -223,6 +223,19 @@ static inline int sagejs_fmpz_polynomial_mul(
     return 1;
 }
 
+static inline int sagejs_fmpz_polynomial_gcd(
+    sagejs_fmpz_polynomial_t result,
+    const sagejs_fmpz_polynomial_t left,
+    const sagejs_fmpz_polynomial_t right)
+{
+    if (!left->sealed || !right->sealed)
+        return 0;
+    fmpz_poly_init(result->value);
+    fmpz_poly_gcd(result->value, left->value, right->value);
+    sagejs_fmpz_polynomial_finish_result(result);
+    return 1;
+}
+
 static inline int sagejs_fmpz_polynomial_divexact(
     sagejs_fmpz_polynomial_t result,
     const sagejs_fmpz_polynomial_t dividend,
@@ -493,6 +506,8 @@ SAGEJS_FMPQ_POLYNOMIAL_BINARY(
     sagejs_fmpq_polynomial_sub, fmpq_poly_sub)
 SAGEJS_FMPQ_POLYNOMIAL_BINARY(
     sagejs_fmpq_polynomial_mul, fmpq_poly_mul)
+SAGEJS_FMPQ_POLYNOMIAL_BINARY(
+    sagejs_fmpq_polynomial_gcd, fmpq_poly_gcd)
 
 #undef SAGEJS_FMPQ_POLYNOMIAL_BINARY
 

@@ -63,6 +63,16 @@ const cases = [
     budget: 30,
   },
   {
+    name: "gcd_ZZ_4000",
+    expression: "_gcd_z_left.gcd(_gcd_z_right)",
+    budget: 10,
+  },
+  {
+    name: "gcd_QQ_2000",
+    expression: "_gcd_q_left.gcd(_gcd_q_right)",
+    budget: 10,
+  },
+  {
     name: "factor_QQ_60",
     expression: "exact_q.factor()",
     budget: 50,
@@ -156,6 +166,12 @@ async function run(environment = process.env) {
         "_large_q_divisor = xq**1000 + QQ(2)/3",
         "_large_q_quotient = Rq([QQ(index % 17 - 8)/(index % 7 + 1) for index in range(4001)])",
         "_large_q_dividend = _large_q_divisor * _large_q_quotient",
+        "_gcd_z_common = xz**250 + 3*xz + 1",
+        "_gcd_z_left = _gcd_z_common * xz**3750",
+        "_gcd_z_right = -3 * _gcd_z_common * (xz**3600 + 1)",
+        "_gcd_q_common = xq**125 + QQ(2)/3*xq + QQ(1)/5",
+        "_gcd_q_left = _gcd_q_common * xq**1875",
+        "_gcd_q_right = QQ(-7)/11 * _gcd_q_common * (xq**1800 + 1)",
         ...definitions,
       ].join("\n"));
       if (setup.stderr !== undefined) throw new Error(setup.stderr);
