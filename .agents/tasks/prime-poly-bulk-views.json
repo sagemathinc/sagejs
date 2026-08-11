@@ -4,7 +4,7 @@
   "id": "prime-poly-bulk-views",
   "title": "Prime Poly Bulk Views",
   "lane": "integration",
-  "status": "active",
+  "status": "complete",
   "owner": "user",
   "objective": "Materialize packed GF(p) polynomial coefficients in bulk and format them directly with exact Sage-compatible semantics and representative performance gates",
   "base_commit": "b21b652c83afe6867ef17da61b691abf40ab6f9f",
@@ -78,14 +78,12 @@
     }
   ],
   "handoff": {
-    "summary": "Small-prime GF(p)[x] public host views now consume canonical packed UInt64Buffer storage in bulk. coefficients() invokes one checked structural primitive which validates the typed array, exact parent element class, uint64 modulus, and every canonical residue; it constructs frozen ordinary field elements directly and returns a fresh fully decorated mutable Python list. repr() traverses packed residues once and emits Sage-compatible polynomial text without first constructing coefficient objects. Focused coverage includes zero/one/sparse polynomials, a prime near 2^32, wrong input types, noncanonical residues, same-parent/frozen scalar identity, fresh mutable result lists, and a guard proving repr() does not call coefficients(). On this host, degree-19999 coefficients() fell from a 73 ms warm baseline to 1.03-1.22 ms and repr() fell from a 293 ms warm baseline to 3.17-4.97 ms. Both paths are permanent invoked polynomial performance-budget cases.",
+    "summary": "Small-prime GF(p)[x] public host views now consume canonical packed UInt64Buffer storage in bulk. coefficients() invokes one checked structural primitive which validates the typed array, exact parent element class, uint64 modulus, and every canonical residue; it constructs frozen ordinary field elements directly and returns a fresh fully decorated mutable Python list. repr() traverses packed residues once and emits Sage-compatible polynomial text without first constructing coefficient objects. Focused coverage includes zero/one/sparse polynomials, a prime near 2^32, wrong input types, noncanonical residues, same-parent/frozen scalar identity, fresh mutable result lists, and a guard proving repr() does not call coefficients(). On this host, degree-19999 coefficients() fell from a 73 ms warm baseline to 1.03-1.22 ms and repr() fell from a 293 ms warm baseline to 3.17-4.97 ms. Both paths are permanent invoked polynomial performance-budget cases. Integration registered the test, reviewed the two new runtime boundaries, rebuilt the self-hosted compiler, and passed the focused test, full polynomial budget, architecture check, and 117-test portable tier.",
     "risks": [
       "The structural primitive deliberately depends on the lightweight prime-field element layout: an exact prototype, _parent, canonical bigint _value, and object freezing. The focused tests make that contract explicit, and any future element-layout change must update the primitive with it.",
-      "The fast paths apply only to canonical packed prime fields of characteristic at most 2^32. Extension fields and legacy representations retain their established coefficient and formatting paths.",
-      "Integration must regenerate architecture/native-boundaries.json for runtime:uint64_polynomial_format and runtime:uint64_residue_elements, then register test/prime-polynomial-bulk-views.cjs in the shared test manifest. The lane intentionally did not edit those unclaimed shared files: architecture:check failed only on the two expected inventory additions, and test:portable failed only because the new host test was not yet assigned a runner tier. Strict Python, runtime intrinsic lowering, uint64 structural tests, the focused public test, and the complete polynomial performance budget pass."
+      "The fast paths apply only to canonical packed prime fields of characteristic at most 2^32. Extension fields and legacy representations retain their established coefficient and formatting paths."
     ],
     "next_steps": [
-      "In the integration worktree, regenerate the native-boundary inventory, add the focused test to the unit manifest, and rerun architecture:check plus test:portable.",
       "Reuse uint64_residue_elements for packed GF(p) matrix host views: call it once on row-major storage, then shape or transpose the returned scalar references without coercing entries again."
     ]
   }

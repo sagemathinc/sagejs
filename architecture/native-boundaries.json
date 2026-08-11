@@ -17,7 +17,7 @@
     "declared-ffi": 178,
     "declared-ffi-resource": 10,
     "napi-export": 292,
-    "runtime-intrinsic": 133,
+    "runtime-intrinsic": 135,
     "wasm-export": 46
   },
   "boundaries": [
@@ -6501,11 +6501,27 @@
       "disposition": "runtime-primitive"
     },
     {
+      "id": "runtime:uint64_polynomial_format",
+      "kind": "runtime-intrinsic",
+      "path": "tools/python/contract.ts",
+      "export": "uint64_polynomial_format",
+      "symbol": "ρσ_uint64_polynomial_format",
+      "disposition": "runtime-primitive"
+    },
+    {
       "id": "runtime:uint64_residue_buffer",
       "kind": "runtime-intrinsic",
       "path": "tools/python/contract.ts",
       "export": "uint64_residue_buffer",
       "symbol": "ρσ_uint64_residue_buffer",
+      "disposition": "runtime-primitive"
+    },
+    {
+      "id": "runtime:uint64_residue_elements",
+      "kind": "runtime-intrinsic",
+      "path": "tools/python/contract.ts",
+      "export": "uint64_residue_elements",
+      "symbol": "ρσ_uint64_residue_elements",
       "disposition": "runtime-primitive"
     },
     {
