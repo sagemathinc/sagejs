@@ -7,7 +7,7 @@
   "status": "review",
   "owner": "user",
   "objective": "Add generated FmpzMatrix row and column selectors with checked duplicate-preserving semantics, lifecycle fuzzing, architecture ratchets, and competitive benchmarks",
-  "base_commit": "74572fe5431a72f32a43c3f8686294c4c56b0a33",
+  "base_commit": "869047cb5037301b40a0a02722703b9182243c97",
   "claims": [
     "ffi/flint.ffi.py",
     "ffi/flint.ffi.json",
@@ -318,6 +318,86 @@
       "started_at": "2026-08-11T13:09:30.487Z",
       "commit": "74572fe5431a72f32a43c3f8686294c4c56b0a33",
       "workspace_fingerprint": "dfe079b18d55e343013a657e4615cb3da34e44fc0f3cca44362f58785ec04f39",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm --dir packages/flint build:ffi",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.017,
+      "started_at": "2026-08-11T13:10:31.967Z",
+      "commit": "7d05cd74f3eae187bd703ae54631a0cf0a4547e8",
+      "workspace_fingerprint": "7638ddd053692e3be01fe918d13b416c8f32dfe764d2ca7044fc71a3d604d62b",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/fmpz-matrix-resource-selectors.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.143,
+      "started_at": "2026-08-11T13:10:33.593Z",
+      "commit": "7d05cd74f3eae187bd703ae54631a0cf0a4547e8",
+      "workspace_fingerprint": "7638ddd053692e3be01fe918d13b416c8f32dfe764d2ca7044fc71a3d604d62b",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node test/fmpz-matrix-selector-lifecycle.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.377,
+      "started_at": "2026-08-11T13:10:34.357Z",
+      "commit": "7d05cd74f3eae187bd703ae54631a0cf0a4547e8",
+      "workspace_fingerprint": "7638ddd053692e3be01fe918d13b416c8f32dfe764d2ca7044fc71a3d604d62b",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/fmpz-matrix-resource-selectors.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.375,
+      "started_at": "2026-08-11T13:10:36.334Z",
+      "commit": "7d05cd74f3eae187bd703ae54631a0cf0a4547e8",
+      "workspace_fingerprint": "7638ddd053692e3be01fe918d13b416c8f32dfe764d2ca7044fc71a3d604d62b",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "env SAGEJS_FLINT_PREFIX=/home/user/sagejs/packages/flint/.native/prefix SAGEJS_GRAPH_PREFIX=/home/user/sagejs/packages/graph/.native/prefix node --test --test-reporter=spec test/ffi.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 33.926,
+      "started_at": "2026-08-11T13:10:40.831Z",
+      "commit": "7d05cd74f3eae187bd703ae54631a0cf0a4547e8",
+      "workspace_fingerprint": "7638ddd053692e3be01fe918d13b416c8f32dfe764d2ca7044fc71a3d604d62b",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 11.803,
+      "started_at": "2026-08-11T13:11:24.192Z",
+      "commit": "7d05cd74f3eae187bd703ae54631a0cf0a4547e8",
+      "workspace_fingerprint": "7638ddd053692e3be01fe918d13b416c8f32dfe764d2ca7044fc71a3d604d62b",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 30.729,
+      "started_at": "2026-08-11T13:11:36.591Z",
+      "commit": "7d05cd74f3eae187bd703ae54631a0cf0a4547e8",
+      "workspace_fingerprint": "7638ddd053692e3be01fe918d13b416c8f32dfe764d2ca7044fc71a3d604d62b",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 12.258,
+      "started_at": "2026-08-11T13:12:07.924Z",
+      "commit": "7d05cd74f3eae187bd703ae54631a0cf0a4547e8",
+      "workspace_fingerprint": "7638ddd053692e3be01fe918d13b416c8f32dfe764d2ca7044fc71a3d604d62b",
       "platform": "linux-x64"
     }
   ],
