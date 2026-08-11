@@ -88,6 +88,11 @@ FlintByteRegion = flint.resource(
         length="sagejs_flint_byte_region_length",
         wasm=False,
     ),
+    host_ingress=copied_bytes(
+        dynamic="ffiFlintByteRegionFromBytes",
+        init="sagejs_flint_byte_region_init_copy",
+        wasm=False,
+    ),
     wasm=False,
 )
 
@@ -1662,6 +1667,31 @@ def fmpz_matrix_deserialize(source: FlintByteRegion) -> FmpzMatrix: ...
 
 
 @flint.function(
+    dynamic="ffiFmpzMatrixDeserializeEntries",
+    symbol="sagejs_fmpz_matrix_deserialize_entries",
+    returns=int,
+    abi=[
+        out("result", sagejs_fmpz_matrix_t),
+        in_("source", sagejs_flint_byte_region_t),
+        in_("rows", uint64_t),
+        in_("columns", uint64_t),
+    ],
+    effects=Effects(pure=False, allocates=True, raises=[ValueError]),
+    result=Status(
+        1,
+        exception=ValueError,
+        message="invalid packed integer matrix entries",
+    ),
+    wasm=False,
+)
+def fmpz_matrix_deserialize_entries(
+    source: FlintByteRegion,
+    rows: uint64,
+    columns: uint64,
+) -> FmpzMatrix: ...
+
+
+@flint.function(
     dynamic="ffiFmpqMatrixCreate",
     symbol="sagejs_fmpq_matrix_init",
     returns=int,
@@ -2373,6 +2403,31 @@ def fmpq_matrix_format(source: FmpqMatrix) -> FlintByteRegion: ...
     wasm=False,
 )
 def fmpq_matrix_serialize(source: FmpqMatrix) -> FlintByteRegion: ...
+
+
+@flint.function(
+    dynamic="ffiFmpqMatrixDeserialize",
+    symbol="sagejs_fmpq_matrix_deserialize",
+    returns=int,
+    abi=[
+        out("result", sagejs_fmpq_matrix_t),
+        in_("source", sagejs_flint_byte_region_t),
+        in_("rows", uint64_t),
+        in_("columns", uint64_t),
+    ],
+    effects=Effects(pure=False, allocates=True, raises=[ValueError]),
+    result=Status(
+        1,
+        exception=ValueError,
+        message="invalid packed rational matrix entries",
+    ),
+    wasm=False,
+)
+def fmpq_matrix_deserialize(
+    source: FlintByteRegion,
+    rows: uint64,
+    columns: uint64,
+) -> FmpqMatrix: ...
 
 
 @flint.function(

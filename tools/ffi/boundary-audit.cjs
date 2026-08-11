@@ -157,6 +157,16 @@ function declaredResources(registry) {
             wasm: resource.host_transfer.targets.wasm,
           },
         }),
+      ...(resource.host_ingress === undefined
+        ? {}
+        : {
+          host_ingress: {
+            kind: resource.host_ingress.kind,
+            dynamic_export: resource.host_ingress.dynamic.export,
+            init_symbol: resource.host_ingress.native.init_symbol,
+            wasm: resource.host_ingress.targets.wasm,
+          },
+        }),
       disposition: "declared-owned-ffi-resource",
     }))
   );

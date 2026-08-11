@@ -62,11 +62,22 @@ async function main() {
       source: relative(root, sourcePath),
       source_hash: createHash("sha256").update(expected).digest("hex"),
       addon: addonName,
-      functions: functions.map((fn) => ({
-        declaration: fn.declaration_id,
-        export: fn.dynamic.export,
-        symbol: fn.native.symbol,
-      })),
+      functions: [
+        ...functions.map((fn) => ({
+          declaration: fn.declaration_id,
+          export: fn.dynamic.export,
+          symbol: fn.native.symbol,
+        })),
+        ...declaration.resources.flatMap((resource) =>
+          resource.host_ingress?.kind === "copied_bytes"
+            ? [{
+              declaration: `${declaration.identity}:resource:${resource.id}`,
+              export: resource.host_ingress.dynamic.export,
+              symbol: resource.host_ingress.native.init_symbol,
+            }]
+            : []
+        ),
+      ],
       resources: declaration.resources
         .filter((resource) =>
           resource.ownership === "owned" &&
@@ -85,6 +96,15 @@ async function main() {
                 kind: resource.host_transfer.kind,
                 export: resource.host_transfer.dynamic.export,
                 wasm: resource.host_transfer.targets.wasm,
+              },
+            }),
+          ...(resource.host_ingress === undefined
+            ? {}
+            : {
+              host_ingress: {
+                kind: resource.host_ingress.kind,
+                export: resource.host_ingress.dynamic.export,
+                wasm: resource.host_ingress.targets.wasm,
               },
             }),
         })),

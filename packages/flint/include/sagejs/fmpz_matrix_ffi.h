@@ -866,6 +866,20 @@ static inline int sagejs_flint_byte_region_init(
     return 1;
 }
 
+static inline int sagejs_flint_byte_region_init_copy(
+    sagejs_flint_byte_region_t result, const unsigned char *source,
+    uint64_t length)
+{
+    /* A copied-byte ingress initializer must leave no ownership on failure. */
+    if (length != 0 && source == NULL)
+        return 0;
+    if (!sagejs_flint_byte_region_init(result, length))
+        return 0;
+    if (length != 0)
+        memcpy(result->data, source, (size_t) length);
+    return 1;
+}
+
 static inline int sagejs_flint_byte_region_set(
     sagejs_flint_byte_region_t region, uint64_t index, uint64_t value)
 {
@@ -884,28 +898,21 @@ static inline int sagejs_flint_byte_region_set(
  * zero has length zero, nonzero values have a nonzero final byte, and the
  * sign bit may not encode negative zero.
  */
-static inline int sagejs_fmpz_matrix_deserialize(
-    sagejs_fmpz_matrix_t result, const sagejs_flint_byte_region_t source)
+static inline int sagejs_fmpz_matrix_deserialize_entry_stream(
+    sagejs_fmpz_matrix_t result, const unsigned char *data,
+    size_t length, uint64_t rows, uint64_t columns)
 {
-    const unsigned char *data = source->data;
-    const size_t length = source->length;
-    if (data == NULL || length < 24 || memcmp(data, "SJZM", 4) != 0 ||
-        data[4] != 1 || data[5] != 0 || data[6] != 0 || data[7] != 0)
-        return 0;
-
-    const uint64_t rows = sagejs_fmpz_matrix_read_u64(data, 8);
-    const uint64_t columns = sagejs_fmpz_matrix_read_u64(data, 16);
-    if (!sagejs_fmpz_matrix_dimensions_fit(rows, columns))
+    if (data == NULL || !sagejs_fmpz_matrix_dimensions_fit(rows, columns))
         return 0;
     const size_t count = (size_t) rows * (size_t) columns;
-    if (count > (length - 24) / 4)
+    if (count > length / 4)
         return 0;
 
-    size_t offset = 24;
+    size_t offset = 0;
     size_t maximum_bytes = 0;
     for (size_t index = 0; index < count; index++)
     {
-        if (offset > length - 4)
+        if (length - offset < 4)
             return 0;
         const uint32_t header = sagejs_fmpz_matrix_read_u32(data, offset);
         offset += 4;
@@ -923,6 +930,8 @@ static inline int sagejs_fmpz_matrix_deserialize(
     if (offset != length)
         return 0;
 
+    /* This is one reusable decode workspace, not per-entry matrix storage.
+       Each destination fmpz retains only the limbs its own value needs. */
     const size_t maximum_words =
         (maximum_bytes + sizeof(ulong) - 1) / sizeof(ulong);
     ulong *words = maximum_words == 0 ? NULL :
@@ -935,7 +944,7 @@ static inline int sagejs_fmpz_matrix_deserialize(
         return 0;
     }
 
-    offset = 24;
+    offset = 0;
     for (size_t index = 0; index < count; index++)
     {
         const uint32_t header = sagejs_fmpz_matrix_read_u32(data, offset);
@@ -967,6 +976,28 @@ static inline int sagejs_fmpz_matrix_deserialize(
     free(words);
     sagejs_fmpz_matrix_finish_result(result);
     return 1;
+}
+
+static inline int sagejs_fmpz_matrix_deserialize_entries(
+    sagejs_fmpz_matrix_t result, const sagejs_flint_byte_region_t source,
+    uint64_t rows, uint64_t columns)
+{
+    return sagejs_fmpz_matrix_deserialize_entry_stream(
+        result, source->data, source->length, rows, columns);
+}
+
+static inline int sagejs_fmpz_matrix_deserialize(
+    sagejs_fmpz_matrix_t result, const sagejs_flint_byte_region_t source)
+{
+    const unsigned char *data = source->data;
+    const size_t length = source->length;
+    if (data == NULL || length < 24 || memcmp(data, "SJZM", 4) != 0 ||
+        data[4] != 1 || data[5] != 0 || data[6] != 0 || data[7] != 0)
+        return 0;
+    return sagejs_fmpz_matrix_deserialize_entry_stream(
+        result, data + 24, length - 24,
+        sagejs_fmpz_matrix_read_u64(data, 8),
+        sagejs_fmpz_matrix_read_u64(data, 16));
 }
 
 #endif

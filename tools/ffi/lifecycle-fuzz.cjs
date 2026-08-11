@@ -72,6 +72,8 @@ function dynamicLifecycleFuzz() {
     assert.ok(flint.ffiFlintByteRegionLength(serialized) > 0n);
     const formattedCopy = flint.ffiFlintByteRegionCopyBytes(formatted);
     const serializedCopy = flint.ffiFlintByteRegionCopyBytes(serialized);
+    const importedRegion = flint.ffiFlintByteRegionFromBytes(serializedCopy);
+    const imported = flint.ffiFmpqMatrixDeserialize(importedRegion, 3n, 3n);
     assert.equal(
       BigInt(formattedCopy.length),
       flint.ffiFlintByteRegionLength(formatted),
@@ -80,6 +82,8 @@ function dynamicLifecycleFuzz() {
       BigInt(serializedCopy.length),
       flint.ffiFlintByteRegionLength(serialized),
     );
+    flint.ffiFmpqMatrixClose(imported);
+    flint.ffiFlintByteRegionClose(importedRegion);
     flint.ffiFlintByteRegionClose(serialized);
     flint.ffiFlintByteRegionClose(formatted);
     flint.ffiFmpqValueClose(determinant);
@@ -167,7 +171,7 @@ const rationalSource = String.raw`
 #include <stdint.h>
 #include <flint/fmpz_mat.h>
 #include <sagejs/ffi_algorithms.h>
-#include <sagejs/fmpq_matrix_ffi.h>
+#include <sagejs/fmpz_matrix_ffi.h>
 
 int main(void)
 {
@@ -219,9 +223,13 @@ int main(void)
         if (!sagejs_flint_fmpq_mat_charpoly_parts(
                 polynomial_num, polynomial_den, left_num, left_den))
             return 6;
-        sagejs_fmpq_matrix_t matrix, random, copy, reduced;
+        sagejs_fmpz_matrix_t integer, integer_imported;
+        sagejs_fmpq_matrix_t matrix, random, copy, reduced, imported, invalid;
         sagejs_fmpq_value_t determinant;
-        sagejs_flint_byte_region_t formatted, serialized;
+        sagejs_flint_byte_region_t formatted, serialized, copied, rejected;
+        sagejs_flint_byte_region_t integer_serialized, integer_body, truncated;
+        rejected->data = NULL;
+        rejected->length = 0;
         if (!sagejs_fmpq_matrix_init(matrix, 3, 3))
             return 7;
         if (!sagejs_fmpq_matrix_randbits(
@@ -246,6 +254,48 @@ int main(void)
             sagejs_flint_byte_region_length(formatted) == 0 ||
             sagejs_flint_byte_region_length(serialized) == 0)
             return 11;
+        if (sagejs_flint_byte_region_init_copy(rejected, NULL, 1) ||
+            rejected->data != NULL || rejected->length != 0)
+            return 12;
+        if (!sagejs_flint_byte_region_init_copy(
+                rejected, serialized->data, serialized->length))
+            return 13;
+        sagejs_flint_byte_region_clear(rejected);
+        if (!sagejs_flint_byte_region_init_copy(
+                copied, serialized->data, serialized->length) ||
+            !sagejs_fmpq_matrix_deserialize(imported, copied, 3, 3))
+            return 14;
+        if (!sagejs_fmpz_matrix_init(integer, 3, 3))
+            return 15;
+        for (slong row = 0; row < 3; row++)
+            for (slong column = 0; column < 3; column++)
+                if (!sagejs_fmpz_matrix_set_entry(
+                        integer, (uint64_t) row, (uint64_t) column,
+                        fmpz_mat_entry(left_num, row, column)))
+                    return 16;
+        if (!sagejs_fmpz_matrix_serialize(integer_serialized, integer) ||
+            integer_serialized->length < 24 ||
+            !sagejs_flint_byte_region_init_copy(
+                integer_body, integer_serialized->data + 24,
+                integer_serialized->length - 24) ||
+            !sagejs_fmpz_matrix_deserialize_entries(
+                integer_imported, integer_body, 3, 3))
+            return 17;
+        if (!sagejs_flint_byte_region_init_copy(
+                truncated, serialized->data, serialized->length - 1))
+            return 18;
+        if (sagejs_fmpq_matrix_deserialize(invalid, truncated, 3, 3))
+        {
+            sagejs_fmpq_matrix_clear(invalid);
+            return 19;
+        }
+        sagejs_flint_byte_region_clear(truncated);
+        sagejs_fmpz_matrix_clear(integer_imported);
+        sagejs_flint_byte_region_clear(integer_body);
+        sagejs_flint_byte_region_clear(integer_serialized);
+        sagejs_fmpz_matrix_clear(integer);
+        sagejs_fmpq_matrix_clear(imported);
+        sagejs_flint_byte_region_clear(copied);
         sagejs_flint_byte_region_clear(serialized);
         sagejs_flint_byte_region_clear(formatted);
         sagejs_fmpq_value_clear(determinant);

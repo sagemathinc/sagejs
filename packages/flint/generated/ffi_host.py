@@ -90,6 +90,7 @@ from sagejs.ffi.flint import (
     flint_byte_region as _ffi_flint_byte_region,
     flint_byte_region_set as _ffi_flint_byte_region_set,
     fmpz_matrix_deserialize as _ffi_fmpz_matrix_deserialize,
+    fmpz_matrix_deserialize_entries as _ffi_fmpz_matrix_deserialize_entries,
     fmpq_matrix as _ffi_fmpq_matrix,
     fmpq_matrix_randbits as _ffi_fmpq_matrix_randbits,
     fmpq_matrix_nrows as _ffi_fmpq_matrix_nrows,
@@ -126,6 +127,7 @@ from sagejs.ffi.flint import (
     fmpq_value_denominator as _ffi_fmpq_value_denominator,
     fmpq_matrix_format as _ffi_fmpq_matrix_format,
     fmpq_matrix_serialize as _ffi_fmpq_matrix_serialize,
+    fmpq_matrix_deserialize as _ffi_fmpq_matrix_deserialize,
     flint_byte_region_length as _ffi_flint_byte_region_length,
     flint_byte_region_get as _ffi_flint_byte_region_get,
     dirichlet_group as _ffi_dirichlet_group,
@@ -962,6 +964,19 @@ def ffiFmpzMatrixDeserialize(
 
 
 @native
+def ffiFmpzMatrixDeserializeEntries(
+    source: FlintByteRegion,
+    rows: uint64,
+    columns: uint64,
+) -> FmpzMatrix:
+    return _ffi_fmpz_matrix_deserialize_entries(
+        source,
+        rows,
+        columns,
+    )
+
+
+@native
 def ffiFmpqMatrixCreate(
     rows: uint64,
     columns: uint64,
@@ -1352,6 +1367,19 @@ def ffiFmpqMatrixSerialize(
 ) -> FlintByteRegion:
     return _ffi_fmpq_matrix_serialize(
         source,
+    )
+
+
+@native
+def ffiFmpqMatrixDeserialize(
+    source: FlintByteRegion,
+    rows: uint64,
+    columns: uint64,
+) -> FmpqMatrix:
+    return _ffi_fmpq_matrix_deserialize(
+        source,
+        rows,
+        columns,
     )
 
 

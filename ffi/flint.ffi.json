@@ -132,6 +132,19 @@
           "wasm": false
         }
       },
+      "host_ingress": {
+        "kind": "copied_bytes",
+        "dynamic": {
+          "export": "ffiFlintByteRegionFromBytes"
+        },
+        "native": {
+          "init_symbol": "sagejs_flint_byte_region_init_copy"
+        },
+        "targets": {
+          "dynamic": true,
+          "wasm": false
+        }
+      },
       "targets": {
         "dynamic": true,
         "native": true,
@@ -6008,6 +6021,101 @@
       }
     },
     {
+      "id": "fmpz_matrix_deserialize_entries",
+      "python_name": "fmpz_matrix_deserialize_entries",
+      "signature": {
+        "parameters": [
+          {
+            "name": "source",
+            "type": "FlintByteRegion",
+            "ownership": "borrowed",
+            "mutability": "read",
+            "aliasing": "allowed"
+          },
+          {
+            "name": "rows",
+            "type": "uint64",
+            "ownership": "value",
+            "mutability": "value",
+            "aliasing": "not_applicable"
+          },
+          {
+            "name": "columns",
+            "type": "uint64",
+            "ownership": "value",
+            "mutability": "value",
+            "aliasing": "not_applicable"
+          }
+        ],
+        "return_type": "FmpzMatrix",
+        "return_ownership": "owned",
+        "borrow_from": null
+      },
+      "dynamic": {
+        "export": "ffiFmpzMatrixDeserializeEntries"
+      },
+      "native": {
+        "symbol": "sagejs_fmpz_matrix_deserialize_entries",
+        "return_type": "int",
+        "arguments": [
+          {
+            "source": "result",
+            "abi_type": "sagejs_fmpz_matrix_t",
+            "direction": "out",
+            "adapter": null
+          },
+          {
+            "source": "source",
+            "abi_type": "sagejs_flint_byte_region_t",
+            "direction": "in",
+            "adapter": null
+          },
+          {
+            "source": "rows",
+            "abi_type": "uint64_t",
+            "direction": "in",
+            "adapter": null
+          },
+          {
+            "source": "columns",
+            "abi_type": "uint64_t",
+            "direction": "in",
+            "adapter": null
+          }
+        ]
+      },
+      "effects": {
+        "pure": false,
+        "deterministic": true,
+        "thread_safe": true,
+        "may_allocate": true,
+        "may_raise": [
+          "ValueError"
+        ],
+        "writes": []
+      },
+      "result": {
+        "domain": "status",
+        "success": [
+          1
+        ],
+        "absence": null
+      },
+      "errors": {
+        "exception": "ValueError",
+        "message": "invalid packed integer matrix entries"
+      },
+      "exceptions": {
+        "policy": "none",
+        "failure_status": null
+      },
+      "targets": {
+        "dynamic": true,
+        "native": true,
+        "wasm": false
+      }
+    },
+    {
       "id": "fmpq_matrix",
       "python_name": "fmpq_matrix",
       "signature": {
@@ -8856,6 +8964,101 @@
       "errors": {
         "exception": "OverflowError",
         "message": "rational matrix serialization is too large"
+      },
+      "exceptions": {
+        "policy": "none",
+        "failure_status": null
+      },
+      "targets": {
+        "dynamic": true,
+        "native": true,
+        "wasm": false
+      }
+    },
+    {
+      "id": "fmpq_matrix_deserialize",
+      "python_name": "fmpq_matrix_deserialize",
+      "signature": {
+        "parameters": [
+          {
+            "name": "source",
+            "type": "FlintByteRegion",
+            "ownership": "borrowed",
+            "mutability": "read",
+            "aliasing": "allowed"
+          },
+          {
+            "name": "rows",
+            "type": "uint64",
+            "ownership": "value",
+            "mutability": "value",
+            "aliasing": "not_applicable"
+          },
+          {
+            "name": "columns",
+            "type": "uint64",
+            "ownership": "value",
+            "mutability": "value",
+            "aliasing": "not_applicable"
+          }
+        ],
+        "return_type": "FmpqMatrix",
+        "return_ownership": "owned",
+        "borrow_from": null
+      },
+      "dynamic": {
+        "export": "ffiFmpqMatrixDeserialize"
+      },
+      "native": {
+        "symbol": "sagejs_fmpq_matrix_deserialize",
+        "return_type": "int",
+        "arguments": [
+          {
+            "source": "result",
+            "abi_type": "sagejs_fmpq_matrix_t",
+            "direction": "out",
+            "adapter": null
+          },
+          {
+            "source": "source",
+            "abi_type": "sagejs_flint_byte_region_t",
+            "direction": "in",
+            "adapter": null
+          },
+          {
+            "source": "rows",
+            "abi_type": "uint64_t",
+            "direction": "in",
+            "adapter": null
+          },
+          {
+            "source": "columns",
+            "abi_type": "uint64_t",
+            "direction": "in",
+            "adapter": null
+          }
+        ]
+      },
+      "effects": {
+        "pure": false,
+        "deterministic": true,
+        "thread_safe": true,
+        "may_allocate": true,
+        "may_raise": [
+          "ValueError"
+        ],
+        "writes": []
+      },
+      "result": {
+        "domain": "status",
+        "success": [
+          1
+        ],
+        "absence": null
+      },
+      "errors": {
+        "exception": "ValueError",
+        "message": "invalid packed rational matrix entries"
       },
       "exceptions": {
         "policy": "none",

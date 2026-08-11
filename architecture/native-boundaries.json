@@ -14,7 +14,7 @@
   },
   "counts": {
     "classified-native-file": 56,
-    "declared-ffi": 160,
+    "declared-ffi": 162,
     "declared-ffi-resource": 9,
     "napi-export": 292,
     "runtime-intrinsic": 128,
@@ -36,6 +36,12 @@
         "dynamic_export": "ffiFlintByteRegionCopyBytes",
         "data_symbol": "sagejs_flint_byte_region_data",
         "length_symbol": "sagejs_flint_byte_region_length",
+        "wasm": false
+      },
+      "host_ingress": {
+        "kind": "copied_bytes",
+        "dynamic_export": "ffiFlintByteRegionFromBytes",
+        "init_symbol": "sagejs_flint_byte_region_init_copy",
         "wasm": false
       },
       "disposition": "declared-owned-ffi-resource"
@@ -329,6 +335,17 @@
       "dynamic_package": "@sagemath/sagejs-flint",
       "dynamic_export": "ffiFmpqMatrixCopy",
       "symbol": "sagejs_fmpq_matrix_init_set",
+      "disposition": "declared-safe-ffi"
+    },
+    {
+      "id": "ffi:flint:fmpq_matrix_deserialize",
+      "kind": "declared-ffi",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "fmpq_matrix_deserialize",
+      "dynamic_package": "@sagemath/sagejs-flint",
+      "dynamic_export": "ffiFmpqMatrixDeserialize",
+      "symbol": "sagejs_fmpq_matrix_deserialize",
       "disposition": "declared-safe-ffi"
     },
     {
@@ -1077,6 +1094,17 @@
       "dynamic_package": "@sagemath/sagejs-flint",
       "dynamic_export": "ffiFmpzMatrixDeserialize",
       "symbol": "sagejs_fmpz_matrix_deserialize",
+      "disposition": "declared-safe-ffi"
+    },
+    {
+      "id": "ffi:flint:fmpz_matrix_deserialize_entries",
+      "kind": "declared-ffi",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "fmpz_matrix_deserialize_entries",
+      "dynamic_package": "@sagemath/sagejs-flint",
+      "dynamic_export": "ffiFmpzMatrixDeserializeEntries",
+      "symbol": "sagejs_fmpz_matrix_deserialize_entries",
       "disposition": "declared-safe-ffi"
     },
     {

@@ -538,7 +538,8 @@ def ρσ_integer_buffer_to_packed_bytes(source):
 def ρσ_exact_integer_values_to_packed_bytes(values):
     """Encode ordinary exact values as canonical variable-length magnitudes."""
     return r"""%js (() => {
-        const source = Array.from(values);
+        const source = Array.isArray(values) ? values : Array.from(values);
+        const magnitudes = new Array(source.length);
         const hexadecimal = new Array(source.length);
         const headers = new Uint32Array(source.length);
         let byteLength = 0;
@@ -547,18 +548,46 @@ def ρσ_exact_integer_values_to_packed_bytes(values):
             if (typeof input !== "bigint" && !Number.isSafeInteger(input)) {
                 throw new TypeError("exact integer values must be integers");
             }
-            const exact = typeof input === "bigint" ? input : BigInt(input);
-            const negative = exact < 0n;
-            const magnitude = negative ? -exact : exact;
-            let text = magnitude === 0n ? "" : magnitude.toString(16);
-            if (text.length % 2 !== 0) text = `0${text}`;
-            const bytes = text.length / 2;
+            let negative;
+            let magnitude;
+            let text = null;
+            let bytes = 0;
+            if (typeof input === "number") {
+                negative = input < 0;
+                magnitude = negative ? -input : input;
+                bytes = magnitude === 0 ? 0 :
+                    magnitude <= 0xff ? 1 :
+                    magnitude <= 0xffff ? 2 :
+                    magnitude <= 0xffffff ? 3 :
+                    magnitude <= 0xffffffff ? 4 :
+                    magnitude <= 0xffffffffff ? 5 :
+                    magnitude <= 0xffffffffffff ? 6 : 7;
+            } else {
+                negative = input < 0n;
+                magnitude = negative ? -input : input;
+                // Repeated BigInt shifts are ideal for the common small case,
+                // but become quadratic for the highly skewed exact values
+                // that motivate this representation.  Large values use one
+                // linear hexadecimal conversion instead.
+                if (magnitude <= 0xffffffffffffffffffffffffffffffffn) {
+                    let remaining = magnitude;
+                    while (remaining !== 0n) {
+                        bytes += 1;
+                        remaining >>= 8n;
+                    }
+                } else {
+                    text = magnitude.toString(16);
+                    if (text.length % 2 !== 0) text = `0${text}`;
+                    bytes = text.length / 2;
+                }
+            }
             if (bytes > 0x7fffffff) {
                 throw new RangeError("exact integer magnitude is too large");
             }
             if (byteLength > Number.MAX_SAFE_INTEGER - 4 - bytes) {
                 throw new RangeError("packed exact integer output is too large");
             }
+            magnitudes[index] = magnitude;
             hexadecimal[index] = text;
             headers[index] = bytes + (negative ? 0x80000000 : 0);
             byteLength += 4 + bytes;
@@ -572,12 +601,32 @@ def ρσ_exact_integer_values_to_packed_bytes(values):
         for (let index = 0; index < source.length; index += 1) {
             view.setUint32(offset, headers[index], true);
             offset += 4;
+            const bytes = headers[index] & 0x7fffffff;
             const text = hexadecimal[index];
-            for (let position = text.length - 2; position >= 0; position -= 2) {
-                output[offset] =
-                    16 * digit(text.charCodeAt(position)) +
-                    digit(text.charCodeAt(position + 1));
-                offset += 1;
+            if (text !== null) {
+                for (let position = text.length - 2;
+                    position >= 0; position -= 2) {
+                    output[offset] =
+                        16 * digit(text.charCodeAt(position)) +
+                        digit(text.charCodeAt(position + 1));
+                    offset += 1;
+                }
+            } else if (typeof magnitudes[index] === "number") {
+                let magnitude = magnitudes[index];
+                if (bytes === 1) {
+                    output[offset++] = magnitude;
+                } else {
+                    for (let byte = 0; byte < bytes; byte += 1) {
+                        output[offset++] = magnitude % 256;
+                        magnitude = Math.floor(magnitude / 256);
+                    }
+                }
+            } else {
+                let magnitude = magnitudes[index];
+                for (let byte = 0; byte < bytes; byte += 1) {
+                    output[offset++] = Number(magnitude & 0xffn);
+                    magnitude >>= 8n;
+                }
             }
         }
         return output;
@@ -1232,6 +1281,16 @@ def ρσ_ffi_resource_create(
                         }
                         return value;
                     }
+                }
+            }
+            if (type === "ByteBuffer") {
+                const tagName = Object.prototype.toString.call(value);
+                if (
+                    ArrayBuffer.isView(value)
+                    && tagName === "[object Uint8Array]"
+                    && value.BYTES_PER_ELEMENT === 1
+                ) {
+                    return value;
                 }
             }
             throw new TypeError(

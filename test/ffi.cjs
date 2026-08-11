@@ -21,7 +21,10 @@ const nativeExportAudit = require("../tools/ffi/native-export-audit.cjs");
 const nativeExportPolicy = require("../tools/ffi/native-export-policy.cjs");
 const hostAdapters = require("../tools/ffi/host-adapters.cjs");
 const { compileKernel } = require("../tools/native-kernel/compiler.cjs");
-const { generateHostCore } = require("../tools/native-kernel/c-backend.cjs");
+const {
+  generateC,
+  generateHostCore,
+} = require("../tools/native-kernel/c-backend.cjs");
 const {
   generateExceptionShims,
 } = require("../tools/native-kernel/ffi-codegen.cjs");
@@ -147,6 +150,7 @@ test("FFI declarations are strict and generated modules are current", () => {
       "fmpz_matrix_augment", "fmpz_matrix_nonzero_count",
       "fmpz_matrix_format", "fmpz_matrix_serialize", "flint_byte_region",
       "flint_byte_region_set", "fmpz_matrix_deserialize",
+      "fmpz_matrix_deserialize_entries",
       "fmpq_matrix", "fmpq_matrix_randbits", "fmpq_matrix_nrows",
       "fmpq_matrix_ncols",
       "fmpq_matrix_set_entry", "fmpq_matrix_entry_numerator",
@@ -164,7 +168,8 @@ test("FFI declarations are strict and generated modules are current", () => {
       "fmpq_matrix_nonzero_count",
       "fmpq_value_numerator",
       "fmpq_value_denominator", "fmpq_matrix_format",
-      "fmpq_matrix_serialize", "flint_byte_region_length",
+      "fmpq_matrix_serialize", "fmpq_matrix_deserialize",
+      "flint_byte_region_length",
       "flint_byte_region_get",
       "dirichlet_group_init", "dirichlet_group_size",
       "dirichlet_group_num_primitive", "n_is_prime", "fmpz_gcd",
@@ -200,6 +205,12 @@ test("FFI declarations are strict and generated modules are current", () => {
     },
     targets: { dynamic: true, wasm: false },
   });
+  assert.deepEqual(byteRegion.host_ingress, {
+    kind: "copied_bytes",
+    dynamic: { export: "ffiFlintByteRegionFromBytes" },
+    native: { init_symbol: "sagejs_flint_byte_region_init_copy" },
+    targets: { dynamic: true, wasm: false },
+  });
   assert.match(flint.identity, /^flint@[0-9a-f]{64}$/);
   const generated = declarations.generatedModulePath(root, flint);
   assert.equal(
@@ -219,12 +230,16 @@ test("FFI declarations are strict and generated modules are current", () => {
     readFileSync(generated, "utf8"),
     /def take_bytes\(self\).*?finally:\n\s+self\.close\(\)/s,
   );
+  assert.match(
+    readFileSync(generated, "utf8"),
+    /def from_bytes\(cls, source: Any\).*?"ByteBuffer"/s,
+  );
   const igraph = registry.byId.get("igraph");
   assert.deepEqual(igraph.ownershipGraph, [
     { resource: "graph", ownership: "owned", owner: null, root: "graph" },
     { resource: "edges", ownership: "borrowed", owner: "graph", root: "graph" },
   ]);
-  assert.match(runSage(["ffi", "check"]), /160 function\(s\)/);
+  assert.match(runSage(["ffi", "check"]), /162 function\(s\)/);
   const inspection = JSON.parse(
     runSage(["ffi", "explain", "flint", "--json"]),
   );
@@ -263,7 +278,7 @@ test("FFI declarations are strict and generated modules are current", () => {
   );
 });
 
-test("generated host adapters cover values and safe owned resources", () => {
+test("generated host adapters cover values and safe owned resources", async () => {
   const registry = declarations.loadRegistry({ root });
   for (const declaration of registry.libraries) {
     const filename = hostAdapters.generatedHostAdapterPath(root, declaration);
@@ -274,14 +289,31 @@ test("generated host adapters cover values and safe owned resources", () => {
     assert.doesNotMatch(source, /sagejs\.runtime|ffi_call/);
     assert.equal(
       functions.length,
-      declaration.library.id === "flint" ? 153 : 2,
+      declaration.library.id === "flint" ? 155 : 2,
     );
+    if (declaration.library.id === "flint") {
+      const ir = await lowerSource(source, filename);
+      const adapter = generateC(ir);
+      assert.match(
+        adapter,
+        /FFI copied-byte ingress requires a Uint8Array/,
+      );
+      assert.match(adapter, /calloc\(1, sizeof\(\*holder\)\)/);
+      assert.match(
+        adapter,
+        /declared initializer is transactional: failure owns nothing/,
+      );
+      assert.match(
+        adapter,
+        /if \(!sagejs_flint_byte_region_init_copy[\s\S]*?goto fail;[\s\S]*?holder->initialized = 1;/,
+      );
+    }
   }
 });
 
 test("packages make generated host adapters canonical and retain handwritten oracles", () => {
   for (const [packagePath, expected] of [
-    ["../packages/flint", 153],
+    ["../packages/flint", 156],
     ["../packages/graph", 2],
   ]) {
     const backend = require(packagePath);
@@ -428,7 +460,7 @@ test("native-boundary audit is a reviewed exact ratchet", () => {
   const current = boundaryAudit.validateBoundarySnapshot(snapshot, { root });
   assert.ok(current.counts["napi-export"] >= 280);
   assert.ok(current.counts["runtime-intrinsic"] >= 100);
-  assert.equal(current.counts["declared-ffi"], 160);
+  assert.equal(current.counts["declared-ffi"], 162);
   assert.equal(current.counts["declared-ffi-resource"], 9);
   assert.match(runSage(["ffi", "audit"]), /inventoried native boundaries/);
   assert.equal(
@@ -597,6 +629,22 @@ test("FFI declarations reject incompatible ownership and ABI mappings", () => {
       ).host_transfer.native.data_symbol = "region->data";
     },
     /byte-copy data_symbol must be an identifier/,
+  );
+  invalid(
+    (document) => {
+      document.resources.find(
+        (resource) => resource.id === "byte_region",
+      ).host_ingress.kind = "borrow_pointer";
+    },
+    /unsupported host ingress borrow_pointer/,
+  );
+  invalid(
+    (document) => {
+      document.resources.find(
+        (resource) => resource.id === "byte_region",
+      ).host_ingress.native.init_symbol = "region->copy";
+    },
+    /byte-ingress init_symbol must be an identifier/,
   );
   invalid(
     (document) => {

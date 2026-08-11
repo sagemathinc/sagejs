@@ -869,6 +869,10 @@ function resourceCopyBytesName(resource) {
   return `sagejs_resource_${resourceCName(resource)}_copy_bytes`;
 }
 
+function resourceFromBytesName(resource) {
+  return `sagejs_resource_${resourceCName(resource)}_from_bytes`;
+}
+
 function functionResource(fn, type) {
   return resourceForFunctionType(fn, type);
 }
@@ -2042,11 +2046,14 @@ function generateOwnedResourceNodeSupport(resource) {
   const close = resourceCloseName(resource);
   const refresh = resourceRefreshName(resource);
   const copyBytes = resourceCopyBytesName(resource);
+  const fromBytes = resourceFromBytesName(resource);
   const [tagHigh, tagLow] = resourceTagWords(resource);
   const tag = `sagejs_resource_${resourceCName(resource)}_type_tag`;
   const sized = resource.native.size_symbol !== undefined;
   const byteTransfer = resource.host_transfer?.kind === "copied_bytes"
     ? resource.host_transfer : null;
+  const byteIngress = resource.host_ingress?.kind === "copied_bytes"
+    ? resource.host_ingress : null;
   const refreshSupport = sized ? `
 static napi_status ${refresh}(napi_env env, ${holder} *holder)
 {
@@ -2110,6 +2117,76 @@ static napi_value ${copyBytes}(napi_env env, napi_callback_info info)
             napi_create_buffer_copy(env, length, source, NULL, &result)))
         return NULL;
     return result;
+}`;
+  const byteIngressSupport = byteIngress === null ? "" : `
+static napi_value ${fromBytes}(napi_env env, napi_callback_info info)
+{
+    napi_value arguments[2];
+    napi_value argument;
+    napi_value array_buffer;
+    napi_value result = NULL;
+    size_t argc = 2;
+    size_t length = 0;
+    size_t byte_offset = 0;
+    napi_typedarray_type array_type;
+    void *data = NULL;
+    bool is_typedarray = false;
+    ${holder} *holder = NULL;
+    if (!sagejs_native_check_napi(env,
+            napi_get_cb_info(env, info, &argc, arguments, NULL, NULL)))
+        return NULL;
+    if (argc != 1)
+    {
+        napi_throw_type_error(env, NULL,
+            "FFI copied-byte ingress requires exactly one Uint8Array");
+        return NULL;
+    }
+    argument = arguments[0];
+    if (!sagejs_native_check_napi(env,
+            napi_is_typedarray(env, argument, &is_typedarray)))
+        return NULL;
+    if (!is_typedarray ||
+        !sagejs_native_check_napi(env,
+            napi_get_typedarray_info(env, argument, &array_type, &length,
+                &data, &array_buffer, &byte_offset)))
+    {
+        if (!is_typedarray)
+            napi_throw_type_error(env, NULL,
+                "FFI copied-byte ingress requires a Uint8Array");
+        return NULL;
+    }
+    (void) array_buffer;
+    (void) byte_offset;
+    if (array_type != napi_uint8_array)
+    {
+        napi_throw_type_error(env, NULL,
+            "FFI copied-byte ingress requires a Uint8Array");
+        return NULL;
+    }
+    holder = (${holder} *) calloc(1, sizeof(*holder));
+    if (holder == NULL)
+    {
+        napi_throw_error(env, NULL, "unable to allocate FFI resource");
+        return NULL;
+    }
+    holder->magic = ${holder}_MAGIC;
+    /* The declared initializer is transactional: failure owns nothing. */
+    if (!${byteIngress.native.init_symbol}(
+            holder->value, (const unsigned char *) data, (uint64_t) length))
+    {
+        napi_throw_error(env, NULL, "unable to copy bytes into FFI resource");
+        goto fail;
+    }
+    holder->initialized = 1;
+    result = ${wrap}(env, &holder);
+    if (result == NULL)
+        goto fail;
+    return result;
+
+fail:
+    if (holder != NULL)
+        ${finalize}(env, holder, NULL);
+    return NULL;
 }`;
   return `
 #define ${holder}_MAGIC UINT64_C(0x${tagHigh})
@@ -2220,7 +2297,8 @@ static napi_value ${close}(napi_env env, napi_callback_info info)
         return NULL;
     return result;
 }
-${byteTransferSupport}`;
+${byteTransferSupport}
+${byteIngressSupport}`;
 }
 
 function generateResourceMemoryInspection(resources) {
@@ -2735,6 +2813,15 @@ static int get_precision(
         ? [
           `        {${cString(resource.host_transfer.dynamic.export)}, NULL, ` +
             `${resourceCopyBytesName(resource)}, NULL, NULL, NULL, ` +
+            `napi_default, NULL}`,
+        ]
+        : []
+    ),
+    ...publicResources.flatMap((resource) =>
+      resource.host_ingress?.kind === "copied_bytes"
+        ? [
+          `        {${cString(resource.host_ingress.dynamic.export)}, NULL, ` +
+            `${resourceFromBytesName(resource)}, NULL, NULL, NULL, ` +
             `napi_default, NULL}`,
         ]
         : []
