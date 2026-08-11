@@ -4,7 +4,7 @@
   "id": "exact-polynomial-ffi",
   "title": "Exact Polynomial Ffi",
   "lane": "integration",
-  "status": "review",
+  "status": "complete",
   "owner": "user",
   "objective": "Generate externally-accounted immutable FLINT FmpzPolynomial and FmpqPolynomial resources with construction, inspection, arithmetic, evaluation, serialization, and lifecycle tests",
   "base_commit": "7f1e656b93f3e667cc0fa2f2cf08d1f8f04161da",
