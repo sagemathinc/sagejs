@@ -2347,6 +2347,18 @@ class Matrix(sage.Element):
     def __add__(self, other: object) -> Matrix:
         left, right = self._pair(other)
         if left._has_packed_rational_storage() and right._has_packed_rational_storage():
+            if left._has_fmpq_matrix_resource() and right._has_fmpq_matrix_resource():
+                resource = _flint_ffi_module().fmpq_matrix_add(
+                    left._rational_resource(),
+                    right._rational_resource(),
+                )
+                _trace_dense_rational_selection(
+                    "add",
+                    "generated-flint-resource",
+                    left.nrows(),
+                    left.ncols(),
+                )
+                return left._parent._from_fmpq_matrix_resource(resource)
             kernel = _dense_rational_kernel_module().dense_rational_matrix_add
             left_numerators, left_denominators = left._rational_kernel_parts(kernel)
             right_numerators, right_denominators = right._rational_kernel_parts(kernel)
@@ -2437,6 +2449,18 @@ class Matrix(sage.Element):
     def __sub__(self, other: object) -> Matrix:
         left, right = self._pair(other)
         if left._has_packed_rational_storage() and right._has_packed_rational_storage():
+            if left._has_fmpq_matrix_resource() and right._has_fmpq_matrix_resource():
+                resource = _flint_ffi_module().fmpq_matrix_sub(
+                    left._rational_resource(),
+                    right._rational_resource(),
+                )
+                _trace_dense_rational_selection(
+                    "subtract",
+                    "generated-flint-resource",
+                    left.nrows(),
+                    left.ncols(),
+                )
+                return left._parent._from_fmpq_matrix_resource(resource)
             kernel = _dense_rational_kernel_module().dense_rational_matrix_subtract
             left_numerators, left_denominators = left._rational_kernel_parts(kernel)
             right_numerators, right_denominators = right._rational_kernel_parts(kernel)
@@ -3005,6 +3029,24 @@ class Matrix(sage.Element):
 
     def transpose(self) -> Matrix:
         if self._has_packed_rational_storage():
+            if self._has_fmpq_matrix_resource():
+                resource = _flint_ffi_module().fmpq_matrix_transpose(
+                    self._rational_resource()
+                )
+                answer = MatrixSpace(
+                    self.base_ring(),
+                    self.ncols(),
+                    self.nrows(),
+                )._from_fmpq_matrix_resource(resource)
+                answer._row_subdivisions = list(self._col_subdivisions)
+                answer._col_subdivisions = list(self._row_subdivisions)
+                _trace_dense_rational_selection(
+                    "transpose",
+                    "generated-flint-resource",
+                    self.nrows(),
+                    self.ncols(),
+                )
+                return answer
             kernel = _dense_rational_kernel_module().dense_rational_matrix_transpose
             source_numerators, source_denominators = self._rational_kernel_parts(kernel)
 
@@ -4586,6 +4628,23 @@ class Matrix(sage.Element):
             raise ArithmeticError("matrix must be square")
         if self._inverse_cache is not runtime.undefined:
             return self._inverse_cache
+        if self._has_fmpq_matrix_resource():
+            try:
+                resource = _flint_ffi_module().fmpq_matrix_inv(
+                    self._rational_resource()
+                )
+            except Exception:
+                raise ZeroDivisionError(  # noqa: B904
+                    "matrix must be nonsingular"
+                )
+            self._inverse_cache = self._parent._from_fmpq_matrix_resource(resource)
+            _trace_dense_rational_selection(
+                "inverse",
+                "generated-flint-resource",
+                self.nrows(),
+                self.ncols(),
+            )
+            return self._inverse_cache
         if self._has_packed_rational_storage():
             kernel = _dense_rational_flint_module().flint_dense_rational_matrix_inverse
             source_numerators, source_denominators = self._rational_kernel_parts(kernel)
@@ -4721,6 +4780,31 @@ class Matrix(sage.Element):
         base = _common_base(self.base_ring(), right_matrix.base_ring())
         left_matrix = self.change_ring(base)
         right_matrix = right_matrix.change_ring(base)
+        if (
+            left_matrix._has_fmpq_matrix_resource()
+            and right_matrix._has_fmpq_matrix_resource()
+        ):
+            try:
+                resource = _flint_ffi_module().fmpq_matrix_solve(
+                    left_matrix._rational_resource(),
+                    right_matrix._rational_resource(),
+                )
+                solution = MatrixSpace(
+                    base,
+                    left_matrix.ncols(),
+                    right_matrix.ncols(),
+                )._from_fmpq_matrix_resource(resource)
+                _trace_dense_rational_selection(
+                    "solve_right",
+                    "generated-flint-resource",
+                    left_matrix.nrows(),
+                    right_matrix.ncols(),
+                )
+                return solution.column(0) if vector_result else solution
+            except Exception:
+                raise ValueError(  # noqa: B904
+                    "matrix equation has no solutions"
+                )
         if (
             left_matrix._has_packed_rational_storage()
             and right_matrix._has_packed_rational_storage()

@@ -142,6 +142,44 @@ static inline int sagejs_fmpq_matrix_init_set(
     return 1;
 }
 
+static inline int sagejs_fmpq_matrix_add(
+    sagejs_fmpq_matrix_t result, const sagejs_fmpq_matrix_t left,
+    const sagejs_fmpq_matrix_t right)
+{
+    if (fmpq_mat_nrows(left->value) != fmpq_mat_nrows(right->value) ||
+        fmpq_mat_ncols(left->value) != fmpq_mat_ncols(right->value))
+        return 0;
+    fmpq_mat_init(result->value,
+        fmpq_mat_nrows(left->value), fmpq_mat_ncols(left->value));
+    fmpq_mat_add(result->value, left->value, right->value);
+    result->known_rank = -1;
+    return 1;
+}
+
+static inline int sagejs_fmpq_matrix_sub(
+    sagejs_fmpq_matrix_t result, const sagejs_fmpq_matrix_t left,
+    const sagejs_fmpq_matrix_t right)
+{
+    if (fmpq_mat_nrows(left->value) != fmpq_mat_nrows(right->value) ||
+        fmpq_mat_ncols(left->value) != fmpq_mat_ncols(right->value))
+        return 0;
+    fmpq_mat_init(result->value,
+        fmpq_mat_nrows(left->value), fmpq_mat_ncols(left->value));
+    fmpq_mat_sub(result->value, left->value, right->value);
+    result->known_rank = -1;
+    return 1;
+}
+
+static inline int sagejs_fmpq_matrix_transpose(
+    sagejs_fmpq_matrix_t result, const sagejs_fmpq_matrix_t source)
+{
+    fmpq_mat_init(result->value,
+        fmpq_mat_ncols(source->value), fmpq_mat_nrows(source->value));
+    fmpq_mat_transpose(result->value, source->value);
+    result->known_rank = source->known_rank;
+    return 1;
+}
+
 static inline int sagejs_fmpq_matrix_mul(
     sagejs_fmpq_matrix_t result, const sagejs_fmpq_matrix_t left,
     const sagejs_fmpq_matrix_t right)
@@ -151,6 +189,41 @@ static inline int sagejs_fmpq_matrix_mul(
     fmpq_mat_init(result->value,
         fmpq_mat_nrows(left->value), fmpq_mat_ncols(right->value));
     fmpq_mat_mul(result->value, left->value, right->value);
+    result->known_rank = -1;
+    return 1;
+}
+
+static inline int sagejs_fmpq_matrix_inv(
+    sagejs_fmpq_matrix_t result, const sagejs_fmpq_matrix_t source)
+{
+    const slong rows = fmpq_mat_nrows(source->value);
+    if (rows != fmpq_mat_ncols(source->value))
+        return 0;
+    fmpq_mat_init(result->value, rows, rows);
+    if (!fmpq_mat_inv(result->value, source->value))
+    {
+        fmpq_mat_clear(result->value);
+        result->known_rank = -1;
+        return 0;
+    }
+    result->known_rank = rows;
+    return 1;
+}
+
+static inline int sagejs_fmpq_matrix_solve(
+    sagejs_fmpq_matrix_t result, const sagejs_fmpq_matrix_t left,
+    const sagejs_fmpq_matrix_t right)
+{
+    if (fmpq_mat_nrows(left->value) != fmpq_mat_nrows(right->value))
+        return 0;
+    fmpq_mat_init(result->value,
+        fmpq_mat_ncols(left->value), fmpq_mat_ncols(right->value));
+    if (!fmpq_mat_can_solve(result->value, left->value, right->value))
+    {
+        fmpq_mat_clear(result->value);
+        result->known_rank = -1;
+        return 0;
+    }
     result->known_rank = -1;
     return 1;
 }

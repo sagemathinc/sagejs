@@ -22,7 +22,12 @@ from sagejs.ffi.flint import (
     fmpq_matrix_entry_denominator as _ffi_fmpq_matrix_entry_denominator,
     fmpq_matrix_entry_is_zero as _ffi_fmpq_matrix_entry_is_zero,
     fmpq_matrix_copy as _ffi_fmpq_matrix_copy,
+    fmpq_matrix_add as _ffi_fmpq_matrix_add,
+    fmpq_matrix_sub as _ffi_fmpq_matrix_sub,
+    fmpq_matrix_transpose as _ffi_fmpq_matrix_transpose,
     fmpq_matrix_mul as _ffi_fmpq_matrix_mul,
+    fmpq_matrix_inv as _ffi_fmpq_matrix_inv,
+    fmpq_matrix_solve as _ffi_fmpq_matrix_solve,
     fmpq_matrix_rref as _ffi_fmpq_matrix_rref,
     fmpq_matrix_rank as _ffi_fmpq_matrix_rank,
     fmpq_matrix_det as _ffi_fmpq_matrix_det,
@@ -189,11 +194,62 @@ def ffiFmpqMatrixCopy(
 
 
 @native
+def ffiFmpqMatrixAdd(
+    left: FmpqMatrix,
+    right: FmpqMatrix,
+) -> FmpqMatrix:
+    return _ffi_fmpq_matrix_add(
+        left,
+        right,
+    )
+
+
+@native
+def ffiFmpqMatrixSub(
+    left: FmpqMatrix,
+    right: FmpqMatrix,
+) -> FmpqMatrix:
+    return _ffi_fmpq_matrix_sub(
+        left,
+        right,
+    )
+
+
+@native
+def ffiFmpqMatrixTranspose(
+    source: FmpqMatrix,
+) -> FmpqMatrix:
+    return _ffi_fmpq_matrix_transpose(
+        source,
+    )
+
+
+@native
 def ffiFmpqMatrixMul(
     left: FmpqMatrix,
     right: FmpqMatrix,
 ) -> FmpqMatrix:
     return _ffi_fmpq_matrix_mul(
+        left,
+        right,
+    )
+
+
+@native
+def ffiFmpqMatrixInv(
+    source: FmpqMatrix,
+) -> FmpqMatrix:
+    return _ffi_fmpq_matrix_inv(
+        source,
+    )
+
+
+@native
+def ffiFmpqMatrixSolve(
+    left: FmpqMatrix,
+    right: FmpqMatrix,
+) -> FmpqMatrix:
+    return _ffi_fmpq_matrix_solve(
         left,
         right,
     )

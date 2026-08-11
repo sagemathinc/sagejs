@@ -46,6 +46,11 @@ function nativeReference(size, seed) {
 const cases = [
   { name: "random_1000", expression: "random_matrix(QQ, 1000)", budget: 100 },
   {
+    name: "add_1000_resource",
+    expression: "_rational_large + _rational_large",
+    budget: 150,
+  },
+  {
     name: "construct_300",
     expression: "matrix(QQ, 300, 300, _rational_budget_values)",
     budget: 180,
@@ -170,6 +175,7 @@ async function run(environment = process.env) {
         "import sagejs.runtime as _rational_budget_runtime",
         "set_random_seed(20260810)",
         "_rational_budget_values = [QQ(index % 201 - 100)/(index % 13 + 1) for index in range(300*300)]",
+        "_rational_large = random_matrix(QQ, 1000)",
         "_rational_left = random_matrix(QQ, 300) / 7",
         "_rational_right = random_matrix(QQ, 300) / 11",
         "_rational_equal = _rational_left.__copy__()",

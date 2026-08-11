@@ -111,7 +111,7 @@
     "architecture:exports": "node scripts/audit-native-exports.cjs --check",
     "architecture:check": "pnpm run ffi:check && pnpm run architecture:packages && pnpm run architecture:native",
     "ffi:check": "node bin/sagejs ffi check",
-    "ffi:lifecycle:fuzz": "node tools/ffi/lifecycle-fuzz.cjs",
+    "ffi:lifecycle:fuzz": "node tools/ffi/lifecycle-fuzz.cjs && node test/fmpq-resource-ops-lifecycle.cjs",
     "parallel:new": "node scripts/parallel-development.cjs new",
     "parallel:check": "node scripts/parallel-development.cjs check",
     "parallel:status": "node scripts/parallel-development.cjs status",
