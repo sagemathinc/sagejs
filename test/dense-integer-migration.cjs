@@ -22,6 +22,10 @@ const flintSourcePath = join(
   "dense_integer_flint.py",
 );
 const matrixSourcePath = join(root, "src", "baselib", "matrix.py");
+const rationalFlintSourcePath = join(
+  root, "src", "lib", "sagejs", "kernels", "matrix",
+  "dense_rational_flint.py",
+);
 
 function runSage(source, environment) {
   const directory = mkdtempSync(join(tmpdir(), "sagejs-dense-integer-script-"));
@@ -66,6 +70,7 @@ A = matrix(ZZ, 3, 3, [
 ])
 B = matrix(ZZ, 3, 3, range(9))
 
+assert A._has_fmpz_matrix_resource()
 assert A.list()[0] == large + 1
 display = matrix(ZZ, 2, 3, [1, -7, 0, 11, -2, 5])
 assert display.str() == '[ 1 -7  0]\n[11 -2  5]'
@@ -77,9 +82,15 @@ assert 3*A == A + A + A
 assert A.transpose().transpose() == A
 assert A.trace() == 2*large + 18
 assert A.matrix_from_rows([2, 0]).dimensions() == (2, 3)
+assert A.matrix_from_rows([2, 0]).list() == A.row(2).list() + A.row(0).list()
 assert A.matrix_from_columns([2, 0]).dimensions() == (3, 2)
+assert A.matrix_from_columns([2, 0]).list() == [
+    A[0, 2], A[0, 0], A[1, 2], A[1, 0], A[2, 2], A[2, 0]
+]
 assert A.stack(B).dimensions() == (6, 3)
 assert A.augment(B).dimensions() == (3, 6)
+assert A.stack(B)._has_fmpz_matrix_resource()
+assert A.augment(B)._has_fmpz_matrix_resource()
 
 edge = matrix(ZZ, 1, 1, [2**64 - 1])
 assert (edge + edge)[0, 0] == 2**65 - 2
@@ -92,6 +103,7 @@ assert C.rank() == 3
 assert (C*C).list() == [68, 48, 120, 168, 108, 288, 204, 128, 344]
 f = C.charpoly()
 assert f(C).is_zero()
+assert C.minpoly()(C).is_zero()
 H, U = C.hermite_form(transformation=True)
 assert U*C == H
 D, L, R = C.smith_form()
@@ -115,14 +127,26 @@ except ValueError:
 
 identity = identity_matrix(ZZ, 3)
 assert identity ** (2**256) == identity
-assert identity._integer_capacity() == 1
+assert identity._has_fmpz_matrix_resource()
 random_value = random_matrix(ZZ, 40)
 assert random_value.dimensions() == (40, 40)
+assert random_value._has_fmpz_matrix_resource()
 assert loads(dumps(A)) == A
+
+packed = matrix(ZZ, 1, 3, [0, 1, -2])._packed_integers()
+assert list(packed) == [
+    0, 0, 0, 0,
+    1, 0, 0, 0, 1,
+    1, 0, 0, 128, 2,
+]
+assert matrix(ZZ, 0, 4)._has_fmpz_matrix_resource()
+assert matrix(ZZ, 3, 0)._has_fmpz_matrix_resource()
+assert matrix(ZZ, 0, 4).transpose().dimensions() == (4, 0)
+assert A.change_ring(QQ).change_ring(ZZ) == A
 
 try:
     A._native
-    raise AssertionError('packed integer matrix exposed an N-API handle')
+    raise AssertionError('generated integer matrix exposed an N-API handle')
 except RuntimeError:
     pass
 print('dense-integer-independent-ok')
@@ -134,13 +158,23 @@ print('dense-integer-independent-ok')
     const matrixSource = readFileSync(matrixSourcePath, "utf8");
     assert.match(
       matrixSource,
+      /__import__\(\s*['"]sagejs\.kernels\.matrix\.dense_integer_flint['"]/,
+    );
+    assert.doesNotMatch(
+      matrixSource,
       /__import__\(\s*['"]sagejs\.kernels\.matrix\.dense_integer['"]/,
     );
+    assert.match(matrixSource, /class _FmpzMatrixResourceStorage/);
+    assert.match(matrixSource, /fmpz_matrix_(?:add|mul|det|format)/);
     assert.doesNotMatch(matrixSource, /\.zzMatrix\s*\(/);
 
     const compiled = await compile({ sourcePath, cacheRoot: temporary });
     const compiledFlint = await compile({
       sourcePath: flintSourcePath,
+      cacheRoot: temporary,
+    });
+    await compile({
+      sourcePath: rationalFlintSourcePath,
       cacheRoot: temporary,
     });
     const kernel = require(compiled.modulePath);
@@ -180,6 +214,18 @@ print('dense-integer-independent-ok')
       );
       assert.ok(fn, `missing ${name}`);
       assert.match(fn.foreignDependencies[0], /^flint@[a-f0-9]{64}:fmpz_mat_/);
+      assert.equal(flintKernel[name].nativeAvailable, true);
+    }
+    for (const name of [
+      "flint_dense_integer_resource_import",
+      "flint_dense_integer_resource_random_fill",
+      "flint_dense_integer_resource_random_fill_default",
+      "flint_dense_integer_resource_nonzero_count",
+    ]) {
+      const fn = compiledFlint.ir.functions.find((candidate) =>
+        candidate.name === name
+      );
+      assert.ok(fn, `missing ${name}`);
       assert.equal(flintKernel[name].nativeAvailable, true);
     }
 
@@ -253,9 +299,9 @@ print('trace-ok')
       SAGEJS_FORBID_ZZ_MATRIX_NAPI: "1",
     });
     assert.match(trace, /Matrix\.random_matrix ZZ 4x4 -> typed-python-isolated/);
-    assert.match(trace, /Matrix\.add ZZ 4x4 -> typed-python-isolated/);
-    assert.match(trace, /Matrix\.multiply ZZ 4x4 -> declared-flint-isolated/);
-    assert.match(trace, /Matrix\.determinant ZZ 4x4 -> declared-flint-isolated/);
+    assert.match(trace, /Matrix\.add ZZ 4x4 -> generated-flint-resource/);
+    assert.match(trace, /Matrix\.multiply ZZ 4x4 -> generated-flint-resource/);
+    assert.match(trace, /Matrix\.determinant ZZ 4x4 -> generated-flint-resource/);
     assert.match(trace, /trace-ok/);
 
     console.log("dense integer matrix migration tests passed");

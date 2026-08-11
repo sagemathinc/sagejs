@@ -1,88 +1,113 @@
 # Dense exact-integer matrix migration
 
-Dense matrices over `ZZ` canonically own a row-major `IntegerBuffer`, not a
-FLINT or N-API matrix object. Each entry has a signed limb count and a fixed
-capacity slice of 64-bit magnitude limbs. Small entries stay on the compiler's
-tagged signed-64-bit path; an overflowing value promotes exactly to GMP at the
-current operation. Capacity growth is transactional: a kernel either writes a
-complete result or raises before changing the caller-owned output, after which
-the public matrix layer retries with a larger buffer.
+Dense matrices over `ZZ` canonically own a generated `FmpzMatrix` resource.
+The public Python object does not own an N-API matrix, a uniform-capacity
+`IntegerBuffer`, or a JavaScript array of entries. FLINT therefore retains its
+natural per-entry arbitrary-precision representation, including highly skewed
+matrices where one entry is enormous and all other entries are small.
 
-The source-transparent structural algorithms are in
-`src/lib/sagejs/kernels/matrix/dense_integer.py`. Multiplication and mature exact
-linear-algebra algorithms cross the declarations in
-`src/lib/sagejs/kernels/matrix/dense_integer_flint.py`. Generated adapters construct
-lexical FLINT matrices from packed input, preflight output capacity, copy the
-result, and clear every temporary. FLINT never becomes the public object's
-owner.
+Generated declarations provide construction, checked entry access and
+mutation, copy, arithmetic, linear algebra, formatting, and canonical
+serialization. Expensive resource-to-resource operations remain entirely in
+FLINT: they do not serialize, predict output limb sizes, or copy through a host
+matrix. The public `Matrix` owns the generated wrapper, whose explicit
+`close()` operation and garbage-collector finalizer both release the FLINT
+object exactly once.
+
+Typed Python still supplies the programmable compiled layer. The bulk importer,
+random fillers, and nonzero traversal in
+`src/lib/sagejs/kernels/matrix/dense_integer_flint.py` safely borrow the owned
+resource. Their compiled cores contain no Node, JavaScript, Python, or N-API
+calls. This proves that ordinary typed-Python algorithms can traverse and
+mutate resource-owned exact objects without making the host or FLINT object
+model part of their source.
+
+## Representation boundaries
+
+The older `IntegerBuffer` kernels remain compatibility and differential
+oracles; they are not the production representation. A complete packed export
+is permitted only at an explicit value boundary such as `.list()`, SagePack
+serialization, or subdivided custom formatting. The stable `fmpz-le-v1`
+SagePack entry stream is unchanged even though the in-memory owner changed.
+
+The public implementation directly covers:
+
+- zero, scalar, iterable, diagonal, identity, and random construction;
+- checked entry mutation, copy, equality, and immutability;
+- addition, subtraction, negation, scalar multiplication, multiplication,
+  powers, transpose, stack, augment, and row/column selection;
+- determinant, rank, trace, density, RREF over `QQ`, Hermite and Smith forms,
+  exact right kernels, characteristic polynomials, and minimal polynomials;
+- `ZZ`/`QQ` conversion, native default formatting, and stable serialization.
+
+Legacy N-API integer matrices are accepted only at one audited compatibility
+ingress and are immediately converted to the generated resource. Setting
+`SAGEJS_FORBID_ZZ_MATRIX_NAPI=1` makes any accidental production use fail.
 
 ## Development-host evidence
 
-On 2026-08-10, using Node 26.7.0, GCC, warm compiled artifacts, and the median
-of five samples, the public performance ratchet reported:
+The focused public-resource benchmark is:
 
-| public operation | size | Sage.js |
-|---|---:|---:|
-| random construction | 500 by 500 | 6.59 ms |
-| flat-list construction | 500 by 500 | 40.04 ms |
-| addition | 500 by 500 | 4.32 ms |
-| subtraction | 500 by 500 | 4.09 ms |
-| negation | 500 by 500 | 3.89 ms |
-| scalar multiplication | 500 by 500 | 4.09 ms |
-| transpose | 500 by 500 | 2.42 ms |
-| equality | 500 by 500 | 1.93 ms |
-| copy | 500 by 500 | 1.97 ms |
-| trace | 500 by 500 | 0.18 ms |
-| density | 500 by 500 | 1.43 ms |
-| matrix multiplication | 150 by 150 | 2.29 ms |
-| determinant | 150 by 150 | 11.07 ms |
-| rank | 150 by 150 | 2.25 ms |
-| characteristic polynomial | 60 by 60 | 4.87 ms |
-| Hermite form | 35 by 35 | 1.30 ms |
-| Smith form | 25 by 25 | 1.34 ms |
-| right kernel | 40 by 60 | 27.83 ms |
+```sh
+node bench/dense-integer-public-resources.cjs
+```
 
-These are development-host regression measurements, not cross-machine claims.
-The gate normalizes against a direct FLINT construction-and-multiplication
-witness to distinguish a real regression from host load, while retaining a
-separate hard raw-time ceiling. It also requires every structural and declared
-FLINT function to resolve to an isolated compiled artifact.
+It measures list and random construction, addition, multiplication,
+determinant, rank, formatting, SagePack round trips, row and column selection,
+diagonal construction, and a 20,001-entry matrix whose final entry has 8,193
+bits. It also asserts that every constructed or returned matrix owns a
+generated resource and runs with legacy integer-matrix N-API access forbidden.
 
-A same-machine SageMath/FLINT spot comparison found broadly similar absolute
-times for construction and the mature asymptotic algorithms. Sage.js was
-slower by several milliseconds for some elementwise operations and faster in
-that run for characteristic polynomial, Smith form, and density. This is the
-right remaining optimization profile: there is no interpreted or
-object-conversion cliff, and compiler improvements can benefit every readable
-typed-Python loop at once.
+The first resource cutover deliberately exposes one remaining structural
+performance cliff. Selecting 250 rows or columns from a 500 by 500 matrix takes
+about 19--21 ms on the development host because the implementation crosses the
+generated FFI twice per selected row or column. The previous canonical packed
+representation took about 2.5--2.7 ms for the same operation. Restoring that
+kernel after the resource cutover would require exporting and reimporting the
+entire matrix, so it is not a sound compatibility path. The immediate follow-up
+is a declared `FmpzMatrix` bulk row/column selector. By contrast, the generated
+resource diagonal constructor takes about 9 ms at size 1000, versus about 333
+ms for the previous entry-by-entry packed construction path.
+
+The stricter warm-sample ratchet remains:
+
+```sh
+pnpm test:matrix:integer-performance
+```
+
+These are development-host regression measurements, not cross-machine speed
+claims. The gate normalizes against a direct FLINT witness to distinguish a
+real regression from host load while retaining hard raw-time ceilings.
 
 ## Correctness and isolation gates
 
-`test/dense-integer-migration.cjs` compiles both kernel modules into a fresh
-cache and runs the complete public lifecycle with
-`SAGEJS_NATIVE_REQUIRED=1` and `SAGEJS_FORBID_ZZ_MATRIX_NAPI=1`. It checks
-190--320-bit entries, overflow growth, mutation and immutability, structural
-operations, multiplication, determinant, rank, characteristic polynomial,
-Hermite and Smith transforms, and exact kernels. The same test forces the
-dynamic fallback/declared-adapter route while the legacy integer-matrix N-API
-properties remain forbidden.
+`test/dense-integer-public-resource.cjs` exercises the public matrix lifecycle
+with compiled native kernels required and again with native execution disabled.
+It monkeypatches the source matrices' packed-export method to raise, then checks
+that arithmetic, transforms, polynomial invariants, selection, conversion, and
+kernel construction still succeed. This is a direct regression against hidden
+full-matrix materialization.
 
-The general native-kernel test compiles `kernel_core.c` as a standalone C
-program and, when the local toolchain is present, as WebAssembly. It passes a
-190-bit `Integer` through the public ABI and checks the exact result. This is a
-direct regression for host isolation and for safe tagged/GMP conversion; the
-Node adapter cannot mask a failure there.
+`test/dense-integer-migration.cjs` preserves the packed-kernel differential
+oracles and verifies stable `fmpz-le-v1` bytes, large entries, mutation,
+immutability, resource ownership, and forbidden N-API access. The resource FFI
+tests and sanitizer-backed lifecycle fuzzing separately cover deterministic
+close, garbage-collected finalization, use-after-close rejection, and native
+allocation accounting.
 
 Run the focused gates with:
 
 ```sh
+node test/dense-integer-public-resource.cjs
 node test/dense-integer-migration.cjs
+node test/fmpz-matrix-resource-kernels.cjs
 pnpm test:matrix:integer-performance
 pnpm test:matrix:corpus
+pnpm ffi:lifecycle:fuzz
 pnpm architecture:check
 ```
 
-Set `SAGEJS_NATIVE_TRACE=1` in a Sage.js session to see
-`typed-python-isolated` or `declared-flint-isolated` at each selected public
-operation. A missing compiled artifact is labeled explicitly; it is never
-reported as native performance.
+Set `SAGEJS_NATIVE_TRACE=1` in a Sage.js session to distinguish generated FLINT
+resource operations from typed-Python isolated kernels. Missing compiled
+artifacts are labeled explicitly; fallback execution is never reported as
+native performance.
