@@ -76,7 +76,7 @@
     {
       "id": "integration",
       "description": "Shared APIs, repository-wide refactors, release integration, and merge coordination",
-      "allowed_claims": ["AGENTS.md", "ARCHITECTURE.md", "README.md", "HACKING.md", "TESTING.md", "PARALLEL-DEVELOPMENT.md", "architecture/", "ffi/", "src/lib/sagejs/ffi/", "src/baselib/sagejs/ffi/", "packages/flint/generated/", "packages/flint/include/sagejs/", "package.json", "pnpm-lock.yaml", "pnpm-workspace.yaml", "pyrightconfig.json", "scripts/", ".agents/", ".github/"],
+      "allowed_claims": ["AGENTS.md", "ARCHITECTURE.md", "README.md", "HACKING.md", "TESTING.md", "PARALLEL-DEVELOPMENT.md", "architecture/", "ffi/", "src/lib/sagejs/ffi/", "src/lib/sagejs/kernels/matrix/dense_integer_flint.py", "src/baselib/sagejs/ffi/", "packages/flint/generated/", "packages/flint/include/sagejs/", "package.json", "pnpm-lock.yaml", "pnpm-workspace.yaml", "pyrightconfig.json", "scripts/", ".agents/", ".github/"],
       "required_checks": ["pnpm architecture:check", "pnpm test:portable", "pnpm test:baselib:strict"]
     }
   ]
