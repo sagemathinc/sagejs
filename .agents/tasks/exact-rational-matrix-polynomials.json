@@ -4,7 +4,7 @@
   "id": "exact-rational-matrix-polynomials",
   "title": "Direct rational matrix characteristic and minimal polynomials",
   "lane": "integration",
-  "status": "active",
+  "status": "review",
   "owner": "codex",
   "objective": "Route dense QQ characteristic_polynomial and minimal_polynomial directly from canonical FmpqMatrix resources to generated owned FmpqPolynomial resources through FLINT, eliminating packed compatibility and generic relation-search paths while preserving Sage semantics, portable fallbacks, lifecycle safety, and competitive performance",
   "base_commit": "f021194faa412ac6e08e2fc15a77101d4d272a76",
@@ -48,10 +48,49 @@
     "pnpm test:portable",
     "pnpm test:baselib:strict"
   ],
-  "runs": [],
+  "runs": [
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 12.377,
+      "started_at": "2026-08-11T18:55:04.134Z",
+      "commit": "d2eea8e2e4ae0d8fbf6ee553fbc81e7f4228849d",
+      "workspace_fingerprint": "8582168e86a0dabff34ce48f6d7cb3d9b3a25000d390ca5ba2a269aba10b947c",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 35.48,
+      "started_at": "2026-08-11T18:55:17.139Z",
+      "commit": "d2eea8e2e4ae0d8fbf6ee553fbc81e7f4228849d",
+      "workspace_fingerprint": "8582168e86a0dabff34ce48f6d7cb3d9b3a25000d390ca5ba2a269aba10b947c",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 12.062,
+      "started_at": "2026-08-11T18:55:53.230Z",
+      "commit": "d2eea8e2e4ae0d8fbf6ee553fbc81e7f4228849d",
+      "workspace_fingerprint": "8582168e86a0dabff34ce48f6d7cb3d9b3a25000d390ca5ba2a269aba10b947c",
+      "platform": "linux-x64"
+    }
+  ],
   "handoff": {
-    "summary": "",
-    "risks": [],
-    "next_steps": []
+    "summary": "Dense QQ characteristic and minimal polynomials now pass the canonical FmpqMatrix resource directly to two generated FLINT operations and receive sealed FmpqPolynomial owners. Public routing precedes packed and generic compatibility paths, preserves variable aliases and caches, returns QQ[x] even for integral minimal polynomials, and handles 0x0 as 1. Focused tests prohibit compatibility materialization, matrix list/power/kernel relation search, scalar coefficient export, and legacy matrix/polynomial N-API; they cover 65,537-bit skew, structured low-degree minimal polynomials, wrong/closed resources, native-disabled Node, trace selection, finalization, 200 dynamic lifecycle rounds, and 500 sanitizer-backed C rounds. The deterministic benchmark measures 60x60 charpoly at about 3.2 ms versus the supplied prior Sage.js 46 ms and Sage 15 ms, and 25x25 minpoly at about 1.4 ms versus the supplied prior Sage.js 990 ms and Sage 3.83 ms.",
+    "risks": [
+      "The new declarations remain wasm=False. Browser hosts retain the existing generic/non-resource path, but direct FmpqMatrix resource lowering to WebAssembly is still future work.",
+      "The complete dense-QQ performance suite has a pre-existing noisy columns_300 host-view miss near 260 ms against its 250 ms budget; both new matrix-polynomial cases pass their 20 ms and 10 ms ratchets comfortably.",
+      "Generated API documentation is stale because matrix.py source locations changed; the integration coordinator should regenerate and verify docs after merging parallel lanes."
+    ],
+    "next_steps": [
+      "Add the same generated resource contract to the FLINT WebAssembly host once owned-resource lowering is available there.",
+      "Delete the packed rational charpoly compatibility path after every supported host has a resource or tested generic implementation.",
+      "Investigate the separate dense-QQ columns_300 host-view budget regression."
+    ]
   }
 }
