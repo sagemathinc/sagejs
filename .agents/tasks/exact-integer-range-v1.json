@@ -4,7 +4,7 @@
   "id": "exact-integer-range-v1",
   "title": "Exact Integer Range Materialization v1",
   "lane": "compiler-runtime",
-  "status": "active",
+  "status": "complete",
   "owner": "user",
   "objective": "Preallocate and fill trusted built-in exact integer ranges for Sage ellipsis and list(range(...)) while preserving generic Python iteration fallbacks, reducing one-million-entry materialization below 80 ms with comprehensive conformance tests",
   "base_commit": "ed70fda0554ec65db66102b2e5e32c3b387a2536",
@@ -72,17 +72,10 @@
     }
   ],
   "handoff": {
-    "summary": "Added checked runtime primitives for preallocated exact-integer range materialization and lazy native exact-range iteration, routed built-in range iteration through the native iterator, and accelerated the common one- and two-start Sage ellipsis forms while retaining the existing generic fallback. CPython-differential tests cover iterator identity, next, exhaustion, fallback, repeated and nested iteration, and exact Number/BigInt transitions; Sage tests cover inclusive and descending ellipses, zero steps, oversized materialization, symbolic/rational/float fallbacks, richer prefixes, and iterator overrides. On this host [1..10^6] fell from about 538 ms to 6.57 ms median and list(range(1, 10^6 + 1)) measured 42.19 ms, both below the 80 ms gate. Build and compiler receipts pass; integration passed 256/258 tests and failed only because the shared native-boundary inventory intentionally remains for the integration lane.",
+    "summary": "Added checked runtime primitives for preallocated exact-integer range materialization and lazy native exact-range iteration, routed built-in range iteration through the native iterator, and accelerated the common one- and two-start Sage ellipsis forms while retaining the existing generic fallback. CPython-differential tests cover iterator identity, next, exhaustion, fallback, repeated and nested iteration, and exact Number/BigInt transitions; Sage tests cover inclusive and descending ellipses, zero steps, oversized materialization, symbolic/rational/float fallbacks, richer prefixes, and iterator overrides. On this host [1..10^6] fell from about 538 ms to 6.57 ms median and list(range(1, 10^6 + 1)) measured 42.19 ms, both below the 80 ms gate. The integration lane added the runtime type signatures, registered the focused test, regenerated the reviewed native-boundary inventory, and validated the final combined tree with a production build, zero-error strict baselib checks, architecture checks, 119 unit tests, and 261 passing integration tests with one intentional capability skip.",
     "risks": [
-      "The runtime type stub and reviewed native-boundary inventory are shared integration surfaces outside this lane and do not yet declare the two new intrinsics.",
-      "The focused test is run directly on this branch because the shared Node test manifest is owned by the concurrent FFLAS lane.",
       "Sage ellipsis materialization briefly owns a raw preallocated array and its decorated-list copy; the observed one-million-entry path remains small and fast, but substantially larger lists retain ordinary JavaScript allocation limits."
     ],
-    "next_steps": [
-      "Add exact_integer_range_values and exact_integer_range_iterator signatures to src/baselib/sagejs/runtime.pyi.",
-      "Regenerate and review architecture/native-boundaries.json for runtime:exact_integer_range_values and runtime:exact_integer_range_iterator.",
-      "Register test/exact-integer-range-v1.cjs in test/node-test-manifest.cjs after the FFLAS lane releases that file.",
-      "Rerun strict baselib, architecture, and integration gates, record the passing integration receipt, then set this task to review or complete in the integration branch."
-    ]
+    "next_steps": []
   }
 }
