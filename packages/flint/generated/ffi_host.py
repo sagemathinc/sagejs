@@ -31,6 +31,7 @@ from sagejs.ffi.flint import (
     fmpz_polynomial_factor_resource as _ffi_fmpz_polynomial_factor_resource,
     fmpz_polynomial_divexact as _ffi_fmpz_polynomial_divexact,
     fmpz_polynomial_pow as _ffi_fmpz_polynomial_pow,
+    fmpz_polynomial_cyclotomic as _ffi_fmpz_polynomial_cyclotomic,
     fmpz_polynomial_evaluate as _ffi_fmpz_polynomial_evaluate,
     fmpz_polynomial_evaluate_rational as _ffi_fmpz_polynomial_evaluate_rational,
     fmpz_polynomial_serialize as _ffi_fmpz_polynomial_serialize,
@@ -331,6 +332,15 @@ def ffiFmpzPolynomialPow(
     return _ffi_fmpz_polynomial_pow(
         source,
         exponent,
+    )
+
+
+@native
+def ffiFmpzPolynomialCyclotomic(
+    order: uint64,
+) -> FmpzPolynomial:
+    return _ffi_fmpz_polynomial_cyclotomic(
+        order,
     )
 
 

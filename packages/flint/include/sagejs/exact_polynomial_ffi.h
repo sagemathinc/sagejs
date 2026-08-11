@@ -286,6 +286,17 @@ static inline int sagejs_fmpz_polynomial_pow(
     return 1;
 }
 
+static inline int sagejs_fmpz_polynomial_cyclotomic(
+    sagejs_fmpz_polynomial_t result, uint64_t order)
+{
+    if (order == 0 || order > (uint64_t) UWORD_MAX)
+        return 0;
+    fmpz_poly_init(result->value);
+    fmpz_poly_cyclotomic(result->value, (ulong) order);
+    sagejs_fmpz_polynomial_finish_result(result);
+    return 1;
+}
+
 static inline int sagejs_fmpz_polynomial_evaluate(
     fmpz_t result, const sagejs_fmpz_polynomial_t source,
     const fmpz_t argument)
