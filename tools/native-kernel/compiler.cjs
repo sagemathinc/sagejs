@@ -57,17 +57,18 @@ function writeDiscoveryIndex(
   sourceHash,
   cacheKey,
   sourceKey,
+  compatibility,
 ) {
   const indexPath = join(cacheRoot, "index.json");
   let index = {
-    schema: "sagejs.native-cache/v2",
+    schema: "sagejs.native-cache/v3",
     sources: {},
     logicalSources: {},
   };
   try {
     const current = JSON.parse(readFileSync(indexPath, "utf8"));
     if (
-      ["sagejs.native-cache/v1", index.schema].includes(current?.schema) &&
+      current?.schema === index.schema &&
       current.sources !== null &&
       typeof current.sources === "object"
     ) {
@@ -80,7 +81,13 @@ function writeDiscoveryIndex(
       }
     }
   } catch (_error) {}
-  index.sources[sourcePath] = { cacheKey, sourceHash };
+  const record = {
+    cacheKey,
+    sourceHash,
+    nativeAbi: compatibility.nativeAbi,
+    foreignDeclarations: compatibility.foreignDeclarations,
+  };
+  index.sources[sourcePath] = record;
   if (sourceKey !== undefined) {
     if (
       typeof sourceKey !== "string" ||
@@ -88,9 +95,24 @@ function writeDiscoveryIndex(
     ) {
       throw new TypeError(`invalid native kernel source key ${sourceKey}`);
     }
-    index.logicalSources[sourceKey] = { cacheKey, sourceHash };
+    index.logicalSources[sourceKey] = record;
   }
   writeFileSync(indexPath, `${JSON.stringify(index, null, 2)}\n`);
+}
+
+function nativeCompatibility(ir) {
+  return Object.freeze({
+    nativeAbi: NATIVE_ABI_VERSION,
+    foreignDeclarations: Object.freeze(
+      (ir.foreignLibraries || [])
+        .map((library) => Object.freeze({
+          id: library.id,
+          declarationIdentity: library.declarationIdentity,
+          dynamicPackage: library.dynamic.package,
+        }))
+        .sort((left, right) => left.id.localeCompare(right.id)),
+    ),
+  });
 }
 
 function backendFingerprint() {
@@ -340,6 +362,7 @@ async function compileKernel(options) {
   const ir = await lowerSource(source, sourcePath, {
     functions: options.functions,
   });
+  const compatibility = nativeCompatibility(ir);
   const usesSpecializedPrimeField = ir.functions.some(
     (fn) => fn.kernelKind === "prime-field-matrix",
   );
@@ -400,6 +423,7 @@ async function compileKernel(options) {
       sourceHash,
       cacheKey,
       sourceKey,
+      compatibility,
     );
     return {
       addonPath,
@@ -412,6 +436,8 @@ async function compileKernel(options) {
       coreHeaderPath,
       shimSourcePath: exceptionShims === null ? null : shimSourcePath,
       shimHeaderPath: exceptionShims === null ? null : shimHeaderPath,
+      nativeAbi: compatibility.nativeAbi,
+      foreignDeclarations: compatibility.foreignDeclarations,
     };
   }
 
@@ -451,6 +477,8 @@ async function compileKernel(options) {
       sourceBoundsChecked,
       sourceHash,
       sourcePath,
+      nativeAbi: compatibility.nativeAbi,
+      foreignDeclarations: compatibility.foreignDeclarations,
     }),
   );
   writeFileSync(
@@ -459,6 +487,8 @@ async function compileKernel(options) {
       {
         cacheKey,
         nativeAbi: NATIVE_ABI_VERSION,
+        sourceHash,
+        foreignDeclarations: compatibility.foreignDeclarations,
         primeFieldTuning: tuning,
         sourceBoundsChecked,
         sourcePath,
@@ -492,6 +522,7 @@ async function compileKernel(options) {
     sourceHash,
     cacheKey,
     sourceKey,
+    compatibility,
   );
   return {
     addonPath,
@@ -504,6 +535,8 @@ async function compileKernel(options) {
     coreHeaderPath,
     shimSourcePath: exceptionShims === null ? null : shimSourcePath,
     shimHeaderPath: exceptionShims === null ? null : shimHeaderPath,
+    nativeAbi: compatibility.nativeAbi,
+    foreignDeclarations: compatibility.foreignDeclarations,
   };
 }
 

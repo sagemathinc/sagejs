@@ -36,6 +36,12 @@ export type RuntimeBootstrapMode = "sage" | "python";
 export const PRECOMPILED_MODULE_FILENAME =
   "__sagejs_precompiled_module_filename__";
 
+// This is the runtime half of `NATIVE_ABI_VERSION` in
+// `tools/native-kernel/c-backend.cjs`. Production-kernel tests ratchet the two
+// values together. Keeping the expected value in the runtime makes an old
+// cache fail closed even when its Python source has not changed.
+export const NATIVE_KERNEL_ABI_VERSION = 20;
+
 // A real statement gives the output pipeline a module to which it can attach
 // the generated baselib.  This used to be a RapydScript anonymous-function
 // extension; the authoritative frontend intentionally accepts Python/Sage.
@@ -254,6 +260,17 @@ export function runRuntimeBootstrap(
     { sourceHash: string; functions: Record<string, unknown> }
   >();
   const nativeSourceHashes = new Map<string, string>();
+  type NativeForeignDeclaration = {
+    id: string;
+    declarationIdentity: string;
+    dynamicPackage: string;
+  };
+  type NativeCompatibility = {
+    cacheKey: string;
+    sourceHash: string;
+    nativeAbi: number;
+    foreignDeclarations: NativeForeignDeclaration[];
+  };
   const nativeLogicalSourceKey = (filename: string): string | undefined => {
     const normalized = filename.replaceAll("\\", "/");
     const marker = "/sagejs/kernels/";
@@ -290,10 +307,86 @@ export function runRuntimeBootstrap(
       return undefined;
     }
   };
+  const staleNativeArtifact = (filename: string, reason: string): Error =>
+    new Error(
+      `stale native kernel artifact for ${filename}: ${reason}; ` +
+      "rebuild the native kernel cache",
+    );
+  const validatedNativeCompatibility = (
+    filename: string,
+    value: unknown,
+    expectedSourceHash: string,
+  ): NativeCompatibility => {
+    if (value === null || typeof value !== "object") {
+      throw staleNativeArtifact(filename, "missing compatibility metadata");
+    }
+    const cacheKey = Reflect.get(value, "cacheKey");
+    const sourceHash = Reflect.get(value, "sourceHash");
+    const nativeAbi = Reflect.get(value, "nativeAbi");
+    const declarations = Reflect.get(value, "foreignDeclarations");
+    if (
+      typeof cacheKey !== "string" || !/^[a-f0-9]{64}$/.test(cacheKey) ||
+      sourceHash !== expectedSourceHash ||
+      nativeAbi !== NATIVE_KERNEL_ABI_VERSION ||
+      !Array.isArray(declarations)
+    ) {
+      throw staleNativeArtifact(
+        filename,
+        "source, cache, or native ABI metadata does not match",
+      );
+    }
+    const foreignDeclarations: NativeForeignDeclaration[] = [];
+    const seen = new Set<string>();
+    for (const declaration of declarations) {
+      const id = declaration?.id;
+      const declarationIdentity = declaration?.declarationIdentity;
+      const dynamicPackage = declaration?.dynamicPackage;
+      if (
+        typeof id !== "string" || !/^[a-z][a-z0-9_]*$/.test(id) ||
+        typeof declarationIdentity !== "string" ||
+        !new RegExp(`^${id}@[a-f0-9]{64}$`).test(declarationIdentity) ||
+        typeof dynamicPackage !== "string" || dynamicPackage.length === 0 ||
+        seen.has(id)
+      ) {
+        throw staleNativeArtifact(
+          filename,
+          "invalid foreign declaration metadata",
+        );
+      }
+      seen.add(id);
+      const backend = Reflect.apply(
+        internalRequire as (...args: any[]) => unknown,
+        undefined,
+        [dynamicPackage],
+      );
+      const manifest = backend === null ||
+          (typeof backend !== "object" && typeof backend !== "function")
+        ? undefined
+        : Reflect.get(backend, "__sagejs_ffi_manifest__");
+      if (manifest?.library !== declarationIdentity) {
+        throw staleNativeArtifact(
+          filename,
+          `FFI declaration ${declarationIdentity} is not provided by ` +
+            dynamicPackage,
+        );
+      }
+      foreignDeclarations.push({ id, declarationIdentity, dynamicPackage });
+    }
+    foreignDeclarations.sort((left, right) => left.id.localeCompare(right.id));
+    return { cacheKey, sourceHash, nativeAbi, foreignDeclarations };
+  };
+  const nativeCompatibilityKey = (value: NativeCompatibility): string =>
+    JSON.stringify({
+      cacheKey: value.cacheKey,
+      sourceHash: value.sourceHash,
+      nativeAbi: value.nativeAbi,
+      foreignDeclarations: value.foreignDeclarations,
+    });
   const registerNativeModule = (
     filename: string,
     sourceHash: string,
     functions: Record<string, unknown>,
+    compatibility: unknown,
   ): void => {
     if (
       typeof filename !== "string" ||
@@ -304,6 +397,7 @@ export function runRuntimeBootstrap(
     ) {
       throw new TypeError("invalid Sage.js native-module registration");
     }
+    validatedNativeCompatibility(filename, compatibility, sourceHash);
     nativeModules.set(resolve(filename), { sourceHash, functions });
   };
   const resolveNativeFunction = (
@@ -359,9 +453,7 @@ export function runRuntimeBootstrap(
           ? undefined
           : index?.logicalSources?.[logicalSourceKey]);
       if (
-        !["sagejs.native-cache/v1", "sagejs.native-cache/v2"].includes(
-          index?.schema,
-        ) ||
+        index?.schema !== "sagejs.native-cache/v3" ||
         record?.sourceHash !== sourceHash ||
         !/^[a-f0-9]{64}$/.test(record?.cacheKey ?? "")
       ) {
@@ -371,11 +463,40 @@ export function runRuntimeBootstrap(
         const modulePath = join(cacheRoot, record.cacheKey, "index.cjs");
         const loaded = loadPrecompiledNativeKernel(modulePath) as
           Record<string, unknown>;
+        const indexCompatibility = validatedNativeCompatibility(
+          sourcePath,
+          record,
+          sourceHash,
+        );
+        const moduleCompatibility = validatedNativeCompatibility(
+          sourcePath,
+          loaded,
+          sourceHash,
+        );
+        if (
+          nativeCompatibilityKey(indexCompatibility) !==
+            nativeCompatibilityKey(moduleCompatibility)
+        ) {
+          nativeModules.delete(sourcePath);
+          throw staleNativeArtifact(
+            sourcePath,
+            "cache index and generated wrapper metadata differ",
+          );
+        }
         const candidate = Reflect.get(loaded, name);
         if (!usableNativeCandidate(candidate)) continue;
-        registerNativeModule(sourcePath, sourceHash, loaded);
+        registerNativeModule(
+          sourcePath,
+          sourceHash,
+          loaded,
+          moduleCompatibility,
+        );
         return candidate;
       } catch (error) {
+        // Generated wrappers self-register while `require` evaluates them.
+        // Never retain that registration if the cache index or current FFI
+        // backend proves the artifact stale afterward.
+        nativeModules.delete(sourcePath);
         if (process.env.SAGEJS_NATIVE_REQUIRED === "1") throw error;
       }
     }

@@ -14,6 +14,7 @@ const { join } = require("node:path");
 const { spawnSync } = require("node:child_process");
 const { compileKernel } = require("../tools/native-kernel/compiler.cjs");
 const {
+  NATIVE_ABI_VERSION,
   generateC,
   generateHostCore,
 } = require("../tools/native-kernel/c-backend.cjs");
@@ -2666,7 +2667,7 @@ print(kernel.pi(1000))
   const integerIndex = JSON.parse(
     readFileSync(join(integerCache, "index.json"), "utf8"),
   );
-  assert.equal(integerIndex.schema, "sagejs.native-cache/v2");
+  assert.equal(integerIndex.schema, "sagejs.native-cache/v3");
   assert.equal(
     integerIndex.sources[integerSourcePath].cacheKey,
     integerKernel.cacheKey,
@@ -2674,6 +2675,14 @@ print(kernel.pi(1000))
   assert.deepEqual(
     integerIndex.logicalSources["fixtures/native-integer-buffer.py"],
     integerIndex.sources[integerSourcePath],
+  );
+  assert.equal(
+    integerIndex.sources[integerSourcePath].nativeAbi,
+    NATIVE_ABI_VERSION,
+  );
+  assert.deepEqual(
+    integerIndex.sources[integerSourcePath].foreignDeclarations,
+    [],
   );
   const harmonicAddon = require(mpmathKernel.addonPath);
   assert.match(
