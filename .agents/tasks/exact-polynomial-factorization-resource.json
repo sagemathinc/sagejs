@@ -4,7 +4,7 @@
   "id": "exact-polynomial-factorization-resource",
   "title": "Owned exact polynomial factorization resources",
   "lane": "integration",
-  "status": "review",
+  "status": "complete",
   "owner": "codex",
   "objective": "Replace packed capacity-retry factorization of ZZ[x] and QQ[x] with generated callee-owned FLINT factorization resources that compute once, expose unit factors and exponents safely, preserve Sage semantics and portable fallback behavior, and require no operation-specific compiler changes",
   "base_commit": "7fefa63e8ec4cff952789b2f37a1b950d9a1f762",
