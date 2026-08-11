@@ -1092,22 +1092,65 @@ def ρσ_ffi_resource_create(
                 }
             }
             if (type === "bool" && typeof value === "boolean") return value;
+            if (type === "UInt64Buffer") {
+                if (
+                    value !== null
+                    && (typeof value === "object"
+                        || typeof value === "function")
+                ) {
+                    const length = Number(Reflect.get(value, "length"));
+                    if (Number.isSafeInteger(length) && length >= 0) {
+                        if (value instanceof BigUint64Array) return value;
+                        for (let position = 0; position < length; position++) {
+                            const entry = Reflect.get(value, String(position));
+                            const exact = typeof entry === "bigint"
+                                ? entry
+                                : Number.isSafeInteger(entry)
+                                    ? BigInt(entry) : -1n;
+                            if (exact < 0n || exact > 18446744073709551615n) {
+                                throw new TypeError(
+                                    "invalid UInt64Buffer entry"
+                                );
+                            }
+                        }
+                        return value;
+                    }
+                }
+            }
             throw new TypeError(
                 `invalid dynamic FFI resource argument for ${type}`
             );
         });
-        const handle = Reflect.apply(create, backend, marshalled);
+        const exception_classes = {
+            OverflowError, RuntimeError, TypeError, ValueError
+        };
+        const exception_class = exception_classes[error_exception];
+        if (
+            error_exception !== null
+            && typeof exception_class !== "function"
+        ) {
+            throw new RuntimeError(
+                `unsupported FFI exception ${error_exception}`
+            );
+        }
+        let handle;
+        try {
+            handle = Reflect.apply(create, backend, marshalled);
+        } catch (error) {
+            if (typeof exception_class === "function") {
+                const message = typeof error?.message === "string"
+                    ? error.message : error_message;
+                throw new exception_class(message);
+            }
+            throw error;
+        }
         if (error_policy === "zero_is_error" && handle === false) {
-            const exceptions = {
-                OverflowError, RuntimeError, TypeError, ValueError
-            };
-            const exception = exceptions[error_exception];
-            if (typeof exception !== "function") {
+            if (typeof exception_class !== "function") {
                 throw new RuntimeError(
-                    `unsupported FFI exception ${error_exception}`
+                    `FFI declaration ${declaration_identity} returned a failed status without a declared exception`
                 );
             }
-            throw new exception(error_message);
+            throw new exception_class(error_message);
         }
         if (
             handle === null

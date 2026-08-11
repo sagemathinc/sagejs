@@ -172,17 +172,58 @@ assert (A + B) - B == A
 assert -(-A) == A
 assert (QQ(3)/7)*A == A*(QQ(3)/7)
 assert A.transpose().transpose() == A
-assert A.matrix_from_rows([2, 0]).dimensions() == (2, 3)
-assert A.matrix_from_columns([2, 0]).dimensions() == (3, 2)
-assert A.stack(B).dimensions() == (6, 3)
-assert A.augment(B).dimensions() == (3, 6)
+selected_rows = A.matrix_from_rows([2, 0, 2])
+selected_columns = A.matrix_from_columns([2, 0, 2])
+empty_rows = A.matrix_from_rows([])
+empty_columns = A.matrix_from_columns([])
+stacked = A.stack(B, subdivide=True)
+augmented = A.augment(B, subdivide=True)
+assert selected_rows == matrix(QQ, [A.row(2), A.row(0), A.row(2)])
+assert selected_columns == matrix(QQ, [A.column(2), A.column(0), A.column(2)]).transpose()
+assert empty_rows.dimensions() == (0, 3)
+assert empty_columns.dimensions() == (3, 0)
+assert stacked.matrix_from_rows([0, 1, 2]) == A
+assert stacked.matrix_from_rows([3, 4, 5]) == B
+assert augmented.matrix_from_columns([0, 1, 2]) == A
+assert augmented.matrix_from_columns([3, 4, 5]) == B
+assert stacked._row_subdivisions == [3]
+assert augmented._col_subdivisions == [3]
+for structural_name, structural_value in [
+    ('selected rows', selected_rows), ('selected columns', selected_columns),
+    ('empty rows', empty_rows), ('empty columns', empty_columns),
+    ('stacked', stacked), ('augmented', augmented),
+]:
+    structural_storage = structural_value._rational_storage_cache
+    if runtime.reflect.get(structural_storage, 'numerators') is not runtime.undefined:
+        raise AssertionError(structural_name + ' materialized numerators')
+    if runtime.reflect.get(structural_storage, 'denominators') is not runtime.undefined:
+        raise AssertionError(structural_name + ' materialized denominators')
+
+integral_rationals = matrix(QQ, 2, 3, [-3, 0, 2**257 + 1, 5, -7, 11])
+converted_integers = integral_rationals.change_ring(ZZ)
+assert [converted_integers[row, column] for row in range(2) for column in range(3)] == [
+    -3, 0, 2**257 + 1, 5, -7, 11,
+]
+assert converted_integers._has_fmpz_matrix_resource()
+try:
+    matrix(QQ, 1, 2, [1, QQ(1)/2]).change_ring(ZZ)
+    raise AssertionError('nonintegral rational matrix converted to ZZ')
+except TypeError:
+    pass
 
 C = matrix(QQ, 3, 3, [2, 4, 4, 6, 6, 12, 10, 4, 16]) / 7
 assert C.rank() == 3
 assert C.det() == QQ(48)/343
 assert C*C == matrix(QQ, 3, 3, [
     68, 48, 120, 168, 108, 288, 204, 128, 344]) / 49
-assert C*(~C) == identity_matrix(QQ, 3)
+first_inverse = C.inverse()
+assert first_inverse.is_mutable()
+first_inverse[0, 0] = first_inverse[0, 0] + 1
+second_inverse = C.inverse()
+assert second_inverse.is_mutable()
+assert C*second_inverse == identity_matrix(QQ, 3)
+assert first_inverse != second_inverse
+assert C._inverse_cache.is_immutable()
 right = matrix(QQ, 3, 2, [
     QQ(1)/2, QQ(2)/3, QQ(3)/5,
     QQ(5)/7, QQ(7)/11, QQ(11)/13])
@@ -393,6 +434,11 @@ A.rank()
 I.inverse()
 I.solve_right(R)
 A.det()
+A.matrix_from_rows([3, 1, 3])
+A.matrix_from_columns([3, 1, 3])
+A.stack(I)
+A.augment(I)
+A.density()
 print('trace-ok')
 `, {
       ...requiredEnvironment,
@@ -413,6 +459,11 @@ print('trace-ok')
     assert.match(trace, /Matrix\.inverse QQ 4x4 -> generated-flint-resource/);
     assert.match(trace, /Matrix\.solve_right QQ 4x2 -> generated-flint-resource/);
     assert.match(trace, /Matrix\.determinant QQ 4x4 -> generated-flint-resource/);
+    assert.match(trace, /Matrix\.matrix_from_rows QQ 3x4 -> generated-flint-resource/);
+    assert.match(trace, /Matrix\.matrix_from_columns QQ 4x3 -> generated-flint-resource/);
+    assert.match(trace, /Matrix\.stack QQ 8x4 -> generated-flint-resource/);
+    assert.match(trace, /Matrix\.augment QQ 4x8 -> generated-flint-resource/);
+    assert.match(trace, /Matrix\.density QQ 4x4 -> generated-flint-resource/);
     assert.match(trace, /trace-ok/);
 
     console.log("dense rational matrix migration tests passed");

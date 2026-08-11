@@ -813,6 +813,121 @@ test("generated opaque FLINT resources close deterministically", () => {
   );
 });
 
+test("resource results accept checked UInt64Buffer arguments", () => {
+  const source = [
+    "import sagejs.runtime as runtime",
+    "from sagejs.ffi.flint import fmpq_matrix, fmpq_matrix_ncols, fmpq_matrix_nrows, fmpq_matrix_select_columns, fmpq_matrix_select_rows",
+    "source = fmpq_matrix(3, 2)",
+    "rows = fmpq_matrix_select_rows(source, runtime.uint64_buffer([2, 0, 2]), 3)",
+    "columns = fmpq_matrix_select_columns(source, runtime.uint64_buffer([1, 0, 1]), 3)",
+    "empty = fmpq_matrix_select_rows(source, runtime.uint64_buffer(0), 0)",
+    "print(fmpq_matrix_nrows(rows), fmpq_matrix_ncols(rows))",
+    "print(fmpq_matrix_nrows(columns), fmpq_matrix_ncols(columns))",
+    "print(fmpq_matrix_nrows(empty), fmpq_matrix_ncols(empty))",
+    "for invalid in [[-1], [2**65]]:",
+    "    try:",
+    "        fmpq_matrix_select_rows(source, invalid, 1)",
+    "    except TypeError as error:",
+    "        print(str(error))",
+    "try:",
+    "    fmpq_matrix_select_rows(source, runtime.uint64_buffer([3]), 1)",
+    "except ValueError as error:",
+    "    print(type(error).__name__, str(error))",
+    "source.close()",
+    "try:",
+    "    fmpq_matrix_select_rows(source, runtime.uint64_buffer([0]), 1)",
+    "except ValueError as error:",
+    "    print(str(error))",
+    "rows.close(); columns.close(); empty.close()",
+    "",
+  ].join("\n");
+  const directory = mkdtempSync(join(tmpdir(), "sagejs-ffi-resource-buffer-"));
+  try {
+    const path = join(directory, "resource_buffer.py");
+    writeFileSync(path, source);
+    const output = runSage([path]);
+    assert.equal(
+      output.trim(),
+      "3 2\n3 3\n0 2\n" +
+      "invalid UInt64Buffer entry\n" +
+      "invalid UInt64Buffer entry\n" +
+        "ValueError rational matrix row selection contains an invalid index\n" +
+        "FFI resource is closed",
+    );
+
+    const unmappedPath = join(directory, "unmapped_resource_error.py");
+    writeFileSync(unmappedPath, [
+      "import sagejs.ffi.flint as flint",
+      "import sagejs.runtime as runtime",
+      "source = flint.fmpq_matrix(3, 2)",
+      "resource_identity = 'resource:' + flint.__sagejs_ffi_declaration__ + ':fmpq_matrix'",
+      "runtime.ffi_resource_create(",
+      "    flint.__sagejs_ffi_declaration__ + ':unmapped_resource_failure',",
+      "    resource_identity,",
+      "    '@sagemath/sagejs-flint',",
+      "    'ffiFmpqMatrixSelectRows',",
+      "    'ffiFmpqMatrixClose',",
+      "    [source._ffi_borrow(), runtime.uint64_buffer([3]), 1],",
+      "    [resource_identity, 'UInt64Buffer', 'uint64'],",
+      "    [None, None, None],",
+      "    'zero_is_error',",
+      "    None,",
+      "    None,",
+      ")",
+      "",
+    ].join("\n"));
+    const unmapped = spawnSync(
+      process.execPath,
+      [join(root, "bin", "sagejs"), unmappedPath],
+      { cwd: root, encoding: "utf8" },
+    );
+    assert.equal(unmapped.status, 1, unmapped.stdout + unmapped.stderr);
+    assert.match(
+      unmapped.stderr,
+      /Error: rational matrix row selection contains an invalid index/,
+    );
+    assert.doesNotMatch(unmapped.stderr, /ValueError:/);
+
+    const falseBackendPath = join(directory, "false-resource-backend.cjs");
+    writeFileSync(
+      falseBackendPath,
+      "module.exports = { create() { return false; }, close() {} };\n",
+    );
+    const falseStatusPath = join(directory, "unmapped_false_status.py");
+    writeFileSync(
+      falseStatusPath,
+      [
+        "import sagejs.runtime as runtime",
+        "try:",
+        "    runtime.ffi_resource_create(",
+        "        'test@0000000000000000000000000000000000000000000000000000000000000000:false_status',",
+        "        'resource:test@0000000000000000000000000000000000000000000000000000000000000000:false_resource',",
+        `        ${JSON.stringify(falseBackendPath)},`,
+        "        'create',",
+        "        'close',",
+        "        [],",
+        "        [],",
+        "        [],",
+        "        'zero_is_error',",
+        "        None,",
+        "        None,",
+        "    )",
+        "except RuntimeError as error:",
+        "    print(str(error))",
+        "",
+      ].join("\n"),
+    );
+    assert.equal(
+      runSage([falseStatusPath]).trim(),
+      "FFI declaration " +
+        "test@0000000000000000000000000000000000000000000000000000000000000000:false_status " +
+        "returned a failed status without a declared exception",
+    );
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+
 test("generated rational matrix resources execute direct FLINT operations", () => {
   const flint = require("../packages/flint");
   const huge = 2n ** 1024n + 3n;
