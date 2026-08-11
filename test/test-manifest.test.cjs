@@ -16,6 +16,10 @@ test("every host test belongs to a runner tier", () => {
 
   const specialized = new Set([
     "compiler.test.cjs",
+    "exact-polynomial-resource-ffi.cjs",
+    "ffi-resource-accounting-codegen.cjs",
+    "ffi-resource-memory.cjs",
+    "fmpq-resource-ops-lifecycle.cjs",
     "native-kernel-addon-child.cjs",
     "native-kernel.cjs",
     "sea-smoke.cjs",

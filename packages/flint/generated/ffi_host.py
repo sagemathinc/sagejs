@@ -12,7 +12,35 @@ from sagejs.ffi.flint import (
     DirichletGroup,
     FlintByteRegion,
     FmpqMatrix,
+    FmpqPolynomial,
     FmpqValue,
+    FmpzPolynomial,
+    fmpz_polynomial as _ffi_fmpz_polynomial,
+    fmpz_polynomial_set_coefficient as _ffi_fmpz_polynomial_set_coefficient,
+    fmpz_polynomial_seal as _ffi_fmpz_polynomial_seal,
+    fmpz_polynomial_length as _ffi_fmpz_polynomial_length,
+    fmpz_polynomial_coefficient as _ffi_fmpz_polynomial_coefficient,
+    fmpz_polynomial_add as _ffi_fmpz_polynomial_add,
+    fmpz_polynomial_sub as _ffi_fmpz_polynomial_sub,
+    fmpz_polynomial_neg as _ffi_fmpz_polynomial_neg,
+    fmpz_polynomial_mul as _ffi_fmpz_polynomial_mul,
+    fmpz_polynomial_pow as _ffi_fmpz_polynomial_pow,
+    fmpz_polynomial_evaluate as _ffi_fmpz_polynomial_evaluate,
+    fmpz_polynomial_evaluate_rational as _ffi_fmpz_polynomial_evaluate_rational,
+    fmpz_polynomial_serialize as _ffi_fmpz_polynomial_serialize,
+    fmpq_polynomial as _ffi_fmpq_polynomial,
+    fmpq_polynomial_set_coefficient as _ffi_fmpq_polynomial_set_coefficient,
+    fmpq_polynomial_seal as _ffi_fmpq_polynomial_seal,
+    fmpq_polynomial_length as _ffi_fmpq_polynomial_length,
+    fmpq_polynomial_coefficient_numerator as _ffi_fmpq_polynomial_coefficient_numerator,
+    fmpq_polynomial_coefficient_denominator as _ffi_fmpq_polynomial_coefficient_denominator,
+    fmpq_polynomial_add as _ffi_fmpq_polynomial_add,
+    fmpq_polynomial_sub as _ffi_fmpq_polynomial_sub,
+    fmpq_polynomial_neg as _ffi_fmpq_polynomial_neg,
+    fmpq_polynomial_mul as _ffi_fmpq_polynomial_mul,
+    fmpq_polynomial_pow as _ffi_fmpq_polynomial_pow,
+    fmpq_polynomial_evaluate as _ffi_fmpq_polynomial_evaluate,
+    fmpq_polynomial_serialize as _ffi_fmpq_polynomial_serialize,
     fmpq_matrix as _ffi_fmpq_matrix,
     fmpq_matrix_randbits as _ffi_fmpq_matrix_randbits,
     fmpq_matrix_nrows as _ffi_fmpq_matrix_nrows,
@@ -86,6 +114,282 @@ from sagejs.ffi.flint import (
     fmpq_poly_factor as _ffi_fmpq_poly_factor,
 )
 from sagejs.native import Integer, IntegerBuffer, UInt64Buffer, native, uint64
+
+
+@native
+def ffiFmpzPolynomialCreate(
+    length: uint64,
+) -> FmpzPolynomial:
+    return _ffi_fmpz_polynomial(
+        length,
+    )
+
+
+@native
+def ffiFmpzPolynomialSetCoefficient(
+    polynomial: FmpzPolynomial,
+    index: uint64,
+    coefficient: Integer,
+) -> bool:
+    return _ffi_fmpz_polynomial_set_coefficient(
+        polynomial,
+        index,
+        coefficient,
+    )
+
+
+@native
+def ffiFmpzPolynomialSeal(
+    polynomial: FmpzPolynomial,
+) -> bool:
+    return _ffi_fmpz_polynomial_seal(
+        polynomial,
+    )
+
+
+@native
+def ffiFmpzPolynomialLength(
+    polynomial: FmpzPolynomial,
+) -> uint64:
+    return _ffi_fmpz_polynomial_length(
+        polynomial,
+    )
+
+
+@native
+def ffiFmpzPolynomialCoefficient(
+    polynomial: FmpzPolynomial,
+    index: uint64,
+) -> Integer:
+    return _ffi_fmpz_polynomial_coefficient(
+        polynomial,
+        index,
+    )
+
+
+@native
+def ffiFmpzPolynomialAdd(
+    left: FmpzPolynomial,
+    right: FmpzPolynomial,
+) -> FmpzPolynomial:
+    return _ffi_fmpz_polynomial_add(
+        left,
+        right,
+    )
+
+
+@native
+def ffiFmpzPolynomialSub(
+    left: FmpzPolynomial,
+    right: FmpzPolynomial,
+) -> FmpzPolynomial:
+    return _ffi_fmpz_polynomial_sub(
+        left,
+        right,
+    )
+
+
+@native
+def ffiFmpzPolynomialNeg(
+    source: FmpzPolynomial,
+) -> FmpzPolynomial:
+    return _ffi_fmpz_polynomial_neg(
+        source,
+    )
+
+
+@native
+def ffiFmpzPolynomialMul(
+    left: FmpzPolynomial,
+    right: FmpzPolynomial,
+) -> FmpzPolynomial:
+    return _ffi_fmpz_polynomial_mul(
+        left,
+        right,
+    )
+
+
+@native
+def ffiFmpzPolynomialPow(
+    source: FmpzPolynomial,
+    exponent: uint64,
+) -> FmpzPolynomial:
+    return _ffi_fmpz_polynomial_pow(
+        source,
+        exponent,
+    )
+
+
+@native
+def ffiFmpzPolynomialEvaluate(
+    source: FmpzPolynomial,
+    argument: Integer,
+) -> Integer:
+    return _ffi_fmpz_polynomial_evaluate(
+        source,
+        argument,
+    )
+
+
+@native
+def ffiFmpzPolynomialEvaluateRational(
+    source: FmpzPolynomial,
+    numerator: Integer,
+    denominator: Integer,
+) -> FmpqValue:
+    return _ffi_fmpz_polynomial_evaluate_rational(
+        source,
+        numerator,
+        denominator,
+    )
+
+
+@native
+def ffiFmpzPolynomialSerialize(
+    source: FmpzPolynomial,
+) -> FlintByteRegion:
+    return _ffi_fmpz_polynomial_serialize(
+        source,
+    )
+
+
+@native
+def ffiFmpqPolynomialCreate(
+    length: uint64,
+) -> FmpqPolynomial:
+    return _ffi_fmpq_polynomial(
+        length,
+    )
+
+
+@native
+def ffiFmpqPolynomialSetCoefficient(
+    polynomial: FmpqPolynomial,
+    index: uint64,
+    numerator: Integer,
+    denominator: Integer,
+) -> bool:
+    return _ffi_fmpq_polynomial_set_coefficient(
+        polynomial,
+        index,
+        numerator,
+        denominator,
+    )
+
+
+@native
+def ffiFmpqPolynomialSeal(
+    polynomial: FmpqPolynomial,
+) -> bool:
+    return _ffi_fmpq_polynomial_seal(
+        polynomial,
+    )
+
+
+@native
+def ffiFmpqPolynomialLength(
+    polynomial: FmpqPolynomial,
+) -> uint64:
+    return _ffi_fmpq_polynomial_length(
+        polynomial,
+    )
+
+
+@native
+def ffiFmpqPolynomialCoefficientNumerator(
+    polynomial: FmpqPolynomial,
+    index: uint64,
+) -> Integer:
+    return _ffi_fmpq_polynomial_coefficient_numerator(
+        polynomial,
+        index,
+    )
+
+
+@native
+def ffiFmpqPolynomialCoefficientDenominator(
+    polynomial: FmpqPolynomial,
+    index: uint64,
+) -> Integer:
+    return _ffi_fmpq_polynomial_coefficient_denominator(
+        polynomial,
+        index,
+    )
+
+
+@native
+def ffiFmpqPolynomialAdd(
+    left: FmpqPolynomial,
+    right: FmpqPolynomial,
+) -> FmpqPolynomial:
+    return _ffi_fmpq_polynomial_add(
+        left,
+        right,
+    )
+
+
+@native
+def ffiFmpqPolynomialSub(
+    left: FmpqPolynomial,
+    right: FmpqPolynomial,
+) -> FmpqPolynomial:
+    return _ffi_fmpq_polynomial_sub(
+        left,
+        right,
+    )
+
+
+@native
+def ffiFmpqPolynomialNeg(
+    source: FmpqPolynomial,
+) -> FmpqPolynomial:
+    return _ffi_fmpq_polynomial_neg(
+        source,
+    )
+
+
+@native
+def ffiFmpqPolynomialMul(
+    left: FmpqPolynomial,
+    right: FmpqPolynomial,
+) -> FmpqPolynomial:
+    return _ffi_fmpq_polynomial_mul(
+        left,
+        right,
+    )
+
+
+@native
+def ffiFmpqPolynomialPow(
+    source: FmpqPolynomial,
+    exponent: uint64,
+) -> FmpqPolynomial:
+    return _ffi_fmpq_polynomial_pow(
+        source,
+        exponent,
+    )
+
+
+@native
+def ffiFmpqPolynomialEvaluate(
+    source: FmpqPolynomial,
+    numerator: Integer,
+    denominator: Integer,
+) -> FmpqValue:
+    return _ffi_fmpq_polynomial_evaluate(
+        source,
+        numerator,
+        denominator,
+    )
+
+
+@native
+def ffiFmpqPolynomialSerialize(
+    source: FmpqPolynomial,
+) -> FlintByteRegion:
+    return _ffi_fmpq_polynomial_serialize(
+        source,
+    )
 
 
 @native
