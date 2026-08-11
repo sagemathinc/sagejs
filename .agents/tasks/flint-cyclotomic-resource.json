@@ -4,7 +4,7 @@
   "id": "flint-cyclotomic-resource",
   "title": "Direct FLINT cyclotomic polynomial resources",
   "lane": "integration",
-  "status": "review",
+  "status": "complete",
   "owner": "user",
   "objective": "Route ZZ[x] cyclotomic construction through one declared generated FmpzPolynomial resource operation with exact Sage semantics, ordinary Python fallback, lifecycle coverage, and representative performance gates",
   "base_commit": "f7a8a71668e4328c15f685e2d502ced7fae0ce27",
@@ -99,7 +99,7 @@
     }
   ],
   "handoff": {
-    "summary": "Added one declared fmpz_poly_cyclotomic operation which returns a sealed generated FmpzPolynomial resource, routed ZZ[x] parent construction and Sage's global cyclotomic_polynomial(n, var='x') spelling through it, retained the ordinary divisor-product fallback on portable hosts and non-ZZ rings, and covered exact coefficients, errors, ownership, closed-resource behavior, composition, and representative performance. Warm orders 10000 and 30030 construct in about 0.25 ms and 0.21 ms respectively on the validation host, compared with 1427 ms and 3630 ms for the previous ordinary fallback baselines; first use was about 52 ms including lazy initialization.",
+    "summary": "Added one declared fmpz_poly_cyclotomic operation which returns a sealed generated FmpzPolynomial resource, routed ZZ[x] parent construction and Sage's global cyclotomic_polynomial(n, var='x') spelling through it, retained the ordinary divisor-product fallback on portable hosts and non-ZZ rings, and covered exact coefficients, errors, ownership, closed-resource behavior, composition, and representative performance. Warm orders 10000 and 30030 construct in about 0.25 ms and 0.21 ms respectively on the validation host, compared with 1427 ms and 3630 ms for the previous ordinary fallback baselines; first use was about 52 ms including lazy initialization. Root integration rebuilt the full production compiler, baselib cache, declared host adapters, and native kernel set, then reran the public/resource smoke successfully.",
     "risks": [
       "The direct FLINT declaration is currently wasm=False; browser and other portable hosts use the tested ordinary Python fallback.",
       "Only linux-x64 executed in this worktree; the generated adapter remains subject to required Windows, macOS, and Linux arm64 CI.",
