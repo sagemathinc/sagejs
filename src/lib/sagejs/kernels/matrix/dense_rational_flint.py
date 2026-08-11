@@ -15,6 +15,8 @@ from sagejs.ffi.flint import (
     fmpq_mat_rref,
     fmpq_mat_solve,
     fmpq_matrix_entry_is_zero,
+    fmpq_matrix_ncols,
+    fmpq_matrix_nrows,
     fmpq_matrix_set_entry,
 )
 from sagejs.native import IntegerBuffer, native, uint64
@@ -42,6 +44,32 @@ def flint_dense_rational_matrix_import(
             if not valid:
                 return False
     return True
+
+
+@native
+def flint_dense_rational_matrix_set_diagonal(
+    target: FmpqMatrix,
+    numerators: IntegerBuffer,
+    denominators: IntegerBuffer,
+    size: uint64,
+) -> bool:
+    """Set one square rational resource from normalized packed parts."""
+    valid = fmpq_matrix_nrows(target) == size
+    if fmpq_matrix_ncols(target) != size:
+        valid = False
+    if len(numerators) != size or len(denominators) != size:
+        valid = False
+    if valid:
+        for index in range(size):
+            if not fmpq_matrix_set_entry(
+                target,
+                index,
+                index,
+                numerators[index],
+                denominators[index],
+            ):
+                return False
+    return valid
 
 
 @native

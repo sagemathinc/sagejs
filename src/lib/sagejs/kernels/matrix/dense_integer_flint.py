@@ -160,6 +160,25 @@ def flint_dense_integer_resource_import(
 
 
 @native
+def flint_dense_integer_resource_set_diagonal(
+    target: FmpzMatrix,
+    diagonal: IntegerBuffer,
+    size: uint64,
+) -> bool:
+    """Set one square integer resource from a packed diagonal."""
+    valid = fmpz_matrix_nrows(target) == size
+    if fmpz_matrix_ncols(target) != size:
+        valid = False
+    if len(diagonal) != size:
+        valid = False
+    if valid:
+        for index in range(size):
+            if not fmpz_matrix_set_entry(target, index, index, diagonal[index]):
+                return False
+    return valid
+
+
+@native
 def flint_dense_integer_resource_random_fill(
     target: FmpzMatrix,
     lower: int,
@@ -254,6 +273,49 @@ def flint_dense_integer_resource_random_fill_default(
 
 
 @native
+def flint_dense_integer_matrix_space_random_fill(
+    target: FmpzMatrix,
+    lower: int,
+    span: uint64,
+    initial_state: uint64,
+    word_base: uint64,
+    multiplier: uint64,
+    increment: uint64,
+) -> Tuple[bool, uint64]:
+    """Fill a resource with `MatrixSpace.random_element` semantics.
+
+    `initial_state` is the random word already consumed by the first density
+    test. Full density still consumes that test for every entry in the current
+    public contract, so the kernel deliberately skips one LCG word before each
+    sampled value and preserves the exact shared random stream.
+    """
+    if word_base == 0 or span == 0 or span > word_base:
+        return False, initial_state
+    if initial_state >= word_base:
+        return False, initial_state
+
+    rows: uint64 = fmpz_matrix_nrows(target)
+    columns: uint64 = fmpz_matrix_ncols(target)
+    limit: uint64 = word_base - word_base % span
+    state: uint64 = initial_state
+    for row in range(rows):
+        for column in range(columns):
+            state = (multiplier * state + increment) % word_base
+            while state >= limit:
+                state = (multiplier * state + increment) % word_base
+            if not fmpz_matrix_set_entry(
+                target,
+                row,
+                column,
+                lower + state % span,
+            ):
+                return False, state
+            if column + 1 < columns or row + 1 < rows:
+                state = (multiplier * state + increment) % word_base
+    return True, state
+
+
+@native
 def flint_dense_integer_resource_nonzero_count(source: FmpzMatrix) -> int:
     """Safely borrow and traverse every exact entry without host callbacks."""
     rows: uint64 = fmpz_matrix_nrows(source)
@@ -276,7 +338,9 @@ __all__ = [
     "flint_dense_integer_matrix_right_kernel",
     "flint_dense_integer_matrix_snf_transform",
     "flint_dense_integer_resource_import",
+    "flint_dense_integer_resource_set_diagonal",
     "flint_dense_integer_resource_nonzero_count",
+    "flint_dense_integer_matrix_space_random_fill",
     "flint_dense_integer_resource_random_fill",
     "flint_dense_integer_resource_random_fill_default",
 ]

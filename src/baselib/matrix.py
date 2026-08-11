@@ -1176,6 +1176,53 @@ class MatrixSpaceParent(sage.Parent):
         probability = float(density)
         if probability < 0 or probability > 1:
             raise ValueError("density must be between 0 and 1")
+        if probability == 1 and not self._sparse:
+            count = self._rows * self._cols
+            if _is_packed_dense_prime_base(self._base):
+                kernel = _dense_prime_kernel_module().dense_prime_field_matrix_space_random_fill
+                storage = _dense_prime_zeros(kernel, count)
+                if count != 0:
+                    initial_state = runtime.normalize_integer(
+                        _random_int(0, 4294967295)
+                    )
+                    final_state = kernel(
+                        storage,
+                        runtime.normalize_integer(
+                            runtime.reflect.get(self._base, "_modulus")
+                        ),
+                        initial_state,
+                    )
+                    _set_random_word_state(final_state)
+                _trace_dense_prime_selection(
+                    "random_element",
+                    _typed_python_implementation(kernel),
+                    self._rows,
+                    self._cols,
+                    int(_untyped(self._base).characteristic()),
+                )
+                return self._from_canonical_uint64_residues(storage)
+            if self._base is sage.ZZ or self._base is sage.QQ:
+                resource = _matrix_space_full_density_integer_resource(
+                    self._rows,
+                    self._cols,
+                    x,
+                    y,
+                )
+                if resource is not runtime.undefined:
+                    if self._base is sage.ZZ:
+                        return self._from_fmpz_matrix_resource(resource)
+                    ffi = _flint_ffi_module()
+                    try:
+                        rational_resource = ffi.fmpq_matrix_from_fmpz(resource)
+                    finally:
+                        resource.close()
+                    _trace_dense_rational_selection(
+                        "random_element",
+                        "generated-fmpz-resource-promotion",
+                        self._rows,
+                        self._cols,
+                    )
+                    return self._from_fmpq_matrix_resource(rational_resource)
         entries = []
         for _index in range(self._rows * self._cols):
             if _random_float() > probability:
@@ -6409,6 +6456,10 @@ def zero_matrix(
 
 
 def identity_matrix(base: sage.Parent, size: int) -> Matrix:
+    base = _canonical_base(base)
+    size = int(size)
+    if size < 0:
+        raise ValueError("matrix dimensions must be nonnegative")
     if base is sage.ZZ:
         ffi = _flint_ffi_module()
         zero = ffi.fmpz_matrix(size, size)
@@ -6418,16 +6469,29 @@ def identity_matrix(base: sage.Parent, size: int) -> Matrix:
             zero.close()
         return MatrixSpace(sage.ZZ, size, size)._from_fmpz_matrix_resource(resource)
     if base is sage.QQ:
-        kernel = _dense_rational_kernel_module().dense_rational_matrix_identity
-        numerators = _dense_integer_zeros(kernel, size * size, 1)
-        denominators = _dense_integer_zeros(kernel, size * size, 1)
-        if not kernel(numerators, denominators, size):
-            raise RuntimeError("dense rational identity buffer mismatch")
-        return MatrixSpace(
-            sage.QQ,
+        ffi = _flint_ffi_module()
+        zero = ffi.fmpz_matrix(size, size)
+        try:
+            integer_resource = ffi.fmpz_matrix_pow(zero, 0)
+        finally:
+            zero.close()
+        try:
+            rational_resource = ffi.fmpq_matrix_from_fmpz(integer_resource)
+        finally:
+            integer_resource.close()
+        return MatrixSpace(sage.QQ, size, size)._from_fmpq_matrix_resource(
+            rational_resource
+        )
+    if _is_packed_dense_prime_base(base):
+        kernel = _dense_prime_kernel_module().dense_prime_field_matrix_identity
+        storage = _dense_prime_zeros(kernel, size * size)
+        if not kernel(
+            storage,
             size,
-            size,
-        )._from_canonical_rational_entries(numerators, denominators)
+            runtime.normalize_integer(runtime.reflect.get(base, "_modulus")),
+        ):
+            raise RuntimeError("dense prime-field identity buffer mismatch")
+        return MatrixSpace(base, size, size)._from_canonical_uint64_residues(storage)
     entries = []
     for row in range(size):
         for col in range(size):
@@ -6446,18 +6510,71 @@ def diagonal_matrix(
     else:
         values = list(diagonal)
     size = len(values)
-    if _canonical_base(base) is sage.ZZ:
+    base = _canonical_base(base)
+    if base is sage.ZZ:
         ffi = _flint_ffi_module()
+        kernel = _dense_integer_flint_module().flint_dense_integer_resource_set_diagonal
+        entries = [sage.ZZ(value) for value in values]
         resource = ffi.fmpz_matrix(size, size)
         try:
-            for index in range(size):
-                ffi.fmpz_matrix_set_entry(
-                    resource, index, index, sage.ZZ(values[index])
-                )
+            if _native_kernel_available(kernel):
+                packed = _dense_integer_buffer(kernel, entries, 1)
+                if not kernel(resource, packed, size):
+                    raise RuntimeError("dense integer diagonal buffer mismatch")
+            else:
+                for index in range(size):
+                    ffi.fmpz_matrix_set_entry(
+                        resource,
+                        index,
+                        index,
+                        entries[index],
+                    )
             return MatrixSpace(sage.ZZ, size, size)._from_fmpz_matrix_resource(resource)
         except Exception:
             resource.close()
             raise
+    if base is sage.QQ:
+        ffi = _flint_ffi_module()
+        kernel = _dense_rational_flint_module().flint_dense_rational_matrix_set_diagonal
+        numerators = []
+        denominators = []
+        for value in values:
+            rational = sage.QQ(value)
+            numerators.append(_untyped(rational)._numerator)
+            denominators.append(_untyped(rational)._denominator)
+        resource = ffi.fmpq_matrix(size, size)
+        try:
+            if _native_kernel_available(kernel):
+                numerator_buffer = _dense_integer_buffer(kernel, numerators, 1)
+                denominator_buffer = _dense_integer_buffer(kernel, denominators, 1)
+                if not kernel(resource, numerator_buffer, denominator_buffer, size):
+                    raise RuntimeError("dense rational diagonal buffer mismatch")
+            else:
+                for index in range(size):
+                    ffi.fmpq_matrix_set_entry(
+                        resource,
+                        index,
+                        index,
+                        numerators[index],
+                        denominators[index],
+                    )
+            return MatrixSpace(sage.QQ, size, size)._from_fmpq_matrix_resource(resource)
+        except Exception:
+            resource.close()
+            raise
+    if _is_packed_dense_prime_base(base):
+        kernel = _dense_prime_kernel_module().dense_prime_field_matrix_set_diagonal
+        diagonal_storage = _prime_residue_values(base, values)
+        target = _dense_prime_zeros(kernel, size * size)
+        source = _dense_prime_buffer(kernel, diagonal_storage)
+        if not kernel(
+            target,
+            source,
+            size,
+            runtime.normalize_integer(runtime.reflect.get(base, "_modulus")),
+        ):
+            raise RuntimeError("dense prime-field diagonal buffer mismatch")
+        return MatrixSpace(base, size, size)._from_canonical_uint64_residues(target)
     entries = []
     for row in range(size):
         for col in range(size):
@@ -6511,6 +6628,58 @@ def _set_random_word_state(state: int) -> None:
         "__sagejs_random_state__",
         runtime.number(state),
     )
+
+
+def _matrix_space_full_density_integer_resource(
+    rows: int,
+    columns: int,
+    lower: Any,
+    upper: Any,
+) -> Any:
+    """Construct the exact integral payload for full-density random elements.
+
+    The optimized kernel supports every inclusive interval spanning at most
+    one 32-bit random word. Wider and nonintegral arguments return
+    `runtime.undefined` so the public method retains its general semantic
+    fallback.
+    """
+    count = rows * columns
+    if count == 0:
+        return _flint_ffi_module().fmpz_matrix(rows, columns)
+    if not runtime.is_exact_integer(lower) or not runtime.is_exact_integer(upper):
+        return runtime.undefined
+    exact_lower = runtime.integer_bigint(lower)
+    exact_upper = runtime.integer_bigint(upper)
+    span = exact_upper - exact_lower + runtime.bigint(1)
+    if span <= 0 or span > runtime.bigint(4294967296):
+        return runtime.undefined
+
+    kernel = _dense_integer_flint_module().flint_dense_integer_matrix_space_random_fill
+    resource = _flint_ffi_module().fmpz_matrix(rows, columns)
+    try:
+        initial_state = _random_int(0, 4294967295)
+        valid, final_state = kernel(
+            resource,
+            exact_lower,
+            runtime.normalize_integer(span),
+            initial_state,
+            runtime.bigint(4294967296),
+            runtime.bigint(1664525),
+            runtime.bigint(1013904223),
+        )
+        if not valid:
+            raise ValueError("invalid full-density matrix random parameters")
+        _set_random_word_state(final_state)
+        _trace_dense_integer_selection(
+            "random_element",
+            _typed_python_implementation(kernel),
+            rows,
+            columns,
+        )
+        return resource
+    except Exception:
+        resource.close()
+        raise
 
 
 def _random_integer(

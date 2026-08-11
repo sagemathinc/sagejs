@@ -1,0 +1,130 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "canonical-matrix-constructors",
+  "title": "Canonical Matrix Constructors",
+  "lane": "arithmetic-algebra",
+  "status": "review",
+  "owner": "user",
+  "objective": "Eliminate per-entry and full-square host construction for dense matrix random, identity, and diagonal constructors over ZZ, QQ, and canonical small GF(p), preserving Sage semantics and fallbacks",
+  "base_commit": "db010e7aa64292a713b1106b79bace62e2caf322",
+  "claims": [
+    "src/baselib/matrix.py",
+    "src/lib/sagejs/kernels/matrix/dense_integer_flint.py",
+    "src/lib/sagejs/kernels/matrix/dense_prime_field.py",
+    "src/lib/sagejs/kernels/matrix/dense_rational_flint.py",
+    "test/canonical-matrix-constructors-v1.cjs",
+    "bench/canonical-matrix-constructors-v1.cjs"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "source-transparent-native",
+    "fallback": "same-source",
+    "oracles": [
+      "cpython",
+      "javascript",
+      "Sage-compatible constructor semantics",
+      "former per-entry deterministic random loop",
+      "generated FLINT resources and packed prime storage"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "node --test test/canonical-matrix-constructors-v1.cjs",
+    "node bench/canonical-matrix-constructors-v1.cjs",
+    "pnpm test:baselib:strict",
+    "pnpm test:native"
+  ],
+  "runs": [
+    {
+      "command": "node --test test/canonical-matrix-constructors-v1.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.764,
+      "started_at": "2026-08-11T23:10:41.519Z",
+      "commit": "db010e7aa64292a713b1106b79bace62e2caf322",
+      "workspace_fingerprint": "3cd19cef1215082d815af32693489439554b7f2e3808bda19de3860da3dadeca",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/canonical-matrix-constructors-v1.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.58,
+      "started_at": "2026-08-11T23:10:44.887Z",
+      "commit": "db010e7aa64292a713b1106b79bace62e2caf322",
+      "workspace_fingerprint": "3cd19cef1215082d815af32693489439554b7f2e3808bda19de3860da3dadeca",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 12.503,
+      "started_at": "2026-08-11T23:10:47.057Z",
+      "commit": "db010e7aa64292a713b1106b79bace62e2caf322",
+      "workspace_fingerprint": "3cd19cef1215082d815af32693489439554b7f2e3808bda19de3860da3dadeca",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/canonical-matrix-constructors-v1.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.709,
+      "started_at": "2026-08-11T23:27:53.232Z",
+      "commit": "db010e7aa64292a713b1106b79bace62e2caf322",
+      "workspace_fingerprint": "3cd19cef1215082d815af32693489439554b7f2e3808bda19de3860da3dadeca",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/canonical-matrix-constructors-v1.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.301,
+      "started_at": "2026-08-11T23:28:01.259Z",
+      "commit": "db010e7aa64292a713b1106b79bace62e2caf322",
+      "workspace_fingerprint": "3cd19cef1215082d815af32693489439554b7f2e3808bda19de3860da3dadeca",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 12.06,
+      "started_at": "2026-08-11T23:28:09.243Z",
+      "commit": "db010e7aa64292a713b1106b79bace62e2caf322",
+      "workspace_fingerprint": "3cd19cef1215082d815af32693489439554b7f2e3808bda19de3860da3dadeca",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:native",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 380.724,
+      "started_at": "2026-08-11T23:28:26.747Z",
+      "commit": "db010e7aa64292a713b1106b79bace62e2caf322",
+      "workspace_fingerprint": "3cd19cef1215082d815af32693489439554b7f2e3808bda19de3860da3dadeca",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Full-density MatrixSpace random elements, identity matrices, and diagonal matrices over ZZ, QQ, and canonical small GF(p) now construct canonical storage through compiled bulk kernels or generated FLINT resources. Full-density random construction preserves the former per-entry RNG stream exactly, including density draws and rejection sampling. Five-sample warm medians for 500x500 random elements were 8.20 ms (ZZ), 9.75 ms (QQ), and 1.01 ms (GF(97)); 1000x1000 identities were 3.32 ms, 9.00 ms, and 0.71 ms; length-1000 diagonals were 3.66 ms, 5.52 ms, and 1.03 ms. Focused native-enabled/native-disabled semantics and isolation tests, strict Python checking, the 380.72-second full native suite, and the direct native architecture ratchet pass. The deterministic changed-file unit tier otherwise passed 117 of 119 checks and stopped only on the two integration-owned shared-file updates listed below.",
+    "risks": [
+      "The integration lane must raise architecture/package-graph.json's linear-algebra source budget from 342000 bytes to cover the measured 349418 bytes; until then pnpm architecture:check and test/package-graph.cjs fail.",
+      "The integration lane must register test/canonical-matrix-constructors-v1.cjs in test/node-test-manifest.cjs; until then test/test-manifest.test.cjs fails.",
+      "The native-disabled ZZ/QQ diagonal fallback intentionally uses O(n) declared scalar writes for correctness; production uses the isolated compiled resource kernels.",
+      "The full-density ZZ/QQ random specialization covers integral intervals spanning at most one 32-bit word; wider and nonintegral cases deliberately retain the general fallback."
+    ],
+    "next_steps": [
+      "Apply the shared package-budget and Node test-manifest updates in the integration lane after cherry-picking this commit.",
+      "Run pnpm architecture:check and pnpm test:changed after those two integration updates; pnpm run architecture:native already passes with the current 718-entry boundary ratchet, so architecture/native-boundaries.json needs no regeneration."
+    ]
+  }
+}
