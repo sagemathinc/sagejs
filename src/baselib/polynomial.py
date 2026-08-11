@@ -158,6 +158,13 @@ def _integer_kernel_output(
     word_capacity: int,
 ) -> Any:
     if _native_kernel_available(kernel_function):
+        factory = getattr(kernel_function, "createIntegerBuffer", None)
+        if callable(factory):
+            return runtime.reflect.apply(
+                factory,
+                runtime.undefined,
+                [length, word_capacity],
+            )
         return _integer_zeros(length, word_capacity)
     return [0 for _index in range(length)]
 
@@ -212,6 +219,23 @@ def _integer_word_capacity(source: Any) -> int:
 
 def _integer_zeros(length: int, word_capacity: int) -> Any:
     return runtime.integer_buffer([0 for _index in range(length)], word_capacity)
+
+
+def _flint_byte_region_bytes(region: Any) -> Any:
+    """Consume an owned variable-size FLINT result into a `Uint8Array`."""
+    ffi = _flint_ffi_module()
+    kernel = _packed_polynomial_flint_module().flint_byte_region_copy
+    try:
+        length = runtime.number(ffi.flint_byte_region_length(region))
+        output = _integer_kernel_output(kernel, length, 1)
+        if not kernel(region, output, length):
+            raise RuntimeError("FLINT byte-region copy failed")
+        if runtime.number(runtime.reflect.get(output, "wordCapacity")) != 1:
+            raise RuntimeError("FLINT byte-region copy used an invalid word capacity")
+        limbs = runtime.reflect.get(output, "limbs")
+        return runtime.uint64_pack_le(limbs, 1)
+    finally:
+        region.close()
 
 
 def _trim_integer_buffer(source: Any) -> Any:
@@ -1411,6 +1435,25 @@ class PolynomialElement(sage.Element):
             else:
                 answer.append(base(coefficient))
         return answer
+
+    def _packed_exact_polynomial(self) -> Any:
+        """Return the stable bulk encoding of a Node exact resource.
+
+        SagePack uses this private capability to avoid constructing one Python
+        scalar per coefficient. Portable packed polynomials return
+        `undefined`, causing the codec to retain its ordinary coefficient
+        representation.
+        """
+        ffi = _flint_ffi_module()
+        if self._has_fmpz_polynomial_resource():
+            return _flint_byte_region_bytes(
+                ffi.fmpz_polynomial_serialize(self._exact_polynomial_resource())
+            )
+        if self._has_fmpq_polynomial_resource():
+            return _flint_byte_region_bytes(
+                ffi.fmpq_polynomial_serialize(self._exact_polynomial_resource())
+            )
+        return runtime.undefined
 
     def __call__(self, value: Any) -> Any:
         if hasattr(value, "nrows") and hasattr(value, "ncols") and value.is_square():

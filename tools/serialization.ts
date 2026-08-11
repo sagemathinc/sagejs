@@ -1069,6 +1069,22 @@ function encodeElement(value: unknown, context: EncodeContext): WireValue {
     });
   }
   if (kind === "polynomial") {
+    const base = callMethod(parent, "base_ring");
+    const baseKind = parentKind(base);
+    const packedMethod = Reflect.get(Object(value), "_packed_exact_polynomial");
+    const packed = ["ZZ", "QQ"].includes(baseKind ?? "") &&
+        typeof packedMethod === "function"
+      ? invoke(packedMethod, value, [])
+      : undefined;
+    if (isUint8Array(packed)) {
+      context.transferable(packed);
+      return context.encode({
+        kind,
+        parent,
+        coefficients: packed,
+        coefficientEncoding: baseKind === "ZZ" ? "fmpz-poly-le-v1" : "fmpq-poly-le-v1",
+      });
+    }
     return context.encode({
       kind,
       parent,
@@ -1136,6 +1152,10 @@ function encodeElement(value: unknown, context: EncodeContext): WireValue {
 }
 
 function polynomialFromCoefficients(parent: unknown, coefficients: unknown[]): unknown {
+  const direct = Reflect.get(Object(parent), "_from_coefficients");
+  if (typeof direct === "function") {
+    return invoke(direct, parent, [coefficients]);
+  }
   const generator = callMethod(parent, "gen");
   let result = callPython(parent, [0]);
   for (let index = coefficients.length - 1; index >= 0; index -= 1) {
@@ -1143,6 +1163,87 @@ function polynomialFromCoefficients(parent: unknown, coefficients: unknown[]): u
     result = callMethod(result, "_add_", [callPython(parent, [coefficients[index]])]);
   }
   return result;
+}
+
+function unpackExactPolynomial(
+  bytes: Uint8Array,
+  encoding: unknown,
+): unknown[] {
+  const rational = encoding === "fmpq-poly-le-v1";
+  if (encoding !== "fmpz-poly-le-v1" && !rational) {
+    throw new SageSerializationError("exact polynomial encoding is invalid");
+  }
+  if (bytes.byteLength < 16) {
+    throw new SageSerializationError("exact polynomial data is truncated");
+  }
+  const expectedMagic = rational ? "SJPQ" : "SJPZ";
+  for (let index = 0; index < 4; index += 1) {
+    if (bytes[index] !== expectedMagic.charCodeAt(index)) {
+      throw new SageSerializationError("exact polynomial magic is invalid");
+    }
+  }
+  if (bytes[4] !== 1 || bytes[5] !== 0 || bytes[6] !== 0 || bytes[7] !== 0) {
+    throw new SageSerializationError("exact polynomial version is unsupported");
+  }
+  const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+  const countValue = view.getBigUint64(8, true);
+  if (countValue > BigInt(Number.MAX_SAFE_INTEGER)) {
+    throw new SageSerializationError("exact polynomial length is too large");
+  }
+  const count = Number(countValue);
+  const partCount = rational ? 2 * count : count;
+  if (partCount > Math.floor((bytes.byteLength - 16) / 4)) {
+    throw new SageSerializationError("exact polynomial data is truncated");
+  }
+  let offset = 16;
+  function readInteger(): bigint {
+    if (offset + 4 > bytes.byteLength) {
+      throw new SageSerializationError("exact polynomial integer is truncated");
+    }
+    const header = view.getUint32(offset, true);
+    offset += 4;
+    const length = header & 0x7fff_ffff;
+    if (offset + length > bytes.byteLength) {
+      throw new SageSerializationError("exact polynomial integer is truncated");
+    }
+    if (length > 0 && bytes[offset + length - 1] === 0) {
+      throw new SageSerializationError(
+        "exact polynomial integer magnitude is not canonical",
+      );
+    }
+    let magnitude = 0n;
+    for (let byte = length - 1; byte >= 0; byte -= 1) {
+      magnitude = (magnitude << 8n) | BigInt(bytes[offset + byte]);
+    }
+    offset += length;
+    if ((header & 0x8000_0000) !== 0) {
+      if (magnitude === 0n) {
+        throw new SageSerializationError("exact polynomial has negative zero");
+      }
+      return -magnitude;
+    }
+    return magnitude;
+  }
+  const coefficients = new Array<unknown>(count);
+  const rationals = rational ? Reflect.get(globalThis, "QQ") : undefined;
+  for (let index = 0; index < count; index += 1) {
+    const numerator = readInteger();
+    if (!rational) {
+      coefficients[index] = numerator;
+      continue;
+    }
+    const denominator = readInteger();
+    if (denominator <= 0n) {
+      throw new SageSerializationError(
+        "exact polynomial denominator is not positive",
+      );
+    }
+    coefficients[index] = callPython(rationals, [numerator, denominator]);
+  }
+  if (offset !== bytes.byteLength) {
+    throw new SageSerializationError("exact polynomial data has trailing bytes");
+  }
+  return coefficients;
 }
 
 function unpackResidues(bytes: Uint8Array, width: number, count: number): number[] {
@@ -1234,7 +1335,10 @@ function decodeElement(payload: WireValue, context: DecodeContext): unknown {
   }
   if (data.kind === "residue") return callPython(data.parent, [data.value]);
   if (data.kind === "polynomial") {
-    return polynomialFromCoefficients(data.parent, data.coefficients as unknown[]);
+    const coefficients = data.coefficients instanceof Uint8Array
+      ? unpackExactPolynomial(data.coefficients, data.coefficientEncoding)
+      : data.coefficients as unknown[];
+    return polynomialFromCoefficients(data.parent, coefficients);
   }
   if (data.kind === "matrix") {
     if (data.entries instanceof Uint8Array) {
