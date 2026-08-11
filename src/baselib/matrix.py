@@ -1962,6 +1962,17 @@ class Matrix(sage.Element):
 
     def is_zero(self) -> bool:
         if self._has_packed_rational_storage():
+            if self._has_fmpq_matrix_resource():
+                result = bool(
+                    _flint_ffi_module().fmpq_matrix_is_zero(self._rational_resource())
+                )
+                _trace_dense_rational_selection(
+                    "is_zero",
+                    "generated-flint-resource",
+                    self.nrows(),
+                    self.ncols(),
+                )
+                return result
             kernel = _dense_rational_kernel_module().dense_rational_matrix_is_zero
             numerators, _denominators = self._rational_kernel_parts(kernel)
             result = bool(kernel(numerators))
@@ -2005,6 +2016,17 @@ class Matrix(sage.Element):
 
     def is_one(self) -> bool:
         if self._has_packed_rational_storage():
+            if self._has_fmpq_matrix_resource():
+                result = bool(
+                    _flint_ffi_module().fmpq_matrix_is_one(self._rational_resource())
+                )
+                _trace_dense_rational_selection(
+                    "is_one",
+                    "generated-flint-resource",
+                    self.nrows(),
+                    self.ncols(),
+                )
+                return result
             kernel = _dense_rational_kernel_module().dense_rational_matrix_is_one
             numerators, denominators = self._rational_kernel_parts(kernel)
             result = bool(kernel(numerators, denominators, self.nrows(), self.ncols()))
@@ -2550,6 +2572,17 @@ class Matrix(sage.Element):
 
     def __neg__(self) -> Matrix:
         if self._has_packed_rational_storage():
+            if self._has_fmpq_matrix_resource():
+                resource = _flint_ffi_module().fmpq_matrix_neg(
+                    self._rational_resource()
+                )
+                _trace_dense_rational_selection(
+                    "negate",
+                    "generated-flint-resource",
+                    self.nrows(),
+                    self.ncols(),
+                )
+                return self._parent._from_fmpq_matrix_resource(resource)
             kernel = _dense_rational_kernel_module().dense_rational_matrix_negate
             source_numerators, source_denominators = self._rational_kernel_parts(kernel)
 
@@ -2717,6 +2750,19 @@ class Matrix(sage.Element):
             return self._parent._from_canonical_integer_entries(entries)
         if self._has_packed_rational_storage():
             rational = sage.QQ(scalar)
+            if self._has_fmpq_matrix_resource():
+                resource = _flint_ffi_module().fmpq_matrix_scalar_mul(
+                    self._rational_resource(),
+                    rational._numerator,
+                    rational._denominator,
+                )
+                _trace_dense_rational_selection(
+                    "scalar_multiply",
+                    "generated-flint-resource",
+                    self.nrows(),
+                    self.ncols(),
+                )
+                return self._parent._from_fmpq_matrix_resource(resource)
             kernel = (
                 _dense_rational_kernel_module().dense_rational_matrix_scalar_multiply
             )
@@ -3322,6 +3368,17 @@ class Matrix(sage.Element):
         if self._rank_cache is runtime.undefined:
             backend = runtime.flint_backend()
             if self._has_packed_rational_storage():
+                if self._has_fmpq_matrix_resource():
+                    self._rank_cache = runtime.number(
+                        _flint_ffi_module().fmpq_matrix_rank(self._rational_resource())
+                    )
+                    _trace_dense_rational_selection(
+                        "rank",
+                        "generated-flint-resource",
+                        self.nrows(),
+                        self.ncols(),
+                    )
+                    return self._rank_cache
                 kernel_function = (
                     _dense_rational_flint_module().flint_dense_rational_matrix_rank
                 )
@@ -5512,6 +5569,21 @@ class Matrix(sage.Element):
             )
             return runtime.normalize_integer(value)
         if self._has_packed_rational_storage():
+            if self._has_fmpq_matrix_resource():
+                ffi = _flint_ffi_module()
+                value = ffi.fmpq_matrix_trace(self._rational_resource())
+                try:
+                    numerator = ffi.fmpq_value_numerator(value)
+                    denominator = ffi.fmpq_value_denominator(value)
+                finally:
+                    value.close()
+                _trace_dense_rational_selection(
+                    "trace",
+                    "generated-flint-resource",
+                    self.nrows(),
+                    self.ncols(),
+                )
+                return _untyped(sage.QQ)(numerator, denominator)
             kernel = _dense_rational_kernel_module().dense_rational_matrix_trace
             source_numerators, source_denominators = self._rational_kernel_parts(kernel)
 
@@ -5564,6 +5636,20 @@ class Matrix(sage.Element):
         left = self.change_ring(base)
         right = other.change_ring(base)
         if left._has_packed_rational_storage() and right._has_packed_rational_storage():
+            if left._has_fmpq_matrix_resource() and right._has_fmpq_matrix_resource():
+                result = bool(
+                    _flint_ffi_module().fmpq_matrix_equal(
+                        left._rational_resource(),
+                        right._rational_resource(),
+                    )
+                )
+                _trace_dense_rational_selection(
+                    "equal",
+                    "generated-flint-resource",
+                    left.nrows(),
+                    left.ncols(),
+                )
+                return result
             kernel = _dense_rational_kernel_module().dense_rational_matrix_equal
             left_numerators, left_denominators = left._rational_kernel_parts(kernel)
             right_numerators, right_denominators = right._rational_kernel_parts(kernel)

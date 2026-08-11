@@ -271,6 +271,85 @@ def fmpq_matrix_copy(source: FmpqMatrix) -> FmpqMatrix: ...
 
 
 @flint.function(
+    dynamic="ffiFmpqMatrixNeg",
+    symbol="sagejs_fmpq_matrix_neg",
+    returns=int,
+    abi=[
+        out("result", sagejs_fmpq_matrix_t),
+        in_("source", sagejs_fmpq_matrix_t),
+    ],
+    effects=Effects(pure=False, allocates=True, raises=[RuntimeError]),
+    result=Status(1, exception=RuntimeError, message="rational matrix negation failed"),
+    wasm=False,
+)
+def fmpq_matrix_neg(source: FmpqMatrix) -> FmpqMatrix: ...
+
+
+@flint.function(
+    dynamic="ffiFmpqMatrixScalarMul",
+    symbol="sagejs_fmpq_matrix_scalar_mul",
+    returns=int,
+    abi=[
+        out("result", sagejs_fmpq_matrix_t),
+        in_("source", sagejs_fmpq_matrix_t),
+        in_("numerator", fmpz_t),
+        in_("denominator", fmpz_t),
+    ],
+    effects=Effects(pure=False, allocates=True, raises=[ValueError]),
+    result=Status(
+        1,
+        exception=ValueError,
+        message="invalid rational matrix scalar",
+    ),
+    wasm=False,
+)
+def fmpq_matrix_scalar_mul(
+    source: FmpqMatrix,
+    numerator: Integer,
+    denominator: Integer,
+) -> FmpqMatrix: ...
+
+
+@flint.function(
+    dynamic="ffiFmpqMatrixEqual",
+    symbol="sagejs_fmpq_matrix_equal",
+    returns=int,
+    abi=[
+        in_("left", sagejs_fmpq_matrix_t),
+        in_("right", sagejs_fmpq_matrix_t),
+    ],
+    effects=Effects(pure=True),
+    result=Direct(),
+    wasm=False,
+)
+def fmpq_matrix_equal(left: FmpqMatrix, right: FmpqMatrix) -> bool: ...
+
+
+@flint.function(
+    dynamic="ffiFmpqMatrixIsZero",
+    symbol="sagejs_fmpq_matrix_is_zero",
+    returns=int,
+    abi=[in_("matrix", sagejs_fmpq_matrix_t)],
+    effects=Effects(pure=True),
+    result=Direct(),
+    wasm=False,
+)
+def fmpq_matrix_is_zero(matrix: FmpqMatrix) -> bool: ...
+
+
+@flint.function(
+    dynamic="ffiFmpqMatrixIsOne",
+    symbol="sagejs_fmpq_matrix_is_one",
+    returns=int,
+    abi=[in_("matrix", sagejs_fmpq_matrix_t)],
+    effects=Effects(pure=True),
+    result=Direct(),
+    wasm=False,
+)
+def fmpq_matrix_is_one(matrix: FmpqMatrix) -> bool: ...
+
+
+@flint.function(
     dynamic="ffiFmpqMatrixAdd",
     symbol="sagejs_fmpq_matrix_add",
     returns=int,
@@ -404,11 +483,11 @@ def fmpq_matrix_rref(source: FmpqMatrix) -> FmpqMatrix: ...
     symbol="sagejs_fmpq_matrix_rank",
     returns=uint64_t,
     abi=[in_("matrix", sagejs_fmpq_matrix_t)],
-    effects=Effects(pure=True, allocates=True),
+    effects=Effects(pure=False, allocates=True, writes=["matrix"]),
     result=Direct(),
     wasm=False,
 )
-def fmpq_matrix_rank(matrix: FmpqMatrix) -> uint64: ...
+def fmpq_matrix_rank(matrix: Writable[FmpqMatrix]) -> uint64: ...
 
 
 @flint.function(
@@ -428,6 +507,25 @@ def fmpq_matrix_rank(matrix: FmpqMatrix) -> uint64: ...
     wasm=False,
 )
 def fmpq_matrix_det(source: FmpqMatrix) -> FmpqValue: ...
+
+
+@flint.function(
+    dynamic="ffiFmpqMatrixTrace",
+    symbol="sagejs_fmpq_matrix_trace",
+    returns=int,
+    abi=[
+        out("result", sagejs_fmpq_value_t),
+        in_("source", sagejs_fmpq_matrix_t),
+    ],
+    effects=Effects(pure=False, allocates=True, raises=[ValueError]),
+    result=Status(
+        1,
+        exception=ValueError,
+        message="trace requires a square rational matrix",
+    ),
+    wasm=False,
+)
+def fmpq_matrix_trace(source: FmpqMatrix) -> FmpqValue: ...
 
 
 @flint.function(

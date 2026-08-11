@@ -80,18 +80,59 @@ resource_difference = resource_sum - resource_right
 resource_transpose = resource_left.transpose()
 resource_inverse = resource_left.inverse()
 resource_solution = resource_left.solve_right(resource_right)
-for resource_value in [
-    resource_left, resource_right, resource_sum, resource_difference,
-    resource_transpose, resource_inverse, resource_solution,
+resource_negated = -resource_left
+resource_scaled = QQ(6, -14)*resource_left
+resource_zero_scaled = QQ(0, 2**4096 + 1)*resource_left
+resource_equal = resource_left.__copy__()
+assert resource_equal == resource_left
+assert not (resource_equal != resource_left)
+resource_equal[0, 0] = resource_equal[0, 0] + QQ(1, 2**601 + 15)
+assert resource_equal != resource_left
+assert not (resource_equal == resource_left)
+assert resource_negated[0, 0] == -resource_left[0, 0]
+assert resource_scaled[0, 0] == -QQ(3, 7)*resource_left[0, 0]
+assert resource_zero_scaled.is_zero()
+assert not resource_zero_scaled.is_one()
+assert resource_zero_scaled.rank() == 0
+assert resource_left.trace() == (
+    QQ(2**521 + 17, 97) + QQ(2**1024 + 3, 11)
+)
+for resource_name, resource_value in [
+    ('left', resource_left), ('right', resource_right), ('sum', resource_sum),
+    ('difference', resource_difference), ('transpose', resource_transpose),
+    ('inverse', resource_inverse), ('solution', resource_solution),
+    ('negated', resource_negated), ('scaled', resource_scaled),
+    ('zero-scaled', resource_zero_scaled), ('equal-copy', resource_equal),
 ]:
     resource_storage = resource_value._rational_storage_cache
-    assert runtime.reflect.get(resource_storage, 'numerators') is runtime.undefined
-    assert runtime.reflect.get(resource_storage, 'denominators') is runtime.undefined
+    if runtime.reflect.get(resource_storage, 'numerators') is not runtime.undefined:
+        raise AssertionError(resource_name + ' materialized numerators')
+    if runtime.reflect.get(resource_storage, 'denominators') is not runtime.undefined:
+        raise AssertionError(resource_name + ' materialized denominators')
 assert resource_difference == resource_left
 assert resource_transpose.transpose() == resource_left
 assert resource_left*resource_inverse == identity_matrix(QQ, 2)
 assert resource_left*resource_solution == resource_right
 assert resource_left == left_before and resource_right == right_before
+
+resource_rank = matrix(QQ, 2, 3, [1, 0, 0, 0, 0, 0])
+assert resource_rank.rank() == 1
+assert resource_rank.rank() == 1
+resource_rank[1, 1] = QQ(2**701 + 1, 2**257 + 93)
+assert resource_rank.rank() == 2
+rank_storage = resource_rank._rational_storage_cache
+assert runtime.reflect.get(rank_storage, 'numerators') is runtime.undefined
+assert runtime.reflect.get(rank_storage, 'denominators') is runtime.undefined
+
+assert zero_matrix(QQ, 0, 7).is_zero()
+assert not zero_matrix(QQ, 0, 7).is_one()
+assert zero_matrix(QQ, 0, 0).is_zero()
+assert zero_matrix(QQ, 0, 0).is_one()
+assert zero_matrix(QQ, 2, 3).is_zero()
+assert not zero_matrix(QQ, 2, 3).is_one()
+assert identity_matrix(QQ, 3).is_one()
+assert not identity_matrix(QQ, 3).is_zero()
+assert zero_matrix(QQ, 0, 0).trace() == 0
 
 try:
     matrix(QQ, 2, 3, range(6)).inverse()
@@ -339,8 +380,16 @@ I = identity_matrix(QQ, 4)
 R = random_matrix(QQ, 4, 2)
 A + A
 A - A
+-A
+(QQ(3)/7)*A
 A.transpose()
 A * A
+A == A.__copy__()
+A != I
+A.is_zero()
+I.is_one()
+A.trace()
+A.rank()
 I.inverse()
 I.solve_right(R)
 A.det()
@@ -352,8 +401,15 @@ print('trace-ok')
     assert.match(trace, /Matrix\.random_matrix QQ 4x4 -> generated-flint-resource/);
     assert.match(trace, /Matrix\.add QQ 4x4 -> generated-flint-resource/);
     assert.match(trace, /Matrix\.subtract QQ 4x4 -> generated-flint-resource/);
+    assert.match(trace, /Matrix\.negate QQ 4x4 -> generated-flint-resource/);
+    assert.match(trace, /Matrix\.scalar_multiply QQ 4x4 -> generated-flint-resource/);
     assert.match(trace, /Matrix\.transpose QQ 4x4 -> generated-flint-resource/);
     assert.match(trace, /Matrix\.multiply QQ 4x4 -> generated-flint-resource/);
+    assert.match(trace, /Matrix\.equal QQ 4x4 -> generated-flint-resource/);
+    assert.match(trace, /Matrix\.is_zero QQ 4x4 -> generated-flint-resource/);
+    assert.match(trace, /Matrix\.is_one QQ 4x4 -> generated-flint-resource/);
+    assert.match(trace, /Matrix\.trace QQ 4x4 -> generated-flint-resource/);
+    assert.match(trace, /Matrix\.rank QQ 4x4 -> generated-flint-resource/);
     assert.match(trace, /Matrix\.inverse QQ 4x4 -> generated-flint-resource/);
     assert.match(trace, /Matrix\.solve_right QQ 4x2 -> generated-flint-resource/);
     assert.match(trace, /Matrix\.determinant QQ 4x4 -> generated-flint-resource/);

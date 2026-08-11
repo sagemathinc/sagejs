@@ -115,10 +115,13 @@ test("FFI declarations are strict and generated modules are current", () => {
       "fmpq_matrix_ncols",
       "fmpq_matrix_set_entry", "fmpq_matrix_entry_numerator",
       "fmpq_matrix_entry_denominator", "fmpq_matrix_entry_is_zero",
-      "fmpq_matrix_copy", "fmpq_matrix_add", "fmpq_matrix_sub",
+      "fmpq_matrix_copy", "fmpq_matrix_neg", "fmpq_matrix_scalar_mul",
+      "fmpq_matrix_equal", "fmpq_matrix_is_zero", "fmpq_matrix_is_one",
+      "fmpq_matrix_add", "fmpq_matrix_sub",
       "fmpq_matrix_transpose", "fmpq_matrix_mul", "fmpq_matrix_inv",
       "fmpq_matrix_solve", "fmpq_matrix_rref",
-      "fmpq_matrix_rank", "fmpq_matrix_det", "fmpq_value_numerator",
+      "fmpq_matrix_rank", "fmpq_matrix_det", "fmpq_matrix_trace",
+      "fmpq_value_numerator",
       "fmpq_value_denominator", "fmpq_matrix_format",
       "fmpq_matrix_serialize", "flint_byte_region_length",
       "flint_byte_region_get",
@@ -163,7 +166,7 @@ test("FFI declarations are strict and generated modules are current", () => {
     { resource: "graph", ownership: "owned", owner: null, root: "graph" },
     { resource: "edges", ownership: "borrowed", owner: "graph", root: "graph" },
   ]);
-  assert.match(runSage(["ffi", "check"]), /72 function\(s\)/);
+  assert.match(runSage(["ffi", "check"]), /78 function\(s\)/);
   const inspection = JSON.parse(
     runSage(["ffi", "explain", "flint", "--json"]),
   );
@@ -213,14 +216,14 @@ test("generated host adapters cover values and safe owned resources", () => {
     assert.doesNotMatch(source, /sagejs\.runtime|ffi_call/);
     assert.equal(
       functions.length,
-      declaration.library.id === "flint" ? 65 : 2,
+      declaration.library.id === "flint" ? 71 : 2,
     );
   }
 });
 
 test("packages make generated host adapters canonical and retain handwritten oracles", () => {
   for (const [packagePath, expected] of [
-    ["../packages/flint", 65],
+    ["../packages/flint", 71],
     ["../packages/graph", 2],
   ]) {
     const backend = require(packagePath);
@@ -367,7 +370,7 @@ test("native-boundary audit is a reviewed exact ratchet", () => {
   const current = boundaryAudit.validateBoundarySnapshot(snapshot, { root });
   assert.ok(current.counts["napi-export"] >= 280);
   assert.ok(current.counts["runtime-intrinsic"] >= 100);
-  assert.equal(current.counts["declared-ffi"], 72);
+  assert.equal(current.counts["declared-ffi"], 78);
   assert.equal(current.counts["declared-ffi-resource"], 6);
   assert.match(runSage(["ffi", "audit"]), /inventoried native boundaries/);
   assert.equal(
@@ -802,6 +805,9 @@ test("generated rational matrix resources execute direct FLINT operations", () =
   const results = [];
   try {
     for (const [resourceResult, oracleResult, rows, columns] of [
+      [flint.ffiFmpqMatrixNeg(left), flint.matrixNeg(oracleLeft), 2, 2],
+      [flint.ffiFmpqMatrixScalarMul(left, -17n, 19n),
+        flint.matrixScalarMul(oracleLeft, -17n, 19n), 2, 2],
       [flint.ffiFmpqMatrixAdd(left, right),
         flint.matrixAdd(oracleLeft, oracleRight), 2, 2],
       [flint.ffiFmpqMatrixSub(left, right),
@@ -818,6 +824,37 @@ test("generated rational matrix resources execute direct FLINT operations", () =
         oracleEntries(oracleResult, rows, columns),
       );
     }
+    assert.equal(flint.ffiFmpqMatrixEqual(left, left), true);
+    assert.equal(flint.ffiFmpqMatrixEqual(left, right), false);
+    assert.equal(
+      flint.ffiFmpqMatrixEqual(left, right),
+      flint.matrixEqual(oracleLeft, oracleRight),
+    );
+    assert.equal(flint.ffiFmpqMatrixIsZero(left), false);
+    assert.equal(flint.ffiFmpqMatrixIsOne(left), false);
+    assert.equal(
+      flint.ffiFmpqMatrixRank(left),
+      BigInt(flint.matrixRank(oracleLeft)),
+    );
+    const trace = flint.ffiFmpqMatrixTrace(left);
+    try {
+      const firstNumerator = leftEntries[0][0];
+      const firstDenominator = leftEntries[0][1];
+      const secondNumerator = leftEntries[3][0];
+      const secondDenominator = leftEntries[3][1];
+      const numerator = firstNumerator * secondDenominator +
+        secondNumerator * firstDenominator;
+      const denominator = firstDenominator * secondDenominator;
+      let leftGcd = numerator < 0n ? -numerator : numerator;
+      let rightGcd = denominator;
+      while (rightGcd !== 0n) {
+        [leftGcd, rightGcd] = [rightGcd, leftGcd % rightGcd];
+      }
+      assert.equal(flint.ffiFmpqValueNumerator(trace), numerator / leftGcd);
+      assert.equal(flint.ffiFmpqValueDenominator(trace), denominator / leftGcd);
+    } finally {
+      flint.ffiFmpqValueClose(trace);
+    }
     assert.deepEqual(resourceEntries(left), originalLeft);
     assert.deepEqual(resourceEntries(right), originalRight);
 
@@ -831,7 +868,26 @@ test("generated rational matrix resources execute direct FLINT operations", () =
     const wrongRows = resourceMatrix(3, 1, [
       [1n, 1n], [2n, 1n], [3n, 1n],
     ]);
+    const zero = resourceMatrix(2, 2, [
+      [0n, 1n], [0n, 1n], [0n, 1n], [0n, 1n],
+    ]);
+    const identity = resourceMatrix(2, 2, [
+      [1n, 1n], [0n, 1n], [0n, 1n], [1n, 1n],
+    ]);
     try {
+      assert.equal(flint.ffiFmpqMatrixIsZero(zero), true);
+      assert.equal(flint.ffiFmpqMatrixIsOne(zero), false);
+      assert.equal(flint.ffiFmpqMatrixIsZero(identity), false);
+      assert.equal(flint.ffiFmpqMatrixIsOne(identity), true);
+      assert.equal(flint.ffiFmpqMatrixEqual(left, rectangular), false);
+      assert.throws(
+        () => flint.ffiFmpqMatrixScalarMul(left, 1n, 0n),
+        /invalid rational matrix scalar/,
+      );
+      assert.throws(
+        () => flint.ffiFmpqMatrixTrace(rectangular),
+        /trace requires a square rational matrix/,
+      );
       assert.throws(
         () => flint.ffiFmpqMatrixAdd(left, rectangular),
         /dimensions are incompatible/,
@@ -851,9 +907,24 @@ test("generated rational matrix resources execute direct FLINT operations", () =
         /no solutions/,
       );
     } finally {
+      flint.ffiFmpqMatrixClose(identity);
+      flint.ffiFmpqMatrixClose(zero);
       flint.ffiFmpqMatrixClose(wrongRows);
       flint.ffiFmpqMatrixClose(singular);
       flint.ffiFmpqMatrixClose(rectangular);
+    }
+    const closed = flint.ffiFmpqMatrixCreate(1n, 1n);
+    flint.ffiFmpqMatrixClose(closed);
+    for (const operation of [
+      () => flint.ffiFmpqMatrixNeg(closed),
+      () => flint.ffiFmpqMatrixScalarMul(closed, 1n, 2n),
+      () => flint.ffiFmpqMatrixEqual(closed, left),
+      () => flint.ffiFmpqMatrixIsZero(closed),
+      () => flint.ffiFmpqMatrixIsOne(closed),
+      () => flint.ffiFmpqMatrixTrace(closed),
+      () => flint.ffiFmpqMatrixRank(closed),
+    ]) {
+      assert.throws(operation, /resource is closed|Invalid argument/);
     }
   } finally {
     for (const result of results.reverse()) flint.ffiFmpqMatrixClose(result);
