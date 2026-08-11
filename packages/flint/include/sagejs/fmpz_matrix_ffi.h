@@ -486,6 +486,59 @@ static inline int sagejs_fmpz_matrix_submatrix(
     return 1;
 }
 
+/*
+ * Index selections preserve order and permit duplicates. Validate the entire
+ * borrowed index vector and result shape before initializing the owned result,
+ * so every rejected call leaves the generated output resource uninitialized.
+ */
+static inline int sagejs_fmpz_matrix_select_rows(
+    sagejs_fmpz_matrix_t result, const sagejs_fmpz_matrix_t source,
+    const uint64_t *selected_rows, uint64_t count)
+{
+    const uint64_t rows = (uint64_t) fmpz_mat_nrows(source->value);
+    const uint64_t columns = (uint64_t) fmpz_mat_ncols(source->value);
+    if ((count != 0 && selected_rows == NULL) ||
+        !sagejs_fmpz_matrix_dimensions_fit(count, columns))
+        return 0;
+    for (uint64_t index = 0; index < count; index++)
+        if (selected_rows[index] >= rows)
+            return 0;
+    if (!sagejs_fmpz_matrix_init(result, count, columns))
+        return 0;
+    for (uint64_t row = 0; row < count; row++)
+        for (uint64_t column = 0; column < columns; column++)
+            fmpz_set(fmpz_mat_entry(result->value,
+                    (slong) row, (slong) column),
+                fmpz_mat_entry(source->value,
+                    (slong) selected_rows[row], (slong) column));
+    sagejs_fmpz_matrix_finish_result(result);
+    return 1;
+}
+
+static inline int sagejs_fmpz_matrix_select_columns(
+    sagejs_fmpz_matrix_t result, const sagejs_fmpz_matrix_t source,
+    const uint64_t *selected_columns, uint64_t count)
+{
+    const uint64_t rows = (uint64_t) fmpz_mat_nrows(source->value);
+    const uint64_t columns = (uint64_t) fmpz_mat_ncols(source->value);
+    if ((count != 0 && selected_columns == NULL) ||
+        !sagejs_fmpz_matrix_dimensions_fit(rows, count))
+        return 0;
+    for (uint64_t index = 0; index < count; index++)
+        if (selected_columns[index] >= columns)
+            return 0;
+    if (!sagejs_fmpz_matrix_init(result, rows, count))
+        return 0;
+    for (uint64_t row = 0; row < rows; row++)
+        for (uint64_t column = 0; column < count; column++)
+            fmpz_set(fmpz_mat_entry(result->value,
+                    (slong) row, (slong) column),
+                fmpz_mat_entry(source->value,
+                    (slong) row, (slong) selected_columns[column]));
+    sagejs_fmpz_matrix_finish_result(result);
+    return 1;
+}
+
 static inline int sagejs_fmpz_matrix_set_block(
     sagejs_fmpz_matrix_t target, uint64_t target_row,
     uint64_t target_column, const sagejs_fmpz_matrix_t source)

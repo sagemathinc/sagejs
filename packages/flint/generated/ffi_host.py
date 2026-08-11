@@ -75,6 +75,8 @@ from sagejs.ffi.flint import (
     fmpq_matrix_from_fmpz as _ffi_fmpq_matrix_from_fmpz,
     fmpz_matrix_from_fmpq_integral as _ffi_fmpz_matrix_from_fmpq_integral,
     fmpz_matrix_submatrix as _ffi_fmpz_matrix_submatrix,
+    fmpz_matrix_select_rows as _ffi_fmpz_matrix_select_rows,
+    fmpz_matrix_select_columns as _ffi_fmpz_matrix_select_columns,
     fmpz_matrix_set_block as _ffi_fmpz_matrix_set_block,
     fmpz_matrix_stack as _ffi_fmpz_matrix_stack,
     fmpz_matrix_augment as _ffi_fmpz_matrix_augment,
@@ -786,6 +788,32 @@ def ffiFmpzMatrixSubmatrix(
         row_stop,
         column_start,
         column_stop,
+    )
+
+
+@native
+def ffiFmpzMatrixSelectRows(
+    source: FmpzMatrix,
+    indices: UInt64Buffer,
+    count: uint64,
+) -> FmpzMatrix:
+    return _ffi_fmpz_matrix_select_rows(
+        source,
+        indices,
+        count,
+    )
+
+
+@native
+def ffiFmpzMatrixSelectColumns(
+    source: FmpzMatrix,
+    indices: UInt64Buffer,
+    count: uint64,
+) -> FmpzMatrix:
+    return _ffi_fmpz_matrix_select_columns(
+        source,
+        indices,
+        count,
     )
 
 

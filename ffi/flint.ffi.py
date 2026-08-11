@@ -1313,6 +1313,76 @@ def fmpz_matrix_submatrix(
 
 
 @flint.function(
+    dynamic="ffiFmpzMatrixSelectRows",
+    symbol="sagejs_fmpz_matrix_select_rows",
+    returns=int,
+    abi=[
+        out("result", sagejs_fmpz_matrix_t),
+        in_("source", sagejs_fmpz_matrix_t),
+        in_(
+            "selected_rows",
+            uint64_t_ptr,
+            packed_slice(
+                data="indices",
+                length="count",
+                access="read",
+                aliasing="allowed",
+                transactional=False,
+            ),
+        ),
+        in_("count", uint64_t),
+    ],
+    effects=Effects(pure=False, allocates=True, raises=[ValueError]),
+    result=Status(
+        1,
+        exception=ValueError,
+        message="integer matrix row selection contains an invalid index",
+    ),
+    wasm=False,
+)
+def fmpz_matrix_select_rows(
+    source: FmpzMatrix,
+    indices: UInt64Buffer,
+    count: uint64,
+) -> FmpzMatrix: ...
+
+
+@flint.function(
+    dynamic="ffiFmpzMatrixSelectColumns",
+    symbol="sagejs_fmpz_matrix_select_columns",
+    returns=int,
+    abi=[
+        out("result", sagejs_fmpz_matrix_t),
+        in_("source", sagejs_fmpz_matrix_t),
+        in_(
+            "selected_columns",
+            uint64_t_ptr,
+            packed_slice(
+                data="indices",
+                length="count",
+                access="read",
+                aliasing="allowed",
+                transactional=False,
+            ),
+        ),
+        in_("count", uint64_t),
+    ],
+    effects=Effects(pure=False, allocates=True, raises=[ValueError]),
+    result=Status(
+        1,
+        exception=ValueError,
+        message="integer matrix column selection contains an invalid index",
+    ),
+    wasm=False,
+)
+def fmpz_matrix_select_columns(
+    source: FmpzMatrix,
+    indices: UInt64Buffer,
+    count: uint64,
+) -> FmpzMatrix: ...
+
+
+@flint.function(
     dynamic="ffiFmpzMatrixSetBlock",
     symbol="sagejs_fmpz_matrix_set_block",
     returns=int,

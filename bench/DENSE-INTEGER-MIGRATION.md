@@ -58,16 +58,25 @@ diagonal construction, and a 20,001-entry matrix whose final entry has 8,193
 bits. It also asserts that every constructed or returned matrix owns a
 generated resource and runs with legacy integer-matrix N-API access forbidden.
 
-The first resource cutover deliberately exposes one remaining structural
-performance cliff. Selecting 250 rows or columns from a 500 by 500 matrix takes
-about 19--21 ms on the development host because the implementation crosses the
-generated FFI twice per selected row or column. The previous canonical packed
-representation took about 2.5--2.7 ms for the same operation. Restoring that
-kernel after the resource cutover would require exporting and reimporting the
-entire matrix, so it is not a sound compatibility path. The immediate follow-up
-is a declared `FmpzMatrix` bulk row/column selector. By contrast, the generated
-resource diagonal constructor takes about 9 ms at size 1000, versus about 333
-ms for the previous entry-by-entry packed construction path.
+The generated `FmpzMatrix` API now includes declared bulk row and column
+selectors. They accept one read-only `UInt64Buffer`, preserve order and
+duplicates, validate the complete index vector before initializing their owned
+result, and retain exact zero-dimensional shapes. A focused low-level benchmark
+selecting 250 even rows or columns from a 500 by 500 small-entry matrix measures
+about 0.40 ms for either generated selector on the development host. The former
+incremental resource route (one submatrix and block-assignment pair per selected
+index) measures 12.58 ms for rows and 13.59 ms for columns in the same process,
+so the generated bulk calls are 31--33 times faster without exporting or
+reimporting the matrix. Run that exact workload with:
+
+```sh
+node bench/fmpz-matrix-resource-selectors.cjs
+```
+
+The public `Matrix` routing is intentionally a separate change from this shared
+declaration and lifecycle commit. The generated resource diagonal constructor
+also takes about 9 ms at size 1000, versus about 333 ms for the previous
+entry-by-entry packed construction path.
 
 The stricter warm-sample ratchet remains:
 

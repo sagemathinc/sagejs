@@ -14,7 +14,7 @@
   },
   "counts": {
     "classified-native-file": 56,
-    "declared-ffi": 153,
+    "declared-ffi": 155,
     "declared-ffi-resource": 9,
     "napi-export": 292,
     "runtime-intrinsic": 126,
@@ -1253,6 +1253,28 @@
       "dynamic_package": "@sagemath/sagejs-flint",
       "dynamic_export": "ffiFmpzMatrixScalarMul",
       "symbol": "sagejs_fmpz_matrix_scalar_mul",
+      "disposition": "declared-safe-ffi"
+    },
+    {
+      "id": "ffi:flint:fmpz_matrix_select_columns",
+      "kind": "declared-ffi",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "fmpz_matrix_select_columns",
+      "dynamic_package": "@sagemath/sagejs-flint",
+      "dynamic_export": "ffiFmpzMatrixSelectColumns",
+      "symbol": "sagejs_fmpz_matrix_select_columns",
+      "disposition": "declared-safe-ffi"
+    },
+    {
+      "id": "ffi:flint:fmpz_matrix_select_rows",
+      "kind": "declared-ffi",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "fmpz_matrix_select_rows",
+      "dynamic_package": "@sagemath/sagejs-flint",
+      "dynamic_export": "ffiFmpzMatrixSelectRows",
+      "symbol": "sagejs_fmpz_matrix_select_rows",
       "disposition": "declared-safe-ffi"
     },
     {
