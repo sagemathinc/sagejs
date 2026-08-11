@@ -1506,6 +1506,24 @@ class PolynomialElement(sage.Element):
                 )
             finally:
                 result.close()
+        base = self._parent.base_ring()
+        # Exact integers and elements of this precise prime field have one
+        # canonical residue. Other parents must keep using the coercion model
+        # below, including extension fields, matrices, and incompatible fields.
+        if _packed_polynomial_kind(base) == "GF" and (
+            runtime.is_exact_integer(value)
+            or getattr(value, "_parent", runtime.undefined) is base
+        ):
+            scalar = _untyped(base)(value)
+            kernel = (
+                _packed_prime_polynomial_module().packed_prime_field_polynomial_evaluate
+            )
+            result = kernel(
+                _uint64_kernel_input(kernel, self._storage),
+                scalar._value,
+                base._modulus,
+            )
+            return scalar._new_reduced(result)
         coefficients = self.coefficients()
         answer = self._parent.base_ring()(0)
         for coefficient in reversed(coefficients):
