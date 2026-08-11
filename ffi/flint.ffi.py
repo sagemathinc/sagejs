@@ -177,13 +177,16 @@ def fmpz_polynomial_seal(polynomial: Writable[FmpzPolynomial]) -> bool: ...
 @flint.function(
     dynamic="ffiFmpzPolynomialLength",
     symbol="sagejs_fmpz_polynomial_length",
-    returns=uint64_t,
-    abi=[in_("polynomial", sagejs_fmpz_polynomial_t)],
-    effects=Effects(pure=True),
-    result=Direct(),
+    returns=int,
+    abi=[
+        out("result", fmpz_t),
+        in_("polynomial", sagejs_fmpz_polynomial_t),
+    ],
+    effects=Effects(pure=True, allocates=True, raises=[ValueError]),
+    result=Status(1, exception=ValueError, message="integer polynomial is unsealed"),
     wasm=False,
 )
-def fmpz_polynomial_length(polynomial: FmpzPolynomial) -> uint64: ...
+def fmpz_polynomial_length(polynomial: FmpzPolynomial) -> Integer: ...
 
 
 @flint.function(
@@ -441,13 +444,16 @@ def fmpq_polynomial_seal(polynomial: Writable[FmpqPolynomial]) -> bool: ...
 @flint.function(
     dynamic="ffiFmpqPolynomialLength",
     symbol="sagejs_fmpq_polynomial_length",
-    returns=uint64_t,
-    abi=[in_("polynomial", sagejs_fmpq_polynomial_t)],
-    effects=Effects(pure=True),
-    result=Direct(),
+    returns=int,
+    abi=[
+        out("result", fmpz_t),
+        in_("polynomial", sagejs_fmpq_polynomial_t),
+    ],
+    effects=Effects(pure=True, allocates=True, raises=[ValueError]),
+    result=Status(1, exception=ValueError, message="rational polynomial is unsealed"),
     wasm=False,
 )
-def fmpq_polynomial_length(polynomial: FmpqPolynomial) -> uint64: ...
+def fmpq_polynomial_length(polynomial: FmpqPolynomial) -> Integer: ...
 
 
 @flint.function(

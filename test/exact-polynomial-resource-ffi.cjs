@@ -271,8 +271,8 @@ function fmpqPolynomial(coefficients) {
 {
   const unsealed = flint.ffiFmpzPolynomialCreate(1n);
   assert.throws(
-    () => flint.ffiFmpzPolynomialCoefficient(unsealed, 0n),
-    /out of bounds/,
+    () => flint.ffiFmpzPolynomialLength(unsealed),
+    /unsealed/,
   );
   assert.equal(flint.ffiFmpzPolynomialSeal(unsealed), true);
   assert.throws(
@@ -287,6 +287,10 @@ function fmpqPolynomial(coefficients) {
   );
 
   const rational = flint.ffiFmpqPolynomialCreate(1n);
+  assert.throws(
+    () => flint.ffiFmpqPolynomialLength(rational),
+    /unsealed/,
+  );
   assert.throws(
     () => flint.ffiFmpqPolynomialSetCoefficient(rational, 0n, 1n, 0n),
     /invalid rational/,
