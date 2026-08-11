@@ -56,19 +56,14 @@ rational_expected = [
 
 integer_serializations = [0]
 rational_serializations = [0]
-integer_row_selections = [0]
-integer_column_selections = [0]
-rational_row_selections = [0]
-rational_column_selections = [0]
-selected_resources = []
+integer_sequences = [0]
+rational_sequences = [0]
 serialized_regions = []
 
 original_integer_serialize = ffi.fmpz_matrix_serialize
 original_rational_serialize = ffi.fmpq_matrix_serialize
-original_integer_rows = ffi.fmpz_matrix_select_rows
-original_integer_columns = ffi.fmpz_matrix_select_columns
-original_rational_rows = ffi.fmpq_matrix_select_rows
-original_rational_columns = ffi.fmpq_matrix_select_columns
+original_integer_sequence = ffi.fmpz_matrix_serialize_sequence
+original_rational_sequence = ffi.fmpq_matrix_serialize_sequence
 
 def integer_serialize(source):
     integer_serializations[0] += 1
@@ -82,39 +77,25 @@ def rational_serialize(source):
     serialized_regions.append(region)
     return region
 
-def integer_rows(source, indices, count):
-    integer_row_selections[0] += 1
-    resource = original_integer_rows(source, indices, count)
-    selected_resources.append(resource)
-    return resource
+def integer_sequence(source, start, stride, count):
+    integer_sequences[0] += 1
+    region = original_integer_sequence(source, start, stride, count)
+    serialized_regions.append(region)
+    return region
 
-def integer_columns(source, indices, count):
-    integer_column_selections[0] += 1
-    resource = original_integer_columns(source, indices, count)
-    selected_resources.append(resource)
-    return resource
-
-def rational_rows(source, indices, count):
-    rational_row_selections[0] += 1
-    resource = original_rational_rows(source, indices, count)
-    selected_resources.append(resource)
-    return resource
-
-def rational_columns(source, indices, count):
-    rational_column_selections[0] += 1
-    resource = original_rational_columns(source, indices, count)
-    selected_resources.append(resource)
-    return resource
+def rational_sequence(source, start, stride, count):
+    rational_sequences[0] += 1
+    region = original_rational_sequence(source, start, stride, count)
+    serialized_regions.append(region)
+    return region
 
 def forbidden(*args):
     raise AssertionError('scalar or uniform exact-matrix boundary was used')
 
 ffi.fmpz_matrix_serialize = integer_serialize
 ffi.fmpq_matrix_serialize = rational_serialize
-ffi.fmpz_matrix_select_rows = integer_rows
-ffi.fmpz_matrix_select_columns = integer_columns
-ffi.fmpq_matrix_select_rows = rational_rows
-ffi.fmpq_matrix_select_columns = rational_columns
+ffi.fmpz_matrix_serialize_sequence = integer_sequence
+ffi.fmpq_matrix_serialize_sequence = rational_sequence
 ffi.fmpz_matrix_entry = forbidden
 ffi.fmpq_matrix_entry_numerator = forbidden
 ffi.fmpq_matrix_entry_denominator = forbidden
@@ -132,10 +113,7 @@ def storage_is_unmaterialized(source):
 
 def verify(source, expected, rational_source, expected_pivots):
     serializations = rational_serializations if rational_source else integer_serializations
-    row_selections = rational_row_selections if rational_source else integer_row_selections
-    column_selections = (
-        rational_column_selections if rational_source else integer_column_selections
-    )
+    sequences = rational_sequences if rational_source else integer_sequences
 
     before = serializations[0]
     assert source.list() == expected
@@ -150,6 +128,10 @@ def verify(source, expected, rational_source, expected_pivots):
     assert serialized_regions[-1].closed
     storage_is_unmaterialized(source)
 
+    assert source.rows(False) is source.rows(False)
+    assert source.rows()[0] is rows[0]
+    assert rows[0].is_immutable()
+
     before = serializations[0]
     columns = source.columns()
     rebuilt = []
@@ -157,18 +139,22 @@ def verify(source, expected, rational_source, expected_pivots):
         for column in range(source.ncols()):
             rebuilt.append(columns[column][row])
     assert rebuilt == expected
-    assert serializations[0] == before + 1
-    assert serialized_regions[-1].closed
+    assert serializations[0] == before
+    assert source.columns(False) is source.columns(False)
+    assert source.columns()[0] is columns[0]
+    assert columns[0].is_immutable()
+    assert columns[0][0] is rows[0][0]
     storage_is_unmaterialized(source)
 
     before_serializations = serializations[0]
-    before_selections = row_selections[0]
-    assert source.row(-1, from_list=True) == tuple(
+    before_sequences = sequences[0]
+    selected_row = source.row(-1, from_list=True)
+    assert selected_row.list() == (
         expected[(source.nrows() - 1) * source.ncols() :]
     )
-    assert serializations[0] == before_serializations + 1
-    assert row_selections[0] == before_selections + 1
-    assert selected_resources[-1].closed
+    assert selected_row.is_mutable()
+    assert serializations[0] == before_serializations
+    assert sequences[0] == before_sequences + 1
     assert serialized_regions[-1].closed
     storage_is_unmaterialized(source)
 
@@ -179,13 +165,14 @@ def verify(source, expected, rational_source, expected_pivots):
     storage_is_unmaterialized(source)
 
     before_serializations = serializations[0]
-    before_selections = column_selections[0]
-    assert source.column(-1, from_list=True) == tuple(
+    before_sequences = sequences[0]
+    selected_column = source.column(-1, from_list=True)
+    assert selected_column.list() == (
         expected[source.ncols() - 1 :: source.ncols()]
     )
-    assert serializations[0] == before_serializations + 1
-    assert column_selections[0] == before_selections + 1
-    assert selected_resources[-1].closed
+    assert selected_column.is_mutable()
+    assert serializations[0] == before_serializations
+    assert sequences[0] == before_sequences + 1
     assert serialized_regions[-1].closed
     storage_is_unmaterialized(source)
 

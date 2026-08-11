@@ -846,6 +846,76 @@ static inline int sagejs_fmpz_matrix_serialize(
 }
 
 /*
+ * Serialize one affine sequence of entries without constructing a temporary
+ * FLINT matrix.  `start + index * stride` addresses the row-major matrix.
+ * Empty sequences do not dereference start or stride; nonempty sequences
+ * validate the complete path before allocating.
+ */
+static inline int sagejs_fmpz_matrix_serialize_sequence(
+    sagejs_flint_byte_region_t result, const sagejs_fmpz_matrix_t source,
+    uint64_t start, uint64_t stride, uint64_t count)
+{
+    const uint64_t rows = (uint64_t) fmpz_mat_nrows(source->value);
+    const uint64_t columns = (uint64_t) fmpz_mat_ncols(source->value);
+    if (rows != 0 && columns > UINT64_MAX / rows)
+        return 0;
+    const uint64_t total = rows * columns;
+    result->data = NULL;
+    result->length = 0;
+    if (count != 0)
+    {
+        if (start >= total ||
+            ((count - 1) != 0 &&
+             stride > (UINT64_MAX - start) / (count - 1)) ||
+            start + (count - 1) * stride >= total)
+            return 0;
+    }
+
+    size_t length = 0;
+    size_t maximum_bytes = 0;
+    for (uint64_t index = 0; index < count; index++)
+    {
+        const uint64_t linear = start + index * stride;
+        const fmpz *entry = fmpz_mat_entry(source->value,
+            (slong) (linear / columns), (slong) (linear % columns));
+        const size_t bytes = sagejs_fmpz_serialized_bytes(entry);
+        if (bytes > UINT32_MAX / 2 ||
+            !sagejs_size_add(&length, 4) ||
+            !sagejs_size_add(&length, bytes))
+            return 0;
+        if (bytes > maximum_bytes)
+            maximum_bytes = bytes;
+    }
+    result->data = (unsigned char *) malloc(length == 0 ? 1 : length);
+    if (result->data == NULL)
+        return 0;
+    result->length = length;
+    const size_t maximum_words =
+        (maximum_bytes + sizeof(ulong) - 1) / sizeof(ulong);
+    ulong *words = maximum_words == 0 ? NULL :
+        (ulong *) calloc(maximum_words, sizeof(ulong));
+    if (maximum_words != 0 && words == NULL)
+    {
+        sagejs_flint_byte_region_clear(result);
+        return 0;
+    }
+    fmpz_t magnitude;
+    fmpz_init(magnitude);
+    size_t offset = 0;
+    for (uint64_t index = 0; index < count; index++)
+    {
+        const uint64_t linear = start + index * stride;
+        sagejs_fmpz_matrix_write_entry(result->data, &offset,
+            fmpz_mat_entry(source->value,
+                (slong) (linear / columns), (slong) (linear % columns)),
+            magnitude, words);
+    }
+    fmpz_clear(magnitude);
+    free(words);
+    return 1;
+}
+
+/*
  * Constructing a byte region is intentionally part of the resource ABI.
  * It gives hosts a safe, pointer-free way to supply persisted SJZM data to
  * the deserializer.  Bulk byte-buffer lowering can later optimize this

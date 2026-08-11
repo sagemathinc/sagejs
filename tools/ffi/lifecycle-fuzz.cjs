@@ -68,8 +68,12 @@ function dynamicLifecycleFuzz() {
     const determinant = flint.ffiFmpqMatrixDet(matrix);
     const formatted = flint.ffiFmpqMatrixFormat(reduced);
     const serialized = flint.ffiFmpqMatrixSerialize(matrix);
+    const sequence = flint.ffiFmpqMatrixSerializeSequence(
+      matrix, 0n, 4n, 3n,
+    );
     assert.ok(flint.ffiFlintByteRegionLength(formatted) > 0n);
     assert.ok(flint.ffiFlintByteRegionLength(serialized) > 0n);
+    assert.ok(flint.ffiFlintByteRegionLength(sequence) > 0n);
     const formattedCopy = flint.ffiFlintByteRegionCopyBytes(formatted);
     const serializedCopy = flint.ffiFlintByteRegionCopyBytes(serialized);
     const importedRegion = flint.ffiFlintByteRegionFromBytes(serializedCopy);
@@ -85,6 +89,7 @@ function dynamicLifecycleFuzz() {
     flint.ffiFmpqMatrixClose(imported);
     flint.ffiFlintByteRegionClose(importedRegion);
     flint.ffiFlintByteRegionClose(serialized);
+    flint.ffiFlintByteRegionClose(sequence);
     flint.ffiFlintByteRegionClose(formatted);
     flint.ffiFmpqValueClose(determinant);
     flint.ffiFmpqMatrixClose(reduced);
@@ -227,7 +232,9 @@ int main(void)
         sagejs_fmpq_matrix_t matrix, random, copy, reduced, imported, invalid;
         sagejs_fmpq_value_t determinant;
         sagejs_flint_byte_region_t formatted, serialized, copied, rejected;
+        sagejs_flint_byte_region_t rational_sequence;
         sagejs_flint_byte_region_t integer_serialized, integer_body, truncated;
+        sagejs_flint_byte_region_t integer_sequence;
         rejected->data = NULL;
         rejected->length = 0;
         if (!sagejs_fmpq_matrix_init(matrix, 3, 3))
@@ -247,12 +254,15 @@ int main(void)
             !sagejs_fmpq_matrix_rref(reduced, copy) ||
             !sagejs_fmpq_matrix_det(determinant, matrix) ||
             !sagejs_fmpq_matrix_format(formatted, reduced) ||
-            !sagejs_fmpq_matrix_serialize(serialized, matrix))
+            !sagejs_fmpq_matrix_serialize(serialized, matrix) ||
+            !sagejs_fmpq_matrix_serialize_sequence(
+                rational_sequence, matrix, 0, 4, 3))
             return 10;
         if (sagejs_flint_byte_region_data(formatted) == NULL ||
             sagejs_flint_byte_region_data(serialized) == NULL ||
             sagejs_flint_byte_region_length(formatted) == 0 ||
-            sagejs_flint_byte_region_length(serialized) == 0)
+            sagejs_flint_byte_region_length(serialized) == 0 ||
+            sagejs_flint_byte_region_length(rational_sequence) == 0)
             return 11;
         if (sagejs_flint_byte_region_init_copy(rejected, NULL, 1) ||
             rejected->data != NULL || rejected->length != 0)
@@ -274,6 +284,8 @@ int main(void)
                         fmpz_mat_entry(left_num, row, column)))
                     return 16;
         if (!sagejs_fmpz_matrix_serialize(integer_serialized, integer) ||
+            !sagejs_fmpz_matrix_serialize_sequence(
+                integer_sequence, integer, 2, 3, 3) ||
             integer_serialized->length < 24 ||
             !sagejs_flint_byte_region_init_copy(
                 integer_body, integer_serialized->data + 24,
@@ -293,10 +305,12 @@ int main(void)
         sagejs_fmpz_matrix_clear(integer_imported);
         sagejs_flint_byte_region_clear(integer_body);
         sagejs_flint_byte_region_clear(integer_serialized);
+        sagejs_flint_byte_region_clear(integer_sequence);
         sagejs_fmpz_matrix_clear(integer);
         sagejs_fmpq_matrix_clear(imported);
         sagejs_flint_byte_region_clear(copied);
         sagejs_flint_byte_region_clear(serialized);
+        sagejs_flint_byte_region_clear(rational_sequence);
         sagejs_flint_byte_region_clear(formatted);
         sagejs_fmpq_value_clear(determinant);
         sagejs_fmpq_matrix_clear(reduced);

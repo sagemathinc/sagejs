@@ -1,0 +1,64 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "exact-matrix-host-views-v2",
+  "title": "Exact Matrix Host Views v2",
+  "lane": "integration",
+  "status": "active",
+  "owner": "user",
+  "objective": "Implement Sage-compatible cached immutable row and column views for dense ZZ and QQ matrices, bulk strided row column and diagonal export from generated exact resources, offset-aware exact decoding, reduced rational bulk construction, centralized successful-mutation cache invalidation, and representative semantic and performance gates without scalar host-boundary loops",
+  "base_commit": "2e22ac7dd38f22a3a4d50dc5be218b4e71025077",
+  "claims": [
+    "src/baselib/matrix.py",
+    "src/baselib/sagejs/runtime.py",
+    "src/baselib/sagejs/runtime.pyi",
+    "src/baselib/sagejs_bootstrap.py",
+    "src/baselib/sagejs/ffi/",
+    "src/lib/sagejs/ffi/",
+    "ffi/flint.ffi.py",
+    "ffi/flint.ffi.json",
+    "packages/flint/generated/",
+    "packages/flint/include/sagejs/",
+    "tools/python/contract.ts",
+    "tools/ffi/",
+    "architecture/",
+    "scripts/check-integer-matrix-budget.cjs",
+    "scripts/check-rational-matrix-budget.cjs",
+    "test/exact-matrix-host-views-v2.cjs",
+    "test/exact-matrix-bulk-host-views.cjs",
+    "test/runtime-intrinsics.cjs",
+    "test/ffi.cjs",
+    "test/node-test-manifest.cjs",
+    "bench/exact-matrix-host-views-v2.cjs"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "mixed",
+    "fallback": "tested-capability",
+    "oracles": [
+      "SageMath dense ZZ and QQ matrix row column diagonal cache mutability and zero-dimensional semantics",
+      "Existing Sage.js packed and generic matrix paths as differential fallbacks"
+    ],
+    "exceptions": [
+      "This coherent vertical slice combines generated external-library resource exports with host representation primitives because exact scalar materialization and Python-compatible vector caching cross the FFI/compiler boundary"
+    ]
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "fallback",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm architecture:check",
+    "pnpm test:portable",
+    "pnpm test:baselib:strict"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "",
+    "risks": [],
+    "next_steps": []
+  }
+}

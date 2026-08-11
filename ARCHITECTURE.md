@@ -224,6 +224,14 @@ multiplication, RREF, determinant, formatting, and variable-size serialization
 return callee-owned generated resources. A typed-Python witness safely borrows
 and traverses the matrix with no host callback. Packed rational buffers remain
 an explicit compatibility/serialization format, not canonical matrix state.
+Python-facing exact matrix rows and columns are cached as immutable `Vector`
+snapshots, never as foreign pointers or serialized bytes. The first orientation
+bulk-decodes the resource once; the opposite orientation transposes the same
+scalar references in the host representation layer. Fresh rows, columns, and
+diagonals use one generated affine-sequence export (`start`, `stride`, `count`)
+that validates the complete access path and preserves variable-size entries,
+without constructing a temporary FLINT matrix or making scalar boundary calls.
+Only a successful matrix mutation invalidates these presentation caches.
 Characteristic and minimal polynomials pass the canonical matrix resource
 directly to FLINT and publish a sealed `FmpqPolynomial` resource. They do not
 export matrix entries, predict coefficient sizes, or recover a relation by

@@ -25,6 +25,8 @@ are the bootstrap implementation used by older checked-in compilers.
 # globals: ρσ_integer_buffer_to_packed_bytes
 # globals: ρσ_exact_integer_values_from_packed_bytes
 # globals: ρσ_exact_integer_values_to_packed_bytes
+# globals: ρσ_reduced_rational_values_from_parts, ρσ_reference_matrix_flatten
+# globals: ρσ_reference_matrix_transpose
 # globals: ρσ_rational_buffers_from_packed_bytes
 # globals: ρσ_integer_buffer_used_word_capacity
 # globals: ρσ_ffi_call, ρσ_ffi_resource_borrow, ρσ_ffi_resource_close
@@ -168,9 +170,24 @@ def exact_integer_values_to_packed_bytes(values):
     return ρσ_exact_integer_values_to_packed_bytes(values)
 
 
-def exact_integer_values_from_packed_bytes(source, count):
-    """Decode canonical signed magnitudes as ordinary exact values."""
-    return ρσ_exact_integer_values_from_packed_bytes(source, count)
+def exact_integer_values_from_packed_bytes(source, count, start=0):
+    """Decode canonical signed magnitudes at a byte offset."""
+    return ρσ_exact_integer_values_from_packed_bytes(source, count, start)
+
+
+def reduced_rational_values_from_parts(parts, rational_class, parent):
+    """Construct immutable rationals from trusted reduced interleaved parts."""
+    return ρσ_reduced_rational_values_from_parts(parts, rational_class, parent)
+
+
+def reference_matrix_transpose(rows, row_count, column_count):
+    """Transpose nested arrays without copying their scalar objects."""
+    return ρσ_reference_matrix_transpose(rows, row_count, column_count)
+
+
+def reference_matrix_flatten(rows, row_count, column_count):
+    """Flatten nested arrays without copying their scalar objects."""
+    return ρσ_reference_matrix_flatten(rows, row_count, column_count)
 
 
 def rational_buffers_from_packed_bytes(source, length):
