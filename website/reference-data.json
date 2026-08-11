@@ -10124,7 +10124,7 @@
         "module": "sage.matrix.constructor",
         "signature": "random_matrix(base: sage.Parent, nrows: int, ncols: Any=None, algorithm: str='randomize', implementation: Any=None, *args: Any, **kwds: Any) -> Matrix",
         "summary": "Construct a random dense matrix over `base`.",
-        "doc": "Construct a random dense matrix over `base`.\n\nThe dimensions are `nrows` by `ncols`; omitting `ncols` constructs\na square matrix. The common Sage keywords `density`, `x`, `y`, and\n`distribution='uniform'` are supported where meaningful.\n\n### Examples\n\n```sage\nsage: A = random_matrix(ZZ, 3, 5, x=-10, y=11)\nsage: A.nrows(), A.ncols(), A.base_ring()\n(3, 5, Integer Ring)\nsage: random_matrix(GF(9, 'a'), 2).base_ring() is GF(9, 'a')\nTrue\n```\n\nSparse matrices and alternate construction algorithms are not yet\nimplemented.",
+        "doc": "Construct a random dense matrix over `base`.\n\nThe dimensions are `nrows` by `ncols`; omitting `ncols` constructs\na square matrix. The common Sage keywords `density`, `x`, `y`, and\n`distribution='uniform'` are supported where meaningful. Full-density\nmatrices over `QQ` use FLINT's two-bit rational distribution and are\nconstructed directly in their owned FLINT resource. This intentionally\ndiffers from SageMath's bounded default rational distribution.\n\n### Examples\n\n```sage\nsage: A = random_matrix(ZZ, 3, 5, x=-10, y=11)\nsage: A.nrows(), A.ncols(), A.base_ring()\n(3, 5, Integer Ring)\nsage: random_matrix(GF(9, 'a'), 2).base_ring() is GF(9, 'a')\nTrue\n```\n\nSparse matrices and alternate construction algorithms are not yet\nimplemented.",
         "tags": [
           "linear algebra",
           "matrices",
@@ -11073,16 +11073,16 @@
         "name": "AffineSpace",
         "qualified": "AffineSpace",
         "path": "src/baselib/polynomial.py",
-        "line": 1783,
+        "line": 3438,
         "excerpt": {
-          "start_line": 1771,
+          "start_line": 3426,
           "text": "    def __repr__(self) -> str:\n        return (\n            \"Affine Space of dimension \"\n            + str(self._dimension)\n            + \" over \"\n            + str(self._base)\n        )\n\n    __str__ = __repr__\n    toString = __repr__\n\n\ndef AffineSpace(\n    dimension: int,\n    base: sage.Parent,\n    names: Any = \"x\",\n) -> AffineSpaceParent:\n    \"\"\"\n    Construct affine space with the requested coordinate names.\n\n    ### Example\n\n    ```sage\n    sage: A = AffineSpace(2, QQ, 'xy')\n    sage: A"
         }
       },
       "examples": [
         {
-          "id": "src/baselib/polynomial.py:1794",
-          "line": 1794,
+          "id": "src/baselib/polynomial.py:3449",
+          "line": 3449,
           "source": "A = AffineSpace(2, QQ, 'xy')",
           "want": "",
           "tags": [],
@@ -11091,14 +11091,14 @@
           "origin": "sagejs",
           "language": "sage",
           "verification": {
-            "id": "src/baselib/polynomial.py:1794",
+            "id": "src/baselib/polynomial.py:3449",
             "status": "pass",
             "actual": ""
           }
         },
         {
-          "id": "src/baselib/polynomial.py:1795",
-          "line": 1795,
+          "id": "src/baselib/polynomial.py:3450",
+          "line": 3450,
           "source": "A",
           "want": "Affine Space of dimension 2 over Rational Field\n",
           "tags": [],
@@ -11107,14 +11107,14 @@
           "origin": "sagejs",
           "language": "sage",
           "verification": {
-            "id": "src/baselib/polynomial.py:1795",
+            "id": "src/baselib/polynomial.py:3450",
             "status": "pass",
             "actual": "Affine Space of dimension 2 over Rational Field\n"
           }
         },
         {
-          "id": "src/baselib/polynomial.py:1797",
-          "line": 1797,
+          "id": "src/baselib/polynomial.py:3452",
+          "line": 3452,
           "source": "A.gens()",
           "want": "(x, y)\n",
           "tags": [],
@@ -11123,7 +11123,7 @@
           "origin": "sagejs",
           "language": "sage",
           "verification": {
-            "id": "src/baselib/polynomial.py:1797",
+            "id": "src/baselib/polynomial.py:3452",
             "status": "pass",
             "actual": "(x, y)\n"
           }
@@ -12209,16 +12209,16 @@
         "name": "Curve",
         "qualified": "Curve",
         "path": "src/baselib/polynomial.py",
-        "line": 1943,
+        "line": 3598,
         "excerpt": {
-          "start_line": 1931,
+          "start_line": 3586,
           "text": "    def __repr__(self) -> str:\n        return (\n            \"Affine Plane Curve over \"\n            + str(self._polynomial._parent.base_ring())\n            + \" defined by\\n   \"\n            + repr(self._polynomial)\n        )\n\n    __str__ = __repr__\n    toString = __repr__\n\n\ndef Curve(polynomial: Any) -> AffinePlaneCurve:\n    \"\"\"\n    Construct an affine plane curve from a multivariate polynomial.\n\n    ### Example\n\n    ```sage\n    sage: x, y = AffineSpace(2, QQ, 'xy').gens()\n    sage: C = Curve((x^2 + y^2 - 1) * (x^3 + y^3 - 1))\n    sage: C.irreducible_components()\n    [Closed subscheme of Affine Space of dimension 2 over Rational Field defined by:\n      x^2 + y^2 - 1, Closed subscheme of Affine Space of dimension 2 over Rational Field defined by:\n      x^3 + y^3 - 1]"
         }
       },
       "examples": [
         {
-          "id": "src/baselib/polynomial.py:1950",
-          "line": 1950,
+          "id": "src/baselib/polynomial.py:3605",
+          "line": 3605,
           "source": "x, y = AffineSpace(2, QQ, 'xy').gens()",
           "want": "",
           "tags": [],
@@ -12227,14 +12227,14 @@
           "origin": "sagejs",
           "language": "sage",
           "verification": {
-            "id": "src/baselib/polynomial.py:1950",
+            "id": "src/baselib/polynomial.py:3605",
             "status": "pass",
             "actual": ""
           }
         },
         {
-          "id": "src/baselib/polynomial.py:1951",
-          "line": 1951,
+          "id": "src/baselib/polynomial.py:3606",
+          "line": 3606,
           "source": "C = Curve((x^2 + y^2 - 1) * (x^3 + y^3 - 1))",
           "want": "",
           "tags": [],
@@ -12243,14 +12243,14 @@
           "origin": "sagejs",
           "language": "sage",
           "verification": {
-            "id": "src/baselib/polynomial.py:1951",
+            "id": "src/baselib/polynomial.py:3606",
             "status": "pass",
             "actual": ""
           }
         },
         {
-          "id": "src/baselib/polynomial.py:1952",
-          "line": 1952,
+          "id": "src/baselib/polynomial.py:3607",
+          "line": 3607,
           "source": "C.irreducible_components()",
           "want": "[Closed subscheme of Affine Space of dimension 2 over Rational Field defined by:\n  x^2 + y^2 - 1, Closed subscheme of Affine Space of dimension 2 over Rational Field defined by:\n  x^3 + y^3 - 1]\n",
           "tags": [],
@@ -12259,7 +12259,7 @@
           "origin": "sagejs",
           "language": "sage",
           "verification": {
-            "id": "src/baselib/polynomial.py:1952",
+            "id": "src/baselib/polynomial.py:3607",
             "status": "pass",
             "actual": "[Closed subscheme of Affine Space of dimension 2 over Rational Field defined by:\n  x^2 + y^2 - 1, Closed subscheme of Affine Space of dimension 2 over Rational Field defined by:\n  x^3 + y^3 - 1]\n"
           }
@@ -14191,16 +14191,16 @@
         "name": "GF",
         "qualified": "GF",
         "path": "src/baselib/finite_fields.py",
-        "line": 1008,
+        "line": 983,
         "excerpt": {
-          "start_line": 996,
+          "start_line": 971,
           "text": "        modulus_coefficients,\n        prime_field,\n        element_type,\n        coefficients is not None,\n    )\n    _extension_fields.set(key, field)\n    conversion = _field_coercion(field)\n    runtime.coercion_model.register(sage.ZZ, field, conversion)\n    runtime.coercion_model.register(prime_field, field, conversion)\n    return field\n\n\ndef GF(\n    order: Any,\n    name: Any = runtime.undefined,\n    modulus: Any = runtime.undefined,\n    names: Any = runtime.undefined,\n) -> Any:\n    r\"\"\"\n    Construct the finite field with `order` elements.\n\n    The order must be a prime power.  Prime fields and extension fields use\n    FLINT arithmetic and participate in Sage.js parent/coercion semantics.\n    `name` (or `names`) names an extension-field generator.\n"
         }
       },
       "examples": [
         {
-          "id": "src/baselib/finite_fields.py:1024",
-          "line": 1024,
+          "id": "src/baselib/finite_fields.py:999",
+          "line": 999,
           "source": "GF(7)",
           "want": "Finite Field of size 7\n",
           "tags": [],
@@ -14209,14 +14209,14 @@
           "origin": "sagejs",
           "language": "sage",
           "verification": {
-            "id": "src/baselib/finite_fields.py:1024",
+            "id": "src/baselib/finite_fields.py:999",
             "status": "pass",
             "actual": "Finite Field of size 7\n"
           }
         },
         {
-          "id": "src/baselib/finite_fields.py:1026",
-          "line": 1026,
+          "id": "src/baselib/finite_fields.py:1001",
+          "line": 1001,
           "source": "K.<a> = GF(9)",
           "want": "",
           "tags": [],
@@ -14225,14 +14225,14 @@
           "origin": "sagejs",
           "language": "sage",
           "verification": {
-            "id": "src/baselib/finite_fields.py:1026",
+            "id": "src/baselib/finite_fields.py:1001",
             "status": "pass",
             "actual": ""
           }
         },
         {
-          "id": "src/baselib/finite_fields.py:1027",
-          "line": 1027,
+          "id": "src/baselib/finite_fields.py:1002",
+          "line": 1002,
           "source": "a^8",
           "want": "1\n",
           "tags": [],
@@ -14241,14 +14241,14 @@
           "origin": "sagejs",
           "language": "sage",
           "verification": {
-            "id": "src/baselib/finite_fields.py:1027",
+            "id": "src/baselib/finite_fields.py:1002",
             "status": "pass",
             "actual": "1\n"
           }
         },
         {
-          "id": "src/baselib/finite_fields.py:1029",
-          "line": 1029,
+          "id": "src/baselib/finite_fields.py:1004",
+          "line": 1004,
           "source": "K['x']",
           "want": "Univariate Polynomial Ring in x over Finite Field in a of size 3^2\n",
           "tags": [],
@@ -14257,7 +14257,7 @@
           "origin": "sagejs",
           "language": "sage",
           "verification": {
-            "id": "src/baselib/finite_fields.py:1029",
+            "id": "src/baselib/finite_fields.py:1004",
             "status": "pass",
             "actual": "Univariate Polynomial Ring in x over Finite Field in a of size 3^2\n"
           }
@@ -20989,9 +20989,9 @@
         "name": "cardinality",
         "qualified": "VectorSubspaceParent.cardinality",
         "path": "src/baselib/matrix.py",
-        "line": 1389,
+        "line": 1468,
         "excerpt": {
-          "start_line": 1377,
+          "start_line": 1456,
           "text": "\n    def _finite_field_order(self) -> int:\n        if getattr(self.base_ring(), \"_kind\", None) not in [\"GF\", \"GF_EXTENSION\"]:\n            raise TypeError(\"vector-space enumeration requires a finite base field\")\n        return int(_untyped(self.base_ring()).order())\n\n    def _finite_field_elements(self) -> list[Any]:\n        self._finite_field_order()\n        if self._enumeration_elements is None:\n            self._enumeration_elements = list(_untyped(self.base_ring()))\n        return self._enumeration_elements\n\n    def cardinality(self) -> int:\n        return self._finite_field_order() ** self.dimension()\n\n    order = cardinality\n\n    def __len__(self) -> int:\n        return self.cardinality()\n\n    def _finite_element(self, index: int) -> Vector:\n        if not runtime.is_exact_integer(index):\n            raise TypeError(\"vector-space indices must be integers or slices\")\n        index = int(index)\n        size = self.cardinality()"
         }
       },
@@ -25785,16 +25785,16 @@
         "name": "matrix",
         "qualified": "matrix",
         "path": "src/baselib/matrix.py",
-        "line": 5539,
+        "line": 6003,
         "excerpt": {
-          "start_line": 5527,
+          "start_line": 5991,
           "text": "        return 1, len(rows), rows\n    first = list(rows[0])\n    cols = len(first)\n    values = []\n    for row in rows:\n        entries = list(row)\n        if len(entries) != cols:\n            raise ValueError(\"matrix rows must all have the same length\")\n        values.extend(entries)\n    return len(rows), cols, values\n\n\ndef matrix(*args: Any) -> Matrix:\n    r\"\"\"\n    Construct a dense matrix, optionally over an explicit base ring.\n\n    Sage's common row-list, flat-list, dimension, and entry-function forms are\n    supported. Exact matrices use FLINT on native hosts; `RDF`/`CDF` and\n    arbitrary-precision real/complex matrices use FLINT, Arb, and ACB.\n\n    ### Examples\n\n    ```sage\n    sage: A = matrix(ZZ, 2, [1, 2, 3, 4])\n    sage: A.det()"
         }
       },
       "examples": [
         {
-          "id": "src/baselib/matrix.py:5550",
-          "line": 5550,
+          "id": "src/baselib/matrix.py:6014",
+          "line": 6014,
           "source": "A = matrix(ZZ, 2, [1, 2, 3, 4])",
           "want": "",
           "tags": [],
@@ -25803,14 +25803,14 @@
           "origin": "sagejs",
           "language": "sage",
           "verification": {
-            "id": "src/baselib/matrix.py:5550",
+            "id": "src/baselib/matrix.py:6014",
             "status": "pass",
             "actual": ""
           }
         },
         {
-          "id": "src/baselib/matrix.py:5551",
-          "line": 5551,
+          "id": "src/baselib/matrix.py:6015",
+          "line": 6015,
           "source": "A.det()",
           "want": "-2\n",
           "tags": [],
@@ -25819,14 +25819,14 @@
           "origin": "sagejs",
           "language": "sage",
           "verification": {
-            "id": "src/baselib/matrix.py:5551",
+            "id": "src/baselib/matrix.py:6015",
             "status": "pass",
             "actual": "-2\n"
           }
         },
         {
-          "id": "src/baselib/matrix.py:5553",
-          "line": 5553,
+          "id": "src/baselib/matrix.py:6017",
+          "line": 6017,
           "source": "A.rref()",
           "want": "[1 0]\n[0 1]\n",
           "tags": [],
@@ -25835,7 +25835,7 @@
           "origin": "sagejs",
           "language": "sage",
           "verification": {
-            "id": "src/baselib/matrix.py:5553",
+            "id": "src/baselib/matrix.py:6017",
             "status": "pass",
             "actual": "[1 0]\n[0 1]\n"
           }
@@ -26054,9 +26054,9 @@
         "name": "Mod",
         "qualified": "Mod",
         "path": "src/baselib/finite_fields.py",
-        "line": 1120,
+        "line": 1095,
         "excerpt": {
-          "start_line": 1108,
+          "start_line": 1083,
           "text": "    ring = _residue_rings.get(key)\n    if ring is not runtime.undefined:\n        return ring\n    ring = IntegerModRing(order)\n    _residue_rings.set(key, ring)\n    runtime.coercion_model.register(sage.ZZ, ring, _field_coercion(ring))\n    return ring\n\n\nIntegers = Zmod\n\n\ndef Mod(value: Any, modulus: Any) -> IntegerModElement:\n    \"\"\"Construct `value` in the ring of integers modulo `modulus`.\"\"\"\n    return Zmod(modulus)(value)\n\n\nruntime.set_class_repr(FiniteFieldElement, \"<class 'FiniteFieldElement'>\")\nruntime.set_class_repr(\n    IntegerModElement, \"<class 'sage.rings.finite_rings.integer_mod.IntegerMod_int64'>\"\n)\nruntime.set_class_repr(\n    FiniteFieldExtensionElement,\n    \"<class 'sage.rings.finite_rings.element_givaro.\" + \"FiniteField_givaroElement'>\",\n)"
         }
       },
@@ -29239,16 +29239,16 @@
         "name": "PolynomialRing",
         "qualified": "PolynomialRing",
         "path": "src/baselib/polynomial.py",
-        "line": 2159,
+        "line": 3814,
         "excerpt": {
-          "start_line": 2147,
+          "start_line": 3802,
           "text": "        ρσ_polynomial_ring_cache.set(base, by_variable)\n    cache_key = \",\".join(variables) + \"|multivariate|\" + order\n    parent = by_variable.get(cache_key)\n    if parent is runtime.undefined:\n        if approximate:\n            parent = ApproximatePolynomialRingParent(base, variables, order)\n        else:\n            parent = MultivariatePolynomialRingParent(base, variables, order)\n        by_variable.set(cache_key, parent)\n    return parent\n\n\ndef PolynomialRing(\n    base: sage.Parent,\n    variable: Any = None,\n    names: Any = None,\n    sparse: bool = False,\n    implementation: Any = None,\n    order: str = \"degrevlex\",\n) -> Any:\n    r\"\"\"\n    Construct a univariate or multivariate polynomial ring.\n\n    Coefficient rings currently include `ZZ`, `QQ`, prime and extension\n    finite fields, `Zmod(n)`, exact algebraic fields, and approximate real"
         }
       },
       "examples": [
         {
-          "id": "src/baselib/polynomial.py:2179",
-          "line": 2179,
+          "id": "src/baselib/polynomial.py:3834",
+          "line": 3834,
           "source": "R.<x> = QQ[]",
           "want": "",
           "tags": [],
@@ -29257,14 +29257,14 @@
           "origin": "sagejs",
           "language": "sage",
           "verification": {
-            "id": "src/baselib/polynomial.py:2179",
+            "id": "src/baselib/polynomial.py:3834",
             "status": "pass",
             "actual": ""
           }
         },
         {
-          "id": "src/baselib/polynomial.py:2180",
-          "line": 2180,
+          "id": "src/baselib/polynomial.py:3835",
+          "line": 3835,
           "source": "(x^4 - 1).factor()",
           "want": "(x + 1) * (x - 1) * (x^2 + 1)\n",
           "tags": [],
@@ -29273,14 +29273,14 @@
           "origin": "sagejs",
           "language": "sage",
           "verification": {
-            "id": "src/baselib/polynomial.py:2180",
+            "id": "src/baselib/polynomial.py:3835",
             "status": "pass",
             "actual": "(x + 1) * (x - 1) * (x^2 + 1)\n"
           }
         },
         {
-          "id": "src/baselib/polynomial.py:2182",
-          "line": 2182,
+          "id": "src/baselib/polynomial.py:3837",
+          "line": 3837,
           "source": "S.<x,y> = GF(4, 'a')[]",
           "want": "",
           "tags": [],
@@ -29289,14 +29289,14 @@
           "origin": "sagejs",
           "language": "sage",
           "verification": {
-            "id": "src/baselib/polynomial.py:2182",
+            "id": "src/baselib/polynomial.py:3837",
             "status": "pass",
             "actual": ""
           }
         },
         {
-          "id": "src/baselib/polynomial.py:2183",
-          "line": 2183,
+          "id": "src/baselib/polynomial.py:3838",
+          "line": 3838,
           "source": "(x + y)^3",
           "want": "x^3 + x^2*y + x*y^2 + y^3\n",
           "tags": [],
@@ -29305,7 +29305,7 @@
           "origin": "sagejs",
           "language": "sage",
           "verification": {
-            "id": "src/baselib/polynomial.py:2183",
+            "id": "src/baselib/polynomial.py:3838",
             "status": "pass",
             "actual": "x^3 + x^2*y + x*y^2 + y^3\n"
           }
@@ -29367,16 +29367,16 @@
         "name": "prime_pi",
         "qualified": "prime_pi",
         "path": "src/baselib/builtins.py",
-        "line": 5660,
+        "line": 5757,
         "excerpt": {
-          "start_line": 5648,
+          "start_line": 5745,
           "text": "\ndef latex(value: Any) -> LatexExpr:\n    \"\"\"Return a compact LaTeX expression for `value`.\"\"\"\n    if _builtins_member_is_function(value, \"_latex_\"):\n        return LatexExpr(_builtins_call_member(value, \"_latex_\", []))\n    return LatexExpr(value)\n\n\n_prime_pi_primes = None\n_prime_pi_checked_through = 1\n\n\ndef prime_pi(value: Any) -> Any:\n    r\"\"\"\n    Return the number of primes less than or equal to `value`.\n\n    Results are exact.  Moderate bounds are served by an incremental prime\n    cache, while large isolated bounds use Lehmer's combinatorial algorithm.\n    As in Sage, inputs are limited to integers below `2^63`.\n\n    ### Examples\n\n    ```sage\n    sage: prime_pi(10)\n    4"
         }
       },
       "examples": [
         {
-          "id": "src/baselib/builtins.py:5671",
-          "line": 5671,
+          "id": "src/baselib/builtins.py:5768",
+          "line": 5768,
           "source": "prime_pi(10)",
           "want": "4\n",
           "tags": [],
@@ -29385,14 +29385,14 @@
           "origin": "sagejs",
           "language": "sage",
           "verification": {
-            "id": "src/baselib/builtins.py:5671",
+            "id": "src/baselib/builtins.py:5768",
             "status": "pass",
             "actual": "4\n"
           }
         },
         {
-          "id": "src/baselib/builtins.py:5673",
-          "line": 5673,
+          "id": "src/baselib/builtins.py:5770",
+          "line": 5770,
           "source": "prime_pi(100)",
           "want": "25\n",
           "tags": [],
@@ -29401,14 +29401,14 @@
           "origin": "sagejs",
           "language": "sage",
           "verification": {
-            "id": "src/baselib/builtins.py:5673",
+            "id": "src/baselib/builtins.py:5770",
             "status": "pass",
             "actual": "25\n"
           }
         },
         {
-          "id": "src/baselib/builtins.py:5675",
-          "line": 5675,
+          "id": "src/baselib/builtins.py:5772",
+          "line": 5772,
           "source": "prime_pi(10^12)",
           "want": "37607912018\n",
           "tags": [],
@@ -29417,7 +29417,7 @@
           "origin": "sagejs",
           "language": "sage",
           "verification": {
-            "id": "src/baselib/builtins.py:5675",
+            "id": "src/baselib/builtins.py:5772",
             "status": "pass",
             "actual": "37607912018\n"
           }
@@ -29668,9 +29668,9 @@
         "name": "quit",
         "qualified": "quit",
         "path": "src/baselib/builtins.py",
-        "line": 7098,
+        "line": 7195,
         "excerpt": {
-          "start_line": 7086,
+          "start_line": 7183,
           "text": "arraylike = ρσ_arraylike\nprint = ρσ_print\nid = ρσ_id\nget_module = ρσ_get_module\npow = ρσ_pow\ndivmod = ρσ_divmod\ndir = ρσ_dir\nvars = ρσ_vars\nhelp = ρσ_help\nsearch_doc = ρσ_search_doc\n\n\ndef quit(code: Any = None) -> None:\n    \"\"\"Exit the current Sage.js or Python session.\n\n    `quit()` exits successfully. An integer argument becomes the process exit\n    status, matching Python's interactive convenience function.\n    \"\"\"\n    if code is None:\n        raise SystemExit\n    raise SystemExit(code)\n\n\nexit = quit\n"
         }
       },
@@ -29744,7 +29744,7 @@
       "module": "sage.matrix.constructor",
       "signature": "random_matrix(base: sage.Parent, nrows: int, ncols: Any=None, algorithm: str='randomize', implementation: Any=None, *args: Any, **kwds: Any) -> Matrix",
       "summary": "Construct a random dense matrix over `base`.",
-      "doc": "Construct a random dense matrix over `base`.\n\nThe dimensions are `nrows` by `ncols`; omitting `ncols` constructs\na square matrix. The common Sage keywords `density`, `x`, `y`, and\n`distribution='uniform'` are supported where meaningful.\n\n### Examples\n\n```sage\nsage: A = random_matrix(ZZ, 3, 5, x=-10, y=11)\nsage: A.nrows(), A.ncols(), A.base_ring()\n(3, 5, Integer Ring)\nsage: random_matrix(GF(9, 'a'), 2).base_ring() is GF(9, 'a')\nTrue\n```\n\nSparse matrices and alternate construction algorithms are not yet\nimplemented.",
+      "doc": "Construct a random dense matrix over `base`.\n\nThe dimensions are `nrows` by `ncols`; omitting `ncols` constructs\na square matrix. The common Sage keywords `density`, `x`, `y`, and\n`distribution='uniform'` are supported where meaningful. Full-density\nmatrices over `QQ` use FLINT's two-bit rational distribution and are\nconstructed directly in their owned FLINT resource. This intentionally\ndiffers from SageMath's bounded default rational distribution.\n\n### Examples\n\n```sage\nsage: A = random_matrix(ZZ, 3, 5, x=-10, y=11)\nsage: A.nrows(), A.ncols(), A.base_ring()\n(3, 5, Integer Ring)\nsage: random_matrix(GF(9, 'a'), 2).base_ring() is GF(9, 'a')\nTrue\n```\n\nSparse matrices and alternate construction algorithms are not yet\nimplemented.",
       "tags": [
         "linear algebra",
         "matrices",
@@ -29795,16 +29795,16 @@
         "name": "random_matrix",
         "qualified": "random_matrix",
         "path": "src/baselib/matrix.py",
-        "line": 5850,
+        "line": 6334,
         "excerpt": {
-          "start_line": 5838,
+          "start_line": 6322,
           "text": "        power = base(1)\n        degree = _untyped(base).degree()\n        characteristic = _untyped(base).characteristic()\n        generator = _untyped(base).gen()\n        for _index in range(degree):\n            coefficient = _random_int(0, characteristic - 1)\n            value += base(coefficient) * power\n            power *= generator\n        if not nonzero or not value.is_zero():\n            return value\n\n\ndef random_matrix(\n    base: sage.Parent,\n    nrows: int,\n    ncols: Any = None,\n    algorithm: str = \"randomize\",\n    implementation: Any = None,\n    *args: Any,\n    **kwds: Any,\n) -> Matrix:\n    r\"\"\"\n    Construct a random dense matrix over `base`.\n\n    The dimensions are `nrows` by `ncols`; omitting `ncols` constructs"
         }
       },
       "examples": [
         {
-          "id": "src/baselib/matrix.py:5869",
-          "line": 5869,
+          "id": "src/baselib/matrix.py:6356",
+          "line": 6356,
           "source": "A = random_matrix(ZZ, 3, 5, x=-10, y=11)",
           "want": "",
           "tags": [],
@@ -29813,14 +29813,14 @@
           "origin": "sagejs",
           "language": "sage",
           "verification": {
-            "id": "src/baselib/matrix.py:5869",
+            "id": "src/baselib/matrix.py:6356",
             "status": "pass",
             "actual": ""
           }
         },
         {
-          "id": "src/baselib/matrix.py:5870",
-          "line": 5870,
+          "id": "src/baselib/matrix.py:6357",
+          "line": 6357,
           "source": "A.nrows(), A.ncols(), A.base_ring()",
           "want": "(3, 5, Integer Ring)\n",
           "tags": [],
@@ -29829,14 +29829,14 @@
           "origin": "sagejs",
           "language": "sage",
           "verification": {
-            "id": "src/baselib/matrix.py:5870",
+            "id": "src/baselib/matrix.py:6357",
             "status": "pass",
             "actual": "(3, 5, Integer Ring)\n"
           }
         },
         {
-          "id": "src/baselib/matrix.py:5872",
-          "line": 5872,
+          "id": "src/baselib/matrix.py:6359",
+          "line": 6359,
           "source": "random_matrix(GF(9, 'a'), 2).base_ring() is GF(9, 'a')",
           "want": "True\n",
           "tags": [],
@@ -29845,7 +29845,7 @@
           "origin": "sagejs",
           "language": "sage",
           "verification": {
-            "id": "src/baselib/matrix.py:5872",
+            "id": "src/baselib/matrix.py:6359",
             "status": "pass",
             "actual": "True\n"
           }
@@ -30645,16 +30645,16 @@
         "name": "sudoku",
         "qualified": "sudoku",
         "path": "src/baselib/matrix.py",
-        "line": 5638,
+        "line": 6102,
         "excerpt": {
-          "start_line": 5626,
+          "start_line": 6090,
           "text": "    elif len(values) == 1:\n        entries = list(values[0])\n    else:\n        raise TypeError(\"unsupported vector() constructor signature\")\n    if isinstance(values[0], Vector):\n        source = values[0]\n        return source if base is None else source.change_ring(base)\n    if base is None:\n        base = _base_for_values(entries)\n    return VectorSpace(base, len(entries))(entries)\n\n\ndef sudoku(puzzle: Matrix) -> Matrix:\n    r\"\"\"\n    Solve a 9-by-9 Sudoku puzzle represented by a matrix.\n\n    Entries from 1 through 9 are fixed clues and zero denotes an empty cell.\n    The input matrix is not modified.  A `ValueError` is raised if the clues\n    are inconsistent or the puzzle has no solution.\n\n    ### Examples\n\n    ```sage\n    sage: A = matrix(ZZ, 9, [\n    ....:     5,0,0,0,8,0,0,4,9, 0,0,0,5,0,0,0,3,0,"
         }
       },
       "examples": [
         {
-          "id": "src/baselib/matrix.py:5649",
-          "line": 5649,
+          "id": "src/baselib/matrix.py:6113",
+          "line": 6113,
           "source": "A = matrix(ZZ, 9, [\n    5,0,0,0,8,0,0,4,9, 0,0,0,5,0,0,0,3,0,\n    0,6,7,3,0,0,0,0,1, 1,5,0,0,0,0,0,0,0,\n    0,0,0,2,0,8,0,0,0, 0,0,0,0,0,0,0,1,8,\n    7,0,0,0,0,4,1,5,0, 0,3,0,0,0,2,0,0,0,\n    4,9,0,0,5,0,0,0,3])",
           "want": "",
           "tags": [],
@@ -30663,14 +30663,14 @@
           "origin": "sagejs",
           "language": "sage",
           "verification": {
-            "id": "src/baselib/matrix.py:5649",
+            "id": "src/baselib/matrix.py:6113",
             "status": "pass",
             "actual": ""
           }
         },
         {
-          "id": "src/baselib/matrix.py:5655",
-          "line": 5655,
+          "id": "src/baselib/matrix.py:6119",
+          "line": 6119,
           "source": "sudoku(A)[0]",
           "want": "(5, 1, 3, 6, 8, 7, 2, 4, 9)\n",
           "tags": [],
@@ -30679,7 +30679,7 @@
           "origin": "sagejs",
           "language": "sage",
           "verification": {
-            "id": "src/baselib/matrix.py:5655",
+            "id": "src/baselib/matrix.py:6119",
             "status": "pass",
             "actual": "(5, 1, 3, 6, 8, 7, 2, 4, 9)\n"
           }
@@ -30956,16 +30956,16 @@
         "name": "Zmod",
         "qualified": "Zmod",
         "path": "src/baselib/finite_fields.py",
-        "line": 1085,
+        "line": 1060,
         "excerpt": {
-          "start_line": 1073,
+          "start_line": 1048,
           "text": "    generator = runtime.bigint(1)\n    if primitive:\n        generator = backend.wordPrimitiveRootPrime(order)\n    field = FiniteField_prime_modn(order, generator)\n    _prime_fields.set(key, field)\n    runtime.coercion_model.register(sage.ZZ, field, _field_coercion(field))\n    return field\n\n\nFiniteField = GF\n\n\ndef Zmod(order: Any) -> IntegerModRing:\n    r\"\"\"\n    Construct the ring of integers modulo `order`.\n\n    Elements support exact arithmetic, inversion of units, iteration, and\n    matrices and polynomial rings over the resulting parent.\n\n    ### Examples\n\n    ```sage\n    sage: R = Zmod(15)\n    sage: R(17)\n    2"
         }
       },
       "examples": [
         {
-          "id": "src/baselib/finite_fields.py:1095",
-          "line": 1095,
+          "id": "src/baselib/finite_fields.py:1070",
+          "line": 1070,
           "source": "R = Zmod(15)",
           "want": "",
           "tags": [],
@@ -30974,14 +30974,14 @@
           "origin": "sagejs",
           "language": "sage",
           "verification": {
-            "id": "src/baselib/finite_fields.py:1095",
+            "id": "src/baselib/finite_fields.py:1070",
             "status": "pass",
             "actual": ""
           }
         },
         {
-          "id": "src/baselib/finite_fields.py:1096",
-          "line": 1096,
+          "id": "src/baselib/finite_fields.py:1071",
+          "line": 1071,
           "source": "R(17)",
           "want": "2\n",
           "tags": [],
@@ -30990,14 +30990,14 @@
           "origin": "sagejs",
           "language": "sage",
           "verification": {
-            "id": "src/baselib/finite_fields.py:1096",
+            "id": "src/baselib/finite_fields.py:1071",
             "status": "pass",
             "actual": "2\n"
           }
         },
         {
-          "id": "src/baselib/finite_fields.py:1098",
-          "line": 1098,
+          "id": "src/baselib/finite_fields.py:1073",
+          "line": 1073,
           "source": "R(2)^4",
           "want": "1\n",
           "tags": [],
@@ -31006,7 +31006,7 @@
           "origin": "sagejs",
           "language": "sage",
           "verification": {
-            "id": "src/baselib/finite_fields.py:1098",
+            "id": "src/baselib/finite_fields.py:1073",
             "status": "pass",
             "actual": "1\n"
           }
