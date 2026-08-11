@@ -15,6 +15,13 @@ const flintPrefix = resolve(
 
 function dynamicLifecycleFuzz() {
   const flint = require(join(root, "packages", "flint"));
+  // FLINT's `ulong` remains 64-bit on Windows LLP64 even though the C
+  // `unsigned long` used by ULONG_MAX is only 32-bit there.
+  const maximumWordSeed = (1n << 64n) - 1n;
+  const seeded = flint.ffiFmpqMatrixRandbits(
+    1n, 1n, 1n, maximumWordSeed, maximumWordSeed,
+  );
+  flint.ffiFmpqMatrixClose(seeded);
   for (let round = 0; round < 200; round += 1) {
     const left = flint.ffiFmpqMatrixCreate(3n, 3n);
     const right = flint.ffiFmpqMatrixRandbits(

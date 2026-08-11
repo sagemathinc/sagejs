@@ -135,8 +135,8 @@ static inline int sagejs_fmpq_matrix_randbits(
     sagejs_fmpq_matrix_t result, uint64_t rows, uint64_t columns,
     uint64_t bits, uint64_t seed1, uint64_t seed2)
 {
-    if (bits == 0 || bits > (uint64_t) ULONG_MAX ||
-        seed1 > (uint64_t) ULONG_MAX || seed2 > (uint64_t) ULONG_MAX ||
+    if (bits == 0 || bits > (uint64_t) UWORD_MAX ||
+        seed1 > (uint64_t) UWORD_MAX || seed2 > (uint64_t) UWORD_MAX ||
         !sagejs_fmpq_matrix_init(result, rows, columns))
         return 0;
     flint_rand_t state;
