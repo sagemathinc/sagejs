@@ -41,13 +41,22 @@ const {
   join,
   resolve,
 } = require("node:path");
-const { spawnSync } = require("node:child_process");
+const { spawn, spawnSync } = require("node:child_process");
 const { git } = require("./parallel-lib.cjs");
 const { pnpmInvocation } = require("./pnpm-invocation.cjs");
 
 const nativeCacheSchema = "sagejs.parallel-native-artifact-cache-v1";
 const nativeCachePackages = new Set(["flint", "fflas", "graph"]);
 const nativeCacheSleep = new Int32Array(new SharedArrayBuffer(4));
+const nativeCompilerStampSchema = "sagejs.native-compiler-inputs-v1";
+const nativeCompilerInputPaths = [
+  "bootstrap",
+  "package.json",
+  "pnpm-lock.yaml",
+  "scripts/build-vendor.cjs",
+  "tools",
+  "tsconfig.json",
+];
 
 function sha256(contents) {
   return createHash("sha256").update(contents).digest("hex");
@@ -410,10 +419,8 @@ function dependencyPrefix(packageId) {
 function nativeArtifactSpecs(workspace, overrides = {}) {
   const identity = nativeBuildIdentity(workspace, overrides);
   const commonAddonInputs = [
-    "pnpm-lock.yaml",
+    ...nativeCompilerInputPaths,
     "scripts/build-ffi-host-adapter.cjs",
-    "tools/ffi",
-    "tools/native-kernel",
   ];
   const descriptions = {
     flint: {
@@ -963,6 +970,40 @@ function readNativeCacheLockOwner(lock) {
   }
 }
 
+function nativeCacheProcessIdentity(pid) {
+  if (!Number.isInteger(pid) || pid <= 0) return null;
+  if (process.platform === "linux") {
+    try {
+      const boot = readFileSync("/proc/sys/kernel/random/boot_id", "utf8").trim();
+      const stat = readFileSync(`/proc/${pid}/stat`, "utf8").trim();
+      const afterCommand = stat.slice(stat.lastIndexOf(") ") + 2).split(/\s+/);
+      const startTicks = afterCommand[19];
+      if (boot && startTicks) return `${boot}:${startTicks}`;
+    } catch {
+      return null;
+    }
+  }
+  if (process.platform !== "win32") {
+    const result = spawnSync("ps", ["-o", "lstart=", "-p", String(pid)], {
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "ignore"],
+    });
+    const start = result.status === 0 ? result.stdout.trim() : "";
+    return start ? `${hostname()}:${pid}:${start}` : null;
+  }
+  const result = spawnSync("powershell.exe", [
+    "-NoProfile",
+    "-Command",
+    `(Get-Process -Id ${pid} -ErrorAction Stop).StartTime.ToUniversalTime().Ticks`,
+  ], {
+    encoding: "utf8",
+    windowsHide: true,
+    stdio: ["ignore", "pipe", "ignore"],
+  });
+  const start = result.status === 0 ? result.stdout.trim() : "";
+  return start ? `${hostname()}:${pid}:${start}` : null;
+}
+
 function heartbeatNativeCacheLock(lock, token) {
   const owner = readNativeCacheLockOwner(lock);
   if (owner?.token !== token) {
@@ -983,6 +1024,7 @@ function acquireNativeCacheLock(lock, options = {}) {
       writeFileSync(join(candidate, "owner.json"), `${JSON.stringify({
         hostname: hostname(),
         pid: process.pid,
+        process_identity: nativeCacheProcessIdentity(process.pid),
         started_at: new Date().toISOString(),
         token,
       })}${EOL}`);
@@ -998,7 +1040,14 @@ function acquireNativeCacheLock(lock, options = {}) {
     if (owner !== null && owner.hostname === hostname()) {
       try {
         process.kill(owner.pid, 0);
-        // A positively live local owner is never displaced based on age.
+        const currentIdentity = nativeCacheProcessIdentity(owner.pid);
+        if (
+          owner.process_identity !== null &&
+          owner.process_identity !== undefined &&
+          currentIdentity !== owner.process_identity
+        ) {
+          recover = true;
+        }
       } catch (error) {
         recover = error.code === "ESRCH";
       }
@@ -1021,6 +1070,36 @@ function acquireNativeCacheLock(lock, options = {}) {
     }
     wait(100);
   }
+}
+
+function startNativeCacheHeartbeat(lock, token, options = {}) {
+  const interval = options.heartbeatMilliseconds ?? 30_000;
+  if (!Number.isInteger(interval) || interval <= 0) {
+    throw new Error(`native-cache heartbeat interval must be positive: ${interval}`);
+  }
+  const identity = nativeCacheProcessIdentity(process.pid);
+  if (identity === null) {
+    // The owner still has PID liveness and before/after-build heartbeats, but
+    // platforms without a process birth identity cannot safely run a helper.
+    return () => {};
+  }
+  const child = spawn(process.execPath, [
+    join(__dirname, "native-cache-heartbeat.cjs"),
+    lock,
+    token,
+    String(process.pid),
+    identity,
+    String(interval),
+  ], {
+    stdio: "ignore",
+    windowsHide: true,
+  });
+  let stopped = false;
+  return () => {
+    if (stopped) return;
+    stopped = true;
+    child.kill();
+  };
 }
 
 function releaseNativeCacheLock(lock, token) {
@@ -1056,7 +1135,28 @@ function runBuildCommands(workspace, spec, runner = runCommand) {
   for (const [command, args] of spec.buildCommands) runner(command, args, workspace);
 }
 
+function readJsonFile(path) {
+  try {
+    return JSON.parse(readFileSync(path, "utf8"));
+  } catch {
+    return null;
+  }
+}
+
+function nativeCompilerStamp(workspace) {
+  return stableJson({
+    arch: process.arch,
+    input_hash: snapshotHash(snapshot(workspace, nativeCompilerInputPaths, {
+      rejectSymlinks: true,
+    })),
+    node: process.versions.node,
+    platform: process.platform,
+    schema: nativeCompilerStampSchema,
+  });
+}
+
 function ensureNativeCompiler(workspace, options = {}) {
+  const stampPath = join(workspace, "dist", ".sagejs-native-compiler.json");
   const required = [
     join(workspace, "dist", "compiler", "compiler.js"),
     join(workspace, "dist", "tools", "compiler.js"),
@@ -1066,7 +1166,12 @@ function ensureNativeCompiler(workspace, options = {}) {
     join(workspace, "dist", "vendor", "tree-sitter-sage.wasm"),
   ];
   const compiler = required[1];
-  if (required.every((path) => existsSync(path))) {
+  const expectedStamp = nativeCompilerStamp(workspace);
+  const actualStamp = readJsonFile(stampPath);
+  if (
+    required.every((path) => existsSync(path)) &&
+    JSON.stringify(actualStamp) === JSON.stringify(expectedStamp)
+  ) {
     return { status: "present", compiler };
   }
   if (typeof options.buildCompiler === "function") {
@@ -1095,6 +1200,8 @@ function ensureNativeCompiler(workspace, options = {}) {
         `the compiler build omitted ${missing.join(", ")}`,
     );
   }
+  mkdirSync(dirname(stampPath), { recursive: true });
+  writeFileSync(stampPath, `${JSON.stringify(expectedStamp, null, 2)}${EOL}`);
   return { status: "built", compiler };
 }
 
@@ -1118,6 +1225,7 @@ function prepareNativeArtifact(workspace, cacheRoot, spec, options = {}) {
       throw error;
     }
   }
+  const stopHeartbeat = startNativeCacheHeartbeat(lock, lockToken, options);
   try {
     const afterLock = restoreNativeArtifact(workspaceRoot, cacheRoot, spec, options);
     if (["present", "restored"].includes(afterLock.status)) return afterLock;
@@ -1159,6 +1267,7 @@ function prepareNativeArtifact(workspace, cacheRoot, spec, options = {}) {
     }
     return { status: "built", entry: publication.entry };
   } finally {
+    stopHeartbeat();
     releaseNativeCacheLock(lock, lockToken);
   }
 }
@@ -1280,6 +1389,7 @@ module.exports = {
   ensureNativeCompiler,
   nativeArtifactSpecs,
   nativeCachePackages,
+  nativeCacheProcessIdentity,
   prepareNativeArtifact,
   prepareNativeDependencies,
   prepareNativePackages,

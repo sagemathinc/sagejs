@@ -26,6 +26,12 @@ artifacts because they also depend on the Node ABI and current declarations.
 Downloaded archives and extracted build trees are discarded after successful
 publication; they are never replicated across warm worktrees.
 
+Installed configuration scripts and `pkg-config` metadata derive their prefix
+from their own location, and unnecessary path-bearing libtool archives are
+removed before publication. The shared prefix therefore remains usable after
+the worktree that built it is deleted; it does not retain a hidden dependency
+on that builder path.
+
 Set `SAGEJS_PARALLEL_NATIVE_CACHE` to move the shared artifact store. Setting
 `SAGEJS_FFLAS_PREFIX` or `SAGEJS_FLINT_PREFIX` opts out because an externally
 managed prefix has no cache content identity.

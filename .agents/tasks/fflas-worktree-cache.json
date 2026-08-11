@@ -10,6 +10,7 @@
   "base_commit": "b21b652c83afe6867ef17da61b691abf40ab6f9f",
   "claims": [
     "scripts/native-worktree-cache.cjs",
+    "scripts/native-cache-heartbeat.cjs",
     "scripts/build-vendor.cjs",
     "scripts/parallel-development.cjs",
     "test/parallel-development.cjs",

@@ -13,6 +13,8 @@ const {
   readdirSync,
   readlinkSync,
   readFileSync,
+  realpathSync,
+  renameSync,
   rmSync,
   symlinkSync,
   writeFileSync,
@@ -39,12 +41,16 @@ const {
   ensureNativeCompiler,
   nativeArtifactSpecs,
   nativeCachePackages,
+  nativeCacheProcessIdentity,
   prepareNativeArtifact,
   restoreNativeArtifact,
   restoreNativePackages,
   snapshot,
   validCacheEntry,
 } = require("../scripts/native-worktree-cache.cjs");
+const {
+  makeFflasPrefixRelocatable,
+} = require("../packages/fflas/scripts/build-deps.cjs");
 
 const parallelDevelopmentModule = resolve(
   __dirname,
@@ -342,6 +348,8 @@ test("native addon preparation builds the compiler once in a fresh workspace", (
   const directory = mkdtempSync(join(tmpdir(), "sagejs-native-compiler-test-"));
   let builds = 0;
   try {
+    mkdirSync(join(directory, "tools"), { recursive: true });
+    writeFileSync(join(directory, "tools", "compiler.ts"), "compiler v1\n");
     const options = {
       buildCompiler(workspace, required) {
         builds += 1;
@@ -355,6 +363,10 @@ test("native addon preparation builds the compiler once in a fresh workspace", (
     assert.equal(ensureNativeCompiler(directory, options).status, "built");
     assert.equal(ensureNativeCompiler(directory, options).status, "present");
     assert.equal(builds, 1);
+    writeFileSync(join(directory, "tools", "compiler.ts"), "compiler v2\n");
+    assert.equal(ensureNativeCompiler(directory, options).status, "built");
+    assert.equal(ensureNativeCompiler(directory, options).status, "present");
+    assert.equal(builds, 2);
   } finally {
     rmSync(directory, { recursive: true, force: true });
   }
@@ -405,6 +417,8 @@ test("shared native dependencies link one read-only content-addressed payload", 
       inputPaths: ["source"],
       inputs: snapshot(secondWorkspace, ["source"]),
     };
+    rmSync(workspace, { recursive: true, force: true });
+    assert.equal(existsSync(payload), true);
     const warm = prepareNativeArtifact(secondWorkspace, cacheRoot, secondSpec, {
       build: buildNativeCacheFixture(counter, "must not build\n"),
     });
@@ -418,6 +432,63 @@ test("shared native dependencies link one read-only content-addressed payload", 
     );
   } finally {
     makeFixtureWritable(cacheRoot);
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+test("FFLAS installation metadata remains valid after relocating its builder prefix", () => {
+  const directory = mkdtempSync(join(tmpdir(), "sagejs-fflas-prefix-test-"));
+  const builder = join(directory, "builder");
+  const prefix = join(builder, "packages", "fflas", ".native", "prefix");
+  const relocated = join(directory, "cache", "payload", "prefix");
+  try {
+    mkdirSync(join(prefix, "bin"), { recursive: true });
+    mkdirSync(join(prefix, "lib", "pkgconfig"), { recursive: true });
+    for (const name of ["fflas-ffpack-config", "givaro-config"]) {
+      const filename = join(prefix, "bin", name);
+      writeFileSync(filename, [
+        "#!/bin/sh",
+        `prefix=${prefix}`,
+        "includedir=${prefix}/include",
+        "echo $prefix",
+        "",
+      ].join("\n"));
+      chmodSync(filename, 0o755);
+    }
+    writeFileSync(join(prefix, "lib", "pkgconfig", "givaro.pc"), [
+      `prefix=${prefix}`,
+      `exec_prefix=${prefix}`,
+      `libdir=${prefix}/lib`,
+      `includedir=${prefix}/include`,
+      `Libs: -L${prefix}/lib -lgivaro`,
+      `Cflags: -I${prefix}/include`,
+      "",
+    ].join("\n"));
+    writeFileSync(join(prefix, "lib", "libgivaro.la"), [
+      `dependency_libs='-L${prefix}/lib'`,
+      `libdir='${prefix}/lib'`,
+      "",
+    ].join("\n"));
+
+    makeFflasPrefixRelocatable(prefix);
+    mkdirSync(dirname(relocated), { recursive: true });
+    renameSync(prefix, relocated);
+    rmSync(builder, { recursive: true, force: true });
+
+    assert.equal(
+      execFileSync(join(relocated, "bin", "givaro-config"), {
+        encoding: "utf8",
+      }).trim(),
+      realpathSync(relocated),
+    );
+    const pkgconfig = readFileSync(
+      join(relocated, "lib", "pkgconfig", "givaro.pc"),
+      "utf8",
+    );
+    assert.match(pkgconfig, /^prefix=\$\{pcfiledir\}\/\.\.\/\.\.$/m);
+    assert.equal(pkgconfig.includes(prefix), false);
+    assert.equal(existsSync(join(relocated, "lib", "libgivaro.la")), false);
+  } finally {
     rmSync(directory, { recursive: true, force: true });
   }
 });
@@ -626,8 +697,10 @@ test("native production keys separate dependency and addon invalidation", () => 
     const source = join(directory, "packages", "flint", "src", "addon.c");
     mkdirSync(join(directory, "packages", "flint", "scripts"), { recursive: true });
     mkdirSync(join(directory, "packages", "flint", "src"), { recursive: true });
+    mkdirSync(join(directory, "tools"), { recursive: true });
     writeFileSync(script, "dependency build v1\n");
     writeFileSync(source, "addon v1\n");
+    writeFileSync(join(directory, "tools", "compiler.ts"), "compiler v1\n");
     const firstIdentity = {
       native: { toolchain: "one" },
       node: { abi: "one" },
@@ -656,6 +729,17 @@ test("native production keys separate dependency and addon invalidation", () => 
     assert.notEqual(
       dependencyChanged.find(({ id }) => id === "flint-addon").key,
       firstAddon.key,
+    );
+
+    writeFileSync(join(directory, "tools", "compiler.ts"), "compiler v2\n");
+    const compilerChanged = nativeArtifactSpecs(directory, { identity: firstIdentity });
+    assert.equal(
+      compilerChanged.find(({ id }) => id === "flint-dependencies").key,
+      dependencyChanged.find(({ id }) => id === "flint-dependencies").key,
+    );
+    assert.notEqual(
+      compilerChanged.find(({ id }) => id === "flint-addon").key,
+      dependencyChanged.find(({ id }) => id === "flint-addon").key,
     );
 
     const abiChanged = nativeArtifactSpecs(directory, { identity: {
@@ -864,6 +948,7 @@ test("an old lock with a positively live local owner is never stolen", () => {
     writeFileSync(join(lock, "owner.json"), JSON.stringify({
       hostname: hostname(),
       pid: process.pid,
+      process_identity: nativeCacheProcessIdentity(process.pid),
       started_at: "2000-01-01T00:00:00.000Z",
       token: "still-live",
     }));
@@ -878,6 +963,56 @@ test("an old lock with a positively live local owner is never stolen", () => {
     );
     assert.equal(counter.count, 0);
     assert.equal(existsSync(lock), true);
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+test("a reused local PID cannot preserve a lock from another process lifetime", () => {
+  const { directory, workspace, cacheRoot } = nativeCacheFixture();
+  const counter = { count: 0 };
+  try {
+    const spec = nativeCacheSpec(workspace);
+    const lock = join(cacheRoot, spec.id, `${spec.key}.lock`);
+    mkdirSync(lock, { recursive: true });
+    writeFileSync(join(lock, "owner.json"), JSON.stringify({
+      hostname: hostname(),
+      pid: process.pid,
+      process_identity: "previous-boot-or-process",
+      started_at: new Date().toISOString(),
+      token: "stale-lifetime",
+    }));
+    writeFileSync(join(lock, "heartbeat"), `${new Date().toISOString()}\n`);
+    const result = prepareNativeArtifact(workspace, cacheRoot, spec, {
+      build: buildNativeCacheFixture(counter),
+      waitMilliseconds: 1000,
+    });
+    assert.equal(result.status, "built");
+    assert.equal(counter.count, 1);
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+test("native cache heartbeat advances during a synchronous build", {
+  skip: nativeCacheProcessIdentity(process.pid) === null,
+}, () => {
+  const { directory, workspace, cacheRoot } = nativeCacheFixture();
+  const pause = new Int32Array(new SharedArrayBuffer(4));
+  try {
+    const spec = nativeCacheSpec(workspace);
+    const lock = join(cacheRoot, spec.id, `${spec.key}.lock`);
+    const result = prepareNativeArtifact(workspace, cacheRoot, spec, {
+      heartbeatMilliseconds: 20,
+      build(current) {
+        const before = readFileSync(join(lock, "heartbeat"), "utf8");
+        Atomics.wait(pause, 0, 0, 250);
+        const after = readFileSync(join(lock, "heartbeat"), "utf8");
+        assert.notEqual(after, before);
+        buildNativeCacheFixture({ count: 0 })(current);
+      },
+    });
+    assert.equal(result.status, "built");
   } finally {
     rmSync(directory, { recursive: true, force: true });
   }
