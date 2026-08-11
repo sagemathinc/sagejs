@@ -1,0 +1,126 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "dense-zz-public-resource",
+  "title": "Public dense ZZ generated-resource cutover",
+  "lane": "arithmetic-algebra",
+  "status": "review",
+  "owner": "dense_zz_public_resource",
+  "objective": "Make public dense ZZ matrices canonically own generated FmpzMatrix resources and route all supported structural and algebraic operations through declared resources with Sage-compatible semantics and competitive performance",
+  "base_commit": "46fb2b755c34faf3bb5dad41e6710f88cfe1b0f6",
+  "claims": [
+    "src/baselib/matrix.py",
+    "test/dense-integer-public-resource.cjs",
+    "test/dense-integer-migration.cjs",
+    "test/matrix-performance.cjs",
+    "scripts/check-integer-matrix-budget.cjs",
+    "bench/dense-integer-public-resources.cjs",
+    "bench/DENSE-INTEGER-MIGRATION.md"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "external-library",
+    "fallback": "tested-capability",
+    "oracles": [
+      "existing packed dense ZZ implementation",
+      "FLINT resource differential checks"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "fallback",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm build",
+    "node test/dense-integer-public-resource.cjs",
+    "node test/dense-integer-migration.cjs",
+    "node test/fmpz-matrix-resource-ffi.cjs",
+    "node scripts/run-sage-doctests.cjs upstream-tests/sage/matrix/matrix_integer_dense_core.doctests.json --expectations upstream-tests/sage/matrix/matrix_integer_dense_core.expectations.json",
+    "pnpm test:baselib:strict",
+    "pnpm architecture:check",
+    "SAGEJS_INTEGER_MATRIX_SAMPLES=3 pnpm test:matrix:integer-performance",
+    "node bench/dense-integer-public-resources.cjs"
+  ],
+  "runs": [
+    {
+      "command": "node test/dense-integer-public-resource.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 8.405,
+      "started_at": "2026-08-11T12:23:31.162Z",
+      "commit": "46fb2b755c34faf3bb5dad41e6710f88cfe1b0f6",
+      "workspace_fingerprint": "bb8cb6be39028c7a5c653c358600d009c1b9312e247ef24a7c84caf4ef280c99",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node test/dense-integer-migration.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 11.532,
+      "started_at": "2026-08-11T12:23:43.700Z",
+      "commit": "46fb2b755c34faf3bb5dad41e6710f88cfe1b0f6",
+      "workspace_fingerprint": "bb8cb6be39028c7a5c653c358600d009c1b9312e247ef24a7c84caf4ef280c99",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 11.974,
+      "started_at": "2026-08-11T12:23:55.943Z",
+      "commit": "46fb2b755c34faf3bb5dad41e6710f88cfe1b0f6",
+      "workspace_fingerprint": "bb8cb6be39028c7a5c653c358600d009c1b9312e247ef24a7c84caf4ef280c99",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 11.648,
+      "started_at": "2026-08-11T12:24:08.622Z",
+      "commit": "46fb2b755c34faf3bb5dad41e6710f88cfe1b0f6",
+      "workspace_fingerprint": "bb8cb6be39028c7a5c653c358600d009c1b9312e247ef24a7c84caf4ef280c99",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "env SAGEJS_INTEGER_MATRIX_SAMPLES=3 pnpm test:matrix:integer-performance",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 11.684,
+      "started_at": "2026-08-11T12:24:25.006Z",
+      "commit": "46fb2b755c34faf3bb5dad41e6710f88cfe1b0f6",
+      "workspace_fingerprint": "bb8cb6be39028c7a5c653c358600d009c1b9312e247ef24a7c84caf4ef280c99",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/dense-integer-public-resources.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.38,
+      "started_at": "2026-08-11T12:27:36.474Z",
+      "commit": "46fb2b755c34faf3bb5dad41e6710f88cfe1b0f6",
+      "workspace_fingerprint": "1f98559ce916267e56b3535c11d9263add4b133150df7fa66efa06d0d405824f",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Public dense ZZ Matrix values now canonically own generated FmpzMatrix resources. Construction, mutation, inspection, structural arithmetic, multiplication, powers, determinant, rank, HNF/SNF with transformations, exact right kernels, characteristic/minimal polynomials, formatting, serialization, stacking, augmentation, and indexed row/column selection stay resource-to-resource. Packed exact storage is materialized only at explicit list, subdivided formatting, and stable serialization boundaries. Native-disabled execution retains tested correct bulk-ingress fallbacks, and focused tests prohibit hidden packed materialization in resource algorithms.",
+    "risks": [
+      "Generated exact matrix resources remain Node-only declarations with wasm=False; portable opaque-resource lowering is a separate architecture milestone.",
+      "Indexed row/column selection is resource-to-resource but currently performs two generated FFI calls per selected row or column. At 250 selected indices from a 500 by 500 matrix it takes about 19--21 ms, versus 2.5--2.7 ms for the former canonical packed path; direct declared resource selectors are required before claiming uniform structural performance.",
+      "The aggregate pnpm ffi:lifecycle:fuzz command cannot start in this isolated worktree because the unrelated graph addon is not provisioned. The focused FmpzMatrix lifecycle test passes 300 ownership rounds plus randomized differential checks.",
+      "The rebased declaration identity required regenerating the ignored local FLINT host adapter before native validation; generated build artifacts are intentionally not committed.",
+      "pnpm parallel:check cannot select this task because the rebased shared worktree contains five other integrated contracts still marked active or review; task-specific validation receipts are current."
+    ],
+    "next_steps": [
+      "Integrate onto the generated-resource FFI base and regenerate native host adapters before testing.",
+      "Add generated FmpzMatrix select_rows and select_columns operations so indexed selection crosses the resource boundary once instead of twice per selected index.",
+      "Apply the same canonical-resource cutover and no-hidden-materialization performance ratchets to remaining exact matrix and polynomial families.",
+      "Prove the same opaque-resource declarations through the WASM host lowering before enabling browser resource storage."
+    ]
+  }
+}

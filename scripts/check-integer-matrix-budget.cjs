@@ -139,7 +139,14 @@ async function run(environment = process.env) {
   const savedCache = process.env.SAGEJS_NATIVE_CACHE_DIR;
   const savedRequired = process.env.SAGEJS_NATIVE_REQUIRED;
   try {
-    for (const filename of ["dense_integer.py", "dense_integer_flint.py"]) {
+    // Exact-object formatting and serialization currently share the neutral
+    // byte-region bulk-copy kernel hosted in dense_rational_flint.py. Compile
+    // that transport provider until it moves into a domain-neutral module.
+    for (const filename of [
+      "dense_integer.py",
+      "dense_integer_flint.py",
+      "dense_rational_flint.py",
+    ]) {
       await compile({
         sourcePath: join(
           root, "src", "lib", "sagejs", "kernels", "matrix", filename,
