@@ -77,6 +77,7 @@ const integration = [
   "test/graphics-export.cjs",
   "test/approximate-polynomial.cjs",
   "test/exact-polynomial-resources.cjs",
+  "test/polynomial-prime-evaluate.cjs",
   "test/padics.cjs",
   "test/groups.cjs",
   "test/graphs.cjs",
