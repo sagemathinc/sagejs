@@ -123,9 +123,39 @@ def write_imports(module, output):
         output.print("] || (globalThis[")
         output.print_string(output.options.module_registry)
         output.print("] = {});")
+    elif output.options.baselib_module_id:
+        # Baselib modules need a private ``__main__`` alias, but their import
+        # lookup must remain connected to the process-wide Python module
+        # cache.  A prototype view supplies both properties without replacing
+        # the canonical ``__main__`` entry as each baselib module initializes.
+        output.print(
+            "var ρσ_modules = Object.create(globalThis.ρσ_modules || "
+            "(globalThis.ρσ_modules = {}));"
+        )
     else:
-        output.print("var ρσ_modules = {};")
+        # Python has one sys.modules cache per interpreter. Standalone output
+        # used to allocate a disconnected registry, which made a function
+        # defined in the baselib unable to import a module embedded by the
+        # calling program once lexical baselib scopes were introduced.
+        output.print(
+            "var ρσ_modules = globalThis.ρσ_modules || (globalThis.ρσ_modules = {});"
+        )
     output.newline()
+    if output.options.baselib_module_id:
+        output.indent()
+        output.print("ρσ_modules.__main__ = globalThis.__sagejs_baselib_modules__[")
+        output.print_string(output.options.baselib_module_id)
+        output.print("] || (globalThis.__sagejs_baselib_modules__[")
+        output.print_string(output.options.baselib_module_id)
+        output.print("] = Object.create(null))")
+        output.end_statement()
+    if not output.options.baselib_module_id:
+        output.indent()
+        output.print(
+            "if (globalThis.__sagejs_baselib_modules__) "
+            "Object.assign(ρσ_modules, globalThis.__sagejs_baselib_modules__)"
+        )
+        output.end_statement()
     if any(module_.module_id == "builtins" for module_ in imports):
         output.indent()
         output.print("ρσ_modules.builtins = {}")
@@ -201,7 +231,38 @@ def write_imports(module, output):
 
 
 def write_main_name(output, filename=None):
-    if output.options.write_name:
+    module_id = output.options.baselib_module_id
+    if module_id:
+        package_name = ".".join(module_id.split(".")[:-1])
+        output.newline()
+        output.indent()
+        output.print("var __name__ = ")
+        output.print_string(module_id)
+        output.print(", __package__ = ")
+        output.print_string(package_name)
+        output.print(
+            ", __loader__ = null, __cached__ = null, "
+            "__builtins__ = globalThis, __doc__ = null"
+        )
+        output.semicolon()
+        if filename:
+            output.newline()
+            output.indent()
+            output.print("var __file__ = " + JSON.stringify(filename))
+            output.semicolon()
+        output.newline()
+        output.indent()
+        output.print("var __spec__ = {name:")
+        output.print_string(module_id)
+        output.print(",parent:")
+        output.print_string(package_name)
+        output.print(",origin:")
+        output.print_string(filename or "")
+        output.print(",loader:null,submodule_search_locations:null}")
+        output.semicolon()
+        output.newline()
+        output.newline()
+    elif output.options.write_name:
         output.newline()
         output.indent()
         output.print(
@@ -269,6 +330,7 @@ def bind_module_namespace(module, output, hidden_names=None):
     """Expose module locals through a live Python module object."""
     hidden_names = hidden_names or []
     module_id = module.module_id
+    display_module_id = output.options.baselib_module_id or module_id
     names = []
     seen = {}
     for symbol in module.localvars:
@@ -314,7 +376,7 @@ def bind_module_namespace(module, output, hidden_names=None):
         normalized_filename = (module.filename or "").replaceAll("\\", "/")
         if normalized_filename.endsWith("/__init__.py"):
             magic_names.push("__path__")
-    elif output.options.write_name:
+    elif output.options.write_name or output.options.baselib_module_id:
         magic_names = [
             "__name__",
             "__package__",
@@ -323,6 +385,8 @@ def bind_module_namespace(module, output, hidden_names=None):
             "__cached__",
             "__builtins__",
         ]
+        if output.options.baselib_module_id:
+            magic_names.push("__doc__")
         if module.filename:
             magic_names.push("__file__")
     for name in magic_names:
@@ -343,11 +407,18 @@ def bind_module_namespace(module, output, hidden_names=None):
             output.comma()
         output.print_string(name)
         output.colon()
-        output.print("{enumerable:true,get:function(){return ")
-        output.print_name(name)
-        output.print("},set:function(value){")
-        output.print_name(name)
-        output.print("=value}}")
+        if output.options.baselib_module_id:
+            output.print("{enumerable:true,get:()=>")
+            output.print_name(name)
+            output.print(",set:value=>")
+            output.print_name(name)
+            output.print("=value}")
+        else:
+            output.print("{enumerable:true,get:function(){return ")
+            output.print_name(name)
+            output.print("},set:function(value){")
+            output.print_name(name)
+            output.print("=value}}")
     wrote_property = names.length > 0
     for entry in hidden_names:
         name = entry.name if entry.name else entry
@@ -358,9 +429,14 @@ def bind_module_namespace(module, output, hidden_names=None):
         wrote_property = True
         output.print_string(name)
         output.colon()
-        output.print("{enumerable:false,get:function(){return ")
-        output.print_name(name)
-        output.print("}}")
+        if output.options.baselib_module_id:
+            output.print("{enumerable:false,get:()=>")
+            output.print_name(name)
+            output.print("}")
+        else:
+            output.print("{enumerable:false,get:function(){return ")
+            output.print_name(name)
+            output.print("}}")
     output.print("})")
     output.end_statement()
 
@@ -376,7 +452,7 @@ def bind_module_namespace(module, output, hidden_names=None):
     else:
         output.print('ρσ_modules["' + module_id + '"]')
     output.print(',"__repr__",{value:function(){return ')
-    output.print(JSON.stringify("<module '" + module_id + "'>"))
+    output.print(JSON.stringify("<module '" + display_module_id + "'>"))
     output.print("}})")
     output.end_statement()
 
@@ -492,7 +568,8 @@ def prologue(module, output):
 
 
 def print_top_level(self, output):
-    set_module_name(self.module_id)
+    effective_module_id = output.options.baselib_module_id or self.module_id
+    set_module_name(effective_module_id)
     is_main = self.module_id is "__main__"
     numeric_literal_pool = prepare_numeric_literal_pool(self, output)
     output.module_control_flow_names = control_flow_import_names(self)
@@ -507,7 +584,14 @@ def print_top_level(self, output):
             output.newline(), output.indent()
             v = "var"
             (
-                output.assign(v + " ρσ_module_doc__"),
+                output.assign(
+                    v
+                    + (
+                        " __doc__"
+                        if output.options.baselib_module_id
+                        else " ρσ_module_doc__"
+                    )
+                ),
                 output.print(JSON.stringify(create_doctring(self.docstrings))),
             )
             output.end_statement()
@@ -527,7 +611,7 @@ def print_top_level(self, output):
                 prologue(self, output)
                 write_imports(self, output)
                 output.module_control_flow_names = control_flow_import_names(self)
-                set_module_name(self.module_id)
+                set_module_name(effective_module_id)
                 output.newline()
                 output.indent()
 
@@ -565,7 +649,7 @@ def print_top_level(self, output):
             prologue(self, output)
             write_imports(self, output)
             output.module_control_flow_names = control_flow_import_names(self)
-            set_module_name(self.module_id)
+            set_module_name(effective_module_id)
             write_main_name(output, self.filename)
         else:
             write_module_metadata(self, output)

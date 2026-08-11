@@ -1758,9 +1758,21 @@ runtime.reflect.set(list_constructor, "prototype", _list_prototype())
 runtime.reflect.set(list_constructor, "__init__", _list_static_init)
 runtime.reflect.set(list_constructor, "append", _list_type_append)
 runtime.reflect.set(_list_prototype(), "__python_type__", list_constructor)
+runtime.set_class_repr(list_constructor, "<class 'list'>")
 runtime.set_class_repr(ρσ_dict, "<class 'dict'>")
 runtime.set_class_repr(ρσ_set, "<class 'set'>")
 runtime.set_class_repr(ρσ_frozenset, "<class 'frozenset'>")
+for builtin_container_type in (
+    list_constructor,
+    ρσ_dict,
+    ρσ_set,
+    ρσ_frozenset,
+):
+    runtime.object.defineProperty(
+        builtin_container_type,
+        "__python_type__",
+        {"value": type, "writable": True, "configurable": True},
+    )
 list_decorate = ρσ_list_decorate
 list = ρσ_list_constructor
 list_wrap = ρσ_list_decorate

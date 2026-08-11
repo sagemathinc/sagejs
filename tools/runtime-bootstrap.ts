@@ -200,12 +200,22 @@ export function runRuntimeBootstrap(
   // namespaces from ordinary objects without scanning/copying their members.
   // A WeakSet also avoids extending the public namespace with a marker.
   const moduleNamespaces = new WeakSet<object>();
-  for (const value of Object.values(moduleRegistry)) {
-    if (
-      (typeof value === "object" && value !== null) ||
-      typeof value === "function"
-    ) {
-      moduleNamespaces.add(value);
+  const namespaceRegistries = [moduleRegistry];
+  const baselibModules = Reflect.get(
+    globalThis,
+    "__sagejs_baselib_modules__",
+  );
+  if (baselibModules && typeof baselibModules === "object") {
+    namespaceRegistries.push(baselibModules);
+  }
+  for (const registry of namespaceRegistries) {
+    for (const value of Object.values(registry)) {
+      if (
+        (typeof value === "object" && value !== null) ||
+        typeof value === "function"
+      ) {
+        moduleNamespaces.add(value);
+      }
     }
   }
   Reflect.set(globalThis, "__sagejs_module_namespaces__", moduleNamespaces);

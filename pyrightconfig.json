@@ -24,6 +24,7 @@
     "src/baselib/padics.py",
     "src/baselib/polynomial.py",
     "src/baselib/real_complex.py",
+    "src/baselib/runtime_primitives.py",
     "src/baselib/series.py",
     "src/baselib/sagejs/ffi/__init__.py",
     "src/baselib/sagejs/ffi/flint.py",

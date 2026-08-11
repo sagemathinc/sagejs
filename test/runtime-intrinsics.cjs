@@ -30,14 +30,16 @@ const bootstrapFunctions = Array.from(
 );
 const bootstrapAssignments = Array.from(
   runtimeSource.matchAll(
-    /^([a-z_]+) = (?:([A-Za-z0-9_ρσ]+)|r'%js ([A-Za-z0-9_ρσ]+)')$/gm,
+    /^([a-z_]+) = (?:([A-Za-z0-9_ρσ]+)|r["']%js ([A-Za-z0-9_ρσ]+)["'])$/gm,
   ),
   (match) => [match[1], match[2] ?? match[3]],
 );
 const bootstrapNames = [
-  ...bootstrapFunctions,
-  ...bootstrapAssignments.map(([name]) => name),
-  "undefined",
+  ...new Set([
+    ...bootstrapFunctions,
+    ...bootstrapAssignments.map(([name]) => name),
+    "undefined",
+  ]),
 ].sort();
 assert.deepEqual(
   bootstrapNames,
@@ -60,7 +62,9 @@ const expectedBootstrapAssignments = runtimeManifest
         : [name, value],
   );
 assert.deepEqual(
-  bootstrapAssignments.toSorted(([left], [right]) => left.localeCompare(right)),
+  bootstrapAssignments
+    .filter(([name]) => name !== "undefined")
+    .toSorted(([left], [right]) => left.localeCompare(right)),
   expectedBootstrapAssignments.toSorted(
     ([left], [right]) => left.localeCompare(right),
   ),

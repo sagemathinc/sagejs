@@ -1390,6 +1390,12 @@ runtime.reflect.set(
     "!\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~ \t\n\r\x0b\x0c",
 )
 runtime.reflect.set(ρσ_str, "whitespace", WHITESPACE)
+runtime.set_class_repr(ρσ_str, "<class 'str'>")
+runtime.object.defineProperty(
+    ρσ_str,
+    "__python_type__",
+    {"value": type, "writable": True, "configurable": True},
+)
 
 str = ρσ_str
 repr = ρσ_repr

@@ -68,6 +68,32 @@ real algorithm merely because a benchmark was urgent.
 - Native Windows x64 is first class.  New native dependencies require Windows
   support or an explicit capability flag with a tested correct fallback.
 
+## Compiled Python module boundaries
+
+Every compiled Python source file has one lexical top-level environment and
+one stable module namespace object. Functions and closures resolve globals in
+that environment; reads and writes through the module object are live views of
+the same storage. Repeated imports return the same object and preserve normal
+`__name__`, `__package__`, `__spec__`, `__dict__`, function `__globals__`, and
+function `__module__` relationships.
+
+Top-level baselib files use canonical internal names of the form
+`sagejs._baselib.<source-stem>` and are registered before initialization in the
+baselib module cache. A file MUST import another module when it depends on that
+module's private state; source ordering is not an import mechanism. Private
+names may repeat independently in different modules and never enter the
+transitional shared Sage facade. Public names exported through that facade
+must remain unique until consumers use explicit module imports, and the build
+rejects ambiguous cross-module references rather than selecting one by file
+order.
+
+The compiler's self-hosting bootstrap may use an explicitly delimited legacy
+concatenation pass only to produce the current compiler. The converged compiler
+and every shipped runtime artifact MUST use lexical modules. Module identity,
+global mutation, closure behavior, introspection, import caching, duplicate
+private names, and accidental public collisions are regression-tested as one
+contract.
+
 ## Native code and exceptions
 
 Every tracked C/C++ source or header is classified in

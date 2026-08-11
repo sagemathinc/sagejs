@@ -83,6 +83,7 @@ output_stream_defaults = {
     "python_attributes": False,
     "pool_numeric_literals": False,
     "numeric_literal_pool_prefix": "",
+    "baselib_module_id": "",
 }
 
 

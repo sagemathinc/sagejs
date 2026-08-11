@@ -50,6 +50,13 @@ def _builtins_default_import(
     """Load a Python module through the host and return CPython-style bindings."""
     module = runtime.reflect.get(runtime.modules, name)
     if module is runtime.undefined:
+        baselib_modules = runtime.reflect.get(
+            runtime.global_object,
+            "__sagejs_baselib_modules__",
+        )
+        if baselib_modules is not runtime.undefined:
+            module = runtime.reflect.get(baselib_modules, name)
+    if module is runtime.undefined:
         loader = runtime.reflect.get(runtime.global_object, "__sagejs_load_module__")
         if loader is runtime.undefined:
             raise ImportError("No module named '" + name + "'")
@@ -168,7 +175,62 @@ cached_method = cached_function
 def _builtins_get_member(value: Any, name: Any) -> Any:
     if value is None or value is runtime.undefined:
         return runtime.undefined
-    return runtime.native_get(value, name)
+    answer = runtime.native_get(value, name)
+    if answer is not runtime.undefined:
+        return answer
+    if not runtime.strict_equal(runtime.jstype(value), "function"):
+        return answer
+    module_name = runtime.native_get(value, "__module__")
+    if not runtime.strict_equal(
+        runtime.jstype(module_name), "string"
+    ) or not runtime.reflect.apply(
+        runtime.string_class.prototype.startsWith,
+        module_name,
+        ["sagejs._baselib."],
+    ):
+        return answer
+    if runtime.strict_equal(name, "__code__"):
+        code = ρσ_function_code(value)
+        runtime.object.defineProperty(
+            value,
+            "__code__",
+            {"value": code, "writable": True, "configurable": True},
+        )
+        return code
+    if runtime.strict_equal(name, "__globals__"):
+        registry = runtime.native_get(
+            runtime.global_object,
+            "__sagejs_baselib_modules__",
+        )
+        module = runtime.native_get(registry, module_name)
+        containers_module = runtime.native_get(
+            registry,
+            "sagejs._baselib.containers",
+        )
+        live_scope_dict = runtime.native_get(
+            containers_module,
+            "ρσ_live_scope_dict",
+        )
+        if runtime.strict_equal(runtime.jstype(live_scope_dict), "function"):
+            return runtime.reflect.apply(
+                live_scope_dict,
+                runtime.undefined,
+                [module],
+            )
+    return answer
+
+
+def _builtins_is_baselib_function(value: Any) -> _Bool:
+    if not runtime.strict_equal(runtime.jstype(value), "function"):
+        return False
+    module_name = runtime.native_get(value, "__module__")
+    return runtime.strict_equal(
+        runtime.jstype(module_name), "string"
+    ) and runtime.reflect.apply(
+        runtime.string_class.prototype.startsWith,
+        module_name,
+        ["sagejs._baselib."],
+    )
 
 
 def ρσ_python_jstype(value: Any) -> _Str:
@@ -4093,6 +4155,11 @@ def ρσ_getattr_internal(
         ):
             return descriptor
     if runtime.strict_equal(runtime.jstype(value), "function"):
+        if _builtins_is_baselib_function(value) and (
+            runtime.strict_equal(name, "__globals__")
+            or runtime.strict_equal(name, "__code__")
+        ):
+            return _builtins_get_member(value, name)
         class_prototype = _builtins_get_member(value, "prototype")
         if (
             not _builtins_has_member(value, name)
@@ -4434,10 +4501,24 @@ def _builtins_function_with_globals(
             return _builtins_function_with_globals(result, global_namespace)
         return result
 
-    runtime.reflect.set(rebound, "__python_type__", ρσ_function_type)
+    runtime.object.defineProperty(
+        rebound,
+        "__python_type__",
+        {
+            "value": ρσ_function_type,
+            "writable": True,
+            "configurable": True,
+        },
+    )
     runtime.reflect.set(rebound, "__python_descriptor__", True)
-    runtime.reflect.set(
-        rebound, "__code__", _builtins_get_member(source_function, "__code__")
+    runtime.object.defineProperty(
+        rebound,
+        "__code__",
+        {
+            "value": _builtins_get_member(source_function, "__code__"),
+            "writable": True,
+            "configurable": True,
+        },
     )
     runtime.reflect.set(
         rebound, "__name__", _builtins_get_member(source_function, "__name__")
@@ -4891,7 +4972,16 @@ def ρσ_len(value: Any) -> _Int:
 
 
 def ρσ_get_module(name: _Str) -> Any:
-    return runtime.reflect.get(runtime.modules, name)
+    module = runtime.reflect.get(runtime.modules, name)
+    if module is not runtime.undefined:
+        return module
+    baselib_modules = runtime.reflect.get(
+        runtime.global_object,
+        "__sagejs_baselib_modules__",
+    )
+    if baselib_modules is runtime.undefined:
+        return runtime.undefined
+    return runtime.reflect.get(baselib_modules, name)
 
 
 def ρσ_pow(
@@ -5054,6 +5144,11 @@ def ρσ_type(*values: Any) -> Any:
                     [dynamic_class, bases],
                 ),
             )
+        runtime.object.defineProperty(
+            dynamic_class,
+            "__python_type__",
+            {"value": ρσ_type, "writable": True, "configurable": True},
+        )
         runtime.set_class_repr(dynamic_class, "<class '" + class_name + "'>")
         return dynamic_class
     if len(values) != 1:
@@ -5100,6 +5195,8 @@ def ρσ_type(*values: Any) -> Any:
     python_type = _builtins_get_member(value, "__python_type__")
     if runtime.strict_equal(runtime.jstype(python_type), "function"):
         return python_type
+    if _builtins_is_baselib_function(value) and not _builtins_is_python_class(value):
+        return ρσ_function_type
     if _builtins_is_python_class(value):
         return ρσ_type
     return _builtins_get_member(value, "constructor")
@@ -5182,7 +5279,11 @@ def ρσ_apply_metaclass(
     decorators = runtime.reflect.get(compiled_class, "ρσ_decorators")
     if decorators is not runtime.undefined:
         runtime.reflect.set(created, "ρσ_decorators", decorators)
-    runtime.reflect.set(created, "__python_type__", metaclass)
+    runtime.object.defineProperty(
+        created,
+        "__python_type__",
+        {"value": metaclass, "writable": True, "configurable": True},
+    )
     return created
 
 
@@ -7170,21 +7271,31 @@ runtime.set_class_repr(ρσ_bool, "<class 'bool'>")
 runtime.set_class_repr(ρσ_float, "<class 'float'>")
 runtime.set_class_repr(ρσ_type, "<class 'type'>")
 runtime.set_class_repr(runtime.function_class, "<class 'function'>")
-runtime.reflect.set(ρσ_int, "__python_type__", ρσ_type)
-runtime.reflect.set(ρσ_bool, "__python_type__", ρσ_type)
-runtime.reflect.set(ρσ_float, "__python_type__", ρσ_type)
-runtime.reflect.set(ρσ_type, "__python_type__", ρσ_type)
+for builtin_numeric_type in (ρσ_int, ρσ_bool, ρσ_float, ρσ_type):
+    runtime.object.defineProperty(
+        builtin_numeric_type,
+        "__python_type__",
+        {"value": ρσ_type, "writable": True, "configurable": True},
+    )
 runtime.reflect.set(runtime.function_class, "__python_type__", ρσ_type)
 runtime.set_class_repr(ρσ_tuple, "<class 'tuple'>")
 runtime.set_class_repr(ρσ_property, "<class 'property'>")
 runtime.set_class_repr(SageProperty, "<class 'property'>")
+for builtin_factory_type in (ρσ_tuple, ρσ_property):
+    # These Python-callable factories implement builtin classes.  Compiled
+    # baselib functions receive lazy function metadata, so replace that marker
+    # explicitly instead of letting class inheritance mistake the factory for
+    # a custom metaclass.
+    runtime.object.defineProperty(
+        builtin_factory_type,
+        "__python_type__",
+        {"value": ρσ_type, "writable": True, "configurable": True},
+    )
 runtime.reflect.set(
     runtime.reflect.get(SageProperty, "prototype"),
     "__python_type__",
     ρσ_property,
 )
-runtime.set_class_repr(runtime.list_constructor, "<class 'list'>")
-runtime.set_class_repr(runtime.string_builtin, "<class 'str'>")
 
 
 class SageObject:

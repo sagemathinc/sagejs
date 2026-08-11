@@ -3201,11 +3201,25 @@ runtime.register_doc(
 )
 
 
-# ``graph_reference_data.py`` sorts before this module in the concatenated
-# baselib build. The guarded import gives standalone type checkers the same
-# name without performing a runtime module import in that build.
-if bool(0):
-    from graph_reference_data import _GRAPH_REFERENCE_RECORDS
+# Generated reference data is a real sibling module, not a name inherited
+# from baselib concatenation.  Sage.js registers it under its canonical
+# internal name; the second spelling keeps this source executable when the
+# baselib directory itself is placed on CPython's import path.
+try:
+    _graph_reference_module = __import__(
+        "sagejs._baselib.graph_reference_data",
+        None,
+        None,
+        ["_GRAPH_REFERENCE_RECORDS"],
+    )
+except ImportError:
+    _graph_reference_module = __import__(
+        "graph_reference_data",
+        None,
+        None,
+        ["_GRAPH_REFERENCE_RECORDS"],
+    )
+_GRAPH_REFERENCE_RECORDS = _graph_reference_module._GRAPH_REFERENCE_RECORDS
 
 
 def _register_graph_reference(record: dict[str, Any]) -> None:
@@ -3239,5 +3253,5 @@ def _register_graph_reference(record: dict[str, Any]) -> None:
     )
 
 
-for _graph_reference_record in _GRAPH_REFERENCE_RECORDS:  # pyright: ignore[reportPossiblyUnboundVariable]
+for _graph_reference_record in _GRAPH_REFERENCE_RECORDS:
     _register_graph_reference(_graph_reference_record)

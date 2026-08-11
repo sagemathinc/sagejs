@@ -58,7 +58,14 @@ def ρσ_native_method_adapter(target_function):
             "__varargs__",
             "__varkw__",
         ]) {
-            method[name] = target_function[name];
+            const descriptor = Object.getOwnPropertyDescriptor(
+                target_function, name
+            );
+            if (descriptor && typeof descriptor.get === "function") {
+                Object.defineProperty(method, name, descriptor);
+            } else {
+                method[name] = target_function[name];
+            }
         }
         method.__sagejs_native_method__ = true;
         return method;
@@ -95,7 +102,16 @@ def ρσ_unbound_method_adapter(target_function):
             "__varargs__",
             "__varkw__",
         ]) {
-            if (name !== "__argnames__") method[name] = target_function[name];
+            if (name !== "__argnames__") {
+                const descriptor = Object.getOwnPropertyDescriptor(
+                    target_function, name
+                );
+                if (descriptor && typeof descriptor.get === "function") {
+                    Object.defineProperty(method, name, descriptor);
+                } else {
+                    method[name] = target_function[name];
+                }
+            }
         }
         method.__func__ = target_function;
         // The adapter still represents an ordinary Python function.  Mark it

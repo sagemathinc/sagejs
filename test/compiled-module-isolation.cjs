@@ -1,0 +1,266 @@
+"use strict";
+
+const assert = require("node:assert/strict");
+const {
+  mkdtempSync,
+  readFileSync,
+  readdirSync,
+  rmSync,
+  writeFileSync,
+} = require("node:fs");
+const { tmpdir } = require("node:os");
+const { join } = require("node:path");
+const { spawnSync } = require("node:child_process");
+const test = require("node:test");
+
+const { createSage } = require("../dist/tools/kernel.js");
+const {
+  analyzeBaselibModules,
+  moduleId,
+} = require("../tools/baselib-modules.cjs");
+
+const root = join(__dirname, "..");
+
+function moduleFixture(filename, exports, references = []) {
+  return { filename, exports, references };
+}
+
+test("baselib symbol analysis rejects accidental shared namespaces", () => {
+  const privateAnalysis = analyzeBaselibModules([
+    moduleFixture("alpha.py", ["public_alpha", "_helper"]),
+    moduleFixture("beta.py", ["public_beta", "_helper"]),
+  ]);
+  assert.deepEqual(privateAnalysis.duplicatePrivate.get("_helper"), [
+    "alpha.py",
+    "beta.py",
+  ]);
+  assert.ok(!privateAnalysis.facadeNames.includes("_helper"));
+  assert.deepEqual(privateAnalysis.facadeNames, ["public_alpha", "public_beta"]);
+
+  assert.throws(
+    () =>
+      analyzeBaselibModules([
+        moduleFixture("alpha.py", ["answer"]),
+        moduleFixture("beta.py", ["answer"]),
+      ]),
+    /duplicate public baselib symbols: answer: alpha\.py, beta\.py/,
+  );
+  assert.throws(
+    () =>
+      analyzeBaselibModules([
+        moduleFixture("alpha.py", ["_helper"]),
+        moduleFixture("beta.py", ["_helper"]),
+        moduleFixture("consumer.py", ["consume"], ["_helper"]),
+      ]),
+    /ambiguous private baselib reference consumer\.py:_helper/,
+  );
+  assert.equal(moduleId("matrix.py"), "sagejs._baselib.matrix");
+  assert.throws(() => moduleId("matrix.cjs"), /not Python source/);
+});
+
+test("generated baselib gives every source file one lexical module", () => {
+  const generated = readFileSync(
+    join(root, "dist/compiler/baselib-plain-pretty.js"),
+    "utf8",
+  );
+  const filenames = readdirSync(join(root, "src", "baselib"))
+    .filter((name) => name.endsWith(".py"))
+    .sort();
+
+  assert.match(
+    generated,
+    /^var ρσ_baselib_modules = Object\.create\(null\);\n/m,
+  );
+  assert.match(
+    generated,
+    /globalThis\.__sagejs_baselib_modules__ = ρσ_baselib_modules;/,
+  );
+  const firstWrapper = generated.indexOf(" = (function() {");
+  assert.ok(
+    firstWrapper > 0,
+    "the generated baselib must contain module wrappers",
+  );
+  for (const filename of filenames) {
+    const rawId = moduleId(filename);
+    const id = rawId.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    assert.ok(
+      generated.indexOf(`ρσ_baselib_modules["${rawId}"] = Object.create(null);`) <
+        firstWrapper,
+      `${filename} must enter the module cache before initialization`,
+    );
+    const matches = generated.match(
+      new RegExp(`ρσ_baselib_modules\\["${id}"\\] = \\(function\\(\\) \\{`, "g"),
+    );
+    assert.equal(matches?.length, 1, `${filename} must have one lexical wrapper`);
+  }
+  assert.doesNotMatch(
+    generated,
+    /^_PLOTLY_MIME = ρσ_baselib_modules\[/m,
+    "a repeated private name must never escape through the shared facade",
+  );
+  assert.doesNotMatch(
+    readFileSync(join(root, "src", "baselib", "graphs.py"), "utf8"),
+    /sorts before this module in the concatenated baselib build/,
+  );
+});
+
+test(
+  "all baselib modules have stable Python identity and introspection",
+  async (t) => {
+    const session = await createSage({ mode: "python" });
+    t.after(() => session.close());
+    const names = readdirSync(join(root, "src", "baselib"))
+      .filter((name) => name.endsWith(".py"))
+      .map((name) => moduleId(name));
+    const namesLiteral = JSON.stringify(names);
+    const result = await session.evaluate(
+      [
+        "import types",
+        `names = ${namesLiteral}`,
+        "modules = [get_module(name) for name in names]",
+        "print(len(modules))",
+        "print(all(module is get_module(name) for name, module in zip(names, modules)))",
+        "print(all(module.__name__ == name for name, module in zip(names, modules)))",
+        "print(all(module.__package__ == 'sagejs._baselib' for module in modules))",
+        "print(all(module.__spec__['name'] == name for name, module in zip(names, modules)))",
+        "print(all(repr(module) == \"<module '\" + name + \"'>\" for name, module in zip(names, modules)))",
+        "print(all(isinstance(module, types.ModuleType) for module in modules))",
+        "matrix_module = get_module('sagejs._baselib.matrix')",
+        "polynomial_module = get_module('sagejs._baselib.polynomial')",
+        "print(matrix_module._integer_buffer_values is not polynomial_module._integer_buffer_values)",
+        "print(random_matrix.__module__)",
+        "print(random_matrix.__globals__ is matrix_module.__dict__)",
+        "print(random_matrix.__globals__ is random_matrix.__globals__)",
+        "print(random_matrix.__code__ is random_matrix.__code__)",
+        "print(type(random_matrix) is types.FunctionType)",
+        "print(all(type(value) is type for value in (int, bool, float, type, tuple, property, str, list, dict, set, frozenset)))",
+        "print(type(PolynomialRing(GF(5), 'x')) is PolynomialRingParent)",
+        "reference_module = get_module('sagejs._baselib.graph_reference_data')",
+        "imported_reference = __import__('sagejs._baselib.graph_reference_data', None, None, ['_GRAPH_REFERENCE_RECORDS'])",
+        "print(reference_module is imported_reference)",
+        "graphs_module = get_module('sagejs._baselib.graphs')",
+        "graphics_module = get_module('sagejs._baselib.graphics')",
+        "old_graph_mime = graphs_module._PLOTLY_MIME",
+        "graphs_module._PLOTLY_MIME = 'application/x-sagejs-isolation-test'",
+        "print(Graph().graphplot()._rich_repr_().mime)",
+        "print(graphics_module._PLOTLY_MIME == old_graph_mime)",
+        "graphs_module._PLOTLY_MIME = old_graph_mime",
+      ].join("\n"),
+    );
+
+    assert.equal(
+      result.stdout.trim(),
+      [
+        String(names.length),
+        "True",
+        "True",
+        "True",
+        "True",
+        "True",
+        "True",
+        "True",
+        "sagejs._baselib.matrix",
+        "True",
+        "True",
+        "True",
+        "True",
+        "True",
+        "True",
+        "True",
+        "application/x-sagejs-isolation-test",
+        "True",
+      ].join("\n"),
+    );
+  },
+);
+
+test("ordinary compiled imports preserve globals, closures, and cache identity", () => {
+  const directory = mkdtempSync(join(tmpdir(), "sagejs-module-isolation-"));
+  try {
+    writeFileSync(
+      join(directory, "alpha.py"),
+      [
+        "value = 10",
+        "def read(): return value",
+        "def write(new_value):",
+        "    global value",
+        "    value = new_value",
+        "def factory(offset):",
+        "    def inner(argument):",
+        "        return value + offset + argument",
+        "    return inner",
+        "",
+      ].join("\n"),
+    );
+    writeFileSync(
+      join(directory, "beta.py"),
+      "value = 99\ndef read(): return value\n",
+    );
+    writeFileSync(
+      join(directory, "cycle_a.py"),
+      [
+        "value = 'a-start'",
+        "import cycle_b",
+        "value = 'a-done'",
+        "def seen(): return cycle_b.seen_a",
+        "",
+      ].join("\n"),
+    );
+    writeFileSync(
+      join(directory, "cycle_b.py"),
+      [
+        "import cycle_a",
+        "seen_a = cycle_a.value",
+        "def current(): return cycle_a.value",
+        "",
+      ].join("\n"),
+    );
+    writeFileSync(
+      join(directory, "main.py"),
+      [
+        "import alpha",
+        "import alpha as alpha_again",
+        "import beta",
+        "print(alpha is alpha_again)",
+        "print(alpha.__name__, alpha.__package__, repr(alpha))",
+        "print(alpha.read(), beta.read())",
+        "closure = alpha.factory(2)",
+        "alpha.write(30)",
+        "print(alpha.read(), beta.read(), closure(3))",
+        "alpha.write(40)",
+        "print(closure(3))",
+        "print(alpha.read.__module__)",
+        "print(alpha.read.__globals__ is alpha.__dict__)",
+        "print(alpha.read.__code__ is alpha.read.__code__)",
+        "Dynamic = type('Dynamic', (object,), {})",
+        "print(type(Dynamic) is type, type(Dynamic()) is Dynamic)",
+        "import cycle_a",
+        "import cycle_b",
+        "print(cycle_a.seen(), cycle_b.current(), cycle_a is cycle_b.cycle_a)",
+        "",
+      ].join("\n"),
+    );
+    const result = spawnSync(join(root, "bin", "sagejs"), ["main.py"], {
+      cwd: directory,
+      encoding: "utf8",
+    });
+    assert.equal(result.status, 0, result.stderr);
+    assert.equal(
+      result.stdout.trim(),
+      [
+        "True",
+        "alpha  <module 'alpha'>",
+        "10 99",
+        "30 99 35",
+        "45",
+        "alpha",
+        "True",
+        "True",
+        "True True",
+        "a-start a-done True",
+      ].join("\n"),
+    );
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});

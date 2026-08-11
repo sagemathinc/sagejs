@@ -11,6 +11,10 @@ var crypto = require("crypto");
 var fs = require("fs");
 var vm = require("vm");
 var zlib = require("zlib");
+var {
+  analyzeBaselibModules,
+  moduleId: baselibModuleId,
+} = require("./baselib-modules.cjs");
 
 async function compile_baselib(PyLang, src_path) {
   const { createPythonCompilerFrontend } = require("./python/compiler-frontend");
@@ -29,13 +33,15 @@ async function compile_baselib(PyLang, src_path) {
   // The historical parser happened not to exercise those helpers during
   // startup; the complete Tree-sitter lowering correctly does.
   items.sort(function (left, right) {
+    if (left === "runtime_primitives.py") return -1;
+    if (right === "runtime_primitives.py") return 1;
     if (left === "builtins.py") return -1;
     if (right === "builtins.py") return 1;
     return left.localeCompare(right);
   });
 
   try {
-    items.forEach(function (fname) {
+    const modules = items.map(function (fname) {
       var ast;
       var raw = fs.readFileSync(
         path.join(src_path, "baselib", fname),
@@ -45,6 +51,7 @@ async function compile_baselib(PyLang, src_path) {
         ast = (frontend ? frontend.parse : PyLang.parse)(raw, {
           filename: fname,
           basedir: path.join(src_path, "baselib"),
+          intrinsic_package_shells: true,
           // Baselib classes implement Python objects, so extracting a method
           // from an instance must retain that instance as ``self``.
           scoped_flags: { bound_methods: true },
@@ -54,16 +61,165 @@ async function compile_baselib(PyLang, src_path) {
         console.error(e.toString());
         process.exit(1);
       }
-      var output = new PyLang.OutputStream({
+      const references = new Set();
+      if (frontend !== null) {
+        ast.walk({
+          _visit: function (node, descend) {
+            if (node instanceof PyLang.AST_SymbolRef) {
+              references.add(node.name);
+            }
+            if (descend !== undefined) descend();
+          },
+        });
+      }
+      return {
+        ast,
+        filename: fname,
+        moduleId: baselibModuleId(fname),
+        exports: [...new Set(ast.exports.map((symbol) => symbol.name))],
+        references: [...references],
+      };
+    });
+    const analysis = analyzeBaselibModules(modules);
+    const facadeNameSet = new Set(analysis.facadeNames);
+    const namingOutput = new PyLang.OutputStream({});
+    let supportsLexicalModuleMetadata = true;
+    try {
+      new PyLang.OutputStream({ baselib_module_id: "__probe__" });
+    } catch (_error) {
+      // The first self-hosting pass runs with the immutable bootstrap
+      // compiler, which does not understand lexical baselib metadata.  The
+      // compiler produced by that pass immediately rebuilds itself below and
+      // emits the isolated form.
+      supportsLexicalModuleMetadata = false;
+    }
+
+    if (!supportsLexicalModuleMetadata) {
+      // The immutable bootstrap compiler predates intrinsic sagejs.runtime
+      // imports and expands the compatibility package into every baselib
+      // parse.  Its output intentionally retains the historical shared scope
+      // for this one self-hosting pass.  The compiler it produces immediately
+      // recompiles the baselib below with lexical modules.
+      ans.pretty +=
+        "globalThis.__sagejs_baselib_modules__ = Object.create(null);\n";
+      for (const module of modules) {
+        const output = new PyLang.OutputStream({
+          beautify: true,
+          keep_docstrings: true,
+          write_name: false,
+          private_scope: false,
+          omit_baselib: true,
+        });
+        module.ast.print(output);
+        ans.pretty += output.get();
+        const descriptors = module.exports.map(function (name) {
+          const javascriptName = namingOutput.make_name(name);
+          return (
+            JSON.stringify(name) +
+            ":{enumerable:true,get:function(){return " +
+            javascriptName +
+            "}}"
+          );
+        });
+        ans.pretty +=
+          `globalThis.__sagejs_baselib_modules__[${JSON.stringify(
+            module.moduleId,
+          )}] = Object.create(null);\n`;
+        if (descriptors.length > 0) {
+          ans.pretty +=
+            `Object.defineProperties(globalThis.__sagejs_baselib_modules__[` +
+            `${JSON.stringify(module.moduleId)}],{${descriptors.join(",")}});\n`;
+        }
+      }
+      return ans;
+    }
+
+    // The intrinsic host boundary supplies class/function adapters used while
+    // builtins.py initializes.  Its legacy Sage facade aliases are inert in
+    // this converged path; ordinary mathematical modules publish the real
+    // values later in the same deterministic sequence.
+    modules.sort(function (left, right) {
+      const priority = function (module) {
+        if (module.filename === "runtime_primitives.py") return 0;
+        if (module.filename === "sagejs_bootstrap.py") return 1;
+        if (module.filename === "builtins.py") return 2;
+        if (module.filename === "containers.py") return 3;
+        if (module.filename === "errors.py") return 4;
+        if (module.filename === "internal.py") return 5;
+        if (module.filename === "str.py") return 6;
+        return 7;
+      };
+      return priority(left) - priority(right);
+    });
+
+    ans.pretty +=
+      "var ρσ_baselib_modules = Object.create(null);\n" +
+      "var ρσ_baselib_facade = Object.create(null);\n";
+    // Install the registry before module initialization.  This is the
+    // baselib equivalent of sys.modules: cyclic bootstrap dependencies may
+    // observe modules which have finished initialization, while the module
+    // currently being evaluated still uses its local namespace fallback.
+    ans.pretty +=
+      "globalThis.__sagejs_baselib_modules__ = ρσ_baselib_modules;\n";
+    // Match Python's sys.modules rule: publish every module object before its
+    // body executes.  Cycles can therefore observe stable, partially
+    // initialized namespaces instead of allocating a second module or
+    // accidentally resolving a shared outer variable.
+    for (const module of modules) {
+      ans.pretty +=
+        `ρσ_baselib_modules[${JSON.stringify(module.moduleId)}] = ` +
+        "Object.create(null);\n";
+    }
+    if (analysis.facadeNames.length > 0) {
+      ans.pretty +=
+        "var " +
+        analysis.facadeNames.map((name) => namingOutput.make_name(name)).join(", ") +
+        ";\n";
+    }
+    // Python's object bootstrap needs array literals while the full list
+    // representation is itself being defined in containers.py.  This tiny
+    // declaration-phase primitive is deliberately replaced by that module's
+    // real implementation before user code runs.  It is not a mathematical
+    // implementation and performs no host callback.
+    ans.pretty += "ρσ_list_decorate = function(answer) { return answer; };\n";
+
+    modules.forEach(function (module) {
+      const outputOptions = {
         beautify: true,
         keep_docstrings: true,
         write_name: false,
         private_scope: false,
         omit_baselib: true,
-      });
-      ast.print(output);
-      ans["pretty"] += output.get();
+      };
+      outputOptions.baselib_module_id = module.moduleId;
+      var output = new PyLang.OutputStream(outputOptions);
+      module.ast.print(output);
+      const facadeAssignments = module.exports
+        .filter((name) => facadeNameSet.has(name))
+        .map(function (name) {
+          const javascriptName = namingOutput.make_name(name);
+          return (
+            "ρσ_baselib_facade[" + JSON.stringify(name) + "] = " +
+            javascriptName + ";"
+          );
+        })
+        .join("\n");
+      ans.pretty +=
+        `ρσ_baselib_modules[${JSON.stringify(module.moduleId)}] = ` +
+        "(function() {\n" +
+        output.get() +
+        (facadeAssignments ? "\n" + facadeAssignments : "") +
+        "\nreturn ρσ_modules.__main__;\n" +
+        "})();\n";
+      for (const name of module.exports) {
+        if (facadeNameSet.has(name)) {
+          ans.pretty +=
+            namingOutput.make_name(name) +
+            " = ρσ_baselib_facade[" + JSON.stringify(name) + "];\n";
+        }
+      }
     });
+    ans.pretty += "ρσ_baselib_facade = null;\n";
   } finally {
     frontend?.close();
   }
@@ -112,6 +268,7 @@ function check_for_changes(base_path, src_path, signatures) {
   });
   var compiler_files = [
     module.filename,
+    path.join(base_path, "tools", "baselib-modules.cjs"),
     path.join(base_path, "tools", "compiler.ts"),
     path.join(base_path, "tools", "runtime-bootstrap.ts"),
   ];

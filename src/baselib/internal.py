@@ -43,6 +43,19 @@ def _internal_member_is_function(value: Any, name: Any) -> bool:
     )
 
 
+def _internal_is_baselib_function(value: Any) -> bool:
+    if not _internal_type_is(runtime.jstype(value), "function"):
+        return False
+    module_name = _internal_get_member_raw(value, "__module__")
+    return _internal_type_is(
+        runtime.jstype(module_name), "string"
+    ) and runtime.reflect.apply(
+        runtime.string_class.prototype.startsWith,
+        module_name,
+        ["sagejs._baselib."],
+    )
+
+
 def _internal_call_member(
     value: Any,
     name: Any,
@@ -327,38 +340,6 @@ def ρσ_unpack_nested(pattern: Any, iterable: Any) -> list[Any]:
     return answer
 
 
-def ρσ_extends(child: Any, parent: Any) -> None:
-    child.prototype = runtime.object.create(parent.prototype)
-    child.prototype.constructor = child
-
-
-def ρσ_validate_class_bases(bases: Any) -> None:
-    """Reject non-types and incompatible native instance layouts."""
-    native_layouts = 0
-    for index in range(len(bases)):
-        base = bases[index]
-        if (
-            not runtime.strict_equal(runtime.jstype(base), "function")
-            or base is runtime.function_class
-        ):
-            raise TypeError("bases must be types")
-        for previous_index in range(index):
-            if base is bases[previous_index]:
-                raise TypeError("duplicate base class")
-        prototype = runtime.reflect.get(base, "prototype")
-        if prototype is runtime.undefined:
-            raise TypeError("bases must be types")
-        if not runtime.reflect.has(prototype, "__bases__"):
-            native_layouts += 1
-    if native_layouts > 1:
-        raise TypeError("multiple bases have instance lay-out conflict")
-
-
-def ρσ_native_method(target_function: Any) -> Any:
-    """Adapt an ordinary `(self, *args)` function to a JS object method."""
-    return runtime.native_method_adapter(target_function)
-
-
 def ρσ_strict_equal(left: Any, right: Any) -> bool:
     return left is right
 
@@ -497,35 +478,6 @@ def _internal_set_class_repr(wrapper: Any, target: Any) -> None:
     runtime.object.defineProperty(wrapper, "__repr__", descriptor)
 
 
-def ρσ_callable_sequence_class(target: Any) -> Any:
-    def call_class(
-        target_class: Any,
-        _this_argument: Any,
-        call_args: Any,
-    ) -> Any:
-        return ρσ_sequence_proxy(runtime.reflect.construct(target_class, call_args))
-
-    def construct_class(
-        target_class: Any,
-        call_args: Any,
-        new_target: Any,
-    ) -> Any:
-        return ρσ_sequence_proxy(
-            runtime.reflect.construct(target_class, call_args, new_target)
-        )
-
-    handler = runtime.object.create(None)
-    runtime.reflect.set(handler, "apply", call_class)
-    runtime.reflect.set(handler, "construct", construct_class)
-    wrapper = runtime.reflect.construct(
-        runtime.proxy_class,
-        [target, handler],
-    )
-    target.prototype.constructor = wrapper
-    _internal_set_class_repr(wrapper, target)
-    return wrapper
-
-
 def ρσ_callable_instance_class_adapter(target: Any) -> Any:
     def make_instance(target_class: Any, call_args: Any) -> Any:
         def callable_instance(*instance_args: Any) -> Any:
@@ -553,7 +505,11 @@ def ρσ_callable_instance_class_adapter(target: Any) -> Any:
         # JavaScript passes the Proxy's hidden target to apply/construct
         # traps, but Python identity must use the public class object.  This
         # preserves CPython's exact ``type(C()) is C`` guarantee.
-        runtime.reflect.set(callable_instance, "__python_type__", wrapper)
+        runtime.object.defineProperty(
+            callable_instance,
+            "__python_type__",
+            {"value": wrapper, "writable": True, "configurable": True},
+        )
         for function_member in ["apply", "bind", "call"]:
             runtime.reflect.set(
                 callable_instance,
@@ -1296,161 +1252,6 @@ def _internal_exists_alternative(
 }
 
 
-def ρσ_compute_mro(cls: Any, bases: Any) -> Any:
-    """Return the C3 linearization for a newly created Python class."""
-    sequences = []
-    for base in bases:
-        inherited = _internal_get_member(base, "__mro__")
-        sequence = []
-        if inherited is runtime.undefined:
-            sequence.push(base)  # type: ignore[attr-defined]
-        else:
-            for item in inherited:
-                sequence.push(item)  # type: ignore[attr-defined]
-        sequences.push(sequence)  # type: ignore[attr-defined]
-    direct_bases = []
-    for base in bases:
-        direct_bases.push(base)  # type: ignore[attr-defined]
-    sequences.push(direct_bases)  # type: ignore[attr-defined]
-
-    result = [cls]
-    while True:
-        active_sequences = []
-        for sequence in sequences:
-            if sequence.length:  # type: ignore[attr-defined]
-                active_sequences.push(sequence)  # type: ignore[attr-defined]
-        sequences = active_sequences
-        if not sequences.length:  # type: ignore[attr-defined]
-            return runtime.object.freeze(result)
-
-        candidate = runtime.undefined
-        for sequence in sequences:
-            head = sequence[0]
-            blocked = False
-            for other in sequences:
-                first = True
-                for item in other:
-                    if first:
-                        first = False
-                        continue
-                    if item is head:
-                        blocked = True
-                        break
-                if blocked:
-                    break
-            if not blocked:
-                candidate = head
-                break
-
-        if candidate is runtime.undefined:
-            raise TypeError("Cannot create a consistent method resolution order (MRO)")
-        result.push(candidate)  # type: ignore[attr-defined]
-        for sequence in sequences:
-            if sequence and sequence[0] is candidate:
-                sequence.shift()  # type: ignore[attr-defined]
-
-
-def ρσ_mixin(*classes: Any) -> None:
-    """Copy missing prototype members using the legacy Sage.js MRO."""
-    seen = runtime.object.create(None)
-    skipped = [
-        "__argnames__",
-        "__handles_kwarg_interpolation__",
-        "__init__",
-        "__annotations__",
-        "__doc__",
-        "__bind_methods__",
-        "__bases__",
-        "__mro__",
-        "constructor",
-        "__class__",
-    ]
-    for name in skipped:
-        seen[name] = True
-
-    resolved_properties = {}
-    target = classes[0].prototype
-    primary_prototype = runtime.object.getPrototypeOf(target)
-    python_type_prototype = _internal_get_member(type, "prototype")
-    for class_index in range(1, len(classes)):
-        secondary_prototype = _internal_get_member(classes[class_index], "prototype")
-        if secondary_prototype is runtime.undefined:
-            raise TypeError("bases must be types")
-        if (
-            classes[class_index] is runtime.tuple_builtin
-            and primary_prototype is python_type_prototype
-        ):
-            raise TypeError("multiple bases have instance lay-out conflict")
-
-    def tuple_mixin_initializer(
-        tuple_initializer: Any,
-        original_initializer: Any,
-    ) -> Any:
-        def initialize_tuple_mixin(
-            self: Any,
-            *args: Any,
-        ) -> Any:
-            runtime.reflect.apply(tuple_initializer, self, args)
-            return runtime.reflect.apply(original_initializer, self, args)
-
-        return runtime.native_method(initialize_tuple_mixin)
-
-    mixed_tuple_secondary = False
-    for class_index in range(1, len(classes)):
-        if classes[class_index] is not runtime.tuple_builtin:
-            continue
-        tuple_initializer = classes[class_index].prototype.__init__
-        original_initializer = target.__init__
-        target.__init__ = tuple_mixin_initializer(
-            tuple_initializer, original_initializer
-        )
-        mixed_tuple_secondary = True
-        break
-    if not mixed_tuple_secondary:
-        prototype = target
-        tuple_prototype = runtime.reflect.get(runtime.tuple_builtin, "prototype")
-        primary_is_tuple = False
-        while prototype and prototype is not runtime.object.prototype:
-            if prototype is tuple_prototype:
-                primary_is_tuple = True
-                break
-            prototype = runtime.object.getPrototypeOf(prototype)
-        if primary_is_tuple:
-            for class_index in range(1, len(classes)):
-                secondary_initializer = runtime.reflect.get(
-                    runtime.reflect.get(classes[class_index], "prototype"),
-                    "__init__",
-                )
-                if runtime.strict_equal(
-                    runtime.jstype(secondary_initializer),
-                    "function",
-                ):
-                    target.__init__ = tuple_mixin_initializer(
-                        target.__init__,
-                        secondary_initializer,
-                    )
-                    break
-
-    prototype = target
-    while prototype and prototype is not runtime.object.prototype:
-        for name in runtime.object.getOwnPropertyNames(prototype):
-            seen[name] = True
-        prototype = runtime.object.getPrototypeOf(prototype)
-
-    for class_index in range(1, len(classes)):
-        prototype = classes[class_index].prototype
-        while prototype and prototype is not runtime.object.prototype:
-            for name in runtime.object.getOwnPropertyNames(prototype):
-                if seen[name]:
-                    continue
-                seen[name] = True
-                resolved_properties[name] = runtime.object.getOwnPropertyDescriptor(
-                    prototype, name
-                )
-            prototype = runtime.object.getPrototypeOf(prototype)
-    runtime.object.defineProperties(target, resolved_properties)
-
-
 def ρσ_instanceof_one(value: Any, candidate: Any) -> bool:
     """Test one `isinstance` candidate without a variadic call frame."""
     value_type = runtime.jstype(value)
@@ -1469,6 +1270,20 @@ def ρσ_instanceof_one(value: Any, candidate: Any) -> bool:
             if ρσ_instanceof_one(value, nested_candidate):
                 return True
         return False
+    function_type = runtime.reflect.get(
+        runtime.global_object,
+        "ρσ_function_type",
+    )
+    if (
+        candidate is function_type
+        and _internal_is_baselib_function(value)
+        and not runtime.reflect.apply(
+            runtime.object.prototype.hasOwnProperty,
+            value,
+            ["__bases__"],
+        )
+    ):
+        return True
     if runtime.array.isArray(candidate) and runtime.object.isFrozen(candidate):
         for nested_candidate in candidate:
             if ρσ_instanceof_one(value, nested_candidate):

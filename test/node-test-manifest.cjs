@@ -11,6 +11,7 @@ const unit = [
   "test/runtime-intrinsics.cjs",
   "test/lint-authoritative.cjs",
   "test/baselib-boundaries.cjs",
+  "test/compiled-module-isolation.cjs",
   "test/documentation.cjs",
   "test/python-docstring-markdown.cjs",
   "test/magma.cjs",

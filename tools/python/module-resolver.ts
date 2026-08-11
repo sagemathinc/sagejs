@@ -337,6 +337,24 @@ export class PythonModuleResolver {
     moduleOptions: Record<string, any>,
   ): void {
     if (own(this.importedModules, key)) return;
+    if (this.options.intrinsic_package_shells && INTRINSIC_MODULES.has(key)) {
+      // A non-intrinsic child such as `sagejs.ffi.flint` still needs its
+      // intrinsic `sagejs` parent in the local module registry.  Do not find
+      // and execute the source compatibility package: that would create a
+      // second Sage namespace and snapshot partially initialized baselib
+      // exports.  An empty cached package shell gives children normal Python
+      // parent publication and stable identity without duplicate execution.
+      const shell = this.createShell({
+        moduleId: key,
+        filename: `<intrinsic:${key}>/__init__.py`,
+        scopedFlags: nullObject(),
+        importedModuleIds: [],
+        baselib: nullObject(),
+      });
+      shell.import_order = this.nextImportOrder++;
+      this.importedModules[key] = shell;
+      return;
+    }
     if (moduleOptions.runtime_imports) {
       this.importedModules[key] = {
         is_cached: true,

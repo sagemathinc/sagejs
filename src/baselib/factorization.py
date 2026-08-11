@@ -12,12 +12,6 @@ from typing import Any, Callable, Iterator, Optional, Sequence
 import sagejs.runtime as runtime
 
 
-def ρσ_sequence_class(cls: type[Any]) -> type[Any]:
-    # Identity fallback for bootstrap compilers which predate sequence-class
-    # lowering. The converged compiler consumes this decorator.
-    return cls
-
-
 def ρσ_factor_pair(prime: Any, exponent: int) -> list[Any]:
     pair = [prime, exponent]
 

@@ -91,7 +91,22 @@ function referencedBindings(
   ancestors: Set<unknown>,
 ): Record<string, EncodedValue> {
   const bindings: Record<string, EncodedValue> = {};
-  const globals = Reflect.get(callable, "__globals__");
+  let globals = Reflect.get(callable, "__globals__");
+  if (globals === undefined) {
+    const moduleName = Reflect.get(callable, "__module__");
+    const baselibModules = Reflect.get(
+      globalThis,
+      "__sagejs_baselib_modules__",
+    );
+    if (
+      typeof moduleName === "string" &&
+      moduleName.startsWith("sagejs._baselib.") &&
+      baselibModules !== null &&
+      typeof baselibModules === "object"
+    ) {
+      globals = Reflect.get(baselibModules, moduleName);
+    }
+  }
   const getitem = Reflect.get(globalThis, "ρσ_getitem");
   const names =
     source.match(
@@ -151,6 +166,15 @@ function encode(value: unknown, ancestors = new Set<unknown>()): EncodedValue {
     const nestedAncestors = new Set(ancestors);
     nestedAncestors.add(value);
     const source = Function.prototype.toString.call(value);
+    if (source.includes("[native code]")) {
+      const moduleName = Reflect.get(value, "__module__");
+      const functionName = Reflect.get(value, "__name__") ?? value.name;
+      throw new TypeError(
+        `multiprocessing cannot serialize native function ${
+          typeof moduleName === "string" ? `${moduleName}.` : ""
+        }${String(functionName || "<anonymous>")}`,
+      );
+    }
     const metadata: Record<string, EncodedValue> = {};
     for (const name of [
       "__argnames__",

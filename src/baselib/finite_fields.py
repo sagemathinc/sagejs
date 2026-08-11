@@ -14,31 +14,6 @@ import sagejs as sage
 import sagejs.runtime as runtime
 
 
-def ρσ_lightweight_math_class(cls: type[Any]) -> type[Any]:
-    # The bootstrap compiler sees this as an ordinary identity decorator.  The
-    # converged compiler recognizes it at compile time and omits its generic
-    # per-instance identity slot.
-    return cls
-
-
-def ρσ_bigint_fields(
-    *names: str,
-) -> Callable[[type[Any]], type[Any]]:
-    # Like ρσ_lightweight_math_class, this is an identity decorator fallback
-    # for bootstrap compilers which predate the typed-field lowering pass.
-    def decorator(cls: type[Any]) -> type[Any]:
-        return cls
-
-    return decorator
-
-
-def ρσ_set_class_repr(cls: type[Any], text: str) -> None:
-    def class_repr() -> str:
-        return text
-
-    runtime.object.defineProperty(cls, "__repr__", {"value": class_repr})
-
-
 @runtime.bigint_fields("_value")
 @runtime.lightweight_math_class
 class FiniteFieldElement(sage.Element):

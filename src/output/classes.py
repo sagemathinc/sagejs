@@ -364,7 +364,9 @@ def print_class(output):
     )
 
     def print_class_module():
-        if self.module_id:
+        if output.options.baselib_module_id:
+            output.print(JSON.stringify(output.options.baselib_module_id))
+        elif self.module_id:
             output.print(JSON.stringify(self.module_id))
         else:
             output.print('(typeof __name__ === "undefined" ? null : __name__)')
