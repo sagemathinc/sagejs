@@ -54,6 +54,20 @@ function rational(coefficients, seal = true) {
   for (const value of [builder, other, same, left]) flint.ffiFmpqPolynomialClose(value);
 }
 
+// FLINT's ulong is a word-sized type even on Windows LLP64. A C ULONG_MAX
+// guard incorrectly rejects this perfectly valid uint64 exponent there.
+{
+  const exponent = 1n << 32n;
+  const zero = integer([0n]);
+  const one = rational([[1n, 1n]]);
+  const zeroPower = flint.ffiFmpzPolynomialPow(zero, exponent);
+  const onePower = flint.ffiFmpqPolynomialPow(one, exponent);
+  assert.equal(flint.ffiFmpzPolynomialEqual(zeroPower, zero), 1n);
+  assert.equal(flint.ffiFmpqPolynomialEqual(onePower, one), 1n);
+  for (const value of [onePower, one]) flint.ffiFmpqPolynomialClose(value);
+  for (const value of [zeroPower, zero]) flint.ffiFmpzPolynomialClose(value);
+}
+
 console.log(JSON.stringify({
   schema: "sagejs.ffi/exact-polynomial-equality-v1",
   status: "ok",
