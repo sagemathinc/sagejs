@@ -550,7 +550,7 @@ def _matrix_row_values(row: Any) -> list[Any]:
 
 def _prime_residue_values(
     base: sage.Parent,
-    values: list[Any],
+    values: Any,
 ) -> Any:
     """Coerce values once into canonical caller-owned `uint64` storage."""
     modulus = int(_untyped(base).characteristic())
@@ -918,15 +918,7 @@ class MatrixSpaceParent(sage.Parent):
                 raise ValueError(
                     "packed matrix residue count does not match dimensions"
                 )
-            values = []
-            for index in range(count):
-                offset = index * width
-                value = 0
-                multiplier = 1
-                for byte_index in range(width):
-                    value += int(entries[offset + byte_index]) * multiplier
-                    multiplier *= 256
-                values.append(value)
+            values = runtime.uint64_unpack_le(entries, width, count)
             return self._from_uint64_residues(values)
         backend = runtime.flint_backend()
         if getattr(self._base, "_kind", None) == "ZMOD":
@@ -953,8 +945,7 @@ class MatrixSpaceParent(sage.Parent):
             raise TypeError("uint64 residues require a prime field")
         if len(entries) != self._rows * self._cols:
             raise ValueError("matrix residue count does not match dimensions")
-        values = [entries[index] for index in range(len(entries))]
-        storage = _prime_residue_values(self._base, values)
+        storage = _prime_residue_values(self._base, entries)
         return Matrix(self, storage)
 
     def _from_canonical_uint64_residues(self, entries: Any) -> Matrix:
@@ -1865,15 +1856,7 @@ class Matrix(sage.Element):
         if self._has_packed_prime_storage():
             if width not in [1, 2, 4, 8]:
                 raise ValueError("unsupported packed residue width")
-            entries = self._prime_residues_cache
-            packed = _packed_uint8(len(entries) * width)
-            for index in range(len(entries)):
-                value = int(entries[index])
-                offset = index * width
-                for byte_index in range(width):
-                    packed[offset + byte_index] = value % 256
-                    value //= 256
-            return packed
+            return runtime.uint64_pack_le(self._prime_residues_cache, width)
         return runtime.flint_backend().matrixExportPacked(self._native, width)
 
     def _prime_residues(self) -> Any:
@@ -1882,16 +1865,9 @@ class Matrix(sage.Element):
             raise TypeError("packed dense-prime storage requires GF(p)")
         if self._prime_residues_cache is runtime.undefined:
             packed = self._packed_residues(4)
-            entries = []
-            for index in range(self.nrows() * self.ncols()):
-                offset = index * 4
-                entries.append(
-                    int(packed[offset])
-                    + int(packed[offset + 1]) * 256
-                    + int(packed[offset + 2]) * 65536
-                    + int(packed[offset + 3]) * 16777216
-                )
-            self._prime_residues_cache = _packed_uint64(entries)
+            self._prime_residues_cache = runtime.uint64_unpack_le(
+                packed, 4, self.nrows() * self.ncols()
+            )
         return self._prime_residues_cache
 
     def _prime_kernel_buffer(self, kernel_function: Any) -> Any:
@@ -5769,6 +5745,14 @@ class Matrix(sage.Element):
         """Return the full entry-by-entry matrix representation."""
         if self.nrows() == 0:
             return "[]"
+        if (
+            self._has_packed_prime_storage()
+            and len(self._row_subdivisions) == 0
+            and len(self._col_subdivisions) == 0
+        ):
+            return runtime.uint64_matrix_format(
+                self._prime_residues_cache, self.nrows(), self.ncols()
+            )
         text_rows = []
         width = 0
         if self._has_packed_rational_storage():
