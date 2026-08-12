@@ -75,6 +75,7 @@ const integration = [
   "test/exact-matrix-bulk-construction.cjs",
   "test/linear-matrix-selection.cjs",
   "test/linear-matrix-predicates.cjs",
+  "test/linear-vector-contract.cjs",
   "test/dense-integer-solve-resource.cjs",
   "test/fmpz-matrix-resource-kernels.cjs",
   "test/fmpz-matrix-right-kernel.cjs",

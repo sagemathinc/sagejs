@@ -13,8 +13,8 @@ just as Sage does.  The helpers never coerce exact entries through `float`.
 
 from __future__ import annotations
 
-from typing import Any, Callable, Sequence
-
+from collections.abc import Callable, Sequence
+from typing import Any
 
 UnaryOperation = Callable[[Any], Any]
 BinaryOperation = Callable[[Any, Any], Any]

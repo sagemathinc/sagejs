@@ -4,7 +4,7 @@
   "id": "linear-vector-contract",
   "title": "Linear Vector Contract",
   "lane": "arithmetic-algebra",
-  "status": "review",
+  "status": "complete",
   "owner": "user",
   "objective": "Implement ordinary CPython-parseable vector zero/support, pairwise/outer products, norm, and normalization contracts over ZZ QQ and GF(p)",
   "base_commit": "97116b99d9b24ded43c80ec547fd9c1e8f77efbd",
