@@ -119,6 +119,7 @@ const integration = [
   "test/polynomial-core-correctness-v1.cjs",
   "test/polynomial-ring-conversion.cjs",
   "test/exact-polynomial-cyclotomic-resource.cjs",
+  "test/cyclotomic-field-polynomial.cjs",
   "test/exact-polynomial-factorization-resource.cjs",
   "test/exact-polynomial-xgcd-resource.cjs",
   "test/exact-polynomial-scalar-slice-resource.cjs",

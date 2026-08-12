@@ -4,7 +4,7 @@
   "id": "cyclotomic-polynomial-core",
   "title": "Cyclotomic Polynomial Core",
   "lane": "arithmetic-algebra",
-  "status": "active",
+  "status": "complete",
   "owner": "user",
   "objective": "Implement ordinary exact Python helper algorithms for CyclotomicField(n)[x] dense construction, derivative, divrem, gcd, xgcd, roots, formatting and serialization contracts",
   "base_commit": "1bd487f2f38589b1e186b6c6a6a84860a115f9bf",
