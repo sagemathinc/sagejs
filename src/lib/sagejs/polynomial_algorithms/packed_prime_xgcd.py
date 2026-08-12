@@ -9,54 +9,70 @@ from sagejs.native import (
     prime_inverse,
     prime_mul,
     prime_sub,
+    prime_zeros,
 )
 
 
 @native
 def packed_prime_field_polynomial_xgcd(
-    output_gcd: UInt64Buffer,
-    output_left_coefficient: UInt64Buffer,
-    output_right_coefficient: UInt64Buffer,
-    output_lengths: UInt64Buffer,
+    output: UInt64Buffer,
     left: UInt64Buffer,
     right: UInt64Buffer,
-    workspace: UInt64Buffer,
     modulus: PrimeFieldModulus,
 ) -> bool:
     """Write the Sage-normalized extended GCD of `left` and `right`.
 
     Coefficients use the canonical low-to-high packed representation. The
-    three result buffers have one shared capacity, at least one and at least
-    the length of either input. `output_lengths` receives the logical lengths
-    of the gcd and its left and right Bezout coefficients. Unused result slots
-    are zeroed.
+    single result buffer contains three equal-capacity coefficient spans,
+    followed by the three logical lengths `(gcd, left, right)`. Its capacity is
+    `max(1, len(left), len(right))`, so its required length is
+    `3 * capacity + 3`. Unused result slots are zeroed.
 
-    `workspace` is caller-owned scratch with seven times the result capacity.
-    This explicit degree-bounded workspace keeps the source portable and the
-    isolated ABI allocation-free. It does not impose a coefficient-capacity
-    assumption: every coefficient is one fixed-size residue modulo `modulus`.
-    The public caller must provide scratch disjoint from the inputs and outputs.
+    The modulus must be a prime between 2 and `2^32 - 1`, and every input
+    coefficient must be a canonical residue. The typed boundary rejects an
+    out-of-range modulus; composite moduli, noncanonical coefficients, and an
+    invalid output shape return `False`. No rejection changes `output`. The
+    kernel first copies both inputs into owned compiler scratch and publishes
+    only after success. Consequently `output` may share or overlap input
+    storage safely; there are no multiple output or caller-scratch spans with
+    an unenforceable alias contract.
     """
-    capacity = len(output_gcd)
-    valid = capacity != 0
-    if len(output_left_coefficient) != capacity:
-        valid = False
-    if len(output_right_coefficient) != capacity:
-        valid = False
-    if len(output_lengths) != 3:
-        valid = False
-    if len(left) > capacity or len(right) > capacity:
-        valid = False
-    if len(workspace) != capacity * 7:
-        valid = False
-    if not valid:
+    capacity = len(left)
+    if len(right) > capacity:
+        capacity = len(right)
+    if capacity == 0:
+        capacity = 1
+    if len(output) != capacity * 3 + 3:
         return False
 
-    # Derive packed zero and one from the caller-owned uint64 span. This is
-    # indistinguishable from integer 0/1 to CPython and native C, while the
-    # JavaScript fallback retains BigUint64Array-compatible scalar values.
-    zero = workspace[0] - workspace[0]
+    # PrimeFieldModulus is range-checked by generated native adapters, but the
+    # same-source fallback must reject the same domain. Convert it through
+    # machine arithmetic so comparisons remain uint64 in the isolated IR.
+    checked_modulus = modulus + 0
+    zero = checked_modulus - checked_modulus
     one = zero + 1
+    if checked_modulus < one + 1 or checked_modulus > 4294967295:
+        raise ValueError("modulus must be between 2 and 2^32 - 1")
+    valid_modulus = True
+    if valid_modulus and checked_modulus != one + 1:
+        if checked_modulus % (one + 1) == zero:
+            valid_modulus = False
+    divisor = one + 2
+    while valid_modulus and divisor <= checked_modulus // divisor:
+        if checked_modulus % divisor == zero:
+            valid_modulus = False
+        divisor += one + 1
+    if not valid_modulus:
+        return False
+
+    for index in range(len(left)):
+        if left[index] < zero or left[index] >= checked_modulus:
+            return False
+    for index in range(len(right)):
+        if right[index] < zero or right[index] >= checked_modulus:
+            return False
+
+    workspace = prime_zeros(capacity * 7)
     old_remainder_offset = 0
     remainder_offset = capacity
     old_left_offset = capacity * 2
@@ -99,6 +115,15 @@ def packed_prime_field_polynomial_xgcd(
             inverse = prime_inverse(
                 workspace[remainder_offset + remainder_length - 1], modulus
             )
+            if (
+                prime_mul(
+                    workspace[remainder_offset + remainder_length - 1],
+                    inverse,
+                    modulus,
+                )
+                != one
+            ):
+                return False
             for offset in range(quotient_length):
                 shift = quotient_length - offset - 1
                 factor = prime_mul(
@@ -126,6 +151,8 @@ def packed_prime_field_polynomial_xgcd(
             and workspace[old_remainder_offset + next_remainder_length - 1] == 0
         ):
             next_remainder_length -= 1
+        if next_remainder_length >= remainder_length:
+            return False
 
         left_product_length = 0
         if quotient_length != 0 and left_length != 0:
@@ -209,37 +236,40 @@ def packed_prime_field_polynomial_xgcd(
         old_right_length = right_length
         right_length = next_right_length
 
-    for index in range(capacity):
-        output_gcd[index] = zero
-        output_left_coefficient[index] = zero
-        output_right_coefficient[index] = zero
-
+    scale = one
     if old_remainder_length == 0:
-        # Sage uses (0, 0, 1) for xgcd(0, 0).
-        output_right_coefficient[0] = one
-        output_lengths[0] = zero
-        output_lengths[1] = zero
-        output_lengths[2] = one
-        return True
+        # Sage normalizes the indeterminate Bezout identity for (0, 0) to the
+        # all-zero triple rather than preserving an initialization witness.
+        old_left_length = zero
+        old_right_length = zero
+    else:
+        leading = workspace[old_remainder_offset + old_remainder_length - 1]
+        scale = prime_inverse(leading, modulus)
+        if prime_mul(leading, scale, modulus) != one:
+            return False
 
-    scale = prime_inverse(
-        workspace[old_remainder_offset + old_remainder_length - 1], modulus
-    )
+    # This is the first caller-visible write. Inputs may overlap this span:
+    # every value still needed by the algorithm now lives in owned scratch.
+    for index in range(len(output)):
+        output[index] = zero
+    left_output_offset = capacity
+    right_output_offset = capacity * 2
+    lengths_offset = capacity * 3
     for index in range(old_remainder_length):
-        output_gcd[index] = prime_mul(
+        output[index] = prime_mul(
             workspace[old_remainder_offset + index], scale, modulus
         )
     for index in range(old_left_length):
-        output_left_coefficient[index] = prime_mul(
+        output[left_output_offset + index] = prime_mul(
             workspace[old_left_offset + index], scale, modulus
         )
     for index in range(old_right_length):
-        output_right_coefficient[index] = prime_mul(
+        output[right_output_offset + index] = prime_mul(
             workspace[old_right_offset + index], scale, modulus
         )
-    output_lengths[0] = zero + old_remainder_length
-    output_lengths[1] = zero + old_left_length
-    output_lengths[2] = zero + old_right_length
+    output[lengths_offset] = zero + old_remainder_length
+    output[lengths_offset + 1] = zero + old_left_length
+    output[lengths_offset + 2] = zero + old_right_length
     return True
 
 

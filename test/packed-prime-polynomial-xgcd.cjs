@@ -49,27 +49,23 @@ def buffer(source):
 
 def invoke(left, right, prime):
     capacity = max(1, len(left), len(right))
-    gcd_output = buffer(capacity)
-    left_output = buffer(capacity)
-    right_output = buffer(capacity)
-    lengths = buffer(3)
-    workspace = buffer(7 * capacity)
+    output = buffer(3 * capacity + 3)
     exact_prime = runtime.bigint(prime) if compiled_kernel else prime
     accepted = packed_prime_field_polynomial_xgcd(
-        gcd_output,
-        left_output,
-        right_output,
-        lengths,
+        output,
         buffer(left),
         buffer(right),
-        workspace,
         exact_prime,
     )
     assert accepted
+    lengths_offset = 3 * capacity
+    gcd_length = int(output[lengths_offset])
+    left_length = int(output[lengths_offset + 1])
+    right_length = int(output[lengths_offset + 2])
     return (
-        [int(gcd_output[index]) for index in range(int(lengths[0]))],
-        [int(left_output[index]) for index in range(int(lengths[1]))],
-        [int(right_output[index]) for index in range(int(lengths[2]))],
+        [int(output[index]) for index in range(gcd_length)],
+        [int(output[capacity + index]) for index in range(left_length)],
+        [int(output[2 * capacity + index]) for index in range(right_length)],
     )
 
 
@@ -133,9 +129,11 @@ def check(left, right, prime):
 
 
 # These exact triples are Sage 10.9 fixtures, including its zero convention.
-assert invoke([], [], 7) == ([], [], [1])
+assert invoke([], [], 7) == ([], [], [])
 assert invoke([], [2, 1], 7) == ([2, 1], [], [1])
 assert invoke([2, 1], [], 7) == ([2, 1], [1], [])
+assert invoke([3], [], 7) == ([1], [5], [])
+assert invoke([], [3], 7) == ([1], [], [5])
 assert invoke([2, 3, 1], [3, 4, 1], 7) == ([1, 1], [6], [1])
 assert invoke([1, 0, 1], [1, 1], 2) == ([1, 1], [], [1])
 assert invoke([6, 2, 5, 1], [3, 4, 1], 7) == (
@@ -144,6 +142,9 @@ assert invoke([6, 2, 5, 1], [3, 4, 1], 7) == (
 assert invoke([17, 3, 999, 1], [81, 42, 7, 1], 65521) == (
     [1], [62452, 65308, 49434], [50796, 36914, 16087]
 )
+
+# The largest 32-bit prime exercises the complete declared modulus domain.
+check([4294967290, 2, 1], [17, 1], 4294967291)
 
 seed = 0x12345678
 for prime in [2, 7, 65521]:
@@ -163,25 +164,71 @@ for prime in [2, 7, 65521]:
     common = [1, 1, 1]
     check(multiply(common, [3 % prime, 1], prime), multiply(common, [5 % prime, 1], prime), prime)
 
-# Shape rejection is transactional for all public outputs.
-gcd_output = buffer([91, 92])
-left_output = buffer([81, 82])
-right_output = buffer([71, 72])
-lengths = buffer([61, 62, 63])
+# Shape rejection is transactional.
+output = buffer([91, 92, 93, 94, 95, 96, 97, 98])
 assert not packed_prime_field_polynomial_xgcd(
-    gcd_output,
-    left_output,
-    right_output,
-    lengths,
+    output,
     buffer([1, 1]),
     buffer([1]),
-    buffer(13),
     7,
 )
-assert [int(value) for value in gcd_output] == [91, 92]
-assert [int(value) for value in left_output] == [81, 82]
-assert [int(value) for value in right_output] == [71, 72]
-assert [int(value) for value in lengths] == [61, 62, 63]
+assert [int(value) for value in output] == [91, 92, 93, 94, 95, 96, 97, 98]
+
+
+def rejected(left, right, prime):
+    capacity = max(1, len(left), len(right))
+    sentinel = list(range(71, 71 + 3 * capacity + 3))
+    output = buffer(sentinel)
+    assert not packed_prime_field_polynomial_xgcd(
+        output,
+        buffer(left),
+        buffer(right),
+        runtime.bigint(prime) if compiled_kernel else prime,
+    )
+    assert [int(value) for value in output] == sentinel
+
+
+# Composite moduli, nonunit leading terms, and noncanonical residues fail
+# before division and never publish a partial result.
+rejected([1], [2, 2], 8)
+rejected([1, 1], [2, 1], 9)
+rejected([1, 7], [1], 7)
+rejected([1], [1, 9], 7)
+
+# The compiled single-output ABI is safe even when its typed view overlaps both
+# inputs. The dynamic and CPython fallbacks use ordinary Python sequences.
+if compiled_kernel:
+    backing = runtime.uint64_buffer(18)
+    backing[2] = runtime.bigint(2)
+    backing[3] = runtime.bigint(3)
+    backing[4] = runtime.bigint(1)
+    backing[6] = runtime.bigint(3)
+    backing[7] = runtime.bigint(4)
+    backing[8] = runtime.bigint(1)
+    subarray = runtime.reflect.get(backing, "subarray")
+    overlap_output = runtime.reflect.apply(subarray, backing, [0, 12])
+    overlap_left = runtime.reflect.apply(subarray, backing, [2, 5])
+    overlap_right = runtime.reflect.apply(subarray, backing, [6, 9])
+    assert packed_prime_field_polynomial_xgcd(
+        overlap_output,
+        overlap_left,
+        overlap_right,
+        runtime.bigint(7),
+    )
+    assert [int(overlap_output[index]) for index in range(12)] == [
+        1, 1, 0, 6, 0, 0, 1, 0, 0, 2, 1, 1
+    ]
+    shared_input = runtime.uint64_buffer([2, 3, 1])
+    shared_output = runtime.uint64_buffer(12)
+    assert packed_prime_field_polynomial_xgcd(
+        shared_output,
+        shared_input,
+        shared_input,
+        runtime.bigint(7),
+    )
+    assert [int(shared_output[index]) for index in range(12)] == [
+        2, 3, 1, 0, 0, 0, 1, 0, 0, 3, 0, 1
+    ]
 
 print("compiled=" + str(compiled_kernel))
 print("PACKED_PRIME_POLYNOMIAL_XGCD_OK")
@@ -233,12 +280,28 @@ test("packed GF(p)[x] xgcd has an ordinary CPython fallback", () => {
     "from sagejs.polynomial_algorithms.packed_prime_xgcd import packed_prime_field_polynomial_xgcd as xgcd",
     "def invoke(a, b, p):",
     "    n = max(1, len(a), len(b))",
-    "    g, s, t, lengths, work = [0]*n, [0]*n, [0]*n, [0]*3, [0]*(7*n)",
-    "    assert xgcd(g, s, t, lengths, a, b, work, p)",
-    "    return g[:lengths[0]], s[:lengths[1]], t[:lengths[2]]",
-    "assert invoke([], [], 7) == ([], [], [1])",
+    "    out = [0] * (3*n + 3)",
+    "    assert xgcd(out, a, b, p)",
+    "    lengths = out[3*n:]",
+    "    return out[:lengths[0]], out[n:n+lengths[1]], out[2*n:2*n+lengths[2]]",
+    "assert invoke([], [], 7) == ([], [], [])",
+    "assert invoke([3], [], 7) == ([1], [5], [])",
     "assert invoke([2, 3, 1], [3, 4, 1], 7) == ([1, 1], [6], [1])",
     "assert invoke([1, 0, 1], [1, 1], 2) == ([1, 1], [], [1])",
+    "assert invoke([4294967290, 2, 1], [17, 1], 4294967291)[0] == [1]",
+    "for a, b, p in [([1], [2, 2], 8), ([1, 1], [2, 1], 9), ([1, 7], [1], 7), ([-1], [1], 7)]:",
+    "    out = [91] * (3*max(1, len(a), len(b)) + 3)",
+    "    assert not xgcd(out, a, b, p)",
+    "    assert all(value == 91 for value in out)",
+    "for p in [0, 1, 4294967296]:",
+    "    out = [91] * 6",
+    "    try:",
+    "        xgcd(out, [1], [1], p)",
+    "    except ValueError:",
+    "        pass",
+    "    else:",
+    "        raise AssertionError('out-of-range modulus accepted')",
+    "    assert out == [91] * 6",
     "print('cpython-ok')",
     "",
   ].join("\n");
