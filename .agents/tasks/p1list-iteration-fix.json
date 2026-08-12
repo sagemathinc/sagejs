@@ -1,0 +1,46 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "p1list-iteration-fix",
+  "title": "Restore P1List sequence iteration",
+  "lane": "modular-forms",
+  "status": "active",
+  "owner": "user",
+  "objective": "Make list(P1List(N)) obey Python sequence exhaustion and preserve exact Sage-compatible indexing semantics",
+  "base_commit": "e221d64f7db7e5d4bfc85ffdb9fa271add59d624",
+  "claims": [
+    "src/baselib/modular.py",
+    "test/modular-symbols.cjs"
+  ],
+  "dependencies": [],
+  "references": [
+    "SageMath P1List sequence semantics"
+  ],
+  "architecture": {
+    "strategy": "dynamic-python",
+    "fallback": "same-source",
+    "oracles": [
+      "SageMath list(P1List(10)) and indexing behavior"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "pnpm test:native",
+    "pnpm bench:modular-symbols"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "P1List now checks normalized sequence indices before crossing the FLINT boundary, raises Python IndexError at both ends, and supports legacy __getitem__ iteration. Focused tests cover Sage's exact level-10 representatives, length, slicing, positive and negative indexing, exhaustion, and native-disabled execution.",
+    "risks": [],
+    "next_steps": [
+      "The integration lane should rerun the full modular-symbols suite after rebuilding its production runtime."
+    ]
+  }
+}

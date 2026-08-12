@@ -505,6 +505,39 @@ test("native P1List representatives, normalization, and actions", async () => {
       (
         await session.evaluate(
           [
+            "P10 = P1List(10)",
+            "[len(P10), list(P10), P10[0], P10[-1], " +
+              "P10[-len(P10)], P10[:100:2]]",
+          ].join("\n"),
+        )
+      ).repr,
+      "[18, [(0, 1), (1, 0), (1, 1), (1, 2), (1, 3), (1, 4), " +
+        "(1, 5), (1, 6), (1, 7), (1, 8), (1, 9), (2, 1), (2, 3), " +
+        "(2, 5), (2, 7), (2, 9), (5, 1), (5, 2)], (0, 1), (5, 2), " +
+        "(0, 1), [(0, 1), (1, 1), (1, 3), (1, 5), (1, 7), (1, 9), " +
+        "(2, 3), (2, 7), (5, 1)]]",
+    );
+    assert.equal(
+      (
+        await session.evaluate(
+          [
+            "errors = []",
+            "for index in [len(P10), -len(P10)-1]:",
+            "    try:",
+            "        P10[index]",
+            "    except Exception as error:",
+            "        errors.append((type(error).__name__, str(error)))",
+            "errors",
+          ].join("\n"),
+        )
+      ).repr,
+      "[('IndexError', 'list index out of range'), " +
+        "('IndexError', 'list index out of range')]",
+    );
+    assert.equal(
+      (
+        await session.evaluate(
+          [
             "P = P1List(12)",
             "[len(P), P[:8], P[-1], P.normalize(7,15), " +
               "P.normalize_with_scalar(7,15), P.index(2,3)]",

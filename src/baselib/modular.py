@@ -2046,8 +2046,11 @@ class P1List:
             start, stop, step = index.indices(len(self))
             return [self.__getitem__(position) for position in range(start, stop, step)]
         index = _exact_integer(index, "P1List index")
+        length = len(self)
         if index < 0:
-            index += len(self)
+            index += length
+        if index < 0 or index >= length:
+            raise IndexError("list index out of range")
         raw = runtime.flint_backend().p1ListEntry(self._native, index)
         return runtime.math_tuple([runtime.number(raw[0]), runtime.number(raw[1])])
 
