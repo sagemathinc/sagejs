@@ -7,7 +7,7 @@
   "status": "active",
   "owner": "user",
   "objective": "Implement production generated FLINT fmpz_mod_ctx plus fmpz_mod_poly resources for arbitrary-prime GF(p)[x], with sealed self-contained ownership, exact modulus checks, callee-owned operations, public integration, serialization, lifecycle fuzzing, Sage differentials, and competitive performance",
-  "base_commit": "0b9b27ae0d473a119a53dc57ceed5fcc214caaa8",
+  "base_commit": "0c4e1a6e06baf12ca907e1e369307321f54eee4e",
   "claims": [
     "packages/flint/include/sagejs/fmpz_mod_polynomial_ffi.h",
     "src/lib/sagejs/kernels/polynomial/arbitrary_prime_flint.py",
