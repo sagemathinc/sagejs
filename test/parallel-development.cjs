@@ -277,6 +277,27 @@ test("validation fingerprints ignore manifests and Git staging state", () => {
     );
     assert.equal(staged, unstaged);
     assert.equal(receiptUpdated, unstaged);
+
+    git("add", ".agents/tasks/task.json");
+    git(
+      "commit",
+      "--quiet",
+      "--only",
+      "-m",
+      "record receipts",
+      ".agents/tasks/task.json",
+    );
+    const receiptCommitted = workspaceFingerprint(
+      directory,
+      ".agents/tasks/task.json",
+    );
+    assert.equal(receiptCommitted, unstaged);
+
+    writeFileSync(join(directory, "source.txt"), "different\n");
+    assert.notEqual(
+      workspaceFingerprint(directory, ".agents/tasks/task.json"),
+      unstaged,
+    );
   } finally {
     rmSync(directory, { recursive: true, force: true });
   }

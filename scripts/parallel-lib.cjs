@@ -296,7 +296,23 @@ function changedFiles(base, cwd = root) {
 
 function workspaceFingerprint(cwd, manifestRelative) {
   const hash = createHash("sha256");
-  hash.update(git(["rev-parse", "HEAD"], cwd));
+  const normalizedManifest = normalizePath(manifestRelative);
+  // Hash the committed workspace content rather than the commit identity.
+  // The task manifest is deliberately excluded because `parallel:run` writes
+  // receipts into it.  A subsequent manifest-only handoff commit must not
+  // invalidate those receipts merely by changing HEAD.
+  const tracked = git(["ls-tree", "-r", "--full-tree", "HEAD"], cwd)
+    .split("\n")
+    .filter(Boolean)
+    .filter((entry) => {
+      const separator = entry.indexOf("\t");
+      if (separator === -1) return true;
+      return normalizePath(entry.slice(separator + 1)) !== normalizedManifest;
+    });
+  for (const entry of tracked) {
+    hash.update(entry);
+    hash.update("\n");
+  }
   const exclude = `:(exclude)${normalizePath(manifestRelative)}`;
   try {
     // Diffing from HEAD includes both staged and unstaged content without
@@ -310,7 +326,7 @@ function workspaceFingerprint(cwd, manifestRelative) {
     cwd,
   ).split("\n").filter(Boolean);
   for (const filename of untracked.sort()) {
-    if (normalizePath(filename) === normalizePath(manifestRelative)) continue;
+    if (normalizePath(filename) === normalizedManifest) continue;
     hash.update(filename);
     hash.update(readFileSync(join(cwd, filename)));
   }
