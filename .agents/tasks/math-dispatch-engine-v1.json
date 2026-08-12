@@ -1,0 +1,54 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "math-dispatch-engine-v1",
+  "title": "Declarative mathematical dispatch engine",
+  "lane": "integration",
+  "status": "active",
+  "owner": "user",
+  "objective": "Implement CPython-parseable mathematical dispatch declarations, deterministic JSON lowering, pure explainable selection, checked portable and host profiles, and benchmark-evidence validation without yet changing public matrix or polynomial dispatch",
+  "base_commit": "d88412c256d63ab3fe288a93ad62567ddd0c4cdf",
+  "claims": [
+    "dispatch/",
+    "tools/math-dispatch/",
+    "docs/math-dispatch-profiles.md",
+    "bin/sagejs-source.cjs",
+    "tools/cli.js",
+    "test/math-dispatch-declarations.cjs",
+    "test/math-dispatch-selection.cjs",
+    "test/math-dispatch-cache-identity.cjs",
+    "test/math-dispatch-benchmark-ingestion.cjs",
+    "test/node-test-manifest.cjs",
+    "bench/math-dispatch-profile.cjs"
+  ],
+  "dependencies": [
+    "math-dispatch-profiles-v1"
+  ],
+  "references": [],
+  "architecture": {
+    "strategy": "compiler-infrastructure",
+    "fallback": "tested-capability",
+    "oracles": [
+      "current Sage.js matrix and polynomial dispatch decisions",
+      "checked Linux x64 and Apple arm64 benchmark reports"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm architecture:check",
+    "pnpm test:portable",
+    "pnpm test:baselib:strict"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "",
+    "risks": [],
+    "next_steps": []
+  }
+}

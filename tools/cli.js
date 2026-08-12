@@ -177,6 +177,7 @@ function print_top_level_usage() {
   console.log("  pip             install pure-Python packages for Sage.js");
   console.log("  pytest          run installed pytest with Sage.js Python");
   console.log("  ffi             validate and inspect foreign-library declarations");
+  console.log("  math            inspect declarative mathematical dispatch decisions");
   console.log("  native          inspect and compile typed @native functions");
   console.log("  compile         compile Sage.js source to JavaScript");
   console.log("  repl            start a REPL with detailed options");
@@ -737,6 +738,64 @@ Write structured JSON.
 opt("write", "", "bool", false, function () {
   /*
 Regenerate the reviewed native-boundary inventory (ffi audit only).
+*/
+});
+
+create_group(
+  "math",
+  "<check|emit-json|evidence|explain|generate> [subject]",
+  function () {
+    /*
+Validate and inspect deterministic mathematical representation and algorithm
+dispatch declarations. `explain` is pure: it never benchmarks or changes
+policy while selecting an implementation.
+*/
+  },
+  function () {
+    /*
+Examples:
+  sagejs math check
+  sagejs math explain dense-prime-matrix.multiply \
+    --features '{"canonical_output":true,"inner":160,"left_rows":160,"modulus":97,"right_columns":160}' \
+    --capabilities fflas,flint-prime-matrix
+  sagejs math evidence report.json
+*/
+  },
+);
+
+opt("json", "", "bool", false, function () {
+  /*
+Write structured JSON.
+*/
+});
+
+opt("features", "", "string", "{}", function () {
+  /*
+JSON object (or @FILE) containing the complete operation feature set.
+*/
+});
+
+opt("capabilities", "", "string", "", function () {
+  /*
+Comma-separated runtime capability facts such as fflas or m4ri.
+*/
+});
+
+opt("build", "", "string", "{}", function () {
+  /*
+JSON object (or @FILE) containing the checked host and mathematics-build identity.
+*/
+});
+
+opt("algorithm", "", "string", "", function () {
+  /*
+Explicit implementation override. It must satisfy every hard capability.
+*/
+});
+
+opt("trace", "", "bool", false, function () {
+  /*
+Also write the concise immutable decision trace to standard error.
 */
 });
 

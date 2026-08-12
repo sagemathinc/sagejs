@@ -1,0 +1,75 @@
+"use strict";
+
+const assert = require("node:assert/strict");
+const { cpSync, mkdtempSync, readFileSync, rmSync, writeFileSync } = require("node:fs");
+const { tmpdir } = require("node:os");
+const { join, resolve } = require("node:path");
+const test = require("node:test");
+
+const { checkGenerated, loadRegistry } = require("../tools/math-dispatch/registry.cjs");
+const { parseDispatchSource } = require("../tools/math-dispatch/source-declarations.cjs");
+
+const root = resolve(__dirname, "..");
+
+test("CPython parses every dispatch authority", () => {
+  const result = require("node:child_process").spawnSync("python3", [
+    "-m", "py_compile",
+    join(root, "dispatch", "matrix.dispatch.py"),
+    join(root, "dispatch", "profiles", "portable.dispatch.py"),
+  ], { encoding: "utf8" });
+  assert.equal(result.status, 0, result.stderr);
+});
+
+test("checked-in authority lowers to current deterministic JSON", async () => {
+  const registry = await loadRegistry({ root });
+  assert.deepEqual([...registry.families.keys()], ["dense-prime-matrix"]);
+  assert.deepEqual(registry.profiles.map((item) => item.document.id), ["portable"]);
+  assert.ok(registry.identity.profile_set_fingerprint.match(/^[a-f0-9]{64}$/));
+  assert.ok(checkGenerated(registry).every((item) => item.matches));
+});
+
+test("lowering is independent of absolute directory", async () => {
+  const temporary = mkdtempSync(join(tmpdir(), "sagejs-dispatch-copy-"));
+  try {
+    cpSync(join(root, "dispatch"), join(temporary, "dispatch"), { recursive: true });
+    const original = await parseDispatchSource(join(root, "dispatch", "matrix.dispatch.py"), { root });
+    const copy = await parseDispatchSource(join(temporary, "dispatch", "matrix.dispatch.py"), { root: temporary });
+    assert.equal(copy.text, original.text);
+  } finally {
+    rmSync(temporary, { recursive: true, force: true });
+  }
+});
+
+test("parser rejects execution, aliases, and unknown constructor fields", async () => {
+  const temporary = mkdtempSync(join(tmpdir(), "sagejs-dispatch-invalid-"));
+  try {
+    const filename = join(temporary, "invalid.dispatch.py");
+    writeFileSync(filename, [
+      "from sagejs.dispatch import DispatchFamily as Family",
+      "VALUE = open('/tmp/not-executed')",
+      "",
+    ].join("\n"));
+    await assert.rejects(parseDispatchSource(filename, { root: temporary }), /may not be aliased/);
+    writeFileSync(filename, [
+      "from sagejs.dispatch import DispatchFamily",
+      "VALUE = DispatchFamily(id='x', schema=1, generation=1, features={}, capabilities=[], representations=[], operations=[], surprise=True)",
+      "",
+    ].join("\n"));
+    await assert.rejects(parseDispatchSource(filename, { root: temporary }), /unknown keyword surprise/);
+  } finally {
+    rmSync(temporary, { recursive: true, force: true });
+  }
+});
+
+test("stale generated JSON fails closed", async () => {
+  const temporary = mkdtempSync(join(tmpdir(), "sagejs-dispatch-stale-"));
+  try {
+    cpSync(join(root, "dispatch"), join(temporary, "dispatch"), { recursive: true });
+    const generated = join(temporary, "dispatch", "generated", "matrix.dispatch.json");
+    writeFileSync(generated, readFileSync(generated, "utf8").replace("dense-prime-matrix", "stale"));
+    const registry = await loadRegistry({ root: temporary });
+    assert.throws(() => checkGenerated(registry), /stale mathematical dispatch JSON/);
+  } finally {
+    rmSync(temporary, { recursive: true, force: true });
+  }
+});
