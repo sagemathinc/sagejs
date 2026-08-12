@@ -23,6 +23,11 @@
 - Ratchet cold production-kernel loading separately from warm mathematical
   execution, and never silently compile a missing production kernel in an
   ordinary installed session.
+- Keep release mathematics libraries portable, but add a fingerprinted
+  CPU-native build profile for source builds and controlled performance runs.
+  Configure GMP without `--enable-fat`, tune FLINT for the host, include CPU
+  features, ABI, compiler, dependency versions, and profile in cache keys, and
+  expose the selected build provenance in timing/debug output.
 
 ## Development infrastructure
 
