@@ -4,7 +4,7 @@
   "id": "matrix-subspaces-contract",
   "title": "Matrix Subspaces Contract",
   "lane": "arithmetic-algebra",
-  "status": "review",
+  "status": "complete",
   "owner": "user",
   "objective": "Define storage-neutral canonical row/column-space planning and execution that reuses one echelon result and bulk-selects its first rank rows, with Sage differential semantics and performance witnesses, ready for later Matrix API wiring",
   "base_commit": "5a1cc59fc7fddad7648e98dc2d341a2455853754",
