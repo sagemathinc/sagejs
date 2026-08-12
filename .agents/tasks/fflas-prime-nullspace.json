@@ -4,10 +4,10 @@
   "id": "fflas-prime-nullspace",
   "title": "FFLAS prime right nullspace",
   "lane": "integration",
-  "status": "active",
+  "status": "review",
   "owner": "user",
   "objective": "Generate and route a fast canonical Sage-compatible right-nullspace basis for dense GF(p), p < 256, through declared FFLAS/FFPACK packed FFI with FLINT capability fallback",
-  "base_commit": "f1f072862c390e96553b1c9e3e0c613b4afd7c7b",
+  "base_commit": "804b2c7b09a37c1dd9754118f31948b5282d4660",
   "claims": [
     "ffi/fflas.ffi.py",
     "ffi/fflas.ffi.json",
@@ -48,12 +48,83 @@
   "validation": [
     "pnpm architecture:check",
     "pnpm test:portable",
-    "pnpm test:baselib:strict"
+    "pnpm test:baselib:strict",
+    "pnpm --dir packages/fflas test",
+    "node --test test/fflas-dense-prime.cjs",
+    "node bench/fflas-dense-prime-nullspace.cjs --check"
   ],
-  "runs": [],
+  "runs": [
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 12.722,
+      "started_at": "2026-08-12T03:54:58.268Z",
+      "commit": "2e709e48097b8f73b64b03063e77d9600275ff83",
+      "workspace_fingerprint": "35b355b608302503a3d187e276645e8556116cfab799a3bfaeccf591340b5ea3",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 12.492,
+      "started_at": "2026-08-12T03:55:16.051Z",
+      "commit": "2e709e48097b8f73b64b03063e77d9600275ff83",
+      "workspace_fingerprint": "35b355b608302503a3d187e276645e8556116cfab799a3bfaeccf591340b5ea3",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm --dir packages/fflas test",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.662,
+      "started_at": "2026-08-12T03:55:34.616Z",
+      "commit": "2e709e48097b8f73b64b03063e77d9600275ff83",
+      "workspace_fingerprint": "35b355b608302503a3d187e276645e8556116cfab799a3bfaeccf591340b5ea3",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/fflas-dense-prime.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 3.822,
+      "started_at": "2026-08-12T03:55:42.080Z",
+      "commit": "2e709e48097b8f73b64b03063e77d9600275ff83",
+      "workspace_fingerprint": "35b355b608302503a3d187e276645e8556116cfab799a3bfaeccf591340b5ea3",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/fflas-dense-prime-nullspace.cjs --check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 17.505,
+      "started_at": "2026-08-12T03:55:51.922Z",
+      "commit": "2e709e48097b8f73b64b03063e77d9600275ff83",
+      "workspace_fingerprint": "35b355b608302503a3d187e276645e8556116cfab799a3bfaeccf591340b5ea3",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 37.774,
+      "started_at": "2026-08-12T03:56:24.847Z",
+      "commit": "2e709e48097b8f73b64b03063e77d9600275ff83",
+      "workspace_fingerprint": "35b355b608302503a3d187e276645e8556116cfab799a3bfaeccf591340b5ea3",
+      "platform": "linux-x64"
+    }
+  ],
   "handoff": {
-    "summary": "",
-    "risks": [],
-    "next_steps": []
+    "summary": "Added one declared, generated, transactional packed-uint64 FFPACK right-nullspace boundary and a source-transparent typed-Python wrapper. The adapter retains no foreign pointer: it imports once, uses RAII to own FFPACK's allocated N-by-nullity column basis even across C++ exceptions, transposes to Sage's nullity-by-N row convention, canonicalizes only that smaller basis, exports once, and frees deterministically. Public dense GF(p) matrices select it for p < 256 beyond the measured 24-row/column crossover and retain declared FLINT for smaller inputs, larger primes, and unavailable hosts including native Windows. Random, structured, exhaustive binary, degenerate, rectangular, FLINT differential, SageMath 10.9 fixture, dynamic-adapter, isolated-native, and transactional-failure checks pass. On the 200x300 GF(97) workload, the generated boundary measured 1.58 ms, the current FLINT shim 9.57 ms, and public Matrix 2.39 ms.",
+    "risks": [
+      "FFLAS/FFPACK remains an optional Unix dependency; native Windows deliberately follows the already-tested declared FLINT fallback.",
+      "The crossover was measured on Linux x64 with one OpenBLAS thread. The conservative threshold keeps tiny matrices on FLINT, but future platform-specific tuning may improve it.",
+      "FFPACK NullSpaceBasis allocates its result. The local RAII owner is established before the call and receives the output pointer by reference so stack unwinding frees even an allocation published before a later C++ exception."
+    ],
+    "next_steps": [
+      "Integrate both commits onto dense-qq-resources and rerun the broad native suite from the primary worktree where the M4RI artifact is provisioned.",
+      "Consider a generated result-shape protocol later to allocate only nullity-by-columns output; the current columns-squared buffer matches the existing FLINT ABI and costs under one millisecond at the measured size."
+    ]
   }
 }
