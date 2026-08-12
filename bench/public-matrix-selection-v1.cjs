@@ -69,6 +69,21 @@ for name, base in [("ZZ", ZZ), ("QQ", QQ), ("GF2", GF(2)), ("GF97", GF(97))]:
 
 integer = matrix(ZZ, size, size, [index % 97 for index in range(size * size)])
 print("ZZ_INSERT", median_ms(lambda: integer.insert_row(250, range(size))))
+
+# Preserve an explicit scaling history for the current storage-replacement
+# swaps.  A follow-up lane will replace these O(n^2) square-matrix paths with
+# direct O(n) generated FLINT/M4RI/packed-storage operations.
+for name, base in [("ZZ", ZZ), ("QQ", QQ), ("GF2", GF(2)), ("GF97", GF(97))]:
+    for scale in [128, 256, 512]:
+        target = matrix(
+            base,
+            scale,
+            scale,
+            [index % 97 for index in range(scale * scale)],
+        )
+        row_ms = median_ms(lambda: target.swap_rows(0, scale - 1))
+        column_ms = median_ms(lambda: target.swap_columns(0, scale - 1))
+        print("SWAP_SCALE", name, scale, row_ms, column_ms)
 `;
 
 function run() {
@@ -102,8 +117,19 @@ const names = [
   "set_block_96x96_ms",
 ];
 const results = {};
+const swapScaling = {};
 for (const line of run().split("\n")) {
   const fields = line.trim().split(/\s+/);
+  if (fields[0] === "SWAP_SCALE") {
+    const domain = fields[1];
+    const size = fields[2];
+    swapScaling[domain] ??= {};
+    swapScaling[domain][size] = {
+      swap_rows_ms: Number(fields[3]),
+      swap_columns_ms: Number(fields[4]),
+    };
+    continue;
+  }
   if (fields[0] === "ZZ_INSERT") {
     results.ZZ_INSERT = { insert_row_ms: Number(fields[1]) };
     continue;
@@ -115,13 +141,23 @@ for (const line of run().split("\n")) {
 }
 
 if (process.argv.includes("--json")) {
-  console.log(JSON.stringify({ size: 500, results }, null, 2));
+  console.log(JSON.stringify({ size: 500, results, swapScaling }, null, 2));
 } else {
   console.log("Public matrix selection and mutation (500x500)");
   for (const [domain, timings] of Object.entries(results)) {
     console.log(`  ${domain}`);
     for (const [name, milliseconds] of Object.entries(timings)) {
       console.log(`    ${name.padEnd(28)} ${milliseconds.toFixed(3)} ms`);
+    }
+  }
+  console.log("  swap scaling (square matrices)");
+  for (const [domain, sizes] of Object.entries(swapScaling)) {
+    for (const [size, timings] of Object.entries(sizes)) {
+      console.log(
+        `    ${domain.padEnd(4)} ${size.padStart(4)} ` +
+          `rows=${timings.swap_rows_ms.toFixed(3)} ms ` +
+          `columns=${timings.swap_columns_ms.toFixed(3)} ms`,
+      );
     }
   }
 }
@@ -134,6 +170,17 @@ if (process.argv.includes("--check")) {
         throw new Error(
           `${domain} ${name} took ${milliseconds.toFixed(3)} ms (budget ${budget})`,
         );
+      }
+    }
+  }
+  for (const [domain, sizes] of Object.entries(swapScaling)) {
+    for (const [size, timings] of Object.entries(sizes)) {
+      for (const [name, milliseconds] of Object.entries(timings)) {
+        if (!Number.isFinite(milliseconds) || milliseconds > 100) {
+          throw new Error(
+            `${domain} ${size} ${name} took ${milliseconds.toFixed(3)} ms`,
+          );
+        }
       }
     }
   }

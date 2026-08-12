@@ -90,6 +90,14 @@ assert inserted == [0, 1, 2, 20, 21, 22, 3, 4, 5]
 assert insert_source == list(range(6))
 append = selection.prepare_row_insertion(2, 3, 2, [30, 31, 32], int)
 assert selection.insert_row_major(insert_source, 2, 3, append)[-3:] == [30, 31, 32]
+# Sage reads exactly one row by index and ignores surplus input.
+surplus = selection.prepare_row_insertion(2, 3, 1, [40, 41, 42, 999], int)
+assert surplus == (1, (40, 41, 42))
+raises(
+    ValueError,
+    "at least 3 entries",
+    lambda: selection.prepare_row_insertion(2, 3, 1, [40, 41], int),
+)
 raises(
     ValueError,
     "nonnegative",

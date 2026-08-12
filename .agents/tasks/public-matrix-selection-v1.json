@@ -4,15 +4,17 @@
   "id": "public-matrix-selection-v1",
   "title": "Public Matrix Selection v1",
   "lane": "integration",
-  "status": "review",
+  "status": "active",
   "owner": "user",
   "objective": "Wire Sage-compatible matrix selection, deletion, swaps, setters, block mutation, and row insertion through storage-neutral plans and existing generated exact-resource or packed-prime operations",
   "base_commit": "f27a41e36b59eabffd046ce36711c7037c02efdd",
   "claims": [
     "src/baselib/matrix.py",
+    "src/lib/sagejs/linear_algebra/matrix_selection.py",
     "src/lib/sagejs/linear_algebra/matrix_selection_public.py",
     "pyrightconfig.json",
     "test/public-matrix-selection-v1.cjs",
+    "test/linear-matrix-selection.cjs",
     "test/dense-integer-public-resource.cjs",
     "test/node-test-manifest.cjs",
     "bench/public-matrix-selection-v1.cjs"
@@ -44,47 +46,15 @@
     "pnpm test:portable",
     "pnpm test:baselib:strict"
   ],
-  "runs": [
-    {
-      "command": "pnpm architecture:check",
-      "result": "pass",
-      "exit_code": 0,
-      "seconds": 13.01,
-      "started_at": "2026-08-12T09:37:46.014Z",
-      "commit": "bb5bca20dd8cc13dd7230eadf58b29ef6ef676cb",
-      "workspace_fingerprint": "acf50089fd40e77a406f43331bc087104e139d98a850ff35e2d8c3ec36f47d9b",
-      "platform": "linux-x64"
-    },
-    {
-      "command": "pnpm test:portable",
-      "result": "pass",
-      "exit_code": 0,
-      "seconds": 40.504,
-      "started_at": "2026-08-12T09:38:02.803Z",
-      "commit": "bb5bca20dd8cc13dd7230eadf58b29ef6ef676cb",
-      "workspace_fingerprint": "acf50089fd40e77a406f43331bc087104e139d98a850ff35e2d8c3ec36f47d9b",
-      "platform": "linux-x64"
-    },
-    {
-      "command": "pnpm test:baselib:strict",
-      "result": "pass",
-      "exit_code": 0,
-      "seconds": 13.241,
-      "started_at": "2026-08-12T09:38:51.927Z",
-      "commit": "bb5bca20dd8cc13dd7230eadf58b29ef6ef676cb",
-      "workspace_fingerprint": "acf50089fd40e77a406f43331bc087104e139d98a850ff35e2d8c3ec36f47d9b",
-      "platform": "linux-x64"
-    }
-  ],
+  "runs": [],
   "handoff": {
     "summary": "Public Matrix selection, deletion, rectangular submatrices, swaps, row and column mutation, exact block mutation, and dense-ZZ row insertion now execute through one lazy storage-aware module. Exact matrices stay in generated FLINT resources and packed-prime matrices preserve uint64 or M4RI storage; common typed-Python plans provide Sage-compatible ordering, validation, and transactional staging. Focused native/dynamic tests prohibit hidden exact full-matrix exports, and a 500x500 cross-domain benchmark records low-single-digit millisecond medians.",
     "risks": [
-      "Arbitrary GF(2) selection and swaps currently traverse the packed/M4RI boundary and benchmark around 4-6 ms at 500x500; direct generated M4RI selectors remain a possible measured optimization.",
-      "Dense-ZZ insert_row deliberately requires exactly ncols entries, whereas current Sage behavior around surplus input is permissive; the stricter transactional contract is explicit and tested."
+      "Row and column swaps currently construct one full replacement matrix, so their square-matrix cost is O(n^2); the benchmark now retains 128, 256, and 512 scaling data for every canonical domain."
     ],
     "next_steps": [
       "Integrate the lane and run the focused public matrix selection test after any concurrent Matrix.py conflict resolution.",
-      "Add direct generated resource operations only where retained benchmark history demonstrates a material crossover."
+      "After the polynomial structural FFI lane integrates, run Public Matrix In-place Swap v1: declare FLINT fmpz/fmpq row and column swaps, add source-transparent M4RI and packed-prime kernels, and ratchet the retained scaling benchmark from O(n^2) to O(n)."
     ]
   }
 }
