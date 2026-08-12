@@ -1,0 +1,89 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "dense-qq-scalar-views",
+  "title": "Dense QQ scalar and affine host views",
+  "lane": "integration",
+  "status": "active",
+  "owner": "user",
+  "objective": "Make dense QQ scalar entry reads use a safe generated one-crossing boundary with Sage semantics and materially lower latency",
+  "base_commit": "236936d95e48ad581a246de0811969f4c9e94c26",
+  "claims": [
+    "src/baselib/matrix.py",
+    "src/lib/sagejs/kernels/matrix/dense_rational_flint.py",
+    "architecture/native-kernels.json",
+    "test/dense-rational-migration.cjs"
+  ],
+  "dependencies": [],
+  "references": [
+    "FLINT fmpq_mat API"
+  ],
+  "architecture": {
+    "strategy": "external-library",
+    "fallback": "tested-capability",
+    "oracles": [
+      "SageMath dense rational matrices",
+      "existing packed Sage.js fallback"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "fallback",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm architecture:check",
+    "pnpm test:portable",
+    "pnpm test:baselib:strict",
+    "node test/dense-rational-migration.cjs"
+  ],
+  "runs": [
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 12.786,
+      "started_at": "2026-08-12T03:32:52.757Z",
+      "commit": "236936d95e48ad581a246de0811969f4c9e94c26",
+      "workspace_fingerprint": "7cd8090bdbc5d7621f0305e67b114270930cc5fe8a5137eba634c0256747710e",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 12.492,
+      "started_at": "2026-08-12T03:33:14.426Z",
+      "commit": "236936d95e48ad581a246de0811969f4c9e94c26",
+      "workspace_fingerprint": "7cd8090bdbc5d7621f0305e67b114270930cc5fe8a5137eba634c0256747710e",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node test/dense-rational-migration.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 16.239,
+      "started_at": "2026-08-12T03:33:27.721Z",
+      "commit": "236936d95e48ad581a246de0811969f4c9e94c26",
+      "workspace_fingerprint": "7cd8090bdbc5d7621f0305e67b114270930cc5fe8a5137eba634c0256747710e",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 37.919,
+      "started_at": "2026-08-12T03:33:49.094Z",
+      "commit": "236936d95e48ad581a246de0811969f4c9e94c26",
+      "workspace_fingerprint": "7cd8090bdbc5d7621f0305e67b114270930cc5fe8a5137eba634c0256747710e",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "",
+    "risks": [],
+    "next_steps": []
+  }
+}
