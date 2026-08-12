@@ -521,11 +521,18 @@ assert.deepEqual(
       true,
       { rowSubmul: 0, dotAccumulate: 1, panelUpdate: 0 },
     ],
+    [
+      "source_uint64_floor_div",
+      "prime-field-source",
+      true,
+      { rowSubmul: 0, dotAccumulate: 0, panelUpdate: 0 },
+    ],
   ],
 );
 assert.match(primeFieldSourceCore.source, /sagejs_source_prime_row_submul/);
 assert.match(primeFieldSourceCore.source, /sagejs_source_prime_dot_accumulate/);
 assert.match(primeFieldSourceC, /compiled_source_prime_rank/);
+assert.match(primeFieldSourceCore.source, /integer floor division by zero/);
 assert.doesNotMatch(primeFieldSourceCore.source, /sagejs_prime_factor/);
 assert.equal(primeFieldSourceCore.audit.hostCallbacks, 0);
 assert.doesNotMatch(primeFieldSourceCore.source, /\bnapi_/);
@@ -1619,6 +1626,21 @@ compileKernel({
     ),
   );
   assert.ok(primeFieldSourceManifest.coreSourceMap.length > 0);
+  for (const [left, right, expected] of [
+    [0n, 1n, 0],
+    [17n, 5n, 3],
+    [0xffffffffn, 97n, 44278013],
+    [0xffffffffffffffffn, 0xffffffffn, 4294967297],
+  ]) {
+    assert.equal(
+      primeFieldSourceModule.source_uint64_floor_div(left, right, 97n),
+      expected,
+    );
+  }
+  assert.throws(
+    () => primeFieldSourceModule.source_uint64_floor_div(1n, 0n, 97n),
+    /floor division by zero/,
+  );
   assert.equal(
     primeFieldSourceManifest.coreSourceMap[0].location,
     `${primeFieldSourcePath}:29:5`,
