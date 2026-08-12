@@ -4,7 +4,7 @@
   "id": "linear-decomposition-contract",
   "title": "Linear Decomposition Contract",
   "lane": "arithmetic-algebra",
-  "status": "review",
+  "status": "complete",
   "owner": "user",
   "objective": "Implement ordinary Python reference contracts for LU, exact QR, and Gram-Schmidt including shape and singular-case semantics",
   "base_commit": "5a1cc59fc7fddad7648e98dc2d341a2455853754",

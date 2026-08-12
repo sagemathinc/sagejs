@@ -74,6 +74,7 @@ const integration = [
   "test/exact-matrix-scalar-operations.cjs",
   "test/exact-matrix-bulk-construction.cjs",
   "test/linear-combinatorial-invariants.cjs",
+  "test/linear-decomposition-contract.cjs",
   "test/linear-matrix-selection.cjs",
   "test/linear-matrix-predicates.cjs",
   "test/linear-vector-contract.cjs",
