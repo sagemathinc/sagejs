@@ -18,6 +18,10 @@ _Str = str
 _BYTE_WHITESPACE = " \t\n\r\x0b\x0c"
 
 
+def _untyped(value: Any) -> Any:
+    return value
+
+
 def _normalise_encoding(encoding: Any) -> _Str:
     return runtime.reflect.apply(
         runtime.string_class.prototype.toLowerCase,
@@ -179,7 +183,7 @@ def _decode_ascii(values: list[_Int], errors: _Str) -> _Str:
             )
         if errors != "strict":
             raise LookupError("unknown error handler name '" + str(errors) + "'")
-        error_source: Any = bytes(values)
+        error_source = _untyped(bytes(values))
         raise UnicodeDecodeError(
             "ascii",
             error_source,
@@ -199,7 +203,7 @@ def _decode_ascii(values: list[_Int], errors: _Str) -> _Str:
         else:
             if errors != "strict":
                 raise LookupError("unknown error handler name '" + str(errors) + "'")
-            error_source = bytes(values)
+            error_source = _untyped(bytes(values))
             raise UnicodeDecodeError(
                 "ascii",
                 error_source,
