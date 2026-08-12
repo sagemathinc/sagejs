@@ -13,9 +13,9 @@
     "new_boundaries_require": "explicit-regeneration-and-review"
   },
   "counts": {
-    "classified-native-file": 60,
-    "declared-ffi": 320,
-    "declared-ffi-resource": 24,
+    "classified-native-file": 61,
+    "declared-ffi": 363,
+    "declared-ffi-resource": 25,
     "napi-export": 292,
     "runtime-intrinsic": 136,
     "wasm-export": 46
@@ -295,6 +295,18 @@
       "disposition": "declared-owned-ffi-resource"
     },
     {
+      "id": "ffi-resource:flint:nmod_matrix",
+      "kind": "declared-ffi-resource",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "NmodMatrix",
+      "abi_type": "sagejs_nmod_matrix_t",
+      "close_export": "ffiNmodMatrixClose",
+      "clear_symbol": "sagejs_nmod_matrix_clear",
+      "size_symbol": "sagejs_nmod_matrix_allocated_bytes",
+      "disposition": "declared-owned-ffi-resource"
+    },
+    {
       "id": "ffi-resource:igraph:edges",
       "kind": "declared-ffi-resource",
       "path": "ffi/igraph.ffi.json",
@@ -352,6 +364,61 @@
       "clear_symbol": "sagejs_m4ri_matrix_clear",
       "size_symbol": "sagejs_m4ri_matrix_allocated_bytes",
       "disposition": "declared-owned-ffi-resource"
+    },
+    {
+      "id": "ffi:fflas:modular_double_available",
+      "kind": "declared-ffi",
+      "path": "ffi/fflas.ffi.json",
+      "library": "fflas",
+      "export": "modular_double_available",
+      "dynamic_package": "@sagemath/sagejs-fflas",
+      "dynamic_export": "ffiFflasModularDoubleAvailable",
+      "symbol": "sagejs_fflas_modular_double_available",
+      "disposition": "declared-safe-ffi"
+    },
+    {
+      "id": "ffi:fflas:modular_double_mul",
+      "kind": "declared-ffi",
+      "path": "ffi/fflas.ffi.json",
+      "library": "fflas",
+      "export": "modular_double_mul",
+      "dynamic_package": "@sagemath/sagejs-fflas",
+      "dynamic_export": "ffiFflasModularDoubleMul",
+      "symbol": "sagejs_fflas_modular_double_mul",
+      "disposition": "declared-safe-ffi"
+    },
+    {
+      "id": "ffi:fflas:modular_double_rank",
+      "kind": "declared-ffi",
+      "path": "ffi/fflas.ffi.json",
+      "library": "fflas",
+      "export": "modular_double_rank",
+      "dynamic_package": "@sagemath/sagejs-fflas",
+      "dynamic_export": "ffiFflasModularDoubleRank",
+      "symbol": "sagejs_fflas_modular_double_rank",
+      "disposition": "declared-safe-ffi"
+    },
+    {
+      "id": "ffi:fflas:modular_double_right_nullspace",
+      "kind": "declared-ffi",
+      "path": "ffi/fflas.ffi.json",
+      "library": "fflas",
+      "export": "modular_double_right_nullspace",
+      "dynamic_package": "@sagemath/sagejs-fflas",
+      "dynamic_export": "ffiFflasModularDoubleRightNullspace",
+      "symbol": "sagejs_fflas_modular_double_right_nullspace",
+      "disposition": "declared-safe-ffi"
+    },
+    {
+      "id": "ffi:fflas:modular_double_rref",
+      "kind": "declared-ffi",
+      "path": "ffi/fflas.ffi.json",
+      "library": "fflas",
+      "export": "modular_double_rref",
+      "dynamic_package": "@sagemath/sagejs-fflas",
+      "dynamic_export": "ffiFflasModularDoubleRref",
+      "symbol": "sagejs_fflas_modular_double_rref",
+      "disposition": "declared-safe-ffi"
     },
     {
       "id": "ffi:fflas:modular_float_available",
@@ -3291,6 +3358,413 @@
       "disposition": "declared-safe-ffi"
     },
     {
+      "id": "ffi:flint:nmod_matrix_add",
+      "kind": "declared-ffi",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "nmod_matrix_add",
+      "dynamic_package": "@sagemath/sagejs-flint",
+      "dynamic_export": "ffiNmodMatrixAdd",
+      "symbol": "sagejs_nmod_matrix_add",
+      "disposition": "declared-safe-ffi"
+    },
+    {
+      "id": "ffi:flint:nmod_matrix_augment",
+      "kind": "declared-ffi",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "nmod_matrix_augment",
+      "dynamic_package": "@sagemath/sagejs-flint",
+      "dynamic_export": "ffiNmodMatrixAugment",
+      "symbol": "sagejs_nmod_matrix_augment",
+      "disposition": "declared-safe-ffi"
+    },
+    {
+      "id": "ffi:flint:nmod_matrix_charpoly",
+      "kind": "declared-ffi",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "nmod_matrix_charpoly",
+      "dynamic_package": "@sagemath/sagejs-flint",
+      "dynamic_export": "ffiNmodMatrixCharpoly",
+      "symbol": "sagejs_nmod_matrix_charpoly",
+      "disposition": "declared-safe-ffi"
+    },
+    {
+      "id": "ffi:flint:nmod_matrix_copy",
+      "kind": "declared-ffi",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "nmod_matrix_copy",
+      "dynamic_package": "@sagemath/sagejs-flint",
+      "dynamic_export": "ffiNmodMatrixCopy",
+      "symbol": "sagejs_nmod_matrix_init_set",
+      "disposition": "declared-safe-ffi"
+    },
+    {
+      "id": "ffi:flint:nmod_matrix_det",
+      "kind": "declared-ffi",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "nmod_matrix_det",
+      "dynamic_package": "@sagemath/sagejs-flint",
+      "dynamic_export": "ffiNmodMatrixDet",
+      "symbol": "sagejs_nmod_matrix_det",
+      "disposition": "declared-safe-ffi"
+    },
+    {
+      "id": "ffi:flint:nmod_matrix_entry",
+      "kind": "declared-ffi",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "nmod_matrix_entry",
+      "dynamic_package": "@sagemath/sagejs-flint",
+      "dynamic_export": "ffiNmodMatrixEntry",
+      "symbol": "sagejs_nmod_matrix_entry",
+      "disposition": "declared-safe-ffi"
+    },
+    {
+      "id": "ffi:flint:nmod_matrix_equal",
+      "kind": "declared-ffi",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "nmod_matrix_equal",
+      "dynamic_package": "@sagemath/sagejs-flint",
+      "dynamic_export": "ffiNmodMatrixEqual",
+      "symbol": "sagejs_nmod_matrix_equal",
+      "disposition": "declared-safe-ffi"
+    },
+    {
+      "id": "ffi:flint:nmod_matrix_format",
+      "kind": "declared-ffi",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "nmod_matrix_format",
+      "dynamic_package": "@sagemath/sagejs-flint",
+      "dynamic_export": "ffiNmodMatrixFormat",
+      "symbol": "sagejs_nmod_matrix_format",
+      "disposition": "declared-safe-ffi"
+    },
+    {
+      "id": "ffi:flint:nmod_matrix_from_entries",
+      "kind": "declared-ffi",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "nmod_matrix_from_entries",
+      "dynamic_package": "@sagemath/sagejs-flint",
+      "dynamic_export": "ffiNmodMatrixFromEntries",
+      "symbol": "sagejs_nmod_matrix_from_entries",
+      "disposition": "declared-safe-ffi"
+    },
+    {
+      "id": "ffi:flint:nmod_matrix_inv",
+      "kind": "declared-ffi",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "nmod_matrix_inv",
+      "dynamic_package": "@sagemath/sagejs-flint",
+      "dynamic_export": "ffiNmodMatrixInv",
+      "symbol": "sagejs_nmod_matrix_inv",
+      "disposition": "declared-safe-ffi"
+    },
+    {
+      "id": "ffi:flint:nmod_matrix_is_one",
+      "kind": "declared-ffi",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "nmod_matrix_is_one",
+      "dynamic_package": "@sagemath/sagejs-flint",
+      "dynamic_export": "ffiNmodMatrixIsOne",
+      "symbol": "sagejs_nmod_matrix_is_one",
+      "disposition": "declared-safe-ffi"
+    },
+    {
+      "id": "ffi:flint:nmod_matrix_is_zero",
+      "kind": "declared-ffi",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "nmod_matrix_is_zero",
+      "dynamic_package": "@sagemath/sagejs-flint",
+      "dynamic_export": "ffiNmodMatrixIsZero",
+      "symbol": "sagejs_nmod_matrix_is_zero",
+      "disposition": "declared-safe-ffi"
+    },
+    {
+      "id": "ffi:flint:nmod_matrix_minpoly",
+      "kind": "declared-ffi",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "nmod_matrix_minpoly",
+      "dynamic_package": "@sagemath/sagejs-flint",
+      "dynamic_export": "ffiNmodMatrixMinpoly",
+      "symbol": "sagejs_nmod_matrix_minpoly",
+      "disposition": "declared-safe-ffi"
+    },
+    {
+      "id": "ffi:flint:nmod_matrix_modulus",
+      "kind": "declared-ffi",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "nmod_matrix_modulus",
+      "dynamic_package": "@sagemath/sagejs-flint",
+      "dynamic_export": "ffiNmodMatrixModulus",
+      "symbol": "sagejs_nmod_matrix_modulus",
+      "disposition": "declared-safe-ffi"
+    },
+    {
+      "id": "ffi:flint:nmod_matrix_mul",
+      "kind": "declared-ffi",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "nmod_matrix_mul",
+      "dynamic_package": "@sagemath/sagejs-flint",
+      "dynamic_export": "ffiNmodMatrixMul",
+      "symbol": "sagejs_nmod_matrix_mul",
+      "disposition": "declared-safe-ffi"
+    },
+    {
+      "id": "ffi:flint:nmod_matrix_mul_vector",
+      "kind": "declared-ffi",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "nmod_matrix_mul_vector",
+      "dynamic_package": "@sagemath/sagejs-flint",
+      "dynamic_export": "ffiNmodMatrixMulVector",
+      "symbol": "sagejs_nmod_matrix_mul_column_vector",
+      "disposition": "declared-safe-ffi"
+    },
+    {
+      "id": "ffi:flint:nmod_matrix_ncols",
+      "kind": "declared-ffi",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "nmod_matrix_ncols",
+      "dynamic_package": "@sagemath/sagejs-flint",
+      "dynamic_export": "ffiNmodMatrixNcols",
+      "symbol": "sagejs_nmod_matrix_ncols",
+      "disposition": "declared-safe-ffi"
+    },
+    {
+      "id": "ffi:flint:nmod_matrix_neg",
+      "kind": "declared-ffi",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "nmod_matrix_neg",
+      "dynamic_package": "@sagemath/sagejs-flint",
+      "dynamic_export": "ffiNmodMatrixNeg",
+      "symbol": "sagejs_nmod_matrix_neg",
+      "disposition": "declared-safe-ffi"
+    },
+    {
+      "id": "ffi:flint:nmod_matrix_nonzero_count",
+      "kind": "declared-ffi",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "nmod_matrix_nonzero_count",
+      "dynamic_package": "@sagemath/sagejs-flint",
+      "dynamic_export": "ffiNmodMatrixNonzeroCount",
+      "symbol": "sagejs_nmod_matrix_nonzero_count",
+      "disposition": "declared-safe-ffi"
+    },
+    {
+      "id": "ffi:flint:nmod_matrix_nrows",
+      "kind": "declared-ffi",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "nmod_matrix_nrows",
+      "dynamic_package": "@sagemath/sagejs-flint",
+      "dynamic_export": "ffiNmodMatrixNrows",
+      "symbol": "sagejs_nmod_matrix_nrows",
+      "disposition": "declared-safe-ffi"
+    },
+    {
+      "id": "ffi:flint:nmod_matrix_random",
+      "kind": "declared-ffi",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "nmod_matrix_random",
+      "dynamic_package": "@sagemath/sagejs-flint",
+      "dynamic_export": "ffiNmodMatrixRandom",
+      "symbol": "sagejs_nmod_matrix_random",
+      "disposition": "declared-safe-ffi"
+    },
+    {
+      "id": "ffi:flint:nmod_matrix_rank",
+      "kind": "declared-ffi",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "nmod_matrix_rank",
+      "dynamic_package": "@sagemath/sagejs-flint",
+      "dynamic_export": "ffiNmodMatrixRank",
+      "symbol": "sagejs_nmod_matrix_rank",
+      "disposition": "declared-safe-ffi"
+    },
+    {
+      "id": "ffi:flint:nmod_matrix_right_kernel",
+      "kind": "declared-ffi",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "nmod_matrix_right_kernel",
+      "dynamic_package": "@sagemath/sagejs-flint",
+      "dynamic_export": "ffiNmodMatrixRightKernel",
+      "symbol": "sagejs_nmod_matrix_right_kernel",
+      "disposition": "declared-safe-ffi"
+    },
+    {
+      "id": "ffi:flint:nmod_matrix_rref",
+      "kind": "declared-ffi",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "nmod_matrix_rref",
+      "dynamic_package": "@sagemath/sagejs-flint",
+      "dynamic_export": "ffiNmodMatrixRref",
+      "symbol": "sagejs_nmod_matrix_rref",
+      "disposition": "declared-safe-ffi"
+    },
+    {
+      "id": "ffi:flint:nmod_matrix_scalar_mul",
+      "kind": "declared-ffi",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "nmod_matrix_scalar_mul",
+      "dynamic_package": "@sagemath/sagejs-flint",
+      "dynamic_export": "ffiNmodMatrixScalarMul",
+      "symbol": "sagejs_nmod_matrix_scalar_mul",
+      "disposition": "declared-safe-ffi"
+    },
+    {
+      "id": "ffi:flint:nmod_matrix_select_columns",
+      "kind": "declared-ffi",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "nmod_matrix_select_columns",
+      "dynamic_package": "@sagemath/sagejs-flint",
+      "dynamic_export": "ffiNmodMatrixSelectColumns",
+      "symbol": "sagejs_nmod_matrix_select_columns",
+      "disposition": "declared-safe-ffi"
+    },
+    {
+      "id": "ffi:flint:nmod_matrix_select_rows",
+      "kind": "declared-ffi",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "nmod_matrix_select_rows",
+      "dynamic_package": "@sagemath/sagejs-flint",
+      "dynamic_export": "ffiNmodMatrixSelectRows",
+      "symbol": "sagejs_nmod_matrix_select_rows",
+      "disposition": "declared-safe-ffi"
+    },
+    {
+      "id": "ffi:flint:nmod_matrix_serialize",
+      "kind": "declared-ffi",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "nmod_matrix_serialize",
+      "dynamic_package": "@sagemath/sagejs-flint",
+      "dynamic_export": "ffiNmodMatrixSerialize",
+      "symbol": "sagejs_nmod_matrix_serialize",
+      "disposition": "declared-safe-ffi"
+    },
+    {
+      "id": "ffi:flint:nmod_matrix_set_block",
+      "kind": "declared-ffi",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "nmod_matrix_set_block",
+      "dynamic_package": "@sagemath/sagejs-flint",
+      "dynamic_export": "ffiNmodMatrixSetBlock",
+      "symbol": "sagejs_nmod_matrix_set_block",
+      "disposition": "declared-safe-ffi"
+    },
+    {
+      "id": "ffi:flint:nmod_matrix_set_entry",
+      "kind": "declared-ffi",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "nmod_matrix_set_entry",
+      "dynamic_package": "@sagemath/sagejs-flint",
+      "dynamic_export": "ffiNmodMatrixSetEntry",
+      "symbol": "sagejs_nmod_matrix_set_entry",
+      "disposition": "declared-safe-ffi"
+    },
+    {
+      "id": "ffi:flint:nmod_matrix_solve",
+      "kind": "declared-ffi",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "nmod_matrix_solve",
+      "dynamic_package": "@sagemath/sagejs-flint",
+      "dynamic_export": "ffiNmodMatrixSolve",
+      "symbol": "sagejs_nmod_matrix_solve",
+      "disposition": "declared-safe-ffi"
+    },
+    {
+      "id": "ffi:flint:nmod_matrix_stack",
+      "kind": "declared-ffi",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "nmod_matrix_stack",
+      "dynamic_package": "@sagemath/sagejs-flint",
+      "dynamic_export": "ffiNmodMatrixStack",
+      "symbol": "sagejs_nmod_matrix_stack",
+      "disposition": "declared-safe-ffi"
+    },
+    {
+      "id": "ffi:flint:nmod_matrix_sub",
+      "kind": "declared-ffi",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "nmod_matrix_sub",
+      "dynamic_package": "@sagemath/sagejs-flint",
+      "dynamic_export": "ffiNmodMatrixSub",
+      "symbol": "sagejs_nmod_matrix_sub",
+      "disposition": "declared-safe-ffi"
+    },
+    {
+      "id": "ffi:flint:nmod_matrix_swap_columns",
+      "kind": "declared-ffi",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "nmod_matrix_swap_columns",
+      "dynamic_package": "@sagemath/sagejs-flint",
+      "dynamic_export": "ffiNmodMatrixSwapColumns",
+      "symbol": "sagejs_nmod_matrix_swap_columns",
+      "disposition": "declared-safe-ffi"
+    },
+    {
+      "id": "ffi:flint:nmod_matrix_swap_rows",
+      "kind": "declared-ffi",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "nmod_matrix_swap_rows",
+      "dynamic_package": "@sagemath/sagejs-flint",
+      "dynamic_export": "ffiNmodMatrixSwapRows",
+      "symbol": "sagejs_nmod_matrix_swap_rows",
+      "disposition": "declared-safe-ffi"
+    },
+    {
+      "id": "ffi:flint:nmod_matrix_trace",
+      "kind": "declared-ffi",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "nmod_matrix_trace",
+      "dynamic_package": "@sagemath/sagejs-flint",
+      "dynamic_export": "ffiNmodMatrixTrace",
+      "symbol": "sagejs_nmod_matrix_trace",
+      "disposition": "declared-safe-ffi"
+    },
+    {
+      "id": "ffi:flint:nmod_matrix_transpose",
+      "kind": "declared-ffi",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "nmod_matrix_transpose",
+      "dynamic_package": "@sagemath/sagejs-flint",
+      "dynamic_export": "ffiNmodMatrixTranspose",
+      "symbol": "sagejs_nmod_matrix_transpose",
+      "disposition": "declared-safe-ffi"
+    },
+    {
       "id": "ffi:flint:nmod_poly_add",
       "kind": "declared-ffi",
       "path": "ffi/flint.ffi.json",
@@ -3530,6 +4004,17 @@
       "dynamic_package": "@sagemath/sagejs-flint",
       "dynamic_export": "ffiNmodPolyXgcd",
       "symbol": "sagejs_flint_nmod_poly_xgcd_packed",
+      "disposition": "declared-safe-ffi"
+    },
+    {
+      "id": "ffi:flint:nmod_vector_mul_matrix",
+      "kind": "declared-ffi",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "nmod_vector_mul_matrix",
+      "dynamic_package": "@sagemath/sagejs-flint",
+      "dynamic_export": "ffiNmodVectorMulMatrix",
+      "symbol": "sagejs_nmod_row_vector_mul_matrix",
       "disposition": "declared-safe-ffi"
     },
     {
@@ -6911,6 +7396,14 @@
       "disposition": "public-abi",
       "review_status": "accepted",
       "lane": "native-compiler"
+    },
+    {
+      "id": "native-file:packages/flint/include/sagejs/nmod_matrix_ffi.h",
+      "kind": "classified-native-file",
+      "path": "packages/flint/include/sagejs/nmod_matrix_ffi.h",
+      "disposition": "external-library-bridge",
+      "review_status": "accepted",
+      "lane": "integration"
     },
     {
       "id": "native-file:packages/flint/src/addon.c",

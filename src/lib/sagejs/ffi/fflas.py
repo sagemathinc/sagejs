@@ -5,7 +5,7 @@ from __future__ import annotations
 import sagejs.runtime as _runtime
 
 __sagejs_ffi_declaration__ = (
-    "fflas@a2120527ab215e933ee314816826de888bb48b72dfa9875d697f2ba2de098790"
+    "fflas@a934cdc126dc59d3a8dda1e967ad2bd8943b13aa35ecdf497d0939c302d15684"
 )
 
 
@@ -298,6 +298,374 @@ def modular_float_right_nullspace(
         __sagejs_ffi_declaration__ + ":modular_float_right_nullspace",
         "@sagemath/sagejs-fflas",
         "ffiFflasModularFloatRightNullspace",
+        [
+            output,
+            nullity_output,
+            source,
+            output_length,
+            nullity_length,
+            source_length,
+            rows,
+            columns,
+            modulus,
+        ],
+        [
+            "UInt64Buffer",
+            "UInt64Buffer",
+            "UInt64Buffer",
+            "uint64",
+            "uint64",
+            "uint64",
+            "uint64",
+            "uint64",
+            "uint64",
+        ],
+        "bool",
+        ["status", [1], None],
+        "ValueError",
+        "FFPACK right nullspace failed or is unavailable",
+        [
+            [
+                "buffer_length",
+                "output",
+                ["output_length"],
+                [
+                    "output",
+                    "nullity_output",
+                    "source",
+                    "output_length",
+                    "nullity_length",
+                    "source_length",
+                    "rows",
+                    "columns",
+                    "modulus",
+                ],
+            ],
+            [
+                "buffer_length",
+                "nullity_output",
+                ["nullity_length"],
+                [
+                    "output",
+                    "nullity_output",
+                    "source",
+                    "output_length",
+                    "nullity_length",
+                    "source_length",
+                    "rows",
+                    "columns",
+                    "modulus",
+                ],
+            ],
+            [
+                "buffer_length",
+                "source",
+                ["source_length"],
+                [
+                    "output",
+                    "nullity_output",
+                    "source",
+                    "output_length",
+                    "nullity_length",
+                    "source_length",
+                    "rows",
+                    "columns",
+                    "modulus",
+                ],
+            ],
+        ],
+    )
+
+
+def modular_double_available() -> bool:
+    """Call declared fflas:modular_double_available."""
+    return _runtime.ffi_call(
+        __sagejs_ffi_declaration__ + ":modular_double_available",
+        "@sagemath/sagejs-fflas",
+        "ffiFflasModularDoubleAvailable",
+        [],
+        [],
+        "bool",
+        ["direct", [], None],
+        None,
+        None,
+        [],
+    )
+
+
+def modular_double_mul(
+    output: list[int],
+    left: list[int],
+    right: list[int],
+    output_length: int,
+    left_length: int,
+    right_length: int,
+    left_rows: int,
+    inner: int,
+    right_columns: int,
+    modulus: int,
+) -> bool:
+    """Call declared fflas:modular_double_mul."""
+    return _runtime.ffi_call(
+        __sagejs_ffi_declaration__ + ":modular_double_mul",
+        "@sagemath/sagejs-fflas",
+        "ffiFflasModularDoubleMul",
+        [
+            output,
+            left,
+            right,
+            output_length,
+            left_length,
+            right_length,
+            left_rows,
+            inner,
+            right_columns,
+            modulus,
+        ],
+        [
+            "UInt64Buffer",
+            "UInt64Buffer",
+            "UInt64Buffer",
+            "uint64",
+            "uint64",
+            "uint64",
+            "uint64",
+            "uint64",
+            "uint64",
+            "uint64",
+        ],
+        "bool",
+        ["status", [1], None],
+        "ValueError",
+        "FFLAS matrix multiplication failed or is unavailable",
+        [
+            [
+                "buffer_length",
+                "output",
+                ["output_length"],
+                [
+                    "output",
+                    "left",
+                    "right",
+                    "output_length",
+                    "left_length",
+                    "right_length",
+                    "left_rows",
+                    "inner",
+                    "right_columns",
+                    "modulus",
+                ],
+            ],
+            [
+                "buffer_length",
+                "left",
+                ["left_length"],
+                [
+                    "output",
+                    "left",
+                    "right",
+                    "output_length",
+                    "left_length",
+                    "right_length",
+                    "left_rows",
+                    "inner",
+                    "right_columns",
+                    "modulus",
+                ],
+            ],
+            [
+                "buffer_length",
+                "right",
+                ["right_length"],
+                [
+                    "output",
+                    "left",
+                    "right",
+                    "output_length",
+                    "left_length",
+                    "right_length",
+                    "left_rows",
+                    "inner",
+                    "right_columns",
+                    "modulus",
+                ],
+            ],
+        ],
+    )
+
+
+def modular_double_rank(
+    rank_output: list[int],
+    source: list[int],
+    rank_length: int,
+    source_length: int,
+    rows: int,
+    columns: int,
+    modulus: int,
+) -> bool:
+    """Call declared fflas:modular_double_rank."""
+    return _runtime.ffi_call(
+        __sagejs_ffi_declaration__ + ":modular_double_rank",
+        "@sagemath/sagejs-fflas",
+        "ffiFflasModularDoubleRank",
+        [rank_output, source, rank_length, source_length, rows, columns, modulus],
+        [
+            "UInt64Buffer",
+            "UInt64Buffer",
+            "uint64",
+            "uint64",
+            "uint64",
+            "uint64",
+            "uint64",
+        ],
+        "bool",
+        ["status", [1], None],
+        "ValueError",
+        "FFPACK matrix rank failed or is unavailable",
+        [
+            [
+                "buffer_length",
+                "rank_output",
+                ["rank_length"],
+                [
+                    "rank_output",
+                    "source",
+                    "rank_length",
+                    "source_length",
+                    "rows",
+                    "columns",
+                    "modulus",
+                ],
+            ],
+            [
+                "buffer_length",
+                "source",
+                ["source_length"],
+                [
+                    "rank_output",
+                    "source",
+                    "rank_length",
+                    "source_length",
+                    "rows",
+                    "columns",
+                    "modulus",
+                ],
+            ],
+        ],
+    )
+
+
+def modular_double_rref(
+    output: list[int],
+    rank_output: list[int],
+    source: list[int],
+    output_length: int,
+    rank_length: int,
+    source_length: int,
+    rows: int,
+    columns: int,
+    modulus: int,
+) -> bool:
+    """Call declared fflas:modular_double_rref."""
+    return _runtime.ffi_call(
+        __sagejs_ffi_declaration__ + ":modular_double_rref",
+        "@sagemath/sagejs-fflas",
+        "ffiFflasModularDoubleRref",
+        [
+            output,
+            rank_output,
+            source,
+            output_length,
+            rank_length,
+            source_length,
+            rows,
+            columns,
+            modulus,
+        ],
+        [
+            "UInt64Buffer",
+            "UInt64Buffer",
+            "UInt64Buffer",
+            "uint64",
+            "uint64",
+            "uint64",
+            "uint64",
+            "uint64",
+            "uint64",
+        ],
+        "bool",
+        ["status", [1], None],
+        "ValueError",
+        "FFPACK matrix RREF failed or is unavailable",
+        [
+            [
+                "buffer_length",
+                "output",
+                ["output_length"],
+                [
+                    "output",
+                    "rank_output",
+                    "source",
+                    "output_length",
+                    "rank_length",
+                    "source_length",
+                    "rows",
+                    "columns",
+                    "modulus",
+                ],
+            ],
+            [
+                "buffer_length",
+                "rank_output",
+                ["rank_length"],
+                [
+                    "output",
+                    "rank_output",
+                    "source",
+                    "output_length",
+                    "rank_length",
+                    "source_length",
+                    "rows",
+                    "columns",
+                    "modulus",
+                ],
+            ],
+            [
+                "buffer_length",
+                "source",
+                ["source_length"],
+                [
+                    "output",
+                    "rank_output",
+                    "source",
+                    "output_length",
+                    "rank_length",
+                    "source_length",
+                    "rows",
+                    "columns",
+                    "modulus",
+                ],
+            ],
+        ],
+    )
+
+
+def modular_double_right_nullspace(
+    output: list[int],
+    nullity_output: list[int],
+    source: list[int],
+    output_length: int,
+    nullity_length: int,
+    source_length: int,
+    rows: int,
+    columns: int,
+    modulus: int,
+) -> bool:
+    """Call declared fflas:modular_double_right_nullspace."""
+    return _runtime.ffi_call(
+        __sagejs_ffi_declaration__ + ":modular_double_right_nullspace",
+        "@sagemath/sagejs-fflas",
+        "ffiFflasModularDoubleRightNullspace",
         [
             output,
             nullity_output,

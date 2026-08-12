@@ -1,0 +1,327 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "word-prime-matrix-public",
+  "title": "Word-prime matrix public resource",
+  "lane": "integration",
+  "status": "complete",
+  "owner": "user",
+  "objective": "Implement generated FLINT nmod_mat resource ownership and a uniformly efficient, traceable public dense GF(p) matrix vertical slice for general word-size primes: bulk construction and random ingress, formatting, SagePack serialization, direct swaps, and preserved FFLAS/FFPACK algorithms",
+  "base_commit": "62d9f6577c055b230dd089ade5895a1824e6463a",
+  "claims": [
+    "packages/flint/include/sagejs/nmod_matrix_ffi.h",
+    "packages/fflas/include/sagejs/fflas_matrix_ffi.h",
+    "packages/fflas/test/test.cjs",
+    "packages/fflas/generated/ffi_host.py",
+    "ffi/fflas.ffi.py",
+    "ffi/fflas.ffi.json",
+    "ffi/flint.ffi.py",
+    "ffi/flint.ffi.json",
+    "packages/flint/generated/ffi_host.py",
+    "src/lib/sagejs/ffi/flint.py",
+    "src/baselib/sagejs/ffi/flint.py",
+    "src/lib/sagejs/ffi/fflas.py",
+    "src/baselib/sagejs/ffi/fflas.py",
+    "architecture/native-boundaries.json",
+    "architecture/native-code.json",
+    "architecture/package-graph.json",
+    "src/lib/sagejs/kernels/matrix/dense_word_prime_flint.py",
+    "src/lib/sagejs/kernels/matrix/dense_prime_field_fflas.py",
+    "src/baselib/matrix.py",
+    "src/lib/sagejs/linear_algebra/matrix_selection_public.py",
+    "src/lib/sagejs/linear_algebra/matrix_vector_public.py",
+    "src/lib/sagejs/linear_algebra/matrix_selection.py",
+    "src/lib/sagejs/linear_algebra/matrix_vector.py",
+    "src/lib/sagejs/linear_algebra/sparse_random.py",
+    "tools/standalone-library.cjs",
+    "tools/serialization.ts",
+    "test/serialization.cjs",
+    "test/prime-matrix-serialization.cjs",
+    "test/node-test-manifest.cjs",
+    "architecture/native-kernels.json",
+    "pyrightconfig.json",
+    "package.json",
+    "test/word-prime-matrix-resource-ffi.cjs",
+    "test/fflas-dense-prime.cjs",
+    "test/linear-sparse-random.cjs",
+    "test/nmod-matrix-resource-lifecycle.cjs",
+    "test/word-prime-matrix-public.cjs",
+    "bench/word-prime-matrix-public.cjs",
+    "bench/results/linux-x64-word-prime-matrix-resource-2026-08-12.json"
+  ],
+  "dependencies": [],
+  "references": [
+    "FLINT nmod_mat API",
+    "bench/MACOS-ARM64-MATH-WITNESS.md"
+  ],
+  "architecture": {
+    "strategy": "external-library",
+    "fallback": "tested-capability",
+    "oracles": [
+      "SageMath dense matrices over GF(2^61-1)",
+      "legacy Sage.js N-API backend as differential oracle"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "fallback",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm architecture:check",
+    "pnpm test:portable",
+    "pnpm test:baselib:strict",
+    "node --test test/fflas-dense-prime.cjs",
+    "node test/linear-sparse-random.cjs",
+    "node --test test/word-prime-matrix-resource-ffi.cjs",
+    "node test/word-prime-matrix-public.cjs",
+    "node test/nmod-matrix-resource-lifecycle.cjs"
+  ],
+  "runs": [
+    {
+      "command": "node --test test/word-prime-matrix-resource-ffi.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.178,
+      "started_at": "2026-08-12T16:36:45.901Z",
+      "commit": "2ecac3496e40ba7b0808eec618581f5dd974c1f7",
+      "workspace_fingerprint": "c9a7981eecce335cfc9a468e0ba072023f9e1ff989211a3ca7b567b8be09d578",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node test/nmod-matrix-resource-lifecycle.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.373,
+      "started_at": "2026-08-12T16:36:46.730Z",
+      "commit": "2ecac3496e40ba7b0808eec618581f5dd974c1f7",
+      "workspace_fingerprint": "c9a7981eecce335cfc9a468e0ba072023f9e1ff989211a3ca7b567b8be09d578",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 14.244,
+      "started_at": "2026-08-12T16:36:48.740Z",
+      "commit": "2ecac3496e40ba7b0808eec618581f5dd974c1f7",
+      "workspace_fingerprint": "c9a7981eecce335cfc9a468e0ba072023f9e1ff989211a3ca7b567b8be09d578",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 13.971,
+      "started_at": "2026-08-12T16:37:03.633Z",
+      "commit": "2ecac3496e40ba7b0808eec618581f5dd974c1f7",
+      "workspace_fingerprint": "c9a7981eecce335cfc9a468e0ba072023f9e1ff989211a3ca7b567b8be09d578",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/fflas-dense-prime.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.201,
+      "started_at": "2026-08-12T16:38:03.997Z",
+      "commit": "2ecac3496e40ba7b0808eec618581f5dd974c1f7",
+      "workspace_fingerprint": "c9a7981eecce335cfc9a468e0ba072023f9e1ff989211a3ca7b567b8be09d578",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node test/word-prime-matrix-public.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.469,
+      "started_at": "2026-08-12T16:38:06.840Z",
+      "commit": "2ecac3496e40ba7b0808eec618581f5dd974c1f7",
+      "workspace_fingerprint": "c9a7981eecce335cfc9a468e0ba072023f9e1ff989211a3ca7b567b8be09d578",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 58.435,
+      "started_at": "2026-08-12T16:38:09.958Z",
+      "commit": "2ecac3496e40ba7b0808eec618581f5dd974c1f7",
+      "workspace_fingerprint": "c9a7981eecce335cfc9a468e0ba072023f9e1ff989211a3ca7b567b8be09d578",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 61.111,
+      "started_at": "2026-08-12T16:46:59.030Z",
+      "commit": "9e0ddb4f898e750917d02572b0cf78aaaca571c1",
+      "workspace_fingerprint": "a3f97f87885bc12f7b7c32fe2b6f7b9853ab9327933f6b042e3d01a1814b8dad",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node test/linear-sparse-random.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.992,
+      "started_at": "2026-08-12T16:48:14.090Z",
+      "commit": "9e0ddb4f898e750917d02572b0cf78aaaca571c1",
+      "workspace_fingerprint": "a3f97f87885bc12f7b7c32fe2b6f7b9853ab9327933f6b042e3d01a1814b8dad",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/fflas-dense-prime.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.206,
+      "started_at": "2026-08-12T16:48:16.697Z",
+      "commit": "9e0ddb4f898e750917d02572b0cf78aaaca571c1",
+      "workspace_fingerprint": "a3f97f87885bc12f7b7c32fe2b6f7b9853ab9327933f6b042e3d01a1814b8dad",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node test/word-prime-matrix-public.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.612,
+      "started_at": "2026-08-12T16:48:19.507Z",
+      "commit": "9e0ddb4f898e750917d02572b0cf78aaaca571c1",
+      "workspace_fingerprint": "a3f97f87885bc12f7b7c32fe2b6f7b9853ab9327933f6b042e3d01a1814b8dad",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/word-prime-matrix-resource-ffi.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.195,
+      "started_at": "2026-08-12T16:48:22.754Z",
+      "commit": "9e0ddb4f898e750917d02572b0cf78aaaca571c1",
+      "workspace_fingerprint": "a3f97f87885bc12f7b7c32fe2b6f7b9853ab9327933f6b042e3d01a1814b8dad",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node test/nmod-matrix-resource-lifecycle.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.565,
+      "started_at": "2026-08-12T16:48:23.555Z",
+      "commit": "9e0ddb4f898e750917d02572b0cf78aaaca571c1",
+      "workspace_fingerprint": "a3f97f87885bc12f7b7c32fe2b6f7b9853ab9327933f6b042e3d01a1814b8dad",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 13.972,
+      "started_at": "2026-08-12T16:48:25.733Z",
+      "commit": "9e0ddb4f898e750917d02572b0cf78aaaca571c1",
+      "workspace_fingerprint": "a3f97f87885bc12f7b7c32fe2b6f7b9853ab9327933f6b042e3d01a1814b8dad",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 14.167,
+      "started_at": "2026-08-12T16:48:40.322Z",
+      "commit": "9e0ddb4f898e750917d02572b0cf78aaaca571c1",
+      "workspace_fingerprint": "a3f97f87885bc12f7b7c32fe2b6f7b9853ab9327933f6b042e3d01a1814b8dad",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/fflas-dense-prime.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.059,
+      "started_at": "2026-08-12T16:50:28.734Z",
+      "commit": "281476b6fbad136654d4be72c8adfd82fca82bf5",
+      "workspace_fingerprint": "02da8ab5f15be4b3935bf01f2f0aa680a55daf074ea049bc50036cc460fa20d8",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node test/linear-sparse-random.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.019,
+      "started_at": "2026-08-12T16:50:31.406Z",
+      "commit": "281476b6fbad136654d4be72c8adfd82fca82bf5",
+      "workspace_fingerprint": "02da8ab5f15be4b3935bf01f2f0aa680a55daf074ea049bc50036cc460fa20d8",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/word-prime-matrix-resource-ffi.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.139,
+      "started_at": "2026-08-12T16:50:34.040Z",
+      "commit": "281476b6fbad136654d4be72c8adfd82fca82bf5",
+      "workspace_fingerprint": "02da8ab5f15be4b3935bf01f2f0aa680a55daf074ea049bc50036cc460fa20d8",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node test/word-prime-matrix-public.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 3.303,
+      "started_at": "2026-08-12T16:50:34.786Z",
+      "commit": "281476b6fbad136654d4be72c8adfd82fca82bf5",
+      "workspace_fingerprint": "02da8ab5f15be4b3935bf01f2f0aa680a55daf074ea049bc50036cc460fa20d8",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node test/nmod-matrix-resource-lifecycle.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.607,
+      "started_at": "2026-08-12T16:50:38.757Z",
+      "commit": "281476b6fbad136654d4be72c8adfd82fca82bf5",
+      "workspace_fingerprint": "02da8ab5f15be4b3935bf01f2f0aa680a55daf074ea049bc50036cc460fa20d8",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 14.402,
+      "started_at": "2026-08-12T16:50:41.213Z",
+      "commit": "281476b6fbad136654d4be72c8adfd82fca82bf5",
+      "workspace_fingerprint": "02da8ab5f15be4b3935bf01f2f0aa680a55daf074ea049bc50036cc460fa20d8",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 13.971,
+      "started_at": "2026-08-12T16:50:56.209Z",
+      "commit": "281476b6fbad136654d4be72c8adfd82fca82bf5",
+      "workspace_fingerprint": "02da8ab5f15be4b3935bf01f2f0aa680a55daf074ea049bc50036cc460fa20d8",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 60.955,
+      "started_at": "2026-08-12T16:51:10.785Z",
+      "commit": "281476b6fbad136654d4be72c8adfd82fca82bf5",
+      "workspace_fingerprint": "02da8ab5f15be4b3935bf01f2f0aa680a55daf074ea049bc50036cc460fa20d8",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "General word-prime dense matrices now canonically own generated FLINT nmod_mat resources for construction, mutation, structural operations, vector products, algorithms, formatting, and serialization. Prime fields below 256 retain packed UInt64 storage and exact Modular<float> FFLAS/FFPACK acceleration; p >= 256 uses retained nmod_mat after a direct crossover audit showed it matches SageMath and the legacy oracle while Modular<double> is modulus-sensitive. The Modular<double> declarations remain explicit and differentially tested through Givaro's exact range without becoming canonical storage. Linux x64 public benchmarks use exact decimal-string digests and compare compiled/dynamic Sage.js, retained legacy N-API, and SageMath; lifecycle fuzzing covers 200 dynamic and 500 sanitizer rounds.",
+    "risks": [
+      "The generated nmod resource is currently Node-gated because native FLINT ulong width and resource lowering have not yet been established for Wasm32; portable execution retains the existing fallback.",
+      "This lane validated and benchmarked on linux-x64; macOS arm64 and linux-arm64 remain required follow-up hosts.",
+      "Public wrapper construction/copy overhead makes 160x160 p=65537 rank and RREF a few tenths of a millisecond slower than direct retained-resource calls even though the underlying generated resource algorithms match the legacy and SageMath backends."
+    ],
+    "next_steps": [
+      "Run the checked-in benchmark receipt on macOS arm64 and linux-arm64 and retain host-specific crossover history.",
+      "Measure and, if warranted, reduce generated resource-wrapper overhead without changing canonical ownership or adding operation-specific handwritten N-API.",
+      "Establish an honest Wasm32 lowering for generated nmod resources or retain a capability-tested portable representation fallback."
+    ]
+  }
+}

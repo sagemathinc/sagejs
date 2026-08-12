@@ -1,0 +1,482 @@
+{
+  "schema": "sagejs.benchmark/gf2-polynomial-contract-baseline-v1",
+  "generated_at": "2026-08-12T17:12:40.153Z",
+  "repository": {
+    "commit": "7a09d9ee8e1fb469d8b15d3fa84a362c37367194",
+    "dirty": true,
+    "benchmark_harness_sha256": "30d82f5ef82d51cee11aa9f2ba4f84971489e08283b337d5c0d8035955194d50",
+    "contract_sha256": "e8c22ee996a4bc276ba22c54e281849a8e2a456c43c9f508efd80312a92abd87"
+  },
+  "host": {
+    "platform": "linux",
+    "architecture": "x64",
+    "node": "v26.7.0",
+    "cpu_model": "AMD EPYC 7B13",
+    "logical_cpus": 16,
+    "memory_bytes": 67418693632,
+    "selected_isa_flags": [
+      "pclmulqdq",
+      "sse4_2",
+      "aes",
+      "avx2",
+      "vpclmulqdq"
+    ]
+  },
+  "workload": {
+    "source_sha256": "5a42c4d07556354903f44745dc0be8ffb24b357b865969b09db0c4f775bf2e39",
+    "degree": 4096,
+    "divisor_degree": 1024,
+    "warmups": 3,
+    "samples": 7,
+    "exact_result_encoding": "degree:canonical-low-to-high-packed-bit-hex"
+  },
+  "backends": {
+    "sagejs": {
+      "public_representation": "UInt64-per-coefficient GF(p) packed storage",
+      "advanced_backend": "generated FLINT nmod_poly packed adapters",
+      "flint": "3.6.0",
+      "build_commit": "7a09d9ee8e1fb469d8b15d3fa84a362c37367194",
+      "executable": "/home/user/sagejs/bin/sagejs",
+      "executable_sha256": "edc3e550ec49a304d997359be734aa4eed9129675ac355b60622bb0ebe9f3241",
+      "flint_declaration_sha256": "f3cd448c808fc47e51d65e278a71c069dae6b7317a026d08db104916a2f0e817",
+      "generated_flint_abi_sha256": "95731dcce963994c71b5ddd376663bcb8eeaab6034561d51bc8727acde33d39d",
+      "dependency_lock_sha256": "cfbf95309dda29b47e3658555538d3ac1b2564eb1f439fc0c41708cf181cee54"
+    },
+    "sagemath": {
+      "version": "SageMath version 10.9.post30, Release Date: 2026-07-14",
+      "public_representation": "<class 'sage.rings.polynomial.polynomial_gf2x.Polynomial_GF2X'>",
+      "advanced_backend": "NTL GF2X (NTL may use the optional gf2x multiplication library)",
+      "build_identity": {
+        "executable": "/home/user/sagelite/sage",
+        "executable_sha256": "b190e6cec5027031be752260d9b21a8e23f11a313cc620e5dcd1be28390643c1",
+        "gf2x_module": "/opt/cocalc-webdev-python/lib/python3.14/site-packages/sage/rings/polynomial/polynomial_gf2x.cpython-314-x86_64-linux-gnu.so",
+        "gf2x_module_sha256": "fb7d5fa9a0a1d545e2a201aa675e74544b522d597efbd6d9fbc9432a3d1e0289",
+        "linkage": [
+          "linux-vdso.so.1 (0x000070aa1581d000)",
+          "libstdc++.so.6 => /usr/lib/x86_64-linux-gnu/libstdc++.so.6 (0x000070aa15525000)",
+          "libgcc_s.so.1 => /usr/lib/x86_64-linux-gnu/libgcc_s.so.1 (0x000070aa154f7000)",
+          "libc.so.6 => /usr/lib/x86_64-linux-gnu/libc.so.6 (0x000070aa152d6000)",
+          "libm.so.6 => /usr/lib/x86_64-linux-gnu/libm.so.6 (0x000070aa151b0000)",
+          "/lib64/ld-linux-x86-64.so.2 (0x000070aa1581f000)"
+        ],
+        "note": "The installed Polynomial_GF2X extension statically contains its NTL/GF2X backend; its module hash is the retained backend build identity."
+      }
+    }
+  },
+  "persistence_comparison": {
+    "sagejs": "SagePack",
+    "sagemath": "Sage pickle/persistence; timings and bytes are not a SagePack comparison"
+  },
+  "runtimes": {
+    "sagejs": {
+      "source_sha256": "dc106efd6541437afed1225c1305d6d9c2dc6d7b0c9a6c62fec726f693f304c4",
+      "degree": 4096,
+      "divisor_degree": 1024,
+      "identities": {
+        "divrem": true,
+        "persistence": true,
+        "xgcd": true
+      },
+      "measurements": {
+        "add": {
+          "iterations_per_sample": 100,
+          "median_ms": 0.0809168815612793,
+          "samples_ms": [
+            0.07213592529296875,
+            0.07522344589233398,
+            0.07590770721435547,
+            0.0809168815612793,
+            0.08433103561401367,
+            0.09923696517944336,
+            0.09981870651245117
+          ]
+        },
+        "construction": {
+          "iterations_per_sample": 25,
+          "median_ms": 0.32530784606933594,
+          "samples_ms": [
+            0.28128623962402344,
+            0.3016948699951172,
+            0.3038978576660156,
+            0.32530784606933594,
+            0.3537273406982422,
+            0.3595161437988281,
+            0.43669700622558594
+          ]
+        },
+        "divrem": {
+          "iterations_per_sample": 20,
+          "median_ms": 0.3810763359069824,
+          "samples_ms": [
+            0.34128427505493164,
+            0.345766544342041,
+            0.3481268882751465,
+            0.3810763359069824,
+            0.46209096908569336,
+            0.7275223731994629,
+            1.412355899810791
+          ]
+        },
+        "format": {
+          "iterations_per_sample": 10,
+          "median_ms": 0.27954578399658203,
+          "samples_ms": [
+            0.15392303466796875,
+            0.1605510711669922,
+            0.2616405487060547,
+            0.27954578399658203,
+            0.41005611419677734,
+            0.4803895950317383,
+            0.4901409149169922
+          ]
+        },
+        "gcd": {
+          "iterations_per_sample": 5,
+          "median_ms": 4.524517059326172,
+          "samples_ms": [
+            4.483938217163086,
+            4.498481750488281,
+            4.508638381958008,
+            4.524517059326172,
+            4.524755477905273,
+            4.773044586181641,
+            4.831409454345703
+          ]
+        },
+        "list": {
+          "iterations_per_sample": 20,
+          "median_ms": 0.2682685852050781,
+          "samples_ms": [
+            0.2346515655517578,
+            0.23686885833740234,
+            0.25871992111206055,
+            0.2682685852050781,
+            0.2778053283691406,
+            0.27849674224853516,
+            0.29631853103637695
+          ]
+        },
+        "multiply": {
+          "iterations_per_sample": 25,
+          "median_ms": 0.25726318359375,
+          "samples_ms": [
+            0.25237083435058594,
+            0.2553081512451172,
+            0.2566719055175781,
+            0.25726318359375,
+            0.25750160217285156,
+            0.2596569061279297,
+            0.3084373474121094
+          ]
+        },
+        "persistence_dump": {
+          "iterations_per_sample": 10,
+          "median_ms": 0.4825115203857422,
+          "samples_ms": [
+            0.4699230194091797,
+            0.4741191864013672,
+            0.47545433044433594,
+            0.4825115203857422,
+            0.48885345458984375,
+            0.5662918090820312,
+            0.6475925445556641
+          ]
+        },
+        "persistence_load": {
+          "iterations_per_sample": 10,
+          "median_ms": 0.46722888946533203,
+          "samples_ms": [
+            0.45545101165771484,
+            0.46045780181884766,
+            0.4641532897949219,
+            0.46722888946533203,
+            0.4767417907714844,
+            0.5335092544555664,
+            0.7191658020019531
+          ]
+        },
+        "xgcd": {
+          "iterations_per_sample": 5,
+          "median_ms": 5.961465835571289,
+          "samples_ms": [
+            5.914449691772461,
+            5.92656135559082,
+            5.928325653076172,
+            5.961465835571289,
+            6.081867218017578,
+            9.879016876220703,
+            20.832347869873047
+          ]
+        }
+      },
+      "parent": "Univariate Polynomial Ring in x over Finite Field of size 2",
+      "persistence_format": "SagePack",
+      "polynomial_type": "<class 'PolynomialElement'>",
+      "results": {
+        "add": {
+          "exact_polynomial": {
+            "sha256": "247e35f78b06f1f4e452d2c665565d8e89743d2d628c1b094c11923a3a206b4d",
+            "encoded_bytes": 1029
+          }
+        },
+        "construction": {
+          "exact_polynomial": {
+            "sha256": "718faa9b56ccbb61ab2afed1b864fa377485ac2c62656f97c005653dbb48d6ca",
+            "encoded_bytes": 1031
+          }
+        },
+        "divrem": {
+          "exact_polynomial": {
+            "sha256": "88f7202742bfe5d5b8624e523e9393c06ff96de864ce02fd314a32347716a368",
+            "encoded_bytes": 1295
+          }
+        },
+        "format": {
+          "characters": 18354,
+          "text_checksum": 9962034629
+        },
+        "gcd": {
+          "exact_polynomial": {
+            "sha256": "4222e521871a648fd3e4786da07edf4e87983338f76769a0779b2af1c892ee87",
+            "encoded_bytes": 4
+          }
+        },
+        "list": {
+          "exact_polynomial": {
+            "sha256": "718faa9b56ccbb61ab2afed1b864fa377485ac2c62656f97c005653dbb48d6ca",
+            "encoded_bytes": 1031
+          }
+        },
+        "multiply": {
+          "exact_polynomial": {
+            "sha256": "ff259a3b929e51ccf72be0c7e295747f266ea1a5aa8fbea99112dc0e0ebf2fcf",
+            "encoded_bytes": 2055
+          }
+        },
+        "persistence_dump": {
+          "bytes": 4894
+        },
+        "persistence_load": {
+          "exact_polynomial": {
+            "sha256": "718faa9b56ccbb61ab2afed1b864fa377485ac2c62656f97c005653dbb48d6ca",
+            "encoded_bytes": 1031
+          }
+        },
+        "xgcd": {
+          "exact_polynomial": {
+            "sha256": "52f4c1c93bb3932609a613f7ac47ea9caffd8551aab83dbd498e7987a272564d",
+            "encoded_bytes": 2066
+          }
+        }
+      },
+      "runtime": "sagejs",
+      "samples": 7,
+      "warmups": 3
+    },
+    "sagemath": {
+      "source_sha256": "44339a563e15ebe79d7c07487a91f80f8f01f44208cd90be49509eb15a5fbed4",
+      "degree": 4096,
+      "divisor_degree": 1024,
+      "identities": {
+        "divrem": true,
+        "persistence": true,
+        "xgcd": true
+      },
+      "measurements": {
+        "add": {
+          "iterations_per_sample": 100,
+          "median_ms": 0.00014129996998235583,
+          "samples_ms": [
+            0.00013979995856061578,
+            0.0001405000512022525,
+            0.0001406000228598714,
+            0.00014129996998235583,
+            0.0001432000135537237,
+            0.00014329998521134257,
+            0.00015509998775087297
+          ]
+        },
+        "construction": {
+          "iterations_per_sample": 25,
+          "median_ms": 2.4892134399851784,
+          "samples_ms": [
+            2.4736609996762127,
+            2.476726999739185,
+            2.4820566398557276,
+            2.4892134399851784,
+            2.5184950401308015,
+            2.520037040230818,
+            2.5288798398105428
+          ]
+        },
+        "divrem": {
+          "iterations_per_sample": 20,
+          "median_ms": 0.0040400002035312355,
+          "samples_ms": [
+            0.003990000550402328,
+            0.004003500362159684,
+            0.004011500277556479,
+            0.0040400002035312355,
+            0.0041074999899137765,
+            0.004389500099932775,
+            0.004872999852523208
+          ]
+        },
+        "format": {
+          "iterations_per_sample": 10,
+          "median_ms": 7.625860499683768,
+          "samples_ms": [
+            7.561752499896102,
+            7.580058499297593,
+            7.58676549885422,
+            7.625860499683768,
+            7.6411225003539585,
+            7.91954240121413,
+            9.577566299412865
+          ]
+        },
+        "gcd": {
+          "iterations_per_sample": 5,
+          "median_ms": 0.12636200117412955,
+          "samples_ms": [
+            0.12434000091161579,
+            0.12447600020095706,
+            0.12579599861055613,
+            0.12636200117412955,
+            0.127057998906821,
+            0.1303639990510419,
+            0.13139400107320398
+          ]
+        },
+        "list": {
+          "iterations_per_sample": 20,
+          "median_ms": 2.509477850253461,
+          "samples_ms": [
+            2.2634518500126433,
+            2.2993258498900104,
+            2.3889503499958664,
+            2.509477850253461,
+            3.2153997497516684,
+            3.2630597503157333,
+            8.156667450384703
+          ]
+        },
+        "multiply": {
+          "iterations_per_sample": 25,
+          "median_ms": 0.00155440007802099,
+          "samples_ms": [
+            0.0015324004925787449,
+            0.0015336001524701715,
+            0.0015400000847876072,
+            0.00155440007802099,
+            0.0015579996397718787,
+            0.0015943998005241156,
+            0.0031671999022364616
+          ]
+        },
+        "persistence_dump": {
+          "iterations_per_sample": 10,
+          "median_ms": 16.16938189981738,
+          "samples_ms": [
+            15.713179799786303,
+            15.789480900275521,
+            15.835182899900246,
+            16.16938189981738,
+            16.255991799698677,
+            16.303837799932808,
+            17.47204479906941
+          ]
+        },
+        "persistence_load": {
+          "iterations_per_sample": 10,
+          "median_ms": 7.085133499640506,
+          "samples_ms": [
+            6.248387500818353,
+            6.358606599678751,
+            6.901961499534082,
+            7.085133499640506,
+            7.636453400482424,
+            8.342582400655374,
+            8.489108399953693
+          ]
+        },
+        "xgcd": {
+          "iterations_per_sample": 5,
+          "median_ms": 0.23998800024855882,
+          "samples_ms": [
+            0.23864599934313446,
+            0.23976000084076077,
+            0.23979999823495746,
+            0.23998800024855882,
+            0.24095579865388572,
+            0.24253999872598797,
+            0.2475640008924529
+          ]
+        }
+      },
+      "parent": "Univariate Polynomial Ring in x over Finite Field of size 2 (using GF2X)",
+      "persistence_format": "Sage pickle/persistence (not SagePack)",
+      "polynomial_type": "<class 'sage.rings.polynomial.polynomial_gf2x.Polynomial_GF2X'>",
+      "results": {
+        "add": {
+          "exact_polynomial": {
+            "sha256": "247e35f78b06f1f4e452d2c665565d8e89743d2d628c1b094c11923a3a206b4d",
+            "encoded_bytes": 1029
+          }
+        },
+        "construction": {
+          "exact_polynomial": {
+            "sha256": "718faa9b56ccbb61ab2afed1b864fa377485ac2c62656f97c005653dbb48d6ca",
+            "encoded_bytes": 1031
+          }
+        },
+        "divrem": {
+          "exact_polynomial": {
+            "sha256": "88f7202742bfe5d5b8624e523e9393c06ff96de864ce02fd314a32347716a368",
+            "encoded_bytes": 1295
+          }
+        },
+        "format": {
+          "characters": 18354,
+          "text_checksum": 9962034629
+        },
+        "gcd": {
+          "exact_polynomial": {
+            "sha256": "4222e521871a648fd3e4786da07edf4e87983338f76769a0779b2af1c892ee87",
+            "encoded_bytes": 4
+          }
+        },
+        "list": {
+          "exact_polynomial": {
+            "sha256": "718faa9b56ccbb61ab2afed1b864fa377485ac2c62656f97c005653dbb48d6ca",
+            "encoded_bytes": 1031
+          }
+        },
+        "multiply": {
+          "exact_polynomial": {
+            "sha256": "ff259a3b929e51ccf72be0c7e295747f266ea1a5aa8fbea99112dc0e0ebf2fcf",
+            "encoded_bytes": 2055
+          }
+        },
+        "persistence_dump": {
+          "bytes": 36781
+        },
+        "persistence_load": {
+          "exact_polynomial": {
+            "sha256": "718faa9b56ccbb61ab2afed1b864fa377485ac2c62656f97c005653dbb48d6ca",
+            "encoded_bytes": 1031
+          }
+        },
+        "xgcd": {
+          "exact_polynomial": {
+            "sha256": "52f4c1c93bb3932609a613f7ac47ea9caffd8551aab83dbd498e7987a272564d",
+            "encoded_bytes": 2066
+          }
+        }
+      },
+      "runtime": "sagemath",
+      "samples": 7,
+      "warmups": 3
+    }
+  }
+}

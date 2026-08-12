@@ -70,11 +70,39 @@ small * small
 small.rank()
 small.right_kernel_matrix()
 
-large_prime = matrix(GF(257), 24, 28, range(24*28))
-large_prime_kernel = large_prime.right_kernel_matrix()
-assert large_prime * large_prime_kernel.transpose() == zero_matrix(
-    GF(257), 24, large_prime_kernel.nrows()
+medium_prime = matrix(GF(257), 24, 28, range(24*28))
+medium_prime_kernel = medium_prime.right_kernel_matrix()
+assert medium_prime * medium_prime_kernel.transpose() == zero_matrix(
+    GF(257), 24, medium_prime_kernel.nrows()
 )
+
+# Byte-sized prime fields use packed Modular<float>; general word primes use
+# generated nmod_mat resources. Modular<double> remains a tested explicit
+# adapter, but exact representation alone does not make conversion competitive.
+for prime in [7, 97, 251]:
+    packed = matrix(GF(prime), 2, 2, [1,2,3,4])
+    assert packed._has_packed_prime_storage()
+    assert not packed._has_nmod_matrix_resource()
+for prime in [257, 4093, 4099, 65537, 94906249, 94906297]:
+    resource = matrix(GF(prime), 2, 2, [1,2,3,4])
+    assert resource._has_nmod_matrix_resource()
+    assert not resource._has_packed_prime_storage()
+
+wide_entries = []
+wide_state = 20260812
+for _index in range(160 * 160):
+    wide_state = (
+        wide_state * 6364136223846793005 + 1442695040888963407
+    ) % 18446744073709551616
+    wide_entries.append(wide_state % 65537)
+wide = matrix(GF(65537), 160, wide_entries)
+wide_product = wide * wide
+for row, column in [(0, 0), (79, 113), (159, 159)]:
+    assert wide_product[row, column] == sum(
+        wide[row, k] * wide[k, column] for k in range(160)
+    )
+assert wide.rank() == wide.rank(algorithm='flint')
+assert wide.rref() == wide.rref(algorithm='flint')
 
 for source in [matrix(QQ, 2), matrix(ZZ, 2)]:
     try:
@@ -106,7 +134,10 @@ print('fflas public semantics ok')
   assert.match(output, /Matrix\.multiply GF\(97\) 8x8 -> declared-flint-isolated/);
   assert.match(output, /Matrix\.rank GF\(97\) 8x8 -> declared-flint-isolated/);
   assert.match(output, /Matrix\.right_kernel GF\(97\) 8x8 -> declared-flint-isolated/);
-  assert.match(output, /Matrix\.right_kernel GF\(257\) 24x28 -> declared-flint-isolated/);
+  assert.match(output, /Matrix\.right_kernel GF\(257\) 24x28 -> generated-flint-resource/);
+  assert.match(output, /Matrix\.multiply GF\(65537\) 160x160 -> generated-flint-resource/);
+  assert.match(output, /Matrix\.rank GF\(65537\) 160x160 -> generated-flint-resource/);
+  assert.match(output, /Matrix\.rref GF\(65537\) 160x160 -> generated-flint-resource/);
   assert.match(output, /fflas public semantics ok/);
 });
 
@@ -194,6 +225,14 @@ test("clean native and SEA build paths establish optional FFLAS first", () => {
   const resources = readFileSync(join(root, "tools", "resources.ts"), "utf8");
   assert.match(resources, /name === "@sagemath\/sagejs-fflas"/);
   assert.match(resources, /FFLAS_FFI_MANIFEST_ASSET/);
+
+  const kernel = readFileSync(join(
+    root,
+    "src/lib/sagejs/kernels/matrix/dense_prime_field_fflas.py",
+  ), "utf8");
+  assert.match(kernel, /if modulus < 256:/);
+  assert.match(kernel, /modular_float_mul/);
+  assert.match(kernel, /modular_double_mul/);
 
   const scripts = JSON.parse(readFileSync(join(root, "package.json"), "utf8")).scripts;
   assert.doesNotMatch(scripts["build:sea:python"], /packages\/fflas/);
