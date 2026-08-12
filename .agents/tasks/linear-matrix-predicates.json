@@ -1,0 +1,97 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "linear-matrix-predicates",
+  "title": "Linear Matrix Predicates",
+  "lane": "arithmetic-algebra",
+  "status": "review",
+  "owner": "user",
+  "objective": "Implement source-transparent matrix predicates and support/nonpivot scans with identical ZZ QQ and GF(p) semantics",
+  "base_commit": "ba436f653bb75baf143d3709c02f5118e89b8e50",
+  "claims": [
+    "src/lib/sagejs/linear_algebra/matrix_predicates.py",
+    "test/linear-matrix-predicates.cjs",
+    "bench/linear-matrix-predicates.cjs"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "source-transparent-native",
+    "fallback": "same-source",
+    "oracles": [
+      "cpython",
+      "javascript",
+      "sage"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "node test/linear-matrix-predicates.cjs",
+    "node bench/linear-matrix-predicates.cjs --check",
+    "pnpm test:baselib:strict",
+    "pnpm test:native"
+  ],
+  "runs": [
+    {
+      "command": "node test/linear-matrix-predicates.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 9.562,
+      "started_at": "2026-08-12T08:55:02.064Z",
+      "commit": "ba436f653bb75baf143d3709c02f5118e89b8e50",
+      "workspace_fingerprint": "beecee446c3b0ff54a6d5c38ee116181333db36e2aad242a23de9afccb58db96",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/linear-matrix-predicates.cjs --check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 4.329,
+      "started_at": "2026-08-12T08:55:19.672Z",
+      "commit": "ba436f653bb75baf143d3709c02f5118e89b8e50",
+      "workspace_fingerprint": "beecee446c3b0ff54a6d5c38ee116181333db36e2aad242a23de9afccb58db96",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 13.571,
+      "started_at": "2026-08-12T08:55:31.786Z",
+      "commit": "ba436f653bb75baf143d3709c02f5118e89b8e50",
+      "workspace_fingerprint": "beecee446c3b0ff54a6d5c38ee116181333db36e2aad242a23de9afccb58db96",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:native",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 561.666,
+      "started_at": "2026-08-12T08:55:51.518Z",
+      "commit": "ba436f653bb75baf143d3709c02f5118e89b8e50",
+      "workspace_fingerprint": "beecee446c3b0ff54a6d5c38ee116181333db36e2aad242a23de9afccb58db96",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Added 24 source-transparent typed-Python kernels for diagonal, symmetric, triangular, scalar, nilpotent, nonzero-position, and echelon-nonpivot queries over generated FmpzMatrix/FmpqMatrix resources and packed GF(p) buffers. Exhaustive differential coverage checks every binary matrix through 3x3 across native and fallback paths, while 1000x1000 performance gates cover sparse and dense scans.",
+    "risks": [
+      "Public Matrix methods are intentionally not wired in this lane; the integration lane owns matrix.py and the shared Node test manifest.",
+      "Exact nonzero/nonpivot scans return capacity + 1 when an output buffer is too small, so public dispatch must validate the returned count before reading results.",
+      "Prime-field nilpotence is a post-charpoly coefficient scan; integration should call the existing declared dense-prime charpoly kernel first.",
+      "Public dispatch must preserve Sage's rectangular-matrix error semantics before invoking square-only predicates."
+    ],
+    "next_steps": [
+      "Register test/linear-matrix-predicates.cjs in test/node-test-manifest.cjs from the integration lane.",
+      "Add a lazy sagejs.linear_algebra.matrix_predicates loader and Matrix methods for is_diagonal, is_symmetric, is_triangular, is_scalar, is_nilpotent, nonzero_positions, and nonpivots.",
+      "Dispatch ZZ and QQ to generated resource kernels, dispatch packed GF(p) to the split fixed-signature kernels, and allocate Int64Buffer outputs for exact resources versus UInt64Buffer outputs for prime fields.",
+      "For nonpivots, compute the echelon form before scanning; for GF(p) nilpotence, obtain the existing declared charpoly into n + 1 coefficients before calling characteristic_is_nilpotent."
+    ]
+  }
+}
