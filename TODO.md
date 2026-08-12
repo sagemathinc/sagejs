@@ -31,7 +31,3 @@
 - Ratchet cold production-kernel loading separately from warm mathematical
   execution, and never silently compile a missing production kernel in an
   ordinary installed session.
-- Give the shared module/build cache an inspectable size policy and safe cleanup
-  command. Bound stale content by age and total bytes without deleting entries
-  used by active builds, and report reclaimed space; the cache must not grow
-  forever during parallel agent development.
