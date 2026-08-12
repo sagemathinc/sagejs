@@ -4,7 +4,7 @@
   "id": "arbitrary-prime-resource-impl",
   "title": "Arbitrary Prime Resource Impl",
   "lane": "integration",
-  "status": "review",
+  "status": "complete",
   "owner": "user",
   "objective": "Implement production generated FLINT fmpz_mod_ctx plus fmpz_mod_poly resources for arbitrary-prime GF(p)[x], with sealed self-contained ownership, exact modulus checks, callee-owned operations, public integration, serialization, lifecycle fuzzing, Sage differentials, and competitive performance",
   "base_commit": "0b9b27ae0d473a119a53dc57ceed5fcc214caaa8",
