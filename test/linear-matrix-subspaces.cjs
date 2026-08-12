@@ -60,11 +60,11 @@ def exercise_row(rows, columns, generator_count):
         calls["count"] += 1
         return generator_count
 
-    def select_rows(value, indices):
+    def select_rows(value, count):
         assert value.label == "echelon"
-        assert indices == tuple(range(generator_count))
+        assert count == generator_count
         calls["select"] += 1
-        return FakeMatrix(len(indices), columns, "basis")
+        return FakeMatrix(count, columns, "basis")
 
     def set_immutable(value):
         calls["immutable"] += 1
@@ -108,7 +108,7 @@ expanded = subspaces.canonical_basis_from_echelon(
     "row",
     dimensions,
     lambda _value: 3,
-    lambda _value, indices: FakeMatrix(len(indices), 3, "basis"),
+    lambda _value, count: FakeMatrix(count, 3, "basis"),
     lambda value: setattr(value, "immutable", True),
 )
 assert expanded.metadata.basis_row_count == 3
@@ -138,10 +138,10 @@ def column_basis_row_count(value):
     return 4
 
 
-def column_select(value, indices):
-    assert indices == (0, 1, 2, 3)
+def column_select(value, count):
+    assert count == 4
     calls["select"] += 1
-    return FakeMatrix(4, 5, "basis")
+    return FakeMatrix(count, 5, "basis")
 
 
 column = subspaces.canonical_column_basis(
@@ -178,7 +178,7 @@ cross = subspaces.prepare_row_space(
     dimensions,
     forbidden,
     forbidden,
-    lambda _value, _indices: forbidden(_value),
+    lambda _value, _count: forbidden(_value),
     forbidden,
 )
 assert isinstance(cross, subspaces.GeneratorSpan)
@@ -198,7 +198,7 @@ for requested in [None, "QQ"]:
         dimensions,
         lambda _value: FakeMatrix(2, 3, "echelon"),
         lambda _value: 1,
-        lambda _value, indices: FakeMatrix(len(indices), 3, "basis"),
+        lambda _value, count: FakeMatrix(count, 3, "basis"),
         lambda value: setattr(value, "immutable", True),
     )
     assert isinstance(prepared, subspaces.CanonicalBasis)
@@ -224,7 +224,7 @@ raises(
         "row",
         dimensions,
         lambda _value: 3,
-        lambda _value, indices: FakeMatrix(len(indices), 3, "basis"),
+        lambda _value, count: FakeMatrix(count, 3, "basis"),
         lambda _value: None,
     ),
 )
@@ -245,7 +245,7 @@ indexed = subspaces.canonical_basis_from_echelon(
     "row",
     dimensions,
     lambda _value: ExactIndex(3),
-    lambda _value, indices: FakeMatrix(len(indices), ExactIndex(3), "basis"),
+    lambda _value, count: FakeMatrix(count, ExactIndex(3), "basis"),
     lambda value: setattr(value, "immutable", True),
 )
 assert indexed.metadata.basis_row_count == 3
@@ -264,7 +264,7 @@ for invalid in [True, 2.0, "2"]:
             "row",
             dimensions,
             lambda _value: 1,
-            lambda _value, indices: FakeMatrix(len(indices), 3, "basis"),
+            lambda _value, count: FakeMatrix(count, 3, "basis"),
             lambda _value: None,
         ),
     )
@@ -278,7 +278,7 @@ for invalid in [True, 2.0, "2"]:
             "row",
             dimensions,
             lambda _value: invalid,
-            lambda _value, indices: FakeMatrix(len(indices), 3, "basis"),
+            lambda _value, count: FakeMatrix(count, 3, "basis"),
             lambda _value: None,
         ),
     )
@@ -292,7 +292,7 @@ raises(
         "row",
         dimensions,
         lambda _value: 1,
-        lambda _value, _indices: FakeMatrix(1, 2, "bad-basis"),
+        lambda _value, _count: FakeMatrix(1, 2, "bad-basis"),
         lambda _value: None,
     ),
 )
@@ -305,7 +305,7 @@ raises(
         lambda _value: FakeMatrix(2, 3, "bad-transpose"),
         forbidden,
         forbidden,
-        lambda _value, _indices: forbidden(_value),
+        lambda _value, _count: forbidden(_value),
         forbidden,
     ),
 )
@@ -351,7 +351,7 @@ def row_basis(value):
         dimensions,
         lambda source: source.echelon_form(),
         lambda echelon: echelon.rank(),
-        lambda echelon, indices: echelon.matrix_from_rows(indices),
+        lambda echelon, count: echelon.matrix_from_prefix_rows(count),
         finish,
     )
 
@@ -363,7 +363,7 @@ def column_basis(value):
         lambda source: source.transpose(),
         lambda source: source.echelon_form(),
         lambda echelon: echelon.rank(),
-        lambda echelon, indices: echelon.matrix_from_rows(indices),
+        lambda echelon, count: echelon.matrix_from_prefix_rows(count),
         finish,
     )
 
@@ -417,7 +417,7 @@ for source, expected_row, expected_column in [
         dimensions,
         lambda value: value.echelon_form(),
         leading_nonzero_row_count,
-        lambda value, indices: value.matrix_from_rows(indices),
+        lambda value, count: value.matrix_from_prefix_rows(count),
         finish,
     )
     column = canonical_column_basis(
@@ -426,7 +426,7 @@ for source, expected_row, expected_column in [
         lambda value: value.transpose(),
         lambda value: value.echelon_form(),
         leading_nonzero_row_count,
-        lambda value, indices: value.matrix_from_rows(indices),
+        lambda value, count: value.matrix_from_prefix_rows(count),
         finish,
     )
     assert row.matrix == expected_row, (source, row.matrix, expected_row)
@@ -457,7 +457,7 @@ same = prepare_row_space(
     dimensions,
     lambda value: value.echelon_form(),
     lambda value: value.rank(),
-    lambda value, indices: value.matrix_from_rows(indices),
+    lambda value, count: value.matrix_from_prefix_rows(count),
     finish,
 )
 assert isinstance(same, CanonicalBasis)
@@ -471,7 +471,7 @@ different = prepare_row_space(
     dimensions,
     lambda _value: 1 / 0,
     lambda _value: 1 / 0,
-    lambda _value, _indices: 1 / 0,
+    lambda _value, _count: 1 / 0,
     lambda _value: 1 / 0,
 )
 assert isinstance(different, GeneratorSpan)
@@ -606,7 +606,10 @@ test("the contract cannot decode matrices or depend on a representation", () => 
   const source = readFileSync(modulePath, "utf8");
   assert.doesNotMatch(source, /sagejs\.runtime|sagejs\.native|sagejs\.ffi/);
   assert.doesNotMatch(source, /\.rows\(|\.list\(|IntegerBuffer|UInt64Buffer|N-API/);
-  assert.match(source, /select_rows\(echelon, selected_rows\)/);
+  assert.match(
+    source,
+    /select_prefix_rows\(echelon, metadata\.basis_row_count\)/,
+  );
   assert.match(source, /basis_row_count\(echelon\)/);
   assert.match(source, /Howell adapter must instead report/);
   assert.match(source, /already_echelonized = True/);
