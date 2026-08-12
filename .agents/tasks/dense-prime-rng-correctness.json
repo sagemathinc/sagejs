@@ -4,7 +4,7 @@
   "id": "dense-prime-rng-correctness",
   "title": "Dense prime random distribution correctness",
   "lane": "arithmetic-algebra",
-  "status": "active",
+  "status": "complete",
   "owner": "user",
   "objective": "Replace low-bit-biased packed GF(p) matrix random generation with deterministic statistically sane uniform residues, preserving public semantics and performance",
   "base_commit": "45c2e812bd94b71298b6f4866b17f26fcccc6157",

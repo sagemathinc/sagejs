@@ -4,7 +4,7 @@
   "id": "prime-source-uint64-floordiv",
   "title": "Prime-source uint64 floor division",
   "lane": "native-compiler",
-  "status": "active",
+  "status": "complete",
   "owner": "user",
   "objective": "Add checked uint64 floor division as a reusable source-transparent prime-kernel compiler operation",
   "base_commit": "3eb6f3fdd5f7401df2ca789c428e38c0da4bab3e",
