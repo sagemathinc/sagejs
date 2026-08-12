@@ -115,6 +115,7 @@ const standardLibraryCacheDirectory = path.join(
 const browserAdditionalModules = [
   "sagejs.ffi.flint",
   "sagejs.ffi.m4ri",
+  "sagejs.kernels.matrix.dense_rational_flint",
 ];
 const vendorDirectory = path.join(repositoryRoot, "dist", "vendor");
 const compilerResourceShim = path.join(
