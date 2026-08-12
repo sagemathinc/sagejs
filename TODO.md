@@ -30,10 +30,6 @@
 - Ratchet cold production-kernel loading separately from warm mathematical
   execution, and never silently compile a missing production kernel in an
   ordinary installed session.
-- Finish the `matrix(ZZ, n, [1..n^2])` construction slice by avoiding the
-  redundant copy of an already-materialized built-in list. Exact range
-  materialization is now fast; keep a public end-to-end performance gate.
-
 ## Development infrastructure
 
 - Make verified documentation example identities content-addressed by source
