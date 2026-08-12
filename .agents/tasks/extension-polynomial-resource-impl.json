@@ -7,7 +7,7 @@
   "status": "active",
   "owner": "extension_poly_resource_impl",
   "objective": "Implement generated FLINT fq_default context and polynomial resources with bulk power-basis coordinate I/O, safe shared-context ownership, resource-to-resource arithmetic, portable correctness, lifecycle fuzzing, and measured production performance",
-  "base_commit": "d9831968c7bfd5936a95df2517278c3b3dcd5064",
+  "base_commit": "0b9b27a8c0d3350627f1ad1f1fbdbf376245a142",
   "claims": [
     "packages/flint/include/sagejs/fq_polynomial_ffi.h",
     "src/lib/sagejs/kernels/polynomial/extension_flint.py",
