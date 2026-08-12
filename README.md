@@ -749,6 +749,28 @@ Third-party modules are translated once and stored in a compiler-versioned,
 source-hashed user cache. Cache misses affect the first import only; edits to a
 module or compiler change invalidate the corresponding entry.
 
+Inspect obsolete compiler-version caches without changing anything with:
+
+```sh
+sagejs cache prune
+```
+
+The command is a dry run unless `--apply` is present. Its conservative default
+policy keeps the current compiler, caches leased by running Sage.js processes,
+the five newest compiler versions, and everything written in the last seven
+days. It selects versions older than 30 days and, when safe, the oldest
+remaining versions toward a best-effort 2 GiB limit. Protected versions may
+keep the cache above that limit. Pin a version manually by placing an empty
+`.sagejs-keep` file in its directory. Run `sagejs cache --help` to inspect or
+override the size and age limits, then apply the displayed plan explicitly:
+
+```sh
+sagejs cache prune --apply
+```
+
+Pruning removes only complete disposable compiler-version directories. It
+never edits a live cache entry or follows symbolic links.
+
 ### Pytest
 
 Sage.js runs the unmodified upstream pytest distribution as an explicit

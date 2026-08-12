@@ -11,6 +11,7 @@ import { homedir } from "os";
 import { dirname, join, resolve } from "path";
 import { Script } from "vm";
 
+import { markModuleCacheInUse } from "./cache-lease";
 import type { Compiler } from "./compiler";
 import dynamicCode from "./dynamic-code";
 import {
@@ -119,6 +120,7 @@ export function runRuntimeBootstrap(
   const moduleCacheDirectory = requestedModuleCacheDirectory === false
     ? ""
     : requestedModuleCacheDirectory ?? defaultModuleCacheDirectory(compiler);
+  if (moduleCacheDirectory) markModuleCacheInUse(moduleCacheDirectory);
   const precompiledModuleCacheDirectory =
     process.env.SAGEJS_PRECOMPILED_MODULE_CACHE_DIR ??
     precompiledLazyModuleCacheDirectory(

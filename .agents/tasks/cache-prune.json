@@ -1,0 +1,79 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "cache-prune",
+  "title": "Bounded module cache pruning",
+  "lane": "integration",
+  "status": "active",
+  "owner": "user",
+  "objective": "Add a safe explicit sagejs cache prune command with conservative bounded retention, active-version leases, dry-run reporting, cross-platform path safety, focused tests, and documentation",
+  "base_commit": "1b0633cac2b2c737d286bf67d2a185a7e75bfe19",
+  "claims": [
+    ".agents/lanes.json",
+    "bin/sagejs-source.cjs",
+    "tools/cache.ts",
+    "tools/cache-lease.ts",
+    "tools/cli.js",
+    "tools/repl.ts",
+    "tools/runtime-bootstrap.ts",
+    "test/cache.cjs",
+    "README.md",
+    "TODO.md"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "compiler-infrastructure",
+    "fallback": "not-applicable",
+    "oracles": [
+      "focused temporary-directory Node tests"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm build",
+    "node --test test/cache.cjs",
+    "pnpm architecture:check",
+    "pnpm test:portable",
+    "pnpm test:baselib:strict"
+  ],
+  "runs": [
+    {
+      "command": "pnpm build",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 140.621,
+      "started_at": "2026-08-12T02:35:40.593Z",
+      "commit": "1b0633cac2b2c737d286bf67d2a185a7e75bfe19",
+      "workspace_fingerprint": "6eb0fe599e838be4a08d8b74eae344ac5682016410ce76be97e96402564454f1",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/cache.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.335,
+      "started_at": "2026-08-12T02:38:05.746Z",
+      "commit": "1b0633cac2b2c737d286bf67d2a185a7e75bfe19",
+      "workspace_fingerprint": "6eb0fe599e838be4a08d8b74eae344ac5682016410ce76be97e96402564454f1",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Adds an explicit dry-run-first `sagejs cache prune` command for whole compiler-version module caches, with current/recent/pinned/leased retention, a conservative age/size policy, atomic quarantine before deletion, fail-closed path checks, runtime heartbeat leases, documentation, and temporary-directory-only tests.",
+    "risks": [
+      "Only Linux x64 was executed in this lane; path and rename behavior is implemented with cross-platform Node APIs and the tests include a Windows junction-compatible symlink case.",
+      "The size ceiling is intentionally best effort because current, active, pinned, newest, and grace-period versions always win over space reclamation."
+    ],
+    "next_steps": [
+      "Run the broader integration/portable suites after coordinator integration.",
+      "Do not invoke `--apply` against a user's real cache without first reviewing the default dry-run report."
+    ]
+  }
+}
