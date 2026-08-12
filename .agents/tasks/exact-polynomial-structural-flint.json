@@ -4,7 +4,7 @@
   "id": "exact-polynomial-structural-flint",
   "title": "Exact Polynomial Structural FLINT",
   "lane": "integration",
-  "status": "active",
+  "status": "review",
   "owner": "user",
   "objective": "Add generated declared-FLINT production adapters and lazy kernels for composition, reversal, shifts, truncation, integration where valid, resultant, and discriminant over exact polynomial resources and word-sized prime fields, without public Polynomial wiring",
   "base_commit": "5a1cc59fc7fddad7648e98dc2d341a2455853754",
@@ -52,7 +52,128 @@
     "node --test test/polynomial-structural-flint.cjs",
     "node bench/polynomial-structural-flint.cjs"
   ],
-  "runs": [],
+  "runs": [
+    {
+      "command": "pnpm build",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 165.636,
+      "started_at": "2026-08-12T10:38:08.813Z",
+      "commit": "2ace233ed9d1b92857e480ed6a0f6b2b599798d3",
+      "workspace_fingerprint": "cc24f37187c28d50e149b29e7d45643f7c71f01764da1fbbd39455bf1bba53dd",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 17.212,
+      "started_at": "2026-08-12T10:40:59.442Z",
+      "commit": "2ace233ed9d1b92857e480ed6a0f6b2b599798d3",
+      "workspace_fingerprint": "cc24f37187c28d50e149b29e7d45643f7c71f01764da1fbbd39455bf1bba53dd",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 14.14,
+      "started_at": "2026-08-12T10:41:21.067Z",
+      "commit": "2ace233ed9d1b92857e480ed6a0f6b2b599798d3",
+      "workspace_fingerprint": "cc24f37187c28d50e149b29e7d45643f7c71f01764da1fbbd39455bf1bba53dd",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 55.457,
+      "started_at": "2026-08-12T10:41:44.331Z",
+      "commit": "2ace233ed9d1b92857e480ed6a0f6b2b599798d3",
+      "workspace_fingerprint": "cc24f37187c28d50e149b29e7d45643f7c71f01764da1fbbd39455bf1bba53dd",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/ffi.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 54.822,
+      "started_at": "2026-08-12T10:42:44.519Z",
+      "commit": "2ace233ed9d1b92857e480ed6a0f6b2b599798d3",
+      "workspace_fingerprint": "cc24f37187c28d50e149b29e7d45643f7c71f01764da1fbbd39455bf1bba53dd",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/polynomial-structural-flint.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 6.82,
+      "started_at": "2026-08-12T10:46:24.584Z",
+      "commit": "ab70e77dc4ae94f0e7d8046bbefae72bcb34ba9c",
+      "workspace_fingerprint": "6724e062bd002a68843e9dfa70b1ce7072c0480a51d598e845abe5e578604726",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/polynomial-structural-flint.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.123,
+      "started_at": "2026-08-12T10:46:32.132Z",
+      "commit": "ab70e77dc4ae94f0e7d8046bbefae72bcb34ba9c",
+      "workspace_fingerprint": "6724e062bd002a68843e9dfa70b1ce7072c0480a51d598e845abe5e578604726",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 13.96,
+      "started_at": "2026-08-12T10:46:37.463Z",
+      "commit": "ab70e77dc4ae94f0e7d8046bbefae72bcb34ba9c",
+      "workspace_fingerprint": "6724e062bd002a68843e9dfa70b1ce7072c0480a51d598e845abe5e578604726",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 14.141,
+      "started_at": "2026-08-12T10:46:52.112Z",
+      "commit": "ab70e77dc4ae94f0e7d8046bbefae72bcb34ba9c",
+      "workspace_fingerprint": "6724e062bd002a68843e9dfa70b1ce7072c0480a51d598e845abe5e578604726",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm build",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 159.804,
+      "started_at": "2026-08-12T10:47:14.059Z",
+      "commit": "ab70e77dc4ae94f0e7d8046bbefae72bcb34ba9c",
+      "workspace_fingerprint": "6724e062bd002a68843e9dfa70b1ce7072c0480a51d598e845abe5e578604726",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 47.204,
+      "started_at": "2026-08-12T10:49:59.689Z",
+      "commit": "ab70e77dc4ae94f0e7d8046bbefae72bcb34ba9c",
+      "workspace_fingerprint": "6724e062bd002a68843e9dfa70b1ce7072c0480a51d598e845abe5e578604726",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/ffi.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 63.453,
+      "started_at": "2026-08-12T10:50:53.791Z",
+      "commit": "ab70e77dc4ae94f0e7d8046bbefae72bcb34ba9c",
+      "workspace_fingerprint": "6724e062bd002a68843e9dfa70b1ce7072c0480a51d598e845abe5e578604726",
+      "platform": "linux-x64"
+    }
+  ],
   "handoff": {
     "summary": "Generated 22 declared FLINT operations plus 24 source-transparent typed-Python wrappers for integer/rational resource and word-prime structural polynomial calculus. Exact outputs are callee-owned resources; packed prime outputs commit transactionally. Focused tests cover Sage fixtures, zero/constant resultants and discriminants, positive-characteristic derivative degree loss, canonical reverse/truncate normalization, native/dynamic parity, and 200-round ASan/UBSan lifecycle fuzzing. Warm direct-adapter medians include 0.58 ms integer composition, 0.42 ms integer resultant, 0.20 ms rational integration, 0.95 ms prime composition, and 0.010 ms prime resultant on the lane host.",
     "risks": [
