@@ -56,8 +56,13 @@ function assertAuditStructure() {
       );
     }
     const matrix = audit.representations[ring].Matrix;
-    assert.equal(matrix.production_path, "packed-compiler-owned");
-    assert.equal(matrix.generated_owned_resources, 0);
+    const exact = ring === "ZZ" || ring === "QQ";
+    assert.equal(
+      matrix.production_path,
+      exact ? "generated-owned-resource" : "packed-compiler-owned",
+    );
+    assert.equal(matrix.generated_owned_resources, exact ? 1 : 0);
+    assert.equal(matrix.napi_host_adapter, true);
     assert.equal(matrix.napi_public_state, false);
     assert.equal(matrix.napi_oracle, true);
     assert.ok(
@@ -97,30 +102,53 @@ function assertBackendInventory() {
     QQ: ffi.functions.filter((fn) => fn.id.startsWith("fmpq_mat_")).length,
     "GF(7)": ffi.functions.filter((fn) => fn.id.startsWith("nmod_mat_")).length,
   };
+  const resourceFunctionCounts = {
+    ZZ: ffi.functions.filter((fn) => fn.id.startsWith("fmpz_matrix_")).length,
+    QQ: ffi.functions.filter((fn) => fn.id.startsWith("fmpq_matrix_")).length,
+    "GF(7)": 0,
+  };
   for (const ring of audit.scope.base_rings) {
     assert.equal(
       ffiCounts[ring],
       audit.representations[ring].Matrix.generated_packed_ffi_functions,
     );
+    assert.equal(
+      resourceFunctionCounts[ring],
+      audit.representations[ring].Matrix.generated_resource_functions,
+    );
+    assert.ok(
+      resourceFunctionCounts[ring] >=
+        audit.ratchets.minimum_generated_resource_functions[ring],
+    );
   }
-  assert.equal(
-    ffi.resources.filter((resource) => /mat/i.test(resource.id)).length,
-    0,
-    "matrix declarations are packed aggregate adapters, not owned resources",
+  const matrixResources = ffi.resources
+    .filter((resource) => /matrix/i.test(resource.id))
+    .map((resource) => resource.id)
+    .sort();
+  assert.deepEqual(
+    matrixResources,
+    [...audit.ratchets.expected_generated_matrix_resource_ids].sort(),
   );
+  assert.equal(matrixResources.length, 2);
 
   const abi = JSON.parse(readFileSync(join(root, "ffi", "abi-types.json"), "utf8"));
   assert.equal(abi.adapters.packed_fmpz_matrix.kind, "packed");
   assert.equal(abi.adapters.packed_nmod_matrix.kind, "packed");
 
   const matrixSource = readFileSync(join(root, "src", "baselib", "matrix.py"), "utf8");
+  for (const storageClass of [
+    "_FmpzMatrixResourceStorage",
+    "_FmpqMatrixResourceStorage",
+  ]) {
+    assert.match(matrixSource, new RegExp(`class ${storageClass}`));
+  }
   for (const module of ["dense_integer", "dense_rational", "dense_prime_field"]) {
     assert.match(matrixSource, new RegExp(`sagejs\\.kernels\\.matrix\\.${module}`));
   }
   for (const message of [
-    "packed GF(p) matrices have no N-API matrix handle",
-    "packed ZZ matrices have no N-API matrix handle",
-    "packed QQ matrices have no N-API matrix handle",
+    "dense GF(p) matrices have no N-API matrix handle",
+    "generated ZZ matrices have no N-API matrix handle",
+    "QQ matrices expose no N-API matrix handle",
   ]) {
     assert.match(matrixSource, new RegExp(message.replace(/[()]/g, "\\$&")));
   }
@@ -154,11 +182,10 @@ function assertPerformanceRatchets() {
       "Matrix",
       "Vector",
     ]));
-    assert.deepEqual(new Set(cases.map((testCase) => testCase.path)), new Set([
-      "packed-compiler-owned",
-      "generated-packed-ffi",
-      "dynamic-python",
-    ]));
+    const expectedPaths = ring === "GF(7)"
+      ? ["packed-compiler-owned", "generated-packed-ffi", "dynamic-python"]
+      : ["generated-owned-resource", "dynamic-python"];
+    assert.deepEqual(new Set(cases.map((testCase) => testCase.path)), new Set(expectedPaths));
   }
 }
 
@@ -168,6 +195,10 @@ def _audit_matrix_vector_witness(base):
     B = matrix(base, 2, 2, [2, 1, 4, 3])
     v = vector(base, [1, 2])
     w = vector(base, [3, 4])
+    mutable_vector = vector(base, [1, 2])
+    mutable_before = mutable_vector.is_mutable()
+    immutable_before = not mutable_vector.is_immutable()
+    mutable_vector.set_immutable()
     matrix_witnesses = [
         A.list() == [base(1), base(2), base(3), base(5)],
         (A + B) - B == A,
@@ -191,9 +222,22 @@ def _audit_matrix_vector_witness(base):
         v.dot_product(w) == base(11),
         v.row().dimensions() == (1, 2),
         v.column().dimensions() == (2, 1),
+        mutable_before,
+        immutable_before,
+        mutable_vector.is_immutable() and not mutable_vector.is_mutable(),
     ]
     assert all(matrix_witnesses)
     assert all(vector_witnesses)
+    if base is ZZ:
+        assert A._has_fmpz_matrix_resource()
+        assert not A._has_fmpq_matrix_resource()
+    elif base is QQ:
+        assert A._has_fmpq_matrix_resource()
+        assert not A._has_fmpz_matrix_resource()
+    else:
+        assert A._has_packed_prime_storage()
+        assert not A._has_fmpz_matrix_resource()
+        assert not A._has_fmpq_matrix_resource()
     try:
         A._native
         raise AssertionError('target Matrix exposed opaque N-API state')
@@ -218,7 +262,7 @@ async function assertOperationalWitnesses() {
     const witnesses = result.stdout.split("\n").filter((line) => line.startsWith("WITNESS"));
     assert.equal(witnesses.length, 3);
     for (const line of witnesses) {
-      assert.match(line, / 12 8$/);
+      assert.match(line, / 12 11$/);
     }
     for (const object of ["Matrix", "Vector"]) {
       const prefix = `${object.toUpperCase()}-SURFACE `;
