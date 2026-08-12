@@ -156,7 +156,9 @@ export class PythonCstLowerer {
     if (root.type !== "module") throw new UnsupportedPythonCstNode(root);
     this.lowered.add(root.type);
     this.currentToplevel = finalizedToplevel;
-    this.nativeBitwise = this.syntax.source.includes("# sagejs: native-bitwise");
+    this.nativeBitwise = this.syntax.source.split(/\r?\n/).some((line) =>
+      /^\s*#\s*sagejs:\s*native-bitwise\s*$/.test(line)
+    );
     for (const [name, details] of Object.entries(NATIVE_CLASSES)) {
       this.knownClasses.set(name, details);
     }
