@@ -6,6 +6,7 @@ const { mkdtempSync, rmSync, writeFileSync } = require("node:fs");
 const { tmpdir } = require("node:os");
 const { join, resolve } = require("node:path");
 const { spawnSync } = require("node:child_process");
+const { sanitizerEnvironment } = require("./helpers/sanitizers.cjs");
 
 const root = resolve(__dirname, "..");
 const prefix = resolve(
@@ -362,11 +363,7 @@ try {
     cwd: root,
     encoding: "utf8",
     env: sanitize
-      ? {
-          ...process.env,
-          ASAN_OPTIONS: "detect_leaks=1:halt_on_error=1",
-          UBSAN_OPTIONS: "halt_on_error=1:print_stacktrace=1",
-        }
+      ? sanitizerEnvironment()
       : process.env,
     timeout: 120_000,
   });
