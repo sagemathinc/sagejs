@@ -45,11 +45,17 @@ const publicHeader = join(
   "sagejs",
   "fflas_matrix_ffi.h",
 );
+const {
+  NATIVE_MATH_DEPENDENCY_VERSIONS,
+  nativeMathBuildProfile,
+} = require(join(repositoryRoot, "scripts", "native-math-profile.cjs"));
+const mathBuildProfile = nativeMathBuildProfile();
+const mathBuildOptions = mathBuildProfile.buildOptions;
 
 const dependencies = [
   {
     name: "gmp",
-    version: "6.3.0",
+    version: NATIVE_MATH_DEPENDENCY_VERSIONS.gmp,
     url: "https://gmplib.org/download/gmp/gmp-6.3.0.tar.xz",
     mirrors: ["https://ftp.gnu.org/gnu/gmp/gmp-6.3.0.tar.xz"],
     sha256: "a3c2b80201b89e68616f4ad30bc66aee4927c3ce50e33929ca819d5c43538898",
@@ -57,14 +63,14 @@ const dependencies = [
   },
   {
     name: "givaro",
-    version: "4.2.2",
+    version: NATIVE_MATH_DEPENDENCY_VERSIONS.givaro,
     url: "https://github.com/linbox-team/givaro/releases/download/v4.2.2/givaro-4.2.2.tar.gz",
     sha256: "53e9fb290deb0e20799c62d250d65c2226013d60b4cebe6b0b54c73000cb8fff",
     archive: process.env.SAGEJS_GIVARO_TARBALL,
   },
   {
     name: "fflas-ffpack",
-    version: "2.5.0",
+    version: NATIVE_MATH_DEPENDENCY_VERSIONS.fflasFfpack,
     url: "https://github.com/linbox-team/fflas-ffpack/releases/download/v2.5.0/fflas-ffpack-2.5.0.tar.gz",
     sha256: "dafb4c0835824d28e4f823748579be6e4c8889c9570c6ce9cce1e186c3ebbb23",
     archive: process.env.SAGEJS_FFLAS_FFPACK_TARBALL,
@@ -211,17 +217,13 @@ function makeFflasPrefixRelocatable(targetPrefix = prefix) {
 function buildGmp(source) {
   const configure = [
     `--prefix=${prefix}`,
-    "--disable-shared",
-    "--enable-static",
-    "--enable-cxx",
-    "--with-pic",
+    ...mathBuildOptions.fflas.gmpConfigure,
   ];
-  if (process.arch === "x64") configure.push("--enable-fat");
   run("./configure", configure, {
     cwd: source,
     env: {
-      CFLAGS: "-O3 -fPIC -std=gnu17",
-      CXXFLAGS: "-O3 -fPIC",
+      CFLAGS: mathBuildOptions.gmp.cflags.join(" "),
+      CXXFLAGS: mathBuildOptions.fflas.cxxflags.join(" "),
     },
   });
   run("make", [`-j${jobs}`], { cwd: source });
@@ -242,7 +244,7 @@ function buildGivaro(source) {
       cwd: source,
       env: {
         CPPFLAGS: `-I${join(prefix, "include")}`,
-        CXXFLAGS: "-O3 -fPIC",
+        CXXFLAGS: mathBuildOptions.fflas.cxxflags.join(" "),
         LDFLAGS: `-L${join(prefix, "lib")}`,
       },
     },
@@ -268,7 +270,7 @@ function buildFflasFfpack(source) {
       cwd: source,
       env: {
         CPPFLAGS: `-I${include}`,
-        CXXFLAGS: "-O3 -fPIC",
+        CXXFLAGS: mathBuildOptions.fflas.cxxflags.join(" "),
         LDFLAGS: `-L${library}`,
         LIBS: "-lgivaro -lgmpxx -lgmp -lopenblas",
         GIVARO_CFLAGS: `-I${include}`,
@@ -290,6 +292,7 @@ async function buildDependencies() {
     givaro: "4.2.2",
     gmp: "6.3.0-cxx",
     openblas: "from-sagejs-flint",
+    mathBuildProfile,
     ...(macosDeploymentTarget ? { macosDeploymentTarget } : {}),
   };
 

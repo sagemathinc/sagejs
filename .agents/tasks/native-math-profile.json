@@ -1,0 +1,89 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "native-math-profile",
+  "title": "CPU-native math dependency profile",
+  "lane": "integration",
+  "status": "review",
+  "owner": "user",
+  "objective": "Implement a fingerprinted opt-in CPU-native GMP/FLINT source-build profile while retaining the portable default, expose complete build provenance, and validate identity without expensive rebuilds",
+  "base_commit": "4b90e55170af4cdef06d9b24b96adaf018251595",
+  "claims": [
+    "packages/fflas/scripts/build-deps.cjs",
+    "packages/flint/scripts/build-deps.cjs",
+    "scripts/native-math-profile.cjs",
+    "scripts/native-worktree-cache.cjs",
+    "tools/native-compiler.ts",
+    "tools/cli.js",
+    "test/native-math-profile.cjs",
+    "test/parallel-development.cjs",
+    "DISTRIBUTION.md",
+    "TODO.md"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "external-library",
+    "fallback": "tested-capability",
+    "oracles": [
+      "deterministic profile/fingerprint unit tests",
+      "portable default configuration"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm architecture:check",
+    "pnpm test:portable",
+    "pnpm test:baselib:strict"
+  ],
+  "runs": [
+    {
+      "command": "node --test test/native-math-profile.cjs test/parallel-development.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 5.715,
+      "started_at": "2026-08-12T05:41:07.218Z",
+      "commit": "c3ca4b4242fa0b7064f81f074d7c6867b08ee09d",
+      "workspace_fingerprint": "57548d19ebf7ac4ab7afc93bf44aefaab13d040ffd94de5cf3ef903dccbc7c8a",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 12.889,
+      "started_at": "2026-08-12T05:41:13.531Z",
+      "commit": "c3ca4b4242fa0b7064f81f074d7c6867b08ee09d",
+      "workspace_fingerprint": "57548d19ebf7ac4ab7afc93bf44aefaab13d040ffd94de5cf3ef903dccbc7c8a",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 13.488,
+      "started_at": "2026-08-12T05:41:33.231Z",
+      "commit": "c3ca4b4242fa0b7064f81f074d7c6867b08ee09d",
+      "workspace_fingerprint": "57548d19ebf7ac4ab7afc93bf44aefaab13d040ffd94de5cf3ef903dccbc7c8a",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Added an opt-in cpu-native mathematics dependency profile while retaining portable release/source defaults. FLINT and FFLAS builders share one deterministic identity; native cache keys separate portable and CPU-native artifacts; dependency stamps record the selected profile and observed FLINT fft_small capability; `sagejs native profile [--json]` exposes selected-versus-installed provenance.",
+    "risks": [
+      "A full CPU-native dependency rebuild was intentionally not run in this lane because it is expensive; compiler flags, configure options, stamp reuse, and fingerprints are covered without rebuilding. The next controlled performance run should build once and record `sagejs native profile --json`.",
+      "The source worktree lacked its m4ri prefix during a final full build, so production native-kernel publication stopped after compiler/runtime caches. This is an environment provisioning gap unrelated to the profile; focused CLI tests use the successfully rebuilt compiler.",
+      "The integration lane must add test/native-math-profile.cjs to test/node-test-manifest.cjs after the automatic-cache lane lands, since that lane owns the shared manifest."
+    ],
+    "next_steps": [
+      "Build FLINT and FFLAS on a controlled benchmark host with SAGEJS_NATIVE_MATH_PROFILE=cpu-native, record profile JSON, and compare representative exact arithmetic benchmarks with the portable build.",
+      "Add test/native-math-profile.cjs to the unit/portable host-test manifest during integration."
+    ]
+  }
+}

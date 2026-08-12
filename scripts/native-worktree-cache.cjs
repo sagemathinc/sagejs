@@ -44,6 +44,7 @@ const {
 const { spawn, spawnSync } = require("node:child_process");
 const { git } = require("./parallel-lib.cjs");
 const { pnpmInvocation } = require("./pnpm-invocation.cjs");
+const { nativeMathBuildProfile } = require("./native-math-profile.cjs");
 
 const nativeCacheSchema = "sagejs.parallel-native-artifact-cache-v1";
 const nativeCachePackages = new Set(["flint", "fflas", "graph"]);
@@ -418,6 +419,9 @@ function dependencyPrefix(packageId) {
 
 function nativeArtifactSpecs(workspace, overrides = {}) {
   const identity = nativeBuildIdentity(workspace, overrides);
+  const mathProfile = stableJson(
+    overrides.mathProfile || nativeMathBuildProfile(),
+  );
   const commonAddonInputs = [
     ...nativeCompilerInputPaths,
     "scripts/build-ffi-host-adapter.cjs",
@@ -426,6 +430,7 @@ function nativeArtifactSpecs(workspace, overrides = {}) {
   const descriptions = {
     flint: {
       dependencyInputs: [
+        "scripts/native-math-profile.cjs",
         "packages/flint/scripts/build-deps.cjs",
         "packages/flint/scripts/triplets",
         "packages/flint/scripts/vcpkg-ports",
@@ -469,6 +474,7 @@ function nativeArtifactSpecs(workspace, overrides = {}) {
         ? "copy"
         : "shared-readonly",
       dependencyInputs: [
+        "scripts/native-math-profile.cjs",
         "packages/fflas/package.json",
         "packages/fflas/scripts/build-deps.cjs",
         "packages/fflas/include/sagejs/fflas_matrix_ffi.h",
@@ -552,6 +558,9 @@ function nativeArtifactSpecs(workspace, overrides = {}) {
     const dependencyKey = sha256(JSON.stringify(stableJson({
       identity: dependencyIdentity,
       inputs: dependencyInputs,
+      mathProfile: ["flint", "fflas"].includes(packageId)
+        ? mathProfile
+        : null,
       materialization: description.dependencyMaterialization,
       packageId,
       schema: nativeCacheSchema,
