@@ -1,0 +1,109 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "generated-diff-classification",
+  "title": "Generated Diff Classification",
+  "lane": "integration",
+  "status": "review",
+  "owner": "user",
+  "objective": "Classify deterministic generated artifacts for collapsed GitHub and CoCalc review, and enforce the authority/generated boundary",
+  "base_commit": "2d5109a44cc2ecc11b6231ab8e6929303c2651f4",
+  "claims": [
+    ".gitattributes",
+    ".agents/lanes.json",
+    "scripts/check-generated-classification.cjs",
+    "scripts/check-native-architecture.cjs",
+    "test/generated-classification.cjs",
+    "test/node-test-manifest.cjs"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "not-applicable",
+    "fallback": "not-applicable",
+    "oracles": [],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm architecture:check",
+    "pnpm test:portable",
+    "pnpm test:baselib:strict"
+  ],
+  "runs": [
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 17.005,
+      "started_at": "2026-08-12T17:40:31.105Z",
+      "commit": "2d5109a44cc2ecc11b6231ab8e6929303c2651f4",
+      "workspace_fingerprint": "d9fc2dcffc1a079c9a2ef48145c41065732ccc603710d5621f236133967d841f",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 14.309,
+      "started_at": "2026-08-12T17:40:56.495Z",
+      "commit": "2d5109a44cc2ecc11b6231ab8e6929303c2651f4",
+      "workspace_fingerprint": "d9fc2dcffc1a079c9a2ef48145c41065732ccc603710d5621f236133967d841f",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 60.987,
+      "started_at": "2026-08-12T17:46:30.063Z",
+      "commit": "2d5109a44cc2ecc11b6231ab8e6929303c2651f4",
+      "workspace_fingerprint": "4f52769e46473c40768beb54bbd22ca6e35281ad57ebbab119c59e40c5010515",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 14.723,
+      "started_at": "2026-08-12T17:51:42.411Z",
+      "commit": "2d5109a44cc2ecc11b6231ab8e6929303c2651f4",
+      "workspace_fingerprint": "ed85a7c231768b5439b8b49893d35804fd91bca2e4c04cd20d0db40637451cb2",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 65.48,
+      "started_at": "2026-08-12T17:52:11.662Z",
+      "commit": "2d5109a44cc2ecc11b6231ab8e6929303c2651f4",
+      "workspace_fingerprint": "ed85a7c231768b5439b8b49893d35804fd91bca2e4c04cd20d0db40637451cb2",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 14.667,
+      "started_at": "2026-08-12T17:53:24.919Z",
+      "commit": "2d5109a44cc2ecc11b6231ab8e6929303c2651f4",
+      "workspace_fingerprint": "ed85a7c231768b5439b8b49893d35804fd91bca2e4c04cd20d0db40637451cb2",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Mark the 18 deterministic FFI and architecture outputs as generated for review, enforce that exact set inside architecture:check, and register focused regression coverage. The test registry also removes a pre-existing duplicate macOS witness entry discovered by the portable tier.",
+    "risks": [
+      "A future generator outside the explicit FFI registry or architecture snapshots must be deliberately added to the expected set; broad generated-directory patterns remain fail-closed because any extra classified tracked path is rejected."
+    ],
+    "next_steps": [
+      "Teach the CoCalc review UI to honor linguist-generated=true in the same way as GitHub Linguist."
+    ]
+  }
+}

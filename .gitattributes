@@ -1,2 +1,14 @@
 # The vendored parser corpus includes intentional CR-only and CRLF files.
 upstream-tests/micropython/basics/* -text
+
+# Derived review artifacts.  These paths are regenerated from authoritative
+# CPython FFI declarations or repository architecture policy.  GitHub's
+# Linguist collapses them by default; review the corresponding inputs instead.
+ffi/*.ffi.json linguist-generated=true
+packages/*/generated/** linguist-generated=true
+src/lib/sagejs/ffi/*.py linguist-generated=true
+src/lib/sagejs/ffi/__init__.py -linguist-generated
+src/baselib/sagejs/ffi/*.py linguist-generated=true
+src/baselib/sagejs/ffi/__init__.py -linguist-generated
+architecture/native-boundaries.json linguist-generated=true
+architecture/native-exports.json linguist-generated=true

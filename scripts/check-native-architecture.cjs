@@ -18,6 +18,9 @@ const EXPORT_MANIFEST = join(ROOT, "architecture", "native-exports.json");
 const ffiDeclarations = require("../tools/ffi/declarations.cjs");
 const ffiBoundaryAudit = require("../tools/ffi/boundary-audit.cjs");
 const ffiNativeExportAudit = require("../tools/ffi/native-export-audit.cjs");
+const {
+  checkGeneratedClassification,
+} = require("./check-generated-classification.cjs");
 
 function readJson(filename) {
   return JSON.parse(readFileSync(filename, "utf8"));
@@ -289,6 +292,7 @@ function validateKernelRegistry(manifest, options = {}) {
 }
 
 function run() {
+  const reviewClassification = checkGeneratedClassification();
   const code = validateNativeCode(readJson(CODE_MANIFEST));
   const audit = validateNativeAudit(readJson(AUDIT_MANIFEST), code);
   const kernels = validateKernelRegistry(readJson(KERNEL_MANIFEST));
@@ -343,6 +347,11 @@ function run() {
   console.log(
     `Every N-API export has a symbol-level decision: ` +
     `${nativeExports.exports.length} classified exports.`,
+  );
+  console.log(
+    `Review classification is exact: ${reviewClassification.generated} ` +
+    `generated artifacts and ${reviewClassification.authoritative} ` +
+    `authoritative tracked paths.`,
   );
 }
 
