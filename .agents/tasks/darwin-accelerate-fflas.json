@@ -4,7 +4,7 @@
   "id": "darwin-accelerate-fflas",
   "title": "Darwin Accelerate-backed FFLAS",
   "lane": "integration",
-  "status": "active",
+  "status": "review",
   "owner": "user",
   "objective": "Use Apple Accelerate as the generated FFLAS/FFPACK BLAS backend on native macOS while preserving Linux OpenBLAS and Windows capability fallback, with ARM64 differential tests and a forced-result GF(7) matrix multiplication benchmark.",
   "base_commit": "7792f9072335667b539ee79e7babff82bab9056c",
@@ -89,10 +89,50 @@
       "commit": "3049ecbd432afa38392127370701e007e5588552",
       "workspace_fingerprint": "ea9093e6e922fcc976087e7401e182ae19f89f3d2dadd9a8f5d97ce3e8c7d5ec",
       "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm --dir packages/fflas test",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.726,
+      "started_at": "2026-08-12T11:00:14.302Z",
+      "commit": "3ef6b3693d99ec9b5a2bf3320769fc03cfca2873",
+      "workspace_fingerprint": "153f7c857480b3f12b139dc90ba1769f84d2598c44e0f2a174be9a8a9e0e13ef",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 13.108,
+      "started_at": "2026-08-12T11:00:36.374Z",
+      "commit": "3ef6b3693d99ec9b5a2bf3320769fc03cfca2873",
+      "workspace_fingerprint": "153f7c857480b3f12b139dc90ba1769f84d2598c44e0f2a174be9a8a9e0e13ef",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 42.018,
+      "started_at": "2026-08-12T11:01:13.780Z",
+      "commit": "3ef6b3693d99ec9b5a2bf3320769fc03cfca2873",
+      "workspace_fingerprint": "153f7c857480b3f12b139dc90ba1769f84d2598c44e0f2a174be9a8a9e0e13ef",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 13.308,
+      "started_at": "2026-08-12T11:02:02.660Z",
+      "commit": "3ef6b3693d99ec9b5a2bf3320769fc03cfca2873",
+      "workspace_fingerprint": "153f7c857480b3f12b139dc90ba1769f84d2598c44e0f2a174be9a8a9e0e13ef",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {
-    "summary": "Native macOS FFLAS/FFPACK adapters now link Apple's system Accelerate framework through the active SDK's TAPI stub while Linux continues to link the pinned FLINT-prefix OpenBLAS archive and Windows retains its explicit tested capability fallback. The provider and Darwin SDK-stub digest are part of the relocatable content-addressed dependency identity. A clean Apple M1 build links only Accelerate, libSystem, and libc++; all nine package differential, canonical-form, aliasing, and transactional tests pass, as does the public routing suite. With one controlled BLAS worker, warm forced-result GF(7) medians were about 0.50 ms for 300x300 squaring and 1.19 ms for 500x500, compared with roughly 1.1 ms and 4.0 ms for the former M1 OpenBLAS build. Raw GF(97) multiplication at 512x512 fell from roughly 3.4 ms to 0.81 ms. Linux x64 retains OpenBLAS and passes package, architecture, portable, and strict-Python gates.",
+    "summary": "Native macOS FFLAS/FFPACK adapters now link Apple's system Accelerate framework through the active SDK's genuine TAPI stub and CBLAS header, while Linux continues to link the pinned FLINT-prefix OpenBLAS archive and Windows retains its explicit tested capability fallback. Exact-platform link declarations are represented in the declaration schema and the provider plus Darwin SDK inputs participate in the relocatable content-addressed dependency identity. At the final revision, a clean Apple M1 rebuild links only Accelerate, libSystem, and libc++; all nine package differential, canonical-form, aliasing, and transactional tests pass, as do public compiled routing and platform-selection/cache-identity regressions. With one controlled BLAS worker, warm forced-result GF(7) medians were 0.59 ms for 300x300 squaring and 1.23 ms for 500x500, compared with roughly 1.1 ms and 4.0 ms for the former M1 OpenBLAS build. Raw GF(97) multiplication at 512x512 previously measured about 0.81 ms versus 3.4 ms. Linux x64 retains OpenBLAS and passes package, platform-link compiler tests, architecture, portable, and strict-Python gates.",
     "risks": [
       "The Apple Accelerate implementation is a system framework dependency and therefore intentionally native-macOS-only; browser and Windows capability behavior is unchanged.",
       "Accelerate's default worker selection was variable for these small matrices, so the focused benchmark fixes VECLIB_MAXIMUM_THREADS=1. Production remains unconstrained so larger workloads can use the framework's normal threading policy.",
