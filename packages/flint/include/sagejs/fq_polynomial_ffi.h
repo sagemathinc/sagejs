@@ -151,10 +151,35 @@ static inline void sagejs_fq_context_clear(sagejs_fq_context_t context)
     context->state = NULL;
 }
 
+static inline size_t sagejs_fq_context_state_allocated_bytes(
+    const sagejs_fq_context_state *state);
+
 static inline size_t sagejs_fq_context_allocated_bytes(
     const sagejs_fq_context_t context)
 {
-    return context->state == NULL ? 0 : sizeof(sagejs_fq_context_state);
+    return sagejs_fq_context_state_allocated_bytes(context->state);
+}
+
+static inline size_t sagejs_fq_context_state_allocated_bytes(
+    const sagejs_fq_context_state *state)
+{
+    if (state == NULL)
+        return 0;
+    const fq_nmod_ctx_struct *inner = FQ_DEFAULT_CTX_FQ_NMOD(state->value);
+    size_t retained = sizeof(sagejs_fq_context_state);
+    retained = sagejs_retained_size_add(retained,
+        sagejs_retained_size_multiply(
+            (size_t) inner->modulus->alloc, sizeof(ulong)));
+    retained = sagejs_retained_size_add(retained,
+        sagejs_retained_size_multiply(
+            (size_t) inner->inv->alloc, sizeof(ulong)));
+    retained = sagejs_retained_size_add(retained,
+        sagejs_retained_size_multiply((size_t) inner->len, sizeof(ulong)));
+    retained = sagejs_retained_size_add(retained,
+        sagejs_retained_size_multiply((size_t) inner->len, sizeof(slong)));
+    if (inner->var != NULL)
+        retained = sagejs_retained_size_add(retained, strlen(inner->var) + 1);
+    return retained;
 }
 
 static inline uint64_t sagejs_fq_context_characteristic(
@@ -226,9 +251,11 @@ static inline size_t sagejs_fq_element_allocated_bytes(
     const nmod_poly_struct *value =
         (const nmod_poly_struct *) element->value->fq_nmod;
     return sagejs_retained_size_add(
+        sagejs_fq_context_state_allocated_bytes(element->context),
+        sagejs_retained_size_add(
         sizeof(sagejs_fq_element_struct),
         sagejs_retained_size_multiply(
-            (size_t) value->alloc, sizeof(ulong)));
+            (size_t) value->alloc, sizeof(ulong))));
 }
 
 static inline int sagejs_fq_element_copy(
@@ -242,6 +269,23 @@ static inline int sagejs_fq_element_copy(
     fq_default_init(result->value, result->context->value);
     fq_default_set(result->value, source->value, result->context->value);
     return 1;
+}
+
+static inline uint64_t sagejs_fq_element_degree(
+    const sagejs_fq_element_t element)
+{
+    return element->context == NULL ? 0 : (uint64_t) element->context->degree;
+}
+
+static inline uint64_t sagejs_fq_element_coordinate(
+    const sagejs_fq_element_t element, uint64_t basis_index)
+{
+    if (element->context == NULL ||
+        basis_index >= (uint64_t) element->context->degree)
+        return 0;
+    return (uint64_t) nmod_poly_get_coeff_ui(
+        (const nmod_poly_struct *) element->value->fq_nmod,
+        (slong) basis_index);
 }
 
 static inline int sagejs_fq_element_equal(
@@ -349,9 +393,11 @@ static inline size_t sagejs_fq_polynomial_allocated_bytes(
         return 0;
     const fq_nmod_poly_struct *value = polynomial->value->fq_nmod;
     size_t retained = sagejs_retained_size_add(
+        sagejs_fq_context_state_allocated_bytes(polynomial->context),
+        sagejs_retained_size_add(
         sizeof(sagejs_fq_polynomial_struct),
         sagejs_retained_size_multiply(
-            (size_t) value->alloc, sizeof(fq_nmod_struct)));
+            (size_t) value->alloc, sizeof(fq_nmod_struct))));
     for (slong index = 0; index < value->alloc; index++)
         retained = sagejs_retained_size_add(retained,
             sagejs_retained_size_multiply(
