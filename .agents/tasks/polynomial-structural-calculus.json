@@ -1,0 +1,114 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "polynomial-structural-calculus",
+  "title": "Polynomial Structural Calculus",
+  "lane": "arithmetic-algebra",
+  "status": "review",
+  "owner": "user",
+  "objective": "Implement ordinary exact Python contracts for univariate polynomial composition, reversal, truncation, shifts, integral, resultant, and discriminant across ZZ, QQ, and GF(p), with Sage-compatible edge semantics and representative benchmarks",
+  "base_commit": "3fbce0b1111129ce3de879fefb2e6b08a70d9840",
+  "claims": [
+    "src/lib/sagejs/polynomial_algorithms/structural_calculus.py",
+    "test/polynomial-structural-calculus.cjs",
+    "bench/polynomial-structural-calculus.cjs"
+  ],
+  "dependencies": [],
+  "references": [
+    "/home/user/upstream/sage/src/sage/rings/polynomial/polynomial_element.pyx"
+  ],
+  "architecture": {
+    "strategy": "dynamic-python",
+    "fallback": "same-source",
+    "oracles": [
+      "sage",
+      "cpython"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "pnpm test:native"
+  ],
+  "runs": [
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 12.414,
+      "started_at": "2026-08-12T09:12:57.092Z",
+      "commit": "3fbce0b1111129ce3de879fefb2e6b08a70d9840",
+      "workspace_fingerprint": "e3e1d292d223aca78f40040042f65eac3a219c6e1a846d7382b9cfdc51ab02ff",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:native",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 153.852,
+      "started_at": "2026-08-12T09:13:19.732Z",
+      "commit": "3fbce0b1111129ce3de879fefb2e6b08a70d9840",
+      "workspace_fingerprint": "7e68eb79e3d979a188b1b52cdde1ae44d847255b16a642fb70f00c3f2a4420d3",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:native",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 578.294,
+      "started_at": "2026-08-12T09:17:52.188Z",
+      "commit": "3fbce0b1111129ce3de879fefb2e6b08a70d9840",
+      "workspace_fingerprint": "2d44b5cdc67b7daae394c2e63bfc4f22398a19f59fcb082d3f475efc3cfac96c",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 12.33,
+      "started_at": "2026-08-12T09:27:47.165Z",
+      "commit": "3fbce0b1111129ce3de879fefb2e6b08a70d9840",
+      "workspace_fingerprint": "2d44b5cdc67b7daae394c2e63bfc4f22398a19f59fcb082d3f475efc3cfac96c",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/polynomial-structural-calculus.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.371,
+      "started_at": "2026-08-12T09:28:00.092Z",
+      "commit": "3fbce0b1111129ce3de879fefb2e6b08a70d9840",
+      "workspace_fingerprint": "2d44b5cdc67b7daae394c2e63bfc4f22398a19f59fcb082d3f475efc3cfac96c",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/polynomial-structural-calculus.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.28,
+      "started_at": "2026-08-12T09:28:02.161Z",
+      "commit": "3fbce0b1111129ce3de879fefb2e6b08a70d9840",
+      "workspace_fingerprint": "2d44b5cdc67b7daae394c2e63bfc4f22398a19f59fcb082d3f475efc3cfac96c",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Added an ordinary CPython-parseable low-to-high dense polynomial calculus for composition, reversal, truncation, monomial shifts, formal integration, Sylvester resultants, and discriminants. Parent-sensitive division is explicit: callers choose ZZ-to-QQ widening, finite-field integer inversion, and exact Bareiss quotients. Focused Sage.js/CPython tests pin Sage 10.9 behavior for zero and constant polynomials, negative truncation, explicit reverse degree, signed resultants, pivoting, and noninvertible characteristic-p antiderivatives. A representative dynamic benchmark covers ZZ, QQ, and GF(65521).",
+    "risks": [
+      "The helper deliberately does not choose public polynomial parents. Integration must coerce composition operands, widen ZZ integrals to QQ, and preserve Sage's zero-polynomial object result for zero.discriminant().",
+      "The cubic Bareiss implementation is a portable correctness fallback and oracle, not the production path for large resource-backed resultants or discriminants; mature FLINT declarations should remain the accelerated path.",
+      "The first native validation attempt failed because this new worktree lacked its ignored local M4RI prefix. After building M4RI, the complete native suite passed without source changes."
+    ],
+    "next_steps": [
+      "Add structural_calculus.py to pyrightconfig.json and polynomial-structural-calculus.cjs to test/node-test-manifest.cjs in the integration lane.",
+      "Wire public PolynomialElement methods through the lazy polynomial-algorithms boundary, using one coefficient decode for the dynamic fallback and public-parent coercion before calling these helpers.",
+      "Add declared FLINT resource-to-resource operations for large ZZ/QQ composition, reverse/shift, resultant, and discriminant where benchmarks justify them; keep these same semantics as the differential oracle."
+    ]
+  }
+}
