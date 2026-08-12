@@ -110,3 +110,106 @@ test("random core APIs match CPython semantics", async (t) => {
     ].join("\n"),
   );
 });
+
+test("exact seeded interval sampling rejects without binary64 truncation", async (t) => {
+  const session = await createSage({ mode: "python" });
+  t.after(() => session.close());
+
+  const result = await session.evaluate(
+    [
+      "import sagejs._baselib.builtins as sage_builtins",
+      "class WordStream:",
+      "    def __init__(self, values):",
+      "        self.values = list(values)",
+      "        self.index = 0",
+      "    def __call__(self):",
+      "        value = self.values[self.index]",
+      "        self.index += 1",
+      "        return value",
+      "small = WordStream([7, 6, 5, 4])",
+      "assert sage_builtins._sage_random_bigint_below(5, small) == 4",
+      "assert small.index == 4",
+      "wide = WordStream([1, 0, 20, 1, 0, 16])",
+      "wide_bound = 2**64 + 17",
+      "assert sage_builtins._sage_random_bigint_below(wide_bound, wide) == 2**64 + 16",
+      "assert wide.index == 6",
+      "unused = WordStream([])",
+      "assert sage_builtins._sage_random_bigint_below(1, unused) == 0",
+      "assert unused.index == 0",
+      "for invalid in [WordStream([-1]), WordStream([2**32])]:",
+      "    try:",
+      "        sage_builtins._sage_random_bigint_below(2, invalid)",
+      "    except ValueError:",
+      "        pass",
+      "    else:",
+      "        raise AssertionError('invalid random word was accepted')",
+      "try:",
+      "    sage_builtins._sage_random_bigint_below(0)",
+      "except ValueError:",
+      "    pass",
+      "else:",
+      "    raise AssertionError('empty exact random interval was accepted')",
+      "print('exact rejection sampling passed')",
+    ].join("\n"),
+  );
+
+  assert.equal(result.stderr ?? "", "");
+  assert.equal(result.stdout.trim(), "exact rejection sampling passed");
+});
+
+test("Sage random primes are seeded, uniform-candidate, and inclusive", async (t) => {
+  const session = await createSage();
+  t.after(() => session.close());
+
+  const result = await session.evaluate(
+    [
+      "set_random_seed(2026)",
+      "first_primes = [random_prime(1000) for _ in range(12)]",
+      "set_random_seed(2026)",
+      "second_primes = [random_prime(1000) for _ in range(12)]",
+      "assert first_primes == second_primes",
+      "assert first_primes == [61, 587, 491, 193, 191, 431, 521, 787, 311, 131, 17, 439]",
+      "assert all(is_prime(value) and 2 <= value <= 1000 for value in first_primes)",
+      "set_random_seed(2026)",
+      "bits = [randint(0, 1) for _ in range(20)]",
+      "assert bits == [1, 0, 0, 0, 1, 1, 0, 1, 0, 1, 0, 0, 1, 0, 1, 0, 1, 1, 0, 0]",
+      "assert any(bits[index] == bits[index + 1] for index in range(len(bits) - 1))",
+      "lower = 10**40 + 10**20",
+      "upper = lower + 10**25",
+      "set_random_seed('wide exact interval')",
+      "first_wide = [randint(lower, upper) for _ in range(8)]",
+      "set_random_seed('wide exact interval')",
+      "second_wide = [randint(lower, upper) for _ in range(8)]",
+      "assert first_wide == second_wide",
+      "assert all(lower <= value <= upper for value in first_wide)",
+      "assert len(set(first_wide)) > 1",
+      "assert randint(2**200, 2**200) == 2**200",
+      "assert random_prime(2) == 2",
+      "assert random_prime(3, lbound=3) == 3",
+      "assert random_prime(17, lbound=14) == 17",
+      "failures = []",
+      "for operation in [",
+      "    lambda: random_prime(1, lbound=-2),",
+      "    lambda: random_prime(10, lbound=11),",
+      "    lambda: random_prime(126, lbound=114),",
+      "    lambda: randint(5, 4),",
+      "]:",
+      "    try:",
+      "        operation()",
+      "    except ValueError as error:",
+      "        failures.append(str(error))",
+      "    else:",
+      "        raise AssertionError('invalid interval was accepted')",
+      "assert failures == [",
+      "    'n must be greater than or equal to 2',",
+      "    'n must be at least lbound: 11',",
+      "    'there are no primes between 114 and 126 (inclusive)',",
+      "    'empty range for randint()',",
+      "]",
+      "print('public random prime semantics passed')",
+    ].join("\n"),
+  );
+
+  assert.equal(result.stderr ?? "", "");
+  assert.equal(result.stdout.trim(), "public random prime semantics passed");
+});

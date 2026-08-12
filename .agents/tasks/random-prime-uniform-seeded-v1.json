@@ -1,0 +1,134 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "random-prime-uniform-seeded-v1",
+  "title": "Uniform seeded random primes",
+  "lane": "compiler-runtime",
+  "status": "active",
+  "owner": "user",
+  "objective": "Make Sage.js exact integer interval sampling and random_prime deterministic under set_random_seed, unbiased over exact intervals including widths above 2^53, and Sage-compatible for inclusive bounds, empty prime intervals, and uniform prime selection using ordinary CPython-parseable Python",
+  "base_commit": "dcc1302a3f305b00a0e09ba25edee45ac2ee2bf1",
+  "claims": [
+    "src/baselib/builtins.py",
+    "test/random-module.cjs"
+  ],
+  "dependencies": [],
+  "references": [
+    "/home/user/upstream/sage/src/sage/arith/misc.py",
+    "https://doc.sagemath.org/html/en/reference/rings_standard/sage/arith/misc.html"
+  ],
+  "architecture": {
+    "strategy": "dynamic-python",
+    "fallback": "same-source",
+    "oracles": [
+      "SageMath random_prime semantics and deterministic exact sampler model"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm build",
+    "node --test test/random-module.cjs",
+    "node --test test/package-graph.cjs",
+    "pnpm test:baselib:strict",
+    "pnpm test:compiler",
+    "pnpm test:integration"
+  ],
+  "runs": [
+    {
+      "command": "node --test test/random-module.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.943,
+      "started_at": "2026-08-12T19:11:44.035Z",
+      "commit": "dcc1302a3f305b00a0e09ba25edee45ac2ee2bf1",
+      "workspace_fingerprint": "1e9ac3259733d7491a2794c79bb14170e95f19926ce03d23dd49c8f83b3eb5b8",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 16.142,
+      "started_at": "2026-08-12T19:11:49.422Z",
+      "commit": "dcc1302a3f305b00a0e09ba25edee45ac2ee2bf1",
+      "workspace_fingerprint": "1e9ac3259733d7491a2794c79bb14170e95f19926ce03d23dd49c8f83b3eb5b8",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:unit",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 64.725,
+      "started_at": "2026-08-12T19:12:13.772Z",
+      "commit": "dcc1302a3f305b00a0e09ba25edee45ac2ee2bf1",
+      "workspace_fingerprint": "1e9ac3259733d7491a2794c79bb14170e95f19926ce03d23dd49c8f83b3eb5b8",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm build",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 196.032,
+      "started_at": "2026-08-12T19:13:31.524Z",
+      "commit": "dcc1302a3f305b00a0e09ba25edee45ac2ee2bf1",
+      "workspace_fingerprint": "1e9ac3259733d7491a2794c79bb14170e95f19926ce03d23dd49c8f83b3eb5b8",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/random-module.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.998,
+      "started_at": "2026-08-12T19:23:06.040Z",
+      "commit": "dcc1302a3f305b00a0e09ba25edee45ac2ee2bf1",
+      "workspace_fingerprint": "4a469848c854563e4447bd2780ad1347cb1aca5e3e92958716fd1dbb66468827",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 15.484,
+      "started_at": "2026-08-12T19:23:08.654Z",
+      "commit": "dcc1302a3f305b00a0e09ba25edee45ac2ee2bf1",
+      "workspace_fingerprint": "4a469848c854563e4447bd2780ad1347cb1aca5e3e92958716fd1dbb66468827",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm build",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 188.961,
+      "started_at": "2026-08-12T19:23:28.594Z",
+      "commit": "dcc1302a3f305b00a0e09ba25edee45ac2ee2bf1",
+      "workspace_fingerprint": "4a469848c854563e4447bd2780ad1347cb1aca5e3e92958716fd1dbb66468827",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/package-graph.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.257,
+      "started_at": "2026-08-12T19:27:17.314Z",
+      "commit": "dcc1302a3f305b00a0e09ba25edee45ac2ee2bf1",
+      "workspace_fingerprint": "4a469848c854563e4447bd2780ad1347cb1aca5e3e92958716fd1dbb66468827",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Replaced biased next-prime selection with uniform exact candidate sampling and primality rejection, backed by the existing seeded MT19937 word stream. Exact randint now supports arbitrary-width intervals without binary64 truncation or modulo bias, while the established LCG float stream remains unchanged. Inclusive bounds, empty intervals, deterministic seeding, singleton intervals, rejection behavior, and wide integer ranges have focused coverage. Independent review approved the corrected multiword generator design.",
+    "risks": [
+      "The deterministic MT output sequences are now explicit compatibility witnesses; changing the seeded generator deliberately will require updating them.",
+      "The full unit tier had one transient uint64 formatting timing-budget failure under concurrent load; its standalone test passed immediately. Compiler and integration tiers also contain unrelated failures already reproducible from the shared baseline in current matrix and polynomial work."
+    ],
+    "next_steps": [
+      "Integrate this collision-free builtins/test change into the shared baseline and rerun the broad tiers after the concurrent matrix and polynomial lanes settle."
+    ]
+  }
+}
