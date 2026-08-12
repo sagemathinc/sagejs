@@ -12,7 +12,6 @@ from __future__ import annotations
 
 from typing import Any, Literal
 
-import sagejs as sage
 import sagejs.runtime as runtime
 from sagejs.ffi import flint
 from sagejs.linear_algebra import matrix_vector as contract
@@ -233,8 +232,11 @@ def _integer_product(
     side: str,
     plan: Any,
 ) -> Any:
-    packed = runtime.exact_integer_values_to_packed_bytes(vector_value._entries)
-    vector_region = flint.FlintByteRegion.from_bytes(packed)
+    exact = __import__(
+        "sagejs.linear_algebra.exact_vector_public",
+        fromlist=["exact_vector_public"],
+    )
+    vector_region = exact.serialize_integer(vector_value._exact_vector_resource())
     try:
 
         def operation(
@@ -253,13 +255,12 @@ def _integer_product(
             vector_region,
             operation,
         )
-        entries = runtime.exact_integer_values_from_packed_bytes(
-            output_region.take_bytes(),
-            plan.result_length,
-        )
+        try:
+            return exact.integer_from_region(output_region, plan.result_length)
+        finally:
+            output_region.close()
     finally:
         vector_region.close()
-    return [runtime.normalize_integer(entry) for entry in entries]
 
 
 def _rational_product(
@@ -268,19 +269,11 @@ def _rational_product(
     side: str,
     plan: Any,
 ) -> Any:
-    packed = runtime.canonical_rational_values_to_packed_bytes(
-        vector_value._entries,
-        sage.Rational,
-        sage.QQ,
+    exact = __import__(
+        "sagejs.linear_algebra.exact_vector_public",
+        fromlist=["exact_vector_public"],
     )
-    if packed is runtime.undefined:
-        parts = []
-        for entry in vector_value._entries:
-            rational = sage.QQ(entry)
-            parts.append(rational._numerator)
-            parts.append(rational._denominator)
-        packed = runtime.exact_integer_values_to_packed_bytes(parts)
-    vector_region = flint.FlintByteRegion.from_bytes(packed)
+    vector_region = exact.serialize_rational(vector_value._exact_vector_resource())
     try:
 
         def operation(
@@ -299,17 +292,12 @@ def _rational_product(
             vector_region,
             operation,
         )
-        parts = runtime.exact_integer_values_from_packed_bytes(
-            output_region.take_bytes(),
-            2 * plan.result_length,
-        )
+        try:
+            return exact.rational_from_region(output_region, plan.result_length)
+        finally:
+            output_region.close()
     finally:
         vector_region.close()
-    return runtime.reduced_rational_values_from_parts(
-        parts,
-        sage.Rational,
-        sage.QQ,
-    )
 
 
 def _nmod_product(
@@ -378,7 +366,7 @@ def matrix_vector_product(
         return result_parent(entries)
 
     if matrix_value._has_fmpz_matrix_resource():
-        entries = _integer_product(matrix_value, vector_value, side, plan)
+        resource = _integer_product(matrix_value, vector_value, side, plan)
         _trace(
             "matrix_vector" if side == "right" else "vector_matrix",
             base,
@@ -386,10 +374,10 @@ def matrix_vector_product(
             plan.columns,
             "generated-flint-resource",
         )
-        return result_parent(entries)
+        return result_parent._from_fmpz_vector_resource(resource)
 
     if matrix_value._has_fmpq_matrix_resource():
-        entries = _rational_product(matrix_value, vector_value, side, plan)
+        resource = _rational_product(matrix_value, vector_value, side, plan)
         _trace(
             "matrix_vector" if side == "right" else "vector_matrix",
             base,
@@ -397,7 +385,7 @@ def matrix_vector_product(
             plan.columns,
             "generated-flint-resource",
         )
-        return result_parent(entries)
+        return result_parent._from_fmpq_vector_resource(resource)
 
     # Extension and approximate fields have not yet acquired a packed vector
     # ABI. Keep their semantically correct matrix-product fallback explicit.

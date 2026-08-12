@@ -1,0 +1,62 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "public-exact-vector-resources-v1",
+  "title": "Public exact vector resources",
+  "lane": "arithmetic-algebra",
+  "status": "active",
+  "owner": "user",
+  "objective": "Route public dense vectors over ZZ and QQ through generated FmpzVector and FmpqVector resources while preserving Sage semantics and eliminating list materialization from arithmetic and exact matrix-vector result publication",
+  "base_commit": "994c32b2719da5f5576ac058a544ace83589e538",
+  "claims": [
+    "src/baselib/matrix.py",
+    "src/lib/sagejs/linear_algebra/exact_vector_public.py",
+    "src/lib/sagejs/linear_algebra/matrix_vector_public.py",
+    "pyrightconfig.json",
+    "test/public-exact-vector-resources.cjs",
+    "test/node-test-manifest.cjs",
+    "bench/public-exact-vector-resources.cjs"
+  ],
+  "dependencies": [
+    "qq-sparse-random-completion-v1-impl"
+  ],
+  "references": [
+    "ffi/flint.ffi.py generated FmpzVector and FmpqVector ABI at base commit 994c32b"
+  ],
+  "architecture": {
+    "strategy": "external-library",
+    "fallback": "tested-capability",
+    "oracles": [
+      "SageMath dense vector semantics over ZZ and QQ",
+      "Sage.js native-disabled ordinary Python fallback"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "fallback",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm build",
+    "pnpm test:unit",
+    "node --test test/public-exact-vector-resources.cjs test/public-matrix-vector.cjs test/linear-vector-contract.cjs test/exact-vector-resource-core.cjs",
+    "node bench/public-exact-vector-resources.cjs",
+    "pnpm test:baselib:strict",
+    "pnpm architecture:check",
+    "pnpm parallel:check"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "Public dense vectors over ZZ and QQ canonically own generated FmpzVector/FmpqVector resources. Construction, mutation, arithmetic, scalar products, and equality stay on the resource; exact matrix-vector results are adopted directly without materializing a host element list. SageMath and native-disabled differential tests cover the public contract, and a 100000-entry benchmark records warmed resource arithmetic.",
+    "risks": [
+      "The current exact matrix-vector ABI exchanges a canonical ByteRegion, so each operand/result is copied once between generated resources even though no host element list is constructed.",
+      "This lane deliberately overlaps src/baselib/matrix.py with its declared qq-sparse-random dependency and must be integrated after that lane."
+    ],
+    "next_steps": [
+      "Add direct FmpzVector/FmpqVector matrix-vector declarations to remove the remaining canonical-byte copy.",
+      "Extend resource-backed bulk publication to exact matrix rows, columns, and diagonals when profiling justifies it."
+    ]
+  }
+}
