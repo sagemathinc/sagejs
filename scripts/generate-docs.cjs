@@ -79,13 +79,16 @@ async function main() {
   const entries = catalog.entries.map((entry) => ({
     ...entry,
     source: sourceForEntry(entry, sources),
-    examples: examplesForEntry(entry, sources).map((example) => ({
-      ...example,
-      verification: resultById.get(example.id) ?? {
-        status: "unverified",
-        reason: "run pnpm docs:verify",
-      },
-    })),
+    examples: examplesForEntry(entry, sources).map((example) => {
+      const { provenance_id: _provenanceId, ...published } = example;
+      return {
+        ...published,
+        verification: resultById.get(example.id) ?? {
+          status: "unverified",
+          reason: "run pnpm docs:verify",
+        },
+      };
+    }),
   }));
   const examples = [...new Map(
     entries.flatMap((entry) => entry.examples).map(

@@ -41,14 +41,16 @@ async function main() {
   }
   const sources = collectReferenceSources(root);
   const examplesById = new Map();
+  const referenceIdByProvenanceId = new Map();
   for (const entry of catalog.entries) {
     for (const example of examplesForEntry(entry, sources)) {
       examplesById.set(example.id, example);
+      referenceIdByProvenanceId.set(example.provenance_id, example.id);
     }
   }
   // Keep the committed verification artifact byte-for-byte reproducible.
   // Release provenance belongs to the build attestation, while every example
-  // ID already contains its exact source path and line.
+  // ID addresses its source path and normalized transcript content.
   const revision = "working-tree";
   const temporary = mkdtempSync(join(tmpdir(), "sagejs-reference-"));
   const fixture = join(temporary, "reference.doctests.json");
@@ -77,7 +79,10 @@ async function main() {
         const source = JSON.parse(readFileSync(path, "utf8"));
         for (const kind of ["skip", "xfail"]) {
           for (const [id, reason] of Object.entries(source[kind] ?? {})) {
-            if (attachedIds.has(id)) mergedExpectations[kind][id] = reason;
+            const referenceId = referenceIdByProvenanceId.get(id) ?? id;
+            if (attachedIds.has(referenceId)) {
+              mergedExpectations[kind][referenceId] = reason;
+            }
           }
         }
       }
