@@ -972,13 +972,35 @@ function compactResidueWidth(modulus: unknown): number | undefined {
   return modulusNumber <= 0x100 ? 1 : modulusNumber <= 0x1_0000 ? 2 : 4;
 }
 
-function canonicalResidue(value: unknown, modulus: number): number | undefined {
-  if (typeof value === "bigint") {
-    if (value < 0n || value >= BigInt(modulus)) return undefined;
-    return Number(value);
+const MAX_UNSIGNED_WORD = 0xffff_ffff_ffff_ffffn;
+
+function unsignedWordModulus(modulus: unknown): bigint | undefined {
+  if (typeof modulus === "bigint") {
+    return modulus >= 2n && modulus <= MAX_UNSIGNED_WORD ? modulus : undefined;
   }
-  const result = Number(value);
-  return Number.isInteger(result) && result >= 0 && result < modulus
+  if (
+    typeof modulus === "number" && Number.isSafeInteger(modulus) &&
+    modulus >= 2
+  ) return BigInt(modulus);
+  return undefined;
+}
+
+function primePolynomialResidueWidth(modulus: unknown): number | undefined {
+  const compact = compactResidueWidth(modulus);
+  if (compact !== undefined) return compact;
+  return unsignedWordModulus(modulus) === undefined ? undefined : 8;
+}
+
+function canonicalWordResidue(
+  value: unknown,
+  modulus: bigint,
+): bigint | undefined {
+  const result = typeof value === "bigint"
+    ? value
+    : typeof value === "number" && Number.isSafeInteger(value)
+      ? BigInt(value)
+      : undefined;
+  return result !== undefined && result >= 0n && result < modulus
     ? result
     : undefined;
 }
@@ -987,18 +1009,26 @@ function compactResidueValues(
   count: number,
   valueAt: (index: number) => unknown,
   modulus: unknown,
+  allowWordResidues = false,
 ): { width: number; bytes: Uint8Array } | undefined {
-  const modulusNumber = Number(modulus);
-  const width = compactResidueWidth(modulus);
-  if (width === undefined) return undefined;
+  const modulusWord = unsignedWordModulus(modulus);
+  const width = allowWordResidues
+    ? primePolynomialResidueWidth(modulus)
+    : compactResidueWidth(modulus);
+  if (
+    width === undefined || modulusWord === undefined ||
+    !Number.isSafeInteger(count) || count < 0 ||
+    count > Math.floor(Number.MAX_SAFE_INTEGER / width)
+  ) return undefined;
   const bytes = new Uint8Array(count * width);
   const view = new DataView(bytes.buffer);
   for (let index = 0; index < count; index += 1) {
-    const value = canonicalResidue(valueAt(index), modulusNumber);
+    const value = canonicalWordResidue(valueAt(index), modulusWord);
     if (value === undefined) return undefined;
-    if (width === 1) view.setUint8(index, value);
-    else if (width === 2) view.setUint16(index * 2, value, true);
-    else view.setUint32(index * 4, value, true);
+    if (width === 1) view.setUint8(index, Number(value));
+    else if (width === 2) view.setUint16(index * 2, Number(value), true);
+    else if (width === 4) view.setUint32(index * 4, Number(value), true);
+    else view.setBigUint64(index * 8, value, true);
   }
   return { width, bytes };
 }
@@ -1013,22 +1043,28 @@ function compactPrimePolynomialNative(value: unknown, base: unknown): {
     return undefined;
   }
   const modulus = Reflect.get(Object(base), "_order");
-  const modulusNumber = Number(modulus);
-  if (compactResidueWidth(modulus) === undefined) return undefined;
+  const modulusWord = unsignedWordModulus(modulus);
+  if (
+    primePolynomialResidueWidth(modulus) === undefined ||
+    modulusWord === undefined
+  ) {
+    return undefined;
+  }
   let count = Number(Reflect.get(Object(storage), "length"));
   while (count > 0) {
-    const finalValue = canonicalResidue(
+    const finalValue = canonicalWordResidue(
       Reflect.get(Object(storage), String(count - 1)),
-      modulusNumber,
+      modulusWord,
     );
     if (finalValue === undefined) return undefined;
-    if (finalValue !== 0) break;
+    if (finalValue !== 0n) break;
     count -= 1;
   }
   const compact = compactResidueValues(
     count,
     (index) => Reflect.get(Object(storage), String(index)),
     modulus,
+    true,
   );
   return compact === undefined ? undefined : { ...compact, count };
 }
@@ -1499,7 +1535,7 @@ function unpackPrimePolynomialResidues(
   bytes: Uint8Array,
   widthValue: unknown,
   countValue: unknown,
-): number[] {
+): Array<number | bigint> {
   if (typeof countValue !== "number" || !Number.isSafeInteger(countValue) ||
       countValue < 0) {
     throw new SageSerializationError("compact polynomial length is invalid");
@@ -1515,24 +1551,39 @@ function unpackPrimePolynomialResidues(
       "compact polynomial residues require a prime-field parent",
     );
   }
-  const modulus = Number(Reflect.get(Object(base), "_order"));
-  const expectedWidth = compactResidueWidth(modulus);
-  if (expectedWidth === undefined || width !== expectedWidth) {
+  const modulus = Reflect.get(Object(base), "_order");
+  const modulusWord = unsignedWordModulus(modulus);
+  const expectedWidth = primePolynomialResidueWidth(modulus);
+  if (
+    modulusWord === undefined || expectedWidth === undefined ||
+    width !== expectedWidth
+  ) {
     throw new SageSerializationError("compact polynomial residue width is noncanonical");
   }
   if (
-    count > Math.floor(bytes.byteLength / width) ||
+    count > Math.floor(Number.MAX_SAFE_INTEGER / width) ||
     bytes.byteLength !== count * width
   ) {
     throw new SageSerializationError("compact polynomial coefficient buffer is invalid");
   }
-  const values = unpackResidues(bytes, width, count);
+  const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+  const values = new Array<number | bigint>(count);
+  for (let index = 0; index < count; index += 1) {
+    values[index] = width === 1
+      ? view.getUint8(index)
+      : width === 2
+        ? view.getUint16(index * 2, true)
+        : width === 4
+          ? view.getUint32(index * 4, true)
+          : view.getBigUint64(index * 8, true);
+  }
   for (const value of values) {
-    if (value >= modulus) {
+    const exact = typeof value === "bigint" ? value : BigInt(value);
+    if (exact >= modulusWord) {
       throw new SageSerializationError("compact polynomial residue is outside its field");
     }
   }
-  if (count > 0 && values[count - 1] === 0) {
+  if (count > 0 && (values[count - 1] === 0 || values[count - 1] === 0n)) {
     throw new SageSerializationError("compact polynomial has a trailing zero coefficient");
   }
   return values;
