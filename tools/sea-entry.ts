@@ -8,6 +8,7 @@
 import Compile from "./compile";
 import { runDocumentationCli } from "./docs";
 import { createKernelEvaluatorAsync } from "./kernel-evaluator";
+import { installCliOutputHandler } from "./process-output";
 import { runPytestCli } from "./pytest";
 import Repl from "./repl";
 import { importPath, libraryPath } from "./utils";
@@ -15,6 +16,8 @@ import { basename, dirname, extname } from "path";
 
 const executable = basename(process.argv[1]);
 const executableStem = basename(executable, extname(executable)).toLowerCase();
+
+installCliOutputHandler();
 
 interface SeaArguments {
   files: string[];

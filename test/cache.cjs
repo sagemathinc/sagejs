@@ -11,7 +11,8 @@ const {
 } = require("node:fs");
 const { tmpdir } = require("node:os");
 const { join } = require("node:path");
-const { spawnSync } = require("node:child_process");
+const { spawn, spawnSync } = require("node:child_process");
+const { EventEmitter, once } = require("node:events");
 const { test } = require("node:test");
 
 const {
@@ -199,4 +200,80 @@ test("sagejs cache prune is a dry run by default", (t) => {
   assert.equal(report.entries.length, 6);
   assert.equal(report.entries.filter((entry) => entry.reason).length, 1);
   assert.equal(require("node:fs").readdirSync(root).length, 6);
+});
+
+test("cache prune exits cleanly when its stdout consumer closes early", async (t) => {
+  const { base, root } = temporaryRoot(t);
+  // Make the JSON report larger than the first pipe read, just as a real cache
+  // with many compiler versions is. Names that are not version hashes are
+  // reported but are never prune candidates.
+  for (let index = 0; index < 1_000; index += 1) {
+    writeFileSync(
+      join(
+        root,
+        `ignored-${index.toString().padStart(4, "0")}-${"x".repeat(120)}`,
+      ),
+      "",
+    );
+  }
+  const child = spawn(
+    process.execPath,
+    [join(__dirname, "..", "bin", "sagejs"), "cache", "prune", "--json"],
+    {
+      cwd: join(__dirname, ".."),
+      env: {
+        ...process.env,
+        HOME: base,
+        SAGEJS_USE_SOURCE: "1",
+        XDG_CACHE_HOME: base,
+      },
+      stdio: ["ignore", "pipe", "pipe"],
+    },
+  );
+  let stderr = "";
+  child.stderr.setEncoding("utf8");
+  child.stderr.on("data", (chunk) => {
+    stderr += chunk;
+  });
+  const closed = once(child, "close");
+  const producedOutput = await Promise.race([
+    once(child.stdout, "data").then(() => true),
+    closed.then(() => false),
+  ]);
+  assert.equal(producedOutput, true, stderr);
+  child.stdout.destroy();
+  const [code, signal] = await closed;
+  assert.equal(signal, null);
+  assert.equal(code, 0, stderr);
+  assert.equal(stderr, "");
+});
+
+test("the CLI output handler recognizes EPIPE deterministically", () => {
+  const { installCliOutputHandler } = require("../dist/tools/process-output.js");
+  const stream = new EventEmitter();
+  let exitCode;
+  installCliOutputHandler(stream, (code) => {
+    exitCode = code;
+  });
+  stream.emit(
+    "error",
+    Object.assign(new Error("broken pipe"), { code: "EPIPE" }),
+  );
+  assert.equal(exitCode, 0);
+});
+
+test("the CLI output handler does not swallow non-EPIPE stream errors", () => {
+  const script = `
+    const { installCliOutputHandler } = require(${JSON.stringify(
+      join(__dirname, "..", "dist", "tools", "process-output.js"),
+    )});
+    installCliOutputHandler();
+    const error = Object.assign(new Error("synthetic stdout failure"), { code: "EIO" });
+    process.stdout.emit("error", error);
+  `;
+  const result = spawnSync(process.execPath, ["-e", script], {
+    encoding: "utf8",
+  });
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /synthetic stdout failure/);
 });

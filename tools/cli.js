@@ -6,6 +6,11 @@
  */
 "use strict"; /*jshint node:true */
 
+// Install this before parsing arguments: help, version, and every subcommand
+// report through the same stdout stream and must tolerate an early-closing
+// pipeline consumer.
+require("./process-output").installCliOutputHandler();
+
 var path = require("path");
 var utils = require("./utils");
 var colored = utils.colored;
