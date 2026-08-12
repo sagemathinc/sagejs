@@ -4,7 +4,7 @@
   "id": "extension-polynomial-resource-contract",
   "title": "Finite extension polynomial resource contract",
   "lane": "integration",
-  "status": "review",
+  "status": "complete",
   "owner": "user",
   "objective": "Specify and validate a storage-neutral generated-resource contract for dense univariate polynomials over finite extension fields, including exact Sage semantics, one bulk coordinate boundary, differential oracles, and measured scalar-boundary costs without implementing shared FFI",
   "base_commit": "e2ad41d6662c924b3db35e11a533caef7a71b825",
