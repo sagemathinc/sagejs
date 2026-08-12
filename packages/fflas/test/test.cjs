@@ -22,7 +22,7 @@ function residues(rows, columns, modulus, initialSeed) {
 function fflasRref(source, rows, columns, modulus) {
   const output = new BigUint64Array(source.length);
   const rank = new BigUint64Array(1);
-  assert.equal(fflas.ffiFflasModularFloatRref(
+  assert.equal(fflas.ffiFflasModularDoubleRref(
     output,
     rank,
     source,
@@ -50,7 +50,7 @@ function flintRref(source, rows, columns, modulus) {
 
 function fflasRank(source, rows, columns, modulus) {
   const rank = new BigUint64Array(1);
-  assert.equal(fflas.ffiFflasModularFloatRank(
+  assert.equal(fflas.ffiFflasModularDoubleRank(
     rank,
     source,
     1n,
@@ -65,7 +65,7 @@ function fflasRank(source, rows, columns, modulus) {
 function fflasRightNullspace(source, rows, columns, modulus) {
   const output = new BigUint64Array(columns * columns);
   const nullity = new BigUint64Array(1);
-  assert.equal(fflas.ffiFflasModularFloatRightNullspace(
+  assert.equal(fflas.ffiFflasModularDoubleRightNullspace(
     output,
     nullity,
     source,
@@ -92,13 +92,14 @@ function flintRightNullspace(source, rows, columns, modulus) {
 }
 
 test("FFLAS capability is explicit", () => {
-  assert.equal(fflas.ffiFflasModularFloatAvailable(), process.platform !== "win32");
+  assert.equal(fflas.ffiFflasModularDoubleAvailable(), process.platform !== "win32");
 });
 
 test("native BLAS selection is explicit and Darwin links Accelerate", {
   skip: process.platform === "win32",
 }, () => {
-  const prefix = join(__dirname, "..", ".native", "prefix");
+  const prefix = process.env.SAGEJS_FFLAS_PREFIX ||
+    join(__dirname, "..", ".native", "prefix");
   const stamp = JSON.parse(
     readFileSync(
       join(prefix, ".sagejs-fflas-dependencies.json"),
@@ -329,7 +330,7 @@ test("FFLAS multiplication agrees with FLINT and permits output aliasing", {
       BigInt(modulus),
     ), true);
     const output = new BigUint64Array(rows * columns);
-    assert.equal(fflas.ffiFflasModularFloatMul(
+    assert.equal(fflas.ffiFflasModularDoubleMul(
       output,
       left,
       right,
@@ -355,7 +356,7 @@ test("FFLAS multiplication agrees with FLINT and permits output aliasing", {
       BigInt(rows),
       BigInt(modulus),
     );
-    assert.equal(fflas.ffiFflasModularFloatMul(
+    assert.equal(fflas.ffiFflasModularDoubleMul(
       squareLeft,
       squareLeft,
       squareRight,
@@ -381,7 +382,7 @@ test("FFLAS multiplication agrees with FLINT and permits output aliasing", {
       BigInt(rows),
       BigInt(modulus),
     );
-    assert.equal(fflas.ffiFflasModularFloatMul(
+    assert.equal(fflas.ffiFflasModularDoubleMul(
       rightAlias,
       rightAliasLeft,
       rightAlias,
@@ -397,18 +398,81 @@ test("FFLAS multiplication agrees with FLINT and permits output aliasing", {
   }
 });
 
+test("Modular double agrees with FLINT throughout its exact field range", {
+  skip: process.platform === "win32",
+}, () => {
+  for (const modulus of [257, 65537, 94906249]) {
+    const rows = 13;
+    const columns = 17;
+    const source = residues(rows, columns, modulus, 20260812 + modulus);
+    source.copyWithin(columns, 0, columns);
+    const actualRref = fflasRref(source, rows, columns, modulus);
+    const expectedRref = flintRref(source, rows, columns, modulus);
+    assert.equal(actualRref.rank, expectedRref.rank, `${modulus}: rank`);
+    assert.equal(fflasRank(source, rows, columns, modulus), expectedRref.rank);
+    assert.deepEqual([...actualRref.output], [...expectedRref.output], `${modulus}: RREF`);
+    const actualKernel = fflasRightNullspace(source, rows, columns, modulus);
+    const expectedKernel = flintRightNullspace(source, rows, columns, modulus);
+    assert.equal(actualKernel.nullity, expectedKernel.nullity, `${modulus}: nullity`);
+    assert.deepEqual([...actualKernel.output], [...expectedKernel.output], `${modulus}: kernel`);
+
+    const rightColumns = 11;
+    const right = residues(columns, rightColumns, modulus, 31415926 + modulus);
+    const expectedProduct = new BigUint64Array(rows * rightColumns);
+    assert.equal(flint.ffiNmodMatMul(
+      expectedProduct, source, right,
+      BigInt(rows), BigInt(columns), BigInt(rightColumns), BigInt(modulus),
+    ), true);
+    const actualProduct = new BigUint64Array(rows * rightColumns);
+    assert.equal(fflas.ffiFflasModularDoubleMul(
+      actualProduct, source, right,
+      BigInt(actualProduct.length), BigInt(source.length), BigInt(right.length),
+      BigInt(rows), BigInt(columns), BigInt(rightColumns), BigInt(modulus),
+    ), true);
+    assert.deepEqual([...actualProduct], [...expectedProduct], `${modulus}: product`);
+  }
+
+  const source = new BigUint64Array([1n]);
+  const output = new BigUint64Array(1);
+  assert.throws(() => fflas.ffiFflasModularDoubleMul(
+    output, source, source, 1n, 1n, 1n, 1n, 1n, 1n, 94906297n,
+  ), /failed|unavailable/i);
+});
+
+test("Modular float remains covered inside its declared exact range", {
+  skip: process.platform === "win32",
+}, () => {
+  assert.equal(fflas.ffiFflasModularFloatAvailable(), true);
+  const rows = 9;
+  const inner = 11;
+  const columns = 7;
+  const left = residues(rows, inner, 251, 27182818);
+  const right = residues(inner, columns, 251, 16180339);
+  const expected = new BigUint64Array(rows * columns);
+  flint.ffiNmodMatMul(
+    expected, left, right, BigInt(rows), BigInt(inner), BigInt(columns), 251n,
+  );
+  const actual = new BigUint64Array(rows * columns);
+  assert.equal(fflas.ffiFflasModularFloatMul(
+    actual, left, right,
+    BigInt(actual.length), BigInt(left.length), BigInt(right.length),
+    BigInt(rows), BigInt(inner), BigInt(columns), 251n,
+  ), true);
+  assert.deepEqual([...actual], [...expected]);
+});
+
 test("failed calls leave every transactional output unchanged", {
   skip: process.platform === "win32",
 }, () => {
   const source = new BigUint64Array([1n, 2n, 3n, 4n]);
   for (const invoke of [
-    (output, rank) => fflas.ffiFflasModularFloatRref(
+    (output, rank) => fflas.ffiFflasModularDoubleRref(
       output, rank, source, 4n, 1n, 4n, 2n, 2n, 8n,
     ),
-    (output, rank) => fflas.ffiFflasModularFloatRref(
+    (output, rank) => fflas.ffiFflasModularDoubleRref(
       output, rank, source, 4n, 1n, 4n, 3n, 2n, 7n,
     ),
-    (output, rank) => fflas.ffiFflasModularFloatRref(
+    (output, rank) => fflas.ffiFflasModularDoubleRref(
       output, rank, source, 4n, 1n, 4n, 2n, 2n, 3n,
     ),
   ]) {
@@ -421,13 +485,13 @@ test("failed calls leave every transactional output unchanged", {
 
 
   for (const invoke of [
-    (output, nullity) => fflas.ffiFflasModularFloatRightNullspace(
+    (output, nullity) => fflas.ffiFflasModularDoubleRightNullspace(
       output, nullity, source, 4n, 1n, 4n, 2n, 2n, 8n,
     ),
-    (output, nullity) => fflas.ffiFflasModularFloatRightNullspace(
+    (output, nullity) => fflas.ffiFflasModularDoubleRightNullspace(
       output, nullity, source, 4n, 1n, 4n, 3n, 2n, 7n,
     ),
-    (output, nullity) => fflas.ffiFflasModularFloatRightNullspace(
+    (output, nullity) => fflas.ffiFflasModularDoubleRightNullspace(
       output, nullity, source, 4n, 1n, 4n, 2n, 2n, 3n,
     ),
   ]) {
@@ -439,7 +503,7 @@ test("failed calls leave every transactional output unchanged", {
   }
 
   const multiplicationOutput = new BigUint64Array(4).fill(73n);
-  assert.throws(() => fflas.ffiFflasModularFloatMul(
+  assert.throws(() => fflas.ffiFflasModularDoubleMul(
     multiplicationOutput,
     source,
     new BigUint64Array([1n, 0n, 0n, 7n]),
@@ -454,13 +518,13 @@ test("failed calls leave every transactional output unchanged", {
   assert.deepEqual([...multiplicationOutput], [73n, 73n, 73n, 73n]);
 
   for (const invoke of [
-    (rank) => fflas.ffiFflasModularFloatRank(
+    (rank) => fflas.ffiFflasModularDoubleRank(
       rank, source, 1n, 4n, 2n, 2n, 8n,
     ),
-    (rank) => fflas.ffiFflasModularFloatRank(
+    (rank) => fflas.ffiFflasModularDoubleRank(
       rank, source, 1n, 4n, 3n, 2n, 7n,
     ),
-    (rank) => fflas.ffiFflasModularFloatRank(
+    (rank) => fflas.ffiFflasModularDoubleRank(
       rank, source, 1n, 4n, 2n, 2n, 3n,
     ),
   ]) {

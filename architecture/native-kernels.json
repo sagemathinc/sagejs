@@ -132,6 +132,17 @@
       "platforms": ["linux-x64", "linux-arm64", "windows-x64", "macos-arm64"]
     },
     {
+      "id": "dense-word-prime-flint-production",
+      "source": "src/lib/sagejs/kernels/matrix/dense_word_prime_flint.py",
+      "functions": ["flint_word_prime_matrix_nonzero_count"],
+      "semantic_domain": "source-transparent traversal of generated borrowed FLINT nmod_mat resources used by public dense word-prime matrices",
+      "fallback": "same-source",
+      "host_isolation": "certified",
+      "oracles": ["cpython", "javascript", "flint", "legacy-napi"],
+      "benchmark": "bench:matrix:word-prime-resource",
+      "platforms": ["linux-x64", "linux-arm64", "windows-x64", "macos-arm64"]
+    },
+    {
       "id": "dense-integer-production",
       "source": "src/lib/sagejs/kernels/matrix/dense_integer.py",
       "functions": [

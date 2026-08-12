@@ -312,6 +312,30 @@ def _rational_product(
     )
 
 
+def _nmod_product(
+    matrix_value: Any,
+    vector_value: Any,
+    side: str,
+    base: Any,
+    plan: Any,
+) -> Any:
+    residues = runtime.uint64_residue_buffer(
+        vector_value._entries, int(base.characteristic())
+    )
+    if residues is runtime.undefined:
+        residues = _prime_residues(base, vector_value._entries)
+    if side == "right":
+        region = flint.nmod_matrix_mul_vector(
+            matrix_value._nmod_resource(), residues, len(residues)
+        )
+    else:
+        region = flint.nmod_vector_mul_matrix(
+            residues, len(residues), matrix_value._nmod_resource()
+        )
+    output = runtime.uint64_unpack_le(region.take_bytes(), 8, plan.result_length)
+    return _prime_entries(base, output)
+
+
 def matrix_vector_product(
     matrix_value: Any,
     vector_value: Any,
@@ -340,6 +364,17 @@ def matrix_vector_product(
 
     if matrix_value._has_packed_prime_storage():
         entries = _prime_product(matrix_value, vector_value, side, base, plan)
+        return result_parent(entries)
+
+    if matrix_value._has_nmod_matrix_resource():
+        entries = _nmod_product(matrix_value, vector_value, side, base, plan)
+        _trace(
+            "matrix_vector" if side == "right" else "vector_matrix",
+            base,
+            plan.rows,
+            plan.columns,
+            "generated-flint-resource",
+        )
         return result_parent(entries)
 
     if matrix_value._has_fmpz_matrix_resource():

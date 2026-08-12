@@ -42,6 +42,12 @@
 
 ## Measurement and performance ergonomics
 
+- Move mathematical representation and algorithm crossover policy out of
+  `matrix.py`, `polynomial.py`, and similar public modules into
+  CPython-parseable declarations with checked-in portable and host-family
+  tuning profiles, deterministic JSON lowering, explainable selection, and
+  benchmark provenance. Keep hard capability limits distinct from measured
+  thresholds and permit an explicitly activated local tuning profile.
 - Ratchet cold production-kernel loading separately from warm mathematical
   execution, and never silently compile a missing production kernel in an
   ordinary installed session.

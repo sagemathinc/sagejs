@@ -18,7 +18,8 @@
         "sagejs/fmpz_matrix_ffi.h",
         "sagejs/fmpq_matrix_ffi.h",
         "sagejs/fmpz_mod_polynomial_ffi.h",
-        "sagejs/fq_polynomial_ffi.h"
+        "sagejs/fq_polynomial_ffi.h",
+        "sagejs/nmod_matrix_ffi.h"
       ],
       "link": {
         "unix": [
@@ -81,6 +82,25 @@
       "native": {
         "clear_symbol": "sagejs_fmpq_matrix_clear",
         "size_symbol": "sagejs_fmpq_matrix_allocated_bytes"
+      },
+      "targets": {
+        "dynamic": true,
+        "native": true,
+        "wasm": true
+      }
+    },
+    {
+      "id": "nmod_matrix",
+      "python_name": "NmodMatrix",
+      "abi_type": "sagejs_nmod_matrix_t",
+      "ownership": "owned",
+      "owner": null,
+      "dynamic": {
+        "close_export": "ffiNmodMatrixClose"
+      },
+      "native": {
+        "clear_symbol": "sagejs_nmod_matrix_clear",
+        "size_symbol": "sagejs_nmod_matrix_allocated_bytes"
       },
       "targets": {
         "dynamic": true,
@@ -16667,6 +16687,3023 @@
       "errors": {
         "exception": "ValueError",
         "message": "FLINT rational characteristic polynomial failed"
+      },
+      "exceptions": {
+        "policy": "none",
+        "failure_status": null
+      },
+      "targets": {
+        "dynamic": true,
+        "native": true,
+        "wasm": true
+      }
+    },
+    {
+      "id": "nmod_matrix_from_entries",
+      "python_name": "nmod_matrix_from_entries",
+      "signature": {
+        "parameters": [
+          {
+            "name": "entries",
+            "type": "UInt64Buffer",
+            "ownership": "borrowed",
+            "mutability": "read",
+            "aliasing": "allowed"
+          },
+          {
+            "name": "entry_count",
+            "type": "uint64",
+            "ownership": "value",
+            "mutability": "value",
+            "aliasing": "not_applicable"
+          },
+          {
+            "name": "rows",
+            "type": "uint64",
+            "ownership": "value",
+            "mutability": "value",
+            "aliasing": "not_applicable"
+          },
+          {
+            "name": "columns",
+            "type": "uint64",
+            "ownership": "value",
+            "mutability": "value",
+            "aliasing": "not_applicable"
+          },
+          {
+            "name": "modulus",
+            "type": "uint64",
+            "ownership": "value",
+            "mutability": "value",
+            "aliasing": "not_applicable"
+          }
+        ],
+        "return_type": "NmodMatrix",
+        "return_ownership": "owned",
+        "borrow_from": null
+      },
+      "dynamic": {
+        "export": "ffiNmodMatrixFromEntries"
+      },
+      "native": {
+        "symbol": "sagejs_nmod_matrix_from_entries",
+        "return_type": "int",
+        "arguments": [
+          {
+            "source": "result",
+            "abi_type": "sagejs_nmod_matrix_t",
+            "direction": "out",
+            "adapter": null
+          },
+          {
+            "source": "source",
+            "abi_type": "uint64_t_ptr",
+            "direction": "in",
+            "adapter": {
+              "kind": "packed_slice",
+              "data": "entries",
+              "length": "entry_count",
+              "access": "read",
+              "aliasing": "allowed",
+              "transactional": false
+            }
+          },
+          {
+            "source": "entry_count",
+            "abi_type": "uint64_t",
+            "direction": "in",
+            "adapter": null
+          },
+          {
+            "source": "rows",
+            "abi_type": "uint64_t",
+            "direction": "in",
+            "adapter": null
+          },
+          {
+            "source": "columns",
+            "abi_type": "uint64_t",
+            "direction": "in",
+            "adapter": null
+          },
+          {
+            "source": "modulus",
+            "abi_type": "uint64_t",
+            "direction": "in",
+            "adapter": null
+          }
+        ]
+      },
+      "effects": {
+        "pure": false,
+        "deterministic": true,
+        "thread_safe": true,
+        "may_allocate": true,
+        "may_raise": [
+          "ValueError",
+          "OverflowError"
+        ],
+        "writes": []
+      },
+      "result": {
+        "domain": "status",
+        "success": [
+          1
+        ],
+        "absence": null
+      },
+      "errors": {
+        "exception": "ValueError",
+        "message": "invalid word-prime matrix packed input"
+      },
+      "exceptions": {
+        "policy": "none",
+        "failure_status": null
+      },
+      "targets": {
+        "dynamic": true,
+        "native": true,
+        "wasm": true
+      }
+    },
+    {
+      "id": "nmod_matrix_random",
+      "python_name": "nmod_matrix_random",
+      "signature": {
+        "parameters": [
+          {
+            "name": "rows",
+            "type": "uint64",
+            "ownership": "value",
+            "mutability": "value",
+            "aliasing": "not_applicable"
+          },
+          {
+            "name": "columns",
+            "type": "uint64",
+            "ownership": "value",
+            "mutability": "value",
+            "aliasing": "not_applicable"
+          },
+          {
+            "name": "modulus",
+            "type": "uint64",
+            "ownership": "value",
+            "mutability": "value",
+            "aliasing": "not_applicable"
+          },
+          {
+            "name": "seed1",
+            "type": "uint64",
+            "ownership": "value",
+            "mutability": "value",
+            "aliasing": "not_applicable"
+          },
+          {
+            "name": "seed2",
+            "type": "uint64",
+            "ownership": "value",
+            "mutability": "value",
+            "aliasing": "not_applicable"
+          }
+        ],
+        "return_type": "NmodMatrix",
+        "return_ownership": "owned",
+        "borrow_from": null
+      },
+      "dynamic": {
+        "export": "ffiNmodMatrixRandom"
+      },
+      "native": {
+        "symbol": "sagejs_nmod_matrix_random",
+        "return_type": "int",
+        "arguments": [
+          {
+            "source": "result",
+            "abi_type": "sagejs_nmod_matrix_t",
+            "direction": "out",
+            "adapter": null
+          },
+          {
+            "source": "rows",
+            "abi_type": "uint64_t",
+            "direction": "in",
+            "adapter": null
+          },
+          {
+            "source": "columns",
+            "abi_type": "uint64_t",
+            "direction": "in",
+            "adapter": null
+          },
+          {
+            "source": "modulus",
+            "abi_type": "uint64_t",
+            "direction": "in",
+            "adapter": null
+          },
+          {
+            "source": "seed1",
+            "abi_type": "uint64_t",
+            "direction": "in",
+            "adapter": null
+          },
+          {
+            "source": "seed2",
+            "abi_type": "uint64_t",
+            "direction": "in",
+            "adapter": null
+          }
+        ]
+      },
+      "effects": {
+        "pure": false,
+        "deterministic": true,
+        "thread_safe": true,
+        "may_allocate": true,
+        "may_raise": [
+          "ValueError",
+          "OverflowError"
+        ],
+        "writes": []
+      },
+      "result": {
+        "domain": "status",
+        "success": [
+          1
+        ],
+        "absence": null
+      },
+      "errors": {
+        "exception": "ValueError",
+        "message": "invalid word-prime random matrix parameters"
+      },
+      "exceptions": {
+        "policy": "none",
+        "failure_status": null
+      },
+      "targets": {
+        "dynamic": true,
+        "native": true,
+        "wasm": true
+      }
+    },
+    {
+      "id": "nmod_matrix_nrows",
+      "python_name": "nmod_matrix_nrows",
+      "signature": {
+        "parameters": [
+          {
+            "name": "matrix",
+            "type": "NmodMatrix",
+            "ownership": "borrowed",
+            "mutability": "read",
+            "aliasing": "allowed"
+          }
+        ],
+        "return_type": "uint64",
+        "return_ownership": "value",
+        "borrow_from": null
+      },
+      "dynamic": {
+        "export": "ffiNmodMatrixNrows"
+      },
+      "native": {
+        "symbol": "sagejs_nmod_matrix_nrows",
+        "return_type": "uint64_t",
+        "arguments": [
+          {
+            "source": "matrix",
+            "abi_type": "sagejs_nmod_matrix_t",
+            "direction": "in",
+            "adapter": null
+          }
+        ]
+      },
+      "effects": {
+        "pure": true,
+        "deterministic": true,
+        "thread_safe": true,
+        "may_allocate": false,
+        "may_raise": [],
+        "writes": []
+      },
+      "result": {
+        "domain": "direct",
+        "success": [],
+        "absence": null
+      },
+      "errors": {
+        "exception": null,
+        "message": null
+      },
+      "exceptions": {
+        "policy": "none",
+        "failure_status": null
+      },
+      "targets": {
+        "dynamic": true,
+        "native": true,
+        "wasm": true
+      }
+    },
+    {
+      "id": "nmod_matrix_ncols",
+      "python_name": "nmod_matrix_ncols",
+      "signature": {
+        "parameters": [
+          {
+            "name": "matrix",
+            "type": "NmodMatrix",
+            "ownership": "borrowed",
+            "mutability": "read",
+            "aliasing": "allowed"
+          }
+        ],
+        "return_type": "uint64",
+        "return_ownership": "value",
+        "borrow_from": null
+      },
+      "dynamic": {
+        "export": "ffiNmodMatrixNcols"
+      },
+      "native": {
+        "symbol": "sagejs_nmod_matrix_ncols",
+        "return_type": "uint64_t",
+        "arguments": [
+          {
+            "source": "matrix",
+            "abi_type": "sagejs_nmod_matrix_t",
+            "direction": "in",
+            "adapter": null
+          }
+        ]
+      },
+      "effects": {
+        "pure": true,
+        "deterministic": true,
+        "thread_safe": true,
+        "may_allocate": false,
+        "may_raise": [],
+        "writes": []
+      },
+      "result": {
+        "domain": "direct",
+        "success": [],
+        "absence": null
+      },
+      "errors": {
+        "exception": null,
+        "message": null
+      },
+      "exceptions": {
+        "policy": "none",
+        "failure_status": null
+      },
+      "targets": {
+        "dynamic": true,
+        "native": true,
+        "wasm": true
+      }
+    },
+    {
+      "id": "nmod_matrix_modulus",
+      "python_name": "nmod_matrix_modulus",
+      "signature": {
+        "parameters": [
+          {
+            "name": "matrix",
+            "type": "NmodMatrix",
+            "ownership": "borrowed",
+            "mutability": "read",
+            "aliasing": "allowed"
+          }
+        ],
+        "return_type": "uint64",
+        "return_ownership": "value",
+        "borrow_from": null
+      },
+      "dynamic": {
+        "export": "ffiNmodMatrixModulus"
+      },
+      "native": {
+        "symbol": "sagejs_nmod_matrix_modulus",
+        "return_type": "uint64_t",
+        "arguments": [
+          {
+            "source": "matrix",
+            "abi_type": "sagejs_nmod_matrix_t",
+            "direction": "in",
+            "adapter": null
+          }
+        ]
+      },
+      "effects": {
+        "pure": true,
+        "deterministic": true,
+        "thread_safe": true,
+        "may_allocate": false,
+        "may_raise": [],
+        "writes": []
+      },
+      "result": {
+        "domain": "direct",
+        "success": [],
+        "absence": null
+      },
+      "errors": {
+        "exception": null,
+        "message": null
+      },
+      "exceptions": {
+        "policy": "none",
+        "failure_status": null
+      },
+      "targets": {
+        "dynamic": true,
+        "native": true,
+        "wasm": true
+      }
+    },
+    {
+      "id": "nmod_matrix_entry",
+      "python_name": "nmod_matrix_entry",
+      "signature": {
+        "parameters": [
+          {
+            "name": "matrix",
+            "type": "NmodMatrix",
+            "ownership": "borrowed",
+            "mutability": "read",
+            "aliasing": "allowed"
+          },
+          {
+            "name": "row",
+            "type": "uint64",
+            "ownership": "value",
+            "mutability": "value",
+            "aliasing": "not_applicable"
+          },
+          {
+            "name": "column",
+            "type": "uint64",
+            "ownership": "value",
+            "mutability": "value",
+            "aliasing": "not_applicable"
+          }
+        ],
+        "return_type": "uint64",
+        "return_ownership": "value",
+        "borrow_from": null
+      },
+      "dynamic": {
+        "export": "ffiNmodMatrixEntry"
+      },
+      "native": {
+        "symbol": "sagejs_nmod_matrix_entry",
+        "return_type": "uint64_t",
+        "arguments": [
+          {
+            "source": "matrix",
+            "abi_type": "sagejs_nmod_matrix_t",
+            "direction": "in",
+            "adapter": null
+          },
+          {
+            "source": "row",
+            "abi_type": "uint64_t",
+            "direction": "in",
+            "adapter": null
+          },
+          {
+            "source": "column",
+            "abi_type": "uint64_t",
+            "direction": "in",
+            "adapter": null
+          }
+        ]
+      },
+      "effects": {
+        "pure": true,
+        "deterministic": true,
+        "thread_safe": true,
+        "may_allocate": false,
+        "may_raise": [],
+        "writes": []
+      },
+      "result": {
+        "domain": "direct",
+        "success": [],
+        "absence": null
+      },
+      "errors": {
+        "exception": null,
+        "message": null
+      },
+      "exceptions": {
+        "policy": "none",
+        "failure_status": null
+      },
+      "targets": {
+        "dynamic": true,
+        "native": true,
+        "wasm": true
+      }
+    },
+    {
+      "id": "nmod_matrix_set_entry",
+      "python_name": "nmod_matrix_set_entry",
+      "signature": {
+        "parameters": [
+          {
+            "name": "matrix",
+            "type": "NmodMatrix",
+            "ownership": "borrowed_mut",
+            "mutability": "write",
+            "aliasing": "allowed"
+          },
+          {
+            "name": "row",
+            "type": "uint64",
+            "ownership": "value",
+            "mutability": "value",
+            "aliasing": "not_applicable"
+          },
+          {
+            "name": "column",
+            "type": "uint64",
+            "ownership": "value",
+            "mutability": "value",
+            "aliasing": "not_applicable"
+          },
+          {
+            "name": "value",
+            "type": "uint64",
+            "ownership": "value",
+            "mutability": "value",
+            "aliasing": "not_applicable"
+          }
+        ],
+        "return_type": "bool",
+        "return_ownership": "value",
+        "borrow_from": null
+      },
+      "dynamic": {
+        "export": "ffiNmodMatrixSetEntry"
+      },
+      "native": {
+        "symbol": "sagejs_nmod_matrix_set_entry",
+        "return_type": "int",
+        "arguments": [
+          {
+            "source": "matrix",
+            "abi_type": "sagejs_nmod_matrix_t",
+            "direction": "in",
+            "adapter": null
+          },
+          {
+            "source": "row",
+            "abi_type": "uint64_t",
+            "direction": "in",
+            "adapter": null
+          },
+          {
+            "source": "column",
+            "abi_type": "uint64_t",
+            "direction": "in",
+            "adapter": null
+          },
+          {
+            "source": "value",
+            "abi_type": "uint64_t",
+            "direction": "in",
+            "adapter": null
+          }
+        ]
+      },
+      "effects": {
+        "pure": false,
+        "deterministic": true,
+        "thread_safe": true,
+        "may_allocate": false,
+        "may_raise": [
+          "ValueError"
+        ],
+        "writes": [
+          "matrix"
+        ]
+      },
+      "result": {
+        "domain": "status",
+        "success": [
+          1
+        ],
+        "absence": null
+      },
+      "errors": {
+        "exception": "ValueError",
+        "message": "invalid word-prime matrix entry"
+      },
+      "exceptions": {
+        "policy": "none",
+        "failure_status": null
+      },
+      "targets": {
+        "dynamic": true,
+        "native": true,
+        "wasm": true
+      }
+    },
+    {
+      "id": "nmod_matrix_copy",
+      "python_name": "nmod_matrix_copy",
+      "signature": {
+        "parameters": [
+          {
+            "name": "source",
+            "type": "NmodMatrix",
+            "ownership": "borrowed",
+            "mutability": "read",
+            "aliasing": "allowed"
+          }
+        ],
+        "return_type": "NmodMatrix",
+        "return_ownership": "owned",
+        "borrow_from": null
+      },
+      "dynamic": {
+        "export": "ffiNmodMatrixCopy"
+      },
+      "native": {
+        "symbol": "sagejs_nmod_matrix_init_set",
+        "return_type": "int",
+        "arguments": [
+          {
+            "source": "result",
+            "abi_type": "sagejs_nmod_matrix_t",
+            "direction": "out",
+            "adapter": null
+          },
+          {
+            "source": "source",
+            "abi_type": "sagejs_nmod_matrix_t",
+            "direction": "in",
+            "adapter": null
+          }
+        ]
+      },
+      "effects": {
+        "pure": false,
+        "deterministic": true,
+        "thread_safe": true,
+        "may_allocate": true,
+        "may_raise": [
+          "RuntimeError"
+        ],
+        "writes": []
+      },
+      "result": {
+        "domain": "status",
+        "success": [
+          1
+        ],
+        "absence": null
+      },
+      "errors": {
+        "exception": "RuntimeError",
+        "message": "word-prime matrix copy failed"
+      },
+      "exceptions": {
+        "policy": "none",
+        "failure_status": null
+      },
+      "targets": {
+        "dynamic": true,
+        "native": true,
+        "wasm": true
+      }
+    },
+    {
+      "id": "nmod_matrix_equal",
+      "python_name": "nmod_matrix_equal",
+      "signature": {
+        "parameters": [
+          {
+            "name": "left",
+            "type": "NmodMatrix",
+            "ownership": "borrowed",
+            "mutability": "read",
+            "aliasing": "allowed"
+          },
+          {
+            "name": "right",
+            "type": "NmodMatrix",
+            "ownership": "borrowed",
+            "mutability": "read",
+            "aliasing": "allowed"
+          }
+        ],
+        "return_type": "bool",
+        "return_ownership": "value",
+        "borrow_from": null
+      },
+      "dynamic": {
+        "export": "ffiNmodMatrixEqual"
+      },
+      "native": {
+        "symbol": "sagejs_nmod_matrix_equal",
+        "return_type": "int",
+        "arguments": [
+          {
+            "source": "left",
+            "abi_type": "sagejs_nmod_matrix_t",
+            "direction": "in",
+            "adapter": null
+          },
+          {
+            "source": "right",
+            "abi_type": "sagejs_nmod_matrix_t",
+            "direction": "in",
+            "adapter": null
+          }
+        ]
+      },
+      "effects": {
+        "pure": true,
+        "deterministic": true,
+        "thread_safe": true,
+        "may_allocate": false,
+        "may_raise": [],
+        "writes": []
+      },
+      "result": {
+        "domain": "direct",
+        "success": [],
+        "absence": null
+      },
+      "errors": {
+        "exception": null,
+        "message": null
+      },
+      "exceptions": {
+        "policy": "none",
+        "failure_status": null
+      },
+      "targets": {
+        "dynamic": true,
+        "native": true,
+        "wasm": true
+      }
+    },
+    {
+      "id": "nmod_matrix_is_zero",
+      "python_name": "nmod_matrix_is_zero",
+      "signature": {
+        "parameters": [
+          {
+            "name": "matrix",
+            "type": "NmodMatrix",
+            "ownership": "borrowed",
+            "mutability": "read",
+            "aliasing": "allowed"
+          }
+        ],
+        "return_type": "bool",
+        "return_ownership": "value",
+        "borrow_from": null
+      },
+      "dynamic": {
+        "export": "ffiNmodMatrixIsZero"
+      },
+      "native": {
+        "symbol": "sagejs_nmod_matrix_is_zero",
+        "return_type": "int",
+        "arguments": [
+          {
+            "source": "matrix",
+            "abi_type": "sagejs_nmod_matrix_t",
+            "direction": "in",
+            "adapter": null
+          }
+        ]
+      },
+      "effects": {
+        "pure": true,
+        "deterministic": true,
+        "thread_safe": true,
+        "may_allocate": false,
+        "may_raise": [],
+        "writes": []
+      },
+      "result": {
+        "domain": "direct",
+        "success": [],
+        "absence": null
+      },
+      "errors": {
+        "exception": null,
+        "message": null
+      },
+      "exceptions": {
+        "policy": "none",
+        "failure_status": null
+      },
+      "targets": {
+        "dynamic": true,
+        "native": true,
+        "wasm": true
+      }
+    },
+    {
+      "id": "nmod_matrix_is_one",
+      "python_name": "nmod_matrix_is_one",
+      "signature": {
+        "parameters": [
+          {
+            "name": "matrix",
+            "type": "NmodMatrix",
+            "ownership": "borrowed",
+            "mutability": "read",
+            "aliasing": "allowed"
+          }
+        ],
+        "return_type": "bool",
+        "return_ownership": "value",
+        "borrow_from": null
+      },
+      "dynamic": {
+        "export": "ffiNmodMatrixIsOne"
+      },
+      "native": {
+        "symbol": "sagejs_nmod_matrix_is_one",
+        "return_type": "int",
+        "arguments": [
+          {
+            "source": "matrix",
+            "abi_type": "sagejs_nmod_matrix_t",
+            "direction": "in",
+            "adapter": null
+          }
+        ]
+      },
+      "effects": {
+        "pure": true,
+        "deterministic": true,
+        "thread_safe": true,
+        "may_allocate": false,
+        "may_raise": [],
+        "writes": []
+      },
+      "result": {
+        "domain": "direct",
+        "success": [],
+        "absence": null
+      },
+      "errors": {
+        "exception": null,
+        "message": null
+      },
+      "exceptions": {
+        "policy": "none",
+        "failure_status": null
+      },
+      "targets": {
+        "dynamic": true,
+        "native": true,
+        "wasm": true
+      }
+    },
+    {
+      "id": "nmod_matrix_nonzero_count",
+      "python_name": "nmod_matrix_nonzero_count",
+      "signature": {
+        "parameters": [
+          {
+            "name": "matrix",
+            "type": "NmodMatrix",
+            "ownership": "borrowed",
+            "mutability": "read",
+            "aliasing": "allowed"
+          }
+        ],
+        "return_type": "uint64",
+        "return_ownership": "value",
+        "borrow_from": null
+      },
+      "dynamic": {
+        "export": "ffiNmodMatrixNonzeroCount"
+      },
+      "native": {
+        "symbol": "sagejs_nmod_matrix_nonzero_count",
+        "return_type": "uint64_t",
+        "arguments": [
+          {
+            "source": "matrix",
+            "abi_type": "sagejs_nmod_matrix_t",
+            "direction": "in",
+            "adapter": null
+          }
+        ]
+      },
+      "effects": {
+        "pure": true,
+        "deterministic": true,
+        "thread_safe": true,
+        "may_allocate": false,
+        "may_raise": [],
+        "writes": []
+      },
+      "result": {
+        "domain": "direct",
+        "success": [],
+        "absence": null
+      },
+      "errors": {
+        "exception": null,
+        "message": null
+      },
+      "exceptions": {
+        "policy": "none",
+        "failure_status": null
+      },
+      "targets": {
+        "dynamic": true,
+        "native": true,
+        "wasm": true
+      }
+    },
+    {
+      "id": "nmod_matrix_add",
+      "python_name": "nmod_matrix_add",
+      "signature": {
+        "parameters": [
+          {
+            "name": "left",
+            "type": "NmodMatrix",
+            "ownership": "borrowed",
+            "mutability": "read",
+            "aliasing": "allowed"
+          },
+          {
+            "name": "right",
+            "type": "NmodMatrix",
+            "ownership": "borrowed",
+            "mutability": "read",
+            "aliasing": "allowed"
+          }
+        ],
+        "return_type": "NmodMatrix",
+        "return_ownership": "owned",
+        "borrow_from": null
+      },
+      "dynamic": {
+        "export": "ffiNmodMatrixAdd"
+      },
+      "native": {
+        "symbol": "sagejs_nmod_matrix_add",
+        "return_type": "int",
+        "arguments": [
+          {
+            "source": "result",
+            "abi_type": "sagejs_nmod_matrix_t",
+            "direction": "out",
+            "adapter": null
+          },
+          {
+            "source": "left",
+            "abi_type": "sagejs_nmod_matrix_t",
+            "direction": "in",
+            "adapter": null
+          },
+          {
+            "source": "right",
+            "abi_type": "sagejs_nmod_matrix_t",
+            "direction": "in",
+            "adapter": null
+          }
+        ]
+      },
+      "effects": {
+        "pure": false,
+        "deterministic": true,
+        "thread_safe": true,
+        "may_allocate": true,
+        "may_raise": [
+          "ValueError"
+        ],
+        "writes": []
+      },
+      "result": {
+        "domain": "status",
+        "success": [
+          1
+        ],
+        "absence": null
+      },
+      "errors": {
+        "exception": "ValueError",
+        "message": "word-prime matrix add mismatch"
+      },
+      "exceptions": {
+        "policy": "none",
+        "failure_status": null
+      },
+      "targets": {
+        "dynamic": true,
+        "native": true,
+        "wasm": true
+      }
+    },
+    {
+      "id": "nmod_matrix_sub",
+      "python_name": "nmod_matrix_sub",
+      "signature": {
+        "parameters": [
+          {
+            "name": "left",
+            "type": "NmodMatrix",
+            "ownership": "borrowed",
+            "mutability": "read",
+            "aliasing": "allowed"
+          },
+          {
+            "name": "right",
+            "type": "NmodMatrix",
+            "ownership": "borrowed",
+            "mutability": "read",
+            "aliasing": "allowed"
+          }
+        ],
+        "return_type": "NmodMatrix",
+        "return_ownership": "owned",
+        "borrow_from": null
+      },
+      "dynamic": {
+        "export": "ffiNmodMatrixSub"
+      },
+      "native": {
+        "symbol": "sagejs_nmod_matrix_sub",
+        "return_type": "int",
+        "arguments": [
+          {
+            "source": "result",
+            "abi_type": "sagejs_nmod_matrix_t",
+            "direction": "out",
+            "adapter": null
+          },
+          {
+            "source": "left",
+            "abi_type": "sagejs_nmod_matrix_t",
+            "direction": "in",
+            "adapter": null
+          },
+          {
+            "source": "right",
+            "abi_type": "sagejs_nmod_matrix_t",
+            "direction": "in",
+            "adapter": null
+          }
+        ]
+      },
+      "effects": {
+        "pure": false,
+        "deterministic": true,
+        "thread_safe": true,
+        "may_allocate": true,
+        "may_raise": [
+          "ValueError"
+        ],
+        "writes": []
+      },
+      "result": {
+        "domain": "status",
+        "success": [
+          1
+        ],
+        "absence": null
+      },
+      "errors": {
+        "exception": "ValueError",
+        "message": "word-prime matrix subtract mismatch"
+      },
+      "exceptions": {
+        "policy": "none",
+        "failure_status": null
+      },
+      "targets": {
+        "dynamic": true,
+        "native": true,
+        "wasm": true
+      }
+    },
+    {
+      "id": "nmod_matrix_neg",
+      "python_name": "nmod_matrix_neg",
+      "signature": {
+        "parameters": [
+          {
+            "name": "source",
+            "type": "NmodMatrix",
+            "ownership": "borrowed",
+            "mutability": "read",
+            "aliasing": "allowed"
+          }
+        ],
+        "return_type": "NmodMatrix",
+        "return_ownership": "owned",
+        "borrow_from": null
+      },
+      "dynamic": {
+        "export": "ffiNmodMatrixNeg"
+      },
+      "native": {
+        "symbol": "sagejs_nmod_matrix_neg",
+        "return_type": "int",
+        "arguments": [
+          {
+            "source": "result",
+            "abi_type": "sagejs_nmod_matrix_t",
+            "direction": "out",
+            "adapter": null
+          },
+          {
+            "source": "source",
+            "abi_type": "sagejs_nmod_matrix_t",
+            "direction": "in",
+            "adapter": null
+          }
+        ]
+      },
+      "effects": {
+        "pure": false,
+        "deterministic": true,
+        "thread_safe": true,
+        "may_allocate": true,
+        "may_raise": [
+          "RuntimeError"
+        ],
+        "writes": []
+      },
+      "result": {
+        "domain": "status",
+        "success": [
+          1
+        ],
+        "absence": null
+      },
+      "errors": {
+        "exception": "RuntimeError",
+        "message": "word-prime matrix negation failed"
+      },
+      "exceptions": {
+        "policy": "none",
+        "failure_status": null
+      },
+      "targets": {
+        "dynamic": true,
+        "native": true,
+        "wasm": true
+      }
+    },
+    {
+      "id": "nmod_matrix_scalar_mul",
+      "python_name": "nmod_matrix_scalar_mul",
+      "signature": {
+        "parameters": [
+          {
+            "name": "source",
+            "type": "NmodMatrix",
+            "ownership": "borrowed",
+            "mutability": "read",
+            "aliasing": "allowed"
+          },
+          {
+            "name": "scalar",
+            "type": "uint64",
+            "ownership": "value",
+            "mutability": "value",
+            "aliasing": "not_applicable"
+          }
+        ],
+        "return_type": "NmodMatrix",
+        "return_ownership": "owned",
+        "borrow_from": null
+      },
+      "dynamic": {
+        "export": "ffiNmodMatrixScalarMul"
+      },
+      "native": {
+        "symbol": "sagejs_nmod_matrix_scalar_mul",
+        "return_type": "int",
+        "arguments": [
+          {
+            "source": "result",
+            "abi_type": "sagejs_nmod_matrix_t",
+            "direction": "out",
+            "adapter": null
+          },
+          {
+            "source": "source",
+            "abi_type": "sagejs_nmod_matrix_t",
+            "direction": "in",
+            "adapter": null
+          },
+          {
+            "source": "scalar",
+            "abi_type": "uint64_t",
+            "direction": "in",
+            "adapter": null
+          }
+        ]
+      },
+      "effects": {
+        "pure": false,
+        "deterministic": true,
+        "thread_safe": true,
+        "may_allocate": true,
+        "may_raise": [
+          "ValueError"
+        ],
+        "writes": []
+      },
+      "result": {
+        "domain": "status",
+        "success": [
+          1
+        ],
+        "absence": null
+      },
+      "errors": {
+        "exception": "ValueError",
+        "message": "invalid word-prime matrix scalar"
+      },
+      "exceptions": {
+        "policy": "none",
+        "failure_status": null
+      },
+      "targets": {
+        "dynamic": true,
+        "native": true,
+        "wasm": true
+      }
+    },
+    {
+      "id": "nmod_matrix_transpose",
+      "python_name": "nmod_matrix_transpose",
+      "signature": {
+        "parameters": [
+          {
+            "name": "source",
+            "type": "NmodMatrix",
+            "ownership": "borrowed",
+            "mutability": "read",
+            "aliasing": "allowed"
+          }
+        ],
+        "return_type": "NmodMatrix",
+        "return_ownership": "owned",
+        "borrow_from": null
+      },
+      "dynamic": {
+        "export": "ffiNmodMatrixTranspose"
+      },
+      "native": {
+        "symbol": "sagejs_nmod_matrix_transpose",
+        "return_type": "int",
+        "arguments": [
+          {
+            "source": "result",
+            "abi_type": "sagejs_nmod_matrix_t",
+            "direction": "out",
+            "adapter": null
+          },
+          {
+            "source": "source",
+            "abi_type": "sagejs_nmod_matrix_t",
+            "direction": "in",
+            "adapter": null
+          }
+        ]
+      },
+      "effects": {
+        "pure": false,
+        "deterministic": true,
+        "thread_safe": true,
+        "may_allocate": true,
+        "may_raise": [
+          "RuntimeError"
+        ],
+        "writes": []
+      },
+      "result": {
+        "domain": "status",
+        "success": [
+          1
+        ],
+        "absence": null
+      },
+      "errors": {
+        "exception": "RuntimeError",
+        "message": "word-prime matrix transpose failed"
+      },
+      "exceptions": {
+        "policy": "none",
+        "failure_status": null
+      },
+      "targets": {
+        "dynamic": true,
+        "native": true,
+        "wasm": true
+      }
+    },
+    {
+      "id": "nmod_matrix_mul",
+      "python_name": "nmod_matrix_mul",
+      "signature": {
+        "parameters": [
+          {
+            "name": "left",
+            "type": "NmodMatrix",
+            "ownership": "borrowed",
+            "mutability": "read",
+            "aliasing": "allowed"
+          },
+          {
+            "name": "right",
+            "type": "NmodMatrix",
+            "ownership": "borrowed",
+            "mutability": "read",
+            "aliasing": "allowed"
+          }
+        ],
+        "return_type": "NmodMatrix",
+        "return_ownership": "owned",
+        "borrow_from": null
+      },
+      "dynamic": {
+        "export": "ffiNmodMatrixMul"
+      },
+      "native": {
+        "symbol": "sagejs_nmod_matrix_mul",
+        "return_type": "int",
+        "arguments": [
+          {
+            "source": "result",
+            "abi_type": "sagejs_nmod_matrix_t",
+            "direction": "out",
+            "adapter": null
+          },
+          {
+            "source": "left",
+            "abi_type": "sagejs_nmod_matrix_t",
+            "direction": "in",
+            "adapter": null
+          },
+          {
+            "source": "right",
+            "abi_type": "sagejs_nmod_matrix_t",
+            "direction": "in",
+            "adapter": null
+          }
+        ]
+      },
+      "effects": {
+        "pure": false,
+        "deterministic": true,
+        "thread_safe": true,
+        "may_allocate": true,
+        "may_raise": [
+          "ValueError"
+        ],
+        "writes": []
+      },
+      "result": {
+        "domain": "status",
+        "success": [
+          1
+        ],
+        "absence": null
+      },
+      "errors": {
+        "exception": "ValueError",
+        "message": "word-prime matrix multiply mismatch"
+      },
+      "exceptions": {
+        "policy": "none",
+        "failure_status": null
+      },
+      "targets": {
+        "dynamic": true,
+        "native": true,
+        "wasm": true
+      }
+    },
+    {
+      "id": "nmod_matrix_inv",
+      "python_name": "nmod_matrix_inv",
+      "signature": {
+        "parameters": [
+          {
+            "name": "source",
+            "type": "NmodMatrix",
+            "ownership": "borrowed",
+            "mutability": "read",
+            "aliasing": "allowed"
+          }
+        ],
+        "return_type": "NmodMatrix",
+        "return_ownership": "owned",
+        "borrow_from": null
+      },
+      "dynamic": {
+        "export": "ffiNmodMatrixInv"
+      },
+      "native": {
+        "symbol": "sagejs_nmod_matrix_inv",
+        "return_type": "int",
+        "arguments": [
+          {
+            "source": "result",
+            "abi_type": "sagejs_nmod_matrix_t",
+            "direction": "out",
+            "adapter": null
+          },
+          {
+            "source": "source",
+            "abi_type": "sagejs_nmod_matrix_t",
+            "direction": "in",
+            "adapter": null
+          }
+        ]
+      },
+      "effects": {
+        "pure": false,
+        "deterministic": true,
+        "thread_safe": true,
+        "may_allocate": true,
+        "may_raise": [
+          "ValueError"
+        ],
+        "writes": []
+      },
+      "result": {
+        "domain": "status",
+        "success": [
+          1
+        ],
+        "absence": null
+      },
+      "errors": {
+        "exception": "ValueError",
+        "message": "word-prime matrix is singular"
+      },
+      "exceptions": {
+        "policy": "none",
+        "failure_status": null
+      },
+      "targets": {
+        "dynamic": true,
+        "native": true,
+        "wasm": true
+      }
+    },
+    {
+      "id": "nmod_matrix_solve",
+      "python_name": "nmod_matrix_solve",
+      "signature": {
+        "parameters": [
+          {
+            "name": "left",
+            "type": "NmodMatrix",
+            "ownership": "borrowed",
+            "mutability": "read",
+            "aliasing": "allowed"
+          },
+          {
+            "name": "right",
+            "type": "NmodMatrix",
+            "ownership": "borrowed",
+            "mutability": "read",
+            "aliasing": "allowed"
+          }
+        ],
+        "return_type": "NmodMatrix",
+        "return_ownership": "owned",
+        "borrow_from": null
+      },
+      "dynamic": {
+        "export": "ffiNmodMatrixSolve"
+      },
+      "native": {
+        "symbol": "sagejs_nmod_matrix_solve",
+        "return_type": "int",
+        "arguments": [
+          {
+            "source": "result",
+            "abi_type": "sagejs_nmod_matrix_t",
+            "direction": "out",
+            "adapter": null
+          },
+          {
+            "source": "left",
+            "abi_type": "sagejs_nmod_matrix_t",
+            "direction": "in",
+            "adapter": null
+          },
+          {
+            "source": "right",
+            "abi_type": "sagejs_nmod_matrix_t",
+            "direction": "in",
+            "adapter": null
+          }
+        ]
+      },
+      "effects": {
+        "pure": false,
+        "deterministic": true,
+        "thread_safe": true,
+        "may_allocate": true,
+        "may_raise": [
+          "ValueError"
+        ],
+        "writes": []
+      },
+      "result": {
+        "domain": "status",
+        "success": [
+          1
+        ],
+        "absence": null
+      },
+      "errors": {
+        "exception": "ValueError",
+        "message": "word-prime matrix solve failed"
+      },
+      "exceptions": {
+        "policy": "none",
+        "failure_status": null
+      },
+      "targets": {
+        "dynamic": true,
+        "native": true,
+        "wasm": true
+      }
+    },
+    {
+      "id": "nmod_matrix_rank",
+      "python_name": "nmod_matrix_rank",
+      "signature": {
+        "parameters": [
+          {
+            "name": "matrix",
+            "type": "NmodMatrix",
+            "ownership": "borrowed_mut",
+            "mutability": "write",
+            "aliasing": "allowed"
+          }
+        ],
+        "return_type": "uint64",
+        "return_ownership": "value",
+        "borrow_from": null
+      },
+      "dynamic": {
+        "export": "ffiNmodMatrixRank"
+      },
+      "native": {
+        "symbol": "sagejs_nmod_matrix_rank",
+        "return_type": "uint64_t",
+        "arguments": [
+          {
+            "source": "matrix",
+            "abi_type": "sagejs_nmod_matrix_t",
+            "direction": "in",
+            "adapter": null
+          }
+        ]
+      },
+      "effects": {
+        "pure": false,
+        "deterministic": true,
+        "thread_safe": true,
+        "may_allocate": true,
+        "may_raise": [],
+        "writes": [
+          "matrix"
+        ]
+      },
+      "result": {
+        "domain": "direct",
+        "success": [],
+        "absence": null
+      },
+      "errors": {
+        "exception": null,
+        "message": null
+      },
+      "exceptions": {
+        "policy": "none",
+        "failure_status": null
+      },
+      "targets": {
+        "dynamic": true,
+        "native": true,
+        "wasm": true
+      }
+    },
+    {
+      "id": "nmod_matrix_rref",
+      "python_name": "nmod_matrix_rref",
+      "signature": {
+        "parameters": [
+          {
+            "name": "source",
+            "type": "NmodMatrix",
+            "ownership": "borrowed",
+            "mutability": "read",
+            "aliasing": "allowed"
+          }
+        ],
+        "return_type": "NmodMatrix",
+        "return_ownership": "owned",
+        "borrow_from": null
+      },
+      "dynamic": {
+        "export": "ffiNmodMatrixRref"
+      },
+      "native": {
+        "symbol": "sagejs_nmod_matrix_rref",
+        "return_type": "int",
+        "arguments": [
+          {
+            "source": "result",
+            "abi_type": "sagejs_nmod_matrix_t",
+            "direction": "out",
+            "adapter": null
+          },
+          {
+            "source": "source",
+            "abi_type": "sagejs_nmod_matrix_t",
+            "direction": "in",
+            "adapter": null
+          }
+        ]
+      },
+      "effects": {
+        "pure": false,
+        "deterministic": true,
+        "thread_safe": true,
+        "may_allocate": true,
+        "may_raise": [
+          "RuntimeError"
+        ],
+        "writes": []
+      },
+      "result": {
+        "domain": "status",
+        "success": [
+          1
+        ],
+        "absence": null
+      },
+      "errors": {
+        "exception": "RuntimeError",
+        "message": "word-prime matrix RREF failed"
+      },
+      "exceptions": {
+        "policy": "none",
+        "failure_status": null
+      },
+      "targets": {
+        "dynamic": true,
+        "native": true,
+        "wasm": true
+      }
+    },
+    {
+      "id": "nmod_matrix_right_kernel",
+      "python_name": "nmod_matrix_right_kernel",
+      "signature": {
+        "parameters": [
+          {
+            "name": "source",
+            "type": "NmodMatrix",
+            "ownership": "borrowed",
+            "mutability": "read",
+            "aliasing": "allowed"
+          }
+        ],
+        "return_type": "NmodMatrix",
+        "return_ownership": "owned",
+        "borrow_from": null
+      },
+      "dynamic": {
+        "export": "ffiNmodMatrixRightKernel"
+      },
+      "native": {
+        "symbol": "sagejs_nmod_matrix_right_kernel",
+        "return_type": "int",
+        "arguments": [
+          {
+            "source": "result",
+            "abi_type": "sagejs_nmod_matrix_t",
+            "direction": "out",
+            "adapter": null
+          },
+          {
+            "source": "source",
+            "abi_type": "sagejs_nmod_matrix_t",
+            "direction": "in",
+            "adapter": null
+          }
+        ]
+      },
+      "effects": {
+        "pure": false,
+        "deterministic": true,
+        "thread_safe": true,
+        "may_allocate": true,
+        "may_raise": [
+          "RuntimeError"
+        ],
+        "writes": []
+      },
+      "result": {
+        "domain": "status",
+        "success": [
+          1
+        ],
+        "absence": null
+      },
+      "errors": {
+        "exception": "RuntimeError",
+        "message": "word-prime right kernel failed"
+      },
+      "exceptions": {
+        "policy": "none",
+        "failure_status": null
+      },
+      "targets": {
+        "dynamic": true,
+        "native": true,
+        "wasm": true
+      }
+    },
+    {
+      "id": "nmod_matrix_det",
+      "python_name": "nmod_matrix_det",
+      "signature": {
+        "parameters": [
+          {
+            "name": "source",
+            "type": "NmodMatrix",
+            "ownership": "borrowed",
+            "mutability": "read",
+            "aliasing": "allowed"
+          }
+        ],
+        "return_type": "uint64",
+        "return_ownership": "value",
+        "borrow_from": null
+      },
+      "dynamic": {
+        "export": "ffiNmodMatrixDet"
+      },
+      "native": {
+        "symbol": "sagejs_nmod_matrix_det",
+        "return_type": "uint64_t",
+        "arguments": [
+          {
+            "source": "source",
+            "abi_type": "sagejs_nmod_matrix_t",
+            "direction": "in",
+            "adapter": null
+          }
+        ]
+      },
+      "effects": {
+        "pure": true,
+        "deterministic": true,
+        "thread_safe": true,
+        "may_allocate": true,
+        "may_raise": [],
+        "writes": []
+      },
+      "result": {
+        "domain": "direct",
+        "success": [],
+        "absence": null
+      },
+      "errors": {
+        "exception": null,
+        "message": null
+      },
+      "exceptions": {
+        "policy": "none",
+        "failure_status": null
+      },
+      "targets": {
+        "dynamic": true,
+        "native": true,
+        "wasm": true
+      }
+    },
+    {
+      "id": "nmod_matrix_trace",
+      "python_name": "nmod_matrix_trace",
+      "signature": {
+        "parameters": [
+          {
+            "name": "source",
+            "type": "NmodMatrix",
+            "ownership": "borrowed",
+            "mutability": "read",
+            "aliasing": "allowed"
+          }
+        ],
+        "return_type": "uint64",
+        "return_ownership": "value",
+        "borrow_from": null
+      },
+      "dynamic": {
+        "export": "ffiNmodMatrixTrace"
+      },
+      "native": {
+        "symbol": "sagejs_nmod_matrix_trace",
+        "return_type": "uint64_t",
+        "arguments": [
+          {
+            "source": "source",
+            "abi_type": "sagejs_nmod_matrix_t",
+            "direction": "in",
+            "adapter": null
+          }
+        ]
+      },
+      "effects": {
+        "pure": true,
+        "deterministic": true,
+        "thread_safe": true,
+        "may_allocate": false,
+        "may_raise": [],
+        "writes": []
+      },
+      "result": {
+        "domain": "direct",
+        "success": [],
+        "absence": null
+      },
+      "errors": {
+        "exception": null,
+        "message": null
+      },
+      "exceptions": {
+        "policy": "none",
+        "failure_status": null
+      },
+      "targets": {
+        "dynamic": true,
+        "native": true,
+        "wasm": true
+      }
+    },
+    {
+      "id": "nmod_matrix_select_rows",
+      "python_name": "nmod_matrix_select_rows",
+      "signature": {
+        "parameters": [
+          {
+            "name": "source",
+            "type": "NmodMatrix",
+            "ownership": "borrowed",
+            "mutability": "read",
+            "aliasing": "allowed"
+          },
+          {
+            "name": "indices",
+            "type": "UInt64Buffer",
+            "ownership": "borrowed",
+            "mutability": "read",
+            "aliasing": "allowed"
+          },
+          {
+            "name": "count",
+            "type": "uint64",
+            "ownership": "value",
+            "mutability": "value",
+            "aliasing": "not_applicable"
+          }
+        ],
+        "return_type": "NmodMatrix",
+        "return_ownership": "owned",
+        "borrow_from": null
+      },
+      "dynamic": {
+        "export": "ffiNmodMatrixSelectRows"
+      },
+      "native": {
+        "symbol": "sagejs_nmod_matrix_select_rows",
+        "return_type": "int",
+        "arguments": [
+          {
+            "source": "result",
+            "abi_type": "sagejs_nmod_matrix_t",
+            "direction": "out",
+            "adapter": null
+          },
+          {
+            "source": "source",
+            "abi_type": "sagejs_nmod_matrix_t",
+            "direction": "in",
+            "adapter": null
+          },
+          {
+            "source": "indices",
+            "abi_type": "uint64_t_ptr",
+            "direction": "in",
+            "adapter": {
+              "kind": "packed_slice",
+              "data": "indices",
+              "length": "count",
+              "access": "read",
+              "aliasing": "allowed",
+              "transactional": false
+            }
+          },
+          {
+            "source": "count",
+            "abi_type": "uint64_t",
+            "direction": "in",
+            "adapter": null
+          }
+        ]
+      },
+      "effects": {
+        "pure": false,
+        "deterministic": true,
+        "thread_safe": true,
+        "may_allocate": true,
+        "may_raise": [
+          "IndexError"
+        ],
+        "writes": []
+      },
+      "result": {
+        "domain": "status",
+        "success": [
+          1
+        ],
+        "absence": null
+      },
+      "errors": {
+        "exception": "IndexError",
+        "message": "word-prime row index is out of range"
+      },
+      "exceptions": {
+        "policy": "none",
+        "failure_status": null
+      },
+      "targets": {
+        "dynamic": true,
+        "native": true,
+        "wasm": true
+      }
+    },
+    {
+      "id": "nmod_matrix_select_columns",
+      "python_name": "nmod_matrix_select_columns",
+      "signature": {
+        "parameters": [
+          {
+            "name": "source",
+            "type": "NmodMatrix",
+            "ownership": "borrowed",
+            "mutability": "read",
+            "aliasing": "allowed"
+          },
+          {
+            "name": "indices",
+            "type": "UInt64Buffer",
+            "ownership": "borrowed",
+            "mutability": "read",
+            "aliasing": "allowed"
+          },
+          {
+            "name": "count",
+            "type": "uint64",
+            "ownership": "value",
+            "mutability": "value",
+            "aliasing": "not_applicable"
+          }
+        ],
+        "return_type": "NmodMatrix",
+        "return_ownership": "owned",
+        "borrow_from": null
+      },
+      "dynamic": {
+        "export": "ffiNmodMatrixSelectColumns"
+      },
+      "native": {
+        "symbol": "sagejs_nmod_matrix_select_columns",
+        "return_type": "int",
+        "arguments": [
+          {
+            "source": "result",
+            "abi_type": "sagejs_nmod_matrix_t",
+            "direction": "out",
+            "adapter": null
+          },
+          {
+            "source": "source",
+            "abi_type": "sagejs_nmod_matrix_t",
+            "direction": "in",
+            "adapter": null
+          },
+          {
+            "source": "indices",
+            "abi_type": "uint64_t_ptr",
+            "direction": "in",
+            "adapter": {
+              "kind": "packed_slice",
+              "data": "indices",
+              "length": "count",
+              "access": "read",
+              "aliasing": "allowed",
+              "transactional": false
+            }
+          },
+          {
+            "source": "count",
+            "abi_type": "uint64_t",
+            "direction": "in",
+            "adapter": null
+          }
+        ]
+      },
+      "effects": {
+        "pure": false,
+        "deterministic": true,
+        "thread_safe": true,
+        "may_allocate": true,
+        "may_raise": [
+          "IndexError"
+        ],
+        "writes": []
+      },
+      "result": {
+        "domain": "status",
+        "success": [
+          1
+        ],
+        "absence": null
+      },
+      "errors": {
+        "exception": "IndexError",
+        "message": "word-prime column index is out of range"
+      },
+      "exceptions": {
+        "policy": "none",
+        "failure_status": null
+      },
+      "targets": {
+        "dynamic": true,
+        "native": true,
+        "wasm": true
+      }
+    },
+    {
+      "id": "nmod_matrix_set_block",
+      "python_name": "nmod_matrix_set_block",
+      "signature": {
+        "parameters": [
+          {
+            "name": "target",
+            "type": "NmodMatrix",
+            "ownership": "borrowed_mut",
+            "mutability": "write",
+            "aliasing": "allowed"
+          },
+          {
+            "name": "target_row",
+            "type": "uint64",
+            "ownership": "value",
+            "mutability": "value",
+            "aliasing": "not_applicable"
+          },
+          {
+            "name": "target_column",
+            "type": "uint64",
+            "ownership": "value",
+            "mutability": "value",
+            "aliasing": "not_applicable"
+          },
+          {
+            "name": "source",
+            "type": "NmodMatrix",
+            "ownership": "borrowed",
+            "mutability": "read",
+            "aliasing": "allowed"
+          }
+        ],
+        "return_type": "bool",
+        "return_ownership": "value",
+        "borrow_from": null
+      },
+      "dynamic": {
+        "export": "ffiNmodMatrixSetBlock"
+      },
+      "native": {
+        "symbol": "sagejs_nmod_matrix_set_block",
+        "return_type": "int",
+        "arguments": [
+          {
+            "source": "target",
+            "abi_type": "sagejs_nmod_matrix_t",
+            "direction": "in",
+            "adapter": null
+          },
+          {
+            "source": "target_row",
+            "abi_type": "uint64_t",
+            "direction": "in",
+            "adapter": null
+          },
+          {
+            "source": "target_column",
+            "abi_type": "uint64_t",
+            "direction": "in",
+            "adapter": null
+          },
+          {
+            "source": "source",
+            "abi_type": "sagejs_nmod_matrix_t",
+            "direction": "in",
+            "adapter": null
+          }
+        ]
+      },
+      "effects": {
+        "pure": false,
+        "deterministic": true,
+        "thread_safe": true,
+        "may_allocate": false,
+        "may_raise": [
+          "ValueError"
+        ],
+        "writes": [
+          "target"
+        ]
+      },
+      "result": {
+        "domain": "status",
+        "success": [
+          1
+        ],
+        "absence": null
+      },
+      "errors": {
+        "exception": "ValueError",
+        "message": "word-prime matrix block mismatch"
+      },
+      "exceptions": {
+        "policy": "none",
+        "failure_status": null
+      },
+      "targets": {
+        "dynamic": true,
+        "native": true,
+        "wasm": true
+      }
+    },
+    {
+      "id": "nmod_matrix_mul_vector",
+      "python_name": "nmod_matrix_mul_vector",
+      "signature": {
+        "parameters": [
+          {
+            "name": "matrix",
+            "type": "NmodMatrix",
+            "ownership": "borrowed",
+            "mutability": "read",
+            "aliasing": "allowed"
+          },
+          {
+            "name": "vector",
+            "type": "UInt64Buffer",
+            "ownership": "borrowed",
+            "mutability": "read",
+            "aliasing": "allowed"
+          },
+          {
+            "name": "length",
+            "type": "uint64",
+            "ownership": "value",
+            "mutability": "value",
+            "aliasing": "not_applicable"
+          }
+        ],
+        "return_type": "FlintByteRegion",
+        "return_ownership": "owned",
+        "borrow_from": null
+      },
+      "dynamic": {
+        "export": "ffiNmodMatrixMulVector"
+      },
+      "native": {
+        "symbol": "sagejs_nmod_matrix_mul_column_vector",
+        "return_type": "int",
+        "arguments": [
+          {
+            "source": "result",
+            "abi_type": "sagejs_flint_byte_region_t",
+            "direction": "out",
+            "adapter": null
+          },
+          {
+            "source": "matrix",
+            "abi_type": "sagejs_nmod_matrix_t",
+            "direction": "in",
+            "adapter": null
+          },
+          {
+            "source": "vector",
+            "abi_type": "uint64_t_ptr",
+            "direction": "in",
+            "adapter": {
+              "kind": "packed_slice",
+              "data": "vector",
+              "length": "length",
+              "access": "read",
+              "aliasing": "allowed",
+              "transactional": false
+            }
+          },
+          {
+            "source": "length",
+            "abi_type": "uint64_t",
+            "direction": "in",
+            "adapter": null
+          }
+        ]
+      },
+      "effects": {
+        "pure": false,
+        "deterministic": true,
+        "thread_safe": true,
+        "may_allocate": true,
+        "may_raise": [
+          "ValueError"
+        ],
+        "writes": []
+      },
+      "result": {
+        "domain": "status",
+        "success": [
+          1
+        ],
+        "absence": null
+      },
+      "errors": {
+        "exception": "ValueError",
+        "message": "word-prime matrix-vector mismatch"
+      },
+      "exceptions": {
+        "policy": "none",
+        "failure_status": null
+      },
+      "targets": {
+        "dynamic": true,
+        "native": true,
+        "wasm": true
+      }
+    },
+    {
+      "id": "nmod_vector_mul_matrix",
+      "python_name": "nmod_vector_mul_matrix",
+      "signature": {
+        "parameters": [
+          {
+            "name": "vector",
+            "type": "UInt64Buffer",
+            "ownership": "borrowed",
+            "mutability": "read",
+            "aliasing": "allowed"
+          },
+          {
+            "name": "length",
+            "type": "uint64",
+            "ownership": "value",
+            "mutability": "value",
+            "aliasing": "not_applicable"
+          },
+          {
+            "name": "matrix",
+            "type": "NmodMatrix",
+            "ownership": "borrowed",
+            "mutability": "read",
+            "aliasing": "allowed"
+          }
+        ],
+        "return_type": "FlintByteRegion",
+        "return_ownership": "owned",
+        "borrow_from": null
+      },
+      "dynamic": {
+        "export": "ffiNmodVectorMulMatrix"
+      },
+      "native": {
+        "symbol": "sagejs_nmod_row_vector_mul_matrix",
+        "return_type": "int",
+        "arguments": [
+          {
+            "source": "result",
+            "abi_type": "sagejs_flint_byte_region_t",
+            "direction": "out",
+            "adapter": null
+          },
+          {
+            "source": "vector",
+            "abi_type": "uint64_t_ptr",
+            "direction": "in",
+            "adapter": {
+              "kind": "packed_slice",
+              "data": "vector",
+              "length": "length",
+              "access": "read",
+              "aliasing": "allowed",
+              "transactional": false
+            }
+          },
+          {
+            "source": "length",
+            "abi_type": "uint64_t",
+            "direction": "in",
+            "adapter": null
+          },
+          {
+            "source": "matrix",
+            "abi_type": "sagejs_nmod_matrix_t",
+            "direction": "in",
+            "adapter": null
+          }
+        ]
+      },
+      "effects": {
+        "pure": false,
+        "deterministic": true,
+        "thread_safe": true,
+        "may_allocate": true,
+        "may_raise": [
+          "ValueError"
+        ],
+        "writes": []
+      },
+      "result": {
+        "domain": "status",
+        "success": [
+          1
+        ],
+        "absence": null
+      },
+      "errors": {
+        "exception": "ValueError",
+        "message": "word-prime vector-matrix mismatch"
+      },
+      "exceptions": {
+        "policy": "none",
+        "failure_status": null
+      },
+      "targets": {
+        "dynamic": true,
+        "native": true,
+        "wasm": true
+      }
+    },
+    {
+      "id": "nmod_matrix_stack",
+      "python_name": "nmod_matrix_stack",
+      "signature": {
+        "parameters": [
+          {
+            "name": "top",
+            "type": "NmodMatrix",
+            "ownership": "borrowed",
+            "mutability": "read",
+            "aliasing": "allowed"
+          },
+          {
+            "name": "bottom",
+            "type": "NmodMatrix",
+            "ownership": "borrowed",
+            "mutability": "read",
+            "aliasing": "allowed"
+          }
+        ],
+        "return_type": "NmodMatrix",
+        "return_ownership": "owned",
+        "borrow_from": null
+      },
+      "dynamic": {
+        "export": "ffiNmodMatrixStack"
+      },
+      "native": {
+        "symbol": "sagejs_nmod_matrix_stack",
+        "return_type": "int",
+        "arguments": [
+          {
+            "source": "result",
+            "abi_type": "sagejs_nmod_matrix_t",
+            "direction": "out",
+            "adapter": null
+          },
+          {
+            "source": "top",
+            "abi_type": "sagejs_nmod_matrix_t",
+            "direction": "in",
+            "adapter": null
+          },
+          {
+            "source": "bottom",
+            "abi_type": "sagejs_nmod_matrix_t",
+            "direction": "in",
+            "adapter": null
+          }
+        ]
+      },
+      "effects": {
+        "pure": false,
+        "deterministic": true,
+        "thread_safe": true,
+        "may_allocate": true,
+        "may_raise": [
+          "ValueError"
+        ],
+        "writes": []
+      },
+      "result": {
+        "domain": "status",
+        "success": [
+          1
+        ],
+        "absence": null
+      },
+      "errors": {
+        "exception": "ValueError",
+        "message": "word-prime matrix stack mismatch"
+      },
+      "exceptions": {
+        "policy": "none",
+        "failure_status": null
+      },
+      "targets": {
+        "dynamic": true,
+        "native": true,
+        "wasm": true
+      }
+    },
+    {
+      "id": "nmod_matrix_augment",
+      "python_name": "nmod_matrix_augment",
+      "signature": {
+        "parameters": [
+          {
+            "name": "left",
+            "type": "NmodMatrix",
+            "ownership": "borrowed",
+            "mutability": "read",
+            "aliasing": "allowed"
+          },
+          {
+            "name": "right",
+            "type": "NmodMatrix",
+            "ownership": "borrowed",
+            "mutability": "read",
+            "aliasing": "allowed"
+          }
+        ],
+        "return_type": "NmodMatrix",
+        "return_ownership": "owned",
+        "borrow_from": null
+      },
+      "dynamic": {
+        "export": "ffiNmodMatrixAugment"
+      },
+      "native": {
+        "symbol": "sagejs_nmod_matrix_augment",
+        "return_type": "int",
+        "arguments": [
+          {
+            "source": "result",
+            "abi_type": "sagejs_nmod_matrix_t",
+            "direction": "out",
+            "adapter": null
+          },
+          {
+            "source": "left",
+            "abi_type": "sagejs_nmod_matrix_t",
+            "direction": "in",
+            "adapter": null
+          },
+          {
+            "source": "right",
+            "abi_type": "sagejs_nmod_matrix_t",
+            "direction": "in",
+            "adapter": null
+          }
+        ]
+      },
+      "effects": {
+        "pure": false,
+        "deterministic": true,
+        "thread_safe": true,
+        "may_allocate": true,
+        "may_raise": [
+          "ValueError"
+        ],
+        "writes": []
+      },
+      "result": {
+        "domain": "status",
+        "success": [
+          1
+        ],
+        "absence": null
+      },
+      "errors": {
+        "exception": "ValueError",
+        "message": "word-prime matrix augment mismatch"
+      },
+      "exceptions": {
+        "policy": "none",
+        "failure_status": null
+      },
+      "targets": {
+        "dynamic": true,
+        "native": true,
+        "wasm": true
+      }
+    },
+    {
+      "id": "nmod_matrix_swap_rows",
+      "python_name": "nmod_matrix_swap_rows",
+      "signature": {
+        "parameters": [
+          {
+            "name": "matrix",
+            "type": "NmodMatrix",
+            "ownership": "borrowed_mut",
+            "mutability": "write",
+            "aliasing": "allowed"
+          },
+          {
+            "name": "first",
+            "type": "uint64",
+            "ownership": "value",
+            "mutability": "value",
+            "aliasing": "not_applicable"
+          },
+          {
+            "name": "second",
+            "type": "uint64",
+            "ownership": "value",
+            "mutability": "value",
+            "aliasing": "not_applicable"
+          }
+        ],
+        "return_type": "bool",
+        "return_ownership": "value",
+        "borrow_from": null
+      },
+      "dynamic": {
+        "export": "ffiNmodMatrixSwapRows"
+      },
+      "native": {
+        "symbol": "sagejs_nmod_matrix_swap_rows",
+        "return_type": "int",
+        "arguments": [
+          {
+            "source": "matrix",
+            "abi_type": "sagejs_nmod_matrix_t",
+            "direction": "in",
+            "adapter": null
+          },
+          {
+            "source": "first",
+            "abi_type": "uint64_t",
+            "direction": "in",
+            "adapter": null
+          },
+          {
+            "source": "second",
+            "abi_type": "uint64_t",
+            "direction": "in",
+            "adapter": null
+          }
+        ]
+      },
+      "effects": {
+        "pure": false,
+        "deterministic": true,
+        "thread_safe": true,
+        "may_allocate": false,
+        "may_raise": [
+          "IndexError"
+        ],
+        "writes": [
+          "matrix"
+        ]
+      },
+      "result": {
+        "domain": "status",
+        "success": [
+          1
+        ],
+        "absence": null
+      },
+      "errors": {
+        "exception": "IndexError",
+        "message": "word-prime row index is out of range"
+      },
+      "exceptions": {
+        "policy": "none",
+        "failure_status": null
+      },
+      "targets": {
+        "dynamic": true,
+        "native": true,
+        "wasm": true
+      }
+    },
+    {
+      "id": "nmod_matrix_swap_columns",
+      "python_name": "nmod_matrix_swap_columns",
+      "signature": {
+        "parameters": [
+          {
+            "name": "matrix",
+            "type": "NmodMatrix",
+            "ownership": "borrowed_mut",
+            "mutability": "write",
+            "aliasing": "allowed"
+          },
+          {
+            "name": "first",
+            "type": "uint64",
+            "ownership": "value",
+            "mutability": "value",
+            "aliasing": "not_applicable"
+          },
+          {
+            "name": "second",
+            "type": "uint64",
+            "ownership": "value",
+            "mutability": "value",
+            "aliasing": "not_applicable"
+          }
+        ],
+        "return_type": "bool",
+        "return_ownership": "value",
+        "borrow_from": null
+      },
+      "dynamic": {
+        "export": "ffiNmodMatrixSwapColumns"
+      },
+      "native": {
+        "symbol": "sagejs_nmod_matrix_swap_columns",
+        "return_type": "int",
+        "arguments": [
+          {
+            "source": "matrix",
+            "abi_type": "sagejs_nmod_matrix_t",
+            "direction": "in",
+            "adapter": null
+          },
+          {
+            "source": "first",
+            "abi_type": "uint64_t",
+            "direction": "in",
+            "adapter": null
+          },
+          {
+            "source": "second",
+            "abi_type": "uint64_t",
+            "direction": "in",
+            "adapter": null
+          }
+        ]
+      },
+      "effects": {
+        "pure": false,
+        "deterministic": true,
+        "thread_safe": true,
+        "may_allocate": false,
+        "may_raise": [
+          "IndexError"
+        ],
+        "writes": [
+          "matrix"
+        ]
+      },
+      "result": {
+        "domain": "status",
+        "success": [
+          1
+        ],
+        "absence": null
+      },
+      "errors": {
+        "exception": "IndexError",
+        "message": "word-prime column index is out of range"
+      },
+      "exceptions": {
+        "policy": "none",
+        "failure_status": null
+      },
+      "targets": {
+        "dynamic": true,
+        "native": true,
+        "wasm": true
+      }
+    },
+    {
+      "id": "nmod_matrix_format",
+      "python_name": "nmod_matrix_format",
+      "signature": {
+        "parameters": [
+          {
+            "name": "source",
+            "type": "NmodMatrix",
+            "ownership": "borrowed",
+            "mutability": "read",
+            "aliasing": "allowed"
+          }
+        ],
+        "return_type": "FlintByteRegion",
+        "return_ownership": "owned",
+        "borrow_from": null
+      },
+      "dynamic": {
+        "export": "ffiNmodMatrixFormat"
+      },
+      "native": {
+        "symbol": "sagejs_nmod_matrix_format",
+        "return_type": "int",
+        "arguments": [
+          {
+            "source": "result",
+            "abi_type": "sagejs_flint_byte_region_t",
+            "direction": "out",
+            "adapter": null
+          },
+          {
+            "source": "source",
+            "abi_type": "sagejs_nmod_matrix_t",
+            "direction": "in",
+            "adapter": null
+          }
+        ]
+      },
+      "effects": {
+        "pure": false,
+        "deterministic": true,
+        "thread_safe": true,
+        "may_allocate": true,
+        "may_raise": [
+          "RuntimeError"
+        ],
+        "writes": []
+      },
+      "result": {
+        "domain": "status",
+        "success": [
+          1
+        ],
+        "absence": null
+      },
+      "errors": {
+        "exception": "RuntimeError",
+        "message": "word-prime matrix formatting failed"
+      },
+      "exceptions": {
+        "policy": "none",
+        "failure_status": null
+      },
+      "targets": {
+        "dynamic": true,
+        "native": true,
+        "wasm": true
+      }
+    },
+    {
+      "id": "nmod_matrix_serialize",
+      "python_name": "nmod_matrix_serialize",
+      "signature": {
+        "parameters": [
+          {
+            "name": "source",
+            "type": "NmodMatrix",
+            "ownership": "borrowed",
+            "mutability": "read",
+            "aliasing": "allowed"
+          },
+          {
+            "name": "width",
+            "type": "uint64",
+            "ownership": "value",
+            "mutability": "value",
+            "aliasing": "not_applicable"
+          }
+        ],
+        "return_type": "FlintByteRegion",
+        "return_ownership": "owned",
+        "borrow_from": null
+      },
+      "dynamic": {
+        "export": "ffiNmodMatrixSerialize"
+      },
+      "native": {
+        "symbol": "sagejs_nmod_matrix_serialize",
+        "return_type": "int",
+        "arguments": [
+          {
+            "source": "result",
+            "abi_type": "sagejs_flint_byte_region_t",
+            "direction": "out",
+            "adapter": null
+          },
+          {
+            "source": "source",
+            "abi_type": "sagejs_nmod_matrix_t",
+            "direction": "in",
+            "adapter": null
+          },
+          {
+            "source": "width",
+            "abi_type": "uint64_t",
+            "direction": "in",
+            "adapter": null
+          }
+        ]
+      },
+      "effects": {
+        "pure": false,
+        "deterministic": true,
+        "thread_safe": true,
+        "may_allocate": true,
+        "may_raise": [
+          "ValueError",
+          "OverflowError"
+        ],
+        "writes": []
+      },
+      "result": {
+        "domain": "status",
+        "success": [
+          1
+        ],
+        "absence": null
+      },
+      "errors": {
+        "exception": "ValueError",
+        "message": "invalid word-prime matrix serialization width"
+      },
+      "exceptions": {
+        "policy": "none",
+        "failure_status": null
+      },
+      "targets": {
+        "dynamic": true,
+        "native": true,
+        "wasm": true
+      }
+    },
+    {
+      "id": "nmod_matrix_charpoly",
+      "python_name": "nmod_matrix_charpoly",
+      "signature": {
+        "parameters": [
+          {
+            "name": "source",
+            "type": "NmodMatrix",
+            "ownership": "borrowed",
+            "mutability": "read",
+            "aliasing": "allowed"
+          }
+        ],
+        "return_type": "FlintByteRegion",
+        "return_ownership": "owned",
+        "borrow_from": null
+      },
+      "dynamic": {
+        "export": "ffiNmodMatrixCharpoly"
+      },
+      "native": {
+        "symbol": "sagejs_nmod_matrix_charpoly",
+        "return_type": "int",
+        "arguments": [
+          {
+            "source": "result",
+            "abi_type": "sagejs_flint_byte_region_t",
+            "direction": "out",
+            "adapter": null
+          },
+          {
+            "source": "source",
+            "abi_type": "sagejs_nmod_matrix_t",
+            "direction": "in",
+            "adapter": null
+          }
+        ]
+      },
+      "effects": {
+        "pure": false,
+        "deterministic": true,
+        "thread_safe": true,
+        "may_allocate": true,
+        "may_raise": [
+          "ValueError"
+        ],
+        "writes": []
+      },
+      "result": {
+        "domain": "status",
+        "success": [
+          1
+        ],
+        "absence": null
+      },
+      "errors": {
+        "exception": "ValueError",
+        "message": "word-prime characteristic polynomial requires a square matrix"
+      },
+      "exceptions": {
+        "policy": "none",
+        "failure_status": null
+      },
+      "targets": {
+        "dynamic": true,
+        "native": true,
+        "wasm": true
+      }
+    },
+    {
+      "id": "nmod_matrix_minpoly",
+      "python_name": "nmod_matrix_minpoly",
+      "signature": {
+        "parameters": [
+          {
+            "name": "source",
+            "type": "NmodMatrix",
+            "ownership": "borrowed",
+            "mutability": "read",
+            "aliasing": "allowed"
+          }
+        ],
+        "return_type": "FlintByteRegion",
+        "return_ownership": "owned",
+        "borrow_from": null
+      },
+      "dynamic": {
+        "export": "ffiNmodMatrixMinpoly"
+      },
+      "native": {
+        "symbol": "sagejs_nmod_matrix_minpoly",
+        "return_type": "int",
+        "arguments": [
+          {
+            "source": "result",
+            "abi_type": "sagejs_flint_byte_region_t",
+            "direction": "out",
+            "adapter": null
+          },
+          {
+            "source": "source",
+            "abi_type": "sagejs_nmod_matrix_t",
+            "direction": "in",
+            "adapter": null
+          }
+        ]
+      },
+      "effects": {
+        "pure": false,
+        "deterministic": true,
+        "thread_safe": true,
+        "may_allocate": true,
+        "may_raise": [
+          "ValueError"
+        ],
+        "writes": []
+      },
+      "result": {
+        "domain": "status",
+        "success": [
+          1
+        ],
+        "absence": null
+      },
+      "errors": {
+        "exception": "ValueError",
+        "message": "word-prime minimal polynomial requires a square matrix"
       },
       "exceptions": {
         "policy": "none",
