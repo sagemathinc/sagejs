@@ -441,7 +441,7 @@ function lowerExpression(node, context, operations) {
       left: left.name, right: right.name, type: left.type });
     return { name: target, type: "bool" };
   }
-  expect(context, node, ["+", "-", "*", "%"].includes(node.operator),
+  expect(context, node, ["+", "-", "*", "%", "//"].includes(node.operator),
     `unsupported source-transparent operator ${node.operator}`);
   expect(
     context,
