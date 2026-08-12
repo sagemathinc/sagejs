@@ -2515,14 +2515,12 @@ class Matrix(sage.Element):
             )
         if self._has_packed_rational_storage():
             if self._has_fmpq_matrix_resource():
-                ffi = _flint_ffi_module()
-                numerator = ffi.fmpq_matrix_entry_numerator(
-                    self._rational_resource(), row, col
+                parts = (
+                    _dense_rational_flint_module().flint_dense_rational_matrix_entry(
+                        self._rational_resource(), row, col
+                    )
                 )
-                denominator = ffi.fmpq_matrix_entry_denominator(
-                    self._rational_resource(), row, col
-                )
-                return _untyped(sage.QQ)(numerator, denominator)
+                return _untyped(sage.QQ)(parts[0], parts[1])
             kernel = _dense_rational_kernel_module().dense_rational_matrix_get
             numerators, denominators = self._rational_kernel_parts(kernel)
             parts = kernel(
