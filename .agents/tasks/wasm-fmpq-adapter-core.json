@@ -39,14 +39,65 @@
     "macos-arm64": "required"
   },
   "validation": [
+    "node --test test/ffi-wasm-fmpq-resource-core.cjs",
     "pnpm architecture:check",
     "pnpm test:portable",
     "pnpm test:baselib:strict"
   ],
-  "runs": [],
+  "runs": [
+    {
+      "command": "node --test test/ffi-wasm-fmpq-resource-core.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.162,
+      "started_at": "2026-08-12T00:37:51.355Z",
+      "commit": "889c0eb77e52ed9e4c860ede45c5c62d7ed719ed",
+      "workspace_fingerprint": "f11718f678bf3b13faaa01579aafc023f3fb61fbf723bf14463c3d66ecfd8a01",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 35.799,
+      "started_at": "2026-08-12T00:38:00.356Z",
+      "commit": "889c0eb77e52ed9e4c860ede45c5c62d7ed719ed",
+      "workspace_fingerprint": "f11718f678bf3b13faaa01579aafc023f3fb61fbf723bf14463c3d66ecfd8a01",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 12.253,
+      "started_at": "2026-08-12T00:39:35.101Z",
+      "commit": "889c0eb77e52ed9e4c860ede45c5c62d7ed719ed",
+      "workspace_fingerprint": "f11718f678bf3b13faaa01579aafc023f3fb61fbf723bf14463c3d66ecfd8a01",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 12.069,
+      "started_at": "2026-08-12T00:39:51.155Z",
+      "commit": "889c0eb77e52ed9e4c860ede45c5c62d7ed719ed",
+      "workspace_fingerprint": "f11718f678bf3b13faaa01579aafc023f3fb61fbf723bf14463c3d66ecfd8a01",
+      "platform": "linux-x64"
+    }
+  ],
   "handoff": {
-    "summary": "",
-    "risks": [],
-    "next_steps": []
+    "summary": "Extended the declaration-driven Wasm host-adapter generator from the original constructor-only resource prototype to exact rational FLINT resources. The generated adapter now supports borrowed and mutable-borrowed resource arguments, exact arbitrary-precision Integer ingress and egress through validated decimal byte staging, copied byte-region ingress and transfer, status-checked owned results, generation-checked handles, deterministic idempotent close, and FinalizationRegistry fallback. FmpqMatrix, FmpqValue, and FlintByteRegion declarations now opt into Wasm for construction, mutation, entry access, copy, multiplication, RREF, rank, determinant, native formatting, serialization, and deserialization. A real CoWasm/FLINT test compiles and links the generated C and exercises exact values larger than 64 bits, arithmetic, transactional failure, transfer lifetime, serialization, and complete resource cleanup.",
+    "risks": [
+      "The generated staging and exact-output buffers intentionally retain their high-water allocation for the lifetime of a Wasm module instance; they do not grow per call, but workloads with one exceptionally large value retain that capacity until the instance is discarded.",
+      "FinalizationRegistry remains nondeterministic by JavaScript design and is only a fallback; production callers and generated wrappers should continue to close resources explicitly or through structured ownership helpers.",
+      "Status-returning resource declarations rely on the existing transactional constructor contract: on failure the declared foreign result must not remain initialized. The current FLINT helpers satisfy this contract, but future external-library declarations must preserve it.",
+      "The full portable tier reaches and passes the new real-WASI test but remains red on the branch's pre-existing stale website/reference-data.json artifact (21 examples are marked unverified at base commit bcba716 while the website test requires zero); the focused test, architecture checks, and strict Python suite are independently green."
+    ],
+    "next_steps": [
+      "Have the distribution lane consume the generated manifest in packages/flint-wasm and expose the selected FmpqMatrix/FmpqValue/FlintByteRegion backend through the ordinary browser runtime.",
+      "Add browser lifecycle and public dense QQ matrix smoke tests after distribution integration, including explicit close and finalizer fallback.",
+      "Consider a documented structured ownership helper for compiled Python so deterministic close is the normal generated path rather than application boilerplate."
+    ]
   }
 }
