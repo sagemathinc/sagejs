@@ -3,7 +3,7 @@
 
 const assert = require("node:assert/strict");
 const { existsSync, mkdtempSync, rmSync, writeFileSync } = require("node:fs");
-const { tmpdir } = require("node:os");
+const { cpus, hostname, release, tmpdir, totalmem } = require("node:os");
 const { join, resolve } = require("node:path");
 const { spawnSync } = require("node:child_process");
 const { performance } = require("node:perf_hooks");
@@ -12,7 +12,14 @@ const { createSage } = require("../dist/tools/kernel.js");
 const root = resolve(__dirname, "..");
 const warmSamples = 5;
 const check = process.argv.includes("--check");
+const retain = process.argv.includes("--retain");
 const sage = process.env.SAGE || "/home/user/bin/sagelite";
+const retainedResult = join(
+  root,
+  "bench",
+  "results",
+  "linux-x64-qq-sparse-random-completion-v1.json",
+);
 
 const cases = [
   {
@@ -66,6 +73,42 @@ function parseMeasurement(repr) {
   const match = /^\(([-+0-9.eE]+), ['"]([0-9a-f]{64})['"]\)$/.exec(repr);
   assert.ok(match, `unexpected Sage.js measurement ${repr}`);
   return { elapsed_ms: Number(match[1]), digest: match[2] };
+}
+
+function gitOutput(args) {
+  const result = spawnSync("git", args, {
+    cwd: root,
+    encoding: "utf8",
+  });
+  assert.equal(result.status, 0, result.stderr || result.stdout);
+  return result.stdout.trim();
+}
+
+function benchmarkEnvironment() {
+  const processors = cpus();
+  const modelCounts = {};
+  for (const processor of processors) {
+    modelCounts[processor.model] = (modelCounts[processor.model] || 0) + 1;
+  }
+  return {
+    host: hostname(),
+    platform: process.platform,
+    arch: process.arch,
+    os_release: release(),
+    cpu_models: modelCounts,
+    logical_cpu_count: processors.length,
+    total_memory_bytes: totalmem(),
+    node: process.version,
+    sage_oracle: existsSync(sage) ? sage : null,
+  };
+}
+
+function sourceRevision() {
+  return {
+    git_commit: gitOutput(["rev-parse", "HEAD"]),
+    git_tree: gitOutput(["rev-parse", "HEAD^{tree}"]),
+    dirty: gitOutput(["status", "--porcelain"]) !== "",
+  };
 }
 
 async function sageJsMeasurements({ nativeDisabled, includeScaling }) {
@@ -176,6 +219,10 @@ function sageMeasurements() {
 }
 
 async function main() {
+  // Capture provenance before an optional --retain write changes the result
+  // file. A retained benchmark is authoritative only when `dirty` is false.
+  const environment = benchmarkEnvironment();
+  const source = sourceRevision();
   const rssBefore = process.memoryUsage().rss;
   const compiled = await sageJsMeasurements({
     nativeDisabled: false,
@@ -201,12 +248,8 @@ async function main() {
   }
   const report = {
     schema: "sagejs.benchmark/qq-sparse-random-completion-v1",
-    environment: {
-      platform: process.platform,
-      arch: process.arch,
-      node: process.version,
-      sage_oracle: sageOracle === null ? null : sage,
-    },
+    source_revision: source,
+    environment,
     workload: {
       warm_samples: warmSamples,
       policy: "session startup and helper setup are separate; each workload has one first sample followed by five same-session warm samples",
@@ -278,7 +321,18 @@ async function main() {
     }
   }
 
-  console.log(JSON.stringify(report, null, 2));
+  const serialized = `${JSON.stringify(report, null, 2)}\n`;
+  if (retain) {
+    assert.equal(
+      report.source_revision.dirty,
+      false,
+      "refusing to retain a benchmark from a dirty source tree",
+    );
+    writeFileSync(retainedResult, serialized);
+    console.log(`retained ${retainedResult}`);
+  } else {
+    process.stdout.write(serialized);
+  }
 }
 
 main().catch((error) => {
