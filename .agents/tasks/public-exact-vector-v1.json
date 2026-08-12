@@ -1,0 +1,128 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "public-exact-vector-v1",
+  "title": "Public Exact Vector v1 contract",
+  "lane": "integration",
+  "status": "proposed",
+  "owner": "user",
+  "objective": "Freeze a Sage-compatible, domain-aware canonical storage and operation contract for public exact dense vectors over ZZ, QQ, GF(2), and small GF(p), including direct packed/resource construction, mutation, arithmetic, dot products, matrix-vector result publication, serialization, lifecycle, portable fallback, and cross-host performance gates without changing active shared FFI declarations",
+  "base_commit": "9ba858a415d6ca6c91538865526bae4effc0cb34",
+  "claims": [
+    ".agents/tasks/public-exact-vector-v1.json"
+  ],
+  "dependencies": [
+    "word-prime-matrix-public",
+    "exact-poly-bulk-impl"
+  ],
+  "references": [
+    "src/baselib/matrix.py",
+    "src/lib/sagejs/linear_algebra/matrix_vector_public.py",
+    "src/lib/sagejs/linear_algebra/vector_contract.py",
+    "docs/audits/linear-algebra-api.json",
+    "bench/linear-algebra-api-audit.cjs",
+    "bench/linear-algebra-api-ratchets.json",
+    "tools/serialization.ts",
+    "SageMath:sage/modules/vector_integer_dense.pyx",
+    "SageMath:sage/modules/vector_rational_dense.pyx",
+    "SageMath:sage/modules/vector_mod2_dense.pyx",
+    "SageMath:sage/modules/vector_modn_dense.pyx",
+    "TODO.md",
+    "planned-claim:src/baselib/matrix.py",
+    "planned-claim:src/lib/sagejs/linear_algebra/vector_public.py",
+    "planned-claim:src/lib/sagejs/kernels/vector/",
+    "planned-claim:packages/flint/include/sagejs/exact_vector_ffi.h",
+    "planned-claim:ffi/flint.ffi.py",
+    "planned-claim:ffi/flint.ffi.json",
+    "planned-claim:packages/flint/generated/ffi_host.py",
+    "planned-claim:src/lib/sagejs/ffi/flint.py",
+    "planned-claim:src/baselib/sagejs/ffi/flint.py",
+    "planned-claim:tools/serialization.ts",
+    "planned-claim:docs/audits/linear-algebra-api.json",
+    "planned-claim:bench/linear-algebra-api-audit.cjs",
+    "planned-claim:bench/linear-algebra-api-ratchets.json",
+    "planned-claim:test/public-exact-vector.cjs",
+    "planned-claim:test/exact-vector-resource-ffi.cjs",
+    "planned-claim:test/exact-vector-serialization.cjs",
+    "planned-claim:test/exact-vector-lifecycle.cjs",
+    "planned-claim:bench/public-exact-vector.cjs",
+    "planned-claim:architecture/native-boundaries.json",
+    "planned-claim:architecture/native-kernels.json",
+    "planned-claim:pyrightconfig.json",
+    "planned-claim:test/node-test-manifest.cjs",
+    "representation:ZZ owns exactly one generated FmpzVector resource containing a variable-size fmpz array and logical length",
+    "representation:QQ owns exactly one generated FmpqVector resource containing normalized variable-size fmpq entries and logical length",
+    "representation:GF(2) owns a compiler-managed word-packed UInt64Buffer plus logical bit length, with unused high bits canonically zero",
+    "representation:other supported small GF(p) owns a compiler-managed UInt64Buffer of canonical residues using the same modulus range and cutoff as dense prime matrices",
+    "representation:unsupported rings and generated-unavailable hosts retain one ordinary host list; no public vector persistently stores both packed/resource and host-list forms",
+    "construction-gate:consume each general iterable exactly once, preserve observable coercion and exception order, accept empty vectors, and provide checked fast paths for exact lists, packed payloads, and matrix result resources",
+    "mutation-gate:default vectors are mutable; integer and slice assignment are transactional after parent coercion; immutable vectors reject every write without changing storage",
+    "sequence-gate:negative indices, arbitrary slices, list(copy=True or False), iteration, repr, equality, copy, row, and column agree with Sage and never expose mutable internal storage",
+    "arithmetic-gate:add, subtract, negate, scalar multiply on either side, dot product, and change_ring execute one whole-vector operation over canonical storage and return a fresh mutable result",
+    "coercion-gate:mixed ZZ/QQ operations widen canonically to QQ; supported ZZ/QQ to GF(p) changes use one bulk conversion; incompatible finite fields and dimensions fail with Sage-compatible types and messages",
+    "matrix-vector-gate:ZZ and QQ matrix-vector operations consume and return vector resources directly; GF(2) and small GF(p) consume and return canonical packed buffers directly; no result path constructs a host element list",
+    "matrix-selection-gate:Matrix.row, column, rows, columns, solve results, kernels, and cached immutable vectors construct the canonical vector representation directly and never inspect Vector._entries",
+    "serialization-gate:SagePack exports each resource or buffer in one bulk operation with versioned canonical fmpz, fmpq, bit-word, or residue payloads; it never calls list or serializes resource handles",
+    "serialization-gate:round trips preserve parent identity, entries, and mutability; existing vector payloads remain decodable through the current public format contract",
+    "lifecycle-gate:resource construction failure is transactional; copies have independent ownership; explicit internal close and finalization are idempotent; random construction, mutation, copy, arithmetic, serialization, and collection are sanitizer clean",
+    "fallback-gate:capability-disabled, native Windows, and WebAssembly hosts preserve public semantics using one tested dynamic-list or portable-resource representation selected at construction",
+    "architecture-gate:no native compiler implementation files change, no algorithm-specific handwritten N-API is added, generated host adapters remain inspectable, and another agent can add a vector operation by declaration plus ordinary Python",
+    "complexity-gate:exact bulk ingress and export are linear in total encoded bytes, including one million small entries plus one very large skewed entry; no uniform limb-capacity allocation is introduced",
+    "memory-gate:GF(2) canonical payload uses ceil(n/64) words and small GF(p) uses at most one uint64 word per entry; host element lists exist only as explicit snapshots",
+    "benchmark:record process startup, first construction, warm construction, mutation, copy, list, iteration, repr, add, subtract, negate, dot, scalar multiply, change_ring, serialization, and matrix-vector publication at lengths 0, 1, 100000, and 1000000",
+    "benchmark:include small and 1024-bit ZZ/QQ entries, highly skewed exact entries, GF(2), GF(7), and primes immediately around the dense-matrix packed/resource cutoff",
+    "benchmark-gate:at length 100000 warm add, dot, and scalar multiply are at most 2 times SageMath's median on the same host after applying a 0.25 ms measurement floor",
+    "benchmark-gate:matrix-vector result publication adds at most 10 percent to the direct backend operation median and performs no proportional host scalar allocation",
+    "benchmark-gate:publish Linux x64, Linux arm64, and macOS arm64 results and retain the current dynamic-list implementation as a forced differential and performance oracle until deletion"
+  ],
+  "architecture": {
+    "strategy": "mixed",
+    "fallback": "tested-capability",
+    "oracles": [
+      "SageMath dense free-module vector semantics",
+      "current Sage.js public Vector behavior",
+      "generated FLINT matrix-vector resources and compiler-owned prime residue buffers"
+    ],
+    "exceptions": [
+      "FLINT does not expose one universal public vector object, so Sage.js may define generated FmpzVector and FmpqVector representation resources containing library-managed scalar arrays. This is a representation primitive, not handwritten mathematical N-API, and all public operations remain declared.",
+      "GF(2) uses an existing UInt64Buffer primitive as packed words rather than introducing a compiler BitBuffer. The typed-Python layer owns logical length, trailing-bit canonicalization, and bounds checks; a measured limitation must be recorded before changing the compiler."
+    ]
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "fallback",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "node --test test/public-exact-vector.cjs test/exact-vector-resource-ffi.cjs test/exact-vector-serialization.cjs test/exact-vector-lifecycle.cjs",
+    "node bench/public-exact-vector.cjs --check",
+    "node bench/linear-algebra-api-audit.cjs --check",
+    "pnpm ffi:check",
+    "pnpm test:serialization",
+    "pnpm architecture:check",
+    "pnpm test:portable",
+    "pnpm test:baselib:strict",
+    "pnpm ffi:lifecycle:fuzz"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "The public Vector is currently always a Python list of public scalar objects. Every add, subtraction, negation, scalar product, and dot product loops dynamically over that list. Exact matrix-vector calls first encode the list into a temporary byte region and decode the result back into a list, while prime-field products similarly publish packed output as a fresh list of field elements. The linear-algebra audit therefore records Vector as dynamic Python with no typed kernels or generated resources. This proposal freezes a domain-aware replacement: generated variable-size exact-vector resources for ZZ and QQ, a word-packed compiler-owned GF(2) buffer, canonical UInt64 residues for other small prime fields, and an unchanged list fallback for other domains or unavailable capabilities. It claims only this planning manifest because active word-prime matrix and exact-polynomial lanes currently own shared FFI and bootstrap files.",
+    "risks": [
+      "Vector is embedded throughout the monolithic matrix module. Matrix row and column caches currently read and write Vector._entries directly, so replacing only arithmetic would create hidden full-list conversions and representation disagreement. Public integration must remove those private-list assumptions in one coherent slice.",
+      "Dedicated exact-vector resources are new representation primitives even though their entries are mature FLINT/GMP objects. Their declared ownership, resize, mutation, copy, matrix-product, export, and failure behavior must be lifecycle-fuzzed before public adoption.",
+      "A naive GF(2) UInt64Buffer with one word per entry would preserve correctness but miss the central performance and memory goal. The canonical representation must pack 64 logical bits per word, canonicalize its tail, and test hostile lengths around every word boundary.",
+      "The active word-prime matrix lane is changing the packed-versus-nmod modulus boundary and matrix-vector declarations. Vector implementation must consume its reviewed shared cutoff and direct result ABI rather than duplicating a stale constant.",
+      "The active exact-polynomial lane still needs shared FLINT declarations. Starting vector FFI edits before it integrates would create avoidable generated-file conflicts; this proposal deliberately sequences behind both active lanes.",
+      "Current SagePack has a compact QQ-vector special case but ZZ and finite-field vectors generally call list. New encodings must retain old decoding and prove deterministic bytes without accidentally serializing hidden storage or losing immutability.",
+      "Sage vector semantics include negative indices, fresh nonsharing slices, transactional slice assignment, mutability, parent-sensitive coercion, and subtle matrix row-cache behavior. Fast paths must remain differential against Sage rather than only the smaller current Sage.js surface."
+    ],
+    "next_steps": [
+      "Stage 1: integrate word-prime-matrix-public and exact-poly-bulk-impl, then rebase this proposal and freeze the resulting dense-prime cutoff, generated resource conventions, and conflict-free file claims.",
+      "Stage 2: create a narrow exact-resource lane for generated FmpzVector and FmpqVector construction, copy, entry access and mutation, bulk export, add/subtract/negate/scalar/dot, change-ring bridges, and direct matrix-vector input/output; do not wire the public Vector yet.",
+      "Stage 3: create a disjoint packed-vector lane implementing ordinary typed-Python GF(2) word packing and small-GF(p) residue buffers, including structural operations, bounds, slicing, tail canonicalization, dynamic same-source fallback, and matrix-vector result buffers without shared FFI edits.",
+      "Stage 4: after both storage lanes pass independent review, take one integration lane over matrix.py, vector_public.py, serialization, audits, and manifests. Give each public vector exactly one backend-selected canonical storage object, remove direct _entries assumptions, and preserve generic-list behavior for all other bases.",
+      "Stage 5: run Sage differential tests, forced fallback tests, sanitizer lifecycle fuzzing, skewed exact-size tests, and retained warm benchmarks on Linux x64, Linux arm64, and the M1 host. Keep the dynamic-list path callable as an oracle until every recorded gate passes, then update the architecture audit and reclaim obsolete paths."
+    ]
+  }
+}
