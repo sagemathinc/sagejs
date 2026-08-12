@@ -1426,7 +1426,7 @@ def ρσ_ffi_call(
                 throw new TypeError("invalid FFI result domain");
             }
             const exceptionClasses = {
-                OverflowError, RuntimeError, TypeError, ValueError
+                IndexError, OverflowError, RuntimeError, TypeError, ValueError
             };
             const exceptionClass = exceptionClasses[error_exception];
             if (
@@ -1802,7 +1802,7 @@ def ρσ_ffi_resource_create(
             );
         });
         const exception_classes = {
-            OverflowError, RuntimeError, TypeError, ValueError
+            IndexError, OverflowError, RuntimeError, TypeError, ValueError
         };
         const exception_class = exception_classes[error_exception];
         if (

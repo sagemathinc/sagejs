@@ -333,6 +333,8 @@
         "flint_extension_polynomial_from_coordinates",
         "flint_extension_polynomial_add",
         "flint_extension_polynomial_multiply",
+        "flint_extension_element_coordinate",
+        "flint_extension_polynomial_coordinate",
         "flint_extension_polynomial_coordinate_sum"
       ],
       "semantic_domain": "word-characteristic finite extension polynomials over generated thread-affine FLINT resources with checked bulk power-basis ingress and safe borrowed traversal",

@@ -11,11 +11,13 @@ from __future__ import annotations
 
 from sagejs.ffi.flint import (
     FqContext,
+    FqElement,
     FqPolynomial,
+    fq_element_coordinate,
     fq_polynomial,
     fq_polynomial_add,
     fq_polynomial_coordinate,
-    fq_polynomial_degree,
+    fq_polynomial_extension_degree,
     fq_polynomial_length,
     fq_polynomial_mul,
 )
@@ -55,14 +57,41 @@ def flint_extension_polynomial_multiply(
 
 
 @native
+def flint_extension_element_coordinate(
+    element: FqElement,
+    basis_index: uint64,
+) -> uint64:
+    """Return one checked power-basis coordinate."""
+    return fq_element_coordinate(element, basis_index)
+
+
+@native
+def flint_extension_polynomial_coordinate(
+    polynomial: FqPolynomial,
+    coefficient_index: uint64,
+    basis_index: uint64,
+) -> uint64:
+    """Return one checked coefficient coordinate."""
+    return fq_polynomial_coordinate(
+        polynomial,
+        coefficient_index,
+        basis_index,
+    )
+
+
+@native
 def flint_extension_polynomial_coordinate_sum(
     polynomial: FqPolynomial,
 ) -> int:
     """Safely borrow and traverse every stored power-basis coordinate."""
     total = 0
     coefficient_count = fq_polynomial_length(polynomial)
-    degree = fq_polynomial_degree(polynomial)
+    extension_degree = fq_polynomial_extension_degree(polynomial)
     for coefficient in range(coefficient_count):
-        for basis in range(degree):
-            total += fq_polynomial_coordinate(polynomial, coefficient, basis)
+        for basis in range(extension_degree):
+            total += fq_polynomial_coordinate(
+                polynomial,
+                coefficient,
+                basis,
+            )
     return total

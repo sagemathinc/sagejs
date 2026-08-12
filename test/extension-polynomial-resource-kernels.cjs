@@ -20,6 +20,26 @@ const witnessPath = join(
 );
 const expectedProduct = [[2n, 1n], [2n, 2n], [0n, 2n], [0n, 1n]];
 
+function decodeCoordinateBytes(bytes) {
+  assert.equal(bytes.subarray(0, 4).toString(), "SJFC");
+  assert.equal(bytes[4], 1);
+  assert.deepEqual(Array.from(bytes.subarray(5, 8)), [0, 0, 0]);
+  const extensionDegree = Number(bytes.readBigUInt64LE(8));
+  const coefficientCount = Number(bytes.readBigUInt64LE(16));
+  assert.equal(bytes.length, 24 + 8 * extensionDegree * coefficientCount);
+  const coordinates = [];
+  for (let coefficient = 0; coefficient < coefficientCount; coefficient += 1) {
+    const row = [];
+    for (let basis = 0; basis < extensionDegree; basis += 1) {
+      row.push(bytes.readBigUInt64LE(
+        24 + 8 * (coefficient * extensionDegree + basis),
+      ));
+    }
+    coordinates.push(row);
+  }
+  return { extensionDegree, coefficientCount, coordinates };
+}
+
 function run(command, args, environment = {}) {
   const result = spawnSync(command, args, {
     cwd: root,
@@ -105,19 +125,38 @@ test("generated extension resources preserve identity and retained contexts", ()
       () => flint.ffiFqPolynomialAdd(left, other),
       /contexts differ/,
     );
+    assert.throws(
+      () => flint.ffiFqPolynomialCoordinate(product, 4n, 0n),
+      /coordinate index out of range/,
+    );
+    assert.throws(
+      () => flint.ffiFqPolynomialCoordinate(product, 0n, 2n),
+      /coordinate index out of range/,
+    );
     const bytes = flint.ffiFqPolynomialCoordinateBytes(product);
     try {
       const copied = flint.ffiFlintByteRegionCopyBytes(bytes);
-      assert.equal(copied.subarray(0, 4).toString(), "SJFC");
-      assert.equal(copied.readBigUInt64LE(8), 2n);
-      assert.equal(copied.readBigUInt64LE(16), 4n);
+      assert.deepEqual(decodeCoordinateBytes(copied), {
+        extensionDegree: 2,
+        coefficientCount: 4,
+        coordinates: expectedProduct,
+      });
     } finally {
       flint.ffiFlintByteRegionClose(bytes);
     }
 
     flint.ffiFqContextClose(context);
     assert.equal(accounted(context), 0n);
-    assert.equal(flint.ffiFqPolynomialCoordinate(product, 3n, 1n), 1n);
+    const retainedSum = flint.ffiFqPolynomialAdd(left, right);
+    resources.push([retainedSum, flint.ffiFqPolynomialClose]);
+    assert.equal(
+      flint.ffiFqPolynomialCoordinate(retainedSum, 1n, 1n),
+      2n,
+    );
+    assert.equal(
+      flint.ffiFqPolynomialCoordinate(product, 3n, 1n),
+      1n,
+    );
     flint.ffiFqContextClose(context);
   } finally {
     closeAll(flint, resources);
@@ -140,6 +179,8 @@ test("typed Python safely borrows and traverses an extension resource", async ()
     "flint_extension_polynomial_from_coordinates",
     "flint_extension_polynomial_add",
     "flint_extension_polynomial_multiply",
+    "flint_extension_element_coordinate",
+    "flint_extension_polynomial_coordinate",
     "flint_extension_polynomial_coordinate_sum",
   ]) {
     assert.equal(module[name].nativeAvailable, true);
@@ -148,7 +189,7 @@ test("typed Python safely borrows and traverses an extension resource", async ()
     assert.ok(fn.foreignDependencies.every((item) => item.startsWith("flint@")));
   }
   const core = readFileSync(compiled.coreSourcePath, "utf8");
-  assert.match(core, /sagejs_fq_polynomial_coordinate/);
+  assert.match(core, /sagejs_fq_polynomial_coordinate_checked/);
   assert.doesNotMatch(core, /\b(?:napi_|node_api|PyObject|Py_|JSValue|v8::)/);
 
   for (const environment of [
@@ -176,4 +217,54 @@ test("generated product coordinates agree with SageMath", () => {
   ].join("; ");
   const actual = JSON.parse(run(sage, ["-c", source]).split(/\r?\n/).at(-1));
   assert.deepEqual(actual, expectedProduct.map((row) => row.map(Number)));
+});
+
+test("production degree-three coordinates agree over GF(125)", () => {
+  const sage = process.env.SAGE_BIN || "/home/user/sagelite/sage";
+  if (!existsSync(sage)) return;
+  const flint = require(packagePath);
+  const modulus = new BigUint64Array([3n, 3n, 0n, 1n]);
+  const leftCoordinates = new BigUint64Array([
+    1n, 2n, 3n,
+    4n, 0n, 1n,
+    2n, 3n, 4n,
+    1n, 1n, 0n,
+  ]);
+  const rightCoordinates = new BigUint64Array([
+    2n, 4n, 1n,
+    0n, 3n, 2n,
+    4n, 1n, 1n,
+  ]);
+  const context = flint.ffiFqContextCreate(modulus, 4n, 5n);
+  const left = flint.ffiFqPolynomialCreate(context, leftCoordinates, 12n, 4n);
+  const right = flint.ffiFqPolynomialCreate(context, rightCoordinates, 9n, 3n);
+  const product = flint.ffiFqPolynomialMul(left, right);
+  try {
+    const actual = [];
+    const count = Number(flint.ffiFqPolynomialLength(product));
+    for (let coefficient = 0; coefficient < count; coefficient += 1) {
+      actual.push(Array.from({ length: 3 }, (_, basis) => Number(
+        flint.ffiFqPolynomialCoordinate(
+          product,
+          BigInt(coefficient),
+          BigInt(basis),
+        ),
+      )));
+    }
+    const source = [
+      "import json",
+      "K.<z> = GF(5^3, modulus=x^3 + 3*x + 3)",
+      "R.<t> = K[]",
+      "left = K([1,2,3]) + K([4,0,1])*t + K([2,3,4])*t^2 + K([1,1,0])*t^3",
+      "right = K([2,4,1]) + K([0,3,2])*t + K([4,1,1])*t^2",
+      "print(json.dumps([[int(v) for v in list(c)] + [0]*(3-len(list(c))) for c in (left*right).list()]))",
+    ].join("; ");
+    const expected = JSON.parse(run(sage, ["-c", source]).split(/\r?\n/).at(-1));
+    assert.deepEqual(actual, expected);
+  } finally {
+    flint.ffiFqPolynomialClose(product);
+    flint.ffiFqPolynomialClose(right);
+    flint.ffiFqPolynomialClose(left);
+    flint.ffiFqContextClose(context);
+  }
 });

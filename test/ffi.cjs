@@ -889,6 +889,43 @@ test("safe generated FLINT surface works in ordinary Sage.js", () => {
   );
 });
 
+test("dynamic FFI maps IndexError and rejects unknown exception classes", () => {
+  const temporary = mkdtempSync(join(tmpdir(), "sagejs-ffi-index-error-"));
+  try {
+    const backendPath = join(temporary, "nullable.cjs");
+    writeFileSync(backendPath, "module.exports = { missing() { return null; } };\n");
+    const output = runSage(["--python"], [
+      "def exercise_exception_mapping():",
+      "    import sagejs.runtime as runtime",
+      "    identity = 'test@' + '0'*64 + ':'",
+      "    def call(exception):",
+      "        return runtime.ffi_call(",
+      "            identity + exception,",
+      `            ${JSON.stringify(backendPath)},`,
+      "            'missing', [], [], 'uint64',",
+      "            ['nullable', [], 'error'],",
+      "            exception, 'missing coordinate', [],",
+      "        )",
+      "    try:",
+      "        call('IndexError')",
+      "    except IndexError as error:",
+      "        print(type(error).__name__, str(error))",
+      "    try:",
+      "        call('KeyError')",
+      "    except RuntimeError as error:",
+      "        print(type(error).__name__, str(error))",
+      "exercise_exception_mapping()",
+      "",
+    ].join("\n"));
+    assert.equal(
+      output.trim(),
+      "IndexError missing coordinate\nRuntimeError unsupported FFI exception KeyError",
+    );
+  } finally {
+    rmSync(temporary, { recursive: true, force: true });
+  }
+});
+
 test("packed FLINT matrix declarations work in ordinary Sage.js", () => {
   const flint = require("../packages/flint");
   assert.equal(
