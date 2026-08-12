@@ -1516,6 +1516,35 @@ def fmpz_matrix_entry(
 
 
 @flint.function(
+    dynamic="ffiFmpzMatrixExportModUi",
+    symbol="sagejs_fmpz_matrix_export_mod_ui",
+    returns=int,
+    abi=[
+        out("result", sagejs_flint_byte_region_t),
+        in_("source", sagejs_fmpz_matrix_t),
+        in_("modulus", uint64_t),
+        in_("width", uint64_t),
+    ],
+    effects=Effects(
+        pure=False,
+        allocates=True,
+        raises=[ValueError, OverflowError],
+    ),
+    result=Status(
+        1,
+        exception=ValueError,
+        message="integer matrix modular export failed",
+    ),
+    wasm=False,
+)
+def fmpz_matrix_export_mod_ui(
+    source: FmpzMatrix,
+    modulus: uint64,
+    width: uint64,
+) -> FlintByteRegion: ...
+
+
+@flint.function(
     dynamic="ffiFmpzMatrixCopy",
     symbol="sagejs_fmpz_matrix_init_set",
     returns=int,

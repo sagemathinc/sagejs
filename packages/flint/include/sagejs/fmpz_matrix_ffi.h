@@ -141,6 +141,52 @@ static inline int sagejs_fmpz_matrix_entry(
     return 1;
 }
 
+/*
+ * Export canonical row-major residues without materializing host integers.
+ *
+ * The generated copied-byte resource carries 1-, 2-, or 4-byte little-endian
+ * entries into host-owned packed storage.  A later backend (notably M4RI for
+ * p = 2) may pack those residues more tightly.  fmpz_fdiv_ui returns the
+ * unique representative in [0, modulus), including for negative and
+ * arbitrarily large inputs.
+ */
+static inline int sagejs_fmpz_matrix_export_mod_ui(
+    sagejs_flint_byte_region_t result, const sagejs_fmpz_matrix_t source,
+    uint64_t modulus, uint64_t width)
+{
+    result->data = NULL;
+    result->length = 0;
+    if (modulus < 2 || modulus > UINT32_MAX ||
+        (width != 1 && width != 2 && width != 4) ||
+        (width < 4 && modulus > (UINT64_C(1) << (8 * width))))
+        return 0;
+    const uint64_t rows = (uint64_t) fmpz_mat_nrows(source->value);
+    const uint64_t columns = (uint64_t) fmpz_mat_ncols(source->value);
+    if (rows != 0 && columns > UINT64_MAX / rows)
+        return 0;
+    const uint64_t count = rows * columns;
+    if (count > (uint64_t) SIZE_MAX / width)
+        return 0;
+    const size_t length = (size_t) count * (size_t) width;
+    result->data = (unsigned char *) malloc(length == 0 ? 1 : length);
+    if (result->data == NULL)
+        return 0;
+    result->length = length;
+    for (uint64_t row = 0; row < rows; row++)
+        for (uint64_t column = 0; column < columns; column++)
+        {
+            const uint64_t residue = (uint64_t) fmpz_fdiv_ui(
+                fmpz_mat_entry(source->value, (slong) row, (slong) column),
+                (ulong) modulus);
+            const size_t offset = ((size_t) row * (size_t) columns +
+                (size_t) column) * (size_t) width;
+            for (uint64_t byte = 0; byte < width; byte++)
+                result->data[offset + (size_t) byte] =
+                    (unsigned char) (residue >> (8 * byte));
+        }
+    return 1;
+}
+
 static inline void sagejs_fmpz_matrix_finish_result(
     sagejs_fmpz_matrix_t result)
 {

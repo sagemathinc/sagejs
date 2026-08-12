@@ -87,6 +87,7 @@ from sagejs.ffi.flint import (
     fmpz_matrix_ncols as _ffi_fmpz_matrix_ncols,
     fmpz_matrix_set_entry as _ffi_fmpz_matrix_set_entry,
     fmpz_matrix_entry as _ffi_fmpz_matrix_entry,
+    fmpz_matrix_export_mod_ui as _ffi_fmpz_matrix_export_mod_ui,
     fmpz_matrix_copy as _ffi_fmpz_matrix_copy,
     fmpz_matrix_neg as _ffi_fmpz_matrix_neg,
     fmpz_matrix_scalar_mul as _ffi_fmpz_matrix_scalar_mul,
@@ -888,6 +889,19 @@ def ffiFmpzMatrixEntry(
         matrix,
         row,
         column,
+    )
+
+
+@native
+def ffiFmpzMatrixExportModUi(
+    source: FmpzMatrix,
+    modulus: uint64,
+    width: uint64,
+) -> FlintByteRegion:
+    return _ffi_fmpz_matrix_export_mod_ui(
+        source,
+        modulus,
+        width,
     )
 
 
