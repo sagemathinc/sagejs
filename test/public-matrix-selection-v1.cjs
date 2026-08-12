@@ -113,12 +113,34 @@ for base in [ZZ, QQ, GF(2), GF(97)]:
     # Every setter snapshots and coerces its complete source before the first
     # write. This includes source/target aliasing and a full self block.
     target = source.__copy__()
+    temporary_blocks = []
+    if base is ZZ or base is QQ:
+        original_set_block = target.set_block
+
+        def capture_set_block(row, column, block):
+            temporary_blocks.append(block)
+            return original_set_block(row, column, block)
+
+        target.set_block = capture_set_block
     target.set_row(1, (target[0, column] for column in range(target.ncols())))
     assert target.row(1) == source.row(0)
     target.set_column(3, (target[row, 0] for row in range(target.nrows())))
     assert target.column(3) == target.column(0)
+    if base is ZZ:
+        assert all(block._integer_resource().closed for block in temporary_blocks)
+    elif base is QQ:
+        assert all(block._rational_resource().closed for block in temporary_blocks)
+    if base is ZZ or base is QQ:
+        target.set_block = original_set_block
     before_self_block = target.__copy__()
+    original_copy = target.__copy__
+
+    def copy_forbidden():
+        raise AssertionError("full self set_block copied its source")
+
+    target.__copy__ = copy_forbidden
     target.set_block(0, 0, target)
+    target.__copy__ = original_copy
     assert target == before_self_block
     target.set_block(3, 4, matrix(base, 0, 0, []))
 
@@ -157,11 +179,64 @@ for base in [ZZ, QQ, GF(2), GF(97)]:
             "insert_row is available only for dense ZZ matrices",
         )
 
+# Combined exact selection owns an intermediate row-selected resource only
+# for the duration of the following column selection.
+for base in [ZZ, QQ]:
+    exact = matrix(base, 3, 4, range(12))
+    intermediate = []
+    original_matrix_from_rows = exact.matrix_from_rows
+
+    def capture_matrix_from_rows(rows):
+        answer = original_matrix_from_rows(rows)
+        intermediate.append(answer)
+        return answer
+
+    exact.matrix_from_rows = capture_matrix_from_rows
+    assert exact.matrix_from_rows_and_columns([2, 0], [3, 1]).list() == [
+        base(value) for value in [11, 9, 3, 1]
+    ]
+    assert len(intermediate) == 1
+    if base is ZZ:
+        assert intermediate[0]._integer_resource().closed
+    else:
+        assert intermediate[0]._rational_resource().closed
+
+# Cross-ring block coercion closes only its converted temporary, on successful
+# mutation and on a later bounds failure.  The caller's original stays usable.
+for target_row in [0, 2]:
+    rational_target = matrix(QQ, 2, 2, range(4))
+    integer_block = matrix(ZZ, 1, 1, [17])
+    converted_blocks = []
+    original_change_ring = integer_block.change_ring
+
+    def capture_change_ring(base):
+        answer = original_change_ring(base)
+        converted_blocks.append(answer)
+        return answer
+
+    integer_block.change_ring = capture_change_ring
+    if target_row == 0:
+        rational_target.set_block(0, 0, integer_block)
+        assert rational_target[0, 0] == QQ(17)
+    else:
+        expect_failure(
+            lambda: rational_target.set_block(target_row, 0, integer_block),
+            IndexError,
+            "matrix window index out of range",
+        )
+    assert len(converted_blocks) == 1
+    assert converted_blocks[0]._rational_resource().closed
+    assert not integer_block._integer_resource().closed
+    assert integer_block[0, 0] == ZZ(17)
+
 assert matrix(ZZ, 2, 3, range(6)).insert_row(1, [7, 8, 9]).list() == [
     0, 1, 2, 7, 8, 9, 3, 4, 5
 ]
 assert matrix(ZZ, 2, 3, range(6)).insert_row(2, [7, 8, 9]).list() == [
     0, 1, 2, 3, 4, 5, 7, 8, 9
+]
+assert matrix(ZZ, 2, 3, range(6)).insert_row(1, [7, 8, 9, 999]).list() == [
+    0, 1, 2, 7, 8, 9, 3, 4, 5
 ]
 expect_failure(lambda: matrix(ZZ, 2, 3, range(6)).insert_row(-1, [1, 2, 3]), ValueError)
 expect_failure(lambda: matrix(ZZ, 2, 3, range(6)).insert_row(3, [1, 2, 3]), ValueError)

@@ -24,6 +24,16 @@ def column_indices(columns: Any, column_count: int) -> tuple[int, ...]:
     return plans.column_indices(columns, column_count)
 
 
+def _close_matrix_resource(matrix: Any) -> None:
+    """Deterministically release one temporary canonical resource."""
+    if matrix._has_fmpz_matrix_resource():
+        matrix._integer_resource().close()
+    elif matrix._has_fmpq_matrix_resource():
+        matrix._rational_resource().close()
+    elif matrix._has_m4ri_matrix_resource():
+        matrix._m4ri_resource().close()
+
+
 def _adopt_same_shape_storage(target: Any, replacement: Any) -> None:
     """Atomically transfer canonical exact or packed-prime storage."""
     if (
@@ -91,7 +101,10 @@ def set_row(target: Any, row: int, values: Any) -> None:
         return
     if target._has_fmpz_matrix_resource() or target._has_fmpq_matrix_resource():
         block = target._parent.matrix_space(1, target.ncols())(entries)
-        target.set_block(int(row), 0, block)
+        try:
+            target.set_block(int(row), 0, block)
+        finally:
+            _close_matrix_resource(block)
         return
     raise NotImplementedError(
         "set_row requires generated exact or packed GF(p) storage"
@@ -115,11 +128,14 @@ def set_column(target: Any, column: int, values: Any) -> None:
         return
     if target._has_fmpz_matrix_resource() or target._has_fmpq_matrix_resource():
         block = target._parent.matrix_space(target.nrows(), 1)(entries)
-        target.set_block(
-            0,
-            int(column),
-            block,
-        )
+        try:
+            target.set_block(
+                0,
+                int(column),
+                block,
+            )
+        finally:
+            _close_matrix_resource(block)
         return
     raise NotImplementedError(
         "set_column requires generated exact or packed GF(p) storage"
@@ -134,7 +150,11 @@ def matrix_from_rows_and_columns(target: Any, rows: Any, columns: Any) -> Any:
         (int(index) for index in rows),
         (int(index) for index in columns),
     )
-    return target.matrix_from_rows(selected_rows).matrix_from_columns(selected_columns)
+    selected = target.matrix_from_rows(selected_rows)
+    try:
+        return selected.matrix_from_columns(selected_columns)
+    finally:
+        _close_matrix_resource(selected)
 
 
 def submatrix(

@@ -171,6 +171,26 @@ def _coerced_snapshot(
     return tuple(coerce(value) for value in source)
 
 
+def _coerced_prefix(
+    values: Iterable[_Value],
+    expected_length: int,
+    coerce: Callable[[_Value], _Coerced],
+) -> tuple[_Coerced, ...]:
+    """Coerce exactly one prefix, ignoring surplus input like Sage."""
+    iterator = iter(values)
+    answer: list[_Coerced] = []
+    for _index in range(expected_length):
+        try:
+            value = next(iterator)
+        except StopIteration:
+            raise ValueError(
+                "list of new entries must have at least "
+                f"{expected_length} entries (only {len(answer)} given)"
+            ) from None
+        answer.append(coerce(value))
+    return tuple(answer)
+
+
 def prepare_row_update(
     row_count: int,
     column_count: int,
@@ -270,7 +290,7 @@ def prepare_row_insertion(
         raise ValueError("index must be nonnegative")
     if index > row_count:
         raise ValueError("index must be less than number of rows")
-    return index, _coerced_snapshot(values, column_count, coerce)
+    return index, _coerced_prefix(values, column_count, coerce)
 
 
 def apply_affine_update(

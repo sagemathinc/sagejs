@@ -2841,8 +2841,23 @@ class Matrix(sage.Element):
         self._check_batch_mutability()
         if not isinstance(block, Matrix):
             raise TypeError("block must be a matrix")
+        temporary = runtime.undefined
         if block.base_ring() is not self.base_ring():
             block = block.change_ring(self.base_ring())
+            temporary = block
+        try:
+            self._set_same_base_block(row, column, block)
+        finally:
+            if temporary is not runtime.undefined:
+                if temporary._has_fmpz_matrix_resource():
+                    temporary._integer_resource().close()
+                elif temporary._has_fmpq_matrix_resource():
+                    temporary._rational_resource().close()
+                elif temporary._has_m4ri_matrix_resource():
+                    temporary._m4ri_resource().close()
+
+    def _set_same_base_block(self, row: int, column: int, block: Matrix) -> None:
+        """Set a same-base block whose temporary ownership is external."""
         if (
             row < 0
             or column < 0
@@ -2853,7 +2868,7 @@ class Matrix(sage.Element):
         if block.nrows() == 0 or block.ncols() == 0:
             return
         if block is self:
-            block = block.__copy__()
+            return
         if self._has_fmpz_matrix_resource() and block._has_fmpz_matrix_resource():
             _flint_ffi_module().fmpz_matrix_set_block(
                 self._integer_resource(),
