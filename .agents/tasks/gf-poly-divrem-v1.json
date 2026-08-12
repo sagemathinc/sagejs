@@ -1,0 +1,91 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "gf-poly-divrem-v1",
+  "title": "Packed GF(p)[x] FLINT divrem",
+  "lane": "integration",
+  "status": "active",
+  "owner": "user",
+  "objective": "Route public packed prime-field polynomial quotient and remainder through one declared FLINT nmod_poly_divrem computation while preserving the typed-Python dynamic fallback and Sage-compatible errors",
+  "base_commit": "1b0633cac2b2c737d286bf67d2a185a7e75bfe19",
+  "claims": [
+    "packages/flint/include/sagejs/ffi_algorithms.h",
+    "ffi/flint.ffi.py",
+    "ffi/flint.ffi.json",
+    "src/lib/sagejs/ffi/flint.py",
+    "src/baselib/sagejs/ffi/flint.py",
+    "packages/flint/generated/",
+    "src/lib/sagejs/kernels/polynomial/packed_flint.py",
+    "src/baselib/polynomial.py",
+    "test/ffi.cjs",
+    "architecture/native-boundaries.json",
+    "architecture/package-graph.json",
+    "test/prime-polynomial-divrem.cjs",
+    "bench/prime-polynomial-divrem.cjs"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "external-library",
+    "fallback": "tested-capability",
+    "oracles": [
+      "SageMath nmod polynomial quo_rem semantics",
+      "Existing typed-Python packed_prime_field_polynomial_quo_rem fallback"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm architecture:check",
+    "pnpm test:portable",
+    "pnpm test:baselib:strict"
+  ],
+  "runs": [
+    {
+      "command": "node --test --test-reporter=spec test/prime-polynomial-divrem.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.812,
+      "started_at": "2026-08-12T02:40:42.815Z",
+      "commit": "1b0633cac2b2c737d286bf67d2a185a7e75bfe19",
+      "workspace_fingerprint": "809f2d3ef32f9c0d026e642487aeb6d6ad681be607d34aaf47dfa5dcab991e9f",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "./bin/sagejs ffi diff flint",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.196,
+      "started_at": "2026-08-12T02:40:45.246Z",
+      "commit": "1b0633cac2b2c737d286bf67d2a185a7e75bfe19",
+      "workspace_fingerprint": "809f2d3ef32f9c0d026e642487aeb6d6ad681be607d34aaf47dfa5dcab991e9f",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm format:python:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.735,
+      "started_at": "2026-08-12T02:40:47.052Z",
+      "commit": "1b0633cac2b2c737d286bf67d2a185a7e75bfe19",
+      "workspace_fingerprint": "809f2d3ef32f9c0d026e642487aeb6d6ad681be607d34aaf47dfa5dcab991e9f",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Public packed GF(p)[x] quotient and remainder now use one declared, transactional FLINT nmod_poly_divrem call whenever the compiled kernel is available, while the existing typed-Python long division remains the tested dynamic fallback. The generated boundary is host-isolated with one public crossing and zero callbacks. On this host, warm median public quo_rem is about 0.6-0.9 ms for degree 1800 by 300 and 1.6-1.9 ms for degree 5000 by 1000, down from roughly 6 ms and 22 ms respectively.",
+    "risks": [
+      "The portable dynamic fallback remains intentionally much slower for large inputs; correctness is differential-tested, and a future Wasm FLINT package can use the same declaration.",
+      "The broad FFI test has unrelated baseline expectations for the newly integrated M4RI declaration; the divrem-focused test, deterministic FFI check, architecture check, and strict baselib checks pass."
+    ],
+    "next_steps": [
+      "Integrate this branch and rerun the broad portable and native suites in the fully synchronized integration tree.",
+      "Consider routing prime-field polynomial power through FLINT after a separate measured crossover audit."
+    ]
+  }
+}

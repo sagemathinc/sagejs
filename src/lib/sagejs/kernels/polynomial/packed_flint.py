@@ -13,6 +13,7 @@ from sagejs.ffi.flint import (
     fmpz_poly_factor,
     fmpz_poly_mul,
     nmod_poly_divexact,
+    nmod_poly_divrem,
     nmod_poly_factor,
     nmod_poly_gcd,
     nmod_poly_is_irreducible,
@@ -168,6 +169,32 @@ def flint_packed_prime_field_polynomial_divexact(
         left,
         right,
         output_length,
+        left_length,
+        right_length,
+        modulus,
+    )
+
+
+@native
+def flint_packed_prime_field_polynomial_divrem(
+    quotient: UInt64Buffer,
+    remainder: UInt64Buffer,
+    left: UInt64Buffer,
+    right: UInt64Buffer,
+    quotient_length: uint64,
+    remainder_length: uint64,
+    left_length: uint64,
+    right_length: uint64,
+    modulus: uint64,
+) -> bool:
+    """Compute quotient and remainder together through one FLINT call."""
+    return nmod_poly_divrem(
+        quotient,
+        remainder,
+        left,
+        right,
+        quotient_length,
+        remainder_length,
         left_length,
         right_length,
         modulus,

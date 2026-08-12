@@ -323,7 +323,7 @@ test("generated host adapters cover values and safe owned resources", async () =
     assert.doesNotMatch(source, /sagejs\.runtime|ffi_call/);
     assert.equal(functions.length, {
       fflas: 4,
-      flint: 179,
+      flint: 180,
       igraph: 2,
     }[declaration.library.id]);
     if (declaration.library.id === "flint") {
@@ -348,7 +348,7 @@ test("generated host adapters cover values and safe owned resources", async () =
 
 test("packages publish every generated host adapter as the canonical export", () => {
   for (const [packagePath, expected] of [
-    ["../packages/flint", 180],
+    ["../packages/flint", 181],
     ["../packages/fflas", 4],
     ["../packages/graph", 2],
   ]) {
