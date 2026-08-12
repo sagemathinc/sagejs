@@ -1,0 +1,99 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "prime-source-uint64-floordiv",
+  "title": "Prime-source uint64 floor division",
+  "lane": "native-compiler",
+  "status": "active",
+  "owner": "user",
+  "objective": "Add checked uint64 floor division as a reusable source-transparent prime-kernel compiler operation",
+  "base_commit": "3eb6f3fdd5f7401df2ca789c428e38c0da4bab3e",
+  "claims": [
+    "tools/native-kernel/prime-source-ir.cjs",
+    "tools/native-kernel/prime-source-backend.cjs",
+    "bench/native_prime_field_source.py",
+    "test/native-kernel.cjs"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "compiler-infrastructure",
+    "fallback": "not-applicable",
+    "oracles": [
+      "native boundary cases against exact JavaScript BigInt quotient values"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm architecture:check",
+    "pnpm test:baselib:strict",
+    "pnpm test:native"
+  ],
+  "runs": [
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 12.096,
+      "started_at": "2026-08-12T00:45:42.943Z",
+      "commit": "3eb6f3fdd5f7401df2ca789c428e38c0da4bab3e",
+      "workspace_fingerprint": "f84b5004fa099efd7912039dff332dbc80933885f87a8d9cdf45609680bd2dc7",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 12.407,
+      "started_at": "2026-08-12T00:45:59.195Z",
+      "commit": "3eb6f3fdd5f7401df2ca789c428e38c0da4bab3e",
+      "workspace_fingerprint": "f84b5004fa099efd7912039dff332dbc80933885f87a8d9cdf45609680bd2dc7",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:native",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 412.172,
+      "started_at": "2026-08-12T00:46:19.242Z",
+      "commit": "3eb6f3fdd5f7401df2ca789c428e38c0da4bab3e",
+      "workspace_fingerprint": "c326e8317b722779756409487fe1eaec860eb866df5e3bb39ebc73f025a8b171",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 11.929,
+      "started_at": "2026-08-12T00:53:32.995Z",
+      "commit": "3eb6f3fdd5f7401df2ca789c428e38c0da4bab3e",
+      "workspace_fingerprint": "c326e8317b722779756409487fe1eaec860eb866df5e3bb39ebc73f025a8b171",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 12.152,
+      "started_at": "2026-08-12T00:53:45.529Z",
+      "commit": "3eb6f3fdd5f7401df2ca789c428e38c0da4bab3e",
+      "workspace_fingerprint": "c326e8317b722779756409487fe1eaec860eb866df5e3bb39ebc73f025a8b171",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Prime-field source lowering now accepts uint64 floor division, emits a checked unsigned C quotient, and rejects a zero divisor through native status handling. The source-transparent witness covers zero, ordinary, 32-bit, and 64-bit boundary quotients. Focused native-kernel tests, architecture checks, strict Python checks, and all correctness portions of test:native passed.",
+    "risks": [
+      "The broad test:native run reached its final finite-matrix performance ratchet and failed only multiply_500 at 30.02 ms normalized versus a 25 ms budget under shared-host load; all preceding compiler, native, FFI, sanitizer, and matrix correctness gates passed."
+    ],
+    "next_steps": [
+      "Use the generic quotient in dense GF(p) rejection-bucket sampling and rerun that focused public matrix suite."
+    ]
+  }
+}

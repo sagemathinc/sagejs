@@ -685,14 +685,19 @@ function emitStatementBody(operation, indent) {
     ].join("\n");
   }
   if (operation.kind === "source.uint64.binary") {
-    if (operation.operation === "%") {
+    if (operation.operation === "%" || operation.operation === "//") {
+      const operationName = operation.operation === "%"
+        ? "modulo"
+        : "floor division";
+      const operator = operation.operation === "%" ? "%" : "/";
       return [
         `${indent}if (${cName(operation.right)} == 0)`,
         `${indent}{`,
-        statusFailure("integer modulo by zero", `${indent}    `),
+        statusFailure(`integer ${operationName} by zero`, `${indent}    `),
         `${indent}    goto fail;`,
         `${indent}}`,
-        `${indent}${target} = ${cName(operation.left)} % ${cName(operation.right)};`,
+        `${indent}${target} = ${cName(operation.left)} ${operator} ` +
+          `${cName(operation.right)};`,
       ].join("\n");
     }
     return `${indent}${target} = ${cName(operation.left)} ` +

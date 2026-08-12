@@ -95,3 +95,13 @@ def source_prime_matmul(
                 accumulator = prime_add(accumulator, product, modulus)
             result[row * columns + column] = accumulator
     return prime_matrix(left, rows, columns, result)
+
+
+@native
+def source_uint64_floor_div(
+    left: uint64,
+    right: uint64,
+    modulus: PrimeFieldModulus,
+) -> uint64:
+    """Return the machine-word floor quotient, rejecting a zero divisor."""
+    return left // right
