@@ -9,6 +9,7 @@
   "objective": "Make public dense ZZ[x] and QQ[x] construction use checked canonical host-list packing followed by one generated FlintByteRegion-to-owned-resource parse, preserving exact Sage semantics, portable fallback, lifecycle safety, and cross-host performance",
   "base_commit": "5655867dc36f98fd88abaca9b425db66352e242c",
   "claims": [
+    "architecture/package-graph.json",
     "architecture/native-boundaries.json",
     "bench/exact-polynomial-byte-regions.sage",
     "bench/exact-polynomial-bulk-construction-contract.cjs",

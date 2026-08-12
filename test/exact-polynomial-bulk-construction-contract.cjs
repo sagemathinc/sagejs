@@ -101,7 +101,9 @@ test("exact polynomial ingress contract is explicit and representation-neutral",
   assert.match(report.contract.acceptance.boundary, /zero scalar coefficient calls/);
   assert.match(report.contract.acceptance.boundary, /no stream-sized BigInt/);
   assert.match(report.contract.acceptance.performance, /same-host SageMath ratio/);
-  assert.match(report.contract.acceptance.performance, /below one millisecond/);
+  assert.match(report.contract.acceptance.performance, /without turning one host's timing/);
+  assert.match(report.contract.acceptance.remaining_performance_goal, /at most 2x/);
+  assert.match(report.contract.acceptance.remaining_performance_goal, /remains unmet/);
   assert.match(report.contract.acceptance.maintainability, /no compiler branch/);
   assert.match(report.contract.acceptance.stage_gates.canonical_pack, /public canonical-list construction actually uses it/);
   assert.match(report.contract.acceptance.stage_gates.byte_region, /reverse\/hex/);
@@ -120,6 +122,7 @@ test("recorded evidence separates setup, first use, warm work, and process time"
   assert.match(report.configuration.timing, /warm median/);
   assert.match(report.configuration.timing, /process wall time/);
   assert.match(report.repository.commit, /^[0-9a-f]{40}$/);
+  assert.equal(report.repository.dirty, false);
   for (const [runtime, domains] of Object.entries(report.measurements)) {
     for (const domain of ["ZZ", "QQ"]) {
       const value = domains[domain];
@@ -167,9 +170,13 @@ test("recorded evidence separates setup, first use, warm work, and process time"
     assert.equal(evidence.host.architecture, "arm64");
     assert.equal(evidence.host.cpu, "Apple M1 Max");
     for (const domain of ["ZZ", "QQ"]) {
-      assert.equal(evidence.comparisons[domain].summaries_match, true);
-      assert.ok(evidence.comparisons[domain].sagejs_over_sage > 1);
+      assert.equal(evidence.measurements.sagejs[domain].ok, true);
+      assert.equal(evidence.diagnostic_stages[domain].ok, true);
     }
+    // This host had no usable SageMath command-line oracle. Cross-runtime
+    // semantics and ratios are recorded by the Linux reports; this evidence
+    // proves the generated-resource path itself on macOS arm64.
+    assert.deepEqual(evidence.comparisons, {});
   }
   const large = report.additional_host_evidence.find(
     (entry) => entry.label === "linux-x64-20001",

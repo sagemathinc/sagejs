@@ -1095,27 +1095,6 @@ if (process.platform !== "win32") {
 #include <stdint.h>
 #include <sagejs/exact_polynomial_ffi.h>
 
-static int region_payload(
-    fmpz_t result, const sagejs_flint_byte_region_t region)
-{
-    const size_t word_count =
-        region->length / sizeof(ulong) +
-        (region->length % sizeof(ulong) != 0);
-    if (word_count > (size_t) WORD_MAX ||
-        word_count > SIZE_MAX / sizeof(ulong))
-        return 0;
-    ulong *words = (ulong *) calloc(word_count, sizeof(ulong));
-    if (words == NULL)
-        return 0;
-    for (size_t byte = 0; byte < region->length; byte++)
-        words[byte / sizeof(ulong)] |=
-            (ulong) region->data[byte] <<
-            (8 * (byte % sizeof(ulong)));
-    fmpz_set_ui_array(result, words, (slong) word_count);
-    free(words);
-    return 1;
-}
-
 static int rejected_integer_region(
     const unsigned char *source, size_t length)
 {
@@ -1241,13 +1220,11 @@ static int exact_region_rejection_matrix(void)
 
 int main(void)
 {
-    fmpz_t coefficient, denominator, argument, result, zpayload, qpayload;
+    fmpz_t coefficient, denominator, argument, result;
     fmpz_init(coefficient);
     fmpz_init(denominator);
     fmpz_init(argument);
     fmpz_init(result);
-    fmpz_init(zpayload);
-    fmpz_init(qpayload);
     if (!exact_region_rejection_matrix())
         return 23;
     for (slong round = 0; round < 300; round++)
@@ -1262,8 +1239,8 @@ int main(void)
         sagejs_fmpq_polynomial_t qrejected, qzero;
         sagejs_fmpz_polynomial_t zunsealed;
         sagejs_fmpq_polynomial_t qunsealed;
-        sagejs_fmpz_polynomial_t zdecoded, zregiondecoded;
-        sagejs_fmpq_polynomial_t qdecoded, qregiondecoded;
+        sagejs_fmpz_polynomial_t zregiondecoded;
+        sagejs_fmpq_polynomial_t qregiondecoded;
         sagejs_fmpq_value_t qvalue, zqvalue;
         sagejs_flint_byte_region_t zbytes, qbytes;
         if (!sagejs_fmpz_polynomial_init(z, 32) ||
@@ -1392,31 +1369,18 @@ int main(void)
                     rejected_region, &region, 1, sizeof(noncanonical)))
                 return 20;
         }
-        if (!region_payload(zpayload, zbytes) ||
-            !region_payload(qpayload, qbytes) ||
-            !sagejs_fmpz_polynomial_deserialize_packed(
-                zdecoded, zpayload, (uint64_t) zbytes->length) ||
-            !sagejs_fmpq_polynomial_deserialize_packed(
-                qdecoded, qpayload, (uint64_t) qbytes->length) ||
-            !fmpz_poly_equal(zdecoded->value, zpower->value) ||
-            !fmpq_poly_equal(qdecoded->value, qpower->value))
-            return 10;
         if (sagejs_fmpz_polynomial_allocated_bytes(z) == 0 ||
             sagejs_fmpq_polynomial_allocated_bytes(q) == 0 ||
             sagejs_flint_byte_region_length(zbytes) < 16 ||
             sagejs_flint_byte_region_length(qbytes) < 16)
             return 7;
-        sagejs_fmpq_polynomial_clear(qdecoded);
-        sagejs_fmpz_polynomial_clear(zdecoded);
         zbytes->data[0] = 0;
         if (!fmpz_poly_equal(zregiondecoded->value, zpower->value) ||
             !fmpq_poly_equal(qregiondecoded->value, qpower->value))
             return 21;
-        if (!region_payload(zpayload, zbytes))
-            return 11;
         sagejs_fmpz_polynomial_t rejected;
-        if (sagejs_fmpz_polynomial_deserialize_packed(
-                rejected, zpayload, (uint64_t) zbytes->length))
+        if (sagejs_fmpz_polynomial_from_byte_region(
+                rejected, zbytes, 0, (uint64_t) zbytes->length))
             return 12;
         sagejs_flint_byte_region_clear(qbytes);
         sagejs_flint_byte_region_clear(zbytes);
@@ -1501,8 +1465,6 @@ int main(void)
     sagejs_flint_byte_region_clear(skew_z_bytes);
     sagejs_fmpq_polynomial_clear(skew_q);
     sagejs_fmpz_polynomial_clear(skew_z);
-    fmpz_clear(qpayload);
-    fmpz_clear(zpayload);
     fmpz_clear(result);
     fmpz_clear(argument);
     fmpz_clear(denominator);

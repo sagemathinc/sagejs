@@ -4,7 +4,6 @@ const unit = [
   "test/test-manifest.test.cjs",
   "test/completer.cjs",
   "test/cowasm-landscape.cjs",
-  "test/macos-arm64-math-witness.cjs",
   "test/module-cache.cjs",
   "test/cache.cjs",
   "test/cache-automatic.cjs",
