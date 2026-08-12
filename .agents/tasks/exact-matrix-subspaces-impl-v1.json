@@ -51,7 +51,8 @@
       "current scalar reconstruction path"
     ],
     "exceptions": [
-      "Generated exact-resource pivot metadata and possible M4RI row selectors are representation adapters; mathematical subspace planning remains ordinary Python"
+      "Generated exact-resource pivot metadata and M4RI row selectors are representation adapters; mathematical subspace planning remains ordinary Python",
+      "Exact pivot queries return an owned ByteRegion containing exactly O(rank) uint64 metadata. Extending the compiler with a caller-owned writable slice plus borrowed resource was deliberately deferred until it has multiple consumers."
     ]
   },
   "platforms": {
@@ -182,11 +183,109 @@
       "commit": "bffdf0ea864c0810c4d23b8aaadb5551d896aa33",
       "workspace_fingerprint": "0df98bb727e403798dfe905a232dcb3b2a98702cc5cb3ba3caef154e957f2b11",
       "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/linear-matrix-subspaces.cjs test/public-exact-matrix-subspaces.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 3.318,
+      "started_at": "2026-08-12T22:42:16.173Z",
+      "commit": "e10eeff9832fadb3591a5809ecc63f75d1b6d3f5",
+      "workspace_fingerprint": "ee8062c9e952810c83f47a3d8fbcab268404e865c815cb6205eb8678a4b95ace",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --expose-gc --test test/exact-matrix-pivot-lifecycle.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.496,
+      "started_at": "2026-08-12T22:42:20.210Z",
+      "commit": "e10eeff9832fadb3591a5809ecc63f75d1b6d3f5",
+      "workspace_fingerprint": "ee8062c9e952810c83f47a3d8fbcab268404e865c815cb6205eb8678a4b95ace",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/exact-matrix-pivot-ffi.cjs test/ffi-wasm-m4ri-resource.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 4.753,
+      "started_at": "2026-08-12T22:42:23.479Z",
+      "commit": "e10eeff9832fadb3591a5809ecc63f75d1b6d3f5",
+      "workspace_fingerprint": "ee8062c9e952810c83f47a3d8fbcab268404e865c815cb6205eb8678a4b95ace",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/public-exact-matrix-subspaces.cjs --check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 34.132,
+      "started_at": "2026-08-12T22:42:33.512Z",
+      "commit": "e10eeff9832fadb3591a5809ecc63f75d1b6d3f5",
+      "workspace_fingerprint": "ee8062c9e952810c83f47a3d8fbcab268404e865c815cb6205eb8678a4b95ace",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm ffi:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.365,
+      "started_at": "2026-08-12T22:43:17.648Z",
+      "commit": "e10eeff9832fadb3591a5809ecc63f75d1b6d3f5",
+      "workspace_fingerprint": "ee8062c9e952810c83f47a3d8fbcab268404e865c815cb6205eb8678a4b95ace",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 14.493,
+      "started_at": "2026-08-12T22:43:20.786Z",
+      "commit": "e10eeff9832fadb3591a5809ecc63f75d1b6d3f5",
+      "workspace_fingerprint": "ee8062c9e952810c83f47a3d8fbcab268404e865c815cb6205eb8678a4b95ace",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 14.101,
+      "started_at": "2026-08-12T22:43:36.048Z",
+      "commit": "e10eeff9832fadb3591a5809ecc63f75d1b6d3f5",
+      "workspace_fingerprint": "ee8062c9e952810c83f47a3d8fbcab268404e865c815cb6205eb8678a4b95ace",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm --dir packages/flint test",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 3.847,
+      "started_at": "2026-08-12T22:44:00.269Z",
+      "commit": "e10eeff9832fadb3591a5809ecc63f75d1b6d3f5",
+      "workspace_fingerprint": "ee8062c9e952810c83f47a3d8fbcab268404e865c815cb6205eb8678a4b95ace",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm --dir packages/m4ri test",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 3.742,
+      "started_at": "2026-08-12T22:44:04.828Z",
+      "commit": "e10eeff9832fadb3591a5809ecc63f75d1b6d3f5",
+      "workspace_fingerprint": "ee8062c9e952810c83f47a3d8fbcab268404e865c815cb6205eb8678a4b95ace",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {
-    "summary": "",
-    "risks": [],
-    "next_steps": []
+    "summary": "Public pivots, row spaces, row modules/images, column spaces, and column modules now use bounded pivot metadata plus one bulk selector over canonical ZZ, QQ, GF(2), and small GF(p) storage. Equal-ring exact operations forbid full host export; bases are immutable, preserve degenerate shapes, share pivot caches with echelon forms, and pass generated/dynamic, SageMath differential, lifecycle, sanitizer, and benchmark coverage. Exact pivot storage grows only with rank, and M4RI row selection is a generated declared resource operation.",
+    "risks": [
+      "pnpm test:portable has an unrelated baseline failure in test/gf2-polynomial-packed-core.cjs: the two packed GF(2) polynomial semantic tests raise OverflowError for a uint64 shift count. The failure reproduces on current main and is assigned outside this lane; 214 of 216 portable tests pass.",
+      "The public resource paths are validated on linux-x64 and the M4RI resource surface executes through real Wasm. Native linux-arm64 and macos-arm64 validation remain integration responsibilities.",
+      "Cross-ring row_space intentionally materializes original generators. The common equal-ring path remains resource-direct; QQ viewed as a ZZ-module is differentially checked against SageMath."
+    ],
+    "next_steps": [
+      "Obtain an independent semantic and architecture review before integration.",
+      "Integrate after the unrelated GF(2) polynomial portable failure is repaired or explicitly baseline-waived.",
+      "Consider a generic caller-owned writable metadata slice only after another bounded-resource query needs the same compiler feature."
+    ]
   }
 }
