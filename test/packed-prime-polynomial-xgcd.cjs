@@ -175,6 +175,28 @@ assert not packed_prime_field_polynomial_xgcd(
 assert [int(value) for value in output] == [91, 92, 93, 94, 95, 96, 97, 98]
 
 
+def invalid_modulus_precedes_shape(prime):
+    # Generated argument conversion rejects PrimeFieldModulus before the body
+    # can inspect output shape. The same-source fallback must do the same.
+    output = buffer([91])
+    try:
+        packed_prime_field_polynomial_xgcd(
+            output,
+            buffer([1]),
+            buffer([1]),
+            runtime.bigint(prime) if compiled_kernel else prime,
+        )
+    except ValueError:
+        pass
+    else:
+        raise AssertionError("invalid modulus was hidden by invalid output shape")
+    assert [int(value) for value in output] == [91]
+
+
+for invalid_prime in [0, 1, 4294967296]:
+    invalid_modulus_precedes_shape(invalid_prime)
+
+
 def rejected(left, right, prime):
     capacity = max(1, len(left), len(right))
     sentinel = list(range(71, 71 + 3 * capacity + 3))
@@ -294,14 +316,14 @@ test("packed GF(p)[x] xgcd has an ordinary CPython fallback", () => {
     "    assert not xgcd(out, a, b, p)",
     "    assert all(value == 91 for value in out)",
     "for p in [0, 1, 4294967296]:",
-    "    out = [91] * 6",
+    "    out = [91]",
     "    try:",
     "        xgcd(out, [1], [1], p)",
     "    except ValueError:",
     "        pass",
     "    else:",
     "        raise AssertionError('out-of-range modulus accepted')",
-    "    assert out == [91] * 6",
+    "    assert out == [91]",
     "print('cpython-ok')",
     "",
   ].join("\n");

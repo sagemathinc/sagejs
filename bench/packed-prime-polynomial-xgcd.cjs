@@ -91,6 +91,17 @@ def decode_source(output, capacity):
     )
 
 
+def source_coefficients_call(left, right, prime):
+    capacity = max(1, left._coefficient_length(), right._coefficient_length())
+    return decode_source(source_call(left, right, prime), capacity)
+
+
+def source_polynomial_call(left, right, prime):
+    return tuple(
+        ring(values) for values in source_coefficients_call(left, right, prime)
+    )
+
+
 def trim(values):
     output = [int(value) for value in values]
     while output and output[-1] == 0:
@@ -133,7 +144,11 @@ field = GF(65521)
 ring = PolynomialRing(field, "x")
 seed = 0x12345678
 mode = "compiled" if source_compiled else "dynamic"
-print("mode,source_compiled,flint_compiled,degree,source_ms,direct_flint_ms,public_flint_ms")
+print(
+    "mode,source_compiled,flint_compiled,degree,"
+    "source_materialized_ms,public_flint_materialized_ms,"
+    "source_coefficients_ms,direct_flint_coefficients_ms"
+)
 for degree in [8, 16, 32, 64, 128, 256]:
     left_values = []
     right_values = []
@@ -147,12 +162,11 @@ for degree in [8, 16, 32, 64, 128, 256]:
     right_values[-1] = 1
     left = ring(left_values)
     right = ring(right_values)
-    capacity = max(1, len(left_values), len(right_values))
 
     public_value = left.xgcd(right)
-    source_value = decode_source(source_call(left, right, 65521), capacity)
+    source_value = source_coefficients_call(left, right, 65521)
     direct_value = direct_flint_call(left, right, 65521)
-    source_polynomials = [ring(values) for values in source_value]
+    source_polynomials = tuple(ring(values) for values in source_value)
     direct_polynomials = [ring(values) for values in direct_value]
     public_gcd = [int(value.lift()) for value in public_value[0].coefficients()]
     assert source_value[0] == public_gcd
@@ -168,13 +182,16 @@ for degree in [8, 16, 32, 64, 128, 256]:
         - direct_polynomials[0]
     ).is_zero()
 
-    source_ms = median_milliseconds(
-        lambda: source_call(left, right, 65521)
+    source_materialized_ms = median_milliseconds(
+        lambda: source_polynomial_call(left, right, 65521)
     )
-    direct_ms = median_milliseconds(
+    public_materialized_ms = median_milliseconds(lambda: left.xgcd(right))
+    source_coefficients_ms = median_milliseconds(
+        lambda: source_coefficients_call(left, right, 65521)
+    )
+    direct_coefficients_ms = median_milliseconds(
         lambda: direct_flint_call(left, right, 65521)
     )
-    public_ms = median_milliseconds(lambda: left.xgcd(right))
     print(
         mode
         + ","
@@ -184,11 +201,13 @@ for degree in [8, 16, 32, 64, 128, 256]:
         + ","
         + str(degree)
         + ","
-        + str(round(source_ms, 6))
+        + str(round(source_materialized_ms, 6))
         + ","
-        + str(round(direct_ms, 6))
+        + str(round(public_materialized_ms, 6))
         + ","
-        + str(round(public_ms, 6))
+        + str(round(source_coefficients_ms, 6))
+        + ","
+        + str(round(direct_coefficients_ms, 6))
     )
 `;
 
@@ -212,6 +231,10 @@ try {
       `node=${process.version} cpu=${cpu}`,
   );
   console.log("# prime=65521 warmup=5 samples=11 statistic=median");
+  console.log(
+    "# materialized columns return PolynomialElement triples; coefficient " +
+      "columns are a separately labeled packed/list diagnostic",
+  );
 
   process.stdout.write(
     run(sagejs, [witnessPath], {
