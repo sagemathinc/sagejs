@@ -4,15 +4,28 @@ Dense univariate polynomials over `GF(p^n)` need three generated foreign
 resource kinds:
 
 - an owned `FqContext` held by the public finite-field parent;
-- owned `FqElement` values that retain that exact context root; and
-- owned `FqPolynomial` values that retain the same context root.
+- self-contained owned `FqElement` handles that retain that exact context; and
+- self-contained owned `FqPolynomial` handles that retain the same context.
 
 The context owns the defining modulus and its foreign precomputation.  Elements
 and polynomials never own a second independently reconstructed context, expose
 a raw pointer, or compare contexts merely by mathematical isomorphism.  Every
 operation validates the exact context identity before entering foreign code.
-Explicit context close invalidates its descendants, while ordinary garbage
-collection uses the generated finalizer only as a fallback.
+Closing the public context handle releases only its own reference: already
+owned elements and polynomials remain valid until they release their retained
+references.  The foreign context is destroyed only after both the public
+handle and every dependent handle are closed.  Ordinary garbage collection
+uses the generated finalizers only as a fallback.
+
+The current declaration schema cannot express an owned resource with another
+declared resource as its owner: an `owner` marks a borrowed view, which has no
+independent clear operation.  Therefore these are deliberately not borrowed
+views.  A generated adapter initially represents each dependent as a
+self-contained opaque handle containing its value and a retained pointer to a
+reference-counted context state.  Its ordinary clear operation clears the
+value and releases that context reference.  A future dependent-owned schema
+can generate the same semantics directly, but public mathematics must not
+wait for or observe that compiler refinement.
 
 The portable interchange representation is a rectangular power-basis table.
 Polynomial coefficients are ordered from constant to leading coefficient.
@@ -29,10 +42,11 @@ returns one host-owned coordinate region.  Word-sized characteristics can use
 packed unsigned words; larger characteristics can use a compiler-owned exact
 integer region without changing this semantic contract.
 
-Public Sage coercion happens before this boundary.  Sage accepts values such as
-`True`, `1.0`, and `"1"` as finite-field coefficients, but the generated ABI
-receives only already-coerced exact canonical coordinates.  Ambiguous or
-lossy-looking values therefore fail closed here.
+Public Sage coercion happens before this boundary and depends on the particular
+finite-field parent.  In particular, Sage rejects floating-point inputs for a
+finite extension even when they happen to be integral.  The generated ABI
+receives only already-coerced exact canonical coordinates, so floats and other
+ambiguous or lossy-looking values fail closed here as well.
 """
 
 from __future__ import annotations
@@ -44,6 +58,8 @@ _Resource = TypeVar("_Resource")
 
 ContextDescriptor: TypeAlias = tuple[int, int, tuple[int, ...], str]
 PowerBasisPayload: TypeAlias = tuple[int, Sequence[Any]]
+SerializedPolynomialPayload: TypeAlias = tuple[ContextDescriptor, int, tuple[int, ...]]
+ContextLifetimeState: TypeAlias = tuple[bool, int, bool]
 PolynomialConstructor: TypeAlias = Callable[[_Context, Sequence[Any], int], _Resource]
 PolynomialExporter: TypeAlias = Callable[
     [_Resource], tuple[_Context, Any, Sequence[Any]]
@@ -66,21 +82,9 @@ def _exact_index(value: Any, name: str) -> int:
     return int(answer)
 
 
-def _valid_ascii_identifier(value: str) -> bool:
-    if len(value) == 0:
-        return False
-    first = value[0]
-    if not (first == "_" or "A" <= first <= "Z" or "a" <= first <= "z"):
-        return False
-    for character in value[1:]:
-        if not (
-            character == "_"
-            or "A" <= character <= "Z"
-            or "a" <= character <= "z"
-            or "0" <= character <= "9"
-        ):
-            return False
-    return True
+def _valid_sage_generator_name(value: str) -> bool:
+    """Match Sage's letter-leading Unicode identifier policy."""
+    return len(value) > 0 and value[0] != "_" and value.isidentifier()
 
 
 def extension_context_descriptor(
@@ -105,7 +109,7 @@ def extension_context_descriptor(
         raise ValueError("finite-field characteristic must be at least 2")
     if extension_degree < 2:
         raise ValueError("finite-extension degree must be at least 2")
-    if not isinstance(generator_name, str) or not _valid_ascii_identifier(
+    if not isinstance(generator_name, str) or not _valid_sage_generator_name(
         generator_name
     ):
         raise TypeError("finite-field generator must be a valid identifier")
@@ -120,6 +124,41 @@ def extension_context_descriptor(
     if checked[-1] != 1:
         raise ValueError("finite-field modulus must be monic")
     return prime, extension_degree, tuple(checked), generator_name
+
+
+def context_lifetime_schedule(events: Sequence[str]) -> list[ContextLifetimeState]:
+    """Model the required retained-context close semantics.
+
+    `retain` represents construction of one independently owned element or
+    polynomial. `release` represents its idempotence-guarded clear operation;
+    callers issue it at most once per dependent. `close_context` closes the
+    public context handle and is itself idempotent.  Each returned state is
+    `(public_handle_open, live_dependents, foreign_context_destroyed)`.
+
+    A generated adapter may implement this with an atomic or non-atomic
+    reference count according to its threading contract.  The observable
+    destruction order is identical.
+    """
+    public_handle_open = True
+    live_dependents = 0
+    destroyed = False
+    states: list[ContextLifetimeState] = []
+    for event in events:
+        if event == "retain":
+            if not public_handle_open or destroyed:
+                raise ValueError("cannot retain a closed finite-field context")
+            live_dependents += 1
+        elif event == "release":
+            if live_dependents == 0:
+                raise ValueError("finite-field dependent released without a retain")
+            live_dependents -= 1
+        elif event == "close_context":
+            public_handle_open = False
+        else:
+            raise ValueError("unknown finite-field context lifetime event")
+        destroyed = not public_handle_open and live_dependents == 0
+        states.append((public_handle_open, live_dependents, destroyed))
+    return states
 
 
 def require_context_identity(expected: _Context, actual: _Context) -> None:
@@ -189,7 +228,12 @@ def checked_polynomial_coordinates(
         offset = (logical_count - 1) * extension_degree
         nonzero = False
         for basis_index in range(extension_degree):
-            if coordinates[offset + basis_index] != 0:
+            if (
+                _exact_index(
+                    coordinates[offset + basis_index], "finite-field coordinate"
+                )
+                != 0
+            ):
                 nonzero = True
                 break
         if nonzero:
@@ -249,3 +293,59 @@ def export_extension_polynomial(
         coefficient_count,
         normalize_trailing_zeroes=False,
     )
+
+
+def serialize_extension_polynomial(
+    descriptor: ContextDescriptor,
+    coordinates: Sequence[Any],
+    coefficient_count: Any,
+) -> SerializedPolynomialPayload:
+    """Copy a normalized descriptor-plus-coordinate interchange payload.
+
+    This is an explicit serialization boundary, so unlike live bulk ingress it
+    owns an immutable copy and contains no resource identity or foreign state.
+    Deserialization reconstructs or retrieves the public context from the
+    descriptor before constructing one polynomial through the bulk boundary.
+    """
+    characteristic, degree, modulus, generator = descriptor
+    checked_descriptor = extension_context_descriptor(
+        characteristic, degree, modulus, generator
+    )
+    logical_count, checked = checked_polynomial_coordinates(
+        characteristic,
+        degree,
+        coordinates,
+        coefficient_count,
+        normalize_trailing_zeroes=True,
+    )
+    flat: list[int] = []
+    limit = logical_count * degree
+    for index in range(limit):
+        flat.append(_exact_index(checked[index], "finite-field coordinate"))
+    return checked_descriptor, logical_count, tuple(flat)
+
+
+def deserialize_extension_polynomial(
+    payload: SerializedPolynomialPayload,
+) -> SerializedPolynomialPayload:
+    """Validate and canonicalize one portable extension-polynomial payload."""
+    if not isinstance(payload, tuple) or len(payload) != 3:
+        raise TypeError("serialized extension polynomial must be a three-tuple")
+    descriptor, coefficient_count, coordinates = payload
+    if not isinstance(descriptor, tuple) or len(descriptor) != 4:
+        raise TypeError("serialized finite-field context descriptor is malformed")
+    characteristic, degree, modulus, generator = descriptor
+    checked_descriptor = extension_context_descriptor(
+        characteristic, degree, modulus, generator
+    )
+    logical_count, checked = checked_polynomial_coordinates(
+        characteristic,
+        degree,
+        coordinates,
+        coefficient_count,
+        normalize_trailing_zeroes=False,
+    )
+    flat: list[int] = []
+    for value in checked:
+        flat.append(_exact_index(value, "finite-field coordinate"))
+    return checked_descriptor, logical_count, tuple(flat)
