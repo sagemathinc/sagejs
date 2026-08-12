@@ -4,7 +4,7 @@
   "id": "prime-poly-sagepack",
   "title": "Word Prime Polynomial SagePack",
   "lane": "integration",
-  "status": "active",
+  "status": "review",
   "owner": "user",
   "objective": "Encode packed GF(p)[x] coefficients for every word-sized prime as canonical fixed-width little-endian SagePack bytes with strict decoding and linear performance",
   "base_commit": "7792f9072335667b539ee79e7babff82bab9056c",
@@ -44,10 +44,87 @@
     "pnpm test:portable",
     "pnpm test:baselib:strict"
   ],
-  "runs": [],
+  "runs": [
+    {
+      "command": "pnpm build",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 145.897,
+      "started_at": "2026-08-12T10:02:51.774Z",
+      "commit": "e2dfb9d9b53ddc2e592ebbd936bcd2746ac3f9d5",
+      "workspace_fingerprint": "1b72a146af8299a3a490e5f255a5a0bb5b07399bf538ba0ce5dd221c9347fad8",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/serialization.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 9.57,
+      "started_at": "2026-08-12T10:05:22.962Z",
+      "commit": "e2dfb9d9b53ddc2e592ebbd936bcd2746ac3f9d5",
+      "workspace_fingerprint": "1b72a146af8299a3a490e5f255a5a0bb5b07399bf538ba0ce5dd221c9347fad8",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/large-prime-polynomial-sagepack.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.828,
+      "started_at": "2026-08-12T10:05:33.130Z",
+      "commit": "e2dfb9d9b53ddc2e592ebbd936bcd2746ac3f9d5",
+      "workspace_fingerprint": "1b72a146af8299a3a490e5f255a5a0bb5b07399bf538ba0ce5dd221c9347fad8",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm exec tsc --noEmit --project tsconfig.json",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.803,
+      "started_at": "2026-08-12T10:05:34.543Z",
+      "commit": "e2dfb9d9b53ddc2e592ebbd936bcd2746ac3f9d5",
+      "workspace_fingerprint": "1b72a146af8299a3a490e5f255a5a0bb5b07399bf538ba0ce5dd221c9347fad8",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 12.869,
+      "started_at": "2026-08-12T10:05:35.952Z",
+      "commit": "e2dfb9d9b53ddc2e592ebbd936bcd2746ac3f9d5",
+      "workspace_fingerprint": "1b72a146af8299a3a490e5f255a5a0bb5b07399bf538ba0ce5dd221c9347fad8",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 40.468,
+      "started_at": "2026-08-12T10:05:53.108Z",
+      "commit": "e2dfb9d9b53ddc2e592ebbd936bcd2746ac3f9d5",
+      "workspace_fingerprint": "1b72a146af8299a3a490e5f255a5a0bb5b07399bf538ba0ce5dd221c9347fad8",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 12.719,
+      "started_at": "2026-08-12T10:06:34.155Z",
+      "commit": "e2dfb9d9b53ddc2e592ebbd936bcd2746ac3f9d5",
+      "workspace_fingerprint": "1b72a146af8299a3a490e5f255a5a0bb5b07399bf538ba0ce5dd221c9347fad8",
+      "platform": "linux-x64"
+    }
+  ],
   "handoff": {
-    "summary": "",
-    "risks": [],
-    "next_steps": []
+    "summary": "Extended the existing prime-field-poly-le-v1 SagePack coefficient encoding to every unsigned-word prime. Polynomials use the canonical one-, two-, four-, or eight-byte little-endian width selected from the exact modulus, while matrix serialization remains unchanged. Encoding reads the canonical BigUint64Array directly and decoding validates lengths, widths, residues, and normalized leading coefficients with exact BigInt arithmetic. Existing generic-array SagePack payloads remain readable. The p=2^61-1, 20,000-coefficient witness is 160,816 bytes instead of about 4.18 MB and measured 2.89 ms median dump plus 0.93 ms median load on Linux x64. Byte-level tests cover the prime 18446744073709551557 immediately below 2^64, canonical little-endian output, malformed widths and lengths, out-of-field residues, and trailing zero rejection.",
+    "risks": [
+      "SagePack v1 is a Sage.js format and the greenfield project has not declared a stable external compatibility contract. This extends the meaning of the existing prime-field-poly-le-v1 tag to coefficientWidth=8; older Sage.js readers that only accept widths through four bytes will reject newly compact wide-prime packets rather than silently misdecode them.",
+      "The implementation uses DataView.getBigUint64 and setBigUint64, which are standard on supported Node and modern browser targets. Browser/Wasm behavior is covered by the portable TypeScript path but was not benchmarked separately in this Linux lane."
+    ],
+    "next_steps": [
+      "Integrate this branch and remove the completed TODO item for word-sized GF(p)[x] SagePack coefficients.",
+      "Retain the benchmark in routine cross-platform runs and collect macOS ARM64 measurements when the benchmark catalog gains persistent host history."
+    ]
   }
 }
