@@ -1,0 +1,47 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "native-cache-abi21-reload",
+  "title": "Native Cache Abi21 Reload",
+  "lane": "integration",
+  "status": "active",
+  "owner": "user",
+  "objective": "Diagnose and fix immediate stale-cache rejection after ABI 21 native compilation without weakening cache validation",
+  "base_commit": "33a292ac998dc797bfae0e762953d6008fc3fb6e",
+  "claims": [
+    ".agents/lanes.json",
+    "tools/native-kernel/compiler.cjs",
+    "tools/runtime-bootstrap.ts",
+    "test/ffi.cjs",
+    "test/production-native-kernels.cjs",
+    "test/node-test-manifest.cjs",
+    "scripts/check-polynomial-budget.cjs"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "not-applicable",
+    "fallback": "not-applicable",
+    "oracles": [],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm architecture:check",
+    "pnpm test:portable",
+    "pnpm test:baselib:strict"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "Synchronized the runtime's strict native-kernel ABI expectation with compiler ABI 21. Added an immediate fresh-cache compile and strict-load regression covering packed prime-field polynomial and dense prime-field matrix kernels; both compile into one new cache and reload as compiled without weakening stale checks.",
+    "risks": [],
+    "next_steps": [
+      "Rerun the polynomial performance audit against the integrated ABI 21 runtime."
+    ]
+  }
+}

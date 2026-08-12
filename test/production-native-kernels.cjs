@@ -36,6 +36,47 @@ function runWithCache(cache, source, required = true) {
   });
 }
 
+function compileIntoCache(cache, source) {
+  return spawnSync(
+    join(root, "bin", "sagejs"),
+    ["native", "compile", source, "--cache-root", cache],
+    { cwd: root, encoding: "utf8" },
+  );
+}
+
+test("fresh native artifacts reload immediately under strict ABI checks", () => {
+  const temporary = mkdtempSync(join(tmpdir(), "sagejs-fresh-native-abi-"));
+  try {
+    const sources = [
+      "src/lib/sagejs/kernels/polynomial/packed_prime_field.py",
+      "src/lib/sagejs/kernels/matrix/dense_prime_field.py",
+    ];
+    for (const source of sources) {
+      const compiled = compileIntoCache(temporary, source);
+      assert.equal(compiled.status, 0, compiled.stdout + compiled.stderr);
+    }
+    const index = JSON.parse(readFileSync(join(temporary, "index.json")));
+    const records = Object.values(index.sources);
+    assert.equal(records.length, sources.length);
+    for (const record of records)
+      assert.equal(record.nativeAbi, NATIVE_ABI_VERSION);
+
+    const program = [
+      "from sagejs.native import is_compiled",
+      "from sagejs.kernels.polynomial.packed_prime_field import packed_prime_field_polynomial_evaluate",
+      "from sagejs.kernels.matrix.dense_prime_field import dense_prime_field_matrix_add",
+      "print(is_compiled(packed_prime_field_polynomial_evaluate))",
+      "print(is_compiled(dense_prime_field_matrix_add))",
+      "",
+    ].join("\n");
+    const loaded = runWithCache(temporary, program);
+    assert.equal(loaded.status, 0, loaded.stdout + loaded.stderr);
+    assert.equal(loaded.stdout.trim(), "True\nTrue");
+  } finally {
+    rmSync(temporary, { recursive: true, force: true });
+  }
+});
+
 test("all production native kernels are published and autoloadable", () => {
   const manifest = JSON.parse(readFileSync(
     join(root, "architecture", "native-kernels.json"),
