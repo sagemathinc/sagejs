@@ -49,7 +49,9 @@ int main(void)
             !sagejs_fq_context_init(other_context, other_modulus, 3, 3) ||
             sagejs_fq_context_init(invalid_context, modulus, 3, 4) ||
             sagejs_fq_context_characteristic(context) != 3 ||
-            sagejs_fq_context_degree(context) != 2)
+            sagejs_fq_context_degree(context) != 2 ||
+            sagejs_fq_context_allocated_bytes(context) <=
+                sizeof(sagejs_fq_context_state))
             return 1;
         if (!sagejs_fq_element_init_coordinates(
                 element, context, element_coordinates, 2) ||
@@ -58,6 +60,10 @@ int main(void)
             !sagejs_fq_element_init_coordinates(
                 other_element, other_context, element_coordinates, 2) ||
             !sagejs_fq_element_equal(element, element_copy) ||
+            sagejs_fq_element_degree(element) != 2 ||
+            sagejs_fq_element_coordinate(element, 1) != 2 ||
+            sagejs_fq_element_allocated_bytes(element) <=
+                sagejs_fq_context_allocated_bytes(context) ||
             sagejs_fq_element_init_coordinates(
                 failed_element, context, invalid_coordinates, 2))
             return 2;
@@ -69,6 +75,8 @@ int main(void)
             !sagejs_fq_polynomial_init_coordinates(
                 other_polynomial, other_context, right_coordinates, 4, 2) ||
             !sagejs_fq_polynomial_equal(left, copy) ||
+            sagejs_fq_polynomial_allocated_bytes(left) <=
+                sagejs_fq_context_allocated_bytes(context) ||
             sagejs_fq_polynomial_init_coordinates(
                 failed_polynomial, context, invalid_coordinates, 2, 1))
             return 3;
