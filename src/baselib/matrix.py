@@ -24,6 +24,7 @@ _dense_rational_flint_module_cache = runtime.undefined
 _flint_ffi_module_cache = runtime.undefined
 _m4ri_ffi_module_cache = runtime.undefined
 _m4ri_available_cache = runtime.undefined
+_matrix_selection_module_cache = runtime.undefined
 
 
 class _FmpzMatrixResourceStorage:
@@ -174,6 +175,17 @@ def _dense_binary_m4ri_kernel_module() -> Any:
             fromlist=["dense_binary_m4ri"],
         )
     return _dense_binary_m4ri_kernel_module_cache
+
+
+def _matrix_selection_module() -> Any:
+    """Load public matrix selection execution lazily."""
+    global _matrix_selection_module_cache
+    if _matrix_selection_module_cache is runtime.undefined:
+        _matrix_selection_module_cache = __import__(
+            "sagejs.linear_algebra.matrix_selection_public",
+            fromlist=["matrix_selection_public"],
+        )
+    return _matrix_selection_module_cache
 
 
 def _native_kernel_available(kernel_function: Any) -> bool:
@@ -2817,70 +2829,18 @@ class Matrix(sage.Element):
         )
 
     def set_row(self, row: int, values: Any) -> None:
-        """Set one row in place through a transactional dense-prime batch."""
-        entries = list(values)
-        if len(entries) != self.ncols():
-            raise ValueError(
-                "list of new entries must be of length "
-                + str(self.ncols())
-                + " (not "
-                + str(len(entries))
-                + ")"
-            )
-        if row < 0 or row >= self.nrows():
-            raise ValueError(
-                "row number must be between 0 and "
-                + str(self.nrows() - 1)
-                + " (inclusive), not "
-                + str(row)
-            )
-        self._check_batch_mutability()
-        if not self._has_packed_prime_storage():
-            raise NotImplementedError("set_row currently requires packed GF(p)")
-        residues = _prime_residue_values(self.base_ring(), entries)
-        self._set_dense_prime_sequence(
-            residues,
-            row * self.ncols(),
-            1,
-            "set_row",
-        )
+        """Set one row after staging and coercing every source entry."""
+        _matrix_selection_module().set_row(self, row, values)
 
     def set_column(self, column: int, values: Any) -> None:
-        """Set one column in place through a transactional dense-prime batch."""
-        entries = list(values)
-        if len(entries) != self.nrows():
-            raise ValueError(
-                "list of new entries must be of length "
-                + str(self.nrows())
-                + " (not "
-                + str(len(entries))
-                + ")"
-            )
-        if column < 0 or column >= self.ncols():
-            raise ValueError(
-                "column number must be between 0 and "
-                + str(self.ncols() - 1)
-                + " (inclusive), not "
-                + str(column)
-            )
-        self._check_batch_mutability()
-        if not self._has_packed_prime_storage():
-            raise NotImplementedError("set_column currently requires packed GF(p)")
-        residues = _prime_residue_values(self.base_ring(), entries)
-        self._set_dense_prime_sequence(
-            residues,
-            column,
-            self.ncols(),
-            "set_column",
-        )
+        """Set one column after staging and coercing every source entry."""
+        _matrix_selection_module().set_column(self, column, values)
 
     def set_block(self, row: int, column: int, block: Any) -> None:
-        """Set a checked matrix window without exporting dense-prime storage."""
+        """Set a checked matrix window through one canonical storage update."""
         self._check_batch_mutability()
         if not isinstance(block, Matrix):
             raise TypeError("block must be a matrix")
-        if not self._has_packed_prime_storage():
-            raise NotImplementedError("set_block currently requires packed GF(p)")
         if block.base_ring() is not self.base_ring():
             block = block.change_ring(self.base_ring())
         if (
@@ -2890,6 +2850,36 @@ class Matrix(sage.Element):
             or column + block.ncols() > self.ncols()
         ):
             raise IndexError("matrix window index out of range")
+        if block.nrows() == 0 or block.ncols() == 0:
+            return
+        if block is self:
+            block = block.__copy__()
+        if self._has_fmpz_matrix_resource() and block._has_fmpz_matrix_resource():
+            _flint_ffi_module().fmpz_matrix_set_block(
+                self._integer_resource(),
+                row,
+                column,
+                block._integer_resource(),
+            )
+            self._integer_storage_cache.entries = runtime.undefined
+            self._integer_entries_cache = runtime.undefined
+            self._clear_cache()
+            return
+        if self._has_fmpq_matrix_resource() and block._has_fmpq_matrix_resource():
+            _flint_ffi_module().fmpq_matrix_set_block(
+                self._rational_resource(),
+                row,
+                column,
+                block._rational_resource(),
+            )
+            self._rational_storage_cache.numerators = runtime.undefined
+            self._rational_storage_cache.denominators = runtime.undefined
+            self._clear_cache()
+            return
+        if not self._has_packed_prime_storage():
+            raise NotImplementedError(
+                "set_block requires generated exact or packed GF(p) storage"
+            )
         modulus = int(_untyped(self.base_ring()).characteristic())
         if self._has_m4ri_matrix_resource() and block._has_m4ri_matrix_resource():
             kernel = _dense_binary_m4ri_kernel_module().m4ri_dense_matrix_set_block
@@ -2905,8 +2895,6 @@ class Matrix(sage.Element):
             )
             if not valid:
                 raise RuntimeError("M4RI block mutation validation failed")
-            if block.nrows() == 0 or block.ncols() == 0:
-                return
             self._prime_residues_cache = runtime.undefined
         elif (
             _is_packed_uint64(self._prime_residues_cache)
@@ -2930,8 +2918,6 @@ class Matrix(sage.Element):
             valid = kernel(target, row, column, source)
             if not valid:
                 raise RuntimeError("dense prime block mutation validation failed")
-            if block.nrows() == 0 or block.ncols() == 0:
-                return
             self._prime_residues_cache = _packed_uint64(target_entries)
         else:
             raise RuntimeError("dense prime block storage representations disagree")
@@ -6460,9 +6446,11 @@ class Matrix(sage.Element):
         self._clear_cache()
 
     def matrix_from_rows(self, rows: Any) -> Matrix:
-        indices = [int(index) for index in rows]
+        indices = _matrix_selection_module().row_indices(
+            (int(index) for index in rows),
+            self.nrows(),
+        )
         if self._has_fmpq_matrix_resource():
-            indices = [_normalize_index(row, self.nrows()) for row in indices]
             resource = _flint_ffi_module().fmpq_matrix_select_rows(
                 self._rational_resource(),
                 _packed_uint64(indices),
@@ -6480,7 +6468,6 @@ class Matrix(sage.Element):
                 self.ncols(),
             )._from_fmpq_matrix_resource(resource)
         if self._has_packed_rational_storage():
-            indices = [_normalize_index(row, self.nrows()) for row in indices]
             kernel = _dense_rational_kernel_module().dense_rational_matrix_select_rows
             source_numerators, source_denominators = self._rational_kernel_parts(kernel)
             index_buffer = _dense_integer_buffer(kernel, indices, 1)
@@ -6518,7 +6505,6 @@ class Matrix(sage.Element):
                 self.ncols(),
             )._from_canonical_rational_entries(storage.numerators, storage.denominators)
         if self._has_integer_storage():
-            indices = [_normalize_index(row, self.nrows()) for row in indices]
             target = _flint_ffi_module().fmpz_matrix_select_rows(
                 self._integer_resource(),
                 _packed_uint64(indices),
@@ -6534,7 +6520,6 @@ class Matrix(sage.Element):
                 self.base_ring(), len(indices), self.ncols()
             )._from_fmpz_matrix_resource(target)
         if self._has_packed_prime_storage():
-            indices = [_normalize_index(row, self.nrows()) for row in indices]
             kernel = _dense_prime_kernel_module().dense_prime_field_matrix_select_rows
             modulus = int(_untyped(self.base_ring()).characteristic())
             entries = _dense_prime_zeros(kernel, len(indices) * self.ncols())
@@ -6565,9 +6550,11 @@ class Matrix(sage.Element):
         )
 
     def matrix_from_columns(self, columns: Any) -> Matrix:
-        indices = [int(index) for index in columns]
+        indices = _matrix_selection_module().column_indices(
+            (int(index) for index in columns),
+            self.ncols(),
+        )
         if self._has_fmpq_matrix_resource():
-            indices = [_normalize_index(column, self.ncols()) for column in indices]
             resource = _flint_ffi_module().fmpq_matrix_select_columns(
                 self._rational_resource(),
                 _packed_uint64(indices),
@@ -6585,7 +6572,6 @@ class Matrix(sage.Element):
                 len(indices),
             )._from_fmpq_matrix_resource(resource)
         if self._has_packed_rational_storage():
-            indices = [_normalize_index(column, self.ncols()) for column in indices]
             kernel = (
                 _dense_rational_kernel_module().dense_rational_matrix_select_columns
             )
@@ -6625,7 +6611,6 @@ class Matrix(sage.Element):
                 len(indices),
             )._from_canonical_rational_entries(storage.numerators, storage.denominators)
         if self._has_integer_storage():
-            indices = [_normalize_index(column, self.ncols()) for column in indices]
             target = _flint_ffi_module().fmpz_matrix_select_columns(
                 self._integer_resource(),
                 _packed_uint64(indices),
@@ -6641,7 +6626,6 @@ class Matrix(sage.Element):
                 self.base_ring(), self.nrows(), len(indices)
             )._from_fmpz_matrix_resource(target)
         if self._has_packed_prime_storage():
-            indices = [_normalize_index(column, self.ncols()) for column in indices]
             kernel = (
                 _dense_prime_kernel_module().dense_prime_field_matrix_select_columns
             )
@@ -6672,6 +6656,50 @@ class Matrix(sage.Element):
             MatrixSpace(self.base_ring(), self.nrows(), len(indices)),
             native,
         )
+
+    def matrix_from_rows_and_columns(self, rows: Any, columns: Any) -> Matrix:
+        """Return the matrix selected by ordered row and column indices."""
+        return _matrix_selection_module().matrix_from_rows_and_columns(
+            self, rows, columns
+        )
+
+    def submatrix(
+        self,
+        row: int = 0,
+        col: int = 0,
+        nrows: int = -1,
+        ncols: int = -1,
+    ) -> Matrix:
+        """Return a half-open rectangular submatrix."""
+        return _matrix_selection_module().submatrix(self, row, col, nrows, ncols)
+
+    def delete_rows(self, rows: Any, check: bool = True) -> Matrix:
+        """Return a copy with the specified rows removed."""
+        return _matrix_selection_module().delete_rows(self, rows, check)
+
+    def delete_columns(self, columns: Any, check: bool = True) -> Matrix:
+        """Return a copy with the specified columns removed."""
+        return _matrix_selection_module().delete_columns(self, columns, check)
+
+    def swap_rows(self, first: int, second: int) -> None:
+        """Swap two rows transactionally."""
+        _matrix_selection_module().swap_rows(self, first, second)
+
+    def swap_columns(self, first: int, second: int) -> None:
+        """Swap two columns transactionally."""
+        _matrix_selection_module().swap_columns(self, first, second)
+
+    def with_swapped_rows(self, first: int, second: int) -> Matrix:
+        """Return a mutable copy with two rows swapped."""
+        return _matrix_selection_module().with_swapped_rows(self, first, second)
+
+    def with_swapped_columns(self, first: int, second: int) -> Matrix:
+        """Return a mutable copy with two columns swapped."""
+        return _matrix_selection_module().with_swapped_columns(self, first, second)
+
+    def insert_row(self, index: int, values: Any) -> Matrix:
+        """Insert one row into a dense integer matrix."""
+        return _matrix_selection_module().insert_row(self, index, values)
 
     def diagonal(self, offset: int = 0) -> list[Any]:
         offset = int(offset)
