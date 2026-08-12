@@ -1,0 +1,195 @@
+{
+  "schema_version": 1,
+  "audit_id": "sage-days-p1-linear-algebra-api",
+  "default_samples": 5,
+  "minimum_samples": 3,
+  "timing_unit": "milliseconds per operation",
+  "policy": "Median warm in-session time. Budgets are deliberately coarse cross-platform regression limits; specialized dense-matrix gates remain authoritative for peak performance.",
+  "authoritative_existing_gates": {
+    "ZZ": "scripts/check-integer-matrix-budget.cjs",
+    "QQ": "scripts/check-rational-matrix-budget.cjs",
+    "GF(7)": "scripts/check-finite-matrix-budget.cjs"
+  },
+  "cases": [
+    {
+      "id": "zz-matrix-construct-80",
+      "object": "Matrix",
+      "base_ring": "ZZ",
+      "operation": "construction",
+      "path": "packed-compiler-owned",
+      "expression": "matrix(ZZ, 80, 80, _audit_zz_values)",
+      "iterations": 2,
+      "budget_ms": 80
+    },
+    {
+      "id": "zz-matrix-add-80",
+      "object": "Matrix",
+      "base_ring": "ZZ",
+      "operation": "add",
+      "path": "packed-compiler-owned",
+      "expression": "_audit_zz_left + _audit_zz_right",
+      "iterations": 3,
+      "budget_ms": 40
+    },
+    {
+      "id": "zz-matrix-multiply-40",
+      "object": "Matrix",
+      "base_ring": "ZZ",
+      "operation": "multiply",
+      "path": "generated-packed-ffi",
+      "expression": "_audit_zz_square * _audit_zz_square",
+      "iterations": 2,
+      "budget_ms": 80
+    },
+    {
+      "id": "zz-matrix-rank-40",
+      "object": "Matrix",
+      "base_ring": "ZZ",
+      "operation": "rank",
+      "path": "generated-packed-ffi",
+      "expression": "_audit_zz_square.__copy__().rank()",
+      "iterations": 2,
+      "budget_ms": 100
+    },
+    {
+      "id": "zz-vector-add-4000",
+      "object": "Vector",
+      "base_ring": "ZZ",
+      "operation": "add",
+      "path": "dynamic-python",
+      "expression": "_audit_zz_vector_left + _audit_zz_vector_right",
+      "iterations": 3,
+      "budget_ms": 80
+    },
+    {
+      "id": "zz-vector-dot-4000",
+      "object": "Vector",
+      "base_ring": "ZZ",
+      "operation": "dot_product",
+      "path": "dynamic-python",
+      "expression": "_audit_zz_vector_left.dot_product(_audit_zz_vector_right)",
+      "iterations": 3,
+      "budget_ms": 80
+    },
+    {
+      "id": "qq-matrix-construct-80",
+      "object": "Matrix",
+      "base_ring": "QQ",
+      "operation": "construction",
+      "path": "packed-compiler-owned",
+      "expression": "matrix(QQ, 80, 80, _audit_qq_values)",
+      "iterations": 2,
+      "budget_ms": 120
+    },
+    {
+      "id": "qq-matrix-add-80",
+      "object": "Matrix",
+      "base_ring": "QQ",
+      "operation": "add",
+      "path": "packed-compiler-owned",
+      "expression": "_audit_qq_left + _audit_qq_right",
+      "iterations": 3,
+      "budget_ms": 60
+    },
+    {
+      "id": "qq-matrix-multiply-30",
+      "object": "Matrix",
+      "base_ring": "QQ",
+      "operation": "multiply",
+      "path": "generated-packed-ffi",
+      "expression": "_audit_qq_square * _audit_qq_square",
+      "iterations": 2,
+      "budget_ms": 120
+    },
+    {
+      "id": "qq-matrix-rank-30",
+      "object": "Matrix",
+      "base_ring": "QQ",
+      "operation": "rank",
+      "path": "generated-packed-ffi",
+      "expression": "_audit_qq_square.__copy__().rank()",
+      "iterations": 2,
+      "budget_ms": 140
+    },
+    {
+      "id": "qq-vector-add-3000",
+      "object": "Vector",
+      "base_ring": "QQ",
+      "operation": "add",
+      "path": "dynamic-python",
+      "expression": "_audit_qq_vector_left + _audit_qq_vector_right",
+      "iterations": 3,
+      "budget_ms": 100
+    },
+    {
+      "id": "qq-vector-dot-3000",
+      "object": "Vector",
+      "base_ring": "QQ",
+      "operation": "dot_product",
+      "path": "dynamic-python",
+      "expression": "_audit_qq_vector_left.dot_product(_audit_qq_vector_right)",
+      "iterations": 3,
+      "budget_ms": 100
+    },
+    {
+      "id": "gf7-matrix-construct-100",
+      "object": "Matrix",
+      "base_ring": "GF(7)",
+      "operation": "construction",
+      "path": "packed-compiler-owned",
+      "expression": "matrix(GF(7), 100, 100, _audit_gf7_values)",
+      "iterations": 2,
+      "budget_ms": 80
+    },
+    {
+      "id": "gf7-matrix-add-100",
+      "object": "Matrix",
+      "base_ring": "GF(7)",
+      "operation": "add",
+      "path": "packed-compiler-owned",
+      "expression": "_audit_gf7_left + _audit_gf7_right",
+      "iterations": 3,
+      "budget_ms": 40
+    },
+    {
+      "id": "gf7-matrix-multiply-60",
+      "object": "Matrix",
+      "base_ring": "GF(7)",
+      "operation": "multiply",
+      "path": "generated-packed-ffi",
+      "expression": "_audit_gf7_square * _audit_gf7_square",
+      "iterations": 2,
+      "budget_ms": 60
+    },
+    {
+      "id": "gf7-matrix-rank-60",
+      "object": "Matrix",
+      "base_ring": "GF(7)",
+      "operation": "rank",
+      "path": "generated-packed-ffi",
+      "expression": "_audit_gf7_square.__copy__().rank()",
+      "iterations": 2,
+      "budget_ms": 60
+    },
+    {
+      "id": "gf7-vector-add-4000",
+      "object": "Vector",
+      "base_ring": "GF(7)",
+      "operation": "add",
+      "path": "dynamic-python",
+      "expression": "_audit_gf7_vector_left + _audit_gf7_vector_right",
+      "iterations": 3,
+      "budget_ms": 80
+    },
+    {
+      "id": "gf7-vector-dot-4000",
+      "object": "Vector",
+      "base_ring": "GF(7)",
+      "operation": "dot_product",
+      "path": "dynamic-python",
+      "expression": "_audit_gf7_vector_left.dot_product(_audit_gf7_vector_right)",
+      "iterations": 3,
+      "budget_ms": 80
+    }
+  ]
+}

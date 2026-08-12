@@ -1,0 +1,258 @@
+{
+  "schema_version": 1,
+  "audit_id": "sage-days-p1-linear-algebra-api",
+  "captured_at": "2026-08-12",
+  "scope": {
+    "objects": ["Matrix", "Vector"],
+    "base_rings": ["ZZ", "QQ", "GF(7)"],
+    "sage_reference": "SageMath 10.9.post1",
+    "sage_reference_method": "sorted public names from dir() on a 2x2 dense matrix or length-2 dense vector",
+    "sagejs_method": "sorted public names from dir() on the corresponding Sage.js value"
+  },
+  "path_kinds": {
+    "packed-compiler-owned": "The public value owns a host-independent packed buffer and executes an ordinary typed-Python structural kernel.",
+    "generated-packed-ffi": "A generated declaration adapter copies compiler-owned packed buffers through a lexical FLINT value; dynamic execution uses the generated N-API host adapter and compiled execution is host-isolated.",
+    "dynamic-python": "The public implementation is ordinary dynamic Python over public values, without a packed native kernel.",
+    "mixed": "The operation composes two or more of the preceding production paths.",
+    "napi-oracle-only": "A legacy opaque FLINT matrix is constructed only by differential tests; it is not public production state or a fallback for the target rings.",
+    "missing": "The Sage public name is not exposed by Sage.js."
+  },
+  "public_surface": {
+    "sagejs": {
+      "Matrix": {
+        "count": 69,
+        "sha256": "c4b75756bacd9e3ccb39b274a79cf2e8c8978b04662586e9ca8baa98fe8a9e0d",
+        "names": [
+          "T", "augment", "base_ring", "change_ring", "characteristic_polynomial",
+          "charpoly", "column", "column_module", "column_space", "columns", "density",
+          "det", "determinant", "diagonal", "diagonalization", "dimensions",
+          "echelon_form", "eigenspaces_left", "eigenspaces_right", "eigenvalues",
+          "eigenvectors_left", "eigenvectors_right", "elementary_divisors", "hermite_form",
+          "howell_form", "image", "inverse", "inverse_of_unit", "is_diagonalizable",
+          "is_immutable", "is_invertible", "is_mutable", "is_one", "is_sparse",
+          "is_square", "is_unit", "is_zero", "kernel", "left_kernel",
+          "left_kernel_matrix", "list", "matrix_from_columns", "matrix_from_rows",
+          "minimal_polynomial", "minpoly", "ncols", "nrows", "nullity", "parent",
+          "pivots", "rank", "right_kernel", "right_kernel_matrix", "right_nullity", "row",
+          "row_module", "row_space", "rows", "rref", "set_immutable", "set_mutable",
+          "smith_form", "solve_left", "solve_right", "stack", "str", "subdivide",
+          "trace", "transpose"
+        ]
+      },
+      "Vector": {
+        "count": 9,
+        "sha256": "76e21c61467f891a4540713dee688501b25e593266524f9347dcaa9a71eeae23",
+        "names": [
+          "base_ring", "change_ring", "column", "degree", "dimension", "dot_product",
+          "list", "parent", "row"
+        ]
+      }
+    },
+    "by_base_ring": {
+      "ZZ": {
+        "Matrix": {
+          "sage_count": 296,
+          "sage_sha256": "4d443a58340d4bbd7bd5871912b5889e27876bd8494d3af0bb8b60c94262945a",
+          "common_count": 67,
+          "missing_count": 229,
+          "sagejs_only_count": 2,
+          "coverage": 0.22635135135135134
+        },
+        "Vector": {
+          "sage_count": 95,
+          "sage_sha256": "9200d18c13921395cd68870be5e98b3489d2bcf719098d394866ffb42d8d43b8",
+          "common_count": 8,
+          "missing_count": 87,
+          "sagejs_only_count": 1,
+          "coverage": 0.08421052631578947
+        }
+      },
+      "QQ": {
+        "Matrix": {
+          "sage_count": 286,
+          "sage_sha256": "71259c50702f44841f130c31f1eff95e5b7549251ab5fdcfdcc8b6953392a435",
+          "common_count": 67,
+          "missing_count": 219,
+          "sagejs_only_count": 2,
+          "coverage": 0.23426573426573427
+        },
+        "Vector": {
+          "sage_count": 95,
+          "sage_sha256": "9200d18c13921395cd68870be5e98b3489d2bcf719098d394866ffb42d8d43b8",
+          "common_count": 8,
+          "missing_count": 87,
+          "sagejs_only_count": 1,
+          "coverage": 0.08421052631578947
+        }
+      },
+      "GF(7)": {
+        "Matrix": {
+          "sage_count": 283,
+          "sage_sha256": "8d71e5460a23dbddeaa2f4126c403751f305c29ea6dc6eea1df886d3459e6991",
+          "common_count": 67,
+          "missing_count": 216,
+          "sagejs_only_count": 2,
+          "coverage": 0.23674911660777384
+        },
+        "Vector": {
+          "sage_count": 96,
+          "sage_sha256": "92d9e598d6be6b3b8ccae7b8e7a12bf0be9faa459990d3911a154c61f587785a",
+          "common_count": 8,
+          "missing_count": 88,
+          "sagejs_only_count": 1,
+          "coverage": 0.08333333333333333
+        }
+      }
+    },
+    "notes": [
+      "Counts measure name compatibility, not semantic completeness; operational witnesses below ratchet representative behavior.",
+      "Sage.js-only Matrix names in this snapshot are howell_form and set_mutable; the Sage.js-only Vector name is dimension.",
+      "Inherited Sage category methods make the reference surface intentionally broad. The hashes make the exact captured oracle independently reproducible without embedding hundreds of names."
+    ]
+  },
+  "representations": {
+    "ZZ": {
+      "Matrix": {
+        "storage": "IntegerBuffer",
+        "production_path": "packed-compiler-owned",
+        "typed_python_kernels": 19,
+        "generated_packed_ffi_functions": 8,
+        "generated_owned_resources": 0,
+        "napi_public_state": false,
+        "napi_oracle": true
+      },
+      "Vector": {
+        "storage": "Python list of Integer elements",
+        "production_path": "dynamic-python",
+        "typed_python_kernels": 0,
+        "generated_packed_ffi_functions": 0,
+        "generated_owned_resources": 0,
+        "napi_public_state": false,
+        "napi_oracle": false
+      }
+    },
+    "QQ": {
+      "Matrix": {
+        "storage": "normalized RationalBuffer pair of IntegerBuffer numerators and denominators",
+        "production_path": "packed-compiler-owned",
+        "typed_python_kernels": 25,
+        "generated_packed_ffi_functions": 7,
+        "generated_owned_resources": 0,
+        "napi_public_state": false,
+        "napi_oracle": true
+      },
+      "Vector": {
+        "storage": "Python list of Rational elements",
+        "production_path": "dynamic-python",
+        "typed_python_kernels": 0,
+        "generated_packed_ffi_functions": 0,
+        "generated_owned_resources": 0,
+        "napi_public_state": false,
+        "napi_oracle": false
+      }
+    },
+    "GF(7)": {
+      "Matrix": {
+        "storage": "row-major UInt64Buffer residues; DensePrimeMatrix is a compiler-owned borrowed NativeRecord",
+        "production_path": "packed-compiler-owned",
+        "typed_python_kernels": 22,
+        "generated_packed_ffi_functions": 9,
+        "generated_owned_resources": 0,
+        "napi_public_state": false,
+        "napi_oracle": true
+      },
+      "Vector": {
+        "storage": "Python list of finite-field elements",
+        "production_path": "dynamic-python",
+        "typed_python_kernels": 0,
+        "generated_packed_ffi_functions": 0,
+        "generated_owned_resources": 0,
+        "napi_public_state": false,
+        "napi_oracle": false
+      }
+    }
+  },
+  "operation_paths": {
+    "Matrix": {
+      "packed-compiler-owned": {
+        "all_target_rings": [
+          "construction", "entry_get", "entry_set", "add", "subtract", "negate",
+          "scalar_multiply", "transpose", "equal", "is_zero", "is_one", "density",
+          "trace", "stack", "augment", "matrix_from_rows", "matrix_from_columns", "copy"
+        ]
+      },
+      "generated-packed-ffi": {
+        "ZZ": [
+          "multiply", "determinant", "rank", "charpoly", "hermite_form",
+          "hermite_form_transformation", "smith_form", "right_kernel"
+        ],
+        "QQ": [
+          "multiply", "determinant", "rank", "rref", "inverse", "solve_right", "charpoly"
+        ],
+        "GF(7)": [
+          "multiply", "determinant", "rank", "rref", "right_kernel", "charpoly",
+          "minpoly", "inverse", "solve_right"
+        ]
+      },
+      "dynamic-python": {
+        "all_target_rings": [
+          "dimensions", "is_square", "list", "row", "rows", "column", "columns",
+          "diagonal", "power", "left_kernel", "row_space", "column_space", "pivots"
+        ],
+        "ZZ": ["minpoly"],
+        "QQ": ["minpoly"]
+      },
+      "mixed": {
+        "ZZ": ["rref_via_QQ", "inverse_via_QQ", "solve_right_via_QQ"],
+        "QQ": ["right_kernel_via_rref_and_typed_basis"],
+        "GF(7)": ["rank_algorithm_modp", "rref_algorithm_modp"]
+      },
+      "napi-oracle-only": {
+        "all_target_rings": ["legacy opaque FLINT matrix differential comparisons"]
+      },
+      "missing_priority_surface": [
+        "matrix_from_rows_and_columns", "submatrix", "swap_rows", "swap_columns",
+        "set_row", "set_column", "delete_rows", "delete_columns", "insert_row",
+        "is_diagonal", "is_symmetric", "is_triangular", "is_scalar", "is_nilpotent",
+        "nonzero_positions", "nonpivots", "LU", "QR", "gram_schmidt", "minors",
+        "permanent", "tensor_product", "numpy"
+      ]
+    },
+    "Vector": {
+      "dynamic-python": {
+        "all_target_rings": [
+          "construction", "entry_get", "iteration", "list", "change_ring", "add",
+          "subtract", "negate", "scalar_multiply", "dot_product", "matrix_multiply",
+          "row", "column", "equal"
+        ]
+      },
+      "missing_priority_surface": [
+        "is_zero", "is_immutable", "set_immutable", "nonzero_positions", "support",
+        "pairwise_product", "outer_product", "norm", "normalized", "numpy"
+      ]
+    }
+  },
+  "source_evidence": {
+    "public_api": "src/baselib/matrix.py",
+    "typed_kernel_directory": "src/lib/sagejs/kernels/matrix",
+    "ffi_declaration": "ffi/flint.ffi.py",
+    "ffi_lowered_ir": "ffi/flint.ffi.json",
+    "ffi_adapter_catalog": "ffi/abi-types.json",
+    "napi_policy": "architecture/native-export-policy.json",
+    "napi_oracles": [
+      "test/dense-integer-migration.cjs",
+      "test/dense-rational-migration.cjs",
+      "test/dense-prime-migration.cjs"
+    ]
+  },
+  "ratchets": {
+    "minimum_sage_name_intersection": {
+      "Matrix": {"ZZ": 67, "QQ": 67, "GF(7)": 67},
+      "Vector": {"ZZ": 8, "QQ": 8, "GF(7)": 8}
+    },
+    "minimum_sagejs_public_names": {"Matrix": 69, "Vector": 9},
+    "target_matrix_napi_public_state": false,
+    "minimum_generated_packed_ffi_functions": {"ZZ": 8, "QQ": 7, "GF(7)": 9},
+    "minimum_operational_witnesses_per_ring": {"Matrix": 12, "Vector": 8}
+  }
+}
