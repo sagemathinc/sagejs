@@ -4,10 +4,10 @@
   "id": "polynomial-domain-performance-matrix",
   "title": "Polynomial Domain Performance Matrix",
   "lane": "arithmetic-algebra",
-  "status": "active",
+  "status": "review",
   "owner": "user",
   "objective": "Add deterministic public cold/warm benchmark and oracle matrix for large-prime, extension-field, and cyclotomic polynomial workflows",
-  "base_commit": "97116b99d9b24ded43c80ec547fd9c1e8f77efbd",
+  "base_commit": "684da899398cfb5cffa8395448ca6d62a1757eee",
   "claims": [
     "bench/public-polynomial-domains-v1.cjs"
   ],
@@ -73,11 +73,50 @@
       "commit": "97116b99d9b24ded43c80ec547fd9c1e8f77efbd",
       "workspace_fingerprint": "0dfbc51db10ca82e67909751b50250653a06ea5b234a2f3833a48ef83b19e5f3",
       "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:changed -- --base 684da899398cfb5cffa8395448ca6d62a1757eee",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 40.882,
+      "started_at": "2026-08-12T08:33:39.354Z",
+      "commit": "0f73a91678560c2b0d58b21e288ff73357d97ee4",
+      "workspace_fingerprint": "0763a4fcbe36a1f70badcff2e4e3a09dde1c33040de1d6ca14d07ac48fe58dfe",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/public-polynomial-domains-v1.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 15.912,
+      "started_at": "2026-08-12T08:34:26.504Z",
+      "commit": "0f73a91678560c2b0d58b21e288ff73357d97ee4",
+      "workspace_fingerprint": "0763a4fcbe36a1f70badcff2e4e3a09dde1c33040de1d6ca14d07ac48fe58dfe",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test docs/audits/polynomial-domains.test.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.125,
+      "started_at": "2026-08-12T08:34:43.037Z",
+      "commit": "0f73a91678560c2b0d58b21e288ff73357d97ee4",
+      "workspace_fingerprint": "0763a4fcbe36a1f70badcff2e4e3a09dde1c33040de1d6ca14d07ac48fe58dfe",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {
-    "summary": "",
-    "risks": [],
-    "next_steps": []
+    "summary": "Added a deterministic public 3-domain by 11-workflow benchmark for GF(p)[x] above the packed-prime boundary, GF(p^n)[x], and CyclotomicField(n)[x]. The machine-readable report includes host and observed representation metadata, process and first-operation cold timings, warm medians, unsupported-operation evidence, fixed-workload algebraic result identities, optional SageMath 10.9 comparison, and runtime ratios without changing implementation selection or imposing fragile timing gates. Every algebraic identity supported by both runtimes matched in the recorded Linux x64 run.",
+    "risks": [
+      "This lane records rather than fixes current gaps: Sage.js supported 18 of 30 timed workflows, with twelve public workflows still reported as unsupported and immutable mutation kept as a semantic-only record.",
+      "The fixed corpus is a reproducible directional baseline, not a claim about all polynomial shapes or hardware; absolute timings and ratios must be retained with their host metadata.",
+      "Formatting checksums and serialized byte lengths are intentionally runtime-specific metadata. Algebraic reconstruction and evaluation identities, rather than byte-for-byte text or persistence formats, are compared across runtimes.",
+      "The first test:changed receipt failed only because the then-current integration base omitted a new higher-weight test from the host-test manifest. After rebasing onto 684da89, the same changed-file unit tier passed all 184 tests."
+    ],
+    "next_steps": [
+      "Rerun this exact matrix as the large-prime, extension-field Euclidean, and cyclotomic-core lanes land so that both newly supported workflows and performance changes remain visible.",
+      "Retain reports from Linux x64, Linux arm64, and macOS arm64 instead of turning one host's ratios into global crossover constants.",
+      "Consider adding the benchmark to the repository benchmark catalog after the three P1 domain lanes stabilize their public surfaces."
+    ]
   }
 }
