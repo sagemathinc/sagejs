@@ -42,9 +42,27 @@ function validateSource(filename, source, label) {
   return source;
 }
 
-function validateExpression(filename, expression, features, label) {
-  if (expression === true || expression === false || Number.isSafeInteger(expression) ||
-      typeof expression === "string") return expression;
+function numericType(type) {
+  return type === "integer" || type === "uint64";
+}
+
+function stringType(type) {
+  return type === "enum" || type === "string";
+}
+
+function compatibleEquality(left, right) {
+  return left === right || (numericType(left) && numericType(right)) ||
+    (stringType(left) && stringType(right));
+}
+
+function requireType(filename, actual, expected, label) {
+  if (actual !== expected) fail(filename, `${label} must be ${expected}, not ${actual}`);
+}
+
+function validateExpression(filename, expression, featureTypes, label) {
+  if (expression === true || expression === false) return "boolean";
+  if (Number.isSafeInteger(expression)) return "integer";
+  if (typeof expression === "string") return "string";
   knownKeys(filename, expression, ["op", "source"], [
     "arguments", "left", "name", "operator", "right", "value",
   ], label);
@@ -57,46 +75,79 @@ function validateExpression(filename, expression, features, label) {
     if (typeof expression.value !== "string" || !/^-?(?:0|[1-9][0-9]*)$/.test(expression.value)) {
       fail(filename, `${label}.value must be a canonical decimal integer`);
     }
+    return "integer";
   } else if (expression.op === "literal") {
     exactKeys(filename, expression, ["op", "source", "value"], label);
     if (!["boolean", "number", "string"].includes(typeof expression.value) ||
         (typeof expression.value === "number" && !Number.isSafeInteger(expression.value))) {
       fail(filename, `${label}.value must be a static scalar`);
     }
+    return typeof expression.value === "number" ? "integer" : typeof expression.value;
   } else if (expression.op === "feature") {
     exactKeys(filename, expression, ["name", "op", "source"], label);
-    if (!features.has(expression.name)) {
+    if (!featureTypes.has(expression.name)) {
       fail(filename, `${label} references unknown feature ${expression.name}`);
     }
+    return featureTypes.get(expression.name);
   } else if (expression.op === "available") {
     exactKeys(filename, expression, ["name", "op", "source"], label);
     identifier(filename, expression.name, `${label}.name`);
+    return "boolean";
   } else if (expression.op === "not") {
     exactKeys(filename, expression, ["arguments", "op", "source"], label);
     if (!Array.isArray(expression.arguments) || expression.arguments.length !== 1) {
       fail(filename, `${label}.arguments must contain one expression`);
     }
-    validateExpression(filename, expression.arguments[0], features, `${label}.arguments[0]`);
+    requireType(filename,
+      validateExpression(filename, expression.arguments[0], featureTypes, `${label}.arguments[0]`),
+      "boolean", `${label}.arguments[0]`);
+    return "boolean";
   } else if (["all", "any", "minimum", "maximum"].includes(expression.op)) {
     exactKeys(filename, expression, ["arguments", "op", "source"], label);
     if (!Array.isArray(expression.arguments) || expression.arguments.length < 2) {
       fail(filename, `${label}.arguments must contain at least two expressions`);
     }
-    expression.arguments.forEach((item, index) =>
-      validateExpression(filename, item, features, `${label}.arguments[${index}]`));
+    const types = expression.arguments.map((item, index) =>
+      validateExpression(filename, item, featureTypes, `${label}.arguments[${index}]`));
+    if (["all", "any"].includes(expression.op)) {
+      types.forEach((type, index) =>
+        requireType(filename, type, "boolean", `${label}.arguments[${index}]`));
+      return "boolean";
+    }
+    types.forEach((type, index) => {
+      if (!numericType(type)) {
+        fail(filename, `${label}.arguments[${index}] must be an exact integer, not ${type}`);
+      }
+    });
+    return "integer";
   } else if (expression.op === "compare") {
     exactKeys(filename, expression, ["left", "op", "operator", "right", "source"], label);
     if (!COMPARISON_OPERATORS.has(expression.operator)) {
       fail(filename, `${label}.operator is unsupported`);
     }
-    validateExpression(filename, expression.left, features, `${label}.left`);
-    validateExpression(filename, expression.right, features, `${label}.right`);
+    const left = validateExpression(filename, expression.left, featureTypes, `${label}.left`);
+    const right = validateExpression(filename, expression.right, featureTypes, `${label}.right`);
+    if (["eq", "ne"].includes(expression.operator)) {
+      if (!compatibleEquality(left, right)) {
+        fail(filename, `${label} equality operands are incompatible: ${left} and ${right}`);
+      }
+    } else if (!numericType(left) || !numericType(right)) {
+      fail(filename, `${label} ordering operands must be exact integers, not ${left} and ${right}`);
+    }
+    return "boolean";
   } else {
     exactKeys(filename, expression, ["left", "op", "right", "source"], label);
-    validateExpression(filename, expression.left, features, `${label}.left`);
-    validateExpression(filename, expression.right, features, `${label}.right`);
+    const left = validateExpression(filename, expression.left, featureTypes, `${label}.left`);
+    const right = validateExpression(filename, expression.right, featureTypes, `${label}.right`);
+    if (!numericType(left) || !numericType(right)) {
+      fail(filename, `${label} arithmetic operands must be exact integers, not ${left} and ${right}`);
+    }
+    return "integer";
   }
-  return expression;
+}
+
+function validatePredicate(filename, expression, featureTypes, label) {
+  requireType(filename, validateExpression(filename, expression, featureTypes, label), "boolean", label);
 }
 
 function validateFamilyDocument(document, options = {}) {
@@ -112,7 +163,8 @@ function validateFamilyDocument(document, options = {}) {
   validateSource(filename, document.source, "family");
   if (document.features === null || typeof document.features !== "object" ||
       Array.isArray(document.features)) fail(filename, "family.features must be an object");
-  const featureNames = new Set(Object.keys(document.features));
+  const featureTypes = new Map(Object.entries(document.features));
+  const featureNames = new Set(featureTypes.keys());
   if (featureNames.size === 0) fail(filename, "family.features must not be empty");
   for (const [name, type] of Object.entries(document.features)) {
     if (!FEATURE_NAME.test(name)) fail(filename, `feature ${name} must be snake_case`);
@@ -126,7 +178,7 @@ function validateFamilyDocument(document, options = {}) {
     if (capabilities.has(capability.id)) fail(filename, `duplicate capability ${capability.id}`);
     nonemptyString(filename, capability.reason, `${capability.id}.reason`);
     validateSource(filename, capability.source, capability.id);
-    validateExpression(filename, capability.requires, featureNames, `${capability.id}.requires`);
+    validatePredicate(filename, capability.requires, featureTypes, `${capability.id}.requires`);
     capabilities.set(capability.id, capability);
   }
   const representations = new Map();
@@ -142,7 +194,7 @@ function validateFamilyDocument(document, options = {}) {
     }
     nonemptyString(filename, representation.reason, `${representation.id}.reason`);
     validateSource(filename, representation.source, representation.id);
-    validateExpression(filename, representation.when, featureNames, `${representation.id}.when`);
+    validatePredicate(filename, representation.when, featureTypes, `${representation.id}.when`);
     representations.set(representation.id, representation);
   }
   const conversions = new Map();
@@ -207,7 +259,7 @@ function validateFamilyDocument(document, options = {}) {
           fail(filename, `${algorithm.id} uses unknown conversion ${conversion}`);
         }
       }
-      validateExpression(filename, algorithm.when, featureNames, `${algorithm.id}.when`);
+      validatePredicate(filename, algorithm.when, featureTypes, `${algorithm.id}.when`);
       algorithms.set(algorithm.id, {
         ...algorithm,
         requires: required,
@@ -250,6 +302,7 @@ function validateFamilyDocument(document, options = {}) {
     document: normalized,
     fingerprint: fingerprint(normalized),
     features: featureNames,
+    featureTypes,
     capabilities: new Map(normalized.capabilities.map((item) => [item.id, item])),
     conversions: new Map(normalized.conversions.map((item) => [item.id, item])),
     representations: new Map(normalized.representations.map((item) => [item.id, item])),
@@ -356,7 +409,7 @@ function validateProfileDocument(document, families, options = {}) {
         if (!evidence.includes(rule.evidence)) fail(filename, `${key}.${rule.id} cites undeclared evidence ${rule.evidence}`);
       }
       validateSource(filename, rule.source, `${key}.${rule.id}`);
-      validateExpression(filename, rule.when, family.features, `${key}.${rule.id}.when`);
+      validatePredicate(filename, rule.when, family.featureTypes, `${key}.${rule.id}.when`);
       if (rule.when === true) terminal = true;
       rules.push(rule);
     }

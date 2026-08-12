@@ -157,6 +157,7 @@ test("stale, dirty, incorrect, noisy, and cold-as-warm reports fail closed", () 
     [report({ timed_scope: { conversion: true, allocation: true, result_construction: true, cleanup: true, lazy_load_excluded: false } }), /first lazy load/],
     [report({ dispatch: { ...report().dispatch, family_fingerprint: "3".repeat(64) } }), /stale/],
     [report({ measurements: { ...report().measurements, warm: { ...report().measurements.warm, dispersion: 0.5 } } }), /excessively noisy/],
+    [report({ measurements: { ...report().measurements, warm: { ...report().measurements.warm, values_ms: [0, 0, 0, 0, 0] } } }), /finite positive/],
   ];
   for (const [candidate, pattern] of cases) {
     assert.throws(() => validateBenchmarkReport(candidate, registry), pattern);
@@ -225,4 +226,65 @@ test("fitting rejects workload and host identity mixtures", () => {
     family: "dense-prime-matrix", operation: "multiply", feature: "inner",
     specialized: "fflas-float", fallback: "flint",
   }), /incomparable/);
+  const protocol = evidenceWith((item, context) => context.candidate === "flint"
+    ? {
+        ...item,
+        measurements: {
+          ...item.measurements,
+          warm: {
+            ...item.measurements.warm,
+            warmups: 100,
+          },
+        },
+      }
+    : item);
+  assert.throws(() => proposeIntegerThreshold(protocol, {
+    family: "dense-prime-matrix", operation: "multiply", feature: "inner",
+    specialized: "fflas-float", fallback: "flint",
+  }), /incomparable/);
+});
+
+test("fitting requires robust wins on both sides of the boundary", () => {
+  function thresholdEvidence(timing) {
+    const reports = [];
+    for (const grid of ["training", "validation"]) {
+      for (const value of [31, 32]) {
+        for (const candidate of ["fflas-float", "flint"]) {
+          const base = report();
+          reports.push(report({
+            case: {
+              ...base.case,
+              grid,
+              candidate,
+              features: { ...base.case.features, inner: value },
+            },
+            measurements: {
+              ...base.measurements,
+              warm: {
+                ...base.measurements.warm,
+                values_ms: Array(5).fill(timing({ value, candidate })),
+              },
+            },
+          }));
+        }
+      }
+    }
+    return ingestBenchmarkReports(reports, registry);
+  }
+
+  const specializedAlwaysWins = thresholdEvidence(({ candidate }) =>
+    candidate === "fflas-float" ? 1 : 2);
+  assert.throws(() => proposeIntegerThreshold(specializedAlwaysWins, {
+    family: "dense-prime-matrix", operation: "multiply", feature: "inner",
+    specialized: "fflas-float", fallback: "flint",
+  }), /supports no adjacent robust threshold/);
+
+  const nearTie = thresholdEvidence(({ value, candidate }) => {
+    const winner = value < 32 ? "flint" : "fflas-float";
+    return candidate === winner ? 1 : 1.16;
+  });
+  assert.throws(() => proposeIntegerThreshold(nearTie, {
+    family: "dense-prime-matrix", operation: "multiply", feature: "inner",
+    specialized: "fflas-float", fallback: "flint",
+  }), /supports no adjacent robust threshold/);
 });

@@ -41,11 +41,44 @@
     "macos-arm64": "required"
   },
   "validation": [
+    "node --test test/math-dispatch-declarations.cjs test/math-dispatch-selection.cjs test/math-dispatch-cache-identity.cjs test/math-dispatch-benchmark-ingestion.cjs",
+    "node bin/sagejs math check",
     "pnpm architecture:check",
     "pnpm test:portable",
     "pnpm test:baselib:strict"
   ],
-  "runs": [],
+  "runs": [
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 14.606,
+      "started_at": "2026-08-12T22:48:42.490Z",
+      "commit": "06ddd1e9eebc6ea6496ef717a90e9f84b5f7d1b3",
+      "workspace_fingerprint": "507e0feae42d720b6cb4e6e79959ec5facccc2302e5958fd54216aa6040307bc",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 14.584,
+      "started_at": "2026-08-12T22:49:00.555Z",
+      "commit": "06ddd1e9eebc6ea6496ef717a90e9f84b5f7d1b3",
+      "workspace_fingerprint": "507e0feae42d720b6cb4e6e79959ec5facccc2302e5958fd54216aa6040307bc",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 65.724,
+      "started_at": "2026-08-12T22:49:18.963Z",
+      "commit": "06ddd1e9eebc6ea6496ef717a90e9f84b5f7d1b3",
+      "workspace_fingerprint": "507e0feae42d720b6cb4e6e79959ec5facccc2302e5958fd54216aa6040307bc",
+      "platform": "linux-x64"
+    }
+  ],
   "handoff": {
     "summary": "",
     "risks": [],

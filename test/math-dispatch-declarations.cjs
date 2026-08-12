@@ -7,6 +7,7 @@ const { join, resolve } = require("node:path");
 const test = require("node:test");
 
 const { checkGenerated, loadRegistry } = require("../tools/math-dispatch/registry.cjs");
+const { validateFamilyDocument } = require("../tools/math-dispatch/schema.cjs");
 const { parseDispatchSource } = require("../tools/math-dispatch/source-declarations.cjs");
 
 const root = resolve(__dirname, "..");
@@ -82,6 +83,34 @@ test("static dictionaries cannot inject inherited profile identity", async () =>
   } finally {
     rmSync(temporary, { recursive: true, force: true });
   }
+});
+
+test("declaration expressions are statically typed and predicates are boolean", async () => {
+  const registry = await loadRegistry({ root });
+  const family = structuredClone(registry.families.get("dense-prime-matrix").document);
+  family.capabilities[0].requires = {
+    op: "add",
+    left: { op: "feature", name: "canonical_output", source: family.source },
+    right: { op: "integer", value: "1", source: family.source },
+    source: family.source,
+  };
+  assert.throws(() => validateFamilyDocument(family), /arithmetic operands.*boolean and integer/);
+
+  const nonPredicate = structuredClone(registry.families.get("dense-prime-matrix").document);
+  nonPredicate.operations[0].algorithms[0].when = {
+    op: "feature", name: "rows", source: nonPredicate.source,
+  };
+  assert.throws(() => validateFamilyDocument(nonPredicate), /\.when must be boolean, not uint64/);
+
+  const incompatible = structuredClone(registry.families.get("dense-prime-matrix").document);
+  incompatible.operations[0].algorithms[0].when = {
+    op: "compare",
+    operator: "eq",
+    left: { op: "feature", name: "canonical_output", source: incompatible.source },
+    right: { op: "integer", value: "1", source: incompatible.source },
+    source: incompatible.source,
+  };
+  assert.throws(() => validateFamilyDocument(incompatible), /equality operands are incompatible/);
 });
 
 test("stale generated JSON fails closed", async () => {
