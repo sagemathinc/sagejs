@@ -4545,6 +4545,7 @@
       "consumers": [
         "packages/flint-wasm/test/factor.test.mjs",
         "packages/flint-wasm/test/matrix.test.mjs",
+        "packages/flint-wasm/test/resource-browser-smoke.mjs",
         "packages/flint/test/test.cjs",
         "src/baselib/matrix.py",
         "test/native-kernel.cjs"
@@ -4599,6 +4600,7 @@
       "consumers": [
         "packages/flint-wasm/test/factor.test.mjs",
         "packages/flint-wasm/test/matrix.test.mjs",
+        "packages/flint-wasm/test/resource-browser-smoke.mjs",
         "packages/flint/test/test.cjs",
         "src/baselib/matrix.py",
         "test/ffi.cjs",
@@ -5050,6 +5052,7 @@
       "consumers": [
         "packages/flint-wasm/test/factor.test.mjs",
         "packages/flint-wasm/test/matrix.test.mjs",
+        "packages/flint-wasm/test/resource-browser-smoke.mjs",
         "packages/flint/bench/benchmark.cjs",
         "packages/flint/test/test.cjs",
         "src/baselib/matrix.py",
@@ -5242,6 +5245,7 @@
       "consumers": [
         "packages/flint-wasm/test/factor.test.mjs",
         "packages/flint-wasm/test/matrix.test.mjs",
+        "packages/flint-wasm/test/resource-browser-smoke.mjs",
         "packages/flint/test/modular.cjs",
         "packages/flint/test/test.cjs",
         "src/baselib/matrix.py",
@@ -6913,6 +6917,7 @@
         "FLINT"
       ],
       "consumers": [
+        "packages/flint-wasm/test/resource-browser-smoke.mjs",
         "packages/flint/test/test.cjs",
         "src/baselib/matrix.py",
         "test/dense-prime-migration.cjs",
