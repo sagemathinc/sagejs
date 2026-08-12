@@ -11,6 +11,8 @@ const root = resolve(__dirname, "..");
 const check = process.argv.includes("--check");
 const coefficientCount = 1000;
 const extensionDegree = 2;
+const highExtensionDegree = 128;
+const highDegreeCoefficientCount = 5000;
 
 function medianMilliseconds(operation, warmups = 2, samples = 7) {
   for (let index = 0; index < warmups; index += 1) operation();
@@ -93,6 +95,41 @@ try {
     const value = flint.ffiFqPolynomialMul(source, source);
     flint.ffiFqPolynomialClose(value);
   });
+  // x^128 + x^7 + x^2 + x + 1 is irreducible over GF(2).
+  const highDegreeModulus = new BigUint64Array(highExtensionDegree + 1);
+  for (const exponent of [0, 1, 2, 7, 128]) highDegreeModulus[exponent] = 1n;
+  const highDegreeCoordinates = new BigUint64Array(
+    highExtensionDegree * highDegreeCoefficientCount,
+  );
+  for (let index = 0; index < highDegreeCoordinates.length; index += 1) {
+    highDegreeCoordinates[index] = BigInt((index * 17 + 1) & 1);
+  }
+  const highDegreeContext = flint.ffiFqContextCreate(
+    highDegreeModulus,
+    BigInt(highDegreeModulus.length),
+    2n,
+  );
+  const highDegreeSource = flint.ffiFqPolynomialCreate(
+    highDegreeContext,
+    highDegreeCoordinates,
+    BigInt(highDegreeCoordinates.length),
+    BigInt(highDegreeCoefficientCount),
+  );
+  let highDegreeExport;
+  try {
+    highDegreeExport = medianMilliseconds(() => {
+      const region = flint.ffiFqPolynomialCoordinateBytes(highDegreeSource);
+      try {
+        const copied = flint.ffiFlintByteRegionCopyBytes(region);
+        assert.equal(copied.length, 24 + 8 * highDegreeCoordinates.length);
+      } finally {
+        flint.ffiFlintByteRegionClose(region);
+      }
+    });
+  } finally {
+    flint.ffiFqPolynomialClose(highDegreeSource);
+    flint.ffiFqContextClose(highDegreeContext);
+  }
   const publicScalar = publicScalarIngressMilliseconds();
   const report = {
     schema: "sagejs.benchmark/extension-polynomial-resources-v1",
@@ -106,10 +143,16 @@ try {
       warmups: 2,
       generatedSamples: 7,
       publicSamples: 5,
+      highDegreeExport: {
+        characteristic: 2,
+        extensionDegree: highExtensionDegree,
+        coefficientCount: highDegreeCoefficientCount,
+      },
     },
     generatedResource: {
       bulkIngressMilliseconds: generatedIngress,
       squareMilliseconds: generatedSquare,
+      highDegreeExportMilliseconds: highDegreeExport,
     },
     currentPublicScalarIngressMilliseconds: publicScalar,
     ingressSpeedup:
@@ -123,6 +166,10 @@ try {
     assert.ok(
       generatedSquare.median < 10,
       `generated square took ${generatedSquare.median} ms`,
+    );
+    assert.ok(
+      highDegreeExport.median < 20,
+      `high-degree bulk export took ${highDegreeExport.median} ms`,
     );
     assert.ok(
       report.ingressSpeedup > 20,

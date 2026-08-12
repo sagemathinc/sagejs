@@ -36,6 +36,7 @@ int main(void)
     const uint64_t right_coordinates[4] = {2, 0, 1, 1};
     const uint64_t element_coordinates[2] = {1, 2};
     const uint64_t invalid_coordinates[2] = {1, 3};
+    const uint64_t *checked_coordinate = NULL;
     for (slong round = 0; round < 1000; round++)
     {
         sagejs_fq_context_t context, other_context, invalid_context;
@@ -60,8 +61,11 @@ int main(void)
             !sagejs_fq_element_init_coordinates(
                 other_element, other_context, element_coordinates, 2) ||
             !sagejs_fq_element_equal(element, element_copy) ||
-            sagejs_fq_element_degree(element) != 2 ||
-            sagejs_fq_element_coordinate(element, 1) != 2 ||
+            sagejs_fq_element_extension_degree(element) != 2 ||
+            (checked_coordinate = sagejs_fq_element_coordinate_checked(
+                element, 1)) == NULL ||
+            *checked_coordinate != 2 ||
+            sagejs_fq_element_coordinate_checked(element, 2) != NULL ||
             sagejs_fq_element_allocated_bytes(element) <=
                 sizeof(sagejs_fq_element_struct) ||
             sagejs_fq_element_init_coordinates(
@@ -84,7 +88,9 @@ int main(void)
         /* Dependents retain the context after its public owner closes. */
         sagejs_fq_context_clear(context);
         if (sagejs_fq_context_allocated_bytes(context) != 0 ||
-            sagejs_fq_element_coordinate(element, 1) != 2 ||
+            (checked_coordinate = sagejs_fq_element_coordinate_checked(
+                element, 1)) == NULL ||
+            *checked_coordinate != 2 ||
             !sagejs_fq_polynomial_add(sum, left, right) ||
             !sagejs_fq_polynomial_mul(product, left, right) ||
             !sagejs_fq_polynomial_neg(negated, product) ||
@@ -93,24 +99,28 @@ int main(void)
             memcmp(coordinates->data, "SJFC", 4) != 0 ||
             coordinates->data[4] != 1 ||
             sagejs_fq_polynomial_length(left) != 3 ||
-            sagejs_fq_polynomial_degree(left) != 2 ||
-            sagejs_fq_polynomial_coordinate(left, 0, 1) != 2 ||
+            sagejs_fq_polynomial_extension_degree(left) != 2 ||
+            (checked_coordinate = sagejs_fq_polynomial_coordinate_checked(
+                left, 0, 1)) == NULL ||
+            *checked_coordinate != 2 ||
+            sagejs_fq_polynomial_coordinate_checked(left, 3, 0) != NULL ||
+            sagejs_fq_polynomial_coordinate_checked(left, 0, 2) != NULL ||
             sagejs_fq_polynomial_length(sum) != 3 ||
-            sagejs_fq_polynomial_coordinate(sum, 0, 0) != 0 ||
-            sagejs_fq_polynomial_coordinate(sum, 0, 1) != 2 ||
-            sagejs_fq_polynomial_coordinate(sum, 1, 0) != 1 ||
-            sagejs_fq_polynomial_coordinate(sum, 1, 1) != 2 ||
+            sagejs_fq_polynomial_coordinate_unchecked(sum, 0, 0) != 0 ||
+            sagejs_fq_polynomial_coordinate_unchecked(sum, 0, 1) != 2 ||
+            sagejs_fq_polynomial_coordinate_unchecked(sum, 1, 0) != 1 ||
+            sagejs_fq_polynomial_coordinate_unchecked(sum, 1, 1) != 2 ||
             sagejs_fq_polynomial_length(product) != 4 ||
-            sagejs_fq_polynomial_coordinate(product, 0, 0) != 2 ||
-            sagejs_fq_polynomial_coordinate(product, 0, 1) != 1 ||
-            sagejs_fq_polynomial_coordinate(product, 1, 0) != 2 ||
-            sagejs_fq_polynomial_coordinate(product, 1, 1) != 2 ||
-            sagejs_fq_polynomial_coordinate(product, 2, 0) != 0 ||
-            sagejs_fq_polynomial_coordinate(product, 2, 1) != 2 ||
-            sagejs_fq_polynomial_coordinate(product, 3, 0) != 0 ||
-            sagejs_fq_polynomial_coordinate(product, 3, 1) != 1 ||
-            sagejs_fq_polynomial_coordinate(negated, 0, 0) != 1 ||
-            sagejs_fq_polynomial_coordinate(negated, 3, 1) != 2)
+            sagejs_fq_polynomial_coordinate_unchecked(product, 0, 0) != 2 ||
+            sagejs_fq_polynomial_coordinate_unchecked(product, 0, 1) != 1 ||
+            sagejs_fq_polynomial_coordinate_unchecked(product, 1, 0) != 2 ||
+            sagejs_fq_polynomial_coordinate_unchecked(product, 1, 1) != 2 ||
+            sagejs_fq_polynomial_coordinate_unchecked(product, 2, 0) != 0 ||
+            sagejs_fq_polynomial_coordinate_unchecked(product, 2, 1) != 2 ||
+            sagejs_fq_polynomial_coordinate_unchecked(product, 3, 0) != 0 ||
+            sagejs_fq_polynomial_coordinate_unchecked(product, 3, 1) != 1 ||
+            sagejs_fq_polynomial_coordinate_unchecked(negated, 0, 0) != 1 ||
+            sagejs_fq_polynomial_coordinate_unchecked(negated, 3, 1) != 2)
             return 4;
         sagejs_flint_byte_region_clear(coordinates);
 

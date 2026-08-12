@@ -13,7 +13,7 @@ const repositoryRoot = resolve(__dirname, "..", "..");
 const schema = "sagejs.ffi/declaration-v6";
 const ownership = new Set(["borrowed", "borrowed_mut", "owned", "value"]);
 const errorExceptions = new Set([
-  "OverflowError", "RuntimeError", "TypeError", "ValueError",
+  "IndexError", "OverflowError", "RuntimeError", "TypeError", "ValueError",
 ]);
 
 function fail(filename, message) {

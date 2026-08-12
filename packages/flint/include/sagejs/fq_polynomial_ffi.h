@@ -63,6 +63,7 @@ typedef struct
 {
     fq_default_t value;
     sagejs_fq_context_state *context;
+    uint64_t coordinate_scratch;
 } sagejs_fq_element_struct;
 
 typedef sagejs_fq_element_struct sagejs_fq_element_t[1];
@@ -71,6 +72,7 @@ typedef struct
 {
     fq_default_poly_t value;
     sagejs_fq_context_state *context;
+    uint64_t coordinate_scratch;
 } sagejs_fq_polynomial_struct;
 
 typedef sagejs_fq_polynomial_struct sagejs_fq_polynomial_t[1];
@@ -294,13 +296,13 @@ static inline int sagejs_fq_element_copy(
     return 1;
 }
 
-static inline uint64_t sagejs_fq_element_degree(
+static inline uint64_t sagejs_fq_element_extension_degree(
     const sagejs_fq_element_t element)
 {
     return element->context == NULL ? 0 : (uint64_t) element->context->degree;
 }
 
-static inline uint64_t sagejs_fq_element_coordinate(
+static inline uint64_t sagejs_fq_element_coordinate_unchecked(
     const sagejs_fq_element_t element, uint64_t basis_index)
 {
     if (element->context == NULL ||
@@ -309,6 +311,17 @@ static inline uint64_t sagejs_fq_element_coordinate(
     return (uint64_t) nmod_poly_get_coeff_ui(
         (const nmod_poly_struct *) element->value->fq_nmod,
         (slong) basis_index);
+}
+
+static inline const uint64_t *sagejs_fq_element_coordinate_checked(
+    sagejs_fq_element_t element, uint64_t basis_index)
+{
+    if (element->context == NULL ||
+        basis_index >= (uint64_t) element->context->degree)
+        return NULL;
+    element->coordinate_scratch =
+        sagejs_fq_element_coordinate_unchecked(element, basis_index);
+    return &element->coordinate_scratch;
 }
 
 static inline int sagejs_fq_element_equal(
@@ -443,14 +456,14 @@ static inline uint64_t sagejs_fq_polynomial_length(
         fq_default_poly_length(polynomial->value, polynomial->context->value);
 }
 
-static inline uint64_t sagejs_fq_polynomial_degree(
+static inline uint64_t sagejs_fq_polynomial_extension_degree(
     const sagejs_fq_polynomial_t polynomial)
 {
     return polynomial->context == NULL ? 0 :
         (uint64_t) polynomial->context->degree;
 }
 
-static inline uint64_t sagejs_fq_polynomial_coordinate(
+static inline uint64_t sagejs_fq_polynomial_coordinate_unchecked(
     const sagejs_fq_polynomial_t polynomial, uint64_t coefficient_index,
     uint64_t basis_index)
 {
@@ -469,6 +482,19 @@ static inline uint64_t sagejs_fq_polynomial_coordinate(
         (slong) basis_index);
     fq_default_clear(coefficient, polynomial->context->value);
     return (uint64_t) result;
+}
+
+static inline const uint64_t *sagejs_fq_polynomial_coordinate_checked(
+    sagejs_fq_polynomial_t polynomial,
+    uint64_t coefficient_index, uint64_t basis_index)
+{
+    if (polynomial->context == NULL ||
+        coefficient_index >= sagejs_fq_polynomial_length(polynomial) ||
+        basis_index >= (uint64_t) polynomial->context->degree)
+        return NULL;
+    polynomial->coordinate_scratch = sagejs_fq_polynomial_coordinate_unchecked(
+        polynomial, coefficient_index, basis_index);
+    return &polynomial->coordinate_scratch;
 }
 
 static inline int sagejs_fq_polynomial_copy(
@@ -604,7 +630,9 @@ static inline int sagejs_fq_polynomial_coordinate_bytes(
     const sagejs_fq_polynomial_t polynomial)
 {
     const uint64_t count = sagejs_fq_polynomial_length(polynomial);
-    const uint64_t degree = sagejs_fq_polynomial_degree(polynomial);
+    const uint64_t degree =
+        sagejs_fq_polynomial_extension_degree(polynomial);
+    fq_default_t coefficient_value;
     size_t coordinate_count;
     size_t payload_bytes;
     size_t total_bytes;
@@ -628,13 +656,21 @@ static inline int sagejs_fq_polynomial_coordinate_bytes(
     result->data[5] = result->data[6] = result->data[7] = 0;
     sagejs_fq_write_u64(result->data + 8, degree);
     sagejs_fq_write_u64(result->data + 16, count);
+    fq_default_init(coefficient_value, polynomial->context->value);
     for (uint64_t coefficient = 0; coefficient < count; coefficient++)
+    {
+        fq_default_poly_get_coeff(
+            coefficient_value, polynomial->value, (slong) coefficient,
+            polynomial->context->value);
         for (uint64_t basis = 0; basis < degree; basis++)
             sagejs_fq_write_u64(
                 result->data + 24 +
                     sizeof(uint64_t) * (coefficient * degree + basis),
-                sagejs_fq_polynomial_coordinate(
-                    polynomial, coefficient, basis));
+                (uint64_t) nmod_poly_get_coeff_ui(
+                    (const nmod_poly_struct *) coefficient_value->fq_nmod,
+                    (slong) basis));
+    }
+    fq_default_clear(coefficient_value, polynomial->context->value);
     return 1;
 }
 
