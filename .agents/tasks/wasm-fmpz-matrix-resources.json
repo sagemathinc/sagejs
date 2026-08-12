@@ -4,7 +4,7 @@
   "id": "wasm-fmpz-matrix-resources",
   "title": "Wasm Fmpz Matrix Resources",
   "lane": "integration",
-  "status": "active",
+  "status": "complete",
   "owner": "user",
   "objective": "Enable a decisive generated FmpzMatrix resource vertical slice in browser WebAssembly, including construction, mutation, access, copy, multiplication, determinant, formatting, serialization, byte ingress, public dense ZZ matrix behavior, failure atomicity, lifecycle accounting, and cold/warm measurement without handwritten operation-specific adapters",
   "base_commit": "d2eaeaf7a3bdcfb83650c5a4471e697498a1e62a",

@@ -4,7 +4,7 @@
   "id": "dense-prime-perf-audit-v3",
   "title": "Dense prime matrix performance audit v3",
   "lane": "arithmetic-algebra",
-  "status": "active",
+  "status": "complete",
   "owner": "user",
   "objective": "Audit dense GF(p) public construction, mutation, arithmetic, linear algebra, and serialization against Sage and native libraries, then identify the highest-value architecture-consistent non-GF(2) optimization lane",
   "base_commit": "236936d95e48ad581a246de0811969f4c9e94c26",

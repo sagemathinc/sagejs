@@ -4,7 +4,7 @@
   "id": "module-cache-high-churn",
   "title": "High-churn module cache retention",
   "lane": "compiler-runtime",
-  "status": "active",
+  "status": "complete",
   "owner": "user",
   "objective": "Make manual and automatic module-cache size pressure prune obsolete recent compiler generations while preserving current, newest retained, pinned, and leased generations",
   "base_commit": "3b0658fa3880a5efba21c80c3699071cdfb6a6c1",

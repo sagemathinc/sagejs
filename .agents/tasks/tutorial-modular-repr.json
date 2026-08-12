@@ -4,7 +4,7 @@
   "id": "tutorial-modular-repr",
   "title": "Tutorial Modular Repr",
   "lane": "modular-forms",
-  "status": "active",
+  "status": "complete",
   "owner": "user",
   "objective": "Restore Sage-compatible modular-symbol ambient and subspace representations in the affected tutorials",
   "base_commit": "1f0475bbbcc0fbf764ab15556eeafd7acaa1495e",

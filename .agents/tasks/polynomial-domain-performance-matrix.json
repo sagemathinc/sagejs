@@ -4,7 +4,7 @@
   "id": "polynomial-domain-performance-matrix",
   "title": "Polynomial Domain Performance Matrix",
   "lane": "arithmetic-algebra",
-  "status": "review",
+  "status": "complete",
   "owner": "user",
   "objective": "Add deterministic public cold/warm benchmark and oracle matrix for large-prime, extension-field, and cyclotomic polynomial workflows",
   "base_commit": "684da899398cfb5cffa8395448ca6d62a1757eee",

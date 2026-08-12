@@ -4,7 +4,7 @@
   "id": "dense-prime-host-boundary",
   "title": "Dense Prime Host Boundary",
   "lane": "arithmetic-algebra",
-  "status": "active",
+  "status": "complete",
   "owner": "user",
   "objective": "Make GF(2) M4RI and packed odd-prime matrix scalar access, mutation, and pivots uniformly fast using generated resources and source-transparent typed Python",
   "base_commit": "d2eaeaf7a3bdcfb83650c5a4471e697498a1e62a",

@@ -4,7 +4,7 @@
   "id": "native-build-order",
   "title": "Make fresh native builds order-safe",
   "lane": "distribution",
-  "status": "active",
+  "status": "complete",
   "owner": "user",
   "objective": "Provide a supported fresh-checkout FLINT and full bootstrap path that establishes compiler prerequisites, builds the addon before generated FFI adapters, and publishes production kernels only after native adapters exist, with deterministic command-order tests and documentation.",
   "base_commit": "05e0e370e1d41d5850577bbce2d7d9885901d8b0",

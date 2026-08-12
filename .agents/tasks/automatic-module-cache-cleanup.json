@@ -4,7 +4,7 @@
   "id": "automatic-module-cache-cleanup",
   "title": "Automatic module cache cleanup",
   "lane": "compiler-runtime",
-  "status": "active",
+  "status": "complete",
   "owner": "user",
   "objective": "Run conservative bounded module-cache pruning automatically off the startup path while preserving manual prune semantics, active leases, current, pinned, and recent compiler versions",
   "base_commit": "b067d425bac86dbd427b73093230f26c58092beb",

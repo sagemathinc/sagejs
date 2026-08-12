@@ -4,7 +4,7 @@
   "id": "tutorial-symbolic-numeric",
   "title": "Symbolic numeric wrapper compatibility",
   "lane": "symbolic",
-  "status": "active",
+  "status": "complete",
   "owner": "user",
   "objective": "Make symbolic transcendental functions evaluate ordinary float and complex numeric wrappers while preserving exact and symbolic semantics, and make expression-tree lowering tolerate values without parents",
   "base_commit": "1f0475bbbcc0fbf764ab15556eeafd7acaa1495e",

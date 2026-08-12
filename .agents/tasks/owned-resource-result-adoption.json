@@ -4,7 +4,7 @@
   "id": "owned-resource-result-adoption",
   "title": "Owned Resource Result Adoption",
   "lane": "native-compiler",
-  "status": "active",
+  "status": "complete",
   "owner": "user",
   "objective": "Adopt owned FFI resource results returned by compiled exact/native functions into standard generated resource tokens with correct identity, deterministic close, finalization, and lifecycle validation",
   "base_commit": "9035cd6e5cebe24b89b3df3629e1b433c4a48a91",
