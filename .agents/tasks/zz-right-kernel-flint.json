@@ -1,0 +1,140 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "zz-right-kernel-flint",
+  "title": "Zz Right Kernel Flint",
+  "lane": "integration",
+  "status": "active",
+  "owner": "user",
+  "objective": "Replace the current dense ZZ right-kernel algorithm with a canonical resource-preserving FLINT nullspace and saturation strategy that matches Sage semantics and materially closes the measured 2.8x gap",
+  "base_commit": "ebb140ee7cd0e8bd5471f06eb7616de6bc5dbbef",
+  "claims": [
+    "packages/flint/include/sagejs/fmpz_matrix_ffi.h",
+    "test/fmpz-matrix-right-kernel.cjs",
+    "bench/fmpz-matrix-right-kernel.cjs"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "external-library",
+    "fallback": "tested-capability",
+    "oracles": [
+      "SageMath dense ZZ right_kernel_matrix",
+      "current public Sage.js implementation"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm architecture:check",
+    "pnpm test:portable",
+    "pnpm test:baselib:strict"
+  ],
+  "runs": [
+    {
+      "command": "node test/fmpz-matrix-right-kernel.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.209,
+      "started_at": "2026-08-12T04:33:56.210Z",
+      "commit": "ebb140ee7cd0e8bd5471f06eb7616de6bc5dbbef",
+      "workspace_fingerprint": "7f4fdd75e18ced1e1da3c6b789b0a0ecaa7e8bc1b0622c79eada0b721f666338",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node test/fmpz-matrix-resource-ffi.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.942,
+      "started_at": "2026-08-12T04:33:58.010Z",
+      "commit": "ebb140ee7cd0e8bd5471f06eb7616de6bc5dbbef",
+      "workspace_fingerprint": "7f4fdd75e18ced1e1da3c6b789b0a0ecaa7e8bc1b0622c79eada0b721f666338",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/fmpz-matrix-right-kernel.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 7.226,
+      "started_at": "2026-08-12T04:34:00.563Z",
+      "commit": "ebb140ee7cd0e8bd5471f06eb7616de6bc5dbbef",
+      "workspace_fingerprint": "7f4fdd75e18ced1e1da3c6b789b0a0ecaa7e8bc1b0622c79eada0b721f666338",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node test/fmpz-matrix-right-kernel.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.136,
+      "started_at": "2026-08-12T04:38:50.727Z",
+      "commit": "ebb140ee7cd0e8bd5471f06eb7616de6bc5dbbef",
+      "workspace_fingerprint": "27649aefabb8a820e88725ad9261924e6bd122759ce613e3a3ceb77457cee6d8",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node test/fmpz-matrix-resource-ffi.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.99,
+      "started_at": "2026-08-12T04:38:52.438Z",
+      "commit": "ebb140ee7cd0e8bd5471f06eb7616de6bc5dbbef",
+      "workspace_fingerprint": "27649aefabb8a820e88725ad9261924e6bd122759ce613e3a3ceb77457cee6d8",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/fmpz-matrix-right-kernel.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 9.523,
+      "started_at": "2026-08-12T04:38:55.022Z",
+      "commit": "ebb140ee7cd0e8bd5471f06eb7616de6bc5dbbef",
+      "workspace_fingerprint": "27649aefabb8a820e88725ad9261924e6bd122759ce613e3a3ceb77457cee6d8",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 12.689,
+      "started_at": "2026-08-12T04:39:36.342Z",
+      "commit": "ebb140ee7cd0e8bd5471f06eb7616de6bc5dbbef",
+      "workspace_fingerprint": "cb0cc450a6f50496a124f3fab118f738974a6ef26f22fd599999ee7a190f9a3b",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 12.07,
+      "started_at": "2026-08-12T04:39:49.607Z",
+      "commit": "ebb140ee7cd0e8bd5471f06eb7616de6bc5dbbef",
+      "workspace_fingerprint": "cb0cc450a6f50496a124f3fab118f738974a6ef26f22fd599999ee7a190f9a3b",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 8.582,
+      "started_at": "2026-08-12T04:40:50.915Z",
+      "commit": "ebb140ee7cd0e8bd5471f06eb7616de6bc5dbbef",
+      "workspace_fingerprint": "8659f3f8890b9132bf9c12879ba9d4c870d0df09839c3d0e9a58970ea2917f44",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Replaced rank plus transpose-HNF-transform with FLINT nullspace, exact lattice saturation, and final row HNF. The canonical basis matches SageMath on 87 structured/random/skew cases, including large integers and degenerate shapes; the existing 300-round ASan/UBSan/leak lifecycle harness passes. On the deterministic 100x150 workload the candidate measured 696 ms versus 1337 ms for the previous generated implementation and 895 ms for SageMath.",
+    "risks": [
+      "The saturation proof depends on FLINT HNF orientation: the leading nullity rows of HNF(B^T), transposed, are a nonsingular column-basis matrix for the lattice generated by B. Exact divisibility is checked before division and failure is reported instead of weakening the result.",
+      "The focused portable tier was not used as a final receipt because this lane branched before two newly-added tests were assigned to the runner manifest and a concurrent incomplete build removed generated runtime-cache files; architecture, strict Python, focused oracle, lifecycle sanitizer, and benchmark validation pass."
+    ],
+    "next_steps": [
+      "Integration lane should rebuild the FLINT generated adapter from the merged header and rerun the focused tests plus the current portable tier."
+    ]
+  }
+}

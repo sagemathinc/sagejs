@@ -383,49 +383,99 @@ static inline int sagejs_fmpz_matrix_snf_transform(
  * Return the canonical row-HNF basis of the integral right kernel.  The
  * result owns exactly nullity * ncols entries; no caller-selected limb or
  * matrix capacity is involved.
+ *
+ * fmpz_mat_nullspace gives columns spanning the rational nullspace, but that
+ * integral lattice need not be saturated.  If B is its transpose, the
+ * nonsingular part H of row_hnf(B^T)^T is a column-basis matrix for B's
+ * lattice.  Hence H^(-1) B has exactly the saturation of B as its row span.
+ * A final row HNF selects Sage's canonical basis.  This route avoids both a
+ * separate rank computation and the large square unimodular transform used
+ * by the former transpose-HNF algorithm.
  */
 static inline int sagejs_fmpz_matrix_right_kernel(
     sagejs_fmpz_matrix_t result, const sagejs_fmpz_matrix_t source)
 {
-    const slong rows = fmpz_mat_nrows(source->value);
     const slong columns = fmpz_mat_ncols(source->value);
-    const slong rank = fmpz_mat_rank(source->value);
-    const slong nullity = columns - rank;
+    fmpz_mat_t nullspace_columns;
+    fmpz_mat_init(nullspace_columns, columns, columns);
+    const slong nullity = fmpz_mat_nullspace(
+        nullspace_columns, source->value);
     if (!sagejs_fmpz_matrix_init(
             result, (uint64_t) nullity, (uint64_t) columns))
-        return 0;
-    if (nullity == 0)
-        return 1;
-    if (rows == 0)
     {
-        fmpz_mat_one(result->value);
-        sagejs_fmpz_matrix_finish_result(result);
+        fmpz_mat_clear(nullspace_columns);
+        return 0;
+    }
+    if (nullity == 0)
+    {
+        fmpz_mat_clear(nullspace_columns);
         return 1;
     }
 
-    fmpz_mat_t transpose;
-    fmpz_mat_t hermite;
-    fmpz_mat_t transform;
     fmpz_mat_t basis;
-    fmpz_mat_t answer;
-    fmpz_mat_init(transpose, columns, rows);
-    fmpz_mat_init(hermite, columns, rows);
-    fmpz_mat_init(transform, columns, columns);
+    fmpz_mat_t basis_transpose;
+    fmpz_mat_t hermite_transpose;
+    fmpz_mat_t lattice_basis;
+    fmpz_mat_t saturated;
+    fmpz_t denominator;
+    fmpz_t remainder;
     fmpz_mat_init(basis, nullity, columns);
-    fmpz_mat_init(answer, nullity, columns);
-    fmpz_mat_transpose(transpose, source->value);
-    fmpz_mat_hnf_transform(hermite, transform, transpose);
     for (slong row = 0; row < nullity; row++)
         for (slong column = 0; column < columns; column++)
             fmpz_set(fmpz_mat_entry(basis, row, column),
-                fmpz_mat_entry(transform, rank + row, column));
-    fmpz_mat_hnf(answer, basis);
-    fmpz_mat_set(result->value, answer);
-    fmpz_mat_clear(answer);
+                fmpz_mat_entry(nullspace_columns, column, row));
+
+    fmpz_mat_init(basis_transpose, columns, nullity);
+    fmpz_mat_init(hermite_transpose, columns, nullity);
+    fmpz_mat_init(lattice_basis, nullity, nullity);
+    fmpz_mat_init(saturated, nullity, columns);
+    fmpz_init(denominator);
+    fmpz_init(remainder);
+    fmpz_mat_transpose(basis_transpose, basis);
+    fmpz_mat_hnf(hermite_transpose, basis_transpose);
+    for (slong row = 0; row < nullity; row++)
+        for (slong column = 0; column < nullity; column++)
+            fmpz_set(fmpz_mat_entry(lattice_basis, row, column),
+                fmpz_mat_entry(hermite_transpose, column, row));
+
+    const int solved = fmpz_mat_solve(
+        saturated, denominator, lattice_basis, basis);
+    int integral = solved && !fmpz_is_zero(denominator);
+    if (integral)
+    {
+        for (slong row = 0; row < nullity && integral; row++)
+            for (slong column = 0; column < columns; column++)
+            {
+                fmpz_mod(remainder,
+                    fmpz_mat_entry(saturated, row, column), denominator);
+                if (!fmpz_is_zero(remainder))
+                {
+                    integral = 0;
+                    break;
+                }
+            }
+        if (integral)
+            for (slong row = 0; row < nullity; row++)
+                for (slong column = 0; column < columns; column++)
+                fmpz_divexact(fmpz_mat_entry(saturated, row, column),
+                    fmpz_mat_entry(saturated, row, column), denominator);
+    }
+    if (integral)
+        fmpz_mat_hnf(result->value, saturated);
+
+    fmpz_clear(remainder);
+    fmpz_clear(denominator);
+    fmpz_mat_clear(saturated);
+    fmpz_mat_clear(lattice_basis);
+    fmpz_mat_clear(hermite_transpose);
+    fmpz_mat_clear(basis_transpose);
     fmpz_mat_clear(basis);
-    fmpz_mat_clear(transform);
-    fmpz_mat_clear(hermite);
-    fmpz_mat_clear(transpose);
+    fmpz_mat_clear(nullspace_columns);
+    if (!integral)
+    {
+        sagejs_fmpz_matrix_clear(result);
+        return 0;
+    }
     sagejs_fmpz_matrix_finish_result(result);
     return 1;
 }
