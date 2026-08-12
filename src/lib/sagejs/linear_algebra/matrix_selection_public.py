@@ -48,7 +48,14 @@ def set_row(target: Any, row: int, values: Any) -> None:
         target.nrows(), target.ncols(), int(row), values, coerce
     )
     target._check_batch_mutability()
-    if target._has_packed_prime_storage():
+    if target._has_packed_prime_storage() or target._has_nmod_matrix_resource():
+        if target._has_nmod_matrix_resource():
+            block = target._parent.matrix_space(1, target.ncols())(entries)
+            try:
+                target.set_block(int(row), 0, block)
+            finally:
+                _close_matrix_resource(block)
+            return
         target._set_dense_prime_sequence(entries, start, stride, "set_row")
         return
     if target._has_fmpz_matrix_resource() or target._has_fmpq_matrix_resource():
@@ -75,7 +82,14 @@ def set_column(target: Any, column: int, values: Any) -> None:
         target.nrows(), target.ncols(), int(column), values, coerce
     )
     target._check_batch_mutability()
-    if target._has_packed_prime_storage():
+    if target._has_packed_prime_storage() or target._has_nmod_matrix_resource():
+        if target._has_nmod_matrix_resource():
+            block = target._parent.matrix_space(target.nrows(), 1)(entries)
+            try:
+                target.set_block(0, int(column), block)
+            finally:
+                _close_matrix_resource(block)
+            return
         target._set_dense_prime_sequence(entries, start, stride, "set_column")
         return
     if target._has_fmpz_matrix_resource() or target._has_fmpq_matrix_resource():

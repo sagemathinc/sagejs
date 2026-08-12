@@ -249,6 +249,13 @@ from sagejs.ffi.flint import (
     nmod_matrix_right_kernel as _ffi_nmod_matrix_right_kernel,
     nmod_matrix_det as _ffi_nmod_matrix_det,
     nmod_matrix_trace as _ffi_nmod_matrix_trace,
+    nmod_matrix_select_rows as _ffi_nmod_matrix_select_rows,
+    nmod_matrix_select_columns as _ffi_nmod_matrix_select_columns,
+    nmod_matrix_set_block as _ffi_nmod_matrix_set_block,
+    nmod_matrix_mul_vector as _ffi_nmod_matrix_mul_vector,
+    nmod_vector_mul_matrix as _ffi_nmod_vector_mul_matrix,
+    nmod_matrix_stack as _ffi_nmod_matrix_stack,
+    nmod_matrix_augment as _ffi_nmod_matrix_augment,
     nmod_matrix_swap_rows as _ffi_nmod_matrix_swap_rows,
     nmod_matrix_swap_columns as _ffi_nmod_matrix_swap_columns,
     nmod_matrix_format as _ffi_nmod_matrix_format,
@@ -2795,6 +2802,95 @@ def ffiNmodMatrixTrace(
 ) -> uint64:
     return _ffi_nmod_matrix_trace(
         source,
+    )
+
+
+@native
+def ffiNmodMatrixSelectRows(
+    source: NmodMatrix,
+    indices: UInt64Buffer,
+    count: uint64,
+) -> NmodMatrix:
+    return _ffi_nmod_matrix_select_rows(
+        source,
+        indices,
+        count,
+    )
+
+
+@native
+def ffiNmodMatrixSelectColumns(
+    source: NmodMatrix,
+    indices: UInt64Buffer,
+    count: uint64,
+) -> NmodMatrix:
+    return _ffi_nmod_matrix_select_columns(
+        source,
+        indices,
+        count,
+    )
+
+
+@native
+def ffiNmodMatrixSetBlock(
+    target: NmodMatrix,
+    target_row: uint64,
+    target_column: uint64,
+    source: NmodMatrix,
+) -> bool:
+    return _ffi_nmod_matrix_set_block(
+        target,
+        target_row,
+        target_column,
+        source,
+    )
+
+
+@native
+def ffiNmodMatrixMulVector(
+    matrix: NmodMatrix,
+    vector: UInt64Buffer,
+    length: uint64,
+) -> FlintByteRegion:
+    return _ffi_nmod_matrix_mul_vector(
+        matrix,
+        vector,
+        length,
+    )
+
+
+@native
+def ffiNmodVectorMulMatrix(
+    vector: UInt64Buffer,
+    length: uint64,
+    matrix: NmodMatrix,
+) -> FlintByteRegion:
+    return _ffi_nmod_vector_mul_matrix(
+        vector,
+        length,
+        matrix,
+    )
+
+
+@native
+def ffiNmodMatrixStack(
+    top: NmodMatrix,
+    bottom: NmodMatrix,
+) -> NmodMatrix:
+    return _ffi_nmod_matrix_stack(
+        top,
+        bottom,
+    )
+
+
+@native
+def ffiNmodMatrixAugment(
+    left: NmodMatrix,
+    right: NmodMatrix,
+) -> NmodMatrix:
+    return _ffi_nmod_matrix_augment(
+        left,
+        right,
     )
 
 

@@ -1,0 +1,128 @@
+{
+  "schema": "sagejs.benchmark/packed-and-word-prime-matrix-v3",
+  "generatedAt": "2026-08-12T16:35:29.449Z",
+  "workload": {
+    "field": "GF(65537)",
+    "shape": [
+      160,
+      160
+    ],
+    "entries": "64-bit LCG seed 20260812, then reduction modulo p",
+    "operations": [
+      "construction",
+      "square",
+      "rank of a copy",
+      "RREF",
+      "density"
+    ],
+    "warmups": 4,
+    "samples": 9,
+    "statistic": "median wall-clock milliseconds; process startup and digest excluded"
+  },
+  "equivalenceDigest": {
+    "fields": [
+      "rank",
+      "determinant",
+      "square trace",
+      "RREF trace",
+      "weighted entry checksum"
+    ],
+    "value": [
+      "160",
+      "15507",
+      "35901",
+      "160",
+      "10808598417981"
+    ],
+    "verifiedAcross": [
+      "compiled Sage.js generated nmod_mat resource",
+      "dynamic Sage.js generated nmod_mat resource adapter",
+      "legacy handwritten N-API/FLINT",
+      "SageMath"
+    ]
+  },
+  "largePrimeNmodWitness": {
+    "field": "GF(2305843009213693951)",
+    "shape": [
+      80,
+      80
+    ],
+    "representation": "generated owned FLINT nmod_mat resource",
+    "compiledTimingsMs": {
+      "construct": 0.583648681640625,
+      "multiply": 0.6933212280273438,
+      "rank": 0.514984130859375,
+      "rref": 0.6234645843505859,
+      "density": 0.09274482727050781
+    },
+    "dynamicTimingsMs": {
+      "construct": 0.49948692321777344,
+      "multiply": 0.6742477416992188,
+      "rank": 0.5042552947998047,
+      "rref": 0.6279945373535156,
+      "density": 0.08416175842285156
+    },
+    "equivalenceDigest": [
+      "80",
+      "1503905041829924922",
+      "6792176230524",
+      "80",
+      "663657149163"
+    ]
+  },
+  "methodology": {
+    "compiled": "public Sage.js generated nmod_mat resource storage with production typed-Python density traversal enabled",
+    "dynamic": "the same generated resource code under SAGEJS_NATIVE_DISABLE=1; resource-to-resource FLINT algorithms remain available while density uses dynamic Python",
+    "representationCrossover": "packed UInt64 plus Modular<float> below 256; generated canonical nmod_mat resources at and above 256; Modular<double> remains an explicit tested adapter rather than the canonical storage route",
+    "legacyNapi": "the superseded handwritten N-API API on a retained nmod_mat object",
+    "sageMath": "SageMath public dense GF(p) matrix API on the identical deterministic entries"
+  },
+  "environment": {
+    "node": "v26.7.0",
+    "platform": "linux",
+    "architecture": "x64",
+    "cpu": "AMD EPYC 7B13",
+    "logicalCpus": 16
+  },
+  "resultsMs": {
+    "compiledSageJs": {
+      "construct": 1.232147216796875,
+      "multiply": 1.3141632080078125,
+      "rank": 1.1703968048095703,
+      "rref": 1.2054443359375,
+      "density": 0.1518726348876953
+    },
+    "dynamicSageJs": {
+      "construct": 1.2001991271972656,
+      "multiply": 1.4569759368896484,
+      "rank": 1.0411739349365234,
+      "rref": 1.3480186462402344,
+      "density": 0.09751319885253906
+    },
+    "legacyNapi": {
+      "construct": 1.692569999999705,
+      "multiply": 2.8027099999999336,
+      "rank": 0.6215299999998933,
+      "rref": 0.7398400000001857,
+      "density": null
+    },
+    "sageMath": {
+      "available": true,
+      "timings": {
+        "construct": 1.9506290045683272,
+        "multiply": 0.6475300033343956,
+        "rank": 0.29632899531861767,
+        "rref": 0.3137399980914779,
+        "density": 2.7706999971996993
+      },
+      "digest": [
+        "160",
+        "15507",
+        "35901",
+        "160",
+        "10808598417981"
+      ],
+      "python": "3.14.4"
+    }
+  }
+}

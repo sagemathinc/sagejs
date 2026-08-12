@@ -32,19 +32,26 @@ production execution path for large matrices.
 
 from __future__ import annotations
 
+import typing as _typing
 from collections.abc import Callable
 from operator import index as operator_index
-from typing import Any, TypeAlias, TypeVar
+from typing import Any
 
-SparseRandomSpec: TypeAlias = tuple[int, int, str, float, int, str]
-SparseRandomWrites: TypeAlias = tuple[
-    int,
-    int,
-    tuple[int, ...],
-    tuple[Any, ...],
-]
+if _typing.TYPE_CHECKING:
+    SparseRandomSpec: _typing.TypeAlias = tuple[int, int, str, float, int, str]
+    SparseRandomWrites: _typing.TypeAlias = tuple[
+        int,
+        int,
+        tuple[int, ...],
+        tuple[Any, ...],
+    ]
 
-_Result = TypeVar("_Result")
+    _Result = _typing.TypeVar("_Result")
+else:
+    # These are static contracts only. Avoid executing parameterized typing
+    # aliases while building the standalone Sage.js baselib module cache.
+    SparseRandomSpec = tuple
+    SparseRandomWrites = tuple
 
 
 def _checked_integer(value: Any, message: str) -> int:

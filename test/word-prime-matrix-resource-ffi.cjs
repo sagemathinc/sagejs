@@ -40,6 +40,14 @@ function entries(resource) {
     ));
 }
 
+function uint64Values(region) {
+  const bytes = flint.ffiFlintByteRegionCopyBytes(region);
+  return Array.from(
+    { length: bytes.length / 8 },
+    (_, index) => bytes.readBigUInt64LE(index * 8),
+  );
+}
+
 test("generated nmod resources retain word-prime matrices", () => {
   const source = matrix(3, 3, [1n,2n,3n, 0n,1n,4n, 5n,6n,0n]);
   assert.equal(flint.ffiNmodMatrixNrows(source), 3n);
@@ -106,6 +114,40 @@ test("generated nmod algorithms stay resource-to-resource", () => {
   }
 });
 
+test("generated nmod structural operations preserve resource ownership", () => {
+  const source = matrix(3, 3, [1n,2n,3n, 4n,5n,6n, 7n,8n,9n]);
+  const selectedRows = flint.ffiNmodMatrixSelectRows(
+    source, new BigUint64Array([2n, 0n, 2n]), 3n,
+  );
+  const selectedColumns = flint.ffiNmodMatrixSelectColumns(
+    source, new BigUint64Array([2n, 0n]), 2n,
+  );
+  assert.deepEqual(entries(selectedRows), [7n,8n,9n, 1n,2n,3n, 7n,8n,9n]);
+  assert.deepEqual(entries(selectedColumns), [3n,1n, 6n,4n, 9n,7n]);
+
+  const block = matrix(1, 2, [10n, 11n]);
+  assert.equal(flint.ffiNmodMatrixSetBlock(source, 1n, 1n, block), true);
+  assert.deepEqual(entries(source), [1n,2n,3n, 4n,10n,11n, 7n,8n,9n]);
+  const stacked = flint.ffiNmodMatrixStack(source, source);
+  const augmented = flint.ffiNmodMatrixAugment(source, source);
+  assert.equal(flint.ffiNmodMatrixNrows(stacked), 6n);
+  assert.equal(flint.ffiNmodMatrixNcols(augmented), 6n);
+
+  const columnProduct = flint.ffiNmodMatrixMulVector(
+    source, new BigUint64Array([1n, 2n, 3n]), 3n,
+  );
+  const rowProduct = flint.ffiNmodVectorMulMatrix(
+    new BigUint64Array([1n, 2n, 3n]), 3n, source,
+  );
+  assert.deepEqual(uint64Values(columnProduct), [14n, 57n, 50n]);
+  assert.deepEqual(uint64Values(rowProduct), [30n, 46n, 52n]);
+  close(columnProduct, flint.ffiFlintByteRegionClose);
+  close(rowProduct, flint.ffiFlintByteRegionClose);
+  for (const resource of [augmented, stacked, block, selectedColumns, selectedRows, source]) {
+    close(resource, flint.ffiNmodMatrixClose);
+  }
+});
+
 test("nmod constructors reject invalid ownership inputs", () => {
   assert.throws(() => matrix(1, 1, [1n], 15n));
   assert.throws(() => flint.ffiNmodMatrixFromEntries(
@@ -121,11 +163,14 @@ test("nmod resource lifecycle remains bounded under repeated algorithms", () => 
     const sum = flint.ffiNmodMatrixAdd(left, right);
     const product = flint.ffiNmodMatrixMul(sum, right);
     const reduced = flint.ffiNmodMatrixRref(product);
+    const selected = flint.ffiNmodMatrixSelectRows(
+      reduced, new BigUint64Array([7n, 0n, 3n]), 3n,
+    );
     const bytes = flint.ffiNmodMatrixSerialize(reduced, 4n);
     assert.ok(accounted(left) > 0n);
     assert.equal(flint.ffiFlintByteRegionCopyBytes(bytes).length, 8 * 8 * 4);
     close(bytes, flint.ffiFlintByteRegionClose);
-    for (const resource of [reduced, product, sum, right, left]) {
+    for (const resource of [selected, reduced, product, sum, right, left]) {
       close(resource, flint.ffiNmodMatrixClose);
       assert.equal(accounted(resource), 0n);
     }

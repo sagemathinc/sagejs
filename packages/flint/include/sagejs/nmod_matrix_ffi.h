@@ -424,6 +424,190 @@ static inline uint64_t sagejs_nmod_matrix_trace(
     return (uint64_t) result;
 }
 
+static inline int sagejs_nmod_matrix_select_rows(
+    sagejs_nmod_matrix_t result, const sagejs_nmod_matrix_t source,
+    const uint64_t *indices, uint64_t count)
+{
+    if ((count != 0 && indices == NULL) || count > (uint64_t) WORD_MAX)
+        return 0;
+    for (uint64_t row = 0; row < count; row++)
+        if (indices[row] >= (uint64_t) nmod_mat_nrows(source->value))
+            return 0;
+    if (!sagejs_nmod_matrix_init(result, count,
+            (uint64_t) nmod_mat_ncols(source->value),
+            (uint64_t) source->value->mod.n))
+        return 0;
+    for (uint64_t row = 0; row < count; row++)
+    {
+        for (slong column = 0; column < nmod_mat_ncols(source->value); column++)
+            nmod_mat_entry(result->value, (slong) row, column) =
+                nmod_mat_entry(source->value, (slong) indices[row], column);
+    }
+    return 1;
+}
+
+static inline int sagejs_nmod_matrix_select_columns(
+    sagejs_nmod_matrix_t result, const sagejs_nmod_matrix_t source,
+    const uint64_t *indices, uint64_t count)
+{
+    if ((count != 0 && indices == NULL) || count > (uint64_t) WORD_MAX)
+        return 0;
+    for (uint64_t column = 0; column < count; column++)
+        if (indices[column] >= (uint64_t) nmod_mat_ncols(source->value))
+            return 0;
+    if (!sagejs_nmod_matrix_init(result,
+            (uint64_t) nmod_mat_nrows(source->value), count,
+            (uint64_t) source->value->mod.n))
+        return 0;
+    for (uint64_t column = 0; column < count; column++)
+    {
+        for (slong row = 0; row < nmod_mat_nrows(source->value); row++)
+            nmod_mat_entry(result->value, row, (slong) column) =
+                nmod_mat_entry(source->value, row, (slong) indices[column]);
+    }
+    return 1;
+}
+
+static inline int sagejs_nmod_matrix_set_block(
+    sagejs_nmod_matrix_t target, uint64_t target_row,
+    uint64_t target_column, const sagejs_nmod_matrix_t source)
+{
+    const uint64_t source_rows =
+        (uint64_t) nmod_mat_nrows(source->value);
+    const uint64_t source_columns =
+        (uint64_t) nmod_mat_ncols(source->value);
+    if (!sagejs_nmod_matrix_same_field(target, source) ||
+        target_row > (uint64_t) nmod_mat_nrows(target->value) ||
+        target_column > (uint64_t) nmod_mat_ncols(target->value) ||
+        source_rows > (uint64_t) nmod_mat_nrows(target->value) - target_row ||
+        source_columns >
+            (uint64_t) nmod_mat_ncols(target->value) - target_column)
+        return 0;
+    for (uint64_t row = 0; row < source_rows; row++)
+        for (uint64_t column = 0; column < source_columns; column++)
+            nmod_mat_entry(target->value,
+                (slong) (target_row + row),
+                (slong) (target_column + column)) =
+                nmod_mat_entry(source->value, (slong) row, (slong) column);
+    target->known_rank = -1;
+    return 1;
+}
+
+static inline int sagejs_nmod_matrix_mul_vector(
+    sagejs_flint_byte_region_t result, const sagejs_nmod_matrix_t matrix,
+    const uint64_t *vector, uint64_t length, int left)
+{
+    const uint64_t rows = (uint64_t) nmod_mat_nrows(matrix->value);
+    const uint64_t columns = (uint64_t) nmod_mat_ncols(matrix->value);
+    const uint64_t expected = left ? rows : columns;
+    const uint64_t output_length = left ? columns : rows;
+    result->data = NULL;
+    result->length = 0;
+    if (length != expected || (length != 0 && vector == NULL) ||
+        output_length > SIZE_MAX / 8)
+        return 0;
+    result->data = (unsigned char *) malloc(
+        output_length == 0 ? 1 : (size_t) output_length * 8);
+    if (result->data == NULL)
+        return 0;
+    result->length = (size_t) output_length * 8;
+    for (uint64_t output = 0; output < output_length; output++)
+    {
+        ulong sum = 0;
+        for (uint64_t inner = 0; inner < expected; inner++)
+        {
+            const uint64_t entry = left
+                ? (uint64_t) nmod_mat_entry(matrix->value,
+                    (slong) inner, (slong) output)
+                : (uint64_t) nmod_mat_entry(matrix->value,
+                    (slong) output, (slong) inner);
+            if (vector[inner] >= (uint64_t) matrix->value->mod.n)
+            {
+                sagejs_flint_byte_region_clear(result);
+                return 0;
+            }
+            sum = nmod_add(sum,
+                nmod_mul((ulong) entry, (ulong) vector[inner],
+                    matrix->value->mod),
+                matrix->value->mod);
+        }
+        const uint64_t value = (uint64_t) sum;
+        for (size_t byte = 0; byte < 8; byte++)
+            result->data[(size_t) output * 8 + byte] =
+                (unsigned char) (value >> (8 * byte));
+    }
+    return 1;
+}
+
+static inline int sagejs_nmod_matrix_mul_column_vector(
+    sagejs_flint_byte_region_t result, const sagejs_nmod_matrix_t matrix,
+    const uint64_t *vector, uint64_t length)
+{
+    return sagejs_nmod_matrix_mul_vector(
+        result, matrix, vector, length, 0);
+}
+
+static inline int sagejs_nmod_row_vector_mul_matrix(
+    sagejs_flint_byte_region_t result, const uint64_t *vector,
+    uint64_t length, const sagejs_nmod_matrix_t matrix)
+{
+    return sagejs_nmod_matrix_mul_vector(
+        result, matrix, vector, length, 1);
+}
+
+static inline int sagejs_nmod_matrix_stack(
+    sagejs_nmod_matrix_t result, const sagejs_nmod_matrix_t top,
+    const sagejs_nmod_matrix_t bottom)
+{
+    if (!sagejs_nmod_matrix_same_field(top, bottom) ||
+        nmod_mat_ncols(top->value) != nmod_mat_ncols(bottom->value) ||
+        (uint64_t) nmod_mat_nrows(bottom->value) >
+            UINT64_MAX - (uint64_t) nmod_mat_nrows(top->value) ||
+        !sagejs_nmod_matrix_init(result,
+            (uint64_t) nmod_mat_nrows(top->value) +
+                (uint64_t) nmod_mat_nrows(bottom->value),
+            (uint64_t) nmod_mat_ncols(top->value),
+            (uint64_t) top->value->mod.n))
+        return 0;
+    for (slong row = 0; row < nmod_mat_nrows(top->value); row++)
+        for (slong column = 0; column < nmod_mat_ncols(top->value); column++)
+            nmod_mat_entry(result->value, row, column) =
+                nmod_mat_entry(top->value, row, column);
+    for (slong row = 0; row < nmod_mat_nrows(bottom->value); row++)
+        for (slong column = 0; column < nmod_mat_ncols(bottom->value); column++)
+            nmod_mat_entry(result->value,
+                nmod_mat_nrows(top->value) + row, column) =
+                nmod_mat_entry(bottom->value, row, column);
+    return 1;
+}
+
+static inline int sagejs_nmod_matrix_augment(
+    sagejs_nmod_matrix_t result, const sagejs_nmod_matrix_t left,
+    const sagejs_nmod_matrix_t right)
+{
+    if (!sagejs_nmod_matrix_same_field(left, right) ||
+        nmod_mat_nrows(left->value) != nmod_mat_nrows(right->value) ||
+        (uint64_t) nmod_mat_ncols(right->value) >
+            UINT64_MAX - (uint64_t) nmod_mat_ncols(left->value) ||
+        !sagejs_nmod_matrix_init(result,
+            (uint64_t) nmod_mat_nrows(left->value),
+            (uint64_t) nmod_mat_ncols(left->value) +
+                (uint64_t) nmod_mat_ncols(right->value),
+            (uint64_t) left->value->mod.n))
+        return 0;
+    for (slong row = 0; row < nmod_mat_nrows(left->value); row++)
+    {
+        for (slong column = 0; column < nmod_mat_ncols(left->value); column++)
+            nmod_mat_entry(result->value, row, column) =
+                nmod_mat_entry(left->value, row, column);
+        for (slong column = 0; column < nmod_mat_ncols(right->value); column++)
+            nmod_mat_entry(result->value, row,
+                nmod_mat_ncols(left->value) + column) =
+                nmod_mat_entry(right->value, row, column);
+    }
+    return 1;
+}
+
 static inline int sagejs_nmod_matrix_swap_rows(
     sagejs_nmod_matrix_t matrix, uint64_t first, uint64_t second)
 {
@@ -552,7 +736,7 @@ static inline int sagejs_nmod_matrix_serialize(
     result->length = length;
     for (size_t index = 0; index < count; index++)
     {
-        const ulong value = nmod_mat_entry(source->value,
+        const uint64_t value = (uint64_t) nmod_mat_entry(source->value,
             (slong) (index / (size_t) columns),
             (slong) (index % (size_t) columns));
         if (width < sizeof(ulong) && value >= ((ulong) 1 << (8 * width)))
@@ -599,7 +783,8 @@ static inline int sagejs_nmod_matrix_polynomial_bytes(
     }
     for (slong index = 0; index < count; index++)
     {
-        const ulong value = nmod_poly_get_coeff_ui(polynomial, index);
+        const uint64_t value =
+            (uint64_t) nmod_poly_get_coeff_ui(polynomial, index);
         for (size_t byte = 0; byte < 8; byte++)
             result->data[(size_t) index * 8 + byte] =
                 (unsigned char) (value >> (8 * byte));

@@ -9,6 +9,10 @@
  */
 
 const MATRIX_STANDALONE_MODULES = Object.freeze([
+  "sagejs.linear_algebra.matrix_selection_public",
+  "sagejs.linear_algebra.matrix_vector_public",
+  "sagejs.linear_algebra.sparse_random",
+  "sagejs.linear_algebra.sparse_random_public",
   "sagejs.kernels.matrix.dense_integer",
   "sagejs.kernels.matrix.dense_integer_flint",
   "sagejs.kernels.matrix.dense_prime_field",
@@ -39,6 +43,13 @@ const BASELIB_STANDALONE_CACHE_MODULES = Object.freeze([
   "sagejs.ffi",
   "sagejs.ffi.flint",
   "sagejs.ffi.fflas",
+  "sagejs.linear_algebra",
+  "sagejs.linear_algebra.matrix_selection",
+  "sagejs.linear_algebra.matrix_selection_public",
+  "sagejs.linear_algebra.matrix_vector",
+  "sagejs.linear_algebra.matrix_vector_public",
+  "sagejs.linear_algebra.sparse_random",
+  "sagejs.linear_algebra.sparse_random_public",
   "sagejs.kernels",
   "sagejs.kernels.matrix",
   "sagejs.kernels.matrix.dense_integer",

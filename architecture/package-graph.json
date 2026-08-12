@@ -61,7 +61,7 @@
       "id": "native-integration",
       "layer": 1,
       "startup": "lazy",
-      "max_source_bytes": 780000,
+      "max_source_bytes": 788000,
       "depends_on": ["core-runtime"],
       "modules": ["sagejs.native", "sagejs.ffi"],
       "files": [
@@ -149,7 +149,8 @@
         "src/lib/sagejs/kernels/matrix/dense_prime_field_fflas.py",
         "src/lib/sagejs/kernels/matrix/dense_prime_field_flint.py",
         "src/lib/sagejs/kernels/matrix/dense_rational.py",
-        "src/lib/sagejs/kernels/matrix/dense_rational_flint.py"
+        "src/lib/sagejs/kernels/matrix/dense_rational_flint.py",
+        "src/lib/sagejs/kernels/matrix/dense_word_prime_flint.py"
       ],
       "prefixes": []
     },
