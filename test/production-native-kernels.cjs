@@ -117,10 +117,12 @@ test("all production native kernels are published and autoloadable", () => {
     "from sagejs.kernels.matrix.dense_integer_flint import flint_dense_integer_resource_random_fill",
     "from sagejs.kernels.matrix.dense_rational_flint import flint_dense_rational_matrix_import",
     "from sagejs.kernels.polynomial.packed_flint import flint_byte_region_copy",
+    "from sagejs.kernels.p1 import p1_gcd",
     "print(dense_prime_field_matrix_add.nativeAvailable)",
     "print(flint_dense_integer_resource_random_fill.nativeAvailable)",
     "print(flint_dense_rational_matrix_import.nativeAvailable)",
     "print(flint_byte_region_copy.nativeAvailable)",
+    "print(p1_gcd.nativeAvailable)",
     "",
   ].join("\n");
   const result = spawnSync(join(root, "bin", "sagejs"), ["--python"], {
@@ -134,7 +136,7 @@ test("all production native kernels are published and autoloadable", () => {
     input: program,
   });
   assert.equal(result.status, 0, result.stderr);
-  assert.equal(result.stdout.trim(), "True\nTrue\nTrue\nTrue");
+  assert.equal(result.stdout.trim(), "True\nTrue\nTrue\nTrue\nTrue");
 });
 
 test("stale FFI declaration metadata fails before a native wrapper loads", () => {

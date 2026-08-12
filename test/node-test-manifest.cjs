@@ -8,6 +8,7 @@ const unit = [
   "test/cache.cjs",
   "test/cache-automatic.cjs",
   "test/native-math-profile.cjs",
+  "test/macos-arm64-math-witness.cjs",
   "test/native-build-order.cjs",
   "test/foreign-adapter-build-graph.cjs",
   "test/runtime-cache.cjs",

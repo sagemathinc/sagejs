@@ -87,8 +87,8 @@ assert.ok(ordinaryDomains.every((domain) => domain.capability_holes.length === 0
 const wordPrime = report.runtimes.sagejs.find(
   (domain) => domain.domain === "GFWORD",
 );
-assert.equal(wordPrime.verified_operations, 12);
-assert.deepEqual(wordPrime.capability_holes, ["swap_rows", "swap_columns"]);
+assert.equal(wordPrime.verified_operations, 14);
+assert.deepEqual(wordPrime.capability_holes, []);
 for (const domain of report.runtimes.sagejs) {
   for (const operation of ["rref", "solve_right", "right_kernel"]) {
     const item = domain.cases.find((candidate) => candidate.operation === operation);
@@ -100,12 +100,10 @@ assert.ok(
     domain.cases.some((item) => item.backends.length !== 0),
   ),
 );
-assert.ok(
-  report.findings.some(
-    (item) =>
-      item.kind === "backend-classification-gap" && item.domain === "GFWORD",
-  ),
-);
+assert.ok(!report.findings.some(
+  (item) =>
+    item.kind === "backend-classification-gap" && item.domain === "GFWORD",
+));
 
 const sageOnlyReport = {
   ...report,
