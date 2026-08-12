@@ -20,6 +20,7 @@ async function initialize(message) {
     baselib: message.baselib,
     standardLibrary: message.standardLibrary,
     flint: message.flint,
+    m4ri: message.m4ri,
     symbolic: message.symbolic,
     compilerWorker: message.compilerWorker,
     compilerFrontend: message.compilerFrontend,

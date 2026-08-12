@@ -28,6 +28,7 @@ export interface BrowserSageSessionOptions {
   baselib?: string | URL;
   standardLibrary?: string | URL;
   flint?: string | URL;
+  m4ri?: string | URL;
   symbolic?: string | URL;
   compilerWorker?: string | URL;
   onGraphicsSave?: (request: SageGraphicsSaveRequest) => void | Promise<void>;

@@ -49,6 +49,16 @@ matrix families still use portable JavaScript matrix objects after crossing
 the C ABI. Higher-weight and Dirichlet-character Manin presentations also
 still require host-neutral core extraction from the Node adapter.
 
+Dense matrices over `GF(2)` use a separate generated M4RI WebAssembly module.
+M4RI-to-M4RI operations stay entirely inside that module: the host sees only
+validated, generation-tagged handles. Canonical logical words, SagePack bytes,
+and formatted text cross the boundary only when explicitly requested, with one
+copy into host-owned storage. The separate module gives M4RI its own linear
+memory and resource table instead of mixing its ownership domain with FLINT's.
+The current CoWasm dependency is M4RI 20250128, while native Sage.js pins
+20260122. The generated surface is tested against both; aligning those pins is
+distribution work rather than an ABI difference.
+
 The JavaScript loader has no host Node.js dependency. Its browser bundle uses
 CoWasm's `wasi-js` with `@cowasm/memfs`, so FLINT can create, seek, reopen, and
 unlink temporary files entirely in memory. This matters for algorithms such as
@@ -132,9 +142,9 @@ pnpm test:wasm
 For a checkout outside the sibling path, build with
 `SAGEJS_COWASM_ROOT=/path/to/cowasm pnpm build:wasm`.
 
-The build uses CoWasm's WASI SDK and static `libflint`, `libmpfr`, and `libgmp`
-archives. The resulting `dist/flint-factor.wasm` is about 4.7 MiB before HTTP
-compression and about 2 MiB with gzip in the current build. The self-hosted
+The build uses CoWasm's WASI SDK and static `libflint`, `libmpfr`, `libgmp`,
+and `libm4ri` archives. The resulting `dist/flint-factor.wasm` is about 4.7 MiB
+before HTTP compression and about 2 MiB with gzip in the current build. The self-hosted
 compiler and baselib add about 3.8 MiB uncompressed or 0.45 MiB with gzip.
 The bundled WASI and in-memory filesystem host is about 0.55 MiB uncompressed.
 The 23-module standard-library manifest is about 3.3 MiB uncompressed and

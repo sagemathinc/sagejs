@@ -8,6 +8,7 @@
   "exports": {
     ".": "./index.mjs",
     "./evaluator": "./evaluator.mjs",
+    "./m4ri": "./m4ri.mjs",
     "./kernel": {
       "types": "./kernel.d.ts",
       "import": "./kernel.mjs",
@@ -24,6 +25,10 @@
     "dist/ffi-resource-adapter.c",
     "dist/ffi-resource-backend.mjs",
     "dist/ffi-resource-manifest.json",
+    "dist/m4ri-resource.wasm",
+    "dist/m4ri-resource-adapter.c",
+    "dist/m4ri-resource-backend.mjs",
+    "dist/m4ri-resource-manifest.json",
     "dist/compiler.js",
     "dist/compiler-frontend.mjs",
     "dist/web-tree-sitter.wasm",
@@ -37,6 +42,7 @@
     "compiler-worker.mjs",
     "evaluator.mjs",
     "index.mjs",
+    "m4ri.mjs",
     "kernel.d.ts",
     "kernel-worker.mjs",
     "kernel.mjs",
