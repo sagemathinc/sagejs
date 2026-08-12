@@ -4,7 +4,7 @@
   "id": "m4ri-resource-core-v1",
   "title": "Generated M4RI resource core v1",
   "lane": "integration",
-  "status": "review",
+  "status": "complete",
   "owner": "user",
   "objective": "Implement generated M4RI owned matrix and byte-region resources with checked scalar and canonical packed row-word operations, lifecycle safety, direct resource algorithms, architecture inventory, focused tests, and benchmarks without public matrix.py integration",
   "base_commit": "b2cfa87aedc2666274d47b6e4feafbf3be410917",
