@@ -6,6 +6,7 @@ const { mkdtempSync, rmSync, writeFileSync } = require("node:fs");
 const { tmpdir } = require("node:os");
 const { resolve } = require("node:path");
 const { spawnSync } = require("node:child_process");
+const { compile: compileNative } = require("@sagemath/sagejs/native");
 
 const root = resolve(__dirname, "..");
 const flintPrefix = resolve(
@@ -388,11 +389,10 @@ function fmpqValue(resource) {
   assert.deepEqual(Array.from(rejected), [71n, 72n, 73n]);
 }
 
-function runKernel(source, environment) {
-  const result = spawnSync(resolve(root, "bin", "sagejs"), ["--python"], {
+function runKernel(scriptPath, environment) {
+  const result = spawnSync(resolve(root, "bin", "sagejs"), [scriptPath], {
     cwd: root,
     encoding: "utf8",
-    input: source,
     env: { ...process.env, ...environment },
     timeout: 180_000,
   });
@@ -401,7 +401,18 @@ function runKernel(source, environment) {
   return result.stdout.trim();
 }
 
-const kernelWitness = String.raw`
+function kernelWitness(bufferModule, requireCompiled) {
+  const bufferImport = bufferModule === "sagejs.runtime"
+    ? `import sagejs.runtime as buffers
+
+def uint64_zeros(length):
+    return buffers.uint64_buffer([0] * length)`
+    : "from sagejs.native import uint64_buffer, uint64_zeros";
+  const uint64Buffer = bufferModule === "sagejs.runtime"
+    ? "buffers.uint64_buffer"
+    : "uint64_buffer";
+  const uint64Zeros = "uint64_zeros";
+  return String.raw`
 from sagejs.ffi.flint import (
     fmpq_polynomial_coefficient_denominator,
     fmpq_polynomial_coefficient_numerator,
@@ -415,7 +426,8 @@ from sagejs.ffi.flint import (
     fmpq_value_numerator,
 )
 from sagejs.kernels.polynomial import structural_flint as structural
-from sagejs.native import is_compiled, uint64_buffer, uint64_zeros
+from sagejs.native import is_compiled
+${bufferImport}
 
 def integer_polynomial(values):
     result = fmpz_polynomial(len(values))
@@ -436,25 +448,76 @@ assert structural.flint_integer_polynomial_resultant(quadratic, linear) == 3
 assert structural.flint_integer_polynomial_discriminant(quadratic) == -8
 
 p = 97
-prime_outer = uint64_buffer([5, 95, 0, 1])
-prime_inner = uint64_buffer([1, 1, 1])
-prime_output = uint64_zeros(7)
+prime_outer = ${uint64Buffer}([5, 95, 0, 1])
+prime_inner = ${uint64Buffer}([1, 1, 1])
+prime_output = ${uint64Zeros}(7)
 assert structural.flint_prime_polynomial_compose(prime_output, prime_outer, prime_inner, 7, 4, 3, p)
 assert list(prime_output) == [4, 1, 4, 7, 6, 3, 1]
-prime_discriminant = uint64_zeros(1)
-assert structural.flint_prime_polynomial_discriminant(prime_discriminant, uint64_buffer([3, 2, 1]), 1, 3, p)
+prime_discriminant = ${uint64Zeros}(1)
+assert structural.flint_prime_polynomial_discriminant(prime_discriminant, ${uint64Buffer}([3, 2, 1]), 1, 3, p)
 assert list(prime_discriminant) == [89]
 
-functions = [value for name, value in structural.__dict__.items() if name.startswith('flint_') and callable(value)]
-print('compiled=' + str(all(is_compiled(function) for function in functions)))
+functions = [
+    structural.flint_integer_polynomial_compose,
+    structural.flint_integer_polynomial_reverse,
+    structural.flint_integer_polynomial_shift_left,
+    structural.flint_integer_polynomial_shift_right,
+    structural.flint_integer_polynomial_truncate,
+    structural.flint_integer_polynomial_integral,
+    structural.flint_integer_polynomial_resultant,
+    structural.flint_integer_polynomial_discriminant,
+    structural.flint_rational_polynomial_compose,
+    structural.flint_rational_polynomial_reverse,
+    structural.flint_rational_polynomial_shift_left,
+    structural.flint_rational_polynomial_shift_right,
+    structural.flint_rational_polynomial_truncate,
+    structural.flint_rational_polynomial_integral,
+    structural.flint_rational_polynomial_resultant,
+    structural.flint_rational_polynomial_discriminant,
+    structural.flint_prime_polynomial_compose,
+    structural.flint_prime_polynomial_reverse,
+    structural.flint_prime_polynomial_shift_left,
+    structural.flint_prime_polynomial_shift_right,
+    structural.flint_prime_polynomial_truncate,
+    structural.flint_prime_polynomial_integral,
+    structural.flint_prime_polynomial_resultant,
+    structural.flint_prime_polynomial_discriminant,
+]
+if ${requireCompiled ? "True" : "False"}:
+    for function in functions:
+        assert is_compiled(function)
 print('STRUCTURAL_FLINT_OK')
 `;
+}
 
-const native = runKernel(kernelWitness, { SAGEJS_NATIVE_REQUIRED: "1" });
-assert.match(native, /compiled=True/);
-assert.match(native, /STRUCTURAL_FLINT_OK/);
-const dynamic = runKernel(kernelWitness, { SAGEJS_NATIVE_DISABLE: "1" });
-assert.match(dynamic, /STRUCTURAL_FLINT_OK/);
+async function validateKernelWitnesses() {
+  const temporary = mkdtempSync(resolve(tmpdir(), "sagejs-structural-kernel-"));
+  const cacheRoot = resolve(temporary, "cache");
+  const sourcePath = resolve(
+    root,
+    "src/lib/sagejs/kernels/polynomial/structural_flint.py",
+  );
+  try {
+    const compiled = await compileNative({ sourcePath, cacheRoot });
+    assert.equal(compiled.ir.functions.length, 24);
+    const nativeScript = resolve(temporary, "native.py");
+    const dynamicScript = resolve(temporary, "dynamic.py");
+    writeFileSync(nativeScript, kernelWitness("sagejs.native", true));
+    writeFileSync(dynamicScript, kernelWitness("sagejs.runtime", false));
+    const native = runKernel(nativeScript, {
+      SAGEJS_NATIVE_CACHE_DIR: cacheRoot,
+      SAGEJS_NATIVE_REQUIRED: "1",
+    });
+    assert.match(native, /STRUCTURAL_FLINT_OK/);
+    const dynamic = runKernel(dynamicScript, {
+      SAGEJS_NATIVE_CACHE_DIR: cacheRoot,
+      SAGEJS_NATIVE_DISABLE: "1",
+    });
+    assert.match(dynamic, /STRUCTURAL_FLINT_OK/);
+  } finally {
+    rmSync(temporary, { recursive: true, force: true });
+  }
+}
 
 if (process.platform !== "win32") {
   const source = String.raw`
@@ -569,8 +632,14 @@ int main(void)
   }
 }
 
-console.log(JSON.stringify({
-  schema: "sagejs.polynomial/structural-flint-v1",
-  status: "ok",
-  operations: 24,
-}));
+validateKernelWitnesses().then(
+  () => console.log(JSON.stringify({
+    schema: "sagejs.polynomial/structural-flint-v1",
+    status: "ok",
+    operations: 24,
+  })),
+  (error) => {
+    console.error(error);
+    process.exitCode = 1;
+  },
+);
