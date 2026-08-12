@@ -358,6 +358,15 @@ def _dense_signed_zeros(kernel_function: Any, length: int) -> Any:
     return [0 for _index in range(length)]
 
 
+def _dense_signed_buffer(kernel_function: Any, source: Any) -> Any:
+    """Pack signed machine values for one source-transparent call."""
+    if _native_kernel_available(kernel_function):
+        factory = getattr(kernel_function, "createInt64Buffer", None)
+        if callable(factory):
+            return factory(source)
+    return [int(value) for value in source]
+
+
 def _matrix_integer_word_capacity(source: Any) -> int:
     capacity = runtime.reflect.get(source, "wordCapacity")
     if capacity is not runtime.undefined:
@@ -2742,6 +2751,198 @@ class Matrix(sage.Element):
         raise NotImplementedError(
             "matrix mutation is currently implemented for packed GF(p), "
             "ZZ, and QQ matrices"
+        )
+
+    def _check_batch_mutability(self) -> None:
+        if self._immutable:
+            raise ValueError("matrix is immutable; change a copy instead")
+
+    def _set_dense_prime_sequence(
+        self,
+        values: Any,
+        start: int,
+        stride: int,
+        operation: str,
+    ) -> None:
+        """Commit one already-coerced affine sequence in one kernel call."""
+        if len(values) == 0:
+            return
+        modulus = int(_untyped(self.base_ring()).characteristic())
+        if self._has_m4ri_matrix_resource():
+            kernel = _dense_binary_m4ri_kernel_module().m4ri_dense_matrix_set_sequence
+            start_row = start // self.ncols()
+            start_column = start % self.ncols()
+            row_stride = 0
+            column_stride = 1
+            if stride != 1:
+                row_stride = 1
+                column_stride = 0
+            valid = kernel(
+                self._m4ri_resource(),
+                _dense_signed_buffer(kernel, values),
+                runtime.bigint(len(values)),
+                runtime.bigint(start_row),
+                runtime.bigint(start_column),
+                runtime.bigint(row_stride),
+                runtime.bigint(column_stride),
+            )
+            if not valid:
+                raise RuntimeError("M4RI batch mutation validation failed")
+            self._prime_residues_cache = runtime.undefined
+        elif _is_packed_uint64(self._prime_residues_cache):
+            kernel = _dense_prime_kernel_module().dense_prime_field_matrix_set_sequence
+            target = self._prime_kernel_buffer(kernel)
+            valid = kernel(
+                target,
+                _dense_prime_buffer(kernel, values),
+                self.nrows(),
+                self.ncols(),
+                start,
+                stride,
+                modulus,
+            )
+            if not valid:
+                raise RuntimeError("dense prime batch mutation validation failed")
+            self._prime_residues_cache = _packed_uint64(target)
+        else:
+            raise NotImplementedError("batch mutation requires packed GF(p) storage")
+        self._native_handle = runtime.undefined
+        self._clear_cache()
+        _trace_dense_prime_selection(
+            operation,
+            _typed_python_implementation(kernel),
+            self.nrows(),
+            self.ncols(),
+            modulus,
+        )
+
+    def set_row(self, row: int, values: Any) -> None:
+        """Set one row in place through a transactional dense-prime batch."""
+        entries = list(values)
+        if len(entries) != self.ncols():
+            raise ValueError(
+                "list of new entries must be of length "
+                + str(self.ncols())
+                + " (not "
+                + str(len(entries))
+                + ")"
+            )
+        if row < 0 or row >= self.nrows():
+            raise ValueError(
+                "row number must be between 0 and "
+                + str(self.nrows() - 1)
+                + " (inclusive), not "
+                + str(row)
+            )
+        self._check_batch_mutability()
+        if not self._has_packed_prime_storage():
+            raise NotImplementedError("set_row currently requires packed GF(p)")
+        residues = _prime_residue_values(self.base_ring(), entries)
+        self._set_dense_prime_sequence(
+            residues,
+            row * self.ncols(),
+            1,
+            "set_row",
+        )
+
+    def set_column(self, column: int, values: Any) -> None:
+        """Set one column in place through a transactional dense-prime batch."""
+        entries = list(values)
+        if len(entries) != self.nrows():
+            raise ValueError(
+                "list of new entries must be of length "
+                + str(self.nrows())
+                + " (not "
+                + str(len(entries))
+                + ")"
+            )
+        if column < 0 or column >= self.ncols():
+            raise ValueError(
+                "column number must be between 0 and "
+                + str(self.ncols() - 1)
+                + " (inclusive), not "
+                + str(column)
+            )
+        self._check_batch_mutability()
+        if not self._has_packed_prime_storage():
+            raise NotImplementedError("set_column currently requires packed GF(p)")
+        residues = _prime_residue_values(self.base_ring(), entries)
+        self._set_dense_prime_sequence(
+            residues,
+            column,
+            self.ncols(),
+            "set_column",
+        )
+
+    def set_block(self, row: int, column: int, block: Any) -> None:
+        """Set a checked matrix window without exporting dense-prime storage."""
+        self._check_batch_mutability()
+        if not isinstance(block, Matrix):
+            raise TypeError("block must be a matrix")
+        if not self._has_packed_prime_storage():
+            raise NotImplementedError("set_block currently requires packed GF(p)")
+        if block.base_ring() is not self.base_ring():
+            block = block.change_ring(self.base_ring())
+        if (
+            row < 0
+            or column < 0
+            or row + block.nrows() > self.nrows()
+            or column + block.ncols() > self.ncols()
+        ):
+            raise IndexError("matrix window index out of range")
+        modulus = int(_untyped(self.base_ring()).characteristic())
+        if self._has_m4ri_matrix_resource() and block._has_m4ri_matrix_resource():
+            kernel = _dense_binary_m4ri_kernel_module().m4ri_dense_matrix_set_block
+            valid = kernel(
+                self._m4ri_resource(),
+                runtime.number(self.nrows()),
+                runtime.number(self.ncols()),
+                runtime.bigint(row),
+                runtime.bigint(column),
+                block._m4ri_resource(),
+                runtime.number(block.nrows()),
+                runtime.number(block.ncols()),
+            )
+            if not valid:
+                raise RuntimeError("M4RI block mutation validation failed")
+            if block.nrows() == 0 or block.ncols() == 0:
+                return
+            self._prime_residues_cache = runtime.undefined
+        elif (
+            _is_packed_uint64(self._prime_residues_cache)
+            and block._has_packed_prime_storage()
+        ):
+            kernel_module = _dense_prime_kernel_module()
+            kernel = kernel_module.dense_prime_field_matrix_set_block
+            target_entries = self._prime_kernel_buffer(kernel)
+            target = kernel_module.DensePrimeMatrix(
+                target_entries,
+                self.nrows(),
+                self.ncols(),
+                modulus,
+            )
+            source = kernel_module.DensePrimeMatrix(
+                block._prime_kernel_buffer(kernel),
+                block.nrows(),
+                block.ncols(),
+                modulus,
+            )
+            valid = kernel(target, row, column, source)
+            if not valid:
+                raise RuntimeError("dense prime block mutation validation failed")
+            if block.nrows() == 0 or block.ncols() == 0:
+                return
+            self._prime_residues_cache = _packed_uint64(target_entries)
+        else:
+            raise RuntimeError("dense prime block storage representations disagree")
+        self._native_handle = runtime.undefined
+        self._clear_cache()
+        _trace_dense_prime_selection(
+            "set_block",
+            _typed_python_implementation(kernel),
+            self.nrows(),
+            self.ncols(),
+            modulus,
         )
 
     def list(self) -> list[Any]:

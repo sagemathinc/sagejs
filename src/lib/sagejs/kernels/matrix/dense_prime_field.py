@@ -396,6 +396,62 @@ def dense_prime_field_matrix_set_diagonal(
 
 
 @native
+def dense_prime_field_matrix_set_sequence(
+    target: UInt64Buffer,
+    values: UInt64Buffer,
+    rows: uint64,
+    columns: uint64,
+    start: uint64,
+    stride: uint64,
+    modulus: PrimeFieldModulus,
+) -> bool:
+    """Transactionally replace one affine row-major entry sequence."""
+    count = len(values)
+    if len(target) != rows * columns:
+        return False
+    if count > 0:
+        if start >= len(target):
+            return False
+        if stride > 0 and count - 1 > (len(target) - 1 - start) // stride:
+            return False
+    for index in range(count):
+        target[start + index * stride] = values[index] % modulus
+    return True
+
+
+@native
+def dense_prime_field_matrix_set_block(
+    target: DensePrimeMatrix,
+    target_row: uint64,
+    target_column: uint64,
+    block: DensePrimeMatrix,
+) -> bool:
+    """Transactionally copy `block` into a checked window of `target`."""
+    target_entries = target.entries
+    block_entries = block.entries
+    if len(target_entries) != target.rows * target.columns:
+        return False
+    if len(block_entries) != block.rows * block.columns:
+        return False
+    if block.modulus != target.modulus:
+        return False
+    if target_row > target.rows or target_column > target.columns:
+        return False
+    if block.rows > target.rows - target_row:
+        return False
+    if block.columns > target.columns - target_column:
+        return False
+    for row in range(block.rows):
+        target_offset = (target_row + row) * target.columns + target_column
+        block_offset = row * block.columns
+        for column in range(block.columns):
+            target_entries[target_offset + column] = block_entries[
+                block_offset + column
+            ]
+    return True
+
+
+@native
 def dense_prime_field_matrix_space_random_fill(
     target: UInt64Buffer,
     modulus: PrimeFieldModulus,
@@ -811,7 +867,9 @@ __all__ = [
     "dense_prime_field_matrix_identity",
     "dense_prime_field_matrix_pivots",
     "dense_prime_field_matrix_rank",
+    "dense_prime_field_matrix_set_block",
     "dense_prime_field_matrix_set_diagonal",
+    "dense_prime_field_matrix_set_sequence",
     "dense_prime_field_matrix_space_random_fill",
     "dense_prime_field_matrix_rref",
     "dense_prime_field_matrix_right_kernel",
