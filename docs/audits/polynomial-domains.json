@@ -1,0 +1,1045 @@
+{
+  "schema": "sagejs.audit/polynomial-domains-v1",
+  "audited_commit": "3b0658fa3880a5efba21c80c3699071cdfb6a6c1",
+  "audited_on": "2026-08-12",
+  "scope": {
+    "included": [
+      "public univariate polynomial parents and elements",
+      "ZZ[x] and QQ[x] on Node and portable hosts",
+      "GF(p)[x] on both sides of the packed 32-bit characteristic boundary",
+      "GF(p^n)[x] through the finite-field extension parent",
+      "CyclotomicField(n)[x] and direct cyclotomic-polynomial construction",
+      "construction, mutation, arithmetic, divrem, gcd, xgcd, factor, roots, evaluate, format, and serialize"
+    ],
+    "excluded": [
+      "multivariate polynomial algorithms",
+      "Zmod(n)[x] for composite n",
+      "power and Laurent series",
+      "rational-function arithmetic beyond polynomial true-division construction",
+      "approximate real and complex coefficient domains"
+    ]
+  },
+  "workflow_order": [
+    "construction",
+    "mutation",
+    "arithmetic",
+    "divrem",
+    "gcd",
+    "xgcd",
+    "factor",
+    "roots",
+    "evaluate",
+    "format",
+    "serialize"
+  ],
+  "status_vocabulary": {
+    "complete": "The audited public workflow is implemented for the stated domain.",
+    "partial": "A useful subset works, but Sage-compatible surface or focused regression coverage is missing.",
+    "missing": "The public Sage workflow is absent or explicitly rejected.",
+    "broken": "The public method exists but reaches an incompatible implementation boundary for this domain."
+  },
+  "coverage_vocabulary": ["strong", "representative", "smoke", "none"],
+  "implementation_types": [
+    "ordinary-python",
+    "source-transparent-native",
+    "generated-resource-ffi",
+    "external-library",
+    "legacy-opaque-native",
+    "host-runtime-primitive",
+    "generic-codec"
+  ],
+  "boundaries": {
+    "exact-resource": {
+      "types": ["generated-resource-ffi", "external-library"],
+      "summary": "Node-owned sealed FmpzPolynomial and FmpqPolynomial resources; public results stay resource-to-resource or resource-to-scalar.",
+      "anchors": [
+        {
+          "path": "src/baselib/polynomial.py",
+          "contains": "class _FmpzPolynomialResourceStorage:"
+        },
+        {
+          "path": "src/baselib/polynomial.py",
+          "contains": "class _FmpqPolynomialResourceStorage:"
+        },
+        {
+          "path": "ffi/flint.ffi.py",
+          "contains": "def fmpz_polynomial_add("
+        },
+        {
+          "path": "ffi/flint.ffi.py",
+          "contains": "def fmpq_polynomial_add("
+        }
+      ]
+    },
+    "packed-exact-fallback": {
+      "types": ["ordinary-python", "source-transparent-native"],
+      "summary": "Portable normalized IntegerBuffer coefficients and rational numerator/denominator buffers provide the dynamic same-source fallback.",
+      "anchors": [
+        {
+          "path": "src/baselib/polynomial.py",
+          "contains": "class _PackedIntegerPolynomialStorage:"
+        },
+        {
+          "path": "src/lib/sagejs/kernels/polynomial/packed_integer.py",
+          "contains": "def packed_integer_polynomial_add("
+        },
+        {
+          "path": "src/lib/sagejs/kernels/polynomial/packed_rational.py",
+          "contains": "def packed_rational_polynomial_add("
+        }
+      ]
+    },
+    "packed-small-prime": {
+      "types": [
+        "ordinary-python",
+        "source-transparent-native",
+        "host-runtime-primitive"
+      ],
+      "summary": "Prime fields of characteristic at most 2^32-1 own normalized UInt64Buffer coefficients and use typed-Python modular kernels.",
+      "anchors": [
+        {
+          "path": "src/baselib/polynomial.py",
+          "contains": "and int(_untyped(base).characteristic()) <= 0xFFFFFFFF"
+        },
+        {
+          "path": "src/lib/sagejs/kernels/polynomial/packed_prime_field.py",
+          "contains": "def packed_prime_field_polynomial_evaluate("
+        },
+        {
+          "path": "src/baselib/sagejs/runtime.py",
+          "contains": "def uint64_polynomial_format(source, variable):"
+        }
+      ]
+    },
+    "packed-prime-flint": {
+      "types": ["source-transparent-native", "generated-resource-ffi", "external-library"],
+      "summary": "Typed-Python wrappers call declared FLINT nmod_poly algorithms for large multiplication, divrem, gcd, irreducibility, factorization, and roots.",
+      "anchors": [
+        {
+          "path": "src/lib/sagejs/kernels/polynomial/packed_flint.py",
+          "contains": "def flint_packed_prime_field_polynomial_divrem("
+        },
+        {
+          "path": "src/lib/sagejs/kernels/polynomial/packed_flint.py",
+          "contains": "def flint_packed_prime_field_polynomial_factor("
+        },
+        {
+          "path": "ffi/flint.ffi.py",
+          "contains": "def nmod_poly_roots("
+        }
+      ]
+    },
+    "legacy-prime-polynomial": {
+      "types": ["legacy-opaque-native", "external-library"],
+      "summary": "Prime fields above the packed cutoff retain opaque legacy FLINT polynomial handles and coefficient materialization.",
+      "anchors": [
+        {
+          "path": "src/baselib/polynomial.py",
+          "contains": "return self._new(runtime.flint_backend().polyAdd(self._native, other._native))"
+        },
+        {
+          "path": "packages/flint/src/addon.c",
+          "contains": "{\"polyAdd\", NULL, poly_add"
+        }
+      ]
+    },
+    "legacy-extension-polynomial": {
+      "types": ["legacy-opaque-native", "external-library"],
+      "summary": "GF(p^n)[x] owns opaque fq_poly handles through the legacy Node addon.",
+      "anchors": [
+        {
+          "path": "src/baselib/polynomial.py",
+          "contains": "runtime.flint_backend().fqPolyAdd(self._native, other._native)"
+        },
+        {
+          "path": "packages/flint/src/addon.c",
+          "contains": "{\"fqPolyFactor\", NULL, sagejs_fq_poly_factor"
+        }
+      ]
+    },
+    "generic-cyclotomic-polynomial": {
+      "types": ["ordinary-python", "legacy-opaque-native"],
+      "summary": "CyclotomicField(n)[x] is routed to the generic sparse ApproximatePolynomialElement despite having an exact base; arithmetic is Python term-list code and factorization calls a legacy cyclotomic helper.",
+      "anchors": [
+        {
+          "path": "src/baselib/polynomial.py",
+          "contains": "class ApproximatePolynomialElement(sage.Element):"
+        },
+        {
+          "path": "src/baselib/polynomial.py",
+          "contains": "result = runtime.flint_backend().cyclotomicPolyFactor("
+        }
+      ]
+    },
+    "immutable-element": {
+      "types": ["host-runtime-primitive"],
+      "summary": "Polynomial element objects are frozen and coefficient-list exports are fresh, but no __setitem__ method raises Sage's specific immutable-polynomial IndexError.",
+      "anchors": [
+        {
+          "path": "src/baselib/polynomial.py",
+          "contains": "runtime.object.freeze(self)"
+        },
+        {
+          "path": "test/polynomial-core-correctness-v1.cjs",
+          "contains": "coefficients[0] = base(99)"
+        }
+      ]
+    },
+    "legacy-exact-roots": {
+      "types": ["legacy-opaque-native", "external-library"],
+      "summary": "ZZ[x] and QQ[x] temporarily reconstruct a legacy polynomial solely to obtain opaque AA/QQbar root objects.",
+      "anchors": [
+        {
+          "path": "src/baselib/polynomial.py",
+          "contains": "def _legacy_polynomial_oracle_input(self) -> Any:"
+        },
+        {
+          "path": "src/baselib/polynomial.py",
+          "contains": "raw_roots = runtime.flint_backend().polyExactRoots("
+        }
+      ]
+    },
+    "sagepack-polynomial": {
+      "types": ["generic-codec", "generated-resource-ffi", "host-runtime-primitive"],
+      "summary": "SagePack uses canonical compact exact and small-prime byte encodings, with a coefficient-list fallback for legacy and extension domains.",
+      "anchors": [
+        {
+          "path": "tools/serialization.ts",
+          "contains": "function polynomialFromCoefficients(parent: unknown, coefficients: unknown[]): unknown"
+        },
+        {
+          "path": "tools/serialization.ts",
+          "contains": "coefficientEncoding: \"prime-field-poly-le-v1\""
+        },
+        {
+          "path": "src/baselib/polynomial.py",
+          "contains": "def _packed_exact_polynomial(self) -> Any:"
+        }
+      ]
+    },
+    "cyclotomic-fmpz-constructor": {
+      "types": ["generated-resource-ffi", "external-library", "ordinary-python"],
+      "summary": "ZZ[x].cyclotomic_polynomial uses one declared FLINT resource call on Node and recursive exact division on portable hosts.",
+      "anchors": [
+        {
+          "path": "src/baselib/polynomial.py",
+          "contains": "def cyclotomic_polynomial(self, degree: Any) -> PolynomialElement:"
+        },
+        {
+          "path": "ffi/flint.ffi.py",
+          "contains": "def fmpz_polynomial_cyclotomic(order: uint64) -> FmpzPolynomial: ..."
+        }
+      ]
+    }
+  },
+  "evidence": {
+    "core-semantics": {
+      "kind": "correctness",
+      "paths": ["test/polynomial-core-correctness-v1.cjs"],
+      "oracles": ["Sage-derived fixed cases", "native/dynamic differential", "algebraic identities"]
+    },
+    "core-divrem-performance": {
+      "kind": "performance",
+      "paths": ["bench/polynomial-core-correctness-v1.cjs"],
+      "oracles": ["quotient-remainder reconstruction", "fixed CI timing ceilings"]
+    },
+    "exact-resource-public": {
+      "kind": "correctness",
+      "paths": ["test/exact-polynomial-resources.cjs"],
+      "oracles": ["resource/portable differential", "algebraic identities", "SagePack round trip"]
+    },
+    "exact-resource-ffi": {
+      "kind": "correctness",
+      "paths": ["test/exact-polynomial-resource-ffi.cjs"],
+      "oracles": ["declared wrapper/FLINT differential", "ownership and closed-resource checks"]
+    },
+    "exact-scalar-slice": {
+      "kind": "correctness",
+      "paths": ["test/exact-polynomial-scalar-slice-resource.cjs"],
+      "oracles": ["optional live SageMath differential", "resource/portable differential"]
+    },
+    "exact-xgcd": {
+      "kind": "correctness",
+      "paths": ["test/exact-polynomial-xgcd-resource.cjs"],
+      "oracles": ["Bezout identity", "Sage-normalized fixed cases", "resource/portable differential"]
+    },
+    "exact-factor": {
+      "kind": "correctness",
+      "paths": ["test/exact-polynomial-factorization-resource.cjs"],
+      "oracles": ["factorization reconstruction", "generated/packed differential", "ownership checks"]
+    },
+    "exact-format": {
+      "kind": "correctness",
+      "paths": ["test/exact-polynomial-format.cjs"],
+      "oracles": ["fixed Sage-compatible strings", "resource/portable differential"]
+    },
+    "exact-roots": {
+      "kind": "correctness",
+      "paths": ["test/algebraic-numbers.cjs"],
+      "oracles": ["fixed AA and QQbar roots", "multiplicity checks"]
+    },
+    "prime-divrem": {
+      "kind": "correctness-and-performance",
+      "paths": ["test/prime-polynomial-divrem.cjs", "bench/prime-polynomial-divrem.cjs"],
+      "oracles": ["native/dynamic differential", "quotient-remainder reconstruction", "fixed CI timing ceilings"]
+    },
+    "prime-evaluate": {
+      "kind": "correctness-and-performance",
+      "paths": ["test/polynomial-prime-evaluate.cjs", "bench/polynomial-prime-evaluate.cjs"],
+      "oracles": ["ordinary CPython Horner oracle", "native/dynamic differential", "fixed CI timing ceiling"]
+    },
+    "prime-bulk-views": {
+      "kind": "correctness-and-performance",
+      "paths": ["test/prime-polynomial-bulk-views.cjs", "bench/prime-polynomial-bulk-views.cjs"],
+      "oracles": ["fixed coefficient and format cases", "fresh-list ownership", "fixed CI timing ceilings"]
+    },
+    "algebra-integration": {
+      "kind": "correctness",
+      "paths": ["test/algebra.py"],
+      "oracles": ["fixed Sage-compatible arithmetic, gcd, factor, and root results"]
+    },
+    "ring-conversion": {
+      "kind": "correctness",
+      "paths": ["test/polynomial-ring-conversion.cjs"],
+      "oracles": ["parent and coefficient preservation", "coercion rejection cases"]
+    },
+    "sagepack": {
+      "kind": "correctness-and-performance",
+      "paths": ["test/serialization.cjs"],
+      "oracles": ["canonical-byte golden hash", "round trip", "size and timing ceilings"]
+    },
+    "cyclotomic-constructor": {
+      "kind": "correctness-and-performance",
+      "paths": [
+        "test/exact-polynomial-cyclotomic-resource.cjs",
+        "bench/exact-polynomial-cyclotomic-resource.cjs"
+      ],
+      "oracles": ["known cyclotomic coefficients", "Node/portable differential", "degree and divisibility identities"]
+    },
+    "exact-resource-performance": {
+      "kind": "performance",
+      "paths": [
+        "bench/exact-polynomial-resources.cjs",
+        "bench/exact-polynomial-bulk-io.cjs",
+        "bench/public-exact-polynomial-division.cjs",
+        "bench/exact-polynomial-resource-gcd.cjs",
+        "bench/exact-polynomial-factorization-resource.cjs",
+        "bench/exact-polynomial-format.cjs",
+        "bench/exact-polynomial-scalar-slice.cjs"
+      ],
+      "oracles": ["fixed CI timing ceilings", "direct-resource/compatibility-path comparison"]
+    }
+  },
+  "sage_oracle_samples": {
+    "version": "10.9.post1",
+    "date": "2026-08-12",
+    "cases": [
+      {
+        "id": "immutable-assignment",
+        "input": "R.<x> = ZZ[]; f = x^2 + 1; f[1] = 3",
+        "expected": "IndexError: polynomials are immutable"
+      },
+      {
+        "id": "large-prime-euclidean",
+        "input": "L=GF(2305843009213693951); S.<u>=L[]; h=(u-1)*(u+2)",
+        "expected": "quo_rem, gcd, xgcd, factor, and roots all succeed"
+      },
+      {
+        "id": "extension-euclidean",
+        "input": "E.<a>=GF(9); T.<t>=E[]; g=(t+a)*(t+a+1)",
+        "expected": "quo_rem and xgcd succeed in addition to gcd, factor, and roots"
+      },
+      {
+        "id": "cyclotomic-field-polynomial",
+        "input": "K.<z>=CyclotomicField(5); U.<v>=K[]; c=(z+1)*v^2+z",
+        "expected": "dense construction, derivative, quo_rem, gcd, xgcd, factor, roots, and evaluation succeed"
+      },
+      {
+        "id": "exact-default-roots",
+        "input": "R.<x>=ZZ[]; (x^2-1).roots()",
+        "expected": "[(1, 1), (-1, 1)]"
+      }
+    ]
+  },
+  "domains": [
+    {
+      "id": "zz",
+      "label": "ZZ[x]",
+      "selector": "base is ZZ",
+      "representation": "FmpzPolynomial resource on Node; normalized IntegerBuffer on portable hosts",
+      "workflows": {
+        "construction": {
+          "status": "complete",
+          "boundaries": ["exact-resource", "packed-exact-fallback"],
+          "evidence": ["exact-resource-public", "exact-resource-ffi", "ring-conversion"],
+          "coverage": { "correctness": "strong", "performance": "representative" }
+        },
+        "mutation": {
+          "status": "partial",
+          "boundaries": ["immutable-element"],
+          "evidence": ["core-semantics"],
+          "coverage": { "correctness": "smoke", "performance": "none" },
+          "finding": "immutable-error"
+        },
+        "arithmetic": {
+          "status": "complete",
+          "boundaries": ["exact-resource", "packed-exact-fallback"],
+          "evidence": ["exact-resource-public", "core-semantics"],
+          "coverage": { "correctness": "strong", "performance": "representative" }
+        },
+        "divrem": {
+          "status": "complete",
+          "boundaries": ["exact-resource", "packed-exact-fallback"],
+          "evidence": ["exact-resource-public", "core-semantics", "core-divrem-performance", "exact-resource-performance"],
+          "coverage": { "correctness": "strong", "performance": "strong" }
+        },
+        "gcd": {
+          "status": "complete",
+          "boundaries": ["exact-resource", "packed-exact-fallback"],
+          "evidence": ["exact-resource-public", "exact-resource-performance"],
+          "coverage": { "correctness": "strong", "performance": "representative" }
+        },
+        "xgcd": {
+          "status": "complete",
+          "boundaries": ["exact-resource", "packed-exact-fallback"],
+          "evidence": ["exact-xgcd"],
+          "coverage": { "correctness": "strong", "performance": "none" }
+        },
+        "factor": {
+          "status": "complete",
+          "boundaries": ["exact-resource", "packed-exact-fallback"],
+          "evidence": ["exact-factor", "exact-resource-performance"],
+          "coverage": { "correctness": "strong", "performance": "representative" }
+        },
+        "roots": {
+          "status": "partial",
+          "boundaries": ["legacy-exact-roots"],
+          "evidence": ["exact-roots"],
+          "coverage": { "correctness": "representative", "performance": "none" },
+          "finding": "exact-default-roots"
+        },
+        "evaluate": {
+          "status": "complete",
+          "boundaries": ["exact-resource", "packed-exact-fallback"],
+          "evidence": ["exact-resource-public", "exact-resource-performance"],
+          "coverage": { "correctness": "strong", "performance": "representative" }
+        },
+        "format": {
+          "status": "complete",
+          "boundaries": ["exact-resource", "packed-exact-fallback"],
+          "evidence": ["exact-format", "exact-resource-performance"],
+          "coverage": { "correctness": "strong", "performance": "strong" }
+        },
+        "serialize": {
+          "status": "complete",
+          "boundaries": ["sagepack-polynomial", "exact-resource"],
+          "evidence": ["exact-resource-public", "sagepack", "exact-resource-performance"],
+          "coverage": { "correctness": "strong", "performance": "representative" }
+        }
+      }
+    },
+    {
+      "id": "qq",
+      "label": "QQ[x]",
+      "selector": "base is QQ",
+      "representation": "FmpqPolynomial resource on Node; normalized numerator/denominator IntegerBuffers on portable hosts",
+      "workflows": {
+        "construction": {
+          "status": "complete",
+          "boundaries": ["exact-resource", "packed-exact-fallback"],
+          "evidence": ["exact-resource-public", "exact-resource-ffi", "ring-conversion"],
+          "coverage": { "correctness": "strong", "performance": "representative" }
+        },
+        "mutation": {
+          "status": "partial",
+          "boundaries": ["immutable-element"],
+          "evidence": ["core-semantics"],
+          "coverage": { "correctness": "smoke", "performance": "none" },
+          "finding": "immutable-error"
+        },
+        "arithmetic": {
+          "status": "complete",
+          "boundaries": ["exact-resource", "packed-exact-fallback"],
+          "evidence": ["exact-resource-public", "core-semantics"],
+          "coverage": { "correctness": "strong", "performance": "representative" }
+        },
+        "divrem": {
+          "status": "complete",
+          "boundaries": ["exact-resource", "packed-exact-fallback"],
+          "evidence": ["exact-resource-public", "core-semantics", "core-divrem-performance", "exact-resource-performance"],
+          "coverage": { "correctness": "strong", "performance": "strong" }
+        },
+        "gcd": {
+          "status": "complete",
+          "boundaries": ["exact-resource", "packed-exact-fallback"],
+          "evidence": ["exact-resource-public", "exact-resource-performance"],
+          "coverage": { "correctness": "strong", "performance": "representative" }
+        },
+        "xgcd": {
+          "status": "complete",
+          "boundaries": ["exact-resource", "packed-exact-fallback"],
+          "evidence": ["exact-xgcd"],
+          "coverage": { "correctness": "strong", "performance": "none" }
+        },
+        "factor": {
+          "status": "complete",
+          "boundaries": ["exact-resource", "packed-exact-fallback"],
+          "evidence": ["exact-factor", "exact-resource-performance"],
+          "coverage": { "correctness": "strong", "performance": "representative" }
+        },
+        "roots": {
+          "status": "partial",
+          "boundaries": ["legacy-exact-roots"],
+          "evidence": ["exact-roots"],
+          "coverage": { "correctness": "representative", "performance": "none" },
+          "finding": "exact-default-roots"
+        },
+        "evaluate": {
+          "status": "complete",
+          "boundaries": ["exact-resource", "packed-exact-fallback"],
+          "evidence": ["exact-resource-public", "exact-resource-performance"],
+          "coverage": { "correctness": "strong", "performance": "representative" }
+        },
+        "format": {
+          "status": "complete",
+          "boundaries": ["exact-resource", "packed-exact-fallback"],
+          "evidence": ["exact-format", "exact-resource-performance"],
+          "coverage": { "correctness": "strong", "performance": "strong" }
+        },
+        "serialize": {
+          "status": "complete",
+          "boundaries": ["sagepack-polynomial", "exact-resource"],
+          "evidence": ["exact-resource-public", "sagepack", "exact-resource-performance"],
+          "coverage": { "correctness": "strong", "performance": "representative" }
+        }
+      }
+    },
+    {
+      "id": "gf-prime-packed",
+      "label": "GF(p)[x], p <= 2^32-1",
+      "selector": "base._kind == GF and characteristic <= 0xffffffff",
+      "representation": "normalized UInt64Buffer coefficients",
+      "workflows": {
+        "construction": {
+          "status": "complete",
+          "boundaries": ["packed-small-prime"],
+          "evidence": ["core-semantics", "prime-bulk-views", "ring-conversion"],
+          "coverage": { "correctness": "strong", "performance": "representative" }
+        },
+        "mutation": {
+          "status": "partial",
+          "boundaries": ["immutable-element"],
+          "evidence": ["core-semantics", "prime-bulk-views"],
+          "coverage": { "correctness": "smoke", "performance": "none" },
+          "finding": "immutable-error"
+        },
+        "arithmetic": {
+          "status": "complete",
+          "boundaries": ["packed-small-prime", "packed-prime-flint"],
+          "evidence": ["core-semantics", "algebra-integration"],
+          "coverage": { "correctness": "representative", "performance": "none" }
+        },
+        "divrem": {
+          "status": "complete",
+          "boundaries": ["packed-small-prime", "packed-prime-flint"],
+          "evidence": ["core-semantics", "prime-divrem"],
+          "coverage": { "correctness": "strong", "performance": "strong" }
+        },
+        "gcd": {
+          "status": "complete",
+          "boundaries": ["packed-prime-flint"],
+          "evidence": ["algebra-integration"],
+          "coverage": { "correctness": "representative", "performance": "none" }
+        },
+        "xgcd": {
+          "status": "missing",
+          "boundaries": ["packed-prime-flint"],
+          "evidence": [],
+          "coverage": { "correctness": "none", "performance": "none" },
+          "finding": "prime-xgcd"
+        },
+        "factor": {
+          "status": "complete",
+          "boundaries": ["packed-prime-flint"],
+          "evidence": ["algebra-integration"],
+          "coverage": { "correctness": "representative", "performance": "none" }
+        },
+        "roots": {
+          "status": "complete",
+          "boundaries": ["packed-prime-flint"],
+          "evidence": ["algebra-integration"],
+          "coverage": { "correctness": "representative", "performance": "none" }
+        },
+        "evaluate": {
+          "status": "complete",
+          "boundaries": ["packed-small-prime"],
+          "evidence": ["prime-evaluate"],
+          "coverage": { "correctness": "strong", "performance": "strong" }
+        },
+        "format": {
+          "status": "complete",
+          "boundaries": ["packed-small-prime"],
+          "evidence": ["prime-bulk-views"],
+          "coverage": { "correctness": "strong", "performance": "strong" }
+        },
+        "serialize": {
+          "status": "complete",
+          "boundaries": ["sagepack-polynomial", "packed-small-prime"],
+          "evidence": ["sagepack"],
+          "coverage": { "correctness": "strong", "performance": "strong" }
+        }
+      }
+    },
+    {
+      "id": "gf-prime-large",
+      "label": "GF(p)[x], p > 2^32-1",
+      "selector": "base._kind == GF and characteristic > 0xffffffff",
+      "representation": "opaque legacy FLINT polynomial handle",
+      "workflows": {
+        "construction": {
+          "status": "partial",
+          "boundaries": ["legacy-prime-polynomial"],
+          "evidence": [],
+          "coverage": { "correctness": "none", "performance": "none" },
+          "finding": "large-prime-boundary"
+        },
+        "mutation": {
+          "status": "partial",
+          "boundaries": ["immutable-element"],
+          "evidence": [],
+          "coverage": { "correctness": "none", "performance": "none" },
+          "finding": "immutable-error"
+        },
+        "arithmetic": {
+          "status": "partial",
+          "boundaries": ["legacy-prime-polynomial"],
+          "evidence": [],
+          "coverage": { "correctness": "none", "performance": "none" },
+          "finding": "large-prime-boundary"
+        },
+        "divrem": {
+          "status": "missing",
+          "boundaries": ["legacy-prime-polynomial"],
+          "evidence": [],
+          "coverage": { "correctness": "none", "performance": "none" },
+          "finding": "large-prime-boundary"
+        },
+        "gcd": {
+          "status": "missing",
+          "boundaries": ["legacy-prime-polynomial"],
+          "evidence": [],
+          "coverage": { "correctness": "none", "performance": "none" },
+          "finding": "large-prime-boundary"
+        },
+        "xgcd": {
+          "status": "missing",
+          "boundaries": ["legacy-prime-polynomial"],
+          "evidence": [],
+          "coverage": { "correctness": "none", "performance": "none" },
+          "finding": "large-prime-boundary"
+        },
+        "factor": {
+          "status": "broken",
+          "boundaries": ["legacy-prime-polynomial", "packed-prime-flint"],
+          "evidence": [],
+          "coverage": { "correctness": "none", "performance": "none" },
+          "finding": "large-prime-boundary"
+        },
+        "roots": {
+          "status": "broken",
+          "boundaries": ["legacy-prime-polynomial", "packed-prime-flint"],
+          "evidence": [],
+          "coverage": { "correctness": "none", "performance": "none" },
+          "finding": "large-prime-boundary"
+        },
+        "evaluate": {
+          "status": "partial",
+          "boundaries": ["legacy-prime-polynomial"],
+          "evidence": [],
+          "coverage": { "correctness": "none", "performance": "none" },
+          "finding": "large-prime-boundary"
+        },
+        "format": {
+          "status": "partial",
+          "boundaries": ["legacy-prime-polynomial"],
+          "evidence": [],
+          "coverage": { "correctness": "none", "performance": "none" },
+          "finding": "large-prime-boundary"
+        },
+        "serialize": {
+          "status": "partial",
+          "boundaries": ["sagepack-polynomial", "legacy-prime-polynomial"],
+          "evidence": [],
+          "coverage": { "correctness": "none", "performance": "none" },
+          "finding": "large-prime-boundary"
+        }
+      }
+    },
+    {
+      "id": "gf-extension",
+      "label": "GF(p^n)[x], n > 1",
+      "selector": "base._kind == GF_EXTENSION",
+      "representation": "opaque legacy FLINT fq_poly handle",
+      "workflows": {
+        "construction": {
+          "status": "complete",
+          "boundaries": ["legacy-extension-polynomial"],
+          "evidence": ["algebra-integration", "ring-conversion"],
+          "coverage": { "correctness": "representative", "performance": "none" }
+        },
+        "mutation": {
+          "status": "partial",
+          "boundaries": ["immutable-element"],
+          "evidence": [],
+          "coverage": { "correctness": "none", "performance": "none" },
+          "finding": "immutable-error"
+        },
+        "arithmetic": {
+          "status": "complete",
+          "boundaries": ["legacy-extension-polynomial"],
+          "evidence": ["algebra-integration"],
+          "coverage": { "correctness": "representative", "performance": "none" }
+        },
+        "divrem": {
+          "status": "missing",
+          "boundaries": ["legacy-extension-polynomial"],
+          "evidence": [],
+          "coverage": { "correctness": "none", "performance": "none" },
+          "finding": "extension-euclidean"
+        },
+        "gcd": {
+          "status": "complete",
+          "boundaries": ["legacy-extension-polynomial"],
+          "evidence": ["algebra-integration"],
+          "coverage": { "correctness": "representative", "performance": "none" }
+        },
+        "xgcd": {
+          "status": "missing",
+          "boundaries": ["legacy-extension-polynomial"],
+          "evidence": [],
+          "coverage": { "correctness": "none", "performance": "none" },
+          "finding": "extension-euclidean"
+        },
+        "factor": {
+          "status": "complete",
+          "boundaries": ["legacy-extension-polynomial"],
+          "evidence": ["algebra-integration"],
+          "coverage": { "correctness": "representative", "performance": "none" }
+        },
+        "roots": {
+          "status": "complete",
+          "boundaries": ["legacy-extension-polynomial"],
+          "evidence": ["algebra-integration"],
+          "coverage": { "correctness": "representative", "performance": "none" }
+        },
+        "evaluate": {
+          "status": "complete",
+          "boundaries": ["legacy-extension-polynomial"],
+          "evidence": ["prime-evaluate"],
+          "coverage": { "correctness": "representative", "performance": "none" }
+        },
+        "format": {
+          "status": "complete",
+          "boundaries": ["legacy-extension-polynomial"],
+          "evidence": ["algebra-integration"],
+          "coverage": { "correctness": "representative", "performance": "none" }
+        },
+        "serialize": {
+          "status": "complete",
+          "boundaries": ["sagepack-polynomial", "legacy-extension-polynomial"],
+          "evidence": ["sagepack"],
+          "coverage": { "correctness": "representative", "performance": "none" }
+        }
+      }
+    },
+    {
+      "id": "cyclotomic-field",
+      "label": "CyclotomicField(n)[x]",
+      "selector": "base._kind == CyclotomicField",
+      "representation": "generic sparse term list with exact cyclotomic coefficients",
+      "workflows": {
+        "construction": {
+          "status": "partial",
+          "boundaries": ["generic-cyclotomic-polynomial"],
+          "evidence": [],
+          "coverage": { "correctness": "none", "performance": "none" },
+          "finding": "cyclotomic-core"
+        },
+        "mutation": {
+          "status": "partial",
+          "boundaries": ["immutable-element"],
+          "evidence": [],
+          "coverage": { "correctness": "none", "performance": "none" },
+          "finding": "immutable-error"
+        },
+        "arithmetic": {
+          "status": "complete",
+          "boundaries": ["generic-cyclotomic-polynomial"],
+          "evidence": [],
+          "coverage": { "correctness": "none", "performance": "none" },
+          "finding": "cyclotomic-coverage"
+        },
+        "divrem": {
+          "status": "missing",
+          "boundaries": ["generic-cyclotomic-polynomial"],
+          "evidence": [],
+          "coverage": { "correctness": "none", "performance": "none" },
+          "finding": "cyclotomic-core"
+        },
+        "gcd": {
+          "status": "missing",
+          "boundaries": ["generic-cyclotomic-polynomial"],
+          "evidence": [],
+          "coverage": { "correctness": "none", "performance": "none" },
+          "finding": "cyclotomic-core"
+        },
+        "xgcd": {
+          "status": "missing",
+          "boundaries": ["generic-cyclotomic-polynomial"],
+          "evidence": [],
+          "coverage": { "correctness": "none", "performance": "none" },
+          "finding": "cyclotomic-core"
+        },
+        "factor": {
+          "status": "partial",
+          "boundaries": ["generic-cyclotomic-polynomial"],
+          "evidence": [],
+          "coverage": { "correctness": "none", "performance": "none" },
+          "finding": "cyclotomic-coverage"
+        },
+        "roots": {
+          "status": "missing",
+          "boundaries": ["generic-cyclotomic-polynomial"],
+          "evidence": [],
+          "coverage": { "correctness": "none", "performance": "none" },
+          "finding": "cyclotomic-core"
+        },
+        "evaluate": {
+          "status": "complete",
+          "boundaries": ["generic-cyclotomic-polynomial"],
+          "evidence": [],
+          "coverage": { "correctness": "none", "performance": "none" },
+          "finding": "cyclotomic-coverage"
+        },
+        "format": {
+          "status": "complete",
+          "boundaries": ["generic-cyclotomic-polynomial"],
+          "evidence": [],
+          "coverage": { "correctness": "none", "performance": "none" },
+          "finding": "cyclotomic-coverage"
+        },
+        "serialize": {
+          "status": "partial",
+          "boundaries": ["sagepack-polynomial", "generic-cyclotomic-polynomial"],
+          "evidence": [],
+          "coverage": { "correctness": "none", "performance": "none" },
+          "finding": "cyclotomic-coverage"
+        }
+      }
+    }
+  ],
+  "special_workflows": [
+    {
+      "id": "cyclotomic-polynomial-construction",
+      "surface": "ZZ[var].cyclotomic_polynomial(n) and cyclotomic_polynomial(n, var)",
+      "status": "complete",
+      "boundaries": ["cyclotomic-fmpz-constructor"],
+      "evidence": ["cyclotomic-constructor"],
+      "coverage": { "correctness": "strong", "performance": "representative" }
+    }
+  ],
+  "findings": [
+    {
+      "id": "large-prime-boundary",
+      "priority": "P1",
+      "summary": "GF(p)[x] above 2^32-1 falls back to an opaque legacy handle, while factor() and roots() dispatch on base._kind and incorrectly pass undefined packed storage to UInt64Buffer-only FLINT wrappers; divrem, gcd, and xgcd are absent.",
+      "sage_oracle": "large-prime-euclidean",
+      "lane": "large-prime-polynomial-correctness"
+    },
+    {
+      "id": "extension-euclidean",
+      "priority": "P1",
+      "summary": "GF(p^n)[x] already exposes legacy FLINT arithmetic, gcd, factorization, and roots, but public quo_rem and xgcd reject the same domain.",
+      "sage_oracle": "extension-euclidean",
+      "lane": "extension-polynomial-euclidean"
+    },
+    {
+      "id": "cyclotomic-core",
+      "priority": "P1",
+      "summary": "CyclotomicField(n)[x] is exact but is routed through the generic sparse class: dense-list construction, derivative, divrem, gcd, xgcd, coefficient indexing, and roots are absent.",
+      "sage_oracle": "cyclotomic-field-polynomial",
+      "lane": "cyclotomic-polynomial-core"
+    },
+    {
+      "id": "prime-xgcd",
+      "priority": "P2",
+      "summary": "Packed GF(p)[x] has fast divrem and gcd but no public xgcd despite Sage's Euclidean-field semantics.",
+      "sage_oracle": "large-prime-euclidean",
+      "lane": "packed-prime-polynomial-xgcd"
+    },
+    {
+      "id": "exact-default-roots",
+      "priority": "P2",
+      "summary": "ZZ[x] and QQ[x] roots are implemented only with an explicit AA or QQbar target; Sage's default base-ring root search is absent.",
+      "sage_oracle": "exact-default-roots",
+      "lane": "exact-polynomial-default-roots"
+    },
+    {
+      "id": "immutable-error",
+      "priority": "P2",
+      "summary": "Elements are frozen and exported lists are independent, but coefficient assignment does not raise Sage's IndexError('polynomials are immutable') through an explicit __setitem__ surface.",
+      "sage_oracle": "immutable-assignment",
+      "lane": "polynomial-immutable-assignment"
+    },
+    {
+      "id": "cyclotomic-coverage",
+      "priority": "P2",
+      "summary": "Existing cyclotomic-field polynomial arithmetic, factorization, evaluation, formatting, and SagePack round trips have no focused public regression or performance coverage.",
+      "sage_oracle": "cyclotomic-field-polynomial",
+      "lane": "cyclotomic-polynomial-core"
+    }
+  ],
+  "contribution_lanes": [
+    {
+      "id": "large-prime-polynomial-correctness",
+      "priority": "P1",
+      "parallel_group": "domain-foundations",
+      "objective": "Make GF(p)[x] for p > 2^32-1 Sage-compatible for divrem, gcd, xgcd, factor, and roots, and ratchet construction, arithmetic, evaluation, formatting, and SagePack round trips.",
+      "domains": ["gf-prime-large"],
+      "workflows": ["construction", "arithmetic", "divrem", "gcd", "xgcd", "factor", "roots", "evaluate", "format", "serialize"],
+      "exclusive_claims": [
+        "test/large-prime-polynomial.cjs",
+        "bench/large-prime-polynomial.cjs"
+      ],
+      "integration_touchpoints": [
+        "src/baselib/polynomial.py",
+        "ffi/flint.ffi.py",
+        "packages/flint/include/sagejs/"
+      ],
+      "architecture": "Prefer declared mature FLINT calls with a tested capability fallback; do not extend opaque production state.",
+      "acceptance": [
+        "Differential corpus against SageMath at p=2305843009213693951",
+        "No UInt64Buffer error reaches factor() or roots()",
+        "Every Euclidean result satisfies reconstruction or Bezout identities",
+        "Native Windows has the declared path or an explicit tested fallback"
+      ]
+    },
+    {
+      "id": "extension-polynomial-euclidean",
+      "priority": "P1",
+      "parallel_group": "domain-foundations",
+      "objective": "Add Sage-compatible quo_rem and xgcd over GF(p^n), retaining current gcd, factor, root, format, and serialization behavior.",
+      "domains": ["gf-extension"],
+      "workflows": ["divrem", "xgcd"],
+      "exclusive_claims": [
+        "test/extension-polynomial-euclidean.cjs",
+        "bench/extension-polynomial-euclidean.cjs"
+      ],
+      "integration_touchpoints": [
+        "src/baselib/polynomial.py",
+        "ffi/flint.ffi.py",
+        "packages/flint/src/extension_field"
+      ],
+      "architecture": "Use mature FLINT fq_poly algorithms through a declared boundary and document the portable capability fallback.",
+      "acceptance": [
+        "Live Sage differential over GF(9) and a second extension degree",
+        "Quotient/remainder reconstruction and degree bound",
+        "Monic gcd plus Bezout identity",
+        "No regression to factorization or roots"
+      ]
+    },
+    {
+      "id": "cyclotomic-polynomial-core",
+      "priority": "P1",
+      "parallel_group": "domain-foundations",
+      "objective": "Treat CyclotomicField(n)[x] as an exact univariate field domain with dense construction, coefficient access, derivative, divrem, gcd, xgcd, roots, and focused coverage for existing workflows.",
+      "domains": ["cyclotomic-field"],
+      "workflows": ["construction", "arithmetic", "divrem", "gcd", "xgcd", "factor", "roots", "evaluate", "format", "serialize"],
+      "exclusive_claims": [
+        "test/cyclotomic-field-polynomial.cjs",
+        "bench/cyclotomic-field-polynomial.cjs"
+      ],
+      "integration_touchpoints": [
+        "src/baselib/polynomial.py",
+        "src/baselib/dirichlet.py"
+      ],
+      "architecture": "Begin with ordinary exact Python algorithms over the existing coefficient parent; use mature external algorithms only after profiling.",
+      "acceptance": [
+        "Live Sage differential over CyclotomicField(5) and CyclotomicField(12)",
+        "Dense coefficient-list construction and derivative",
+        "Quotient/remainder and Bezout identities",
+        "SagePack round trip and factorization reconstruction"
+      ]
+    },
+    {
+      "id": "packed-prime-polynomial-xgcd",
+      "priority": "P2",
+      "parallel_group": "algorithm-slices",
+      "objective": "Add source-transparent or declared-FLINT xgcd for packed GF(p)[x] without weakening the existing dynamic divrem oracle.",
+      "domains": ["gf-prime-packed"],
+      "workflows": ["xgcd"],
+      "exclusive_claims": [
+        "src/lib/sagejs/kernels/polynomial/packed_prime_xgcd.py",
+        "test/packed-prime-polynomial-xgcd.cjs",
+        "bench/packed-prime-polynomial-xgcd.cjs"
+      ],
+      "integration_touchpoints": ["src/baselib/polynomial.py"],
+      "architecture": "Keep one ordinary CPython-parseable source body and differential native/dynamic execution, or use a generated FLINT declaration if it wins representative benchmarks.",
+      "acceptance": [
+        "Sage-normalized monic gcd",
+        "Bezout identity over several primes including 2 and 65521",
+        "CPython, dynamic Sage.js, and native Sage.js differential",
+        "Representative benchmark against repeated public divrem"
+      ]
+    },
+    {
+      "id": "exact-polynomial-default-roots",
+      "priority": "P2",
+      "parallel_group": "algorithm-slices",
+      "objective": "Implement Sage's default base-ring roots() behavior over ZZ[x] and QQ[x] while preserving explicit AA and QQbar targets.",
+      "domains": ["zz", "qq"],
+      "workflows": ["roots"],
+      "exclusive_claims": ["test/exact-polynomial-default-roots.cjs"],
+      "integration_touchpoints": ["src/baselib/polynomial.py"],
+      "architecture": "Use exact factorization and linear-factor extraction before considering another native boundary.",
+      "acceptance": [
+        "Live Sage differential for repeated, absent, zero, and constant roots",
+        "No opaque QQbar bridge for default base-ring roots",
+        "Explicit AA and QQbar behavior remains unchanged"
+      ]
+    },
+    {
+      "id": "polynomial-immutable-assignment",
+      "priority": "P2",
+      "parallel_group": "surface-semantics",
+      "objective": "Reject coefficient assignment with Sage's exact immutable-polynomial exception semantics for every univariate polynomial representation.",
+      "domains": ["zz", "qq", "gf-prime-packed", "gf-prime-large", "gf-extension", "cyclotomic-field"],
+      "workflows": ["mutation"],
+      "exclusive_claims": ["test/polynomial-immutable-assignment.cjs"],
+      "integration_touchpoints": ["src/baselib/polynomial.py"],
+      "architecture": "Pure public-surface semantics; canonical storage remains immutable.",
+      "acceptance": [
+        "f[index] = value raises IndexError('polynomials are immutable')",
+        "All source values and exported coefficient lists remain unchanged",
+        "Sage mode and Python mode both preserve assignment evaluation order"
+      ]
+    },
+    {
+      "id": "polynomial-domain-performance-matrix",
+      "priority": "P2",
+      "parallel_group": "coverage",
+      "objective": "Add a deterministic public benchmark/oracle matrix for large-prime, extension-field, and cyclotomic-field polynomial workflows that currently have no performance evidence.",
+      "domains": ["gf-prime-large", "gf-extension", "cyclotomic-field"],
+      "workflows": ["construction", "arithmetic", "divrem", "gcd", "xgcd", "factor", "roots", "evaluate", "format", "serialize"],
+      "exclusive_claims": ["bench/public-polynomial-domains-v1.cjs"],
+      "integration_touchpoints": [],
+      "architecture": "Audit-only benchmark; report cold and warm medians without changing implementation selection.",
+      "acceptance": [
+        "Fixed seeded workloads and result identities",
+        "Separate Sage.js and SageMath measurements",
+        "No timing gate below 5 ms without a documented noise margin",
+        "Machine-readable output with host and representation metadata"
+      ]
+    }
+  ]
+}
