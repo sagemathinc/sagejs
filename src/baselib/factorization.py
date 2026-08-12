@@ -125,22 +125,22 @@ class Factorization:
             exponent
         ):
             raise TypeError("factorization exponents must be integers")
-        if exponent < 0:
-            raise ValueError(
-                "negative powers of factorizations are not implemented yet"
-            )
+
+        if exponent == 1:
+            return self
+        if exponent == 0:
+            return Factorization([])
 
         factors = []
         for pair in self._factors:
-            if pair[1] * exponent != 0:
-                factors.append([pair[0], pair[1] * exponent])
+            factors.append([pair[0], pair[1] * exponent])
         unit_exponent = (
             runtime.bigint(exponent)
             if runtime.jstype(self._unit) == "bigint"
             else exponent
         )
         unit = runtime.operator_pow_exact(self._unit, unit_exponent)
-        return type(self)(factors, unit, self._cr_value, False, False)
+        return Factorization(factors, unit, self._cr_value, False, False)
 
     def __repr__(self) -> str:
         if len(self._factors) == 0:
@@ -172,6 +172,7 @@ class Factorization:
                 runtime.jstype(self._unit) == "object"
                 and runtime.reflect.has(self._unit, "_denominator")
                 and runtime.reflect.get(self._unit, "_denominator") == runtime.bigint(1)
+                and runtime.jstype(self._factors[0][0]) not in ("bigint", "number")
             ):
                 unit_text = "(" + unit_text + ")"
             terms.insert(0, unit_text)
