@@ -13,7 +13,9 @@
     "tools/native-kernel/compiler.cjs",
     "scripts/parallel-development.cjs",
     "scripts/native-worktree-cache.cjs",
-    "test/parallel-development.cjs"
+    "test/parallel-development.cjs",
+    "packages/m4ri/scripts/build-deps.cjs",
+    "packages/m4ri/test/test.cjs"
   ],
   "dependencies": [],
   "references": [

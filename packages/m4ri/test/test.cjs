@@ -2,7 +2,14 @@
 
 const assert = require("node:assert/strict");
 const { spawnSync } = require("node:child_process");
-const { mkdtempSync, readFileSync, rmSync, writeFileSync } = require("node:fs");
+const {
+  lstatSync,
+  mkdtempSync,
+  readFileSync,
+  readlinkSync,
+  rmSync,
+  writeFileSync,
+} = require("node:fs");
 const { tmpdir } = require("node:os");
 const { join, resolve } = require("node:path");
 const test = require("node:test");
@@ -18,6 +25,32 @@ function close(resource, closer) {
   closer(resource);
   closer(resource);
 }
+
+test("ordinary dependency builds preserve a restored shared generation", {
+  skip: process.platform === "win32",
+}, () => {
+  const prefix = join(root, ".native", "prefix");
+  assert.equal(lstatSync(prefix).isSymbolicLink(), true);
+  const generation = readlinkSync(prefix);
+  const header = join(prefix, "include", "sagejs", "m4ri_matrix_ffi.h");
+  const contents = readFileSync(header);
+  const environment = { ...process.env };
+  delete environment.SAGEJS_M4RI_PREFIX;
+  const result = spawnSync(
+    process.execPath,
+    [join(root, "scripts", "build-deps.cjs")],
+    {
+      cwd: repositoryRoot,
+      encoding: "utf8",
+      env: environment,
+    },
+  );
+  assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`);
+  assert.equal(lstatSync(prefix).isSymbolicLink(), true);
+  assert.equal(readlinkSync(prefix), generation);
+  assert.deepEqual(readFileSync(header), contents);
+  assert.match(result.stdout, /Native cache m4ri-dependencies: present/);
+});
 
 function fromRows(rows, columns = rows[0]?.length ?? 0) {
   const bytes = Buffer.alloc(rows.length * columns);

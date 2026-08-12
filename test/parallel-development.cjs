@@ -1387,13 +1387,14 @@ test("native package cache orders FLINT before its FFLAS dependent", () => {
     [...nativeCachePackages],
     ["flint", "fflas", "graph", "m4ri"],
   );
-  assert.deepEqual(
-    nativeArtifactSpecs(resolve(__dirname, ".."), {
+  const specs = nativeArtifactSpecs(resolve(__dirname, ".."), {
       identity: {
         native: { toolchain: "test" },
         node: { abi: "test" },
       },
-    }).map(({ id }) => id),
+    });
+  assert.deepEqual(
+    specs.map(({ id }) => id),
     [
       "flint-dependencies",
       "flint-addon",
@@ -1404,6 +1405,10 @@ test("native package cache orders FLINT before its FFLAS dependent", () => {
       "m4ri-dependencies",
       "m4ri-addon",
     ],
+  );
+  assert.deepEqual(
+    specs.find(({ id }) => id === "m4ri-dependencies").buildCommands,
+    [["node", ["packages/m4ri/scripts/build-deps.cjs", "--cache-build"]]],
   );
 });
 
