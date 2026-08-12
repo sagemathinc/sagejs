@@ -1672,7 +1672,7 @@ static inline int sagejs_exact_polynomial_validate_region(
 
 static inline void sagejs_exact_polynomial_read_region_fmpz(
     fmpz_t result, const unsigned char *source, size_t *offset,
-    ulong *words, size_t word_capacity)
+    ulong *words)
 {
     const uint32_t header = sagejs_exact_polynomial_region_u32(
         source, *offset);
@@ -1681,8 +1681,13 @@ static inline void sagejs_exact_polynomial_read_region_fmpz(
         (size_t) (header & UINT32_C(0x7fffffff));
     const size_t word_count =
         (byte_count + sizeof(ulong) - 1) / sizeof(ulong);
-    if (word_capacity != 0)
-        memset(words, 0, word_capacity * sizeof(ulong));
+    /*
+     * Clear only the words consumed by this coefficient. Clearing the full
+     * maximum-sized scratch on every entry would turn one huge coefficient
+     * among many small values into O(count * maximum magnitude size).
+     */
+    if (word_count != 0)
+        memset(words, 0, word_count * sizeof(ulong));
     for (size_t byte = 0; byte < byte_count; byte++)
         words[byte / sizeof(ulong)] |=
             (ulong) source[*offset + byte] <<
@@ -1736,7 +1741,7 @@ static inline int sagejs_fmpz_polynomial_parse_region(
     for (slong index = 0; index < count; index++)
     {
         sagejs_exact_polynomial_read_region_fmpz(
-            coefficient, source, &offset, words, word_capacity);
+            coefficient, source, &offset, words);
         if (!sagejs_fmpz_polynomial_set_coefficient(
                 temporary, (uint64_t) index, coefficient))
         {
@@ -1788,9 +1793,9 @@ static inline int sagejs_fmpq_polynomial_parse_region(
     for (slong index = 0; index < count; index++)
     {
         sagejs_exact_polynomial_read_region_fmpz(
-            numerator, source, &offset, words, word_capacity);
+            numerator, source, &offset, words);
         sagejs_exact_polynomial_read_region_fmpz(
-            denominator, source, &offset, words, word_capacity);
+            denominator, source, &offset, words);
         fmpz_gcd(divisor, numerator, denominator);
         if (!fmpz_is_one(divisor) ||
             !sagejs_fmpq_polynomial_set_coefficient(

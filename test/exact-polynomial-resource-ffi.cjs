@@ -1318,22 +1318,50 @@ int main(void)
         fmpz_poly_clear(zterm);
         fmpz_poly_clear(zidentity);
     }
+    /*
+     * One 1,048,577-bit coefficient among 19,999 tiny entries is a hostile
+     * skew witness. Region parsing must scale with encoded bytes, not clear
+     * the maximum-sized coefficient scratch once per entry.
+     */
     fmpz_one(coefficient);
-    fmpz_mul_2exp(coefficient, coefficient, 8192);
+    fmpz_mul_2exp(coefficient, coefficient, 1048576);
     sagejs_fmpz_polynomial_t skew_z;
+    sagejs_fmpz_polynomial_t parsed_skew_z;
     sagejs_fmpq_polynomial_t skew_q;
+    sagejs_fmpq_polynomial_t parsed_skew_q;
+    sagejs_flint_byte_region_t skew_z_bytes, skew_q_bytes;
     if (!sagejs_fmpz_polynomial_init(skew_z, 20000) ||
-        !sagejs_fmpz_polynomial_set_coefficient(skew_z, 19999, coefficient) ||
+        !sagejs_fmpz_polynomial_set_coefficient(skew_z, 0, coefficient))
+        return 8;
+    fmpz_one(argument);
+    if (!sagejs_fmpz_polynomial_set_coefficient(skew_z, 19999, argument) ||
         !sagejs_fmpz_polynomial_seal(skew_z) ||
         sagejs_fmpz_polynomial_allocated_bytes(skew_z) >= 1024 * 1024)
         return 8;
     fmpz_set_ui(denominator, 3);
     if (!sagejs_fmpq_polynomial_init(skew_q, 20000) ||
         !sagejs_fmpq_polynomial_set_coefficient(
-            skew_q, 19999, coefficient, denominator) ||
+            skew_q, 0, coefficient, denominator) ||
+        !sagejs_fmpq_polynomial_set_coefficient(
+            skew_q, 19999, argument, denominator) ||
         !sagejs_fmpq_polynomial_seal(skew_q) ||
         sagejs_fmpq_polynomial_allocated_bytes(skew_q) >= 1024 * 1024)
         return 9;
+    if (!sagejs_fmpz_polynomial_serialize(skew_z_bytes, skew_z) ||
+        !sagejs_fmpq_polynomial_serialize(skew_q_bytes, skew_q) ||
+        !sagejs_fmpz_polynomial_from_byte_region(
+            parsed_skew_z, skew_z_bytes, 0,
+            (uint64_t) skew_z_bytes->length) ||
+        !sagejs_fmpq_polynomial_from_byte_region(
+            parsed_skew_q, skew_q_bytes, 0,
+            (uint64_t) skew_q_bytes->length) ||
+        !fmpz_poly_equal(skew_z->value, parsed_skew_z->value) ||
+        !fmpq_poly_equal(skew_q->value, parsed_skew_q->value))
+        return 22;
+    sagejs_fmpq_polynomial_clear(parsed_skew_q);
+    sagejs_fmpz_polynomial_clear(parsed_skew_z);
+    sagejs_flint_byte_region_clear(skew_q_bytes);
+    sagejs_flint_byte_region_clear(skew_z_bytes);
     sagejs_fmpq_polynomial_clear(skew_q);
     sagejs_fmpz_polynomial_clear(skew_z);
     fmpz_clear(qpayload);
