@@ -8,6 +8,7 @@ const { spawnSync } = require("node:child_process");
 const root = join(__dirname, "..");
 const flint = require(join(root, "packages", "flint"));
 const prime89 = (1n << 89n) - 1n;
+const checkOnly = process.argv.includes("--check");
 
 let currentSagejsFailure;
 try {
@@ -123,7 +124,7 @@ const recordedSage109Milliseconds = {
   },
 };
 
-console.log(JSON.stringify({
+const report = {
   schema: "sagejs.benchmark/arbitrary-prime-polynomial-contract-v1",
   currentSagejsFailure,
   resourceTarget: {
@@ -133,4 +134,14 @@ console.log(JSON.stringify({
   },
   portableQuadraticOracleMilliseconds: JSON.parse(fallback.stdout),
   recordedSage109Milliseconds,
-}, null, 2));
+};
+assert.deepEqual(Object.keys(report.portableQuadraticOracleMilliseconds), [
+  "89",
+  "127",
+]);
+for (const measurement of Object.values(
+  report.portableQuadraticOracleMilliseconds,
+)) {
+  assert.ok(Object.values(measurement).every(Number.isFinite));
+}
+if (!checkOnly) console.log(JSON.stringify(report, null, 2));
