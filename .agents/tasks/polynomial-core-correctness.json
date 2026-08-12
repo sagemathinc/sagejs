@@ -1,0 +1,110 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "polynomial-core-correctness",
+  "title": "Univariate Polynomial Correctness v1",
+  "lane": "integration",
+  "status": "active",
+  "owner": "user",
+  "objective": "Repair Sage-compatible coefficient indexing, degree, coefficient-list, derivative, and Euclidean quotient/remainder semantics across canonical ZZ[x], QQ[x], and small-prime GF(p)[x], eliminating silent None and NaN results",
+  "base_commit": "06a6d88805844d15d4247a64574883992a44d091",
+  "claims": [
+    "src/baselib/polynomial.py",
+    "src/lib/sagejs/kernels/polynomial/packed_prime_field.py",
+    "ffi/flint.ffi.py",
+    "ffi/flint.ffi.json",
+    "src/lib/sagejs/ffi/flint.py",
+    "src/baselib/sagejs/ffi/flint.py",
+    "packages/flint/generated/ffi_host.py",
+    "packages/flint/include/sagejs/exact_polynomial_ffi.h",
+    "architecture/native-boundaries.json",
+    "architecture/package-graph.json",
+    "test/ffi.cjs",
+    "test/exact-polynomial-resource-ffi.cjs",
+    "test/node-test-manifest.cjs",
+    "test/exact-polynomial-resources.cjs",
+    "test/polynomial-core-correctness-v1.cjs",
+    "bench/polynomial-core-correctness-v1.cjs"
+  ],
+  "dependencies": [],
+  "references": [
+    "SageMath univariate polynomial semantics"
+  ],
+  "architecture": {
+    "strategy": "mixed",
+    "fallback": "tested-capability",
+    "oracles": [
+      "SageMath ZZ[x], QQ[x], and GF(p)[x]",
+      "native-disabled Sage.js portable fallback"
+    ],
+    "exceptions": [
+      "Exact ZZ/QQ domains use generated FLINT resources while packed small-prime GF(p) uses a source-transparent typed-Python kernel."
+    ]
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm architecture:check",
+    "pnpm test:portable",
+    "pnpm test:baselib:strict",
+    "pnpm test:native"
+  ],
+  "runs": [
+    {
+      "command": "node test/polynomial-core-correctness-v1.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.282,
+      "started_at": "2026-08-12T01:16:14.879Z",
+      "commit": "06a6d88805844d15d4247a64574883992a44d091",
+      "workspace_fingerprint": "2150362865c9ebcfe47b0e1813104220756356d9645abbeb2e5d47d720e75dcf",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node test/exact-polynomial-resource-ffi.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 3.571,
+      "started_at": "2026-08-12T01:16:17.756Z",
+      "commit": "06a6d88805844d15d4247a64574883992a44d091",
+      "workspace_fingerprint": "2150362865c9ebcfe47b0e1813104220756356d9645abbeb2e5d47d720e75dcf",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/polynomial-core-correctness-v1.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.726,
+      "started_at": "2026-08-12T01:16:21.936Z",
+      "commit": "06a6d88805844d15d4247a64574883992a44d091",
+      "workspace_fingerprint": "2150362865c9ebcfe47b0e1813104220756356d9645abbeb2e5d47d720e75dcf",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm ffi:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.929,
+      "started_at": "2026-08-12T01:16:23.290Z",
+      "commit": "06a6d88805844d15d4247a64574883992a44d091",
+      "workspace_fingerprint": "2150362865c9ebcfe47b0e1813104220756356d9645abbeb2e5d47d720e75dcf",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Implemented Sage-compatible indexing (including truncating slices), degree/list/truth predicates, resource- and kernel-backed formal derivatives, scalar // semantics, and coherent quo_rem/%/divmod across ZZ[x], QQ[x], and small-prime GF(p)[x]. Generated FLINT quotient/remainder pair resources compute once and close deterministically; the typed GF(p) kernel preserves the Python oracle. Degree-400/100 medians are 0.62ms ZZ, 3.13ms QQ, and 0.58ms GF(1009), eliminating the former ~6.2s QQ cliff. Raised the reviewed arithmetic bootstrap source budget from 575000 to 580000 bytes.",
+    "risks": [
+      "Nested coefficient-ring differentiation remains outside this univariate canonical-domain slice.",
+      "The complete portable tier is currently blocked by unrelated inherited python-stdlib source-budget drift and website reference-generation failures; all polynomial-focused checks pass.",
+      "The complete native tier was stopped after package, generated FFI, production-kernel, and sanitizer lifecycle phases passed so the finished lane could be integrated promptly."
+    ],
+    "next_steps": [
+      "Integrate onto dense-qq-resources and rerun repository-wide portable/native tiers after upstream budget and website drift are resolved.",
+      "Consider extending the same generated pair-resource pattern to other multi-output exact algorithms."
+    ]
+  }
+}

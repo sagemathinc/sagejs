@@ -123,9 +123,13 @@ test("FFI declarations are strict and generated modules are current", () => {
       "fmpz_polynomial_seal", "fmpz_polynomial_length",
       "fmpz_polynomial_equal", "fmpz_polynomial_coefficient",
       "fmpz_polynomial_add", "fmpz_polynomial_sub",
-      "fmpz_polynomial_neg", "fmpz_polynomial_mul",
+      "fmpz_polynomial_neg", "fmpz_polynomial_derivative",
+      "fmpz_polynomial_mul",
       "fmpz_polynomial_gcd", "fmpz_polynomial_factor_resource",
       "fmpz_polynomial_divexact",
+      "fmpz_polynomial_quo_rem_resource",
+      "fmpz_polynomial_division_result_quotient",
+      "fmpz_polynomial_division_result_remainder",
       "fmpz_polynomial_pow",
       "fmpz_polynomial_cyclotomic",
       "fmpz_polynomial_evaluate",
@@ -137,6 +141,7 @@ test("FFI declarations are strict and generated modules are current", () => {
       "fmpq_polynomial_equal", "fmpq_polynomial_coefficient_numerator",
       "fmpq_polynomial_coefficient_denominator", "fmpq_polynomial_add",
       "fmpq_polynomial_sub", "fmpq_polynomial_neg",
+      "fmpq_polynomial_derivative",
       "fmpq_polynomial_mul", "fmpq_polynomial_gcd",
       "fmpq_polynomial_factor_resource",
       "exact_polynomial_factorization_count",
@@ -146,6 +151,9 @@ test("FFI declarations are strict and generated modules are current", () => {
       "exact_polynomial_factorization_fmpz_factor",
       "exact_polynomial_factorization_fmpq_factor",
       "fmpq_polynomial_divexact",
+      "fmpq_polynomial_quo_rem_resource",
+      "fmpq_polynomial_division_result_quotient",
+      "fmpq_polynomial_division_result_remainder",
       "fmpq_polynomial_pow",
       "fmpq_polynomial_evaluate", "fmpq_polynomial_serialize",
       "fmpq_polynomial_format",
@@ -212,6 +220,7 @@ test("FFI declarations are strict and generated modules are current", () => {
     [
       "FmpzMatrix", "FmpqMatrix", "FmpqValue", "FlintByteRegion",
       "FmpzPolynomial", "FmpqPolynomial", "ExactPolynomialFactorization",
+      "FmpzPolynomialDivisionResult", "FmpqPolynomialDivisionResult",
       "DirichletGroup",
     ],
   );
@@ -223,13 +232,13 @@ test("FFI declarations are strict and generated modules are current", () => {
       data_symbol: "sagejs_flint_byte_region_data",
       length_symbol: "sagejs_flint_byte_region_length",
     },
-    targets: { dynamic: true, wasm: false },
+    targets: { dynamic: true, wasm: true },
   });
   assert.deepEqual(byteRegion.host_ingress, {
     kind: "copied_bytes",
     dynamic: { export: "ffiFlintByteRegionFromBytes" },
     native: { init_symbol: "sagejs_flint_byte_region_init_copy" },
-    targets: { dynamic: true, wasm: false },
+    targets: { dynamic: true, wasm: true },
   });
   assert.match(flint.identity, /^flint@[0-9a-f]{64}$/);
   const generated = declarations.generatedModulePath(root, flint);
@@ -263,7 +272,7 @@ test("FFI declarations are strict and generated modules are current", () => {
     { resource: "graph", ownership: "owned", owner: null, root: "graph" },
     { resource: "edges", ownership: "borrowed", owner: "graph", root: "graph" },
   ]);
-  assert.match(runSage(["ffi", "check"]), /181 function\(s\)/);
+  assert.match(runSage(["ffi", "check"]), /189 function\(s\)/);
   const inspection = JSON.parse(
     runSage(["ffi", "explain", "flint", "--json"]),
   );
@@ -313,7 +322,7 @@ test("generated host adapters cover values and safe owned resources", async () =
     assert.doesNotMatch(source, /sagejs\.runtime|ffi_call/);
     assert.equal(functions.length, {
       fflas: 4,
-      flint: 170,
+      flint: 178,
       igraph: 2,
     }[declaration.library.id]);
     if (declaration.library.id === "flint") {
@@ -338,7 +347,7 @@ test("generated host adapters cover values and safe owned resources", async () =
 
 test("packages publish every generated host adapter as the canonical export", () => {
   for (const [packagePath, expected] of [
-    ["../packages/flint", 171],
+    ["../packages/flint", 179],
     ["../packages/fflas", 4],
     ["../packages/graph", 2],
   ]) {
@@ -482,8 +491,8 @@ test("native-boundary audit is a reviewed exact ratchet", () => {
   const current = boundaryAudit.validateBoundarySnapshot(snapshot, { root });
   assert.ok(current.counts["napi-export"] >= 280);
   assert.ok(current.counts["runtime-intrinsic"] >= 100);
-  assert.equal(current.counts["declared-ffi"], 181);
-  assert.equal(current.counts["declared-ffi-resource"], 10);
+  assert.equal(current.counts["declared-ffi"], 189);
+  assert.equal(current.counts["declared-ffi-resource"], 12);
   assert.match(runSage(["ffi", "audit"]), /inventoried native boundaries/);
   assert.equal(
     current.boundaries.filter((item) =>

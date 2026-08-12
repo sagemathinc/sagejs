@@ -209,6 +209,44 @@
       }
     },
     {
+      "id": "fmpz_polynomial_division_result",
+      "python_name": "FmpzPolynomialDivisionResult",
+      "abi_type": "sagejs_fmpz_polynomial_division_result_t",
+      "ownership": "owned",
+      "owner": null,
+      "dynamic": {
+        "close_export": "ffiFmpzPolynomialDivisionResultClose"
+      },
+      "native": {
+        "clear_symbol": "sagejs_fmpz_polynomial_division_result_clear",
+        "size_symbol": "sagejs_fmpz_polynomial_division_result_allocated_bytes"
+      },
+      "targets": {
+        "dynamic": true,
+        "native": true,
+        "wasm": false
+      }
+    },
+    {
+      "id": "fmpq_polynomial_division_result",
+      "python_name": "FmpqPolynomialDivisionResult",
+      "abi_type": "sagejs_fmpq_polynomial_division_result_t",
+      "ownership": "owned",
+      "owner": null,
+      "dynamic": {
+        "close_export": "ffiFmpqPolynomialDivisionResultClose"
+      },
+      "native": {
+        "clear_symbol": "sagejs_fmpq_polynomial_division_result_clear",
+        "size_symbol": "sagejs_fmpq_polynomial_division_result_allocated_bytes"
+      },
+      "targets": {
+        "dynamic": true,
+        "native": true,
+        "wasm": false
+      }
+    },
+    {
       "id": "dirichlet_group",
       "python_name": "DirichletGroup",
       "abi_type": "dirichlet_group_t",
@@ -920,6 +958,75 @@
       }
     },
     {
+      "id": "fmpz_polynomial_derivative",
+      "python_name": "fmpz_polynomial_derivative",
+      "signature": {
+        "parameters": [
+          {
+            "name": "source",
+            "type": "FmpzPolynomial",
+            "ownership": "borrowed",
+            "mutability": "read",
+            "aliasing": "allowed"
+          }
+        ],
+        "return_type": "FmpzPolynomial",
+        "return_ownership": "owned",
+        "borrow_from": null
+      },
+      "dynamic": {
+        "export": "ffiFmpzPolynomialDerivative"
+      },
+      "native": {
+        "symbol": "sagejs_fmpz_polynomial_derivative",
+        "return_type": "int",
+        "arguments": [
+          {
+            "source": "result",
+            "abi_type": "sagejs_fmpz_polynomial_t",
+            "direction": "out",
+            "adapter": null
+          },
+          {
+            "source": "source",
+            "abi_type": "sagejs_fmpz_polynomial_t",
+            "direction": "in",
+            "adapter": null
+          }
+        ]
+      },
+      "effects": {
+        "pure": false,
+        "deterministic": true,
+        "thread_safe": true,
+        "may_allocate": true,
+        "may_raise": [
+          "ValueError"
+        ],
+        "writes": []
+      },
+      "result": {
+        "domain": "status",
+        "success": [
+          1
+        ],
+        "absence": null
+      },
+      "errors": {
+        "exception": "ValueError",
+        "message": "integer polynomial is unsealed"
+      },
+      "exceptions": {
+        "policy": "none",
+        "failure_status": null
+      },
+      "targets": {
+        "dynamic": true,
+        "native": true,
+        "wasm": false
+      }
+    },
+    {
       "id": "fmpz_polynomial_mul",
       "python_name": "fmpz_polynomial_mul",
       "signature": {
@@ -1223,6 +1330,226 @@
       "errors": {
         "exception": "ValueError",
         "message": "integer polynomial exact division requires sealed resources, a nonzero divisor, and an exact quotient"
+      },
+      "exceptions": {
+        "policy": "none",
+        "failure_status": null
+      },
+      "targets": {
+        "dynamic": true,
+        "native": true,
+        "wasm": false
+      }
+    },
+    {
+      "id": "fmpz_polynomial_quo_rem_resource",
+      "python_name": "fmpz_polynomial_quo_rem_resource",
+      "signature": {
+        "parameters": [
+          {
+            "name": "dividend",
+            "type": "FmpzPolynomial",
+            "ownership": "borrowed",
+            "mutability": "read",
+            "aliasing": "allowed"
+          },
+          {
+            "name": "divisor",
+            "type": "FmpzPolynomial",
+            "ownership": "borrowed",
+            "mutability": "read",
+            "aliasing": "allowed"
+          }
+        ],
+        "return_type": "FmpzPolynomialDivisionResult",
+        "return_ownership": "owned",
+        "borrow_from": null
+      },
+      "dynamic": {
+        "export": "ffiFmpzPolynomialQuoRemResource"
+      },
+      "native": {
+        "symbol": "sagejs_fmpz_polynomial_quo_rem_resource",
+        "return_type": "int",
+        "arguments": [
+          {
+            "source": "result",
+            "abi_type": "sagejs_fmpz_polynomial_division_result_t",
+            "direction": "out",
+            "adapter": null
+          },
+          {
+            "source": "dividend",
+            "abi_type": "sagejs_fmpz_polynomial_t",
+            "direction": "in",
+            "adapter": null
+          },
+          {
+            "source": "divisor",
+            "abi_type": "sagejs_fmpz_polynomial_t",
+            "direction": "in",
+            "adapter": null
+          }
+        ]
+      },
+      "effects": {
+        "pure": false,
+        "deterministic": true,
+        "thread_safe": true,
+        "may_allocate": true,
+        "may_raise": [
+          "ValueError"
+        ],
+        "writes": []
+      },
+      "result": {
+        "domain": "status",
+        "success": [
+          1
+        ],
+        "absence": null
+      },
+      "errors": {
+        "exception": "ValueError",
+        "message": "integer polynomial division requires sealed resources and a nonzero divisor"
+      },
+      "exceptions": {
+        "policy": "none",
+        "failure_status": null
+      },
+      "targets": {
+        "dynamic": true,
+        "native": true,
+        "wasm": false
+      }
+    },
+    {
+      "id": "fmpz_polynomial_division_result_quotient",
+      "python_name": "fmpz_polynomial_division_result_quotient",
+      "signature": {
+        "parameters": [
+          {
+            "name": "division",
+            "type": "FmpzPolynomialDivisionResult",
+            "ownership": "borrowed",
+            "mutability": "read",
+            "aliasing": "allowed"
+          }
+        ],
+        "return_type": "FmpzPolynomial",
+        "return_ownership": "owned",
+        "borrow_from": null
+      },
+      "dynamic": {
+        "export": "ffiFmpzPolynomialDivisionResultQuotient"
+      },
+      "native": {
+        "symbol": "sagejs_fmpz_polynomial_division_result_quotient",
+        "return_type": "int",
+        "arguments": [
+          {
+            "source": "result",
+            "abi_type": "sagejs_fmpz_polynomial_t",
+            "direction": "out",
+            "adapter": null
+          },
+          {
+            "source": "division",
+            "abi_type": "sagejs_fmpz_polynomial_division_result_t",
+            "direction": "in",
+            "adapter": null
+          }
+        ]
+      },
+      "effects": {
+        "pure": false,
+        "deterministic": true,
+        "thread_safe": true,
+        "may_allocate": true,
+        "may_raise": [
+          "ValueError"
+        ],
+        "writes": []
+      },
+      "result": {
+        "domain": "status",
+        "success": [
+          1
+        ],
+        "absence": null
+      },
+      "errors": {
+        "exception": "ValueError",
+        "message": "invalid integer division result"
+      },
+      "exceptions": {
+        "policy": "none",
+        "failure_status": null
+      },
+      "targets": {
+        "dynamic": true,
+        "native": true,
+        "wasm": false
+      }
+    },
+    {
+      "id": "fmpz_polynomial_division_result_remainder",
+      "python_name": "fmpz_polynomial_division_result_remainder",
+      "signature": {
+        "parameters": [
+          {
+            "name": "division",
+            "type": "FmpzPolynomialDivisionResult",
+            "ownership": "borrowed",
+            "mutability": "read",
+            "aliasing": "allowed"
+          }
+        ],
+        "return_type": "FmpzPolynomial",
+        "return_ownership": "owned",
+        "borrow_from": null
+      },
+      "dynamic": {
+        "export": "ffiFmpzPolynomialDivisionResultRemainder"
+      },
+      "native": {
+        "symbol": "sagejs_fmpz_polynomial_division_result_remainder",
+        "return_type": "int",
+        "arguments": [
+          {
+            "source": "result",
+            "abi_type": "sagejs_fmpz_polynomial_t",
+            "direction": "out",
+            "adapter": null
+          },
+          {
+            "source": "division",
+            "abi_type": "sagejs_fmpz_polynomial_division_result_t",
+            "direction": "in",
+            "adapter": null
+          }
+        ]
+      },
+      "effects": {
+        "pure": false,
+        "deterministic": true,
+        "thread_safe": true,
+        "may_allocate": true,
+        "may_raise": [
+          "ValueError"
+        ],
+        "writes": []
+      },
+      "result": {
+        "domain": "status",
+        "success": [
+          1
+        ],
+        "absence": null
+      },
+      "errors": {
+        "exception": "ValueError",
+        "message": "invalid integer division result"
       },
       "exceptions": {
         "policy": "none",
@@ -2569,6 +2896,75 @@
       }
     },
     {
+      "id": "fmpq_polynomial_derivative",
+      "python_name": "fmpq_polynomial_derivative",
+      "signature": {
+        "parameters": [
+          {
+            "name": "source",
+            "type": "FmpqPolynomial",
+            "ownership": "borrowed",
+            "mutability": "read",
+            "aliasing": "allowed"
+          }
+        ],
+        "return_type": "FmpqPolynomial",
+        "return_ownership": "owned",
+        "borrow_from": null
+      },
+      "dynamic": {
+        "export": "ffiFmpqPolynomialDerivative"
+      },
+      "native": {
+        "symbol": "sagejs_fmpq_polynomial_derivative",
+        "return_type": "int",
+        "arguments": [
+          {
+            "source": "result",
+            "abi_type": "sagejs_fmpq_polynomial_t",
+            "direction": "out",
+            "adapter": null
+          },
+          {
+            "source": "source",
+            "abi_type": "sagejs_fmpq_polynomial_t",
+            "direction": "in",
+            "adapter": null
+          }
+        ]
+      },
+      "effects": {
+        "pure": false,
+        "deterministic": true,
+        "thread_safe": true,
+        "may_allocate": true,
+        "may_raise": [
+          "ValueError"
+        ],
+        "writes": []
+      },
+      "result": {
+        "domain": "status",
+        "success": [
+          1
+        ],
+        "absence": null
+      },
+      "errors": {
+        "exception": "ValueError",
+        "message": "rational polynomial is unsealed"
+      },
+      "exceptions": {
+        "policy": "none",
+        "failure_status": null
+      },
+      "targets": {
+        "dynamic": true,
+        "native": true,
+        "wasm": false
+      }
+    },
+    {
       "id": "fmpq_polynomial_mul",
       "python_name": "fmpq_polynomial_mul",
       "signature": {
@@ -3325,6 +3721,226 @@
       "errors": {
         "exception": "ValueError",
         "message": "rational polynomial exact division requires sealed resources, a nonzero divisor, and an exact quotient"
+      },
+      "exceptions": {
+        "policy": "none",
+        "failure_status": null
+      },
+      "targets": {
+        "dynamic": true,
+        "native": true,
+        "wasm": false
+      }
+    },
+    {
+      "id": "fmpq_polynomial_quo_rem_resource",
+      "python_name": "fmpq_polynomial_quo_rem_resource",
+      "signature": {
+        "parameters": [
+          {
+            "name": "dividend",
+            "type": "FmpqPolynomial",
+            "ownership": "borrowed",
+            "mutability": "read",
+            "aliasing": "allowed"
+          },
+          {
+            "name": "divisor",
+            "type": "FmpqPolynomial",
+            "ownership": "borrowed",
+            "mutability": "read",
+            "aliasing": "allowed"
+          }
+        ],
+        "return_type": "FmpqPolynomialDivisionResult",
+        "return_ownership": "owned",
+        "borrow_from": null
+      },
+      "dynamic": {
+        "export": "ffiFmpqPolynomialQuoRemResource"
+      },
+      "native": {
+        "symbol": "sagejs_fmpq_polynomial_quo_rem_resource",
+        "return_type": "int",
+        "arguments": [
+          {
+            "source": "result",
+            "abi_type": "sagejs_fmpq_polynomial_division_result_t",
+            "direction": "out",
+            "adapter": null
+          },
+          {
+            "source": "dividend",
+            "abi_type": "sagejs_fmpq_polynomial_t",
+            "direction": "in",
+            "adapter": null
+          },
+          {
+            "source": "divisor",
+            "abi_type": "sagejs_fmpq_polynomial_t",
+            "direction": "in",
+            "adapter": null
+          }
+        ]
+      },
+      "effects": {
+        "pure": false,
+        "deterministic": true,
+        "thread_safe": true,
+        "may_allocate": true,
+        "may_raise": [
+          "ValueError"
+        ],
+        "writes": []
+      },
+      "result": {
+        "domain": "status",
+        "success": [
+          1
+        ],
+        "absence": null
+      },
+      "errors": {
+        "exception": "ValueError",
+        "message": "rational polynomial division requires sealed resources and a nonzero divisor"
+      },
+      "exceptions": {
+        "policy": "none",
+        "failure_status": null
+      },
+      "targets": {
+        "dynamic": true,
+        "native": true,
+        "wasm": false
+      }
+    },
+    {
+      "id": "fmpq_polynomial_division_result_quotient",
+      "python_name": "fmpq_polynomial_division_result_quotient",
+      "signature": {
+        "parameters": [
+          {
+            "name": "division",
+            "type": "FmpqPolynomialDivisionResult",
+            "ownership": "borrowed",
+            "mutability": "read",
+            "aliasing": "allowed"
+          }
+        ],
+        "return_type": "FmpqPolynomial",
+        "return_ownership": "owned",
+        "borrow_from": null
+      },
+      "dynamic": {
+        "export": "ffiFmpqPolynomialDivisionResultQuotient"
+      },
+      "native": {
+        "symbol": "sagejs_fmpq_polynomial_division_result_quotient",
+        "return_type": "int",
+        "arguments": [
+          {
+            "source": "result",
+            "abi_type": "sagejs_fmpq_polynomial_t",
+            "direction": "out",
+            "adapter": null
+          },
+          {
+            "source": "division",
+            "abi_type": "sagejs_fmpq_polynomial_division_result_t",
+            "direction": "in",
+            "adapter": null
+          }
+        ]
+      },
+      "effects": {
+        "pure": false,
+        "deterministic": true,
+        "thread_safe": true,
+        "may_allocate": true,
+        "may_raise": [
+          "ValueError"
+        ],
+        "writes": []
+      },
+      "result": {
+        "domain": "status",
+        "success": [
+          1
+        ],
+        "absence": null
+      },
+      "errors": {
+        "exception": "ValueError",
+        "message": "invalid rational division result"
+      },
+      "exceptions": {
+        "policy": "none",
+        "failure_status": null
+      },
+      "targets": {
+        "dynamic": true,
+        "native": true,
+        "wasm": false
+      }
+    },
+    {
+      "id": "fmpq_polynomial_division_result_remainder",
+      "python_name": "fmpq_polynomial_division_result_remainder",
+      "signature": {
+        "parameters": [
+          {
+            "name": "division",
+            "type": "FmpqPolynomialDivisionResult",
+            "ownership": "borrowed",
+            "mutability": "read",
+            "aliasing": "allowed"
+          }
+        ],
+        "return_type": "FmpqPolynomial",
+        "return_ownership": "owned",
+        "borrow_from": null
+      },
+      "dynamic": {
+        "export": "ffiFmpqPolynomialDivisionResultRemainder"
+      },
+      "native": {
+        "symbol": "sagejs_fmpq_polynomial_division_result_remainder",
+        "return_type": "int",
+        "arguments": [
+          {
+            "source": "result",
+            "abi_type": "sagejs_fmpq_polynomial_t",
+            "direction": "out",
+            "adapter": null
+          },
+          {
+            "source": "division",
+            "abi_type": "sagejs_fmpq_polynomial_division_result_t",
+            "direction": "in",
+            "adapter": null
+          }
+        ]
+      },
+      "effects": {
+        "pure": false,
+        "deterministic": true,
+        "thread_safe": true,
+        "may_allocate": true,
+        "may_raise": [
+          "ValueError"
+        ],
+        "writes": []
+      },
+      "result": {
+        "domain": "status",
+        "success": [
+          1
+        ],
+        "absence": null
+      },
+      "errors": {
+        "exception": "ValueError",
+        "message": "invalid rational division result"
       },
       "exceptions": {
         "policy": "none",

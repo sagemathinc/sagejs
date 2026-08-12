@@ -161,6 +161,65 @@ def _rational_polynomial_remainder(
     return remainder
 
 
+def _field_polynomial_quo_rem(
+    dividend: list[Any], divisor: list[Any], zero: Any
+) -> tuple[list[Any], list[Any]]:
+    """Return dense quotient and remainder over a field.
+
+    Coefficients are low-to-high.  This ordinary implementation is the
+    portable oracle for canonical `QQ[x]` and small-prime `GF(p)[x]` storage;
+    the parent turns both results back into its canonical representation.
+    """
+    remainder = list(dividend)
+    quotient_length = max(0, len(dividend) - len(divisor) + 1)
+    quotient = [zero for _index in range(quotient_length)]
+    divisor_degree = len(divisor) - 1
+    divisor_leading = divisor[-1]
+    for shift in range(quotient_length - 1, -1, -1):
+        factor = remainder[divisor_degree + shift] / divisor_leading
+        quotient[shift] = factor
+        if factor != zero:
+            for index in range(divisor_degree + 1):
+                remainder[index + shift] -= factor * divisor[index]
+    return (
+        _trim_polynomial_coefficients(quotient),
+        _trim_polynomial_coefficients(remainder),
+    )
+
+
+def _integer_polynomial_quo_rem(
+    dividend: list[Any], divisor: list[Any]
+) -> tuple[list[Any], list[Any]]:
+    """Return FLINT/Sage-compatible dense quotient and remainder over `ZZ`.
+
+    `ZZ[x]` is not a Euclidean domain.  Sage nevertheless exposes FLINT's
+    coefficient-wise division convention: each possible quotient coefficient
+    is selected from high to low, using floor division once its magnitude is
+    at least that of the divisor's leading coefficient.  Consequently the
+    remainder need not have degree below the divisor when the leading
+    coefficient is a nonunit.
+    """
+    remainder = list(dividend)
+    quotient_length = max(0, len(dividend) - len(divisor) + 1)
+    quotient = [0 for _index in range(quotient_length)]
+    divisor_degree = len(divisor) - 1
+    divisor_leading = divisor[-1]
+    leading_magnitude = abs(divisor_leading)
+    for shift in range(quotient_length - 1, -1, -1):
+        numerator = remainder[divisor_degree + shift]
+        factor = 0
+        if abs(numerator) >= leading_magnitude:
+            factor = numerator // divisor_leading
+        quotient[shift] = factor
+        if factor != 0:
+            for index in range(divisor_degree + 1):
+                remainder[index + shift] -= factor * divisor[index]
+    return (
+        _trim_polynomial_coefficients(quotient),
+        _trim_polynomial_coefficients(remainder),
+    )
+
+
 def _monic_rational_polynomial_gcd(left: list[Any], right: list[Any]) -> list[Any]:
     """Compute the monic Euclidean GCD of two dense `QQ` polynomials."""
     left = _trim_polynomial_coefficients([sage.QQ(value) for value in left])
@@ -1143,25 +1202,32 @@ class PolynomialElement(sage.Element):
         return self._new(runtime.flint_backend().polyPow(self._native, exponent))
 
     def __floordiv__(self, other: object) -> PolynomialElement:
+        scalar_divisor = not isinstance(other, PolynomialElement)
         operands = runtime.coercion_model.coercePair(self, other)
-        if not isinstance(operands.left, PolynomialElement):
+        if not isinstance(operands.left, PolynomialElement) or not isinstance(
+            operands.right, PolynomialElement
+        ):
             raise TypeError("polynomial division requires polynomials")
         left = operands.left
         right = operands.right
+        if right._coefficient_length() == 0:
+            raise ZeroDivisionError("division by zero polynomial")
         base = operands.parent.base_ring()
         kind = _packed_polynomial_kind(base)
+        if scalar_divisor and kind in ["ZZ", "QQ", "GF"]:
+            divisor = base(other)
+            coefficients = left.coefficients()
+            if kind == "ZZ":
+                values = [coefficient // divisor for coefficient in coefficients]
+            else:
+                values = [coefficient / divisor for coefficient in coefficients]
+            return operands.parent._from_coefficients(values)
         if kind == "ZZ":
             if (
                 left._has_fmpz_polynomial_resource()
                 and right._has_fmpz_polynomial_resource()
             ):
-                return left._new(
-                    _FmpzPolynomialResourceStorage(
-                        _flint_ffi_module().fmpz_polynomial_divexact(
-                            left._storage.resource, right._storage.resource
-                        )
-                    )
-                )
+                return left._quo_rem_same_parent(right)[0]
             left_length = left._coefficient_length()
             right_length = right._coefficient_length()
             left._materialize_exact_compatibility_storage()
@@ -1175,7 +1241,7 @@ class PolynomialElement(sage.Element):
             while True:
                 output = _integer_zeros(left_length, capacity)
                 try:
-                    kernel(
+                    valid = kernel(
                         output,
                         left._storage.coefficients,
                         right._storage.coefficients,
@@ -1184,25 +1250,24 @@ class PolynomialElement(sage.Element):
                         right_length,
                         1,
                     )
-                    return left._publish_exact_packed_storage(
-                        _PackedIntegerPolynomialStorage(output)
-                    )
+                    if valid:
+                        return left._publish_exact_packed_storage(
+                            _PackedIntegerPolynomialStorage(output)
+                        )
+                    return left._quo_rem_same_parent(right)[0]
                 except Exception as error:
-                    if not _integer_capacity_error(error):
+                    if _integer_capacity_error(error):
+                        capacity *= 2
+                    elif isinstance(error, ValueError):
+                        return left._quo_rem_same_parent(right)[0]
+                    else:
                         raise
-                    capacity *= 2
         if kind == "QQ":
             if (
                 left._has_fmpq_polynomial_resource()
                 and right._has_fmpq_polynomial_resource()
             ):
-                return left._new(
-                    _FmpqPolynomialResourceStorage(
-                        _flint_ffi_module().fmpq_polynomial_divexact(
-                            left._storage.resource, right._storage.resource
-                        )
-                    )
-                )
+                return left._quo_rem_same_parent(right)[0]
             left_length = left._coefficient_length()
             right_length = right._coefficient_length()
             left._materialize_exact_compatibility_storage()
@@ -1219,7 +1284,7 @@ class PolynomialElement(sage.Element):
                 numerators = _integer_zeros(left_length, capacity)
                 denominators = _integer_zeros(left_length, capacity)
                 try:
-                    kernel(
+                    valid = kernel(
                         numerators,
                         denominators,
                         left._storage.numerators,
@@ -1231,27 +1296,20 @@ class PolynomialElement(sage.Element):
                         right_length,
                         1,
                     )
-                    return left._publish_exact_packed_storage(
-                        _PackedRationalPolynomialStorage(numerators, denominators)
-                    )
+                    if valid:
+                        return left._publish_exact_packed_storage(
+                            _PackedRationalPolynomialStorage(numerators, denominators)
+                        )
+                    return left._quo_rem_same_parent(right)[0]
                 except Exception as error:
-                    if not _integer_capacity_error(error):
+                    if _integer_capacity_error(error):
+                        capacity *= 2
+                    elif isinstance(error, ValueError):
+                        return left._quo_rem_same_parent(right)[0]
+                    else:
                         raise
-                    capacity *= 2
         if kind == "GF":
-            left_length = left._coefficient_length()
-            right_length = right._coefficient_length()
-            output = runtime.uint64_buffer(left_length)
-            _packed_polynomial_flint_module().flint_packed_prime_field_polynomial_divexact(
-                output,
-                left._storage,
-                right._storage,
-                left_length,
-                left_length,
-                right_length,
-                base._modulus,
-            )
-            return left._new(output)
+            return left._quo_rem_same_parent(right)[0]
         if base._kind == "GF_EXTENSION":
             native_value = runtime.flint_backend().fqPolyDivExact(
                 operands.left._native, operands.right._native
@@ -1262,6 +1320,121 @@ class PolynomialElement(sage.Element):
                 operands.right._native,
             )
         return operands.parent._from_legacy_native(native_value)
+
+    def __rfloordiv__(self, other: object) -> PolynomialElement:
+        return self._parent(other).__floordiv__(self)
+
+    def __divmod__(self, other: object) -> tuple[PolynomialElement, PolynomialElement]:
+        return self.quo_rem(other)
+
+    def __rdivmod__(self, other: object) -> tuple[PolynomialElement, PolynomialElement]:
+        return self._parent(other).quo_rem(self)
+
+    def _quo_rem_same_parent(
+        self, other: PolynomialElement
+    ) -> tuple[PolynomialElement, PolynomialElement]:
+        if other._coefficient_length() == 0:
+            raise ZeroDivisionError("division by zero polynomial")
+        if self._coefficient_length() == 0:
+            return runtime.math_tuple([self, self])
+        base = self._parent.base_ring()
+        kind = _packed_polynomial_kind(base)
+        if kind == "ZZ" and (
+            self._has_fmpz_polynomial_resource()
+            and other._has_fmpz_polynomial_resource()
+        ):
+            ffi = _flint_ffi_module()
+            division = ffi.fmpz_polynomial_quo_rem_resource(
+                self._exact_polynomial_resource(),
+                other._exact_polynomial_resource(),
+            )
+            try:
+                quotient = self._parent._from_fmpz_polynomial_resource(
+                    ffi.fmpz_polynomial_division_result_quotient(division)
+                )
+                remainder = self._parent._from_fmpz_polynomial_resource(
+                    ffi.fmpz_polynomial_division_result_remainder(division)
+                )
+                return runtime.math_tuple([quotient, remainder])
+            finally:
+                division.close()
+        if kind == "QQ" and (
+            self._has_fmpq_polynomial_resource()
+            and other._has_fmpq_polynomial_resource()
+        ):
+            ffi = _flint_ffi_module()
+            division = ffi.fmpq_polynomial_quo_rem_resource(
+                self._exact_polynomial_resource(),
+                other._exact_polynomial_resource(),
+            )
+            try:
+                quotient = self._parent._from_fmpq_polynomial_resource(
+                    ffi.fmpq_polynomial_division_result_quotient(division)
+                )
+                remainder = self._parent._from_fmpq_polynomial_resource(
+                    ffi.fmpq_polynomial_division_result_remainder(division)
+                )
+                return runtime.math_tuple([quotient, remainder])
+            finally:
+                division.close()
+        if kind == "ZZ":
+            quotient, remainder = _integer_polynomial_quo_rem(
+                self.coefficients(), other.coefficients()
+            )
+        elif kind == "QQ":
+            quotient, remainder = _field_polynomial_quo_rem(
+                self.coefficients(), other.coefficients(), base(0)
+            )
+        elif kind == "GF":
+            quotient_length = max(
+                0, self._coefficient_length() - other._coefficient_length() + 1
+            )
+            kernel = (
+                _packed_prime_polynomial_module().packed_prime_field_polynomial_quo_rem
+            )
+            quotient_output = _uint64_kernel_output(kernel, quotient_length)
+            remainder_output = _uint64_kernel_output(kernel, self._coefficient_length())
+            if not kernel(
+                quotient_output,
+                remainder_output,
+                _uint64_kernel_input(kernel, self._storage),
+                _uint64_kernel_input(kernel, other._storage),
+                base._modulus,
+            ):
+                raise RuntimeError("packed prime-field polynomial division failed")
+            return runtime.math_tuple(
+                [
+                    self._new(_canonical_uint64_output(quotient_output)),
+                    self._new(_canonical_uint64_output(remainder_output)),
+                ]
+            )
+        else:
+            raise NotImplementedError(
+                "quotient and remainder are implemented for ZZ, QQ, and GF(p)"
+            )
+        return runtime.math_tuple(
+            [
+                self._parent._from_coefficients(quotient),
+                self._parent._from_coefficients(remainder),
+            ]
+        )
+
+    def quo_rem(self, other: object) -> tuple[PolynomialElement, PolynomialElement]:
+        operands = runtime.coercion_model.coercePair(self, other)
+        if not isinstance(operands.left, PolynomialElement) or not isinstance(
+            operands.right, PolynomialElement
+        ):
+            raise TypeError("polynomial division requires polynomials")
+        return operands.left._quo_rem_same_parent(operands.right)
+
+    def __mod__(self, other: object) -> PolynomialElement:
+        return self.quo_rem(other)[1]
+
+    def __rmod__(self, other: object) -> PolynomialElement:
+        return self._parent(other).quo_rem(self)[1]
+
+    def mod(self, other: object) -> PolynomialElement:
+        return self.__mod__(other)
 
     def _eq_(self, other: PolynomialElement) -> bool:
         base = self._parent.base_ring()
@@ -1343,6 +1516,149 @@ class PolynomialElement(sage.Element):
         if kind == "GF":
             return _buffer_length(self._storage)
         return len(self.coefficients())
+
+    def __getitem__(self, index: Any) -> Any:
+        """Return the coefficient of the requested non-Laurent exponent.
+
+        Polynomial indexing is not list indexing: every negative exponent and
+        every exponent above the degree has coefficient zero.  As in Sage,
+        `f[:stop]` truncates a polynomial; slices with a start or step are not
+        defined.
+        """
+        if hasattr(index, "__sagejs_slice__"):
+            if index.step is not None:
+                raise IndexError("polynomial slicing with a step is not defined")
+            if index.start is not None:
+                raise IndexError("polynomial slicing with a start is not defined")
+            length = self._coefficient_length()
+            stop = length if index.stop is None else int(index.stop)
+            stop = min(max(stop, 0), length)
+            return self._parent._from_coefficients(self.coefficients()[:stop])
+        if not runtime.is_exact_integer(index):
+            raise TypeError("polynomial coefficient index must be an integer")
+        exact_index = runtime.integer_bigint(index)
+        length = self._coefficient_length()
+        base = self._parent.base_ring()
+        if exact_index < 0 or exact_index >= length:
+            return base(0)
+        position = runtime.number(exact_index)
+        kind = _packed_polynomial_kind(base)
+        if kind == "ZZ":
+            if self._has_fmpz_polynomial_resource():
+                return base(
+                    _flint_ffi_module().fmpz_polynomial_coefficient(
+                        self._exact_polynomial_resource(), position
+                    )
+                )
+            return base(self._storage.coefficients[position])
+        if kind == "QQ":
+            if self._has_fmpq_polynomial_resource():
+                ffi = _flint_ffi_module()
+                return base(
+                    ffi.fmpq_polynomial_coefficient_numerator(
+                        self._exact_polynomial_resource(), position
+                    ),
+                    ffi.fmpq_polynomial_coefficient_denominator(
+                        self._exact_polynomial_resource(), position
+                    ),
+                )
+            return base(
+                self._storage.numerators[position],
+                self._storage.denominators[position],
+            )
+        if kind == "GF":
+            return base(self._storage[position])
+        return self.coefficients()[position]
+
+    def degree(self) -> int:
+        """Return the degree, with degree `-1` for the zero polynomial."""
+        return self._coefficient_length() - 1
+
+    def list(self) -> list[Any]:
+        """Return a fresh low-to-high list of coefficients."""
+        return self.coefficients()
+
+    def is_zero(self) -> bool:
+        return self._coefficient_length() == 0
+
+    def is_one(self) -> bool:
+        return self._coefficient_length() == 1 and self[0] == self._parent.base_ring()(
+            1
+        )
+
+    def __bool__(self) -> bool:
+        return not self.is_zero()
+
+    def _derivative_once(self) -> PolynomialElement:
+        base = self._parent.base_ring()
+        kind = _packed_polynomial_kind(base)
+        if kind == "ZZ" and self._has_fmpz_polynomial_resource():
+            return self._parent._from_fmpz_polynomial_resource(
+                _flint_ffi_module().fmpz_polynomial_derivative(
+                    self._exact_polynomial_resource()
+                )
+            )
+        if kind == "QQ" and self._has_fmpq_polynomial_resource():
+            return self._parent._from_fmpq_polynomial_resource(
+                _flint_ffi_module().fmpq_polynomial_derivative(
+                    self._exact_polynomial_resource()
+                )
+            )
+        if kind == "GF":
+            kernel = _packed_prime_polynomial_module().packed_prime_field_polynomial_derivative
+            output = _uint64_kernel_output(
+                kernel, max(0, self._coefficient_length() - 1)
+            )
+            if not kernel(
+                output,
+                _uint64_kernel_input(kernel, self._storage),
+                base._modulus,
+            ):
+                raise RuntimeError("packed prime-field polynomial derivative failed")
+            return self._new(_canonical_uint64_output(output))
+        coefficients = self.coefficients()
+        if len(coefficients) <= 1:
+            return self._parent(0)
+        return self._parent._from_coefficients(
+            [coefficients[index] * index for index in range(1, len(coefficients))]
+        )
+
+    def derivative(self, *args: Any) -> PolynomialElement:
+        """Return a formal derivative in Sage's common univariate forms.
+
+        The accepted forms are `f.derivative()`, `f.derivative(x)`, repeated
+        generator arguments, and `f.derivative(x, count)`.
+        """
+        count = 1
+        if len(args) != 0:
+            count = 0
+            position = 0
+            generator = self._parent.gen()
+            while position < len(args):
+                variable = args[position]
+                if not isinstance(variable, PolynomialElement) or not (
+                    variable._parent is self._parent and variable == generator
+                ):
+                    raise ValueError(
+                        "polynomial derivative variable is not a generator"
+                    )
+                repetitions = 1
+                if position + 1 < len(args) and runtime.is_exact_integer(
+                    args[position + 1]
+                ):
+                    repetitions = int(args[position + 1])
+                    if repetitions < 0:
+                        raise ValueError("derivative order must be nonnegative")
+                    position += 1
+                count += repetitions
+                position += 1
+        result = self
+        for _index in range(count):
+            result = result._derivative_once()
+        return result
+
+    diff = derivative
+    differentiate = derivative
 
     def gcd(self, other: object) -> PolynomialElement:
         operands = runtime.coercion_model.coercePair(self, other)

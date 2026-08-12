@@ -14,9 +14,11 @@ from sagejs.ffi.flint import (
     FlintByteRegion,
     FmpqMatrix,
     FmpqPolynomial,
+    FmpqPolynomialDivisionResult,
     FmpqValue,
     FmpzMatrix,
     FmpzPolynomial,
+    FmpzPolynomialDivisionResult,
     fmpz_polynomial as _ffi_fmpz_polynomial,
     fmpz_polynomial_set_coefficient as _ffi_fmpz_polynomial_set_coefficient,
     fmpz_polynomial_seal as _ffi_fmpz_polynomial_seal,
@@ -26,10 +28,14 @@ from sagejs.ffi.flint import (
     fmpz_polynomial_add as _ffi_fmpz_polynomial_add,
     fmpz_polynomial_sub as _ffi_fmpz_polynomial_sub,
     fmpz_polynomial_neg as _ffi_fmpz_polynomial_neg,
+    fmpz_polynomial_derivative as _ffi_fmpz_polynomial_derivative,
     fmpz_polynomial_mul as _ffi_fmpz_polynomial_mul,
     fmpz_polynomial_gcd as _ffi_fmpz_polynomial_gcd,
     fmpz_polynomial_factor_resource as _ffi_fmpz_polynomial_factor_resource,
     fmpz_polynomial_divexact as _ffi_fmpz_polynomial_divexact,
+    fmpz_polynomial_quo_rem_resource as _ffi_fmpz_polynomial_quo_rem_resource,
+    fmpz_polynomial_division_result_quotient as _ffi_fmpz_polynomial_division_result_quotient,
+    fmpz_polynomial_division_result_remainder as _ffi_fmpz_polynomial_division_result_remainder,
     fmpz_polynomial_pow as _ffi_fmpz_polynomial_pow,
     fmpz_polynomial_cyclotomic as _ffi_fmpz_polynomial_cyclotomic,
     fmpz_polynomial_evaluate as _ffi_fmpz_polynomial_evaluate,
@@ -47,6 +53,7 @@ from sagejs.ffi.flint import (
     fmpq_polynomial_add as _ffi_fmpq_polynomial_add,
     fmpq_polynomial_sub as _ffi_fmpq_polynomial_sub,
     fmpq_polynomial_neg as _ffi_fmpq_polynomial_neg,
+    fmpq_polynomial_derivative as _ffi_fmpq_polynomial_derivative,
     fmpq_polynomial_mul as _ffi_fmpq_polynomial_mul,
     fmpq_polynomial_gcd as _ffi_fmpq_polynomial_gcd,
     fmpq_polynomial_factor_resource as _ffi_fmpq_polynomial_factor_resource,
@@ -57,6 +64,9 @@ from sagejs.ffi.flint import (
     exact_polynomial_factorization_fmpz_factor as _ffi_exact_polynomial_factorization_fmpz_factor,
     exact_polynomial_factorization_fmpq_factor as _ffi_exact_polynomial_factorization_fmpq_factor,
     fmpq_polynomial_divexact as _ffi_fmpq_polynomial_divexact,
+    fmpq_polynomial_quo_rem_resource as _ffi_fmpq_polynomial_quo_rem_resource,
+    fmpq_polynomial_division_result_quotient as _ffi_fmpq_polynomial_division_result_quotient,
+    fmpq_polynomial_division_result_remainder as _ffi_fmpq_polynomial_division_result_remainder,
     fmpq_polynomial_pow as _ffi_fmpq_polynomial_pow,
     fmpq_polynomial_evaluate as _ffi_fmpq_polynomial_evaluate,
     fmpq_polynomial_serialize as _ffi_fmpq_polynomial_serialize,
@@ -285,6 +295,15 @@ def ffiFmpzPolynomialNeg(
 
 
 @native
+def ffiFmpzPolynomialDerivative(
+    source: FmpzPolynomial,
+) -> FmpzPolynomial:
+    return _ffi_fmpz_polynomial_derivative(
+        source,
+    )
+
+
+@native
 def ffiFmpzPolynomialMul(
     left: FmpzPolynomial,
     right: FmpzPolynomial,
@@ -323,6 +342,35 @@ def ffiFmpzPolynomialDivExact(
     return _ffi_fmpz_polynomial_divexact(
         dividend,
         divisor,
+    )
+
+
+@native
+def ffiFmpzPolynomialQuoRemResource(
+    dividend: FmpzPolynomial,
+    divisor: FmpzPolynomial,
+) -> FmpzPolynomialDivisionResult:
+    return _ffi_fmpz_polynomial_quo_rem_resource(
+        dividend,
+        divisor,
+    )
+
+
+@native
+def ffiFmpzPolynomialDivisionResultQuotient(
+    division: FmpzPolynomialDivisionResult,
+) -> FmpzPolynomial:
+    return _ffi_fmpz_polynomial_division_result_quotient(
+        division,
+    )
+
+
+@native
+def ffiFmpzPolynomialDivisionResultRemainder(
+    division: FmpzPolynomialDivisionResult,
+) -> FmpzPolynomial:
+    return _ffi_fmpz_polynomial_division_result_remainder(
+        division,
     )
 
 
@@ -506,6 +554,15 @@ def ffiFmpqPolynomialNeg(
 
 
 @native
+def ffiFmpqPolynomialDerivative(
+    source: FmpqPolynomial,
+) -> FmpqPolynomial:
+    return _ffi_fmpq_polynomial_derivative(
+        source,
+    )
+
+
+@native
 def ffiFmpqPolynomialMul(
     left: FmpqPolynomial,
     right: FmpqPolynomial,
@@ -604,6 +661,35 @@ def ffiFmpqPolynomialDivExact(
     return _ffi_fmpq_polynomial_divexact(
         dividend,
         divisor,
+    )
+
+
+@native
+def ffiFmpqPolynomialQuoRemResource(
+    dividend: FmpqPolynomial,
+    divisor: FmpqPolynomial,
+) -> FmpqPolynomialDivisionResult:
+    return _ffi_fmpq_polynomial_quo_rem_resource(
+        dividend,
+        divisor,
+    )
+
+
+@native
+def ffiFmpqPolynomialDivisionResultQuotient(
+    division: FmpqPolynomialDivisionResult,
+) -> FmpqPolynomial:
+    return _ffi_fmpq_polynomial_division_result_quotient(
+        division,
+    )
+
+
+@native
+def ffiFmpqPolynomialDivisionResultRemainder(
+    division: FmpqPolynomialDivisionResult,
+) -> FmpqPolynomial:
+    return _ffi_fmpq_polynomial_division_result_remainder(
+        division,
     )
 
 
