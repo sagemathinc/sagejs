@@ -1,0 +1,67 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "cache-epipe",
+  "title": "Cache Epipe",
+  "lane": "compiler-runtime",
+  "status": "active",
+  "owner": "user",
+  "objective": "Make Sage.js CLI stdout tolerate consumers that close pipes early, with a subprocess regression for cache prune JSON and no cache policy changes",
+  "base_commit": "f7413695a8af8907441f189f7168c11b05a8ee17",
+  "claims": [
+    "tools/cli.js",
+    "tools/process-output.ts",
+    "tools/sea-entry.ts",
+    "test/cache.cjs"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "compiler-infrastructure",
+    "fallback": "not-applicable",
+    "oracles": [
+      "Node subprocess closes cache prune stdout after first chunk and observes clean exit"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm build",
+    "pnpm test:compiler",
+    "pnpm test:integration"
+  ],
+  "runs": [
+    {
+      "command": "node --test test/cache.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.966,
+      "started_at": "2026-08-12T03:28:38.976Z",
+      "commit": "f7413695a8af8907441f189f7168c11b05a8ee17",
+      "workspace_fingerprint": "d752d043047f195976ede24adf4f48c1b2408edbab627d93ea7158073b977ae9",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/cache.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.964,
+      "started_at": "2026-08-12T03:29:36.685Z",
+      "commit": "f7413695a8af8907441f189f7168c11b05a8ee17",
+      "workspace_fingerprint": "18cb4425aa07127ca64167627586030cbe0b041f1fa1746ec3b60214076244aa",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Installed one idempotent stdout error handler for the source CLI and SEA entry point. EPIPE exits successfully for early-closing pipeline consumers, while every other output error is rethrown. Cache pruning policy and deletion behavior are unchanged. Focused tests cover a real early-close subprocess, deterministic EPIPE handling, and preservation of non-EPIPE failures.",
+    "risks": [
+      "The full build reached production native-kernel generation but could not find the worktree-local M4RI static archive; TypeScript compilation, compiler rebuilding, and focused cache tests completed independently."
+    ],
+    "next_steps": []
+  }
+}
