@@ -17,10 +17,13 @@ import sagejs.runtime as runtime
 _dense_prime_kernel_module_cache = runtime.undefined
 _dense_prime_flint_module_cache = runtime.undefined
 _dense_prime_fflas_module_cache = runtime.undefined
+_dense_binary_m4ri_kernel_module_cache = runtime.undefined
 _dense_integer_flint_module_cache = runtime.undefined
 _dense_rational_kernel_module_cache = runtime.undefined
 _dense_rational_flint_module_cache = runtime.undefined
 _flint_ffi_module_cache = runtime.undefined
+_m4ri_ffi_module_cache = runtime.undefined
+_m4ri_available_cache = runtime.undefined
 
 
 class _FmpzMatrixResourceStorage:
@@ -52,6 +55,18 @@ class _FmpqMatrixResourceStorage:
         self.resource = resource
         self.numerators: Any = runtime.undefined
         self.denominators: Any = runtime.undefined
+
+
+class _M4riMatrixResourceStorage:
+    """Own one generated M4RI binary-matrix resource.
+
+    A row-major residue buffer may be materialized lazily for an explicitly
+    requested alternative backend or a general host view.  The M4RI resource
+    remains the canonical public representation.
+    """
+
+    def __init__(self, resource: Any) -> None:
+        self.resource = resource
 
 
 def _dense_integer_flint_module() -> Any:
@@ -94,6 +109,25 @@ def _flint_ffi_module() -> Any:
     return _flint_ffi_module_cache
 
 
+def _m4ri_ffi_module() -> Any:
+    """Load generated safe M4RI resources without exposing package handles."""
+    global _m4ri_ffi_module_cache
+    if _m4ri_ffi_module_cache is runtime.undefined:
+        _m4ri_ffi_module_cache = __import__("sagejs.ffi.m4ri", fromlist=["m4ri"])
+    return _m4ri_ffi_module_cache
+
+
+def _m4ri_available() -> bool:
+    """Return the stable process capability for generated M4RI resources."""
+    global _m4ri_available_cache
+    if _m4ri_available_cache is runtime.undefined:
+        try:
+            _m4ri_available_cache = bool(_m4ri_ffi_module().available())
+        except Exception:
+            _m4ri_available_cache = False
+    return bool(_m4ri_available_cache)
+
+
 def _dense_prime_kernel_module() -> Any:
     """Load the source-transparent dense `GF(p)` kernel lazily."""
     # ``matrix.py`` is part of the bootstrap baselib, which is evaluated
@@ -129,6 +163,17 @@ def _dense_prime_fflas_module() -> Any:
             fromlist=["dense_prime_field_fflas"],
         )
     return _dense_prime_fflas_module_cache
+
+
+def _dense_binary_m4ri_kernel_module() -> Any:
+    """Load source-transparent kernels that borrow M4RI resources."""
+    global _dense_binary_m4ri_kernel_module_cache
+    if _dense_binary_m4ri_kernel_module_cache is runtime.undefined:
+        _dense_binary_m4ri_kernel_module_cache = __import__(
+            "sagejs.kernels.matrix.dense_binary_m4ri",
+            fromlist=["dense_binary_m4ri"],
+        )
+    return _dense_binary_m4ri_kernel_module_cache
 
 
 def _native_kernel_available(kernel_function: Any) -> bool:
@@ -255,6 +300,18 @@ def _is_packed_dense_prime_base(base: sage.Parent) -> bool:
         getattr(base, "_kind", None) == "GF"
         and int(_untyped(base).characteristic()) <= 0xFFFFFFFF
     )
+
+
+def _is_dense_binary_base(base: sage.Parent) -> bool:
+    """Return whether `base` is the prime field `GF(2)`."""
+    return (
+        _is_packed_dense_prime_base(base) and int(_untyped(base).characteristic()) == 2
+    )
+
+
+def _uses_m4ri_resource(base: sage.Parent) -> bool:
+    """Return whether canonical M4RI storage is available for this base."""
+    return _is_dense_binary_base(base) and _m4ri_available()
 
 
 def _uses_dense_prime_kernel(base: sage.Parent) -> bool:
@@ -947,7 +1004,7 @@ class MatrixSpaceParent(sage.Parent):
         if len(entries) != self._rows * self._cols:
             raise ValueError("matrix residue count does not match dimensions")
         storage = _prime_residue_values(self._base, entries)
-        return Matrix(self, storage)
+        return self._from_canonical_uint64_residues(storage)
 
     def _from_canonical_uint64_residues(self, entries: Any) -> Matrix:
         """Take ownership of trusted canonical packed prime-field entries."""
@@ -957,7 +1014,33 @@ class MatrixSpaceParent(sage.Parent):
             raise ValueError("matrix residue count does not match dimensions")
         if not _is_packed_uint64(entries):
             entries = _packed_uint64(entries)
+        if _uses_m4ri_resource(self._base):
+            ffi = _m4ri_ffi_module()
+            region = ffi.M4riByteRegion.from_bytes(runtime.uint64_pack_le(entries, 1))
+            try:
+                resource = ffi.matrix_from_sagepack_bytes(
+                    region,
+                    self._rows,
+                    self._cols,
+                )
+            finally:
+                region.close()
+            return self._from_m4ri_matrix_resource(resource)
         return Matrix(self, entries)
+
+    def _from_m4ri_matrix_resource(self, resource: Any) -> Matrix:
+        """Take ownership of a checked generated M4RI matrix resource."""
+        if not _is_dense_binary_base(self._base):
+            resource.close()
+            raise TypeError("M4RI matrix storage requires GF(2)")
+        ffi = _m4ri_ffi_module()
+        if (
+            runtime.number(ffi.matrix_nrows(resource)) != self._rows
+            or runtime.number(ffi.matrix_ncols(resource)) != self._cols
+        ):
+            resource.close()
+            raise ValueError("M4RI matrix resource dimensions do not agree")
+        return Matrix(self, _M4riMatrixResourceStorage(resource))
 
     def _from_packed_integers(self, entries: Any) -> Matrix:
         """Construct an integer matrix from packed signed magnitudes."""
@@ -1288,6 +1371,10 @@ class MatrixSpaceParent(sage.Parent):
                 return self._from_fmpq_matrix_resource(
                     _flint_ffi_module().fmpq_matrix(self._rows, self._cols)
                 )
+            if _uses_m4ri_resource(self._base):
+                return self._from_m4ri_matrix_resource(
+                    _m4ri_ffi_module().matrix(self._rows, self._cols)
+                )
             values = [0 for _ in range(self._rows * self._cols)]
         elif isinstance(entries, list):
             values = entries
@@ -1309,7 +1396,7 @@ class MatrixSpaceParent(sage.Parent):
             raise ValueError("matrix entry count does not match its dimensions")
         if _is_packed_dense_prime_base(self._base):
             storage = _prime_residue_values(self._base, values)
-            return Matrix(self, storage)
+            return self._from_canonical_uint64_residues(storage)
         if self._base is sage.ZZ:
             return self._from_integer_values(values)
         if self._base is sage.QQ:
@@ -1784,7 +1871,11 @@ class Matrix(sage.Element):
             values.extend(constructor_args)
             source = matrix(*values)
             parent = source._parent
-            if source._has_packed_prime_storage():
+            if source._has_m4ri_matrix_resource():
+                native_value = _M4riMatrixResourceStorage(
+                    _m4ri_ffi_module().matrix_copy(source._m4ri_resource())
+                )
+            elif source._has_packed_prime_storage():
                 native_value = _copy_packed_uint64(source._prime_residues())
             elif source._has_integer_storage():
                 native_value = _FmpzMatrixResourceStorage(
@@ -1824,6 +1915,7 @@ class Matrix(sage.Element):
             )
         self._parent = parent
         self._native_handle: Any = runtime.undefined
+        self._m4ri_storage_cache: Any = runtime.undefined
         self._prime_residues_cache: Any = runtime.undefined
         self._prime_host_values_cache: Any = runtime.undefined
         self._integer_entries_cache: Any = runtime.undefined
@@ -1832,6 +1924,8 @@ class Matrix(sage.Element):
         self._exact_host_values_cache: Any = runtime.undefined
         if _is_packed_uint64(native_value):
             self._prime_residues_cache = native_value
+        elif isinstance(native_value, _M4riMatrixResourceStorage):
+            self._m4ri_storage_cache = native_value
         elif isinstance(native_value, _FmpzMatrixResourceStorage):
             self._integer_storage_cache = native_value
         elif isinstance(native_value, _PackedRationalStorage):
@@ -1868,7 +1962,7 @@ class Matrix(sage.Element):
         production code cannot accidentally make a host object canonical.
         """
         if self._has_packed_prime_storage():
-            raise RuntimeError("packed GF(p) matrices have no N-API matrix handle")
+            raise RuntimeError("dense GF(p) matrices have no N-API matrix handle")
         if self._has_integer_storage():
             raise RuntimeError("generated ZZ matrices have no N-API matrix handle")
         if self._has_packed_rational_storage():
@@ -1882,8 +1976,16 @@ class Matrix(sage.Element):
     def _has_packed_prime_storage(self) -> bool:
         return (
             self._prime_residues_cache is not runtime.undefined
-            and _is_packed_dense_prime_base(self.base_ring())
-        )
+            or self._has_m4ri_matrix_resource()
+        ) and _is_packed_dense_prime_base(self.base_ring())
+
+    def _has_m4ri_matrix_resource(self) -> bool:
+        return isinstance(self._m4ri_storage_cache, _M4riMatrixResourceStorage)
+
+    def _m4ri_resource(self) -> Any:
+        if not self._has_m4ri_matrix_resource():
+            raise TypeError("binary matrix does not own an M4RI resource")
+        return self._m4ri_storage_cache.resource
 
     def _has_integer_storage(self) -> bool:
         return self.base_ring() is sage.ZZ and isinstance(
@@ -2007,7 +2109,10 @@ class Matrix(sage.Element):
         if self._has_packed_prime_storage():
             if width not in [1, 2, 4, 8]:
                 raise ValueError("unsupported packed residue width")
-            return runtime.uint64_pack_le(self._prime_residues_cache, width)
+            if self._has_m4ri_matrix_resource() and width == 1:
+                region = _m4ri_ffi_module().matrix_sagepack_bytes(self._m4ri_resource())
+                return region.take_bytes()
+            return runtime.uint64_pack_le(self._prime_residues(), width)
         return runtime.flint_backend().matrixExportPacked(self._native, width)
 
     def _prime_residues(self) -> Any:
@@ -2015,9 +2120,11 @@ class Matrix(sage.Element):
         if not _uses_dense_prime_kernel(self.base_ring()):
             raise TypeError("packed dense-prime storage requires GF(p)")
         if self._prime_residues_cache is runtime.undefined:
-            packed = self._packed_residues(4)
+            packed = self._packed_residues(1 if self._has_m4ri_matrix_resource() else 4)
             self._prime_residues_cache = runtime.uint64_unpack_le(
-                packed, 4, self.nrows() * self.ncols()
+                packed,
+                1 if self._has_m4ri_matrix_resource() else 4,
+                self.nrows() * self.ncols(),
             )
         return self._prime_residues_cache
 
@@ -2278,6 +2385,17 @@ class Matrix(sage.Element):
                 self.ncols(),
             )
             return result
+        if self._has_m4ri_matrix_resource():
+            kernel = _dense_binary_m4ri_kernel_module().m4ri_dense_matrix_nonzero_count
+            result = runtime.number(kernel(self._m4ri_resource())) == 0
+            _trace_dense_prime_selection(
+                "is_zero",
+                _typed_python_implementation(kernel),
+                self.nrows(),
+                self.ncols(),
+                2,
+            )
+            return result
         if self._has_packed_prime_storage():
             kernel = _dense_prime_kernel_module().dense_prime_field_matrix_is_zero
             result = bool(
@@ -2333,6 +2451,17 @@ class Matrix(sage.Element):
                 self.ncols(),
             )
             return result
+        if self._has_m4ri_matrix_resource():
+            kernel = _dense_binary_m4ri_kernel_module().m4ri_dense_matrix_is_one
+            result = bool(kernel(self._m4ri_resource()))
+            _trace_dense_prime_selection(
+                "is_one",
+                _typed_python_implementation(kernel),
+                self.nrows(),
+                self.ncols(),
+                2,
+            )
+            return result
         if self._has_packed_prime_storage():
             kernel = _dense_prime_kernel_module().dense_prime_field_matrix_is_one
             result = bool(
@@ -2367,7 +2496,16 @@ class Matrix(sage.Element):
         row = _normalize_index(row, self.nrows())
         col = _normalize_index(col, self.ncols())
         if self._has_packed_prime_storage():
-            residue = int(self._prime_residues_cache[row * self.ncols() + col])
+            if self._has_m4ri_matrix_resource():
+                residue = runtime.number(
+                    _m4ri_ffi_module().matrix_entry_code(
+                        self._m4ri_resource(), row, col
+                    )
+                )
+                if residue not in [0, 1]:
+                    raise RuntimeError("M4RI returned an invalid matrix entry")
+            else:
+                residue = int(self._prime_residues_cache[row * self.ncols() + col])
             return self.base_ring()(residue)
         if self._has_integer_storage():
             return runtime.normalize_integer(
@@ -2427,7 +2565,13 @@ class Matrix(sage.Element):
         col = _normalize_index(index[1], self.ncols())
         if self._has_packed_prime_storage():
             residue = _prime_residue_values(self.base_ring(), [value])[0]
-            self._prime_residues_cache[row * self.ncols() + col] = residue
+            if self._has_m4ri_matrix_resource():
+                _m4ri_ffi_module().matrix_set_entry(
+                    self._m4ri_resource(), row, col, int(residue)
+                )
+                self._prime_residues_cache = runtime.undefined
+            else:
+                self._prime_residues_cache[row * self.ncols() + col] = residue
             self._native_handle = runtime.undefined
             self._clear_cache()
             return
@@ -2732,6 +2876,14 @@ class Matrix(sage.Element):
                 left.ncols(),
             )
             return left._parent._from_fmpz_matrix_resource(resource)
+        if left._has_m4ri_matrix_resource() and right._has_m4ri_matrix_resource():
+            resource = _m4ri_ffi_module().matrix_add(
+                left._m4ri_resource(), right._m4ri_resource()
+            )
+            _trace_dense_prime_selection(
+                "add", "generated-m4ri-resource", left.nrows(), left.ncols(), 2
+            )
+            return left._parent._from_m4ri_matrix_resource(resource)
         if left._has_packed_prime_storage() and right._has_packed_prime_storage():
             kernel = _dense_prime_kernel_module().dense_prime_field_matrix_add
             modulus = int(_untyped(left.base_ring()).characteristic())
@@ -2821,6 +2973,18 @@ class Matrix(sage.Element):
                 left.ncols(),
             )
             return left._parent._from_fmpz_matrix_resource(resource)
+        if left._has_m4ri_matrix_resource() and right._has_m4ri_matrix_resource():
+            resource = _m4ri_ffi_module().matrix_add(
+                left._m4ri_resource(), right._m4ri_resource()
+            )
+            _trace_dense_prime_selection(
+                "subtract",
+                "generated-m4ri-resource",
+                left.nrows(),
+                left.ncols(),
+                2,
+            )
+            return left._parent._from_m4ri_matrix_resource(resource)
         if left._has_packed_prime_storage() and right._has_packed_prime_storage():
             kernel = _dense_prime_kernel_module().dense_prime_field_matrix_subtract
             modulus = int(_untyped(left.base_ring()).characteristic())
@@ -2903,6 +3067,12 @@ class Matrix(sage.Element):
                 self.ncols(),
             )
             return self._parent._from_fmpz_matrix_resource(resource)
+        if self._has_m4ri_matrix_resource():
+            resource = _m4ri_ffi_module().matrix_copy(self._m4ri_resource())
+            _trace_dense_prime_selection(
+                "negate", "generated-m4ri-resource", self.nrows(), self.ncols(), 2
+            )
+            return self._parent._from_m4ri_matrix_resource(resource)
         if self._has_packed_prime_storage():
             kernel = _dense_prime_kernel_module().dense_prime_field_matrix_negate
             modulus = int(_untyped(self.base_ring()).characteristic())
@@ -2963,6 +3133,20 @@ class Matrix(sage.Element):
                     runtime.reflect.get(value, "_native"),
                 ),
             )
+        if self._has_m4ri_matrix_resource():
+            factor = int(_untyped(self.base_ring()(scalar))._value)
+            if factor == 0:
+                resource = _m4ri_ffi_module().matrix(self.nrows(), self.ncols())
+            else:
+                resource = _m4ri_ffi_module().matrix_copy(self._m4ri_resource())
+            _trace_dense_prime_selection(
+                "scalar_multiply",
+                "generated-m4ri-resource",
+                self.nrows(),
+                self.ncols(),
+                2,
+            )
+            return self._parent._from_m4ri_matrix_resource(resource)
         if self._has_packed_prime_storage():
             kernel = (
                 _dense_prime_kernel_module().dense_prime_field_matrix_scalar_multiply
@@ -3086,6 +3270,20 @@ class Matrix(sage.Element):
             base = _common_base(self.base_ring(), other.base_ring())
             left = self.change_ring(base)
             right = other.change_ring(base)
+            if left._has_m4ri_matrix_resource() and right._has_m4ri_matrix_resource():
+                resource = _m4ri_ffi_module().matrix_mul(
+                    left._m4ri_resource(), right._m4ri_resource()
+                )
+                _trace_dense_prime_selection(
+                    "multiply",
+                    "generated-m4ri-resource",
+                    left.nrows(),
+                    right.ncols(),
+                    2,
+                )
+                return MatrixSpace(
+                    base, left.nrows(), right.ncols()
+                )._from_m4ri_matrix_resource(resource)
             if left._has_packed_prime_storage() and right._has_packed_prime_storage():
                 modulus = int(_untyped(base).characteristic())
                 if _use_fflas_matrix_mul(
@@ -3404,6 +3602,21 @@ class Matrix(sage.Element):
                 self.ncols(),
             )
             return answer
+        if self._has_m4ri_matrix_resource():
+            resource = _m4ri_ffi_module().matrix_transpose(self._m4ri_resource())
+            answer = MatrixSpace(
+                self.base_ring(), self.ncols(), self.nrows()
+            )._from_m4ri_matrix_resource(resource)
+            answer._row_subdivisions = list(self._col_subdivisions)
+            answer._col_subdivisions = list(self._row_subdivisions)
+            _trace_dense_prime_selection(
+                "transpose",
+                "generated-m4ri-resource",
+                self.nrows(),
+                self.ncols(),
+                2,
+            )
+            return answer
         if self._has_packed_prime_storage():
             kernel = _dense_prime_kernel_module().dense_prime_field_matrix_transpose
             entries = _dense_prime_zeros(kernel, self.nrows() * self.ncols())
@@ -3461,6 +3674,7 @@ class Matrix(sage.Element):
             )
         if algorithm not in [
             None,
+            "m4ri",
             "flint",
             "linbox",
             "ntl",
@@ -3470,6 +3684,8 @@ class Matrix(sage.Element):
             "charpoly",
         ]:
             raise ValueError("unknown determinant algorithm")
+        if algorithm == "m4ri" and not self._has_m4ri_matrix_resource():
+            raise ValueError("M4RI determinant requires an available GF(2) backend")
         if self._determinant_cache is not runtime.undefined:
             return self._determinant_cache
         if self._has_packed_rational_storage():
@@ -3541,6 +3757,21 @@ class Matrix(sage.Element):
                 self.ncols(),
             )
             return self._determinant_cache
+        if self._has_m4ri_matrix_resource() and algorithm in [None, "m4ri"]:
+            code = runtime.number(
+                _m4ri_ffi_module().matrix_determinant_code(self._m4ri_resource())
+            )
+            if code not in [0, 1]:
+                raise RuntimeError("M4RI determinant returned an invalid value")
+            self._determinant_cache = self.base_ring()(code)
+            _trace_dense_prime_selection(
+                "determinant",
+                "generated-m4ri-resource",
+                self.nrows(),
+                self.ncols(),
+                2,
+            )
+            return self._determinant_cache
         if self._has_packed_prime_storage():
             kernel = (
                 _dense_prime_flint_module().flint_dense_prime_field_matrix_determinant
@@ -3593,12 +3824,14 @@ class Matrix(sage.Element):
         self._column_vectors_cache = runtime.undefined
 
     def rank(self, algorithm: Any = None) -> int:
-        if algorithm not in [None, "fflas", "flint", "linbox", "modp"]:
+        if algorithm not in [None, "m4ri", "fflas", "flint", "linbox", "modp"]:
             raise ValueError(
-                "algorithm must be one of 'fflas', 'modp', 'flint' or 'linbox'"
+                "algorithm must be one of 'm4ri', 'fflas', 'modp', 'flint' or 'linbox'"
             )
         if algorithm == "fflas" and not self._has_packed_prime_storage():
             raise ValueError("FFLAS rank requires a dense matrix over GF(p)")
+        if algorithm == "m4ri" and not self._has_m4ri_matrix_resource():
+            raise ValueError("M4RI rank requires an available GF(2) backend")
         if self._rank_cache is runtime.undefined:
             backend = runtime.flint_backend()
             if self._has_packed_rational_storage():
@@ -3661,6 +3894,17 @@ class Matrix(sage.Element):
                     implementation,
                     self.nrows(),
                     self.ncols(),
+                )
+            elif self._has_m4ri_matrix_resource() and algorithm in [None, "m4ri"]:
+                self._rank_cache = runtime.number(
+                    _m4ri_ffi_module().matrix_rank(self._m4ri_resource())
+                )
+                _trace_dense_prime_selection(
+                    "rank",
+                    "generated-m4ri-resource",
+                    self.nrows(),
+                    self.ncols(),
+                    2,
                 )
             elif self._has_packed_prime_storage() and algorithm != "modp":
                 modulus = int(_untyped(self.base_ring()).characteristic())
@@ -3761,6 +4005,17 @@ class Matrix(sage.Element):
     def density(self) -> float:
         if self.nrows() == 0 or self.ncols() == 0:
             return 0.0
+        if self._has_m4ri_matrix_resource():
+            kernel = _dense_binary_m4ri_kernel_module().m4ri_dense_matrix_nonzero_count
+            nonzero = runtime.number(kernel(self._m4ri_resource()))
+            _trace_dense_prime_selection(
+                "density",
+                _typed_python_implementation(kernel),
+                self.nrows(),
+                self.ncols(),
+                2,
+            )
+            return nonzero / (self.nrows() * self.ncols())
         if self._has_packed_prime_storage():
             kernel = _dense_prime_kernel_module().dense_prime_field_matrix_nonzero_count
             modulus = int(_untyped(self.base_ring()).characteristic())
@@ -3819,10 +4074,12 @@ class Matrix(sage.Element):
         return False
 
     def rref(self, algorithm: Any = None) -> Matrix:
-        if algorithm not in [None, "fflas", "flint", "modp"]:
-            raise ValueError("algorithm must be 'fflas', 'flint', or 'modp'")
+        if algorithm not in [None, "m4ri", "fflas", "flint", "modp"]:
+            raise ValueError("algorithm must be 'm4ri', 'fflas', 'flint', or 'modp'")
         if algorithm == "fflas" and not self._has_packed_prime_storage():
             raise ValueError("FFLAS RREF requires a dense matrix over GF(p)")
+        if algorithm == "m4ri" and not self._has_m4ri_matrix_resource():
+            raise ValueError("M4RI RREF requires an available GF(2) backend")
         if self._rref_cache is runtime.undefined:
             if self._has_integer_storage():
                 self._rref_cache = self.change_ring(sage.QQ).rref(algorithm)
@@ -3889,6 +4146,26 @@ class Matrix(sage.Element):
                     ),
                     self.nrows(),
                     self.ncols(),
+                )
+                return self._rref_cache
+            if self._has_m4ri_matrix_resource() and algorithm in [None, "m4ri"]:
+                resource = _m4ri_ffi_module().matrix_rref(self._m4ri_resource())
+                self._rref_cache = self._parent._from_m4ri_matrix_resource(resource)
+                rank_kernel = (
+                    _dense_binary_m4ri_kernel_module().m4ri_dense_matrix_nonzero_rows
+                )
+                self._rank_cache = runtime.number(
+                    rank_kernel(self._rref_cache._m4ri_resource())
+                )
+                self._rref_cache._rank_cache = self._rank_cache
+                self._rref_cache._rref_cache = self._rref_cache
+                self._rref_cache.set_immutable()
+                _trace_dense_prime_selection(
+                    "rref",
+                    "generated-m4ri-resource",
+                    self.nrows(),
+                    self.ncols(),
+                    2,
                 )
                 return self._rref_cache
             base = sage.QQ
@@ -4261,6 +4538,23 @@ class Matrix(sage.Element):
                     "generated-flint-resource",
                     self.nrows(),
                     self.ncols(),
+                )
+            elif self._has_m4ri_matrix_resource():
+                columns = int(self.ncols())
+                ffi = _m4ri_ffi_module()
+                resource = ffi.matrix_right_kernel(self._m4ri_resource())
+                nullity = runtime.number(ffi.matrix_nrows(resource))
+                self._rank_cache = columns - nullity
+                basis = MatrixSpace(
+                    self.base_ring(), nullity, columns
+                )._from_m4ri_matrix_resource(resource)
+                basis._rank_cache = nullity
+                _trace_dense_prime_selection(
+                    "right_kernel",
+                    "generated-m4ri-resource",
+                    self.nrows(),
+                    self.ncols(),
+                    2,
                 )
             elif self._has_packed_rational_storage():
                 columns = int(self.ncols())
@@ -5027,6 +5321,20 @@ class Matrix(sage.Element):
             return self._cache_inverse_result(answer)
         if self._has_integer_storage():
             return self._cache_inverse_result(self.change_ring(sage.QQ).inverse())
+        if self._has_m4ri_matrix_resource():
+            try:
+                resource = _m4ri_ffi_module().matrix_inverse(self._m4ri_resource())
+            except Exception:
+                raise ZeroDivisionError("matrix must be nonsingular")  # noqa: B904
+            answer = self._parent._from_m4ri_matrix_resource(resource)
+            _trace_dense_prime_selection(
+                "inverse",
+                "generated-m4ri-resource",
+                self.nrows(),
+                self.ncols(),
+                2,
+            )
+            return self._cache_inverse_result(answer)
         if self._has_packed_prime_storage():
             ffi_module = _dense_prime_flint_module()
             kernel_function = ffi_module.flint_dense_prime_field_matrix_inverse
@@ -5243,6 +5551,29 @@ class Matrix(sage.Element):
                 return solution.column(0) if vector_result else solution
             except Exception:
                 pass
+        if (
+            left_matrix._has_m4ri_matrix_resource()
+            and right_matrix._has_m4ri_matrix_resource()
+        ):
+            try:
+                resource = _m4ri_ffi_module().matrix_solve(
+                    left_matrix._m4ri_resource(), right_matrix._m4ri_resource()
+                )
+            except Exception:
+                raise ValueError("matrix equation has no solutions")  # noqa: B904
+            solution = MatrixSpace(
+                base,
+                left_matrix.ncols(),
+                right_matrix.ncols(),
+            )._from_m4ri_matrix_resource(resource)
+            _trace_dense_prime_selection(
+                "solve_right",
+                "generated-m4ri-resource",
+                left_matrix.nrows(),
+                right_matrix.ncols(),
+                2,
+            )
+            return solution.column(0) if vector_result else solution
         if (
             left_matrix._has_packed_prime_storage()
             and right_matrix._has_packed_prime_storage()
@@ -6084,6 +6415,20 @@ class Matrix(sage.Element):
                 left.ncols(),
             )
             return result
+        if left._has_m4ri_matrix_resource() and right._has_m4ri_matrix_resource():
+            result = bool(
+                _m4ri_ffi_module().matrix_equal(
+                    left._m4ri_resource(), right._m4ri_resource()
+                )
+            )
+            _trace_dense_prime_selection(
+                "equal",
+                "generated-m4ri-resource",
+                left.nrows(),
+                left.ncols(),
+                2,
+            )
+            return result
         if left._has_packed_prime_storage() and right._has_packed_prime_storage():
             kernel = _dense_prime_kernel_module().dense_prime_field_matrix_equal
             modulus = int(_untyped(base).characteristic())
@@ -6108,6 +6453,13 @@ class Matrix(sage.Element):
         return backend.matrixEqual(left._native, right._native)
 
     def __copy__(self) -> Matrix:
+        if self._has_m4ri_matrix_resource():
+            answer = self._parent._from_m4ri_matrix_resource(
+                _m4ri_ffi_module().matrix_copy(self._m4ri_resource())
+            )
+            answer._row_subdivisions = list(self._row_subdivisions)
+            answer._col_subdivisions = list(self._col_subdivisions)
+            return answer
         if self._has_packed_rational_storage():
             if self._has_fmpq_matrix_resource():
                 answer = self._parent._from_fmpq_matrix_resource(
@@ -6181,12 +6533,19 @@ class Matrix(sage.Element):
         if self.nrows() == 0:
             return "[]"
         if (
+            self._has_m4ri_matrix_resource()
+            and len(self._row_subdivisions) == 0
+            and len(self._col_subdivisions) == 0
+        ):
+            region = _m4ri_ffi_module().matrix_format(self._m4ri_resource())
+            return bytes(region.take_bytes()).decode("ascii")
+        if (
             self._has_packed_prime_storage()
             and len(self._row_subdivisions) == 0
             and len(self._col_subdivisions) == 0
         ):
             return runtime.uint64_matrix_format(
-                self._prime_residues_cache, self.nrows(), self.ncols()
+                self._prime_residues(), self.nrows(), self.ncols()
             )
         text_rows = []
         width = 0

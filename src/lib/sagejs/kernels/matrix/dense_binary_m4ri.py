@@ -1,0 +1,57 @@
+"""Source-transparent kernels over borrowed generated M4RI matrices."""
+
+from __future__ import annotations
+
+from sagejs.ffi.m4ri import (
+    M4riMatrix,
+    matrix_entry_code,
+    matrix_ncols,
+    matrix_nrows,
+)
+from sagejs.native import native
+
+
+@native
+def m4ri_dense_matrix_nonzero_count(source: M4riMatrix) -> int:
+    """Count nonzero entries without crossing the host inside the loop."""
+    count = 0
+    rows = matrix_nrows(source)
+    columns = matrix_ncols(source)
+    for row in range(rows):
+        for column in range(columns):
+            if matrix_entry_code(source, row, column) != 0:
+                count += 1
+    return count
+
+
+@native
+def m4ri_dense_matrix_nonzero_rows(source: M4riMatrix) -> int:
+    """Count nonzero rows of a matrix already in row-echelon form."""
+    count = 0
+    rows = matrix_nrows(source)
+    columns = matrix_ncols(source)
+    for row in range(rows):
+        nonzero = False
+        for column in range(columns):
+            if matrix_entry_code(source, row, column) != 0:
+                nonzero = True
+        if nonzero:
+            count += 1
+    return count
+
+
+@native
+def m4ri_dense_matrix_is_one(source: M4riMatrix) -> bool:
+    """Return whether `source` is the identity matrix."""
+    rows = matrix_nrows(source)
+    columns = matrix_ncols(source)
+    if rows != columns:
+        return False
+    for row in range(rows):
+        for column in range(columns):
+            expected = 0
+            if row == column:
+                expected = 1
+            if matrix_entry_code(source, row, column) != expected:
+                return False
+    return True
