@@ -46,6 +46,10 @@ except Exception:
 answer = {
     "integer": [[int(value.degree()), [str(part) for part in value.coefficients()], loads(dumps(value)) == value] for value in integer_cases],
     "rational": [[int(value.degree()), [str(part) for part in value.coefficients()], loads(dumps(value)) == value] for value in rational_cases],
+    "integer_skew_exact": integer_cases[-1][1] == huge,
+    "rational_skew_exact": rational_cases[-1][0] == QQ(huge) / QQ(large_denominator),
+    "huge": str(huge),
+    "large_denominator": str(large_denominator),
     "resource": [integer_cases[-1]._has_fmpz_polynomial_resource(), rational_cases[-1]._has_fmpq_polynomial_resource()],
     "invalid": invalid,
 }
@@ -189,8 +193,8 @@ test("public exact construction preserves dense Sage semantics without legacy N-
   ]);
   assert.deepEqual(value.integer[3].slice(0, 1), [1]);
   assert.deepEqual(value.integer[3][1].slice(0, 1), ["1"]);
-  assert.match(value.integer[3][1][1], /^[0-9]+$/);
-  assert.ok(value.integer[3][1][1].length > 19_000);
+  assert.equal(value.integer_skew_exact, true);
+  assert.equal(value.integer[3][1][1], value.huge);
   assert.equal(value.integer[3][2], true);
   assert.deepEqual(value.rational.slice(0, 3), [
     [-1, [], true],
@@ -198,7 +202,11 @@ test("public exact construction preserves dense Sage semantics without legacy N-
     [1, ["1/2", "-3/4"], true],
   ]);
   assert.deepEqual(value.rational[3].slice(0, 1), [0]);
-  assert.match(value.rational[3][1][0], /^[1-9][0-9]*\/[1-9][0-9]*$/);
+  assert.equal(value.rational_skew_exact, true);
+  assert.equal(
+    value.rational[3][1][0],
+    `${value.huge}/${value.large_denominator}`,
+  );
   assert.equal(value.rational[3][2], true);
   assert.deepEqual(value.resource, [true, true]);
   assert.equal(value.invalid, true);
