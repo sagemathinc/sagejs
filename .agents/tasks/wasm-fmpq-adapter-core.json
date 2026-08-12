@@ -16,7 +16,8 @@
     "src/baselib/sagejs/ffi/flint.py",
     "packages/flint/generated/ffi_host.py",
     "architecture/native-boundaries.json",
-    "test/ffi-wasm-fmpq-resource-core.cjs"
+    "test/ffi-wasm-fmpq-resource-core.cjs",
+    "test/node-test-manifest.cjs"
   ],
   "dependencies": [],
   "references": [
