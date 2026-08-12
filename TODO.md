@@ -20,6 +20,11 @@
 
 ## Measurement and performance ergonomics
 
+- Extend Sage mode's `time` output to separate user CPU, system CPU, wall
+  time, and one-time initialization/native-loading work, so cold startup is
+  not mistaken for mathematical execution.
+- Implement Sage/IPython-compatible `%timeit` with calibrated loop counts,
+  repeated samples, and concise mean/dispersion output for warm microbenchmarks.
 - Ratchet cold production-kernel loading separately from warm mathematical
   execution, and never silently compile a missing production kernel in an
   ordinary installed session.
