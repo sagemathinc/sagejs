@@ -58,7 +58,7 @@
     {
       "id": "documentation-compat",
       "description": "DocSpec, searchable documentation, tutorials, and compatibility corpora",
-      "allowed_claims": ["DOCUMENTATION.md", "DOCSPEC.md", "website/", "src/baselib/builtins.py", "scripts/generate-docs.cjs", "scripts/extract-sage", "scripts/run-sage", "tools/docs.ts", "tools/documentation.ts"],
+      "allowed_claims": ["DOCUMENTATION.md", "DOCSPEC.md", "website/", "src/baselib/builtins.py", "scripts/generate-docs.cjs", "scripts/reference-examples.cjs", "scripts/verify-reference-examples.cjs", "scripts/extract-sage", "scripts/run-sage", "tools/docs.ts", "tools/documentation.ts"],
       "required_checks": ["pnpm docs:check", "pnpm test:tutorial"]
     },
     {
