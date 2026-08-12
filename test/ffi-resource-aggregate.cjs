@@ -588,3 +588,63 @@ test("resource aggregate declarations reject unproved mutation shapes", () => {
     rmSync(temporary, { recursive: true, force: true });
   }
 });
+
+test("read-only packed ingress may construct or derive owned resources", () => {
+  const temporary = mkdtempSync(join(root, "build", "ffi-resource-ingress-"));
+  try {
+    const catalog = declarations.loadRegistry({ root }).catalog;
+    const constructorDocument = witnessDocument(temporary);
+    const constructor = structuredClone(constructorDocument.functions.find(
+      (fn) => fn.id === "matrix_select_rows",
+    ));
+    constructor.id = "matrix_from_entries";
+    constructor.python_name = "matrix_from_entries";
+    constructor.dynamic.export = "ffiWitnessMatrixFromEntries";
+    constructor.native.symbol = "sagejs_witness_matrix_from_entries";
+    constructor.signature.parameters = constructor.signature.parameters.slice(1);
+    constructor.native.arguments = [
+      constructor.native.arguments[0],
+      ...constructor.native.arguments.slice(2),
+    ];
+    constructorDocument.functions.push(constructor);
+    const checkedConstructor = declarations.loadDeclarationDocument(
+      constructorDocument,
+      { filename: join(temporary, "constructor.ffi.json"), catalog },
+    ).functions.find((fn) => fn.id === "matrix_from_entries");
+    assert.equal(
+      checkedConstructor.call_plan.arguments[1].lowering.adapter,
+      "packed_slice",
+    );
+
+    const derivedDocument = witnessDocument(temporary);
+    const flint = JSON.parse(
+      readFileSync(join(root, "ffi", "flint.ffi.json"), "utf8"),
+    );
+    const byteRegion = structuredClone(
+      flint.resources.find((item) => item.id === "byte_region"),
+    );
+    byteRegion.dynamic.close_export = "ffiWitnessByteRegionClose";
+    derivedDocument.resources.push(byteRegion);
+    const derived = structuredClone(derivedDocument.functions.find(
+      (fn) => fn.id === "matrix_select_rows",
+    ));
+    derived.id = "matrix_selected_bytes";
+    derived.python_name = "matrix_selected_bytes";
+    derived.dynamic.export = "ffiWitnessMatrixSelectedBytes";
+    derived.native.symbol = "sagejs_witness_matrix_selected_bytes";
+    derived.signature.return_type = "FlintByteRegion";
+    derived.native.arguments[0].abi_type = "sagejs_flint_byte_region_t";
+    derivedDocument.functions.push(derived);
+    const checkedDerived = declarations.loadDeclarationDocument(
+      derivedDocument,
+      { filename: join(temporary, "derived.ffi.json"), catalog },
+    ).functions.find((fn) => fn.id === "matrix_selected_bytes");
+    assert.equal(checkedDerived.signature.return_type, "FlintByteRegion");
+    assert.equal(
+      checkedDerived.call_plan.arguments[2].lowering.adapter,
+      "packed_slice",
+    );
+  } finally {
+    rmSync(temporary, { recursive: true, force: true });
+  }
+});

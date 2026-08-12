@@ -312,20 +312,25 @@ function validateResourceAggregateComposition(
 
   const reject = (detail) => fail(
     filename,
-    `${fn.id} resource/aggregate composition ${detail}; only one borrowed ` +
-      "read-only owned resource and one read-only UInt64Buffer packed slice " +
-      "are currently supported",
+    `${fn.id} resource/aggregate composition ${detail}; only one read-only ` +
+      "UInt64Buffer packed slice, optionally paired with one borrowed " +
+      "read-only owned resource, is currently supported",
   );
-  if (adapters.length !== 1 || resourceParameters.length !== 1) {
+  if (adapters.length !== 1 || resourceParameters.length > 1) {
     reject("has an unsupported number of resources or adapters");
   }
   const resourceParameter = resourceParameters[0];
-  const resource = resourcesByType.get(resourceParameter.type);
-  if (resource.ownership !== "owned" ||
-      resourceParameter.ownership !== "borrowed" ||
-      resourceParameter.mutability !== "read" ||
-      resourceParameter.aliasing !== "allowed") {
-    reject("requires a mutable or borrowed-view resource");
+  if (resourceParameter !== undefined) {
+    const resource = resourcesByType.get(resourceParameter.type);
+    if (resource.ownership !== "owned" ||
+        resourceParameter.ownership !== "borrowed" ||
+        resourceParameter.mutability !== "read" ||
+        resourceParameter.aliasing !== "allowed") {
+      reject("requires a mutable or borrowed-view resource");
+    }
+  } else if (returnResource === undefined ||
+      returnResource.ownership !== "owned") {
+    reject("has no owned resource input or result");
   }
   const nativeArgument = adapters[0];
   const adapter = nativeArgument.adapter;
@@ -343,7 +348,8 @@ function validateResourceAggregateComposition(
       length?.type !== "uint64") {
     reject("uses an unsupported aggregate adapter");
   }
-  const consumed = new Set([resourceParameter.name, data.name, length.name]);
+  const consumed = new Set([data.name, length.name]);
+  if (resourceParameter !== undefined) consumed.add(resourceParameter.name);
   if (fn.signature.parameters.some((parameter) =>
     !consumed.has(parameter.name) && parameter.type !== "uint64"
   )) {
@@ -353,9 +359,8 @@ function validateResourceAggregateComposition(
     reject("declares mutation");
   }
   if (returnResource !== undefined) {
-    if (returnResource.ownership !== "owned" ||
-        returnResource.id !== resource.id) {
-      reject("returns an unrelated or borrowed resource");
+    if (returnResource.ownership !== "owned") {
+      reject("returns a borrowed resource");
     }
   } else if (!new Set(["bool", "uint64"]).has(fn.signature.return_type)) {
     reject("returns an unsupported value type");

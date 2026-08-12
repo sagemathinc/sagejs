@@ -1,0 +1,56 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "extension-polynomial-resource-impl",
+  "title": "Generated finite-extension polynomial resources",
+  "lane": "integration",
+  "status": "active",
+  "owner": "extension_poly_resource_impl",
+  "objective": "Implement generated FLINT fq_default context and polynomial resources with bulk power-basis coordinate I/O, safe shared-context ownership, resource-to-resource arithmetic, portable correctness, lifecycle fuzzing, and measured production performance",
+  "base_commit": "d9831968c7bfd5936a95df2517278c3b3dcd5064",
+  "claims": [
+    "packages/flint/include/sagejs/fq_polynomial_ffi.h",
+    "src/lib/sagejs/kernels/polynomial/extension_flint.py",
+    "test/extension-polynomial-resource-ffi.cjs",
+    "test/extension-polynomial-resource-kernels.cjs",
+    "test/fixtures/native-ffi-flint-extension",
+    "bench/extension-polynomial-resources.cjs",
+    "architecture/native-kernels.json",
+    "tools/ffi/declarations.cjs",
+    "test/ffi-resource-aggregate.cjs",
+    "ffi/abi-types.json"
+  ],
+  "dependencies": [
+    "extension-polynomial-resource-contract"
+  ],
+  "references": [
+    "FLINT fq_default and fq_default_poly APIs",
+    "SageMath finite extension polynomial semantics"
+  ],
+  "architecture": {
+    "strategy": "external-library",
+    "fallback": "tested-capability",
+    "oracles": [
+      "SageMath finite-extension polynomial behavior",
+      "generated dynamic/native differential"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "fallback",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm architecture:check",
+    "pnpm test:portable",
+    "pnpm test:baselib:strict"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "",
+    "risks": [],
+    "next_steps": []
+  }
+}
