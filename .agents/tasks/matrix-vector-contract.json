@@ -1,0 +1,112 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "matrix-vector-contract",
+  "title": "Storage-neutral dense matrix-vector contract",
+  "lane": "arithmetic-algebra",
+  "status": "review",
+  "owner": "user",
+  "objective": "Define and validate ordinary CPython-parseable one-bulk-operation contracts for dense Matrix times Vector and Vector times Matrix across GF(2), small GF(p), ZZ, and QQ, preserving Sage dimensions, coercion, and result-vector semantics without host scalar boundary loops",
+  "base_commit": "1f1219932802054fcd7a424ac877b84aa88d4b60",
+  "claims": [
+    "src/lib/sagejs/linear_algebra/matrix_vector.py",
+    "test/linear-matrix-vector.cjs",
+    "bench/linear-matrix-vector.cjs"
+  ],
+  "dependencies": [],
+  "references": [
+    "SageMath 10.9.post2 dense matrix-vector and vector-matrix semantics"
+  ],
+  "architecture": {
+    "strategy": "dynamic-python",
+    "fallback": "same-source",
+    "oracles": [
+      "SageMath matrix-vector and vector-matrix semantics",
+      "Current Sage.js Matrix and Vector public behavior"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "node test/linear-matrix-vector.cjs",
+    "node bench/linear-matrix-vector.cjs",
+    "pnpm test:baselib:strict",
+    "pnpm test:native",
+    "pnpm architecture:check"
+  ],
+  "runs": [
+    {
+      "command": "node test/linear-matrix-vector.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.956,
+      "started_at": "2026-08-12T11:00:06.377Z",
+      "commit": "1f1219932802054fcd7a424ac877b84aa88d4b60",
+      "workspace_fingerprint": "a8686de114ed298176c1afe122a1917ef796f32a3ded655778fb5cd43d8dcfe5",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/linear-matrix-vector.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.93,
+      "started_at": "2026-08-12T11:00:07.929Z",
+      "commit": "1f1219932802054fcd7a424ac877b84aa88d4b60",
+      "workspace_fingerprint": "a8686de114ed298176c1afe122a1917ef796f32a3ded655778fb5cd43d8dcfe5",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 12.934,
+      "started_at": "2026-08-12T11:00:11.465Z",
+      "commit": "1f1219932802054fcd7a424ac877b84aa88d4b60",
+      "workspace_fingerprint": "a8686de114ed298176c1afe122a1917ef796f32a3ded655778fb5cd43d8dcfe5",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 13.167,
+      "started_at": "2026-08-12T11:00:24.987Z",
+      "commit": "1f1219932802054fcd7a424ac877b84aa88d4b60",
+      "workspace_fingerprint": "a8686de114ed298176c1afe122a1917ef796f32a3ded655778fb5cd43d8dcfe5",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:native",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 575.581,
+      "started_at": "2026-08-12T11:00:44.018Z",
+      "commit": "1f1219932802054fcd7a424ac877b84aa88d4b60",
+      "workspace_fingerprint": "a8686de114ed298176c1afe122a1917ef796f32a3ded655778fb5cd43d8dcfe5",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Added an ordinary CPython-parseable storage-neutral contract for dense Matrix times Vector and Vector times Matrix. A validated orientation plan fixes input and output degrees, rejects incompatible dimensions with SageMath's TypeError semantics, and invokes exactly one complete backend operation over opaque matrix/vector storage. Separate row-major scalar fallbacks provide a differential oracle without constructing temporary one-column or one-row matrices. CPython and Sage.js fixtures cover ZZ, QQ, GF(2), and GF(7), explicit mixed-parent widening, incompatible finite fields, exact rational arithmetic, empty shapes, fresh mutable result vectors, invalid storage, one-call execution, and backend failure propagation. The benchmark records public 500 by 500 behavior and the intentionally non-production scalar/materialization fallback at 100 by 100, making the acceleration opportunity measurable.",
+    "risks": [
+      "This lane deliberately does not wire Matrix or Vector, add FFI, or select a physical backend. It defines semantics and a one-bulk-call integration boundary, so it is not itself a public performance improvement.",
+      "Current public Sage.js dimension-mismatch multiplication raises ValueError, whereas SageMath 10.9.post2 raises TypeError. Public integration should adopt the contract's TypeError behavior and update the existing public regression expectation.",
+      "The callback identity distinguishes right-product from left-product; the side string remains outside the storage ABI. Integration must select the orientation-specific backend operation consistently with the validated plan.",
+      "The scalar fallbacks assume entries and zero have already been coerced into the canonical common result parent. Calling them on uncoerced mixed-parent inputs is an integration error.",
+      "The public 500 by 500 benchmark currently takes one warmed sample per orientation to keep the preparation benchmark small, so its raw samples can expose host contention; production performance gates should use the repository's multi-sample normalized methodology.",
+      "Only Linux x64 validation ran in this worktree. The new source is pure ordinary Python and JavaScript test code, but the declared platform matrix remains an integration/CI responsibility."
+    ],
+    "next_steps": [
+      "Add src/lib/sagejs/linear_algebra/matrix_vector.py to pyrightconfig.json and test/linear-matrix-vector.cjs to the Node test manifest in the integration lane.",
+      "Wire Matrix times Vector and Vector times Matrix through canonical Sage parent coercion, prepare one complete storage value for each operand, dispatch exactly one orientation-specific bulk operation, and construct a fresh mutable Vector of plan.result_length.",
+      "Implement measured bulk backends for generated FmpzMatrix/FmpqMatrix resources and M4RI/word-prime storage; avoid public temporary matrices and per-entry host boundary calls.",
+      "Correct the current public dimension-mismatch exception from ValueError to SageMath-compatible TypeError while preserving distinct-finite-field TypeError behavior.",
+      "Add multi-sample public performance gates after the real storage backends land, with result equivalence and construction/coercion costs reported separately."
+    ]
+  }
+}
