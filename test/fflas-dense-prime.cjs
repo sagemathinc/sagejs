@@ -51,6 +51,13 @@ assert fflas_rref.rank() == flint_rref.rank()
 assert matrix(field, 40, 44, entries).rank(algorithm='fflas') == matrix(
     field, 40, 44, entries
 ).rank(algorithm='flint')
+kernel_source = matrix(field, 40, 44, entries)
+kernel = kernel_source.right_kernel_matrix()
+assert kernel.dimensions() == (44 - kernel_source.rank(), 44)
+assert kernel == kernel.rref()
+assert kernel_source * kernel.transpose() == zero_matrix(
+    field, kernel_source.nrows(), kernel.nrows()
+)
 rank_entries = [(31*k*k + 23*k + 7) % 97 for k in range(64*68)]
 assert matrix(field, 64, 68, rank_entries).rank() == matrix(
     field, 64, 68, rank_entries
@@ -60,6 +67,13 @@ assert matrix(field, 64, 68, rank_entries).rank() == matrix(
 small = matrix(field, 8, 8, range(64))
 small * small
 small.rank()
+small.right_kernel_matrix()
+
+large_prime = matrix(GF(257), 24, 28, range(24*28))
+large_prime_kernel = large_prime.right_kernel_matrix()
+assert large_prime * large_prime_kernel.transpose() == zero_matrix(
+    GF(257), 24, large_prime_kernel.nrows()
+)
 
 for source in [matrix(QQ, 2), matrix(ZZ, 2)]:
     try:
@@ -87,8 +101,11 @@ print('fflas public semantics ok')
   assert.match(output, /Matrix\.multiply GF\(97\) 40x40 -> declared-fflas-isolated/);
   assert.match(output, /Matrix\.rref GF\(97\) 40x44 -> declared-fflas-isolated/);
   assert.match(output, /Matrix\.rank GF\(97\) 64x68 -> declared-fflas-isolated/);
+  assert.match(output, /Matrix\.right_kernel GF\(97\) 40x44 -> declared-fflas-isolated/);
   assert.match(output, /Matrix\.multiply GF\(97\) 8x8 -> declared-flint-isolated/);
   assert.match(output, /Matrix\.rank GF\(97\) 8x8 -> declared-flint-isolated/);
+  assert.match(output, /Matrix\.right_kernel GF\(97\) 8x8 -> declared-flint-isolated/);
+  assert.match(output, /Matrix\.right_kernel GF\(257\) 24x28 -> declared-flint-isolated/);
   assert.match(output, /fflas public semantics ok/);
 });
 
@@ -106,9 +123,13 @@ try:
     raise AssertionError('unavailable FFLAS rank backend unexpectedly ran')
 except ValueError as error:
     assert 'available backend' in str(error)
+source = matrix(GF(97), 40, 44, range(40*44))
+kernel = source.right_kernel_matrix()
+assert source * kernel.transpose() == zero_matrix(GF(97), 40, kernel.nrows())
 print('fflas capability fallback ok')
-`);
+`, { SAGEJS_NATIVE_TRACE: "1" });
   assert.match(output, /fflas capability fallback ok/);
+  assert.match(output, /Matrix\.right_kernel GF\(97\) 40x44 -> declared-flint-isolated/);
 });
 
 test("dynamic adapters preserve public FFLAS semantics when native kernels are disabled", {
@@ -133,6 +154,12 @@ rank_entries = [(31*k*k + 23*k + 7) % 97 for k in range(64*68)]
 assert matrix(field, 64, 68, rank_entries).rank() == matrix(
     field, 64, 68, rank_entries
 ).rank(algorithm='flint')
+kernel_source = matrix(field, 40, 44, entries)
+kernel = kernel_source.right_kernel_matrix()
+assert kernel == kernel.rref()
+assert kernel_source * kernel.transpose() == zero_matrix(
+    field, kernel_source.nrows(), kernel.nrows()
+)
 print('fflas dynamic adapter semantics ok')
 `, {
     SAGEJS_NATIVE_DISABLE: "1",
@@ -141,6 +168,7 @@ print('fflas dynamic adapter semantics ok')
   assert.match(output, /Matrix\.multiply GF\(97\) 40x40 -> declared-fflas-adapter/);
   assert.match(output, /Matrix\.rref GF\(97\) 40x44 -> declared-fflas-adapter/);
   assert.match(output, /Matrix\.rank GF\(97\) 64x68 -> declared-fflas-adapter/);
+  assert.match(output, /Matrix\.right_kernel GF\(97\) 40x44 -> declared-fflas-adapter/);
   assert.match(output, /fflas dynamic adapter semantics ok/);
 });
 

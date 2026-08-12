@@ -173,6 +173,30 @@ test("FFPACK right nullspace is FLINT's canonical row basis", {
         [...expected.output],
         `${modulus}: canonical basis ${rows}x${columns}`,
       );
+      const nullity = Number(actual.nullity);
+      const basis = actual.output.slice(0, nullity * columns);
+      const reduced = fflasRref(basis, nullity, columns, modulus);
+      assert.equal(reduced.rank, actual.nullity);
+      assert.deepEqual([...reduced.output], [...basis]);
+      if (rows !== 0 && nullity !== 0) {
+        const basisTranspose = new BigUint64Array(columns * nullity);
+        for (let row = 0; row < nullity; row += 1) {
+          for (let column = 0; column < columns; column += 1) {
+            basisTranspose[column * nullity + row] = basis[row * columns + column];
+          }
+        }
+        const product = new BigUint64Array(rows * nullity);
+        assert.equal(flint.ffiNmodMatMul(
+          product,
+          source,
+          basisTranspose,
+          BigInt(rows),
+          BigInt(columns),
+          BigInt(nullity),
+          BigInt(modulus),
+        ), true);
+        assert.ok(product.every((value) => value === 0n));
+      }
     }
   }
 });
@@ -191,6 +215,50 @@ test("FFPACK right nullspace agrees exhaustively on small binary matrices", {
     const expected = flintRightNullspace(source, rows, columns, 2);
     assert.equal(actual.nullity, expected.nullity, `mask=${mask}`);
     assert.deepEqual([...actual.output], [...expected.output], `mask=${mask}`);
+  }
+});
+
+test("FFPACK canonical bases match SageMath 10.9 fixtures", {
+  skip: process.platform === "win32",
+}, () => {
+  const fixtures = [
+    [7, 3, 5, 2, [1, 0, 1, 1, 4, 0, 1, 4, 3, 6]],
+    [
+      97,
+      4,
+      7,
+      4,
+      [
+        1, 0, 0, 0, 82, 24, 87,
+        0, 1, 0, 0, 87, 15, 91,
+        0, 0, 1, 0, 91, 8, 94,
+        0, 0, 0, 1, 94, 3, 96,
+      ],
+    ],
+    [
+      5,
+      2,
+      6,
+      4,
+      [
+        1, 0, 0, 0, 0, 4,
+        0, 1, 0, 0, 3, 2,
+        0, 0, 1, 0, 3, 4,
+        0, 0, 0, 1, 0, 0,
+      ],
+    ],
+  ];
+  for (const [modulus, rows, columns, nullity, expected] of fixtures) {
+    const source = new BigUint64Array(rows * columns);
+    for (let index = 0; index < source.length; index += 1) {
+      source[index] = BigInt((29 * index * index + 17 * index + 3) % modulus);
+    }
+    const actual = fflasRightNullspace(source, rows, columns, modulus);
+    assert.equal(actual.nullity, BigInt(nullity));
+    assert.deepEqual(
+      [...actual.output.slice(0, nullity * columns)],
+      expected.map(BigInt),
+    );
   }
 });
 

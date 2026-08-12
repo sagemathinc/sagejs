@@ -360,7 +360,7 @@ static inline int sagejs_fflas_modular_float_right_nullspace(
         return 1;
     }
 
-    float *basis_columns = NULL;
+    sagejs_fflas_float_allocation basis_owner(NULL);
     size_t leading_dimension = 0;
     size_t nullity = 0;
     const size_t returned_nullity = FFPACK::NullSpaceBasis(
@@ -370,19 +370,18 @@ static inline int sagejs_fflas_modular_float_right_nullspace(
         (size_t) columns,
         source.data(),
         (size_t) columns,
-        basis_columns,
+        basis_owner.data,
         leading_dimension,
         nullity);
-    sagejs_fflas_float_allocation basis_owner(basis_columns);
     if (returned_nullity != nullity || nullity > (size_t) columns ||
         leading_dimension != nullity ||
-        (nullity != 0 && basis_columns == NULL))
+        (nullity != 0 && basis_owner.data == NULL))
         return 0;
 
     for (size_t row = 0; row < nullity; ++row)
         for (size_t column = 0; column < (size_t) columns; ++column)
             output[row * (size_t) columns + column] =
-                basis_columns[column * leading_dimension + row];
+                basis_owner.data[column * leading_dimension + row];
 
     if (sagejs_fflas_canonical_rref(
             field,
