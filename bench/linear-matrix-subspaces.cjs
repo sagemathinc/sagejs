@@ -104,8 +104,9 @@ const report = {
   },
   expected_public_wiring: [
     "compute echelon_form once",
-    "read rank metadata from the echelon result",
-    "bulk matrix_from_rows(range(rank))",
+    "read a domain-correct leading basis-row count",
+    "use rank metadata only for ZZ and fields",
+    "bulk matrix_from_rows(range(basis_row_count))",
     "mark the basis immutable",
     "construct the subspace with already_echelonized=true",
   ],

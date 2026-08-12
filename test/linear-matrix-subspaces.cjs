@@ -2,7 +2,13 @@
 "use strict";
 
 const assert = require("node:assert/strict");
-const { mkdtempSync, readFileSync, rmSync, writeFileSync } = require("node:fs");
+const {
+  existsSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} = require("node:fs");
 const { tmpdir } = require("node:os");
 const { join, resolve } = require("node:path");
 const { spawnSync } = require("node:child_process");
@@ -40,8 +46,8 @@ def dimensions(value):
     return value.rows, value.columns
 
 
-def exercise_row(rows, columns, matrix_rank):
-    calls = {"echelon": 0, "rank": 0, "select": 0, "immutable": 0}
+def exercise_row(rows, columns, generator_count):
+    calls = {"echelon": 0, "count": 0, "select": 0, "immutable": 0}
     source = FakeMatrix(rows, columns, "source")
 
     def echelon_form(value):
@@ -49,14 +55,14 @@ def exercise_row(rows, columns, matrix_rank):
         calls["echelon"] += 1
         return FakeMatrix(rows, columns, "echelon")
 
-    def rank(value):
+    def basis_row_count(value):
         assert value.label == "echelon"
-        calls["rank"] += 1
-        return matrix_rank
+        calls["count"] += 1
+        return generator_count
 
     def select_rows(value, indices):
         assert value.label == "echelon"
-        assert indices == tuple(range(matrix_rank))
+        assert indices == tuple(range(generator_count))
         calls["select"] += 1
         return FakeMatrix(len(indices), columns, "basis")
 
@@ -68,18 +74,21 @@ def exercise_row(rows, columns, matrix_rank):
         source,
         dimensions,
         echelon_form,
-        rank,
+        basis_row_count,
         select_rows,
         set_immutable,
     )
-    assert calls == {"echelon": 1, "rank": 1, "select": 1, "immutable": 1}
+    assert calls == {"echelon": 1, "count": 1, "select": 1, "immutable": 1}
     assert result.matrix.immutable
-    assert (result.matrix.rows, result.matrix.columns) == (matrix_rank, columns)
+    assert (result.matrix.rows, result.matrix.columns) == (generator_count, columns)
     metadata = result.metadata
     assert metadata.orientation == "row"
     assert metadata.ambient_dimension == columns
-    assert metadata.rank == matrix_rank
-    assert (metadata.basis_rows, metadata.basis_columns) == (matrix_rank, columns)
+    assert metadata.basis_row_count == generator_count
+    assert (metadata.basis_rows, metadata.basis_columns) == (
+        generator_count,
+        columns,
+    )
     assert metadata.already_echelonized is True
     assert metadata.immutable is True
 
@@ -88,9 +97,26 @@ exercise_row(5, 7, 3)
 exercise_row(0, 7, 0)
 exercise_row(5, 0, 0)
 
+# Canonical forms are allowed to have a representation-specific row count.
+# A composite-residue Howell form can add generator rows that were implicit
+# in fewer source rows, so neither the source row count nor rank is a valid
+# universal selector bound.
+expanded = subspaces.canonical_basis_from_echelon(
+    FakeMatrix(3, 3, "expanded-howell"),
+    2,
+    3,
+    "row",
+    dimensions,
+    lambda _value: 3,
+    lambda _value, indices: FakeMatrix(len(indices), 3, "basis"),
+    lambda value: setattr(value, "immutable", True),
+)
+assert expanded.metadata.basis_row_count == 3
+assert (expanded.matrix.rows, expanded.matrix.columns) == (3, 3)
+
 # A column basis transposes once, echelonizes once, and selects rows from that
 # result without asking for a host row or scalar entry.
-calls = {"transpose": 0, "echelon": 0, "rank": 0, "select": 0}
+calls = {"transpose": 0, "echelon": 0, "count": 0, "select": 0}
 source = FakeMatrix(5, 7, "source")
 
 
@@ -106,9 +132,9 @@ def column_echelon(value):
     return FakeMatrix(7, 5, "echelon")
 
 
-def column_rank(value):
+def column_basis_row_count(value):
     assert value.label == "echelon"
-    calls["rank"] += 1
+    calls["count"] += 1
     return 4
 
 
@@ -123,11 +149,11 @@ column = subspaces.canonical_column_basis(
     dimensions,
     transpose,
     column_echelon,
-    column_rank,
+    column_basis_row_count,
     column_select,
     lambda value: setattr(value, "immutable", True),
 )
-assert calls == {"transpose": 1, "echelon": 1, "rank": 1, "select": 1}
+assert calls == {"transpose": 1, "echelon": 1, "count": 1, "select": 1}
 assert column.matrix.immutable
 assert column.metadata.orientation == "column"
 assert column.metadata.ambient_dimension == 5
@@ -190,7 +216,7 @@ def raises(exception, fragment, function):
 
 raises(
     ValueError,
-    "exceeds maximum rank",
+    "exceeds echelon row count",
     lambda: subspaces.canonical_basis_from_echelon(
         FakeMatrix(2, 3, "echelon"),
         2,
@@ -202,6 +228,60 @@ raises(
         lambda _value: None,
     ),
 )
+
+
+class ExactIndex:
+    def __init__(self, value):
+        self.value = value
+
+    def __index__(self):
+        return self.value
+
+
+indexed = subspaces.canonical_basis_from_echelon(
+    FakeMatrix(ExactIndex(3), ExactIndex(3), "indexed-echelon"),
+    ExactIndex(2),
+    ExactIndex(3),
+    "row",
+    dimensions,
+    lambda _value: ExactIndex(3),
+    lambda _value, indices: FakeMatrix(len(indices), ExactIndex(3), "basis"),
+    lambda value: setattr(value, "immutable", True),
+)
+assert indexed.metadata.basis_row_count == 3
+assert indexed.metadata.basis_columns == 3
+
+# Dimensions and row counts are structural integers, never coercions. In
+# particular bool is rejected even though CPython makes it an int subclass.
+for invalid in [True, 2.0, "2"]:
+    raises(
+        TypeError,
+        "source row count must be an integer",
+        lambda invalid=invalid: subspaces.canonical_basis_from_echelon(
+            FakeMatrix(2, 3, "echelon"),
+            invalid,
+            3,
+            "row",
+            dimensions,
+            lambda _value: 1,
+            lambda _value, indices: FakeMatrix(len(indices), 3, "basis"),
+            lambda _value: None,
+        ),
+    )
+    raises(
+        TypeError,
+        "basis row count must be an integer",
+        lambda invalid=invalid: subspaces.canonical_basis_from_echelon(
+            FakeMatrix(2, 3, "echelon"),
+            2,
+            3,
+            "row",
+            dimensions,
+            lambda _value: invalid,
+            lambda _value, indices: FakeMatrix(len(indices), 3, "basis"),
+            lambda _value: None,
+        ),
+    )
 raises(
     ValueError,
     "row selector returned shape",
@@ -236,6 +316,7 @@ print("linear-matrix-subspaces-python-ok")
 const sagejsWitness = String.raw`
 from sagejs.linear_algebra.matrix_subspaces import (
     CanonicalBasis,
+    CanonicalBasisMetadata,
     GeneratorSpan,
     canonical_column_basis,
     canonical_row_basis,
@@ -249,6 +330,19 @@ def dimensions(value):
 
 def finish(value):
     value.set_immutable()
+
+
+def leading_nonzero_row_count(echelon):
+    count = 0
+    found_zero = False
+    for row in echelon.rows():
+        nonzero = any(entry != 0 for entry in row)
+        if nonzero:
+            assert not found_zero, "canonical generator rows must be leading"
+            count += 1
+        else:
+            found_zero = True
+    return count
 
 
 def row_basis(value):
@@ -299,8 +393,50 @@ for base, expected_row, expected_column in [
     zero_column = column_basis(zero)
     assert (zero_row.matrix.nrows(), zero_row.matrix.ncols()) == (0, 4)
     assert (zero_column.matrix.nrows(), zero_column.matrix.ncols()) == (0, 3)
-    assert zero_row.metadata.rank == 0 and zero_column.metadata.rank == 0
+    assert zero_row.metadata.basis_row_count == 0
+    assert zero_column.metadata.basis_row_count == 0
     assert zero_row.matrix.is_immutable() and zero_column.matrix.is_immutable()
+
+# Composite residue rings use a different canonical-echelon contract. Howell
+# can add generator rows and its algebraic rank does not count them. These two
+# fixtures are also checked below against the modules generated in Sage 10.9.
+for source, expected_row, expected_column in [
+    (
+        matrix(Zmod(6), 2, 3, [2, 1, 0, 0, 3, 1]),
+        matrix(Zmod(6), [[2, 1, 0], [0, 3, 0], [0, 0, 1]]),
+        matrix(Zmod(6), [[1, 0], [0, 1]]),
+    ),
+    (
+        matrix(Zmod(6), 3, 2, [2, 1, 0, 3, 0, 0]),
+        matrix(Zmod(6), [[2, 1], [0, 3]]),
+        matrix(Zmod(6), [[1, 3, 0]]),
+    ),
+]:
+    row = canonical_row_basis(
+        source,
+        dimensions,
+        lambda value: value.echelon_form(),
+        leading_nonzero_row_count,
+        lambda value, indices: value.matrix_from_rows(indices),
+        finish,
+    )
+    column = canonical_column_basis(
+        source,
+        dimensions,
+        lambda value: value.transpose(),
+        lambda value: value.echelon_form(),
+        leading_nonzero_row_count,
+        lambda value, indices: value.matrix_from_rows(indices),
+        finish,
+    )
+    assert row.matrix == expected_row, (source, row.matrix, expected_row)
+    assert column.matrix == expected_column, (source, column.matrix, expected_column)
+    assert row.matrix == source.row_space().basis_matrix()
+    assert column.matrix == source.column_space().basis_matrix()
+    assert row.metadata.basis_row_count == expected_row.nrows()
+    assert column.metadata.basis_row_count == expected_column.nrows()
+    assert row.metadata.basis_row_count != row.matrix.rank()
+    assert row.matrix.is_immutable() and column.matrix.is_immutable()
 
 # Degenerate dimensions survive the selector; a flat host list would lose
 # exactly this information.
@@ -344,7 +480,46 @@ assert different.base_ring == QQ
 assert different.ambient_dimension == 2
 assert different.already_echelonized is False
 
+for invalid in [True, 2.0, "2"]:
+    try:
+        CanonicalBasisMetadata("row", invalid, 0, 0, 0)
+    except TypeError:
+        pass
+    else:
+        raise AssertionError("structural dimensions must reject coercion")
+
 print("linear-matrix-subspaces-sagejs-ok")
+`;
+
+const sageMathWitness = String.raw`
+R = Zmod(6)
+
+# Sage 10.9 does not expose Howell form here, so certify equality of generated
+# row modules with explicit changes of generators in both directions.
+wide = matrix(R, 2, 3, [2, 1, 0, 0, 3, 1])
+wide_howell = matrix(R, [[2, 1, 0], [0, 3, 0], [0, 0, 1]])
+assert matrix(R, [[1, 0], [3, 0], [3, 1]]) * wide == wide_howell
+assert matrix(R, [[1, 0, 0], [0, 1, 1]]) * wide_howell == wide
+
+wide_transpose = wide.transpose()
+wide_column_howell = matrix(R, [[1, 0], [0, 1]])
+assert matrix(R, [[0, 1, 3], [0, 0, 1]]) * wide_transpose == wide_column_howell
+assert matrix(R, [[2, 0], [1, 3], [0, 1]]) * wide_column_howell == wide_transpose
+
+tall = matrix(R, 3, 2, [2, 1, 0, 3, 0, 0])
+tall_howell = matrix(R, [[2, 1], [0, 3]])
+assert matrix(R, [[1, 0, 0], [0, 1, 0]]) * tall == tall_howell
+assert matrix(R, [[1, 0], [0, 1], [0, 0]]) * tall_howell == tall
+
+tall_transpose = tall.transpose()
+tall_column_howell = matrix(R, [[1, 3, 0]])
+assert matrix(R, [[0, 1]]) * tall_transpose == tall_column_howell
+assert matrix(R, [[2], [1]]) * tall_column_howell == tall_transpose
+
+assert len(wide.row_space().gens()) == 2
+assert len(tall.row_space().gens()) == 2
+
+print("linear-matrix-subspaces-sagemath-ok")
 `;
 
 function runPython(source) {
@@ -391,22 +566,49 @@ function runSageJs(source) {
   }
 }
 
+const sageMath = process.env.SAGE || "/home/user/bin/sagelite";
+
+function runSageMath(source) {
+  const result = spawnSync(sageMath, ["-c", source], {
+    cwd: root,
+    encoding: "utf8",
+    timeout: 60_000,
+    env: { ...process.env, PYTHONWARNINGS: "ignore" },
+  });
+  if (result.error) throw result.error;
+  assert.equal(result.status, 0, result.stderr || result.stdout);
+  return result.stdout.trim();
+}
+
 test("canonical subspace planning is deterministic in CPython", () => {
   assert.equal(runPython(pythonWitness), "linear-matrix-subspaces-python-ok");
 });
 
-test("canonical bases match Sage over ZZ, QQ, GF(7), and GF(2)", () => {
+test("canonical generators cover fields, ZZ, and composite Zmod", () => {
   assert.equal(
     runSageJs(sagejsWitness),
     "linear-matrix-subspaces-sagejs-ok",
   );
 });
 
+test(
+  "Howell fixtures generate the same composite modules in SageMath",
+  { skip: !existsSync(sageMath) },
+  () => {
+    assert.equal(
+      runSageMath(sageMathWitness),
+      "linear-matrix-subspaces-sagemath-ok",
+    );
+  },
+);
+
 test("the contract cannot decode matrices or depend on a representation", () => {
   const source = readFileSync(modulePath, "utf8");
   assert.doesNotMatch(source, /sagejs\.runtime|sagejs\.native|sagejs\.ffi/);
   assert.doesNotMatch(source, /\.rows\(|\.list\(|IntegerBuffer|UInt64Buffer|N-API/);
   assert.match(source, /select_rows\(echelon, selected_rows\)/);
+  assert.match(source, /basis_row_count\(echelon\)/);
+  assert.match(source, /Howell adapter must instead report/);
   assert.match(source, /already_echelonized = True/);
   assert.match(source, /already_echelonized = False/);
 });
