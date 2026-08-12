@@ -10,6 +10,7 @@
   "base_commit": "dcc1302a3f305b00a0e09ba25edee45ac2ee2bf1",
   "claims": [
     "tools/repl.ts",
+    ".agents/lanes.json",
     "tools/kernel-evaluator.ts",
     "tools/runtime-bootstrap.ts",
     "tools/python/lowerer.ts",
@@ -141,7 +142,7 @@
     }
   ],
   "handoff": {
-    "summary": "Piped CLI fragments and kernel evaluations now expose one coherent live __main__ namespace. Lexical loads, __main__ attributes, globals(), locals(), vars(), dir(), deletion, and global restoration agree across cells; magic globals initialize once; and intrinsic aliases obey all supported lexical bindings, including parameters, locals, closures, comprehensions, with/exception aliases, pattern captures, and class scopes. Reusable-main intrinsic fast paths verify the live alias against the canonical module, so indirect __main__ and globals() writes cannot leave stale compiler assumptions. Namespace targets and descriptor maps have null prototypes, internal flags use Symbols, and globals() dictionaries are cached out of band; valid Python names such as `__proto__`, `arguments`, and the former marker spellings remain ordinary globals. The compiler-runtime lane now owns `src/baselib/containers.py` because `rho_live_scope_dict` is runtime namespace infrastructure despite its historical container-module location.",
+    "summary": "Piped CLI fragments and kernel evaluations now expose one coherent live __main__ namespace. Lexical loads, __main__ attributes, globals(), locals(), vars(), dir(), deletion, and global restoration agree across cells; magic globals initialize once; and intrinsic aliases obey all supported lexical bindings, including parameters, locals, closures, comprehensions, with/exception aliases, pattern captures, and class scopes. Reusable-main intrinsic fast paths verify the live alias against the canonical module, so indirect __main__ and globals() writes cannot leave stale compiler assumptions. Namespace targets and descriptor maps have null prototypes, internal flags use Symbols, and globals() dictionaries are cached out of band; valid Python names such as `__proto__`, `arguments`, and the former marker spellings remain ordinary globals. The compiler-runtime lane now owns `src/baselib/containers.py` because `rho_live_scope_dict` is runtime namespace infrastructure despite its historical container-module location; it may claim `.agents/lanes.json` only so an approved lane classification change can validate itself.",
     "risks": [
       "The lane remains based on dcc1302 while origin/main has advanced substantially; test:changed therefore expanded to 583 unrelated files and was stopped after its build phase at the integration coordinator's direction.",
       "The live namespace keeps deleted global accessors internally so functions compiled before deletion can restore the binding; the reusable __main__ proxy deliberately filters those undefined accessors from Python introspection.",
