@@ -1,0 +1,67 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "public-matrix-vector",
+  "title": "Public one-boundary matrix-vector products",
+  "lane": "integration",
+  "status": "active",
+  "owner": "user",
+  "objective": "Implement public dense Matrix times Vector and Vector times Matrix through the integrated storage-neutral one-operation contract, completing generated FLINT-resource ZZ and QQ products with Sage coercion and dimension semantics and explicit capability gates for remaining packed finite-field backends",
+  "base_commit": "91522d6bba7eccfb75010c4d4f15868b258bfde0",
+  "claims": [
+    "src/baselib/matrix.py",
+    "src/lib/sagejs/linear_algebra/matrix_vector_public.py",
+    "src/lib/sagejs/kernels/matrix/dense_prime_field.py",
+    "src/lib/sagejs/kernels/matrix/dense_binary_m4ri.py",
+    "ffi/flint.ffi.py",
+    "ffi/flint.ffi.json",
+    "packages/flint/generated/ffi_host.py",
+    "packages/flint/include/sagejs/fmpz_matrix_ffi.h",
+    "packages/flint/include/sagejs/fmpq_matrix_ffi.h",
+    "src/baselib/sagejs/ffi/flint.py",
+    "src/lib/sagejs/ffi/flint.py",
+    "test/public-matrix-vector.cjs",
+    "bench/public-matrix-vector.cjs",
+    "architecture/native-boundaries.json",
+    "architecture/package-graph.json",
+    "pyrightconfig.json"
+  ],
+  "dependencies": [
+    "matrix-vector-contract"
+  ],
+  "references": [
+    "SageMath 10.9 dense matrix-vector semantics"
+  ],
+  "architecture": {
+    "strategy": "external-library",
+    "fallback": "tested-capability",
+    "oracles": [
+      "SageMath 10.9 behavior",
+      "storage-neutral scalar matrix-vector oracle"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm architecture:check",
+    "pnpm test:portable",
+    "pnpm test:baselib:strict"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "Public Matrix*Vector and Vector*Matrix now use a lazy storage-neutral dispatcher. ZZ and QQ cross one generated FLINT-resource boundary, GF(2) borrows M4RI in compiled typed Python, and other packed prime fields use compiler-owned residue buffers. Sage coercion, zero shapes, skew exact values, fresh mutable results, and dimension errors are covered by focused regression tests.",
+    "risks": [
+      "Extension and approximate fields deliberately retain the former temporary row/column matrix fallback until they acquire declared vector ABIs.",
+      "The generated FFI wrappers increase the native-integration package ratchet from 605000 to 612000 bytes."
+    ],
+    "next_steps": [
+      "Run portable and non-x64 validation after integration.",
+      "Measure whether lazy Python orchestration overhead merits a fused public dispatch helper for very small exact products."
+    ]
+  }
+}

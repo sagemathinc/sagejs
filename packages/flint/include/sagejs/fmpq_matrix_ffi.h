@@ -1224,4 +1224,61 @@ static inline uint64_t sagejs_flint_byte_region_get(
     return index < (uint64_t) region->length ? (uint64_t) region->data[index] : 0;
 }
 
+/*
+ * Direct rational matrix-vector products over canonical packed rationals.
+ * Private one-row/one-column matrices provide vector storage to FLINT; only
+ * the entry stream crosses the generated host boundary.
+ */
+static inline int sagejs_fmpq_matrix_mul_vector(
+    sagejs_flint_byte_region_t result,
+    const sagejs_fmpq_matrix_t matrix,
+    const sagejs_flint_byte_region_t vector)
+{
+    const uint64_t inner = (uint64_t) fmpq_mat_ncols(matrix->value);
+    const uint64_t output_length = (uint64_t) fmpq_mat_nrows(matrix->value);
+    sagejs_fmpq_matrix_t input;
+    sagejs_fmpq_matrix_t output;
+    result->data = NULL;
+    result->length = 0;
+    if (!sagejs_fmpq_matrix_deserialize(input, vector, inner, 1))
+        return 0;
+    if (!sagejs_fmpq_matrix_init(output, output_length, 1))
+    {
+        sagejs_fmpq_matrix_clear(input);
+        return 0;
+    }
+    fmpq_mat_mul(output->value, matrix->value, input->value);
+    const int ok = sagejs_fmpq_matrix_serialize_sequence(
+        result, output, 0, 1, output_length);
+    sagejs_fmpq_matrix_clear(output);
+    sagejs_fmpq_matrix_clear(input);
+    return ok;
+}
+
+static inline int sagejs_fmpq_vector_mul_matrix(
+    sagejs_flint_byte_region_t result,
+    const sagejs_flint_byte_region_t vector,
+    const sagejs_fmpq_matrix_t matrix)
+{
+    const uint64_t inner = (uint64_t) fmpq_mat_nrows(matrix->value);
+    const uint64_t output_length = (uint64_t) fmpq_mat_ncols(matrix->value);
+    sagejs_fmpq_matrix_t input;
+    sagejs_fmpq_matrix_t output;
+    result->data = NULL;
+    result->length = 0;
+    if (!sagejs_fmpq_matrix_deserialize(input, vector, 1, inner))
+        return 0;
+    if (!sagejs_fmpq_matrix_init(output, 1, output_length))
+    {
+        sagejs_fmpq_matrix_clear(input);
+        return 0;
+    }
+    fmpq_mat_mul(output->value, input->value, matrix->value);
+    const int ok = sagejs_fmpq_matrix_serialize_sequence(
+        result, output, 0, 1, output_length);
+    sagejs_fmpq_matrix_clear(output);
+    sagejs_fmpq_matrix_clear(input);
+    return ok;
+}
+
 #endif

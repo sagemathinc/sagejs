@@ -1211,4 +1211,67 @@ static inline int sagejs_fmpz_matrix_deserialize(
         sagejs_fmpz_matrix_read_u64(data, 16));
 }
 
+/*
+ * Direct exact matrix-vector products over the stable entry-stream boundary.
+ *
+ * The one-row/one-column matrices below are private FLINT vector storage.
+ * They never escape the adapter and, unlike
+ * the former public implementation, no general matrix product or public
+ * one-row/one-column Matrix is constructed.  Variable-size output is encoded
+ * only after FLINT has computed it, so there is no limb-capacity retry.
+ */
+static inline int sagejs_fmpz_matrix_mul_vector(
+    sagejs_flint_byte_region_t result,
+    const sagejs_fmpz_matrix_t matrix,
+    const sagejs_flint_byte_region_t vector)
+{
+    const uint64_t inner = (uint64_t) fmpz_mat_ncols(matrix->value);
+    const uint64_t output_length = (uint64_t) fmpz_mat_nrows(matrix->value);
+    sagejs_fmpz_matrix_t input;
+    sagejs_fmpz_matrix_t output;
+    result->data = NULL;
+    result->length = 0;
+    if (!sagejs_fmpz_matrix_deserialize_entry_stream(
+            input, vector->data, vector->length, inner, 1))
+        return 0;
+    if (!sagejs_fmpz_matrix_init(output, output_length, 1))
+    {
+        sagejs_fmpz_matrix_clear(input);
+        return 0;
+    }
+    fmpz_mat_mul(output->value, matrix->value, input->value);
+    const int ok = sagejs_fmpz_matrix_serialize_sequence(
+        result, output, 0, 1, output_length);
+    sagejs_fmpz_matrix_clear(output);
+    sagejs_fmpz_matrix_clear(input);
+    return ok;
+}
+
+static inline int sagejs_fmpz_vector_mul_matrix(
+    sagejs_flint_byte_region_t result,
+    const sagejs_flint_byte_region_t vector,
+    const sagejs_fmpz_matrix_t matrix)
+{
+    const uint64_t inner = (uint64_t) fmpz_mat_nrows(matrix->value);
+    const uint64_t output_length = (uint64_t) fmpz_mat_ncols(matrix->value);
+    sagejs_fmpz_matrix_t input;
+    sagejs_fmpz_matrix_t output;
+    result->data = NULL;
+    result->length = 0;
+    if (!sagejs_fmpz_matrix_deserialize_entry_stream(
+            input, vector->data, vector->length, 1, inner))
+        return 0;
+    if (!sagejs_fmpz_matrix_init(output, 1, output_length))
+    {
+        sagejs_fmpz_matrix_clear(input);
+        return 0;
+    }
+    fmpz_mat_mul(output->value, input->value, matrix->value);
+    const int ok = sagejs_fmpz_matrix_serialize_sequence(
+        result, output, 0, 1, output_length);
+    sagejs_fmpz_matrix_clear(output);
+    sagejs_fmpz_matrix_clear(input);
+    return ok;
+}
+
 #endif

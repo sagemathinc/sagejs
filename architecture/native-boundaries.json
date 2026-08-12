@@ -14,7 +14,7 @@
   },
   "counts": {
     "classified-native-file": 58,
-    "declared-ffi": 263,
+    "declared-ffi": 267,
     "declared-ffi-resource": 16,
     "napi-export": 292,
     "runtime-intrinsic": 136,
@@ -728,6 +728,17 @@
       "disposition": "declared-safe-ffi"
     },
     {
+      "id": "ffi:flint:fmpq_matrix_mul_vector",
+      "kind": "declared-ffi",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "fmpq_matrix_mul_vector",
+      "dynamic_package": "@sagemath/sagejs-flint",
+      "dynamic_export": "ffiFmpqMatrixMulVector",
+      "symbol": "sagejs_fmpq_matrix_mul_vector",
+      "disposition": "declared-safe-ffi"
+    },
+    {
       "id": "ffi:flint:fmpq_matrix_ncols",
       "kind": "declared-ffi",
       "path": "ffi/flint.ffi.json",
@@ -1432,6 +1443,17 @@
       "disposition": "declared-safe-ffi"
     },
     {
+      "id": "ffi:flint:fmpq_vector_mul_matrix",
+      "kind": "declared-ffi",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "fmpq_vector_mul_matrix",
+      "dynamic_package": "@sagemath/sagejs-flint",
+      "dynamic_export": "ffiFmpqVectorMulMatrix",
+      "symbol": "sagejs_fmpq_vector_mul_matrix",
+      "disposition": "declared-safe-ffi"
+    },
+    {
       "id": "ffi:flint:fmpz_gcd",
       "kind": "declared-ffi",
       "path": "ffi/flint.ffi.json",
@@ -1737,6 +1759,17 @@
       "dynamic_package": "@sagemath/sagejs-flint",
       "dynamic_export": "ffiFmpzMatrixMul",
       "symbol": "sagejs_fmpz_matrix_mul",
+      "disposition": "declared-safe-ffi"
+    },
+    {
+      "id": "ffi:flint:fmpz_matrix_mul_vector",
+      "kind": "declared-ffi",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "fmpz_matrix_mul_vector",
+      "dynamic_package": "@sagemath/sagejs-flint",
+      "dynamic_export": "ffiFmpzMatrixMulVector",
+      "symbol": "sagejs_fmpz_matrix_mul_vector",
       "disposition": "declared-safe-ffi"
     },
     {
@@ -2441,6 +2474,17 @@
       "dynamic_package": "@sagemath/sagejs-flint",
       "dynamic_export": "ffiFmpzPolynomialXgcdResultRightCoefficient",
       "symbol": "sagejs_fmpz_polynomial_xgcd_result_right_coefficient",
+      "disposition": "declared-safe-ffi"
+    },
+    {
+      "id": "ffi:flint:fmpz_vector_mul_matrix",
+      "kind": "declared-ffi",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "fmpz_vector_mul_matrix",
+      "dynamic_package": "@sagemath/sagejs-flint",
+      "dynamic_export": "ffiFmpzVectorMulMatrix",
+      "symbol": "sagejs_fmpz_vector_mul_matrix",
       "disposition": "declared-safe-ffi"
     },
     {

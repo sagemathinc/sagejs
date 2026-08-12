@@ -26,6 +26,7 @@ _m4ri_ffi_module_cache = runtime.undefined
 _m4ri_available_cache = runtime.undefined
 _matrix_selection_module_cache = runtime.undefined
 _matrix_selection_plans_module_cache = runtime.undefined
+_matrix_vector_public_module_cache = runtime.undefined
 
 
 class _FmpzMatrixResourceStorage:
@@ -198,6 +199,17 @@ def _matrix_selection_plans_module() -> Any:
             fromlist=["matrix_selection"],
         )
     return _matrix_selection_plans_module_cache
+
+
+def _matrix_vector_public_module() -> Any:
+    """Load representation-aware matrix-vector execution lazily."""
+    global _matrix_vector_public_module_cache
+    if _matrix_vector_public_module_cache is runtime.undefined:
+        _matrix_vector_public_module_cache = __import__(
+            "sagejs.linear_algebra.matrix_vector_public",
+            fromlist=["matrix_vector_public"],
+        )
+    return _matrix_vector_public_module_cache
 
 
 def _native_kernel_available(kernel_function: Any) -> bool:
@@ -1651,10 +1663,7 @@ class Vector(sage.Element):
                 total += left._entries[index] * right._entries[index]
             return total
         if isinstance(other, Matrix):
-            if len(self) != other.nrows():
-                raise ValueError("vector and matrix dimensions are incompatible")
-            result = self.row() * other
-            return result.row(0)
+            return other._vector_product(self, "left")
         if _is_extension_field_base(self.base_ring()):
             scalar = self.base_ring()(other)
             return VectorSpace(self.base_ring(), len(self))(
@@ -3666,15 +3675,23 @@ class Matrix(sage.Element):
             ),
         )
 
+    def _vector_product(self, vector_value: Vector, side: str) -> Vector:
+        """Return one oriented dense product through a bulk storage boundary."""
+        base = _common_base(self.base_ring(), vector_value.base_ring())
+        return _matrix_vector_public_module().matrix_vector_product(
+            self,
+            vector_value,
+            side,
+            base,
+            VectorSpace(
+                base,
+                self.nrows() if side == "right" else self.ncols(),
+            ),
+        )
+
     def __mul__(self, other: object) -> Any:
         if isinstance(other, Vector):
-            if self.ncols() != len(other):
-                raise ValueError("matrix and vector dimensions are incompatible")
-            base = _common_base(self.base_ring(), other.base_ring())
-            left = self.change_ring(base)
-            right = other.change_ring(base).column()
-            product = left * right
-            return product.column(0)
+            return self._vector_product(other, "right")
         if isinstance(other, Matrix):
             if self.ncols() != other.nrows():
                 raise ValueError(
