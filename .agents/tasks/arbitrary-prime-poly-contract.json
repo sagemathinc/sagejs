@@ -4,7 +4,7 @@
   "id": "arbitrary-prime-poly-contract",
   "title": "Arbitrary-prime polynomial resource contract",
   "lane": "arithmetic-algebra",
-  "status": "active",
+  "status": "review",
   "owner": "user",
   "objective": "Specify and test Sage-compatible GF(p)[x] semantics for p at least 2^64 and define a representation-neutral generated-resource protocol owning fmpz_mod_ctx_t plus fmpz_mod_poly_t without caller capacity prediction or cross-resource lifetime coupling",
   "base_commit": "f29c602daa5f85511caa7dfa8e24f39c04df789f",
@@ -38,7 +38,8 @@
     "node bench/arbitrary-prime-polynomial-contract.cjs --check",
     "pnpm exec pyright --pythonversion 3.11 src/lib/sagejs/polynomial_algorithms/arbitrary_prime_contract.py",
     "pnpm test:baselib:strict",
-    "pnpm architecture:check"
+    "pnpm architecture:check",
+    "pnpm test:native"
   ],
   "runs": [
     {
@@ -50,11 +51,91 @@
       "commit": "f888985ab5e27ff4f73ddf1b8bf4d7f8fec9b317",
       "workspace_fingerprint": "a09c3eb9a68c6927d63b1cfece2050c7da7a018546938045d60e39b35c6368e2",
       "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/arbitrary-prime-polynomial-contract.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.192,
+      "started_at": "2026-08-12T11:23:14.945Z",
+      "commit": "fd939215a46cc0f285c46357222ba0b7de702455",
+      "workspace_fingerprint": "74cb9aba33ef066d926fa28b2fad2fd7f15112151bd3cad8d4a1292de8a12b03",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/arbitrary-prime-polynomial-contract.cjs --check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.77,
+      "started_at": "2026-08-12T11:23:15.853Z",
+      "commit": "fd939215a46cc0f285c46357222ba0b7de702455",
+      "workspace_fingerprint": "74cb9aba33ef066d926fa28b2fad2fd7f15112151bd3cad8d4a1292de8a12b03",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm exec pyright --pythonversion 3.11 src/lib/sagejs/polynomial_algorithms/arbitrary_prime_contract.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.298,
+      "started_at": "2026-08-12T11:23:17.237Z",
+      "commit": "fd939215a46cc0f285c46357222ba0b7de702455",
+      "workspace_fingerprint": "74cb9aba33ef066d926fa28b2fad2fd7f15112151bd3cad8d4a1292de8a12b03",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 13.759,
+      "started_at": "2026-08-12T11:23:19.188Z",
+      "commit": "fd939215a46cc0f285c46357222ba0b7de702455",
+      "workspace_fingerprint": "74cb9aba33ef066d926fa28b2fad2fd7f15112151bd3cad8d4a1292de8a12b03",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 13.446,
+      "started_at": "2026-08-12T11:23:33.575Z",
+      "commit": "fd939215a46cc0f285c46357222ba0b7de702455",
+      "workspace_fingerprint": "74cb9aba33ef066d926fa28b2fad2fd7f15112151bd3cad8d4a1292de8a12b03",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:native",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 162.633,
+      "started_at": "2026-08-12T11:24:55.081Z",
+      "commit": "fd939215a46cc0f285c46357222ba0b7de702455",
+      "workspace_fingerprint": "74cb9aba33ef066d926fa28b2fad2fd7f15112151bd3cad8d4a1292de8a12b03",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:native",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 609.395,
+      "started_at": "2026-08-12T11:28:02.814Z",
+      "commit": "fd939215a46cc0f285c46357222ba0b7de702455",
+      "workspace_fingerprint": "74cb9aba33ef066d926fa28b2fad2fd7f15112151bd3cad8d4a1292de8a12b03",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {
-    "summary": "",
-    "risks": [],
-    "next_steps": []
+    "summary": "Defined the arbitrary-prime GF(p)[x] boundary as one self-contained generated owner of both fmpz_mod_ctx_t and fmpz_mod_poly_t. Operands are borrowed only for a synchronous call; each polynomial result is a fresh callee-owned resource with its own equivalent context; division, xgcd, and factor aggregates extract independent child owners; text and serialization use callee-owned variable-size regions; callers never predict capacities. An ordinary CPython fallback proves construction normalization, arithmetic, divrem, monic gcd/xgcd including (0,0), evaluation, and formatting at the Mersenne primes 2^89-1, 2^127-1, and 2^521-1. SageMath 10.9.post1 observations pin explicit cross-parent construction versus binary mismatch, zero factor/roots behavior, factor unit and root multiplicity conventions, and serialization parent identity. The benchmark records the current Sage.js unsigned-word RangeError plus cold and warm Sage reference measurements.",
+    "risks": [
+      "The public finite-field parent currently exists for arbitrary primes, but polynomial.py classifies moduli above 2^64 as legacy and reaches nmod_poly, which rejects them. This lane deliberately does not wire or alter that shared public path.",
+      "The fallback factor and roots semantics are pinned, but factorization itself is delegated to future generated fmpz_mod_poly_factor declarations; recreating it in Python would defeat the architecture and performance objective.",
+      "The generated FFI schema must ensure extracted aggregate children clone or take ownership of an equivalent context. A child that borrows an aggregate or parent context would violate the no cross-resource lifetime dependency contract.",
+      "Windows uses the same-source fallback until its FLINT build exposes the generated resource capability; WebAssembly still needs the same declaration lowered to owned linear-memory state."
+    ],
+    "next_steps": [
+      "Independently review the Sage 10.9 observations and the resource lifetime contract before integration.",
+      "Add a declaration-schema FmpzModPolynomial resource with construction, copy, coefficient access, arithmetic, divrem, gcd/xgcd, evaluation, formatting, factor/roots, and stable serialization. Keep context plus polynomial as one ownership unit and make all variable-size results callee owned.",
+      "Wire polynomial.py only after lifecycle fuzzing proves that closing operands, parent objects, and aggregate result resources cannot invalidate escaped polynomial results.",
+      "Add the module to pyrightconfig.json and the focused test to test/node-test-manifest.cjs in the integration lane."
+    ]
   }
 }
