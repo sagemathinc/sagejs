@@ -361,6 +361,7 @@ function nativeBuildIdentity(workspace, overrides = {}) {
     "SAGEJS_GMP_TARBALL",
     "SAGEJS_GIVARO_TARBALL",
     "SAGEJS_IGRAPH_TARBALL",
+    "SAGEJS_M4RI_TARBALL",
     "SAGEJS_MPC_TARBALL",
     "SAGEJS_MPFR_TARBALL",
     "SAGEJS_OPENBLAS_TARBALL",
