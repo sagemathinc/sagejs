@@ -94,6 +94,47 @@ assert any(value.denominator() > 1 for value in reciprocal.list())
 assert random_matrix(QQ, 3, density=0.2, distribution="uniform").base_ring() is QQ
 assert random_matrix(QQ, 3, density=0.2, distribution="anything").base_ring() is QQ
 
+# Sage's public constructor distinguishes an omitted/None density from an
+# explicit numeric density. The former passes nonzero=False to full-density
+# rational generation; the latter passes nonzero=True. These seeded witnesses
+# pin both bounded and reciprocal-uniform behavior, including the next word.
+set_random_seed(0)
+bounded_allow_zero = random_matrix(QQ, 3, num_bound=2, den_bound=2)
+assert bounded_allow_zero.list() == [
+    QQ(1), QQ(0), QQ(1) / 2,
+    QQ(0), QQ(0), QQ(-1),
+    QQ(0), QQ(-1) / 2, QQ(1),
+]
+assert random() == 0.2723426336888224
+set_random_seed(0)
+bounded_nonzero = random_matrix(QQ, 3, density=1, num_bound=2, den_bound=2)
+assert all(bounded_nonzero.list())
+assert bounded_nonzero.list() == [
+    QQ(1), QQ(1) / 2, QQ(-1),
+    QQ(-1) / 2, QQ(1), QQ(-1),
+    QQ(2), QQ(2), QQ(-1),
+]
+assert random() == 0.5716368802823126
+set_random_seed(0)
+reciprocal_allow_zero = random_matrix(QQ, 3, distribution="1/n")
+assert reciprocal_allow_zero.list() == [
+    QQ(-1) / 2, QQ(1) / 9, QQ(5),
+    QQ(-1) / 3, QQ(0), QQ(0),
+    QQ(-3) / 2, QQ(-1), QQ(-1) / 2,
+]
+assert random() == 0.2104770359583199
+
+# Explicit density=None is identical to omission across every optimized exact
+# domain, including random-stream publication.
+for base in [ZZ, QQ, GF(2), GF(7)]:
+    set_random_seed(31)
+    omitted = random_matrix(base, 3)
+    omitted_next = random()
+    set_random_seed(31)
+    explicit_none = random_matrix(base, 3, density=None)
+    assert explicit_none == omitted
+    assert random() == omitted_next
+
 largest_word_prime = GF(4294967291)
 word_prime = random_matrix(largest_word_prime, 4, 5, density=0.6)
 assert word_prime.base_ring() is largest_word_prime
@@ -166,6 +207,13 @@ cases = [
     capture(QQ, 7, density=0.5, distribution="1/n"),
     capture(GF(4294967291), 7, density=0.5),
     capture(GF(2), 19, density=float("nan")),
+    capture(QQ, 0, num_bound=2, den_bound=2),
+    capture(QQ, 0, density=1, num_bound=2, den_bound=2),
+    capture(QQ, 0, distribution="1/n"),
+    capture(ZZ, 31, density=None),
+    capture(QQ, 31, density=None),
+    capture(GF(2), 31, density=None),
+    capture(GF(7), 31, density=None),
 ]
 print(repr(cases))
 `;
@@ -174,6 +222,39 @@ assert.equal(
   runSageJs(parityWitness, { SAGEJS_NATIVE_DISABLE: "1" }),
   "native and disabled-native sparse results and next RNG state differ",
 );
+
+// Run the same semantic distinction against Sage when the configured oracle
+// is present. Exact entries intentionally differ because Sage.js has its own
+// reproducible stream; zero admissibility and None/omission behavior do not.
+const sage = process.env.SAGE || "/home/user/bin/sagelite";
+if (existsSync(sage)) {
+  const sageOracle = String.raw`
+set_random_seed(0)
+assert any(value == 0 for value in random_matrix(
+    QQ, 3, num_bound=2, den_bound=2
+).list())
+set_random_seed(0)
+assert all(random_matrix(
+    QQ, 3, density=1, num_bound=2, den_bound=2
+).list())
+set_random_seed(0)
+assert any(value == 0 for value in random_matrix(
+    QQ, 3, distribution="1/n"
+).list())
+for base in [ZZ, QQ, GF(2), GF(7)]:
+    set_random_seed(31)
+    omitted = random_matrix(base, 3)
+    set_random_seed(31)
+    assert random_matrix(base, 3, density=None) == omitted
+`;
+  const oracle = spawnSync(sage, ["-c", sageOracle], {
+    cwd: root,
+    encoding: "utf8",
+    timeout: 180_000,
+  });
+  if (oracle.error) throw oracle.error;
+  assert.equal(oracle.status, 0, oracle.stderr || oracle.stdout);
+}
 
 const trace = runSageJs(
   String.raw`

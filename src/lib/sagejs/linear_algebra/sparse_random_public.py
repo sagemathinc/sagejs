@@ -147,6 +147,7 @@ def sparse_random_fmpq(
     target: FmpqMatrix,
     draws_per_row: uint64,
     full_nonzero: uint64,
+    require_nonzero: uint64,
     numerator_bound: uint64,
     denominator_bound: uint64,
     initial_state: uint64,
@@ -155,7 +156,7 @@ def sparse_random_fmpq(
     multiplier: uint64,
     increment: uint64,
 ) -> bool:
-    """Fill sparse `QQ` storage with bounded nonzero canonical rationals."""
+    """Fill `QQ` storage with bounded canonical rational entries."""
     rows: uint64 = fmpq_matrix_nrows(target)
     columns: uint64 = fmpq_matrix_ncols(target)
     if len(final_state) != 1 or word_base == 0 or initial_state >= word_base:
@@ -213,7 +214,8 @@ def sparse_random_fmpq(
             for column in range(draws_per_row):
                 unsigned_numerator = word_base - word_base
                 denominator = word_base // word_base
-                while unsigned_numerator == 0:
+                retry = 1
+                while retry != 0:
                     if consumed != 0:
                         state = (multiplier * state + increment) % word_base
                     limit = word_base - word_base % numerator_bound
@@ -229,6 +231,9 @@ def sparse_random_fmpq(
                     if denominator == 0:
                         denominator = word_base // word_base
                     state = (multiplier * state + increment) % word_base
+                    retry = 0
+                    if require_nonzero != 0 and unsigned_numerator == 0:
+                        retry = 1
                 if state % 2 == 0:
                     if not fmpq_matrix_set_entry(
                         target,
