@@ -26,10 +26,10 @@
   ratchet. Keep the public `Matrix` API unified while making exact-integer,
   rational, prime-field, and generic host dispatch independently readable and
   claimable by parallel agents.
-- Make public dense vectors domain-aware packed/resource-backed objects over
-  `ZZ`, `QQ`, `GF(2)`, and small `GF(p)`. Vector arithmetic and matrix-vector
-  result publication still materialize host element lists and are now a larger
-  warm-path bottleneck than the matrix kernels themselves.
+- Finish public dense-vector storage over `GF(2)` and small `GF(p)`. Exact
+  `ZZ` and `QQ` vectors now canonically own generated resources; their remaining
+  matrix-vector bridge is list-free but should become a direct resource ABI so
+  it no longer copies through a temporary `ByteRegion`.
 - Wire public row and column spaces through the completed bulk
   `matrix_subspaces` contract, and add one generated exact-resource pivot query
   so `ZZ` and `QQ` echelon metadata never requires exporting every entry.
@@ -51,3 +51,6 @@
 - Ratchet cold production-kernel loading separately from warm mathematical
   execution, and never silently compile a missing production kernel in an
   ordinary installed session.
+- Bound and age the shared native-module cache automatically. Cleanup must
+  respect active leases, retain current build identities, report reclaimed
+  space, and avoid requiring users to discover multi-gigabyte stale caches.
