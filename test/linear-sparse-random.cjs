@@ -237,6 +237,30 @@ for invalid_dimension in [True, 1.5, "2"]:
             invalid_dimension, 2, 0.5
         ),
     )
+
+class IndexDimension:
+    def __index__(self):
+        return 3
+
+class BadIndexDimension:
+    def __index__(self):
+        return "3"
+
+class InstanceOnlyIndex:
+    def __init__(self):
+        self.__index__ = lambda: 3
+
+assert sparse.sage_row_sparse_random_spec(
+    IndexDimension(), 2, 0.5
+)[:2] == (3, 2)
+for invalid_dimension in [BadIndexDimension(), InstanceOnlyIndex()]:
+    raises(
+        TypeError,
+        "dimensions must be integers",
+        lambda invalid_dimension=invalid_dimension: sparse.sage_row_sparse_random_spec(
+            invalid_dimension, 2, 0.5
+        ),
+    )
 raises(
     ValueError,
     "collision",

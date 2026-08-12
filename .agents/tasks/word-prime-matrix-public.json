@@ -4,7 +4,7 @@
   "id": "word-prime-matrix-public",
   "title": "Word-prime matrix public resource",
   "lane": "integration",
-  "status": "active",
+  "status": "review",
   "owner": "user",
   "objective": "Implement generated FLINT nmod_mat resource ownership and a uniformly efficient, traceable public dense GF(p) matrix vertical slice for general word-size primes: bulk construction and random ingress, formatting, SagePack serialization, direct swaps, and preserved FFLAS/FFPACK algorithms",
   "base_commit": "62d9f6577c055b230dd089ade5895a1824e6463a",
@@ -43,6 +43,7 @@
     "package.json",
     "test/word-prime-matrix-resource-ffi.cjs",
     "test/fflas-dense-prime.cjs",
+    "test/linear-sparse-random.cjs",
     "test/nmod-matrix-resource-lifecycle.cjs",
     "test/word-prime-matrix-public.cjs",
     "bench/word-prime-matrix-public.cjs",
@@ -73,6 +74,7 @@
     "pnpm test:portable",
     "pnpm test:baselib:strict",
     "node --test test/fflas-dense-prime.cjs",
+    "node test/linear-sparse-random.cjs",
     "node --test test/word-prime-matrix-resource-ffi.cjs",
     "node test/word-prime-matrix-public.cjs",
     "node test/nmod-matrix-resource-lifecycle.cjs"
@@ -146,6 +148,86 @@
       "started_at": "2026-08-12T16:38:09.958Z",
       "commit": "2ecac3496e40ba7b0808eec618581f5dd974c1f7",
       "workspace_fingerprint": "c9a7981eecce335cfc9a468e0ba072023f9e1ff989211a3ca7b567b8be09d578",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 61.111,
+      "started_at": "2026-08-12T16:46:59.030Z",
+      "commit": "9e0ddb4f898e750917d02572b0cf78aaaca571c1",
+      "workspace_fingerprint": "a3f97f87885bc12f7b7c32fe2b6f7b9853ab9327933f6b042e3d01a1814b8dad",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node test/linear-sparse-random.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.992,
+      "started_at": "2026-08-12T16:48:14.090Z",
+      "commit": "9e0ddb4f898e750917d02572b0cf78aaaca571c1",
+      "workspace_fingerprint": "a3f97f87885bc12f7b7c32fe2b6f7b9853ab9327933f6b042e3d01a1814b8dad",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/fflas-dense-prime.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.206,
+      "started_at": "2026-08-12T16:48:16.697Z",
+      "commit": "9e0ddb4f898e750917d02572b0cf78aaaca571c1",
+      "workspace_fingerprint": "a3f97f87885bc12f7b7c32fe2b6f7b9853ab9327933f6b042e3d01a1814b8dad",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node test/word-prime-matrix-public.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.612,
+      "started_at": "2026-08-12T16:48:19.507Z",
+      "commit": "9e0ddb4f898e750917d02572b0cf78aaaca571c1",
+      "workspace_fingerprint": "a3f97f87885bc12f7b7c32fe2b6f7b9853ab9327933f6b042e3d01a1814b8dad",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/word-prime-matrix-resource-ffi.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.195,
+      "started_at": "2026-08-12T16:48:22.754Z",
+      "commit": "9e0ddb4f898e750917d02572b0cf78aaaca571c1",
+      "workspace_fingerprint": "a3f97f87885bc12f7b7c32fe2b6f7b9853ab9327933f6b042e3d01a1814b8dad",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node test/nmod-matrix-resource-lifecycle.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.565,
+      "started_at": "2026-08-12T16:48:23.555Z",
+      "commit": "9e0ddb4f898e750917d02572b0cf78aaaca571c1",
+      "workspace_fingerprint": "a3f97f87885bc12f7b7c32fe2b6f7b9853ab9327933f6b042e3d01a1814b8dad",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 13.972,
+      "started_at": "2026-08-12T16:48:25.733Z",
+      "commit": "9e0ddb4f898e750917d02572b0cf78aaaca571c1",
+      "workspace_fingerprint": "a3f97f87885bc12f7b7c32fe2b6f7b9853ab9327933f6b042e3d01a1814b8dad",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 14.167,
+      "started_at": "2026-08-12T16:48:40.322Z",
+      "commit": "9e0ddb4f898e750917d02572b0cf78aaaca571c1",
+      "workspace_fingerprint": "a3f97f87885bc12f7b7c32fe2b6f7b9853ab9327933f6b042e3d01a1814b8dad",
       "platform": "linux-x64"
     }
   ],
