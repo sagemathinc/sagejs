@@ -611,6 +611,9 @@ function nativeArtifactSpecs(workspace, overrides = {}) {
       addonBuildCommands: [
         ["pnpm", ["--dir", "packages/m4ri", "run", "build:ffi"]],
       ],
+      dependencyBuildCommands: [
+        ["node", ["packages/m4ri/scripts/build-deps.cjs", "--cache-build"]],
+      ],
     },
   };
   return Object.entries(descriptions).flatMap(([packageId, description]) => {

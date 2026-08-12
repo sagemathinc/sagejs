@@ -15,6 +15,7 @@ const { basename, dirname, join, resolve } = require("node:path");
 const { spawnSync } = require("node:child_process");
 
 const packageRoot = resolve(__dirname, "..");
+const repositoryRoot = resolve(packageRoot, "..", "..");
 const buildRoot = join(packageRoot, ".native");
 const prefix = resolve(
   process.env.SAGEJS_M4RI_PREFIX || join(buildRoot, "prefix"),
@@ -125,7 +126,7 @@ function makePrefixRelocatable() {
   }
 }
 
-async function main() {
+async function buildDependencies() {
   const stamp = join(prefix, ".sagejs-m4ri-dependencies.json");
   const supported =
     ((process.platform === "linux" || process.platform === "darwin") &&
@@ -183,6 +184,33 @@ async function main() {
   makePrefixRelocatable();
   writeFileSync(stamp, `${JSON.stringify(expected, null, 2)}\n`);
   rmSync(sources, { recursive: true, force: true });
+}
+
+async function main() {
+  const arguments_ = process.argv.slice(2);
+  const cacheBuild = arguments_.length === 1 && arguments_[0] === "--cache-build";
+  if (arguments_.length !== 0 && !cacheBuild) {
+    throw new Error(`unknown M4RI dependency build option: ${arguments_.join(" ")}`);
+  }
+  if (!cacheBuild && process.env.SAGEJS_M4RI_PREFIX === undefined) {
+    const {
+      prepareNativeDependencies,
+      restoreNativeDependencies,
+    } = require("../../../scripts/native-worktree-cache.cjs");
+    const restored = restoreNativeDependencies(repositoryRoot, ["m4ri"]);
+    if (restored.every(({ status }) => ["present", "restored"].includes(status))) {
+      for (const result of restored) {
+        process.stdout.write(`Native cache ${result.id}: ${result.status}\n`);
+      }
+      return;
+    }
+    const results = prepareNativeDependencies(repositoryRoot, ["m4ri"]);
+    for (const result of results) {
+      process.stdout.write(`Native cache ${result.id}: ${result.status}\n`);
+    }
+    return;
+  }
+  await buildDependencies();
 }
 
 main().catch((error) => {
