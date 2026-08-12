@@ -4,7 +4,7 @@
   "id": "cache-epipe",
   "title": "Cache Epipe",
   "lane": "compiler-runtime",
-  "status": "active",
+  "status": "complete",
   "owner": "user",
   "objective": "Make Sage.js CLI stdout tolerate consumers that close pipes early, with a subprocess regression for cache prune JSON and no cache policy changes",
   "base_commit": "f7413695a8af8907441f189f7168c11b05a8ee17",
