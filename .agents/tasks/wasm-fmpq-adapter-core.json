@@ -4,7 +4,7 @@
   "id": "wasm-fmpq-adapter-core",
   "title": "Wasm Fmpq Resource Adapter Core",
   "lane": "integration",
-  "status": "active",
+  "status": "complete",
   "owner": "user",
   "objective": "Extend declaration-driven Wasm host adapters and reviewed FLINT declarations so generated FmpqMatrix, FmpqValue, and FlintByteRegion resource operations support borrowed-resource calls, copied byte transfer, deterministic close, and finalizer fallback without operation-specific compiler branches",
   "base_commit": "bcba716dc3fa1e098487556b8364718bf6c7f608",
