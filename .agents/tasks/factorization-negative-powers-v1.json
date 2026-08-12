@@ -355,6 +355,76 @@
       "commit": "796228634f9321ce7d2ea3d810221bebf81d4977",
       "workspace_fingerprint": "67a4623bcbfda431b87806a4f35bfbf8af08c481a4e9ad3967b83ee28549507a",
       "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm build",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 174.232,
+      "started_at": "2026-08-12T21:54:43.478Z",
+      "commit": "56e6526c4e9b80d8829df4dd1404aca4c5bc0b48",
+      "workspace_fingerprint": "801074ea029ca3d447fa880c31a94b1bdac0f28d474303fc22d97be0c463699b",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/factorization-negative-powers.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 3.721,
+      "started_at": "2026-08-12T21:57:42.991Z",
+      "commit": "56e6526c4e9b80d8829df4dd1404aca4c5bc0b48",
+      "workspace_fingerprint": "801074ea029ca3d447fa880c31a94b1bdac0f28d474303fc22d97be0c463699b",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node scripts/run-test-tier.cjs integration --test-name-pattern=factorization-negative-powers",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.143,
+      "started_at": "2026-08-12T21:57:47.333Z",
+      "commit": "56e6526c4e9b80d8829df4dd1404aca4c5bc0b48",
+      "workspace_fingerprint": "801074ea029ca3d447fa880c31a94b1bdac0f28d474303fc22d97be0c463699b",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 14.475,
+      "started_at": "2026-08-12T21:57:48.089Z",
+      "commit": "56e6526c4e9b80d8829df4dd1404aca4c5bc0b48",
+      "workspace_fingerprint": "801074ea029ca3d447fa880c31a94b1bdac0f28d474303fc22d97be0c463699b",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 60.391,
+      "started_at": "2026-08-12T21:58:06.814Z",
+      "commit": "56e6526c4e9b80d8829df4dd1404aca4c5bc0b48",
+      "workspace_fingerprint": "801074ea029ca3d447fa880c31a94b1bdac0f28d474303fc22d97be0c463699b",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:native",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 616.342,
+      "started_at": "2026-08-12T21:59:12.733Z",
+      "commit": "56e6526c4e9b80d8829df4dd1404aca4c5bc0b48",
+      "workspace_fingerprint": "801074ea029ca3d447fa880c31a94b1bdac0f28d474303fc22d97be0c463699b",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm parallel:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.589,
+      "started_at": "2026-08-12T22:09:36.590Z",
+      "commit": "56e6526c4e9b80d8829df4dd1404aca4c5bc0b48",
+      "workspace_fingerprint": "801074ea029ca3d447fa880c31a94b1bdac0f28d474303fc22d97be0c463699b",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {
