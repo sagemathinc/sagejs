@@ -1,0 +1,133 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "macos-fflas-cxx-compat",
+  "title": "Portable generated C++ standard compatibility",
+  "lane": "integration",
+  "status": "review",
+  "owner": "user",
+  "objective": "Make generated FFLAS exception-shim adapters compile on Apple Clang/libc++ arm64 by selecting the oldest portable supported C++ language standard consistently across Unix, Xcode, and MSVC without changing pure-C kernels, with deterministic binding.gyp regression coverage and real macOS validation.",
+  "base_commit": "49f32404c1fa0d464e40506d1395cc3b66f5bc62",
+  "claims": [
+    "tools/native-kernel/compiler.cjs",
+    "test/ffi.cjs"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "compiler-infrastructure",
+    "fallback": "not-applicable",
+    "oracles": [
+      "generated binding.gyp structure tests",
+      "real Apple Clang 17 arm64 package build"
+    ],
+    "exceptions": [
+      "Generated C++ foreign-library exception shields require an explicit portable language standard."
+    ]
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "node test/ffi.cjs",
+    "pnpm architecture:check",
+    "pnpm test:portable",
+    "pnpm test:baselib:strict"
+  ],
+  "runs": [
+    {
+      "command": "node --test --test-name-pattern=generated (C\\+\\+ shields|binding\\.gyp) test/ffi.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.469,
+      "started_at": "2026-08-12T07:49:48.062Z",
+      "commit": "3b0658fa3880a5efba21c80c3699071cdfb6a6c1",
+      "workspace_fingerprint": "706b786b99f47b624a9cc39101264967144d33be6910f4ee1b56470205c98c77",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 16.954,
+      "started_at": "2026-08-12T07:49:49.273Z",
+      "commit": "3b0658fa3880a5efba21c80c3699071cdfb6a6c1",
+      "workspace_fingerprint": "706b786b99f47b624a9cc39101264967144d33be6910f4ee1b56470205c98c77",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 15.209,
+      "started_at": "2026-08-12T07:50:07.074Z",
+      "commit": "3b0658fa3880a5efba21c80c3699071cdfb6a6c1",
+      "workspace_fingerprint": "706b786b99f47b624a9cc39101264967144d33be6910f4ee1b56470205c98c77",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node test/ffi.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 51.844,
+      "started_at": "2026-08-12T07:50:31.995Z",
+      "commit": "3b0658fa3880a5efba21c80c3699071cdfb6a6c1",
+      "workspace_fingerprint": "706b786b99f47b624a9cc39101264967144d33be6910f4ee1b56470205c98c77",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 39.86,
+      "started_at": "2026-08-12T07:53:21.112Z",
+      "commit": "49f32404c1fa0d464e40506d1395cc3b66f5bc62",
+      "workspace_fingerprint": "bb82599fa64edf0fde4ccfdd8b10e50ac52d86ec0b47cfe50d48fa792c331cd5",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node test/ffi.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 43.846,
+      "started_at": "2026-08-12T07:54:33.749Z",
+      "commit": "49f32404c1fa0d464e40506d1395cc3b66f5bc62",
+      "workspace_fingerprint": "bb82599fa64edf0fde4ccfdd8b10e50ac52d86ec0b47cfe50d48fa792c331cd5",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 12.829,
+      "started_at": "2026-08-12T07:55:18.197Z",
+      "commit": "49f32404c1fa0d464e40506d1395cc3b66f5bc62",
+      "workspace_fingerprint": "bb82599fa64edf0fde4ccfdd8b10e50ac52d86ec0b47cfe50d48fa792c331cd5",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 12.578,
+      "started_at": "2026-08-12T07:55:31.629Z",
+      "commit": "49f32404c1fa0d464e40506d1395cc3b66f5bc62",
+      "workspace_fingerprint": "bb82599fa64edf0fde4ccfdd8b10e50ac52d86ec0b47cfe50d48fa792c331cd5",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Generated native kernels with C++ exception shields now select C++17 explicitly and consistently: `-std=c++17` for Unix compilers, `CLANG_CXX_LANGUAGE_STANDARD: c++17` for Xcode, and `LanguageStandard: stdcpp17` for MSVC. Pure-C kernels retain their previous recipes. The compiler exposes and uses one inspectable language-standard policy, while deterministic tests exercise the actual generated `binding.gyp` structure for Linux, macOS, and Windows. A clean generated FFLAS host adapter was built on an Apple M1 Max with Apple Clang 17; its emitted recipe contained both Unix and Xcode C++17 settings, and all eight FFLAS/FFPACK package tests passed.",
+    "risks": [
+      "The portable tier was run and its mathematical/compiler tests passed, but its manifest ratchet has one inherited integration failure: `test/exact-matrix-scalar-operations.cjs` exists on the base branch without an entry in `test/node-test-manifest.cjs`. This lane does not claim either file.",
+      "Windows x64 and Linux arm64 recipes are covered deterministically at the generated `binding.gyp` level; their real compiler builds remain CI/integration validation rather than lane-local hardware tests."
+    ],
+    "next_steps": [
+      "Register the inherited exact-matrix scalar test in the integration lane, then rerun `pnpm test:portable`.",
+      "Retain Windows x64 and Linux arm64 native package builds as release/CI gates."
+    ]
+  }
+}

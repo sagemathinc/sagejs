@@ -53,6 +53,25 @@ const nativeFlintLibrary = join(
   process.platform === "win32" ? "flint.lib" : "libflint.a",
 );
 
+const GENERATED_CXX_LANGUAGE_STANDARD = Object.freeze({
+  compilerFlag: "-std=c++17",
+  msvc: "stdcpp17",
+  xcode: "c++17",
+});
+
+function generatedCxxLanguageSettings(platform) {
+  return Object.freeze({
+    compilerFlag:
+      platform === "win32"
+        ? null
+        : GENERATED_CXX_LANGUAGE_STANDARD.compilerFlag,
+    msvc:
+      platform === "win32" ? GENERATED_CXX_LANGUAGE_STANDARD.msvc : null,
+    xcode:
+      platform === "darwin" ? GENERATED_CXX_LANGUAGE_STANDARD.xcode : null,
+  });
+}
+
 function sha256(value) {
   return createHash("sha256").update(value).digest("hex");
 }
@@ -472,7 +491,12 @@ function foreignCompilationInputs(ir, options = {}) {
   return inputs;
 }
 
-function bindingGyp(ir, sourceBoundsChecked, hasExceptionShims = false) {
+function bindingGyp(
+  ir,
+  sourceBoundsChecked,
+  hasExceptionShims = false,
+  platform = process.platform,
+) {
   const usesPrimeField = ir.functions.some(
     (fn) => ["prime-field-matrix", "prime-field-source"].includes(fn.kernelKind),
   );
@@ -496,6 +520,7 @@ function bindingGyp(ir, sourceBoundsChecked, hasExceptionShims = false) {
     ),
   ));
   const usesForeignLibraries = foreignLibraries.length > 0;
+  const cxxLanguage = generatedCxxLanguageSettings(platform);
   const target = {
     target_name: "sagejs_native_kernel",
     win_delay_load_hook: "false",
@@ -518,7 +543,7 @@ function bindingGyp(ir, sourceBoundsChecked, hasExceptionShims = false) {
         : [`SAGEJS_NATIVE_SOURCE_BOUNDS_CHECK=${sourceBoundsChecked ? 1 : 0}`]),
     ],
   };
-  if (process.platform === "win32") {
+  if (platform === "win32") {
     target.libraries = [
       ...foreignLibraries,
       ...(usesExplicitPrimeModulus ? [nativeFlintLibrary] : []),
@@ -548,7 +573,11 @@ function bindingGyp(ir, sourceBoundsChecked, hasExceptionShims = false) {
         Optimization: 3,
         WarningLevel: 3,
         ...(hasExceptionShims
-          ? { ExceptionHandling: 1, RuntimeTypeInfo: true }
+          ? {
+            ExceptionHandling: 1,
+            LanguageStandard: cxxLanguage.msvc,
+            RuntimeTypeInfo: true,
+          }
           : {}),
       },
     };
@@ -576,14 +605,19 @@ function bindingGyp(ir, sourceBoundsChecked, hasExceptionShims = false) {
     ];
     if (hasExceptionShims) {
       target["cflags_cc!"] = ["-fno-exceptions", "-fno-rtti"];
-      target.cflags_cc = ["-fexceptions", "-frtti"];
+      target.cflags_cc = [
+        cxxLanguage.compilerFlag,
+        "-fexceptions",
+        "-frtti",
+      ];
     }
-    if (process.platform === "darwin") {
+    if (platform === "darwin") {
       target.xcode_settings = {
         GCC_OPTIMIZATION_LEVEL: "3",
         MACOSX_DEPLOYMENT_TARGET: "13.0",
         ...(hasExceptionShims
           ? {
+            CLANG_CXX_LANGUAGE_STANDARD: cxxLanguage.xcode,
             GCC_ENABLE_CPP_EXCEPTIONS: "YES",
             GCC_ENABLE_CPP_RTTI: "YES",
           }
@@ -811,5 +845,7 @@ async function compileKernel(options) {
 module.exports = {
   NATIVE_ABI_VERSION,
   compileKernel,
+  bindingGyp,
   foreignCompilationInputs,
+  generatedCxxLanguageSettings,
 };

@@ -20,7 +20,11 @@ const boundaryAudit = require("../tools/ffi/boundary-audit.cjs");
 const nativeExportAudit = require("../tools/ffi/native-export-audit.cjs");
 const nativeExportPolicy = require("../tools/ffi/native-export-policy.cjs");
 const hostAdapters = require("../tools/ffi/host-adapters.cjs");
-const { compileKernel } = require("../tools/native-kernel/compiler.cjs");
+const {
+  bindingGyp,
+  compileKernel,
+  generatedCxxLanguageSettings,
+} = require("../tools/native-kernel/compiler.cjs");
 const {
   generateC,
   generateHostCore,
@@ -1943,6 +1947,61 @@ test("generated C++ shields convert actual exceptions to declared status", (t) =
   }
 });
 
+test("generated binding.gyp pins portable C++17 settings on every host", () => {
+  assert.deepEqual(generatedCxxLanguageSettings("linux"), {
+    compilerFlag: "-std=c++17",
+    msvc: null,
+    xcode: null,
+  });
+  assert.deepEqual(generatedCxxLanguageSettings("darwin"), {
+    compilerFlag: "-std=c++17",
+    msvc: null,
+    xcode: "c++17",
+  });
+  assert.deepEqual(generatedCxxLanguageSettings("win32"), {
+    compilerFlag: null,
+    msvc: "stdcpp17",
+    xcode: null,
+  });
+
+  const ir = {
+    foreignLibraries: [],
+    functions: [{ kernelKind: "prime-field-matrix" }],
+  };
+  const linux = bindingGyp(ir, true, true, "linux").targets[0];
+  assert.deepEqual(linux["cflags_cc!"], ["-fno-exceptions", "-fno-rtti"]);
+  assert.deepEqual(linux.cflags_cc, [
+    "-std=c++17",
+    "-fexceptions",
+    "-frtti",
+  ]);
+  assert.equal(linux.xcode_settings, undefined);
+
+  const macos = bindingGyp(ir, true, true, "darwin").targets[0];
+  assert.deepEqual(macos.cflags_cc, [
+    "-std=c++17",
+    "-fexceptions",
+    "-frtti",
+  ]);
+  assert.deepEqual(macos.xcode_settings, {
+    CLANG_CXX_LANGUAGE_STANDARD: "c++17",
+    GCC_ENABLE_CPP_EXCEPTIONS: "YES",
+    GCC_ENABLE_CPP_RTTI: "YES",
+    GCC_OPTIMIZATION_LEVEL: "3",
+    MACOSX_DEPLOYMENT_TARGET: "13.0",
+  });
+
+  const windows = bindingGyp(ir, true, true, "win32").targets[0];
+  assert.deepEqual(windows.msvs_settings.VCCLCompilerTool, {
+    ExceptionHandling: 1,
+    LanguageStandard: "stdcpp17",
+    Optimization: 3,
+    RuntimeTypeInfo: true,
+    WarningLevel: 3,
+  });
+  assert.equal(windows.cflags_cc, undefined);
+});
+
 test("compiled packed slices agree with fallbacks and commit outputs transactionally", async () => {
   const temporary = mkdtempSync(join(tmpdir(), "sagejs-ffi-slices-"));
   try {
@@ -1964,8 +2023,14 @@ test("compiled packed slices agree with fallbacks and commit outputs transaction
       );
       assert.deepEqual(
         binding.targets[0].cflags_cc,
-        ["-fexceptions", "-frtti"],
+        ["-std=c++17", "-fexceptions", "-frtti"],
       );
+      if (process.platform === "darwin") {
+        assert.equal(
+          binding.targets[0].xcode_settings.CLANG_CXX_LANGUAGE_STANDARD,
+          "c++17",
+        );
+      }
     }
     assert.match(readFileSync(graphResult.shimSourcePath, "utf8"),
       /catch \(\.\.\.\)/);
