@@ -4,7 +4,7 @@
   "id": "timing-load-breakdown",
   "title": "Timing Load Breakdown",
   "lane": "compiler-runtime",
-  "status": "active",
+  "status": "review",
   "owner": "user",
   "objective": "Add opt-in execution timing breakdowns for observed module, addon, and native-kernel initialization without distorting statement timing",
   "base_commit": "c592988d8f93aeb9f54190bb28d1cabdeace6887",
@@ -73,12 +73,33 @@
       "commit": "c592988d8f93aeb9f54190bb28d1cabdeace6887",
       "workspace_fingerprint": "78566660c26ee2fbbe73b6ec0bfc45069560ffa8ee311762168e3c69ac298d51",
       "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm build",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 183.546,
+      "started_at": "2026-08-12T04:06:22.160Z",
+      "commit": "9d79d8949159bf0966a3924d397e25996b1a329b",
+      "workspace_fingerprint": "bb2688913903b4f017dd592cc86b2e09dd5bc8e6d79774c25a3200dc27610a57",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:compiler",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 83.254,
+      "started_at": "2026-08-12T04:09:29.410Z",
+      "commit": "9d79d8949159bf0966a3924d397e25996b1a329b",
+      "workspace_fingerprint": "bb2688913903b4f017dd592cc86b2e09dd5bc8e6d79774c25a3200dc27610a57",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {
     "summary": "Adds display-only `%time --breakdown` and Sage `time --breakdown` parsing, typed nested initialization spans for Python modules, native addons, runtime modules, and first-load native kernels, compact aggregate-only default output, explicit inclusion in wall time, Node CPU reporting, browser wall-only formatting, CLI help, documentation, and deterministic host/kernel/compiler tests.",
     "risks": [
-      "The integration receipt has five unrelated baseline failures: one superseded exact-matrix serialization counter and four stale FFI ratchets expecting three libraries and 190 declarations before M4RI. The current integration branch has already refreshed those ratchets and passes them.",
+      "The integration receipt has five unrelated baseline failures: one superseded exact-matrix serialization counter and four stale FFI ratchets expecting three libraries and 190 declarations before M4RI. The integration branch fixed and passed these at ebb140e.",
+      "A post-rebase compiler rerun passed 14 of 15 active fixtures; compiler/algebra.py alone reached the existing 39-second child-process timeout under concurrent load. The same compiler suite passed completely before the rebase, and the timing/compiler focused tests passed afterward.",
       "Initialization spans are synchronous by design; future asynchronous lazy loaders need an async-aware span primitive before they can appear in the tree."
     ],
     "next_steps": [
