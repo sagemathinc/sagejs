@@ -175,6 +175,13 @@ export class PythonCstLowerer {
     for (const [name, details] of Object.entries(
       this.options.classes ?? {},
     )) this.knownClasses.set(name, details);
+    for (const [name, table] of Object.entries(
+      this.options.intrinsic_modules ?? {},
+    )) {
+      if (table && typeof table === "object") {
+        this.intrinsicModules.set(name, table as Record<string, string>);
+      }
+    }
     this.annotationsMode = root.namedChildren.some(
       (node) => node.type === "future_import_statement" &&
         /\bannotations\b/.test(node.text),
@@ -195,6 +202,7 @@ export class PythonCstLowerer {
         this.options.scoped_flags?.sequential_definitions
       ),
     ).analyze(ast);
+    ast.intrinsic_modules = Object.fromEntries(this.intrinsicModules);
     return {
       ast,
       directlyLoweredNodeTypes: new Set(this.lowered),
@@ -1420,6 +1428,13 @@ export class PythonCstLowerer {
     const left =
       this.optionalField(node, "left") ?? this.field(node, "name");
     const annotation = this.optionalField(node, "type");
+    if (
+      this.functionFrames.length === 0 &&
+      this.classStack.length === 0 &&
+      left.type === "identifier"
+    ) {
+      this.intrinsicModules.delete(left.text);
+    }
     if (annotation) {
       const value = this.optionalField(node, "right");
       return this.make("AST_AnnotatedAssignment", node, {

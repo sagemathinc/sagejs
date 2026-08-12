@@ -188,6 +188,36 @@ assert.match(
   /^[\d.]+ (?:ns|µs|ms|s) ± [\d.]+ (?:ns|µs|ms|s) per loop \(mean ± std\. dev\. of 1 run, 1 loop each\)\n1\s*$/,
 );
 assert.equal(run(["--python"], "value = 17\n").trim(), "");
+assert.equal(
+  run(
+    ["--python"],
+    [
+      "import sagejs.runtime as runtime",
+      "import __main__",
+      "value = 10",
+      "",
+      "def make_reader(offset):",
+      "    def read(argument):",
+      "        return value + offset + argument",
+      "    return read",
+      "",
+      "reader = make_reader(2)",
+      "value = 20",
+      "",
+      "class CurrentValue:",
+      "    def read(self):",
+      "        return value",
+      "",
+      "print(runtime.reflect.get(__main__, 'value'))",
+      "print(reader(3), CurrentValue().read())",
+      "print(__main__ is __import__('__main__'))",
+      "print(__main__.CurrentValue is CurrentValue)",
+      "print(__name__, __main__.__name__)",
+      "",
+    ].join("\n"),
+  ).trim(),
+  ["20", "25 20", "True", "True", "__main__ __main__"].join("\n"),
+);
 const pythonRuntimeFailure = runFailure(
   ["--python"],
   "raise RuntimeError('piped Python failure')\n",

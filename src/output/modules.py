@@ -195,11 +195,14 @@ def write_imports(module, output):
         if module_.dynamic:
             continue
         output.indent()
-        if module_id.indexOf(".") is -1:
+        if module_id == "__main__" and output.options.reuse_main_module:
+            output.print("ρσ_modules.__main__ || (ρσ_modules.__main__ = {})")
+        elif module_id.indexOf(".") is -1:
             output.print("ρσ_modules." + module_id)
         else:
             output.print('ρσ_modules["' + module_id + '"]')
-        output.space(), output.print("="), output.space(), output.print("{}")
+        if not (module_id == "__main__" and output.options.reuse_main_module):
+            output.space(), output.print("="), output.space(), output.print("{}")
         output.end_statement()
 
     # Every loaded child module is also an attribute of its parent package.
@@ -331,6 +334,11 @@ def bind_module_namespace(module, output, hidden_names=None):
     hidden_names = hidden_names or []
     module_id = module.module_id
     display_module_id = output.options.baselib_module_id or module_id
+    descriptor_prefix = (
+        "{configurable:true,"
+        if module_id == "__main__" and output.options.reuse_main_module
+        else "{"
+    )
     names = []
     seen = {}
     for symbol in module.localvars:
@@ -408,13 +416,13 @@ def bind_module_namespace(module, output, hidden_names=None):
         output.print_string(name)
         output.colon()
         if output.options.baselib_module_id:
-            output.print("{enumerable:true,get:()=>")
+            output.print(descriptor_prefix + "enumerable:true,get:()=>")
             output.print_name(name)
             output.print(",set:value=>")
             output.print_name(name)
             output.print("=value}")
         else:
-            output.print("{enumerable:true,get:function(){return ")
+            output.print(descriptor_prefix + "enumerable:true,get:function(){return ")
             output.print_name(name)
             output.print("},set:function(value){")
             output.print_name(name)
@@ -430,11 +438,11 @@ def bind_module_namespace(module, output, hidden_names=None):
         output.print_string(name)
         output.colon()
         if output.options.baselib_module_id:
-            output.print("{enumerable:false,get:()=>")
+            output.print(descriptor_prefix + "enumerable:false,get:()=>")
             output.print_name(name)
             output.print("}")
         else:
-            output.print("{enumerable:false,get:function(){return ")
+            output.print(descriptor_prefix + "enumerable:false,get:function(){return ")
             output.print_name(name)
             output.print("}}")
     output.print("})")
@@ -868,7 +876,26 @@ def print_imports(container, output):
 
     def dynamic_import(self):
         def publish_local(name):
-            if not self.target_module or self.target_module is "__main__":
+            if not self.target_module:
+                return
+            if self.target_module is "__main__":
+                if not output.options.reuse_main_module:
+                    return
+                output.indent()
+                output.print(
+                    "if (!Object.prototype.hasOwnProperty.call(ρσ_modules.__main__,"
+                )
+                output.print_string(name)
+                output.print(")) Object.defineProperty(ρσ_modules.__main__,")
+                output.print_string(name)
+                output.print(
+                    ",{configurable:true,enumerable:true,get:function(){return "
+                )
+                output.print_name(name)
+                output.print("},set:function(value){")
+                output.print_name(name)
+                output.print("=value}})")
+                output.end_statement()
                 return
             output.indent()
             output.print("ρσ_modules[")

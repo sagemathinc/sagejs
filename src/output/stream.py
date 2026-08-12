@@ -75,6 +75,9 @@ output_stream_defaults = {
     "discard_asserts": False,
     "module_cache_dir": "",
     "module_registry": "",
+    # Interactive evaluators execute one compiled fragment at a time inside
+    # the same Python `__main__` module.
+    "reuse_main_module": False,
     "write_name": True,
     "exact_integers": False,
     "rational_division": False,

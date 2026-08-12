@@ -184,6 +184,7 @@ export function createKernelEvaluator({
       libdir: importPath,
       import_dirs: getImportDirs(),
       classes: transient && classes ? { ...classes } : classes,
+      intrinsic_modules: toplevel?.intrinsic_modules,
       scoped_flags: transient ? { ...scopedFlags } : scopedFlags,
       jsage: language === "sage",
       exact_integer_literals: true,
@@ -199,7 +200,7 @@ export function createKernelEvaluator({
   ): string {
     const output = new compiler.OutputStream({
       omit_baselib: true,
-      write_name: false,
+      write_name: true,
       private_scope: false,
       beautify: true,
       keep_docstrings: true,
@@ -212,6 +213,7 @@ export function createKernelEvaluator({
       numeric_literal_pool_prefix:
         `ρσ_kernel_${numericLiteralPoolCounter++}_`,
       module_registry: "__sagejs_kernel_modules__",
+      reuse_main_module: true,
     });
     ast.print(output);
     return output.get();

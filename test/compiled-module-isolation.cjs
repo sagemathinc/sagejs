@@ -174,6 +174,41 @@ test(
   },
 );
 
+test("kernel cells share one live __main__ module namespace", async (t) => {
+  const session = await createSage({ mode: "python" });
+  t.after(() => session.close());
+
+  await session.evaluate("import sagejs.runtime as runtime\nimport __main__");
+  await session.evaluate("value = 10");
+  await session.evaluate(
+    "def make_reader(offset):\n" +
+      "    def read(argument):\n" +
+      "        return value + offset + argument\n" +
+      "    return read",
+  );
+  await session.evaluate("reader = make_reader(2)\nvalue = 20");
+  await session.evaluate(
+    "class CurrentValue:\n" +
+      "    def read(self):\n" +
+      "        return value",
+  );
+
+  assert.equal(
+    (await session.evaluate(
+      "runtime.reflect.get(__main__, 'value'), reader(3), " +
+        "CurrentValue().read(), __main__.CurrentValue is CurrentValue, " +
+        "__name__, __main__.__name__",
+    )).repr,
+    "(20, 25, 20, True, '__main__', '__main__')",
+  );
+  assert.equal(
+    (await session.evaluate("__main__ is __import__('__main__')")).repr,
+    "True",
+  );
+  await session.evaluate("runtime = 'shadowed'");
+  assert.equal((await session.evaluate("runtime")).repr, "'shadowed'");
+});
+
 test("ordinary compiled imports preserve globals, closures, and cache identity", () => {
   const directory = mkdtempSync(join(tmpdir(), "sagejs-module-isolation-"));
   try {

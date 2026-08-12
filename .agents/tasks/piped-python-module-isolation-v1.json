@@ -1,0 +1,110 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "piped-python-module-isolation-v1",
+  "title": "Piped Python module isolation",
+  "lane": "compiler-runtime",
+  "status": "active",
+  "owner": "user",
+  "objective": "Preserve one lexical __main__ namespace across blank-line-separated piped Python input while retaining compiled-module isolation and correct noninteractive failure status",
+  "base_commit": "dcc1302a3f305b00a0e09ba25edee45ac2ee2bf1",
+  "claims": [
+    "tools/repl.ts",
+    "tools/kernel-evaluator.ts",
+    "tools/runtime-bootstrap.ts",
+    "tools/python/lowerer.ts",
+    "src/output/modules.py",
+    "src/output/stream.py",
+    "src/baselib/builtins.py",
+    "test/cli-smoke.cjs",
+    "test/compiled-module-isolation.cjs"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "compiler-infrastructure",
+    "fallback": "not-applicable",
+    "oracles": [
+      "CPython stdin session semantics and Sage.js interactive evaluation"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm build",
+    "pnpm test:compiler",
+    "pnpm test:integration",
+    "node test/cli-smoke.cjs",
+    "node --test test/compiled-module-isolation.cjs",
+    "pnpm test:baselib:strict",
+    "pnpm architecture:check"
+  ],
+  "runs": [
+    {
+      "command": "pnpm build",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 180.144,
+      "started_at": "2026-08-12T19:42:34.324Z",
+      "commit": "dcc1302a3f305b00a0e09ba25edee45ac2ee2bf1",
+      "workspace_fingerprint": "e6bb53a0324dfc9a0b39dd51736020b8bad4cd7f21fb2b7663dc77e0018bd391",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node test/cli-smoke.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 61.86,
+      "started_at": "2026-08-12T19:45:43.175Z",
+      "commit": "dcc1302a3f305b00a0e09ba25edee45ac2ee2bf1",
+      "workspace_fingerprint": "e6bb53a0324dfc9a0b39dd51736020b8bad4cd7f21fb2b7663dc77e0018bd391",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/compiled-module-isolation.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.79,
+      "started_at": "2026-08-12T19:47:28.743Z",
+      "commit": "dcc1302a3f305b00a0e09ba25edee45ac2ee2bf1",
+      "workspace_fingerprint": "e6bb53a0324dfc9a0b39dd51736020b8bad4cd7f21fb2b7663dc77e0018bd391",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 14.765,
+      "started_at": "2026-08-12T19:47:34.023Z",
+      "commit": "dcc1302a3f305b00a0e09ba25edee45ac2ee2bf1",
+      "workspace_fingerprint": "e6bb53a0324dfc9a0b39dd51736020b8bad4cd7f21fb2b7663dc77e0018bd391",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 16.241,
+      "started_at": "2026-08-12T19:47:54.810Z",
+      "commit": "dcc1302a3f305b00a0e09ba25edee45ac2ee2bf1",
+      "workspace_fingerprint": "e6bb53a0324dfc9a0b39dd51736020b8bad4cd7f21fb2b7663dc77e0018bd391",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Piped CLI fragments and kernel evaluations now execute as one persistent lexical __main__ module. Dynamic imports, globals, closures, classes, __main__ identity, __name__, and compiler-only intrinsic aliases survive fragment boundaries without reopening cross-module symbol collisions.",
+    "risks": [
+      "The base revision's full compiler suite fails compiler/matrix.py because sorted() cannot iterate its lowered plain-object dictionary.",
+      "The base revision's integration tier has six known failures in dense-prime serialization, two mathematically incorrect exact-polynomial expectations, and three polynomial regressions. The focused namespace tests, strict baselib gate, and architecture gate pass."
+    ],
+    "next_steps": [
+      "Land the independent corrections for the exact polynomial and rational matrix expectations before rerunning the complete integration tier.",
+      "Track the inherited compiler/matrix.py and polynomial failures in their owning lanes rather than broadening this compiler-runtime lane."
+    ]
+  }
+}

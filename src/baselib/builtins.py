@@ -48,7 +48,10 @@ def _builtins_default_import(
     level: _Int = 0,
 ) -> Any:
     """Load a Python module through the host and return CPython-style bindings."""
-    module = runtime.reflect.get(runtime.modules, name)
+    modules = runtime.reflect.get(runtime.global_object, "ρσ_modules")
+    if modules is runtime.undefined:
+        modules = runtime.modules
+    module = runtime.reflect.get(modules, name)
     if module is runtime.undefined:
         baselib_modules = runtime.reflect.get(
             runtime.global_object,
@@ -73,7 +76,7 @@ def _builtins_default_import(
                         loader, runtime.undefined, [name + "." + item]
                     )
                     if child is runtime.undefined:
-                        child = runtime.reflect.get(runtime.modules, name + "." + item)
+                        child = runtime.reflect.get(modules, name + "." + item)
                     if child is not runtime.undefined:
                         # CPython publishes an imported child module on its
                         # parent package.  Generated from-import code then
@@ -89,7 +92,7 @@ def _builtins_default_import(
         return module
 
     top_name = name.split(".")[0]
-    top_module = runtime.reflect.get(runtime.modules, top_name)
+    top_module = runtime.reflect.get(modules, top_name)
     return module if top_module is runtime.undefined else top_module
 
 
@@ -5025,7 +5028,10 @@ def ρσ_len(value: Any) -> _Int:
 
 
 def ρσ_get_module(name: _Str) -> Any:
-    module = runtime.reflect.get(runtime.modules, name)
+    modules = runtime.reflect.get(runtime.global_object, "ρσ_modules")
+    if modules is runtime.undefined:
+        modules = runtime.modules
+    module = runtime.reflect.get(modules, name)
     if module is not runtime.undefined:
         return module
     baselib_modules = runtime.reflect.get(
