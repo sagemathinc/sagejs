@@ -1,0 +1,56 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "arbitrary-prime-resource-impl",
+  "title": "Arbitrary Prime Resource Impl",
+  "lane": "integration",
+  "status": "active",
+  "owner": "user",
+  "objective": "Implement production generated FLINT fmpz_mod_ctx plus fmpz_mod_poly resources for arbitrary-prime GF(p)[x], with sealed self-contained ownership, exact modulus checks, callee-owned operations, public integration, serialization, lifecycle fuzzing, Sage differentials, and competitive performance",
+  "base_commit": "0b9b27ae0d473a119a53dc57ceed5fcc214caaa8",
+  "claims": [
+    "packages/flint/include/sagejs/fmpz_mod_polynomial_ffi.h",
+    "src/lib/sagejs/kernels/polynomial/arbitrary_prime_flint.py",
+    "src/lib/sagejs/polynomial_algorithms/arbitrary_prime_public.py",
+    "test/arbitrary-prime-polynomial-resource-ffi.cjs",
+    "test/arbitrary-prime-polynomial-resource-kernels.cjs",
+    "test/fixtures/native-ffi-flint-arbitrary-prime",
+    "test/public-arbitrary-prime-polynomial.cjs",
+    "bench/arbitrary-prime-polynomial-resources.cjs",
+    "src/baselib/polynomial.py",
+    "pyrightconfig.json"
+  ],
+  "dependencies": [
+    "arbitrary-prime-poly-contract"
+  ],
+  "references": [
+    "FLINT fmpz_mod_ctx/fmpz_mod_poly APIs",
+    "SageMath arbitrary-prime finite-field polynomial semantics"
+  ],
+  "architecture": {
+    "strategy": "external-library",
+    "fallback": "tested-capability",
+    "oracles": [
+      "SageMath at primes 2^89-1, 2^127-1, and 2^521-1",
+      "generated dynamic/native differential"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm architecture:check",
+    "pnpm test:portable",
+    "pnpm test:baselib:strict"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "",
+    "risks": [],
+    "next_steps": []
+  }
+}
