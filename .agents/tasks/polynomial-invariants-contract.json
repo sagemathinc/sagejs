@@ -1,0 +1,51 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "polynomial-invariants-contract",
+  "title": "Storage-neutral exact polynomial invariants",
+  "lane": "arithmetic-algebra",
+  "status": "active",
+  "owner": "user",
+  "objective": "Define CPython-parseable storage-neutral exact polynomial invariant, squarefree, radical, and factor-root contracts with Sage 10.9 edge semantics and Sage.js dynamic differential coverage",
+  "base_commit": "5a1cc59fc7fddad7648e98dc2d341a2455853754",
+  "claims": [
+    "src/lib/sagejs/polynomial_algorithms/invariants.py",
+    "test/polynomial-invariants-contract.cjs",
+    "bench/polynomial-invariants-contract.cjs"
+  ],
+  "dependencies": [],
+  "references": [
+    "SageMath 10.9 polynomial element semantics",
+    "Sage.js generated exact polynomial resources"
+  ],
+  "architecture": {
+    "strategy": "dynamic-python",
+    "fallback": "same-source",
+    "oracles": [
+      "SageMath 10.9",
+      "CPython exact arithmetic",
+      "Sage.js dynamic execution"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "node --test test/polynomial-invariants-contract.cjs",
+    "node bench/polynomial-invariants-contract.cjs",
+    "pnpm architecture:check",
+    "pnpm exec pyright --pythonversion 3.11 src/lib/sagejs/polynomial_algorithms/invariants.py",
+    "pnpm test:baselib:strict",
+    "pnpm test:native"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "",
+    "risks": [],
+    "next_steps": []
+  }
+}
