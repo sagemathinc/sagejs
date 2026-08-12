@@ -1,6 +1,6 @@
-# Native Kernel v20
+# Native Kernel v22
 
-Native Kernel v20 asks whether selected Sage.js library functions can compile
+Native Kernel v22 asks whether selected Sage.js library functions can compile
 as whole native algorithms instead of crossing Node-API for every scalar
 operation. Its exact-integer backend uses checked machine words until an
 operation cannot fit, promotes the live frame to lazy GMP-backed tagged values,
@@ -65,7 +65,7 @@ The command prints the content-addressed generated-module path. A subsequent
 identical build reports `cached`. The cache identity includes source,
 typed IR, all backend source, the shared native header, native ABI, Node module
 ABI, operating system, architecture, and MPFR/MPC versions.
-Native Kernel v20 is currently a source-tree development feature and uses the
+Native Kernel v22 is currently a source-tree development feature and uses the
 MPFR/MPC prefix built by `packages/flint`.
 
 Importing `algorithms` normally in a fresh Sage.js process then resolves every
@@ -140,7 +140,8 @@ than opaque generated code.
 ## Pipeline
 
 `tools/native-kernel/ir.cjs` parses source with the real Sage.js compiler and
-lowers marked functions to typed IR. Native Kernel v20 supports:
+lowers marked functions to the serialized Native Kernel IR v22. Native Kernel
+v22 supports:
 
 - multi-function exact `int`/`Integer` modules backed by GMP, with multiple
   exact arguments and exact `BigInt` fallback;
@@ -182,6 +183,15 @@ lowers marked functions to typed IR. Native Kernel v20 supports:
 - source-transparent binary64 kernels with mixed `uint64`/`Float64`
   signatures, integer-to-double coercion, `abs`, arithmetic, and counted
   loops, returning ordinary JavaScript/Python floats;
+- typed `uint64` `&`, `|`, `^`, `<<`, and `>>`, including augmented scalar
+  and packed-buffer assignments. These operations use the full unsigned
+  64-bit word: left shift wraps modulo `2^64`, right shift is logical, and
+  counts outside `0..63` raise `OverflowError` before generated C executes a
+  shift. A `# sagejs: native-bitwise` source marker preserves CPython's `^`
+  spelling in Sage mode without changing ordinary Sage exponentiation. The
+  CPython fallback keeps Python `int` shift behavior because `uint64` is an
+  annotation-only alias there; portable source that can overflow a left shift
+  must mask explicitly;
 - borrowed packed `Float64Buffer` parameters, bounded `Float64Record` views,
   checked indexed reads/writes, buffer aliasing, `sqrt`, dynamic one- and
   two-bound ranges, and arbitrarily nested counted loops;

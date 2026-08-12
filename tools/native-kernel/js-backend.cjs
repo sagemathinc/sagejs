@@ -9,6 +9,9 @@ const {
   javascriptRuntime,
   resourceForFunctionType,
 } = require("./ffi-codegen.cjs");
+const {
+  hasUint64Bitwise,
+} = require("./uint64-operations.cjs");
 
 const METHOD = {
   add: "_add_",
@@ -179,7 +182,7 @@ ${fn.name}.nativeAvailable = nativeAddon !== null;`;
 
 function emitExactStatement(operation, indent, resourceStack = null) {
   if (operation.kind === "uint64.constant") {
-    return `${indent}${operation.target} = ${operation.value};`;
+    return `${indent}${operation.target} = ${operation.value}n;`;
   }
   if (operation.kind === "integer.constant") {
     return `${indent}${operation.target} = BigInt(${jsString(operation.value)});`;
@@ -272,18 +275,9 @@ function emitExactStatement(operation, indent, resourceStack = null) {
     throw new Error(`unsupported exact integer operation ${operation.operation}`);
   }
   if (operation.kind === "uint64.binary") {
-    const operator = { add: "+", sub: "-", mul: "*", mod: "%" }[
-      operation.operation
-    ];
-    if (operator !== undefined) {
-      return `${indent}${operation.target} = ${operation.left} ${operator} ` +
-        `${operation.right};`;
-    }
-    if (operation.operation === "floordiv") {
-      return `${indent}${operation.target} = Math.floor(` +
-        `${operation.left} / ${operation.right});`;
-    }
-    throw new Error(`unsupported uint64 operation ${operation.operation}`);
+    return `${indent}${operation.target} = uint64Binary(` +
+      `${jsString(operation.operation)}, ${operation.left}, ` +
+      `${operation.right});`;
   }
   if (["integer.compare", "uint64.compare", "bool.compare"].includes(
     operation.kind
@@ -325,7 +319,7 @@ function emitExactStatement(operation, indent, resourceStack = null) {
     return `${indent}${operation.target} = ${operation.source} !== 0n;`;
   }
   if (operation.kind === "uint64.truth") {
-    return `${indent}${operation.target} = ${operation.source} !== 0;`;
+    return `${indent}${operation.target} = ${operation.source} !== 0n;`;
   }
   if (operation.kind === "native.call") {
     const targets = operation.results === undefined
@@ -377,9 +371,9 @@ function emitExactStatement(operation, indent, resourceStack = null) {
       ? `${operation.index} < ${operation.count}`
       : `${operation.index} - ${operation.start} < ${operation.count}`;
     return [
-      `${indent}for (${operation.index} = ${operation.start}; ` +
+      `${indent}for (${operation.index} = ${BigInt(operation.start)}n; ` +
         `${condition}; ` +
-        `${operation.index} += ${operation.step || 1}) {`,
+        `${operation.index} += ${BigInt(operation.step || 1)}n) {`,
       ...operation.body.map((item) =>
         emitExactStatement(item, `${indent}  `, resourceStack)
       ),
@@ -535,6 +529,7 @@ function normalizedArgument(param) {
       `${jsString(param.resourceIdentity)}, ${jsString(param.name)})`;
   }
   if (param.type === "Integer") return `BigInt(${param.name})`;
+  if (param.type === "uint64") return `BigInt(${param.name})`;
   if (param.type === "Int64Buffer" || param.type === "Int64Record") {
     return `int64BufferView(${param.name}, ${jsString(param.name)})`;
   }
@@ -664,22 +659,8 @@ function emitExactPublicFunction(fn) {
     `  const sagejs_native_${param.name} = ${normalizedArgument(param)};`
   );
   const args = fn.params.map((param) => `sagejs_native_${param.name}`).join(", ");
-  const ffiPassThrough = fn.body.every((operation) =>
-    operation.kind === "ffi.call" || operation.kind === "return"
-  );
-  const fallbackGuards = fn.params
-    .filter((param) => param.type === "uint64")
-    .filter(() => !ffiPassThrough)
-    .map((param) =>
-      `  if (typeof sagejs_native_${param.name} === "bigint" &&\n` +
-      `      sagejs_native_${param.name} > BigInt(Number.MAX_SAFE_INTEGER)) {\n` +
-      `    throw new RangeError("JavaScript fallback cannot iterate beyond Number.MAX_SAFE_INTEGER");\n` +
-      "  }"
-    );
   const fallbackArgs = fn.params.map((param) =>
-    param.type === "uint64" && !ffiPassThrough
-      ? `Number(sagejs_native_${param.name})`
-      : `sagejs_native_${param.name}`
+    `sagejs_native_${param.name}`
   ).join(", ");
   const fallbackExpression = exactResourceResult(
     fn,
@@ -711,13 +692,11 @@ ${normalized.join("\n")}
   if (sagejs_native_backend !== "bigint") {
     return ${exactReturn(fn, exactNativeExpression(fn, "sagejs_native_backend"))};
   }
-${fallbackGuards.join("\n")}
   return ${exactReturn(fn, fallbackExpression)};
 }
 ${fn.name}.javascript = function (${declaredParams}) {
   validate_${fn.name}(${params});
 ${normalized.join("\n")}
-${fallbackGuards.join("\n")}
   return ${exactReturn(fn, fallbackExpression)};
 };
 ${fn.name}.bigint = ${fn.name}.javascript;
@@ -980,9 +959,10 @@ ${fn.name}.nativeAvailable = nativeAddon !== null;`;
 }
 
 function generateJavaScript(ir, options = {}) {
-  function emitFloat64Statement(operation, indent) {
+  function emitFloat64Statement(operation, indent, uint64BigInt) {
     if (operation.kind === "uint64.constant") {
-      return `${indent}${operation.target} = ${operation.value};`;
+      return `${indent}${operation.target} = ${operation.value}` +
+        `${uint64BigInt ? "n" : ""};`;
     }
     if (operation.kind === "float64.constant") {
       return `${indent}${operation.target} = ${operation.value};`;
@@ -1002,26 +982,34 @@ function generateJavaScript(ir, options = {}) {
         `${indent}${operation.target} = Math.sqrt(${operation.source});`;
     }
     if (operation.kind === "uint64.binary") {
-      return `${indent}${operation.target} = ${operation.left} ` +
-        `${operation.operation} ${operation.right};`;
+      const helper = uint64BigInt ? "uint64Binary" : "uint64NumberBinary";
+      return `${indent}${operation.target} = ${helper}(` +
+        `${jsString(operation.operation)}, ${operation.left}, ` +
+        `${operation.right});`;
     }
     if (operation.kind === "float64.buffer.copy") {
       return `${indent}${operation.target} = ${operation.source};`;
     }
     if (operation.kind === "float64.buffer.length") {
-      return `${indent}${operation.target} = ${operation.buffer}.length;`;
+      return `${indent}${operation.target} = ` +
+        `${uint64BigInt ? "BigInt(" : ""}${operation.buffer}.length` +
+        `${uint64BigInt ? ")" : ""};`;
     }
     if (operation.kind === "float64.record.view") {
       return `${indent}${operation.target} = float64RecordView(` +
-        `${operation.buffer}, ${operation.start}, ${operation.length});`;
+        `${operation.buffer}, ` +
+        `${uint64BigInt ? `Number(${operation.start})` : operation.start}, ` +
+        `${uint64BigInt ? `Number(${operation.length})` : operation.length});`;
     }
     if (operation.kind === "float64.buffer.get") {
       return `${indent}${operation.target} = float64BufferGet(` +
-        `${operation.buffer}, ${operation.index});`;
+        `${operation.buffer}, ` +
+        `${uint64BigInt ? `Number(${operation.index})` : operation.index});`;
     }
     if (operation.kind === "float64.buffer.set") {
       return `${indent}float64BufferSet(${operation.buffer}, ` +
-        `${operation.index}, ${operation.value});`;
+        `${uint64BigInt ? `Number(${operation.index})` : operation.index}, ` +
+        `${operation.value});`;
     }
     if (operation.kind === "float64.binary") {
       const operator = { add: "+", sub: "-", mul: "*", div: "/" }[
@@ -1039,9 +1027,10 @@ function generateJavaScript(ir, options = {}) {
       return [
         `${indent}for (${operation.index} = ${operation.start}; ` +
           `${operation.index} < ${stop}; ` +
-          `${operation.index} += ${operation.step || 1}) {`,
+          `${operation.index} += ${operation.step || 1}` +
+          `${uint64BigInt ? "n" : ""}) {`,
         ...operation.body.map((item) =>
-          emitFloat64Statement(item, `${indent}  `)
+          emitFloat64Statement(item, `${indent}  `, uint64BigInt)
         ),
         `${indent}}`,
       ].join("\n");
@@ -1053,6 +1042,7 @@ function generateJavaScript(ir, options = {}) {
   }
 
   function emitFloat64PublicFunction(fn) {
+    const uint64BigInt = hasUint64Bitwise(fn.body);
     const params = fn.params.map((param) => param.name).join(", ");
     const locals = fn.locals.map((local) => local.name);
     const declaration = locals.length === 0 ? "" : `  let ${locals.join(", ")};\n`;
@@ -1064,7 +1054,7 @@ function generateJavaScript(ir, options = {}) {
     const fallback = `function javascript_${fn.name}(${params}) {\n` +
       (bufferNormalization ? bufferNormalization + "\n" : "") +
       declaration + fn.body.map((operation) =>
-        emitFloat64Statement(operation, "  ")
+        emitFloat64Statement(operation, "  ", uint64BigInt)
       ).join("\n") + "\n}";
     const validation = fn.params.map((param) => param.type === "uint64"
       ? uint64Validation(param.name)
@@ -1080,7 +1070,7 @@ function generateJavaScript(ir, options = {}) {
       : param.name
     ).join(", ");
     const fallbackArgs = fn.params.map((param) => param.type === "uint64"
-      ? `Number(${param.name})`
+      ? uint64BigInt ? `BigInt(${param.name})` : `Number(${param.name})`
       : param.name
     ).join(", ");
     const copyBack = fn.params
@@ -1151,6 +1141,53 @@ ${javascriptRuntime(ir)}
 const float64BufferViewTag = Symbol("sagejs.native.Float64BufferView");
 const int64BufferViewTag = Symbol("sagejs.native.Int64BufferView");
 const integerBufferViewTag = Symbol("sagejs.native.IntegerBufferView");
+
+function uint64Binary(operation, left, right) {
+  const a = BigInt(left);
+  const b = BigInt(right);
+  if (operation === "floordiv" || operation === "mod") {
+    if (b === 0n) {
+      throw new RangeError("unsigned integer division or modulo by zero");
+    }
+    return operation === "floordiv" ? a / b : a % b;
+  }
+  if (operation === "lshift") {
+    if (b >= 64n) {
+      nativeRaise(
+        "OverflowError", "uint64 shift count must be between 0 and 63");
+    }
+    return BigInt.asUintN(64, a << b);
+  }
+  if (operation === "rshift") {
+    if (b >= 64n) {
+      nativeRaise(
+        "OverflowError", "uint64 shift count must be between 0 and 63");
+    }
+    return a >> b;
+  }
+  if (operation === "bitand") return a & b;
+  if (operation === "bitor") return a | b;
+  if (operation === "bitxor") return a ^ b;
+  if (operation === "add" || operation === "+") {
+    return BigInt.asUintN(64, a + b);
+  }
+  if (operation === "sub" || operation === "-") {
+    return BigInt.asUintN(64, a - b);
+  }
+  if (operation === "mul" || operation === "*") {
+    return BigInt.asUintN(64, a * b);
+  }
+  throw new Error("unsupported uint64 operation " + operation);
+}
+
+function uint64NumberBinary(operation, left, right) {
+  const result = uint64Binary(operation, left, right);
+  if (result > BigInt(Number.MAX_SAFE_INTEGER)) {
+    throw new RangeError(
+      "JavaScript fallback cannot represent uint64 beyond Number.MAX_SAFE_INTEGER");
+  }
+  return Number(result);
+}
 
 function isTypedArrayKind(value, name) {
   return ArrayBuffer.isView(value) &&
@@ -1631,6 +1668,9 @@ function nativeExactCall(name, args, backend = "tagged", declaredErrors = null) 
     if (message.includes("outside signed 64-bit")) {
       nativeRaise("OverflowError", message);
     }
+    if (message.includes("uint64 shift count")) {
+      nativeRaise("OverflowError", message);
+    }
     if (message.includes("IntegerBuffer word capacity") ||
         message.includes("IntegerBuffer slot exceeds")) {
       nativeRaise("OverflowError", message);
@@ -1666,6 +1706,9 @@ function nativeFloat64Call(name, args) {
       nativeRaise("ZeroDivisionError", message);
     }
     if (message.includes("math domain")) nativeRaise("ValueError", message);
+    if (message.includes("uint64 shift count")) {
+      nativeRaise("OverflowError", message);
+    }
     throw error;
   }
 }
@@ -1742,6 +1785,9 @@ function primeFieldNativeCall(name, args) {
         message.includes("square") || message.includes("compatible") ||
         message.includes("base rings differ")) {
       nativeRaise("ValueError", message);
+    }
+    if (message.includes("uint64 shift count")) {
+      nativeRaise("OverflowError", message);
     }
     throw error;
   }

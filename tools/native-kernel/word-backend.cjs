@@ -8,6 +8,10 @@ const {
 const { tupleElementTypes } = require("./integer-ir.cjs");
 const { emitWordForeignCall } = require("./ffi-codegen.cjs");
 const { isForeignResourceType } = require("./ffi-codegen.cjs");
+const {
+  isUint64Shift,
+  uint64COperator,
+} = require("./uint64-operations.cjs");
 
 const INT64_MIN = -(1n << 63n);
 const INT64_MAX = (1n << 63n) - 1n;
@@ -158,7 +162,18 @@ function emitWordOperation(operation, context, indent) {
         `${indent}${target} = ${left} ${operator} ${right};`,
       ].join("\n");
     }
-    const operator = { add: "+", sub: "-", mul: "*" }[operation.operation];
+    const operator = uint64COperator(operation.operation);
+    if (isUint64Shift(operation.operation)) {
+      return [
+        `${indent}if (${right} >= UINT64_C(64))`,
+        `${indent}{`,
+        `${indent}    sagejs_native_status_set(status, SAGEJS_NATIVE_RANGE_ERROR, ` +
+          `"uint64 shift count must be between 0 and 63");`,
+        `${indent}    ${context.failure}`,
+        `${indent}}`,
+        `${indent}${target} = ${left} ${operator} (unsigned int) ${right};`,
+      ].join("\n");
+    }
     return `${indent}${target} = ${left} ${operator} ${right};`;
   }
   if (operation.kind === "uint64.compare") {

@@ -4,6 +4,9 @@ const {
   annotateOperations,
   sourceSpan,
 } = require("./provenance.cjs");
+const {
+  uint64BitwiseOperation,
+} = require("./uint64-operations.cjs");
 
 const MAX_SMALL_POWER = 64n;
 const TYPE_ALIASES = new Map([
@@ -278,10 +281,12 @@ function signatureFromFunction(
 function isIntegerSignature(signature) {
   return (
     signature.returnType === "Integer" ||
+    signature.returnType === "uint64" ||
     signature.returnType === "bool" ||
     isTupleType(signature.returnType) ||
     signature.params.some(
       (param) => param.type === "Integer" || param.type === "bool" ||
+        param.type === "uint64" ||
         param.type === "UInt64Buffer" || EXACT_BUFFER_TYPES.has(param.type),
     )
   );
@@ -404,6 +409,14 @@ function emitUint64Constant(context, node, operations, value) {
     value: value.toString(),
   });
   return { name: target, type: "uint64" };
+}
+
+function lowerUint64Operand(node, context, operations) {
+  const literal = integerLiteral(node);
+  if (literal !== undefined) {
+    return emitUint64Constant(context, node, operations, literal);
+  }
+  return lowerExpression(node, context, operations);
 }
 
 function emitBoolean(context, node, operations, value) {
@@ -1049,6 +1062,27 @@ function lowerExpression(node, context, operations) {
     return { name: target, type: "Integer" };
   }
 
+  const bitwise = uint64BitwiseOperation(node.operator);
+  if (bitwise !== undefined) {
+    const left = lowerUint64Operand(node.left, context, operations);
+    const right = lowerUint64Operand(node.right, context, operations);
+    expect(
+      context,
+      node,
+      left.type === "uint64" && right.type === "uint64",
+      `uint64 operator ${node.operator} requires uint64 operands`,
+    );
+    const target = temporary(context, node, "uint64");
+    operations.push({
+      kind: "uint64.binary",
+      operation: bitwise,
+      target,
+      left: left.name,
+      right: right.name,
+    });
+    return { name: target, type: "uint64" };
+  }
+
   const comparison = COMPARISONS.get(node.operator);
   if (comparison !== undefined) {
     let left = lowerExpression(node.left, context, operations);
@@ -1372,13 +1406,37 @@ function lowerAssignment(statement, context) {
     ? assign.operator.slice(0, -1)
     : "";
   const operation = INTEGER_BINARY.get(symbol);
+  const bitwise = uint64BitwiseOperation(symbol);
   expect(
     context,
     assign,
-    operation !== undefined,
+    operation !== undefined || bitwise !== undefined,
     `unsupported augmented operator ${assign.operator}`,
   );
   const type = context.variables.get(target);
+  if (type === "uint64" && bitwise !== undefined) {
+    expect(
+      context,
+      assign.left,
+      context.initialized.has(target),
+      `augmented target ${target} must be an initialized uint64`,
+    );
+    const right = lowerUint64Operand(assign.right, context, operations);
+    expect(
+      context,
+      assign.right,
+      right.type === "uint64",
+      `uint64 augmented operator ${assign.operator} requires a uint64 operand`,
+    );
+    operations.push({
+      kind: "uint64.binary",
+      operation: bitwise,
+      target,
+      left: target,
+      right: right.name,
+    });
+    return operations;
+  }
   expect(
     context,
     assign.left,

@@ -1155,6 +1155,12 @@ export class PythonCstLowerer {
 
   private normalizeOperator(operator: string): string {
     if (this.syntax.mode === "sage") {
+      // Compiled systems kernels are ordinary CPython-parseable source.  The
+      // existing module marker opts their fallback into JavaScript's native
+      // fixed-width bitwise operators, so preserve Python's xor spelling too.
+      // Without the marker Sage mode deliberately keeps `^` as exponentiation.
+      if (operator === "^" && this.nativeBitwise) return "^";
+      if (operator === "^=" && this.nativeBitwise) return "^=";
       if (operator === "^") return "**";
       if (operator === "^^") return "^";
       if (operator === "^=") return "**=";
