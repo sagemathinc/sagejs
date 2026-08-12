@@ -1,0 +1,74 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "dense-prime-perf-audit-v3",
+  "title": "Dense prime matrix performance audit v3",
+  "lane": "arithmetic-algebra",
+  "status": "active",
+  "owner": "user",
+  "objective": "Audit dense GF(p) public construction, mutation, arithmetic, linear algebra, and serialization against Sage and native libraries, then identify the highest-value architecture-consistent non-GF(2) optimization lane",
+  "base_commit": "236936d95e48ad581a246de0811969f4c9e94c26",
+  "claims": [
+    "bench/dense-prime-performance-v3.cjs"
+  ],
+  "dependencies": [],
+  "references": [
+    "SageMath dense modular matrix behavior and performance"
+  ],
+  "architecture": {
+    "strategy": "source-transparent-native",
+    "fallback": "same-source",
+    "oracles": [
+      "cpython",
+      "javascript",
+      "SageMath dense matrices over small prime fields"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "pnpm test:native",
+    "node bench/dense-prime-performance-v3.cjs all"
+  ],
+  "runs": [
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 11.995,
+      "started_at": "2026-08-12T03:21:57.415Z",
+      "commit": "236936d95e48ad581a246de0811969f4c9e94c26",
+      "workspace_fingerprint": "7adef23461bb9eef4830bbea9d97dc27dce47d55c0e18b441fcbdeedbfaa9202",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/dense-prime-performance-v3.cjs all",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 4.167,
+      "started_at": "2026-08-12T03:26:26.387Z",
+      "commit": "236936d95e48ad581a246de0811969f4c9e94c26",
+      "workspace_fingerprint": "7adef23461bb9eef4830bbea9d97dc27dce47d55c0e18b441fcbdeedbfaa9202",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Added a deterministic public Sage.js-versus-SageMath benchmark covering cold and warm dense GF(97) construction, scalar access and mutation, structural arithmetic, linear algebra, formatting, and serialization. The packed foundation is already competitive for construction, random fill, addition, subtraction, scalar multiplication, lists, and formatting. The largest warm gaps are right kernel (9.87 ms versus 1.48 ms), serialization (34.61 ms versus 6.49 ms), deserialization (11.98 ms versus 1.58 ms), determinant (4.69 ms versus 1.01 ms), and characteristic polynomial (2.09 ms versus 0.42 ms). Direct profiling shows the right-kernel gap is not a host-boundary problem: the declared call and public call are both about 9-10 ms, while raw FLINT timings split into rank 1.96 ms, nullspace 3.38 ms, and the existing full shim 9.16 ms. The shim redundantly computes rank, nullspace, and then RREF of the basis.",
+    "risks": [
+      "Measurements are from one Linux x64 host and small timings vary under shared-host contention; the benchmark reports medians and separates first use from warm calls.",
+      "The audit intentionally excludes GF(2), which is owned by the concurrent M4RI lane.",
+      "Serialization is a generic SagePack and packed-transfer concern outside this lane; it was measured but not yet profiled copy by copy."
+    ],
+    "next_steps": [
+      "Create an integration lane for a generated FFLAS/FFPACK right-kernel declaration using FFPACK::NullSpaceBasis for p < 256, with a measured crossover, Sage and FLINT differential oracles, and the existing Windows-capable FLINT fallback.",
+      "Profile SagePack GF(p) serialization and deserialization as a generic packed-object transfer lane, counting allocations and full-buffer copies before changing representation code.",
+      "After right kernel, measure generated FFPACK determinant and characteristic-polynomial adapters; do not replace the readable typed-Python structural kernels that are already competitive."
+    ]
+  }
+}
