@@ -83,7 +83,7 @@
       "targets": {
         "dynamic": true,
         "native": true,
-        "wasm": false
+        "wasm": true
       }
     },
     {
@@ -102,7 +102,7 @@
       "targets": {
         "dynamic": true,
         "native": true,
-        "wasm": false
+        "wasm": true
       }
     },
     {
@@ -129,7 +129,7 @@
         },
         "targets": {
           "dynamic": true,
-          "wasm": false
+          "wasm": true
         }
       },
       "host_ingress": {
@@ -142,13 +142,13 @@
         },
         "targets": {
           "dynamic": true,
-          "wasm": false
+          "wasm": true
         }
       },
       "targets": {
         "dynamic": true,
         "native": true,
-        "wasm": false
+        "wasm": true
       }
     },
     {
@@ -6782,7 +6782,7 @@
       "targets": {
         "dynamic": true,
         "native": true,
-        "wasm": false
+        "wasm": true
       }
     },
     {
@@ -6874,7 +6874,7 @@
       "targets": {
         "dynamic": true,
         "native": true,
-        "wasm": false
+        "wasm": true
       }
     },
     {
@@ -7120,7 +7120,7 @@
       "targets": {
         "dynamic": true,
         "native": true,
-        "wasm": false
+        "wasm": true
       }
     },
     {
@@ -7301,7 +7301,7 @@
       "targets": {
         "dynamic": true,
         "native": true,
-        "wasm": false
+        "wasm": true
       }
     },
     {
@@ -7360,7 +7360,7 @@
       "targets": {
         "dynamic": true,
         "native": true,
-        "wasm": false
+        "wasm": true
       }
     },
     {
@@ -7477,7 +7477,7 @@
       "targets": {
         "dynamic": true,
         "native": true,
-        "wasm": false
+        "wasm": true
       }
     },
     {
@@ -7572,7 +7572,7 @@
       "targets": {
         "dynamic": true,
         "native": true,
-        "wasm": false
+        "wasm": true
       }
     },
     {
@@ -7667,7 +7667,7 @@
       "targets": {
         "dynamic": true,
         "native": true,
-        "wasm": false
+        "wasm": true
       }
     },
     {
@@ -7752,7 +7752,7 @@
       "targets": {
         "dynamic": true,
         "native": true,
-        "wasm": false
+        "wasm": true
       }
     },
     {
@@ -7821,7 +7821,7 @@
       "targets": {
         "dynamic": true,
         "native": true,
-        "wasm": false
+        "wasm": true
       }
     },
     {
@@ -8490,7 +8490,7 @@
       "targets": {
         "dynamic": true,
         "native": true,
-        "wasm": false
+        "wasm": true
       }
     },
     {
@@ -8710,7 +8710,7 @@
       "targets": {
         "dynamic": true,
         "native": true,
-        "wasm": false
+        "wasm": true
       }
     },
     {
@@ -8978,7 +8978,7 @@
       "targets": {
         "dynamic": true,
         "native": true,
-        "wasm": false
+        "wasm": true
       }
     },
     {
@@ -9047,7 +9047,7 @@
       "targets": {
         "dynamic": true,
         "native": true,
-        "wasm": false
+        "wasm": true
       }
     },
     {
@@ -9833,7 +9833,7 @@
       "targets": {
         "dynamic": true,
         "native": true,
-        "wasm": false
+        "wasm": true
       }
     },
     {
@@ -9898,7 +9898,7 @@
       "targets": {
         "dynamic": true,
         "native": true,
-        "wasm": false
+        "wasm": true
       }
     },
     {
@@ -9967,7 +9967,7 @@
       "targets": {
         "dynamic": true,
         "native": true,
-        "wasm": false
+        "wasm": true
       }
     },
     {
@@ -10036,7 +10036,7 @@
       "targets": {
         "dynamic": true,
         "native": true,
-        "wasm": false
+        "wasm": true
       }
     },
     {
@@ -10240,7 +10240,7 @@
       "targets": {
         "dynamic": true,
         "native": true,
-        "wasm": false
+        "wasm": true
       }
     },
     {

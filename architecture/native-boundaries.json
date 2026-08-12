@@ -36,13 +36,13 @@
         "dynamic_export": "ffiFlintByteRegionCopyBytes",
         "data_symbol": "sagejs_flint_byte_region_data",
         "length_symbol": "sagejs_flint_byte_region_length",
-        "wasm": false
+        "wasm": true
       },
       "host_ingress": {
         "kind": "copied_bytes",
         "dynamic_export": "ffiFlintByteRegionFromBytes",
         "init_symbol": "sagejs_flint_byte_region_init_copy",
-        "wasm": false
+        "wasm": true
       },
       "disposition": "declared-owned-ffi-resource"
     },
