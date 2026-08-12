@@ -1,0 +1,112 @@
+#!/usr/bin/env node
+"use strict";
+
+const assert = require("node:assert/strict");
+const { resolve } = require("node:path");
+const { spawnSync } = require("node:child_process");
+
+const root = resolve(__dirname, "..");
+
+function run(source, environment = {}) {
+  const result = spawnSync(
+    process.execPath,
+    [resolve(root, "bin", "sagejs"), "--python"],
+    {
+      cwd: root,
+      encoding: "utf8",
+      input: source,
+      env: {
+        ...process.env,
+        SAGEJS_FORBID_POLYNOMIAL_NAPI: "1",
+        ...environment,
+      },
+      timeout: 120_000,
+    },
+  );
+  assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`);
+  assert.equal(result.stderr, "", `${result.stdout}\n${result.stderr}`);
+  assert.doesNotMatch(result.stderr, /forbidden legacy mathematical N-API/);
+  return result.stdout.trim();
+}
+
+const witness = [
+  "R = PolynomialRing(ZZ, 'x'); x = R.gen()",
+  "S = PolynomialRing(QQ, 'y'); y = S.gen()",
+  "T = PolynomialRing(GF(97), 'z'); z = T.gen()",
+  "def forbid_materialization(self):",
+  "    raise AssertionError('structural operation materialized packed exact coefficients')",
+  "setattr(type(x), '_materialize_exact_compatibility_storage', forbid_materialization)",
+  "zf = x**3 - 2*x + 5",
+  "zg = x**2 + x + 1",
+  "qf = y**3 - QQ(1)/2*y + QQ(1)/3",
+  "qg = y**2 + y + QQ(1)/5",
+  "pf = z**3 - 2*z + 5",
+  "pg = z**2 + z + 1",
+  "assert zf(zg) == x**6 + 3*x**5 + 6*x**4 + 7*x**3 + 4*x**2 + x + 4",
+  "assert qf(qg) == qg**3 - QQ(1)/2*qg + QQ(1)/3",
+  "assert pf(pg) == pg**3 - 2*pg + 5",
+  "assert zf(zg)._has_fmpz_polynomial_resource()",
+  "assert qf(qg)._has_fmpq_polynomial_resource()",
+  "assert zf.reverse() == 5*x**3 - 2*x**2 + 1",
+  "assert zf.reverse(8) == 5*x**8 - 2*x**7 + x**5",
+  "assert R(0).reverse(8) == R(0)",
+  "assert qf.reverse(0) == S(QQ(1)/3)",
+  "assert pf.reverse(5) == 5*z**5 - 2*z**4 + z**2",
+  "assert zf.truncate(2) == -2*x + 5",
+  "assert zf.truncate(-1) == -2*x + 5",
+  "assert zf.truncate(-2) == -2*x + 5",
+  "assert zf.truncate(1000000) == zf",
+  "assert zf << 2 == x**5 - 2*x**3 + 5*x**2",
+  "assert zf >> 2 == x",
+  "assert (zf << -2) == x and (zf >> -2) == zf << 2",
+  "assert R(0) << 100 == R(0)",
+  "zi = zf.integral()",
+  "assert zi.parent() is PolynomialRing(QQ, 'x')",
+  "assert zi == QQ(1)/4*zi.parent().gen()**4 - zi.parent().gen()**2 + 5*zi.parent().gen()",
+  "assert zi.derivative() == zi.parent()(zf)",
+  "assert qf.integral().derivative() == qf",
+  "assert pf.integral().derivative() == pf",
+  "assert zf.integral(x) == zi",
+  "assert (x**2 + 2*x + 3).resultant(x + 2) == 3",
+  "assert (y**2 + 2*y + 3).resultant(y + 2) == QQ(3)",
+  "assert (z**2 + 2*z + 3).resultant(z + 2) == T.base_ring()(3)",
+  "assert (x**2 + 2*x + 3).discriminant() == -8",
+  "assert (y**2 + 2*y + 3).discriminant() == QQ(-8)",
+  "assert (z**2 + 2*z + 3).discriminant() == T.base_ring()(-8)",
+  "for P, generator in [(R, x), (S, y), (T, z)]:",
+  "    assert P(0).resultant(generator + 1) == P.base_ring()(0)",
+  "    assert P(7).resultant(generator + 1) == P.base_ring()(7)",
+  "    assert P(7).resultant(P(7)) == P.base_ring()(1)",
+  "    assert P(0).discriminant() == P.base_ring()(0)",
+  "    assert P(7).discriminant() == P.base_ring()(0)",
+  "for operation in [lambda: zf.reverse(-1), lambda: zf.reverse(QQ(3)/2)]:",
+  "    try:",
+  "        operation()",
+  "    except ValueError:",
+  "        pass",
+  "    else:",
+  "        raise AssertionError('invalid reverse degree was accepted')",
+  "binary = PolynomialRing(GF(2), 'u'); u = binary.gen()",
+  "assert (u**2 + 1).integral() == u**3 + u",
+  "for bad in [u, u**3]:",
+  "    try:",
+  "        bad.integral()",
+  "    except ZeroDivisionError:",
+  "        pass",
+  "    else:",
+  "        raise AssertionError('nonintegrable characteristic term was accepted')",
+  "small = PolynomialRing(GF(3), 't'); t = small.gen()",
+  "degree_drop = 2*t**6 + t**5 + 1",
+  "assert degree_drop.discriminant() == small.base_ring()(2)",
+  "assert zf._has_fmpz_polynomial_resource() and qf._has_fmpq_polynomial_resource()",
+  "print('public-polynomial-structural-ok')",
+  "",
+].join("\n");
+
+assert.equal(run(witness), "public-polynomial-structural-ok");
+assert.equal(
+  run(witness, { SAGEJS_NATIVE_DISABLE: "1" }),
+  "public-polynomial-structural-ok",
+);
+
+console.log("public polynomial structural tests passed");
