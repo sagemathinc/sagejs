@@ -1,108 +1,140 @@
 #!/usr/bin/env node
 "use strict";
 
+const { execFileSync, spawnSync } = require("node:child_process");
 const { mkdtempSync, rmSync, writeFileSync } = require("node:fs");
-const { tmpdir } = require("node:os");
+const os = require("node:os");
+const { tmpdir } = os;
 const { join } = require("node:path");
-const { spawnSync } = require("node:child_process");
 
 const root = join(__dirname, "..");
 const sagejs = join(root, "bin", "sagejs");
-const sources = [
-  join(
-    root,
-    "src",
-    "lib",
-    "sagejs",
-    "polynomial_algorithms",
-    "packed_prime_xgcd.py",
-  ),
-  ...["packed_prime_field.py", "packed_flint.py"].map((name) =>
-    join(root, "src", "lib", "sagejs", "kernels", "polynomial", name)
-  ),
-];
+const sourceKernel = join(
+  root,
+  "src",
+  "lib",
+  "sagejs",
+  "polynomial_algorithms",
+  "packed_prime_xgcd.py",
+);
+const flintKernel = join(
+  root,
+  "src",
+  "lib",
+  "sagejs",
+  "kernels",
+  "polynomial",
+  "packed_flint.py",
+);
+const primeKernel = join(
+  root,
+  "src",
+  "lib",
+  "sagejs",
+  "kernels",
+  "polynomial",
+  "packed_prime_field.py",
+);
 
 function run(command, args, options = {}) {
   const result = spawnSync(command, args, {
     cwd: root,
     encoding: "utf8",
-    timeout: 120_000,
+    timeout: 240_000,
     ...options,
     env: { ...process.env, ...options.env },
   });
   if (result.error) throw result.error;
-  if (result.status !== 0) throw new Error(result.stderr || result.stdout);
+  if (result.status !== 0) throw new Error(result.stdout + result.stderr);
   return result.stdout;
 }
 
 const witness = String.raw`
 import sagejs.runtime as runtime
+from sagejs.kernels.polynomial.packed_flint import flint_packed_prime_field_polynomial_xgcd
+from sagejs.native import is_compiled
 from sagejs.polynomial_algorithms.packed_prime_xgcd import packed_prime_field_polynomial_xgcd
 import time
 
 
-def kernel_xgcd(left, right, prime):
+source_compiled = is_compiled(packed_prime_field_polynomial_xgcd)
+flint_compiled = is_compiled(flint_packed_prime_field_polynomial_xgcd)
+
+
+def source_call(left, right, prime):
+    capacity = max(1, left._coefficient_length(), right._coefficient_length())
+    if source_compiled:
+        output = runtime.uint64_buffer(3 * capacity + 3)
+        left_input = left._storage
+        right_input = right._storage
+        modulus = runtime.bigint(prime)
+    else:
+        output = [0] * (3 * capacity + 3)
+        left_input = [int(value) for value in left._storage]
+        right_input = [int(value) for value in right._storage]
+        modulus = prime
+    assert packed_prime_field_polynomial_xgcd(
+        output, left_input, right_input, modulus
+    )
+    return output
+
+
+def decode_source(output, capacity):
+    lengths_offset = 3 * capacity
+    gcd_length = int(output[lengths_offset])
+    left_length = int(output[lengths_offset + 1])
+    right_length = int(output[lengths_offset + 2])
+    return (
+        [int(output[index]) for index in range(gcd_length)],
+        [int(output[capacity + index]) for index in range(left_length)],
+        [int(output[2 * capacity + index]) for index in range(right_length)],
+    )
+
+
+def trim(values):
+    output = [int(value) for value in values]
+    while output and output[-1] == 0:
+        output.pop()
+    return output
+
+
+def direct_flint_call(left, right, prime):
     capacity = max(1, left._coefficient_length(), right._coefficient_length())
     gcd_output = runtime.uint64_buffer(capacity)
     left_output = runtime.uint64_buffer(capacity)
     right_output = runtime.uint64_buffer(capacity)
-    lengths = runtime.uint64_buffer(3)
-    workspace = runtime.uint64_buffer(7 * capacity)
-    assert packed_prime_field_polynomial_xgcd(
+    assert flint_packed_prime_field_polynomial_xgcd(
         gcd_output,
         left_output,
         right_output,
-        lengths,
         left._storage,
         right._storage,
-        workspace,
+        capacity,
+        left._coefficient_length(),
+        right._coefficient_length(),
         prime,
     )
-    return (
-        left._new(
-            runtime.uint64_buffer_prefix(gcd_output, runtime.number(lengths[0]))
-        ),
-        left._new(
-            runtime.uint64_buffer_prefix(left_output, runtime.number(lengths[1]))
-        ),
-        left._new(
-            runtime.uint64_buffer_prefix(right_output, runtime.number(lengths[2]))
-        ),
-    )
+    return trim(gcd_output), trim(left_output), trim(right_output)
 
 
-def public_divrem_xgcd(left, right):
-    ring = left.parent()
-    old_remainder = left
-    remainder = right
-    old_left = ring(1)
-    left_coefficient = ring(0)
-    old_right = ring(0)
-    right_coefficient = ring(1)
-    while remainder:
-        quotient, next_remainder = old_remainder.quo_rem(remainder)
-        old_remainder, remainder = remainder, next_remainder
-        old_left, left_coefficient = (
-            left_coefficient,
-            old_left - quotient * left_coefficient,
-        )
-        old_right, right_coefficient = (
-            right_coefficient,
-            old_right - quotient * right_coefficient,
-        )
-    if not old_remainder:
-        return old_remainder, old_left, old_right
-    scale = old_remainder.parent().base_ring()(1) / old_remainder[
-        old_remainder.degree()
-    ]
-    return old_remainder * scale, old_left * scale, old_right * scale
+def median_milliseconds(function):
+    for _repeat in range(5):
+        function()
+    samples = []
+    for _repeat in range(11):
+        started = time.perf_counter()
+        function()
+        samples.append(1000 * (time.perf_counter() - started))
+    samples.sort()
+    return samples[5]
 
 
 field = GF(65521)
 ring = PolynomialRing(field, "x")
 seed = 0x12345678
-print("degree,kernel_ms,repeated_public_divrem_ms,speedup")
-for degree in [16, 32, 64, 128]:
+mode = "compiled" if source_compiled else "dynamic"
+print("mode,source_compiled,flint_compiled,degree,source_ms,direct_flint_ms,public_flint_ms")
+for degree in [8, 16, 32, 64, 128, 256]:
     left_values = []
     right_values = []
     for _index in range(degree + 1):
@@ -115,34 +147,48 @@ for degree in [16, 32, 64, 128]:
     right_values[-1] = 1
     left = ring(left_values)
     right = ring(right_values)
-    expected = public_divrem_xgcd(left, right)
-    actual = kernel_xgcd(left, right, field._modulus)
-    assert actual == expected
-    assert actual[1] * left + actual[2] * right == actual[0]
-    for _repeat in range(3):
-        kernel_xgcd(left, right, field._modulus)
-        public_divrem_xgcd(left, right)
-    kernel_samples = []
-    public_samples = []
-    for _repeat in range(9):
-        started = time.perf_counter()
-        kernel_xgcd(left, right, field._modulus)
-        kernel_samples.append(1000 * (time.perf_counter() - started))
-        started = time.perf_counter()
-        public_divrem_xgcd(left, right)
-        public_samples.append(1000 * (time.perf_counter() - started))
-    kernel_samples.sort()
-    public_samples.sort()
-    kernel_ms = kernel_samples[4]
-    public_ms = public_samples[4]
+    capacity = max(1, len(left_values), len(right_values))
+
+    public_value = left.xgcd(right)
+    source_value = decode_source(source_call(left, right, 65521), capacity)
+    direct_value = direct_flint_call(left, right, 65521)
+    source_polynomials = [ring(values) for values in source_value]
+    direct_polynomials = [ring(values) for values in direct_value]
+    public_gcd = [int(value.lift()) for value in public_value[0].coefficients()]
+    assert source_value[0] == public_gcd
+    assert direct_value[0] == public_gcd
+    assert (
+        source_polynomials[1] * left
+        + source_polynomials[2] * right
+        - source_polynomials[0]
+    ).is_zero()
+    assert (
+        direct_polynomials[1] * left
+        + direct_polynomials[2] * right
+        - direct_polynomials[0]
+    ).is_zero()
+
+    source_ms = median_milliseconds(
+        lambda: source_call(left, right, 65521)
+    )
+    direct_ms = median_milliseconds(
+        lambda: direct_flint_call(left, right, 65521)
+    )
+    public_ms = median_milliseconds(lambda: left.xgcd(right))
     print(
-        str(degree)
+        mode
         + ","
-        + str(round(kernel_ms, 4))
+        + str(source_compiled)
         + ","
-        + str(round(public_ms, 4))
+        + str(flint_compiled)
         + ","
-        + str(round(public_ms / kernel_ms, 2))
+        + str(degree)
+        + ","
+        + str(round(source_ms, 6))
+        + ","
+        + str(round(direct_ms, 6))
+        + ","
+        + str(round(public_ms, 6))
     )
 `;
 
@@ -151,15 +197,38 @@ const cache = join(temporary, "cache");
 const witnessPath = join(temporary, "witness.py");
 try {
   writeFileSync(witnessPath, witness);
-  for (const source of sources) {
-    run(sagejs, ["native", "compile", source, "--cache-root", cache]);
-  }
-  process.stdout.write(run(sagejs, [witnessPath], {
-    env: {
-      SAGEJS_NATIVE_CACHE_DIR: cache,
-      SAGEJS_NATIVE_REQUIRED: "1",
-    },
-  }));
+  run(sagejs, ["native", "compile", sourceKernel, "--cache-root", cache]);
+  run(sagejs, ["native", "compile", flintKernel, "--cache-root", cache]);
+  run(sagejs, ["native", "compile", primeKernel, "--cache-root", cache]);
+
+  const revision = execFileSync("git", ["rev-parse", "HEAD"], {
+    cwd: root,
+    encoding: "utf8",
+  }).trim();
+  const cpu = os.cpus()[0]?.model || "unknown";
+  console.log(`# revision=${revision}`);
+  console.log(
+    `# host=${os.hostname()} platform=${process.platform}-${process.arch} ` +
+      `node=${process.version} cpu=${cpu}`,
+  );
+  console.log("# prime=65521 warmup=5 samples=11 statistic=median");
+
+  process.stdout.write(
+    run(sagejs, [witnessPath], {
+      env: {
+        SAGEJS_NATIVE_CACHE_DIR: cache,
+        SAGEJS_NATIVE_REQUIRED: "1",
+      },
+    }),
+  );
+  process.stdout.write(
+    run(sagejs, [witnessPath], {
+      env: {
+        SAGEJS_NATIVE_CACHE_DIR: cache,
+        SAGEJS_NATIVE_DISABLE: "1",
+      },
+    }),
+  );
 } finally {
   rmSync(temporary, { recursive: true, force: true });
 }
