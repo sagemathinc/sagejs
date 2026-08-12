@@ -109,6 +109,19 @@ test("full-width uint64 features remain exact beyond JavaScript's safe integer r
   }), /unsigned 64-bit integer/);
 });
 
+test("exact arithmetic over normalized uint64 strings remains total", () => {
+  const { evaluate } = require("../tools/math-dispatch/selector.cjs");
+  const source = { path: "synthetic.dispatch.py", line: 1, column: 1 };
+  const expression = {
+    op: "add",
+    left: { op: "feature", name: "n", source },
+    right: { op: "integer", value: "1", source },
+    source,
+  };
+  assert.equal(evaluate(expression, { n: "18446744073709551614" }, new Set()),
+    18446744073709551615n);
+});
+
 function checkedProfile(id, match, choose = "flint", kind = "checked") {
   const family = registry.families.get("dense-prime-matrix");
   return validateProfileDocument({
@@ -170,6 +183,15 @@ test("an activated local profile applies only on a complete exact identity match
   assert.equal(rejected.profile.origin, "portable");
   assert.equal(rejected.implementation, "fflas-float");
   assert.match(rejected.profile.diagnostics[0].reasons[0], /build_fingerprint/);
+  const extraLibrary = selectImplementation(registry, {
+    ...request,
+    build: {
+      ...match,
+      library_versions: { flint: "3.6.0", fflas: "2.5.0" },
+    },
+  });
+  assert.equal(extraLibrary.profile.origin, "portable");
+  assert.match(extraLibrary.profile.diagnostics[0].reasons[0], /library_versions keys/);
 });
 
 test("most-specific checked profile wins independently of source order", () => {

@@ -10,7 +10,7 @@
             "op": "available",
             "source": {
               "column": 17,
-              "line": 32,
+              "line": 33,
               "path": "dispatch/matrix.dispatch.py"
             }
           },
@@ -20,7 +20,7 @@
               "op": "feature",
               "source": {
                 "column": 17,
-                "line": 33,
+                "line": 34,
                 "path": "dispatch/matrix.dispatch.py"
               }
             },
@@ -30,14 +30,14 @@
               "op": "integer",
               "source": {
                 "column": 38,
-                "line": 33,
+                "line": 34,
                 "path": "dispatch/matrix.dispatch.py"
               },
               "value": "94906266"
             },
             "source": {
               "column": 17,
-              "line": 33,
+              "line": 34,
               "path": "dispatch/matrix.dispatch.py"
             }
           },
@@ -46,7 +46,7 @@
             "op": "feature",
             "source": {
               "column": 17,
-              "line": 34,
+              "line": 35,
               "path": "dispatch/matrix.dispatch.py"
             }
           }
@@ -54,13 +54,13 @@
         "op": "all",
         "source": {
           "column": 22,
-          "line": 31,
+          "line": 32,
           "path": "dispatch/matrix.dispatch.py"
         }
       },
       "source": {
         "column": 9,
-        "line": 29,
+        "line": 30,
         "path": "dispatch/matrix.dispatch.py"
       }
     },
@@ -72,13 +72,13 @@
         "op": "available",
         "source": {
           "column": 22,
-          "line": 40,
+          "line": 41,
           "path": "dispatch/matrix.dispatch.py"
         }
       },
       "source": {
         "column": 9,
-        "line": 38,
+        "line": 39,
         "path": "dispatch/matrix.dispatch.py"
       }
     },
@@ -92,7 +92,7 @@
             "op": "available",
             "source": {
               "column": 17,
-              "line": 46,
+              "line": 47,
               "path": "dispatch/matrix.dispatch.py"
             }
           },
@@ -102,7 +102,7 @@
               "op": "feature",
               "source": {
                 "column": 17,
-                "line": 47,
+                "line": 48,
                 "path": "dispatch/matrix.dispatch.py"
               }
             },
@@ -112,14 +112,14 @@
               "op": "integer",
               "source": {
                 "column": 39,
-                "line": 47,
+                "line": 48,
                 "path": "dispatch/matrix.dispatch.py"
               },
               "value": "2"
             },
             "source": {
               "column": 17,
-              "line": 47,
+              "line": 48,
               "path": "dispatch/matrix.dispatch.py"
             }
           },
@@ -128,7 +128,7 @@
             "op": "feature",
             "source": {
               "column": 17,
-              "line": 48,
+              "line": 49,
               "path": "dispatch/matrix.dispatch.py"
             }
           }
@@ -136,15 +136,29 @@
         "op": "all",
         "source": {
           "column": 22,
-          "line": 45,
+          "line": 46,
           "path": "dispatch/matrix.dispatch.py"
         }
       },
       "source": {
         "column": 9,
-        "line": 43,
+        "line": 44,
         "path": "dispatch/matrix.dispatch.py"
       }
+    }
+  ],
+  "conversions": [
+    {
+      "allocation": "copy",
+      "id": "packed-u64-fflas",
+      "reason": "FFLAS consumes a temporary row-major modular array",
+      "source": {
+        "column": 9,
+        "line": 55,
+        "path": "dispatch/matrix.dispatch.py"
+      },
+      "source_representation": "packed-u64",
+      "target_layout": "fflas-row-major"
     }
   ],
   "features": {
@@ -177,33 +191,70 @@
           ],
           "source": {
             "column": 17,
-            "line": 87,
+            "line": 97,
             "path": "dispatch/matrix.dispatch.py"
           },
           "when": {
-            "left": {
-              "name": "modulus",
-              "op": "feature",
-              "source": {
-                "column": 26,
-                "line": 90,
-                "path": "dispatch/matrix.dispatch.py"
-              }
-            },
-            "op": "compare",
-            "operator": "ne",
-            "right": {
-              "op": "integer",
-              "source": {
-                "column": 48,
-                "line": 90,
-                "path": "dispatch/matrix.dispatch.py"
+            "arguments": [
+              {
+                "left": {
+                  "name": "modulus",
+                  "op": "feature",
+                  "source": {
+                    "column": 33,
+                    "line": 100,
+                    "path": "dispatch/matrix.dispatch.py"
+                  }
+                },
+                "op": "compare",
+                "operator": "ne",
+                "right": {
+                  "op": "integer",
+                  "source": {
+                    "column": 55,
+                    "line": 100,
+                    "path": "dispatch/matrix.dispatch.py"
+                  },
+                  "value": "2"
+                },
+                "source": {
+                  "column": 33,
+                  "line": 100,
+                  "path": "dispatch/matrix.dispatch.py"
+                }
               },
-              "value": "2"
-            },
+              {
+                "left": {
+                  "name": "modulus",
+                  "op": "feature",
+                  "source": {
+                    "column": 58,
+                    "line": 100,
+                    "path": "dispatch/matrix.dispatch.py"
+                  }
+                },
+                "op": "compare",
+                "operator": "lt",
+                "right": {
+                  "op": "integer",
+                  "source": {
+                    "column": 79,
+                    "line": 100,
+                    "path": "dispatch/matrix.dispatch.py"
+                  },
+                  "value": "256"
+                },
+                "source": {
+                  "column": 58,
+                  "line": 100,
+                  "path": "dispatch/matrix.dispatch.py"
+                }
+              }
+            ],
+            "op": "all",
             "source": {
               "column": 26,
-              "line": 90,
+              "line": 100,
               "path": "dispatch/matrix.dispatch.py"
             }
           }
@@ -220,7 +271,7 @@
           ],
           "source": {
             "column": 17,
-            "line": 95,
+            "line": 105,
             "path": "dispatch/matrix.dispatch.py"
           },
           "when": true
@@ -238,7 +289,7 @@
           ],
           "source": {
             "column": 17,
-            "line": 101,
+            "line": 111,
             "path": "dispatch/matrix.dispatch.py"
           },
           "when": true
@@ -251,7 +302,7 @@
           "requires": [],
           "source": {
             "column": 17,
-            "line": 107,
+            "line": 117,
             "path": "dispatch/matrix.dispatch.py"
           },
           "when": {
@@ -260,7 +311,7 @@
               "op": "feature",
               "source": {
                 "column": 26,
-                "line": 109,
+                "line": 119,
                 "path": "dispatch/matrix.dispatch.py"
               }
             },
@@ -270,14 +321,14 @@
               "op": "integer",
               "source": {
                 "column": 47,
-                "line": 109,
+                "line": 119,
                 "path": "dispatch/matrix.dispatch.py"
               },
               "value": "256"
             },
             "source": {
               "column": 26,
-              "line": 109,
+              "line": 119,
               "path": "dispatch/matrix.dispatch.py"
             }
           }
@@ -293,7 +344,7 @@
       "id": "multiply",
       "source": {
         "column": 9,
-        "line": 77,
+        "line": 87,
         "path": "dispatch/matrix.dispatch.py"
       }
     },
@@ -314,33 +365,70 @@
           ],
           "source": {
             "column": 17,
-            "line": 118,
+            "line": 128,
             "path": "dispatch/matrix.dispatch.py"
           },
           "when": {
-            "left": {
-              "name": "modulus",
-              "op": "feature",
-              "source": {
-                "column": 26,
-                "line": 121,
-                "path": "dispatch/matrix.dispatch.py"
-              }
-            },
-            "op": "compare",
-            "operator": "ne",
-            "right": {
-              "op": "integer",
-              "source": {
-                "column": 48,
-                "line": 121,
-                "path": "dispatch/matrix.dispatch.py"
+            "arguments": [
+              {
+                "left": {
+                  "name": "modulus",
+                  "op": "feature",
+                  "source": {
+                    "column": 33,
+                    "line": 131,
+                    "path": "dispatch/matrix.dispatch.py"
+                  }
+                },
+                "op": "compare",
+                "operator": "ne",
+                "right": {
+                  "op": "integer",
+                  "source": {
+                    "column": 55,
+                    "line": 131,
+                    "path": "dispatch/matrix.dispatch.py"
+                  },
+                  "value": "2"
+                },
+                "source": {
+                  "column": 33,
+                  "line": 131,
+                  "path": "dispatch/matrix.dispatch.py"
+                }
               },
-              "value": "2"
-            },
+              {
+                "left": {
+                  "name": "modulus",
+                  "op": "feature",
+                  "source": {
+                    "column": 58,
+                    "line": 131,
+                    "path": "dispatch/matrix.dispatch.py"
+                  }
+                },
+                "op": "compare",
+                "operator": "lt",
+                "right": {
+                  "op": "integer",
+                  "source": {
+                    "column": 79,
+                    "line": 131,
+                    "path": "dispatch/matrix.dispatch.py"
+                  },
+                  "value": "256"
+                },
+                "source": {
+                  "column": 58,
+                  "line": 131,
+                  "path": "dispatch/matrix.dispatch.py"
+                }
+              }
+            ],
+            "op": "all",
             "source": {
               "column": 26,
-              "line": 121,
+              "line": 131,
               "path": "dispatch/matrix.dispatch.py"
             }
           }
@@ -357,7 +445,7 @@
           ],
           "source": {
             "column": 17,
-            "line": 126,
+            "line": 136,
             "path": "dispatch/matrix.dispatch.py"
           },
           "when": true
@@ -375,7 +463,7 @@
           ],
           "source": {
             "column": 17,
-            "line": 132,
+            "line": 142,
             "path": "dispatch/matrix.dispatch.py"
           },
           "when": true
@@ -388,7 +476,7 @@
           "requires": [],
           "source": {
             "column": 17,
-            "line": 138,
+            "line": 148,
             "path": "dispatch/matrix.dispatch.py"
           },
           "when": {
@@ -397,7 +485,7 @@
               "op": "feature",
               "source": {
                 "column": 26,
-                "line": 140,
+                "line": 150,
                 "path": "dispatch/matrix.dispatch.py"
               }
             },
@@ -407,14 +495,14 @@
               "op": "integer",
               "source": {
                 "column": 47,
-                "line": 140,
+                "line": 150,
                 "path": "dispatch/matrix.dispatch.py"
               },
               "value": "256"
             },
             "source": {
               "column": 26,
-              "line": 140,
+              "line": 150,
               "path": "dispatch/matrix.dispatch.py"
             }
           }
@@ -429,7 +517,7 @@
       "id": "rank",
       "source": {
         "column": 9,
-        "line": 114,
+        "line": 124,
         "path": "dispatch/matrix.dispatch.py"
       }
     },
@@ -450,33 +538,70 @@
           ],
           "source": {
             "column": 17,
-            "line": 149,
+            "line": 159,
             "path": "dispatch/matrix.dispatch.py"
           },
           "when": {
-            "left": {
-              "name": "modulus",
-              "op": "feature",
-              "source": {
-                "column": 26,
-                "line": 152,
-                "path": "dispatch/matrix.dispatch.py"
-              }
-            },
-            "op": "compare",
-            "operator": "ne",
-            "right": {
-              "op": "integer",
-              "source": {
-                "column": 48,
-                "line": 152,
-                "path": "dispatch/matrix.dispatch.py"
+            "arguments": [
+              {
+                "left": {
+                  "name": "modulus",
+                  "op": "feature",
+                  "source": {
+                    "column": 33,
+                    "line": 162,
+                    "path": "dispatch/matrix.dispatch.py"
+                  }
+                },
+                "op": "compare",
+                "operator": "ne",
+                "right": {
+                  "op": "integer",
+                  "source": {
+                    "column": 55,
+                    "line": 162,
+                    "path": "dispatch/matrix.dispatch.py"
+                  },
+                  "value": "2"
+                },
+                "source": {
+                  "column": 33,
+                  "line": 162,
+                  "path": "dispatch/matrix.dispatch.py"
+                }
               },
-              "value": "2"
-            },
+              {
+                "left": {
+                  "name": "modulus",
+                  "op": "feature",
+                  "source": {
+                    "column": 58,
+                    "line": 162,
+                    "path": "dispatch/matrix.dispatch.py"
+                  }
+                },
+                "op": "compare",
+                "operator": "lt",
+                "right": {
+                  "op": "integer",
+                  "source": {
+                    "column": 79,
+                    "line": 162,
+                    "path": "dispatch/matrix.dispatch.py"
+                  },
+                  "value": "256"
+                },
+                "source": {
+                  "column": 58,
+                  "line": 162,
+                  "path": "dispatch/matrix.dispatch.py"
+                }
+              }
+            ],
+            "op": "all",
             "source": {
               "column": 26,
-              "line": 152,
+              "line": 162,
               "path": "dispatch/matrix.dispatch.py"
             }
           }
@@ -493,7 +618,7 @@
           ],
           "source": {
             "column": 17,
-            "line": 157,
+            "line": 167,
             "path": "dispatch/matrix.dispatch.py"
           },
           "when": true
@@ -511,7 +636,7 @@
           ],
           "source": {
             "column": 17,
-            "line": 163,
+            "line": 173,
             "path": "dispatch/matrix.dispatch.py"
           },
           "when": true
@@ -524,7 +649,7 @@
           "requires": [],
           "source": {
             "column": 17,
-            "line": 169,
+            "line": 179,
             "path": "dispatch/matrix.dispatch.py"
           },
           "when": {
@@ -533,7 +658,7 @@
               "op": "feature",
               "source": {
                 "column": 26,
-                "line": 171,
+                "line": 181,
                 "path": "dispatch/matrix.dispatch.py"
               }
             },
@@ -543,14 +668,14 @@
               "op": "integer",
               "source": {
                 "column": 47,
-                "line": 171,
+                "line": 181,
                 "path": "dispatch/matrix.dispatch.py"
               },
               "value": "256"
             },
             "source": {
               "column": 26,
-              "line": 171,
+              "line": 181,
               "path": "dispatch/matrix.dispatch.py"
             }
           }
@@ -565,7 +690,7 @@
       "id": "right-nullspace",
       "source": {
         "column": 9,
-        "line": 145,
+        "line": 155,
         "path": "dispatch/matrix.dispatch.py"
       }
     },
@@ -586,33 +711,70 @@
           ],
           "source": {
             "column": 17,
-            "line": 180,
+            "line": 190,
             "path": "dispatch/matrix.dispatch.py"
           },
           "when": {
-            "left": {
-              "name": "modulus",
-              "op": "feature",
-              "source": {
-                "column": 26,
-                "line": 183,
-                "path": "dispatch/matrix.dispatch.py"
-              }
-            },
-            "op": "compare",
-            "operator": "ne",
-            "right": {
-              "op": "integer",
-              "source": {
-                "column": 48,
-                "line": 183,
-                "path": "dispatch/matrix.dispatch.py"
+            "arguments": [
+              {
+                "left": {
+                  "name": "modulus",
+                  "op": "feature",
+                  "source": {
+                    "column": 33,
+                    "line": 193,
+                    "path": "dispatch/matrix.dispatch.py"
+                  }
+                },
+                "op": "compare",
+                "operator": "ne",
+                "right": {
+                  "op": "integer",
+                  "source": {
+                    "column": 55,
+                    "line": 193,
+                    "path": "dispatch/matrix.dispatch.py"
+                  },
+                  "value": "2"
+                },
+                "source": {
+                  "column": 33,
+                  "line": 193,
+                  "path": "dispatch/matrix.dispatch.py"
+                }
               },
-              "value": "2"
-            },
+              {
+                "left": {
+                  "name": "modulus",
+                  "op": "feature",
+                  "source": {
+                    "column": 58,
+                    "line": 193,
+                    "path": "dispatch/matrix.dispatch.py"
+                  }
+                },
+                "op": "compare",
+                "operator": "lt",
+                "right": {
+                  "op": "integer",
+                  "source": {
+                    "column": 79,
+                    "line": 193,
+                    "path": "dispatch/matrix.dispatch.py"
+                  },
+                  "value": "256"
+                },
+                "source": {
+                  "column": 58,
+                  "line": 193,
+                  "path": "dispatch/matrix.dispatch.py"
+                }
+              }
+            ],
+            "op": "all",
             "source": {
               "column": 26,
-              "line": 183,
+              "line": 193,
               "path": "dispatch/matrix.dispatch.py"
             }
           }
@@ -629,7 +791,7 @@
           ],
           "source": {
             "column": 17,
-            "line": 188,
+            "line": 198,
             "path": "dispatch/matrix.dispatch.py"
           },
           "when": true
@@ -647,7 +809,7 @@
           ],
           "source": {
             "column": 17,
-            "line": 194,
+            "line": 204,
             "path": "dispatch/matrix.dispatch.py"
           },
           "when": true
@@ -660,7 +822,7 @@
           "requires": [],
           "source": {
             "column": 17,
-            "line": 200,
+            "line": 210,
             "path": "dispatch/matrix.dispatch.py"
           },
           "when": {
@@ -669,7 +831,7 @@
               "op": "feature",
               "source": {
                 "column": 26,
-                "line": 202,
+                "line": 212,
                 "path": "dispatch/matrix.dispatch.py"
               }
             },
@@ -679,14 +841,14 @@
               "op": "integer",
               "source": {
                 "column": 47,
-                "line": 202,
+                "line": 212,
                 "path": "dispatch/matrix.dispatch.py"
               },
               "value": "256"
             },
             "source": {
               "column": 26,
-              "line": 202,
+              "line": 212,
               "path": "dispatch/matrix.dispatch.py"
             }
           }
@@ -701,7 +863,7 @@
       "id": "rref",
       "source": {
         "column": 9,
-        "line": 176,
+        "line": 186,
         "path": "dispatch/matrix.dispatch.py"
       }
     }
@@ -713,7 +875,7 @@
       "reason": "word-prime matrices canonically use a generated FLINT nmod_mat resource",
       "source": {
         "column": 9,
-        "line": 69,
+        "line": 79,
         "path": "dispatch/matrix.dispatch.py"
       },
       "when": {
@@ -722,7 +884,7 @@
           "op": "feature",
           "source": {
             "column": 18,
-            "line": 71,
+            "line": 81,
             "path": "dispatch/matrix.dispatch.py"
           }
         },
@@ -732,14 +894,14 @@
           "op": "integer",
           "source": {
             "column": 40,
-            "line": 71,
+            "line": 81,
             "path": "dispatch/matrix.dispatch.py"
           },
           "value": "256"
         },
         "source": {
           "column": 18,
-          "line": 71,
+          "line": 81,
           "path": "dispatch/matrix.dispatch.py"
         }
       }
@@ -750,7 +912,7 @@
       "reason": "GF(2) has a dedicated packed-bit representation",
       "source": {
         "column": 9,
-        "line": 54,
+        "line": 64,
         "path": "dispatch/matrix.dispatch.py"
       },
       "when": {
@@ -761,7 +923,7 @@
               "op": "feature",
               "source": {
                 "column": 25,
-                "line": 56,
+                "line": 66,
                 "path": "dispatch/matrix.dispatch.py"
               }
             },
@@ -771,14 +933,14 @@
               "op": "integer",
               "source": {
                 "column": 47,
-                "line": 56,
+                "line": 66,
                 "path": "dispatch/matrix.dispatch.py"
               },
               "value": "2"
             },
             "source": {
               "column": 25,
-              "line": 56,
+              "line": 66,
               "path": "dispatch/matrix.dispatch.py"
             }
           },
@@ -787,7 +949,7 @@
             "op": "available",
             "source": {
               "column": 50,
-              "line": 56,
+              "line": 66,
               "path": "dispatch/matrix.dispatch.py"
             }
           }
@@ -795,7 +957,7 @@
         "op": "all",
         "source": {
           "column": 18,
-          "line": 56,
+          "line": 66,
           "path": "dispatch/matrix.dispatch.py"
         }
       }
@@ -806,7 +968,7 @@
       "reason": "small prime matrices canonically own packed row-major residues",
       "source": {
         "column": 9,
-        "line": 60,
+        "line": 70,
         "path": "dispatch/matrix.dispatch.py"
       },
       "when": {
@@ -817,7 +979,7 @@
               "op": "feature",
               "source": {
                 "column": 17,
-                "line": 63,
+                "line": 73,
                 "path": "dispatch/matrix.dispatch.py"
               }
             },
@@ -827,14 +989,14 @@
               "op": "integer",
               "source": {
                 "column": 38,
-                "line": 63,
+                "line": 73,
                 "path": "dispatch/matrix.dispatch.py"
               },
               "value": "256"
             },
             "source": {
               "column": 17,
-              "line": 63,
+              "line": 73,
               "path": "dispatch/matrix.dispatch.py"
             }
           },
@@ -846,7 +1008,7 @@
                   "op": "feature",
                   "source": {
                     "column": 24,
-                    "line": 64,
+                    "line": 74,
                     "path": "dispatch/matrix.dispatch.py"
                   }
                 },
@@ -856,14 +1018,14 @@
                   "op": "integer",
                   "source": {
                     "column": 46,
-                    "line": 64,
+                    "line": 74,
                     "path": "dispatch/matrix.dispatch.py"
                   },
                   "value": "2"
                 },
                 "source": {
                   "column": 24,
-                  "line": 64,
+                  "line": 74,
                   "path": "dispatch/matrix.dispatch.py"
                 }
               },
@@ -874,7 +1036,7 @@
                     "op": "available",
                     "source": {
                       "column": 54,
-                      "line": 64,
+                      "line": 74,
                       "path": "dispatch/matrix.dispatch.py"
                     }
                   }
@@ -882,7 +1044,7 @@
                 "op": "not",
                 "source": {
                   "column": 49,
-                  "line": 64,
+                  "line": 74,
                   "path": "dispatch/matrix.dispatch.py"
                 }
               }
@@ -890,7 +1052,7 @@
             "op": "any",
             "source": {
               "column": 17,
-              "line": 64,
+              "line": 74,
               "path": "dispatch/matrix.dispatch.py"
             }
           }
@@ -898,7 +1060,7 @@
         "op": "all",
         "source": {
           "column": 18,
-          "line": 62,
+          "line": 72,
           "path": "dispatch/matrix.dispatch.py"
         }
       }
@@ -908,7 +1070,7 @@
   "schema_version": 1,
   "source": {
     "column": 22,
-    "line": 15,
+    "line": 16,
     "path": "dispatch/matrix.dispatch.py"
   }
 }

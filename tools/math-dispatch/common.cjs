@@ -83,9 +83,16 @@ function canonicalize(value) {
   if (typeof value !== "object") {
     throw new Error(`canonical JSON cannot encode ${typeof value}`);
   }
-  const result = {};
+  const result = Object.create(null);
   for (const key of Object.keys(value).sort()) {
-    if (value[key] !== undefined) result[key] = canonicalize(value[key]);
+    if (value[key] !== undefined) {
+      Object.defineProperty(result, key, {
+        value: canonicalize(value[key]),
+        enumerable: true,
+        configurable: true,
+        writable: true,
+      });
+    }
   }
   return result;
 }

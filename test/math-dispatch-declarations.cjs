@@ -61,6 +61,29 @@ test("parser rejects execution, aliases, and unknown constructor fields", async 
   }
 });
 
+test("static dictionaries cannot inject inherited profile identity", async () => {
+  const temporary = mkdtempSync(join(tmpdir(), "sagejs-dispatch-prototype-"));
+  try {
+    const filename = join(temporary, "evil.dispatch.py");
+    writeFileSync(filename, [
+      "from sagejs.dispatch import DispatchProfile",
+      "PROFILE = DispatchProfile(",
+      "    id='evil', schema=1, generation=1, kind='checked',",
+      "    match={'__proto__': {'os': 'linux', 'arch': 'x64'}},",
+      "    declarations={}, evidence=[], operations=[],",
+      ")",
+      "",
+    ].join("\n"));
+    const parsed = await parseDispatchSource(filename, { root: temporary });
+    assert.equal(Object.getPrototypeOf(parsed.document.match), null);
+    assert.equal(Object.hasOwn(parsed.document.match, "__proto__"), true);
+    assert.equal(parsed.document.match.os, undefined);
+    assert.match(parsed.text, /"__proto__"/);
+  } finally {
+    rmSync(temporary, { recursive: true, force: true });
+  }
+});
+
 test("stale generated JSON fails closed", async () => {
   const temporary = mkdtempSync(join(tmpdir(), "sagejs-dispatch-stale-"));
   try {

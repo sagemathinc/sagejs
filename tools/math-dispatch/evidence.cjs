@@ -2,6 +2,7 @@
 
 const {
   FINGERPRINT,
+  canonicalJson,
   deepFreeze,
   exactKeys,
   fail,
@@ -10,7 +11,7 @@ const {
   safeInteger,
   uniqueStrings,
 } = require("./common.cjs");
-const { normalizeFeatures } = require("./selector.cjs");
+const { evaluate, normalizeFeatures } = require("./selector.cjs");
 
 const BENCHMARK_SCHEMA = "sagejs.math-dispatch/benchmark-v1";
 
@@ -56,17 +57,6 @@ function validateBenchmarkReport(report, registry, options = {}) {
   if (report.dispatch.declaration_generation !== family.document.generation) {
     fail(filename, "declaration generation is stale");
   }
-  const features = normalizeFeatures(family, operation, report.case.features);
-  const algorithm = operation.algorithms.find((item) => item.id === report.case.candidate);
-  if (!algorithm) fail(filename, `unknown candidate ${report.case.candidate}`);
-  if (!family.representations.has(report.case.representation)) {
-    fail(filename, `unknown representation ${report.case.representation}`);
-  }
-  if (!new Set(["training", "validation"]).has(report.case.grid)) {
-    fail(filename, "case.grid must be training or validation");
-  }
-  if (report.case.semantic_options === null || typeof report.case.semantic_options !== "object" ||
-      Array.isArray(report.case.semantic_options)) fail(filename, "case.semantic_options must be an object");
   exactKeys(filename, report.native_math, [
     "build_fingerprint", "capabilities", "libraries",
   ], "native_math");
@@ -82,6 +72,39 @@ function validateBenchmarkReport(report, registry, options = {}) {
       Object.values(report.native_math.libraries).some((item) => typeof item !== "string")) {
     fail(filename, "native_math.libraries must be a string map");
   }
+  const features = normalizeFeatures(family, operation, report.case.features);
+  const algorithm = operation.algorithms.find((item) => item.id === report.case.candidate);
+  if (!algorithm) fail(filename, `unknown candidate ${report.case.candidate}`);
+  const observed = new Set(capabilities);
+  const capabilityResults = new Map(family.document.capabilities.map((capability) => [
+    capability.id,
+    Boolean(evaluate(capability.requires, features, observed)),
+  ]));
+  for (const required of algorithm.requires) {
+    if (!capabilityResults.get(required)) {
+      fail(filename, `candidate ${algorithm.id} does not satisfy capability ${required}`);
+    }
+  }
+  if (!Boolean(evaluate(algorithm.when, features, observed))) {
+    fail(filename, `candidate ${algorithm.id} does not satisfy its hard predicate`);
+  }
+  const canonicalRepresentations = family.document.representations.filter((representation) =>
+    Boolean(evaluate(representation.when, features, observed)));
+  if (canonicalRepresentations.length !== 1) {
+    fail(filename, `features and capabilities match ${canonicalRepresentations.length} canonical representations`);
+  }
+  if (!family.representations.has(report.case.representation)) {
+    fail(filename, `unknown representation ${report.case.representation}`);
+  }
+  if (canonicalRepresentations[0].id !== report.case.representation) {
+    fail(filename,
+      `representation ${report.case.representation} is not canonical; expected ${canonicalRepresentations[0].id}`);
+  }
+  if (!new Set(["training", "validation"]).has(report.case.grid)) {
+    fail(filename, "case.grid must be training or validation");
+  }
+  if (report.case.semantic_options === null || typeof report.case.semantic_options !== "object" ||
+      Array.isArray(report.case.semantic_options)) fail(filename, "case.semantic_options must be an object");
   exactKeys(filename, report.host, [
     "arch", "blas_provider", "cpu_family", "logical_cpus", "memory_bytes",
     "os", "physical_cpus", "threading",
@@ -155,6 +178,31 @@ function proposeIntegerThreshold(evidence, options) {
   const relevant = evidence.reports.map((item) => item.report).filter((report) =>
     report.case.family === family && report.case.operation === operation &&
     [specialized, fallback].includes(report.case.candidate));
+  if (relevant.length === 0) throw new Error("no comparable benchmark evidence was provided");
+  function comparisonIdentity(report) {
+    const features = { ...report.case.features };
+    delete features[feature];
+    return canonicalJson({
+      suite_version: report.suite_version,
+      source: report.source,
+      dispatch: report.dispatch,
+      native_math: report.native_math,
+      host: report.host,
+      representation: report.case.representation,
+      semantic_options: report.case.semantic_options,
+      timed_scope: report.timed_scope,
+      features,
+      oracle: report.correctness.oracle,
+    });
+  }
+  const identity = comparisonIdentity(relevant[0]);
+  for (const report of relevant.slice(1)) {
+    if (comparisonIdentity(report) !== identity) {
+      throw new Error(
+        "benchmark evidence is incomparable outside the threshold feature, grid, and candidate",
+      );
+    }
+  }
   const grids = new Map([["training", new Map()], ["validation", new Map()]]);
   for (const report of relevant) {
     const value = report.case.features[feature];
@@ -167,7 +215,10 @@ function proposeIntegerThreshold(evidence, options) {
     if (candidates.has(report.case.candidate)) {
       throw new Error(`duplicate ${report.case.grid} evidence for ${report.case.candidate} at ${feature}=${value}`);
     }
-    candidates.set(report.case.candidate, median(report.measurements.warm.values_ms));
+    candidates.set(report.case.candidate, {
+      timing: median(report.measurements.warm.values_ms),
+      report,
+    });
   }
   for (const [grid, entries] of grids) {
     if (entries.size < 2) throw new Error(`${grid} grid requires at least two feature values`);
@@ -175,14 +226,18 @@ function proposeIntegerThreshold(evidence, options) {
       for (const candidate of [specialized, fallback]) {
         if (!candidates.has(candidate)) throw new Error(`${grid} grid is missing ${candidate} at ${feature}=${value}`);
       }
+      if (candidates.get(specialized).report.correctness.digest !==
+          candidates.get(fallback).report.correctness.digest) {
+        throw new Error(`${grid} candidate correctness digests differ at ${feature}=${value}`);
+      }
     }
   }
   const trainingValues = [...grids.get("training").keys()].sort((a, b) => a - b);
   const candidates = trainingValues.filter((threshold) => {
     if (!trainingValues.includes(threshold - 1)) return false;
     return trainingValues.every((value) => value < threshold ||
-      grids.get("training").get(value).get(fallback) /
-        grids.get("training").get(value).get(specialized) >= minimumSpeedup);
+      grids.get("training").get(value).get(fallback).timing /
+        grids.get("training").get(value).get(specialized).timing >= minimumSpeedup);
   });
   const threshold = candidates[0];
   if (threshold === undefined) throw new Error("training evidence supports no adjacent robust threshold");
@@ -191,7 +246,8 @@ function proposeIntegerThreshold(evidence, options) {
       throw new Error(`${grid} grid does not cover both sides adjacent to threshold ${threshold}`);
     }
     for (const [value, timings] of entries) {
-      if (value >= threshold && timings.get(fallback) / timings.get(specialized) < minimumSpeedup) {
+      if (value >= threshold &&
+          timings.get(fallback).timing / timings.get(specialized).timing < minimumSpeedup) {
         throw new Error(`${grid} grid does not validate specialized win at ${feature}=${value}`);
       }
     }
@@ -210,9 +266,9 @@ function proposeIntegerThreshold(evidence, options) {
       grid,
       [...entries].sort(([left], [right]) => left - right).map(([value, timings]) => ({
         value,
-        specialized_ms: timings.get(specialized),
-        fallback_ms: timings.get(fallback),
-        speedup: timings.get(fallback) / timings.get(specialized),
+        specialized_ms: timings.get(specialized).timing,
+        fallback_ms: timings.get(fallback).timing,
+        speedup: timings.get(fallback).timing / timings.get(specialized).timing,
       })),
     ])),
   });
