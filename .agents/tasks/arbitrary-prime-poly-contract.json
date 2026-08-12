@@ -34,8 +34,11 @@
     "macos-arm64": "required"
   },
   "validation": [
+    "node --test test/arbitrary-prime-polynomial-contract.cjs",
+    "node bench/arbitrary-prime-polynomial-contract.cjs",
+    "pnpm exec pyright --pythonversion 3.11 src/lib/sagejs/polynomial_algorithms/arbitrary_prime_contract.py",
     "pnpm test:baselib:strict",
-    "pnpm test:native"
+    "pnpm architecture:check"
   ],
   "runs": [],
   "handoff": {
