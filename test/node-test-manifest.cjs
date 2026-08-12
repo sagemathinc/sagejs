@@ -57,6 +57,7 @@ const integration = [
   "test/dense-prime-migration.cjs",
   "test/fflas-dense-prime.cjs",
   "test/dense-prime-structural.cjs",
+  "test/dense-prime-host-boundary.cjs",
   "test/m4ri-public-matrix.cjs",
   "test/prime-matrix-bulk-views-v1.cjs",
   "test/prime-matrix-serialization.cjs",

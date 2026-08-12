@@ -191,6 +191,36 @@ def dense_prime_field_matrix_nonzero_count(
 
 
 @native
+def dense_prime_field_matrix_pivots(
+    output: UInt64Buffer,
+    source: DensePrimeMatrix,
+) -> uint64:
+    """Write pivot columns of an echelon matrix and return their count."""
+    entries = source.entries
+    rows = source.rows
+    columns = source.columns
+    if len(entries) != rows * columns:
+        raise ValueError("dense prime matrix shape mismatch")
+    capacity = rows
+    if columns < capacity:
+        capacity = columns
+    if len(output) < capacity:
+        raise ValueError("dense prime pivot output is too small")
+    pivot_count = 0
+    search_start = 0
+    for row in range(rows):
+        pivot = columns
+        for column in range(search_start, columns):
+            if pivot == columns and entries[row * columns + column] != 0:
+                pivot = column
+        if pivot != columns:
+            output[pivot_count] = pivot
+            pivot_count += 1
+            search_start = pivot + 1
+    return pivot_count
+
+
+@native
 def dense_prime_field_matrix_trace(
     source: UInt64Buffer,
     size: uint64,
@@ -779,6 +809,7 @@ def dense_prime_field_matrix_solve(
 __all__ = [
     "DensePrimeMatrix",
     "dense_prime_field_matrix_identity",
+    "dense_prime_field_matrix_pivots",
     "dense_prime_field_matrix_rank",
     "dense_prime_field_matrix_set_diagonal",
     "dense_prime_field_matrix_space_random_fill",

@@ -1,0 +1,53 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "dense-prime-host-boundary",
+  "title": "Dense Prime Host Boundary",
+  "lane": "arithmetic-algebra",
+  "status": "active",
+  "owner": "user",
+  "objective": "Make GF(2) M4RI and packed odd-prime matrix scalar access, mutation, and pivots uniformly fast using generated resources and source-transparent typed Python",
+  "base_commit": "d2eaeaf7a3bdcfb83650c5a4471e697498a1e62a",
+  "claims": [
+    "src/baselib/matrix.py",
+    "src/baselib/finite_fields.py",
+    "src/lib/sagejs/kernels/matrix/dense_prime_field.py",
+    "src/lib/sagejs/kernels/matrix/dense_binary_m4ri.py",
+    "test/dense-prime-host-boundary.cjs",
+    "test/node-test-manifest.cjs",
+    "bench/dense-prime-host-boundary.cjs"
+  ],
+  "dependencies": [],
+  "references": [
+    "SageMath dense matrices over small prime fields"
+  ],
+  "architecture": {
+    "strategy": "source-transparent-native",
+    "fallback": "same-source",
+    "oracles": [
+      "cpython",
+      "javascript",
+      "host-isolated native kernels",
+      "SageMath dense matrices over GF(p)"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm architecture:check",
+    "pnpm test:portable",
+    "pnpm test:baselib:strict",
+    "pnpm test:native"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "",
+    "risks": [],
+    "next_steps": []
+  }
+}
