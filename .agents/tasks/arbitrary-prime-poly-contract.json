@@ -4,10 +4,10 @@
   "id": "arbitrary-prime-poly-contract",
   "title": "Arbitrary-prime polynomial resource contract",
   "lane": "arithmetic-algebra",
-  "status": "active",
+  "status": "review",
   "owner": "user",
   "objective": "Specify and test Sage-compatible GF(p)[x] semantics for p at least 2^64 and define a representation-neutral generated-resource protocol owning fmpz_mod_ctx_t plus fmpz_mod_poly_t without caller capacity prediction or cross-resource lifetime coupling",
-  "base_commit": "e84feccdd2404715491bf4a954b34bc01837fdf6",
+  "base_commit": "d9831968c7bfd5936a95df2517278c3b3dcd5064",
   "claims": [
     "src/lib/sagejs/polynomial_algorithms/arbitrary_prime_contract.py",
     "test/arbitrary-prime-polynomial-contract.cjs",
@@ -241,6 +241,86 @@
       "commit": "2c8f8d2e6b37670d30cae6d1f03eb4dc43ecd93b",
       "workspace_fingerprint": "e1436f6e33fc74c485d32af5cedd0b52dfb429bd8cf3eccc900a59d8df7f7e30",
       "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:native",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 644.262,
+      "started_at": "2026-08-12T12:23:01.095Z",
+      "commit": "779618122ec236fd457c6bc131f35910b4214df1",
+      "workspace_fingerprint": "ca5321790054f6392abae08c4e047b401079804862842dac2bcd0f97231c3930",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/arbitrary-prime-polynomial-contract.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.192,
+      "started_at": "2026-08-12T12:34:07.615Z",
+      "commit": "0905ca4ae5f83a1d23f749e2ee3a159aaf07b96f",
+      "workspace_fingerprint": "d67b55231452991da961587d5a876d114787158eb27f804ad533f50f4e3165fc",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/arbitrary-prime-polynomial-contract.cjs --check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.089,
+      "started_at": "2026-08-12T12:34:08.407Z",
+      "commit": "0905ca4ae5f83a1d23f749e2ee3a159aaf07b96f",
+      "workspace_fingerprint": "d67b55231452991da961587d5a876d114787158eb27f804ad533f50f4e3165fc",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm exec pyright --pythonversion 3.11 src/lib/sagejs/polynomial_algorithms/arbitrary_prime_contract.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.374,
+      "started_at": "2026-08-12T12:34:10.283Z",
+      "commit": "0905ca4ae5f83a1d23f749e2ee3a159aaf07b96f",
+      "workspace_fingerprint": "d67b55231452991da961587d5a876d114787158eb27f804ad533f50f4e3165fc",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 13.504,
+      "started_at": "2026-08-12T12:34:12.274Z",
+      "commit": "0905ca4ae5f83a1d23f749e2ee3a159aaf07b96f",
+      "workspace_fingerprint": "d67b55231452991da961587d5a876d114787158eb27f804ad533f50f4e3165fc",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 13.423,
+      "started_at": "2026-08-12T12:34:26.390Z",
+      "commit": "0905ca4ae5f83a1d23f749e2ee3a159aaf07b96f",
+      "workspace_fingerprint": "d67b55231452991da961587d5a876d114787158eb27f804ad533f50f4e3165fc",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:native",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 535.102,
+      "started_at": "2026-08-12T12:34:50.306Z",
+      "commit": "0905ca4ae5f83a1d23f749e2ee3a159aaf07b96f",
+      "workspace_fingerprint": "d67b55231452991da961587d5a876d114787158eb27f804ad533f50f4e3165fc",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:native",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 558.436,
+      "started_at": "2026-08-12T12:44:14.990Z",
+      "commit": "0905ca4ae5f83a1d23f749e2ee3a159aaf07b96f",
+      "workspace_fingerprint": "d67b55231452991da961587d5a876d114787158eb27f804ad533f50f4e3165fc",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {
@@ -252,7 +332,7 @@
       "Windows must expose the same generated FLINT resource rather than an incomplete operation-dependent fallback. WebAssembly still needs the same declaration lowered to owned linear-memory state."
     ],
     "next_steps": [
-      "Independently review the Sage 10.9 observations and the resource lifetime contract before integration.",
+      "Integrate the reviewed contract and use it as the acceptance specification for the production generated resource.",
       "Add a declaration-schema FmpzModPolynomial resource with construction, copy, coefficient access, arithmetic, divrem, gcd/xgcd, evaluation, formatting, factor/roots, and stable serialization. Keep context plus polynomial as one ownership unit and make all variable-size results callee owned.",
       "Wire polynomial.py only after lifecycle fuzzing proves that closing operands, parent objects, and aggregate result resources cannot invalidate escaped polynomial results.",
       "Add the module to pyrightconfig.json and the focused test to test/node-test-manifest.cjs in the integration lane."
