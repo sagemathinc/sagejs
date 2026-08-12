@@ -345,6 +345,19 @@
       "platforms": ["linux-x64", "linux-arm64", "windows-x64", "macos-arm64"]
     },
     {
+      "id": "arbitrary-prime-polynomial-resource-production",
+      "source": "src/lib/sagejs/kernels/polynomial/arbitrary_prime_flint.py",
+      "functions": [
+        "flint_arbitrary_prime_polynomial_coefficient_sum"
+      ],
+      "semantic_domain": "arbitrary-prime GF(p)[x] polynomials over generated self-contained FLINT resources with safe borrowed coefficient traversal",
+      "fallback": "same-source",
+      "host_isolation": "certified",
+      "oracles": ["cpython", "javascript", "flint", "sage"],
+      "benchmark": "bench:native:ffi:arbitrary-prime-polynomial",
+      "platforms": ["linux-x64", "linux-arm64", "windows-x64", "macos-arm64"]
+    },
+    {
       "id": "compiler-owned-record-witness",
       "source": "bench/native_record_witness.py",
       "functions": ["scaled_sum", "scale_first", "scaled_sum_constructed"],

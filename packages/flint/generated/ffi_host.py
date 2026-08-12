@@ -18,6 +18,11 @@ from sagejs.ffi.flint import (
     FmpqPolynomialXgcdResult,
     FmpqValue,
     FmpzMatrix,
+    FmpzModPolynomial,
+    FmpzModPolynomialDivisionResult,
+    FmpzModPolynomialFactorization,
+    FmpzModPolynomialRoots,
+    FmpzModPolynomialXgcdResult,
     FmpzPolynomial,
     FmpzPolynomialDivisionResult,
     FmpzPolynomialXgcdResult,
@@ -278,6 +283,36 @@ from sagejs.ffi.flint import (
     fq_polynomial_neg as _ffi_fq_polynomial_neg,
     fq_polynomial_pow as _ffi_fq_polynomial_pow,
     fq_polynomial_coordinate_bytes as _ffi_fq_polynomial_coordinate_bytes,
+    fmpz_mod_polynomial as _ffi_fmpz_mod_polynomial,
+    fmpz_mod_polynomial_set_coefficient as _ffi_fmpz_mod_polynomial_set_coefficient,
+    fmpz_mod_polynomial_seal as _ffi_fmpz_mod_polynomial_seal,
+    fmpz_mod_polynomial_modulus as _ffi_fmpz_mod_polynomial_modulus,
+    fmpz_mod_polynomial_is_zero as _ffi_fmpz_mod_polynomial_is_zero,
+    fmpz_mod_polynomial_length as _ffi_fmpz_mod_polynomial_length,
+    fmpz_mod_polynomial_entry_count as _ffi_fmpz_mod_polynomial_entry_count,
+    fmpz_mod_polynomial_coefficient as _ffi_fmpz_mod_polynomial_coefficient,
+    fmpz_mod_polynomial_copy as _ffi_fmpz_mod_polynomial_copy,
+    fmpz_mod_polynomial_equal as _ffi_fmpz_mod_polynomial_equal,
+    fmpz_mod_polynomial_add as _ffi_fmpz_mod_polynomial_add,
+    fmpz_mod_polynomial_sub as _ffi_fmpz_mod_polynomial_sub,
+    fmpz_mod_polynomial_mul as _ffi_fmpz_mod_polynomial_mul,
+    fmpz_mod_polynomial_neg as _ffi_fmpz_mod_polynomial_neg,
+    fmpz_mod_polynomial_pow as _ffi_fmpz_mod_polynomial_pow,
+    fmpz_mod_polynomial_derivative as _ffi_fmpz_mod_polynomial_derivative,
+    fmpz_mod_polynomial_evaluate as _ffi_fmpz_mod_polynomial_evaluate,
+    fmpz_mod_polynomial_gcd as _ffi_fmpz_mod_polynomial_gcd,
+    fmpz_mod_polynomial_divrem_resource as _ffi_fmpz_mod_polynomial_divrem_resource,
+    fmpz_mod_polynomial_division_result_quotient as _ffi_fmpz_mod_polynomial_division_result_quotient,
+    fmpz_mod_polynomial_division_result_remainder as _ffi_fmpz_mod_polynomial_division_result_remainder,
+    fmpz_mod_polynomial_xgcd_resource as _ffi_fmpz_mod_polynomial_xgcd_resource,
+    fmpz_mod_polynomial_xgcd_result_gcd as _ffi_fmpz_mod_polynomial_xgcd_result_gcd,
+    fmpz_mod_polynomial_xgcd_result_left_coefficient as _ffi_fmpz_mod_polynomial_xgcd_result_left_coefficient,
+    fmpz_mod_polynomial_xgcd_result_right_coefficient as _ffi_fmpz_mod_polynomial_xgcd_result_right_coefficient,
+    fmpz_mod_polynomial_factor_resource as _ffi_fmpz_mod_polynomial_factor_resource,
+    fmpz_mod_polynomial_roots_resource as _ffi_fmpz_mod_polynomial_roots_resource,
+    fmpz_mod_polynomial_format as _ffi_fmpz_mod_polynomial_format,
+    fmpz_mod_polynomial_serialize as _ffi_fmpz_mod_polynomial_serialize,
+    fmpz_mod_polynomial_deserialize as _ffi_fmpz_mod_polynomial_deserialize,
 )
 from sagejs.native import Integer, IntegerBuffer, UInt64Buffer, native, uint64
 
@@ -3465,4 +3500,300 @@ def ffiFqPolynomialCoordinateBytes(
 ) -> FlintByteRegion:
     return _ffi_fq_polynomial_coordinate_bytes(
         polynomial,
+    )
+
+
+@native
+def ffiFmpzModPolynomialCreate(
+    modulus: Integer,
+    length: uint64,
+) -> FmpzModPolynomial:
+    return _ffi_fmpz_mod_polynomial(
+        modulus,
+        length,
+    )
+
+
+@native
+def ffiFmpzModPolynomialSetCoefficient(
+    polynomial: FmpzModPolynomial,
+    index: uint64,
+    coefficient: Integer,
+) -> bool:
+    return _ffi_fmpz_mod_polynomial_set_coefficient(
+        polynomial,
+        index,
+        coefficient,
+    )
+
+
+@native
+def ffiFmpzModPolynomialSeal(
+    polynomial: FmpzModPolynomial,
+) -> bool:
+    return _ffi_fmpz_mod_polynomial_seal(
+        polynomial,
+    )
+
+
+@native
+def ffiFmpzModPolynomialModulus(
+    source: FmpzModPolynomial,
+) -> Integer:
+    return _ffi_fmpz_mod_polynomial_modulus(
+        source,
+    )
+
+
+@native
+def ffiFmpzModPolynomialIsZero(
+    source: FmpzModPolynomial,
+) -> Integer:
+    return _ffi_fmpz_mod_polynomial_is_zero(
+        source,
+    )
+
+
+@native
+def ffiFmpzModPolynomialLength(
+    source: FmpzModPolynomial,
+) -> Integer:
+    return _ffi_fmpz_mod_polynomial_length(
+        source,
+    )
+
+
+@native
+def ffiFmpzModPolynomialEntryCount(
+    source: FmpzModPolynomial,
+) -> uint64:
+    return _ffi_fmpz_mod_polynomial_entry_count(
+        source,
+    )
+
+
+@native
+def ffiFmpzModPolynomialCoefficient(
+    source: FmpzModPolynomial,
+    index: uint64,
+) -> Integer:
+    return _ffi_fmpz_mod_polynomial_coefficient(
+        source,
+        index,
+    )
+
+
+@native
+def ffiFmpzModPolynomialCopy(
+    source: FmpzModPolynomial,
+) -> FmpzModPolynomial:
+    return _ffi_fmpz_mod_polynomial_copy(
+        source,
+    )
+
+
+@native
+def ffiFmpzModPolynomialEqual(
+    left: FmpzModPolynomial,
+    right: FmpzModPolynomial,
+) -> Integer:
+    return _ffi_fmpz_mod_polynomial_equal(
+        left,
+        right,
+    )
+
+
+@native
+def ffiFmpzModPolynomialAdd(
+    left: FmpzModPolynomial,
+    right: FmpzModPolynomial,
+) -> FmpzModPolynomial:
+    return _ffi_fmpz_mod_polynomial_add(
+        left,
+        right,
+    )
+
+
+@native
+def ffiFmpzModPolynomialSub(
+    left: FmpzModPolynomial,
+    right: FmpzModPolynomial,
+) -> FmpzModPolynomial:
+    return _ffi_fmpz_mod_polynomial_sub(
+        left,
+        right,
+    )
+
+
+@native
+def ffiFmpzModPolynomialMul(
+    left: FmpzModPolynomial,
+    right: FmpzModPolynomial,
+) -> FmpzModPolynomial:
+    return _ffi_fmpz_mod_polynomial_mul(
+        left,
+        right,
+    )
+
+
+@native
+def ffiFmpzModPolynomialNeg(
+    source: FmpzModPolynomial,
+) -> FmpzModPolynomial:
+    return _ffi_fmpz_mod_polynomial_neg(
+        source,
+    )
+
+
+@native
+def ffiFmpzModPolynomialPow(
+    source: FmpzModPolynomial,
+    exponent: uint64,
+) -> FmpzModPolynomial:
+    return _ffi_fmpz_mod_polynomial_pow(
+        source,
+        exponent,
+    )
+
+
+@native
+def ffiFmpzModPolynomialDerivative(
+    source: FmpzModPolynomial,
+) -> FmpzModPolynomial:
+    return _ffi_fmpz_mod_polynomial_derivative(
+        source,
+    )
+
+
+@native
+def ffiFmpzModPolynomialEvaluate(
+    source: FmpzModPolynomial,
+    argument: Integer,
+) -> Integer:
+    return _ffi_fmpz_mod_polynomial_evaluate(
+        source,
+        argument,
+    )
+
+
+@native
+def ffiFmpzModPolynomialGcd(
+    left: FmpzModPolynomial,
+    right: FmpzModPolynomial,
+) -> FmpzModPolynomial:
+    return _ffi_fmpz_mod_polynomial_gcd(
+        left,
+        right,
+    )
+
+
+@native
+def ffiFmpzModPolynomialDivremResource(
+    dividend: FmpzModPolynomial,
+    divisor: FmpzModPolynomial,
+) -> FmpzModPolynomialDivisionResult:
+    return _ffi_fmpz_mod_polynomial_divrem_resource(
+        dividend,
+        divisor,
+    )
+
+
+@native
+def ffiFmpzModPolynomialDivisionResultQuotient(
+    division: FmpzModPolynomialDivisionResult,
+) -> FmpzModPolynomial:
+    return _ffi_fmpz_mod_polynomial_division_result_quotient(
+        division,
+    )
+
+
+@native
+def ffiFmpzModPolynomialDivisionResultRemainder(
+    division: FmpzModPolynomialDivisionResult,
+) -> FmpzModPolynomial:
+    return _ffi_fmpz_mod_polynomial_division_result_remainder(
+        division,
+    )
+
+
+@native
+def ffiFmpzModPolynomialXgcdResource(
+    left: FmpzModPolynomial,
+    right: FmpzModPolynomial,
+) -> FmpzModPolynomialXgcdResult:
+    return _ffi_fmpz_mod_polynomial_xgcd_resource(
+        left,
+        right,
+    )
+
+
+@native
+def ffiFmpzModPolynomialXgcdResultGcd(
+    xgcd: FmpzModPolynomialXgcdResult,
+) -> FmpzModPolynomial:
+    return _ffi_fmpz_mod_polynomial_xgcd_result_gcd(
+        xgcd,
+    )
+
+
+@native
+def ffiFmpzModPolynomialXgcdResultLeftCoefficient(
+    xgcd: FmpzModPolynomialXgcdResult,
+) -> FmpzModPolynomial:
+    return _ffi_fmpz_mod_polynomial_xgcd_result_left_coefficient(
+        xgcd,
+    )
+
+
+@native
+def ffiFmpzModPolynomialXgcdResultRightCoefficient(
+    xgcd: FmpzModPolynomialXgcdResult,
+) -> FmpzModPolynomial:
+    return _ffi_fmpz_mod_polynomial_xgcd_result_right_coefficient(
+        xgcd,
+    )
+
+
+@native
+def ffiFmpzModPolynomialFactorResource(
+    source: FmpzModPolynomial,
+) -> FmpzModPolynomialFactorization:
+    return _ffi_fmpz_mod_polynomial_factor_resource(
+        source,
+    )
+
+
+@native
+def ffiFmpzModPolynomialRootsResource(
+    source: FmpzModPolynomial,
+) -> FmpzModPolynomialRoots:
+    return _ffi_fmpz_mod_polynomial_roots_resource(
+        source,
+    )
+
+
+@native
+def ffiFmpzModPolynomialFormat(
+    source: FmpzModPolynomial,
+) -> FlintByteRegion:
+    return _ffi_fmpz_mod_polynomial_format(
+        source,
+    )
+
+
+@native
+def ffiFmpzModPolynomialSerialize(
+    source: FmpzModPolynomial,
+) -> FlintByteRegion:
+    return _ffi_fmpz_mod_polynomial_serialize(
+        source,
+    )
+
+
+@native
+def ffiFmpzModPolynomialDeserialize(
+    source: FlintByteRegion,
+) -> FmpzModPolynomial:
+    return _ffi_fmpz_mod_polynomial_deserialize(
+        source,
     )

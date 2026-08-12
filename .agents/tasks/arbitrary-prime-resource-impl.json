@@ -1,0 +1,170 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "arbitrary-prime-resource-impl",
+  "title": "Arbitrary Prime Resource Impl",
+  "lane": "integration",
+  "status": "complete",
+  "owner": "user",
+  "objective": "Implement production generated FLINT fmpz_mod_ctx plus fmpz_mod_poly resources for arbitrary-prime GF(p)[x], with sealed self-contained ownership, exact modulus checks, callee-owned operations, public integration, serialization, lifecycle fuzzing, Sage differentials, and competitive performance",
+  "base_commit": "0b9b27ae0d473a119a53dc57ceed5fcc214caaa8",
+  "claims": [
+    "packages/flint/include/sagejs/fmpz_mod_polynomial_ffi.h",
+    "src/lib/sagejs/kernels/polynomial/arbitrary_prime_flint.py",
+    "src/lib/sagejs/polynomial_algorithms/arbitrary_prime_public.py",
+    "test/arbitrary-prime-polynomial-resource-ffi.cjs",
+    "test/arbitrary-prime-polynomial-resource-kernels.cjs",
+    "test/fixtures/native-ffi-flint-arbitrary-prime",
+    "test/public-arbitrary-prime-polynomial.cjs",
+    "bench/arbitrary-prime-polynomial-resources.cjs",
+    "src/baselib/polynomial.py",
+    "pyrightconfig.json",
+    "tools/serialization.ts",
+    "architecture/native-kernels.json",
+    "test/node-test-manifest.cjs",
+    "package.json"
+  ],
+  "dependencies": [
+    "arbitrary-prime-poly-contract"
+  ],
+  "references": [
+    "FLINT fmpz_mod_ctx/fmpz_mod_poly APIs",
+    "SageMath arbitrary-prime finite-field polynomial semantics"
+  ],
+  "architecture": {
+    "strategy": "external-library",
+    "fallback": "tested-capability",
+    "oracles": [
+      "SageMath at primes 2^89-1, 2^127-1, and 2^521-1",
+      "generated dynamic/native differential"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm architecture:check",
+    "pnpm test:portable",
+    "pnpm test:baselib:strict"
+  ],
+  "runs": [
+    {
+      "command": "node test/public-arbitrary-prime-polynomial.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 3.159,
+      "started_at": "2026-08-12T14:21:08.380Z",
+      "commit": "ef20bc1021fb62e5c2ba1b2dc41da8b3d4464133",
+      "workspace_fingerprint": "e677666475c060eb4843e6c6e5ced93fb08e587afd2659bc449b6b70f024e77a",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node test/arbitrary-prime-polynomial-resource-kernels.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.592,
+      "started_at": "2026-08-12T14:21:12.171Z",
+      "commit": "ef20bc1021fb62e5c2ba1b2dc41da8b3d4464133",
+      "workspace_fingerprint": "e677666475c060eb4843e6c6e5ced93fb08e587afd2659bc449b6b70f024e77a",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node test/arbitrary-prime-polynomial-resource-ffi.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.692,
+      "started_at": "2026-08-12T14:21:14.428Z",
+      "commit": "ef20bc1021fb62e5c2ba1b2dc41da8b3d4464133",
+      "workspace_fingerprint": "e677666475c060eb4843e6c6e5ced93fb08e587afd2659bc449b6b70f024e77a",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "env SAGEJS_FFI_SANITIZE=1 node test/arbitrary-prime-polynomial-resource-ffi.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.173,
+      "started_at": "2026-08-12T14:21:16.818Z",
+      "commit": "ef20bc1021fb62e5c2ba1b2dc41da8b3d4464133",
+      "workspace_fingerprint": "e677666475c060eb4843e6c6e5ced93fb08e587afd2659bc449b6b70f024e77a",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/arbitrary-prime-polynomial-resources.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.123,
+      "started_at": "2026-08-12T14:21:19.603Z",
+      "commit": "ef20bc1021fb62e5c2ba1b2dc41da8b3d4464133",
+      "workspace_fingerprint": "e677666475c060eb4843e6c6e5ced93fb08e587afd2659bc449b6b70f024e77a",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 14.683,
+      "started_at": "2026-08-12T14:21:22.324Z",
+      "commit": "ef20bc1021fb62e5c2ba1b2dc41da8b3d4464133",
+      "workspace_fingerprint": "e677666475c060eb4843e6c6e5ced93fb08e587afd2659bc449b6b70f024e77a",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 14.2,
+      "started_at": "2026-08-12T14:21:37.645Z",
+      "commit": "ef20bc1021fb62e5c2ba1b2dc41da8b3d4464133",
+      "workspace_fingerprint": "e677666475c060eb4843e6c6e5ced93fb08e587afd2659bc449b6b70f024e77a",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 46.92,
+      "started_at": "2026-08-12T14:21:52.437Z",
+      "commit": "ef20bc1021fb62e5c2ba1b2dc41da8b3d4464133",
+      "workspace_fingerprint": "e677666475c060eb4843e6c6e5ced93fb08e587afd2659bc449b6b70f024e77a",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 47.419,
+      "started_at": "2026-08-12T14:28:55.015Z",
+      "commit": "2412539c0470d49f6ea6b697c8f491babd933cb4",
+      "workspace_fingerprint": "3cdd4fee9ef1a9d0a45a82cd69b2ee7be7ff69279fd2e6dcbc02570d20a2ae1c",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/production-native-kernels.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 7.727,
+      "started_at": "2026-08-12T14:29:43.062Z",
+      "commit": "2412539c0470d49f6ea6b697c8f491babd933cb4",
+      "workspace_fingerprint": "3cdd4fee9ef1a9d0a45a82cd69b2ee7be7ff69279fd2e6dcbc02570d20a2ae1c",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Arbitrary-prime GF(p)[x] for p larger than a FLINT word now uses generated self-contained fmpz_mod_ctx plus fmpz_mod_poly resources in production. Public construction, sealed ownership, coefficient access, arithmetic, power, division, gcd/xgcd, evaluation, formatting, factorization, roots, and deterministic SagePack serialization avoid legacy polynomial N-API and uniform-limb buffers. Arithmetic remains resource-to-resource; factorization and roots each cross the host boundary once as a canonical byte payload. The typed borrowed-traversal kernel is registered and published by the normal production build. Native and same-source dynamic programs pass at p=2^89-1, 2^127-1, and 2^521-1; their deterministic divrem, xgcd, evaluation, factor, and roots vector is identical to SageMath 10.9.post1. Sanitizer-backed aggregate lifecycle stress, strict Python, architecture, portable, benchmark, and required production-cache gates pass on Linux x64. Independent review verdict: integrate commit 2412539c0470d49f6ea6b697c8f491babd933cb4.",
+    "risks": [
+      "Execution was validated locally only on Linux x64; Linux arm64, macOS arm64, and Windows x64 remain required and must be exercised by their CI hosts.",
+      "The generated resource core and arithmetic declarations have a credible Wasm lowering, but public factorization, roots, and formatting use aggregate/result declarations whose Wasm lowering is explicitly future work. When generated resources are unavailable, greater-than-word prime polynomial construction retains the pre-lane explicit unsupported behavior.",
+      "Low-level construction resources remain mutable until sealed; public PolynomialElement construction publishes only sealed owners and rejects or closes mismatched adopted resources.",
+      "The recorded portable failure at ef20bc1 was the review-discovered missing registry/test-manifest integration; the later portable receipt at 2412539 passes all 189 tests."
+    ],
+    "next_steps": [
+      "Run the focused public, lifecycle, and production-cache tests on Linux arm64, macOS arm64, and Windows x64 CI hosts.",
+      "Implement generated Wasm lowering for computed byte-region aggregates, then enable arbitrary-prime factorization, roots, and formatting in browsers without changing the public resource contract.",
+      "Profile the 512-coefficient public export path, currently about 39-48 ms, and add a resource-level bulk coefficient view only if measured workloads justify it."
+    ]
+  }
+}
