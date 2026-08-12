@@ -36,21 +36,26 @@ function bytes(region) {
   );
 }
 
-function payload(source) {
-  const hexadecimal = Buffer.from(source).reverse().toString("hex");
-  return hexadecimal.length === 0 ? 0n : BigInt(`0x${hexadecimal}`);
-}
-
 function deserializeInteger(source) {
-  return flint.ffiFmpzPolynomialDeserialize(
-    payload(source), BigInt(source.byteLength),
-  );
+  const region = flint.ffiFlintByteRegionFromBytes(source);
+  try {
+    return flint.ffiFmpzPolynomialFromByteRegion(
+      region, 0n, BigInt(source.byteLength),
+    );
+  } finally {
+    flint.ffiFlintByteRegionClose(region);
+  }
 }
 
 function deserializeRational(source) {
-  return flint.ffiFmpqPolynomialDeserialize(
-    payload(source), BigInt(source.byteLength),
-  );
+  const region = flint.ffiFlintByteRegionFromBytes(source);
+  try {
+    return flint.ffiFmpqPolynomialFromByteRegion(
+      region, 0n, BigInt(source.byteLength),
+    );
+  } finally {
+    flint.ffiFlintByteRegionClose(region);
+  }
 }
 
 function polynomialBytes(magic, coefficients) {
@@ -704,20 +709,27 @@ function fmpqPolynomial(coefficients) {
       /invalid SJPZ v1 integer polynomial serialization/,
     );
   }
-  assert.throws(
-    () => flint.ffiFmpzPolynomialDeserialize(-1n, 16n),
-    /invalid SJPZ v1 integer polynomial serialization/,
-  );
-  assert.throws(
-    () => flint.ffiFmpzPolynomialDeserialize(
-      1n << BigInt(8 * validInteger.length), BigInt(validInteger.length),
-    ),
-    /invalid SJPZ v1 integer polynomial serialization/,
-  );
-  assert.throws(
-    () => flint.ffiFmpzPolynomialDeserialize(payload(validInteger), 2n ** 64n - 1n),
-    /invalid SJPZ v1 integer polynomial serialization/,
-  );
+  const validRegion = flint.ffiFlintByteRegionFromBytes(validInteger);
+  try {
+    assert.throws(
+      () => flint.ffiFmpzPolynomialFromByteRegion(validRegion, 1n, 16n),
+      /invalid SJPZ v1 integer polynomial serialization/,
+    );
+    assert.throws(
+      () => flint.ffiFmpzPolynomialFromByteRegion(
+        validRegion, 0n, BigInt(validInteger.length + 1),
+      ),
+      /invalid SJPZ v1 integer polynomial serialization/,
+    );
+    assert.throws(
+      () => flint.ffiFmpzPolynomialFromByteRegion(
+        validRegion, 0n, 2n ** 64n - 1n,
+      ),
+      /invalid SJPZ v1 integer polynomial serialization/,
+    );
+  } finally {
+    flint.ffiFlintByteRegionClose(validRegion);
+  }
 
   const invalidRational = [
     polynomialBytes("SJPQ", [[1n, 0n]]),

@@ -1051,13 +1051,14 @@ def fmpz_polynomial_format(source: FmpzPolynomial) -> FlintByteRegion: ...
 
 
 @flint.function(
-    dynamic="ffiFmpzPolynomialDeserialize",
-    symbol="sagejs_fmpz_polynomial_deserialize_packed",
+    dynamic="ffiFmpzPolynomialFromByteRegion",
+    symbol="sagejs_fmpz_polynomial_from_byte_region",
     returns=int,
     abi=[
         out("result", sagejs_fmpz_polynomial_t),
-        in_("payload", fmpz_t),
-        in_("byte_length", uint64_t),
+        in_("source", sagejs_flint_byte_region_t),
+        in_("offset", uint64_t),
+        in_("length", uint64_t),
     ],
     effects=Effects(pure=False, allocates=True, raises=[ValueError]),
     result=Status(
@@ -1067,9 +1068,10 @@ def fmpz_polynomial_format(source: FmpzPolynomial) -> FlintByteRegion: ...
     ),
     wasm=False,
 )
-def fmpz_polynomial_deserialize(
-    payload: Integer,
-    byte_length: uint64,
+def fmpz_polynomial_from_byte_region(
+    source: FlintByteRegion,
+    offset: uint64,
+    length: uint64,
 ) -> FmpzPolynomial: ...
 
 
@@ -1920,13 +1922,14 @@ def fmpq_polynomial_format(source: FmpqPolynomial) -> FlintByteRegion: ...
 
 
 @flint.function(
-    dynamic="ffiFmpqPolynomialDeserialize",
-    symbol="sagejs_fmpq_polynomial_deserialize_packed",
+    dynamic="ffiFmpqPolynomialFromByteRegion",
+    symbol="sagejs_fmpq_polynomial_from_byte_region",
     returns=int,
     abi=[
         out("result", sagejs_fmpq_polynomial_t),
-        in_("payload", fmpz_t),
-        in_("byte_length", uint64_t),
+        in_("source", sagejs_flint_byte_region_t),
+        in_("offset", uint64_t),
+        in_("length", uint64_t),
     ],
     effects=Effects(pure=False, allocates=True, raises=[ValueError]),
     result=Status(
@@ -1936,9 +1939,10 @@ def fmpq_polynomial_format(source: FmpqPolynomial) -> FlintByteRegion: ...
     ),
     wasm=False,
 )
-def fmpq_polynomial_deserialize(
-    payload: Integer,
-    byte_length: uint64,
+def fmpq_polynomial_from_byte_region(
+    source: FlintByteRegion,
+    offset: uint64,
+    length: uint64,
 ) -> FmpqPolynomial: ...
 
 

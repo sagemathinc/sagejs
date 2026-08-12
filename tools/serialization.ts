@@ -1424,28 +1424,6 @@ function unpackExactPolynomial(
   return coefficients;
 }
 
-function exactPolynomialPayload(bytes: Uint8Array): bigint {
-  const buffer = Reflect.get(globalThis, "Buffer");
-  const from = Reflect.get(Object(buffer), "from");
-  if (typeof from === "function") {
-    const copy = invoke(from, buffer, [bytes]);
-    callMethod(copy, "reverse");
-    const hexadecimal = String(callMethod(copy, "toString", ["hex"]));
-    return hexadecimal.length === 0 ? 0n : BigInt(`0x${hexadecimal}`);
-  }
-
-  // Generated exact resources are currently Node-only. Keep a portable
-  // implementation here so the stable codec does not accidentally depend on
-  // Buffer if another host gains the same declared resource capability.
-  const hexadecimal = new Array<string>(bytes.byteLength);
-  for (let index = 0; index < bytes.byteLength; index += 1) {
-    hexadecimal[index] = bytes[bytes.byteLength - index - 1]
-      .toString(16).padStart(2, "0");
-  }
-  const text = hexadecimal.join("");
-  return text.length === 0 ? 0n : BigInt(`0x${text}`);
-}
-
 function polynomialFromExactResource(
   parent: unknown,
   bytes: Uint8Array,
@@ -1464,11 +1442,7 @@ function polynomialFromExactResource(
     return undefined;
   }
   try {
-    return invoke(restore, parent, [
-      exactPolynomialPayload(bytes),
-      bytes.byteLength,
-      encoding,
-    ]);
+    return callPython(restore, [bytes, encoding]);
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     throw new SageSerializationError(message);

@@ -91,6 +91,7 @@ const integration = [
   "test/public-sparse-random.cjs",
   "test/dense-matrix-public-audit.cjs",
   "test/exact-polynomial-byte-regions.cjs",
+  "test/exact-polynomial-bulk-construction.cjs",
   "test/public-polynomial-structural.cjs",
   "test/public-matrix-selection-v1.cjs",
   "test/public-matrix-vector.cjs",

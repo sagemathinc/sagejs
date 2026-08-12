@@ -3191,21 +3191,18 @@ class PolynomialRingParent(sage.Parent):
 
     def _from_exact_polynomial_serialization(
         self,
-        payload: Any,
-        byte_length: int,
+        source: Any,
         encoding: Any,
     ) -> PolynomialElement:
         """Restore one canonical SagePack stream through generated FLINT FFI."""
         if not self._supports_exact_polynomial_resource_deserialization(encoding):
             raise ValueError("exact polynomial resource deserialization is unavailable")
-        if byte_length != _buffer_length(payload):
-            raise ValueError("exact polynomial byte length does not match its payload")
         if self._base is sage.ZZ:
             return self._from_fmpz_polynomial_resource(
-                _exact_polynomial_resource_from_bytes(payload, False)
+                _exact_polynomial_resource_from_bytes(source, False)
             )
         return self._from_fmpq_polynomial_resource(
-            _exact_polynomial_resource_from_bytes(payload, True)
+            _exact_polynomial_resource_from_bytes(source, True)
         )
 
     def _from_coefficients(
@@ -3238,7 +3235,8 @@ class PolynomialRingParent(sage.Parent):
                 length = len(values)
                 while length > 0 and values[length - 1] == 0:
                     length -= 1
-                body = _packed_exact_parts_prefix(body, length)
+                if length != len(values):
+                    body = _packed_exact_parts_prefix(body, length)
                 return self._from_fmpz_polynomial_resource(
                     _exact_polynomial_resource_from_bytes(
                         _exact_polynomial_bytes(body, length, False), False
@@ -3271,7 +3269,8 @@ class PolynomialRingParent(sage.Parent):
             length = len(values)
             while length > 0 and values[length - 1] == 0:
                 length -= 1
-            body = _packed_exact_parts_prefix(body, 2 * length)
+            if length != len(values):
+                body = _packed_exact_parts_prefix(body, 2 * length)
             return self._from_fmpq_polynomial_resource(
                 _exact_polynomial_resource_from_bytes(
                     _exact_polynomial_bytes(body, length, True), True
@@ -3475,7 +3474,12 @@ class PolynomialRingParent(sage.Parent):
             if value._parent is not self:
                 return self._from_coefficients(value.coefficients())
             return self._coercePolynomial(value)
-        if isinstance(value, (list, tuple)):
+        if isinstance(value, list):
+            # Every storage backend consumes or copies this synchronously.
+            # Preserve the caller's list for checked whole-list packing rather
+            # than materializing an identical host list first.
+            return self._from_coefficients(value)
+        if isinstance(value, tuple):
             return self._from_coefficients(list(value))
         plan = runtime.coercion_model.resolveParents(
             runtime.coercion_model.parentOf(value), self._base

@@ -7,12 +7,26 @@
   "status": "active",
   "owner": "user",
   "objective": "Make public dense ZZ[x] and QQ[x] construction use checked canonical host-list packing followed by one generated FlintByteRegion-to-owned-resource parse, preserving exact Sage semantics, portable fallback, lifecycle safety, and cross-host performance",
-  "base_commit": "576db728015f2c18faeb4db43c2b8c73cf5cf85d",
+  "base_commit": "5655867dc36f98fd88abaca9b425db66352e242c",
   "claims": [
+    "architecture/native-boundaries.json",
+    "bench/exact-polynomial-byte-regions.sage",
+    "bench/exact-polynomial-bulk-construction-contract.cjs",
+    "bench/results/exact-polynomial-bulk-construction.json",
+    "ffi/flint.ffi.json",
+    "ffi/flint.ffi.py",
+    "packages/flint/generated/ffi_host.py",
     "packages/flint/include/sagejs/exact_polynomial_ffi.h",
     "src/baselib/polynomial.py",
+    "src/baselib/sagejs_bootstrap.py",
+    "src/baselib/sagejs/ffi/flint.py",
+    "src/lib/sagejs/ffi/flint.py",
     "test/exact-polynomial-bulk-construction.cjs",
-    "test/exact-polynomial-resource-ffi.cjs"
+    "test/exact-polynomial-bulk-construction-contract.cjs",
+    "test/exact-polynomial-resource-ffi.cjs",
+    "test/ffi.cjs",
+    "test/node-test-manifest.cjs",
+    "tools/serialization.ts"
   ],
   "dependencies": [],
   "references": [

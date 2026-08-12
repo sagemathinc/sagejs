@@ -1268,17 +1268,6 @@
       "disposition": "declared-safe-ffi"
     },
     {
-      "id": "ffi:flint:fmpq_polynomial_deserialize",
-      "kind": "declared-ffi",
-      "path": "ffi/flint.ffi.json",
-      "library": "flint",
-      "export": "fmpq_polynomial_deserialize",
-      "dynamic_package": "@sagemath/sagejs-flint",
-      "dynamic_export": "ffiFmpqPolynomialDeserialize",
-      "symbol": "sagejs_fmpq_polynomial_deserialize_packed",
-      "disposition": "declared-safe-ffi"
-    },
-    {
       "id": "ffi:flint:fmpq_polynomial_discriminant",
       "kind": "declared-ffi",
       "path": "ffi/flint.ffi.json",
@@ -1364,6 +1353,17 @@
       "dynamic_package": "@sagemath/sagejs-flint",
       "dynamic_export": "ffiFmpqPolynomialFormat",
       "symbol": "sagejs_fmpq_polynomial_format",
+      "disposition": "declared-safe-ffi"
+    },
+    {
+      "id": "ffi:flint:fmpq_polynomial_from_byte_region",
+      "kind": "declared-ffi",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "fmpq_polynomial_from_byte_region",
+      "dynamic_package": "@sagemath/sagejs-flint",
+      "dynamic_export": "ffiFmpqPolynomialFromByteRegion",
+      "symbol": "sagejs_fmpq_polynomial_from_byte_region",
       "disposition": "declared-safe-ffi"
     },
     {
@@ -2643,17 +2643,6 @@
       "disposition": "declared-safe-ffi"
     },
     {
-      "id": "ffi:flint:fmpz_polynomial_deserialize",
-      "kind": "declared-ffi",
-      "path": "ffi/flint.ffi.json",
-      "library": "flint",
-      "export": "fmpz_polynomial_deserialize",
-      "dynamic_package": "@sagemath/sagejs-flint",
-      "dynamic_export": "ffiFmpzPolynomialDeserialize",
-      "symbol": "sagejs_fmpz_polynomial_deserialize_packed",
-      "disposition": "declared-safe-ffi"
-    },
-    {
       "id": "ffi:flint:fmpz_polynomial_discriminant",
       "kind": "declared-ffi",
       "path": "ffi/flint.ffi.json",
@@ -2750,6 +2739,17 @@
       "dynamic_package": "@sagemath/sagejs-flint",
       "dynamic_export": "ffiFmpzPolynomialFormat",
       "symbol": "sagejs_fmpz_polynomial_format",
+      "disposition": "declared-safe-ffi"
+    },
+    {
+      "id": "ffi:flint:fmpz_polynomial_from_byte_region",
+      "kind": "declared-ffi",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "fmpz_polynomial_from_byte_region",
+      "dynamic_package": "@sagemath/sagejs-flint",
+      "dynamic_export": "ffiFmpzPolynomialFromByteRegion",
+      "symbol": "sagejs_fmpz_polynomial_from_byte_region",
       "disposition": "declared-safe-ffi"
     },
     {
