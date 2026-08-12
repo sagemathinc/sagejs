@@ -4,7 +4,7 @@
   "id": "browser-fmpq-resource-v1",
   "title": "Browser FmpqMatrix Resource Slice v1",
   "lane": "distribution",
-  "status": "active",
+  "status": "complete",
   "owner": "user",
   "objective": "Extend declaration-driven WebAssembly resources to a dense QQ matrix FmpqMatrix slice with create or bulk import, mutation and access, copy, multiplication, RREF, determinant, format and serialization, deterministic and finalizer cleanup, copied FlintByteRegion ownership, and ordinary sagejs.ffi.flint imports in real Chromium",
   "base_commit": "06a6d88805844d15d4247a64574883992a44d091",
