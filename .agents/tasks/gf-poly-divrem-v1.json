@@ -4,7 +4,7 @@
   "id": "gf-poly-divrem-v1",
   "title": "Packed GF(p)[x] FLINT divrem",
   "lane": "integration",
-  "status": "active",
+  "status": "complete",
   "owner": "user",
   "objective": "Route public packed prime-field polynomial quotient and remainder through one declared FLINT nmod_poly_divrem computation while preserving the typed-Python dynamic fallback and Sage-compatible errors",
   "base_commit": "1b0633cac2b2c737d286bf67d2a185a7e75bfe19",
