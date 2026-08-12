@@ -36,9 +36,19 @@ cpSync(
 );
 run(process.execPath, [join(root, "scripts", "build-vendor.cjs")]);
 run(process.execPath, [join(root, "bin", "sagejs"), "self", "--complete"]);
+// Declarations are authoritative. Generate their deterministic lowering before
+// module caches consume the safe Python wrappers, then reconcile every optional
+// host adapter that is already installed. Reconciliation resolves the native
+// content key but neither provisions an absent foreign library nor republishes
+// a matching warm artifact.
+run(process.execPath, [join(root, "bin", "sagejs"), "ffi", "generate"]);
 run(process.execPath, [join(root, "scripts", "build-task-runtime.cjs")]);
 run(process.execPath, [join(root, "scripts", "build-module-cache.cjs")]);
 run(process.execPath, [join(root, "scripts", "build-runtime-cache.cjs")]);
+run(process.execPath, [
+  join(root, "scripts", "build-ffi-host-adapter.cjs"),
+  "--reconcile-installed",
+]);
 
 const generatedFlintAdapter = join(
   root,
