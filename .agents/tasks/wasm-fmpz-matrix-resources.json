@@ -4,7 +4,7 @@
   "id": "wasm-fmpz-matrix-resources",
   "title": "Wasm Fmpz Matrix Resources",
   "lane": "integration",
-  "status": "active",
+  "status": "review",
   "owner": "user",
   "objective": "Enable a decisive generated FmpzMatrix resource vertical slice in browser WebAssembly, including construction, mutation, access, copy, multiplication, determinant, formatting, serialization, byte ingress, public dense ZZ matrix behavior, failure atomicity, lifecycle accounting, and cold/warm measurement without handwritten operation-specific adapters",
   "base_commit": "d2eaeaf7a3bdcfb83650c5a4471e697498a1e62a",
@@ -198,6 +198,166 @@
       "started_at": "2026-08-12T05:51:09.329Z",
       "commit": "591e5d97440973f6007b378bc4257592a3078eb6",
       "workspace_fingerprint": "0ce33b1d03b599113d194b450996df0c4c044e0a09153eb4afc202a9678d0ef5",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm ffi:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 3.394,
+      "started_at": "2026-08-12T05:55:22.711Z",
+      "commit": "f03b8903d22243c47b31d8e1b9d7148d46d5ddc7",
+      "workspace_fingerprint": "ab6a45a03a15871dd3b02fcd27ae4a4b0a1edb6b14909fb4a2eee2726b7fa649",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/ffi-wasm-fmpz-resource-core.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.233,
+      "started_at": "2026-08-12T05:55:31.618Z",
+      "commit": "f03b8903d22243c47b31d8e1b9d7148d46d5ddc7",
+      "workspace_fingerprint": "ab6a45a03a15871dd3b02fcd27ae4a4b0a1edb6b14909fb4a2eee2726b7fa649",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm --dir packages/flint-wasm test",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 20.66,
+      "started_at": "2026-08-12T05:55:38.949Z",
+      "commit": "f03b8903d22243c47b31d8e1b9d7148d46d5ddc7",
+      "workspace_fingerprint": "ab6a45a03a15871dd3b02fcd27ae4a4b0a1edb6b14909fb4a2eee2726b7fa649",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node packages/flint-wasm/test/resource-browser-smoke.mjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 7.387,
+      "started_at": "2026-08-12T05:56:07.265Z",
+      "commit": "f03b8903d22243c47b31d8e1b9d7148d46d5ddc7",
+      "workspace_fingerprint": "ab6a45a03a15871dd3b02fcd27ae4a4b0a1edb6b14909fb4a2eee2726b7fa649",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 16.519,
+      "started_at": "2026-08-12T05:56:20.423Z",
+      "commit": "f03b8903d22243c47b31d8e1b9d7148d46d5ddc7",
+      "workspace_fingerprint": "ab6a45a03a15871dd3b02fcd27ae4a4b0a1edb6b14909fb4a2eee2726b7fa649",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/test-manifest.test.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.217,
+      "started_at": "2026-08-12T05:56:42.044Z",
+      "commit": "f03b8903d22243c47b31d8e1b9d7148d46d5ddc7",
+      "workspace_fingerprint": "ab6a45a03a15871dd3b02fcd27ae4a4b0a1edb6b14909fb4a2eee2726b7fa649",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/ffi-wasm-fmpz-resource-core.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.162,
+      "started_at": "2026-08-12T05:57:24.420Z",
+      "commit": "f03b8903d22243c47b31d8e1b9d7148d46d5ddc7",
+      "workspace_fingerprint": "e4c2fd7afbcbd0462e7b467f27c951a43ac2bf12faf9f6dc9ca479717cb04a4d",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node test/fmpz-matrix-resource-ffi.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.234,
+      "started_at": "2026-08-12T05:57:31.627Z",
+      "commit": "f03b8903d22243c47b31d8e1b9d7148d46d5ddc7",
+      "workspace_fingerprint": "e4c2fd7afbcbd0462e7b467f27c951a43ac2bf12faf9f6dc9ca479717cb04a4d",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm --dir packages/flint-wasm test",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 19.782,
+      "started_at": "2026-08-12T05:57:43.403Z",
+      "commit": "f03b8903d22243c47b31d8e1b9d7148d46d5ddc7",
+      "workspace_fingerprint": "e4c2fd7afbcbd0462e7b467f27c951a43ac2bf12faf9f6dc9ca479717cb04a4d",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node packages/flint-wasm/test/resource-browser-smoke.mjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 4.257,
+      "started_at": "2026-08-12T05:58:07.713Z",
+      "commit": "f03b8903d22243c47b31d8e1b9d7148d46d5ddc7",
+      "workspace_fingerprint": "e4c2fd7afbcbd0462e7b467f27c951a43ac2bf12faf9f6dc9ca479717cb04a4d",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 12.718,
+      "started_at": "2026-08-12T05:58:16.060Z",
+      "commit": "f03b8903d22243c47b31d8e1b9d7148d46d5ddc7",
+      "workspace_fingerprint": "e4c2fd7afbcbd0462e7b467f27c951a43ac2bf12faf9f6dc9ca479717cb04a4d",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 39.165,
+      "started_at": "2026-08-12T05:58:36.729Z",
+      "commit": "f03b8903d22243c47b31d8e1b9d7148d46d5ddc7",
+      "workspace_fingerprint": "e4c2fd7afbcbd0462e7b467f27c951a43ac2bf12faf9f6dc9ca479717cb04a4d",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 39.829,
+      "started_at": "2026-08-12T06:01:49.417Z",
+      "commit": "f03b8903d22243c47b31d8e1b9d7148d46d5ddc7",
+      "workspace_fingerprint": "e4c2fd7afbcbd0462e7b467f27c951a43ac2bf12faf9f6dc9ca479717cb04a4d",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 12.615,
+      "started_at": "2026-08-12T06:02:34.522Z",
+      "commit": "f03b8903d22243c47b31d8e1b9d7148d46d5ddc7",
+      "workspace_fingerprint": "e4c2fd7afbcbd0462e7b467f27c951a43ac2bf12faf9f6dc9ca479717cb04a4d",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm ffi:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.87,
+      "started_at": "2026-08-12T06:02:56.048Z",
+      "commit": "f03b8903d22243c47b31d8e1b9d7148d46d5ddc7",
+      "workspace_fingerprint": "e4c2fd7afbcbd0462e7b467f27c951a43ac2bf12faf9f6dc9ca479717cb04a4d",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/test-manifest.test.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.105,
+      "started_at": "2026-08-12T06:03:02.169Z",
+      "commit": "f03b8903d22243c47b31d8e1b9d7148d46d5ddc7",
+      "workspace_fingerprint": "e4c2fd7afbcbd0462e7b467f27c951a43ac2bf12faf9f6dc9ca479717cb04a4d",
       "platform": "linux-x64"
     }
   ],
