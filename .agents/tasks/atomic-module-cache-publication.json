@@ -4,7 +4,7 @@
   "id": "atomic-module-cache-publication",
   "title": "Atomic module cache publication",
   "lane": "compiler-runtime",
-  "status": "active",
+  "status": "complete",
   "owner": "user",
   "objective": "Publish compiler module cache files atomically and prove concurrent readers, writers, and bounded pruning never observe partial entries or delete actively leased publications",
   "base_commit": "511e0d6d48cf5568721c96463ceaae699a0be86c",
@@ -68,7 +68,7 @@
     }
   ],
   "handoff": {
-    "summary": "Publishes both compiler-generated imported-module metadata and lazy runtime JavaScript/bytecode cache documents through a shared same-directory temporary-file-and-rename primitive. Concurrent publishers can replace one complete cache value with another, while readers never observe a truncated JSON document. Publication failures remain advisory cache misses, and private temporary files are removed on failure. Temporary-root regressions exercise four concurrent large publishers plus readers, failure cleanup, and an active leased publisher racing applied bounded cleanup; the established compiler and REPL cache integration suite also passes.",
+    "summary": "Integrated on dense-qq-resources. Compiler-generated imported-module metadata and lazy runtime JavaScript/bytecode cache documents now use a shared same-directory temporary-file-and-rename primitive. Concurrent publishers replace only complete values, publication failures remain advisory cache misses, and private temporary files are removed on failure. Temporary-root regressions exercise four concurrent large publishers plus readers, failure cleanup, and an active leased publisher racing applied bounded cleanup; the focused cache suite and established compiler/REPL module-cache integration suite pass after integration.",
     "risks": [
       "The full compiler tier has an unrelated existing matrix fixture failure because its standalone runtime cannot import sagejs.linear_algebra.matrix_vector_public.",
       "The full integration tier has an unrelated existing higher-weight Hecke failure because p1_gcd is absent from the published native artifact set in this worktree.",
