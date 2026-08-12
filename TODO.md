@@ -8,14 +8,6 @@
   each old native path only as a differential oracle until deletion.
 - Make every declared FFI dynamic fallback behave identically in a source
   checkout, the SEA, future CPython adapters, and WebAssembly-capable hosts.
-- Complete dense `GF(2)` as a generated M4RI resource vertical slice, with a
-  bit-packed portable fallback and explicit conversions only for algorithms
-  better served by FLINT.
-- Give dense `ZZ` rank a cheap generated modular full-rank certificate before
-  exact FLINT elimination, while preserving an explicit exact-algorithm path.
-- Make generated-resource lifetime accounting and finalizer backpressure
-  uniformly cheap for large temporary exact objects; explicit close remains
-  deterministic and finalization remains a safe fallback.
 - Use compiler-owned packed mathematical objects where they give a complete,
   fast host-independent vertical slice; use generated opaque resources for
   mature exact libraries and copy only at explicit representation boundaries.
