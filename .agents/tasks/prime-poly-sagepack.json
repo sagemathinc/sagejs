@@ -4,7 +4,7 @@
   "id": "prime-poly-sagepack",
   "title": "Word Prime Polynomial SagePack",
   "lane": "integration",
-  "status": "review",
+  "status": "complete",
   "owner": "user",
   "objective": "Encode packed GF(p)[x] coefficients for every word-sized prime as canonical fixed-width little-endian SagePack bytes with strict decoding and linear performance",
   "base_commit": "7792f9072335667b539ee79e7babff82bab9056c",

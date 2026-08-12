@@ -17,10 +17,6 @@
 - Migrate exact power and Laurent series from private FLINT polynomial state to
   compiler-owned packed coefficients, then delete their audited polynomial
   reconstruction ingress.
-- Encode word-sized `GF(p)[x]` SagePack coefficients as canonical fixed-width
-  little-endian words instead of generic scalar objects. The 20,000-term
-  large-prime witness is correct today but occupies about 4.18 MB and measured
-  78 ms to dump and 139 ms to load.
 - Split the bootstrap `matrix.py` implementation into ordinary, domain-focused
   modules before the linear-algebra package reaches its temporary 410 KB source
   ratchet. Keep the public `Matrix` API unified while making exact-integer,
