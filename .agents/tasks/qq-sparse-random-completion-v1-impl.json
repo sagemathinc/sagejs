@@ -52,12 +52,94 @@
     "pnpm test:baselib:strict",
     "pnpm test:native"
   ],
-  "runs": [],
+  "runs": [
+    {
+      "command": "node test/public-sparse-random.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 11.956,
+      "started_at": "2026-08-12T21:12:18.340Z",
+      "commit": "32440bf27dbb2caa57b6645cd50c9a7f32552162",
+      "workspace_fingerprint": "ac8134e7d6b7bf1e56407f1618a234ad07942903cb7b8fa50be373f9a73fdfb2",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node test/linear-sparse-random.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.363,
+      "started_at": "2026-08-12T21:12:34.366Z",
+      "commit": "32440bf27dbb2caa57b6645cd50c9a7f32552162",
+      "workspace_fingerprint": "ac8134e7d6b7bf1e56407f1618a234ad07942903cb7b8fa50be373f9a73fdfb2",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/public-sparse-random.cjs --check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 38.328,
+      "started_at": "2026-08-12T21:12:41.293Z",
+      "commit": "32440bf27dbb2caa57b6645cd50c9a7f32552162",
+      "workspace_fingerprint": "ac8134e7d6b7bf1e56407f1618a234ad07942903cb7b8fa50be373f9a73fdfb2",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "./bin/sagejs native explain src/lib/sagejs/linear_algebra/sparse_random_public.py --function sparse_random_fmpq",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.439,
+      "started_at": "2026-08-12T21:13:25.247Z",
+      "commit": "32440bf27dbb2caa57b6645cd50c9a7f32552162",
+      "workspace_fingerprint": "ac8134e7d6b7bf1e56407f1618a234ad07942903cb7b8fa50be373f9a73fdfb2",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 14.765,
+      "started_at": "2026-08-12T21:13:30.941Z",
+      "commit": "32440bf27dbb2caa57b6645cd50c9a7f32552162",
+      "workspace_fingerprint": "ac8134e7d6b7bf1e56407f1618a234ad07942903cb7b8fa50be373f9a73fdfb2",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 14.417,
+      "started_at": "2026-08-12T21:13:49.881Z",
+      "commit": "32440bf27dbb2caa57b6645cd50c9a7f32552162",
+      "workspace_fingerprint": "ac8134e7d6b7bf1e56407f1618a234ad07942903cb7b8fa50be373f9a73fdfb2",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 63.638,
+      "started_at": "2026-08-12T21:14:09.573Z",
+      "commit": "32440bf27dbb2caa57b6645cd50c9a7f32552162",
+      "workspace_fingerprint": "ac8134e7d6b7bf1e56407f1618a234ad07942903cb7b8fa50be373f9a73fdfb2",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:native",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 642.311,
+      "started_at": "2026-08-12T21:15:17.481Z",
+      "commit": "32440bf27dbb2caa57b6645cd50c9a7f32552162",
+      "workspace_fingerprint": "ac8134e7d6b7bf1e56407f1618a234ad07942903cb7b8fa50be373f9a73fdfb2",
+      "platform": "linux-x64"
+    }
+  ],
   "handoff": {
-    "summary": "Dense QQ random_matrix compiles arbitrary-width bounded and Sage-compatible reciprocal-uniform 1/n generation into one source-transparent native generator call. The kernel allocates and fills a private FmpqMatrix without advancing the shared RNG on failure; the host then makes one read-only bulk copy into its FLINT/GMP allocator domain, closes the private source in its owner domain, and only then publishes the final RNG state and mutable matrix. Native-disabled exact serialization parity covers all four 200x300 workloads and the public tests cover five seeds, collisions, integral bounds, wide/skewed bounds, 1/n, failed-allocation RNG rollback, and greater-than-1000-bit public mutation followed by idempotent close. The sanitizer lifecycle adds 200 large-limb copy/mutate/close rounds. On linux-x64, compiled 200x300 density=.2 warm medians were 2.48 ms for small bounds, 10.71 ms for 80/97-bit bounds, 10.91 ms for 17/521-bit skew, and 2.45 ms for 1/n, versus SageMath medians of 1.79, 4.60, 4.05, and 1.40 ms. The 1000x1000 density=.1 wide case was 104.01 ms versus SageMath 49.87 ms, with 211.7 MiB compiled-session RSS growth.",
+    "summary": "Dense QQ random_matrix compiles arbitrary-width bounded and Sage-compatible reciprocal-uniform 1/n generation into one source-transparent native generator call. The kernel allocates and fills a private FmpqMatrix without advancing the shared RNG on failure; the host then makes one read-only bulk copy into its FLINT/GMP allocator domain, closes the private source in its owner domain, and only then publishes the final RNG state and mutable matrix. Native-disabled exact serialization parity covers all four 200x300 workloads. Public regressions cover five seeds, collisions, integral bounds, wide/skewed bounds, 1/n, failed allocation, six repeated injected failures of sagejs.ffi.flint.fmpq_matrix_copy with exact RNG rollback, and greater-than-1000-bit public mutation followed by idempotent close. The retained clean-source linux-x64 report identifies commit 8436557, its Git tree, the 16-core AMD EPYC host, OS, Node runtime, and memory. Compiled 200x300 density=.2 warm medians were 2.46 ms for small bounds, 9.95 ms for 80/97-bit bounds, 10.84 ms for 17/521-bit skew, and 2.41 ms for 1/n, versus SageMath medians of 1.77, 4.47, 3.76, and 1.33 ms. The 1000x1000 density=.1 wide case was 104.68 ms versus SageMath 50.73 ms. A fresh build preceded current-HEAD focused, architecture, strict, portable, and complete native receipts.",
     "risks": [
       "The ownership boundary requires one matrix-area FLINT deep copy after native generation. The retained timing and memory evidence includes that copy, but it increases transient memory and is O(rows*columns), including structural zero entries.",
       "A generated resource's type identity does not imply allocator interchangeability. Future code must preserve owner dispatch for allocation-growing mutation and destruction, or repeat this private-result-to-host-copy publication pattern; publishing the private token directly would reintroduce cross-addon FLINT/GMP lifetime corruption.",
+      "The sanitizer harness validates 200 rounds of the read-only deep-copy, source-close, large-limb destination mutation, and destination-close lifetime sequence through the adapter primitives available in one process. It deliberately does not claim to instantiate two separately linked allocator domains; the public subprocess regression exercises the actual generated-addon-to-host publication boundary.",
       "The retained benchmark is linux-x64 evidence. Windows x64, macOS arm64, and linux arm64 rely on the same-source fallback and declared FLINT resource machinery but still need platform CI evidence.",
       "Each selected rational still calls declared fmpq_matrix_set_entry inside the isolated core. This has no host crossings and scales with selected entries, but future bulk FLINT APIs may reduce per-entry retained-byte accounting overhead further."
     ],
