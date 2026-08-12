@@ -204,7 +204,9 @@ A = matrix(QQ, 3, 3, [
 ])
 R = PolynomialRing(QQ, 't'); t = R.gen()
 expected_charpoly = (t - QQ(huge, 97))**2 * (t - QQ(2, 3))
-expected_minpoly = (t - QQ(huge, 97)) * (t - QQ(2, 3))
+# The nonzero superdiagonal makes the repeated eigenvalue a size-two Jordan
+# block, so its factor occurs twice in the minimal polynomial as well.
+expected_minpoly = (t - QQ(huge, 97))**2 * (t - QQ(2, 3))
 characteristic = A.characteristic_polynomial('t')
 minimal = A.minimal_polynomial('t')
 assert characteristic == expected_charpoly
