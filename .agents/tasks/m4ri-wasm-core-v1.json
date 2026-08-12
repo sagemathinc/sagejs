@@ -1,0 +1,53 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "m4ri-wasm-core-v1",
+  "title": "Generic M4RI Wasm declaration lowering",
+  "lane": "integration",
+  "status": "active",
+  "owner": "user",
+  "objective": "Enable the declared M4RI resources and operations for generic Wasm lowering, including explicitly selected scalar capability operations and real reactor lifecycle coverage.",
+  "base_commit": "8f87f908aca55e386c6d4af77fef3c791bf0b148",
+  "claims": [
+    "ffi/m4ri.ffi.py",
+    "ffi/m4ri.ffi.json",
+    "src/lib/sagejs/ffi/m4ri.py",
+    "src/baselib/sagejs/ffi/m4ri.py",
+    "packages/m4ri/generated/ffi_host.py",
+    "tools/ffi/wasm-adapters.cjs",
+    "scripts/build-ffi-wasm-resource-adapter.cjs",
+    "test/ffi-wasm-resource.cjs",
+    "test/ffi-wasm-m4ri-resource.cjs",
+    "architecture/native-boundaries.json"
+  ],
+  "dependencies": [],
+  "references": [
+    "/home/user/cowasm/sagemath/m4ri"
+  ],
+  "architecture": {
+    "strategy": "compiler-infrastructure",
+    "fallback": "tested-capability",
+    "oracles": [
+      "native generated M4RI backend",
+      "portable packed GF(2) semantics"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "fallback",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm architecture:check",
+    "pnpm test:portable",
+    "pnpm test:baselib:strict"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "",
+    "risks": [],
+    "next_steps": []
+  }
+}

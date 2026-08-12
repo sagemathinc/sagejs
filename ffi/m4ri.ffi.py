@@ -35,7 +35,7 @@ M4riMatrix = m4ri.resource(
     close="ffiM4riMatrixClose",
     clear="sagejs_m4ri_matrix_clear",
     size="sagejs_m4ri_matrix_allocated_bytes",
-    wasm=False,
+    wasm=True,
 )
 
 
@@ -50,14 +50,14 @@ M4riByteRegion = m4ri.resource(
         dynamic="ffiM4riByteRegionCopyBytes",
         data="sagejs_m4ri_byte_region_data",
         length="sagejs_m4ri_byte_region_length",
-        wasm=False,
+        wasm=True,
     ),
     host_ingress=copied_bytes(
         dynamic="ffiM4riByteRegionFromBytes",
         init="sagejs_m4ri_byte_region_init_copy",
-        wasm=False,
+        wasm=True,
     ),
-    wasm=False,
+    wasm=True,
 )
 
 
@@ -68,7 +68,7 @@ M4riByteRegion = m4ri.resource(
     abi=[],
     effects=Effects(pure=True),
     result=Direct(),
-    wasm=False,
+    wasm=True,
 )
 def available() -> bool: ...
 
@@ -88,7 +88,7 @@ def available() -> bool: ...
         exception=OverflowError,
         message="M4RI matrix dimensions are too large or unavailable",
     ),
-    wasm=False,
+    wasm=True,
 )
 def matrix(rows: uint64, columns: uint64) -> M4riMatrix: ...
 
@@ -100,7 +100,7 @@ def matrix(rows: uint64, columns: uint64) -> M4riMatrix: ...
     abi=[in_("matrix", sagejs_m4ri_matrix_t)],
     effects=Effects(pure=True),
     result=Direct(),
-    wasm=False,
+    wasm=True,
 )
 def matrix_nrows(matrix: M4riMatrix) -> uint64: ...
 
@@ -112,7 +112,7 @@ def matrix_nrows(matrix: M4riMatrix) -> uint64: ...
     abi=[in_("matrix", sagejs_m4ri_matrix_t)],
     effects=Effects(pure=True),
     result=Direct(),
-    wasm=False,
+    wasm=True,
 )
 def matrix_ncols(matrix: M4riMatrix) -> uint64: ...
 
@@ -133,7 +133,7 @@ def matrix_ncols(matrix: M4riMatrix) -> uint64: ...
         exception=ValueError,
         message="M4RI matrix entry or index is invalid",
     ),
-    wasm=False,
+    wasm=True,
 )
 def matrix_set_entry(
     matrix: Writable[M4riMatrix], row: uint64, column: uint64, value: uint64
@@ -151,7 +151,7 @@ def matrix_set_entry(
     ],
     effects=Effects(pure=True),
     result=Direct(),
-    wasm=False,
+    wasm=True,
 )
 def matrix_entry_code(matrix: M4riMatrix, row: uint64, column: uint64) -> uint64:
     """Return 0 or 1, or 2 when `(row, column)` is out of bounds."""
@@ -168,7 +168,7 @@ def matrix_entry_code(matrix: M4riMatrix, row: uint64, column: uint64) -> uint64
     ],
     effects=Effects(pure=False, allocates=True, raises=[RuntimeError]),
     result=Status(1, exception=RuntimeError, message="M4RI matrix copy failed"),
-    wasm=False,
+    wasm=True,
 )
 def matrix_copy(source: M4riMatrix) -> M4riMatrix: ...
 
@@ -183,7 +183,7 @@ def matrix_copy(source: M4riMatrix) -> M4riMatrix: ...
     ],
     effects=Effects(pure=True),
     result=Direct(),
-    wasm=False,
+    wasm=True,
 )
 def matrix_equal(left: M4riMatrix, right: M4riMatrix) -> bool: ...
 
@@ -203,7 +203,7 @@ def matrix_equal(left: M4riMatrix, right: M4riMatrix) -> bool: ...
         exception=ValueError,
         message="M4RI matrix dimensions are incompatible for addition",
     ),
-    wasm=False,
+    wasm=True,
 )
 def matrix_add(left: M4riMatrix, right: M4riMatrix) -> M4riMatrix: ...
 
@@ -223,7 +223,7 @@ def matrix_add(left: M4riMatrix, right: M4riMatrix) -> M4riMatrix: ...
         exception=ValueError,
         message="M4RI matrix dimensions are incompatible for multiplication",
     ),
-    wasm=False,
+    wasm=True,
 )
 def matrix_mul(left: M4riMatrix, right: M4riMatrix) -> M4riMatrix: ...
 
@@ -238,7 +238,7 @@ def matrix_mul(left: M4riMatrix, right: M4riMatrix) -> M4riMatrix: ...
     ],
     effects=Effects(pure=False, allocates=True, raises=[RuntimeError]),
     result=Status(1, exception=RuntimeError, message="M4RI transpose failed"),
-    wasm=False,
+    wasm=True,
 )
 def matrix_transpose(source: M4riMatrix) -> M4riMatrix: ...
 
@@ -250,7 +250,7 @@ def matrix_transpose(source: M4riMatrix) -> M4riMatrix: ...
     abi=[in_("source", sagejs_m4ri_matrix_t)],
     effects=Effects(pure=False, allocates=True),
     result=Direct(),
-    wasm=False,
+    wasm=True,
 )
 def matrix_rank(source: M4riMatrix) -> uint64: ...
 
@@ -265,7 +265,7 @@ def matrix_rank(source: M4riMatrix) -> uint64: ...
     ],
     effects=Effects(pure=False, allocates=True, raises=[RuntimeError]),
     result=Status(1, exception=RuntimeError, message="M4RI RREF failed"),
-    wasm=False,
+    wasm=True,
 )
 def matrix_rref(source: M4riMatrix) -> M4riMatrix: ...
 
@@ -277,7 +277,7 @@ def matrix_rref(source: M4riMatrix) -> M4riMatrix: ...
     abi=[in_("source", sagejs_m4ri_matrix_t)],
     effects=Effects(pure=False, allocates=True),
     result=Direct(),
-    wasm=False,
+    wasm=True,
 )
 def matrix_determinant_code(source: M4riMatrix) -> uint64:
     """Return the determinant 0 or 1, or 2 for a nonsquare matrix."""
@@ -294,7 +294,7 @@ def matrix_determinant_code(source: M4riMatrix) -> uint64:
     ],
     effects=Effects(pure=False, allocates=True, raises=[ValueError]),
     result=Status(1, exception=ValueError, message="M4RI matrix is not invertible"),
-    wasm=False,
+    wasm=True,
 )
 def matrix_inverse(source: M4riMatrix) -> M4riMatrix: ...
 
@@ -314,7 +314,7 @@ def matrix_inverse(source: M4riMatrix) -> M4riMatrix: ...
         exception=ValueError,
         message="M4RI matrix equation has incompatible dimensions or no solution",
     ),
-    wasm=False,
+    wasm=True,
 )
 def matrix_solve(left: M4riMatrix, right: M4riMatrix) -> M4riMatrix: ...
 
@@ -329,7 +329,7 @@ def matrix_solve(left: M4riMatrix, right: M4riMatrix) -> M4riMatrix: ...
     ],
     effects=Effects(pure=False, allocates=True, raises=[RuntimeError]),
     result=Status(1, exception=RuntimeError, message="M4RI right kernel failed"),
-    wasm=False,
+    wasm=True,
 )
 def matrix_right_kernel(source: M4riMatrix) -> M4riMatrix: ...
 
@@ -344,7 +344,7 @@ def matrix_right_kernel(source: M4riMatrix) -> M4riMatrix: ...
     ],
     effects=Effects(pure=False, allocates=True, raises=[RuntimeError]),
     result=Status(1, exception=RuntimeError, message="M4RI logical-word export failed"),
-    wasm=False,
+    wasm=True,
 )
 def matrix_logical_words(source: M4riMatrix) -> M4riByteRegion: ...
 
@@ -365,7 +365,7 @@ def matrix_logical_words(source: M4riMatrix) -> M4riByteRegion: ...
         exception=ValueError,
         message="invalid canonical M4RI logical-word data",
     ),
-    wasm=False,
+    wasm=True,
 )
 def matrix_from_logical_words(
     source: M4riByteRegion, rows: uint64, columns: uint64
@@ -384,7 +384,7 @@ def matrix_from_logical_words(
     result=Status(
         1, exception=RuntimeError, message="M4RI SagePack byte export failed"
     ),
-    wasm=False,
+    wasm=True,
 )
 def matrix_sagepack_bytes(source: M4riMatrix) -> M4riByteRegion: ...
 
@@ -401,7 +401,7 @@ def matrix_sagepack_bytes(source: M4riMatrix) -> M4riByteRegion: ...
     ],
     effects=Effects(pure=False, allocates=True, raises=[ValueError]),
     result=Status(1, exception=ValueError, message="invalid GF(2) SagePack bytes"),
-    wasm=False,
+    wasm=True,
 )
 def matrix_from_sagepack_bytes(
     source: M4riByteRegion, rows: uint64, columns: uint64
@@ -418,6 +418,6 @@ def matrix_from_sagepack_bytes(
     ],
     effects=Effects(pure=False, allocates=True, raises=[RuntimeError]),
     result=Status(1, exception=RuntimeError, message="M4RI matrix formatting failed"),
-    wasm=False,
+    wasm=True,
 )
 def matrix_format(source: M4riMatrix) -> M4riByteRegion: ...
