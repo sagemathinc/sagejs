@@ -267,7 +267,9 @@ def matrix_rank(source: M4riMatrix) -> uint64: ...
     result=Status(1, exception=RuntimeError, message="M4RI RREF failed"),
     wasm=True,
 )
-def matrix_rref(source: M4riMatrix) -> M4riMatrix: ...
+def matrix_rref(source: M4riMatrix) -> M4riMatrix:
+    """Return RREF storage carrying the rank from the same elimination."""
+    ...
 
 
 @m4ri.function(

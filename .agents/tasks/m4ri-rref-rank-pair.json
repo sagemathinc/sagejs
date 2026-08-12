@@ -1,0 +1,106 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "m4ri-rref-rank-pair",
+  "title": "M4RI single-pass RREF rank",
+  "lane": "integration",
+  "status": "review",
+  "owner": "user",
+  "objective": "Make generated M4RI RREF resources retain and expose the rank computed by the same elimination, so public GF(2) RREF never performs a second elimination and remains fast on native and Wasm",
+  "base_commit": "200e275c8a13507e5e880a0f311ef0b3a1382acd",
+  "claims": [
+    "ffi/m4ri.ffi.py",
+    "ffi/m4ri.ffi.json",
+    "packages/m4ri/include/sagejs/m4ri_matrix_ffi.h",
+    "packages/m4ri/bench/benchmark.cjs",
+    "packages/m4ri/test/",
+    "src/baselib/matrix.py",
+    "test/ffi-wasm-m4ri-resource.cjs",
+    "test/m4ri-public-matrix.cjs",
+    "bench/matrix-m4ri-rref-rank.cjs",
+    ".agents/tasks/m4ri-rref-rank-pair.json"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "external-library",
+    "fallback": "tested-capability",
+    "oracles": [
+      "Current dynamic dense GF(2) matrix semantics",
+      "M4RI rank and RREF"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "fallback",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm architecture:check",
+    "pnpm test:portable",
+    "pnpm test:baselib:strict"
+  ],
+  "runs": [
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 12.445,
+      "started_at": "2026-08-12T03:10:28.595Z",
+      "commit": "200e275c8a13507e5e880a0f311ef0b3a1382acd",
+      "workspace_fingerprint": "7ed247c0135274db24b9533cf4203f11527c81a8fa6d994616500e04ec69c232",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 37.271,
+      "started_at": "2026-08-12T03:10:46.227Z",
+      "commit": "200e275c8a13507e5e880a0f311ef0b3a1382acd",
+      "workspace_fingerprint": "0cbf3199f5335540ad80766f16210b730097eb9c5050c4a44ee67a8d92408380",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 12.424,
+      "started_at": "2026-08-12T03:14:29.749Z",
+      "commit": "200e275c8a13507e5e880a0f311ef0b3a1382acd",
+      "workspace_fingerprint": "940a236f2c0ad8a8318acc918ffc2774f13f0e16f727192003097e3c6e462908",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 12.249,
+      "started_at": "2026-08-12T03:14:48.175Z",
+      "commit": "200e275c8a13507e5e880a0f311ef0b3a1382acd",
+      "workspace_fingerprint": "940a236f2c0ad8a8318acc918ffc2774f13f0e16f727192003097e3c6e462908",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 37.267,
+      "started_at": "2026-08-12T03:15:07.184Z",
+      "commit": "200e275c8a13507e5e880a0f311ef0b3a1382acd",
+      "workspace_fingerprint": "940a236f2c0ad8a8318acc918ffc2774f13f0e16f727192003097e3c6e462908",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "M4RI matrix resources now retain an optional exact rank certificate. RREF records the rank returned by its single echelonization; the existing declared rank query reads it in O(1). Zero construction, inverse, and kernel construction publish known ranks, copy and transpose preserve them, and the sole writable declaration invalidates the certificate when a bit changes. Public GF(2) RREF therefore computes elimination once with no compiler or generated-wrapper special case. Native differential, lifecycle, ASan/UBSan/leak, real-Wasm, public performance, architecture, portable, and strict-Python checks pass.",
+    "risks": [
+      "Future writable M4RI declarations must invalidate rank metadata; the declaration audit currently confirms matrix_set_entry is the only writable operation."
+    ],
+    "next_steps": [
+      "Integrate this commit onto dense-qq-resources and keep the RREF-plus-rank benchmark as the regression witness."
+    ]
+  }
+}

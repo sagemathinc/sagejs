@@ -86,6 +86,11 @@ const samples = {
   rrefMs: measured(7, () => {
     close(m4ri.ffiM4riMatrixRref(left), m4ri.ffiM4riMatrixClose);
   }),
+  rrefThenRankMs: measured(7, () => {
+    const reduced = m4ri.ffiM4riMatrixRref(left);
+    m4ri.ffiM4riMatrixRank(reduced);
+    close(reduced, m4ri.ffiM4riMatrixClose);
+  }),
 };
 close(right, m4ri.ffiM4riMatrixClose);
 close(left, m4ri.ffiM4riMatrixClose);

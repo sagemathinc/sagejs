@@ -149,7 +149,19 @@ test("RREF, determinant, inverse, solve, and right kernel are differential", {
     const kernel = m4ri.ffiM4riMatrixRightKernel(source);
     const kernelRows = toRows(kernel);
     assert.equal(m4ri.ffiM4riMatrixRank(source), BigInt(expected.rank));
+    // RREF records the rank returned by the same elimination. This query is
+    // therefore a scalar metadata read rather than a second echelonization.
+    assert.equal(m4ri.ffiM4riMatrixRank(reduced), BigInt(expected.rank));
     assert.deepEqual(toRows(reduced), expected.answer);
+    if (expected.rank !== 0) {
+      for (let column = 0; column < columns; column += 1) {
+        m4ri.ffiM4riMatrixSetEntry(reduced, 0n, BigInt(column), 0n);
+      }
+      assert.equal(
+        m4ri.ffiM4riMatrixRank(reduced),
+        BigInt(expected.rank - 1),
+      );
+    }
     assert.equal(kernelRows.length, columns - expected.rank);
     assert.deepEqual(
       multiply(sourceRows, transpose(kernelRows)),
@@ -396,10 +408,19 @@ int main(void) {
   for (uint64_t iteration = 0; iteration < 200; ++iteration) {
     sagejs_m4ri_matrix_t a, b, c, r, k;
     if (!sagejs_m4ri_matrix_init(a, iteration % 17, iteration % 71)) return 1;
-    if (!sagejs_m4ri_matrix_init_set(b, a)) return 2;
-    if (!sagejs_m4ri_matrix_add(c, a, b)) return 3;
-    if (!sagejs_m4ri_matrix_rref(r, c)) return 4;
-    if (!sagejs_m4ri_matrix_right_kernel(k, r)) return 5;
+    if (!a->rank_is_known || a->known_rank != 0) return 2;
+    if (!sagejs_m4ri_matrix_init_set(b, a)) return 3;
+    if (!sagejs_m4ri_matrix_add(c, a, b)) return 4;
+    if (!sagejs_m4ri_matrix_rref(r, c)) return 5;
+    if (!r->rank_is_known) return 6;
+    if (sagejs_m4ri_matrix_rank(r) != r->known_rank) return 7;
+    if (r->value->nrows != 0 && r->value->ncols != 0) {
+      const uint64_t old_value = sagejs_m4ri_matrix_entry_code(r, 0, 0);
+      if (!sagejs_m4ri_matrix_set_entry(r, 0, 0, old_value ^ 1)) return 8;
+      if (r->rank_is_known) return 9;
+      (void) sagejs_m4ri_matrix_rank(r);
+    }
+    if (!sagejs_m4ri_matrix_right_kernel(k, r)) return 10;
     sagejs_m4ri_matrix_clear(k);
     sagejs_m4ri_matrix_clear(r);
     sagejs_m4ri_matrix_clear(c);
