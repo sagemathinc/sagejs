@@ -1,4 +1,8 @@
 import { createWasiHost } from "./dist/wasi-runtime.mjs";
+import {
+  createGeneratedWasmBackend,
+  generatedWasmManifest,
+} from "./dist/ffi-resource-backend.mjs";
 import { createPortablePolynomialBackend } from "./portable-polynomial.mjs";
 import { createPortableMatrixBackend } from "./portable-matrix.mjs";
 
@@ -44,6 +48,7 @@ export async function instantiateFlintFactor(source) {
   });
   const memory = instance.exports.memory;
   wasi.initialize(instance);
+  const generatedResourceBackend = createGeneratedWasmBackend(instance);
   const polynomialBackend = createPortablePolynomialBackend();
   const matrixBackend = createPortableMatrixBackend();
 
@@ -483,7 +488,7 @@ export async function instantiateFlintFactor(source) {
       ));
   }
 
-  return Object.freeze({
+  const backend = {
     factor,
     isPrime,
     nextPrime,
@@ -508,7 +513,20 @@ export async function instantiateFlintFactor(source) {
     ...polynomialBackend,
     ...matrixBackend,
     matrixCharpoly,
+    ...generatedResourceBackend,
+  };
+  Object.defineProperty(backend, "__sagejs_wasm_resource_live_count__", {
+    value: () => instance.exports.sagejs_wasm_resource_live_count(),
+    enumerable: false,
   });
+  Object.defineProperty(backend, "__sagejs_ffi_manifest__", {
+    value: Object.freeze({
+      ...generatedWasmManifest,
+      library: generatedWasmManifest.declaration,
+    }),
+    enumerable: false,
+  });
+  return Object.freeze(backend);
 }
 
 export function formatFactorization({ sign, factors }) {

@@ -121,7 +121,7 @@ export async function instantiateSageEvaluator({
   const globalEvaluate = globalThis.eval;
   let outputHandler = (text) => console.log(text);
 
-  globalThis.require = (name) => {
+  const runtimeRequire = (name) => {
     if (name === "@sagemath/sagejs-flint") {
       return flintBackend;
     }
@@ -130,6 +130,8 @@ export async function instantiateSageEvaluator({
     }
     throw new Error(`module ${JSON.stringify(name)} is unavailable in browser`);
   };
+  globalThis.require = runtimeRequire;
+  globalThis.__sagejs_runtime_require__ = runtimeRequire;
   globalThis.__sagejs_output_write__ = (text) => {
     outputHandler(String(text));
   };

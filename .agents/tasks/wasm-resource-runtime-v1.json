@@ -1,0 +1,109 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "wasm-resource-runtime-v1",
+  "title": "Generated Wasm resource runtime integration",
+  "lane": "distribution",
+  "status": "active",
+  "owner": "user",
+  "objective": "Connect a generated FLINT opaque-resource backend through the ordinary Sage.js browser package/runtime loader and verify explicit close plus FinalizationRegistry cleanup end to end",
+  "base_commit": "b1eb1ece8643069c4a39839a92b87c1f2a4c0129",
+  "claims": [
+    "packages/flint-wasm/scripts/build.cjs",
+    "packages/flint-wasm/index.mjs",
+    "packages/flint-wasm/evaluator.mjs",
+    "packages/flint-wasm/compiler-worker.mjs",
+    "packages/flint-wasm/src/compiler-resources.ts",
+    "packages/flint-wasm/package.json",
+    "packages/flint-wasm/test/resource.test.mjs",
+    "packages/flint-wasm/test/resource-browser-smoke.mjs",
+    "test/ffi-wasm-resource.cjs"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "external-library",
+    "fallback": "tested-capability",
+    "oracles": [
+      "Existing generated Node resource lifecycle and CoWasm FLINT behavior",
+      "Sage.js compiled Python resource wrapper explicit-close semantics"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "fallback",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm --dir packages/flint-wasm test",
+    "pnpm --dir packages/flint-wasm test:resource-browser",
+    "pnpm test:portable",
+    "pnpm test:native",
+    "pnpm test:sea"
+  ],
+  "runs": [
+    {
+      "command": "pnpm --dir packages/flint-wasm test",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 6.947,
+      "started_at": "2026-08-11T23:52:58.065Z",
+      "commit": "b1eb1ece8643069c4a39839a92b87c1f2a4c0129",
+      "workspace_fingerprint": "2a1638a20c797989ef9209eda506fe5c901dd991e3dd17889bb843729ff89230",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm --dir packages/flint-wasm test:resource-browser",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 7.857,
+      "started_at": "2026-08-11T23:53:09.353Z",
+      "commit": "b1eb1ece8643069c4a39839a92b87c1f2a4c0129",
+      "workspace_fingerprint": "2a1638a20c797989ef9209eda506fe5c901dd991e3dd17889bb843729ff89230",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 40.562,
+      "started_at": "2026-08-11T23:53:22.266Z",
+      "commit": "b1eb1ece8643069c4a39839a92b87c1f2a4c0129",
+      "workspace_fingerprint": "2a1638a20c797989ef9209eda506fe5c901dd991e3dd17889bb843729ff89230",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:native",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 392.486,
+      "started_at": "2026-08-11T23:54:07.573Z",
+      "commit": "b1eb1ece8643069c4a39839a92b87c1f2a4c0129",
+      "workspace_fingerprint": "2a1638a20c797989ef9209eda506fe5c901dd991e3dd17889bb843729ff89230",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:sea",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 223.265,
+      "started_at": "2026-08-12T00:00:45.570Z",
+      "commit": "b1eb1ece8643069c4a39839a92b87c1f2a4c0129",
+      "workspace_fingerprint": "2a1638a20c797989ef9209eda506fe5c901dd991e3dd17889bb843729ff89230",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Generated the declared FLINT Dirichlet-group Wasm adapter during the browser package build, linked its C exports into the public Wasm instance, exposed the generated backend and declaration manifest through the ordinary runtime loader, bundled nested generated Python FFI modules and caches with package-aware paths, and added Node plus real-Chromium lifecycle coverage for explicit close and FinalizationRegistry cleanup.",
+    "risks": [
+      "The browser finalizer assertion needs Chromium with --expose-gc; the smoke test searches standard Chromium paths or SAGEJS_CHROMIUM.",
+      "The broader pnpm test:sea check is currently red before exercising this package: its existing mpmath.py smoke fixture resolves itself instead of the bundled mpmath package and reports cannot import name 'mp'. No SEA or Python import files are within this lane's claims."
+    ],
+    "next_steps": [
+      "Resolve the unrelated SEA mpmath script/package shadowing regression in an integration or Python-runtime lane.",
+      "Extend the generated Wasm selection only when additional declaration resources explicitly opt into the Wasm target."
+    ]
+  }
+}

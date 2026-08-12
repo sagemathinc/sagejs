@@ -2,6 +2,7 @@
 
 interface StandardLibraryDocument {
   modules: Record<string, {
+    package?: boolean;
     source: string;
     cache: Record<string, any>;
   }>;
@@ -33,9 +34,15 @@ export function configureBrowserCompilerResources({
   binaryResources.set("tree-sitter-python.wasm", pythonGrammar);
   binaryResources.set("tree-sitter-sage.wasm", sageGrammar);
   for (const [name, module] of Object.entries(standardLibrary.modules)) {
-    textResources.set(`__stdlib__/${name}.py`, module.source);
+    const modulePath = name.replaceAll(".", "/");
     textResources.set(
-      `__module_cache__/${name}.json`,
+      module.package
+        ? `__stdlib__/${modulePath}/__init__.py`
+        : `__stdlib__/${modulePath}.py`,
+      module.source,
+    );
+    textResources.set(
+      `__module_cache__/${name.replaceAll(".", "-")}.json`,
       JSON.stringify(module.cache),
     );
     sourceSignatures.set(module.source, String(module.cache.signature));

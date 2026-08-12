@@ -21,6 +21,9 @@
   },
   "files": [
     "dist/flint-factor.wasm",
+    "dist/ffi-resource-adapter.c",
+    "dist/ffi-resource-backend.mjs",
+    "dist/ffi-resource-manifest.json",
     "dist/compiler.js",
     "dist/compiler-frontend.mjs",
     "dist/web-tree-sitter.wasm",
@@ -45,8 +48,9 @@
   ],
   "scripts": {
     "build": "node scripts/build.cjs",
-    "test": "pnpm run build && node --test test/*.test.mjs",
-    "test:browser": "pnpm run build && node test/browser-smoke.mjs"
+    "test": "pnpm run build && node --expose-gc --test test/*.test.mjs",
+    "test:browser": "pnpm run build && node test/browser-smoke.mjs",
+    "test:resource-browser": "pnpm run build && node test/resource-browser-smoke.mjs"
   },
   "dependencies": {
     "@cowasm/memfs": "3.5.1",

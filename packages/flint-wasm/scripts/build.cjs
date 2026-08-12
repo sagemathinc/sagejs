@@ -4,6 +4,10 @@ const fs = require("node:fs");
 const path = require("node:path");
 const { spawnSync } = require("node:child_process");
 const esbuild = require("esbuild");
+const { loadRegistry } = require("../../../tools/ffi/declarations.cjs");
+const {
+  generatedWasmResourceAdapter,
+} = require("../../../tools/ffi/wasm-adapters.cjs");
 
 const packageRoot = path.resolve(__dirname, "..");
 const repositoryRoot = path.resolve(packageRoot, "..", "..");
@@ -38,6 +42,18 @@ const dependencies = ["flint", "mpfr", "gmp"].map((name) => ({
 const outputDirectory = path.join(packageRoot, "dist");
 const rawOutput = path.join(outputDirectory, "flint-factor.unstripped.wasm");
 const output = path.join(outputDirectory, "flint-factor.wasm");
+const resourceAdapterSource = path.join(
+  outputDirectory,
+  "ffi-resource-adapter.c",
+);
+const resourceBackendOutput = path.join(
+  outputDirectory,
+  "ffi-resource-backend.mjs",
+);
+const resourceManifestOutput = path.join(
+  outputDirectory,
+  "ffi-resource-manifest.json",
+);
 const compilerOutput = path.join(outputDirectory, "compiler.js");
 const compilerFrontendOutput = path.join(
   outputDirectory,
@@ -134,8 +150,33 @@ for (const dependency of dependencies) {
 
 fs.mkdirSync(outputDirectory, { recursive: true });
 
+const flintDeclaration = loadRegistry({ root: repositoryRoot }).byId.get(
+  "flint",
+);
+if (flintDeclaration === undefined) {
+  throw new Error("the generated FLINT FFI declaration is unavailable");
+}
+const resourceAdapter = generatedWasmResourceAdapter(flintDeclaration, {
+  resourceIds: ["dirichlet_group"],
+  functionIds: [
+    "dirichlet_group_init",
+    "dirichlet_group_size",
+    "dirichlet_group_num_primitive",
+  ],
+});
+fs.writeFileSync(resourceAdapterSource, resourceAdapter.cSource);
+fs.writeFileSync(
+  resourceBackendOutput,
+  resourceAdapter.javascriptSource +
+    "\nexport const generatedWasmManifest = Object.freeze(" +
+    JSON.stringify(resourceAdapter.manifest) +
+    ");\n",
+);
+fs.writeFileSync(resourceManifestOutput, resourceAdapter.manifestSource);
+
 const includeArguments = dependencies.flatMap(({ prefix }) => [
-  `-I${path.join(prefix, "include")}`,
+  "-isystem",
+  path.join(prefix, "include"),
 ]);
 const libraryArguments = dependencies.flatMap(({ prefix }) => [
   `-L${path.join(prefix, "lib")}`,
@@ -187,6 +228,7 @@ const exportNames = [
   "sagejs_p1_cusp_count",
   "sagejs_p1_cusp_numerator",
   "sagejs_p1_cusp_denominator",
+  ...resourceAdapter.manifest.exports,
 ];
 
 run(clang, [
@@ -200,8 +242,10 @@ run(clang, [
   "-Werror",
   ...includeArguments,
   `-I${path.join(repositoryRoot, "packages", "flint", "src")}`,
+  `-I${path.join(repositoryRoot, "packages", "flint", "include")}`,
   path.join(packageRoot, "src", "factor.c"),
   path.join(packageRoot, "src", "modsym.c"),
+  resourceAdapterSource,
   path.join(repositoryRoot, "packages", "flint", "src", "charpoly.c"),
   path.join(repositoryRoot, "packages", "flint", "src", "p1_core.c"),
   path.join(repositoryRoot, "packages", "flint", "src", "modsym_core.c"),
@@ -286,20 +330,37 @@ for (const filename of [
     path.join(outputDirectory, filename),
   );
 }
-const standardLibraryModules = {};
-for (const filename of fs.readdirSync(standardLibrarySourceDirectory).sort()) {
-  if (!filename.endsWith(".py")) {
-    continue;
+function pythonSources(directory) {
+  const sources = [];
+  for (const entry of fs.readdirSync(directory, { withFileTypes: true })) {
+    const filename = path.join(directory, entry.name);
+    if (entry.isDirectory()) {
+      sources.push(...pythonSources(filename));
+    } else if (entry.isFile() && entry.name.endsWith(".py")) {
+      sources.push(filename);
+    }
   }
-  const name = filename.slice(0, -3);
+  return sources.sort();
+}
+
+const standardLibraryModules = {};
+for (const filename of pythonSources(standardLibrarySourceDirectory)) {
+  const relative = path.relative(standardLibrarySourceDirectory, filename);
+  const components = relative.slice(0, -3).split(path.sep);
+  if (components.at(-1) === "__init__") components.pop();
+  const name = components.join(".");
+  if (!name) continue;
+  const cacheFilename = path.join(
+    standardLibraryCacheDirectory,
+    `${name}.json`,
+  );
+  if (!fs.existsSync(cacheFilename)) continue;
   standardLibraryModules[name] = {
-    source: fs.readFileSync(
-      path.join(standardLibrarySourceDirectory, filename),
-      "utf8",
-    ),
+    package: path.basename(filename) === "__init__.py",
+    source: fs.readFileSync(filename, "utf8"),
     cache: JSON.parse(
       fs.readFileSync(
-        path.join(standardLibraryCacheDirectory, `${name}.json`),
+        cacheFilename,
         "utf8",
       ),
     ),
