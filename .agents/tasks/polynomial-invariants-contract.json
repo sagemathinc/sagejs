@@ -262,6 +262,56 @@
       "commit": "be7001632d51d8ced62cc0e171b66a9377fcaf3e",
       "workspace_fingerprint": "b3c9534f501f32bce26d01c2356b3992f8e25c0ca96c1243c0f29eb93944a9c3",
       "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/polynomial-invariants-contract.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.733,
+      "started_at": "2026-08-12T11:07:08.810Z",
+      "commit": "222a4bcfe06e723692e86fb478f8b8f13d2c8a24",
+      "workspace_fingerprint": "519d001e1811ac0d32611cf46f833d34bdc767823484e7d7a8b87710ef83ee13",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/polynomial-invariants-contract.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.048,
+      "started_at": "2026-08-12T11:07:11.423Z",
+      "commit": "222a4bcfe06e723692e86fb478f8b8f13d2c8a24",
+      "workspace_fingerprint": "519d001e1811ac0d32611cf46f833d34bdc767823484e7d7a8b87710ef83ee13",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm exec pyright --pythonversion 3.11 src/lib/sagejs/polynomial_algorithms/invariants.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.272,
+      "started_at": "2026-08-12T11:07:14.229Z",
+      "commit": "222a4bcfe06e723692e86fb478f8b8f13d2c8a24",
+      "workspace_fingerprint": "519d001e1811ac0d32611cf46f833d34bdc767823484e7d7a8b87710ef83ee13",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 13.864,
+      "started_at": "2026-08-12T11:07:16.222Z",
+      "commit": "222a4bcfe06e723692e86fb478f8b8f13d2c8a24",
+      "workspace_fingerprint": "519d001e1811ac0d32611cf46f833d34bdc767823484e7d7a8b87710ef83ee13",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 13.66,
+      "started_at": "2026-08-12T11:07:30.784Z",
+      "commit": "222a4bcfe06e723692e86fb478f8b8f13d2c8a24",
+      "workspace_fingerprint": "519d001e1811ac0d32611cf46f833d34bdc767823484e7d7a8b87710ef83ee13",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {
