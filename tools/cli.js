@@ -161,6 +161,7 @@ function print_top_level_usage() {
   console.log("  " + command(executable + " --install-jupyter-kernel\n"));
 
   console.log(label("Advanced subcommands:"));
+  console.log("  cache           inspect and safely prune compiler module caches");
   console.log("  docs            search and export installed API documentation");
   console.log("  pip             install pure-Python packages for Sage.js");
   console.log("  pytest          run installed pytest with Sage.js Python");
@@ -631,6 +632,69 @@ Install the Jupyter kernelspec under Jupyter's current sys.prefix.
 opt("prefix", "", "string", "", function () {
   /*
 Install the Jupyter kernelspec under the given prefix.
+*/
+});
+
+create_group(
+  "cache",
+  "<prune>",
+  function () {
+    /*
+Inspect or prune disposable compiler-versioned module caches. `prune` is a
+dry run by default; pass `--apply` to remove only versions allowed by the
+retention policy. The current compiler, recent versions, pinned versions, and
+versions leased by running Sage.js processes are always preserved.
+*/
+  },
+  function () {
+    /*
+Examples:
+  sagejs cache prune
+  sagejs cache prune --apply
+  sagejs cache prune --max-size 4GiB --max-age 60 --apply
+*/
+  },
+);
+
+opt("apply", "", "bool", false, function () {
+  /*
+Apply the prune plan. Without this option the command only reports candidates.
+*/
+});
+
+opt("dry_run", "", "bool", false, function () {
+  /*
+Explicitly request report-only mode. This is already the safe default.
+*/
+});
+
+opt("max_size", "", "string", "2GiB", function () {
+  /*
+Target maximum cache size, such as 500MiB, 2GiB, or 3GB.
+*/
+});
+
+opt("max_age", "", "string", "30", function () {
+  /*
+Select unprotected compiler versions older than this many days.
+*/
+});
+
+opt("min_age", "", "string", "7", function () {
+  /*
+Never remove a compiler version newer than this many days.
+*/
+});
+
+opt("keep", "", "string", "5", function () {
+  /*
+Always retain this many newest compiler versions.
+*/
+});
+
+opt("json", "", "bool", false, function () {
+  /*
+Write the complete prune plan or result as structured JSON.
 */
 });
 

@@ -117,6 +117,11 @@ if (argv.mode === "self") {
     console.error(error?.stack ?? error);
     process.exitCode = 1;
   });
+} else if (argv.mode === "cache") {
+  load("cache").runCacheCli(argv).catch((error) => {
+    console.error(error?.message ?? String(error));
+    process.exitCode = 1;
+  });
 } else if (argv.mode === "native") {
   load("native-compiler").runNativeCompilerCli(argv).catch((error) => {
     console.error(error?.stack ?? error);

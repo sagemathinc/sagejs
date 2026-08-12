@@ -37,6 +37,7 @@ import {
 } from "./foreign";
 import { rewriteQuestionMarkHelp } from "./polyglot";
 import type { PythonCompilerFrontend } from "./python/compiler-frontend";
+import { markModuleCacheInUse } from "./cache-lease";
 import {
   formatExecutionTiming,
   installTimingHooks,
@@ -229,6 +230,7 @@ export default async function Repl(
   if (moduleCacheDir && !pathExists(moduleCacheDir)) {
     mkdirSync(moduleCacheDir, { recursive: true });
   }
+  if (moduleCacheDir) markModuleCacheInUse(moduleCacheDir);
   const precompiledModuleCacheDir = standardLibraryCacheDirectory(
     join(__dirname, "..", "module-cache"),
   );
