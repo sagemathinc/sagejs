@@ -1,0 +1,133 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "sparse-random-matrix-contract",
+  "title": "Sparse Random Matrix Contract",
+  "lane": "arithmetic-algebra",
+  "status": "review",
+  "owner": "user",
+  "objective": "Define and validate a storage-neutral bulk plan for efficient sparse random dense-matrix construction over ZZ, QQ, GF(2), and small GF(p)",
+  "base_commit": "1f1219932802054fcd7a424ac877b84aa88d4b60",
+  "claims": [
+    "src/lib/sagejs/linear_algebra/sparse_random.py",
+    "test/linear-sparse-random.cjs",
+    "bench/linear-sparse-random.cjs"
+  ],
+  "dependencies": [],
+  "references": [
+    "/home/user/upstream/sage/src/sage/matrix/special.py",
+    "/home/user/upstream/sage/src/sage/matrix/matrix_integer_dense.pyx",
+    "/home/user/upstream/sage/src/sage/matrix/matrix_rational_dense.pyx",
+    "/home/user/upstream/sage/src/sage/matrix/matrix_mod2_dense.pyx",
+    "/home/user/upstream/sage/src/sage/matrix/matrix_modn_dense_template.pxi"
+  ],
+  "architecture": {
+    "strategy": "dynamic-python",
+    "fallback": "same-source",
+    "oracles": [
+      "sage"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "node test/linear-sparse-random.cjs",
+    "node bench/linear-sparse-random.cjs",
+    "pnpm exec pyright --pythonversion 3.11 src/lib/sagejs/linear_algebra/sparse_random.py",
+    "pnpm test:baselib:strict",
+    "pnpm architecture:check",
+    "pnpm test:native"
+  ],
+  "runs": [
+    {
+      "command": "node test/linear-sparse-random.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.176,
+      "started_at": "2026-08-12T11:03:53.795Z",
+      "commit": "1f1219932802054fcd7a424ac877b84aa88d4b60",
+      "workspace_fingerprint": "72b63a66b216b6cffbb9c260ec79bc4bd2f58d10daf09ac82f5e8d7b81aa37b5",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/linear-sparse-random.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 20.42,
+      "started_at": "2026-08-12T11:03:56.608Z",
+      "commit": "1f1219932802054fcd7a424ac877b84aa88d4b60",
+      "workspace_fingerprint": "72b63a66b216b6cffbb9c260ec79bc4bd2f58d10daf09ac82f5e8d7b81aa37b5",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 14.213,
+      "started_at": "2026-08-12T11:04:17.706Z",
+      "commit": "1f1219932802054fcd7a424ac877b84aa88d4b60",
+      "workspace_fingerprint": "72b63a66b216b6cffbb9c260ec79bc4bd2f58d10daf09ac82f5e8d7b81aa37b5",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 13.978,
+      "started_at": "2026-08-12T11:04:32.535Z",
+      "commit": "1f1219932802054fcd7a424ac877b84aa88d4b60",
+      "workspace_fingerprint": "72b63a66b216b6cffbb9c260ec79bc4bd2f58d10daf09ac82f5e8d7b81aa37b5",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 13.557,
+      "started_at": "2026-08-12T11:04:54.374Z",
+      "commit": "1f1219932802054fcd7a424ac877b84aa88d4b60",
+      "workspace_fingerprint": "72b63a66b216b6cffbb9c260ec79bc4bd2f58d10daf09ac82f5e8d7b81aa37b5",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:native",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 622.504,
+      "started_at": "2026-08-12T11:05:08.560Z",
+      "commit": "1f1219932802054fcd7a424ac877b84aa88d4b60",
+      "workspace_fingerprint": "72b63a66b216b6cffbb9c260ec79bc4bd2f58d10daf09ac82f5e8d7b81aa37b5",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm exec pyright --pythonversion 3.11 src/lib/sagejs/linear_algebra/sparse_random.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.17,
+      "started_at": "2026-08-12T11:16:06.540Z",
+      "commit": "1f1219932802054fcd7a424ac877b84aa88d4b60",
+      "workspace_fingerprint": "72b63a66b216b6cffbb9c260ec79bc4bd2f58d10daf09ac82f5e8d7b81aa37b5",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Defined an immutable O(1) bulk-construction specification for Sage-compatible explicit-density random matrices. The ordinary Python oracle distinguishes ZZ keep-first collisions, QQ and small-GF(p) replacement collisions, and dense-GF(2) inclusive Bernoulli sampling; preserves seeded callback order, density clamping, floor-per-row behavior, and zero-axis edge cases; and hands the complete schedule to exactly one storage-specific constructor without materializing a dense zero matrix or host-side entry list.",
+    "risks": [
+      "This lane specifies semantics and the one-call boundary but intentionally does not wire public random_matrix or implement domain storage constructors.",
+      "Sage's dense GF(2) zero-axis path returns before density coercion, unlike its ZZ, QQ, and small-prime row-draw implementations; integration must retain this observable distinction.",
+      "The bulk constructor must own one shared seeded stream and each domain's exact value distribution. Generating positions and values in separate host passes would change reproducibility and collision consumption.",
+      "The benchmark is a retained pre-integration scalar-loop baseline; its public timings are not performance gates under concurrent native-suite load."
+    ],
+    "next_steps": [
+      "Register the module and focused test from the integration lane without moving sparse random semantics back into matrix.py.",
+      "Add storage-specific bulk constructors for generated FmpzMatrix and FmpqMatrix resources, packed uint64 prime matrices, and M4RI GF(2) matrices.",
+      "Have public random_matrix build one domain-appropriate specification, cross one boundary, and publish the completed matrix transactionally.",
+      "Add clean-host performance gates against the retained 1000x1000 density=0.1 baseline and Sage after public integration."
+    ]
+  }
+}
