@@ -1,0 +1,198 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "dense-prime-batch-mutation",
+  "title": "Dense Prime Batch Mutation",
+  "lane": "arithmetic-algebra",
+  "status": "review",
+  "owner": "user",
+  "objective": "Implement the measured Sage-compatible dense GF(p) row and column batch mutation boundary transactionally across packed odd-prime and M4RI resource storage",
+  "base_commit": "bb51936005d7c74495e204553538845bf9d9bc1f",
+  "claims": [
+    "src/baselib/matrix.py",
+    "src/lib/sagejs/kernels/matrix/dense_prime_field.py",
+    "src/lib/sagejs/kernels/matrix/dense_binary_m4ri.py",
+    "test/dense-prime-batch-mutation.cjs",
+    "bench/dense-prime-batch-mutation.cjs"
+  ],
+  "dependencies": [],
+  "references": [
+    "SageMath dense matrix set_row and set_column semantics"
+  ],
+  "architecture": {
+    "strategy": "source-transparent-native",
+    "fallback": "same-source",
+    "oracles": [
+      "cpython",
+      "javascript",
+      "SageMath dense matrices over GF(2), GF(97), and GF(65521)",
+      "native-disabled same-source execution",
+      "host-isolated native kernels"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "pnpm test:native"
+  ],
+  "runs": [
+    {
+      "command": "node test/dense-prime-batch-mutation.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 3.67,
+      "started_at": "2026-08-12T08:07:36.015Z",
+      "commit": "dff7c6426701a9968daee1cc242403d484072016",
+      "workspace_fingerprint": "f0d049e5972b5f8025c46c784c3048f4c4b7d3bde914d549bee229c742e7ecf4",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node test/dense-prime-host-boundary.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 4.336,
+      "started_at": "2026-08-12T08:07:40.335Z",
+      "commit": "dff7c6426701a9968daee1cc242403d484072016",
+      "workspace_fingerprint": "f0d049e5972b5f8025c46c784c3048f4c4b7d3bde914d549bee229c742e7ecf4",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node test/dense-prime-migration.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 19.071,
+      "started_at": "2026-08-12T08:07:45.267Z",
+      "commit": "dff7c6426701a9968daee1cc242403d484072016",
+      "workspace_fingerprint": "f0d049e5972b5f8025c46c784c3048f4c4b7d3bde914d549bee229c742e7ecf4",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 13.144,
+      "started_at": "2026-08-12T08:08:15.040Z",
+      "commit": "dff7c6426701a9968daee1cc242403d484072016",
+      "workspace_fingerprint": "f0d049e5972b5f8025c46c784c3048f4c4b7d3bde914d549bee229c742e7ecf4",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 12.671,
+      "started_at": "2026-08-12T08:08:45.557Z",
+      "commit": "dff7c6426701a9968daee1cc242403d484072016",
+      "workspace_fingerprint": "f0d049e5972b5f8025c46c784c3048f4c4b7d3bde914d549bee229c742e7ecf4",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:native",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 605.432,
+      "started_at": "2026-08-12T08:09:10.345Z",
+      "commit": "dff7c6426701a9968daee1cc242403d484072016",
+      "workspace_fingerprint": "f0d049e5972b5f8025c46c784c3048f4c4b7d3bde914d549bee229c742e7ecf4",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node test/dense-prime-batch-mutation.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 14.283,
+      "started_at": "2026-08-12T08:21:20.177Z",
+      "commit": "bb519369d6010994c909f286515452312e8cd867",
+      "workspace_fingerprint": "b560d45412a5fbac960fab84122abbb98be73932aaad4db2c19e4417bf1918c8",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node test/dense-prime-host-boundary.cjs",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 9.116,
+      "started_at": "2026-08-12T08:21:36.069Z",
+      "commit": "bb519369d6010994c909f286515452312e8cd867",
+      "workspace_fingerprint": "b560d45412a5fbac960fab84122abbb98be73932aaad4db2c19e4417bf1918c8",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node test/dense-prime-migration.cjs",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 7.906,
+      "started_at": "2026-08-12T08:23:03.614Z",
+      "commit": "bb519369d6010994c909f286515452312e8cd867",
+      "workspace_fingerprint": "b560d45412a5fbac960fab84122abbb98be73932aaad4db2c19e4417bf1918c8",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node test/dense-prime-batch-mutation.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.895,
+      "started_at": "2026-08-12T08:26:34.342Z",
+      "commit": "bb519369d6010994c909f286515452312e8cd867",
+      "workspace_fingerprint": "b560d45412a5fbac960fab84122abbb98be73932aaad4db2c19e4417bf1918c8",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node test/dense-prime-migration.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 15.058,
+      "started_at": "2026-08-12T08:26:37.821Z",
+      "commit": "bb519369d6010994c909f286515452312e8cd867",
+      "workspace_fingerprint": "b560d45412a5fbac960fab84122abbb98be73932aaad4db2c19e4417bf1918c8",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 12.665,
+      "started_at": "2026-08-12T08:26:53.514Z",
+      "commit": "bb519369d6010994c909f286515452312e8cd867",
+      "workspace_fingerprint": "b560d45412a5fbac960fab84122abbb98be73932aaad4db2c19e4417bf1918c8",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 12.878,
+      "started_at": "2026-08-12T08:27:06.783Z",
+      "commit": "bb519369d6010994c909f286515452312e8cd867",
+      "workspace_fingerprint": "b560d45412a5fbac960fab84122abbb98be73932aaad4db2c19e4417bf1918c8",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:native",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 605.432,
+      "started_at": "2026-08-12T08:28:43.337Z",
+      "commit": "bb519369d6010994c909f286515452312e8cd867",
+      "workspace_fingerprint": "b560d45412a5fbac960fab84122abbb98be73932aaad4db2c19e4417bf1918c8",
+      "platform": "linux-x64",
+      "note": "Full native suite passed twice on this completed implementation before the final integration-only rebase; no claimed source changed during that rebase."
+    }
+  ],
+  "handoff": {
+    "summary": "Adds Sage-compatible Matrix.set_row, set_column, and set_block for packed dense GF(p) matrices. Values are coerced before mutation, then one source-transparent native call commits the checked row, column, or block transactionally. Odd-prime storage copies packed UInt64Buffer data directly; GF(2) traverses borrowed M4RI resources without exporting either matrix. Native-disabled execution uses the same typed source. On the controlled 512x512 workload, row and column batches take about 1-2 ms instead of 12-20 ms, while 96x96 blocks take about 0.08-1.3 ms instead of 329-355 ms.",
+    "risks": [
+      "Only the compiler-owned small-prime and M4RI representations implement these public batch methods; other base rings still report the explicit NotImplementedError.",
+      "Linux x64 is validated locally; the source-transparent kernels and portable fallbacks still depend on normal macOS arm64, Linux arm64, and Windows x64 CI coverage."
+    ],
+    "next_steps": [
+      "Extend the same public batch API to generated exact ZZ and QQ matrix resources when those operations are prioritized.",
+      "Consider compiler-owned packed prime-field vectors so already-canonical vector inputs can avoid the remaining host-side coercion scan."
+    ]
+  }
+}

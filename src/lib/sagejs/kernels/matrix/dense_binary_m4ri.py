@@ -36,6 +36,86 @@ def m4ri_dense_matrix_set_entry(
 
 
 @native
+def m4ri_dense_matrix_set_sequence(
+    target: M4riMatrix,
+    values: Int64Buffer,
+    count: uint64,
+    start_row: uint64,
+    start_column: uint64,
+    row_stride: uint64,
+    column_stride: uint64,
+) -> bool:
+    """Transactionally replace one affine row-major entry sequence."""
+    rows = matrix_nrows(target)
+    columns = matrix_ncols(target)
+    if len(values) != count:
+        return False
+    if row_stride + column_stride != 1:
+        return False
+    if count > 0:
+        if start_row >= rows or start_column >= columns:
+            return False
+        if row_stride > 0 and count - 1 > (rows - 1 - start_row) // row_stride:
+            return False
+        if (
+            column_stride > 0
+            and count - 1 > (columns - 1 - start_column) // column_stride
+        ):
+            return False
+    for index in range(count):
+        if values[index] < 0 or values[index] > 1:
+            return False
+    for index in range(count):
+        row = start_row + index * row_stride
+        column = start_column + index * column_stride
+        zero = row_stride - row_stride
+        one = row_stride + column_stride
+        if values[index] == 0:
+            if not matrix_set_entry(target, row, column, zero):
+                return False
+        else:
+            if not matrix_set_entry(target, row, column, one):
+                return False
+    return True
+
+
+@native
+def m4ri_dense_matrix_set_block(
+    target: M4riMatrix,
+    target_rows: uint64,
+    target_columns: uint64,
+    target_row: uint64,
+    target_column: uint64,
+    block: M4riMatrix,
+    block_rows: uint64,
+    block_columns: uint64,
+) -> bool:
+    """Copy a checked borrowed M4RI resource directly into `target`."""
+    if target_row > target_rows or target_column > target_columns:
+        return False
+    if block_rows > target_rows - target_row:
+        return False
+    if block_columns > target_columns - target_column:
+        return False
+    for row in range(block_rows):
+        for column in range(block_columns):
+            value = matrix_entry_code(block, row, column)
+            if value > 1:
+                return False
+    for row in range(block_rows):
+        for column in range(block_columns):
+            value = matrix_entry_code(block, row, column)
+            if not matrix_set_entry(
+                target,
+                target_row + row,
+                target_column + column,
+                value,
+            ):
+                return False
+    return True
+
+
+@native
 def m4ri_dense_matrix_pivots(
     output: Int64Buffer,
     source: M4riMatrix,
