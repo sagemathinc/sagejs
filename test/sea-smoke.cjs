@@ -126,7 +126,10 @@ try {
 
   testJavaScriptSea(pythonExecutable, temporaryDirectory);
 
-  const mpmathProgram = join(temporaryDirectory, "mpmath.py");
+  // Do not name this fixture `mpmath.py`: as in CPython, the script directory
+  // has import precedence, so that name would correctly shadow the bundled
+  // `mpmath` package and turn the import below into a circular self-import.
+  const mpmathProgram = join(temporaryDirectory, "mpmath-smoke.py");
   writeFileSync(
     mpmathProgram,
     [
