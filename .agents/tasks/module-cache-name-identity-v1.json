@@ -4,7 +4,7 @@
   "id": "module-cache-name-identity-v1",
   "title": "Canonical module-cache name identity",
   "lane": "integration",
-  "status": "active",
+  "status": "complete",
   "owner": "user",
   "objective": "Make precompiled module-cache publication and resolution use one canonical dotted-module filename mapping so compiler fixtures load strict ordinary-Python modules instead of silently reparsing with legacy flags",
   "base_commit": "5f8b8485db6d455c957a7658e09c9a39494a1955",
