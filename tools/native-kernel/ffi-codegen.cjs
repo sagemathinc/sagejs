@@ -963,6 +963,123 @@ function sagejsFfiPublicResource(value, identity, argument) {
   return state;
 }
 
+const sagejsFfiResourceFactories = new Map();
+
+function sagejsFfiResourceFactory(metadata) {
+  const key = metadata.declarationIdentity + ":" + metadata.pythonModule +
+    ":" + metadata.pythonName;
+  let factory = sagejsFfiResourceFactories.get(key);
+  if (factory !== undefined) return factory;
+  const loader = Reflect.get(globalThis, "__sagejs_load_module__");
+  if (typeof loader !== "function") {
+    throw new Error("the generated FFI module loader is unavailable");
+  }
+  const module = Reflect.apply(loader, undefined, [metadata.pythonModule]);
+  factory = Reflect.get(module, metadata.pythonName);
+  if (typeof factory !== "function") {
+    throw new Error(
+      metadata.pythonModule + " does not export " + metadata.pythonName
+    );
+  }
+  sagejsFfiResourceFactories.set(key, factory);
+  return factory;
+}
+
+function sagejsFfiBackendSelfFinalizes(backend, declarationIdentity) {
+  const manifest = Reflect.get(backend, "__sagejs_ffi_manifest__");
+  const lifecycle = manifest?.resource_lifecycle;
+  return manifest?.schema === "sagejs.ffi/generated-host-adapter-v1" &&
+    typeof manifest?.library === "string" &&
+    declarationIdentity === manifest.library &&
+    lifecycle?.model === "node-api-basic-post-finalizer-v1" &&
+    lifecycle?.self_finalizing === true;
+}
+
+function sagejsFfiResourceRegistry() {
+  if (typeof FinalizationRegistry !== "function") return null;
+  return globalThis.__sagejs_ffi_resource_registry__ ??=
+    new FinalizationRegistry((state) => {
+      if (state.closed) return;
+      try {
+        Reflect.apply(state.close, state.backend, [state.handle]);
+      } catch (_error) {
+        // Finalizers cannot report recoverable errors to user code.
+      } finally {
+        state.closed = true;
+        state.handle = null;
+      }
+    });
+}
+
+function sagejsFfiClosePublishedResource(state, token) {
+  if (state.closed) return;
+  try {
+    Reflect.apply(state.close, state.backend, [state.handle]);
+  } finally {
+    state.closed = true;
+    state.handle = null;
+    state.registry?.unregister(token);
+  }
+}
+
+function sagejsFfiPublishResourceResult(state, metadata, selfFinalizing = false) {
+  if (state === null || (typeof state !== "object" &&
+      typeof state !== "function") || state.identity !== metadata.identity ||
+      state.ownership !== "owned" || state.closed ||
+      (state.root !== null && state.root !== undefined && state.root !== state) ||
+      (typeof state.handle !== "object" && typeof state.handle !== "function") ||
+      typeof state.close !== "function") {
+    throw new TypeError("native kernel returned an invalid owned FFI resource");
+  }
+  const tag = globalThis.__sagejs_ffi_resource_tag__ ??=
+    Symbol("Sage.js declared FFI resource");
+  state.declaration = metadata.declarationIdentity;
+  state.root = state;
+  state.borrowed = false;
+  state.registry = selfFinalizing || sagejsFfiBackendSelfFinalizes(
+    state.backend, metadata.declarationIdentity
+  ) ? null : sagejsFfiResourceRegistry();
+  const token = Object.create(null);
+  Object.defineProperty(token, tag, { value: state });
+  state.registry?.register(token, state, token);
+  try {
+    return Reflect.apply(sagejsFfiResourceFactory(metadata), undefined, [token]);
+  } catch (error) {
+    try {
+      sagejsFfiClosePublishedResource(state, token);
+    } catch (_closeError) {
+      // Preserve the public-factory failure after deterministically releasing
+      // the newly owned foreign value.
+    }
+    throw error;
+  }
+}
+
+function sagejsFfiAdoptNativeResourceResult(handle, metadata) {
+  if (handle === null || (typeof handle !== "object" &&
+      typeof handle !== "function")) {
+    throw new TypeError("native kernel returned an invalid FFI resource holder");
+  }
+  const close = Reflect.get(nativeAddon, metadata.closeExport);
+  if (typeof close !== "function") {
+    throw new Error(
+      "native kernel lacks declared resource close export " +
+      metadata.closeExport
+    );
+  }
+  return sagejsFfiPublishResourceResult({
+    identity: metadata.identity,
+    declaration: metadata.declarationIdentity,
+    backend: nativeAddon,
+    close,
+    handle,
+    closed: false,
+    ownership: "owned",
+    owner: null,
+    root: null,
+  }, metadata, true);
+}
+
 function sagejsFfiCall(
   packageName, exportName, args, parameterTypes, returnType, resultDomain, errors,
   resourceMetadata, resourceStack

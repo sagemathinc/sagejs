@@ -42,10 +42,11 @@ const polynomialWitness = join(
   root, "bench", "native-ffi-flint-polynomial.py",
 );
 
-function runSage(args, input = undefined) {
+function runSage(args, input = undefined, env = {}) {
   const result = spawnSync(process.execPath, [join(root, "bin", "sagejs"), ...args], {
     cwd: root,
     encoding: "utf8",
+    env: { ...process.env, ...env },
     input,
   });
   assert.equal(
@@ -1574,15 +1575,38 @@ test("public kernels borrow and transfer generated FLINT resources", async () =>
   try {
     const sourcePath = join(temporary, "resource_kernel.py");
     writeFileSync(sourcePath, [
-      "from sagejs.ffi.flint import FmpqMatrix, fmpq_matrix_copy",
-      "from sagejs.native import native",
+      "from sagejs.ffi.flint import (",
+      "    FmpqMatrix,",
+      "    fmpq_matrix,",
+      "    fmpq_matrix_copy,",
+      "    fmpq_matrix_nrows,",
+      ")",
+      "from sagejs.native import native, uint64",
+      "",
+      "@native",
+      "def create(rows: uint64, columns: uint64) -> FmpqMatrix:",
+      "    return fmpq_matrix(rows, columns)",
       "",
       "@native",
       "def clone(matrix: FmpqMatrix) -> FmpqMatrix:",
       "    return fmpq_matrix_copy(matrix)",
       "",
+      "@native",
+      "def rows(matrix: FmpqMatrix) -> uint64:",
+      "    return fmpq_matrix_nrows(matrix)",
+      "",
     ].join("\n"));
-    const compiled = await compileKernel({ sourcePath, cacheRoot: temporary });
+    const compiled = await compileKernel({ sourcePath });
+    const wrapperSource = readFileSync(compiled.modulePath, "utf8");
+    assert.match(wrapperSource, /sagejsFfiAdoptNativeResourceResult/);
+    assert.match(wrapperSource, /sagejsFfiPublishResourceResult/);
+    assert.match(wrapperSource, /"pythonModule":"sagejs\.ffi\.flint"/);
+    assert.match(wrapperSource, /"pythonName":"FmpqMatrix"/);
+    assert.match(wrapperSource, /"closeExport":"ffiFmpqMatrixClose"/);
+    assert.match(
+      wrapperSource,
+      /backend: nativeAddon,[\s\S]*?ownership: "owned"[\s\S]*?}, metadata, true\)/,
+    );
     // Load the generated addon directly so this test exercises N-API type-tag
     // compatibility between two independently compiled resource adapters. The
     // ordinary public wrapper intentionally accepts only safe Python resource
@@ -1603,6 +1627,109 @@ test("public kernels borrow and transfer generated FLINT resources", async () =>
     assert.equal(flint.ffiFmpqMatrixEntryDenominator(clone, 0n, 0n), 19n);
     flint.ffiFmpqMatrixClose(clone);
     flint.ffiFmpqMatrixClose(matrix);
+
+    const runnerPath = join(temporary, "exercise_resource_kernel.py");
+    writeFileSync(runnerPath, [
+      "from resource_kernel import clone, create, rows",
+      "from sagejs.ffi.flint import (",
+      "    fmpq_matrix,",
+      "    fmpq_matrix_entry_denominator,",
+      "    fmpq_matrix_entry_numerator,",
+      "    fmpq_matrix_ncols,",
+      "    fmpq_matrix_nrows,",
+      "    fmpq_matrix_set_entry,",
+      "    fmpz_matrix,",
+      ")",
+      "",
+      "source = create(2, 3)",
+      "assert type(source).__name__ == 'FmpqMatrix'",
+      "assert rows(source) == 2",
+      "assert fmpq_matrix_ncols(source) == 3",
+      "assert fmpq_matrix_set_entry(source, 1, 2, 17, 19)",
+      "copy = clone(source)",
+      "assert type(copy).__name__ == 'FmpqMatrix'",
+      "assert fmpq_matrix_entry_numerator(copy, 1, 2) == 17",
+      "assert fmpq_matrix_entry_denominator(copy, 1, 2) == 19",
+      "source.close()",
+      "source.close()",
+      "assert source.closed",
+      "assert fmpq_matrix_nrows(copy) == 2",
+      "for operation in [lambda: rows(source), lambda: clone(source)]:",
+      "    try:",
+      "        operation()",
+      "    except ValueError as error:",
+      "        assert str(error) == 'FFI resource is closed'",
+      "    else:",
+      "        raise AssertionError('closed resource was accepted')",
+      "wrong = fmpz_matrix(1, 1)",
+      "try:",
+      "    clone(wrong)",
+      "except TypeError as error:",
+      "    assert 'wrong FFI resource type' in str(error)",
+      "else:",
+      "    raise AssertionError('wrong resource type was accepted')",
+      "wrong.close()",
+      "copy.close()",
+      "copy.close()",
+      "assert copy.closed",
+      "print('owned-resource-result-ok')",
+      "",
+    ].join("\n"));
+    for (const env of [{}, { SAGEJS_NATIVE_DISABLE: "1" }]) {
+      assert.equal(
+        runSage([runnerPath], undefined, env).trim(),
+        "owned-resource-result-ok",
+      );
+    }
+
+    const lifecycle = spawnSync(process.execPath, ["--expose-gc", "-e", `
+const assert = require("node:assert/strict");
+globalThis.__sagejs_load_module__ = () => ({
+  FmpqMatrix(token) { return { token }; },
+});
+const wrapper = require(${JSON.stringify(compiled.modulePath)});
+const addon = require(${JSON.stringify(compiled.addonPath)});
+const accounted = addon.__sagejsFfiResourceExternalMemory;
+const tag = () => globalThis.__sagejs_ffi_resource_tag__;
+
+const explicit = wrapper.create(32n, 32n);
+const explicitState = explicit.token[tag()];
+assert.ok(accounted(explicitState.handle) > 0n);
+Reflect.apply(explicitState.close, explicitState.backend, [explicitState.handle]);
+explicitState.closed = true;
+assert.equal(accounted(explicitState.handle), 0n);
+explicitState.handle = null;
+
+function unreachableHolder() {
+  const value = wrapper.create(32n, 32n);
+  return new WeakRef(value.token[tag()].handle);
+}
+
+(async () => {
+  const reference = unreachableHolder();
+  let collected = false;
+  for (let turn = 0; turn < 50; turn += 1) {
+    await new Promise((resolve) => setImmediate(resolve));
+    global.gc();
+    await new Promise((resolve) => setImmediate(resolve));
+    if (reference.deref() === undefined) {
+      collected = true;
+      break;
+    }
+  }
+  assert.equal(collected, true, "native owned holder stayed strongly reachable");
+  process.stdout.write("owned-resource-lifecycle-ok");
+})().catch((error) => {
+  console.error(error && error.stack || error);
+  process.exitCode = 1;
+});
+`], { cwd: root, encoding: "utf8" });
+    assert.equal(
+      lifecycle.status,
+      0,
+      `${lifecycle.stdout}\n${lifecycle.stderr}`,
+    );
+    assert.equal(lifecycle.stdout, "owned-resource-lifecycle-ok");
   } finally {
     rmSync(temporary, { recursive: true, force: true });
   }

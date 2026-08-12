@@ -7,6 +7,7 @@ const {
 const {
   javascriptForeignCall,
   javascriptRuntime,
+  resourceForFunctionType,
 } = require("./ffi-codegen.cjs");
 
 const METHOD = {
@@ -459,6 +460,38 @@ function exactReturn(fn, expression) {
     : `nativeTuple(${expression})`;
 }
 
+function exactResourceResultMetadata(fn) {
+  const resource = resourceForFunctionType(fn, fn.returnType);
+  if (resource === undefined) return null;
+  if (resource.ownership !== "owned") {
+    throw new Error(
+      `native public result ${fn.returnType} must be an owned FFI resource`,
+    );
+  }
+  const pythonModule = resource.library?.python_module;
+  if (typeof pythonModule !== "string") {
+    throw new Error(
+      `native public result ${fn.returnType} lacks its Python FFI module`,
+    );
+  }
+  return Object.freeze({
+    identity: `resource:${resource.declaration_identity}:${resource.id}`,
+    declarationIdentity: resource.declaration_identity,
+    pythonModule,
+    pythonName: resource.python_name,
+    closeExport: resource.dynamic.close_export,
+  });
+}
+
+function exactResourceResult(fn, expression, native) {
+  const metadata = exactResourceResultMetadata(fn);
+  if (metadata === null) return expression;
+  const adopt = native
+    ? "sagejsFfiAdoptNativeResourceResult"
+    : "sagejsFfiPublishResourceResult";
+  return `${adopt}(${expression}, ${JSON.stringify(metadata)})`;
+}
+
 function exactValidation(param) {
   if (param.resourceIdentity !== undefined) {
     return `  sagejsFfiPublicResource(${param.name}, ` +
@@ -552,8 +585,12 @@ function exactNativeExpression(fn, backend) {
         ? `sagejs_native_${param.name}`
         : `sagejs_native_${param.name}.handle`
     ).join(", ");
-    return `nativeExactCall(${jsString(fn.name)}, [${args}], ${backend}, ` +
-      `${ffiErrors})`;
+    return exactResourceResult(
+      fn,
+      `nativeExactCall(${jsString(fn.name)}, [${args}], ${backend}, ` +
+        `${ffiErrors})`,
+      true,
+    );
   }
   const declarations = buffers.map((param) =>
     `    const sagejs_native_descriptor_${param.name} = ` +
@@ -578,7 +615,7 @@ function exactNativeExpression(fn, backend) {
     .map((param) => `      sagejs_native_descriptor_${param.name}.copyBack();`);
   const call = `nativeExactCall(${jsString(fn.name)}, [${args}], ${backend}, ` +
     `${ffiErrors})`;
-  return [
+  const expression = [
     "(() => {",
     ...declarations,
     ...(copies.length === 0
@@ -592,6 +629,7 @@ function exactNativeExpression(fn, backend) {
         ]),
     "  })()",
   ].join("\n");
+  return exactResourceResult(fn, expression, true);
 }
 
 function backendDecision(fn) {
@@ -643,6 +681,11 @@ function emitExactPublicFunction(fn) {
       ? `Number(sagejs_native_${param.name})`
       : `sagejs_native_${param.name}`
   ).join(", ");
+  const fallbackExpression = exactResourceResult(
+    fn,
+    `javascript_${fn.name}(${fallbackArgs})`,
+    false,
+  );
   const policy = JSON.stringify(fn.analysis.backend);
   const effects = JSON.stringify(fn.analysis.effects);
   const taggedInteger = JSON.stringify(fn.analysis.taggedInteger);
@@ -669,13 +712,13 @@ ${normalized.join("\n")}
     return ${exactReturn(fn, exactNativeExpression(fn, "sagejs_native_backend"))};
   }
 ${fallbackGuards.join("\n")}
-  return ${exactReturn(fn, `javascript_${fn.name}(${fallbackArgs})`)};
+  return ${exactReturn(fn, fallbackExpression)};
 }
 ${fn.name}.javascript = function (${declaredParams}) {
   validate_${fn.name}(${params});
 ${normalized.join("\n")}
 ${fallbackGuards.join("\n")}
-  return ${exactReturn(fn, `javascript_${fn.name}(${fallbackArgs})`)};
+  return ${exactReturn(fn, fallbackExpression)};
 };
 ${fn.name}.bigint = ${fn.name}.javascript;
 ${fn.name}.tagged = function (${declaredParams}) {
