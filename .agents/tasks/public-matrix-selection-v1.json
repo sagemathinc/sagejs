@@ -4,7 +4,7 @@
   "id": "public-matrix-selection-v1",
   "title": "Public Matrix Selection v1",
   "lane": "integration",
-  "status": "active",
+  "status": "review",
   "owner": "user",
   "objective": "Wire Sage-compatible matrix selection, deletion, swaps, setters, block mutation, and row insertion through storage-neutral plans and existing generated exact-resource or packed-prime operations",
   "base_commit": "f27a41e36b59eabffd046ce36711c7037c02efdd",
@@ -46,9 +46,40 @@
     "pnpm test:portable",
     "pnpm test:baselib:strict"
   ],
-  "runs": [],
+  "runs": [
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 13.094,
+      "started_at": "2026-08-12T10:12:25.820Z",
+      "commit": "2c1e0ee52a8a47beaf6df090583448c8cabffb59",
+      "workspace_fingerprint": "d021e773500ff393fed95a44f1ffe317e132f19b59bff3a2dd44ad3576c6dec1",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 40.821,
+      "started_at": "2026-08-12T10:12:49.887Z",
+      "commit": "2c1e0ee52a8a47beaf6df090583448c8cabffb59",
+      "workspace_fingerprint": "d021e773500ff393fed95a44f1ffe317e132f19b59bff3a2dd44ad3576c6dec1",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 12.968,
+      "started_at": "2026-08-12T10:13:34.602Z",
+      "commit": "2c1e0ee52a8a47beaf6df090583448c8cabffb59",
+      "workspace_fingerprint": "d021e773500ff393fed95a44f1ffe317e132f19b59bff3a2dd44ad3576c6dec1",
+      "platform": "linux-x64"
+    }
+  ],
   "handoff": {
-    "summary": "Public Matrix selection, deletion, rectangular submatrices, swaps, row and column mutation, exact block mutation, and dense-ZZ row insertion now execute through one lazy storage-aware module. Exact matrices stay in generated FLINT resources and packed-prime matrices preserve uint64 or M4RI storage; common typed-Python plans provide Sage-compatible ordering, validation, and transactional staging. Focused native/dynamic tests prohibit hidden exact full-matrix exports, and a 500x500 cross-domain benchmark records low-single-digit millisecond medians.",
+    "summary": "Public Matrix selection, deletion, rectangular submatrices, swaps, row and column mutation, exact block mutation, and dense-ZZ row insertion now execute through one lazy storage-aware module. Exact matrices stay in generated FLINT resources and packed-prime matrices preserve uint64 or M4RI storage; common typed-Python plans provide Sage-compatible ordering, validation, and transactional staging. Every exact staging, combined-selection, and cross-ring conversion resource is closed deterministically on success and error, while caller-owned resources remain open. Full self set_block is a validated no-op, and insert_row consumes Sage's exact ncols prefix while ignoring surplus input. Focused native/dynamic tests instrument ownership, prohibit hidden exact full-matrix exports, and retain cross-domain performance and swap-scaling history.",
     "risks": [
       "Row and column swaps currently construct one full replacement matrix, so their square-matrix cost is O(n^2); the benchmark now retains 128, 256, and 512 scaling data for every canonical domain."
     ],
