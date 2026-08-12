@@ -374,6 +374,8 @@ function_ops = {
     "nin": "!ρσ_in",
 }
 
+native_uint64_operators = ("&", "|", "^", "<<", ">>")
+
 
 def print_arithmetic_call(output, name):
     suffix = "_exact(" if output.options.exact_integers else "("
@@ -381,7 +383,19 @@ def print_arithmetic_call(output, name):
 
 
 def print_binary_op(self, output):
-    if self.native_operator:
+    if (
+        self.native_operator
+        and self.inferred_type is "uint64"
+        and self.operator in native_uint64_operators
+    ):
+        output.print("ρσ_native_uint64_binary(")
+        output.print(JSON.stringify(self.operator))
+        output.comma()
+        self.left.print(output)
+        output.comma()
+        self.right.print(output)
+        output.print(")")
+    elif self.native_operator:
         output.spaced(self.left, self.operator, self.right)
     elif output.uses_python_truthiness() and (
         self.operator is "&&" or self.operator is "||"
@@ -822,7 +836,13 @@ def print_assignment(self, output):
 
 
 def print_assign(self, output):
-    if self.native_operator:
+    native_uint64_operator = self.operator[:-1]
+    marked_uint64 = (
+        self.native_operator
+        and self.inferred_type is "uint64"
+        and native_uint64_operator in native_uint64_operators
+    )
+    if self.native_operator and not marked_uint64:
         output.spaced(self.left, self.operator, self.right)
         return
     arithmetic_compound_functions = {
@@ -846,6 +866,12 @@ def print_assign(self, output):
         "<<=": "ρσ_operator_ilshift",
         ">>=": "ρσ_operator_irshift",
     }
+    if marked_uint64:
+        compound_functions[self.operator] = (
+            "ρσ_native_uint64_binary.bind(null,"
+            + JSON.stringify(native_uint64_operator)
+            + ")"
+        )
     if (
         output.options.python_attributes
         and is_node_type(self.left, AST_Dot)

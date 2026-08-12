@@ -974,12 +974,14 @@ export class PythonCstLowerer {
           const operator = this.normalizeOperator(
             this.field(node, "operator").text,
           );
+          const nativeUint64 = this.nativeBitwise &&
+            ["&", "|", "^", "<<", ">>"].includes(operator);
           return this.make("AST_Binary", node, {
             left: this.lowerExpression(this.field(node, "left")),
             operator,
             right: this.lowerExpression(this.field(node, "right")),
-            native_operator: this.nativeBitwise &&
-              ["&", "|", "^", "<<", ">>"].includes(operator),
+            native_operator: nativeUint64,
+            inferred_type: nativeUint64 ? "uint64" : undefined,
           });
         }
       case "comparison_operator":
@@ -995,7 +997,7 @@ export class PythonCstLowerer {
         return this.make("AST_UnaryPrefix", node, {
           operator: operator === "not" ? "!" : operator,
           expression: this.lowerExpression(argument),
-          native_operator: this.nativeBitwise && operator === "~",
+          native_operator: false,
         });
       }
       case "conditional_expression":
@@ -1471,12 +1473,14 @@ export class PythonCstLowerer {
       loweredLeft.assignment = loweredRight;
       return loweredLeft;
     }
+    const nativeUint64 = this.nativeBitwise &&
+      ["&=", "|=", "^=", "<<=", ">>="].includes(operator);
     const assignment = this.make("AST_Assign", node, {
       left: loweredLeft,
       operator,
       right: loweredRight,
-      native_operator: this.nativeBitwise &&
-        ["&=", "|=", "^=", "<<=", ">>="].includes(operator),
+      native_operator: nativeUint64,
+      inferred_type: nativeUint64 ? "uint64" : undefined,
     });
     assignment.is_walrus = node.type === "named_expression";
     return assignment;

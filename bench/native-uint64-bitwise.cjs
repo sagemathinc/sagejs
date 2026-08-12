@@ -1,7 +1,9 @@
 "use strict";
 
+const { spawnSync } = require("node:child_process");
 const { mkdtempSync, rmSync, writeFileSync } = require("node:fs");
 const { tmpdir } = require("node:os");
+const { arch, cpus, platform, release } = require("node:os");
 const { join } = require("node:path");
 
 const {
@@ -27,7 +29,11 @@ function median(values) {
   return sorted[Math.floor(sorted.length / 2)];
 }
 
-function measure(fn, args, samples) {
+const WARMUPS = 2;
+const SAMPLES = 7;
+
+function measure(fn, args, warmups, samples) {
+  for (let warmup = 0; warmup < warmups; warmup += 1) fn(...args);
   const values = [];
   let result;
   for (let sample = 0; sample < samples; sample += 1) {
@@ -36,6 +42,52 @@ function measure(fn, args, samples) {
     values.push(Number(process.hrtime.bigint() - start) / 1e6);
   }
   return { medianMs: median(values), result: String(result) };
+}
+
+function measureDynamic(directory, args) {
+  const runnerPath = join(directory, "run_dynamic.py");
+  writeFileSync(runnerPath, `
+import json
+import sys
+import time
+
+sys.path.insert(0, ${JSON.stringify(directory)})
+from uint64_bitwise_bench import xorshift64
+
+args = (${args[0]}, ${args[1]})
+for _ in range(${WARMUPS}):
+    xorshift64(*args)
+samples = []
+result = None
+for _ in range(${SAMPLES}):
+    started = time.perf_counter()
+    result = xorshift64(*args)
+    samples.append((time.perf_counter() - started) * 1000)
+samples.sort()
+print(json.dumps({
+    "medianMs": samples[len(samples) // 2],
+    "result": str(result),
+}))
+`);
+  const measured = spawnSync(
+    process.execPath,
+    [join(__dirname, "..", "bin", "sagejs"), runnerPath],
+    {
+      cwd: join(__dirname, ".."),
+      encoding: "utf8",
+      env: {
+        ...process.env,
+        SAGEJS_NATIVE_MODE: "dynamic",
+        SAGEJS_NATIVE_AUTOLOAD: "0",
+      },
+    },
+  );
+  if (measured.error) throw measured.error;
+  if (measured.status !== 0) {
+    throw new Error(measured.stdout + measured.stderr);
+  }
+  const line = measured.stdout.trim().split("\n").at(-1);
+  return JSON.parse(line);
 }
 
 async function main() {
@@ -49,19 +101,40 @@ async function main() {
     });
     const kernel = require(compiled.modulePath).xorshift64;
     const args = [0x6a09e667f3bcc909n, 1_000_000n];
-    kernel(...args);
-    kernel.javascript(...args);
-    const native = measure(kernel, args, 7);
-    const javascript = measure(kernel.javascript, args, 7);
-    if (native.result !== javascript.result) {
-      throw new Error("native and JavaScript xorshift64 results differ");
+    const native = measure(kernel, args, WARMUPS, SAMPLES);
+    const javascript = measure(kernel.javascript, args, WARMUPS, SAMPLES);
+    const dynamic = measureDynamic(directory, args);
+    if (native.result !== javascript.result || native.result !== dynamic.result) {
+      throw new Error(
+        "native, portable JavaScript, and dynamic xorshift64 results differ",
+      );
     }
     process.stdout.write(`${JSON.stringify({
       schema: "sagejs.native-uint64-bitwise-benchmark/v1",
+      host: {
+        node: process.version,
+        v8: process.versions.v8,
+        platform: platform(),
+        release: release(),
+        arch: arch(),
+        cpu: cpus()[0]?.model || "unknown",
+      },
+      policy: {
+        warmups: WARMUPS,
+        samples: SAMPLES,
+        statistic: "median wall-clock milliseconds",
+        compilationAndConstructionExcluded: true,
+        resultEquivalenceChecked: true,
+        dynamicMode: "same-source Sage.js with SAGEJS_NATIVE_MODE=dynamic",
+      },
       rounds: Number(args[1]),
       native,
       javascript,
-      speedup: javascript.medianMs / native.medianMs,
+      dynamic,
+      speedup: {
+        javascriptOverNative: javascript.medianMs / native.medianMs,
+        dynamicOverNative: dynamic.medianMs / native.medianMs,
+      },
     }, null, 2)}\n`);
   } finally {
     rmSync(directory, { recursive: true, force: true });

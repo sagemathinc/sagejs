@@ -1464,15 +1464,15 @@ compileKernel({
   const nativeRecordModule = require(nativeRecordKernel.modulePath);
   assert.equal(nativeRecordModule.scaled_sum({
     entries: [1, 2, 3], length: 3, modulus: 101,
-  }, 7), 42);
+  }, 7), 42n);
   assert.equal(
     nativeRecordModule.scaled_sum_constructed([1, 2, 3], 3, 101, 7),
-    42,
+    42n,
   );
   const mutableRecordEntries = [3];
   assert.equal(nativeRecordModule.scale_first({
     entries: mutableRecordEntries, length: 1, modulus: 101,
-  }, 7), 21);
+  }, 7), 21n);
   assert.deepEqual(mutableRecordEntries.map(Number), [21]);
   assert.throws(() => nativeRecordModule.scaled_sum({
     entries: [1], length: 1, modulus: 1,
@@ -1641,10 +1641,11 @@ compileKernel({
   );
   assert.ok(primeFieldSourceManifest.coreSourceMap.length > 0);
   for (const [left, right, expected] of [
-    [0n, 1n, 0],
-    [17n, 5n, 3],
-    [0xffffffffn, 97n, 44278013],
-    [0xffffffffffffffffn, 0xffffffffn, 4294967297],
+    [0n, 1n, 0n],
+    [17n, 5n, 3n],
+    [0xffffffffn, 97n, 44278013n],
+    [0xffffffffffffffffn, 0xffffffffn, 4294967297n],
+    [0xffffffffffffffffn, 1n, 0xffffffffffffffffn],
   ]) {
     assert.equal(
       primeFieldSourceModule.source_uint64_floor_div(left, right, 97n),
@@ -1933,7 +1934,7 @@ compileKernel({
     );
     assert.equal(
       primeFieldSourceAddon.source_prime_rank(left),
-      flint.matrixRank(left),
+      BigInt(flint.matrixRank(left)),
     );
     assert.equal(
       flint.matrixEqual(

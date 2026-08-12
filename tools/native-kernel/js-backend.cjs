@@ -1093,7 +1093,13 @@ function generateJavaScript(ir, options = {}) {
       "  }\n" + validation + "\n" +
       `  if (nativeAddon !== null) {\n${nativeCall}\n  }\n` +
       `  return javascript_${fn.name}(${fallbackArgs});\n` +
-      `}\n${fn.name}.javascript = javascript_${fn.name};\n` +
+      `}\n${fn.name}.javascript = function (${params}) {\n` +
+      `  if (arguments.length !== ${fn.params.length}) {\n` +
+      `    throw new TypeError("${fn.name}() expects exactly ` +
+        `${fn.params.length} arguments");\n` +
+      `  }\n${validation}\n` +
+      `  return javascript_${fn.name}(${fallbackArgs});\n` +
+      `};\n` +
       `${fn.name}.nativeAvailable = nativeAddon !== null;\n` +
       `${fn.name}.backendFor = () => nativeAddon === null ` +
         `? "javascript-number" : "native-double";\n` +
