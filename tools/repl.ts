@@ -564,6 +564,7 @@ export default async function Repl(
         jsage: options.sage,
         exact_integer_literals: true,
         strict_python_scopes: true,
+        reuse_main_module: true,
         runtime_imports: true,
         module_cache_dir: moduleCacheDir,
         precompiled_module_cache_dir: precompiledModuleCacheDir,

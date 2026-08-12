@@ -344,6 +344,59 @@ test("kernel intrinsic aliases follow later Python bindings", async (t) => {
   await session.evaluate("import sagejs.runtime as runtime");
   assert.equal((await session.evaluate("runtime.reflect is not None")).repr, "True");
   await session.evaluate(
+    "def parameter_shadow(runtime):\n" +
+      "    return runtime.upper()\n" +
+      "def local_shadow():\n" +
+      "    runtime = 'local-shadow'\n" +
+      "    return runtime.upper()\n" +
+      "def closure_shadow():\n" +
+      "    runtime = 'closure-shadow'\n" +
+      "    def read():\n" +
+      "        return runtime.upper()\n" +
+      "    return read()\n" +
+      "def comprehension_shadow():\n" +
+      "    return [runtime.upper() for runtime in ['comprehension-shadow']]\n" +
+      "class RuntimeContext:\n" +
+      "    def __enter__(self):\n" +
+      "        return 'with-shadow'\n" +
+      "    def __exit__(self, kind, value, traceback):\n" +
+      "        return False\n" +
+      "def with_shadow():\n" +
+      "    with RuntimeContext() as runtime:\n" +
+      "        return runtime.upper()\n" +
+      "def exception_shadow():\n" +
+      "    try:\n" +
+      "        raise ValueError('exception-shadow')\n" +
+      "    except ValueError as runtime:\n" +
+      "        return runtime.args[0]\n" +
+      "def match_shadow():\n" +
+      "    match 'match-shadow':\n" +
+      "        case runtime:\n" +
+      "            return runtime.upper()\n" +
+      "class ClassShadow:\n" +
+      "    runtime = 'class-shadow'\n" +
+      "    value = runtime.upper()\n" +
+      "class ClassImport:\n" +
+      "    import sagejs.runtime as runtime\n" +
+      "    value = runtime.reflect is not None\n" +
+      "def nested_class_shadow():\n" +
+      "    class Nested:\n" +
+      "        runtime = 'nested-class-shadow'\n" +
+      "        value = runtime.upper()\n" +
+      "    return Nested.value",
+  );
+  assert.equal(
+    (await session.evaluate(
+      "parameter_shadow('parameter-shadow'), local_shadow(), " +
+        "closure_shadow(), comprehension_shadow(), with_shadow(), " +
+        "exception_shadow(), match_shadow(), ClassShadow.value, " +
+        "ClassImport.value, nested_class_shadow()",
+    )).repr,
+    "('PARAMETER-SHADOW', 'LOCAL-SHADOW', 'CLOSURE-SHADOW', " +
+      "['COMPREHENSION-SHADOW'], 'WITH-SHADOW', 'exception-shadow', " +
+      "'MATCH-SHADOW', 'CLASS-SHADOW', True, 'NESTED-CLASS-SHADOW')",
+  );
+  await session.evaluate(
     "for runtime in ['loop-shadow']:\n" +
       "    loop_result = runtime.upper()",
   );
@@ -366,6 +419,52 @@ test("kernel intrinsic aliases follow later Python bindings", async (t) => {
   await assert.rejects(
     session.evaluate("low_level.reflect"),
     /low_level|AttributeError|NameError/,
+  );
+
+  await session.evaluate("import sagejs.runtime as runtime\nimport __main__");
+  await session.evaluate("__main__.runtime = 'module-shadow'");
+  assert.equal((await session.evaluate("runtime.upper()")).repr, "'MODULE-SHADOW'");
+  await assert.rejects(
+    session.evaluate("runtime.reflect"),
+    /attribute.*reflect|AttributeError/i,
+  );
+  await session.evaluate("import sagejs.runtime as runtime");
+  await session.evaluate("globals()['runtime'] = 'dictionary-shadow'");
+  assert.equal(
+    (await session.evaluate("runtime.upper()")).repr,
+    "'DICTIONARY-SHADOW'",
+  );
+  await assert.rejects(
+    session.evaluate("runtime.reflect"),
+    /attribute.*reflect|AttributeError/i,
+  );
+});
+
+test("kernel namespace metadata cannot collide with Python globals", async (t) => {
+  const session = await createSage({ mode: "python" });
+  t.after(() => session.close());
+
+  await session.evaluate(
+    "__proto__ = 17\n" +
+      "__sagejs_reusable_main__ = 18\n" +
+      "__sagejs_main_magic_initialized__ = 19\n" +
+      "__sagejs_live_scope_dict__ = 20\n" +
+      "import __main__",
+  );
+  assert.equal(
+    (await session.evaluate(
+      "(__proto__, __main__.__proto__, globals()['__proto__'], " +
+        "__sagejs_reusable_main__, __sagejs_main_magic_initialized__, " +
+        "__sagejs_live_scope_dict__, globals() is globals())",
+    )).repr,
+    "(17, 17, 17, 18, 19, 20, True)",
+  );
+  await session.evaluate("__main__.__proto__ = 23");
+  assert.equal(
+    (await session.evaluate(
+      "__proto__, globals()['__proto__'], '__proto__' in dir()",
+    )).repr,
+    "(23, 23, True)",
   );
 });
 

@@ -262,6 +262,37 @@ assert.equal(
     "global-write global-write",
   ].join("\n"),
 );
+assert.equal(
+  run(
+    ["--python"],
+    [
+      "import sagejs.runtime as runtime",
+      "import __main__",
+      "",
+      "def intrinsic_parameter(runtime):",
+      "    return runtime.upper()",
+      "",
+      "print(intrinsic_parameter('parameter-shadow'))",
+      "__main__.runtime = 'module-shadow'",
+      "",
+      "print(runtime.upper())",
+      "__proto__ = 17",
+      "__sagejs_reusable_main__ = 18",
+      "__sagejs_main_magic_initialized__ = 19",
+      "__sagejs_live_scope_dict__ = 20",
+      "",
+      "print(__proto__, __main__.__proto__, globals()['__proto__'])",
+      "print(__sagejs_reusable_main__, __sagejs_main_magic_initialized__, __sagejs_live_scope_dict__)",
+      "",
+    ].join("\n"),
+  ).trim(),
+  [
+    "PARAMETER-SHADOW",
+    "MODULE-SHADOW",
+    "17 17 17",
+    "18 19 20",
+  ].join("\n"),
+);
 const pythonRuntimeFailure = runFailure(
   ["--python"],
   "raise RuntimeError('piped Python failure')\n",

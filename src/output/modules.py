@@ -122,7 +122,7 @@ def write_imports(module, output):
         output.print_string(output.options.module_registry)
         output.print("] || (globalThis[")
         output.print_string(output.options.module_registry)
-        output.print("] = {});")
+        output.print("] = Object.create(null));")
     elif output.options.baselib_module_id:
         # Baselib modules need a private ``__main__`` alias, but their import
         # lookup must remain connected to the process-wide Python module
@@ -198,8 +198,10 @@ def write_imports(module, output):
         if module_id == "__main__" and output.options.reuse_main_module:
             output.print(
                 "ρσ_modules.__main__ && "
-                "ρσ_modules.__main__.__sagejs_reusable_main__ || ("
-                "ρσ_modules.__main__ = new Proxy(ρσ_modules.__main__ || {}, {"
+                "ρσ_modules.__main__[Symbol.for("
+                "'sagejs.compiler.reusable-main')] || ("
+                "ρσ_modules.__main__ = new Proxy("
+                "ρσ_modules.__main__ || Object.create(null), {"
                 "set:function(target,name,incoming,receiver){"
                 "if (typeof name === 'string' && "
                 "!Object.prototype.hasOwnProperty.call(target,name)) "
@@ -213,12 +215,10 @@ def write_imports(module, output):
                 "return Reflect.deleteProperty(target,name)},"
                 "ownKeys:function(target){"
                 "return Reflect.ownKeys(target).filter(function(name){"
-                "if (name === '__sagejs_reusable_main__' || "
-                "name === '__sagejs_main_magic_initialized__') return false;"
                 "return typeof name !== 'string' || "
                 "Reflect.get(target,name) !== undefined})}}),"
                 "Object.defineProperty(ρσ_modules.__main__,"
-                "'__sagejs_reusable_main__',{value:true,configurable:true}),"
+                "Symbol.for('sagejs.compiler.reusable-main'),{value:true}),"
                 "ρσ_modules.__main__)"
             )
         elif module_id.indexOf(".") is -1:
@@ -226,7 +226,12 @@ def write_imports(module, output):
         else:
             output.print('ρσ_modules["' + module_id + '"]')
         if not (module_id == "__main__" and output.options.reuse_main_module):
-            output.space(), output.print("="), output.space(), output.print("{}")
+            (
+                output.space(),
+                output.print("="),
+                output.space(),
+                output.print("Object.create(null)"),
+            )
         output.end_statement()
 
     # Every loaded child module is also an attribute of its parent package.
@@ -294,8 +299,8 @@ def write_main_name(output, filename=None):
         output.indent()
         if output.options.reuse_main_module:
             output.print(
-                "if (!ρσ_modules.__main__."
-                "__sagejs_main_magic_initialized__) {"
+                "if (!ρσ_modules.__main__[Symbol.for("
+                "'sagejs.compiler.main-magic-initialized')]) {"
                 '__name__ = "__main__"; __package__ = null; '
                 "__loader__ = null; __spec__ = null; __cached__ = null; "
                 "__builtins__ = ρσ_modules.builtins || {}; "
@@ -304,8 +309,8 @@ def write_main_name(output, filename=None):
                 output.print("__file__ = " + JSON.stringify(filename) + "; ")
             output.print(
                 "Object.defineProperty(ρσ_modules.__main__,"
-                "'__sagejs_main_magic_initialized__',"
-                "{value:true,configurable:true})}"
+                "Symbol.for('sagejs.compiler.main-magic-initialized'),"
+                "{value:true})}"
             )
         else:
             output.print(
@@ -449,11 +454,13 @@ def bind_module_namespace(module, output, hidden_names=None):
     else:
         output.print('ρσ_modules["' + module_id + '"]')
     output.comma()
-    output.print("{")
+    output.print("Object.assign(Object.create(null),{")
     for index, name in enumerate(names):
         if index:
             output.comma()
+        output.print("[")
         output.print_string(name)
+        output.print("]")
         output.colon()
         print_lexical_namespace_descriptor(output, name, descriptor_prefix, True, True)
     wrote_property = names.length > 0
@@ -464,12 +471,14 @@ def bind_module_namespace(module, output, hidden_names=None):
         if wrote_property:
             output.comma()
         wrote_property = True
+        output.print("[")
         output.print_string(name)
+        output.print("]")
         output.colon()
         print_lexical_namespace_descriptor(
             output, name, descriptor_prefix, False, False
         )
-    output.print("})")
+    output.print("}))")
     output.end_statement()
 
     output.indent()
