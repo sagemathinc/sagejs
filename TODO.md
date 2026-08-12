@@ -33,13 +33,3 @@
   Configure GMP without `--enable-fat`, tune FLINT for the host, include CPU
   features, ABI, compiler, dependency versions, and profile in cache keys, and
   expose the selected build provenance in timing/debug output.
-
-## Development infrastructure
-
-- Add automatic, bounded cleanup for `~/.cache/sagejs/modules`. Build on
-  `sagejs cache prune` with configurable size/age limits, preserve active
-  leases and current artifacts, and make cache growth self-limiting without
-  requiring users to notice and run a manual command.
-- Make verified documentation example identities content-addressed by source
-  path plus example input/expected-output hashes. Keep line numbers only as
-  provenance so unrelated source insertions do not invalidate passing results.
