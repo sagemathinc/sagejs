@@ -1,0 +1,64 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "dense-matrix-performance-audit",
+  "title": "Dense matrix public performance audit",
+  "lane": "arithmetic-algebra",
+  "status": "active",
+  "owner": "user",
+  "objective": "Provide a machine-readable, reproducible correctness and performance audit of public dense matrix operations over ZZ, QQ, GF(2), GF(7), and a large word prime, with separated cold/warm measurements, backend traces, bounded routine mode, opt-in full Sage comparison, and a prioritized remediation handoff",
+  "base_commit": "e2ad41d6662c924b3db35e11a533caef7a71b825",
+  "claims": [
+    "bench/dense-matrix-public-audit.cjs",
+    "bench/dense-matrix-public-audit.md",
+    "test/dense-matrix-public-audit.cjs"
+  ],
+  "dependencies": [],
+  "references": [
+    "SageMath public dense matrix behavior and performance"
+  ],
+  "architecture": {
+    "strategy": "dynamic-python",
+    "fallback": "same-source",
+    "oracles": [
+      "SageMath differential oracle when available",
+      "Sage.js explicit result witnesses and algebraic identities"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "not-applicable",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "node test/dense-matrix-public-audit.cjs",
+    "node bench/dense-matrix-public-audit.cjs --runtime all --check"
+  ],
+  "runs": [
+    {
+      "command": "node test/dense-matrix-public-audit.cjs",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 0.655,
+      "started_at": "2026-08-12T11:49:20.429Z",
+      "commit": "e2ad41d6662c924b3db35e11a533caef7a71b825",
+      "workspace_fingerprint": "0978f975da1e0a824b38a287e99fbcd7074c52cccb98a434f1d04f712790ee9c",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Added a machine-readable dense matrix audit with quick, routine, and full modes; verified 14 public operations over ZZ, QQ, GF(2), GF(7), and GF(2^61-1); separated process/bootstrap/first/warm timings; classified native routes; and compared representative workloads with SageMath.",
+    "risks": [
+      "Cross-host timings are intentionally reported rather than ratcheted; retain reports on Linux x64, Linux arm64, and Darwin arm64.",
+      "GF(2^61-1) row/column swaps are public capability holes and most large-word-prime operations emit no backend trace.",
+      "The lane needed a local M4RI build because the shared parallel cache did not provision that package."
+    ],
+    "next_steps": [
+      "Implement canonical arbitrary-word-prime storage with bulk range ingress, direct swaps, and traceable algorithms.",
+      "Replace selection-and-reconstruction swaps with direct exact/resource and packed operations.",
+      "Profile and batch GF(2) random fill."
+    ]
+  }
+}
