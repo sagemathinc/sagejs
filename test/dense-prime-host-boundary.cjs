@@ -39,7 +39,7 @@ def expect_failure(function, exception):
         pass
 
 
-for prime in [2, 97, 65521]:
+for prime in [2, 97, 65521, 4294967291]:
     field = GF(prime)
     source = matrix(field, 3, 5, [
         0, 1, 2, 3, 4,
@@ -79,7 +79,7 @@ for prime in [2, 97, 65521]:
         )
 
 for rows, columns in [(0, 0), (0, 7), (5, 0)]:
-    for prime in [2, 97]:
+    for prime in [2, 97, 65521, 4294967291]:
         source = matrix(GF(prime), rows, columns, [])
         assert source.pivots() == ()
         assert source.pivots() is source.pivots()
@@ -87,9 +87,26 @@ for rows, columns in [(0, 0), (0, 7), (5, 0)]:
 print("dense-prime-host-boundary-ok")
 `;
 
-assert.equal(runSage(correctness), "dense-prime-host-boundary-ok");
+const compiledCorrectness = String.raw`
+from sagejs.kernels.matrix.dense_word_prime_flint import flint_word_prime_matrix_pivots
+from sagejs.native import is_compiled
+
+assert is_compiled(flint_word_prime_matrix_pivots)
+assert flint_word_prime_matrix_pivots.nativeAvailable
+` + correctness;
+
+const dynamicCorrectness = String.raw`
+from sagejs.kernels.matrix.dense_word_prime_flint import flint_word_prime_matrix_pivots
+
+assert not flint_word_prime_matrix_pivots.nativeAvailable
+` + correctness;
+
 assert.equal(
-  runSage(correctness, { SAGEJS_NATIVE_DISABLE: "1" }),
+  runSage(compiledCorrectness),
+  "dense-prime-host-boundary-ok",
+);
+assert.equal(
+  runSage(dynamicCorrectness, { SAGEJS_NATIVE_DISABLE: "1" }),
   "dense-prime-host-boundary-ok",
 );
 
@@ -144,20 +161,20 @@ def measurements(prime):
     return read_seconds, write_seconds, cached_pivots, rref_seconds, pivot_seconds
 
 
-for prime in [2, 97]:
+for prime in [2, 97, 65521]:
     values = measurements(prime)
     print(prime, values[0], values[1], values[2], values[3], values[4])
 `;
 
 const lines = runSage(performance).split("\n");
-assert.equal(lines.length, 2);
+assert.equal(lines.length, 3);
 for (const line of lines) {
   const [prime, read, write, cached, rref, pivots] =
     line.split(/\s+/).map(Number);
   // These are regression ceilings, deliberately above the uncontended
   // benchmark medians. The benchmark records the sharper optimization
   // targets without making shared CI load a source of false failures.
-  const readLimit = prime === 2 ? 20e-6 : 18e-6;
+  const readLimit = prime === 2 ? 20e-6 : prime === 97 ? 18e-6 : 25e-6;
   const writeLimit = 40e-6;
   assert.ok(read < readLimit, `GF(${prime}) scalar read took ${read}s`);
   assert.ok(write < writeLimit, `GF(${prime}) scalar write took ${write}s`);

@@ -1,0 +1,154 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "word-prime-pivots-remediation",
+  "title": "Word-prime pivot remediation",
+  "lane": "arithmetic-algebra",
+  "status": "active",
+  "owner": "user",
+  "objective": "Make nmod-resource dense prime matrices compute and cache pivots through source-transparent typed Python traversal without legacy N-API handles, and align sparse-random representation assertions",
+  "base_commit": "d423f84e64cf29f6f7813741785992f820f9de77",
+  "claims": [
+    "src/baselib/matrix.py",
+    "src/lib/sagejs/kernels/matrix/dense_word_prime_flint.py",
+    "test/dense-prime-host-boundary.cjs",
+    "test/public-sparse-random.cjs"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "source-transparent-native",
+    "fallback": "same-source",
+    "oracles": [
+      "cpython",
+      "javascript",
+      "SageMath dense GF(p) pivots for word primes"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "node test/dense-prime-host-boundary.cjs",
+    "node test/public-sparse-random.cjs",
+    "node test/nmod-matrix-resource-lifecycle.cjs",
+    "pnpm test:baselib:strict",
+    "pnpm architecture:check",
+    "pnpm test:native"
+  ],
+  "runs": [
+    {
+      "command": "node test/dense-prime-host-boundary.cjs",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 3.832,
+      "started_at": "2026-08-12T18:05:36.679Z",
+      "commit": "5a9f3e130661b47377a19a586a399ced89288467",
+      "workspace_fingerprint": "9a21008ad39a5b9637e658de11fbe76e3ddeda05b5b0f70cd9dbbe5079f9e5aa",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node test/dense-prime-host-boundary.cjs",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 3.754,
+      "started_at": "2026-08-12T18:05:45.095Z",
+      "commit": "5a9f3e130661b47377a19a586a399ced89288467",
+      "workspace_fingerprint": "9a21008ad39a5b9637e658de11fbe76e3ddeda05b5b0f70cd9dbbe5079f9e5aa",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node test/dense-prime-host-boundary.cjs",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 3.84,
+      "started_at": "2026-08-12T18:05:54.852Z",
+      "commit": "5a9f3e130661b47377a19a586a399ced89288467",
+      "workspace_fingerprint": "9a21008ad39a5b9637e658de11fbe76e3ddeda05b5b0f70cd9dbbe5079f9e5aa",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node test/dense-prime-host-boundary.cjs",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 4.755,
+      "started_at": "2026-08-12T18:06:36.600Z",
+      "commit": "5a9f3e130661b47377a19a586a399ced89288467",
+      "workspace_fingerprint": "7e4fa270b08fac1fdee15197d2eacf6fdd228cd65c5a35a9b65d52461f7414f5",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node test/dense-prime-host-boundary.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 4.887,
+      "started_at": "2026-08-12T18:11:46.499Z",
+      "commit": "d423f84b396b57c36e701650b1f2608c74b74a8f",
+      "workspace_fingerprint": "1871b9b569e9f45d0f38f8d429210cf2a8cf698cc10aaad8908ccb26398eca59",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node test/public-sparse-random.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 11.857,
+      "started_at": "2026-08-12T18:11:55.056Z",
+      "commit": "d423f84b396b57c36e701650b1f2608c74b74a8f",
+      "workspace_fingerprint": "1871b9b569e9f45d0f38f8d429210cf2a8cf698cc10aaad8908ccb26398eca59",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node test/nmod-matrix-resource-lifecycle.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.211,
+      "started_at": "2026-08-12T18:12:10.782Z",
+      "commit": "d423f84b396b57c36e701650b1f2608c74b74a8f",
+      "workspace_fingerprint": "1871b9b569e9f45d0f38f8d429210cf2a8cf698cc10aaad8908ccb26398eca59",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 14.009,
+      "started_at": "2026-08-12T18:12:17.621Z",
+      "commit": "d423f84b396b57c36e701650b1f2608c74b74a8f",
+      "workspace_fingerprint": "1871b9b569e9f45d0f38f8d429210cf2a8cf698cc10aaad8908ccb26398eca59",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 14.271,
+      "started_at": "2026-08-12T18:12:36.782Z",
+      "commit": "d423f84b396b57c36e701650b1f2608c74b74a8f",
+      "workspace_fingerprint": "1871b9b569e9f45d0f38f8d429210cf2a8cf698cc10aaad8908ccb26398eca59",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:native",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 547.691,
+      "started_at": "2026-08-12T18:12:56.570Z",
+      "commit": "d423f84b396b57c36e701650b1f2608c74b74a8f",
+      "workspace_fingerprint": "1871b9b569e9f45d0f38f8d429210cf2a8cf698cc10aaad8908ccb26398eca59",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Route dense word-prime Matrix.pivots() through a source-transparent native kernel that borrows canonical nmod storage, traverses the echelon form inside one host boundary, and preserves the existing pivot caches. Cover native and disabled-native semantics, largest 32-bit prime storage, empty shapes, performance, and sanitizer-backed resource lifecycle.",
+    "risks": [
+      "The full pnpm test:native lane rebuilt and passed package, production-kernel, FFI, and lifecycle stages, then failed in the pre-existing test/native-kernel.cjs prime-field fixture because it accesses the removed Matrix._native handle. Focused pivot, lifecycle, strict, and architecture receipts pass."
+    ],
+    "next_steps": [
+      "Remediate the stale prime-field Matrix._native fixture in test/native-kernel.cjs as a separate compiler-test lane."
+    ]
+  }
+}

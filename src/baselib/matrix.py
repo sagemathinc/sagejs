@@ -5192,6 +5192,7 @@ class Matrix(sage.Element):
         echelon = self.echelon_form()
         if (
             echelon._has_packed_prime_storage()
+            or echelon._has_nmod_matrix_resource()
             or echelon._has_integer_storage()
             or echelon._has_packed_rational_storage()
         ):
@@ -5206,6 +5207,16 @@ class Matrix(sage.Element):
                 pivot_count = runtime.number(
                     kernel(pivot_output, echelon._m4ri_resource())
                 )
+            elif echelon._has_nmod_matrix_resource():
+                kernel = _dense_word_prime_flint_module().flint_word_prime_matrix_pivots
+                pivot_output = _dense_signed_zeros(
+                    kernel, min(echelon.nrows(), echelon.ncols())
+                )
+                pivot_count = runtime.number(
+                    kernel(pivot_output, echelon._nmod_resource())
+                )
+                if pivot_count < 0:
+                    raise ValueError("word-prime pivot output is too small")
             elif _is_packed_uint64(echelon._prime_residues_cache):
                 kernel_module = _dense_prime_kernel_module()
                 kernel = kernel_module.dense_prime_field_matrix_pivots

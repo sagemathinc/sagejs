@@ -138,7 +138,7 @@ for base in [ZZ, QQ, GF(2), GF(7)]:
 largest_word_prime = GF(4294967291)
 word_prime = random_matrix(largest_word_prime, 4, 5, density=0.6)
 assert word_prime.base_ring() is largest_word_prime
-assert word_prime._has_packed_prime_storage()
+assert word_prime._has_nmod_matrix_resource()
 
 set_random_seed(19)
 nan_binary = random_matrix(GF(2), 2, 3, density=float("nan"))
