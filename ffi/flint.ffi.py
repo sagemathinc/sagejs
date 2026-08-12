@@ -2502,6 +2502,50 @@ def fmpz_matrix_select_columns(
 
 
 @flint.function(
+    dynamic="ffiFmpzMatrixSwapRows",
+    symbol="sagejs_fmpz_matrix_swap_rows",
+    returns=int,
+    abi=[
+        in_("matrix", sagejs_fmpz_matrix_t),
+        in_("first", uint64_t),
+        in_("second", uint64_t),
+    ],
+    effects=Effects(pure=False, raises=[ValueError], writes=["matrix"]),
+    result=Status(
+        1,
+        exception=ValueError,
+        message="integer matrix row index is out of range",
+    ),
+    wasm=True,
+)
+def fmpz_matrix_swap_rows(
+    matrix: Writable[FmpzMatrix], first: uint64, second: uint64
+) -> bool: ...
+
+
+@flint.function(
+    dynamic="ffiFmpzMatrixSwapColumns",
+    symbol="sagejs_fmpz_matrix_swap_columns",
+    returns=int,
+    abi=[
+        in_("matrix", sagejs_fmpz_matrix_t),
+        in_("first", uint64_t),
+        in_("second", uint64_t),
+    ],
+    effects=Effects(pure=False, raises=[ValueError], writes=["matrix"]),
+    result=Status(
+        1,
+        exception=ValueError,
+        message="integer matrix column index is out of range",
+    ),
+    wasm=True,
+)
+def fmpz_matrix_swap_columns(
+    matrix: Writable[FmpzMatrix], first: uint64, second: uint64
+) -> bool: ...
+
+
+@flint.function(
     dynamic="ffiFmpzMatrixSetBlock",
     symbol="sagejs_fmpz_matrix_set_block",
     returns=int,
@@ -3380,6 +3424,50 @@ def fmpq_matrix_select_columns(
     indices: UInt64Buffer,
     count: uint64,
 ) -> FmpqMatrix: ...
+
+
+@flint.function(
+    dynamic="ffiFmpqMatrixSwapRows",
+    symbol="sagejs_fmpq_matrix_swap_rows",
+    returns=int,
+    abi=[
+        in_("matrix", sagejs_fmpq_matrix_t),
+        in_("first", uint64_t),
+        in_("second", uint64_t),
+    ],
+    effects=Effects(pure=False, raises=[ValueError], writes=["matrix"]),
+    result=Status(
+        1,
+        exception=ValueError,
+        message="rational matrix row index is out of range",
+    ),
+    wasm=True,
+)
+def fmpq_matrix_swap_rows(
+    matrix: Writable[FmpqMatrix], first: uint64, second: uint64
+) -> bool: ...
+
+
+@flint.function(
+    dynamic="ffiFmpqMatrixSwapColumns",
+    symbol="sagejs_fmpq_matrix_swap_columns",
+    returns=int,
+    abi=[
+        in_("matrix", sagejs_fmpq_matrix_t),
+        in_("first", uint64_t),
+        in_("second", uint64_t),
+    ],
+    effects=Effects(pure=False, raises=[ValueError], writes=["matrix"]),
+    result=Status(
+        1,
+        exception=ValueError,
+        message="rational matrix column index is out of range",
+    ),
+    wasm=True,
+)
+def fmpq_matrix_swap_columns(
+    matrix: Writable[FmpqMatrix], first: uint64, second: uint64
+) -> bool: ...
 
 
 @flint.function(

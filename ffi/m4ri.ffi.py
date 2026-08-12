@@ -141,6 +141,50 @@ def matrix_set_entry(
 
 
 @m4ri.function(
+    dynamic="ffiM4riMatrixSwapRows",
+    symbol="sagejs_m4ri_matrix_swap_rows",
+    returns=int,
+    abi=[
+        in_("matrix", sagejs_m4ri_matrix_t),
+        in_("first", uint64_t),
+        in_("second", uint64_t),
+    ],
+    effects=Effects(pure=False, raises=[ValueError], writes=["matrix"]),
+    result=Status(
+        1,
+        exception=ValueError,
+        message="M4RI matrix row index is out of range",
+    ),
+    wasm=True,
+)
+def matrix_swap_rows(
+    matrix: Writable[M4riMatrix], first: uint64, second: uint64
+) -> bool: ...
+
+
+@m4ri.function(
+    dynamic="ffiM4riMatrixSwapColumns",
+    symbol="sagejs_m4ri_matrix_swap_columns",
+    returns=int,
+    abi=[
+        in_("matrix", sagejs_m4ri_matrix_t),
+        in_("first", uint64_t),
+        in_("second", uint64_t),
+    ],
+    effects=Effects(pure=False, raises=[ValueError], writes=["matrix"]),
+    result=Status(
+        1,
+        exception=ValueError,
+        message="M4RI matrix column index is out of range",
+    ),
+    wasm=True,
+)
+def matrix_swap_columns(
+    matrix: Writable[M4riMatrix], first: uint64, second: uint64
+) -> bool: ...
+
+
+@m4ri.function(
     dynamic="ffiM4riMatrixEntryCode",
     symbol="sagejs_m4ri_matrix_entry_code",
     returns=uint64_t,

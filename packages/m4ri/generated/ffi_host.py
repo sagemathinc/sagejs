@@ -16,6 +16,8 @@ from sagejs.ffi.m4ri import (
     matrix_nrows as _ffi_matrix_nrows,
     matrix_ncols as _ffi_matrix_ncols,
     matrix_set_entry as _ffi_matrix_set_entry,
+    matrix_swap_rows as _ffi_matrix_swap_rows,
+    matrix_swap_columns as _ffi_matrix_swap_columns,
     matrix_entry_code as _ffi_matrix_entry_code,
     matrix_copy as _ffi_matrix_copy,
     matrix_equal as _ffi_matrix_equal,
@@ -87,6 +89,32 @@ def ffiM4riMatrixSetEntry(
         row,
         column,
         value,
+    )
+
+
+@native
+def ffiM4riMatrixSwapRows(
+    matrix: M4riMatrix,
+    first: uint64,
+    second: uint64,
+) -> bool:
+    return _ffi_matrix_swap_rows(
+        matrix,
+        first,
+        second,
+    )
+
+
+@native
+def ffiM4riMatrixSwapColumns(
+    matrix: M4riMatrix,
+    first: uint64,
+    second: uint64,
+) -> bool:
+    return _ffi_matrix_swap_columns(
+        matrix,
+        first,
+        second,
     )
 
 

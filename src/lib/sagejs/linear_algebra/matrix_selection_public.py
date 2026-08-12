@@ -34,56 +34,6 @@ def _close_matrix_resource(matrix: Any) -> None:
         matrix._m4ri_resource().close()
 
 
-def _adopt_same_shape_storage(target: Any, replacement: Any) -> None:
-    """Atomically transfer canonical exact or packed-prime storage."""
-    if (
-        replacement.base_ring() is not target.base_ring()
-        or replacement.dimensions() != target.dimensions()
-    ):
-        raise ValueError("replacement matrix has the wrong parent")
-
-    old_integer = (
-        target._integer_resource()
-        if target._has_fmpz_matrix_resource()
-        else runtime.undefined
-    )
-    old_rational = (
-        target._rational_resource()
-        if target._has_fmpq_matrix_resource()
-        else runtime.undefined
-    )
-    old_m4ri = (
-        target._m4ri_resource()
-        if target._has_m4ri_matrix_resource()
-        else runtime.undefined
-    )
-
-    if replacement._has_fmpz_matrix_resource():
-        target._integer_storage_cache = replacement._integer_storage_cache
-        replacement._integer_storage_cache = runtime.undefined
-    elif replacement._has_fmpq_matrix_resource():
-        target._rational_storage_cache = replacement._rational_storage_cache
-        replacement._rational_storage_cache = runtime.undefined
-    elif replacement._has_m4ri_matrix_resource():
-        target._m4ri_storage_cache = replacement._m4ri_storage_cache
-        target._prime_residues_cache = runtime.undefined
-        replacement._m4ri_storage_cache = runtime.undefined
-    elif replacement._has_packed_prime_storage():
-        target._prime_residues_cache = replacement._prime_residues_cache
-        target._m4ri_storage_cache = runtime.undefined
-        replacement._prime_residues_cache = runtime.undefined
-    else:
-        raise NotImplementedError(
-            "storage replacement requires generated exact or packed GF(p) storage"
-        )
-
-    target._native_handle = runtime.undefined
-    for resource in [old_integer, old_rational, old_m4ri]:
-        if resource is not runtime.undefined:
-            resource.close()
-    target._clear_cache()
-
-
 def set_row(target: Any, row: int, values: Any) -> None:
     """Stage and commit one complete row."""
     base = target.base_ring()
@@ -223,33 +173,63 @@ def delete_columns(target: Any, columns: Any, check: bool = True) -> Any:
 
 
 def swap_rows(target: Any, first: int, second: int) -> None:
-    """Swap two rows transactionally."""
+    """Swap two rows in canonical storage without copying the matrix."""
     target._check_batch_mutability()
     plans.prepare_row_swap(target.nrows(), target.ncols(), int(first), int(second))
     if first == second:
         target._clear_cache()
         return
-    indices = list(range(target.nrows()))
-    indices[int(first)], indices[int(second)] = (
-        indices[int(second)],
-        indices[int(first)],
+    if target._has_fmpz_matrix_resource():
+        flint.fmpz_matrix_swap_rows(target._integer_resource(), int(first), int(second))
+        target._integer_storage_cache.entries = runtime.undefined
+        target._integer_entries_cache = runtime.undefined
+        target._clear_cache()
+        return
+    if target._has_fmpq_matrix_resource():
+        flint.fmpq_matrix_swap_rows(
+            target._rational_resource(), int(first), int(second)
+        )
+        target._rational_storage_cache.numerators = runtime.undefined
+        target._rational_storage_cache.denominators = runtime.undefined
+        target._clear_cache()
+        return
+    if target._has_packed_prime_storage():
+        target._swap_dense_prime_axis(int(first), int(second), False)
+        return
+    raise NotImplementedError(
+        "swap_rows requires generated exact or packed GF(p) storage"
     )
-    _adopt_same_shape_storage(target, target.matrix_from_rows(indices))
 
 
 def swap_columns(target: Any, first: int, second: int) -> None:
-    """Swap two columns transactionally."""
+    """Swap two columns in canonical storage without copying the matrix."""
     target._check_batch_mutability()
     plans.prepare_column_swap(target.nrows(), target.ncols(), int(first), int(second))
     if first == second:
         target._clear_cache()
         return
-    indices = list(range(target.ncols()))
-    indices[int(first)], indices[int(second)] = (
-        indices[int(second)],
-        indices[int(first)],
+    if target._has_fmpz_matrix_resource():
+        flint.fmpz_matrix_swap_columns(
+            target._integer_resource(), int(first), int(second)
+        )
+        target._integer_storage_cache.entries = runtime.undefined
+        target._integer_entries_cache = runtime.undefined
+        target._clear_cache()
+        return
+    if target._has_fmpq_matrix_resource():
+        flint.fmpq_matrix_swap_columns(
+            target._rational_resource(), int(first), int(second)
+        )
+        target._rational_storage_cache.numerators = runtime.undefined
+        target._rational_storage_cache.denominators = runtime.undefined
+        target._clear_cache()
+        return
+    if target._has_packed_prime_storage():
+        target._swap_dense_prime_axis(int(first), int(second), True)
+        return
+    raise NotImplementedError(
+        "swap_columns requires generated exact or packed GF(p) storage"
     )
-    _adopt_same_shape_storage(target, target.matrix_from_columns(indices))
 
 
 def with_swapped_rows(target: Any, first: int, second: int) -> Any:
