@@ -1,0 +1,46 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "tutorial-modular-repr",
+  "title": "Tutorial Modular Repr",
+  "lane": "modular-forms",
+  "status": "active",
+  "owner": "user",
+  "objective": "Restore Sage-compatible modular-symbol ambient and subspace representations in the affected tutorials",
+  "base_commit": "1f0475bbbcc0fbf764ab15556eeafd7acaa1495e",
+  "claims": [
+    "src/baselib/modular.py",
+    "test/modular-symbols.cjs"
+  ],
+  "dependencies": [],
+  "references": [
+    "SageMath modular symbols repr semantics"
+  ],
+  "architecture": {
+    "strategy": "dynamic-python",
+    "fallback": "same-source",
+    "oracles": [
+      "SageMath ambient and cuspidal subspace repr"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "pnpm test:native",
+    "pnpm bench:modular-symbols"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "Render character modular-symbol spaces from values on every Dirichlet unit generator, coerced through the actual base ring, and use Sage's generic subspace representation without leaking algorithmic labels.",
+    "risks": [],
+    "next_steps": [
+      "The integration lane should run its broad portable suite after cherry-picking."
+    ]
+  }
+}

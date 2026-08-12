@@ -101,6 +101,57 @@ test("Gamma1 and character cuspidal modular-symbol models", async () => {
   }
 });
 
+test("modular-symbol ambient and subspace reprs match Sage", async () => {
+  const session = await createSage();
+  try {
+    assert.equal(
+      (
+        await session.evaluate(
+          [
+            "e = DirichletGroup(13).0^2",
+            "M = ModularSymbols(e, 2)",
+            "[M, M.cuspidal_submodule()]",
+          ].join("\n"),
+        )
+      ).repr,
+      "[Modular Symbols space of dimension 4 and level 13, weight 2, " +
+        "character [zeta6], sign 0, over Cyclotomic Field of order 6 and " +
+        "degree 2, Modular Symbols subspace of dimension 2 of Modular " +
+        "Symbols space of dimension 4 and level 13, weight 2, character " +
+        "[zeta6], sign 0, over Cyclotomic Field of order 6 and degree 2]",
+    );
+    assert.equal(
+      (
+        await session.evaluate(
+          [
+            "e = DirichletGroup(5).gen()",
+            "ModularSymbols(e, 3)",
+          ].join("\n"),
+        )
+      ).repr,
+      "Modular Symbols space of dimension 2 and level 5, weight 3, " +
+        "character [zeta4], sign 0, over Cyclotomic Field of order 4 and " +
+        "degree 2",
+    );
+    assert.equal(
+      (
+        await session.evaluate(
+          [
+            "G = DirichletGroup(20)",
+            "e = G.gen(0) * G.gen(1)",
+            "ModularSymbols(e, 2)",
+          ].join("\n"),
+        )
+      ).repr,
+      "Modular Symbols space of dimension 6 and level 20, weight 2, " +
+        "character [-1, zeta4], sign 0, over Cyclotomic Field of order 4 " +
+        "and degree 2",
+    );
+  } finally {
+    await session.close();
+  }
+});
+
 test("Dirichlet-character Manin symbols, signs, boundaries, and Hecke", async () => {
   const session = await createSage();
   try {
