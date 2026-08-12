@@ -10,7 +10,9 @@
   "base_commit": "dcc1302a3f305b00a0e09ba25edee45ac2ee2bf1",
   "claims": [
     "src/baselib/factorization.py",
-    "test/factorization-negative-powers.cjs"
+    "test/algebra.py",
+    "test/factorization-negative-powers.cjs",
+    "test/node-test-manifest.cjs"
   ],
   "dependencies": [],
   "references": [
@@ -32,8 +34,13 @@
     "macos-arm64": "required"
   },
   "validation": [
+    "pnpm build",
+    "node --test test/factorization-negative-powers.cjs",
+    "node scripts/run-test-tier.cjs integration --test-name-pattern=factorization-negative-powers",
     "pnpm test:baselib:strict",
-    "pnpm test:native"
+    "pnpm test:portable",
+    "pnpm test:native",
+    "pnpm parallel:check"
   ],
   "runs": [
     {
@@ -65,12 +72,153 @@
       "commit": "dcc1302a3f305b00a0e09ba25edee45ac2ee2bf1",
       "workspace_fingerprint": "3ff40a83285bc8463629eaee2bdda72481ee54b68c17001741b44a4362071e8a",
       "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm build",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 179.94,
+      "started_at": "2026-08-12T19:42:37.428Z",
+      "commit": "b68f7c56e74d8294ff3c2ba5158152a00be88473",
+      "workspace_fingerprint": "dc46d60e4b1518d87ab0ee232bc57ba81b165a049978e67125725ceb3bcc345a",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/factorization-negative-powers.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.364,
+      "started_at": "2026-08-12T19:45:43.360Z",
+      "commit": "b68f7c56e74d8294ff3c2ba5158152a00be88473",
+      "workspace_fingerprint": "dc46d60e4b1518d87ab0ee232bc57ba81b165a049978e67125725ceb3bcc345a",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 17.672,
+      "started_at": "2026-08-12T19:45:46.442Z",
+      "commit": "b68f7c56e74d8294ff3c2ba5158152a00be88473",
+      "workspace_fingerprint": "dc46d60e4b1518d87ab0ee232bc57ba81b165a049978e67125725ceb3bcc345a",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 64.027,
+      "started_at": "2026-08-12T19:46:08.991Z",
+      "commit": "b68f7c56e74d8294ff3c2ba5158152a00be88473",
+      "workspace_fingerprint": "dc46d60e4b1518d87ab0ee232bc57ba81b165a049978e67125725ceb3bcc345a",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:native",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 614.188,
+      "started_at": "2026-08-12T19:47:24.627Z",
+      "commit": "b68f7c56e74d8294ff3c2ba5158152a00be88473",
+      "workspace_fingerprint": "dc46d60e4b1518d87ab0ee232bc57ba81b165a049978e67125725ceb3bcc345a",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm build",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 209.542,
+      "started_at": "2026-08-12T20:24:04.208Z",
+      "commit": "b68f7c56e74d8294ff3c2ba5158152a00be88473",
+      "workspace_fingerprint": "e456157d5e125002d238d54fc8bd40c5b0310763a3b686e3c5876bff14e531e2",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/factorization-negative-powers.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 4.367,
+      "started_at": "2026-08-12T20:27:40.110Z",
+      "commit": "b68f7c56e74d8294ff3c2ba5158152a00be88473",
+      "workspace_fingerprint": "e456157d5e125002d238d54fc8bd40c5b0310763a3b686e3c5876bff14e531e2",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node scripts/run-test-tier.cjs integration --test-name-pattern=factorization-negative-powers",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.314,
+      "started_at": "2026-08-12T20:27:46.507Z",
+      "commit": "b68f7c56e74d8294ff3c2ba5158152a00be88473",
+      "workspace_fingerprint": "e456157d5e125002d238d54fc8bd40c5b0310763a3b686e3c5876bff14e531e2",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 25.004,
+      "started_at": "2026-08-12T20:27:48.335Z",
+      "commit": "b68f7c56e74d8294ff3c2ba5158152a00be88473",
+      "workspace_fingerprint": "e456157d5e125002d238d54fc8bd40c5b0310763a3b686e3c5876bff14e531e2",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 64.934,
+      "started_at": "2026-08-12T20:28:14.012Z",
+      "commit": "b68f7c56e74d8294ff3c2ba5158152a00be88473",
+      "workspace_fingerprint": "e456157d5e125002d238d54fc8bd40c5b0310763a3b686e3c5876bff14e531e2",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm parallel:check",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 0.581,
+      "started_at": "2026-08-12T20:29:19.651Z",
+      "commit": "b68f7c56e74d8294ff3c2ba5158152a00be88473",
+      "workspace_fingerprint": "e456157d5e125002d238d54fc8bd40c5b0310763a3b686e3c5876bff14e531e2",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:native",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 651.886,
+      "started_at": "2026-08-12T20:29:39.775Z",
+      "commit": "b68f7c56e74d8294ff3c2ba5158152a00be88473",
+      "workspace_fingerprint": "e456157d5e125002d238d54fc8bd40c5b0310763a3b686e3c5876bff14e531e2",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm parallel:check",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 0.677,
+      "started_at": "2026-08-12T20:41:04.388Z",
+      "commit": "b68f7c56e74d8294ff3c2ba5158152a00be88473",
+      "workspace_fingerprint": "e456157d5e125002d238d54fc8bd40c5b0310763a3b686e3c5876bff14e531e2",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm parallel:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.63,
+      "started_at": "2026-08-12T20:41:13.811Z",
+      "commit": "b68f7c56e74d8294ff3c2ba5158152a00be88473",
+      "workspace_fingerprint": "e456157d5e125002d238d54fc8bd40c5b0310763a3b686e3c5876bff14e531e2",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {
-    "summary": "Factorization now follows Sage's commutative integral-power semantics: exponent one preserves identity, zero returns the neutral generic factorization, and negative powers negate formal exponents while the unit's exact power operation controls invertibility. Focused tests cover integer and polynomial factorizations, ordering and simplification, rational units and nonunits, and unavailable inverses.",
+    "summary": "Factorization now follows Sage's commutative integral-power semantics: exponent one preserves identity, zero returns the neutral generic factorization, and negative powers negate formal exponents while exact polynomial factors and units enter their fraction field. Focused tests cover integer, rational, and polynomial factors and units, ordering and simplification, display, value reconstruction, zero powers, and zero inversion failures.",
     "risks": [
-      "Factorization currently models only the existing commutative Sage.js core; Sage's separate noncommutative inversion path remains outside this lane."
+      "Factorization currently models only the existing commutative Sage.js core; Sage's separate noncommutative inversion path remains outside this lane.",
+      "Automatic fraction-field entry uses the existing polynomial _factorization_repr capability; other future element families must implement their own exact negative power before formal factors over them can be expanded."
     ],
     "next_steps": [
       "Integrate after independent review and retain the focused test in the arithmetic compatibility suite."

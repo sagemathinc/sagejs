@@ -12,6 +12,23 @@ from typing import Any, Callable, Iterator, Optional, Sequence
 import sagejs.runtime as runtime
 
 
+def _factorization_power(value: Any, exponent: int) -> Any:
+    """Raise a factor or unit, entering its fraction field when necessary."""
+    if exponent < 0 and hasattr(value, "_factorization_repr"):
+        parent = value.parent()
+        if hasattr(parent, "fraction_field"):
+            denominator = runtime.operator_pow_exact(value, -exponent)
+            return parent.fraction_field()(1, denominator)
+    return runtime.operator_pow_exact(value, exponent)
+
+
+def _factorization_factor_is_atomic(value: Any) -> bool:
+    """Return whether Sage prints units beside this factor without parentheses."""
+    if runtime.jstype(value) in ("bigint", "number"):
+        return True
+    return isinstance(value, runtime.rational_class)
+
+
 def ρσ_factor_pair(prime: Any, exponent: int) -> list[Any]:
     pair = [prime, exponent]
 
@@ -139,7 +156,7 @@ class Factorization:
             if runtime.jstype(self._unit) == "bigint"
             else exponent
         )
-        unit = runtime.operator_pow_exact(self._unit, unit_exponent)
+        unit = _factorization_power(self._unit, unit_exponent)
         return Factorization(factors, unit, self._cr_value, False, False)
 
     def __repr__(self) -> str:
@@ -168,12 +185,7 @@ class Factorization:
 
         if not runtime.equals(self._unit, one):
             unit_text = runtime.repr(self._unit)
-            if (
-                runtime.jstype(self._unit) == "object"
-                and runtime.reflect.has(self._unit, "_denominator")
-                and runtime.reflect.get(self._unit, "_denominator") == runtime.bigint(1)
-                and runtime.jstype(self._factors[0][0]) not in ("bigint", "number")
-            ):
+            if not _factorization_factor_is_atomic(self._factors[0][0]):
                 unit_text = "(" + unit_text + ")"
             terms.insert(0, unit_text)
         return str.join(separator, terms)
@@ -224,7 +236,7 @@ class Factorization:
             if runtime.jstype(prime) == "bigint":
                 exponent = runtime.bigint(exponent)
             value = runtime.operator_mul_exact(
-                value, runtime.operator_pow_exact(prime, exponent)
+                value, _factorization_power(prime, exponent)
             )
         return value
 
