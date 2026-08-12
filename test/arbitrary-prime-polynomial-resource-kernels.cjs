@@ -2,6 +2,8 @@
 "use strict";
 
 const assert = require("node:assert/strict");
+const { mkdtempSync, rmSync, writeFileSync } = require("node:fs");
+const { tmpdir } = require("node:os");
 const { join, resolve } = require("node:path");
 const { spawnSync } = require("node:child_process");
 
@@ -91,20 +93,23 @@ print("arbitrary-prime-resource-kernel-ok")
 `;
 
 function run(environment) {
-  const result = spawnSync(
-    process.execPath,
-    [join(root, "bin", "sagejs"), "--python"],
-    {
+  const directory = mkdtempSync(join(tmpdir(), "sagejs-arbitrary-prime-kernel-"));
+  try {
+    const program = join(directory, "check.py");
+    writeFileSync(program, witness);
+    const result = spawnSync(process.execPath, [join(root, "bin", "sagejs"), program], {
       cwd: root,
       encoding: "utf8",
       env: { ...process.env, ...environment },
-      input: witness,
       timeout: 120_000,
-    },
-  );
-  if (result.error) throw result.error;
-  assert.equal(result.status, 0, result.stderr || result.stdout);
-  assert.match(result.stdout, /arbitrary-prime-resource-kernel-ok/);
+    });
+    if (result.error) throw result.error;
+    assert.equal(result.status, 0, result.stderr || result.stdout);
+    assert.equal(result.stderr, "");
+    assert.equal(result.stdout.trim(), "arbitrary-prime-resource-kernel-ok");
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
 }
 
 run({});

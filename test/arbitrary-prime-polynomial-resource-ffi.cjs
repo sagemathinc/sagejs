@@ -119,6 +119,7 @@ int main(void)
         quotient, division));
     assert(sagejs_fmpz_mod_polynomial_division_result_remainder(
         remainder, division));
+    sagejs_fmpz_mod_polynomial_division_result_clear(division);
     fmpz_t scalar;
     fmpz_init(scalar);
     assert(sagejs_fmpz_mod_polynomial_length(scalar, quotient));
@@ -137,15 +138,24 @@ int main(void)
         bezout_left, extended));
     assert(sagejs_fmpz_mod_polynomial_xgcd_result_right_coefficient(
         bezout_right, extended));
+    sagejs_fmpz_mod_polynomial_xgcd_result_clear(extended);
     assert(sagejs_fmpz_mod_polynomial_length(scalar, gcd));
     assert(fmpz_equal_ui(scalar, 2));
     assert_coefficient(gcd, 1, "1");
 
+    /* Factorization preserves a nonmonic unit and repeated exponents. Child
+       resources remain independently owned after the aggregate closes. */
+    const slong target_values[] = {104, -52, -130, 13, 52, 13};
+    sagejs_fmpz_mod_polynomial_t target;
+    polynomial(target, p89, target_values, 6);
     sagejs_fmpz_mod_polynomial_factorization_t factorization;
-    assert(sagejs_fmpz_mod_polynomial_factor_resource(factorization, left));
+    assert(sagejs_fmpz_mod_polynomial_factor_resource(factorization, target));
     assert(sagejs_fmpz_mod_polynomial_factorization_count(
         scalar, factorization));
     assert(fmpz_equal_ui(scalar, 2));
+    assert(sagejs_fmpz_mod_polynomial_factorization_unit(
+        scalar, factorization));
+    assert(fmpz_equal_ui(scalar, 13));
     unsigned char *factor_bytes = NULL;
     uint64_t factor_bytes_length = 0;
     assert(sagejs_fmpz_mod_polynomial_factorization_copy_bytes(
@@ -154,15 +164,41 @@ int main(void)
     assert(memcmp(factor_bytes, "SJFPM\1\0\0", 8) == 0);
     assert(sagejs_fmpz_mod_polynomial_read_u64(factor_bytes, 8) == 2);
     sagejs_fmpz_mod_polynomial_free_bytes(factor_bytes);
-    sagejs_fmpz_mod_polynomial_t factor;
+    sagejs_fmpz_mod_polynomial_t factor, other_factor;
     assert(sagejs_fmpz_mod_polynomial_factorization_factor(
         factor, factorization, 0));
+    assert(sagejs_fmpz_mod_polynomial_factorization_factor(
+        other_factor, factorization, 1));
+    fmpz_t first_exponent, second_exponent;
+    fmpz_init(first_exponent);
+    fmpz_init(second_exponent);
+    assert(sagejs_fmpz_mod_polynomial_factorization_exponent(
+        first_exponent, factorization, 0));
+    assert(sagejs_fmpz_mod_polynomial_factorization_exponent(
+        second_exponent, factorization, 1));
+    assert((fmpz_equal_ui(first_exponent, 2) &&
+            fmpz_equal_ui(second_exponent, 3)) ||
+        (fmpz_equal_ui(first_exponent, 3) &&
+            fmpz_equal_ui(second_exponent, 2)));
     sagejs_fmpz_mod_polynomial_factorization_clear(factorization);
     assert(sagejs_fmpz_mod_polynomial_length(scalar, factor));
     assert(fmpz_equal_ui(scalar, 2));
+    sagejs_fmpz_mod_polynomial_t first_power, second_power, factor_product;
+    assert(sagejs_fmpz_mod_polynomial_pow(
+        first_power, factor, fmpz_get_ui(first_exponent)));
+    assert(sagejs_fmpz_mod_polynomial_pow(
+        second_power, other_factor, fmpz_get_ui(second_exponent)));
+    assert(sagejs_fmpz_mod_polynomial_mul(
+        factor_product, first_power, second_power));
+    const slong unit_values[] = {13};
+    sagejs_fmpz_mod_polynomial_t unit_polynomial, reconstructed;
+    polynomial(unit_polynomial, p89, unit_values, 1);
+    assert(sagejs_fmpz_mod_polynomial_mul(
+        reconstructed, unit_polynomial, factor_product));
+    assert_equal(reconstructed, target);
 
     sagejs_fmpz_mod_polynomial_roots_t roots;
-    assert(sagejs_fmpz_mod_polynomial_roots_resource(roots, left));
+    assert(sagejs_fmpz_mod_polynomial_roots_resource(roots, target));
     assert(sagejs_fmpz_mod_polynomial_roots_count(scalar, roots));
     assert(fmpz_equal_ui(scalar, 2));
     unsigned char *root_bytes = NULL;
@@ -176,11 +212,9 @@ int main(void)
     fmpz_t root;
     fmpz_init(root);
     assert(sagejs_fmpz_mod_polynomial_roots_root(root, roots, 0));
-    if (!fmpz_is_one(root))
-    {
-        fmpz_add_ui(root, root, 1);
-        assert(fmpz_equal(root, p89));
-    }
+    assert(sagejs_fmpz_mod_polynomial_roots_exponent(scalar, roots, 0));
+    assert(fmpz_equal_ui(scalar, 2) || fmpz_equal_ui(scalar, 3));
+    sagejs_fmpz_mod_polynomial_roots_clear(roots);
 
     sagejs_flint_byte_region_t bytes, text;
     assert(sagejs_fmpz_mod_polynomial_serialize(bytes, left));
@@ -214,6 +248,43 @@ int main(void)
         assert(sagejs_fmpz_mod_polynomial_length(scalar, temporary));
         sagejs_fmpz_mod_polynomial_clear(temporary);
     }
+    for (size_t iteration = 0; iteration < 256; iteration++)
+    {
+        sagejs_fmpz_mod_polynomial_division_result_t aggregate_division;
+        sagejs_fmpz_mod_polynomial_t child;
+        assert(sagejs_fmpz_mod_polynomial_divrem_resource(
+            aggregate_division, left, divisor));
+        assert(sagejs_fmpz_mod_polynomial_division_result_quotient(
+            child, aggregate_division));
+        sagejs_fmpz_mod_polynomial_division_result_clear(aggregate_division);
+        assert(sagejs_fmpz_mod_polynomial_length(scalar, child));
+        sagejs_fmpz_mod_polynomial_clear(child);
+
+        sagejs_fmpz_mod_polynomial_xgcd_result_t aggregate_xgcd;
+        assert(sagejs_fmpz_mod_polynomial_xgcd_resource(
+            aggregate_xgcd, left, divisor));
+        assert(sagejs_fmpz_mod_polynomial_xgcd_result_gcd(
+            child, aggregate_xgcd));
+        sagejs_fmpz_mod_polynomial_xgcd_result_clear(aggregate_xgcd);
+        assert(sagejs_fmpz_mod_polynomial_length(scalar, child));
+        sagejs_fmpz_mod_polynomial_clear(child);
+
+        sagejs_fmpz_mod_polynomial_factorization_t aggregate_factors;
+        assert(sagejs_fmpz_mod_polynomial_factor_resource(
+            aggregate_factors, target));
+        assert(sagejs_fmpz_mod_polynomial_factorization_factor(
+            child, aggregate_factors, 0));
+        sagejs_fmpz_mod_polynomial_factorization_clear(aggregate_factors);
+        assert(sagejs_fmpz_mod_polynomial_length(scalar, child));
+        sagejs_fmpz_mod_polynomial_clear(child);
+
+        sagejs_fmpz_mod_polynomial_roots_t aggregate_roots;
+        assert(sagejs_fmpz_mod_polynomial_roots_resource(
+            aggregate_roots, target));
+        assert(sagejs_fmpz_mod_polynomial_roots_root(
+            scalar, aggregate_roots, 0));
+        sagejs_fmpz_mod_polynomial_roots_clear(aggregate_roots);
+    }
 
     sagejs_fmpz_mod_polynomial_clear(left521);
     sagejs_fmpz_mod_polynomial_clear(left127);
@@ -221,15 +292,21 @@ int main(void)
     sagejs_fmpz_mod_polynomial_clear(roundtrip);
     sagejs_flint_byte_region_clear(bytes);
     fmpz_clear(root);
-    sagejs_fmpz_mod_polynomial_roots_clear(roots);
+    sagejs_fmpz_mod_polynomial_clear(reconstructed);
+    sagejs_fmpz_mod_polynomial_clear(unit_polynomial);
+    sagejs_fmpz_mod_polynomial_clear(factor_product);
+    sagejs_fmpz_mod_polynomial_clear(second_power);
+    sagejs_fmpz_mod_polynomial_clear(first_power);
+    fmpz_clear(second_exponent);
+    fmpz_clear(first_exponent);
+    sagejs_fmpz_mod_polynomial_clear(other_factor);
     sagejs_fmpz_mod_polynomial_clear(factor);
+    sagejs_fmpz_mod_polynomial_clear(target);
     sagejs_fmpz_mod_polynomial_clear(bezout_right);
     sagejs_fmpz_mod_polynomial_clear(bezout_left);
     sagejs_fmpz_mod_polynomial_clear(gcd);
-    sagejs_fmpz_mod_polynomial_xgcd_result_clear(extended);
     sagejs_fmpz_mod_polynomial_clear(remainder);
     sagejs_fmpz_mod_polynomial_clear(quotient);
-    sagejs_fmpz_mod_polynomial_division_result_clear(division);
     sagejs_fmpz_mod_polynomial_clear(powered);
     sagejs_fmpz_mod_polynomial_clear(negated);
     sagejs_fmpz_mod_polynomial_clear(sum);

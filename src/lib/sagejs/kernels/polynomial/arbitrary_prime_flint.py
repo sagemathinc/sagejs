@@ -2,7 +2,7 @@
 
 The resource owns its FLINT context and polynomial.  These compiled functions
 borrow that owner only for the synchronous native call; neither a pointer nor
-a context token escapes into the host runtime.
+a context token escapes into the host environment.
 """
 
 from __future__ import annotations

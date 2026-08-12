@@ -403,7 +403,7 @@ static inline int sagejs_fmpz_mod_polynomial_divrem_resource(
     const sagejs_fmpz_mod_polynomial_t divisor)
 {
     if (!sagejs_fmpz_mod_polynomial_same_modulus(dividend, divisor) ||
-        fmpz_mod_poly_is_zero(divisor->value, divisor->context))
+        fmpz_mod_poly_length(divisor->value, divisor->context) == 0)
         return 0;
     sagejs_fmpz_mod_polynomial_struct *quotient = &result->quotient;
     sagejs_fmpz_mod_polynomial_struct *remainder = &result->remainder;

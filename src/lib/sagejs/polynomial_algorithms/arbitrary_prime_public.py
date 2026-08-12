@@ -17,7 +17,6 @@ from typing import Any
 
 import sagejs.runtime as runtime
 
-
 _POLYNOMIAL_MAGIC = [83, 74, 77, 80, 1, 0, 0, 0]
 _FACTORIZATION_MAGIC = [83, 74, 70, 80, 77, 1, 0, 0]
 _ROOTS_MAGIC = [83, 74, 82, 80, 77, 1, 0, 0]
@@ -82,7 +81,7 @@ def encode_resource_payload(coefficients: list[Any], modulus: Any) -> Any:
         values.pop()
     if len(values) > _MAX_HOST_COUNT:
         raise OverflowError("arbitrary-prime polynomial is too large")
-    length = 16 + _unsigned_width(prime)
+    length = 24 + _unsigned_width(prime)
     for value in values:
         length += 8 + _unsigned_width(value)
     output = _byte_array(length)
@@ -221,9 +220,8 @@ def decode_roots_payload(source: Any) -> tuple[Any, list[tuple[Any, int]]]:
 
 def format_resource_text(raw: str, variable: str) -> str:
     """Normalize FLINT's sentinel-variable output to Sage display syntax."""
-    raw = raw.replace(runtime.regexp(r"\s+", "g"), "")
-    raw = raw.replace(runtime.regexp(r"\+", "g"), " + ").replace(
-        runtime.regexp(r"([^-])-+", "g"), "$1 - "
-    )
-    raw = raw.replace(runtime.regexp(r"(^|[+-] )1\*", "g"), "$1")
-    return raw.replace(runtime.regexp(r"x", "g"), variable)
+    # `fmpz_mod_poly_get_str_pretty` emits canonical nonnegative residues, so
+    # its only operators here are `+`, `*`, and `^`.  Plain Python string
+    # operations keep this strict module portable and avoid JavaScript regexp
+    # semantics at a mathematical boundary.
+    return raw.replace("+", " + ").replace("x", variable)

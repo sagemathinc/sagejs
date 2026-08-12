@@ -15,6 +15,7 @@ _packed_rational_polynomial_module_cache = runtime.undefined
 _packed_prime_polynomial_module_cache = runtime.undefined
 _packed_polynomial_flint_module_cache = runtime.undefined
 _polynomial_structural_public_module_cache = runtime.undefined
+_arbitrary_prime_public_module_cache = runtime.undefined
 _flint_ffi_module_cache = runtime.undefined
 _generated_flint_resources_available_cache = runtime.undefined
 
@@ -62,12 +63,30 @@ class _FmpqPolynomialResourceStorage:
         self.denominators = denominators
 
 
+class _FmpzModPolynomialResourceStorage:
+    """Own one sealed arbitrary-prime FLINT polynomial and its context."""
+
+    def __init__(self, resource: Any) -> None:
+        self.resource = resource
+
+
 def _flint_ffi_module() -> Any:
     """Load generated safe FLINT resources without exposing package handles."""
     global _flint_ffi_module_cache
     if _flint_ffi_module_cache is runtime.undefined:
         _flint_ffi_module_cache = __import__("sagejs.ffi.flint", fromlist=["flint"])
     return _flint_ffi_module_cache
+
+
+def _arbitrary_prime_public_module() -> Any:
+    """Load stable byte codecs for arbitrary-prime polynomial resources."""
+    global _arbitrary_prime_public_module_cache
+    if _arbitrary_prime_public_module_cache is runtime.undefined:
+        _arbitrary_prime_public_module_cache = __import__(
+            "sagejs.polynomial_algorithms.arbitrary_prime_public",
+            fromlist=["arbitrary_prime_public"],
+        )
+    return _arbitrary_prime_public_module_cache
 
 
 def _generated_flint_resources_available() -> bool:
@@ -777,11 +796,10 @@ def _packed_polynomial_kind(base: sage.Parent) -> str:
         return "ZZ"
     if base is sage.QQ:
         return "QQ"
-    if (
-        getattr(base, "_kind", None) == "GF"
-        and int(_untyped(base).characteristic()) <= 0xFFFFFFFFFFFFFFFF
-    ):
-        return "GF"
+    if getattr(base, "_kind", None) == "GF":
+        if int(_untyped(base).characteristic()) <= 0xFFFFFFFFFFFFFFFF:
+            return "GF"
+        return "GF_ARB" if _generated_flint_resources_available() else "legacy"
     return "legacy"
 
 
@@ -842,7 +860,11 @@ class PolynomialElement(sage.Element):
             self._native = runtime.undefined
             if isinstance(
                 value,
-                (_FmpzPolynomialResourceStorage, _FmpqPolynomialResourceStorage),
+                (
+                    _FmpzPolynomialResourceStorage,
+                    _FmpqPolynomialResourceStorage,
+                    _FmpzModPolynomialResourceStorage,
+                ),
             ):
                 self._storage = value
             else:
@@ -886,6 +908,14 @@ class PolynomialElement(sage.Element):
 
     def _has_fmpq_polynomial_resource(self) -> bool:
         return isinstance(self._storage, _FmpqPolynomialResourceStorage)
+
+    def _has_fmpz_mod_polynomial_resource(self) -> bool:
+        return isinstance(self._storage, _FmpzModPolynomialResourceStorage)
+
+    def _arbitrary_prime_polynomial_resource(self) -> Any:
+        if not self._has_fmpz_mod_polynomial_resource():
+            raise TypeError("polynomial does not own an arbitrary-prime resource")
+        return self._storage.resource
 
     def _exact_polynomial_resource(self) -> Any:
         if not (
@@ -1072,6 +1102,13 @@ class PolynomialElement(sage.Element):
                     _canonical_integer_output(denominators, capacity),
                 )
             )
+        if kind == "GF_ARB":
+            return self._parent._from_fmpz_mod_polynomial_resource(
+                _flint_ffi_module().fmpz_mod_polynomial_add(
+                    self._arbitrary_prime_polynomial_resource(),
+                    other._arbitrary_prime_polynomial_resource(),
+                )
+            )
         if kind == "GF":
             length = max(_buffer_length(self._storage), _buffer_length(other._storage))
             wide = _wide_prime_polynomial(base)
@@ -1198,6 +1235,13 @@ class PolynomialElement(sage.Element):
                 _PackedRationalPolynomialStorage(
                     _canonical_integer_output(numerators, capacity),
                     _canonical_integer_output(denominators, capacity),
+                )
+            )
+        if kind == "GF_ARB":
+            return self._parent._from_fmpz_mod_polynomial_resource(
+                _flint_ffi_module().fmpz_mod_polynomial_sub(
+                    self._arbitrary_prime_polynomial_resource(),
+                    other._arbitrary_prime_polynomial_resource(),
                 )
             )
         if kind == "GF":
@@ -1390,6 +1434,13 @@ class PolynomialElement(sage.Element):
                     _canonical_integer_output(denominators, capacity),
                 )
             )
+        if kind == "GF_ARB":
+            return self._parent._from_fmpz_mod_polynomial_resource(
+                _flint_ffi_module().fmpz_mod_polynomial_mul(
+                    self._arbitrary_prime_polynomial_resource(),
+                    other._arbitrary_prime_polynomial_resource(),
+                )
+            )
         if kind == "GF":
             use_flint = (
                 _wide_prime_polynomial(base) or left_length * right_length >= 4096
@@ -1512,6 +1563,12 @@ class PolynomialElement(sage.Element):
                     ),
                 )
             )
+        if kind == "GF_ARB":
+            return self._parent._from_fmpz_mod_polynomial_resource(
+                _flint_ffi_module().fmpz_mod_polynomial_neg(
+                    self._arbitrary_prime_polynomial_resource()
+                )
+            )
         if kind == "GF":
             wide = _wide_prime_polynomial(base)
             kernel = (
@@ -1558,6 +1615,12 @@ class PolynomialElement(sage.Element):
                     )
                 )
             )
+        if self._has_fmpz_mod_polynomial_resource():
+            return self._parent._from_fmpz_mod_polynomial_resource(
+                _flint_ffi_module().fmpz_mod_polynomial_pow(
+                    self._arbitrary_prime_polynomial_resource(), exponent
+                )
+            )
         if _packed_polynomial_kind(self._parent.base_ring()) != "legacy":
             answer = self._parent(1)
             power = self
@@ -1585,7 +1648,7 @@ class PolynomialElement(sage.Element):
             raise ZeroDivisionError("division by zero polynomial")
         base = operands.parent.base_ring()
         kind = _packed_polynomial_kind(base)
-        if scalar_divisor and kind in ["ZZ", "QQ", "GF"]:
+        if scalar_divisor and kind in ["ZZ", "QQ", "GF", "GF_ARB"]:
             divisor = base(other)
             if kind == "ZZ" and left._has_fmpz_polynomial_resource():
                 return left._new(
@@ -1698,7 +1761,7 @@ class PolynomialElement(sage.Element):
                         return left._quo_rem_same_parent(right)[0]
                     else:
                         raise
-        if kind == "GF":
+        if kind in ["GF", "GF_ARB"]:
             return left._quo_rem_same_parent(right)[0]
         if base._kind == "GF_EXTENSION":
             native_value = runtime.flint_backend().fqPolyDivExact(
@@ -1763,6 +1826,22 @@ class PolynomialElement(sage.Element):
                 )
                 remainder = self._parent._from_fmpq_polynomial_resource(
                     ffi.fmpq_polynomial_division_result_remainder(division)
+                )
+                return runtime.math_tuple([quotient, remainder])
+            finally:
+                division.close()
+        if kind == "GF_ARB":
+            ffi = _flint_ffi_module()
+            division = ffi.fmpz_mod_polynomial_divrem_resource(
+                self._arbitrary_prime_polynomial_resource(),
+                other._arbitrary_prime_polynomial_resource(),
+            )
+            try:
+                quotient = self._parent._from_fmpz_mod_polynomial_resource(
+                    ffi.fmpz_mod_polynomial_division_result_quotient(division)
+                )
+                remainder = self._parent._from_fmpz_mod_polynomial_resource(
+                    ffi.fmpz_mod_polynomial_division_result_remainder(division)
                 )
                 return runtime.math_tuple([quotient, remainder])
             finally:
@@ -1896,6 +1975,13 @@ class PolynomialElement(sage.Element):
                 _integer_kernel_input(kernel, other._storage.numerators),
                 _integer_kernel_input(kernel, other._storage.denominators),
             )
+        if kind == "GF_ARB":
+            return bool(
+                _flint_ffi_module().fmpz_mod_polynomial_equal(
+                    self._arbitrary_prime_polynomial_resource(),
+                    other._arbitrary_prime_polynomial_resource(),
+                )
+            )
         if kind == "GF":
             if _wide_prime_polynomial(base):
                 return bool(
@@ -1940,6 +2026,12 @@ class PolynomialElement(sage.Element):
                     )
                 )
             return _buffer_length(self._storage.numerators)
+        if kind == "GF_ARB":
+            return runtime.number(
+                _flint_ffi_module().fmpz_mod_polynomial_length(
+                    self._arbitrary_prime_polynomial_resource()
+                )
+            )
         if kind == "GF":
             return _buffer_length(self._storage)
         return len(self.coefficients())
@@ -2009,6 +2101,12 @@ class PolynomialElement(sage.Element):
                 self._storage.numerators[position],
                 self._storage.denominators[position],
             )
+        if kind == "GF_ARB":
+            return base._from_reduced(
+                _flint_ffi_module().fmpz_mod_polynomial_coefficient(
+                    self._arbitrary_prime_polynomial_resource(), position
+                )
+            )
         if kind == "GF":
             return base(self._storage[position])
         return self.coefficients()[position]
@@ -2049,6 +2147,12 @@ class PolynomialElement(sage.Element):
             return self._parent._from_fmpq_polynomial_resource(
                 _flint_ffi_module().fmpq_polynomial_derivative(
                     self._exact_polynomial_resource()
+                )
+            )
+        if kind == "GF_ARB":
+            return self._parent._from_fmpz_mod_polynomial_resource(
+                _flint_ffi_module().fmpz_mod_polynomial_derivative(
+                    self._arbitrary_prime_polynomial_resource()
                 )
             )
         if kind == "GF":
@@ -2191,6 +2295,13 @@ class PolynomialElement(sage.Element):
                     )
                 )
             return _dynamic_exact_polynomial_gcd(operands.left, operands.right)
+        if kind == "GF_ARB":
+            return operands.parent._from_fmpz_mod_polynomial_resource(
+                _flint_ffi_module().fmpz_mod_polynomial_gcd(
+                    operands.left._arbitrary_prime_polynomial_resource(),
+                    operands.right._arbitrary_prime_polynomial_resource(),
+                )
+            )
         if base._kind == "GF_EXTENSION":
             native_value = runtime.flint_backend().fqPolyGcd(
                 operands.left._native, operands.right._native
@@ -2302,6 +2413,30 @@ class PolynomialElement(sage.Element):
                 finally:
                     result.close()
             return _dynamic_field_polynomial_xgcd(left, right)
+        if kind == "GF_ARB":
+            ffi = _flint_ffi_module()
+            result = ffi.fmpz_mod_polynomial_xgcd_resource(
+                left._arbitrary_prime_polynomial_resource(),
+                right._arbitrary_prime_polynomial_resource(),
+            )
+            try:
+                return runtime.math_tuple(
+                    [
+                        parent._from_fmpz_mod_polynomial_resource(
+                            ffi.fmpz_mod_polynomial_xgcd_result_gcd(result)
+                        ),
+                        parent._from_fmpz_mod_polynomial_resource(
+                            ffi.fmpz_mod_polynomial_xgcd_result_left_coefficient(result)
+                        ),
+                        parent._from_fmpz_mod_polynomial_resource(
+                            ffi.fmpz_mod_polynomial_xgcd_result_right_coefficient(
+                                result
+                            )
+                        ),
+                    ]
+                )
+            finally:
+                result.close()
         if kind == "GF":
             output_length = max(left._coefficient_length(), right._coefficient_length())
             gcd_output = runtime.uint64_buffer(output_length)
@@ -2332,7 +2467,10 @@ class PolynomialElement(sage.Element):
     def is_irreducible(self) -> bool:
         if self._parent.base_ring()._kind == "GF_EXTENSION":
             return runtime.flint_backend().fqPolyIsIrreducible(self._native)
-        if self._parent.base_ring()._kind == "GF":
+        if _packed_polynomial_kind(self._parent.base_ring()) == "GF_ARB":
+            if self.degree() <= 0:
+                return False
+        if _packed_polynomial_kind(self._parent.base_ring()) == "GF":
             return _packed_polynomial_flint_module().flint_packed_prime_field_polynomial_is_irreducible(
                 self._storage,
                 self._coefficient_length(),
@@ -2379,6 +2517,33 @@ class PolynomialElement(sage.Element):
             return _decode_exact_polynomial_factorization(
                 factorization.take_bytes(),
                 parent,
+            )
+
+        if _packed_polynomial_kind(base) == "GF_ARB":
+            if self.is_zero():
+                raise ArithmeticError("factorization of 0 is not defined")
+            payload = (
+                _flint_ffi_module()
+                .fmpz_mod_polynomial_factor_resource(
+                    self._arbitrary_prime_polynomial_resource()
+                )
+                .take_bytes()
+            )
+            modulus, unit_value, raw_factors = (
+                _arbitrary_prime_public_module().decode_factorization_payload(payload)
+            )
+            if modulus != base._modulus:
+                raise ValueError("factorization modulus does not match its parent")
+            factors = [
+                [parent._from_coefficients(coefficients), runtime.number(exponent)]
+                for coefficients, exponent in raw_factors
+            ]
+            return sage.Factorization(
+                factors,
+                base._from_reduced(unit_value),
+                False,
+                True,
+                False,
             )
 
         source_length = self._coefficient_length()
@@ -2540,6 +2705,30 @@ class PolynomialElement(sage.Element):
         field = self._parent.base_ring()
         if field._kind == "GF_EXTENSION":
             raw_roots = runtime.flint_backend().fqPolyRoots(self._native)
+        elif _packed_polynomial_kind(field) == "GF_ARB":
+            if self.is_zero():
+                raise ArithmeticError("factorization of 0 is not defined")
+            payload = (
+                _flint_ffi_module()
+                .fmpz_mod_polynomial_roots_resource(
+                    self._arbitrary_prime_polynomial_resource()
+                )
+                .take_bytes()
+            )
+            modulus, raw_roots = _arbitrary_prime_public_module().decode_roots_payload(
+                payload
+            )
+            if modulus != field._modulus:
+                raise ValueError("roots modulus does not match its parent")
+            answer = []
+            for root_value, count in raw_roots:
+                root = field._from_reduced(root_value)
+                answer.append(
+                    runtime.factor_pair(root, runtime.number(count))
+                    if multiplicities
+                    else root
+                )
+            return answer
         else:
             source_length = self._coefficient_length()
             capacity = max(0, source_length - 1)
@@ -2615,6 +2804,20 @@ class PolynomialElement(sage.Element):
                 base(numerators[index], denominators[index])
                 for index in range(len(numerators))
             ]
+        if kind == "GF_ARB":
+            payload = (
+                _flint_ffi_module()
+                .fmpz_mod_polynomial_serialize(
+                    self._arbitrary_prime_polynomial_resource()
+                )
+                .take_bytes()
+            )
+            modulus, values = _arbitrary_prime_public_module().decode_resource_payload(
+                payload
+            )
+            if modulus != base._modulus:
+                raise ValueError("polynomial modulus does not match its parent")
+            return [base._from_reduced(value) for value in values]
         if kind == "GF":
             return runtime.uint64_residue_elements(
                 self._storage,
@@ -2660,6 +2863,16 @@ class PolynomialElement(sage.Element):
                 ffi.fmpq_polynomial_serialize(self._exact_polynomial_resource())
             )
         return runtime.undefined
+
+    def _packed_arbitrary_prime_polynomial(self) -> Any:
+        """Return the stable native payload for a large prime-field resource."""
+        if not self._has_fmpz_mod_polynomial_resource():
+            return runtime.undefined
+        return (
+            _flint_ffi_module()
+            .fmpz_mod_polynomial_serialize(self._arbitrary_prime_polynomial_resource())
+            .take_bytes()
+        )
 
     def __call__(self, value: Any) -> Any:
         if hasattr(value, "nrows") and hasattr(value, "ncols") and value.is_square():
@@ -2710,6 +2923,15 @@ class PolynomialElement(sage.Element):
         # Exact integers and elements of this precise prime field have one
         # canonical residue. Other parents must keep using the coercion model
         # below, including extension fields, matrices, and incompatible fields.
+        if _packed_polynomial_kind(base) == "GF_ARB" and (
+            runtime.is_exact_integer(value)
+            or getattr(value, "_parent", runtime.undefined) is base
+        ):
+            scalar = _untyped(base)(value)
+            result = _flint_ffi_module().fmpz_mod_polynomial_evaluate(
+                self._arbitrary_prime_polynomial_resource(), scalar._value
+            )
+            return scalar._new_reduced(result)
         if _packed_polynomial_kind(base) == "GF" and (
             runtime.is_exact_integer(value)
             or getattr(value, "_parent", runtime.undefined) is base
@@ -2745,6 +2967,14 @@ class PolynomialElement(sage.Element):
     def __repr__(self) -> str:
         base = self._parent.base_ring()
         kind = _packed_polynomial_kind(base)
+        if kind == "GF_ARB":
+            region = _flint_ffi_module().fmpz_mod_polynomial_format(
+                self._arbitrary_prime_polynomial_resource()
+            )
+            return _arbitrary_prime_public_module().format_resource_text(
+                bytes(region.take_bytes()).decode("ascii"),
+                self._parent.variable_name(),
+            )
         if kind == "GF":
             return runtime.uint64_polynomial_format(
                 self._storage,
@@ -2904,6 +3134,50 @@ class PolynomialRingParent(sage.Parent):
         _flint_ffi_module().fmpq_polynomial_length(resource)
         return PolynomialElement(self, _FmpqPolynomialResourceStorage(resource))
 
+    def _from_fmpz_mod_polynomial_resource(self, resource: Any) -> PolynomialElement:
+        """Take ownership of a checked sealed arbitrary-prime resource."""
+        if _packed_polynomial_kind(self._base) != "GF_ARB":
+            resource.close()
+            raise TypeError("arbitrary-prime polynomial requires GF(p)")
+        ffi = _flint_ffi_module()
+        try:
+            modulus = ffi.fmpz_mod_polynomial_modulus(resource)
+            ffi.fmpz_mod_polynomial_length(resource)
+        except Exception:
+            resource.close()
+            raise
+        if modulus != self._base._modulus:
+            resource.close()
+            raise ValueError("polynomial resource modulus does not match its parent")
+        return PolynomialElement(self, _FmpzModPolynomialResourceStorage(resource))
+
+    def _supports_arbitrary_prime_polynomial_resource_deserialization(
+        self, encoding: Any
+    ) -> bool:
+        """Report whether SagePack can restore one `SJMP` resource directly."""
+        return (
+            _generated_flint_resources_available()
+            and _packed_polynomial_kind(self._base) == "GF_ARB"
+            and encoding == "fmpz-mod-poly-le-v1"
+        )
+
+    def _from_arbitrary_prime_polynomial_serialization(
+        self, payload: Any, encoding: Any
+    ) -> PolynomialElement:
+        """Restore canonical resource bytes while retaining parent metadata."""
+        if not self._supports_arbitrary_prime_polynomial_resource_deserialization(
+            encoding
+        ):
+            raise ValueError(
+                "arbitrary-prime polynomial resource deserialization is unavailable"
+            )
+        region = _flint_ffi_module().FlintByteRegion.from_bytes(payload)
+        try:
+            resource = _flint_ffi_module().fmpz_mod_polynomial_deserialize(region)
+        finally:
+            region.close()
+        return self._from_fmpz_mod_polynomial_resource(resource)
+
     def _supports_exact_polynomial_resource_deserialization(
         self,
         encoding: Any,
@@ -3005,6 +3279,17 @@ class PolynomialRingParent(sage.Parent):
                     [self._base(value)._value for value in coefficients]
                 )
             return PolynomialElement(self, packed)
+        if kind == "GF_ARB":
+            values = [self._base(value)._value for value in coefficients]
+            payload = _arbitrary_prime_public_module().encode_resource_payload(
+                values, self._base._modulus
+            )
+            region = _flint_ffi_module().FlintByteRegion.from_bytes(payload)
+            try:
+                resource = _flint_ffi_module().fmpz_mod_polynomial_deserialize(region)
+            finally:
+                region.close()
+            return self._from_fmpz_mod_polynomial_resource(resource)
         result = self(0)
         generator = self.gen()
         for coefficient in reversed(coefficients):
