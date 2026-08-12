@@ -108,7 +108,7 @@ test("module-cache prune preserves current, recent, pinned, and leased versions"
   }
 });
 
-test("size pressure removes oldest eligible versions but honors the grace window", (t) => {
+test("size pressure uses the age grace before crossing it", (t) => {
   const { root } = temporaryRoot(t);
   const old = versionName("1");
   const middle = versionName("2");
@@ -126,7 +126,67 @@ test("size pressure removes oldest eligible versions but honors the grace window
     report.entries.filter((entry) => entry.reason).map((entry) => entry.version).sort(),
     [old, middle].sort(),
   );
+  assert.equal(
+    report.entries.find((entry) => entry.version === middle).reason,
+    "over-size",
+  );
   assert.equal(report.entries.find((entry) => entry.version === fresh).reason, undefined);
+});
+
+test("high-churn recent versions obey size pressure and hard protections", (t) => {
+  const { root } = temporaryRoot(t);
+  const now = Date.now();
+  const current = versionName("a");
+  const pinned = versionName("b");
+  const leased = versionName("c");
+  const ordinary = ["1", "2", "3", "4", "5", "6"].map(versionName);
+  addVersion(root, current, { ageDays: 0.8, bytes: 40 });
+  addVersion(root, pinned, { ageDays: 0.7, bytes: 40, pin: true });
+  addVersion(root, leased, { ageDays: 0.6, bytes: 40, lease: true });
+  ordinary.forEach((version, index) => {
+    addVersion(root, version, { ageDays: 0.5 - index * 0.05, bytes: 40 });
+  });
+
+  const dryRun = pruneModuleCache({
+    currentVersions: [current],
+    expectedRoot: root,
+    now,
+    policy: { keepVersions: 2, maxAgeDays: 30, minAgeDays: 7, maxBytes: 200 },
+    root,
+  });
+  const candidates = dryRun.entries.filter((entry) => entry.reason);
+  assert.ok(candidates.length > 0);
+  assert.ok(candidates.every((entry) => entry.ageDays < 7));
+  assert.ok(candidates.every((entry) => entry.reason === "over-size"));
+  for (const version of [current, pinned, leased]) {
+    assert.equal(
+      dryRun.entries.find((entry) => entry.version === version).reason,
+      undefined,
+      version,
+    );
+  }
+  assert.equal(dryRun.entries.filter((entry) => entry.newest).length, 2);
+  assert.ok(
+    dryRun.entries
+      .filter((entry) => entry.newest)
+      .every((entry) => !entry.reason),
+  );
+
+  const applied = pruneModuleCache({
+    apply: true,
+    currentVersions: [current],
+    expectedRoot: root,
+    now,
+    policy: { keepVersions: 2, maxAgeDays: 30, minAgeDays: 7, maxBytes: 200 },
+    root,
+  });
+  assert.deepEqual(
+    applied.removedVersions.sort(),
+    candidates.map((entry) => entry.version).sort(),
+  );
+  for (const version of [current, pinned, leased]) {
+    assert.equal(existsSync(join(root, version)), true, version);
+  }
 });
 
 test("a real process lease is idempotent and released explicitly", (t) => {
@@ -200,6 +260,31 @@ test("sagejs cache prune is a dry run by default", (t) => {
   assert.equal(report.entries.length, 6);
   assert.equal(report.entries.filter((entry) => entry.reason).length, 1);
   assert.equal(require("node:fs").readdirSync(root).length, 6);
+});
+
+test("cache help distinguishes hard retention from the age grace", () => {
+  const result = spawnSync(
+    process.execPath,
+    [join(__dirname, "..", "bin", "sagejs"), "cache", "--help"],
+    {
+      cwd: join(__dirname, ".."),
+      encoding: "utf8",
+      env: { ...process.env, SAGEJS_USE_SOURCE: "1" },
+    },
+  );
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(
+    result.stdout,
+    /current compiler, newest retained versions, pinned\s+versions, and versions leased/,
+  );
+  assert.match(
+    result.stdout,
+    /Recent obsolete versions are protected from age-based expiry, but\s+are selected when older obsolete versions cannot meet the size target/,
+  );
+  assert.match(
+    result.stdout,
+    /Prefer obsolete versions at least this old under size\s+pressure/,
+  );
 });
 
 test("cache prune exits cleanly when its stdout consumer closes early", async (t) => {

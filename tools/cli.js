@@ -653,8 +653,10 @@ create_group(
     /*
 Inspect or prune disposable compiler-versioned module caches. `prune` is a
 dry run by default; pass `--apply` to remove only versions allowed by the
-retention policy. The current compiler, recent versions, pinned versions, and
-versions leased by running Sage.js processes are always preserved.
+retention policy. The current compiler, newest retained versions, pinned
+versions, and versions leased by running Sage.js processes are always
+preserved. Recent obsolete versions are protected from age-based expiry, but
+are selected when older obsolete versions cannot meet the size target.
 */
   },
   function () {
@@ -693,7 +695,9 @@ Select unprotected compiler versions older than this many days.
 
 opt("min_age", "", "string", "7", function () {
   /*
-Never remove a compiler version newer than this many days.
+Prefer obsolete versions at least this old under size pressure. If they are
+insufficient, newer obsolete versions may also be selected after preserving
+current, newest retained, pinned, and leased versions.
 */
 });
 
