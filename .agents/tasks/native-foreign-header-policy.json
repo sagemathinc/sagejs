@@ -1,0 +1,48 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "native-foreign-header-policy",
+  "title": "Foreign header materialization policy",
+  "lane": "integration",
+  "status": "active",
+  "owner": "user",
+  "objective": "Resolve the native-kernel foreign-header include expectation mismatch by establishing and testing the intended declaration/compiler/cache materialization policy, and provision M4RI dependencies and generated addons through the shared parallel-worktree cache",
+  "base_commit": "e84feccdd2404715491bf4a954b34bc01837fdf6",
+  "claims": [
+    "test/native-kernel.cjs",
+    "tools/native-kernel/compiler.cjs",
+    "scripts/parallel-development.cjs",
+    "scripts/native-worktree-cache.cjs",
+    "test/parallel-development.cjs"
+  ],
+  "dependencies": [],
+  "references": [
+    "Repeated test/native-kernel.cjs failure after about 436 seconds: temporary prefix expected while declaration source_include_dirs resolves to source root"
+  ],
+  "architecture": {
+    "strategy": "compiler-infrastructure",
+    "fallback": "not-applicable",
+    "oracles": [
+      "Focused native kernel foreign-header regression",
+      "Parallel native-cache package inventory tests"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm architecture:check",
+    "pnpm test:portable",
+    "pnpm test:baselib:strict"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "",
+    "risks": [],
+    "next_steps": []
+  }
+}

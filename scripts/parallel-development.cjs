@@ -600,7 +600,7 @@ Actions:
   cleanup               plan obsolete-generation cleanup (dry-run by default)
 
 Options:
-  --package ID          flint, fflas, or graph; repeatable (defaults to all)
+  --package ID          flint, fflas, graph, or m4ri; repeatable (defaults to all)
   --cache-root PATH     override the shared content-addressed cache
   --json                structured status or cleanup output
   --apply               execute a cleanup plan
