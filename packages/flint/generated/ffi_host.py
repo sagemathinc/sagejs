@@ -17,6 +17,7 @@ from sagejs.ffi.flint import (
     FmpqPolynomialDivisionResult,
     FmpqPolynomialXgcdResult,
     FmpqValue,
+    FmpqVector,
     FmpzMatrix,
     FmpzModPolynomial,
     FmpzModPolynomialDivisionResult,
@@ -26,6 +27,7 @@ from sagejs.ffi.flint import (
     FmpzPolynomial,
     FmpzPolynomialDivisionResult,
     FmpzPolynomialXgcdResult,
+    FmpzVector,
     FqContext,
     FqElement,
     FqPolynomial,
@@ -109,6 +111,29 @@ from sagejs.ffi.flint import (
     fmpq_polynomial_serialize as _ffi_fmpq_polynomial_serialize,
     fmpq_polynomial_format as _ffi_fmpq_polynomial_format,
     fmpq_polynomial_from_byte_region as _ffi_fmpq_polynomial_from_byte_region,
+    fmpz_vector_from_byte_region as _ffi_fmpz_vector_from_byte_region,
+    fmpq_vector_from_byte_region as _ffi_fmpq_vector_from_byte_region,
+    fmpz_vector_length as _ffi_fmpz_vector_length,
+    fmpq_vector_length as _ffi_fmpq_vector_length,
+    fmpz_vector_entry as _ffi_fmpz_vector_entry,
+    fmpq_vector_entry_numerator as _ffi_fmpq_vector_entry_numerator,
+    fmpq_vector_entry_denominator as _ffi_fmpq_vector_entry_denominator,
+    fmpz_vector_set_entry as _ffi_fmpz_vector_set_entry,
+    fmpq_vector_set_entry as _ffi_fmpq_vector_set_entry,
+    fmpz_vector_copy as _ffi_fmpz_vector_copy,
+    fmpq_vector_copy as _ffi_fmpq_vector_copy,
+    fmpz_vector_serialize as _ffi_fmpz_vector_serialize,
+    fmpq_vector_serialize as _ffi_fmpq_vector_serialize,
+    fmpz_vector_equal as _ffi_fmpz_vector_equal,
+    fmpq_vector_equal as _ffi_fmpq_vector_equal,
+    fmpz_vector_add as _ffi_fmpz_vector_add,
+    fmpq_vector_add as _ffi_fmpq_vector_add,
+    fmpz_vector_sub as _ffi_fmpz_vector_sub,
+    fmpq_vector_sub as _ffi_fmpq_vector_sub,
+    fmpz_vector_scalar_mul as _ffi_fmpz_vector_scalar_mul,
+    fmpq_vector_scalar_mul as _ffi_fmpq_vector_scalar_mul,
+    fmpz_vector_dot as _ffi_fmpz_vector_dot,
+    fmpq_vector_dot as _ffi_fmpq_vector_dot,
     fmpz_matrix as _ffi_fmpz_matrix,
     fmpz_matrix_nrows as _ffi_fmpz_matrix_nrows,
     fmpz_matrix_ncols as _ffi_fmpz_matrix_ncols,
@@ -1170,6 +1195,255 @@ def ffiFmpqPolynomialFromByteRegion(
         source,
         offset,
         length,
+    )
+
+
+@native
+def ffiFmpzVectorFromByteRegion(
+    source: FlintByteRegion,
+    length: uint64,
+) -> FmpzVector:
+    return _ffi_fmpz_vector_from_byte_region(
+        source,
+        length,
+    )
+
+
+@native
+def ffiFmpqVectorFromByteRegion(
+    source: FlintByteRegion,
+    length: uint64,
+) -> FmpqVector:
+    return _ffi_fmpq_vector_from_byte_region(
+        source,
+        length,
+    )
+
+
+@native
+def ffiFmpzVectorLength(
+    vector: FmpzVector,
+) -> uint64:
+    return _ffi_fmpz_vector_length(
+        vector,
+    )
+
+
+@native
+def ffiFmpqVectorLength(
+    vector: FmpqVector,
+) -> uint64:
+    return _ffi_fmpq_vector_length(
+        vector,
+    )
+
+
+@native
+def ffiFmpzVectorEntry(
+    vector: FmpzVector,
+    index: uint64,
+) -> Integer:
+    return _ffi_fmpz_vector_entry(
+        vector,
+        index,
+    )
+
+
+@native
+def ffiFmpqVectorEntryNumerator(
+    vector: FmpqVector,
+    index: uint64,
+) -> Integer:
+    return _ffi_fmpq_vector_entry_numerator(
+        vector,
+        index,
+    )
+
+
+@native
+def ffiFmpqVectorEntryDenominator(
+    vector: FmpqVector,
+    index: uint64,
+) -> Integer:
+    return _ffi_fmpq_vector_entry_denominator(
+        vector,
+        index,
+    )
+
+
+@native
+def ffiFmpzVectorSetEntry(
+    vector: FmpzVector,
+    index: uint64,
+    entry: Integer,
+) -> bool:
+    return _ffi_fmpz_vector_set_entry(
+        vector,
+        index,
+        entry,
+    )
+
+
+@native
+def ffiFmpqVectorSetEntry(
+    vector: FmpqVector,
+    index: uint64,
+    numerator: Integer,
+    denominator: Integer,
+) -> bool:
+    return _ffi_fmpq_vector_set_entry(
+        vector,
+        index,
+        numerator,
+        denominator,
+    )
+
+
+@native
+def ffiFmpzVectorCopy(
+    source: FmpzVector,
+) -> FmpzVector:
+    return _ffi_fmpz_vector_copy(
+        source,
+    )
+
+
+@native
+def ffiFmpqVectorCopy(
+    source: FmpqVector,
+) -> FmpqVector:
+    return _ffi_fmpq_vector_copy(
+        source,
+    )
+
+
+@native
+def ffiFmpzVectorSerialize(
+    source: FmpzVector,
+) -> FlintByteRegion:
+    return _ffi_fmpz_vector_serialize(
+        source,
+    )
+
+
+@native
+def ffiFmpqVectorSerialize(
+    source: FmpqVector,
+) -> FlintByteRegion:
+    return _ffi_fmpq_vector_serialize(
+        source,
+    )
+
+
+@native
+def ffiFmpzVectorEqual(
+    left: FmpzVector,
+    right: FmpzVector,
+) -> bool:
+    return _ffi_fmpz_vector_equal(
+        left,
+        right,
+    )
+
+
+@native
+def ffiFmpqVectorEqual(
+    left: FmpqVector,
+    right: FmpqVector,
+) -> bool:
+    return _ffi_fmpq_vector_equal(
+        left,
+        right,
+    )
+
+
+@native
+def ffiFmpzVectorAdd(
+    left: FmpzVector,
+    right: FmpzVector,
+) -> FmpzVector:
+    return _ffi_fmpz_vector_add(
+        left,
+        right,
+    )
+
+
+@native
+def ffiFmpqVectorAdd(
+    left: FmpqVector,
+    right: FmpqVector,
+) -> FmpqVector:
+    return _ffi_fmpq_vector_add(
+        left,
+        right,
+    )
+
+
+@native
+def ffiFmpzVectorSub(
+    left: FmpzVector,
+    right: FmpzVector,
+) -> FmpzVector:
+    return _ffi_fmpz_vector_sub(
+        left,
+        right,
+    )
+
+
+@native
+def ffiFmpqVectorSub(
+    left: FmpqVector,
+    right: FmpqVector,
+) -> FmpqVector:
+    return _ffi_fmpq_vector_sub(
+        left,
+        right,
+    )
+
+
+@native
+def ffiFmpzVectorScalarMul(
+    source: FmpzVector,
+    scalar: Integer,
+) -> FmpzVector:
+    return _ffi_fmpz_vector_scalar_mul(
+        source,
+        scalar,
+    )
+
+
+@native
+def ffiFmpqVectorScalarMul(
+    source: FmpqVector,
+    numerator: Integer,
+    denominator: Integer,
+) -> FmpqVector:
+    return _ffi_fmpq_vector_scalar_mul(
+        source,
+        numerator,
+        denominator,
+    )
+
+
+@native
+def ffiFmpzVectorDot(
+    left: FmpzVector,
+    right: FmpzVector,
+) -> Integer:
+    return _ffi_fmpz_vector_dot(
+        left,
+        right,
+    )
+
+
+@native
+def ffiFmpqVectorDot(
+    left: FmpqVector,
+    right: FmpqVector,
+) -> FmpqValue:
+    return _ffi_fmpq_vector_dot(
+        left,
+        right,
     )
 
 

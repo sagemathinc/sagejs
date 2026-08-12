@@ -95,6 +95,13 @@
       "rationale": "Host-neutral generated owned-resource ABI over FLINT dense integer matrices, with physical retained-size accounting, structural arithmetic, exact algorithms, formatting, and stable serialization."
     },
     {
+      "path": "packages/flint/include/sagejs/exact_vector_ffi.h",
+      "category": "external-library-bridge",
+      "review_status": "accepted",
+      "lane": "integration",
+      "rationale": "Host-neutral generated owned-resource ABI over one-column FLINT integer and rational matrices, providing distinct exact-vector type tags, variable-size entry ownership, canonical byte streams, structural arithmetic, dot products, and deterministic lifecycle accounting."
+    },
+    {
       "path": "packages/flint/include/sagejs/ffi_algorithms.h",
       "category": "external-library-bridge",
       "review_status": "accepted",

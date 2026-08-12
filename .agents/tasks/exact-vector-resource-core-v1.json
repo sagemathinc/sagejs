@@ -1,0 +1,105 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "exact-vector-resource-core-v1",
+  "title": "Generated exact vector resources",
+  "lane": "integration",
+  "status": "review",
+  "owner": "user",
+  "objective": "Provide generated owned FLINT-backed exact integer and rational vector resource primitives with canonical byte-region construction, lifecycle, serialization, structural arithmetic, dot products, and sanitizer-backed direct tests without public vector integration",
+  "base_commit": "dcc1302a3f305b00a0e09ba25edee45ac2ee2bf1",
+  "claims": [
+    "ffi/flint.ffi.py",
+    "ffi/flint.ffi.json",
+    "packages/flint/include/sagejs/exact_vector_ffi.h",
+    "packages/flint/generated/ffi_host.py",
+    "src/lib/sagejs/ffi/flint.py",
+    "src/baselib/sagejs/ffi/flint.py",
+    "architecture/package-graph.json",
+    "architecture/native-code.json",
+    "architecture/native-boundaries.json",
+    "test/exact-vector-resource-core.cjs",
+    "test/node-test-manifest.cjs"
+  ],
+  "dependencies": [],
+  "references": [
+    "FLINT fmpz_vec.h and fmpq_vec.h",
+    "Existing Sage.js fmpz_mat/fmpq_mat generated resource ABI"
+  ],
+  "architecture": {
+    "strategy": "external-library",
+    "fallback": "tested-capability",
+    "oracles": [
+      "flint",
+      "javascript",
+      "cpython"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "node test/exact-vector-resource-core.cjs",
+    "pnpm architecture:check",
+    "pnpm test:portable",
+    "pnpm test:baselib:strict"
+  ],
+  "runs": [
+    {
+      "command": "node test/exact-vector-resource-core.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.645,
+      "started_at": "2026-08-12T19:06:19.230Z",
+      "commit": "dcc1302a3f305b00a0e09ba25edee45ac2ee2bf1",
+      "workspace_fingerprint": "77c957836c94ed20d225720f66cac7d8eef5c1f4327c14d15a96f898dcbe5d64",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 18.009,
+      "started_at": "2026-08-12T19:06:25.205Z",
+      "commit": "dcc1302a3f305b00a0e09ba25edee45ac2ee2bf1",
+      "workspace_fingerprint": "77c957836c94ed20d225720f66cac7d8eef5c1f4327c14d15a96f898dcbe5d64",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 17.237,
+      "started_at": "2026-08-12T19:06:47.290Z",
+      "commit": "dcc1302a3f305b00a0e09ba25edee45ac2ee2bf1",
+      "workspace_fingerprint": "77c957836c94ed20d225720f66cac7d8eef5c1f4327c14d15a96f898dcbe5d64",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 63.296,
+      "started_at": "2026-08-12T19:07:11.998Z",
+      "commit": "dcc1302a3f305b00a0e09ba25edee45ac2ee2bf1",
+      "workspace_fingerprint": "77c957836c94ed20d225720f66cac7d8eef5c1f4327c14d15a96f898dcbe5d64",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Added distinct generated FmpzVector and FmpqVector owned resources backed by one-column FLINT matrices, with canonical byte-region construction, deterministic close and retained-memory accounting, entry mutation and export, copy, equality, add/subtract, scalar multiplication, dot products, stable serialization, generated host adapters, and direct ASan/UBSan/LSan lifecycle coverage. No public Vector or Matrix integration and no algorithm-specific N-API were added.",
+    "risks": [
+      "The declarations are marked wasm-capable and use host-neutral FLINT headers, but this lane directly validated the generated Node adapter and C ABI rather than rebuilding a WASM FLINT host.",
+      "The shared generated FLINT declaration files overlap the concurrent exact-matrix-pivot-ffi-v1 integration lane and must be regenerated once after both authoritative declaration changes are combined."
+    ],
+    "next_steps": [
+      "Integrate this authoritative declaration and header after coordinating with exact-matrix-pivot-ffi-v1, then regenerate the shared JSON, safe Python mirrors, host adapter, and native-boundary inventory once.",
+      "Add public exact Vector construction and operations in a separate lane after the generated resource foundation lands.",
+      "Exercise the same resource declarations through the WASM FLINT lowering when that builder is available."
+    ]
+  }
+}
