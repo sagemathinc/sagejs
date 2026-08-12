@@ -83,10 +83,10 @@ function validateBenchmarkReport(report, registry, options = {}) {
   const algorithm = operation.algorithms.find((item) => item.id === report.case.candidate);
   if (!algorithm) fail(filename, `unknown candidate ${report.case.candidate}`);
   const observed = new Set(capabilities);
-  const capabilityResults = new Map(family.document.capabilities.map((capability) => [
-    capability.id,
-    Boolean(evaluate(capability.requires, features, observed)),
-  ]));
+  const capabilityResults = new Map(algorithm.requires.map((capabilityId) => {
+    const capability = family.capabilities.get(capabilityId);
+    return [capabilityId, Boolean(evaluate(capability.requires, features, observed))];
+  }));
   for (const required of algorithm.requires) {
     if (!capabilityResults.get(required)) {
       fail(filename, `candidate ${algorithm.id} does not satisfy capability ${required}`);

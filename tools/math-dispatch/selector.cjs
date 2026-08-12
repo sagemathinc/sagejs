@@ -210,7 +210,8 @@ function selectImplementation(registry, request) {
     throw new Error(`canonical representation policy matched ${representationMatches.length} representations`);
   }
   const capabilityResults = new Map();
-  for (const capability of family.document.capabilities) {
+  const requiredCapabilities = new Set(operation.algorithms.flatMap((algorithm) => algorithm.requires));
+  for (const capability of family.document.capabilities.filter((item) => requiredCapabilities.has(item.id))) {
     capabilityResults.set(capability.id, Boolean(evaluate(capability.requires, features, available)));
   }
   const candidates = operation.algorithms.map((algorithm) => {
