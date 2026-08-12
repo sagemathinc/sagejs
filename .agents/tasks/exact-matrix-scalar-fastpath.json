@@ -1,0 +1,92 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "exact-matrix-scalar-fastpath",
+  "title": "Exact Matrix Scalar Fastpath",
+  "lane": "arithmetic-algebra",
+  "status": "active",
+  "owner": "user",
+  "objective": "Reduce interpreted dense ZZ and QQ scalar entry read/write overhead through semantics-preserving resource fast paths, trusted reduced Rational construction, and amortized mutation cache invalidation, without weakening bounds, coercion, or mutability checks",
+  "base_commit": "ebb140ee7cd0e8bd5471f06eb7616de6bc5dbbef",
+  "claims": [
+    "src/baselib/matrix.py",
+    "src/baselib/exact_rational.py",
+    "src/lib/sagejs/kernels/matrix/dense_rational.py",
+    "test/exact-matrix-scalar-fastpath.cjs",
+    "bench/exact-matrix-scalar-fastpath.cjs"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "source-transparent-native",
+    "fallback": "same-source",
+    "oracles": [
+      "cpython",
+      "javascript",
+      "SageMath dense ZZ and QQ indexing and mutation"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "pnpm test:native"
+  ],
+  "runs": [
+    {
+      "command": "node test/exact-matrix-scalar-fastpath.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.783,
+      "started_at": "2026-08-12T04:53:19.291Z",
+      "commit": "ebb140ee7cd0e8bd5471f06eb7616de6bc5dbbef",
+      "workspace_fingerprint": "80f8cb1eec066d49e0def981042f3301f12006621cdc7adc741cd3453ca49d4a",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 13.05,
+      "started_at": "2026-08-12T04:53:21.704Z",
+      "commit": "ebb140ee7cd0e8bd5471f06eb7616de6bc5dbbef",
+      "workspace_fingerprint": "80f8cb1eec066d49e0def981042f3301f12006621cdc7adc741cd3453ca49d4a",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 12.856,
+      "started_at": "2026-08-12T04:53:35.353Z",
+      "commit": "ebb140ee7cd0e8bd5471f06eb7616de6bc5dbbef",
+      "workspace_fingerprint": "80f8cb1eec066d49e0def981042f3301f12006621cdc7adc741cd3453ca49d4a",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/exact-matrix-scalar-fastpath.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.798,
+      "started_at": "2026-08-12T04:53:52.853Z",
+      "commit": "ebb140ee7cd0e8bd5471f06eb7616de6bc5dbbef",
+      "workspace_fingerprint": "80f8cb1eec066d49e0def981042f3301f12006621cdc7adc741cd3453ca49d4a",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Dense generated ZZ and QQ resources now bypass generic representation predicates for public scalar reads and writes. QQ reads construct Rational values from FLINT's already canonical numerator/denominator pair instead of recomputing a gcd. Successful mutation preserves all coercion, bounds, and mutability checks while reusing the identity-insensitive characteristic/minimal-polynomial maps during cache invalidation. Focused ordinary and native-disabled tests cover negative indices, large skewed entries, hostile values, Rational subclasses, immutable matrices, all public derived-cache families, and absence of uniform-limb materialization. The recorded shared-host benchmark measured 20,000 reads at 344.8 ms for ZZ and 274.2 ms for QQ, plus 10,000 writes at 230.8 ms for ZZ and 267.4 ms for QQ; uncontended comparison runs against the base measured roughly 389 to 256 ms for ZZ reads, 406 to 248 ms for QQ reads, 283 to 224 ms for ZZ writes, and 299 to 259 ms for QQ writes.",
+    "risks": [
+      "The complete pnpm test:native command reaches the repository's pre-existing generated FFLAS ratchet mismatch (the checked test expects 4 functions while the current declaration and generated manifest contain 5); focused dense ZZ/QQ migration, strict Python, architecture, and scalar tests pass.",
+      "test/exact-matrix-bulk-host-views.cjs currently fails its serialization-count assertion on both this lane and the unmodified integration worktree, so it is not a regression introduced here."
+    ],
+    "next_steps": [
+      "Rebase or cherry-pick onto the current integration branch, rebuild production kernels, and rerun the full native suite after its FFLAS function-count ratchet is corrected."
+    ]
+  }
+}

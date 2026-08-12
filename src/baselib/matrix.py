@@ -2498,8 +2498,37 @@ class Matrix(sage.Element):
         return self.nrows()
 
     def _entry(self, row: int, col: int) -> Any:
-        row = _normalize_index(row, self.nrows())
-        col = _normalize_index(col, self.ncols())
+        # Exact generated resources are the common scalar-access path.  Test
+        # their concrete storage directly before the more general matrix
+        # representation predicates: those predicates intentionally answer
+        # broader architectural questions and each performs base-ring and
+        # storage dispatch that is unnecessary once the concrete owner is
+        # already known.
+        rows = self.nrows()
+        columns = self.ncols()
+        row = _normalize_index(row, rows)
+        col = _normalize_index(col, columns)
+        integer_storage = self._integer_storage_cache
+        if isinstance(integer_storage, _FmpzMatrixResourceStorage):
+            return runtime.normalize_integer(
+                _flint_ffi_module().fmpz_matrix_entry(
+                    integer_storage.resource,
+                    row,
+                    col,
+                )
+            )
+        rational_storage = self._rational_storage_cache
+        if isinstance(rational_storage, _FmpqMatrixResourceStorage):
+            parts = _dense_rational_flint_module().flint_dense_rational_matrix_entry(
+                rational_storage.resource,
+                row,
+                col,
+            )
+            # FLINT owns the canonical fmpq representation and the declared
+            # getter returns its already coprime parts with a positive
+            # denominator.  Revalidating them through QQ would compute an
+            # avoidable gcd on every scalar read.
+            return _untyped(sage.Rational)._from_reduced(parts[0], parts[1])
         if self._has_packed_prime_storage():
             if self._has_m4ri_matrix_resource():
                 residue = runtime.number(
@@ -2510,30 +2539,17 @@ class Matrix(sage.Element):
                 if residue not in [0, 1]:
                     raise RuntimeError("M4RI returned an invalid matrix entry")
             else:
-                residue = int(self._prime_residues_cache[row * self.ncols() + col])
+                residue = int(self._prime_residues_cache[row * columns + col])
             return self.base_ring()(residue)
-        if self._has_integer_storage():
-            return runtime.normalize_integer(
-                _flint_ffi_module().fmpz_matrix_entry(
-                    self._integer_resource(), row, col
-                )
-            )
         if self._has_packed_rational_storage():
-            if self._has_fmpq_matrix_resource():
-                parts = (
-                    _dense_rational_flint_module().flint_dense_rational_matrix_entry(
-                        self._rational_resource(), row, col
-                    )
-                )
-                return _untyped(sage.QQ)(parts[0], parts[1])
             kernel = _dense_rational_kernel_module().dense_rational_matrix_get
             numerators, denominators = self._rational_kernel_parts(kernel)
             parts = kernel(
                 numerators,
                 denominators,
-                row * self.ncols() + col,
+                row * columns + col,
             )
-            return _untyped(sage.QQ)(parts[0], parts[1])
+            return _untyped(sage.Rational)._from_reduced(parts[0], parts[1])
         backend = runtime.flint_backend()
         if _is_extension_field_base(self.base_ring()):
             native_value = backend.fqMatrixEntry(
@@ -2566,6 +2582,33 @@ class Matrix(sage.Element):
             raise IndexError("matrix index must have two components")
         row = _normalize_index(index[0], self.nrows())
         col = _normalize_index(index[1], self.ncols())
+        integer_storage = self._integer_storage_cache
+        if isinstance(integer_storage, _FmpzMatrixResourceStorage):
+            exact = sage.ZZ(value)
+            _flint_ffi_module().fmpz_matrix_set_entry(
+                integer_storage.resource,
+                row,
+                col,
+                exact,
+            )
+            integer_storage.entries = runtime.undefined
+            self._integer_entries_cache = runtime.undefined
+            self._clear_cache()
+            return
+        rational_storage = self._rational_storage_cache
+        if isinstance(rational_storage, _FmpqMatrixResourceStorage):
+            rational = sage.QQ(value)
+            _flint_ffi_module().fmpq_matrix_set_entry(
+                rational_storage.resource,
+                row,
+                col,
+                rational._numerator,
+                rational._denominator,
+            )
+            rational_storage.numerators = runtime.undefined
+            rational_storage.denominators = runtime.undefined
+            self._clear_cache()
+            return
         if self._has_packed_prime_storage():
             residue = _prime_residue_values(self.base_ring(), [value])[0]
             if self._has_m4ri_matrix_resource():
@@ -2578,29 +2621,7 @@ class Matrix(sage.Element):
             self._native_handle = runtime.undefined
             self._clear_cache()
             return
-        if self._has_integer_storage():
-            exact = sage.ZZ(value)
-            _flint_ffi_module().fmpz_matrix_set_entry(
-                self._integer_resource(), row, col, exact
-            )
-            self._integer_storage_cache.entries = runtime.undefined
-            self._integer_entries_cache = runtime.undefined
-            self._clear_cache()
-            return
         if self._has_packed_rational_storage():
-            if self._has_fmpq_matrix_resource():
-                rational = sage.QQ(value)
-                _flint_ffi_module().fmpq_matrix_set_entry(
-                    self._rational_resource(),
-                    row,
-                    col,
-                    rational._numerator,
-                    rational._denominator,
-                )
-                self._rational_storage_cache.numerators = runtime.undefined
-                self._rational_storage_cache.denominators = runtime.undefined
-                self._clear_cache()
-                return
             kernel = _dense_rational_kernel_module().dense_rational_matrix_set
             rational = sage.QQ(value)
             required_capacity = max(
@@ -3819,8 +3840,11 @@ class Matrix(sage.Element):
         self._smith_cache = runtime.undefined
         self._right_kernel_cache = runtime.undefined
         self._left_kernel_cache = runtime.undefined
-        self._charpoly_cache = runtime.map()
-        self._minpoly_cache = runtime.map()
+        # Scalar construction may invalidate an already empty matrix thousands
+        # of times. Reuse these two identity-insensitive lookup tables rather
+        # than allocate fresh maps for every successful write.
+        self._charpoly_cache.clear()
+        self._minpoly_cache.clear()
         self._prime_host_values_cache = runtime.undefined
         self._exact_host_values_cache = runtime.undefined
         self._row_vectors_cache = runtime.undefined
