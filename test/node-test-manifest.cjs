@@ -161,6 +161,7 @@ const integration = [
   "test/exact-polynomial-format.cjs",
   "test/polynomial-structural-flint.cjs",
   "test/polynomial-invariants-contract.cjs",
+  "test/packed-prime-polynomial-xgcd.cjs",
   "test/polynomial-extension-resource-contract.cjs",
   "test/arbitrary-prime-polynomial-contract.cjs",
   "test/arbitrary-prime-polynomial-resource-ffi.cjs",

@@ -4,7 +4,7 @@
   "id": "packed-prime-polynomial-xgcd",
   "title": "Packed Prime Polynomial Xgcd",
   "lane": "arithmetic-algebra",
-  "status": "active",
+  "status": "complete",
   "owner": "user",
   "objective": "Add source-transparent packed GF(p)[x] xgcd with Sage-normalized monic gcd and Bezout identities",
   "base_commit": "5f8b8485db6d455c957a7658e09c9a39494a1955",

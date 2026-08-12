@@ -65,6 +65,7 @@
     "src/lib/sagejs/polynomial_algorithms/extension_resource_contract.py",
     "src/lib/sagejs/polynomial_algorithms/arbitrary_prime_public.py",
     "src/lib/sagejs/polynomial_algorithms/invariants.py",
+    "src/lib/sagejs/polynomial_algorithms/packed_prime_xgcd.py",
     "src/lib/sagejs/polynomial_algorithms/public_structural.py",
     "src/lib/sagejs/polynomial_algorithms/structural_calculus.py",
     "src/lib/sagejs/polynomial_algorithms/gf2_packed_core.py",
