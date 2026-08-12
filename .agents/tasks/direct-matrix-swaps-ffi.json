@@ -4,7 +4,7 @@
   "id": "direct-matrix-swaps-ffi",
   "title": "Direct matrix swaps through canonical storage",
   "lane": "integration",
-  "status": "review",
+  "status": "complete",
   "owner": "user",
   "objective": "Replace whole-matrix-copy row and column swaps with checked O(n)/O(m) direct mutation for canonical ZZ, QQ, packed small GF(p), and M4RI GF(2) matrices; preserve Sage semantics and prove backend selection and scaling.",
   "base_commit": "29913192fbb075b55c7b7c14b49ed1ff7849f036",
