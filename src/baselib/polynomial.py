@@ -2689,6 +2689,8 @@ class PolynomialRingParent(sage.Parent):
 
     def __call__(self, value: Any = 0) -> PolynomialElement:
         if isinstance(value, PolynomialElement):
+            if value._parent is not self:
+                return self._from_coefficients(value.coefficients())
             return self._coercePolynomial(value)
         if isinstance(value, (list, tuple)):
             return self._from_coefficients(list(value))

@@ -1,0 +1,44 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "tutorial-polynomial-conversion",
+  "title": "Explicit univariate polynomial conversion",
+  "lane": "arithmetic-algebra",
+  "status": "active",
+  "owner": "user",
+  "objective": "Make explicit conversion between compatible univariate polynomial rings transfer coefficients by generator position while preserving canonical-coercion rejection between distinct variables",
+  "base_commit": "804b2c7005fa7ef886fad547c9848385a0f4317a",
+  "claims": [
+    "src/baselib/polynomial.py",
+    "test/polynomial-ring-conversion.cjs"
+  ],
+  "dependencies": [],
+  "references": [
+    "/home/user/upstream/sage/src/sage/rings/polynomial/polynomial_ring.py"
+  ],
+  "architecture": {
+    "strategy": "dynamic-python",
+    "fallback": "same-source",
+    "oracles": [
+      "Sage tutorial tour_polynomial.rst lines 164-172",
+      "Upstream Sage PolynomialRing_generic element-constructor and coercion semantics"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "pnpm test:native"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "",
+    "risks": [],
+    "next_steps": []
+  }
+}
