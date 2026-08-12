@@ -385,6 +385,7 @@ function publicResource(state, identity, backend) {
 test("resource and read-only UInt64Buffer aggregates compose safely", async () => {
   mkdirSync(join(root, "build"), { recursive: true });
   const temporary = mkdtempSync(join(root, "build", "ffi-resource-aggregate-"));
+  const previousLoadModule = globalThis.__sagejs_load_module__;
   const previousRequire = globalThis.__sagejs_runtime_require__;
   try {
     writeFileSync(
@@ -443,16 +444,29 @@ test("resource and read-only UInt64Buffer aggregates compose safely", async () =
       assert.equal(packageName, "sagejs-ffi-resource-aggregate-witness");
       return backend;
     };
+    globalThis.__sagejs_load_module__ = (moduleName) => {
+      assert.equal(moduleName, "sagejs.ffi.witness");
+      return {
+        FmpzMatrix(token) {
+          return { _ffi_borrow: () => token };
+        },
+      };
+    };
     const compiled = await compileKernel({ sourcePath, cacheRoot: temporary });
     const module = require(compiled.modulePath);
     const addon = require(compiled.addonPath);
     const identity = `resource:${declaration.identity}:fmpz_matrix`;
 
-    const nativeHandle = module.ffiWitnessMatrixCreate(4n, 3n);
-    const nativeMatrix = publicResource(nativeHandle, identity, addon);
-    const dynamicState = module.ffiWitnessMatrixCreate.javascript(4n, 3n);
+    const nativeMatrix = module.ffiWitnessMatrixCreate(4n, 3n);
+    const nativeState = nativeMatrix._ffi_borrow()[
+      globalThis.__sagejs_ffi_resource_tag__
+    ];
+    const nativeHandle = nativeState.handle;
+    const dynamicMatrix = module.ffiWitnessMatrixCreate.javascript(4n, 3n);
+    const dynamicState = dynamicMatrix._ffi_borrow()[
+      globalThis.__sagejs_ffi_resource_tag__
+    ];
     assert.equal(dynamicState.closed, false);
-    const dynamicMatrix = publicResource(dynamicState, identity, backend);
     const backing = BigUint64Array.from([99n, 3n, 1n, 88n]);
     const indices = backing.subarray(1, 3);
     const before = Array.from(backing);
@@ -469,19 +483,20 @@ test("resource and read-only UInt64Buffer aggregates compose safely", async () =
     );
     assert.deepEqual(Array.from(backing), before);
 
-    const nativeSelectedHandle = module.ffiWitnessMatrixSelectRows(
+    const nativeSelected = module.ffiWitnessMatrixSelectRows(
       nativeMatrix, indices, 2n,
     );
-    const nativeSelected = publicResource(
-      nativeSelectedHandle, identity, addon,
-    );
-    const dynamicSelectedState = module.ffiWitnessMatrixSelectRows.javascript(
+    const nativeSelectedState = nativeSelected._ffi_borrow()[
+      globalThis.__sagejs_ffi_resource_tag__
+    ];
+    const nativeSelectedHandle = nativeSelectedState.handle;
+    const dynamicSelected = module.ffiWitnessMatrixSelectRows.javascript(
       dynamicMatrix, indices, 2n,
     );
+    const dynamicSelectedState = dynamicSelected._ffi_borrow()[
+      globalThis.__sagejs_ffi_resource_tag__
+    ];
     assert.equal(dynamicSelectedState.closed, false);
-    const dynamicSelected = publicResource(
-      dynamicSelectedState, identity, backend,
-    );
     const selectedRows = BigUint64Array.from([0n, 1n]);
     assert.equal(
       module.ffiWitnessMatrixIndexChecksum(nativeSelected, selectedRows, 2n),
@@ -543,6 +558,11 @@ test("resource and read-only UInt64Buffer aggregates compose safely", async () =
       /resource is closed/,
     );
   } finally {
+    if (previousLoadModule === undefined) {
+      delete globalThis.__sagejs_load_module__;
+    } else {
+      globalThis.__sagejs_load_module__ = previousLoadModule;
+    }
     if (previousRequire === undefined) {
       delete globalThis.__sagejs_runtime_require__;
     } else {
