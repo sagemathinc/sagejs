@@ -29,6 +29,11 @@
  * polynomial resources retain it independently, so closing the public context
  * wrapper cannot invalidate a surviving dependent resource. Generated owners
  * still clear each resource exactly once and expose no foreign pointer.
+ *
+ * The shared reference count and FLINT values are thread-affine. Generated
+ * declarations therefore mark every operation `thread_safe=False`; a host
+ * must serialize calls, borrows, explicit close, and finalization for one
+ * context family on its owning execution thread.
  */
 
 typedef struct
@@ -258,17 +263,10 @@ static inline size_t sagejs_fq_element_allocated_bytes(
         return 0;
     const nmod_poly_struct *value =
         (const nmod_poly_struct *) element->value->fq_nmod;
-    /*
-     * Generated wrappers account each live resource independently. Include
-     * the shared state in each dependent's conservative estimate so closing
-     * the public context cannot hide native memory from GC pressure.
-     */
     return sagejs_retained_size_add(
-        sagejs_fq_context_state_allocated_bytes(element->context),
-        sagejs_retained_size_add(
         sizeof(sagejs_fq_element_struct),
         sagejs_retained_size_multiply(
-            (size_t) value->alloc, sizeof(ulong))));
+            (size_t) value->alloc, sizeof(ulong)));
 }
 
 static inline int sagejs_fq_element_copy(
@@ -419,13 +417,10 @@ static inline size_t sagejs_fq_polynomial_allocated_bytes(
     if (polynomial->context == NULL)
         return 0;
     const fq_nmod_poly_struct *value = polynomial->value->fq_nmod;
-    /* See the element-accounting comment above for the deliberate overcount. */
     size_t retained = sagejs_retained_size_add(
-        sagejs_fq_context_state_allocated_bytes(polynomial->context),
-        sagejs_retained_size_add(
         sizeof(sagejs_fq_polynomial_struct),
         sagejs_retained_size_multiply(
-            (size_t) value->alloc, sizeof(fq_nmod_struct))));
+            (size_t) value->alloc, sizeof(fq_nmod_struct)));
     for (slong index = 0; index < value->alloc; index++)
         retained = sagejs_retained_size_add(retained,
             sagejs_retained_size_multiply(
