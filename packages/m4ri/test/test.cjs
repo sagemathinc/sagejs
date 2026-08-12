@@ -163,6 +163,74 @@ test("generated M4RI resources cover checked structural operations", {
   }
 });
 
+test("generated M4RI row selection preserves resources and shapes", {
+  skip: !m4ri.ffiM4riAvailable(),
+}, () => {
+  const sourceRows = [
+    [1, 0, 0],
+    [0, 1, 0],
+    [0, 0, 1],
+    [1, 1, 1],
+  ];
+  const source = fromRows(sourceRows);
+  const selected = m4ri.ffiM4riMatrixSelectRows(
+    source,
+    new BigUint64Array([3n, 1n, 3n]),
+    3n,
+  );
+  const empty = m4ri.ffiM4riMatrixSelectRows(
+    source,
+    new BigUint64Array(0),
+    0n,
+  );
+  const zeroColumnsSource = m4ri.ffiM4riMatrixCreate(3n, 0n);
+  const zeroColumns = m4ri.ffiM4riMatrixSelectRows(
+    zeroColumnsSource,
+    new BigUint64Array([2n, 0n]),
+    2n,
+  );
+
+  assert.deepEqual(toRows(source), sourceRows);
+  assert.deepEqual(toRows(selected), [sourceRows[3], sourceRows[1], sourceRows[3]]);
+  assert.deepEqual(
+    [m4ri.ffiM4riMatrixNrows(empty), m4ri.ffiM4riMatrixNcols(empty)],
+    [0n, 3n],
+  );
+  assert.deepEqual(
+    [
+      m4ri.ffiM4riMatrixNrows(zeroColumns),
+      m4ri.ffiM4riMatrixNcols(zeroColumns),
+    ],
+    [2n, 0n],
+  );
+  assert.throws(
+    () => m4ri.ffiM4riMatrixSelectRows(
+      source,
+      new BigUint64Array([4n]),
+      1n,
+    ),
+    /row index is out of range/,
+  );
+  assert.throws(
+    () => m4ri.ffiM4riMatrixSelectRows(
+      source,
+      new BigUint64Array([0n]),
+      2n,
+    ),
+    /packed slice length does not match/,
+  );
+
+  m4ri.ffiM4riMatrixSetEntry(selected, 0n, 0n, 0n);
+  assert.equal(m4ri.ffiM4riMatrixEntryCode(source, 3n, 0n), 1n);
+  assert.equal(m4ri.ffiM4riMatrixEntryCode(selected, 2n, 0n), 1n);
+  close(source, m4ri.ffiM4riMatrixClose);
+  assert.deepEqual(toRows(selected), [[0, 1, 1], [0, 1, 0], [1, 1, 1]]);
+
+  for (const resource of [zeroColumns, zeroColumnsSource, empty, selected]) {
+    close(resource, m4ri.ffiM4riMatrixClose);
+  }
+});
+
 test("RREF, determinant, inverse, solve, and right kernel are differential", {
   skip: !m4ri.ffiM4riAvailable(),
 }, () => {
@@ -439,7 +507,8 @@ test("sanitizers exercise façade allocation and destruction", (t) => {
 #include "sagejs/m4ri_matrix_ffi.h"
 int main(void) {
   for (uint64_t iteration = 0; iteration < 200; ++iteration) {
-    sagejs_m4ri_matrix_t a, b, c, r, k;
+    sagejs_m4ri_matrix_t a, b, c, r, k, selected;
+    const uint64_t repeated_rows[3] = {0, 0, 0};
     if (!sagejs_m4ri_matrix_init(a, iteration % 17, iteration % 71)) return 1;
     if (!a->rank_is_known || a->known_rank != 0) return 2;
     if (!sagejs_m4ri_matrix_init_set(b, a)) return 3;
@@ -454,6 +523,12 @@ int main(void) {
       (void) sagejs_m4ri_matrix_rank(r);
     }
     if (!sagejs_m4ri_matrix_right_kernel(k, r)) return 10;
+    const uint64_t selection_count = a->value->nrows == 0 ? 0 : 3;
+    if (!sagejs_m4ri_matrix_select_rows(
+            selected, a, repeated_rows, selection_count)) return 11;
+    if (selected->value->nrows != (rci_t) selection_count ||
+        selected->value->ncols != a->value->ncols) return 12;
+    sagejs_m4ri_matrix_clear(selected);
     sagejs_m4ri_matrix_clear(k);
     sagejs_m4ri_matrix_clear(r);
     sagejs_m4ri_matrix_clear(c);

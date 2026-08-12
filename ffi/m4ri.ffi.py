@@ -9,6 +9,7 @@ from sagejs.ffi.declare import (
     copied_bytes,
     in_,
     out,
+    packed_slice,
 )
 
 
@@ -215,6 +216,47 @@ def matrix_entry_code(matrix: M4riMatrix, row: uint64, column: uint64) -> uint64
     wasm=True,
 )
 def matrix_copy(source: M4riMatrix) -> M4riMatrix: ...
+
+
+@m4ri.function(
+    dynamic="ffiM4riMatrixSelectRows",
+    symbol="sagejs_m4ri_matrix_select_rows",
+    returns=int,
+    abi=[
+        out("result", sagejs_m4ri_matrix_t),
+        in_("source", sagejs_m4ri_matrix_t),
+        in_(
+            "selected_rows",
+            uint64_t_ptr,
+            packed_slice(
+                data="indices",
+                length="count",
+                access="read",
+                aliasing="allowed",
+                transactional=False,
+            ),
+        ),
+        in_("count", uint64_t),
+    ],
+    effects=Effects(pure=False, allocates=True, raises=[IndexError]),
+    result=Status(
+        1,
+        exception=IndexError,
+        message="M4RI matrix row index is out of range",
+    ),
+    wasm=False,
+)
+def matrix_select_rows(
+    source: M4riMatrix,
+    indices: UInt64Buffer,
+    count: uint64,
+) -> M4riMatrix:
+    """Copy selected rows in order, preserving repetitions.
+
+    Wasm uses the existing packed `GF(2)` selection fallback until generated
+    resource-result calls support borrowed packed slices.
+    """
+    ...
 
 
 @m4ri.function(
