@@ -59,7 +59,10 @@ The full machine-readable records are:
 The production FLINT kernels were Mach-O arm64 bundles linked to `libSystem`
 and `libc++`. The generated FFLAS-FFPACK kernel was also a Mach-O arm64 bundle
 and used Apple's Accelerate framework. Thus these measurements do not pass
-through Rosetta.
+through Rosetta. The companion JSON persists the exact pnpm, clang, and FLINT
+versions plus `file` identity and `otool` linkage for representative generated
+FLINT and FFLAS-FFPACK artifacts; `--require-macos --check` validates that
+evidence rather than relying on this prose.
 
 ## Timing definitions
 
@@ -78,8 +81,8 @@ separates mathematical first-use cost from process startup. The subprocess
 wall time remains in the raw JSON as `process_ms`.
 
 Sage.js serialization uses SagePack, whereas SageMath `dumps` uses Python
-serialization. Serialization timings are useful runtime-local witnesses but
-their bytes and absolute times are not claimed to represent the same format.
+serialization. Serialization timings are runtime-local witnesses only: their
+bytes and timings are not compared, and their raw comparison ratios are null.
 
 ## Dense matrices
 
@@ -140,10 +143,12 @@ SageMath even though the resulting operations are inexpensive.
 
 1. **General word-prime matrix representation is the P1 gap.** Deterministic
    construction is 15.38 times slower than SageMath, `.str()` is 13.10 times
-   slower, and SagePack dump/load are about 3.9 times slower. The same public
-   representation cannot currently perform `swap_rows` or `swap_columns`.
-   This is a boundary/storage problem around an exceptionally fast algorithm
-   backend, not an argument against FFLAS-FFPACK.
+   slower, and the runtime-local SagePack witness takes 1.37 seconds to dump
+   and 0.47 seconds to load this 300 by 300 case. The same public representation
+   cannot currently perform `swap_rows` or `swap_columns`. This is a boundary/
+   storage problem around an exceptionally fast algorithm backend, not an
+   argument against FFLAS-FFPACK. SagePack is not compared with SageMath's
+   different Python serialization format.
 2. **Word-prime backend observability is incomplete.** Successful random,
    arithmetic, transpose, rank, RREF, determinant, characteristic polynomial,
    solve, and kernel cases emitted no native route under `SAGEJS_NATIVE_TRACE`.

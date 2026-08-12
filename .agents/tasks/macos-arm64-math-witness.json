@@ -4,7 +4,7 @@
   "id": "macos-arm64-math-witness",
   "title": "macOS arm64 mathematical performance witness",
   "lane": "arithmetic-algebra",
-  "status": "review",
+  "status": "active",
   "owner": "user",
   "objective": "Establish a reproducible macOS arm64 compatibility and performance witness for representative dense exact and finite-field matrices and univariate polynomials, recording cold and warm Sage.js timings, SageMath comparison when available, exact host/toolchain/commit metadata, and platform-specific regressions without changing mathematical implementations",
   "base_commit": "7b873685f617fc0046fb9673838ff2f6588ac933",
@@ -12,7 +12,8 @@
     "bench/macos-arm64-math-witness.cjs",
     "bench/MACOS-ARM64-MATH-WITNESS.md",
     "bench/results/macos-arm64-m1-max-dense-matrix-2026-08-12.json",
-    "bench/results/macos-arm64-m1-max-format-polynomial-2026-08-12.json"
+    "bench/results/macos-arm64-m1-max-format-polynomial-2026-08-12.json",
+    "test/macos-arm64-math-witness.cjs"
   ],
   "dependencies": [],
   "references": [
@@ -35,6 +36,7 @@
   },
   "validation": [
     "node --check bench/macos-arm64-math-witness.cjs",
+    "node --test test/macos-arm64-math-witness.cjs",
     "node --test test/dense-matrix-public-audit.cjs",
     "pnpm test:baselib:strict",
     "pnpm test:native",
