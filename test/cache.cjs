@@ -411,6 +411,37 @@ test("sagejs cache prune is a dry run by default", (t) => {
   assert.equal(require("node:fs").readdirSync(root).length, 6);
 });
 
+test("sagejs cache status reports quiet automatic cleanup state", (t) => {
+  const { base, root } = temporaryRoot(t);
+  writeFileSync(join(root, ".sagejs-auto-cleanup.json"), JSON.stringify({
+    schema: "sagejs.module-cache-auto-cleanup/v1",
+    last_attempt_ms: 1_000,
+    next_attempt_ms: 2_000,
+    last_status: "deferred",
+    last_reclaimed_bytes: 4096,
+    last_removed_versions: 2,
+  }));
+  const result = spawnSync(
+    process.execPath,
+    [join(__dirname, "..", "bin", "sagejs"), "cache", "status", "--json"],
+    {
+      cwd: join(__dirname, ".."),
+      encoding: "utf8",
+      env: {
+        ...process.env,
+        HOME: base,
+        SAGEJS_USE_SOURCE: "1",
+        XDG_CACHE_HOME: base,
+      },
+    },
+  );
+  assert.equal(result.status, 0, result.stderr);
+  const status = JSON.parse(result.stdout);
+  assert.equal(status.root, root);
+  assert.equal(status.automatic.last_status, "deferred");
+  assert.equal(status.automatic.last_reclaimed_bytes, 4096);
+});
+
 test("cache help distinguishes hard retention from the age grace", () => {
   const result = spawnSync(
     process.execPath,

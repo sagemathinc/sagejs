@@ -648,7 +648,7 @@ Install the Jupyter kernelspec under the given prefix.
 
 create_group(
   "cache",
-  "<prune>",
+  "<status|prune>",
   function () {
     /*
 Inspect or prune disposable compiler-versioned module caches. `prune` is a
@@ -657,11 +657,13 @@ retention policy. The current compiler, newest retained versions, pinned
 versions, and versions leased by running Sage.js processes are always
 preserved. Recent obsolete versions are protected from age-based expiry, but
 are selected when older obsolete versions cannot meet the size target.
+`status` reports the last quiet automatic-cleanup result and its next retry.
 */
   },
   function () {
     /*
 Examples:
+  sagejs cache status
   sagejs cache prune
   sagejs cache prune --apply
   sagejs cache prune --max-size 4GiB --max-age 60 --apply

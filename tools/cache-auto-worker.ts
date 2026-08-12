@@ -1,10 +1,11 @@
 import { randomBytes } from "node:crypto";
 import {
-  closeSync,
   existsSync,
   lstatSync,
-  openSync,
+  mkdirSync,
   readFileSync,
+  renameSync,
+  rmdirSync,
   unlinkSync,
   writeFileSync,
 } from "node:fs";
@@ -23,7 +24,9 @@ import {
   AUTOMATIC_CACHE_STATE_FILENAME,
   AUTOMATIC_CACHE_STATE_SCHEMA,
   DEFAULT_AUTOMATIC_CACHE_INTERVAL_HOURS,
+  DEFAULT_AUTOMATIC_CACHE_RETRY_HOURS,
 } from "./cache-auto";
+import { atomicWriteCacheFileSync } from "./cache-file";
 
 /*
  * Automatic policy overrides:
@@ -33,9 +36,12 @@ import {
  *   configure the same retention policy as the manual command.
  * - SAGEJS_MODULE_CACHE_AUTO_CLEANUP_{INTERVAL_HOURS,MAX_BYTES,MAX_VERSIONS}
  *   bound how often and how much one detached pass may remove.
+ * - SAGEJS_MODULE_CACHE_AUTO_CLEANUP_RETRY_HOURS schedules unfinished passes.
  */
 
 export const AUTOMATIC_CACHE_LOCK_FILENAME = ".sagejs-auto-cleanup.lock";
+export const AUTOMATIC_CACHE_LOCK_OWNER_FILENAME = "owner";
+export const AUTOMATIC_CACHE_LOCK_MIGRATION_SUFFIX = ".migration";
 export const DEFAULT_AUTOMATIC_CACHE_LOCK_STALE_MS = 2 * 60 * 60 * 1_000;
 export const DEFAULT_AUTOMATIC_CACHE_MAX_BYTES_PER_RUN = 1024 ** 3;
 export const DEFAULT_AUTOMATIC_CACHE_MAX_VERSIONS_PER_RUN = 128;
@@ -45,9 +51,11 @@ const VERSION_PATTERN = /^(?:[a-f0-9]{40}|[a-f0-9]{64})$/;
 interface AutomaticCacheState {
   schema: string;
   last_attempt_ms: number;
+  next_attempt_ms?: number;
   last_error?: string;
   last_reclaimed_bytes?: number;
   last_removed_versions?: number;
+  last_status?: "applied" | "deferred" | "error" | "running";
 }
 
 export interface AutomaticModuleCacheCleanupOptions {
@@ -69,6 +77,7 @@ interface AutomaticPolicy {
   maxBytesPerRun: number;
   maxVersionsPerRun: number;
   policy: CachePolicy;
+  retryMs: number;
 }
 
 function enabled(value: string | undefined): boolean {
@@ -134,6 +143,11 @@ function configuredPolicy(environment: NodeJS.ProcessEnv): AutomaticPolicy {
       true,
     ),
     policy,
+    retryMs: finiteNumber(
+      "SAGEJS_MODULE_CACHE_AUTO_CLEANUP_RETRY_HOURS",
+      environment.SAGEJS_MODULE_CACHE_AUTO_CLEANUP_RETRY_HOURS,
+      DEFAULT_AUTOMATIC_CACHE_RETRY_HOURS,
+    ) * 60 * 60 * 1_000,
   };
 }
 
@@ -147,7 +161,9 @@ function readState(filename: string): AutomaticCacheState | undefined {
   if (
     state.schema !== AUTOMATIC_CACHE_STATE_SCHEMA ||
     !Number.isFinite(state.last_attempt_ms) ||
-    state.last_attempt_ms < 0
+    state.last_attempt_ms < 0 ||
+    (state.next_attempt_ms !== undefined &&
+      (!Number.isFinite(state.next_attempt_ms) || state.next_attempt_ms < 0))
   ) throw new Error("automatic cache cleanup refused malformed state marker");
   return state;
 }
@@ -159,7 +175,9 @@ function writeState(filename: string, state: AutomaticCacheState): void {
       throw new Error("automatic cache cleanup refused unsafe state marker");
     }
   }
-  writeFileSync(filename, `${JSON.stringify(state)}\n`, { mode: 0o600 });
+  // Publish beside the marker and rename into place, so a concurrent symlink
+  // replacement cannot redirect this advisory write outside the cache root.
+  atomicWriteCacheFileSync(filename, `${JSON.stringify(state)}\n`);
 }
 
 function acquireLock(
@@ -168,34 +186,113 @@ function acquireLock(
   staleMs: number,
 ): (() => void) | undefined {
   const token = randomBytes(12).toString("hex");
-  for (let attempt = 0; attempt < 2; attempt += 1) {
+  const ownerFilename = join(filename, AUTOMATIC_CACHE_LOCK_OWNER_FILENAME);
+  const migration = `${filename}${AUTOMATIC_CACHE_LOCK_MIGRATION_SUFFIX}`;
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    if (existsSync(migration)) {
+      const migrationMetadata = lstatSync(migration);
+      if (!migrationMetadata.isDirectory() || migrationMetadata.isSymbolicLink()) {
+        throw new Error("automatic cache cleanup refused unsafe lock migration marker");
+      }
+      return undefined;
+    }
+    let created = false;
     try {
-      const descriptor = openSync(filename, "wx", 0o600);
+      // mkdir is the portable compare-and-set operation: exactly one worker
+      // creates the canonical lock directory and every other contender sees it.
+      mkdirSync(filename, { mode: 0o700 });
+      created = true;
       try {
-        writeFileSync(descriptor, `${token}\n`);
-      } finally {
-        closeSync(descriptor);
+        writeFileSync(ownerFilename, `${token}\n`, { flag: "wx", mode: 0o600 });
+      } catch (error) {
+        try {
+          rmdirSync(filename);
+        } catch (_cleanupError) {}
+        throw error;
       }
       return () => {
         try {
           const metadata = lstatSync(filename);
-          if (!metadata.isFile() || metadata.isSymbolicLink()) return;
-          if (readFileSync(filename, "utf8").trim() === token) unlinkSync(filename);
+          if (!metadata.isDirectory() || metadata.isSymbolicLink()) return;
+          if (readFileSync(ownerFilename, "utf8").trim() !== token) return;
+          unlinkSync(ownerFilename);
+          rmdirSync(filename);
         } catch (_error) {}
       };
     } catch (error) {
+      if (created) throw error;
       if ((error as NodeJS.ErrnoException).code !== "EEXIST") throw error;
       const metadata = lstatSync(filename);
-      if (!metadata.isFile() || metadata.isSymbolicLink()) {
+      if (metadata.isSymbolicLink()) {
         throw new Error("automatic cache cleanup refused unsafe lock marker");
       }
-      if (now - metadata.mtimeMs <= staleMs) return undefined;
-      try {
-        unlinkSync(filename);
-      } catch (unlinkError) {
-        if ((unlinkError as NodeJS.ErrnoException).code !== "ENOENT") {
-          throw unlinkError;
+      if (metadata.isFile()) {
+        // v1 used a regular file. Serialize migration against all new workers,
+        // preserve a fresh old worker, and retire only a stale file whose
+        // identity and contents still match after atomic quarantine. Old v1
+        // workers do not heartbeat, so their stale timeout is necessarily the
+        // same explicit "paused beyond staleMs means dead" lease assumption.
+        try {
+          mkdirSync(migration, { mode: 0o700 });
+        } catch (migrationError) {
+          if ((migrationError as NodeJS.ErrnoException).code === "EEXIST") {
+            return undefined;
+          }
+          throw migrationError;
         }
+        try {
+          if (!existsSync(filename)) continue;
+          const legacy = lstatSync(filename);
+          if (legacy.isSymbolicLink() || !legacy.isFile()) return undefined;
+          if (now - legacy.mtimeMs <= staleMs) return undefined;
+          const contents = readFileSync(filename, "utf8");
+          const quarantine =
+            `${filename}.legacy-${process.pid}-${randomBytes(12).toString("hex")}`;
+          renameSync(filename, quarantine);
+          const claimed = lstatSync(quarantine);
+          if (
+            !claimed.isFile() ||
+            claimed.isSymbolicLink() ||
+            claimed.dev !== legacy.dev ||
+            (legacy.ino !== 0 && claimed.ino !== legacy.ino) ||
+            readFileSync(quarantine, "utf8") !== contents
+          ) {
+            if (!existsSync(filename)) renameSync(quarantine, filename);
+            return undefined;
+          }
+          unlinkSync(quarantine);
+          continue;
+        } finally {
+          try {
+            rmdirSync(migration);
+          } catch (_error) {}
+        }
+      }
+      if (!metadata.isDirectory()) {
+        throw new Error("automatic cache cleanup refused unsafe lock marker");
+      }
+      let owner;
+      try {
+        const ownerMetadata = lstatSync(ownerFilename);
+        if (!ownerMetadata.isFile() || ownerMetadata.isSymbolicLink()) {
+          throw new Error("automatic cache cleanup refused unsafe lock owner");
+        }
+        owner = readFileSync(ownerFilename, "utf8").trim();
+        if (!owner) throw new Error("automatic cache cleanup refused empty lock owner");
+        if (now - ownerMetadata.mtimeMs <= staleMs) return undefined;
+        // Removing the token then the now-empty directory is an identity-safe
+        // stale takeover. No replacement can occupy the canonical directory
+        // until rmdir succeeds; afterwards every contender races the mkdir
+        // above and exactly one wins. A paused owner beyond staleMs is the
+        // explicit advisory-lease assumption of automatic maintenance.
+        if (readFileSync(ownerFilename, "utf8").trim() !== owner) return undefined;
+        unlinkSync(ownerFilename);
+        rmdirSync(filename);
+      } catch (takeoverError) {
+        if (["ENOENT", "ENOTEMPTY", "EEXIST"].includes(
+          (takeoverError as NodeJS.ErrnoException).code ?? "",
+        )) continue;
+        throw takeoverError;
       }
     }
   }
@@ -230,12 +327,16 @@ export function runAutomaticModuleCacheCleanup(
 
   try {
     const state = readState(stateFilename);
-    if (state && now - state.last_attempt_ms < configured.intervalMs) {
+    const due = state?.next_attempt_ms ??
+      (state ? state.last_attempt_ms + configured.intervalMs : 0);
+    if (state && now < due) {
       return { status: "recent" };
     }
     writeState(stateFilename, {
       schema: AUTOMATIC_CACHE_STATE_SCHEMA,
       last_attempt_ms: now,
+      next_attempt_ms: now + Math.min(configured.retryMs, configured.intervalMs),
+      last_status: "running",
     });
     try {
       const report = pruneModuleCache({
@@ -243,6 +344,7 @@ export function runAutomaticModuleCacheCleanup(
         applyLimits: {
           maxBytes: configured.maxBytesPerRun,
           maxVersions: configured.maxVersionsPerRun,
+          allowOversizedFirst: true,
         },
         currentVersions: [options.currentVersion],
         expectedRoot: options.expectedRoot ?? root,
@@ -250,18 +352,27 @@ export function runAutomaticModuleCacheCleanup(
         policy: configured.policy,
         root,
       });
+      const deferred = (report.deferredVersions?.length ?? 0) > 0;
       writeState(stateFilename, {
         schema: AUTOMATIC_CACHE_STATE_SCHEMA,
         last_attempt_ms: now,
+        next_attempt_ms: now + (
+          deferred
+            ? Math.min(configured.retryMs, configured.intervalMs)
+            : configured.intervalMs
+        ),
         last_reclaimed_bytes: report.reclaimedBytes,
         last_removed_versions: report.removedVersions.length,
+        last_status: deferred ? "deferred" : "applied",
       });
       return { report, status: "applied" };
     } catch (error) {
       writeState(stateFilename, {
         schema: AUTOMATIC_CACHE_STATE_SCHEMA,
         last_attempt_ms: now,
+        next_attempt_ms: now + Math.min(configured.retryMs, configured.intervalMs),
         last_error: error instanceof Error ? error.message : String(error),
+        last_status: "error",
       });
       throw error;
     }

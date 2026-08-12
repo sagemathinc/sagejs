@@ -15,16 +15,18 @@ const {
 } = require("node:fs");
 const { tmpdir } = require("node:os");
 const { join } = require("node:path");
-const { spawnSync } = require("node:child_process");
+const { spawn, spawnSync } = require("node:child_process");
 const { test } = require("node:test");
 
 const {
   AUTOMATIC_CACHE_STATE_FILENAME,
   automaticModuleCacheCleanupPlan,
+  readAutomaticModuleCacheCleanupState,
   scheduleAutomaticModuleCacheCleanup,
 } = require("../dist/tools/cache-auto.js");
 const {
   AUTOMATIC_CACHE_LOCK_FILENAME,
+  AUTOMATIC_CACHE_LOCK_OWNER_FILENAME,
   runAutomaticModuleCacheCleanup,
 } = require("../dist/tools/cache-auto-worker.js");
 const {
@@ -256,7 +258,9 @@ test("automatic cleanup honors a live maintenance lock", (t) => {
   const expired = versionName("6");
   addVersion(root, current, { ageDays: 100 });
   addVersion(root, expired, { ageDays: 100 });
-  writeFileSync(join(root, AUTOMATIC_CACHE_LOCK_FILENAME), "another-worker\n");
+  const lock = join(root, AUTOMATIC_CACHE_LOCK_FILENAME);
+  mkdirSync(lock);
+  writeFileSync(join(lock, AUTOMATIC_CACHE_LOCK_OWNER_FILENAME), "another-worker\n");
   const result = runAutomaticModuleCacheCleanup({
     currentVersion: current,
     environment: automaticEnvironment(base),
@@ -267,7 +271,92 @@ test("automatic cleanup honors a live maintenance lock", (t) => {
   assert.equal(existsSync(join(root, expired)), true);
 });
 
-test("automatic cleanup never exceeds its byte budget", (t) => {
+test("legacy regular-file locks migrate only after becoming stale", (t) => {
+  const { base, root } = temporaryRoot(t);
+  const current = versionName("5");
+  const firstExpired = versionName("6");
+  addVersion(root, current, { ageDays: 100 });
+  addVersion(root, firstExpired, { ageDays: 100 });
+  const lock = join(root, AUTOMATIC_CACHE_LOCK_FILENAME);
+  writeFileSync(lock, "legacy-worker\n");
+  const options = {
+    currentVersion: current,
+    environment: automaticEnvironment(base),
+    expectedRoot: root,
+    lockStaleMs: 60_000,
+    root,
+  };
+  assert.equal(runAutomaticModuleCacheCleanup(options).status, "locked");
+  assert.equal(readFileSync(lock, "utf8"), "legacy-worker\n");
+  assert.equal(existsSync(join(root, firstExpired)), true);
+
+  const old = new Date(Date.now() - 2 * 60 * 60 * 1_000);
+  utimesSync(lock, old, old);
+  const migrated = runAutomaticModuleCacheCleanup(options);
+  assert.equal(migrated.status, "applied");
+  assert.deepEqual(migrated.report.removedVersions, [firstExpired]);
+  assert.equal(existsSync(lock), false);
+  assert.deepEqual(
+    readdirSync(root).filter((name) => name.includes(".legacy-")),
+    [],
+  );
+});
+
+test("concurrent stale-lock takeover admits at most one cleanup worker", async (t) => {
+  const { base, root } = temporaryRoot(t);
+  const current = versionName("5");
+  const expired = versionName("6");
+  addVersion(root, current, { ageDays: 100 });
+  addVersion(root, expired, { ageDays: 100 });
+  const lock = join(root, AUTOMATIC_CACHE_LOCK_FILENAME);
+  mkdirSync(lock);
+  const owner = join(lock, AUTOMATIC_CACHE_LOCK_OWNER_FILENAME);
+  writeFileSync(owner, "stale-owner\n");
+  const old = new Date(Date.now() - 3 * 60 * 60 * 1_000);
+  utimesSync(owner, old, old);
+  const helper = join(__dirname, "..", "dist", "tools", "cache-auto-worker.js");
+  const source = `
+    const { runAutomaticModuleCacheCleanup } = require(process.argv[1]);
+    const options = JSON.parse(process.argv[2]);
+    process.on("message", () => {
+      const result = runAutomaticModuleCacheCleanup(options);
+      process.send(result.status);
+      process.exit(0);
+    });
+  `;
+  const options = {
+    currentVersion: current,
+    environment: automaticEnvironment(base),
+    expectedRoot: root,
+    lockStaleMs: 1,
+    root,
+  };
+  const children = Array.from(
+    { length: 2 },
+    () => spawn(
+      process.execPath,
+      ["-e", source, helper, JSON.stringify(options)],
+      { stdio: ["ignore", "ignore", "pipe", "ipc"] },
+    ),
+  );
+  t.after(() => children.forEach((child) => {
+    if (child.exitCode === null) child.kill();
+  }));
+  const statuses = children.map((child) => new Promise((resolve, reject) => {
+    child.once("error", reject);
+    child.once("message", resolve);
+  }));
+  children.forEach((child) => child.send("go"));
+  const results = await Promise.all(statuses);
+  assert.equal(results.filter((status) => status === "applied").length, 1);
+  assert.ok(
+    results.every((status) => ["applied", "locked", "recent"].includes(status)),
+  );
+  assert.equal(existsSync(join(root, expired)), false);
+  assert.equal(existsSync(lock), false);
+});
+
+test("automatic cleanup may remove one oversized eligible generation", (t) => {
   const { base, root } = temporaryRoot(t);
   const current = versionName("7");
   const expired = versionName("8");
@@ -283,9 +372,49 @@ test("automatic cleanup never exceeds its byte budget", (t) => {
     root,
   });
   assert.equal(result.status, "applied");
-  assert.deepEqual(result.report.removedVersions, []);
-  assert.deepEqual(result.report.deferredVersions, [expired]);
-  assert.equal(existsSync(join(root, expired)), true);
+  assert.deepEqual(result.report.removedVersions, [expired]);
+  assert.deepEqual(result.report.deferredVersions, []);
+  assert.equal(existsSync(join(root, expired)), false);
+});
+
+test("deferred cleanup records a short retry deadline and observable result", (t) => {
+  const { base, root } = temporaryRoot(t);
+  const now = Date.now();
+  const current = versionName("7");
+  const candidates = ["8", "9"].map(versionName);
+  addVersion(root, current, { ageDays: 100 });
+  candidates.forEach((version) => addVersion(root, version, { ageDays: 100 }));
+  const environment = automaticEnvironment(base, {
+    SAGEJS_MODULE_CACHE_AUTO_CLEANUP_INTERVAL_HOURS: "24",
+    SAGEJS_MODULE_CACHE_AUTO_CLEANUP_MAX_VERSIONS: "1",
+    SAGEJS_MODULE_CACHE_AUTO_CLEANUP_RETRY_HOURS: "0.25",
+  });
+  const first = runAutomaticModuleCacheCleanup({
+    currentVersion: current,
+    environment,
+    expectedRoot: root,
+    now,
+    root,
+  });
+  assert.equal(first.status, "applied");
+  assert.equal(first.report.deferredVersions.length, 1);
+  const state = readAutomaticModuleCacheCleanupState(root);
+  assert.equal(state.last_status, "deferred");
+  assert.equal(state.next_attempt_ms, now + 15 * 60 * 1_000);
+  assert.equal(state.last_removed_versions, 1);
+  assert.equal(
+    automaticModuleCacheCleanupPlan(join(root, current), {
+      environment,
+      home: base,
+      now: now + 14 * 60 * 1_000,
+    }),
+    undefined,
+  );
+  assert.ok(automaticModuleCacheCleanupPlan(join(root, current), {
+    environment,
+    home: base,
+    now: now + 16 * 60 * 1_000,
+  }));
 });
 
 test("automatic cleanup makes bounded progress on a recent high-churn cache", (t) => {

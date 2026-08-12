@@ -15,14 +15,20 @@ import {
 export const AUTOMATIC_CACHE_STATE_FILENAME = ".sagejs-auto-cleanup.json";
 export const AUTOMATIC_CACHE_STATE_SCHEMA = "sagejs.module-cache-auto-cleanup/v1";
 export const DEFAULT_AUTOMATIC_CACHE_INTERVAL_HOURS = 24;
+export const DEFAULT_AUTOMATIC_CACHE_RETRY_HOURS = 1;
 export const DEFAULT_AUTOMATIC_CACHE_START_DELAY_MS = 2_000;
 
 const VERSION_PATTERN = /^(?:[a-f0-9]{40}|[a-f0-9]{64})$/;
 const scheduledRoots = new Set<string>();
 
-interface AutomaticCacheState {
+export interface AutomaticCacheState {
   schema: string;
   last_attempt_ms: number;
+  next_attempt_ms?: number;
+  last_error?: string;
+  last_reclaimed_bytes?: number;
+  last_removed_versions?: number;
+  last_status?: string;
 }
 
 export interface AutomaticCacheCleanupPlan {
@@ -73,20 +79,41 @@ function recentAutomaticAttempt(
   const filename = join(root, AUTOMATIC_CACHE_STATE_FILENAME);
   if (!existsSync(filename)) return false;
   try {
-    const metadata = lstatSync(filename);
-    if (!metadata.isFile() || metadata.isSymbolicLink()) return undefined;
-    const state = JSON.parse(readFileSync(filename, "utf8")) as AutomaticCacheState;
-    if (
-      state.schema !== AUTOMATIC_CACHE_STATE_SCHEMA ||
-      !Number.isFinite(state.last_attempt_ms) ||
-      state.last_attempt_ms < 0
-    ) return undefined;
-    return now - state.last_attempt_ms < intervalMs;
+    const state = readAutomaticState(filename);
+    if (!state) return false;
+    const nextAttempt = Number.isFinite(state.next_attempt_ms)
+      ? state.next_attempt_ms!
+      : state.last_attempt_ms + intervalMs;
+    return now < nextAttempt;
   } catch (_error) {
     // A malformed or concurrently replaced maintenance marker disables the
     // automatic path. Manual `sagejs cache prune` remains available.
     return undefined;
   }
+}
+
+/** Read the last detached cleanup result for diagnostics without scanning. */
+export function readAutomaticModuleCacheCleanupState(
+  root: string,
+): AutomaticCacheState | undefined {
+  return readAutomaticState(join(resolve(root), AUTOMATIC_CACHE_STATE_FILENAME));
+}
+
+function readAutomaticState(filename: string): AutomaticCacheState | undefined {
+  if (!existsSync(filename)) return undefined;
+  const metadata = lstatSync(filename);
+  if (!metadata.isFile() || metadata.isSymbolicLink()) {
+    throw new Error("automatic cache cleanup refused unsafe state marker");
+  }
+  const state = JSON.parse(readFileSync(filename, "utf8")) as AutomaticCacheState;
+  if (
+    state.schema !== AUTOMATIC_CACHE_STATE_SCHEMA ||
+    !Number.isFinite(state.last_attempt_ms) ||
+    state.last_attempt_ms < 0 ||
+    (state.next_attempt_ms !== undefined &&
+      (!Number.isFinite(state.next_attempt_ms) || state.next_attempt_ms < 0))
+  ) throw new Error("automatic cache cleanup refused malformed state marker");
+  return state;
 }
 
 /**

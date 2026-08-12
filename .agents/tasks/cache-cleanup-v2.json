@@ -1,0 +1,108 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "cache-cleanup-v2",
+  "title": "Bounded module-cache cleanup v2",
+  "lane": "compiler-runtime",
+  "status": "active",
+  "owner": "user",
+  "objective": "Make automatic compiler module-cache cleanup identity-safe, promptly retryable, bounded for oversized eligible generations, and quietly observable while preserving every current safety invariant",
+  "base_commit": "fe8fdaeb721c4959f6fe2802d5554d18b88ff800",
+  "claims": [
+    "tools/cache-auto.ts",
+    "tools/cache-auto-worker.ts",
+    "tools/cache.ts",
+    "tools/cli.js",
+    "test/cache-automatic.cjs",
+    "test/cache.cjs"
+  ],
+  "dependencies": [],
+  "references": [
+    "Independent module-cache cleanup audit"
+  ],
+  "architecture": {
+    "strategy": "compiler-infrastructure",
+    "fallback": "not-applicable",
+    "oracles": [
+      "Deterministic filesystem concurrency and retention tests"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm build",
+    "pnpm test:compiler",
+    "pnpm test:integration",
+    "pnpm exec tsc --noEmit --project tsconfig.json",
+    "node --test test/cache-automatic.cjs",
+    "node --test --test-name-pattern=status test/cache.cjs"
+  ],
+  "runs": [
+    {
+      "command": "pnpm build",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 191.858,
+      "started_at": "2026-08-12T17:02:38.266Z",
+      "commit": "fe8fdaeb721c4959f6fe2802d5554d18b88ff800",
+      "workspace_fingerprint": "e5ce01f7ae43cd56d6ea630554ad1b5a432b3999b18e7c4b8af8c26d7a49af6d",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm build",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 144.922,
+      "started_at": "2026-08-12T17:08:15.163Z",
+      "commit": "fe8fdaeb721c4959f6fe2802d5554d18b88ff800",
+      "workspace_fingerprint": "e2ca5ce023d5ac33277e8ce23408fa25274d855a4c19bffc41a995a2fb673098",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm exec tsc --noEmit --project tsconfig.json",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.895,
+      "started_at": "2026-08-12T17:12:47.968Z",
+      "commit": "fe8fdaeb721c4959f6fe2802d5554d18b88ff800",
+      "workspace_fingerprint": "14239b7f0ee6d76082c4626077661304f20230569377157cb5435e6365a3ea17",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/cache-automatic.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.254,
+      "started_at": "2026-08-12T17:12:49.546Z",
+      "commit": "fe8fdaeb721c4959f6fe2802d5554d18b88ff800",
+      "workspace_fingerprint": "14239b7f0ee6d76082c4626077661304f20230569377157cb5435e6365a3ea17",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test --test-name-pattern=status test/cache.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.229,
+      "started_at": "2026-08-12T17:12:50.398Z",
+      "commit": "fe8fdaeb721c4959f6fe2802d5554d18b88ff800",
+      "workspace_fingerprint": "14239b7f0ee6d76082c4626077661304f20230569377157cb5435e6365a3ea17",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Automatic module-cache maintenance now uses a portable atomic-mkdir directory lock with an owner token, identity-safe stale removal, and conservative migration of stale regular-file locks from the previous protocol. Work-limited passes may remove one oversized eligible generation and record a shorter retry deadline whenever work remains or a pass fails. State publication is atomic, startup remains silent, and `sagejs cache status [--json]` exposes the last result and next deadline. Deterministic fixtures cover two-process stale-lock contention, legacy migration, oversized progress, deferred retry scheduling, protected generations, unsafe markers, and status output.",
+    "risks": [
+      "Like the existing advisory lease protocol, reclaiming an owner whose token has not changed for longer than the stale timeout assumes that owner is dead rather than paused.",
+      "The final broad build was disrupted by a separately identified concurrent dist/module-cache-build deletion race; focused TypeScript and cache tests are fresh, while compiler and integration suites require revalidation after the shared build-cache repair lands."
+    ],
+    "next_steps": [
+      "Merge the shared compiler/build-cache repair, then rerun pnpm build, pnpm test:compiler, and pnpm test:integration before integration.",
+      "Exercise the directory-lock tests on native Windows CI, where mkdir/rmdir are the intended portable synchronization primitives."
+    ]
+  }
+}

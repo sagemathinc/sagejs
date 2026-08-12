@@ -17,6 +17,10 @@ import {
 
 import createCompiler from "./compiler";
 import {
+  AUTOMATIC_CACHE_STATE_FILENAME,
+  readAutomaticModuleCacheCleanupState,
+} from "./cache-auto";
+import {
   MODULE_CACHE_LEASE_PREFIX,
   MODULE_CACHE_LEASE_STALE_MS,
   MODULE_CACHE_LEASE_SUFFIX,
@@ -82,6 +86,8 @@ export interface PruneCacheOptions {
 export interface CacheApplyLimits {
   maxBytes: number;
   maxVersions: number;
+  /** Permit one otherwise eligible tree to exceed the byte cap. */
+  allowOversizedFirst?: boolean;
 }
 
 interface ScannedDirectory {
@@ -328,6 +334,7 @@ export function pruneModuleCache(options: PruneCacheOptions): CachePruneReport {
   const now = options.now ?? Date.now();
   const applyLimits = options.applyLimits
     ? {
+        allowOversizedFirst: options.applyLimits.allowOversizedFirst === true,
         maxBytes: finiteNonnegative(
           "applyLimits.maxBytes",
           options.applyLimits.maxBytes ?? Number.MAX_SAFE_INTEGER,
@@ -352,10 +359,14 @@ export function pruneModuleCache(options: PruneCacheOptions): CachePruneReport {
   let attemptedBytes = 0;
   let attemptedVersions = 0;
   for (const entry of candidates) {
+    const oversizedFirst =
+      applyLimits?.allowOversizedFirst === true &&
+      attemptedVersions === 0 &&
+      entry.bytes > applyLimits.maxBytes;
     if (
       applyLimits &&
       (attemptedVersions >= applyLimits.maxVersions ||
-        attemptedBytes + entry.bytes > applyLimits.maxBytes)
+        (!oversizedFirst && attemptedBytes + entry.bytes > applyLimits.maxBytes))
     ) {
       report.deferredVersions!.push(entry.version);
       continue;
@@ -470,13 +481,45 @@ export interface CacheCliArguments {
 
 export async function runCacheCli(argv: CacheCliArguments): Promise<void> {
   const [command, ...extra] = argv.files;
-  if (command !== "prune" || extra.length > 0) {
+  if (!["prune", "status"].includes(command ?? "") || extra.length > 0) {
     throw new Error(
       command === undefined
-        ? "cache command required; use `sagejs cache prune`"
+        ? "cache command required; use `sagejs cache status` or `sagejs cache prune`"
         : `unknown cache command ${JSON.stringify(command)}; use ` +
-          "`sagejs cache prune`",
+          "`sagejs cache status` or `sagejs cache prune`",
     );
+  }
+  if (command === "status") {
+    const root = defaultModuleCacheRoot();
+    const automatic = readAutomaticModuleCacheCleanupState(root);
+    const output = {
+      automatic,
+      root,
+      state_file: join(root, AUTOMATIC_CACHE_STATE_FILENAME),
+    };
+    if (argv.json) process.stdout.write(`${JSON.stringify(output, null, 2)}\n`);
+    else {
+      process.stdout.write(`Module cache: ${root}\n`);
+      if (!automatic) {
+        process.stdout.write("Automatic cleanup: no completed attempt recorded.\n");
+      }
+      else {
+        const removed = automatic.last_removed_versions ?? 0;
+        const reclaimed = automatic.last_reclaimed_bytes ?? 0;
+        process.stdout.write(
+          `Automatic cleanup: ${automatic.last_status ?? "recorded"}; ` +
+          `last attempt ${new Date(automatic.last_attempt_ms).toISOString()}; ` +
+          `removed ${removed} version(s), ${formatBytes(reclaimed)}.\n` +
+          `Next attempt eligible ${new Date(
+            automatic.next_attempt_ms ?? automatic.last_attempt_ms,
+          ).toISOString()}.\n`,
+        );
+        if (automatic.last_error) {
+          process.stdout.write(`Last error: ${automatic.last_error}\n`);
+        }
+      }
+    }
+    return;
   }
   if (argv.apply && argv.dry_run) {
     throw new Error("--apply and --dry-run cannot be used together");
