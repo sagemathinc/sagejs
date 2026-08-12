@@ -1,6 +1,6 @@
 {
   "schema": "sagejs.benchmark/macos-arm64-math-witness-v1",
-  "generated_at": "2026-08-12T13:02:19.949Z",
+  "generated_at": "2026-08-12T13:49:26.037Z",
   "host": {
     "platform": "darwin",
     "architecture": "arm64",
@@ -10,9 +10,39 @@
     "memory_bytes": 34359738368
   },
   "repository": {
-    "commit": "873b1d8e852146b5ff44f78a6c530688ce0bd735",
+    "commit": "d6d4bb97b6ca0446f0baf3ff56eb0f253a96ed82",
     "branch": "agent/macos-arm64-math-witness",
     "dirty": false
+  },
+  "toolchain": {
+    "pnpm": "11.9.0",
+    "clang": "Apple clang version 17.0.0 (clang-1700.4.4.1)",
+    "flint": "3.6.0",
+    "native_artifacts": [
+      {
+        "library": "flint",
+        "logical_source": "sagejs/kernels/matrix/dense_rational_flint.py",
+        "cache_key": "135adaef718f45f28a95ddbd2b7f225f0fbad103d633d6ff616bb4d48c892af1",
+        "path": "dist/native-kernels/135adaef718f45f28a95ddbd2b7f225f0fbad103d633d6ff616bb4d48c892af1/build/Release/sagejs_native_kernel.node",
+        "file_identity": "/Volumes/sage/sagejs/dist/native-kernels/135adaef718f45f28a95ddbd2b7f225f0fbad103d633d6ff616bb4d48c892af1/build/Release/sagejs_native_kernel.node: Mach-O 64-bit bundle arm64",
+        "linked_libraries": [
+          "/usr/lib/libSystem.B.dylib",
+          "/usr/lib/libc++.1.dylib"
+        ]
+      },
+      {
+        "library": "fflas",
+        "logical_source": "sagejs/kernels/matrix/dense_prime_field_fflas.py",
+        "cache_key": "90133d7c48185b738330c6e2258f6ee7c153cc16c82d8466f2545f8d7cac3f3b",
+        "path": "dist/native-kernels/90133d7c48185b738330c6e2258f6ee7c153cc16c82d8466f2545f8d7cac3f3b/build/Release/sagejs_native_kernel.node",
+        "file_identity": "/Volumes/sage/sagejs/dist/native-kernels/90133d7c48185b738330c6e2258f6ee7c153cc16c82d8466f2545f8d7cac3f3b/build/Release/sagejs_native_kernel.node: Mach-O 64-bit bundle arm64",
+        "linked_libraries": [
+          "/System/Library/Frameworks/Accelerate.framework/Versions/A/Accelerate",
+          "/usr/lib/libSystem.B.dylib",
+          "/usr/lib/libc++.1.dylib"
+        ]
+      }
+    ]
   },
   "configuration": {
     "samples": 5,
@@ -39,9 +69,9 @@
         "family": "matrix",
         "comparable": true,
         "ok": true,
-        "process_ms": 365.847959,
-        "first_ms": 1.5630722045898438,
-        "warm_ms": 0.4622936248779297,
+        "process_ms": 389.43466600000005,
+        "first_ms": 1.5926361083984375,
+        "warm_ms": 0.46372413635253906,
         "summary": [
           60199,
           "[  353   116  -563  -800   522  ",
@@ -54,9 +84,9 @@
         "family": "matrix",
         "comparable": false,
         "ok": true,
-        "process_ms": 403.546084,
-        "first_ms": 4.319667816162109,
-        "warm_ms": 0.6206035614013672,
+        "process_ms": 411.537166,
+        "first_ms": 4.305839538574219,
+        "warm_ms": 0.6134510040283203,
         "summary": [
           230529,
           true
@@ -68,9 +98,9 @@
         "family": "matrix",
         "comparable": false,
         "ok": true,
-        "process_ms": 402.4532079999999,
-        "first_ms": 1.377105712890625,
-        "warm_ms": 0.5877017974853516,
+        "process_ms": 403.3170829999999,
+        "first_ms": 1.4355182647705078,
+        "warm_ms": 0.5879402160644531,
         "summary": [
           200,
           200,
@@ -86,9 +116,9 @@
         "family": "matrix",
         "comparable": true,
         "ok": true,
-        "process_ms": 420.929625,
-        "first_ms": 2.8526782989501953,
-        "warm_ms": 0.5002021789550781,
+        "process_ms": 414.32466699999986,
+        "first_ms": 1.5783309936523438,
+        "warm_ms": 0.4703998565673828,
         "summary": [
           51359,
           "[  353/8   116/9 -563/10 -800/11",
@@ -101,9 +131,9 @@
         "family": "matrix",
         "comparable": false,
         "ok": true,
-        "process_ms": 521.60825,
-        "first_ms": 4.426002502441406,
-        "warm_ms": 0.6387233734130859,
+        "process_ms": 524.5252500000001,
+        "first_ms": 4.274845123291016,
+        "warm_ms": 0.6322860717773438,
         "summary": [
           238222,
           true
@@ -115,9 +145,9 @@
         "family": "matrix",
         "comparable": false,
         "ok": true,
-        "process_ms": 529.3447080000001,
-        "first_ms": 1.8813610076904297,
-        "warm_ms": 1.1150836944580078,
+        "process_ms": 556.2525,
+        "first_ms": 1.9097328186035156,
+        "warm_ms": 1.0919570922851562,
         "summary": [
           150,
           150,
@@ -133,9 +163,9 @@
         "family": "matrix",
         "comparable": true,
         "ok": true,
-        "process_ms": 357.4859999999999,
-        "first_ms": 1.0275840759277344,
-        "warm_ms": 0.11134147644042969,
+        "process_ms": 362.4214999999999,
+        "first_ms": 1.0254383087158203,
+        "warm_ms": 0.11444091796875,
         "summary": [
           20199,
           "[0 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1",
@@ -148,9 +178,9 @@
         "family": "matrix",
         "comparable": false,
         "ok": true,
-        "process_ms": 547.1957500000003,
-        "first_ms": 3.9136409759521484,
-        "warm_ms": 0.396728515625,
+        "process_ms": 577.129833,
+        "first_ms": 4.012346267700195,
+        "warm_ms": 0.3848075866699219,
         "summary": [
           250785,
           true
@@ -162,9 +192,9 @@
         "family": "matrix",
         "comparable": false,
         "ok": true,
-        "process_ms": 587.6962079999998,
-        "first_ms": 4.163980484008789,
-        "warm_ms": 2.892017364501953,
+        "process_ms": 567.7725419999997,
+        "first_ms": 3.9031505584716797,
+        "warm_ms": 2.8734207153320312,
         "summary": [
           500,
           500,
@@ -180,9 +210,9 @@
         "family": "matrix",
         "comparable": true,
         "ok": true,
-        "process_ms": 357.3594579999999,
-        "first_ms": 1.5141963958740234,
-        "warm_ms": 0.47087669372558594,
+        "process_ms": 346.6162910000003,
+        "first_ms": 1.4314651489257812,
+        "warm_ms": 0.45990943908691406,
         "summary": [
           20199,
           "[3 4 4 5 4 5 5 6 5 6 6 0 6 6 0 0",
@@ -195,9 +225,9 @@
         "family": "matrix",
         "comparable": false,
         "ok": true,
-        "process_ms": 587.7933750000002,
-        "first_ms": 5.41234016418457,
-        "warm_ms": 1.1949539184570312,
+        "process_ms": 590.085,
+        "first_ms": 5.335092544555664,
+        "warm_ms": 1.2173652648925781,
         "summary": [
           250785,
           true
@@ -209,9 +239,9 @@
         "family": "matrix",
         "comparable": false,
         "ok": true,
-        "process_ms": 620.822709,
-        "first_ms": 2.371072769165039,
-        "warm_ms": 1.1096000671386719,
+        "process_ms": 590.3984169999994,
+        "first_ms": 2.330780029296875,
+        "warm_ms": 1.1005401611328125,
         "summary": [
           500,
           500,
@@ -227,9 +257,9 @@
         "family": "matrix",
         "comparable": true,
         "ok": true,
-        "process_ms": 1211.917042,
-        "first_ms": 116.729736328125,
-        "warm_ms": 103.79600524902344,
+        "process_ms": 1210.952875,
+        "first_ms": 116.52827262878418,
+        "warm_ms": 103.1494140625,
         "summary": [
           128159,
           "[1996325805108194761 14429330013",
@@ -242,9 +272,9 @@
         "family": "matrix",
         "comparable": false,
         "ok": true,
-        "process_ms": 12815.029167,
-        "first_ms": 1378.2076835632324,
-        "warm_ms": 1369.734287261963,
+        "process_ms": 12829.19625,
+        "first_ms": 1374.345302581787,
+        "warm_ms": 1375.929832458496,
         "summary": [
           19376378,
           true
@@ -256,9 +286,9 @@
         "family": "matrix",
         "comparable": false,
         "ok": true,
-        "process_ms": 6008.353917,
-        "first_ms": 496.4888095855713,
-        "warm_ms": 471.86779975891113,
+        "process_ms": 5983.305166000002,
+        "first_ms": 494.63939666748047,
+        "warm_ms": 468.3530330657959,
         "summary": [
           300,
           300,
@@ -274,9 +304,9 @@
         "family": "polynomial",
         "comparable": true,
         "ok": true,
-        "process_ms": 378.56383300000016,
-        "first_ms": 33.51116180419922,
-        "warm_ms": 1.5206336975097656,
+        "process_ms": 377.7306659999995,
+        "first_ms": 42.68527030944824,
+        "warm_ms": 1.1391639709472656,
         "summary": [
           5000,
           "205",
@@ -290,9 +320,9 @@
         "family": "polynomial",
         "comparable": true,
         "ok": true,
-        "process_ms": 362.1954579999983,
-        "first_ms": 1.2216567993164062,
-        "warm_ms": 0.1251697540283203,
+        "process_ms": 362.7694580000025,
+        "first_ms": 1.2028217315673828,
+        "warm_ms": 0.12564659118652344,
         "summary": [
           4000,
           "-294306",
@@ -306,9 +336,9 @@
         "family": "polynomial",
         "comparable": true,
         "ok": true,
-        "process_ms": 363.17462499999965,
-        "first_ms": 0.44417381286621094,
-        "warm_ms": 0.1647472381591797,
+        "process_ms": 362.4432080000006,
+        "first_ms": 0.4284381866455078,
+        "warm_ms": 0.17070770263671875,
         "summary": [
           500,
           "712",
@@ -322,9 +352,9 @@
         "family": "polynomial",
         "comparable": false,
         "ok": true,
-        "process_ms": 424.9391250000008,
-        "first_ms": 11.528253555297852,
-        "warm_ms": 8.629560470581055,
+        "process_ms": 421.27133299999696,
+        "first_ms": 11.606931686401367,
+        "warm_ms": 8.663415908813477,
         "summary": [
           16,
           "16"
@@ -336,9 +366,9 @@
         "family": "polynomial",
         "comparable": true,
         "ok": true,
-        "process_ms": 359.8149999999987,
-        "first_ms": 1.1973381042480469,
-        "warm_ms": 0.08606910705566406,
+        "process_ms": 354.86462499999834,
+        "first_ms": 1.2149810791015625,
+        "warm_ms": 0.08440017700195312,
         "summary": [
           28,
           "x^5000 - 3*x^2500 + 7*x - 11",
@@ -351,9 +381,9 @@
         "family": "polynomial",
         "comparable": false,
         "ok": true,
-        "process_ms": 371.208125000001,
-        "first_ms": 3.817319869995117,
-        "warm_ms": 0.20766258239746094,
+        "process_ms": 366.95183299999917,
+        "first_ms": 3.8390159606933594,
+        "warm_ms": 0.18262863159179688,
         "summary": [
           29456,
           true
@@ -365,9 +395,9 @@
         "family": "polynomial",
         "comparable": false,
         "ok": true,
-        "process_ms": 378.3657089999979,
-        "first_ms": 1.2981891632080078,
-        "warm_ms": 0.38933753967285156,
+        "process_ms": 367.7930000000015,
+        "first_ms": 1.2738704681396484,
+        "warm_ms": 0.3724098205566406,
         "summary": [
           5000,
           "303",
@@ -382,9 +412,9 @@
         "family": "polynomial",
         "comparable": true,
         "ok": true,
-        "process_ms": 437.94845799999894,
-        "first_ms": 37.38880157470703,
-        "warm_ms": 4.821300506591797,
+        "process_ms": 430.6482920000017,
+        "first_ms": 36.057472229003906,
+        "warm_ms": 4.741430282592773,
         "summary": [
           5000,
           "41/5",
@@ -398,9 +428,9 @@
         "family": "polynomial",
         "comparable": true,
         "ok": true,
-        "process_ms": 398.33812500000204,
-        "first_ms": 0.9069442749023438,
-        "warm_ms": 0.32258033752441406,
+        "process_ms": 405.34308299999975,
+        "first_ms": 0.8714199066162109,
+        "warm_ms": 0.31280517578125,
         "summary": [
           4000,
           "-49051/36",
@@ -414,9 +444,9 @@
         "family": "polynomial",
         "comparable": true,
         "ok": true,
-        "process_ms": 374.63595799999894,
-        "first_ms": 0.7688999176025391,
-        "warm_ms": 0.4744529724121094,
+        "process_ms": 372.30025000000023,
+        "first_ms": 0.7350444793701172,
+        "warm_ms": 0.45871734619140625,
         "summary": [
           500,
           "356/15",
@@ -430,9 +460,9 @@
         "family": "polynomial",
         "comparable": false,
         "ok": true,
-        "process_ms": 425.6055000000015,
-        "first_ms": 11.762857437133789,
-        "warm_ms": 8.660554885864258,
+        "process_ms": 425.1426670000001,
+        "first_ms": 11.779069900512695,
+        "warm_ms": 8.681774139404297,
         "summary": [
           16,
           "16"
@@ -444,9 +474,9 @@
         "family": "polynomial",
         "comparable": true,
         "ok": true,
-        "process_ms": 359.30137500000274,
-        "first_ms": 1.239776611328125,
-        "warm_ms": 0.11563301086425781,
+        "process_ms": 360.9249579999996,
+        "first_ms": 1.2400150299072266,
+        "warm_ms": 0.11992454528808594,
         "summary": [
           28,
           "x^5000 - 3*x^2500 + 7*x - 11",
@@ -459,9 +489,9 @@
         "family": "polynomial",
         "comparable": false,
         "ok": true,
-        "process_ms": 420.6920829999981,
-        "first_ms": 4.285573959350586,
-        "warm_ms": 0.4832744598388672,
+        "process_ms": 408.06637500000215,
+        "first_ms": 4.230499267578125,
+        "warm_ms": 0.4715919494628906,
         "summary": [
           53505,
           true
@@ -473,9 +503,9 @@
         "family": "polynomial",
         "comparable": false,
         "ok": true,
-        "process_ms": 411.86812499999724,
-        "first_ms": 1.6624927520751953,
-        "warm_ms": 0.7691383361816406,
+        "process_ms": 409.4994999999981,
+        "first_ms": 1.659393310546875,
+        "warm_ms": 0.7615089416503906,
         "summary": [
           5000,
           "303/10",
@@ -490,9 +520,9 @@
         "family": "polynomial",
         "comparable": true,
         "ok": true,
-        "process_ms": 335.2862079999977,
-        "first_ms": 1.0678768157958984,
-        "warm_ms": 0.23937225341796875,
+        "process_ms": 334.9182080000028,
+        "first_ms": 1.0840892791748047,
+        "warm_ms": 0.2353191375732422,
         "summary": [
           5000,
           "2",
@@ -506,9 +536,9 @@
         "family": "polynomial",
         "comparable": true,
         "ok": true,
-        "process_ms": 379.9630410000027,
-        "first_ms": 33.77676010131836,
-        "warm_ms": 0.10371208190917969,
+        "process_ms": 407.8208749999976,
+        "first_ms": 56.52165412902832,
+        "warm_ms": 0.10919570922851562,
         "summary": [
           4000,
           "2",
@@ -522,9 +552,9 @@
         "family": "polynomial",
         "comparable": true,
         "ok": true,
-        "process_ms": 388.76737499999945,
-        "first_ms": 0.7309913635253906,
-        "warm_ms": 0.31948089599609375,
+        "process_ms": 400.5961669999997,
+        "first_ms": 3.1156539916992188,
+        "warm_ms": 0.33354759216308594,
         "summary": [
           500,
           "5",
@@ -538,9 +568,9 @@
         "family": "polynomial",
         "comparable": false,
         "ok": true,
-        "process_ms": 396.3765830000011,
-        "first_ms": 21.873950958251953,
-        "warm_ms": 2.248048782348633,
+        "process_ms": 395.9239170000001,
+        "first_ms": 23.377656936645508,
+        "warm_ms": 2.404928207397461,
         "summary": [
           39,
           "39"
@@ -552,8 +582,8 @@
         "family": "polynomial",
         "comparable": true,
         "ok": true,
-        "process_ms": 377.6746660000026,
-        "first_ms": 0.3142356872558594,
+        "process_ms": 375.92475000000195,
+        "first_ms": 0.3218650817871094,
         "warm_ms": 0.09679794311523438,
         "summary": [
           21,
@@ -567,9 +597,9 @@
         "family": "polynomial",
         "comparable": false,
         "ok": true,
-        "process_ms": 384.82074999999895,
-        "first_ms": 4.219770431518555,
-        "warm_ms": 0.41174888610839844,
+        "process_ms": 381.60841600000276,
+        "first_ms": 4.121541976928711,
+        "warm_ms": 0.4138946533203125,
         "summary": [
           5798,
           true
@@ -581,9 +611,9 @@
         "family": "polynomial",
         "comparable": false,
         "ok": true,
-        "process_ms": 394.53983299999527,
-        "first_ms": 1.8177032470703125,
-        "warm_ms": 0.5412101745605469,
+        "process_ms": 383.846458,
+        "first_ms": 1.6813278198242188,
+        "warm_ms": 0.5557537078857422,
         "summary": [
           5000,
           "2",
@@ -598,9 +628,9 @@
         "family": "polynomial",
         "comparable": true,
         "ok": true,
-        "process_ms": 336.03820899999846,
-        "first_ms": 0.8981227874755859,
-        "warm_ms": 0.16021728515625,
+        "process_ms": 332.38837500000227,
+        "first_ms": 0.9024143218994141,
+        "warm_ms": 0.21028518676757812,
         "summary": [
           5000,
           "336861275000155735",
@@ -614,9 +644,9 @@
         "family": "polynomial",
         "comparable": true,
         "ok": true,
-        "process_ms": 379.3947079999998,
-        "first_ms": 33.94675254821777,
-        "warm_ms": 0.21004676818847656,
+        "process_ms": 378.4971250000017,
+        "first_ms": 33.98942947387695,
+        "warm_ms": 0.2205371856689453,
         "summary": [
           4000,
           "1011336248186754817",
@@ -630,9 +660,9 @@
         "family": "polynomial",
         "comparable": true,
         "ok": true,
-        "process_ms": 375.7280830000018,
-        "first_ms": 0.7817745208740234,
-        "warm_ms": 0.40531158447265625,
+        "process_ms": 380.0107500000013,
+        "first_ms": 0.9655952453613281,
+        "warm_ms": 0.4050731658935547,
         "summary": [
           500,
           "613676657109771412",
@@ -646,9 +676,9 @@
         "family": "polynomial",
         "comparable": false,
         "ok": true,
-        "process_ms": 443.57424999999785,
-        "first_ms": 12.990713119506836,
-        "warm_ms": 9.390830993652344,
+        "process_ms": 443.51183299999684,
+        "first_ms": 12.930154800415039,
+        "warm_ms": 9.285688400268555,
         "summary": [
           75,
           "75"
@@ -660,9 +690,9 @@
         "family": "polynomial",
         "comparable": true,
         "ok": true,
-        "process_ms": 368.3672499999957,
-        "first_ms": 0.31685829162597656,
-        "warm_ms": 0.09322166442871094,
+        "process_ms": 369.54533299999457,
+        "first_ms": 0.3199577331542969,
+        "warm_ms": 0.09059906005859375,
         "summary": [
           63,
           "x^5000 + 2305843009213693948*x^2",
@@ -675,9 +705,9 @@
         "family": "polynomial",
         "comparable": false,
         "ok": true,
-        "process_ms": 389.0167500000025,
-        "first_ms": 4.1446685791015625,
-        "warm_ms": 0.3578662872314453,
+        "process_ms": 385.8209999999963,
+        "first_ms": 4.151105880737305,
+        "warm_ms": 0.35881996154785156,
         "summary": [
           40823,
           true
@@ -689,9 +719,9 @@
         "family": "polynomial",
         "comparable": false,
         "ok": true,
-        "process_ms": 390.0817089999982,
-        "first_ms": 1.5041828155517578,
-        "warm_ms": 0.3719329833984375,
+        "process_ms": 395.30804199999693,
+        "first_ms": 1.6069412231445312,
+        "warm_ms": 0.38123130798339844,
         "summary": [
           5000,
           "2089549440844503344",
@@ -708,9 +738,9 @@
         "family": "matrix",
         "comparable": true,
         "ok": true,
-        "process_ms": 2392.2863750000033,
-        "first_ms": 3.865250386297703,
-        "warm_ms": 3.6129578948020935,
+        "process_ms": 3581.2454170000055,
+        "first_ms": 4.599416628479958,
+        "warm_ms": 3.604457713663578,
         "summary": [
           60199,
           "[  353   116  -563  -800   522  ",
@@ -723,9 +753,9 @@
         "family": "matrix",
         "comparable": false,
         "ok": true,
-        "process_ms": 2362.6765000000014,
-        "first_ms": 2.254832535982132,
-        "warm_ms": 2.147332765161991,
+        "process_ms": 2357.1119169999947,
+        "first_ms": 2.335749566555023,
+        "warm_ms": 2.146707847714424,
         "summary": [
           11990,
           true
@@ -737,9 +767,9 @@
         "family": "matrix",
         "comparable": false,
         "ok": true,
-        "process_ms": 2360.541124999996,
-        "first_ms": 3.381292335689068,
-        "warm_ms": 2.7202079072594643,
+        "process_ms": 2358.4974169999987,
+        "first_ms": 3.344457596540451,
+        "warm_ms": 2.732166089117527,
         "summary": [
           200,
           200,
@@ -755,9 +785,9 @@
         "family": "matrix",
         "comparable": true,
         "ok": true,
-        "process_ms": 2378.8980840000004,
-        "first_ms": 3.1525827944278717,
-        "warm_ms": 2.9376670718193054,
+        "process_ms": 2367.4219169999997,
+        "first_ms": 3.026125021278858,
+        "warm_ms": 2.906832844018936,
         "summary": [
           51359,
           "[  353/8   116/9 -563/10 -800/11",
@@ -770,9 +800,9 @@
         "family": "matrix",
         "comparable": false,
         "ok": true,
-        "process_ms": 2453.2928329999995,
-        "first_ms": 8.419792167842388,
-        "warm_ms": 8.27800016850233,
+        "process_ms": 2447.9987919999985,
+        "first_ms": 8.424834348261356,
+        "warm_ms": 8.280791342258453,
         "summary": [
           57270,
           true
@@ -784,9 +814,9 @@
         "family": "matrix",
         "comparable": false,
         "ok": true,
-        "process_ms": 2432.990709000005,
-        "first_ms": 7.12920818477869,
-        "warm_ms": 6.906791590154171,
+        "process_ms": 2418.4272079999937,
+        "first_ms": 7.093457505106926,
+        "warm_ms": 6.901041604578495,
         "summary": [
           150,
           150,
@@ -802,9 +832,9 @@
         "family": "matrix",
         "comparable": true,
         "ok": true,
-        "process_ms": 2335.892291999997,
-        "first_ms": 0.03075040876865387,
-        "warm_ms": 0.018209218978881836,
+        "process_ms": 2330.7159170000014,
+        "first_ms": 0.030833296477794647,
+        "warm_ms": 0.01816730946302414,
         "summary": [
           20199,
           "[0 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1",
@@ -817,9 +847,9 @@
         "family": "matrix",
         "comparable": false,
         "ok": true,
-        "process_ms": 2433.852165999997,
-        "first_ms": 1.4736242592334747,
-        "warm_ms": 1.3105003163218498,
+        "process_ms": 2420.7623340000064,
+        "first_ms": 2.6929164305329323,
+        "warm_ms": 1.3071252033114433,
         "summary": [
           267,
           true
@@ -831,9 +861,9 @@
         "family": "matrix",
         "comparable": false,
         "ok": true,
-        "process_ms": 2430.393833000002,
-        "first_ms": 1.8436247482895851,
-        "warm_ms": 1.2232912704348564,
+        "process_ms": 2433.8598330000023,
+        "first_ms": 1.8849577754735947,
+        "warm_ms": 1.2215832248330116,
         "summary": [
           500,
           500,
@@ -849,9 +879,9 @@
         "family": "matrix",
         "comparable": true,
         "ok": true,
-        "process_ms": 2457.1167080000014,
-        "first_ms": 12.533583678305149,
-        "warm_ms": 12.533166445791721,
+        "process_ms": 2465.196708000003,
+        "first_ms": 12.859375216066837,
+        "warm_ms": 12.836541049182415,
         "summary": [
           20199,
           "[3 4 4 5 4 5 5 6 5 6 6 0 6 6 0 0",
@@ -864,9 +894,9 @@
         "family": "matrix",
         "comparable": false,
         "ok": true,
-        "process_ms": 2467.0522090000013,
-        "first_ms": 2.9627904295921326,
-        "warm_ms": 2.676749601960182,
+        "process_ms": 2466.346083000004,
+        "first_ms": 2.9324572533369064,
+        "warm_ms": 2.6454590260982513,
         "summary": [
           10928,
           true
@@ -878,9 +908,9 @@
         "family": "matrix",
         "comparable": false,
         "ok": true,
-        "process_ms": 2443.9028749999998,
-        "first_ms": 0.776125118136406,
-        "warm_ms": 0.12412481009960175,
+        "process_ms": 2441.509124999997,
+        "first_ms": 0.763624906539917,
+        "warm_ms": 0.12312456965446472,
         "summary": [
           500,
           500,
@@ -896,9 +926,9 @@
         "family": "matrix",
         "comparable": true,
         "ok": true,
-        "process_ms": 2419.2152500000084,
-        "first_ms": 8.18466767668724,
-        "warm_ms": 7.92370829731226,
+        "process_ms": 2424.996207999997,
+        "first_ms": 7.924625650048256,
+        "warm_ms": 7.681792601943016,
         "summary": [
           128159,
           "[1996325805108194761 14429330013",
@@ -911,9 +941,9 @@
         "family": "matrix",
         "comparable": false,
         "ok": true,
-        "process_ms": 5475.624832999994,
-        "first_ms": 358.98158233612776,
-        "warm_ms": 353.685250505805,
+        "process_ms": 5491.078166000007,
+        "first_ms": 359.6721664071083,
+        "warm_ms": 355.3327079862356,
         "summary": [
           1942520,
           true
@@ -925,9 +955,9 @@
         "family": "matrix",
         "comparable": false,
         "ok": true,
-        "process_ms": 3813.2421659999964,
-        "first_ms": 112.69166599959135,
-        "warm_ms": 122.22720868885517,
+        "process_ms": 3830.8448329999956,
+        "first_ms": 114.375582896173,
+        "warm_ms": 124.19850006699562,
         "summary": [
           300,
           300,
@@ -943,9 +973,9 @@
         "family": "polynomial",
         "comparable": true,
         "ok": true,
-        "process_ms": 2327.509791999997,
-        "first_ms": 0.1454995945096016,
-        "warm_ms": 0.08229073137044907,
+        "process_ms": 2317.256208000006,
+        "first_ms": 0.14412496238946915,
+        "warm_ms": 0.08224975317716599,
         "summary": [
           5000,
           "205",
@@ -959,9 +989,9 @@
         "family": "polynomial",
         "comparable": true,
         "ok": true,
-        "process_ms": 2320.8729579999927,
-        "first_ms": 0.19366666674613953,
-        "warm_ms": 0.04816707223653793,
+        "process_ms": 2325.2225839999883,
+        "first_ms": 1.2591248378157616,
+        "warm_ms": 0.0499160960316658,
         "summary": [
           4000,
           "-294306",
@@ -975,9 +1005,9 @@
         "family": "polynomial",
         "comparable": true,
         "ok": true,
-        "process_ms": 2322.4727920000005,
-        "first_ms": 0.16533397138118744,
-        "warm_ms": 0.11987518519163132,
+        "process_ms": 2318.2239170000103,
+        "first_ms": 0.4629995673894882,
+        "warm_ms": 0.12024957686662674,
         "summary": [
           500,
           "712",
@@ -991,9 +1021,9 @@
         "family": "polynomial",
         "comparable": false,
         "ok": true,
-        "process_ms": 2330.53575000001,
-        "first_ms": 3.584541380405426,
-        "warm_ms": 1.904292032122612,
+        "process_ms": 2344.73616700001,
+        "first_ms": 11.447833850979805,
+        "warm_ms": 1.9218754023313522,
         "summary": [
           16,
           "16"
@@ -1005,9 +1035,9 @@
         "family": "polynomial",
         "comparable": true,
         "ok": true,
-        "process_ms": 2318.3797919999924,
-        "first_ms": 0.6405413150787354,
-        "warm_ms": 0.042582862079143524,
+        "process_ms": 2320.631374999997,
+        "first_ms": 0.645957887172699,
+        "warm_ms": 0.04233419895172119,
         "summary": [
           28,
           "x^5000 - 3*x^2500 + 7*x - 11",
@@ -1020,9 +1050,9 @@
         "family": "polynomial",
         "comparable": false,
         "ok": true,
-        "process_ms": 2398.8178749999934,
-        "first_ms": 10.32475009560585,
-        "warm_ms": 10.020208545029163,
+        "process_ms": 2400.833249999996,
+        "first_ms": 10.247834026813507,
+        "warm_ms": 9.964417666196823,
         "summary": [
           42293,
           true
@@ -1034,9 +1064,9 @@
         "family": "polynomial",
         "comparable": false,
         "ok": true,
-        "process_ms": 2353.201832999999,
-        "first_ms": 2.732708118855953,
-        "warm_ms": 2.644750289618969,
+        "process_ms": 2343.4341669999994,
+        "first_ms": 2.7472497895359993,
+        "warm_ms": 2.648833207786083,
         "summary": [
           5000,
           "303",
@@ -1051,9 +1081,9 @@
         "family": "polynomial",
         "comparable": true,
         "ok": true,
-        "process_ms": 2336.3783750000002,
-        "first_ms": 0.21533295512199402,
-        "warm_ms": 0.18700025975704193,
+        "process_ms": 2331.339333000011,
+        "first_ms": 0.20370818674564362,
+        "warm_ms": 0.19291695207357407,
         "summary": [
           5000,
           "41/5",
@@ -1067,9 +1097,9 @@
         "family": "polynomial",
         "comparable": true,
         "ok": true,
-        "process_ms": 2329.341916999998,
-        "first_ms": 0.41899923235177994,
-        "warm_ms": 0.2354579046368599,
+        "process_ms": 2324.764875000008,
+        "first_ms": 0.43000001460313797,
+        "warm_ms": 0.2361675724387169,
         "summary": [
           4000,
           "-49051/36",
@@ -1083,9 +1113,9 @@
         "family": "polynomial",
         "comparable": true,
         "ok": true,
-        "process_ms": 2322.063666999995,
-        "first_ms": 0.5329996347427368,
-        "warm_ms": 0.40458235889673233,
+        "process_ms": 2323.9195419999887,
+        "first_ms": 0.5520004779100418,
+        "warm_ms": 0.40237512439489365,
         "summary": [
           500,
           "356/15",
@@ -1099,9 +1129,9 @@
         "family": "polynomial",
         "comparable": false,
         "ok": true,
-        "process_ms": 2334.5375420000055,
-        "first_ms": 3.7656258791685104,
-        "warm_ms": 1.939665526151657,
+        "process_ms": 2338.6414169999916,
+        "first_ms": 3.8207918405532837,
+        "warm_ms": 2.01562512665987,
         "summary": [
           16,
           "16"
@@ -1113,9 +1143,9 @@
         "family": "polynomial",
         "comparable": true,
         "ok": true,
-        "process_ms": 2355.6181249999936,
-        "first_ms": 1.7149578779935837,
-        "warm_ms": 0.8132494986057281,
+        "process_ms": 2341.8523330000025,
+        "first_ms": 1.6003744676709175,
+        "warm_ms": 0.7422501221299171,
         "summary": [
           28,
           "x^5000 - 3*x^2500 + 7*x - 11",
@@ -1128,9 +1158,9 @@
         "family": "polynomial",
         "comparable": false,
         "ok": true,
-        "process_ms": 2457.225000000006,
-        "first_ms": 11.390374973416328,
-        "warm_ms": 11.226249858736992,
+        "process_ms": 2449.9064579999977,
+        "first_ms": 11.355292052030563,
+        "warm_ms": 11.206459254026413,
         "summary": [
           50228,
           true
@@ -1142,9 +1172,9 @@
         "family": "polynomial",
         "comparable": false,
         "ok": true,
-        "process_ms": 2354.5206250000047,
-        "first_ms": 3.4904172644019127,
-        "warm_ms": 3.407667391002178,
+        "process_ms": 2362.1908330000006,
+        "first_ms": 3.5470006987452507,
+        "warm_ms": 3.449833020567894,
         "summary": [
           5000,
           "303/10",
@@ -1159,9 +1189,9 @@
         "family": "polynomial",
         "comparable": true,
         "ok": true,
-        "process_ms": 2347.9989160000114,
-        "first_ms": 1.1665839701890945,
-        "warm_ms": 0.6598755717277527,
+        "process_ms": 2356.142082999999,
+        "first_ms": 1.0900413617491722,
+        "warm_ms": 0.6597498431801796,
         "summary": [
           5000,
           "2",
@@ -1175,9 +1205,9 @@
         "family": "polynomial",
         "comparable": true,
         "ok": true,
-        "process_ms": 2348.425457999998,
-        "first_ms": 0.17224997282028198,
-        "warm_ms": 0.020333565771579742,
+        "process_ms": 2342.160625000004,
+        "first_ms": 0.3775414079427719,
+        "warm_ms": 0.02058316022157669,
         "summary": [
           4000,
           "2",
@@ -1191,9 +1221,9 @@
         "family": "polynomial",
         "comparable": true,
         "ok": true,
-        "process_ms": 2340.7037500000006,
-        "first_ms": 0.08987542241811752,
-        "warm_ms": 0.048208050429821014,
+        "process_ms": 2342.6500839999935,
+        "first_ms": 1.392291858792305,
+        "warm_ms": 0.048374757170677185,
         "summary": [
           500,
           "5",
@@ -1207,9 +1237,9 @@
         "family": "polynomial",
         "comparable": false,
         "ok": true,
-        "process_ms": 2351.707791000008,
-        "first_ms": 1.194375567138195,
-        "warm_ms": 0.481458380818367,
+        "process_ms": 2367.2081670000043,
+        "first_ms": 1.6347914934158325,
+        "warm_ms": 0.48574991524219513,
         "summary": [
           39,
           "39"
@@ -1221,9 +1251,9 @@
         "family": "polynomial",
         "comparable": true,
         "ok": true,
-        "process_ms": 2390.2894579999993,
-        "first_ms": 2.985832281410694,
-        "warm_ms": 2.2485004737973213,
+        "process_ms": 2377.936916000006,
+        "first_ms": 2.9474999755620956,
+        "warm_ms": 2.2478746250271797,
         "summary": [
           21,
           "x^5000 + 4*x^2500 + 3",
@@ -1236,9 +1266,9 @@
         "family": "polynomial",
         "comparable": false,
         "ok": true,
-        "process_ms": 2506.82654200001,
-        "first_ms": 16.16083364933729,
-        "warm_ms": 15.899875201284885,
+        "process_ms": 2497.033249999993,
+        "first_ms": 16.130750067532063,
+        "warm_ms": 15.899582765996456,
         "summary": [
           46097,
           true
@@ -1250,9 +1280,9 @@
         "family": "polynomial",
         "comparable": false,
         "ok": true,
-        "process_ms": 2436.063540999996,
-        "first_ms": 4.326458089053631,
-        "warm_ms": 4.316166043281555,
+        "process_ms": 2417.0150840000133,
+        "first_ms": 4.330041818320751,
+        "warm_ms": 4.362625069916248,
         "summary": [
           5000,
           "2",
@@ -1267,9 +1297,9 @@
         "family": "polynomial",
         "comparable": true,
         "ok": true,
-        "process_ms": 2355.8019170000043,
-        "first_ms": 1.9352072849869728,
-        "warm_ms": 1.4343755319714546,
+        "process_ms": 2354.486374999993,
+        "first_ms": 2.0341668277978897,
+        "warm_ms": 1.4894995838403702,
         "summary": [
           5000,
           "336861275000155735",
@@ -1283,9 +1313,9 @@
         "family": "polynomial",
         "comparable": true,
         "ok": true,
-        "process_ms": 2355.008707999994,
-        "first_ms": 0.31729042530059814,
-        "warm_ms": 0.14541763812303543,
+        "process_ms": 2338.77012500001,
+        "first_ms": 0.30395854264497757,
+        "warm_ms": 0.14474987983703613,
         "summary": [
           4000,
           "1011336248186754817",
@@ -1299,9 +1329,9 @@
         "family": "polynomial",
         "comparable": true,
         "ok": true,
-        "process_ms": 2350.867333000002,
-        "first_ms": 0.1760842278599739,
-        "warm_ms": 0.12970902025699615,
+        "process_ms": 2337.225166999997,
+        "first_ms": 0.17362553626298904,
+        "warm_ms": 0.1298747956752777,
         "summary": [
           500,
           "613676657109771412",
@@ -1315,9 +1345,9 @@
         "family": "polynomial",
         "comparable": false,
         "ok": true,
-        "process_ms": 2394.118791999994,
-        "first_ms": 7.344499230384827,
-        "warm_ms": 6.403333507478237,
+        "process_ms": 2399.3661250000005,
+        "first_ms": 7.6934583485126495,
+        "warm_ms": 6.426750682294369,
         "summary": [
           75,
           "75"
@@ -1329,9 +1359,9 @@
         "family": "polynomial",
         "comparable": true,
         "ok": true,
-        "process_ms": 2394.45425000001,
-        "first_ms": 3.2256674021482468,
-        "warm_ms": 2.447250299155712,
+        "process_ms": 2390.171875,
+        "first_ms": 3.191082738339901,
+        "warm_ms": 2.4553332477808,
         "summary": [
           63,
           "x^5000 + 2305843009213693948*x^2",
@@ -1344,9 +1374,9 @@
         "family": "polynomial",
         "comparable": false,
         "ok": true,
-        "process_ms": 2552.618374999991,
-        "first_ms": 21.50920871645212,
-        "warm_ms": 21.178333088755608,
+        "process_ms": 2543.4778330000117,
+        "first_ms": 21.549958735704422,
+        "warm_ms": 21.256208419799805,
         "summary": [
           108573,
           true
@@ -1358,9 +1388,9 @@
         "family": "polynomial",
         "comparable": false,
         "ok": true,
-        "process_ms": 2445.023499999981,
-        "first_ms": 6.864042021334171,
-        "warm_ms": 6.823291070759296,
+        "process_ms": 2433.0659589999996,
+        "first_ms": 6.7883748561143875,
+        "warm_ms": 6.871417164802551,
         "summary": [
           5000,
           "2089549440844503344",
@@ -1375,217 +1405,260 @@
   "comparison": [
     {
       "name": "ZZ.matrix.str",
-      "sagejs_over_sage": 0.1279543350181369,
+      "comparable": true,
+      "sagejs_over_sage": 0.12865295508799546,
       "summaries_match": true
     },
     {
       "name": "ZZ.matrix.dump",
-      "sagejs_over_sage": 0.28901135933375,
+      "comparable": false,
+      "sagejs_over_sage": null,
       "summaries_match": null
     },
     {
       "name": "ZZ.matrix.load",
-      "sagejs_over_sage": 0.2160503231818943,
+      "comparable": false,
+      "sagejs_over_sage": null,
       "summaries_match": null
     },
     {
       "name": "QQ.matrix.str",
-      "sagejs_over_sage": 0.17027190853363158,
+      "comparable": true,
+      "sagejs_over_sage": 0.16182556129268727,
       "summaries_match": true
     },
     {
       "name": "QQ.matrix.dump",
-      "sagejs_over_sage": 0.07715913993858312,
+      "comparable": false,
+      "sagejs_over_sage": null,
       "summaries_match": null
     },
     {
       "name": "QQ.matrix.load",
-      "sagejs_over_sage": 0.1614474217012124,
+      "comparable": false,
+      "sagejs_over_sage": null,
       "summaries_match": null
     },
     {
       "name": "GF2.matrix.str",
-      "sagejs_over_sage": 6.114566284779051,
+      "comparable": true,
+      "sagejs_over_sage": 6.2992771825498535,
       "summaries_match": true
     },
     {
       "name": "GF2.matrix.dump",
-      "sagejs_over_sage": 0.30273057601274644,
+      "comparable": false,
+      "sagejs_over_sage": null,
       "summaries_match": null
     },
     {
       "name": "GF2.matrix.load",
-      "sagejs_over_sage": 2.364128179770217,
+      "comparable": false,
+      "sagejs_over_sage": null,
       "summaries_match": null
     },
     {
       "name": "GF7.matrix.str",
-      "sagejs_over_sage": 0.037570449236608745,
+      "comparable": true,
+      "sagejs_over_sage": 0.03582814383756492,
       "summaries_match": true
     },
     {
       "name": "GF7.matrix.dump",
-      "sagejs_over_sage": 0.446419761333659,
+      "comparable": false,
+      "sagejs_over_sage": null,
       "summaries_match": null
     },
     {
       "name": "GF7.matrix.load",
-      "sagejs_over_sage": 8.939389846786417,
+      "comparable": false,
+      "sagejs_over_sage": null,
       "summaries_match": null
     },
     {
       "name": "GFword.matrix.str",
-      "sagejs_over_sage": 13.09942281497557,
+      "comparable": true,
+      "sagejs_over_sage": 13.427779088491612,
       "summaries_match": true
     },
     {
       "name": "GFword.matrix.dump",
-      "sagejs_over_sage": 3.8727492461252115,
+      "comparable": false,
+      "sagejs_over_sage": null,
       "summaries_match": null
     },
     {
       "name": "GFword.matrix.load",
-      "sagejs_over_sage": 3.8605790381756186,
+      "comparable": false,
+      "sagejs_over_sage": null,
       "summaries_match": null
     },
     {
       "name": "ZZ.polynomial.construct",
-      "sagejs_over_sage": 18.47879672698876,
+      "comparable": true,
+      "sagejs_over_sage": 13.850059446300175,
       "summaries_match": true
     },
     {
       "name": "ZZ.polynomial.multiply",
-      "sagejs_over_sage": 2.598658133374582,
+      "comparable": true,
+      "sagejs_over_sage": 2.5171558109595686,
       "summaries_match": true
     },
     {
       "name": "ZZ.polynomial.gcd",
-      "sagejs_over_sage": 1.3743231169638348,
+      "comparable": true,
+      "sagejs_over_sage": 1.419611670035704,
       "summaries_match": true
     },
     {
       "name": "ZZ.polynomial.factor",
-      "sagejs_over_sage": 4.531637125510706,
+      "comparable": false,
+      "sagejs_over_sage": null,
       "summaries_match": null
     },
     {
       "name": "ZZ.polynomial.str",
-      "sagejs_over_sage": 2.021214705946679,
+      "comparable": true,
+      "sagejs_over_sage": 1.993664202745512,
       "summaries_match": true
     },
     {
       "name": "ZZ.polynomial.dump",
-      "sagejs_over_sage": 0.020724377288582323,
+      "comparable": false,
+      "sagejs_over_sage": null,
       "summaries_match": null
     },
     {
       "name": "ZZ.polynomial.load",
-      "sagejs_over_sage": 0.1472114555393219,
+      "comparable": false,
+      "sagejs_over_sage": null,
       "summaries_match": null
     },
     {
       "name": "QQ.polynomial.construct",
-      "sagejs_over_sage": 25.78231983664525,
+      "comparable": true,
+      "sagejs_over_sage": 24.577572015467574,
       "summaries_match": true
     },
     {
       "name": "QQ.polynomial.multiply",
-      "sagejs_over_sage": 1.3700127758374503,
+      "comparable": true,
+      "sagejs_over_sage": 1.3245051915940738,
       "summaries_match": true
     },
     {
       "name": "QQ.polynomial.gcd",
-      "sagejs_over_sage": 1.1726981218506642,
+      "comparable": true,
+      "sagejs_over_sage": 1.140024117746449,
       "summaries_match": true
     },
     {
       "name": "QQ.polynomial.factor",
-      "sagejs_over_sage": 4.464973351898977,
+      "comparable": false,
+      "sagejs_over_sage": null,
       "summaries_match": null
     },
     {
       "name": "QQ.polynomial.str",
-      "sagejs_over_sage": 0.1421863906003069,
+      "comparable": true,
+      "sagejs_over_sage": 0.16156891284026675,
       "summaries_match": true
     },
     {
       "name": "QQ.polynomial.dump",
-      "sagejs_over_sage": 0.04304861070437977,
+      "comparable": false,
+      "sagejs_over_sage": null,
       "summaries_match": null
     },
     {
       "name": "QQ.polynomial.load",
-      "sagejs_over_sage": 0.22570815984345258,
+      "comparable": false,
+      "sagejs_over_sage": null,
       "summaries_match": null
     },
     {
       "name": "GF7.polynomial.construct",
-      "sagejs_over_sage": 0.3627536215520453,
+      "comparable": true,
+      "sagejs_over_sage": 0.3566793383973202,
       "summaries_match": true
     },
     {
       "name": "GF7.polynomial.multiply",
-      "sagejs_over_sage": 5.100535886044062,
+      "comparable": true,
+      "sagejs_over_sage": 5.3050993167729965,
       "summaries_match": true
     },
     {
       "name": "GF7.polynomial.gcd",
-      "sagejs_over_sage": 6.627127484883024,
+      "comparable": true,
+      "sagejs_over_sage": 6.895075276269686,
       "summaries_match": true
     },
     {
       "name": "GF7.polynomial.factor",
-      "sagejs_over_sage": 4.66924841671148,
+      "comparable": false,
+      "sagejs_over_sage": null,
       "summaries_match": null
     },
     {
       "name": "GF7.polynomial.str",
-      "sagejs_over_sage": 0.043049998985216886,
+      "comparable": true,
+      "sagejs_over_sage": 0.04306198488007931,
       "summaries_match": true
     },
     {
       "name": "GF7.polynomial.dump",
-      "sagejs_over_sage": 0.025896359618918556,
+      "comparable": false,
+      "sagejs_over_sage": null,
       "summaries_match": null
     },
     {
       "name": "GF7.polynomial.load",
-      "sagejs_over_sage": 0.1253914166261009,
+      "comparable": false,
+      "sagejs_over_sage": null,
       "summaries_match": null
     },
     {
       "name": "GFword.polynomial.construct",
-      "sagejs_over_sage": 0.11169828373748254,
+      "comparable": true,
+      "sagejs_over_sage": 0.1411784125682001,
       "summaries_match": true
     },
     {
       "name": "GFword.polynomial.multiply",
-      "sagejs_over_sage": 1.4444380399766876,
+      "comparable": true,
+      "sagejs_over_sage": 1.5235742227712579,
       "summaries_match": true
     },
     {
       "name": "GFword.polynomial.gcd",
-      "sagejs_over_sage": 3.124775622154889,
+      "comparable": true,
+      "sagejs_over_sage": 3.118951323752976,
       "summaries_match": true
     },
     {
       "name": "GFword.polynomial.factor",
-      "sagejs_over_sage": 1.4665534729192395,
+      "comparable": false,
+      "sagejs_over_sage": null,
       "summaries_match": null
     },
     {
       "name": "GFword.polynomial.str",
-      "sagejs_over_sage": 0.03809241108719934,
+      "comparable": true,
+      "sagejs_over_sage": 0.036898885371458134,
       "summaries_match": true
     },
     {
       "name": "GFword.polynomial.dump",
-      "sagejs_over_sage": 0.016897755160034306,
+      "comparable": false,
+      "sagejs_over_sage": null,
       "summaries_match": null
     },
     {
       "name": "GFword.polynomial.load",
-      "sagejs_over_sage": 0.05450932395253201,
+      "comparable": false,
+      "sagejs_over_sage": null,
       "summaries_match": null
     }
   ]
