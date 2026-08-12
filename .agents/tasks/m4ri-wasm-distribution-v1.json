@@ -4,7 +4,7 @@
   "id": "m4ri-wasm-distribution-v1",
   "title": "M4RI browser backend distribution",
   "lane": "distribution",
-  "status": "active",
+  "status": "review",
   "owner": "user",
   "objective": "Build, package, route, and browser-test a separately owned generated M4RI Wasm backend for Sage.js browser sessions.",
   "base_commit": "33a292ac998dc797bfae0e762953d6008fc3fb6e",
@@ -60,11 +60,70 @@
       "commit": "c45693503d809bba7e58fb9e8d31a0840bf33a9b",
       "workspace_fingerprint": "be889ce70dc62d301d8059af6708eba4b4c1420184f83b9147f00a4a863bebf4",
       "platform": "linux-x64"
+    },
+    {
+      "command": "node packages/flint-wasm/test/resource-browser-smoke.mjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 3.035,
+      "started_at": "2026-08-12T02:18:34.132Z",
+      "commit": "1b495490d700cd0113cb6acbd6985ebde0e5d74c",
+      "workspace_fingerprint": "8c0f2abc0ef92940620f0c6f1bdfb73b9e9991da3dd0aafcf52bd1bfd0eec722",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 12.47,
+      "started_at": "2026-08-12T02:18:43.907Z",
+      "commit": "1b495490d700cd0113cb6acbd6985ebde0e5d74c",
+      "workspace_fingerprint": "8c0f2abc0ef92940620f0c6f1bdfb73b9e9991da3dd0aafcf52bd1bfd0eec722",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 7.804,
+      "started_at": "2026-08-12T02:19:48.380Z",
+      "commit": "1b495490d700cd0113cb6acbd6985ebde0e5d74c",
+      "workspace_fingerprint": "8c0f2abc0ef92940620f0c6f1bdfb73b9e9991da3dd0aafcf52bd1bfd0eec722",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:sea",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 232.859,
+      "started_at": "2026-08-12T02:21:49.795Z",
+      "commit": "1b495490d700cd0113cb6acbd6985ebde0e5d74c",
+      "workspace_fingerprint": "8c0f2abc0ef92940620f0c6f1bdfb73b9e9991da3dd0aafcf52bd1bfd0eec722",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm --filter @sagemath/sagejs-flint-wasm test",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 14.666,
+      "started_at": "2026-08-12T02:25:58.764Z",
+      "commit": "1b495490d700cd0113cb6acbd6985ebde0e5d74c",
+      "workspace_fingerprint": "8c0f2abc0ef92940620f0c6f1bdfb73b9e9991da3dd0aafcf52bd1bfd0eec722",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {
-    "summary": "",
-    "risks": [],
-    "next_steps": []
+    "summary": "Packages a separately instantiated generated M4RI Wasm resource backend, exposes it through @sagemath/sagejs-flint-wasm and the browser evaluator/kernel, and covers the complete 22-function resource surface, ownership, finalization, cross-instance branding, and portable differential semantics in Node and Chromium.",
+    "risks": [
+      "The CoWasm sysroot currently supplies M4RI 20250128 while native Sage.js pins 20260122; the declared ABI used here is shared, but aligning those dependency revisions remains desirable.",
+      "The package and Chromium lifecycle suites pass. The broad portable gate passed 131 of 133 checks but failed because dist/module-cache/numpy.json and dist/runtime-cache/manifest.json were absent; those root build artifacts are outside this package-only claim.",
+      "The SEA build completed, but the root SEA smoke executable was killed before returning an exit status. Architecture checking likewise reached the native export inventory and reported drift caused by generated addon state outside this claim.",
+      "This lane exposes the Wasm M4RI package and browser runtime; routing the public dense GF(2) Matrix implementation is intentionally owned by a separate integration lane."
+    ],
+    "next_steps": [
+      "Integrate the public dense GF(2) Matrix API with the generated M4RI resource backend and its portable fallback.",
+      "Align the CoWasm M4RI dependency revision with the native Sage.js pin.",
+      "Make broad portable and architecture gates prepare or isolate their required root-level generated artifacts in parallel worktrees."
+    ]
   }
 }
