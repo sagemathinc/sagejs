@@ -7,7 +7,7 @@
   "status": "active",
   "owner": "user",
   "objective": "Implement ordinary Python reference contracts for LU, exact QR, and Gram-Schmidt including shape and singular-case semantics",
-  "base_commit": "684da899398cfb5cffa8395448ca6d62a1757eee",
+  "base_commit": "3fbce0b1111129ce3de879fefb2e6b08a70d9840",
   "claims": [
     "src/lib/sagejs/linear_algebra/decompositions.py",
     "test/linear-decomposition-contract.cjs",
@@ -35,8 +35,11 @@
   "validation": [
     "node test/linear-decomposition-contract.cjs",
     "node bench/linear-decomposition-contract.cjs --json",
+    "pnpm exec pyright --pythonversion 3.11 src/lib/sagejs/linear_algebra/decompositions.py",
+    "pnpm architecture:check",
     "pnpm test:baselib:strict",
-    "pnpm test:native"
+    "pnpm test:native",
+    "node scripts/check-integer-matrix-budget.cjs"
   ],
   "runs": [
     {
@@ -88,11 +91,99 @@
       "commit": "684da899398cfb5cffa8395448ca6d62a1757eee",
       "workspace_fingerprint": "febb7ca74ceb9b484a292f7c5058317a5ee136bb13e80243b1d4c40151c9cb47",
       "platform": "linux-x64"
+    },
+    {
+      "command": "node test/linear-decomposition-contract.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.097,
+      "started_at": "2026-08-12T08:59:54.816Z",
+      "commit": "c3d855937647e3b6c60e9c2790567a8be9006c2f",
+      "workspace_fingerprint": "ffff2aea1dafa3a2177501f16756de36960d0f626b45e46b8aef02dea23ede71",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/linear-decomposition-contract.cjs --json",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 4.198,
+      "started_at": "2026-08-12T08:59:55.697Z",
+      "commit": "c3d855937647e3b6c60e9c2790567a8be9006c2f",
+      "workspace_fingerprint": "ffff2aea1dafa3a2177501f16756de36960d0f626b45e46b8aef02dea23ede71",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm exec pyright --pythonversion 3.11 src/lib/sagejs/linear_algebra/decompositions.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.341,
+      "started_at": "2026-08-12T09:00:00.513Z",
+      "commit": "c3d855937647e3b6c60e9c2790567a8be9006c2f",
+      "workspace_fingerprint": "ffff2aea1dafa3a2177501f16756de36960d0f626b45e46b8aef02dea23ede71",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 14.353,
+      "started_at": "2026-08-12T09:00:02.575Z",
+      "commit": "c3d855937647e3b6c60e9c2790567a8be9006c2f",
+      "workspace_fingerprint": "ffff2aea1dafa3a2177501f16756de36960d0f626b45e46b8aef02dea23ede71",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 13.55,
+      "started_at": "2026-08-12T09:00:17.515Z",
+      "commit": "c3d855937647e3b6c60e9c2790567a8be9006c2f",
+      "workspace_fingerprint": "ffff2aea1dafa3a2177501f16756de36960d0f626b45e46b8aef02dea23ede71",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 15.9,
+      "started_at": "2026-08-12T09:00:39.959Z",
+      "commit": "c3d855937647e3b6c60e9c2790567a8be9006c2f",
+      "workspace_fingerprint": "ffff2aea1dafa3a2177501f16756de36960d0f626b45e46b8aef02dea23ede71",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node scripts/check-integer-matrix-budget.cjs",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 10.894,
+      "started_at": "2026-08-12T09:05:30.981Z",
+      "commit": "c3d855937647e3b6c60e9c2790567a8be9006c2f",
+      "workspace_fingerprint": "ffff2aea1dafa3a2177501f16756de36960d0f626b45e46b8aef02dea23ede71",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node scripts/check-integer-matrix-budget.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 13.715,
+      "started_at": "2026-08-12T09:08:28.436Z",
+      "commit": "c3d855937647e3b6c60e9c2790567a8be9006c2f",
+      "workspace_fingerprint": "ffff2aea1dafa3a2177501f16756de36960d0f626b45e46b8aef02dea23ede71",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {
-    "summary": "",
-    "risks": [],
-    "next_steps": []
+    "summary": "Added an immutable explicit-shape RationalMatrixData reference value and ordinary CPython implementations of Sage-oriented partial/nonzero-pivot LU, full/reduced exact QR, and exact row Gram-Schmidt. The contracts fix A=P*L*U, A=Q*R, and A=M*G tuple order; rectangular, rank-deficient, singular, dependent-row, and zero-dimensional shapes; rational square-root failure; and deterministic 40x40 baselines. Live SageMath 10.9.post1 probes supply exact LU/QR/Gram fixtures and shape oracles. Nothing is wired into public Matrix yet.",
+    "risks": [
+      "The reference scalar domain is Fraction, so QR and orthonormal Gram-Schmidt intentionally raise when a required square root leaves QQ. A future QQbar or exact-ring adapter must also provide conjugation semantics before extending this contract to complex exact fields.",
+      "The helper currently fixes Sage's default PLU tuple contract for explicit partial/nonzero pivoting. Public Matrix.LU still needs an adapter for pivot=None auto-selection and the optional compact return format.",
+      "A full native aggregate reached all FFI, sanitizer lifecycle, compiler, matrix migration, and finite-field budget gates, then transiently measured inherited ZZ density_500 at 9.88ms normalized against an 8ms budget. Immediate isolated runs passed at 2.13ms before rebase and 3.17ms after rebase. The first aggregate attempt also exposed and then repaired a missing worktree-local M4RI prefix; a redundant third aggregate was stopped at coordinator request."
+    ],
+    "next_steps": [
+      "In the integration lane, add src/lib/sagejs/linear_algebra/decompositions.py to pyrightconfig.json and test/linear-decomposition-contract.cjs to test/node-test-manifest.cjs. The existing linear-algebra-algorithms prefix already owns the source, so no package-graph entry is needed.",
+      "Wire Matrix.LU, Matrix.QR, and Matrix.gram_schmidt through a lazy sagejs.linear_algebra.decompositions import. For ZZ and QQ, bulk-export once into RationalMatrixData and construct each returned Matrix over QQ with the recorded explicit dimensions; preserve Sage's pivot=None, compact-format, mutability/cache, and exception behavior in the public adapter.",
+      "After public differential tests are stable, benchmark each method and replace only measured hot paths with generated FLINT resources or source-transparent typed Python while retaining these ordinary-Python contracts as the oracle."
+    ]
   }
 }
