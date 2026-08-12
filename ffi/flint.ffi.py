@@ -159,6 +159,31 @@ FmpqPolynomialDivisionResult = flint.resource(
 )
 
 
+# These aggregate owners follow the existing exact-polynomial resource path.
+# Their `wasm=False` is that path's current portability limitation; browsers
+# execute the ordinary-Python fallback until generated Wasm ownership lands.
+FmpzPolynomialXgcdResult = flint.resource(
+    id="fmpz_polynomial_xgcd_result",
+    abi=sagejs_fmpz_polynomial_xgcd_result_t,
+    ownership="owned",
+    close="ffiFmpzPolynomialXgcdResultClose",
+    clear="sagejs_fmpz_polynomial_xgcd_result_clear",
+    size="sagejs_fmpz_polynomial_xgcd_result_allocated_bytes",
+    wasm=False,
+)
+
+
+FmpqPolynomialXgcdResult = flint.resource(
+    id="fmpq_polynomial_xgcd_result",
+    abi=sagejs_fmpq_polynomial_xgcd_result_t,
+    ownership="owned",
+    close="ffiFmpqPolynomialXgcdResultClose",
+    clear="sagejs_fmpq_polynomial_xgcd_result_clear",
+    size="sagejs_fmpq_polynomial_xgcd_result_allocated_bytes",
+    wasm=False,
+)
+
+
 DirichletGroup = flint.resource(
     id="dirichlet_group",
     abi=dirichlet_group_t,
@@ -402,6 +427,76 @@ def fmpz_polynomial_mul(
 def fmpz_polynomial_gcd(
     left: FmpzPolynomial,
     right: FmpzPolynomial,
+) -> FmpzPolynomial: ...
+
+
+@flint.function(
+    dynamic="ffiFmpzPolynomialXgcdResource",
+    symbol="sagejs_fmpz_polynomial_xgcd_resource",
+    returns=int,
+    abi=[
+        out("result", sagejs_fmpz_polynomial_xgcd_result_t),
+        in_("left", sagejs_fmpz_polynomial_t),
+        in_("right", sagejs_fmpz_polynomial_t),
+    ],
+    effects=Effects(pure=False, allocates=True, raises=[ValueError]),
+    result=Status(1, exception=ValueError, message="integer polynomial is unsealed"),
+    wasm=False,
+)
+def fmpz_polynomial_xgcd_resource(
+    left: FmpzPolynomial,
+    right: FmpzPolynomial,
+) -> FmpzPolynomialXgcdResult: ...
+
+
+@flint.function(
+    dynamic="ffiFmpzPolynomialXgcdResultGcd",
+    symbol="sagejs_fmpz_polynomial_xgcd_result_gcd",
+    returns=int,
+    abi=[
+        out("result", sagejs_fmpz_polynomial_t),
+        in_("xgcd", sagejs_fmpz_polynomial_xgcd_result_t),
+    ],
+    effects=Effects(pure=False, allocates=True, raises=[ValueError]),
+    result=Status(1, exception=ValueError, message="invalid integer xgcd result"),
+    wasm=False,
+)
+def fmpz_polynomial_xgcd_result_gcd(
+    xgcd: FmpzPolynomialXgcdResult,
+) -> FmpzPolynomial: ...
+
+
+@flint.function(
+    dynamic="ffiFmpzPolynomialXgcdResultLeftCoefficient",
+    symbol="sagejs_fmpz_polynomial_xgcd_result_left_coefficient",
+    returns=int,
+    abi=[
+        out("result", sagejs_fmpz_polynomial_t),
+        in_("xgcd", sagejs_fmpz_polynomial_xgcd_result_t),
+    ],
+    effects=Effects(pure=False, allocates=True, raises=[ValueError]),
+    result=Status(1, exception=ValueError, message="invalid integer xgcd result"),
+    wasm=False,
+)
+def fmpz_polynomial_xgcd_result_left_coefficient(
+    xgcd: FmpzPolynomialXgcdResult,
+) -> FmpzPolynomial: ...
+
+
+@flint.function(
+    dynamic="ffiFmpzPolynomialXgcdResultRightCoefficient",
+    symbol="sagejs_fmpz_polynomial_xgcd_result_right_coefficient",
+    returns=int,
+    abi=[
+        out("result", sagejs_fmpz_polynomial_t),
+        in_("xgcd", sagejs_fmpz_polynomial_xgcd_result_t),
+    ],
+    effects=Effects(pure=False, allocates=True, raises=[ValueError]),
+    result=Status(1, exception=ValueError, message="invalid integer xgcd result"),
+    wasm=False,
+)
+def fmpz_polynomial_xgcd_result_right_coefficient(
+    xgcd: FmpzPolynomialXgcdResult,
 ) -> FmpzPolynomial: ...
 
 
@@ -914,6 +1009,76 @@ def fmpq_polynomial_mul(
 def fmpq_polynomial_gcd(
     left: FmpqPolynomial,
     right: FmpqPolynomial,
+) -> FmpqPolynomial: ...
+
+
+@flint.function(
+    dynamic="ffiFmpqPolynomialXgcdResource",
+    symbol="sagejs_fmpq_polynomial_xgcd_resource",
+    returns=int,
+    abi=[
+        out("result", sagejs_fmpq_polynomial_xgcd_result_t),
+        in_("left", sagejs_fmpq_polynomial_t),
+        in_("right", sagejs_fmpq_polynomial_t),
+    ],
+    effects=Effects(pure=False, allocates=True, raises=[ValueError]),
+    result=Status(1, exception=ValueError, message="rational polynomial is unsealed"),
+    wasm=False,
+)
+def fmpq_polynomial_xgcd_resource(
+    left: FmpqPolynomial,
+    right: FmpqPolynomial,
+) -> FmpqPolynomialXgcdResult: ...
+
+
+@flint.function(
+    dynamic="ffiFmpqPolynomialXgcdResultGcd",
+    symbol="sagejs_fmpq_polynomial_xgcd_result_gcd",
+    returns=int,
+    abi=[
+        out("result", sagejs_fmpq_polynomial_t),
+        in_("xgcd", sagejs_fmpq_polynomial_xgcd_result_t),
+    ],
+    effects=Effects(pure=False, allocates=True, raises=[ValueError]),
+    result=Status(1, exception=ValueError, message="invalid rational xgcd result"),
+    wasm=False,
+)
+def fmpq_polynomial_xgcd_result_gcd(
+    xgcd: FmpqPolynomialXgcdResult,
+) -> FmpqPolynomial: ...
+
+
+@flint.function(
+    dynamic="ffiFmpqPolynomialXgcdResultLeftCoefficient",
+    symbol="sagejs_fmpq_polynomial_xgcd_result_left_coefficient",
+    returns=int,
+    abi=[
+        out("result", sagejs_fmpq_polynomial_t),
+        in_("xgcd", sagejs_fmpq_polynomial_xgcd_result_t),
+    ],
+    effects=Effects(pure=False, allocates=True, raises=[ValueError]),
+    result=Status(1, exception=ValueError, message="invalid rational xgcd result"),
+    wasm=False,
+)
+def fmpq_polynomial_xgcd_result_left_coefficient(
+    xgcd: FmpqPolynomialXgcdResult,
+) -> FmpqPolynomial: ...
+
+
+@flint.function(
+    dynamic="ffiFmpqPolynomialXgcdResultRightCoefficient",
+    symbol="sagejs_fmpq_polynomial_xgcd_result_right_coefficient",
+    returns=int,
+    abi=[
+        out("result", sagejs_fmpq_polynomial_t),
+        in_("xgcd", sagejs_fmpq_polynomial_xgcd_result_t),
+    ],
+    effects=Effects(pure=False, allocates=True, raises=[ValueError]),
+    result=Status(1, exception=ValueError, message="invalid rational xgcd result"),
+    wasm=False,
+)
+def fmpq_polynomial_xgcd_result_right_coefficient(
+    xgcd: FmpqPolynomialXgcdResult,
 ) -> FmpqPolynomial: ...
 
 

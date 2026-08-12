@@ -15,10 +15,12 @@ from sagejs.ffi.flint import (
     FmpqMatrix,
     FmpqPolynomial,
     FmpqPolynomialDivisionResult,
+    FmpqPolynomialXgcdResult,
     FmpqValue,
     FmpzMatrix,
     FmpzPolynomial,
     FmpzPolynomialDivisionResult,
+    FmpzPolynomialXgcdResult,
     fmpz_polynomial as _ffi_fmpz_polynomial,
     fmpz_polynomial_set_coefficient as _ffi_fmpz_polynomial_set_coefficient,
     fmpz_polynomial_seal as _ffi_fmpz_polynomial_seal,
@@ -31,6 +33,10 @@ from sagejs.ffi.flint import (
     fmpz_polynomial_derivative as _ffi_fmpz_polynomial_derivative,
     fmpz_polynomial_mul as _ffi_fmpz_polynomial_mul,
     fmpz_polynomial_gcd as _ffi_fmpz_polynomial_gcd,
+    fmpz_polynomial_xgcd_resource as _ffi_fmpz_polynomial_xgcd_resource,
+    fmpz_polynomial_xgcd_result_gcd as _ffi_fmpz_polynomial_xgcd_result_gcd,
+    fmpz_polynomial_xgcd_result_left_coefficient as _ffi_fmpz_polynomial_xgcd_result_left_coefficient,
+    fmpz_polynomial_xgcd_result_right_coefficient as _ffi_fmpz_polynomial_xgcd_result_right_coefficient,
     fmpz_polynomial_factor_resource as _ffi_fmpz_polynomial_factor_resource,
     fmpz_polynomial_divexact as _ffi_fmpz_polynomial_divexact,
     fmpz_polynomial_quo_rem_resource as _ffi_fmpz_polynomial_quo_rem_resource,
@@ -56,6 +62,10 @@ from sagejs.ffi.flint import (
     fmpq_polynomial_derivative as _ffi_fmpq_polynomial_derivative,
     fmpq_polynomial_mul as _ffi_fmpq_polynomial_mul,
     fmpq_polynomial_gcd as _ffi_fmpq_polynomial_gcd,
+    fmpq_polynomial_xgcd_resource as _ffi_fmpq_polynomial_xgcd_resource,
+    fmpq_polynomial_xgcd_result_gcd as _ffi_fmpq_polynomial_xgcd_result_gcd,
+    fmpq_polynomial_xgcd_result_left_coefficient as _ffi_fmpq_polynomial_xgcd_result_left_coefficient,
+    fmpq_polynomial_xgcd_result_right_coefficient as _ffi_fmpq_polynomial_xgcd_result_right_coefficient,
     fmpq_polynomial_factor_resource as _ffi_fmpq_polynomial_factor_resource,
     exact_polynomial_factorization_count as _ffi_exact_polynomial_factorization_count,
     exact_polynomial_factorization_exponent as _ffi_exact_polynomial_factorization_exponent,
@@ -328,6 +338,44 @@ def ffiFmpzPolynomialGcd(
 
 
 @native
+def ffiFmpzPolynomialXgcdResource(
+    left: FmpzPolynomial,
+    right: FmpzPolynomial,
+) -> FmpzPolynomialXgcdResult:
+    return _ffi_fmpz_polynomial_xgcd_resource(
+        left,
+        right,
+    )
+
+
+@native
+def ffiFmpzPolynomialXgcdResultGcd(
+    xgcd: FmpzPolynomialXgcdResult,
+) -> FmpzPolynomial:
+    return _ffi_fmpz_polynomial_xgcd_result_gcd(
+        xgcd,
+    )
+
+
+@native
+def ffiFmpzPolynomialXgcdResultLeftCoefficient(
+    xgcd: FmpzPolynomialXgcdResult,
+) -> FmpzPolynomial:
+    return _ffi_fmpz_polynomial_xgcd_result_left_coefficient(
+        xgcd,
+    )
+
+
+@native
+def ffiFmpzPolynomialXgcdResultRightCoefficient(
+    xgcd: FmpzPolynomialXgcdResult,
+) -> FmpzPolynomial:
+    return _ffi_fmpz_polynomial_xgcd_result_right_coefficient(
+        xgcd,
+    )
+
+
+@native
 def ffiFmpzPolynomialFactorResource(
     source: FmpzPolynomial,
 ) -> ExactPolynomialFactorization:
@@ -583,6 +631,44 @@ def ffiFmpqPolynomialGcd(
     return _ffi_fmpq_polynomial_gcd(
         left,
         right,
+    )
+
+
+@native
+def ffiFmpqPolynomialXgcdResource(
+    left: FmpqPolynomial,
+    right: FmpqPolynomial,
+) -> FmpqPolynomialXgcdResult:
+    return _ffi_fmpq_polynomial_xgcd_resource(
+        left,
+        right,
+    )
+
+
+@native
+def ffiFmpqPolynomialXgcdResultGcd(
+    xgcd: FmpqPolynomialXgcdResult,
+) -> FmpqPolynomial:
+    return _ffi_fmpq_polynomial_xgcd_result_gcd(
+        xgcd,
+    )
+
+
+@native
+def ffiFmpqPolynomialXgcdResultLeftCoefficient(
+    xgcd: FmpqPolynomialXgcdResult,
+) -> FmpqPolynomial:
+    return _ffi_fmpq_polynomial_xgcd_result_left_coefficient(
+        xgcd,
+    )
+
+
+@native
+def ffiFmpqPolynomialXgcdResultRightCoefficient(
+    xgcd: FmpqPolynomialXgcdResult,
+) -> FmpqPolynomial:
+    return _ffi_fmpq_polynomial_xgcd_result_right_coefficient(
+        xgcd,
     )
 
 

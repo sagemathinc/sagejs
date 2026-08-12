@@ -133,6 +133,17 @@ function decodePolynomial(source, rational) {
   return coefficients;
 }
 
+function resourceCoefficients(resource, rational) {
+  const region = rational
+    ? flint.ffiFmpqPolynomialSerialize(resource)
+    : flint.ffiFmpzPolynomialSerialize(resource);
+  try {
+    return decodePolynomial(bytes(region), rational);
+  } finally {
+    closeTwice(region, flint.ffiFlintByteRegionClose);
+  }
+}
+
 function fmpzPolynomial(coefficients) {
   const result = flint.ffiFmpzPolynomialCreate(BigInt(coefficients.length));
   try {
@@ -425,6 +436,64 @@ function fmpqPolynomial(coefficients) {
   closeTwice(sum, flint.ffiFmpqPolynomialClose);
   closeTwice(right, flint.ffiFmpqPolynomialClose);
   closeTwice(left, flint.ffiFmpqPolynomialClose);
+}
+
+{
+  const left = fmpzPolynomial([2n, 1n]);
+  const right = fmpzPolynomial([4n, 1n]);
+  const result = flint.ffiFmpzPolynomialXgcdResource(left, right);
+  assert.ok(accounted(result) > 0n);
+  const gcd = flint.ffiFmpzPolynomialXgcdResultGcd(result);
+  const leftCoefficient =
+    flint.ffiFmpzPolynomialXgcdResultLeftCoefficient(result);
+  const rightCoefficient =
+    flint.ffiFmpzPolynomialXgcdResultRightCoefficient(result);
+  assert.deepEqual(resourceCoefficients(gcd, false), [2n]);
+  assert.deepEqual(resourceCoefficients(leftCoefficient, false), [-1n]);
+  assert.deepEqual(resourceCoefficients(rightCoefficient, false), [1n]);
+  closeTwice(result, flint.ffiFmpzPolynomialXgcdResultClose);
+  assert.throws(
+    () => flint.ffiFmpzPolynomialXgcdResultGcd(result),
+    /resource is closed/,
+  );
+  // The three selected polynomials are independent retained resources.
+  assert.equal(flint.ffiFmpzPolynomialCoefficient(gcd, 0n), 2n);
+  const repeated = flint.ffiFmpzPolynomialXgcdResource(left, left);
+  const repeatedGcd = flint.ffiFmpzPolynomialXgcdResultGcd(repeated);
+  assert.equal(flint.ffiFmpzPolynomialEqual(repeatedGcd, left), 1n);
+  const unsealed = flint.ffiFmpzPolynomialCreate(1n);
+  assert.throws(
+    () => flint.ffiFmpzPolynomialXgcdResource(unsealed, right),
+    /integer polynomial is unsealed/,
+  );
+  for (const value of [
+    unsealed, repeatedGcd, rightCoefficient, leftCoefficient, gcd, right, left,
+  ]) closeTwice(value, flint.ffiFmpzPolynomialClose);
+  closeTwice(repeated, flint.ffiFmpzPolynomialXgcdResultClose);
+}
+
+{
+  const left = fmpqPolynomial([[2n, 1n], [1n, 1n]]);
+  const right = fmpqPolynomial([[4n, 1n], [1n, 1n]]);
+  const result = flint.ffiFmpqPolynomialXgcdResource(left, right);
+  assert.ok(accounted(result) > 0n);
+  const gcd = flint.ffiFmpqPolynomialXgcdResultGcd(result);
+  const leftCoefficient =
+    flint.ffiFmpqPolynomialXgcdResultLeftCoefficient(result);
+  const rightCoefficient =
+    flint.ffiFmpqPolynomialXgcdResultRightCoefficient(result);
+  assert.deepEqual(resourceCoefficients(gcd, true), [[1n, 1n]]);
+  assert.deepEqual(resourceCoefficients(leftCoefficient, true), [[-1n, 2n]]);
+  assert.deepEqual(resourceCoefficients(rightCoefficient, true), [[1n, 2n]]);
+  closeTwice(result, flint.ffiFmpqPolynomialXgcdResultClose);
+  assert.throws(
+    () => flint.ffiFmpqPolynomialXgcdResultRightCoefficient(result),
+    /resource is closed/,
+  );
+  assert.equal(flint.ffiFmpqPolynomialCoefficientNumerator(gcd, 0n), 1n);
+  for (const value of [
+    rightCoefficient, leftCoefficient, gcd, right, left,
+  ]) closeTwice(value, flint.ffiFmpqPolynomialClose);
 }
 
 {
@@ -980,15 +1049,28 @@ int main(void)
     {
         sagejs_fmpz_polynomial_t z, zsum, zproduct, zquotient, zgcd, zpower;
         sagejs_fmpq_polynomial_t q, qsum, qproduct, qquotient, qgcd, qpower;
+        sagejs_fmpz_polynomial_xgcd_result_t zxgcd;
+        sagejs_fmpq_polynomial_xgcd_result_t qxgcd;
         sagejs_fmpz_polynomial_t zrejected, zzero;
         sagejs_fmpq_polynomial_t qrejected, qzero;
+        sagejs_fmpz_polynomial_t zunsealed;
+        sagejs_fmpq_polynomial_t qunsealed;
         sagejs_fmpz_polynomial_t zdecoded;
         sagejs_fmpq_polynomial_t qdecoded;
         sagejs_fmpq_value_t qvalue, zqvalue;
         sagejs_flint_byte_region_t zbytes, qbytes;
         if (!sagejs_fmpz_polynomial_init(z, 32) ||
-            !sagejs_fmpq_polynomial_init(q, 32))
+            !sagejs_fmpq_polynomial_init(q, 32) ||
+            !sagejs_fmpz_polynomial_init(zunsealed, 1) ||
+            !sagejs_fmpq_polynomial_init(qunsealed, 1))
             return 2;
+        sagejs_fmpz_polynomial_xgcd_result_t rejected_zxgcd = {0};
+        sagejs_fmpq_polynomial_xgcd_result_t rejected_qxgcd = {0};
+        if (sagejs_fmpz_polynomial_xgcd_resource(
+                rejected_zxgcd, zunsealed, zunsealed) ||
+            sagejs_fmpq_polynomial_xgcd_resource(
+                rejected_qxgcd, qunsealed, qunsealed))
+            return 18;
         for (slong index = 0; index < 32; index++)
         {
             fmpz_set_si(coefficient, round + 3 * index - 17);
@@ -1005,12 +1087,33 @@ int main(void)
             !sagejs_fmpz_polynomial_add(zsum, z, z) ||
             !sagejs_fmpz_polynomial_mul(zproduct, z, zsum) ||
             !sagejs_fmpz_polynomial_gcd(zgcd, zproduct, z) ||
+            !sagejs_fmpz_polynomial_xgcd_resource(zxgcd, zproduct, z) ||
             !sagejs_fmpz_polynomial_pow(zpower, z, 3) ||
             !sagejs_fmpq_polynomial_add(qsum, q, q) ||
             !sagejs_fmpq_polynomial_mul(qproduct, q, qsum) ||
             !sagejs_fmpq_polynomial_gcd(qgcd, qproduct, q) ||
+            !sagejs_fmpq_polynomial_xgcd_resource(qxgcd, qproduct, q) ||
             !sagejs_fmpq_polynomial_pow(qpower, q, 3))
             return 5;
+        fmpz_poly_t zidentity, zterm;
+        fmpq_poly_t qidentity, qterm;
+        fmpz_poly_init(zidentity);
+        fmpz_poly_init(zterm);
+        fmpq_poly_init(qidentity);
+        fmpq_poly_init(qterm);
+        fmpz_poly_mul(
+            zidentity, zxgcd->left_coefficient.value, zproduct->value);
+        fmpz_poly_mul(
+            zterm, zxgcd->right_coefficient.value, z->value);
+        fmpz_poly_add(zidentity, zidentity, zterm);
+        fmpq_poly_mul(
+            qidentity, qxgcd->left_coefficient.value, qproduct->value);
+        fmpq_poly_mul(
+            qterm, qxgcd->right_coefficient.value, q->value);
+        fmpq_poly_add(qidentity, qidentity, qterm);
+        if (!fmpz_poly_equal(zidentity, zxgcd->gcd.value) ||
+            !fmpq_poly_equal(qidentity, qxgcd->gcd.value))
+            return 17;
         fmpz_poly_t z_before, zproduct_before;
         fmpq_poly_t q_before, qproduct_before;
         fmpz_poly_init(z_before);
@@ -1079,6 +1182,8 @@ int main(void)
         sagejs_fmpq_value_clear(zqvalue);
         sagejs_fmpq_value_clear(qvalue);
         sagejs_fmpq_polynomial_clear(qzero);
+        sagejs_fmpq_polynomial_clear(qunsealed);
+        sagejs_fmpq_polynomial_xgcd_result_clear(qxgcd);
         sagejs_fmpq_polynomial_clear(qpower);
         sagejs_fmpq_polynomial_clear(qgcd);
         sagejs_fmpq_polynomial_clear(qquotient);
@@ -1087,7 +1192,11 @@ int main(void)
         sagejs_fmpq_polynomial_clear(q);
         fmpq_poly_clear(qproduct_before);
         fmpq_poly_clear(q_before);
+        fmpq_poly_clear(qterm);
+        fmpq_poly_clear(qidentity);
+        sagejs_fmpz_polynomial_xgcd_result_clear(zxgcd);
         sagejs_fmpz_polynomial_clear(zpower);
+        sagejs_fmpz_polynomial_clear(zunsealed);
         sagejs_fmpz_polynomial_clear(zgcd);
         sagejs_fmpz_polynomial_clear(zzero);
         sagejs_fmpz_polynomial_clear(zquotient);
@@ -1096,6 +1205,8 @@ int main(void)
         sagejs_fmpz_polynomial_clear(z);
         fmpz_poly_clear(zproduct_before);
         fmpz_poly_clear(z_before);
+        fmpz_poly_clear(zterm);
+        fmpz_poly_clear(zidentity);
     }
     fmpz_one(coefficient);
     fmpz_mul_2exp(coefficient, coefficient, 8192);

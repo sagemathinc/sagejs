@@ -83,6 +83,16 @@ const cases = [
     budget: 10,
   },
   {
+    name: "xgcd_ZZ_300",
+    expression: "_xgcd_z_left.xgcd(_xgcd_z_right)",
+    budget: 50,
+  },
+  {
+    name: "xgcd_QQ_300",
+    expression: "_xgcd_q_left.xgcd(_xgcd_q_right)",
+    budget: 50,
+  },
+  {
     name: "factor_ZZ_80",
     expression: "exact_z.factor()",
     budget: 50,
@@ -187,6 +197,12 @@ async function run(environment = process.env) {
         "_gcd_q_common = xq**125 + QQ(2)/3*xq + QQ(1)/5",
         "_gcd_q_left = _gcd_q_common * xq**1875",
         "_gcd_q_right = QQ(-7)/11 * _gcd_q_common * (xq**1800 + 1)",
+        "_xgcd_z_common = xz**20 + 3*xz + 1",
+        "_xgcd_z_left = _xgcd_z_common * (xz**280 + xz + 1)",
+        "_xgcd_z_right = _xgcd_z_common * (xz**275 + 2*xz + 3)",
+        "_xgcd_q_common = xq**20 + QQ(2)/3*xq + QQ(1)/5",
+        "_xgcd_q_left = _xgcd_q_common * (xq**280 + xq + QQ(1)/7)",
+        "_xgcd_q_right = _xgcd_q_common * (xq**275 + QQ(2)/11*xq + 3)",
         ...definitions,
       ].join("\n"));
       if (setup.stderr !== undefined) throw new Error(setup.stderr);
