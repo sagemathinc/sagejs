@@ -746,10 +746,124 @@ test("native addon preparation builds the compiler once in a fresh workspace", (
     assert.equal(ensureNativeCompiler(directory, options).status, "built");
     assert.equal(ensureNativeCompiler(directory, options).status, "present");
     assert.equal(builds, 1);
-    writeFileSync(join(directory, "tools", "compiler.ts"), "compiler v2\n");
+    const stampPath = join(directory, "dist", ".sagejs-native-compiler.json");
+    const obsoleteStamp = JSON.parse(readFileSync(stampPath, "utf8"));
+    obsoleteStamp.schema = "sagejs.native-compiler-inputs-v1";
+    writeFileSync(stampPath, `${JSON.stringify(obsoleteStamp)}\n`);
     assert.equal(ensureNativeCompiler(directory, options).status, "built");
     assert.equal(ensureNativeCompiler(directory, options).status, "present");
     assert.equal(builds, 2);
+    writeFileSync(join(directory, "tools", "compiler.ts"), "compiler v2\n");
+    assert.equal(ensureNativeCompiler(directory, options).status, "built");
+    assert.equal(ensureNativeCompiler(directory, options).status, "present");
+    assert.equal(builds, 3);
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+function nativeCompilerBuildRunner(directory, observations) {
+  return (_command, arguments_, workspace) => {
+    assert.equal(workspace, directory);
+    const program = arguments_[0];
+    if (program.endsWith(join("typescript", "bin", "tsc"))) {
+      mkdirSync(join(directory, "dist", "tools", "python"), {
+        recursive: true,
+      });
+      writeFileSync(join(directory, "dist", "tools", "compiler.js"), "tool\n");
+      writeFileSync(
+        join(directory, "dist", "tools", "python", "compiler-frontend.js"),
+        "frontend\n",
+      );
+      return;
+    }
+    if (program === join(directory, "scripts", "build-vendor.cjs")) {
+      mkdirSync(join(directory, "dist", "vendor"), { recursive: true });
+      for (const name of [
+        "web-tree-sitter.wasm",
+        "tree-sitter-python.wasm",
+        "tree-sitter-sage.wasm",
+      ]) {
+        writeFileSync(join(directory, "dist", "vendor", name), "wasm\n");
+      }
+      return;
+    }
+    if (program === join(directory, "bin", "sagejs")) {
+      assert.deepEqual(arguments_.slice(1), ["self", "--complete"]);
+      const compilerPath = join(directory, "dist", "compiler", "compiler.js");
+      observations.beforeSelf.push(readFileSync(compilerPath, "utf8"));
+      writeFileSync(compilerPath, "converged compiler\n");
+      return;
+    }
+    assert.fail(`unexpected native compiler command: ${arguments_.join(" ")}`);
+  };
+}
+
+test("native compiler preparation self-hosts without downgrading an existing compiler", () => {
+  for (const existingCompiler of [null, "existing converged compiler\n"]) {
+    const directory = mkdtempSync(join(tmpdir(), "sagejs-native-self-host-test-"));
+    const observations = { beforeSelf: [] };
+    try {
+      mkdirSync(join(directory, "bootstrap"), { recursive: true });
+      writeFileSync(
+        join(directory, "bootstrap", "compiler.js"),
+        "immutable stage zero\n",
+      );
+      if (existingCompiler !== null) {
+        mkdirSync(join(directory, "dist", "compiler"), { recursive: true });
+        writeFileSync(
+          join(directory, "dist", "compiler", "compiler.js"),
+          existingCompiler,
+        );
+      }
+      const options = {
+        runner: nativeCompilerBuildRunner(directory, observations),
+        validateCompiler(workspace) {
+          assert.equal(workspace, directory);
+          assert.equal(
+            readFileSync(
+              join(directory, "dist", "compiler", "compiler.js"),
+              "utf8",
+            ),
+            "converged compiler\n",
+          );
+        },
+      };
+      assert.equal(ensureNativeCompiler(directory, options).status, "built");
+      assert.deepEqual(observations.beforeSelf, [
+        existingCompiler ?? "immutable stage zero\n",
+      ]);
+      assert.equal(ensureNativeCompiler(directory, options).status, "present");
+      assert.equal(observations.beforeSelf.length, 1);
+    } finally {
+      rmSync(directory, { recursive: true, force: true });
+    }
+  }
+});
+
+test("failed native compiler convergence restores the previous compiler", () => {
+  const directory = mkdtempSync(join(tmpdir(), "sagejs-native-rollback-test-"));
+  const observations = { beforeSelf: [] };
+  try {
+    mkdirSync(join(directory, "bootstrap"), { recursive: true });
+    writeFileSync(join(directory, "bootstrap", "compiler.js"), "stage zero\n");
+    mkdirSync(join(directory, "dist", "compiler"), { recursive: true });
+    const compilerPath = join(directory, "dist", "compiler", "compiler.js");
+    writeFileSync(compilerPath, "known good compiler\n");
+    assert.throws(
+      () => ensureNativeCompiler(directory, {
+        runner: nativeCompilerBuildRunner(directory, observations),
+        validateCompiler() {
+          throw new Error("invalid compiler export");
+        },
+      }),
+      /invalid compiler export/,
+    );
+    assert.equal(readFileSync(compilerPath, "utf8"), "known good compiler\n");
+    assert.equal(
+      existsSync(join(directory, "dist", ".sagejs-native-compiler.json")),
+      false,
+    );
   } finally {
     rmSync(directory, { recursive: true, force: true });
   }
