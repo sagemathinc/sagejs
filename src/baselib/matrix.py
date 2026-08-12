@@ -27,6 +27,8 @@ _m4ri_available_cache = runtime.undefined
 _matrix_selection_module_cache = runtime.undefined
 _matrix_selection_plans_module_cache = runtime.undefined
 _matrix_vector_public_module_cache = runtime.undefined
+_sparse_random_module_cache = runtime.undefined
+_sparse_random_public_module_cache = runtime.undefined
 
 
 class _FmpzMatrixResourceStorage:
@@ -210,6 +212,28 @@ def _matrix_vector_public_module() -> Any:
             fromlist=["matrix_vector_public"],
         )
     return _matrix_vector_public_module_cache
+
+
+def _sparse_random_module() -> Any:
+    """Load storage-neutral sparse random construction policy lazily."""
+    global _sparse_random_module_cache
+    if _sparse_random_module_cache is runtime.undefined:
+        _sparse_random_module_cache = __import__(
+            "sagejs.linear_algebra.sparse_random",
+            fromlist=["sparse_random"],
+        )
+    return _sparse_random_module_cache
+
+
+def _sparse_random_public_module() -> Any:
+    """Load isolated sparse random storage executors lazily."""
+    global _sparse_random_public_module_cache
+    if _sparse_random_public_module_cache is runtime.undefined:
+        _sparse_random_public_module_cache = __import__(
+            "sagejs.linear_algebra.sparse_random_public",
+            fromlist=["sparse_random_public"],
+        )
+    return _sparse_random_public_module_cache
 
 
 def _native_kernel_available(kernel_function: Any) -> bool:
@@ -7783,6 +7807,317 @@ def _random_extension_field_element(
             return value
 
 
+def _bulk_sparse_random_matrix(
+    base: sage.Parent,
+    rows: int,
+    columns: int,
+    density: float,
+    distribution: Any,
+    lower: Any,
+    upper: Any,
+    numerator_bound: Any,
+    denominator_bound: Any,
+) -> Any:
+    """Construct one explicit-density exact matrix through one bulk boundary.
+
+    The caller has already distinguished an explicit `density` from the
+    default full-density distribution. Unsupported domains return
+    `runtime.undefined` so the general semantic fallback remains available.
+    """
+    policy = _sparse_random_module()
+    executors = _sparse_random_public_module()
+    word_base = runtime.normalize_integer(4294967296)
+    multiplier = runtime.normalize_integer(1664525)
+    increment = runtime.normalize_integer(1013904223)
+
+    def portable(spec: Any, draw_nonzero: Any = None, one: Any = 1) -> Matrix:
+        """Materialize the same policy when native execution is disabled."""
+
+        def draw_column(bound: int) -> int:
+            return _random_int(0, bound - 1)
+
+        sampling = spec[2]
+        if sampling == "entry-bernoulli":
+            writes = policy.sample_sparse_random_spec(
+                spec,
+                draw_unit=_random_float,
+                one=one,
+            )
+        else:
+            writes = policy.sample_sparse_random_spec(
+                spec,
+                draw_index=draw_column,
+                draw_nonzero=draw_nonzero,
+            )
+        values = policy.materialize_sparse_random_writes(writes, 0)
+        return matrix(base, rows, columns, values)
+
+    if _uses_m4ri_resource(base):
+        spec = policy.sage_binary_sparse_random_spec(rows, columns, density)
+        normalized_density = float(spec[3])
+        if rows == 0 or columns == 0 or normalized_density <= 0:
+            return MatrixSpace(base, rows, columns)(0)
+        kernel = executors.sparse_random_m4ri
+        if not _native_kernel_available(kernel):
+            return portable(spec)
+        resource = _m4ri_ffi_module().matrix(rows, columns)
+        final_state = _dense_integer_zeros(kernel, 1)
+        try:
+            initial_state = runtime.normalize_integer(_random_int(0, 4294967295))
+            threshold = runtime.normalize_integer(
+                runtime.math.floor(normalized_density * 4294967296)
+            )
+            if not kernel(
+                resource,
+                threshold,
+                initial_state,
+                final_state,
+                word_base,
+                multiplier,
+                increment,
+            ):
+                raise RuntimeError("invalid sparse binary random parameters")
+            _set_random_word_state(_integer_buffer_values(final_state)[0])
+            _trace_dense_prime_selection(
+                "random_matrix",
+                _typed_python_implementation(kernel) + "-sparse",
+                rows,
+                columns,
+                2,
+            )
+            return MatrixSpace(base, rows, columns)._from_m4ri_matrix_resource(resource)
+        except Exception:
+            resource.close()
+            raise
+
+    if _is_dense_binary_base(base):
+        spec = policy.sage_binary_sparse_random_spec(rows, columns, density)
+        normalized_density = float(spec[3])
+        target = _packed_uint64(rows * columns)
+        if rows == 0 or columns == 0 or normalized_density <= 0:
+            return MatrixSpace(base, rows, columns)._from_canonical_uint64_residues(
+                target
+            )
+        kernel = executors.sparse_random_binary
+        if not _native_kernel_available(kernel):
+            return portable(spec)
+        target = _dense_prime_zeros(kernel, rows * columns)
+        final_state = _dense_prime_zeros(kernel, 1)
+        initial_state = runtime.normalize_integer(_random_int(0, 4294967295))
+        threshold = runtime.normalize_integer(
+            runtime.math.floor(normalized_density * 4294967296)
+        )
+        if not kernel(
+            target,
+            rows,
+            columns,
+            runtime.normalize_integer(2),
+            threshold,
+            initial_state,
+            final_state,
+            word_base,
+            multiplier,
+            increment,
+        ):
+            raise RuntimeError("invalid sparse binary random parameters")
+        _set_random_word_state(final_state[0])
+        _trace_dense_prime_selection(
+            "random_matrix",
+            _typed_python_implementation(kernel) + "-sparse-portable",
+            rows,
+            columns,
+            2,
+        )
+        return MatrixSpace(base, rows, columns)._from_canonical_uint64_residues(target)
+
+    if _is_packed_dense_prime_base(base):
+        modulus = runtime.normalize_integer(runtime.reflect.get(base, "_modulus"))
+        if modulus <= 2:
+            return runtime.undefined
+        spec = policy.sage_row_sparse_random_spec(
+            rows,
+            columns,
+            density,
+            collision="replace",
+        )
+        draws_per_row = int(spec[4])
+        if draws_per_row == 0:
+            return MatrixSpace(base, rows, columns)(0)
+        kernel = executors.sparse_random_prime
+        if not _native_kernel_available(kernel):
+            return portable(
+                spec,
+                draw_nonzero=lambda: _random_int(1, modulus - 1),
+            )
+        target = _dense_prime_zeros(kernel, rows * columns)
+        final_state = _dense_prime_zeros(kernel, 1)
+        initial_state = runtime.normalize_integer(_random_int(0, 4294967295))
+        if not kernel(
+            target,
+            rows,
+            columns,
+            modulus,
+            modulus - 1,
+            draws_per_row,
+            1 if float(spec[3]) == 1 else 0,
+            initial_state,
+            final_state,
+            word_base,
+            multiplier,
+            increment,
+        ):
+            raise RuntimeError("invalid sparse prime-field random parameters")
+        _set_random_word_state(final_state[0])
+        _trace_dense_prime_selection(
+            "random_matrix",
+            _typed_python_implementation(kernel) + "-sparse",
+            rows,
+            columns,
+            int(_untyped(base).characteristic()),
+        )
+        return MatrixSpace(base, rows, columns)._from_canonical_uint64_residues(target)
+
+    if base is sage.ZZ:
+        spec = policy.sage_row_sparse_random_spec(
+            rows,
+            columns,
+            density,
+            collision="keep-first",
+        )
+        draws_per_row = int(spec[4])
+        if draws_per_row == 0:
+            return MatrixSpace(sage.ZZ, rows, columns)(0)
+        if lower is not None:
+            value_lower = 0 if upper is None else int(lower)
+            value_width = int(lower) if upper is None else int(upper) - int(lower)
+            value_mode = 0
+        elif distribution == "uniform":
+            value_lower = -2
+            value_width = 5
+            value_mode = 1
+        else:
+            value_lower = 0
+            value_width = 1
+            value_mode = 2
+        if value_width <= 0 or value_width > 4294967296:
+            return runtime.undefined
+        kernel = executors.sparse_random_fmpz
+        if not _native_kernel_available(kernel):
+            return portable(
+                spec,
+                draw_nonzero=lambda: _random_integer(
+                    distribution,
+                    lower,
+                    upper,
+                    True,
+                ),
+            )
+        resource = _flint_ffi_module().fmpz_matrix(rows, columns)
+        final_state = _dense_integer_zeros(kernel, 1)
+        try:
+            initial_state = runtime.normalize_integer(_random_int(0, 4294967295))
+            if not kernel(
+                resource,
+                draws_per_row,
+                1 if float(spec[3]) == 1 else 0,
+                value_mode,
+                value_lower,
+                value_width,
+                initial_state,
+                final_state,
+                word_base,
+                multiplier,
+                increment,
+                runtime.normalize_integer(858993460),
+                runtime.normalize_integer(2147483648),
+            ):
+                raise RuntimeError("invalid sparse integer random parameters")
+            _set_random_word_state(_integer_buffer_values(final_state)[0])
+            _trace_dense_integer_selection(
+                "random_matrix",
+                _typed_python_implementation(kernel) + "-sparse",
+                rows,
+                columns,
+            )
+            return MatrixSpace(sage.ZZ, rows, columns)._from_fmpz_matrix_resource(
+                resource
+            )
+        except Exception:
+            resource.close()
+            raise
+
+    if base is sage.QQ and distribution is None:
+        spec = policy.sage_row_sparse_random_spec(
+            rows,
+            columns,
+            density,
+            collision="replace",
+        )
+        draws_per_row = int(spec[4])
+        if draws_per_row == 0:
+            return MatrixSpace(sage.QQ, rows, columns)(0)
+        try:
+            numerator_width = int(numerator_bound) + 1
+            denominator_width = int(denominator_bound) + 1
+        except Exception:
+            return runtime.undefined
+        if (
+            numerator_width <= 1
+            or denominator_width <= 0
+            or numerator_width > 4294967296
+            or denominator_width > 4294967296
+        ):
+            return runtime.undefined
+        kernel = executors.sparse_random_fmpq
+        if not _native_kernel_available(kernel):
+
+            def draw_rational_nonzero() -> Any:
+                numerator = 0
+                denominator = 1
+                while numerator == 0:
+                    numerator = _random_int(0, numerator_width - 1)
+                    denominator = _random_int(0, denominator_width - 1)
+                    if denominator == 0:
+                        denominator = 1
+                    if _random_int(0, 1) != 0:
+                        numerator = -numerator
+                return sage.QQ(numerator) / sage.QQ(denominator)
+
+            return portable(spec, draw_nonzero=draw_rational_nonzero)
+        resource = _flint_ffi_module().fmpq_matrix(rows, columns)
+        final_state = _dense_integer_zeros(kernel, 1)
+        try:
+            initial_state = runtime.normalize_integer(_random_int(0, 4294967295))
+            if not kernel(
+                resource,
+                draws_per_row,
+                1 if float(spec[3]) == 1 else 0,
+                numerator_width,
+                denominator_width,
+                initial_state,
+                final_state,
+                word_base,
+                multiplier,
+                increment,
+            ):
+                raise RuntimeError("invalid sparse rational random parameters")
+            _set_random_word_state(_integer_buffer_values(final_state)[0])
+            _trace_dense_rational_selection(
+                "random_matrix",
+                _typed_python_implementation(kernel) + "-sparse",
+                rows,
+                columns,
+            )
+            return MatrixSpace(sage.QQ, rows, columns)._from_fmpq_matrix_resource(
+                resource
+            )
+        except Exception:
+            resource.close()
+            raise
+
+    return runtime.undefined
+
+
 def random_matrix(
     base: sage.Parent,
     nrows: int,
@@ -7848,18 +8183,27 @@ def random_matrix(
     cols = rows if ncols is None else int(ncols)
     if rows < 0 or cols < 0:
         raise ValueError("matrix dimensions must be nonnegative")
-    density = float(keyword("density", 1.0))
-    if density < 0 or density > 1:
-        raise ValueError("density must be between 0 and 1")
+    density_supplied = runtime.reflect.has(kwds, "density")
+    raw_density = keyword("density", 1.0)
+    # Sage's dense GF(2) implementation returns before coercing density when
+    # either axis is empty. This is observable for hostile coercion objects.
+    if density_supplied and _is_dense_binary_base(base) and (rows == 0 or cols == 0):
+        return MatrixSpace(base, rows, cols)(0)
+    density = float(raw_density)
+    if density > 1:
+        density = 1.0
     distribution = keyword("distribution", None)
-    if distribution is not None and distribution != "uniform":
+    if base is sage.QQ:
+        if distribution not in (None, "1/n"):
+            raise ValueError("unknown random rational distribution")
+    elif distribution is not None and distribution != "uniform":
         raise ValueError("unknown random integer distribution")
     lower = keyword("x", None)
     upper = keyword("y", None)
     if upper is not None and lower is None:
         raise TypeError("y requires x")
-    if base is sage.QQ and (lower is not None or distribution is not None):
-        raise TypeError("QQ random matrices do not accept x, y, or distribution")
+    if base is sage.QQ and lower is not None:
+        raise TypeError("QQ random matrices do not accept x or y")
     if lower is not None:
         lower = int(lower)
         if upper is not None:
@@ -7868,6 +8212,21 @@ def random_matrix(
                 raise ValueError("y must be greater than x")
         elif lower <= 0:
             raise ValueError("x must be positive when y is omitted")
+
+    if density_supplied:
+        sparse_result = _bulk_sparse_random_matrix(
+            base,
+            rows,
+            cols,
+            density,
+            distribution,
+            lower,
+            upper,
+            keyword("num_bound", 2),
+            keyword("den_bound", 2),
+        )
+        if sparse_result is not runtime.undefined:
+            return sparse_result
 
     if (
         modular_ring
