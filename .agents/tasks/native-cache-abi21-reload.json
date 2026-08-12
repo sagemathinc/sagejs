@@ -4,7 +4,7 @@
   "id": "native-cache-abi21-reload",
   "title": "Native Cache Abi21 Reload",
   "lane": "integration",
-  "status": "active",
+  "status": "complete",
   "owner": "user",
   "objective": "Diagnose and fix immediate stale-cache rejection after ABI 21 native compilation without weakening cache validation",
   "base_commit": "33a292ac998dc797bfae0e762953d6008fc3fb6e",
