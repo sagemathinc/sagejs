@@ -7,7 +7,7 @@
   "status": "review",
   "owner": "user",
   "objective": "Route ZZ[x] and QQ[x] scalar floor division and truncating prefix slices through generated FLINT resources without whole-polynomial serialization, preserving Sage semantics and lifecycle safety with differential and performance coverage.",
-  "base_commit": "10202938896c227a73b547367bf4565c29675a89",
+  "base_commit": "b448cf50dcee6bed31d176bbdb841dc74d6abc9e",
   "claims": [
     "ffi/flint.ffi.py",
     "ffi/flint.ffi.json",
@@ -52,110 +52,20 @@
       "command": "pnpm architecture:check",
       "result": "pass",
       "exit_code": 0,
-      "seconds": 12.911,
-      "started_at": "2026-08-12T05:52:12.954Z",
-      "commit": "10202938896c227a73b547367bf4565c29675a89",
-      "workspace_fingerprint": "e08d6fd6958b17ccc715cd9ded709562020ad4fceeab2d59f1e8a455ab0553ab",
+      "seconds": 12.589,
+      "started_at": "2026-08-12T06:15:13.360Z",
+      "commit": "ecd569992f7bd4cd755774622efced888d834eca",
+      "workspace_fingerprint": "7e6a05a905f66005d2236e9c636e5282d04ce6f93b20893451601058cb665b24",
       "platform": "linux-x64"
     },
     {
       "command": "pnpm test:baselib:strict",
       "result": "pass",
       "exit_code": 0,
-      "seconds": 13.411,
-      "started_at": "2026-08-12T05:52:35.240Z",
-      "commit": "10202938896c227a73b547367bf4565c29675a89",
-      "workspace_fingerprint": "e08d6fd6958b17ccc715cd9ded709562020ad4fceeab2d59f1e8a455ab0553ab",
-      "platform": "linux-x64"
-    },
-    {
-      "command": "node test/exact-polynomial-scalar-slice-resource.cjs",
-      "result": "pass",
-      "exit_code": 0,
-      "seconds": 6.031,
-      "started_at": "2026-08-12T05:52:49.278Z",
-      "commit": "10202938896c227a73b547367bf4565c29675a89",
-      "workspace_fingerprint": "e08d6fd6958b17ccc715cd9ded709562020ad4fceeab2d59f1e8a455ab0553ab",
-      "platform": "linux-x64"
-    },
-    {
-      "command": "node test/exact-polynomial-resource-ffi.cjs",
-      "result": "pass",
-      "exit_code": 0,
-      "seconds": 4.652,
-      "started_at": "2026-08-12T05:52:55.924Z",
-      "commit": "10202938896c227a73b547367bf4565c29675a89",
-      "workspace_fingerprint": "e08d6fd6958b17ccc715cd9ded709562020ad4fceeab2d59f1e8a455ab0553ab",
-      "platform": "linux-x64"
-    },
-    {
-      "command": "node --test test/ffi.cjs",
-      "result": "pass",
-      "exit_code": 0,
-      "seconds": 51.1,
-      "started_at": "2026-08-12T05:53:06.314Z",
-      "commit": "10202938896c227a73b547367bf4565c29675a89",
-      "workspace_fingerprint": "e08d6fd6958b17ccc715cd9ded709562020ad4fceeab2d59f1e8a455ab0553ab",
-      "platform": "linux-x64"
-    },
-    {
-      "command": "env SAGEJS_POLYNOMIAL_SAMPLES=3 node scripts/check-polynomial-budget.cjs",
-      "result": "pass",
-      "exit_code": 0,
-      "seconds": 13.838,
-      "started_at": "2026-08-12T05:54:07.245Z",
-      "commit": "10202938896c227a73b547367bf4565c29675a89",
-      "workspace_fingerprint": "e08d6fd6958b17ccc715cd9ded709562020ad4fceeab2d59f1e8a455ab0553ab",
-      "platform": "linux-x64"
-    },
-    {
-      "command": "pnpm test:portable",
-      "result": "fail",
-      "exit_code": 1,
-      "seconds": 47.373,
-      "started_at": "2026-08-12T05:54:49.280Z",
-      "commit": "10202938896c227a73b547367bf4565c29675a89",
-      "workspace_fingerprint": "e08d6fd6958b17ccc715cd9ded709562020ad4fceeab2d59f1e8a455ab0553ab",
-      "platform": "linux-x64"
-    },
-    {
-      "command": "pnpm test:portable",
-      "result": "fail",
-      "exit_code": 1,
-      "seconds": 42.83,
-      "started_at": "2026-08-12T05:57:41.708Z",
-      "commit": "10202938896c227a73b547367bf4565c29675a89",
-      "workspace_fingerprint": "e5af400cc229f758766e2fcdd830d24b4e6965f03739d7dbac27d1260008f625",
-      "platform": "linux-x64"
-    },
-    {
-      "command": "pnpm test:portable",
-      "result": "pass",
-      "exit_code": 0,
-      "seconds": 39.018,
-      "started_at": "2026-08-12T06:01:02.916Z",
-      "commit": "10202938896c227a73b547367bf4565c29675a89",
-      "workspace_fingerprint": "927c638302abb12d47f323be6ed0b9dfc7fcd14d5cef537f27e4a45bd70b4b20",
-      "platform": "linux-x64"
-    },
-    {
-      "command": "pnpm architecture:check",
-      "result": "pass",
-      "exit_code": 0,
-      "seconds": 13.46,
-      "started_at": "2026-08-12T06:01:49.172Z",
-      "commit": "10202938896c227a73b547367bf4565c29675a89",
-      "workspace_fingerprint": "927c638302abb12d47f323be6ed0b9dfc7fcd14d5cef537f27e4a45bd70b4b20",
-      "platform": "linux-x64"
-    },
-    {
-      "command": "pnpm test:baselib:strict",
-      "result": "pass",
-      "exit_code": 0,
-      "seconds": 12.387,
-      "started_at": "2026-08-12T06:02:39.165Z",
-      "commit": "10202938896c227a73b547367bf4565c29675a89",
-      "workspace_fingerprint": "927c638302abb12d47f323be6ed0b9dfc7fcd14d5cef537f27e4a45bd70b4b20",
+      "seconds": 12.118,
+      "started_at": "2026-08-12T06:15:33.407Z",
+      "commit": "ecd569992f7bd4cd755774622efced888d834eca",
+      "workspace_fingerprint": "7e6a05a905f66005d2236e9c636e5282d04ce6f93b20893451601058cb665b24",
       "platform": "linux-x64"
     }
   ],

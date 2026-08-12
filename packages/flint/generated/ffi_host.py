@@ -30,6 +30,8 @@ from sagejs.ffi.flint import (
     fmpz_polynomial_add as _ffi_fmpz_polynomial_add,
     fmpz_polynomial_sub as _ffi_fmpz_polynomial_sub,
     fmpz_polynomial_neg as _ffi_fmpz_polynomial_neg,
+    fmpz_polynomial_scalar_floor_div as _ffi_fmpz_polynomial_scalar_floor_div,
+    fmpz_polynomial_truncate as _ffi_fmpz_polynomial_truncate,
     fmpz_polynomial_derivative as _ffi_fmpz_polynomial_derivative,
     fmpz_polynomial_mul as _ffi_fmpz_polynomial_mul,
     fmpz_polynomial_gcd as _ffi_fmpz_polynomial_gcd,
@@ -59,6 +61,8 @@ from sagejs.ffi.flint import (
     fmpq_polynomial_add as _ffi_fmpq_polynomial_add,
     fmpq_polynomial_sub as _ffi_fmpq_polynomial_sub,
     fmpq_polynomial_neg as _ffi_fmpq_polynomial_neg,
+    fmpq_polynomial_scalar_div as _ffi_fmpq_polynomial_scalar_div,
+    fmpq_polynomial_truncate as _ffi_fmpq_polynomial_truncate,
     fmpq_polynomial_derivative as _ffi_fmpq_polynomial_derivative,
     fmpq_polynomial_mul as _ffi_fmpq_polynomial_mul,
     fmpq_polynomial_gcd as _ffi_fmpq_polynomial_gcd,
@@ -304,6 +308,28 @@ def ffiFmpzPolynomialNeg(
 ) -> FmpzPolynomial:
     return _ffi_fmpz_polynomial_neg(
         source,
+    )
+
+
+@native
+def ffiFmpzPolynomialScalarFloorDiv(
+    source: FmpzPolynomial,
+    divisor: Integer,
+) -> FmpzPolynomial:
+    return _ffi_fmpz_polynomial_scalar_floor_div(
+        source,
+        divisor,
+    )
+
+
+@native
+def ffiFmpzPolynomialTruncate(
+    source: FmpzPolynomial,
+    stop: uint64,
+) -> FmpzPolynomial:
+    return _ffi_fmpz_polynomial_truncate(
+        source,
+        stop,
     )
 
 
@@ -601,6 +627,30 @@ def ffiFmpqPolynomialNeg(
 ) -> FmpqPolynomial:
     return _ffi_fmpq_polynomial_neg(
         source,
+    )
+
+
+@native
+def ffiFmpqPolynomialScalarDiv(
+    source: FmpqPolynomial,
+    numerator: Integer,
+    denominator: Integer,
+) -> FmpqPolynomial:
+    return _ffi_fmpq_polynomial_scalar_div(
+        source,
+        numerator,
+        denominator,
+    )
+
+
+@native
+def ffiFmpqPolynomialTruncate(
+    source: FmpqPolynomial,
+    stop: uint64,
+) -> FmpqPolynomial:
+    return _ffi_fmpq_polynomial_truncate(
+        source,
+        stop,
     )
 
 
