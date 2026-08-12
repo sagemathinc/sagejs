@@ -39,7 +39,8 @@
     "node bench/polynomial-extension-resource-contract.cjs",
     "pnpm exec pyright --pythonversion 3.11 src/lib/sagejs/polynomial_algorithms/extension_resource_contract.py",
     "pnpm architecture:check",
-    "pnpm test:baselib:strict"
+    "pnpm test:baselib:strict",
+    "pnpm test:native"
   ],
   "runs": [
     {
@@ -100,6 +101,56 @@
       "started_at": "2026-08-12T11:35:22.375Z",
       "commit": "91fd558d715025b90fd869641ade3694ac5871c8",
       "workspace_fingerprint": "cacd706dda55d2708aed5df7dac2eed8e50603b12ea1f2beb937e1f2ac1c5720",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node test/polynomial-extension-resource-contract.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.564,
+      "started_at": "2026-08-12T11:45:19.150Z",
+      "commit": "e51528c1042bf37cdd9b50cc44437fb4fac7e399",
+      "workspace_fingerprint": "076f7ed9ba832021a348221f316dc782f537331980a13b5d35ce8e410eb8123d",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/polynomial-extension-resource-contract.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 23.803,
+      "started_at": "2026-08-12T11:45:22.295Z",
+      "commit": "e51528c1042bf37cdd9b50cc44437fb4fac7e399",
+      "workspace_fingerprint": "076f7ed9ba832021a348221f316dc782f537331980a13b5d35ce8e410eb8123d",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm exec pyright --pythonversion 3.11 src/lib/sagejs/polynomial_algorithms/extension_resource_contract.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.092,
+      "started_at": "2026-08-12T11:45:46.693Z",
+      "commit": "e51528c1042bf37cdd9b50cc44437fb4fac7e399",
+      "workspace_fingerprint": "076f7ed9ba832021a348221f316dc782f537331980a13b5d35ce8e410eb8123d",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 13.18,
+      "started_at": "2026-08-12T11:45:48.378Z",
+      "commit": "e51528c1042bf37cdd9b50cc44437fb4fac7e399",
+      "workspace_fingerprint": "076f7ed9ba832021a348221f316dc782f537331980a13b5d35ce8e410eb8123d",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 13.194,
+      "started_at": "2026-08-12T11:46:02.159Z",
+      "commit": "e51528c1042bf37cdd9b50cc44437fb4fac7e399",
+      "workspace_fingerprint": "076f7ed9ba832021a348221f316dc782f537331980a13b5d35ce8e410eb8123d",
       "platform": "linux-x64"
     }
   ],
