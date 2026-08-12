@@ -43,6 +43,7 @@ const integration = [
   "test/ffi-resource-finalization-bootstrap.cjs",
   "test/native-resource-basic-finalizer.cjs",
   "test/ffi-wasm-fmpq-resource-core.cjs",
+  "test/ffi-wasm-m4ri-resource.cjs",
   "test/ffi-wasm-resource.cjs",
   "test/fmpq-matrix-right-kernel-resource.cjs",
   "test/rational-right-kernel-resource-public.cjs",

@@ -18,6 +18,7 @@
     "scripts/build-ffi-wasm-resource-adapter.cjs",
     "test/ffi-wasm-resource.cjs",
     "test/ffi-wasm-m4ri-resource.cjs",
+    "test/node-test-manifest.cjs",
     "architecture/native-boundaries.json"
   ],
   "dependencies": [],
