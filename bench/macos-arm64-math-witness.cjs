@@ -8,9 +8,9 @@
 
 const assert = require("node:assert/strict");
 const { execFileSync, spawnSync } = require("node:child_process");
-const { mkdtempSync, rmSync, writeFileSync } = require("node:fs");
+const { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } = require("node:fs");
 const { tmpdir } = require("node:os");
-const { join, resolve } = require("node:path");
+const { join, relative, resolve } = require("node:path");
 
 const root = resolve(__dirname, "..");
 const sagejs = join(root, "bin", "sagejs");
@@ -26,6 +26,8 @@ if (process.argv.includes("--help") || process.argv.includes("-h")) {
   --filter REGEXP   Select operation names
   --output PATH     Write the complete JSON report
   --markdown PATH   Write a Markdown timing table
+  --render-report PATH
+                    Render an existing JSON report without benchmarking
   --check           Fail on execution, round-trip, or comparable-result errors
   --require-macos   With --check, require a Darwin arm64 host
 
@@ -46,6 +48,7 @@ const requestedRuntime = argument("--runtime", "sagejs");
 const sage = argument("--sage", process.env.SAGEJS_BENCH_SAGE);
 const output = argument("--output");
 const markdown = argument("--markdown");
+const reportInput = argument("--render-report");
 const quick = process.argv.includes("--quick");
 const check = process.argv.includes("--check");
 const requireMacos = process.argv.includes("--require-macos");
@@ -248,6 +251,48 @@ function commandOutput(command, args) {
   }
 }
 
+function flintVersion() {
+  const header = join(root, "packages", "flint", ".native", "prefix", "include", "flint", "flint.h");
+  if (!existsSync(header)) return null;
+  const match = readFileSync(header, "utf8").match(/^#define FLINT_VERSION "([^"]+)"/m);
+  return match?.[1] || null;
+}
+
+function nativeArtifactEvidence() {
+  const indexPath = join(root, "dist", "native-kernels", "index.json");
+  if (!existsSync(indexPath)) return [];
+  const index = JSON.parse(readFileSync(indexPath, "utf8"));
+  const representatives = [
+    ["sagejs/kernels/matrix/dense_rational_flint.py", "flint"],
+    ["sagejs/kernels/matrix/dense_prime_field_fflas.py", "fflas"],
+  ];
+  return representatives.flatMap(([logicalSource, library]) => {
+    const metadata = index.logicalSources?.[logicalSource];
+    if (!metadata) return [];
+    const artifact = join(
+      root,
+      "dist",
+      "native-kernels",
+      metadata.cacheKey,
+      "build",
+      "Release",
+      "sagejs_native_kernel.node",
+    );
+    if (!existsSync(artifact)) return [];
+    const linkage = process.platform === "darwin" ? commandOutput("otool", ["-L", artifact]) : null;
+    return [{
+      library,
+      logical_source: logicalSource,
+      cache_key: metadata.cacheKey,
+      path: relative(root, artifact),
+      file_identity: commandOutput("file", [artifact]),
+      linked_libraries: linkage
+        ? linkage.split("\n").slice(1).map((line) => line.trim().split(/\s+/)[0]).filter(Boolean)
+        : null,
+    }];
+  });
+}
+
 function runCase(runtime, command, entry, directory) {
   const source = join(directory, `${entry.name.replaceAll(".", "-")}.sage`);
   writeFileSync(source, pythonSource(entry));
@@ -309,6 +354,62 @@ function runtimeVersion(runtime, command) {
     : commandOutput(command, ["--version"]);
 }
 
+function markdownReport(value) {
+  const hasSagejs = Boolean(value.measurements.sagejs);
+  const hasSage = Boolean(value.measurements.sage);
+  const lines = [
+    "# macOS arm64 mathematical performance witness",
+    "",
+    `Generated from Sage.js commit \`${value.repository.commit}\` on \`${value.host.cpu || `${value.host.platform}-${value.host.architecture}`}\`.`,
+    "",
+    "Dense construction, arithmetic, RREF, determinant, characteristic polynomial, solving, kernels, and backend routes are measured by the canonical `bench/dense-matrix-public-audit.cjs`. This companion intentionally measures matrix formatting/serialization and univariate polynomials.",
+    "",
+    "`first` is the first invocation in a fresh runtime process after untimed setup. It is not process startup. `warm` is the median after that first call and two additional untimed warmups. All BLAS/OpenMP thread caps are one.",
+    "",
+  ];
+  if (hasSagejs && hasSage) {
+    lines.push(
+      "| operation | Sage.js first | Sage.js warm | Sage warm | ratio | status |",
+      "| :-- | --: | --: | --: | --: | :-- |",
+    );
+    const sageByName = new Map(value.measurements.sage.map((entry) => [entry.name, entry]));
+    for (const entry of value.measurements.sagejs) {
+      const oracle = sageByName.get(entry.name);
+      const ratio = entry.comparable && entry.ok && oracle?.ok
+        ? entry.warm_ms / oracle.warm_ms
+        : null;
+      const status = !entry.ok
+        ? "Sage.js failed"
+        : oracle && !oracle.ok
+          ? "Sage failed"
+          : entry.comparable
+            ? "ok"
+            : "runtime-local";
+      lines.push(`| ${entry.name} | ${entry.ok ? entry.first_ms.toFixed(3) : "—"} ms | ${entry.ok ? entry.warm_ms.toFixed(3) : "—"} ms | ${oracle?.ok ? `${oracle.warm_ms.toFixed(3)} ms` : "—"} | ${ratio === null ? "—" : `${ratio.toFixed(2)}×`} | ${status} |`);
+    }
+  } else {
+    const runtime = hasSagejs ? "Sage.js" : "Sage";
+    const entries = hasSagejs ? value.measurements.sagejs : value.measurements.sage;
+    lines.push(
+      `| operation | ${runtime} first | ${runtime} warm | status |`,
+      "| :-- | --: | --: | :-- |",
+    );
+    for (const entry of entries || []) {
+      const status = !entry.ok ? "failed" : entry.comparable ? "ok" : "runtime-local";
+      lines.push(`| ${entry.name} | ${entry.ok ? entry.first_ms.toFixed(3) : "—"} ms | ${entry.ok ? entry.warm_ms.toFixed(3) : "—"} ms | ${status} |`);
+    }
+  }
+  lines.push("", "Serialization byte lengths and timings are intentionally not compared: Sage.js uses SagePack while SageMath's `dumps` currently uses its own Python serialization. Matrix/scalar/polynomial summaries are compared where the public result has a common canonical meaning.", "");
+  return lines.join("\n");
+}
+
+if (reportInput) {
+  const rendered = `${markdownReport(JSON.parse(readFileSync(resolve(reportInput), "utf8")))}\n`;
+  if (markdown) writeFileSync(resolve(markdown), rendered);
+  process.stdout.write(rendered);
+  process.exit(0);
+}
+
 const runtimes = requestedRuntime === "all"
   ? [["sagejs", sagejs], ["sage", sage]]
   : requestedRuntime === "sage"
@@ -348,6 +449,12 @@ const report = {
     branch: commandOutput("git", ["branch", "--show-current"]),
     dirty: commandOutput("git", ["status", "--porcelain"]) !== "",
   },
+  toolchain: {
+    pnpm: commandOutput("pnpm", ["--version"]),
+    clang: commandOutput("clang", ["--version"])?.split("\n")[0] || null,
+    flint: flintVersion(),
+    native_artifacts: nativeArtifactEvidence(),
+  },
   configuration: {
     samples,
     quick,
@@ -372,34 +479,13 @@ if (measurements.sagejs && measurements.sage) {
       : JSON.stringify(entry.summary) === JSON.stringify(oracle.summary);
     return {
       name: entry.name,
-      sagejs_over_sage: entry.ok && oracle?.ok ? entry.warm_ms / oracle.warm_ms : null,
+      comparable: entry.comparable,
+      sagejs_over_sage: entry.comparable && entry.ok && oracle?.ok
+        ? entry.warm_ms / oracle.warm_ms
+        : null,
       summaries_match: summariesMatch,
     };
   });
-}
-
-function markdownReport(value) {
-  const lines = [
-    "# macOS arm64 mathematical performance witness",
-    "",
-    `Generated from Sage.js commit \`${value.repository.commit}\` on \`${value.host.cpu || `${value.host.platform}-${value.host.architecture}`}\`.`,
-    "",
-    "Dense construction, arithmetic, RREF, determinant, characteristic polynomial, solving, kernels, and backend routes are measured by the canonical `bench/dense-matrix-public-audit.cjs`. This companion intentionally measures matrix formatting/serialization and univariate polynomials.",
-    "",
-    "`first` is the first invocation in a fresh runtime process after untimed setup. It is not process startup. `warm` is the median after that first call and two additional untimed warmups. All BLAS/OpenMP thread caps are one.",
-    "",
-    "| operation | Sage.js first | Sage.js warm | Sage warm | ratio | status |",
-    "| :-- | --: | --: | --: | --: | :-- |",
-  ];
-  const sageByName = new Map((value.measurements.sage || []).map((entry) => [entry.name, entry]));
-  for (const entry of value.measurements.sagejs || value.measurements.sage || []) {
-    const oracle = sageByName.get(entry.name);
-    const ratio = entry.ok && oracle?.ok ? entry.warm_ms / oracle.warm_ms : null;
-    const status = !entry.ok ? "Sage.js failed" : oracle && !oracle.ok ? "Sage failed" : "ok";
-    lines.push(`| ${entry.name} | ${entry.ok ? entry.first_ms.toFixed(3) : "—"} ms | ${entry.ok ? entry.warm_ms.toFixed(3) : "—"} ms | ${oracle?.ok ? `${oracle.warm_ms.toFixed(3)} ms` : "—"} | ${ratio === null ? "—" : `${ratio.toFixed(2)}×`} | ${status} |`);
-  }
-  lines.push("", "Serialization byte lengths are intentionally not compared: Sage.js uses SagePack while SageMath's `dumps` currently uses its own Python serialization. Matrix/scalar/polynomial summaries are compared where the public result has a common canonical meaning.", "");
-  return lines.join("\n");
 }
 
 const encoded = `${JSON.stringify(report, null, 2)}\n`;
@@ -410,6 +496,15 @@ if (check) {
   if (requireMacos) {
     assert.equal(process.platform, "darwin", "the recorded witness must run on macOS");
     assert.equal(process.arch, "arm64", "the recorded witness must run on arm64");
+    assert.match(report.toolchain.clang || "", /^Apple clang version /);
+    assert.ok(report.toolchain.flint, "the recorded witness requires a FLINT version");
+    const artifacts = new Map(report.toolchain.native_artifacts.map((entry) => [entry.library, entry]));
+    assert.match(artifacts.get("flint")?.file_identity || "", /Mach-O 64-bit bundle arm64/);
+    assert.match(artifacts.get("fflas")?.file_identity || "", /Mach-O 64-bit bundle arm64/);
+    assert.ok(
+      artifacts.get("fflas")?.linked_libraries?.some((path) => path.includes("Accelerate.framework")),
+      "the recorded FFLAS witness must link Apple's Accelerate framework",
+    );
   }
   for (const [runtime, entries] of Object.entries(measurements)) {
     assert.equal(entries.filter((entry) => !entry.ok).length, 0, `${runtime} has failed cases`);
