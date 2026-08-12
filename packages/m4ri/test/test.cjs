@@ -231,6 +231,30 @@ test("generated M4RI row selection preserves resources and shapes", {
   }
 });
 
+test("generated M4RI prefix selection preserves resources and shapes", {
+  skip: !m4ri.ffiM4riAvailable(),
+}, () => {
+  const sourceRows = [[1, 0, 1], [0, 1, 1], [1, 1, 0]];
+  const source = fromRows(sourceRows);
+  const prefix = m4ri.ffiM4riMatrixPrefixRows(source, 2n);
+  const empty = m4ri.ffiM4riMatrixPrefixRows(source, 0n);
+  assert.deepEqual(toRows(prefix), sourceRows.slice(0, 2));
+  assert.deepEqual(
+    [m4ri.ffiM4riMatrixNrows(empty), m4ri.ffiM4riMatrixNcols(empty)],
+    [0n, 3n],
+  );
+  assert.throws(
+    () => m4ri.ffiM4riMatrixPrefixRows(source, 4n),
+    /row-prefix count is invalid/,
+  );
+  m4ri.ffiM4riMatrixSetEntry(prefix, 0n, 0n, 0n);
+  assert.equal(m4ri.ffiM4riMatrixEntryCode(source, 0n, 0n), 1n);
+  close(source, m4ri.ffiM4riMatrixClose);
+  assert.deepEqual(toRows(prefix), [[0, 0, 1], [0, 1, 1]]);
+  close(prefix, m4ri.ffiM4riMatrixClose);
+  close(empty, m4ri.ffiM4riMatrixClose);
+});
+
 test("RREF, determinant, inverse, solve, and right kernel are differential", {
   skip: !m4ri.ffiM4riAvailable(),
 }, () => {

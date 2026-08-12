@@ -639,6 +639,25 @@ static inline int sagejs_fmpq_matrix_select_rows(
     return 1;
 }
 
+static inline int sagejs_fmpq_matrix_prefix_rows(
+    sagejs_fmpq_matrix_t result, const sagejs_fmpq_matrix_t source,
+    uint64_t count)
+{
+    const uint64_t rows = (uint64_t) fmpq_mat_nrows(source->value);
+    const uint64_t columns = (uint64_t) fmpq_mat_ncols(source->value);
+    if (count > rows || count > (uint64_t) WORD_MAX ||
+        (count != 0 && columns > (uint64_t) SIZE_MAX / count) ||
+        !sagejs_fmpq_matrix_init(result, count, columns))
+        return 0;
+    for (uint64_t row = 0; row < count; row++)
+        for (uint64_t column = 0; column < columns; column++)
+            fmpq_set(fmpq_mat_entry(result->value, (slong) row, (slong) column),
+                fmpq_mat_entry(source->value, (slong) row, (slong) column));
+    result->known_rank = -1;
+    sagejs_fmpq_matrix_recompute_allocated_bytes(result);
+    return 1;
+}
+
 static inline int sagejs_fmpq_matrix_select_columns(
     sagejs_fmpq_matrix_t result, const sagejs_fmpq_matrix_t source,
     const uint64_t *selected_columns, uint64_t count)

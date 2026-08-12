@@ -21,6 +21,7 @@ from sagejs.ffi.m4ri import (
     matrix_entry_code as _ffi_matrix_entry_code,
     matrix_copy as _ffi_matrix_copy,
     matrix_select_rows as _ffi_matrix_select_rows,
+    matrix_prefix_rows as _ffi_matrix_prefix_rows,
     matrix_equal as _ffi_matrix_equal,
     matrix_add as _ffi_matrix_add,
     matrix_mul as _ffi_matrix_mul,
@@ -150,6 +151,17 @@ def ffiM4riMatrixSelectRows(
     return _ffi_matrix_select_rows(
         source,
         indices,
+        count,
+    )
+
+
+@native
+def ffiM4riMatrixPrefixRows(
+    source: M4riMatrix,
+    count: uint64,
+) -> M4riMatrix:
+    return _ffi_matrix_prefix_rows(
+        source,
         count,
     )
 

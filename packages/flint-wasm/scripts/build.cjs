@@ -113,9 +113,14 @@ const standardLibraryCacheDirectory = path.join(
   "module-cache",
 );
 const browserAdditionalModules = [
+  "collections.abc",
   "sagejs.ffi.flint",
   "sagejs.ffi.m4ri",
+  "sagejs.kernels.matrix.dense_binary_m4ri",
+  "sagejs.kernels.matrix.dense_integer_flint",
   "sagejs.kernels.matrix.dense_rational_flint",
+  "sagejs.linear_algebra.matrix_subspaces",
+  "sagejs.linear_algebra.matrix_subspaces_public",
 ];
 const vendorDirectory = path.join(repositoryRoot, "dist", "vendor");
 const compilerResourceShim = path.join(
@@ -215,11 +220,15 @@ const resourceAdapter = generatedWasmResourceAdapter(flintDeclaration, {
     "fmpz_matrix_det",
     "fmpz_matrix_entry",
     "fmpz_matrix_format",
+    "fmpz_matrix_hnf",
     "fmpz_matrix_mul",
     "fmpz_matrix_ncols",
     "fmpz_matrix_nrows",
+    "fmpz_matrix_prefix_rows",
+    "fmpz_matrix_echelon_pivots",
     "fmpz_matrix_serialize",
     "fmpz_matrix_set_entry",
+    "fmpz_matrix_transpose",
     "fmpq_matrix",
     "fmpq_matrix_copy",
     "fmpq_matrix_deserialize",
@@ -231,10 +240,13 @@ const resourceAdapter = generatedWasmResourceAdapter(flintDeclaration, {
     "fmpq_matrix_mul",
     "fmpq_matrix_ncols",
     "fmpq_matrix_nrows",
+    "fmpq_matrix_prefix_rows",
+    "fmpq_matrix_echelon_pivots",
     "fmpq_matrix_rank",
     "fmpq_matrix_rref",
     "fmpq_matrix_serialize",
     "fmpq_matrix_set_entry",
+    "fmpq_matrix_transpose",
     "fmpq_value_denominator",
     "fmpq_value_numerator",
   ],
@@ -265,6 +277,7 @@ const m4riAdapter = generatedWasmResourceAdapter(m4riDeclaration, {
     "matrix_set_entry",
     "matrix_entry_code",
     "matrix_copy",
+    "matrix_prefix_rows",
     "matrix_equal",
     "matrix_add",
     "matrix_mul",
@@ -582,7 +595,10 @@ for (const filename of pythonSources(standardLibrarySourceDirectory)) {
 }
 fs.writeFileSync(
   standardLibraryOutput,
-  JSON.stringify({ modules: standardLibraryModules }),
+  JSON.stringify({
+    modules: standardLibraryModules,
+    preload: browserAdditionalModules,
+  }),
 );
 fs.copyFileSync(
   require.resolve("plotly.js-dist-min/plotly.min.js"),

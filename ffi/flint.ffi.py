@@ -2706,7 +2706,7 @@ def fmpz_matrix_sub(left: FmpzMatrix, right: FmpzMatrix) -> FmpzMatrix: ...
         exception=RuntimeError,
         message="integer matrix transpose failed",
     ),
-    wasm=False,
+    wasm=True,
 )
 def fmpz_matrix_transpose(source: FmpzMatrix) -> FmpzMatrix: ...
 
@@ -2881,7 +2881,7 @@ def fmpz_matrix_trace(source: FmpzMatrix) -> Integer: ...
     ],
     effects=Effects(pure=False, allocates=True, raises=[RuntimeError]),
     result=Status(1, exception=RuntimeError, message="integer matrix HNF failed"),
-    wasm=False,
+    wasm=True,
 )
 def fmpz_matrix_hnf(source: FmpzMatrix) -> FmpzMatrix: ...
 
@@ -3118,6 +3118,26 @@ def fmpz_matrix_select_rows(
     indices: UInt64Buffer,
     count: uint64,
 ) -> FmpzMatrix: ...
+
+
+@flint.function(
+    dynamic="ffiFmpzMatrixPrefixRows",
+    symbol="sagejs_fmpz_matrix_prefix_rows",
+    returns=int,
+    abi=[
+        out("result", sagejs_fmpz_matrix_t),
+        in_("source", sagejs_fmpz_matrix_t),
+        in_("count", uint64_t),
+    ],
+    effects=Effects(pure=False, allocates=True, raises=[ValueError]),
+    result=Status(
+        1,
+        exception=ValueError,
+        message="integer matrix row-prefix count is invalid",
+    ),
+    wasm=True,
+)
+def fmpz_matrix_prefix_rows(source: FmpzMatrix, count: uint64) -> FmpzMatrix: ...
 
 
 @flint.function(
@@ -3820,7 +3840,7 @@ def fmpq_matrix_sub(left: FmpqMatrix, right: FmpqMatrix) -> FmpqMatrix: ...
         exception=RuntimeError,
         message="rational matrix transpose failed",
     ),
-    wasm=False,
+    wasm=True,
 )
 def fmpq_matrix_transpose(source: FmpqMatrix) -> FmpqMatrix: ...
 
@@ -4110,6 +4130,26 @@ def fmpq_matrix_select_rows(
     indices: UInt64Buffer,
     count: uint64,
 ) -> FmpqMatrix: ...
+
+
+@flint.function(
+    dynamic="ffiFmpqMatrixPrefixRows",
+    symbol="sagejs_fmpq_matrix_prefix_rows",
+    returns=int,
+    abi=[
+        out("result", sagejs_fmpq_matrix_t),
+        in_("source", sagejs_fmpq_matrix_t),
+        in_("count", uint64_t),
+    ],
+    effects=Effects(pure=False, allocates=True, raises=[ValueError]),
+    result=Status(
+        1,
+        exception=ValueError,
+        message="rational matrix row-prefix count is invalid",
+    ),
+    wasm=True,
+)
+def fmpq_matrix_prefix_rows(source: FmpqMatrix, count: uint64) -> FmpqMatrix: ...
 
 
 @flint.function(

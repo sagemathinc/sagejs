@@ -634,6 +634,23 @@ static inline int sagejs_fmpz_matrix_select_rows(
     return 1;
 }
 
+static inline int sagejs_fmpz_matrix_prefix_rows(
+    sagejs_fmpz_matrix_t result, const sagejs_fmpz_matrix_t source,
+    uint64_t count)
+{
+    const uint64_t rows = (uint64_t) fmpz_mat_nrows(source->value);
+    const uint64_t columns = (uint64_t) fmpz_mat_ncols(source->value);
+    if (count > rows || !sagejs_fmpz_matrix_dimensions_fit(count, columns) ||
+        !sagejs_fmpz_matrix_init(result, count, columns))
+        return 0;
+    for (uint64_t row = 0; row < count; row++)
+        for (uint64_t column = 0; column < columns; column++)
+            fmpz_set(fmpz_mat_entry(result->value, (slong) row, (slong) column),
+                fmpz_mat_entry(source->value, (slong) row, (slong) column));
+    sagejs_fmpz_matrix_finish_result(result);
+    return 1;
+}
+
 static inline int sagejs_fmpz_matrix_select_columns(
     sagejs_fmpz_matrix_t result, const sagejs_fmpz_matrix_t source,
     const uint64_t *selected_columns, uint64_t count)

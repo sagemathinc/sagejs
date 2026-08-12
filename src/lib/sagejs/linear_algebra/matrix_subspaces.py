@@ -34,13 +34,6 @@ from typing import Any
 ROW_ORIENTATION = "row"
 COLUMN_ORIENTATION = "column"
 
-Dimensions = Callable[[Any], tuple[int, int]]
-MatrixOperation = Callable[[Any], Any]
-BasisRowCount = Callable[[Any], int]
-RowSelector = Callable[[Any, tuple[int, ...]], Any]
-MutabilityOperation = Callable[[Any], None]
-BaseRingEquality = Callable[[Any, Any], bool]
-
 
 class CanonicalBasisMetadata:
     """Facts an adapter may trust about immutable canonical generator rows.
@@ -156,10 +149,10 @@ def canonical_basis_from_echelon(
     source_rows: int,
     source_columns: int,
     orientation: str,
-    dimensions: Dimensions,
-    basis_row_count: BasisRowCount,
-    select_rows: RowSelector,
-    set_immutable: MutabilityOperation,
+    dimensions: Callable[[Any], tuple[int, int]],
+    basis_row_count: Callable[[Any], int],
+    select_rows: Callable[[Any, tuple[int, ...]], Any],
+    set_immutable: Callable[[Any], None],
 ) -> CanonicalBasis:
     """Bulk-select a canonical basis from one already computed echelon matrix.
 
@@ -222,11 +215,11 @@ def canonical_basis_from_echelon(
 
 def canonical_row_basis(
     source: Any,
-    dimensions: Dimensions,
-    echelon_form: MatrixOperation,
-    basis_row_count: BasisRowCount,
-    select_rows: RowSelector,
-    set_immutable: MutabilityOperation,
+    dimensions: Callable[[Any], tuple[int, int]],
+    echelon_form: Callable[[Any], Any],
+    basis_row_count: Callable[[Any], int],
+    select_rows: Callable[[Any, tuple[int, ...]], Any],
+    set_immutable: Callable[[Any], None],
 ) -> CanonicalBasis:
     """Compute one canonical row echelon form and retain its generator rows."""
     source_rows, source_columns = _checked_shape(dimensions(source), "source")
@@ -245,12 +238,12 @@ def canonical_row_basis(
 
 def canonical_column_basis(
     source: Any,
-    dimensions: Dimensions,
-    transpose: MatrixOperation,
-    echelon_form: MatrixOperation,
-    basis_row_count: BasisRowCount,
-    select_rows: RowSelector,
-    set_immutable: MutabilityOperation,
+    dimensions: Callable[[Any], tuple[int, int]],
+    transpose: Callable[[Any], Any],
+    echelon_form: Callable[[Any], Any],
+    basis_row_count: Callable[[Any], int],
+    select_rows: Callable[[Any, tuple[int, ...]], Any],
+    set_immutable: Callable[[Any], None],
 ) -> CanonicalBasis:
     """Echelonize the transpose once and retain canonical column generators."""
     source_rows, source_columns = _checked_shape(dimensions(source), "source")
@@ -275,12 +268,12 @@ def prepare_row_space(
     source: Any,
     source_base_ring: Any,
     requested_base_ring: Any | None,
-    same_base_ring: BaseRingEquality,
-    dimensions: Dimensions,
-    echelon_form: MatrixOperation,
-    basis_row_count: BasisRowCount,
-    select_rows: RowSelector,
-    set_immutable: MutabilityOperation,
+    same_base_ring: Callable[[Any, Any], bool],
+    dimensions: Callable[[Any], tuple[int, int]],
+    echelon_form: Callable[[Any], Any],
+    basis_row_count: Callable[[Any], int],
+    select_rows: Callable[[Any, tuple[int, ...]], Any],
+    set_immutable: Callable[[Any], None],
 ) -> CanonicalBasis | GeneratorSpan:
     """Prepare Sage-compatible data for `row_space(base_ring=...)`.
 
