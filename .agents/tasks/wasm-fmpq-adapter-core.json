@@ -1,0 +1,51 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "wasm-fmpq-adapter-core",
+  "title": "Wasm Fmpq Resource Adapter Core",
+  "lane": "integration",
+  "status": "active",
+  "owner": "user",
+  "objective": "Extend declaration-driven Wasm host adapters and reviewed FLINT declarations so generated FmpqMatrix, FmpqValue, and FlintByteRegion resource operations support borrowed-resource calls, copied byte transfer, deterministic close, and finalizer fallback without operation-specific compiler branches",
+  "base_commit": "bcba716dc3fa1e098487556b8364718bf6c7f608",
+  "claims": [
+    "tools/ffi/wasm-adapters.cjs",
+    "ffi/flint.ffi.py",
+    "ffi/flint.ffi.json",
+    "src/lib/sagejs/ffi/flint.py",
+    "src/baselib/sagejs/ffi/flint.py",
+    "packages/flint/generated/ffi_host.py",
+    "architecture/native-boundaries.json",
+    "test/ffi-wasm-fmpq-resource-core.cjs"
+  ],
+  "dependencies": [],
+  "references": [
+    "FFI.md"
+  ],
+  "architecture": {
+    "strategy": "compiler-infrastructure",
+    "fallback": "tested-capability",
+    "oracles": [
+      "Existing generated Node FmpqMatrix resource behavior",
+      "FLINT exact rational matrix arithmetic"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "fallback",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm architecture:check",
+    "pnpm test:portable",
+    "pnpm test:baselib:strict"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "",
+    "risks": [],
+    "next_steps": []
+  }
+}

@@ -60,7 +60,7 @@ FmpqMatrix = flint.resource(
     close="ffiFmpqMatrixClose",
     clear="sagejs_fmpq_matrix_clear",
     size="sagejs_fmpq_matrix_allocated_bytes",
-    wasm=False,
+    wasm=True,
 )
 
 
@@ -71,7 +71,7 @@ FmpqValue = flint.resource(
     close="ffiFmpqValueClose",
     clear="sagejs_fmpq_value_clear",
     size="sagejs_fmpq_value_allocated_bytes",
-    wasm=False,
+    wasm=True,
 )
 
 
@@ -86,14 +86,14 @@ FlintByteRegion = flint.resource(
         dynamic="ffiFlintByteRegionCopyBytes",
         data="sagejs_flint_byte_region_data",
         length="sagejs_flint_byte_region_length",
-        wasm=False,
+        wasm=True,
     ),
     host_ingress=copied_bytes(
         dynamic="ffiFlintByteRegionFromBytes",
         init="sagejs_flint_byte_region_init_copy",
-        wasm=False,
+        wasm=True,
     ),
-    wasm=False,
+    wasm=True,
 )
 
 
@@ -1871,7 +1871,7 @@ def fmpz_matrix_serialize_sequence(
         exception=OverflowError,
         message="FLINT byte-region length is too large",
     ),
-    wasm=False,
+    wasm=True,
 )
 def flint_byte_region(length: uint64) -> FlintByteRegion: ...
 
@@ -1895,7 +1895,7 @@ def flint_byte_region(length: uint64) -> FlintByteRegion: ...
         exception=ValueError,
         message="FLINT byte-region index or byte value is out of bounds",
     ),
-    wasm=False,
+    wasm=True,
 )
 def flint_byte_region_set(
     region: Writable[FlintByteRegion],
@@ -1963,7 +1963,7 @@ def fmpz_matrix_deserialize_entries(
         exception=OverflowError,
         message="rational matrix dimensions are too large",
     ),
-    wasm=False,
+    wasm=True,
 )
 def fmpq_matrix(rows: uint64, columns: uint64) -> FmpqMatrix: ...
 
@@ -2004,7 +2004,7 @@ def fmpq_matrix_randbits(
     abi=[in_("matrix", sagejs_fmpq_matrix_t)],
     effects=Effects(pure=True),
     result=Direct(),
-    wasm=False,
+    wasm=True,
 )
 def fmpq_matrix_nrows(matrix: FmpqMatrix) -> uint64: ...
 
@@ -2016,7 +2016,7 @@ def fmpq_matrix_nrows(matrix: FmpqMatrix) -> uint64: ...
     abi=[in_("matrix", sagejs_fmpq_matrix_t)],
     effects=Effects(pure=True),
     result=Direct(),
-    wasm=False,
+    wasm=True,
 )
 def fmpq_matrix_ncols(matrix: FmpqMatrix) -> uint64: ...
 
@@ -2043,7 +2043,7 @@ def fmpq_matrix_ncols(matrix: FmpqMatrix) -> uint64: ...
         exception=ValueError,
         message="invalid rational matrix entry",
     ),
-    wasm=False,
+    wasm=True,
 )
 def fmpq_matrix_set_entry(
     matrix: Writable[FmpqMatrix],
@@ -2070,7 +2070,7 @@ def fmpq_matrix_set_entry(
         exception=ValueError,
         message="rational matrix entry is out of bounds",
     ),
-    wasm=False,
+    wasm=True,
 )
 def fmpq_matrix_entry_numerator(
     matrix: FmpqMatrix,
@@ -2095,7 +2095,7 @@ def fmpq_matrix_entry_numerator(
         exception=ValueError,
         message="rational matrix entry is out of bounds",
     ),
-    wasm=False,
+    wasm=True,
 )
 def fmpq_matrix_entry_denominator(
     matrix: FmpqMatrix,
@@ -2115,7 +2115,7 @@ def fmpq_matrix_entry_denominator(
     ],
     effects=Effects(pure=True),
     result=Direct(),
-    wasm=False,
+    wasm=True,
 )
 def fmpq_matrix_entry_is_zero(
     matrix: FmpqMatrix,
@@ -2134,7 +2134,7 @@ def fmpq_matrix_entry_is_zero(
     ],
     effects=Effects(pure=False, allocates=True, raises=[RuntimeError]),
     result=Status(1, exception=RuntimeError, message="rational matrix copy failed"),
-    wasm=False,
+    wasm=True,
 )
 def fmpq_matrix_copy(source: FmpqMatrix) -> FmpqMatrix: ...
 
@@ -2292,7 +2292,7 @@ def fmpq_matrix_transpose(source: FmpqMatrix) -> FmpqMatrix: ...
         exception=ValueError,
         message="rational matrix dimensions are incompatible",
     ),
-    wasm=False,
+    wasm=True,
 )
 def fmpq_matrix_mul(left: FmpqMatrix, right: FmpqMatrix) -> FmpqMatrix: ...
 
@@ -2342,7 +2342,7 @@ def fmpq_matrix_solve(left: FmpqMatrix, right: FmpqMatrix) -> FmpqMatrix: ...
     ],
     effects=Effects(pure=False, allocates=True, raises=[RuntimeError]),
     result=Status(1, exception=RuntimeError, message="rational matrix RREF failed"),
-    wasm=False,
+    wasm=True,
 )
 def fmpq_matrix_rref(source: FmpqMatrix) -> FmpqMatrix: ...
 
@@ -2411,7 +2411,7 @@ def fmpq_matrix_minpoly(source: FmpqMatrix) -> FmpqPolynomial: ...
     abi=[in_("matrix", sagejs_fmpq_matrix_t)],
     effects=Effects(pure=False, allocates=True, writes=["matrix"]),
     result=Direct(),
-    wasm=False,
+    wasm=True,
 )
 def fmpq_matrix_rank(matrix: Writable[FmpqMatrix]) -> uint64: ...
 
@@ -2430,7 +2430,7 @@ def fmpq_matrix_rank(matrix: Writable[FmpqMatrix]) -> uint64: ...
         exception=ValueError,
         message="determinant requires a square rational matrix",
     ),
-    wasm=False,
+    wasm=True,
 )
 def fmpq_matrix_det(source: FmpqMatrix) -> FmpqValue: ...
 
@@ -2649,7 +2649,7 @@ def fmpq_matrix_nonzero_count(source: FmpqMatrix) -> uint64: ...
     abi=[out("result", fmpz_t), in_("value", sagejs_fmpq_value_t)],
     effects=Effects(pure=True, allocates=True),
     result=Direct(),
-    wasm=False,
+    wasm=True,
 )
 def fmpq_value_numerator(value: FmpqValue) -> Integer: ...
 
@@ -2661,7 +2661,7 @@ def fmpq_value_numerator(value: FmpqValue) -> Integer: ...
     abi=[out("result", fmpz_t), in_("value", sagejs_fmpq_value_t)],
     effects=Effects(pure=True, allocates=True),
     result=Direct(),
-    wasm=False,
+    wasm=True,
 )
 def fmpq_value_denominator(value: FmpqValue) -> Integer: ...
 
@@ -2676,7 +2676,7 @@ def fmpq_value_denominator(value: FmpqValue) -> Integer: ...
     ],
     effects=Effects(pure=False, allocates=True, raises=[RuntimeError]),
     result=Status(1, exception=RuntimeError, message="rational matrix format failed"),
-    wasm=False,
+    wasm=True,
 )
 def fmpq_matrix_format(source: FmpqMatrix) -> FlintByteRegion: ...
 
@@ -2695,7 +2695,7 @@ def fmpq_matrix_format(source: FmpqMatrix) -> FlintByteRegion: ...
         exception=OverflowError,
         message="rational matrix serialization is too large",
     ),
-    wasm=False,
+    wasm=True,
 )
 def fmpq_matrix_serialize(source: FmpqMatrix) -> FlintByteRegion: ...
 
@@ -2743,7 +2743,7 @@ def fmpq_matrix_serialize_sequence(
         exception=ValueError,
         message="invalid packed rational matrix entries",
     ),
-    wasm=False,
+    wasm=True,
 )
 def fmpq_matrix_deserialize(
     source: FlintByteRegion,
