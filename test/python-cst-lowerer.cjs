@@ -43,6 +43,27 @@ const outputOptions = {
   python_attributes: true,
 };
 
+function wrapTimeitStatement(compiler, ast, { number, repeat = 7 } = {}) {
+  const statements = ast.body;
+  const body =
+    statements.length === 1
+      ? statements[0]
+      : new compiler.AST_BlockStatement({
+          start: statements[0]?.start ?? ast.start,
+          end: statements.at(-1)?.end ?? ast.end,
+          body: statements,
+        });
+  const statement = new compiler.AST_TimedStatement({
+    start: body.start,
+    end: body.end,
+    body,
+  });
+  statement.timeit_number = number ?? null;
+  statement.timeit_repeat = repeat;
+  ast.body = [statement];
+  return ast;
+}
+
 test("direct CST lowering matches established JavaScript for core nodes", async () => {
   const compiler = createCompiler();
   const legacyCompiler = createBootstrapCompiler();
@@ -186,6 +207,137 @@ test("Sage percent-time is represented and emitted by the compiler", async () =>
     assert.match(output.get(), /performance\.now\(\)/);
     assert.doesNotThrow(() => new Script(output.get()));
   } finally {
+    frontend.close();
+  }
+});
+
+test("compiler-marked timeit calibrates an inline statement", async () => {
+  const compiler = createCompiler();
+  const frontend = await createPythonCompilerFrontend(compiler, "sage");
+  const saved = new Map(
+    ["tick", "ρσ_resolve_callable", "ρσ_check_interrupt"].map((name) => [
+      name,
+      Object.getOwnPropertyDescriptor(globalThis, name),
+    ]),
+  );
+  const reports = [];
+  let now = 0;
+  let ticks = 0;
+  const uninstallTimingHooks = installTimingHooks(
+    globalThis,
+    (text) => reports.push(text),
+    {
+      timeitPolicy: {
+        now: () => now,
+        calibrationTargetMs: 2,
+        maximumNumber: 10_000,
+      },
+    },
+  );
+  globalThis.tick = () => {
+    ticks += 1;
+    now += 0.025;
+  };
+  globalThis.ρσ_resolve_callable = (value) => value;
+  globalThis.ρσ_check_interrupt = () => undefined;
+  let temporaryName;
+  let previousTemporary;
+  try {
+    const ast = wrapTimeitStatement(
+      compiler,
+      frontend.parse("tick()\n", parserOptions),
+    );
+    assert.equal(ast.body[0].constructor.name, "AST_TimedStatement");
+    assert.equal(ast.body[0].timeit_number, null);
+    assert.equal(ast.body[0].timeit_repeat, 7);
+    const explicit = wrapTimeitStatement(
+      compiler,
+      frontend.parse("tick()\n", parserOptions),
+      { number: 4, repeat: 2 },
+    );
+    assert.equal(explicit.body[0].timeit_number, 4);
+    assert.equal(explicit.body[0].timeit_repeat, 2);
+
+    const output = new compiler.OutputStream(outputOptions);
+    ast.print(output);
+    const javascript = output.get();
+    assert.match(javascript, /__sagejs_timeit_start__/);
+    assert.match(javascript, /for \(ρσ_time_start_/);
+    assert.match(javascript, /ρσ_check_interrupt/);
+    temporaryName = javascript.match(
+      /const (ρσ_time_start_[A-Za-z0-9_]+_context) =/,
+    )?.[1];
+    assert.ok(temporaryName);
+    assert.doesNotMatch(javascript, /globalThis\["ρσ_time_start_.*_context/);
+    previousTemporary = Object.getOwnPropertyDescriptor(
+      globalThis,
+      temporaryName,
+    );
+    const sentinel = {};
+    globalThis[temporaryName] = sentinel;
+    new Script(javascript).runInThisContext();
+    assert.equal(ticks, 812);
+    assert.equal(globalThis[temporaryName], sentinel);
+    assert.equal(reports.length, 1);
+    assert.match(
+      reports[0],
+      /^25\.0 µs ± 0 µs per loop .*7 runs, 100 loops each\)$/,
+    );
+  } finally {
+    uninstallTimingHooks();
+    if (temporaryName) {
+      if (previousTemporary) {
+        Object.defineProperty(globalThis, temporaryName, previousTemporary);
+      } else {
+        delete globalThis[temporaryName];
+      }
+    }
+    for (const [name, descriptor] of saved) {
+      if (descriptor) Object.defineProperty(globalThis, name, descriptor);
+      else delete globalThis[name];
+    }
+    frontend.close();
+  }
+});
+
+test("compiler-emitted timeit aborts cleanly after an exception", async () => {
+  const compiler = createCompiler();
+  const frontend = await createPythonCompilerFrontend(compiler, "sage");
+  const saved = new Map(
+    ["timeit_boom", "ρσ_resolve_callable", "ρσ_check_interrupt"].map(
+      (name) => [name, Object.getOwnPropertyDescriptor(globalThis, name)],
+    ),
+  );
+  const reports = [];
+  const uninstallTimingHooks = installTimingHooks(globalThis, (text) =>
+    reports.push(text),
+  );
+  const failure = new Error("timeit failure");
+  globalThis.timeit_boom = () => {
+    throw failure;
+  };
+  globalThis.ρσ_resolve_callable = (value) => value;
+  globalThis.ρσ_check_interrupt = () => undefined;
+  try {
+    const ast = wrapTimeitStatement(
+      compiler,
+      frontend.parse("timeit_boom()\n", parserOptions),
+      { number: 2, repeat: 2 },
+    );
+    const output = new compiler.OutputStream(outputOptions);
+    ast.print(output);
+    assert.throws(
+      () => new Script(output.get()).runInThisContext(),
+      (error) => error === failure,
+    );
+    measureInitialization("unrelated later initialization", () => undefined);
+    assert.deepEqual(reports, []);
+  } finally {
+    uninstallTimingHooks();
+    for (const [name, descriptor] of saved) {
+      if (descriptor) Object.defineProperty(globalThis, name, descriptor);
+      else delete globalThis[name];
+    }
     frontend.close();
   }
 });

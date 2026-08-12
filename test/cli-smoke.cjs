@@ -129,6 +129,32 @@ assert.equal(
   run([], "value = GF(5)\nvalue\n").trim(),
   "Finite Field of size 5",
 );
+const timeitOutput = run(
+  [],
+  [
+    "timeit_counter = 0",
+    "%timeit -n2 -r3 timeit_counter += 1",
+    "print(timeit_counter)",
+    "",
+  ].join("\n"),
+);
+assert.match(
+  timeitOutput,
+  /^[\d.]+ (?:ns|µs|ms|s) ± [\d.]+ (?:ns|µs|ms|s) per loop \(mean ± std\. dev\. of 3 runs, 2 loops each\)\n7\s*$/,
+);
+const pythonTimeitOutput = run(
+  ["--python"],
+  [
+    "python_timeit_value = 0",
+    "%timeit -n1 -r1 python_timeit_value = 2^3",
+    "print(python_timeit_value)",
+    "",
+  ].join("\n"),
+);
+assert.match(
+  pythonTimeitOutput,
+  /^[\d.]+ (?:ns|µs|ms|s) ± [\d.]+ (?:ns|µs|ms|s) per loop \(mean ± std\. dev\. of 1 run, 1 loop each\)\n1\s*$/,
+);
 assert.equal(run(["--python"], "value = 17\n").trim(), "");
 assert.equal(
   run(

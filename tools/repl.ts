@@ -41,6 +41,8 @@ import {
   formatExecutionTiming,
   installTimingHooks,
   measureExecution,
+  parseTimeitDirective,
+  TimeitOptions,
 } from "./timing";
 
 const DEFAULT_HISTORY_SIZE = 1000;
@@ -467,6 +469,19 @@ export default async function Repl(
         return false;
       }
     }
+    let timeitOptions: TimeitOptions | undefined;
+    if (!foreignFrontend) {
+      try {
+        const timeit = parseTimeitDirective(source);
+        if (timeit) {
+          source = timeit.source;
+          timeitOptions = timeit.options;
+        }
+      } catch (error) {
+        options.console.error(error?.message ?? error);
+        return false;
+      }
+    }
     let timed = false;
     if (source.startsWith("%time ") || source.startsWith("time ")) {
       timed = true;
@@ -519,6 +534,24 @@ export default async function Repl(
         precompiled_module_cache_dir: precompiledModuleCacheDir,
         tokens: options.tokens,
       });
+      if (timeitOptions) {
+        const statements = toplevel.body;
+        const body = statements.length === 1
+          ? statements[0]
+          : new PyLang.AST_BlockStatement({
+            start: statements[0]?.start ?? toplevel.start,
+            end: statements.at(-1)?.end ?? toplevel.end,
+            body: statements,
+          });
+        const statement = new PyLang.AST_TimedStatement({
+          start: body.start,
+          end: body.end,
+          body,
+        });
+        statement.timeit_number = timeitOptions.number ?? null;
+        statement.timeit_repeat = timeitOptions.repeat ?? 7;
+        toplevel.body = [statement];
+      }
     } catch (err) {
       if (
         !runOptions.filename &&

@@ -16,6 +16,7 @@ Start with:
 - [Implementation](../IMPLEMENTATION.md)
 - [Embedding](../EMBEDDING.md)
 - [Jupyter](../JUPYTER.md)
+- [Measuring execution](timing.md)
 - [Polyglot execution](../POLYGLOT.md)
 - [Python standard library compatibility](python-standard-library.md)
 - [Plotting](../PLOTTING.md)

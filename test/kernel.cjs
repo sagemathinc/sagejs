@@ -86,6 +86,33 @@ async function main(t) {
   assert.match(coldImport.stdout, /\n  import colorsys: [\d.]+ms\n/);
   const warmImport = await session.evaluate("%time import colorsys");
   assert.doesNotMatch(warmImport.stdout, /\nInitialization:/);
+  await session.evaluate("timeit_counter = 0");
+  const timeit = await session.evaluate(
+    "%timeit -n 2 -r 3 timeit_counter += 1",
+  );
+  assert.equal(timeit.repr, "");
+  assert.match(
+    timeit.stdout,
+    /^[\d.]+ (?:ns|µs|ms|s) ± [\d.]+ (?:ns|µs|ms|s) per loop \(mean ± std\. dev\. of 3 runs, 2 loops each\)\n$/,
+  );
+  assert.equal((await session.evaluate("timeit_counter")).repr, "7");
+  await session.evaluate("timeit_sentinel = 123");
+  assert.equal((await session.evaluate("timeit_sentinel")).repr, "123");
+  const suppressedTimeit = await session.evaluate(
+    "%timeit -n1 -r1 timeit_sentinel + 1",
+  );
+  assert.equal(suppressedTimeit.repr, "");
+  assert.equal((await session.evaluate("_")).repr, "123");
+  const importedTimeit = await session.evaluate(
+    "%timeit -n1 -r1 import bisect",
+  );
+  assert.equal(importedTimeit.repr, "");
+  assert.match(importedTimeit.stdout, /mean ± std\. dev\. of 1 run/);
+  assert.match(importedTimeit.stdout, /Initialization \(warmup only\):/);
+  assert.equal(
+    (await session.evaluate("bisect.bisect_left([1, 3, 5], 4)")).repr,
+    "2",
+  );
   assert.match(
     (await session.evaluate("search_doc('natural logarithm')")).stdout,
     /log2 -- The natural logarithm of `2`\./,
@@ -219,6 +246,10 @@ async function main(t) {
   assert.deepEqual(await session.isComplete("2 + 2"), {
     status: "complete",
   });
+  assert.deepEqual(
+    await session.isComplete("%timeit -n2 2 + 2", { language: "python" }),
+    { status: "complete" },
+  );
   assert.deepEqual(await session.isComplete("def f(:\n    pass"), {
     status: "invalid",
   });
@@ -237,6 +268,18 @@ imported_method = ImportedMethod()
   assert.equal(
     (await session.evaluate("imported_method.value()")).repr,
     "2.302585092994046",
+  );
+
+  await session.evaluate("timeit_preserved = 77");
+  const interruptedTimeit = session.evaluate(
+    "%timeit -n100000000 -r2 2 + 3",
+  );
+  setTimeout(() => void session.interrupt(), 50);
+  await assert.rejects(interruptedTimeit, SageSessionInterruptedError);
+  assert.equal((await session.evaluate("timeit_preserved")).repr, "77");
+  assert.match(
+    (await session.evaluate("%timeit -n1 -r1 2 + 3")).stdout,
+    /mean ± std\. dev\. of 1 run, 1 loop each/,
   );
 
   const interrupted = session.evaluate("while True:\n    pass");

@@ -356,6 +356,8 @@ def generate_code():
     DEFPRINT(AST_SimpleStatement, f_simple_statement)
 
     def print_timed_statement(self, output):
+        if self.timeit_repeat is not undefined:
+            return print_timeit_statement(self, output)
         start_name = output.new_time_counter()
         finish_name = start_name + "_finish"
         timing_hooks = (
@@ -410,6 +412,113 @@ def generate_code():
         output.with_block(timed_body)
 
     DEFPRINT(AST_TimedStatement, print_timed_statement)
+
+    def print_timeit_statement(self, output):
+        prefix = output.new_time_counter()
+        context_name = prefix + "_context"
+        context = context_name
+        error_name = prefix + "_error"
+
+        def timeit_body():
+            output.indent()
+            output.print(
+                'if (typeof globalThis.__sagejs_timeit_start__ !== "function") '
+                'throw new Error("%timeit is unavailable in this host")'
+            )
+            output.end_statement()
+            output.indent()
+            output.print("const " + context + " = ")
+            output.print("{controller:globalThis.__sagejs_timeit_start__({number:")
+            output.print(
+                "null" if self.timeit_number is None else str(self.timeit_number)
+            )
+            output.print(",repeat:" + str(self.timeit_repeat) + "}),loops:0,index:0}")
+            output.end_statement()
+            output.indent()
+            output.print("try")
+            output.space()
+
+            def protected_execution():
+                output.indent()
+                output.print("while (true)")
+                output.space()
+
+                def repeated_batches():
+                    output.indent()
+                    output.assign(context + ".loops")
+                    output.print(
+                        "globalThis.__sagejs_timeit_begin__(" + context + ".controller)"
+                    )
+                    output.end_statement()
+                    output.indent()
+                    output.print("if (!" + context + ".loops) break")
+                    output.end_statement()
+                    output.indent()
+                    output.print(
+                        "for ("
+                        + context
+                        + ".index = 0; "
+                        + context
+                        + ".index"
+                        + " < "
+                        + context
+                        + ".loops"
+                        + "; "
+                        + context
+                        + ".index"
+                        + " += 1)"
+                    )
+                    output.space()
+
+                    def timed_loop():
+                        output.indent()
+                        output.print(
+                            "if (("
+                            + context
+                            + ".index"
+                            + " & 4095) === 0) globalThis.ρσ_check_interrupt()"
+                        )
+                        output.end_statement()
+                        output.indent()
+                        self.body.print(output)
+                        output.newline()
+
+                    output.with_block(timed_loop)
+                    output.newline()
+                    output.indent()
+                    output.print(
+                        "globalThis.__sagejs_timeit_end__(" + context + ".controller)"
+                    )
+                    output.end_statement()
+
+                output.with_block(repeated_batches)
+                output.newline()
+                output.indent()
+                output.print(
+                    "globalThis.__sagejs_timeit_finish__(" + context + ".controller)"
+                )
+                output.end_statement()
+
+            output.with_block(protected_execution)
+            output.space()
+            output.print("catch (" + error_name + ")")
+            output.space()
+
+            def abort_timing():
+                output.indent()
+                output.print(
+                    "globalThis.__sagejs_timeit_abort__(" + context + ".controller)"
+                )
+                output.end_statement()
+                output.indent()
+                output.print("throw " + error_name)
+                output.end_statement()
+
+            output.with_block(abort_timing)
+            output.newline()
+
+        output.with_block(timeit_body)
+
     DEFPRINT(AST_BlockStatement, lambda self, output: print_bracketed(self, output))
 
     DEFPRINT(AST_EmptyStatement, lambda self, output: None)
