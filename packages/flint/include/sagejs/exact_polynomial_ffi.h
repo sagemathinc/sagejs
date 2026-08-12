@@ -4,6 +4,7 @@
 #include <limits.h>
 #include <stdint.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include <flint/flint.h>
 #include <flint/fmpq.h>
@@ -882,6 +883,29 @@ static inline int sagejs_fmpz_polynomial_serialize(
     return 1;
 }
 
+static inline int sagejs_fmpz_polynomial_format(
+    sagejs_flint_byte_region_t result,
+    const sagejs_fmpz_polynomial_t source)
+{
+    result->data = NULL;
+    result->length = 0;
+    if (!source->sealed)
+        return 0;
+    char *text = fmpz_poly_get_str_pretty(source->value, "x");
+    if (text == NULL)
+        return 0;
+    const size_t length = strlen(text);
+    result->data = (unsigned char *) malloc(length == 0 ? 1 : length);
+    const int ok = result->data != NULL;
+    if (ok)
+    {
+        memcpy(result->data, text, length);
+        result->length = length;
+    }
+    flint_free(text);
+    return ok;
+}
+
 static inline int sagejs_fmpq_polynomial_serialize(
     sagejs_flint_byte_region_t result,
     const sagejs_fmpq_polynomial_t source)
@@ -929,6 +953,29 @@ static inline int sagejs_fmpq_polynomial_serialize(
     free(words);
     fmpq_clear(coefficient);
     return 1;
+}
+
+static inline int sagejs_fmpq_polynomial_format(
+    sagejs_flint_byte_region_t result,
+    const sagejs_fmpq_polynomial_t source)
+{
+    result->data = NULL;
+    result->length = 0;
+    if (!source->sealed)
+        return 0;
+    char *text = fmpq_poly_get_str_pretty(source->value, "x");
+    if (text == NULL)
+        return 0;
+    const size_t length = strlen(text);
+    result->data = (unsigned char *) malloc(length == 0 ? 1 : length);
+    const int ok = result->data != NULL;
+    if (ok)
+    {
+        memcpy(result->data, text, length);
+        result->length = length;
+    }
+    flint_free(text);
+    return ok;
 }
 
 /*

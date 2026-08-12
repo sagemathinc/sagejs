@@ -1,0 +1,119 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "exact-polynomial-format",
+  "title": "Fast exact polynomial formatting",
+  "lane": "integration",
+  "status": "review",
+  "owner": "user",
+  "objective": "Make warm repr and str of large univariate ZZ and QQ polynomials uniformly fast through a bulk generated-resource path while preserving Sage formatting and portable fallback semantics",
+  "base_commit": "65ed287e6f12f586f0200931033780055e4dfe4a",
+  "claims": [
+    "src/baselib/polynomial.py",
+    "ffi/flint.ffi.py",
+    "ffi/flint.ffi.json",
+    "src/lib/sagejs/ffi/flint.py",
+    "src/baselib/sagejs/ffi/flint.py",
+    "packages/flint/generated/ffi_host.py",
+    "packages/flint/include/sagejs/exact_polynomial_ffi.h",
+    "architecture/native-boundaries.json",
+    "test/ffi.cjs",
+    "test/node-test-manifest.cjs",
+    "test/exact-polynomial-format.cjs",
+    "bench/exact-polynomial-format.cjs"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "external-library",
+    "fallback": "tested-capability",
+    "oracles": [
+      "SageMath polynomial repr and current dynamic fallback",
+      "FLINT exact polynomial pretty formatting"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm architecture:check",
+    "pnpm test:portable",
+    "pnpm test:baselib:strict"
+  ],
+  "runs": [
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 12.605,
+      "started_at": "2026-08-11T23:59:04.907Z",
+      "commit": "65ed287e6f12f586f0200931033780055e4dfe4a",
+      "workspace_fingerprint": "eff7d11d082c35c7c74a67fde446f70fb2cb38f7d01751e8101560feca23a400",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 36.049,
+      "started_at": "2026-08-11T23:59:21.579Z",
+      "commit": "65ed287e6f12f586f0200931033780055e4dfe4a",
+      "workspace_fingerprint": "eff7d11d082c35c7c74a67fde446f70fb2cb38f7d01751e8101560feca23a400",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 12.425,
+      "started_at": "2026-08-12T00:00:01.350Z",
+      "commit": "65ed287e6f12f586f0200931033780055e4dfe4a",
+      "workspace_fingerprint": "eff7d11d082c35c7c74a67fde446f70fb2cb38f7d01751e8101560feca23a400",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 12.005,
+      "started_at": "2026-08-12T00:01:52.956Z",
+      "commit": "65ed287e6f12f586f0200931033780055e4dfe4a",
+      "workspace_fingerprint": "180994db8aa2145fb6a0461d65f6675c844942e0559fa0e799a9dd2599d104af",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 36.738,
+      "started_at": "2026-08-12T00:02:15.456Z",
+      "commit": "65ed287e6f12f586f0200931033780055e4dfe4a",
+      "workspace_fingerprint": "180994db8aa2145fb6a0461d65f6675c844942e0559fa0e799a9dd2599d104af",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 12.199,
+      "started_at": "2026-08-12T00:02:55.647Z",
+      "commit": "65ed287e6f12f586f0200931033780055e4dfe4a",
+      "workspace_fingerprint": "180994db8aa2145fb6a0461d65f6675c844942e0559fa0e799a9dd2599d104af",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Added generated FLINT resource formatters for sealed ZZ and QQ polynomials, normalized their sentinel-variable pretty output to Sage display syntax, and retained the existing dynamic formatter as the portable fallback. Exact QQ coefficient materialization now uses the checked bulk reduced-rational decoder instead of constructing one host object per loop iteration. Focused tests cover repr/str equivalence, variable names, zero/unit/sign/fraction cases, skew large coefficients, forbidden coefficient materialization, portable fallback, and 20,000 rational coefficients. Representative warm degree-50k formatting measured 126.6 ms over ZZ and 166.2 ms over QQ for roughly 0.9-1.0 MB outputs. Generated FFI, native-boundary, test-manifest, and verified reference outputs are current.",
+    "risks": [
+      "The FLINT resource formatter is intentionally unavailable to Wasm; portable hosts retain the tested coefficient-based dynamic formatter.",
+      "The documentation gate deterministically requests line-ID and fingerprint refreshes outside this lane's ownership; integration must regenerate those verified outputs after rebasing."
+    ],
+    "next_steps": [
+      "Regenerate the declaration hash, host adapters, native-boundary snapshot, and reference metadata if integration rebases across newer FLINT declarations or documentation outputs."
+    ]
+  }
+}

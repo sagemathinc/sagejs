@@ -514,6 +514,25 @@ def fmpz_polynomial_serialize(source: FmpzPolynomial) -> FlintByteRegion: ...
 
 
 @flint.function(
+    dynamic="ffiFmpzPolynomialFormat",
+    symbol="sagejs_fmpz_polynomial_format",
+    returns=int,
+    abi=[
+        out("result", sagejs_flint_byte_region_t),
+        in_("source", sagejs_fmpz_polynomial_t),
+    ],
+    effects=Effects(pure=False, allocates=True, raises=[RuntimeError]),
+    result=Status(
+        1,
+        exception=RuntimeError,
+        message="integer polynomial formatting failed",
+    ),
+    wasm=False,
+)
+def fmpz_polynomial_format(source: FmpzPolynomial) -> FlintByteRegion: ...
+
+
+@flint.function(
     dynamic="ffiFmpzPolynomialDeserialize",
     symbol="sagejs_fmpz_polynomial_deserialize_packed",
     returns=int,
@@ -1014,6 +1033,25 @@ def fmpq_polynomial_evaluate(
     wasm=False,
 )
 def fmpq_polynomial_serialize(source: FmpqPolynomial) -> FlintByteRegion: ...
+
+
+@flint.function(
+    dynamic="ffiFmpqPolynomialFormat",
+    symbol="sagejs_fmpq_polynomial_format",
+    returns=int,
+    abi=[
+        out("result", sagejs_flint_byte_region_t),
+        in_("source", sagejs_fmpq_polynomial_t),
+    ],
+    effects=Effects(pure=False, allocates=True, raises=[RuntimeError]),
+    result=Status(
+        1,
+        exception=RuntimeError,
+        message="rational polynomial formatting failed",
+    ),
+    wasm=False,
+)
+def fmpq_polynomial_format(source: FmpqPolynomial) -> FlintByteRegion: ...
 
 
 @flint.function(
