@@ -1074,13 +1074,11 @@ function compactMatrixNative(value: unknown, base: unknown): {
   bytes: Uint8Array;
   count: number;
 } | undefined {
-  const modulusNumber = Number(Reflect.get(Object(base), "_order"));
-  if (
-    !Number.isSafeInteger(modulusNumber) ||
-    modulusNumber < 2 ||
-    modulusNumber > 0xffff_ffff
-  ) return undefined;
-  const width = modulusNumber <= 0x100 ? 1 : modulusNumber <= 0x1_0000 ? 2 : 4;
+  const modulus = Reflect.get(Object(base), "_order");
+  const width = parentKind(base) === "GF"
+    ? primePolynomialResidueWidth(modulus)
+    : compactResidueWidth(modulus);
+  if (width === undefined) return undefined;
   const exporter = Reflect.get(Object(value), "_packed_residues");
   if (typeof exporter !== "function") return undefined;
   const rows = Number(callMethod(value, "nrows"));
@@ -1608,13 +1606,17 @@ function primeMatrixFromCanonicalResidues(
   countValue: unknown,
 ): unknown | undefined {
   const restore = Reflect.get(Object(parent), "_from_canonical_uint64_residues");
-  if (typeof restore !== "function") return undefined;
+  const restorePacked = Reflect.get(Object(parent), "_from_packed_residues");
+  if (typeof restore !== "function" && typeof restorePacked !== "function") {
+    return undefined;
+  }
   const base = callMethod(parent, "base_ring");
   if (parentKind(base) !== "GF") return undefined;
-  const modulus = Number(Reflect.get(Object(base), "_order"));
-  const expectedWidth = compactResidueWidth(modulus);
+  const modulus = Reflect.get(Object(base), "_order");
+  const modulusWord = unsignedWordModulus(modulus);
+  const expectedWidth = primePolynomialResidueWidth(modulus);
   if (
-    expectedWidth === undefined ||
+    modulusWord === undefined || expectedWidth === undefined ||
     typeof widthValue !== "number" ||
     !Number.isInteger(widthValue) ||
     widthValue !== expectedWidth
@@ -1631,25 +1633,34 @@ function primeMatrixFromCanonicalResidues(
     throw new SageSerializationError("compact matrix entry buffer is invalid");
   }
 
-  // Decode, validate, and publish the fixed-size residues in one pass. The
-  // output is fresh caller-owned storage, so a mutable matrix cannot alias the
-  // SagePack input. Uint32 views avoid constructing one BigInt per entry while
-  // the explicit word positions preserve little-endian SagePack bytes on both
-  // little- and big-endian hosts.
+  const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+  for (let index = 0; index < countValue; index += 1) {
+    const value = expectedWidth === 1
+      ? BigInt(view.getUint8(index))
+      : expectedWidth === 2
+        ? BigInt(view.getUint16(index * 2, true))
+        : expectedWidth === 4
+          ? BigInt(view.getUint32(index * 4, true))
+          : view.getBigUint64(index * 8, true);
+    if (value >= modulusWord) {
+      throw new SageSerializationError("compact matrix residue is outside its field");
+    }
+  }
+  if (typeof restorePacked === "function") {
+    return invoke(restorePacked, parent, [bytes, expectedWidth]);
+  }
+
+  // Legacy parents may only expose the canonical fixed-width constructor.
   const entries = new BigUint64Array(countValue);
   const words = new Uint32Array(entries.buffer);
   const littleEndian = new Uint8Array(new Uint16Array([1]).buffer)[0] === 1;
   const lowWord = littleEndian ? 0 : 1;
-  const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
   for (let index = 0; index < countValue; index += 1) {
     const value = expectedWidth === 1
       ? bytes[index]
       : expectedWidth === 2
         ? view.getUint16(index * 2, true)
         : view.getUint32(index * 4, true);
-    if (value >= modulus) {
-      throw new SageSerializationError("compact matrix residue is outside its field");
-    }
     words[index * 2 + lowWord] = value;
   }
   return invoke(restore, parent, [entries]);

@@ -13,6 +13,11 @@ from __future__ import annotations
 
 from sagejs.native import UInt64Buffer, native, uint64
 from sagejs.ffi.fflas import (
+    modular_double_available,
+    modular_double_mul,
+    modular_double_rank,
+    modular_double_rref,
+    modular_double_right_nullspace,
     modular_float_available,
     modular_float_mul,
     modular_float_rank,
@@ -23,8 +28,8 @@ from sagejs.ffi.fflas import (
 
 @native
 def fflas_dense_prime_field_available() -> bool:
-    """Return whether this host provides the FFLAS small-prime backend."""
-    return modular_float_available()
+    """Return whether this host provides the FFLAS packed-prime backend."""
+    return modular_float_available() and modular_double_available()
 
 
 @native
@@ -37,7 +42,20 @@ def fflas_dense_prime_field_matrix_mul(
     right_columns: uint64,
     modulus: uint64,
 ) -> bool:
-    return modular_float_mul(
+    if modulus < 256:
+        return modular_float_mul(
+            output,
+            left,
+            right,
+            left_rows * right_columns,
+            left_rows * inner,
+            inner * right_columns,
+            left_rows,
+            inner,
+            right_columns,
+            modulus,
+        )
+    return modular_double_mul(
         output,
         left,
         right,
@@ -61,7 +79,19 @@ def fflas_dense_prime_field_matrix_rref(
     modulus: uint64,
 ) -> bool:
     rank_length: uint64 = 1
-    return modular_float_rref(
+    if modulus < 256:
+        return modular_float_rref(
+            output,
+            rank_output,
+            source,
+            rows * columns,
+            rank_length,
+            rows * columns,
+            rows,
+            columns,
+            modulus,
+        )
+    return modular_double_rref(
         output,
         rank_output,
         source,
@@ -84,7 +114,17 @@ def fflas_dense_prime_field_matrix_rank(
 ) -> bool:
     """Compute rank directly with FFPACK's mutable packed-matrix primitive."""
     rank_length: uint64 = 1
-    return modular_float_rank(
+    if modulus < 256:
+        return modular_float_rank(
+            rank_output,
+            source,
+            rank_length,
+            rows * columns,
+            rows,
+            columns,
+            modulus,
+        )
+    return modular_double_rank(
         rank_output,
         source,
         rank_length,
@@ -106,7 +146,19 @@ def fflas_dense_prime_field_matrix_right_nullspace(
 ) -> bool:
     """Compute the canonical row basis of the right nullspace with FFPACK."""
     nullity_length: uint64 = 1
-    return modular_float_right_nullspace(
+    if modulus < 256:
+        return modular_float_right_nullspace(
+            output,
+            nullity_output,
+            source,
+            columns * columns,
+            nullity_length,
+            rows * columns,
+            rows,
+            columns,
+            modulus,
+        )
+    return modular_double_right_nullspace(
         output,
         nullity_output,
         source,

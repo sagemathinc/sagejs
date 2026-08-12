@@ -109,6 +109,13 @@
       "rationale": "Host-neutral owned-resource ABI over variable-size FLINT rational matrices for declaration-generated kernels and replaceable host adapters."
     },
     {
+      "path": "packages/flint/include/sagejs/nmod_matrix_ffi.h",
+      "category": "external-library-bridge",
+      "review_status": "accepted",
+      "lane": "integration",
+      "rationale": "Host-neutral generated owned-resource ABI over FLINT word-prime matrices, with checked bulk ingress, deterministic lifecycle accounting, direct resource-to-resource arithmetic and elimination, formatting, and canonical width-8 serialization."
+    },
+    {
       "path": "packages/flint/include/sagejs/fq_polynomial_ffi.h",
       "category": "external-library-bridge",
       "review_status": "accepted",

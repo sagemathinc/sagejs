@@ -15,17 +15,27 @@ without aliasing its source or exposing a partially converted target.
 
 from __future__ import annotations
 
+import typing as _typing
 from collections.abc import Callable, Iterable, MutableSequence, Sequence
-from typing import TypeAlias, TypeVar
 
-_Value = TypeVar("_Value")
-_Coerced = TypeVar("_Coerced")
+if _typing.TYPE_CHECKING:
+    _Value = _typing.TypeVar("_Value")
+    _Coerced = _typing.TypeVar("_Coerced")
 
-SelectionPlan: TypeAlias = tuple[tuple[int, ...], tuple[int, ...]]
-AffineUpdatePlan: TypeAlias = tuple[int, int, tuple[_Coerced, ...]]
-BlockUpdatePlan: TypeAlias = tuple[int, int, int, int, tuple[_Coerced, ...]]
-RowInsertionPlan: TypeAlias = tuple[int, tuple[_Coerced, ...]]
-SwapPlan: TypeAlias = tuple[int, int, int, int, int]
+    SelectionPlan: _typing.TypeAlias = tuple[tuple[int, ...], tuple[int, ...]]
+    AffineUpdatePlan: _typing.TypeAlias = tuple[int, int, tuple[_Coerced, ...]]
+    BlockUpdatePlan: _typing.TypeAlias = tuple[int, int, int, int, tuple[_Coerced, ...]]
+    RowInsertionPlan: _typing.TypeAlias = tuple[int, tuple[_Coerced, ...]]
+    SwapPlan: _typing.TypeAlias = tuple[int, int, int, int, int]
+else:
+    # These aliases describe static contracts; no runtime code inspects them.
+    # Keeping their subscriptions out of module execution also keeps this
+    # support module valid in the standalone Sage.js baselib cache.
+    SelectionPlan = tuple
+    AffineUpdatePlan = tuple
+    BlockUpdatePlan = tuple
+    RowInsertionPlan = tuple
+    SwapPlan = tuple
 
 
 def _checked_dimension(value: int, name: str) -> int:
