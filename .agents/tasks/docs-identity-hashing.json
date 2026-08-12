@@ -1,0 +1,73 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "docs-identity-hashing",
+  "title": "Docs Identity Hashing",
+  "lane": "documentation-compat",
+  "status": "review",
+  "owner": "user",
+  "objective": "Replace volatile verified-documentation example IDs with content-addressed source-path/input/output identities while retaining line provenance and deterministic verification artifacts",
+  "base_commit": "055d03835e0a371da135fe67bced9bdb13eae4a0",
+  "claims": [
+    "scripts/reference-examples.cjs",
+    "scripts/generate-docs.cjs",
+    "scripts/verify-reference-examples.cjs",
+    "test/reference-examples.cjs",
+    "test/website.cjs",
+    "website/reference-data.json",
+    "website/reference-results.json",
+    "website/reference.html",
+    "docs/reference/api.md"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "not-applicable",
+    "fallback": "not-applicable",
+    "oracles": [
+      "Focused identity stability and invalidation tests"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "not-applicable",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm docs:check",
+    "pnpm test:tutorial"
+  ],
+  "runs": [
+    {
+      "command": "pnpm docs:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 149.636,
+      "started_at": "2026-08-12T05:31:33.929Z",
+      "commit": "055d03835e0a371da135fe67bced9bdb13eae4a0",
+      "workspace_fingerprint": "b08e9aa90f301732374a0cb17db223dabe888ca1a701397cb0776ef70b3b87d9",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:tutorial",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 167.185,
+      "started_at": "2026-08-12T05:34:08.011Z",
+      "commit": "055d03835e0a371da135fe67bced9bdb13eae4a0",
+      "workspace_fingerprint": "b08e9aa90f301732374a0cb17db223dabe888ca1a701397cb0776ef70b3b87d9",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Verified documentation examples now use source-path plus normalized input/output SHA-256 addresses while retaining line and extractor coordinate provenance. Identical repeated transcripts receive deterministic occurrence suffixes.",
+    "risks": [
+      "Occurrence suffixes depend on the relative order of exact duplicate transcripts within one source path; distinct examples remain independently content-addressed."
+    ],
+    "next_steps": [
+      "Add test/reference-examples.cjs to test/node-test-manifest.cjs in the integration lane."
+    ]
+  }
+}

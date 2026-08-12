@@ -1,9 +1,68 @@
 "use strict";
 
+const { createHash } = require("node:crypto");
 const { readdirSync, readFileSync } = require("node:fs");
 const { join, relative } = require("node:path");
 
 const { extractSageDoctests } = require("../tools/sage-doctest-fixture.cjs");
+
+function normalizedExampleText(value) {
+  const text = String(value ?? "")
+    .replaceAll("\r\n", "\n")
+    .replaceAll("\r", "\n");
+  return text.endsWith("\n") ? text.slice(0, -1) : text;
+}
+
+function shortHash(value) {
+  return createHash("sha256").update(value).digest("hex").slice(0, 16);
+}
+
+function contentAddressedExampleId(path, source, want, occurrence = 1) {
+  const normalizedPath = String(path).replaceAll("\\", "/");
+  const address = (
+    `${normalizedPath}#${shortHash(normalizedExampleText(source))}-` +
+    shortHash(normalizedExampleText(want))
+  );
+  return occurrence === 1 ? address : `${address}~${occurrence}`;
+}
+
+function contentAddressExample(example, id) {
+  return {
+    ...example,
+    // Extracted fixture IDs are source coordinates.  They remain useful when
+    // joining the upstream expectation corpus, but are not stable identities:
+    // inserting an unrelated line changes them.  Verification and published
+    // documentation instead address the normalized transcript content.
+    provenance_id: example.id,
+    id,
+  };
+}
+
+function referenceExampleIds(groups) {
+  const occurrences = new Map();
+  const ids = new Map();
+  for (const group of groups) {
+    for (const example of group.examples) {
+      const address = contentAddressedExampleId(
+        group.path,
+        example.source,
+        example.want,
+      );
+      const occurrence = (occurrences.get(address) ?? 0) + 1;
+      occurrences.set(address, occurrence);
+      ids.set(
+        example.id,
+        contentAddressedExampleId(
+          group.path,
+          example.source,
+          example.want,
+          occurrence,
+        ),
+      );
+    }
+  }
+  return ids;
+}
 
 function walkFiles(directory, predicate) {
   const answer = [];
@@ -100,7 +159,11 @@ function collectReferenceSources(root) {
       });
     }
   }
-  return { groups, definitions };
+  return {
+    groups,
+    definitions,
+    referenceExampleIds: referenceExampleIds(groups),
+  };
 }
 
 function tailName(value) {
@@ -131,14 +194,21 @@ function examplesForEntry(entry, sources) {
       return parts.length > 1 && parts.at(-2).toLowerCase() === normalizedOwner;
     });
   });
-  return matches.flatMap((group) => group.examples.map((example) => ({
-    ...example,
-    owner: group.owner,
-    path: group.path,
-    origin: group.origin,
-    provenance: group.provenance,
-    language: "sage",
-  })));
+  return matches.flatMap((group) => group.examples.map((example) => {
+    const id = sources.referenceExampleIds?.get(example.id) ??
+      contentAddressedExampleId(group.path, example.source, example.want);
+    return contentAddressExample(
+      {
+        ...example,
+        owner: group.owner,
+        path: group.path,
+        origin: group.origin,
+        provenance: group.provenance,
+        language: "sage",
+      },
+      id,
+    );
+  }));
 }
 
 function sourceForEntry(entry, sources) {
@@ -206,6 +276,8 @@ function combinedFixture(examples, revision) {
 module.exports = {
   collectReferenceSources,
   combinedFixture,
+  contentAddressedExampleId,
   examplesForEntry,
+  normalizedExampleText,
   sourceForEntry,
 };

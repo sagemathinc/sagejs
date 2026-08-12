@@ -11,217 +11,217 @@
   },
   "results": [
     {
-      "id": "src/baselib/polynomial.py:3857",
+      "id": "src/baselib/polynomial.py#def14d007f6d9a12-e3b0c44298fc1c14",
       "status": "pass",
       "actual": ""
     },
     {
-      "id": "src/baselib/polynomial.py:3858",
+      "id": "src/baselib/polynomial.py#559aead08264d579-febf41a036cd0868",
       "status": "pass",
       "actual": "Affine Space of dimension 2 over Rational Field\n"
     },
     {
-      "id": "src/baselib/polynomial.py:3860",
+      "id": "src/baselib/polynomial.py#f319b20047dab08a-814095bbc622eed7",
       "status": "pass",
       "actual": "(x, y)\n"
     },
     {
-      "id": "src/baselib/graphics3d.py:2115",
+      "id": "src/baselib/graphics3d.py#dd36051673d700fc-e3b0c44298fc1c14",
       "status": "pass",
       "actual": ""
     },
     {
-      "id": "src/baselib/graphics3d.py:2117",
+      "id": "src/baselib/graphics3d.py#bd661656eedd781d-0c3a441869f788d9",
       "status": "pass",
       "actual": "Graphics3d Object\n"
     },
     {
-      "id": "src/baselib/graphics.py:4481",
+      "id": "src/baselib/graphics.py#f39e2c7290ff6bae-441459f59cccc537",
       "status": "pass",
       "actual": "Graphics object consisting of 1 graphics primitive\n"
     },
     {
-      "id": "src/baselib/graphics.py:3800",
+      "id": "src/baselib/graphics.py#46152e6532be6dff-f73279a4a86d135a",
       "status": "pass",
       "actual": "[0.0, 0.0, 0.0]\n"
     },
     {
-      "id": "src/baselib/graphics.py:3802",
+      "id": "src/baselib/graphics.py#4d2343fcf039e18a-4e07408562bedb8b",
       "status": "pass",
       "actual": "3\n"
     },
     {
-      "id": "src/baselib/graphics.py:3635",
+      "id": "src/baselib/graphics.py#9289b0a4b0fd8aa0-e3b0c44298fc1c14",
       "status": "pass",
       "actual": ""
     },
     {
-      "id": "src/baselib/graphics.py:3636",
+      "id": "src/baselib/graphics.py#890cc4163e199259-739ef7d6d304c0a4",
       "status": "pass",
       "actual": "(3, [0.0, 0.0, 0], 3)\n"
     },
     {
-      "id": "src/baselib/polynomial.py:4013",
+      "id": "src/baselib/polynomial.py#1d12daf28af8136a-e3b0c44298fc1c14",
       "status": "pass",
       "actual": ""
     },
     {
-      "id": "src/baselib/polynomial.py:4014",
+      "id": "src/baselib/polynomial.py#2eddafb4d0f5672a-e3b0c44298fc1c14",
       "status": "pass",
       "actual": ""
     },
     {
-      "id": "src/baselib/polynomial.py:4015",
+      "id": "src/baselib/polynomial.py#06c5e7960cda410c-5badf7217b080d99",
       "status": "pass",
       "actual": "[Closed subscheme of Affine Space of dimension 2 over Rational Field defined by:\n  x^2 + y^2 - 1, Closed subscheme of Affine Space of dimension 2 over Rational Field defined by:\n  x^3 + y^3 - 1]\n"
     },
     {
-      "id": "reference-tests/graphs.cjs:directed-graph-workflow",
+      "id": "reference-tests/graphs.cjs#fd5c6221e4646e11-3cbc87c7681f34db",
       "status": "pass",
       "actual": "True\n"
     },
     {
-      "id": "reference-tests/graphs.cjs:named-graph-generators-workflow",
+      "id": "reference-tests/graphs.cjs#868594839b54acaa-3cbc87c7681f34db",
       "status": "pass",
       "actual": "True\n"
     },
     {
-      "id": "src/baselib/modular.py:430",
+      "id": "src/baselib/modular.py#523d40dbb1bee28b-6b86b273ff34fce1",
       "status": "pass",
       "actual": "1\n"
     },
     {
-      "id": "src/baselib/modular.py:432",
+      "id": "src/baselib/modular.py#afbbfc8ae5a1bd04-6b86b273ff34fce1",
       "status": "pass",
       "actual": "1\n"
     },
     {
-      "id": "src/baselib/modular.py:434",
+      "id": "src/baselib/modular.py#acd048704b1adcd2-e3b0c44298fc1c14",
       "status": "pass",
       "actual": ""
     },
     {
-      "id": "src/baselib/modular.py:435",
+      "id": "src/baselib/modular.py#e9dec85705e2ad32-6b86b273ff34fce1",
       "status": "pass",
       "actual": "1\n"
     },
     {
-      "id": "src/baselib/dirichlet.py:1038",
+      "id": "src/baselib/dirichlet.py#3f56e6f86d7f60ed-e3b0c44298fc1c14",
       "status": "pass",
       "actual": ""
     },
     {
-      "id": "src/baselib/dirichlet.py:1039",
+      "id": "src/baselib/dirichlet.py#15464eeb758d5890-3fc1d2b4a592f59b",
       "status": "pass",
       "actual": "(8, 20)\n"
     },
     {
-      "id": "src/baselib/dirichlet.py:1041",
+      "id": "src/baselib/dirichlet.py#84ab25664e504489-e3b0c44298fc1c14",
       "status": "pass",
       "actual": ""
     },
     {
-      "id": "src/baselib/dirichlet.py:1042",
+      "id": "src/baselib/dirichlet.py#47ae783339cc5cbe-3cbc87c7681f34db",
       "status": "pass",
       "actual": "True\n"
     },
     {
-      "id": "src/baselib/modular.py:1047",
+      "id": "src/baselib/modular.py#fcae88bf1b380c12-e3b0c44298fc1c14~2",
       "status": "pass",
       "actual": ""
     },
     {
-      "id": "src/baselib/modular.py:1048",
+      "id": "src/baselib/modular.py#1b21701f388cda2d-e3b0c44298fc1c14",
       "status": "pass",
       "actual": ""
     },
     {
-      "id": "src/baselib/modular.py:1049",
+      "id": "src/baselib/modular.py#a58cba3a14881509-ad57366865126e55",
       "status": "pass",
       "actual": "100\n"
     },
     {
-      "id": "src/baselib/modular.py:692",
+      "id": "src/baselib/modular.py#fcae88bf1b380c12-e3b0c44298fc1c14",
       "status": "pass",
       "actual": ""
     },
     {
-      "id": "src/baselib/modular.py:693",
+      "id": "src/baselib/modular.py#8399bc92cd631c46-e3b0c44298fc1c14",
       "status": "pass",
       "actual": ""
     },
     {
-      "id": "src/baselib/modular.py:694",
+      "id": "src/baselib/modular.py#337f75dac4f3b63e-a51e5fc544a1400b",
       "status": "pass",
       "actual": "1 + 6/97*q + 18/97*q^2 + 24/97*q^3 + 42/97*q^4 + O(q^5)\n"
     },
     {
-      "id": "src/baselib/elliptic_curves.py:1232",
+      "id": "src/baselib/elliptic_curves.py#d74ccc1fa7a76510-e3b0c44298fc1c14~2",
       "status": "pass",
       "actual": ""
     },
     {
-      "id": "src/baselib/elliptic_curves.py:1233",
+      "id": "src/baselib/elliptic_curves.py#a9f51566bd6705f7-2a7afe0198baf94e",
       "status": "pass",
       "actual": "Elliptic Curve defined by y^2 + y = x^3 - x over Rational Field\n"
     },
     {
-      "id": "src/baselib/elliptic_curves.py:1235",
+      "id": "src/baselib/elliptic_curves.py#5fc3f419b1f2ec5e-112e7d5ec82c367f",
       "status": "pass",
       "actual": "(161/16 : -2065/64 : 1)\n"
     },
     {
-      "id": "src/baselib/finite_fields.py:999",
+      "id": "src/baselib/finite_fields.py#d5fed5b346a11651-bdf39be03f43bdb9",
       "status": "pass",
       "actual": "Finite Field of size 7\n"
     },
     {
-      "id": "src/baselib/finite_fields.py:1001",
+      "id": "src/baselib/finite_fields.py#2680962aa3520480-e3b0c44298fc1c14",
       "status": "pass",
       "actual": ""
     },
     {
-      "id": "src/baselib/finite_fields.py:1002",
+      "id": "src/baselib/finite_fields.py#b51192cce36ea46d-6b86b273ff34fce1",
       "status": "pass",
       "actual": "1\n"
     },
     {
-      "id": "src/baselib/finite_fields.py:1004",
+      "id": "src/baselib/finite_fields.py#248946a81e60d7c2-5c17eac5f0f80928",
       "status": "pass",
       "actual": "Univariate Polynomial Ring in x over Finite Field in a of size 3^2\n"
     },
     {
-      "id": "reference-tests/graphs.cjs:mutable-graph-workflow",
+      "id": "reference-tests/graphs.cjs#a2a3794032faa44d-3cbc87c7681f34db",
       "status": "pass",
       "actual": "True\n"
     },
     {
-      "id": "reference-tests/graphs.cjs:structural-algorithms-workflow",
+      "id": "reference-tests/graphs.cjs#c64554b931b91050-3cbc87c7681f34db",
       "status": "pass",
       "actual": "True\n"
     },
     {
-      "id": "reference-tests/graphs.cjs:isomorphism-and-optimization-workflow",
+      "id": "reference-tests/graphs.cjs#571882a6543137c9-3cbc87c7681f34db",
       "status": "pass",
       "actual": "True\n"
     },
     {
-      "id": "reference-tests/graphs.cjs:graph-layout-and-plotting-workflow",
+      "id": "reference-tests/graphs.cjs#65c66de6fd2984af-3cbc87c7681f34db",
       "status": "pass",
       "actual": "True\n"
     },
     {
-      "id": "src/baselib/graphics.py:4264",
+      "id": "src/baselib/graphics.py#e95372572f18dc14-e3b0c44298fc1c14",
       "status": "pass",
       "actual": ""
     },
     {
-      "id": "src/baselib/graphics.py:4265",
+      "id": "src/baselib/graphics.py#130e66d323a7c490-6b86b273ff34fce1",
       "status": "pass",
       "actual": "1\n"
     },
     {
-      "id": "reference-tests/graphs.cjs:petersen-plot-preview",
+      "id": "reference-tests/graphs.cjs#09564602411e05ef-14a1e7932a10f7fe",
       "status": "pass",
       "actual": "Graphics object consisting of 2 graphics primitives\n",
       "display": {
@@ -430,454 +430,454 @@
       }
     },
     {
-      "id": "reference-tests/graphs.cjs:graph-database-workflow",
+      "id": "reference-tests/graphs.cjs#daede379b6551d13-3cbc87c7681f34db",
       "status": "pass",
       "actual": "True\n"
     },
     {
-      "id": "src/baselib/graphics.py:3176",
+      "id": "src/baselib/graphics.py#55d251b726925a2a-e3b0c44298fc1c14",
       "status": "pass",
       "actual": ""
     },
     {
-      "id": "src/baselib/graphics.py:3177",
+      "id": "src/baselib/graphics.py#b4bac3d2ef3ddf50-cf4dabed2ce0f4fc",
       "status": "pass",
       "actual": "(1, 2)\n"
     },
     {
-      "id": "src/baselib/graphs.py:2777",
+      "id": "src/baselib/graphs.py#993984691e161e88-5feceb66ffc86f38",
       "status": "pass",
       "actual": "0\n"
     },
     {
-      "id": "src/baselib/graphs.py:2779",
+      "id": "src/baselib/graphs.py#6a5ff39392352008-83e465b4ce777100",
       "status": "pass",
       "actual": "Complete graph: Graph on 4 vertices\n"
     },
     {
-      "id": "src/baselib/graphs.py:2787",
+      "id": "src/baselib/graphs.py#03c9bcc343ce7a23-e3b0c44298fc1c14",
       "status": "pass",
       "actual": ""
     },
     {
-      "id": "src/baselib/graphs.py:2788",
+      "id": "src/baselib/graphs.py#ee579700819a2879-e3b0c44298fc1c14",
       "status": "pass",
       "actual": ""
     },
     {
-      "id": "src/baselib/graphs.py:2789",
+      "id": "src/baselib/graphs.py#942d92dd00dcd703-3cbc87c7681f34db",
       "status": "pass",
       "actual": "True\n"
     },
     {
-      "id": "src/baselib/graphs.py:2796",
+      "id": "src/baselib/graphs.py#94bbefa17dcf6dd3-e3b0c44298fc1c14",
       "status": "pass",
       "actual": ""
     },
     {
-      "id": "src/baselib/graphs.py:2799",
+      "id": "src/baselib/graphs.py#99c7eadd48460db3-fed8103d25675ba7",
       "status": "pass",
       "actual": "Graphics Array of size 3 x 3\n"
     },
     {
-      "id": "src/sage/graphs/generators/random.py:67",
+      "id": "src/sage/graphs/generators/random.py#5f3a32feaebd6256-e3b0c44298fc1c14",
       "status": "pass",
       "actual": ""
     },
     {
-      "id": "src/sage/graphs/generators/random.py:68",
+      "id": "src/sage/graphs/generators/random.py#02890ae208f9e9f1-e4f235ce47f6606e",
       "status": "xfail",
       "actual": "[(0, 1), (0, 2), (1, 2), (1, 3), (1, 5), (2, 4), (3, 5)]\n",
       "reason": "Sage.js uses a portable deterministic random stream rather than Sage's GMP randstate, so seeded samples are distribution-compatible but not bit-for-bit identical"
     },
     {
-      "id": "src/sage/graphs/generators/random.py:73",
+      "id": "src/sage/graphs/generators/random.py#880f559ee7d4bb9a-e3b0c44298fc1c14",
       "status": "pass",
       "actual": ""
     },
     {
-      "id": "src/sage/graphs/generators/random.py:74",
+      "id": "src/sage/graphs/generators/random.py#0cc937ca71683dac-e3b0c44298fc1c14",
       "status": "skip",
       "reason": "Sage directive: # long time (enable with --long)"
     },
     {
-      "id": "src/sage/graphs/generators/random.py:78",
+      "id": "src/sage/graphs/generators/random.py#69e793b82a48e6e2-e3b0c44298fc1c14",
       "status": "pass",
       "actual": ""
     },
     {
-      "id": "src/sage/graphs/generators/random.py:79",
+      "id": "src/sage/graphs/generators/random.py#e5c6206921904730-e3b0c44298fc1c14",
       "status": "pass",
       "actual": ""
     },
     {
-      "id": "src/sage/graphs/generators/random.py:80",
+      "id": "src/sage/graphs/generators/random.py#d490fd374eebb8b0-e3b0c44298fc1c14",
       "status": "pass",
       "actual": ""
     },
     {
-      "id": "src/sage/graphs/generators/random.py:83",
+      "id": "src/sage/graphs/generators/random.py#43713a458e68c1de-e3b0c44298fc1c14",
       "status": "pass",
       "actual": ""
     },
     {
-      "id": "src/sage/graphs/generators/random.py:88",
+      "id": "src/sage/graphs/generators/random.py#ff4ce7e1163c90e3-e3b0c44298fc1c14",
       "status": "pass",
       "actual": ""
     },
     {
-      "id": "src/sage/graphs/generators/random.py:89",
+      "id": "src/sage/graphs/generators/random.py#29aa7a4a9878a911-e3b0c44298fc1c14",
       "status": "skip",
       "reason": "Sage directive: # long time (enable with --long)"
     },
     {
-      "id": "src/sage/graphs/generators/random.py:90",
+      "id": "src/sage/graphs/generators/random.py#18849f0defd65555-83e465b4ce777100",
       "status": "pass",
       "actual": "Complete graph: Graph on 4 vertices\n"
     },
     {
-      "id": "src/sage/graphs/generators/random.py:95",
+      "id": "src/sage/graphs/generators/random.py#42852f4d06cb2b67-0d1357c75022c1ad",
       "status": "pass",
       "actual": "sagejs/runtime-bootstrap-sage.js:<location>\n        throw ρσ_exception_value(new ValueError(\"'algorithm' must be equal to 'networkx' or to 'Sage'\"));\n        ^\n\nValueError: 'algorithm' must be equal to 'networkx' or to 'Sage'\n    at ValueError.ρσ_method___init__ [as __init__] (sagejs/runtime-bootstrap-sage.js:<location>)\n    at ValueError.__init__ (sagejs/runtime-bootstrap-sage.js:<location>)\n    at ValueError.__init__ (sagejs/runtime-bootstrap-sage.js:<location>)\n    at new ValueError (sagejs/runtime-bootstrap-sage.js:<location>)\n    at GraphGenerators.ρσ_method_RandomGNP [as RandomGNP] (sagejs/runtime-bootstrap-sage.js:<location>)\n    at ρσ_interpolate_kwargs (sagejs/runtime-bootstrap-sage.js:<location>)\n    at evalmachine.<anonymous>:<location>\n    at Script.runInThisContext (node:vm:<location>)\n    at runInThisContext (node:vm:<location>)\n    at execute (<SAGEJS_ROOT>/dist/tools/repl.js:<location>)\n"
     },
     {
-      "id": "src/sage/graphs/generators/random.py:99",
+      "id": "src/sage/graphs/generators/random.py#5f3a32feaebd6256-e3b0c44298fc1c14~2",
       "status": "pass",
       "actual": ""
     },
     {
-      "id": "src/sage/graphs/generators/random.py:100",
+      "id": "src/sage/graphs/generators/random.py#430d3a59513f240a-72440a20f54075ac",
       "status": "xfail",
       "actual": "248\n",
       "reason": "Sage.js uses a portable deterministic random stream rather than Sage's GMP randstate, so seeded samples are distribution-compatible but not bit-for-bit identical"
     },
     {
-      "id": "src/sage/graphs/generators/random.py:102",
+      "id": "src/sage/graphs/generators/random.py#5377c459909c5854-e3b0c44298fc1c14",
       "status": "skip",
       "reason": "optional features unavailable: networkx"
     },
     {
-      "id": "src/sage/graphs/generators/random.py:103",
+      "id": "src/sage/graphs/generators/random.py#9cb2cb1b63c747ca-3cbc87c7681f34db",
       "status": "skip",
       "reason": "optional features unavailable: networkx"
     },
     {
-      "id": "src/baselib/graphics.py:2534",
+      "id": "src/baselib/graphics.py#17671abe261ba66e-441459f59cccc537",
       "status": "pass",
       "actual": "Graphics object consisting of 1 graphics primitive\n"
     },
     {
-      "id": "src/baselib/graphics3d.py:3160",
+      "id": "src/baselib/graphics3d.py#45ca1b4721d9ee1e-4e05322c10ee7e21",
       "status": "pass",
       "actual": "(x, y, z)\n"
     },
     {
-      "id": "src/baselib/graphics3d.py:3162",
+      "id": "src/baselib/graphics3d.py#a9813e2756244916-0c3a441869f788d9",
       "status": "pass",
       "actual": "Graphics3d Object\n"
     },
     {
-      "id": "src/baselib/graphics3d.py:1914",
+      "id": "src/baselib/graphics3d.py#5cc8a84cafffcac4-e3b0c44298fc1c14",
       "status": "pass",
       "actual": ""
     },
     {
-      "id": "src/baselib/graphics3d.py:1915",
+      "id": "src/baselib/graphics3d.py#802eb5eae0add48b-f3e49bcac468b5df",
       "status": "pass",
       "actual": "[[0, 1, 2]]\n"
     },
     {
-      "id": "src/baselib/graphics3d.py:1917",
+      "id": "src/baselib/graphics3d.py#47b1824ff9234cae-6671064d959f5283",
       "status": "pass",
       "actual": "[[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]]\n"
     },
     {
-      "id": "src/baselib/matrix.py:6411",
+      "id": "src/baselib/matrix.py#3777d1a944e35692-e3b0c44298fc1c14",
       "status": "pass",
       "actual": ""
     },
     {
-      "id": "src/baselib/matrix.py:6412",
+      "id": "src/baselib/matrix.py#9593f09a484811c7-cf3bae39dd692048",
       "status": "pass",
       "actual": "-2\n"
     },
     {
-      "id": "src/baselib/matrix.py:6414",
+      "id": "src/baselib/matrix.py#405777987b283881-149964165c0e1bbf",
       "status": "pass",
       "actual": "[1 0]\n[0 1]\n"
     },
     {
-      "id": "src/baselib/groups.py:567",
+      "id": "src/baselib/groups.py#6ae78638ca48f516-e3b0c44298fc1c14",
       "status": "pass",
       "actual": ""
     },
     {
-      "id": "src/baselib/groups.py:568",
+      "id": "src/baselib/groups.py#6ca8205cf0f6f962-e3b0c44298fc1c14",
       "status": "pass",
       "actual": ""
     },
     {
-      "id": "src/baselib/groups.py:569",
+      "id": "src/baselib/groups.py#6f7ecbdb475e0987-eaa0689a095d4394",
       "status": "pass",
       "actual": "336\n"
     },
     {
-      "id": "src/baselib/modular.py:1004",
+      "id": "src/baselib/modular.py#90f6ac1f31cf147f-e3b0c44298fc1c14",
       "status": "pass",
       "actual": ""
     },
     {
-      "id": "src/baselib/modular.py:1005",
+      "id": "src/baselib/modular.py#2bfe9bbec3425b17-d4735e3a265e16ee",
       "status": "pass",
       "actual": "2\n"
     },
     {
-      "id": "src/baselib/modular.py:1007",
+      "id": "src/baselib/modular.py#3cfe7569fb8876d8-6b86b273ff34fce1",
       "status": "pass",
       "actual": "1\n"
     },
     {
-      "id": "src/baselib/modular.py:3250",
+      "id": "src/baselib/modular.py#be246b1bd85db602-e3b0c44298fc1c14",
       "status": "pass",
       "actual": ""
     },
     {
-      "id": "src/baselib/modular.py:3251",
+      "id": "src/baselib/modular.py#88facfb84ea232c1-90ae519c16c23134",
       "status": "pass",
       "actual": "[ 1 -1]\n[ 0  0]\n[ 0  0]\n"
     },
     {
-      "id": "src/baselib/modular.py:3531",
+      "id": "src/baselib/modular.py#e773e65ae60c2b9f-e3b0c44298fc1c14",
       "status": "pass",
       "actual": ""
     },
     {
-      "id": "src/baselib/modular.py:3532",
+      "id": "src/baselib/modular.py#611b234d59ea3095-8559994e24c5cb01",
       "status": "pass",
       "actual": "[1, 1, 2, 3, 6, 20]\n"
     },
     {
-      "id": "src/baselib/modular.py:3539",
+      "id": "src/baselib/modular.py#405518e5fdedddca-e3b0c44298fc1c14",
       "status": "pass",
       "actual": ""
     },
     {
-      "id": "src/baselib/modular.py:3540",
+      "id": "src/baselib/modular.py#858b266f0968cf76-e3b0c44298fc1c14",
       "status": "pass",
       "actual": ""
     },
     {
-      "id": "src/baselib/modular.py:3541",
+      "id": "src/baselib/modular.py#8258fe03019e163d-7638ad4d4f4c164d",
       "status": "pass",
       "actual": "[1, 1, 24]\n"
     },
     {
-      "id": "src/baselib/modular.py:3280",
+      "id": "src/baselib/modular.py#44bcc9a53bb1591b-e3b0c44298fc1c14",
       "status": "pass",
       "actual": ""
     },
     {
-      "id": "src/baselib/modular.py:3281",
+      "id": "src/baselib/modular.py#9fe9ef85d9e7d7c3-e3b0c44298fc1c14",
       "status": "pass",
       "actual": ""
     },
     {
-      "id": "src/baselib/modular.py:3282",
+      "id": "src/baselib/modular.py#2e1a3f149e87befa-05d9e5123438e21c",
       "status": "pass",
       "actual": "((5, 2), 2)\n"
     },
     {
-      "id": "src/baselib/modular.py:3911",
+      "id": "src/baselib/modular.py#1e0fada8cc8c7990-e3b0c44298fc1c14",
       "status": "pass",
       "actual": ""
     },
     {
-      "id": "src/baselib/modular.py:3912",
+      "id": "src/baselib/modular.py#92b5ba6413319e6f-39fa9ec190eee7b6",
       "status": "pass",
       "actual": "60\n"
     },
     {
-      "id": "src/baselib/modular.py:3604",
+      "id": "src/baselib/modular.py#d668c2300b6a68dd-e3b0c44298fc1c14",
       "status": "pass",
       "actual": ""
     },
     {
-      "id": "src/baselib/modular.py:3605",
+      "id": "src/baselib/modular.py#b30e6bf0f0f5ee51-e3b0c44298fc1c14",
       "status": "pass",
       "actual": ""
     },
     {
-      "id": "src/baselib/modular.py:3606",
+      "id": "src/baselib/modular.py#93c9f0c2cd6d7087-c2356069e9d1e79c",
       "status": "pass",
       "actual": "24\n"
     },
     {
-      "id": "src/baselib/modular.py:3608",
+      "id": "src/baselib/modular.py#e38abd35fcdc37b2-3b01616cb89b0520",
       "status": "pass",
       "actual": "[2, 2, 2, 2, 4, 4, 4, 4]\n"
     },
     {
-      "id": "src/baselib/graphics.py:2793",
+      "id": "src/baselib/graphics.py#e56965e227de7acb-e3b0c44298fc1c14",
       "status": "pass",
       "actual": ""
     },
     {
-      "id": "src/baselib/graphics.py:2794",
+      "id": "src/baselib/graphics.py#6cdbefe97dc33336-e3b0c44298fc1c14",
       "status": "pass",
       "actual": ""
     },
     {
-      "id": "src/baselib/graphics.py:2795",
+      "id": "src/baselib/graphics.py#4b2c03786228dcdb-5568d4645dfaeadc",
       "status": "pass",
       "actual": "Multigraphics with 2 elements\n"
     },
     {
-      "id": "src/baselib/modular.py:2013",
+      "id": "src/baselib/modular.py#27665c6e15d3a040-e3b0c44298fc1c14",
       "status": "pass",
       "actual": ""
     },
     {
-      "id": "src/baselib/modular.py:2014",
+      "id": "src/baselib/modular.py#d52a02d377a80ad4-c2356069e9d1e79c",
       "status": "pass",
       "actual": "24\n"
     },
     {
-      "id": "src/baselib/modular.py:2016",
+      "id": "src/baselib/modular.py#5c880c0c53650549-619e895320f7e770",
       "status": "pass",
       "actual": "(1, 9)\n"
     },
     {
-      "id": "src/baselib/modular.py:2018",
+      "id": "src/baselib/modular.py#c2e1ed5fead602dc-4a44dc15364204a8",
       "status": "pass",
       "actual": "10\n"
     },
     {
-      "id": "src/baselib/modular.py:2451",
+      "id": "src/baselib/modular.py#d678e5ffb4d20ee6-87fce8343ac4cd78",
       "status": "pass",
       "actual": "[ 3  0  0]\n[ 1 -2  0]\n[ 1  0 -2]\n"
     },
     {
-      "id": "src/baselib/groups.py:438",
+      "id": "src/baselib/groups.py#b871bd412cbef662-e3b0c44298fc1c14",
       "status": "pass",
       "actual": ""
     },
     {
-      "id": "src/baselib/groups.py:439",
+      "id": "src/baselib/groups.py#6f7ecbdb475e0987-2abaca4911e68fa9",
       "status": "pass",
       "actual": "120\n"
     },
     {
-      "id": "src/baselib/groups.py:441",
+      "id": "src/baselib/groups.py#aeb566bc205790aa-60a33e6cf5151f2d",
       "status": "pass",
       "actual": "False\n"
     },
     {
-      "id": "src/baselib/graphics3d.py:2205",
+      "id": "src/baselib/graphics3d.py#c1dc3818406b3428-e3b0c44298fc1c14",
       "status": "pass",
       "actual": ""
     },
     {
-      "id": "src/baselib/graphics3d.py:2206",
+      "id": "src/baselib/graphics3d.py#829c30fb7cef59e2-0c3a441869f788d9",
       "status": "pass",
       "actual": "Graphics3d Object\n"
     },
     {
-      "id": "src/baselib/polynomial.py:4242",
+      "id": "src/baselib/polynomial.py#0589052cd70c5442-e3b0c44298fc1c14",
       "status": "pass",
       "actual": ""
     },
     {
-      "id": "src/baselib/polynomial.py:4243",
+      "id": "src/baselib/polynomial.py#211d1a07c12a56d3-c3f7c1d6f3b011af",
       "status": "pass",
       "actual": "(x + 1) * (x - 1) * (x^2 + 1)\n"
     },
     {
-      "id": "src/baselib/polynomial.py:4245",
+      "id": "src/baselib/polynomial.py#879acf70128b6be0-e3b0c44298fc1c14",
       "status": "pass",
       "actual": ""
     },
     {
-      "id": "src/baselib/polynomial.py:4246",
+      "id": "src/baselib/polynomial.py#2935ab1a54b6ef2c-050305b3ec2996f0",
       "status": "pass",
       "actual": "x^3 + x^2*y + x*y^2 + y^3\n"
     },
     {
-      "id": "src/baselib/builtins.py:5825",
+      "id": "src/baselib/builtins.py#4c7d8330c2c79857-4b227777d4dd1fc6",
       "status": "pass",
       "actual": "4\n"
     },
     {
-      "id": "src/baselib/builtins.py:5827",
+      "id": "src/baselib/builtins.py#ca981138a8a22b10-b7a56873cd771f2c",
       "status": "pass",
       "actual": "25\n"
     },
     {
-      "id": "src/baselib/builtins.py:5829",
+      "id": "src/baselib/builtins.py#c0bc81d3429aebdb-0f03cde178fa9f37",
       "status": "pass",
       "actual": "37607912018\n"
     },
     {
-      "id": "src/baselib/number_fields.py:2982",
+      "id": "src/baselib/number_fields.py#27641fc0831ac6e7-e3b0c44298fc1c14",
       "status": "pass",
       "actual": ""
     },
     {
-      "id": "src/baselib/number_fields.py:2983",
+      "id": "src/baselib/number_fields.py#44cb607cdf73cfb4-163f9d874bf45bcc",
       "status": "pass",
       "actual": "-23\n"
     },
     {
-      "id": "src/baselib/number_fields.py:2985",
+      "id": "src/baselib/number_fields.py#9bdbe852abd1679f-4079e4af87d7d813",
       "status": "pass",
       "actual": "(3,)\n"
     },
     {
-      "id": "src/baselib/matrix.py:6882",
+      "id": "src/baselib/matrix.py#b17ff7be6a528fc2-e3b0c44298fc1c14",
       "status": "pass",
       "actual": ""
     },
     {
-      "id": "src/baselib/matrix.py:6883",
+      "id": "src/baselib/matrix.py#97db44fc39945d18-41f2eaaeeeb24074",
       "status": "pass",
       "actual": "(3, 5, Integer Ring)\n"
     },
     {
-      "id": "src/baselib/matrix.py:6885",
+      "id": "src/baselib/matrix.py#fa1961c5906b90ea-3cbc87c7681f34db",
       "status": "pass",
       "actual": "True\n"
     },
     {
-      "id": "src/baselib/symbolic.py:2387",
+      "id": "src/baselib/symbolic.py#92a64902788254ae-9c10500612dcb6f1",
       "status": "pass",
       "actual": "[x == -2, x == 2]\n"
     },
     {
-      "id": "src/baselib/groups.py:646",
+      "id": "src/baselib/groups.py#0abcda1883011fff-eba3ff5a3fd19728",
       "status": "pass",
       "actual": "276595200\n"
     },
     {
-      "id": "src/baselib/matrix.py:6517",
+      "id": "src/baselib/matrix.py#b58bb4a279a18edf-e3b0c44298fc1c14",
       "status": "pass",
       "actual": ""
     },
     {
-      "id": "src/baselib/matrix.py:6523",
+      "id": "src/baselib/matrix.py#9971501a52f38d1a-b7945d60e67a36b5",
       "status": "pass",
       "actual": "(5, 1, 3, 6, 8, 7, 2, 4, 9)\n"
     },
     {
-      "id": "src/baselib/finite_fields.py:1070",
+      "id": "src/baselib/finite_fields.py#a4efb6c82ad07055-e3b0c44298fc1c14",
       "status": "pass",
       "actual": ""
     },
     {
-      "id": "src/baselib/finite_fields.py:1071",
+      "id": "src/baselib/finite_fields.py#27cc52590769f211-d4735e3a265e16ee",
       "status": "pass",
       "actual": "2\n"
     },
     {
-      "id": "src/baselib/finite_fields.py:1073",
+      "id": "src/baselib/finite_fields.py#3fe317b5859522f8-6b86b273ff34fce1",
       "status": "pass",
       "actual": "1\n"
     }
