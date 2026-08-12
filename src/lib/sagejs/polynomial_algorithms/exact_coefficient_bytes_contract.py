@@ -48,11 +48,13 @@ Their C symbols should accept a read-only borrowed
 `sagejs_flint_byte_region_t` plus `uint64_t offset` and `uint64_t length`.
 The adapter checks `offset <= region.length` and
 `length <= region.length - offset` before parsing, so addition cannot wrap.
-Both functions allocate and may raise `ValueError` for invalid canonical data
-or `OverflowError` when the selected region/count cannot fit `size_t`/`slong`.
-They are non-consuming: success and failure leave the byte region reusable.
-Node and Wasm use the same declaration.  Wasm borrows the copied linear-memory
-region only for the synchronous call and must not retain its address.
+Both functions allocate and use `Status(1, exception=ValueError, ...)` for an
+invalid canonical stream, invalid range, or a count which cannot fit FLINT's
+`slong`.  (This reference decoder distinguishes the last case as
+`OverflowError` for diagnostics.)  They are non-consuming: success and failure
+leave the byte region reusable.  Node and Wasm use the same declaration.  Wasm
+borrows the copied linear-memory region only for the synchronous call and must
+not retain its address.
 
 This replaces the current `payload: fmpz_t, byte_length: uint64_t` ABI.  That
 ABI converts bytes to hexadecimal, constructs a stream-sized host `BigInt`,
@@ -61,8 +63,7 @@ marshals it to `fmpz`, then reconstructs the bytes before FLINT can parse them.
 
 from __future__ import annotations
 
-from collections.abc import Sequence
-from typing import TypeAlias
+from typing import Sequence, TypeAlias
 
 IntegerCoefficient: TypeAlias = int
 RationalParts: TypeAlias = tuple[int, int]
