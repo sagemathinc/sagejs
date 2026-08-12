@@ -7,7 +7,10 @@ const { join } = require("node:path");
 const test = require("node:test");
 
 const sourceDeclarations = require("../tools/ffi/source-declarations.cjs");
-const { generateArtifacts } = require("../tools/native-kernel/c-backend.cjs");
+const {
+  RESOURCE_FINALIZATION_CAPABILITY,
+  generateArtifacts,
+} = require("../tools/native-kernel/c-backend.cjs");
 const { lowerSource } = require("../tools/native-kernel/ir.cjs");
 
 const root = join(__dirname, "..");
@@ -111,6 +114,15 @@ def ffiResourceAccountingOuter(
     return adapter.slice(start, next === -1 ? undefined : next);
   }
   assert.match(adapter, /int64_t accounted_bytes;/);
+  assert.deepEqual(RESOURCE_FINALIZATION_CAPABILITY, {
+    model: "node-api-basic-post-finalizer-v1",
+    self_finalizing: true,
+  });
+  assert.match(adapter, /#define NAPI_EXPERIMENTAL/);
+  assert.match(
+    adapter,
+    /#ifndef NODE_API_EXPERIMENTAL_HAS_POST_FINALIZER[\s\S]*?#error "generated resource adapters require node_api_post_finalizer"/,
+  );
   assert.match(
     adapter,
     /__sagejsFfiResourceExternalMemory[\s\S]*?sagejs_resource_external_memory/,
@@ -145,7 +157,37 @@ def ffiResourceAccountingOuter(
   );
   assert.match(
     adapter,
-    /sagejs_fmpq_matrix_clear\(holder->value\);[\s\S]*?holder->accounted_bytes = 0;[\s\S]*?napi_adjust_external_memory/,
+    /sagejs_resource_FmpqMatrix_holder_clear_native[\s\S]*?sagejs_fmpq_matrix_clear\(holder->value\)/,
+  );
+  const basicFinalize = adapter.match(
+    /static void sagejs_resource_FmpqMatrix_finalize\([\s\S]*?\n}\n/,
+  )?.[0];
+  assert.ok(basicFinalize);
+  assert.match(basicFinalize, /node_api_basic_env env/);
+  assert.match(
+    basicFinalize,
+    /holder_clear_native\(holder\);[\s\S]*?node_api_post_finalizer/,
+  );
+  assert.doesNotMatch(
+    basicFinalize,
+    /napi_adjust_external_memory|napi_[a-z]+\(/,
+  );
+  const postFinalize = adapter.match(
+    /static void sagejs_resource_FmpqMatrix_post_finalize\([\s\S]*?\n}\n/,
+  )?.[0];
+  assert.ok(postFinalize);
+  assert.match(postFinalize, /napi_env env/);
+  assert.match(
+    postFinalize,
+    /release_accounting\(env, holder\);[\s\S]*?free\(holder\)/,
+  );
+  const explicitRelease = adapter.match(
+    /static void sagejs_resource_FmpqMatrix_release\([\s\S]*?\n}\n/,
+  )?.[0];
+  assert.ok(explicitRelease);
+  assert.match(
+    explicitRelease,
+    /clear_native\(holder\);[\s\S]*?release_accounting\(env, holder\)/,
   );
   for (const name of [
     "compiled_ffiFmpqMatrixCopy",
@@ -167,7 +209,7 @@ def ffiResourceAccountingOuter(
     assert.ok(refreshed < wrapped);
     assert.match(
       generated,
-      /fail:[\s\S]*?sagejs_resource_FmpqMatrix_finalize\(env, sagejs_wrapper_result, NULL\)/,
+      /fail:[\s\S]*?sagejs_resource_FmpqMatrix_destroy\(env, sagejs_wrapper_result\)/,
     );
   }
   for (const name of [
@@ -187,5 +229,26 @@ def ffiResourceAccountingOuter(
   assert.doesNotMatch(
     generateArtifacts(ir).coreSource,
     /napi_adjust_external_memory|napi_env|node_api/,
+  );
+
+  const primeFilename = join(root, "bench", "native_prime_field_matrix.py");
+  const primeIr = await lowerSource(
+    readFileSync(primeFilename, "utf8"),
+    primeFilename,
+  );
+  const mixedAdapter = generateArtifacts({
+    ...ir,
+    functions: [
+      ir.functions.find((fn) => fn.name === "ffiFmpqMatrixCreate"),
+      primeIr.functions.find((fn) => fn.name === "prime_field_factor"),
+    ],
+  }).adapterSource;
+  assert.match(
+    mixedAdapter,
+    /static void sagejs_prime_factor_finalize\(\s*node_api_basic_env env/,
+  );
+  assert.match(
+    mixedAdapter,
+    /napi_wrap\(env, object, factor, sagejs_prime_factor_finalize/,
   );
 });

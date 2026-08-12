@@ -1,0 +1,186 @@
+#include <stdint.h>
+#include <stdlib.h>
+#include <string.h>
+
+#include <node_api.h>
+
+#ifndef NODE_API_EXPERIMENTAL_HAS_POST_FINALIZER
+#error "lifecycle fixture requires node_api_post_finalizer"
+#endif
+
+#define HOLDER_MAGIC UINT64_C(0x9bf3c642881d1405)
+
+typedef struct
+{
+    uint64_t magic;
+    int initialized;
+    int64_t accounted_bytes;
+    uint64_t payload_bytes;
+    unsigned char *payload;
+} holder;
+
+static uint64_t clear_count = 0;
+static uint64_t post_count = 0;
+static uint64_t free_count = 0;
+static uint64_t fallback_free_count = 0;
+static uint64_t active_bytes = 0;
+
+static void clear_native(holder *value)
+{
+    if (!value->initialized)
+        return;
+    free(value->payload);
+    value->payload = NULL;
+    value->initialized = 0;
+    clear_count++;
+    active_bytes -= value->payload_bytes;
+    value->payload_bytes = 0;
+}
+
+static void release_accounting(napi_env env, holder *value)
+{
+    const int64_t accounted = value->accounted_bytes;
+    int64_t adjusted = 0;
+    value->accounted_bytes = 0;
+    if (env != NULL && accounted != 0)
+        (void) napi_adjust_external_memory(env, -accounted, &adjusted);
+}
+
+static void post_finalize(napi_env env, void *data, void *hint)
+{
+    holder *value = (holder *) data;
+    (void) hint;
+    if (value == NULL || value->magic != HOLDER_MAGIC)
+        return;
+    release_accounting(env, value);
+    value->magic = 0;
+    free(value);
+    post_count++;
+    free_count++;
+}
+
+static void basic_finalize(
+    node_api_basic_env env, void *data, void *hint)
+{
+    holder *value = (holder *) data;
+    (void) hint;
+    if (value == NULL || value->magic != HOLDER_MAGIC)
+        return;
+    clear_native(value);
+    if (env == NULL ||
+        node_api_post_finalizer(env, post_finalize, value, NULL) != napi_ok)
+    {
+        value->magic = 0;
+        free(value);
+        fallback_free_count++;
+        free_count++;
+    }
+}
+
+static napi_value allocate_resource(napi_env env, napi_callback_info info)
+{
+    napi_value argument;
+    napi_value object = NULL;
+    holder *value = NULL;
+    size_t argc = 1;
+    uint32_t bytes = 0;
+    int64_t adjusted = 0;
+    if (napi_get_cb_info(env, info, &argc, &argument, NULL, NULL) != napi_ok ||
+        argc != 1 || napi_get_value_uint32(env, argument, &bytes) != napi_ok)
+        return NULL;
+    value = (holder *) calloc(1, sizeof(*value));
+    if (value == NULL)
+        return NULL;
+    value->payload = (unsigned char *) malloc(bytes == 0 ? 1 : bytes);
+    if (value->payload == NULL)
+    {
+        free(value);
+        return NULL;
+    }
+    memset(value->payload, 0xa5, bytes == 0 ? 1 : bytes);
+    value->magic = HOLDER_MAGIC;
+    value->initialized = 1;
+    value->payload_bytes = bytes;
+    active_bytes += bytes;
+    if (napi_create_object(env, &object) != napi_ok ||
+        napi_wrap(env, object, value, basic_finalize, NULL, NULL) != napi_ok)
+    {
+        clear_native(value);
+        value->magic = 0;
+        free(value);
+        free_count++;
+        return NULL;
+    }
+    if (napi_adjust_external_memory(env, bytes, &adjusted) != napi_ok)
+    {
+        void *removed = NULL;
+        if (napi_remove_wrap(env, object, &removed) == napi_ok &&
+            removed == value)
+        {
+            clear_native(value);
+            value->magic = 0;
+            free(value);
+            free_count++;
+        }
+        return NULL;
+    }
+    value->accounted_bytes = bytes;
+    return object;
+}
+
+static napi_value close_resource(napi_env env, napi_callback_info info)
+{
+    napi_value argument;
+    napi_value result;
+    holder *value = NULL;
+    size_t argc = 1;
+    if (napi_get_cb_info(env, info, &argc, &argument, NULL, NULL) != napi_ok ||
+        argc != 1 || napi_unwrap(env, argument, (void **) &value) != napi_ok ||
+        value == NULL || value->magic != HOLDER_MAGIC)
+        return NULL;
+    clear_native(value);
+    release_accounting(env, value);
+    if (napi_get_undefined(env, &result) != napi_ok)
+        return NULL;
+    return result;
+}
+
+static int set_uint64(napi_env env, napi_value object,
+    const char *name, uint64_t value)
+{
+    napi_value exact;
+    return napi_create_bigint_uint64(env, value, &exact) == napi_ok &&
+        napi_set_named_property(env, object, name, exact) == napi_ok;
+}
+
+static napi_value lifecycle_stats(napi_env env, napi_callback_info info)
+{
+    napi_value result;
+    (void) info;
+    if (napi_create_object(env, &result) != napi_ok ||
+        !set_uint64(env, result, "clears", clear_count) ||
+        !set_uint64(env, result, "posts", post_count) ||
+        !set_uint64(env, result, "frees", free_count) ||
+        !set_uint64(env, result, "fallbackFrees", fallback_free_count) ||
+        !set_uint64(env, result, "activeBytes", active_bytes))
+        return NULL;
+    return result;
+}
+
+static napi_value initialize(napi_env env, napi_value exports)
+{
+    const napi_property_descriptor properties[] = {
+        {"allocate", NULL, allocate_resource, NULL, NULL, NULL,
+            napi_default, NULL},
+        {"close", NULL, close_resource, NULL, NULL, NULL,
+            napi_default, NULL},
+        {"stats", NULL, lifecycle_stats, NULL, NULL, NULL,
+            napi_default, NULL}
+    };
+    if (napi_define_properties(env, exports,
+            sizeof(properties) / sizeof(properties[0]), properties) != napi_ok)
+        return NULL;
+    return exports;
+}
+
+NAPI_MODULE(NODE_GYP_MODULE_NAME, initialize)

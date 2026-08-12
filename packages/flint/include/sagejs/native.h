@@ -110,7 +110,7 @@ static inline int sagejs_native_check_napi(
 }
 
 static inline void sagejs_native_finalize_real(
-    napi_env env, void *data, void *hint)
+    node_api_basic_env env, void *data, void *hint)
 {
     sagejs_real *real = (sagejs_real *) data;
     (void) env;
@@ -125,7 +125,7 @@ static inline void sagejs_native_finalize_real(
 }
 
 static inline void sagejs_native_finalize_complex(
-    napi_env env, void *data, void *hint)
+    node_api_basic_env env, void *data, void *hint)
 {
     sagejs_complex *complex = (sagejs_complex *) data;
     (void) env;
@@ -281,7 +281,7 @@ static inline sagejs_matrix *sagejs_native_unwrap_prime_matrix(
 }
 
 static inline void sagejs_native_finalize_prime_matrix(
-    napi_env env, void *data, void *hint)
+    node_api_basic_env env, void *data, void *hint)
 {
     sagejs_matrix *matrix = (sagejs_matrix *) data;
     (void) env;
