@@ -4,7 +4,7 @@
   "id": "foreign-adapter-build-graph",
   "title": "Foreign adapter build graph invalidation",
   "lane": "integration",
-  "status": "review",
+  "status": "complete",
   "owner": "user",
   "objective": "Make ordinary builds regenerate and rebuild every generated foreign-library host adapter exactly when its declaration, generated source, or build inputs change, with focused stale-addon regression tests and no gratuitous warm rebuilds.",
   "base_commit": "d9831968c7bfd5936a95df2517278c3b3dcd5064",
