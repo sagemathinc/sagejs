@@ -6,7 +6,7 @@
   "lane": "arithmetic-algebra",
   "status": "active",
   "owner": "user",
-  "objective": "Provide a machine-readable, reproducible correctness and performance audit of public dense matrix operations over ZZ, QQ, GF(2), GF(7), and a large word prime, with separated cold/warm measurements, backend traces, bounded routine mode, opt-in full Sage comparison, and a prioritized remediation handoff",
+  "objective": "Provide a machine-readable, reproducible correctness and performance audit of public dense matrix operations over ZZ, QQ, GF(2), GF(7), and a large word prime, with separated process/bootstrap/first-measured/warm measurements, backend traces, bounded routine mode, opt-in full Sage comparison, and a prioritized remediation handoff",
   "base_commit": "e2ad41d6662c924b3db35e11a533caef7a71b825",
   "claims": [
     "bench/dense-matrix-public-audit.cjs",
@@ -28,9 +28,9 @@
   },
   "platforms": {
     "linux-x64": "required",
-    "linux-arm64": "required",
+    "linux-arm64": "not-applicable",
     "windows-x64": "not-applicable",
-    "macos-arm64": "required"
+    "macos-arm64": "not-applicable"
   },
   "validation": [
     "pnpm test:baselib:strict",
@@ -108,19 +108,51 @@
       "commit": "a74ff3a5c12de8eca9b1e91febccbcf077a51adc",
       "workspace_fingerprint": "02fcd1d72e2445c350bac34617d70da8023c8af6215cebca7f048d791f969170",
       "platform": "linux-x64"
+    },
+    {
+      "command": "node test/dense-matrix-public-audit.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 5.672,
+      "started_at": "2026-08-12T12:21:52.670Z",
+      "commit": "bd31bbf9d33e78e8fc53fa730e8f8dcf62703201",
+      "workspace_fingerprint": "b29abe93a1a1b7646f0f5baab0c424efe6f0698a841ce81f9d863ba15416c86f",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/dense-matrix-public-audit.cjs --runtime all --check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 34.915,
+      "started_at": "2026-08-12T12:22:05.108Z",
+      "commit": "bd31bbf9d33e78e8fc53fa730e8f8dcf62703201",
+      "workspace_fingerprint": "b29abe93a1a1b7646f0f5baab0c424efe6f0698a841ce81f9d863ba15416c86f",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 13.375,
+      "started_at": "2026-08-12T12:22:50.359Z",
+      "commit": "bd31bbf9d33e78e8fc53fa730e8f8dcf62703201",
+      "workspace_fingerprint": "b29abe93a1a1b7646f0f5baab0c424efe6f0698a841ce81f9d863ba15416c86f",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {
-    "summary": "Added a machine-readable dense matrix audit with quick, routine, and full modes; audited 14 public surfaces per domain; verified all 14 over ZZ, QQ, GF(2), and GF(7); recorded row/column swaps over GF(2^61-1) as capability holes; separated process/bootstrap/first/warm timings; classified only routes emitted inside timed invocation windows; and compared representative workloads with SageMath.",
+    "summary": "Added a machine-readable dense matrix audit with quick, routine, and full modes; audited 14 public surfaces per domain; verified all 14 over ZZ, QQ, GF(2), and GF(7); recorded row/column swaps over GF(2^61-1) as capability holes; separated process/bootstrap/order-dependent-first/warm timings; classified only routes emitted inside timed invocation windows; and compared identical deterministic workloads with SageMath.",
     "risks": [
       "Cross-host timings are intentionally reported rather than ratcheted; retain reports on Linux x64, Linux arm64, and Darwin arm64.",
       "GF(2^61-1) row/column swaps are public capability holes and most large-word-prime operations emit no backend trace.",
-      "The lane needed a local M4RI build because the shared parallel cache did not provision that package."
+      "The lane needed a local M4RI build because the shared parallel cache did not provision that package.",
+      "This benchmark-only change has Linux x64 receipts. Cross-host Linux arm64 and Darwin arm64 reports are follow-up performance evidence, not merge gates or portability claims."
     ],
     "next_steps": [
       "Implement canonical arbitrary-word-prime storage with bulk range ingress, direct swaps, and traceable algorithms.",
       "Replace selection-and-reconstruction swaps with direct exact/resource and packed operations.",
-      "Profile and batch GF(2) random fill."
+      "Profile and batch GF(2) random fill with common pre-generated random bits.",
+      "Retain comparable JSON reports from Linux arm64 and Darwin arm64 before selecting architecture-specific crossovers."
     ]
   }
 }

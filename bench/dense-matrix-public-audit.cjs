@@ -156,6 +156,26 @@ def _value(index):
   }
 }
 
+function measurementScope(operation) {
+  if (new Set([
+    "rank",
+    "rref",
+    "determinant",
+    "charpoly",
+    "solve_right",
+    "right_kernel",
+  ]).has(operation)) {
+    return "copy-plus-operation-on-fixed-source";
+  }
+  if (operation === "swap_rows" || operation === "swap_columns") {
+    return "copy-plus-mutating-operation-on-fixed-source";
+  }
+  if (operation === "construct_random") {
+    return "runtime-local-random-construction";
+  }
+  return "operation-on-fixed-source";
+}
+
 function benchmarkSource(runtime, domain, settings) {
   const preamble = runtime === "sage"
     ? "from sage.all import *\nimport time"
@@ -195,7 +215,7 @@ def _timed_invoke(label, sample, function):
 def _measure(label, function, verify):
     print("AUDIT_CASE|" + label)
     try:
-        result, cold_ms = _timed_invoke(label, "first", function)
+        result, first_measured_ms = _timed_invoke(label, "first", function)
         verify(result)
         samples = []
         for _sample in range(_samples):
@@ -205,7 +225,7 @@ def _measure(label, function, verify):
             samples.append(elapsed_ms)
             verify(result)
         print(
-            "AUDIT_RESULT|" + label + "|" + str(cold_ms) + "|" +
+            "AUDIT_RESULT|" + label + "|" + str(first_measured_ms) + "|" +
             str(_median(samples)) + "|" + str(min(samples)) + "|" +
             str(max(samples)) + "|verified"
         )
@@ -419,6 +439,7 @@ print("AUDIT_SCRIPT_MS|" + str(1000 * (time.perf_counter() - _audit_script_start
 }
 
 function findSage() {
+  if (process.env.SAGEJS_MATRIX_AUDIT_DISABLE_SAGE === "1") return undefined;
   const candidates = [
     process.env.SAGE,
     "sagelite",
@@ -459,20 +480,29 @@ function parseOutput(stdout) {
       continue;
     }
     if (line.startsWith("AUDIT_RESULT|")) {
-      const [, operation, cold, warm, minimum, maximum, witness] = line.split("|");
+      const [, operation, firstMeasured, warm, minimum, maximum, witness] = line.split("|");
       cases.push({
         operation,
-        first_ms: Number(cold),
+        first_measured_ms: Number(firstMeasured),
         warm_median_ms: Number(warm),
         warm_min_ms: Number(minimum),
         warm_max_ms: Number(maximum),
         witness,
+        timed_scope: measurementScope(operation),
+        comparable_input: operation !== "construct_random",
       });
       continue;
     }
     if (line.startsWith("AUDIT_FAILURE|")) {
       const [, operation, status, exception, detail] = line.split("|");
-      cases.push({ operation, status, exception, detail });
+      cases.push({
+        operation,
+        status,
+        exception,
+        detail,
+        timed_scope: measurementScope(operation),
+        comparable_input: operation !== "construct_random",
+      });
       continue;
     }
     if (line.startsWith("AUDIT_SCRIPT_MS|")) {
@@ -557,7 +587,13 @@ function compareRuntimes(runtimeReports) {
     const sageCases = new Map(sageDomain.cases.map((item) => [item.operation, item]));
     for (const sagejsCase of sagejsDomain.cases) {
       const sageCase = sageCases.get(sagejsCase.operation);
-      if (sageCase === undefined) continue;
+      if (
+        sageCase === undefined ||
+        sagejsCase.status !== undefined ||
+        sageCase.status !== undefined ||
+        sagejsCase.comparable_input !== true ||
+        sageCase.comparable_input !== true
+      ) continue;
       comparisons.push({
         domain: sagejsDomain.domain,
         operation: sagejsCase.operation,
@@ -600,18 +636,18 @@ function findingsFor(runtimeReports, comparisons) {
           });
           continue;
         }
-        const coldRatio = item.warm_median_ms === 0
+        const firstMeasuredRatio = item.warm_median_ms === 0
           ? undefined
-          : item.first_ms / item.warm_median_ms;
-        if (coldRatio >= 10 && item.first_ms >= 50) {
+          : item.first_measured_ms / item.warm_median_ms;
+        if (firstMeasuredRatio >= 10 && item.first_measured_ms >= 50) {
           findings.push({
             priority: "P2",
-            kind: "cold-start-dominates",
+            kind: "first-measured-invocation-dominates",
             runtime,
             domain: domain.domain,
             operation: item.operation,
-            ratio: coldRatio,
-            detail: "First invocation is at least 10x the warm median and at least 50 ms.",
+            ratio: firstMeasuredRatio,
+            detail: "The order-dependent first measured invocation is at least 10x the warm median and at least 50 ms; it is not a process-isolated cold measurement.",
           });
         }
       }
@@ -657,6 +693,11 @@ function findingsFor(runtimeReports, comparisons) {
 }
 
 function validate(report) {
+  assert.equal(
+    report.unavailable.length,
+    0,
+    `explicitly requested runtime unavailable: ${report.unavailable.map((item) => item.runtime).join(", ")}`,
+  );
   const sagejs = report.runtimes.sagejs;
   assert.ok(sagejs, "check mode requires the Sage.js runtime");
   assert.equal(sagejs.length, domains.length);
@@ -669,7 +710,9 @@ function validate(report) {
         continue;
       }
       assert.equal(item.witness, "verified");
-      assert.ok(Number.isFinite(item.first_ms) && item.first_ms >= 0);
+      assert.ok(
+        Number.isFinite(item.first_measured_ms) && item.first_measured_ms >= 0,
+      );
       assert.ok(Number.isFinite(item.warm_median_ms) && item.warm_median_ms >= 0);
     }
   }
@@ -726,14 +769,16 @@ function main() {
       mode: options.mode,
       runtimes: requestedRuntimes,
       sage_command: sageCommand,
-      cold_definition: [
+      timing_definition: [
         "fresh_process_ms is wall time for a new process and the complete domain workload",
         "runtime_bootstrap_estimate_ms is fresh process wall time minus in-script time",
-        "first_ms is the first measured invocation after operand setup in that process",
+        "first_measured_ms is the first measured invocation after operand setup at that point in the serial domain workload; earlier operations may have loaded the same backend, so this is not a cold measurement",
         "warm_median_ms is the median of immediately repeated, verified invocations",
       ],
       single_thread_environment: true,
       result_policy: "Every timed result is consumed by an operation-specific semantic witness.",
+      source_policy: "Each operation reuses one fixed source. Cacheable and destructive algorithms time an explicit matrix copy plus the operation so result caches cannot make warm samples vacuous.",
+      comparison_policy: "Sage ratios contain only identical deterministic inputs. Runtime-local random_matrix workloads are reported separately and excluded from comparisons.",
       full_mode: "Opt-in larger cases; compares with SageMath when an executable is available.",
     },
     domains: {

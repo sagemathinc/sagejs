@@ -34,6 +34,8 @@ assert.deepEqual(attribution.cases[0].backends, [
 assert.deepEqual(attribution.cases[1].backends, [
   "Matrix.transpose:transpose-route",
 ]);
+assert.equal(attribution.cases[0].first_measured_ms, 1);
+assert.equal(attribution.cases[0].timed_scope, "operation-on-fixed-source");
 const result = spawnSync(
   process.execPath,
   [
@@ -60,6 +62,9 @@ assert.deepEqual(Object.keys(report.runtimes), ["sagejs"]);
 assert.deepEqual(
   report.runtimes.sagejs.map((item) => item.domain),
   ["ZZ", "QQ", "GF2", "GF7", "GFWORD"],
+);
+assert.ok(
+  report.comparisons.every((item) => item.operation !== "construct_random"),
 );
 for (const domain of report.runtimes.sagejs) {
   assert.equal(domain.ok, true);
@@ -100,3 +105,27 @@ assert.ok(
 );
 
 console.log("dense matrix public audit quick contract ok");
+
+const missingSage = spawnSync(
+  process.execPath,
+  [
+    resolve(root, "bench", "dense-matrix-public-audit.cjs"),
+    "--quick",
+    "--runtime",
+    "sage",
+    "--check",
+    "--json",
+  ],
+  {
+    cwd: root,
+    encoding: "utf8",
+    timeout: 30_000,
+    env: { ...process.env, SAGEJS_MATRIX_AUDIT_DISABLE_SAGE: "1" },
+  },
+);
+assert.equal(missingSage.status, 1);
+const missingReport = JSON.parse(missingSage.stdout);
+assert.deepEqual(missingReport.unavailable, [
+  { runtime: "sage", reason: "no SageMath executable found" },
+]);
+assert.match(missingSage.stderr, /explicitly requested runtime unavailable: sage/);

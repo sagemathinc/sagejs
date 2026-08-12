@@ -16,13 +16,19 @@ testing. `SAGE` may select a SageMath executable.
 
 The output is machine-readable JSON with explicit host, revision, workload,
 runtime, domain, and operation fields. Each domain runs in a fresh process.
-The report separates total fresh-process time, estimated bootstrap time, first
-invocation time, and warm median/minimum/maximum. Every timed result is consumed
+The report separates total fresh-process time, estimated bootstrap time,
+order-dependent first-measured time, and warm median/minimum/maximum. The
+first-measured value is **not** a cold operation measurement: operations run
+serially within a domain process, so an earlier operation may already have
+loaded the same backend. Every timed result is consumed
 by a semantic witness: complete round-trip traversal for random construction,
 sampled entries for structural operations, exact matrix
 identities for solving and kernels, and known results for rank, RREF,
 determinant, and characteristic polynomial. Destructive or cacheable algorithms
 receive a fresh matrix copy on every invocation.
+That copy is inside the timed window and the report labels these cases
+`copy-plus-operation-on-fixed-source`. Reusing one fixed mathematical source
+makes samples comparable while preventing cached result reuse.
 
 Backend routes are collected only between an explicit trace begin/end pair
 around each timed invocation. Setup and result verification happen outside that
@@ -52,10 +58,12 @@ the reproducible JSON report is authoritative. The durable conclusions were:
    0.13 ms. The trace shows matrix selection/reconstruction, confirming that
    the public operation copies or rebuilds a complete matrix instead of doing
    an in-place backend swap.
-4. **Binary random fill still has a material gap.** `GF(2)` random construction
-   was roughly 4.3 ms versus 0.08 ms for SageMath at 500 by 700. This is less
-   urgent than missing large-prime mutation but is a clean, bounded packed
-   kernel target.
+4. **Binary random fill deserves a controlled follow-up.** `GF(2)` random
+   construction was a visible part of Sage.js's local full-mode workload. The
+   audit intentionally makes no Sage/Sage.js ratio claim for this operation,
+   because the public generators do not promise identical distributions. A
+   dedicated benchmark with common pre-generated random bits would make this a
+   clean, bounded packed-kernel investigation.
 5. **Exact resources validate the hybrid architecture.** `ZZ` and `QQ`
    multiplication, determinant, RREF, characteristic polynomial, solve, and
    right kernel were generally competitive with or faster than SageMath for
@@ -64,9 +72,14 @@ the reproducible JSON report is authoritative. The durable conclusions were:
    add/subtract boundary overhead, rather than mature FLINT algorithms.
 6. **Cold timing must remain separate.** Fresh Sage.js processes spent roughly
    0.7--0.8 seconds bootstrapping per domain in the routine run, and first
-   invocation occasionally paid another lazy compiler/library cost. Combining
-   either with warm arithmetic would obscure both startup and mathematical
-   performance.
+   measured invocation occasionally paid another lazy compiler/library cost.
+   Because the latter is serial and order-dependent, it is evidence for a
+   follow-up process-isolated cold-start experiment, not itself a cold timing.
+
+`random_matrix` measurements use each runtime's public generator and native
+distribution. They are useful within one runtime, but are deliberately omitted
+from cross-runtime ratios because equal seeds do not imply identical data or
+distribution across Sage.js and SageMath.
 
 ## Prioritized follow-up
 
