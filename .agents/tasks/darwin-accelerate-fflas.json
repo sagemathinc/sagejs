@@ -129,6 +129,46 @@
       "commit": "3ef6b3693d99ec9b5a2bf3320769fc03cfca2873",
       "workspace_fingerprint": "153f7c857480b3f12b139dc90ba1769f84d2598c44e0f2a174be9a8a9e0e13ef",
       "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm --dir packages/fflas test",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.733,
+      "started_at": "2026-08-12T11:03:34.727Z",
+      "commit": "238d718670effab836367e2cd5e908cda2581065",
+      "workspace_fingerprint": "0844ce4b8f3f9d70dd7bbc7204b23ac770f1858e1ca93520cff7dd5071f045cc",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 13.448,
+      "started_at": "2026-08-12T11:03:44.949Z",
+      "commit": "238d718670effab836367e2cd5e908cda2581065",
+      "workspace_fingerprint": "0844ce4b8f3f9d70dd7bbc7204b23ac770f1858e1ca93520cff7dd5071f045cc",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 43.334,
+      "started_at": "2026-08-12T11:04:06.864Z",
+      "commit": "238d718670effab836367e2cd5e908cda2581065",
+      "workspace_fingerprint": "0844ce4b8f3f9d70dd7bbc7204b23ac770f1858e1ca93520cff7dd5071f045cc",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 13.951,
+      "started_at": "2026-08-12T11:04:59.397Z",
+      "commit": "238d718670effab836367e2cd5e908cda2581065",
+      "workspace_fingerprint": "0844ce4b8f3f9d70dd7bbc7204b23ac770f1858e1ca93520cff7dd5071f045cc",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {
