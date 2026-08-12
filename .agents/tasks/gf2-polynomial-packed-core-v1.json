@@ -4,7 +4,7 @@
   "id": "gf2-polynomial-packed-core-v1",
   "title": "Compiler-owned GF(2) polynomial packed core",
   "lane": "integration",
-  "status": "review",
+  "status": "complete",
   "owner": "user",
   "objective": "Implement canonical compiler-owned bit-packed GF(2)[x] storage and source-transparent read-only traversal, XOR, shifts, equality, formatting, and serialization primitives without changing the public polynomial API or shared FFI",
   "base_commit": "dcc1302a3f305b00a0e09ba25edee45ac2ee2bf1",
@@ -379,7 +379,7 @@
     }
   ],
   "handoff": {
-    "summary": "Adds canonical BitPolynomialStorage with 64 low-to-high GF(2) coefficients per uint64 word, persistent BigUint64Array storage whenever any packed kernel is compiled, versioned minimal serialization, bulk local formatting/coefficient traversal, and source-transparent borrowed-record kernels for validation, bit length, coefficient access, population count, equality, XOR, and left/right shifts. Selective native artifacts preserve the packed carrier across interleaved dynamic operations, so a later compiled call does not remarshal stored lists; a dedicated bit-length-only artifact regression proves that repeated compiled borrows retain the same persistent carrier object. CPython, SageMath, Sage.js dynamic fallback, selective AOT, and full-module AOT execution agree at 0/63/64/65 and maximum-word boundaries; zero shifts above uint64 and malformed transactional writes are covered. The retained degree-262143 benchmark records a 32768-byte logical packed payload versus 2097152 bytes for one uint64 per coefficient and gates formatting and coefficient materialization against per-coefficient boundary regressions.",
+    "summary": "Integrated canonical BitPolynomialStorage with 64 low-to-high GF(2) coefficients per uint64 word, persistent BigUint64Array storage whenever any packed kernel is compiled, versioned minimal serialization, bulk local formatting/coefficient traversal, and source-transparent borrowed-record kernels for validation, bit length, coefficient access, population count, equality, XOR, and left/right shifts. Selective native artifacts preserve the packed carrier across interleaved dynamic operations, so a later compiled call does not remarshal stored lists; a dedicated bit-length-only artifact regression proves that repeated compiled borrows retain the same persistent carrier object. CPython, SageMath, Sage.js dynamic fallback, selective AOT, and full-module AOT execution agree at 0/63/64/65 and maximum-word boundaries; zero shifts above uint64 and malformed transactional writes are covered. Independent review compiled all eight public kernels separately and verified persistent carrier identity plus 150 randomized native/dynamic cases. The combined branch preserves its newer package budgets while adding the reviewed polynomial-kernel dependency.",
     "risks": [
       "The source-transparent compiler currently lacks uint64 bitwise operators, so XOR deliberately performs 64 arithmetic bit steps per word; a future representation-level compiler primitive can optimize this without changing the storage contract.",
       "Only linux-x64 execution was available in this lane; required linux-arm64, Windows x64, and macOS arm64 validation remains CI or integration work.",
