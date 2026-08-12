@@ -91,16 +91,66 @@
       "commit": "5efff67b7d0b4b274d59310d47b079094d10a0f7",
       "workspace_fingerprint": "74409573945d834758ef799548d4a6551b09c1cfc0a16e33fedf22eb2894a807",
       "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 13.525,
+      "started_at": "2026-08-12T12:22:08.420Z",
+      "commit": "26afef72623054658102e5bf7ceaa6e731e3a143",
+      "workspace_fingerprint": "3e18a31b6d4bae3e6e3ebaa7b9350dcd95f568f4280469c221e251e8e3fa5d40",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 13.306,
+      "started_at": "2026-08-12T12:22:22.551Z",
+      "commit": "26afef72623054658102e5bf7ceaa6e731e3a143",
+      "workspace_fingerprint": "3e18a31b6d4bae3e6e3ebaa7b9350dcd95f568f4280469c221e251e8e3fa5d40",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 41.763,
+      "started_at": "2026-08-12T12:22:36.457Z",
+      "commit": "26afef72623054658102e5bf7ceaa6e731e3a143",
+      "workspace_fingerprint": "3e18a31b6d4bae3e6e3ebaa7b9350dcd95f568f4280469c221e251e8e3fa5d40",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm --dir packages/m4ri build",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.562,
+      "started_at": "2026-08-12T12:23:26.346Z",
+      "commit": "26afef72623054658102e5bf7ceaa6e731e3a143",
+      "workspace_fingerprint": "3e18a31b6d4bae3e6e3ebaa7b9350dcd95f568f4280469c221e251e8e3fa5d40",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm --dir packages/m4ri test",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 3.735,
+      "started_at": "2026-08-12T12:23:29.540Z",
+      "commit": "26afef72623054658102e5bf7ceaa6e731e3a143",
+      "workspace_fingerprint": "3e18a31b6d4bae3e6e3ebaa7b9350dcd95f568f4280469c221e251e8e3fa5d40",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {
-    "summary": "Reconciled the long native-kernel foreign-input witness with the intentional compiler policy: repository-owned declaration adapter headers precede installed-prefix headers, and the cache fingerprints the exact same search-order winner. The regression now asserts that source ownership explicitly and mutates a genuinely prefix-owned declared FLINT header to prove cache-key and digest invalidation without relying on an inert duplicate. Registered M4RI as the fourth shared native-cache package with independently keyed dependency and generated-addon stages, read-only shared Unix dependency materialization, explicit Windows capability outputs, archive/toolchain/source identities, and default parallel-worktree restore. A real cold prepare built and published both M4RI stages, a warm prepare reported both present, the worktree prefix resolved to the immutable cache generation, and pnpm build then published all 12 production kernels. Focused native-kernel and 42-test cache suites, architecture, strict Python, and portable tiers pass.",
+    "summary": "Reconciled the long native-kernel foreign-input witness with the intentional compiler policy: repository-owned declaration adapter headers precede installed-prefix headers, and the cache fingerprints the exact same search-order winner. The regression now asserts that source ownership explicitly and mutates a genuinely prefix-owned declared FLINT header to prove cache-key and digest invalidation without relying on an inert duplicate. Registered M4RI as the fourth shared native-cache package with independently keyed dependency and generated-addon stages, read-only shared Unix dependency materialization, explicit Windows capability outputs, archive/toolchain/source identities, and default parallel-worktree restore. The ordinary package dependency command now restores or prepares that cache stage and never writes into its immutable payload; only the explicit cache-internal `--cache-build` path constructs a prefix. A real cold prepare built and published both M4RI stages, warm prepares reported them present, the worktree prefix resolved to the immutable cache generation, an ordinary package build preserved its symlink target and header bytes, and pnpm build published all 12 production kernels. Focused native-kernel, M4RI package, and 42-test cache suites, architecture, strict Python, and portable tiers pass.",
     "risks": [
       "Linux x64 exercised cold publication, warm reuse, and production compilation. macOS arm64 follows the same relocatable read-only dependency path and Windows follows the existing no-M4RI capability payload, but final execution on those platforms remains a CI responsibility.",
       "Declared-header fingerprints intentionally cover declaration-listed headers rather than discovering arbitrary transitive compiler includes. Declaration authors must continue listing every ABI-significant header, as documented by the original cache-input architecture."
     ],
     "next_steps": [
-      "Integrate all three commits and retain the published shared M4RI generation so subsequent worktrees avoid rebuilding it.",
+      "Integrate the M4RI cache commits after the already-integrated foreign-header witness and retain the published shared generation so subsequent worktrees avoid rebuilding it.",
       "Let Windows and macOS CI confirm the new default M4RI cache stages on their platform-specific capability paths."
     ]
   }
