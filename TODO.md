@@ -30,6 +30,7 @@
 - Ratchet cold production-kernel loading separately from warm mathematical
   execution, and never silently compile a missing production kernel in an
   ordinary installed session.
+
 ## Development infrastructure
 
 - Make verified documentation example identities content-addressed by source
