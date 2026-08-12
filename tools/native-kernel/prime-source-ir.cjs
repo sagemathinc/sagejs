@@ -8,6 +8,11 @@ const {
   assignOperationIds,
   sourceSpan,
 } = require("./provenance.cjs");
+const {
+  UINT64_SEMANTICS,
+  hasUint64Bitwise,
+  uint64BitwiseOperation,
+} = require("./uint64-operations.cjs");
 
 /*
  * Source-transparent lowering for the prime-field compiler experiment.
@@ -441,7 +446,10 @@ function lowerExpression(node, context, operations) {
       left: left.name, right: right.name, type: left.type });
     return { name: target, type: "bool" };
   }
-  expect(context, node, ["+", "-", "*", "%", "//"].includes(node.operator),
+  const bitwise = uint64BitwiseOperation(node.operator);
+  expect(context, node,
+    ["+", "-", "*", "%", "//"].includes(node.operator) ||
+      bitwise !== undefined,
     `unsupported source-transparent operator ${node.operator}`);
   expect(
     context,
@@ -455,8 +463,17 @@ function lowerExpression(node, context, operations) {
     ["uint64", "PrimeModulusValue"].includes(right.type),
     `machine arithmetic expects uint64 or PrimeFieldModulus, got ${right.type}`,
   );
+  if (bitwise !== undefined) {
+    expect(
+      context,
+      node,
+      left.type === "uint64" && right.type === "uint64",
+      `uint64 operator ${node.operator} requires uint64 operands`,
+    );
+  }
   const target = temporary(context, node, "uint64");
-  operations.push({ kind: "source.uint64.binary", operation: node.operator,
+  operations.push({ kind: "source.uint64.binary",
+    operation: bitwise ?? node.operator,
     target, left: left.name, right: right.name });
   return { name: target, type: "uint64" };
 }
@@ -465,33 +482,56 @@ function copyOperation(type, target, source, borrowed = false) {
   return { kind: "source.copy", type, target, source, borrowed };
 }
 
+function lowerBufferAssignment(item, rightNode, operator, context) {
+  const operations = [];
+  const buffer = lowerExpression(item.expression, context, operations);
+  const index = lowerExpression(item.property, context, operations);
+  expectType(context, item, buffer, "UInt64Buffer", "buffer assignment");
+  expectType(context, item.property, index, "uint64", "buffer assignment");
+  let current;
+  let augmented;
+  if (operator !== "=") {
+    const symbol = operator.endsWith("=") ? operator.slice(0, -1) : "";
+    augmented = uint64BitwiseOperation(symbol);
+    expect(context, item, augmented !== undefined,
+      `unsupported indexed augmented operator ${operator}`);
+    current = temporary(context, item, "uint64");
+    operations.push({ kind: "source.buffer.get", target: current,
+      buffer: buffer.name, index: index.name });
+  }
+  let value = lowerExpression(rightNode, context, operations);
+  expectType(context, rightNode, value, "uint64", "buffer assignment");
+  if (augmented !== undefined) {
+    const target = temporary(context, item, "uint64");
+    operations.push({ kind: "source.uint64.binary", operation: augmented,
+      target, left: current, right: value.name });
+    value = { name: target, type: "uint64" };
+  }
+  operations.push({ kind: "source.buffer.set", buffer: buffer.name,
+    index: index.name, value: value.name });
+  return operations;
+}
+
 function lowerAssignment(statement, context) {
   const assign = statement.body;
   if (nodeType(assign) === "AST_ItemAccess" && assign.assignment !== undefined) {
-    const operations = [];
-    const buffer = lowerExpression(assign.expression, context, operations);
-    const index = lowerExpression(assign.property, context, operations);
-    const value = lowerExpression(assign.assignment, context, operations);
-    expectType(context, assign, buffer, "UInt64Buffer", "buffer assignment");
-    expectType(context, assign.property, index, "uint64", "buffer assignment");
-    expectType(context, assign.assignment, value, "uint64", "buffer assignment");
-    operations.push({ kind: "source.buffer.set", buffer: buffer.name,
-      index: index.name, value: value.name });
-    return operations;
+    return lowerBufferAssignment(
+      assign,
+      assign.assignment,
+      assign.operator || "=",
+      context,
+    );
   }
   expect(context, statement, nodeType(statement) === "AST_SimpleStatement" &&
     nodeType(assign) === "AST_Assign", "native assignment expected");
   const operations = [];
-  if (assign.operator === "=" && nodeType(assign.left) === "AST_ItemAccess") {
-    const buffer = lowerExpression(assign.left.expression, context, operations);
-    const index = lowerExpression(assign.left.property, context, operations);
-    const value = lowerExpression(assign.right, context, operations);
-    expectType(context, assign.left, buffer, "UInt64Buffer", "buffer assignment");
-    expectType(context, assign.left.property, index, "uint64", "buffer assignment");
-    expectType(context, assign.right, value, "uint64", "buffer assignment");
-    operations.push({ kind: "source.buffer.set", buffer: buffer.name,
-      index: index.name, value: value.name });
-    return operations;
+  if (nodeType(assign.left) === "AST_ItemAccess") {
+    return lowerBufferAssignment(
+      assign.left,
+      assign.right,
+      assign.operator,
+      context,
+    );
   }
   expect(context, assign.left, nodeType(assign.left) === "AST_SymbolRef",
     "native assignment targets must be local names or buffer items");
@@ -506,13 +546,16 @@ function lowerAssignment(statement, context) {
     return operations;
   }
   const symbol = assign.operator.endsWith("=") ? assign.operator.slice(0, -1) : "";
-  expect(context, assign, ["+", "-", "*"].includes(symbol),
+  const bitwise = uint64BitwiseOperation(symbol);
+  expect(context, assign,
+    ["+", "-", "*"].includes(symbol) || bitwise !== undefined,
     `unsupported augmented operator ${assign.operator}`);
   expect(context, assign.left, context.variables.get(target) === "uint64" &&
     context.initialized.has(target), `augmented target ${target} must be uint64`);
   const right = lowerExpression(assign.right, context, operations);
   expectType(context, assign.right, right, "uint64", "augmented assignment");
-  operations.push({ kind: "source.uint64.binary", operation: symbol,
+  operations.push({ kind: "source.uint64.binary",
+    operation: bitwise ?? symbol,
     target, left: target, right: right.name });
   return operations;
 }
@@ -672,6 +715,9 @@ function lowerPrimeSourceFunction(
     optimizations: optimized.optimizations,
     dependencies: Array.from(context.dependencies).sort(),
     records: Array.from(records.values()),
+    analysis: hasUint64Bitwise(optimized.body)
+      ? { uint64: UINT64_SEMANTICS }
+      : {},
   };
   // Optimized operations retain the IDs of the operations they replace and
   // receive a fresh stable ID of their own.

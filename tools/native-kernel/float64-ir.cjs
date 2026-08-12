@@ -4,6 +4,11 @@ const {
   annotateOperations,
   sourceSpan,
 } = require("./provenance.cjs");
+const {
+  UINT64_SEMANTICS,
+  hasUint64Bitwise,
+  uint64BitwiseOperation,
+} = require("./uint64-operations.cjs");
 
 const UINT64_MAX = 18446744073709551615n;
 const BUFFER_TYPES = new Set(["Float64Buffer", "Float64Record"]);
@@ -255,11 +260,14 @@ function lowerBinary(node, context, operations, expectedType) {
     type === "Float64" || type === "uint64",
     "cannot use " + type + " in binary64 arithmetic",
   );
-  const allowed = type === "Float64" ? ["+", "-", "*", "/"] : ["+", "-", "*"];
+  const bitwise = uint64BitwiseOperation(node.operator);
+  const allowed = type === "Float64"
+    ? ["+", "-", "*", "/"]
+    : ["+", "-", "*"];
   expect(
     context,
     node,
-    allowed.includes(node.operator),
+    allowed.includes(node.operator) || (type === "uint64" && bitwise !== undefined),
     "unsupported " + type + " operator " + node.operator,
   );
   const left = lowerExpression(node.left, context, operations, type);
@@ -275,7 +283,7 @@ function lowerBinary(node, context, operations, expectedType) {
     kind: type === "Float64" ? "float64.binary" : "uint64.binary",
     operation: type === "Float64"
       ? { "+": "add", "-": "sub", "*": "mul", "/": "div" }[node.operator]
-      : node.operator,
+      : bitwise ?? node.operator,
     target,
     left: left.name,
     right: right.name,
@@ -489,6 +497,25 @@ function assign(statement, context) {
       type: value.type,
     });
   } else {
+    const bitwise = uint64BitwiseOperation(
+      operator.endsWith("=") ? operator.slice(0, -1) : "",
+    );
+    if (
+      bitwise !== undefined &&
+      context.variables.get(target) === "uint64" &&
+      context.initialized.has(target)
+    ) {
+      const value = lowerExpression(rightNode, context, operations, "uint64");
+      operations.push({
+        kind: "uint64.binary",
+        operation: bitwise,
+        target,
+        left: target,
+        right: value.name,
+      });
+      context.initialized.add(target);
+      return operations;
+    }
     expect(
       context,
       node,
@@ -677,8 +704,14 @@ function lowerFloat64Function(fn, signature, filename, decorated) {
       effects: {
         pure: mutated.size === 0,
         mutates: Array.from(mutated).sort(),
-        mayRaise: ["IndexError", "ZeroDivisionError", "ValueError"],
+        mayRaise: [
+          "IndexError",
+          "ZeroDivisionError",
+          "ValueError",
+          ...(hasUint64Bitwise(body) ? ["OverflowError"] : []),
+        ],
       },
+      ...(hasUint64Bitwise(body) ? { uint64: UINT64_SEMANTICS } : {}),
     },
     body,
   };

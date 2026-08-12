@@ -1,0 +1,192 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "native-uint64-bitwise-v1",
+  "title": "Native Uint64 Bitwise V1",
+  "lane": "compiler-runtime",
+  "status": "active",
+  "owner": "user",
+  "objective": "Implement generic source-transparent typed uint64 bitwise and shift operators in IR, dynamic fallback, native C lowering, explain/inspect output, and differential property tests with defined shift semantics",
+  "base_commit": "dcc1302a3f305b00a0e09ba25edee45ac2ee2bf1",
+  "claims": [
+    "tools/native-kernel/",
+    "tools/python/lowerer.ts",
+    "test/native-kernel.cjs",
+    "test/ffi.cjs",
+    "test/node-test-manifest.cjs",
+    "test/native-uint64-bitwise.cjs",
+    "bench/native-uint64-bitwise.cjs",
+    "bench/NATIVE-COMPILER.md"
+  ],
+  "dependencies": [],
+  "references": [
+    "ARCHITECTURE.md",
+    "eaf48817b790f416dabffa2e58ab871fc42c00d0",
+    "tools/native-kernel/prime-source-ir.cjs",
+    "tools/native-kernel/integer-ir.cjs"
+  ],
+  "scope_notes": [
+    "The lane expanded from native-compiler to compiler-runtime after the frontend revealed that Sage mode normalized CPython xor to exponentiation even under the existing explicit native-bitwise marker. The only frontend change preserves `^` and `^=` under that marker and leaves ordinary Sage exponentiation unchanged."
+  ],
+  "architecture": {
+    "strategy": "source-transparent-native",
+    "fallback": "same-source",
+    "oracles": [
+      "cpython",
+      "javascript",
+      "native-c"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "node --test test/native-uint64-bitwise.cjs",
+    "node bench/native-uint64-bitwise.cjs",
+    "pnpm build",
+    "pnpm test:compiler",
+    "pnpm test:integration",
+    "pnpm architecture:check",
+    "pnpm test:baselib:strict",
+    "pnpm test:native"
+  ],
+  "runs": [
+    {
+      "command": "node --test test/native-uint64-bitwise.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.777,
+      "started_at": "2026-08-12T19:57:04.874Z",
+      "commit": "dcc1302a3f305b00a0e09ba25edee45ac2ee2bf1",
+      "workspace_fingerprint": "ca85128574c712a1bab048ab50f880c2c4b67cf96beaf8efc491c67aa2d1ddcf",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/native-uint64-bitwise.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.819,
+      "started_at": "2026-08-12T19:57:11.091Z",
+      "commit": "dcc1302a3f305b00a0e09ba25edee45ac2ee2bf1",
+      "workspace_fingerprint": "ca85128574c712a1bab048ab50f880c2c4b67cf96beaf8efc491c67aa2d1ddcf",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 14.553,
+      "started_at": "2026-08-12T19:57:19.244Z",
+      "commit": "dcc1302a3f305b00a0e09ba25edee45ac2ee2bf1",
+      "workspace_fingerprint": "ca85128574c712a1bab048ab50f880c2c4b67cf96beaf8efc491c67aa2d1ddcf",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 15.3,
+      "started_at": "2026-08-12T19:57:53.658Z",
+      "commit": "dcc1302a3f305b00a0e09ba25edee45ac2ee2bf1",
+      "workspace_fingerprint": "ca85128574c712a1bab048ab50f880c2c4b67cf96beaf8efc491c67aa2d1ddcf",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/native-uint64-bitwise.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.931,
+      "started_at": "2026-08-12T20:14:52.347Z",
+      "commit": "dcc1302a3f305b00a0e09ba25edee45ac2ee2bf1",
+      "workspace_fingerprint": "47c1298f94fa4d8c73e045eac51012b262ac29bcc45aa61396cf758900bd334d",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/native-uint64-bitwise.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.898,
+      "started_at": "2026-08-12T20:14:54.916Z",
+      "commit": "dcc1302a3f305b00a0e09ba25edee45ac2ee2bf1",
+      "workspace_fingerprint": "47c1298f94fa4d8c73e045eac51012b262ac29bcc45aa61396cf758900bd334d",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm build",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 286.448,
+      "started_at": "2026-08-12T20:14:57.453Z",
+      "commit": "dcc1302a3f305b00a0e09ba25edee45ac2ee2bf1",
+      "workspace_fingerprint": "47c1298f94fa4d8c73e045eac51012b262ac29bcc45aa61396cf758900bd334d",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:compiler",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 106.289,
+      "started_at": "2026-08-12T20:19:53.434Z",
+      "commit": "dcc1302a3f305b00a0e09ba25edee45ac2ee2bf1",
+      "workspace_fingerprint": "47c1298f94fa4d8c73e045eac51012b262ac29bcc45aa61396cf758900bd334d",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:integration",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 375.657,
+      "started_at": "2026-08-12T20:21:51.737Z",
+      "commit": "dcc1302a3f305b00a0e09ba25edee45ac2ee2bf1",
+      "workspace_fingerprint": "47c1298f94fa4d8c73e045eac51012b262ac29bcc45aa61396cf758900bd334d",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 14.826,
+      "started_at": "2026-08-12T20:28:28.109Z",
+      "commit": "dcc1302a3f305b00a0e09ba25edee45ac2ee2bf1",
+      "workspace_fingerprint": "47c1298f94fa4d8c73e045eac51012b262ac29bcc45aa61396cf758900bd334d",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 16.431,
+      "started_at": "2026-08-12T20:28:43.555Z",
+      "commit": "dcc1302a3f305b00a0e09ba25edee45ac2ee2bf1",
+      "workspace_fingerprint": "47c1298f94fa4d8c73e045eac51012b262ac29bcc45aa61396cf758900bd334d",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/native-uint64-bitwise.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.89,
+      "started_at": "2026-08-12T20:38:27.226Z",
+      "commit": "dcc1302a3f305b00a0e09ba25edee45ac2ee2bf1",
+      "workspace_fingerprint": "1a0e6045b8daa0c8580709b98c496c066ceca7dea636b1925bc226fe438c97c4",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Implemented canonical typed uint64 &, |, ^, <<, and >> operations across exact, binary64, and source-transparent prime IR plus portable JavaScript, isolated C, word, tagged, and prime-source backends. Added augmented scalar and UInt64Buffer lowering with Python target-before-RHS evaluation order, explicit 0..63 shift guards, logical right shift, modulo-2^64 left shift, Sage-mode xor marker preservation, IR v22, cache fingerprinting, explain metadata, focused differential/property coverage, benchmark coverage, compiler documentation, and Node test-manifest registration.",
+    "risks": [
+      "The broad compiler tier failed outside this claim: compiler/algebra.py timed out and compiler/matrix.py hit an existing sparse-random runtime error under Node 26.7.0.",
+      "The broad integration tier passed 371/380 tests but failed eight matrix/polynomial runtime tests outside this claim; focused native-kernel, FFI, build, architecture, and strict checks pass.",
+      "CPython's annotation-only uint64 fallback retains Python int left-shift behavior; full-word wrapping and 0..63 guards are the documented typed-IR/native/portable-JavaScript contract, so cross-path source that can overflow must mask explicitly."
+    ],
+    "next_steps": [
+      "Integration lane: in src/lib/sagejs/native.py, change the module docstring's `Native Kernel v21` to `Native Kernel v22` and add the documented typed uint64 contract: &, |, and ^ operate on the full unsigned word; left shift wraps modulo 2^64; right shift is logical; compiled/typed-JavaScript shift counts are 0..63 with OverflowError for 64+, negative values fail the uint64 boundary, `# sagejs: native-bitwise` preserves ^ as xor in Sage mode, and CPython's annotation-only fallback retains int shift behavior.",
+      "Integration lane: rerun pnpm test:compiler and pnpm test:integration after rebasing onto the current integration base and preparing its native cache; investigate only if the recorded unrelated matrix/polynomial failures remain.",
+      "The test manifest follow-up is already complete in this lane: test/native-uint64-bitwise.cjs is registered in test/node-test-manifest.cjs."
+    ]
+  }
+}

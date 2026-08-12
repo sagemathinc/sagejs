@@ -1,5 +1,12 @@
 "use strict";
 
+const {
+  UINT64_SEMANTICS,
+  hasUint64Bitwise,
+  isUint64Bitwise,
+  isUint64Shift,
+} = require("./uint64-operations.cjs");
+
 function exactTypes(fn) {
   return new Map(
     [...fn.params, ...fn.locals].map((value) => [value.name, value.type]),
@@ -251,6 +258,7 @@ function constantBits(value) {
 function executionProfile(fn) {
   const profile = {
     arithmeticOperations: 0,
+    uint64BitwiseOperations: 0,
     nativeCalls: 0,
     rangeLoops: 0,
     whileLoops: 0,
@@ -269,6 +277,12 @@ function executionProfile(fn) {
         operation.kind === "integer.round_sqrt"
       ) {
         profile.arithmeticOperations += 1;
+      }
+      if (
+        operation.kind === "uint64.binary" &&
+        isUint64Bitwise(operation.operation)
+      ) {
+        profile.uint64BitwiseOperations += 1;
       }
       if (operation.kind === "native.call" || operation.kind === "ffi.call") {
         profile.nativeCalls += 1;
@@ -329,6 +343,10 @@ function localEffects(fn) {
           ["floordiv", "mod"].includes(operation.operation))
       ) {
         mayRaise.add("ZeroDivisionError");
+      }
+      if (operation.kind === "uint64.binary" &&
+          isUint64Shift(operation.operation)) {
+        mayRaise.add("OverflowError");
       }
       if (operation.kind === "integer.round_sqrt") {
         mayRaise.add("ValueError");
@@ -582,6 +600,15 @@ function backendPolicy(fn, profile, recursive) {
     };
   }
   if (
+    profile.uint64BitwiseOperations > 0 &&
+    fn.params.every((param) => param.type !== "Integer")
+  ) {
+    return {
+      kind: "tagged",
+      reason: "bounded uint64 operations execute in the isolated native core",
+    };
+  }
+  if (
     profile.rangeLoops > 0 &&
     profile.nativeCalls > 0 &&
     profile.dependencyDepth >= 2
@@ -699,6 +726,7 @@ function analyzeExactModule(functions) {
       backend,
       effects: effect,
       taggedInteger: taggedIntegerProof(fn, effect),
+      ...(hasUint64Bitwise(fn.body) ? { uint64: UINT64_SEMANTICS } : {}),
     };
   }
   return functions;

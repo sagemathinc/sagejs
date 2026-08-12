@@ -4,6 +4,10 @@ const {
   cOperationComment,
   cSourceDirective,
 } = require("./provenance.cjs");
+const {
+  isUint64Shift,
+  uint64COperator,
+} = require("./uint64-operations.cjs");
 
 function cString(value) {
   return JSON.stringify(String(value));
@@ -700,8 +704,23 @@ function emitStatementBody(operation, indent) {
           `${cName(operation.right)};`,
       ].join("\n");
     }
-    return `${indent}${target} = ${cName(operation.left)} ` +
-      `${operation.operation} ${cName(operation.right)};`;
+    const left = cName(operation.left);
+    const right = cName(operation.right);
+    const operator = uint64COperator(operation.operation);
+    if (isUint64Shift(operation.operation)) {
+      return [
+        `${indent}if (${right} >= UINT64_C(64))`,
+        `${indent}{`,
+        statusFailure(
+          "uint64 shift count must be between 0 and 63",
+          `${indent}    `,
+        ),
+        `${indent}    goto fail;`,
+        `${indent}}`,
+        `${indent}${target} = ${left} ${operator} (unsigned int) ${right};`,
+      ].join("\n");
+    }
+    return `${indent}${target} = ${left} ${operator} ${right};`;
   }
   if (operation.kind === "source.compare") {
     const left = operation.type === "PrimeModulus"

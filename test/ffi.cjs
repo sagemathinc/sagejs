@@ -1656,7 +1656,7 @@ test("generated igraph views pin owners and invalidate on explicit close", () =>
 test("typed FFI imports lower to declared host-isolated calls", async () => {
   const source = readFileSync(witness, "utf8");
   const ir = await lowerSource(source, witness);
-  assert.equal(ir.version, 21);
+  assert.equal(ir.version, 22);
   assert.equal(ir.foreignLibraries.length, 1);
   assert.equal(ir.foreignLibraries[0].id, "flint");
   assert.match(ir.foreignLibraries[0].declarationHash, /^[0-9a-f]{64}$/);
