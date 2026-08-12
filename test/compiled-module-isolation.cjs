@@ -444,6 +444,19 @@ test("kernel namespace metadata cannot collide with Python globals", async (t) =
   const session = await createSage({ mode: "python" });
   t.after(() => session.close());
 
+  await session.evaluate("import sagejs.runtime as runtime\nimport __main__");
+  await session.evaluate(
+    "host_prototype = runtime.object.getPrototypeOf(runtime.global_object)",
+  );
+  await session.evaluate("__main__.__proto__ = {'polluted': 1}");
+  assert.equal(
+    (await session.evaluate(
+      "runtime.object.getPrototypeOf(runtime.global_object) is host_prototype, " +
+        "__main__.__proto__['polluted']",
+    )).repr,
+    "(True, 1)",
+  );
+
   await session.evaluate(
     "__proto__ = 17\n" +
       "__sagejs_reusable_main__ = 18\n" +
@@ -465,6 +478,22 @@ test("kernel namespace metadata cannot collide with Python globals", async (t) =
       "__proto__, globals()['__proto__'], '__proto__' in dir()",
     )).repr,
     "(23, 23, True)",
+  );
+});
+
+test("kernel namespace builtins follow persistent rebinding", async (t) => {
+  const session = await createSage({ mode: "python" });
+  t.after(() => session.close());
+
+  await session.evaluate(
+    "globals = lambda: 'globals-shadow'\n" +
+      "locals = lambda: 'locals-shadow'\n" +
+      "vars = lambda: 'vars-shadow'\n" +
+      "dir = lambda: ['dir-shadow']",
+  );
+  assert.equal(
+    (await session.evaluate("globals(), locals(), vars(), dir()")).repr,
+    "('globals-shadow', 'locals-shadow', 'vars-shadow', ['dir-shadow'])",
   );
 });
 

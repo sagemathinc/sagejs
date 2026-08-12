@@ -139,17 +139,37 @@
       "commit": "f1f30494def783ac90039665b409258b0c7fdb86",
       "workspace_fingerprint": "0ca1409902bbf96bef16947cd7bcc7525966f955214d4a7783696e8850c6316f",
       "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/compiled-module-isolation.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 3.877,
+      "started_at": "2026-08-12T22:16:55.210Z",
+      "commit": "e78dfa6b947757bccacddab5ba24d964ae2202d8",
+      "workspace_fingerprint": "203b32f255e17d7338f5d1a2aedd5028a695303316a1706eb7641c9f20a83640",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node test/cli-smoke.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 58.165,
+      "started_at": "2026-08-12T22:17:02.908Z",
+      "commit": "e78dfa6b947757bccacddab5ba24d964ae2202d8",
+      "workspace_fingerprint": "203b32f255e17d7338f5d1a2aedd5028a695303316a1706eb7641c9f20a83640",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {
-    "summary": "Piped CLI fragments and kernel evaluations now expose one coherent live __main__ namespace. Lexical loads, __main__ attributes, globals(), locals(), vars(), dir(), deletion, and global restoration agree across cells; magic globals initialize once; and intrinsic aliases obey all supported lexical bindings, including parameters, locals, closures, comprehensions, with/exception aliases, pattern captures, and class scopes. Reusable-main intrinsic fast paths verify the live alias against the canonical module, so indirect __main__ and globals() writes cannot leave stale compiler assumptions. Namespace targets and descriptor maps have null prototypes, internal flags use Symbols, and globals() dictionaries are cached out of band; valid Python names such as `__proto__`, `arguments`, and the former marker spellings remain ordinary globals. The compiler-runtime lane now owns `src/baselib/containers.py` because `rho_live_scope_dict` is runtime namespace infrastructure despite its historical container-module location; it may claim `.agents/lanes.json` only so an approved lane classification change can validate itself.",
+    "summary": "Piped CLI fragments and kernel evaluations now expose one coherent live __main__ namespace. Lexical loads, __main__ attributes, globals(), locals(), vars(), dir(), deletion, and global restoration agree across cells; magic globals initialize once; and intrinsic aliases obey all supported lexical bindings, including parameters, locals, closures, comprehensions, with/exception aliases, pattern captures, and class scopes. Namespace builtins are marked only when lexical analysis proves that their names are unshadowed, while reusable-main calls consult the canonical live module so a binding installed by an earlier cell wins. Reusable-main intrinsic fast paths likewise verify live aliases against the canonical module, so indirect __main__ and globals() writes cannot leave stale compiler assumptions. Namespace targets and descriptor maps have null prototypes, internal flags use Symbols, and globals() dictionaries are cached out of band; valid Python names such as `__proto__`, `arguments`, and the former marker spellings remain ordinary globals. New host-global publication uses own-property reflection rather than inherited setters, so assigning `__main__.__proto__` cannot mutate the host global prototype. The compiler-runtime lane now owns `src/baselib/containers.py` because `rho_live_scope_dict` is runtime namespace infrastructure despite its historical container-module location; it may claim `.agents/lanes.json` only so an approved lane classification change can validate itself.",
     "risks": [
       "The lane remains based on dcc1302 while origin/main has advanced substantially; test:changed therefore expanded to 583 unrelated files and was stopped after its build phase at the integration coordinator's direction.",
       "The live namespace keeps deleted global accessors internally so functions compiled before deletion can restore the binding; the reusable __main__ proxy deliberately filters those undefined accessors from Python introspection.",
       "The complete compiler suite still reaches its pre-existing sparse-random matrix fixture failure (`sample_sparse_random_spec`: object is not iterable); all other compiler fixtures passed or retained their documented skips, and the focused module-isolation and CLI suites pass."
     ],
     "next_steps": [
-      "Independently re-review lexical intrinsic dispatch, indirect live-alias mutation, and collision-proof namespace metadata before integration.",
+      "Independently re-review lexical intrinsic dispatch, persistent namespace-builtin rebinding, indirect live-alias mutation, safe host publication, and collision-proof namespace metadata before integration.",
       "Rebase or merge through the integration lane before running repository-wide validation against current origin/main."
     ]
   }

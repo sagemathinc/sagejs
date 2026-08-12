@@ -123,6 +123,7 @@ export class PythonCstLowerer {
   private annotationsMode: any = false;
   private readonly knownClasses = new Map<string, any>();
   private readonly intrinsicModules = new Map<string, Record<string, string>>();
+  private moduleBindings = new Set<string>();
   private readonly classBindings: Array<{
     names: Set<string>;
     functionDepth: number;
@@ -189,6 +190,12 @@ export class PythonCstLowerer {
         this.intrinsicModules.set(name, table as Record<string, string>);
       }
     }
+    this.moduleBindings = this.functionBindingNames(
+      root,
+      this.emptyParameters(),
+      new Set(),
+      new Set(),
+    );
     this.annotationsMode = root.namedChildren.some(
       (node) => node.type === "future_import_statement" &&
         /\bannotations\b/.test(node.text),
@@ -1883,6 +1890,23 @@ export class PythonCstLowerer {
     return false;
   }
 
+  private namespaceBuiltinIsLexicallyShadowed(name: string): boolean {
+    const classFrame = this.classBindings.at(-1);
+    if (
+      classFrame &&
+      this.functionFrames.length === classFrame.functionDepth &&
+      classFrame.names.has(name)
+    ) {
+      return true;
+    }
+    for (let index = this.functionFrames.length - 1; index >= 0; index -= 1) {
+      const frame = this.functionFrames[index];
+      if (frame.globals.has(name)) break;
+      if (frame.bindings.has(name) || frame.nonlocals.has(name)) return true;
+    }
+    return this.moduleBindings.has(name);
+  }
+
   private lowerLambda(node: SyntaxNode): any {
     const parameters = node.childForFieldName("parameters");
     const body = this.field(node, "body");
@@ -3214,12 +3238,20 @@ export class PythonCstLowerer {
       "ρσ_bigint_gcd",
       "ρσ_integer_bigint",
     ]).has(callableName ?? "") ? "bigint" : undefined;
-    return this.make("AST_Call", node, {
+    const call = this.make("AST_Call", node, {
       expression: callable,
       direct_call: callable.intrinsic_call === true || inferredType !== undefined,
       inferred_type: inferredType,
       args,
     });
+    if (
+      functionNode.type === "identifier" &&
+      ["dir", "globals", "locals", "vars"].includes(functionNode.text) &&
+      !this.namespaceBuiltinIsLexicallyShadowed(functionNode.text)
+    ) {
+      call.namespace_builtin = true;
+    }
+    return call;
   }
 
   /** Mark the object-shaped metadata consumed directly by native Object APIs. */

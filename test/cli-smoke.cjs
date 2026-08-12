@@ -293,6 +293,21 @@ assert.equal(
     "18 19 20",
   ].join("\n"),
 );
+assert.equal(
+  run(
+    ["--python"],
+    [
+      "globals = lambda: 'globals-shadow'",
+      "locals = lambda: 'locals-shadow'",
+      "vars = lambda: 'vars-shadow'",
+      "dir = lambda: ['dir-shadow']",
+      "",
+      "print(globals(), locals(), vars(), dir())",
+      "",
+    ].join("\n"),
+  ).trim(),
+  "globals-shadow locals-shadow vars-shadow ['dir-shadow']",
+);
 const pythonRuntimeFailure = runFailure(
   ["--python"],
   "raise RuntimeError('piped Python failure')\n",

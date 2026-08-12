@@ -880,6 +880,7 @@ def print_function_call(self, output):
     if (
         is_node_type(self.expression, AST_SymbolRef)
         and self.expression.name in ("dir", "locals", "globals", "vars")
+        and self.namespace_builtin
         and (self.expression.name is not "dir" or output.options.python_attributes)
         and self.args.length == 0
         and not self.args.starargs
@@ -888,6 +889,20 @@ def print_function_call(self, output):
     ):
         want_globals = self.expression.name is "globals"
         want_dir = self.expression.name is "dir"
+        live_name = self.expression.name
+        reusable_guard = output.options.reuse_main_module
+        if reusable_guard:
+            output.print("(ρσ_modules.__main__[")
+            output.print(JSON.stringify(live_name))
+            output.print("] === undefined ? ")
+
+        def finish_reusable_guard():
+            if not reusable_guard:
+                return
+            output.print(" : ρσ_resolve_callable(ρσ_modules.__main__[")
+            output.print(JSON.stringify(live_name))
+            output.print("])())")
+
         scope = None
         stack = output.stack()
         for index in range(stack.length - 1, -1, -1):
@@ -939,6 +954,7 @@ def print_function_call(self, output):
                     "if(names.indexOf('help')<0)names.push('help');"
                     "names.sort();return names})(ρσ_dir(ρσ_modules.__main__))"
                 )
+                finish_reusable_guard()
                 return
             output.print("ρσ_list_decorate([")
             for index, name in enumerate(names):
@@ -946,6 +962,7 @@ def print_function_call(self, output):
                     output.comma()
                 output.print(JSON.stringify(name))
             output.print("])")
+            finish_reusable_guard()
             return
 
         if want_globals or (
@@ -954,6 +971,7 @@ def print_function_call(self, output):
             output.print("ρσ_live_scope_dict(ρσ_modules[")
             output.print(JSON.stringify(scope.module_id))
             output.print("])")
+            finish_reusable_guard()
             return
 
         output.print("ρσ_scope_dict({")
@@ -968,6 +986,7 @@ def print_function_call(self, output):
             else:
                 output.print_name(name)
         output.print("})")
+        finish_reusable_guard()
         return
 
     if self.pooled_numeric_name:
