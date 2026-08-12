@@ -4,7 +4,7 @@
   "id": "extension-polynomial-resource-impl",
   "title": "Generated finite-extension polynomial resources",
   "lane": "integration",
-  "status": "review",
+  "status": "complete",
   "owner": "extension_poly_resource_impl",
   "objective": "Implement generated FLINT fq_default context and polynomial resources with bulk power-basis coordinate I/O, safe shared-context ownership, resource-to-resource arithmetic, portable correctness, lifecycle fuzzing, and measured production performance",
   "base_commit": "0b9b27a8c0d3350627f1ad1f1fbdbf376245a142",
