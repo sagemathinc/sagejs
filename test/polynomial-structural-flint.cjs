@@ -95,12 +95,16 @@ function fmpqValue(resource) {
   const linear = fmpzPolynomial([2n, 1n]);
   const zero = fmpzPolynomial([]);
   const constant = fmpzPolynomial([7n]);
+  const zeroConstantLinear = fmpzPolynomial([0n, 1n]);
+  const trailingZeros = fmpzPolynomial([3n, 0n, 0n]);
   const results = [
     flint.ffiFmpzPolynomialCompose(outer, inner),
     flint.ffiFmpzPolynomialReverse(quadratic, 6n),
     flint.ffiFmpzPolynomialShiftLeft(quadratic, 2n),
     flint.ffiFmpzPolynomialShiftRight(quadratic, 1n),
     flint.ffiFmpzPolynomialTruncate(quadratic, 2n),
+    flint.ffiFmpzPolynomialReverse(zeroConstantLinear, 2n),
+    flint.ffiFmpzPolynomialTruncate(trailingZeros, 2n),
   ];
   const integral = flint.ffiFmpzPolynomialIntegral(quadratic);
   assert.deepEqual(
@@ -111,6 +115,8 @@ function fmpqValue(resource) {
       [0n, 0n, 3n, 2n, 1n],
       [2n, 1n],
       [3n, 2n],
+      [1n],
+      [3n],
     ],
   );
   assert.deepEqual(fmpqCoefficients(integral), [
@@ -128,7 +134,16 @@ function fmpqValue(resource) {
   assert.equal(flint.ffiFmpzPolynomialDiscriminant(constant), 0n);
   closeTwice(integral, flint.ffiFmpqPolynomialClose);
   for (const result of results) closeTwice(result, flint.ffiFmpzPolynomialClose);
-  for (const resource of [constant, zero, linear, quadratic, inner, outer]) {
+  for (const resource of [
+    trailingZeros,
+    zeroConstantLinear,
+    constant,
+    zero,
+    linear,
+    quadratic,
+    inner,
+    outer,
+  ]) {
     closeTwice(resource, flint.ffiFmpzPolynomialClose);
   }
 }
@@ -140,6 +155,12 @@ function fmpqValue(resource) {
   const linear = fmpqPolynomial([[2n, 1n], [1n, 1n]]);
   const zero = fmpqPolynomial([]);
   const constant = fmpqPolynomial([[7n, 3n]]);
+  const zeroConstantLinear = fmpqPolynomial([[0n, 1n], [1n, 1n]]);
+  const trailingZeros = fmpqPolynomial([
+    [3n, 1n],
+    [0n, 1n],
+    [0n, 1n],
+  ]);
   const results = [
     flint.ffiFmpqPolynomialCompose(outer, inner),
     flint.ffiFmpqPolynomialReverse(quadratic, 6n),
@@ -147,6 +168,8 @@ function fmpqValue(resource) {
     flint.ffiFmpqPolynomialShiftRight(quadratic, 1n),
     flint.ffiFmpqPolynomialTruncate(quadratic, 2n),
     flint.ffiFmpqPolynomialIntegral(quadratic),
+    flint.ffiFmpqPolynomialReverse(zeroConstantLinear, 2n),
+    flint.ffiFmpqPolynomialTruncate(trailingZeros, 2n),
   ];
   const resultant = flint.ffiFmpqPolynomialResultant(quadratic, linear);
   const discriminant = flint.ffiFmpqPolynomialDiscriminant(quadratic);
@@ -170,6 +193,8 @@ function fmpqValue(resource) {
   assert.deepEqual(fmpqCoefficients(results[5]), [
     [0n, 1n], [3n, 1n], [1n, 1n], [1n, 3n],
   ]);
+  assert.deepEqual(fmpqCoefficients(results[6]), [[1n, 1n]]);
+  assert.deepEqual(fmpqCoefficients(results[7]), [[3n, 1n]]);
   assert.deepEqual(fmpqValue(resultant), [3n, 1n]);
   assert.deepEqual(fmpqValue(discriminant), [-8n, 1n]);
   assert.deepEqual(fmpqValue(zeroResultant), [0n, 1n]);
@@ -189,7 +214,16 @@ function fmpqValue(resource) {
     closeTwice(scalar, flint.ffiFmpqValueClose);
   }
   for (const result of results) closeTwice(result, flint.ffiFmpqPolynomialClose);
-  for (const resource of [constant, zero, linear, quadratic, inner, outer]) {
+  for (const resource of [
+    trailingZeros,
+    zeroConstantLinear,
+    constant,
+    zero,
+    linear,
+    quadratic,
+    inner,
+    outer,
+  ]) {
     closeTwice(resource, flint.ffiFmpqPolynomialClose);
   }
 }
@@ -307,6 +341,27 @@ function fmpqValue(resource) {
   assert.deepEqual(Array.from(inseparableDiscriminant), [0n]);
 
   const rejected = BigUint64Array.from([71n, 72n, 73n]);
+  // This source has a valid formal antiderivative in GF(2): the coefficient
+  // whose denominator vanishes is zero. The packed FLINT fast path rejects
+  // all degree >= characteristic inputs as a capability boundary; the public
+  // dispatcher must preserve semantics by selecting the same-source portable
+  // implementation, which deliberately skips division for zero coefficients.
+  const validCharacteristicHole = BigUint64Array.from([1n, 0n, 1n]);
+  const validCharacteristicHoleOutput = BigUint64Array.from([81n, 82n, 83n, 84n]);
+  assert.throws(
+    () => flint.ffiNmodPolyIntegral(
+      validCharacteristicHoleOutput,
+      validCharacteristicHole,
+      4n,
+      3n,
+      2n,
+    ),
+    /degree smaller than the characteristic/,
+  );
+  assert.deepEqual(
+    Array.from(validCharacteristicHoleOutput),
+    [81n, 82n, 83n, 84n],
+  );
   assert.throws(
     () => flint.ffiNmodPolyIntegral(
       rejected,

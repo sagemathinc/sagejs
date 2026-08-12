@@ -4,6 +4,12 @@ Exact integer and rational operations borrow sealed resource owners and return
 new callee-owned resources.  Prime-field operations use fixed-width packed
 coefficient buffers and transactional output.  No wrapper exposes a foreign
 pointer or calls the dynamic host after native argument marshalling.
+
+The packed prime-field integral is a fast-path capability, not the complete
+semantic operation: it applies only when the source degree is smaller than the
+characteristic.  For longer inputs, a public dispatcher must use the portable
+same-source implementation, because zero coefficients at exceptional degrees
+can still admit a formal antiderivative.
 """
 
 from __future__ import annotations
