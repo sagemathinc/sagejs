@@ -14,6 +14,12 @@ comparison. `--full` uses substantially larger matrices and five warm samples;
 it is intended for explicit performance investigations rather than routine
 testing. `SAGE` may select a SageMath executable.
 
+With `--check`, every explicitly requested runtime must be available and must
+complete every domain with valid semantic witnesses and complete operation
+coverage. Known unsupported public operations and missing backend trace
+classifications remain explicit findings in the report; they are not hidden,
+but they are remediation outputs rather than failures of the audit machinery.
+
 The output is machine-readable JSON with explicit host, revision, workload,
 runtime, domain, and operation fields. Each domain runs in a fresh process.
 The report separates total fresh-process time, estimated bootstrap time,
