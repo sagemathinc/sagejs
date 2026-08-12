@@ -1,0 +1,133 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "gf2-polynomial-contract",
+  "title": "Public bit-packed GF(2)[x] polynomial contract",
+  "lane": "integration",
+  "status": "active",
+  "owner": "user",
+  "objective": "Freeze a Sage-compatible public GF(2)[x] representation and operation contract with compiler-owned bit-packed canonical storage, safe mutation and borrowed views, portable same-source algorithms, generated mature-library acceleration, deterministic serialization, lifecycle verification, and measured crossovers",
+  "base_commit": "fe8fdaeb721c4959f6fe2802d5554d18b88ff800",
+  "claims": [
+    ".agents/tasks/gf2-polynomial-contract.json"
+  ],
+  "dependencies": [
+    "large-prime-polynomial-correctness",
+    "prime-poly-bulk-views",
+    "prime-poly-sagepack"
+  ],
+  "references": [
+    "SageMath 10.9 polynomial_gf2x.pyx and polynomial_ring.py GF2X semantics",
+    "NTL GF2X and GF2XFactoring public APIs",
+    "GF2X multiplication library",
+    "FLINT nmod_poly packed adapters as the current Sage.js differential backend",
+    "docs/audits/polynomial-domains.json",
+    ".agents/tasks/large-prime-polynomial-correctness.json",
+    ".agents/tasks/prime-poly-bulk-views.json",
+    ".agents/tasks/prime-poly-sagepack.json",
+    "planned-claim:src/baselib/polynomial.py",
+    "planned-claim:src/lib/sagejs/polynomial_algorithms/gf2_public.py",
+    "planned-claim:src/lib/sagejs/kernels/polynomial/gf2_packed.py",
+    "planned-claim:packages/ntl/",
+    "planned-claim:ffi/ntl.ffi.py",
+    "planned-claim:ffi/ntl.ffi.json",
+    "planned-claim:src/lib/sagejs/ffi/ntl.py",
+    "planned-claim:src/baselib/sagejs/ffi/ntl.py",
+    "planned-claim:tools/serialization.ts",
+    "planned-claim:test/public-gf2-polynomial.cjs",
+    "planned-claim:test/gf2-polynomial-packed.cjs",
+    "planned-claim:test/gf2-polynomial-ntl-ffi.cjs",
+    "planned-claim:test/gf2-polynomial-lifecycle.cjs",
+    "planned-claim:bench/public-gf2-polynomial.cjs",
+    "planned-claim:bench/results/linux-x64-gf2-polynomial-v1.json",
+    "planned-claim:architecture/native-boundaries.json",
+    "planned-claim:architecture/native-kernels.json",
+    "planned-claim:architecture/native-code.json",
+    "planned-claim:package.json",
+    "planned-claim:pnpm-lock.yaml",
+    "planned-claim:pyrightconfig.json",
+    "planned-claim:test/node-test-manifest.cjs",
+    "representation:one public GF(2)[x] value canonically owns compiler-managed low-to-high bits in ceil(logical_length/64) UInt64 words plus a logical coefficient length",
+    "representation:the highest stored bit is one for every nonzero polynomial, zero is the unique empty payload, and every unused high bit in the final word is zero",
+    "representation:polynomials are immutable as in Sage; arithmetic returns fresh nonaliasing canonical storage and no operation exposes a writable view of the internal words",
+    "representation:NTL GF2X, FLINT nmod_poly, host coefficient arrays, formatted text, and SagePack bytes are never persistent alternate canonical state",
+    "boundary:the canonical packed words are the interchange format between public Python, same-source kernels, SagePack, and any mature backend; all ingress and egress are bulk and checked",
+    "boundary:an NTL call may construct one ephemeral GF2X from canonical packed bytes, run an arbitrary number of fused resource operations, and export one canonical packed result; it must not export one host coefficient at a time",
+    "boundary:a single ordinary public arithmetic call may perform one packed-to-GF2X import and one GF2X-to-packed export per operand/result, but a compiled typed-Python lexical region may keep temporary owned GF2X resources across a call graph to avoid repeated conversion",
+    "boundary:ordinary packed operations such as equality, coefficient access, slicing, shift, add, formatting, and SagePack remain compiler-owned and do not convert through NTL merely because NTL is available",
+    "construction-gate:consume arbitrary coefficient iterables once, coerce in Sage order, reduce integers modulo two, normalize trailing zeroes, and support empty, sparse, dense, byte, and trusted word ingress without one host object per stored zero",
+    "access-gate:degree, length, truth, zero, one, hash, equality, comparison, coefficient indexing including negative and out-of-range zero, iteration, list, coefficients, slicing, copy, and repr preserve Sage GF2X semantics",
+    "immutability-gate:public coefficient assignment raises IndexError with Sage-compatible semantics before any mutation; internal trusted builders may mutate uniquely owned unpublished storage only",
+    "view-gate:a compiled typed-Python kernel may borrow a read-only BitPolynomialView containing rooted word storage and logical length; views cannot escape, outlive the owner, write padding, or expose raw pointers",
+    "arithmetic-gate:add, subtract, negate, scalar multiply, multiply, square, power, shifts, truncation, derivative, evaluation, composition, divexact, quotient, remainder, and quo_rem return canonical bit-packed storage with no host scalar loops",
+    "euclidean-gate:gcd is monic; xgcd returns (g,s,t) with s*left+t*right=g and Sage-compatible zero cases; divrem rejects zero divisors transactionally and computes quotient and remainder once",
+    "advanced-gate:is_irreducible, factor, roots, and modular composition use a mature backend when available, preserve deterministic public normalization and ordering, and return compiler-owned public polynomials rather than backend owners",
+    "format-gate:repr traverses set bits or packed words directly, preserves the public variable name and Sage term ordering, and never expands a coefficient object list",
+    "serialization-gate:SagePack uses a distinct versioned GF(2) bit-polynomial encoding consisting of exact logical length plus little-endian packed bits; it rejects nonzero padding, trailing-zero normalization violations, excess length, and malformed payloads before publication",
+    "serialization-gate:existing prime-field-poly-le-v1 payloads remain decodable; new dumps are deterministic, parent preserving, O(ceil(n/8)) bytes, and never serialize an NTL pointer or resource handle",
+    "fallback-gate:the browser, native Windows without a reviewed NTL package, and any capability-disabled host use the same canonical bit words and ordinary CPython-parseable algorithms; lack of NTL cannot change semantics",
+    "backend-gate:use a generated safe NTL package and declarations with C++ exception shields, deterministic owned-resource cleanup, copied-byte transfer, explicit target capability flags, and no algorithm-specific handwritten N-API",
+    "backend-gate:GF2X and its multiplication dependency are optional mature libraries selected only for operations and sizes justified by retained per-host benchmark profiles; unsupported targets fall back without changing public storage",
+    "compiler-gate:no compiler special case selects code from a function name; packed typed-Python bodies and generated foreign calls retain source provenance, inspectable IR and target C, and host-isolated call graphs",
+    "correctness-gate:differentially compare Sage.js packed fallback, generated NTL, existing packed nmod_poly, CPython reference algorithms, and SageMath 10.9 for zero, one, sparse, dense, random, adversarial word-boundary, and degree-65536 fixtures",
+    "correctness-gate:cover logical lengths 0,1,2,63,64,65,127,128,129 and hostile padding; verify algebraic identities, exact repr, coefficient order, parent identity, immutability, hashes, nonaliasing, deterministic factor expansion, and SagePack round trips",
+    "lifecycle-gate:wrong types, closed resources, malformed packed input, injected allocation failure, C++ exceptions, backend failure, finalization, explicit close, copied results, and aliasing schedules are transactional and ASan/UBSan/leak clean",
+    "memory-gate:canonical payload and serialized coefficient body use at most ceil(n/64) machine words and ceil(n/8) bytes respectively; no UInt64-per-coefficient shadow or proportional host scalar list survives an operation",
+    "benchmark-baseline:2026-08-12 linux-x64 warm dense degree-4096 medians in milliseconds were Sage.js/Sage construction 0.442/2.893, add 0.106/0.000152, multiply 0.294/0.001554, divrem 0.386/0.003952, gcd 4.639/0.1254, xgcd 6.029/0.2407, list 0.361/2.216, repr 0.188/7.533, SagePack dump 0.521/15.458, and load 0.524/6.524",
+    "benchmark-gate:retain current Sage.js advantages for construction, list, repr, and SagePack within 25 percent on the same host after a 0.05 ms floor; do not route them through NTL by default",
+    "benchmark-gate:for dense degrees 4096 and 65536, warm add, multiply, divrem, gcd, and xgcd are at most two times SageMath GF2X after a 0.05 ms floor and never materially slower than the retained nmod_poly oracle",
+    "benchmark-gate:record sparse and dense inputs across degrees 0,64,4096,65536 and 1000000, separated first-use versus warm samples, allocation/peak memory, public trace, backend, compiler mode, exact result digest, and uncensored timeouts",
+    "crossover-gate:measure Linux x64, Linux arm64, and macOS arm64 independently; store profile data rather than hard-coding one host threshold, and default conservatively to packed same-source algorithms when no matching profile exists"
+  ],
+  "architecture": {
+    "strategy": "mixed",
+    "fallback": "tested-capability",
+    "oracles": [
+      "SageMath 10.9 GF(2)[x] public semantics and NTL GF2X results",
+      "current Sage.js UInt64-per-coefficient dynamic/native implementation",
+      "ordinary CPython-parseable bit-polynomial reference algorithms"
+    ],
+    "exceptions": [
+      "NTL GF2X is C++ and owns variable-capacity packed state internally. Sage.js may expose it only as an ephemeral generated owned resource with C++ exception shields; the compiler-managed packed words remain the public canonical representation.",
+      "A dedicated GF(2) SagePack payload intentionally changes new encodings from one byte per coefficient to one bit per coefficient. The greenfield rule permits this direct correction, while the current encoding remains readable for stored development artifacts."
+    ]
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "fallback",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "node --test test/public-gf2-polynomial.cjs test/gf2-polynomial-packed.cjs test/gf2-polynomial-ntl-ffi.cjs test/gf2-polynomial-lifecycle.cjs",
+    "env SAGEJS_FFI_SANITIZE=1 node --test test/gf2-polynomial-ntl-ffi.cjs test/gf2-polynomial-lifecycle.cjs",
+    "node bench/public-gf2-polynomial.cjs --check",
+    "pnpm ffi:check",
+    "pnpm test:serialization",
+    "pnpm architecture:check",
+    "pnpm test:portable",
+    "pnpm test:baselib:strict",
+    "pnpm ffi:lifecycle:fuzz"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "Sage.js currently gives every word-prime polynomial, including GF(2)[x], one UInt64 word per coefficient and dispatches mature operations through FLINT nmod_poly. SageMath instead defaults GF(2)[x] to NTL GF2X, whose dense arithmetic is genuinely bit packed. A controlled Linux x64 degree-4096 comparison found Sage.js already faster for public construction, list, repr, and SagePack, but about 37x slower for gcd, 25x for xgcd, 98x for divrem, 189x for multiplication, and roughly 700x for addition before the 0.05 ms measurement floor. This proposal preserves the good compiler-owned host surfaces, corrects canonical memory from eight bytes to one bit per coefficient, and introduces generated ephemeral GF2X acceleration only where measured. It claims only this planning manifest; implementation is split into disjoint packed, backend, and integration stages.",
+    "risks": [
+      "A blanket NTL resource representation would regress the host-facing operations Sage.js already wins: construction, list, repr, and SagePack. The public canonical representation must remain compiler-owned packed words, with NTL conversion confined to measured expensive operations or fused compiled regions.",
+      "A blanket typed-Python implementation would leave large polynomial arithmetic orders of magnitude behind SageMath GF2X. Addition can be a direct word XOR, but fast carryless multiplication, division, gcd, xgcd, factorization, and modular composition should reuse a mature backend until a portable kernel is independently competitive.",
+      "NTL depends on GMP and optionally GF2X and is a C++ library. Native Windows, static linkage, license notices, exception containment, external-memory accounting, sanitizer behavior, and Wasm availability must be proved by the distribution lane rather than assumed from SageMath's Unix build.",
+      "The term GF2X is overloaded: NTL::GF2X is the complete polynomial type while the separate gf2x library primarily accelerates low-level multiplication. The implementation should bind NTL for semantics and let NTL select gf2x, not expose the low-level library as the public object.",
+      "Public Sage polynomials are immutable. Introducing mutation merely because the backing words are writable would be a semantic regression; internal builders must be unpublished and uniquely owned, and borrowed compiled views must be read only.",
+      "The existing prime-field SagePack encoding stores one byte at p=2. A new bit payload changes emitted development-format bytes and needs strict old-format decoding plus canonical length and padding validation.",
+      "Operation crossovers vary by sparsity, degree, CPU carryless-multiply support, backend build, and conversion cost. One Linux threshold is not portable policy; profiles must retain raw measurements and exact workloads.",
+      "The active exact-polynomial and word-prime-matrix lanes own shared declarations and generated hosts. GF(2)[x] implementation should start with disjoint packed source and package work, then take shared integration files only after those lanes land."
+    ],
+    "next_steps": [
+      "Stage 1: implement and independently review a compiler-owned BitPolynomialStorage module over UInt64Buffer words: normalization, checked pack/unpack, access, comparison, hashing, slicing, shifts, XOR arithmetic, derivative, formatting, serialization bytes, dynamic same-source fallback, and typed borrowed traversal. Do not edit shared FFI declarations.",
+      "Stage 2: in a distribution lane, package NTL plus its pinned optional gf2x dependency for Linux x64/arm64 and macOS arm64, investigate native Windows and Wasm, and expose only generated GF2X resource construction from packed bytes, copied export, arithmetic, divrem aggregate, gcd/xgcd aggregate, factoring, and lifecycle counters through C++ exception shields.",
+      "Stage 3: benchmark raw packed algorithms, import/export cost, fused GF2X resources, current nmod_poly, and SageMath on the same fixtures. Produce per-host operation and size crossover profiles; fail closed to packed fallback when a backend or profile is unavailable.",
+      "Stage 4: take one public integration lane over polynomial.py and SagePack. Make GF(2)[x] own exactly one packed-bit value, preserve all Sage semantics and current fast host surfaces, route only measured heavy operations to NTL, and retain forced-packed plus forced-nmod differential modes.",
+      "Stage 5: run correctness, malformed-input, forced fallback, sanitizer lifecycle, portable, architecture, strict-Python, performance, and cross-host gates. Keep old UInt64-per-coefficient decoding until all stored development fixtures migrate, then delete its GF(2) production construction and arithmetic routes."
+    ]
+  }
+}
