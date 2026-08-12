@@ -4,7 +4,7 @@
   "id": "exact-vector-resource-core-v1",
   "title": "Generated exact vector resources",
   "lane": "integration",
-  "status": "active",
+  "status": "review",
   "owner": "user",
   "objective": "Provide generated owned FLINT-backed exact integer and rational vector resource primitives with canonical byte-region construction, lifecycle, serialization, structural arithmetic, dot products, and sanitizer-backed direct tests without public vector integration",
   "base_commit": "dcc1302a3f305b00a0e09ba25edee45ac2ee2bf1",
@@ -89,10 +89,50 @@
       "commit": "dcc1302a3f305b00a0e09ba25edee45ac2ee2bf1",
       "workspace_fingerprint": "77c957836c94ed20d225720f66cac7d8eef5c1f4327c14d15a96f898dcbe5d64",
       "platform": "linux-x64"
+    },
+    {
+      "command": "node test/exact-vector-resource-core.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.61,
+      "started_at": "2026-08-12T19:30:37.489Z",
+      "commit": "c5b6bfaee15add46174e5c9f75054470a1944b3e",
+      "workspace_fingerprint": "0d22c49a419c5c8cd74bed8c6012d42a2e736f39d1e908a8c9173d284f064a14",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 15.533,
+      "started_at": "2026-08-12T19:30:54.691Z",
+      "commit": "c5b6bfaee15add46174e5c9f75054470a1944b3e",
+      "workspace_fingerprint": "0d22c49a419c5c8cd74bed8c6012d42a2e736f39d1e908a8c9173d284f064a14",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 18.107,
+      "started_at": "2026-08-12T19:31:28.268Z",
+      "commit": "c5b6bfaee15add46174e5c9f75054470a1944b3e",
+      "workspace_fingerprint": "0d22c49a419c5c8cd74bed8c6012d42a2e736f39d1e908a8c9173d284f064a14",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 65.149,
+      "started_at": "2026-08-12T19:32:00.321Z",
+      "commit": "c5b6bfaee15add46174e5c9f75054470a1944b3e",
+      "workspace_fingerprint": "0d22c49a419c5c8cd74bed8c6012d42a2e736f39d1e908a8c9173d284f064a14",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {
-    "summary": "Added distinct generated FmpzVector and FmpqVector owned resources backed by one-column FLINT matrices, with canonical byte-region construction, deterministic close and retained-memory accounting, entry mutation and export, copy, equality, add/subtract, scalar multiplication, dot products, stable serialization, generated host adapters, and direct ASan/UBSan/LSan lifecycle coverage. No public Vector or Matrix integration and no algorithm-specific N-API were added.",
+    "summary": "Added distinct generated FmpzVector and FmpqVector owned resources backed by one-column FLINT matrices, with canonical byte-region construction, deterministic close and exact retained-memory accounting, entry mutation and export, copy, equality, add/subtract, scalar multiplication, dot products, stable serialization, generated host adapters, and direct ASan/UBSan/LSan lifecycle coverage. Rational setter failures now expose one honest ValueError domain and are regression-tested as atomic for zero denominators and out-of-range indices. Corrected inherited fmpz_mat accounting to match FLINT's contiguous-entry representation and proved the exact small-vector charge. No public Vector or Matrix integration and no algorithm-specific N-API were added.",
     "risks": [
       "The declarations are marked wasm-capable and use host-neutral FLINT headers, but this lane directly validated the generated Node adapter and C ABI rather than rebuilding a WASM FLINT host.",
       "The shared generated FLINT declaration files overlap the concurrent exact-matrix-pivot-ffi-v1 integration lane and must be regenerated once after both authoritative declaration changes are combined."
