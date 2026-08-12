@@ -48,7 +48,14 @@ print(json.dumps({
   const result = spawnSync(process.execPath, [join(root, "bin", "sagejs"), source], {
     cwd: root,
     encoding: "utf8",
-    env: { ...process.env, SAGEJS_NATIVE_REQUIRED: "1" },
+    env: {
+      ...process.env,
+      SAGEJS_NATIVE_REQUIRED: "1",
+      // Small exact matrices benchmark more reproducibly with a single BLAS
+      // worker. This also makes CPU and wall time directly comparable with
+      // SageMath's single-threaded reference measurement.
+      VECLIB_MAXIMUM_THREADS: "1",
+    },
     timeout: 120_000,
   });
   if (result.error) throw result.error;
