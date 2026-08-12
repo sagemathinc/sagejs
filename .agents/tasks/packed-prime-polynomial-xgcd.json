@@ -1,0 +1,136 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "packed-prime-polynomial-xgcd",
+  "title": "Packed Prime Polynomial Xgcd",
+  "lane": "arithmetic-algebra",
+  "status": "review",
+  "owner": "user",
+  "objective": "Add source-transparent packed GF(p)[x] xgcd with Sage-normalized monic gcd and Bezout identities",
+  "base_commit": "1bd487f2f38589b1e186b6c6a6a84860a115f9bf",
+  "claims": [
+    "src/lib/sagejs/polynomial_algorithms/packed_prime_xgcd.py",
+    "test/packed-prime-polynomial-xgcd.cjs",
+    "bench/packed-prime-polynomial-xgcd.cjs"
+  ],
+  "dependencies": [],
+  "references": [
+    "SageMath 10.9.post2 polynomial xgcd normalization"
+  ],
+  "architecture": {
+    "strategy": "source-transparent-native",
+    "fallback": "same-source",
+    "oracles": [
+      "sage",
+      "cpython",
+      "javascript"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "node --test test/packed-prime-polynomial-xgcd.cjs",
+    "pnpm test:baselib:strict",
+    "pnpm test:native"
+  ],
+  "runs": [
+    {
+      "command": "node --test test/packed-prime-polynomial-xgcd.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 4.179,
+      "started_at": "2026-08-12T08:38:03.932Z",
+      "commit": "97116b99d9b24ded43c80ec547fd9c1e8f77efbd",
+      "workspace_fingerprint": "50709afbbe6e5eab0fa66383bae43a1a0de2574a31e68aabf0ccec3eae72de49",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 13.213,
+      "started_at": "2026-08-12T08:38:12.904Z",
+      "commit": "97116b99d9b24ded43c80ec547fd9c1e8f77efbd",
+      "workspace_fingerprint": "50709afbbe6e5eab0fa66383bae43a1a0de2574a31e68aabf0ccec3eae72de49",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:native",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 2.031,
+      "started_at": "2026-08-12T08:38:35.618Z",
+      "commit": "97116b99d9b24ded43c80ec547fd9c1e8f77efbd",
+      "workspace_fingerprint": "50709afbbe6e5eab0fa66383bae43a1a0de2574a31e68aabf0ccec3eae72de49",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:native",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 149.459,
+      "started_at": "2026-08-12T08:39:05.739Z",
+      "commit": "97116b99d9b24ded43c80ec547fd9c1e8f77efbd",
+      "workspace_fingerprint": "50709afbbe6e5eab0fa66383bae43a1a0de2574a31e68aabf0ccec3eae72de49",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/packed-prime-polynomial-xgcd.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 4.42,
+      "started_at": "2026-08-12T08:51:31.902Z",
+      "commit": "1bd487f2f38589b1e186b6c6a6a84860a115f9bf",
+      "workspace_fingerprint": "aea0ad653431a655670375e97f240e6f15470904d4c65567b5f624c51f4b28bd",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 14.048,
+      "started_at": "2026-08-12T08:51:36.978Z",
+      "commit": "1bd487f2f38589b1e186b6c6a6a84860a115f9bf",
+      "workspace_fingerprint": "aea0ad653431a655670375e97f240e6f15470904d4c65567b5f624c51f4b28bd",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:native",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 530.109,
+      "started_at": "2026-08-12T08:52:00.284Z",
+      "commit": "1bd487f2f38589b1e186b6c6a6a84860a115f9bf",
+      "workspace_fingerprint": "aea0ad653431a655670375e97f240e6f15470904d4c65567b5f624c51f4b28bd",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:native",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 561.321,
+      "started_at": "2026-08-12T09:03:13.336Z",
+      "commit": "1bd487f2f38589b1e186b6c6a6a84860a115f9bf",
+      "workspace_fingerprint": "aea0ad653431a655670375e97f240e6f15470904d4c65567b5f624c51f4b28bd",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Added a lazy, source-transparent packed GF(p)[x] extended Euclidean kernel with Sage-normalized monic outputs, explicit logical lengths, degree-bounded caller-owned scratch, and one ordinary-Python fallback. Focused tests cover compiled, dynamic Sage.js, and CPython execution; Sage 10.9 fixtures; randomized Bezout, divisibility, and monicity checks over GF(2), GF(7), and GF(65521); zero inputs; non-coprime inputs; and transactional shape rejection. On degree 16 through 128 inputs over GF(65521), one compiled crossing takes 0.19 to 0.32 ms and is 31x to 101x faster than reconstructing extended Euclid from repeated public quo_rem calls.",
+    "risks": [
+      "The public PolynomialElement.xgcd method is intentionally not wired in this write-disjoint lane.",
+      "The kernel uses classical quadratic polynomial arithmetic and seven result-capacity scratch spans; a later measured crossover may favor a declared FLINT resource at high degrees.",
+      "The integration caller must preserve the documented disjointness of inputs, outputs, and scratch and pass canonical residues modulo the field characteristic."
+    ],
+    "next_steps": [
+      "Add a lazy loader in the public polynomial module, but do not add this module to the arithmetic bootstrap: the polynomial_algorithms package exists specifically to avoid increasing the compiler bootstrap budget.",
+      "For public wiring, allocate capacity max(1, left coefficient length, right coefficient length), three UInt64Buffer outputs of that capacity, a three-entry lengths buffer, and workspace of seven times capacity; invoke with the existing _uint64_kernel_input convention; trim with runtime.uint64_buffer_prefix; and construct all three values through left._new.",
+      "Differentially test the public xgcd surface and use the included benchmark to choose any eventual declared-FLINT crossover without changing the source-transparent small-degree implementation."
+    ]
+  }
+}
