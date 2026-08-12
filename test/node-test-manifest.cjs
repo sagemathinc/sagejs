@@ -8,6 +8,7 @@ const unit = [
   "test/cache.cjs",
   "test/cache-automatic.cjs",
   "test/native-math-profile.cjs",
+  "test/native-build-order.cjs",
   "test/runtime-cache.cjs",
   "test/startup-budget.cjs",
   "test/timing-core.cjs",

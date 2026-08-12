@@ -7,6 +7,7 @@ const { tmpdir } = require("node:os");
 const { join } = require("node:path");
 const { spawnSync } = require("node:child_process");
 const test = require("node:test");
+const { bootstrapBuildPlan } = require("../scripts/bootstrap.cjs");
 
 const root = join(__dirname, "..");
 
@@ -173,12 +174,16 @@ print('fflas dynamic adapter semantics ok')
 });
 
 test("clean native and SEA build paths establish optional FFLAS first", () => {
-  const bootstrap = readFileSync(join(root, "scripts", "bootstrap.cjs"), "utf8");
-  const flint = bootstrap.indexOf('["--dir", "packages/flint", "build"]');
-  const fflas = bootstrap.indexOf('["--dir", "packages/fflas", "build"]');
-  const graph = bootstrap.indexOf('["--dir", "packages/graph", "build"]');
-  const build = bootstrap.indexOf('["run", "build"]');
-  assert.ok(flint >= 0 && flint < fflas && fflas < graph && graph < build);
+  const commands = bootstrapBuildPlan().map(({ command, arguments: args }) =>
+    `${command} ${args.join(" ")}`
+  );
+  assert.deepEqual(commands, [
+    "pnpm run build",
+    "pnpm --dir packages/flint build",
+    "pnpm --dir packages/fflas build",
+    "pnpm --dir packages/graph build",
+    "node scripts/build-production-native-kernels.cjs",
+  ]);
 
   const buildSource = readFileSync(join(root, "scripts", "build.cjs"), "utf8");
   assert.match(buildSource, /generatedFlintAdapter\) && existsSync\(generatedFflasAdapter/);
