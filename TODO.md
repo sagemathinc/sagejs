@@ -8,9 +8,17 @@
   each old native path only as a differential oracle until deletion.
 - Make every declared FFI dynamic fallback behave identically in a source
   checkout, the SEA, future CPython adapters, and WebAssembly-capable hosts.
-- Extend the generated WebAssembly resource adapter from its real
-  `DirichletGroup` lifecycle smoke to `FmpqMatrix` plus copied byte regions,
-  then verify the package-loader and `FinalizationRegistry` path in a browser.
+- Complete dense `GF(2)` as a generated M4RI resource vertical slice, with a
+  bit-packed portable fallback and explicit conversions only for algorithms
+  better served by FLINT.
+- Give dense `ZZ` rank a cheap generated modular full-rank certificate before
+  exact FLINT elimination, while preserving an explicit exact-algorithm path.
+- Finish the public `ZZ[x]`, `QQ[x]`, and small-prime `GF(p)[x]` core API with
+  single-computation quotient/remainder, indexing, derivatives, and Sage
+  differential tests.
+- Make generated-resource lifetime accounting and finalizer backpressure
+  uniformly cheap for large temporary exact objects; explicit close remains
+  deterministic and finalization remains a safe fallback.
 - Use compiler-owned packed mathematical objects where they give a complete,
   fast host-independent vertical slice; use generated opaque resources for
   mature exact libraries and copy only at explicit representation boundaries.
@@ -28,9 +36,8 @@
 
 ## Measurement and performance ergonomics
 
-- Make `time` report user, system, total CPU, and wall time. Instrument and
-  separately report lazy initialization performed inside the timed statement,
-  with an optional breakdown of module, addon, and native-kernel loading.
+- Extend the new `time` CPU/wall/initialization report with an optional
+  breakdown of module, addon, and native-kernel loading.
 - Implement `%timeit` with compilation once, automatic loop calibration,
   warmup, high-resolution timing, current-scope semantics, suppressed result
   printing, and the familiar `-n` and `-r` controls.
