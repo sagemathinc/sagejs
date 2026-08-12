@@ -981,6 +981,18 @@ class MatrixSpaceParent(sage.Parent):
                 raise ValueError(
                     "packed matrix residue count does not match dimensions"
                 )
+            if _uses_m4ri_resource(self._base) and width == 1:
+                ffi = _m4ri_ffi_module()
+                region = ffi.M4riByteRegion.from_bytes(entries)
+                try:
+                    resource = ffi.matrix_from_sagepack_bytes(
+                        region,
+                        self._rows,
+                        self._cols,
+                    )
+                finally:
+                    region.close()
+                return self._from_m4ri_matrix_resource(resource)
             values = runtime.uint64_unpack_le(entries, width, count)
             return self._from_uint64_residues(values)
         backend = runtime.flint_backend()
@@ -2818,6 +2830,23 @@ class Matrix(sage.Element):
                     self.ncols(),
                 )._from_integer_values(self._rational_numerators())
             return matrix(base, self.nrows(), self.ncols(), self.list())
+        if (
+            self.base_ring() is sage.ZZ
+            and _is_packed_dense_prime_base(base)
+            and self._has_fmpz_matrix_resource()
+        ):
+            modulus = int(_untyped(base).characteristic())
+            width = 1 if modulus <= 0x100 else 2 if modulus <= 0x10000 else 4
+            region = _flint_ffi_module().fmpz_matrix_export_mod_ui(
+                self._integer_resource(),
+                modulus,
+                width,
+            )
+            return MatrixSpace(
+                base,
+                self.nrows(),
+                self.ncols(),
+            )._from_packed_residues(region.take_bytes(), width)
         if self.base_ring() is sage.ZZ and (
             _is_modular_base(base)
             or _is_extension_field_base(base)

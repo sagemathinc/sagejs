@@ -1,0 +1,130 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "zz-matrix-modp-conversion",
+  "title": "Zz Matrix Modp Conversion",
+  "lane": "integration",
+  "status": "review",
+  "owner": "user",
+  "objective": "Convert canonical generated FmpzMatrix resources directly to packed dense GF(p) storage for Matrix.change_ring without host Integer materialization, including p=2, fallbacks, differential tests, and benchmarks",
+  "base_commit": "07c2962d602d200874a4787d8c17496d698f30a3",
+  "claims": [
+    "ffi/flint.ffi.py",
+    "ffi/flint.ffi.json",
+    "packages/flint/include/sagejs/fmpz_matrix_ffi.h",
+    "packages/flint/generated/ffi_host.py",
+    "src/lib/sagejs/ffi/flint.py",
+    "src/baselib/sagejs/ffi/flint.py",
+    "src/baselib/matrix.py",
+    "test/fmpz-matrix-modp-conversion.cjs",
+    "test/node-test-manifest.cjs",
+    "test/ffi.cjs",
+    "bench/fmpz-matrix-modp-conversion.cjs",
+    "architecture/native-boundaries.json"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "external-library",
+    "fallback": "tested-capability",
+    "oracles": [
+      "Current public Matrix.change_ring behavior",
+      "SageMath dense integer matrix conversion to GF(p)"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm architecture:check",
+    "pnpm test:portable",
+    "pnpm test:baselib:strict"
+  ],
+  "runs": [
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 12.751,
+      "started_at": "2026-08-12T05:30:23.419Z",
+      "commit": "07c2962d602d200874a4787d8c17496d698f30a3",
+      "workspace_fingerprint": "07900fa5b77c405ec2ecfd4d546ba5e7b506714149a55f78641876f0929a2801",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 39.65,
+      "started_at": "2026-08-12T05:30:44.079Z",
+      "commit": "07c2962d602d200874a4787d8c17496d698f30a3",
+      "workspace_fingerprint": "07900fa5b77c405ec2ecfd4d546ba5e7b506714149a55f78641876f0929a2801",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 12.823,
+      "started_at": "2026-08-12T05:32:05.362Z",
+      "commit": "07c2962d602d200874a4787d8c17496d698f30a3",
+      "workspace_fingerprint": "e3a8ac8a9d3e6858dc5885c607a69ea5d9026bd8c040a373193ebe458fa27c76",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 39.748,
+      "started_at": "2026-08-12T05:32:24.392Z",
+      "commit": "07c2962d602d200874a4787d8c17496d698f30a3",
+      "workspace_fingerprint": "e3a8ac8a9d3e6858dc5885c607a69ea5d9026bd8c040a373193ebe458fa27c76",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 13.921,
+      "started_at": "2026-08-12T05:33:38.849Z",
+      "commit": "07c2962d602d200874a4787d8c17496d698f30a3",
+      "workspace_fingerprint": "b1eb3d2a03475f55fecdd7faee8c0f6e84c21674367cfb82da349510f8675836",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 13.951,
+      "started_at": "2026-08-12T05:34:00.031Z",
+      "commit": "07c2962d602d200874a4787d8c17496d698f30a3",
+      "workspace_fingerprint": "b1eb3d2a03475f55fecdd7faee8c0f6e84c21674367cfb82da349510f8675836",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 41.319,
+      "started_at": "2026-08-12T05:34:21.490Z",
+      "commit": "07c2962d602d200874a4787d8c17496d698f30a3",
+      "workspace_fingerprint": "b1eb3d2a03475f55fecdd7faee8c0f6e84c21674367cfb82da349510f8675836",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Added a generated FLINT FmpzMatrix-to-minimal-width byte-region reduction and routed dense ZZ Matrix.change_ring(GF(p)) through it without scalar entry calls, serialization, IntegerBuffer decoding, or host Integer lists. GF(2) enters the existing canonical M4RI resource directly from packed bytes when available; other supported small primes enter canonical UInt64 storage. Public and raw-boundary tests cover huge signed skew entries, empty shapes, closed resources, malformed modulus/width inputs, mutation snapshots, and native-disabled execution. The SageMath 10.9 oracle agrees for p=2,3,97,65521,4294967291. On one million entries, warm conversion measured 6.5 ms for GF(2) and 19.3 ms for GF(97), versus 87.4 ms through host Integer materialization.",
+    "risks": [
+      "FmpzMatrix resources remain declared wasm=False, so this boundary inherits the existing native-only exact-integer resource capability rather than proving a new browser lowering.",
+      "The generated copied-byte ownership contract performs one FLINT-to-host copy; GF(2) then performs the existing host-to-M4RI copied ingress because independently generated libraries cannot share raw pointers. The measured million-entry path remains 6.5 ms."
+    ],
+    "next_steps": [
+      "Integrate the commit on dense-qq-resources and retain the benchmark as a regression/crossover witness.",
+      "Consider a general generated cross-library byte transfer only if profiling finds the GF(2) copy material; do not add shared raw-pointer ownership speculatively."
+    ]
+  }
+}
