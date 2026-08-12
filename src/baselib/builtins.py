@@ -5684,30 +5684,33 @@ def random_prime(
     proof: Any = True,
     lbound: Any = 2,
 ) -> Any:
+    """Return a uniformly selected prime in the inclusive interval."""
     del proof
     upper = runtime.integer_bigint(upper_bound)
-    lower = runtime.integer_bigint(lbound)
+    requested_lower = runtime.integer_bigint(lbound)
+    if upper < runtime.bigint(2):
+        raise ValueError("n must be greater than or equal to 2")
+    if upper < requested_lower:
+        raise ValueError("n must be at least lbound: " + str(lbound))
+    lower = requested_lower
     if lower < runtime.bigint(2):
         lower = runtime.bigint(2)
-    if lower > upper:
-        raise ValueError("the lower bound must not exceed the upper bound")
-    span = runtime.native_add(runtime.native_sub(upper, lower), runtime.bigint(1))
-    start = runtime.native_add(
-        lower,
-        runtime.bigint(
-            runtime.math.floor(runtime.math.random() * runtime.number(span))
-        ),
+    smallest_prime = runtime.flint_backend().nextPrime(
+        runtime.native_sub(lower, runtime.bigint(1))
     )
-    answer = runtime.flint_backend().nextPrime(
-        runtime.native_sub(start, runtime.bigint(1))
-    )
-    if answer > upper:
-        answer = runtime.flint_backend().nextPrime(
-            runtime.native_sub(lower, runtime.bigint(1))
+    if smallest_prime > upper:
+        raise ValueError(
+            "there are no primes between "
+            + str(runtime.normalize_integer(lower))
+            + " and "
+            + str(runtime.normalize_integer(upper))
+            + " (inclusive)"
         )
-    if answer > upper:
-        raise ValueError("no prime in the specified interval")
-    return runtime.normalize_integer(answer)
+    span = runtime.native_add(runtime.native_sub(upper, lower), runtime.bigint(1))
+    while True:
+        candidate = runtime.native_add(lower, _sage_random_bigint_below(span))
+        if runtime.flint_backend().isPrime(candidate):
+            return runtime.normalize_integer(candidate)
 
 
 def legendre_symbol(numerator: Any, prime: Any) -> _Int:
@@ -6472,6 +6475,11 @@ def zeta(value: Any) -> Any:
     return answer
 
 
+def _sage_random_word() -> _Int:
+    random_module = __import__("random")
+    return runtime.number(random_module.getrandbits(32))
+
+
 def _sage_random_float() -> _Float:
     state = runtime.reflect.get(runtime.global_object, "__sagejs_random_state__")
     if state is runtime.undefined:
@@ -6487,6 +6495,38 @@ def _sage_random_float() -> _Float:
     return ρσ_float_result(runtime.native_div(state, 4294967296))
 
 
+def _sage_random_bigint_below(
+    upper_bound: Any,
+    draw_word: Callable[[], Any] | None = None,
+) -> Any:
+    """Return an exact uniform integer in `[0, upper_bound)`."""
+    upper = runtime.integer_bigint(upper_bound)
+    if upper <= runtime.bigint(0):
+        raise ValueError("random upper bound must be positive")
+    if upper == runtime.bigint(1):
+        return runtime.bigint(0)
+    if draw_word is None:
+        draw_word = _sage_random_word
+
+    bit_count = runtime.native_sub(upper, runtime.bigint(1)).bit_length()
+    word_count = (bit_count + 31) // 32
+    bit_modulus = runtime.native_lshift(runtime.bigint(1), runtime.bigint(bit_count))
+    word_modulus = runtime.bigint(4294967296)
+    while True:
+        candidate = runtime.bigint(0)
+        for _index in range(word_count):
+            word = runtime.integer_bigint(draw_word())
+            if word < runtime.bigint(0) or word >= word_modulus:
+                raise ValueError("random word must be between 0 and 2^32 - 1")
+            candidate = runtime.native_add(
+                runtime.native_lshift(candidate, runtime.bigint(32)),
+                word,
+            )
+        candidate = runtime.native_mod(candidate, bit_modulus)
+        if candidate < upper:
+            return candidate
+
+
 def set_random_seed(seed_value: Any) -> None:
     text = str(seed_value)
     state = 5381
@@ -6499,13 +6539,8 @@ def set_random_seed(seed_value: Any) -> None:
         "__sagejs_random_state__",
         runtime.number(state),
     )
-    random_module = runtime.reflect.get(runtime.modules, "random")
-    if random_module is not runtime.undefined:
-        runtime.reflect.apply(
-            runtime.reflect.get(random_module, "seed"),
-            random_module,
-            [seed_value],
-        )
+    random_module = __import__("random")
+    random_module.seed(seed_value)
 
 
 def random() -> _Float:
@@ -6519,12 +6554,7 @@ def randint(start: Any, stop: Any) -> Any:
         raise ValueError("empty range for randint()")
     span = runtime.native_add(runtime.native_sub(upper, lower), runtime.bigint(1))
     return runtime.normalize_integer(
-        runtime.native_add(
-            lower,
-            runtime.bigint(
-                runtime.math.floor(_sage_random_float() * runtime.number(span))
-            ),
-        )
+        runtime.native_add(lower, _sage_random_bigint_below(span))
     )
 
 
