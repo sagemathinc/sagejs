@@ -11,17 +11,17 @@
   },
   "results": [
     {
-      "id": "src/baselib/polynomial.py:3504",
+      "id": "src/baselib/polynomial.py:3857",
       "status": "pass",
       "actual": ""
     },
     {
-      "id": "src/baselib/polynomial.py:3505",
+      "id": "src/baselib/polynomial.py:3858",
       "status": "pass",
       "actual": "Affine Space of dimension 2 over Rational Field\n"
     },
     {
-      "id": "src/baselib/polynomial.py:3507",
+      "id": "src/baselib/polynomial.py:3860",
       "status": "pass",
       "actual": "(x, y)\n"
     },
@@ -61,17 +61,17 @@
       "actual": "(3, [0.0, 0.0, 0], 3)\n"
     },
     {
-      "id": "src/baselib/polynomial.py:3660",
+      "id": "src/baselib/polynomial.py:4013",
       "status": "pass",
       "actual": ""
     },
     {
-      "id": "src/baselib/polynomial.py:3661",
+      "id": "src/baselib/polynomial.py:4014",
       "status": "pass",
       "actual": ""
     },
     {
-      "id": "src/baselib/polynomial.py:3662",
+      "id": "src/baselib/polynomial.py:4015",
       "status": "pass",
       "actual": "[Closed subscheme of Affine Space of dimension 2 over Rational Field defined by:\n  x^2 + y^2 - 1, Closed subscheme of Affine Space of dimension 2 over Rational Field defined by:\n  x^3 + y^3 - 1]\n"
     },
@@ -538,7 +538,7 @@
     {
       "id": "src/sage/graphs/generators/random.py:95",
       "status": "pass",
-      "actual": "sagejs/runtime-bootstrap-sage.js:<location>\n        throw ρσ_exception_value(new ValueError(\"'algorithm' must be equal to 'networkx' or to 'Sage'\"));\n        ^\n\nValueError: 'algorithm' must be equal to 'networkx' or to 'Sage'\n    at ValueError.ρσ_method___init__ [as __init__] (sagejs/runtime-bootstrap-sage.js:<location>)\n    at ValueError.__init__ (sagejs/runtime-bootstrap-sage.js:<location>)\n    at ValueError.__init__ (sagejs/runtime-bootstrap-sage.js:<location>)\n    at new ValueError (sagejs/runtime-bootstrap-sage.js:<location>)\n    at GraphGenerators.ρσ_method_RandomGNP [as RandomGNP] (sagejs/runtime-bootstrap-sage.js:<location>)\n    at ρσ_interpolate_kwargs (sagejs/runtime-bootstrap-sage.js:<location>)\n    at evalmachine.<anonymous>:<location>\n    at Script.runInThisContext (node:vm:<location>)\n    at runInThisContext (node:vm:<location>)\n    at runJS (<SAGEJS_ROOT>/dist/tools/repl.js:<location>)\n"
+      "actual": "sagejs/runtime-bootstrap-sage.js:<location>\n        throw ρσ_exception_value(new ValueError(\"'algorithm' must be equal to 'networkx' or to 'Sage'\"));\n        ^\n\nValueError: 'algorithm' must be equal to 'networkx' or to 'Sage'\n    at ValueError.ρσ_method___init__ [as __init__] (sagejs/runtime-bootstrap-sage.js:<location>)\n    at ValueError.__init__ (sagejs/runtime-bootstrap-sage.js:<location>)\n    at ValueError.__init__ (sagejs/runtime-bootstrap-sage.js:<location>)\n    at new ValueError (sagejs/runtime-bootstrap-sage.js:<location>)\n    at GraphGenerators.ρσ_method_RandomGNP [as RandomGNP] (sagejs/runtime-bootstrap-sage.js:<location>)\n    at ρσ_interpolate_kwargs (sagejs/runtime-bootstrap-sage.js:<location>)\n    at evalmachine.<anonymous>:<location>\n    at Script.runInThisContext (node:vm:<location>)\n    at runInThisContext (node:vm:<location>)\n    at execute (<SAGEJS_ROOT>/dist/tools/repl.js:<location>)\n"
     },
     {
       "id": "src/sage/graphs/generators/random.py:99",
@@ -592,17 +592,17 @@
       "actual": "[[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]]\n"
     },
     {
-      "id": "src/baselib/matrix.py:6109",
+      "id": "src/baselib/matrix.py:6411",
       "status": "pass",
       "actual": ""
     },
     {
-      "id": "src/baselib/matrix.py:6110",
+      "id": "src/baselib/matrix.py:6412",
       "status": "pass",
       "actual": "-2\n"
     },
     {
-      "id": "src/baselib/matrix.py:6112",
+      "id": "src/baselib/matrix.py:6414",
       "status": "pass",
       "actual": "[1 0]\n[0 1]\n"
     },
@@ -782,37 +782,37 @@
       "actual": "Graphics3d Object\n"
     },
     {
-      "id": "src/baselib/polynomial.py:3889",
+      "id": "src/baselib/polynomial.py:4242",
       "status": "pass",
       "actual": ""
     },
     {
-      "id": "src/baselib/polynomial.py:3890",
+      "id": "src/baselib/polynomial.py:4243",
       "status": "pass",
       "actual": "(x + 1) * (x - 1) * (x^2 + 1)\n"
     },
     {
-      "id": "src/baselib/polynomial.py:3892",
+      "id": "src/baselib/polynomial.py:4245",
       "status": "pass",
       "actual": ""
     },
     {
-      "id": "src/baselib/polynomial.py:3893",
+      "id": "src/baselib/polynomial.py:4246",
       "status": "pass",
       "actual": "x^3 + x^2*y + x*y^2 + y^3\n"
     },
     {
-      "id": "src/baselib/builtins.py:5768",
+      "id": "src/baselib/builtins.py:5825",
       "status": "pass",
       "actual": "4\n"
     },
     {
-      "id": "src/baselib/builtins.py:5770",
+      "id": "src/baselib/builtins.py:5827",
       "status": "pass",
       "actual": "25\n"
     },
     {
-      "id": "src/baselib/builtins.py:5772",
+      "id": "src/baselib/builtins.py:5829",
       "status": "pass",
       "actual": "37607912018\n"
     },
@@ -832,17 +832,17 @@
       "actual": "(3,)\n"
     },
     {
-      "id": "src/baselib/matrix.py:6451",
+      "id": "src/baselib/matrix.py:6882",
       "status": "pass",
       "actual": ""
     },
     {
-      "id": "src/baselib/matrix.py:6452",
+      "id": "src/baselib/matrix.py:6883",
       "status": "pass",
       "actual": "(3, 5, Integer Ring)\n"
     },
     {
-      "id": "src/baselib/matrix.py:6454",
+      "id": "src/baselib/matrix.py:6885",
       "status": "pass",
       "actual": "True\n"
     },
@@ -857,12 +857,12 @@
       "actual": "276595200\n"
     },
     {
-      "id": "src/baselib/matrix.py:6208",
+      "id": "src/baselib/matrix.py:6517",
       "status": "pass",
       "actual": ""
     },
     {
-      "id": "src/baselib/matrix.py:6214",
+      "id": "src/baselib/matrix.py:6523",
       "status": "pass",
       "actual": "(5, 1, 3, 6, 8, 7, 2, 4, 9)\n"
     },

@@ -1,0 +1,98 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "website-reference-refresh",
+  "title": "Refresh website reference example IDs",
+  "lane": "documentation-compat",
+  "status": "active",
+  "owner": "user",
+  "objective": "Regenerate and verify website reference artifacts after known documentation example line-ID moves without accepting new compatibility failures",
+  "base_commit": "8f87f908aca55e386c6d4af77fef3c791bf0b148",
+  "claims": [
+    "website/"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "not-applicable",
+    "fallback": "not-applicable",
+    "oracles": [
+      "pnpm docs:verify"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "not-applicable",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm docs:verify",
+    "pnpm docs:check",
+    "pnpm test:tutorial",
+    "node --test test/website.cjs test/dashboard-examples.cjs test/coverage-graphs.cjs",
+    "pnpm test:website:browser"
+  ],
+  "runs": [
+    {
+      "command": "pnpm docs:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 141.879,
+      "started_at": "2026-08-12T01:57:13.906Z",
+      "commit": "8f87f908aca55e386c6d4af77fef3c791bf0b148",
+      "workspace_fingerprint": "4289e9c98e346244319ed20f3bb6df3c40d486857229e0eb704fbc72406a8d94",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:tutorial",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 153.143,
+      "started_at": "2026-08-12T01:59:45.714Z",
+      "commit": "8f87f908aca55e386c6d4af77fef3c791bf0b148",
+      "workspace_fingerprint": "4289e9c98e346244319ed20f3bb6df3c40d486857229e0eb704fbc72406a8d94",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm docs:verify",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 174.288,
+      "started_at": "2026-08-12T02:04:26.503Z",
+      "commit": "8f87f908aca55e386c6d4af77fef3c791bf0b148",
+      "workspace_fingerprint": "4289e9c98e346244319ed20f3bb6df3c40d486857229e0eb704fbc72406a8d94",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/website.cjs test/dashboard-examples.cjs test/coverage-graphs.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 18.265,
+      "started_at": "2026-08-12T02:07:25.375Z",
+      "commit": "8f87f908aca55e386c6d4af77fef3c791bf0b148",
+      "workspace_fingerprint": "4289e9c98e346244319ed20f3bb6df3c40d486857229e0eb704fbc72406a8d94",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:website:browser",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.319,
+      "started_at": "2026-08-12T02:07:48.209Z",
+      "commit": "8f87f908aca55e386c6d4af77fef3c791bf0b148",
+      "workspace_fingerprint": "4289e9c98e346244319ed20f3bb6df3c40d486857229e0eb704fbc72406a8d94",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Regenerated the executable reference corpus after source line moves. All 21 previously unverified examples are verified again, with 127 passes, 2 expected failures, 4 skips, and zero failures across the 133 directly executed examples; the published reference manual contains 262 passes, 2 expected failures, 4 skips, and zero unverified or failing examples.",
+    "risks": [
+      "The lane's inherited `pnpm test:tutorial` gate currently has eight failures on the unchanged base revision; none is caused by the generated website artifacts."
+    ],
+    "next_steps": [
+      "Implement the content-addressed documentation example identities already recorded in TODO.md on the integration branch so unrelated line insertions no longer invalidate verification."
+    ]
+  }
+}
