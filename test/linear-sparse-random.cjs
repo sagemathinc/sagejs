@@ -229,6 +229,14 @@ raises(
     "nonnegative",
     lambda: sparse.sage_row_sparse_random_spec(-1, 2, 0.5),
 )
+for invalid_dimension in [True, 1.5, "2"]:
+    raises(
+        TypeError,
+        "dimensions must be integers",
+        lambda invalid_dimension=invalid_dimension: sparse.sage_row_sparse_random_spec(
+            invalid_dimension, 2, 0.5
+        ),
+    )
 raises(
     ValueError,
     "collision",
@@ -250,6 +258,16 @@ raises(
         draw_nonzero=lambda: 1,
     ),
 )
+for invalid_column in [True, 0.5, "0"]:
+    raises(
+        TypeError,
+        "noninteger column",
+        lambda invalid_column=invalid_column: sparse.sample_sparse_random_spec(
+            sparse.sage_row_sparse_random_spec(1, 2, 0.5),
+            draw_index=lambda bound, invalid_column=invalid_column: invalid_column,
+            draw_nonzero=lambda: 1,
+        ),
+    )
 raises(
     ValueError,
     "returned zero",
