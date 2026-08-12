@@ -4,7 +4,7 @@
   "id": "arbitrary-prime-poly-contract",
   "title": "Arbitrary-prime polynomial resource contract",
   "lane": "arithmetic-algebra",
-  "status": "review",
+  "status": "active",
   "owner": "user",
   "objective": "Specify and test Sage-compatible GF(p)[x] semantics for p at least 2^64 and define a representation-neutral generated-resource protocol owning fmpz_mod_ctx_t plus fmpz_mod_poly_t without caller capacity prediction or cross-resource lifetime coupling",
   "base_commit": "f29c602daa5f85511caa7dfa8e24f39c04df789f",
@@ -30,7 +30,7 @@
   "platforms": {
     "linux-x64": "required",
     "linux-arm64": "required",
-    "windows-x64": "fallback",
+    "windows-x64": "required",
     "macos-arm64": "required"
   },
   "validation": [
@@ -121,15 +121,65 @@
       "commit": "fd939215a46cc0f285c46357222ba0b7de702455",
       "workspace_fingerprint": "74cb9aba33ef066d926fa28b2fad2fd7f15112151bd3cad8d4a1292de8a12b03",
       "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/arbitrary-prime-polynomial-contract.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.197,
+      "started_at": "2026-08-12T11:56:52.457Z",
+      "commit": "ee3f4975a2edf7fbfb9c53142436d35bbe737d1d",
+      "workspace_fingerprint": "dffa1ba94a953f4e90648888fec14162a98e13938b0bc5153812728f3c74a6a6",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/arbitrary-prime-polynomial-contract.cjs --check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.158,
+      "started_at": "2026-08-12T11:56:53.265Z",
+      "commit": "ee3f4975a2edf7fbfb9c53142436d35bbe737d1d",
+      "workspace_fingerprint": "dffa1ba94a953f4e90648888fec14162a98e13938b0bc5153812728f3c74a6a6",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm exec pyright --pythonversion 3.11 src/lib/sagejs/polynomial_algorithms/arbitrary_prime_contract.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.254,
+      "started_at": "2026-08-12T11:56:55.047Z",
+      "commit": "ee3f4975a2edf7fbfb9c53142436d35bbe737d1d",
+      "workspace_fingerprint": "dffa1ba94a953f4e90648888fec14162a98e13938b0bc5153812728f3c74a6a6",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 13.63,
+      "started_at": "2026-08-12T11:56:56.940Z",
+      "commit": "ee3f4975a2edf7fbfb9c53142436d35bbe737d1d",
+      "workspace_fingerprint": "dffa1ba94a953f4e90648888fec14162a98e13938b0bc5153812728f3c74a6a6",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 14.488,
+      "started_at": "2026-08-12T11:57:11.315Z",
+      "commit": "ee3f4975a2edf7fbfb9c53142436d35bbe737d1d",
+      "workspace_fingerprint": "dffa1ba94a953f4e90648888fec14162a98e13938b0bc5153812728f3c74a6a6",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {
-    "summary": "Defined the arbitrary-prime GF(p)[x] boundary as one self-contained generated owner of both fmpz_mod_ctx_t and fmpz_mod_poly_t. Operands are borrowed only for a synchronous call; each polynomial result is a fresh callee-owned resource with its own equivalent context; division, xgcd, and factor aggregates extract independent child owners; text and serialization use callee-owned variable-size regions; callers never predict capacities. An ordinary CPython fallback proves construction normalization, arithmetic, divrem, monic gcd/xgcd including (0,0), evaluation, and formatting at the Mersenne primes 2^89-1, 2^127-1, and 2^521-1. SageMath 10.9.post1 observations pin explicit cross-parent construction versus binary mismatch, zero factor/roots behavior, factor unit and root multiplicity conventions, and serialization parent identity. The benchmark records the current Sage.js unsigned-word RangeError plus cold and warm Sage reference measurements.",
+    "summary": "Defined arbitrary-prime GF(p)[x] as one sealed generated owner of both fmpz_mod_ctx_t and fmpz_mod_poly_t on every native platform. Operands are rooted synchronous borrows, exact moduli are compared before each multi-resource call, and every polynomial or aggregate child result is a fresh self-contained owner. Callers never predict variable result capacities. Executable oracles pin normalization, arithmetic, public ZeroDivisionError, monic gcd/xgcd including (0,0), factor leading-unit extraction, monic factors, canonical roots with exact multiplicities, and formatting through 521-bit primes. Native SJMP v1 bytes contain only modulus and coefficients; a distinct SagePack envelope owns the variable, sparse flag, and canonical-parent restoration. The benchmark now reproduces the existing unsigned-word RangeError through the public PolynomialRing API and records Sage 10.9 baselines.",
     "risks": [
       "The public finite-field parent currently exists for arbitrary primes, but polynomial.py classifies moduli above 2^64 as legacy and reaches nmod_poly, which rejects them. This lane deliberately does not wire or alter that shared public path.",
-      "The fallback factor and roots semantics are pinned, but factorization itself is delegated to future generated fmpz_mod_poly_factor declarations; recreating it in Python would defeat the architecture and performance objective.",
+      "Factorization itself is delegated to future generated fmpz_mod_poly_factor declarations; the executable adapter oracle specifies the missing FLINT unit handling and zero behavior, and recreating production factorization in Python would defeat the architecture and performance objective.",
       "The generated FFI schema must ensure extracted aggregate children clone or take ownership of an equivalent context. A child that borrows an aggregate or parent context would violate the no cross-resource lifetime dependency contract.",
-      "Windows uses the same-source fallback until its FLINT build exposes the generated resource capability; WebAssembly still needs the same declaration lowered to owned linear-memory state."
+      "Windows must expose the same generated FLINT resource rather than an incomplete operation-dependent fallback. WebAssembly still needs the same declaration lowered to owned linear-memory state."
     ],
     "next_steps": [
       "Independently review the Sage 10.9 observations and the resource lifetime contract before integration.",
