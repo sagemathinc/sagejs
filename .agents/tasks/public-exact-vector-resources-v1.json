@@ -12,7 +12,6 @@
     "src/baselib/matrix.py",
     "src/lib/sagejs/linear_algebra/exact_vector_public.py",
     "src/lib/sagejs/linear_algebra/matrix_vector_public.py",
-    "pyrightconfig.json",
     "test/public-exact-vector-resources.cjs",
     "test/node-test-manifest.cjs",
     "bench/public-exact-vector-resources.cjs"
@@ -44,6 +43,7 @@
     "node --test test/public-exact-vector-resources.cjs test/public-matrix-vector.cjs test/linear-vector-contract.cjs test/exact-vector-resource-core.cjs",
     "node bench/public-exact-vector-resources.cjs",
     "pnpm test:baselib:strict",
+    "pnpm test:native",
     "pnpm architecture:check",
     "pnpm parallel:check"
   ],
@@ -56,6 +56,7 @@
     ],
     "next_steps": [
       "Add direct FmpzVector/FmpqVector matrix-vector declarations to remove the remaining canonical-byte copy.",
+      "Register exact_vector_public.py in pyrightconfig.json through the shared integration lane.",
       "Extend resource-backed bulk publication to exact matrix rows, columns, and diagonals when profiling justifies it."
     ]
   }

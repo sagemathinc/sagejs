@@ -50,7 +50,6 @@
     "src/lib/sagejs/linear_algebra/__init__.py",
     "src/lib/sagejs/linear_algebra/combinatorial.py",
     "src/lib/sagejs/linear_algebra/decompositions.py",
-    "src/lib/sagejs/linear_algebra/exact_vector_public.py",
     "src/lib/sagejs/linear_algebra/matrix_selection.py",
     "src/lib/sagejs/linear_algebra/matrix_predicates.py",
     "src/lib/sagejs/linear_algebra/matrix_subspaces.py",
