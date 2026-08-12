@@ -111,15 +111,18 @@ assert A._has_m4ri_matrix_resource() and B._has_m4ri_matrix_resource()
 start = perf_counter(); C = A*B; multiply = perf_counter()-start
 start = perf_counter(); rank = A.rank(); rank_time = perf_counter()-start
 start = perf_counter(); reduced = A.rref(); rref_time = perf_counter()-start
+start = perf_counter(); reduced_rank = reduced.rank(); reduced_rank_time = perf_counter()-start
 assert C._has_m4ri_matrix_resource() and reduced._has_m4ri_matrix_resource()
 assert not hasattr(A, "_prime_residues_cache")
-print(multiply, rank_time, rref_time, rank)
+assert reduced_rank == rank
+print(multiply, rank_time, rref_time, reduced_rank_time, rank)
 `;
 const fields = runSage(benchmarkScript).split(/\s+/).map(Number);
-assert.equal(fields.length, 4);
+assert.equal(fields.length, 5);
 assert.ok(fields[0] < 0.1, `warm public M4RI multiply took ${fields[0]}s`);
 assert.ok(fields[1] < 0.1, `warm public M4RI rank took ${fields[1]}s`);
 assert.ok(fields[2] < 0.1, `warm public M4RI RREF took ${fields[2]}s`);
+assert.ok(fields[3] < 0.01, `cached RREF rank query took ${fields[3]}s`);
 
 // Keep a cheap JS timing witness so this file itself cannot accidentally
 // become a multi-second process-orchestration test outside mathematical work.

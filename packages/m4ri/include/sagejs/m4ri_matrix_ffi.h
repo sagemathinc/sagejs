@@ -23,6 +23,8 @@ typedef struct
     mzd_t *value;
 #endif
     size_t retained_bytes;
+    uint64_t known_rank;
+    int rank_is_known;
 } sagejs_m4ri_matrix_struct;
 
 typedef sagejs_m4ri_matrix_struct sagejs_m4ri_matrix_t[1];
@@ -140,7 +142,20 @@ static inline int sagejs_m4ri_matrix_adopt(
     result->value = value;
     result->retained_bytes =
         value == NULL ? 0 : sagejs_m4ri_matrix_physical_bytes(value);
+    result->known_rank = 0;
+    result->rank_is_known =
+        value != NULL && (value->nrows == 0 || value->ncols == 0);
     return value != NULL;
+}
+
+static inline int sagejs_m4ri_matrix_adopt_with_rank(
+    sagejs_m4ri_matrix_t result, mzd_t *value, uint64_t rank)
+{
+    if (!sagejs_m4ri_matrix_adopt(result, value))
+        return 0;
+    result->known_rank = rank;
+    result->rank_is_known = 1;
+    return 1;
 }
 
 static inline int sagejs_m4ri_matrix_init(
@@ -150,9 +165,11 @@ static inline int sagejs_m4ri_matrix_init(
     rci_t c;
     result->value = NULL;
     result->retained_bytes = 0;
+    result->known_rank = 0;
+    result->rank_is_known = 0;
     if (!sagejs_m4ri_checked_dimensions(rows, columns, &r, &c))
         return 0;
-    return sagejs_m4ri_matrix_adopt(result, mzd_init(r, c));
+    return sagejs_m4ri_matrix_adopt_with_rank(result, mzd_init(r, c), 0);
 }
 
 static inline void sagejs_m4ri_matrix_clear(sagejs_m4ri_matrix_t matrix)
@@ -161,6 +178,8 @@ static inline void sagejs_m4ri_matrix_clear(sagejs_m4ri_matrix_t matrix)
         mzd_free(matrix->value);
     matrix->value = NULL;
     matrix->retained_bytes = 0;
+    matrix->known_rank = 0;
+    matrix->rank_is_known = 0;
 }
 
 static inline mzd_t *sagejs_m4ri_safe_copy(const mzd_t *source)
@@ -191,7 +210,13 @@ static inline int sagejs_m4ri_matrix_set_entry(
     if (value > 1 || row >= (uint64_t) matrix->value->nrows ||
         column >= (uint64_t) matrix->value->ncols)
         return 0;
-    mzd_write_bit(matrix->value, (rci_t) row, (rci_t) column, (BIT) value);
+    if ((uint64_t) mzd_read_bit(
+            matrix->value, (rci_t) row, (rci_t) column) != value)
+    {
+        mzd_write_bit(matrix->value, (rci_t) row, (rci_t) column, (BIT) value);
+        matrix->known_rank = 0;
+        matrix->rank_is_known = 0;
+    }
     return 1;
 }
 
@@ -208,8 +233,11 @@ static inline uint64_t sagejs_m4ri_matrix_entry_code(
 static inline int sagejs_m4ri_matrix_init_set(
     sagejs_m4ri_matrix_t result, const sagejs_m4ri_matrix_t source)
 {
-    return sagejs_m4ri_matrix_adopt(
-        result, sagejs_m4ri_safe_copy(source->value));
+    mzd_t *copy = sagejs_m4ri_safe_copy(source->value);
+    if (source->rank_is_known)
+        return sagejs_m4ri_matrix_adopt_with_rank(
+            result, copy, source->known_rank);
+    return sagejs_m4ri_matrix_adopt(result, copy);
 }
 
 static inline int sagejs_m4ri_matrix_equal(
@@ -262,13 +290,18 @@ static inline int sagejs_m4ri_matrix_transpose(
         return sagejs_m4ri_matrix_init(
             result, (uint64_t) source->value->ncols,
             (uint64_t) source->value->nrows);
-    return sagejs_m4ri_matrix_adopt(
-        result, mzd_transpose(NULL, source->value));
+    mzd_t *transpose = mzd_transpose(NULL, source->value);
+    if (source->rank_is_known)
+        return sagejs_m4ri_matrix_adopt_with_rank(
+            result, transpose, source->known_rank);
+    return sagejs_m4ri_matrix_adopt(result, transpose);
 }
 
 static inline uint64_t sagejs_m4ri_matrix_rank(
     const sagejs_m4ri_matrix_t source)
 {
+    if (source->rank_is_known)
+        return source->known_rank;
     if (source->value->nrows == 0 || source->value->ncols == 0)
         return 0;
     mzd_t *work = mzd_copy(NULL, source->value);
@@ -281,9 +314,11 @@ static inline int sagejs_m4ri_matrix_rref(
     sagejs_m4ri_matrix_t result, const sagejs_m4ri_matrix_t source)
 {
     mzd_t *work = sagejs_m4ri_safe_copy(source->value);
+    rci_t rank = 0;
     if (source->value->nrows != 0 && source->value->ncols != 0)
-        (void) mzd_echelonize(work, 1);
-    return sagejs_m4ri_matrix_adopt(result, work);
+        rank = mzd_echelonize(work, 1);
+    return sagejs_m4ri_matrix_adopt_with_rank(
+        result, work, (uint64_t) rank);
 }
 
 static inline uint64_t sagejs_m4ri_matrix_determinant_code(
@@ -302,6 +337,8 @@ static inline int sagejs_m4ri_matrix_inverse(
     const rci_t n = source->value->nrows;
     result->value = NULL;
     result->retained_bytes = 0;
+    result->known_rank = 0;
+    result->rank_is_known = 0;
     if (n != source->value->ncols)
         return 0;
     if (n == 0)
@@ -333,7 +370,8 @@ static inline int sagejs_m4ri_matrix_inverse(
     mzd_free_window(right);
     mzd_free_window(left);
     mzd_free(augmented);
-    return invertible && sagejs_m4ri_matrix_adopt(result, inverse);
+    return invertible && sagejs_m4ri_matrix_adopt_with_rank(
+        result, inverse, (uint64_t) n);
 }
 
 static inline int sagejs_m4ri_matrix_is_zero_safe(const mzd_t *matrix)
@@ -357,6 +395,8 @@ static inline int sagejs_m4ri_matrix_solve(
     const rci_t right_columns = right->value->ncols;
     result->value = NULL;
     result->retained_bytes = 0;
+    result->known_rank = 0;
+    result->rank_is_known = 0;
     if (rows != right->value->nrows)
         return 0;
     if (right_columns == 0)
@@ -416,7 +456,8 @@ static inline int sagejs_m4ri_matrix_right_kernel(
     mzd_free(columns_basis);
     if (rows_basis->nrows != 0 && rows_basis->ncols != 0)
         (void) mzd_echelonize(rows_basis, 1);
-    return sagejs_m4ri_matrix_adopt(result, rows_basis);
+    return sagejs_m4ri_matrix_adopt_with_rank(
+        result, rows_basis, (uint64_t) rows_basis->nrows);
 }
 
 static inline uint64_t sagejs_m4ri_read_u64_le(
@@ -605,6 +646,8 @@ static inline int sagejs_m4ri_matrix_init(
     (void) columns;
     result->value = NULL;
     result->retained_bytes = 0;
+    result->known_rank = 0;
+    result->rank_is_known = 0;
     return 0;
 }
 
@@ -612,6 +655,8 @@ static inline void sagejs_m4ri_matrix_clear(sagejs_m4ri_matrix_t matrix)
 {
     matrix->value = NULL;
     matrix->retained_bytes = 0;
+    matrix->known_rank = 0;
+    matrix->rank_is_known = 0;
 }
 
 #define SAGEJS_M4RI_STUB_DIRECT(name) \

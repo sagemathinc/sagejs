@@ -4151,6 +4151,8 @@ class Matrix(sage.Element):
             if self._has_m4ri_matrix_resource() and algorithm in [None, "m4ri"]:
                 resource = _m4ri_ffi_module().matrix_rref(self._m4ri_resource())
                 self._rref_cache = self._parent._from_m4ri_matrix_resource(resource)
+                # The RREF resource retains the rank returned by this same
+                # M4RI elimination, so this declared query is O(1).
                 self._rank_cache = runtime.number(
                     _m4ri_ffi_module().matrix_rank(self._rref_cache._m4ri_resource())
                 )

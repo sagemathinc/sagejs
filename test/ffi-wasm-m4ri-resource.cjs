@@ -153,6 +153,11 @@ test("complete M4RI resources execute through real Wasm", {
     assert.equal(backend.ffiM4riMatrixEqual(solved, inverse), true);
     const rref = keepMatrix(backend.ffiM4riMatrixRref(matrix));
     assert.equal(backend.ffiM4riMatrixEqual(rref, identity), true);
+    assert.equal(backend.ffiM4riMatrixRank(rref), 3n);
+    for (let column = 0n; column < 3n; column += 1n) {
+      backend.ffiM4riMatrixSetEntry(rref, 0n, column, 0n);
+    }
+    assert.equal(backend.ffiM4riMatrixRank(rref), 2n);
     const kernel = keepMatrix(backend.ffiM4riMatrixRightKernel(matrix));
     assert.equal(backend.ffiM4riMatrixNrows(kernel), 0n);
     assert.equal(backend.ffiM4riMatrixNcols(kernel), 3n);
