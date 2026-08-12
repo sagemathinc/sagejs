@@ -4791,6 +4791,87 @@ def nmod_poly_divexact(
 
 
 @flint.function(
+    dynamic="ffiNmodPolyDivRem",
+    symbol="sagejs_flint_nmod_poly_divrem_packed",
+    returns=int,
+    abi=[
+        out(
+            "quotient_output",
+            uint64_t_ptr,
+            packed_slice(
+                data="quotient",
+                length="quotient_length",
+                access="write",
+                aliasing="allowed",
+                transactional=True,
+            ),
+        ),
+        out(
+            "remainder_output",
+            uint64_t_ptr,
+            packed_slice(
+                data="remainder",
+                length="remainder_length",
+                access="write",
+                aliasing="allowed",
+                transactional=True,
+            ),
+        ),
+        in_(
+            "left_data",
+            uint64_t_ptr,
+            packed_slice(
+                data="left",
+                length="left_length",
+                access="read",
+                aliasing="allowed",
+                transactional=False,
+            ),
+        ),
+        in_(
+            "right_data",
+            uint64_t_ptr,
+            packed_slice(
+                data="right",
+                length="right_length",
+                access="read",
+                aliasing="allowed",
+                transactional=False,
+            ),
+        ),
+        in_("quotient_length", uint64_t),
+        in_("remainder_length", uint64_t),
+        in_("left_length", uint64_t),
+        in_("right_length", uint64_t),
+        in_("modulus", uint64_t),
+    ],
+    effects=Effects(
+        pure=False,
+        allocates=True,
+        raises=[ValueError],
+        writes=["quotient", "remainder"],
+    ),
+    result=Status(
+        1,
+        exception=ValueError,
+        message="invalid packed polynomial quotient and remainder",
+    ),
+    wasm=True,
+)
+def nmod_poly_divrem(
+    quotient: Writable[UInt64Buffer],
+    remainder: Writable[UInt64Buffer],
+    left: UInt64Buffer,
+    right: UInt64Buffer,
+    quotient_length: uint64,
+    remainder_length: uint64,
+    left_length: uint64,
+    right_length: uint64,
+    modulus: uint64,
+) -> bool: ...
+
+
+@flint.function(
     dynamic="ffiFmpzPolyDivExact",
     symbol="sagejs_flint_fmpz_poly_divexact_packed",
     returns=int,

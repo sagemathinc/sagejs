@@ -1389,18 +1389,45 @@ class PolynomialElement(sage.Element):
             quotient_length = max(
                 0, self._coefficient_length() - other._coefficient_length() + 1
             )
-            kernel = (
+            remainder_length = min(
+                self._coefficient_length(), other._coefficient_length() - 1
+            )
+            native_kernel = _packed_polynomial_flint_module().flint_packed_prime_field_polynomial_divrem
+            dynamic_kernel = (
                 _packed_prime_polynomial_module().packed_prime_field_polynomial_quo_rem
             )
+            kernel = (
+                native_kernel
+                if _native_kernel_available(native_kernel)
+                else dynamic_kernel
+            )
             quotient_output = _uint64_kernel_output(kernel, quotient_length)
-            remainder_output = _uint64_kernel_output(kernel, self._coefficient_length())
-            if not kernel(
-                quotient_output,
-                remainder_output,
-                _uint64_kernel_input(kernel, self._storage),
-                _uint64_kernel_input(kernel, other._storage),
-                base._modulus,
-            ):
+            remainder_output = _uint64_kernel_output(kernel, remainder_length)
+            if kernel is native_kernel:
+                success = kernel(
+                    quotient_output,
+                    remainder_output,
+                    _uint64_kernel_input(kernel, self._storage),
+                    _uint64_kernel_input(kernel, other._storage),
+                    quotient_length,
+                    remainder_length,
+                    self._coefficient_length(),
+                    other._coefficient_length(),
+                    base._modulus,
+                )
+            else:
+                dynamic_remainder = _uint64_kernel_output(
+                    kernel, self._coefficient_length()
+                )
+                success = kernel(
+                    quotient_output,
+                    dynamic_remainder,
+                    _uint64_kernel_input(kernel, self._storage),
+                    _uint64_kernel_input(kernel, other._storage),
+                    base._modulus,
+                )
+                remainder_output = dynamic_remainder
+            if not success:
                 raise RuntimeError("packed prime-field polynomial division failed")
             return runtime.math_tuple(
                 [

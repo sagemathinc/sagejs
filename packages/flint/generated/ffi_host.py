@@ -190,6 +190,7 @@ from sagejs.ffi.flint import (
     fmpq_poly_mul as _ffi_fmpq_poly_mul,
     nmod_poly_mul as _ffi_nmod_poly_mul,
     nmod_poly_divexact as _ffi_nmod_poly_divexact,
+    nmod_poly_divrem as _ffi_nmod_poly_divrem,
     fmpz_poly_divexact as _ffi_fmpz_poly_divexact,
     fmpq_poly_divexact as _ffi_fmpq_poly_divexact,
     nmod_poly_gcd as _ffi_nmod_poly_gcd,
@@ -2231,6 +2232,31 @@ def ffiNmodPolyDivExact(
         left,
         right,
         output_length,
+        left_length,
+        right_length,
+        modulus,
+    )
+
+
+@native
+def ffiNmodPolyDivRem(
+    quotient: UInt64Buffer,
+    remainder: UInt64Buffer,
+    left: UInt64Buffer,
+    right: UInt64Buffer,
+    quotient_length: uint64,
+    remainder_length: uint64,
+    left_length: uint64,
+    right_length: uint64,
+    modulus: uint64,
+) -> bool:
+    return _ffi_nmod_poly_divrem(
+        quotient,
+        remainder,
+        left,
+        right,
+        quotient_length,
+        remainder_length,
         left_length,
         right_length,
         modulus,

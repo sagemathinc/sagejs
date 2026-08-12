@@ -266,6 +266,67 @@ static inline int sagejs_flint_nmod_poly_divexact_packed(
     return divides;
 }
 
+static inline int sagejs_flint_nmod_poly_divrem_packed(
+    uint64_t *quotient_output,
+    uint64_t *remainder_output,
+    const uint64_t *left,
+    const uint64_t *right,
+    uint64_t quotient_length,
+    uint64_t remainder_length,
+    uint64_t left_length,
+    uint64_t right_length,
+    uint64_t modulus)
+{
+    uint64_t expected_quotient_length, expected_remainder_length;
+    nmod_poly_t left_poly, right_poly, quotient, remainder;
+    if (modulus < 2 || !n_is_prime((ulong) modulus) ||
+        left_length > (uint64_t) WORD_MAX ||
+        right_length > (uint64_t) WORD_MAX || right_length == 0)
+        return 0;
+    expected_quotient_length = left_length >= right_length
+        ? left_length - right_length + 1 : 0;
+    expected_remainder_length = left_length < right_length
+        ? left_length : right_length - 1;
+    if (quotient_length != expected_quotient_length ||
+        remainder_length != expected_remainder_length)
+        return 0;
+    nmod_poly_init(left_poly, (ulong) modulus);
+    nmod_poly_init(right_poly, (ulong) modulus);
+    nmod_poly_init(quotient, (ulong) modulus);
+    nmod_poly_init(remainder, (ulong) modulus);
+    sagejs_flint_nmod_poly_set_packed(
+        left_poly, left, left_length, modulus);
+    sagejs_flint_nmod_poly_set_packed(
+        right_poly, right, right_length, modulus);
+    if (nmod_poly_is_zero(right_poly))
+    {
+        nmod_poly_clear(remainder);
+        nmod_poly_clear(quotient);
+        nmod_poly_clear(right_poly);
+        nmod_poly_clear(left_poly);
+        return 0;
+    }
+    nmod_poly_divrem(quotient, remainder, left_poly, right_poly);
+    if ((uint64_t) nmod_poly_length(quotient) > quotient_length ||
+        (uint64_t) nmod_poly_length(remainder) > remainder_length)
+    {
+        nmod_poly_clear(remainder);
+        nmod_poly_clear(quotient);
+        nmod_poly_clear(right_poly);
+        nmod_poly_clear(left_poly);
+        return 0;
+    }
+    sagejs_flint_nmod_poly_get_packed(
+        quotient_output, quotient_length, quotient);
+    sagejs_flint_nmod_poly_get_packed(
+        remainder_output, remainder_length, remainder);
+    nmod_poly_clear(remainder);
+    nmod_poly_clear(quotient);
+    nmod_poly_clear(right_poly);
+    nmod_poly_clear(left_poly);
+    return 1;
+}
+
 static inline int sagejs_flint_fmpz_poly_divexact_packed(
     fmpz_mat_t output,
     const fmpz_mat_t left,

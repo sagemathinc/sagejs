@@ -14,7 +14,7 @@
   },
   "counts": {
     "classified-native-file": 58,
-    "declared-ffi": 212,
+    "declared-ffi": 213,
     "declared-ffi-resource": 14,
     "napi-export": 292,
     "runtime-intrinsic": 136,
@@ -2168,6 +2168,17 @@
       "dynamic_package": "@sagemath/sagejs-flint",
       "dynamic_export": "ffiNmodPolyDivExact",
       "symbol": "sagejs_flint_nmod_poly_divexact_packed",
+      "disposition": "declared-safe-ffi"
+    },
+    {
+      "id": "ffi:flint:nmod_poly_divrem",
+      "kind": "declared-ffi",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "nmod_poly_divrem",
+      "dynamic_package": "@sagemath/sagejs-flint",
+      "dynamic_export": "ffiNmodPolyDivRem",
+      "symbol": "sagejs_flint_nmod_poly_divrem_packed",
       "disposition": "declared-safe-ffi"
     },
     {
