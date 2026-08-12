@@ -4,7 +4,7 @@
   "id": "extension-polynomial-resource-impl",
   "title": "Generated finite-extension polynomial resources",
   "lane": "integration",
-  "status": "active",
+  "status": "review",
   "owner": "extension_poly_resource_impl",
   "objective": "Implement generated FLINT fq_default context and polynomial resources with bulk power-basis coordinate I/O, safe shared-context ownership, resource-to-resource arithmetic, portable correctness, lifecycle fuzzing, and measured production performance",
   "base_commit": "41f9925e6a001137ad1f06d22b41083596c0e34d",
@@ -67,10 +67,81 @@
     "pnpm test:portable",
     "pnpm test:baselib:strict"
   ],
-  "runs": [],
+  "runs": [
+    {
+      "command": "pnpm test:portable",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 44.537,
+      "started_at": "2026-08-12T14:07:41.346Z",
+      "commit": "579121643da193ac97a802675c9b88da37fb1369",
+      "workspace_fingerprint": "c94eb31e2a8ef1940ac24c37d9962d4266b9839d245ab40127601a186738df54",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 13.592,
+      "started_at": "2026-08-12T14:08:34.531Z",
+      "commit": "579121643da193ac97a802675c9b88da37fb1369",
+      "workspace_fingerprint": "c94eb31e2a8ef1940ac24c37d9962d4266b9839d245ab40127601a186738df54",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 13.363,
+      "started_at": "2026-08-12T14:08:48.881Z",
+      "commit": "579121643da193ac97a802675c9b88da37fb1369",
+      "workspace_fingerprint": "c94eb31e2a8ef1940ac24c37d9962d4266b9839d245ab40127601a186738df54",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm ffi:lifecycle:fuzz",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 18.428,
+      "started_at": "2026-08-12T14:09:03.016Z",
+      "commit": "579121643da193ac97a802675c9b88da37fb1369",
+      "workspace_fingerprint": "c94eb31e2a8ef1940ac24c37d9962d4266b9839d245ab40127601a186738df54",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/extension-polynomial-resource-kernels.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 5.112,
+      "started_at": "2026-08-12T14:09:22.220Z",
+      "commit": "579121643da193ac97a802675c9b88da37fb1369",
+      "workspace_fingerprint": "c94eb31e2a8ef1940ac24c37d9962d4266b9839d245ab40127601a186738df54",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/extension-polynomial-resources.cjs --check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 7.933,
+      "started_at": "2026-08-12T14:09:28.163Z",
+      "commit": "579121643da193ac97a802675c9b88da37fb1369",
+      "workspace_fingerprint": "c94eb31e2a8ef1940ac24c37d9962d4266b9839d245ab40127601a186738df54",
+      "platform": "linux-x64"
+    }
+  ],
   "handoff": {
-    "summary": "",
-    "risks": [],
-    "next_steps": []
+    "summary": "Generated thread-affine FLINT fq_default resources now provide exact-identity shared contexts, elements, and polynomials with checked bulk word-coordinate ingress, checked coordinate access, copy/equality/arithmetic, full coordinate transfer, deterministic close, source-transparent typed-Python kernels, Sage differentials, sanitizer lifecycle coverage, and measured performance. The implementation fixes fq_default to fq_nmod internally; public mathematical state remains the characteristic, monic irreducible modulus, generator name, and low-to-high power-basis coordinates. At GF(3^2) with 1000 coefficients, bulk ingress is about 0.09 ms and squaring about 0.14 ms; degree-128 export of 5000 coefficients is about 3.4 ms. SJFC is an internal coordinate-transfer frame only, not public standalone serialization: portable serialization remains descriptor plus coordinates at the public layer.",
+    "risks": [
+      "This v1 resource ingress is intentionally word-characteristic only; large-prime coordinates retain the portable path until IntegerBuffer ingress is generated.",
+      "The resources are explicitly thread-affine because FLINT context access and non-atomic reference counts are serialized by the owning execution thread.",
+      "Closing the public context wrapper while dependents survive temporarily under-reports the shared context allocation; it does not double-count, leak, or free early, and the repository TODO records shared accounting tokens if measured GC pressure warrants them.",
+      "Browser/Wasm lowering remains capability-gated (wasm=False); dynamic same-source correctness is tested but FLINT resource publication in Wasm is a later platform lane."
+    ],
+    "next_steps": [
+      "Wire public finite-extension polynomial construction and arithmetic to the generated resources so the measured bulk-ingress speedup reaches ordinary Sage.js users.",
+      "Represent public serialization as the complete field descriptor plus SJFC-equivalent coordinate content; never treat the coordinate frame alone as field identity.",
+      "Run the sanitizer and performance witness on macOS arm64 and Linux arm64, then add the future Wasm resource-lifetime implementation.",
+      "Extend exact-integer coordinate ingress for characteristics larger than one machine word."
+    ]
   }
 }
