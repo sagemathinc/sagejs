@@ -117,11 +117,69 @@
       "commit": "df8f83b02401cc80219b316f65951532bc5bdd61",
       "workspace_fingerprint": "1e9d6650e37847a80c9ec47b0fc4bd737fc2bd973bcd8c06308ff2f16ded784e",
       "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/math-dispatch-declarations.cjs test/math-dispatch-selection.cjs test/math-dispatch-cache-identity.cjs test/math-dispatch-benchmark-ingestion.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.961,
+      "started_at": "2026-08-12T23:05:28.559Z",
+      "commit": "775048e44b2658919f7d8470036b46a2bfecf448",
+      "workspace_fingerprint": "0729d55dff8f53650998ca92f3b906cfc8c89d98ed04eac3abf259d6f2f9ae5a",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bin/sagejs math check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.407,
+      "started_at": "2026-08-12T23:05:31.154Z",
+      "commit": "775048e44b2658919f7d8470036b46a2bfecf448",
+      "workspace_fingerprint": "0729d55dff8f53650998ca92f3b906cfc8c89d98ed04eac3abf259d6f2f9ae5a",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 14.197,
+      "started_at": "2026-08-12T23:05:40.617Z",
+      "commit": "775048e44b2658919f7d8470036b46a2bfecf448",
+      "workspace_fingerprint": "0729d55dff8f53650998ca92f3b906cfc8c89d98ed04eac3abf259d6f2f9ae5a",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 14.398,
+      "started_at": "2026-08-12T23:05:58.366Z",
+      "commit": "775048e44b2658919f7d8470036b46a2bfecf448",
+      "workspace_fingerprint": "0729d55dff8f53650998ca92f3b906cfc8c89d98ed04eac3abf259d6f2f9ae5a",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 63.486,
+      "started_at": "2026-08-12T23:08:10.956Z",
+      "commit": "775048e44b2658919f7d8470036b46a2bfecf448",
+      "workspace_fingerprint": "0729d55dff8f53650998ca92f3b906cfc8c89d98ed04eac3abf259d6f2f9ae5a",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {
-    "summary": "",
-    "risks": [],
-    "next_steps": []
+    "summary": "Implemented and independently approved the mathematical dispatch foundation without changing public matrix or polynomial behavior: constrained CPython declarations and deterministic JSON, closed typed schemas, pure explainable selection, capability and representation validation, specialization identities, portable/checked/local profiles, strict benchmark evidence ingestion, and robust adjacent threshold proposals. The dense prime matrix authority demonstrates GF(2), packed small-prime, FLINT resource, FFLAS/FFPACK, and typed-Python choices. Commits c755a23, 06ddd1e, df8f83b, and 775048e are pushed on origin/agent/math-dispatch-engine-v1.",
+    "risks": [
+      "This branch predates several shared compiler and native-artifact repairs. Its recorded full pnpm test:portable run passed all dispatch tests but failed seven inherited cases: missing optional FLINT addon artifacts, compiled-module isolation and dynamic-FFI fallout from that absence, and the separately diagnosed GF(2) native-bitwise marker regression.",
+      "The checked-in portable thresholds are inspectable policy examples, not newly fitted authority from this lane; production host overlays still require correctness-stamped evidence on repaired Linux and Apple-silicon baselines.",
+      "No public mathematical consumer uses this selector yet. Consumer integration must preserve existing semantics and record specialization identity in native cache keys before dispatch affects production execution."
+    ],
+    "next_steps": [
+      "Integrate these commits onto the repaired shared branch and rerun the complete portable tier with installed native artifacts.",
+      "Wire one dense-prime operation through the selector in a separate claimed lane, preserving explicit override and explain output as the vertical slice.",
+      "Collect comparable Linux x64 and macOS arm64 training and validation reports, then review generated checked profile proposals rather than hard-coding host crossovers."
+    ]
   }
 }
