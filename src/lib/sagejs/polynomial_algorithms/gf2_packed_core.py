@@ -18,6 +18,7 @@ from typing import Any, Iterable
 
 from sagejs.kernels.polynomial.gf2_packed import (
     BitPolynomialView,
+    gf2_packed_bit_length,
     gf2_packed_coefficient,
     gf2_packed_equal,
     gf2_packed_shift_left,
@@ -66,6 +67,7 @@ def _storage_kernel() -> Any:
         gf2_packed_coefficient,
         gf2_packed_equal,
         gf2_packed_weight,
+        gf2_packed_bit_length,
         gf2_packed_valid,
     ):
         if is_compiled(candidate):
