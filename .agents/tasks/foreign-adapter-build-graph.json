@@ -4,7 +4,7 @@
   "id": "foreign-adapter-build-graph",
   "title": "Foreign adapter build graph invalidation",
   "lane": "integration",
-  "status": "active",
+  "status": "review",
   "owner": "user",
   "objective": "Make ordinary builds regenerate and rebuild every generated foreign-library host adapter exactly when its declaration, generated source, or build inputs change, with focused stale-addon regression tests and no gratuitous warm rebuilds.",
   "base_commit": "d9831968c7bfd5936a95df2517278c3b3dcd5064",
@@ -35,10 +35,47 @@
     "pnpm test:portable",
     "pnpm test:baselib:strict"
   ],
-  "runs": [],
+  "runs": [
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 13.404,
+      "started_at": "2026-08-12T12:55:20.170Z",
+      "commit": "2ec5b0aa38c16ae6c3b4223e506dcdd23db44c2c",
+      "workspace_fingerprint": "0155b891cfc1500cde0fa2e771ef091890af34dd5c23e6d0e4cf5d12297994dd",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 42.511,
+      "started_at": "2026-08-12T12:55:34.190Z",
+      "commit": "2ec5b0aa38c16ae6c3b4223e506dcdd23db44c2c",
+      "workspace_fingerprint": "0155b891cfc1500cde0fa2e771ef091890af34dd5c23e6d0e4cf5d12297994dd",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 13.471,
+      "started_at": "2026-08-12T12:56:17.335Z",
+      "commit": "2ec5b0aa38c16ae6c3b4223e506dcdd23db44c2c",
+      "workspace_fingerprint": "0155b891cfc1500cde0fa2e771ef091890af34dd5c23e6d0e4cf5d12297994dd",
+      "platform": "linux-x64"
+    }
+  ],
   "handoff": {
-    "summary": "",
-    "risks": [],
-    "next_steps": []
+    "summary": "Ordinary builds now regenerate deterministic FFI lowerings before module-cache construction, then reconcile every already-installed FLINT, FFLAS, igraph, and M4RI generated host adapter before production-kernel publication. The installed manifest records the complete native compiler cache key and addon hash, so declaration, wrapper-generator, compiler/backend, toolchain, target, foreign-header/library, or artifact-byte drift republishes exactly the stale adapter. Missing optional adapters are reported and remain unprovisioned; current warm adapters are not republished. Focused tests cover ordering, empty optional build directories, warm no-op operation, stale manifests, changed native cache identities, and tampered addons. Complete ordinary-build trials confirmed both FLINT-only stale repair and unchanged warm mtimes.",
+    "risks": [
+      "Cross-platform behavior is mechanically covered by platform-neutral path and hashing logic, and the compiler cache already owns Windows/Darwin target identity, but the validation receipts in this worktree are linux-x64 only.",
+      "The broad changed-file runner reached an inherited standalone compiler fixture failure: compiler/matrix.py cannot import sagejs.linear_algebra.matrix_selection_public. This is pre-existing on the integration branch and outside this lane; build, architecture, portable, strict, and focused FFI validation passed."
+    ],
+    "next_steps": [
+      "Run an independent review of commit 2ec5b0a before integration.",
+      "After integration, remove the completed ordinary-build adapter invalidation item from TODO.md in the integration lane."
+    ]
   }
 }
