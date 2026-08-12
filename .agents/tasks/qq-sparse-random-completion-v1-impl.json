@@ -4,7 +4,7 @@
   "id": "qq-sparse-random-completion-v1-impl",
   "title": "QQ Sparse Random Completion v1 implementation",
   "lane": "integration",
-  "status": "review",
+  "status": "complete",
   "owner": "user",
   "objective": "Compile arbitrary-width bounded and reciprocal-uniform 1/n dense QQ random_matrix generation directly into one owned FmpqMatrix resource call, preserving seeded and fallback semantics with competitive warm performance",
   "base_commit": "43c26cc4f769515049f07cc5b97b6077087ecf6c",
@@ -135,7 +135,7 @@
     }
   ],
   "handoff": {
-    "summary": "Dense QQ random_matrix compiles arbitrary-width bounded and Sage-compatible reciprocal-uniform 1/n generation into one source-transparent native generator call. The kernel allocates and fills a private FmpqMatrix without advancing the shared RNG on failure; the host then makes one read-only bulk copy into its FLINT/GMP allocator domain, closes the private source in its owner domain, and only then publishes the final RNG state and mutable matrix. Native-disabled exact serialization parity covers all four 200x300 workloads. Public regressions cover five seeds, collisions, integral bounds, wide/skewed bounds, 1/n, failed allocation, six repeated injected failures of sagejs.ffi.flint.fmpq_matrix_copy with exact RNG rollback, and greater-than-1000-bit public mutation followed by idempotent close. The retained clean-source linux-x64 report identifies commit 8436557, its Git tree, the 16-core AMD EPYC host, OS, Node runtime, and memory. Compiled 200x300 density=.2 warm medians were 2.46 ms for small bounds, 9.95 ms for 80/97-bit bounds, 10.84 ms for 17/521-bit skew, and 2.41 ms for 1/n, versus SageMath medians of 1.77, 4.47, 3.76, and 1.33 ms. The 1000x1000 density=.1 wide case was 104.68 ms versus SageMath 50.73 ms. A fresh build preceded current-HEAD focused, architecture, strict, portable, and complete native receipts.",
+    "summary": "Integrated dense QQ random_matrix compilation for arbitrary-width bounded and Sage-compatible reciprocal-uniform 1/n generation in one source-transparent native generator call. The kernel allocates and fills a private FmpqMatrix without advancing the shared RNG on failure; the host then makes one read-only bulk copy into its FLINT/GMP allocator domain, closes the private source in its owner domain, and only then publishes the final RNG state and mutable matrix. Native-disabled exact serialization parity covers all four 200x300 workloads. Public regressions cover five seeds, collisions, integral bounds, wide/skewed bounds, 1/n, failed allocation, six repeated injected failures of sagejs.ffi.flint.fmpq_matrix_copy with exact RNG rollback, and greater-than-1000-bit public mutation followed by idempotent close. Independent final review approved allocator ownership, rollback, benchmark provenance, and sanitizer claim boundaries. The consolidated branch was rebuilt before its focused regressions and benchmark gate passed.",
     "risks": [
       "The ownership boundary requires one matrix-area FLINT deep copy after native generation. The retained timing and memory evidence includes that copy, but it increases transient memory and is O(rows*columns), including structural zero entries.",
       "A generated resource's type identity does not imply allocator interchangeability. Future code must preserve owner dispatch for allocation-growing mutation and destruction, or repeat this private-result-to-host-copy publication pattern; publishing the private token directly would reintroduce cross-addon FLINT/GMP lifetime corruption.",
