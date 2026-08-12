@@ -4037,16 +4037,24 @@ class ModularSymbolsSpace(sage.Parent):
 
     def __repr__(self) -> str:
         if not self.is_ambient():
-            kind = "" if self._subspace_kind is None else self._subspace_kind + " "
             return (
-                "Modular Symbols "
-                + kind
-                + "subspace of dimension "
+                "Modular Symbols subspace of dimension "
                 + str(self._dimension)
                 + " of "
                 + str(self._ambient)
             )
         if self._character is not None:
+            character_values = []
+            for generator in self._character.parent().unit_gens():
+                value = self._character(generator)
+                if self._base is sage.QQ:
+                    if value.is_one():
+                        value = sage.QQ(1)
+                    elif (-value).is_one():
+                        value = sage.QQ(-1)
+                else:
+                    value = self._base(value)
+                character_values.append(value)
             return (
                 "Modular Symbols space of dimension "
                 + str(self._dimension)
@@ -4054,8 +4062,8 @@ class ModularSymbolsSpace(sage.Parent):
                 + str(self.level())
                 + ", weight "
                 + str(self._weight)
-                + ", character of order "
-                + str(self._character.order())
+                + ", character "
+                + str(character_values)
                 + ", sign "
                 + str(self._sign)
                 + ", over "
