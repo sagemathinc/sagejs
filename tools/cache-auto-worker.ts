@@ -5,11 +5,12 @@ import {
   mkdirSync,
   readFileSync,
   renameSync,
+  rmSync,
   rmdirSync,
   unlinkSync,
   writeFileSync,
 } from "node:fs";
-import { basename, join, resolve } from "node:path";
+import { basename, dirname, join, resolve } from "node:path";
 
 import {
   DEFAULT_CACHE_POLICY,
@@ -41,7 +42,6 @@ import { atomicWriteCacheFileSync } from "./cache-file";
 
 export const AUTOMATIC_CACHE_LOCK_FILENAME = ".sagejs-auto-cleanup.lock";
 export const AUTOMATIC_CACHE_LOCK_OWNER_FILENAME = "owner";
-export const AUTOMATIC_CACHE_LOCK_MIGRATION_SUFFIX = ".migration";
 export const DEFAULT_AUTOMATIC_CACHE_LOCK_STALE_MS = 2 * 60 * 60 * 1_000;
 export const DEFAULT_AUTOMATIC_CACHE_MAX_BYTES_PER_RUN = 1024 ** 3;
 export const DEFAULT_AUTOMATIC_CACHE_MAX_VERSIONS_PER_RUN = 128;
@@ -59,6 +59,8 @@ interface AutomaticCacheState {
 }
 
 export interface AutomaticModuleCacheCleanupOptions {
+  /** Test-only hook immediately before a planned candidate is rechecked. */
+  beforeRemove?: (entry: { path: string; version: string }) => void;
   currentVersion: string;
   environment?: NodeJS.ProcessEnv;
   expectedRoot?: string;
@@ -180,123 +182,143 @@ function writeState(filename: string, state: AutomaticCacheState): void {
   atomicWriteCacheFileSync(filename, `${JSON.stringify(state)}\n`);
 }
 
-function acquireLock(
-  filename: string,
+function acquireDirectoryMutex(
+  directory: string,
   now: number,
   staleMs: number,
 ): (() => void) | undefined {
   const token = randomBytes(12).toString("hex");
-  const ownerFilename = join(filename, AUTOMATIC_CACHE_LOCK_OWNER_FILENAME);
-  const migration = `${filename}${AUTOMATIC_CACHE_LOCK_MIGRATION_SUFFIX}`;
+  const owner = join(directory, AUTOMATIC_CACHE_LOCK_OWNER_FILENAME);
   for (let attempt = 0; attempt < 3; attempt += 1) {
-    if (existsSync(migration)) {
-      const migrationMetadata = lstatSync(migration);
-      if (!migrationMetadata.isDirectory() || migrationMetadata.isSymbolicLink()) {
-        throw new Error("automatic cache cleanup refused unsafe lock migration marker");
-      }
-      return undefined;
-    }
-    let created = false;
     try {
-      // mkdir is the portable compare-and-set operation: exactly one worker
-      // creates the canonical lock directory and every other contender sees it.
-      mkdirSync(filename, { mode: 0o700 });
-      created = true;
+      mkdirSync(directory, { mode: 0o700 });
       try {
-        writeFileSync(ownerFilename, `${token}\n`, { flag: "wx", mode: 0o600 });
+        writeFileSync(owner, `${token}\n`, { flag: "wx", mode: 0o600 });
       } catch (error) {
         try {
-          rmdirSync(filename);
+          rmdirSync(directory);
         } catch (_cleanupError) {}
         throw error;
       }
       return () => {
         try {
-          const metadata = lstatSync(filename);
-          if (!metadata.isDirectory() || metadata.isSymbolicLink()) return;
-          if (readFileSync(ownerFilename, "utf8").trim() !== token) return;
-          unlinkSync(ownerFilename);
-          rmdirSync(filename);
+          if (readFileSync(owner, "utf8").trim() !== token) return;
+          unlinkSync(owner);
+          rmdirSync(directory);
         } catch (_error) {}
       };
     } catch (error) {
-      if (created) throw error;
       if ((error as NodeJS.ErrnoException).code !== "EEXIST") throw error;
-      const metadata = lstatSync(filename);
-      if (metadata.isSymbolicLink()) {
-        throw new Error("automatic cache cleanup refused unsafe lock marker");
+      const metadata = lstatSync(directory);
+      if (!metadata.isDirectory() || metadata.isSymbolicLink()) {
+        throw new Error("automatic cache cleanup refused unsafe mutex marker");
       }
-      if (metadata.isFile()) {
-        // v1 used a regular file. Serialize migration against all new workers,
-        // preserve a fresh old worker, and retire only a stale file whose
-        // identity and contents still match after atomic quarantine. Old v1
-        // workers do not heartbeat, so their stale timeout is necessarily the
-        // same explicit "paused beyond staleMs means dead" lease assumption.
-        try {
-          mkdirSync(migration, { mode: 0o700 });
-        } catch (migrationError) {
-          if ((migrationError as NodeJS.ErrnoException).code === "EEXIST") {
-            return undefined;
-          }
-          throw migrationError;
-        }
-        try {
-          if (!existsSync(filename)) continue;
-          const legacy = lstatSync(filename);
-          if (legacy.isSymbolicLink() || !legacy.isFile()) return undefined;
-          if (now - legacy.mtimeMs <= staleMs) return undefined;
-          const contents = readFileSync(filename, "utf8");
-          const quarantine =
-            `${filename}.legacy-${process.pid}-${randomBytes(12).toString("hex")}`;
-          renameSync(filename, quarantine);
-          const claimed = lstatSync(quarantine);
-          if (
-            !claimed.isFile() ||
-            claimed.isSymbolicLink() ||
-            claimed.dev !== legacy.dev ||
-            (legacy.ino !== 0 && claimed.ino !== legacy.ino) ||
-            readFileSync(quarantine, "utf8") !== contents
-          ) {
-            if (!existsSync(filename)) renameSync(quarantine, filename);
-            return undefined;
-          }
-          unlinkSync(quarantine);
-          continue;
-        } finally {
-          try {
-            rmdirSync(migration);
-          } catch (_error) {}
-        }
-      }
-      if (!metadata.isDirectory()) {
-        throw new Error("automatic cache cleanup refused unsafe lock marker");
-      }
-      let owner;
       try {
-        const ownerMetadata = lstatSync(ownerFilename);
+        const ownerMetadata = lstatSync(owner);
         if (!ownerMetadata.isFile() || ownerMetadata.isSymbolicLink()) {
-          throw new Error("automatic cache cleanup refused unsafe lock owner");
+          throw new Error("automatic cache cleanup refused unsafe mutex owner");
         }
-        owner = readFileSync(ownerFilename, "utf8").trim();
-        if (!owner) throw new Error("automatic cache cleanup refused empty lock owner");
         if (now - ownerMetadata.mtimeMs <= staleMs) return undefined;
-        // Removing the token then the now-empty directory is an identity-safe
-        // stale takeover. No replacement can occupy the canonical directory
-        // until rmdir succeeds; afterwards every contender races the mkdir
-        // above and exactly one wins. A paused owner beyond staleMs is the
-        // explicit advisory-lease assumption of automatic maintenance.
-        if (readFileSync(ownerFilename, "utf8").trim() !== owner) return undefined;
-        unlinkSync(ownerFilename);
-        rmdirSync(filename);
-      } catch (takeoverError) {
-        if (["ENOENT", "ENOTEMPTY", "EEXIST"].includes(
-          (takeoverError as NodeJS.ErrnoException).code ?? "",
-        )) continue;
-        throw takeoverError;
+        const observed = readFileSync(owner, "utf8").trim();
+        if (!observed || readFileSync(owner, "utf8").trim() !== observed) {
+          return undefined;
+        }
+        unlinkSync(owner);
+        rmdirSync(directory);
+      } catch (recoveryError) {
+        if ((recoveryError as NodeJS.ErrnoException).code === "ENOENT") {
+          // mkdir+owner and owner+rmdir each have an empty-directory crash
+          // window. Directory identity prevents replacement until rmdir; an
+          // abandoned empty mutex is therefore safely reclaimable when stale.
+          if (now - metadata.mtimeMs <= staleMs) return undefined;
+          try {
+            rmdirSync(directory);
+          } catch (removeError) {
+            if (!["ENOENT", "ENOTEMPTY"].includes(
+              (removeError as NodeJS.ErrnoException).code ?? "",
+            )) throw removeError;
+          }
+        } else if (!["ENOENT", "ENOTEMPTY"].includes(
+          (recoveryError as NodeJS.ErrnoException).code ?? "",
+        )) throw recoveryError;
       }
     }
   }
   return undefined;
+}
+
+function acquireLock(
+  filename: string,
+  now: number,
+  staleMs: number,
+): (() => void) | undefined {
+  const parent = dirname(filename);
+  const guard = `${filename}.guard`;
+  const releaseGuard = acquireDirectoryMutex(guard, now, staleMs);
+  if (!releaseGuard) return undefined;
+  const token = randomBytes(12).toString("hex");
+  const owner = join(filename, AUTOMATIC_CACHE_LOCK_OWNER_FILENAME);
+  try {
+    if (existsSync(filename)) {
+      const metadata = lstatSync(filename);
+      if (metadata.isSymbolicLink()) {
+        throw new Error("automatic cache cleanup refused unsafe lock marker");
+      }
+      let stale = false;
+      if (metadata.isFile()) {
+        // v1 legacy locks did not heartbeat. Fresh files are preserved; stale
+        // files are assumed abandoned under the documented stale-timeout rule.
+        stale = now - metadata.mtimeMs > staleMs;
+      } else if (metadata.isDirectory()) {
+        try {
+          const ownerMetadata = lstatSync(owner);
+          if (!ownerMetadata.isFile() || ownerMetadata.isSymbolicLink()) {
+            throw new Error("automatic cache cleanup refused unsafe lock owner");
+          }
+          stale = now - ownerMetadata.mtimeMs > staleMs;
+        } catch (error) {
+          if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+          stale = now - metadata.mtimeMs > staleMs;
+        }
+      } else {
+        throw new Error("automatic cache cleanup refused unsafe lock marker");
+      }
+      if (!stale) return undefined;
+      const quarantine = join(
+        parent,
+        `.sagejs-auto-retired-${process.pid}-${randomBytes(12).toString("hex")}`,
+      );
+      renameSync(filename, quarantine);
+      // A crash after the atomic rename leaves only this inert private path;
+      // the canonical lock is free and future workers continue immediately.
+      rmSync(quarantine, { recursive: true, force: false });
+    }
+    mkdirSync(filename, { mode: 0o700 });
+    writeFileSync(owner, `${token}\n`, { flag: "wx", mode: 0o600 });
+  } finally {
+    releaseGuard();
+  }
+
+  return () => {
+    const releaseOperation = acquireDirectoryMutex(guard, Date.now(), staleMs);
+    if (!releaseOperation) return;
+    try {
+      const metadata = lstatSync(filename);
+      if (!metadata.isDirectory() || metadata.isSymbolicLink()) return;
+      if (readFileSync(owner, "utf8").trim() !== token) return;
+      const quarantine = join(
+        parent,
+        `.sagejs-auto-released-${process.pid}-${randomBytes(12).toString("hex")}`,
+      );
+      renameSync(filename, quarantine);
+      rmSync(quarantine, { recursive: true, force: false });
+    } catch (_error) {
+      // A later worker can recover a stale canonical marker. Private release
+      // quarantines are inert if a crash or deletion error leaves one behind.
+    } finally {
+      releaseOperation();
+    }
+  };
 }
 
 /** Execute one bounded maintenance pass. Tests must supply a temporary root. */
@@ -346,13 +368,21 @@ export function runAutomaticModuleCacheCleanup(
           maxVersions: configured.maxVersionsPerRun,
           allowOversizedFirst: true,
         },
+        beforeRemove: options.beforeRemove,
         currentVersions: [options.currentVersion],
         expectedRoot: options.expectedRoot ?? root,
         now,
         policy: configured.policy,
         root,
       });
-      const deferred = (report.deferredVersions?.length ?? 0) > 0;
+      const failed = report.errors.length > 0;
+      const deferred = failed || (report.deferredVersions?.length ?? 0) > 0;
+      const diagnostic = failed
+        ? `${report.errors.length} cache generation(s) could not be removed: ` +
+          report.errors.slice(0, 3).map(({ version, message }) =>
+            `${version}: ${message}`
+          ).join("; ")
+        : undefined;
       writeState(stateFilename, {
         schema: AUTOMATIC_CACHE_STATE_SCHEMA,
         last_attempt_ms: now,
@@ -363,7 +393,8 @@ export function runAutomaticModuleCacheCleanup(
         ),
         last_reclaimed_bytes: report.reclaimedBytes,
         last_removed_versions: report.removedVersions.length,
-        last_status: deferred ? "deferred" : "applied",
+        ...(diagnostic ? { last_error: diagnostic } : {}),
+        last_status: failed ? "error" : deferred ? "deferred" : "applied",
       });
       return { report, status: "applied" };
     } catch (error) {

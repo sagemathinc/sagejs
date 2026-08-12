@@ -302,6 +302,30 @@ test("legacy regular-file locks migrate only after becoming stale", (t) => {
   );
 });
 
+test("empty lock crash remnants are preserved while fresh and reclaimed stale", (t) => {
+  const { base, root } = temporaryRoot(t);
+  const current = versionName("5");
+  const expired = versionName("6");
+  addVersion(root, current, { ageDays: 100 });
+  addVersion(root, expired, { ageDays: 100 });
+  const lock = join(root, AUTOMATIC_CACHE_LOCK_FILENAME);
+  mkdirSync(lock);
+  const options = {
+    currentVersion: current,
+    environment: automaticEnvironment(base),
+    expectedRoot: root,
+    lockStaleMs: 60_000,
+    root,
+  };
+  assert.equal(runAutomaticModuleCacheCleanup(options).status, "locked");
+  const old = new Date(Date.now() - 2 * 60 * 60 * 1_000);
+  utimesSync(lock, old, old);
+  const recovered = runAutomaticModuleCacheCleanup(options);
+  assert.equal(recovered.status, "applied");
+  assert.deepEqual(recovered.report.removedVersions, [expired]);
+  assert.equal(existsSync(lock), false);
+});
+
 test("concurrent stale-lock takeover admits at most one cleanup worker", async (t) => {
   const { base, root } = temporaryRoot(t);
   const current = versionName("5");
@@ -328,7 +352,7 @@ test("concurrent stale-lock takeover admits at most one cleanup worker", async (
     currentVersion: current,
     environment: automaticEnvironment(base),
     expectedRoot: root,
-    lockStaleMs: 1,
+    lockStaleMs: 60_000,
     root,
   };
   const children = Array.from(
@@ -354,6 +378,30 @@ test("concurrent stale-lock takeover admits at most one cleanup worker", async (
   );
   assert.equal(existsSync(join(root, expired)), false);
   assert.equal(existsSync(lock), false);
+});
+
+test("abandoned guard directories recover only after becoming stale", (t) => {
+  const { base, root } = temporaryRoot(t);
+  const current = versionName("5");
+  const expired = versionName("6");
+  addVersion(root, current, { ageDays: 100 });
+  addVersion(root, expired, { ageDays: 100 });
+  const guard = join(root, `${AUTOMATIC_CACHE_LOCK_FILENAME}.guard`);
+  mkdirSync(guard);
+  const options = {
+    currentVersion: current,
+    environment: automaticEnvironment(base),
+    expectedRoot: root,
+    lockStaleMs: 60_000,
+    root,
+  };
+  assert.equal(runAutomaticModuleCacheCleanup(options).status, "locked");
+  const old = new Date(Date.now() - 2 * 60 * 60 * 1_000);
+  utimesSync(guard, old, old);
+  const recovered = runAutomaticModuleCacheCleanup(options);
+  assert.equal(recovered.status, "applied");
+  assert.deepEqual(recovered.report.removedVersions, [expired]);
+  assert.equal(existsSync(guard), false);
 });
 
 test("automatic cleanup may remove one oversized eligible generation", (t) => {
@@ -415,6 +463,46 @@ test("deferred cleanup records a short retry deadline and observable result", (t
     home: base,
     now: now + 16 * 60 * 1_000,
   }));
+});
+
+test("per-entry prune errors are observable and retry promptly", (t) => {
+  const { base, root } = temporaryRoot(t);
+  const now = Date.now();
+  const current = versionName("7");
+  const unsafe = versionName("8");
+  const removable = versionName("9");
+  addVersion(root, current, { ageDays: 100 });
+  addVersion(root, unsafe, { ageDays: 110 });
+  addVersion(root, removable, { ageDays: 100 });
+  const environment = automaticEnvironment(base, {
+    SAGEJS_MODULE_CACHE_AUTO_CLEANUP_INTERVAL_HOURS: "24",
+    SAGEJS_MODULE_CACHE_AUTO_CLEANUP_MAX_VERSIONS: "1",
+    SAGEJS_MODULE_CACHE_AUTO_CLEANUP_RETRY_HOURS: "0.25",
+  });
+  const result = runAutomaticModuleCacheCleanup({
+    beforeRemove: (entry) => {
+      if (entry.version !== unsafe) return;
+      rmSync(entry.path, { recursive: true, force: true });
+      try {
+        symlinkSync(root, entry.path, "dir");
+      } catch (error) {
+        if (error && ["EPERM", "EACCES"].includes(error.code)) return;
+        throw error;
+      }
+    },
+    currentVersion: current,
+    environment,
+    expectedRoot: root,
+    now,
+    root,
+  });
+  assert.equal(result.status, "applied");
+  assert.deepEqual(result.report.skippedVersions, [unsafe]);
+  assert.deepEqual(result.report.removedVersions, [removable]);
+  const state = readAutomaticModuleCacheCleanupState(root);
+  assert.equal(state.last_status, "error");
+  assert.match(state.last_error, /could not be removed/);
+  assert.equal(state.next_attempt_ms, now + 15 * 60 * 1_000);
 });
 
 test("automatic cleanup makes bounded progress on a recent high-churn cache", (t) => {

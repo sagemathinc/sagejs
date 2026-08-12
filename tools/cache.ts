@@ -76,6 +76,8 @@ export interface CachePruneReport {
 export interface PruneCacheOptions {
   apply?: boolean;
   applyLimits?: Partial<CacheApplyLimits>;
+  /** Test-only hook immediately before a planned candidate is rechecked. */
+  beforeRemove?: (entry: CacheVersionEntry) => void;
   currentVersions: string[];
   expectedRoot?: string;
   now?: number;
@@ -358,6 +360,7 @@ export function pruneModuleCache(options: PruneCacheOptions): CachePruneReport {
   }
   let attemptedBytes = 0;
   let attemptedVersions = 0;
+  let attemptedCandidates = 0;
   for (const entry of candidates) {
     const oversizedFirst =
       applyLimits?.allowOversizedFirst === true &&
@@ -366,18 +369,21 @@ export function pruneModuleCache(options: PruneCacheOptions): CachePruneReport {
     if (
       applyLimits &&
       (attemptedVersions >= applyLimits.maxVersions ||
+        attemptedCandidates >= applyLimits.maxVersions * 2 ||
         (!oversizedFirst && attemptedBytes + entry.bytes > applyLimits.maxBytes))
     ) {
       report.deferredVersions!.push(entry.version);
       continue;
     }
     attemptedVersions += 1;
+    attemptedCandidates += 1;
     attemptedBytes += entry.bytes;
     const quarantine = join(
       report.root,
       `.sagejs-prune-${process.pid}-${randomBytes(6).toString("hex")}-${entry.version}`,
     );
     try {
+      options.beforeRemove?.(entry);
       const metadata = lstatSync(entry.path);
       if (!metadata.isDirectory() || metadata.isSymbolicLink()) {
         throw new Error("candidate changed type after inspection");
@@ -415,6 +421,10 @@ export function pruneModuleCache(options: PruneCacheOptions): CachePruneReport {
       report.removedVersions.push(entry.version);
       report.reclaimedBytes += entry.bytes;
     } catch (error) {
+      // A failed candidate did not consume the destructive-work budget. Let a
+      // later eligible generation make progress during this same bounded pass.
+      attemptedVersions -= 1;
+      attemptedBytes -= entry.bytes;
       report.skippedVersions.push(entry.version);
       report.errors.push({
         version: entry.version,
