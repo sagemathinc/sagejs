@@ -23,7 +23,7 @@ function run(source, extraEnvironment = {}) {
   return result.stdout.trim();
 }
 
-const correctness = run([
+const correctnessSource = [
   "R = PolynomialRing(ZZ, 'x'); x = R.gen()",
   "assert x._has_fmpz_polynomial_resource()",
   "zero = R([0, 0, 0])",
@@ -35,7 +35,8 @@ const correctness = run([
   "assert (f + g - g) == f and -(-f) == f",
   "assert (x + 1)**5 == x**5 + 5*x**4 + 10*x**3 + 10*x**2 + 5*x + 1",
   "assert f(3) == huge + 180",
-  "assert f(QQ(1)/QQ(2)) == QQ(huge) + QQ(1)/QQ(8)",
+  // f(1/2) = huge - 3/2 + 7/8 = huge - 5/8.
+  "assert f(QQ(1)/QQ(2)) == QQ(huge) - QQ(5)/QQ(8)",
   "assert f.coefficients() == [huge, -3, 0, 7]",
   "assert str(R([-1, 1, -2])) == '-2*x^2 + x - 1'",
   "S = PolynomialRing(QQ, 'y'); y = S.gen()",
@@ -54,9 +55,13 @@ const correctness = run([
   "assert restored_q._has_fmpq_polynomial_resource()",
   "print('exact-polynomial-resources-ok')",
   "",
-].join("\n"));
+].join("\n");
 
-assert.equal(correctness, "exact-polynomial-resources-ok");
+assert.equal(run(correctnessSource), "exact-polynomial-resources-ok");
+assert.equal(
+  run(correctnessSource, { SAGEJS_NATIVE_DISABLE: "1" }),
+  "exact-polynomial-resources-ok",
+);
 
 const directDivisionSource = [
   "from sagejs_serialization import dumps",
