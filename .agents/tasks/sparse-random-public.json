@@ -12,7 +12,8 @@
     "src/baselib/matrix.py",
     "src/lib/sagejs/linear_algebra/sparse_random_public.py",
     "test/public-sparse-random.cjs",
-    "bench/public-sparse-random.cjs"
+    "bench/public-sparse-random.cjs",
+    "pyrightconfig.json"
   ],
   "dependencies": [
     "sparse-random-matrix-contract"
@@ -102,19 +103,60 @@
       "commit": "93b9882599eccb00e1f7c77f970301571db5d96b",
       "workspace_fingerprint": "75497afcbdd98f43b8ff108d96397eb7e8021602eef602a9e94825bcc74f057a",
       "platform": "linux-x64"
+    },
+    {
+      "command": "node test/public-sparse-random.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 7.502,
+      "started_at": "2026-08-12T13:39:23.338Z",
+      "commit": "f818ff44fcee0a341cfc2e28a1b72dce66d476db",
+      "workspace_fingerprint": "f26c8be40f90199a4623d160b2731f0f7ab408d7fc45be442b67ddb6a25cdb40",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/public-sparse-random.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 4.285,
+      "started_at": "2026-08-12T13:39:31.456Z",
+      "commit": "f818ff44fcee0a341cfc2e28a1b72dce66d476db",
+      "workspace_fingerprint": "f26c8be40f90199a4623d160b2731f0f7ab408d7fc45be442b67ddb6a25cdb40",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 14.089,
+      "started_at": "2026-08-12T13:39:36.344Z",
+      "commit": "f818ff44fcee0a341cfc2e28a1b72dce66d476db",
+      "workspace_fingerprint": "f26c8be40f90199a4623d160b2731f0f7ab408d7fc45be442b67ddb6a25cdb40",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 13.657,
+      "started_at": "2026-08-12T13:39:51.048Z",
+      "commit": "f818ff44fcee0a341cfc2e28a1b72dce66d476db",
+      "workspace_fingerprint": "f26c8be40f90199a4623d160b2731f0f7ab408d7fc45be442b67ddb6a25cdb40",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {
-    "summary": "Explicit-density random_matrix now dispatches ZZ to an owned FmpzMatrix resource with keep-first collisions, QQ to an owned FmpqMatrix resource with replacement collisions, GF(2) to M4RI Bernoulli fill (or the portable packed representation), and packed small GF(p) to compiler-owned residues with replacement collisions. Five CPython-parseable typed-Python kernels consume and republish the shared seeded stream inside one bulk fill call; native-disabled execution samples the same storage-neutral policy and is seed-identical on fixed witnesses. The 365 added matrix.py lines are intentional orchestration rather than formatting churn: 22 lines declare two lazy modules, about 315 lines allocate canonical domain storage, select one executor/fallback, publish RNG state and traces, and close failed resources, while the remaining hook distinguishes explicit density and preserves Sage edge normalization. Warm 1000x1000 density=0.1 medians on linux-x64 were approximately ZZ 13-23 ms, QQ 16 ms, GF(2) 7 ms, and GF(7) 2.4 ms, competitive with local SageMath medians of about 19, 35, 33, and 2.5 ms respectively.",
+    "summary": "Explicit-density random_matrix now dispatches ZZ to an owned FmpzMatrix resource with keep-first collisions, QQ to an owned FmpqMatrix resource with replacement collisions, GF(2) to M4RI Bernoulli fill (or the portable packed representation), and packed word GF(p) to compiler-owned residues with replacement collisions. Five CPython-parseable typed-Python kernels consume and republish the shared seeded stream inside one bulk fill call; native-disabled execution samples the same storage-neutral policy and is exactly seed-identical, including collision cases and the next RNG value. Arbitrarily large rational bounds and Sage's reciprocal-uniform '1/n' distribution have explicit correct portable paths rather than falling into integer generation; arbitrary non-'1/n' distribution labels retain Sage's bounded rational behavior. NaN binary density, hostile QQ bound coercion order, deterministic resource cleanup, and GF(4294967291) are covered. The matrix.py growth is intentional orchestration rather than formatting churn: lazy module loading, canonical domain allocation, one executor/fallback selection, RNG publication/tracing, and failure cleanup. Warm 1000x1000 density=0.1 medians on linux-x64 are approximately ZZ/QQ 23 ms, GF(2) 7.3 ms, and GF(7) 2.7 ms.",
     "risks": [
-      "The native bounded ZZ and QQ executors deliberately support one-word bounds up to 2^32; wider exact bounds retain the existing correct dynamic construction path rather than silently narrowing.",
+      "The native bounded QQ executor deliberately supports one-word bounds up to 2^32; wider exact bounds use the explicit storage-neutral portable sampler. Its measured 200x200 density=0.1 median is about 292 ms, so a future arbitrary-bound typed kernel would improve performance without changing semantics.",
+      "The reciprocal-uniform '1/n' distribution currently uses the explicit portable sampler (about 217 ms median for 200x200 density=0.1) and remains a candidate for a dedicated typed kernel.",
       "Linux x64 has focused, strict, architecture, native-lifecycle, and benchmark evidence; required non-x64 platforms still need CI execution.",
       "The broad native suite reached and passed FFI/resource lifecycle coverage but later hit a pre-existing foreign-header cache witness assertion unrelated to this diff; focused compilation and resource execution pass."
     ],
     "next_steps": [
       "Add test/public-sparse-random.cjs to the shared node test manifest in the integration lane.",
       "Keep the focused trace regression in the shared host-test manifest after integration; it now passes after rebuilding the merged generated FLINT adapter.",
-      "Consider a declared reciprocal-uniform rational generator before claiming optimized distribution='1/n'; it currently retains the general fallback."
+      "Add arbitrary-bound and reciprocal-uniform typed QQ executors if those less-common distributions become performance priorities; their portable baselines are now recorded."
     ]
   }
 }
