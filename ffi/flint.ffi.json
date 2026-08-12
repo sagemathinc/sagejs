@@ -7645,6 +7645,172 @@
       }
     },
     {
+      "id": "fmpz_matrix_mul_vector",
+      "python_name": "fmpz_matrix_mul_vector",
+      "signature": {
+        "parameters": [
+          {
+            "name": "matrix",
+            "type": "FmpzMatrix",
+            "ownership": "borrowed",
+            "mutability": "read",
+            "aliasing": "allowed"
+          },
+          {
+            "name": "vector",
+            "type": "FlintByteRegion",
+            "ownership": "borrowed",
+            "mutability": "read",
+            "aliasing": "allowed"
+          }
+        ],
+        "return_type": "FlintByteRegion",
+        "return_ownership": "owned",
+        "borrow_from": null
+      },
+      "dynamic": {
+        "export": "ffiFmpzMatrixMulVector"
+      },
+      "native": {
+        "symbol": "sagejs_fmpz_matrix_mul_vector",
+        "return_type": "int",
+        "arguments": [
+          {
+            "source": "result",
+            "abi_type": "sagejs_flint_byte_region_t",
+            "direction": "out",
+            "adapter": null
+          },
+          {
+            "source": "matrix",
+            "abi_type": "sagejs_fmpz_matrix_t",
+            "direction": "in",
+            "adapter": null
+          },
+          {
+            "source": "vector",
+            "abi_type": "sagejs_flint_byte_region_t",
+            "direction": "in",
+            "adapter": null
+          }
+        ]
+      },
+      "effects": {
+        "pure": false,
+        "deterministic": true,
+        "thread_safe": true,
+        "may_allocate": true,
+        "may_raise": [
+          "ValueError",
+          "OverflowError"
+        ],
+        "writes": []
+      },
+      "result": {
+        "domain": "status",
+        "success": [
+          1
+        ],
+        "absence": null
+      },
+      "errors": {
+        "exception": "ValueError",
+        "message": "integer matrix-vector input is invalid"
+      },
+      "exceptions": {
+        "policy": "none",
+        "failure_status": null
+      },
+      "targets": {
+        "dynamic": true,
+        "native": true,
+        "wasm": true
+      }
+    },
+    {
+      "id": "fmpz_vector_mul_matrix",
+      "python_name": "fmpz_vector_mul_matrix",
+      "signature": {
+        "parameters": [
+          {
+            "name": "vector",
+            "type": "FlintByteRegion",
+            "ownership": "borrowed",
+            "mutability": "read",
+            "aliasing": "allowed"
+          },
+          {
+            "name": "matrix",
+            "type": "FmpzMatrix",
+            "ownership": "borrowed",
+            "mutability": "read",
+            "aliasing": "allowed"
+          }
+        ],
+        "return_type": "FlintByteRegion",
+        "return_ownership": "owned",
+        "borrow_from": null
+      },
+      "dynamic": {
+        "export": "ffiFmpzVectorMulMatrix"
+      },
+      "native": {
+        "symbol": "sagejs_fmpz_vector_mul_matrix",
+        "return_type": "int",
+        "arguments": [
+          {
+            "source": "result",
+            "abi_type": "sagejs_flint_byte_region_t",
+            "direction": "out",
+            "adapter": null
+          },
+          {
+            "source": "vector",
+            "abi_type": "sagejs_flint_byte_region_t",
+            "direction": "in",
+            "adapter": null
+          },
+          {
+            "source": "matrix",
+            "abi_type": "sagejs_fmpz_matrix_t",
+            "direction": "in",
+            "adapter": null
+          }
+        ]
+      },
+      "effects": {
+        "pure": false,
+        "deterministic": true,
+        "thread_safe": true,
+        "may_allocate": true,
+        "may_raise": [
+          "ValueError",
+          "OverflowError"
+        ],
+        "writes": []
+      },
+      "result": {
+        "domain": "status",
+        "success": [
+          1
+        ],
+        "absence": null
+      },
+      "errors": {
+        "exception": "ValueError",
+        "message": "integer vector-matrix input is invalid"
+      },
+      "exceptions": {
+        "policy": "none",
+        "failure_status": null
+      },
+      "targets": {
+        "dynamic": true,
+        "native": true,
+        "wasm": true
+      }
+    },
+    {
       "id": "fmpz_matrix_pow",
       "python_name": "fmpz_matrix_pow",
       "signature": {
@@ -11640,6 +11806,172 @@
       "errors": {
         "exception": "ValueError",
         "message": "rational matrix dimensions are incompatible"
+      },
+      "exceptions": {
+        "policy": "none",
+        "failure_status": null
+      },
+      "targets": {
+        "dynamic": true,
+        "native": true,
+        "wasm": true
+      }
+    },
+    {
+      "id": "fmpq_matrix_mul_vector",
+      "python_name": "fmpq_matrix_mul_vector",
+      "signature": {
+        "parameters": [
+          {
+            "name": "matrix",
+            "type": "FmpqMatrix",
+            "ownership": "borrowed",
+            "mutability": "read",
+            "aliasing": "allowed"
+          },
+          {
+            "name": "vector",
+            "type": "FlintByteRegion",
+            "ownership": "borrowed",
+            "mutability": "read",
+            "aliasing": "allowed"
+          }
+        ],
+        "return_type": "FlintByteRegion",
+        "return_ownership": "owned",
+        "borrow_from": null
+      },
+      "dynamic": {
+        "export": "ffiFmpqMatrixMulVector"
+      },
+      "native": {
+        "symbol": "sagejs_fmpq_matrix_mul_vector",
+        "return_type": "int",
+        "arguments": [
+          {
+            "source": "result",
+            "abi_type": "sagejs_flint_byte_region_t",
+            "direction": "out",
+            "adapter": null
+          },
+          {
+            "source": "matrix",
+            "abi_type": "sagejs_fmpq_matrix_t",
+            "direction": "in",
+            "adapter": null
+          },
+          {
+            "source": "vector",
+            "abi_type": "sagejs_flint_byte_region_t",
+            "direction": "in",
+            "adapter": null
+          }
+        ]
+      },
+      "effects": {
+        "pure": false,
+        "deterministic": true,
+        "thread_safe": true,
+        "may_allocate": true,
+        "may_raise": [
+          "ValueError",
+          "OverflowError"
+        ],
+        "writes": []
+      },
+      "result": {
+        "domain": "status",
+        "success": [
+          1
+        ],
+        "absence": null
+      },
+      "errors": {
+        "exception": "ValueError",
+        "message": "rational matrix-vector input is invalid"
+      },
+      "exceptions": {
+        "policy": "none",
+        "failure_status": null
+      },
+      "targets": {
+        "dynamic": true,
+        "native": true,
+        "wasm": true
+      }
+    },
+    {
+      "id": "fmpq_vector_mul_matrix",
+      "python_name": "fmpq_vector_mul_matrix",
+      "signature": {
+        "parameters": [
+          {
+            "name": "vector",
+            "type": "FlintByteRegion",
+            "ownership": "borrowed",
+            "mutability": "read",
+            "aliasing": "allowed"
+          },
+          {
+            "name": "matrix",
+            "type": "FmpqMatrix",
+            "ownership": "borrowed",
+            "mutability": "read",
+            "aliasing": "allowed"
+          }
+        ],
+        "return_type": "FlintByteRegion",
+        "return_ownership": "owned",
+        "borrow_from": null
+      },
+      "dynamic": {
+        "export": "ffiFmpqVectorMulMatrix"
+      },
+      "native": {
+        "symbol": "sagejs_fmpq_vector_mul_matrix",
+        "return_type": "int",
+        "arguments": [
+          {
+            "source": "result",
+            "abi_type": "sagejs_flint_byte_region_t",
+            "direction": "out",
+            "adapter": null
+          },
+          {
+            "source": "vector",
+            "abi_type": "sagejs_flint_byte_region_t",
+            "direction": "in",
+            "adapter": null
+          },
+          {
+            "source": "matrix",
+            "abi_type": "sagejs_fmpq_matrix_t",
+            "direction": "in",
+            "adapter": null
+          }
+        ]
+      },
+      "effects": {
+        "pure": false,
+        "deterministic": true,
+        "thread_safe": true,
+        "may_allocate": true,
+        "may_raise": [
+          "ValueError",
+          "OverflowError"
+        ],
+        "writes": []
+      },
+      "result": {
+        "domain": "status",
+        "success": [
+          1
+        ],
+        "absence": null
+      },
+      "errors": {
+        "exception": "ValueError",
+        "message": "rational vector-matrix input is invalid"
       },
       "exceptions": {
         "policy": "none",
