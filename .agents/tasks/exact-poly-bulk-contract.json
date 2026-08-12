@@ -11,7 +11,8 @@
   "claims": [
     "bench/exact-polynomial-bulk-construction-contract.cjs",
     "bench/results/exact-polynomial-bulk-construction.json",
-    "test/exact-polynomial-bulk-construction-contract.cjs"
+    "test/exact-polynomial-bulk-construction-contract.cjs",
+    "test/node-test-manifest.cjs"
   ],
   "dependencies": [],
   "references": [
@@ -37,12 +38,74 @@
     "node --test test/exact-polynomial-bulk-construction-contract.cjs",
     "node bench/exact-polynomial-bulk-construction-contract.cjs --runtime sagejs --samples 3 --count 1001 --check",
     "pnpm test:baselib:strict",
-    "pnpm architecture:check"
+    "pnpm architecture:check",
+    "pnpm test:native"
   ],
-  "runs": [],
+  "runs": [
+    {
+      "command": "node --test test/exact-polynomial-bulk-construction-contract.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.099,
+      "started_at": "2026-08-12T14:50:21.069Z",
+      "commit": "b9670b078e2f99e364f6c2be35b42c346111f60a",
+      "workspace_fingerprint": "f7b2e49e0fb88558caddfdd0893b02ef99d5a26a727f31eb654b6339b7ccd421",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/exact-polynomial-bulk-construction-contract.cjs --runtime sagejs --samples 3 --count 1001 --check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.964,
+      "started_at": "2026-08-12T14:50:22.907Z",
+      "commit": "b9670b078e2f99e364f6c2be35b42c346111f60a",
+      "workspace_fingerprint": "f7b2e49e0fb88558caddfdd0893b02ef99d5a26a727f31eb654b6339b7ccd421",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 14.123,
+      "started_at": "2026-08-12T14:50:26.512Z",
+      "commit": "b9670b078e2f99e364f6c2be35b42c346111f60a",
+      "workspace_fingerprint": "f7b2e49e0fb88558caddfdd0893b02ef99d5a26a727f31eb654b6339b7ccd421",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 14.442,
+      "started_at": "2026-08-12T14:50:41.257Z",
+      "commit": "b9670b078e2f99e364f6c2be35b42c346111f60a",
+      "workspace_fingerprint": "f7b2e49e0fb88558caddfdd0893b02ef99d5a26a727f31eb654b6339b7ccd421",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:native",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 390.484,
+      "started_at": "2026-08-12T14:51:44.208Z",
+      "commit": "b9670b078e2f99e364f6c2be35b42c346111f60a",
+      "workspace_fingerprint": "f7b2e49e0fb88558caddfdd0893b02ef99d5a26a727f31eb654b6339b7ccd421",
+      "platform": "linux-x64"
+    }
+  ],
   "handoff": {
-    "summary": "",
-    "risks": [],
-    "next_steps": []
+    "summary": "Diagnosed exact ZZ[x]/QQ[x] construction without modifying production code. The current route is already bulk, but canonical host values are rebuilt as Python scalar-part lists (and ZZ inputs are unnecessarily converted to BigInt) before the SJP byte stream is reversed, hex encoded, parsed as one enormous BigInt, marshalled as fmpz, reconstructed, and parsed by FLINT. The focused benchmark records setup, first use, warm public work, process time, checked canonical packing, current transport, proposed ByteRegion ingress, 20001-coefficient scaling, a 65538-bit skew, and M1 Max comparisons against SageMath. The contract requires both checked direct host-list packing and declared ByteRegion-to-polynomial resource parsing; changing only one stage cannot pass.",
+    "risks": [
+      "On the M1 Max, 5001-coefficient warm construction is still about 16-20x SageMath for ZZ[x] and 27-28x for QQ[x]. Replacing only the stream-sized BigInt cannot close that gap; the checked canonical host-list path is mandatory, and the 2x end-to-end target may expose a need for a faster general exact-sequence ingress primitive.",
+      "One M1 sample immediately after rebuilding sources spent about 2.2 seconds in the first ZZ[x] construction before the persistent adapter artifact was warm. The report preserves this separately from later fresh-process first use; the implementation lane must verify ordinary builds publish every required adapter rather than hiding this in steady-state medians.",
+      "Diagnostic stage timings are deliberately non-additive because V8 optimizes the isolated helpers differently from the public method. They identify route costs and scaling but are not substitutes for the public end-to-end gate.",
+      "This Node audit specifies but does not itself execute the browser/Wasm capability-disabled packed fallback; the implementation lane must retain and test it."
+    ],
+    "next_steps": [
+      "Add generated flint:fmpz_polynomial_from_byte_region and flint:fmpq_polynomial_from_byte_region declarations, reusing the existing checked SJPZ/SJPQ parser and borrowed FlintByteRegion lifecycle.",
+      "Wire exact list inputs through exact_integer_values_to_packed_bytes or canonical_rational_values_to_packed_bytes before the ordinary coercion fallback; remove Buffer reverse/hex and stream-sized BigInt transport from public construction.",
+      "Add route assertions, malformed-stream transaction tests, sanitizer lifecycle fuzzing, capability-disabled differentials, and one-copy adapter audit evidence.",
+      "Rerun the same-host SageMath comparison, 20001-coefficient scaling, skewed 65538-bit cases, and post-build first-use measurement. If the 2x gate remains unreachable, improve one general exact-sequence host-ingress primitive rather than adding polynomial-specific compiler or N-API code."
+    ]
   }
 }

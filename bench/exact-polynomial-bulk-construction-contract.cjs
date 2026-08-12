@@ -248,6 +248,9 @@ def skew_fast_pack_body():
 
 def skew_public_construct():
     answer = R(skew)
+    ${rational
+      ? "if answer[len(skew) // 2] != QQ(huge) / QQ(large_denominator):\n        raise AssertionError(\"skewed rational coefficient changed\")"
+      : "if answer[len(skew) // 2] != huge:\n        raise AssertionError(\"skewed integer coefficient changed\")"}
     answer._exact_polynomial_resource().close()
 
 payload, byte_length = internal._exact_polynomial_payload(parts, ${count}, ${rational ? "True" : "False"})

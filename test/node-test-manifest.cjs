@@ -133,6 +133,7 @@ const integration = [
   "test/approximate-polynomial.cjs",
   "test/bytes.cjs",
   "test/exact-polynomial-resources.cjs",
+  "test/exact-polynomial-bulk-construction-contract.cjs",
   "test/polynomial-core-correctness-v1.cjs",
   "test/polynomial-ring-conversion.cjs",
   "test/exact-polynomial-cyclotomic-resource.cjs",
