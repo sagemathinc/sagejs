@@ -11,7 +11,7 @@
   },
   "match": {
     "src/doc/en/tutorial/tour_advanced.rst:219": {
-      "regex": "^Wall time: [0-9.]+ms$"
+      "regex": "^CPU times: user [0-9.]+(?:ms|s), sys: [0-9.]+(?:ms|s), total: [0-9.]+(?:ms|s)\\nWall time: [0-9.]+(?:ms|s)$"
     },
     "src/doc/en/tutorial/tour_help.rst:14": {
       "regex": "^Help on function tan[\\s\\S]*Return the tangent"
@@ -23,7 +23,12 @@
       "regex": "^Help on function sudoku[\\s\\S]*Solve a 9-by-9 Sudoku"
     },
     "src/doc/en/tutorial/tour_help.rst:166": {
-      "regex": "^Error: Inconsistent indentation$"
+      "regex": "^PythonSyntaxError: <embedded>:[0-9]+:[0-9]+: Inconsistent indentation$"
+    },
+    "src/doc/en/tutorial/tour_advanced.rst:36": {
+      "accepted": [
+        "[Closed subscheme of Affine Space of dimension 2 over Rational Field defined by:\n  y - 1,\n  x, Closed subscheme of Affine Space of dimension 2 over Rational Field defined by:\n  x - 1,\n  y, Closed subscheme of Affine Space of dimension 2 over Rational Field defined by:\n  2*y^2 + 4*y + 3,\n  x + y + 2]\n"
+      ]
     },
     "src/doc/en/tutorial/tour_algebra.rst:93": {
       "accepted": ["[theta == 1/4*pi]\n"]
