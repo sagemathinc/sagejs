@@ -1,0 +1,359 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "exact-matrix-pivot-ffi-v1",
+  "title": "Generated exact matrix pivot queries",
+  "lane": "integration",
+  "status": "complete",
+  "owner": "user",
+  "objective": "Declare and generate callee-owned pivot-column queries for FmpzMatrix and FmpqMatrix resources, with direct, lifecycle, native, and native-disabled differential coverage, without public Matrix integration",
+  "base_commit": "dcc1302a3f305b00a0e09ba25edee45ac2ee2bf1",
+  "claims": [
+    "ffi/flint.ffi.py",
+    "ffi/flint.ffi.json",
+    "packages/flint/generated/ffi_host.py",
+    "packages/flint/include/sagejs/fmpz_matrix_ffi.h",
+    "packages/flint/include/sagejs/fmpq_matrix_ffi.h",
+    "src/lib/sagejs/ffi/flint.py",
+    "src/baselib/sagejs/ffi/flint.py",
+    "architecture/package-graph.json",
+    "architecture/native-boundaries.json",
+    "test/exact-matrix-pivot-ffi.cjs",
+    "test/ffi.cjs",
+    "test/node-test-manifest.cjs"
+  ],
+  "dependencies": [],
+  "references": [
+    "https://flintlib.org/doc/fmpz_mat.html",
+    "https://flintlib.org/doc/fmpq_mat.html"
+  ],
+  "architecture": {
+    "strategy": "external-library",
+    "fallback": "tested-capability",
+    "oracles": [
+      "Direct generated host adapter versus expected echelon pivot columns",
+      "Native and SAGEJS_NATIVE_DISABLE same-source execution",
+      "ASan/UBSan/LSan resource lifecycle harness"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm --dir packages/flint build",
+    "node --test test/exact-matrix-pivot-ffi.cjs",
+    "node --test test/ffi.cjs",
+    "pnpm ffi:check",
+    "pnpm architecture:check",
+    "pnpm test:portable",
+    "pnpm test:baselib:strict",
+    "pnpm parallel:check"
+  ],
+  "runs": [
+    {
+      "command": "pnpm --dir packages/flint build",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 46.745,
+      "started_at": "2026-08-12T19:01:06.657Z",
+      "commit": "dcc1302a3f305b00a0e09ba25edee45ac2ee2bf1",
+      "workspace_fingerprint": "1b9e6af7a114eda953052fa92ebff01b9a07202d9de414b32e042f870ebc5b50",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/exact-matrix-pivot-ffi.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 5.882,
+      "started_at": "2026-08-12T19:01:59.444Z",
+      "commit": "dcc1302a3f305b00a0e09ba25edee45ac2ee2bf1",
+      "workspace_fingerprint": "1b9e6af7a114eda953052fa92ebff01b9a07202d9de414b32e042f870ebc5b50",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/ffi.cjs",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 66.652,
+      "started_at": "2026-08-12T19:02:09.112Z",
+      "commit": "dcc1302a3f305b00a0e09ba25edee45ac2ee2bf1",
+      "workspace_fingerprint": "1b9e6af7a114eda953052fa92ebff01b9a07202d9de414b32e042f870ebc5b50",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/ffi.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 64.476,
+      "started_at": "2026-08-12T19:03:46.779Z",
+      "commit": "dcc1302a3f305b00a0e09ba25edee45ac2ee2bf1",
+      "workspace_fingerprint": "40e486c4a2b1e0b23cbe02b7ef7c700817522f8bb781fd2bfc88e03d391265cc",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm ffi:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.83,
+      "started_at": "2026-08-12T19:04:56.184Z",
+      "commit": "dcc1302a3f305b00a0e09ba25edee45ac2ee2bf1",
+      "workspace_fingerprint": "40e486c4a2b1e0b23cbe02b7ef7c700817522f8bb781fd2bfc88e03d391265cc",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 3.854,
+      "started_at": "2026-08-12T19:05:05.653Z",
+      "commit": "dcc1302a3f305b00a0e09ba25edee45ac2ee2bf1",
+      "workspace_fingerprint": "40e486c4a2b1e0b23cbe02b7ef7c700817522f8bb781fd2bfc88e03d391265cc",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 15.012,
+      "started_at": "2026-08-12T19:05:33.704Z",
+      "commit": "dcc1302a3f305b00a0e09ba25edee45ac2ee2bf1",
+      "workspace_fingerprint": "9e2631e61efea6016778741d17a5f54a543806b3fd34edef8939730ee7d2cdf0",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 16.202,
+      "started_at": "2026-08-12T19:05:57.856Z",
+      "commit": "dcc1302a3f305b00a0e09ba25edee45ac2ee2bf1",
+      "workspace_fingerprint": "9e2631e61efea6016778741d17a5f54a543806b3fd34edef8939730ee7d2cdf0",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:changed",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 486.193,
+      "started_at": "2026-08-12T19:06:25.141Z",
+      "commit": "dcc1302a3f305b00a0e09ba25edee45ac2ee2bf1",
+      "workspace_fingerprint": "9e2631e61efea6016778741d17a5f54a543806b3fd34edef8939730ee7d2cdf0",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 68.45,
+      "started_at": "2026-08-12T19:15:47.676Z",
+      "commit": "dcc1302a3f305b00a0e09ba25edee45ac2ee2bf1",
+      "workspace_fingerprint": "9e2631e61efea6016778741d17a5f54a543806b3fd34edef8939730ee7d2cdf0",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm --dir packages/flint build",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 15.914,
+      "started_at": "2026-08-12T19:18:04.686Z",
+      "commit": "dcc1302a3f305b00a0e09ba25edee45ac2ee2bf1",
+      "workspace_fingerprint": "9e2631e61efea6016778741d17a5f54a543806b3fd34edef8939730ee7d2cdf0",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/exact-matrix-pivot-ffi.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 5.303,
+      "started_at": "2026-08-12T19:18:24.573Z",
+      "commit": "dcc1302a3f305b00a0e09ba25edee45ac2ee2bf1",
+      "workspace_fingerprint": "9e2631e61efea6016778741d17a5f54a543806b3fd34edef8939730ee7d2cdf0",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm --dir packages/flint build",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 15.706,
+      "started_at": "2026-08-12T19:19:55.381Z",
+      "commit": "dcc1302a3f305b00a0e09ba25edee45ac2ee2bf1",
+      "workspace_fingerprint": "ccaf4bb410e1dedf6d156d2164b708eedef5a9d88dd01a52ed4903da99e73eb6",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/exact-matrix-pivot-ffi.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 4.79,
+      "started_at": "2026-08-12T19:20:15.510Z",
+      "commit": "dcc1302a3f305b00a0e09ba25edee45ac2ee2bf1",
+      "workspace_fingerprint": "ccaf4bb410e1dedf6d156d2164b708eedef5a9d88dd01a52ed4903da99e73eb6",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/ffi.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 51.574,
+      "started_at": "2026-08-12T19:20:24.329Z",
+      "commit": "dcc1302a3f305b00a0e09ba25edee45ac2ee2bf1",
+      "workspace_fingerprint": "ccaf4bb410e1dedf6d156d2164b708eedef5a9d88dd01a52ed4903da99e73eb6",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm ffi:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.534,
+      "started_at": "2026-08-12T19:21:19.835Z",
+      "commit": "dcc1302a3f305b00a0e09ba25edee45ac2ee2bf1",
+      "workspace_fingerprint": "ccaf4bb410e1dedf6d156d2164b708eedef5a9d88dd01a52ed4903da99e73eb6",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 14.668,
+      "started_at": "2026-08-12T19:21:23.064Z",
+      "commit": "dcc1302a3f305b00a0e09ba25edee45ac2ee2bf1",
+      "workspace_fingerprint": "ccaf4bb410e1dedf6d156d2164b708eedef5a9d88dd01a52ed4903da99e73eb6",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 63.989,
+      "started_at": "2026-08-12T19:21:42.343Z",
+      "commit": "dcc1302a3f305b00a0e09ba25edee45ac2ee2bf1",
+      "workspace_fingerprint": "ccaf4bb410e1dedf6d156d2164b708eedef5a9d88dd01a52ed4903da99e73eb6",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 14.685,
+      "started_at": "2026-08-12T19:22:50.274Z",
+      "commit": "dcc1302a3f305b00a0e09ba25edee45ac2ee2bf1",
+      "workspace_fingerprint": "ccaf4bb410e1dedf6d156d2164b708eedef5a9d88dd01a52ed4903da99e73eb6",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm parallel:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.601,
+      "started_at": "2026-08-12T19:23:05.607Z",
+      "commit": "dcc1302a3f305b00a0e09ba25edee45ac2ee2bf1",
+      "workspace_fingerprint": "ccaf4bb410e1dedf6d156d2164b708eedef5a9d88dd01a52ed4903da99e73eb6",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm --dir packages/flint build",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 44.047,
+      "started_at": "2026-08-12T19:23:42.142Z",
+      "commit": "dcc1302a3f305b00a0e09ba25edee45ac2ee2bf1",
+      "workspace_fingerprint": "d3fac47a3afeab43b85718d453b9690471aab5dab3a40bbedc772c79aeca5db2",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/exact-matrix-pivot-ffi.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 5.118,
+      "started_at": "2026-08-12T19:24:30.479Z",
+      "commit": "dcc1302a3f305b00a0e09ba25edee45ac2ee2bf1",
+      "workspace_fingerprint": "d3fac47a3afeab43b85718d453b9690471aab5dab3a40bbedc772c79aeca5db2",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/ffi.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 55.402,
+      "started_at": "2026-08-12T19:24:36.393Z",
+      "commit": "dcc1302a3f305b00a0e09ba25edee45ac2ee2bf1",
+      "workspace_fingerprint": "d3fac47a3afeab43b85718d453b9690471aab5dab3a40bbedc772c79aeca5db2",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm ffi:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.272,
+      "started_at": "2026-08-12T19:25:36.004Z",
+      "commit": "dcc1302a3f305b00a0e09ba25edee45ac2ee2bf1",
+      "workspace_fingerprint": "d3fac47a3afeab43b85718d453b9690471aab5dab3a40bbedc772c79aeca5db2",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 16.488,
+      "started_at": "2026-08-12T19:25:38.927Z",
+      "commit": "dcc1302a3f305b00a0e09ba25edee45ac2ee2bf1",
+      "workspace_fingerprint": "d3fac47a3afeab43b85718d453b9690471aab5dab3a40bbedc772c79aeca5db2",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 14.557,
+      "started_at": "2026-08-12T19:25:56.140Z",
+      "commit": "dcc1302a3f305b00a0e09ba25edee45ac2ee2bf1",
+      "workspace_fingerprint": "d3fac47a3afeab43b85718d453b9690471aab5dab3a40bbedc772c79aeca5db2",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 66.389,
+      "started_at": "2026-08-12T19:26:19.099Z",
+      "commit": "dcc1302a3f305b00a0e09ba25edee45ac2ee2bf1",
+      "workspace_fingerprint": "d3fac47a3afeab43b85718d453b9690471aab5dab3a40bbedc772c79aeca5db2",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm parallel:check",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 0.734,
+      "started_at": "2026-08-12T19:27:29.698Z",
+      "commit": "dcc1302a3f305b00a0e09ba25edee45ac2ee2bf1",
+      "workspace_fingerprint": "d3fac47a3afeab43b85718d453b9690471aab5dab3a40bbedc772c79aeca5db2",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm parallel:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.62,
+      "started_at": "2026-08-12T19:27:43.961Z",
+      "commit": "dcc1302a3f305b00a0e09ba25edee45ac2ee2bf1",
+      "workspace_fingerprint": "d3fac47a3afeab43b85718d453b9690471aab5dab3a40bbedc772c79aeca5db2",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Generated exact-size callee-owned pivot-column byte-region queries for borrowed FmpzMatrix and FmpqMatrix resources. Direct adapters, source-transparent native and native-disabled paths, empty, all-zero, full-rank, and huge-exact-value matrices, deterministic close, use-after-close rejection, external-memory accounting, and sanitizer-backed lifecycle stress are covered without changing the public Matrix API. Independent review approved the ABI, semantics, ownership, and portability design with no blockers.",
+    "risks": [
+      "The new declarations are portable by construction and declare wasm=True, but this lane does not add a browser-facing public Matrix consumer; the portable suite remains the lowering gate.",
+      "A broad pnpm test:changed run reached unrelated baseline failures: compiler/algebra.py timed out and compiler/matrix.py hit the existing sparse-random iterator defect. The focused compiled pivot witness and all FFI tests pass."
+    ],
+    "next_steps": [
+      "Integrate the generated pivot queries into public exact Matrix.pivots/echelon consumers in a separate lane.",
+      "Exercise the new functions through the browser public wrapper when exact matrix resources are wired there."
+    ]
+  }
+}

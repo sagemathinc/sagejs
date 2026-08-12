@@ -776,6 +776,62 @@ static inline uint64_t sagejs_fmpz_matrix_nonzero_count(
     return count;
 }
 
+/* See `sagejs_fmpq_matrix_echelon_pivots` for the packed result contract. */
+static inline int sagejs_fmpz_matrix_echelon_pivots(
+    sagejs_flint_byte_region_t result,
+    const sagejs_fmpz_matrix_t source)
+{
+    const uint64_t rows = (uint64_t) fmpz_mat_nrows(source->value);
+    const uint64_t columns = (uint64_t) fmpz_mat_ncols(source->value);
+    const uint64_t capacity = rows < columns ? rows : columns;
+    result->data = NULL;
+    result->length = 0;
+    if (capacity > (uint64_t) SIZE_MAX / sizeof(uint64_t))
+        return 0;
+    uint64_t *pivots = capacity == 0 ? NULL :
+        (uint64_t *) malloc((size_t) capacity * sizeof(uint64_t));
+    if (capacity != 0 && pivots == NULL)
+        return 0;
+
+    uint64_t count = 0;
+    uint64_t search_start = 0;
+    for (uint64_t row = 0; row < rows; row++)
+    {
+        uint64_t pivot = columns;
+        for (uint64_t column = search_start; column < columns; column++)
+            if (!fmpz_is_zero(fmpz_mat_entry(
+                    source->value, (slong) row, (slong) column)))
+            {
+                pivot = column;
+                break;
+            }
+        if (pivot != columns)
+        {
+            if (count >= capacity)
+            {
+                free(pivots);
+                return 0;
+            }
+            pivots[count++] = pivot;
+            search_start = pivot + 1;
+        }
+    }
+
+    const size_t length = (size_t) count * sizeof(uint64_t);
+    result->data = (unsigned char *) malloc(length == 0 ? 1 : length);
+    if (result->data == NULL)
+    {
+        free(pivots);
+        return 0;
+    }
+    result->length = length;
+    for (uint64_t index = 0; index < count; index++)
+        sagejs_flint_byte_region_write_u64(
+            result->data, (size_t) index * sizeof(uint64_t), pivots[index]);
+    free(pivots);
+    return 1;
+}
+
 static inline int sagejs_fmpz_matrix_format(
     sagejs_flint_byte_region_t result, const sagejs_fmpz_matrix_t source)
 {

@@ -14,7 +14,7 @@
   },
   "counts": {
     "classified-native-file": 62,
-    "declared-ffi": 386,
+    "declared-ffi": 388,
     "declared-ffi-resource": 27,
     "napi-export": 292,
     "runtime-intrinsic": 136,
@@ -805,6 +805,17 @@
       "dynamic_package": "@sagemath/sagejs-flint",
       "dynamic_export": "ffiFmpqMatrixDet",
       "symbol": "sagejs_fmpq_matrix_det",
+      "disposition": "declared-safe-ffi"
+    },
+    {
+      "id": "ffi:flint:fmpq_matrix_echelon_pivots",
+      "kind": "declared-ffi",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "fmpq_matrix_echelon_pivots",
+      "dynamic_package": "@sagemath/sagejs-flint",
+      "dynamic_export": "ffiFmpqMatrixEchelonPivots",
+      "symbol": "sagejs_fmpq_matrix_echelon_pivots",
       "disposition": "declared-safe-ffi"
     },
     {
@@ -1971,6 +1982,17 @@
       "dynamic_package": "@sagemath/sagejs-flint",
       "dynamic_export": "ffiFmpzMatrixDet",
       "symbol": "sagejs_fmpz_matrix_det",
+      "disposition": "declared-safe-ffi"
+    },
+    {
+      "id": "ffi:flint:fmpz_matrix_echelon_pivots",
+      "kind": "declared-ffi",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "fmpz_matrix_echelon_pivots",
+      "dynamic_package": "@sagemath/sagejs-flint",
+      "dynamic_export": "ffiFmpzMatrixEchelonPivots",
+      "symbol": "sagejs_fmpz_matrix_echelon_pivots",
       "disposition": "declared-safe-ffi"
     },
     {

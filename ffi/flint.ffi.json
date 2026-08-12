@@ -11743,6 +11743,75 @@
       }
     },
     {
+      "id": "fmpz_matrix_echelon_pivots",
+      "python_name": "fmpz_matrix_echelon_pivots",
+      "signature": {
+        "parameters": [
+          {
+            "name": "source",
+            "type": "FmpzMatrix",
+            "ownership": "borrowed",
+            "mutability": "read",
+            "aliasing": "allowed"
+          }
+        ],
+        "return_type": "FlintByteRegion",
+        "return_ownership": "owned",
+        "borrow_from": null
+      },
+      "dynamic": {
+        "export": "ffiFmpzMatrixEchelonPivots"
+      },
+      "native": {
+        "symbol": "sagejs_fmpz_matrix_echelon_pivots",
+        "return_type": "int",
+        "arguments": [
+          {
+            "source": "result",
+            "abi_type": "sagejs_flint_byte_region_t",
+            "direction": "out",
+            "adapter": null
+          },
+          {
+            "source": "source",
+            "abi_type": "sagejs_fmpz_matrix_t",
+            "direction": "in",
+            "adapter": null
+          }
+        ]
+      },
+      "effects": {
+        "pure": false,
+        "deterministic": true,
+        "thread_safe": true,
+        "may_allocate": true,
+        "may_raise": [
+          "RuntimeError"
+        ],
+        "writes": []
+      },
+      "result": {
+        "domain": "status",
+        "success": [
+          1
+        ],
+        "absence": null
+      },
+      "errors": {
+        "exception": "RuntimeError",
+        "message": "integer matrix pivot query failed"
+      },
+      "exceptions": {
+        "policy": "none",
+        "failure_status": null
+      },
+      "targets": {
+        "dynamic": true,
+        "native": true,
+        "wasm": true
+      }
+    },
+    {
       "id": "fmpz_matrix_format",
       "python_name": "fmpz_matrix_format",
       "signature": {
@@ -15520,6 +15589,75 @@
         "dynamic": true,
         "native": true,
         "wasm": false
+      }
+    },
+    {
+      "id": "fmpq_matrix_echelon_pivots",
+      "python_name": "fmpq_matrix_echelon_pivots",
+      "signature": {
+        "parameters": [
+          {
+            "name": "source",
+            "type": "FmpqMatrix",
+            "ownership": "borrowed",
+            "mutability": "read",
+            "aliasing": "allowed"
+          }
+        ],
+        "return_type": "FlintByteRegion",
+        "return_ownership": "owned",
+        "borrow_from": null
+      },
+      "dynamic": {
+        "export": "ffiFmpqMatrixEchelonPivots"
+      },
+      "native": {
+        "symbol": "sagejs_fmpq_matrix_echelon_pivots",
+        "return_type": "int",
+        "arguments": [
+          {
+            "source": "result",
+            "abi_type": "sagejs_flint_byte_region_t",
+            "direction": "out",
+            "adapter": null
+          },
+          {
+            "source": "source",
+            "abi_type": "sagejs_fmpq_matrix_t",
+            "direction": "in",
+            "adapter": null
+          }
+        ]
+      },
+      "effects": {
+        "pure": false,
+        "deterministic": true,
+        "thread_safe": true,
+        "may_allocate": true,
+        "may_raise": [
+          "RuntimeError"
+        ],
+        "writes": []
+      },
+      "result": {
+        "domain": "status",
+        "success": [
+          1
+        ],
+        "absence": null
+      },
+      "errors": {
+        "exception": "RuntimeError",
+        "message": "rational matrix pivot query failed"
+      },
+      "exceptions": {
+        "policy": "none",
+        "failure_status": null
+      },
+      "targets": {
+        "dynamic": true,
+        "native": true,
+        "wasm": true
       }
     },
     {
