@@ -4,10 +4,10 @@
   "id": "exact-polynomial-byte-regions",
   "title": "Exact polynomial byte-region contract",
   "lane": "arithmetic-algebra",
-  "status": "active",
+  "status": "review",
   "owner": "user",
   "objective": "Specify and differentially verify a direct signed byte-region ingress and egress contract for packed ZZ[x] and QQ[x] coefficients, with implementation-ready ABI and measured current overhead",
-  "base_commit": "e2ad41d6662c924b3db35e11a533caef7a71b825",
+  "base_commit": "e84feccdd2404715491bf4a954b34bc01837fdf6",
   "claims": [
     "src/lib/sagejs/polynomial_algorithms/exact_coefficient_bytes_contract.py",
     "test/exact-polynomial-byte-regions.cjs",
@@ -162,10 +162,60 @@
       "commit": "7498fa625737b9d4e170a10bfc3958967d17bf76",
       "workspace_fingerprint": "5140677d31810b383b3482903e4bc75a37900af53c6b1825f7d837e78dfb3ff6",
       "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm exec pyright src/lib/sagejs/polynomial_algorithms/exact_coefficient_bytes_contract.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.271,
+      "started_at": "2026-08-12T11:57:37.472Z",
+      "commit": "c602b0eae6b8ccc0815599a1f279f4d934d7bf52",
+      "workspace_fingerprint": "3028b1725d6ad9236c33d5a6cae52638b7d6bfd08ec66345872ac86617a98732",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node test/exact-polynomial-byte-regions.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.263,
+      "started_at": "2026-08-12T11:57:39.359Z",
+      "commit": "c602b0eae6b8ccc0815599a1f279f4d934d7bf52",
+      "workspace_fingerprint": "3028b1725d6ad9236c33d5a6cae52638b7d6bfd08ec66345872ac86617a98732",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "env SAGEJS_FORBID_POLYNOMIAL_NAPI=1 ./bin/sagejs --python bench/exact-polynomial-byte-regions.sage",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 4.804,
+      "started_at": "2026-08-12T11:57:41.273Z",
+      "commit": "c602b0eae6b8ccc0815599a1f279f4d934d7bf52",
+      "workspace_fingerprint": "3028b1725d6ad9236c33d5a6cae52638b7d6bfd08ec66345872ac86617a98732",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 15.652,
+      "started_at": "2026-08-12T11:57:58.840Z",
+      "commit": "c602b0eae6b8ccc0815599a1f279f4d934d7bf52",
+      "workspace_fingerprint": "3028b1725d6ad9236c33d5a6cae52638b7d6bfd08ec66345872ac86617a98732",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 14.408,
+      "started_at": "2026-08-12T11:58:15.121Z",
+      "commit": "c602b0eae6b8ccc0815599a1f279f4d934d7bf52",
+      "workspace_fingerprint": "3028b1725d6ad9236c33d5a6cae52638b7d6bfd08ec66345872ac86617a98732",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {
-    "summary": "Defined an implementation-ready, storage-neutral SJPZ/SJPQ v1 byte-region contract without changing shared FFI or public polynomial code. The ordinary Python oracle normalizes encoder input, strictly validates selected offset/length ranges, signed magnitudes, reduced rational pairs, zero and trailing-zero rules, caller-supplied platform coefficient limits, and constructs results transactionally. CPython and Sage.js witnesses pass by default; the same witness passed SageMath 10.9.post30 with SAGEJS_SAGE_ORACLE=/home/user/sagelite/sage. Current generated FLINT egress is byte-for-byte identical. The later ABI reuses FlintByteRegion.from_bytes and adds non-consuming fmpz/fmpq_polynomial_from_byte_region(region, offset, length) resource constructors. On Node this admits one literal host-to-owned-region copy; Wasm instead has one host-boundary copy plus owned-region materialization. Warm linux-x64 measurements show the current bytes-to-BigInt stage at 8.4 ms for 0.5 MB dense ZZ, 12.5 ms for 1 MB dense QQ, and 12.8 ms for one 1 MB skewed coefficient, versus 0.11, 0.13, and 0.10 ms for the Node byte-region copy. Current deserialization takes another 2.3, 8.5, and 19.6 ms, but those measurements combine avoidable transport reconstruction with unavoidable parse/import work and do not measure the future parser. Egress is already efficient and remains unchanged.",
+    "summary": "Defined an implementation-ready, storage-neutral SJPZ/SJPQ v1 byte-region contract without changing shared FFI or public polynomial code. The ordinary Python oracle normalizes encoder input, strictly validates selected offset/length ranges, signed magnitudes, reduced rational pairs, zero and trailing-zero rules, caller-supplied platform coefficient limits, and constructs results transactionally. CPython and Sage.js witnesses pass by default; the same witness passed SageMath 10.9.post30 with SAGEJS_SAGE_ORACLE=/home/user/sagelite/sage. Current generated FLINT egress is byte-for-byte identical. The later ABI reuses FlintByteRegion.from_bytes and adds non-consuming fmpz/fmpq_polynomial_from_byte_region(region, offset, length) resource constructors. On Node this admits one literal host-to-owned-region copy; Wasm instead has one host-boundary copy plus owned-region materialization. The final warm linux-x64 run measured the current bytes-to-BigInt stage at 14.1 ms for 0.5 MB dense ZZ, 12.6 ms for 1 MB dense QQ, and 13.0 ms for one 1 MB skewed coefficient, versus 0.13, 0.12, and 0.09 ms for the Node byte-region copy. Current deserialization took another 2.5, 8.4, and 19.5 ms, but those measurements combine avoidable transport reconstruction with unavoidable parse/import work and do not measure the future parser. Egress is already efficient and remains unchanged.",
     "risks": [
       "This lane specifies and tests the contract but deliberately does not implement the native primitive; sanitizer, lifecycle, Node, and Wasm proof belongs to the later shared-FFI lane.",
       "The exact polynomial resources currently declare wasm=False. The byte-region resource and synchronous borrowed model are conceptually Wasm-capable, but exact polynomial resource lowering and its host-boundary-copy plus owned-region-materialization lifecycle must be implemented and verified separately.",
