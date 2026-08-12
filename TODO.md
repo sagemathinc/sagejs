@@ -17,6 +17,11 @@
 - Migrate exact power and Laurent series from private FLINT polynomial state to
   compiler-owned packed coefficients, then delete their audited polynomial
   reconstruction ingress.
+- Split the bootstrap `matrix.py` implementation into ordinary, domain-focused
+  modules before the linear-algebra package reaches its temporary 410 KB source
+  ratchet. Keep the public `Matrix` API unified while making exact-integer,
+  rational, prime-field, and generic host dispatch independently readable and
+  claimable by parallel agents.
 
 ## Measurement and performance ergonomics
 

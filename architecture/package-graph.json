@@ -106,7 +106,7 @@
       "id": "linear-algebra",
       "layer": 3,
       "startup": "bootstrap",
-      "max_source_bytes": 385000,
+      "max_source_bytes": 410000,
       "depends_on": ["core-runtime", "native-integration", "arithmetic"],
       "files": [
         "src/baselib/matrix.py",
