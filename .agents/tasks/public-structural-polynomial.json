@@ -4,7 +4,7 @@
   "id": "public-structural-polynomial",
   "title": "Public structural polynomial API",
   "lane": "integration",
-  "status": "review",
+  "status": "complete",
   "owner": "user",
   "objective": "Wire reviewed ordinary structural calculus and generated FLINT adapters into the public ZZ[x], QQ[x], and packed word-prime GF(p)[x] Polynomial API with correct portable fallback, lifecycle, Sage semantics, native selection, and performance.",
   "base_commit": "29913192fbb075b55c7b7c14b49ed1ff7849f036",
