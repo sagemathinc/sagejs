@@ -4,7 +4,7 @@
   "id": "fflas-worktree-cache",
   "title": "Fflas Worktree Cache",
   "lane": "integration",
-  "status": "active",
+  "status": "review",
   "owner": "user",
   "objective": "Share immutable content-addressed GMP, Givaro, FFLAS-FFPACK, and OpenBLAS dependency artifacts across worktrees without redundant builds or full copies, with concurrency-safe publication and focused disk/build verification",
   "base_commit": "b21b652c83afe6867ef17da61b691abf40ab6f9f",
@@ -272,10 +272,70 @@
       "commit": "8fef71da6bdfbba32e91087b4eb191c5c4675bb4",
       "workspace_fingerprint": "a5a0fcfabf7aba9aaf5421b35cd7d58571081882b1d8358725839dcfaa1b564b",
       "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/parallel-development.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 6.706,
+      "started_at": "2026-08-11T23:58:33.379Z",
+      "commit": "6cbf13c6bb7e3716cb9cb9ad867be81c2af741cb",
+      "workspace_fingerprint": "c7a7fea06bc531c2506001a83557f71682ff9a925acf02c2b85defde3ee809ca",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm --dir packages/fflas test",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.82,
+      "started_at": "2026-08-11T23:58:40.806Z",
+      "commit": "6cbf13c6bb7e3716cb9cb9ad867be81c2af741cb",
+      "workspace_fingerprint": "c7a7fea06bc531c2506001a83557f71682ff9a925acf02c2b85defde3ee809ca",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 12.89,
+      "started_at": "2026-08-11T23:58:42.322Z",
+      "commit": "6cbf13c6bb7e3716cb9cb9ad867be81c2af741cb",
+      "workspace_fingerprint": "c7a7fea06bc531c2506001a83557f71682ff9a925acf02c2b85defde3ee809ca",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 6.976,
+      "started_at": "2026-08-11T23:58:55.844Z",
+      "commit": "6cbf13c6bb7e3716cb9cb9ad867be81c2af741cb",
+      "workspace_fingerprint": "c7a7fea06bc531c2506001a83557f71682ff9a925acf02c2b85defde3ee809ca",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 34.9,
+      "started_at": "2026-08-12T00:01:44.021Z",
+      "commit": "6cbf13c6bb7e3716cb9cb9ad867be81c2af741cb",
+      "workspace_fingerprint": "c7a7fea06bc531c2506001a83557f71682ff9a925acf02c2b85defde3ee809ca",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 11.882,
+      "started_at": "2026-08-12T00:02:19.512Z",
+      "commit": "6cbf13c6bb7e3716cb9cb9ad867be81c2af741cb",
+      "workspace_fingerprint": "c7a7fea06bc531c2506001a83557f71682ff9a925acf02c2b85defde3ee809ca",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {
-    "summary": "FFLAS dependency builds now publish one immutable, content-addressed GMP/Givaro/FFLAS-FFPACK/OpenBLAS prefix and materialize it in Unix worktrees as a read-only symlink. Installed config and pkg-config metadata is relocatable and path-bearing libtool archives are omitted. Fresh worktrees bootstrap only the TypeScript compiler plus Python/Sage parser assets; a content stamp and addon input identity reject stale compiler outputs. Publication uses process-birth ownership and a live helper heartbeat during synchronous builds. On bench-1, a fully empty clone completed FLINT plus FFLAS preparation in 5m25s; the hardened FFLAS generation built cold in 1m16s over the retained FLINT cache, and an identical warm prepare took 3.07s. After deleting the builder outputs, a detached worktree restored all four FLINT/FFLAS stages, traversed the relocated config prefix, and passed the FFLAS tests. Windows retains copy materialization.",
+    "summary": "FFLAS dependency builds now publish one immutable, content-addressed GMP/Givaro/FFLAS-FFPACK/OpenBLAS prefix and materialize it in Unix worktrees as a read-only symlink. Installed config and pkg-config metadata is relocatable and path-bearing libtool archives are omitted. Fresh worktrees bootstrap only the TypeScript compiler plus Python/Sage parser assets; a content stamp and addon input identity reject stale compiler outputs. Addon keys include the shared ABI type registry and each package's real generated FFI descriptor, with regression coverage that keeps dependency prefixes stable under addon-only changes. Publication uses process-birth ownership and a live helper heartbeat during synchronous builds. On bench-1, a fully empty clone completed FLINT plus FFLAS preparation in 5m25s; the hardened FFLAS generation built cold in 1m16s over the retained FLINT cache, and an identical warm prepare took 3.07s. After deleting the builder outputs, a detached worktree restored all four FLINT/FFLAS stages, traversed the relocated config prefix, and passed the FFLAS tests. Windows retains copy materialization.",
     "risks": [
       "Shared Unix materializations are absolute symlinks into the repository-common cache, so manually relocating only a worktree without its common Git directory breaks the link.",
       "Old content-addressed cache generations are retained indefinitely; a future concurrency-safe garbage collector should reclaim versions no live worktree or build references.",
