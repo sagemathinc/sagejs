@@ -164,6 +164,8 @@ failure(lambda: matrix_minors(A, 2, max_work=799), "requires 800")
 failure(lambda: matrix_minors(A, -1), "nonnegative")
 failure(lambda: matrix_minors(A, 1.5), "interpreted as an integer")
 failure(lambda: matrix_minors(A, 2, max_work=-1), "nonnegative")
+failure(lambda: matrix_minors(A, 0, max_work=-1), "nonnegative")
+failure(lambda: matrix_minors(A, 9, max_work=-1), "nonnegative")
 
 B = matrix(ZZ, 5, 5, [1] * 25)
 assert matrix_permanent(B, max_work=400) == 120
@@ -177,6 +179,11 @@ failure(lambda: matrix_permanent(wide), "pass max_work=None")
 failure(lambda: matrix_minors(wide, 10), "pass max_work=None")
 
 assert matrix_permanent(matrix(QQ, 0, 7, []), max_work=0) == QQ(1)
+assert matrix_permanent(matrix(QQ, 0, 7, []), algorithm="unused") == QQ(1)
+failure(
+    lambda: matrix_permanent(matrix(QQ, 0, 7, []), max_work=-1),
+    "nonnegative",
+)
 assert matrix_minors(matrix(GF(7), 0, 4, []), 0, max_work=0) == [GF(7)(1)]
 failure(lambda: matrix_permanent(matrix(ZZ, 2, 1, [1, 2])), "m (=2)")
 print("linear-combinatorial-policy-ok")

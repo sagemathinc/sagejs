@@ -15,7 +15,6 @@ from __future__ import annotations
 
 from typing import Any
 
-
 # A work unit is one elementary position in the algorithm's combinatorial
 # state space. This is intentionally a deterministic structural budget rather
 # than a host-dependent wall-clock estimate.
@@ -31,7 +30,7 @@ def _index(value: Any) -> int:
     except AttributeError:
         raise TypeError(
             "'" + type(value).__name__ + "' object cannot be interpreted as an integer"
-        )
+        ) from None
     answer = method()
     if not isinstance(answer, int):
         raise TypeError("__index__ returned non-int")
@@ -179,6 +178,7 @@ def matrix_minors(
     arithmetic. The implementation never assumes packed, host, or
     foreign-library storage.
     """
+    limit = _work_limit(max_work)
     size = _index(k)
     if size < 0:
         raise ValueError("minor size must be nonnegative")
@@ -188,7 +188,7 @@ def matrix_minors(
         return [source.base_ring()(1)]
     if size > min(rows, columns):
         return []
-    _require_work("matrix minors", minors_work(rows, columns, size), max_work)
+    _require_work("matrix minors", minors_work(rows, columns, size), limit)
 
     entries = source.list()
     if size == 1:
@@ -240,17 +240,18 @@ def matrix_permanent(
     default even though this implementation uses the equivalent subset-DP
     recurrence. No sparse Butera-Pernici implementation is currently exposed.
     """
-    if algorithm != "Ryser":
-        raise ValueError('algorithm must be "Ryser"')
+    limit = _work_limit(max_work)
     rows = source.nrows()
     columns = source.ncols()
     if rows == 0:
         return source.base_ring()(1)
+    if algorithm != "Ryser":
+        raise ValueError('algorithm must be "Ryser"')
     if rows > columns:
         raise ValueError(
             "must have m <= n, but m (=" + str(rows) + ") and n (=" + str(columns) + ")"
         )
-    _require_work("matrix permanent", permanent_work(rows, columns), max_work)
+    _require_work("matrix permanent", permanent_work(rows, columns), limit)
 
     base = source.base_ring()
     zero = base(0)

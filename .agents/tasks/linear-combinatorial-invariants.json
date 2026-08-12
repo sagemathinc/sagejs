@@ -4,7 +4,7 @@
   "id": "linear-combinatorial-invariants",
   "title": "Linear Combinatorial Invariants",
   "lane": "arithmetic-algebra",
-  "status": "review",
+  "status": "complete",
   "owner": "user",
   "objective": "Implement ordinary exact Python helpers for matrix minors and permanent with explicit size policy and correct dynamic fallback",
   "base_commit": "1bd487f2f38589b1e186b6c6a6a84860a115f9bf",

@@ -48,6 +48,7 @@
     "src/lib/sagejs/ffi/fflas.py",
     "src/lib/sagejs/ffi/m4ri.py",
     "src/lib/sagejs/linear_algebra/__init__.py",
+    "src/lib/sagejs/linear_algebra/combinatorial.py",
     "src/lib/sagejs/linear_algebra/matrix_selection.py",
     "src/lib/sagejs/linear_algebra/matrix_predicates.py",
     "src/lib/sagejs/linear_algebra/vector_contract.py",
