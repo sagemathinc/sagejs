@@ -4,7 +4,7 @@
   "id": "public-matrix-vector",
   "title": "Public one-boundary matrix-vector products",
   "lane": "integration",
-  "status": "review",
+  "status": "complete",
   "owner": "user",
   "objective": "Implement public dense Matrix times Vector and Vector times Matrix through the integrated storage-neutral one-operation contract, completing generated FLINT-resource ZZ and QQ products with Sage coercion and dimension semantics and explicit capability gates for remaining packed finite-field backends",
   "base_commit": "91522d6bba7eccfb75010c4d4f15868b258bfde0",
