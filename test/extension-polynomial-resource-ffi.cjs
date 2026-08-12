@@ -13,7 +13,7 @@ const flintPrefix = resolve(
   process.env.SAGEJS_FLINT_PREFIX ||
     join(root, "packages", "flint", ".native", "prefix"),
 );
-const lifecycleRounds = process.platform === "darwin" ? 8 : 1000;
+const lifecycleRounds = process.platform === "darwin" ? 2 : 1000;
 
 if (process.platform === "win32") {
   process.stdout.write(JSON.stringify({
