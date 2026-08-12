@@ -4,10 +4,10 @@
   "id": "audit-linear-algebra-api",
   "title": "P1 linear algebra API audit",
   "lane": "arithmetic-algebra",
-  "status": "active",
+  "status": "review",
   "owner": "user",
   "objective": "Measure and ratchet Sage-compatible public Matrix and Vector API coverage and representative performance over ZZ, QQ, and small GF(p), classify each execution path, and publish an independent implementation-lane decomposition without changing math implementations or shared registries",
-  "base_commit": "05e0e370e1d41d5850577bbce2d7d9885901d8b0",
+  "base_commit": "3b0658fa3880a5efba21c80c3699071cdfb6a6c1",
   "claims": [
     "docs/audits/linear-algebra-api.json",
     "docs/SAGE-DAYS-LINEAR-ALGEBRA-API.md",
@@ -129,20 +129,59 @@
       "commit": "05e0e370e1d41d5850577bbce2d7d9885901d8b0",
       "workspace_fingerprint": "0797fa9db3734ab5650a87af47d7c5275b16f481a2b3cf6c1250be1b735898b4",
       "platform": "linux-x64"
+    },
+    {
+      "command": "node test/linear-algebra-api-audit.js",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.904,
+      "started_at": "2026-08-12T07:42:54.402Z",
+      "commit": "1e28c76a8efef6aac1f44da4349b530f9022a105",
+      "workspace_fingerprint": "2f2523e248b7f0892d1b82b761e5b29a23622d3a394e03887a00854e20043ec1",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/linear-algebra-api-audit.cjs --check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 3.599,
+      "started_at": "2026-08-12T07:42:55.931Z",
+      "commit": "1e28c76a8efef6aac1f44da4349b530f9022a105",
+      "workspace_fingerprint": "2f2523e248b7f0892d1b82b761e5b29a23622d3a394e03887a00854e20043ec1",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 13.092,
+      "started_at": "2026-08-12T07:43:00.126Z",
+      "commit": "1e28c76a8efef6aac1f44da4349b530f9022a105",
+      "workspace_fingerprint": "2f2523e248b7f0892d1b82b761e5b29a23622d3a394e03887a00854e20043ec1",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:native",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 597.176,
+      "started_at": "2026-08-12T07:43:51.959Z",
+      "commit": "1e28c76a8efef6aac1f44da4349b530f9022a105",
+      "workspace_fingerprint": "2f2523e248b7f0892d1b82b761e5b29a23622d3a394e03887a00854e20043ec1",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {
-    "summary": "Captured SageMath 10.9 and Sage.js public Matrix/Vector name coverage over ZZ, QQ, and GF(7); classified packed compiler-owned, generated packed FFI, dynamic Python, N-API oracle-only, and missing paths; added deterministic source/behavior ratchets, an 18-case performance audit, and a write-disjoint prioritized follow-on lane map.",
+    "summary": "Corrected the SageMath 10.9/Sage.js Matrix and Vector audit for the current architecture: dense ZZ and QQ matrices canonically own generated FmpzMatrix and FmpqMatrix resources, GF(7) owns packed residues and exposes 27 typed kernels, and exact packed declarations are compatibility boundaries rather than canonical storage. Updated deterministic storage/resource witnesses, declaration counts, vector mutability coverage, the 18-case performance audit, and the write-disjoint Sage Days lane map.",
     "risks": [
-      "Sage dir() counts include broad inherited category methods, so the audit separates name coverage from 60 focused operational witnesses.",
+      "Sage dir() counts include broad inherited category methods, so the audit separates name coverage from 69 focused operational witnesses.",
       "Performance limits are coarse cross-platform API regressions; the existing ring-specific dense-matrix gates remain authoritative.",
-      "The required pnpm test:native cannot pass on base commit a4fb41c: packages/flint/test/lazy-factor.cjs observes four lazy FLINT requests instead of one before reaching this lane's files. The focused dense migration suites passed in the broader CLI run, and this lane does not claim the compiler/runtime cache fix.",
-      "pnpm test:changed also reaches pre-existing runtime-intrinsic and generated documentation drift on the base commit; shared manifests and generated registries were intentionally left untouched."
+      "The declaration-count ratchets intentionally require review when generated exact-resource operations are renamed or consolidated."
     ],
     "next_steps": [
-      "Integrate or rebase onto the compiler/runtime lazy-load fix, then rerun pnpm test:native and move this contract to review.",
       "Start the write-disjoint linear-vector-contract, linear-matrix-selection, and linear-matrix-predicates preparation lanes described in docs/SAGE-DAYS-LINEAR-ALGEBRA-API.md.",
-      "Use a short integration-owned lane for each reviewed helper batch that edits src/baselib/matrix.py and updates the audit snapshot."
+      "Use a short integration-owned lane for each reviewed helper batch that edits src/baselib/matrix.py and updates the audit snapshot.",
+      "Refresh the Sage 10.9 name oracle only when the pinned upstream surface or the deliberate Sage.js public API changes."
     ]
   }
 }
