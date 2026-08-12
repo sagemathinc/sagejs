@@ -5262,6 +5262,46 @@ class Matrix(sage.Element):
                     right_matrix.ncols(),
                 )._from_canonical_uint64_residues(output)
                 return result.column(0) if vector_result else result
+        if (
+            left_matrix._has_packed_prime_storage()
+            and right_matrix._has_packed_prime_storage()
+        ):
+            reduced = left_matrix.augment(right_matrix).rref()
+            kernel_module = _dense_prime_kernel_module()
+            kernel_function = kernel_module.dense_prime_field_matrix_solution_from_rref
+            output = _dense_prime_zeros(
+                kernel_function,
+                left_matrix.ncols() * right_matrix.ncols(),
+            )
+            reduced_record = kernel_module.DensePrimeMatrix(
+                reduced._prime_kernel_buffer(kernel_function),
+                reduced.nrows(),
+                reduced.ncols(),
+                int(_untyped(base).characteristic()),
+            )
+            solved = bool(
+                kernel_function(
+                    reduced_record,
+                    left_matrix.ncols(),
+                    right_matrix.ncols(),
+                    output,
+                )
+            )
+            _trace_dense_prime_selection(
+                "solve_right",
+                _typed_python_implementation(kernel_function),
+                left_matrix.nrows(),
+                right_matrix.ncols(),
+                int(_untyped(base).characteristic()),
+            )
+            if not solved:
+                raise ValueError("matrix equation has no solutions")
+            result = MatrixSpace(
+                base,
+                left_matrix.ncols(),
+                right_matrix.ncols(),
+            )._from_canonical_uint64_residues(output)
+            return result.column(0) if vector_result else result
         native_value = runtime.undefined
         if (
             not left_matrix._has_packed_prime_storage()

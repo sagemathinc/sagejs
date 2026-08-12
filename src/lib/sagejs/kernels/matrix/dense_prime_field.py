@@ -668,6 +668,60 @@ def dense_prime_field_matrix_right_kernel(
 
 
 @native
+def dense_prime_field_matrix_solution_from_rref(
+    reduced: DensePrimeMatrix,
+    left_columns: uint64,
+    right_columns: uint64,
+    output: UInt64Buffer,
+) -> bool:
+    """Extract one solution from an augmented RREF matrix.
+
+    Free variables are set to zero, so `output` has the canonical shape
+    `left_columns * right_columns`. Return false exactly when a zero row in
+    the left block has a nonzero entry in the right block.
+    """
+    rows = reduced.rows
+    columns = reduced.columns
+    entries = reduced.entries
+    if rows > 4294967295:
+        raise ValueError("dense prime solution dimensions are too large")
+    if left_columns > 4294967295 or right_columns > 4294967295:
+        raise ValueError("dense prime solution dimensions are too large")
+    if columns != left_columns + right_columns:
+        raise ValueError("dense prime augmented RREF shape mismatch")
+    if len(entries) != rows * columns:
+        raise ValueError("dense prime augmented RREF storage mismatch")
+    if len(output) != left_columns * right_columns:
+        raise ValueError("dense prime solution output shape mismatch")
+
+    # Detect inconsistency before changing output. An RREF row whose left
+    # block is zero represents 0 = b, which is soluble only when b is zero.
+    for row in range(rows):
+        pivot = left_columns
+        for column in range(left_columns):
+            if pivot == left_columns and entries[row * columns + column] != 0:
+                pivot = column
+        if pivot == left_columns:
+            for column in range(right_columns):
+                if entries[row * columns + left_columns + column] != 0:
+                    return False
+
+    for index in range(left_columns * right_columns):
+        output[index] = 0
+    for row in range(rows):
+        pivot = left_columns
+        for column in range(left_columns):
+            if pivot == left_columns and entries[row * columns + column] != 0:
+                pivot = column
+        if pivot != left_columns:
+            for column in range(right_columns):
+                output[pivot * right_columns + column] = entries[
+                    row * columns + left_columns + column
+                ]
+    return True
+
+
+@native
 def dense_prime_field_matrix_solve(
     left: DensePrimeMatrix,
     right: DensePrimeMatrix,
@@ -730,5 +784,6 @@ __all__ = [
     "dense_prime_field_matrix_space_random_fill",
     "dense_prime_field_matrix_rref",
     "dense_prime_field_matrix_right_kernel",
+    "dense_prime_field_matrix_solution_from_rref",
     "dense_prime_field_matrix_solve",
 ]
