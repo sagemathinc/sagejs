@@ -79,4 +79,3 @@ export function markModuleCacheInUse(
   leases.set(cacheDirectory, { filename, release });
   return release;
 }
-
