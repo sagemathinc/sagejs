@@ -64,6 +64,7 @@ const integration = [
   "test/exact-matrix-bulk-construction.cjs",
   "test/dense-integer-solve-resource.cjs",
   "test/fmpz-matrix-resource-kernels.cjs",
+  "test/fmpz-matrix-right-kernel.cjs",
   "test/fmpz-matrix-resource-selectors.cjs",
   "test/fmpz-matrix-selector-lifecycle.cjs",
   "test/dense-rational-migration.cjs",
