@@ -11,11 +11,6 @@
 - Use compiler-owned packed mathematical objects where they give a complete,
   fast host-independent vertical slice; use generated opaque resources for
   mature exact libraries and copy only at explicit representation boundaries.
-- Give compiled baselib modules lexical top-level namespaces instead of the
-  current shared bootstrap scope, then ratchet duplicate private helper names.
-  Until then, prefix module-private helpers that differ semantically; a matrix
-  versus polynomial capacity-helper collision once caused linear scans at
-  every dense integer matrix boundary.
 - Replace the narrow exact-root reconstruction exception for packed `ZZ[x]`
   and `QQ[x]` after algebraic-number resources have a declared generated FFI
   representation.
