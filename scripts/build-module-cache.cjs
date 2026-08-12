@@ -29,6 +29,10 @@ function compilerCacheFilename(sourceFilename) {
   );
 }
 
+function precompiledCacheFilename(moduleName) {
+  return `${moduleName.replaceAll(".", "-")}.json`;
+}
+
 function sourceFilenameForModule(name) {
   const base = join(libraryDirectory, ...name.split("."));
   const moduleFilename = `${base}.py`;
@@ -87,7 +91,7 @@ for (const { name, sourceFilename } of modules) {
     temporaryDirectory,
     compilerCacheFilename(sourceFilename),
   );
-  copyFileSync(generated, join(outputDirectory, `${name}.json`));
+  copyFileSync(generated, join(outputDirectory, precompiledCacheFilename(name)));
 }
 
 rmSync(temporaryDirectory, { recursive: true, force: true });

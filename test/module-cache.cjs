@@ -2,6 +2,7 @@
 
 const assert = require("node:assert/strict");
 const {
+  existsSync,
   mkdirSync,
   mkdtempSync,
   readdirSync,
@@ -40,6 +41,10 @@ const precompiledNumpyCache = join(
   "module-cache",
   "numpy.json",
 );
+const dottedPrecompiledModules = [
+  "sagejs.linear_algebra.sparse_random",
+  "sagejs.kernels.matrix.dense_integer",
+];
 
 mkdirSync(sourceDirectory);
 
@@ -78,6 +83,20 @@ function filesBelow(directory) {
 }
 
 try {
+  for (const name of dottedPrecompiledModules) {
+    const canonical = join(
+      root,
+      "dist",
+      "module-cache",
+      `${name.replaceAll(".", "-")}.json`,
+    );
+    const obsolete = join(root, "dist", "module-cache", `${name}.json`);
+    assert.ok(existsSync(canonical), `missing canonical cache for ${name}`);
+    assert.equal(existsSync(obsolete), false, `obsolete cache name for ${name}`);
+    const cachedModule = JSON.parse(readFileSync(canonical, "utf8"));
+    assert.ok(cachedModule.outputs["beautify:true keep_docstrings:false"]);
+  }
+
   const numpyCache = JSON.parse(readFileSync(precompiledNumpyCache, "utf8"));
   assert.equal(typeof numpyCache.version, "string");
   assert.ok(numpyCache.outputs["beautify:true keep_docstrings:false"]);
