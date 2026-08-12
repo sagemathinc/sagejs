@@ -681,6 +681,16 @@ async function main() {
     assert.equal(contourTrace.contours.coloring, "lines");
     assert.equal(contourTrace.line.color, "red");
 
+    const callableContour = await session.evaluate(
+      "f=lambda x,y: cos(x*y); " +
+        "contour_plot(f, (-4,4), (-4,4), plot_points=3)",
+    );
+    const callableValues = callableContour.display?.data.data[0].z;
+    assert.equal(callableValues.length, 3);
+    assert.equal(callableValues[0].length, 3);
+    assert.ok(Math.abs(callableValues[0][0] - Math.cos(16)) < 1e-15);
+    assert.equal(callableValues[1][1], 1);
+
     const implicit = await session.evaluate(
       "implicit_plot(x^2+y^2-1, (x,-1,1), (y,-1,1), plot_points=3)",
     );

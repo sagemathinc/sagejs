@@ -1,0 +1,111 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "tutorial-symbolic-numeric",
+  "title": "Symbolic numeric wrapper compatibility",
+  "lane": "symbolic",
+  "status": "active",
+  "owner": "user",
+  "objective": "Make symbolic transcendental functions evaluate ordinary float and complex numeric wrappers while preserving exact and symbolic semantics, and make expression-tree lowering tolerate values without parents",
+  "base_commit": "1f0475bbbcc0fbf764ab15556eeafd7acaa1495e",
+  "claims": [
+    "src/baselib/symbolic.py",
+    "test/symbolic.cjs",
+    "test/graphics.cjs"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "dynamic-python",
+    "fallback": "same-source",
+    "oracles": [
+      "Sage-compatible symbolic and numeric behavior",
+      "Focused contour plot and transcendental regression tests"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm build",
+    "pnpm test:compiler",
+    "pnpm test:integration",
+    "pnpm test:baselib:strict",
+    "node test/symbolic.cjs",
+    "node test/graphics.cjs",
+    "node scripts/run-sage-tutorial.cjs --file tour_plotting"
+  ],
+  "runs": [
+    {
+      "command": "pnpm build",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 146.048,
+      "started_at": "2026-08-12T03:26:48.326Z",
+      "commit": "1f0475bbbcc0fbf764ab15556eeafd7acaa1495e",
+      "workspace_fingerprint": "4546a881b254210b36c5ed3f6dc1618c031a95a148ec816f0124e011f8bf0b62",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:compiler",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 81.004,
+      "started_at": "2026-08-12T03:29:20.983Z",
+      "commit": "1f0475bbbcc0fbf764ab15556eeafd7acaa1495e",
+      "workspace_fingerprint": "4546a881b254210b36c5ed3f6dc1618c031a95a148ec816f0124e011f8bf0b62",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 12.827,
+      "started_at": "2026-08-12T03:32:53.973Z",
+      "commit": "1f0475bbbcc0fbf764ab15556eeafd7acaa1495e",
+      "workspace_fingerprint": "4546a881b254210b36c5ed3f6dc1618c031a95a148ec816f0124e011f8bf0b62",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node test/symbolic.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.78,
+      "started_at": "2026-08-12T03:33:07.417Z",
+      "commit": "1f0475bbbcc0fbf764ab15556eeafd7acaa1495e",
+      "workspace_fingerprint": "4546a881b254210b36c5ed3f6dc1618c031a95a148ec816f0124e011f8bf0b62",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node test/graphics.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.254,
+      "started_at": "2026-08-12T03:33:09.825Z",
+      "commit": "1f0475bbbcc0fbf764ab15556eeafd7acaa1495e",
+      "workspace_fingerprint": "4546a881b254210b36c5ed3f6dc1618c031a95a148ec816f0124e011f8bf0b62",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node scripts/run-sage-tutorial.cjs --file tour_plotting",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 3.151,
+      "started_at": "2026-08-12T03:33:12.677Z",
+      "commit": "1f0475bbbcc0fbf764ab15556eeafd7acaa1495e",
+      "workspace_fingerprint": "4546a881b254210b36c5ed3f6dc1618c031a95a148ec816f0124e011f8bf0b62",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Symbolic transcendental functions now distinguish ordinary Python float and complex wrappers from exact integers and symbolic values. Integral boxed floats evaluate numerically, complex values reuse the canonical lazy cmath module, and expression-tree conversion safely rejects objects without mathematical parents. Focused tests cover exact preservation, positive/negative/integral/nonintegral float dispatch, complex result identity, and the tutorial callable contour plot.",
+    "risks": [
+      "Complex numeric dispatch requires the normal Sage.js lazy Python module loader; a deliberately stripped standalone realm fails explicitly if it attempts this path."
+    ],
+    "next_steps": []
+  }
+}
