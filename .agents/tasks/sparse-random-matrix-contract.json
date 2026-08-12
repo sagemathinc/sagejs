@@ -4,7 +4,7 @@
   "id": "sparse-random-matrix-contract",
   "title": "Sparse Random Matrix Contract",
   "lane": "arithmetic-algebra",
-  "status": "review",
+  "status": "complete",
   "owner": "user",
   "objective": "Define and validate a storage-neutral bulk plan for efficient sparse random dense-matrix construction over ZZ, QQ, GF(2), and small GF(p)",
   "base_commit": "1f1219932802054fcd7a424ac877b84aa88d4b60",
