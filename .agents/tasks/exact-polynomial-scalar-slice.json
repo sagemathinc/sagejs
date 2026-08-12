@@ -1,0 +1,173 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "exact-polynomial-scalar-slice",
+  "title": "Exact polynomial scalar division and slicing",
+  "lane": "integration",
+  "status": "review",
+  "owner": "user",
+  "objective": "Route ZZ[x] and QQ[x] scalar floor division and truncating prefix slices through generated FLINT resources without whole-polynomial serialization, preserving Sage semantics and lifecycle safety with differential and performance coverage.",
+  "base_commit": "10202938896c227a73b547367bf4565c29675a89",
+  "claims": [
+    "ffi/flint.ffi.py",
+    "ffi/flint.ffi.json",
+    "packages/flint/include/sagejs/exact_polynomial_ffi.h",
+    "packages/flint/generated/",
+    "src/baselib/polynomial.py",
+    "src/baselib/sagejs/ffi/flint.py",
+    "src/lib/sagejs/ffi/flint.py",
+    "test/exact-polynomial-scalar-slice-resource.cjs",
+    "test/exact-polynomial-resource-ffi.cjs",
+    "test/ffi.cjs",
+    "test/node-test-manifest.cjs",
+    "bench/exact-polynomial-scalar-slice.cjs",
+    "architecture/native-boundaries.json",
+    "architecture/package-graph.json",
+    "scripts/check-polynomial-budget.cjs"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "external-library",
+    "fallback": "same-source",
+    "oracles": [
+      "SageMath exact polynomial scalar division and slice semantics",
+      "Existing dynamic Python fallback"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "fallback",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm architecture:check",
+    "pnpm test:portable",
+    "pnpm test:baselib:strict"
+  ],
+  "runs": [
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 12.911,
+      "started_at": "2026-08-12T05:52:12.954Z",
+      "commit": "10202938896c227a73b547367bf4565c29675a89",
+      "workspace_fingerprint": "e08d6fd6958b17ccc715cd9ded709562020ad4fceeab2d59f1e8a455ab0553ab",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 13.411,
+      "started_at": "2026-08-12T05:52:35.240Z",
+      "commit": "10202938896c227a73b547367bf4565c29675a89",
+      "workspace_fingerprint": "e08d6fd6958b17ccc715cd9ded709562020ad4fceeab2d59f1e8a455ab0553ab",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node test/exact-polynomial-scalar-slice-resource.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 6.031,
+      "started_at": "2026-08-12T05:52:49.278Z",
+      "commit": "10202938896c227a73b547367bf4565c29675a89",
+      "workspace_fingerprint": "e08d6fd6958b17ccc715cd9ded709562020ad4fceeab2d59f1e8a455ab0553ab",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node test/exact-polynomial-resource-ffi.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 4.652,
+      "started_at": "2026-08-12T05:52:55.924Z",
+      "commit": "10202938896c227a73b547367bf4565c29675a89",
+      "workspace_fingerprint": "e08d6fd6958b17ccc715cd9ded709562020ad4fceeab2d59f1e8a455ab0553ab",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/ffi.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 51.1,
+      "started_at": "2026-08-12T05:53:06.314Z",
+      "commit": "10202938896c227a73b547367bf4565c29675a89",
+      "workspace_fingerprint": "e08d6fd6958b17ccc715cd9ded709562020ad4fceeab2d59f1e8a455ab0553ab",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "env SAGEJS_POLYNOMIAL_SAMPLES=3 node scripts/check-polynomial-budget.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 13.838,
+      "started_at": "2026-08-12T05:54:07.245Z",
+      "commit": "10202938896c227a73b547367bf4565c29675a89",
+      "workspace_fingerprint": "e08d6fd6958b17ccc715cd9ded709562020ad4fceeab2d59f1e8a455ab0553ab",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 47.373,
+      "started_at": "2026-08-12T05:54:49.280Z",
+      "commit": "10202938896c227a73b547367bf4565c29675a89",
+      "workspace_fingerprint": "e08d6fd6958b17ccc715cd9ded709562020ad4fceeab2d59f1e8a455ab0553ab",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 42.83,
+      "started_at": "2026-08-12T05:57:41.708Z",
+      "commit": "10202938896c227a73b547367bf4565c29675a89",
+      "workspace_fingerprint": "e5af400cc229f758766e2fcdd830d24b4e6965f03739d7dbac27d1260008f625",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 39.018,
+      "started_at": "2026-08-12T06:01:02.916Z",
+      "commit": "10202938896c227a73b547367bf4565c29675a89",
+      "workspace_fingerprint": "927c638302abb12d47f323be6ed0b9dfc7fcd14d5cef537f27e4a45bd70b4b20",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 13.46,
+      "started_at": "2026-08-12T06:01:49.172Z",
+      "commit": "10202938896c227a73b547367bf4565c29675a89",
+      "workspace_fingerprint": "927c638302abb12d47f323be6ed0b9dfc7fcd14d5cef537f27e4a45bd70b4b20",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 12.387,
+      "started_at": "2026-08-12T06:02:39.165Z",
+      "commit": "10202938896c227a73b547367bf4565c29675a89",
+      "workspace_fingerprint": "927c638302abb12d47f323be6ed0b9dfc7fcd14d5cef537f27e4a45bd70b4b20",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Added generated callee-owned FLINT operations for ZZ[x] scalar floor division, QQ[x] scalar division, and exact-polynomial prefix truncation. Public scalar // and [:stop] paths preserve canonical resources without coefficient serialization. Sage differential, portable fallback, direct host-adapter, closed/wrong/unsealed resource, ASan/UBSan lifecycle, and degree-100000 performance coverage pass.",
+    "risks": [
+      "The exact polynomial resources remain unavailable in Wasm, so portable hosts continue to use the same-source packed fallback.",
+      "The native-integration source-size ratchet rises from 515000 to 522000 bytes for four generated declarations and wrappers."
+    ],
+    "next_steps": [
+      "Integrate after rebasing generated declaration hashes and shared FFI ratchets onto the current integration branch.",
+      "Consider adding non-prefix polynomial slices only after Sage semantics and a suitable FLINT resource operation are specified."
+    ]
+  }
+}

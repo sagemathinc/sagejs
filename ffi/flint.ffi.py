@@ -378,6 +378,56 @@ def fmpz_polynomial_neg(source: FmpzPolynomial) -> FmpzPolynomial: ...
 
 
 @flint.function(
+    dynamic="ffiFmpzPolynomialScalarFloorDiv",
+    symbol="sagejs_fmpz_polynomial_scalar_floor_div",
+    returns=int,
+    abi=[
+        out("result", sagejs_fmpz_polynomial_t),
+        in_("source", sagejs_fmpz_polynomial_t),
+        in_("divisor", fmpz_t),
+    ],
+    effects=Effects(
+        pure=False,
+        allocates=True,
+        raises=[ValueError],
+    ),
+    result=Status(
+        1,
+        exception=ValueError,
+        message="integer polynomial scalar division requires a sealed resource and a nonzero divisor",
+    ),
+    wasm=False,
+)
+def fmpz_polynomial_scalar_floor_div(
+    source: FmpzPolynomial,
+    divisor: Integer,
+) -> FmpzPolynomial: ...
+
+
+@flint.function(
+    dynamic="ffiFmpzPolynomialTruncate",
+    symbol="sagejs_fmpz_polynomial_truncate",
+    returns=int,
+    abi=[
+        out("result", sagejs_fmpz_polynomial_t),
+        in_("source", sagejs_fmpz_polynomial_t),
+        in_("stop", uint64_t),
+    ],
+    effects=Effects(pure=False, allocates=True, raises=[ValueError, OverflowError]),
+    result=Status(
+        1,
+        exception=ValueError,
+        message="integer polynomial truncation requires a sealed resource and a supported stop",
+    ),
+    wasm=False,
+)
+def fmpz_polynomial_truncate(
+    source: FmpzPolynomial,
+    stop: uint64,
+) -> FmpzPolynomial: ...
+
+
+@flint.function(
     dynamic="ffiFmpzPolynomialDerivative",
     symbol="sagejs_fmpz_polynomial_derivative",
     returns=int,
@@ -957,6 +1007,58 @@ def fmpq_polynomial_sub(
     wasm=False,
 )
 def fmpq_polynomial_neg(source: FmpqPolynomial) -> FmpqPolynomial: ...
+
+
+@flint.function(
+    dynamic="ffiFmpqPolynomialScalarDiv",
+    symbol="sagejs_fmpq_polynomial_scalar_div",
+    returns=int,
+    abi=[
+        out("result", sagejs_fmpq_polynomial_t),
+        in_("source", sagejs_fmpq_polynomial_t),
+        in_("numerator", fmpz_t),
+        in_("denominator", fmpz_t),
+    ],
+    effects=Effects(
+        pure=False,
+        allocates=True,
+        raises=[ValueError],
+    ),
+    result=Status(
+        1,
+        exception=ValueError,
+        message="rational polynomial scalar division requires a sealed resource and a nonzero divisor",
+    ),
+    wasm=False,
+)
+def fmpq_polynomial_scalar_div(
+    source: FmpqPolynomial,
+    numerator: Integer,
+    denominator: Integer,
+) -> FmpqPolynomial: ...
+
+
+@flint.function(
+    dynamic="ffiFmpqPolynomialTruncate",
+    symbol="sagejs_fmpq_polynomial_truncate",
+    returns=int,
+    abi=[
+        out("result", sagejs_fmpq_polynomial_t),
+        in_("source", sagejs_fmpq_polynomial_t),
+        in_("stop", uint64_t),
+    ],
+    effects=Effects(pure=False, allocates=True, raises=[ValueError, OverflowError]),
+    result=Status(
+        1,
+        exception=ValueError,
+        message="rational polynomial truncation requires a sealed resource and a supported stop",
+    ),
+    wasm=False,
+)
+def fmpq_polynomial_truncate(
+    source: FmpqPolynomial,
+    stop: uint64,
+) -> FmpqPolynomial: ...
 
 
 @flint.function(
