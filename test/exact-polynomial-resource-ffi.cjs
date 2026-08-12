@@ -172,12 +172,26 @@ function fmpqPolynomial(coefficients) {
   const sum = flint.ffiFmpzPolynomialAdd(left, right);
   const difference = flint.ffiFmpzPolynomialSub(left, right);
   const negated = flint.ffiFmpzPolynomialNeg(left);
+  const derivative = flint.ffiFmpzPolynomialDerivative(left);
   const product = flint.ffiFmpzPolynomialMul(left, right);
   const common = flint.ffiFmpzPolynomialGcd(product, left);
   const quotient = flint.ffiFmpzPolynomialDivExact(product, left);
   const zero = fmpzPolynomial([]);
   const zeroQuotient = flint.ffiFmpzPolynomialDivExact(zero, right);
   const power = flint.ffiFmpzPolynomialPow(left, 12n);
+  const divisionDividend = fmpzPolynomial([1n, 0n, 1n]);
+  const divisionDivisor = fmpzPolynomial([1n, 1n]);
+  const division = flint.ffiFmpzPolynomialQuoRemResource(
+    divisionDividend, divisionDivisor,
+  );
+  assert.throws(
+    () => flint.ffiFmpzPolynomialQuoRemResource(divisionDividend, zero),
+    /division requires sealed resources and a nonzero divisor/,
+  );
+  const divisionQuotient =
+    flint.ffiFmpzPolynomialDivisionResultQuotient(division);
+  const divisionRemainder =
+    flint.ffiFmpzPolynomialDivisionResultRemainder(division);
   assert.deepEqual(
     [0n, 1n].map((index) =>
       flint.ffiFmpzPolynomialCoefficient(sum, index)),
@@ -189,6 +203,7 @@ function fmpqPolynomial(coefficients) {
     [2n, -1n],
   );
   assert.equal(flint.ffiFmpzPolynomialCoefficient(negated, 1n), -1n);
+  assert.equal(flint.ffiFmpzPolynomialCoefficient(derivative, 0n), 1n);
   assert.deepEqual(
     [0n, 1n, 2n].map((index) =>
       flint.ffiFmpzPolynomialCoefficient(product, index)),
@@ -217,6 +232,15 @@ function fmpqPolynomial(coefficients) {
   assert.equal(flint.ffiFmpzPolynomialCoefficient(right, 1n), 2n);
   assert.equal(flint.ffiFmpzPolynomialLength(power), 13n);
   assert.equal(flint.ffiFmpzPolynomialCoefficient(power, 6n), 924n);
+  assert.deepEqual(
+    [0n, 1n].map((index) =>
+      flint.ffiFmpzPolynomialCoefficient(divisionQuotient, index)),
+    [-1n, 1n],
+  );
+  assert.equal(
+    flint.ffiFmpzPolynomialCoefficient(divisionRemainder, 0n), 2n,
+  );
+  assert.ok(accounted(division) > 0n);
   assert.equal(flint.ffiFmpzPolynomialEvaluate(power, 2n), 531441n);
   const rationalValue = flint.ffiFmpzPolynomialEvaluateRational(left, 1n, 2n);
   assert.equal(flint.ffiFmpqValueNumerator(rationalValue), 3n);
@@ -238,12 +262,22 @@ function fmpqPolynomial(coefficients) {
   closeTwice(restored, flint.ffiFmpzPolynomialClose);
   closeTwice(serialized, flint.ffiFlintByteRegionClose);
   closeTwice(rationalValue, flint.ffiFmpqValueClose);
+  closeTwice(divisionRemainder, flint.ffiFmpzPolynomialClose);
+  closeTwice(divisionQuotient, flint.ffiFmpzPolynomialClose);
+  closeTwice(division, flint.ffiFmpzPolynomialDivisionResultClose);
+  assert.throws(
+    () => flint.ffiFmpzPolynomialDivisionResultQuotient(division),
+    /resource is closed/,
+  );
+  closeTwice(divisionDivisor, flint.ffiFmpzPolynomialClose);
+  closeTwice(divisionDividend, flint.ffiFmpzPolynomialClose);
   closeTwice(power, flint.ffiFmpzPolynomialClose);
   closeTwice(zeroQuotient, flint.ffiFmpzPolynomialClose);
   closeTwice(zero, flint.ffiFmpzPolynomialClose);
   closeTwice(quotient, flint.ffiFmpzPolynomialClose);
   closeTwice(common, flint.ffiFmpzPolynomialClose);
   closeTwice(product, flint.ffiFmpzPolynomialClose);
+  closeTwice(derivative, flint.ffiFmpzPolynomialClose);
   closeTwice(negated, flint.ffiFmpzPolynomialClose);
   closeTwice(difference, flint.ffiFmpzPolynomialClose);
   closeTwice(sum, flint.ffiFmpzPolynomialClose);
@@ -257,12 +291,28 @@ function fmpqPolynomial(coefficients) {
   const sum = flint.ffiFmpqPolynomialAdd(left, right);
   const difference = flint.ffiFmpqPolynomialSub(left, right);
   const negated = flint.ffiFmpqPolynomialNeg(left);
+  const derivative = flint.ffiFmpqPolynomialDerivative(left);
   const product = flint.ffiFmpqPolynomialMul(left, right);
   const common = flint.ffiFmpqPolynomialGcd(product, left);
   const quotient = flint.ffiFmpqPolynomialDivExact(product, left);
   const zero = fmpqPolynomial([]);
   const zeroQuotient = flint.ffiFmpqPolynomialDivExact(zero, right);
   const power = flint.ffiFmpqPolynomialPow(left, 3n);
+  const divisionDividend = fmpqPolynomial([
+    [1n, 1n], [0n, 1n], [1n, 1n],
+  ]);
+  const divisionDivisor = fmpqPolynomial([[-1n, 1n], [2n, 1n]]);
+  const division = flint.ffiFmpqPolynomialQuoRemResource(
+    divisionDividend, divisionDivisor,
+  );
+  assert.throws(
+    () => flint.ffiFmpqPolynomialQuoRemResource(divisionDividend, zero),
+    /division requires sealed resources and a nonzero divisor/,
+  );
+  const divisionQuotient =
+    flint.ffiFmpqPolynomialDivisionResultQuotient(division);
+  const divisionRemainder =
+    flint.ffiFmpqPolynomialDivisionResultRemainder(division);
   assert.deepEqual(
     [
       flint.ffiFmpqPolynomialCoefficientNumerator(sum, 0n),
@@ -290,6 +340,10 @@ function fmpqPolynomial(coefficients) {
     ],
     [-1n, 2n, -1n, 3n],
   );
+  assert.equal(flint.ffiFmpqPolynomialCoefficientNumerator(derivative, 0n), 1n);
+  assert.equal(
+    flint.ffiFmpqPolynomialCoefficientDenominator(derivative, 0n), 3n,
+  );
   assert.equal(flint.ffiFmpqPolynomialLength(product), 3n);
   assert.equal(flint.ffiFmpqPolynomialEqual(quotient, right), 1n);
   const monicLeft = fmpqPolynomial([[3n, 2n], [1n, 1n]]);
@@ -314,6 +368,21 @@ function fmpqPolynomial(coefficients) {
   assert.equal(flint.ffiFmpqPolynomialCoefficientNumerator(left, 0n), 1n);
   assert.equal(flint.ffiFmpqPolynomialCoefficientDenominator(left, 0n), 2n);
   assert.equal(flint.ffiFmpqPolynomialLength(power), 4n);
+  assert.deepEqual(
+    [0n, 1n].flatMap((index) => [
+      flint.ffiFmpqPolynomialCoefficientNumerator(divisionQuotient, index),
+      flint.ffiFmpqPolynomialCoefficientDenominator(divisionQuotient, index),
+    ]),
+    [1n, 4n, 1n, 2n],
+  );
+  assert.deepEqual(
+    [
+      flint.ffiFmpqPolynomialCoefficientNumerator(divisionRemainder, 0n),
+      flint.ffiFmpqPolynomialCoefficientDenominator(divisionRemainder, 0n),
+    ],
+    [5n, 4n],
+  );
+  assert.ok(accounted(division) > 0n);
   const value = flint.ffiFmpqPolynomialEvaluate(left, 3n, 2n);
   assert.equal(flint.ffiFmpqValueNumerator(value), 1n);
   assert.equal(flint.ffiFmpqValueDenominator(value), 1n);
@@ -334,6 +403,15 @@ function fmpqPolynomial(coefficients) {
   closeTwice(restored, flint.ffiFmpqPolynomialClose);
   closeTwice(serialized, flint.ffiFlintByteRegionClose);
   closeTwice(value, flint.ffiFmpqValueClose);
+  closeTwice(divisionRemainder, flint.ffiFmpqPolynomialClose);
+  closeTwice(divisionQuotient, flint.ffiFmpqPolynomialClose);
+  closeTwice(division, flint.ffiFmpqPolynomialDivisionResultClose);
+  assert.throws(
+    () => flint.ffiFmpqPolynomialDivisionResultRemainder(division),
+    /resource is closed/,
+  );
+  closeTwice(divisionDivisor, flint.ffiFmpqPolynomialClose);
+  closeTwice(divisionDividend, flint.ffiFmpqPolynomialClose);
   closeTwice(power, flint.ffiFmpqPolynomialClose);
   closeTwice(zeroQuotient, flint.ffiFmpqPolynomialClose);
   closeTwice(zero, flint.ffiFmpqPolynomialClose);
@@ -341,6 +419,7 @@ function fmpqPolynomial(coefficients) {
   closeTwice(monicLeft, flint.ffiFmpqPolynomialClose);
   closeTwice(common, flint.ffiFmpqPolynomialClose);
   closeTwice(product, flint.ffiFmpqPolynomialClose);
+  closeTwice(derivative, flint.ffiFmpqPolynomialClose);
   closeTwice(negated, flint.ffiFmpqPolynomialClose);
   closeTwice(difference, flint.ffiFmpqPolynomialClose);
   closeTwice(sum, flint.ffiFmpqPolynomialClose);

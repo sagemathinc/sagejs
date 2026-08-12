@@ -63,6 +63,33 @@ typedef struct
 typedef sagejs_exact_polynomial_factorization_struct
     sagejs_exact_polynomial_factorization_t[1];
 
+/*
+ * Quotient/remainder is one mathematical operation. These result owners keep
+ * both variable-size FLINT polynomials alive after one division, so generated
+ * host adapters can publish each component without recomputing the division
+ * or predicting coefficient capacities.
+ */
+
+typedef struct
+{
+    sagejs_fmpz_polynomial_struct quotient;
+    sagejs_fmpz_polynomial_struct remainder;
+    size_t retained_bytes;
+} sagejs_fmpz_polynomial_division_result_struct;
+
+typedef sagejs_fmpz_polynomial_division_result_struct
+    sagejs_fmpz_polynomial_division_result_t[1];
+
+typedef struct
+{
+    sagejs_fmpq_polynomial_struct quotient;
+    sagejs_fmpq_polynomial_struct remainder;
+    size_t retained_bytes;
+} sagejs_fmpq_polynomial_division_result_struct;
+
+typedef sagejs_fmpq_polynomial_division_result_struct
+    sagejs_fmpq_polynomial_division_result_t[1];
+
 static inline void sagejs_exact_polynomial_adjust_retained_bytes(
     size_t *retained, size_t previous, size_t current)
 {
@@ -230,6 +257,18 @@ static inline int sagejs_fmpz_polynomial_neg(
     return 1;
 }
 
+static inline int sagejs_fmpz_polynomial_derivative(
+    sagejs_fmpz_polynomial_t result,
+    const sagejs_fmpz_polynomial_t source)
+{
+    if (!source->sealed)
+        return 0;
+    fmpz_poly_init(result->value);
+    fmpz_poly_derivative(result->value, source->value);
+    sagejs_fmpz_polynomial_finish_result(result);
+    return 1;
+}
+
 static inline int sagejs_fmpz_polynomial_mul(
     sagejs_fmpz_polynomial_t result,
     const sagejs_fmpz_polynomial_t left,
@@ -271,6 +310,64 @@ static inline int sagejs_fmpz_polynomial_divexact(
         memset(result, 0, sizeof(*result));
         return 0;
     }
+    sagejs_fmpz_polynomial_finish_result(result);
+    return 1;
+}
+
+static inline size_t sagejs_fmpz_polynomial_division_result_allocated_bytes(
+    const sagejs_fmpz_polynomial_division_result_t division)
+{
+    return division->retained_bytes;
+}
+
+static inline void sagejs_fmpz_polynomial_division_result_clear(
+    sagejs_fmpz_polynomial_division_result_t division)
+{
+    sagejs_fmpz_polynomial_clear(&division->quotient);
+    sagejs_fmpz_polynomial_clear(&division->remainder);
+    division->retained_bytes = 0;
+}
+
+static inline int sagejs_fmpz_polynomial_quo_rem_resource(
+    sagejs_fmpz_polynomial_division_result_t result,
+    const sagejs_fmpz_polynomial_t dividend,
+    const sagejs_fmpz_polynomial_t divisor)
+{
+    if (!dividend->sealed || !divisor->sealed ||
+        fmpz_poly_is_zero(divisor->value))
+        return 0;
+    fmpz_poly_init(result->quotient.value);
+    fmpz_poly_init(result->remainder.value);
+    fmpz_poly_divrem(result->quotient.value, result->remainder.value,
+        dividend->value, divisor->value);
+    sagejs_fmpz_polynomial_finish_result(&result->quotient);
+    sagejs_fmpz_polynomial_finish_result(&result->remainder);
+    result->retained_bytes = sizeof(*result);
+    result->retained_bytes = sagejs_retained_size_add(
+        result->retained_bytes,
+        result->quotient.retained_bytes - sizeof(result->quotient));
+    result->retained_bytes = sagejs_retained_size_add(
+        result->retained_bytes,
+        result->remainder.retained_bytes - sizeof(result->remainder));
+    return 1;
+}
+
+static inline int sagejs_fmpz_polynomial_division_result_quotient(
+    sagejs_fmpz_polynomial_t result,
+    const sagejs_fmpz_polynomial_division_result_t division)
+{
+    fmpz_poly_init(result->value);
+    fmpz_poly_set(result->value, division->quotient.value);
+    sagejs_fmpz_polynomial_finish_result(result);
+    return 1;
+}
+
+static inline int sagejs_fmpz_polynomial_division_result_remainder(
+    sagejs_fmpz_polynomial_t result,
+    const sagejs_fmpz_polynomial_division_result_t division)
+{
+    fmpz_poly_init(result->value);
+    fmpz_poly_set(result->value, division->remainder.value);
     sagejs_fmpz_polynomial_finish_result(result);
     return 1;
 }
@@ -739,6 +836,64 @@ static inline int sagejs_fmpq_polynomial_divexact(
     return 1;
 }
 
+static inline size_t sagejs_fmpq_polynomial_division_result_allocated_bytes(
+    const sagejs_fmpq_polynomial_division_result_t division)
+{
+    return division->retained_bytes;
+}
+
+static inline void sagejs_fmpq_polynomial_division_result_clear(
+    sagejs_fmpq_polynomial_division_result_t division)
+{
+    sagejs_fmpq_polynomial_clear(&division->quotient);
+    sagejs_fmpq_polynomial_clear(&division->remainder);
+    division->retained_bytes = 0;
+}
+
+static inline int sagejs_fmpq_polynomial_quo_rem_resource(
+    sagejs_fmpq_polynomial_division_result_t result,
+    const sagejs_fmpq_polynomial_t dividend,
+    const sagejs_fmpq_polynomial_t divisor)
+{
+    if (!dividend->sealed || !divisor->sealed ||
+        fmpq_poly_is_zero(divisor->value))
+        return 0;
+    fmpq_poly_init(result->quotient.value);
+    fmpq_poly_init(result->remainder.value);
+    fmpq_poly_divrem(result->quotient.value, result->remainder.value,
+        dividend->value, divisor->value);
+    sagejs_fmpq_polynomial_finish_result(&result->quotient);
+    sagejs_fmpq_polynomial_finish_result(&result->remainder);
+    result->retained_bytes = sizeof(*result);
+    result->retained_bytes = sagejs_retained_size_add(
+        result->retained_bytes,
+        result->quotient.retained_bytes - sizeof(result->quotient));
+    result->retained_bytes = sagejs_retained_size_add(
+        result->retained_bytes,
+        result->remainder.retained_bytes - sizeof(result->remainder));
+    return 1;
+}
+
+static inline int sagejs_fmpq_polynomial_division_result_quotient(
+    sagejs_fmpq_polynomial_t result,
+    const sagejs_fmpq_polynomial_division_result_t division)
+{
+    fmpq_poly_init(result->value);
+    fmpq_poly_set(result->value, division->quotient.value);
+    sagejs_fmpq_polynomial_finish_result(result);
+    return 1;
+}
+
+static inline int sagejs_fmpq_polynomial_division_result_remainder(
+    sagejs_fmpq_polynomial_t result,
+    const sagejs_fmpq_polynomial_division_result_t division)
+{
+    fmpq_poly_init(result->value);
+    fmpq_poly_set(result->value, division->remainder.value);
+    sagejs_fmpq_polynomial_finish_result(result);
+    return 1;
+}
+
 static inline int sagejs_fmpq_polynomial_neg(
     sagejs_fmpq_polynomial_t result,
     const sagejs_fmpq_polynomial_t source)
@@ -747,6 +902,18 @@ static inline int sagejs_fmpq_polynomial_neg(
         return 0;
     fmpq_poly_init(result->value);
     fmpq_poly_neg(result->value, source->value);
+    sagejs_fmpq_polynomial_finish_result(result);
+    return 1;
+}
+
+static inline int sagejs_fmpq_polynomial_derivative(
+    sagejs_fmpq_polynomial_t result,
+    const sagejs_fmpq_polynomial_t source)
+{
+    if (!source->sealed)
+        return 0;
+    fmpq_poly_init(result->value);
+    fmpq_poly_derivative(result->value, source->value);
     sagejs_fmpq_polynomial_finish_result(result);
     return 1;
 }

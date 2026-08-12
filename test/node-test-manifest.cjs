@@ -93,6 +93,7 @@ const integration = [
   "test/graphics-export.cjs",
   "test/approximate-polynomial.cjs",
   "test/exact-polynomial-resources.cjs",
+  "test/polynomial-core-correctness-v1.cjs",
   "test/exact-polynomial-cyclotomic-resource.cjs",
   "test/exact-polynomial-factorization-resource.cjs",
   "test/exact-polynomial-format.cjs",

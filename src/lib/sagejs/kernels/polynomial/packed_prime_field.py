@@ -7,6 +7,7 @@ from sagejs.native import (
     UInt64Buffer,
     native,
     prime_add,
+    prime_inverse,
     prime_mul,
     prime_sub,
     uint64,
@@ -75,6 +76,22 @@ def packed_prime_field_polynomial_negate(
 
 
 @native
+def packed_prime_field_polynomial_derivative(
+    output: UInt64Buffer,
+    source: UInt64Buffer,
+    modulus: PrimeFieldModulus,
+) -> bool:
+    expected = 0
+    if len(source) > 1:
+        expected = len(source) - 1
+    valid = len(output) == expected
+    if valid:
+        for index in range(1, len(source)):
+            output[index - 1] = prime_mul(source[index], index % modulus, modulus)
+    return valid
+
+
+@native
 def packed_prime_field_polynomial_multiply(
     output: UInt64Buffer,
     left: UInt64Buffer,
@@ -127,3 +144,42 @@ def packed_prime_field_polynomial_evaluate(
             prime_mul(result, value, modulus), coefficients[index], modulus
         )
     return result
+
+
+@native
+def packed_prime_field_polynomial_quo_rem(
+    quotient: UInt64Buffer,
+    remainder: UInt64Buffer,
+    dividend: UInt64Buffer,
+    divisor: UInt64Buffer,
+    modulus: PrimeFieldModulus,
+) -> bool:
+    """Divide canonical low-to-high coefficients over a small prime field."""
+    quotient_length = 0
+    if len(dividend) >= len(divisor):
+        quotient_length = len(dividend) - len(divisor) + 1
+    valid = (
+        len(divisor) != 0
+        and len(quotient) == quotient_length
+        and len(remainder) == len(dividend)
+    )
+    if valid:
+        for index in range(len(remainder)):
+            remainder[index] = dividend[index]
+        for index in range(len(quotient)):
+            quotient[index] = 0
+        divisor_degree = len(divisor) - 1
+        inverse = prime_inverse(divisor[divisor_degree], modulus)
+        for offset in range(quotient_length):
+            shift = quotient_length - offset - 1
+            factor = prime_mul(remainder[divisor_degree + shift], inverse, modulus)
+            quotient[shift] = factor
+            if factor != 0:
+                for index in range(len(divisor)):
+                    target = index + shift
+                    remainder[target] = prime_sub(
+                        remainder[target],
+                        prime_mul(factor, divisor[index], modulus),
+                        modulus,
+                    )
+    return valid

@@ -130,6 +130,28 @@ ExactPolynomialFactorization = flint.resource(
 )
 
 
+FmpzPolynomialDivisionResult = flint.resource(
+    id="fmpz_polynomial_division_result",
+    abi=sagejs_fmpz_polynomial_division_result_t,
+    ownership="owned",
+    close="ffiFmpzPolynomialDivisionResultClose",
+    clear="sagejs_fmpz_polynomial_division_result_clear",
+    size="sagejs_fmpz_polynomial_division_result_allocated_bytes",
+    wasm=False,
+)
+
+
+FmpqPolynomialDivisionResult = flint.resource(
+    id="fmpq_polynomial_division_result",
+    abi=sagejs_fmpq_polynomial_division_result_t,
+    ownership="owned",
+    close="ffiFmpqPolynomialDivisionResultClose",
+    clear="sagejs_fmpq_polynomial_division_result_clear",
+    size="sagejs_fmpq_polynomial_division_result_allocated_bytes",
+    wasm=False,
+)
+
+
 DirichletGroup = flint.resource(
     id="dirichlet_group",
     abi=dirichlet_group_t,
@@ -324,6 +346,21 @@ def fmpz_polynomial_neg(source: FmpzPolynomial) -> FmpzPolynomial: ...
 
 
 @flint.function(
+    dynamic="ffiFmpzPolynomialDerivative",
+    symbol="sagejs_fmpz_polynomial_derivative",
+    returns=int,
+    abi=[
+        out("result", sagejs_fmpz_polynomial_t),
+        in_("source", sagejs_fmpz_polynomial_t),
+    ],
+    effects=Effects(pure=False, allocates=True, raises=[ValueError]),
+    result=Status(1, exception=ValueError, message="integer polynomial is unsealed"),
+    wasm=False,
+)
+def fmpz_polynomial_derivative(source: FmpzPolynomial) -> FmpzPolynomial: ...
+
+
+@flint.function(
     dynamic="ffiFmpzPolynomialMul",
     symbol="sagejs_fmpz_polynomial_mul",
     returns=int,
@@ -405,6 +442,63 @@ def fmpz_polynomial_factor_resource(
 def fmpz_polynomial_divexact(
     dividend: FmpzPolynomial,
     divisor: FmpzPolynomial,
+) -> FmpzPolynomial: ...
+
+
+@flint.function(
+    dynamic="ffiFmpzPolynomialQuoRemResource",
+    symbol="sagejs_fmpz_polynomial_quo_rem_resource",
+    returns=int,
+    abi=[
+        out("result", sagejs_fmpz_polynomial_division_result_t),
+        in_("dividend", sagejs_fmpz_polynomial_t),
+        in_("divisor", sagejs_fmpz_polynomial_t),
+    ],
+    effects=Effects(pure=False, allocates=True, raises=[ValueError]),
+    result=Status(
+        1,
+        exception=ValueError,
+        message="integer polynomial division requires sealed resources and a nonzero divisor",
+    ),
+    wasm=False,
+)
+def fmpz_polynomial_quo_rem_resource(
+    dividend: FmpzPolynomial,
+    divisor: FmpzPolynomial,
+) -> FmpzPolynomialDivisionResult: ...
+
+
+@flint.function(
+    dynamic="ffiFmpzPolynomialDivisionResultQuotient",
+    symbol="sagejs_fmpz_polynomial_division_result_quotient",
+    returns=int,
+    abi=[
+        out("result", sagejs_fmpz_polynomial_t),
+        in_("division", sagejs_fmpz_polynomial_division_result_t),
+    ],
+    effects=Effects(pure=False, allocates=True, raises=[ValueError]),
+    result=Status(1, exception=ValueError, message="invalid integer division result"),
+    wasm=False,
+)
+def fmpz_polynomial_division_result_quotient(
+    division: FmpzPolynomialDivisionResult,
+) -> FmpzPolynomial: ...
+
+
+@flint.function(
+    dynamic="ffiFmpzPolynomialDivisionResultRemainder",
+    symbol="sagejs_fmpz_polynomial_division_result_remainder",
+    returns=int,
+    abi=[
+        out("result", sagejs_fmpz_polynomial_t),
+        in_("division", sagejs_fmpz_polynomial_division_result_t),
+    ],
+    effects=Effects(pure=False, allocates=True, raises=[ValueError]),
+    result=Status(1, exception=ValueError, message="invalid integer division result"),
+    wasm=False,
+)
+def fmpz_polynomial_division_result_remainder(
+    division: FmpzPolynomialDivisionResult,
 ) -> FmpzPolynomial: ...
 
 
@@ -764,6 +858,21 @@ def fmpq_polynomial_neg(source: FmpqPolynomial) -> FmpqPolynomial: ...
 
 
 @flint.function(
+    dynamic="ffiFmpqPolynomialDerivative",
+    symbol="sagejs_fmpq_polynomial_derivative",
+    returns=int,
+    abi=[
+        out("result", sagejs_fmpq_polynomial_t),
+        in_("source", sagejs_fmpq_polynomial_t),
+    ],
+    effects=Effects(pure=False, allocates=True, raises=[ValueError]),
+    result=Status(1, exception=ValueError, message="rational polynomial is unsealed"),
+    wasm=False,
+)
+def fmpq_polynomial_derivative(source: FmpqPolynomial) -> FmpqPolynomial: ...
+
+
+@flint.function(
     dynamic="ffiFmpqPolynomialMul",
     symbol="sagejs_fmpq_polynomial_mul",
     returns=int,
@@ -965,6 +1074,63 @@ def exact_polynomial_factorization_fmpq_factor(
 def fmpq_polynomial_divexact(
     dividend: FmpqPolynomial,
     divisor: FmpqPolynomial,
+) -> FmpqPolynomial: ...
+
+
+@flint.function(
+    dynamic="ffiFmpqPolynomialQuoRemResource",
+    symbol="sagejs_fmpq_polynomial_quo_rem_resource",
+    returns=int,
+    abi=[
+        out("result", sagejs_fmpq_polynomial_division_result_t),
+        in_("dividend", sagejs_fmpq_polynomial_t),
+        in_("divisor", sagejs_fmpq_polynomial_t),
+    ],
+    effects=Effects(pure=False, allocates=True, raises=[ValueError]),
+    result=Status(
+        1,
+        exception=ValueError,
+        message="rational polynomial division requires sealed resources and a nonzero divisor",
+    ),
+    wasm=False,
+)
+def fmpq_polynomial_quo_rem_resource(
+    dividend: FmpqPolynomial,
+    divisor: FmpqPolynomial,
+) -> FmpqPolynomialDivisionResult: ...
+
+
+@flint.function(
+    dynamic="ffiFmpqPolynomialDivisionResultQuotient",
+    symbol="sagejs_fmpq_polynomial_division_result_quotient",
+    returns=int,
+    abi=[
+        out("result", sagejs_fmpq_polynomial_t),
+        in_("division", sagejs_fmpq_polynomial_division_result_t),
+    ],
+    effects=Effects(pure=False, allocates=True, raises=[ValueError]),
+    result=Status(1, exception=ValueError, message="invalid rational division result"),
+    wasm=False,
+)
+def fmpq_polynomial_division_result_quotient(
+    division: FmpqPolynomialDivisionResult,
+) -> FmpqPolynomial: ...
+
+
+@flint.function(
+    dynamic="ffiFmpqPolynomialDivisionResultRemainder",
+    symbol="sagejs_fmpq_polynomial_division_result_remainder",
+    returns=int,
+    abi=[
+        out("result", sagejs_fmpq_polynomial_t),
+        in_("division", sagejs_fmpq_polynomial_division_result_t),
+    ],
+    effects=Effects(pure=False, allocates=True, raises=[ValueError]),
+    result=Status(1, exception=ValueError, message="invalid rational division result"),
+    wasm=False,
+)
+def fmpq_polynomial_division_result_remainder(
+    division: FmpqPolynomialDivisionResult,
 ) -> FmpqPolynomial: ...
 
 

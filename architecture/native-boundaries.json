@@ -14,8 +14,8 @@
   },
   "counts": {
     "classified-native-file": 57,
-    "declared-ffi": 181,
-    "declared-ffi-resource": 10,
+    "declared-ffi": 189,
+    "declared-ffi-resource": 12,
     "napi-export": 292,
     "runtime-intrinsic": 135,
     "wasm-export": 46
@@ -94,6 +94,18 @@
       "disposition": "declared-owned-ffi-resource"
     },
     {
+      "id": "ffi-resource:flint:fmpq_polynomial_division_result",
+      "kind": "declared-ffi-resource",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "FmpqPolynomialDivisionResult",
+      "abi_type": "sagejs_fmpq_polynomial_division_result_t",
+      "close_export": "ffiFmpqPolynomialDivisionResultClose",
+      "clear_symbol": "sagejs_fmpq_polynomial_division_result_clear",
+      "size_symbol": "sagejs_fmpq_polynomial_division_result_allocated_bytes",
+      "disposition": "declared-owned-ffi-resource"
+    },
+    {
       "id": "ffi-resource:flint:fmpq_value",
       "kind": "declared-ffi-resource",
       "path": "ffi/flint.ffi.json",
@@ -127,6 +139,18 @@
       "close_export": "ffiFmpzPolynomialClose",
       "clear_symbol": "sagejs_fmpz_polynomial_clear",
       "size_symbol": "sagejs_fmpz_polynomial_allocated_bytes",
+      "disposition": "declared-owned-ffi-resource"
+    },
+    {
+      "id": "ffi-resource:flint:fmpz_polynomial_division_result",
+      "kind": "declared-ffi-resource",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "FmpzPolynomialDivisionResult",
+      "abi_type": "sagejs_fmpz_polynomial_division_result_t",
+      "close_export": "ffiFmpzPolynomialDivisionResultClose",
+      "clear_symbol": "sagejs_fmpz_polynomial_division_result_clear",
+      "size_symbol": "sagejs_fmpz_polynomial_division_result_allocated_bytes",
       "disposition": "declared-owned-ffi-resource"
     },
     {
@@ -922,6 +946,17 @@
       "disposition": "declared-safe-ffi"
     },
     {
+      "id": "ffi:flint:fmpq_polynomial_derivative",
+      "kind": "declared-ffi",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "fmpq_polynomial_derivative",
+      "dynamic_package": "@sagemath/sagejs-flint",
+      "dynamic_export": "ffiFmpqPolynomialDerivative",
+      "symbol": "sagejs_fmpq_polynomial_derivative",
+      "disposition": "declared-safe-ffi"
+    },
+    {
       "id": "ffi:flint:fmpq_polynomial_deserialize",
       "kind": "declared-ffi",
       "path": "ffi/flint.ffi.json",
@@ -941,6 +976,28 @@
       "dynamic_package": "@sagemath/sagejs-flint",
       "dynamic_export": "ffiFmpqPolynomialDivExact",
       "symbol": "sagejs_fmpq_polynomial_divexact",
+      "disposition": "declared-safe-ffi"
+    },
+    {
+      "id": "ffi:flint:fmpq_polynomial_division_result_quotient",
+      "kind": "declared-ffi",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "fmpq_polynomial_division_result_quotient",
+      "dynamic_package": "@sagemath/sagejs-flint",
+      "dynamic_export": "ffiFmpqPolynomialDivisionResultQuotient",
+      "symbol": "sagejs_fmpq_polynomial_division_result_quotient",
+      "disposition": "declared-safe-ffi"
+    },
+    {
+      "id": "ffi:flint:fmpq_polynomial_division_result_remainder",
+      "kind": "declared-ffi",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "fmpq_polynomial_division_result_remainder",
+      "dynamic_package": "@sagemath/sagejs-flint",
+      "dynamic_export": "ffiFmpqPolynomialDivisionResultRemainder",
+      "symbol": "sagejs_fmpq_polynomial_division_result_remainder",
       "disposition": "declared-safe-ffi"
     },
     {
@@ -1040,6 +1097,17 @@
       "dynamic_package": "@sagemath/sagejs-flint",
       "dynamic_export": "ffiFmpqPolynomialPow",
       "symbol": "sagejs_fmpq_polynomial_pow",
+      "disposition": "declared-safe-ffi"
+    },
+    {
+      "id": "ffi:flint:fmpq_polynomial_quo_rem_resource",
+      "kind": "declared-ffi",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "fmpq_polynomial_quo_rem_resource",
+      "dynamic_package": "@sagemath/sagejs-flint",
+      "dynamic_export": "ffiFmpqPolynomialQuoRemResource",
+      "symbol": "sagejs_fmpq_polynomial_quo_rem_resource",
       "disposition": "declared-safe-ffi"
     },
     {
@@ -1714,6 +1782,17 @@
       "disposition": "declared-safe-ffi"
     },
     {
+      "id": "ffi:flint:fmpz_polynomial_derivative",
+      "kind": "declared-ffi",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "fmpz_polynomial_derivative",
+      "dynamic_package": "@sagemath/sagejs-flint",
+      "dynamic_export": "ffiFmpzPolynomialDerivative",
+      "symbol": "sagejs_fmpz_polynomial_derivative",
+      "disposition": "declared-safe-ffi"
+    },
+    {
       "id": "ffi:flint:fmpz_polynomial_deserialize",
       "kind": "declared-ffi",
       "path": "ffi/flint.ffi.json",
@@ -1733,6 +1812,28 @@
       "dynamic_package": "@sagemath/sagejs-flint",
       "dynamic_export": "ffiFmpzPolynomialDivExact",
       "symbol": "sagejs_fmpz_polynomial_divexact",
+      "disposition": "declared-safe-ffi"
+    },
+    {
+      "id": "ffi:flint:fmpz_polynomial_division_result_quotient",
+      "kind": "declared-ffi",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "fmpz_polynomial_division_result_quotient",
+      "dynamic_package": "@sagemath/sagejs-flint",
+      "dynamic_export": "ffiFmpzPolynomialDivisionResultQuotient",
+      "symbol": "sagejs_fmpz_polynomial_division_result_quotient",
+      "disposition": "declared-safe-ffi"
+    },
+    {
+      "id": "ffi:flint:fmpz_polynomial_division_result_remainder",
+      "kind": "declared-ffi",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "fmpz_polynomial_division_result_remainder",
+      "dynamic_package": "@sagemath/sagejs-flint",
+      "dynamic_export": "ffiFmpzPolynomialDivisionResultRemainder",
+      "symbol": "sagejs_fmpz_polynomial_division_result_remainder",
       "disposition": "declared-safe-ffi"
     },
     {
@@ -1843,6 +1944,17 @@
       "dynamic_package": "@sagemath/sagejs-flint",
       "dynamic_export": "ffiFmpzPolynomialPow",
       "symbol": "sagejs_fmpz_polynomial_pow",
+      "disposition": "declared-safe-ffi"
+    },
+    {
+      "id": "ffi:flint:fmpz_polynomial_quo_rem_resource",
+      "kind": "declared-ffi",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "fmpz_polynomial_quo_rem_resource",
+      "dynamic_package": "@sagemath/sagejs-flint",
+      "dynamic_export": "ffiFmpzPolynomialQuoRemResource",
+      "symbol": "sagejs_fmpz_polynomial_quo_rem_resource",
       "disposition": "declared-safe-ffi"
     },
     {
