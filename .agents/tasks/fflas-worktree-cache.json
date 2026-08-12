@@ -4,7 +4,7 @@
   "id": "fflas-worktree-cache",
   "title": "Fflas Worktree Cache",
   "lane": "integration",
-  "status": "review",
+  "status": "complete",
   "owner": "user",
   "objective": "Share immutable content-addressed GMP, Givaro, FFLAS-FFPACK, and OpenBLAS dependency artifacts across worktrees without redundant builds or full copies, with concurrency-safe publication and focused disk/build verification",
   "base_commit": "b21b652c83afe6867ef17da61b691abf40ab6f9f",
@@ -342,7 +342,7 @@
       "Windows uses copied prefixes because developer-mode symlink capability is not guaranteed, so it receives build reuse but not the same disk deduplication."
     ],
     "next_steps": [
-      "Integrate the lane and exercise the cache-hit smoke test on native Windows and macOS CI.",
+      "Exercise the cache-hit smoke test on native Windows and macOS CI.",
       "Design conservative cache garbage collection after shared materialization has accumulated real-world usage."
     ]
   }
