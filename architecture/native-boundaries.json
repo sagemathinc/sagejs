@@ -14,7 +14,7 @@
   },
   "counts": {
     "classified-native-file": 58,
-    "declared-ffi": 228,
+    "declared-ffi": 235,
     "declared-ffi-resource": 16,
     "napi-export": 292,
     "runtime-intrinsic": 136,
@@ -2356,6 +2356,28 @@
       "disposition": "declared-safe-ffi"
     },
     {
+      "id": "ffi:flint:nmod_poly_add",
+      "kind": "declared-ffi",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "nmod_poly_add",
+      "dynamic_package": "@sagemath/sagejs-flint",
+      "dynamic_export": "ffiNmodPolyAdd",
+      "symbol": "sagejs_flint_nmod_poly_add_packed",
+      "disposition": "declared-safe-ffi"
+    },
+    {
+      "id": "ffi:flint:nmod_poly_derivative",
+      "kind": "declared-ffi",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "nmod_poly_derivative",
+      "dynamic_package": "@sagemath/sagejs-flint",
+      "dynamic_export": "ffiNmodPolyDerivative",
+      "symbol": "sagejs_flint_nmod_poly_derivative_packed",
+      "disposition": "declared-safe-ffi"
+    },
+    {
       "id": "ffi:flint:nmod_poly_divexact",
       "kind": "declared-ffi",
       "path": "ffi/flint.ffi.json",
@@ -2375,6 +2397,28 @@
       "dynamic_package": "@sagemath/sagejs-flint",
       "dynamic_export": "ffiNmodPolyDivRem",
       "symbol": "sagejs_flint_nmod_poly_divrem_packed",
+      "disposition": "declared-safe-ffi"
+    },
+    {
+      "id": "ffi:flint:nmod_poly_equal",
+      "kind": "declared-ffi",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "nmod_poly_equal",
+      "dynamic_package": "@sagemath/sagejs-flint",
+      "dynamic_export": "ffiNmodPolyEqual",
+      "symbol": "sagejs_flint_nmod_poly_equal_packed",
+      "disposition": "declared-safe-ffi"
+    },
+    {
+      "id": "ffi:flint:nmod_poly_evaluate",
+      "kind": "declared-ffi",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "nmod_poly_evaluate",
+      "dynamic_package": "@sagemath/sagejs-flint",
+      "dynamic_export": "ffiNmodPolyEvaluate",
+      "symbol": "sagejs_flint_nmod_poly_evaluate_packed",
       "disposition": "declared-safe-ffi"
     },
     {
@@ -2422,6 +2466,17 @@
       "disposition": "declared-safe-ffi"
     },
     {
+      "id": "ffi:flint:nmod_poly_neg",
+      "kind": "declared-ffi",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "nmod_poly_neg",
+      "dynamic_package": "@sagemath/sagejs-flint",
+      "dynamic_export": "ffiNmodPolyNeg",
+      "symbol": "sagejs_flint_nmod_poly_neg_packed",
+      "disposition": "declared-safe-ffi"
+    },
+    {
       "id": "ffi:flint:nmod_poly_roots",
       "kind": "declared-ffi",
       "path": "ffi/flint.ffi.json",
@@ -2430,6 +2485,28 @@
       "dynamic_package": "@sagemath/sagejs-flint",
       "dynamic_export": "ffiNmodPolyRoots",
       "symbol": "sagejs_flint_nmod_poly_roots_packed",
+      "disposition": "declared-safe-ffi"
+    },
+    {
+      "id": "ffi:flint:nmod_poly_sub",
+      "kind": "declared-ffi",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "nmod_poly_sub",
+      "dynamic_package": "@sagemath/sagejs-flint",
+      "dynamic_export": "ffiNmodPolySub",
+      "symbol": "sagejs_flint_nmod_poly_sub_packed",
+      "disposition": "declared-safe-ffi"
+    },
+    {
+      "id": "ffi:flint:nmod_poly_xgcd",
+      "kind": "declared-ffi",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "nmod_poly_xgcd",
+      "dynamic_package": "@sagemath/sagejs-flint",
+      "dynamic_export": "ffiNmodPolyXgcd",
+      "symbol": "sagejs_flint_nmod_poly_xgcd_packed",
       "disposition": "declared-safe-ffi"
     },
     {

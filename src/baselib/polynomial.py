@@ -767,10 +767,18 @@ def _packed_polynomial_kind(base: sage.Parent) -> str:
         return "QQ"
     if (
         getattr(base, "_kind", None) == "GF"
-        and int(_untyped(base).characteristic()) <= 0xFFFFFFFF
+        and int(_untyped(base).characteristic()) <= 0xFFFFFFFFFFFFFFFF
     ):
         return "GF"
     return "legacy"
+
+
+def _wide_prime_polynomial(base: sage.Parent) -> bool:
+    """Return whether packed `GF(p)[x]` arithmetic needs FLINT word operations."""
+    return (
+        _packed_polynomial_kind(base) == "GF"
+        and int(_untyped(base).characteristic()) > 0xFFFFFFFF
+    )
 
 
 def _normalize_packed_storage(base: sage.Parent, storage: Any) -> Any:
@@ -1053,15 +1061,32 @@ class PolynomialElement(sage.Element):
                 )
             )
         if kind == "GF":
-            kernel = _packed_prime_polynomial_module().packed_prime_field_polynomial_add
             length = max(_buffer_length(self._storage), _buffer_length(other._storage))
-            output = _uint64_kernel_output(kernel, length)
-            if not kernel(
-                output,
-                _uint64_kernel_input(kernel, self._storage),
-                _uint64_kernel_input(kernel, other._storage),
-                base._modulus,
-            ):
+            wide = _wide_prime_polynomial(base)
+            kernel = (
+                _packed_polynomial_flint_module().flint_packed_prime_field_polynomial_add
+                if wide
+                else _packed_prime_polynomial_module().packed_prime_field_polynomial_add
+            )
+            output = (
+                runtime.uint64_buffer(length)
+                if wide
+                else _uint64_kernel_output(kernel, length)
+            )
+            kernel_arguments = [output, self._storage, other._storage]
+            if wide:
+                kernel_arguments.extend(
+                    [
+                        length,
+                        _buffer_length(self._storage),
+                        _buffer_length(other._storage),
+                    ]
+                )
+            else:
+                kernel_arguments[1] = _uint64_kernel_input(kernel, self._storage)
+                kernel_arguments[2] = _uint64_kernel_input(kernel, other._storage)
+            kernel_arguments.append(base._modulus)
+            if not kernel(*kernel_arguments):
                 raise RuntimeError("packed prime polynomial add failed")
             return self._new(_canonical_uint64_output(output))
         if base._kind == "GF_EXTENSION":
@@ -1164,17 +1189,32 @@ class PolynomialElement(sage.Element):
                 )
             )
         if kind == "GF":
+            wide = _wide_prime_polynomial(base)
             kernel = (
-                _packed_prime_polynomial_module().packed_prime_field_polynomial_subtract
+                _packed_polynomial_flint_module().flint_packed_prime_field_polynomial_subtract
+                if wide
+                else _packed_prime_polynomial_module().packed_prime_field_polynomial_subtract
             )
             length = max(_buffer_length(self._storage), _buffer_length(other._storage))
-            output = _uint64_kernel_output(kernel, length)
-            if not kernel(
-                output,
-                _uint64_kernel_input(kernel, self._storage),
-                _uint64_kernel_input(kernel, other._storage),
-                base._modulus,
-            ):
+            output = (
+                runtime.uint64_buffer(length)
+                if wide
+                else _uint64_kernel_output(kernel, length)
+            )
+            kernel_arguments = [output, self._storage, other._storage]
+            if wide:
+                kernel_arguments.extend(
+                    [
+                        length,
+                        _buffer_length(self._storage),
+                        _buffer_length(other._storage),
+                    ]
+                )
+            else:
+                kernel_arguments[1] = _uint64_kernel_input(kernel, self._storage)
+                kernel_arguments[2] = _uint64_kernel_input(kernel, other._storage)
+            kernel_arguments.append(base._modulus)
+            if not kernel(*kernel_arguments):
                 raise RuntimeError("packed prime polynomial subtract failed")
             return self._new(_canonical_uint64_output(output))
         if base._kind == "GF_EXTENSION":
@@ -1339,7 +1379,9 @@ class PolynomialElement(sage.Element):
                 )
             )
         if kind == "GF":
-            use_flint = left_length * right_length >= 4096
+            use_flint = (
+                _wide_prime_polynomial(base) or left_length * right_length >= 4096
+            )
             kernel = (
                 _packed_polynomial_flint_module().flint_packed_prime_field_polynomial_multiply
                 if use_flint
@@ -1459,15 +1501,26 @@ class PolynomialElement(sage.Element):
                 )
             )
         if kind == "GF":
+            wide = _wide_prime_polynomial(base)
             kernel = (
-                _packed_prime_polynomial_module().packed_prime_field_polynomial_negate
+                _packed_polynomial_flint_module().flint_packed_prime_field_polynomial_negate
+                if wide
+                else _packed_prime_polynomial_module().packed_prime_field_polynomial_negate
             )
-            output = _uint64_kernel_output(kernel, self._coefficient_length())
-            kernel(
-                output,
-                _uint64_kernel_input(kernel, self._storage),
-                base._modulus,
+            length = self._coefficient_length()
+            output = (
+                runtime.uint64_buffer(length)
+                if wide
+                else _uint64_kernel_output(kernel, length)
             )
+            if wide:
+                kernel(output, self._storage, length, length, base._modulus)
+            else:
+                kernel(
+                    output,
+                    _uint64_kernel_input(kernel, self._storage),
+                    base._modulus,
+                )
             return self._new(_canonical_uint64_output(output))
         if base._kind == "GF_EXTENSION":
             return self._new(runtime.flint_backend().fqPolyNeg(self._native))
@@ -1832,6 +1885,16 @@ class PolynomialElement(sage.Element):
                 _integer_kernel_input(kernel, other._storage.denominators),
             )
         if kind == "GF":
+            if _wide_prime_polynomial(base):
+                return bool(
+                    _packed_polynomial_flint_module().flint_packed_prime_field_polynomial_equal(
+                        self._storage,
+                        other._storage,
+                        self._coefficient_length(),
+                        other._coefficient_length(),
+                        base._modulus,
+                    )
+                )
             kernel = (
                 _packed_prime_polynomial_module().packed_prime_field_polynomial_equal
             )
@@ -1946,6 +2009,10 @@ class PolynomialElement(sage.Element):
         """Return a fresh low-to-high list of coefficients."""
         return self.coefficients()
 
+    def __iter__(self) -> Any:
+        """Iterate over coefficients from the constant term upward."""
+        return iter(self.coefficients())
+
     def is_zero(self) -> bool:
         return self._coefficient_length() == 0
 
@@ -1973,15 +2040,35 @@ class PolynomialElement(sage.Element):
                 )
             )
         if kind == "GF":
-            kernel = _packed_prime_polynomial_module().packed_prime_field_polynomial_derivative
-            output = _uint64_kernel_output(
-                kernel, max(0, self._coefficient_length() - 1)
+            wide = _wide_prime_polynomial(base)
+            kernel = (
+                _packed_polynomial_flint_module().flint_packed_prime_field_polynomial_derivative
+                if wide
+                else _packed_prime_polynomial_module().packed_prime_field_polynomial_derivative
             )
-            if not kernel(
-                output,
-                _uint64_kernel_input(kernel, self._storage),
-                base._modulus,
-            ):
+            source_length = self._coefficient_length()
+            output_length = max(0, source_length - 1)
+            output = (
+                runtime.uint64_buffer(output_length)
+                if wide
+                else _uint64_kernel_output(kernel, output_length)
+            )
+            valid = (
+                kernel(
+                    output,
+                    self._storage,
+                    output_length,
+                    source_length,
+                    base._modulus,
+                )
+                if wide
+                else kernel(
+                    output,
+                    _uint64_kernel_input(kernel, self._storage),
+                    base._modulus,
+                )
+            )
+            if not valid:
                 raise RuntimeError("packed prime-field polynomial derivative failed")
             return self._new(_canonical_uint64_output(output))
         coefficients = self.coefficients()
@@ -2173,7 +2260,32 @@ class PolynomialElement(sage.Element):
                 finally:
                     result.close()
             return _dynamic_field_polynomial_xgcd(left, right)
-        raise TypeError("polynomial xgcd is implemented over ZZ and QQ")
+        if kind == "GF":
+            output_length = max(left._coefficient_length(), right._coefficient_length())
+            gcd_output = runtime.uint64_buffer(output_length)
+            left_output = runtime.uint64_buffer(output_length)
+            right_output = runtime.uint64_buffer(output_length)
+            valid = _packed_polynomial_flint_module().flint_packed_prime_field_polynomial_xgcd(
+                gcd_output,
+                left_output,
+                right_output,
+                left._storage,
+                right._storage,
+                output_length,
+                left._coefficient_length(),
+                right._coefficient_length(),
+                parent.base_ring()._modulus,
+            )
+            if not valid:
+                raise RuntimeError("packed prime-field polynomial xgcd failed")
+            return runtime.math_tuple(
+                [
+                    left._new(_canonical_uint64_output(gcd_output)),
+                    left._new(_canonical_uint64_output(left_output)),
+                    left._new(_canonical_uint64_output(right_output)),
+                ]
+            )
+        raise TypeError("polynomial xgcd is implemented over ZZ, QQ, and GF(p)")
 
     def is_irreducible(self) -> bool:
         if self._parent.base_ring()._kind == "GF_EXTENSION":
@@ -2559,14 +2671,26 @@ class PolynomialElement(sage.Element):
             or getattr(value, "_parent", runtime.undefined) is base
         ):
             scalar = _untyped(base)(value)
-            kernel = (
-                _packed_prime_polynomial_module().packed_prime_field_polynomial_evaluate
-            )
-            result = kernel(
-                _uint64_kernel_input(kernel, self._storage),
-                scalar._value,
-                base._modulus,
-            )
+            if _wide_prime_polynomial(base):
+                output = runtime.uint64_buffer(1)
+                valid = _packed_polynomial_flint_module().flint_packed_prime_field_polynomial_evaluate(
+                    output,
+                    self._storage,
+                    1,
+                    self._coefficient_length(),
+                    scalar._value,
+                    base._modulus,
+                )
+                if not valid:
+                    raise RuntimeError("packed prime-field evaluation failed")
+                result = output[0]
+            else:
+                kernel = _packed_prime_polynomial_module().packed_prime_field_polynomial_evaluate
+                result = kernel(
+                    _uint64_kernel_input(kernel, self._storage),
+                    scalar._value,
+                    base._modulus,
+                )
             return scalar._new_reduced(result)
         coefficients = self.coefficients()
         answer = self._parent.base_ring()(0)
