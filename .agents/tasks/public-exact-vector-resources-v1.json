@@ -4,7 +4,7 @@
   "id": "public-exact-vector-resources-v1",
   "title": "Public exact vector resources",
   "lane": "arithmetic-algebra",
-  "status": "active",
+  "status": "review",
   "owner": "user",
   "objective": "Route public dense vectors over ZZ and QQ through generated FmpzVector and FmpqVector resources while preserving Sage semantics and eliminating list materialization from same-base arithmetic and exact matrix-vector result publication",
   "base_commit": "994c32b2719da5f5576ac058a544ace83589e538",
@@ -96,6 +96,86 @@
       "started_at": "2026-08-12T21:21:39.551Z",
       "commit": "6ae93491892c5b8fa4c2f5ec5fc80332a9a4aba9",
       "workspace_fingerprint": "f99cd4ec62a9461f527930c385de8af3e12ee510a42376fea3bde102e6424ef7",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm build",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 179.977,
+      "started_at": "2026-08-12T21:38:42.216Z",
+      "commit": "dde46bb62b5bfdf240b000b15ebddfc87734eeb4",
+      "workspace_fingerprint": "3488b1e1275b15d0566a13e97576dafcb7ecc9078573e107950c8223aa09271f",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/public-exact-vector-resources.cjs test/public-matrix-vector.cjs test/linear-vector-contract.cjs test/exact-vector-resource-core.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 5.131,
+      "started_at": "2026-08-12T21:41:48.493Z",
+      "commit": "dde46bb62b5bfdf240b000b15ebddfc87734eeb4",
+      "workspace_fingerprint": "3488b1e1275b15d0566a13e97576dafcb7ecc9078573e107950c8223aa09271f",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/public-exact-vector-resources.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 3.085,
+      "started_at": "2026-08-12T21:41:54.226Z",
+      "commit": "dde46bb62b5bfdf240b000b15ebddfc87734eeb4",
+      "workspace_fingerprint": "3488b1e1275b15d0566a13e97576dafcb7ecc9078573e107950c8223aa09271f",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 14.352,
+      "started_at": "2026-08-12T21:41:57.920Z",
+      "commit": "dde46bb62b5bfdf240b000b15ebddfc87734eeb4",
+      "workspace_fingerprint": "3488b1e1275b15d0566a13e97576dafcb7ecc9078573e107950c8223aa09271f",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 14.372,
+      "started_at": "2026-08-12T21:42:12.877Z",
+      "commit": "dde46bb62b5bfdf240b000b15ebddfc87734eeb4",
+      "workspace_fingerprint": "3488b1e1275b15d0566a13e97576dafcb7ecc9078573e107950c8223aa09271f",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:unit",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 62.372,
+      "started_at": "2026-08-12T21:42:31.746Z",
+      "commit": "dde46bb62b5bfdf240b000b15ebddfc87734eeb4",
+      "workspace_fingerprint": "3488b1e1275b15d0566a13e97576dafcb7ecc9078573e107950c8223aa09271f",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:native",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 627.206,
+      "started_at": "2026-08-12T21:43:44.932Z",
+      "commit": "dde46bb62b5bfdf240b000b15ebddfc87734eeb4",
+      "workspace_fingerprint": "3488b1e1275b15d0566a13e97576dafcb7ecc9078573e107950c8223aa09271f",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm parallel:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.6,
+      "started_at": "2026-08-12T21:54:17.116Z",
+      "commit": "dde46bb62b5bfdf240b000b15ebddfc87734eeb4",
+      "workspace_fingerprint": "3488b1e1275b15d0566a13e97576dafcb7ecc9078573e107950c8223aa09271f",
       "platform": "linux-x64"
     }
   ],
