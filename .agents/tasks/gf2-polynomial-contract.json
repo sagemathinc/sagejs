@@ -4,7 +4,7 @@
   "id": "gf2-polynomial-contract",
   "title": "Public bit-packed GF(2)[x] polynomial contract",
   "lane": "integration",
-  "status": "active",
+  "status": "proposed",
   "owner": "user",
   "objective": "Freeze a Sage-compatible public GF(2)[x] representation and operation contract with compiler-owned bit-packed canonical storage, safe mutation and borrowed views, portable same-source algorithms, generated mature-library acceleration, deterministic serialization, lifecycle verification, and measured crossovers",
   "base_commit": "fe8fdaeb721c4959f6fe2802d5554d18b88ff800",
