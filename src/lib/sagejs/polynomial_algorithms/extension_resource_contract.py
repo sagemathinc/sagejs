@@ -15,7 +15,9 @@ Closing the public context handle releases only its own reference: already
 owned elements and polynomials remain valid until they release their retained
 references.  The foreign context is destroyed only after both the public
 handle and every dependent handle are closed.  Ordinary garbage collection
-uses the generated finalizers only as a fallback.
+uses the generated finalizers only as a fallback.  Operations on a surviving
+dependent may create another dependent after the public wrapper is closed;
+that result retains the still-live shared context before foreign code returns.
 
 The current declaration schema cannot express an owned resource with another
 declared resource as its owner: an `owner` marks a borrowed view, which has no
@@ -52,6 +54,7 @@ ambiguous or lossy-looking values fail closed here as well.
 from __future__ import annotations
 
 from typing import Any, Callable, Sequence, TypeAlias, TypeVar
+from unicodedata import category as unicode_category
 
 _Context = TypeVar("_Context")
 _Resource = TypeVar("_Resource")
@@ -83,8 +86,16 @@ def _exact_index(value: Any, name: str) -> int:
 
 
 def _valid_sage_generator_name(value: str) -> bool:
-    """Match Sage's letter-leading Unicode identifier policy."""
-    return len(value) > 0 and value[0] != "_" and value.isidentifier()
+    """Match Sage's letter-leading Unicode alphanumeric name policy."""
+    if len(value) == 0 or not unicode_category(value[0]).startswith("L"):
+        return False
+    for character in value[1:]:
+        kind = unicode_category(character)
+        if character != "_" and not (
+            kind.startswith("L") or kind in {"Nd", "Nl", "No"}
+        ):
+            return False
+    return True
 
 
 def extension_context_descriptor(
@@ -129,10 +140,13 @@ def extension_context_descriptor(
 def context_lifetime_schedule(events: Sequence[str]) -> list[ContextLifetimeState]:
     """Model the required retained-context close semantics.
 
-    `retain` represents construction of one independently owned element or
-    polynomial. `release` represents its idempotence-guarded clear operation;
-    callers issue it at most once per dependent. `close_context` closes the
-    public context handle and is itself idempotent.  Each returned state is
+    `retain` represents construction through the public context handle.
+    `retain_dependent` represents a result constructed from a still-live
+    element or polynomial; it remains valid after `close_context` provided at
+    least one dependent still roots the foreign context.  `release` represents
+    an idempotence-guarded dependent clear operation; callers issue it at most
+    once per dependent. `close_context` closes the public context handle and is
+    itself idempotent.  Each returned state is
     `(public_handle_open, live_dependents, foreign_context_destroyed)`.
 
     A generated adapter may implement this with an atomic or non-atomic
@@ -147,6 +161,10 @@ def context_lifetime_schedule(events: Sequence[str]) -> list[ContextLifetimeStat
         if event == "retain":
             if not public_handle_open or destroyed:
                 raise ValueError("cannot retain a closed finite-field context")
+            live_dependents += 1
+        elif event == "retain_dependent":
+            if destroyed or live_dependents == 0:
+                raise ValueError("cannot derive from a dead finite-field context")
             live_dependents += 1
         elif event == "release":
             if live_dependents == 0:
