@@ -25,6 +25,7 @@ _flint_ffi_module_cache = runtime.undefined
 _m4ri_ffi_module_cache = runtime.undefined
 _m4ri_available_cache = runtime.undefined
 _matrix_selection_module_cache = runtime.undefined
+_matrix_selection_plans_module_cache = runtime.undefined
 
 
 class _FmpzMatrixResourceStorage:
@@ -186,6 +187,17 @@ def _matrix_selection_module() -> Any:
             fromlist=["matrix_selection_public"],
         )
     return _matrix_selection_module_cache
+
+
+def _matrix_selection_plans_module() -> Any:
+    """Load host-neutral matrix selection plans lazily."""
+    global _matrix_selection_plans_module_cache
+    if _matrix_selection_plans_module_cache is runtime.undefined:
+        _matrix_selection_plans_module_cache = __import__(
+            "sagejs.linear_algebra.matrix_selection",
+            fromlist=["matrix_selection"],
+        )
+    return _matrix_selection_plans_module_cache
 
 
 def _native_kernel_available(kernel_function: Any) -> bool:
@@ -2833,6 +2845,7 @@ class Matrix(sage.Element):
         first: int,
         second: int,
         swap_columns: bool,
+        plan: Any,
     ) -> None:
         """Swap one checked packed-prime axis without copying the matrix."""
         modulus = int(_untyped(self.base_ring()).characteristic())
@@ -2859,24 +2872,27 @@ class Matrix(sage.Element):
                 if swap_columns
                 else kernel_module.dense_prime_field_matrix_swap_rows
             )
-            target = self._prime_kernel_buffer(kernel)
-            valid = kernel(
-                target,
-                self.nrows(),
-                self.ncols(),
-                first,
-                second,
-                modulus,
-            )
-            if not valid:
-                raise RuntimeError("dense prime matrix swap validation failed")
-            if not _native_kernel_available(kernel):
-                # The ordinary Python fallback owns a list copy.  Native
-                # execution borrows the canonical BigUint64Array itself and
-                # has already committed the in-place permutation; repacking
-                # that path would copy every matrix entry and destroy the
-                # axis-linear complexity guarantee.
-                self._prime_residues_cache = _packed_uint64(target)
+            if _native_kernel_available(kernel):
+                target = self._prime_kernel_buffer(kernel)
+                valid = kernel(
+                    target,
+                    self.nrows(),
+                    self.ncols(),
+                    first,
+                    second,
+                    modulus,
+                )
+                if not valid:
+                    raise RuntimeError("dense prime matrix swap validation failed")
+            else:
+                # The checked semantic plan works directly on the canonical
+                # typed array.  Sending it through `_dense_prime_buffer`
+                # would copy and repack all `rows * columns` entries merely
+                # to exchange one axis when native execution is disabled.
+                _matrix_selection_plans_module().apply_swap(
+                    self._prime_residues_cache,
+                    plan,
+                )
         else:
             raise NotImplementedError("matrix swap requires packed GF(p) storage")
         self._native_handle = runtime.undefined
