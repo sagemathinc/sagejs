@@ -44,6 +44,9 @@
 
 ## Development infrastructure
 
+- Make verified documentation example identities content-addressed by source
+  path plus example input/expected-output hashes. Keep line numbers only as
+  provenance so unrelated source insertions do not invalidate passing results.
 - Add bounded cleanup for `~/.cache/sagejs/modules`. Compiler-versioned module
   caches are disposable, but rapid compiler development currently leaves every
   obsolete version behind. Preserve active/current versions, expose a safe
