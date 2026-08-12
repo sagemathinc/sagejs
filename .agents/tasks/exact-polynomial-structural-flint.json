@@ -1,0 +1,57 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "exact-polynomial-structural-flint",
+  "title": "Exact Polynomial Structural FLINT",
+  "lane": "integration",
+  "status": "active",
+  "owner": "user",
+  "objective": "Add generated declared-FLINT production adapters and lazy kernels for composition, reversal, shifts, truncation, integration where valid, resultant, and discriminant over exact polynomial resources and word-sized prime fields, without public Polynomial wiring",
+  "base_commit": "5a1cc59fc7fddad7648e98dc2d341a2455853754",
+  "claims": [
+    "ffi/flint.ffi.py",
+    "ffi/flint.ffi.json",
+    "packages/flint/generated/ffi_host.py",
+    "packages/flint/include/sagejs/exact_polynomial_ffi.h",
+    "packages/flint/include/sagejs/ffi_algorithms.h",
+    "src/baselib/sagejs/ffi/flint.py",
+    "src/lib/sagejs/ffi/flint.py",
+    "src/lib/sagejs/kernels/polynomial/structural_flint.py",
+    "architecture/package-graph.json",
+    "architecture/native-boundaries.json",
+    "test/polynomial-structural-flint.cjs",
+    "test/node-test-manifest.cjs",
+    "bench/polynomial-structural-flint.cjs",
+    "test/ffi.cjs"
+  ],
+  "dependencies": [],
+  "references": [
+    "/home/user/upstream/sage/src/sage/rings/polynomial/polynomial_element.pyx"
+  ],
+  "architecture": {
+    "strategy": "external-library",
+    "fallback": "same-source",
+    "oracles": [
+      "SageMath 10.9 structural polynomial operations",
+      "dynamic structural_calculus Python contract"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm architecture:check",
+    "pnpm test:portable",
+    "pnpm test:baselib:strict"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "",
+    "risks": [],
+    "next_steps": []
+  }
+}

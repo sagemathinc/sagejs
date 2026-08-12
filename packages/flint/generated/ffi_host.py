@@ -32,6 +32,13 @@ from sagejs.ffi.flint import (
     fmpz_polynomial_neg as _ffi_fmpz_polynomial_neg,
     fmpz_polynomial_scalar_floor_div as _ffi_fmpz_polynomial_scalar_floor_div,
     fmpz_polynomial_truncate as _ffi_fmpz_polynomial_truncate,
+    fmpz_polynomial_compose as _ffi_fmpz_polynomial_compose,
+    fmpz_polynomial_reverse as _ffi_fmpz_polynomial_reverse,
+    fmpz_polynomial_shift_left as _ffi_fmpz_polynomial_shift_left,
+    fmpz_polynomial_shift_right as _ffi_fmpz_polynomial_shift_right,
+    fmpz_polynomial_integral as _ffi_fmpz_polynomial_integral,
+    fmpz_polynomial_resultant as _ffi_fmpz_polynomial_resultant,
+    fmpz_polynomial_discriminant as _ffi_fmpz_polynomial_discriminant,
     fmpz_polynomial_derivative as _ffi_fmpz_polynomial_derivative,
     fmpz_polynomial_mul as _ffi_fmpz_polynomial_mul,
     fmpz_polynomial_gcd as _ffi_fmpz_polynomial_gcd,
@@ -63,6 +70,13 @@ from sagejs.ffi.flint import (
     fmpq_polynomial_neg as _ffi_fmpq_polynomial_neg,
     fmpq_polynomial_scalar_div as _ffi_fmpq_polynomial_scalar_div,
     fmpq_polynomial_truncate as _ffi_fmpq_polynomial_truncate,
+    fmpq_polynomial_compose as _ffi_fmpq_polynomial_compose,
+    fmpq_polynomial_reverse as _ffi_fmpq_polynomial_reverse,
+    fmpq_polynomial_shift_left as _ffi_fmpq_polynomial_shift_left,
+    fmpq_polynomial_shift_right as _ffi_fmpq_polynomial_shift_right,
+    fmpq_polynomial_integral as _ffi_fmpq_polynomial_integral,
+    fmpq_polynomial_resultant as _ffi_fmpq_polynomial_resultant,
+    fmpq_polynomial_discriminant as _ffi_fmpq_polynomial_discriminant,
     fmpq_polynomial_derivative as _ffi_fmpq_polynomial_derivative,
     fmpq_polynomial_mul as _ffi_fmpq_polynomial_mul,
     fmpq_polynomial_gcd as _ffi_fmpq_polynomial_gcd,
@@ -210,6 +224,14 @@ from sagejs.ffi.flint import (
     nmod_poly_equal as _ffi_nmod_poly_equal,
     nmod_poly_derivative as _ffi_nmod_poly_derivative,
     nmod_poly_evaluate as _ffi_nmod_poly_evaluate,
+    nmod_poly_compose as _ffi_nmod_poly_compose,
+    nmod_poly_reverse as _ffi_nmod_poly_reverse,
+    nmod_poly_shift_left as _ffi_nmod_poly_shift_left,
+    nmod_poly_shift_right as _ffi_nmod_poly_shift_right,
+    nmod_poly_truncate as _ffi_nmod_poly_truncate,
+    nmod_poly_integral as _ffi_nmod_poly_integral,
+    nmod_poly_resultant as _ffi_nmod_poly_resultant,
+    nmod_poly_discriminant as _ffi_nmod_poly_discriminant,
     nmod_poly_mul as _ffi_nmod_poly_mul,
     nmod_poly_divexact as _ffi_nmod_poly_divexact,
     nmod_poly_divrem as _ffi_nmod_poly_divrem,
@@ -338,6 +360,79 @@ def ffiFmpzPolynomialTruncate(
     return _ffi_fmpz_polynomial_truncate(
         source,
         stop,
+    )
+
+
+@native
+def ffiFmpzPolynomialCompose(
+    outer: FmpzPolynomial,
+    inner: FmpzPolynomial,
+) -> FmpzPolynomial:
+    return _ffi_fmpz_polynomial_compose(
+        outer,
+        inner,
+    )
+
+
+@native
+def ffiFmpzPolynomialReverse(
+    source: FmpzPolynomial,
+    length: uint64,
+) -> FmpzPolynomial:
+    return _ffi_fmpz_polynomial_reverse(
+        source,
+        length,
+    )
+
+
+@native
+def ffiFmpzPolynomialShiftLeft(
+    source: FmpzPolynomial,
+    amount: uint64,
+) -> FmpzPolynomial:
+    return _ffi_fmpz_polynomial_shift_left(
+        source,
+        amount,
+    )
+
+
+@native
+def ffiFmpzPolynomialShiftRight(
+    source: FmpzPolynomial,
+    amount: uint64,
+) -> FmpzPolynomial:
+    return _ffi_fmpz_polynomial_shift_right(
+        source,
+        amount,
+    )
+
+
+@native
+def ffiFmpzPolynomialIntegral(
+    source: FmpzPolynomial,
+) -> FmpqPolynomial:
+    return _ffi_fmpz_polynomial_integral(
+        source,
+    )
+
+
+@native
+def ffiFmpzPolynomialResultant(
+    left: FmpzPolynomial,
+    right: FmpzPolynomial,
+) -> Integer:
+    return _ffi_fmpz_polynomial_resultant(
+        left,
+        right,
+    )
+
+
+@native
+def ffiFmpzPolynomialDiscriminant(
+    source: FmpzPolynomial,
+) -> Integer:
+    return _ffi_fmpz_polynomial_discriminant(
+        source,
     )
 
 
@@ -659,6 +754,79 @@ def ffiFmpqPolynomialTruncate(
     return _ffi_fmpq_polynomial_truncate(
         source,
         stop,
+    )
+
+
+@native
+def ffiFmpqPolynomialCompose(
+    outer: FmpqPolynomial,
+    inner: FmpqPolynomial,
+) -> FmpqPolynomial:
+    return _ffi_fmpq_polynomial_compose(
+        outer,
+        inner,
+    )
+
+
+@native
+def ffiFmpqPolynomialReverse(
+    source: FmpqPolynomial,
+    length: uint64,
+) -> FmpqPolynomial:
+    return _ffi_fmpq_polynomial_reverse(
+        source,
+        length,
+    )
+
+
+@native
+def ffiFmpqPolynomialShiftLeft(
+    source: FmpqPolynomial,
+    amount: uint64,
+) -> FmpqPolynomial:
+    return _ffi_fmpq_polynomial_shift_left(
+        source,
+        amount,
+    )
+
+
+@native
+def ffiFmpqPolynomialShiftRight(
+    source: FmpqPolynomial,
+    amount: uint64,
+) -> FmpqPolynomial:
+    return _ffi_fmpq_polynomial_shift_right(
+        source,
+        amount,
+    )
+
+
+@native
+def ffiFmpqPolynomialIntegral(
+    source: FmpqPolynomial,
+) -> FmpqPolynomial:
+    return _ffi_fmpq_polynomial_integral(
+        source,
+    )
+
+
+@native
+def ffiFmpqPolynomialResultant(
+    left: FmpqPolynomial,
+    right: FmpqPolynomial,
+) -> FmpqValue:
+    return _ffi_fmpq_polynomial_resultant(
+        left,
+        right,
+    )
+
+
+@native
+def ffiFmpqPolynomialDiscriminant(
+    source: FmpqPolynomial,
+) -> FmpqValue:
+    return _ffi_fmpq_polynomial_discriminant(
+        source,
     )
 
 
@@ -2481,6 +2649,158 @@ def ffiNmodPolyEvaluate(
         output_length,
         source_length,
         argument,
+        modulus,
+    )
+
+
+@native
+def ffiNmodPolyCompose(
+    output: UInt64Buffer,
+    outer: UInt64Buffer,
+    inner: UInt64Buffer,
+    output_length: uint64,
+    outer_length: uint64,
+    inner_length: uint64,
+    modulus: uint64,
+) -> bool:
+    return _ffi_nmod_poly_compose(
+        output,
+        outer,
+        inner,
+        output_length,
+        outer_length,
+        inner_length,
+        modulus,
+    )
+
+
+@native
+def ffiNmodPolyReverse(
+    output: UInt64Buffer,
+    source: UInt64Buffer,
+    output_length: uint64,
+    source_length: uint64,
+    reverse_length: uint64,
+    modulus: uint64,
+) -> bool:
+    return _ffi_nmod_poly_reverse(
+        output,
+        source,
+        output_length,
+        source_length,
+        reverse_length,
+        modulus,
+    )
+
+
+@native
+def ffiNmodPolyShiftLeft(
+    output: UInt64Buffer,
+    source: UInt64Buffer,
+    output_length: uint64,
+    source_length: uint64,
+    amount: uint64,
+    modulus: uint64,
+) -> bool:
+    return _ffi_nmod_poly_shift_left(
+        output,
+        source,
+        output_length,
+        source_length,
+        amount,
+        modulus,
+    )
+
+
+@native
+def ffiNmodPolyShiftRight(
+    output: UInt64Buffer,
+    source: UInt64Buffer,
+    output_length: uint64,
+    source_length: uint64,
+    amount: uint64,
+    modulus: uint64,
+) -> bool:
+    return _ffi_nmod_poly_shift_right(
+        output,
+        source,
+        output_length,
+        source_length,
+        amount,
+        modulus,
+    )
+
+
+@native
+def ffiNmodPolyTruncate(
+    output: UInt64Buffer,
+    source: UInt64Buffer,
+    output_length: uint64,
+    source_length: uint64,
+    stop: uint64,
+    modulus: uint64,
+) -> bool:
+    return _ffi_nmod_poly_truncate(
+        output,
+        source,
+        output_length,
+        source_length,
+        stop,
+        modulus,
+    )
+
+
+@native
+def ffiNmodPolyIntegral(
+    output: UInt64Buffer,
+    source: UInt64Buffer,
+    output_length: uint64,
+    source_length: uint64,
+    modulus: uint64,
+) -> bool:
+    return _ffi_nmod_poly_integral(
+        output,
+        source,
+        output_length,
+        source_length,
+        modulus,
+    )
+
+
+@native
+def ffiNmodPolyResultant(
+    output: UInt64Buffer,
+    left: UInt64Buffer,
+    right: UInt64Buffer,
+    one: uint64,
+    left_length: uint64,
+    right_length: uint64,
+    modulus: uint64,
+) -> bool:
+    return _ffi_nmod_poly_resultant(
+        output,
+        left,
+        right,
+        one,
+        left_length,
+        right_length,
+        modulus,
+    )
+
+
+@native
+def ffiNmodPolyDiscriminant(
+    output: UInt64Buffer,
+    source: UInt64Buffer,
+    one: uint64,
+    source_length: uint64,
+    modulus: uint64,
+) -> bool:
+    return _ffi_nmod_poly_discriminant(
+        output,
+        source,
+        one,
+        source_length,
         modulus,
     )
 

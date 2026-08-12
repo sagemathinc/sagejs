@@ -364,6 +364,221 @@ static inline int sagejs_flint_nmod_poly_evaluate_packed(
     return 1;
 }
 
+static inline int sagejs_flint_nmod_poly_compose_packed(
+    uint64_t *output,
+    const uint64_t *outer,
+    const uint64_t *inner,
+    uint64_t output_length,
+    uint64_t outer_length,
+    uint64_t inner_length,
+    uint64_t modulus)
+{
+    nmod_poly_t outer_poly, inner_poly, result;
+    uint64_t expected;
+    if (outer_length == 0)
+        expected = 0;
+    else if (outer_length == 1 || inner_length <= 1)
+        expected = 1;
+    else
+    {
+        if (outer_length - 1 >
+            (UINT64_MAX - 1) / (inner_length - 1))
+            return 0;
+        expected = (outer_length - 1) * (inner_length - 1) + 1;
+    }
+    if (modulus < 2 || !n_is_prime((ulong) modulus) ||
+        outer_length > (uint64_t) WORD_MAX ||
+        inner_length > (uint64_t) WORD_MAX ||
+        output_length != expected || output_length > (uint64_t) WORD_MAX)
+        return 0;
+    nmod_poly_init(outer_poly, (ulong) modulus);
+    nmod_poly_init(inner_poly, (ulong) modulus);
+    nmod_poly_init(result, (ulong) modulus);
+    sagejs_flint_nmod_poly_set_packed(
+        outer_poly, outer, outer_length, modulus);
+    sagejs_flint_nmod_poly_set_packed(
+        inner_poly, inner, inner_length, modulus);
+    nmod_poly_compose(result, outer_poly, inner_poly);
+    sagejs_flint_nmod_poly_get_packed(output, output_length, result);
+    nmod_poly_clear(result);
+    nmod_poly_clear(inner_poly);
+    nmod_poly_clear(outer_poly);
+    return 1;
+}
+
+static inline int sagejs_flint_nmod_poly_reverse_packed(
+    uint64_t *output,
+    const uint64_t *source,
+    uint64_t output_length,
+    uint64_t source_length,
+    uint64_t reverse_length,
+    uint64_t modulus)
+{
+    nmod_poly_t source_poly, result;
+    if (modulus < 2 || !n_is_prime((ulong) modulus) ||
+        source_length > (uint64_t) WORD_MAX ||
+        reverse_length > (uint64_t) WORD_MAX ||
+        output_length != reverse_length)
+        return 0;
+    nmod_poly_init(source_poly, (ulong) modulus);
+    nmod_poly_init(result, (ulong) modulus);
+    sagejs_flint_nmod_poly_set_packed(
+        source_poly, source, source_length, modulus);
+    nmod_poly_reverse(result, source_poly, (slong) reverse_length);
+    sagejs_flint_nmod_poly_get_packed(output, output_length, result);
+    nmod_poly_clear(result);
+    nmod_poly_clear(source_poly);
+    return 1;
+}
+
+static inline int sagejs_flint_nmod_poly_shift_left_packed(
+    uint64_t *output,
+    const uint64_t *source,
+    uint64_t output_length,
+    uint64_t source_length,
+    uint64_t amount,
+    uint64_t modulus)
+{
+    nmod_poly_t source_poly, result;
+    const uint64_t expected = source_length == 0 ? 0 : source_length + amount;
+    if (modulus < 2 || !n_is_prime((ulong) modulus) ||
+        source_length > (uint64_t) WORD_MAX || amount > (uint64_t) WORD_MAX ||
+        (source_length != 0 && expected < source_length) ||
+        output_length != expected || output_length > (uint64_t) WORD_MAX)
+        return 0;
+    nmod_poly_init(source_poly, (ulong) modulus);
+    nmod_poly_init(result, (ulong) modulus);
+    sagejs_flint_nmod_poly_set_packed(
+        source_poly, source, source_length, modulus);
+    nmod_poly_shift_left(result, source_poly, (slong) amount);
+    sagejs_flint_nmod_poly_get_packed(output, output_length, result);
+    nmod_poly_clear(result);
+    nmod_poly_clear(source_poly);
+    return 1;
+}
+
+static inline int sagejs_flint_nmod_poly_shift_right_packed(
+    uint64_t *output,
+    const uint64_t *source,
+    uint64_t output_length,
+    uint64_t source_length,
+    uint64_t amount,
+    uint64_t modulus)
+{
+    nmod_poly_t source_poly, result;
+    const uint64_t expected = amount >= source_length
+        ? 0 : source_length - amount;
+    if (modulus < 2 || !n_is_prime((ulong) modulus) ||
+        source_length > (uint64_t) WORD_MAX || amount > (uint64_t) WORD_MAX ||
+        output_length != expected)
+        return 0;
+    nmod_poly_init(source_poly, (ulong) modulus);
+    nmod_poly_init(result, (ulong) modulus);
+    sagejs_flint_nmod_poly_set_packed(
+        source_poly, source, source_length, modulus);
+    nmod_poly_shift_right(result, source_poly, (slong) amount);
+    sagejs_flint_nmod_poly_get_packed(output, output_length, result);
+    nmod_poly_clear(result);
+    nmod_poly_clear(source_poly);
+    return 1;
+}
+
+static inline int sagejs_flint_nmod_poly_truncate_packed(
+    uint64_t *output,
+    const uint64_t *source,
+    uint64_t output_length,
+    uint64_t source_length,
+    uint64_t stop,
+    uint64_t modulus)
+{
+    nmod_poly_t source_poly;
+    const uint64_t expected = stop < source_length ? stop : source_length;
+    if (modulus < 2 || !n_is_prime((ulong) modulus) ||
+        source_length > (uint64_t) WORD_MAX || stop > (uint64_t) WORD_MAX ||
+        output_length != expected)
+        return 0;
+    nmod_poly_init(source_poly, (ulong) modulus);
+    sagejs_flint_nmod_poly_set_packed(
+        source_poly, source, source_length, modulus);
+    nmod_poly_truncate(source_poly, (slong) stop);
+    sagejs_flint_nmod_poly_get_packed(output, output_length, source_poly);
+    nmod_poly_clear(source_poly);
+    return 1;
+}
+
+static inline int sagejs_flint_nmod_poly_integral_packed(
+    uint64_t *output,
+    const uint64_t *source,
+    uint64_t output_length,
+    uint64_t source_length,
+    uint64_t modulus)
+{
+    nmod_poly_t source_poly, result;
+    const uint64_t expected = source_length == 0 ? 0 : source_length + 1;
+    /* FLINT's integral requires every 1, ..., degree + 1 to be invertible.
+     * Longer positive-characteristic antiderivatives remain a same-source
+     * typed-Python responsibility because zero exceptional coefficients can
+     * make them mathematically valid even when this dense operation is not. */
+    if (modulus < 2 || !n_is_prime((ulong) modulus) ||
+        source_length >= modulus || source_length > (uint64_t) WORD_MAX ||
+        output_length != expected || output_length > (uint64_t) WORD_MAX)
+        return 0;
+    nmod_poly_init(source_poly, (ulong) modulus);
+    nmod_poly_init(result, (ulong) modulus);
+    sagejs_flint_nmod_poly_set_packed(
+        source_poly, source, source_length, modulus);
+    nmod_poly_integral(result, source_poly);
+    sagejs_flint_nmod_poly_get_packed(output, output_length, result);
+    nmod_poly_clear(result);
+    nmod_poly_clear(source_poly);
+    return 1;
+}
+
+static inline int sagejs_flint_nmod_poly_resultant_packed(
+    uint64_t *output,
+    const uint64_t *left,
+    const uint64_t *right,
+    uint64_t output_length,
+    uint64_t left_length,
+    uint64_t right_length,
+    uint64_t modulus)
+{
+    nmod_poly_t left_poly, right_poly;
+    if (modulus < 2 || !n_is_prime((ulong) modulus) ||
+        output_length != 1 || left_length > (uint64_t) WORD_MAX ||
+        right_length > (uint64_t) WORD_MAX)
+        return 0;
+    nmod_poly_init(left_poly, (ulong) modulus);
+    nmod_poly_init(right_poly, (ulong) modulus);
+    sagejs_flint_nmod_poly_set_packed(
+        left_poly, left, left_length, modulus);
+    sagejs_flint_nmod_poly_set_packed(
+        right_poly, right, right_length, modulus);
+    output[0] = (uint64_t) nmod_poly_resultant(left_poly, right_poly);
+    nmod_poly_clear(right_poly);
+    nmod_poly_clear(left_poly);
+    return 1;
+}
+
+static inline int sagejs_flint_nmod_poly_discriminant_packed(
+    uint64_t *output,
+    const uint64_t *source,
+    uint64_t output_length,
+    uint64_t source_length,
+    uint64_t modulus)
+{
+    nmod_poly_t source_poly;
+    if (modulus < 2 || !n_is_prime((ulong) modulus) ||
+        output_length != 1 || source_length > (uint64_t) WORD_MAX)
+        return 0;
+    nmod_poly_init(source_poly, (ulong) modulus);
+    sagejs_flint_nmod_poly_set_packed(
+        source_poly, source, source_length, modulus);
+    output[0] = (uint64_t) nmod_poly_discriminant(source_poly);
+    nmod_poly_clear(source_poly);
+    return 1;
+}
+
 static inline int sagejs_flint_nmod_poly_xgcd_packed(
     uint64_t *gcd_output,
     uint64_t *left_coefficient_output,
