@@ -18,10 +18,18 @@ of the algorithm or changing their call sites.
     True
 ```
 
-Native Kernel v21 currently accepts a deliberately narrow typed numerical
+Native Kernel v22 currently accepts a deliberately narrow typed numerical
 subset, including exact `Integer`/GMP kernels and reusable dense
-decompositions over prime fields. It also supports packed binary64 buffers and
-mutable signed exact-integer buffers with bounded record views. Mutable
+decompositions over prime fields. Typed `uint64` kernels support full-word
+`&`, `|`, `^`, `<<`, and `>>`, including augmented scalar and buffer forms.
+Left shift wraps modulo `2^64`; right shift is logical. Shift counts must be in
+`0..63`: counts of `64` or more raise `OverflowError`, while negative counts
+fail `uint64` validation. The `# sagejs: native-bitwise` marker preserves xor
+in Sage mode and gives dynamic Sage.js the same checked exact `Number`/`BigInt`
+behavior. In CPython, `uint64` remains the annotation-only alias `int`, so
+overflowing shifts and out-of-range counts retain ordinary Python behavior.
+The compiler also supports packed binary64 buffers and mutable signed
+exact-integer buffers with bounded record views. Mutable
 `IntegerBuffer` values retain arbitrary precision through an explicit packed
 signed-limb ABI, so source-transparent algebraic loops can exchange whole GMP
 vectors without object-at-a-time host calls. Explicit AOT compilation produces

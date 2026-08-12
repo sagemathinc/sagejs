@@ -4,7 +4,7 @@
   "id": "native-uint64-bitwise-v1",
   "title": "Native Uint64 Bitwise V1",
   "lane": "compiler-runtime",
-  "status": "active",
+  "status": "complete",
   "owner": "user",
   "objective": "Implement generic source-transparent typed uint64 bitwise and shift operators in IR, dynamic fallback, native C lowering, explain/inspect output, and differential property tests with defined shift semantics",
   "base_commit": "dcc1302a3f305b00a0e09ba25edee45ac2ee2bf1",
@@ -260,7 +260,7 @@
     }
   ],
   "handoff": {
-    "summary": "Implemented canonical typed uint64 &, |, ^, <<, and >> operations across exact, binary64, and source-transparent prime IR plus portable JavaScript, isolated C, word, tagged, and prime-source backends. Augmented scalar and UInt64Buffer lowering preserves Python target-before-RHS evaluation order, uses explicit 0..63 shift guards, logical right shift, and modulo-2^64 left shift. Sage-mode native-bitwise source now preserves xor and uses checked full-word dynamic helpers for mixed exact Number/BigInt values rather than JavaScript 32-bit operators. Prime-source Node returns preserve the full unsigned range as BigInt, exposed JavaScript fallbacks validate the public ABI, and adversarial tests cover 2^40, 2^63, 2^64-1, invalid operands, shift 64, mixed representations, dynamic fallback, native C, and portable JavaScript. IR v22, cache fingerprinting, explain metadata, host/policy benchmark metadata, compiler documentation, and Node test-manifest registration are included.",
+    "summary": "Integrated canonical typed uint64 &, |, ^, <<, and >> operations across exact, binary64, and source-transparent prime IR plus portable JavaScript, isolated C, word, tagged, and prime-source backends. Augmented scalar and UInt64Buffer lowering preserves Python target-before-RHS evaluation order, uses explicit 0..63 shift guards, logical right shift, and modulo-2^64 left shift. Sage-mode native-bitwise source preserves xor and uses checked full-word dynamic helpers for mixed exact Number/BigInt values rather than JavaScript 32-bit operators. Prime-source Node returns preserve the full unsigned range as BigInt, exposed JavaScript fallbacks validate the public ABI, and adversarial tests cover 2^40, 2^63, 2^64-1, invalid operands, shift 64, mixed representations, dynamic fallback, native C, and portable JavaScript. Independent review approved the semantics and benchmark evidence; integration documents the intentional CPython annotation-only divergence in Native Kernel v22.",
     "risks": [
       "The fresh required pnpm test:compiler receipt at commit 3e0ef0d passed 14/15 runnable fixtures and failed only compiler/matrix.py: sample_sparse_random_spec reaches sorted/list and raises TypeError: object is not iterable under Node 26.7.0. That sparse-random path is outside every claim in this lane; compiler/algebra.py passed in 43 seconds.",
       "The required broad integration tier was not rerun after the unchanged matrix blocker, per coordinator direction not to broaden this lane into matrix remediation. Its earlier receipt passed 371/380 tests and failed eight matrix/polynomial runtime tests outside this claim; fresh focused dynamic/portable/native, native-kernel, frontend/operator, build, architecture, and strict receipts pass.",
