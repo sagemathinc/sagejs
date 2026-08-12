@@ -2,11 +2,16 @@
 "use strict";
 
 const assert = require("node:assert/strict");
+const { execFileSync } = require("node:child_process");
+const { mkdtempSync, writeFileSync } = require("node:fs");
+const { tmpdir } = require("node:os");
+const { join } = require("node:path");
 const test = require("node:test");
 
 const {
   checkGeneratedClassification,
   expectedGeneratedPaths,
+  generatedAttributes,
   validateClassification,
 } = require("../scripts/check-generated-classification.cjs");
 
@@ -76,5 +81,54 @@ test("validation rejects missing and extra generated classifications", () => {
       ]),
     ),
     /authoritative files are incorrectly classified/,
+  );
+  assert.throws(
+    () => validateClassification(
+      expected,
+      tracked,
+      new Map([
+        ["authority.py", "custom-value"],
+        ["derived.json", "set"],
+      ]),
+    ),
+    /ambiguous linguist-generated value/,
+  );
+});
+
+test("Git attribute set, unset, and unspecified states are interpreted exactly", () => {
+  const root = mkdtempSync(join(tmpdir(), "sagejs-generated-attributes-"));
+  execFileSync("git", ["init", "--quiet"], { cwd: root });
+  writeFileSync(
+    join(root, ".gitattributes"),
+    [
+      "derived.json linguist-generated",
+      "authority.py -linguist-generated",
+      "custom.txt linguist-generated=opaque",
+      "",
+    ].join("\n"),
+  );
+  const attributes = generatedAttributes(
+    ["derived.json", "authority.py", "ordinary.md", "custom.txt"],
+    root,
+  );
+  assert.equal(attributes.get("derived.json"), "set");
+  assert.equal(attributes.get("authority.py"), "unset");
+  assert.equal(attributes.get("ordinary.md"), "unspecified");
+  assert.equal(attributes.get("custom.txt"), "opaque");
+  assert.deepEqual(
+    validateClassification(
+      ["derived.json"],
+      ["authority.py", "derived.json", "ordinary.md"],
+      attributes,
+    ),
+    { generated: 1, authoritative: 2 },
+  );
+  assert.throws(
+    () => validateClassification(
+      ["derived.json"],
+      ["custom.txt", "derived.json"],
+      attributes,
+    ),
+    /ambiguous linguist-generated value "opaque"/,
   );
 });

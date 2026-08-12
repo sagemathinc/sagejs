@@ -75,9 +75,15 @@ function validateClassification(expected, tracked, attributes) {
       `expected generated artifacts are not tracked:\n  ${missing.join("\n  ")}`,
     );
   }
-  const incorrectlyUnclassified = expected.filter(
-    (path) => attributes.get(path) !== "true",
-  );
+  const classified = (path) => {
+    const value = attributes.get(path);
+    if (value === "set" || value === "true") return true;
+    if (value === "unset" || value === "unspecified") return false;
+    throw new Error(
+      `${path} has ambiguous linguist-generated value ${JSON.stringify(value)}`,
+    );
+  };
+  const incorrectlyUnclassified = expected.filter((path) => !classified(path));
   if (incorrectlyUnclassified.length > 0) {
     throw new Error(
       "generated artifacts lack linguist-generated=true:\n  " +
@@ -85,7 +91,7 @@ function validateClassification(expected, tracked, attributes) {
     );
   }
   const incorrectlyClassified = tracked.filter(
-    (path) => attributes.get(path) === "true" && !expectedSet.has(path),
+    (path) => classified(path) && !expectedSet.has(path),
   );
   if (incorrectlyClassified.length > 0) {
     throw new Error(
