@@ -1522,6 +1522,25 @@ class PolynomialElement(sage.Element):
         kind = _packed_polynomial_kind(base)
         if scalar_divisor and kind in ["ZZ", "QQ", "GF"]:
             divisor = base(other)
+            if kind == "ZZ" and left._has_fmpz_polynomial_resource():
+                return left._new(
+                    _FmpzPolynomialResourceStorage(
+                        _flint_ffi_module().fmpz_polynomial_scalar_floor_div(
+                            left._exact_polynomial_resource(),
+                            runtime.integer_bigint(divisor),
+                        )
+                    )
+                )
+            if kind == "QQ" and left._has_fmpq_polynomial_resource():
+                return left._new(
+                    _FmpqPolynomialResourceStorage(
+                        _flint_ffi_module().fmpq_polynomial_scalar_div(
+                            left._exact_polynomial_resource(),
+                            divisor._numerator,
+                            divisor._denominator,
+                        )
+                    )
+                )
             coefficients = left.coefficients()
             if kind == "ZZ":
                 values = [coefficient // divisor for coefficient in coefficients]
@@ -1866,6 +1885,22 @@ class PolynomialElement(sage.Element):
             length = self._coefficient_length()
             stop = length if index.stop is None else int(index.stop)
             stop = min(max(stop, 0), length)
+            if self._has_fmpz_polynomial_resource():
+                return self._new(
+                    _FmpzPolynomialResourceStorage(
+                        _flint_ffi_module().fmpz_polynomial_truncate(
+                            self._exact_polynomial_resource(), stop
+                        )
+                    )
+                )
+            if self._has_fmpq_polynomial_resource():
+                return self._new(
+                    _FmpqPolynomialResourceStorage(
+                        _flint_ffi_module().fmpq_polynomial_truncate(
+                            self._exact_polynomial_resource(), stop
+                        )
+                    )
+                )
             return self._parent._from_coefficients(self.coefficients()[:stop])
         if not runtime.is_exact_integer(index):
             raise TypeError("polynomial coefficient index must be an integer")

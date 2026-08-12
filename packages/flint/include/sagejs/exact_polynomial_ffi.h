@@ -285,6 +285,32 @@ static inline int sagejs_fmpz_polynomial_neg(
     return 1;
 }
 
+static inline int sagejs_fmpz_polynomial_scalar_floor_div(
+    sagejs_fmpz_polynomial_t result,
+    const sagejs_fmpz_polynomial_t source,
+    const fmpz_t divisor)
+{
+    if (!source->sealed || fmpz_is_zero(divisor))
+        return 0;
+    fmpz_poly_init(result->value);
+    fmpz_poly_scalar_fdiv_fmpz(result->value, source->value, divisor);
+    sagejs_fmpz_polynomial_finish_result(result);
+    return 1;
+}
+
+static inline int sagejs_fmpz_polynomial_truncate(
+    sagejs_fmpz_polynomial_t result,
+    const sagejs_fmpz_polynomial_t source,
+    uint64_t stop)
+{
+    if (!source->sealed || stop > (uint64_t) WORD_MAX)
+        return 0;
+    fmpz_poly_init(result->value);
+    fmpz_poly_set_trunc(result->value, source->value, (slong) stop);
+    sagejs_fmpz_polynomial_finish_result(result);
+    return 1;
+}
+
 static inline int sagejs_fmpz_polynomial_derivative(
     sagejs_fmpz_polynomial_t result,
     const sagejs_fmpz_polynomial_t source)
@@ -930,6 +956,38 @@ static inline int sagejs_fmpq_polynomial_neg(
         return 0;
     fmpq_poly_init(result->value);
     fmpq_poly_neg(result->value, source->value);
+    sagejs_fmpq_polynomial_finish_result(result);
+    return 1;
+}
+
+static inline int sagejs_fmpq_polynomial_scalar_div(
+    sagejs_fmpq_polynomial_t result,
+    const sagejs_fmpq_polynomial_t source,
+    const fmpz_t numerator,
+    const fmpz_t denominator)
+{
+    if (!source->sealed || fmpz_is_zero(numerator) ||
+        fmpz_is_zero(denominator))
+        return 0;
+    fmpq_t divisor;
+    fmpq_init(divisor);
+    fmpq_set_fmpz_frac(divisor, numerator, denominator);
+    fmpq_poly_init(result->value);
+    fmpq_poly_scalar_div_fmpq(result->value, source->value, divisor);
+    fmpq_clear(divisor);
+    sagejs_fmpq_polynomial_finish_result(result);
+    return 1;
+}
+
+static inline int sagejs_fmpq_polynomial_truncate(
+    sagejs_fmpq_polynomial_t result,
+    const sagejs_fmpq_polynomial_t source,
+    uint64_t stop)
+{
+    if (!source->sealed || stop > (uint64_t) WORD_MAX)
+        return 0;
+    fmpq_poly_init(result->value);
+    fmpq_poly_set_trunc(result->value, source->value, (slong) stop);
     sagejs_fmpq_polynomial_finish_result(result);
     return 1;
 }

@@ -93,6 +93,26 @@ const cases = [
     budget: 50,
   },
   {
+    name: "scalar_floor_div_ZZ_100000",
+    expression: "_scalar_z // -7",
+    budget: 10,
+  },
+  {
+    name: "prefix_slice_ZZ_100000",
+    expression: "_scalar_z[:50000]",
+    budget: 10,
+  },
+  {
+    name: "scalar_div_QQ_100000",
+    expression: "_scalar_q // (QQ(-7)/11)",
+    budget: 10,
+  },
+  {
+    name: "prefix_slice_QQ_100000",
+    expression: "_scalar_q[:50000]",
+    budget: 10,
+  },
+  {
     name: "factor_ZZ_80",
     expression: "exact_z.factor()",
     budget: 50,
@@ -203,6 +223,8 @@ async function run(environment = process.env) {
         "_xgcd_q_common = xq**20 + QQ(2)/3*xq + QQ(1)/5",
         "_xgcd_q_left = _xgcd_q_common * (xq**280 + xq + QQ(1)/7)",
         "_xgcd_q_right = _xgcd_q_common * (xq**275 + QQ(2)/11*xq + 3)",
+        "_scalar_z = Rz([index % 17 - 8 for index in range(100001)])",
+        "_scalar_q = Rq([QQ(index % 17 - 8)/(index % 7 + 1) for index in range(100001)])",
         ...definitions,
       ].join("\n"));
       if (setup.stderr !== undefined) throw new Error(setup.stderr);

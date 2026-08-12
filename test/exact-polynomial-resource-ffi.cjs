@@ -183,8 +183,10 @@ function fmpqPolynomial(coefficients) {
   const sum = flint.ffiFmpzPolynomialAdd(left, right);
   const difference = flint.ffiFmpzPolynomialSub(left, right);
   const negated = flint.ffiFmpzPolynomialNeg(left);
+  const scalarFloor = flint.ffiFmpzPolynomialScalarFloorDiv(right, -2n);
   const derivative = flint.ffiFmpzPolynomialDerivative(left);
   const product = flint.ffiFmpzPolynomialMul(left, right);
+  const truncated = flint.ffiFmpzPolynomialTruncate(product, 2n);
   const common = flint.ffiFmpzPolynomialGcd(product, left);
   const quotient = flint.ffiFmpzPolynomialDivExact(product, left);
   const zero = fmpzPolynomial([]);
@@ -214,6 +216,16 @@ function fmpqPolynomial(coefficients) {
     [2n, -1n],
   );
   assert.equal(flint.ffiFmpzPolynomialCoefficient(negated, 1n), -1n);
+  assert.deepEqual(
+    [0n, 1n].map((index) =>
+      flint.ffiFmpzPolynomialCoefficient(scalarFloor, index)),
+    [0n, -1n],
+  );
+  assert.deepEqual(
+    [0n, 1n].map((index) =>
+      flint.ffiFmpzPolynomialCoefficient(truncated, index)),
+    [-1n, 1n],
+  );
   assert.equal(flint.ffiFmpzPolynomialCoefficient(derivative, 0n), 1n);
   assert.deepEqual(
     [0n, 1n, 2n].map((index) =>
@@ -232,6 +244,10 @@ function fmpqPolynomial(coefficients) {
   assert.throws(
     () => flint.ffiFmpzPolynomialDivExact(left, zero),
     /exact division requires sealed resources, a nonzero divisor, and an exact quotient/,
+  );
+  assert.throws(
+    () => flint.ffiFmpzPolynomialScalarFloorDiv(left, 0n),
+    /scalar division requires a sealed resource and a nonzero divisor/,
   );
   for (let iteration = 0; iteration < 64; iteration += 1) {
     assert.throws(
@@ -290,6 +306,8 @@ function fmpqPolynomial(coefficients) {
   closeTwice(product, flint.ffiFmpzPolynomialClose);
   closeTwice(derivative, flint.ffiFmpzPolynomialClose);
   closeTwice(negated, flint.ffiFmpzPolynomialClose);
+  closeTwice(scalarFloor, flint.ffiFmpzPolynomialClose);
+  closeTwice(truncated, flint.ffiFmpzPolynomialClose);
   closeTwice(difference, flint.ffiFmpzPolynomialClose);
   closeTwice(sum, flint.ffiFmpzPolynomialClose);
   closeTwice(right, flint.ffiFmpzPolynomialClose);
@@ -302,8 +320,10 @@ function fmpqPolynomial(coefficients) {
   const sum = flint.ffiFmpqPolynomialAdd(left, right);
   const difference = flint.ffiFmpqPolynomialSub(left, right);
   const negated = flint.ffiFmpqPolynomialNeg(left);
+  const scalarDivided = flint.ffiFmpqPolynomialScalarDiv(left, -2n, 3n);
   const derivative = flint.ffiFmpqPolynomialDerivative(left);
   const product = flint.ffiFmpqPolynomialMul(left, right);
+  const truncated = flint.ffiFmpqPolynomialTruncate(product, 2n);
   const common = flint.ffiFmpqPolynomialGcd(product, left);
   const quotient = flint.ffiFmpqPolynomialDivExact(product, left);
   const zero = fmpqPolynomial([]);
@@ -351,6 +371,14 @@ function fmpqPolynomial(coefficients) {
     ],
     [-1n, 2n, -1n, 3n],
   );
+  assert.deepEqual(
+    [0n, 1n].flatMap((index) => [
+      flint.ffiFmpqPolynomialCoefficientNumerator(scalarDivided, index),
+      flint.ffiFmpqPolynomialCoefficientDenominator(scalarDivided, index),
+    ]),
+    [-3n, 4n, -1n, 2n],
+  );
+  assert.equal(flint.ffiFmpqPolynomialLength(truncated), 2n);
   assert.equal(flint.ffiFmpqPolynomialCoefficientNumerator(derivative, 0n), 1n);
   assert.equal(
     flint.ffiFmpqPolynomialCoefficientDenominator(derivative, 0n), 3n,
@@ -369,6 +397,10 @@ function fmpqPolynomial(coefficients) {
   assert.throws(
     () => flint.ffiFmpqPolynomialDivExact(left, zero),
     /exact division requires sealed resources, a nonzero divisor, and an exact quotient/,
+  );
+  assert.throws(
+    () => flint.ffiFmpqPolynomialScalarDiv(left, 0n, 1n),
+    /scalar division requires a sealed resource and a nonzero divisor/,
   );
   for (let iteration = 0; iteration < 64; iteration += 1) {
     assert.throws(
@@ -432,6 +464,8 @@ function fmpqPolynomial(coefficients) {
   closeTwice(product, flint.ffiFmpqPolynomialClose);
   closeTwice(derivative, flint.ffiFmpqPolynomialClose);
   closeTwice(negated, flint.ffiFmpqPolynomialClose);
+  closeTwice(scalarDivided, flint.ffiFmpqPolynomialClose);
+  closeTwice(truncated, flint.ffiFmpqPolynomialClose);
   closeTwice(difference, flint.ffiFmpqPolynomialClose);
   closeTwice(sum, flint.ffiFmpqPolynomialClose);
   closeTwice(right, flint.ffiFmpqPolynomialClose);
@@ -730,6 +764,14 @@ function fmpqPolynomial(coefficients) {
     /integer polynomial is unsealed/,
   );
   assert.throws(
+    () => flint.ffiFmpzPolynomialScalarFloorDiv(unsealed, 2n),
+    /scalar division requires a sealed resource/,
+  );
+  assert.throws(
+    () => flint.ffiFmpzPolynomialTruncate(unsealed, 1n),
+    /truncation requires a sealed resource/,
+  );
+  assert.throws(
     () => flint.ffiFmpzPolynomialLength(unsealed),
     /unsealed/,
   );
@@ -760,10 +802,24 @@ function fmpqPolynomial(coefficients) {
     () => flint.ffiFmpzPolynomialGcd(sealedInteger, unsealed),
     /closed|invalid resource/i,
   );
+  assert.throws(
+    () => flint.ffiFmpzPolynomialTruncate(unsealed, 1n),
+    /closed|invalid resource/i,
+  );
   closeTwice(sealedInteger, flint.ffiFmpzPolynomialClose);
 
   const rational = flint.ffiFmpqPolynomialCreate(1n);
   const sealedRational = fmpqPolynomial([[1n, 1n]]);
+  const wrongInteger = fmpzPolynomial([1n]);
+  assert.throws(
+    () => flint.ffiFmpqPolynomialTruncate(wrongInteger, 1n),
+    /declared .* resource/i,
+  );
+  assert.throws(
+    () => flint.ffiFmpzPolynomialTruncate(sealedRational, 1n),
+    /declared .* resource/i,
+  );
+  closeTwice(wrongInteger, flint.ffiFmpzPolynomialClose);
   assert.throws(
     () => flint.ffiFmpqPolynomialDivExact(sealedRational, rational),
     /exact division requires sealed resources/,
@@ -771,6 +827,14 @@ function fmpqPolynomial(coefficients) {
   assert.throws(
     () => flint.ffiFmpqPolynomialGcd(sealedRational, rational),
     /rational polynomial is unsealed/,
+  );
+  assert.throws(
+    () => flint.ffiFmpqPolynomialScalarDiv(rational, 2n, 3n),
+    /scalar division requires a sealed resource/,
+  );
+  assert.throws(
+    () => flint.ffiFmpqPolynomialTruncate(rational, 1n),
+    /truncation requires a sealed resource/,
   );
   assert.throws(
     () => flint.ffiFmpqPolynomialLength(rational),
@@ -787,6 +851,10 @@ function fmpqPolynomial(coefficients) {
   );
   assert.throws(
     () => flint.ffiFmpqPolynomialDivExact(sealedRational, rational),
+    /closed|invalid resource/i,
+  );
+  assert.throws(
+    () => flint.ffiFmpqPolynomialTruncate(rational, 1n),
     /closed|invalid resource/i,
   );
   assert.throws(
@@ -1048,7 +1116,9 @@ int main(void)
     for (slong round = 0; round < 300; round++)
     {
         sagejs_fmpz_polynomial_t z, zsum, zproduct, zquotient, zgcd, zpower;
+        sagejs_fmpz_polynomial_t zscalar, ztruncated;
         sagejs_fmpq_polynomial_t q, qsum, qproduct, qquotient, qgcd, qpower;
+        sagejs_fmpq_polynomial_t qscalar, qtruncated;
         sagejs_fmpz_polynomial_xgcd_result_t zxgcd;
         sagejs_fmpq_polynomial_xgcd_result_t qxgcd;
         sagejs_fmpz_polynomial_t zrejected, zzero;
@@ -1084,6 +1154,12 @@ int main(void)
         }
         if (!sagejs_fmpz_polynomial_seal(z) ||
             !sagejs_fmpq_polynomial_seal(q) ||
+            !sagejs_fmpz_polynomial_scalar_floor_div(
+                zscalar, z, denominator) ||
+            !sagejs_fmpz_polynomial_truncate(ztruncated, z, 17) ||
+            !sagejs_fmpq_polynomial_scalar_div(
+                qscalar, q, coefficient, denominator) ||
+            !sagejs_fmpq_polynomial_truncate(qtruncated, q, 17) ||
             !sagejs_fmpz_polynomial_add(zsum, z, z) ||
             !sagejs_fmpz_polynomial_mul(zproduct, z, zsum) ||
             !sagejs_fmpz_polynomial_gcd(zgcd, zproduct, z) ||
@@ -1189,6 +1265,8 @@ int main(void)
         sagejs_fmpq_polynomial_clear(qquotient);
         sagejs_fmpq_polynomial_clear(qproduct);
         sagejs_fmpq_polynomial_clear(qsum);
+        sagejs_fmpq_polynomial_clear(qtruncated);
+        sagejs_fmpq_polynomial_clear(qscalar);
         sagejs_fmpq_polynomial_clear(q);
         fmpq_poly_clear(qproduct_before);
         fmpq_poly_clear(q_before);
@@ -1202,6 +1280,8 @@ int main(void)
         sagejs_fmpz_polynomial_clear(zquotient);
         sagejs_fmpz_polynomial_clear(zproduct);
         sagejs_fmpz_polynomial_clear(zsum);
+        sagejs_fmpz_polynomial_clear(ztruncated);
+        sagejs_fmpz_polynomial_clear(zscalar);
         sagejs_fmpz_polynomial_clear(z);
         fmpz_poly_clear(zproduct_before);
         fmpz_poly_clear(z_before);
