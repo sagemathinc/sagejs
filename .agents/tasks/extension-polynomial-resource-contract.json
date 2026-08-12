@@ -152,18 +152,79 @@
       "commit": "e51528c1042bf37cdd9b50cc44437fb4fac7e399",
       "workspace_fingerprint": "076f7ed9ba832021a348221f316dc782f537331980a13b5d35ce8e410eb8123d",
       "platform": "linux-x64"
+    },
+    {
+      "command": "node test/polynomial-extension-resource-contract.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 5.494,
+      "started_at": "2026-08-12T11:58:24.158Z",
+      "commit": "a2d3e8ee2ad19f3ad055da8859f8e6c26c1b5492",
+      "workspace_fingerprint": "ab63ba1659f80ff7045f4e9c4ea393cebd885deeb2701f618ecb58fa412a98a5",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/polynomial-extension-resource-contract.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 23.778,
+      "started_at": "2026-08-12T11:58:30.249Z",
+      "commit": "a2d3e8ee2ad19f3ad055da8859f8e6c26c1b5492",
+      "workspace_fingerprint": "ab63ba1659f80ff7045f4e9c4ea393cebd885deeb2701f618ecb58fa412a98a5",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm exec pyright --pythonversion 3.11 src/lib/sagejs/polynomial_algorithms/extension_resource_contract.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.244,
+      "started_at": "2026-08-12T11:58:54.765Z",
+      "commit": "a2d3e8ee2ad19f3ad055da8859f8e6c26c1b5492",
+      "workspace_fingerprint": "ab63ba1659f80ff7045f4e9c4ea393cebd885deeb2701f618ecb58fa412a98a5",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 14.692,
+      "started_at": "2026-08-12T11:59:07.050Z",
+      "commit": "a2d3e8ee2ad19f3ad055da8859f8e6c26c1b5492",
+      "workspace_fingerprint": "ab63ba1659f80ff7045f4e9c4ea393cebd885deeb2701f618ecb58fa412a98a5",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 13.761,
+      "started_at": "2026-08-12T11:59:22.411Z",
+      "commit": "a2d3e8ee2ad19f3ad055da8859f8e6c26c1b5492",
+      "workspace_fingerprint": "ab63ba1659f80ff7045f4e9c4ea393cebd885deeb2701f618ecb58fa412a98a5",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:native",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 399.581,
+      "started_at": "2026-08-12T12:01:11.228Z",
+      "commit": "a2d3e8ee2ad19f3ad055da8859f8e6c26c1b5492",
+      "workspace_fingerprint": "ab63ba1659f80ff7045f4e9c4ea393cebd885deeb2701f618ecb58fa412a98a5",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {
-    "summary": "Defines the strict storage-neutral contract for generated finite-extension FqContext, FqElement, and FqPolynomial resources without inventing a fake resource implementation. It pins exact context identity, deterministic modulus metadata, low-to-high polynomial and power-basis coordinate ordering, canonical residues, trailing-zero normalization, and one synchronous bulk construction/export callback. CPython, Sage.js, and SageMath agree on the tested parent identity, incompatibility, coefficient, modulus, and zero semantics. For a 1,000-coefficient GF(3^2) polynomial, current Sage.js scalar construction measured about 975 ms and SagePack load about 1,032 ms, while validating the complete 2,000-coordinate table and calling one sentinel callback measured about 5 ms; the benchmark explicitly labels that last number as protocol overhead only, not FFI resource performance.",
+    "summary": "Defines the strict storage-neutral contract for generated finite-extension FqContext, FqElement, and FqPolynomial resources without inventing a fake foreign resource implementation. Context-dependent elements and polynomials are independently owned self-contained handles whose adapters retain a shared reference-counted context; closing the public context releases only its reference and destruction waits for the last dependent clear. The executable close schedule pins that behavior while documenting the current declaration-schema gap for dependent-owned resources. The contract also pins exact context identity, deterministic modulus metadata, Sage-compatible Unicode letter-leading generator names, low-to-high polynomial and power-basis coordinate ordering, canonical residues, trailing-zero normalization, immutable descriptor-plus-coordinate serialization, and one synchronous bulk construction/export callback. A custom GF(5^3) oracle verifies the nontrivial coordinate table [[1,2,3],[4,0,1],[0,2,0]] and coefficient strings against SageMath and the current FLINT-backed Sage.js field. For a 1,000-coefficient GF(3^2) polynomial, current Sage.js scalar construction and SagePack load each measured about 1,000 ms, while validating the complete 2,000-coordinate table and calling one sentinel callback measured about 5 ms; the benchmark explicitly labels that last number as protocol overhead only, not FFI resource performance.",
     "risks": [
-      "This lane intentionally specifies but does not implement FqContext, FqElement, or FqPolynomial declarations, generated adapters, lifecycle, public wiring, or WASM lowering.",
+      "This lane intentionally specifies but does not implement FqContext, FqElement, or FqPolynomial declarations, generated adapters, public wiring, sanitizer-backed lifecycle execution, or WASM lowering.",
+      "The current declaration schema cannot attach an owner to an independently clearable owned resource. Initial generated adapters must therefore use self-contained element and polynomial handles that retain/release a shared context internally; dependent-owned schema support is an optional later compiler refinement with the same public semantics.",
       "Power-basis coordinates are an interchange boundary, not canonical live storage; an integration that retains or exposes the host table would recreate the representation coupling this design avoids.",
       "Word-sized characteristics can use packed unsigned residues, but larger characteristics need a compiler-owned exact-integer coordinate region without changing the contract.",
-      "The full pnpm test:native command ran for about 436 seconds and reached test/native-kernel.cjs, then failed an inherited foreign-header cache assertion: it observed packages/flint/include/sagejs/fmpq_matrix_ffi.h where the test expected its temporary override-prefix copy. Coordinator commit 8898b83 addresses that shared receipt failure; no claimed source in this lane was involved."
+      "The full pnpm test:native command ran for about 436 seconds and reached test/native-kernel.cjs, then failed an inherited foreign-header cache assertion: it observed packages/flint/include/sagejs/fmpq_matrix_ffi.h where the test expected its temporary override-prefix copy. No claimed source in this contract-only lane was involved, so the focused validation set records the executable contract, benchmark, Pyright, strict baselib, and architecture checks while the shared native-header test is repaired centrally."
     ],
     "next_steps": [
-      "Declare generated owned context, element, and polynomial resources with an acyclic context ownership graph and deterministic close/finalizer behavior.",
+      "Generate owned context, element, and polynomial resources whose self-contained dependent handles retain/release the shared context and follow the pinned deterministic close/finalizer schedule.",
       "Implement one bulk power-basis construction/export adapter over FLINT fq_default, selecting fq_nmod or fq storage internally without exposing that choice to public mathematics.",
       "Wire the public GF(p^n)[x] parent to resource-to-resource arithmetic and use bulk export only for explicit coefficients, formatting, and SagePack boundaries.",
       "Add sanitizer-backed context/element/polynomial lifetime schedules and prove a credible WASM lowering before replacing the legacy opaque backend."
