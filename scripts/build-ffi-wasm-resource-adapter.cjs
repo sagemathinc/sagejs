@@ -49,13 +49,34 @@ function cowasmRoot() {
   return candidates.find((candidate) => existsSync(candidate)) ?? candidates[0];
 }
 
-function toolchain() {
+const wasmLibraries = Object.freeze({
+  flint: Object.freeze({
+    prefixes: Object.freeze(["flint", "mpfr", "gmp"]),
+    libraries: Object.freeze([
+      "flint", "mpfr", "gmp", "m", "wasi-emulated-signal",
+    ]),
+    sources: Object.freeze([
+      join(root, "packages", "flint-wasm", "src", "wasi-stubs.c"),
+    ]),
+  }),
+  m4ri: Object.freeze({
+    prefixes: Object.freeze(["m4ri"]),
+    libraries: Object.freeze(["m4ri", "m"]),
+    sources: Object.freeze([]),
+  }),
+});
+
+function toolchain(library = "flint") {
+  const configuration = wasmLibraries[library];
+  if (configuration === undefined) {
+    throw new Error(`no Wasm toolchain configuration for ${library}`);
+  }
   const cowasm = cowasmRoot();
   const wasiNative = join(
     cowasm, "core", "build", "build", "wasi-sdk", "dist",
     "wasi-sdk-next", "native",
   );
-  const prefixes = ["flint", "mpfr", "gmp"].map((name) => ({
+  const prefixes = configuration.prefixes.map((name) => ({
     name,
     path: join(cowasm, "sagemath", name, "dist", "wasi-sdk"),
   }));
@@ -63,6 +84,8 @@ function toolchain() {
     clang: join(wasiNative, "bin", "clang"),
     sysroot: join(wasiNative, "share", "wasi-sysroot"),
     prefixes,
+    libraries: configuration.libraries,
+    sources: configuration.sources,
   };
 }
 
@@ -70,7 +93,7 @@ function requirePath(description, path) {
   if (!existsSync(path)) {
     throw new Error(
       `missing ${description}: ${path}\n` +
-      "Build the CoWasm FLINT toolchain or set SAGEJS_COWASM_ROOT.",
+      "Build the required CoWasm library toolchain or set SAGEJS_COWASM_ROOT.",
     );
   }
 }
@@ -94,7 +117,9 @@ function build(options) {
   writeFileSync(join(options.output, "ffi_host.py"), artifacts.hostSource);
   writeFileSync(join(options.output, "manifest.json"), artifacts.manifestSource);
 
-  const { clang, sysroot, prefixes } = toolchain();
+  const { clang, sysroot, prefixes, libraries, sources } = toolchain(
+    options.library,
+  );
   requirePath("WASI SDK clang", clang);
   requirePath("WASI SDK sysroot", sysroot);
   for (const prefix of prefixes) {
@@ -117,17 +142,15 @@ function build(options) {
       "-isystem",
       join(prefix.path, "include"),
     ]),
-    `-I${join(root, "packages", "flint", "include")}`,
+    ...declaration.library.native.toolchain.source_include_dirs.map(
+      (directory) => `-I${join(root, directory)}`,
+    ),
     cPath,
-    join(root, "packages", "flint-wasm", "src", "wasi-stubs.c"),
+    ...sources,
     ...prefixes.flatMap((prefix) => [
       `-L${join(prefix.path, "lib")}`,
     ]),
-    "-lflint",
-    "-lmpfr",
-    "-lgmp",
-    "-lm",
-    "-lwasi-emulated-signal",
+    ...libraries.map((library) => `-l${library}`),
     ...artifacts.manifest.exports.map((name) => `-Wl,--export=${name}`),
     "-Wl,--export-memory",
     "-Wl,--gc-sections",

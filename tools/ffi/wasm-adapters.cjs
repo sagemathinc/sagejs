@@ -66,15 +66,10 @@ function selectWasmResourceSurface(declaration, options = {}) {
   }
 
   const functions = declaration.functions.filter((fn) => {
-    if (requested !== null && !requested.has(fn.id)) return false;
+    if (requested !== null) return requested.has(fn.id);
     const touched = touchedResources(fn, byType);
     return Array.from(touched).some((id) => selectedIds.has(id));
   });
-  if (requested !== null && functions.length !== requested.size) {
-    const found = new Set(functions.map((fn) => fn.id));
-    const unrelated = Array.from(requested).filter((id) => !found.has(id));
-    fail(`selected functions do not use the selected resources: ${unrelated}`);
-  }
   for (const fn of functions) {
     if (fn.targets.wasm !== true) {
       fail(`function ${fn.id} is not declared for the Wasm target`);

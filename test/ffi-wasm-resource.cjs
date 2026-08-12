@@ -96,12 +96,14 @@ test("generated Wasm resource selection is explicit and fail-closed", () => {
   assert.match(generated.hostSource, /def ffiDirichletGroupCreate/);
   assert.doesNotMatch(generated.hostSource, /def ffiFmpqMatrixCreate/);
 
-  assert.throws(
-    () => generatedWasmResourceAdapter(declaration, {
-      resourceIds: ["dirichlet_group"],
-      functionIds: ["n_is_prime"],
-    }),
-    /do not use the selected resources/,
+  const scalarGenerated = generatedWasmResourceAdapter(declaration, {
+    resourceIds: ["dirichlet_group"],
+    functionIds: ["n_is_prime"],
+  });
+  assert.deepEqual(scalarGenerated.manifest.functions, ["n_is_prime"]);
+  assert.match(
+    scalarGenerated.cSource,
+    /sagejs_wasm_wordIsPrime/,
   );
   assert.throws(
     () => generatedWasmResourceAdapter(declaration, {
