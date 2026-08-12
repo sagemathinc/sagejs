@@ -260,6 +260,34 @@ static inline int sagejs_m4ri_matrix_init_set(
     return sagejs_m4ri_matrix_adopt(result, copy);
 }
 
+/*
+ * Copy rows in the caller's order and permit repetitions. Validate the
+ * complete borrowed index vector and output dimensions before allocating the
+ * independent owned result.
+ */
+static inline int sagejs_m4ri_matrix_select_rows(
+    sagejs_m4ri_matrix_t result, const sagejs_m4ri_matrix_t source,
+    const uint64_t *selected_rows, uint64_t count)
+{
+    rci_t result_rows;
+    rci_t result_columns;
+    const uint64_t source_rows = (uint64_t) source->value->nrows;
+    const uint64_t source_columns = (uint64_t) source->value->ncols;
+    if ((count != 0 && selected_rows == NULL) ||
+        !sagejs_m4ri_checked_dimensions(
+            count, source_columns, &result_rows, &result_columns))
+        return 0;
+    for (uint64_t row = 0; row < count; row++)
+        if (selected_rows[row] >= source_rows)
+            return 0;
+    mzd_t *selected = mzd_init(result_rows, result_columns);
+    if (result_columns != 0)
+        for (rci_t row = 0; row < result_rows; row++)
+            mzd_copy_row(
+                selected, row, source->value, (rci_t) selected_rows[row]);
+    return sagejs_m4ri_matrix_adopt(result, selected);
+}
+
 static inline int sagejs_m4ri_matrix_equal(
     const sagejs_m4ri_matrix_t left, const sagejs_m4ri_matrix_t right)
 {
@@ -714,6 +742,17 @@ SAGEJS_M4RI_STUB_UNARY(sagejs_m4ri_matrix_rref)
 SAGEJS_M4RI_STUB_UNARY(sagejs_m4ri_matrix_inverse)
 SAGEJS_M4RI_STUB_UNARY(sagejs_m4ri_matrix_right_kernel)
 #undef SAGEJS_M4RI_STUB_UNARY
+
+static inline int sagejs_m4ri_matrix_select_rows(
+    sagejs_m4ri_matrix_t result, const sagejs_m4ri_matrix_t source,
+    const uint64_t *selected_rows, uint64_t count)
+{
+    (void) result;
+    (void) source;
+    (void) selected_rows;
+    (void) count;
+    return 0;
+}
 
 #define SAGEJS_M4RI_STUB_BINARY(name) \
     static inline int name(sagejs_m4ri_matrix_t result, \

@@ -62,12 +62,21 @@ function closeAll(backend, owned) {
 }
 
 test("complete M4RI resource surface lowers generically to Wasm", () => {
+  const selector = declaration().functions.find(
+    (candidate) => candidate.id === "matrix_select_rows",
+  );
+  assert.ok(selector);
+  assert.equal(selector.targets.wasm, false);
   const generated = generatedWasmResourceAdapter(declaration(), {
     resourceIds,
     functionIds,
   });
   assert.deepEqual(generated.manifest.resources, resourceIds);
   assert.deepEqual(generated.manifest.functions, functionIds);
+  assert.equal(
+    generated.manifest.functions.includes("matrix_select_rows"),
+    false,
+  );
   assert.deepEqual(generated.manifest.host_ingress, [{
     resource: "byte_region",
     kind: "copied_bytes",

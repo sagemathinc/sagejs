@@ -20,6 +20,7 @@ from sagejs.ffi.m4ri import (
     matrix_swap_columns as _ffi_matrix_swap_columns,
     matrix_entry_code as _ffi_matrix_entry_code,
     matrix_copy as _ffi_matrix_copy,
+    matrix_select_rows as _ffi_matrix_select_rows,
     matrix_equal as _ffi_matrix_equal,
     matrix_add as _ffi_matrix_add,
     matrix_mul as _ffi_matrix_mul,
@@ -36,7 +37,7 @@ from sagejs.ffi.m4ri import (
     matrix_from_sagepack_bytes as _ffi_matrix_from_sagepack_bytes,
     matrix_format as _ffi_matrix_format,
 )
-from sagejs.native import native, uint64
+from sagejs.native import UInt64Buffer, native, uint64
 
 
 @native
@@ -137,6 +138,19 @@ def ffiM4riMatrixCopy(
 ) -> M4riMatrix:
     return _ffi_matrix_copy(
         source,
+    )
+
+
+@native
+def ffiM4riMatrixSelectRows(
+    source: M4riMatrix,
+    indices: UInt64Buffer,
+    count: uint64,
+) -> M4riMatrix:
+    return _ffi_matrix_select_rows(
+        source,
+        indices,
+        count,
     )
 
 
