@@ -4,7 +4,7 @@
   "id": "public-matrix-vector",
   "title": "Public one-boundary matrix-vector products",
   "lane": "integration",
-  "status": "active",
+  "status": "review",
   "owner": "user",
   "objective": "Implement public dense Matrix times Vector and Vector times Matrix through the integrated storage-neutral one-operation contract, completing generated FLINT-resource ZZ and QQ products with Sage coercion and dimension semantics and explicit capability gates for remaining packed finite-field backends",
   "base_commit": "91522d6bba7eccfb75010c4d4f15868b258bfde0",
@@ -21,6 +21,7 @@
     "src/baselib/sagejs/ffi/flint.py",
     "src/lib/sagejs/ffi/flint.py",
     "test/public-matrix-vector.cjs",
+    "test/node-test-manifest.cjs",
     "bench/public-matrix-vector.cjs",
     "architecture/native-boundaries.json",
     "architecture/package-graph.json",
@@ -52,12 +53,94 @@
     "pnpm test:portable",
     "pnpm test:baselib:strict"
   ],
-  "runs": [],
+  "runs": [
+    {
+      "command": "node test/public-matrix-vector.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.641,
+      "started_at": "2026-08-12T13:03:54.094Z",
+      "commit": "e39f59a948acddb3a660ecc2de7336b3a97fb921",
+      "workspace_fingerprint": "7ed23d53cb17337e32ee9ceef24c1d8719b20e93c41d8616a4bddca17fe33a00",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 13.568,
+      "started_at": "2026-08-12T13:04:05.799Z",
+      "commit": "e39f59a948acddb3a660ecc2de7336b3a97fb921",
+      "workspace_fingerprint": "7ed23d53cb17337e32ee9ceef24c1d8719b20e93c41d8616a4bddca17fe33a00",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 13.35,
+      "started_at": "2026-08-12T13:04:22.980Z",
+      "commit": "e39f59a948acddb3a660ecc2de7336b3a97fb921",
+      "workspace_fingerprint": "7ed23d53cb17337e32ee9ceef24c1d8719b20e93c41d8616a4bddca17fe33a00",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/public-matrix-vector.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 3.011,
+      "started_at": "2026-08-12T13:04:43.950Z",
+      "commit": "e39f59a948acddb3a660ecc2de7336b3a97fb921",
+      "workspace_fingerprint": "7ed23d53cb17337e32ee9ceef24c1d8719b20e93c41d8616a4bddca17fe33a00",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 42.937,
+      "started_at": "2026-08-12T13:05:06.867Z",
+      "commit": "e39f59a948acddb3a660ecc2de7336b3a97fb921",
+      "workspace_fingerprint": "7ed23d53cb17337e32ee9ceef24c1d8719b20e93c41d8616a4bddca17fe33a00",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 43.232,
+      "started_at": "2026-08-12T13:06:30.673Z",
+      "commit": "e39f59a948acddb3a660ecc2de7336b3a97fb921",
+      "workspace_fingerprint": "959c781879b1a01825d81efcae60ba26b44648e4806557e40bab330a8e7398a6",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 15.051,
+      "started_at": "2026-08-12T13:07:39.075Z",
+      "commit": "e39f59a948acddb3a660ecc2de7336b3a97fb921",
+      "workspace_fingerprint": "959c781879b1a01825d81efcae60ba26b44648e4806557e40bab330a8e7398a6",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 15.222,
+      "started_at": "2026-08-12T13:07:59.302Z",
+      "commit": "e39f59a948acddb3a660ecc2de7336b3a97fb921",
+      "workspace_fingerprint": "959c781879b1a01825d81efcae60ba26b44648e4806557e40bab330a8e7398a6",
+      "platform": "linux-x64"
+    }
+  ],
   "handoff": {
     "summary": "Public Matrix*Vector and Vector*Matrix now use a lazy storage-neutral dispatcher. ZZ and QQ cross one generated FLINT-resource boundary, GF(2) borrows M4RI in compiled typed Python, and other packed prime fields use compiler-owned residue buffers. Sage coercion, zero shapes, skew exact values, fresh mutable results, and dimension errors are covered by focused regression tests.",
     "risks": [
       "Extension and approximate fields deliberately retain the former temporary row/column matrix fallback until they acquire declared vector ABIs.",
-      "The generated FFI wrappers increase the native-integration package ratchet from 605000 to 612000 bytes."
+      "The generated FFI wrappers increase the native-integration package ratchet from 605000 to 612000 bytes.",
+      "At 500x500, the lazy public dispatcher currently adds enough fixed overhead that ZZ and QQ trail the reconstructed temporary-matrix path; packed prime products remain about twice as fast."
     ],
     "next_steps": [
       "Run portable and non-x64 validation after integration.",
