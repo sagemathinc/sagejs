@@ -4,7 +4,7 @@
   "id": "exact-matrix-scalar-operations",
   "title": "Exact Matrix Scalar Operations",
   "lane": "arithmetic-algebra",
-  "status": "active",
+  "status": "review",
   "owner": "user",
   "objective": "Measure and accelerate public dense ZZ and QQ negation, scalar multiplication, and supported scalar division through existing generated FLINT resources without entrywise host reconstruction or algorithm-specific Node-API",
   "base_commit": "098afe93dc9a9451e1f5a60505d53d4d13c3d1bf",
@@ -39,10 +39,67 @@
     "pnpm test:baselib:strict",
     "pnpm test:native"
   ],
-  "runs": [],
+  "runs": [
+    {
+      "command": "node test/exact-matrix-scalar-operations.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.314,
+      "started_at": "2026-08-12T07:19:46.684Z",
+      "commit": "8425ca4e2746599b66674c6e3fce458baf22fd22",
+      "workspace_fingerprint": "d7ce2378790055d251425013da0c47706948e78f3ec2190cc1c73158d99c9444",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/exact-matrix-scalar-operations.cjs sagejs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.954,
+      "started_at": "2026-08-12T07:19:49.615Z",
+      "commit": "8425ca4e2746599b66674c6e3fce458baf22fd22",
+      "workspace_fingerprint": "d7ce2378790055d251425013da0c47706948e78f3ec2190cc1c73158d99c9444",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 13.03,
+      "started_at": "2026-08-12T07:19:53.185Z",
+      "commit": "8425ca4e2746599b66674c6e3fce458baf22fd22",
+      "workspace_fingerprint": "d7ce2378790055d251425013da0c47706948e78f3ec2190cc1c73158d99c9444",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 13.772,
+      "started_at": "2026-08-12T07:20:06.816Z",
+      "commit": "8425ca4e2746599b66674c6e3fce458baf22fd22",
+      "workspace_fingerprint": "d7ce2378790055d251425013da0c47706948e78f3ec2190cc1c73158d99c9444",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:native",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 166.582,
+      "started_at": "2026-08-12T07:24:14.770Z",
+      "commit": "f068815c1efa1cf3b0307d155adacbc8eb6d178b",
+      "workspace_fingerprint": "98267768d18a6afcf5a82c07b7c22fbb8156c7cd1d4246b718949490821a417a",
+      "platform": "linux-x64"
+    }
+  ],
   "handoff": {
-    "summary": "",
-    "risks": [],
-    "next_steps": []
+    "summary": "Dense generated ZZ and QQ resources now handle negation and common exact scalar multiplication before generic coercion or representation dispatch. QQ resource division passes the reciprocal numerator and denominator directly to FLINT, and same-shape result adoption makes the declaration guarantee explicit without repeating native dimension queries. Differential tests cover large skewed exact values, coercion, zero division, hostile values, empty shapes, ownership, idempotent close, native-disabled fallback, trace selection, and absence of packed host materialization. On the recorded 300x300 Linux workload, warm medians were 0.42 ms for ZZ negation, 0.55 ms for ZZ multiplication, 1.16 ms for QQ negation, 3.24 ms for QQ multiplication, and 2.68 ms for QQ division. A later direct aggregate native-suite rerun completed successfully through all FFI, sanitizer, compiler, dense-matrix, and polynomial performance gates; the integration branch independently repeated the focused test, benchmark, architecture, and strict-Python checks.",
+    "risks": [
+      "Only linux-x64 has a lane-local performance receipt; required linux-arm64, macOS-arm64, and Windows-x64 semantics remain delegated to integration CI.",
+      "The initial recorded aggregate native run failed under the shared multi-lane workspace. A direct rerun on the final commit passed end to end, but was not recorded by parallel:run because integration had already independently validated the focused change."
+    ],
+    "next_steps": [
+      "Exercise the focused exact scalar suite on macOS-arm64, linux-arm64, and Windows-x64 CI without changing the generated-resource architecture.",
+      "Retain the warm scalar-operation benchmark in the exact-matrix performance history so future host-boundary changes cannot reintroduce entrywise materialization."
+    ]
   }
 }
