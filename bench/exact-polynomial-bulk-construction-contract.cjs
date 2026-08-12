@@ -29,6 +29,8 @@ if (process.argv.includes("--help") || process.argv.includes("-h")) {
   --samples N       Warm samples per operation (default: 7)
   --count N         Coefficient count (default: 5001)
   --output PATH     Write the complete JSON report
+  --evidence LABEL=PATH
+                    Attach a previously recorded host report; repeatable
   --check           Check execution, summaries, and cross-runtime semantics
 
 The benchmark records process wall time, raw-input setup, the first public
@@ -45,6 +47,9 @@ const requestedRuntime = argument("--runtime", "sagejs");
 const sage = argument("--sage", process.env.SAGEJS_BENCH_SAGE);
 const output = argument("--output");
 const check = process.argv.includes("--check");
+const evidenceArguments = process.argv.flatMap((value, index, values) =>
+  value === "--evidence" && values[index + 1] ? [values[index + 1]] : []
+);
 
 assert.ok(Number.isInteger(samples) && samples >= 3 && samples <= 31);
 assert.ok(Number.isInteger(count) && count >= 1 && count <= 1_000_001);
@@ -202,6 +207,14 @@ import sagejs._baselib.polynomial as internal
 
 raw = ${raw}
 ffi = internal._flint_ffi_module()
+R = PolynomialRing(${domain}, "x")
+huge = 2**65537 + 1
+${rational
+  ? `large_denominator = 2**32771 + 1
+skew = [QQ(1) for index in range(${count})]
+skew[len(skew) // 2] = QQ(huge) / QQ(large_denominator)`
+  : `skew = [1 for index in range(${count})]
+skew[len(skew) // 2] = huge`}
 
 def median_call(function):
     function()
@@ -227,6 +240,15 @@ def fast_pack_body():
     ${rational
       ? "return runtime.canonical_rational_values_to_packed_bytes(raw, sage.Rational, sage.QQ)"
       : "return runtime.exact_integer_values_to_packed_bytes(raw)"}
+
+def skew_fast_pack_body():
+    ${rational
+      ? "return runtime.canonical_rational_values_to_packed_bytes(skew, sage.Rational, sage.QQ)"
+      : "return runtime.exact_integer_values_to_packed_bytes(skew)"}
+
+def skew_public_construct():
+    answer = R(skew)
+    answer._exact_polynomial_resource().close()
 
 payload, byte_length = internal._exact_polynomial_payload(parts, ${count}, ${rational ? "True" : "False"})
 
@@ -255,6 +277,10 @@ report = {
     "generated_deserialize_ms": median_call(deserialize),
     "proposed_byte_region_ingress_ms": median_call(byte_region_ingress),
     "encoded_bytes": len(envelope),
+    "skew_checked_host_list_pack_ms": median_call(skew_fast_pack_body),
+    "skew_public_construct_ms": median_call(skew_public_construct),
+    "skew_encoded_bytes": len(skew_fast_pack_body()) + 16,
+    "skew_bits": 65538,
 }
 print("SAGEJS_EXACT_POLY_STAGE " + json.dumps(report, separators=(",", ":")))
 `;
@@ -379,6 +405,24 @@ const report = {
   measurements,
   diagnostic_stages: stages,
   comparisons,
+  additional_host_evidence: evidenceArguments.map((entry) => {
+    const separator = entry.indexOf("=");
+    assert.ok(separator > 0, "--evidence must be LABEL=PATH");
+    const label = entry.slice(0, separator);
+    const source = JSON.parse(readFileSync(resolve(entry.slice(separator + 1)), "utf8"));
+    assert.equal(source.schema, "sagejs.benchmark/exact-polynomial-bulk-construction-v1");
+    return {
+      label,
+      generated_at: source.generated_at,
+      host: source.host,
+      repository: source.repository,
+      configuration: source.configuration,
+      runtimes: source.runtimes,
+      measurements: source.measurements,
+      diagnostic_stages: source.diagnostic_stages,
+      comparisons: source.comparisons,
+    };
+  }),
 };
 
 if (check) {
