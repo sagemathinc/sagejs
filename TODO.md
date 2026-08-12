@@ -26,10 +26,22 @@
   ratchet. Keep the public `Matrix` API unified while making exact-integer,
   rational, prime-field, and generic host dispatch independently readable and
   claimable by parallel agents.
+- Make public dense vectors domain-aware packed/resource-backed objects over
+  `ZZ`, `QQ`, `GF(2)`, and small `GF(p)`. Vector arithmetic and matrix-vector
+  result publication still materialize host element lists and are now a larger
+  warm-path bottleneck than the matrix kernels themselves.
+- Wire public row and column spaces through the completed bulk
+  `matrix_subspaces` contract, and add one generated exact-resource pivot query
+  so `ZZ` and `QQ` echelon metadata never requires exporting every entry.
+- Complete generated sparse-random `QQ` construction for the `1/n`
+  distribution and numerator/denominator bounds beyond 32 bits; both currently
+  fall back to dense host loops.
+- Accept general finite Python iterables such as `range` in polynomial-ring
+  construction with the same semantics as Sage; list and tuple construction
+  already work.
 
 ## Measurement and performance ergonomics
 
 - Ratchet cold production-kernel loading separately from warm mathematical
   execution, and never silently compile a missing production kernel in an
   ordinary installed session.
-
