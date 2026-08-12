@@ -7,7 +7,7 @@
   "status": "review",
   "owner": "user",
   "objective": "Convert canonical generated FmpzMatrix resources directly to packed dense GF(p) storage for Matrix.change_ring without host Integer materialization, including p=2, fallbacks, differential tests, and benchmarks",
-  "base_commit": "07c2962d602d200874a4787d8c17496d698f30a3",
+  "base_commit": "1926aca74d0b16b985f63a8a2aa763d473239ceb",
   "claims": [
     "ffi/flint.ffi.py",
     "ffi/flint.ffi.json",
@@ -17,7 +17,6 @@
     "src/baselib/sagejs/ffi/flint.py",
     "src/baselib/matrix.py",
     "test/fmpz-matrix-modp-conversion.cjs",
-    "test/node-test-manifest.cjs",
     "test/ffi.cjs",
     "bench/fmpz-matrix-modp-conversion.cjs",
     "architecture/native-boundaries.json"
@@ -114,6 +113,36 @@
       "commit": "07c2962d602d200874a4787d8c17496d698f30a3",
       "workspace_fingerprint": "b1eb3d2a03475f55fecdd7faee8c0f6e84c21674367cfb82da349510f8675836",
       "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 12.772,
+      "started_at": "2026-08-12T05:37:14.360Z",
+      "commit": "a1a39ce6fdac06bc7cc2cca04042ef5bf4c4536f",
+      "workspace_fingerprint": "4d5f03f0bcaab973373d23ad103baa19f321a268a575fe47dae4fad7df71adc1",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 12.478,
+      "started_at": "2026-08-12T05:37:27.743Z",
+      "commit": "a1a39ce6fdac06bc7cc2cca04042ef5bf4c4536f",
+      "workspace_fingerprint": "4d5f03f0bcaab973373d23ad103baa19f321a268a575fe47dae4fad7df71adc1",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 39.573,
+      "started_at": "2026-08-12T05:37:40.804Z",
+      "commit": "a1a39ce6fdac06bc7cc2cca04042ef5bf4c4536f",
+      "workspace_fingerprint": "4d5f03f0bcaab973373d23ad103baa19f321a268a575fe47dae4fad7df71adc1",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {
@@ -123,7 +152,7 @@
       "The generated copied-byte ownership contract performs one FLINT-to-host copy; GF(2) then performs the existing host-to-M4RI copied ingress because independently generated libraries cannot share raw pointers. The measured million-entry path remains 6.5 ms."
     ],
     "next_steps": [
-      "Integrate the commit on dense-qq-resources and retain the benchmark as a regression/crossover witness.",
+      "Integrate the commit on dense-qq-resources, add test/fmpz-matrix-modp-conversion.cjs to test/node-test-manifest.cjs in the manifest-owning integration lane, and retain the benchmark as a regression/crossover witness.",
       "Consider a general generated cross-library byte transfer only if profiling finds the GF(2) copy material; do not add shared raw-pointer ownership speculatively."
     ]
   }
