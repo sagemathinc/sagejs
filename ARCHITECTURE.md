@@ -103,6 +103,10 @@ public type contract, while bootstrap code refers to it only by module name.
 Domain algorithms therefore remain independently readable, claimable by
 parallel projects, and removable from startup without fragmenting public APIs
 into representation-specific classes.
+The source-transparent modules under `sagejs.kernels.matrix` and
+`sagejs.kernels.polynomial` are likewise lazy packages: being trusted
+production kernels does not make their Python declarations part of the
+bootstrap source budget.
 
 ## Native code and exceptions
 

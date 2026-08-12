@@ -4,7 +4,7 @@
   "id": "large-prime-polynomial-correctness",
   "title": "Large Prime Polynomial Correctness",
   "lane": "integration",
-  "status": "active",
+  "status": "complete",
   "owner": "user",
   "objective": "Make GF(p)[x] for p > 2^32-1 Sage-compatible and fast for construction, arithmetic, divrem, gcd, xgcd, factor, roots, evaluation, formatting, and SagePack",
   "base_commit": "97116b99d9b24ded43c80ec547fd9c1e8f77efbd",
@@ -56,8 +56,7 @@
     ],
     "next_steps": [
       "Add canonical fixed-width 8-byte GF(p) polynomial encoding and decoding in tools/serialization.ts; retain deterministic little-endian bytes and reject noncanonical residues.",
-      "Raise architecture/package-graph.json native-integration max_source_bytes from the old 524000 budget to the newly measured 547190-or-higher integration result.",
-      "Register test/large-prime-polynomial.cjs in test/node-test-manifest.cjs and update test/ffi.cjs exact declaration/adapter/export/boundary ratchets by seven."
+      "Rebuild the declared FLINT adapters on Windows x64, macOS arm64, and WebAssembly in the normal platform validation wave."
     ]
   }
 }

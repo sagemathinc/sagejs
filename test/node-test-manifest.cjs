@@ -127,6 +127,7 @@ const integration = [
   "test/prime-polynomial-bulk-views.cjs",
   "test/prime-polynomial-divrem.cjs",
   "test/polynomial-prime-evaluate.cjs",
+  "test/large-prime-polynomial.cjs",
   "test/padics.cjs",
   "test/groups.cjs",
   "test/graphs.cjs",

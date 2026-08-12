@@ -45,6 +45,14 @@ test("the checked-in package graph owns every Python source and respects budgets
     "polynomial-algorithms",
   );
   assert.equal(
+    result.ownership.get("src/lib/sagejs/kernels/matrix/dense_integer.py"),
+    "matrix-native-kernels",
+  );
+  assert.equal(
+    result.ownership.get("src/lib/sagejs/kernels/polynomial/packed_flint.py"),
+    "polynomial-native-kernels",
+  );
+  assert.equal(
     result.typescriptOwnership.get("tools/serialization-codecs/number-fields.ts"),
     "arithmetic",
   );

@@ -61,7 +61,7 @@
       "id": "native-integration",
       "layer": 1,
       "startup": "lazy",
-      "max_source_bytes": 524000,
+      "max_source_bytes": 560000,
       "depends_on": ["core-runtime"],
       "modules": ["sagejs.native", "sagejs.ffi"],
       "files": [
@@ -87,12 +87,7 @@
         "src/baselib/real_complex.py",
         "src/baselib/series.py",
         "src/baselib/zeta_data.py",
-        "src/baselib/zz_introspection.py",
-        "src/lib/sagejs/kernels/polynomial/__init__.py",
-        "src/lib/sagejs/kernels/polynomial/packed_flint.py",
-        "src/lib/sagejs/kernels/polynomial/packed_integer.py",
-        "src/lib/sagejs/kernels/polynomial/packed_prime_field.py",
-        "src/lib/sagejs/kernels/polynomial/packed_rational.py"
+        "src/baselib/zz_introspection.py"
       ],
       "typescript_files": [
         "tools/serialization-codecs/arithmetic.ts",
@@ -107,14 +102,42 @@
       "layer": 3,
       "startup": "bootstrap",
       "max_source_bytes": 410000,
+      "depends_on": ["core-runtime", "native-integration", "arithmetic"],
+      "files": [
+        "src/baselib/matrix.py"
+      ],
+      "typescript_files": ["tools/serialization-codecs/linear-algebra.ts"],
+      "prefixes": []
+    },
+    {
+      "id": "polynomial-native-kernels",
+      "layer": 3,
+      "startup": "lazy",
+      "max_source_bytes": 100000,
+      "depends_on": ["core-runtime", "native-integration", "arithmetic"],
+      "modules": ["sagejs.kernels.polynomial"],
+      "files": [
+        "src/lib/sagejs/kernels/polynomial/__init__.py",
+        "src/lib/sagejs/kernels/polynomial/packed_flint.py",
+        "src/lib/sagejs/kernels/polynomial/packed_integer.py",
+        "src/lib/sagejs/kernels/polynomial/packed_prime_field.py",
+        "src/lib/sagejs/kernels/polynomial/packed_rational.py"
+      ],
+      "prefixes": []
+    },
+    {
+      "id": "matrix-native-kernels",
+      "layer": 4,
+      "startup": "lazy",
+      "max_source_bytes": 150000,
       "depends_on": [
         "core-runtime",
         "native-integration",
         "arithmetic",
-        "python-stdlib"
+        "linear-algebra"
       ],
+      "modules": ["sagejs.kernels.matrix"],
       "files": [
-        "src/baselib/matrix.py",
         "src/lib/sagejs/kernels/matrix/__init__.py",
         "src/lib/sagejs/kernels/matrix/dense_binary_m4ri.py",
         "src/lib/sagejs/kernels/matrix/dense_integer.py",
@@ -125,7 +148,6 @@
         "src/lib/sagejs/kernels/matrix/dense_rational.py",
         "src/lib/sagejs/kernels/matrix/dense_rational_flint.py"
       ],
-      "typescript_files": ["tools/serialization-codecs/linear-algebra.ts"],
       "prefixes": []
     },
     {
