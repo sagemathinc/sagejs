@@ -1392,32 +1392,124 @@ def ρσ_ffi_call(
 ):
     """Marshal a checked declaration call to its ordinary dynamic backend."""
     return r"""%js (() => {
-        if (
-            typeof declaration_identity !== "string"
-            || !/^[a-z][a-z0-9_]*@[0-9a-f]{64}:[A-Za-z_][A-Za-z0-9_]*$/
-                .test(declaration_identity)
-        ) {
-            throw new TypeError("invalid FFI declaration identity");
+        const runtime_require = __sagejs_runtime_require__;
+        const call_plans = (
+            globalThis.__sagejs_ffi_call_plans__ ??= new Map()
+        );
+        let plan = call_plans.get(declaration_identity);
+        if (plan === undefined || plan.runtimeRequire !== runtime_require) {
+            if (
+                typeof declaration_identity !== "string"
+                || !/^[a-z][a-z0-9_]*@[0-9a-f]{64}:[A-Za-z_][A-Za-z0-9_]*$/
+                    .test(declaration_identity)
+            ) {
+                throw new TypeError("invalid FFI declaration identity");
+            }
+            if (values.length !== parameter_types.length) {
+                throw new TypeError(
+                    `FFI declaration ${declaration_identity} argument count mismatch`
+                );
+            }
+            const backend = runtime_require(package_name);
+            const callableValue = Reflect.get(backend, export_name);
+            if (typeof callableValue !== "function") {
+                throw new RuntimeError(
+                    `FFI declaration ${declaration_identity} backend `
+                    + `${package_name} does not export ${export_name}`
+                );
+            }
+            if (
+                !Array.isArray(result_domain)
+                || result_domain.length !== 3
+                || !["direct", "nullable", "status"].includes(result_domain[0])
+            ) {
+                throw new TypeError("invalid FFI result domain");
+            }
+            const exceptionClasses = {
+                OverflowError, RuntimeError, TypeError, ValueError
+            };
+            const exceptionClass = exceptionClasses[error_exception];
+            if (
+                error_exception !== null
+                && typeof exceptionClass !== "function"
+            ) {
+                throw new RuntimeError(
+                    `unsupported FFI exception ${error_exception}`
+                );
+            }
+            const constraintPlans = constraints.map((constraint) => {
+                const [kind, buffer, dimensions, names] = constraint;
+                if (
+                    kind !== "buffer_length"
+                    || typeof buffer !== "string"
+                    || !Array.isArray(dimensions)
+                    || !Array.isArray(names)
+                ) {
+                    throw new TypeError("invalid FFI call-plan constraint");
+                }
+                const bufferIndex = names.length === 0
+                    ? -1 : names.indexOf(buffer);
+                if (bufferIndex < 0) {
+                    throw new TypeError("FFI call plan names an unknown buffer");
+                }
+                const dimensionIndices = dimensions.map((dimension) => {
+                    const index = names.indexOf(dimension);
+                    if (index < 0) {
+                        throw new TypeError(
+                            "FFI call plan names an invalid dimension"
+                        );
+                    }
+                    return index;
+                });
+                return [bufferIndex, dimensionIndices];
+            });
+            const parameterPlans = parameter_types.map((parameterType) => {
+                let kind = -1;
+                if (
+                    typeof parameterType === "string"
+                    && parameterType.startsWith("resource:")
+                ) {
+                    kind = 0;
+                } else if (parameterType === "Integer") {
+                    kind = 1;
+                } else if (parameterType === "uint64") {
+                    kind = 2;
+                } else if (parameterType === "bool") {
+                    kind = 3;
+                } else if (parameterType === "UInt64Buffer") {
+                    kind = 4;
+                } else if (parameterType === "IntegerBuffer") {
+                    kind = 5;
+                }
+                return Object.freeze([kind, parameterType]);
+            });
+            plan = Object.freeze({
+                runtimeRequire: runtime_require,
+                backend,
+                callableValue,
+                parameterPlans: Object.freeze(parameterPlans),
+                returnType: return_type,
+                resultKind: result_domain[0],
+                exceptionClass,
+                errorMessage: error_message,
+                constraintPlans: Object.freeze(constraintPlans.map(
+                    ([bufferIndex, dimensionIndices]) => Object.freeze([
+                        bufferIndex, Object.freeze(dimensionIndices)
+                    ])
+                )),
+            });
+            call_plans.set(declaration_identity, plan);
         }
-        if (values.length !== parameter_types.length) {
+        if (values.length !== plan.parameterPlans.length) {
             throw new TypeError(
                 `FFI declaration ${declaration_identity} argument count mismatch`
             );
         }
-        const backend = __sagejs_runtime_require__(package_name);
-        const callable_value = Reflect.get(backend, export_name);
-        if (typeof callable_value !== "function") {
-            throw new RuntimeError(
-                `FFI declaration ${declaration_identity} backend `
-                + `${package_name} does not export ${export_name}`
-            );
-        }
-        const marshalled = values.map((value, index) => {
-            const parameter_type = parameter_types[index];
-            if (
-                typeof parameter_type === "string"
-                && parameter_type.startsWith("resource:")
-            ) {
+        const marshalled = new Array(values.length);
+        for (let index = 0; index < values.length; index++) {
+            const value = values[index];
+            const [parameter_kind, parameter_type] = plan.parameterPlans[index];
+            if (parameter_kind === 0) {
                 const tag = (
                     globalThis.__sagejs_ffi_resource_tag__ ??= Symbol(
                         "Sage.js declared FFI resource"
@@ -1435,24 +1527,33 @@ def ρσ_ffi_call(
                 if ((state.root ?? state).closed) {
                     throw new ValueError("FFI resource is closed");
                 }
-                return state.handle;
+                marshalled[index] = state.handle;
+                continue;
             }
-            if (parameter_type === "Integer") {
-                if (typeof value === "bigint") return value;
-                if (Number.isSafeInteger(value)) return BigInt(value);
+            if (parameter_kind === 1) {
+                if (typeof value === "bigint") {
+                    marshalled[index] = value;
+                    continue;
+                }
+                if (Number.isSafeInteger(value)) {
+                    marshalled[index] = BigInt(value);
+                    continue;
+                }
             }
-            if (parameter_type === "uint64") {
+            if (parameter_kind === 2) {
                 const exact = typeof value === "bigint"
                     ? value
                     : Number.isSafeInteger(value) ? BigInt(value) : -1n;
                 if (exact >= 0n && exact <= 18446744073709551615n) {
-                    return exact;
+                    marshalled[index] = exact;
+                    continue;
                 }
             }
-            if (parameter_type === "bool" && typeof value === "boolean") {
-                return value;
+            if (parameter_kind === 3 && typeof value === "boolean") {
+                marshalled[index] = value;
+                continue;
             }
-            if (parameter_type === "UInt64Buffer") {
+            if (parameter_kind === 4) {
                 if (
                     value !== null
                     && (typeof value === "object"
@@ -1463,7 +1564,10 @@ def ρσ_ffi_call(
                         // A BigUint64Array is already a constant-time proof of
                         // the complete packed ABI contract.  Canonical matrix
                         // storage must not be rescanned at every FFI call.
-                        if (value instanceof BigUint64Array) return value;
+                        if (value instanceof BigUint64Array) {
+                            marshalled[index] = value;
+                            continue;
+                        }
                         for (let position = 0; position < length; position++) {
                             const entry = Reflect.get(value, String(position));
                             const exact = typeof entry === "bigint"
@@ -1476,11 +1580,12 @@ def ρσ_ffi_call(
                                 );
                             }
                         }
-                        return value;
+                        marshalled[index] = value;
+                        continue;
                     }
                 }
             }
-            if (parameter_type === "IntegerBuffer") {
+            if (parameter_kind === 5) {
                 if (
                     value !== null
                     && (typeof value === "object"
@@ -1501,7 +1606,8 @@ def ρσ_ffi_call(
                             && sizes.length === length
                             && limbs.length === length * capacity
                         ) {
-                            return value;
+                            marshalled[index] = value;
+                            continue;
                         }
                         for (let position = 0; position < length; position++) {
                             const entry = Reflect.get(value, String(position));
@@ -1514,33 +1620,20 @@ def ρσ_ffi_call(
                                 );
                             }
                         }
-                        return value;
+                        marshalled[index] = value;
+                        continue;
                     }
                 }
             }
             throw new TypeError(
                 `invalid dynamic FFI argument for ${parameter_type}`
             );
-        });
-        for (const constraint of constraints) {
-            const [kind, buffer, dimensions, parameter_names] = constraint;
-            if (
-                kind !== "buffer_length"
-                || typeof buffer !== "string"
-                || !Array.isArray(dimensions)
-                || !Array.isArray(parameter_names)
-            ) {
-                throw new TypeError("invalid FFI call-plan constraint");
-            }
-            const buffer_index = parameter_types.length === 0 ? -1 :
-                parameter_names.indexOf(buffer);
-            if (buffer_index < 0) {
-                throw new TypeError("FFI call plan names an unknown buffer");
-            }
+        }
+        for (const constraint of plan.constraintPlans) {
+            const [buffer_index, dimension_indices] = constraint;
             let expected = 1n;
-            for (const dimension of dimensions) {
-                const index = parameter_names.indexOf(dimension);
-                if (index < 0 || typeof marshalled[index] !== "bigint") {
+            for (const index of dimension_indices) {
+                if (typeof marshalled[index] !== "bigint") {
                     throw new TypeError("FFI call plan names an invalid dimension");
                 }
                 expected *= marshalled[index];
@@ -1551,62 +1644,43 @@ def ρσ_ffi_call(
                 );
             }
         }
-        const exception_classes = {
-            OverflowError, RuntimeError, TypeError, ValueError
-        };
-        const exception_class = exception_classes[error_exception];
-        if (
-            error_exception !== null
-            && typeof exception_class !== "function"
-        ) {
-            throw new RuntimeError(
-                `unsupported FFI exception ${error_exception}`
-            );
-        }
         let result;
         try {
-            result = Reflect.apply(callable_value, backend, marshalled);
+            result = Reflect.apply(plan.callableValue, plan.backend, marshalled);
         } catch (error) {
             // Generated host adapters translate a failed isolated-core status
             // before returning to JavaScript.  Re-enter the declaration's
             // semantic exception domain instead of leaking a generic host
             // Error through the safe Python surface.
-            if (typeof exception_class === "function") {
+            if (typeof plan.exceptionClass === "function") {
                 const message = typeof error?.message === "string"
-                    ? error.message : error_message;
-                throw new exception_class(message);
+                    ? error.message : plan.errorMessage;
+                throw new plan.exceptionClass(message);
             }
             throw error;
         }
-        if (
-            !Array.isArray(result_domain)
-            || result_domain.length !== 3
-            || !["direct", "nullable", "status"].includes(result_domain[0])
-        ) {
-            throw new TypeError("invalid FFI result domain");
-        }
         const failed = (
-            (result_domain[0] === "status" && result === false)
-            || (result_domain[0] === "nullable" && result == null)
+            (plan.resultKind === "status" && result === false)
+            || (plan.resultKind === "nullable" && result == null)
         );
         if (failed) {
-            throw new exception_class(error_message);
+            throw new plan.exceptionClass(plan.errorMessage);
         }
-        if (return_type === "bool" && typeof result === "boolean") {
+        if (plan.returnType === "bool" && typeof result === "boolean") {
             return result;
         }
-        if (return_type === "Integer" && typeof result === "bigint") {
+        if (plan.returnType === "Integer" && typeof result === "bigint") {
             return result;
         }
         if (
-            return_type === "uint64" && typeof result === "bigint"
+            plan.returnType === "uint64" && typeof result === "bigint"
             && result >= 0n && result <= 18446744073709551615n
         ) {
             return result;
         }
         throw new TypeError(
             `FFI declaration ${declaration_identity} returned invalid `
-            + `${return_type}`
+            + `${plan.returnType}`
         );
     })()"""
 
