@@ -36,6 +36,7 @@ rational_cases = [
     S((QQ(-2) / QQ(-4), QQ(6) / QQ(-8), 0, 0)),
     S([QQ(huge) / QQ(large_denominator), 0]),
 ]
+canonical_skew = QQ(huge) / QQ(large_denominator)
 
 invalid = False
 try:
@@ -47,7 +48,10 @@ answer = {
     "integer": [[int(value.degree()), [str(part) for part in value.coefficients()], loads(dumps(value)) == value] for value in integer_cases],
     "rational": [[int(value.degree()), [str(part) for part in value.coefficients()], loads(dumps(value)) == value] for value in rational_cases],
     "integer_skew_exact": integer_cases[-1][1] == huge,
-    "rational_skew_exact": rational_cases[-1][0] == QQ(huge) / QQ(large_denominator),
+    "rational_skew_exact": rational_cases[-1][0] == canonical_skew,
+    "rational_skew_expected": str(canonical_skew),
+    "rational_skew_expected_parts": [str(canonical_skew._numerator), str(canonical_skew._denominator)],
+    "rational_skew_parts": [str(rational_cases[-1][0]._numerator), str(rational_cases[-1][0]._denominator)],
     "huge": str(huge),
     "large_denominator": str(large_denominator),
     "resource": [integer_cases[-1]._has_fmpz_polynomial_resource(), rational_cases[-1]._has_fmpq_polynomial_resource()],
@@ -114,6 +118,8 @@ test("recorded evidence separates setup, first use, warm work, and process time"
   assert.match(report.configuration.timing, /first invocation/);
   assert.match(report.configuration.timing, /warm median/);
   assert.match(report.configuration.timing, /process wall time/);
+  assert.equal(report.repository.dirty, false);
+  assert.match(report.repository.commit, /^[0-9a-f]{40}$/);
   for (const [runtime, domains] of Object.entries(report.measurements)) {
     for (const domain of ["ZZ", "QQ"]) {
       const value = domains[domain];
@@ -132,6 +138,31 @@ test("recorded evidence separates setup, first use, warm work, and process time"
   const m1Evidence = report.additional_host_evidence.filter((entry) =>
     entry.label.startsWith("m1-"),
   );
+  for (const evidence of report.additional_host_evidence) {
+    assert.equal(evidence.repository.dirty, false, evidence.label);
+    assert.match(evidence.repository.commit, /^[0-9a-f]{40}$/, evidence.label);
+    assert.ok(Number.isInteger(evidence.configuration.samples));
+    assert.ok(evidence.configuration.samples > 0);
+    assert.ok(Number.isInteger(evidence.configuration.count));
+    assert.ok(evidence.configuration.count > 0);
+    for (const [runtime, domains] of Object.entries(evidence.measurements)) {
+      for (const domain of ["ZZ", "QQ"]) {
+        const value = domains[domain];
+        assert.equal(value.ok, true, `${evidence.label} ${runtime} ${domain}`);
+        for (const key of ["setup_ms", "first_ms", "warm_ms", "process_ms"]) {
+          assert.equal(typeof value[key], "number", `${evidence.label} ${runtime} ${domain} ${key}`);
+          assert.ok(Number.isFinite(value[key]), `${evidence.label} ${runtime} ${domain} ${key}`);
+          assert.ok(value[key] >= 0, `${evidence.label} ${runtime} ${domain} ${key}`);
+        }
+      }
+    }
+    for (const [domain, comparison] of Object.entries(evidence.comparisons)) {
+      assert.equal(comparison.summaries_match, true, `${evidence.label} ${domain}`);
+      assert.equal(typeof comparison.sagejs_over_sage, "number", `${evidence.label} ${domain}`);
+      assert.ok(Number.isFinite(comparison.sagejs_over_sage), `${evidence.label} ${domain}`);
+      assert.ok(comparison.sagejs_over_sage > 0, `${evidence.label} ${domain}`);
+    }
+  }
   for (const evidence of m1Evidence) {
     assert.equal(evidence.host.platform, "darwin");
     assert.equal(evidence.host.architecture, "arm64");
@@ -163,7 +194,7 @@ test("recorded evidence separates setup, first use, warm work, and process time"
   }
 });
 
-test("stage evidence demonstrates the existing BigInt detour and byte-region primitive", () => {
+test("stage evidence demonstrates the existing BigInt detour and ByteRegion creation baseline", () => {
   for (const domain of ["ZZ", "QQ"]) {
     const stages = report.diagnostic_stages[domain];
     assert.equal(stages.ok, true);
@@ -172,7 +203,7 @@ test("stage evidence demonstrates the existing BigInt detour and byte-region pri
     assert.ok(stages.checked_host_list_pack_ms >= 0);
     assert.ok(stages.bytes_to_bigint_ms >= 0);
     assert.ok(stages.generated_deserialize_ms >= 0);
-    assert.ok(stages.proposed_byte_region_ingress_ms >= 0);
+    assert.ok(stages.byte_region_creation_ms >= 0);
     assert.ok(stages.skew_checked_host_list_pack_ms >= 0);
     assert.ok(stages.skew_public_construct_ms >= 0);
     assert.ok(stages.skew_encoded_bytes > stages.encoded_bytes);
@@ -203,10 +234,8 @@ test("public exact construction preserves dense Sage semantics without legacy N-
   ]);
   assert.deepEqual(value.rational[3].slice(0, 1), [0]);
   assert.equal(value.rational_skew_exact, true);
-  assert.equal(
-    value.rational[3][1][0],
-    `${value.huge}/${value.large_denominator}`,
-  );
+  assert.equal(value.rational[3][1][0], value.rational_skew_expected);
+  assert.deepEqual(value.rational_skew_parts, value.rational_skew_expected_parts);
   assert.equal(value.rational[3][2], true);
   assert.deepEqual(value.resource, [true, true]);
   assert.equal(value.invalid, true);

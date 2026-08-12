@@ -125,7 +125,7 @@ const implementationContract = Object.freeze({
     correctness:
       "All semantic differentials agree between generated-resource execution, capability-disabled packed execution, and SageMath where formats are comparable.",
     boundary:
-      "Generated adapter audit proves one checked host-list packing pass, one byte-region ingress, one borrowed parse, zero scalar coefficient calls, and no stream-sized BigInt.",
+      "Generated adapter audit proves one checked host-list packing operation, one byte-region creation, one borrowed parse, zero scalar coefficient calls, and no stream-sized BigInt.",
     performance:
       "On each measured host, report fresh-process setup, first invocation, and a warm median separately. For 5001 small dense coefficients, warm public construction for both ZZ[x] and QQ[x] must be no slower than 2.0x SageMath on the same host. Also test 20001 coefficients and skewed inputs for linear scaling in coefficient count plus encoded bytes; never encode a single-host crossover as a universal constant.",
     portability:
@@ -136,7 +136,7 @@ const implementationContract = Object.freeze({
       canonical_pack:
         "The benchmark must time the checked direct host-list pack separately for ZZ and QQ, and a route/audit test must prove that public canonical-list construction actually uses it rather than merely leaving the primitive available.",
       byte_region:
-        "The benchmark must time region creation and the borrowed FLINT parse separately; audit must reject Buffer reverse/hex, stream-sized BigInt, and fmpz payload marshalling in the public constructor.",
+        "The current benchmark records ByteRegion creation as a baseline-only stage. Once the required parser API exists, it must time region creation and the borrowed FLINT parse separately; audit must reject Buffer reverse/hex, stream-sized BigInt, and fmpz payload marshalling in the public constructor.",
       end_to_end:
         "The same benchmark must retain public first and warm measurements. Passing only the ByteRegion stage or only the canonical-pack stage is insufficient: both route assertions and the end-to-end same-host SageMath ratio must pass.",
       skew:
@@ -267,7 +267,7 @@ resource.close()
 def bytes_to_bigint():
     return internal._little_endian_bytes_payload(envelope)
 
-def byte_region_ingress():
+def create_byte_region():
     copied = ffi.FlintByteRegion.from_bytes(envelope)
     copied.close()
 
@@ -278,7 +278,7 @@ report = {
     "full_current_payload_ms": median_call(lambda: internal._exact_polynomial_payload(parts, ${count}, ${rational ? "True" : "False"})),
     "bytes_to_bigint_ms": median_call(bytes_to_bigint),
     "generated_deserialize_ms": median_call(deserialize),
-    "proposed_byte_region_ingress_ms": median_call(byte_region_ingress),
+    "byte_region_creation_ms": median_call(create_byte_region),
     "encoded_bytes": len(envelope),
     "skew_checked_host_list_pack_ms": median_call(skew_fast_pack_body),
     "skew_public_construct_ms": median_call(skew_public_construct),
