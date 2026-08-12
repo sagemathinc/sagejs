@@ -1,0 +1,58 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "packed-prime-vector-core-v1",
+  "title": "Packed prime vector core v1",
+  "lane": "arithmetic-algebra",
+  "status": "blocked",
+  "owner": "user",
+  "objective": "Implement compiler-owned bit-packed GF(2) vectors and canonical fixed-width small-prime vector kernels with correct dynamic fallbacks, arithmetic, dot products, selectors, differential tests, inspectable native lowering, and focused benchmarks without changing public Vector integration or shared compiler and FFI infrastructure",
+  "base_commit": "43c26cc4f769515049f07cc5b97b6077087ecf6c",
+  "claims": [
+    "src/lib/sagejs/linear_algebra/packed_binary_vector.py",
+    "src/lib/sagejs/linear_algebra/packed_prime_vector.py",
+    "test/packed-prime-vector-core.cjs",
+    "bench/packed-prime-vector-core.cjs"
+  ],
+  "dependencies": [],
+  "references": [
+    "ARCHITECTURE.md",
+    "src/baselib/vector.py",
+    "src/lib/sagejs/kernels/matrix/dense_prime_field.py",
+    "src/lib/sagejs/kernels/polynomial/packed_prime_field.py"
+  ],
+  "architecture": {
+    "strategy": "source-transparent-native",
+    "fallback": "same-source",
+    "oracles": [
+      "cpython",
+      "javascript",
+      "existing public Vector semantics"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "pnpm test:native"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "The first direct capability probe established that the existing source-transparent UInt64Buffer/NativeRecord compiler cannot express an efficient bit-packed GF(2) vector core. Compiling canonical padding validation stopped at packed_binary_vector.py:32:26 with `unsupported source-transparent operator >>`; inspection of prime-source-ir.cjs confirmed that typed uint64 binary lowering currently admits only +, -, *, %, and //. The required operations &, |, ^, <<, and >> are therefore absent generically. The experimental vector modules were deleted rather than shipping arithmetic emulation or a half-vector abstraction, so this blocked task contains no production change.",
+    "risks": [
+      "Emulating word bit operations with repeated division and remainder would make the storage nominally bit-packed while performing up to 64 scalar iterations per word, defeating the representation's purpose and obscuring a compiler limitation.",
+      "Adding vector-specific compiler substitutions would violate source transparency and make the compiler recognize mathematical functions by name.",
+      "Finishing only the fixed-width small-GF(p) half would create an incomplete public foundation and weaken the intended shared vector contract."
+    ],
+    "next_steps": [
+      "Complete and independently review the separate native-uint64-bitwise-v1 compiler prerequisite, which must implement generic typed uint64 &, |, ^, <<, and >> semantics without changing Python Integer bitwise behavior.",
+      "Integrate that prerequisite into the shared baseline, then resume this exact task from the updated base and reintroduce both GF(2) and small-GF(p) modules together.",
+      "Retain differential, inspectability, canonical-padding, transactional-output, and focused benchmark requirements when the lane resumes."
+    ]
+  }
+}
