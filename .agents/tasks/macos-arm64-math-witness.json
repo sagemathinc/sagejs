@@ -4,7 +4,7 @@
   "id": "macos-arm64-math-witness",
   "title": "macOS arm64 mathematical performance witness",
   "lane": "arithmetic-algebra",
-  "status": "active",
+  "status": "review",
   "owner": "user",
   "objective": "Establish a reproducible macOS arm64 compatibility and performance witness for representative dense exact and finite-field matrices and univariate polynomials, recording cold and warm Sage.js timings, SageMath comparison when available, exact host/toolchain/commit metadata, and platform-specific regressions without changing mathematical implementations",
   "base_commit": "7b873685f617fc0046fb9673838ff2f6588ac933",
@@ -37,6 +37,8 @@
   "validation": [
     "node --check bench/macos-arm64-math-witness.cjs",
     "node --test test/macos-arm64-math-witness.cjs",
+    "pnpm test:baselib:strict",
+    "pnpm test:native",
     "node bench/macos-arm64-math-witness.cjs --render-report bench/results/macos-arm64-m1-max-format-polynomial-2026-08-12.json",
     "ssh m1 cd /Volumes/sage/sagejs && /opt/homebrew/bin/node bench/macos-arm64-math-witness.cjs --runtime all --sage /Volumes/sage/sagelite-build/smoke/public-dev-cp314-20260704-004400/bin/sage --quick --samples 1 --check --require-macos"
   ],
@@ -189,6 +191,66 @@
       "started_at": "2026-08-12T13:28:16.010Z",
       "commit": "10f243a8749d13fe0b57d4f8677b52a2242fbc91",
       "workspace_fingerprint": "ec7f96cb948ec71466c14819255e56a18a72563f11c62ce30327714269b2959a",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --check bench/macos-arm64-math-witness.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.032,
+      "started_at": "2026-08-12T13:51:55.583Z",
+      "commit": "110729095dc4ec95c01590facfbbf0123b7f80a5",
+      "workspace_fingerprint": "cfd277793f5081d58b7002619e2124338b62eb9956ba1d7b6ea809076d98cc63",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/macos-arm64-math-witness.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.184,
+      "started_at": "2026-08-12T13:51:56.249Z",
+      "commit": "110729095dc4ec95c01590facfbbf0123b7f80a5",
+      "workspace_fingerprint": "cfd277793f5081d58b7002619e2124338b62eb9956ba1d7b6ea809076d98cc63",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/macos-arm64-math-witness.cjs --render-report bench/results/macos-arm64-m1-max-format-polynomial-2026-08-12.json",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.037,
+      "started_at": "2026-08-12T13:52:03.671Z",
+      "commit": "110729095dc4ec95c01590facfbbf0123b7f80a5",
+      "workspace_fingerprint": "cfd277793f5081d58b7002619e2124338b62eb9956ba1d7b6ea809076d98cc63",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "ssh m1 cd /Volumes/sage/sagejs && /opt/homebrew/bin/node bench/macos-arm64-math-witness.cjs --runtime all --sage /Volumes/sage/sagelite-build/smoke/public-dev-cp314-20260704-004400/bin/sage --quick --samples 1 --check --require-macos",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 39.231,
+      "started_at": "2026-08-12T13:52:10.416Z",
+      "commit": "110729095dc4ec95c01590facfbbf0123b7f80a5",
+      "workspace_fingerprint": "cfd277793f5081d58b7002619e2124338b62eb9956ba1d7b6ea809076d98cc63",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 15.358,
+      "started_at": "2026-08-12T13:53:44.208Z",
+      "commit": "110729095dc4ec95c01590facfbbf0123b7f80a5",
+      "workspace_fingerprint": "cfd277793f5081d58b7002619e2124338b62eb9956ba1d7b6ea809076d98cc63",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:native",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 717.466,
+      "started_at": "2026-08-12T13:54:00.203Z",
+      "commit": "110729095dc4ec95c01590facfbbf0123b7f80a5",
+      "workspace_fingerprint": "cfd277793f5081d58b7002619e2124338b62eb9956ba1d7b6ea809076d98cc63",
       "platform": "linux-x64"
     }
   ],
