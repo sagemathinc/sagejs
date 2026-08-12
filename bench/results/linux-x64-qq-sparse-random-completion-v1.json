@@ -7,138 +7,329 @@
     "sage_oracle": "/home/user/bin/sagelite"
   },
   "workload": {
-    "samples": 5,
-    "policy": "one first call followed by five same-process warm samples",
-    "random_state": "shared deterministic Sage.js stream; no reseed between samples"
+    "warm_samples": 5,
+    "policy": "session startup and helper setup are separate; each workload has one first sample followed by five same-session warm samples",
+    "random_state": "each compiled, dynamic, and SageMath sample uses the same explicit per-case seed",
+    "timed_region": "matrix construction only; serialization digest and resource close occur after timing",
+    "dynamic_scope": "native-disabled equivalence covers the four 200x300 cases; the 1000x1000 scaling case is excluded because its full Python fallback is intentionally non-production"
   },
   "memory": {
-    "rss_before_bytes": 53403648,
-    "rss_after_bytes": 190287872,
-    "rss_delta_bytes": 136884224,
-    "max_rss_kib": 257096
+    "rss_before_bytes": 53772288,
+    "rss_after_compiled_bytes": 275795968,
+    "compiled_rss_delta_bytes": 222023680,
+    "rss_after_all_sagejs_bytes": 289992704,
+    "all_sagejs_rss_delta_bytes": 236220416,
+    "max_rss_kib": 1403860
   },
-  "sagejs": [
-    {
-      "id": "QQ-small-bounds-200x300-density-.2",
-      "cold_ms": 158.1857204437256,
-      "warm_samples_ms": [
-        6.402730941772461,
-        2.9468536376953125,
-        3.8046836853027344,
-        2.6617050170898438,
-        2.5932788848876953
-      ],
-      "warm_median_ms": 2.9468536376953125
+  "equivalence": {
+    "compiled_vs_dynamic_exact_serialization": true,
+    "case_ids": [
+      "QQ-small-bounds-200x300-density-.2",
+      "QQ-80x97-bit-bounds-200x300-density-.2",
+      "QQ-17x521-bit-bounds-200x300-density-.2",
+      "QQ-1n-200x300-density-.2"
+    ]
+  },
+  "sagejs": {
+    "compiled": {
+      "mode": "compiled-native",
+      "startup_ms": 303.30501499999997,
+      "setup_ms": 1480.906849,
+      "measurements": [
+        {
+          "id": "QQ-small-bounds-200x300-density-.2",
+          "first_sample_ms": 84.27214622497559,
+          "first_digest": "b586b9f06be91ad891f872c62674bc82cca7f4141025b4c536aa023d87fc469c",
+          "warm_samples_ms": [
+            2.4788379669189453,
+            3.2224655151367188,
+            2.6731491088867188,
+            2.475738525390625,
+            2.329587936401367
+          ],
+          "warm_digests": [
+            "49e40fbceb0b8440dd8a1d391fe0ac1a805f429cc8a214c1ca79a61fabc90412",
+            "e5a1ba1ade6d9ae6445e22d1548dcf42e9700105d8b605134b6226c3cd7153bf",
+            "194245d8c2c96ed0818012f46427b3656738310c7f91b668e6ce46e0fb68bdac",
+            "1fd81f84c0f6108f3cf00b8acfe77a9b27410eb3d056efcf01b3e2312d0dfb06",
+            "fe1197190523e293860cd4173df2dcc7ec1641ce863e825893367922377703db"
+          ],
+          "warm_median_ms": 2.4788379669189453
+        },
+        {
+          "id": "QQ-80x97-bit-bounds-200x300-density-.2",
+          "first_sample_ms": 12.0849609375,
+          "first_digest": "ea284001b69f67745e71d262acc8d4caab46ab1ec6e9242a4a0b88e6a99a05f1",
+          "warm_samples_ms": [
+            10.705947875976562,
+            11.217832565307617,
+            11.59358024597168,
+            10.26463508605957,
+            10.152339935302734
+          ],
+          "warm_digests": [
+            "c902de538e28bd886df365fa9f765bda3ce9441614b2eecc97056c9310aeae48",
+            "9cbf01ad6ea10fed6b31f8ef398050ab7ff81390213fab73e22140f3017ccb47",
+            "e3344ca255abcd3272eebd1afea9a22eee1826fed2429a95ffb6458723d61c4d",
+            "ee36978d7ab4903072ffa0c18fe5c1a072f069652797017844aed3e841d48a82",
+            "8bcf2fe1b75e42df0e5b9053456abc53e63f4bb49621f24d7d8e8b9ae18c59cd"
+          ],
+          "warm_median_ms": 10.705947875976562
+        },
+        {
+          "id": "QQ-17x521-bit-bounds-200x300-density-.2",
+          "first_sample_ms": 11.569023132324219,
+          "first_digest": "1cc55ba1f57bd042d7c934935c67e4f088268e3dc3d080c3a000353a932c7ade",
+          "warm_samples_ms": [
+            11.273860931396484,
+            10.91313362121582,
+            10.595083236694336,
+            10.477066040039062,
+            11.252164840698242
+          ],
+          "warm_digests": [
+            "e6e0ba8a6cf893790c706ba14d5752f178b6969362f85291d9e7ca6e10d28378",
+            "d81781ecafc4d95989b8f806f5450cbbe85c03b5879a03eb74fb5e8b01e38c6a",
+            "df487add6bba6faba8447b4225c5b22cf84bd2820bdb0bd51937bdcafbf96724",
+            "d63abb0aa718a20361aba3285ee76897718a585505ef9506ec29954a877ec3e5",
+            "9b8be46ddc59b4b7d20a74a9ec8bb1be7280d2105b3e534e46576d5594fb3cd3"
+          ],
+          "warm_median_ms": 10.91313362121582
+        },
+        {
+          "id": "QQ-1n-200x300-density-.2",
+          "first_sample_ms": 2.4118423461914062,
+          "first_digest": "05565aa28041d1d0973b503db497827607c17dae5b03f07ec100f1ffddef5790",
+          "warm_samples_ms": [
+            2.4132728576660156,
+            2.5315284729003906,
+            2.445220947265625,
+            2.4619102478027344,
+            2.389669418334961
+          ],
+          "warm_digests": [
+            "0842d7d8eacc4db45a75147cc8d6fbaf8a6871798a4f09aa28557c7140c4fe24",
+            "4c4b485c2e23d00db55adc020628ab82faf8de057dc9aab47777c00a402326ba",
+            "04097564f5cb95e0a892c73283f24e09a3e2c027d3cc1ee1e73f033bcae1d5b0",
+            "a24328f648a6bf18d3fee06a70ce56eb23309ded059d95b084bc9509efd09daf",
+            "fc7ec1e13ae7a2f426b5088cde1d985fcf20e925f7ee24ab2dca6d955fb19f88"
+          ],
+          "warm_median_ms": 2.445220947265625
+        },
+        {
+          "id": "QQ-80x97-bit-bounds-1000x1000-density-.1",
+          "first_sample_ms": 115.00120162963867,
+          "first_digest": "9747a01c10c0f1448dedfbadb073c01f6ba0d4931e9869d4203d196a0d7e7b9d",
+          "warm_samples_ms": [
+            96.41075134277344,
+            104.01368141174316,
+            103.5776138305664,
+            149.82199668884277,
+            106.19306564331055
+          ],
+          "warm_digests": [
+            "a742e7dd0009f115a51d6f80d392b670a3a27ad5da229006c1cb42931547ba2a",
+            "fbd7a1a9af1b26ab15d052d04444d649c0c83b535f11e59b6a9dbce8c7e8d292",
+            "45567534ce6d391c32f1d478ded005faeddfe5b784cd66c891eb067f5383ad2e",
+            "81171f2410d8b101d4e4618eb7c64599b0df053081aaa72f63cad7506f27b702",
+            "4eec8326ef4a4442e575272ba7dea31b24421c7b6876f8159a7fa1837b1c49ce"
+          ],
+          "warm_median_ms": 104.01368141174316
+        }
+      ]
     },
-    {
-      "id": "QQ-80x97-bit-bounds-200x300-density-.2",
-      "cold_ms": 9.145736694335938,
-      "warm_samples_ms": [
-        8.689403533935547,
-        8.894920349121094,
-        8.74018669128418,
-        8.657693862915039,
-        8.804798126220703
-      ],
-      "warm_median_ms": 8.74018669128418
-    },
-    {
-      "id": "QQ-17x521-bit-bounds-200x300-density-.2",
-      "cold_ms": 10.081768035888672,
-      "warm_samples_ms": [
-        9.316205978393555,
-        9.374141693115234,
-        9.238958358764648,
-        9.336471557617188,
-        9.395599365234375
-      ],
-      "warm_median_ms": 9.336471557617188
-    },
-    {
-      "id": "QQ-1n-200x300-density-.2",
-      "cold_ms": 2.118349075317383,
-      "warm_samples_ms": [
-        2.076864242553711,
-        1.9609928131103516,
-        1.9910335540771484,
-        1.9459724426269531,
-        1.9795894622802734
-      ],
-      "warm_median_ms": 1.9795894622802734
-    },
-    {
-      "id": "QQ-80x97-bit-bounds-1000x1000-density-.1",
-      "cold_ms": 72.56388664245605,
-      "warm_samples_ms": [
-        73.02212715148926,
-        75.9577751159668,
-        76.48181915283203,
-        77.16846466064453,
-        77.45862007141113
-      ],
-      "warm_median_ms": 76.48181915283203
+    "dynamic": {
+      "mode": "dynamic-native-disabled",
+      "startup_ms": 246.6964599999992,
+      "setup_ms": 124.52696900000046,
+      "measurements": [
+        {
+          "id": "QQ-small-bounds-200x300-density-.2",
+          "first_sample_ms": 798.0349063873291,
+          "first_digest": "b586b9f06be91ad891f872c62674bc82cca7f4141025b4c536aa023d87fc469c",
+          "warm_samples_ms": [
+            608.6955070495605,
+            594.1171646118164,
+            587.5577926635742,
+            577.1145820617676,
+            566.9400691986084
+          ],
+          "warm_digests": [
+            "49e40fbceb0b8440dd8a1d391fe0ac1a805f429cc8a214c1ca79a61fabc90412",
+            "e5a1ba1ade6d9ae6445e22d1548dcf42e9700105d8b605134b6226c3cd7153bf",
+            "194245d8c2c96ed0818012f46427b3656738310c7f91b668e6ce46e0fb68bdac",
+            "1fd81f84c0f6108f3cf00b8acfe77a9b27410eb3d056efcf01b3e2312d0dfb06",
+            "fe1197190523e293860cd4173df2dcc7ec1641ce863e825893367922377703db"
+          ],
+          "warm_median_ms": 587.5577926635742
+        },
+        {
+          "id": "QQ-80x97-bit-bounds-200x300-density-.2",
+          "first_sample_ms": 1138.0910873413086,
+          "first_digest": "ea284001b69f67745e71d262acc8d4caab46ab1ec6e9242a4a0b88e6a99a05f1",
+          "warm_samples_ms": [
+            1037.7848148345947,
+            1207.3113918304443,
+            979.5882701873779,
+            967.0267105102539,
+            975.1074314117432
+          ],
+          "warm_digests": [
+            "c902de538e28bd886df365fa9f765bda3ce9441614b2eecc97056c9310aeae48",
+            "9cbf01ad6ea10fed6b31f8ef398050ab7ff81390213fab73e22140f3017ccb47",
+            "e3344ca255abcd3272eebd1afea9a22eee1826fed2429a95ffb6458723d61c4d",
+            "ee36978d7ab4903072ffa0c18fe5c1a072f069652797017844aed3e841d48a82",
+            "8bcf2fe1b75e42df0e5b9053456abc53e63f4bb49621f24d7d8e8b9ae18c59cd"
+          ],
+          "warm_median_ms": 979.5882701873779
+        },
+        {
+          "id": "QQ-17x521-bit-bounds-200x300-density-.2",
+          "first_sample_ms": 903.9740562438965,
+          "first_digest": "1cc55ba1f57bd042d7c934935c67e4f088268e3dc3d080c3a000353a932c7ade",
+          "warm_samples_ms": [
+            1025.1193046569824,
+            991.818904876709,
+            1033.4675312042236,
+            1017.8601741790771,
+            1042.8338050842285
+          ],
+          "warm_digests": [
+            "e6e0ba8a6cf893790c706ba14d5752f178b6969362f85291d9e7ca6e10d28378",
+            "d81781ecafc4d95989b8f806f5450cbbe85c03b5879a03eb74fb5e8b01e38c6a",
+            "df487add6bba6faba8447b4225c5b22cf84bd2820bdb0bd51937bdcafbf96724",
+            "d63abb0aa718a20361aba3285ee76897718a585505ef9506ec29954a877ec3e5",
+            "9b8be46ddc59b4b7d20a74a9ec8bb1be7280d2105b3e534e46576d5594fb3cd3"
+          ],
+          "warm_median_ms": 1025.1193046569824
+        },
+        {
+          "id": "QQ-1n-200x300-density-.2",
+          "first_sample_ms": 611.3874912261963,
+          "first_digest": "05565aa28041d1d0973b503db497827607c17dae5b03f07ec100f1ffddef5790",
+          "warm_samples_ms": [
+            605.9350967407227,
+            596.9736576080322,
+            599.6904373168945,
+            582.6740264892578,
+            590.4507637023926
+          ],
+          "warm_digests": [
+            "0842d7d8eacc4db45a75147cc8d6fbaf8a6871798a4f09aa28557c7140c4fe24",
+            "4c4b485c2e23d00db55adc020628ab82faf8de057dc9aab47777c00a402326ba",
+            "04097564f5cb95e0a892c73283f24e09a3e2c027d3cc1ee1e73f033bcae1d5b0",
+            "a24328f648a6bf18d3fee06a70ce56eb23309ded059d95b084bc9509efd09daf",
+            "fc7ec1e13ae7a2f426b5088cde1d985fcf20e925f7ee24ab2dca6d955fb19f88"
+          ],
+          "warm_median_ms": 596.9736576080322
+        }
+      ]
     }
-  ],
-  "sage": [
-    {
-      "id": "QQ-small-bounds-200x300-density-.2",
-      "cold_ms": 4.557029998977669,
-      "warm_samples_ms": [
-        1.8233800074085593,
-        1.8084400071529672,
-        1.8091289966832846,
-        1.78516999585554,
-        1.829319997341372
-      ],
-      "warm_median_ms": 1.8091289966832846
-    },
-    {
-      "id": "QQ-80x97-bit-bounds-200x300-density-.2",
-      "cold_ms": 6.046680005965754,
-      "warm_samples_ms": [
-        4.590519005432725,
-        4.580389999318868,
-        4.5531899959314615,
-        4.555389998131432,
-        4.5162190072005615
-      ],
-      "warm_median_ms": 4.555389998131432
-    },
-    {
-      "id": "QQ-17x521-bit-bounds-200x300-density-.2",
-      "cold_ms": 5.122028989717364,
-      "warm_samples_ms": [
-        3.9039399998728186,
-        3.8599300023633987,
-        3.761978994589299,
-        3.8242599985096604,
-        3.882969991536811
-      ],
-      "warm_median_ms": 3.8599300023633987
-    },
-    {
-      "id": "QQ-1n-200x300-density-.2",
-      "cold_ms": 1.367049990221858,
-      "warm_samples_ms": [
-        1.3585999986389652,
-        1.3423289929050952,
-        1.3480890047503635,
-        1.3740089925704524,
-        1.3573500036727637
-      ],
-      "warm_median_ms": 1.3573500036727637
-    },
-    {
-      "id": "QQ-80x97-bit-bounds-1000x1000-density-.1",
-      "cold_ms": 80.35900499089621,
-      "warm_samples_ms": [
-        60.50530599895865,
-        54.82873700384516,
-        56.7832460073987,
-        58.10229700000491,
-        57.73426700034179
-      ],
-      "warm_median_ms": 57.73426700034179
-    }
-  ]
+  },
+  "sage": {
+    "startup_ms": 1031.4381960000028,
+    "benchmark_process_ms": 3293.5100109999985,
+    "measurements": [
+      {
+        "id": "QQ-small-bounds-200x300-density-.2",
+        "first_sample_ms": 4.325740010244772,
+        "first_nonzero": 10910,
+        "warm_samples_ms": [
+          1.8024399905698374,
+          1.7716690053930506,
+          1.7916799988597631,
+          1.7886700079543516,
+          1.8049500067718327
+        ],
+        "warm_nonzero_counts": [
+          10887,
+          10941,
+          10935,
+          10891,
+          10839
+        ],
+        "warm_median_ms": 1.7916799988597631
+      },
+      {
+        "id": "QQ-80x97-bit-bounds-200x300-density-.2",
+        "first_sample_ms": 4.777280002599582,
+        "first_nonzero": 10913,
+        "warm_samples_ms": [
+          4.318919003708288,
+          4.597179999109358,
+          4.628609996871091,
+          4.59711899748072,
+          4.706189996795729
+        ],
+        "warm_nonzero_counts": [
+          10852,
+          10914,
+          10899,
+          10911,
+          10935
+        ],
+        "warm_median_ms": 4.597179999109358
+      },
+      {
+        "id": "QQ-17x521-bit-bounds-200x300-density-.2",
+        "first_sample_ms": 4.808290002983995,
+        "first_nonzero": 10898,
+        "warm_samples_ms": [
+          4.048268994665705,
+          3.9155400008894503,
+          4.200799987302162,
+          3.9134300022851676,
+          4.256699001416564
+        ],
+        "warm_nonzero_counts": [
+          10869,
+          10924,
+          10912,
+          10896,
+          10875
+        ],
+        "warm_median_ms": 4.048268994665705
+      },
+      {
+        "id": "QQ-1n-200x300-density-.2",
+        "first_sample_ms": 1.362180002615787,
+        "first_nonzero": 10895,
+        "warm_samples_ms": [
+          1.3535999896703288,
+          1.3718000118387863,
+          1.4029099984327331,
+          2.5164099934045225,
+          3.1955090089468285
+        ],
+        "warm_nonzero_counts": [
+          10873,
+          10889,
+          10922,
+          10902,
+          10914
+        ],
+        "warm_median_ms": 1.4029099984327331
+      },
+      {
+        "id": "QQ-80x97-bit-bounds-1000x1000-density-.1",
+        "first_sample_ms": 96.63591200660449,
+        "first_nonzero": 95166,
+        "warm_samples_ms": [
+          49.43224599992391,
+          49.8719860042911,
+          48.459295998327434,
+          51.24373600119725,
+          52.668884993181564
+        ],
+        "warm_nonzero_counts": [
+          95103,
+          95224,
+          95300,
+          95246,
+          95247
+        ],
+        "warm_median_ms": 49.8719860042911
+      }
+    ]
+  }
 }

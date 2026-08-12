@@ -242,9 +242,11 @@ assert.equal(
 
 // Variable-size FLINT entries must be allocated and destroyed by the same
 // native addon.  This subprocess regression catches the allocator-domain bug
-// that occurs if a host-created resource is borrowed by a statically linked
-// kernel which then grows its fmpz limbs. Explicit close is deliberately
-// repeated to verify deterministic, idempotent ownership cleanup.
+// that occurs if a generated resource is published directly and later mutated
+// by the separately linked host addon. The kernel-private result is now copied
+// into host-owned storage before publication, so a public assignment may grow
+// its limbs and the host owner may deterministically close it. Explicit close
+// is deliberately repeated to verify idempotent ownership cleanup.
 assert.equal(
   runSageJs(String.raw`
 set_random_seed(7)
@@ -254,6 +256,9 @@ value = random_matrix(
 )
 assert abs(value[0, 0].numerator()) > 2**64
 assert value[0, 0].denominator() > 2**64
+value[0, 0] = QQ(2**1009 + 123) / QQ(2**1217 + 321)
+assert abs(value[0, 0].numerator()) > 2**1000
+assert value[0, 0].denominator() > 2**1200
 resource = value._rational_resource()
 resource.close()
 resource.close()
@@ -261,6 +266,29 @@ assert resource.closed
 print("wide-entry-close-ok")
 `),
   "wide-entry-close-ok",
+);
+
+// The kernel allocates before advancing its private LCG state, and the host
+// publishes that state only after the host-owned copy succeeds. An allocation
+// failure therefore leaves the next observable random word unchanged.
+assert.equal(
+  runSageJs(String.raw`
+set_random_seed(123)
+expected = random()
+set_random_seed(123)
+try:
+    random_matrix(
+        QQ, 2**63, 2, density=0.5,
+        num_bound=5, den_bound=5,
+    )
+except OverflowError:
+    pass
+else:
+    raise AssertionError("expected rational matrix allocation failure")
+assert random() == expected
+print("failed-allocation-rng-ok")
+`),
+  "failed-allocation-rng-ok",
 );
 
 // Run the same semantic distinction against Sage when the configured oracle

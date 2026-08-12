@@ -332,6 +332,36 @@ int main(void)
         sagejs_fmpq_matrix_clear(no_columns);
         sagejs_fmpq_matrix_clear(no_rows);
     }
+    /* A generated kernel and the public FLINT addon may be separately linked
+       allocator domains. Model the publication sequence through the adapter
+       primitives visible to this sanitizer harness: make a read-only deep
+       copy, close the private source first, then grow and destroy only the
+       public copy. ASan/UBSan/LSan exercise the large-limb lifecycle. */
+    for (slong round = 0; round < 200; round++)
+    {
+        sagejs_fmpq_matrix_t private_matrix, public_matrix;
+        fmpz_one(numerator);
+        fmpz_mul_2exp(numerator, numerator, 521 + (ulong) round);
+        fmpz_add_ui(numerator, numerator, (ulong) (2 * round + 1));
+        fmpz_one(denominator);
+        fmpz_mul_2exp(denominator, denominator, 607 + (ulong) round);
+        fmpz_add_ui(denominator, denominator, (ulong) (2 * round + 3));
+        if (!sagejs_fmpq_matrix_init(private_matrix, 2, 2) ||
+            !sagejs_fmpq_matrix_set_entry(
+                private_matrix, 0, 0, numerator, denominator) ||
+            !sagejs_fmpq_matrix_init_set(public_matrix, private_matrix))
+            return 8;
+        sagejs_fmpq_matrix_clear(private_matrix);
+
+        fmpz_mul_2exp(numerator, numerator, 733);
+        fmpz_add_ui(numerator, numerator, (ulong) (2 * round + 5));
+        fmpz_mul_2exp(denominator, denominator, 911);
+        fmpz_add_ui(denominator, denominator, (ulong) (2 * round + 7));
+        if (!sagejs_fmpq_matrix_set_entry(
+                public_matrix, 1, 1, numerator, denominator))
+            return 8;
+        sagejs_fmpq_matrix_clear(public_matrix);
+    }
     fmpz_clear(scale);
     fmpz_clear(denominator);
     fmpz_clear(numerator);

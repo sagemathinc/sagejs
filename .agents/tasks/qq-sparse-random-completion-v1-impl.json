@@ -14,7 +14,9 @@
     "test/public-sparse-random.cjs",
     "test/linear-sparse-random.cjs",
     "bench/public-sparse-random.cjs",
-    "bench/results/linux-x64-qq-sparse-random-completion-v1.json"
+    "bench/results/linux-x64-qq-sparse-random-completion-v1.json",
+    "test/fmpq-resource-ops-lifecycle.cjs",
+    "ARCHITECTURE.md"
   ],
   "dependencies": [
     "qq-sparse-random-completion-v1",
@@ -50,100 +52,19 @@
     "pnpm test:baselib:strict",
     "pnpm test:native"
   ],
-  "runs": [
-    {
-      "command": "pnpm architecture:check",
-      "result": "pass",
-      "exit_code": 0,
-      "seconds": 15.288,
-      "started_at": "2026-08-12T19:42:15.995Z",
-      "commit": "43c26cc4f769515049f07cc5b97b6077087ecf6c",
-      "workspace_fingerprint": "2bd0820dff0f0e3515d1fe423183ad892db2fecd5c48a22ec7f2dbcf4ac5fdb1",
-      "platform": "linux-x64"
-    },
-    {
-      "command": "pnpm test:baselib:strict",
-      "result": "pass",
-      "exit_code": 0,
-      "seconds": 14.781,
-      "started_at": "2026-08-12T19:42:31.965Z",
-      "commit": "43c26cc4f769515049f07cc5b97b6077087ecf6c",
-      "workspace_fingerprint": "2bd0820dff0f0e3515d1fe423183ad892db2fecd5c48a22ec7f2dbcf4ac5fdb1",
-      "platform": "linux-x64"
-    },
-    {
-      "command": "node test/public-sparse-random.cjs",
-      "result": "pass",
-      "exit_code": 0,
-      "seconds": 9.999,
-      "started_at": "2026-08-12T19:42:47.383Z",
-      "commit": "43c26cc4f769515049f07cc5b97b6077087ecf6c",
-      "workspace_fingerprint": "2bd0820dff0f0e3515d1fe423183ad892db2fecd5c48a22ec7f2dbcf4ac5fdb1",
-      "platform": "linux-x64"
-    },
-    {
-      "command": "node test/linear-sparse-random.cjs",
-      "result": "pass",
-      "exit_code": 0,
-      "seconds": 2.15,
-      "started_at": "2026-08-12T19:42:58.053Z",
-      "commit": "43c26cc4f769515049f07cc5b97b6077087ecf6c",
-      "workspace_fingerprint": "2bd0820dff0f0e3515d1fe423183ad892db2fecd5c48a22ec7f2dbcf4ac5fdb1",
-      "platform": "linux-x64"
-    },
-    {
-      "command": "node bench/public-sparse-random.cjs --check",
-      "result": "pass",
-      "exit_code": 0,
-      "seconds": 3.221,
-      "started_at": "2026-08-12T19:43:00.843Z",
-      "commit": "43c26cc4f769515049f07cc5b97b6077087ecf6c",
-      "workspace_fingerprint": "2bd0820dff0f0e3515d1fe423183ad892db2fecd5c48a22ec7f2dbcf4ac5fdb1",
-      "platform": "linux-x64"
-    },
-    {
-      "command": "./bin/sagejs native explain src/lib/sagejs/linear_algebra/sparse_random_public.py --function sparse_random_fmpq",
-      "result": "pass",
-      "exit_code": 0,
-      "seconds": 0.479,
-      "started_at": "2026-08-12T19:43:04.690Z",
-      "commit": "43c26cc4f769515049f07cc5b97b6077087ecf6c",
-      "workspace_fingerprint": "2bd0820dff0f0e3515d1fe423183ad892db2fecd5c48a22ec7f2dbcf4ac5fdb1",
-      "platform": "linux-x64"
-    },
-    {
-      "command": "pnpm test:portable",
-      "result": "pass",
-      "exit_code": 0,
-      "seconds": 63.364,
-      "started_at": "2026-08-12T19:43:09.734Z",
-      "commit": "43c26cc4f769515049f07cc5b97b6077087ecf6c",
-      "workspace_fingerprint": "2bd0820dff0f0e3515d1fe423183ad892db2fecd5c48a22ec7f2dbcf4ac5fdb1",
-      "platform": "linux-x64"
-    },
-    {
-      "command": "pnpm test:native",
-      "result": "pass",
-      "exit_code": 0,
-      "seconds": 662.893,
-      "started_at": "2026-08-12T19:44:40.977Z",
-      "commit": "43c26cc4f769515049f07cc5b97b6077087ecf6c",
-      "workspace_fingerprint": "2bd0820dff0f0e3515d1fe423183ad892db2fecd5c48a22ec7f2dbcf4ac5fdb1",
-      "platform": "linux-x64"
-    }
-  ],
+  "runs": [],
   "handoff": {
-    "summary": "Dense QQ random_matrix now compiles arbitrary-width bounded values and Sage-compatible reciprocal-uniform 1/n values into one source-transparent native call. The kernel constructs, mutates, and returns its owned FmpqMatrix resource, publishes the exact next shared random word, and retains a same-semantics portable fallback. Native-disabled parity covers five seeds, one-word, 80/97-bit, 17/521-bit skew, integral, sparse 1/n, omitted-density 1/n, and collisions. The allocator-domain subprocess closes a matrix containing greater-than-64-bit entries twice. On linux-x64, 200x300 density=.2 warm medians were 2.95 ms for small bounds, 8.74 ms for 80/97-bit bounds, 9.34 ms for 17/521-bit skew, and 1.98 ms for 1/n, versus SageMath medians of 1.81, 4.56, 3.86, and 1.36 ms; the 1000x1000 density=.1 wide case was 76.48 ms with 130.5 MiB retained RSS growth.",
+    "summary": "Dense QQ random_matrix compiles arbitrary-width bounded and Sage-compatible reciprocal-uniform 1/n generation into one source-transparent native generator call. The kernel allocates and fills a private FmpqMatrix without advancing the shared RNG on failure; the host then makes one read-only bulk copy into its FLINT/GMP allocator domain, closes the private source in its owner domain, and only then publishes the final RNG state and mutable matrix. Native-disabled exact serialization parity covers all four 200x300 workloads and the public tests cover five seeds, collisions, integral bounds, wide/skewed bounds, 1/n, failed-allocation RNG rollback, and greater-than-1000-bit public mutation followed by idempotent close. The sanitizer lifecycle adds 200 large-limb copy/mutate/close rounds. On linux-x64, compiled 200x300 density=.2 warm medians were 2.48 ms for small bounds, 10.71 ms for 80/97-bit bounds, 10.91 ms for 17/521-bit skew, and 2.45 ms for 1/n, versus SageMath medians of 1.79, 4.60, 4.05, and 1.40 ms. The 1000x1000 density=.1 wide case was 104.01 ms versus SageMath 49.87 ms, with 211.7 MiB compiled-session RSS growth.",
     "risks": [
-      "A host-addon-created FmpqMatrix borrowed by a separately statically linked native kernel was experimentally rejected: growing big fmpz entries in the kernel and destroying them in the host addon crossed FLINT/GMP allocator domains and segfaulted. Variable-size foreign resources must be constructed, mutated, and destroyed in one generated addon unless a shared-library allocator ABI is proved. The selected kernel-owned return pattern satisfies that invariant without compiler, FFI, or handwritten native changes.",
-      "One initial full native run stopped when an unrelated exact-polynomial timing ratchet measured 4.17x work for 2x input under concurrent builds. Its isolated immediate rerun passed, and a fresh recorded 663-second full native run passed every package, sanitizer, compiler, migration, matrix, and polynomial gate. This confirms host-load sensitivity in timing ratchets rather than a reproducible regression.",
+      "The ownership boundary requires one matrix-area FLINT deep copy after native generation. The retained timing and memory evidence includes that copy, but it increases transient memory and is O(rows*columns), including structural zero entries.",
+      "A generated resource's type identity does not imply allocator interchangeability. Future code must preserve owner dispatch for allocation-growing mutation and destruction, or repeat this private-result-to-host-copy publication pattern; publishing the private token directly would reintroduce cross-addon FLINT/GMP lifetime corruption.",
       "The retained benchmark is linux-x64 evidence. Windows x64, macOS arm64, and linux arm64 rely on the same-source fallback and declared FLINT resource machinery but still need platform CI evidence.",
       "Each selected rational still calls declared fmpq_matrix_set_entry inside the isolated core. This has no host crossings and scales with selected entries, but future bulk FLINT APIs may reduce per-entry retained-byte accounting overhead further."
     ],
     "next_steps": [
-      "Teach architecture guidance and, where feasible, compiler validation that variable-size foreign-resource allocation and destruction must share an allocator/provenance domain.",
       "Run the retained benchmark and native lifecycle regression on macOS arm64, linux arm64, and Windows x64 before integration.",
-      "Integrate this lane after independent review, then reuse the kernel-owned construct/mutate/return pattern for other variable-size generated resources rather than adding operation-specific host adapters."
+      "Consider explicit resource-owner dispatch in the generated FFI runtime so a private variable-size resource can remain mutable without a publication copy.",
+      "Integrate this lane after independent review and reuse the documented allocator-provenance rule for other generated variable-size resources."
     ]
   }
 }
