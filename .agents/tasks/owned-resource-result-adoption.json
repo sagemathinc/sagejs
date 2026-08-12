@@ -1,0 +1,60 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "owned-resource-result-adoption",
+  "title": "Owned Resource Result Adoption",
+  "lane": "native-compiler",
+  "status": "active",
+  "owner": "user",
+  "objective": "Adopt owned FFI resource results returned by compiled exact/native functions into standard generated resource tokens with correct identity, deterministic close, finalization, and lifecycle validation",
+  "base_commit": "9035cd6e5cebe24b89b3df3629e1b433c4a48a91",
+  "claims": [
+    "tools/native-kernel/js-backend.cjs",
+    "tools/native-kernel/ffi-codegen.cjs",
+    "test/native-kernel.cjs",
+    "test/ffi.cjs"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "compiler-infrastructure",
+    "fallback": "same-source",
+    "oracles": [
+      "dynamic generated FFI resource behavior",
+      "compiled and native-disabled differential tests"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm architecture:check",
+    "pnpm test:baselib:strict",
+    "pnpm test:native"
+  ],
+  "runs": [
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 13.971,
+      "started_at": "2026-08-12T06:14:29.396Z",
+      "commit": "9035cd6e5cebe24b89b3df3629e1b433c4a48a91",
+      "workspace_fingerprint": "5af86d090d461f885d56d75d2e656bed14b7c96ed696da43c5435b7c9ed5e063",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Compiled exact functions now adopt owned FFI resource results into the ordinary generated Python resource classes on native and dynamic paths. The generated wrapper derives the declaration identity, public module/class, and close export from the FFI declaration; native N-API holders retain their self-finalizing lifecycle while dynamic resources use the shared JavaScript finalization registry. FmpqMatrix regressions cover construction, cloning, use, independent liveness, explicit idempotent close, wrong and closed resources, native-disabled fallback, generated metadata, and forced-GC holder reclamation.",
+    "risks": [
+      "The integration lane should repeat the full native suite after rebasing dependent resource work; this lane's full native suite passed before its final factory-cache-key hardening, and the focused lifecycle regression, architecture checks, and strict Python checks passed afterward."
+    ],
+    "next_steps": [
+      "Rebase higher-weight resource-returning kernels onto this branch and verify they return their generated public resource classes without operation-specific wrappers."
+    ]
+  }
+}
