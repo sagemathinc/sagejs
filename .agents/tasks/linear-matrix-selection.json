@@ -4,17 +4,21 @@
   "id": "linear-matrix-selection",
   "title": "Linear Matrix Selection",
   "lane": "arithmetic-algebra",
-  "status": "active",
+  "status": "review",
   "owner": "user",
   "objective": "Implement storage-neutral matrix selection and mutation contracts with exact-resource and packed-prime friendly semantics",
-  "base_commit": "97116b989da7f5d2b35b514aa3e1f01ef5a4d1ae",
+  "base_commit": "684da899398cfb5cffa8395448ca6d62a1757eee",
   "claims": [
     "src/lib/sagejs/linear_algebra/matrix_selection.py",
     "test/linear-matrix-selection.cjs",
     "bench/linear-matrix-selection.cjs"
   ],
   "dependencies": [],
-  "references": [],
+  "references": [
+    "/home/user/upstream/sage/src/sage/matrix/matrix0.pyx",
+    "/home/user/upstream/sage/src/sage/matrix/matrix1.pyx",
+    "/home/user/upstream/sage/src/sage/matrix/matrix_integer_dense.pyx"
+  ],
   "architecture": {
     "strategy": "dynamic-python",
     "fallback": "same-source",
@@ -30,13 +34,75 @@
     "macos-arm64": "required"
   },
   "validation": [
+    "node --test test/linear-matrix-selection.cjs",
+    "node bench/linear-matrix-selection.cjs --check",
     "pnpm test:baselib:strict",
     "pnpm test:native"
   ],
-  "runs": [],
+  "runs": [
+    {
+      "command": "node --test test/linear-matrix-selection.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.007,
+      "started_at": "2026-08-12T08:35:56.781Z",
+      "commit": "113a7f3d3e3b490a335cd0989decb266da2c1f86",
+      "workspace_fingerprint": "a2d5c1b66fd905247e48205f023fb90f944e688a7d9671100ae882ad6348f143",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/linear-matrix-selection.cjs --check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.167,
+      "started_at": "2026-08-12T08:35:58.373Z",
+      "commit": "113a7f3d3e3b490a335cd0989decb266da2c1f86",
+      "workspace_fingerprint": "a2d5c1b66fd905247e48205f023fb90f944e688a7d9671100ae882ad6348f143",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 12.368,
+      "started_at": "2026-08-12T08:35:59.135Z",
+      "commit": "113a7f3d3e3b490a335cd0989decb266da2c1f86",
+      "workspace_fingerprint": "a2d5c1b66fd905247e48205f023fb90f944e688a7d9671100ae882ad6348f143",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:native",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 154.374,
+      "started_at": "2026-08-12T08:36:19.923Z",
+      "commit": "113a7f3d3e3b490a335cd0989decb266da2c1f86",
+      "workspace_fingerprint": "a2d5c1b66fd905247e48205f023fb90f944e688a7d9671100ae882ad6348f143",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:native",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 612.03,
+      "started_at": "2026-08-12T08:39:33.880Z",
+      "commit": "113a7f3d3e3b490a335cd0989decb266da2c1f86",
+      "workspace_fingerprint": "a2d5c1b66fd905247e48205f023fb90f944e688a7d9671100ae882ad6348f143",
+      "platform": "linux-x64"
+    }
+  ],
   "handoff": {
-    "summary": "",
-    "risks": [],
-    "next_steps": []
+    "summary": "Ordinary CPython-parseable helpers now define Sage-compatible immutable plans for row, column, combined, rectangular, deletion, swap, setter, block, and row-insertion operations. Selection preserves order and duplicates and rejects negative axes; staged mutation snapshots and coerces all source values before publication. CPython and Sage.js execute the same source, and the 500x500 reference witness keeps planning and fallback execution negligible. The module is storage-neutral: generated FLINT-resource and packed-prime executors can consume plans without host scalar materialization.",
+    "risks": [
+      "The reference apply helpers guarantee that plan validation and coercion precede writes, but an arbitrary hostile MutableSequence setter can still fail while applying. Public exact-resource and packed-prime executors must retain their transactional boundary.",
+      "A combined exact-resource selector can initially compose generated row and column selectors without host materialization, but this creates one temporary resource; add a combined declared operation only if measurement justifies it.",
+      "The first full native receipt failed because shared cache preparation does not yet recognize packages/m4ri; after building the pinned M4RI dependency locally, the exact same full suite passed."
+    ],
+    "next_steps": [
+      "In the integration lane, add src/lib/sagejs/linear_algebra/matrix_selection.py to pyrightconfig.json and register test/linear-matrix-selection.cjs in the Node test manifest. The prefix is already owned by the linear-algebra package, so no per-file package-graph entry is needed.",
+      "Wire matrix_from_rows_and_columns, submatrix, deletion, swaps, set_row, set_column, block mutation, and insert_row in src/baselib/matrix.py. Preserve column-before-row validation and invalidate caches only after successful publication.",
+      "For ZZ and QQ, consume checked indices through generated resource selectors/submatrix and stage setters through a temporary resource plus generated set_block. Explicitly close intermediate resources. For packed GF(p), consume the same plans through the existing transactional batch kernels.",
+      "Run public differential tests over ZZ, QQ, GF(2), and GF(97), including immutable matrices, duplicate selectors, empty dimensions, aliased sources, coercion failures, and 500x500 resource/packed performance witnesses."
+    ]
   }
 }
