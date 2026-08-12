@@ -212,7 +212,9 @@ test("native-bitwise marker preserves CPython xor without changing Sage power", 
   assert.equal(opted.body[1].body.inferred_type, "uint64");
 
   const documented = await parseSage(
-    '"""The literal text # sagejs: native-bitwise documents a pragma."""\n' +
+    '"""This docstring documents the following literal marker.\n' +
+      "# sagejs: native-bitwise\n" +
+      'It must not opt this module into bounded shifts.\n"""\n' +
       "value = 1 << 64\n",
   );
   const documentedAssignment = documented.body.at(-1);
