@@ -1,0 +1,51 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "automatic-module-cache-cleanup",
+  "title": "Automatic module cache cleanup",
+  "lane": "compiler-runtime",
+  "status": "active",
+  "owner": "user",
+  "objective": "Run conservative bounded module-cache pruning automatically off the startup path while preserving manual prune semantics, active leases, current, pinned, and recent compiler versions",
+  "base_commit": "b067d425bac86dbd427b73093230f26c58092beb",
+  "claims": [
+    "tools/cache.ts",
+    "tools/cache-lease.ts",
+    "tools/cache-auto.ts",
+    "tools/cache-auto-worker.ts",
+    "test/cache-automatic.cjs",
+    "test/node-test-manifest.cjs"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "compiler-infrastructure",
+    "fallback": "not-applicable",
+    "oracles": [
+      "manual prune policy and temporary-cache fixtures"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm build",
+    "pnpm test:compiler",
+    "pnpm test:integration",
+    "node --test test/cache.cjs test/cache-automatic.cjs",
+    "node --test test/test-manifest.test.cjs"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "Automatic versioned-module-cache maintenance is scheduled through the existing process lease path. Startup performs only exact-path metadata checks and reads one small state marker, then an unreferenced timer launches an unreferenced detached worker. The worker uses the existing conservative prune policy, preserves current/newest/recent/pinned/leased versions, serializes passes with a stale-safe lock, records its last attempt, and caps both attempted bytes and attempted versions per pass. Manual cache-prune plan, output, dry-run, and application semantics are unchanged. The test manifest also now includes two previously landed tests and removes one duplicate entry.",
+    "risks": [
+      "Automatic retention settings are environment variables rather than public CLI flags; invalid settings fail closed and the manual prune command remains the diagnostic path.",
+      "The full integration tier had 14 unrelated worktree-environment failures because only the FLINT native package was prepared; missing FFLAS, graph, M4RI, and production-kernel artifacts caused 13, while one dense-prime timing ratchet failed under concurrent load. The complete root integration suite was independently green immediately before this lane's final validation."
+    ],
+    "next_steps": []
+  }
+}

@@ -57,6 +57,7 @@ export interface CachePruneReport {
   applied: boolean;
   candidateBytes: number;
   currentVersions: string[];
+  deferredVersions?: string[];
   entries: CacheVersionEntry[];
   errors: Array<{ version: string; message: string }>;
   ignoredEntries: string[];
@@ -70,11 +71,17 @@ export interface CachePruneReport {
 
 export interface PruneCacheOptions {
   apply?: boolean;
+  applyLimits?: Partial<CacheApplyLimits>;
   currentVersions: string[];
   expectedRoot?: string;
   now?: number;
   policy?: Partial<CachePolicy>;
   root?: string;
+}
+
+export interface CacheApplyLimits {
+  maxBytes: number;
+  maxVersions: number;
 }
 
 interface ScannedDirectory {
@@ -118,6 +125,14 @@ function validateCacheRoot(rootValue: string, expectedRootValue: string): string
     throw new Error(`cache prune refused non-directory or symlinked root: ${root}`);
   }
   return root;
+}
+
+/** Validate one exact module-cache root without scanning or changing it. */
+export function validateModuleCacheRoot(
+  rootValue: string,
+  expectedRootValue: string,
+): string {
+  return validateCacheRoot(rootValue, expectedRootValue);
 }
 
 function scanDirectory(directory: string): ScannedDirectory {
@@ -296,8 +311,42 @@ export function pruneModuleCache(options: PruneCacheOptions): CachePruneReport {
   if (!options.apply) return report;
   report.applied = true;
   const now = options.now ?? Date.now();
+  const applyLimits = options.applyLimits
+    ? {
+        maxBytes: finiteNonnegative(
+          "applyLimits.maxBytes",
+          options.applyLimits.maxBytes ?? Number.MAX_SAFE_INTEGER,
+        ),
+        maxVersions: finiteNonnegative(
+          "applyLimits.maxVersions",
+          options.applyLimits.maxVersions ?? Number.MAX_SAFE_INTEGER,
+        ),
+      }
+    : undefined;
+  if (applyLimits && !Number.isInteger(applyLimits.maxVersions)) {
+    throw new Error("applyLimits.maxVersions must be an integer");
+  }
+  if (applyLimits) report.deferredVersions = [];
 
-  for (const entry of report.entries.filter((candidate) => candidate.reason)) {
+  const candidates = report.entries.filter((candidate) => candidate.reason);
+  // Automatic maintenance supplies limits and starts with the oldest trees.
+  // Manual pruning deliberately keeps its established plan/application order.
+  if (applyLimits) {
+    candidates.sort((left, right) => right.ageDays - left.ageDays);
+  }
+  let attemptedBytes = 0;
+  let attemptedVersions = 0;
+  for (const entry of candidates) {
+    if (
+      applyLimits &&
+      (attemptedVersions >= applyLimits.maxVersions ||
+        attemptedBytes + entry.bytes > applyLimits.maxBytes)
+    ) {
+      report.deferredVersions!.push(entry.version);
+      continue;
+    }
+    attemptedVersions += 1;
+    attemptedBytes += entry.bytes;
     const quarantine = join(
       report.root,
       `.sagejs-prune-${process.pid}-${randomBytes(6).toString("hex")}-${entry.version}`,
