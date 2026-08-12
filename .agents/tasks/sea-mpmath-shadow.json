@@ -4,7 +4,7 @@
   "id": "sea-mpmath-shadow",
   "title": "Sea Mpmath Shadow",
   "lane": "distribution",
-  "status": "active",
+  "status": "complete",
   "owner": "user",
   "objective": "Fix the SEA mpmath smoke fixture so bundled mpmath is tested without violating ordinary Python script-directory import precedence",
   "base_commit": "bcba716dc3fa1e098487556b8364718bf6c7f608",
