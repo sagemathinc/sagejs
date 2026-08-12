@@ -28,7 +28,6 @@ from sagejs.ffi.flint import (
 )
 from sagejs.native import Int64Buffer, PrimeFieldModulus, UInt64Buffer, native, uint64
 
-
 # Dense integer matrix resources
 
 

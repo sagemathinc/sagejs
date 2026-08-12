@@ -4,7 +4,7 @@
   "id": "linear-matrix-predicates",
   "title": "Linear Matrix Predicates",
   "lane": "arithmetic-algebra",
-  "status": "review",
+  "status": "complete",
   "owner": "user",
   "objective": "Implement source-transparent matrix predicates and support/nonpivot scans with identical ZZ QQ and GF(p) semantics",
   "base_commit": "ba436f653bb75baf143d3709c02f5118e89b8e50",

@@ -49,6 +49,7 @@
     "src/lib/sagejs/ffi/m4ri.py",
     "src/lib/sagejs/linear_algebra/__init__.py",
     "src/lib/sagejs/linear_algebra/matrix_selection.py",
+    "src/lib/sagejs/linear_algebra/matrix_predicates.py",
     "src/lib/sagejs/polynomial_algorithms/__init__.py",
     "src/lib/sagejs/polynomial_algorithms/cyclotomic_core.py",
     "src/lib/sagejs/kernels/__init__.py",
