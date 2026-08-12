@@ -7817,12 +7817,13 @@ def _bulk_sparse_random_matrix(
     upper: Any,
     numerator_bound: Any,
     denominator_bound: Any,
+    require_nonzero: bool,
 ) -> Any:
-    """Construct one explicit-density exact matrix through one bulk boundary.
+    """Construct one exact random matrix through one storage-level boundary.
 
-    The caller has already distinguished an explicit `density` from the
-    default full-density distribution. Unsupported domains return
-    `runtime.undefined` so the general semantic fallback remains available.
+    `require_nonzero` distinguishes numeric density from Sage's omitted/None
+    full-density policy. Unsupported domains return `runtime.undefined` so the
+    general semantic fallback remains available.
     """
     policy = _sparse_random_module()
     executors = _sparse_random_public_module()
@@ -7851,6 +7852,15 @@ def _bulk_sparse_random_matrix(
             )
         values = policy.materialize_sparse_random_writes(writes, 0)
         return matrix(base, rows, columns, values)
+
+    def portable_full(draw_value: Any) -> Matrix:
+        """Materialize a full row-major distribution which may produce zero."""
+        return matrix(
+            base,
+            rows,
+            columns,
+            [draw_value() for _index in range(rows * columns)],
+        )
 
     if _uses_m4ri_resource(base) and lower is None:
         spec = policy.sage_binary_sparse_random_spec(rows, columns, density)
@@ -8076,11 +8086,12 @@ def _bulk_sparse_random_matrix(
 
         if distribution == "1/n":
 
-            def draw_reciprocal_uniform_nonzero() -> Any:
-                """Model Sage's reciprocal-uniform nonzero rational draw."""
+            def draw_reciprocal_uniform() -> Any:
+                """Model Sage's reciprocal-uniform rational draw."""
                 numerator = 0
                 denominator = 1
-                while numerator == 0:
+                retry = True
+                while retry:
                     centered = _random_int(0, 2147483647) - 1073741823
                     if centered == 0:
                         centered = 1
@@ -8090,30 +8101,39 @@ def _bulk_sparse_random_matrix(
                     if denominator_word == 0:
                         denominator_word = 1
                     denominator = 2147483647 // denominator_word
+                    retry = require_nonzero and numerator == 0
                 return sage.QQ(numerator) / sage.QQ(denominator)
 
             # This distribution has variable-sized control flow and no native
             # executor yet. Keep both execution modes on the explicit portable
             # implementation instead of falling into the integer generator.
-            return portable(spec, draw_nonzero=draw_reciprocal_uniform_nonzero)
+            if require_nonzero:
+                return portable(spec, draw_nonzero=draw_reciprocal_uniform)
+            return portable_full(draw_reciprocal_uniform)
 
-        def draw_rational_nonzero() -> Any:
+        def draw_rational() -> Any:
             numerator = 0
             denominator = 1
-            while numerator == 0:
+            retry = True
+            while retry:
                 numerator = _random_int(0, numerator_width - 1)
                 denominator = _random_int(0, denominator_width - 1)
                 if denominator == 0:
                     denominator = 1
                 if _random_int(0, 1) != 0:
                     numerator = -numerator
+                retry = require_nonzero and numerator == 0
             return sage.QQ(numerator) / sage.QQ(denominator)
 
         if numerator_width > 4294967296 or denominator_width > 4294967296:
-            return portable(spec, draw_nonzero=draw_rational_nonzero)
+            if require_nonzero:
+                return portable(spec, draw_nonzero=draw_rational)
+            return portable_full(draw_rational)
         kernel = executors.sparse_random_fmpq
         if not _native_kernel_available(kernel):
-            return portable(spec, draw_nonzero=draw_rational_nonzero)
+            if require_nonzero:
+                return portable(spec, draw_nonzero=draw_rational)
+            return portable_full(draw_rational)
         final_state = _dense_integer_zeros(kernel, 1)
         resource = _flint_ffi_module().fmpq_matrix(rows, columns)
         try:
@@ -8122,6 +8142,7 @@ def _bulk_sparse_random_matrix(
                 resource,
                 draws_per_row,
                 1 if float(spec[3]) == 1 else 0,
+                1 if require_nonzero else 0,
                 numerator_width,
                 denominator_width,
                 initial_state,
@@ -8214,7 +8235,13 @@ def random_matrix(
     if rows < 0 or cols < 0:
         raise ValueError("matrix dimensions must be nonnegative")
     density_supplied = runtime.reflect.has(kwds, "density")
-    raw_density = keyword("density", 1.0)
+    raw_density = keyword("density", None)
+    # Sage treats an explicit `density=None` exactly like an omitted density:
+    # it selects full density and permits zero entries. Only a numeric density
+    # requests the explicit-density `nonzero=True` policy.
+    if raw_density is None:
+        density_supplied = False
+        raw_density = 1.0
     # Sage's dense GF(2) implementation returns before coercing density when
     # either axis is empty. This is observable for hostile coercion objects.
     if density_supplied and _is_dense_binary_base(base) and (rows == 0 or cols == 0):
@@ -8256,6 +8283,7 @@ def random_matrix(
             upper,
             keyword("num_bound", 2),
             keyword("den_bound", 2),
+            density_supplied,
         )
         if sparse_result is not runtime.undefined:
             return sparse_result
