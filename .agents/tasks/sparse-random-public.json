@@ -183,10 +183,50 @@
       "commit": "70f471ed454afc7f6e46e78e6b2f2de18c7968bf",
       "workspace_fingerprint": "f280465814323bd190e6cd719a4867f6a3cc69fa3ef0ffc98e01bfd853fac1da",
       "platform": "linux-x64"
+    },
+    {
+      "command": "node test/public-sparse-random.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 9.458,
+      "started_at": "2026-08-12T13:56:19.617Z",
+      "commit": "5f48e83e71f62e3221fc74443974fd9bae9f9f96",
+      "workspace_fingerprint": "fc4ec28ebab0e70770db300a3ec5e81a96755c10b74773d5c1898520b7ade3d2",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 14.831,
+      "started_at": "2026-08-12T13:56:33.855Z",
+      "commit": "5f48e83e71f62e3221fc74443974fd9bae9f9f96",
+      "workspace_fingerprint": "fc4ec28ebab0e70770db300a3ec5e81a96755c10b74773d5c1898520b7ade3d2",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 13.399,
+      "started_at": "2026-08-12T13:56:58.686Z",
+      "commit": "5f48e83e71f62e3221fc74443974fd9bae9f9f96",
+      "workspace_fingerprint": "fc4ec28ebab0e70770db300a3ec5e81a96755c10b74773d5c1898520b7ade3d2",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/public-sparse-random.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 4.346,
+      "started_at": "2026-08-12T13:57:20.209Z",
+      "commit": "5f48e83e71f62e3221fc74443974fd9bae9f9f96",
+      "workspace_fingerprint": "fc4ec28ebab0e70770db300a3ec5e81a96755c10b74773d5c1898520b7ade3d2",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {
-    "summary": "Explicit-density random_matrix now dispatches ZZ to an owned FmpzMatrix resource with keep-first collisions, QQ to an owned FmpqMatrix resource with replacement collisions, GF(2) to M4RI Bernoulli fill (or the portable packed representation), and packed word GF(p) to compiler-owned residues with replacement collisions. Five CPython-parseable typed-Python kernels consume and republish the shared seeded stream inside one bulk fill call; native-disabled execution samples the same storage-neutral policy and is exactly seed-identical, including collision cases and the next RNG value. Arbitrarily large rational bounds and Sage's reciprocal-uniform '1/n' distribution have explicit correct portable paths rather than falling into integer generation; arbitrary non-'1/n' distribution labels retain Sage's bounded rational behavior. NaN binary density, hostile QQ bound coercion order, deterministic resource cleanup, and GF(4294967291) are covered. The matrix.py growth is intentional orchestration rather than formatting churn: lazy module loading, canonical domain allocation, one executor/fallback selection, RNG publication/tracing, and failure cleanup. Warm 1000x1000 density=0.1 medians on linux-x64 are approximately ZZ/QQ 23 ms, GF(2) 7.3 ms, and GF(7) 2.7 ms.",
+    "summary": "Explicit-density random_matrix now dispatches ZZ to an owned FmpzMatrix resource with keep-first collisions, QQ to an owned FmpqMatrix resource with replacement collisions, GF(2) to M4RI Bernoulli fill (or the portable packed representation), and packed word GF(p) to compiler-owned residues with replacement collisions. Five CPython-parseable typed-Python kernels consume and republish the shared seeded stream inside one bulk fill call; native-disabled execution samples the same storage-neutral policy and is exactly seed-identical, including collision cases and the next RNG value. Arbitrarily large rational bounds and Sage's reciprocal-uniform '1/n' distribution have explicit correct portable paths rather than falling into integer generation; arbitrary non-'1/n' distribution labels retain Sage's bounded rational behavior. Omitted or None rational density uses Sage's allow-zero full-density policy, while numeric density=1 remains nonzero; explicit density=None is omission-equivalent across ZZ, QQ, GF(2), and word GF(p). NaN binary density, hostile QQ bound coercion order, deterministic resource cleanup, and GF(4294967291) are covered. The matrix.py growth is intentional orchestration rather than formatting churn: lazy module loading, canonical domain allocation, one executor/fallback selection, RNG publication/tracing, and failure cleanup. Warm 1000x1000 density=0.1 medians on linux-x64 are approximately ZZ/QQ 14 ms, GF(2) 6.8 ms, and GF(7) 2.3 ms.",
     "risks": [
       "The native bounded QQ executor deliberately supports one-word bounds up to 2^32; wider exact bounds use the explicit storage-neutral portable sampler. Its measured 200x200 density=0.1 median is about 292 ms, so a future arbitrary-bound typed kernel would improve performance without changing semantics.",
       "The reciprocal-uniform '1/n' distribution currently uses the explicit portable sampler (about 217 ms median for 200x200 density=0.1) and remains a candidate for a dedicated typed kernel.",
@@ -194,6 +234,7 @@
       "The broad native suite reached and passed FFI/resource lifecycle coverage but later hit a pre-existing foreign-header cache witness assertion unrelated to this diff; focused compilation and resource execution pass."
     ],
     "next_steps": [
+      "Register src/lib/sagejs/linear_algebra/sparse_random_public.py in architecture/native-kernels.json through the integration lane so clean production builds publish its five kernels.",
       "Add test/public-sparse-random.cjs to the shared node test manifest in the integration lane.",
       "Keep the focused trace regression in the shared host-test manifest after integration; it now passes after rebuilding the merged generated FLINT adapter.",
       "Add arbitrary-bound and reciprocal-uniform typed QQ executors if those less-common distributions become performance priorities; their portable baselines are now recorded."
