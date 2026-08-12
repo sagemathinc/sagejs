@@ -14,7 +14,7 @@
   },
   "counts": {
     "classified-native-file": 62,
-    "declared-ffi": 388,
+    "declared-ffi": 389,
     "declared-ffi-resource": 27,
     "napi-export": 292,
     "runtime-intrinsic": 136,
@@ -4600,6 +4600,17 @@
       "dynamic_package": "@sagemath/sagejs-m4ri",
       "dynamic_export": "ffiM4riMatrixSagepackBytes",
       "symbol": "sagejs_m4ri_matrix_sagepack_bytes",
+      "disposition": "declared-safe-ffi"
+    },
+    {
+      "id": "ffi:m4ri:matrix_select_rows",
+      "kind": "declared-ffi",
+      "path": "ffi/m4ri.ffi.json",
+      "library": "m4ri",
+      "export": "matrix_select_rows",
+      "dynamic_package": "@sagemath/sagejs-m4ri",
+      "dynamic_export": "ffiM4riMatrixSelectRows",
+      "symbol": "sagejs_m4ri_matrix_select_rows",
       "disposition": "declared-safe-ffi"
     },
     {

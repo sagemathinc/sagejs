@@ -1,0 +1,192 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "exact-matrix-subspaces-impl-v1",
+  "title": "Public exact matrix subspaces implementation",
+  "lane": "integration",
+  "status": "active",
+  "owner": "user",
+  "objective": "Route public pivots and row/column subspaces over canonical ZZ, QQ, GF(2), and small GF(p) storage through bulk selectors and bounded generated pivot metadata without full exact-matrix export",
+  "base_commit": "3168d612c0e7b19e110a799e1bc89dba62e849f9",
+  "claims": [
+    "src/baselib/matrix.py",
+    "src/lib/sagejs/linear_algebra/matrix_subspaces_public.py",
+    "ffi/flint.ffi.py",
+    "ffi/flint.ffi.json",
+    "packages/flint/include/sagejs/fmpz_matrix_ffi.h",
+    "packages/flint/include/sagejs/fmpq_matrix_ffi.h",
+    "packages/flint/generated/ffi_host.py",
+    "src/baselib/sagejs/ffi/flint.py",
+    "src/lib/sagejs/ffi/flint.py",
+    "ffi/m4ri.ffi.py",
+    "ffi/m4ri.ffi.json",
+    "packages/m4ri/include/sagejs/m4ri_matrix_ffi.h",
+    "packages/m4ri/generated/ffi_host.py",
+    "packages/m4ri/test/test.cjs",
+    "src/baselib/sagejs/ffi/m4ri.py",
+    "src/lib/sagejs/ffi/m4ri.py",
+    "src/lib/sagejs/kernels/matrix/dense_binary_m4ri.py",
+    "test/public-exact-matrix-subspaces.cjs",
+    "test/exact-matrix-pivot-lifecycle.cjs",
+    "test/ffi-wasm-m4ri-resource.cjs",
+    "test/node-test-manifest.cjs",
+    "bench/public-exact-matrix-subspaces.cjs",
+    "architecture/native-boundaries.json",
+    "pyrightconfig.json"
+  ],
+  "dependencies": [
+    "exact-matrix-subspaces-v1"
+  ],
+  "references": [
+    "/home/user/upstream/sage/src/sage/matrix/matrix2.pyx",
+    "src/lib/sagejs/linear_algebra/matrix_subspaces.py",
+    "test/exact-matrix-pivot-ffi.cjs",
+    "bench/linear-matrix-subspaces.cjs"
+  ],
+  "architecture": {
+    "strategy": "mixed",
+    "fallback": "tested-capability",
+    "oracles": [
+      "SageMath 10.9 row/column space and pivot semantics",
+      "current scalar reconstruction path"
+    ],
+    "exceptions": [
+      "Generated exact-resource pivot metadata and possible M4RI row selectors are representation adapters; mathematical subspace planning remains ordinary Python"
+    ]
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "fallback",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "node --test test/linear-matrix-subspaces.cjs test/public-exact-matrix-subspaces.cjs",
+    "node --expose-gc --test test/exact-matrix-pivot-lifecycle.cjs",
+    "node --test test/exact-matrix-pivot-ffi.cjs test/ffi-wasm-m4ri-resource.cjs",
+    "node bench/public-exact-matrix-subspaces.cjs --check",
+    "pnpm ffi:check",
+    "pnpm architecture:check",
+    "pnpm test:portable",
+    "pnpm test:baselib:strict",
+    "pnpm --dir packages/flint test",
+    "pnpm --dir packages/m4ri test"
+  ],
+  "runs": [
+    {
+      "command": "node --test test/linear-matrix-subspaces.cjs test/public-exact-matrix-subspaces.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 8.903,
+      "started_at": "2026-08-12T22:35:40.447Z",
+      "commit": "bffdf0ea864c0810c4d23b8aaadb5551d896aa33",
+      "workspace_fingerprint": "a069e7705f2c7b6f783659b7c6a721054c20bda92db48a6d36fa95b68fa0794f",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --expose-gc --test test/exact-matrix-pivot-lifecycle.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.631,
+      "started_at": "2026-08-12T22:35:50.083Z",
+      "commit": "bffdf0ea864c0810c4d23b8aaadb5551d896aa33",
+      "workspace_fingerprint": "a069e7705f2c7b6f783659b7c6a721054c20bda92db48a6d36fa95b68fa0794f",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/public-exact-matrix-subspaces.cjs --check",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 33.212,
+      "started_at": "2026-08-12T22:35:53.497Z",
+      "commit": "bffdf0ea864c0810c4d23b8aaadb5551d896aa33",
+      "workspace_fingerprint": "a069e7705f2c7b6f783659b7c6a721054c20bda92db48a6d36fa95b68fa0794f",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/public-exact-matrix-subspaces.cjs --check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 33.406,
+      "started_at": "2026-08-12T22:37:07.411Z",
+      "commit": "bffdf0ea864c0810c4d23b8aaadb5551d896aa33",
+      "workspace_fingerprint": "0df98bb727e403798dfe905a232dcb3b2a98702cc5cb3ba3caef154e957f2b11",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm ffi:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.281,
+      "started_at": "2026-08-12T22:37:45.419Z",
+      "commit": "bffdf0ea864c0810c4d23b8aaadb5551d896aa33",
+      "workspace_fingerprint": "0df98bb727e403798dfe905a232dcb3b2a98702cc5cb3ba3caef154e957f2b11",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 14.39,
+      "started_at": "2026-08-12T22:37:51.485Z",
+      "commit": "bffdf0ea864c0810c4d23b8aaadb5551d896aa33",
+      "workspace_fingerprint": "0df98bb727e403798dfe905a232dcb3b2a98702cc5cb3ba3caef154e957f2b11",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 64.049,
+      "started_at": "2026-08-12T22:38:14.134Z",
+      "commit": "bffdf0ea864c0810c4d23b8aaadb5551d896aa33",
+      "workspace_fingerprint": "0df98bb727e403798dfe905a232dcb3b2a98702cc5cb3ba3caef154e957f2b11",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 14.453,
+      "started_at": "2026-08-12T22:39:54.799Z",
+      "commit": "bffdf0ea864c0810c4d23b8aaadb5551d896aa33",
+      "workspace_fingerprint": "0df98bb727e403798dfe905a232dcb3b2a98702cc5cb3ba3caef154e957f2b11",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm --dir packages/flint test",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 4.422,
+      "started_at": "2026-08-12T22:40:12.995Z",
+      "commit": "bffdf0ea864c0810c4d23b8aaadb5551d896aa33",
+      "workspace_fingerprint": "0df98bb727e403798dfe905a232dcb3b2a98702cc5cb3ba3caef154e957f2b11",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm --dir packages/m4ri test",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 3.781,
+      "started_at": "2026-08-12T22:40:21.414Z",
+      "commit": "bffdf0ea864c0810c4d23b8aaadb5551d896aa33",
+      "workspace_fingerprint": "0df98bb727e403798dfe905a232dcb3b2a98702cc5cb3ba3caef154e957f2b11",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/exact-matrix-pivot-ffi.cjs test/ffi-wasm-m4ri-resource.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 4.605,
+      "started_at": "2026-08-12T22:40:34.749Z",
+      "commit": "bffdf0ea864c0810c4d23b8aaadb5551d896aa33",
+      "workspace_fingerprint": "0df98bb727e403798dfe905a232dcb3b2a98702cc5cb3ba3caef154e957f2b11",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "",
+    "risks": [],
+    "next_steps": []
+  }
+}
