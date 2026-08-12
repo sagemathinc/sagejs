@@ -4,7 +4,7 @@
   "id": "wasm-fmpq-matrix-resources",
   "title": "Wasm Fmpq Matrix Resources",
   "lane": "integration",
-  "status": "active",
+  "status": "review",
   "owner": "user",
   "objective": "Prove the production generated FmpqMatrix WebAssembly resource vertical slice through real CoWasm and browser execution, including exact bulk construction, dimensions, mutation and access, copy, multiplication, RREF, determinant, formatting, serialization roundtrip, failure atomicity, deterministic/finalizer cleanup, and payload/cold/warm measurements without operation-specific JavaScript",
   "base_commit": "098afe93dc9a9451e1f5a60505d53d4d13c3d1bf",
@@ -42,10 +42,79 @@
     "pnpm test:portable",
     "pnpm test:baselib:strict"
   ],
-  "runs": [],
+  "runs": [
+    {
+      "command": "pnpm --dir packages/flint-wasm test",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 15.667,
+      "started_at": "2026-08-12T06:46:59.368Z",
+      "commit": "73bb5bd5d11342d038339af5091c7fa3de8dcf4f",
+      "workspace_fingerprint": "e5be0aef9e554bf3ccec2f8c1a9d9d8815dfa058ec24dd7e159fe089a67fd17e",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node packages/flint-wasm/test/fmpq-resource-browser-proof.mjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.892,
+      "started_at": "2026-08-12T06:47:19.350Z",
+      "commit": "73bb5bd5d11342d038339af5091c7fa3de8dcf4f",
+      "workspace_fingerprint": "e5be0aef9e554bf3ccec2f8c1a9d9d8815dfa058ec24dd7e159fe089a67fd17e",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/wasm-fmpq-matrix-resources.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.123,
+      "started_at": "2026-08-12T06:47:24.694Z",
+      "commit": "73bb5bd5d11342d038339af5091c7fa3de8dcf4f",
+      "workspace_fingerprint": "e5be0aef9e554bf3ccec2f8c1a9d9d8815dfa058ec24dd7e159fe089a67fd17e",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 12.736,
+      "started_at": "2026-08-12T06:47:29.112Z",
+      "commit": "73bb5bd5d11342d038339af5091c7fa3de8dcf4f",
+      "workspace_fingerprint": "e5be0aef9e554bf3ccec2f8c1a9d9d8815dfa058ec24dd7e159fe089a67fd17e",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 12.389,
+      "started_at": "2026-08-12T06:47:47.749Z",
+      "commit": "73bb5bd5d11342d038339af5091c7fa3de8dcf4f",
+      "workspace_fingerprint": "e5be0aef9e554bf3ccec2f8c1a9d9d8815dfa058ec24dd7e159fe089a67fd17e",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 38.39,
+      "started_at": "2026-08-12T06:48:04.194Z",
+      "commit": "73bb5bd5d11342d038339af5091c7fa3de8dcf4f",
+      "workspace_fingerprint": "e5be0aef9e554bf3ccec2f8c1a9d9d8815dfa058ec24dd7e159fe089a67fd17e",
+      "platform": "linux-x64"
+    }
+  ],
   "handoff": {
-    "summary": "",
-    "risks": [],
-    "next_steps": []
+    "summary": "Proved the already selected declaration-generated FmpqMatrix production WebAssembly slice without changing declarations, headers, the adapter generator, or handwritten operation-specific JavaScript. The direct artifact and real Chromium tests cover variable-size bulk rational ingress, dimensions, arbitrary-precision set/get, independent copy, multiplication, RREF/rank, determinant, formatting, serialization/deserialization, host-copy ownership, idempotent close, use-after-close rejection, failed-write and failed-result atomicity, live-slot accounting, and FinalizationRegistry cleanup. The generated backend structure and 5,050,000-byte payload ceiling are ratcheted. On this Linux x64 host the 4,953,137-byte artifact instantiated in 36.03 ms; a full-rank 32x32 matrix used a 10,192-byte variable-length rational stream, constructed in 1.23 ms, multiplied first/warm-median in 1.68/0.64 ms, reduced in 0.96 ms, and completed serialize/copy/ingress/deserialize in 0.48 ms.",
+    "risks": [
+      "The full public browser evaluator currently fails before matrix construction because packages/flint-wasm/scripts/build.cjs selects sagejs.ffi.flint but omits its sagejs.kernels.matrix.dense_rational_flint standard-library dependency. This lane deliberately did not expand that shared registry while it was claimed by another active task; the direct generated backend still passes in real Chromium.",
+      "Formatting and serialization intentionally cross Wasm memory by a checked host-owned copy; matrix arithmetic and RREF remain resource-to-resource.",
+      "Timing samples describe one Linux x64 host and are evidence rather than hard performance gates; the byte ceilings and exact arithmetic results are deterministic ratchets."
+    ],
+    "next_steps": [
+      "In the integration lane, add sagejs.kernels.matrix.dense_rational_flint to the browser standard-library selection and rerun the existing public matrix(QQ) browser smoke.",
+      "Keep the direct Chromium proof in the distribution validation set so resource lifecycle semantics are tested independently of the language compiler and public matrix layer.",
+      "Monitor the shared FLINT Wasm payload as more exact-resource declarations are selected."
+    ]
   }
 }
