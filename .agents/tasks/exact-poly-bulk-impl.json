@@ -12,10 +12,7 @@
     "packages/flint/include/sagejs/exact_polynomial_ffi.h",
     "src/baselib/polynomial.py",
     "test/exact-polynomial-bulk-construction.cjs",
-    "test/exact-polynomial-resource-ffi.cjs",
-    "tools/ffi/lifecycle-fuzz.cjs",
-    "bench/exact-polynomial-bulk-construction.cjs",
-    "bench/results/exact-polynomial-bulk-construction-implementation.json"
+    "test/exact-polynomial-resource-ffi.cjs"
   ],
   "dependencies": [],
   "references": [
