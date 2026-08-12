@@ -4,7 +4,7 @@
   "id": "factorization-negative-powers-v1",
   "title": "Factorization negative powers",
   "lane": "arithmetic-algebra",
-  "status": "review",
+  "status": "complete",
   "owner": "user",
   "objective": "Implement Sage-compatible negative integral powers of Factorization in ordinary Python with focused integer and polynomial differential coverage",
   "base_commit": "dcc1302a3f305b00a0e09ba25edee45ac2ee2bf1",
