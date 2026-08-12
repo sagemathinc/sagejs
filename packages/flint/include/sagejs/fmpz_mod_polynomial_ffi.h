@@ -259,6 +259,13 @@ static inline int sagejs_fmpz_mod_polynomial_length(
     return 1;
 }
 
+static inline uint64_t sagejs_fmpz_mod_polynomial_entry_count(
+    const sagejs_fmpz_mod_polynomial_t source)
+{
+    return source->sealed ? (uint64_t)
+        fmpz_mod_poly_length(source->value, source->context) : 0;
+}
+
 static inline int sagejs_fmpz_mod_polynomial_coefficient(
     fmpz_t result, const sagejs_fmpz_mod_polynomial_t polynomial,
     uint64_t index)
@@ -610,7 +617,7 @@ static inline int sagejs_fmpz_mod_polynomial_factorization_factor(
     return 1;
 }
 
-static inline int sagejs_fmpz_mod_polynomial_factorization_take_bytes(
+static inline int sagejs_fmpz_mod_polynomial_factorization_copy_bytes(
     unsigned char **output, uint64_t *output_length,
     const sagejs_fmpz_mod_polynomial_factorization_t factorization)
 {
@@ -753,7 +760,7 @@ static inline int sagejs_fmpz_mod_polynomial_roots_root(
     return 1;
 }
 
-static inline int sagejs_fmpz_mod_polynomial_roots_take_bytes(
+static inline int sagejs_fmpz_mod_polynomial_roots_copy_bytes(
     unsigned char **output, uint64_t *output_length,
     const sagejs_fmpz_mod_polynomial_roots_t roots)
 {
