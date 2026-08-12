@@ -1,0 +1,46 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "exact-poly-bulk-contract",
+  "title": "Exact polynomial bulk construction contract",
+  "lane": "arithmetic-algebra",
+  "status": "active",
+  "owner": "user",
+  "objective": "Reproduce and explain public ZZ[x] and QQ[x] bulk-construction regressions across Linux x64 and macOS arm64, then freeze a narrow machine-readable implementation contract with semantic differentials and honest performance gates without modifying production polynomial or FFI code",
+  "base_commit": "05a837eec3377889922b9ee286887ea412b8db7d",
+  "claims": [
+    "bench/exact-polynomial-bulk-construction-contract.cjs",
+    "bench/results/exact-polynomial-bulk-construction.json",
+    "test/exact-polynomial-bulk-construction-contract.cjs"
+  ],
+  "dependencies": [],
+  "references": [
+    "SageMath public PolynomialRing construction semantics",
+    "FLINT fmpz_poly and fmpq_poly bulk coefficient APIs"
+  ],
+  "architecture": {
+    "strategy": "external-library",
+    "fallback": "tested-capability",
+    "oracles": [
+      "SageMath ZZ[x] and QQ[x] construction, coefficient, degree, zero, and round-trip behavior",
+      "Current Sage.js dynamic public polynomial construction"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "fallback",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "pnpm test:native"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "",
+    "risks": [],
+    "next_steps": []
+  }
+}
