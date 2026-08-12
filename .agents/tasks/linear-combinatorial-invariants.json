@@ -4,7 +4,7 @@
   "id": "linear-combinatorial-invariants",
   "title": "Linear Combinatorial Invariants",
   "lane": "arithmetic-algebra",
-  "status": "active",
+  "status": "review",
   "owner": "user",
   "objective": "Implement ordinary exact Python helpers for matrix minors and permanent with explicit size policy and correct dynamic fallback",
   "base_commit": "1bd487f2f38589b1e186b6c6a6a84860a115f9bf",
@@ -35,10 +35,12 @@
   },
   "validation": [
     "node test/linear-combinatorial-invariants.cjs",
+    "node bench/linear-combinatorial-invariants.cjs",
     "pnpm exec pyright --pythonversion 3.11 src/lib/sagejs/linear_algebra/combinatorial.py",
     "pnpm architecture:check",
     "pnpm test:baselib:strict",
-    "pnpm test:native"
+    "pnpm test:native",
+    "pnpm test:matrix:performance"
   ],
   "runs": [
     {
@@ -90,11 +92,89 @@
       "commit": "1bd487f2f38589b1e186b6c6a6a84860a115f9bf",
       "workspace_fingerprint": "5e3520441519a017a6e95f82693a2402a0c99ef31b19e1b6ef74f3f101fbc826",
       "platform": "linux-x64"
+    },
+    {
+      "command": "node test/linear-combinatorial-invariants.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 4.157,
+      "started_at": "2026-08-12T09:25:01.955Z",
+      "commit": "36ccf1a0b2d8266c6198c52e691bde734498f659",
+      "workspace_fingerprint": "3d39aac0aa2b65018359ca23152bd3adc73df19ba1cdd42410befdd339ebcc03",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/linear-combinatorial-invariants.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 8.469,
+      "started_at": "2026-08-12T09:25:06.707Z",
+      "commit": "36ccf1a0b2d8266c6198c52e691bde734498f659",
+      "workspace_fingerprint": "3d39aac0aa2b65018359ca23152bd3adc73df19ba1cdd42410befdd339ebcc03",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm exec pyright --pythonversion 3.11 src/lib/sagejs/linear_algebra/combinatorial.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.115,
+      "started_at": "2026-08-12T09:25:15.774Z",
+      "commit": "36ccf1a0b2d8266c6198c52e691bde734498f659",
+      "workspace_fingerprint": "3d39aac0aa2b65018359ca23152bd3adc73df19ba1cdd42410befdd339ebcc03",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 13.877,
+      "started_at": "2026-08-12T09:25:23.812Z",
+      "commit": "36ccf1a0b2d8266c6198c52e691bde734498f659",
+      "workspace_fingerprint": "3d39aac0aa2b65018359ca23152bd3adc73df19ba1cdd42410befdd339ebcc03",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 12.723,
+      "started_at": "2026-08-12T09:25:38.267Z",
+      "commit": "36ccf1a0b2d8266c6198c52e691bde734498f659",
+      "workspace_fingerprint": "3d39aac0aa2b65018359ca23152bd3adc73df19ba1cdd42410befdd339ebcc03",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:matrix:performance",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 8.983,
+      "started_at": "2026-08-12T09:25:51.579Z",
+      "commit": "36ccf1a0b2d8266c6198c52e691bde734498f659",
+      "workspace_fingerprint": "3d39aac0aa2b65018359ca23152bd3adc73df19ba1cdd42410befdd339ebcc03",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:native",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 532.352,
+      "started_at": "2026-08-12T09:26:29.606Z",
+      "commit": "36ccf1a0b2d8266c6198c52e691bde734498f659",
+      "workspace_fingerprint": "3d39aac0aa2b65018359ca23152bd3adc73df19ba1cdd42410befdd339ebcc03",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {
-    "summary": "",
-    "risks": [],
-    "next_steps": []
+    "summary": "Added ordinary CPython-parseable matrix_minors and matrix_permanent helpers for exact matrices. Both bulk-read the public row-major list once and use division-free subset recurrences, so the dynamic fallback is independent of packed or foreign-resource storage. A deterministic one-million-unit default budget prevents accidental exponential work and max_work=None is the explicit unbounded override. Sage differential coverage includes every 0..5 by 0..5 shape over ZZ, QQ, and GF(7), every valid and one oversized minor degree, rectangular and empty permanents, lexicographic ordering, determinant reconstruction, first-row permanent expansion, and all-ones closed forms. The source is not yet wired into public Matrix.",
+    "risks": [
+      "The ordinary dynamic implementation is a correctness oracle, not the eventual performance endpoint. Warm 10x10 permanent measurements are roughly 0.16s over ZZ, 0.43s over QQ, and 0.19s over GF(7), versus 0.5ms, 2.1ms, and 2.8ms in Sage. A later measured accelerator must retain this same-source oracle and work policy.",
+      "The default combinatorial budget is an intentional new Sage.js safety policy. Public wiring should expose max_work clearly and document max_work=None; silently hiding the limit behind the traditional Sage signature would make rejection surprising.",
+      "The first 498-second full native aggregate passed all functional, FFI, sanitizer, compiler, and migration gates before shared-host GF(p) multiply medians missed two raw timing thresholds. The immediate isolated finite-matrix gate passed with its measured 2.02x load normalization, and a second complete 532-second native aggregate passed every gate."
+    ],
+    "next_steps": [
+      "In the integration lane, add src/lib/sagejs/linear_algebra/combinatorial.py to pyrightconfig.json and test/linear-combinatorial-invariants.cjs to test/node-test-manifest.cjs. The linear-algebra-algorithms prefix already owns the source, so no package-graph entry is needed.",
+      "Add a lazy sagejs.linear_algebra.combinatorial module cache in matrix.py. Matrix.minors(k, max_work=DEFAULT_COMBINATORIAL_WORK_LIMIT) should delegate to matrix_minors(self, k, max_work), and Matrix.permanent(algorithm='Ryser', max_work=DEFAULT_COMBINATORIAL_WORK_LIMIT) should delegate to matrix_permanent(self, algorithm, max_work). Preserve the documented ValueError for matrices with more rows than columns.",
+      "After the public API is differential and benchmarked, accelerate measured hot exact-domain paths with source-transparent typed Python or generated library resources. Keep the helper as the representation-independent dynamic oracle and retain the deterministic work guard."
+    ]
   }
 }
