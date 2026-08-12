@@ -35,6 +35,7 @@ const unit = [
   "test/package-graph.cjs",
   "test/architecture-policy.cjs",
   "test/generated-classification.cjs",
+  "test/gf2-polynomial-packed-core.cjs",
   "test/pnpm-invocation.cjs",
   "test/website.cjs",
   "test/audit-gaps.cjs",

@@ -52,6 +52,8 @@ added, add_ms = measure(lambda: left + right)
 shifted, shift_ms = measure(lambda: left.shift_left(65))
 weight, weight_ms = measure(lambda: left.weight())
 serialized, serialize_ms = measure(lambda: left.to_bytes())
+coefficients, coefficients_ms = measure(lambda: left.to_coefficients())
+formatted, format_ms = measure(lambda: left.format())
 print("GF2_PACKED_CORE " + json.dumps({
     "degree": degree,
     "identity": [
@@ -60,18 +62,23 @@ print("GF2_PACKED_CORE " + json.dumps({
         shifted.shift_right(65) == left,
         weight,
         B.from_bytes(serialized) == left,
+        len(coefficients),
+        len(formatted),
     ],
     "median_ms": {
         "add_xor": add_ms,
         "shift_left_65": shift_ms,
         "weight": weight_ms,
         "serialize": serialize_ms,
+        "to_coefficients": coefficients_ms,
+        "format": format_ms,
     },
     "storage_bytes": {
-        "packed_words": len(left.words) * 8,
+        "logical_packed_payload": len(left.words) * 8,
         "dense_uint64_coefficients": left.bit_length * 8,
         "versioned_serialization": len(serialized),
     },
+    "storage_carrier": str(type(left._words)),
 }, sort_keys=True, separators=(",", ":")))
 `
   .replaceAll("__DEGREE__", String(degree))
@@ -112,12 +119,17 @@ try {
     assert.equal(native.identity[4], true);
     assert.ok(
       native.storage_bytes.dense_uint64_coefficients /
-          native.storage_bytes.packed_words >=
+          native.storage_bytes.logical_packed_payload >=
         63,
     );
+    assert.match(native.storage_carrier, /BigUint64Array/);
     for (const milliseconds of Object.values(native.median_ms)) {
       assert.ok(Number.isFinite(milliseconds) && milliseconds >= 0);
     }
+    assert.ok(native.median_ms.format < 2_000);
+    assert.ok(dynamic.median_ms.format < 2_000);
+    assert.ok(native.median_ms.to_coefficients < 2_000);
+    assert.ok(dynamic.median_ms.to_coefficients < 2_000);
   }
   console.log(JSON.stringify({
     schema: "sagejs.benchmark/gf2-polynomial-packed-core-v1",

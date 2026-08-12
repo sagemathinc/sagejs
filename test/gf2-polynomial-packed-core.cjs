@@ -1,7 +1,7 @@
 "use strict";
 
 const assert = require("node:assert/strict");
-const { mkdtempSync, rmSync } = require("node:fs");
+const { existsSync, mkdtempSync, rmSync } = require("node:fs");
 const { tmpdir } = require("node:os");
 const { join } = require("node:path");
 const { spawnSync } = require("node:child_process");
@@ -18,6 +18,7 @@ const kernelSource = join(
   "polynomial",
   "gf2_packed.py",
 );
+const sage = process.env.SAGE_EXECUTABLE || "/home/user/sagelite/sage";
 
 function runSage(source, environment = {}) {
   const result = spawnSync(sagejs, ["--python"], {
@@ -43,12 +44,20 @@ from sagejs.polynomial_algorithms.gf2_packed_core import BitPolynomialStorage as
 
 a = B.from_coefficients([1, 0, 1, 1] + [0] * 62 + [1])
 b = B.from_coefficients([1, 1])
+maximum_word = B.from_words([2**64 - 1], 64)
+boundaries = [B.from_words([2**62], 63), maximum_word, B.from_words([0, 1], 65)]
 print(is_compiled(gf2_packed_xor), is_compiled(gf2_packed_shift_left))
+print(type(a._words))
+print([(value.bit_length, value.shift_left(1).shift_right(1) == value) for value in boundaries])
 print(a.bit_length, a.degree, a.weight())
 print(a.words)
 print((a + b).format())
 print(a.shift_left(65).shift_right(65) == a)
 print(B.from_bytes(a.to_bytes()) == a)
+print(B.zero().shift_left(2**64) == B.zero())
+print(B.zero().shift_right(2**64) == B.zero())
+print(maximum_word.weight(), maximum_word.shift_left(1).shift_right(1) == maximum_word)
+print(maximum_word + maximum_word == B.zero())
 bad = BitPolynomialView([1, 0], 1)
 output = [91, 92]
 output_length = [93]
@@ -82,10 +91,17 @@ for length in [0, 1, 2, 63, 64, 65, 127, 128, 129, 1025]:
 
 left = B.from_coefficients([1, 0, 1, 1])
 right = B.from_coefficients([1, 1])
+maximum_word = B.from_words([2**64 - 1], 64)
 assert (left + right).to_coefficients() == [0, 1, 1, 1]
 assert (left ^ right) == left + right
+assert maximum_word.weight() == 64
+assert maximum_word.to_coefficients() == [1] * 64
+assert maximum_word.shift_left(1).shift_right(1) == maximum_word
+assert maximum_word + maximum_word == B.zero()
 assert left.format() == "x^3 + x^2 + 1"
 assert B.zero().format() == "0"
+assert B.zero().shift_left(2**64) == B.zero()
+assert B.zero().shift_right(2**64) == B.zero()
 assert left.coefficient(1000) == 0
 try:
     left.coefficient(-1)
@@ -173,13 +189,121 @@ test("packed GF(2) kernels compile source-transparently and match fallback", () 
     assert.match(native, /^True True/m);
     assert.match(dynamic, /^False False/m);
     assert.equal(
-      native.replace(/^True True/m, "availability"),
-      dynamic.replace(/^False False/m, "availability"),
+      native
+        .replace(/^True True/m, "availability")
+        .replace(/^<(?:class '[^']+'|function BigUint64Array)>$/m, "carrier"),
+      dynamic
+        .replace(/^False False/m, "availability")
+        .replace(/^<class '[^']+'>$/m, "carrier"),
     );
     assert.match(native, /67 66 4/);
+    assert.match(native, /BigUint64Array/);
+    assert.equal((native.match(/BigUint64Array/g) || []).length, 1);
     assert.match(native, /x\^66 \+ x\^3 \+ x\^2 \+ x/);
     assert.match(native, /False\n\[91, 92\] \[93\]$/);
   } finally {
     rmSync(cache, { recursive: true, force: true });
   }
 });
+
+test("selective packed kernels retain UInt64Buffer storage", () => {
+  const cache = mkdtempSync(join(tmpdir(), "sagejs-gf2-packed-selective-"));
+  try {
+    const compilation = spawnSync(
+      sagejs,
+      [
+        "native",
+        "compile",
+        kernelSource,
+        "--functions",
+        "gf2_packed_xor",
+        "--cache-root",
+        cache,
+      ],
+      { cwd: root, encoding: "utf8", timeout: 60_000 },
+    );
+    if (compilation.error) throw compilation.error;
+    assert.equal(compilation.status, 0, compilation.stderr || compilation.stdout);
+    assert.match(compilation.stdout, /built 3 native functions?/);
+
+    const output = runSage(
+      String.raw`
+from sagejs.native import is_compiled
+from sagejs.kernels.polynomial.gf2_packed import (
+    gf2_packed_shift_left,
+    gf2_packed_valid,
+    gf2_packed_xor,
+)
+from sagejs.polynomial_algorithms.gf2_packed_core import BitPolynomialStorage as B
+a = B.from_coefficients([1, 0, 1, 1])
+b = B.from_coefficients([1, 1])
+added = a + b
+cancelled = a + a
+shifted = a.shift_left(1)
+mixed = shifted + b
+print(
+    is_compiled(gf2_packed_xor),
+    is_compiled(gf2_packed_valid),
+    is_compiled(gf2_packed_shift_left),
+)
+print(
+    type(a._words),
+    type(added._words),
+    type(cancelled._words),
+    type(shifted._words),
+    type(mixed._words),
+)
+print(added.format(), cancelled == B.zero(), mixed.format())
+`,
+      {
+        SAGEJS_NATIVE_CACHE_DIR: cache,
+      },
+    );
+    assert.match(output, /^True False False/m);
+    assert.equal((output.match(/BigUint64Array/g) || []).length, 5);
+    assert.match(output, /x\^3 \+ x\^2 \+ x True x\^4 \+ x\^3 \+ 1$/);
+  } finally {
+    rmSync(cache, { recursive: true, force: true });
+  }
+});
+
+test(
+  "packed GF(2) semantics agree with SageMath",
+  { skip: !existsSync(sage) },
+  () => {
+    const sageSource = String.raw`
+from sage.all import *
+R = PolynomialRing(GF(2), "x")
+x = R.gen()
+a = R([1, 0, 1, 1] + [0] * 62 + [1])
+b = R([1, 1])
+print([int(value) for value in a.list()])
+print(a)
+print([int(value) for value in (a + b).list()])
+print([int(value) for value in (a * x^65).list()])
+`;
+    const sageResult = spawnSync(sage, ["-c", sageSource], {
+      cwd: root,
+      encoding: "utf8",
+      timeout: 60_000,
+    });
+    if (sageResult.error) throw sageResult.error;
+    assert.equal(sageResult.status, 0, sageResult.stderr || sageResult.stdout);
+
+    const sagejsSource = String.raw`
+from sagejs.polynomial_algorithms.gf2_packed_core import BitPolynomialStorage as B
+a = B.from_coefficients([1, 0, 1, 1] + [0] * 62 + [1])
+b = B.from_coefficients([1, 1])
+print(a.to_coefficients())
+print(a.format())
+print((a + b).to_coefficients())
+print(a.shift_left(65).to_coefficients())
+`;
+    const sageOutput = sageResult.stdout
+      .split(/\r?\n/)
+      .filter((line) => !line.startsWith("//"))
+      .join("\n")
+      .trim();
+    assert.equal(runSage(sagejsSource), sageOutput);
+  },
+);
