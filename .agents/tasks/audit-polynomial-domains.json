@@ -1,0 +1,187 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "audit-polynomial-domains",
+  "title": "P1 polynomial domains audit",
+  "lane": "arithmetic-algebra",
+  "status": "review",
+  "owner": "user",
+  "objective": "Inventory public univariate polynomial workflows and implementation boundaries across ZZ[x], QQ[x], GF(p)[x], extension fields, and cyclotomic-relevant domains; record correctness, performance, and oracle coverage; and define prioritized independent contribution lanes with deterministic audit validation",
+  "base_commit": "3b0658fa3880a5efba21c80c3699071cdfb6a6c1",
+  "claims": [
+    "docs/audits/polynomial-domains.json",
+    "docs/audits/polynomial-domains.test.cjs"
+  ],
+  "dependencies": [],
+  "references": [
+    "SageMath univariate polynomial semantics",
+    "Sage.js ARCHITECTURE.md"
+  ],
+  "architecture": {
+    "strategy": "dynamic-python",
+    "fallback": "same-source",
+    "oracles": [
+      "repository source and focused regression tests",
+      "SageMath representative polynomial workflows"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "pnpm test:native",
+    "pnpm test:polynomial:performance",
+    "node --test docs/audits/polynomial-domains.test.cjs"
+  ],
+  "runs": [
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 12.403,
+      "started_at": "2026-08-12T06:50:19.510Z",
+      "commit": "098afe93dc9a9451e1f5a60505d53d4d13c3d1bf",
+      "workspace_fingerprint": "40eea6ad943b2121ac0d22e6f50072e45025e171159c4c99d8abb9f72a8bb737",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test docs/audits/polynomial-domains.test.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.131,
+      "started_at": "2026-08-12T06:50:37.023Z",
+      "commit": "098afe93dc9a9451e1f5a60505d53d4d13c3d1bf",
+      "workspace_fingerprint": "40eea6ad943b2121ac0d22e6f50072e45025e171159c4c99d8abb9f72a8bb737",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:native",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 149.061,
+      "started_at": "2026-08-12T06:50:45.460Z",
+      "commit": "098afe93dc9a9451e1f5a60505d53d4d13c3d1bf",
+      "workspace_fingerprint": "40eea6ad943b2121ac0d22e6f50072e45025e171159c4c99d8abb9f72a8bb737",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:native",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 590.178,
+      "started_at": "2026-08-12T06:53:43.695Z",
+      "commit": "098afe93dc9a9451e1f5a60505d53d4d13c3d1bf",
+      "workspace_fingerprint": "40eea6ad943b2121ac0d22e6f50072e45025e171159c4c99d8abb9f72a8bb737",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 12.572,
+      "started_at": "2026-08-12T07:14:48.077Z",
+      "commit": "05e0e370e1d41d5850577bbce2d7d9885901d8b0",
+      "workspace_fingerprint": "997bacce692f19c8e7a742449514cdebde5fe5f35bc2e8281db75e9f99a0bc27",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test docs/audits/polynomial-domains.test.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.121,
+      "started_at": "2026-08-12T07:15:01.236Z",
+      "commit": "05e0e370e1d41d5850577bbce2d7d9885901d8b0",
+      "workspace_fingerprint": "997bacce692f19c8e7a742449514cdebde5fe5f35bc2e8281db75e9f99a0bc27",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:native",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 588.953,
+      "started_at": "2026-08-12T07:15:07.640Z",
+      "commit": "05e0e370e1d41d5850577bbce2d7d9885901d8b0",
+      "workspace_fingerprint": "997bacce692f19c8e7a742449514cdebde5fe5f35bc2e8281db75e9f99a0bc27",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 13.534,
+      "started_at": "2026-08-12T07:25:53.504Z",
+      "commit": "4cc9d80a06e6596df3287173c4f24b22893e4758",
+      "workspace_fingerprint": "050ec3b5a5b7b88ac819d44d903862cc083cd816dc820a23b1c1011fde5c6542",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test docs/audits/polynomial-domains.test.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.141,
+      "started_at": "2026-08-12T07:26:07.807Z",
+      "commit": "4cc9d80a06e6596df3287173c4f24b22893e4758",
+      "workspace_fingerprint": "050ec3b5a5b7b88ac819d44d903862cc083cd816dc820a23b1c1011fde5c6542",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:native",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 37.697,
+      "started_at": "2026-08-12T07:26:23.753Z",
+      "commit": "4cc9d80a06e6596df3287173c4f24b22893e4758",
+      "workspace_fingerprint": "050ec3b5a5b7b88ac819d44d903862cc083cd816dc820a23b1c1011fde5c6542",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 13.378,
+      "started_at": "2026-08-12T07:42:43.562Z",
+      "commit": "3b0658fa3880a5efba21c80c3699071cdfb6a6c1",
+      "workspace_fingerprint": "36a759e182da05f23fee82e510eb7f44063482aa7f57485c8fba481e142a0b6c",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:native",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 553.363,
+      "started_at": "2026-08-12T07:43:03.225Z",
+      "commit": "3b0658fa3880a5efba21c80c3699071cdfb6a6c1",
+      "workspace_fingerprint": "36a759e182da05f23fee82e510eb7f44063482aa7f57485c8fba481e142a0b6c",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:polynomial:performance",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 12.453,
+      "started_at": "2026-08-12T07:53:49.876Z",
+      "commit": "3b0658fa3880a5efba21c80c3699071cdfb6a6c1",
+      "workspace_fingerprint": "36a759e182da05f23fee82e510eb7f44063482aa7f57485c8fba481e142a0b6c",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Added a machine-readable public univariate polynomial audit across six representation domains and eleven workflows, anchored to implementation and evidence records. The audit records SageMath 10.9.post1 oracles, current correctness and performance coverage, and seven bounded follow-up lanes; its deterministic test validates matrix completeness, source anchors, contribution-lane isolation, and unresolved P1 gaps without changing shared registries or mathematical implementations.",
+    "risks": [
+      "Large-prime and extension-field polynomials still depend on legacy opaque Node handles, and portable support is not established; the audit intentionally records this current snapshot instead of changing implementations.",
+      "The audit is documentation and ratcheting rather than a mathematical implementation; its platform-neutral source assertions run on Linux x64, while the recorded implementation gaps still need their own cross-platform contribution lanes.",
+      "The full native suite reached its final performance section on this base and passed all preceding builds, FFI, lifecycle, sanitizer, resource, and matrix migration checks. Its dense GF(p) multiply_500 timing missed the normalized 25 ms budget under concurrent lane builds (34.72 ms); an immediate isolated rerun passed at 24.99 ms. The polynomial performance matrix independently passed every audited polynomial budget.",
+      "The audit is pinned to source base 3b0658fa3880a5efba21c80c3699071cdfb6a6c1, and its source-drift assertions deliberately require an audit refresh when the recorded P1 gaps are fixed."
+    ],
+    "next_steps": [
+      "Schedule the P1 large-prime-polynomial-correctness lane first.",
+      "Schedule the independent P1 extension-polynomial-euclidean lane.",
+      "Schedule the P1 cyclotomic-polynomial-core lane with integration ownership for any shared polynomial.py dispatch edits."
+    ]
+  }
+}
