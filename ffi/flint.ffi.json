@@ -64,7 +64,7 @@
       "targets": {
         "dynamic": true,
         "native": true,
-        "wasm": false
+        "wasm": true
       }
     },
     {
@@ -5058,7 +5058,7 @@
       "targets": {
         "dynamic": true,
         "native": true,
-        "wasm": false
+        "wasm": true
       }
     },
     {
@@ -5117,7 +5117,7 @@
       "targets": {
         "dynamic": true,
         "native": true,
-        "wasm": false
+        "wasm": true
       }
     },
     {
@@ -5176,7 +5176,7 @@
       "targets": {
         "dynamic": true,
         "native": true,
-        "wasm": false
+        "wasm": true
       }
     },
     {
@@ -5280,7 +5280,7 @@
       "targets": {
         "dynamic": true,
         "native": true,
-        "wasm": false
+        "wasm": true
       }
     },
     {
@@ -5375,7 +5375,7 @@
       "targets": {
         "dynamic": true,
         "native": true,
-        "wasm": false
+        "wasm": true
       }
     },
     {
@@ -5540,7 +5540,7 @@
       "targets": {
         "dynamic": true,
         "native": true,
-        "wasm": false
+        "wasm": true
       }
     },
     {
@@ -6196,7 +6196,7 @@
       "targets": {
         "dynamic": true,
         "native": true,
-        "wasm": false
+        "wasm": true
       }
     },
     {
@@ -6465,7 +6465,7 @@
       "targets": {
         "dynamic": true,
         "native": true,
-        "wasm": false
+        "wasm": true
       }
     },
     {
@@ -7936,7 +7936,7 @@
       "targets": {
         "dynamic": true,
         "native": true,
-        "wasm": false
+        "wasm": true
       }
     },
     {
@@ -8005,7 +8005,7 @@
       "targets": {
         "dynamic": true,
         "native": true,
-        "wasm": false
+        "wasm": true
       }
     },
     {
@@ -8344,7 +8344,7 @@
       "targets": {
         "dynamic": true,
         "native": true,
-        "wasm": false
+        "wasm": true
       }
     },
     {
@@ -8439,7 +8439,7 @@
       "targets": {
         "dynamic": true,
         "native": true,
-        "wasm": false
+        "wasm": true
       }
     },
     {

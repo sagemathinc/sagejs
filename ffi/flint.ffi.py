@@ -50,7 +50,7 @@ FmpzMatrix = flint.resource(
     close="ffiFmpzMatrixClose",
     clear="sagejs_fmpz_matrix_clear",
     size="sagejs_fmpz_matrix_allocated_bytes",
-    wasm=False,
+    wasm=True,
 )
 
 
@@ -1430,7 +1430,7 @@ def fmpq_polynomial_deserialize(
         exception=OverflowError,
         message="integer matrix dimensions are too large",
     ),
-    wasm=False,
+    wasm=True,
 )
 def fmpz_matrix(rows: uint64, columns: uint64) -> FmpzMatrix: ...
 
@@ -1442,7 +1442,7 @@ def fmpz_matrix(rows: uint64, columns: uint64) -> FmpzMatrix: ...
     abi=[in_("matrix", sagejs_fmpz_matrix_t)],
     effects=Effects(pure=True),
     result=Direct(),
-    wasm=False,
+    wasm=True,
 )
 def fmpz_matrix_nrows(matrix: FmpzMatrix) -> uint64: ...
 
@@ -1454,7 +1454,7 @@ def fmpz_matrix_nrows(matrix: FmpzMatrix) -> uint64: ...
     abi=[in_("matrix", sagejs_fmpz_matrix_t)],
     effects=Effects(pure=True),
     result=Direct(),
-    wasm=False,
+    wasm=True,
 )
 def fmpz_matrix_ncols(matrix: FmpzMatrix) -> uint64: ...
 
@@ -1480,7 +1480,7 @@ def fmpz_matrix_ncols(matrix: FmpzMatrix) -> uint64: ...
         exception=ValueError,
         message="integer matrix entry is out of bounds",
     ),
-    wasm=False,
+    wasm=True,
 )
 def fmpz_matrix_set_entry(
     matrix: Writable[FmpzMatrix],
@@ -1506,7 +1506,7 @@ def fmpz_matrix_set_entry(
         exception=ValueError,
         message="integer matrix entry is out of bounds",
     ),
-    wasm=False,
+    wasm=True,
 )
 def fmpz_matrix_entry(
     matrix: FmpzMatrix,
@@ -1554,7 +1554,7 @@ def fmpz_matrix_export_mod_ui(
     ],
     effects=Effects(pure=False, allocates=True, raises=[RuntimeError]),
     result=Status(1, exception=RuntimeError, message="integer matrix copy failed"),
-    wasm=False,
+    wasm=True,
 )
 def fmpz_matrix_copy(source: FmpzMatrix) -> FmpzMatrix: ...
 
@@ -1710,7 +1710,7 @@ def fmpz_matrix_transpose(source: FmpzMatrix) -> FmpzMatrix: ...
         exception=ValueError,
         message="integer matrix dimensions are incompatible",
     ),
-    wasm=False,
+    wasm=True,
 )
 def fmpz_matrix_mul(left: FmpzMatrix, right: FmpzMatrix) -> FmpzMatrix: ...
 
@@ -1785,7 +1785,7 @@ def fmpz_matrix_rank_mod_46337(matrix: FmpzMatrix) -> uint64:
         exception=ValueError,
         message="determinant requires a square integer matrix",
     ),
-    wasm=False,
+    wasm=True,
 )
 def fmpz_matrix_det(source: FmpzMatrix) -> Integer: ...
 
@@ -2192,7 +2192,7 @@ def fmpz_matrix_nonzero_count(source: FmpzMatrix) -> uint64: ...
     ],
     effects=Effects(pure=False, allocates=True, raises=[RuntimeError]),
     result=Status(1, exception=RuntimeError, message="integer matrix format failed"),
-    wasm=False,
+    wasm=True,
 )
 def fmpz_matrix_format(source: FmpzMatrix) -> FlintByteRegion: ...
 
@@ -2211,7 +2211,7 @@ def fmpz_matrix_format(source: FmpzMatrix) -> FlintByteRegion: ...
         exception=OverflowError,
         message="integer matrix serialization is too large",
     ),
-    wasm=False,
+    wasm=True,
 )
 def fmpz_matrix_serialize(source: FmpzMatrix) -> FlintByteRegion: ...
 
@@ -2304,7 +2304,7 @@ def flint_byte_region_set(
         exception=ValueError,
         message="invalid SJZM v1 integer matrix serialization",
     ),
-    wasm=False,
+    wasm=True,
 )
 def fmpz_matrix_deserialize(source: FlintByteRegion) -> FmpzMatrix: ...
 
@@ -2325,7 +2325,7 @@ def fmpz_matrix_deserialize(source: FlintByteRegion) -> FmpzMatrix: ...
         exception=ValueError,
         message="invalid packed integer matrix entries",
     ),
-    wasm=False,
+    wasm=True,
 )
 def fmpz_matrix_deserialize_entries(
     source: FlintByteRegion,

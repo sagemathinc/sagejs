@@ -1,0 +1,217 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "wasm-fmpz-matrix-resources",
+  "title": "Wasm Fmpz Matrix Resources",
+  "lane": "integration",
+  "status": "active",
+  "owner": "user",
+  "objective": "Enable a decisive generated FmpzMatrix resource vertical slice in browser WebAssembly, including construction, mutation, access, copy, multiplication, determinant, formatting, serialization, byte ingress, public dense ZZ matrix behavior, failure atomicity, lifecycle accounting, and cold/warm measurement without handwritten operation-specific adapters",
+  "base_commit": "d2eaeaf7a3bdcfb83650c5a4471e697498a1e62a",
+  "claims": [
+    "ffi/flint.ffi.py",
+    "ffi/flint.ffi.json",
+    "architecture/native-boundaries.json",
+    "architecture/package-graph.json",
+    "packages/flint/generated/",
+    "src/baselib/sagejs/ffi/flint.py",
+    "src/lib/sagejs/ffi/flint.py",
+    "packages/flint-wasm/scripts/build.cjs",
+    "packages/flint-wasm/evaluator.mjs",
+    "packages/flint-wasm/package.json",
+    "packages/flint-wasm/README.md",
+    "packages/flint-wasm/test/fmpz-resource.test.mjs",
+    "packages/flint-wasm/test/fmpq-resource.test.mjs",
+    "packages/flint-wasm/test/resource.test.mjs",
+    "packages/flint-wasm/test/resource-browser-smoke.mjs",
+    "test/ffi-wasm-fmpz-resource-core.cjs",
+    "test/node-test-manifest.cjs",
+    "bench/wasm-fmpz-matrix-resources.cjs",
+    ".agents/tasks/wasm-fmpz-matrix-resources.json"
+  ],
+  "dependencies": [],
+  "references": [
+    "CoWasm FLINT/GMP WebAssembly toolchain",
+    "existing generated FmpqMatrix Wasm resource slice"
+  ],
+  "architecture": {
+    "strategy": "external-library",
+    "fallback": "tested-capability",
+    "oracles": [
+      "generated Node FmpzMatrix resource surface",
+      "public Sage.js dense ZZ matrices",
+      "SageMath dense integer matrices and SagePack roundtrip"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "node --test test/ffi-wasm-fmpz-resource-core.cjs",
+    "node test/fmpz-matrix-resource-ffi.cjs",
+    "pnpm --dir packages/flint-wasm test",
+    "node packages/flint-wasm/test/resource-browser-smoke.mjs",
+    "pnpm architecture:check",
+    "pnpm test:portable",
+    "pnpm test:baselib:strict"
+  ],
+  "runs": [
+    {
+      "command": "node --test test/ffi-wasm-fmpz-resource-core.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.098,
+      "started_at": "2026-08-12T05:41:23.191Z",
+      "commit": "591e5d97440973f6007b378bc4257592a3078eb6",
+      "workspace_fingerprint": "8a2f8893ab35cd43ce163b165ea623b7d19a12370f30063388f6503b05f2c30f",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node test/fmpz-matrix-resource-ffi.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2,
+      "started_at": "2026-08-12T05:41:24.893Z",
+      "commit": "591e5d97440973f6007b378bc4257592a3078eb6",
+      "workspace_fingerprint": "8a2f8893ab35cd43ce163b165ea623b7d19a12370f30063388f6503b05f2c30f",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm --dir packages/flint-wasm test",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 16.288,
+      "started_at": "2026-08-12T05:41:32.008Z",
+      "commit": "591e5d97440973f6007b378bc4257592a3078eb6",
+      "workspace_fingerprint": "8a2f8893ab35cd43ce163b165ea623b7d19a12370f30063388f6503b05f2c30f",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node packages/flint-wasm/test/resource-browser-smoke.mjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 4.126,
+      "started_at": "2026-08-12T05:41:48.903Z",
+      "commit": "591e5d97440973f6007b378bc4257592a3078eb6",
+      "workspace_fingerprint": "8a2f8893ab35cd43ce163b165ea623b7d19a12370f30063388f6503b05f2c30f",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 12.815,
+      "started_at": "2026-08-12T05:41:59.884Z",
+      "commit": "591e5d97440973f6007b378bc4257592a3078eb6",
+      "workspace_fingerprint": "8a2f8893ab35cd43ce163b165ea623b7d19a12370f30063388f6503b05f2c30f",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 39.141,
+      "started_at": "2026-08-12T05:42:13.310Z",
+      "commit": "591e5d97440973f6007b378bc4257592a3078eb6",
+      "workspace_fingerprint": "8a2f8893ab35cd43ce163b165ea623b7d19a12370f30063388f6503b05f2c30f",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 38.608,
+      "started_at": "2026-08-12T05:42:57.808Z",
+      "commit": "591e5d97440973f6007b378bc4257592a3078eb6",
+      "workspace_fingerprint": "8a2f8893ab35cd43ce163b165ea623b7d19a12370f30063388f6503b05f2c30f",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 37.857,
+      "started_at": "2026-08-12T05:49:13.457Z",
+      "commit": "591e5d97440973f6007b378bc4257592a3078eb6",
+      "workspace_fingerprint": "0ce33b1d03b599113d194b450996df0c4c044e0a09153eb4afc202a9678d0ef5",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/ffi-wasm-fmpz-resource-core.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.088,
+      "started_at": "2026-08-12T05:50:06.486Z",
+      "commit": "591e5d97440973f6007b378bc4257592a3078eb6",
+      "workspace_fingerprint": "0ce33b1d03b599113d194b450996df0c4c044e0a09153eb4afc202a9678d0ef5",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node test/fmpz-matrix-resource-ffi.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.935,
+      "started_at": "2026-08-12T05:50:12.067Z",
+      "commit": "591e5d97440973f6007b378bc4257592a3078eb6",
+      "workspace_fingerprint": "0ce33b1d03b599113d194b450996df0c4c044e0a09153eb4afc202a9678d0ef5",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm --dir packages/flint-wasm test",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 15.883,
+      "started_at": "2026-08-12T05:50:18.111Z",
+      "commit": "591e5d97440973f6007b378bc4257592a3078eb6",
+      "workspace_fingerprint": "0ce33b1d03b599113d194b450996df0c4c044e0a09153eb4afc202a9678d0ef5",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node packages/flint-wasm/test/resource-browser-smoke.mjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 3.894,
+      "started_at": "2026-08-12T05:50:39.643Z",
+      "commit": "591e5d97440973f6007b378bc4257592a3078eb6",
+      "workspace_fingerprint": "0ce33b1d03b599113d194b450996df0c4c044e0a09153eb4afc202a9678d0ef5",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 14.306,
+      "started_at": "2026-08-12T05:50:47.682Z",
+      "commit": "591e5d97440973f6007b378bc4257592a3078eb6",
+      "workspace_fingerprint": "0ce33b1d03b599113d194b450996df0c4c044e0a09153eb4afc202a9678d0ef5",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 12.28,
+      "started_at": "2026-08-12T05:51:09.329Z",
+      "commit": "591e5d97440973f6007b378bc4257592a3078eb6",
+      "workspace_fingerprint": "0ce33b1d03b599113d194b450996df0c4c044e0a09153eb4afc202a9678d0ef5",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Enabled the existing declared FmpzMatrix resource and twelve operations in the generic FLINT Wasm adapter with no generator or handwritten native changes. Public browser matrix(ZZ) construction, mutation, access, copy, multiplication, determinant, formatting, and SagePack roundtrip now remain generated FLINT resources. Added copied-byte ingress, deterministic and finalizer cleanup tests, failure-atomicity coverage, generated-code inspection, size ratchets, and cold/warm measurements. The 4,953,137-byte FLINT payload is only 5,767 bytes (0.12%) larger than the previous package artifact; measured cold instantiation was 38.0 ms, first bulk construction 1.17 ms, first multiplication 0.69 ms, warm multiplication median 0.33 ms, and serialize/copy/ingress/deserialize 0.63 ms for a 48x48 matrix.",
+    "risks": [
+      "Formatted and serialized values deliberately cross the Wasm boundary by copy; resource-to-resource operations do not copy or materialize entries on the host.",
+      "The browser host added here exposes only data-only SagePack operations; filesystem and unrelated host operations remain unavailable.",
+      "This is a decisive production slice, not the complete FmpzMatrix declaration surface; unselected operations retain their existing tested fallback."
+    ],
+    "next_steps": [
+      "Enable additional FmpzMatrix resource operations declaratively according to public use and measured performance.",
+      "Apply the same generated-resource pattern to exact polynomial families in browser Wasm.",
+      "Keep the CoWasm toolchain and browser package payload ratchets exercised in CI."
+    ]
+  }
+}

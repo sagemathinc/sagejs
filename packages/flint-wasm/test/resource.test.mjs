@@ -7,6 +7,12 @@ import { instantiateFlintFactor } from "../index.mjs";
 const wasm = await fs.readFile(
   new URL("../dist/flint-factor.wasm", import.meta.url),
 );
+const resourceBackend = await fs.readFile(
+  new URL("../dist/ffi-resource-backend.mjs", import.meta.url),
+);
+const serializationBackend = await fs.readFile(
+  new URL("../dist/serialization.mjs", import.meta.url),
+);
 const flint = await instantiateFlintFactor(wasm);
 
 function liveResources() {
@@ -14,11 +20,24 @@ function liveResources() {
 }
 
 test("loads the generated resource backend through the public package", () => {
+  assert.ok(
+    wasm.byteLength <= 5_050_000,
+    `FLINT Wasm payload grew to ${wasm.byteLength} bytes`,
+  );
+  assert.ok(
+    resourceBackend.byteLength <= 32_000,
+    `generated resource backend grew to ${resourceBackend.byteLength} bytes`,
+  );
+  assert.ok(
+    serializationBackend.byteLength <= 50_000,
+    `browser SagePack backend grew to ${serializationBackend.byteLength} bytes`,
+  );
   assert.equal(
     flint.__sagejs_ffi_manifest__.library,
     flint.__sagejs_ffi_manifest__.declaration,
   );
   assert.deepEqual(flint.__sagejs_ffi_manifest__.resources, [
+    "fmpz_matrix",
     "fmpq_matrix",
     "fmpq_value",
     "byte_region",

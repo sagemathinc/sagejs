@@ -89,6 +89,10 @@ const symbolicBackendOutput = path.join(
   outputDirectory,
   "symbolic-backend.mjs",
 );
+const serializationOutput = path.join(
+  outputDirectory,
+  "serialization.mjs",
+);
 const plotlyOutput = path.join(outputDirectory, "plotly.min.js");
 const compilerSource = path.join(
   repositoryRoot,
@@ -195,6 +199,7 @@ const resourceAdapter = generatedWasmResourceAdapter(flintDeclaration, {
   resourceIds: [
     "byte_region",
     "dirichlet_group",
+    "fmpz_matrix",
     "fmpq_matrix",
     "fmpq_value",
   ],
@@ -202,6 +207,18 @@ const resourceAdapter = generatedWasmResourceAdapter(flintDeclaration, {
     "dirichlet_group_init",
     "dirichlet_group_size",
     "dirichlet_group_num_primitive",
+    "fmpz_matrix",
+    "fmpz_matrix_copy",
+    "fmpz_matrix_deserialize",
+    "fmpz_matrix_deserialize_entries",
+    "fmpz_matrix_det",
+    "fmpz_matrix_entry",
+    "fmpz_matrix_format",
+    "fmpz_matrix_mul",
+    "fmpz_matrix_ncols",
+    "fmpz_matrix_nrows",
+    "fmpz_matrix_serialize",
+    "fmpz_matrix_set_entry",
     "fmpq_matrix",
     "fmpq_matrix_copy",
     "fmpq_matrix_deserialize",
@@ -415,6 +432,15 @@ esbuild.buildSync({
   platform: "browser",
   target: ["es2022"],
   outfile: symbolicBackendOutput,
+  minify: true,
+});
+esbuild.buildSync({
+  entryPoints: [path.join(repositoryRoot, "tools", "serialization.ts")],
+  bundle: true,
+  format: "esm",
+  platform: "browser",
+  target: ["es2022"],
+  outfile: serializationOutput,
   minify: true,
 });
 const compilerFrontendBuild = esbuild.build({
