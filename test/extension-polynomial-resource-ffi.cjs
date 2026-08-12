@@ -92,7 +92,23 @@ int main(void)
             coordinates->data[4] != 1 ||
             sagejs_fq_polynomial_length(left) != 3 ||
             sagejs_fq_polynomial_degree(left) != 2 ||
-            sagejs_fq_polynomial_coordinate(left, 0, 1) != 2)
+            sagejs_fq_polynomial_coordinate(left, 0, 1) != 2 ||
+            sagejs_fq_polynomial_length(sum) != 3 ||
+            sagejs_fq_polynomial_coordinate(sum, 0, 0) != 0 ||
+            sagejs_fq_polynomial_coordinate(sum, 0, 1) != 2 ||
+            sagejs_fq_polynomial_coordinate(sum, 1, 0) != 1 ||
+            sagejs_fq_polynomial_coordinate(sum, 1, 1) != 2 ||
+            sagejs_fq_polynomial_length(product) != 4 ||
+            sagejs_fq_polynomial_coordinate(product, 0, 0) != 2 ||
+            sagejs_fq_polynomial_coordinate(product, 0, 1) != 1 ||
+            sagejs_fq_polynomial_coordinate(product, 1, 0) != 2 ||
+            sagejs_fq_polynomial_coordinate(product, 1, 1) != 2 ||
+            sagejs_fq_polynomial_coordinate(product, 2, 0) != 0 ||
+            sagejs_fq_polynomial_coordinate(product, 2, 1) != 2 ||
+            sagejs_fq_polynomial_coordinate(product, 3, 0) != 0 ||
+            sagejs_fq_polynomial_coordinate(product, 3, 1) != 1 ||
+            sagejs_fq_polynomial_coordinate(negated, 0, 0) != 1 ||
+            sagejs_fq_polynomial_coordinate(negated, 3, 1) != 2)
             return 4;
         sagejs_flint_byte_region_clear(coordinates);
 
