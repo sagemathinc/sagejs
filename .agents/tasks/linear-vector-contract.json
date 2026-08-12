@@ -1,0 +1,95 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "linear-vector-contract",
+  "title": "Linear Vector Contract",
+  "lane": "arithmetic-algebra",
+  "status": "review",
+  "owner": "user",
+  "objective": "Implement ordinary CPython-parseable vector zero/support, pairwise/outer products, norm, and normalization contracts over ZZ QQ and GF(p)",
+  "base_commit": "97116b99d9b24ded43c80ec547fd9c1e8f77efbd",
+  "claims": [
+    "src/lib/sagejs/linear_algebra/vector_contract.py",
+    "test/linear-vector-contract.cjs",
+    "bench/linear-vector-contract.cjs"
+  ],
+  "dependencies": [],
+  "references": [
+    "SageMath 10.9.post2 dense free-module element semantics"
+  ],
+  "architecture": {
+    "strategy": "dynamic-python",
+    "fallback": "same-source",
+    "oracles": [
+      "sage"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "pnpm test:native"
+  ],
+  "runs": [
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 16.044,
+      "started_at": "2026-08-12T08:52:07.663Z",
+      "commit": "97116b99d9b24ded43c80ec547fd9c1e8f77efbd",
+      "workspace_fingerprint": "32fd695adbdd9183026a6f1f351031d26c03f1ae26fdf03db6ee1dd7020385ce",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:native",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 561.117,
+      "started_at": "2026-08-12T08:52:24.606Z",
+      "commit": "97116b99d9b24ded43c80ec547fd9c1e8f77efbd",
+      "workspace_fingerprint": "32fd695adbdd9183026a6f1f351031d26c03f1ae26fdf03db6ee1dd7020385ce",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node test/linear-vector-contract.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.011,
+      "started_at": "2026-08-12T09:01:46.441Z",
+      "commit": "97116b99d9b24ded43c80ec547fd9c1e8f77efbd",
+      "workspace_fingerprint": "32fd695adbdd9183026a6f1f351031d26c03f1ae26fdf03db6ee1dd7020385ce",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/linear-vector-contract.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 4.269,
+      "started_at": "2026-08-12T09:01:48.128Z",
+      "commit": "97116b99d9b24ded43c80ec547fd9c1e8f77efbd",
+      "workspace_fingerprint": "32fd695adbdd9183026a6f1f351031d26c03f1ae26fdf03db6ee1dd7020385ce",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Added an ordinary CPython-parseable, storage-neutral dense-vector contract for zero/support scans, pairwise products, row-major outer products, p-norms, and non-mutating normalization. Explicit absolute-value, root, and division protocols keep exact/symbolic parent widening under the public integration layer's control. CPython and Sage.js fixtures cover SageMath 10.9.post2 semantics over ZZ, QQ, and GF(7), including finite-field rejection, empty and zero vectors, shape failures, allocation, and preserved source mutability. A five-sample Linux x64 benchmark records length-10,000 support, pairwise product, and norm workloads plus a 100x120 outer product.",
+    "risks": [
+      "This preparation lane intentionally does not expose methods on public Vector, so integration must apply canonical vector coercion before pairwise products and canonical matrix product-parent selection before outer products.",
+      "The helper returns flattened outer-product entries because it cannot construct Matrix without importing the high-contention public module; integration must preserve len(left) by len(right) shape, including zero dimensions.",
+      "Sage.js currently lacks a public finite-field absolute-value error, so integration must supply a callback that raises ArithmeticError rather than accidentally using the canonical residue's numeric absolute value.",
+      "The helper is not yet registered in pyrightconfig.json or the Node test manifest; those are shared integration-lane files."
+    ],
+    "next_steps": [
+      "Rebase onto integration commit ba436f6 so src/lib/sagejs/linear_algebra/ has its lazy package owner.",
+      "Add src/lib/sagejs/linear_algebra/vector_contract.py to pyrightconfig.json and test/linear-vector-contract.cjs to the Node test manifest.",
+      "Wire is_zero, support/nonzero_positions, pairwise_product, outer_product, norm, and normalized onto Vector in src/baselib/matrix.py using canonical coercion/result constructors and without adding a mutating normalize method.",
+      "After public wiring, add public Sage differential fixtures for parent identity and consider packed vector kernels only from measured public bottlenecks."
+    ]
+  }
+}
