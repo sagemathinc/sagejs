@@ -4,7 +4,7 @@
   "id": "timing-core-v1",
   "title": "Timing Core v1",
   "lane": "compiler-runtime",
-  "status": "review",
+  "status": "complete",
   "owner": "user",
   "objective": "Unify interactive time measurement around high-resolution execution-only boundaries, report Node CPU and wall time, provide browser wall-only parity, and instrument nested lazy initialization spans.",
   "base_commit": "b21b652c83afe6867ef17da61b691abf40ab6f9f",
@@ -241,7 +241,7 @@
       "`pnpm test:changed` selected broad inherited native work and passed build, architecture, unit, strict Python, compiler, integration, and most native checks before an unrelated dense-GF(p) `multiply_300` performance sample exceeded its normalized budget (19.41ms versus 15ms). The timing lane does not change matrix or native code; all exact contract validation commands were rerun with fresh passing receipts."
     ],
     "next_steps": [
-      "Integrate this lane, then implement `%timeit` as a separate statistical benchmarking feature built on the shared execution boundary.",
+      "Implement `%timeit` as a separate statistical benchmarking feature built on the shared execution boundary.",
       "Add additional named initialization spans only at measured lazy-loading choke points so ordinary execution output stays concise."
     ]
   }
