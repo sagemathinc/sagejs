@@ -4,7 +4,7 @@
   "id": "darwin-accelerate-fflas",
   "title": "Darwin Accelerate-backed FFLAS",
   "lane": "integration",
-  "status": "review",
+  "status": "complete",
   "owner": "user",
   "objective": "Use Apple Accelerate as the generated FFLAS/FFPACK BLAS backend on native macOS while preserving Linux OpenBLAS and Windows capability fallback, with ARM64 differential tests and a forced-result GF(7) matrix multiplication benchmark.",
   "base_commit": "7792f9072335667b539ee79e7babff82bab9056c",
