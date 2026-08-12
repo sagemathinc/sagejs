@@ -14,6 +14,38 @@ async function main() {
       "<class 'sage.symbolic.expression.Expression'>",
     );
     assert.equal((await session.evaluate("f = sin(x^2)\nf")).repr, "sin(x^2)");
+    assert.equal((await session.evaluate("cos(1)")).repr, "cos(1)");
+    assert.equal((await session.evaluate("cos(ZZ(1))")).repr, "cos(1)");
+    assert.equal((await session.evaluate("cos(QQ(1,2))")).repr, "cos(1/2)");
+    assert.equal((await session.evaluate("cos(x)")).repr, "cos(x)");
+    assert.ok(
+      Math.abs(
+        Number((await session.evaluate("cos(float(1))")).repr) - Math.cos(1),
+      ) < 1e-15,
+    );
+    assert.ok(
+      Math.abs(
+        Number((await session.evaluate("cos(float(-4))")).repr) - Math.cos(-4),
+      ) < 1e-15,
+    );
+    assert.ok(
+      Math.abs(
+        Number((await session.evaluate("cos(float(0.5))")).repr) -
+          Math.cos(0.5),
+      ) < 1e-15,
+    );
+    assert.equal(
+      (await session.evaluate("type(cos(complex(1,2)))")).repr,
+      "<class 'complex'>",
+    );
+    assert.equal(
+      (await session.evaluate("cos(complex(1,2))")).repr,
+      "(2.0327230070196656-3.0518977991518j)",
+    );
+    await assert.rejects(
+      session.evaluate("cos(object())"),
+      /cannot convert object to a symbolic expression/,
+    );
     assert.equal((await session.evaluate("f.subs(x=2)")).repr, "sin(4)");
     assert.equal(
       (await session.evaluate("f.derivative(x)")).repr,

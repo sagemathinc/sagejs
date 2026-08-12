@@ -214,17 +214,18 @@ def _expression_tree(value: Any) -> Any:
         return value._tree
     if runtime.jstype(value) in ("object", "function"):
         value_parent = runtime.reflect.get(value, "_parent")
-        parent_kind = runtime.reflect.get(value_parent, "_kind")
-        if parent_kind in ("RealField", "RDF"):
-            return float(value)
-        construction = runtime.reflect.get(value_parent, "_construction")
-        if (
-            runtime.jstype(construction) == "object"
-            and runtime.reflect.get(construction, "kind") == "polynomial"
-        ):
-            base_ring = runtime.reflect.get(value_parent, "_base")
-            if base_ring is sage.ZZ or base_ring is sage.QQ:
-                return _call_backend("parse", [str(value)])
+        if runtime.jstype(value_parent) in ("object", "function"):
+            parent_kind = runtime.reflect.get(value_parent, "_kind")
+            if parent_kind in ("RealField", "RDF"):
+                return float(value)
+            construction = runtime.reflect.get(value_parent, "_construction")
+            if (
+                runtime.jstype(construction) == "object"
+                and runtime.reflect.get(construction, "kind") == "polynomial"
+            ):
+                base_ring = runtime.reflect.get(value_parent, "_base")
+                if base_ring is sage.ZZ or base_ring is sage.QQ:
+                    return _call_backend("parse", [str(value)])
     if isinstance(value, sage.Rational):
         if value.denominator() == 1:
             return runtime.normalize_integer(value.numerator())
@@ -1074,13 +1075,27 @@ runtime.reflect.set(
 )
 
 
+def _complex_numeric_function(name: str, value: complex) -> complex:
+    loader = runtime.reflect.get(runtime.global_object, "__sagejs_load_module__")
+    if loader is runtime.undefined:
+        raise RuntimeError("the Python module loader is unavailable")
+    module = runtime.reflect.apply(loader, runtime.undefined, ["cmath"])
+    function_name = "log" if name == "Ln" else name.lower()
+    target = runtime.reflect.get(module, function_name)
+    if runtime.jstype(target) != "function":
+        raise TypeError(function_name + "() does not accept complex values")
+    return runtime.reflect.apply(target, runtime.undefined, [value])
+
+
 def _symbolic_function(
     name: str,
     value: Any,
     numeric_function: Callable[[float], float],
 ) -> Any:
-    if runtime.jstype(value) == "number" and not runtime.number.isSafeInteger(value):
-        return numeric_function(value)
+    if isinstance(value, complex):
+        return _complex_numeric_function(name, value)
+    if isinstance(value, float):
+        return numeric_function(runtime.number(value))
     parent_value = getattr(value, "_parent", None)
     if getattr(parent_value, "_kind", None) in ["RDF", "RealField"]:
         return numeric_function(float(value))
