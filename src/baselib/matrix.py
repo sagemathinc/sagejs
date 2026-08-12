@@ -1149,13 +1149,15 @@ class MatrixSpaceParent(sage.Parent):
             resource.close()
             raise
 
-    def _from_fmpz_matrix_resource(self, resource: Any) -> Matrix:
-        """Take ownership of a checked generated FLINT matrix resource."""
+    def _from_fmpz_matrix_resource(
+        self, resource: Any, check_dimensions: bool = True
+    ) -> Matrix:
+        """Take ownership of a generated FLINT matrix resource."""
         if self._base is not sage.ZZ:
             resource.close()
             raise TypeError("FLINT integer matrix storage requires ZZ")
         ffi = _flint_ffi_module()
-        if (
+        if check_dimensions and (
             runtime.number(ffi.fmpz_matrix_nrows(resource)) != self._rows
             or runtime.number(ffi.fmpz_matrix_ncols(resource)) != self._cols
         ):
@@ -1294,13 +1296,15 @@ class MatrixSpaceParent(sage.Parent):
             resource.close()
             raise
 
-    def _from_fmpq_matrix_resource(self, resource: Any) -> Matrix:
-        """Take ownership of a checked generated FLINT matrix resource."""
+    def _from_fmpq_matrix_resource(
+        self, resource: Any, check_dimensions: bool = True
+    ) -> Matrix:
+        """Take ownership of a generated FLINT matrix resource."""
         if self._base is not sage.QQ:
             resource.close()
             raise TypeError("FLINT rational matrix storage requires QQ")
         ffi = _flint_ffi_module()
-        if (
+        if check_dimensions and (
             runtime.number(ffi.fmpq_matrix_nrows(resource)) != self._rows
             or runtime.number(ffi.fmpq_matrix_ncols(resource)) != self._cols
         ):
@@ -3100,18 +3104,25 @@ class Matrix(sage.Element):
         )
 
     def __neg__(self) -> Matrix:
+        if self._has_fmpz_matrix_resource():
+            resource = _flint_ffi_module().fmpz_matrix_neg(self._integer_resource())
+            _trace_dense_integer_selection(
+                "negate",
+                "generated-flint-resource",
+                self.nrows(),
+                self.ncols(),
+            )
+            return self._parent._from_fmpz_matrix_resource(resource, False)
+        if self._has_fmpq_matrix_resource():
+            resource = _flint_ffi_module().fmpq_matrix_neg(self._rational_resource())
+            _trace_dense_rational_selection(
+                "negate",
+                "generated-flint-resource",
+                self.nrows(),
+                self.ncols(),
+            )
+            return self._parent._from_fmpq_matrix_resource(resource, False)
         if self._has_packed_rational_storage():
-            if self._has_fmpq_matrix_resource():
-                resource = _flint_ffi_module().fmpq_matrix_neg(
-                    self._rational_resource()
-                )
-                _trace_dense_rational_selection(
-                    "negate",
-                    "generated-flint-resource",
-                    self.nrows(),
-                    self.ncols(),
-                )
-                return self._parent._from_fmpq_matrix_resource(resource)
             kernel = _dense_rational_kernel_module().dense_rational_matrix_negate
             source_numerators, source_denominators = self._rational_kernel_parts(kernel)
 
@@ -3142,15 +3153,6 @@ class Matrix(sage.Element):
             return self._parent._from_canonical_rational_entries(
                 storage.numerators, storage.denominators
             )
-        if self._has_integer_storage():
-            resource = _flint_ffi_module().fmpz_matrix_neg(self._integer_resource())
-            _trace_dense_integer_selection(
-                "negate",
-                "generated-flint-resource",
-                self.nrows(),
-                self.ncols(),
-            )
-            return self._parent._from_fmpz_matrix_resource(resource)
         if self._has_m4ri_matrix_resource():
             resource = _m4ri_ffi_module().matrix_copy(self._m4ri_resource())
             _trace_dense_prime_selection(
@@ -3192,6 +3194,36 @@ class Matrix(sage.Element):
             self.base_ring()
         ):
             return self.change_ring(_untyped(scalar_parent))._scalar_mul(scalar)
+        if self._has_fmpz_matrix_resource() and runtime.is_exact_integer(scalar):
+            resource = _flint_ffi_module().fmpz_matrix_scalar_mul(
+                self._integer_resource(), scalar
+            )
+            _trace_dense_integer_selection(
+                "scalar_multiply",
+                "generated-flint-resource",
+                self.nrows(),
+                self.ncols(),
+            )
+            return self._parent._from_fmpz_matrix_resource(resource, False)
+        if self._has_fmpq_matrix_resource() and (
+            runtime.is_exact_integer(scalar) or isinstance(scalar, sage.Rational)
+        ):
+            if isinstance(scalar, sage.Rational):
+                numerator = scalar._numerator
+                denominator = scalar._denominator
+            else:
+                numerator = runtime.integer_bigint(scalar)
+                denominator = runtime.bigint(1)
+            resource = _flint_ffi_module().fmpq_matrix_scalar_mul(
+                self._rational_resource(), numerator, denominator
+            )
+            _trace_dense_rational_selection(
+                "scalar_multiply",
+                "generated-flint-resource",
+                self.nrows(),
+                self.ncols(),
+            )
+            return self._parent._from_fmpq_matrix_resource(resource, False)
         if _is_extension_field_base(self.base_ring()):
             value = self.base_ring()(scalar)
             native_value = runtime.flint_backend().fqMatrixScalarMul(
@@ -3271,7 +3303,7 @@ class Matrix(sage.Element):
                 self.nrows(),
                 self.ncols(),
             )
-            return self._parent._from_fmpz_matrix_resource(resource)
+            return self._parent._from_fmpz_matrix_resource(resource, False)
         if self._has_packed_rational_storage():
             rational = sage.QQ(scalar)
             if self._has_fmpq_matrix_resource():
@@ -3286,7 +3318,7 @@ class Matrix(sage.Element):
                     self.nrows(),
                     self.ncols(),
                 )
-                return self._parent._from_fmpq_matrix_resource(resource)
+                return self._parent._from_fmpq_matrix_resource(resource, False)
             kernel = (
                 _dense_rational_kernel_module().dense_rational_matrix_scalar_multiply
             )
@@ -3570,6 +3602,17 @@ class Matrix(sage.Element):
         _base, numerator, denominator = _scalar_parts(scalar)
         if numerator == 0:
             raise ZeroDivisionError("matrix division by zero")
+        if self._has_fmpq_matrix_resource():
+            resource = _flint_ffi_module().fmpq_matrix_scalar_mul(
+                self._rational_resource(), denominator, numerator
+            )
+            _trace_dense_rational_selection(
+                "scalar_divide",
+                "generated-flint-resource",
+                self.nrows(),
+                self.ncols(),
+            )
+            return self._parent._from_fmpq_matrix_resource(resource, False)
         reciprocal = runtime.rational_class(denominator, numerator)
         return self._scalar_mul(reciprocal)
 
