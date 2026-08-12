@@ -4,7 +4,7 @@
   "id": "matrix-subspaces-contract",
   "title": "Matrix Subspaces Contract",
   "lane": "arithmetic-algebra",
-  "status": "review",
+  "status": "active",
   "owner": "user",
   "objective": "Define storage-neutral canonical row/column-space planning and execution that reuses one echelon result and bulk-selects its first rank rows, with Sage differential semantics and performance witnesses, ready for later Matrix API wiring",
   "base_commit": "5a1cc59fc7fddad7648e98dc2d341a2455853754",
@@ -101,10 +101,60 @@
       "commit": "5a1cc59fc7fddad7648e98dc2d341a2455853754",
       "workspace_fingerprint": "3ede5d831e1f2466f5ad551acaad0d262adb7e34755c8f855fd312d3594999ee",
       "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/linear-matrix-subspaces.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 3.361,
+      "started_at": "2026-08-12T10:49:45.863Z",
+      "commit": "ed6ff750fdcbcdb24a3f0d89dbca933f1ec7f85a",
+      "workspace_fingerprint": "7d6d2c3dfb3abc6607ed7783b3905557171966631c111fde286df52461187d70",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/linear-matrix-subspaces.cjs --check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 20.306,
+      "started_at": "2026-08-12T10:49:49.908Z",
+      "commit": "ed6ff750fdcbcdb24a3f0d89dbca933f1ec7f85a",
+      "workspace_fingerprint": "7d6d2c3dfb3abc6607ed7783b3905557171966631c111fde286df52461187d70",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm exec pyright src/lib/sagejs/linear_algebra/matrix_subspaces.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.274,
+      "started_at": "2026-08-12T10:50:10.852Z",
+      "commit": "ed6ff750fdcbcdb24a3f0d89dbca933f1ec7f85a",
+      "workspace_fingerprint": "7d6d2c3dfb3abc6607ed7783b3905557171966631c111fde286df52461187d70",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 14.96,
+      "started_at": "2026-08-12T10:50:12.837Z",
+      "commit": "ed6ff750fdcbcdb24a3f0d89dbca933f1ec7f85a",
+      "workspace_fingerprint": "7d6d2c3dfb3abc6607ed7783b3905557171966631c111fde286df52461187d70",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 14.229,
+      "started_at": "2026-08-12T10:50:28.443Z",
+      "commit": "ed6ff750fdcbcdb24a3f0d89dbca933f1ec7f85a",
+      "workspace_fingerprint": "7d6d2c3dfb3abc6607ed7783b3905557171966631c111fde286df52461187d70",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {
-    "summary": "Added an ordinary CPython-parseable, representation-neutral protocol for canonical row and column bases. It computes one echelon result, reads its rank metadata, bulk-selects exactly the first rank rows, validates degenerate shapes, marks the basis immutable through an explicit callback, and returns already-echelonized metadata for the future subspace adapter. Cross-ring row_space(base_ring=...) is represented separately as a noncanonical GeneratorSpan, preserving Sage's subtle semantics rather than incorrectly changing the source matrix ring. CPython call-count tests and Sage.js differentials cover ZZ HNF lattice bases, QQ/GF(7)/GF(2) field bases, rank zero, 0xn, nx0, exact canonical forms, immutability, and base-ring planning. On warm 200x300 extraction after one shared echelon computation, direct row-basis selection measured 11.6x faster over ZZ, 25.4x over QQ, 236x over GF(7), and 150x over GF(2); the transpose/column-basis witness measured 9.7x to 583x faster.",
+    "summary": "Added an ordinary CPython-parseable, representation-neutral protocol for canonical row and column generator matrices. It computes one canonical echelon result, asks a domain adapter for its actual leading generator-row count, bulk-selects those rows, validates structural dimensions with the exact __index__ protocol, marks the result immutable through an explicit callback, and returns already-echelonized metadata for the future subspace adapter. This distinction is essential for composite Zmod(n): a Howell form can have more nonzero canonical generator rows than its algebraic rank or even the source matrix row count. Wide and tall Zmod(6) regressions compare the Sage.js Howell matrices with explicit bidirectional generator changes certified by SageMath. Cross-ring row_space(base_ring=...) remains a separate noncanonical GeneratorSpan. CPython call-count tests and Sage.js differentials also cover ZZ HNF, QQ/GF(7)/GF(2) field bases, rank zero, degenerate shapes, exact canonical forms, immutability, and base-ring planning. Warm 200x300 extraction remains materially faster than scalar reconstruction across every covered domain.",
     "risks": [
       "This lane deliberately does not modify public matrix.py, so Matrix.row_space() and Matrix.column_space() still use the scalar-decoding implementation until the integration lane wires this protocol.",
       "The shared test/node-test-manifest.cjs and pyrightconfig.json were not claimed because another active lane owns the manifest and the task was scoped to new files. Focused Pyright passed, but integration must register both the test and module before the global runner can accept the new files.",
@@ -113,7 +163,8 @@
     "next_steps": [
       "Register test/linear-matrix-subspaces.cjs in the unit tier and add src/lib/sagejs/linear_algebra/matrix_subspaces.py to pyrightconfig.json during integration.",
       "Wire Matrix.row_space(), row_module(), image(), column_space(), and column_module() through the new canonical-basis protocol once public matrix.py is no longer under an overlapping selection lane.",
-      "Teach VectorSubspaceParent or its constructor adapter to consume already_echelonized and immutable metadata without canonicalizing the selected basis again, and implement the GeneratorSpan fallback for a distinct row-space base ring.",
+      "Teach VectorSubspaceParent or its constructor adapter to consume already_echelonized and immutable metadata without canonicalizing the selected generator matrix again, and implement the GeneratorSpan fallback for a distinct row-space base ring.",
+      "Give the public Zmod(n) adapter a packed leading-nonzero-row count for Howell forms; rank is only a valid basis-row-count callback over ZZ and fields.",
       "Run the full native/integration suite after shared registrations and public wiring; this representation-neutral lane itself adds no native boundary."
     ]
   }
