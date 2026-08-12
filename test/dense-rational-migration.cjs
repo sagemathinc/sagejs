@@ -240,8 +240,22 @@ assert K.nrows() == 3
 assert wide*K.transpose() == zero_matrix(QQ, 2, 3)
 
 mutable = matrix(QQ, 2, 2, [QQ(1)/2, QQ(2)/3, QQ(3)/4, QQ(4)/5])
+assert mutable[0, 0] == QQ(1)/2
+assert mutable[-1, -1] == QQ(4)/5
+for bad_index in [(-3, 0), (0, 2)]:
+    try:
+        mutable[bad_index[0], bad_index[1]]
+        raise AssertionError('out-of-bounds rational entry read succeeded')
+    except IndexError:
+        pass
+first_rows = mutable.rows(copy=False)
+first_columns = mutable.columns(copy=False)
 mutable[0, 1] = -QQ(2**320 + 9)/37
 assert mutable[0, 1] == -QQ(2**320 + 9)/37
+assert mutable.rows(copy=False) is not first_rows
+assert mutable.columns(copy=False) is not first_columns
+assert mutable.row(0)[1] == -QQ(2**320 + 9)/37
+assert mutable.column(1)[0] == -QQ(2**320 + 9)/37
 
 # Exact entries are independently variable-sized.  One enormous value must not
 # force a uniform per-entry limb capacity or prevent the compact values beside
@@ -313,6 +327,7 @@ print('dense-rational-independent-ok')
     assert.ok(functions.has("dense_rational_matrix_kernel_from_rref"));
 
     for (const name of [
+      "flint_dense_rational_matrix_entry",
       "flint_dense_rational_matrix_mul",
       "flint_dense_rational_matrix_rank",
       "flint_dense_rational_matrix_rref",
@@ -325,9 +340,18 @@ print('dense-rational-independent-ok')
         candidate.name === name
       );
       assert.ok(fn, `missing ${name}`);
-      assert.match(fn.foreignDependencies[0], /^flint@[a-f0-9]{64}:fmpq_mat_/);
+      assert.ok(fn.foreignDependencies.length > 0, `missing ${name} FFI calls`);
+      for (const dependency of fn.foreignDependencies) {
+        assert.match(dependency, /^flint@[a-f0-9]{64}:fmpq_(?:mat|matrix)_/);
+      }
       assert.equal(flintKernel[name].nativeAvailable, true);
     }
+
+    const entryFunction = compiledFlint.ir.functions.find((candidate) =>
+      candidate.name === "flint_dense_rational_matrix_entry"
+    );
+    assert.equal(entryFunction.foreignDependencies.length, 2);
+    assert.equal(entryFunction.analysis.execution.nativeCalls, 2);
 
     for (const generated of [
       readFileSync(compiled.coreSourcePath, "utf8"),

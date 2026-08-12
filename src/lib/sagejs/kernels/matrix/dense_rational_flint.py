@@ -14,12 +14,27 @@ from sagejs.ffi.flint import (
     fmpq_mat_rank,
     fmpq_mat_rref,
     fmpq_mat_solve,
+    fmpq_matrix_entry_denominator,
     fmpq_matrix_entry_is_zero,
+    fmpq_matrix_entry_numerator,
     fmpq_matrix_ncols,
     fmpq_matrix_nrows,
     fmpq_matrix_set_entry,
 )
 from sagejs.native import IntegerBuffer, native, uint64
+
+
+@native
+def flint_dense_rational_matrix_entry(
+    matrix: FmpqMatrix,
+    row: uint64,
+    column: uint64,
+) -> tuple[int, int]:
+    """Return both exact parts through one compiled host boundary."""
+    return (
+        fmpq_matrix_entry_numerator(matrix, row, column),
+        fmpq_matrix_entry_denominator(matrix, row, column),
+    )
 
 
 @native
