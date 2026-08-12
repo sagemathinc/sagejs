@@ -4,7 +4,7 @@
   "id": "public-matrix-selection-v1",
   "title": "Public Matrix Selection v1",
   "lane": "integration",
-  "status": "review",
+  "status": "complete",
   "owner": "user",
   "objective": "Wire Sage-compatible matrix selection, deletion, swaps, setters, block mutation, and row insertion through storage-neutral plans and existing generated exact-resource or packed-prime operations",
   "base_commit": "f27a41e36b59eabffd046ce36711c7037c02efdd",
