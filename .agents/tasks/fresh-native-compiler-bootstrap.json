@@ -1,0 +1,87 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "fresh-native-compiler-bootstrap",
+  "title": "Fresh Native Compiler Bootstrap",
+  "lane": "integration",
+  "status": "complete",
+  "owner": "user",
+  "objective": "Make native package preparation build and preserve a converged self-hosted compiler instead of downgrading dist/compiler to immutable stage zero",
+  "base_commit": "de9f926d7d75411be7ad08219921b160adc2b380",
+  "claims": [
+    "scripts/native-worktree-cache.cjs",
+    "test/parallel-development.cjs"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "compiler-infrastructure",
+    "fallback": "not-applicable",
+    "oracles": [
+      "Fresh-workspace compiler export and preservation regression tests"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm architecture:check",
+    "pnpm test:portable",
+    "pnpm test:baselib:strict"
+  ],
+  "runs": [
+    {
+      "command": "node --test test/parallel-development.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 9.253,
+      "started_at": "2026-08-12T17:06:53.260Z",
+      "commit": "de9f926d7d75411be7ad08219921b160adc2b380",
+      "workspace_fingerprint": "b7a5a0f5a4762bc65063762015fde31b66f19de1a0610fca12d4413a35a264ef",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node scripts/parallel-development.cjs check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.108,
+      "started_at": "2026-08-12T17:07:08.466Z",
+      "commit": "de9f926d7d75411be7ad08219921b160adc2b380",
+      "workspace_fingerprint": "b7a5a0f5a4762bc65063762015fde31b66f19de1a0610fca12d4413a35a264ef",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node scripts/check-package-graph.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.107,
+      "started_at": "2026-08-12T17:07:08.680Z",
+      "commit": "de9f926d7d75411be7ad08219921b160adc2b380",
+      "workspace_fingerprint": "b7a5a0f5a4762bc65063762015fde31b66f19de1a0610fca12d4413a35a264ef",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node scripts/check-native-architecture.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 10.43,
+      "started_at": "2026-08-12T17:07:08.890Z",
+      "commit": "de9f926d7d75411be7ad08219921b160adc2b380",
+      "workspace_fingerprint": "b7a5a0f5a4762bc65063762015fde31b66f19de1a0610fca12d4413a35a264ef",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Native package preparation now serializes compiler provisioning, preserves an existing converged compiler, self-hosts stage zero to convergence through the worktree source entry point (never an installed native launcher), validates the public compiler-version export, and rolls back a failed replacement. The v2 stamp invalidates every artifact produced by the incomplete v1 bootstrap path.",
+    "risks": [
+      "A genuinely stale compiler now incurs the full two-pass self-host build before native addon preparation; the stamp makes this a one-time cost per compiler input set."
+    ],
+    "next_steps": [
+      "Retain the native-launcher shadow regression whenever compiler provisioning or source-launch selection changes."
+    ]
+  }
+}
