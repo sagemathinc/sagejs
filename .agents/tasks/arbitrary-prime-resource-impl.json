@@ -19,7 +19,10 @@
     "bench/arbitrary-prime-polynomial-resources.cjs",
     "src/baselib/polynomial.py",
     "pyrightconfig.json",
-    "tools/serialization.ts"
+    "tools/serialization.ts",
+    "architecture/native-kernels.json",
+    "test/node-test-manifest.cjs",
+    "package.json"
   ],
   "dependencies": [
     "arbitrary-prime-poly-contract"
@@ -48,7 +51,88 @@
     "pnpm test:portable",
     "pnpm test:baselib:strict"
   ],
-  "runs": [],
+  "runs": [
+    {
+      "command": "node test/public-arbitrary-prime-polynomial.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 3.159,
+      "started_at": "2026-08-12T14:21:08.380Z",
+      "commit": "ef20bc1021fb62e5c2ba1b2dc41da8b3d4464133",
+      "workspace_fingerprint": "e677666475c060eb4843e6c6e5ced93fb08e587afd2659bc449b6b70f024e77a",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node test/arbitrary-prime-polynomial-resource-kernels.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.592,
+      "started_at": "2026-08-12T14:21:12.171Z",
+      "commit": "ef20bc1021fb62e5c2ba1b2dc41da8b3d4464133",
+      "workspace_fingerprint": "e677666475c060eb4843e6c6e5ced93fb08e587afd2659bc449b6b70f024e77a",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node test/arbitrary-prime-polynomial-resource-ffi.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.692,
+      "started_at": "2026-08-12T14:21:14.428Z",
+      "commit": "ef20bc1021fb62e5c2ba1b2dc41da8b3d4464133",
+      "workspace_fingerprint": "e677666475c060eb4843e6c6e5ced93fb08e587afd2659bc449b6b70f024e77a",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "env SAGEJS_FFI_SANITIZE=1 node test/arbitrary-prime-polynomial-resource-ffi.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.173,
+      "started_at": "2026-08-12T14:21:16.818Z",
+      "commit": "ef20bc1021fb62e5c2ba1b2dc41da8b3d4464133",
+      "workspace_fingerprint": "e677666475c060eb4843e6c6e5ced93fb08e587afd2659bc449b6b70f024e77a",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/arbitrary-prime-polynomial-resources.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.123,
+      "started_at": "2026-08-12T14:21:19.603Z",
+      "commit": "ef20bc1021fb62e5c2ba1b2dc41da8b3d4464133",
+      "workspace_fingerprint": "e677666475c060eb4843e6c6e5ced93fb08e587afd2659bc449b6b70f024e77a",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 14.683,
+      "started_at": "2026-08-12T14:21:22.324Z",
+      "commit": "ef20bc1021fb62e5c2ba1b2dc41da8b3d4464133",
+      "workspace_fingerprint": "e677666475c060eb4843e6c6e5ced93fb08e587afd2659bc449b6b70f024e77a",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 14.2,
+      "started_at": "2026-08-12T14:21:37.645Z",
+      "commit": "ef20bc1021fb62e5c2ba1b2dc41da8b3d4464133",
+      "workspace_fingerprint": "e677666475c060eb4843e6c6e5ced93fb08e587afd2659bc449b6b70f024e77a",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 46.92,
+      "started_at": "2026-08-12T14:21:52.437Z",
+      "commit": "ef20bc1021fb62e5c2ba1b2dc41da8b3d4464133",
+      "workspace_fingerprint": "e677666475c060eb4843e6c6e5ced93fb08e587afd2659bc449b6b70f024e77a",
+      "platform": "linux-x64"
+    }
+  ],
   "handoff": {
     "summary": "",
     "risks": [],
