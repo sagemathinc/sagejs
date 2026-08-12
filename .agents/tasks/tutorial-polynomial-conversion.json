@@ -4,7 +4,7 @@
   "id": "tutorial-polynomial-conversion",
   "title": "Explicit univariate polynomial conversion",
   "lane": "arithmetic-algebra",
-  "status": "active",
+  "status": "complete",
   "owner": "user",
   "objective": "Make explicit conversion between compatible univariate polynomial rings transfer coefficients by generator position while preserving canonical-coercion rejection between distinct variables",
   "base_commit": "804b2c7005fa7ef886fad547c9848385a0f4317a",
