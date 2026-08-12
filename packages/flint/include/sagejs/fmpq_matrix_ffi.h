@@ -835,8 +835,9 @@ static inline void sagejs_flint_byte_region_write_u64(
  * Return the pivot columns of a matrix already in row-echelon form.
  *
  * The result is a packed sequence of unsigned 64-bit little-endian column
- * indices. A temporary index array lets the callee allocate the owned byte
- * region at its exact final size without exporting matrix entries or asking
+ * indices. The owned region grows geometrically during the single matrix scan
+ * and records its exact final byte length. Thus temporary storage is
+ * proportional to the actual rank without exporting matrix entries or asking
  * the host to predict a result capacity.
  */
 static inline int sagejs_fmpq_matrix_echelon_pivots(
@@ -845,17 +846,12 @@ static inline int sagejs_fmpq_matrix_echelon_pivots(
 {
     const uint64_t rows = (uint64_t) fmpq_mat_nrows(source->value);
     const uint64_t columns = (uint64_t) fmpq_mat_ncols(source->value);
-    const uint64_t capacity = rows < columns ? rows : columns;
     result->data = NULL;
     result->length = 0;
-    if (capacity > (uint64_t) SIZE_MAX / sizeof(uint64_t))
-        return 0;
-    uint64_t *pivots = capacity == 0 ? NULL :
-        (uint64_t *) malloc((size_t) capacity * sizeof(uint64_t));
-    if (capacity != 0 && pivots == NULL)
-        return 0;
 
-    uint64_t count = 0;
+    size_t count = 0;
+    size_t capacity = 0;
+    const size_t maximum_capacity = SIZE_MAX / sizeof(uint64_t);
     uint64_t search_start = 0;
     for (uint64_t row = 0; row < rows; row++)
     {
@@ -867,31 +863,56 @@ static inline int sagejs_fmpq_matrix_echelon_pivots(
                 pivot = column;
                 break;
             }
-        if (pivot != columns)
+        if (pivot == columns)
+            break;
+        else
         {
-            if (count >= capacity)
+            if (count == capacity)
             {
-                free(pivots);
-                return 0;
+                if (count == maximum_capacity)
+                    goto failure;
+                size_t next_capacity = capacity == 0 ? 4 : capacity;
+                if (next_capacity > maximum_capacity / 2)
+                    next_capacity = maximum_capacity;
+                else if (capacity != 0)
+                    next_capacity *= 2;
+                if (next_capacity <= count)
+                    next_capacity = count + 1;
+                unsigned char *grown = (unsigned char *) realloc(
+                    result->data, next_capacity * sizeof(uint64_t));
+                if (grown == NULL)
+                    goto failure;
+                result->data = grown;
+                capacity = next_capacity;
             }
-            pivots[count++] = pivot;
+            sagejs_flint_byte_region_write_u64(
+                result->data, count * sizeof(uint64_t), pivot);
+            count++;
             search_start = pivot + 1;
         }
     }
 
-    const size_t length = (size_t) count * sizeof(uint64_t);
-    result->data = (unsigned char *) malloc(length == 0 ? 1 : length);
-    if (result->data == NULL)
+    result->length = count * sizeof(uint64_t);
+    if (count == 0)
     {
-        free(pivots);
-        return 0;
+        result->data = (unsigned char *) malloc(1);
+        if (result->data == NULL)
+            return 0;
     }
-    result->length = length;
-    for (uint64_t index = 0; index < count; index++)
-        sagejs_flint_byte_region_write_u64(
-            result->data, (size_t) index * sizeof(uint64_t), pivots[index]);
-    free(pivots);
+    else if (count != capacity)
+    {
+        unsigned char *shrunk = (unsigned char *) realloc(
+            result->data, result->length);
+        if (shrunk != NULL)
+            result->data = shrunk;
+    }
     return 1;
+
+failure:
+    free(result->data);
+    result->data = NULL;
+    result->length = 0;
+    return 0;
 }
 
 static inline int sagejs_size_add(size_t *value, size_t increment)
