@@ -933,6 +933,13 @@ def print_function_call(self, output):
             add_name("help")
 
         if want_dir:
+            if output.options.reuse_main_module and is_node_type(scope, AST_Toplevel):
+                output.print(
+                    "(function(){var names=arguments[0];"
+                    "if(names.indexOf('help')<0)names.push('help');"
+                    "names.sort();return names})(ρσ_dir(ρσ_modules.__main__))"
+                )
+                return
             output.print("ρσ_list_decorate([")
             for index, name in enumerate(names):
                 if index:
@@ -941,7 +948,9 @@ def print_function_call(self, output):
             output.print("])")
             return
 
-        if want_globals:
+        if want_globals or (
+            output.options.reuse_main_module and is_node_type(scope, AST_Toplevel)
+        ):
             output.print("ρσ_live_scope_dict(ρσ_modules[")
             output.print(JSON.stringify(scope.module_id))
             output.print("])")

@@ -196,7 +196,31 @@ def write_imports(module, output):
             continue
         output.indent()
         if module_id == "__main__" and output.options.reuse_main_module:
-            output.print("ρσ_modules.__main__ || (ρσ_modules.__main__ = {})")
+            output.print(
+                "ρσ_modules.__main__ && "
+                "ρσ_modules.__main__.__sagejs_reusable_main__ || ("
+                "ρσ_modules.__main__ = new Proxy(ρσ_modules.__main__ || {}, {"
+                "set:function(target,name,incoming,receiver){"
+                "if (typeof name === 'string' && "
+                "!Object.prototype.hasOwnProperty.call(target,name)) "
+                "globalThis[name]=incoming;"
+                "return Reflect.set(target,name,incoming,receiver)},"
+                "deleteProperty:function(target,name){"
+                "if (typeof name === 'string') globalThis[name]=undefined;"
+                "var descriptor=Reflect.getOwnPropertyDescriptor(target,name);"
+                "if (descriptor && typeof descriptor.set === 'function') "
+                "return Reflect.set(target,name,undefined,target);"
+                "return Reflect.deleteProperty(target,name)},"
+                "ownKeys:function(target){"
+                "return Reflect.ownKeys(target).filter(function(name){"
+                "if (name === '__sagejs_reusable_main__' || "
+                "name === '__sagejs_main_magic_initialized__') return false;"
+                "return typeof name !== 'string' || "
+                "Reflect.get(target,name) !== undefined})}}),"
+                "Object.defineProperty(ρσ_modules.__main__,"
+                "'__sagejs_reusable_main__',{value:true,configurable:true}),"
+                "ρσ_modules.__main__)"
+            )
         elif module_id.indexOf(".") is -1:
             output.print("ρσ_modules." + module_id)
         else:
@@ -268,13 +292,29 @@ def write_main_name(output, filename=None):
     elif output.options.write_name:
         output.newline()
         output.indent()
-        output.print(
-            'var __name__ = "__main__", __package__ = null, '
-            "__loader__ = null, __spec__ = null, __cached__ = null, "
-            "__builtins__ = ρσ_modules.builtins || {}"
-        )
+        if output.options.reuse_main_module:
+            output.print(
+                "if (!ρσ_modules.__main__."
+                "__sagejs_main_magic_initialized__) {"
+                '__name__ = "__main__"; __package__ = null; '
+                "__loader__ = null; __spec__ = null; __cached__ = null; "
+                "__builtins__ = ρσ_modules.builtins || {}; "
+            )
+            if filename:
+                output.print("__file__ = " + JSON.stringify(filename) + "; ")
+            output.print(
+                "Object.defineProperty(ρσ_modules.__main__,"
+                "'__sagejs_main_magic_initialized__',"
+                "{value:true,configurable:true})}"
+            )
+        else:
+            output.print(
+                'var __name__ = "__main__", __package__ = null, '
+                "__loader__ = null, __spec__ = null, __cached__ = null, "
+                "__builtins__ = ρσ_modules.builtins || {}"
+            )
         output.semicolon()
-        if filename:
+        if filename and not output.options.reuse_main_module:
             output.newline()
             output.indent()
             output.print("var __file__ = " + JSON.stringify(filename))
@@ -418,15 +458,15 @@ def bind_module_namespace(module, output, hidden_names=None):
         if output.options.baselib_module_id:
             output.print(descriptor_prefix + "enumerable:true,get:()=>")
             output.print_name(name)
-            output.print(",set:value=>")
+            output.print(",set:function(){")
             output.print_name(name)
-            output.print("=value}")
+            output.print("=arguments[0]}}")
         else:
             output.print(descriptor_prefix + "enumerable:true,get:function(){return ")
             output.print_name(name)
-            output.print("},set:function(value){")
+            output.print("},set:function(){")
             output.print_name(name)
-            output.print("=value}}")
+            output.print("=arguments[0]}}")
     wrote_property = names.length > 0
     for entry in hidden_names:
         name = entry.name if entry.name else entry
@@ -892,9 +932,9 @@ def print_imports(container, output):
                     ",{configurable:true,enumerable:true,get:function(){return "
                 )
                 output.print_name(name)
-                output.print("},set:function(value){")
+                output.print("},set:function(){")
                 output.print_name(name)
-                output.print("=value}})")
+                output.print("=arguments[0]}})")
                 output.end_statement()
                 return
             output.indent()
@@ -1006,6 +1046,37 @@ def print_imports(container, output):
 
     for self in container.imports:
         if self.intrinsic:
+            if (
+                output.options.reuse_main_module
+                and self.target_module is "__main__"
+                and self.alias
+            ):
+                local_name = self.alias.name
+                output.indent()
+                output.print("var ")
+                output.print_name(local_name)
+                output.space()
+                output.print("=")
+                output.space()
+                output.print("ρσ_modules[")
+                output.print_string(self.key)
+                output.print("] || (ρσ_modules[")
+                output.print_string(self.key)
+                output.print("] = {__name__:")
+                output.print_string(self.key)
+                output.print("})")
+                output.end_statement()
+                output.indent()
+                output.print("Object.defineProperty(ρσ_modules.__main__,")
+                output.print_string(local_name)
+                output.print(
+                    ",{configurable:true,enumerable:true,get:function(){return "
+                )
+                output.print_name(local_name)
+                output.print("},set:function(){")
+                output.print_name(local_name)
+                output.print("=arguments[0]}})")
+                output.end_statement()
             continue
         if self.dynamic and self.key != "builtins":
             dynamic_import(self)

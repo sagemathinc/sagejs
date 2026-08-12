@@ -356,13 +356,15 @@ export class PythonCstLowerer {
         if (!targets.every(validDeleteTarget)) {
           throw new SyntaxError("cannot delete expression");
         }
-        const deleted = targets.map((target) =>
-          this.make("AST_UnaryPrefix", node, {
+        const deleted = targets.map((target) => {
+          const expression = this.lowerExpression(target);
+          this.invalidateIntrinsicBinding(target);
+          return this.make("AST_UnaryPrefix", node, {
             operator: "delete",
-            expression: this.lowerExpression(target),
+            expression,
             parenthesized: false,
-          })
-        );
+          });
+        });
         return deleted.map((body) =>
           this.make("AST_SimpleStatement", node, { body })
         );
@@ -703,14 +705,14 @@ export class PythonCstLowerer {
     const alternative = significantChildren(node).find(
       (child) => child.type === "else_clause",
     );
-    const init = this.lowerBindingTarget(
-      this.lowerExpression(this.field(node, "left")),
-      this.field(node, "left"),
-    );
+    const left = this.field(node, "left");
+    const init = this.lowerBindingTarget(this.lowerExpression(left), left);
+    const object = this.lowerExpression(this.field(node, "right"));
+    this.invalidateIntrinsicBinding(left);
     return this.make(isAsync ? "AST_AsyncFor" : "AST_ForIn", node, {
       init,
       name: null,
-      object: this.lowerExpression(this.field(node, "right")),
+      object,
       body: this.lowerBlock(this.field(node, "body")),
       alternative: alternative
         ? this.lowerBlock(this.field(alternative, "body"))
@@ -728,6 +730,22 @@ export class PythonCstLowerer {
       });
     }
     return target;
+  }
+
+  private invalidateIntrinsicBinding(node: SyntaxNode): void {
+    if (this.functionFrames.length > 0 || this.classStack.length > 0) return;
+    if (node.type === "identifier") {
+      this.intrinsicModules.delete(node.text);
+      return;
+    }
+    if ([
+      "parenthesized_expression", "expression_list", "pattern_list",
+      "tuple_pattern", "list_pattern", "tuple", "list",
+    ].includes(node.type)) {
+      for (const child of significantChildren(node)) {
+        this.invalidateIntrinsicBinding(child);
+      }
+    }
   }
 
   private lowerDeclaration(node: SyntaxNode, isGlobal: boolean): any {
@@ -1428,19 +1446,16 @@ export class PythonCstLowerer {
     const left =
       this.optionalField(node, "left") ?? this.field(node, "name");
     const annotation = this.optionalField(node, "type");
-    if (
-      this.functionFrames.length === 0 &&
-      this.classStack.length === 0 &&
-      left.type === "identifier"
-    ) {
-      this.intrinsicModules.delete(left.text);
-    }
     if (annotation) {
       const value = this.optionalField(node, "right");
+      const loweredAnnotation = this.lowerType(annotation);
+      const loweredValue = value ? this.lowerExpression(value) : null;
+      const target = this.lowerExpression(left);
+      if (value) this.invalidateIntrinsicBinding(left);
       return this.make("AST_AnnotatedAssignment", node, {
-        target: this.lowerExpression(left),
-        annotation: this.lowerType(annotation),
-        value: value ? this.lowerExpression(value) : null,
+        target,
+        annotation: loweredAnnotation,
+        value: loweredValue,
       });
     }
     const right =
@@ -1455,8 +1470,9 @@ export class PythonCstLowerer {
     ) {
       throw new SyntaxError("illegal expression for augmented assignment");
     }
-    const loweredLeft = this.lowerExpression(left);
     const loweredRight = this.lowerExpression(right);
+    const loweredLeft = this.lowerExpression(left);
+    this.invalidateIntrinsicBinding(left);
     // A subscript or slice assignment is normally represented directly on
     // the target node for compatibility with the stage-zero AST.  In a
     // chained assignment, however, that representation would make the outer
@@ -1698,9 +1714,14 @@ export class PythonCstLowerer {
     const parameters = this.field(node, "parameters");
     const args = this.lowerParameters(parameters);
     const returnType = node.childForFieldName("return_type");
+    const loweredReturnType = returnType ? this.lowerType(returnType) : null;
+    const returnAnnotationText = returnType ? returnType.text : null;
     const bodyNode = this.field(node, "body");
     const isCoroutine = node.children.some((part) => part.text === "async");
     const inherited = this.functionFrames.at(-1);
+    if (!isMethod && this.functionFrames.length === 0 && !this.classStack.length) {
+      this.intrinsicModules.delete(nameNode.text);
+    }
     this.functionFrames.push({
       isCoroutine,
       superClass: isMethod
@@ -1741,8 +1762,8 @@ export class PythonCstLowerer {
         this.currentToplevel?.scoped_flags?.sequential_definitions ??
         this.options.scoped_flags?.sequential_definitions
       ),
-      return_annotation: returnType ? this.lowerType(returnType) : null,
-      return_annotation_text: returnType ? returnType.text : null,
+      return_annotation: loweredReturnType,
+      return_annotation_text: returnAnnotationText,
       declared_globals: this.declaredNames(bodyNode, "global_statement"),
       declared_nonlocals: this.declaredNames(bodyNode, "nonlocal_statement"),
       scope_bindings: this.argumentNames(args),
@@ -1884,6 +1905,9 @@ export class PythonCstLowerer {
       }
       return this.lowerExpression(child);
     });
+    if (this.functionFrames.length === 0 && this.classStack.length === 0) {
+      this.intrinsicModules.delete(nameNode.text);
+    }
     const isNamedTupleClass = baseNodes.some((child) =>
       child.text === "NamedTuple" || child.text.endsWith(".NamedTuple")
     );
@@ -2337,13 +2361,27 @@ export class PythonCstLowerer {
         wildcard,
       ));
     }
-    for (const imported of imports) this.registerImportedClasses(imported);
     for (const imported of imports) {
-      if (!imported.intrinsic || !imported.alias?.name) continue;
-      const table = imported.key === "sagejs.runtime"
-        ? SAGEJS_RUNTIME_INTRINSICS
-        : SAGEJS_PUBLIC_INTRINSICS;
-      if (table) this.intrinsicModules.set(imported.alias.name, table);
+      this.registerImportedClasses(imported);
+      if (this.functionFrames.length > 0 || this.classStack.length > 0) continue;
+      if (imported.intrinsic && imported.alias?.name) {
+        const table = imported.key === "sagejs.runtime"
+          ? SAGEJS_RUNTIME_INTRINSICS
+          : SAGEJS_PUBLIC_INTRINSICS;
+        if (table) this.intrinsicModules.set(imported.alias.name, table);
+        continue;
+      }
+      if (imported.star) {
+        this.intrinsicModules.clear();
+      } else if (imported.argnames) {
+        for (const argument of imported.argnames) {
+          this.intrinsicModules.delete(argument.alias?.name ?? argument.name);
+        }
+      } else {
+        this.intrinsicModules.delete(
+          imported.alias?.name ?? imported.key.split(".")[0],
+        );
+      }
     }
     return this.make("AST_Imports", node, { imports });
   }

@@ -240,7 +240,7 @@ export function createKernelEvaluator({
     compilerFrontends.get("python")!,
   );
   global.__sagejs_kernel_modules__ = global.ρσ_modules;
-  runInThisContext('var __name__ = "__embedded__"; show_js = false;');
+  runInThisContext('var __name__ = "__main__"; show_js = false;');
 
   function compile(
     source: string,

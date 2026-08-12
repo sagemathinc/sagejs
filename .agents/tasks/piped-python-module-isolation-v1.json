@@ -13,7 +13,10 @@
     "tools/kernel-evaluator.ts",
     "tools/runtime-bootstrap.ts",
     "tools/python/lowerer.ts",
+    "src/output/codegen.py",
+    "src/output/functions.py",
     "src/output/modules.py",
+    "src/output/operators.py",
     "src/output/stream.py",
     "src/baselib/builtins.py",
     "test/cli-smoke.cjs",
@@ -94,17 +97,37 @@
       "commit": "dcc1302a3f305b00a0e09ba25edee45ac2ee2bf1",
       "workspace_fingerprint": "e6bb53a0324dfc9a0b39dd51736020b8bad4cd7f21fb2b7663dc77e0018bd391",
       "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/compiled-module-isolation.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 4.161,
+      "started_at": "2026-08-12T20:40:29.619Z",
+      "commit": "2fc1c5ee3c1e254b0102760b74537536100b10d2",
+      "workspace_fingerprint": "2c370a9296f1cb635ecc51352ea5ab8352cfa909647e9a6584e34ed8c053581d",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node test/cli-smoke.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 84.766,
+      "started_at": "2026-08-12T20:40:40.750Z",
+      "commit": "2fc1c5ee3c1e254b0102760b74537536100b10d2",
+      "workspace_fingerprint": "2c370a9296f1cb635ecc51352ea5ab8352cfa909647e9a6584e34ed8c053581d",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {
-    "summary": "Piped CLI fragments and kernel evaluations now execute as one persistent lexical __main__ module. Dynamic imports, globals, closures, classes, __main__ identity, __name__, and compiler-only intrinsic aliases survive fragment boundaries without reopening cross-module symbol collisions.",
+    "summary": "Piped CLI fragments and kernel evaluations now expose one coherent live __main__ namespace. Lexical loads, __main__ attributes, globals(), locals(), vars(), dir(), deletion, and global restoration agree across cells; magic globals initialize once; and intrinsic aliases stop lowering intrinsically after assignment, loops, definitions, imports, or deletion.",
     "risks": [
-      "The base revision's full compiler suite fails compiler/matrix.py because sorted() cannot iterate its lowered plain-object dictionary.",
-      "The base revision's integration tier has six known failures in dense-prime serialization, two mathematically incorrect exact-polynomial expectations, and three polynomial regressions. The focused namespace tests, strict baselib gate, and architecture gate pass."
+      "The lane remains based on dcc1302 while origin/main has advanced substantially; test:changed therefore expanded to 583 unrelated files and was stopped after its build phase at the integration coordinator's direction.",
+      "The live namespace keeps deleted global accessors internally so functions compiled before deletion can restore the binding; the reusable __main__ proxy deliberately filters those undefined accessors from Python introspection."
     ],
     "next_steps": [
-      "Land the independent corrections for the exact polynomial and rational matrix expectations before rerunning the complete integration tier.",
-      "Track the inherited compiler/matrix.py and polynomial failures in their owning lanes rather than broadening this compiler-runtime lane."
+      "Independently review the proxy invariants and intrinsic-alias invalidation before integration.",
+      "Rebase or merge through the integration lane before running repository-wide validation against current origin/main."
     ]
   }
 }

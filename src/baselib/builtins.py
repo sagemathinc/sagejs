@@ -4461,9 +4461,13 @@ def ρσ_resolve_module_name(
     if value is not runtime.undefined:
         return value
     if _builtins_has_member(module_builtins, name):
-        return _builtins_get_member(module_builtins, name)
+        builtin_value = _builtins_get_member(module_builtins, name)
+        if builtin_value is not runtime.undefined:
+            return builtin_value
     if _builtins_has_member(runtime.global_object, name):
-        return _builtins_get_member(runtime.global_object, name)
+        global_value = _builtins_get_member(runtime.global_object, name)
+        if global_value is not runtime.undefined:
+            return global_value
     raise NameError("name '" + name + "' is not defined")
 
 

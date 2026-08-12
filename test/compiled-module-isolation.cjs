@@ -205,8 +205,142 @@ test("kernel cells share one live __main__ module namespace", async (t) => {
     (await session.evaluate("__main__ is __import__('__main__')")).repr,
     "True",
   );
+  await session.evaluate("__main__.value = 99");
+  assert.equal((await session.evaluate("value")).repr, "99");
+  await session.evaluate("ρσ_module_value = 7");
+  await session.evaluate("__main__.ρσ_module_value = 8");
+  assert.equal((await session.evaluate("ρσ_module_value")).repr, "8");
+  await session.evaluate("__name__ = 'changed-main-name'");
+  assert.equal(
+    (await session.evaluate("(__name__, __main__.__name__)")).repr,
+    "('changed-main-name', 'changed-main-name')",
+  );
+  await session.evaluate("__main__.created_from_module = 41");
+  assert.equal(
+    (await session.evaluate(
+      "created_from_module + 1, " +
+        "globals()['created_from_module'] is __main__.created_from_module, " +
+        "locals()['created_from_module'] is __main__.created_from_module, " +
+        "vars()['created_from_module'] is __main__.created_from_module, " +
+        "'created_from_module' in dir()",
+    )).repr,
+    "(42, True, True, True, True)",
+  );
+  await session.evaluate("del __main__.value");
+  assert.equal(
+    (await session.evaluate(
+      "hasattr(__main__, 'value'), 'value' in globals(), 'value' in dir()",
+    )).repr,
+    "(False, False, False)",
+  );
+  await assert.rejects(session.evaluate("value"), /value.*not defined|NameError/);
+  await session.evaluate("dictionary_value = 17");
+  await session.evaluate("del globals()['dictionary_value']");
+  assert.equal(
+    (await session.evaluate(
+      "hasattr(__main__, 'dictionary_value'), " +
+        "'dictionary_value' in globals(), 'dictionary_value' in dir()",
+    )).repr,
+    "(False, False, False)",
+  );
+  await assert.rejects(
+    session.evaluate("dictionary_value"),
+    /dictionary_value.*not defined|NameError/,
+  );
+  await session.evaluate(
+    "restored = 1\n" +
+      "def restore():\n" +
+      "    global restored\n" +
+      "    restored = 22\n" +
+      "del restored",
+  );
+  assert.equal(
+    (await session.evaluate(
+      "hasattr(__main__, 'restored'), 'restored' in globals(), " +
+        "'restored' in dir()",
+    )).repr,
+    "(False, False, False)",
+  );
+  await session.evaluate("restore()");
+  assert.equal(
+    (await session.evaluate(
+      "restored, __main__.restored, globals()['restored'], " +
+        "'restored' in dir()",
+    )).repr,
+    "(22, 22, 22, True)",
+  );
   await session.evaluate("runtime = 'shadowed'");
   assert.equal((await session.evaluate("runtime")).repr, "'shadowed'");
+});
+
+test("kernel cells initialize magic globals once", async (t) => {
+  const session = await createSage({ mode: "python" });
+  t.after(() => session.close());
+
+  await session.evaluate("import __main__");
+  await session.evaluate(
+    "__name__ = 'custom-main'\n" +
+      "__package__ = 'custom.package'\n" +
+      "__file__ = 'custom.py'\n" +
+      "__loader__ = 'custom-loader'\n" +
+      "__spec__ = 'custom-spec'\n" +
+      "__cached__ = 'custom-cache'",
+  );
+  assert.equal(
+    (await session.evaluate(
+      "(__name__, __package__, __file__, __loader__, __spec__, __cached__) == " +
+        "(__main__.__name__, __main__.__package__, __main__.__file__, " +
+        "__main__.__loader__, __main__.__spec__, __main__.__cached__)",
+    )).repr,
+    "True",
+  );
+  assert.equal(
+    (await session.evaluate(
+      "__name__, __package__, __file__, __loader__, __spec__, __cached__",
+    )).repr,
+    "('custom-main', 'custom.package', 'custom.py', 'custom-loader', " +
+      "'custom-spec', 'custom-cache')",
+  );
+  await session.evaluate("del __package__");
+  assert.equal(
+    (await session.evaluate(
+      "hasattr(__main__, '__package__'), '__package__' in globals(), " +
+        "'__package__' in dir(), __name__, __file__",
+    )).repr,
+    "(False, False, False, 'custom-main', 'custom.py')",
+  );
+});
+
+test("kernel intrinsic aliases follow later Python bindings", async (t) => {
+  const session = await createSage({ mode: "python" });
+  t.after(() => session.close());
+
+  await session.evaluate("import sagejs.runtime as runtime");
+  assert.equal((await session.evaluate("runtime.reflect is not None")).repr, "True");
+  await session.evaluate(
+    "for runtime in ['loop-shadow']:\n" +
+      "    loop_result = runtime.upper()",
+  );
+  assert.equal(
+    (await session.evaluate("runtime, loop_result")).repr,
+    "('loop-shadow', 'LOOP-SHADOW')",
+  );
+  await session.evaluate("def runtime():\n    return 'function-shadow'");
+  assert.equal((await session.evaluate("runtime()")).repr, "'function-shadow'");
+
+  await session.evaluate("import sagejs.runtime as rebound");
+  await session.evaluate("rebound = 'direct-shadow'\nrebound_result = rebound.upper()");
+  assert.equal(
+    (await session.evaluate("rebound, rebound_result")).repr,
+    "('direct-shadow', 'DIRECT-SHADOW')",
+  );
+
+  await session.evaluate("import sagejs.runtime as low_level");
+  await session.evaluate("del low_level");
+  await assert.rejects(
+    session.evaluate("low_level.reflect"),
+    /low_level|AttributeError|NameError/,
+  );
 });
 
 test("ordinary compiled imports preserve globals, closures, and cache identity", () => {

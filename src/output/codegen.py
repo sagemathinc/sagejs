@@ -897,6 +897,9 @@ def generate_code():
                     check_unbound = (
                         scope.annotated_locals
                         and scope.annotated_locals.indexOf(self.name) is not -1
+                    ) or (
+                        output.options.reuse_main_module
+                        and is_node_type(scope, AST_Toplevel)
                     )
                     module_name_fallback = (
                         (is_node_type(scope, AST_Toplevel) and check_unbound)
