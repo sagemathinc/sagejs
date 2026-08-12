@@ -3633,12 +3633,25 @@ class Matrix(sage.Element):
                     self.ncols(),
                 )
             elif self._has_integer_storage():
-                self._rank_cache = runtime.number(
-                    _flint_ffi_module().fmpz_matrix_rank(self._integer_resource())
-                )
+                ffi = _flint_ffi_module()
+                resource = self._integer_resource()
+                maximum_rank = min(self.nrows(), self.ncols())
+                if algorithm in ["flint", "linbox"]:
+                    rank = ffi.fmpz_matrix_rank(resource)
+                    implementation = "generated-flint-resource-exact"
+                else:
+                    rank = ffi.fmpz_matrix_rank_mod_46337(resource)
+                    if rank == maximum_rank:
+                        implementation = "generated-flint-resource-modular-certificate"
+                    else:
+                        rank = ffi.fmpz_matrix_rank(resource)
+                        implementation = (
+                            "generated-flint-resource-modular-inconclusive-exact"
+                        )
+                self._rank_cache = runtime.number(rank)
                 _trace_dense_integer_selection(
                     "rank",
-                    "generated-flint-resource",
+                    implementation,
                     self.nrows(),
                     self.ncols(),
                 )

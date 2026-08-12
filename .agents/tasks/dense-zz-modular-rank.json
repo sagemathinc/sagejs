@@ -1,0 +1,148 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "dense-zz-modular-rank",
+  "title": "Dense ZZ modular full-rank certificate",
+  "lane": "integration",
+  "status": "active",
+  "owner": "codex",
+  "objective": "Accelerate public dense ZZ rank by certifying full row or column rank modulo a deterministic word-size prime through generated FLINT resources and falling back exactly for every inconclusive case",
+  "base_commit": "2c6e1cb790bcd39abda524c9f9a75a68ea15ae23",
+  "claims": [
+    "ffi/flint.ffi.py",
+    "ffi/flint.ffi.json",
+    "src/lib/sagejs/ffi/flint.py",
+    "src/baselib/sagejs/ffi/flint.py",
+    "packages/flint/generated/",
+    "packages/flint/include/sagejs/fmpz_matrix_ffi.h",
+    "src/baselib/matrix.py",
+    "test/dense-integer-modular-rank.cjs",
+    "test/ffi.cjs",
+    "test/node-test-manifest.cjs",
+    "bench/dense-integer-modular-rank.py",
+    "architecture/native-boundaries.json",
+    "architecture/package-graph.json"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "external-library",
+    "fallback": "tested-capability",
+    "oracles": [
+      "existing exact fmpz_mat_rank",
+      "SageMath dense integer rank semantics"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm --dir packages/flint run build:ffi",
+    "node test/dense-integer-modular-rank.cjs",
+    "node --test --test-reporter=spec test/ffi.cjs",
+    "node test/dense-integer-migration.cjs",
+    "node test/dense-integer-public-resource.cjs",
+    "pnpm architecture:check",
+    "pnpm test:portable",
+    "pnpm test:baselib:strict"
+  ],
+  "runs": [
+    {
+      "command": "pnpm --dir packages/flint run build:ffi",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.02,
+      "started_at": "2026-08-12T01:48:53.522Z",
+      "commit": "2c6e1cb790bcd39abda524c9f9a75a68ea15ae23",
+      "workspace_fingerprint": "60c1f9760dd24d62aa47559251211a6a21162ea27a143f234379d443555f00ca",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node test/dense-integer-modular-rank.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 7.997,
+      "started_at": "2026-08-12T01:49:00.253Z",
+      "commit": "2c6e1cb790bcd39abda524c9f9a75a68ea15ae23",
+      "workspace_fingerprint": "60c1f9760dd24d62aa47559251211a6a21162ea27a143f234379d443555f00ca",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test --test-reporter=spec test/ffi.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 37.184,
+      "started_at": "2026-08-12T01:49:12.016Z",
+      "commit": "2c6e1cb790bcd39abda524c9f9a75a68ea15ae23",
+      "workspace_fingerprint": "60c1f9760dd24d62aa47559251211a6a21162ea27a143f234379d443555f00ca",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node test/dense-integer-migration.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 12.163,
+      "started_at": "2026-08-12T01:49:55.602Z",
+      "commit": "2c6e1cb790bcd39abda524c9f9a75a68ea15ae23",
+      "workspace_fingerprint": "60c1f9760dd24d62aa47559251211a6a21162ea27a143f234379d443555f00ca",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node test/dense-integer-public-resource.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 9.373,
+      "started_at": "2026-08-12T01:50:08.357Z",
+      "commit": "2c6e1cb790bcd39abda524c9f9a75a68ea15ae23",
+      "workspace_fingerprint": "60c1f9760dd24d62aa47559251211a6a21162ea27a143f234379d443555f00ca",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 12.103,
+      "started_at": "2026-08-12T01:50:22.302Z",
+      "commit": "2c6e1cb790bcd39abda524c9f9a75a68ea15ae23",
+      "workspace_fingerprint": "60c1f9760dd24d62aa47559251211a6a21162ea27a143f234379d443555f00ca",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 12.037,
+      "started_at": "2026-08-12T01:50:35.004Z",
+      "commit": "2c6e1cb790bcd39abda524c9f9a75a68ea15ae23",
+      "workspace_fingerprint": "60c1f9760dd24d62aa47559251211a6a21162ea27a143f234379d443555f00ca",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 36.882,
+      "started_at": "2026-08-12T01:51:09.767Z",
+      "commit": "2c6e1cb790bcd39abda524c9f9a75a68ea15ae23",
+      "workspace_fingerprint": "60c1f9760dd24d62aa47559251211a6a21162ea27a143f234379d443555f00ca",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Public dense ZZ rank now first reduces the borrowed generated FmpzMatrix resource modulo the fixed prime 46337. Maximal modular rank is a rigorous exact full-rank certificate; every smaller modular rank, including prime-collision cases, invokes the existing exact FLINT rank once. Explicit flint and linbox choices remain exact. On this host, a 200x300 random full-row-rank matrix measures about 4.9 ms through the certificate versus 2107 ms through exact FLINT, while a structured rank-199 matrix takes the expected 2203 ms modular-plus-exact fallback. The path never materializes host entries and emits distinct selection traces for certificate, inconclusive fallback, and explicitly exact execution.",
+    "risks": [
+      "The fixed prime can be unlucky for a full-rank matrix; this is safe but invokes exact fallback, as proved by a diagonal entry equal to 46337.",
+      "Deficient matrices pay for one cheap modular reduction before their unavoidable exact FLINT rank computation.",
+      "Generated FmpzMatrix resources currently declare wasm=False, so browser support remains governed by the existing exact-matrix capability boundary. Native-disabled Node execution is differentially tested through the generated dynamic adapter.",
+      "The required portable tier reaches an unrelated checked-in website reference-data failure: its baseline has 21 unverified examples while test/website.cjs requires zero. The same 21 unverified examples are present in the integration checkout; all 132 other portable tests pass."
+    ],
+    "next_steps": [
+      "Measure whether multiple deterministic primes are worthwhile for structured full-rank matrices that collide modulo 46337; never accept anything except maximal modular rank.",
+      "Apply the same one-sided certificate principle to other expensive exact predicates only where a modular witness is a proof, not a heuristic."
+    ]
+  }
+}

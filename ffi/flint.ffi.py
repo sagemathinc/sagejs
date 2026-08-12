@@ -1552,6 +1552,25 @@ def fmpz_matrix_rank(matrix: FmpzMatrix) -> uint64: ...
 
 
 @flint.function(
+    dynamic="ffiFmpzMatrixRankMod46337",
+    symbol="sagejs_fmpz_matrix_rank_mod_46337",
+    returns=uint64_t,
+    abi=[in_("matrix", sagejs_fmpz_matrix_t)],
+    effects=Effects(pure=True, allocates=True),
+    result=Direct(),
+    wasm=False,
+)
+def fmpz_matrix_rank_mod_46337(matrix: FmpzMatrix) -> uint64:
+    """Return the matrix rank modulo the fixed prime `46337`.
+
+    A result equal to `min(nrows, ncols)` certifies the exact integer rank.
+    Every smaller result is inconclusive and must be followed by an exact rank
+    computation.
+    """
+    ...
+
+
+@flint.function(
     dynamic="ffiFmpzMatrixDet",
     symbol="sagejs_fmpz_matrix_det",
     returns=int,

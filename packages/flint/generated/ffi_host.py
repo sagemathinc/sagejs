@@ -89,6 +89,7 @@ from sagejs.ffi.flint import (
     fmpz_matrix_mul as _ffi_fmpz_matrix_mul,
     fmpz_matrix_pow as _ffi_fmpz_matrix_pow,
     fmpz_matrix_rank as _ffi_fmpz_matrix_rank,
+    fmpz_matrix_rank_mod_46337 as _ffi_fmpz_matrix_rank_mod_46337,
     fmpz_matrix_det as _ffi_fmpz_matrix_det,
     fmpz_matrix_trace as _ffi_fmpz_matrix_trace,
     fmpz_matrix_hnf as _ffi_fmpz_matrix_hnf,
@@ -919,6 +920,15 @@ def ffiFmpzMatrixRank(
     matrix: FmpzMatrix,
 ) -> uint64:
     return _ffi_fmpz_matrix_rank(
+        matrix,
+    )
+
+
+@native
+def ffiFmpzMatrixRankMod46337(
+    matrix: FmpzMatrix,
+) -> uint64:
+    return _ffi_fmpz_matrix_rank_mod_46337(
         matrix,
     )
 
