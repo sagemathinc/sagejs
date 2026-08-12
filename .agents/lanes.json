@@ -28,7 +28,7 @@
     {
       "id": "modular-forms",
       "description": "Dirichlet characters, modular symbols, modular forms, and Hecke algorithms",
-      "allowed_claims": ["src/baselib/dirichlet.py", "src/baselib/modular.py", "src/lib/sage/modular/", "packages/flint/src/charpoly", "packages/flint/src/cyclotomic_rref", "packages/flint/src/dirichlet", "packages/flint/src/modsym_core", "packages/flint/src/p1", "packages/flint/src/sparse_rational"],
+      "allowed_claims": ["src/baselib/dirichlet.py", "src/baselib/modular.py", "src/lib/sage/modular/", "src/lib/sagejs/kernels/p1.py", "packages/flint/src/charpoly", "packages/flint/src/cyclotomic_rref", "packages/flint/src/dirichlet", "packages/flint/src/modsym_core", "packages/flint/src/p1", "packages/flint/src/sparse_rational"],
       "required_checks": ["pnpm test:baselib:strict", "pnpm test:native", "pnpm bench:modular-symbols"]
     },
     {
