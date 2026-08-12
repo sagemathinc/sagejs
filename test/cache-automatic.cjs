@@ -288,6 +288,47 @@ test("automatic cleanup never exceeds its byte budget", (t) => {
   assert.equal(existsSync(join(root, expired)), true);
 });
 
+test("automatic cleanup makes bounded progress on a recent high-churn cache", (t) => {
+  const { base, root } = temporaryRoot(t);
+  const now = Date.now();
+  const current = versionName("a");
+  const pinned = versionName("b");
+  const leased = versionName("c");
+  const ordinary = ["d", "e", "f", "1", "2"].map(versionName);
+  addVersion(root, current, { ageDays: 0.9, bytes: 32 });
+  addVersion(root, pinned, { ageDays: 0.8, bytes: 32, pin: true });
+  addVersion(root, leased, { ageDays: 0.7, bytes: 32, lease: true });
+  ordinary.forEach((version, index) => {
+    addVersion(root, version, { ageDays: 0.6 - index * 0.05, bytes: 32 });
+  });
+  const result = runAutomaticModuleCacheCleanup({
+    currentVersion: current,
+    environment: automaticEnvironment(base, {
+      SAGEJS_MODULE_CACHE_AUTO_CLEANUP_MAX_BYTES: "1MiB",
+      SAGEJS_MODULE_CACHE_AUTO_CLEANUP_MAX_VERSIONS: "2",
+      SAGEJS_MODULE_CACHE_KEEP_VERSIONS: "2",
+      SAGEJS_MODULE_CACHE_MAX_SIZE: "128B",
+    }),
+    expectedRoot: root,
+    now,
+    root,
+  });
+  assert.equal(result.status, "applied");
+  assert.deepEqual(result.report.removedVersions, ordinary.slice(0, 2));
+  assert.ok(result.report.deferredVersions.length > 0);
+  for (const version of [current, pinned, leased]) {
+    assert.equal(existsSync(join(root, version)), true, version);
+  }
+  const newest = result.report.entries.filter((entry) => entry.newest);
+  assert.equal(newest.length, 2);
+  assert.ok(newest.every((entry) => existsSync(join(root, entry.version))));
+  assert.ok(
+    result.report.removedVersions.every((version) =>
+      ordinary.includes(version)
+    ),
+  );
+});
+
 test("the detached worker cannot be redirected to a nonstandard cache root", (t) => {
   const { base, root } = temporaryRoot(t);
   const current = versionName("9");

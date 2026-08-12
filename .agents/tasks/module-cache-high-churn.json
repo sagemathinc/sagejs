@@ -1,0 +1,101 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "module-cache-high-churn",
+  "title": "High-churn module cache retention",
+  "lane": "compiler-runtime",
+  "status": "active",
+  "owner": "user",
+  "objective": "Make manual and automatic module-cache size pressure prune obsolete recent compiler generations while preserving current, newest retained, pinned, and leased generations",
+  "base_commit": "3b0658fa3880a5efba21c80c3699071cdfb6a6c1",
+  "claims": [
+    "tools/cache.ts",
+    "tools/cache-auto-worker.ts",
+    "tools/cli.js",
+    "test/cache.cjs",
+    "test/cache-automatic.cjs"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "compiler-infrastructure",
+    "fallback": "not-applicable",
+    "oracles": [
+      "Deterministic temporary-cache fixtures; no test may inspect or mutate the real user cache"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm build",
+    "pnpm test:compiler",
+    "pnpm test:integration",
+    "node --test test/cache.cjs test/cache-automatic.cjs"
+  ],
+  "runs": [
+    {
+      "command": "pnpm build",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 173.253,
+      "started_at": "2026-08-12T07:20:37.291Z",
+      "commit": "05e0e370e1d41d5850577bbce2d7d9885901d8b0",
+      "workspace_fingerprint": "6b13b43f53f86cf7eda8e5362560aebd974ed0815521b25802d790137e3f70ae",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:compiler",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 86.601,
+      "started_at": "2026-08-12T07:23:41.734Z",
+      "commit": "05e0e370e1d41d5850577bbce2d7d9885901d8b0",
+      "workspace_fingerprint": "6b13b43f53f86cf7eda8e5362560aebd974ed0815521b25802d790137e3f70ae",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:integration",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 108.047,
+      "started_at": "2026-08-12T07:25:13.357Z",
+      "commit": "05e0e370e1d41d5850577bbce2d7d9885901d8b0",
+      "workspace_fingerprint": "6b13b43f53f86cf7eda8e5362560aebd974ed0815521b25802d790137e3f70ae",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm build",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 161.275,
+      "started_at": "2026-08-12T07:50:08.094Z",
+      "commit": "3b0658fa3880a5efba21c80c3699071cdfb6a6c1",
+      "workspace_fingerprint": "e8f2e6284c233f1cb8b7a6c6696c67323b4a7a3d4c6e34dcdb21ca07771a9872",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/cache.cjs test/cache-automatic.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.785,
+      "started_at": "2026-08-12T07:54:44.666Z",
+      "commit": "3b0658fa3880a5efba21c80c3699071cdfb6a6c1",
+      "workspace_fingerprint": "e8f2e6284c233f1cb8b7a6c6696c67323b4a7a3d4c6e34dcdb21ca07771a9872",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Size pressure now treats minAgeDays as a preferred grace window instead of an absolute retention guarantee: it removes older obsolete generations first, then recent obsolete generations as needed, while current, newest retained, pinned, and leased generations remain hard protections. Manual and bounded automatic cleanup are covered entirely by temporary-cache tests.",
+    "risks": [
+      "The cache can remain above maxBytes when hard-protected generations alone exceed the target; this is intentional and reported as best effort."
+    ],
+    "next_steps": [
+      "Replace the README cache-policy paragraph with the supplied wording so the user guide matches CLI help."
+    ]
+  }
+}

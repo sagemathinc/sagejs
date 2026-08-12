@@ -262,9 +262,12 @@ function inspectCache(options: PruneCacheOptions): CachePruneReport {
   entries.slice(0, policy.keepVersions).forEach((entry) => {
     entry.newest = true;
   });
+  // These are hard retention guarantees. The age grace below is deliberately
+  // separate: high-churn development can create hundreds of fresh compiler
+  // hashes, and treating every one as absolutely protected makes maxBytes
+  // ineffective precisely when the cache is growing fastest.
   const protectedEntry = (entry: CacheVersionEntry): boolean =>
-    entry.current || entry.inUse || entry.pinned || entry.newest ||
-    entry.ageDays < policy.minAgeDays;
+    entry.current || entry.inUse || entry.pinned || entry.newest;
 
   for (const entry of entries) {
     if (!protectedEntry(entry) && entry.ageDays >= policy.maxAgeDays) {
@@ -278,11 +281,23 @@ function inspectCache(options: PruneCacheOptions): CachePruneReport {
     0,
   );
   if (retainedBytes > policy.maxBytes) {
-    for (const entry of [...entries].reverse()) {
+    const oldestFirst = [...entries].reverse();
+    // Prefer entries outside the grace window, then cross it only if those are
+    // insufficient. This retains the useful meaning of minAgeDays without
+    // letting a high-churn burst make maxBytes entirely ineffective.
+    for (const mayCrossGrace of [false, true]) {
+      for (const entry of oldestFirst) {
+        if (retainedBytes <= policy.maxBytes) break;
+        if (
+          entry.reason ||
+          protectedEntry(entry) ||
+          (!mayCrossGrace && entry.ageDays < policy.minAgeDays) ||
+          (mayCrossGrace && entry.ageDays >= policy.minAgeDays)
+        ) continue;
+        entry.reason = "over-size";
+        retainedBytes -= entry.bytes;
+      }
       if (retainedBytes <= policy.maxBytes) break;
-      if (entry.reason || protectedEntry(entry)) continue;
-      entry.reason = "over-size";
-      retainedBytes -= entry.bytes;
     }
   }
 
@@ -362,18 +377,22 @@ export function pruneModuleCache(options: PruneCacheOptions): CachePruneReport {
       renameSync(entry.path, quarantine);
       try {
         // Refuse a symlink or special file introduced after planning and check
-        // the moved tree for a lease once more before destructive work.
+        // the moved tree for a lease or pin once more before destructive work.
         scanDirectory(quarantine);
       } catch (error) {
         if (!existsSync(entry.path)) renameSync(quarantine, entry.path);
         throw error;
       }
-      if (hasFreshLease(quarantine, now)) {
+      if (
+        hasFreshLease(quarantine, now) ||
+        existsSync(join(quarantine, PIN_FILENAME))
+      ) {
         if (existsSync(entry.path)) {
           report.skippedVersions.push(entry.version);
           report.errors.push({
             version: entry.version,
-            message: `became active during prune; preserved at ${quarantine}`,
+            message:
+              `became active or pinned during prune; preserved at ${quarantine}`,
           });
         } else {
           renameSync(quarantine, entry.path);
