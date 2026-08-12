@@ -4,7 +4,7 @@
   "id": "public-exact-vector-resources-v1",
   "title": "Public exact vector resources",
   "lane": "arithmetic-algebra",
-  "status": "review",
+  "status": "complete",
   "owner": "user",
   "objective": "Route public dense vectors over ZZ and QQ through generated FmpzVector and FmpqVector resources while preserving Sage semantics and eliminating list materialization from same-base arithmetic and exact matrix-vector result publication",
   "base_commit": "994c32b2719da5f5576ac058a544ace83589e538",
@@ -180,7 +180,7 @@
     }
   ],
   "handoff": {
-    "summary": "Public dense vectors over ZZ and QQ canonically own generated FmpzVector/FmpqVector resources. Construction, mutation, same-base arithmetic, scalar products, and equality stay on the resource; exact matrix-vector results are adopted without materializing a host element list. SageMath and native-disabled differential tests cover the public contract, and a 100000-entry benchmark records warmed resource arithmetic.",
+    "summary": "Integrated public dense vectors over ZZ and QQ with canonical generated FmpzVector/FmpqVector resources. Construction, mutation, same-base arithmetic, scalar products, equality, and independent shallow/deep copies stay on the resource; exact matrix-vector results are adopted without materializing a host element list. Adopted resources validate dimensions and close on mismatch. Slicing is currently one documented bulk host-materialization boundary rather than N scalar foreign calls. Independent review approved the explicit list-free but non-zero-copy ByteRegion matrix bridge, lifecycle behavior, and follow-up ABI debt. The consolidated branch passes focused public and sanitizer tests plus its 100000-entry resource benchmark.",
     "risks": [
       "The current exact matrix-vector ABI exchanges a canonical ByteRegion: input serializes and reparses the vector, while output serializes a temporary FLINT result and parses/copies it into the public resource. No host element list is constructed, but this is not zero-copy.",
       "Exact slicing bulk-materializes and re-imports once, and mixed ZZ/QQ arithmetic currently materializes during FmpzVector-to-FmpqVector conversion; neither path has a direct generated resource declaration yet.",
