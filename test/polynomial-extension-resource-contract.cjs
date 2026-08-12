@@ -56,6 +56,30 @@ def assert_raises(exception, operation):
 
 descriptor = extension_context_descriptor(3, 2, [1, 0, 1], "a")
 assert descriptor == (3, 2, (1, 0, 1), "a")
+unicode_descriptor = extension_context_descriptor(3, 2, [1, 0, 1], "α")
+assert unicode_descriptor[-1] == "α"
+
+# Context-dependent resources retain their own context reference. Closing the
+# public wrapper does not invalidate them; destruction waits for the last
+# dependent clear.
+assert context_lifetime_schedule([
+    "retain", "retain", "close_context", "release", "release",
+]) == [
+    (True, 1, False),
+    (True, 2, False),
+    (False, 2, False),
+    (False, 1, False),
+    (False, 0, True),
+]
+assert context_lifetime_schedule(["close_context", "close_context"]) == [
+    (False, 0, True),
+    (False, 0, True),
+]
+assert_raises(
+    ValueError,
+    lambda: context_lifetime_schedule(["close_context", "retain"]),
+)
+assert_raises(ValueError, lambda: context_lifetime_schedule(["release"]))
 
 # Equivalent metadata is not resource identity.  Separately owned contexts do
 # not mix even if both were constructed from this descriptor.
@@ -95,6 +119,16 @@ count, exported = export_extension_polynomial(
 )
 assert count == 3 and exported is canonical
 assert export_calls == [sentinel]
+
+serialized = serialize_extension_polynomial(descriptor, coordinates, 5)
+assert serialized == (descriptor, 3, tuple(coordinates[:6]))
+assert deserialize_extension_polynomial(serialized) == serialized
+assert_raises(
+    ValueError,
+    lambda: deserialize_extension_polynomial(
+        (descriptor, 4, tuple(coordinates[:6]) + (0, 0))
+    ),
+)
 
 zero_calls = []
 zero = construct_extension_polynomial(
@@ -148,6 +182,10 @@ assert_raises(
 assert_raises(
     TypeError,
     lambda: extension_context_descriptor(3, 2, [1, 0, 1], "not a name"),
+)
+assert_raises(
+    TypeError,
+    lambda: extension_context_descriptor(3, 2, [1, 0, 1], "_a"),
 )
 assert_raises(
     ValueError,
@@ -207,6 +245,11 @@ try:
     incompatible_rejected = False
 except Exception:
     incompatible_rejected = True
+try:
+    field(1.0)
+    float_coefficient_rejected = False
+except TypeError:
+    float_coefficient_rejected = True
 print(json.dumps({
     "sameFieldIdentity": field is same_field,
     "sameNormalizedModulusIdentity": field is same_modulus,
@@ -216,6 +259,7 @@ print(json.dumps({
     "zeroLength": len(ring(0).list()),
     "zeroDegree": int(ring(0).degree()),
     "incompatibleRejected": incompatible_rejected,
+    "floatCoefficientRejected": float_coefficient_rejected,
     "modulus": [str(coefficient) for coefficient in field.modulus().list()],
 }))
 `;
@@ -235,6 +279,7 @@ test("public extension-field semantics agree with SageMath", (t) => {
     zeroLength: 0,
     zeroDegree: -1,
     incompatibleRejected: true,
+    floatCoefficientRejected: true,
     modulus: ["1", "0", "1"],
   });
 
@@ -246,4 +291,82 @@ test("public extension-field semantics agree with SageMath", (t) => {
   const sageOutput = run(sage, ["-c", publicSemantics]);
   const oracle = JSON.parse(sageOutput.split(/\r?\n/).at(-1));
   assert.deepEqual(sagejs, oracle);
+});
+
+test("power-basis ordering and portable payload follow a nontrivial Sage field", (t) => {
+  const sagejsSource = String.raw`
+import json
+prime = GF(5)
+modulus_ring = PolynomialRing(prime, "u")
+u = modulus_ring.gen()
+field = GF(125, "a", modulus=u**3 + u + 1)
+a = field.gen()
+ring = PolynomialRing(field, "x")
+value = ring([1 + 2*a + 3*a**2, 4 + a**2, 2*a])
+print(json.dumps([str(coefficient) for coefficient in value.list()]))
+`;
+  const strings = JSON.parse(
+    run(process.execPath, [join(root, "bin/sagejs"), "--python"], {
+      input: sagejsSource,
+    }),
+  );
+  assert.deepEqual(strings, ["3*a^2 + 2*a + 1", "a^2 + 4", "2*a"]);
+
+  const coordinates = [1, 2, 3, 4, 0, 1, 0, 2, 0];
+  const contractSource = String.raw`
+descriptor = extension_context_descriptor(5, 3, [1, 1, 0, 1], "a")
+coordinates = [1, 2, 3, 4, 0, 1, 0, 2, 0]
+calls = []
+answer = construct_extension_polynomial(
+    object(), 5, 3, coordinates, 3,
+    lambda context, storage, count: calls.append((storage, count)) or count,
+)
+assert answer == 3 and calls == [(coordinates, 3)]
+payload = serialize_extension_polynomial(descriptor, coordinates, 3)
+assert deserialize_extension_polynomial(payload) == payload
+print("nontrivial-power-basis-contract-ok")
+`;
+  assert.equal(
+    runSagejsContract(contractSource),
+    "nontrivial-power-basis-contract-ok",
+  );
+
+  const sage = process.env.SAGE_BIN || "/home/user/sagelite/sage";
+  if (!existsSync(sage)) {
+    t.skip("SageMath power-basis oracle is unavailable");
+    return;
+  }
+  const sageOracle = String.raw`
+from sage.all import *
+import json
+prime = GF(5)
+modulus_ring = PolynomialRing(prime, "u")
+u = modulus_ring.gen()
+field = GF(125, "a", modulus=u**3 + u + 1)
+a = field.gen()
+ring = PolynomialRing(field, "x")
+value = ring([1 + 2*a + 3*a**2, 4 + a**2, 2*a])
+unicode_name = GF(9, "α").variable_name()
+try:
+    GF(9, "_a")
+    underscore_name_rejected = False
+except (TypeError, ValueError):
+    underscore_name_rejected = True
+print(json.dumps({
+    "coordinates": [[int(value) for value in coefficient.list()]
+                    for coefficient in value.list()],
+    "strings": [str(coefficient) for coefficient in value.list()],
+    "unicodeName": unicode_name,
+    "underscoreNameRejected": underscore_name_rejected,
+}))
+`;
+  const output = run(sage, ["-c", sageOracle]);
+  const oracle = JSON.parse(output.split(/\r?\n/).at(-1));
+  assert.deepEqual(oracle, {
+    coordinates: [coordinates.slice(0, 3), coordinates.slice(3, 6),
+      coordinates.slice(6, 9)],
+    strings,
+    unicodeName: "α",
+    underscoreNameRejected: true,
+  });
 });
