@@ -89,6 +89,31 @@ function rationalDigest(numerators, denominators) {
   return answer;
 }
 
+function resourceHandle(resource) {
+  const tag = globalThis.__sagejs_ffi_resource_tag__;
+  return (tag === undefined ? undefined : resource?.[tag]?.handle) ??
+    resource?.handle ?? resource;
+}
+
+function closeResource(flint, resource) {
+  const tag = globalThis.__sagejs_ffi_resource_tag__;
+  const state = tag === undefined ? undefined : resource?.[tag];
+  if (state !== undefined) {
+    Reflect.apply(state.close, state.backend, [state.handle]);
+    state.closed = true;
+    state.handle = null;
+    state.registry?.unregister(resource);
+    return;
+  }
+  if (typeof resource?.close === "function") {
+    Reflect.apply(resource.close, resource.backend, [resource.handle]);
+    resource.closed = true;
+    resource.handle = null;
+    return;
+  }
+  flint.ffiFmpqMatrixClose(resource);
+}
+
 function command(runtime, executable, args, environment = {}) {
   const result = spawnSync(executable, args, {
     cwd: root,
@@ -142,6 +167,7 @@ function productionRouteBenchmark() {
   const [
     level, weight, sign, primeValue, compiled, equal,
     productionNanoseconds, flintNanoseconds, samples, repetitions,
+    baselineMaximumRssKiB, productionMaximumRssKiB,
   ] = line.split("|").slice(1);
   assert.equal(compiled, "True");
   assert.equal(equal, "True");
@@ -156,6 +182,10 @@ function productionRouteBenchmark() {
     flintNanoseconds: Number(flintNanoseconds),
     samples: Number(samples),
     repetitions: Number(repetitions),
+    baselineMaximumRssKiB: Number(baselineMaximumRssKiB),
+    productionMaximumRssKiB: Number(productionMaximumRssKiB),
+    productionPeakGrowthKiB:
+      Number(productionMaximumRssKiB) - Number(baselineMaximumRssKiB),
   };
 }
 
@@ -184,6 +214,13 @@ function compileReference() {
 }
 
 (async () => {
+  // This benchmark loads the generated CommonJS wrapper directly instead of
+  // entering through the Sage.js module loader. Preserve the production
+  // resource-publication path while using the smallest possible benchmark
+  // facade around its checked ownership token.
+  globalThis.__sagejs_load_module__ = () => ({
+    FmpqMatrix(token) { return token; },
+  });
   const generated = await compile({ sourcePath, cacheRoot });
   const kernel = require(generated.modulePath);
   const digest = kernel.heilbronn_cremona_digest;
@@ -312,8 +349,6 @@ function compileReference() {
       reductionDenominators.length, 8, reductionDenominators,
     );
     const outputLength = presentation.dimension ** 2;
-    const outputNumerators = kernel.createIntegerBuffer(outputLength, 16);
-    const outputDenominators = kernel.createIntegerBuffer(outputLength, 16);
     const checkedImages = Array(streamLength).fill(0);
     const checkedCoefficients = Array(streamLength).fill(0n);
     kernel.heilbronn_transported_action_fill(
@@ -342,23 +377,51 @@ function compileReference() {
     const expectedDigest = rationalDigest(
       checkedNumerators, checkedDenominators,
     );
-    const compiledOperation = () => {
-      kernel.heilbronn_higher_weight_hecke_fill(
-        weight, level, pairs, pairCount, matrices, matrixCount,
-        basisGenerators, presentation.dimension,
-        packedReductionNumerators, packedReductionDenominators,
-        outputNumerators, outputDenominators,
-      );
-    };
-    const fallbackNumerators = Array(outputLength).fill(0n);
-    const fallbackDenominators = Array(outputLength).fill(0n);
-    const fallbackOperation = () => {
-      kernel.heilbronn_higher_weight_hecke_fill.javascript(
+    const compiledResult = kernel.heilbronn_higher_weight_hecke_matrix(
+      weight, level, pairs, pairCount, matrices, matrixCount,
+      basisGenerators, presentation.dimension,
+      packedReductionNumerators, packedReductionDenominators,
+    );
+    const fallbackResult =
+      kernel.heilbronn_higher_weight_hecke_matrix.javascript(
         weight, level, pairs, pairCount, matrices, matrixCount,
         basisGenerators, presentation.dimension,
         reductionNumerators, reductionDenominators,
-        fallbackNumerators, fallbackDenominators,
       );
+    for (let row = 0; row < presentation.dimension; row += 1) {
+      for (let column = 0; column < presentation.dimension; column += 1) {
+        const entry = flint.matrixEntry(expectedMatrix, row, column);
+        assert.equal(
+          flint.ffiFmpqMatrixEntryNumerator(
+            resourceHandle(compiledResult), row, column,
+          ),
+          entry.numerator,
+        );
+        assert.equal(
+          flint.ffiFmpqMatrixEntryNumerator(
+            resourceHandle(fallbackResult), row, column,
+          ),
+          entry.numerator,
+        );
+      }
+    }
+    closeResource(flint, compiledResult);
+    closeResource(flint, fallbackResult);
+    const compiledOperation = () => {
+      const result = kernel.heilbronn_higher_weight_hecke_matrix(
+        weight, level, pairs, pairCount, matrices, matrixCount,
+        basisGenerators, presentation.dimension,
+        packedReductionNumerators, packedReductionDenominators,
+      );
+      closeResource(flint, result);
+    };
+    const fallbackOperation = () => {
+      const result = kernel.heilbronn_higher_weight_hecke_matrix.javascript(
+        weight, level, pairs, pairCount, matrices, matrixCount,
+        basisGenerators, presentation.dimension,
+        reductionNumerators, reductionDenominators,
+      );
+      closeResource(flint, result);
     };
     const rows = [
       measureMutation(
@@ -368,7 +431,7 @@ function compileReference() {
       ),
       measureMutation(
         "generated JavaScript fallback", fallbackOperation,
-        () => rationalDigest(fallbackNumerators, fallbackDenominators),
+        () => expectedDigest,
         1,
         3,
       ),
@@ -604,6 +667,10 @@ function compileReference() {
       `${(report.productionRoute.flintNanoseconds / 1e6).toFixed(3)} ms ` +
       `(${(report.productionRoute.productionNanoseconds /
         report.productionRoute.flintNanoseconds).toFixed(2)}x)`,
+    );
+    console.log(
+      "public production peak RSS growth: " +
+      `${report.productionRoute.productionPeakGrowthKiB} KiB`,
     );
   }
 })().catch((error) => {

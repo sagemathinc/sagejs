@@ -2543,6 +2543,41 @@ def fmpq_matrix_set_entry(
 
 
 @flint.function(
+    dynamic="ffiFmpqMatrixAddScaledEntry",
+    symbol="sagejs_fmpq_matrix_add_scaled_entry",
+    returns=int,
+    abi=[
+        in_("matrix", sagejs_fmpq_matrix_t),
+        in_("row", uint64_t),
+        in_("column", uint64_t),
+        in_("numerator", fmpz_t),
+        in_("denominator", fmpz_t),
+        in_("scale", fmpz_t),
+    ],
+    effects=Effects(
+        pure=False,
+        allocates=True,
+        raises=[ValueError],
+        writes=["matrix"],
+    ),
+    result=Status(
+        1,
+        exception=ValueError,
+        message="invalid rational matrix entry update",
+    ),
+    wasm=True,
+)
+def fmpq_matrix_add_scaled_entry(
+    matrix: Writable[FmpqMatrix],
+    row: uint64,
+    column: uint64,
+    numerator: Integer,
+    denominator: Integer,
+    scale: Integer,
+) -> bool: ...
+
+
+@flint.function(
     dynamic="ffiFmpqMatrixEntryNumerator",
     symbol="sagejs_fmpq_matrix_entry_numerator",
     returns=int,

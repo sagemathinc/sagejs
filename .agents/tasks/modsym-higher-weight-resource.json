@@ -1,0 +1,233 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "modsym-higher-weight-resource",
+  "title": "Modsym Higher Weight Resource",
+  "lane": "modular-forms",
+  "status": "review",
+  "owner": "user",
+  "objective": "Return production higher-weight Hecke matrices as owned generated FmpqMatrix resources without packed rational retries or host reconstruction",
+  "base_commit": "49f32404c1fa0d464e40506d1395cc3b66f5bc62",
+  "claims": [
+    "src/lib/sagejs/kernels/p1.py",
+    "src/baselib/modular.py",
+    "test/modular-symbols.cjs",
+    "test/native-kernel.cjs",
+    "test/higher-weight-hecke-resource.cjs",
+    "bench/native_p1_production.py",
+    "bench/native_p1_workload.py",
+    "bench/compare-native-p1.cjs",
+    "bench/NATIVE-COMPILER.md",
+    "architecture/native-boundaries.json",
+    "architecture/native-exports.json",
+    "architecture/native-kernels.json",
+    "architecture/package-graph.json",
+    "ffi/flint.ffi.json",
+    "ffi/flint.ffi.py",
+    "src/lib/sagejs/ffi/flint.py",
+    "src/baselib/sagejs/ffi/flint.py",
+    "packages/flint/generated/ffi_host.py",
+    "packages/flint/include/sagejs/fmpq_matrix_ffi.h",
+    "test/ffi.cjs",
+    "test/fmpq-resource-ops-lifecycle.cjs"
+  ],
+  "dependencies": [
+    "owned-resource-result-adoption"
+  ],
+  "references": [
+    "Sage higher-weight modular symbols"
+  ],
+  "architecture": {
+    "strategy": "mixed",
+    "fallback": "same-source",
+    "oracles": [
+      "cpython",
+      "javascript",
+      "legacy p1ListHigherWeightHeckeMatrix differential oracle",
+      "SageMath exact matrices across levels, weights, signs, and primes"
+    ],
+    "exceptions": [
+      "The generated generic FLINT entry-update primitive is coordinated integration work required to keep the typed modular traversal competitive."
+    ]
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "fallback",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm build",
+    "pnpm test:baselib:strict",
+    "pnpm test:native",
+    "pnpm bench:modular-symbols",
+    "node test/higher-weight-hecke-resource.cjs",
+    "node --test --test-name-pattern=native kernels test/native-kernel.cjs",
+    "node test/fmpq-resource-ops-lifecycle.cjs",
+    "pnpm architecture:check",
+    "env SAGEJS_NATIVE_P1_PRODUCTION_REPETITIONS=50 SAGEJS_NATIVE_P1_PRODUCTION_SAMPLES=7 ./bin/sagejs bench/native_p1_production.py"
+  ],
+  "runs": [
+    {
+      "command": "pnpm build",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 146.363,
+      "started_at": "2026-08-12T07:01:12.063Z",
+      "commit": "2994da45f2450d4779f5e95943b28e986374dcef",
+      "workspace_fingerprint": "f1f312c79ed1125d33bbfa8983346678853cc63ad3cf6933143f5ee037e46f83",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 13.11,
+      "started_at": "2026-08-12T07:03:51.311Z",
+      "commit": "2994da45f2450d4779f5e95943b28e986374dcef",
+      "workspace_fingerprint": "f1f312c79ed1125d33bbfa8983346678853cc63ad3cf6933143f5ee037e46f83",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node test/higher-weight-hecke-resource.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 88.782,
+      "started_at": "2026-08-12T07:04:09.458Z",
+      "commit": "2994da45f2450d4779f5e95943b28e986374dcef",
+      "workspace_fingerprint": "f1f312c79ed1125d33bbfa8983346678853cc63ad3cf6933143f5ee037e46f83",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test --test-name-pattern=native kernels test/native-kernel.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 67.556,
+      "started_at": "2026-08-12T07:05:45.955Z",
+      "commit": "2994da45f2450d4779f5e95943b28e986374dcef",
+      "workspace_fingerprint": "f1f312c79ed1125d33bbfa8983346678853cc63ad3cf6933143f5ee037e46f83",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node test/fmpq-resource-ops-lifecycle.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.848,
+      "started_at": "2026-08-12T07:07:03.419Z",
+      "commit": "2994da45f2450d4779f5e95943b28e986374dcef",
+      "workspace_fingerprint": "f1f312c79ed1125d33bbfa8983346678853cc63ad3cf6933143f5ee037e46f83",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 12.961,
+      "started_at": "2026-08-12T07:07:12.901Z",
+      "commit": "2994da45f2450d4779f5e95943b28e986374dcef",
+      "workspace_fingerprint": "f1f312c79ed1125d33bbfa8983346678853cc63ad3cf6933143f5ee037e46f83",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "env SAGEJS_NATIVE_P1_PRODUCTION_REPETITIONS=50 SAGEJS_NATIVE_P1_PRODUCTION_SAMPLES=7 ./bin/sagejs bench/native_p1_production.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 4.952,
+      "started_at": "2026-08-12T07:07:36.518Z",
+      "commit": "2994da45f2450d4779f5e95943b28e986374dcef",
+      "workspace_fingerprint": "f1f312c79ed1125d33bbfa8983346678853cc63ad3cf6933143f5ee037e46f83",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm bench:modular-symbols",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 396.709,
+      "started_at": "2026-08-12T07:08:18.710Z",
+      "commit": "2994da45f2450d4779f5e95943b28e986374dcef",
+      "workspace_fingerprint": "f1f312c79ed1125d33bbfa8983346678853cc63ad3cf6933143f5ee037e46f83",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:native",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 191.432,
+      "started_at": "2026-08-12T07:15:00.510Z",
+      "commit": "2994da45f2450d4779f5e95943b28e986374dcef",
+      "workspace_fingerprint": "f1f312c79ed1125d33bbfa8983346678853cc63ad3cf6933143f5ee037e46f83",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:native",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 431.133,
+      "started_at": "2026-08-12T07:18:39.083Z",
+      "commit": "2994da45f2450d4779f5e95943b28e986374dcef",
+      "workspace_fingerprint": "f1f312c79ed1125d33bbfa8983346678853cc63ad3cf6933143f5ee037e46f83",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:native",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 589.261,
+      "started_at": "2026-08-12T07:42:00.186Z",
+      "commit": "2994da45f2450d4779f5e95943b28e986374dcef",
+      "workspace_fingerprint": "f1f312c79ed1125d33bbfa8983346678853cc63ad3cf6933143f5ee037e46f83",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node test/higher-weight-hecke-resource.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 83.832,
+      "started_at": "2026-08-12T08:00:27.163Z",
+      "commit": "d9fb61558d1600da184ba0492a954be3cc39d9ec",
+      "workspace_fingerprint": "7073c1bcaeac569a32a944452f1e90db05ee0bcbc10a4f5d3deaea7602892045",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 12.559,
+      "started_at": "2026-08-12T08:01:57.579Z",
+      "commit": "d9fb61558d1600da184ba0492a954be3cc39d9ec",
+      "workspace_fingerprint": "7073c1bcaeac569a32a944452f1e90db05ee0bcbc10a4f5d3deaea7602892045",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm ffi:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.85,
+      "started_at": "2026-08-12T08:02:26.851Z",
+      "commit": "d9fb61558d1600da184ba0492a954be3cc39d9ec",
+      "workspace_fingerprint": "7073c1bcaeac569a32a944452f1e90db05ee0bcbc10a4f5d3deaea7602892045",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 13.258,
+      "started_at": "2026-08-12T08:02:29.402Z",
+      "commit": "d9fb61558d1600da184ba0492a954be3cc39d9ec",
+      "workspace_fingerprint": "7073c1bcaeac569a32a944452f1e90db05ee0bcbc10a4f5d3deaea7602892045",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Production higher-weight Hecke matrices now return owned generated FmpqMatrix resources. The typed traversal performs each exact contribution through one generic declared FLINT add-scaled-entry operation, removing uniform limb capacities, retries, packed result export, and host rational reconstruction. Native and same-source dynamic results are differential against the legacy FLINT oracle across level 11 T_101 and signed level-1000 weight-4/6 cases. The complete public typed route measures 2.64 ms versus 1.85 ms for the oracle on the 16-vCPU AMD EPYC host, with only 640 KiB peak-RSS growth across the timed batch and sanitizer-backed resource lifecycle coverage.",
+    "risks": [
+      "The modular slice required a generic shared FFI primitive, so the current lane checker cannot express the authorized cross-lane claims in one coherent task even though architecture checks pass.",
+      "The declaration is marked wasm-compatible, but this lane did not rebuild the browser FLINT artifact."
+    ],
+    "next_steps": [
+      "Review and integrate the combined modular-forms and shared-FFI slice; split by lane during merge only if repository policy requires it.",
+      "Use the generic scaled-entry primitive for other exact typed traversals that accumulate into FLINT-owned rational matrices."
+    ]
+  }
+}

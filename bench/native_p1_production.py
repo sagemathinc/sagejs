@@ -2,7 +2,7 @@
 
 The presentation and packed inputs are intentionally cached for both paths.
 Each timed production call discards only the resulting Hecke matrix, so the
-measurement includes the isolated typed kernel, exact output materialization,
+measurement includes the isolated typed kernel, generated resource ownership,
 and public Matrix construction without measuring presentation construction.
 """
 
@@ -10,7 +10,8 @@ import os
 import statistics
 import time
 
-from sagejs.kernels.p1 import heilbronn_higher_weight_hecke_fill
+import sagejs.runtime as runtime
+from sagejs.kernels.p1 import heilbronn_higher_weight_hecke_matrix
 from sagejs.native import is_compiled
 
 
@@ -30,6 +31,17 @@ if typed != oracle:
 
 production_samples = []
 flint_samples = []
+process = runtime.reflect.get(runtime.global_object, "process")
+
+
+def maximum_rss() -> int:
+    usage = runtime.reflect.apply(
+        runtime.reflect.get(process, "resourceUsage"), process, []
+    )
+    return runtime.number(runtime.reflect.get(usage, "maxRSS"))
+
+
+baseline_maximum_rss = maximum_rss()
 for _sample in range(samples):
     start = time.perf_counter_ns()
     for _repetition in range(repetitions):
@@ -37,6 +49,8 @@ for _sample in range(samples):
         typed = line.higher_weight_hecke_matrix(weight, sign, prime)
     production_samples.append((time.perf_counter_ns() - start) / repetitions)
 
+production_maximum_rss = maximum_rss()
+for _sample in range(samples):
     start = time.perf_counter_ns()
     for _repetition in range(repetitions):
         oracle = line._higher_weight_hecke_matrix_flint(
@@ -56,7 +70,7 @@ print(
     + "|"
     + str(prime)
     + "|"
-    + str(is_compiled(heilbronn_higher_weight_hecke_fill))
+    + str(is_compiled(heilbronn_higher_weight_hecke_matrix))
     + "|"
     + str(typed == oracle)
     + "|"
@@ -67,4 +81,8 @@ print(
     + str(samples)
     + "|"
     + str(repetitions)
+    + "|"
+    + str(baseline_maximum_rss)
+    + "|"
+    + str(production_maximum_rss)
 )
