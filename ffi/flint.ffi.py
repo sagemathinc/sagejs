@@ -29,6 +29,7 @@ flint = Library(
         "flint/nmod_mat.h",
         "flint/ulong_extras.h",
         "sagejs/exact_polynomial_ffi.h",
+        "sagejs/exact_vector_ffi.h",
         "sagejs/ffi_algorithms.h",
         "sagejs/fmpz_matrix_ffi.h",
         "sagejs/fmpq_matrix_ffi.h",
@@ -65,6 +66,28 @@ FmpqMatrix = flint.resource(
     close="ffiFmpqMatrixClose",
     clear="sagejs_fmpq_matrix_clear",
     size="sagejs_fmpq_matrix_allocated_bytes",
+    wasm=True,
+)
+
+
+FmpzVector = flint.resource(
+    id="fmpz_vector",
+    abi=sagejs_fmpz_vector_t,
+    ownership="owned",
+    close="ffiFmpzVectorClose",
+    clear="sagejs_fmpz_vector_clear",
+    size="sagejs_fmpz_vector_allocated_bytes",
+    wasm=True,
+)
+
+
+FmpqVector = flint.resource(
+    id="fmpq_vector",
+    abi=sagejs_fmpq_vector_t,
+    ownership="owned",
+    close="ffiFmpqVectorClose",
+    clear="sagejs_fmpq_vector_clear",
+    size="sagejs_fmpq_vector_allocated_bytes",
     wasm=True,
 )
 
@@ -1944,6 +1967,468 @@ def fmpq_polynomial_from_byte_region(
     offset: uint64,
     length: uint64,
 ) -> FmpqPolynomial: ...
+
+
+@flint.function(
+    dynamic="ffiFmpzVectorFromByteRegion",
+    symbol="sagejs_fmpz_vector_from_byte_region",
+    returns=int,
+    abi=[
+        out("result", sagejs_fmpz_vector_t),
+        in_("source", sagejs_flint_byte_region_t),
+        in_("length", uint64_t),
+    ],
+    effects=Effects(pure=False, allocates=True, raises=[ValueError]),
+    result=Status(
+        1,
+        exception=ValueError,
+        message="invalid canonical integer vector entry stream",
+    ),
+    wasm=True,
+)
+def fmpz_vector_from_byte_region(
+    source: FlintByteRegion,
+    length: uint64,
+) -> FmpzVector: ...
+
+
+@flint.function(
+    dynamic="ffiFmpqVectorFromByteRegion",
+    symbol="sagejs_fmpq_vector_from_byte_region",
+    returns=int,
+    abi=[
+        out("result", sagejs_fmpq_vector_t),
+        in_("source", sagejs_flint_byte_region_t),
+        in_("length", uint64_t),
+    ],
+    effects=Effects(pure=False, allocates=True, raises=[ValueError]),
+    result=Status(
+        1,
+        exception=ValueError,
+        message="invalid canonical rational vector entry stream",
+    ),
+    wasm=True,
+)
+def fmpq_vector_from_byte_region(
+    source: FlintByteRegion,
+    length: uint64,
+) -> FmpqVector: ...
+
+
+@flint.function(
+    dynamic="ffiFmpzVectorLength",
+    symbol="sagejs_fmpz_vector_length",
+    returns=uint64_t,
+    abi=[in_("vector", sagejs_fmpz_vector_t)],
+    effects=Effects(pure=True),
+    result=Direct(),
+    wasm=True,
+)
+def fmpz_vector_length(vector: FmpzVector) -> uint64: ...
+
+
+@flint.function(
+    dynamic="ffiFmpqVectorLength",
+    symbol="sagejs_fmpq_vector_length",
+    returns=uint64_t,
+    abi=[in_("vector", sagejs_fmpq_vector_t)],
+    effects=Effects(pure=True),
+    result=Direct(),
+    wasm=True,
+)
+def fmpq_vector_length(vector: FmpqVector) -> uint64: ...
+
+
+@flint.function(
+    dynamic="ffiFmpzVectorEntry",
+    symbol="sagejs_fmpz_vector_entry",
+    returns=int,
+    abi=[
+        out("result", fmpz_t),
+        in_("vector", sagejs_fmpz_vector_t),
+        in_("index", uint64_t),
+    ],
+    effects=Effects(pure=True, allocates=True, raises=[IndexError]),
+    result=Status(
+        1,
+        exception=IndexError,
+        message="integer vector index is out of range",
+    ),
+    wasm=True,
+)
+def fmpz_vector_entry(vector: FmpzVector, index: uint64) -> Integer: ...
+
+
+@flint.function(
+    dynamic="ffiFmpqVectorEntryNumerator",
+    symbol="sagejs_fmpq_vector_entry_numerator",
+    returns=int,
+    abi=[
+        out("result", fmpz_t),
+        in_("vector", sagejs_fmpq_vector_t),
+        in_("index", uint64_t),
+    ],
+    effects=Effects(pure=True, allocates=True, raises=[IndexError]),
+    result=Status(
+        1,
+        exception=IndexError,
+        message="rational vector index is out of range",
+    ),
+    wasm=True,
+)
+def fmpq_vector_entry_numerator(
+    vector: FmpqVector,
+    index: uint64,
+) -> Integer: ...
+
+
+@flint.function(
+    dynamic="ffiFmpqVectorEntryDenominator",
+    symbol="sagejs_fmpq_vector_entry_denominator",
+    returns=int,
+    abi=[
+        out("result", fmpz_t),
+        in_("vector", sagejs_fmpq_vector_t),
+        in_("index", uint64_t),
+    ],
+    effects=Effects(pure=True, allocates=True, raises=[IndexError]),
+    result=Status(
+        1,
+        exception=IndexError,
+        message="rational vector index is out of range",
+    ),
+    wasm=True,
+)
+def fmpq_vector_entry_denominator(
+    vector: FmpqVector,
+    index: uint64,
+) -> Integer: ...
+
+
+@flint.function(
+    dynamic="ffiFmpzVectorSetEntry",
+    symbol="sagejs_fmpz_vector_set_entry",
+    returns=int,
+    abi=[
+        in_("vector", sagejs_fmpz_vector_t),
+        in_("index", uint64_t),
+        in_("entry", fmpz_t),
+    ],
+    effects=Effects(
+        pure=False,
+        allocates=True,
+        raises=[IndexError],
+        writes=["vector"],
+    ),
+    result=Status(
+        1,
+        exception=IndexError,
+        message="integer vector index is out of range",
+    ),
+    wasm=True,
+)
+def fmpz_vector_set_entry(
+    vector: Writable[FmpzVector],
+    index: uint64,
+    entry: Integer,
+) -> bool: ...
+
+
+@flint.function(
+    dynamic="ffiFmpqVectorSetEntry",
+    symbol="sagejs_fmpq_vector_set_entry",
+    returns=int,
+    abi=[
+        in_("vector", sagejs_fmpq_vector_t),
+        in_("index", uint64_t),
+        in_("numerator", fmpz_t),
+        in_("denominator", fmpz_t),
+    ],
+    effects=Effects(
+        pure=False,
+        allocates=True,
+        raises=[IndexError, ValueError],
+        writes=["vector"],
+    ),
+    result=Status(
+        1,
+        exception=ValueError,
+        message="invalid rational vector entry",
+    ),
+    wasm=True,
+)
+def fmpq_vector_set_entry(
+    vector: Writable[FmpqVector],
+    index: uint64,
+    numerator: Integer,
+    denominator: Integer,
+) -> bool: ...
+
+
+@flint.function(
+    dynamic="ffiFmpzVectorCopy",
+    symbol="sagejs_fmpz_vector_init_set",
+    returns=int,
+    abi=[
+        out("result", sagejs_fmpz_vector_t),
+        in_("source", sagejs_fmpz_vector_t),
+    ],
+    effects=Effects(pure=False, allocates=True, raises=[RuntimeError]),
+    result=Status(1, exception=RuntimeError, message="integer vector copy failed"),
+    wasm=True,
+)
+def fmpz_vector_copy(source: FmpzVector) -> FmpzVector: ...
+
+
+@flint.function(
+    dynamic="ffiFmpqVectorCopy",
+    symbol="sagejs_fmpq_vector_init_set",
+    returns=int,
+    abi=[
+        out("result", sagejs_fmpq_vector_t),
+        in_("source", sagejs_fmpq_vector_t),
+    ],
+    effects=Effects(pure=False, allocates=True, raises=[RuntimeError]),
+    result=Status(1, exception=RuntimeError, message="rational vector copy failed"),
+    wasm=True,
+)
+def fmpq_vector_copy(source: FmpqVector) -> FmpqVector: ...
+
+
+@flint.function(
+    dynamic="ffiFmpzVectorSerialize",
+    symbol="sagejs_fmpz_vector_serialize",
+    returns=int,
+    abi=[
+        out("result", sagejs_flint_byte_region_t),
+        in_("source", sagejs_fmpz_vector_t),
+    ],
+    effects=Effects(pure=False, allocates=True, raises=[OverflowError]),
+    result=Status(
+        1,
+        exception=OverflowError,
+        message="integer vector serialization is too large",
+    ),
+    wasm=True,
+)
+def fmpz_vector_serialize(source: FmpzVector) -> FlintByteRegion: ...
+
+
+@flint.function(
+    dynamic="ffiFmpqVectorSerialize",
+    symbol="sagejs_fmpq_vector_serialize",
+    returns=int,
+    abi=[
+        out("result", sagejs_flint_byte_region_t),
+        in_("source", sagejs_fmpq_vector_t),
+    ],
+    effects=Effects(pure=False, allocates=True, raises=[OverflowError]),
+    result=Status(
+        1,
+        exception=OverflowError,
+        message="rational vector serialization is too large",
+    ),
+    wasm=True,
+)
+def fmpq_vector_serialize(source: FmpqVector) -> FlintByteRegion: ...
+
+
+@flint.function(
+    dynamic="ffiFmpzVectorEqual",
+    symbol="sagejs_fmpz_vector_equal",
+    returns=int,
+    abi=[
+        in_("left", sagejs_fmpz_vector_t),
+        in_("right", sagejs_fmpz_vector_t),
+    ],
+    effects=Effects(pure=True),
+    result=Direct(),
+    wasm=True,
+)
+def fmpz_vector_equal(left: FmpzVector, right: FmpzVector) -> bool: ...
+
+
+@flint.function(
+    dynamic="ffiFmpqVectorEqual",
+    symbol="sagejs_fmpq_vector_equal",
+    returns=int,
+    abi=[
+        in_("left", sagejs_fmpq_vector_t),
+        in_("right", sagejs_fmpq_vector_t),
+    ],
+    effects=Effects(pure=True),
+    result=Direct(),
+    wasm=True,
+)
+def fmpq_vector_equal(left: FmpqVector, right: FmpqVector) -> bool: ...
+
+
+@flint.function(
+    dynamic="ffiFmpzVectorAdd",
+    symbol="sagejs_fmpz_vector_add",
+    returns=int,
+    abi=[
+        out("result", sagejs_fmpz_vector_t),
+        in_("left", sagejs_fmpz_vector_t),
+        in_("right", sagejs_fmpz_vector_t),
+    ],
+    effects=Effects(pure=False, allocates=True, raises=[ValueError]),
+    result=Status(
+        1,
+        exception=ValueError,
+        message="integer vector lengths are incompatible",
+    ),
+    wasm=True,
+)
+def fmpz_vector_add(left: FmpzVector, right: FmpzVector) -> FmpzVector: ...
+
+
+@flint.function(
+    dynamic="ffiFmpqVectorAdd",
+    symbol="sagejs_fmpq_vector_add",
+    returns=int,
+    abi=[
+        out("result", sagejs_fmpq_vector_t),
+        in_("left", sagejs_fmpq_vector_t),
+        in_("right", sagejs_fmpq_vector_t),
+    ],
+    effects=Effects(pure=False, allocates=True, raises=[ValueError]),
+    result=Status(
+        1,
+        exception=ValueError,
+        message="rational vector lengths are incompatible",
+    ),
+    wasm=True,
+)
+def fmpq_vector_add(left: FmpqVector, right: FmpqVector) -> FmpqVector: ...
+
+
+@flint.function(
+    dynamic="ffiFmpzVectorSub",
+    symbol="sagejs_fmpz_vector_sub",
+    returns=int,
+    abi=[
+        out("result", sagejs_fmpz_vector_t),
+        in_("left", sagejs_fmpz_vector_t),
+        in_("right", sagejs_fmpz_vector_t),
+    ],
+    effects=Effects(pure=False, allocates=True, raises=[ValueError]),
+    result=Status(
+        1,
+        exception=ValueError,
+        message="integer vector lengths are incompatible",
+    ),
+    wasm=True,
+)
+def fmpz_vector_sub(left: FmpzVector, right: FmpzVector) -> FmpzVector: ...
+
+
+@flint.function(
+    dynamic="ffiFmpqVectorSub",
+    symbol="sagejs_fmpq_vector_sub",
+    returns=int,
+    abi=[
+        out("result", sagejs_fmpq_vector_t),
+        in_("left", sagejs_fmpq_vector_t),
+        in_("right", sagejs_fmpq_vector_t),
+    ],
+    effects=Effects(pure=False, allocates=True, raises=[ValueError]),
+    result=Status(
+        1,
+        exception=ValueError,
+        message="rational vector lengths are incompatible",
+    ),
+    wasm=True,
+)
+def fmpq_vector_sub(left: FmpqVector, right: FmpqVector) -> FmpqVector: ...
+
+
+@flint.function(
+    dynamic="ffiFmpzVectorScalarMul",
+    symbol="sagejs_fmpz_vector_scalar_mul",
+    returns=int,
+    abi=[
+        out("result", sagejs_fmpz_vector_t),
+        in_("source", sagejs_fmpz_vector_t),
+        in_("scalar", fmpz_t),
+    ],
+    effects=Effects(pure=False, allocates=True, raises=[RuntimeError]),
+    result=Status(
+        1,
+        exception=RuntimeError,
+        message="integer vector scalar multiplication failed",
+    ),
+    wasm=True,
+)
+def fmpz_vector_scalar_mul(
+    source: FmpzVector,
+    scalar: Integer,
+) -> FmpzVector: ...
+
+
+@flint.function(
+    dynamic="ffiFmpqVectorScalarMul",
+    symbol="sagejs_fmpq_vector_scalar_mul",
+    returns=int,
+    abi=[
+        out("result", sagejs_fmpq_vector_t),
+        in_("source", sagejs_fmpq_vector_t),
+        in_("numerator", fmpz_t),
+        in_("denominator", fmpz_t),
+    ],
+    effects=Effects(pure=False, allocates=True, raises=[ValueError]),
+    result=Status(
+        1,
+        exception=ValueError,
+        message="invalid rational vector scalar",
+    ),
+    wasm=True,
+)
+def fmpq_vector_scalar_mul(
+    source: FmpqVector,
+    numerator: Integer,
+    denominator: Integer,
+) -> FmpqVector: ...
+
+
+@flint.function(
+    dynamic="ffiFmpzVectorDot",
+    symbol="sagejs_fmpz_vector_dot",
+    returns=int,
+    abi=[
+        out("result", fmpz_t),
+        in_("left", sagejs_fmpz_vector_t),
+        in_("right", sagejs_fmpz_vector_t),
+    ],
+    effects=Effects(pure=True, allocates=True, raises=[ValueError]),
+    result=Status(
+        1,
+        exception=ValueError,
+        message="integer vector lengths are incompatible",
+    ),
+    wasm=True,
+)
+def fmpz_vector_dot(left: FmpzVector, right: FmpzVector) -> Integer: ...
+
+
+@flint.function(
+    dynamic="ffiFmpqVectorDot",
+    symbol="sagejs_fmpq_vector_dot",
+    returns=int,
+    abi=[
+        out("result", sagejs_fmpq_value_t),
+        in_("left", sagejs_fmpq_vector_t),
+        in_("right", sagejs_fmpq_vector_t),
+    ],
+    effects=Effects(pure=False, allocates=True, raises=[ValueError]),
+    result=Status(
+        1,
+        exception=ValueError,
+        message="rational vector lengths are incompatible",
+    ),
+    wasm=True,
+)
+def fmpq_vector_dot(left: FmpqVector, right: FmpqVector) -> FmpqValue: ...
 
 
 @flint.function(
