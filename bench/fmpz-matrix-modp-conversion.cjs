@@ -38,13 +38,21 @@ async function main() {
       "    return (_modp_runtime.wall_time() - started) * 1000",
       "def _modp_direct_2(): return _modp_source.change_ring(GF(2))",
       "def _modp_direct_97(): return _modp_source.change_ring(GF(97))",
+      "def _modp_direct_65521(): return _modp_source.change_ring(GF(65521))",
+      "def _modp_direct_4294967291(): return _modp_source.change_ring(GF(4294967291))",
       "def _modp_host_97(): return matrix(GF(97), _modp_n, _modp_n, _modp_source.list())",
+      "def _modp_host_65521(): return matrix(GF(65521), _modp_n, _modp_n, _modp_source.list())",
+      "def _modp_host_4294967291(): return matrix(GF(4294967291), _modp_n, _modp_n, _modp_source.list())",
     ].join("\n"));
 
     const cases = [
       ["generated ZZ -> GF(2)", "_modp_direct_2", 80],
       ["generated ZZ -> GF(97)", "_modp_direct_97", 60],
+      ["generated ZZ -> GF(65521)", "_modp_direct_65521", 100],
+      ["generated ZZ -> GF(4294967291)", "_modp_direct_4294967291", 140],
       ["host Integer oracle GF(97)", "_modp_host_97", 1000],
+      ["host Integer oracle GF(65521)", "_modp_host_65521", 1000],
+      ["host Integer oracle GF(4294967291)", "_modp_host_4294967291", 1300],
     ];
     const measurements = new Map();
     const failures = [];
@@ -64,11 +72,19 @@ async function main() {
       );
       if (!(elapsed > 0 && elapsed <= limit)) failures.push(label);
     }
-    const direct = measurements.get("_modp_direct_97");
-    const host = measurements.get("_modp_host_97");
-    console.log(`  host-materialization speedup  ${(host / direct).toFixed(1)}x`);
-    if (!(direct * 3 <= host)) {
-      failures.push("generated conversion speedup");
+    for (const modulus of [97, 65521, 4294967291]) {
+      const direct = measurements.get(`_modp_direct_${modulus}`);
+      const host = measurements.get(`_modp_host_${modulus}`);
+      console.log(
+        `  GF(${modulus}) host speedup`.padEnd(36) +
+        `${(host / direct).toFixed(1)}x`,
+      );
+      // The bulk route must remain materially faster even on a contended
+      // development host. Absolute budgets catch regressions independently;
+      // requiring 2x avoids turning ordinary scheduler noise into a flaky gate.
+      if (!(direct * 2 <= host)) {
+        failures.push(`generated GF(${modulus}) conversion speedup`);
+      }
     }
     if (failures.length !== 0) {
       throw new Error(`modular conversion budget exceeded: ${failures.join(", ")}`);

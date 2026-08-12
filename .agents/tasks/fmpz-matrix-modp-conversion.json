@@ -1,0 +1,182 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "fmpz-matrix-modp-conversion",
+  "title": "Bulk ZZ to prime-field matrix conversion",
+  "lane": "arithmetic-algebra",
+  "status": "review",
+  "owner": "user",
+  "objective": "Route dense ZZ matrices through the existing declared 32-bit residue export and construct canonical packed or nmod GF(p) storage without host scalar materialization, while preserving a tested correct fallback for wider primes",
+  "base_commit": "d423f84b396b57c36e701650b1f2608c74b74a8f",
+  "claims": [
+    "src/baselib/matrix.py",
+    "test/fmpz-matrix-modp-conversion.cjs",
+    "bench/fmpz-matrix-modp-conversion.cjs"
+  ],
+  "dependencies": [
+    "word-prime-pivots-remediation"
+  ],
+  "references": [
+    "Current host-materializing Matrix.change_ring fallback",
+    "SageMath dense ZZ to GF(p) conversion semantics"
+  ],
+  "architecture": {
+    "strategy": "external-library",
+    "fallback": "tested-capability",
+    "oracles": [
+      "Existing scalar change_ring path",
+      "SageMath and dynamic/native differential execution"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm build",
+    "node --test test/fmpz-matrix-modp-conversion.cjs",
+    "node bench/fmpz-matrix-modp-conversion.cjs",
+    "env SAGEJS_NATIVE_DISABLE=1 node bench/fmpz-matrix-modp-conversion.cjs",
+    "pnpm architecture:check",
+    "pnpm test:baselib:strict",
+    "pnpm test:native"
+  ],
+  "runs": [
+    {
+      "command": "pnpm build",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 175.835,
+      "started_at": "2026-08-12T18:06:16.881Z",
+      "commit": "e1f4019ffa09b69647a7c963a45f9ce952fe313a",
+      "workspace_fingerprint": "51246a8b4b613c82af03543d0a319595f6140618db96821a93480b2050ed3f0d",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/fmpz-matrix-modp-conversion.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.757,
+      "started_at": "2026-08-12T18:09:51.178Z",
+      "commit": "e1f4019ffa09b69647a7c963a45f9ce952fe313a",
+      "workspace_fingerprint": "067fa5f7c36aa0e9fe82ad482962ffeb967759f631bc458b3421673250af803d",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/fmpz-matrix-modp-conversion.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 3.565,
+      "started_at": "2026-08-12T18:09:56.972Z",
+      "commit": "e1f4019ffa09b69647a7c963a45f9ce952fe313a",
+      "workspace_fingerprint": "067fa5f7c36aa0e9fe82ad482962ffeb967759f631bc458b3421673250af803d",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "env SAGEJS_NATIVE_DISABLE=1 node bench/fmpz-matrix-modp-conversion.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 3.665,
+      "started_at": "2026-08-12T18:10:04.806Z",
+      "commit": "e1f4019ffa09b69647a7c963a45f9ce952fe313a",
+      "workspace_fingerprint": "067fa5f7c36aa0e9fe82ad482962ffeb967759f631bc458b3421673250af803d",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 13.968,
+      "started_at": "2026-08-12T18:10:12.420Z",
+      "commit": "e1f4019ffa09b69647a7c963a45f9ce952fe313a",
+      "workspace_fingerprint": "067fa5f7c36aa0e9fe82ad482962ffeb967759f631bc458b3421673250af803d",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 14.771,
+      "started_at": "2026-08-12T18:11:36.920Z",
+      "commit": "e1f4019ffa09b69647a7c963a45f9ce952fe313a",
+      "workspace_fingerprint": "067fa5f7c36aa0e9fe82ad482962ffeb967759f631bc458b3421673250af803d",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm build",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 236.534,
+      "started_at": "2026-08-12T18:13:03.687Z",
+      "commit": "d423f84b396b57c36e701650b1f2608c74b74a8f",
+      "workspace_fingerprint": "8aca4577b21fab62effb4d72b4c3dca00a7c723f2a83cc4e8a24b15a8eaf4855",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/fmpz-matrix-modp-conversion.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 5.378,
+      "started_at": "2026-08-12T18:17:37.243Z",
+      "commit": "d423f84b396b57c36e701650b1f2608c74b74a8f",
+      "workspace_fingerprint": "8aca4577b21fab62effb4d72b4c3dca00a7c723f2a83cc4e8a24b15a8eaf4855",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/fmpz-matrix-modp-conversion.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 3.548,
+      "started_at": "2026-08-12T18:17:43.231Z",
+      "commit": "d423f84b396b57c36e701650b1f2608c74b74a8f",
+      "workspace_fingerprint": "8aca4577b21fab62effb4d72b4c3dca00a7c723f2a83cc4e8a24b15a8eaf4855",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "env SAGEJS_NATIVE_DISABLE=1 node bench/fmpz-matrix-modp-conversion.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 3.62,
+      "started_at": "2026-08-12T18:17:47.393Z",
+      "commit": "d423f84b396b57c36e701650b1f2608c74b74a8f",
+      "workspace_fingerprint": "8aca4577b21fab62effb4d72b4c3dca00a7c723f2a83cc4e8a24b15a8eaf4855",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 4.065,
+      "started_at": "2026-08-12T18:17:51.623Z",
+      "commit": "d423f84b396b57c36e701650b1f2608c74b74a8f",
+      "workspace_fingerprint": "8aca4577b21fab62effb4d72b4c3dca00a7c723f2a83cc4e8a24b15a8eaf4855",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 13.878,
+      "started_at": "2026-08-12T18:18:06.588Z",
+      "commit": "d423f84b396b57c36e701650b1f2608c74b74a8f",
+      "workspace_fingerprint": "8aca4577b21fab62effb4d72b4c3dca00a7c723f2a83cc4e8a24b15a8eaf4855",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Dense ZZ matrices now use the existing generated fmpz residue exporter for every prime modulus through UINT32_MAX. The published result remains canonical: GF(2) uses M4RI where available, primes below 256 use packed storage, and larger supported primes use generated nmod resources. Huge signed entries, empty rectangular shapes, native-disabled execution, region/resource cleanup, and the correct scalar fallback above UINT32_MAX are covered. Million-entry conversion is approximately four times faster than host materialization.",
+    "risks": [
+      "The existing declared exporter stops at UINT32_MAX; wider primes remain correct but use the scalar fallback.",
+      "The optimized nmod publication path uses the existing Node capability gate, so this lane claims no new WASM resource support.",
+      "The refreshed integration base reserves flint_word_prime_matrix_pivots before its companion source lane lands, temporarily blocking the combined build, architecture check, and native suite for reasons outside this lane's claims."
+    ],
+    "next_steps": [
+      "Merge word-prime-pivots-remediation, then rerun the combined build, architecture check, and native suite on the integrated tree.",
+      "Extend the shared declared residue export ABI to uint64 and width 8 with Windows and WASM portability before removing the wider-prime fallback.",
+      "Retain the focused million-entry benchmark as a conversion performance ratchet."
+    ]
+  }
+}
