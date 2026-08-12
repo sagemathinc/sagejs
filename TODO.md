@@ -17,6 +17,10 @@
 - Migrate exact power and Laurent series from private FLINT polynomial state to
   compiler-owned packed coefficients, then delete their audited polynomial
   reconstruction ingress.
+- Add compiler-level shared external-memory accounting tokens if measurements
+  show that explicitly closing a context wrapper while dependent generated
+  resources retain that context materially distorts V8 garbage-collection
+  decisions. Never count the same shared allocation once per dependent.
 - Split the bootstrap `matrix.py` implementation into ordinary, domain-focused
   modules before the linear-algebra package reaches its temporary 410 KB source
   ratchet. Keep the public `Matrix` API unified while making exact-integer,
