@@ -3347,6 +3347,9 @@ class PolynomialRingParent(sage.Parent):
         return runtime.math_tuple([self.gen()])
 
     def fraction_field(self) -> RationalFunctionFieldParent:
+        domain_test = getattr(self._base, "is_integral_domain", None)
+        if callable(domain_test) and not domain_test():
+            raise TypeError("a fraction field requires an integral domain")
         if self._fraction_field is runtime.undefined:
             self._fraction_field = RationalFunctionFieldParent(self)
         return self._fraction_field
@@ -5034,6 +5037,20 @@ class RationalFunctionElement(sage.Element):
 
     def __neg__(self) -> RationalFunctionElement:
         return self._parent(-self._numerator, self._denominator)
+
+    def __pow__(self, exponent: int) -> RationalFunctionElement:
+        exponent = runtime.integer_bigint(exponent)
+        if exponent < 0:
+            if self._numerator == 0:
+                raise ZeroDivisionError("rational function division by zero")
+            return self._parent(
+                self._denominator ** (-exponent),
+                self._numerator ** (-exponent),
+            )
+        return self._parent(
+            self._numerator**exponent,
+            self._denominator**exponent,
+        )
 
     def __eq__(self, other: object) -> bool:
         try:

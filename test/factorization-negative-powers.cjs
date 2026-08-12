@@ -142,3 +142,109 @@ print(repr(polynomial_factor))
     ].join("\n"),
   );
 });
+
+test("polynomial-unit inverses remain closed under later powers", () => {
+  const output = run(`
+R = PolynomialRing(ZZ, 'x')
+x = R.gen()
+g = Factorization([(x + 1, 1)], unit=x)
+inverse = g**-1
+squared = inverse**2
+reciprocal = inverse**-1
+print(repr(inverse))
+print(repr(squared))
+print(repr(squared.unit()))
+print(squared.value() == R.fraction_field()(1, x**4 + 2*x**3 + x**2))
+print(reciprocal.value() == x**2 + x)
+
+zero = R.fraction_field()(0)
+try:
+    zero**-1
+except ZeroDivisionError as error:
+    print(str(error))
+`);
+
+  assert.equal(
+    output,
+    [
+      "(1/x) * (x + 1)^-1",
+      "(1/x^2) * (x + 1)^-2",
+      "1/x^2",
+      "True",
+      "True",
+      "rational function division by zero",
+    ].join("\n"),
+  );
+});
+
+test("fraction fields reject polynomial rings over non-domains", () => {
+  const output = run(`
+for modulus in [6, 8]:
+    R = PolynomialRing(Zmod(modulus), 'x')
+    x = R.gen()
+    for operation in [
+        lambda: R.fraction_field(),
+        lambda: Factorization([(x + 1, 1)], unit=x)**-1,
+    ]:
+        try:
+            operation()
+        except TypeError as error:
+            print(modulus, str(error))
+        else:
+            raise AssertionError('fraction-field construction unexpectedly succeeded')
+
+field_ring = PolynomialRing(Zmod(7), 'x')
+print(field_ring.fraction_field())
+`);
+
+  assert.equal(
+    output,
+    [
+      "6 a fraction field requires an integral domain",
+      "6 a fraction field requires an integral domain",
+      "8 a fraction field requires an integral domain",
+      "8 a fraction field requires an integral domain",
+      "Fraction Field of Univariate Polynomial Ring in x over Ring of integers modulo 7",
+    ].join("\n"),
+  );
+});
+
+test("factorization formatting follows factor-parent atomicity", () => {
+  const output = run(`
+RR80 = RealField(80)
+R = PolynomialRing(ZZ, 'x')
+x = R.gen()
+
+real = Factorization([(RR80('1.25'), 1)], unit=RR80('2.5'))
+mixed_atomic = Factorization(
+    [(RR80('1.25'), 1), (QQ(3, 2), 2)],
+    unit=RR80('2.5'),
+    sort=False,
+)
+mixed_nonatomic = Factorization(
+    [(QQ(3, 2), 1), (x + 1, 1)],
+    unit=QQ(2),
+    sort=False,
+)
+
+print(repr(real))
+print(repr(mixed_atomic))
+print(repr(mixed_nonatomic))
+print(
+    ZZ._repr_option('element_is_atomic'),
+    QQ._repr_option('element_is_atomic'),
+    RR80._repr_option('element_is_atomic'),
+    R._repr_option('element_is_atomic'),
+)
+`);
+
+  assert.equal(
+    output,
+    [
+      "2.5000000000000000000000 * 1.2500000000000000000000",
+      "2.5000000000000000000000 * 1.2500000000000000000000 * 3/2^2",
+      "(2) * 3/2 * (x + 1)",
+      "True True True False",
+    ].join("\n"),
+  );
+});
