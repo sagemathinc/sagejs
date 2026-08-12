@@ -1,0 +1,51 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "wasm-fmpq-matrix-resources",
+  "title": "Wasm Fmpq Matrix Resources",
+  "lane": "integration",
+  "status": "active",
+  "owner": "user",
+  "objective": "Prove the production generated FmpqMatrix WebAssembly resource vertical slice through real CoWasm and browser execution, including exact bulk construction, dimensions, mutation and access, copy, multiplication, RREF, determinant, formatting, serialization roundtrip, failure atomicity, deterministic/finalizer cleanup, and payload/cold/warm measurements without operation-specific JavaScript",
+  "base_commit": "098afe93dc9a9451e1f5a60505d53d4d13c3d1bf",
+  "claims": [
+    "packages/flint-wasm/test/fmpq-resource-proof.test.mjs",
+    "packages/flint-wasm/test/fmpq-resource-browser-proof.mjs",
+    "bench/wasm-fmpq-matrix-resources.cjs"
+  ],
+  "dependencies": [],
+  "references": [
+    "CoWasm FLINT/GMP WebAssembly toolchain",
+    "SageMath dense rational matrix semantics"
+  ],
+  "architecture": {
+    "strategy": "external-library",
+    "fallback": "tested-capability",
+    "oracles": [
+      "generated Node FmpqMatrix resource surface",
+      "generated FmpqMatrix resource surface in real Chromium",
+      "FLINT exact rational arithmetic"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "fallback",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm --dir packages/flint-wasm test",
+    "node packages/flint-wasm/test/fmpq-resource-browser-proof.mjs",
+    "node bench/wasm-fmpq-matrix-resources.cjs",
+    "pnpm architecture:check",
+    "pnpm test:portable",
+    "pnpm test:baselib:strict"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "",
+    "risks": [],
+    "next_steps": []
+  }
+}
