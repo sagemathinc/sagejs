@@ -1,0 +1,56 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "browser-fmpq-resource-v1",
+  "title": "Browser FmpqMatrix Resource Slice v1",
+  "lane": "distribution",
+  "status": "active",
+  "owner": "user",
+  "objective": "Extend declaration-driven WebAssembly resources to a dense QQ matrix FmpqMatrix slice with create or bulk import, mutation and access, copy, multiplication, RREF, determinant, format and serialization, deterministic and finalizer cleanup, copied FlintByteRegion ownership, and ordinary sagejs.ffi.flint imports in real Chromium",
+  "base_commit": "06a6d88805844d15d4247a64574883992a44d091",
+  "claims": [
+    "packages/flint-wasm/",
+    "test/ffi-wasm-resource.cjs",
+    "test/browser-fmpq-resource-v1.cjs"
+  ],
+  "dependencies": [
+    "wasm-fmpq-adapter-core"
+  ],
+  "references": [],
+  "architecture": {
+    "strategy": "external-library",
+    "fallback": "tested-capability",
+    "oracles": [
+      "Existing Node generated FmpqMatrix FFI resource behavior",
+      "FLINT exact rational matrix arithmetic"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "fallback",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm --dir packages/flint-wasm test",
+    "pnpm --dir packages/flint-wasm test:resource-browser",
+    "pnpm architecture:check",
+    "pnpm test:portable",
+    "pnpm test:native",
+    "pnpm test:sea"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "Select the generated FmpqMatrix, FmpqValue, and FlintByteRegion resources in the production CoWasm package; test the bounded dense QQ lifecycle directly in Node and through ordinary sagejs.ffi.flint plus public matrix(QQ) APIs in real Chromium; and document FLINT-owned browser matrix storage and copied variable-size host results.",
+    "risks": [
+      "The browser package intentionally selects only the declared dense QQ vertical slice; unsupported exact matrix families continue to use the portable JavaScript backend.",
+      "Formatting and serialization cross Wasm memory by an explicit host-owned copy; zero-copy external ArrayBuffer ownership remains a possible measured optimization.",
+      "The Wasm payload is currently 4.72 MiB before HTTP compression and should be monitored as more FLINT declarations are selected."
+    ],
+    "next_steps": [
+      "Extend the production selection with additional declaration-backed FLINT resources only when a public browser operation requires them.",
+      "Add browser performance gates after representative dense QQ workloads and stable browser benchmark infrastructure are available."
+    ]
+  }
+}

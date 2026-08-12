@@ -181,6 +181,43 @@ try {
     }
   }
   assert.equal(remaining, "0");
+
+  assert.equal(await runSource([
+    "from sagejs.ffi.flint import fmpq_matrix, fmpq_matrix_nrows, fmpq_matrix_ncols, fmpq_matrix_set_entry, fmpq_matrix_entry_numerator, fmpq_matrix_entry_denominator",
+    "empty = fmpq_matrix(2, 3)",
+    "print(fmpq_matrix_nrows(empty), fmpq_matrix_ncols(empty), empty.closed)",
+    "fmpq_matrix_set_entry(empty, 1, 2, -22, 7)",
+    "print(fmpq_matrix_entry_numerator(empty, 1, 2), fmpq_matrix_entry_denominator(empty, 1, 2))",
+    "empty.close(); empty.close()",
+    "print(empty.closed)",
+    "def dense_qq_resource_slice():",
+    "    value = matrix(QQ, 2, [QQ(1)/2, QQ(1)/3, 2, -1])",
+    "    square = value * value",
+    "    reduced = value.rref()",
+    "    packed = value._packed_rationals()",
+    "    copy = value.__copy__()",
+    "    return (value.det(), square.str(), reduced.str(), len(packed), packed[0], packed[len(packed)-1], copy.str() == value.str())",
+    "print(dense_qq_resource_slice())",
+  ].join("\n")), [
+    "2 3 False",
+    "-22 7",
+    "True",
+    "(-7/6, '[11/12  -1/6]\\n[   -1   5/3]', '[1 0]\\n[0 1]', 40, 1, 1, True)",
+    "None",
+  ].join("\n"));
+
+  remaining = "1";
+  for (let attempt = 0; attempt < 50 && remaining !== "0"; attempt += 1) {
+    remaining = (await runSource([
+      "import sagejs.runtime as runtime",
+      "runtime.reflect.apply(runtime.reflect.get(runtime.global_object, 'gc'), runtime.undefined, [])",
+      liveCount,
+    ].join("\n"))).trim();
+    if (remaining !== "0") {
+      await new Promise((resolve) => setTimeout(resolve, 25));
+    }
+  }
+  assert.equal(remaining, "0");
   console.log("Generated Wasm resource browser lifecycle smoke test passed");
 } finally {
   socket?.close();

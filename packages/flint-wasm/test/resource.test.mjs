@@ -19,6 +19,9 @@ test("loads the generated resource backend through the public package", () => {
     flint.__sagejs_ffi_manifest__.declaration,
   );
   assert.deepEqual(flint.__sagejs_ffi_manifest__.resources, [
+    "fmpq_matrix",
+    "fmpq_value",
+    "byte_region",
     "dirichlet_group",
   ]);
   assert.equal(liveResources(), 0n);
