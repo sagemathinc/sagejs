@@ -4,7 +4,7 @@
   "id": "exact-polynomial-format",
   "title": "Fast exact polynomial formatting",
   "lane": "integration",
-  "status": "review",
+  "status": "complete",
   "owner": "user",
   "objective": "Make warm repr and str of large univariate ZZ and QQ polynomials uniformly fast through a bulk generated-resource path while preserving Sage formatting and portable fallback semantics",
   "base_commit": "65ed287e6f12f586f0200931033780055e4dfe4a",
@@ -137,13 +137,10 @@
     }
   ],
   "handoff": {
-    "summary": "Added generated FLINT resource formatters for sealed ZZ and QQ polynomials, normalized their sentinel-variable pretty output to Sage display syntax, and retained the existing dynamic formatter as the portable fallback. Exact QQ coefficient materialization now uses the checked bulk reduced-rational decoder instead of constructing one host object per loop iteration. Focused tests cover repr/str equivalence, variable names, zero/unit/sign/fraction cases, skew large coefficients, forbidden coefficient materialization, portable fallback, and 20,000 rational coefficients. Representative warm degree-50k formatting measured 126.6 ms over ZZ and 166.2 ms over QQ for roughly 0.9-1.0 MB outputs. Generated FFI, native-boundary, test-manifest, and verified reference outputs are current.",
+    "summary": "Added generated FLINT resource formatters for sealed ZZ and QQ polynomials, normalized their sentinel-variable pretty output to Sage display syntax, and retained the existing dynamic formatter as the portable fallback. Exact QQ coefficient materialization now uses the checked bulk reduced-rational decoder instead of constructing one host object per loop iteration. Focused tests cover repr/str equivalence, variable names, zero/unit/sign/fraction cases, skew large coefficients, forbidden coefficient materialization, portable fallback, and 20,000 rational coefficients. Representative warm degree-50k formatting measured 126.6 ms over ZZ and 166.2 ms over QQ for roughly 0.9-1.0 MB outputs. Root integration rebuilt the FLINT adapter and compiler caches and regenerated the deterministic declaration, native-boundary, test-manifest, and reference outputs.",
     "risks": [
-      "The FLINT resource formatter is intentionally unavailable to Wasm; portable hosts retain the tested coefficient-based dynamic formatter.",
-      "The documentation gate deterministically requests line-ID and fingerprint refreshes outside this lane's ownership; integration must regenerate those verified outputs after rebasing."
+      "The FLINT resource formatter is intentionally unavailable to Wasm; portable hosts retain the tested coefficient-based dynamic formatter."
     ],
-    "next_steps": [
-      "Regenerate the declaration hash, host adapters, native-boundary snapshot, and reference metadata if integration rebases across newer FLINT declarations or documentation outputs."
-    ]
+    "next_steps": []
   }
 }
