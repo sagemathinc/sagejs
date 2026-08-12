@@ -38,16 +38,19 @@ boundary and cuspidal subspaces; signed star eigenspaces; and exact prime
 Hecke matrices. The headless-browser suite exercises all of those layers
 through the public evaluator instead of calling a private smoke-test ABI.
 
-Dense rational matrices can remain generated, type-tagged FLINT resources in
-Wasm linear memory. Construction, bulk import, copying, multiplication, RREF,
-rank, determinant, formatting, and serialization use the same declarations
-and host-neutral C ABI as Node. Variable-size results remain owned by FLINT;
-only an explicitly requested serialization or formatted result is copied into
+Dense integer and rational matrices can remain generated, type-tagged FLINT
+resources in Wasm linear memory. Construction, bulk import, entry mutation,
+copying, multiplication, determinant, formatting, and serialization use the
+same declarations and host-neutral C ABI as Node; the rational slice also
+includes RREF and rank. Variable-size results remain owned by FLINT. Only an
+explicitly requested serialization or formatted result is copied into
 host-owned bytes. The generated wrapper validates handles, closes resources
-deterministically, and supplies a tracing-GC finalizer fallback. Other exact
-matrix families still use portable JavaScript matrix objects after crossing
-the C ABI. Higher-weight and Dirichlet-character Manin presentations also
-still require host-neutral core extraction from the Node adapter.
+deterministically, and supplies a tracing-GC finalizer fallback. Browser
+`dumps` and `loads` use the same data-only SagePack codec as Node, so a dense
+integer matrix roundtrip bulk-exports and reconstructs one resource instead of
+materializing scalar entries. Higher-weight and Dirichlet-character Manin
+presentations still require host-neutral core extraction from the Node
+adapter.
 
 Dense matrices over `GF(2)` use a separate generated M4RI WebAssembly module.
 M4RI-to-M4RI operations stay entirely inside that module: the host sees only

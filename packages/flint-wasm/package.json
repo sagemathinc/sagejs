@@ -38,6 +38,7 @@
     "dist/plotly.min.js",
     "dist/stdlib.json",
     "dist/symbolic-backend.mjs",
+    "dist/serialization.mjs",
     "dist/wasi-runtime.mjs",
     "compiler-worker.mjs",
     "evaluator.mjs",

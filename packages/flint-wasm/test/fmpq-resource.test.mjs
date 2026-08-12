@@ -52,6 +52,7 @@ function liveResources() {
 
 test("runs a generated dense rational matrix resource slice", () => {
   assert.deepEqual(flint.__sagejs_ffi_manifest__.resources, [
+    "fmpz_matrix",
     "fmpq_matrix",
     "fmpq_value",
     "byte_region",

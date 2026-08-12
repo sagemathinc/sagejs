@@ -1,5 +1,11 @@
 import { instantiateFlintFactor } from "./index.mjs";
 import { instantiateM4ri } from "./m4ri.mjs";
+import {
+  dumps as serializationDumps,
+  loads as serializationLoads,
+  pack as serializationPack,
+  unpack as serializationUnpack,
+} from "./dist/serialization.mjs";
 
 function deserializeError(serialized) {
   const error = new Error(serialized.message);
@@ -142,8 +148,46 @@ export async function instantiateSageEvaluator({
     }
     throw new Error(`module ${JSON.stringify(name)} is unavailable in browser`);
   };
+  const serializationHost = Object.freeze({
+    call(operation, args) {
+      try {
+        if (operation === "serializationDumps") {
+          return { ok: true, value: serializationDumps(args[0]) };
+        }
+        if (operation === "serializationLoads") {
+          return { ok: true, value: serializationLoads(String(args[0])) };
+        }
+        if (operation === "serializationPack") {
+          return { ok: true, value: serializationPack(args[0]) };
+        }
+        if (operation === "serializationUnpack") {
+          const source = args[0] === null || args[0] === undefined
+            ? args[0]
+            : Reflect.get(Object(args[0]), "_values") ?? args[0];
+          return { ok: true, value: serializationUnpack(source) };
+        }
+        return {
+          ok: false,
+          error: {
+            code: "ENOSYS",
+            message: `host operation ${operation} is unavailable in browser`,
+          },
+        };
+      } catch (error) {
+        return {
+          ok: false,
+          error: {
+            code: "EINVAL",
+            message: error?.message ?? String(error),
+            stack: error?.stack,
+          },
+        };
+      }
+    },
+  });
   globalThis.require = runtimeRequire;
   globalThis.__sagejs_runtime_require__ = runtimeRequire;
+  globalThis.__sagejs_host__ = serializationHost;
   globalThis.__sagejs_output_write__ = (text) => {
     outputHandler(String(text));
   };
