@@ -1,0 +1,100 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "linear-combinatorial-invariants",
+  "title": "Linear Combinatorial Invariants",
+  "lane": "arithmetic-algebra",
+  "status": "active",
+  "owner": "user",
+  "objective": "Implement ordinary exact Python helpers for matrix minors and permanent with explicit size policy and correct dynamic fallback",
+  "base_commit": "1bd487f2f38589b1e186b6c6a6a84860a115f9bf",
+  "claims": [
+    "src/lib/sagejs/linear_algebra/combinatorial.py",
+    "test/linear-combinatorial-invariants.cjs",
+    "bench/linear-combinatorial-invariants.cjs"
+  ],
+  "dependencies": [],
+  "references": [
+    "/home/user/upstream/sage/src/sage/matrix/matrix2.pyx:1540",
+    "/home/user/upstream/sage/src/sage/matrix/matrix2.pyx:2189",
+    "Brualdi and Ryser, Combinatorial Matrix Theory, Theorem 7.1.1"
+  ],
+  "architecture": {
+    "strategy": "dynamic-python",
+    "fallback": "same-source",
+    "oracles": [
+      "sage"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "node test/linear-combinatorial-invariants.cjs",
+    "pnpm exec pyright --pythonversion 3.11 src/lib/sagejs/linear_algebra/combinatorial.py",
+    "pnpm architecture:check",
+    "pnpm test:baselib:strict",
+    "pnpm test:native"
+  ],
+  "runs": [
+    {
+      "command": "node test/linear-combinatorial-invariants.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 4.278,
+      "started_at": "2026-08-12T09:14:01.649Z",
+      "commit": "1bd487f2f38589b1e186b6c6a6a84860a115f9bf",
+      "workspace_fingerprint": "5e3520441519a017a6e95f82693a2402a0c99ef31b19e1b6ef74f3f101fbc826",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm exec pyright --pythonversion 3.11 src/lib/sagejs/linear_algebra/combinatorial.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.11,
+      "started_at": "2026-08-12T09:14:06.560Z",
+      "commit": "1bd487f2f38589b1e186b6c6a6a84860a115f9bf",
+      "workspace_fingerprint": "5e3520441519a017a6e95f82693a2402a0c99ef31b19e1b6ef74f3f101fbc826",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 12.934,
+      "started_at": "2026-08-12T09:14:08.262Z",
+      "commit": "1bd487f2f38589b1e186b6c6a6a84860a115f9bf",
+      "workspace_fingerprint": "5e3520441519a017a6e95f82693a2402a0c99ef31b19e1b6ef74f3f101fbc826",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 12.496,
+      "started_at": "2026-08-12T09:14:26.955Z",
+      "commit": "1bd487f2f38589b1e186b6c6a6a84860a115f9bf",
+      "workspace_fingerprint": "5e3520441519a017a6e95f82693a2402a0c99ef31b19e1b6ef74f3f101fbc826",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:native",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 498.188,
+      "started_at": "2026-08-12T09:14:45.733Z",
+      "commit": "1bd487f2f38589b1e186b6c6a6a84860a115f9bf",
+      "workspace_fingerprint": "5e3520441519a017a6e95f82693a2402a0c99ef31b19e1b6ef74f3f101fbc826",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "",
+    "risks": [],
+    "next_steps": []
+  }
+}
