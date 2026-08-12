@@ -7,7 +7,7 @@
   "status": "active",
   "owner": "user",
   "objective": "Provide a machine-readable, reproducible correctness and performance audit of public dense matrix operations over ZZ, QQ, GF(2), GF(7), and a large word prime, with separated process/bootstrap/first-measured/warm measurements, backend traces, bounded routine mode, opt-in full Sage comparison, and a prioritized remediation handoff",
-  "base_commit": "e2ad41d6662c924b3db35e11a533caef7a71b825",
+  "base_commit": "d9831968c7bfd5936a95df2517278c3b3dcd5064",
   "claims": [
     "bench/dense-matrix-public-audit.cjs",
     "bench/dense-matrix-public-audit.md",
@@ -167,6 +167,76 @@
       "started_at": "2026-08-12T12:29:35.822Z",
       "commit": "f97e98c01a57a08bc3d1da1ccc4b08599ba92ec2",
       "workspace_fingerprint": "e24abd1f099cbef0f4906b4304925e37a3dcde136791b40849d64861289a49ba",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node test/dense-matrix-public-audit.cjs",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 9.109,
+      "started_at": "2026-08-12T12:33:14.733Z",
+      "commit": "06c9dd4837bcd92e99d246d1c93bc10dec103298",
+      "workspace_fingerprint": "602b893637dc36a8883e9968df72ba08fe9a2942d0d27dd54c33fc406009fee0",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node test/dense-matrix-public-audit.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 5.787,
+      "started_at": "2026-08-12T12:38:23.655Z",
+      "commit": "06c9dd4837bcd92e99d246d1c93bc10dec103298",
+      "workspace_fingerprint": "18a3428a9cb85440826b326125767c0663a9b5698ddebaadb22579b4a7b3c74e",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/dense-matrix-public-audit.cjs --quick --runtime all --check --json",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 12.032,
+      "started_at": "2026-08-12T12:38:34.119Z",
+      "commit": "06c9dd4837bcd92e99d246d1c93bc10dec103298",
+      "workspace_fingerprint": "18a3428a9cb85440826b326125767c0663a9b5698ddebaadb22579b4a7b3c74e",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 13.807,
+      "started_at": "2026-08-12T12:38:50.519Z",
+      "commit": "06c9dd4837bcd92e99d246d1c93bc10dec103298",
+      "workspace_fingerprint": "18a3428a9cb85440826b326125767c0663a9b5698ddebaadb22579b4a7b3c74e",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node test/dense-matrix-public-audit.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 5.723,
+      "started_at": "2026-08-12T12:39:27.445Z",
+      "commit": "06c9dd4837bcd92e99d246d1c93bc10dec103298",
+      "workspace_fingerprint": "602b893637dc36a8883e9968df72ba08fe9a2942d0d27dd54c33fc406009fee0",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/dense-matrix-public-audit.cjs --quick --runtime all --check --json",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 12.122,
+      "started_at": "2026-08-12T12:39:38.187Z",
+      "commit": "06c9dd4837bcd92e99d246d1c93bc10dec103298",
+      "workspace_fingerprint": "602b893637dc36a8883e9968df72ba08fe9a2942d0d27dd54c33fc406009fee0",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 13.83,
+      "started_at": "2026-08-12T12:39:54.114Z",
+      "commit": "06c9dd4837bcd92e99d246d1c93bc10dec103298",
+      "workspace_fingerprint": "602b893637dc36a8883e9968df72ba08fe9a2942d0d27dd54c33fc406009fee0",
       "platform": "linux-x64"
     }
   ],
