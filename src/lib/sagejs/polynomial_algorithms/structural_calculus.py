@@ -235,7 +235,7 @@ def dense_resultant(
     left = _normalize(left, zero)
     right = _normalize(right, zero)
     if not left or not right:
-        raise ValueError("The Sylvester matrix is not defined for zero polynomials")
+        return zero
     left_degree = len(left) - 1
     right_degree = len(right) - 1
     size = left_degree + right_degree
@@ -267,17 +267,22 @@ def dense_discriminant(
     storage layer returns the supplied coefficient-domain `zero`; a public
     wrapper that preserves Sage's zero-polynomial parent can handle that one
     object-level distinction without changing the calculation.
+
+    The leading-coefficient exponent uses the actual normalized derivative
+    degree.  This matters in positive characteristic, where differentiation
+    may remove one or more high terms.
     """
     coefficients = _normalize(coefficients, zero)
     if not coefficients:
         return zero
     degree = len(coefficients) - 1
     if degree == 0:
-        raise ValueError("The Sylvester matrix is not defined for zero polynomials")
+        return zero
     if degree == 1:
         return one
     derivative = [coefficients[index] * index for index in range(1, len(coefficients))]
     derivative = _normalize(derivative, zero)
+    derivative_degree = len(derivative) - 1
     resultant = dense_resultant(
         coefficients,
         derivative,
@@ -287,8 +292,11 @@ def dense_discriminant(
     )
     if degree % 4 in (2, 3):
         resultant = -resultant
-    return _checked_exact_quotient(
-        resultant,
-        coefficients[-1],
-        exact_quotient,
-    )
+    leading_exponent = degree - derivative_degree - 2
+    if leading_exponent == -1:
+        return _checked_exact_quotient(
+            resultant,
+            coefficients[-1],
+            exact_quotient,
+        )
+    return resultant * coefficients[-1] ** leading_exponent

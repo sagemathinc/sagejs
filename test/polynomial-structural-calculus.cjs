@@ -116,17 +116,13 @@ for base in [ZZ, QQ, GF(2), GF(5)]:
     assert dense_resultant(
         [one, zero, one], [zero, one], zero, one, quotient
     ) == one
-    assert_raises(
-        ValueError,
-        lambda: dense_resultant([], [one], zero, one, quotient),
-    )
+    assert dense_resultant([], [one], zero, one, quotient) == zero
+    assert dense_resultant([one], [], zero, one, quotient) == zero
+    assert dense_resultant([], [], zero, one, quotient) == zero
 
     assert dense_discriminant([], zero, one, quotient) == zero
     assert dense_discriminant([zero, one], zero, one, quotient) == one
-    assert_raises(
-        ValueError,
-        lambda: dense_discriminant([one], zero, one, quotient),
-    )
+    assert dense_discriminant([one], zero, one, quotient) == zero
 
 # Sage's signed Sylvester convention is pinned independently of equal-degree
 # examples, for which accidentally swapping the two arguments is invisible.
@@ -180,17 +176,50 @@ assert_raises(
     ),
 )
 
-# Inseparable positive-characteristic polynomials have zero derivative, so
-# Sage's discriminant path reaches its zero-polynomial resultant error.
-assert_raises(
-    ValueError,
-    lambda: dense_discriminant(
-        [field2(1), field2(0), field2(1)],
-        field2(0),
-        field2(1),
-        field_exact_quotient,
-    ),
-)
+# Sage 10.9 gives resultant 1 and discriminant 2 here.  The x^6 term
+# disappears after differentiation in characteristic 3, so deg(f') == 4
+# and the discriminant formula uses leading-coefficient exponent 0, not -1.
+field3 = GF(3)
+degree_drop = [
+    field3(1), field3(0), field3(0), field3(0),
+    field3(0), field3(1), field3(2),
+]
+degree_drop_derivative = [
+    field3(0), field3(0), field3(0), field3(0), field3(2),
+]
+assert dense_resultant(
+    degree_drop,
+    degree_drop_derivative,
+    field3(0),
+    field3(1),
+    field_exact_quotient,
+) == field3(1)
+assert dense_discriminant(
+    degree_drop,
+    field3(0),
+    field3(1),
+    field_exact_quotient,
+) == field3(2)
+positive_leading_exponent = [
+    field3(1), field3(0), field3(0), field3(0),
+    field3(1), field3(0), field3(2),
+]
+# Here deg(f') == 3, so Sage's leading-coefficient exponent is positive (1).
+assert dense_discriminant(
+    positive_leading_exponent,
+    field3(0),
+    field3(1),
+    field_exact_quotient,
+) == field3(1)
+
+# A positive-degree inseparable polynomial has zero derivative, resultant,
+# and discriminant in the exact specialized parents.
+assert dense_discriminant(
+    [field2(1), field2(0), field2(1)],
+    field2(0),
+    field2(1),
+    field_exact_quotient,
+) == field2(0)
 
 print("polynomial-structural-calculus-ok")
 `;
@@ -230,6 +259,71 @@ assert dense_integral(value, zero, lambda coefficient, n: coefficient/n) == [
 ]
 assert dense_resultant(value, [2*one, one], zero, one, divide) == 3*one
 assert dense_discriminant(value, zero, one, divide) == -8*one
+assert dense_resultant([], [one], zero, one, divide) == zero
+assert dense_resultant([one], [], zero, one, divide) == zero
+assert dense_discriminant([], zero, one, divide) == zero
+assert dense_discriminant([one], zero, one, divide) == zero
+
+class Mod3:
+    def __init__(self, value):
+        self.value = value.value if isinstance(value, Mod3) else int(value) % 3
+
+    def __add__(self, other):
+        return Mod3(self.value + Mod3(other).value)
+
+    def __sub__(self, other):
+        return Mod3(self.value - Mod3(other).value)
+
+    def __mul__(self, other):
+        return Mod3(self.value * Mod3(other).value)
+
+    def __truediv__(self, other):
+        denominator = Mod3(other).value
+        if denominator == 0:
+            raise ZeroDivisionError("division by zero in GF(3)")
+        return Mod3(self.value * pow(denominator, -1, 3))
+
+    def __neg__(self):
+        return Mod3(-self.value)
+
+    def __pow__(self, exponent):
+        return Mod3(pow(self.value, exponent, 3))
+
+    def __eq__(self, other):
+        try:
+            return self.value == Mod3(other).value
+        except (TypeError, ValueError):
+            return False
+
+mod3_zero = Mod3(0)
+mod3_one = Mod3(1)
+degree_drop = [
+    Mod3(1), Mod3(0), Mod3(0), Mod3(0),
+    Mod3(0), Mod3(1), Mod3(2),
+]
+assert dense_discriminant(
+    degree_drop,
+    mod3_zero,
+    mod3_one,
+    lambda numerator, denominator: numerator / denominator,
+) == Mod3(2)
+positive_leading_exponent = [
+    Mod3(1), Mod3(0), Mod3(0), Mod3(0),
+    Mod3(1), Mod3(0), Mod3(2),
+]
+assert dense_discriminant(
+    positive_leading_exponent,
+    mod3_zero,
+    mod3_one,
+    lambda numerator, denominator: numerator / denominator,
+) == Mod3(1)
+inseparable = [Mod3(1), Mod3(0), Mod3(0), Mod3(1)]
+assert dense_discriminant(
+    inseparable,
+    mod3_zero,
+    mod3_one,
+    lambda numerator, denominator: numerator / denominator,
+) == Mod3(0)
 print("cpython-polynomial-structural-calculus-ok")
 `;
   const python = process.env.PYTHON ||

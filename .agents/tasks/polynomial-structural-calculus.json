@@ -34,7 +34,8 @@
   },
   "validation": [
     "pnpm test:baselib:strict",
-    "pnpm test:native"
+    "pnpm test:native",
+    "node --test test/polynomial-structural-calculus.cjs"
   ],
   "runs": [
     {
@@ -96,12 +97,42 @@
       "commit": "3fbce0b1111129ce3de879fefb2e6b08a70d9840",
       "workspace_fingerprint": "2d44b5cdc67b7daae394c2e63bfc4f22398a19f59fcb082d3f475efc3cfac96c",
       "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 12.738,
+      "started_at": "2026-08-12T09:50:58.224Z",
+      "commit": "e7a63bb4c4301107101d7db9d713cd61afb71f61",
+      "workspace_fingerprint": "00606f9c378327220daeabeed924cefd8002b2b4c965df93744f06b857215d0d",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/polynomial-structural-calculus.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.307,
+      "started_at": "2026-08-12T09:51:16.262Z",
+      "commit": "e7a63bb4c4301107101d7db9d713cd61afb71f61",
+      "workspace_fingerprint": "00606f9c378327220daeabeed924cefd8002b2b4c965df93744f06b857215d0d",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:native",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 546.958,
+      "started_at": "2026-08-12T09:51:30.789Z",
+      "commit": "e7a63bb4c4301107101d7db9d713cd61afb71f61",
+      "workspace_fingerprint": "00606f9c378327220daeabeed924cefd8002b2b4c965df93744f06b857215d0d",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {
-    "summary": "Added an ordinary CPython-parseable low-to-high dense polynomial calculus for composition, reversal, truncation, monomial shifts, formal integration, Sylvester resultants, and discriminants. Parent-sensitive division is explicit: callers choose ZZ-to-QQ widening, finite-field integer inversion, and exact Bareiss quotients. Focused Sage.js/CPython tests pin Sage 10.9 behavior for zero and constant polynomials, negative truncation, explicit reverse degree, signed resultants, pivoting, and noninvertible characteristic-p antiderivatives. A representative dynamic benchmark covers ZZ, QQ, and GF(65521).",
+    "summary": "Added an ordinary CPython-parseable low-to-high dense polynomial calculus for composition, reversal, truncation, monomial shifts, formal integration, Sylvester resultants, and discriminants. Parent-sensitive division is explicit: callers choose ZZ-to-QQ widening, finite-field integer inversion, and exact Bareiss quotients. Focused Sage.js/CPython tests pin Sage 10.9 behavior for zero and constant polynomials, negative truncation, explicit reverse degree, signed resultants, pivoting, noninvertible characteristic-p antiderivatives, and nonmonic characteristic-p discriminants whose derivative degree drops. A representative dynamic benchmark covers ZZ, QQ, and GF(65521).",
     "risks": [
-      "The helper deliberately does not choose public polynomial parents. Integration must coerce composition operands, widen ZZ integrals to QQ, and preserve Sage's zero-polynomial object result for zero.discriminant().",
+      "The helper deliberately does not choose public polynomial parents. Integration must coerce composition operands, widen ZZ integrals to QQ, and decide whether zero.discriminant() returns the generic parent's zero polynomial object or the specialized exact parent's scalar base-ring zero; the storage helper returns coefficient-domain zero.",
       "The cubic Bareiss implementation is a portable correctness fallback and oracle, not the production path for large resource-backed resultants or discriminants; mature FLINT declarations should remain the accelerated path.",
       "The first native validation attempt failed because this new worktree lacked its ignored local M4RI prefix. After building M4RI, the complete native suite passed without source changes."
     ],
