@@ -1,0 +1,102 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "module-cache-name-identity-v1",
+  "title": "Canonical module-cache name identity",
+  "lane": "integration",
+  "status": "active",
+  "owner": "user",
+  "objective": "Make precompiled module-cache publication and resolution use one canonical dotted-module filename mapping so compiler fixtures load strict ordinary-Python modules instead of silently reparsing with legacy flags",
+  "base_commit": "5f8b8485db6d455c957a7658e09c9a39494a1955",
+  "claims": [
+    "scripts/build-module-cache.cjs",
+    "test/module-cache.cjs"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "compiler-infrastructure",
+    "fallback": "not-applicable",
+    "oracles": [
+      "module resolver requested cache identity",
+      "fresh compiler matrix fixture"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm run build",
+    "node test/module-cache.cjs",
+    "pnpm architecture:check",
+    "pnpm test:portable",
+    "pnpm test:baselib:strict"
+  ],
+  "runs": [
+    {
+      "command": "pnpm run build",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 176.886,
+      "started_at": "2026-08-12T22:55:49.312Z",
+      "commit": "5f8b8485db6d455c957a7658e09c9a39494a1955",
+      "workspace_fingerprint": "a9c6ef9cb85e17fbe9e6a8c54a3e7babc5860180300a0db52eb1f6eb664e6b74",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node test/module-cache.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 10.999,
+      "started_at": "2026-08-12T22:58:50.375Z",
+      "commit": "5f8b8485db6d455c957a7658e09c9a39494a1955",
+      "workspace_fingerprint": "a9c6ef9cb85e17fbe9e6a8c54a3e7babc5860180300a0db52eb1f6eb664e6b74",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 14.157,
+      "started_at": "2026-08-12T22:59:07.441Z",
+      "commit": "5f8b8485db6d455c957a7658e09c9a39494a1955",
+      "workspace_fingerprint": "a9c6ef9cb85e17fbe9e6a8c54a3e7babc5860180300a0db52eb1f6eb664e6b74",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 13.986,
+      "started_at": "2026-08-12T22:59:25.379Z",
+      "commit": "5f8b8485db6d455c957a7658e09c9a39494a1955",
+      "workspace_fingerprint": "a9c6ef9cb85e17fbe9e6a8c54a3e7babc5860180300a0db52eb1f6eb664e6b74",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 15.431,
+      "started_at": "2026-08-12T23:02:23.221Z",
+      "commit": "5f8b8485db6d455c957a7658e09c9a39494a1955",
+      "workspace_fingerprint": "a9c6ef9cb85e17fbe9e6a8c54a3e7babc5860180300a0db52eb1f6eb664e6b74",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Precompiled dotted Python module identities now publish with the resolver's canonical hyphenated cache filename mapping. The focused regression checks representative nested module caches for the canonical spelling, absence of the obsolete spelling, and strict cached output. A fresh build, the focused module-cache test, architecture checks, and strict baselib checks pass. Generated compiler output for compiler/matrix.py now contains cached-module metadata and row_values = ρσ_dict(); that fixture remains blocked earlier by the independently owned missing sagejs.linear_algebra.exact_vector_public module.",
+    "risks": [
+      "pnpm test:portable fails on this lane's base because a prose native-bitwise marker in sagejs.native is interpreted as a source directive, causing checked lowering of a 64-bit fallback shift. The failure reproduces with the native module cache disabled and is unrelated to cache filename publication; shared commit 457239f fixes the marker detection.",
+      "The full compiler/matrix.py fixture cannot complete until the separately owned sagejs.linear_algebra.exact_vector_public dependency is integrated."
+    ],
+    "next_steps": [
+      "Cherry-pick this lane onto the repaired shared branch containing commit 457239f or its equivalent.",
+      "Rerun pnpm test:portable after integration, and rerun compiler/matrix.py after the exact-vector dependency lands; then record the passing receipts and advance the contract to review."
+    ]
+  }
+}
