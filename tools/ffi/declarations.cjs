@@ -779,12 +779,18 @@ function loadDeclarationDocument(document, options = {}) {
     /^[A-Za-z0-9_+./-]+$/);
   safeStrings(filename, library.native.dependencies,
     "library.native.dependencies", /^[A-Za-z][A-Za-z0-9_+.-]*$/);
-  exactKeys(filename, library.native.link, ["unix", "windows"],
-    "library.native.link");
+  knownKeys(filename, library.native.link, ["unix", "windows"],
+    ["linux", "darwin"], "library.native.link");
   safeStrings(filename, library.native.link.unix, "library.native.link.unix",
     /^[A-Za-z0-9_+.-]+$/);
   safeStrings(filename, library.native.link.windows,
     "library.native.link.windows", /^[A-Za-z0-9_+.-]+$/);
+  for (const platform of ["linux", "darwin"]) {
+    if (library.native.link[platform] !== undefined) {
+      safeStrings(filename, library.native.link[platform],
+        `library.native.link.${platform}`, /^[A-Za-z0-9_+.-]+$/);
+    }
+  }
   exactKeys(filename, library.native.toolchain,
     ["prefix_environment", "unix_default", "windows_default", "include_dirs",
       "source_include_dirs"],
