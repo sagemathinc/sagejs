@@ -4,7 +4,7 @@
   "id": "native-resource-basic-finalizer",
   "title": "Native Resource Basic Finalizer",
   "lane": "integration",
-  "status": "active",
+  "status": "complete",
   "owner": "user",
   "objective": "Make generated Node resource holders safely self-finalizing with node_api_basic_finalize plus node_api_post_finalizer, expose a proven capability marker, and prevent redundant bootstrap finalizers while preserving portable fallback behavior",
   "base_commit": "4db746d5914229dae4d744ba9bc42eac91c08ff4",

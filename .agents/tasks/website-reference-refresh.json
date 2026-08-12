@@ -4,7 +4,7 @@
   "id": "website-reference-refresh",
   "title": "Refresh website reference example IDs",
   "lane": "documentation-compat",
-  "status": "active",
+  "status": "complete",
   "owner": "user",
   "objective": "Regenerate and verify website reference artifacts after known documentation example line-ID moves without accepting new compatibility failures",
   "base_commit": "8f87f908aca55e386c6d4af77fef3c791bf0b148",

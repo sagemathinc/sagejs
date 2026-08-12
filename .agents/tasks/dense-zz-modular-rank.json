@@ -4,7 +4,7 @@
   "id": "dense-zz-modular-rank",
   "title": "Dense ZZ modular full-rank certificate",
   "lane": "integration",
-  "status": "active",
+  "status": "complete",
   "owner": "codex",
   "objective": "Accelerate public dense ZZ rank by certifying full row or column rank modulo a deterministic word-size prime through generated FLINT resources and falling back exactly for every inconclusive case",
   "base_commit": "2c6e1cb790bcd39abda524c9f9a75a68ea15ae23",

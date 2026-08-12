@@ -4,7 +4,7 @@
   "id": "m4ri-wasm-core-v1",
   "title": "Generic M4RI Wasm declaration lowering",
   "lane": "integration",
-  "status": "active",
+  "status": "complete",
   "owner": "user",
   "objective": "Enable the declared M4RI resources and operations for generic Wasm lowering, including explicitly selected scalar capability operations and real reactor lifecycle coverage.",
   "base_commit": "8f87f908aca55e386c6d4af77fef3c791bf0b148",
