@@ -131,6 +131,7 @@ const integration = [
   "test/exact-polynomial-scalar-slice-resource.cjs",
   "test/exact-polynomial-format.cjs",
   "test/polynomial-structural-flint.cjs",
+  "test/public-polynomial-structural.cjs",
   "test/prime-polynomial-bulk-views.cjs",
   "test/prime-polynomial-divrem.cjs",
   "test/polynomial-prime-evaluate.cjs",

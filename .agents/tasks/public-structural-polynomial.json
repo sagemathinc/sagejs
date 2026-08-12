@@ -1,0 +1,111 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "public-structural-polynomial",
+  "title": "Public structural polynomial API",
+  "lane": "integration",
+  "status": "review",
+  "owner": "user",
+  "objective": "Wire reviewed ordinary structural calculus and generated FLINT adapters into the public ZZ[x], QQ[x], and packed word-prime GF(p)[x] Polynomial API with correct portable fallback, lifecycle, Sage semantics, native selection, and performance.",
+  "base_commit": "29913192fbb075b55c7b7c14b49ed1ff7849f036",
+  "claims": [
+    "src/baselib/polynomial.py",
+    "src/lib/sagejs/polynomial_algorithms/public_structural.py",
+    "test/public-polynomial-structural.cjs",
+    "bench/public-polynomial-structural.cjs",
+    "test/node-test-manifest.cjs",
+    "pyrightconfig.json",
+    ".agents/tasks/public-structural-polynomial.json"
+  ],
+  "dependencies": [],
+  "references": [
+    "SageMath 10.9 polynomial semantics",
+    "src/lib/sagejs/polynomial_algorithms/structural_calculus.py",
+    "src/lib/sagejs/kernels/polynomial/structural_flint.py"
+  ],
+  "architecture": {
+    "strategy": "external-library",
+    "fallback": "tested-capability",
+    "oracles": [
+      "SageMath 10.9 differential semantics",
+      "ordinary structural_calculus same-source fallback"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "fallback",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm architecture:check",
+    "pnpm test:portable",
+    "pnpm test:baselib:strict"
+  ],
+  "runs": [
+    {
+      "command": "node test/public-polynomial-structural.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.909,
+      "started_at": "2026-08-12T11:31:01.597Z",
+      "commit": "29913192fbb075b55c7b7c14b49ed1ff7849f036",
+      "workspace_fingerprint": "fa89390001b33ad4d47a536b346a9eb8f2c8a26a076231258b41974ea91a0e68",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 13.507,
+      "started_at": "2026-08-12T11:31:07.379Z",
+      "commit": "29913192fbb075b55c7b7c14b49ed1ff7849f036",
+      "workspace_fingerprint": "fa89390001b33ad4d47a536b346a9eb8f2c8a26a076231258b41974ea91a0e68",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 15.149,
+      "started_at": "2026-08-12T11:31:24.551Z",
+      "commit": "29913192fbb075b55c7b7c14b49ed1ff7849f036",
+      "workspace_fingerprint": "fa89390001b33ad4d47a536b346a9eb8f2c8a26a076231258b41974ea91a0e68",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 42.569,
+      "started_at": "2026-08-12T11:31:46.415Z",
+      "commit": "29913192fbb075b55c7b7c14b49ed1ff7849f036",
+      "workspace_fingerprint": "fa89390001b33ad4d47a536b346a9eb8f2c8a26a076231258b41974ea91a0e68",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/public-polynomial-structural.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.821,
+      "started_at": "2026-08-12T11:32:32.338Z",
+      "commit": "29913192fbb075b55c7b7c14b49ed1ff7849f036",
+      "workspace_fingerprint": "fa89390001b33ad4d47a536b346a9eb8f2c8a26a076231258b41974ea91a0e68",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Adds public same-parent composition, reverse, signed shifts, truncation, integral, resultant, and discriminant for dense univariate polynomials over ZZ, QQ, and packed word-prime GF(p). Exact Node polynomials remain sealed generated FLINT resources, prime-field calls cross one packed UInt64 boundary, rational scalar resources close deterministically, and portable hosts use the reviewed ordinary structural calculus. The dispatch lives in a strict lazy module so the arithmetic bootstrap stays within budget. The focused witness forbids exact coefficient materialization and runs with normal and native-disabled execution. Warm Linux x64 medians were 0.79 ms for degree-64-by-8 ZZ composition, 0.60 ms for the degree-64 ZZ resultant, 0.41 ms for degree-1000 QQ integration, 1.17 ms for degree-256-by-8 61-bit GF(p) composition, and 0.15 ms for the degree-256 GF(p) resultant.",
+    "risks": [
+      "The generated structural FLINT wrappers currently execute through the safe dynamic FFI path because structural_flint is not yet selected as a production compiled kernel; making that shared selection is intentionally left to the integration lane.",
+      "Linux x64 is validated locally. Portable tests prove the storage-neutral fallback infrastructure, but Linux arm64, macOS arm64, Windows fallback, and browser/WASM execution still rely on their normal CI lanes.",
+      "The repository-wide test:changed gate reached two unrelated inherited failures: compiler/algebra.py exceeded its fixture timeout, and compiler/matrix.py could not load the already-tracked lazy matrix_selection_public module from the standalone compiler fixture. All claimed focused, architecture, strict, and portable gates pass."
+    ],
+    "next_steps": [
+      "Have the integration lane decide whether structural_flint should become a production compiled kernel after comparing compiled and generated dynamic-FFI startup and steady-state costs.",
+      "Add these public operations to cross-platform and browser polynomial differential matrices as the corresponding FLINT/WASM adapter coverage lands.",
+      "Extend the same lazy public-dispatch pattern to the remaining reviewed polynomial algorithms without growing the arithmetic bootstrap."
+    ]
+  }
+}
