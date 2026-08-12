@@ -7,6 +7,8 @@ import {
 import { hostname } from "node:os";
 import { join, resolve } from "node:path";
 
+import { scheduleAutomaticModuleCacheCleanup } from "./cache-auto";
+
 export const MODULE_CACHE_LEASE_PREFIX = ".sagejs-active-";
 export const MODULE_CACHE_LEASE_SUFFIX = ".json";
 export const MODULE_CACHE_LEASE_SCHEMA = "sagejs.module-cache-lease/v1";
@@ -77,5 +79,6 @@ export function markModuleCacheInUse(
   timer.unref();
   process.once("exit", release);
   leases.set(cacheDirectory, { filename, release });
+  scheduleAutomaticModuleCacheCleanup(cacheDirectory);
   return release;
 }
