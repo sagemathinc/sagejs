@@ -7852,7 +7852,7 @@ def _bulk_sparse_random_matrix(
         values = policy.materialize_sparse_random_writes(writes, 0)
         return matrix(base, rows, columns, values)
 
-    if _uses_m4ri_resource(base):
+    if _uses_m4ri_resource(base) and lower is None:
         spec = policy.sage_binary_sparse_random_spec(rows, columns, density)
         normalized_density = float(spec[3])
         if rows == 0 or columns == 0 or normalized_density <= 0:
@@ -7890,7 +7890,7 @@ def _bulk_sparse_random_matrix(
             resource.close()
             raise
 
-    if _is_dense_binary_base(base):
+    if _is_dense_binary_base(base) and lower is None:
         spec = policy.sage_binary_sparse_random_spec(rows, columns, density)
         normalized_density = float(spec[3])
         target = _packed_uint64(rows * columns)
@@ -7930,7 +7930,7 @@ def _bulk_sparse_random_matrix(
         )
         return MatrixSpace(base, rows, columns)._from_canonical_uint64_residues(target)
 
-    if _is_packed_dense_prime_base(base):
+    if _is_packed_dense_prime_base(base) and lower is None:
         modulus = runtime.normalize_integer(runtime.reflect.get(base, "_modulus"))
         if modulus <= 2:
             return runtime.undefined
