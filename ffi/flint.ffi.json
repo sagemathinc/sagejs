@@ -1010,6 +1010,171 @@
       }
     },
     {
+      "id": "fmpz_polynomial_scalar_floor_div",
+      "python_name": "fmpz_polynomial_scalar_floor_div",
+      "signature": {
+        "parameters": [
+          {
+            "name": "source",
+            "type": "FmpzPolynomial",
+            "ownership": "borrowed",
+            "mutability": "read",
+            "aliasing": "allowed"
+          },
+          {
+            "name": "divisor",
+            "type": "Integer",
+            "ownership": "borrowed",
+            "mutability": "read",
+            "aliasing": "allowed"
+          }
+        ],
+        "return_type": "FmpzPolynomial",
+        "return_ownership": "owned",
+        "borrow_from": null
+      },
+      "dynamic": {
+        "export": "ffiFmpzPolynomialScalarFloorDiv"
+      },
+      "native": {
+        "symbol": "sagejs_fmpz_polynomial_scalar_floor_div",
+        "return_type": "int",
+        "arguments": [
+          {
+            "source": "result",
+            "abi_type": "sagejs_fmpz_polynomial_t",
+            "direction": "out",
+            "adapter": null
+          },
+          {
+            "source": "source",
+            "abi_type": "sagejs_fmpz_polynomial_t",
+            "direction": "in",
+            "adapter": null
+          },
+          {
+            "source": "divisor",
+            "abi_type": "fmpz_t",
+            "direction": "in",
+            "adapter": null
+          }
+        ]
+      },
+      "effects": {
+        "pure": false,
+        "deterministic": true,
+        "thread_safe": true,
+        "may_allocate": true,
+        "may_raise": [
+          "ValueError"
+        ],
+        "writes": []
+      },
+      "result": {
+        "domain": "status",
+        "success": [
+          1
+        ],
+        "absence": null
+      },
+      "errors": {
+        "exception": "ValueError",
+        "message": "integer polynomial scalar division requires a sealed resource and a nonzero divisor"
+      },
+      "exceptions": {
+        "policy": "none",
+        "failure_status": null
+      },
+      "targets": {
+        "dynamic": true,
+        "native": true,
+        "wasm": false
+      }
+    },
+    {
+      "id": "fmpz_polynomial_truncate",
+      "python_name": "fmpz_polynomial_truncate",
+      "signature": {
+        "parameters": [
+          {
+            "name": "source",
+            "type": "FmpzPolynomial",
+            "ownership": "borrowed",
+            "mutability": "read",
+            "aliasing": "allowed"
+          },
+          {
+            "name": "stop",
+            "type": "uint64",
+            "ownership": "value",
+            "mutability": "value",
+            "aliasing": "not_applicable"
+          }
+        ],
+        "return_type": "FmpzPolynomial",
+        "return_ownership": "owned",
+        "borrow_from": null
+      },
+      "dynamic": {
+        "export": "ffiFmpzPolynomialTruncate"
+      },
+      "native": {
+        "symbol": "sagejs_fmpz_polynomial_truncate",
+        "return_type": "int",
+        "arguments": [
+          {
+            "source": "result",
+            "abi_type": "sagejs_fmpz_polynomial_t",
+            "direction": "out",
+            "adapter": null
+          },
+          {
+            "source": "source",
+            "abi_type": "sagejs_fmpz_polynomial_t",
+            "direction": "in",
+            "adapter": null
+          },
+          {
+            "source": "stop",
+            "abi_type": "uint64_t",
+            "direction": "in",
+            "adapter": null
+          }
+        ]
+      },
+      "effects": {
+        "pure": false,
+        "deterministic": true,
+        "thread_safe": true,
+        "may_allocate": true,
+        "may_raise": [
+          "ValueError",
+          "OverflowError"
+        ],
+        "writes": []
+      },
+      "result": {
+        "domain": "status",
+        "success": [
+          1
+        ],
+        "absence": null
+      },
+      "errors": {
+        "exception": "ValueError",
+        "message": "integer polynomial truncation requires a sealed resource and a supported stop"
+      },
+      "exceptions": {
+        "policy": "none",
+        "failure_status": null
+      },
+      "targets": {
+        "dynamic": true,
+        "native": true,
+        "wasm": false
+      }
+    },
+    {
       "id": "fmpz_polynomial_derivative",
       "python_name": "fmpz_polynomial_derivative",
       "signature": {
@@ -3225,6 +3390,184 @@
       "errors": {
         "exception": "ValueError",
         "message": "rational polynomial is unsealed"
+      },
+      "exceptions": {
+        "policy": "none",
+        "failure_status": null
+      },
+      "targets": {
+        "dynamic": true,
+        "native": true,
+        "wasm": false
+      }
+    },
+    {
+      "id": "fmpq_polynomial_scalar_div",
+      "python_name": "fmpq_polynomial_scalar_div",
+      "signature": {
+        "parameters": [
+          {
+            "name": "source",
+            "type": "FmpqPolynomial",
+            "ownership": "borrowed",
+            "mutability": "read",
+            "aliasing": "allowed"
+          },
+          {
+            "name": "numerator",
+            "type": "Integer",
+            "ownership": "borrowed",
+            "mutability": "read",
+            "aliasing": "allowed"
+          },
+          {
+            "name": "denominator",
+            "type": "Integer",
+            "ownership": "borrowed",
+            "mutability": "read",
+            "aliasing": "allowed"
+          }
+        ],
+        "return_type": "FmpqPolynomial",
+        "return_ownership": "owned",
+        "borrow_from": null
+      },
+      "dynamic": {
+        "export": "ffiFmpqPolynomialScalarDiv"
+      },
+      "native": {
+        "symbol": "sagejs_fmpq_polynomial_scalar_div",
+        "return_type": "int",
+        "arguments": [
+          {
+            "source": "result",
+            "abi_type": "sagejs_fmpq_polynomial_t",
+            "direction": "out",
+            "adapter": null
+          },
+          {
+            "source": "source",
+            "abi_type": "sagejs_fmpq_polynomial_t",
+            "direction": "in",
+            "adapter": null
+          },
+          {
+            "source": "numerator",
+            "abi_type": "fmpz_t",
+            "direction": "in",
+            "adapter": null
+          },
+          {
+            "source": "denominator",
+            "abi_type": "fmpz_t",
+            "direction": "in",
+            "adapter": null
+          }
+        ]
+      },
+      "effects": {
+        "pure": false,
+        "deterministic": true,
+        "thread_safe": true,
+        "may_allocate": true,
+        "may_raise": [
+          "ValueError"
+        ],
+        "writes": []
+      },
+      "result": {
+        "domain": "status",
+        "success": [
+          1
+        ],
+        "absence": null
+      },
+      "errors": {
+        "exception": "ValueError",
+        "message": "rational polynomial scalar division requires a sealed resource and a nonzero divisor"
+      },
+      "exceptions": {
+        "policy": "none",
+        "failure_status": null
+      },
+      "targets": {
+        "dynamic": true,
+        "native": true,
+        "wasm": false
+      }
+    },
+    {
+      "id": "fmpq_polynomial_truncate",
+      "python_name": "fmpq_polynomial_truncate",
+      "signature": {
+        "parameters": [
+          {
+            "name": "source",
+            "type": "FmpqPolynomial",
+            "ownership": "borrowed",
+            "mutability": "read",
+            "aliasing": "allowed"
+          },
+          {
+            "name": "stop",
+            "type": "uint64",
+            "ownership": "value",
+            "mutability": "value",
+            "aliasing": "not_applicable"
+          }
+        ],
+        "return_type": "FmpqPolynomial",
+        "return_ownership": "owned",
+        "borrow_from": null
+      },
+      "dynamic": {
+        "export": "ffiFmpqPolynomialTruncate"
+      },
+      "native": {
+        "symbol": "sagejs_fmpq_polynomial_truncate",
+        "return_type": "int",
+        "arguments": [
+          {
+            "source": "result",
+            "abi_type": "sagejs_fmpq_polynomial_t",
+            "direction": "out",
+            "adapter": null
+          },
+          {
+            "source": "source",
+            "abi_type": "sagejs_fmpq_polynomial_t",
+            "direction": "in",
+            "adapter": null
+          },
+          {
+            "source": "stop",
+            "abi_type": "uint64_t",
+            "direction": "in",
+            "adapter": null
+          }
+        ]
+      },
+      "effects": {
+        "pure": false,
+        "deterministic": true,
+        "thread_safe": true,
+        "may_allocate": true,
+        "may_raise": [
+          "ValueError",
+          "OverflowError"
+        ],
+        "writes": []
+      },
+      "result": {
+        "domain": "status",
+        "success": [
+          1
+        ],
+        "absence": null
+      },
+      "errors": {
+        "exception": "ValueError",
+        "message": "rational polynomial truncation requires a sealed resource and a supported stop"
       },
       "exceptions": {
         "policy": "none",

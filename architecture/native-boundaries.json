@@ -14,7 +14,7 @@
   },
   "counts": {
     "classified-native-file": 58,
-    "declared-ffi": 223,
+    "declared-ffi": 227,
     "declared-ffi-resource": 16,
     "napi-export": 292,
     "runtime-intrinsic": 136,
@@ -1190,6 +1190,17 @@
       "disposition": "declared-safe-ffi"
     },
     {
+      "id": "ffi:flint:fmpq_polynomial_scalar_div",
+      "kind": "declared-ffi",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "fmpq_polynomial_scalar_div",
+      "dynamic_package": "@sagemath/sagejs-flint",
+      "dynamic_export": "ffiFmpqPolynomialScalarDiv",
+      "symbol": "sagejs_fmpq_polynomial_scalar_div",
+      "disposition": "declared-safe-ffi"
+    },
+    {
       "id": "ffi:flint:fmpq_polynomial_seal",
       "kind": "declared-ffi",
       "path": "ffi/flint.ffi.json",
@@ -1231,6 +1242,17 @@
       "dynamic_package": "@sagemath/sagejs-flint",
       "dynamic_export": "ffiFmpqPolynomialSub",
       "symbol": "sagejs_fmpq_polynomial_sub",
+      "disposition": "declared-safe-ffi"
+    },
+    {
+      "id": "ffi:flint:fmpq_polynomial_truncate",
+      "kind": "declared-ffi",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "fmpq_polynomial_truncate",
+      "dynamic_package": "@sagemath/sagejs-flint",
+      "dynamic_export": "ffiFmpqPolynomialTruncate",
+      "symbol": "sagejs_fmpq_polynomial_truncate",
       "disposition": "declared-safe-ffi"
     },
     {
@@ -2103,6 +2125,17 @@
       "disposition": "declared-safe-ffi"
     },
     {
+      "id": "ffi:flint:fmpz_polynomial_scalar_floor_div",
+      "kind": "declared-ffi",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "fmpz_polynomial_scalar_floor_div",
+      "dynamic_package": "@sagemath/sagejs-flint",
+      "dynamic_export": "ffiFmpzPolynomialScalarFloorDiv",
+      "symbol": "sagejs_fmpz_polynomial_scalar_floor_div",
+      "disposition": "declared-safe-ffi"
+    },
+    {
       "id": "ffi:flint:fmpz_polynomial_seal",
       "kind": "declared-ffi",
       "path": "ffi/flint.ffi.json",
@@ -2144,6 +2177,17 @@
       "dynamic_package": "@sagemath/sagejs-flint",
       "dynamic_export": "ffiFmpzPolynomialSub",
       "symbol": "sagejs_fmpz_polynomial_sub",
+      "disposition": "declared-safe-ffi"
+    },
+    {
+      "id": "ffi:flint:fmpz_polynomial_truncate",
+      "kind": "declared-ffi",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "fmpz_polynomial_truncate",
+      "dynamic_package": "@sagemath/sagejs-flint",
+      "dynamic_export": "ffiFmpzPolynomialTruncate",
+      "symbol": "sagejs_fmpz_polynomial_truncate",
       "disposition": "declared-safe-ffi"
     },
     {
