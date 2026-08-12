@@ -615,6 +615,33 @@ test("read-only packed ingress may construct or derive owned resources", () => {
       checkedConstructor.call_plan.arguments[1].lowering.adapter,
       "packed_slice",
     );
+    const badConstructorDocument = witnessDocument(temporary);
+    const badConstructor = structuredClone(constructor);
+    badConstructor.id = "matrix_from_two_entry_slices";
+    badConstructor.python_name = "matrix_from_two_entry_slices";
+    badConstructor.dynamic.export = "ffiWitnessMatrixFromTwoEntrySlices";
+    badConstructor.native.symbol = "sagejs_witness_matrix_from_two_entry_slices";
+    badConstructor.signature.parameters.splice(
+      1,
+      0,
+      structuredClone(badConstructor.signature.parameters[0]),
+    );
+    badConstructor.signature.parameters[1].name = "other_indices";
+    badConstructor.native.arguments.splice(
+      2,
+      0,
+      structuredClone(badConstructor.native.arguments[1]),
+    );
+    badConstructor.native.arguments[2].source = "other_selected_rows";
+    badConstructor.native.arguments[2].adapter.data = "other_indices";
+    badConstructorDocument.functions.push(badConstructor);
+    assert.throws(
+      () => declarations.loadDeclarationDocument(badConstructorDocument, {
+        filename: join(temporary, "two-slices.ffi.json"),
+        catalog,
+      }),
+      /resource\/aggregate composition.*only one read-only UInt64Buffer packed slice/,
+    );
 
     const derivedDocument = witnessDocument(temporary);
     const flint = JSON.parse(
@@ -643,6 +670,28 @@ test("read-only packed ingress may construct or derive owned resources", () => {
     assert.equal(
       checkedDerived.call_plan.arguments[2].lowering.adapter,
       "packed_slice",
+    );
+    const badDerivedDocument = witnessDocument(temporary);
+    badDerivedDocument.resources.push(byteRegion);
+    const badDerived = structuredClone(derived);
+    badDerived.id = "matrix_selected_bytes_mutable";
+    badDerived.python_name = "matrix_selected_bytes_mutable";
+    badDerived.dynamic.export = "ffiWitnessMatrixSelectedBytesMutable";
+    badDerived.native.symbol = "sagejs_witness_matrix_selected_bytes_mutable";
+    badDerived.signature.parameters[1].ownership = "borrowed_mut";
+    badDerived.signature.parameters[1].mutability = "write";
+    badDerived.native.arguments[2].direction = "out";
+    badDerived.native.arguments[2].adapter.access = "write";
+    badDerived.native.arguments[2].adapter.transactional = true;
+    badDerived.effects.pure = false;
+    badDerived.effects.writes = ["indices"];
+    badDerivedDocument.functions.push(badDerived);
+    assert.throws(
+      () => declarations.loadDeclarationDocument(badDerivedDocument, {
+        filename: join(temporary, "mutable-slice.ffi.json"),
+        catalog,
+      }),
+      /resource\/aggregate composition.*unsupported aggregate/,
     );
   } finally {
     rmSync(temporary, { recursive: true, force: true });
