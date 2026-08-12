@@ -48,14 +48,61 @@ leading_ms = median(
     lambda: polynomial_leading_coefficient(coefficients, 0, count, coefficient)
 )
 valuation_ms = median(
-    lambda: polynomial_valuation(coefficients, 0, object(), count, coefficient)
+    lambda: polynomial_valuation_reference(
+        coefficients, 0, object(), count, coefficient
+    )
+)
+valuation_boundary_ms = median(
+    lambda: polynomial_valuation(
+        coefficients, object(), lambda _source: 50000
+    )
 )
 roots_ms = median(root_operation)
 roots = root_operation()
 assert roots[0] == (1, 1)
 assert roots[-1] == (500, 1)
 
-print(leading_ms, valuation_ms, roots_ms)
+RZ = PolynomialRing(ZZ, "x")
+x = RZ.gen()
+squarefree_part = RZ(1)
+for root in range(1, 61):
+    squarefree_part *= x - root
+repeated = squarefree_part**2 * (x + 1001)**3
+
+def primitive_is_squarefree(polynomial, _scalar):
+    return polynomial.gcd(polynomial.derivative()).degree() == 0
+
+def primitive_squarefree_part(polynomial, _scalar):
+    return polynomial // polynomial.gcd(polynomial.derivative())
+
+squarefree_operation = lambda: polynomial_is_squarefree(
+    repeated,
+    lambda polynomial: polynomial == 0,
+    lambda _polynomial: ZZ(1),
+    lambda _scalar: True,
+    primitive_is_squarefree,
+)
+radical_operation = lambda: polynomial_radical_from_squarefree_part(
+    repeated,
+    lambda polynomial: polynomial == 0,
+    lambda _polynomial: ZZ(1),
+    lambda scalar: scalar,
+    primitive_squarefree_part,
+    lambda scalar, part: scalar*part,
+)
+squarefree_ms = median(squarefree_operation)
+radical_ms = median(radical_operation)
+assert squarefree_operation() is False
+assert radical_operation() == squarefree_part*(x + 1001)
+
+print(
+    leading_ms,
+    valuation_ms,
+    valuation_boundary_ms,
+    roots_ms,
+    squarefree_ms,
+    radical_ms,
+)
 `;
 
 const directory = mkdtempSync(join(tmpdir(), "sagejs-polynomial-invariants-bench-"));
@@ -71,8 +118,13 @@ try {
   });
   if (result.error) throw result.error;
   assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`);
-  const [leading, valuation, roots] = result.stdout.trim().split(/\s+/).map(Number);
-  assert.ok([leading, valuation, roots].every(Number.isFinite), result.stdout);
+  const [leading, valuationReference, valuationBoundary, roots, squarefree, radical] =
+    result.stdout.trim().split(/\s+/).map(Number);
+  assert.ok(
+    [leading, valuationReference, valuationBoundary, roots, squarefree, radical]
+      .every(Number.isFinite),
+    result.stdout,
+  );
   console.log(JSON.stringify({
     schema: "sagejs.benchmark/polynomial-invariants-contract-v1",
     implementation: "ordinary-storage-neutral-python",
@@ -80,8 +132,18 @@ try {
       coefficients: 100000,
       trailingZeroCoefficients: 49999,
       exactLinearFactors: 500,
+      repeatedPolynomialDegree: 123,
+      valuationReferenceOnly: true,
+      productionValuationBoundary: "one callback or compiled borrowed traversal",
     },
-    milliseconds: { leading, valuation, roots },
+    milliseconds: {
+      leading,
+      valuationReference,
+      valuationBoundary,
+      roots,
+      squarefree,
+      radical,
+    },
   }, null, 2));
 } finally {
   rmSync(directory, { recursive: true, force: true });
