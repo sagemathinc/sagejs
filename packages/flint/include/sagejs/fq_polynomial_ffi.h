@@ -76,11 +76,13 @@ static inline int sagejs_fq_size_multiply(
     return 1;
 }
 
-static inline void sagejs_fq_context_state_retain(
+static inline int sagejs_fq_context_state_retain(
     sagejs_fq_context_state *state)
 {
-    if (state != NULL)
-        state->references++;
+    if (state == NULL || state->references == SIZE_MAX)
+        return 0;
+    state->references++;
+    return 1;
 }
 
 static inline void sagejs_fq_context_state_release(
@@ -103,7 +105,8 @@ static inline int sagejs_fq_context_init(
     sagejs_fq_context_state *state;
 
     result->state = NULL;
-    if (!sagejs_fq_word_fits(characteristic) || characteristic < 2 ||
+    if (modulus == NULL || !sagejs_fq_word_fits(characteristic) ||
+        characteristic < 2 ||
         !n_is_prime((ulong) characteristic) || modulus_length < 3 ||
         modulus_length > (uint64_t) WORD_MAX ||
         modulus[modulus_length - 1] != 1)
@@ -198,7 +201,8 @@ static inline int sagejs_fq_coordinates_valid(
     const sagejs_fq_context_state *context,
     const uint64_t *coordinates, uint64_t length)
 {
-    if (context == NULL || length != (uint64_t) context->degree)
+    if (context == NULL || (length != 0 && coordinates == NULL) ||
+        length != (uint64_t) context->degree)
         return 0;
     for (uint64_t index = 0; index < length; index++)
         if (coordinates[index] >= (uint64_t) context->characteristic)
@@ -228,7 +232,11 @@ static inline int sagejs_fq_element_init_coordinates(
             context->state, coordinates, coordinate_length))
         return 0;
     result->context = context->state;
-    sagejs_fq_context_state_retain(result->context);
+    if (!sagejs_fq_context_state_retain(result->context))
+    {
+        result->context = NULL;
+        return 0;
+    }
     fq_default_init(result->value, result->context->value);
     sagejs_fq_set_coordinates(result->value, result->context, coordinates);
     return 1;
@@ -250,6 +258,11 @@ static inline size_t sagejs_fq_element_allocated_bytes(
         return 0;
     const nmod_poly_struct *value =
         (const nmod_poly_struct *) element->value->fq_nmod;
+    /*
+     * Generated wrappers account each live resource independently. Include
+     * the shared state in each dependent's conservative estimate so closing
+     * the public context cannot hide native memory from GC pressure.
+     */
     return sagejs_retained_size_add(
         sagejs_fq_context_state_allocated_bytes(element->context),
         sagejs_retained_size_add(
@@ -265,7 +278,11 @@ static inline int sagejs_fq_element_copy(
     if (source->context == NULL)
         return 0;
     result->context = source->context;
-    sagejs_fq_context_state_retain(result->context);
+    if (!sagejs_fq_context_state_retain(result->context))
+    {
+        result->context = NULL;
+        return 0;
+    }
     fq_default_init(result->value, result->context->value);
     fq_default_set(result->value, source->value, result->context->value);
     return 1;
@@ -303,7 +320,11 @@ static inline int sagejs_fq_element_binary(
     if (left->context == NULL || left->context != right->context)
         return 0;
     result->context = left->context;
-    sagejs_fq_context_state_retain(result->context);
+    if (!sagejs_fq_context_state_retain(result->context))
+    {
+        result->context = NULL;
+        return 0;
+    }
     fq_default_init(result->value, result->context->value);
     if (operation == 0)
         fq_default_add(
@@ -348,6 +369,8 @@ static inline int sagejs_fq_polynomial_init_coordinates(
 
     result->context = NULL;
     if (context->state == NULL ||
+        (coordinate_length != 0 && coordinates == NULL) ||
+        coordinate_length > (uint64_t) SIZE_MAX ||
         coefficient_count > (uint64_t) WORD_MAX ||
         !sagejs_fq_size_multiply(
             (size_t) coefficient_count,
@@ -359,7 +382,11 @@ static inline int sagejs_fq_polynomial_init_coordinates(
             return 0;
 
     result->context = context->state;
-    sagejs_fq_context_state_retain(result->context);
+    if (!sagejs_fq_context_state_retain(result->context))
+    {
+        result->context = NULL;
+        return 0;
+    }
     fq_default_poly_init2(
         result->value, (slong) coefficient_count, result->context->value);
     fq_default_init(coefficient, result->context->value);
@@ -392,6 +419,7 @@ static inline size_t sagejs_fq_polynomial_allocated_bytes(
     if (polynomial->context == NULL)
         return 0;
     const fq_nmod_poly_struct *value = polynomial->value->fq_nmod;
+    /* See the element-accounting comment above for the deliberate overcount. */
     size_t retained = sagejs_retained_size_add(
         sagejs_fq_context_state_allocated_bytes(polynomial->context),
         sagejs_retained_size_add(
@@ -448,7 +476,11 @@ static inline int sagejs_fq_polynomial_copy(
     if (source->context == NULL)
         return 0;
     result->context = source->context;
-    sagejs_fq_context_state_retain(result->context);
+    if (!sagejs_fq_context_state_retain(result->context))
+    {
+        result->context = NULL;
+        return 0;
+    }
     fq_default_poly_init(result->value, result->context->value);
     fq_default_poly_set(
         result->value, source->value, result->context->value);
@@ -473,7 +505,11 @@ static inline int sagejs_fq_polynomial_binary(
     if (left->context == NULL || left->context != right->context)
         return 0;
     result->context = left->context;
-    sagejs_fq_context_state_retain(result->context);
+    if (!sagejs_fq_context_state_retain(result->context))
+    {
+        result->context = NULL;
+        return 0;
+    }
     fq_default_poly_init(result->value, result->context->value);
     if (operation == 0)
         fq_default_poly_add(
@@ -522,7 +558,11 @@ static inline int sagejs_fq_polynomial_neg(
     if (source->context == NULL)
         return 0;
     result->context = source->context;
-    sagejs_fq_context_state_retain(result->context);
+    if (!sagejs_fq_context_state_retain(result->context))
+    {
+        result->context = NULL;
+        return 0;
+    }
     fq_default_poly_init(result->value, result->context->value);
     fq_default_poly_neg(
         result->value, source->value, result->context->value);
@@ -537,7 +577,11 @@ static inline int sagejs_fq_polynomial_pow(
     if (source->context == NULL || exponent > (uint64_t) UWORD_MAX)
         return 0;
     result->context = source->context;
-    sagejs_fq_context_state_retain(result->context);
+    if (!sagejs_fq_context_state_retain(result->context))
+    {
+        result->context = NULL;
+        return 0;
+    }
     fq_default_poly_init(result->value, result->context->value);
     fq_default_poly_pow(
         result->value, source->value, (ulong) exponent,
