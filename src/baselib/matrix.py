@@ -29,6 +29,7 @@ _FFLAS_DOUBLE_MAX_MODULUS = 94906266
 _PACKED_PRIME_MAX_MODULUS = 256
 _matrix_selection_module_cache = runtime.undefined
 _matrix_selection_plans_module_cache = runtime.undefined
+_matrix_subspaces_public_module_cache = runtime.undefined
 _matrix_vector_public_module_cache = runtime.undefined
 _exact_vector_public_module_cache = runtime.undefined
 _sparse_random_module_cache = runtime.undefined
@@ -228,6 +229,17 @@ def _matrix_selection_plans_module() -> Any:
             fromlist=["matrix_selection"],
         )
     return _matrix_selection_plans_module_cache
+
+
+def _matrix_subspaces_public_module() -> Any:
+    """Load representation-aware exact subspace execution lazily."""
+    global _matrix_subspaces_public_module_cache
+    if _matrix_subspaces_public_module_cache is runtime.undefined:
+        _matrix_subspaces_public_module_cache = __import__(
+            "sagejs.linear_algebra.matrix_subspaces_public",
+            fromlist=["matrix_subspaces_public"],
+        )
+    return _matrix_subspaces_public_module_cache
 
 
 def _matrix_vector_public_module() -> Any:
@@ -5236,6 +5248,7 @@ class Matrix(sage.Element):
                     if transform_resource is not runtime.undefined:
                         transform_resource.close()
                     raise
+                self._hermite_cache._hermite_cache = self._hermite_cache
                 self._hermite_cache.set_immutable()
                 _trace_dense_integer_selection(
                     "hermite_form",
@@ -5253,6 +5266,7 @@ class Matrix(sage.Element):
         if self._hermite_cache is runtime.undefined:
             resource = _flint_ffi_module().fmpz_matrix_hnf(self._integer_resource())
             self._hermite_cache = self._parent._from_fmpz_matrix_resource(resource)
+            self._hermite_cache._hermite_cache = self._hermite_cache
             self._hermite_cache.set_immutable()
             _trace_dense_integer_selection(
                 "hermite_form",
@@ -5420,7 +5434,27 @@ class Matrix(sage.Element):
                 echelon._has_fmpz_matrix_resource()
                 or echelon._has_fmpq_matrix_resource()
             ):
-                exact_entries = echelon._exact_host_values()
+                ffi = _flint_ffi_module()
+                if echelon._has_fmpz_matrix_resource():
+                    region = ffi.fmpz_matrix_echelon_pivots(echelon._integer_resource())
+                else:
+                    region = ffi.fmpq_matrix_echelon_pivots(
+                        echelon._rational_resource()
+                    )
+                packed = region.take_bytes()
+                if len(packed) % 8 != 0:
+                    raise RuntimeError("invalid exact pivot metadata length")
+                pivot_count = len(packed) // 8
+                pivot_output = runtime.uint64_unpack_le(packed, 8, pivot_count)
+                answer = runtime.math_tuple(
+                    [
+                        runtime.number(pivot_output[index])
+                        for index in range(pivot_count)
+                    ]
+                )
+                self._pivots_cache = answer
+                echelon._pivots_cache = answer
+                return answer
             pivots = []
             previous = -1
             for row in range(echelon.nrows()):
@@ -5446,19 +5480,29 @@ class Matrix(sage.Element):
         )
         return self._pivots_cache
 
-    def row_space(self) -> VectorSubspaceParent:
+    def row_space(self, base_ring: Any = None) -> VectorSubspaceParent:
+        plan = _matrix_subspaces_public_module().prepare_public_row_space(
+            self, base_ring
+        )
+        if hasattr(plan, "metadata"):
+            ambient_base = self.base_ring()
+            basis = plan.matrix
+        else:
+            ambient_base = plan.base_ring
+            basis = _cross_ring_row_basis(plan.matrix, ambient_base)
         return VectorSubspaceParent(
-            VectorSpace(self.base_ring(), self.ncols()),
-            _canonical_row_basis(self),
+            VectorSpace(ambient_base, self.ncols()),
+            basis,
         )
 
     row_module = row_space
     image = row_space
 
     def column_space(self) -> VectorSubspaceParent:
+        basis = _matrix_subspaces_public_module().public_column_basis(self).matrix
         return VectorSubspaceParent(
             VectorSpace(self.base_ring(), self.nrows()),
-            _canonical_row_basis(self.transpose()),
+            basis,
         )
 
     column_module = column_space
@@ -7200,6 +7244,13 @@ class Matrix(sage.Element):
             )._from_nmod_matrix_resource(target)
             answer._trace_word_prime_resource("matrix_from_rows")
             return answer
+        if self._has_m4ri_matrix_resource():
+            target = _m4ri_ffi_module().matrix_select_rows(
+                self._m4ri_resource(), _packed_uint64(indices), len(indices)
+            )
+            return MatrixSpace(
+                self.base_ring(), len(indices), self.ncols()
+            )._from_m4ri_matrix_resource(target)
         if self._has_packed_prime_storage():
             kernel = _dense_prime_kernel_module().dense_prime_field_matrix_select_rows
             modulus = int(_untyped(self.base_ring()).characteristic())
@@ -7828,21 +7879,48 @@ class MatrixBasis:
     toString = __repr__
 
 
+def _cross_ring_row_basis(source: Matrix, base_ring: sage.Parent) -> Matrix:
+    """Canonicalize original row generators over a different coefficient ring.
+
+    The important non-coercive case is a rational matrix viewed as a
+    `ZZ`-module.  Clearing one common denominator transports that lattice to
+    `ZZ^n`; HNF canonicalizes it without changing the integer span, after
+    which scaling back preserves Sage's rational-coordinate basis matrix.
+    Cross-ring construction is intentionally allowed to materialize the
+    original generators: the resource-direct boundary applies to the common
+    equal-ring operation.
+    """
+    if source.base_ring() is sage.QQ and base_ring is sage.ZZ:
+        values = source.list()
+        denominator = 1
+        for value in values:
+            right = int(value.denominator())
+            left = denominator
+            while right != 0:
+                left, right = right, left % right
+            denominator = denominator // left * int(value.denominator())
+        scaled = matrix(
+            sage.ZZ,
+            source.nrows(),
+            source.ncols(),
+            [(value * denominator).numerator() for value in values],
+        )
+        integer_basis = _canonical_row_basis(scaled)
+        answer = matrix(
+            sage.QQ,
+            integer_basis.nrows(),
+            integer_basis.ncols(),
+            [sage.QQ(value) / denominator for value in integer_basis.list()],
+        )
+        answer.set_immutable()
+        return answer
+    changed = source.change_ring(base_ring)
+    return _canonical_row_basis(changed)
+
+
 def _canonical_row_basis(source: Matrix) -> Matrix:
-    echelon = source.echelon_form()
-    rows = []
-    for row in echelon.rows():
-        if any(entry != 0 for entry in row):
-            rows.append(row)
-    entries = []
-    for row in rows:
-        entries.extend(row)
-    return matrix(
-        source.base_ring(),
-        len(rows),
-        source.ncols(),
-        entries,
-    )
+    """Return the immutable canonical row basis through bulk selection."""
+    return _matrix_subspaces_public_module().prepare_public_row_space(source).matrix
 
 
 _matrix_space_cache = runtime.map()
