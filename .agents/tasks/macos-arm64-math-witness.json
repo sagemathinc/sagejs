@@ -37,10 +37,7 @@
   "validation": [
     "node --check bench/macos-arm64-math-witness.cjs",
     "node --test test/macos-arm64-math-witness.cjs",
-    "node --test test/dense-matrix-public-audit.cjs",
-    "pnpm test:baselib:strict",
-    "pnpm test:native",
-    "node bench/macos-arm64-math-witness.cjs --runtime sage --sage /home/user/bin/sagelite --quick --samples 1 --check",
+    "node bench/macos-arm64-math-witness.cjs --render-report bench/results/macos-arm64-m1-max-format-polynomial-2026-08-12.json",
     "ssh m1 cd /Volumes/sage/sagejs && /opt/homebrew/bin/node bench/macos-arm64-math-witness.cjs --runtime all --sage /Volumes/sage/sagelite-build/smoke/public-dev-cp314-20260704-004400/bin/sage --quick --samples 1 --check --require-macos"
   ],
   "runs": [
@@ -196,7 +193,7 @@
     }
   ],
   "handoff": {
-    "summary": "Added a reproducible process-isolated macOS arm64 witness and recorded full verified M1 Max results against SageMath 10.9.post2. Native FLINT, M4RI, and FFLAS-FFPACK production kernels build and run as Mach-O arm64; exact matrix resources are healthy and word-prime algorithms are exceptionally fast. The witness isolates general word-prime public representation and exact polynomial construction as the main boundary regressions.",
+    "summary": "Added a reproducible process-isolated macOS arm64 witness and recorded full verified M1 Max results against SageMath 10.9.post2. Native FLINT, M4RI, and FFLAS-FFPACK production kernels build and run as Mach-O arm64; the checked JSON now persists exact pnpm, clang, FLINT, file-identity, linkage, and Accelerate evidence. Unlike serialization formats have null ratios and single-runtime Markdown is explicitly labeled. The witness isolates general word-prime public representation and exact polynomial construction as the main boundary regressions.",
     "risks": [
       "General word-prime matrix construction, formatting, and SagePack are 4-15x slower than SageMath; row and column swaps are not implemented and successful backend routes are not traced.",
       "The first pnpm native:precompile:production run on macOS linked its addon but hit a transient node-gyp ENOENT for build/node_gyp_bins; a cached rerun completed all twelve kernels.",

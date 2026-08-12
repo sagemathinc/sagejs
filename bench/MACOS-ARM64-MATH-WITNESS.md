@@ -26,9 +26,9 @@ The witness was recorded on 2026-08-12 with:
 - one OpenMP/BLAS thread.
 
 The canonical dense audit used Sage.js revision
-`7b873685f617fc0046fb9673838ff2f6588ac933`. The companion witness used
-`873b1d8e852146b5ff44f78a6c530688ce0bd735`; that revision differs only by
-adding the witness script and its parallel-lane contract.
+`7b873685f617fc0046fb9673838ff2f6588ac933`. The final companion witness used
+`d6d4bb97b6ca0446f0baf3ff56eb0f253a96ed82`; that revision adds the witness,
+its reporting checks, and no mathematical implementation changes.
 
 From a clean checkout on the Mac:
 
@@ -123,26 +123,28 @@ Selected companion warm medians:
 
 | operation | Sage.js | SageMath | ratio |
 | :-- | --: | --: | --: |
-| `ZZ` matrix `.str()` | 0.462 ms | 3.613 ms | 0.13x |
-| `QQ` matrix `.str()` | 0.500 ms | 2.938 ms | 0.17x |
-| `GF(7)` matrix `.str()` | 0.471 ms | 12.533 ms | 0.04x |
-| word-prime matrix `.str()` | 103.796 ms | 7.924 ms | 13.10x |
-| `ZZ[x]` construction | 1.521 ms | 0.082 ms | 18.48x |
-| `QQ[x]` construction | 4.821 ms | 0.187 ms | 25.78x |
-| `GF(7)[x]` multiplication | 0.104 ms | 0.020 ms | 5.10x |
-| word-prime polynomial construction | 0.160 ms | 1.434 ms | 0.11x |
-| word-prime polynomial factorization | 9.391 ms | 6.403 ms | 1.47x |
+| `ZZ` matrix `.str()` | 0.464 ms | 3.604 ms | 0.13x |
+| `QQ` matrix `.str()` | 0.470 ms | 2.907 ms | 0.16x |
+| `GF(7)` matrix `.str()` | 0.460 ms | 12.837 ms | 0.04x |
+| word-prime matrix `.str()` | 103.149 ms | 7.682 ms | 13.43x |
+| `ZZ[x]` construction | 1.139 ms | 0.082 ms | 13.85x |
+| `QQ[x]` construction | 4.741 ms | 0.193 ms | 24.58x |
+| `GF(7)[x]` multiplication | 0.109 ms | 0.021 ms | 5.31x |
+| word-prime polynomial construction | 0.210 ms | 1.489 ms | 0.14x |
+| word-prime polynomial factorization | 9.286 ms | 6.427 ms | — |
 
 Every comparable summary matched. All SagePack round trips reproduced the
 same public value. Exact and small-prime matrix formatting is excellent, and
 polynomial resource operations are healthy on arm64. `ZZ[x]` and `QQ[x]`
 construction deserve focused boundary profiling; they are slower than
-SageMath even though the resulting operations are inexpensive.
+SageMath even though the resulting operations are inexpensive. Factorization
+is shown as two runtime-local observations because the factor summary is not a
+canonical cross-runtime equivalence witness.
 
 ## Actionable findings
 
 1. **General word-prime matrix representation is the P1 gap.** Deterministic
-   construction is 15.38 times slower than SageMath, `.str()` is 13.10 times
+   construction is 15.38 times slower than SageMath, `.str()` is 13.43 times
    slower, and the runtime-local SagePack witness takes 1.37 seconds to dump
    and 0.47 seconds to load this 300 by 300 case. The same public representation
    cannot currently perform `swap_rows` or `swap_columns`. This is a boundary/
