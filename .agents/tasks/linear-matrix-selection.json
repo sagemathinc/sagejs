@@ -4,7 +4,7 @@
   "id": "linear-matrix-selection",
   "title": "Linear Matrix Selection",
   "lane": "arithmetic-algebra",
-  "status": "review",
+  "status": "complete",
   "owner": "user",
   "objective": "Implement storage-neutral matrix selection and mutation contracts with exact-resource and packed-prime friendly semantics",
   "base_commit": "684da899398cfb5cffa8395448ca6d62a1757eee",

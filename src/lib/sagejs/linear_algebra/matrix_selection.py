@@ -18,7 +18,6 @@ from __future__ import annotations
 from collections.abc import Callable, Iterable, MutableSequence, Sequence
 from typing import TypeAlias, TypeVar
 
-
 _Value = TypeVar("_Value")
 _Coerced = TypeVar("_Coerced")
 

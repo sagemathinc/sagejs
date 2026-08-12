@@ -73,6 +73,7 @@ const integration = [
   "test/exact-matrix-scalar-fastpath.cjs",
   "test/exact-matrix-scalar-operations.cjs",
   "test/exact-matrix-bulk-construction.cjs",
+  "test/linear-matrix-selection.cjs",
   "test/dense-integer-solve-resource.cjs",
   "test/fmpz-matrix-resource-kernels.cjs",
   "test/fmpz-matrix-right-kernel.cjs",

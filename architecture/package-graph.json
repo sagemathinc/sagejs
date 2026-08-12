@@ -107,7 +107,12 @@
       "layer": 3,
       "startup": "bootstrap",
       "max_source_bytes": 410000,
-      "depends_on": ["core-runtime", "native-integration", "arithmetic"],
+      "depends_on": [
+        "core-runtime",
+        "native-integration",
+        "arithmetic",
+        "python-stdlib"
+      ],
       "files": [
         "src/baselib/matrix.py",
         "src/lib/sagejs/kernels/matrix/__init__.py",
@@ -142,7 +147,8 @@
         "core-runtime",
         "native-integration",
         "arithmetic",
-        "linear-algebra"
+        "linear-algebra",
+        "python-stdlib"
       ],
       "modules": ["sagejs.linear_algebra"],
       "files": [],
