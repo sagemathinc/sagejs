@@ -78,5 +78,50 @@ print("direct-prime-swap-borrows-storage")
 `),
   "direct-prime-swap-borrows-storage",
 );
+assert.equal(
+  run(String.raw`
+value = matrix(GF(97), 32, 47, range(32 * 47))
+storage = value._prime_residues_cache
+value.swap_rows(0, 31)
+value.swap_columns(0, 46)
+assert value._prime_residues_cache is storage
+print("direct-prime-fallback-borrows-storage")
+`, { SAGEJS_NATIVE_DISABLE: "1" }),
+  "direct-prime-fallback-borrows-storage",
+);
+
+const edgeCases = String.raw`
+def expect_failure(function, exception):
+    try:
+        function()
+        raise AssertionError("operation unexpectedly succeeded")
+    except exception:
+        pass
+
+
+for base in [ZZ, QQ, GF(2), GF(97)]:
+    no_rows = matrix(base, 0, 4, [])
+    no_rows.swap_columns(0, 3)
+    assert no_rows.dimensions() == (0, 4)
+    expect_failure(lambda: no_rows.swap_rows(0, 0), IndexError)
+
+    no_columns = matrix(base, 3, 0, [])
+    no_columns.swap_rows(0, 2)
+    assert no_columns.dimensions() == (3, 0)
+    expect_failure(lambda: no_columns.swap_columns(0, 0), IndexError)
+
+    immutable = matrix(base, 2, 2, range(4))
+    immutable.set_immutable()
+    expect_failure(lambda: immutable.swap_rows(0, 1), ValueError)
+    expect_failure(lambda: immutable.swap_columns(0, 1), ValueError)
+
+print("direct-matrix-swap-edges-ok")
+`;
+
+assert.equal(run(edgeCases), "direct-matrix-swap-edges-ok");
+assert.equal(
+  run(edgeCases, { SAGEJS_NATIVE_DISABLE: "1" }),
+  "direct-matrix-swap-edges-ok",
+);
 
 console.log("direct matrix swap tests passed");
