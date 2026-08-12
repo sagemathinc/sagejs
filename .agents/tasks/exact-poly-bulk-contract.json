@@ -4,7 +4,7 @@
   "id": "exact-poly-bulk-contract",
   "title": "Exact polynomial bulk construction contract",
   "lane": "integration",
-  "status": "review",
+  "status": "complete",
   "owner": "user",
   "objective": "Reproduce and explain public ZZ[x] and QQ[x] bulk-construction regressions across Linux x64 and macOS arm64, then freeze a narrow machine-readable implementation contract with semantic differentials and honest performance gates without modifying production polynomial or FFI code",
   "base_commit": "228330646cd3ee09b07397344269f68397d70c78",
