@@ -176,20 +176,30 @@ function parseLibrary(filename, callNode) {
     ],
     keywords: [
       "id", "python_module", "package", "headers", "link_unix",
-      "link_windows", "dependencies", "prefix_environment", "unix_default",
-      "windows_default", "include_dirs", "source_include_dirs",
+      "link_linux", "link_darwin", "link_windows", "dependencies",
+      "prefix_environment", "unix_default", "windows_default", "include_dirs",
+      "source_include_dirs",
     ],
   });
+  const link = {
+    unix: strings(filename, call, "link_unix"),
+    windows: strings(filename, call, "link_windows"),
+  };
+  for (const [keyword, platform] of [
+    ["link_linux", "linux"],
+    ["link_darwin", "darwin"],
+  ]) {
+    if (call.keywords.has(keyword)) {
+      link[platform] = strings(filename, call, keyword);
+    }
+  }
   return {
     id: requiredString(filename, call, "id"),
     python_module: requiredString(filename, call, "python_module"),
     dynamic: { package: requiredString(filename, call, "package") },
     native: {
       headers: strings(filename, call, "headers"),
-      link: {
-        unix: strings(filename, call, "link_unix"),
-        windows: strings(filename, call, "link_windows"),
-      },
+      link,
       dependencies: strings(filename, call, "dependencies"),
       toolchain: {
         prefix_environment: requiredString(filename, call, "prefix_environment"),

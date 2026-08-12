@@ -1142,6 +1142,29 @@ test("native production keys separate dependency and addon invalidation", () => 
   }
 });
 
+test("FFLAS native keys include selected platform SDK inputs", () => {
+  const identity = {
+    native: { toolchain: "one" },
+    node: { abi: "one" },
+  };
+  const key = (platformInputs) => nativeArtifactSpecs(resolve(__dirname, ".."), {
+    identity,
+    platformInputs: { fflas: platformInputs },
+  }).find(({ id }) => id === "fflas-dependencies").key;
+  const first = key({
+    accelerateStub: { sha256: "a" },
+    cblasHeader: { sha256: "b" },
+  });
+  assert.notEqual(first, key({
+    accelerateStub: { sha256: "changed" },
+    cblasHeader: { sha256: "b" },
+  }));
+  assert.notEqual(first, key({
+    accelerateStub: { sha256: "a" },
+    cblasHeader: { sha256: "changed" },
+  }));
+});
+
 test("native addon keys include shared ABI types and package FFI descriptors", () => {
   const directory = mkdtempSync(join(tmpdir(), "sagejs-native-ffi-key-test-"));
   const identity = {

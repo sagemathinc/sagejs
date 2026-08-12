@@ -23,6 +23,7 @@ const {
 const { generateJavaScript } = require("./js-backend.cjs");
 const { generateExceptionShims } = require("./ffi-codegen.cjs");
 const { declarationFiles } = require("../ffi/declarations.cjs");
+const { macosDeploymentTarget } = require("../../scripts/darwin-native.cjs");
 
 const root = resolve(__dirname, "..", "..");
 const windowsTriplet = "x64-windows-static-md-release";
@@ -367,19 +368,19 @@ function windowsClangBuiltins() {
   return library;
 }
 
-function foreignPrefix(library) {
+function foreignPrefix(library, platform = process.platform) {
   const toolchain = library.native.toolchain;
   return resolve(
     process.env[toolchain.prefix_environment] ||
-      join(root, process.platform === "win32"
+      join(root, platform === "win32"
         ? toolchain.windows_default : toolchain.unix_default),
   );
 }
 
-function foreignIncludeDirectories(ir) {
+function foreignIncludeDirectories(ir, platform = process.platform) {
   return uniquePaths(
     (ir.foreignLibraries || []).flatMap((library) => {
-      const prefix = foreignPrefix(library);
+      const prefix = foreignPrefix(library, platform);
       return [
         ...library.native.toolchain.source_include_dirs.map((directory) =>
           join(root, directory)),
@@ -390,19 +391,27 @@ function foreignIncludeDirectories(ir) {
   );
 }
 
-function compilationIncludeDirectories(ir) {
+function compilationIncludeDirectories(ir, platform = process.platform) {
   return uniquePaths([
+    // A declared library owns the headers that describe its selected ABI.
+    // Keep them ahead of the global FLINT support prefix so a library-specific
+    // CBLAS provider cannot accidentally compile against another provider.
+    ...foreignIncludeDirectories(ir, platform),
     join(nativePrefix, "include"),
     nativeInclude,
-    ...foreignIncludeDirectories(ir),
   ]);
 }
 
-function foreignLinkedLibraries(library) {
-  const prefix = foreignPrefix(library);
-  return library.native.link[
-    process.platform === "win32" ? "windows" : "unix"
-  ].map((name) => ({ name, path: join(prefix, "lib", name) }));
+function foreignLinkedLibraries(library, platform = process.platform) {
+  const prefix = foreignPrefix(library, platform);
+  const link = library.native.link;
+  const platformLink = platform === "win32"
+    ? link.windows
+    : link[platform] ?? link.unix;
+  return platformLink.map((name) => ({
+    name,
+    path: join(prefix, "lib", name),
+  }));
 }
 
 function resolveDeclaredHeader(
@@ -516,7 +525,7 @@ function bindingGyp(
   const tuning = usesSpecializedPrimeField ? primeFieldTuning() : null;
   const foreignLibraries = Array.from(new Set(
     (ir.foreignLibraries || []).flatMap((library) =>
-      foreignLinkedLibraries(library).map(({ path }) => path)
+      foreignLinkedLibraries(library, platform).map(({ path }) => path)
     ),
   ));
   const usesForeignLibraries = foreignLibraries.length > 0;
@@ -525,7 +534,7 @@ function bindingGyp(
     target_name: "sagejs_native_kernel",
     win_delay_load_hook: "false",
     sources: ["kernel.c", ...(hasExceptionShims ? ["ffi_shims.cc"] : [])],
-    include_dirs: compilationIncludeDirectories(ir),
+    include_dirs: compilationIncludeDirectories(ir, platform),
     defines: [
       "NAPI_VERSION=8",
       ...(usesSpecializedPrimeField
@@ -614,7 +623,7 @@ function bindingGyp(
     if (platform === "darwin") {
       target.xcode_settings = {
         GCC_OPTIMIZATION_LEVEL: "3",
-        MACOSX_DEPLOYMENT_TARGET: "13.0",
+        MACOSX_DEPLOYMENT_TARGET: macosDeploymentTarget(),
         ...(hasExceptionShims
           ? {
             CLANG_CXX_LANGUAGE_STANDARD: cxxLanguage.xcode,

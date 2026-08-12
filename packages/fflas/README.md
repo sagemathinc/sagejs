@@ -22,10 +22,15 @@ tested fallback.
 
 ## Native dependencies
 
-`pnpm --dir packages/fflas build` obtains the pinned GMP, Givaro,
-FFLAS-FFPACK, and OpenBLAS prefix through Sage.js's content-addressed native
-artifact cache. On supported Unix hosts the cache publishes that prefix once,
-makes it read-only, and links every Git worktree to the same immutable payload.
+`pnpm --dir packages/fflas build` obtains the pinned GMP, Givaro, and
+FFLAS-FFPACK prefix through Sage.js's content-addressed native artifact cache.
+Linux uses the pinned OpenBLAS archive from Sage.js's FLINT prefix. Native
+macOS builds use Apple's system Accelerate framework through the active macOS
+SDK's CBLAS header and text-based linker stub; no OpenBLAS payload or headers
+are placed in the Darwin dependency prefix. The built addon records the stable
+system framework install name and does not redistribute the SDK stub. On supported
+Unix hosts the cache publishes the resulting prefix once, makes it read-only,
+and links every Git worktree to the same immutable payload.
 Concurrent cold builds serialize on the artifact key, so only one worktree
 performs the dependency build. Generated Node adapters remain separate cached
 artifacts because they also depend on the Node ABI and current declarations.

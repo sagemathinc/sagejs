@@ -4,7 +4,7 @@
   "id": "polynomial-invariants-contract",
   "title": "Storage-neutral exact polynomial invariants",
   "lane": "arithmetic-algebra",
-  "status": "review",
+  "status": "complete",
   "owner": "user",
   "objective": "Define CPython-parseable storage-neutral exact polynomial invariant, squarefree, radical, and factor-root contracts with Sage 10.9 edge semantics and Sage.js dynamic differential coverage",
   "base_commit": "5a1cc59fc7fddad7648e98dc2d341a2455853754",

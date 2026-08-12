@@ -49,6 +49,10 @@ const { spawn, spawnSync } = require("node:child_process");
 const { git } = require("./parallel-lib.cjs");
 const { pnpmInvocation } = require("./pnpm-invocation.cjs");
 const { nativeMathBuildProfile } = require("./native-math-profile.cjs");
+const {
+  appleAccelerateSdkInputs,
+  fflasMathBuildProfile,
+} = require("./darwin-native.cjs");
 
 const nativeCacheSchema = "sagejs.parallel-native-artifact-cache-v1";
 const nativeCacheMaintenanceSchema = "sagejs.parallel-native-cache-status-v1";
@@ -66,6 +70,7 @@ const nativeCompilerInputPaths = [
   "package.json",
   "pnpm-lock.yaml",
   "scripts/build-vendor.cjs",
+  "scripts/darwin-native.cjs",
   "tools",
   "tsconfig.json",
 ];
@@ -261,6 +266,14 @@ function assertInputsCurrent(workspace, spec) {
   if (JSON.stringify(current) !== JSON.stringify(spec.inputs)) {
     throw new Error(`native-cache inputs changed while preparing ${spec.id}`);
   }
+  for (const input of Object.values(spec.platformInputs || {})) {
+    if (typeof input?.path !== "string" || input.state === "missing") continue;
+    if (JSON.stringify(fileIdentity(input.path)) !== JSON.stringify(input)) {
+      throw new Error(
+        `native-cache platform inputs changed while preparing ${spec.id}`,
+      );
+    }
+  }
 }
 
 function snapshotHash(entries) {
@@ -430,9 +443,7 @@ function dependencyPrefix(packageId) {
 
 function nativeArtifactSpecs(workspace, overrides = {}) {
   const identity = nativeBuildIdentity(workspace, overrides);
-  const mathProfile = stableJson(
-    overrides.mathProfile || nativeMathBuildProfile(),
-  );
+  const baseMathProfile = overrides.mathProfile || nativeMathBuildProfile();
   const commonAddonInputs = [
     ...nativeCompilerInputPaths,
     "scripts/build-ffi-host-adapter.cjs",
@@ -485,11 +496,13 @@ function nativeArtifactSpecs(workspace, overrides = {}) {
         ? "copy"
         : "shared-readonly",
       dependencyInputs: [
+        "scripts/darwin-native.cjs",
         "scripts/native-math-profile.cjs",
         "packages/fflas/package.json",
         "packages/fflas/scripts/build-deps.cjs",
         "packages/fflas/include/sagejs/fflas_matrix_ffi.h",
-        "packages/flint/scripts/build-deps.cjs",
+        ...(process.platform === "darwin"
+          ? [] : ["packages/flint/scripts/build-deps.cjs"]),
       ],
       addonInputs: [
         "packages/fflas/package.json",
@@ -515,7 +528,9 @@ function nativeArtifactSpecs(workspace, overrides = {}) {
         : [
           `${dependencyPrefix("fflas")}/lib/libgmpxx.a`,
           `${dependencyPrefix("fflas")}/lib/libgivaro.a`,
-          `${dependencyPrefix("fflas")}/lib/libopenblas.a`,
+          `${dependencyPrefix("fflas")}/lib/${
+            process.platform === "darwin" ? "Accelerate.tbd" : "libopenblas.a"
+          }`,
           `${dependencyPrefix("fflas")}/.sagejs-fflas-dependencies.json`,
         ],
       addonBuildCommands: [
@@ -559,6 +574,9 @@ function nativeArtifactSpecs(workspace, overrides = {}) {
     },
   };
   return Object.entries(descriptions).flatMap(([packageId, description]) => {
+    const mathProfile = stableJson(packageId === "fflas"
+      ? fflasMathBuildProfile(baseMathProfile)
+      : baseMathProfile);
     const dependencyInputs = snapshot(workspace, description.dependencyInputs, {
       rejectSymlinks: true,
     });
@@ -566,6 +584,14 @@ function nativeArtifactSpecs(workspace, overrides = {}) {
     // it out of this stage avoids rebuilding mature dependencies after an
     // otherwise compatible Node upgrade; the addon stage below includes it.
     const dependencyIdentity = identity.native ?? identity;
+    const platformInputs = overrides.platformInputs?.[packageId] ??
+      (packageId === "fflas" && process.platform === "darwin" ? (() => {
+        const { stub, cblasHeader } = appleAccelerateSdkInputs();
+        return {
+          accelerateStub: fileIdentity(stub),
+          cblasHeader: fileIdentity(cblasHeader),
+        };
+      })() : null);
     const dependencyKey = sha256(JSON.stringify(stableJson({
       identity: dependencyIdentity,
       inputs: dependencyInputs,
@@ -574,6 +600,7 @@ function nativeArtifactSpecs(workspace, overrides = {}) {
         : null,
       materialization: description.dependencyMaterialization,
       packageId,
+      platformInputs,
       schema: nativeCacheSchema,
       stage: "dependencies",
     })));
@@ -600,6 +627,7 @@ function nativeArtifactSpecs(workspace, overrides = {}) {
           : null,
         inputPaths: description.dependencyInputs,
         inputs: dependencyInputs,
+        platformInputs,
         outputRoots: [dependencyPrefix(packageId)],
         cleanupRoots: [
           `packages/${packageId}/.native/downloads`,
@@ -697,6 +725,7 @@ function validCacheEntry(entry, spec) {
       manifest.id !== spec.id ||
       manifest.key !== spec.key ||
       manifest.input_hash !== snapshotHash(spec.inputs) ||
+      manifest.platform_input_hash !== snapshotHash(spec.platformInputs || null) ||
       JSON.stringify(manifest.output_roots) !== JSON.stringify(spec.outputRoots) ||
       (manifest.materialization || "copy") !== materializationForSpec(spec) ||
       (manifest.generation !== undefined &&
@@ -1376,6 +1405,7 @@ function publishNativeArtifact(workspace, cacheRoot, spec) {
       key: spec.key,
       output_roots: spec.outputRoots,
       input_hash: snapshotHash(spec.inputs),
+      platform_input_hash: snapshotHash(spec.platformInputs || null),
       materialization: materializationForSpec(spec),
       generation: generationForSpec(spec),
       files,
@@ -1867,9 +1897,11 @@ function nativePackageCacheable(packageId) {
   if (process.env[`SAGEJS_${packageId.toUpperCase()}_PREFIX`] !== undefined) {
     return false;
   }
-  // FFLAS copies the exact OpenBLAS archive selected by the FLINT prefix.
-  // An externally managed FLINT prefix has no content identity in this cache.
-  return packageId !== "fflas" || process.env.SAGEJS_FLINT_PREFIX === undefined;
+  // FFLAS obtains OpenBLAS and its CBLAS headers from FLINT on Linux. Darwin
+  // uses only the selected SDK's Accelerate inputs and is independent of the
+  // FLINT prefix.
+  return packageId !== "fflas" || process.platform === "darwin" ||
+    process.env.SAGEJS_FLINT_PREFIX === undefined;
 }
 
 function prepareNativePackages(workspace, packageIds, options = {}) {
@@ -1886,7 +1918,8 @@ function prepareNativePackages(workspace, packageIds, options = {}) {
     preparedSpecs.add(spec.id);
   };
   for (const packageId of packageIds) {
-    if (packageId === "fflas" && nativePackageCacheable("flint")) {
+    if (packageId === "fflas" && process.platform !== "darwin" &&
+        nativePackageCacheable("flint")) {
       const flintPrerequisites = selectedNativeSpecs(
         workspace,
         ["flint"],
