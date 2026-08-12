@@ -194,6 +194,16 @@ pnpm --dir packages/flint test
 pnpm --dir packages/flint bench
 ```
 
+`pnpm --dir packages/flint build` is the supported composite package build.
+From a fresh installed checkout it first builds the Sage.js compiler frontend
+needed by native FFI generation, then builds the native dependencies, the
+direct Node addon, and finally the generated FFI adapter. The last two stages
+must stay in that order: `node-gyp rebuild` replaces `packages/flint/build`, so
+running it after `build:ffi` would delete the generated adapter. The repository
+bootstrap uses the same composite after establishing the compiler once for all
+native packages, and publishes production kernels only after every generated
+adapter exists.
+
 The portable boundary is intentional: an arm64 ffpoly/smalljac port can be
 developed, benchmarked against the fallback, and proposed upstream without
 changing the public elliptic-curve API or blocking core Apple Silicon support.
@@ -215,9 +225,15 @@ matrix products.
 For development, an existing compatible prefix can skip the dependency build:
 
 ```sh
+pnpm run build
 SAGEJS_FLINT_PREFIX=/path/to/prefix \
   pnpm --dir packages/flint build:addon
+SAGEJS_FLINT_PREFIX=/path/to/prefix \
+  pnpm --dir packages/flint build:ffi
 ```
+
+Those are low-level stages for an already initialized compiler. Use the
+composite `pnpm --dir packages/flint build` for ordinary source builds.
 
 This package is private while the API and prebuilt-binary distribution layout
 are being established. It is not part of the Sage.js 0.2.0 npm package.

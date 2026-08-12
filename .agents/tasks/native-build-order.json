@@ -1,0 +1,70 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "native-build-order",
+  "title": "Make fresh native builds order-safe",
+  "lane": "distribution",
+  "status": "active",
+  "owner": "user",
+  "objective": "Provide a supported fresh-checkout FLINT and full bootstrap path that establishes compiler prerequisites, builds the addon before generated FFI adapters, and publishes production kernels only after native adapters exist, with deterministic command-order tests and documentation.",
+  "base_commit": "05e0e370e1d41d5850577bbce2d7d9885901d8b0",
+  "claims": [
+    "packages/flint/package.json",
+    "packages/flint/scripts/build.cjs",
+    "packages/flint/README.md",
+    "scripts/bootstrap.cjs",
+    "test/fflas-dense-prime.cjs",
+    "test/native-build-order.cjs",
+    "test/node-test-manifest.cjs"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "compiler-infrastructure",
+    "fallback": "not-applicable",
+    "oracles": [],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:portable",
+    "pnpm test:native",
+    "pnpm test:sea"
+  ],
+  "runs": [
+    {
+      "command": "node --test test/native-build-order.cjs test/test-manifest.test.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.121,
+      "started_at": "2026-08-12T07:15:03.740Z",
+      "commit": "05e0e370e1d41d5850577bbce2d7d9885901d8b0",
+      "workspace_fingerprint": "5f95a19767fe42b97f5a86dad79791dd71b1127ab52db554a797d3d694673750",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test --test-name-pattern=clean native and SEA build paths test/fflas-dense-prime.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.105,
+      "started_at": "2026-08-12T07:15:04.452Z",
+      "commit": "05e0e370e1d41d5850577bbce2d7d9885901d8b0",
+      "workspace_fingerprint": "5f95a19767fe42b97f5a86dad79791dd71b1127ab52db554a797d3d694673750",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Added a cross-platform FLINT composite that detects missing compiler artifacts, builds the root compiler before dependencies, guarantees node-gyp addon generation precedes FFI generation, and exposes a plan-only path. Reordered full bootstrap to build compiler/runtime prerequisites first, build FLINT then FFLAS then graph, and publish production kernels only afterward. Added deterministic mocked command-order tests and documented the supported build boundary.",
+    "risks": [
+      "The dense-qq-resources integration baseline currently leaves dist/module-cache and dist/runtime-cache incomplete after pnpm build, so the required portable tier has unrelated existing failures and broad native/SEA receipts were not recorded in this lane."
+    ],
+    "next_steps": [
+      "After rebasing onto a compiler-clean integration baseline, run pnpm test:portable, pnpm test:native, and pnpm test:sea on the target Linux/macOS/Windows builders."
+    ]
+  }
+}

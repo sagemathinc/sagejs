@@ -6,18 +6,13 @@ const { join } = require("node:path");
 const { spawnSync } = require("node:child_process");
 
 const root = join(__dirname, "..");
-const arguments_ = new Set(process.argv.slice(2));
-arguments_.delete("--");
-const withoutSea = arguments_.delete("--without-sea");
-const help = arguments_.delete("--help") || arguments_.delete("-h");
 const executableSuffix = process.platform === "win32" ? ".exe" : "";
 const pnpmCommand =
   process.platform === "win32" ? process.env.ComSpec || "cmd.exe" : "pnpm";
 const pnpmPrefixArguments =
   process.platform === "win32" ? ["/d", "/s", "/c", "pnpm.cmd"] : [];
 
-if (help) {
-  process.stdout.write(`Usage: pnpm bootstrap [--without-sea]
+const helpText = `Usage: pnpm bootstrap [--without-sea]
 
 Prepare a source checkout, install JavaScript dependencies, build the Sage.js
 runtime and native mathematics stack, and build build/sea/sagejs.
@@ -25,12 +20,18 @@ runtime and native mathematics stack, and build build/sea/sagejs.
 Options:
   --without-sea  Support Node 22.22.2+ by omitting the single executable.
                  The ordinary native runtime is still built completely.
-`);
-  process.exit(0);
-}
+`;
 
-if (arguments_.size !== 0) {
-  throw new Error(`unknown bootstrap option: ${[...arguments_].join(", ")}`);
+function parseArguments(input) {
+  const arguments_ = new Set(input);
+  arguments_.delete("--");
+  const withoutSea = arguments_.delete("--without-sea");
+  const help = arguments_.delete("--help") || arguments_.delete("-h");
+  if (help) return { help, withoutSea };
+  if (arguments_.size !== 0) {
+    throw new Error(`unknown bootstrap option: ${[...arguments_].join(", ")}`);
+  }
+  return { help, withoutSea };
 }
 
 function versionAtLeast(actual, required) {
@@ -94,7 +95,7 @@ function step(number, description) {
   process.stdout.write(`\n==> ${number}. ${description}\n`);
 }
 
-function checkPrerequisites() {
+function checkPrerequisites(withoutSea) {
   const minimumNode = withoutSea ? "22.22.2" : "25.5.0";
   if (!versionAtLeast(process.versions.node, minimumNode)) {
     const reason = withoutSea
@@ -163,9 +164,54 @@ function checkPrerequisites() {
   }
 }
 
-function main() {
+function bootstrapBuildPlan() {
+  return [
+    {
+      phase: "compiler",
+      command: "pnpm",
+      arguments: ["run", "build"],
+    },
+    {
+      phase: "native",
+      command: "pnpm",
+      arguments: ["--dir", "packages/flint", "build"],
+    },
+    {
+      phase: "native",
+      command: "pnpm",
+      arguments: ["--dir", "packages/fflas", "build"],
+    },
+    {
+      phase: "native",
+      command: "pnpm",
+      arguments: ["--dir", "packages/graph", "build"],
+    },
+    {
+      phase: "production",
+      command: "node",
+      arguments: ["scripts/build-production-native-kernels.cjs"],
+    },
+  ];
+}
+
+function executeBuildPhase(plan, phase, runners = {}) {
+  const pnpmRunner = runners.runPnpm || runPnpm;
+  const nodeRunner = runners.runNode || ((args) => run(process.execPath, args));
+  for (const command of plan.filter((item) => item.phase === phase)) {
+    if (command.command === "pnpm") pnpmRunner(command.arguments);
+    else if (command.command === "node") nodeRunner(command.arguments);
+    else throw new Error(`unknown bootstrap command: ${command.command}`);
+  }
+}
+
+function main(inputArguments = process.argv.slice(2)) {
+  const { help, withoutSea } = parseArguments(inputArguments);
+  if (help) {
+    process.stdout.write(helpText);
+    return;
+  }
   step(1, "Checking the host toolchain");
-  checkPrerequisites();
+  checkPrerequisites(withoutSea);
 
   step(2, "Initializing Git submodules");
   run("git", ["submodule", "update", "--init", "--recursive"]);
@@ -173,25 +219,27 @@ function main() {
   step(3, "Installing the pinned pnpm dependency graph");
   runPnpm(["install", "--frozen-lockfile"]);
 
+  const buildPlan = bootstrapBuildPlan();
+  step(4, "Building the Sage.js compiler, runtime, and standard library");
+  executeBuildPhase(buildPlan, "compiler");
+
   step(
-    4,
+    5,
     process.platform === "linux" && process.arch === "x64"
       ? "Building FLINT, ffpoly, smalljac, igraph, and their Node addons"
       : "Building FLINT, FFLAS/FFPACK, igraph, and their generated adapters",
   );
-  runPnpm(["--dir", "packages/flint", "build"]);
-  runPnpm(["--dir", "packages/fflas", "build"]);
-  runPnpm(["--dir", "packages/graph", "build"]);
+  executeBuildPhase(buildPlan, "native");
 
-  step(5, "Building the Sage.js compiler, runtime, and standard library");
-  runPnpm(["run", "build"]);
+  step(6, "Publishing production native kernels");
+  executeBuildPhase(buildPlan, "production");
 
   if (!withoutSea) {
-    step(6, "Building the self-contained mathematics executable");
+    step(7, "Building the self-contained mathematics executable");
     run(process.execPath, ["scripts/build-sea.cjs", "--with-flint"]);
   }
 
-  step(withoutSea ? 6 : 7, "Running native smoke checks");
+  step(withoutSea ? 7 : 8, "Running native smoke checks");
   run(process.execPath, ["bin/sagejs", "--version"]);
   smoke(process.execPath, ["bin/sagejs"], "development runtime");
   if (!withoutSea) {
@@ -217,9 +265,17 @@ runs reuse them unless the pinned versions change.
 `);
 }
 
-try {
-  main();
-} catch (error) {
-  process.stderr.write(`\nBootstrap failed:\n${error.stack || error}\n`);
-  process.exitCode = 1;
+module.exports = {
+  bootstrapBuildPlan,
+  executeBuildPhase,
+  parseArguments,
+};
+
+if (require.main === module) {
+  try {
+    main();
+  } catch (error) {
+    process.stderr.write(`\nBootstrap failed:\n${error.stack || error}\n`);
+    process.exitCode = 1;
+  }
 }
