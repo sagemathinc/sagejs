@@ -370,10 +370,18 @@ evidence; they never override declarations directly.
 
 The generator uses a deliberately small rule model—initially piecewise integer
 thresholds over declared features. It chooses thresholds on a training grid and
-must pass a separate validation grid. A specialized algorithm must exceed a
-minimum speedup and confidence margin on both sides of a proposed boundary;
-near ties choose the portable fallback. Crossovers are tested at neighboring
-values, not inferred from one square matrix.
+must pass a separate validation grid. The portable fallback below a proposed
+boundary and the specialized algorithm at or above it must each exceed a
+minimum speedup and confidence margin; near ties choose the portable fallback.
+Crossovers are tested at neighboring values, not inferred from one square
+matrix.
+
+The v1 confidence margin is deliberately conservative and inspectable: the
+winner's reported median is inflated by its relative dispersion while the
+loser's median is reduced by its relative dispersion. The resulting bounded
+speedup must exceed the configured minimum. Reports are comparable only when
+their warmup count, sample count, statistic, and timeout agree; zero-duration
+warm samples are rejected rather than producing an infinite speedup.
 
 Matrix grids include square, tall, wide, degenerate, structured, and random
 inputs; several modulus classes; and conversion-inclusive measurements.

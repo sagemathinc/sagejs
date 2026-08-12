@@ -22,6 +22,13 @@ function finiteNonnegative(filename, value, label) {
   return value;
 }
 
+function finitePositive(filename, value, label) {
+  if (typeof value !== "number" || !Number.isFinite(value) || value <= 0) {
+    fail(filename, `${label} must be a finite positive number`);
+  }
+  return value;
+}
+
 function validateBenchmarkReport(report, registry, options = {}) {
   const filename = options.filename || "<benchmark report>";
   exactKeys(filename, report, [
@@ -141,13 +148,14 @@ function validateBenchmarkReport(report, registry, options = {}) {
   safeInteger(filename, warm.samples, "measurements.warm.samples", 3);
   if (warm.statistic !== "median") fail(filename, "warm statistic must be median");
   finiteNonnegative(filename, warm.dispersion, "measurements.warm.dispersion");
+  if (warm.dispersion >= 1) fail(filename, "warm dispersion must be less than one");
   if (warm.dispersion > (options.maximumDispersion ?? 0.2)) fail(filename, "warm samples are excessively noisy");
   safeInteger(filename, warm.outliers, "measurements.warm.outliers", 0);
-  finiteNonnegative(filename, warm.timeout_ms, "measurements.warm.timeout_ms");
+  finitePositive(filename, warm.timeout_ms, "measurements.warm.timeout_ms");
   if (!Array.isArray(warm.values_ms) || warm.values_ms.length !== warm.samples) {
     fail(filename, "warm.values_ms length must equal warm.samples");
   }
-  warm.values_ms.forEach((value, index) => finiteNonnegative(filename, value, `warm.values_ms[${index}]`));
+  warm.values_ms.forEach((value, index) => finitePositive(filename, value, `warm.values_ms[${index}]`));
   exactKeys(filename, report.correctness, ["digest", "matched", "oracle"], "correctness");
   nonemptyString(filename, report.correctness.digest, "correctness.digest");
   nonemptyString(filename, report.correctness.oracle, "correctness.oracle");
@@ -191,6 +199,12 @@ function proposeIntegerThreshold(evidence, options) {
       representation: report.case.representation,
       semantic_options: report.case.semantic_options,
       timed_scope: report.timed_scope,
+      measurement_protocol: {
+        warmups: report.measurements.warm.warmups,
+        samples: report.measurements.warm.samples,
+        statistic: report.measurements.warm.statistic,
+        timeout_ms: report.measurements.warm.timeout_ms,
+      },
       features,
       oracle: report.correctness.oracle,
     });
@@ -203,12 +217,17 @@ function proposeIntegerThreshold(evidence, options) {
       );
     }
   }
+  function exactInteger(value) {
+    if (Number.isSafeInteger(value)) return BigInt(value);
+    if (typeof value === "string" && /^(?:0|[1-9][0-9]*)$/.test(value)) return BigInt(value);
+    throw new Error(`threshold feature ${feature} must be an exact nonnegative integer`);
+  }
+  function jsonInteger(value) {
+    return value <= BigInt(Number.MAX_SAFE_INTEGER) ? Number(value) : value.toString();
+  }
   const grids = new Map([["training", new Map()], ["validation", new Map()]]);
   for (const report of relevant) {
-    const value = report.case.features[feature];
-    if (!Number.isSafeInteger(value)) {
-      throw new Error(`threshold feature ${feature} must be a safe integer`);
-    }
+    const value = exactInteger(report.case.features[feature]);
     const entries = grids.get(report.case.grid);
     if (!entries.has(value)) entries.set(value, new Map());
     const candidates = entries.get(value);
@@ -217,6 +236,7 @@ function proposeIntegerThreshold(evidence, options) {
     }
     candidates.set(report.case.candidate, {
       timing: median(report.measurements.warm.values_ms),
+      dispersion: report.measurements.warm.dispersion,
       report,
     });
   }
@@ -232,23 +252,30 @@ function proposeIntegerThreshold(evidence, options) {
       }
     }
   }
-  const trainingValues = [...grids.get("training").keys()].sort((a, b) => a - b);
+  function robustSpeedup(timings, winner, loser) {
+    const winnerTiming = timings.get(winner);
+    const loserTiming = timings.get(loser);
+    return (loserTiming.timing * (1 - loserTiming.dispersion)) /
+      (winnerTiming.timing * (1 + winnerTiming.dispersion));
+  }
+  const trainingValues = [...grids.get("training").keys()].sort((a, b) => a < b ? -1 : a > b ? 1 : 0);
   const candidates = trainingValues.filter((threshold) => {
-    if (!trainingValues.includes(threshold - 1)) return false;
-    return trainingValues.every((value) => value < threshold ||
-      grids.get("training").get(value).get(fallback).timing /
-        grids.get("training").get(value).get(specialized).timing >= minimumSpeedup);
+    if (!trainingValues.includes(threshold - 1n)) return false;
+    return trainingValues.every((value) => value < threshold
+      ? robustSpeedup(grids.get("training").get(value), fallback, specialized) >= minimumSpeedup
+      : robustSpeedup(grids.get("training").get(value), specialized, fallback) >= minimumSpeedup);
   });
   const threshold = candidates[0];
   if (threshold === undefined) throw new Error("training evidence supports no adjacent robust threshold");
   for (const [grid, entries] of grids) {
-    if (!entries.has(threshold) || !entries.has(threshold - 1)) {
+    if (!entries.has(threshold) || !entries.has(threshold - 1n)) {
       throw new Error(`${grid} grid does not cover both sides adjacent to threshold ${threshold}`);
     }
     for (const [value, timings] of entries) {
-      if (value >= threshold &&
-          timings.get(fallback).timing / timings.get(specialized).timing < minimumSpeedup) {
-        throw new Error(`${grid} grid does not validate specialized win at ${feature}=${value}`);
+      const winner = value < threshold ? fallback : specialized;
+      const loser = value < threshold ? specialized : fallback;
+      if (robustSpeedup(timings, winner, loser) < minimumSpeedup) {
+        throw new Error(`${grid} grid does not validate robust ${winner} win at ${feature}=${value}`);
       }
     }
   }
@@ -259,16 +286,19 @@ function proposeIntegerThreshold(evidence, options) {
     operation,
     feature,
     comparison: { specialized, fallback },
-    threshold: { operator: "ge", value: threshold },
+    threshold: { operator: "ge", value: jsonInteger(threshold) },
     minimum_speedup: minimumSpeedup,
+    confidence_model: "reported-relative-dispersion-bounds",
     evidence_fingerprint: evidence.fingerprint,
     evidence: Object.fromEntries([...grids].map(([grid, entries]) => [
       grid,
-      [...entries].sort(([left], [right]) => left - right).map(([value, timings]) => ({
-        value,
+      [...entries].sort(([left], [right]) => left < right ? -1 : left > right ? 1 : 0).map(([value, timings]) => ({
+        value: jsonInteger(value),
         specialized_ms: timings.get(specialized).timing,
         fallback_ms: timings.get(fallback).timing,
         speedup: timings.get(fallback).timing / timings.get(specialized).timing,
+        robust_specialized_speedup: robustSpeedup(timings, specialized, fallback),
+        robust_fallback_speedup: robustSpeedup(timings, fallback, specialized),
       })),
     ])),
   });
