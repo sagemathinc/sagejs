@@ -33,6 +33,8 @@
     "macos-arm64": "required"
   },
   "validation": [
+    "pnpm test:baselib:strict",
+    "pnpm test:native",
     "node test/dense-matrix-public-audit.cjs",
     "node bench/dense-matrix-public-audit.cjs --runtime all --check"
   ],
@@ -46,10 +48,70 @@
       "commit": "e2ad41d6662c924b3db35e11a533caef7a71b825",
       "workspace_fingerprint": "0978f975da1e0a824b38a287e99fbcd7074c52cccb98a434f1d04f712790ee9c",
       "platform": "linux-x64"
+    },
+    {
+      "command": "node test/dense-matrix-public-audit.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 5.493,
+      "started_at": "2026-08-12T11:52:24.378Z",
+      "commit": "87dc14ef50f7632991837959607caa3757a3d6da",
+      "workspace_fingerprint": "961d142ccdff59dc4e2e2dda72a948d103541a50264739cc3b1c33448ad7d00a",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/dense-matrix-public-audit.cjs --runtime all --check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 26.257,
+      "started_at": "2026-08-12T11:52:30.469Z",
+      "commit": "87dc14ef50f7632991837959607caa3757a3d6da",
+      "workspace_fingerprint": "961d142ccdff59dc4e2e2dda72a948d103541a50264739cc3b1c33448ad7d00a",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node test/dense-matrix-public-audit.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 6.639,
+      "started_at": "2026-08-12T12:07:03.958Z",
+      "commit": "a74ff3a5c12de8eca9b1e91febccbcf077a51adc",
+      "workspace_fingerprint": "02fcd1d72e2445c350bac34617d70da8023c8af6215cebca7f048d791f969170",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/dense-matrix-public-audit.cjs --runtime all --check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 36.602,
+      "started_at": "2026-08-12T12:07:16.074Z",
+      "commit": "a74ff3a5c12de8eca9b1e91febccbcf077a51adc",
+      "workspace_fingerprint": "02fcd1d72e2445c350bac34617d70da8023c8af6215cebca7f048d791f969170",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 14.534,
+      "started_at": "2026-08-12T12:07:57.811Z",
+      "commit": "a74ff3a5c12de8eca9b1e91febccbcf077a51adc",
+      "workspace_fingerprint": "02fcd1d72e2445c350bac34617d70da8023c8af6215cebca7f048d791f969170",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:native",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 401.658,
+      "started_at": "2026-08-12T12:08:17.529Z",
+      "commit": "a74ff3a5c12de8eca9b1e91febccbcf077a51adc",
+      "workspace_fingerprint": "02fcd1d72e2445c350bac34617d70da8023c8af6215cebca7f048d791f969170",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {
-    "summary": "Added a machine-readable dense matrix audit with quick, routine, and full modes; verified 14 public operations over ZZ, QQ, GF(2), GF(7), and GF(2^61-1); separated process/bootstrap/first/warm timings; classified native routes; and compared representative workloads with SageMath.",
+    "summary": "Added a machine-readable dense matrix audit with quick, routine, and full modes; audited 14 public surfaces per domain; verified all 14 over ZZ, QQ, GF(2), and GF(7); recorded row/column swaps over GF(2^61-1) as capability holes; separated process/bootstrap/first/warm timings; classified only routes emitted inside timed invocation windows; and compared representative workloads with SageMath.",
     "risks": [
       "Cross-host timings are intentionally reported rather than ratcheted; retain reports on Linux x64, Linux arm64, and Darwin arm64.",
       "GF(2^61-1) row/column swaps are public capability holes and most large-word-prime operations emit no backend trace.",
