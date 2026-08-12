@@ -190,6 +190,10 @@ export default async function Repl(
   options0: Partial<Options>,
 ): Promise<ReplController> {
   const options = replDefaults(options0);
+  const interactiveInput = options.input?.isTTY === true;
+  function markUncaughtInputFailure(): void {
+    if (!interactiveInput) process.exitCode = 1;
+  }
   const foreignLanguage = selectedForeignLanguage(options);
   const sourceLanguage =
     foreignLanguage ?? (options.sage ? "sage" : "python");
@@ -383,6 +387,7 @@ export default async function Repl(
         } else {
           options.console.error(err);
         }
+        markUncaughtInputFailure();
         return undefined;
       }
     };
@@ -399,6 +404,7 @@ export default async function Repl(
         } else {
           options.console.error(err);
         }
+        markUncaughtInputFailure();
       }
     }
     if (measured) {
@@ -450,6 +456,7 @@ export default async function Repl(
       });
     } catch (err) {
       options.console.error(err?.stack ?? err);
+      markUncaughtInputFailure();
     }
   }
 
@@ -463,6 +470,7 @@ export default async function Repl(
         }
       } catch (err) {
         options.console.error(err?.stack ?? err);
+        markUncaughtInputFailure();
       }
     }
   }
@@ -493,6 +501,7 @@ export default async function Repl(
         }
       } catch (error) {
         options.console.error(error?.message ?? error);
+        markUncaughtInputFailure();
         return false;
       }
     }
@@ -507,6 +516,7 @@ export default async function Repl(
       }
     } catch (error) {
       options.console.error(error?.message ?? error);
+      markUncaughtInputFailure();
       return false;
     }
     if (foreignFrontend) {
@@ -527,6 +537,7 @@ export default async function Repl(
           return true;
         }
         options.console.log(err?.toString?.() ?? err);
+        markUncaughtInputFailure();
         return false;
       }
       if (options.emitSage) options.console.log(source.trimEnd());
@@ -588,6 +599,7 @@ export default async function Repl(
       } else {
         options.console.log(err.stack || err);
       }
+      markUncaughtInputFailure();
       return false;
     }
     const output = printAST(toplevel);

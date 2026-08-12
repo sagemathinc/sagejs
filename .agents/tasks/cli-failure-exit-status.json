@@ -1,0 +1,68 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "cli-failure-exit-status",
+  "title": "Noninteractive CLI failure exit status",
+  "lane": "integration",
+  "status": "review",
+  "owner": "user",
+  "objective": "Make uncaught compile and runtime failures from piped or redirected Sage.js CLI input exit nonzero without changing interactive REPL behavior or broken-pipe handling",
+  "base_commit": "fe8fdaeb721c4959f6fe2802d5554d18b88ff800",
+  "claims": [
+    "tools/repl.ts",
+    "test/cli-smoke.cjs"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "not-applicable",
+    "fallback": "not-applicable",
+    "oracles": [
+      "Node subprocess exit-status assertions in Python and Sage modes"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm architecture:check",
+    "pnpm test:portable",
+    "pnpm test:baselib:strict",
+    "pnpm test:cli"
+  ],
+  "runs": [
+    {
+      "command": "node test/cli-smoke.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 68.672,
+      "started_at": "2026-08-12T17:02:14.965Z",
+      "commit": "fe8fdaeb721c4959f6fe2802d5554d18b88ff800",
+      "workspace_fingerprint": "9023746325f02948529fb217ca573a0ecd0dd3f3f9463e12eb02f3559dd0714f",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node test/cli-smoke.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 69.093,
+      "started_at": "2026-08-12T17:03:29.516Z",
+      "commit": "fe8fdaeb721c4959f6fe2802d5554d18b88ff800",
+      "workspace_fingerprint": "9023746325f02948529fb217ca573a0ecd0dd3f3f9463e12eb02f3559dd0714f",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Noninteractive REPL input now latches exit status 1 whenever an uncaught user compile, lowering, load, timing, runtime, or result-print failure is reported. TTY input retains the interactive contract of reporting errors and continuing without changing the process status. Focused CLI coverage includes successful Python input; Python and Sage runtime failures; syntax failures; an async-function failure; an EOF-flushed compound suite; a synthetic TTY session; and an early-closing stdout consumer.",
+    "risks": [
+      "Broad integration receipts are intentionally deferred: parallel native-cache preparation downgraded this fresh worktree's self-hosted compiler to the checked-in bootstrap artifact. The compiler was manually reconverged and the focused CLI suite passes; a separate integration lane is fixing that cache/bootstrap defect."
+    ],
+    "next_steps": [
+      "After the cache/bootstrap fix lands, merge or rebase that foundation, run the integration lane's architecture, portable, strict-baselib, and CLI validations, and set this contract to review."
+    ]
+  }
+}
