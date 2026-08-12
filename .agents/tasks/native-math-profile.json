@@ -77,13 +77,24 @@
   "handoff": {
     "summary": "Added an opt-in cpu-native mathematics dependency profile while retaining portable release/source defaults. FLINT and FFLAS builders share one deterministic identity; native cache keys separate portable and CPU-native artifacts; dependency stamps record the selected profile and observed FLINT fft_small capability; `sagejs native profile [--json]` exposes selected-versus-installed provenance.",
     "risks": [
-      "A full CPU-native dependency rebuild was intentionally not run in this lane because it is expensive; compiler flags, configure options, stamp reuse, and fingerprints are covered without rebuilding. The next controlled performance run should build once and record `sagejs native profile --json`.",
       "The source worktree lacked its m4ri prefix during a final full build, so production native-kernel publication stopped after compiler/runtime caches. This is an environment provisioning gap unrelated to the profile; focused CLI tests use the successfully rebuilt compiler.",
       "The integration lane must add test/native-math-profile.cjs to test/node-test-manifest.cjs after the automatic-cache lane lands, since that lane owns the shared manifest."
     ],
     "next_steps": [
-      "Build FLINT and FFLAS on a controlled benchmark host with SAGEJS_NATIVE_MATH_PROFILE=cpu-native, record profile JSON, and compare representative exact arithmetic benchmarks with the portable build.",
+      "Repeat controlled profile measurements on additional CPU families and retain benchmark history rather than hard-coding one host's crossover.",
       "Add test/native-math-profile.cjs to the unit/portable host-test manifest during integration."
     ]
+  },
+  "controlled_benchmark": {
+    "date": "2026-08-12",
+    "host_cpu": "AMD EPYC 7B13",
+    "native_fingerprint": "06f24fea50daad3cf1fda9a36861c180b82fc85637758d5e3dfadcc46900ed93",
+    "installed_matches_selected": true,
+    "method": "warm Sage mode %timeit on identical seeded inputs; isolated portable and cpu-native FLINT/GMP prefixes",
+    "milliseconds": {
+      "qq_rref_200x300": {"portable": 915, "cpu_native": 781},
+      "qq_inverse_160x160": {"portable": 664, "cpu_native": 622},
+      "qq_multiply_300x300": {"portable": 63.0, "cpu_native": 50.1}
+    }
   }
 }
