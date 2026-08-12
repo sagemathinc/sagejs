@@ -59,6 +59,35 @@ function fflasRank(source, rows, columns, modulus) {
   return rank[0];
 }
 
+function fflasRightNullspace(source, rows, columns, modulus) {
+  const output = new BigUint64Array(columns * columns);
+  const nullity = new BigUint64Array(1);
+  assert.equal(fflas.ffiFflasModularFloatRightNullspace(
+    output,
+    nullity,
+    source,
+    BigInt(output.length),
+    1n,
+    BigInt(source.length),
+    BigInt(rows),
+    BigInt(columns),
+    BigInt(modulus),
+  ), true);
+  return { output, nullity: nullity[0] };
+}
+
+function flintRightNullspace(source, rows, columns, modulus) {
+  const output = new BigUint64Array(columns * columns);
+  const nullity = flint.ffiNmodMatRightKernel(
+    output,
+    source,
+    BigInt(rows),
+    BigInt(columns),
+    BigInt(modulus),
+  );
+  return { output, nullity };
+}
+
 test("FFLAS capability is explicit", () => {
   assert.equal(fflas.ffiFflasModularFloatAvailable(), process.platform !== "win32");
 });
@@ -115,6 +144,53 @@ test("FFPACK canonical RREF agrees with FLINT across primes and shapes", {
         `${modulus}: ${rows}x${columns}`,
       );
     }
+  }
+});
+
+test("FFPACK right nullspace is FLINT's canonical row basis", {
+  skip: process.platform === "win32",
+}, () => {
+  const primes = [2, 3, 5, 7, 97, 251];
+  const shapes = [
+    [0, 0], [0, 7], [7, 0], [1, 1], [1, 7], [7, 1],
+    [4, 9], [9, 4], [8, 8], [17, 23], [23, 17],
+  ];
+  let seed = 32452843;
+  for (const modulus of primes) {
+    for (const [rows, columns] of shapes) {
+      const source = residues(rows, columns, modulus, seed++);
+      if (rows >= 2) source.copyWithin(columns, 0, columns);
+      if (rows >= 3) source.fill(0n, 2 * columns, 3 * columns);
+      const actual = fflasRightNullspace(source, rows, columns, modulus);
+      const expected = flintRightNullspace(source, rows, columns, modulus);
+      assert.equal(
+        actual.nullity,
+        expected.nullity,
+        `${modulus}: nullity ${rows}x${columns}`,
+      );
+      assert.deepEqual(
+        [...actual.output],
+        [...expected.output],
+        `${modulus}: canonical basis ${rows}x${columns}`,
+      );
+    }
+  }
+});
+
+test("FFPACK right nullspace agrees exhaustively on small binary matrices", {
+  skip: process.platform === "win32",
+}, () => {
+  const rows = 2;
+  const columns = 3;
+  for (let mask = 0n; mask < (1n << BigInt(rows * columns)); mask += 1n) {
+    const source = new BigUint64Array(rows * columns);
+    for (let index = 0; index < source.length; index += 1) {
+      source[index] = (mask >> BigInt(index)) & 1n;
+    }
+    const actual = fflasRightNullspace(source, rows, columns, 2);
+    const expected = flintRightNullspace(source, rows, columns, 2);
+    assert.equal(actual.nullity, expected.nullity, `mask=${mask}`);
+    assert.deepEqual([...actual.output], [...expected.output], `mask=${mask}`);
   }
 });
 
@@ -226,6 +302,25 @@ test("failed calls leave every transactional output unchanged", {
     assert.throws(() => invoke(output, rank), /failed|unavailable/i);
     assert.deepEqual([...output], [91n, 91n, 91n, 91n]);
     assert.deepEqual([...rank], [92n]);
+  }
+
+
+  for (const invoke of [
+    (output, nullity) => fflas.ffiFflasModularFloatRightNullspace(
+      output, nullity, source, 4n, 1n, 4n, 2n, 2n, 8n,
+    ),
+    (output, nullity) => fflas.ffiFflasModularFloatRightNullspace(
+      output, nullity, source, 4n, 1n, 4n, 3n, 2n, 7n,
+    ),
+    (output, nullity) => fflas.ffiFflasModularFloatRightNullspace(
+      output, nullity, source, 4n, 1n, 4n, 2n, 2n, 3n,
+    ),
+  ]) {
+    const output = new BigUint64Array(4).fill(81n);
+    const nullity = new BigUint64Array([82n]);
+    assert.throws(() => invoke(output, nullity), /failed|unavailable/i);
+    assert.deepEqual([...output], [81n, 81n, 81n, 81n]);
+    assert.deepEqual([...nullity], [82n]);
   }
 
   const multiplicationOutput = new BigUint64Array(4).fill(73n);

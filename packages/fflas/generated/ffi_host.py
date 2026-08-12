@@ -13,6 +13,7 @@ from sagejs.ffi.fflas import (
     modular_float_mul as _ffi_modular_float_mul,
     modular_float_rank as _ffi_modular_float_rank,
     modular_float_rref as _ffi_modular_float_rref,
+    modular_float_right_nullspace as _ffi_modular_float_right_nullspace,
 )
 from sagejs.native import UInt64Buffer, native, uint64
 
@@ -92,6 +93,31 @@ def ffiFflasModularFloatRref(
         source,
         output_length,
         rank_length,
+        source_length,
+        rows,
+        columns,
+        modulus,
+    )
+
+
+@native
+def ffiFflasModularFloatRightNullspace(
+    output: UInt64Buffer,
+    nullity_output: UInt64Buffer,
+    source: UInt64Buffer,
+    output_length: uint64,
+    nullity_length: uint64,
+    source_length: uint64,
+    rows: uint64,
+    columns: uint64,
+    modulus: uint64,
+) -> bool:
+    return _ffi_modular_float_right_nullspace(
+        output,
+        nullity_output,
+        source,
+        output_length,
+        nullity_length,
         source_length,
         rows,
         columns,

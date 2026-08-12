@@ -248,3 +248,75 @@ def modular_float_rref(
     columns: uint64,
     modulus: uint64,
 ) -> bool: ...
+
+
+@fflas.function(
+    dynamic="ffiFflasModularFloatRightNullspace",
+    symbol="sagejs_fflas_modular_float_right_nullspace",
+    returns=int,
+    abi=[
+        out(
+            "output_data",
+            uint64_t_ptr,
+            packed_slice(
+                data="output",
+                length="output_length",
+                access="write",
+                aliasing="allowed",
+                transactional=True,
+            ),
+        ),
+        out(
+            "nullity_data",
+            uint64_t_ptr,
+            packed_slice(
+                data="nullity_output",
+                length="nullity_length",
+                access="write",
+                aliasing="allowed",
+                transactional=True,
+            ),
+        ),
+        in_(
+            "source_data",
+            uint64_t_ptr,
+            packed_slice(
+                data="source",
+                length="source_length",
+                access="read",
+                aliasing="allowed",
+                transactional=False,
+            ),
+        ),
+        in_("output_length", uint64_t),
+        in_("nullity_length", uint64_t),
+        in_("source_length", uint64_t),
+        in_("rows", uint64_t),
+        in_("columns", uint64_t),
+        in_("modulus", uint64_t),
+    ],
+    effects=Effects(
+        pure=False,
+        allocates=True,
+        raises=[ValueError, OverflowError],
+        writes=["output", "nullity_output"],
+    ),
+    result=Status(
+        1,
+        exception=ValueError,
+        message="FFPACK right nullspace failed or is unavailable",
+    ),
+    exceptions=CxxToStatus(0),
+    wasm=False,
+)
+def modular_float_right_nullspace(
+    output: Writable[UInt64Buffer],
+    nullity_output: Writable[UInt64Buffer],
+    source: UInt64Buffer,
+    output_length: uint64,
+    nullity_length: uint64,
+    source_length: uint64,
+    rows: uint64,
+    columns: uint64,
+    modulus: uint64,
+) -> bool: ...

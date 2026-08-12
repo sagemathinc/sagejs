@@ -5,7 +5,7 @@ from __future__ import annotations
 import sagejs.runtime as _runtime
 
 __sagejs_ffi_declaration__ = (
-    "fflas@dc7c6cec4c592402bcb1e5e9f0d089dfcd2cb7344119f7e9ad3d9365983e28fe"
+    "fflas@c0d5fe07b4faa7210addea4b24aa10cc1dcc75e6f8e2c1efbec531ae2f90e22a"
 )
 
 
@@ -272,6 +272,101 @@ def modular_float_rref(
                     "source",
                     "output_length",
                     "rank_length",
+                    "source_length",
+                    "rows",
+                    "columns",
+                    "modulus",
+                ],
+            ],
+        ],
+    )
+
+
+def modular_float_right_nullspace(
+    output: list[int],
+    nullity_output: list[int],
+    source: list[int],
+    output_length: int,
+    nullity_length: int,
+    source_length: int,
+    rows: int,
+    columns: int,
+    modulus: int,
+) -> bool:
+    """Call declared fflas:modular_float_right_nullspace."""
+    return _runtime.ffi_call(
+        __sagejs_ffi_declaration__ + ":modular_float_right_nullspace",
+        "@sagemath/sagejs-fflas",
+        "ffiFflasModularFloatRightNullspace",
+        [
+            output,
+            nullity_output,
+            source,
+            output_length,
+            nullity_length,
+            source_length,
+            rows,
+            columns,
+            modulus,
+        ],
+        [
+            "UInt64Buffer",
+            "UInt64Buffer",
+            "UInt64Buffer",
+            "uint64",
+            "uint64",
+            "uint64",
+            "uint64",
+            "uint64",
+            "uint64",
+        ],
+        "bool",
+        ["status", [1], None],
+        "ValueError",
+        "FFPACK right nullspace failed or is unavailable",
+        [
+            [
+                "buffer_length",
+                "output",
+                ["output_length"],
+                [
+                    "output",
+                    "nullity_output",
+                    "source",
+                    "output_length",
+                    "nullity_length",
+                    "source_length",
+                    "rows",
+                    "columns",
+                    "modulus",
+                ],
+            ],
+            [
+                "buffer_length",
+                "nullity_output",
+                ["nullity_length"],
+                [
+                    "output",
+                    "nullity_output",
+                    "source",
+                    "output_length",
+                    "nullity_length",
+                    "source_length",
+                    "rows",
+                    "columns",
+                    "modulus",
+                ],
+            ],
+            [
+                "buffer_length",
+                "source",
+                ["source_length"],
+                [
+                    "output",
+                    "nullity_output",
+                    "source",
+                    "output_length",
+                    "nullity_length",
                     "source_length",
                     "rows",
                     "columns",
