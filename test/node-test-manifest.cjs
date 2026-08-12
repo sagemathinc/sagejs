@@ -54,6 +54,7 @@ const integration = [
   "test/dense-prime-structural.cjs",
   "test/m4ri-public-matrix.cjs",
   "test/prime-matrix-bulk-views-v1.cjs",
+  "test/prime-matrix-serialization.cjs",
   "test/canonical-matrix-constructors-v1.cjs",
   "test/dense-integer-migration.cjs",
   "test/dense-integer-public-resource.cjs",

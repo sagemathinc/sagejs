@@ -31,6 +31,7 @@ are the bootstrap implementation used by older checked-in compilers.
 # globals: ρσ_reference_matrix_transpose
 # globals: ρσ_rational_buffers_from_packed_bytes
 # globals: ρσ_integer_buffer_used_word_capacity
+# globals: ρσ_uint64_pack_le, ρσ_uint64_unpack_le
 # globals: ρσ_ffi_call, ρσ_ffi_resource_borrow, ρσ_ffi_resource_close
 # globals: ρσ_ffi_resource_copy_bytes
 # globals: ρσ_ffi_resource_closed, ρσ_ffi_resource_create
@@ -249,35 +250,7 @@ def uint64_pack_le(source, width):
     width are rejected rather than truncated. Byte shifts are explicit, so
     the result does not depend on host endianness.
     """
-    return r"""%js (() => {
-        if (!(source instanceof BigUint64Array)) {
-            throw new TypeError("source must be a BigUint64Array");
-        }
-        if (width !== 1 && width !== 2 && width !== 4 && width !== 8) {
-            throw new RangeError("uint64 packed width must be 1, 2, 4, or 8");
-        }
-        if (source.length > Math.floor(Number.MAX_SAFE_INTEGER / width)) {
-            throw new RangeError("packed uint64 byte length is too large");
-        }
-        const output = new Uint8Array(source.length * width);
-        const maximum = width === 8
-            ? 0xffffffffffffffffn
-            : (1n << BigInt(width * 8)) - 1n;
-        for (let index = 0; index < source.length; index += 1) {
-            let value = source[index];
-            if (value > maximum) {
-                throw new RangeError(
-                    "uint64 entry does not fit the requested packed width"
-                );
-            }
-            const offset = index * width;
-            for (let byte = 0; byte < width; byte += 1) {
-                output[offset + byte] = Number(value & 0xffn);
-                value >>= 8n;
-            }
-        }
-        return output;
-    })()"""
+    return ρσ_uint64_pack_le(source, width)
 
 
 def uint64_unpack_le(source, width, length):
@@ -287,36 +260,7 @@ def uint64_unpack_le(source, width, length):
     overlong inputs fail. Decoding uses explicit shifts and is portable across
     native host byte orders.
     """
-    return r"""%js (() => {
-        if (!(source instanceof Uint8Array)) {
-            throw new TypeError("source must be a Uint8Array");
-        }
-        if (width !== 1 && width !== 2 && width !== 4 && width !== 8) {
-            throw new RangeError("uint64 packed width must be 1, 2, 4, or 8");
-        }
-        if (!Number.isSafeInteger(length) || length < 0) {
-            throw new RangeError("invalid unpacked uint64 length");
-        }
-        if (length > Math.floor(Number.MAX_SAFE_INTEGER / width)) {
-            throw new RangeError("packed uint64 byte length is too large");
-        }
-        const byteLength = length * width;
-        if (source.byteLength !== byteLength) {
-            throw new RangeError(
-                "packed uint64 byte length does not match entry count"
-            );
-        }
-        const output = new BigUint64Array(length);
-        for (let index = 0; index < length; index += 1) {
-            const offset = index * width;
-            let value = 0n;
-            for (let byte = width - 1; byte >= 0; byte -= 1) {
-                value = (value << 8n) + BigInt(source[offset + byte]);
-            }
-            output[index] = value;
-        }
-        return output;
-    })()"""
+    return ρσ_uint64_unpack_le(source, width, length)
 
 
 def uint64_matrix_format(source, rows, columns):
