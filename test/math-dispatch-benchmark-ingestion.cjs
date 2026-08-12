@@ -113,8 +113,6 @@ test("restricted fitting emits an inert reviewable adjacent threshold proposal",
             features: {
               ...base.case.features,
               inner: value,
-              left_rows: value,
-              right_columns: value,
             },
           },
           measurements: {
@@ -176,4 +174,55 @@ test("declared conversion cost cannot be hidden", () => {
     },
   });
   assert.throws(() => validateBenchmarkReport(candidate, registry), /hides a declared representation conversion/);
+});
+
+test("evidence rejects unavailable candidates and noncanonical representations", () => {
+  const unavailable = report({
+    native_math: {
+      ...report().native_math,
+      capabilities: ["flint-prime-matrix"],
+    },
+  });
+  assert.throws(() => validateBenchmarkReport(unavailable, registry), /does not satisfy capability/);
+  const noncanonical = report({
+    case: { ...report().case, representation: "flint-nmod-resource" },
+  });
+  assert.throws(() => validateBenchmarkReport(noncanonical, registry), /is not canonical/);
+});
+
+test("fitting rejects workload and host identity mixtures", () => {
+  function evidenceWith(mutator) {
+    const reports = [];
+    for (const grid of ["training", "validation"]) {
+      for (const value of [31, 32]) {
+        for (const candidate of ["fflas-float", "flint"]) {
+          const base = report();
+          const item = report({
+            case: {
+              ...base.case,
+              grid,
+              candidate,
+              features: { ...base.case.features, inner: value },
+            },
+          });
+          reports.push(mutator(item, { grid, value, candidate }));
+        }
+      }
+    }
+    return ingestBenchmarkReports(reports, registry);
+  }
+  const workload = evidenceWith((item, context) => context.candidate === "flint"
+    ? { ...item, case: { ...item.case, features: { ...item.case.features, left_rows: 1 } } }
+    : item);
+  assert.throws(() => proposeIntegerThreshold(workload, {
+    family: "dense-prime-matrix", operation: "multiply", feature: "inner",
+    specialized: "fflas-float", fallback: "flint",
+  }), /incomparable/);
+  const host = evidenceWith((item, context) => context.grid === "validation"
+    ? { ...item, host: { ...item.host, os: "darwin", arch: "arm64" } }
+    : item);
+  assert.throws(() => proposeIntegerThreshold(host, {
+    family: "dense-prime-matrix", operation: "multiply", feature: "inner",
+    specialized: "fflas-float", fallback: "flint",
+  }), /incomparable/);
 });

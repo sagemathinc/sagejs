@@ -58,6 +58,9 @@ function evaluate(expression, features, available) {
 
 function numeric(value) {
   if (typeof value === "bigint") return value;
+  if (typeof value === "string" && /^-?(?:0|[1-9][0-9]*)$/.test(value)) {
+    return BigInt(value);
+  }
   if (!Number.isSafeInteger(value)) throw new Error("dispatch arithmetic requires exact integers");
   return value;
 }
@@ -129,10 +132,20 @@ function normalizeFeatures(family, operation, provided) {
   return deepFreeze(result);
 }
 
-function identityMatches(match, build) {
+function identityMatches(match, build, options = {}) {
   const mismatches = [];
   for (const [key, expected] of Object.entries(match)) {
     if (key === "library_versions") {
+      if (options.exact) {
+        const expectedKeys = Object.keys(expected).sort();
+        const actualKeys = Object.keys(build.library_versions || {}).sort();
+        if (JSON.stringify(expectedKeys) !== JSON.stringify(actualKeys)) {
+          mismatches.push(
+            `library_versions keys=${actualKeys.join(",") || "missing"}, ` +
+            `expected ${expectedKeys.join(",")}`,
+          );
+        }
+      }
       for (const [library, version] of Object.entries(expected)) {
         if (build.library_versions?.[library] !== version) {
           mismatches.push(`${library}=${build.library_versions?.[library] ?? "missing"}, expected ${version}`);
@@ -159,7 +172,7 @@ function selectProfile(registry, key, build, localProfile) {
   const diagnostics = [];
   if (localProfile) {
     if (localProfile.document.kind !== "local") throw new Error("activated local profile must have kind local");
-    const match = identityMatches(localProfile.document.match, build);
+    const match = identityMatches(localProfile.document.match, build, { exact: true });
     if (match.matches && localProfile.operationMap.has(key)) {
       return { profile: localProfile, origin: "local", diagnostics };
     }

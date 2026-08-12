@@ -1,6 +1,7 @@
 from sagejs.dispatch import (
     Algorithm,
     Capability,
+    Conversion,
     DispatchFamily,
     Operation,
     Representation,
@@ -50,6 +51,15 @@ DENSE_PRIME_MATRIX = DispatchFamily(
             reason="M4RI is unavailable or the field is not GF(2)",
         ),
     ],
+    conversions=[
+        Conversion(
+            id="packed-u64-fflas",
+            source_representation="packed-u64",
+            target_layout="fflas-row-major",
+            allocation="copy",
+            reason="FFLAS consumes a temporary row-major modular array",
+        ),
+    ],
     representations=[
         Representation(
             id="m4ri-gf2",
@@ -87,7 +97,7 @@ DENSE_PRIME_MATRIX = DispatchFamily(
                 Algorithm(
                     id="fflas-float",
                     requires=["fflas-modular-float"],
-                    when=feature("modulus") != 2,
+                    when=all_of(feature("modulus") != 2, feature("modulus") < 256),
                     fallback=["flint", "typed-python"],
                     conversions=["packed-u64-fflas"],
                     reason="FFLAS/FFPACK dense modular multiplication",
@@ -118,7 +128,7 @@ DENSE_PRIME_MATRIX = DispatchFamily(
                 Algorithm(
                     id="ffpack",
                     requires=["fflas-modular-float"],
-                    when=feature("modulus") != 2,
+                    when=all_of(feature("modulus") != 2, feature("modulus") < 256),
                     fallback=["flint", "typed-python"],
                     conversions=["packed-u64-fflas"],
                     reason="FFPACK dense modular rank",
@@ -149,7 +159,7 @@ DENSE_PRIME_MATRIX = DispatchFamily(
                 Algorithm(
                     id="ffpack",
                     requires=["fflas-modular-float"],
-                    when=feature("modulus") != 2,
+                    when=all_of(feature("modulus") != 2, feature("modulus") < 256),
                     fallback=["flint", "typed-python"],
                     conversions=["packed-u64-fflas"],
                     reason="FFPACK dense modular right nullspace",
@@ -180,7 +190,7 @@ DENSE_PRIME_MATRIX = DispatchFamily(
                 Algorithm(
                     id="ffpack",
                     requires=["fflas-modular-float"],
-                    when=feature("modulus") != 2,
+                    when=all_of(feature("modulus") != 2, feature("modulus") < 256),
                     fallback=["flint", "typed-python"],
                     conversions=["packed-u64-fflas"],
                     reason="FFPACK dense modular reduced row echelon form",

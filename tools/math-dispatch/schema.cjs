@@ -19,6 +19,7 @@ const FEATURE_TYPES = new Set(["boolean", "enum", "integer", "string", "uint64"]
 const FEATURE_NAME = /^[a-z][a-z0-9]*(?:_[a-z0-9]+)*$/;
 const REPRESENTATION_POLICIES = new Set(["canonical", "canonical-when-capable"]);
 const PROFILE_KINDS = new Set(["portable", "checked", "local"]);
+const CONVERSION_ALLOCATIONS = new Set(["borrow", "copy"]);
 const MATCH_KEYS = new Set([
   "arch", "benchmark_schema", "blas_provider", "build_fingerprint",
   "cpu_family", "declaration_generation", "library_versions", "os",
@@ -101,7 +102,7 @@ function validateExpression(filename, expression, features, label) {
 function validateFamilyDocument(document, options = {}) {
   const filename = options.filename || "<family>";
   exactKeys(filename, document, [
-    "capabilities", "features", "generation", "id", "kind", "operations",
+    "capabilities", "conversions", "features", "generation", "id", "kind", "operations",
     "representations", "schema", "schema_version", "source",
   ], "family");
   if (document.schema !== FAMILY_SCHEMA || document.schema_version !== 1 ||
@@ -144,6 +145,25 @@ function validateFamilyDocument(document, options = {}) {
     validateExpression(filename, representation.when, featureNames, `${representation.id}.when`);
     representations.set(representation.id, representation);
   }
+  const conversions = new Map();
+  if (!Array.isArray(document.conversions)) fail(filename, "family.conversions must be a list");
+  for (const conversion of document.conversions) {
+    exactKeys(filename, conversion, [
+      "allocation", "id", "reason", "source", "source_representation", "target_layout",
+    ], "conversion");
+    identifier(filename, conversion.id, "conversion.id");
+    if (conversions.has(conversion.id)) fail(filename, `duplicate conversion ${conversion.id}`);
+    if (!representations.has(conversion.source_representation)) {
+      fail(filename, `${conversion.id} uses unknown source representation ${conversion.source_representation}`);
+    }
+    identifier(filename, conversion.target_layout, `${conversion.id}.target_layout`);
+    if (!CONVERSION_ALLOCATIONS.has(conversion.allocation)) {
+      fail(filename, `${conversion.id}.allocation must be borrow or copy`);
+    }
+    nonemptyString(filename, conversion.reason, `${conversion.id}.reason`);
+    validateSource(filename, conversion.source, conversion.id);
+    conversions.set(conversion.id, conversion);
+  }
   const operations = new Map();
   if (!Array.isArray(document.operations) || document.operations.length === 0) {
     fail(filename, "family.operations must be a nonempty list");
@@ -178,12 +198,22 @@ function validateFamilyDocument(document, options = {}) {
         identifiers: true,
         preserveOrder: true,
       });
-      const conversions = uniqueStrings(filename, algorithm.conversions, `${algorithm.id}.conversions`, {
+      const conversionIds = uniqueStrings(filename, algorithm.conversions, `${algorithm.id}.conversions`, {
         identifiers: true,
         preserveOrder: true,
       });
+      for (const conversion of conversionIds) {
+        if (!conversions.has(conversion)) {
+          fail(filename, `${algorithm.id} uses unknown conversion ${conversion}`);
+        }
+      }
       validateExpression(filename, algorithm.when, featureNames, `${algorithm.id}.when`);
-      algorithms.set(algorithm.id, { ...algorithm, requires: required, fallback, conversions });
+      algorithms.set(algorithm.id, {
+        ...algorithm,
+        requires: required,
+        fallback,
+        conversions: conversionIds,
+      });
     }
     for (const algorithm of algorithms.values()) {
       for (const fallback of algorithm.fallback) {
@@ -212,6 +242,7 @@ function validateFamilyDocument(document, options = {}) {
     ...document,
     features: deepFreeze(Object.fromEntries(Object.entries(document.features).sort())),
     capabilities: Object.freeze([...capabilities.values()].sort((a, b) => a.id.localeCompare(b.id))),
+    conversions: Object.freeze([...conversions.values()].sort((a, b) => a.id.localeCompare(b.id))),
     representations: Object.freeze([...representations.values()].sort((a, b) => a.id.localeCompare(b.id))),
     operations: Object.freeze([...operations.values()].sort((a, b) => a.id.localeCompare(b.id))),
   });
@@ -220,6 +251,7 @@ function validateFamilyDocument(document, options = {}) {
     fingerprint: fingerprint(normalized),
     features: featureNames,
     capabilities: new Map(normalized.capabilities.map((item) => [item.id, item])),
+    conversions: new Map(normalized.conversions.map((item) => [item.id, item])),
     representations: new Map(normalized.representations.map((item) => [item.id, item])),
     operations: new Map(normalized.operations.map((item) => [item.id, item])),
   });
@@ -235,7 +267,8 @@ function validateMatch(filename, match, kind) {
   if (kind === "portable" && Object.keys(match).length !== 0) {
     fail(filename, "portable profile.match must be empty");
   }
-  if (kind !== "portable" && (!match.os || !match.arch)) {
+  if (kind !== "portable" &&
+      (!Object.hasOwn(match, "os") || !Object.hasOwn(match, "arch"))) {
     fail(filename, `${kind} profile.match requires os and arch`);
   }
   for (const [key, value] of Object.entries(match)) {
@@ -255,7 +288,7 @@ function validateMatch(filename, match, kind) {
   }
   if (kind === "local") {
     for (const key of MATCH_KEYS) {
-      if (!(key in match)) fail(filename, `local profile.match requires exact ${key}`);
+      if (!Object.hasOwn(match, key)) fail(filename, `local profile.match requires exact ${key}`);
     }
   }
   return deepFreeze(match);

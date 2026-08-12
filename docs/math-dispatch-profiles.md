@@ -17,7 +17,9 @@ The checked contract is:
 - lowering records repository-relative source locations and produces
   byte-stable, sorted-key JSON under `dispatch/generated/`;
 - family declarations own closed feature types, capabilities, canonical
-  representations, algorithms, conversions, and ordered fallback chains;
+  representations, algorithms, conversions, and ordered fallback chains.
+  Every conversion names its canonical source representation, temporary target
+  layout, allocation policy, and rationale;
 - profiles can select only declared algorithms. Their schema has no mechanism
   to widen a capability or replace canonical representation policy;
 - the selector normalizes the complete operation feature set, evaluates hard

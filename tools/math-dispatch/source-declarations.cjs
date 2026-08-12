@@ -16,7 +16,7 @@ const {
 
 const IMPORT_MODULE = "sagejs.dispatch";
 const ALLOWED_IMPORTS = new Set([
-  "Algorithm", "Capability", "DispatchFamily", "DispatchProfile",
+  "Algorithm", "Capability", "Conversion", "DispatchFamily", "DispatchProfile",
   "Operation", "ProfileOperation", "Representation", "Rule", "all_of",
   "any_of", "available", "feature", "maximum", "minimum", "not_",
 ]);
@@ -93,7 +93,7 @@ function literal(filename, node) {
       break;
     case "AST_Array": return array(node.elements).map((item) => literal(filename, item));
     case "AST_Object": {
-      const result = {};
+      const result = Object.create(null);
       for (const property of array(node.properties)) {
         expect(filename, property, nodeType(property) === "AST_ObjectKeyVal",
           "dictionary entries must be key/value pairs");
@@ -101,7 +101,12 @@ function literal(filename, node) {
         expect(filename, property.key, typeof key === "string", "dictionary keys must be strings");
         expect(filename, property, !Object.prototype.hasOwnProperty.call(result, key),
           `duplicate dictionary key ${key}`);
-        result[key] = literal(filename, property.value);
+        Object.defineProperty(result, key, {
+          value: literal(filename, property.value),
+          enumerable: true,
+          configurable: true,
+          writable: true,
+        });
       }
       return result;
     }
@@ -254,6 +259,22 @@ function parseAlgorithm(filename, node, logicalFilename) {
   };
 }
 
+function parseConversion(filename, node, logicalFilename) {
+  const call = callParts(filename, node, "Conversion", {
+    positional: [0],
+    required: ["id", "source_representation", "target_layout", "allocation", "reason"],
+    keywords: ["id", "source_representation", "target_layout", "allocation", "reason"],
+  });
+  return {
+    id: requiredString(filename, call, "id"),
+    source_representation: requiredString(filename, call, "source_representation"),
+    target_layout: requiredString(filename, call, "target_layout"),
+    allocation: requiredString(filename, call, "allocation"),
+    reason: requiredString(filename, call, "reason"),
+    source: location(node, logicalFilename),
+  };
+}
+
 function parseOperation(filename, node, logicalFilename) {
   const call = callParts(filename, node, "Operation", {
     positional: [0], required: ["id", "features", "algorithms"],
@@ -271,11 +292,11 @@ function parseOperation(filename, node, logicalFilename) {
 function parseFamily(filename, node, logicalFilename) {
   const call = callParts(filename, node, "DispatchFamily", {
     positional: [0], required: [
-      "id", "schema", "generation", "features", "capabilities",
+      "id", "schema", "generation", "features", "capabilities", "conversions",
       "representations", "operations",
     ],
     keywords: [
-      "id", "schema", "generation", "features", "capabilities",
+      "id", "schema", "generation", "features", "capabilities", "conversions",
       "representations", "operations",
     ],
   });
@@ -288,6 +309,8 @@ function parseFamily(filename, node, logicalFilename) {
     features: keywordLiteral(filename, call, "features"),
     capabilities: staticListOfCalls(filename, call.keywords.get("capabilities"),
       (item) => parseCapability(filename, item, logicalFilename)),
+    conversions: staticListOfCalls(filename, call.keywords.get("conversions"),
+      (item) => parseConversion(filename, item, logicalFilename)),
     representations: staticListOfCalls(filename, call.keywords.get("representations"),
       (item) => parseRepresentation(filename, item, logicalFilename)),
     operations: staticListOfCalls(filename, call.keywords.get("operations"),
