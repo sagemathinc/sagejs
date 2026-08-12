@@ -4,7 +4,7 @@
   "id": "arbitrary-prime-poly-contract",
   "title": "Arbitrary-prime polynomial resource contract",
   "lane": "arithmetic-algebra",
-  "status": "review",
+  "status": "complete",
   "owner": "user",
   "objective": "Specify and test Sage-compatible GF(p)[x] semantics for p at least 2^64 and define a representation-neutral generated-resource protocol owning fmpz_mod_ctx_t plus fmpz_mod_poly_t without caller capacity prediction or cross-resource lifetime coupling",
   "base_commit": "d9831968c7bfd5936a95df2517278c3b3dcd5064",
