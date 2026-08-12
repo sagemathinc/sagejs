@@ -98,6 +98,7 @@ const integration = [
   "test/public-polynomial-structural.cjs",
   "test/public-matrix-selection-v1.cjs",
   "test/public-matrix-vector.cjs",
+  "test/public-exact-vector-resources.cjs",
   "test/direct-matrix-swaps.cjs",
   "test/linear-vector-contract.cjs",
   "test/dense-integer-solve-resource.cjs",
