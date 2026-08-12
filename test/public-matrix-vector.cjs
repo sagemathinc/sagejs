@@ -130,6 +130,46 @@ assert.equal(
   "public-matrix-vector-ok",
 );
 
+const tracedBehavior = String.raw`
+cases = [
+    (ZZ, [1, 2, 3, 4], [5, 6]),
+    (QQ, [1/2, 2/3, 3/4, 4/5], [5/6, 6/7]),
+    (GF(2), [1, 0, 1, 1], [1, 1]),
+    (GF(7), [1, 2, 3, 4], [5, 6]),
+]
+for base, entries, vector_entries in cases:
+    A = matrix(base, 2, 2, entries)
+    v = vector(base, vector_entries)
+    assert A * v == vector(base, [
+        A[0, 0] * v[0] + A[0, 1] * v[1],
+        A[1, 0] * v[0] + A[1, 1] * v[1],
+    ])
+    assert v * A == vector(base, [
+        v[0] * A[0, 0] + v[1] * A[1, 0],
+        v[0] * A[0, 1] + v[1] * A[1, 1],
+    ])
+print("public-matrix-vector-trace-ok")
+`;
+
+function assertTraceEnabled(environment = {}) {
+  const output = runSage(tracedBehavior, {
+    SAGEJS_NATIVE_TRACE: "1",
+    ...environment,
+  });
+  assert.match(output, /Matrix\.matrix_vector Integer Ring 2x2/);
+  assert.match(output, /Matrix\.vector_matrix Integer Ring 2x2/);
+  assert.match(output, /Matrix\.matrix_vector Rational Field 2x2/);
+  assert.match(output, /Matrix\.vector_matrix Rational Field 2x2/);
+  assert.match(output, /Matrix\.matrix_vector Finite Field of size 2 2x2/);
+  assert.match(output, /Matrix\.vector_matrix Finite Field of size 2 2x2/);
+  assert.match(output, /Matrix\.matrix_vector Finite Field of size 7 2x2/);
+  assert.match(output, /Matrix\.vector_matrix Finite Field of size 7 2x2/);
+  assert.match(output, /public-matrix-vector-trace-ok$/);
+}
+
+assertTraceEnabled();
+assertTraceEnabled({ SAGEJS_NATIVE_DISABLE: "1" });
+
 const directFfi = String.raw`
 import sagejs.runtime as runtime
 import sagejs.ffi.flint as ffi
