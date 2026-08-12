@@ -7953,9 +7953,7 @@ def fmpz_mod_polynomial_copy(source: FmpzModPolynomial) -> FmpzModPolynomial: ..
         in_("right", sagejs_fmpz_mod_polynomial_t),
     ],
     effects=Effects(pure=True, allocates=True, raises=[ValueError]),
-    result=Status(
-        1, exception=ValueError, message="polynomial moduli do not match"
-    ),
+    result=Status(1, exception=ValueError, message="polynomial moduli do not match"),
     wasm=True,
 )
 def fmpz_mod_polynomial_equal(
@@ -8239,9 +8237,7 @@ def fmpz_mod_polynomial_xgcd_result_right_coefficient(
         in_("source", sagejs_fmpz_mod_polynomial_t),
     ],
     effects=Effects(pure=False, allocates=True, raises=[ValueError]),
-    result=Status(
-        1, exception=ValueError, message="factorization of 0 is not defined"
-    ),
+    result=Status(1, exception=ValueError, message="factorization of 0 is not defined"),
     wasm=False,
 )
 def fmpz_mod_polynomial_factor_resource(
@@ -8258,9 +8254,7 @@ def fmpz_mod_polynomial_factor_resource(
         in_("source", sagejs_fmpz_mod_polynomial_t),
     ],
     effects=Effects(pure=False, allocates=True, raises=[ValueError]),
-    result=Status(
-        1, exception=ValueError, message="factorization of 0 is not defined"
-    ),
+    result=Status(1, exception=ValueError, message="factorization of 0 is not defined"),
     wasm=False,
 )
 def fmpz_mod_polynomial_roots_resource(

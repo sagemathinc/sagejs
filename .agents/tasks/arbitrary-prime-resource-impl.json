@@ -18,7 +18,8 @@
     "test/public-arbitrary-prime-polynomial.cjs",
     "bench/arbitrary-prime-polynomial-resources.cjs",
     "src/baselib/polynomial.py",
-    "pyrightconfig.json"
+    "pyrightconfig.json",
+    "tools/serialization.ts"
   ],
   "dependencies": [
     "arbitrary-prime-poly-contract"

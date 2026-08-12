@@ -1206,6 +1206,23 @@ function encodeElement(value: unknown, context: EncodeContext): WireValue {
         coefficientCount: compactPrime.count,
       });
     }
+    const arbitraryPrimeMethod = Reflect.get(
+      Object(value),
+      "_packed_arbitrary_prime_polynomial",
+    );
+    const arbitraryPrime = baseKind === "GF" &&
+        typeof arbitraryPrimeMethod === "function"
+      ? invoke(arbitraryPrimeMethod, value, [])
+      : undefined;
+    if (isUint8Array(arbitraryPrime)) {
+      context.transferable(arbitraryPrime);
+      return context.encode({
+        kind,
+        parent,
+        coefficients: arbitraryPrime,
+        coefficientEncoding: "fmpz-mod-poly-le-v1",
+      });
+    }
     const packedMethod = Reflect.get(Object(value), "_packed_exact_polynomial");
     const packed = ["ZZ", "QQ"].includes(baseKind ?? "") &&
         typeof packedMethod === "function"
@@ -1460,6 +1477,114 @@ function polynomialFromExactResource(
   }
 }
 
+function polynomialFromArbitraryPrimeResource(
+  parent: unknown,
+  bytes: Uint8Array,
+  encoding: unknown,
+): unknown {
+  const supports = Reflect.get(
+    Object(parent),
+    "_supports_arbitrary_prime_polynomial_resource_deserialization",
+  );
+  const restore = Reflect.get(
+    Object(parent),
+    "_from_arbitrary_prime_polynomial_serialization",
+  );
+  if (typeof supports !== "function" || typeof restore !== "function" ||
+      !invoke(supports, parent, [encoding])) {
+    return undefined;
+  }
+  try {
+    return invoke(restore, parent, [bytes, encoding]);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    throw new SageSerializationError(message);
+  }
+}
+
+function unpackArbitraryPrimePolynomial(
+  parent: unknown,
+  bytes: Uint8Array,
+): bigint[] {
+  const magic = [83, 74, 77, 80, 1, 0, 0, 0];
+  if (bytes.byteLength < magic.length ||
+      magic.some((value, index) => bytes[index] !== value)) {
+    throw new SageSerializationError(
+      "invalid arbitrary-prime polynomial serialization magic",
+    );
+  }
+  let offset = magic.length;
+  const readU64 = (): number => {
+    if (offset + 8 > bytes.byteLength) {
+      throw new SageSerializationError(
+        "truncated arbitrary-prime polynomial serialization",
+      );
+    }
+    let value = 0n;
+    for (let index = 7; index >= 0; index -= 1) {
+      value = (value << 8n) | BigInt(bytes[offset + index]);
+    }
+    offset += 8;
+    if (value > BigInt(Number.MAX_SAFE_INTEGER)) {
+      throw new SageSerializationError(
+        "arbitrary-prime polynomial serialization is too large",
+      );
+    }
+    return Number(value);
+  };
+  const readUnsigned = (): bigint => {
+    const length = readU64();
+    if (length === 0 || offset + length > bytes.byteLength) {
+      throw new SageSerializationError(
+        "invalid arbitrary-prime polynomial integer length",
+      );
+    }
+    if (length > 1 && bytes[offset + length - 1] === 0) {
+      throw new SageSerializationError(
+        "noncanonical arbitrary-prime polynomial integer",
+      );
+    }
+    let value = 0n;
+    for (let index = length - 1; index >= 0; index -= 1) {
+      value = (value << 8n) | BigInt(bytes[offset + index]);
+    }
+    offset += length;
+    return value;
+  };
+  const modulus = readUnsigned();
+  const base = callMethod(parent, "base_ring");
+  const expectedModulus = BigInt(
+    Reflect.get(Object(base), "_order") as bigint | number | string,
+  );
+  if (modulus !== expectedModulus) {
+    throw new SageSerializationError(
+      "arbitrary-prime polynomial modulus does not match its parent",
+    );
+  }
+  const count = readU64();
+  const coefficients = new Array<bigint>(count);
+  for (let index = 0; index < count; index += 1) {
+    const value = readUnsigned();
+    if (value >= modulus) {
+      throw new SageSerializationError(
+        "arbitrary-prime polynomial coefficient is outside its field",
+      );
+    }
+    coefficients[index] = value;
+  }
+  if (offset !== bytes.byteLength) {
+    throw new SageSerializationError(
+      "arbitrary-prime polynomial data has trailing bytes",
+    );
+  }
+  if (count > 0 && coefficients[count - 1] === 0n) {
+    throw new SageSerializationError(
+      "arbitrary-prime polynomial has a trailing zero coefficient",
+    );
+  }
+  return coefficients;
+}
+
 function unpackResidues(bytes: Uint8Array, width: number, count: number): number[] {
   if (![1, 2, 4].includes(width) || bytes.byteLength !== width * count) {
     throw new SageSerializationError("compact matrix entry buffer is invalid");
@@ -1662,6 +1787,21 @@ function decodeElement(payload: WireValue, context: DecodeContext): unknown {
   }
   if (data.kind === "residue") return callPython(data.parent, [data.value]);
   if (data.kind === "polynomial") {
+    if (
+      data.coefficients instanceof Uint8Array &&
+      data.coefficientEncoding === "fmpz-mod-poly-le-v1"
+    ) {
+      const direct = polynomialFromArbitraryPrimeResource(
+        data.parent,
+        data.coefficients,
+        data.coefficientEncoding,
+      );
+      if (direct !== undefined) return direct;
+      return polynomialFromCoefficients(
+        data.parent,
+        unpackArbitraryPrimePolynomial(data.parent, data.coefficients),
+      );
+    }
     if (
       data.coefficients instanceof Uint8Array &&
       data.coefficientEncoding === "prime-field-poly-le-v1"
