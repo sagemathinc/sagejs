@@ -14,7 +14,7 @@
   },
   "counts": {
     "classified-native-file": 58,
-    "declared-ffi": 213,
+    "declared-ffi": 214,
     "declared-ffi-resource": 14,
     "napi-export": 292,
     "runtime-intrinsic": 136,
@@ -250,6 +250,17 @@
       "dynamic_package": "@sagemath/sagejs-fflas",
       "dynamic_export": "ffiFflasModularFloatRank",
       "symbol": "sagejs_fflas_modular_float_rank",
+      "disposition": "declared-safe-ffi"
+    },
+    {
+      "id": "ffi:fflas:modular_float_right_nullspace",
+      "kind": "declared-ffi",
+      "path": "ffi/fflas.ffi.json",
+      "library": "fflas",
+      "export": "modular_float_right_nullspace",
+      "dynamic_package": "@sagemath/sagejs-fflas",
+      "dynamic_export": "ffiFflasModularFloatRightNullspace",
+      "symbol": "sagejs_fflas_modular_float_right_nullspace",
       "disposition": "declared-safe-ffi"
     },
     {

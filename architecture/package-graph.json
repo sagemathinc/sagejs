@@ -61,7 +61,7 @@
       "id": "native-integration",
       "layer": 1,
       "startup": "lazy",
-      "max_source_bytes": 490000,
+      "max_source_bytes": 495000,
       "depends_on": ["core-runtime"],
       "modules": ["sagejs.native", "sagejs.ffi"],
       "files": [
@@ -106,7 +106,7 @@
       "id": "linear-algebra",
       "layer": 3,
       "startup": "bootstrap",
-      "max_source_bytes": 380000,
+      "max_source_bytes": 385000,
       "depends_on": ["core-runtime", "native-integration", "arithmetic"],
       "files": [
         "src/baselib/matrix.py",

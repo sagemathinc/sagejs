@@ -227,6 +227,11 @@ def _use_fflas_matrix_rank(rows: int, columns: int, modulus: int) -> bool:
     return min(rows, columns) >= 64 and _fflas_small_prime_available(modulus)
 
 
+def _use_fflas_matrix_right_nullspace(rows: int, columns: int, modulus: int) -> bool:
+    """Select FFPACK beyond its measured canonical-nullspace crossover."""
+    return min(rows, columns) >= 24 and _fflas_small_prime_available(modulus)
+
+
 def _typed_python_implementation(kernel_function: Any) -> str:
     return (
         "typed-python-isolated"
@@ -4612,18 +4617,42 @@ class Matrix(sage.Element):
                 )
             elif self._has_packed_prime_storage():
                 columns = int(self.ncols())
-                ffi_module = _dense_prime_flint_module()
-                kernel_function = ffi_module.flint_dense_prime_field_matrix_right_kernel
-                output = _dense_prime_zeros(kernel_function, columns * columns)
-                nullity = runtime.number(
+                modulus = int(_untyped(self.base_ring()).characteristic())
+                if _use_fflas_matrix_right_nullspace(self.nrows(), columns, modulus):
+                    kernel_function = _dense_prime_fflas_module().fflas_dense_prime_field_matrix_right_nullspace
+                    implementation = (
+                        "declared-fflas-isolated"
+                        if _native_kernel_available(kernel_function)
+                        else "declared-fflas-adapter"
+                    )
+                    output = _dense_prime_zeros(kernel_function, columns * columns)
+                    nullity_output = _dense_prime_zeros(kernel_function, 1)
                     kernel_function(
                         output,
+                        nullity_output,
                         self._prime_kernel_buffer(kernel_function),
                         self.nrows(),
                         columns,
-                        int(_untyped(self.base_ring()).characteristic()),
+                        modulus,
                     )
-                )
+                    nullity = runtime.number(nullity_output[0])
+                else:
+                    kernel_function = _dense_prime_flint_module().flint_dense_prime_field_matrix_right_kernel
+                    implementation = (
+                        "declared-flint-isolated"
+                        if _native_kernel_available(kernel_function)
+                        else "declared-flint-adapter"
+                    )
+                    output = _dense_prime_zeros(kernel_function, columns * columns)
+                    nullity = runtime.number(
+                        kernel_function(
+                            output,
+                            self._prime_kernel_buffer(kernel_function),
+                            self.nrows(),
+                            columns,
+                            modulus,
+                        )
+                    )
                 self._rank_cache = columns - nullity
                 basis_entries = _packed_uint64_prefix(output, nullity * columns)
                 basis = MatrixSpace(
@@ -4631,14 +4660,10 @@ class Matrix(sage.Element):
                 )._from_canonical_uint64_residues(basis_entries)
                 _trace_dense_prime_selection(
                     "right_kernel",
-                    (
-                        "declared-flint-isolated"
-                        if _native_kernel_available(kernel_function)
-                        else "declared-flint-adapter"
-                    ),
+                    implementation,
                     self.nrows(),
                     self.ncols(),
-                    int(_untyped(self.base_ring()).characteristic()),
+                    modulus,
                 )
             elif _is_extension_field_base(self.base_ring()):
                 nullity = self.ncols() - self.rank()
