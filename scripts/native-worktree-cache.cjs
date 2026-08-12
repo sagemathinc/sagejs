@@ -56,7 +56,7 @@ const {
 
 const nativeCacheSchema = "sagejs.parallel-native-artifact-cache-v1";
 const nativeCacheMaintenanceSchema = "sagejs.parallel-native-cache-status-v1";
-const nativeCachePackages = new Set(["flint", "fflas", "graph"]);
+const nativeCachePackages = new Set(["flint", "fflas", "graph", "m4ri"]);
 const nativeCacheArtifactIds = new Set(
   [...nativeCachePackages].flatMap((packageId) => [
     `${packageId}-dependencies`,
@@ -361,6 +361,7 @@ function nativeBuildIdentity(workspace, overrides = {}) {
     "SAGEJS_GMP_TARBALL",
     "SAGEJS_GIVARO_TARBALL",
     "SAGEJS_IGRAPH_TARBALL",
+    "SAGEJS_M4RI_TARBALL",
     "SAGEJS_MPC_TARBALL",
     "SAGEJS_MPFR_TARBALL",
     "SAGEJS_OPENBLAS_TARBALL",
@@ -570,6 +571,48 @@ function nativeArtifactSpecs(workspace, overrides = {}) {
           ? `${dependencyPrefix("graph")}/lib/igraph.lib`
           : `${dependencyPrefix("graph")}/lib/libigraph.a`,
         `${dependencyPrefix("graph")}/.sagejs-igraph-1.0.1`,
+      ],
+    },
+    m4ri: {
+      dependencyMaterialization: process.platform === "win32"
+        ? "copy"
+        : "shared-readonly",
+      dependencyInputs: [
+        "packages/m4ri/package.json",
+        "packages/m4ri/scripts/build-deps.cjs",
+        "packages/m4ri/include/sagejs/m4ri_matrix_ffi.h",
+      ],
+      addonInputs: [
+        "packages/m4ri/package.json",
+        "packages/m4ri/include",
+        "packages/m4ri/generated/ffi_host.py",
+        "packages/m4ri/scripts/native-prefix.cjs",
+        "ffi/m4ri.ffi.py",
+        "ffi/m4ri.ffi.json",
+        ...commonAddonInputs,
+      ],
+      addonOutputs: [
+        "packages/m4ri/build/generated-ffi",
+      ],
+      requiredAddonOutputs: [
+        "packages/m4ri/build/generated-ffi/sagejs_m4ri_ffi.node",
+        "packages/m4ri/build/generated-ffi/manifest.json",
+      ],
+      requiredDependencyOutputs: process.platform === "win32"
+        ? [
+          `${dependencyPrefix("m4ri")}/.sagejs-m4ri-dependencies.json`,
+          `${dependencyPrefix("m4ri")}/include/sagejs/m4ri_matrix_ffi.h`,
+        ]
+        : [
+          `${dependencyPrefix("m4ri")}/lib/libm4ri.a`,
+          `${dependencyPrefix("m4ri")}/.sagejs-m4ri-dependencies.json`,
+          `${dependencyPrefix("m4ri")}/include/sagejs/m4ri_matrix_ffi.h`,
+        ],
+      addonBuildCommands: [
+        ["pnpm", ["--dir", "packages/m4ri", "run", "build:ffi"]],
+      ],
+      dependencyBuildCommands: [
+        ["node", ["packages/m4ri/scripts/build-deps.cjs", "--cache-build"]],
       ],
     },
   };

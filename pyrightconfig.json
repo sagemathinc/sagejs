@@ -60,6 +60,7 @@
     "src/lib/sagejs/polynomial_algorithms/__init__.py",
     "src/lib/sagejs/polynomial_algorithms/cyclotomic_core.py",
     "src/lib/sagejs/polynomial_algorithms/exact_coefficient_bytes_contract.py",
+    "src/lib/sagejs/polynomial_algorithms/extension_resource_contract.py",
     "src/lib/sagejs/polynomial_algorithms/invariants.py",
     "src/lib/sagejs/polynomial_algorithms/public_structural.py",
     "src/lib/sagejs/polynomial_algorithms/structural_calculus.py",
