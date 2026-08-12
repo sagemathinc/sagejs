@@ -50,16 +50,32 @@
         "src/baselib/itertools.py",
         "src/baselib/runtime_primitives.py",
         "src/baselib/sagejs_bootstrap.py",
+        "src/baselib/sagejs/__init__.py",
+        "src/baselib/sagejs/runtime.py",
+        "src/lib/sagejs/__init__.py",
         "src/baselib/str.py"
       ],
-      "prefixes": ["src/baselib/sagejs/"]
+      "prefixes": []
+    },
+    {
+      "id": "native-integration",
+      "layer": 1,
+      "startup": "lazy",
+      "max_source_bytes": 485000,
+      "depends_on": ["core-runtime"],
+      "modules": ["sagejs.native", "sagejs.ffi"],
+      "files": [
+        "src/lib/sagejs/native.py",
+        "src/lib/sagejs/kernels/__init__.py"
+      ],
+      "prefixes": ["src/baselib/sagejs/ffi/", "src/lib/sagejs/ffi/"]
     },
     {
       "id": "arithmetic",
-      "layer": 1,
+      "layer": 2,
       "startup": "bootstrap",
-      "max_source_bytes": 580000,
-      "depends_on": ["core-runtime"],
+      "max_source_bytes": 605000,
+      "depends_on": ["core-runtime", "native-integration"],
       "files": [
         "src/baselib/algebra.py",
         "src/baselib/exact_rational.py",
@@ -71,7 +87,12 @@
         "src/baselib/real_complex.py",
         "src/baselib/series.py",
         "src/baselib/zeta_data.py",
-        "src/baselib/zz_introspection.py"
+        "src/baselib/zz_introspection.py",
+        "src/lib/sagejs/kernels/polynomial/__init__.py",
+        "src/lib/sagejs/kernels/polynomial/packed_flint.py",
+        "src/lib/sagejs/kernels/polynomial/packed_integer.py",
+        "src/lib/sagejs/kernels/polynomial/packed_prime_field.py",
+        "src/lib/sagejs/kernels/polynomial/packed_rational.py"
       ],
       "typescript_files": [
         "tools/serialization-codecs/arithmetic.ts",
@@ -83,16 +104,17 @@
     },
     {
       "id": "linear-algebra",
-      "layer": 2,
+      "layer": 3,
       "startup": "bootstrap",
-      "max_source_bytes": 358500,
-      "depends_on": ["core-runtime", "arithmetic"],
+      "max_source_bytes": 361000,
+      "depends_on": ["core-runtime", "native-integration", "arithmetic"],
       "files": [
         "src/baselib/matrix.py",
         "src/lib/sagejs/kernels/matrix/__init__.py",
         "src/lib/sagejs/kernels/matrix/dense_integer.py",
         "src/lib/sagejs/kernels/matrix/dense_integer_flint.py",
         "src/lib/sagejs/kernels/matrix/dense_prime_field.py",
+        "src/lib/sagejs/kernels/matrix/dense_prime_field_fflas.py",
         "src/lib/sagejs/kernels/matrix/dense_prime_field_flint.py",
         "src/lib/sagejs/kernels/matrix/dense_rational.py",
         "src/lib/sagejs/kernels/matrix/dense_rational_flint.py"
@@ -102,7 +124,7 @@
     },
     {
       "id": "symbolics",
-      "layer": 2,
+      "layer": 3,
       "startup": "bootstrap",
       "max_source_bytes": 95000,
       "depends_on": ["core-runtime", "arithmetic"],
@@ -111,7 +133,7 @@
     },
     {
       "id": "groups-combinatorics",
-      "layer": 3,
+      "layer": 4,
       "startup": "bootstrap",
       "max_source_bytes": 33000,
       "depends_on": ["core-runtime", "arithmetic", "linear-algebra"],
@@ -120,10 +142,10 @@
     },
     {
       "id": "graph-theory",
-      "layer": 3,
+      "layer": 4,
       "startup": "bootstrap",
       "max_source_bytes": 330000,
-      "depends_on": ["core-runtime", "linear-algebra"],
+      "depends_on": ["core-runtime", "native-integration", "linear-algebra"],
       "files": [
         "src/baselib/graph_reference_data.py",
         "src/baselib/graphs.py"
@@ -151,10 +173,10 @@
     },
     {
       "id": "modular-forms",
-      "layer": 3,
+      "layer": 4,
       "startup": "bootstrap",
       "max_source_bytes": 255000,
-      "depends_on": ["core-runtime", "arithmetic", "linear-algebra"],
+      "depends_on": ["core-runtime", "native-integration", "arithmetic", "linear-algebra"],
       "files": [
         "src/baselib/dirichlet.py",
         "src/baselib/modular.py",
@@ -165,7 +187,7 @@
     },
     {
       "id": "graphics",
-      "layer": 3,
+      "layer": 4,
       "startup": "bootstrap",
       "max_source_bytes": 320000,
       "depends_on": ["core-runtime", "arithmetic", "symbolics"],
@@ -189,10 +211,7 @@
         "tokenize", "traceback", "types", "unicodedata", "unittest", "urllib", "uuid", "warnings", "weakref", "xml", "zlib"
       ],
       "files": [
-        "src/baselib/sagejs/ffi/__init__.py",
-        "src/baselib/sagejs/ffi/fflas.py",
-        "src/baselib/sagejs/ffi/flint.py",
-        "src/baselib/sagejs/ffi/igraph.py",
+        "src/lib/sagejs/javascript.py",
         "src/lib/_dummy_thread.py", "src/lib/_thread.py", "src/lib/abc.py", "src/lib/aes.py", "src/lib/annotationlib.py", "src/lib/argparse.py", "src/lib/array.py", "src/lib/ast.py", "src/lib/atexit.py", "src/lib/base64.py", "src/lib/bdb.py", "src/lib/calendar.py", "src/lib/cmath.py", "src/lib/colorsys.py", "src/lib/copy.py", "src/lib/datetime.py", "src/lib/decimal.py", "src/lib/enum.py",
         "src/lib/codecs.py",
         "src/lib/bisect.py", "src/lib/collections.py", "src/lib/contextlib.py",
@@ -211,12 +230,12 @@
         "src/lib/uuid.py", "src/lib/warnings.py", "src/lib/weakref.py", "src/lib/zlib.py"
       ],
       "prefixes": [
-        "src/lib/collections/", "src/lib/html/", "src/lib/http/", "src/lib/importlib/", "src/lib/os/", "src/lib/sage/", "src/lib/sagejs/", "src/lib/unittest/", "src/lib/urllib/", "src/lib/xml/"
+        "src/lib/collections/", "src/lib/html/", "src/lib/http/", "src/lib/importlib/", "src/lib/os/", "src/lib/sage/", "src/lib/unittest/", "src/lib/urllib/", "src/lib/xml/"
       ]
     },
     {
       "id": "numeric-compat",
-      "layer": 3,
+      "layer": 4,
       "startup": "lazy",
       "max_source_bytes": 2100000,
       "depends_on": ["core-runtime", "python-stdlib", "arithmetic", "linear-algebra"],
@@ -226,7 +245,7 @@
     },
     {
       "id": "polyglot",
-      "layer": 4,
+      "layer": 5,
       "startup": "lazy",
       "max_source_bytes": 35000,
       "depends_on": [
