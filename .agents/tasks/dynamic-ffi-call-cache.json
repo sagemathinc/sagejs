@@ -1,0 +1,93 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "dynamic-ffi-call-cache",
+  "title": "Dynamic Ffi Call Cache",
+  "lane": "compiler-runtime",
+  "status": "active",
+  "owner": "user",
+  "objective": "Resolve invariant declared-FFI backend, export, parameter-plan, constraint, and result-domain metadata once per generated declaration call site while retaining all per-call value, ownership, range, transaction, and exception validation",
+  "base_commit": "d2088079f87bcc86eda7d5b21ec5f855c16c1061",
+  "claims": [
+    "src/baselib/sagejs_bootstrap.py",
+    "tools/ffi/declarations.cjs",
+    "test/ffi.cjs",
+    "test/dynamic-ffi-call-cache.cjs",
+    "bench/dynamic-ffi-call-cache.cjs"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "compiler-infrastructure",
+    "fallback": "same-source",
+    "oracles": [
+      "existing dynamic FFI semantics with SAGEJS_NATIVE_DISABLE=1",
+      "generated native FFI path"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm build",
+    "pnpm test:compiler",
+    "pnpm test:integration"
+  ],
+  "runs": [
+    {
+      "command": "node --test test/dynamic-ffi-call-cache.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.215,
+      "started_at": "2026-08-12T04:57:37.619Z",
+      "commit": "d2088079f87bcc86eda7d5b21ec5f855c16c1061",
+      "workspace_fingerprint": "4bacc8f8bf1e471438b955471381e158296b7127ca416281db8f6022b6de10d3",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:native",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 9.437,
+      "started_at": "2026-08-12T04:57:44.646Z",
+      "commit": "d2088079f87bcc86eda7d5b21ec5f855c16c1061",
+      "workspace_fingerprint": "4bacc8f8bf1e471438b955471381e158296b7127ca416281db8f6022b6de10d3",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm format:python:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.705,
+      "started_at": "2026-08-12T04:57:54.667Z",
+      "commit": "d2088079f87bcc86eda7d5b21ec5f855c16c1061",
+      "workspace_fingerprint": "4bacc8f8bf1e471438b955471381e158296b7127ca416281db8f6022b6de10d3",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/dynamic-ffi-call-cache.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 6.733,
+      "started_at": "2026-08-12T04:57:57.945Z",
+      "commit": "d2088079f87bcc86eda7d5b21ec5f855c16c1061",
+      "workspace_fingerprint": "4bacc8f8bf1e471438b955471381e158296b7127ca416281db8f6022b6de10d3",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Caches invariant dynamic declared-FFI backend/export, specialized parameter validation, constraint indices, result domain, and exception class once per cryptographically identified declaration call site; all value, ownership, range, transactional, result, and exception checks remain per call. Backend replacement is honored when the trusted runtime require function changes. The repeated FmpqMatrix scalar-entry benchmark improved from a 5.23 microsecond uncached median to 4.39 microseconds cached on this host.",
+    "risks": [
+      "A backend that mutates an export in place without replacing the trusted runtime require function keeps the already resolved callable; generated production backends are immutable by contract, while explicit runtime-host replacement remains supported.",
+      "The full integration suite had four unrelated or pre-existing failures: one base serialization-count assertion, one stale FFLAS manifest count assertion, and two transient performance/environment failures that passed focused reruns."
+    ],
+    "next_steps": [
+      "Integration should cherry-pick this commit and retain the narrow core-runtime byte-budget ratchet.",
+      "If dynamic scalar crossings remain important after higher-level bulk APIs, consider generated closure-local constant wire arrays as a separate measured optimization."
+    ]
+  }
+}
