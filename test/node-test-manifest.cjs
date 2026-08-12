@@ -41,6 +41,7 @@ const integration = [
   "test/ffi-byte-region-bulk.cjs",
   "test/ffi-resource-aggregate.cjs",
   "test/ffi-wasm-fmpq-resource-core.cjs",
+  "test/ffi-wasm-m4ri-resource.cjs",
   "test/ffi-wasm-resource.cjs",
   "test/fmpq-matrix-right-kernel-resource.cjs",
   "test/rational-right-kernel-resource-public.cjs",
