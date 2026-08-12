@@ -42,6 +42,9 @@ importers:
       '@sagemath/sagejs-graph':
         specifier: workspace:*
         version: link:packages/graph
+      '@sagemath/sagejs-m4ri':
+        specifier: workspace:*
+        version: link:packages/m4ri
       '@types/node':
         specifier: ^26.1.1
         version: 26.1.1
@@ -127,6 +130,8 @@ importers:
       node-gyp:
         specifier: ^13.0.1
         version: 13.0.1
+
+  packages/m4ri: {}
 
   packages/native-darwin-arm64: {}
 

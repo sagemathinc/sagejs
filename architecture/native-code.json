@@ -46,6 +46,13 @@
       "rationale": "Narrow host-neutral façade over FFLAS/FFPACK packed small-prime multiplication and canonical RREF, with complete shape and residue validation and transactional generated copyback."
     },
     {
+      "path": "packages/m4ri/include/sagejs/m4ri_matrix_ffi.h",
+      "category": "external-library-bridge",
+      "review_status": "accepted",
+      "lane": "integration",
+      "rationale": "Host-neutral generated owned-resource ABI over M4RI dense GF(2) matrices, with checked dimensions and empty shapes, canonical logical row-word and SagePack transfer, deterministic lifecycle accounting, and direct resource-to-resource linear algebra."
+    },
+    {
       "path": "packages/flint-wasm/src/factor.c",
       "category": "external-library-bridge",
       "review_status": "accepted",
