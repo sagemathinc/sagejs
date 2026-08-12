@@ -92,8 +92,16 @@ def _trace(
     ):
         return
     print(
-        f"[sagejs native] Matrix.{operation} {base} "
-        f"{rows}x{columns} -> {implementation}"
+        "[sagejs native] Matrix."
+        + operation
+        + " "
+        + str(base)
+        + " "
+        + str(rows)
+        + "x"
+        + str(columns)
+        + " -> "
+        + implementation
     )
 
 
