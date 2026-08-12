@@ -277,6 +277,27 @@ test("validation fingerprints ignore manifests and Git staging state", () => {
     );
     assert.equal(staged, unstaged);
     assert.equal(receiptUpdated, unstaged);
+
+    git("add", ".agents/tasks/task.json");
+    git(
+      "commit",
+      "--quiet",
+      "--only",
+      "-m",
+      "record receipts",
+      ".agents/tasks/task.json",
+    );
+    const receiptCommitted = workspaceFingerprint(
+      directory,
+      ".agents/tasks/task.json",
+    );
+    assert.equal(receiptCommitted, unstaged);
+
+    writeFileSync(join(directory, "source.txt"), "different\n");
+    assert.notEqual(
+      workspaceFingerprint(directory, ".agents/tasks/task.json"),
+      unstaged,
+    );
   } finally {
     rmSync(directory, { recursive: true, force: true });
   }
@@ -1121,6 +1142,79 @@ test("native production keys separate dependency and addon invalidation", () => 
   }
 });
 
+test("M4RI cache keys separate dependency and generated-addon inputs", () => {
+  const directory = mkdtempSync(join(tmpdir(), "sagejs-m4ri-key-test-"));
+  const identity = {
+    native: { toolchain: "one" },
+    node: { abi: "one" },
+  };
+  const keys = () => {
+    const specs = nativeArtifactSpecs(directory, { identity });
+    return Object.fromEntries(
+      specs
+        .filter(({ packageId }) => packageId === "m4ri")
+        .map(({ id, key }) => [id, key]),
+    );
+  };
+  try {
+    for (const path of [
+      "packages/m4ri/scripts",
+      "packages/m4ri/include/sagejs",
+      "packages/m4ri/generated",
+      "ffi",
+    ]) {
+      mkdirSync(join(directory, path), { recursive: true });
+    }
+    writeFileSync(join(directory, "packages/m4ri/package.json"), "package v1\n");
+    writeFileSync(
+      join(directory, "packages/m4ri/scripts/build-deps.cjs"),
+      "dependency v1\n",
+    );
+    writeFileSync(
+      join(directory, "packages/m4ri/scripts/native-prefix.cjs"),
+      "prefix v1\n",
+    );
+    writeFileSync(
+      join(directory, "packages/m4ri/include/sagejs/m4ri_matrix_ffi.h"),
+      "header v1\n",
+    );
+    writeFileSync(
+      join(directory, "packages/m4ri/generated/ffi_host.py"),
+      "generated v1\n",
+    );
+    writeFileSync(join(directory, "ffi/m4ri.ffi.py"), "declaration v1\n");
+    writeFileSync(join(directory, "ffi/m4ri.ffi.json"), "descriptor v1\n");
+
+    const first = keys();
+    writeFileSync(
+      join(directory, "packages/m4ri/generated/ffi_host.py"),
+      "generated v2\n",
+    );
+    const addonChanged = keys();
+    assert.equal(
+      addonChanged["m4ri-dependencies"],
+      first["m4ri-dependencies"],
+    );
+    assert.notEqual(addonChanged["m4ri-addon"], first["m4ri-addon"]);
+
+    writeFileSync(
+      join(directory, "packages/m4ri/scripts/build-deps.cjs"),
+      "dependency v2\n",
+    );
+    const dependencyChanged = keys();
+    assert.notEqual(
+      dependencyChanged["m4ri-dependencies"],
+      addonChanged["m4ri-dependencies"],
+    );
+    assert.notEqual(
+      dependencyChanged["m4ri-addon"],
+      addonChanged["m4ri-addon"],
+    );
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+
 test("FFLAS native keys include selected platform SDK inputs", () => {
   const identity = {
     native: { toolchain: "one" },
@@ -1154,6 +1248,7 @@ test("native addon keys include shared ABI types and package FFI descriptors", (
     ["flint", "flint.ffi.json"],
     ["fflas", "fflas.ffi.json"],
     ["graph", "igraph.ffi.json"],
+    ["m4ri", "m4ri.ffi.json"],
   ];
   const keysById = () => new Map(
     nativeArtifactSpecs(directory, { identity }).map(({ id, key }) => [id, key]),
@@ -1288,7 +1383,33 @@ test("a custom prefix skips only its package during cache restore", () => {
 });
 
 test("native package cache orders FLINT before its FFLAS dependent", () => {
-  assert.deepEqual([...nativeCachePackages], ["flint", "fflas", "graph"]);
+  assert.deepEqual(
+    [...nativeCachePackages],
+    ["flint", "fflas", "graph", "m4ri"],
+  );
+  const specs = nativeArtifactSpecs(resolve(__dirname, ".."), {
+      identity: {
+        native: { toolchain: "test" },
+        node: { abi: "test" },
+      },
+    });
+  assert.deepEqual(
+    specs.map(({ id }) => id),
+    [
+      "flint-dependencies",
+      "flint-addon",
+      "fflas-dependencies",
+      "fflas-addon",
+      "graph-dependencies",
+      "graph-addon",
+      "m4ri-dependencies",
+      "m4ri-addon",
+    ],
+  );
+  assert.deepEqual(
+    specs.find(({ id }) => id === "m4ri-dependencies").buildCommands,
+    [["node", ["packages/m4ri/scripts/build-deps.cjs", "--cache-build"]]],
+  );
 });
 
 test("corrupt native cache entries fail closed and rebuild", () => {

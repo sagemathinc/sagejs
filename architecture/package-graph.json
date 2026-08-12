@@ -61,7 +61,7 @@
       "id": "native-integration",
       "layer": 1,
       "startup": "lazy",
-      "max_source_bytes": 600000,
+      "max_source_bytes": 605000,
       "depends_on": ["core-runtime"],
       "modules": ["sagejs.native", "sagejs.ffi"],
       "files": [
@@ -156,7 +156,12 @@
       "layer": 3,
       "startup": "lazy",
       "max_source_bytes": 250000,
-      "depends_on": ["core-runtime", "native-integration", "arithmetic"],
+      "depends_on": [
+        "core-runtime",
+        "native-integration",
+        "arithmetic",
+        "python-stdlib"
+      ],
       "modules": ["sagejs.polynomial_algorithms"],
       "files": [],
       "prefixes": ["src/lib/sagejs/polynomial_algorithms/"]

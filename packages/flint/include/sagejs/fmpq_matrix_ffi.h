@@ -665,6 +665,27 @@ static inline int sagejs_fmpq_matrix_select_columns(
     return 1;
 }
 
+/* Row and column permutations preserve both retained bytes and known rank. */
+static inline int sagejs_fmpq_matrix_swap_rows(
+    sagejs_fmpq_matrix_t matrix, uint64_t first, uint64_t second)
+{
+    const uint64_t rows = (uint64_t) fmpq_mat_nrows(matrix->value);
+    if (first >= rows || second >= rows)
+        return 0;
+    fmpq_mat_swap_rows(matrix->value, NULL, (slong) first, (slong) second);
+    return 1;
+}
+
+static inline int sagejs_fmpq_matrix_swap_columns(
+    sagejs_fmpq_matrix_t matrix, uint64_t first, uint64_t second)
+{
+    const uint64_t columns = (uint64_t) fmpq_mat_ncols(matrix->value);
+    if (first >= columns || second >= columns)
+        return 0;
+    fmpq_mat_swap_cols(matrix->value, NULL, (slong) first, (slong) second);
+    return 1;
+}
+
 static inline int sagejs_fmpq_matrix_set_block(
     sagejs_fmpq_matrix_t target, uint64_t target_row,
     uint64_t target_column, const sagejs_fmpq_matrix_t source)

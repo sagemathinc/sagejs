@@ -998,11 +998,6 @@ try {
   const foreignWitnessPrefix = join(temporary, "foreign-input-prefix");
   const foreignWitnessCache = join(temporary, "foreign-input-cache");
   copyForeignCacheWitnessPrefix(installedForeignPrefix, foreignWitnessPrefix);
-  cpSync(
-    join(root, "packages", "flint", "include", "sagejs"),
-    join(foreignWitnessPrefix, "include", "sagejs"),
-    { recursive: true },
-  );
   const foreignWitnessSource = join(temporary, "foreign-cache-adapter.py");
   writeFileSync(
     foreignWitnessSource,
@@ -1038,14 +1033,34 @@ try {
   const initialHeader = initialFlintInputs.headers.find(
     (input) => input.name === "sagejs/fmpq_matrix_ffi.h",
   );
+  assert.ok(initialHeader);
   assert.match(initialHeader.sha256, /^[a-f0-9]{64}$/);
   assert.equal(
     initialHeader.path,
     join(
-      foreignWitnessPrefix,
+      root,
+      "packages",
+      "flint",
       "include",
       "sagejs",
       "fmpq_matrix_ffi.h",
+    ).replaceAll("\\", "/"),
+  );
+  assert.equal(
+    initialFlintInputs.includeOrder[0],
+    join(root, "packages", "flint", "include").replaceAll("\\", "/"),
+  );
+  const initialExternalHeader = initialFlintInputs.headers.find(
+    (input) => input.name === "flint/ulong_extras.h",
+  );
+  assert.ok(initialExternalHeader);
+  assert.equal(
+    initialExternalHeader.path,
+    join(
+      foreignWitnessPrefix,
+      "include",
+      "flint",
+      "ulong_extras.h",
     ).replaceAll("\\", "/"),
   );
   assert.equal(
@@ -1072,14 +1087,13 @@ try {
   const witnessHeaderPath = join(
     foreignWitnessPrefix,
     "include",
-    "sagejs",
-    "fmpq_matrix_ffi.h",
+    "flint",
+    "ulong_extras.h",
   );
   writeFileSync(
     witnessHeaderPath,
     readFileSync(witnessHeaderPath, "utf8") +
-      "\n#undef sagejs_fmpq_matrix_nrows\n" +
-      "#define sagejs_fmpq_matrix_nrows(matrix) ((uint64_t) 123)\n",
+      "\n/* native foreign-input cache invalidation witness */\n",
   );
   const changedForeignWitness = runForeignCacheWitness(
     foreignWitnessPrefix,
@@ -1087,7 +1101,7 @@ try {
     foreignWitnessSource,
   );
   assert.equal(changedForeignWitness.cached, false);
-  assert.equal(changedForeignWitness.value, 123);
+  assert.equal(changedForeignWitness.value, 2);
   assert.notEqual(changedForeignWitness.cacheKey, initialForeignWitness.cacheKey);
   assert.notEqual(
     changedForeignWitness.foreignInputs[0].fingerprint,
@@ -1095,9 +1109,9 @@ try {
   );
   assert.notEqual(
     changedForeignWitness.foreignInputs[0].headers.find(
-      (input) => input.name === "sagejs/fmpq_matrix_ffi.h",
+      (input) => input.name === "flint/ulong_extras.h",
     ).sha256,
-    initialHeader.sha256,
+    initialExternalHeader.sha256,
   );
   assert.deepEqual(
     changedForeignWitness.foreignInputs[0].libraries,

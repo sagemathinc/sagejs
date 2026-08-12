@@ -14,6 +14,7 @@ _packed_integer_polynomial_module_cache = runtime.undefined
 _packed_rational_polynomial_module_cache = runtime.undefined
 _packed_prime_polynomial_module_cache = runtime.undefined
 _packed_polynomial_flint_module_cache = runtime.undefined
+_polynomial_structural_public_module_cache = runtime.undefined
 _flint_ffi_module_cache = runtime.undefined
 _generated_flint_resources_available_cache = runtime.undefined
 
@@ -131,6 +132,17 @@ def _packed_polynomial_flint_module() -> Any:
             fromlist=["packed_flint"],
         )
     return _packed_polynomial_flint_module_cache
+
+
+def _polynomial_structural_public_module() -> Any:
+    """Load public structural dispatch outside the arithmetic bootstrap."""
+    global _polynomial_structural_public_module_cache
+    if _polynomial_structural_public_module_cache is runtime.undefined:
+        _polynomial_structural_public_module_cache = __import__(
+            "sagejs.polynomial_algorithms.public_structural",
+            fromlist=["public_structural"],
+        )
+    return _polynomial_structural_public_module_cache
 
 
 def _integer_capacity_error(error: Exception) -> bool:
@@ -2078,6 +2090,36 @@ class PolynomialElement(sage.Element):
             [coefficients[index] * index for index in range(1, len(coefficients))]
         )
 
+    def _compose_same_parent(
+        self,
+        inner: PolynomialElement,
+    ) -> PolynomialElement:
+        return _polynomial_structural_public_module().compose(self, inner)
+
+    def reverse(self, degree: Any = None) -> PolynomialElement:
+        return _polynomial_structural_public_module().reverse(self, degree)
+
+    def shift(self, amount: Any) -> PolynomialElement:
+        return _polynomial_structural_public_module().shift(self, amount)
+
+    def __lshift__(self, amount: Any) -> PolynomialElement:
+        return _polynomial_structural_public_module().left_shift(self, amount)
+
+    def __rshift__(self, amount: Any) -> PolynomialElement:
+        return _polynomial_structural_public_module().right_shift(self, amount)
+
+    def truncate(self, precision: Any) -> PolynomialElement:
+        return _polynomial_structural_public_module().truncate(self, precision)
+
+    def integral(self, variable: Any = None) -> PolynomialElement:
+        return _polynomial_structural_public_module().integral(self, variable)
+
+    def resultant(self, other: object) -> Any:
+        return _polynomial_structural_public_module().resultant(self, other)
+
+    def discriminant(self) -> Any:
+        return _polynomial_structural_public_module().discriminant(self)
+
     def derivative(self, *args: Any) -> PolynomialElement:
         """Return a formal derivative in Sage's common univariate forms.
 
@@ -2627,6 +2669,8 @@ class PolynomialElement(sage.Element):
             for coefficient in reversed(coefficients):
                 answer = answer * value + coefficient * identity
             return answer
+        if isinstance(value, PolynomialElement) and value._parent is self._parent:
+            return self._compose_same_parent(value)
         if self._has_fmpz_polynomial_resource():
             ffi = _flint_ffi_module()
             resource = self._exact_polynomial_resource()

@@ -1,0 +1,366 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "extension-polynomial-resource-contract",
+  "title": "Finite extension polynomial resource contract",
+  "lane": "integration",
+  "status": "complete",
+  "owner": "user",
+  "objective": "Specify and validate a storage-neutral generated-resource contract for dense univariate polynomials over finite extension fields, including exact Sage semantics, one bulk coordinate boundary, differential oracles, and measured scalar-boundary costs without implementing shared FFI",
+  "base_commit": "e2ad41d6662c924b3db35e11a533caef7a71b825",
+  "claims": [
+    "src/lib/sagejs/polynomial_algorithms/extension_resource_contract.py",
+    "test/polynomial-extension-resource-contract.cjs",
+    "bench/polynomial-extension-resource-contract.cjs",
+    "architecture/package-graph.json",
+    "test/node-test-manifest.cjs",
+    "pyrightconfig.json"
+  ],
+  "dependencies": [],
+  "references": [
+    "SageMath finite field and polynomial semantics",
+    "FLINT fq, fq_nmod, and fq_default APIs"
+  ],
+  "architecture": {
+    "strategy": "external-library",
+    "fallback": "tested-capability",
+    "oracles": [
+      "CPython contract tests",
+      "Sage.js dynamic execution",
+      "SageMath finite-extension polynomial behavior"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "fallback",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "node test/polynomial-extension-resource-contract.cjs",
+    "node bench/polynomial-extension-resource-contract.cjs",
+    "pnpm exec pyright --pythonversion 3.11 src/lib/sagejs/polynomial_algorithms/extension_resource_contract.py",
+    "pnpm architecture:check",
+    "pnpm test:portable",
+    "pnpm test:baselib:strict"
+  ],
+  "runs": [
+    {
+      "command": "node test/polynomial-extension-resource-contract.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.61,
+      "started_at": "2026-08-12T11:33:52.097Z",
+      "commit": "91fd558d715025b90fd869641ade3694ac5871c8",
+      "workspace_fingerprint": "cacd706dda55d2708aed5df7dac2eed8e50603b12ea1f2beb937e1f2ac1c5720",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/polynomial-extension-resource-contract.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 26.186,
+      "started_at": "2026-08-12T11:33:55.310Z",
+      "commit": "91fd558d715025b90fd869641ade3694ac5871c8",
+      "workspace_fingerprint": "cacd706dda55d2708aed5df7dac2eed8e50603b12ea1f2beb937e1f2ac1c5720",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm exec pyright --pythonversion 3.11 src/lib/sagejs/polynomial_algorithms/extension_resource_contract.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.171,
+      "started_at": "2026-08-12T11:34:22.194Z",
+      "commit": "91fd558d715025b90fd869641ade3694ac5871c8",
+      "workspace_fingerprint": "cacd706dda55d2708aed5df7dac2eed8e50603b12ea1f2beb937e1f2ac1c5720",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 14.06,
+      "started_at": "2026-08-12T11:34:24.013Z",
+      "commit": "91fd558d715025b90fd869641ade3694ac5871c8",
+      "workspace_fingerprint": "cacd706dda55d2708aed5df7dac2eed8e50603b12ea1f2beb937e1f2ac1c5720",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 14.376,
+      "started_at": "2026-08-12T11:34:38.681Z",
+      "commit": "91fd558d715025b90fd869641ade3694ac5871c8",
+      "workspace_fingerprint": "cacd706dda55d2708aed5df7dac2eed8e50603b12ea1f2beb937e1f2ac1c5720",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:native",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 435.951,
+      "started_at": "2026-08-12T11:35:22.375Z",
+      "commit": "91fd558d715025b90fd869641ade3694ac5871c8",
+      "workspace_fingerprint": "cacd706dda55d2708aed5df7dac2eed8e50603b12ea1f2beb937e1f2ac1c5720",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node test/polynomial-extension-resource-contract.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.564,
+      "started_at": "2026-08-12T11:45:19.150Z",
+      "commit": "e51528c1042bf37cdd9b50cc44437fb4fac7e399",
+      "workspace_fingerprint": "076f7ed9ba832021a348221f316dc782f537331980a13b5d35ce8e410eb8123d",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/polynomial-extension-resource-contract.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 23.803,
+      "started_at": "2026-08-12T11:45:22.295Z",
+      "commit": "e51528c1042bf37cdd9b50cc44437fb4fac7e399",
+      "workspace_fingerprint": "076f7ed9ba832021a348221f316dc782f537331980a13b5d35ce8e410eb8123d",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm exec pyright --pythonversion 3.11 src/lib/sagejs/polynomial_algorithms/extension_resource_contract.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.092,
+      "started_at": "2026-08-12T11:45:46.693Z",
+      "commit": "e51528c1042bf37cdd9b50cc44437fb4fac7e399",
+      "workspace_fingerprint": "076f7ed9ba832021a348221f316dc782f537331980a13b5d35ce8e410eb8123d",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 13.18,
+      "started_at": "2026-08-12T11:45:48.378Z",
+      "commit": "e51528c1042bf37cdd9b50cc44437fb4fac7e399",
+      "workspace_fingerprint": "076f7ed9ba832021a348221f316dc782f537331980a13b5d35ce8e410eb8123d",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 13.194,
+      "started_at": "2026-08-12T11:46:02.159Z",
+      "commit": "e51528c1042bf37cdd9b50cc44437fb4fac7e399",
+      "workspace_fingerprint": "076f7ed9ba832021a348221f316dc782f537331980a13b5d35ce8e410eb8123d",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node test/polynomial-extension-resource-contract.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 5.494,
+      "started_at": "2026-08-12T11:58:24.158Z",
+      "commit": "a2d3e8ee2ad19f3ad055da8859f8e6c26c1b5492",
+      "workspace_fingerprint": "ab63ba1659f80ff7045f4e9c4ea393cebd885deeb2701f618ecb58fa412a98a5",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/polynomial-extension-resource-contract.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 23.778,
+      "started_at": "2026-08-12T11:58:30.249Z",
+      "commit": "a2d3e8ee2ad19f3ad055da8859f8e6c26c1b5492",
+      "workspace_fingerprint": "ab63ba1659f80ff7045f4e9c4ea393cebd885deeb2701f618ecb58fa412a98a5",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm exec pyright --pythonversion 3.11 src/lib/sagejs/polynomial_algorithms/extension_resource_contract.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.244,
+      "started_at": "2026-08-12T11:58:54.765Z",
+      "commit": "a2d3e8ee2ad19f3ad055da8859f8e6c26c1b5492",
+      "workspace_fingerprint": "ab63ba1659f80ff7045f4e9c4ea393cebd885deeb2701f618ecb58fa412a98a5",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 14.692,
+      "started_at": "2026-08-12T11:59:07.050Z",
+      "commit": "a2d3e8ee2ad19f3ad055da8859f8e6c26c1b5492",
+      "workspace_fingerprint": "ab63ba1659f80ff7045f4e9c4ea393cebd885deeb2701f618ecb58fa412a98a5",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 13.761,
+      "started_at": "2026-08-12T11:59:22.411Z",
+      "commit": "a2d3e8ee2ad19f3ad055da8859f8e6c26c1b5492",
+      "workspace_fingerprint": "ab63ba1659f80ff7045f4e9c4ea393cebd885deeb2701f618ecb58fa412a98a5",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:native",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 399.581,
+      "started_at": "2026-08-12T12:01:11.228Z",
+      "commit": "a2d3e8ee2ad19f3ad055da8859f8e6c26c1b5492",
+      "workspace_fingerprint": "ab63ba1659f80ff7045f4e9c4ea393cebd885deeb2701f618ecb58fa412a98a5",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node test/polynomial-extension-resource-contract.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 5.724,
+      "started_at": "2026-08-12T12:16:49.734Z",
+      "commit": "18ffe5374368e304c8779dc56c9968be1eef8d07",
+      "workspace_fingerprint": "d9ea9fd1e2606245bac907e2e392a85b47909591921b257d14a8c8f32159a41f",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm exec pyright --pythonversion 3.11 src/lib/sagejs/polynomial_algorithms/extension_resource_contract.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.396,
+      "started_at": "2026-08-12T12:16:56.124Z",
+      "commit": "18ffe5374368e304c8779dc56c9968be1eef8d07",
+      "workspace_fingerprint": "d9ea9fd1e2606245bac907e2e392a85b47909591921b257d14a8c8f32159a41f",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 14.239,
+      "started_at": "2026-08-12T12:16:58.152Z",
+      "commit": "18ffe5374368e304c8779dc56c9968be1eef8d07",
+      "workspace_fingerprint": "d9ea9fd1e2606245bac907e2e392a85b47909591921b257d14a8c8f32159a41f",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 3.154,
+      "started_at": "2026-08-12T12:17:13.015Z",
+      "commit": "18ffe5374368e304c8779dc56c9968be1eef8d07",
+      "workspace_fingerprint": "d9ea9fd1e2606245bac907e2e392a85b47909591921b257d14a8c8f32159a41f",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 3.088,
+      "started_at": "2026-08-12T12:18:58.344Z",
+      "commit": "18ffe5374368e304c8779dc56c9968be1eef8d07",
+      "workspace_fingerprint": "b4a85df80bcc14f4be5072f1937fc576bc13c7c4935c8e38418351f921eb8c9e",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 13.251,
+      "started_at": "2026-08-12T12:19:20.586Z",
+      "commit": "18ffe5374368e304c8779dc56c9968be1eef8d07",
+      "workspace_fingerprint": "80fbc5b67e446cdb24aeb669a959a8f982d2d2fd94a38535c03b84f4d7ae734e",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 41.875,
+      "started_at": "2026-08-12T12:19:40.936Z",
+      "commit": "18ffe5374368e304c8779dc56c9968be1eef8d07",
+      "workspace_fingerprint": "80fbc5b67e446cdb24aeb669a959a8f982d2d2fd94a38535c03b84f4d7ae734e",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 13.488,
+      "started_at": "2026-08-12T12:20:47.390Z",
+      "commit": "18ffe5374368e304c8779dc56c9968be1eef8d07",
+      "workspace_fingerprint": "9f0181a7e0de6b218017fc159d5be22c2afb9ccdc4827a059d3b1d515ea1e9b1",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 13.321,
+      "started_at": "2026-08-12T12:21:01.474Z",
+      "commit": "18ffe5374368e304c8779dc56c9968be1eef8d07",
+      "workspace_fingerprint": "9f0181a7e0de6b218017fc159d5be22c2afb9ccdc4827a059d3b1d515ea1e9b1",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 41.661,
+      "started_at": "2026-08-12T12:21:15.424Z",
+      "commit": "18ffe5374368e304c8779dc56c9968be1eef8d07",
+      "workspace_fingerprint": "9f0181a7e0de6b218017fc159d5be22c2afb9ccdc4827a059d3b1d515ea1e9b1",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node test/polynomial-extension-resource-contract.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 5.325,
+      "started_at": "2026-08-12T12:22:23.791Z",
+      "commit": "18ffe5374368e304c8779dc56c9968be1eef8d07",
+      "workspace_fingerprint": "9f0181a7e0de6b218017fc159d5be22c2afb9ccdc4827a059d3b1d515ea1e9b1",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/polynomial-extension-resource-contract.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 23.743,
+      "started_at": "2026-08-12T12:22:29.716Z",
+      "commit": "18ffe5374368e304c8779dc56c9968be1eef8d07",
+      "workspace_fingerprint": "9f0181a7e0de6b218017fc159d5be22c2afb9ccdc4827a059d3b1d515ea1e9b1",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm exec pyright --pythonversion 3.11 src/lib/sagejs/polynomial_algorithms/extension_resource_contract.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.162,
+      "started_at": "2026-08-12T12:22:54.063Z",
+      "commit": "18ffe5374368e304c8779dc56c9968be1eef8d07",
+      "workspace_fingerprint": "9f0181a7e0de6b218017fc159d5be22c2afb9ccdc4827a059d3b1d515ea1e9b1",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Defines the strict storage-neutral contract for generated finite-extension FqContext, FqElement, and FqPolynomial resources without inventing a fake foreign resource implementation. Context-dependent elements and polynomials are independently owned self-contained handles whose adapters retain a shared reference-counted context; closing the public context releases only its reference, operations on a surviving dependent can retain that live context for a new result, and destruction waits for the last dependent clear. The executable close schedule pins that behavior while documenting the current declaration-schema gap for dependent-owned resources. The contract also pins exact context identity, deterministic modulus metadata, Sage-compatible Unicode letter-leading and alphanumeric-or-underscore generator names, low-to-high polynomial and power-basis coordinate ordering, canonical residues, trailing-zero normalization, immutable descriptor-plus-coordinate serialization, and one synchronous bulk construction/export callback. Unicode general categories are used because the Sage.js string runtime currently lacks Unicode-complete isalpha/isalnum methods; polynomial-algorithms therefore declares its dependency on python-stdlib. A custom GF(5^3) oracle verifies the nontrivial coordinate table [[1,2,3],[4,0,1],[0,2,0]] and coefficient strings against SageMath and the current FLINT-backed Sage.js field. For a 1,000-coefficient GF(3^2) polynomial, current Sage.js scalar construction and SagePack load each measured about 1,000 ms, while validating the complete 2,000-coordinate table and calling one sentinel callback measured about 5 ms; the benchmark explicitly labels that last number as protocol overhead only, not FFI resource performance.",
+    "risks": [
+      "This lane intentionally specifies but does not implement FqContext, FqElement, or FqPolynomial declarations, generated adapters, public wiring, sanitizer-backed lifecycle execution, or WASM lowering.",
+      "The current declaration schema cannot attach an owner to an independently clearable owned resource. Initial generated adapters must therefore use self-contained element and polynomial handles that retain/release a shared context internally; dependent-owned schema support is an optional later compiler refinement with the same public semantics.",
+      "Power-basis coordinates are an interchange boundary, not canonical live storage; an integration that retains or exposes the host table would recreate the representation coupling this design avoids.",
+      "Word-sized characteristics can use packed unsigned residues, but larger characteristics need a compiler-owned exact-integer coordinate region without changing the contract.",
+      "The full pnpm test:native command ran for about 436 seconds and reached test/native-kernel.cjs, then failed an inherited foreign-header cache assertion: it observed packages/flint/include/sagejs/fmpq_matrix_ffi.h where the test expected its temporary override-prefix copy. No claimed source in this contract-only lane was involved, so the focused validation set records the executable contract, benchmark, Pyright, strict baselib, and architecture checks while the shared native-header test is repaired centrally."
+    ],
+    "next_steps": [
+      "Generate owned context, element, and polynomial resources whose self-contained dependent handles retain/release the shared context and follow the pinned deterministic close/finalizer schedule.",
+      "Implement one bulk power-basis construction/export adapter over FLINT fq_default, selecting fq_nmod or fq storage internally without exposing that choice to public mathematics.",
+      "Wire the public GF(p^n)[x] parent to resource-to-resource arithmetic and use bulk export only for explicit coefficients, formatting, and SagePack boundaries.",
+      "Add sanitizer-backed context/element/polynomial lifetime schedules and prove a credible WASM lowering before replacing the legacy opaque backend."
+    ]
+  }
+}
