@@ -88,13 +88,13 @@
     ],
     "acceptance": {
       "correctness": "All semantic differentials agree between generated-resource execution, capability-disabled packed execution, and SageMath where formats are comparable.",
-      "boundary": "Generated adapter audit proves one checked host-list packing pass, one byte-region ingress, one borrowed parse, zero scalar coefficient calls, and no stream-sized BigInt.",
+      "boundary": "Generated adapter audit proves one checked host-list packing operation, one byte-region creation, one borrowed parse, zero scalar coefficient calls, and no stream-sized BigInt.",
       "performance": "On each measured host, report fresh-process setup, first invocation, and a warm median separately. For 5001 small dense coefficients, warm public construction for both ZZ[x] and QQ[x] must be no slower than 2.0x SageMath on the same host. Also test 20001 coefficients and skewed inputs for linear scaling in coefficient count plus encoded bytes; never encode a single-host crossover as a universal constant.",
       "portability": "Linux x64 and macOS arm64 must exercise the generated resource; Windows x64 and Wasm require either that path or a tested correct capability fallback.",
       "maintainability": "The implementation adds declarations and ordinary Python wiring but no compiler branch specific to polynomial construction.",
       "stage_gates": {
         "canonical_pack": "The benchmark must time the checked direct host-list pack separately for ZZ and QQ, and a route/audit test must prove that public canonical-list construction actually uses it rather than merely leaving the primitive available.",
-        "byte_region": "The benchmark must time region creation and the borrowed FLINT parse separately; audit must reject Buffer reverse/hex, stream-sized BigInt, and fmpz payload marshalling in the public constructor.",
+        "byte_region": "The current benchmark records ByteRegion creation as a baseline-only stage. Once the required parser API exists, it must time region creation and the borrowed FLINT parse separately; audit must reject Buffer reverse/hex, stream-sized BigInt, and fmpz payload marshalling in the public constructor.",
         "end_to_end": "The same benchmark must retain public first and warm measurements. Passing only the ByteRegion stage or only the canonical-pack stage is insufficient: both route assertions and the end-to-end same-host SageMath ratio must pass.",
         "skew": "Run the public path with one 65538-bit value among small values and report encoded bytes; time and memory must scale with total encoded bytes, not maximum limb size times coefficient count."
       }
@@ -150,7 +150,7 @@
       "full_current_payload_ms": 0.7333755493164062,
       "bytes_to_bigint_ms": 0.1270771026611328,
       "generated_deserialize_ms": 0.20241737365722656,
-      "proposed_byte_region_ingress_ms": 0.06628036499023438,
+      "byte_region_creation_ms": 0.06628036499023438,
       "encoded_bytes": 28746,
       "skew_checked_host_list_pack_ms": 0.24271011352539062,
       "skew_public_construct_ms": 2.057313919067383,
@@ -166,7 +166,7 @@
       "full_current_payload_ms": 1.1489391326904297,
       "bytes_to_bigint_ms": 0.21386146545410156,
       "generated_deserialize_ms": 0.5452632904052734,
-      "proposed_byte_region_ingress_ms": 0.06461143493652344,
+      "byte_region_creation_ms": 0.06461143493652344,
       "encoded_bytes": 53033,
       "skew_checked_host_list_pack_ms": 1.931905746459961,
       "skew_public_construct_ms": 22.83191680908203,
@@ -282,7 +282,7 @@
           "full_current_payload_ms": 0.6287097930908203,
           "bytes_to_bigint_ms": 0.10633468627929688,
           "generated_deserialize_ms": 0.1327991485595703,
-          "proposed_byte_region_ingress_ms": 0.027418136596679688,
+          "byte_region_creation_ms": 0.027418136596679688,
           "encoded_bytes": 28746
         },
         "QQ": {
@@ -294,7 +294,7 @@
           "full_current_payload_ms": 0.9086132049560547,
           "bytes_to_bigint_ms": 0.16069412231445312,
           "generated_deserialize_ms": 0.4723072052001953,
-          "proposed_byte_region_ingress_ms": 0.029087066650390625,
+          "byte_region_creation_ms": 0.029087066650390625,
           "encoded_bytes": 53033
         }
       },
@@ -415,7 +415,7 @@
           "full_current_payload_ms": 0.8227825164794922,
           "bytes_to_bigint_ms": 0.08821487426757812,
           "generated_deserialize_ms": 0.1270771026611328,
-          "proposed_byte_region_ingress_ms": 0.02574920654296875,
+          "byte_region_creation_ms": 0.02574920654296875,
           "encoded_bytes": 28746,
           "skew_checked_host_list_pack_ms": 0.6184577941894531,
           "skew_public_construct_ms": 1.4905929565429688,
@@ -431,7 +431,7 @@
           "full_current_payload_ms": 0.8397102355957031,
           "bytes_to_bigint_ms": 0.1556873321533203,
           "generated_deserialize_ms": 0.4730224609375,
-          "proposed_byte_region_ingress_ms": 0.026941299438476562,
+          "byte_region_creation_ms": 0.026941299438476562,
           "encoded_bytes": 53033,
           "skew_checked_host_list_pack_ms": 1.2395381927490234,
           "skew_public_construct_ms": 17.743349075317383,
@@ -520,7 +520,7 @@
           "full_current_payload_ms": 2.9184818267822266,
           "bytes_to_bigint_ms": 0.6859302520751953,
           "generated_deserialize_ms": 0.5311965942382812,
-          "proposed_byte_region_ingress_ms": 0.06699562072753906,
+          "byte_region_creation_ms": 0.06699562072753906,
           "encoded_bytes": 114924,
           "skew_checked_host_list_pack_ms": 0.8254051208496094,
           "skew_public_construct_ms": 7.345914840698242,
@@ -536,7 +536,7 @@
           "full_current_payload_ms": 6.087541580200195,
           "bytes_to_bigint_ms": 1.3546943664550781,
           "generated_deserialize_ms": 1.9619464874267578,
-          "proposed_byte_region_ingress_ms": 0.08916854858398438,
+          "byte_region_creation_ms": 0.08916854858398438,
           "encoded_bytes": 212134,
           "skew_checked_host_list_pack_ms": 7.575750350952148,
           "skew_public_construct_ms": 105.62944412231445,
