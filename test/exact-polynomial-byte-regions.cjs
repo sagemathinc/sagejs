@@ -103,6 +103,12 @@ huge_count = bytearray(zero_z)
 for byte in range(8):
     huge_count[8 + byte] = 255
 expect_invalid(huge_count, False)
+try:
+    decode_exact_polynomial_region(huge_count, False, 0, None, 2**31 - 1)
+except OverflowError:
+    pass
+else:
+    raise AssertionError("target coefficient-count limit was not enforced")
 
 # Signed magnitudes are little-endian, minimal, and have no negative zero.
 negative_zero = bytearray(zero_z)
@@ -150,8 +156,8 @@ assert.equal(
 const sagejsWitness = String.raw`
 ${commonWitness}
 
-# Existing resource egress is already the desired one-copy direction.  It must
-# remain byte-for-byte identical to the storage-neutral contract.
+# Existing Node resource egress already makes the required native-to-host copy.
+# It must remain byte-for-byte identical to the storage-neutral contract.
 RZ = PolynomialRing(ZZ, "x")
 z_values = [0, -1, 2**137 + 3, -(2**521) + 5]
 z = RZ(z_values)

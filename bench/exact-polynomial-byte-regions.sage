@@ -6,10 +6,14 @@ Run with:
         bench/exact-polynomial-byte-regions.sage
 
 `byte_region_copy_ms` is deliberately not a claim about the not-yet-written
-polynomial parser.  It isolates the generated one-copy host ingress that the
-future resource-to-resource deserializer will borrow.  FLINT must still parse
-and initialize its coefficients, but it will no longer build a stream-sized
-host `BigInt`, marshal that to `fmpz`, and reconstruct the input bytes.
+polynomial parser.  On Node it isolates the generated host-to-owned-region
+copy that the future resource-to-resource deserializer will borrow.  A Wasm
+lowering has one host-boundary copy plus owned-region materialization and is
+not measured here.  FLINT must still parse and initialize its coefficients,
+but it will no longer build a stream-sized host `BigInt`, marshal that to
+`fmpz`, and reconstruct the input bytes.  `current_deserialize_ms` includes
+both avoidable transport reconstruction and unavoidable parse/import work;
+it is not an estimate of the future parser's speedup.
 """
 
 import time
@@ -117,4 +121,3 @@ benchmark_case(
     skew_integer_values,
     False,
 )
-

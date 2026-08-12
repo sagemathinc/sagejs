@@ -7,8 +7,10 @@ directly from a borrowed byte-region resource.
 
 The intended host boundary is:
 
-1. `FlintByteRegion.from_bytes(source)` copies host bytes exactly once into an
-   owned foreign byte region.
+1. `FlintByteRegion.from_bytes(source)` crosses the host boundary once into an
+   owned foreign byte region.  On Node this can be one literal copy.  A Wasm
+   host first copies into linear memory and may then materialize the owned C
+   region, so the contract does not claim one physical copy there.
 2. `fmpz_polynomial_from_byte_region(region, offset, length)` or
    `fmpq_polynomial_from_byte_region(region, offset, length)` borrows that
    region, validates the selected range, and constructs a temporary FLINT
@@ -48,13 +50,16 @@ Their C symbols should accept a read-only borrowed
 `sagejs_flint_byte_region_t` plus `uint64_t offset` and `uint64_t length`.
 The adapter checks `offset <= region.length` and
 `length <= region.length - offset` before parsing, so addition cannot wrap.
-Both functions allocate and use `Status(1, exception=ValueError, ...)` for an
-invalid canonical stream, invalid range, or a count which cannot fit FLINT's
-`slong`.  (This reference decoder distinguishes the last case as
-`OverflowError` for diagnostics.)  They are non-consuming: success and failure
-leave the byte region reusable.  Node and Wasm use the same declaration.  Wasm
-borrows the copied linear-memory region only for the synchronous call and must
-not retain its address.
+It also checks the stream's coefficient count against the target's `size_t`,
+FLINT `slong`, and `WORD_MAX`; those are platform limits, not a hard-coded
+63-bit promise.  Both functions allocate and use
+`Status(1, exception=ValueError, ...)` for an invalid canonical stream, invalid
+range, or unrepresentable count.  (This reference decoder distinguishes a
+caller-supplied platform bound as `OverflowError` for diagnostics.)  They are
+non-consuming: success and failure leave the byte region reusable.  Node and
+Wasm may use the same declaration.  Wasm borrows the owned region only for the
+synchronous call and must not retain its address; its lowering must explicitly
+account for both the host-boundary copy and owned-region materialization.
 
 This replaces the current `payload: fmpz_t, byte_length: uint64_t` ABI.  That
 ABI converts bytes to hexadecimal, constructs a stream-sized host `BigInt`,
@@ -75,7 +80,7 @@ FORMAT_VERSION = 1
 ENVELOPE_BYTES = 16
 SIGN_BIT = 0x80000000
 LENGTH_MASK = 0x7FFFFFFF
-MAX_FLINT_LENGTH = (1 << 63) - 1
+MAX_WIRE_COUNT = (1 << 64) - 1
 
 
 def _exact_index(value: object, name: str) -> int:
@@ -174,8 +179,8 @@ def encode_integer_polynomial_region(coefficients: Sequence[object]) -> bytes:
     values = [_exact_index(value, "coefficient") for value in coefficients]
     while values and values[-1] == 0:
         values.pop()
-    if len(values) > MAX_FLINT_LENGTH:
-        raise OverflowError("integer polynomial is too long for FLINT")
+    if len(values) > MAX_WIRE_COUNT:
+        raise OverflowError("integer polynomial is too long for the wire format")
     output = bytearray(SJPZ_MAGIC)
     output.extend([FORMAT_VERSION, 0, 0, 0])
     _write_u64(output, len(values))
@@ -196,8 +201,8 @@ def encode_rational_polynomial_region(
     values = [canonical_rational_parts(top, bottom) for top, bottom in coefficients]
     while values and values[-1][0] == 0:
         values.pop()
-    if len(values) > MAX_FLINT_LENGTH:
-        raise OverflowError("rational polynomial is too long for FLINT")
+    if len(values) > MAX_WIRE_COUNT:
+        raise OverflowError("rational polynomial is too long for the wire format")
     output = bytearray(SJPQ_MAGIC)
     output.extend([FORMAT_VERSION, 0, 0, 0])
     _write_u64(output, len(values))
@@ -251,6 +256,7 @@ def decode_exact_polynomial_region(
     rational: bool,
     offset: object = 0,
     length: object | None = None,
+    maximum_coefficient_count: object | None = None,
 ) -> tuple[ExactCoefficient, ...]:
     """Validate and decode one selected canonical SJPZ or SJPQ range.
 
@@ -271,8 +277,12 @@ def decode_exact_polynomial_region(
         if _checked_byte(source, start + index) != 0:
             raise ValueError("exact polynomial byte-region reserved bytes are nonzero")
     coefficient_count = _read_u64(source, start + 8)
-    if coefficient_count > MAX_FLINT_LENGTH:
-        raise OverflowError("exact polynomial is too long for FLINT")
+    if maximum_coefficient_count is not None:
+        maximum = _exact_index(maximum_coefficient_count, "maximum coefficient count")
+        if maximum < 0:
+            raise ValueError("maximum coefficient count must be nonnegative")
+        if coefficient_count > maximum:
+            raise OverflowError("exact polynomial is too long for the target")
     minimum = 8 if rational else 4
     if coefficient_count > (limit - start - ENVELOPE_BYTES) // minimum:
         raise ValueError("exact polynomial coefficient stream is truncated")
