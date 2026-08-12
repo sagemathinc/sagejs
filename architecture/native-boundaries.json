@@ -17,7 +17,7 @@
     "declared-ffi": 212,
     "declared-ffi-resource": 14,
     "napi-export": 292,
-    "runtime-intrinsic": 135,
+    "runtime-intrinsic": 136,
     "wasm-export": 46
   },
   "boundaries": [
@@ -6005,6 +6005,14 @@
       "path": "tools/python/contract.ts",
       "export": "callable_instance_class",
       "symbol": "ρσ_callable_instance_class",
+      "disposition": "runtime-primitive"
+    },
+    {
+      "id": "runtime:canonical_rational_values_to_packed_bytes",
+      "kind": "runtime-intrinsic",
+      "path": "tools/python/contract.ts",
+      "export": "canonical_rational_values_to_packed_bytes",
+      "symbol": "ρσ_canonical_rational_values_to_packed_bytes",
       "disposition": "runtime-primitive"
     },
     {

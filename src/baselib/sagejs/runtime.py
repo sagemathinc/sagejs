@@ -25,6 +25,7 @@ are the bootstrap implementation used by older checked-in compilers.
 # globals: ρσ_integer_buffer_to_packed_bytes
 # globals: ρσ_exact_integer_values_from_packed_bytes
 # globals: ρσ_exact_integer_values_to_packed_bytes
+# globals: ρσ_canonical_rational_values_to_packed_bytes
 # globals: ρσ_exact_integer_range_iterator, ρσ_exact_integer_range_values
 # globals: ρσ_reduced_rational_values_from_parts, ρσ_reference_matrix_flatten
 # globals: ρσ_reference_matrix_transpose
@@ -169,6 +170,17 @@ def integer_buffer_to_packed_bytes(source):
 def exact_integer_values_to_packed_bytes(values):
     """Encode exact values as canonical variable-length signed magnitudes."""
     return ρσ_exact_integer_values_to_packed_bytes(values)
+
+
+def canonical_rational_values_to_packed_bytes(values, rational_class, parent):
+    """Encode canonical integers/rationals, or return `undefined`.
+
+    This fail-closed representation primitive recognizes primitive exact
+    integers and frozen instances of `rational_class` owned by `parent`. It
+    invokes no language-level coercion or conversion protocol. Callers retain
+    their ordinary coercion path for every unrecognized value.
+    """
+    return ρσ_canonical_rational_values_to_packed_bytes(values, rational_class, parent)
 
 
 def exact_integer_values_from_packed_bytes(source, count, start=0):
