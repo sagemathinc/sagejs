@@ -157,6 +157,12 @@ function print_top_level_usage() {
   console.log("  -h, --help      show this help");
   console.log("  -V, --version   show the Sage.js version\n");
 
+  console.log(label("Interactive timing:"));
+  console.log("  time EXPR       report CPU and wall time in Sage mode");
+  console.log("  %time --breakdown EXPR");
+  console.log("                  list module, addon, and native-kernel loading");
+  console.log("  %timeit EXPR    measure warmed steady-state execution\n");
+
   console.log(label("Examples:"));
   console.log("  " + command(executable));
   console.log("  " + command(executable + " --python"));

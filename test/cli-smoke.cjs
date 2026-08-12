@@ -56,6 +56,7 @@ assert.match(help, /\.py files use Python and \.sage files use Sage/);
 assert.match(help, /--python\s+ordinary Python syntax and division/);
 assert.match(help, /--wolfram\s+experimental Wolfram Language frontend/);
 assert.match(help, /sagejs --install-jupyter-kernel/);
+assert.match(help, /%time --breakdown EXPR/);
 assert.match(help, /Advanced subcommands:/);
 assert.match(
   run(["compile", "--help"]),
@@ -142,6 +143,17 @@ assert.match(
   timeitOutput,
   /^[\d.]+ (?:ns|µs|ms|s) ± [\d.]+ (?:ns|µs|ms|s) per loop \(mean ± std\. dev\. of 3 runs, 2 loops each\)\n7\s*$/,
 );
+const timingBreakdownOutput = run(
+  [],
+  "%time --breakdown import colorsys\n",
+);
+assert.match(timingBreakdownOutput, /^CPU times:/);
+assert.match(timingBreakdownOutput, /\nWall time: [\d.]+ms\n/);
+assert.match(
+  timingBreakdownOutput,
+  /\nInitialization \(included in wall time\): [\d.]+ms\n/,
+);
+assert.match(timingBreakdownOutput, /\n  Module colorsys: [\d.]+ms\n/);
 const pythonTimeitOutput = run(
   ["--python"],
   [

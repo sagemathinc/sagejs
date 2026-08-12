@@ -82,10 +82,21 @@ async function main(t) {
     /^CPU times: user [\d.]+ms, sys: [\d.]+ms, total: [\d.]+ms\nWall time: [\d.]+ms\n$/,
   );
   const coldImport = await session.evaluate("%time import colorsys");
-  assert.match(coldImport.stdout, /\nInitialization: [\d.]+ms\n/);
-  assert.match(coldImport.stdout, /\n  import colorsys: [\d.]+ms\n/);
+  assert.match(
+    coldImport.stdout,
+    /\nInitialization \(included in wall time\): [\d.]+ms\n/,
+  );
+  assert.doesNotMatch(coldImport.stdout, /\n  Module /);
+  const detailedImport = await session.evaluate(
+    "%time --breakdown import calendar",
+  );
+  assert.match(
+    detailedImport.stdout,
+    /\nInitialization \(included in wall time\): [\d.]+ms\n/,
+  );
+  assert.match(detailedImport.stdout, /\n  Module calendar: [\d.]+ms\n/);
   const warmImport = await session.evaluate("%time import colorsys");
-  assert.doesNotMatch(warmImport.stdout, /\nInitialization:/);
+  assert.doesNotMatch(warmImport.stdout, /\nInitialization/);
   await session.evaluate("timeit_counter = 0");
   const timeit = await session.evaluate(
     "%timeit -n 2 -r 3 timeit_counter += 1",

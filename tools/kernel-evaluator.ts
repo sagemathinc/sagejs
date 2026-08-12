@@ -24,6 +24,7 @@ import {
   formatExecutionTiming,
   installTimingHooks,
   measureExecution,
+  parseTimeDirective,
   parseTimeitDirective,
   TimeitOptions,
 } from "./timing";
@@ -423,16 +424,8 @@ export function createKernelEvaluator({
     ): KernelEvaluation {
       const timeit = parseTimeitDirective(source);
       if (timeit) source = timeit.source;
-      let timed = false;
-      const timingMatch =
-        source.match(/^[ \t]*%time[ \t]+/) ??
-        (language === "sage"
-          ? source.match(/^[ \t]*time[ \t]+/)
-          : null);
-      if (timingMatch) {
-        timed = true;
-        source = source.slice(timingMatch[0].length);
-      }
+      const timing = parseTimeDirective(source, language === "sage");
+      if (timing) source = timing.source;
       const javascript = compile(source, filename, language, timeit?.options);
       const execution = measureExecution(() => {
         if (interruptState) Atomics.store(interruptState, 1, 1);
@@ -460,7 +453,13 @@ export function createKernelEvaluator({
       const display = publishResult ? richDisplay(value) : undefined;
       if (publishResult) global._ = value;
       const durationMs = execution.timing.wallMs;
-      if (timed) onOutput(`${formatExecutionTiming(execution.timing)}\n`);
+      if (timing) {
+        onOutput(
+          `${formatExecutionTiming(execution.timing, {
+            breakdown: timing.breakdown,
+          })}\n`,
+        );
+      }
       return {
         repr,
         durationMs,

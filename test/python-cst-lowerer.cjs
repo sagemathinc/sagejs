@@ -330,7 +330,11 @@ test("compiler-emitted timeit aborts cleanly after an exception", async () => {
       () => new Script(output.get()).runInThisContext(),
       (error) => error === failure,
     );
-    measureInitialization("unrelated later initialization", () => undefined);
+    measureInitialization(
+      "runtime",
+      "unrelated later initialization",
+      () => undefined,
+    );
     assert.deepEqual(reports, []);
   } finally {
     uninstallTimingHooks();
@@ -380,7 +384,11 @@ test("compiler-emitted timing closes its collector when execution raises", async
       () => new Script(output.get()).runInThisContext(),
       (error) => error === failure,
     );
-    measureInitialization("unrelated later initialization", () => undefined);
+    measureInitialization(
+      "runtime",
+      "unrelated later initialization",
+      () => undefined,
+    );
 
     assert.equal(token.finished, true);
     assert.deepEqual(completedTiming.initialization, []);

@@ -1,0 +1,89 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "timing-load-breakdown",
+  "title": "Timing Load Breakdown",
+  "lane": "compiler-runtime",
+  "status": "active",
+  "owner": "user",
+  "objective": "Add opt-in execution timing breakdowns for observed module, addon, and native-kernel initialization without distorting statement timing",
+  "base_commit": "c592988d8f93aeb9f54190bb28d1cabdeace6887",
+  "claims": [
+    "tools/timing.ts",
+    "tools/repl.ts",
+    "tools/kernel-evaluator.ts",
+    "tools/runtime-bootstrap.ts",
+    "tools/resources.ts",
+    "tools/cli.js",
+    "src/output/codegen.py",
+    "test/timing-core.cjs",
+    "test/python-cst-lowerer.cjs",
+    "test/kernel.cjs",
+    "test/cli-smoke.cjs",
+    "docs/timing.md"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "compiler-infrastructure",
+    "fallback": "not-applicable",
+    "oracles": [
+      "deterministic timing clock and REPL/kernel integration tests"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm build",
+    "pnpm test:compiler",
+    "pnpm test:integration"
+  ],
+  "runs": [
+    {
+      "command": "pnpm build",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 178.191,
+      "started_at": "2026-08-12T03:56:08.288Z",
+      "commit": "c592988d8f93aeb9f54190bb28d1cabdeace6887",
+      "workspace_fingerprint": "78566660c26ee2fbbe73b6ec0bfc45069560ffa8ee311762168e3c69ac298d51",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:compiler",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 79.361,
+      "started_at": "2026-08-12T03:59:11.399Z",
+      "commit": "c592988d8f93aeb9f54190bb28d1cabdeace6887",
+      "workspace_fingerprint": "78566660c26ee2fbbe73b6ec0bfc45069560ffa8ee311762168e3c69ac298d51",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:integration",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 229.339,
+      "started_at": "2026-08-12T04:00:35.930Z",
+      "commit": "c592988d8f93aeb9f54190bb28d1cabdeace6887",
+      "workspace_fingerprint": "78566660c26ee2fbbe73b6ec0bfc45069560ffa8ee311762168e3c69ac298d51",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Adds display-only `%time --breakdown` and Sage `time --breakdown` parsing, typed nested initialization spans for Python modules, native addons, runtime modules, and first-load native kernels, compact aggregate-only default output, explicit inclusion in wall time, Node CPU reporting, browser wall-only formatting, CLI help, documentation, and deterministic host/kernel/compiler tests.",
+    "risks": [
+      "The integration receipt has five unrelated baseline failures: one superseded exact-matrix serialization counter and four stale FFI ratchets expecting three libraries and 190 declarations before M4RI. The current integration branch has already refreshed those ratchets and passes them.",
+      "Initialization spans are synchronous by design; future asynchronous lazy loaders need an async-aware span primitive before they can appear in the tree."
+    ],
+    "next_steps": [
+      "Integrate onto the current dense-qq-resources branch and run the refreshed integration suite.",
+      "Use the typed native-kernel spans in the separate cold-production-kernel performance ratchet."
+    ]
+  }
+}
