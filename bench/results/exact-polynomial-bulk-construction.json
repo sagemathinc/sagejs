@@ -1,6 +1,6 @@
 {
   "schema": "sagejs.benchmark/exact-polynomial-bulk-construction-v1",
-  "generated_at": "2026-08-12T14:47:25.286Z",
+  "generated_at": "2026-08-12T14:48:56.453Z",
   "host": {
     "platform": "linux",
     "architecture": "x64",
@@ -8,9 +8,9 @@
     "cpu": "AMD EPYC 7B13"
   },
   "repository": {
-    "commit": "78655f0df6b25cd800c701b9d28a3d4e4d647f71",
+    "commit": "37048b4604a18799cc56b17b204dada6121294b5",
     "branch": "agent/exact-poly-bulk-contract",
-    "dirty": true
+    "dirty": false
   },
   "configuration": {
     "count": 5001,
@@ -110,11 +110,11 @@
     "sagejs": {
       "ZZ": {
         "ok": true,
-        "process_ms": 719.560539,
-        "setup_ms": 17.7459716796875,
-        "first_ms": 65.55294990539551,
-        "warm_ms": 3.0050277709960938,
-        "first_delta_ms": 62.547922134399414,
+        "process_ms": 594.029168,
+        "setup_ms": 10.276556015014648,
+        "first_ms": 52.81710624694824,
+        "warm_ms": 2.972841262817383,
+        "first_delta_ms": 49.84426498413086,
         "summary": [
           5000,
           "-823",
@@ -125,11 +125,11 @@
       },
       "QQ": {
         "ok": true,
-        "process_ms": 935.5296240000002,
-        "setup_ms": 108.69479179382324,
-        "first_ms": 81.08353614807129,
-        "warm_ms": 9.313106536865234,
-        "first_delta_ms": 71.77042961120605,
+        "process_ms": 768.1702660000001,
+        "setup_ms": 72.67379760742188,
+        "first_ms": 71.34842872619629,
+        "warm_ms": 9.458065032958984,
+        "first_delta_ms": 61.890363693237305,
         "summary": [
           5000,
           "-823/25",
@@ -143,33 +143,33 @@
   "diagnostic_stages": {
     "ZZ": {
       "ok": true,
-      "process_ms": 908.3369659999998,
-      "normalize_ms": 1.0402202606201172,
-      "pack_body_ms": 1.0821819305419922,
-      "checked_host_list_pack_ms": 0.25773048400878906,
-      "full_current_payload_ms": 1.1394023895263672,
-      "bytes_to_bigint_ms": 0.13375282287597656,
-      "generated_deserialize_ms": 0.18405914306640625,
-      "proposed_byte_region_ingress_ms": 0.06985664367675781,
+      "process_ms": 697.1711709999998,
+      "normalize_ms": 0.7176399230957031,
+      "pack_body_ms": 1.417398452758789,
+      "checked_host_list_pack_ms": 0.3516674041748047,
+      "full_current_payload_ms": 0.7333755493164062,
+      "bytes_to_bigint_ms": 0.1270771026611328,
+      "generated_deserialize_ms": 0.20241737365722656,
+      "proposed_byte_region_ingress_ms": 0.06628036499023438,
       "encoded_bytes": 28746,
-      "skew_checked_host_list_pack_ms": 0.25916099548339844,
-      "skew_public_construct_ms": 2.1212100982666016,
+      "skew_checked_host_list_pack_ms": 0.24271011352539062,
+      "skew_public_construct_ms": 2.057313919067383,
       "skew_encoded_bytes": 33213,
       "skew_bits": 65538
     },
     "QQ": {
       "ok": true,
-      "process_ms": 1350.1842539999998,
-      "normalize_ms": 26.856184005737305,
-      "pack_body_ms": 1.6021728515625,
-      "checked_host_list_pack_ms": 2.317667007446289,
-      "full_current_payload_ms": 1.1947154998779297,
-      "bytes_to_bigint_ms": 0.23126602172851562,
-      "generated_deserialize_ms": 0.5326271057128906,
-      "proposed_byte_region_ingress_ms": 0.06270408630371094,
+      "process_ms": 1328.0154870000001,
+      "normalize_ms": 26.447057723999023,
+      "pack_body_ms": 1.5647411346435547,
+      "checked_host_list_pack_ms": 2.3207664489746094,
+      "full_current_payload_ms": 1.1489391326904297,
+      "bytes_to_bigint_ms": 0.21386146545410156,
+      "generated_deserialize_ms": 0.5452632904052734,
+      "proposed_byte_region_ingress_ms": 0.06461143493652344,
       "encoded_bytes": 53033,
-      "skew_checked_host_list_pack_ms": 1.8649101257324219,
-      "skew_public_construct_ms": 23.27275276184082,
+      "skew_checked_host_list_pack_ms": 1.931905746459961,
+      "skew_public_construct_ms": 22.83191680908203,
       "skew_encoded_bytes": 62313,
       "skew_bits": 65538
     }
@@ -310,8 +310,8 @@
       }
     },
     {
-      "label": "m1-warm-artifact-cache",
-      "generated_at": "2026-08-12T14:45:46.804Z",
+      "label": "m1-current-warm-artifact-cache",
+      "generated_at": "2026-08-12T14:48:17.377Z",
       "host": {
         "platform": "darwin",
         "architecture": "arm64",
@@ -319,7 +319,7 @@
         "cpu": "Apple M1 Max"
       },
       "repository": {
-        "commit": "78655f0df6b25cd800c701b9d28a3d4e4d647f71",
+        "commit": "9701542db9fac6a7c66f43835f6f6b16842799f5",
         "branch": "agent/exact-poly-bulk-contract",
         "dirty": false
       },
@@ -343,11 +343,11 @@
         "sagejs": {
           "ZZ": {
             "ok": true,
-            "process_ms": 318.479459,
-            "setup_ms": 6.690740585327148,
-            "first_ms": 34.9428653717041,
-            "warm_ms": 1.634359359741211,
-            "first_delta_ms": 33.30850601196289,
+            "process_ms": 327.368166,
+            "setup_ms": 7.50422477722168,
+            "first_ms": 35.017967224121094,
+            "warm_ms": 1.7647743225097656,
+            "first_delta_ms": 33.25319290161133,
             "summary": [
               5000,
               "-823",
@@ -358,11 +358,11 @@
           },
           "QQ": {
             "ok": true,
-            "process_ms": 396.7505829999999,
-            "setup_ms": 37.71829605102539,
-            "first_ms": 39.88146781921387,
-            "warm_ms": 5.40471076965332,
-            "first_delta_ms": 34.47675704956055,
+            "process_ms": 395.4508750000001,
+            "setup_ms": 38.33270072937012,
+            "first_ms": 39.49880599975586,
+            "warm_ms": 5.221366882324219,
+            "first_delta_ms": 34.27743911743164,
             "summary": [
               5000,
               "-823/25",
@@ -375,11 +375,11 @@
         "sage": {
           "ZZ": {
             "ok": true,
-            "process_ms": 2398.881375,
-            "setup_ms": 1.3915421441197395,
-            "first_ms": 0.13729184865951538,
-            "warm_ms": 0.08966680616140366,
-            "first_delta_ms": 0.047625042498111725,
+            "process_ms": 2390.791833,
+            "setup_ms": 1.4337925240397453,
+            "first_ms": 0.13654213398694992,
+            "warm_ms": 0.08974969387054443,
+            "first_delta_ms": 0.04679244011640549,
             "summary": [
               5000,
               "-823",
@@ -390,11 +390,11 @@
           },
           "QQ": {
             "ok": true,
-            "process_ms": 2405.858709,
-            "setup_ms": 4.673083312809467,
-            "first_ms": 0.2071671187877655,
-            "warm_ms": 0.1914994791150093,
-            "first_delta_ms": 0.015667639672756195,
+            "process_ms": 2390.3051670000004,
+            "setup_ms": 4.742208868265152,
+            "first_ms": 0.2009579911828041,
+            "warm_ms": 0.1882920041680336,
+            "first_delta_ms": 0.012665987014770508,
             "summary": [
               5000,
               "-823/25",
@@ -408,39 +408,143 @@
       "diagnostic_stages": {
         "ZZ": {
           "ok": true,
-          "process_ms": 345.367875,
-          "normalize_ms": 0.4303455352783203,
-          "pack_body_ms": 0.7848739624023438,
-          "checked_host_list_pack_ms": 0.1742839813232422,
-          "full_current_payload_ms": 0.8053779602050781,
-          "bytes_to_bigint_ms": 0.11086463928222656,
-          "generated_deserialize_ms": 0.13399124145507812,
-          "proposed_byte_region_ingress_ms": 0.027179718017578125,
-          "encoded_bytes": 28746
+          "process_ms": 383.5725,
+          "normalize_ms": 0.47206878662109375,
+          "pack_body_ms": 0.6918907165527344,
+          "checked_host_list_pack_ms": 0.1990795135498047,
+          "full_current_payload_ms": 0.8227825164794922,
+          "bytes_to_bigint_ms": 0.08821487426757812,
+          "generated_deserialize_ms": 0.1270771026611328,
+          "proposed_byte_region_ingress_ms": 0.02574920654296875,
+          "encoded_bytes": 28746,
+          "skew_checked_host_list_pack_ms": 0.6184577941894531,
+          "skew_public_construct_ms": 1.4905929565429688,
+          "skew_encoded_bytes": 33213,
+          "skew_bits": 65538
         },
         "QQ": {
           "ok": true,
-          "process_ms": 530.379917,
-          "normalize_ms": 12.210607528686523,
-          "pack_body_ms": 1.1262893676757812,
-          "checked_host_list_pack_ms": 1.4355182647705078,
-          "full_current_payload_ms": 0.8425712585449219,
-          "bytes_to_bigint_ms": 0.1575946807861328,
-          "generated_deserialize_ms": 0.47206878662109375,
-          "proposed_byte_region_ingress_ms": 0.027894973754882812,
-          "encoded_bytes": 53033
+          "process_ms": 745.5415420000002,
+          "normalize_ms": 12.441873550415039,
+          "pack_body_ms": 1.1348724365234375,
+          "checked_host_list_pack_ms": 1.4133453369140625,
+          "full_current_payload_ms": 0.8397102355957031,
+          "bytes_to_bigint_ms": 0.1556873321533203,
+          "generated_deserialize_ms": 0.4730224609375,
+          "proposed_byte_region_ingress_ms": 0.026941299438476562,
+          "encoded_bytes": 53033,
+          "skew_checked_host_list_pack_ms": 1.2395381927490234,
+          "skew_public_construct_ms": 17.743349075317383,
+          "skew_encoded_bytes": 62313,
+          "skew_bits": 65538
         }
       },
       "comparisons": {
         "ZZ": {
           "summaries_match": true,
-          "sagejs_over_sage": 18.22702770074471
+          "sagejs_over_sage": 19.66329071891084
         },
         "QQ": {
           "summaries_match": true,
-          "sagejs_over_sage": 28.223109507297405
+          "sagejs_over_sage": 27.73015723845937
         }
       }
+    },
+    {
+      "label": "linux-x64-20001",
+      "generated_at": "2026-08-12T14:47:55.823Z",
+      "host": {
+        "platform": "linux",
+        "architecture": "x64",
+        "uname": "Linux project-52d00914-04c1-4c7a-83d6-69240c2570f1 6.17.0-1022-gcp #25-Ubuntu SMP Sat Jul 25 01:12:40 UTC 2026 x86_64 GNU/Linux",
+        "cpu": "AMD EPYC 7B13"
+      },
+      "repository": {
+        "commit": "9701542db9fac6a7c66f43835f6f6b16842799f5",
+        "branch": "agent/exact-poly-bulk-contract",
+        "dirty": false
+      },
+      "configuration": {
+        "count": 20001,
+        "samples": 5,
+        "timing": "fresh process per domain; setup, first invocation, warm median, and complete process wall time reported separately",
+        "threads": 1
+      },
+      "runtimes": {
+        "sagejs": {
+          "executable": "/home/user/sagejs-worktrees/exact-poly-bulk-contract/bin/sagejs",
+          "version": "0.2.0"
+        }
+      },
+      "measurements": {
+        "sagejs": {
+          "ZZ": {
+            "ok": true,
+            "process_ms": 669.7057729999999,
+            "setup_ms": 24.045467376708984,
+            "first_ms": 59.75198745727539,
+            "warm_ms": 7.935762405395508,
+            "first_delta_ms": 51.81622505187988,
+            "summary": [
+              20000,
+              "-823",
+              "-454",
+              "362"
+            ],
+            "first_summary_matches": true
+          },
+          "QQ": {
+            "ok": true,
+            "process_ms": 1114.838651,
+            "setup_ms": 246.01244926452637,
+            "first_ms": 87.67938613891602,
+            "warm_ms": 34.455060958862305,
+            "first_delta_ms": 53.22432518005371,
+            "summary": [
+              20000,
+              "-823/25",
+              "-227/15",
+              "181/6"
+            ],
+            "first_summary_matches": true
+          }
+        }
+      },
+      "diagnostic_stages": {
+        "ZZ": {
+          "ok": true,
+          "process_ms": 860.48774,
+          "normalize_ms": 4.060268402099609,
+          "pack_body_ms": 2.398967742919922,
+          "checked_host_list_pack_ms": 1.1243820190429688,
+          "full_current_payload_ms": 2.9184818267822266,
+          "bytes_to_bigint_ms": 0.6859302520751953,
+          "generated_deserialize_ms": 0.5311965942382812,
+          "proposed_byte_region_ingress_ms": 0.06699562072753906,
+          "encoded_bytes": 114924,
+          "skew_checked_host_list_pack_ms": 0.8254051208496094,
+          "skew_public_construct_ms": 7.345914840698242,
+          "skew_encoded_bytes": 108213,
+          "skew_bits": 65538
+        },
+        "QQ": {
+          "ok": true,
+          "process_ms": 2875.3902980000003,
+          "normalize_ms": 105.45921325683594,
+          "pack_body_ms": 4.412412643432617,
+          "checked_host_list_pack_ms": 9.760856628417969,
+          "full_current_payload_ms": 6.087541580200195,
+          "bytes_to_bigint_ms": 1.3546943664550781,
+          "generated_deserialize_ms": 1.9619464874267578,
+          "proposed_byte_region_ingress_ms": 0.08916854858398438,
+          "encoded_bytes": 212134,
+          "skew_checked_host_list_pack_ms": 7.575750350952148,
+          "skew_public_construct_ms": 105.62944412231445,
+          "skew_encoded_bytes": 212313,
+          "skew_bits": 65538
+        }
+      },
+      "comparisons": {}
     }
   ]
 }
