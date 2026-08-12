@@ -314,19 +314,23 @@ def dense_prime_field_matrix_random_fill(
 ) -> uint64:
     """Fill `target` uniformly using Sage.js's deterministic 32-bit LCG.
 
-    Rejection sampling avoids reducing a non-divisible 32-bit interval
-    directly modulo `modulus`.  The returned state lets the dynamic host
-    preserve the one shared reproducible random stream without entering the
-    host once per matrix entry.
+    Rejection sampling partitions the accepted high-order interval into
+    equal-sized buckets.  Selecting a bucket instead of taking the low bits
+    modulo `modulus` matters: the low bits of a linear congruential generator
+    have short periods (the lowest bit merely alternates), whereas each bucket
+    is selected by the high-order part of the state.  The returned state lets
+    the dynamic host preserve the one shared reproducible random stream
+    without entering the host once per matrix entry.
     """
     word_base = 4294967296
     limit = word_base - word_base % modulus
+    bucket = limit // modulus
     state = initial_state
     count = len(target)
     for index in range(count):
         while state >= limit:
             state = (1664525 * state + 1013904223) % word_base
-        target[index] = state % modulus
+        target[index] = state // bucket
         if index + 1 < count:
             state = (1664525 * state + 1013904223) % word_base
     return state
@@ -370,13 +374,14 @@ def dense_prime_field_matrix_space_random_fill(
     """Fill packed storage with `MatrixSpace.random_element` semantics."""
     word_base = 4294967296
     limit = word_base - word_base % modulus
+    bucket = limit // modulus
     state = initial_state
     count = len(target)
     for index in range(count):
         state = (1664525 * state + 1013904223) % word_base
         while state >= limit:
             state = (1664525 * state + 1013904223) % word_base
-        target[index] = state % modulus
+        target[index] = state // bucket
         if index + 1 < count:
             state = (1664525 * state + 1013904223) % word_base
     return state

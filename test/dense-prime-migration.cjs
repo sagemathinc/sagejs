@@ -38,18 +38,28 @@ function randomEntries(rows, columns, modulus, initialSeed) {
 function sageRandomResidues(length, modulus, initialState) {
   const wordBase = 4294967296n;
   const limit = wordBase - wordBase % modulus;
+  const bucket = limit / modulus;
   let state = BigInt(initialState);
   const entries = [];
   for (let index = 0; index < length; index += 1) {
     while (state >= limit) {
       state = (1664525n * state + 1013904223n) % wordBase;
     }
-    entries.push(state % modulus);
+    entries.push(state / bucket);
     if (index + 1 < length) {
       state = (1664525n * state + 1013904223n) % wordBase;
     }
   }
   return { entries, state };
+}
+
+function assertExactBucketPartition(modulus) {
+  const wordBase = 4294967296n;
+  const limit = wordBase - wordBase % modulus;
+  const bucket = limit / modulus;
+  assert.equal(limit, bucket * modulus);
+  assert.ok(bucket > 0n);
+  assert.ok(wordBase - limit < modulus);
 }
 
 function matrix(rows, columns, modulus, entries) {
@@ -201,6 +211,17 @@ random_source = random_matrix(GF(97), 12, 9)
 assert not hasattr(random_source, '_native_handle')
 set_random_seed(1729)
 assert random_matrix(GF(97), 12, 9) == random_source
+
+# The low bit of the shared LCG alternates, so reducing the raw word modulo 2
+# used to make every large binary matrix have rank at most two.  High-order
+# bucket selection must instead produce ordinary full-rank-scale matrices and
+# remain reproducible through the public seed contract.
+set_random_seed(20260812)
+binary_shapes = [63, 64, 65, 80]
+binary_ranks = [random_matrix(GF(2), size).rank() for size in binary_shapes]
+assert all(binary_ranks[index] >= binary_shapes[index] - 8 for index in range(4))
+set_random_seed(20260812)
+assert [random_matrix(GF(2), size).rank() for size in binary_shapes] == binary_ranks
 packed_left = matrix(GF(97), 2, 3, [1, 2, 3, 4, 5, 6])
 packed_right = matrix(GF(97), 3, 2, [7, 8, 9, 10, 11, 12])
 packed_product = packed_left * packed_right
@@ -430,14 +451,27 @@ print("dense-prime-independent-ok")
       [1000, 97n, 0xffffffffn],
       [1000, 4294967291n, 4000000000n],
     ]) {
+      assertExactBucketPartition(modulus);
       const target = packed(kernel, length);
       const expected = sageRandomResidues(length, modulus, seed);
       const finalState = kernel.dense_prime_field_matrix_random_fill(
         target, modulus, seed,
       );
       assert.deepEqual(Array.from(target), expected.entries);
+      assert.ok(Array.from(target).every((entry) =>
+        entry >= 0n && entry < modulus
+      ));
       assert.equal(BigInt(finalState), expected.state);
     }
+
+    const binary = packed(kernel, 4096);
+    kernel.dense_prime_field_matrix_random_fill(binary, 2n, 1729n);
+    const binaryEntries = Array.from(binary);
+    const ones = binaryEntries.filter((entry) => entry === 1n).length;
+    assert.ok(ones > 1800 && ones < 2300, `unbalanced GF(2) sample: ${ones}`);
+    assert.ok(binaryEntries.some((entry, index) =>
+      index > 0 && entry === binaryEntries[index - 1]
+    ), "GF(2) output still alternates deterministically");
 
     const shapes = [
       [0, 0], [0, 5], [5, 0], [1, 1], [2, 7], [7, 2], [8, 8],

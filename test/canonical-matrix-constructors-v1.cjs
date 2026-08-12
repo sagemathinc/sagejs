@@ -62,6 +62,19 @@ def legacy_random_int(start, stop):
             return runtime.normalize_integer(start + value % width)
 
 
+def uniform_word_residue(modulus):
+    word_base = runtime.bigint(4294967296)
+    modulus = runtime.integer_bigint(modulus)
+    limit = word_base - word_base % modulus
+    bucket = limit // modulus
+    while True:
+        word = runtime.integer_bigint(
+            runtime.math.floor(float(random()) * 4294967296)
+        )
+        if word < limit:
+            return runtime.normalize_integer(word // bucket)
+
+
 def legacy_full_density(count, start, stop, modulus=None):
     values = []
     for _index in range(count):
@@ -69,7 +82,7 @@ def legacy_full_density(count, start, stop, modulus=None):
         if modulus is None:
             values.append(legacy_random_int(start, stop))
         else:
-            values.append(legacy_random_int(0, modulus - 1))
+            values.append(uniform_word_residue(modulus))
     return values
 
 
@@ -91,8 +104,9 @@ def expect_error(function):
     raise AssertionError('operation unexpectedly succeeded')
 
 
-# Full-density specialization is bit-for-bit compatible with the former
-# public loop, including rejection sampling and the following RNG state.
+# Full-density specialization preserves the public random-state progression.
+# Prime residues use exact high-order buckets rather than the LCG's correlated
+# low bits, so their values deliberately differ from the former scalar loop.
 for seed in [0, 1, 17, 999999]:
     set_random_seed(seed)
     integer = MatrixSpace(ZZ, 3, 4).random_element(x=0, y=2147483648)
