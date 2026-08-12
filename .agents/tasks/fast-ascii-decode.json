@@ -1,0 +1,46 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "fast-ascii-decode",
+  "title": "Fast Ascii Decode",
+  "lane": "compiler-runtime",
+  "status": "active",
+  "owner": "user",
+  "objective": "Make Python bytes.decode('ascii') and exact FLINT matrix and polynomial formatting use a semantics-preserving host-native fast path, with focused differential tests and measured public formatting performance",
+  "base_commit": "86e6b0f65e957074cc0988dd3d2b9882c1e4ab96",
+  "claims": [
+    "src/baselib/byte_strings.py",
+    "test/bytes.py",
+    "test/bytes.cjs",
+    "test/node-test-manifest.cjs",
+    "bench/bytes-ascii-decode.cjs"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "dynamic-python",
+    "fallback": "same-source",
+    "oracles": [
+      "cpython",
+      "SageMath dense exact matrix and polynomial str output"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm build",
+    "pnpm test:compiler",
+    "pnpm test:integration"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "",
+    "risks": [],
+    "next_steps": []
+  }
+}
