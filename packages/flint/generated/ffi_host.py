@@ -21,6 +21,9 @@ from sagejs.ffi.flint import (
     FmpzPolynomial,
     FmpzPolynomialDivisionResult,
     FmpzPolynomialXgcdResult,
+    FqContext,
+    FqElement,
+    FqPolynomial,
     fmpz_polynomial as _ffi_fmpz_polynomial,
     fmpz_polynomial_set_coefficient as _ffi_fmpz_polynomial_set_coefficient,
     fmpz_polynomial_seal as _ffi_fmpz_polynomial_seal,
@@ -252,6 +255,29 @@ from sagejs.ffi.flint import (
     nmod_poly_roots as _ffi_nmod_poly_roots,
     fmpz_poly_factor as _ffi_fmpz_poly_factor,
     fmpq_poly_factor as _ffi_fmpq_poly_factor,
+    fq_context as _ffi_fq_context,
+    fq_context_characteristic as _ffi_fq_context_characteristic,
+    fq_context_degree as _ffi_fq_context_degree,
+    fq_element as _ffi_fq_element,
+    fq_element_copy as _ffi_fq_element_copy,
+    fq_element_degree as _ffi_fq_element_degree,
+    fq_element_coordinate as _ffi_fq_element_coordinate,
+    fq_element_equal as _ffi_fq_element_equal,
+    fq_element_add as _ffi_fq_element_add,
+    fq_element_sub as _ffi_fq_element_sub,
+    fq_element_mul as _ffi_fq_element_mul,
+    fq_polynomial as _ffi_fq_polynomial,
+    fq_polynomial_copy as _ffi_fq_polynomial_copy,
+    fq_polynomial_length as _ffi_fq_polynomial_length,
+    fq_polynomial_degree as _ffi_fq_polynomial_degree,
+    fq_polynomial_coordinate as _ffi_fq_polynomial_coordinate,
+    fq_polynomial_equal as _ffi_fq_polynomial_equal,
+    fq_polynomial_add as _ffi_fq_polynomial_add,
+    fq_polynomial_sub as _ffi_fq_polynomial_sub,
+    fq_polynomial_mul as _ffi_fq_polynomial_mul,
+    fq_polynomial_neg as _ffi_fq_polynomial_neg,
+    fq_polynomial_pow as _ffi_fq_polynomial_pow,
+    fq_polynomial_coordinate_bytes as _ffi_fq_polynomial_coordinate_bytes,
 )
 from sagejs.native import Integer, IntegerBuffer, UInt64Buffer, native, uint64
 
@@ -3194,4 +3220,249 @@ def ffiFmpqPolyFactor(
         factor_coefficients_length,
         source_length,
         one,
+    )
+
+
+@native
+def ffiFqContextCreate(
+    modulus: UInt64Buffer,
+    modulus_length: uint64,
+    characteristic: uint64,
+) -> FqContext:
+    return _ffi_fq_context(
+        modulus,
+        modulus_length,
+        characteristic,
+    )
+
+
+@native
+def ffiFqContextCharacteristic(
+    context: FqContext,
+) -> uint64:
+    return _ffi_fq_context_characteristic(
+        context,
+    )
+
+
+@native
+def ffiFqContextDegree(
+    context: FqContext,
+) -> uint64:
+    return _ffi_fq_context_degree(
+        context,
+    )
+
+
+@native
+def ffiFqElementCreate(
+    context: FqContext,
+    coordinates: UInt64Buffer,
+    coordinate_length: uint64,
+) -> FqElement:
+    return _ffi_fq_element(
+        context,
+        coordinates,
+        coordinate_length,
+    )
+
+
+@native
+def ffiFqElementCopy(
+    source: FqElement,
+) -> FqElement:
+    return _ffi_fq_element_copy(
+        source,
+    )
+
+
+@native
+def ffiFqElementDegree(
+    element: FqElement,
+) -> uint64:
+    return _ffi_fq_element_degree(
+        element,
+    )
+
+
+@native
+def ffiFqElementCoordinate(
+    element: FqElement,
+    basis_index: uint64,
+) -> uint64:
+    return _ffi_fq_element_coordinate(
+        element,
+        basis_index,
+    )
+
+
+@native
+def ffiFqElementEqual(
+    left: FqElement,
+    right: FqElement,
+) -> bool:
+    return _ffi_fq_element_equal(
+        left,
+        right,
+    )
+
+
+@native
+def ffiFqElementAdd(
+    left: FqElement,
+    right: FqElement,
+) -> FqElement:
+    return _ffi_fq_element_add(
+        left,
+        right,
+    )
+
+
+@native
+def ffiFqElementSub(
+    left: FqElement,
+    right: FqElement,
+) -> FqElement:
+    return _ffi_fq_element_sub(
+        left,
+        right,
+    )
+
+
+@native
+def ffiFqElementMul(
+    left: FqElement,
+    right: FqElement,
+) -> FqElement:
+    return _ffi_fq_element_mul(
+        left,
+        right,
+    )
+
+
+@native
+def ffiFqPolynomialCreate(
+    context: FqContext,
+    coordinates: UInt64Buffer,
+    coordinate_length: uint64,
+    coefficient_count: uint64,
+) -> FqPolynomial:
+    return _ffi_fq_polynomial(
+        context,
+        coordinates,
+        coordinate_length,
+        coefficient_count,
+    )
+
+
+@native
+def ffiFqPolynomialCopy(
+    source: FqPolynomial,
+) -> FqPolynomial:
+    return _ffi_fq_polynomial_copy(
+        source,
+    )
+
+
+@native
+def ffiFqPolynomialLength(
+    polynomial: FqPolynomial,
+) -> uint64:
+    return _ffi_fq_polynomial_length(
+        polynomial,
+    )
+
+
+@native
+def ffiFqPolynomialDegree(
+    polynomial: FqPolynomial,
+) -> uint64:
+    return _ffi_fq_polynomial_degree(
+        polynomial,
+    )
+
+
+@native
+def ffiFqPolynomialCoordinate(
+    polynomial: FqPolynomial,
+    coefficient_index: uint64,
+    basis_index: uint64,
+) -> uint64:
+    return _ffi_fq_polynomial_coordinate(
+        polynomial,
+        coefficient_index,
+        basis_index,
+    )
+
+
+@native
+def ffiFqPolynomialEqual(
+    left: FqPolynomial,
+    right: FqPolynomial,
+) -> bool:
+    return _ffi_fq_polynomial_equal(
+        left,
+        right,
+    )
+
+
+@native
+def ffiFqPolynomialAdd(
+    left: FqPolynomial,
+    right: FqPolynomial,
+) -> FqPolynomial:
+    return _ffi_fq_polynomial_add(
+        left,
+        right,
+    )
+
+
+@native
+def ffiFqPolynomialSub(
+    left: FqPolynomial,
+    right: FqPolynomial,
+) -> FqPolynomial:
+    return _ffi_fq_polynomial_sub(
+        left,
+        right,
+    )
+
+
+@native
+def ffiFqPolynomialMul(
+    left: FqPolynomial,
+    right: FqPolynomial,
+) -> FqPolynomial:
+    return _ffi_fq_polynomial_mul(
+        left,
+        right,
+    )
+
+
+@native
+def ffiFqPolynomialNeg(
+    source: FqPolynomial,
+) -> FqPolynomial:
+    return _ffi_fq_polynomial_neg(
+        source,
+    )
+
+
+@native
+def ffiFqPolynomialPow(
+    source: FqPolynomial,
+    exponent: uint64,
+) -> FqPolynomial:
+    return _ffi_fq_polynomial_pow(
+        source,
+        exponent,
+    )
+
+
+@native
+def ffiFqPolynomialCoordinateBytes(
+    polynomial: FqPolynomial,
+) -> FlintByteRegion:
+    return _ffi_fq_polynomial_coordinate_bytes(
+        polynomial,
     )

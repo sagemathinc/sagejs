@@ -31,6 +31,7 @@ flint = Library(
         "sagejs/ffi_algorithms.h",
         "sagejs/fmpz_matrix_ffi.h",
         "sagejs/fmpq_matrix_ffi.h",
+        "sagejs/fq_polynomial_ffi.h",
     ],
     link_unix=["libflint.a", "libopenblas.a"],
     link_windows=["flint.lib", "openblas.lib", "pthreadVC3.lib"],
@@ -116,6 +117,43 @@ FmpqPolynomial = flint.resource(
     close="ffiFmpqPolynomialClose",
     clear="sagejs_fmpq_polynomial_clear",
     size="sagejs_fmpq_polynomial_allocated_bytes",
+    wasm=False,
+)
+
+
+# These three owned handles share one internally retained, thread-affine FLINT
+# context.  Every operation below is therefore explicitly `thread_safe=False`.
+# Dependents survive closing the public context wrapper and retain the context
+# until the last element or polynomial closes.
+FqContext = flint.resource(
+    id="fq_context",
+    abi=sagejs_fq_context_t,
+    ownership="owned",
+    close="ffiFqContextClose",
+    clear="sagejs_fq_context_clear",
+    size="sagejs_fq_context_allocated_bytes",
+    wasm=False,
+)
+
+
+FqElement = flint.resource(
+    id="fq_element",
+    abi=sagejs_fq_element_t,
+    ownership="owned",
+    close="ffiFqElementClose",
+    clear="sagejs_fq_element_clear",
+    size="sagejs_fq_element_allocated_bytes",
+    wasm=False,
+)
+
+
+FqPolynomial = flint.resource(
+    id="fq_polynomial",
+    abi=sagejs_fq_polynomial_t,
+    ownership="owned",
+    close="ffiFqPolynomialClose",
+    clear="sagejs_fq_polynomial_clear",
+    size="sagejs_fq_polynomial_allocated_bytes",
     wasm=False,
 )
 
@@ -7185,3 +7223,496 @@ def fmpq_poly_factor(
     source_length: uint64,
     one: Min[uint64, 1],
 ) -> bool: ...
+
+
+# Word-characteristic finite extension resources. Coordinates are canonical
+# residues in the low-to-high power basis `1, a, ..., a^(degree-1)`.
+@flint.function(
+    dynamic="ffiFqContextCreate",
+    symbol="sagejs_fq_context_init",
+    returns=int,
+    abi=[
+        out("result", sagejs_fq_context_t),
+        in_(
+            "modulus_entries",
+            uint64_t_ptr,
+            packed_slice(
+                data="modulus",
+                length="modulus_length",
+                access="read",
+                aliasing="allowed",
+                transactional=False,
+            ),
+        ),
+        in_("modulus_length", uint64_t),
+        in_("characteristic", uint64_t),
+    ],
+    effects=Effects(
+        pure=False,
+        deterministic=True,
+        thread_safe=False,
+        allocates=True,
+        raises=[ValueError],
+    ),
+    result=Status(
+        1,
+        exception=ValueError,
+        message="finite extension modulus is invalid or unsupported",
+    ),
+    wasm=False,
+)
+def fq_context(
+    modulus: UInt64Buffer,
+    modulus_length: uint64,
+    characteristic: uint64,
+) -> FqContext: ...
+
+
+@flint.function(
+    dynamic="ffiFqContextCharacteristic",
+    symbol="sagejs_fq_context_characteristic",
+    returns=uint64_t,
+    abi=[in_("context", sagejs_fq_context_t)],
+    effects=Effects(pure=True, thread_safe=False),
+    result=Direct(),
+    wasm=False,
+)
+def fq_context_characteristic(context: FqContext) -> uint64: ...
+
+
+@flint.function(
+    dynamic="ffiFqContextDegree",
+    symbol="sagejs_fq_context_degree",
+    returns=uint64_t,
+    abi=[in_("context", sagejs_fq_context_t)],
+    effects=Effects(pure=True, thread_safe=False),
+    result=Direct(),
+    wasm=False,
+)
+def fq_context_degree(context: FqContext) -> uint64: ...
+
+
+@flint.function(
+    dynamic="ffiFqElementCreate",
+    symbol="sagejs_fq_element_init_coordinates",
+    returns=int,
+    abi=[
+        out("result", sagejs_fq_element_t),
+        in_("context", sagejs_fq_context_t),
+        in_(
+            "coordinate_entries",
+            uint64_t_ptr,
+            packed_slice(
+                data="coordinates",
+                length="coordinate_length",
+                access="read",
+                aliasing="allowed",
+                transactional=False,
+            ),
+        ),
+        in_("coordinate_length", uint64_t),
+    ],
+    effects=Effects(
+        pure=False,
+        deterministic=True,
+        thread_safe=False,
+        allocates=True,
+        raises=[ValueError],
+    ),
+    result=Status(
+        1,
+        exception=ValueError,
+        message="finite extension element coordinates are invalid",
+    ),
+    wasm=False,
+)
+def fq_element(
+    context: FqContext,
+    coordinates: UInt64Buffer,
+    coordinate_length: uint64,
+) -> FqElement: ...
+
+
+@flint.function(
+    dynamic="ffiFqElementCopy",
+    symbol="sagejs_fq_element_copy",
+    returns=int,
+    abi=[
+        out("result", sagejs_fq_element_t),
+        in_("source", sagejs_fq_element_t),
+    ],
+    effects=Effects(
+        pure=False,
+        thread_safe=False,
+        allocates=True,
+        raises=[RuntimeError],
+    ),
+    result=Status(1, exception=RuntimeError, message="finite extension copy failed"),
+    wasm=False,
+)
+def fq_element_copy(source: FqElement) -> FqElement: ...
+
+
+@flint.function(
+    dynamic="ffiFqElementDegree",
+    symbol="sagejs_fq_element_degree",
+    returns=uint64_t,
+    abi=[in_("element", sagejs_fq_element_t)],
+    effects=Effects(pure=True, thread_safe=False),
+    result=Direct(),
+    wasm=False,
+)
+def fq_element_degree(element: FqElement) -> uint64: ...
+
+
+@flint.function(
+    dynamic="ffiFqElementCoordinate",
+    symbol="sagejs_fq_element_coordinate",
+    returns=uint64_t,
+    abi=[
+        in_("element", sagejs_fq_element_t),
+        in_("basis_index", uint64_t),
+    ],
+    effects=Effects(pure=True, thread_safe=False),
+    result=Direct(),
+    wasm=False,
+)
+def fq_element_coordinate(element: FqElement, basis_index: uint64) -> uint64: ...
+
+
+@flint.function(
+    dynamic="ffiFqElementEqual",
+    symbol="sagejs_fq_element_equal",
+    returns=int,
+    abi=[
+        in_("left", sagejs_fq_element_t),
+        in_("right", sagejs_fq_element_t),
+    ],
+    effects=Effects(pure=True, thread_safe=False),
+    result=Direct(),
+    wasm=False,
+)
+def fq_element_equal(left: FqElement, right: FqElement) -> bool: ...
+
+
+@flint.function(
+    dynamic="ffiFqElementAdd",
+    symbol="sagejs_fq_element_add",
+    returns=int,
+    abi=[
+        out("result", sagejs_fq_element_t),
+        in_("left", sagejs_fq_element_t),
+        in_("right", sagejs_fq_element_t),
+    ],
+    effects=Effects(
+        pure=False,
+        thread_safe=False,
+        allocates=True,
+        raises=[ValueError],
+    ),
+    result=Status(1, exception=ValueError, message="finite extension contexts differ"),
+    wasm=False,
+)
+def fq_element_add(left: FqElement, right: FqElement) -> FqElement: ...
+
+
+@flint.function(
+    dynamic="ffiFqElementSub",
+    symbol="sagejs_fq_element_sub",
+    returns=int,
+    abi=[
+        out("result", sagejs_fq_element_t),
+        in_("left", sagejs_fq_element_t),
+        in_("right", sagejs_fq_element_t),
+    ],
+    effects=Effects(
+        pure=False,
+        thread_safe=False,
+        allocates=True,
+        raises=[ValueError],
+    ),
+    result=Status(1, exception=ValueError, message="finite extension contexts differ"),
+    wasm=False,
+)
+def fq_element_sub(left: FqElement, right: FqElement) -> FqElement: ...
+
+
+@flint.function(
+    dynamic="ffiFqElementMul",
+    symbol="sagejs_fq_element_mul",
+    returns=int,
+    abi=[
+        out("result", sagejs_fq_element_t),
+        in_("left", sagejs_fq_element_t),
+        in_("right", sagejs_fq_element_t),
+    ],
+    effects=Effects(
+        pure=False,
+        thread_safe=False,
+        allocates=True,
+        raises=[ValueError],
+    ),
+    result=Status(1, exception=ValueError, message="finite extension contexts differ"),
+    wasm=False,
+)
+def fq_element_mul(left: FqElement, right: FqElement) -> FqElement: ...
+
+
+@flint.function(
+    dynamic="ffiFqPolynomialCreate",
+    symbol="sagejs_fq_polynomial_init_coordinates",
+    returns=int,
+    abi=[
+        out("result", sagejs_fq_polynomial_t),
+        in_("context", sagejs_fq_context_t),
+        in_(
+            "coordinate_entries",
+            uint64_t_ptr,
+            packed_slice(
+                data="coordinates",
+                length="coordinate_length",
+                access="read",
+                aliasing="allowed",
+                transactional=False,
+            ),
+        ),
+        in_("coordinate_length", uint64_t),
+        in_("coefficient_count", uint64_t),
+    ],
+    effects=Effects(
+        pure=False,
+        deterministic=True,
+        thread_safe=False,
+        allocates=True,
+        raises=[ValueError],
+    ),
+    result=Status(
+        1,
+        exception=ValueError,
+        message="finite extension polynomial coordinates are invalid",
+    ),
+    wasm=False,
+)
+def fq_polynomial(
+    context: FqContext,
+    coordinates: UInt64Buffer,
+    coordinate_length: uint64,
+    coefficient_count: uint64,
+) -> FqPolynomial: ...
+
+
+@flint.function(
+    dynamic="ffiFqPolynomialCopy",
+    symbol="sagejs_fq_polynomial_copy",
+    returns=int,
+    abi=[
+        out("result", sagejs_fq_polynomial_t),
+        in_("source", sagejs_fq_polynomial_t),
+    ],
+    effects=Effects(
+        pure=False,
+        thread_safe=False,
+        allocates=True,
+        raises=[RuntimeError],
+    ),
+    result=Status(
+        1, exception=RuntimeError, message="extension polynomial copy failed"
+    ),
+    wasm=False,
+)
+def fq_polynomial_copy(source: FqPolynomial) -> FqPolynomial: ...
+
+
+@flint.function(
+    dynamic="ffiFqPolynomialLength",
+    symbol="sagejs_fq_polynomial_length",
+    returns=uint64_t,
+    abi=[in_("polynomial", sagejs_fq_polynomial_t)],
+    effects=Effects(pure=True, thread_safe=False),
+    result=Direct(),
+    wasm=False,
+)
+def fq_polynomial_length(polynomial: FqPolynomial) -> uint64: ...
+
+
+@flint.function(
+    dynamic="ffiFqPolynomialDegree",
+    symbol="sagejs_fq_polynomial_degree",
+    returns=uint64_t,
+    abi=[in_("polynomial", sagejs_fq_polynomial_t)],
+    effects=Effects(pure=True, thread_safe=False),
+    result=Direct(),
+    wasm=False,
+)
+def fq_polynomial_degree(polynomial: FqPolynomial) -> uint64: ...
+
+
+@flint.function(
+    dynamic="ffiFqPolynomialCoordinate",
+    symbol="sagejs_fq_polynomial_coordinate",
+    returns=uint64_t,
+    abi=[
+        in_("polynomial", sagejs_fq_polynomial_t),
+        in_("coefficient_index", uint64_t),
+        in_("basis_index", uint64_t),
+    ],
+    effects=Effects(pure=True, thread_safe=False),
+    result=Direct(),
+    wasm=False,
+)
+def fq_polynomial_coordinate(
+    polynomial: FqPolynomial,
+    coefficient_index: uint64,
+    basis_index: uint64,
+) -> uint64: ...
+
+
+@flint.function(
+    dynamic="ffiFqPolynomialEqual",
+    symbol="sagejs_fq_polynomial_equal",
+    returns=int,
+    abi=[
+        in_("left", sagejs_fq_polynomial_t),
+        in_("right", sagejs_fq_polynomial_t),
+    ],
+    effects=Effects(pure=True, thread_safe=False),
+    result=Direct(),
+    wasm=False,
+)
+def fq_polynomial_equal(left: FqPolynomial, right: FqPolynomial) -> bool: ...
+
+
+@flint.function(
+    dynamic="ffiFqPolynomialAdd",
+    symbol="sagejs_fq_polynomial_add",
+    returns=int,
+    abi=[
+        out("result", sagejs_fq_polynomial_t),
+        in_("left", sagejs_fq_polynomial_t),
+        in_("right", sagejs_fq_polynomial_t),
+    ],
+    effects=Effects(
+        pure=False,
+        thread_safe=False,
+        allocates=True,
+        raises=[ValueError],
+    ),
+    result=Status(
+        1, exception=ValueError, message="extension polynomial contexts differ"
+    ),
+    wasm=False,
+)
+def fq_polynomial_add(left: FqPolynomial, right: FqPolynomial) -> FqPolynomial: ...
+
+
+@flint.function(
+    dynamic="ffiFqPolynomialSub",
+    symbol="sagejs_fq_polynomial_sub",
+    returns=int,
+    abi=[
+        out("result", sagejs_fq_polynomial_t),
+        in_("left", sagejs_fq_polynomial_t),
+        in_("right", sagejs_fq_polynomial_t),
+    ],
+    effects=Effects(
+        pure=False,
+        thread_safe=False,
+        allocates=True,
+        raises=[ValueError],
+    ),
+    result=Status(
+        1, exception=ValueError, message="extension polynomial contexts differ"
+    ),
+    wasm=False,
+)
+def fq_polynomial_sub(left: FqPolynomial, right: FqPolynomial) -> FqPolynomial: ...
+
+
+@flint.function(
+    dynamic="ffiFqPolynomialMul",
+    symbol="sagejs_fq_polynomial_mul",
+    returns=int,
+    abi=[
+        out("result", sagejs_fq_polynomial_t),
+        in_("left", sagejs_fq_polynomial_t),
+        in_("right", sagejs_fq_polynomial_t),
+    ],
+    effects=Effects(
+        pure=False,
+        thread_safe=False,
+        allocates=True,
+        raises=[ValueError],
+    ),
+    result=Status(
+        1, exception=ValueError, message="extension polynomial contexts differ"
+    ),
+    wasm=False,
+)
+def fq_polynomial_mul(left: FqPolynomial, right: FqPolynomial) -> FqPolynomial: ...
+
+
+@flint.function(
+    dynamic="ffiFqPolynomialNeg",
+    symbol="sagejs_fq_polynomial_neg",
+    returns=int,
+    abi=[
+        out("result", sagejs_fq_polynomial_t),
+        in_("source", sagejs_fq_polynomial_t),
+    ],
+    effects=Effects(
+        pure=False,
+        thread_safe=False,
+        allocates=True,
+        raises=[RuntimeError],
+    ),
+    result=Status(
+        1, exception=RuntimeError, message="extension polynomial negation failed"
+    ),
+    wasm=False,
+)
+def fq_polynomial_neg(source: FqPolynomial) -> FqPolynomial: ...
+
+
+@flint.function(
+    dynamic="ffiFqPolynomialPow",
+    symbol="sagejs_fq_polynomial_pow",
+    returns=int,
+    abi=[
+        out("result", sagejs_fq_polynomial_t),
+        in_("source", sagejs_fq_polynomial_t),
+        in_("exponent", uint64_t),
+    ],
+    effects=Effects(
+        pure=False,
+        thread_safe=False,
+        allocates=True,
+        raises=[OverflowError],
+    ),
+    result=Status(
+        1, exception=OverflowError, message="extension polynomial exponent is too large"
+    ),
+    wasm=False,
+)
+def fq_polynomial_pow(source: FqPolynomial, exponent: uint64) -> FqPolynomial: ...
+
+
+@flint.function(
+    dynamic="ffiFqPolynomialCoordinateBytes",
+    symbol="sagejs_fq_polynomial_coordinate_bytes",
+    returns=int,
+    abi=[
+        out("result", sagejs_flint_byte_region_t),
+        in_("polynomial", sagejs_fq_polynomial_t),
+    ],
+    effects=Effects(
+        pure=False,
+        thread_safe=False,
+        allocates=True,
+        raises=[OverflowError],
+    ),
+    result=Status(
+        1, exception=OverflowError, message="extension polynomial export is too large"
+    ),
+    wasm=False,
+)
+def fq_polynomial_coordinate_bytes(polynomial: FqPolynomial) -> FlintByteRegion: ...

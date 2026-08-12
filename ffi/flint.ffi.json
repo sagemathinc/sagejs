@@ -16,7 +16,8 @@
         "sagejs/exact_polynomial_ffi.h",
         "sagejs/ffi_algorithms.h",
         "sagejs/fmpz_matrix_ffi.h",
-        "sagejs/fmpq_matrix_ffi.h"
+        "sagejs/fmpq_matrix_ffi.h",
+        "sagejs/fq_polynomial_ffi.h"
       ],
       "link": {
         "unix": [
@@ -182,6 +183,63 @@
       "native": {
         "clear_symbol": "sagejs_fmpq_polynomial_clear",
         "size_symbol": "sagejs_fmpq_polynomial_allocated_bytes"
+      },
+      "targets": {
+        "dynamic": true,
+        "native": true,
+        "wasm": false
+      }
+    },
+    {
+      "id": "fq_context",
+      "python_name": "FqContext",
+      "abi_type": "sagejs_fq_context_t",
+      "ownership": "owned",
+      "owner": null,
+      "dynamic": {
+        "close_export": "ffiFqContextClose"
+      },
+      "native": {
+        "clear_symbol": "sagejs_fq_context_clear",
+        "size_symbol": "sagejs_fq_context_allocated_bytes"
+      },
+      "targets": {
+        "dynamic": true,
+        "native": true,
+        "wasm": false
+      }
+    },
+    {
+      "id": "fq_element",
+      "python_name": "FqElement",
+      "abi_type": "sagejs_fq_element_t",
+      "ownership": "owned",
+      "owner": null,
+      "dynamic": {
+        "close_export": "ffiFqElementClose"
+      },
+      "native": {
+        "clear_symbol": "sagejs_fq_element_clear",
+        "size_symbol": "sagejs_fq_element_allocated_bytes"
+      },
+      "targets": {
+        "dynamic": true,
+        "native": true,
+        "wasm": false
+      }
+    },
+    {
+      "id": "fq_polynomial",
+      "python_name": "FqPolynomial",
+      "abi_type": "sagejs_fq_polynomial_t",
+      "ownership": "owned",
+      "owner": null,
+      "dynamic": {
+        "close_export": "ffiFqPolynomialClose"
+      },
+      "native": {
+        "clear_symbol": "sagejs_fq_polynomial_clear",
+        "size_symbol": "sagejs_fq_polynomial_allocated_bytes"
       },
       "targets": {
         "dynamic": true,
@@ -22250,6 +22308,1771 @@
         "dynamic": true,
         "native": true,
         "wasm": true
+      }
+    },
+    {
+      "id": "fq_context",
+      "python_name": "fq_context",
+      "signature": {
+        "parameters": [
+          {
+            "name": "modulus",
+            "type": "UInt64Buffer",
+            "ownership": "borrowed",
+            "mutability": "read",
+            "aliasing": "allowed"
+          },
+          {
+            "name": "modulus_length",
+            "type": "uint64",
+            "ownership": "value",
+            "mutability": "value",
+            "aliasing": "not_applicable"
+          },
+          {
+            "name": "characteristic",
+            "type": "uint64",
+            "ownership": "value",
+            "mutability": "value",
+            "aliasing": "not_applicable"
+          }
+        ],
+        "return_type": "FqContext",
+        "return_ownership": "owned",
+        "borrow_from": null
+      },
+      "dynamic": {
+        "export": "ffiFqContextCreate"
+      },
+      "native": {
+        "symbol": "sagejs_fq_context_init",
+        "return_type": "int",
+        "arguments": [
+          {
+            "source": "result",
+            "abi_type": "sagejs_fq_context_t",
+            "direction": "out",
+            "adapter": null
+          },
+          {
+            "source": "modulus_entries",
+            "abi_type": "uint64_t_ptr",
+            "direction": "in",
+            "adapter": {
+              "kind": "packed_slice",
+              "data": "modulus",
+              "length": "modulus_length",
+              "access": "read",
+              "aliasing": "allowed",
+              "transactional": false
+            }
+          },
+          {
+            "source": "modulus_length",
+            "abi_type": "uint64_t",
+            "direction": "in",
+            "adapter": null
+          },
+          {
+            "source": "characteristic",
+            "abi_type": "uint64_t",
+            "direction": "in",
+            "adapter": null
+          }
+        ]
+      },
+      "effects": {
+        "pure": false,
+        "deterministic": true,
+        "thread_safe": false,
+        "may_allocate": true,
+        "may_raise": [
+          "ValueError"
+        ],
+        "writes": []
+      },
+      "result": {
+        "domain": "status",
+        "success": [
+          1
+        ],
+        "absence": null
+      },
+      "errors": {
+        "exception": "ValueError",
+        "message": "finite extension modulus is invalid or unsupported"
+      },
+      "exceptions": {
+        "policy": "none",
+        "failure_status": null
+      },
+      "targets": {
+        "dynamic": true,
+        "native": true,
+        "wasm": false
+      }
+    },
+    {
+      "id": "fq_context_characteristic",
+      "python_name": "fq_context_characteristic",
+      "signature": {
+        "parameters": [
+          {
+            "name": "context",
+            "type": "FqContext",
+            "ownership": "borrowed",
+            "mutability": "read",
+            "aliasing": "allowed"
+          }
+        ],
+        "return_type": "uint64",
+        "return_ownership": "value",
+        "borrow_from": null
+      },
+      "dynamic": {
+        "export": "ffiFqContextCharacteristic"
+      },
+      "native": {
+        "symbol": "sagejs_fq_context_characteristic",
+        "return_type": "uint64_t",
+        "arguments": [
+          {
+            "source": "context",
+            "abi_type": "sagejs_fq_context_t",
+            "direction": "in",
+            "adapter": null
+          }
+        ]
+      },
+      "effects": {
+        "pure": true,
+        "deterministic": true,
+        "thread_safe": false,
+        "may_allocate": false,
+        "may_raise": [],
+        "writes": []
+      },
+      "result": {
+        "domain": "direct",
+        "success": [],
+        "absence": null
+      },
+      "errors": {
+        "exception": null,
+        "message": null
+      },
+      "exceptions": {
+        "policy": "none",
+        "failure_status": null
+      },
+      "targets": {
+        "dynamic": true,
+        "native": true,
+        "wasm": false
+      }
+    },
+    {
+      "id": "fq_context_degree",
+      "python_name": "fq_context_degree",
+      "signature": {
+        "parameters": [
+          {
+            "name": "context",
+            "type": "FqContext",
+            "ownership": "borrowed",
+            "mutability": "read",
+            "aliasing": "allowed"
+          }
+        ],
+        "return_type": "uint64",
+        "return_ownership": "value",
+        "borrow_from": null
+      },
+      "dynamic": {
+        "export": "ffiFqContextDegree"
+      },
+      "native": {
+        "symbol": "sagejs_fq_context_degree",
+        "return_type": "uint64_t",
+        "arguments": [
+          {
+            "source": "context",
+            "abi_type": "sagejs_fq_context_t",
+            "direction": "in",
+            "adapter": null
+          }
+        ]
+      },
+      "effects": {
+        "pure": true,
+        "deterministic": true,
+        "thread_safe": false,
+        "may_allocate": false,
+        "may_raise": [],
+        "writes": []
+      },
+      "result": {
+        "domain": "direct",
+        "success": [],
+        "absence": null
+      },
+      "errors": {
+        "exception": null,
+        "message": null
+      },
+      "exceptions": {
+        "policy": "none",
+        "failure_status": null
+      },
+      "targets": {
+        "dynamic": true,
+        "native": true,
+        "wasm": false
+      }
+    },
+    {
+      "id": "fq_element",
+      "python_name": "fq_element",
+      "signature": {
+        "parameters": [
+          {
+            "name": "context",
+            "type": "FqContext",
+            "ownership": "borrowed",
+            "mutability": "read",
+            "aliasing": "allowed"
+          },
+          {
+            "name": "coordinates",
+            "type": "UInt64Buffer",
+            "ownership": "borrowed",
+            "mutability": "read",
+            "aliasing": "allowed"
+          },
+          {
+            "name": "coordinate_length",
+            "type": "uint64",
+            "ownership": "value",
+            "mutability": "value",
+            "aliasing": "not_applicable"
+          }
+        ],
+        "return_type": "FqElement",
+        "return_ownership": "owned",
+        "borrow_from": null
+      },
+      "dynamic": {
+        "export": "ffiFqElementCreate"
+      },
+      "native": {
+        "symbol": "sagejs_fq_element_init_coordinates",
+        "return_type": "int",
+        "arguments": [
+          {
+            "source": "result",
+            "abi_type": "sagejs_fq_element_t",
+            "direction": "out",
+            "adapter": null
+          },
+          {
+            "source": "context",
+            "abi_type": "sagejs_fq_context_t",
+            "direction": "in",
+            "adapter": null
+          },
+          {
+            "source": "coordinate_entries",
+            "abi_type": "uint64_t_ptr",
+            "direction": "in",
+            "adapter": {
+              "kind": "packed_slice",
+              "data": "coordinates",
+              "length": "coordinate_length",
+              "access": "read",
+              "aliasing": "allowed",
+              "transactional": false
+            }
+          },
+          {
+            "source": "coordinate_length",
+            "abi_type": "uint64_t",
+            "direction": "in",
+            "adapter": null
+          }
+        ]
+      },
+      "effects": {
+        "pure": false,
+        "deterministic": true,
+        "thread_safe": false,
+        "may_allocate": true,
+        "may_raise": [
+          "ValueError"
+        ],
+        "writes": []
+      },
+      "result": {
+        "domain": "status",
+        "success": [
+          1
+        ],
+        "absence": null
+      },
+      "errors": {
+        "exception": "ValueError",
+        "message": "finite extension element coordinates are invalid"
+      },
+      "exceptions": {
+        "policy": "none",
+        "failure_status": null
+      },
+      "targets": {
+        "dynamic": true,
+        "native": true,
+        "wasm": false
+      }
+    },
+    {
+      "id": "fq_element_copy",
+      "python_name": "fq_element_copy",
+      "signature": {
+        "parameters": [
+          {
+            "name": "source",
+            "type": "FqElement",
+            "ownership": "borrowed",
+            "mutability": "read",
+            "aliasing": "allowed"
+          }
+        ],
+        "return_type": "FqElement",
+        "return_ownership": "owned",
+        "borrow_from": null
+      },
+      "dynamic": {
+        "export": "ffiFqElementCopy"
+      },
+      "native": {
+        "symbol": "sagejs_fq_element_copy",
+        "return_type": "int",
+        "arguments": [
+          {
+            "source": "result",
+            "abi_type": "sagejs_fq_element_t",
+            "direction": "out",
+            "adapter": null
+          },
+          {
+            "source": "source",
+            "abi_type": "sagejs_fq_element_t",
+            "direction": "in",
+            "adapter": null
+          }
+        ]
+      },
+      "effects": {
+        "pure": false,
+        "deterministic": true,
+        "thread_safe": false,
+        "may_allocate": true,
+        "may_raise": [
+          "RuntimeError"
+        ],
+        "writes": []
+      },
+      "result": {
+        "domain": "status",
+        "success": [
+          1
+        ],
+        "absence": null
+      },
+      "errors": {
+        "exception": "RuntimeError",
+        "message": "finite extension copy failed"
+      },
+      "exceptions": {
+        "policy": "none",
+        "failure_status": null
+      },
+      "targets": {
+        "dynamic": true,
+        "native": true,
+        "wasm": false
+      }
+    },
+    {
+      "id": "fq_element_degree",
+      "python_name": "fq_element_degree",
+      "signature": {
+        "parameters": [
+          {
+            "name": "element",
+            "type": "FqElement",
+            "ownership": "borrowed",
+            "mutability": "read",
+            "aliasing": "allowed"
+          }
+        ],
+        "return_type": "uint64",
+        "return_ownership": "value",
+        "borrow_from": null
+      },
+      "dynamic": {
+        "export": "ffiFqElementDegree"
+      },
+      "native": {
+        "symbol": "sagejs_fq_element_degree",
+        "return_type": "uint64_t",
+        "arguments": [
+          {
+            "source": "element",
+            "abi_type": "sagejs_fq_element_t",
+            "direction": "in",
+            "adapter": null
+          }
+        ]
+      },
+      "effects": {
+        "pure": true,
+        "deterministic": true,
+        "thread_safe": false,
+        "may_allocate": false,
+        "may_raise": [],
+        "writes": []
+      },
+      "result": {
+        "domain": "direct",
+        "success": [],
+        "absence": null
+      },
+      "errors": {
+        "exception": null,
+        "message": null
+      },
+      "exceptions": {
+        "policy": "none",
+        "failure_status": null
+      },
+      "targets": {
+        "dynamic": true,
+        "native": true,
+        "wasm": false
+      }
+    },
+    {
+      "id": "fq_element_coordinate",
+      "python_name": "fq_element_coordinate",
+      "signature": {
+        "parameters": [
+          {
+            "name": "element",
+            "type": "FqElement",
+            "ownership": "borrowed",
+            "mutability": "read",
+            "aliasing": "allowed"
+          },
+          {
+            "name": "basis_index",
+            "type": "uint64",
+            "ownership": "value",
+            "mutability": "value",
+            "aliasing": "not_applicable"
+          }
+        ],
+        "return_type": "uint64",
+        "return_ownership": "value",
+        "borrow_from": null
+      },
+      "dynamic": {
+        "export": "ffiFqElementCoordinate"
+      },
+      "native": {
+        "symbol": "sagejs_fq_element_coordinate",
+        "return_type": "uint64_t",
+        "arguments": [
+          {
+            "source": "element",
+            "abi_type": "sagejs_fq_element_t",
+            "direction": "in",
+            "adapter": null
+          },
+          {
+            "source": "basis_index",
+            "abi_type": "uint64_t",
+            "direction": "in",
+            "adapter": null
+          }
+        ]
+      },
+      "effects": {
+        "pure": true,
+        "deterministic": true,
+        "thread_safe": false,
+        "may_allocate": false,
+        "may_raise": [],
+        "writes": []
+      },
+      "result": {
+        "domain": "direct",
+        "success": [],
+        "absence": null
+      },
+      "errors": {
+        "exception": null,
+        "message": null
+      },
+      "exceptions": {
+        "policy": "none",
+        "failure_status": null
+      },
+      "targets": {
+        "dynamic": true,
+        "native": true,
+        "wasm": false
+      }
+    },
+    {
+      "id": "fq_element_equal",
+      "python_name": "fq_element_equal",
+      "signature": {
+        "parameters": [
+          {
+            "name": "left",
+            "type": "FqElement",
+            "ownership": "borrowed",
+            "mutability": "read",
+            "aliasing": "allowed"
+          },
+          {
+            "name": "right",
+            "type": "FqElement",
+            "ownership": "borrowed",
+            "mutability": "read",
+            "aliasing": "allowed"
+          }
+        ],
+        "return_type": "bool",
+        "return_ownership": "value",
+        "borrow_from": null
+      },
+      "dynamic": {
+        "export": "ffiFqElementEqual"
+      },
+      "native": {
+        "symbol": "sagejs_fq_element_equal",
+        "return_type": "int",
+        "arguments": [
+          {
+            "source": "left",
+            "abi_type": "sagejs_fq_element_t",
+            "direction": "in",
+            "adapter": null
+          },
+          {
+            "source": "right",
+            "abi_type": "sagejs_fq_element_t",
+            "direction": "in",
+            "adapter": null
+          }
+        ]
+      },
+      "effects": {
+        "pure": true,
+        "deterministic": true,
+        "thread_safe": false,
+        "may_allocate": false,
+        "may_raise": [],
+        "writes": []
+      },
+      "result": {
+        "domain": "direct",
+        "success": [],
+        "absence": null
+      },
+      "errors": {
+        "exception": null,
+        "message": null
+      },
+      "exceptions": {
+        "policy": "none",
+        "failure_status": null
+      },
+      "targets": {
+        "dynamic": true,
+        "native": true,
+        "wasm": false
+      }
+    },
+    {
+      "id": "fq_element_add",
+      "python_name": "fq_element_add",
+      "signature": {
+        "parameters": [
+          {
+            "name": "left",
+            "type": "FqElement",
+            "ownership": "borrowed",
+            "mutability": "read",
+            "aliasing": "allowed"
+          },
+          {
+            "name": "right",
+            "type": "FqElement",
+            "ownership": "borrowed",
+            "mutability": "read",
+            "aliasing": "allowed"
+          }
+        ],
+        "return_type": "FqElement",
+        "return_ownership": "owned",
+        "borrow_from": null
+      },
+      "dynamic": {
+        "export": "ffiFqElementAdd"
+      },
+      "native": {
+        "symbol": "sagejs_fq_element_add",
+        "return_type": "int",
+        "arguments": [
+          {
+            "source": "result",
+            "abi_type": "sagejs_fq_element_t",
+            "direction": "out",
+            "adapter": null
+          },
+          {
+            "source": "left",
+            "abi_type": "sagejs_fq_element_t",
+            "direction": "in",
+            "adapter": null
+          },
+          {
+            "source": "right",
+            "abi_type": "sagejs_fq_element_t",
+            "direction": "in",
+            "adapter": null
+          }
+        ]
+      },
+      "effects": {
+        "pure": false,
+        "deterministic": true,
+        "thread_safe": false,
+        "may_allocate": true,
+        "may_raise": [
+          "ValueError"
+        ],
+        "writes": []
+      },
+      "result": {
+        "domain": "status",
+        "success": [
+          1
+        ],
+        "absence": null
+      },
+      "errors": {
+        "exception": "ValueError",
+        "message": "finite extension contexts differ"
+      },
+      "exceptions": {
+        "policy": "none",
+        "failure_status": null
+      },
+      "targets": {
+        "dynamic": true,
+        "native": true,
+        "wasm": false
+      }
+    },
+    {
+      "id": "fq_element_sub",
+      "python_name": "fq_element_sub",
+      "signature": {
+        "parameters": [
+          {
+            "name": "left",
+            "type": "FqElement",
+            "ownership": "borrowed",
+            "mutability": "read",
+            "aliasing": "allowed"
+          },
+          {
+            "name": "right",
+            "type": "FqElement",
+            "ownership": "borrowed",
+            "mutability": "read",
+            "aliasing": "allowed"
+          }
+        ],
+        "return_type": "FqElement",
+        "return_ownership": "owned",
+        "borrow_from": null
+      },
+      "dynamic": {
+        "export": "ffiFqElementSub"
+      },
+      "native": {
+        "symbol": "sagejs_fq_element_sub",
+        "return_type": "int",
+        "arguments": [
+          {
+            "source": "result",
+            "abi_type": "sagejs_fq_element_t",
+            "direction": "out",
+            "adapter": null
+          },
+          {
+            "source": "left",
+            "abi_type": "sagejs_fq_element_t",
+            "direction": "in",
+            "adapter": null
+          },
+          {
+            "source": "right",
+            "abi_type": "sagejs_fq_element_t",
+            "direction": "in",
+            "adapter": null
+          }
+        ]
+      },
+      "effects": {
+        "pure": false,
+        "deterministic": true,
+        "thread_safe": false,
+        "may_allocate": true,
+        "may_raise": [
+          "ValueError"
+        ],
+        "writes": []
+      },
+      "result": {
+        "domain": "status",
+        "success": [
+          1
+        ],
+        "absence": null
+      },
+      "errors": {
+        "exception": "ValueError",
+        "message": "finite extension contexts differ"
+      },
+      "exceptions": {
+        "policy": "none",
+        "failure_status": null
+      },
+      "targets": {
+        "dynamic": true,
+        "native": true,
+        "wasm": false
+      }
+    },
+    {
+      "id": "fq_element_mul",
+      "python_name": "fq_element_mul",
+      "signature": {
+        "parameters": [
+          {
+            "name": "left",
+            "type": "FqElement",
+            "ownership": "borrowed",
+            "mutability": "read",
+            "aliasing": "allowed"
+          },
+          {
+            "name": "right",
+            "type": "FqElement",
+            "ownership": "borrowed",
+            "mutability": "read",
+            "aliasing": "allowed"
+          }
+        ],
+        "return_type": "FqElement",
+        "return_ownership": "owned",
+        "borrow_from": null
+      },
+      "dynamic": {
+        "export": "ffiFqElementMul"
+      },
+      "native": {
+        "symbol": "sagejs_fq_element_mul",
+        "return_type": "int",
+        "arguments": [
+          {
+            "source": "result",
+            "abi_type": "sagejs_fq_element_t",
+            "direction": "out",
+            "adapter": null
+          },
+          {
+            "source": "left",
+            "abi_type": "sagejs_fq_element_t",
+            "direction": "in",
+            "adapter": null
+          },
+          {
+            "source": "right",
+            "abi_type": "sagejs_fq_element_t",
+            "direction": "in",
+            "adapter": null
+          }
+        ]
+      },
+      "effects": {
+        "pure": false,
+        "deterministic": true,
+        "thread_safe": false,
+        "may_allocate": true,
+        "may_raise": [
+          "ValueError"
+        ],
+        "writes": []
+      },
+      "result": {
+        "domain": "status",
+        "success": [
+          1
+        ],
+        "absence": null
+      },
+      "errors": {
+        "exception": "ValueError",
+        "message": "finite extension contexts differ"
+      },
+      "exceptions": {
+        "policy": "none",
+        "failure_status": null
+      },
+      "targets": {
+        "dynamic": true,
+        "native": true,
+        "wasm": false
+      }
+    },
+    {
+      "id": "fq_polynomial",
+      "python_name": "fq_polynomial",
+      "signature": {
+        "parameters": [
+          {
+            "name": "context",
+            "type": "FqContext",
+            "ownership": "borrowed",
+            "mutability": "read",
+            "aliasing": "allowed"
+          },
+          {
+            "name": "coordinates",
+            "type": "UInt64Buffer",
+            "ownership": "borrowed",
+            "mutability": "read",
+            "aliasing": "allowed"
+          },
+          {
+            "name": "coordinate_length",
+            "type": "uint64",
+            "ownership": "value",
+            "mutability": "value",
+            "aliasing": "not_applicable"
+          },
+          {
+            "name": "coefficient_count",
+            "type": "uint64",
+            "ownership": "value",
+            "mutability": "value",
+            "aliasing": "not_applicable"
+          }
+        ],
+        "return_type": "FqPolynomial",
+        "return_ownership": "owned",
+        "borrow_from": null
+      },
+      "dynamic": {
+        "export": "ffiFqPolynomialCreate"
+      },
+      "native": {
+        "symbol": "sagejs_fq_polynomial_init_coordinates",
+        "return_type": "int",
+        "arguments": [
+          {
+            "source": "result",
+            "abi_type": "sagejs_fq_polynomial_t",
+            "direction": "out",
+            "adapter": null
+          },
+          {
+            "source": "context",
+            "abi_type": "sagejs_fq_context_t",
+            "direction": "in",
+            "adapter": null
+          },
+          {
+            "source": "coordinate_entries",
+            "abi_type": "uint64_t_ptr",
+            "direction": "in",
+            "adapter": {
+              "kind": "packed_slice",
+              "data": "coordinates",
+              "length": "coordinate_length",
+              "access": "read",
+              "aliasing": "allowed",
+              "transactional": false
+            }
+          },
+          {
+            "source": "coordinate_length",
+            "abi_type": "uint64_t",
+            "direction": "in",
+            "adapter": null
+          },
+          {
+            "source": "coefficient_count",
+            "abi_type": "uint64_t",
+            "direction": "in",
+            "adapter": null
+          }
+        ]
+      },
+      "effects": {
+        "pure": false,
+        "deterministic": true,
+        "thread_safe": false,
+        "may_allocate": true,
+        "may_raise": [
+          "ValueError"
+        ],
+        "writes": []
+      },
+      "result": {
+        "domain": "status",
+        "success": [
+          1
+        ],
+        "absence": null
+      },
+      "errors": {
+        "exception": "ValueError",
+        "message": "finite extension polynomial coordinates are invalid"
+      },
+      "exceptions": {
+        "policy": "none",
+        "failure_status": null
+      },
+      "targets": {
+        "dynamic": true,
+        "native": true,
+        "wasm": false
+      }
+    },
+    {
+      "id": "fq_polynomial_copy",
+      "python_name": "fq_polynomial_copy",
+      "signature": {
+        "parameters": [
+          {
+            "name": "source",
+            "type": "FqPolynomial",
+            "ownership": "borrowed",
+            "mutability": "read",
+            "aliasing": "allowed"
+          }
+        ],
+        "return_type": "FqPolynomial",
+        "return_ownership": "owned",
+        "borrow_from": null
+      },
+      "dynamic": {
+        "export": "ffiFqPolynomialCopy"
+      },
+      "native": {
+        "symbol": "sagejs_fq_polynomial_copy",
+        "return_type": "int",
+        "arguments": [
+          {
+            "source": "result",
+            "abi_type": "sagejs_fq_polynomial_t",
+            "direction": "out",
+            "adapter": null
+          },
+          {
+            "source": "source",
+            "abi_type": "sagejs_fq_polynomial_t",
+            "direction": "in",
+            "adapter": null
+          }
+        ]
+      },
+      "effects": {
+        "pure": false,
+        "deterministic": true,
+        "thread_safe": false,
+        "may_allocate": true,
+        "may_raise": [
+          "RuntimeError"
+        ],
+        "writes": []
+      },
+      "result": {
+        "domain": "status",
+        "success": [
+          1
+        ],
+        "absence": null
+      },
+      "errors": {
+        "exception": "RuntimeError",
+        "message": "extension polynomial copy failed"
+      },
+      "exceptions": {
+        "policy": "none",
+        "failure_status": null
+      },
+      "targets": {
+        "dynamic": true,
+        "native": true,
+        "wasm": false
+      }
+    },
+    {
+      "id": "fq_polynomial_length",
+      "python_name": "fq_polynomial_length",
+      "signature": {
+        "parameters": [
+          {
+            "name": "polynomial",
+            "type": "FqPolynomial",
+            "ownership": "borrowed",
+            "mutability": "read",
+            "aliasing": "allowed"
+          }
+        ],
+        "return_type": "uint64",
+        "return_ownership": "value",
+        "borrow_from": null
+      },
+      "dynamic": {
+        "export": "ffiFqPolynomialLength"
+      },
+      "native": {
+        "symbol": "sagejs_fq_polynomial_length",
+        "return_type": "uint64_t",
+        "arguments": [
+          {
+            "source": "polynomial",
+            "abi_type": "sagejs_fq_polynomial_t",
+            "direction": "in",
+            "adapter": null
+          }
+        ]
+      },
+      "effects": {
+        "pure": true,
+        "deterministic": true,
+        "thread_safe": false,
+        "may_allocate": false,
+        "may_raise": [],
+        "writes": []
+      },
+      "result": {
+        "domain": "direct",
+        "success": [],
+        "absence": null
+      },
+      "errors": {
+        "exception": null,
+        "message": null
+      },
+      "exceptions": {
+        "policy": "none",
+        "failure_status": null
+      },
+      "targets": {
+        "dynamic": true,
+        "native": true,
+        "wasm": false
+      }
+    },
+    {
+      "id": "fq_polynomial_degree",
+      "python_name": "fq_polynomial_degree",
+      "signature": {
+        "parameters": [
+          {
+            "name": "polynomial",
+            "type": "FqPolynomial",
+            "ownership": "borrowed",
+            "mutability": "read",
+            "aliasing": "allowed"
+          }
+        ],
+        "return_type": "uint64",
+        "return_ownership": "value",
+        "borrow_from": null
+      },
+      "dynamic": {
+        "export": "ffiFqPolynomialDegree"
+      },
+      "native": {
+        "symbol": "sagejs_fq_polynomial_degree",
+        "return_type": "uint64_t",
+        "arguments": [
+          {
+            "source": "polynomial",
+            "abi_type": "sagejs_fq_polynomial_t",
+            "direction": "in",
+            "adapter": null
+          }
+        ]
+      },
+      "effects": {
+        "pure": true,
+        "deterministic": true,
+        "thread_safe": false,
+        "may_allocate": false,
+        "may_raise": [],
+        "writes": []
+      },
+      "result": {
+        "domain": "direct",
+        "success": [],
+        "absence": null
+      },
+      "errors": {
+        "exception": null,
+        "message": null
+      },
+      "exceptions": {
+        "policy": "none",
+        "failure_status": null
+      },
+      "targets": {
+        "dynamic": true,
+        "native": true,
+        "wasm": false
+      }
+    },
+    {
+      "id": "fq_polynomial_coordinate",
+      "python_name": "fq_polynomial_coordinate",
+      "signature": {
+        "parameters": [
+          {
+            "name": "polynomial",
+            "type": "FqPolynomial",
+            "ownership": "borrowed",
+            "mutability": "read",
+            "aliasing": "allowed"
+          },
+          {
+            "name": "coefficient_index",
+            "type": "uint64",
+            "ownership": "value",
+            "mutability": "value",
+            "aliasing": "not_applicable"
+          },
+          {
+            "name": "basis_index",
+            "type": "uint64",
+            "ownership": "value",
+            "mutability": "value",
+            "aliasing": "not_applicable"
+          }
+        ],
+        "return_type": "uint64",
+        "return_ownership": "value",
+        "borrow_from": null
+      },
+      "dynamic": {
+        "export": "ffiFqPolynomialCoordinate"
+      },
+      "native": {
+        "symbol": "sagejs_fq_polynomial_coordinate",
+        "return_type": "uint64_t",
+        "arguments": [
+          {
+            "source": "polynomial",
+            "abi_type": "sagejs_fq_polynomial_t",
+            "direction": "in",
+            "adapter": null
+          },
+          {
+            "source": "coefficient_index",
+            "abi_type": "uint64_t",
+            "direction": "in",
+            "adapter": null
+          },
+          {
+            "source": "basis_index",
+            "abi_type": "uint64_t",
+            "direction": "in",
+            "adapter": null
+          }
+        ]
+      },
+      "effects": {
+        "pure": true,
+        "deterministic": true,
+        "thread_safe": false,
+        "may_allocate": false,
+        "may_raise": [],
+        "writes": []
+      },
+      "result": {
+        "domain": "direct",
+        "success": [],
+        "absence": null
+      },
+      "errors": {
+        "exception": null,
+        "message": null
+      },
+      "exceptions": {
+        "policy": "none",
+        "failure_status": null
+      },
+      "targets": {
+        "dynamic": true,
+        "native": true,
+        "wasm": false
+      }
+    },
+    {
+      "id": "fq_polynomial_equal",
+      "python_name": "fq_polynomial_equal",
+      "signature": {
+        "parameters": [
+          {
+            "name": "left",
+            "type": "FqPolynomial",
+            "ownership": "borrowed",
+            "mutability": "read",
+            "aliasing": "allowed"
+          },
+          {
+            "name": "right",
+            "type": "FqPolynomial",
+            "ownership": "borrowed",
+            "mutability": "read",
+            "aliasing": "allowed"
+          }
+        ],
+        "return_type": "bool",
+        "return_ownership": "value",
+        "borrow_from": null
+      },
+      "dynamic": {
+        "export": "ffiFqPolynomialEqual"
+      },
+      "native": {
+        "symbol": "sagejs_fq_polynomial_equal",
+        "return_type": "int",
+        "arguments": [
+          {
+            "source": "left",
+            "abi_type": "sagejs_fq_polynomial_t",
+            "direction": "in",
+            "adapter": null
+          },
+          {
+            "source": "right",
+            "abi_type": "sagejs_fq_polynomial_t",
+            "direction": "in",
+            "adapter": null
+          }
+        ]
+      },
+      "effects": {
+        "pure": true,
+        "deterministic": true,
+        "thread_safe": false,
+        "may_allocate": false,
+        "may_raise": [],
+        "writes": []
+      },
+      "result": {
+        "domain": "direct",
+        "success": [],
+        "absence": null
+      },
+      "errors": {
+        "exception": null,
+        "message": null
+      },
+      "exceptions": {
+        "policy": "none",
+        "failure_status": null
+      },
+      "targets": {
+        "dynamic": true,
+        "native": true,
+        "wasm": false
+      }
+    },
+    {
+      "id": "fq_polynomial_add",
+      "python_name": "fq_polynomial_add",
+      "signature": {
+        "parameters": [
+          {
+            "name": "left",
+            "type": "FqPolynomial",
+            "ownership": "borrowed",
+            "mutability": "read",
+            "aliasing": "allowed"
+          },
+          {
+            "name": "right",
+            "type": "FqPolynomial",
+            "ownership": "borrowed",
+            "mutability": "read",
+            "aliasing": "allowed"
+          }
+        ],
+        "return_type": "FqPolynomial",
+        "return_ownership": "owned",
+        "borrow_from": null
+      },
+      "dynamic": {
+        "export": "ffiFqPolynomialAdd"
+      },
+      "native": {
+        "symbol": "sagejs_fq_polynomial_add",
+        "return_type": "int",
+        "arguments": [
+          {
+            "source": "result",
+            "abi_type": "sagejs_fq_polynomial_t",
+            "direction": "out",
+            "adapter": null
+          },
+          {
+            "source": "left",
+            "abi_type": "sagejs_fq_polynomial_t",
+            "direction": "in",
+            "adapter": null
+          },
+          {
+            "source": "right",
+            "abi_type": "sagejs_fq_polynomial_t",
+            "direction": "in",
+            "adapter": null
+          }
+        ]
+      },
+      "effects": {
+        "pure": false,
+        "deterministic": true,
+        "thread_safe": false,
+        "may_allocate": true,
+        "may_raise": [
+          "ValueError"
+        ],
+        "writes": []
+      },
+      "result": {
+        "domain": "status",
+        "success": [
+          1
+        ],
+        "absence": null
+      },
+      "errors": {
+        "exception": "ValueError",
+        "message": "extension polynomial contexts differ"
+      },
+      "exceptions": {
+        "policy": "none",
+        "failure_status": null
+      },
+      "targets": {
+        "dynamic": true,
+        "native": true,
+        "wasm": false
+      }
+    },
+    {
+      "id": "fq_polynomial_sub",
+      "python_name": "fq_polynomial_sub",
+      "signature": {
+        "parameters": [
+          {
+            "name": "left",
+            "type": "FqPolynomial",
+            "ownership": "borrowed",
+            "mutability": "read",
+            "aliasing": "allowed"
+          },
+          {
+            "name": "right",
+            "type": "FqPolynomial",
+            "ownership": "borrowed",
+            "mutability": "read",
+            "aliasing": "allowed"
+          }
+        ],
+        "return_type": "FqPolynomial",
+        "return_ownership": "owned",
+        "borrow_from": null
+      },
+      "dynamic": {
+        "export": "ffiFqPolynomialSub"
+      },
+      "native": {
+        "symbol": "sagejs_fq_polynomial_sub",
+        "return_type": "int",
+        "arguments": [
+          {
+            "source": "result",
+            "abi_type": "sagejs_fq_polynomial_t",
+            "direction": "out",
+            "adapter": null
+          },
+          {
+            "source": "left",
+            "abi_type": "sagejs_fq_polynomial_t",
+            "direction": "in",
+            "adapter": null
+          },
+          {
+            "source": "right",
+            "abi_type": "sagejs_fq_polynomial_t",
+            "direction": "in",
+            "adapter": null
+          }
+        ]
+      },
+      "effects": {
+        "pure": false,
+        "deterministic": true,
+        "thread_safe": false,
+        "may_allocate": true,
+        "may_raise": [
+          "ValueError"
+        ],
+        "writes": []
+      },
+      "result": {
+        "domain": "status",
+        "success": [
+          1
+        ],
+        "absence": null
+      },
+      "errors": {
+        "exception": "ValueError",
+        "message": "extension polynomial contexts differ"
+      },
+      "exceptions": {
+        "policy": "none",
+        "failure_status": null
+      },
+      "targets": {
+        "dynamic": true,
+        "native": true,
+        "wasm": false
+      }
+    },
+    {
+      "id": "fq_polynomial_mul",
+      "python_name": "fq_polynomial_mul",
+      "signature": {
+        "parameters": [
+          {
+            "name": "left",
+            "type": "FqPolynomial",
+            "ownership": "borrowed",
+            "mutability": "read",
+            "aliasing": "allowed"
+          },
+          {
+            "name": "right",
+            "type": "FqPolynomial",
+            "ownership": "borrowed",
+            "mutability": "read",
+            "aliasing": "allowed"
+          }
+        ],
+        "return_type": "FqPolynomial",
+        "return_ownership": "owned",
+        "borrow_from": null
+      },
+      "dynamic": {
+        "export": "ffiFqPolynomialMul"
+      },
+      "native": {
+        "symbol": "sagejs_fq_polynomial_mul",
+        "return_type": "int",
+        "arguments": [
+          {
+            "source": "result",
+            "abi_type": "sagejs_fq_polynomial_t",
+            "direction": "out",
+            "adapter": null
+          },
+          {
+            "source": "left",
+            "abi_type": "sagejs_fq_polynomial_t",
+            "direction": "in",
+            "adapter": null
+          },
+          {
+            "source": "right",
+            "abi_type": "sagejs_fq_polynomial_t",
+            "direction": "in",
+            "adapter": null
+          }
+        ]
+      },
+      "effects": {
+        "pure": false,
+        "deterministic": true,
+        "thread_safe": false,
+        "may_allocate": true,
+        "may_raise": [
+          "ValueError"
+        ],
+        "writes": []
+      },
+      "result": {
+        "domain": "status",
+        "success": [
+          1
+        ],
+        "absence": null
+      },
+      "errors": {
+        "exception": "ValueError",
+        "message": "extension polynomial contexts differ"
+      },
+      "exceptions": {
+        "policy": "none",
+        "failure_status": null
+      },
+      "targets": {
+        "dynamic": true,
+        "native": true,
+        "wasm": false
+      }
+    },
+    {
+      "id": "fq_polynomial_neg",
+      "python_name": "fq_polynomial_neg",
+      "signature": {
+        "parameters": [
+          {
+            "name": "source",
+            "type": "FqPolynomial",
+            "ownership": "borrowed",
+            "mutability": "read",
+            "aliasing": "allowed"
+          }
+        ],
+        "return_type": "FqPolynomial",
+        "return_ownership": "owned",
+        "borrow_from": null
+      },
+      "dynamic": {
+        "export": "ffiFqPolynomialNeg"
+      },
+      "native": {
+        "symbol": "sagejs_fq_polynomial_neg",
+        "return_type": "int",
+        "arguments": [
+          {
+            "source": "result",
+            "abi_type": "sagejs_fq_polynomial_t",
+            "direction": "out",
+            "adapter": null
+          },
+          {
+            "source": "source",
+            "abi_type": "sagejs_fq_polynomial_t",
+            "direction": "in",
+            "adapter": null
+          }
+        ]
+      },
+      "effects": {
+        "pure": false,
+        "deterministic": true,
+        "thread_safe": false,
+        "may_allocate": true,
+        "may_raise": [
+          "RuntimeError"
+        ],
+        "writes": []
+      },
+      "result": {
+        "domain": "status",
+        "success": [
+          1
+        ],
+        "absence": null
+      },
+      "errors": {
+        "exception": "RuntimeError",
+        "message": "extension polynomial negation failed"
+      },
+      "exceptions": {
+        "policy": "none",
+        "failure_status": null
+      },
+      "targets": {
+        "dynamic": true,
+        "native": true,
+        "wasm": false
+      }
+    },
+    {
+      "id": "fq_polynomial_pow",
+      "python_name": "fq_polynomial_pow",
+      "signature": {
+        "parameters": [
+          {
+            "name": "source",
+            "type": "FqPolynomial",
+            "ownership": "borrowed",
+            "mutability": "read",
+            "aliasing": "allowed"
+          },
+          {
+            "name": "exponent",
+            "type": "uint64",
+            "ownership": "value",
+            "mutability": "value",
+            "aliasing": "not_applicable"
+          }
+        ],
+        "return_type": "FqPolynomial",
+        "return_ownership": "owned",
+        "borrow_from": null
+      },
+      "dynamic": {
+        "export": "ffiFqPolynomialPow"
+      },
+      "native": {
+        "symbol": "sagejs_fq_polynomial_pow",
+        "return_type": "int",
+        "arguments": [
+          {
+            "source": "result",
+            "abi_type": "sagejs_fq_polynomial_t",
+            "direction": "out",
+            "adapter": null
+          },
+          {
+            "source": "source",
+            "abi_type": "sagejs_fq_polynomial_t",
+            "direction": "in",
+            "adapter": null
+          },
+          {
+            "source": "exponent",
+            "abi_type": "uint64_t",
+            "direction": "in",
+            "adapter": null
+          }
+        ]
+      },
+      "effects": {
+        "pure": false,
+        "deterministic": true,
+        "thread_safe": false,
+        "may_allocate": true,
+        "may_raise": [
+          "OverflowError"
+        ],
+        "writes": []
+      },
+      "result": {
+        "domain": "status",
+        "success": [
+          1
+        ],
+        "absence": null
+      },
+      "errors": {
+        "exception": "OverflowError",
+        "message": "extension polynomial exponent is too large"
+      },
+      "exceptions": {
+        "policy": "none",
+        "failure_status": null
+      },
+      "targets": {
+        "dynamic": true,
+        "native": true,
+        "wasm": false
+      }
+    },
+    {
+      "id": "fq_polynomial_coordinate_bytes",
+      "python_name": "fq_polynomial_coordinate_bytes",
+      "signature": {
+        "parameters": [
+          {
+            "name": "polynomial",
+            "type": "FqPolynomial",
+            "ownership": "borrowed",
+            "mutability": "read",
+            "aliasing": "allowed"
+          }
+        ],
+        "return_type": "FlintByteRegion",
+        "return_ownership": "owned",
+        "borrow_from": null
+      },
+      "dynamic": {
+        "export": "ffiFqPolynomialCoordinateBytes"
+      },
+      "native": {
+        "symbol": "sagejs_fq_polynomial_coordinate_bytes",
+        "return_type": "int",
+        "arguments": [
+          {
+            "source": "result",
+            "abi_type": "sagejs_flint_byte_region_t",
+            "direction": "out",
+            "adapter": null
+          },
+          {
+            "source": "polynomial",
+            "abi_type": "sagejs_fq_polynomial_t",
+            "direction": "in",
+            "adapter": null
+          }
+        ]
+      },
+      "effects": {
+        "pure": false,
+        "deterministic": true,
+        "thread_safe": false,
+        "may_allocate": true,
+        "may_raise": [
+          "OverflowError"
+        ],
+        "writes": []
+      },
+      "result": {
+        "domain": "status",
+        "success": [
+          1
+        ],
+        "absence": null
+      },
+      "errors": {
+        "exception": "OverflowError",
+        "message": "extension polynomial export is too large"
+      },
+      "exceptions": {
+        "policy": "none",
+        "failure_status": null
+      },
+      "targets": {
+        "dynamic": true,
+        "native": true,
+        "wasm": false
       }
     }
   ]
