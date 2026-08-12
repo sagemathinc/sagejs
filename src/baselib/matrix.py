@@ -8117,6 +8117,24 @@ def _random_int(start: int, stop: int) -> int:
             return start + value % width
 
 
+def _current_random_word_state() -> int:
+    """Return the shared LCG state without consuming its next word.
+
+    Initializing an as-yet-unused stream records the sampled seed before any
+    bulk allocation. If allocation then fails, the next public random draw is
+    still exactly the draw that would have followed this initialization.
+    """
+    state = runtime.reflect.get(runtime.global_object, "__sagejs_random_state__")
+    if state is runtime.undefined:
+        state = runtime.math.floor(runtime.math.random() * 4294967296)
+        runtime.reflect.set(
+            runtime.global_object,
+            "__sagejs_random_state__",
+            state,
+        )
+    return runtime.normalize_integer(state)
+
+
 def _set_random_word_state(state: int) -> None:
     """Update the shared deterministic random stream after a bulk kernel."""
     runtime.reflect.set(
@@ -8542,8 +8560,8 @@ def _bulk_sparse_random_matrix(
                 return portable(spec, draw_nonzero=draw_value)
             return portable_full(draw_value)
         final_state = _dense_integer_zeros(kernel, 1)
-        initial_state = runtime.normalize_integer(_random_int(0, 4294967295))
-        resource = kernel(
+        initial_state = _current_random_word_state()
+        private_resource = kernel(
             runtime.bigint(rows),
             runtime.bigint(columns),
             draws_per_row,
@@ -8558,7 +8576,15 @@ def _bulk_sparse_random_matrix(
             multiplier,
             increment,
         )
+        resource = runtime.undefined
         try:
+            # The generated kernel is a separately linked FLINT/GMP allocator
+            # domain. Deep-copy its read-only result into the ordinary FLINT
+            # addon before publication so every later public mutation and the
+            # final close share one allocator provenance. Close the private
+            # source in its own addon after the copy completes.
+            resource = _flint_ffi_module().fmpq_matrix_copy(private_resource)
+            private_resource.close()
             _set_random_word_state(_integer_buffer_values(final_state)[0])
             _trace_dense_rational_selection(
                 "random_matrix",
@@ -8570,7 +8596,9 @@ def _bulk_sparse_random_matrix(
                 resource
             )
         except Exception:
-            resource.close()
+            private_resource.close()
+            if resource is not runtime.undefined:
+                resource.close()
             raise
 
     return runtime.undefined

@@ -1,10 +1,12 @@
 """Source-transparent bulk executors for sparse random dense matrices.
 
-Each executor receives the first already-consumed word from Sage.js's shared
-32-bit stream, consumes every later word inside one isolated native call, and
-writes the last consumed word to a one-entry `IntegerBuffer`. Policy lives in
-`sagejs.linear_algebra.sparse_random`; this module realizes that policy in
-canonical FLINT, M4RI, or packed storage.
+The target-filling executors receive the first already-consumed word from
+Sage.js's shared 32-bit stream. The resource-constructing rational executor
+instead receives the preceding LCG state so allocation can fail without
+consuming that first word. Each executor consumes later words inside one
+isolated native call and writes the final state to a one-entry `IntegerBuffer`.
+Policy lives in `sagejs.linear_algebra.sparse_random`; this module realizes
+that policy in canonical FLINT, M4RI, or packed storage.
 """
 
 from __future__ import annotations
@@ -193,7 +195,14 @@ def sparse_random_fmpq(
     multiplier: uint64,
     increment: uint64,
 ) -> FmpqMatrix:
-    """Construct `QQ` storage with bounded or reciprocal-uniform entries."""
+    """Construct private `QQ` storage with bounded or reciprocal-uniform entries.
+
+    `initial_state` is the shared LCG state immediately before the first word,
+    rather than an already-consumed word. Resource allocation and parameter
+    validation therefore finish before this kernel advances the stream. The
+    host publishes `final_state` only after it has copied this private result
+    into the allocator domain used by public mutable matrices.
+    """
     target = fmpq_matrix(rows, columns)
     if len(final_state) != 1 or word_base == 0 or initial_state >= word_base:
         return target
@@ -218,7 +227,7 @@ def sparse_random_fmpq(
             denominator_words += 1
         denominator_limit = denominator_span - denominator_span % denominator_bound
 
-    state: uint64 = initial_state
+    state: uint64 = (multiplier * initial_state + increment) % word_base
     consumed = 0
     for row in range(rows):
         for draw in range(draws_per_row):

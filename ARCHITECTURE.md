@@ -191,6 +191,15 @@ Resource construction inside control-flow blocks still fails compilation. A
 compiler change MUST NOT silently turn a resource into a raw pointer or host
 callback.
 
+Variable-size resources also retain their allocator provenance after a kernel
+returns. Allocation-growing mutation and destruction MUST occur in the same
+linked allocator domain. A resource constructed in a per-kernel addon may be
+published as mutable only when all such operations continue through that owner,
+or after an explicit read-only deep copy into the public host addon's ownership
+domain followed by deterministic closure of the private source. A shared type
+tag proves representation compatibility; it does not by itself prove allocator
+interchangeability between separately linked FLINT/GMP copies.
+
 An owned resource MAY declare a contiguous copied-byte host transfer by naming
 opaque data and length accessors. The generated host adapter validates the
 resource and complete range, then copies once into host-owned byte storage; it
