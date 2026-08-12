@@ -83,7 +83,9 @@ int main(void)
 
         /* Dependents retain the context after its public owner closes. */
         sagejs_fq_context_clear(context);
-        if (!sagejs_fq_polynomial_add(sum, left, right) ||
+        if (sagejs_fq_context_allocated_bytes(context) != 0 ||
+            sagejs_fq_element_coordinate(element, 1) != 2 ||
+            !sagejs_fq_polynomial_add(sum, left, right) ||
             !sagejs_fq_polynomial_mul(product, left, right) ||
             !sagejs_fq_polynomial_neg(negated, product) ||
             !sagejs_fq_polynomial_coordinate_bytes(coordinates, product) ||

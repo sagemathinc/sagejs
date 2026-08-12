@@ -34,6 +34,14 @@
  * declarations therefore mark every operation `thread_safe=False`; a host
  * must serialize calls, borrows, explicit close, and finalization for one
  * context family on its owning execution thread.
+ *
+ * The context wrapper is the sole external-memory accounting owner for the
+ * shared context allocation; dependents report only their unique storage.
+ * Explicitly closing that wrapper while dependents retain the context can
+ * therefore temporarily under-report, but never double-count or free, the
+ * context allocation until the last dependent closes. If measurements show
+ * material GC pressure, the declaration compiler should grow one shared
+ * external-memory accounting token for dependent resource families.
  */
 
 typedef struct
