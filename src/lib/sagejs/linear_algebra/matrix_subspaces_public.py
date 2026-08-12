@@ -49,6 +49,8 @@ def _basis_row_count(echelon: Any) -> int:
 
 
 def _select_rows(echelon: Any, indices: tuple[int, ...]) -> Any:
+    if hasattr(echelon, "matrix_from_prefix_rows"):
+        return echelon.matrix_from_prefix_rows(len(indices))
     return echelon.matrix_from_rows(indices)
 
 

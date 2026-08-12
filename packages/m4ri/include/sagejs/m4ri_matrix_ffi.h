@@ -288,6 +288,26 @@ static inline int sagejs_m4ri_matrix_select_rows(
     return sagejs_m4ri_matrix_adopt(result, selected);
 }
 
+static inline int sagejs_m4ri_matrix_prefix_rows(
+    sagejs_m4ri_matrix_t result, const sagejs_m4ri_matrix_t source,
+    uint64_t count)
+{
+    rci_t result_rows;
+    rci_t result_columns;
+    const uint64_t source_rows = (uint64_t) source->value->nrows;
+    const uint64_t source_columns = (uint64_t) source->value->ncols;
+    if (count > source_rows || !sagejs_m4ri_checked_dimensions(
+            count, source_columns, &result_rows, &result_columns))
+        return 0;
+    mzd_t *selected = mzd_init(result_rows, result_columns);
+    if (selected == NULL)
+        return 0;
+    if (result_columns != 0)
+        for (rci_t row = 0; row < result_rows; row++)
+            mzd_copy_row(selected, row, source->value, row);
+    return sagejs_m4ri_matrix_adopt(result, selected);
+}
+
 static inline int sagejs_m4ri_matrix_equal(
     const sagejs_m4ri_matrix_t left, const sagejs_m4ri_matrix_t right)
 {
@@ -750,6 +770,16 @@ static inline int sagejs_m4ri_matrix_select_rows(
     (void) result;
     (void) source;
     (void) selected_rows;
+    (void) count;
+    return 0;
+}
+
+static inline int sagejs_m4ri_matrix_prefix_rows(
+    sagejs_m4ri_matrix_t result, const sagejs_m4ri_matrix_t source,
+    uint64_t count)
+{
+    (void) result;
+    (void) source;
     (void) count;
     return 0;
 }

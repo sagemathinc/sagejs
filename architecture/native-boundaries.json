@@ -14,7 +14,7 @@
   },
   "counts": {
     "classified-native-file": 62,
-    "declared-ffi": 389,
+    "declared-ffi": 392,
     "declared-ffi-resource": 27,
     "napi-export": 292,
     "runtime-intrinsic": 136,
@@ -992,6 +992,17 @@
       "dynamic_package": "@sagemath/sagejs-flint",
       "dynamic_export": "ffiFmpqMatrixNrows",
       "symbol": "sagejs_fmpq_matrix_nrows",
+      "disposition": "declared-safe-ffi"
+    },
+    {
+      "id": "ffi:flint:fmpq_matrix_prefix_rows",
+      "kind": "declared-ffi",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "fmpq_matrix_prefix_rows",
+      "dynamic_package": "@sagemath/sagejs-flint",
+      "dynamic_export": "ffiFmpqMatrixPrefixRows",
+      "symbol": "sagejs_fmpq_matrix_prefix_rows",
       "disposition": "declared-safe-ffi"
     },
     {
@@ -2180,6 +2191,17 @@
       "dynamic_package": "@sagemath/sagejs-flint",
       "dynamic_export": "ffiFmpzMatrixPow",
       "symbol": "sagejs_fmpz_matrix_pow",
+      "disposition": "declared-safe-ffi"
+    },
+    {
+      "id": "ffi:flint:fmpz_matrix_prefix_rows",
+      "kind": "declared-ffi",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "fmpz_matrix_prefix_rows",
+      "dynamic_package": "@sagemath/sagejs-flint",
+      "dynamic_export": "ffiFmpzMatrixPrefixRows",
+      "symbol": "sagejs_fmpz_matrix_prefix_rows",
       "disposition": "declared-safe-ffi"
     },
     {
@@ -4556,6 +4578,17 @@
       "dynamic_package": "@sagemath/sagejs-m4ri",
       "dynamic_export": "ffiM4riMatrixNrows",
       "symbol": "sagejs_m4ri_matrix_nrows",
+      "disposition": "declared-safe-ffi"
+    },
+    {
+      "id": "ffi:m4ri:matrix_prefix_rows",
+      "kind": "declared-ffi",
+      "path": "ffi/m4ri.ffi.json",
+      "library": "m4ri",
+      "export": "matrix_prefix_rows",
+      "dynamic_package": "@sagemath/sagejs-m4ri",
+      "dynamic_export": "ffiM4riMatrixPrefixRows",
+      "symbol": "sagejs_m4ri_matrix_prefix_rows",
       "disposition": "declared-safe-ffi"
     },
     {

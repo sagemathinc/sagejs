@@ -84,6 +84,15 @@ test("runs a generated dense rational matrix resource slice", () => {
   assert.equal(liveResources(), 1n);
 
   const copy = flint.ffiFmpqMatrixCopy(matrix);
+  const prefix = flint.ffiFmpqMatrixPrefixRows(matrix, 1n);
+  assert.equal(flint.ffiFmpqMatrixNrows(prefix), 1n);
+  assert.equal(flint.ffiFmpqMatrixNcols(prefix), 2n);
+  assert.equal(flint.ffiFmpqMatrixEntryNumerator(prefix, 0n, 0n), 1n);
+  assert.equal(flint.ffiFmpqMatrixEntryDenominator(prefix, 0n, 0n), 2n);
+  assert.throws(
+    () => flint.ffiFmpqMatrixPrefixRows(matrix, 3n),
+    /row-prefix count is invalid/,
+  );
   const squared = flint.ffiFmpqMatrixMul(matrix, copy);
   const reduced = flint.ffiFmpqMatrixRref(matrix);
   const determinant = flint.ffiFmpqMatrixDet(matrix);
@@ -120,6 +129,7 @@ test("runs a generated dense rational matrix resource slice", () => {
   close(reduced, flint.ffiFmpqMatrixClose);
   close(squared, flint.ffiFmpqMatrixClose);
   close(copy, flint.ffiFmpqMatrixClose);
+  close(prefix, flint.ffiFmpqMatrixClose);
   close(matrix, flint.ffiFmpqMatrixClose);
   assert.equal(liveResources(), 0n);
 });

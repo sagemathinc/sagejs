@@ -165,7 +165,10 @@ self.onmessage = async ({ data }) => {
         compiler,
         "sage",
       );
-      const initialization = frontend.parse("", {
+      const initializationSource = (standardLibrary.preload ?? [])
+        .map((name) => `import ${name}`)
+        .join("\n");
+      const initialization = frontend.parse(initializationSource, {
         filename: "<browser-init>",
         basedir: "__stdlib__",
         libdir: "__stdlib__",

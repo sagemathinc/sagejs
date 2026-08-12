@@ -72,6 +72,7 @@ test("generated FmpzMatrix selectors preserve order and duplicates", () => {
     new BigUint64Array([4n, 0n, 4n, 2n]),
     4n,
   );
+  const prefix = flint.ffiFmpzMatrixPrefixRows(source, 2n);
   try {
     assert.deepEqual(shape(selectedRows), [4, 5]);
     assert.deepEqual(
@@ -80,6 +81,8 @@ test("generated FmpzMatrix selectors preserve order and duplicates", () => {
         values.slice(row * 5, row * 5 + 5)),
     );
     assert.deepEqual(shape(selectedColumns), [4, 4]);
+    assert.deepEqual(shape(prefix), [2, 5]);
+    assert.deepEqual(entries(prefix), values.slice(0, 10));
     assert.deepEqual(
       entries(selectedColumns),
       Array.from({ length: 4 }, (_, row) => [4, 0, 4, 2].map(
@@ -92,7 +95,9 @@ test("generated FmpzMatrix selectors preserve order and duplicates", () => {
     assert.equal(flint.ffiFmpzMatrixEntry(selectedColumns, 3n, 3n), huge);
     assert.ok(accounted(selectedRows) > 0n);
     assert.ok(accounted(selectedColumns) > 0n);
+    assert.ok(accounted(prefix) > 0n);
   } finally {
+    close(prefix);
     close(selectedColumns);
     close(selectedRows);
     close(source);
@@ -109,6 +114,10 @@ test("selectors reject a closed resource before native entry", () => {
     /resource is closed/,
   );
   assert.throws(
+    () => flint.ffiFmpzMatrixPrefixRows(source, 1n),
+    /resource is closed/,
+  );
+  assert.throws(
     () => flint.ffiFmpzMatrixSelectColumns(
       source, new BigUint64Array([0n]), 1n,
     ),
@@ -122,6 +131,7 @@ test("generated FmpzMatrix selectors preserve every empty shape", () => {
   const emptyRows = flint.ffiFmpzMatrixSelectRows(
     noRows, new BigUint64Array(0), 0n,
   );
+  const emptyPrefix = flint.ffiFmpzMatrixPrefixRows(noRows, 0n);
   const columnsOfNoRows = flint.ffiFmpzMatrixSelectColumns(
     noRows, new BigUint64Array([3n, 1n]), 2n,
   );
@@ -133,10 +143,12 @@ test("generated FmpzMatrix selectors preserve every empty shape", () => {
   );
   try {
     assert.deepEqual(shape(emptyRows), [0, 4]);
+    assert.deepEqual(shape(emptyPrefix), [0, 4]);
     assert.deepEqual(shape(columnsOfNoRows), [0, 2]);
     assert.deepEqual(shape(rowsOfNoColumns), [2, 0]);
     assert.deepEqual(shape(emptyColumns), [3, 0]);
   } finally {
+    close(emptyPrefix);
     close(emptyColumns);
     close(rowsOfNoColumns);
     close(columnsOfNoRows);
@@ -158,6 +170,10 @@ test("invalid selection fails atomically before allocating a result", () => {
           source, new BigUint64Array([2n, 3n]), 2n,
         ),
         /row selection contains an invalid index/,
+      );
+      assert.throws(
+        () => flint.ffiFmpzMatrixPrefixRows(source, 4n),
+        /row-prefix count is invalid/,
       );
       assert.throws(
         () => flint.ffiFmpzMatrixSelectColumns(

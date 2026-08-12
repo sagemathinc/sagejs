@@ -35,6 +35,17 @@ test("runs a generated dense integer matrix resource slice", () => {
   );
 
   const copy = flint.ffiFmpzMatrixCopy(matrix);
+  const prefix = flint.ffiFmpzMatrixPrefixRows(matrix, 1n);
+  assert.equal(flint.ffiFmpzMatrixNrows(prefix), 1n);
+  assert.equal(flint.ffiFmpzMatrixNcols(prefix), 2n);
+  assert.equal(
+    flint.ffiFmpzMatrixEntry(prefix, 0n, 0n),
+    2n ** 100n + 17n,
+  );
+  assert.throws(
+    () => flint.ffiFmpzMatrixPrefixRows(matrix, 3n),
+    /row-prefix count is invalid/,
+  );
   const squared = flint.ffiFmpzMatrixMul(matrix, copy);
   assert.equal(
     flint.ffiFmpzMatrixEntry(squared, 0n, 0n),
@@ -84,6 +95,7 @@ test("runs a generated dense integer matrix resource slice", () => {
   close(restored, flint.ffiFmpzMatrixClose);
   close(squared, flint.ffiFmpzMatrixClose);
   close(copy, flint.ffiFmpzMatrixClose);
+  close(prefix, flint.ffiFmpzMatrixClose);
   close(matrix, flint.ffiFmpzMatrixClose);
   assert.equal(liveResources(), 0n);
 });

@@ -154,6 +154,8 @@ try {
     }
 
     await command("Runtime.enable");
+    await command("Network.enable");
+    await command("Network.setCacheDisabled", { cacheDisabled: true });
     await command("Page.enable");
     await command("Page.navigate", {
       url:
@@ -231,7 +233,27 @@ try {
       );
     }
 
+    async function runPublicExactSubspaces() {
+      await runSource(
+        "Z = matrix(ZZ, [[2,4,6],[1,2,3],[0,0,0]])\n" +
+          "Q = matrix(QQ, [[1/2,1/3,0],[1,2/3,0],[0,0,0]])\n" +
+          "B = matrix(GF(2), [[1,0,1],[0,1,1],[1,1,0]])\n" +
+          "spaces = [Z.row_space(), Z.column_space(), " +
+          "Q.row_space(), Q.column_space(), " +
+          "B.row_space(), B.column_space()]\n" +
+          "[W.dimension() for W in spaces] == [1,1,1,1,2,2] and " +
+          "all(W.basis_matrix().is_immutable() for W in spaces)",
+        "True",
+      );
+    }
+
     await waitForOutput("2 * 1013");
+    const publicExactSubspacesOnly = process.argv.includes(
+      "--public-exact-subspaces",
+    );
+    if (publicExactSubspacesOnly) {
+      await runPublicExactSubspaces();
+    } else {
     await runSourceWithShortcut("factor(42)", "shift", "2 * 3 * 7");
     await runSourceWithShortcut("factor(66)", "ctrl", "2 * 3 * 11");
     await runSource("import math\nmath.sin(math.pi/2)", "1");
@@ -259,6 +281,7 @@ try {
         "Free module of degree 3 and rank 2 over Integer Ring\n" +
         "Echelon basis matrix:\n[ 1  1 -1]\n[ 0  3 -2]\nTrue",
     );
+    await runPublicExactSubspaces();
     await runSource(
       "F = GF(5)\nA = matrix(F, [[1,2],[3,4]])\n" +
         "print(A.det(), A.rank())\n" +
@@ -373,11 +396,16 @@ try {
       ],
       aspect: { x: 1, y: 1, z: 1 },
     });
+    }
     socket.close();
   } finally {
     chrome.kill();
   }
-  console.log("Chromium Web Worker mathematics and plotting smoke test passed");
+  console.log(
+    process.argv.includes("--public-exact-subspaces")
+      ? "Chromium public exact matrix subspaces test passed"
+      : "Chromium Web Worker mathematics and plotting smoke test passed",
+  );
 } finally {
   server.close();
 }

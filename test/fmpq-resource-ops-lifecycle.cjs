@@ -59,6 +59,7 @@ function dynamicLifecycleFuzz() {
     const selectedRows = flint.ffiFmpqMatrixSelectRows(
       left, new BigUint64Array([2n, 0n]), 2n,
     );
+    const prefixRows = flint.ffiFmpqMatrixPrefixRows(left, 2n);
     const selectedColumns = flint.ffiFmpqMatrixSelectColumns(
       left, new BigUint64Array([2n, 0n]), 2n,
     );
@@ -78,6 +79,11 @@ function dynamicLifecycleFuzz() {
     assert.equal(flint.ffiFmpqMatrixRank(left), 3n);
     assert.equal(flint.ffiFmpqMatrixNonzeroCount(left), 6n);
     assert.equal(flint.ffiFmpqMatrixNrows(stacked), 4n);
+    assert.equal(flint.ffiFmpqMatrixNrows(prefixRows), 2n);
+    assert.equal(
+      flint.ffiFmpqMatrixEntryNumerator(prefixRows, 0n, 0n),
+      flint.ffiFmpqMatrixEntryNumerator(left, 0n, 0n),
+    );
     assert.equal(flint.ffiFmpqMatrixNcols(augmented), 4n);
     assert.equal(flint.ffiFmpqMatrixNrows(kernel), 0n);
     assert.equal(flint.ffiFmpqMatrixNcols(kernel), 3n);
@@ -98,6 +104,7 @@ function dynamicLifecycleFuzz() {
     flint.ffiFmpqMatrixClose(augmented);
     flint.ffiFmpqMatrixClose(stacked);
     flint.ffiFmpqMatrixClose(selectedColumns);
+    flint.ffiFmpqMatrixClose(prefixRows);
     flint.ffiFmpqMatrixClose(selectedRows);
     flint.ffiFmpqMatrixClose(submatrix);
     flint.ffiFmpqMatrixClose(solution);
@@ -134,6 +141,10 @@ function dynamicLifecycleFuzz() {
         singular, new BigUint64Array([2n]), 1n,
       ),
       /row selection contains an invalid index/,
+    );
+    assert.throws(
+      () => flint.ffiFmpqMatrixPrefixRows(singular, 3n),
+      /row-prefix count is invalid/,
     );
     assert.throws(
       () => flint.ffiFmpqMatrixSetBlock(singular, 0n, 0n, singular),
@@ -180,7 +191,8 @@ int main(void)
         sagejs_fmpq_matrix_t left, right, sum, difference;
         sagejs_fmpq_matrix_t negated, scaled, transposed, inverse, solution;
         sagejs_fmpq_matrix_t kernel;
-        sagejs_fmpq_matrix_t submatrix, selected_rows, selected_columns;
+        sagejs_fmpq_matrix_t submatrix, selected_rows, prefix_rows;
+        sagejs_fmpq_matrix_t selected_columns;
         sagejs_fmpq_matrix_t stacked, augmented, block_target;
         sagejs_fmpq_matrix_t singular, inconsistent, failed;
         sagejs_fmpq_value_t trace, failed_value;
@@ -227,6 +239,7 @@ int main(void)
                 submatrix, left, 1, 3, 0, 2) ||
             !sagejs_fmpq_matrix_select_rows(
                 selected_rows, left, selected, 2) ||
+            !sagejs_fmpq_matrix_prefix_rows(prefix_rows, left, 2) ||
             !sagejs_fmpq_matrix_select_columns(
                 selected_columns, left, selected, 2) ||
             !sagejs_fmpq_matrix_stack(
@@ -244,6 +257,7 @@ int main(void)
             sagejs_fmpq_matrix_rank(left) != 3 ||
             sagejs_fmpq_matrix_nonzero_count(left) != 6 ||
             sagejs_fmpq_matrix_nrows(stacked) != 4 ||
+            sagejs_fmpq_matrix_nrows(prefix_rows) != 2 ||
             sagejs_fmpq_matrix_ncols(augmented) != 4)
             return 4;
         if (sagejs_fmpq_matrix_nrows(kernel) != 0 ||
@@ -277,6 +291,7 @@ int main(void)
                 failed, singular, NULL, 1) ||
             sagejs_fmpq_matrix_select_rows(
                 failed, singular, invalid, 1) ||
+            sagejs_fmpq_matrix_prefix_rows(failed, singular, 3) ||
             sagejs_fmpq_matrix_set_block(singular, 0, 0, singular) ||
             sagejs_fmpq_matrix_trace(failed_value, inconsistent))
             return 6;
@@ -286,6 +301,7 @@ int main(void)
         sagejs_fmpq_matrix_clear(augmented);
         sagejs_fmpq_matrix_clear(stacked);
         sagejs_fmpq_matrix_clear(selected_columns);
+        sagejs_fmpq_matrix_clear(prefix_rows);
         sagejs_fmpq_matrix_clear(selected_rows);
         sagejs_fmpq_matrix_clear(submatrix);
         sagejs_fmpq_matrix_clear(solution);

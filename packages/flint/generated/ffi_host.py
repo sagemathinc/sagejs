@@ -168,6 +168,7 @@ from sagejs.ffi.flint import (
     fmpz_matrix_from_fmpq_integral as _ffi_fmpz_matrix_from_fmpq_integral,
     fmpz_matrix_submatrix as _ffi_fmpz_matrix_submatrix,
     fmpz_matrix_select_rows as _ffi_fmpz_matrix_select_rows,
+    fmpz_matrix_prefix_rows as _ffi_fmpz_matrix_prefix_rows,
     fmpz_matrix_select_columns as _ffi_fmpz_matrix_select_columns,
     fmpz_matrix_swap_rows as _ffi_fmpz_matrix_swap_rows,
     fmpz_matrix_swap_columns as _ffi_fmpz_matrix_swap_columns,
@@ -215,6 +216,7 @@ from sagejs.ffi.flint import (
     fmpq_matrix_trace as _ffi_fmpq_matrix_trace,
     fmpq_matrix_submatrix as _ffi_fmpq_matrix_submatrix,
     fmpq_matrix_select_rows as _ffi_fmpq_matrix_select_rows,
+    fmpq_matrix_prefix_rows as _ffi_fmpq_matrix_prefix_rows,
     fmpq_matrix_select_columns as _ffi_fmpq_matrix_select_columns,
     fmpq_matrix_swap_rows as _ffi_fmpq_matrix_swap_rows,
     fmpq_matrix_swap_columns as _ffi_fmpq_matrix_swap_columns,
@@ -1810,6 +1812,17 @@ def ffiFmpzMatrixSelectRows(
 
 
 @native
+def ffiFmpzMatrixPrefixRows(
+    source: FmpzMatrix,
+    count: uint64,
+) -> FmpzMatrix:
+    return _ffi_fmpz_matrix_prefix_rows(
+        source,
+        count,
+    )
+
+
+@native
 def ffiFmpzMatrixSelectColumns(
     source: FmpzMatrix,
     indices: UInt64Buffer,
@@ -2334,6 +2347,17 @@ def ffiFmpqMatrixSelectRows(
     return _ffi_fmpq_matrix_select_rows(
         source,
         indices,
+        count,
+    )
+
+
+@native
+def ffiFmpqMatrixPrefixRows(
+    source: FmpqMatrix,
+    count: uint64,
+) -> FmpqMatrix:
+    return _ffi_fmpq_matrix_prefix_rows(
+        source,
         count,
     )
 

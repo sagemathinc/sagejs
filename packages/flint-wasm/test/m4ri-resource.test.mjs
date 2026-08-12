@@ -40,6 +40,14 @@ test("runs the complete generated M4RI resource surface", () => {
   assert.equal(m4ri.ffiM4riMatrixNcols(left), 2n);
 
   const copy = m4ri.ffiM4riMatrixCopy(left);
+  const prefix = m4ri.ffiM4riMatrixPrefixRows(left, 1n);
+  assert.equal(m4ri.ffiM4riMatrixNrows(prefix), 1n);
+  assert.equal(m4ri.ffiM4riMatrixNcols(prefix), 2n);
+  assert.equal(m4ri.ffiM4riMatrixEntryCode(prefix, 0n, 1n), 1n);
+  assert.throws(
+    () => m4ri.ffiM4riMatrixPrefixRows(left, 3n),
+    /row-prefix count is invalid/,
+  );
   const zero = m4ri.ffiM4riMatrixAdd(left, copy);
   const square = m4ri.ffiM4riMatrixMul(left, copy);
   const transpose = m4ri.ffiM4riMatrixTranspose(left);
@@ -90,6 +98,7 @@ test("runs the complete generated M4RI resource surface", () => {
     square,
     zero,
     copy,
+    prefix,
     left,
   ]) {
     close(value, m4ri.ffiM4riMatrixClose);

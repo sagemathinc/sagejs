@@ -260,6 +260,26 @@ def matrix_select_rows(
 
 
 @m4ri.function(
+    dynamic="ffiM4riMatrixPrefixRows",
+    symbol="sagejs_m4ri_matrix_prefix_rows",
+    returns=int,
+    abi=[
+        out("result", sagejs_m4ri_matrix_t),
+        in_("source", sagejs_m4ri_matrix_t),
+        in_("count", uint64_t),
+    ],
+    effects=Effects(pure=False, allocates=True, raises=[ValueError]),
+    result=Status(
+        1,
+        exception=ValueError,
+        message="M4RI matrix row-prefix count is invalid",
+    ),
+    wasm=True,
+)
+def matrix_prefix_rows(source: M4riMatrix, count: uint64) -> M4riMatrix: ...
+
+
+@m4ri.function(
     dynamic="ffiM4riMatrixEqual",
     symbol="sagejs_m4ri_matrix_equal",
     returns=int,

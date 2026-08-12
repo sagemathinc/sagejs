@@ -1762,7 +1762,7 @@ class VectorSpaceParent(sage.Parent):
 class Vector(sage.Element):
     def __init__(
         self,
-        parent: VectorSpaceParent,
+        parent: Any,
         entries: Any,
         native_value: Any = runtime.undefined,
     ) -> None:
@@ -2050,6 +2050,8 @@ class VectorSubspaceParent(sage.Parent):
     ) -> None:
         self._ambient = ambient
         self._basis_matrix = basis
+        self._coordinate_ring = basis.base_ring()
+        self._coordinate_ambient = VectorSpace(self._coordinate_ring, ambient.degree())
         self._defining_matrix = defining_matrix
         self._left_kernel = left_kernel
         self._enumeration_elements: Any = None
@@ -2080,15 +2082,31 @@ class VectorSubspaceParent(sage.Parent):
         return self._basis_matrix
 
     def basis(self) -> list[Vector]:
-        return self._basis_matrix.rows()
+        return [self.gen(index) for index in range(self.dimension())]
 
     gens = basis
 
     def gen(self, index: int = 0) -> Vector:
-        return self._basis_matrix.row(index)
+        row = self._basis_matrix.row(index)
+        return Vector(self, row.list())
+
+    def _from_fmpz_vector_resource(self, resource: Any) -> Vector:
+        if self._coordinate_ring is not sage.ZZ:
+            resource.close()
+            raise TypeError("integer coordinate resource requires ZZ")
+        return Vector(self, runtime.undefined, resource)
+
+    def _from_fmpq_vector_resource(self, resource: Any) -> Vector:
+        if self._coordinate_ring is not sage.QQ:
+            resource.close()
+            raise TypeError("rational coordinate resource requires QQ")
+        return Vector(self, runtime.undefined, resource)
 
     def zero(self) -> Vector:
-        return self._ambient(0)
+        return Vector(
+            self,
+            [self._coordinate_ring(0) for _entry in range(self.degree())],
+        )
 
     def _finite_field_order(self) -> int:
         if getattr(self.base_ring(), "_kind", None) not in ["GF", "GF_EXTENSION"]:
@@ -2151,7 +2169,7 @@ class VectorSubspaceParent(sage.Parent):
 
     def __contains__(self, value: object) -> bool:
         try:
-            element = self._ambient(value)
+            element = self._coordinate_ambient(value)
         except Exception:
             return False
         if self._defining_matrix is not None:
@@ -2163,14 +2181,24 @@ class VectorSubspaceParent(sage.Parent):
                 if entry != 0:
                     return False
             return True
-        extended = self._basis_matrix.stack(element)
-        return _canonical_row_basis(extended) == self._basis_matrix
+        element_row = matrix(
+            self._coordinate_ring,
+            1,
+            self.degree(),
+            element.list(),
+        )
+        extended = self._basis_matrix.stack(element_row)
+        if self._coordinate_ring is self.base_ring():
+            canonical = _canonical_row_basis(extended)
+        else:
+            canonical = _cross_ring_row_basis(extended, self.base_ring())
+        return canonical == self._basis_matrix
 
     def __call__(self, entries: Any = 0) -> Vector:
-        element = self._ambient(entries)
+        element = self._coordinate_ambient(entries)
         if element not in self:
             raise ValueError("vector is not in the subspace")
-        return element
+        return Vector(self, element.list())
 
     def __eq__(self, other: object) -> bool:
         return (
@@ -7245,12 +7273,19 @@ class Matrix(sage.Element):
             answer._trace_word_prime_resource("matrix_from_rows")
             return answer
         if self._has_m4ri_matrix_resource():
-            target = _m4ri_ffi_module().matrix_select_rows(
-                self._m4ri_resource(), _packed_uint64(indices), len(indices)
-            )
-            return MatrixSpace(
-                self.base_ring(), len(indices), self.ncols()
-            )._from_m4ri_matrix_resource(target)
+            try:
+                target = _m4ri_ffi_module().matrix_select_rows(
+                    self._m4ri_resource(), _packed_uint64(indices), len(indices)
+                )
+            except Exception:
+                # Browser M4RI currently omits this resource+borrowed-slice
+                # ABI. Export one logical row-major view and let the ordinary
+                # packed selector copy the requested rows in bulk.
+                target = runtime.undefined
+            if target is not runtime.undefined:
+                return MatrixSpace(
+                    self.base_ring(), len(indices), self.ncols()
+                )._from_m4ri_matrix_resource(target)
         if self._has_packed_prime_storage():
             kernel = _dense_prime_kernel_module().dense_prime_field_matrix_select_rows
             modulus = int(_untyped(self.base_ring()).characteristic())
@@ -7280,6 +7315,34 @@ class Matrix(sage.Element):
             MatrixSpace(self.base_ring(), len(indices), self.ncols()),
             native,
         )
+
+    def matrix_from_prefix_rows(self, count: int) -> Matrix:
+        """Copy leading rows through a portable resource operation."""
+        count = int(count)
+        if count < 0 or count > self.nrows():
+            raise IndexError("matrix row-prefix count is out of range")
+        if self._has_fmpz_matrix_resource():
+            resource = _flint_ffi_module().fmpz_matrix_prefix_rows(
+                self._integer_resource(), count
+            )
+            return MatrixSpace(
+                self.base_ring(), count, self.ncols()
+            )._from_fmpz_matrix_resource(resource)
+        if self._has_fmpq_matrix_resource():
+            resource = _flint_ffi_module().fmpq_matrix_prefix_rows(
+                self._rational_resource(), count
+            )
+            return MatrixSpace(
+                self.base_ring(), count, self.ncols()
+            )._from_fmpq_matrix_resource(resource)
+        if self._has_m4ri_matrix_resource():
+            resource = _m4ri_ffi_module().matrix_prefix_rows(
+                self._m4ri_resource(), count
+            )
+            return MatrixSpace(
+                self.base_ring(), count, self.ncols()
+            )._from_m4ri_matrix_resource(resource)
+        return self.matrix_from_rows(range(count))
 
     def matrix_from_columns(self, columns: Any) -> Matrix:
         indices = _matrix_selection_module().column_indices(
@@ -7914,7 +7977,23 @@ def _cross_ring_row_basis(source: Matrix, base_ring: sage.Parent) -> Matrix:
         )
         answer.set_immutable()
         return answer
-    changed = source.change_ring(base_ring)
+    if base_ring is sage.ZZ and getattr(source.base_ring(), "_kind", None) in [
+        "GF",
+        "ZMOD",
+    ]:
+        changed = matrix(
+            sage.ZZ,
+            source.nrows(),
+            source.ncols(),
+            [value.lift() for value in source.list()],
+        )
+    else:
+        changed = matrix(
+            base_ring,
+            source.nrows(),
+            source.ncols(),
+            source.list(),
+        )
     return _canonical_row_basis(changed)
 
 

@@ -27,6 +27,7 @@ const functionIds = [
   "matrix_set_entry",
   "matrix_entry_code",
   "matrix_copy",
+  "matrix_prefix_rows",
   "matrix_equal",
   "matrix_add",
   "matrix_mul",
@@ -73,10 +74,8 @@ test("complete M4RI resource surface lowers generically to Wasm", () => {
   });
   assert.deepEqual(generated.manifest.resources, resourceIds);
   assert.deepEqual(generated.manifest.functions, functionIds);
-  assert.equal(
-    generated.manifest.functions.includes("matrix_select_rows"),
-    false,
-  );
+  assert.equal(generated.manifest.functions.includes("matrix_select_rows"), false);
+  assert.equal(generated.manifest.functions.includes("matrix_prefix_rows"), true);
   assert.deepEqual(generated.manifest.host_ingress, [{
     resource: "byte_region",
     kind: "copied_bytes",
@@ -143,6 +142,10 @@ test("complete M4RI resources execute through real Wasm", {
     assert.equal(backend.ffiM4riMatrixDeterminantCode(matrix), 1n);
 
     const copy = keepMatrix(backend.ffiM4riMatrixCopy(matrix));
+    const prefix = keepMatrix(backend.ffiM4riMatrixPrefixRows(matrix, 2n));
+    assert.equal(backend.ffiM4riMatrixNrows(prefix), 2n);
+    assert.equal(backend.ffiM4riMatrixNcols(prefix), 3n);
+    assert.equal(backend.ffiM4riMatrixEntryCode(prefix, 1n, 2n), 1n);
     assert.equal(backend.ffiM4riMatrixEqual(matrix, copy), true);
     backend.ffiM4riMatrixSetEntry(copy, 0n, 0n, 0n);
     assert.equal(backend.ffiM4riMatrixEqual(matrix, copy), false);

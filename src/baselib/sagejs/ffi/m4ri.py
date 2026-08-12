@@ -7,7 +7,7 @@ from typing import Any
 import sagejs.runtime as _runtime
 
 __sagejs_ffi_declaration__ = (
-    "m4ri@c82cb42e2895c8d07440d97b84b90f6767d6a7bb570ef6a8c2efc992d24dc9c7"
+    "m4ri@0aadb93e4a22edaaf5d36fb9b63ac0700ca4983a465849cacf87ef10eefcfa6e"
 )
 
 
@@ -27,7 +27,7 @@ class M4riMatrix:
     def _ffi_borrow(self) -> Any:
         return _runtime.ffi_resource_borrow(
             self._token,
-            "resource:m4ri@c82cb42e2895c8d07440d97b84b90f6767d6a7bb570ef6a8c2efc992d24dc9c7:matrix",
+            "resource:m4ri@0aadb93e4a22edaaf5d36fb9b63ac0700ca4983a465849cacf87ef10eefcfa6e:matrix",
         )
 
     def __enter__(self) -> M4riMatrix:
@@ -48,7 +48,7 @@ class M4riByteRegion:
         return cls(
             _runtime.ffi_resource_create(
                 __sagejs_ffi_declaration__ + ":__resource_byte_region_from_bytes",
-                "resource:m4ri@c82cb42e2895c8d07440d97b84b90f6767d6a7bb570ef6a8c2efc992d24dc9c7:byte_region",
+                "resource:m4ri@0aadb93e4a22edaaf5d36fb9b63ac0700ca4983a465849cacf87ef10eefcfa6e:byte_region",
                 "@sagemath/sagejs-m4ri",
                 "ffiM4riByteRegionFromBytes",
                 "ffiM4riByteRegionClose",
@@ -74,7 +74,7 @@ class M4riByteRegion:
     def _ffi_borrow(self) -> Any:
         return _runtime.ffi_resource_borrow(
             self._token,
-            "resource:m4ri@c82cb42e2895c8d07440d97b84b90f6767d6a7bb570ef6a8c2efc992d24dc9c7:byte_region",
+            "resource:m4ri@0aadb93e4a22edaaf5d36fb9b63ac0700ca4983a465849cacf87ef10eefcfa6e:byte_region",
         )
 
     def __enter__(self) -> M4riByteRegion:
@@ -89,7 +89,7 @@ class M4riByteRegion:
         """Copy this resource's byte payload into host-owned storage."""
         return _runtime.ffi_resource_copy_bytes(
             self._token,
-            "resource:m4ri@c82cb42e2895c8d07440d97b84b90f6767d6a7bb570ef6a8c2efc992d24dc9c7:byte_region",
+            "resource:m4ri@0aadb93e4a22edaaf5d36fb9b63ac0700ca4983a465849cacf87ef10eefcfa6e:byte_region",
             "ffiM4riByteRegionCopyBytes",
         )
 
@@ -122,7 +122,7 @@ def matrix(rows: int, columns: int) -> M4riMatrix:
     return M4riMatrix(
         _runtime.ffi_resource_create(
             __sagejs_ffi_declaration__ + ":matrix",
-            "resource:m4ri@c82cb42e2895c8d07440d97b84b90f6767d6a7bb570ef6a8c2efc992d24dc9c7:matrix",
+            "resource:m4ri@0aadb93e4a22edaaf5d36fb9b63ac0700ca4983a465849cacf87ef10eefcfa6e:matrix",
             "@sagemath/sagejs-m4ri",
             "ffiM4riMatrixCreate",
             "ffiM4riMatrixClose",
@@ -144,7 +144,7 @@ def matrix_nrows(matrix: M4riMatrix) -> int:
         "ffiM4riMatrixNrows",
         [matrix._ffi_borrow()],
         [
-            "resource:m4ri@c82cb42e2895c8d07440d97b84b90f6767d6a7bb570ef6a8c2efc992d24dc9c7:matrix"
+            "resource:m4ri@0aadb93e4a22edaaf5d36fb9b63ac0700ca4983a465849cacf87ef10eefcfa6e:matrix"
         ],
         "uint64",
         ["direct", [], None],
@@ -162,7 +162,7 @@ def matrix_ncols(matrix: M4riMatrix) -> int:
         "ffiM4riMatrixNcols",
         [matrix._ffi_borrow()],
         [
-            "resource:m4ri@c82cb42e2895c8d07440d97b84b90f6767d6a7bb570ef6a8c2efc992d24dc9c7:matrix"
+            "resource:m4ri@0aadb93e4a22edaaf5d36fb9b63ac0700ca4983a465849cacf87ef10eefcfa6e:matrix"
         ],
         "uint64",
         ["direct", [], None],
@@ -180,7 +180,7 @@ def matrix_set_entry(matrix: M4riMatrix, row: int, column: int, value: int) -> b
         "ffiM4riMatrixSetEntry",
         [matrix._ffi_borrow(), row, column, value],
         [
-            "resource:m4ri@c82cb42e2895c8d07440d97b84b90f6767d6a7bb570ef6a8c2efc992d24dc9c7:matrix",
+            "resource:m4ri@0aadb93e4a22edaaf5d36fb9b63ac0700ca4983a465849cacf87ef10eefcfa6e:matrix",
             "uint64",
             "uint64",
             "uint64",
@@ -201,7 +201,7 @@ def matrix_swap_rows(matrix: M4riMatrix, first: int, second: int) -> bool:
         "ffiM4riMatrixSwapRows",
         [matrix._ffi_borrow(), first, second],
         [
-            "resource:m4ri@c82cb42e2895c8d07440d97b84b90f6767d6a7bb570ef6a8c2efc992d24dc9c7:matrix",
+            "resource:m4ri@0aadb93e4a22edaaf5d36fb9b63ac0700ca4983a465849cacf87ef10eefcfa6e:matrix",
             "uint64",
             "uint64",
         ],
@@ -221,7 +221,7 @@ def matrix_swap_columns(matrix: M4riMatrix, first: int, second: int) -> bool:
         "ffiM4riMatrixSwapColumns",
         [matrix._ffi_borrow(), first, second],
         [
-            "resource:m4ri@c82cb42e2895c8d07440d97b84b90f6767d6a7bb570ef6a8c2efc992d24dc9c7:matrix",
+            "resource:m4ri@0aadb93e4a22edaaf5d36fb9b63ac0700ca4983a465849cacf87ef10eefcfa6e:matrix",
             "uint64",
             "uint64",
         ],
@@ -241,7 +241,7 @@ def matrix_entry_code(matrix: M4riMatrix, row: int, column: int) -> int:
         "ffiM4riMatrixEntryCode",
         [matrix._ffi_borrow(), row, column],
         [
-            "resource:m4ri@c82cb42e2895c8d07440d97b84b90f6767d6a7bb570ef6a8c2efc992d24dc9c7:matrix",
+            "resource:m4ri@0aadb93e4a22edaaf5d36fb9b63ac0700ca4983a465849cacf87ef10eefcfa6e:matrix",
             "uint64",
             "uint64",
         ],
@@ -258,13 +258,13 @@ def matrix_copy(source: M4riMatrix) -> M4riMatrix:
     return M4riMatrix(
         _runtime.ffi_resource_create(
             __sagejs_ffi_declaration__ + ":matrix_copy",
-            "resource:m4ri@c82cb42e2895c8d07440d97b84b90f6767d6a7bb570ef6a8c2efc992d24dc9c7:matrix",
+            "resource:m4ri@0aadb93e4a22edaaf5d36fb9b63ac0700ca4983a465849cacf87ef10eefcfa6e:matrix",
             "@sagemath/sagejs-m4ri",
             "ffiM4riMatrixCopy",
             "ffiM4riMatrixClose",
             [source._ffi_borrow()],
             [
-                "resource:m4ri@c82cb42e2895c8d07440d97b84b90f6767d6a7bb570ef6a8c2efc992d24dc9c7:matrix"
+                "resource:m4ri@0aadb93e4a22edaaf5d36fb9b63ac0700ca4983a465849cacf87ef10eefcfa6e:matrix"
             ],
             [None],
             "zero_is_error",
@@ -281,13 +281,13 @@ def matrix_select_rows(
     return M4riMatrix(
         _runtime.ffi_resource_create(
             __sagejs_ffi_declaration__ + ":matrix_select_rows",
-            "resource:m4ri@c82cb42e2895c8d07440d97b84b90f6767d6a7bb570ef6a8c2efc992d24dc9c7:matrix",
+            "resource:m4ri@0aadb93e4a22edaaf5d36fb9b63ac0700ca4983a465849cacf87ef10eefcfa6e:matrix",
             "@sagemath/sagejs-m4ri",
             "ffiM4riMatrixSelectRows",
             "ffiM4riMatrixClose",
             [source._ffi_borrow(), indices, count],
             [
-                "resource:m4ri@c82cb42e2895c8d07440d97b84b90f6767d6a7bb570ef6a8c2efc992d24dc9c7:matrix",
+                "resource:m4ri@0aadb93e4a22edaaf5d36fb9b63ac0700ca4983a465849cacf87ef10eefcfa6e:matrix",
                 "UInt64Buffer",
                 "uint64",
             ],
@@ -295,6 +295,28 @@ def matrix_select_rows(
             "zero_is_error",
             "IndexError",
             "M4RI matrix row index is out of range",
+        )
+    )
+
+
+def matrix_prefix_rows(source: M4riMatrix, count: int) -> M4riMatrix:
+    """Call declared m4ri:matrix_prefix_rows."""
+    return M4riMatrix(
+        _runtime.ffi_resource_create(
+            __sagejs_ffi_declaration__ + ":matrix_prefix_rows",
+            "resource:m4ri@0aadb93e4a22edaaf5d36fb9b63ac0700ca4983a465849cacf87ef10eefcfa6e:matrix",
+            "@sagemath/sagejs-m4ri",
+            "ffiM4riMatrixPrefixRows",
+            "ffiM4riMatrixClose",
+            [source._ffi_borrow(), count],
+            [
+                "resource:m4ri@0aadb93e4a22edaaf5d36fb9b63ac0700ca4983a465849cacf87ef10eefcfa6e:matrix",
+                "uint64",
+            ],
+            [None, None],
+            "zero_is_error",
+            "ValueError",
+            "M4RI matrix row-prefix count is invalid",
         )
     )
 
@@ -307,8 +329,8 @@ def matrix_equal(left: M4riMatrix, right: M4riMatrix) -> bool:
         "ffiM4riMatrixEqual",
         [left._ffi_borrow(), right._ffi_borrow()],
         [
-            "resource:m4ri@c82cb42e2895c8d07440d97b84b90f6767d6a7bb570ef6a8c2efc992d24dc9c7:matrix",
-            "resource:m4ri@c82cb42e2895c8d07440d97b84b90f6767d6a7bb570ef6a8c2efc992d24dc9c7:matrix",
+            "resource:m4ri@0aadb93e4a22edaaf5d36fb9b63ac0700ca4983a465849cacf87ef10eefcfa6e:matrix",
+            "resource:m4ri@0aadb93e4a22edaaf5d36fb9b63ac0700ca4983a465849cacf87ef10eefcfa6e:matrix",
         ],
         "bool",
         ["direct", [], None],
@@ -323,14 +345,14 @@ def matrix_add(left: M4riMatrix, right: M4riMatrix) -> M4riMatrix:
     return M4riMatrix(
         _runtime.ffi_resource_create(
             __sagejs_ffi_declaration__ + ":matrix_add",
-            "resource:m4ri@c82cb42e2895c8d07440d97b84b90f6767d6a7bb570ef6a8c2efc992d24dc9c7:matrix",
+            "resource:m4ri@0aadb93e4a22edaaf5d36fb9b63ac0700ca4983a465849cacf87ef10eefcfa6e:matrix",
             "@sagemath/sagejs-m4ri",
             "ffiM4riMatrixAdd",
             "ffiM4riMatrixClose",
             [left._ffi_borrow(), right._ffi_borrow()],
             [
-                "resource:m4ri@c82cb42e2895c8d07440d97b84b90f6767d6a7bb570ef6a8c2efc992d24dc9c7:matrix",
-                "resource:m4ri@c82cb42e2895c8d07440d97b84b90f6767d6a7bb570ef6a8c2efc992d24dc9c7:matrix",
+                "resource:m4ri@0aadb93e4a22edaaf5d36fb9b63ac0700ca4983a465849cacf87ef10eefcfa6e:matrix",
+                "resource:m4ri@0aadb93e4a22edaaf5d36fb9b63ac0700ca4983a465849cacf87ef10eefcfa6e:matrix",
             ],
             [None, None],
             "zero_is_error",
@@ -345,14 +367,14 @@ def matrix_mul(left: M4riMatrix, right: M4riMatrix) -> M4riMatrix:
     return M4riMatrix(
         _runtime.ffi_resource_create(
             __sagejs_ffi_declaration__ + ":matrix_mul",
-            "resource:m4ri@c82cb42e2895c8d07440d97b84b90f6767d6a7bb570ef6a8c2efc992d24dc9c7:matrix",
+            "resource:m4ri@0aadb93e4a22edaaf5d36fb9b63ac0700ca4983a465849cacf87ef10eefcfa6e:matrix",
             "@sagemath/sagejs-m4ri",
             "ffiM4riMatrixMul",
             "ffiM4riMatrixClose",
             [left._ffi_borrow(), right._ffi_borrow()],
             [
-                "resource:m4ri@c82cb42e2895c8d07440d97b84b90f6767d6a7bb570ef6a8c2efc992d24dc9c7:matrix",
-                "resource:m4ri@c82cb42e2895c8d07440d97b84b90f6767d6a7bb570ef6a8c2efc992d24dc9c7:matrix",
+                "resource:m4ri@0aadb93e4a22edaaf5d36fb9b63ac0700ca4983a465849cacf87ef10eefcfa6e:matrix",
+                "resource:m4ri@0aadb93e4a22edaaf5d36fb9b63ac0700ca4983a465849cacf87ef10eefcfa6e:matrix",
             ],
             [None, None],
             "zero_is_error",
@@ -367,13 +389,13 @@ def matrix_transpose(source: M4riMatrix) -> M4riMatrix:
     return M4riMatrix(
         _runtime.ffi_resource_create(
             __sagejs_ffi_declaration__ + ":matrix_transpose",
-            "resource:m4ri@c82cb42e2895c8d07440d97b84b90f6767d6a7bb570ef6a8c2efc992d24dc9c7:matrix",
+            "resource:m4ri@0aadb93e4a22edaaf5d36fb9b63ac0700ca4983a465849cacf87ef10eefcfa6e:matrix",
             "@sagemath/sagejs-m4ri",
             "ffiM4riMatrixTranspose",
             "ffiM4riMatrixClose",
             [source._ffi_borrow()],
             [
-                "resource:m4ri@c82cb42e2895c8d07440d97b84b90f6767d6a7bb570ef6a8c2efc992d24dc9c7:matrix"
+                "resource:m4ri@0aadb93e4a22edaaf5d36fb9b63ac0700ca4983a465849cacf87ef10eefcfa6e:matrix"
             ],
             [None],
             "zero_is_error",
@@ -391,7 +413,7 @@ def matrix_rank(source: M4riMatrix) -> int:
         "ffiM4riMatrixRank",
         [source._ffi_borrow()],
         [
-            "resource:m4ri@c82cb42e2895c8d07440d97b84b90f6767d6a7bb570ef6a8c2efc992d24dc9c7:matrix"
+            "resource:m4ri@0aadb93e4a22edaaf5d36fb9b63ac0700ca4983a465849cacf87ef10eefcfa6e:matrix"
         ],
         "uint64",
         ["direct", [], None],
@@ -406,13 +428,13 @@ def matrix_rref(source: M4riMatrix) -> M4riMatrix:
     return M4riMatrix(
         _runtime.ffi_resource_create(
             __sagejs_ffi_declaration__ + ":matrix_rref",
-            "resource:m4ri@c82cb42e2895c8d07440d97b84b90f6767d6a7bb570ef6a8c2efc992d24dc9c7:matrix",
+            "resource:m4ri@0aadb93e4a22edaaf5d36fb9b63ac0700ca4983a465849cacf87ef10eefcfa6e:matrix",
             "@sagemath/sagejs-m4ri",
             "ffiM4riMatrixRref",
             "ffiM4riMatrixClose",
             [source._ffi_borrow()],
             [
-                "resource:m4ri@c82cb42e2895c8d07440d97b84b90f6767d6a7bb570ef6a8c2efc992d24dc9c7:matrix"
+                "resource:m4ri@0aadb93e4a22edaaf5d36fb9b63ac0700ca4983a465849cacf87ef10eefcfa6e:matrix"
             ],
             [None],
             "zero_is_error",
@@ -430,7 +452,7 @@ def matrix_determinant_code(source: M4riMatrix) -> int:
         "ffiM4riMatrixDeterminantCode",
         [source._ffi_borrow()],
         [
-            "resource:m4ri@c82cb42e2895c8d07440d97b84b90f6767d6a7bb570ef6a8c2efc992d24dc9c7:matrix"
+            "resource:m4ri@0aadb93e4a22edaaf5d36fb9b63ac0700ca4983a465849cacf87ef10eefcfa6e:matrix"
         ],
         "uint64",
         ["direct", [], None],
@@ -445,13 +467,13 @@ def matrix_inverse(source: M4riMatrix) -> M4riMatrix:
     return M4riMatrix(
         _runtime.ffi_resource_create(
             __sagejs_ffi_declaration__ + ":matrix_inverse",
-            "resource:m4ri@c82cb42e2895c8d07440d97b84b90f6767d6a7bb570ef6a8c2efc992d24dc9c7:matrix",
+            "resource:m4ri@0aadb93e4a22edaaf5d36fb9b63ac0700ca4983a465849cacf87ef10eefcfa6e:matrix",
             "@sagemath/sagejs-m4ri",
             "ffiM4riMatrixInverse",
             "ffiM4riMatrixClose",
             [source._ffi_borrow()],
             [
-                "resource:m4ri@c82cb42e2895c8d07440d97b84b90f6767d6a7bb570ef6a8c2efc992d24dc9c7:matrix"
+                "resource:m4ri@0aadb93e4a22edaaf5d36fb9b63ac0700ca4983a465849cacf87ef10eefcfa6e:matrix"
             ],
             [None],
             "zero_is_error",
@@ -466,14 +488,14 @@ def matrix_solve(left: M4riMatrix, right: M4riMatrix) -> M4riMatrix:
     return M4riMatrix(
         _runtime.ffi_resource_create(
             __sagejs_ffi_declaration__ + ":matrix_solve",
-            "resource:m4ri@c82cb42e2895c8d07440d97b84b90f6767d6a7bb570ef6a8c2efc992d24dc9c7:matrix",
+            "resource:m4ri@0aadb93e4a22edaaf5d36fb9b63ac0700ca4983a465849cacf87ef10eefcfa6e:matrix",
             "@sagemath/sagejs-m4ri",
             "ffiM4riMatrixSolve",
             "ffiM4riMatrixClose",
             [left._ffi_borrow(), right._ffi_borrow()],
             [
-                "resource:m4ri@c82cb42e2895c8d07440d97b84b90f6767d6a7bb570ef6a8c2efc992d24dc9c7:matrix",
-                "resource:m4ri@c82cb42e2895c8d07440d97b84b90f6767d6a7bb570ef6a8c2efc992d24dc9c7:matrix",
+                "resource:m4ri@0aadb93e4a22edaaf5d36fb9b63ac0700ca4983a465849cacf87ef10eefcfa6e:matrix",
+                "resource:m4ri@0aadb93e4a22edaaf5d36fb9b63ac0700ca4983a465849cacf87ef10eefcfa6e:matrix",
             ],
             [None, None],
             "zero_is_error",
@@ -488,13 +510,13 @@ def matrix_right_kernel(source: M4riMatrix) -> M4riMatrix:
     return M4riMatrix(
         _runtime.ffi_resource_create(
             __sagejs_ffi_declaration__ + ":matrix_right_kernel",
-            "resource:m4ri@c82cb42e2895c8d07440d97b84b90f6767d6a7bb570ef6a8c2efc992d24dc9c7:matrix",
+            "resource:m4ri@0aadb93e4a22edaaf5d36fb9b63ac0700ca4983a465849cacf87ef10eefcfa6e:matrix",
             "@sagemath/sagejs-m4ri",
             "ffiM4riMatrixRightKernel",
             "ffiM4riMatrixClose",
             [source._ffi_borrow()],
             [
-                "resource:m4ri@c82cb42e2895c8d07440d97b84b90f6767d6a7bb570ef6a8c2efc992d24dc9c7:matrix"
+                "resource:m4ri@0aadb93e4a22edaaf5d36fb9b63ac0700ca4983a465849cacf87ef10eefcfa6e:matrix"
             ],
             [None],
             "zero_is_error",
@@ -509,13 +531,13 @@ def matrix_logical_words(source: M4riMatrix) -> M4riByteRegion:
     return M4riByteRegion(
         _runtime.ffi_resource_create(
             __sagejs_ffi_declaration__ + ":matrix_logical_words",
-            "resource:m4ri@c82cb42e2895c8d07440d97b84b90f6767d6a7bb570ef6a8c2efc992d24dc9c7:byte_region",
+            "resource:m4ri@0aadb93e4a22edaaf5d36fb9b63ac0700ca4983a465849cacf87ef10eefcfa6e:byte_region",
             "@sagemath/sagejs-m4ri",
             "ffiM4riMatrixLogicalWords",
             "ffiM4riByteRegionClose",
             [source._ffi_borrow()],
             [
-                "resource:m4ri@c82cb42e2895c8d07440d97b84b90f6767d6a7bb570ef6a8c2efc992d24dc9c7:matrix"
+                "resource:m4ri@0aadb93e4a22edaaf5d36fb9b63ac0700ca4983a465849cacf87ef10eefcfa6e:matrix"
             ],
             [None],
             "zero_is_error",
@@ -532,13 +554,13 @@ def matrix_from_logical_words(
     return M4riMatrix(
         _runtime.ffi_resource_create(
             __sagejs_ffi_declaration__ + ":matrix_from_logical_words",
-            "resource:m4ri@c82cb42e2895c8d07440d97b84b90f6767d6a7bb570ef6a8c2efc992d24dc9c7:matrix",
+            "resource:m4ri@0aadb93e4a22edaaf5d36fb9b63ac0700ca4983a465849cacf87ef10eefcfa6e:matrix",
             "@sagemath/sagejs-m4ri",
             "ffiM4riMatrixFromLogicalWords",
             "ffiM4riMatrixClose",
             [source._ffi_borrow(), rows, columns],
             [
-                "resource:m4ri@c82cb42e2895c8d07440d97b84b90f6767d6a7bb570ef6a8c2efc992d24dc9c7:byte_region",
+                "resource:m4ri@0aadb93e4a22edaaf5d36fb9b63ac0700ca4983a465849cacf87ef10eefcfa6e:byte_region",
                 "uint64",
                 "uint64",
             ],
@@ -555,13 +577,13 @@ def matrix_sagepack_bytes(source: M4riMatrix) -> M4riByteRegion:
     return M4riByteRegion(
         _runtime.ffi_resource_create(
             __sagejs_ffi_declaration__ + ":matrix_sagepack_bytes",
-            "resource:m4ri@c82cb42e2895c8d07440d97b84b90f6767d6a7bb570ef6a8c2efc992d24dc9c7:byte_region",
+            "resource:m4ri@0aadb93e4a22edaaf5d36fb9b63ac0700ca4983a465849cacf87ef10eefcfa6e:byte_region",
             "@sagemath/sagejs-m4ri",
             "ffiM4riMatrixSagepackBytes",
             "ffiM4riByteRegionClose",
             [source._ffi_borrow()],
             [
-                "resource:m4ri@c82cb42e2895c8d07440d97b84b90f6767d6a7bb570ef6a8c2efc992d24dc9c7:matrix"
+                "resource:m4ri@0aadb93e4a22edaaf5d36fb9b63ac0700ca4983a465849cacf87ef10eefcfa6e:matrix"
             ],
             [None],
             "zero_is_error",
@@ -578,13 +600,13 @@ def matrix_from_sagepack_bytes(
     return M4riMatrix(
         _runtime.ffi_resource_create(
             __sagejs_ffi_declaration__ + ":matrix_from_sagepack_bytes",
-            "resource:m4ri@c82cb42e2895c8d07440d97b84b90f6767d6a7bb570ef6a8c2efc992d24dc9c7:matrix",
+            "resource:m4ri@0aadb93e4a22edaaf5d36fb9b63ac0700ca4983a465849cacf87ef10eefcfa6e:matrix",
             "@sagemath/sagejs-m4ri",
             "ffiM4riMatrixFromSagepackBytes",
             "ffiM4riMatrixClose",
             [source._ffi_borrow(), rows, columns],
             [
-                "resource:m4ri@c82cb42e2895c8d07440d97b84b90f6767d6a7bb570ef6a8c2efc992d24dc9c7:byte_region",
+                "resource:m4ri@0aadb93e4a22edaaf5d36fb9b63ac0700ca4983a465849cacf87ef10eefcfa6e:byte_region",
                 "uint64",
                 "uint64",
             ],
@@ -601,13 +623,13 @@ def matrix_format(source: M4riMatrix) -> M4riByteRegion:
     return M4riByteRegion(
         _runtime.ffi_resource_create(
             __sagejs_ffi_declaration__ + ":matrix_format",
-            "resource:m4ri@c82cb42e2895c8d07440d97b84b90f6767d6a7bb570ef6a8c2efc992d24dc9c7:byte_region",
+            "resource:m4ri@0aadb93e4a22edaaf5d36fb9b63ac0700ca4983a465849cacf87ef10eefcfa6e:byte_region",
             "@sagemath/sagejs-m4ri",
             "ffiM4riMatrixFormat",
             "ffiM4riByteRegionClose",
             [source._ffi_borrow()],
             [
-                "resource:m4ri@c82cb42e2895c8d07440d97b84b90f6767d6a7bb570ef6a8c2efc992d24dc9c7:matrix"
+                "resource:m4ri@0aadb93e4a22edaaf5d36fb9b63ac0700ca4983a465849cacf87ef10eefcfa6e:matrix"
             ],
             [None],
             "zero_is_error",

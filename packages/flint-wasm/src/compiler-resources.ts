@@ -1,6 +1,7 @@
 /* Browser resource boundary for the bundled Tree-sitter compiler frontend. */
 
 interface StandardLibraryDocument {
+  preload?: string[];
   modules: Record<string, {
     package?: boolean;
     source: string;
