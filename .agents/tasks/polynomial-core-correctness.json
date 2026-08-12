@@ -4,7 +4,7 @@
   "id": "polynomial-core-correctness",
   "title": "Univariate Polynomial Correctness v1",
   "lane": "integration",
-  "status": "active",
+  "status": "complete",
   "owner": "user",
   "objective": "Repair Sage-compatible coefficient indexing, degree, coefficient-list, derivative, and Euclidean quotient/remainder semantics across canonical ZZ[x], QQ[x], and small-prime GF(p)[x], eliminating silent None and NaN results",
   "base_commit": "06a6d88805844d15d4247a64574883992a44d091",

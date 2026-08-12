@@ -27,6 +27,10 @@
   Until then, prefix module-private helpers that differ semantically; a matrix
   versus polynomial capacity-helper collision once caused linear scans at
   every dense integer matrix boundary.
+- Split generated `sagejs.ffi` declarations and mathematical kernel sources
+  out of the current broad `python-stdlib` package-graph prefix, so their
+  source growth is charged to the native integration and mathematics layers
+  that actually own it.
 - Replace the narrow exact-root reconstruction exception for packed `ZZ[x]`
   and `QQ[x]` after algebraic-number resources have a declared generated FFI
   representation.
