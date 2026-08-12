@@ -4,7 +4,7 @@
   "id": "m4ri-wasm-distribution-v1",
   "title": "M4RI browser backend distribution",
   "lane": "distribution",
-  "status": "review",
+  "status": "complete",
   "owner": "user",
   "objective": "Build, package, route, and browser-test a separately owned generated M4RI Wasm backend for Sage.js browser sessions.",
   "base_commit": "33a292ac998dc797bfae0e762953d6008fc3fb6e",
