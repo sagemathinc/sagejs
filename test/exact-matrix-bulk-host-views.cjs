@@ -124,7 +124,10 @@ def verify(source, expected, rational_source, expected_pivots):
     before = serializations[0]
     rows = source.rows()
     assert [entry for row in rows for entry in row] == expected
-    assert serializations[0] == before + 1
+    # list() populated the canonical immutable host-value cache above.
+    # Constructing row vectors reuses that snapshot instead of exporting the
+    # unchanged FLINT resource a second time.
+    assert serializations[0] == before
     assert serialized_regions[-1].closed
     storage_is_unmaterialized(source)
 
