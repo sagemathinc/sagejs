@@ -38,18 +38,27 @@ class _PackedRationalPolynomialStorage:
 class _FmpzPolynomialResourceStorage:
     """Own one sealed generated FLINT polynomial and a lazy packed oracle."""
 
-    def __init__(self, resource: Any) -> None:
+    def __init__(
+        self,
+        resource: Any,
+        coefficients: Any = runtime.undefined,
+    ) -> None:
         self.resource = resource
-        self.coefficients: Any = runtime.undefined
+        self.coefficients = coefficients
 
 
 class _FmpqPolynomialResourceStorage:
     """Own one sealed generated FLINT polynomial and lazy packed components."""
 
-    def __init__(self, resource: Any) -> None:
+    def __init__(
+        self,
+        resource: Any,
+        numerators: Any = runtime.undefined,
+        denominators: Any = runtime.undefined,
+    ) -> None:
         self.resource = resource
-        self.numerators: Any = runtime.undefined
-        self.denominators: Any = runtime.undefined
+        self.numerators = numerators
+        self.denominators = denominators
 
 
 def _flint_ffi_module() -> Any:
@@ -457,6 +466,83 @@ def _decode_exact_polynomial_bytes(source: Any, base: Any) -> list[Any]:
     )
 
 
+def _packed_factorization_u64(source: Any, offset: int) -> int:
+    """Decode one host-sized unsigned field from trusted factor bytes."""
+    if offset < 0 or offset + 8 > _buffer_length(source):
+        raise ValueError("exact polynomial factorization payload is truncated")
+    value = 0
+    for byte_index in range(7, -1, -1):
+        value = 256 * value + int(source[offset + byte_index])
+    if value > 0xFFFFFFFF:
+        raise OverflowError("exact polynomial factorization is too large")
+    return value
+
+
+def _decode_exact_polynomial_factorization(
+    source: Any,
+    parent: PolynomialRingParent,
+) -> sage.Factorization:
+    """Decode all exact FLINT factors after one generated host copy.
+
+    Factors initially retain compiler-owned packed coefficients.  Their FLINT
+    resource is materialized lazily on the first resource-to-resource
+    operation, so returning a factorization never performs one native call per
+    child and each polynomial remains independent of the closed factorization.
+    """
+    length = _buffer_length(source)
+    if length < 16 or [int(source[index]) for index in range(4)] != [83, 74, 80, 70]:
+        raise ValueError("invalid exact polynomial factorization payload")
+    if int(source[4]) != 1 or any(int(source[index]) != 0 for index in range(5, 8)):
+        raise ValueError("unsupported exact polynomial factorization payload")
+    count = _packed_factorization_u64(source, 8)
+    metadata_end = 16 + 16 * count
+    if metadata_end > length:
+        raise ValueError("exact polynomial factorization payload is truncated")
+    exponents = []
+    coefficient_counts = []
+    total_coefficients = 0
+    for index in range(count):
+        metadata = 16 + 16 * index
+        exponents.append(_packed_factorization_u64(source, metadata))
+        coefficient_count = _packed_factorization_u64(source, metadata + 8)
+        coefficient_counts.append(coefficient_count)
+        total_coefficients += coefficient_count
+        if total_coefficients > 0xFFFFFFFF:
+            raise OverflowError("exact polynomial factorization is too large")
+    parts = runtime.exact_integer_values_from_packed_bytes(
+        _packed_uint8_suffix(source, metadata_end),
+        2 + total_coefficients,
+    )
+    base = parent.base_ring()
+    unit = base(parts[0]) if base is sage.ZZ else base(parts[0]) / base(parts[1])
+    factors = []
+    part_index = 2
+    for index in range(count):
+        coefficient_count = coefficient_counts[index]
+        coefficients = parts[part_index : part_index + coefficient_count]
+        part_index += coefficient_count
+        capacity = _integer_word_capacity(coefficients)
+        numerators = runtime.integer_buffer(coefficients, capacity)
+        if base is sage.ZZ:
+            storage = _FmpzPolynomialResourceStorage(
+                runtime.undefined,
+                numerators,
+            )
+        else:
+            storage = _FmpqPolynomialResourceStorage(
+                runtime.undefined,
+                numerators,
+                runtime.integer_buffer([1 for _entry in coefficients], 1),
+            )
+        factors.append(
+            [
+                PolynomialElement(parent, storage),
+                runtime.number(exponents[index]),
+            ]
+        )
+    return sage.Factorization(factors, unit, False, False, False)
+
+
 def _format_exact_polynomial_resource(raw: str, variable: str) -> str:
     """Normalize FLINT's sentinel-variable output to Sage display syntax."""
     raw = raw.replace(runtime.regexp(r"\s+", "g"), "")
@@ -598,6 +684,38 @@ class PolynomialElement(sage.Element):
             self._has_fmpz_polynomial_resource() or self._has_fmpq_polynomial_resource()
         ):
             raise TypeError("polynomial does not own an exact FLINT resource")
+        if self._storage.resource is runtime.undefined:
+            ffi = _flint_ffi_module()
+            if self._has_fmpz_polynomial_resource():
+                values = _integer_buffer_values(self._storage.coefficients)
+                payload, byte_length = _exact_polynomial_payload(
+                    values,
+                    len(values),
+                    False,
+                )
+                self._storage.resource = ffi.fmpz_polynomial_deserialize(
+                    payload,
+                    byte_length,
+                )
+                self._storage.coefficients = runtime.undefined
+            else:
+                numerators = _integer_buffer_values(self._storage.numerators)
+                denominators = _integer_buffer_values(self._storage.denominators)
+                parts = []
+                for index in range(len(numerators)):
+                    parts.append(numerators[index])
+                    parts.append(denominators[index])
+                payload, byte_length = _exact_polynomial_payload(
+                    parts,
+                    len(numerators),
+                    True,
+                )
+                self._storage.resource = ffi.fmpq_polynomial_deserialize(
+                    payload,
+                    byte_length,
+                )
+                self._storage.numerators = runtime.undefined
+                self._storage.denominators = runtime.undefined
         return self._storage.resource
 
     def _materialize_exact_compatibility_storage(self) -> None:
@@ -1783,55 +1901,20 @@ class PolynomialElement(sage.Element):
             factorization = ffi.fmpz_polynomial_factor_resource(
                 self._exact_polynomial_resource()
             )
-            try:
-                count = int(ffi.exact_polynomial_factorization_count(factorization))
-                factors = []
-                for index in range(count):
-                    factor = parent._from_fmpz_polynomial_resource(
-                        ffi.exact_polynomial_factorization_fmpz_factor(
-                            factorization, index
-                        )
-                    )
-                    exponent = runtime.number(
-                        ffi.exact_polynomial_factorization_exponent(
-                            factorization, index
-                        )
-                    )
-                    factors.append([factor, exponent])
-                unit = base(
-                    ffi.exact_polynomial_factorization_unit_numerator(factorization)
-                )
-                return sage.Factorization(factors, unit, False, True, False)
-            finally:
-                factorization.close()
+            return _decode_exact_polynomial_factorization(
+                factorization.take_bytes(),
+                parent,
+            )
 
         if base is sage.QQ and self._has_fmpq_polynomial_resource():
             ffi = _flint_ffi_module()
             factorization = ffi.fmpq_polynomial_factor_resource(
                 self._exact_polynomial_resource()
             )
-            try:
-                count = int(ffi.exact_polynomial_factorization_count(factorization))
-                factors = []
-                for index in range(count):
-                    factor = parent._from_fmpq_polynomial_resource(
-                        ffi.exact_polynomial_factorization_fmpq_factor(
-                            factorization, index
-                        )
-                    )
-                    exponent = runtime.number(
-                        ffi.exact_polynomial_factorization_exponent(
-                            factorization, index
-                        )
-                    )
-                    factors.append([factor, exponent])
-                unit = base(
-                    ffi.exact_polynomial_factorization_unit_numerator(factorization),
-                    ffi.exact_polynomial_factorization_unit_denominator(factorization),
-                )
-                return sage.Factorization(factors, unit, False, True, False)
-            finally:
-                factorization.close()
+            return _decode_exact_polynomial_factorization(
+                factorization.take_bytes(),
+                parent,
+            )
 
         source_length = self._coefficient_length()
         degree = max(0, source_length - 1)
@@ -2035,6 +2118,8 @@ class PolynomialElement(sage.Element):
         kind = _packed_polynomial_kind(base)
         if kind == "ZZ":
             if self._has_fmpz_polynomial_resource():
+                if self._storage.coefficients is not runtime.undefined:
+                    return _integer_buffer_values(self._storage.coefficients)
                 ffi = _flint_ffi_module()
                 return _decode_exact_polynomial_bytes(
                     _flint_byte_region_bytes(
@@ -2045,6 +2130,13 @@ class PolynomialElement(sage.Element):
             return _integer_buffer_values(self._storage.coefficients)
         if kind == "QQ":
             if self._has_fmpq_polynomial_resource():
+                if self._storage.numerators is not runtime.undefined:
+                    numerators = _integer_buffer_values(self._storage.numerators)
+                    denominators = _integer_buffer_values(self._storage.denominators)
+                    return [
+                        base(numerators[index], denominators[index])
+                        for index in range(len(numerators))
+                    ]
                 ffi = _flint_ffi_module()
                 return _decode_exact_polynomial_bytes(
                     _flint_byte_region_bytes(
@@ -2179,7 +2271,10 @@ class PolynomialElement(sage.Element):
                 self._storage,
                 self._parent.variable_name(),
             )
-        if self._has_fmpz_polynomial_resource():
+        if (
+            self._has_fmpz_polynomial_resource()
+            and self._storage.coefficients is runtime.undefined
+        ):
             region = _flint_ffi_module().fmpz_polynomial_format(
                 self._exact_polynomial_resource()
             )
@@ -2187,7 +2282,10 @@ class PolynomialElement(sage.Element):
                 bytes(region.take_bytes()).decode("ascii"),
                 self._parent.variable_name(),
             )
-        if self._has_fmpq_polynomial_resource():
+        if (
+            self._has_fmpq_polynomial_resource()
+            and self._storage.numerators is runtime.undefined
+        ):
             region = _flint_ffi_module().fmpq_polynomial_format(
                 self._exact_polynomial_resource()
             )

@@ -2101,7 +2101,8 @@ static napi_status ${refresh}(napi_env env, ${holder} *holder)
         (void) sagejs_native_check_napi(env, accounting_status);
         return NULL;
     }` : "";
-  const byteTransferSupport = byteTransfer === null ? "" : `
+  const byteTransferSupport = byteTransfer === null ? "" :
+    byteTransfer.native.copy_symbol === undefined ? `
 static napi_value ${copyBytes}(napi_env env, napi_callback_info info)
 {
     napi_value argument;
@@ -2133,6 +2134,50 @@ static napi_value ${copyBytes}(napi_env env, napi_callback_info info)
     const void *source = length == 0 ? (const void *) "" : data;
     if (!sagejs_native_check_napi(env,
             napi_create_buffer_copy(env, length, source, NULL, &result)))
+        return NULL;
+    return result;
+}` : `
+static napi_value ${copyBytes}(napi_env env, napi_callback_info info)
+{
+    napi_value argument;
+    napi_value result = NULL;
+    size_t argc = 1;
+    ${holder} *holder = NULL;
+    unsigned char *data = NULL;
+    uint64_t length64 = 0;
+    if (!sagejs_native_check_napi(env,
+            napi_get_cb_info(env, info, &argc, &argument, NULL, NULL)))
+        return NULL;
+    if (argc != 1 || !${unwrap}(env, argument, &holder))
+        return NULL;
+    if (!${byteTransfer.native.copy_symbol}(
+            &data, &length64, holder->value))
+    {
+        ${byteTransfer.native.clear_symbol}(data);
+        napi_throw_error(env, NULL,
+            "unable to compute FFI byte payload");
+        return NULL;
+    }
+    if (length64 > (uint64_t) SIZE_MAX)
+    {
+        ${byteTransfer.native.clear_symbol}(data);
+        napi_throw_range_error(env, NULL,
+            "FFI byte payload is too large for this host");
+        return NULL;
+    }
+    const size_t length = (size_t) length64;
+    if (length != 0 && data == NULL)
+    {
+        ${byteTransfer.native.clear_symbol}(data);
+        napi_throw_error(env, NULL,
+            "computed FFI byte payload has nonzero length but no data");
+        return NULL;
+    }
+    const void *source = length == 0 ? (const void *) "" : data;
+    const napi_status status =
+        napi_create_buffer_copy(env, length, source, NULL, &result);
+    ${byteTransfer.native.clear_symbol}(data);
+    if (!sagejs_native_check_napi(env, status))
         return NULL;
     return result;
 }`;

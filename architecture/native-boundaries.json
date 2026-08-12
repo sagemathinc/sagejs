@@ -67,6 +67,13 @@
       "close_export": "ffiExactPolynomialFactorizationClose",
       "clear_symbol": "sagejs_exact_polynomial_factorization_clear",
       "size_symbol": "sagejs_exact_polynomial_factorization_allocated_bytes",
+      "host_transfer": {
+        "kind": "copied_bytes",
+        "dynamic_export": "ffiExactPolynomialFactorizationCopyBytes",
+        "copy_symbol": "sagejs_exact_polynomial_factorization_copy_bytes",
+        "clear_symbol": "sagejs_exact_polynomial_factorization_free_bytes",
+        "wasm": false
+      },
       "disposition": "declared-owned-ffi-resource"
     },
     {
