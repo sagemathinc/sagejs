@@ -1,0 +1,57 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "native-resource-basic-finalizer",
+  "title": "Native Resource Basic Finalizer",
+  "lane": "integration",
+  "status": "active",
+  "owner": "user",
+  "objective": "Make generated Node resource holders safely self-finalizing with node_api_basic_finalize plus node_api_post_finalizer, expose a proven capability marker, and prevent redundant bootstrap finalizers while preserving portable fallback behavior",
+  "base_commit": "4db746d5914229dae4d744ba9bc42eac91c08ff4",
+  "claims": [
+    "tools/native-kernel/c-backend.cjs",
+    "tools/native-kernel/prime-field-backend.cjs",
+    ".agents/lanes.json",
+    "scripts/build-ffi-host-adapter.cjs",
+    "packages/flint/include/sagejs/native.h",
+    "src/baselib/sagejs_bootstrap.py",
+    "test/ffi-resource-accounting-codegen.cjs",
+    "test/ffi-resource-memory.cjs",
+    "test/ffi-resource-finalization-bootstrap.cjs",
+    "test/native-resource-basic-finalizer.cjs",
+    "test/fixtures/native-resource-finalizer/",
+    "test/node-test-manifest.cjs"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "compiler-infrastructure",
+    "fallback": "tested-capability",
+    "oracles": [
+      "existing explicit-close lifecycle and generated FFI resource tests",
+      "controlled Node --expose-gc lifecycle fixture with clear-count and memory-accounting invariants"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm architecture:check",
+    "pnpm test:portable",
+    "pnpm test:baselib:strict"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "Generated Node resource holders now clear only pure foreign state in node_api_basic_finalize, defer external-memory accounting and holder release through node_api_post_finalizer, publish an authenticated self-finalization capability, and let the bootstrap retain its JavaScript FinalizationRegistry only for unmarked or mismatched backends. Focused generated-resource, GC, worker-termination, mixed-adapter, ASan, UBSan, compiler, FLINT, strict-Python, architecture, and lifecycle-fuzz checks pass.",
+    "risks": [
+      "The broad portable tier currently has one unrelated website reference-manual ID failure (21 !== 0); a dedicated website refresh lane is already addressing that generated artifact."
+    ],
+    "next_steps": [
+      "Integrate the dedicated website refresh, rerun the portable tier, and then move this task to review."
+    ]
+  }
+}

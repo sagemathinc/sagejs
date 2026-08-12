@@ -1588,7 +1588,16 @@ def ρσ_ffi_resource_create(
                 "Sage.js declared FFI resource"
             )
         );
-        const registry = (
+        const manifest = Reflect.get(backend, "__sagejs_ffi_manifest__");
+        const lifecycle = manifest?.resource_lifecycle;
+        const backend_self_finalizes = (
+            manifest?.schema === "sagejs.ffi/generated-host-adapter-v1"
+            && typeof manifest?.library === "string"
+            && declaration_identity.startsWith(`${manifest.library}:`)
+            && lifecycle?.model === "node-api-basic-post-finalizer-v1"
+            && lifecycle?.self_finalizing === true
+        );
+        const registry = backend_self_finalizes ? null : (
             globalThis.__sagejs_ffi_resource_registry__ ??=
                 new FinalizationRegistry((state) => {
                     if (state.closed) return;
@@ -1610,12 +1619,13 @@ def ρσ_ffi_resource_create(
             handle,
             closed: false,
             root: null,
-            borrowed: false
+            borrowed: false,
+            registry
         };
         state.root = state;
         const token = Object.create(null);
         Object.defineProperty(token, tag, {value: state});
-        registry.register(token, state, token);
+        registry?.register(token, state, token);
         return token;
     })()"""
 
@@ -1781,7 +1791,7 @@ def ρσ_ffi_resource_close(token):
         Reflect.apply(state.close, state.backend, [state.handle]);
         state.closed = true;
         state.handle = null;
-        globalThis.__sagejs_ffi_resource_registry__?.unregister(token);
+        state.registry?.unregister(token);
         return undefined;
     })()"""
 

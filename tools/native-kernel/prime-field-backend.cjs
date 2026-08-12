@@ -977,7 +977,7 @@ static const napi_type_tag sagejs_prime_factor_type_tag = {
 };
 
 static void sagejs_prime_factor_finalize(
-    napi_env env, void *data, void *hint)
+    node_api_basic_env env, void *data, void *hint)
 {
     sagejs_prime_factor *factor = (sagejs_prime_factor *) data;
     (void) env;

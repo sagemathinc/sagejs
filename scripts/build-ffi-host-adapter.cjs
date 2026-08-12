@@ -13,6 +13,9 @@ const {
 const { basename, dirname, join, relative, resolve } = require("node:path");
 const { createHash } = require("node:crypto");
 const { compileKernel } = require("../tools/native-kernel/compiler.cjs");
+const {
+  RESOURCE_FINALIZATION_CAPABILITY,
+} = require("../tools/native-kernel/c-backend.cjs");
 const { loadRegistry } = require("../tools/ffi/declarations.cjs");
 const {
   generatedHostAdapterPath,
@@ -54,6 +57,10 @@ async function main() {
     fn.signature.return_type,
     ...fn.signature.parameters.map((parameter) => parameter.type),
   ]));
+  const generatedResources = declaration.resources.filter((resource) =>
+    resource.ownership === "owned" &&
+    generatedResourceTypes.has(resource.python_name)
+  );
   writeFileSync(
     join(outputDirectory, "manifest.json"),
     `${JSON.stringify({
@@ -78,11 +85,10 @@ async function main() {
             : []
         ),
       ],
-      resources: declaration.resources
-        .filter((resource) =>
-          resource.ownership === "owned" &&
-          generatedResourceTypes.has(resource.python_name)
-        )
+      ...(generatedResources.length === 0
+        ? {}
+        : { resource_lifecycle: RESOURCE_FINALIZATION_CAPABILITY }),
+      resources: generatedResources
         .map((resource) => ({
           id: resource.id,
           python_type: resource.python_name,

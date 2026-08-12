@@ -50,7 +50,11 @@ const {
   resourceForFunctionType,
 } = require("./ffi-codegen.cjs");
 
-const NATIVE_ABI_VERSION = 20;
+const NATIVE_ABI_VERSION = 21;
+const RESOURCE_FINALIZATION_CAPABILITY = Object.freeze({
+  model: "node-api-basic-post-finalizer-v1",
+  self_finalizing: true,
+});
 
 function statusFailure(kind, message, indent) {
   const code = {
@@ -857,6 +861,14 @@ function resourceFinalizeName(resource) {
   return `sagejs_resource_${resourceCName(resource)}_finalize`;
 }
 
+function resourcePostFinalizeName(resource) {
+  return `sagejs_resource_${resourceCName(resource)}_post_finalize`;
+}
+
+function resourceDestroyName(resource) {
+  return `sagejs_resource_${resourceCName(resource)}_destroy`;
+}
+
 function resourceReleaseName(resource) {
   return `sagejs_resource_${resourceCName(resource)}_release`;
 }
@@ -1006,7 +1018,7 @@ function emitTaggedWrapper(fn) {
       );
       cleanup.push(
         `    if (${value} != NULL)`,
-        `        ${resourceFinalizeName(resource)}(env, ${value}, NULL);`,
+        `        ${resourceDestroyName(resource)}(env, ${value});`,
       );
       resultArguments.push(`${value}->value`);
       resultInitialization.push(`    ${value}->initialized = 1;`);
@@ -1198,7 +1210,7 @@ function emitExactWrapper(fn) {
       );
       cleanup.push(
         `    if (${value} != NULL)`,
-        `        ${resourceFinalizeName(resource)}(env, ${value}, NULL);`,
+        `        ${resourceDestroyName(resource)}(env, ${value});`,
       );
       resultArguments.push(`${value}->value`);
       resultInitialization.push(`    ${value}->initialized = 1;`);
@@ -2044,6 +2056,8 @@ function generateOwnedResourceNodeSupport(resource) {
   }
   const holder = resourceHolderName(resource);
   const finalize = resourceFinalizeName(resource);
+  const postFinalize = resourcePostFinalizeName(resource);
+  const destroy = resourceDestroyName(resource);
   const release = resourceReleaseName(resource);
   const unwrap = resourceUnwrapName(resource);
   const wrap = resourceWrapName(resource);
@@ -2083,7 +2097,7 @@ static napi_status ${refresh}(napi_env env, ${holder} *holder)
         void *removed = NULL;
         if (napi_remove_wrap(env, object, &removed) == napi_ok &&
             removed == holder)
-            ${finalize}(env, holder, NULL);
+            ${destroy}(env, holder);
         (void) sagejs_native_check_napi(env, accounting_status);
         return NULL;
     }` : "";
@@ -2189,7 +2203,7 @@ static napi_value ${fromBytes}(napi_env env, napi_callback_info info)
 
 fail:
     if (holder != NULL)
-        ${finalize}(env, holder, NULL);
+        ${destroy}(env, holder);
     return NULL;
 }`;
   return `
@@ -2208,11 +2222,15 @@ static const napi_type_tag ${tag} = {
 };
 
 ${refreshSupport}
-static void ${release}(napi_env env, ${holder} *holder)
+static void ${holder}_clear_native(${holder} *holder)
 {
     if (holder->initialized)
         ${resource.native.clear_symbol}(holder->value);
     holder->initialized = 0;
+}
+
+static void ${holder}_release_accounting(napi_env env, ${holder} *holder)
+{
     const int64_t accounted = holder->accounted_bytes;
     holder->accounted_bytes = 0;
     if (env != NULL && accounted != 0)
@@ -2222,15 +2240,50 @@ static void ${release}(napi_env env, ${holder} *holder)
     }
 }
 
-static void ${finalize}(napi_env env, void *data, void *hint)
+static void ${release}(napi_env env, ${holder} *holder)
+{
+    ${holder}_clear_native(holder);
+    ${holder}_release_accounting(env, holder);
+}
+
+static void ${destroy}(napi_env env, ${holder} *holder)
+{
+    ${release}(env, holder);
+    holder->magic = 0;
+    free(holder);
+}
+
+static void ${postFinalize}(napi_env env, void *data, void *hint)
 {
     ${holder} *holder = (${holder} *) data;
     (void) hint;
     if (holder == NULL || holder->magic != ${holder}_MAGIC)
         return;
-    ${release}(env, holder);
+    ${holder}_release_accounting(env, holder);
     holder->magic = 0;
     free(holder);
+}
+
+static void ${finalize}(
+    node_api_basic_env env, void *data, void *hint)
+{
+    ${holder} *holder = (${holder} *) data;
+    (void) hint;
+    if (holder == NULL || holder->magic != ${holder}_MAGIC)
+        return;
+    /* GC finalization may run while JavaScript and ordinary Node-API calls
+       are forbidden.  Clear only foreign mathematical state here. */
+    ${holder}_clear_native(holder);
+    if (env == NULL ||
+        node_api_post_finalizer(
+            env, ${postFinalize}, holder, NULL) != napi_ok)
+    {
+        /* Environment teardown may reject deferred work.  The expensive
+           native state is already gone; reclaim the tiny holder without
+           touching Node-API.  Its dying environment discards accounting. */
+        holder->magic = 0;
+        free(holder);
+    }
 }
 
 static int ${unwrap}(
@@ -2846,7 +2899,18 @@ static int get_precision(
 #include <stdlib.h>
 #include <string.h>
 
+${publicResources.length === 0 ? "" : `#ifndef NAPI_EXPERIMENTAL
+#define NAPI_EXPERIMENTAL
+#endif
+#ifndef NODE_API_EXPERIMENTAL_NO_WARNING
+#define NODE_API_EXPERIMENTAL_NO_WARNING
+#endif
+`}
 #include <node_api.h>
+${publicResources.length === 0 ? "" : `#ifndef NODE_API_EXPERIMENTAL_HAS_POST_FINALIZER
+#error "generated resource adapters require node_api_post_finalizer"
+#endif
+`}
 ${exact.length > 0 ? "#include <gmp.h>" : ""}
 ${fields.some((fn) => fn.kernelKind === "real-field") ? "#include <mpfr.h>" : ""}
 ${fields.some((fn) => fn.kernelKind === "complex-field") ? "#include <mpc.h>" : ""}
@@ -2906,6 +2970,7 @@ function generateArtifacts(ir) {
 
 module.exports = {
   NATIVE_ABI_VERSION,
+  RESOURCE_FINALIZATION_CAPABILITY,
   generateArtifacts,
   generateC,
   generateHostCore,

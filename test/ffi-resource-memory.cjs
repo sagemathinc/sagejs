@@ -18,6 +18,14 @@ const accounted = generated.__sagejsFfiResourceExternalMemory;
 const MiB = 1024 * 1024;
 
 assert.equal(typeof accounted, "function");
+assert.deepEqual(manifest.resource_lifecycle, {
+  model: "node-api-basic-post-finalizer-v1",
+  self_finalizing: true,
+});
+assert.deepEqual(
+  flint.__sagejs_ffi_manifest__.resource_lifecycle,
+  manifest.resource_lifecycle,
+);
 
 function runChild(source, flags = []) {
   const result = spawnSync(process.execPath, [...flags, "-e", source], {
