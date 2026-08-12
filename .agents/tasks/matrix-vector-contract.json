@@ -4,7 +4,7 @@
   "id": "matrix-vector-contract",
   "title": "Storage-neutral dense matrix-vector contract",
   "lane": "arithmetic-algebra",
-  "status": "review",
+  "status": "complete",
   "owner": "user",
   "objective": "Define and validate ordinary CPython-parseable one-bulk-operation contracts for dense Matrix times Vector and Vector times Matrix across GF(2), small GF(p), ZZ, and QQ, preserving Sage dimensions, coercion, and result-vector semantics without host scalar boundary loops",
   "base_commit": "1f1219932802054fcd7a424ac877b84aa88d4b60",
@@ -98,6 +98,7 @@
       "Current public Sage.js dimension-mismatch multiplication raises ValueError, whereas SageMath 10.9.post2 raises TypeError. Public integration should adopt the contract's TypeError behavior and update the existing public regression expectation.",
       "The callback identity distinguishes right-product from left-product; the side string remains outside the storage ABI. Integration must select the orientation-specific backend operation consistently with the validated plan.",
       "The scalar fallbacks assume entries and zero have already been coerced into the canonical common result parent. Calling them on uncoerced mixed-parent inputs is an integration error.",
+      "SageMath has an isolated GF(2) zero-dimensional right-product quirk that returns an immutable zero vector, while other orientations and rings return mutable vectors. This contract intentionally specifies a uniformly fresh mutable result; public integration must retain an explicit regression and document that intentional incompatibility.",
       "The public 500 by 500 benchmark currently takes one warmed sample per orientation to keep the preparation benchmark small, so its raw samples can expose host contention; production performance gates should use the repository's multi-sample normalized methodology.",
       "Only Linux x64 validation ran in this worktree. The new source is pure ordinary Python and JavaScript test code, but the declared platform matrix remains an integration/CI responsibility."
     ],
