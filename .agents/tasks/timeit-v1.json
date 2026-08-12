@@ -4,7 +4,7 @@
   "id": "timeit-v1",
   "title": "Timing Ergonomics v2",
   "lane": "compiler-runtime",
-  "status": "review",
+  "status": "complete",
   "owner": "user",
   "objective": "Implement Sage/IPython-style %timeit with compile-once execution, warmup, calibrated loops, repeats, wall-time statistics, scope-preserving semantics, and bounded tests",
   "base_commit": "bcba716dc3fa1e098487556b8364718bf6c7f608",

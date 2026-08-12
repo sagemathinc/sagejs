@@ -42,9 +42,6 @@
 
 - Extend the new `time` CPU/wall/initialization report with an optional
   breakdown of module, addon, and native-kernel loading.
-- Implement `%timeit` with compilation once, automatic loop calibration,
-  warmup, high-resolution timing, current-scope semantics, suppressed result
-  printing, and the familiar `-n` and `-r` controls.
 - Ratchet cold production-kernel loading separately from warm mathematical
   execution, and never silently compile a missing production kernel in an
   ordinary installed session.
