@@ -1,0 +1,98 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "linear-decomposition-contract",
+  "title": "Linear Decomposition Contract",
+  "lane": "arithmetic-algebra",
+  "status": "active",
+  "owner": "user",
+  "objective": "Implement ordinary Python reference contracts for LU, exact QR, and Gram-Schmidt including shape and singular-case semantics",
+  "base_commit": "684da899398cfb5cffa8395448ca6d62a1757eee",
+  "claims": [
+    "src/lib/sagejs/linear_algebra/decompositions.py",
+    "test/linear-decomposition-contract.cjs",
+    "bench/linear-decomposition-contract.cjs"
+  ],
+  "dependencies": [],
+  "references": [
+    "SageMath 10.9 matrix2.pyx Matrix.LU, Matrix.QR, Matrix._gram_schmidt_noscale, and Matrix.gram_schmidt",
+    "Live SageMath 10.9.post1 oracle probes for tuple entries, reconstruction identities, rectangular ranks, singular inputs, and zero-dimensional shapes"
+  ],
+  "architecture": {
+    "strategy": "dynamic-python",
+    "fallback": "same-source",
+    "oracles": [
+      "sage"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "node test/linear-decomposition-contract.cjs",
+    "node bench/linear-decomposition-contract.cjs --json",
+    "pnpm test:baselib:strict",
+    "pnpm test:native"
+  ],
+  "runs": [
+    {
+      "command": "node test/linear-decomposition-contract.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.092,
+      "started_at": "2026-08-12T08:44:30.679Z",
+      "commit": "684da899398cfb5cffa8395448ca6d62a1757eee",
+      "workspace_fingerprint": "febb7ca74ceb9b484a292f7c5058317a5ee136bb13e80243b1d4c40151c9cb47",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/linear-decomposition-contract.cjs --json",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 3.463,
+      "started_at": "2026-08-12T08:44:31.389Z",
+      "commit": "684da899398cfb5cffa8395448ca6d62a1757eee",
+      "workspace_fingerprint": "febb7ca74ceb9b484a292f7c5058317a5ee136bb13e80243b1d4c40151c9cb47",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 13.43,
+      "started_at": "2026-08-12T08:44:35.490Z",
+      "commit": "684da899398cfb5cffa8395448ca6d62a1757eee",
+      "workspace_fingerprint": "febb7ca74ceb9b484a292f7c5058317a5ee136bb13e80243b1d4c40151c9cb47",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:native",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 164.304,
+      "started_at": "2026-08-12T08:44:57.844Z",
+      "commit": "684da899398cfb5cffa8395448ca6d62a1757eee",
+      "workspace_fingerprint": "febb7ca74ceb9b484a292f7c5058317a5ee136bb13e80243b1d4c40151c9cb47",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:native",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 574.374,
+      "started_at": "2026-08-12T08:48:27.578Z",
+      "commit": "684da899398cfb5cffa8395448ca6d62a1757eee",
+      "workspace_fingerprint": "febb7ca74ceb9b484a292f7c5058317a5ee136bb13e80243b1d4c40151c9cb47",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "",
+    "risks": [],
+    "next_steps": []
+  }
+}
