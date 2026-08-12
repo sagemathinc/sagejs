@@ -222,6 +222,66 @@
       "commit": "f14d9c0a0bb04ad5d18e347ba548d7e8682670f3",
       "workspace_fingerprint": "f2718f85e1a6d28e789c31926e52a08dd700dc556ba754ed71821d7663ad120b",
       "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/exact-polynomial-bulk-construction-contract.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.329,
+      "started_at": "2026-08-12T15:24:57.815Z",
+      "commit": "e657d8298ab64e91e9856eda6938bd1959f358fe",
+      "workspace_fingerprint": "6051372904f2e2f09157841ffd50212cf880446ef4f9a2beae8240055541c2b8",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/exact-polynomial-bulk-construction-contract.cjs --runtime sagejs --samples 3 --count 1001 --check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.658,
+      "started_at": "2026-08-12T15:24:59.749Z",
+      "commit": "e657d8298ab64e91e9856eda6938bd1959f358fe",
+      "workspace_fingerprint": "6051372904f2e2f09157841ffd50212cf880446ef4f9a2beae8240055541c2b8",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node test/exact-polynomial-resource-ffi.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 3.62,
+      "started_at": "2026-08-12T15:25:03.006Z",
+      "commit": "e657d8298ab64e91e9856eda6938bd1959f358fe",
+      "workspace_fingerprint": "6051372904f2e2f09157841ffd50212cf880446ef4f9a2beae8240055541c2b8",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 13.741,
+      "started_at": "2026-08-12T15:25:07.216Z",
+      "commit": "e657d8298ab64e91e9856eda6938bd1959f358fe",
+      "workspace_fingerprint": "6051372904f2e2f09157841ffd50212cf880446ef4f9a2beae8240055541c2b8",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 13.798,
+      "started_at": "2026-08-12T15:25:21.585Z",
+      "commit": "e657d8298ab64e91e9856eda6938bd1959f358fe",
+      "workspace_fingerprint": "6051372904f2e2f09157841ffd50212cf880446ef4f9a2beae8240055541c2b8",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 47.781,
+      "started_at": "2026-08-12T15:25:35.983Z",
+      "commit": "e657d8298ab64e91e9856eda6938bd1959f358fe",
+      "workspace_fingerprint": "6051372904f2e2f09157841ffd50212cf880446ef4f9a2beae8240055541c2b8",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {
