@@ -47,6 +47,20 @@ for base, entries in expected:
     assert value == [base(entry) for entry in entries], (base, value)
     assert 0 <= next_random < 1
 
+# Two draws into three columns force collisions for this seed. These fixed
+# witnesses distinguish ZZ's keep-first rule from QQ/GF(p)'s replacement rule
+# and pin each rule's different random-stream consumption.
+collision_expected = [
+    (ZZ, [-13, 0, 0], 0.5214411122724414),
+    (QQ, [2, 0, 0], 0.5072056364733726),
+    (GF(7), [3, 0, 0], 0.4537145944777876),
+]
+for base, entries, next_random in collision_expected:
+    set_random_seed(1)
+    value = random_matrix(base, 1, 3, density=0.99)
+    assert value.list() == [base(entry) for entry in entries]
+    assert random() == next_random
+
 for base in [ZZ, QQ, GF(7)]:
     assert random_matrix(base, 4, 10, density=-1).is_zero()
     assert random_matrix(base, 4, 10, density=0.09).is_zero()
@@ -69,13 +83,32 @@ bounded = random_matrix(ZZ, 20, 30, density=0.2, x=-7, y=8)
 assert all(-7 <= value < 8 for value in bounded.list())
 rational = random_matrix(QQ, 20, 30, density=0.2, num_bound=5, den_bound=5)
 assert any(value.denominator() > 1 for value in rational.list())
+set_random_seed(7)
+huge = random_matrix(QQ, 6, 8, density=0.5,
+                     num_bound=2**40, den_bound=2**40)
+assert any(value.denominator() > 2**32 for value in huge.list())
+reciprocal = random_matrix(QQ, 20, 30, density=0.2, distribution="1/n")
+assert any(value.denominator() > 1 for value in reciprocal.list())
+# Sage accepts arbitrary non-'1/n' names as aliases for the default bounded
+# rational distribution.
+assert random_matrix(QQ, 3, density=0.2, distribution="uniform").base_ring() is QQ
+assert random_matrix(QQ, 3, density=0.2, distribution="anything").base_ring() is QQ
+
+largest_word_prime = GF(4294967291)
+word_prime = random_matrix(largest_word_prime, 4, 5, density=0.6)
+assert word_prime.base_ring() is largest_word_prime
+assert word_prime._has_packed_prime_storage()
+
+set_random_seed(19)
+nan_binary = random_matrix(GF(2), 2, 3, density=float("nan"))
+assert nan_binary.is_zero()
 
 binary = random_matrix(GF(2), 200, 200, density=0.1)
 assert max(sum(1 for value in binary.row(row) if value) for row in range(200)) > 20
 
 assert random_matrix(ZZ, 3, density=0.2)._has_fmpz_matrix_resource()
 assert random_matrix(QQ, 3, density=0.2)._has_fmpq_matrix_resource()
-assert random_matrix(GF(2), 3, density=0.2)._has_m4ri_matrix_resource()
+assert random_matrix(GF(2), 3, density=0.2)._has_packed_prime_storage()
 
 class BadDensity:
     def __float__(self):
@@ -94,6 +127,21 @@ for base in [ZZ, QQ, GF(7)]:
     else:
         raise AssertionError("row-draw density was not coerced")
 
+class BadBound:
+    def __add__(self, other):
+        raise RuntimeError("bound coerced")
+
+
+for density in [-1, 0]:
+    random_matrix(QQ, 2, 3, density=density, num_bound=BadBound())
+for rows, columns in [(0, 5), (5, 0), (2, 3)]:
+    try:
+        random_matrix(QQ, rows, columns, density=0.01, num_bound=BadBound())
+    except RuntimeError as error:
+        assert "bound coerced" in str(error)
+    else:
+        raise AssertionError("positive-density QQ bound was not coerced")
+
 print("public-sparse-random-ok")
 `;
 
@@ -101,6 +149,30 @@ assert.equal(runSageJs(semanticWitness), "public-sparse-random-ok");
 assert.equal(
   runSageJs(semanticWitness, { SAGEJS_NATIVE_DISABLE: "1" }),
   "public-sparse-random-ok",
+);
+
+const parityWitness = String.raw`
+def capture(base, seed, **kwds):
+    set_random_seed(seed)
+    value = random_matrix(base, 4, 6, **kwds)
+    return value.list(), random()
+
+
+cases = [
+    capture(ZZ, 1, density=0.99),
+    capture(QQ, 1, density=0.99),
+    capture(GF(7), 1, density=0.99),
+    capture(QQ, 7, density=0.5, num_bound=2**40, den_bound=2**40),
+    capture(QQ, 7, density=0.5, distribution="1/n"),
+    capture(GF(4294967291), 7, density=0.5),
+    capture(GF(2), 19, density=float("nan")),
+]
+print(repr(cases))
+`;
+assert.equal(
+  runSageJs(parityWitness),
+  runSageJs(parityWitness, { SAGEJS_NATIVE_DISABLE: "1" }),
+  "native and disabled-native sparse results and next RNG state differ",
 );
 
 const trace = runSageJs(

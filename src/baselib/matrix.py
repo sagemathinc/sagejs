@@ -7857,11 +7857,13 @@ def _bulk_sparse_random_matrix(
         normalized_density = float(spec[3])
         if rows == 0 or columns == 0 or normalized_density <= 0:
             return MatrixSpace(base, rows, columns)(0)
+        if normalized_density != normalized_density:
+            return portable(spec)
         kernel = executors.sparse_random_m4ri
         if not _native_kernel_available(kernel):
             return portable(spec)
-        resource = _m4ri_ffi_module().matrix(rows, columns)
         final_state = _dense_integer_zeros(kernel, 1)
+        resource = _m4ri_ffi_module().matrix(rows, columns)
         try:
             initial_state = runtime.normalize_integer(_random_int(0, 4294967295))
             threshold = runtime.normalize_integer(
@@ -7898,6 +7900,8 @@ def _bulk_sparse_random_matrix(
             return MatrixSpace(base, rows, columns)._from_canonical_uint64_residues(
                 target
             )
+        if normalized_density != normalized_density:
+            return portable(spec)
         kernel = executors.sparse_random_binary
         if not _native_kernel_available(kernel):
             return portable(spec)
@@ -8012,8 +8016,8 @@ def _bulk_sparse_random_matrix(
                     True,
                 ),
             )
-        resource = _flint_ffi_module().fmpz_matrix(rows, columns)
         final_state = _dense_integer_zeros(kernel, 1)
+        resource = _flint_ffi_module().fmpz_matrix(rows, columns)
         try:
             initial_state = runtime.normalize_integer(_random_int(0, 4294967295))
             if not kernel(
@@ -8046,7 +8050,7 @@ def _bulk_sparse_random_matrix(
             resource.close()
             raise
 
-    if base is sage.QQ and distribution is None:
+    if base is sage.QQ:
         spec = policy.sage_row_sparse_random_spec(
             rows,
             columns,
@@ -8054,38 +8058,64 @@ def _bulk_sparse_random_matrix(
             collision="replace",
         )
         draws_per_row = int(spec[4])
+        if float(spec[3]) <= 0:
+            return MatrixSpace(sage.QQ, rows, columns)(0)
+
+        # Sage evaluates and coerces both `bound + 1` expressions before it
+        # inspects the distribution or starts any loop. This is observable for
+        # hostile coercion objects even when a positive density rounds to no
+        # row draws or one matrix axis is empty.
+        numerator_width = int(numerator_bound + 1)
+        denominator_width = int(denominator_bound + 1)
+        if numerator_width <= 1:
+            raise ValueError("num_bound must be positive")
+        if denominator_width <= 0:
+            raise ValueError("den_bound must be nonnegative")
         if draws_per_row == 0:
             return MatrixSpace(sage.QQ, rows, columns)(0)
-        try:
-            numerator_width = int(numerator_bound) + 1
-            denominator_width = int(denominator_bound) + 1
-        except Exception:
-            return runtime.undefined
-        if (
-            numerator_width <= 1
-            or denominator_width <= 0
-            or numerator_width > 4294967296
-            or denominator_width > 4294967296
-        ):
-            return runtime.undefined
-        kernel = executors.sparse_random_fmpq
-        if not _native_kernel_available(kernel):
 
-            def draw_rational_nonzero() -> Any:
+        if distribution == "1/n":
+
+            def draw_reciprocal_uniform_nonzero() -> Any:
+                """Model Sage's reciprocal-uniform nonzero rational draw."""
                 numerator = 0
                 denominator = 1
                 while numerator == 0:
-                    numerator = _random_int(0, numerator_width - 1)
-                    denominator = _random_int(0, denominator_width - 1)
-                    if denominator == 0:
-                        denominator = 1
-                    if _random_int(0, 1) != 0:
-                        numerator = -numerator
+                    centered = _random_int(0, 2147483647) - 1073741823
+                    if centered == 0:
+                        centered = 1
+                    magnitude = 858993458 // abs(centered)
+                    numerator = magnitude if centered > 0 else -magnitude
+                    denominator_word = _random_int(0, 2147483647)
+                    if denominator_word == 0:
+                        denominator_word = 1
+                    denominator = 2147483647 // denominator_word
                 return sage.QQ(numerator) / sage.QQ(denominator)
 
+            # This distribution has variable-sized control flow and no native
+            # executor yet. Keep both execution modes on the explicit portable
+            # implementation instead of falling into the integer generator.
+            return portable(spec, draw_nonzero=draw_reciprocal_uniform_nonzero)
+
+        def draw_rational_nonzero() -> Any:
+            numerator = 0
+            denominator = 1
+            while numerator == 0:
+                numerator = _random_int(0, numerator_width - 1)
+                denominator = _random_int(0, denominator_width - 1)
+                if denominator == 0:
+                    denominator = 1
+                if _random_int(0, 1) != 0:
+                    numerator = -numerator
+            return sage.QQ(numerator) / sage.QQ(denominator)
+
+        if numerator_width > 4294967296 or denominator_width > 4294967296:
             return portable(spec, draw_nonzero=draw_rational_nonzero)
-        resource = _flint_ffi_module().fmpq_matrix(rows, columns)
+        kernel = executors.sparse_random_fmpq
+        if not _native_kernel_available(kernel):
+            return portable(spec, draw_nonzero=draw_rational_nonzero)
         final_state = _dense_integer_zeros(kernel, 1)
+        resource = _flint_ffi_module().fmpq_matrix(rows, columns)
         try:
             initial_state = runtime.normalize_integer(_random_int(0, 4294967295))
             if not kernel(
@@ -8193,10 +8223,7 @@ def random_matrix(
     if density > 1:
         density = 1.0
     distribution = keyword("distribution", None)
-    if base is sage.QQ:
-        if distribution not in (None, "1/n"):
-            raise ValueError("unknown random rational distribution")
-    elif distribution is not None and distribution != "uniform":
+    if base is not sage.QQ and distribution is not None and distribution != "uniform":
         raise ValueError("unknown random integer distribution")
     lower = keyword("x", None)
     upper = keyword("y", None)
@@ -8213,7 +8240,12 @@ def random_matrix(
         elif lower <= 0:
             raise ValueError("x must be positive when y is omitted")
 
-    if density_supplied:
+    rational_options_supplied = base is sage.QQ and (
+        runtime.reflect.has(kwds, "distribution")
+        or runtime.reflect.has(kwds, "num_bound")
+        or runtime.reflect.has(kwds, "den_bound")
+    )
+    if density_supplied or rational_options_supplied:
         sparse_result = _bulk_sparse_random_matrix(
             base,
             rows,
