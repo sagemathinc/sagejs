@@ -11,6 +11,8 @@ from importlib.util import module_from_spec, spec_from_file_location
 from pathlib import Path
 from statistics import median
 from time import perf_counter
+from fractions import Fraction
+from math import isqrt
 import json
 import platform
 import sys
@@ -22,9 +24,22 @@ module = module_from_spec(spec)
 sys.modules[spec.name] = module
 spec.loader.exec_module(module)
 
-Matrix = module.RationalMatrixData
+Matrix = module.ExactMatrixData
 size = 40
 samples = 7
+zero = Fraction(0)
+one = Fraction(1)
+
+
+def rational_sqrt(value):
+    numerator = isqrt(value.numerator)
+    denominator = isqrt(value.denominator)
+    if (
+        numerator * numerator != value.numerator
+        or denominator * denominator != value.denominator
+    ):
+        raise TypeError("square root left QQ")
+    return Fraction(numerator, denominator)
 
 
 def measure(function):
@@ -50,29 +65,47 @@ for row in range(size):
             lu_entries.append(101 + row)
         else:
             lu_entries.append(((17 * row + 31 * column + 5) % 7) - 3)
-lu_input = Matrix.create(size, size, lu_entries)
+lu_input = Matrix.create(size, size, map(Fraction, lu_entries), zero=zero, one=one)
 
 # Upper triangular columns have exact positive rational norms after projection,
 # so the 40 x 40 QR workload measures the full cubic reference path in QQ.
-qr_input = Matrix.from_rows([
+qr_input = Matrix.from_rows(
     [
-        0 if column < row else (row % 5) + 1 if column == row
-        else ((11 * row + 7 * column) % 9) - 4
-        for column in range(size)
-    ]
-    for row in range(size)
-])
+        [
+            Fraction(
+                0
+                if column < row
+                else (row % 5) + 1
+                if column == row
+                else ((11 * row + 7 * column) % 9) - 4
+            )
+            for column in range(size)
+        ]
+        for row in range(size)
+    ],
+    zero=zero,
+    one=one,
+)
 
 # The corresponding lower-triangular row workload gives a full-rank exact
 # Gram-Schmidt decomposition without introducing irrational normalization.
-gram_input = Matrix.from_rows([
+gram_input = Matrix.from_rows(
     [
-        0 if column > row else (row % 5) + 1 if column == row
-        else ((13 * row + 5 * column) % 9) - 4
-        for column in range(size)
-    ]
-    for row in range(size)
-])
+        [
+            Fraction(
+                0
+                if column > row
+                else (row % 5) + 1
+                if column == row
+                else ((13 * row + 5 * column) % 9) - 4
+            )
+            for column in range(size)
+        ]
+        for row in range(size)
+    ],
+    zero=zero,
+    one=one,
+)
 
 
 def run_lu():
@@ -80,7 +113,7 @@ def run_lu():
 
 
 def run_qr():
-    return module.exact_qr(qr_input)
+    return module.exact_qr(qr_input, square_root=rational_sqrt)
 
 
 def run_gram():

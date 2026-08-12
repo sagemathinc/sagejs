@@ -1,10 +1,11 @@
 """Exact reference contracts for classical matrix decompositions.
 
-This module deliberately contains ordinary CPython-parseable Python.  It fixes
-the public mathematical semantics before a `Matrix` method, generated FLINT
-resource operation, or source-transparent native kernel is selected.  The
-small immutable `RationalMatrixData` value preserves both dimensions even when
-one is zero; nested Python lists cannot distinguish `0 x n` shapes.
+This module deliberately contains ordinary Python that executes unchanged in
+CPython and Sage.js.  It fixes the public mathematical semantics before a
+`Matrix` method, generated FLINT resource operation, or source-transparent
+native kernel is selected.  The small `ExactMatrixData` value preserves both
+dimensions even when one is zero; nested Python lists cannot distinguish
+`0 x n` shapes.
 
 The contracts follow Sage:
 
@@ -12,60 +13,82 @@ The contracts follow Sage:
 - `exact_qr` returns `(Q, R)` with `A = Q * R`, using full or reduced shapes;
 - `gram_schmidt_rows` returns `(G, M)` with `A = M * G`.
 
-The reference scalar domain is `fractions.Fraction`.  Consequently normalized
-QR succeeds precisely when every required square root is rational.  A future
-public ring adapter may supply a different exact square-root operation without
-changing the shape, reconstruction, rank-deficiency, or zero-shape contracts.
+Scalars are supplied by the caller together with their additive and
+multiplicative identities.  LU requires field division; partial pivoting also
+requires ordered absolute values.  QR receives an exact square-root operation.
+Inner products here are bilinear, not Hermitian: complex exact fields require
+a separate conjugating scalar protocol before public wiring.
 """
 
 from __future__ import annotations
 
 from collections.abc import Callable, Iterable, Sequence
-from dataclasses import dataclass
-from fractions import Fraction
-from math import isqrt
+from typing import Any
 
 
-RationalInput = int | Fraction
-SquareRoot = Callable[[Fraction], Fraction]
+SquareRoot = Callable[[Any], Any]
 
 
-@dataclass(frozen=True, slots=True)
-class RationalMatrixData:
-    """An immutable row-major rational matrix with explicit dimensions."""
+class ExactMatrixData:
+    """A row-major exact-scalar matrix value with explicit dimensions.
 
-    nrows: int
-    ncols: int
-    entries: tuple[Fraction, ...]
+    Algorithms never construct or coerce scalar elements themselves.  The
+    caller supplies `zero`, `one`, and entries from one compatible exact scalar
+    domain.  Entries are snapped into an immutable tuple, so algorithms may
+    safely return new values without aliasing caller storage.
+    """
 
-    def __post_init__(self) -> None:
-        if self.nrows < 0 or self.ncols < 0:
+    def __init__(
+        self,
+        nrows: int,
+        ncols: int,
+        entries: Iterable[Any],
+        zero: Any,
+        one: Any,
+    ) -> None:
+        if nrows < 0 or ncols < 0:
             raise ValueError("matrix dimensions must be nonnegative")
-        if len(self.entries) != self.nrows * self.ncols:
+        snapshot = tuple(entries)
+        if len(snapshot) != nrows * ncols:
             raise ValueError(
-                "matrix entry count does not match "
-                f"{self.nrows} x {self.ncols} dimensions"
+                f"matrix entry count does not match {nrows} x {ncols} dimensions"
             )
-        if any(not isinstance(value, Fraction) for value in self.entries):
-            raise TypeError("matrix entries must be fractions")
+        self.nrows = nrows
+        self.ncols = ncols
+        self.entries = snapshot
+        self.zero = zero
+        self.one = one
+
+    def __eq__(self, other: object) -> bool:
+        return (
+            isinstance(other, ExactMatrixData)
+            and self.nrows == other.nrows
+            and self.ncols == other.ncols
+            and self.entries == other.entries
+        )
 
     @classmethod
     def create(
         cls,
         nrows: int,
         ncols: int,
-        entries: Iterable[RationalInput],
-    ) -> RationalMatrixData:
-        """Construct a matrix while coercing every entry to `Fraction`."""
-        return cls(nrows, ncols, tuple(Fraction(value) for value in entries))
+        entries: Iterable[Any],
+        *,
+        zero: Any,
+        one: Any,
+    ) -> ExactMatrixData:
+        """Construct by taking an immutable snapshot of exact entries."""
+        return cls(nrows, ncols, entries, zero, one)
 
     @classmethod
     def from_rows(
         cls,
-        rows: Sequence[Sequence[RationalInput]],
+        rows: Sequence[Sequence[Any]],
         *,
+        zero: Any,
+        one: Any,
         ncols: int | None = None,
-    ) -> RationalMatrixData:
+    ) -> ExactMatrixData:
         """Construct from rows, with `ncols` preserving an empty row set."""
         row_count = len(rows)
         if row_count == 0:
@@ -81,35 +104,50 @@ class RationalMatrixData:
             row_count,
             column_count,
             (value for row in rows for value in row),
+            zero=zero,
+            one=one,
         )
 
     @classmethod
-    def zero(cls, nrows: int, ncols: int) -> RationalMatrixData:
+    def zero_matrix(
+        cls,
+        nrows: int,
+        ncols: int,
+        *,
+        zero: Any,
+        one: Any,
+    ) -> ExactMatrixData:
         """Return the `nrows x ncols` zero matrix."""
-        return cls(nrows, ncols, (Fraction(0),) * (nrows * ncols))
+        return cls(nrows, ncols, (zero,) * (nrows * ncols), zero, one)
 
     @classmethod
-    def identity(cls, size: int) -> RationalMatrixData:
+    def identity(
+        cls,
+        size: int,
+        *,
+        zero: Any,
+        one: Any,
+    ) -> ExactMatrixData:
         """Return the `size x size` identity matrix."""
-        entries = [Fraction(0)] * (size * size)
+        entries = [zero] * (size * size)
         for index in range(size):
-            entries[index * size + index] = Fraction(1)
-        return cls(size, size, tuple(entries))
+            entries[index * size + index] = one
+        return cls(size, size, entries, zero, one)
 
-    def entry(self, row: int, column: int) -> Fraction:
+    def entry(self, row: int, column: int) -> Any:
         """Return one checked entry."""
         if row < 0 or row >= self.nrows or column < 0 or column >= self.ncols:
             raise IndexError("matrix index out of range")
         return self.entries[row * self.ncols + column]
 
-    def row(self, index: int) -> tuple[Fraction, ...]:
+    def row(self, index: int) -> tuple[Any, ...]:
         """Return one checked immutable row."""
         if index < 0 or index >= self.nrows:
             raise IndexError("matrix row index out of range")
         start = index * self.ncols
         return self.entries[start : start + self.ncols]
 
-    def column(self, index: int) -> tuple[Fraction, ...]:
+    def column(self, index: int) -> tuple[Any, ...]:
         """Return one checked immutable column."""
         if index < 0 or index >= self.ncols:
             raise IndexError("matrix column index out of range")
@@ -117,9 +155,9 @@ class RationalMatrixData:
             self.entries[row * self.ncols + index] for row in range(self.nrows)
         )
 
-    def transpose(self) -> RationalMatrixData:
+    def transpose(self) -> ExactMatrixData:
         """Return the transpose while preserving empty dimensions."""
-        return RationalMatrixData(
+        return ExactMatrixData(
             self.ncols,
             self.nrows,
             tuple(
@@ -127,61 +165,52 @@ class RationalMatrixData:
                 for column in range(self.ncols)
                 for row in range(self.nrows)
             ),
+            self.zero,
+            self.one,
         )
 
-    def multiply(self, other: RationalMatrixData) -> RationalMatrixData:
+    def multiply(self, other: ExactMatrixData) -> ExactMatrixData:
         """Return the exact matrix product."""
         if self.ncols != other.nrows:
             raise ValueError("incompatible matrix dimensions")
-        output: list[Fraction] = []
+        output: list[Any] = []
         for row in range(self.nrows):
             for column in range(other.ncols):
-                value = Fraction(0)
+                value = self.zero
                 for index in range(self.ncols):
                     value += self.entry(row, index) * other.entry(index, column)
                 output.append(value)
-        return RationalMatrixData(self.nrows, other.ncols, tuple(output))
+        return ExactMatrixData(
+            self.nrows,
+            other.ncols,
+            output,
+            self.zero,
+            self.one,
+        )
 
 
-def _dot(left: Sequence[Fraction], right: Sequence[Fraction]) -> Fraction:
+def _dot(left: Sequence[Any], right: Sequence[Any], zero: Any) -> Any:
     if len(left) != len(right):
         raise ValueError("vector dimensions must agree")
-    value = Fraction(0)
+    value = zero
     for index in range(len(left)):
         value += left[index] * right[index]
     return value
 
 
 def _subtract_scaled(
-    target: Sequence[Fraction],
-    scale: Fraction,
-    source: Sequence[Fraction],
-) -> list[Fraction]:
+    target: Sequence[Any],
+    scale: Any,
+    source: Sequence[Any],
+) -> list[Any]:
     return [target[index] - scale * source[index] for index in range(len(target))]
 
 
-def rational_square_root(value: Fraction) -> Fraction:
-    """Return the nonnegative rational square root or fail exactly."""
-    if value < 0:
-        raise ValueError("a negative rational has no real square root")
-    numerator = isqrt(value.numerator)
-    denominator = isqrt(value.denominator)
-    if numerator * numerator != value.numerator:
-        raise TypeError(
-            "exact QR decomposition requires square roots outside Rational Field"
-        )
-    if denominator * denominator != value.denominator:
-        raise TypeError(
-            "exact QR decomposition requires square roots outside Rational Field"
-        )
-    return Fraction(numerator, denominator)
-
-
 def exact_lu(
-    matrix: RationalMatrixData,
+    matrix: ExactMatrixData,
     *,
     pivot: str = "partial",
-) -> tuple[RationalMatrixData, RationalMatrixData, RationalMatrixData]:
+) -> tuple[ExactMatrixData, ExactMatrixData, ExactMatrixData]:
     """Return Sage-oriented exact `(P, L, U)` factors.
 
     For an `m x n` input, `P` and `L` are `m x m`, `U` is `m x n`,
@@ -201,7 +230,7 @@ def exact_lu(
     for index in range(diagonal):
         pivot_row = -1
         if pivot == "partial":
-            largest = Fraction(0)
+            largest = abs(matrix.zero)
             for row in range(index, rows):
                 candidate = abs(working[row * columns + index])
                 if candidate > largest:
@@ -234,34 +263,46 @@ def exact_lu(
                 target = row * columns + column
                 working[target] -= multiplier * working[index * columns + column]
 
-    lower_entries = [Fraction(0)] * (rows * rows)
+    lower_entries = [matrix.zero] * (rows * rows)
     for row in range(rows):
-        lower_entries[row * rows + row] = Fraction(1)
+        lower_entries[row * rows + row] = matrix.one
     upper_entries = working.copy()
     for row in range(1, rows):
         for column in range(min(row, diagonal)):
             lower_entries[row * rows + column] = upper_entries[row * columns + column]
-            upper_entries[row * columns + column] = Fraction(0)
+            upper_entries[row * columns + column] = matrix.zero
 
-    permutation_entries = [Fraction(0)] * (rows * rows)
+    permutation_entries = [matrix.zero] * (rows * rows)
     for working_row, original_row in enumerate(permutation):
-        permutation_entries[original_row * rows + working_row] = Fraction(1)
+        permutation_entries[original_row * rows + working_row] = matrix.one
 
     return (
-        RationalMatrixData(rows, rows, tuple(permutation_entries)),
-        RationalMatrixData(rows, rows, tuple(lower_entries)),
-        RationalMatrixData(rows, columns, tuple(upper_entries)),
+        ExactMatrixData(
+            rows,
+            rows,
+            permutation_entries,
+            matrix.zero,
+            matrix.one,
+        ),
+        ExactMatrixData(rows, rows, lower_entries, matrix.zero, matrix.one),
+        ExactMatrixData(
+            rows,
+            columns,
+            upper_entries,
+            matrix.zero,
+            matrix.one,
+        ),
     )
 
 
 def _orthogonal_columns(
-    matrix: RationalMatrixData,
+    matrix: ExactMatrixData,
     square_root: SquareRoot,
-) -> tuple[list[list[Fraction]], list[list[Fraction]]]:
+) -> tuple[list[list[Any]], list[list[Any]]]:
     """Return normalized independent columns and reduced QR rows."""
-    basis: list[list[Fraction]] = []
+    basis: list[list[Any]] = []
     coefficients = [
-        [Fraction(0) for _ in range(matrix.ncols)]
+        [matrix.zero for _ in range(matrix.ncols)]
         for _ in range(min(matrix.nrows, matrix.ncols))
     ]
 
@@ -269,14 +310,14 @@ def _orthogonal_columns(
         original = list(matrix.column(column))
         orthogonal = original.copy()
         for basis_index, vector in enumerate(basis):
-            coefficient = _dot(vector, original)
+            coefficient = _dot(vector, original, matrix.zero)
             coefficients[basis_index][column] = coefficient
             orthogonal = _subtract_scaled(orthogonal, coefficient, vector)
-        norm_squared = _dot(orthogonal, orthogonal)
-        if norm_squared == 0:
+        norm_squared = _dot(orthogonal, orthogonal, matrix.zero)
+        if norm_squared == matrix.zero:
             continue
         scale = square_root(norm_squared)
-        if scale == 0:
+        if scale == matrix.zero:
             raise ValueError("exact square-root operation returned zero")
         basis.append([value / scale for value in orthogonal])
         coefficients[len(basis) - 1][column] = scale
@@ -285,33 +326,38 @@ def _orthogonal_columns(
 
 
 def exact_qr(
-    matrix: RationalMatrixData,
+    matrix: ExactMatrixData,
     *,
+    square_root: SquareRoot,
     full: bool = True,
-    square_root: SquareRoot = rational_square_root,
-) -> tuple[RationalMatrixData, RationalMatrixData]:
+) -> tuple[ExactMatrixData, ExactMatrixData]:
     """Return Sage-shaped exact QR factors.
 
     If `full` is true for an `m x n` matrix, `Q` is `m x m` and `R` is
     `m x n`.  Otherwise `Q` is `m x rank` and `R` is `rank x n`.
-    Rank-deficient columns are omitted from the reduced factors.  The rational
-    reference raises `TypeError` when normalization leaves `QQ`; a public
-    exact ring may provide its own `square_root` operation.
+    Rank-deficient columns are omitted from the reduced factors. The caller's
+    `square_root` must return an exact scalar in the same domain
+    or raise. This bilinear reference is intended for rational and real exact
+    fields; it does not implement Hermitian inner products.
     """
     basis, coefficient_rows = _orthogonal_columns(matrix, square_root)
     rank = len(basis)
 
     if full:
         for coordinate in range(matrix.nrows):
-            candidate = [Fraction(0)] * matrix.nrows
-            candidate[coordinate] = Fraction(1)
+            candidate = [matrix.zero] * matrix.nrows
+            candidate[coordinate] = matrix.one
             for vector in basis:
-                candidate = _subtract_scaled(candidate, _dot(vector, candidate), vector)
-            norm_squared = _dot(candidate, candidate)
-            if norm_squared == 0:
+                candidate = _subtract_scaled(
+                    candidate,
+                    _dot(vector, candidate, matrix.zero),
+                    vector,
+                )
+            norm_squared = _dot(candidate, candidate, matrix.zero)
+            if norm_squared == matrix.zero:
                 continue
             scale = square_root(norm_squared)
-            if scale == 0:
+            if scale == matrix.zero:
                 raise ValueError("exact square-root operation returned zero")
             basis.append([value / scale for value in candidate])
             if len(basis) == matrix.nrows:
@@ -327,70 +373,103 @@ def exact_qr(
         for row in range(matrix.nrows)
         for column in range(len(basis))
     )
-    q = RationalMatrixData(matrix.nrows, len(basis), q_entries)
+    q = ExactMatrixData(
+        matrix.nrows,
+        len(basis),
+        q_entries,
+        matrix.zero,
+        matrix.one,
+    )
 
-    r_entries: list[Fraction] = []
+    r_entries: list[Any] = []
     for row in range(output_rows):
         if row < rank:
             r_entries.extend(coefficient_rows[row])
         else:
-            r_entries.extend([Fraction(0)] * matrix.ncols)
-    r = RationalMatrixData(output_rows, matrix.ncols, tuple(r_entries))
+            r_entries.extend([matrix.zero] * matrix.ncols)
+    r = ExactMatrixData(
+        output_rows,
+        matrix.ncols,
+        r_entries,
+        matrix.zero,
+        matrix.one,
+    )
     return q, r
 
 
 def gram_schmidt_rows(
-    matrix: RationalMatrixData,
+    matrix: ExactMatrixData,
     *,
     orthonormal: bool = False,
-    square_root: SquareRoot = rational_square_root,
-) -> tuple[RationalMatrixData, RationalMatrixData]:
+    square_root: SquareRoot | None = None,
+) -> tuple[ExactMatrixData, ExactMatrixData]:
     """Orthogonalize rows and return Sage-shaped `(G, M)`.
 
     For an `m x n` matrix of rank `r`, `G` is `r x n`, `M` is `m x r`,
     and `matrix == M * G`.  Exact dependent and zero rows are omitted from
     `G`; this differs intentionally from the deprecated module-level Sage
-    helper, which raises on dependent input.
+    helper, which raises on dependent input. Storage beyond the returned
+    matrices is `O(m*r + r*n)` for `m` rows, `n` columns, and rank `r`; in
+    particular, tall skinny inputs never allocate an `m x m` scratch matrix.
+
+    This uses a bilinear dot product. Complex exact fields need a separate
+    Hermitian contract with explicit conjugation.
     """
-    basis: list[list[Fraction]] = []
-    coefficient_rows = [
-        [Fraction(0) for _ in range(matrix.nrows)] for _ in range(matrix.nrows)
-    ]
+    if orthonormal and square_root is None:
+        raise ValueError("orthonormal Gram-Schmidt requires an exact square root")
+
+    basis: list[list[Any]] = []
+    coefficient_rows: list[list[Any]] = []
 
     for row in range(matrix.nrows):
         original = list(matrix.row(row))
         orthogonal = original.copy()
-        for basis_index, vector in enumerate(basis):
-            denominator = Fraction(1) if orthonormal else _dot(vector, vector)
-            coefficient = _dot(original, vector) / denominator
-            coefficient_rows[row][basis_index] = coefficient
+        coefficients: list[Any] = []
+        for vector in basis:
+            denominator = (
+                matrix.one if orthonormal else _dot(vector, vector, matrix.zero)
+            )
+            coefficient = _dot(original, vector, matrix.zero) / denominator
+            coefficients.append(coefficient)
             orthogonal = _subtract_scaled(orthogonal, coefficient, vector)
-        norm_squared = _dot(orthogonal, orthogonal)
-        if norm_squared == 0:
+        norm_squared = _dot(orthogonal, orthogonal, matrix.zero)
+        if norm_squared == matrix.zero:
+            coefficient_rows.append(coefficients)
             continue
         if orthonormal:
+            if square_root is None:
+                raise AssertionError("square-root validation was bypassed")
             scale = square_root(norm_squared)
-            if scale == 0:
+            if scale == matrix.zero:
                 raise ValueError("exact square-root operation returned zero")
             basis.append([value / scale for value in orthogonal])
-            coefficient_rows[row][len(basis) - 1] = scale
+            coefficients.append(scale)
         else:
             basis.append(orthogonal)
-            coefficient_rows[row][len(basis) - 1] = Fraction(1)
+            coefficients.append(matrix.one)
+        coefficient_rows.append(coefficients)
 
     rank = len(basis)
-    g = RationalMatrixData(
+    g = ExactMatrixData(
         rank,
         matrix.ncols,
         tuple(value for row in basis for value in row),
+        matrix.zero,
+        matrix.one,
     )
-    m = RationalMatrixData(
+    m = ExactMatrixData(
         matrix.nrows,
         rank,
         tuple(
-            coefficient_rows[row][column]
+            (
+                coefficient_rows[row][column]
+                if column < len(coefficient_rows[row])
+                else matrix.zero
+            )
             for row in range(matrix.nrows)
             for column in range(rank)
         ),
+        matrix.zero,
+        matrix.one,
     )
     return g, m
