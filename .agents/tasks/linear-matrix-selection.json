@@ -1,0 +1,42 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "linear-matrix-selection",
+  "title": "Linear Matrix Selection",
+  "lane": "arithmetic-algebra",
+  "status": "active",
+  "owner": "user",
+  "objective": "Implement storage-neutral matrix selection and mutation contracts with exact-resource and packed-prime friendly semantics",
+  "base_commit": "97116b989da7f5d2b35b514aa3e1f01ef5a4d1ae",
+  "claims": [
+    "src/lib/sagejs/linear_algebra/matrix_selection.py",
+    "test/linear-matrix-selection.cjs",
+    "bench/linear-matrix-selection.cjs"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "dynamic-python",
+    "fallback": "same-source",
+    "oracles": [
+      "sage"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "pnpm test:native"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "",
+    "risks": [],
+    "next_steps": []
+  }
+}
