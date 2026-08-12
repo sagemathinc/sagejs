@@ -4,7 +4,7 @@
   "id": "polynomial-invariants-contract",
   "title": "Storage-neutral exact polynomial invariants",
   "lane": "arithmetic-algebra",
-  "status": "active",
+  "status": "review",
   "owner": "user",
   "objective": "Define CPython-parseable storage-neutral exact polynomial invariant, squarefree, radical, and factor-root contracts with Sage 10.9 edge semantics and Sage.js dynamic differential coverage",
   "base_commit": "5a1cc59fc7fddad7648e98dc2d341a2455853754",
@@ -42,10 +42,79 @@
     "pnpm test:baselib:strict",
     "pnpm test:native"
   ],
-  "runs": [],
+  "runs": [
+    {
+      "command": "node --test test/polynomial-invariants-contract.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.493,
+      "started_at": "2026-08-12T10:14:48.033Z",
+      "commit": "678c5fdfc20930dcc828b4cf0e731b9ee702a9a7",
+      "workspace_fingerprint": "2f4c310b6e8f499ca4ed235c5f44e74965448e373859bb0fbdce9c0430e1bb3e",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/polynomial-invariants-contract.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.428,
+      "started_at": "2026-08-12T10:14:50.145Z",
+      "commit": "678c5fdfc20930dcc828b4cf0e731b9ee702a9a7",
+      "workspace_fingerprint": "2f4c310b6e8f499ca4ed235c5f44e74965448e373859bb0fbdce9c0430e1bb3e",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 13.897,
+      "started_at": "2026-08-12T10:14:52.188Z",
+      "commit": "678c5fdfc20930dcc828b4cf0e731b9ee702a9a7",
+      "workspace_fingerprint": "2f4c310b6e8f499ca4ed235c5f44e74965448e373859bb0fbdce9c0430e1bb3e",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm exec pyright --pythonversion 3.11 src/lib/sagejs/polynomial_algorithms/invariants.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.144,
+      "started_at": "2026-08-12T10:15:06.694Z",
+      "commit": "678c5fdfc20930dcc828b4cf0e731b9ee702a9a7",
+      "workspace_fingerprint": "2f4c310b6e8f499ca4ed235c5f44e74965448e373859bb0fbdce9c0430e1bb3e",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 13.274,
+      "started_at": "2026-08-12T10:15:08.441Z",
+      "commit": "678c5fdfc20930dcc828b4cf0e731b9ee702a9a7",
+      "workspace_fingerprint": "2f4c310b6e8f499ca4ed235c5f44e74965448e373859bb0fbdce9c0430e1bb3e",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:native",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 550.82,
+      "started_at": "2026-08-12T10:15:55.379Z",
+      "commit": "678c5fdfc20930dcc828b4cf0e731b9ee702a9a7",
+      "workspace_fingerprint": "2f4c310b6e8f499ca4ed235c5f44e74965448e373859bb0fbdce9c0430e1bb3e",
+      "platform": "linux-x64"
+    }
+  ],
   "handoff": {
-    "summary": "",
-    "risks": [],
-    "next_steps": []
+    "summary": "Added an ordinary CPython-parseable semantic layer for leading and constant coefficients, valuation, parent-aware monic construction, domain-owned content, squarefreeness, squarefree decompositions, radicals, and exact default-parent root extraction from mature factor lists. Callbacks keep FLINT resources, packed storage, parent coercion, scalar-content policy, factorization, and result construction outside the contract. Sage.js and CPython tests pin SageMath 10.9 ZZ/QQ behavior for zero, constants, signed scalar units, parent widening, multiplicities, and default root domains. A hash-indexed root pass preserves an equality fallback for unhashable exact elements.",
+    "risks": [
+      "This is an unwired contract module; public PolynomialElement integration must supply generated resource operations and must not turn the callbacks into coefficient-by-coefficient host crossings.",
+      "The contract deliberately defines zero as not squarefree in both exact domains, following the mathematical contract and task requirement even though SageMath 10.9's QQ implementation currently reports True.",
+      "ZZ squarefreeness and radicals require a mature scalar callback for the FLINT factorization unit because the generated backend retains integer content as a scalar rather than expanding its prime factors as constant polynomials."
+    ],
+    "next_steps": [
+      "Add invariants.py to the strict Pyright and node test manifests in the integration lane.",
+      "Wire the public ZZ and QQ polynomial methods to these contracts using generated FLINT resource callbacks for content, factorization, squarefree decomposition, and monic/result construction.",
+      "Retain the CPython and dynamic witnesses as differential oracles when native public wiring is added."
+    ]
   }
 }
