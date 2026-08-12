@@ -8499,32 +8499,25 @@ def _bulk_sparse_random_matrix(
         if draws_per_row == 0:
             return MatrixSpace(sage.QQ, rows, columns)(0)
 
-        if distribution == "1/n":
+        value_mode = 1 if distribution == "1/n" else 0
 
-            def draw_reciprocal_uniform() -> Any:
-                """Model Sage's reciprocal-uniform rational draw."""
-                numerator = 0
-                denominator = 1
-                retry = True
-                while retry:
-                    centered = _random_int(0, 2147483647) - 1073741823
-                    if centered == 0:
-                        centered = 1
-                    magnitude = 858993458 // abs(centered)
-                    numerator = magnitude if centered > 0 else -magnitude
-                    denominator_word = _random_int(0, 2147483647)
-                    if denominator_word == 0:
-                        denominator_word = 1
-                    denominator = 2147483647 // denominator_word
-                    retry = require_nonzero and numerator == 0
-                return sage.QQ(numerator) / sage.QQ(denominator)
-
-            # This distribution has variable-sized control flow and no native
-            # executor yet. Keep both execution modes on the explicit portable
-            # implementation instead of falling into the integer generator.
-            if require_nonzero:
-                return portable(spec, draw_nonzero=draw_reciprocal_uniform)
-            return portable_full(draw_reciprocal_uniform)
+        def draw_reciprocal_uniform() -> Any:
+            """Model Sage's reciprocal-uniform rational draw."""
+            numerator = 0
+            denominator = 1
+            retry = True
+            while retry:
+                centered = _random_int(0, 2147483647) - 1073741823
+                if centered == 0:
+                    centered = 1
+                magnitude = 858993458 // abs(centered)
+                numerator = magnitude if centered > 0 else -magnitude
+                denominator_word = _random_int(0, 2147483647)
+                if denominator_word == 0:
+                    denominator_word = 1
+                denominator = 2147483647 // denominator_word
+                retry = require_nonzero and numerator == 0
+            return sage.QQ(numerator) / sage.QQ(denominator)
 
         def draw_rational() -> Any:
             numerator = 0
@@ -8540,33 +8533,30 @@ def _bulk_sparse_random_matrix(
                 retry = require_nonzero and numerator == 0
             return sage.QQ(numerator) / sage.QQ(denominator)
 
-        if numerator_width > 4294967296 or denominator_width > 4294967296:
-            if require_nonzero:
-                return portable(spec, draw_nonzero=draw_rational)
-            return portable_full(draw_rational)
         kernel = executors.sparse_random_fmpq
         if not _native_kernel_available(kernel):
+            draw_value = draw_reciprocal_uniform if value_mode == 1 else draw_rational
             if require_nonzero:
-                return portable(spec, draw_nonzero=draw_rational)
-            return portable_full(draw_rational)
+                return portable(spec, draw_nonzero=draw_value)
+            return portable_full(draw_value)
         final_state = _dense_integer_zeros(kernel, 1)
-        resource = _flint_ffi_module().fmpq_matrix(rows, columns)
+        initial_state = runtime.normalize_integer(_random_int(0, 4294967295))
+        resource = kernel(
+            runtime.bigint(rows),
+            runtime.bigint(columns),
+            draws_per_row,
+            1 if float(spec[3]) == 1 else 0,
+            1 if require_nonzero else 0,
+            value_mode,
+            numerator_width,
+            denominator_width,
+            initial_state,
+            final_state,
+            word_base,
+            multiplier,
+            increment,
+        )
         try:
-            initial_state = runtime.normalize_integer(_random_int(0, 4294967295))
-            if not kernel(
-                resource,
-                draws_per_row,
-                1 if float(spec[3]) == 1 else 0,
-                1 if require_nonzero else 0,
-                numerator_width,
-                denominator_width,
-                initial_state,
-                final_state,
-                word_base,
-                multiplier,
-                increment,
-            ):
-                raise RuntimeError("invalid sparse rational random parameters")
             _set_random_word_state(_integer_buffer_values(final_state)[0])
             _trace_dense_rational_selection(
                 "random_matrix",
