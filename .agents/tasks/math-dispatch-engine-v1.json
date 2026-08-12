@@ -77,6 +77,46 @@
       "commit": "06ddd1e9eebc6ea6496ef717a90e9f84b5f7d1b3",
       "workspace_fingerprint": "507e0feae42d720b6cb4e6e79959ec5facccc2302e5958fd54216aa6040307bc",
       "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/math-dispatch-declarations.cjs test/math-dispatch-selection.cjs test/math-dispatch-cache-identity.cjs test/math-dispatch-benchmark-ingestion.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.661,
+      "started_at": "2026-08-12T22:54:45.870Z",
+      "commit": "df8f83b02401cc80219b316f65951532bc5bdd61",
+      "workspace_fingerprint": "1e9d6650e37847a80c9ec47b0fc4bd737fc2bd973bcd8c06308ff2f16ded784e",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bin/sagejs math check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.442,
+      "started_at": "2026-08-12T22:54:55.676Z",
+      "commit": "df8f83b02401cc80219b316f65951532bc5bdd61",
+      "workspace_fingerprint": "1e9d6650e37847a80c9ec47b0fc4bd737fc2bd973bcd8c06308ff2f16ded784e",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 14.661,
+      "started_at": "2026-08-12T22:55:00.358Z",
+      "commit": "df8f83b02401cc80219b316f65951532bc5bdd61",
+      "workspace_fingerprint": "1e9d6650e37847a80c9ec47b0fc4bd737fc2bd973bcd8c06308ff2f16ded784e",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 15.713,
+      "started_at": "2026-08-12T22:55:18.923Z",
+      "commit": "df8f83b02401cc80219b316f65951532bc5bdd61",
+      "workspace_fingerprint": "1e9d6650e37847a80c9ec47b0fc4bd737fc2bd973bcd8c06308ff2f16ded784e",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {

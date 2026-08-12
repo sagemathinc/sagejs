@@ -7,7 +7,10 @@ const { join, resolve } = require("node:path");
 const test = require("node:test");
 
 const { checkGenerated, loadRegistry } = require("../tools/math-dispatch/registry.cjs");
-const { validateFamilyDocument } = require("../tools/math-dispatch/schema.cjs");
+const {
+  validateFamilyDocument,
+  validateProfileDocument,
+} = require("../tools/math-dispatch/schema.cjs");
 const { parseDispatchSource } = require("../tools/math-dispatch/source-declarations.cjs");
 
 const root = resolve(__dirname, "..");
@@ -111,6 +114,34 @@ test("declaration expressions are statically typed and predicates are boolean", 
     source: incompatible.source,
   };
   assert.throws(() => validateFamilyDocument(incompatible), /equality operands are incompatible/);
+});
+
+test("operations declare every feature reachable from family and profile predicates", async () => {
+  const registry = await loadRegistry({ root });
+  const family = structuredClone(registry.families.get("dense-prime-matrix").document);
+  const multiply = family.operations.find((operation) => operation.id === "multiply");
+  const flint = multiply.algorithms.find((algorithm) => algorithm.id === "flint");
+  flint.when = {
+    op: "compare",
+    operator: "ge",
+    left: { op: "feature", name: "rows", source: family.source },
+    right: { op: "integer", value: "1", source: family.source },
+    source: family.source,
+  };
+  assert.throws(() => validateFamilyDocument(family),
+    /multiply\.flint\.when references feature rows.*multiply\.features/);
+
+  const profile = structuredClone(registry.profiles[0].document);
+  const profiledMultiply = profile.operations.find((operation) => operation.operation === "multiply");
+  profiledMultiply.rules[0].when = {
+    op: "compare",
+    operator: "ge",
+    left: { op: "feature", name: "rows", source: profile.source },
+    right: { op: "integer", value: "1", source: profile.source },
+    source: profile.source,
+  };
+  assert.throws(() => validateProfileDocument(profile, registry.families),
+    /multiply\..*\.when references feature rows.*multiply\.features/);
 });
 
 test("stale generated JSON fails closed", async () => {

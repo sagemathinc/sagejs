@@ -150,6 +150,25 @@ function validatePredicate(filename, expression, featureTypes, label) {
   requireType(filename, validateExpression(filename, expression, featureTypes, label), "boolean", label);
 }
 
+function expressionFeatures(expression, result = new Set()) {
+  if (expression === null || typeof expression !== "object") return result;
+  if (expression.op === "feature") result.add(expression.name);
+  for (const key of ["arguments", "left", "right"]) {
+    const value = expression[key];
+    if (Array.isArray(value)) value.forEach((item) => expressionFeatures(item, result));
+    else expressionFeatures(value, result);
+  }
+  return result;
+}
+
+function requireOperationFeatures(filename, operationId, declared, expression, label) {
+  for (const name of expressionFeatures(expression)) {
+    if (!declared.has(name)) {
+      fail(filename, `${label} references feature ${name}, but ${operationId}.features does not declare it`);
+    }
+  }
+}
+
 function validateFamilyDocument(document, options = {}) {
   const filename = options.filename || "<family>";
   exactKeys(filename, document, [
@@ -266,6 +285,20 @@ function validateFamilyDocument(document, options = {}) {
         fallback,
         conversions: conversionIds,
       });
+    }
+    const declaredFeatures = new Set(operationFeatures);
+    for (const representation of representations.values()) {
+      requireOperationFeatures(filename, operation.id, declaredFeatures, representation.when,
+        `representation ${representation.id}.when`);
+    }
+    for (const algorithm of algorithms.values()) {
+      requireOperationFeatures(filename, operation.id, declaredFeatures, algorithm.when,
+        `${operation.id}.${algorithm.id}.when`);
+      for (const capabilityId of algorithm.requires) {
+        const capability = capabilities.get(capabilityId);
+        requireOperationFeatures(filename, operation.id, declaredFeatures, capability.requires,
+          `${operation.id}.${algorithm.id} capability ${capabilityId}.requires`);
+      }
     }
     for (const algorithm of algorithms.values()) {
       for (const fallback of algorithm.fallback) {
@@ -410,6 +443,8 @@ function validateProfileDocument(document, families, options = {}) {
       }
       validateSource(filename, rule.source, `${key}.${rule.id}`);
       validatePredicate(filename, rule.when, family.featureTypes, `${key}.${rule.id}.when`);
+      requireOperationFeatures(filename, key, new Set(operation.features), rule.when,
+        `${key}.${rule.id}.when`);
       if (rule.when === true) terminal = true;
       rules.push(rule);
     }
