@@ -1,0 +1,83 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "polynomial-domain-performance-matrix",
+  "title": "Polynomial Domain Performance Matrix",
+  "lane": "arithmetic-algebra",
+  "status": "active",
+  "owner": "user",
+  "objective": "Add deterministic public cold/warm benchmark and oracle matrix for large-prime, extension-field, and cyclotomic polynomial workflows",
+  "base_commit": "97116b99d9b24ded43c80ec547fd9c1e8f77efbd",
+  "claims": [
+    "bench/public-polynomial-domains-v1.cjs"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "dynamic-python",
+    "fallback": "same-source",
+    "oracles": [
+      "sage"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "pnpm test:native",
+    "node --test docs/audits/polynomial-domains.test.cjs",
+    "node bench/public-polynomial-domains-v1.cjs"
+  ],
+  "runs": [
+    {
+      "command": "node bench/public-polynomial-domains-v1.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 11.134,
+      "started_at": "2026-08-12T08:30:39.895Z",
+      "commit": "97116b99d9b24ded43c80ec547fd9c1e8f77efbd",
+      "workspace_fingerprint": "0dfbc51db10ca82e67909751b50250653a06ea5b234a2f3833a48ef83b19e5f3",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test docs/audits/polynomial-domains.test.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.12,
+      "started_at": "2026-08-12T08:30:55.945Z",
+      "commit": "97116b99d9b24ded43c80ec547fd9c1e8f77efbd",
+      "workspace_fingerprint": "0dfbc51db10ca82e67909751b50250653a06ea5b234a2f3833a48ef83b19e5f3",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 12.596,
+      "started_at": "2026-08-12T08:30:56.708Z",
+      "commit": "97116b99d9b24ded43c80ec547fd9c1e8f77efbd",
+      "workspace_fingerprint": "0dfbc51db10ca82e67909751b50250653a06ea5b234a2f3833a48ef83b19e5f3",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:changed -- --base 97116b99d9b24ded43c80ec547fd9c1e8f77efbd",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 40.586,
+      "started_at": "2026-08-12T08:31:16.788Z",
+      "commit": "97116b99d9b24ded43c80ec547fd9c1e8f77efbd",
+      "workspace_fingerprint": "0dfbc51db10ca82e67909751b50250653a06ea5b234a2f3833a48ef83b19e5f3",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "",
+    "risks": [],
+    "next_steps": []
+  }
+}
