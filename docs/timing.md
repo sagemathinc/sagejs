@@ -12,8 +12,24 @@ time factor(2^127 - 1)
 
 On Node.js this reports user, system, total CPU, and wall time. An embedded
 host without a process CPU clock reports wall time only. Lazy imports, native
-addons, and compiled-kernel loading that happen during the statement are
-listed separately as initialization.
+addons, and compiled-kernel loading that happen during the statement contribute
+to the wall and CPU totals, and are also reported as an aggregate initialization
+time. Compilation of the submitted statement itself remains outside the
+measurement.
+
+Ask for the observed initialization tree when investigating a cold timing:
+
+```sage
+%time --breakdown import my_package
+time --breakdown first_native_call()
+```
+
+The long spelling is intentional: the normal timing display remains compact,
+while `--breakdown` identifies Python modules, native addons, and compiled
+native kernels separately. It only changes formatting. Sage.js records the
+same spans for an ordinary `time` statement, and it neither imports anything
+extra nor moves initialization outside the statement's elapsed time. A warm
+repeat has no initialization line when it performs no lazy loading.
 
 Use `%timeit` for a stable per-loop measurement:
 

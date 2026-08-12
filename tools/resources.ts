@@ -38,6 +38,13 @@ const KERNEL_WORKER_ASSET = "worker/kernel-worker.cjs";
 const MULTIPROCESSING_WORKER_ASSET = "worker/multiprocessing-worker.cjs";
 const VENDOR_ASSET_PREFIX = "vendor/";
 const NATIVE_KERNEL_ASSET_PREFIX = "native-kernels/";
+const NATIVE_RUNTIME_MODULES = new Set([
+  "@sagemath/sagejs-flint",
+  "@sagemath/sagejs-fflas",
+  "@sagemath/sagejs-graph",
+  "@sagemath/sagejs-m4ri",
+  "zeromq",
+]);
 
 let flintModule: unknown;
 let graphModule: unknown;
@@ -135,8 +142,17 @@ export function precompiledNativeKernelCacheDirectory(
 /** Load a published native-kernel wrapper from disk or an embedded SEA asset. */
 export function loadPrecompiledNativeKernel(
   moduleFilename: string,
+  sourceLabel = basename(dirname(moduleFilename)),
 ): unknown {
-  if (!isSea()) return require(moduleFilename);
+  if (!isSea()) {
+    const resolved = require.resolve(moduleFilename);
+    if (require.cache[resolved]) return require(resolved);
+    return measureInitialization(
+      "native-kernel",
+      sourceLabel,
+      () => require(resolved),
+    );
+  }
   const key = assetKeyForVirtualPath(moduleFilename);
   if (
     key === undefined ||
@@ -148,34 +164,40 @@ export function loadPrecompiledNativeKernel(
   }
   const cached = nativeKernelModules.get(key);
   if (cached !== undefined) return cached;
-  const relativeModule = key.slice(NATIVE_KERNEL_ASSET_PREFIX.length);
-  const cacheKey = relativeModule.slice(0, -"/index.cjs".length);
-  if (!/^[a-f0-9]{64}$/.test(cacheKey)) {
-    throw new Error(`invalid embedded native kernel key ${cacheKey}`);
-  }
-  const addonKey =
-    `${NATIVE_KERNEL_ASSET_PREFIX}${cacheKey}/build/Release/` +
-    "sagejs_native_kernel.node";
-  if (!hasAsset(addonKey)) {
-    throw new Error(`native kernel addon is not embedded: ${addonKey}`);
-  }
-  if (!nativeTemporaryDirectory) {
-    nativeTemporaryDirectory = mkdtempSync(join(tmpdir(), "sagejs-sea-"));
-  }
-  const outputDirectory = join(nativeTemporaryDirectory, "native-kernels", cacheKey);
-  const outputModule = join(outputDirectory, "index.cjs");
-  const outputAddon = join(
-    outputDirectory,
-    "build",
-    "Release",
-    "sagejs_native_kernel.node",
-  );
-  mkdirSync(dirname(outputAddon), { recursive: true });
-  writeFileSync(outputModule, Buffer.from(getAsset(key)), { mode: 0o700 });
-  writeFileSync(outputAddon, Buffer.from(getAsset(addonKey)), { mode: 0o700 });
-  const loaded = createRequire(outputModule)(outputModule);
-  nativeKernelModules.set(key, loaded);
-  return loaded;
+  return measureInitialization("native-kernel", sourceLabel, () => {
+    const relativeModule = key.slice(NATIVE_KERNEL_ASSET_PREFIX.length);
+    const cacheKey = relativeModule.slice(0, -"/index.cjs".length);
+    if (!/^[a-f0-9]{64}$/.test(cacheKey)) {
+      throw new Error(`invalid embedded native kernel key ${cacheKey}`);
+    }
+    const addonKey =
+      `${NATIVE_KERNEL_ASSET_PREFIX}${cacheKey}/build/Release/` +
+      "sagejs_native_kernel.node";
+    if (!hasAsset(addonKey)) {
+      throw new Error(`native kernel addon is not embedded: ${addonKey}`);
+    }
+    if (!nativeTemporaryDirectory) {
+      nativeTemporaryDirectory = mkdtempSync(join(tmpdir(), "sagejs-sea-"));
+    }
+    const outputDirectory = join(
+      nativeTemporaryDirectory,
+      "native-kernels",
+      cacheKey,
+    );
+    const outputModule = join(outputDirectory, "index.cjs");
+    const outputAddon = join(
+      outputDirectory,
+      "build",
+      "Release",
+      "sagejs_native_kernel.node",
+    );
+    mkdirSync(dirname(outputAddon), { recursive: true });
+    writeFileSync(outputModule, Buffer.from(getAsset(key)), { mode: 0o700 });
+    writeFileSync(outputAddon, Buffer.from(getAsset(addonKey)), { mode: 0o700 });
+    const loaded = createRequire(outputModule)(outputModule);
+    nativeKernelModules.set(key, loaded);
+    return loaded;
+  });
 }
 
 export function readResourceText(filename: string): string {
@@ -475,7 +497,10 @@ function loadEmbeddedZeroMQ(): unknown {
 
 export function runtimeRequire(name: string): unknown {
   if (runtimeModuleCache.has(name)) return runtimeModuleCache.get(name);
-  return measureInitialization(`require ${name}`, () => {
+  const kind = NATIVE_RUNTIME_MODULES.has(name)
+    ? "addon"
+    : "runtime";
+  return measureInitialization(kind, name, () => {
     let module: unknown;
     if (isSea() && name === "@sagemath/sagejs-flint") {
       module = loadEmbeddedFlint();

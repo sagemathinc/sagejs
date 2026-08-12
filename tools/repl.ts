@@ -42,6 +42,7 @@ import {
   formatExecutionTiming,
   installTimingHooks,
   measureExecution,
+  parseTimeDirective,
   parseTimeitDirective,
   TimeitOptions,
 } from "./timing";
@@ -348,7 +349,12 @@ export default async function Repl(
     }
   }
 
-  function runJS(js: string, noPrint: boolean, timed: boolean): void {
+  function runJS(
+    js: string,
+    noPrint: boolean,
+    timed: boolean,
+    timingBreakdown: boolean,
+  ): void {
     if (runInThisContext("show_js")) {
       options.console.log(
         colorize("---------- Compiled JavaScript ---------", "green", true)
@@ -395,7 +401,13 @@ export default async function Repl(
         }
       }
     }
-    if (measured) options.console.log(formatExecutionTiming(measured.timing));
+    if (measured) {
+      options.console.log(
+        formatExecutionTiming(measured.timing, {
+          breakdown: timingBreakdown,
+        }),
+      );
+    }
   }
 
   function stripCopiedPrompt(line: string): string {
@@ -485,9 +497,17 @@ export default async function Repl(
       }
     }
     let timed = false;
-    if (source.startsWith("%time ") || source.startsWith("time ")) {
-      timed = true;
-      source = source.slice(5).trimLeft();
+    let timingBreakdown = false;
+    try {
+      const timing = parseTimeDirective(source, true);
+      if (timing) {
+        timed = true;
+        timingBreakdown = timing.breakdown;
+        source = timing.source;
+      }
+    } catch (error) {
+      options.console.error(error?.message ?? error);
+      return false;
     }
     if (foreignFrontend) {
       try {
@@ -591,7 +611,7 @@ export default async function Repl(
       !!foreignFrontend ||
       source.trimRight().endsWith(";") ||
       finalStatementIsAssignment;
-    runJS(output, noPrint, timed);
+    runJS(output, noPrint, timed, timingBreakdown);
     return false;
   }
 

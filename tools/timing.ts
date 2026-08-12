@@ -15,10 +15,17 @@ export interface CpuTiming {
 }
 
 export interface InitializationTiming {
+  kind: InitializationTimingKind;
   label: string;
   wallMs: number;
   children: InitializationTiming[];
 }
+
+export type InitializationTimingKind =
+  | "module"
+  | "addon"
+  | "native-kernel"
+  | "runtime";
 
 export interface ExecutionTiming {
   wallMs: number;
@@ -60,6 +67,16 @@ export interface TimeitDirective {
   options: TimeitOptions;
 }
 
+export interface TimeDirective {
+  source: string;
+  breakdown: boolean;
+}
+
+export interface TimingFormatOptions {
+  /** Include the nested initialization tree after its aggregate duration. */
+  breakdown?: boolean;
+}
+
 export interface TimingHookOptions {
   /** Override calibration only for a controlled embedding or deterministic test. */
   timeitPolicy?: TimeitPolicy;
@@ -86,8 +103,12 @@ class TimingCollector {
   readonly initializationStack: MutableInitializationTiming[] = [];
   finished = false;
 
-  beginInitialization(label: string): MutableInitializationTiming {
+  beginInitialization(
+    kind: InitializationTimingKind,
+    label: string,
+  ): MutableInitializationTiming {
     const span: MutableInitializationTiming = {
+      kind,
       label,
       wallMs: 0,
       children: [],
@@ -220,6 +241,40 @@ export function parseTimeitDirective(
 
   if (!rest.trim()) throw new TypeError("%timeit requires a statement");
   return { source: rest, options };
+}
+
+/**
+ * Parse an interactive `%time` prefix, and Sage's plain `time` spelling.
+ *
+ * This happens before compilation so `--breakdown` is a host display option,
+ * not part of the measured Python statement. It changes neither collection
+ * nor execution and therefore cannot force an otherwise lazy import.
+ */
+export function parseTimeDirective(
+  source: string,
+  allowPlainTime = false,
+): TimeDirective | undefined {
+  const prefix = source.match(/^[ \t]*%time(?:[ \t]+|$)/) ??
+    (allowPlainTime
+      ? source.match(/^[ \t]*time(?:[ \t]+|$)/)
+      : null);
+  if (!prefix) return undefined;
+  let rest = source.slice(prefix[0].length);
+  let breakdown = false;
+  const option = rest.match(/^--breakdown(?:[ \t]+|$)/);
+  if (option) {
+    breakdown = true;
+    rest = rest.slice(option[0].length);
+  } else {
+    const separator = rest.match(/^--(?:[ \t]+|$)/);
+    if (separator) rest = rest.slice(separator[0].length);
+    else if (/^--[A-Za-z]/.test(rest)) {
+      const name = rest.match(/^--[^ \t\r\n]*/)?.[0] ?? rest;
+      throw new TypeError(`unsupported %time option ${name}`);
+    }
+  }
+  if (!rest.trim()) throw new TypeError("%time requires a statement");
+  return { source: rest, breakdown };
 }
 
 type TimeitStage = "warmup" | "calibration" | "samples" | "done";
@@ -382,6 +437,7 @@ function freezeInitializationTiming(
   span: MutableInitializationTiming,
 ): InitializationTiming {
   return {
+    kind: span.kind,
     label: span.label,
     wallMs: span.wallMs,
     children: span.children.map((child) =>
@@ -428,12 +484,13 @@ export function measureExecution<T>(callback: () => T): {
 
 /** Begin a lazy-initialization span when an execution timing is active. */
 export function beginInitializationTiming(
+  kind: InitializationTimingKind,
   label: string,
 ): InitializationTimingToken | undefined {
   if (!activeCollector) return undefined;
   return {
     collector: activeCollector,
-    span: activeCollector.beginInitialization(label),
+    span: activeCollector.beginInitialization(kind, label),
   };
 }
 
@@ -445,8 +502,12 @@ export function finishInitializationTiming(
 }
 
 /** Record one synchronous lazy-initialization operation. */
-export function measureInitialization<T>(label: string, callback: () => T): T {
-  const token = beginInitializationTiming(label);
+export function measureInitialization<T>(
+  kind: InitializationTimingKind,
+  label: string,
+  callback: () => T,
+): T {
+  const token = beginInitializationTiming(kind, label);
   try {
     return callback();
   } finally {
@@ -481,8 +542,15 @@ function formatInitializationLines(
 ): string[] {
   const lines: string[] = [];
   for (const span of spans) {
+    const kind = {
+      module: "Module",
+      addon: "Addon",
+      "native-kernel": "Native kernel",
+      runtime: "Runtime",
+    }[span.kind];
     lines.push(
-      `${"  ".repeat(depth)}${span.label}: ${formatMilliseconds(span.wallMs)}`,
+      `${"  ".repeat(depth)}${kind} ${span.label}: ` +
+        formatMilliseconds(span.wallMs),
     );
     lines.push(...formatInitializationLines(span.children, depth + 1));
   }
@@ -490,7 +558,10 @@ function formatInitializationLines(
 }
 
 /** Format timing output using Sage's CPU-plus-wall shape. */
-export function formatExecutionTiming(timing: ExecutionTiming): string {
+export function formatExecutionTiming(
+  timing: ExecutionTiming,
+  options: TimingFormatOptions = {},
+): string {
   const lines: string[] = [];
   if (timing.cpu) {
     lines.push(
@@ -501,12 +572,18 @@ export function formatExecutionTiming(timing: ExecutionTiming): string {
   }
   lines.push(`Wall time: ${formatMilliseconds(timing.wallMs)}`);
   if (timing.initialization.length > 0) {
+    // Children are contained in their parents. Sum roots only so a module
+    // importing an addon is not counted twice in the aggregate.
     const total = timing.initialization.reduce(
       (sum, span) => sum + span.wallMs,
       0,
     );
-    lines.push(`Initialization: ${formatMilliseconds(total)}`);
-    lines.push(...formatInitializationLines(timing.initialization, 1));
+    lines.push(
+      `Initialization (included in wall time): ${formatMilliseconds(total)}`,
+    );
+    if (options.breakdown) {
+      lines.push(...formatInitializationLines(timing.initialization, 1));
+    }
   }
   return lines.join("\n");
 }

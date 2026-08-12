@@ -467,7 +467,7 @@ export function runRuntimeBootstrap(
       }
       try {
         const modulePath = join(cacheRoot, record.cacheKey, "index.cjs");
-        const loaded = loadPrecompiledNativeKernel(modulePath) as
+        const loaded = loadPrecompiledNativeKernel(modulePath, sourcePath) as
           Record<string, unknown>;
         const indexCompatibility = validatedNativeCompatibility(
           sourcePath,
@@ -596,7 +596,7 @@ export function runRuntimeBootstrap(
     Reflect.set(registry, name, namespace);
     if (parent && childName) Reflect.set(parent, childName, namespace);
     loading.add(name);
-    const initializationTiming = beginInitializationTiming(`import ${name}`);
+    const initializationTiming = beginInitializationTiming("module", name);
     try {
       // Installed modules are ordinary Python regardless of whether their
       // importer is a Sage worksheet. This also lets both host modes share a
