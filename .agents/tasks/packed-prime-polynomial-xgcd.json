@@ -212,20 +212,60 @@
       "commit": "42e9f860d258da86ca0ad676c619c7a17dc4ca23",
       "workspace_fingerprint": "4dfa34d9058da18cd133c7fd30d6a770d65b5f17ac1e8748362b098b3d55205d",
       "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/packed-prime-polynomial-xgcd.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 4.407,
+      "started_at": "2026-08-12T23:12:56.070Z",
+      "commit": "3d9efa5a31d62f6bc1ed05735990490c1f5d4d37",
+      "workspace_fingerprint": "eb9668e1f796495eac97dcd6444bd8ac69b0a3c8f90276ba2b0943f3af428302",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm exec pyright src/lib/sagejs/polynomial_algorithms/packed_prime_xgcd.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.121,
+      "started_at": "2026-08-12T23:13:04.106Z",
+      "commit": "3d9efa5a31d62f6bc1ed05735990490c1f5d4d37",
+      "workspace_fingerprint": "eb9668e1f796495eac97dcd6444bd8ac69b0a3c8f90276ba2b0943f3af428302",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 14.626,
+      "started_at": "2026-08-12T23:13:08.739Z",
+      "commit": "3d9efa5a31d62f6bc1ed05735990490c1f5d4d37",
+      "workspace_fingerprint": "eb9668e1f796495eac97dcd6444bd8ac69b0a3c8f90276ba2b0943f3af428302",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/packed-prime-polynomial-xgcd.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 36.212,
+      "started_at": "2026-08-12T23:13:30.460Z",
+      "commit": "3d9efa5a31d62f6bc1ed05735990490c1f5d4d37",
+      "workspace_fingerprint": "eb9668e1f796495eac97dcd6444bd8ac69b0a3c8f90276ba2b0943f3af428302",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {
-    "summary": "Added a source-transparent packed GF(p)[x] extended Euclidean kernel with Sage-normalized monic outputs and a single transactional output layout. The kernel copies inputs into compiler-owned scratch, so compiled callers may safely overlap input and output typed views; zero/zero returns Sage's (0, 0, 0). Complete 32-bit primality and canonical-residue checks, verified leading-coefficient inverses, and strict Euclidean degree-decrease checks reject malformed domains without hanging. Focused compiled, dynamic Sage.js, and CPython tests cover Sage fixtures, randomized Bezout identities, the largest 32-bit prime, composite/nonunit moduli, noncanonical residues, zero and nonmonic constants, aliasing, and transactional rejection. On the measured AMD EPYC 7B13 host, compiled same-source XGCD is faster than public FLINT through degree 128 and slower at degree 256; dynamic same-source execution remains a correctness fallback.",
+    "summary": "Added a source-transparent packed GF(p)[x] extended Euclidean kernel with Sage-normalized monic outputs and a single transactional output layout. The kernel copies inputs into compiler-owned scratch, so compiled callers may safely overlap input and output typed views; zero/zero returns Sage's (0, 0, 0). Complete 32-bit primality and canonical-residue checks, verified leading-coefficient inverses, and strict Euclidean degree-decrease checks reject malformed domains without hanging. Modulus range validation precedes output-shape validation in every execution mode, matching generated argument-conversion order. Focused compiled, dynamic Sage.js, and CPython tests cover Sage fixtures, randomized Bezout identities, the largest 32-bit prime, composite/nonunit moduli, noncanonical residues, zero and nonmonic constants, aliasing, transactional rejection, and invalid-modulus plus invalid-shape parity. The equal-work benchmark fully materializes polynomial triples from both the source kernel and public FLINT path; public FLINT is faster at every measured degree from 8 through 256 on the AMD EPYC 7B13 host. Dynamic same-source execution remains a correctness fallback.",
     "risks": [
       "The public PolynomialElement.xgcd method is intentionally not wired in this write-disjoint lane.",
-      "The kernel uses classical quadratic polynomial arithmetic; the measured compiled-source/public-FLINT crossover bracket of degree 128 to 256 is specific to one Linux x64 host and must become dispatch-profile evidence rather than a hard-coded universal threshold.",
+      "The kernel uses classical quadratic polynomial arithmetic, and no measured production crossover currently supports selecting it over public FLINT: the equal-work public path wins throughout degrees 8 to 256 on the measured Linux x64 host.",
       "The broad pnpm test:changed gate is blocked by integration-only registration of this focused test in test/node-test-manifest.cjs, plus unrelated baseline GF(2) packed shift/module-surface failures and a noisy uint64 structural performance ratio of 4.84 above its 4.0 gate.",
       "The full pnpm test:native gate completed compiler, FFI, lifecycle, sanitizer, and native-kernel suites, then failed in unchanged test/dense-prime-migration.cjs because strictEqual compared actual 0n with expected 0."
     ],
     "next_steps": [
       "In the integration lane, add src/lib/sagejs/polynomial_algorithms/packed_prime_xgcd.py to pyrightconfig.json and test/packed-prime-polynomial-xgcd.cjs to test/node-test-manifest.cjs; explicit Pyright already reports zero errors.",
-      "Obtain a fresh independent review of domain proofs, degree progress, transactional publication, typed-view aliasing, and the benchmark comparison before public wiring.",
-      "After review, wire the public polynomial surface with the one-output ABI and dispatch compiled source only within a multi-host measured profile, retaining declared/public FLINT for larger degrees."
+      "Obtain a fresh independent review of domain proofs, degree progress, rejection parity, transactional publication, typed-view aliasing, and the equal-work benchmark before integration.",
+      "Do not add a production dispatch threshold from the current evidence. Keep public FLINT selected unless a future equal-work, multi-host profile supports a source-kernel region or source result construction is materially improved."
     ]
   }
 }
