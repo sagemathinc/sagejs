@@ -349,6 +349,15 @@ def _dense_prime_zeros(kernel_function: Any, length: int) -> Any:
     return [0 for _index in range(length)]
 
 
+def _dense_signed_zeros(kernel_function: Any, length: int) -> Any:
+    """Allocate packed signed output for an exact borrowed-resource kernel."""
+    if _native_kernel_available(kernel_function):
+        factory = getattr(kernel_function, "createInt64Buffer", None)
+        if callable(factory):
+            return factory(length)
+    return [0 for _index in range(length)]
+
+
 def _matrix_integer_word_capacity(source: Any) -> int:
     capacity = runtime.reflect.get(source, "wordCapacity")
     if capacity is not runtime.undefined:
@@ -630,6 +639,16 @@ def _prime_residue_values(
             residue = int(_untyped(base(value))._value)
         residues.append(residue)
     return _packed_uint64(residues)
+
+
+def _prime_residue_value(base: sage.Parent, value: Any) -> int:
+    """Coerce one value to a canonical residue without temporary storage."""
+    if getattr(value, "_parent", None) is base:
+        return runtime.number(_untyped(value)._value)
+    modulus = runtime.number(_untyped(base)._modulus)
+    if runtime.is_exact_integer(value):
+        return int(value) % modulus
+    return int(_untyped(base(value))._value)
 
 
 def _native_matrix(
@@ -1964,6 +1983,7 @@ class Matrix(sage.Element):
         self._smith_cache = runtime.undefined
         self._right_kernel_cache = runtime.undefined
         self._left_kernel_cache = runtime.undefined
+        self._pivots_cache = runtime.undefined
         self._charpoly_cache = runtime.map()
         self._minpoly_cache = runtime.map()
         self._row_vectors_cache: Any = runtime.undefined
@@ -2541,18 +2561,25 @@ class Matrix(sage.Element):
             # denominator.  Revalidating them through QQ would compute an
             # avoidable gcd on every scalar read.
             return _untyped(sage.Rational)._from_reduced(parts[0], parts[1])
-        if self._has_packed_prime_storage():
-            if self._has_m4ri_matrix_resource():
-                residue = runtime.number(
-                    _m4ri_ffi_module().matrix_entry_code(
-                        self._m4ri_resource(), row, col
-                    )
-                )
-                if residue not in [0, 1]:
-                    raise RuntimeError("M4RI returned an invalid matrix entry")
-            else:
-                residue = int(self._prime_residues_cache[row * columns + col])
-            return self.base_ring()(residue)
+        m4ri_storage = self._m4ri_storage_cache
+        prime_storage = self._prime_residues_cache
+        if isinstance(m4ri_storage, _M4riMatrixResourceStorage):
+            flat_index = row * columns + col
+            if self._prime_host_values_cache is not runtime.undefined:
+                return self._prime_host_values_cache[flat_index]
+            kernel = _dense_binary_m4ri_kernel_module().m4ri_dense_matrix_entry
+            residue = runtime.number(kernel(m4ri_storage.resource, row, col))
+            if residue not in [0, 1]:
+                raise RuntimeError("M4RI returned an invalid matrix entry")
+            return _untyped(self.base_ring())._from_reduced(residue)
+        if _is_packed_uint64(prime_storage) and _is_packed_dense_prime_base(
+            self.base_ring()
+        ):
+            flat_index = row * columns + col
+            if self._prime_host_values_cache is not runtime.undefined:
+                return self._prime_host_values_cache[flat_index]
+            residue = int(prime_storage[flat_index])
+            return _untyped(self.base_ring())._from_reduced(residue)
         if self._has_packed_rational_storage():
             kernel = _dense_rational_kernel_module().dense_rational_matrix_get
             numerators, denominators = self._rational_kernel_parts(kernel)
@@ -2621,15 +2648,19 @@ class Matrix(sage.Element):
             rational_storage.denominators = runtime.undefined
             self._clear_cache()
             return
-        if self._has_packed_prime_storage():
-            residue = _prime_residue_values(self.base_ring(), [value])[0]
-            if self._has_m4ri_matrix_resource():
-                _m4ri_ffi_module().matrix_set_entry(
-                    self._m4ri_resource(), row, col, int(residue)
-                )
+        m4ri_storage = self._m4ri_storage_cache
+        prime_storage = self._prime_residues_cache
+        if (
+            isinstance(m4ri_storage, _M4riMatrixResourceStorage)
+            or _is_packed_uint64(prime_storage)
+        ) and _is_packed_dense_prime_base(self.base_ring()):
+            residue = _prime_residue_value(self.base_ring(), value)
+            if isinstance(m4ri_storage, _M4riMatrixResourceStorage):
+                kernel = _dense_binary_m4ri_kernel_module().m4ri_dense_matrix_set_entry
+                kernel(m4ri_storage.resource, row, col, residue)
                 self._prime_residues_cache = runtime.undefined
             else:
-                self._prime_residues_cache[row * self.ncols() + col] = residue
+                prime_storage[row * self.ncols() + col] = runtime.bigint(residue)
             self._native_handle = runtime.undefined
             self._clear_cache()
             return
@@ -3869,6 +3900,7 @@ class Matrix(sage.Element):
         self._smith_cache = runtime.undefined
         self._right_kernel_cache = runtime.undefined
         self._left_kernel_cache = runtime.undefined
+        self._pivots_cache = runtime.undefined
         # Scalar construction may invalidate an already empty matrix thousands
         # of times. Reuse these two identity-insensitive lookup tables rather
         # than allocate fresh maps for every successful write.
@@ -4506,6 +4538,8 @@ class Matrix(sage.Element):
         self._immutable = False
 
     def pivots(self) -> Any:
+        if self._pivots_cache is not runtime.undefined:
+            return self._pivots_cache
         echelon = self.echelon_form()
         if (
             echelon._has_packed_prime_storage()
@@ -4513,6 +4547,39 @@ class Matrix(sage.Element):
             or echelon._has_packed_rational_storage()
         ):
             exact_entries = None
+            pivot_count = 0
+            pivot_output = None
+            if echelon._has_m4ri_matrix_resource():
+                kernel = _dense_binary_m4ri_kernel_module().m4ri_dense_matrix_pivots
+                pivot_output = _dense_signed_zeros(
+                    kernel, min(echelon.nrows(), echelon.ncols())
+                )
+                pivot_count = runtime.number(
+                    kernel(pivot_output, echelon._m4ri_resource())
+                )
+            elif _is_packed_uint64(echelon._prime_residues_cache):
+                kernel_module = _dense_prime_kernel_module()
+                kernel = kernel_module.dense_prime_field_matrix_pivots
+                pivot_output = _dense_prime_zeros(
+                    kernel, min(echelon.nrows(), echelon.ncols())
+                )
+                source = kernel_module.DensePrimeMatrix(
+                    echelon._prime_kernel_buffer(kernel),
+                    echelon.nrows(),
+                    echelon.ncols(),
+                    int(_untyped(echelon.base_ring()).characteristic()),
+                )
+                pivot_count = runtime.number(kernel(pivot_output, source))
+            if pivot_output is not None:
+                answer = runtime.math_tuple(
+                    [
+                        runtime.number(pivot_output[index])
+                        for index in range(pivot_count)
+                    ]
+                )
+                self._pivots_cache = answer
+                echelon._pivots_cache = answer
+                return answer
             if (
                 echelon._has_fmpz_matrix_resource()
                 or echelon._has_fmpq_matrix_resource()
@@ -4533,9 +4600,15 @@ class Matrix(sage.Element):
                 if pivot is not None:
                     pivots.append(pivot)
                     previous = pivot
-            return runtime.math_tuple(pivots)
+            answer = runtime.math_tuple(pivots)
+            self._pivots_cache = answer
+            echelon._pivots_cache = answer
+            return answer
         answer = runtime.flint_backend().matrixPivots(echelon._native)
-        return runtime.math_tuple([runtime.number(index) for index in answer])
+        self._pivots_cache = runtime.math_tuple(
+            [runtime.number(index) for index in answer]
+        )
+        return self._pivots_cache
 
     def row_space(self) -> VectorSubspaceParent:
         return VectorSubspaceParent(

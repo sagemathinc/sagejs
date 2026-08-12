@@ -309,6 +309,18 @@ def _new_prime_field_element(
     return FiniteFieldElement(parent, value)
 
 
+def _new_reduced_prime_field_element(
+    parent: Any,
+    value: int,
+) -> FiniteFieldElement:
+    """Construct an element from an already canonical residue."""
+    answer = runtime.object.create(_finite_field_element_prototype)
+    answer._parent = parent
+    answer._value = runtime.bigint(value)
+    runtime.object.freeze(answer)
+    return answer
+
+
 @runtime.bigint_fields("_value")
 @runtime.lightweight_math_class
 class IntegerModElement(FiniteFieldElement):
@@ -492,6 +504,10 @@ class FiniteField_prime_modn(sage.Parent):
 
     def __call__(self, value: Any = 0) -> FiniteFieldElement:
         return _new_prime_field_element(self, value)
+
+    def _from_reduced(self, value: int) -> FiniteFieldElement:
+        """Construct directly from a canonical integer residue."""
+        return _new_reduced_prime_field_element(self, value)
 
     def order(self) -> int:
         return runtime.normalize_integer(self._order)
