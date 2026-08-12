@@ -37,6 +37,17 @@ def packed_prime_field_polynomial_xgcd(
     storage safely; there are no multiple output or caller-scratch spans with
     an unenforceable alias contract.
     """
+    # PrimeFieldModulus is range-checked by generated native adapters, but the
+    # same-source fallback must reject the same domain. Convert it through
+    # machine arithmetic so comparisons remain uint64 in the isolated IR. Do
+    # this before inspecting the result shape: native argument conversion also
+    # rejects the modulus before entering the function body.
+    checked_modulus = modulus + 0
+    zero = checked_modulus - checked_modulus
+    one = zero + 1
+    if checked_modulus < one + 1 or checked_modulus > 4294967295:
+        raise ValueError("modulus must be between 2 and 2^32 - 1")
+
     capacity = len(left)
     if len(right) > capacity:
         capacity = len(right)
@@ -44,15 +55,6 @@ def packed_prime_field_polynomial_xgcd(
         capacity = 1
     if len(output) != capacity * 3 + 3:
         return False
-
-    # PrimeFieldModulus is range-checked by generated native adapters, but the
-    # same-source fallback must reject the same domain. Convert it through
-    # machine arithmetic so comparisons remain uint64 in the isolated IR.
-    checked_modulus = modulus + 0
-    zero = checked_modulus - checked_modulus
-    one = zero + 1
-    if checked_modulus < one + 1 or checked_modulus > 4294967295:
-        raise ValueError("modulus must be between 2 and 2^32 - 1")
     valid_modulus = True
     if valid_modulus and checked_modulus != one + 1:
         if checked_modulus % (one + 1) == zero:
