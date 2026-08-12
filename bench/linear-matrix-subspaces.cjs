@@ -29,7 +29,7 @@ def selected_basis(value):
         dimensions,
         lambda source: source.echelon_form(),
         lambda echelon: echelon.rank(),
-        lambda echelon, indices: echelon.matrix_from_rows(indices),
+        lambda echelon, count: echelon.matrix_from_prefix_rows(count),
         finish,
     ).matrix
 

@@ -48,10 +48,10 @@ def _basis_row_count(echelon: Any) -> int:
     return len(echelon.pivots())
 
 
-def _select_rows(echelon: Any, indices: tuple[int, ...]) -> Any:
+def _select_prefix_rows(echelon: Any, count: int) -> Any:
     if hasattr(echelon, "matrix_from_prefix_rows"):
-        return echelon.matrix_from_prefix_rows(len(indices))
-    return echelon.matrix_from_rows(indices)
+        return echelon.matrix_from_prefix_rows(count)
+    return echelon.matrix_from_rows(range(count))
 
 
 def _set_immutable(value: Any) -> None:
@@ -71,7 +71,7 @@ def prepare_public_row_space(
         _dimensions,
         lambda value: value.echelon_form(),
         _basis_row_count,
-        _select_rows,
+        _select_prefix_rows,
         _set_immutable,
     )
 
@@ -84,7 +84,7 @@ def public_column_basis(source: Any) -> CanonicalBasis:
         lambda value: value.transpose(),
         lambda value: value.echelon_form(),
         _basis_row_count,
-        _select_rows,
+        _select_prefix_rows,
         _set_immutable,
     )
 

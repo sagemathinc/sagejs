@@ -151,7 +151,7 @@ def canonical_basis_from_echelon(
     orientation: str,
     dimensions: Callable[[Any], tuple[int, int]],
     basis_row_count: Callable[[Any], int],
-    select_rows: Callable[[Any, tuple[int, ...]], Any],
+    select_prefix_rows: Callable[[Any, int], Any],
     set_immutable: Callable[[Any], None],
 ) -> CanonicalBasis:
     """Bulk-select a canonical basis from one already computed echelon matrix.
@@ -167,7 +167,7 @@ def canonical_basis_from_echelon(
     contract proves that rank equals this count, such as `ZZ` or a field.  A
     Howell adapter must instead report its actual leading nonzero row count.
 
-    The selector must preserve the exact shape `basis_row_count` by
+    The prefix selector must preserve the exact shape `basis_row_count` by
     `ambient_dimension`, including `0` by `n`. This explicit check prevents a
     host list from collapsing degenerate matrix dimensions.
     """
@@ -198,8 +198,7 @@ def canonical_basis_from_echelon(
         source_columns,
         generator_rows,
     )
-    selected_rows = tuple(range(metadata.basis_row_count))
-    basis = select_rows(echelon, selected_rows)
+    basis = select_prefix_rows(echelon, metadata.basis_row_count)
     basis_shape = _checked_shape(dimensions(basis), "basis")
     expected_basis_shape = (metadata.basis_rows, metadata.basis_columns)
     if basis_shape != expected_basis_shape:
@@ -218,7 +217,7 @@ def canonical_row_basis(
     dimensions: Callable[[Any], tuple[int, int]],
     echelon_form: Callable[[Any], Any],
     basis_row_count: Callable[[Any], int],
-    select_rows: Callable[[Any, tuple[int, ...]], Any],
+    select_prefix_rows: Callable[[Any, int], Any],
     set_immutable: Callable[[Any], None],
 ) -> CanonicalBasis:
     """Compute one canonical row echelon form and retain its generator rows."""
@@ -231,7 +230,7 @@ def canonical_row_basis(
         ROW_ORIENTATION,
         dimensions,
         basis_row_count,
-        select_rows,
+        select_prefix_rows,
         set_immutable,
     )
 
@@ -242,7 +241,7 @@ def canonical_column_basis(
     transpose: Callable[[Any], Any],
     echelon_form: Callable[[Any], Any],
     basis_row_count: Callable[[Any], int],
-    select_rows: Callable[[Any, tuple[int, ...]], Any],
+    select_prefix_rows: Callable[[Any, int], Any],
     set_immutable: Callable[[Any], None],
 ) -> CanonicalBasis:
     """Echelonize the transpose once and retain canonical column generators."""
@@ -259,7 +258,7 @@ def canonical_column_basis(
         COLUMN_ORIENTATION,
         dimensions,
         basis_row_count,
-        select_rows,
+        select_prefix_rows,
         set_immutable,
     )
 
@@ -272,7 +271,7 @@ def prepare_row_space(
     dimensions: Callable[[Any], tuple[int, int]],
     echelon_form: Callable[[Any], Any],
     basis_row_count: Callable[[Any], int],
-    select_rows: Callable[[Any, tuple[int, ...]], Any],
+    select_prefix_rows: Callable[[Any, int], Any],
     set_immutable: Callable[[Any], None],
 ) -> CanonicalBasis | GeneratorSpan:
     """Prepare Sage-compatible data for `row_space(base_ring=...)`.
@@ -294,6 +293,6 @@ def prepare_row_space(
         dimensions,
         echelon_form,
         basis_row_count,
-        select_rows,
+        select_prefix_rows,
         set_immutable,
     )
