@@ -4,7 +4,7 @@
   "id": "zz-right-kernel-flint",
   "title": "Zz Right Kernel Flint",
   "lane": "integration",
-  "status": "active",
+  "status": "review",
   "owner": "user",
   "objective": "Replace the current dense ZZ right-kernel algorithm with a canonical resource-preserving FLINT nullspace and saturation strategy that matches Sage semantics and materially closes the measured 2.8x gap",
   "base_commit": "ebb140ee7cd0e8bd5471f06eb7616de6bc5dbbef",
