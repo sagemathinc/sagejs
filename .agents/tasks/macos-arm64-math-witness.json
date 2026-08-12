@@ -4,7 +4,7 @@
   "id": "macos-arm64-math-witness",
   "title": "macOS arm64 mathematical performance witness",
   "lane": "arithmetic-algebra",
-  "status": "active",
+  "status": "review",
   "owner": "user",
   "objective": "Establish a reproducible macOS arm64 compatibility and performance witness for representative dense exact and finite-field matrices and univariate polynomials, recording cold and warm Sage.js timings, SageMath comparison when available, exact host/toolchain/commit metadata, and platform-specific regressions without changing mathematical implementations",
   "base_commit": "7b873685f617fc0046fb9673838ff2f6588ac933",
@@ -131,11 +131,81 @@
       "commit": "873b1d8e852146b5ff44f78a6c530688ce0bd735",
       "workspace_fingerprint": "c21a5310f3044c7415d4db92a292ee0a5bfeab0019feff604c99d39e99faa4f2",
       "platform": "linux-x64"
+    },
+    {
+      "command": "node --check bench/macos-arm64-math-witness.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.035,
+      "started_at": "2026-08-12T13:26:03.165Z",
+      "commit": "10f243a8749d13fe0b57d4f8677b52a2242fbc91",
+      "workspace_fingerprint": "ec7f96cb948ec71466c14819255e56a18a72563f11c62ce30327714269b2959a",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/dense-matrix-public-audit.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 6.176,
+      "started_at": "2026-08-12T13:26:03.854Z",
+      "commit": "10f243a8749d13fe0b57d4f8677b52a2242fbc91",
+      "workspace_fingerprint": "ec7f96cb948ec71466c14819255e56a18a72563f11c62ce30327714269b2959a",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 14.713,
+      "started_at": "2026-08-12T13:26:10.641Z",
+      "commit": "10f243a8749d13fe0b57d4f8677b52a2242fbc91",
+      "workspace_fingerprint": "ec7f96cb948ec71466c14819255e56a18a72563f11c62ce30327714269b2959a",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/macos-arm64-math-witness.cjs --runtime sage --sage /home/user/bin/sagelite --quick --samples 1 --check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 14.913,
+      "started_at": "2026-08-12T13:26:34.419Z",
+      "commit": "10f243a8749d13fe0b57d4f8677b52a2242fbc91",
+      "workspace_fingerprint": "ec7f96cb948ec71466c14819255e56a18a72563f11c62ce30327714269b2959a",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "ssh m1 cd /Volumes/sage/sagejs && /opt/homebrew/bin/node bench/macos-arm64-math-witness.cjs --runtime all --sage /Volumes/sage/sagelite-build/smoke/public-dev-cp314-20260704-004400/bin/sage --quick --samples 1 --check --require-macos",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 39.329,
+      "started_at": "2026-08-12T13:26:55.746Z",
+      "commit": "10f243a8749d13fe0b57d4f8677b52a2242fbc91",
+      "workspace_fingerprint": "ec7f96cb948ec71466c14819255e56a18a72563f11c62ce30327714269b2959a",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:native",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 615.54,
+      "started_at": "2026-08-12T13:28:16.010Z",
+      "commit": "10f243a8749d13fe0b57d4f8677b52a2242fbc91",
+      "workspace_fingerprint": "ec7f96cb948ec71466c14819255e56a18a72563f11c62ce30327714269b2959a",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {
-    "summary": "",
-    "risks": [],
-    "next_steps": []
+    "summary": "Added a reproducible process-isolated macOS arm64 witness and recorded full verified M1 Max results against SageMath 10.9.post2. Native FLINT, M4RI, and FFLAS-FFPACK production kernels build and run as Mach-O arm64; exact matrix resources are healthy and word-prime algorithms are exceptionally fast. The witness isolates general word-prime public representation and exact polynomial construction as the main boundary regressions.",
+    "risks": [
+      "General word-prime matrix construction, formatting, and SagePack are 4-15x slower than SageMath; row and column swaps are not implemented and successful backend routes are not traced.",
+      "The first pnpm native:precompile:production run on macOS linked its addon but hit a transient node-gyp ENOENT for build/node_gyp_bins; a cached rerun completed all twelve kernels.",
+      "Sage.js SagePack and SageMath Python serialization are different formats, so serialization bytes and absolute timings are intentionally not treated as cross-runtime equivalence claims.",
+      "Early Linux validation attempts in the receipt history failed before this worktree was built and its shared native cache restored; the later full native suite and all focused checks pass."
+    ],
+    "next_steps": [
+      "Give general word-prime matrices a bulk public construction/format/serialization path, add swaps, and emit SAGEJS_NATIVE_TRACE routes without weakening FFLAS-FFPACK performance.",
+      "Profile bulk ZZ[x] and QQ[x] resource construction on both Linux x64 and macOS arm64.",
+      "Add a clean macOS CI/build witness for the transient node-gyp post-link node_gyp_bins failure and make first-run publication deterministic.",
+      "Retain benchmark history across CPU families and compare later revisions with the checked raw JSON rather than hard-coding one host's crossover."
+    ]
   }
 }
