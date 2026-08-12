@@ -139,6 +139,7 @@ const integration = [
   "test/polynomial-structural-flint.cjs",
   "test/polynomial-invariants-contract.cjs",
   "test/polynomial-extension-resource-contract.cjs",
+  "test/extension-polynomial-resource-ffi.cjs",
   "test/prime-polynomial-bulk-views.cjs",
   "test/prime-polynomial-divrem.cjs",
   "test/polynomial-prime-evaluate.cjs",

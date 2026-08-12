@@ -16,9 +16,12 @@
     "test/fixtures/native-ffi-flint-extension",
     "bench/extension-polynomial-resources.cjs",
     "architecture/native-kernels.json",
+    "architecture/native-code.json",
     "tools/ffi/declarations.cjs",
     "test/ffi-resource-aggregate.cjs",
-    "ffi/abi-types.json"
+    "ffi/abi-types.json",
+    "package.json",
+    "test/node-test-manifest.cjs"
   ],
   "dependencies": [
     "extension-polynomial-resource-contract"
