@@ -225,6 +225,7 @@ class RealDoubleField_class(sage.Parent):
     def __init__(self) -> None:
         self._name = "Real Double Field"
         self._kind = "RDF"
+        self._element_is_atomic = True
 
     def __call__(self, value: Any = 0) -> float:
         if isinstance(value, sage.Rational):
@@ -256,6 +257,7 @@ class RealField_class(sage.Parent):
         )
         self._kind = "RealField"
         self._precision = precision
+        self._element_is_atomic = True
 
     def __call__(self, value: Any = 0) -> RealNumberElement:
         return _real_field_element(self, value)

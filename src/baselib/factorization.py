@@ -23,10 +23,17 @@ def _factorization_power(value: Any, exponent: int) -> Any:
 
 
 def _factorization_factor_is_atomic(value: Any) -> bool:
-    """Return whether Sage prints units beside this factor without parentheses."""
+    """Return whether the factor's parent declares its elements atomic."""
     if runtime.jstype(value) in ("bigint", "number"):
         return True
-    return isinstance(value, runtime.rational_class)
+    parent_method = getattr(value, "parent", None)
+    if not callable(parent_method):
+        return False
+    parent = parent_method()
+    option = getattr(parent, "_repr_option", None)
+    if not callable(option):
+        return False
+    return bool(option("element_is_atomic"))
 
 
 def ρσ_factor_pair(prime: Any, exponent: int) -> list[Any]:
@@ -185,7 +192,12 @@ class Factorization:
 
         if not runtime.equals(self._unit, one):
             unit_text = runtime.repr(self._unit)
-            if not _factorization_factor_is_atomic(self._factors[0][0]):
+            atomic = True
+            for pair in self._factors:
+                if not _factorization_factor_is_atomic(pair[0]):
+                    atomic = False
+                    break
+            if not atomic:
                 unit_text = "(" + unit_text + ")"
             terms.insert(0, unit_text)
         return str.join(separator, terms)

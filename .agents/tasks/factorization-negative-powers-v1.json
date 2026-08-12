@@ -9,7 +9,10 @@
   "objective": "Implement Sage-compatible negative integral powers of Factorization in ordinary Python with focused integer and polynomial differential coverage",
   "base_commit": "dcc1302a3f305b00a0e09ba25edee45ac2ee2bf1",
   "claims": [
+    "src/baselib/algebra.py",
     "src/baselib/factorization.py",
+    "src/baselib/polynomial.py",
+    "src/baselib/real_complex.py",
     "test/algebra.py",
     "test/factorization-negative-powers.cjs",
     "test/node-test-manifest.cjs"
@@ -212,13 +215,154 @@
       "commit": "b68f7c56e74d8294ff3c2ba5158152a00be88473",
       "workspace_fingerprint": "e456157d5e125002d238d54fc8bd40c5b0310763a3b686e3c5876bff14e531e2",
       "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm build",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 179.665,
+      "started_at": "2026-08-12T21:10:22.027Z",
+      "commit": "796228634f9321ce7d2ea3d810221bebf81d4977",
+      "workspace_fingerprint": "c3f2bae119968321533ed751698c6dd26594b97daa4d34800132ad2128cfbdf3",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/factorization-negative-powers.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 4.017,
+      "started_at": "2026-08-12T21:13:39.413Z",
+      "commit": "796228634f9321ce7d2ea3d810221bebf81d4977",
+      "workspace_fingerprint": "c3f2bae119968321533ed751698c6dd26594b97daa4d34800132ad2128cfbdf3",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node scripts/run-test-tier.cjs integration --test-name-pattern=factorization-negative-powers",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.152,
+      "started_at": "2026-08-12T21:13:44.099Z",
+      "commit": "796228634f9321ce7d2ea3d810221bebf81d4977",
+      "workspace_fingerprint": "c3f2bae119968321533ed751698c6dd26594b97daa4d34800132ad2128cfbdf3",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 14.934,
+      "started_at": "2026-08-12T21:13:44.925Z",
+      "commit": "796228634f9321ce7d2ea3d810221bebf81d4977",
+      "workspace_fingerprint": "c3f2bae119968321533ed751698c6dd26594b97daa4d34800132ad2128cfbdf3",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 63.8,
+      "started_at": "2026-08-12T21:14:06.575Z",
+      "commit": "796228634f9321ce7d2ea3d810221bebf81d4977",
+      "workspace_fingerprint": "c3f2bae119968321533ed751698c6dd26594b97daa4d34800132ad2128cfbdf3",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 61.387,
+      "started_at": "2026-08-12T21:15:31.804Z",
+      "commit": "796228634f9321ce7d2ea3d810221bebf81d4977",
+      "workspace_fingerprint": "c3f2bae119968321533ed751698c6dd26594b97daa4d34800132ad2128cfbdf3",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:changed -- --base dcc1302a3f305b00a0e09ba25edee45ac2ee2bf1",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 370.47,
+      "started_at": "2026-08-12T21:16:39.002Z",
+      "commit": "796228634f9321ce7d2ea3d810221bebf81d4977",
+      "workspace_fingerprint": "c3f2bae119968321533ed751698c6dd26594b97daa4d34800132ad2128cfbdf3",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:native",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 632.909,
+      "started_at": "2026-08-12T21:28:04.843Z",
+      "commit": "796228634f9321ce7d2ea3d810221bebf81d4977",
+      "workspace_fingerprint": "67a4623bcbfda431b87806a4f35bfbf8af08c481a4e9ad3967b83ee28549507a",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/factorization-negative-powers.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 3.811,
+      "started_at": "2026-08-12T21:38:50.866Z",
+      "commit": "796228634f9321ce7d2ea3d810221bebf81d4977",
+      "workspace_fingerprint": "67a4623bcbfda431b87806a4f35bfbf8af08c481a4e9ad3967b83ee28549507a",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node scripts/run-test-tier.cjs integration --test-name-pattern=factorization-negative-powers",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.152,
+      "started_at": "2026-08-12T21:38:55.326Z",
+      "commit": "796228634f9321ce7d2ea3d810221bebf81d4977",
+      "workspace_fingerprint": "67a4623bcbfda431b87806a4f35bfbf8af08c481a4e9ad3967b83ee28549507a",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 14.853,
+      "started_at": "2026-08-12T21:38:56.188Z",
+      "commit": "796228634f9321ce7d2ea3d810221bebf81d4977",
+      "workspace_fingerprint": "67a4623bcbfda431b87806a4f35bfbf8af08c481a4e9ad3967b83ee28549507a",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 61.95,
+      "started_at": "2026-08-12T21:39:14.735Z",
+      "commit": "796228634f9321ce7d2ea3d810221bebf81d4977",
+      "workspace_fingerprint": "67a4623bcbfda431b87806a4f35bfbf8af08c481a4e9ad3967b83ee28549507a",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm build",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 178.25,
+      "started_at": "2026-08-12T21:40:21.236Z",
+      "commit": "796228634f9321ce7d2ea3d810221bebf81d4977",
+      "workspace_fingerprint": "67a4623bcbfda431b87806a4f35bfbf8af08c481a4e9ad3967b83ee28549507a",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm parallel:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.617,
+      "started_at": "2026-08-12T21:44:01.142Z",
+      "commit": "796228634f9321ce7d2ea3d810221bebf81d4977",
+      "workspace_fingerprint": "67a4623bcbfda431b87806a4f35bfbf8af08c481a4e9ad3967b83ee28549507a",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {
-    "summary": "Factorization now follows Sage's commutative integral-power semantics: exponent one preserves identity, zero returns the neutral generic factorization, and negative powers negate formal exponents while exact polynomial factors and units enter their fraction field. Focused tests cover integer, rational, and polynomial factors and units, ordering and simplification, display, value reconstruction, zero powers, and zero inversion failures.",
+    "summary": "Factorization now follows Sage's commutative integral-power semantics: exponent one preserves identity, zero returns the neutral generic factorization, and negative powers negate formal exponents while exact polynomial factors and units enter their fraction field. Rational-function units remain closed under later signed powers, polynomial fraction fields reject composite-modulus coefficient rings, and unit formatting uses Sage-compatible parent atomicity metadata including RealField and mixed factors. Six focused differential regressions cover integer, rational, polynomial, and rational-function composition, display, value reconstruction, non-domain rejection, zero powers, and zero inversion failures.",
     "risks": [
       "Factorization currently models only the existing commutative Sage.js core; Sage's separate noncommutative inversion path remains outside this lane.",
-      "Automatic fraction-field entry uses the existing polynomial _factorization_repr capability; other future element families must implement their own exact negative power before formal factors over them can be expanded."
+      "Automatic fraction-field entry uses the existing polynomial _factorization_repr capability; other future element families must implement their own exact negative power before formal factors over them can be expanded.",
+      "The deterministic changed-file run was attempted against the lane base and retained as a failed receipt: compiler/algebra.py exceeded its shared-load timeout but passed alone, while compiler/matrix.py failed in the unrelated sparse-random fixture. Focused, strict, portable, and the complete native gate pass on the final workspace fingerprint."
     ],
     "next_steps": [
       "Integrate after independent review and retain the focused test in the arithmetic compatibility suite."

@@ -88,6 +88,14 @@ class Parent:
     __str__ = __repr__
     toString = __repr__
 
+    def _repr_option(self, key: str) -> bool:
+        """Return parent metadata used when composing element representations."""
+        if key == "element_is_atomic":
+            return bool(getattr(self, "_element_is_atomic", False))
+        if key in ["ascii_art", "element_ascii_art"]:
+            return False
+        raise ValueError("unknown representation option: " + key)
+
     def __getitem__(self, variable: Any) -> Any:
         if (
             isinstance(variable, (list, tuple))
@@ -146,6 +154,7 @@ class IntegerRing(Ring):
     def __init__(self, name: str = "Integer Ring") -> None:
         Parent.__init__(self, name)
         self._kind = "ZZ"
+        self._element_is_atomic = True
 
     def __call__(self, value: object) -> Any:
         candidate = _untyped(value)
@@ -169,6 +178,7 @@ class RationalField(Field):
     def __init__(self, name: str = "Rational Field") -> None:
         Parent.__init__(self, name)
         self._kind = "QQ"
+        self._element_is_atomic = True
 
     def __call__(
         self,
