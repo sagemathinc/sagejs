@@ -123,8 +123,12 @@ test("recorded evidence separates setup, first use, warm work, and process time"
   }
   const labels = new Set(report.additional_host_evidence.map((entry) => entry.label));
   assert.ok(labels.has("m1-after-build"));
-  assert.ok(labels.has("m1-warm-artifact-cache"));
-  for (const evidence of report.additional_host_evidence) {
+  assert.ok(labels.has("m1-current-warm-artifact-cache"));
+  assert.ok(labels.has("linux-x64-20001"));
+  const m1Evidence = report.additional_host_evidence.filter((entry) =>
+    entry.label.startsWith("m1-"),
+  );
+  for (const evidence of m1Evidence) {
     assert.equal(evidence.host.platform, "darwin");
     assert.equal(evidence.host.architecture, "arm64");
     assert.equal(evidence.host.cpu, "Apple M1 Max");
@@ -137,12 +141,22 @@ test("recorded evidence separates setup, first use, warm work, and process time"
     (entry) => entry.label === "m1-after-build",
   );
   const artifactWarm = report.additional_host_evidence.find(
-    (entry) => entry.label === "m1-warm-artifact-cache",
+    (entry) => entry.label === "m1-current-warm-artifact-cache",
   );
   assert.ok(
     artifactCold.measurements.sagejs.ZZ.first_ms >
       artifactWarm.measurements.sagejs.ZZ.first_ms,
   );
+  const large = report.additional_host_evidence.find(
+    (entry) => entry.label === "linux-x64-20001",
+  );
+  assert.equal(large.host.platform, "linux");
+  assert.equal(large.host.architecture, "x64");
+  assert.equal(large.configuration.count, 20_001);
+  for (const domain of ["ZZ", "QQ"]) {
+    assert.equal(large.measurements.sagejs[domain].ok, true);
+    assert.equal(large.diagnostic_stages[domain].skew_bits, 65_538);
+  }
 });
 
 test("stage evidence demonstrates the existing BigInt detour and byte-region primitive", () => {
