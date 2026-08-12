@@ -1,0 +1,63 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "large-prime-polynomial-correctness",
+  "title": "Large Prime Polynomial Correctness",
+  "lane": "integration",
+  "status": "active",
+  "owner": "user",
+  "objective": "Make GF(p)[x] for p > 2^32-1 Sage-compatible and fast for construction, arithmetic, divrem, gcd, xgcd, factor, roots, evaluation, formatting, and SagePack",
+  "base_commit": "97116b99d9b24ded43c80ec547fd9c1e8f77efbd",
+  "claims": [
+    "src/baselib/polynomial.py",
+    "src/lib/sagejs/kernels/polynomial/packed_flint.py",
+    "ffi/flint.ffi.py",
+    "ffi/flint.ffi.json",
+    "src/lib/sagejs/ffi/flint.py",
+    "src/baselib/sagejs/ffi/flint.py",
+    "architecture/native-boundaries.json",
+    "packages/flint/generated/",
+    "packages/flint/include/sagejs/",
+    "packages/flint/scripts/",
+    "test/large-prime-polynomial.cjs",
+    "bench/large-prime-polynomial.cjs"
+  ],
+  "dependencies": [],
+  "references": [
+    "SageMath at p=2305843009213693951"
+  ],
+  "architecture": {
+    "strategy": "external-library",
+    "fallback": "tested-capability",
+    "oracles": [
+      "SageMath differential oracle",
+      "Reconstruction and Bezout identities"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "fallback",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm architecture:check",
+    "pnpm test:portable",
+    "pnpm test:baselib:strict"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "Dense GF(p)[x] now uses canonical BigUint64Array storage for every prime fitting one FLINT word. Wide-prime add, subtract, negate, equality, derivative, evaluation, xgcd, and the already-present multiply/divrem/gcd/factor/roots operations cross generated declared FLINT packed-slice adapters; no polynomial N-API object becomes production state. A SageMath 10.9.post30 oracle at p=2305843009213693951 and an additional prime immediately below 2^64 cover formatting, coefficient iteration, arithmetic, Bezout identities, factors, roots, and SagePack round trips in compiled and dynamic modes. The focused benchmark records 20,000-coefficient construction/add/derivative/evaluation and advanced operation medians.",
+    "risks": [
+      "The declarations are marked wasm=True and portable fallback infrastructure passes, but this lane did not rebuild the FLINT WASM artifact or exercise these seven new symbols in a browser.",
+      "Windows x64 and arm64 native builds were not available in this worktree; generated adapters use the existing FLINT word ABI and need normal platform CI.",
+      "Current SagePack is correct for wide-prime polynomials but falls back to per-coefficient generic objects: 20,000 coefficients measured 4,178,505 bytes with 78 ms dump and 139 ms load medians."
+    ],
+    "next_steps": [
+      "Add canonical fixed-width 8-byte GF(p) polynomial encoding and decoding in tools/serialization.ts; retain deterministic little-endian bytes and reject noncanonical residues.",
+      "Raise architecture/package-graph.json native-integration max_source_bytes from the old 524000 budget to the newly measured 547190-or-higher integration result.",
+      "Register test/large-prime-polynomial.cjs in test/node-test-manifest.cjs and update test/ffi.cjs exact declaration/adapter/export/boundary ratchets by seven."
+    ]
+  }
+}

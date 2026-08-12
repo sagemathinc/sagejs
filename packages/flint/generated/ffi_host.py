@@ -204,12 +204,19 @@ from sagejs.ffi.flint import (
     nmod_mat_solve as _ffi_nmod_mat_solve,
     fmpz_poly_mul as _ffi_fmpz_poly_mul,
     fmpq_poly_mul as _ffi_fmpq_poly_mul,
+    nmod_poly_add as _ffi_nmod_poly_add,
+    nmod_poly_sub as _ffi_nmod_poly_sub,
+    nmod_poly_neg as _ffi_nmod_poly_neg,
+    nmod_poly_equal as _ffi_nmod_poly_equal,
+    nmod_poly_derivative as _ffi_nmod_poly_derivative,
+    nmod_poly_evaluate as _ffi_nmod_poly_evaluate,
     nmod_poly_mul as _ffi_nmod_poly_mul,
     nmod_poly_divexact as _ffi_nmod_poly_divexact,
     nmod_poly_divrem as _ffi_nmod_poly_divrem,
     fmpz_poly_divexact as _ffi_fmpz_poly_divexact,
     fmpq_poly_divexact as _ffi_fmpq_poly_divexact,
     nmod_poly_gcd as _ffi_nmod_poly_gcd,
+    nmod_poly_xgcd as _ffi_nmod_poly_xgcd,
     nmod_poly_is_irreducible as _ffi_nmod_poly_is_irreducible,
     nmod_poly_factor as _ffi_nmod_poly_factor,
     nmod_poly_roots as _ffi_nmod_poly_roots,
@@ -2367,6 +2374,118 @@ def ffiFmpqPolyMul(
 
 
 @native
+def ffiNmodPolyAdd(
+    output: UInt64Buffer,
+    left: UInt64Buffer,
+    right: UInt64Buffer,
+    output_length: uint64,
+    left_length: uint64,
+    right_length: uint64,
+    modulus: uint64,
+) -> bool:
+    return _ffi_nmod_poly_add(
+        output,
+        left,
+        right,
+        output_length,
+        left_length,
+        right_length,
+        modulus,
+    )
+
+
+@native
+def ffiNmodPolySub(
+    output: UInt64Buffer,
+    left: UInt64Buffer,
+    right: UInt64Buffer,
+    output_length: uint64,
+    left_length: uint64,
+    right_length: uint64,
+    modulus: uint64,
+) -> bool:
+    return _ffi_nmod_poly_sub(
+        output,
+        left,
+        right,
+        output_length,
+        left_length,
+        right_length,
+        modulus,
+    )
+
+
+@native
+def ffiNmodPolyNeg(
+    output: UInt64Buffer,
+    source: UInt64Buffer,
+    output_length: uint64,
+    source_length: uint64,
+    modulus: uint64,
+) -> bool:
+    return _ffi_nmod_poly_neg(
+        output,
+        source,
+        output_length,
+        source_length,
+        modulus,
+    )
+
+
+@native
+def ffiNmodPolyEqual(
+    left: UInt64Buffer,
+    right: UInt64Buffer,
+    left_length: uint64,
+    right_length: uint64,
+    modulus: uint64,
+) -> bool:
+    return _ffi_nmod_poly_equal(
+        left,
+        right,
+        left_length,
+        right_length,
+        modulus,
+    )
+
+
+@native
+def ffiNmodPolyDerivative(
+    output: UInt64Buffer,
+    source: UInt64Buffer,
+    output_length: uint64,
+    source_length: uint64,
+    modulus: uint64,
+) -> bool:
+    return _ffi_nmod_poly_derivative(
+        output,
+        source,
+        output_length,
+        source_length,
+        modulus,
+    )
+
+
+@native
+def ffiNmodPolyEvaluate(
+    output: UInt64Buffer,
+    source: UInt64Buffer,
+    output_length: uint64,
+    source_length: uint64,
+    argument: uint64,
+    modulus: uint64,
+) -> bool:
+    return _ffi_nmod_poly_evaluate(
+        output,
+        source,
+        output_length,
+        source_length,
+        argument,
+        modulus,
+    )
+
+
+@native
 def ffiNmodPolyMul(
     output: UInt64Buffer,
     left: UInt64Buffer,
@@ -2493,6 +2612,31 @@ def ffiNmodPolyGcd(
 ) -> bool:
     return _ffi_nmod_poly_gcd(
         output,
+        left,
+        right,
+        output_length,
+        left_length,
+        right_length,
+        modulus,
+    )
+
+
+@native
+def ffiNmodPolyXgcd(
+    gcd_output: UInt64Buffer,
+    left_coefficient_output: UInt64Buffer,
+    right_coefficient_output: UInt64Buffer,
+    left: UInt64Buffer,
+    right: UInt64Buffer,
+    output_length: uint64,
+    left_length: uint64,
+    right_length: uint64,
+    modulus: uint64,
+) -> bool:
+    return _ffi_nmod_poly_xgcd(
+        gcd_output,
+        left_coefficient_output,
+        right_coefficient_output,
         left,
         right,
         output_length,

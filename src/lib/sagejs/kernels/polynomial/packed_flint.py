@@ -12,13 +12,20 @@ from sagejs.ffi.flint import (
     fmpz_poly_divexact,
     fmpz_poly_factor,
     fmpz_poly_mul,
+    nmod_poly_add,
+    nmod_poly_derivative,
     nmod_poly_divexact,
     nmod_poly_divrem,
+    nmod_poly_equal,
+    nmod_poly_evaluate,
     nmod_poly_factor,
     nmod_poly_gcd,
     nmod_poly_is_irreducible,
     nmod_poly_mul,
+    nmod_poly_neg,
     nmod_poly_roots,
+    nmod_poly_sub,
+    nmod_poly_xgcd,
 )
 from sagejs.native import IntegerBuffer, UInt64Buffer, native, uint64
 
@@ -102,6 +109,118 @@ def flint_packed_prime_field_polynomial_multiply(
         output_length,
         left_length,
         right_length,
+        modulus,
+    )
+
+
+@native
+def flint_packed_prime_field_polynomial_add(
+    output: UInt64Buffer,
+    left: UInt64Buffer,
+    right: UInt64Buffer,
+    output_length: uint64,
+    left_length: uint64,
+    right_length: uint64,
+    modulus: uint64,
+) -> bool:
+    return nmod_poly_add(
+        output,
+        left,
+        right,
+        output_length,
+        left_length,
+        right_length,
+        modulus,
+    )
+
+
+@native
+def flint_packed_prime_field_polynomial_subtract(
+    output: UInt64Buffer,
+    left: UInt64Buffer,
+    right: UInt64Buffer,
+    output_length: uint64,
+    left_length: uint64,
+    right_length: uint64,
+    modulus: uint64,
+) -> bool:
+    return nmod_poly_sub(
+        output,
+        left,
+        right,
+        output_length,
+        left_length,
+        right_length,
+        modulus,
+    )
+
+
+@native
+def flint_packed_prime_field_polynomial_negate(
+    output: UInt64Buffer,
+    source: UInt64Buffer,
+    output_length: uint64,
+    source_length: uint64,
+    modulus: uint64,
+) -> bool:
+    return nmod_poly_neg(
+        output,
+        source,
+        output_length,
+        source_length,
+        modulus,
+    )
+
+
+@native
+def flint_packed_prime_field_polynomial_equal(
+    left: UInt64Buffer,
+    right: UInt64Buffer,
+    left_length: uint64,
+    right_length: uint64,
+    modulus: uint64,
+) -> bool:
+    return nmod_poly_equal(
+        left,
+        right,
+        left_length,
+        right_length,
+        modulus,
+    )
+
+
+@native
+def flint_packed_prime_field_polynomial_derivative(
+    output: UInt64Buffer,
+    source: UInt64Buffer,
+    output_length: uint64,
+    source_length: uint64,
+    modulus: uint64,
+) -> bool:
+    return nmod_poly_derivative(
+        output,
+        source,
+        output_length,
+        source_length,
+        modulus,
+    )
+
+
+@native
+def flint_packed_prime_field_polynomial_evaluate(
+    output: UInt64Buffer,
+    source: UInt64Buffer,
+    output_length: uint64,
+    source_length: uint64,
+    argument: uint64,
+    modulus: uint64,
+) -> bool:
+    return nmod_poly_evaluate(
+        output,
+        source,
+        output_length,
+        source_length,
+        argument,
         modulus,
     )
 
@@ -213,6 +332,31 @@ def flint_packed_prime_field_polynomial_gcd(
 ) -> bool:
     return nmod_poly_gcd(
         output,
+        left,
+        right,
+        output_length,
+        left_length,
+        right_length,
+        modulus,
+    )
+
+
+@native
+def flint_packed_prime_field_polynomial_xgcd(
+    gcd_output: UInt64Buffer,
+    left_coefficient_output: UInt64Buffer,
+    right_coefficient_output: UInt64Buffer,
+    left: UInt64Buffer,
+    right: UInt64Buffer,
+    output_length: uint64,
+    left_length: uint64,
+    right_length: uint64,
+    modulus: uint64,
+) -> bool:
+    return nmod_poly_xgcd(
+        gcd_output,
+        left_coefficient_output,
+        right_coefficient_output,
         left,
         right,
         output_length,

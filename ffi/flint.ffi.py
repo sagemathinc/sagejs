@@ -4995,6 +4995,300 @@ def fmpq_poly_mul(
 
 
 @flint.function(
+    dynamic="ffiNmodPolyAdd",
+    symbol="sagejs_flint_nmod_poly_add_packed",
+    returns=int,
+    abi=[
+        out(
+            "result",
+            uint64_t_ptr,
+            packed_slice(
+                data="output",
+                length="output_length",
+                access="write",
+                aliasing="allowed",
+                transactional=True,
+            ),
+        ),
+        in_(
+            "left_data",
+            uint64_t_ptr,
+            packed_slice(
+                data="left",
+                length="left_length",
+                access="read",
+                aliasing="allowed",
+                transactional=False,
+            ),
+        ),
+        in_(
+            "right_data",
+            uint64_t_ptr,
+            packed_slice(
+                data="right",
+                length="right_length",
+                access="read",
+                aliasing="allowed",
+                transactional=False,
+            ),
+        ),
+        in_("output_length", uint64_t),
+        in_("left_length", uint64_t),
+        in_("right_length", uint64_t),
+        in_("modulus", uint64_t),
+    ],
+    effects=Effects(pure=False, allocates=True, raises=[ValueError], writes=["output"]),
+    result=Status(1, exception=ValueError, message="invalid polynomial addition"),
+    wasm=True,
+)
+def nmod_poly_add(
+    output: Writable[UInt64Buffer],
+    left: UInt64Buffer,
+    right: UInt64Buffer,
+    output_length: uint64,
+    left_length: uint64,
+    right_length: uint64,
+    modulus: uint64,
+) -> bool: ...
+
+
+@flint.function(
+    dynamic="ffiNmodPolySub",
+    symbol="sagejs_flint_nmod_poly_sub_packed",
+    returns=int,
+    abi=[
+        out(
+            "result",
+            uint64_t_ptr,
+            packed_slice(
+                data="output",
+                length="output_length",
+                access="write",
+                aliasing="allowed",
+                transactional=True,
+            ),
+        ),
+        in_(
+            "left_data",
+            uint64_t_ptr,
+            packed_slice(
+                data="left",
+                length="left_length",
+                access="read",
+                aliasing="allowed",
+                transactional=False,
+            ),
+        ),
+        in_(
+            "right_data",
+            uint64_t_ptr,
+            packed_slice(
+                data="right",
+                length="right_length",
+                access="read",
+                aliasing="allowed",
+                transactional=False,
+            ),
+        ),
+        in_("output_length", uint64_t),
+        in_("left_length", uint64_t),
+        in_("right_length", uint64_t),
+        in_("modulus", uint64_t),
+    ],
+    effects=Effects(pure=False, allocates=True, raises=[ValueError], writes=["output"]),
+    result=Status(1, exception=ValueError, message="invalid polynomial subtraction"),
+    wasm=True,
+)
+def nmod_poly_sub(
+    output: Writable[UInt64Buffer],
+    left: UInt64Buffer,
+    right: UInt64Buffer,
+    output_length: uint64,
+    left_length: uint64,
+    right_length: uint64,
+    modulus: uint64,
+) -> bool: ...
+
+
+@flint.function(
+    dynamic="ffiNmodPolyNeg",
+    symbol="sagejs_flint_nmod_poly_neg_packed",
+    returns=int,
+    abi=[
+        out(
+            "result",
+            uint64_t_ptr,
+            packed_slice(
+                data="output",
+                length="output_length",
+                access="write",
+                aliasing="allowed",
+                transactional=True,
+            ),
+        ),
+        in_(
+            "source_data",
+            uint64_t_ptr,
+            packed_slice(
+                data="source",
+                length="source_length",
+                access="read",
+                aliasing="allowed",
+                transactional=False,
+            ),
+        ),
+        in_("output_length", uint64_t),
+        in_("source_length", uint64_t),
+        in_("modulus", uint64_t),
+    ],
+    effects=Effects(pure=False, allocates=True, raises=[ValueError], writes=["output"]),
+    result=Status(1, exception=ValueError, message="invalid polynomial negation"),
+    wasm=True,
+)
+def nmod_poly_neg(
+    output: Writable[UInt64Buffer],
+    source: UInt64Buffer,
+    output_length: uint64,
+    source_length: uint64,
+    modulus: uint64,
+) -> bool: ...
+
+
+@flint.function(
+    dynamic="ffiNmodPolyEqual",
+    symbol="sagejs_flint_nmod_poly_equal_packed",
+    returns=int,
+    abi=[
+        in_(
+            "left_data",
+            uint64_t_ptr,
+            packed_slice(
+                data="left",
+                length="left_length",
+                access="read",
+                aliasing="allowed",
+                transactional=False,
+            ),
+        ),
+        in_(
+            "right_data",
+            uint64_t_ptr,
+            packed_slice(
+                data="right",
+                length="right_length",
+                access="read",
+                aliasing="allowed",
+                transactional=False,
+            ),
+        ),
+        in_("left_length", uint64_t),
+        in_("right_length", uint64_t),
+        in_("modulus", uint64_t),
+    ],
+    effects=Effects(pure=True, allocates=True, raises=[]),
+    result=Direct(),
+    wasm=True,
+)
+def nmod_poly_equal(
+    left: UInt64Buffer,
+    right: UInt64Buffer,
+    left_length: uint64,
+    right_length: uint64,
+    modulus: uint64,
+) -> bool: ...
+
+
+@flint.function(
+    dynamic="ffiNmodPolyDerivative",
+    symbol="sagejs_flint_nmod_poly_derivative_packed",
+    returns=int,
+    abi=[
+        out(
+            "result",
+            uint64_t_ptr,
+            packed_slice(
+                data="output",
+                length="output_length",
+                access="write",
+                aliasing="allowed",
+                transactional=True,
+            ),
+        ),
+        in_(
+            "source_data",
+            uint64_t_ptr,
+            packed_slice(
+                data="source",
+                length="source_length",
+                access="read",
+                aliasing="allowed",
+                transactional=False,
+            ),
+        ),
+        in_("output_length", uint64_t),
+        in_("source_length", uint64_t),
+        in_("modulus", uint64_t),
+    ],
+    effects=Effects(pure=False, allocates=True, raises=[ValueError], writes=["output"]),
+    result=Status(1, exception=ValueError, message="invalid polynomial derivative"),
+    wasm=True,
+)
+def nmod_poly_derivative(
+    output: Writable[UInt64Buffer],
+    source: UInt64Buffer,
+    output_length: uint64,
+    source_length: uint64,
+    modulus: uint64,
+) -> bool: ...
+
+
+@flint.function(
+    dynamic="ffiNmodPolyEvaluate",
+    symbol="sagejs_flint_nmod_poly_evaluate_packed",
+    returns=int,
+    abi=[
+        out(
+            "result",
+            uint64_t_ptr,
+            packed_slice(
+                data="output",
+                length="output_length",
+                access="write",
+                aliasing="allowed",
+                transactional=True,
+            ),
+        ),
+        in_(
+            "source_data",
+            uint64_t_ptr,
+            packed_slice(
+                data="source",
+                length="source_length",
+                access="read",
+                aliasing="allowed",
+                transactional=False,
+            ),
+        ),
+        in_("output_length", uint64_t),
+        in_("source_length", uint64_t),
+        in_("argument", uint64_t),
+        in_("modulus", uint64_t),
+    ],
+    effects=Effects(pure=False, allocates=True, raises=[ValueError], writes=["output"]),
+    result=Status(1, exception=ValueError, message="invalid polynomial evaluation"),
+    wasm=True,
+)
+def nmod_poly_evaluate(
+    output: Writable[UInt64Buffer],
+    source: UInt64Buffer,
+    output_length: Min[uint64, 1],
+    source_length: uint64,
+    argument: uint64,
+    modulus: uint64,
+) -> bool: ...
+
+
+@flint.function(
     dynamic="ffiNmodPolyMul",
     symbol="sagejs_flint_nmod_poly_mul_packed",
     returns=int,
@@ -5434,6 +5728,97 @@ def fmpq_poly_divexact(
 )
 def nmod_poly_gcd(
     output: Writable[UInt64Buffer],
+    left: UInt64Buffer,
+    right: UInt64Buffer,
+    output_length: uint64,
+    left_length: uint64,
+    right_length: uint64,
+    modulus: uint64,
+) -> bool: ...
+
+
+@flint.function(
+    dynamic="ffiNmodPolyXgcd",
+    symbol="sagejs_flint_nmod_poly_xgcd_packed",
+    returns=int,
+    abi=[
+        out(
+            "gcd_result",
+            uint64_t_ptr,
+            packed_slice(
+                data="gcd_output",
+                length="output_length",
+                access="write",
+                aliasing="allowed",
+                transactional=True,
+            ),
+        ),
+        out(
+            "left_coefficient_result",
+            uint64_t_ptr,
+            packed_slice(
+                data="left_coefficient_output",
+                length="output_length",
+                access="write",
+                aliasing="allowed",
+                transactional=True,
+            ),
+        ),
+        out(
+            "right_coefficient_result",
+            uint64_t_ptr,
+            packed_slice(
+                data="right_coefficient_output",
+                length="output_length",
+                access="write",
+                aliasing="allowed",
+                transactional=True,
+            ),
+        ),
+        in_(
+            "left_data",
+            uint64_t_ptr,
+            packed_slice(
+                data="left",
+                length="left_length",
+                access="read",
+                aliasing="allowed",
+                transactional=False,
+            ),
+        ),
+        in_(
+            "right_data",
+            uint64_t_ptr,
+            packed_slice(
+                data="right",
+                length="right_length",
+                access="read",
+                aliasing="allowed",
+                transactional=False,
+            ),
+        ),
+        in_("output_length", uint64_t),
+        in_("left_length", uint64_t),
+        in_("right_length", uint64_t),
+        in_("modulus", uint64_t),
+    ],
+    effects=Effects(
+        pure=False,
+        allocates=True,
+        raises=[ValueError],
+        writes=[
+            "gcd_output",
+            "left_coefficient_output",
+            "right_coefficient_output",
+        ],
+    ),
+    result=Status(1, exception=ValueError, message="polynomial xgcd failed"),
+    wasm=True,
+)
+def nmod_poly_xgcd(
+    gcd_output: Writable[UInt64Buffer],
+    left_coefficient_output: Writable[UInt64Buffer],
+    right_coefficient_output: Writable[UInt64Buffer],
     left: UInt64Buffer,
     right: UInt64Buffer,
     output_length: uint64,

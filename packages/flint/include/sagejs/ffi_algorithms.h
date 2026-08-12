@@ -208,6 +208,205 @@ static inline void sagejs_flint_nmod_poly_get_packed(
             ? (uint64_t) nmod_poly_get_coeff_ui(source, (slong) index) : 0;
 }
 
+static inline int sagejs_flint_nmod_poly_binary_packed(
+    uint64_t *output,
+    const uint64_t *left,
+    const uint64_t *right,
+    uint64_t output_length,
+    uint64_t left_length,
+    uint64_t right_length,
+    uint64_t modulus,
+    int subtract)
+{
+    nmod_poly_t left_poly, right_poly, result;
+    const uint64_t expected = left_length > right_length
+        ? left_length : right_length;
+    if (modulus < 2 || !n_is_prime((ulong) modulus) ||
+        output_length != expected ||
+        output_length > (uint64_t) WORD_MAX)
+        return 0;
+    nmod_poly_init(left_poly, (ulong) modulus);
+    nmod_poly_init(right_poly, (ulong) modulus);
+    nmod_poly_init(result, (ulong) modulus);
+    sagejs_flint_nmod_poly_set_packed(
+        left_poly, left, left_length, modulus);
+    sagejs_flint_nmod_poly_set_packed(
+        right_poly, right, right_length, modulus);
+    if (subtract)
+        nmod_poly_sub(result, left_poly, right_poly);
+    else
+        nmod_poly_add(result, left_poly, right_poly);
+    sagejs_flint_nmod_poly_get_packed(output, output_length, result);
+    nmod_poly_clear(result);
+    nmod_poly_clear(right_poly);
+    nmod_poly_clear(left_poly);
+    return 1;
+}
+
+static inline int sagejs_flint_nmod_poly_add_packed(
+    uint64_t *output,
+    const uint64_t *left,
+    const uint64_t *right,
+    uint64_t output_length,
+    uint64_t left_length,
+    uint64_t right_length,
+    uint64_t modulus)
+{
+    return sagejs_flint_nmod_poly_binary_packed(
+        output, left, right, output_length, left_length, right_length,
+        modulus, 0);
+}
+
+static inline int sagejs_flint_nmod_poly_sub_packed(
+    uint64_t *output,
+    const uint64_t *left,
+    const uint64_t *right,
+    uint64_t output_length,
+    uint64_t left_length,
+    uint64_t right_length,
+    uint64_t modulus)
+{
+    return sagejs_flint_nmod_poly_binary_packed(
+        output, left, right, output_length, left_length, right_length,
+        modulus, 1);
+}
+
+static inline int sagejs_flint_nmod_poly_neg_packed(
+    uint64_t *output,
+    const uint64_t *source,
+    uint64_t output_length,
+    uint64_t source_length,
+    uint64_t modulus)
+{
+    nmod_poly_t source_poly, result;
+    if (modulus < 2 || !n_is_prime((ulong) modulus) ||
+        output_length != source_length ||
+        output_length > (uint64_t) WORD_MAX)
+        return 0;
+    nmod_poly_init(source_poly, (ulong) modulus);
+    nmod_poly_init(result, (ulong) modulus);
+    sagejs_flint_nmod_poly_set_packed(
+        source_poly, source, source_length, modulus);
+    nmod_poly_neg(result, source_poly);
+    sagejs_flint_nmod_poly_get_packed(output, output_length, result);
+    nmod_poly_clear(result);
+    nmod_poly_clear(source_poly);
+    return 1;
+}
+
+static inline int sagejs_flint_nmod_poly_equal_packed(
+    const uint64_t *left,
+    const uint64_t *right,
+    uint64_t left_length,
+    uint64_t right_length,
+    uint64_t modulus)
+{
+    int equal;
+    nmod_poly_t left_poly, right_poly;
+    if (modulus < 2 || !n_is_prime((ulong) modulus) ||
+        left_length > (uint64_t) WORD_MAX ||
+        right_length > (uint64_t) WORD_MAX)
+        return 0;
+    nmod_poly_init(left_poly, (ulong) modulus);
+    nmod_poly_init(right_poly, (ulong) modulus);
+    sagejs_flint_nmod_poly_set_packed(
+        left_poly, left, left_length, modulus);
+    sagejs_flint_nmod_poly_set_packed(
+        right_poly, right, right_length, modulus);
+    equal = nmod_poly_equal(left_poly, right_poly);
+    nmod_poly_clear(right_poly);
+    nmod_poly_clear(left_poly);
+    return equal;
+}
+
+static inline int sagejs_flint_nmod_poly_derivative_packed(
+    uint64_t *output,
+    const uint64_t *source,
+    uint64_t output_length,
+    uint64_t source_length,
+    uint64_t modulus)
+{
+    nmod_poly_t source_poly, result;
+    const uint64_t expected = source_length == 0 ? 0 : source_length - 1;
+    if (modulus < 2 || !n_is_prime((ulong) modulus) ||
+        output_length != expected ||
+        source_length > (uint64_t) WORD_MAX)
+        return 0;
+    nmod_poly_init(source_poly, (ulong) modulus);
+    nmod_poly_init(result, (ulong) modulus);
+    sagejs_flint_nmod_poly_set_packed(
+        source_poly, source, source_length, modulus);
+    nmod_poly_derivative(result, source_poly);
+    sagejs_flint_nmod_poly_get_packed(output, output_length, result);
+    nmod_poly_clear(result);
+    nmod_poly_clear(source_poly);
+    return 1;
+}
+
+static inline int sagejs_flint_nmod_poly_evaluate_packed(
+    uint64_t *output,
+    const uint64_t *source,
+    uint64_t output_length,
+    uint64_t source_length,
+    uint64_t argument,
+    uint64_t modulus)
+{
+    nmod_poly_t source_poly;
+    if (modulus < 2 || !n_is_prime((ulong) modulus) ||
+        output_length != 1 || source_length > (uint64_t) WORD_MAX)
+        return 0;
+    nmod_poly_init(source_poly, (ulong) modulus);
+    sagejs_flint_nmod_poly_set_packed(
+        source_poly, source, source_length, modulus);
+    output[0] = (uint64_t) nmod_poly_evaluate_nmod(
+        source_poly, (ulong) (argument % modulus));
+    nmod_poly_clear(source_poly);
+    return 1;
+}
+
+static inline int sagejs_flint_nmod_poly_xgcd_packed(
+    uint64_t *gcd_output,
+    uint64_t *left_coefficient_output,
+    uint64_t *right_coefficient_output,
+    const uint64_t *left,
+    const uint64_t *right,
+    uint64_t output_length,
+    uint64_t left_length,
+    uint64_t right_length,
+    uint64_t modulus)
+{
+    nmod_poly_t left_poly, right_poly, gcd, left_coefficient,
+        right_coefficient;
+    const uint64_t required = left_length > right_length
+        ? left_length : right_length;
+    if (modulus < 2 || !n_is_prime((ulong) modulus) ||
+        output_length < required || output_length > (uint64_t) WORD_MAX)
+        return 0;
+    nmod_poly_init(left_poly, (ulong) modulus);
+    nmod_poly_init(right_poly, (ulong) modulus);
+    nmod_poly_init(gcd, (ulong) modulus);
+    nmod_poly_init(left_coefficient, (ulong) modulus);
+    nmod_poly_init(right_coefficient, (ulong) modulus);
+    sagejs_flint_nmod_poly_set_packed(
+        left_poly, left, left_length, modulus);
+    sagejs_flint_nmod_poly_set_packed(
+        right_poly, right, right_length, modulus);
+    nmod_poly_xgcd(
+        gcd, left_coefficient, right_coefficient, left_poly, right_poly);
+    sagejs_flint_nmod_poly_get_packed(
+        gcd_output, output_length, gcd);
+    sagejs_flint_nmod_poly_get_packed(
+        left_coefficient_output, output_length, left_coefficient);
+    sagejs_flint_nmod_poly_get_packed(
+        right_coefficient_output, output_length, right_coefficient);
+    nmod_poly_clear(right_coefficient);
+    nmod_poly_clear(left_coefficient);
+    nmod_poly_clear(gcd);
+    nmod_poly_clear(right_poly);
+    nmod_poly_clear(left_poly);
+    return 1;
+}
+
 static inline void sagejs_flint_fmpz_poly_set_packed(
     fmpz_poly_t output,
     const fmpz_mat_t source)
