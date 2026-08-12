@@ -17,16 +17,15 @@
 - Migrate exact power and Laurent series from private FLINT polynomial state to
   compiler-owned packed coefficients, then delete their audited polynomial
   reconstruction ingress.
+- Add compiler-level shared external-memory accounting tokens if measurements
+  show that explicitly closing a context wrapper while dependent generated
+  resources retain that context materially distorts V8 garbage-collection
+  decisions. Never count the same shared allocation once per dependent.
 - Split the bootstrap `matrix.py` implementation into ordinary, domain-focused
   modules before the linear-algebra package reaches its temporary 410 KB source
   ratchet. Keep the public `Matrix` API unified while making exact-integer,
   rational, prime-field, and generic host dispatch independently readable and
   claimable by parallel agents.
-- Make the ordinary build graph regenerate and rebuild a foreign-library host
-  adapter whenever its declaration or generated adapter source changes.
-  Focused FFI tests must not accidentally load a stale addon that predates the
-  declarations under test.
-
 ## Measurement and performance ergonomics
 
 - Ratchet cold production-kernel loading separately from warm mathematical
