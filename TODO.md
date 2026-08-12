@@ -23,13 +23,13 @@
 - Extend Sage mode's `time` output to separate user CPU, system CPU, wall
   time, and one-time initialization/native-loading work, so cold startup is
   not mistaken for mathematical execution.
-- Implement Sage/IPython-compatible `%timeit` with calibrated loop counts,
-  repeated samples, and concise mean/dispersion output for warm microbenchmarks.
 - Ratchet cold production-kernel loading separately from warm mathematical
   execution, and never silently compile a missing production kernel in an
   ordinary installed session.
-- Keep release mathematics libraries portable, but add a fingerprinted
-  CPU-native build profile for source builds and controlled performance runs.
-  Configure GMP without `--enable-fat`, tune FLINT for the host, include CPU
-  features, ABI, compiler, dependency versions, and profile in cache keys, and
-  expose the selected build provenance in timing/debug output.
+
+## Development infrastructure
+
+- Improve cache cleanup and observability beyond the bounded automatic module
+  cache collector: report cache size and retained generations, provide a safe
+  explicit cleanup command for obsolete native toolchain/profile artifacts,
+  and keep all cleanup lease-aware and fail-closed around unexpected paths.
