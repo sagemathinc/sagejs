@@ -17,6 +17,7 @@ const {
   renameSync,
   rmSync,
   symlinkSync,
+  utimesSync,
   writeFileSync,
 } = require("node:fs");
 const { hostname, tmpdir } = require("node:os");
@@ -38,10 +39,13 @@ const {
   taskForBranch,
 } = require("../scripts/parallel-development.cjs");
 const {
+  assertExactNativeCacheRoot,
+  cleanupNativeCache,
   ensureNativeCompiler,
   nativeArtifactSpecs,
   nativeCachePackages,
   nativeCacheProcessIdentity,
+  nativeCacheStatus,
   prepareNativeArtifact,
   restoreNativeArtifact,
   restoreNativePackages,
@@ -299,6 +303,340 @@ function makeFixtureWritable(path) {
     }
   }
 }
+
+function nativeMaintenanceFixture() {
+  const temporaryRoot = realpathSync(tmpdir());
+  const directory = mkdtempSync(join(temporaryRoot, "sagejs-cache-maintenance-"));
+  const workspace = join(directory, "workspace");
+  const cacheRoot = join(directory, "sagejs-native-artifacts");
+  mkdirSync(workspace);
+  mkdirSync(cacheRoot);
+  return { cacheRoot, directory, workspace };
+}
+
+function writeMaintenanceGeneration(
+  cacheRoot,
+  id,
+  key,
+  options = {},
+) {
+  const outputRoot = options.outputRoot || "build/native";
+  const entry = join(cacheRoot, id, key);
+  const payload = join(entry, "payload", outputRoot);
+  const contents = options.contents || "cached generation\n";
+  mkdirSync(payload, { recursive: true });
+  writeFileSync(join(payload, "artifact.bin"), contents);
+  const filePath = `${outputRoot}/artifact.bin`;
+  writeFileSync(join(entry, "manifest.json"), `${JSON.stringify({
+    schema: "sagejs.parallel-native-artifact-cache-v1",
+    id,
+    key,
+    output_roots: [outputRoot],
+    input_hash: "0".repeat(64),
+    materialization: "copy",
+    generation: options.mathProfile
+      ? {
+        identity_hash: "1".repeat(64),
+        math_profile: options.mathProfile,
+        package_id: id.replace(/-(?:dependencies|addon)$/, ""),
+        stage: id.endsWith("-addon") ? "addon" : "dependencies",
+      }
+      : null,
+    files: [{
+      path: filePath,
+      type: "file",
+      mode: 0o644,
+      size: Buffer.byteLength(contents),
+      sha256: nativeCacheHash(contents),
+    }],
+  }, null, 2)}\n`);
+  if (options.modified) {
+    const when = new Date(options.modified);
+    utimesSync(entry, when, when);
+  }
+  return entry;
+}
+
+test("native cache status reports size and conservative retention reasons", () => {
+  const { cacheRoot, directory, workspace } = nativeMaintenanceFixture();
+  const selectedKey = "1".repeat(64);
+  const obsoleteKey = "2".repeat(64);
+  const lockedKey = "3".repeat(64);
+  const currentSpecs = [{
+    id: "flint-dependencies",
+    key: selectedKey,
+    outputRoots: ["packages/flint/.native/prefix"],
+  }];
+  try {
+    writeMaintenanceGeneration(cacheRoot, "flint-dependencies", selectedKey, {
+      contents: "selected\n",
+      mathProfile: {
+        effective: "portable",
+        fingerprint: "a".repeat(64),
+        requested: "portable",
+      },
+    });
+    writeMaintenanceGeneration(cacheRoot, "flint-dependencies", obsoleteKey, {
+      contents: "obsolete generation\n",
+    });
+    writeMaintenanceGeneration(cacheRoot, "flint-dependencies", lockedKey, {
+      contents: "locked generation\n",
+    });
+    mkdirSync(
+      join(cacheRoot, "flint-dependencies", `${lockedKey}.lock`),
+      { recursive: true },
+    );
+    const status = nativeCacheStatus(workspace, cacheRoot, {
+      currentSpecs,
+      expectedRoot: cacheRoot,
+    });
+    assert.equal(status.safe, true);
+    assert.equal(status.totals.generations, 3);
+    assert.equal(status.totals.obsolete_generations, 1);
+    assert.equal(status.totals.retained_generations, 2);
+    assert.ok(status.totals.bytes >= Buffer.byteLength(
+      "selected\nobsolete generation\nlocked generation\n",
+    ));
+    const generations = new Map(
+      status.artifacts[0].generations.map((generation) => [
+        generation.key,
+        generation,
+      ]),
+    );
+    assert.deepEqual(generations.get(selectedKey).reasons, ["current-selected"]);
+    assert.deepEqual(generations.get(lockedKey).reasons, ["build-lock"]);
+    assert.equal(generations.get(obsoleteKey).state, "obsolete");
+    assert.equal(
+      generations.get(selectedKey).math_profile.fingerprint,
+      "a".repeat(64),
+    );
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+test("native cache cleanup is dry-run by default and bounded when applied", () => {
+  const { cacheRoot, directory, workspace } = nativeMaintenanceFixture();
+  const keys = ["4".repeat(64), "5".repeat(64), "6".repeat(64)];
+  const currentSpecs = [];
+  try {
+    keys.forEach((key, index) => writeMaintenanceGeneration(
+      cacheRoot,
+      "graph-addon",
+      key,
+      {
+        contents: `${"x".repeat(16 + index)}\n`,
+        modified: `2026-01-0${index + 1}T00:00:00.000Z`,
+      },
+    ));
+    const dryRun = cleanupNativeCache(workspace, cacheRoot, {
+      currentSpecs,
+      expectedRoot: cacheRoot,
+      maxBytes: 1024,
+      maxGenerations: 1,
+    });
+    assert.equal(dryRun.applied, false);
+    assert.equal(dryRun.eligible.generations, 3);
+    assert.equal(dryRun.selected.generations.length, 1);
+    assert.equal(dryRun.selected.generations[0].key, keys[0]);
+    assert.equal(existsSync(join(cacheRoot, "graph-addon", keys[0])), true);
+
+    const applied = cleanupNativeCache(workspace, cacheRoot, {
+      apply: true,
+      currentSpecs,
+      expectedRoot: cacheRoot,
+      maxBytes: 1024,
+      maxGenerations: 1,
+    });
+    assert.equal(applied.removed.generations.length, 1);
+    assert.equal(applied.removed.generations[0].key, keys[0]);
+    assert.equal(applied.after.generations, 2);
+    assert.equal(existsSync(join(cacheRoot, "graph-addon", keys[0])), false);
+    assert.equal(existsSync(join(cacheRoot, "graph-addon", keys[1])), true);
+    assert.equal(existsSync(join(cacheRoot, "graph-addon", keys[2])), true);
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+test("native cache cleanup rechecks locks before each removal", () => {
+  const { cacheRoot, directory, workspace } = nativeMaintenanceFixture();
+  const key = "7".repeat(64);
+  try {
+    const entry = writeMaintenanceGeneration(cacheRoot, "graph-dependencies", key);
+    const result = cleanupNativeCache(workspace, cacheRoot, {
+      apply: true,
+      currentSpecs: [],
+      expectedRoot: cacheRoot,
+      maxBytes: 1024,
+      maxGenerations: 1,
+      beforeRemove() {
+        mkdirSync(`${entry}.lock`);
+      },
+    });
+    assert.equal(result.removed.generations.length, 0);
+    assert.equal(result.skipped[0].result, "new-lock");
+    assert.equal(existsSync(entry), true);
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+test("installed shared cache links retain their exact generation", {
+  skip: process.platform === "win32",
+}, () => {
+  const { cacheRoot, directory, workspace } = nativeMaintenanceFixture();
+  const installedKey = "8".repeat(64);
+  const selectedKey = "9".repeat(64);
+  const outputRoot = "packages/fflas/.native/prefix";
+  try {
+    const installed = writeMaintenanceGeneration(
+      cacheRoot,
+      "fflas-dependencies",
+      installedKey,
+      { outputRoot },
+    );
+    const output = join(workspace, outputRoot);
+    mkdirSync(dirname(output), { recursive: true });
+    symlinkSync(join(installed, "payload", outputRoot), output, "dir");
+    const status = nativeCacheStatus(workspace, cacheRoot, {
+      currentSpecs: [{
+        id: "fflas-dependencies",
+        key: selectedKey,
+        outputRoots: [outputRoot],
+      }],
+      expectedRoot: cacheRoot,
+    });
+    const generation = status.artifacts[0].generations[0];
+    assert.equal(generation.key, installedKey);
+    assert.equal(generation.state, "retained");
+    assert.ok(generation.reasons[0].startsWith("installed-link:"));
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+test("native cache cleanup rejects broad, symlinked, and unexpected roots", {
+  skip: process.platform === "win32",
+}, () => {
+  const { cacheRoot, directory, workspace } = nativeMaintenanceFixture();
+  const outside = join(directory, "outside");
+  const linkedRoot = join(directory, "linked-native-artifacts");
+  try {
+    mkdirSync(outside);
+    writeFileSync(join(outside, "sentinel"), "preserve\n");
+    symlinkSync(outside, linkedRoot, "dir");
+    assert.throws(
+      () => assertExactNativeCacheRoot(workspace, resolve("/"), resolve("/")),
+      /refused broad root/,
+    );
+    assert.throws(
+      () => assertExactNativeCacheRoot(
+        workspace,
+        resolve(workspace),
+        resolve(workspace),
+      ),
+      /refused broad root/,
+    );
+    assert.throws(
+      () => nativeCacheStatus(workspace, cacheRoot, {
+        currentSpecs: [],
+        expectedRoot: join(directory, "different-cache-root"),
+      }),
+      /refused unexpected root/,
+    );
+    assert.throws(
+      () => nativeCacheStatus(workspace, linkedRoot, {
+        currentSpecs: [],
+        expectedRoot: linkedRoot,
+      }),
+      /symlinked component/,
+    );
+    mkdirSync(join(cacheRoot, "unexpected-generation-family"));
+    const status = nativeCacheStatus(workspace, cacheRoot, {
+      currentSpecs: [],
+      expectedRoot: cacheRoot,
+    });
+    assert.equal(status.safe, false);
+    assert.match(status.issues[0], /unexpected cache-root entry/);
+    assert.throws(
+      () => cleanupNativeCache(workspace, cacheRoot, {
+        apply: true,
+        currentSpecs: [],
+        expectedRoot: cacheRoot,
+        maxBytes: 1024,
+        maxGenerations: 1,
+      }),
+      /refused unsafe layout/,
+    );
+    rmSync(join(cacheRoot, "unexpected-generation-family"), {
+      recursive: true,
+      force: true,
+    });
+    symlinkSync(outside, join(cacheRoot, "flint-addon"), "dir");
+    assert.equal(
+      nativeCacheStatus(workspace, cacheRoot, {
+        currentSpecs: [],
+        expectedRoot: cacheRoot,
+      }).safe,
+      false,
+    );
+    rmSync(join(cacheRoot, "flint-addon"));
+    mkdirSync(join(cacheRoot, "flint-addon"));
+    symlinkSync(outside, join(cacheRoot, "flint-addon", "b".repeat(64)), "dir");
+    assert.equal(
+      nativeCacheStatus(workspace, cacheRoot, {
+        currentSpecs: [],
+        expectedRoot: cacheRoot,
+      }).safe,
+      false,
+    );
+    assert.equal(readFileSync(join(outside, "sentinel"), "utf8"), "preserve\n");
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+test("native cache maintenance CLI emits JSON and never applies by default", () => {
+  const { cacheRoot, directory } = nativeMaintenanceFixture();
+  const key = "a".repeat(64);
+  const script = resolve(__dirname, "../scripts/parallel-development.cjs");
+  try {
+    const entry = writeMaintenanceGeneration(cacheRoot, "graph-addon", key);
+    const dryRun = JSON.parse(execFileSync(process.execPath, [
+      script,
+      "cache",
+      "cleanup",
+      "--cache-root",
+      cacheRoot,
+      "--max-generations",
+      "1",
+      "--max-bytes",
+      "1MiB",
+      "--json",
+    ], { encoding: "utf8" }));
+    assert.equal(dryRun.applied, false);
+    assert.equal(dryRun.selected.generations[0].key, key);
+    assert.equal(existsSync(entry), true);
+    const applied = JSON.parse(execFileSync(process.execPath, [
+      script,
+      "cache",
+      "cleanup",
+      "--cache-root",
+      cacheRoot,
+      "--max-generations",
+      "1",
+      "--max-bytes",
+      "1MiB",
+      "--apply",
+      "--json",
+    ], { encoding: "utf8" }));
+    assert.equal(applied.removed.generations[0].key, key);
+    assert.equal(existsSync(entry), false);
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
 
 test("native artifact cache builds cold and restores immutable warm snapshots", () => {
   const { directory, workspace, cacheRoot } = nativeCacheFixture();

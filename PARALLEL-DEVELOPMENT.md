@@ -57,6 +57,37 @@ heartbeat advances even while a synchronous compiler or linker is running;
 concurrent worktrees therefore wait without mistaking a long build for a dead
 owner, while crashed or rebooted owners are recoverable.
 
+Inspect the shared store without building anything:
+
+```sh
+pnpm parallel:cache -- status
+pnpm parallel:cache -- status --json
+```
+
+The report separates current or installed generations from obsolete ones,
+shows their apparent byte sizes, and reports active build locks. New
+publications also record their native toolchain and mathematics-profile
+generation in the cache manifest. Existing manifests remain readable and are
+reported without profile metadata.
+
+Explicit cleanup is a dry run unless `--apply` is present:
+
+```sh
+pnpm parallel:cache -- cleanup
+pnpm parallel:cache -- cleanup --apply \
+  --max-generations 4 --max-bytes 8GiB
+```
+
+Apply mode is always capped (8 generations and 20 GiB by default). It retains
+the currently selected content keys, every generation linked into a live Git
+worktree, and every generation with a build lock. Each candidate is checked
+again immediately before its atomic quarantine and deletion. Maintenance
+accepts only the exact configured or explicitly supplied cache root, refuses
+filesystem/home/workspace roots, and stops without deleting anything when a
+root, artifact family, or generation directory is symlinked or has an
+unexpected layout. `--cache-root` is useful for inspecting a deliberately
+relocated store; it does not relax those checks.
+
 Use `--no-install` when an external provisioning system will prepare the
 worktree. Run `pnpm parallel:new -- --help` for all options.
 
@@ -120,6 +151,8 @@ short integration project.
 | `pnpm parallel:check` | Validate contracts, claims, changes, and receipts |
 | `pnpm parallel:status` | Summarize every worktree and detect overlap |
 | `pnpm parallel:run` | Run and record an exact validation command |
+| `pnpm parallel:cache -- status` | Report shared native-cache size and retained generations |
+| `pnpm parallel:cache -- cleanup` | Dry-run bounded obsolete native-cache cleanup |
 | `pnpm test:changed` | Run the deterministic checks implied by a diff |
 | `pnpm architecture:check` | Enforce package, native-code, and kernel policy |
 

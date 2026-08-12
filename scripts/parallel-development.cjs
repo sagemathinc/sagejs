@@ -29,8 +29,10 @@ const {
   workspaceFingerprint,
 } = require("./parallel-lib.cjs");
 const {
+  cleanupNativeCache,
   defaultNativeCacheRoot,
   nativeCachePackages,
+  nativeCacheStatus,
   prepareNativePackages,
   restoreNativePackages,
 } = require("./native-worktree-cache.cjs");
@@ -41,7 +43,7 @@ function usage(exitCode = 0) {
   pnpm parallel:check -- [--task ID | --all] [--json]
   pnpm parallel:status -- [--json]
   pnpm parallel:run -- ID -- COMMAND [ARG ...]
-  pnpm parallel:cache -- [prepare|restore] [--package flint|fflas|graph]
+  pnpm parallel:cache -- [prepare|restore|status|cleanup] [options]
   pnpm test:changed -- [--base REF] [--list]
 
 Run a subcommand with --help for details. Lane names:
@@ -489,34 +491,170 @@ function changedChecks(rawArgs) {
   for (const command of commands) run(command[0], command.slice(1), root);
 }
 
+function parseCacheByteLimit(value) {
+  const match = String(value).match(/^(\d+)(B|KiB|MiB|GiB)?$/i);
+  if (!match) {
+    throw new Error(
+      `--max-bytes must be an integer with optional B, KiB, MiB, or GiB: ${value}`,
+    );
+  }
+  const multipliers = {
+    b: 1,
+    gib: 1024 ** 3,
+    kib: 1024,
+    mib: 1024 ** 2,
+  };
+  const bytes = Number(match[1]) * multipliers[(match[2] || "B").toLowerCase()];
+  if (!Number.isSafeInteger(bytes) || bytes <= 0) {
+    throw new Error(`--max-bytes is outside the safe positive range: ${value}`);
+  }
+  return bytes;
+}
+
+function parseCacheGenerationLimit(value) {
+  if (!/^\d+$/.test(String(value))) {
+    throw new Error(`--max-generations must be a positive integer: ${value}`);
+  }
+  const count = Number(value);
+  if (!Number.isSafeInteger(count) || count <= 0) {
+    throw new Error(`--max-generations must be a positive integer: ${value}`);
+  }
+  return count;
+}
+
+function formatCacheBytes(bytes) {
+  const units = ["B", "KiB", "MiB", "GiB", "TiB"];
+  let amount = bytes;
+  let unit = 0;
+  while (amount >= 1024 && unit < units.length - 1) {
+    amount /= 1024;
+    unit += 1;
+  }
+  return `${unit === 0 ? amount : amount.toFixed(amount >= 10 ? 1 : 2)} ${units[unit]}`;
+}
+
+function printNativeCacheStatus(status) {
+  const totals = status.totals;
+  process.stdout.write(`Native cache: ${status.cache_root}\n`);
+  process.stdout.write(
+    `  ${formatCacheBytes(totals.bytes)} in ${totals.generations} generations; ` +
+      `${totals.obsolete_generations} obsolete ` +
+      `(${formatCacheBytes(totals.obsolete_bytes)})\n`,
+  );
+  process.stdout.write(
+    `  retained ${totals.retained_generations}; active locks ${totals.locks}\n`,
+  );
+  for (const artifact of status.artifacts) {
+    process.stdout.write(
+      `  ${artifact.id}: ${formatCacheBytes(artifact.bytes)}, ` +
+        `${artifact.generations.length} generations, ${artifact.locks} locks\n`,
+    );
+  }
+  if (!status.safe) {
+    for (const issue of status.issues) process.stderr.write(`  unsafe: ${issue}\n`);
+  }
+}
+
+function printNativeCacheCleanup(result) {
+  const mode = result.applied ? "applied" : "dry run";
+  process.stdout.write(`Native cache cleanup (${mode}): ${result.cache_root}\n`);
+  process.stdout.write(
+    `  eligible ${result.eligible.generations} generations ` +
+      `(${formatCacheBytes(result.eligible.bytes)}); selected ` +
+      `${result.selected.generations.length} ` +
+      `(${formatCacheBytes(result.selected.bytes)})\n`,
+  );
+  if (result.applied) {
+    process.stdout.write(
+      `  removed ${result.removed.generations.length} generations ` +
+        `(${formatCacheBytes(result.removed.bytes)}); skipped ` +
+        `${result.skipped.length}\n`,
+    );
+  } else {
+    process.stdout.write("  no files removed; pass --apply to execute this bounded plan\n");
+  }
+}
+
 function nativeCacheCommand(rawArgs) {
   const args = [...rawArgs];
   if (flag(args, "--help")) {
-    process.stdout.write(`Usage: pnpm parallel:cache -- [prepare|restore] [options]
+    process.stdout.write(`Usage: pnpm parallel:cache -- ACTION [options]
+
+Actions:
+  prepare               restore or build selected native packages (default)
+  restore               restore selected packages without building
+  status                report cache size and retained generations
+  cleanup               plan obsolete-generation cleanup (dry-run by default)
 
 Options:
   --package ID          flint, fflas, or graph; repeatable (defaults to all)
   --cache-root PATH     override the shared content-addressed cache
+  --json                structured status or cleanup output
+  --apply               execute a cleanup plan
+  --max-generations N   cleanup cap (default 8)
+  --max-bytes SIZE      cleanup cap; B, KiB, MiB, or GiB (default 20GiB)
 
 prepare restores a valid artifact or builds and atomically publishes a cache
-miss. restore never builds and is used automatically by parallel:new.
+miss. restore never builds and is used automatically by parallel:new. cleanup
+preserves current selections, installed shared links, and locked generations;
+without --apply it only reports the exact bounded plan.
 `);
     return;
   }
   const action = args.shift() || "prepare";
+  const json = flag(args, "--json");
+  const apply = flag(args, "--apply");
   const requested = values(args, "--package");
   const packageIds = requested.length > 0 ? requested : [...nativeCachePackages];
   const cacheRoot = resolve(value(args, "--cache-root", defaultNativeCacheRoot(root)));
+  const maxGenerationsOption = value(args, "--max-generations");
+  const maxBytesOption = value(args, "--max-bytes");
+  const maxGenerationsValue = maxGenerationsOption ?? "8";
+  const maxBytesValue = maxBytesOption ?? "20GiB";
   if (args.length) throw new Error(`unknown arguments: ${args.join(" ")}`);
-  const results = action === "prepare"
-    ? prepareNativePackages(root, packageIds, { cacheRoot })
-    : action === "restore"
-      ? restoreNativePackages(root, packageIds, { cacheRoot })
-      : null;
-  if (results === null) throw new Error(`unknown native cache action: ${action}`);
-  for (const result of results) {
-    process.stdout.write(`Native cache ${result.id}: ${result.status}\n`);
+  if (["prepare", "restore"].includes(action)) {
+    if (json || apply || maxGenerationsOption || maxBytesOption) {
+      throw new Error(
+        `${action} does not accept cleanup/status output options`,
+      );
+    }
+    const results = action === "prepare"
+      ? prepareNativePackages(root, packageIds, { cacheRoot })
+      : restoreNativePackages(root, packageIds, { cacheRoot });
+    for (const result of results) {
+      process.stdout.write(`Native cache ${result.id}: ${result.status}\n`);
+    }
+    return;
   }
+  if (requested.length !== 0) {
+    throw new Error(`${action} does not accept --package`);
+  }
+  if (action === "status") {
+    if (apply || maxGenerationsOption || maxBytesOption) {
+      throw new Error("status does not accept cleanup limits or --apply");
+    }
+    const status = nativeCacheStatus(root, cacheRoot, {
+      expectedRoot: cacheRoot,
+      workspaces: parseWorktrees().map(({ path }) => path),
+    });
+    if (json) process.stdout.write(`${JSON.stringify(status, null, 2)}\n`);
+    else printNativeCacheStatus(status);
+    if (!status.safe) process.exitCode = 1;
+    return;
+  }
+  if (action === "cleanup") {
+    const result = cleanupNativeCache(root, cacheRoot, {
+      apply,
+      expectedRoot: cacheRoot,
+      maxBytes: parseCacheByteLimit(maxBytesValue),
+      maxGenerations: parseCacheGenerationLimit(maxGenerationsValue),
+      workspaces: parseWorktrees().map(({ path }) => path),
+    });
+    if (json) process.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
+    else printNativeCacheCleanup(result);
+    return;
+  }
+  throw new Error(`unknown native cache action: ${action}`);
 }
 
 if (require.main === module) {

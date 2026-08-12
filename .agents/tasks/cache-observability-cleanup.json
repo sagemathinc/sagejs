@@ -1,0 +1,82 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "cache-observability-cleanup",
+  "title": "Native cache observability and cleanup",
+  "lane": "integration",
+  "status": "review",
+  "owner": "user",
+  "objective": "Report native artifact cache size and retained toolchain/profile generations, and safely dry-run or boundedly remove obsolete generations while preserving selected/installed profiles and live leases or locks",
+  "base_commit": "098afe93dc9a9451e1f5a60505d53d4d13c3d1bf",
+  "claims": [
+    "scripts/native-worktree-cache.cjs",
+    "scripts/parallel-development.cjs",
+    "test/parallel-development.cjs",
+    "PARALLEL-DEVELOPMENT.md",
+    "TODO.md"
+  ],
+  "dependencies": [
+    "automatic-module-cache-cleanup",
+    "native-math-profile"
+  ],
+  "references": [],
+  "architecture": {
+    "strategy": "compiler-infrastructure",
+    "fallback": "not-applicable",
+    "oracles": [
+      "temporary native-cache roots exercising status and cleanup plans without touching user caches"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm architecture:check",
+    "pnpm test:portable",
+    "pnpm test:baselib:strict"
+  ],
+  "runs": [
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 12.667,
+      "started_at": "2026-08-12T06:55:33.654Z",
+      "commit": "098afe93dc9a9451e1f5a60505d53d4d13c3d1bf",
+      "workspace_fingerprint": "54918f5e468829fa8ec9bc949cdc7e49cf285902023ee8efc3127738a55a88f4",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 39.917,
+      "started_at": "2026-08-12T06:55:56.635Z",
+      "commit": "098afe93dc9a9451e1f5a60505d53d4d13c3d1bf",
+      "workspace_fingerprint": "54918f5e468829fa8ec9bc949cdc7e49cf285902023ee8efc3127738a55a88f4",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 12.526,
+      "started_at": "2026-08-12T06:56:40.598Z",
+      "commit": "098afe93dc9a9451e1f5a60505d53d4d13c3d1bf",
+      "workspace_fingerprint": "54918f5e468829fa8ec9bc949cdc7e49cf285902023ee8efc3127738a55a88f4",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Added `parallel:cache status` and dry-run-first bounded `parallel:cache cleanup` with concise human and structured JSON reports. Maintenance validates the exact cache root and every known artifact generation, records toolchain/profile metadata on new publications, retains current selections, installed shared links, and locked generations, and atomically rechecks candidates before removal. Focused regressions use temporary cache roots exclusively and cover size accounting, retention, dry-run/apply behavior, byte/generation limits, late locks, CLI JSON, and broad/symlinked/unexpected path refusal. Contributor documentation describes the operational contract and the completed TODO item is removed.",
+    "risks": [
+      "Status and cleanup validate cached payloads against their manifests, so inspection time is proportional to the bytes and files in the shared store; this never runs on startup or automatic maintenance paths.",
+      "Cache entries published before this change remain compatible but report null toolchain/profile metadata until republished."
+    ],
+    "next_steps": []
+  }
+}
