@@ -1,0 +1,79 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "factorization-negative-powers-v1",
+  "title": "Factorization negative powers",
+  "lane": "arithmetic-algebra",
+  "status": "review",
+  "owner": "user",
+  "objective": "Implement Sage-compatible negative integral powers of Factorization in ordinary Python with focused integer and polynomial differential coverage",
+  "base_commit": "dcc1302a3f305b00a0e09ba25edee45ac2ee2bf1",
+  "claims": [
+    "src/baselib/factorization.py",
+    "test/factorization-negative-powers.cjs"
+  ],
+  "dependencies": [],
+  "references": [
+    "SageMath sage.structure.factorization.Factorization.__pow__"
+  ],
+  "architecture": {
+    "strategy": "dynamic-python",
+    "fallback": "same-source",
+    "oracles": [
+      "SageMath Factorization behavior for integer and polynomial factors",
+      "Existing Sage.js positive-power and value semantics"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "pnpm test:native"
+  ],
+  "runs": [
+    {
+      "command": "node --test test/factorization-negative-powers.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.255,
+      "started_at": "2026-08-12T19:05:55.214Z",
+      "commit": "dcc1302a3f305b00a0e09ba25edee45ac2ee2bf1",
+      "workspace_fingerprint": "3ff40a83285bc8463629eaee2bdda72481ee54b68c17001741b44a4362071e8a",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 16.325,
+      "started_at": "2026-08-12T19:05:58.211Z",
+      "commit": "dcc1302a3f305b00a0e09ba25edee45ac2ee2bf1",
+      "workspace_fingerprint": "3ff40a83285bc8463629eaee2bdda72481ee54b68c17001741b44a4362071e8a",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:native",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 672.464,
+      "started_at": "2026-08-12T19:06:28.908Z",
+      "commit": "dcc1302a3f305b00a0e09ba25edee45ac2ee2bf1",
+      "workspace_fingerprint": "3ff40a83285bc8463629eaee2bdda72481ee54b68c17001741b44a4362071e8a",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Factorization now follows Sage's commutative integral-power semantics: exponent one preserves identity, zero returns the neutral generic factorization, and negative powers negate formal exponents while the unit's exact power operation controls invertibility. Focused tests cover integer and polynomial factorizations, ordering and simplification, rational units and nonunits, and unavailable inverses.",
+    "risks": [
+      "Factorization currently models only the existing commutative Sage.js core; Sage's separate noncommutative inversion path remains outside this lane."
+    ],
+    "next_steps": [
+      "Integrate after independent review and retain the focused test in the arithmetic compatibility suite."
+    ]
+  }
+}
