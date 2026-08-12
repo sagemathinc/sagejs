@@ -108,7 +108,7 @@ test("FFI declarations are strict and generated modules are current", () => {
   const registry = declarations.loadRegistry({ root });
   assert.equal(registry.schema, "sagejs.ffi/declaration-v6");
   assert.equal(registry.catalog.schema, "sagejs.ffi/abi-catalog-v2");
-  assert.equal(registry.libraries.length, 3);
+  assert.equal(registry.libraries.length, 4);
   const fflas = registry.byId.get("fflas");
   assert.doesNotMatch(
     declarations.generatePythonModule(fflas),
@@ -211,7 +211,8 @@ test("FFI declarations are strict and generated modules are current", () => {
       "nmod_mat_minpoly", "nmod_mat_inv", "nmod_mat_rref",
       "nmod_mat_mul", "nmod_mat_right_kernel", "nmod_mat_solve",
       "fmpz_poly_mul", "fmpq_poly_mul", "nmod_poly_mul",
-      "nmod_poly_divexact", "fmpz_poly_divexact", "fmpq_poly_divexact",
+      "nmod_poly_divexact", "nmod_poly_divrem",
+      "fmpz_poly_divexact", "fmpq_poly_divexact",
       "nmod_poly_gcd", "nmod_poly_is_irreducible", "nmod_poly_factor",
       "nmod_poly_roots", "fmpz_poly_factor", "fmpq_poly_factor",
     ],
@@ -285,7 +286,7 @@ test("FFI declarations are strict and generated modules are current", () => {
     { resource: "graph", ownership: "owned", owner: null, root: "graph" },
     { resource: "edges", ownership: "borrowed", owner: "graph", root: "graph" },
   ]);
-  assert.match(runSage(["ffi", "check"]), /190 function\(s\)/);
+  assert.match(runSage(["ffi", "check"]), /214 function\(s\)/);
   const inspection = JSON.parse(
     runSage(["ffi", "explain", "flint", "--json"]),
   );
@@ -334,9 +335,10 @@ test("generated host adapters cover values and safe owned resources", async () =
     assert.match(source, /whose core calls the declared foreign symbols/);
     assert.doesNotMatch(source, /sagejs\.runtime|ffi_call/);
     assert.equal(functions.length, {
-      fflas: 4,
+      fflas: 5,
       flint: 180,
       igraph: 2,
+      m4ri: 22,
     }[declaration.library.id]);
     if (declaration.library.id === "flint") {
       const ir = await lowerSource(source, filename);
@@ -471,7 +473,7 @@ test("FFI v7 Python declarations lower deterministically to the checked JSON IR"
   assert.equal(sourceRegistry.schema, "sagejs.ffi/source-declaration-v1");
   assert.deepEqual(
     sourceRegistry.sources.map((source) => source.document.library.id),
-    ["fflas", "flint", "igraph"],
+    ["fflas", "flint", "igraph", "m4ri"],
   );
   for (const source of sourceRegistry.sources) {
     const id = source.document.library.id;
@@ -534,8 +536,8 @@ test("native-boundary audit is a reviewed exact ratchet", () => {
   const current = boundaryAudit.validateBoundarySnapshot(snapshot, { root });
   assert.ok(current.counts["napi-export"] >= 280);
   assert.ok(current.counts["runtime-intrinsic"] >= 100);
-  assert.equal(current.counts["declared-ffi"], 190);
-  assert.equal(current.counts["declared-ffi-resource"], 12);
+  assert.equal(current.counts["declared-ffi"], 214);
+  assert.equal(current.counts["declared-ffi-resource"], 14);
   assert.match(runSage(["ffi", "audit"]), /inventoried native boundaries/);
   assert.equal(
     current.boundaries.filter((item) =>
