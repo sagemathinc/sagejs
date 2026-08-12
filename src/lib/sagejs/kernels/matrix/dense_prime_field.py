@@ -14,6 +14,7 @@ from sagejs.native import (
     PrimeFieldModulus,
     UInt64Buffer,
     native,
+    prime_add,
     prime_inverse,
     prime_mul,
     prime_sub,
@@ -123,6 +124,67 @@ def dense_prime_field_matrix_transpose(
         for row in range(rows):
             for column in range(columns):
                 output[column * rows + row] = source[row * columns + column]
+    return valid != 0
+
+
+@native
+def dense_prime_field_matrix_mul_vector(
+    output: UInt64Buffer,
+    matrix: UInt64Buffer,
+    vector: UInt64Buffer,
+    rows: uint64,
+    columns: uint64,
+    modulus: PrimeFieldModulus,
+) -> bool:
+    """Compute one packed `matrix * vector` product."""
+    valid = 1
+    if len(output) != rows:
+        valid = 0
+    if len(matrix) != rows * columns:
+        valid = 0
+    if len(vector) != columns:
+        valid = 0
+    if valid != 0:
+        for row in range(rows):
+            total = 0
+            offset = row * columns
+            for column in range(columns):
+                total = prime_add(
+                    total,
+                    prime_mul(matrix[offset + column], vector[column], modulus),
+                    modulus,
+                )
+            output[row] = total
+    return valid != 0
+
+
+@native
+def dense_prime_field_vector_mul_matrix(
+    output: UInt64Buffer,
+    vector: UInt64Buffer,
+    matrix: UInt64Buffer,
+    rows: uint64,
+    columns: uint64,
+    modulus: PrimeFieldModulus,
+) -> bool:
+    """Compute one packed `vector * matrix` product."""
+    valid = 1
+    if len(output) != columns:
+        valid = 0
+    if len(vector) != rows:
+        valid = 0
+    if len(matrix) != rows * columns:
+        valid = 0
+    if valid != 0:
+        for column in range(columns):
+            total = 0
+            for row in range(rows):
+                total = prime_add(
+                    total,
+                    prime_mul(vector[row], matrix[row * columns + column], modulus),
+                    modulus,
+                )
+            output[column] = total
     return valid != 0
 
 

@@ -116,6 +116,8 @@ from sagejs.ffi.flint import (
     fmpz_matrix_sub as _ffi_fmpz_matrix_sub,
     fmpz_matrix_transpose as _ffi_fmpz_matrix_transpose,
     fmpz_matrix_mul as _ffi_fmpz_matrix_mul,
+    fmpz_matrix_mul_vector as _ffi_fmpz_matrix_mul_vector,
+    fmpz_vector_mul_matrix as _ffi_fmpz_vector_mul_matrix,
     fmpz_matrix_pow as _ffi_fmpz_matrix_pow,
     fmpz_matrix_rank as _ffi_fmpz_matrix_rank,
     fmpz_matrix_rank_mod_46337 as _ffi_fmpz_matrix_rank_mod_46337,
@@ -165,6 +167,8 @@ from sagejs.ffi.flint import (
     fmpq_matrix_sub as _ffi_fmpq_matrix_sub,
     fmpq_matrix_transpose as _ffi_fmpq_matrix_transpose,
     fmpq_matrix_mul as _ffi_fmpq_matrix_mul,
+    fmpq_matrix_mul_vector as _ffi_fmpq_matrix_mul_vector,
+    fmpq_vector_mul_matrix as _ffi_fmpq_vector_mul_matrix,
     fmpq_matrix_inv as _ffi_fmpq_matrix_inv,
     fmpq_matrix_solve as _ffi_fmpq_matrix_solve,
     fmpq_matrix_rref as _ffi_fmpq_matrix_rref,
@@ -1236,6 +1240,28 @@ def ffiFmpzMatrixMul(
 
 
 @native
+def ffiFmpzMatrixMulVector(
+    matrix: FmpzMatrix,
+    vector: FlintByteRegion,
+) -> FlintByteRegion:
+    return _ffi_fmpz_matrix_mul_vector(
+        matrix,
+        vector,
+    )
+
+
+@native
+def ffiFmpzVectorMulMatrix(
+    vector: FlintByteRegion,
+    matrix: FmpzMatrix,
+) -> FlintByteRegion:
+    return _ffi_fmpz_vector_mul_matrix(
+        vector,
+        matrix,
+    )
+
+
+@native
 def ffiFmpzMatrixPow(
     source: FmpzMatrix,
     exponent: uint64,
@@ -1785,6 +1811,28 @@ def ffiFmpqMatrixMul(
     return _ffi_fmpq_matrix_mul(
         left,
         right,
+    )
+
+
+@native
+def ffiFmpqMatrixMulVector(
+    matrix: FmpqMatrix,
+    vector: FlintByteRegion,
+) -> FlintByteRegion:
+    return _ffi_fmpq_matrix_mul_vector(
+        matrix,
+        vector,
+    )
+
+
+@native
+def ffiFmpqVectorMulMatrix(
+    vector: FlintByteRegion,
+    matrix: FmpqMatrix,
+) -> FlintByteRegion:
+    return _ffi_fmpq_vector_mul_matrix(
+        vector,
+        matrix,
     )
 
 

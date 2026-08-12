@@ -2124,6 +2124,52 @@ def fmpz_matrix_mul(left: FmpzMatrix, right: FmpzMatrix) -> FmpzMatrix: ...
 
 
 @flint.function(
+    dynamic="ffiFmpzMatrixMulVector",
+    symbol="sagejs_fmpz_matrix_mul_vector",
+    returns=int,
+    abi=[
+        out("result", sagejs_flint_byte_region_t),
+        in_("matrix", sagejs_fmpz_matrix_t),
+        in_("vector", sagejs_flint_byte_region_t),
+    ],
+    effects=Effects(pure=False, allocates=True, raises=[ValueError, OverflowError]),
+    result=Status(
+        1,
+        exception=ValueError,
+        message="integer matrix-vector input is invalid",
+    ),
+    wasm=True,
+)
+def fmpz_matrix_mul_vector(
+    matrix: FmpzMatrix,
+    vector: FlintByteRegion,
+) -> FlintByteRegion: ...
+
+
+@flint.function(
+    dynamic="ffiFmpzVectorMulMatrix",
+    symbol="sagejs_fmpz_vector_mul_matrix",
+    returns=int,
+    abi=[
+        out("result", sagejs_flint_byte_region_t),
+        in_("vector", sagejs_flint_byte_region_t),
+        in_("matrix", sagejs_fmpz_matrix_t),
+    ],
+    effects=Effects(pure=False, allocates=True, raises=[ValueError, OverflowError]),
+    result=Status(
+        1,
+        exception=ValueError,
+        message="integer vector-matrix input is invalid",
+    ),
+    wasm=True,
+)
+def fmpz_vector_mul_matrix(
+    vector: FlintByteRegion,
+    matrix: FmpzMatrix,
+) -> FlintByteRegion: ...
+
+
+@flint.function(
     dynamic="ffiFmpzMatrixPow",
     symbol="sagejs_fmpz_matrix_pow",
     returns=int,
@@ -3168,6 +3214,52 @@ def fmpq_matrix_transpose(source: FmpqMatrix) -> FmpqMatrix: ...
     wasm=True,
 )
 def fmpq_matrix_mul(left: FmpqMatrix, right: FmpqMatrix) -> FmpqMatrix: ...
+
+
+@flint.function(
+    dynamic="ffiFmpqMatrixMulVector",
+    symbol="sagejs_fmpq_matrix_mul_vector",
+    returns=int,
+    abi=[
+        out("result", sagejs_flint_byte_region_t),
+        in_("matrix", sagejs_fmpq_matrix_t),
+        in_("vector", sagejs_flint_byte_region_t),
+    ],
+    effects=Effects(pure=False, allocates=True, raises=[ValueError, OverflowError]),
+    result=Status(
+        1,
+        exception=ValueError,
+        message="rational matrix-vector input is invalid",
+    ),
+    wasm=True,
+)
+def fmpq_matrix_mul_vector(
+    matrix: FmpqMatrix,
+    vector: FlintByteRegion,
+) -> FlintByteRegion: ...
+
+
+@flint.function(
+    dynamic="ffiFmpqVectorMulMatrix",
+    symbol="sagejs_fmpq_vector_mul_matrix",
+    returns=int,
+    abi=[
+        out("result", sagejs_flint_byte_region_t),
+        in_("vector", sagejs_flint_byte_region_t),
+        in_("matrix", sagejs_fmpq_matrix_t),
+    ],
+    effects=Effects(pure=False, allocates=True, raises=[ValueError, OverflowError]),
+    result=Status(
+        1,
+        exception=ValueError,
+        message="rational vector-matrix input is invalid",
+    ),
+    wasm=True,
+)
+def fmpq_vector_mul_matrix(
+    vector: FlintByteRegion,
+    matrix: FmpqMatrix,
+) -> FlintByteRegion: ...
 
 
 @flint.function(

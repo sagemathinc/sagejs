@@ -38,6 +38,52 @@ def m4ri_dense_matrix_set_entry(
 
 
 @native
+def m4ri_dense_matrix_mul_vector(
+    output: Int64Buffer,
+    source: M4riMatrix,
+    vector: Int64Buffer,
+) -> bool:
+    """Compute `source * vector` while borrowing canonical M4RI storage."""
+    rows = matrix_nrows(source)
+    columns = matrix_ncols(source)
+    if len(output) != rows or len(vector) != columns:
+        return False
+    for row in range(rows):
+        total = 0
+        for column in range(columns):
+            if matrix_entry_code(source, row, column) * vector[column] != 0:
+                if total == 0:
+                    total = 1
+                else:
+                    total = 0
+        output[row] = total
+    return True
+
+
+@native
+def m4ri_dense_vector_mul_matrix(
+    output: Int64Buffer,
+    vector: Int64Buffer,
+    source: M4riMatrix,
+) -> bool:
+    """Compute `vector * source` while borrowing canonical M4RI storage."""
+    rows = matrix_nrows(source)
+    columns = matrix_ncols(source)
+    if len(output) != columns or len(vector) != rows:
+        return False
+    for column in range(columns):
+        total = 0
+        for row in range(rows):
+            if vector[row] * matrix_entry_code(source, row, column) != 0:
+                if total == 0:
+                    total = 1
+                else:
+                    total = 0
+        output[column] = total
+    return True
+
+
+@native
 def m4ri_dense_matrix_swap_rows(
     target: M4riMatrix,
     first: uint64,
