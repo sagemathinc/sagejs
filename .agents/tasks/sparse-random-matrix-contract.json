@@ -113,6 +113,66 @@
       "commit": "1f1219932802054fcd7a424ac877b84aa88d4b60",
       "workspace_fingerprint": "72b63a66b216b6cffbb9c260ec79bc4bd2f58d10daf09ac82f5e8d7b81aa37b5",
       "platform": "linux-x64"
+    },
+    {
+      "command": "node test/linear-sparse-random.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.905,
+      "started_at": "2026-08-12T11:21:59.165Z",
+      "commit": "13ad9216e681eb341d8aac26834528739ae0427b",
+      "workspace_fingerprint": "f69c5cfd66862b52696814e7c2e8ee1009858ad5c9571ca289bd3b3dca2164bf",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/linear-sparse-random.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 19.696,
+      "started_at": "2026-08-12T11:22:01.669Z",
+      "commit": "13ad9216e681eb341d8aac26834528739ae0427b",
+      "workspace_fingerprint": "f69c5cfd66862b52696814e7c2e8ee1009858ad5c9571ca289bd3b3dca2164bf",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm exec pyright --pythonversion 3.11 src/lib/sagejs/linear_algebra/sparse_random.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.202,
+      "started_at": "2026-08-12T11:22:21.979Z",
+      "commit": "13ad9216e681eb341d8aac26834528739ae0427b",
+      "workspace_fingerprint": "f69c5cfd66862b52696814e7c2e8ee1009858ad5c9571ca289bd3b3dca2164bf",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 12.926,
+      "started_at": "2026-08-12T11:22:23.783Z",
+      "commit": "13ad9216e681eb341d8aac26834528739ae0427b",
+      "workspace_fingerprint": "f69c5cfd66862b52696814e7c2e8ee1009858ad5c9571ca289bd3b3dca2164bf",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 13.333,
+      "started_at": "2026-08-12T11:22:37.294Z",
+      "commit": "13ad9216e681eb341d8aac26834528739ae0427b",
+      "workspace_fingerprint": "f69c5cfd66862b52696814e7c2e8ee1009858ad5c9571ca289bd3b3dca2164bf",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:native",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 568.301,
+      "started_at": "2026-08-12T11:22:55.821Z",
+      "commit": "13ad9216e681eb341d8aac26834528739ae0427b",
+      "workspace_fingerprint": "f69c5cfd66862b52696814e7c2e8ee1009858ad5c9571ca289bd3b3dca2164bf",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {
