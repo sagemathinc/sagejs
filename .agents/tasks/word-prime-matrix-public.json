@@ -4,7 +4,7 @@
   "id": "word-prime-matrix-public",
   "title": "Word-prime matrix public resource",
   "lane": "integration",
-  "status": "review",
+  "status": "complete",
   "owner": "user",
   "objective": "Implement generated FLINT nmod_mat resource ownership and a uniformly efficient, traceable public dense GF(p) matrix vertical slice for general word-size primes: bulk construction and random ingress, formatting, SagePack serialization, direct swaps, and preserved FFLAS/FFPACK algorithms",
   "base_commit": "62d9f6577c055b230dd089ade5895a1824e6463a",
