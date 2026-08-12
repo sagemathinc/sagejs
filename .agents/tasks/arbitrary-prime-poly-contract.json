@@ -1,0 +1,46 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "arbitrary-prime-poly-contract",
+  "title": "Arbitrary-prime polynomial resource contract",
+  "lane": "arithmetic-algebra",
+  "status": "active",
+  "owner": "user",
+  "objective": "Specify and test Sage-compatible GF(p)[x] semantics for p at least 2^64 and define a representation-neutral generated-resource protocol owning fmpz_mod_ctx_t plus fmpz_mod_poly_t without caller capacity prediction or cross-resource lifetime coupling",
+  "base_commit": "f29c602daa5f85511caa7dfa8e24f39c04df789f",
+  "claims": [
+    "src/lib/sagejs/polynomial_algorithms/arbitrary_prime_contract.py",
+    "test/arbitrary-prime-polynomial-contract.cjs",
+    "bench/arbitrary-prime-polynomial-contract.cjs"
+  ],
+  "dependencies": [],
+  "references": [
+    "SageMath 10.9",
+    "FLINT fmpz_mod_poly/fmpz_mod_ctx APIs"
+  ],
+  "architecture": {
+    "strategy": "external-library",
+    "fallback": "tested-capability",
+    "oracles": [
+      "SageMath 10.9 semantics at primes 2^89-1 and larger",
+      "ordinary CPython-parseable planning-contract tests"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "fallback",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "pnpm test:native"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "",
+    "risks": [],
+    "next_steps": []
+  }
+}
