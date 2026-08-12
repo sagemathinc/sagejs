@@ -1149,21 +1149,30 @@ class MatrixSpaceParent(sage.Parent):
             resource.close()
             raise
 
-    def _from_fmpz_matrix_resource(
-        self, resource: Any, check_dimensions: bool = True
-    ) -> Matrix:
-        """Take ownership of a generated FLINT matrix resource."""
+    def _from_fmpz_matrix_resource(self, resource: Any) -> Matrix:
+        """Take ownership of a checked generated FLINT matrix resource."""
         if self._base is not sage.ZZ:
             resource.close()
             raise TypeError("FLINT integer matrix storage requires ZZ")
         ffi = _flint_ffi_module()
-        if check_dimensions and (
+        if (
             runtime.number(ffi.fmpz_matrix_nrows(resource)) != self._rows
             or runtime.number(ffi.fmpz_matrix_ncols(resource)) != self._cols
         ):
             resource.close()
             raise ValueError("integer matrix resource dimensions do not agree")
         return Matrix(self, _FmpzMatrixResourceStorage(resource))
+
+    def _from_same_shape_fmpz_matrix_resource(self, resource: Any) -> Matrix:
+        """Adopt a generated result whose declaration preserves dimensions."""
+        if self._base is not sage.ZZ:
+            resource.close()
+            raise TypeError("FLINT integer matrix storage requires ZZ")
+        try:
+            return Matrix(self, _FmpzMatrixResourceStorage(resource))
+        except Exception:
+            resource.close()
+            raise
 
     def _from_packed_rationals(self, entries: Any) -> Matrix:
         """Construct a rational matrix from packed numerator/denominator data."""
@@ -1296,21 +1305,30 @@ class MatrixSpaceParent(sage.Parent):
             resource.close()
             raise
 
-    def _from_fmpq_matrix_resource(
-        self, resource: Any, check_dimensions: bool = True
-    ) -> Matrix:
-        """Take ownership of a generated FLINT matrix resource."""
+    def _from_fmpq_matrix_resource(self, resource: Any) -> Matrix:
+        """Take ownership of a checked generated FLINT matrix resource."""
         if self._base is not sage.QQ:
             resource.close()
             raise TypeError("FLINT rational matrix storage requires QQ")
         ffi = _flint_ffi_module()
-        if check_dimensions and (
+        if (
             runtime.number(ffi.fmpq_matrix_nrows(resource)) != self._rows
             or runtime.number(ffi.fmpq_matrix_ncols(resource)) != self._cols
         ):
             resource.close()
             raise ValueError("rational matrix resource dimensions do not agree")
         return Matrix(self, _FmpqMatrixResourceStorage(resource))
+
+    def _from_same_shape_fmpq_matrix_resource(self, resource: Any) -> Matrix:
+        """Adopt a generated result whose declaration preserves dimensions."""
+        if self._base is not sage.QQ:
+            resource.close()
+            raise TypeError("FLINT rational matrix storage requires QQ")
+        try:
+            return Matrix(self, _FmpqMatrixResourceStorage(resource))
+        except Exception:
+            resource.close()
+            raise
 
     def identity_matrix(self) -> Matrix:
         if self._rows != self._cols:
@@ -3112,7 +3130,7 @@ class Matrix(sage.Element):
                 self.nrows(),
                 self.ncols(),
             )
-            return self._parent._from_fmpz_matrix_resource(resource, False)
+            return self._parent._from_same_shape_fmpz_matrix_resource(resource)
         if self._has_fmpq_matrix_resource():
             resource = _flint_ffi_module().fmpq_matrix_neg(self._rational_resource())
             _trace_dense_rational_selection(
@@ -3121,7 +3139,7 @@ class Matrix(sage.Element):
                 self.nrows(),
                 self.ncols(),
             )
-            return self._parent._from_fmpq_matrix_resource(resource, False)
+            return self._parent._from_same_shape_fmpq_matrix_resource(resource)
         if self._has_packed_rational_storage():
             kernel = _dense_rational_kernel_module().dense_rational_matrix_negate
             source_numerators, source_denominators = self._rational_kernel_parts(kernel)
@@ -3204,7 +3222,7 @@ class Matrix(sage.Element):
                 self.nrows(),
                 self.ncols(),
             )
-            return self._parent._from_fmpz_matrix_resource(resource, False)
+            return self._parent._from_same_shape_fmpz_matrix_resource(resource)
         if self._has_fmpq_matrix_resource() and (
             runtime.is_exact_integer(scalar) or isinstance(scalar, sage.Rational)
         ):
@@ -3223,7 +3241,7 @@ class Matrix(sage.Element):
                 self.nrows(),
                 self.ncols(),
             )
-            return self._parent._from_fmpq_matrix_resource(resource, False)
+            return self._parent._from_same_shape_fmpq_matrix_resource(resource)
         if _is_extension_field_base(self.base_ring()):
             value = self.base_ring()(scalar)
             native_value = runtime.flint_backend().fqMatrixScalarMul(
@@ -3303,7 +3321,7 @@ class Matrix(sage.Element):
                 self.nrows(),
                 self.ncols(),
             )
-            return self._parent._from_fmpz_matrix_resource(resource, False)
+            return self._parent._from_same_shape_fmpz_matrix_resource(resource)
         if self._has_packed_rational_storage():
             rational = sage.QQ(scalar)
             if self._has_fmpq_matrix_resource():
@@ -3318,7 +3336,7 @@ class Matrix(sage.Element):
                     self.nrows(),
                     self.ncols(),
                 )
-                return self._parent._from_fmpq_matrix_resource(resource, False)
+                return self._parent._from_same_shape_fmpq_matrix_resource(resource)
             kernel = (
                 _dense_rational_kernel_module().dense_rational_matrix_scalar_multiply
             )
@@ -3612,7 +3630,7 @@ class Matrix(sage.Element):
                 self.nrows(),
                 self.ncols(),
             )
-            return self._parent._from_fmpq_matrix_resource(resource, False)
+            return self._parent._from_same_shape_fmpq_matrix_resource(resource)
         reciprocal = runtime.rational_class(denominator, numerator)
         return self._scalar_mul(reciprocal)
 
