@@ -1,0 +1,131 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "math-dispatch-profiles-v1",
+  "title": "Declarative Mathematical Dispatch Profiles v1",
+  "lane": "integration",
+  "status": "proposed",
+  "owner": "user",
+  "objective": "Specify and then implement CPython-parseable authoritative declarations for mathematical representation and algorithm dispatch, deterministic inspectable JSON lowering, conservative portable and checked host/build profiles, optional explicit local tuning, reproducible cache identities, and traceable selection without making mathematical semantics machine-dependent",
+  "base_commit": "de9f926d7d75411be7ad08219921b160adc2b380",
+  "claims": [
+    ".agents/tasks/math-dispatch-profiles-v1.json",
+    "docs/math-dispatch-profiles.md",
+    "TODO.md"
+  ],
+  "dependencies": [
+    "native-math-profile",
+    "native-foreign-cache-inputs",
+    "native-worktree-cache",
+    "fflas-dense-prime-v1",
+    "fflas-prime-nullspace",
+    "word-prime-matrix-public",
+    "macos-arm64-math-witness",
+    "dense-matrix-performance-audit",
+    "polynomial-domain-performance-matrix"
+  ],
+  "references": [
+    "docs/math-dispatch-profiles.md",
+    "src/baselib/matrix.py",
+    "src/baselib/polynomial.py",
+    "scripts/native-math-profile.cjs",
+    "scripts/native-worktree-cache.cjs",
+    "tools/native-compiler.ts",
+    "bench/word-prime-matrix-public.cjs",
+    "bench/fflas-dense-prime.cjs",
+    "bench/fflas-dense-prime-nullspace.cjs",
+    "bench/macos-arm64-math-witness.cjs",
+    "bench/results/linux-x64-word-prime-matrix-resource-2026-08-12.json",
+    "bench/results/macos-arm64-m1-max-dense-matrix-2026-08-12.json",
+    "planned-claim:dispatch/matrix.dispatch.py",
+    "planned-claim:dispatch/polynomial.dispatch.py",
+    "planned-claim:dispatch/profiles/portable.dispatch.py",
+    "planned-claim:dispatch/profiles/linux-x64.dispatch.py",
+    "planned-claim:dispatch/profiles/linux-arm64.dispatch.py",
+    "planned-claim:dispatch/profiles/macos-arm64.dispatch.py",
+    "planned-claim:dispatch/profiles/windows-x64.dispatch.py",
+    "planned-claim:dispatch/generated/matrix.dispatch.json",
+    "planned-claim:dispatch/generated/polynomial.dispatch.json",
+    "planned-claim:dispatch/generated/profiles.dispatch.json",
+    "planned-claim:tools/math-dispatch/",
+    "planned-claim:tools/cli.js",
+    "planned-claim:tools/native-compiler.ts",
+    "planned-claim:scripts/native-worktree-cache.cjs",
+    "planned-claim:test/math-dispatch-declarations.cjs",
+    "planned-claim:test/math-dispatch-selection.cjs",
+    "planned-claim:test/math-dispatch-cache-identity.cjs",
+    "planned-claim:test/math-dispatch-benchmark-ingestion.cjs",
+    "planned-claim:bench/math-dispatch-profile.cjs",
+    "classification-gate:hard capability constraints include domain and modulus bounds, native word size, representation, generated symbol availability, library versions, build options, canonical-output requirements, proof semantics, aliasing, and supported hosts; a performance profile may narrow but never widen them",
+    "classification-gate:canonical representation policy is architecture rather than tuning and cannot be changed by host overlays or local profiles; every alternative-backend conversion is declared and its allocation and copy cost is included in selection evidence",
+    "classification-gate:portable thresholds and checked host/build overlays are the only benchmark-derived layers; constants that define formats, exactness, safety, proofs, canonicalization, or public semantics remain ordinary invariants",
+    "classification-gate:explicit algorithm overrides have precedence over profiles, still satisfy hard capabilities, and raise their documented error rather than silently falling back; None or auto alone uses tuning",
+    "audit-gate:migrate or explicitly classify matrix.py FFLAS multiply 32, RREF 32, rank 64, and right-nullspace 24 thresholds; packed-prime representation cutoff 256; Givaro exact limit 94906266; nmod Node and uint64 bounds; ZZ modular-rank certificate; and polynomial.py packed ZZ 256, QQ 64, and GF(p) 4096 multiplication thresholds",
+    "declaration-gate:authoritative source is constrained CPython 3.11 syntax lowered from AST without execution; unknown fields, duplicate identifiers, ambiguous precedence, unreachable fallbacks, invalid numeric values, and host attempts to change representation or widen capability fail deterministically",
+    "declaration-gate:lowering preserves source locations and explanations, canonicalizes key and set ordering plus number spelling, emits byte-identical JSON independently of directory and enumeration order, and CI rejects stale derived files",
+    "feature-gate:the closed typed feature vocabulary covers operation, domain, semantic options, representation, rows, columns, inner dimension, degree and operand lengths, aspect and skew, density and sparsity class, modulus and bit-size range, coefficient size, ISA family, OS/architecture, backend and symbol availability, library versions, BLAS and threading provider, native mathematics build fingerprint, and declared conversion costs",
+    "selection-gate:normalize features, filter capabilities with recorded reasons, honor explicit override, apply an explicitly activated exact-identity local profile, otherwise choose the unique most-specific checked host/build overlay, otherwise portable, then walk a declared correctness fallback chain; equal-specificity matches are errors and source order never breaks ties",
+    "selection-gate:selection is pure and deterministic for one feature/capability/build/profile identity and never benchmarks, samples load, mutates policy, catches an executing algorithm as a capability miss, or silently changes proof, randomness, canonical result, exception, factor ordering, or basis semantics",
+    "portable-gate:every operation has a conservative checked portable fallback where a correct implementation exists; specialized selection requires a robust win and near ties prefer the mature fallback",
+    "host-profile-gate:checked profiles bind to stable OS/architecture and ISA families, exact or reviewed-compatible native mathematics build fingerprints, dependency and BLAS versions, threading model, declaration generation, and benchmark schema; unmatched or stale profiles explain the mismatch and fall back atomically to portable",
+    "local-tuning-gate:sagejs tune math emits inert schema-validated JSON with complete host/build/declaration/tool/evidence identity; generation does not activate it, activation is explicit, identity must match exactly, and mismatch warns then applies none of the local profile",
+    "benchmark-schema-gate:accepted reports record source commit and clean state, operation features and semantics, representation and candidate, process-isolated cold and initialization versus warm timing, conversions and cleanup in scope, samples and dispersion, memory where relevant, exact digest and differential oracle, host family, library and BLAS versions, threading, build and declaration fingerprints",
+    "benchmark-ingestion-gate:reject incompatible, stale, incorrect, noisy, incomplete, cold-as-warm, hidden-conversion, or incomparable evidence; use a restricted piecewise integer-threshold model, separate training and validation grids, test adjacent values around a boundary, and emit a reviewable proposal rather than editing authority automatically",
+    "benchmark-grid:matrix evidence spans square, tall, wide, degenerate, structured, random, modulus classes, density classes, and conversion-inclusive workloads; polynomial evidence varies both lengths, degree, coefficient bits, modulus, sparsity, and skew",
+    "cross-host-gate:retain comparable correctness-stamped reports from Linux x64, Apple M1 arm64, and Linux arm64 before a checked overlay changes production selection; Windows x64 has complete capability and portable-fallback tests even before it has a tuned overlay",
+    "explain-gate:sagejs math explain provides normalized features, canonical representation reason, every candidate and rejection, conversions, selected profile origin/schema/fingerprint, matched rule and evidence, fallback chain, build fingerprint, and execution mode in text and JSON",
+    "trace-gate:SAGEJS_MATH_TRACE uses the same immutable decision record as execution and reports operation, salient features, representation, implementation, rule, and profile fingerprint; trace and explain cannot implement separate selection logic",
+    "identity-gate:keep native dependency-build, addon or kernel artifact, dispatch declaration/profile-set, and selected runtime profile fingerprints separately named; changing runtime thresholds does not rebuild FLINT or FFLAS",
+    "identity-gate:when native compilation specializes or deletes a dispatch decision, declaration/profile-set and selected profile fingerprints enter the artifact key and manifest; otherwise profile choice remains runtime-indirect so local tuning does not multiply native artifacts",
+    "reproducibility-gate:an explicit portable mode is always available, benchmarks record all profile fingerprints, serialized objects contain no tuning state, and seeded results, mathematical values, errors, proof status, formatting, and canonical caches are profile-independent",
+    "agent-scalability-gate:after the vertical slice a fresh agent can add one backend candidate, capability, benchmark evidence, and checked tuning rule without editing selector or compiler implementation code"
+  ],
+  "architecture": {
+    "strategy": "compiler-infrastructure",
+    "fallback": "tested-capability",
+    "oracles": [
+      "Current Sage.js dense matrix and polynomial dispatch before migration",
+      "SageMath 10.9 public algorithm-override and mathematical result semantics",
+      "Generated FLINT, FFLAS-FFPACK, and M4RI direct backend differentials",
+      "Checked Linux x64, Apple M1 arm64, and Linux arm64 benchmark reports with exact result digests",
+      "Existing native mathematics dependency and foreign-input build fingerprints"
+    ],
+    "exceptions": [
+      "The selector and declaration lowerer are compiler/runtime infrastructure, but all mathematical algorithms remain ordinary typed Python or generated external-library boundaries; this task permits no new handwritten mathematical native implementation."
+    ]
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm parallel:check",
+    "pnpm test:changed",
+    "pnpm architecture:check",
+    "pnpm test:portable",
+    "pnpm test:baselib:strict"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "The planning audit found that readable public mathematical modules currently mix five distinct policy classes: hard backend limits, canonical storage architecture, portable measured crossover constants, host/build-specific opportunities, and explicit user algorithm choices. Dense prime matrix FFLAS/FFPACK thresholds and several packed polynomial multiplication thresholds are hard-coded in matrix.py and polynomial.py, while native dependency builds already have a strong separate fingerprint. The accompanying design freezes an implementation path: constrained CPython-parseable declarations are the authority, deterministic JSON is the runtime artifact, benchmark evidence can propose only tuning layers, checked host overlays match exact stable identities, local tuning is opt-in, and trace/explain exposes the complete decision. This contract is plan-only and deliberately changes no dispatch behavior.",
+    "risks": [
+      "A generic dispatch DSL can become a second programming language. Keep its predicates closed, typed, total, and limited to features proven useful by actual crossover evidence.",
+      "Per-host profiles can create an unreviewable matrix. Begin with portable plus Linux x64, M1 arm64, and Linux arm64, require sparse overlays, and fall back when identities do not match exactly.",
+      "Representation and algorithm tuning are coupled through conversion cost. Prevent profiles from changing canonical ownership and require conversion-inclusive candidate evidence rather than pretending all inputs are already in the preferred backend.",
+      "Library upgrades can invalidate crossovers without changing the CPU. Bind checked tuning to the existing native mathematics build fingerprint and make staleness visible rather than guessing compatibility.",
+      "Some mathematically valid algorithms differ observably in bases, factor order, proof, or randomness. Do not auto-dispatch among them until a common canonical semantic contract exists.",
+      "Noisy cloud measurements can fit false boundaries. Retain raw reports, reject high dispersion, validate on held-out neighboring and skew workloads, and prefer the conservative implementation near ties.",
+      "Compile-time specialization can make a runtime profile change ineffective. Either keep selection indirect or include every effective profile identity in the compiled artifact key and explanation."
+    ],
+    "next_steps": [
+      "Create a fresh implementation lane with the planned declaration, lowerer, generated JSON, CLI, selector, benchmark, and cache claims after the active matrix integration lanes no longer own matrix.py and central tooling.",
+      "Implement syntax, schema, canonical lowering, validation, synthetic selection, trace/explain, and fingerprint tests first without changing public Matrix behavior.",
+      "Model dense prime matrices as the first vertical slice and run old and new selectors differentially for all explicit overrides, capability modes, dimensions, moduli, and representations before switching production dispatch.",
+      "Normalize and retain comparable Linux x64, Apple M1 arm64, and Linux arm64 evidence, then add only the checked overlays that measurably differ from portable policy.",
+      "Route matrix.py through the new selector and delete its crossover predicates; only after that stabilizes, migrate polynomial multiplication and other measured mathematical choices.",
+      "Add opt-in local tune output last so a local file cannot become an undocumented escape from profile identity, validation, or reproducibility."
+    ]
+  }
+}
