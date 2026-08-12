@@ -1,0 +1,1592 @@
+{
+  "schema": "sagejs.benchmark/macos-arm64-math-witness-v1",
+  "generated_at": "2026-08-12T13:02:19.949Z",
+  "host": {
+    "platform": "darwin",
+    "architecture": "arm64",
+    "uname": "Darwin studio.local 25.4.0 Darwin Kernel Version 25.4.0: Thu Mar 19 19:30:44 PDT 2026; root:xnu-12377.101.15~1/RELEASE_ARM64_T6000 arm64",
+    "macos": "ProductName:\t\tmacOS\nProductVersion:\t\t26.4\nBuildVersion:\t\t25E246",
+    "cpu": "Apple M1 Max",
+    "memory_bytes": 34359738368
+  },
+  "repository": {
+    "commit": "873b1d8e852146b5ff44f78a6c530688ce0bd735",
+    "branch": "agent/macos-arm64-math-witness",
+    "dirty": false
+  },
+  "configuration": {
+    "samples": 5,
+    "quick": false,
+    "filter": null,
+    "timing": "fresh-process first invocation and same-process warmed median; setup excluded",
+    "threads": 1
+  },
+  "runtimes": {
+    "sagejs": {
+      "executable": "/Volumes/sage/sagejs/bin/sagejs",
+      "version": "0.2.0",
+      "node_version": "v26.5.0"
+    },
+    "sage": {
+      "executable": "/Volumes/sage/sagelite-build/smoke/public-dev-cp314-20260704-004400/bin/sage",
+      "version": "10.9.post2"
+    }
+  },
+  "measurements": {
+    "sagejs": [
+      {
+        "name": "ZZ.matrix.str",
+        "family": "matrix",
+        "comparable": true,
+        "ok": true,
+        "process_ms": 365.847959,
+        "first_ms": 1.5630722045898438,
+        "warm_ms": 0.4622936248779297,
+        "summary": [
+          60199,
+          "[  353   116  -563  -800   522  ",
+          "3  -256  -493   829   592   -87]"
+        ],
+        "first_summary_matches": true
+      },
+      {
+        "name": "ZZ.matrix.dump",
+        "family": "matrix",
+        "comparable": false,
+        "ok": true,
+        "process_ms": 403.546084,
+        "first_ms": 4.319667816162109,
+        "warm_ms": 0.6206035614013672,
+        "summary": [
+          230529,
+          true
+        ],
+        "first_summary_matches": true
+      },
+      {
+        "name": "ZZ.matrix.load",
+        "family": "matrix",
+        "comparable": false,
+        "ok": true,
+        "process_ms": 402.4532079999999,
+        "first_ms": 1.377105712890625,
+        "warm_ms": 0.5877017974853516,
+        "summary": [
+          200,
+          200,
+          "691",
+          "-663",
+          "235",
+          true
+        ],
+        "first_summary_matches": true
+      },
+      {
+        "name": "QQ.matrix.str",
+        "family": "matrix",
+        "comparable": true,
+        "ok": true,
+        "process_ms": 420.929625,
+        "first_ms": 2.8526782989501953,
+        "warm_ms": 0.5002021789550781,
+        "summary": [
+          51359,
+          "[  353/8   116/9 -563/10 -800/11",
+          " -145/3  894/19    43/4  -22/21]"
+        ],
+        "first_summary_matches": true
+      },
+      {
+        "name": "QQ.matrix.dump",
+        "family": "matrix",
+        "comparable": false,
+        "ok": true,
+        "process_ms": 521.60825,
+        "first_ms": 4.426002502441406,
+        "warm_ms": 0.6387233734130859,
+        "summary": [
+          238222,
+          true
+        ],
+        "first_summary_matches": true
+      },
+      {
+        "name": "QQ.matrix.load",
+        "family": "matrix",
+        "comparable": false,
+        "ok": true,
+        "process_ms": 529.3447080000001,
+        "first_ms": 1.8813610076904297,
+        "warm_ms": 1.1150836944580078,
+        "summary": [
+          150,
+          150,
+          "691",
+          "-316/25",
+          "-706/11",
+          true
+        ],
+        "first_summary_matches": true
+      },
+      {
+        "name": "GF2.matrix.str",
+        "family": "matrix",
+        "comparable": true,
+        "ok": true,
+        "process_ms": 357.4859999999999,
+        "first_ms": 1.0275840759277344,
+        "warm_ms": 0.11134147644042969,
+        "summary": [
+          20199,
+          "[0 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1",
+          "0 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1]"
+        ],
+        "first_summary_matches": true
+      },
+      {
+        "name": "GF2.matrix.dump",
+        "family": "matrix",
+        "comparable": false,
+        "ok": true,
+        "process_ms": 547.1957500000003,
+        "first_ms": 3.9136409759521484,
+        "warm_ms": 0.396728515625,
+        "summary": [
+          250785,
+          true
+        ],
+        "first_summary_matches": true
+      },
+      {
+        "name": "GF2.matrix.load",
+        "family": "matrix",
+        "comparable": false,
+        "ok": true,
+        "process_ms": 587.6962079999998,
+        "first_ms": 4.163980484008789,
+        "warm_ms": 2.892017364501953,
+        "summary": [
+          500,
+          500,
+          "0",
+          "1",
+          "0",
+          true
+        ],
+        "first_summary_matches": true
+      },
+      {
+        "name": "GF7.matrix.str",
+        "family": "matrix",
+        "comparable": true,
+        "ok": true,
+        "process_ms": 357.3594579999999,
+        "first_ms": 1.5141963958740234,
+        "warm_ms": 0.47087669372558594,
+        "summary": [
+          20199,
+          "[3 4 4 5 4 5 5 6 5 6 6 0 6 6 0 0",
+          "1 0 1 1 2 1 2 2 3 2 3 3 4 3 4 4]"
+        ],
+        "first_summary_matches": true
+      },
+      {
+        "name": "GF7.matrix.dump",
+        "family": "matrix",
+        "comparable": false,
+        "ok": true,
+        "process_ms": 587.7933750000002,
+        "first_ms": 5.41234016418457,
+        "warm_ms": 1.1949539184570312,
+        "summary": [
+          250785,
+          true
+        ],
+        "first_summary_matches": true
+      },
+      {
+        "name": "GF7.matrix.load",
+        "family": "matrix",
+        "comparable": false,
+        "ok": true,
+        "process_ms": 620.822709,
+        "first_ms": 2.371072769165039,
+        "warm_ms": 1.1096000671386719,
+        "summary": [
+          500,
+          500,
+          "5",
+          "5",
+          "0",
+          true
+        ],
+        "first_summary_matches": true
+      },
+      {
+        "name": "GFword.matrix.str",
+        "family": "matrix",
+        "comparable": true,
+        "ok": true,
+        "process_ms": 1211.917042,
+        "first_ms": 116.729736328125,
+        "warm_ms": 103.79600524902344,
+        "summary": [
+          128159,
+          "[1996325805108194761 14429330013",
+          "72268360042  304793468474071194]"
+        ],
+        "first_summary_matches": true
+      },
+      {
+        "name": "GFword.matrix.dump",
+        "family": "matrix",
+        "comparable": false,
+        "ok": true,
+        "process_ms": 12815.029167,
+        "first_ms": 1378.2076835632324,
+        "warm_ms": 1369.734287261963,
+        "summary": [
+          19376378,
+          true
+        ],
+        "first_summary_matches": true
+      },
+      {
+        "name": "GFword.matrix.load",
+        "family": "matrix",
+        "comparable": false,
+        "ok": true,
+        "process_ms": 6008.353917,
+        "first_ms": 496.4888095855713,
+        "warm_ms": 471.86779975891113,
+        "summary": [
+          300,
+          300,
+          "2180869393181271879",
+          "1285076717554888376",
+          "304782911413743764",
+          true
+        ],
+        "first_summary_matches": true
+      },
+      {
+        "name": "ZZ.polynomial.construct",
+        "family": "polynomial",
+        "comparable": true,
+        "ok": true,
+        "process_ms": 378.56383300000016,
+        "first_ms": 33.51116180419922,
+        "warm_ms": 1.5206336975097656,
+        "summary": [
+          5000,
+          "205",
+          "867",
+          "315"
+        ],
+        "first_summary_matches": true
+      },
+      {
+        "name": "ZZ.polynomial.multiply",
+        "family": "polynomial",
+        "comparable": true,
+        "ok": true,
+        "process_ms": 362.1954579999983,
+        "first_ms": 1.2216567993164062,
+        "warm_ms": 0.1251697540283203,
+        "summary": [
+          4000,
+          "-294306",
+          "1",
+          "-341003154"
+        ],
+        "first_summary_matches": true
+      },
+      {
+        "name": "ZZ.polynomial.gcd",
+        "family": "polynomial",
+        "comparable": true,
+        "ok": true,
+        "process_ms": 363.17462499999965,
+        "first_ms": 0.44417381286621094,
+        "warm_ms": 0.1647472381591797,
+        "summary": [
+          500,
+          "712",
+          "1",
+          "502"
+        ],
+        "first_summary_matches": true
+      },
+      {
+        "name": "ZZ.polynomial.factor",
+        "family": "polynomial",
+        "comparable": false,
+        "ok": true,
+        "process_ms": 424.9391250000008,
+        "first_ms": 11.528253555297852,
+        "warm_ms": 8.629560470581055,
+        "summary": [
+          16,
+          "16"
+        ],
+        "first_summary_matches": true
+      },
+      {
+        "name": "ZZ.polynomial.str",
+        "family": "polynomial",
+        "comparable": true,
+        "ok": true,
+        "process_ms": 359.8149999999987,
+        "first_ms": 1.1973381042480469,
+        "warm_ms": 0.08606910705566406,
+        "summary": [
+          28,
+          "x^5000 - 3*x^2500 + 7*x - 11",
+          "x^5000 - 3*x^2500 + 7*x - 11"
+        ],
+        "first_summary_matches": true
+      },
+      {
+        "name": "ZZ.polynomial.dump",
+        "family": "polynomial",
+        "comparable": false,
+        "ok": true,
+        "process_ms": 371.208125000001,
+        "first_ms": 3.817319869995117,
+        "warm_ms": 0.20766258239746094,
+        "summary": [
+          29456,
+          true
+        ],
+        "first_summary_matches": true
+      },
+      {
+        "name": "ZZ.polynomial.load",
+        "family": "polynomial",
+        "comparable": false,
+        "ok": true,
+        "process_ms": 378.3657089999979,
+        "first_ms": 1.2981891632080078,
+        "warm_ms": 0.38933753967285156,
+        "summary": [
+          5000,
+          "303",
+          "1",
+          "413",
+          true
+        ],
+        "first_summary_matches": true
+      },
+      {
+        "name": "QQ.polynomial.construct",
+        "family": "polynomial",
+        "comparable": true,
+        "ok": true,
+        "process_ms": 437.94845799999894,
+        "first_ms": 37.38880157470703,
+        "warm_ms": 4.821300506591797,
+        "summary": [
+          5000,
+          "41/5",
+          "289",
+          "45/2"
+        ],
+        "first_summary_matches": true
+      },
+      {
+        "name": "QQ.polynomial.multiply",
+        "family": "polynomial",
+        "comparable": true,
+        "ok": true,
+        "process_ms": 398.33812500000204,
+        "first_ms": 0.9069442749023438,
+        "warm_ms": 0.32258033752441406,
+        "summary": [
+          4000,
+          "-49051/36",
+          "1",
+          "-422506136502822286361/83032042913820"
+        ],
+        "first_summary_matches": true
+      },
+      {
+        "name": "QQ.polynomial.gcd",
+        "family": "polynomial",
+        "comparable": true,
+        "ok": true,
+        "process_ms": 374.63595799999894,
+        "first_ms": 0.7688999176025391,
+        "warm_ms": 0.4744529724121094,
+        "summary": [
+          500,
+          "356/15",
+          "1",
+          "502"
+        ],
+        "first_summary_matches": true
+      },
+      {
+        "name": "QQ.polynomial.factor",
+        "family": "polynomial",
+        "comparable": false,
+        "ok": true,
+        "process_ms": 425.6055000000015,
+        "first_ms": 11.762857437133789,
+        "warm_ms": 8.660554885864258,
+        "summary": [
+          16,
+          "16"
+        ],
+        "first_summary_matches": true
+      },
+      {
+        "name": "QQ.polynomial.str",
+        "family": "polynomial",
+        "comparable": true,
+        "ok": true,
+        "process_ms": 359.30137500000274,
+        "first_ms": 1.239776611328125,
+        "warm_ms": 0.11563301086425781,
+        "summary": [
+          28,
+          "x^5000 - 3*x^2500 + 7*x - 11",
+          "x^5000 - 3*x^2500 + 7*x - 11"
+        ],
+        "first_summary_matches": true
+      },
+      {
+        "name": "QQ.polynomial.dump",
+        "family": "polynomial",
+        "comparable": false,
+        "ok": true,
+        "process_ms": 420.6920829999981,
+        "first_ms": 4.285573959350586,
+        "warm_ms": 0.4832744598388672,
+        "summary": [
+          53505,
+          true
+        ],
+        "first_summary_matches": true
+      },
+      {
+        "name": "QQ.polynomial.load",
+        "family": "polynomial",
+        "comparable": false,
+        "ok": true,
+        "process_ms": 411.86812499999724,
+        "first_ms": 1.6624927520751953,
+        "warm_ms": 0.7691383361816406,
+        "summary": [
+          5000,
+          "303/10",
+          "1",
+          "413/30",
+          true
+        ],
+        "first_summary_matches": true
+      },
+      {
+        "name": "GF7.polynomial.construct",
+        "family": "polynomial",
+        "comparable": true,
+        "ok": true,
+        "process_ms": 335.2862079999977,
+        "first_ms": 1.0678768157958984,
+        "warm_ms": 0.23937225341796875,
+        "summary": [
+          5000,
+          "2",
+          "6",
+          "0"
+        ],
+        "first_summary_matches": true
+      },
+      {
+        "name": "GF7.polynomial.multiply",
+        "family": "polynomial",
+        "comparable": true,
+        "ok": true,
+        "process_ms": 379.9630410000027,
+        "first_ms": 33.77676010131836,
+        "warm_ms": 0.10371208190917969,
+        "summary": [
+          4000,
+          "2",
+          "1",
+          "5"
+        ],
+        "first_summary_matches": true
+      },
+      {
+        "name": "GF7.polynomial.gcd",
+        "family": "polynomial",
+        "comparable": true,
+        "ok": true,
+        "process_ms": 388.76737499999945,
+        "first_ms": 0.7309913635253906,
+        "warm_ms": 0.31948089599609375,
+        "summary": [
+          500,
+          "5",
+          "1",
+          "5"
+        ],
+        "first_summary_matches": true
+      },
+      {
+        "name": "GF7.polynomial.factor",
+        "family": "polynomial",
+        "comparable": false,
+        "ok": true,
+        "process_ms": 396.3765830000011,
+        "first_ms": 21.873950958251953,
+        "warm_ms": 2.248048782348633,
+        "summary": [
+          39,
+          "39"
+        ],
+        "first_summary_matches": true
+      },
+      {
+        "name": "GF7.polynomial.str",
+        "family": "polynomial",
+        "comparable": true,
+        "ok": true,
+        "process_ms": 377.6746660000026,
+        "first_ms": 0.3142356872558594,
+        "warm_ms": 0.09679794311523438,
+        "summary": [
+          21,
+          "x^5000 + 4*x^2500 + 3",
+          "x^5000 + 4*x^2500 + 3"
+        ],
+        "first_summary_matches": true
+      },
+      {
+        "name": "GF7.polynomial.dump",
+        "family": "polynomial",
+        "comparable": false,
+        "ok": true,
+        "process_ms": 384.82074999999895,
+        "first_ms": 4.219770431518555,
+        "warm_ms": 0.41174888610839844,
+        "summary": [
+          5798,
+          true
+        ],
+        "first_summary_matches": true
+      },
+      {
+        "name": "GF7.polynomial.load",
+        "family": "polynomial",
+        "comparable": false,
+        "ok": true,
+        "process_ms": 394.53983299999527,
+        "first_ms": 1.8177032470703125,
+        "warm_ms": 0.5412101745605469,
+        "summary": [
+          5000,
+          "2",
+          "1",
+          "0",
+          true
+        ],
+        "first_summary_matches": true
+      },
+      {
+        "name": "GFword.polynomial.construct",
+        "family": "polynomial",
+        "comparable": true,
+        "ok": true,
+        "process_ms": 336.03820899999846,
+        "first_ms": 0.8981227874755859,
+        "warm_ms": 0.16021728515625,
+        "summary": [
+          5000,
+          "336861275000155735",
+          "384453359988656935",
+          "360657317494406335"
+        ],
+        "first_summary_matches": true
+      },
+      {
+        "name": "GFword.polynomial.multiply",
+        "family": "polynomial",
+        "comparable": true,
+        "ok": true,
+        "process_ms": 379.3947079999998,
+        "first_ms": 33.94675254821777,
+        "warm_ms": 0.21004676818847656,
+        "summary": [
+          4000,
+          "1011336248186754817",
+          "1",
+          "1954375002789348002"
+        ],
+        "first_summary_matches": true
+      },
+      {
+        "name": "GFword.polynomial.gcd",
+        "family": "polynomial",
+        "comparable": true,
+        "ok": true,
+        "process_ms": 375.7280830000018,
+        "first_ms": 0.7817745208740234,
+        "warm_ms": 0.40531158447265625,
+        "summary": [
+          500,
+          "613676657109771412",
+          "1",
+          "616056261359196472"
+        ],
+        "first_summary_matches": true
+      },
+      {
+        "name": "GFword.polynomial.factor",
+        "family": "polynomial",
+        "comparable": false,
+        "ok": true,
+        "process_ms": 443.57424999999785,
+        "first_ms": 12.990713119506836,
+        "warm_ms": 9.390830993652344,
+        "summary": [
+          75,
+          "75"
+        ],
+        "first_summary_matches": true
+      },
+      {
+        "name": "GFword.polynomial.str",
+        "family": "polynomial",
+        "comparable": true,
+        "ok": true,
+        "process_ms": 368.3672499999957,
+        "first_ms": 0.31685829162597656,
+        "warm_ms": 0.09322166442871094,
+        "summary": [
+          63,
+          "x^5000 + 2305843009213693948*x^2",
+          "2500 + 7*x + 2305843009213693940"
+        ],
+        "first_summary_matches": true
+      },
+      {
+        "name": "GFword.polynomial.dump",
+        "family": "polynomial",
+        "comparable": false,
+        "ok": true,
+        "process_ms": 389.0167500000025,
+        "first_ms": 4.1446685791015625,
+        "warm_ms": 0.3578662872314453,
+        "summary": [
+          40823,
+          true
+        ],
+        "first_summary_matches": true
+      },
+      {
+        "name": "GFword.polynomial.load",
+        "family": "polynomial",
+        "comparable": false,
+        "ok": true,
+        "process_ms": 390.0817089999982,
+        "first_ms": 1.5041828155517578,
+        "warm_ms": 0.3719329833984375,
+        "summary": [
+          5000,
+          "2089549440844503344",
+          "1",
+          "2113345483338753944",
+          true
+        ],
+        "first_summary_matches": true
+      }
+    ],
+    "sage": [
+      {
+        "name": "ZZ.matrix.str",
+        "family": "matrix",
+        "comparable": true,
+        "ok": true,
+        "process_ms": 2392.2863750000033,
+        "first_ms": 3.865250386297703,
+        "warm_ms": 3.6129578948020935,
+        "summary": [
+          60199,
+          "[  353   116  -563  -800   522  ",
+          "3  -256  -493   829   592   -87]"
+        ],
+        "first_summary_matches": true
+      },
+      {
+        "name": "ZZ.matrix.dump",
+        "family": "matrix",
+        "comparable": false,
+        "ok": true,
+        "process_ms": 2362.6765000000014,
+        "first_ms": 2.254832535982132,
+        "warm_ms": 2.147332765161991,
+        "summary": [
+          11990,
+          true
+        ],
+        "first_summary_matches": true
+      },
+      {
+        "name": "ZZ.matrix.load",
+        "family": "matrix",
+        "comparable": false,
+        "ok": true,
+        "process_ms": 2360.541124999996,
+        "first_ms": 3.381292335689068,
+        "warm_ms": 2.7202079072594643,
+        "summary": [
+          200,
+          200,
+          "691",
+          "-663",
+          "235",
+          true
+        ],
+        "first_summary_matches": true
+      },
+      {
+        "name": "QQ.matrix.str",
+        "family": "matrix",
+        "comparable": true,
+        "ok": true,
+        "process_ms": 2378.8980840000004,
+        "first_ms": 3.1525827944278717,
+        "warm_ms": 2.9376670718193054,
+        "summary": [
+          51359,
+          "[  353/8   116/9 -563/10 -800/11",
+          " -145/3  894/19    43/4  -22/21]"
+        ],
+        "first_summary_matches": true
+      },
+      {
+        "name": "QQ.matrix.dump",
+        "family": "matrix",
+        "comparable": false,
+        "ok": true,
+        "process_ms": 2453.2928329999995,
+        "first_ms": 8.419792167842388,
+        "warm_ms": 8.27800016850233,
+        "summary": [
+          57270,
+          true
+        ],
+        "first_summary_matches": true
+      },
+      {
+        "name": "QQ.matrix.load",
+        "family": "matrix",
+        "comparable": false,
+        "ok": true,
+        "process_ms": 2432.990709000005,
+        "first_ms": 7.12920818477869,
+        "warm_ms": 6.906791590154171,
+        "summary": [
+          150,
+          150,
+          "691",
+          "-316/25",
+          "-706/11",
+          true
+        ],
+        "first_summary_matches": true
+      },
+      {
+        "name": "GF2.matrix.str",
+        "family": "matrix",
+        "comparable": true,
+        "ok": true,
+        "process_ms": 2335.892291999997,
+        "first_ms": 0.03075040876865387,
+        "warm_ms": 0.018209218978881836,
+        "summary": [
+          20199,
+          "[0 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1",
+          "0 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1]"
+        ],
+        "first_summary_matches": true
+      },
+      {
+        "name": "GF2.matrix.dump",
+        "family": "matrix",
+        "comparable": false,
+        "ok": true,
+        "process_ms": 2433.852165999997,
+        "first_ms": 1.4736242592334747,
+        "warm_ms": 1.3105003163218498,
+        "summary": [
+          267,
+          true
+        ],
+        "first_summary_matches": true
+      },
+      {
+        "name": "GF2.matrix.load",
+        "family": "matrix",
+        "comparable": false,
+        "ok": true,
+        "process_ms": 2430.393833000002,
+        "first_ms": 1.8436247482895851,
+        "warm_ms": 1.2232912704348564,
+        "summary": [
+          500,
+          500,
+          "0",
+          "1",
+          "0",
+          true
+        ],
+        "first_summary_matches": true
+      },
+      {
+        "name": "GF7.matrix.str",
+        "family": "matrix",
+        "comparable": true,
+        "ok": true,
+        "process_ms": 2457.1167080000014,
+        "first_ms": 12.533583678305149,
+        "warm_ms": 12.533166445791721,
+        "summary": [
+          20199,
+          "[3 4 4 5 4 5 5 6 5 6 6 0 6 6 0 0",
+          "1 0 1 1 2 1 2 2 3 2 3 3 4 3 4 4]"
+        ],
+        "first_summary_matches": true
+      },
+      {
+        "name": "GF7.matrix.dump",
+        "family": "matrix",
+        "comparable": false,
+        "ok": true,
+        "process_ms": 2467.0522090000013,
+        "first_ms": 2.9627904295921326,
+        "warm_ms": 2.676749601960182,
+        "summary": [
+          10928,
+          true
+        ],
+        "first_summary_matches": true
+      },
+      {
+        "name": "GF7.matrix.load",
+        "family": "matrix",
+        "comparable": false,
+        "ok": true,
+        "process_ms": 2443.9028749999998,
+        "first_ms": 0.776125118136406,
+        "warm_ms": 0.12412481009960175,
+        "summary": [
+          500,
+          500,
+          "5",
+          "5",
+          "0",
+          true
+        ],
+        "first_summary_matches": true
+      },
+      {
+        "name": "GFword.matrix.str",
+        "family": "matrix",
+        "comparable": true,
+        "ok": true,
+        "process_ms": 2419.2152500000084,
+        "first_ms": 8.18466767668724,
+        "warm_ms": 7.92370829731226,
+        "summary": [
+          128159,
+          "[1996325805108194761 14429330013",
+          "72268360042  304793468474071194]"
+        ],
+        "first_summary_matches": true
+      },
+      {
+        "name": "GFword.matrix.dump",
+        "family": "matrix",
+        "comparable": false,
+        "ok": true,
+        "process_ms": 5475.624832999994,
+        "first_ms": 358.98158233612776,
+        "warm_ms": 353.685250505805,
+        "summary": [
+          1942520,
+          true
+        ],
+        "first_summary_matches": true
+      },
+      {
+        "name": "GFword.matrix.load",
+        "family": "matrix",
+        "comparable": false,
+        "ok": true,
+        "process_ms": 3813.2421659999964,
+        "first_ms": 112.69166599959135,
+        "warm_ms": 122.22720868885517,
+        "summary": [
+          300,
+          300,
+          "2180869393181271879",
+          "1285076717554888376",
+          "304782911413743764",
+          true
+        ],
+        "first_summary_matches": true
+      },
+      {
+        "name": "ZZ.polynomial.construct",
+        "family": "polynomial",
+        "comparable": true,
+        "ok": true,
+        "process_ms": 2327.509791999997,
+        "first_ms": 0.1454995945096016,
+        "warm_ms": 0.08229073137044907,
+        "summary": [
+          5000,
+          "205",
+          "867",
+          "315"
+        ],
+        "first_summary_matches": true
+      },
+      {
+        "name": "ZZ.polynomial.multiply",
+        "family": "polynomial",
+        "comparable": true,
+        "ok": true,
+        "process_ms": 2320.8729579999927,
+        "first_ms": 0.19366666674613953,
+        "warm_ms": 0.04816707223653793,
+        "summary": [
+          4000,
+          "-294306",
+          "1",
+          "-341003154"
+        ],
+        "first_summary_matches": true
+      },
+      {
+        "name": "ZZ.polynomial.gcd",
+        "family": "polynomial",
+        "comparable": true,
+        "ok": true,
+        "process_ms": 2322.4727920000005,
+        "first_ms": 0.16533397138118744,
+        "warm_ms": 0.11987518519163132,
+        "summary": [
+          500,
+          "712",
+          "1",
+          "502"
+        ],
+        "first_summary_matches": true
+      },
+      {
+        "name": "ZZ.polynomial.factor",
+        "family": "polynomial",
+        "comparable": false,
+        "ok": true,
+        "process_ms": 2330.53575000001,
+        "first_ms": 3.584541380405426,
+        "warm_ms": 1.904292032122612,
+        "summary": [
+          16,
+          "16"
+        ],
+        "first_summary_matches": true
+      },
+      {
+        "name": "ZZ.polynomial.str",
+        "family": "polynomial",
+        "comparable": true,
+        "ok": true,
+        "process_ms": 2318.3797919999924,
+        "first_ms": 0.6405413150787354,
+        "warm_ms": 0.042582862079143524,
+        "summary": [
+          28,
+          "x^5000 - 3*x^2500 + 7*x - 11",
+          "x^5000 - 3*x^2500 + 7*x - 11"
+        ],
+        "first_summary_matches": true
+      },
+      {
+        "name": "ZZ.polynomial.dump",
+        "family": "polynomial",
+        "comparable": false,
+        "ok": true,
+        "process_ms": 2398.8178749999934,
+        "first_ms": 10.32475009560585,
+        "warm_ms": 10.020208545029163,
+        "summary": [
+          42293,
+          true
+        ],
+        "first_summary_matches": true
+      },
+      {
+        "name": "ZZ.polynomial.load",
+        "family": "polynomial",
+        "comparable": false,
+        "ok": true,
+        "process_ms": 2353.201832999999,
+        "first_ms": 2.732708118855953,
+        "warm_ms": 2.644750289618969,
+        "summary": [
+          5000,
+          "303",
+          "1",
+          "413",
+          true
+        ],
+        "first_summary_matches": true
+      },
+      {
+        "name": "QQ.polynomial.construct",
+        "family": "polynomial",
+        "comparable": true,
+        "ok": true,
+        "process_ms": 2336.3783750000002,
+        "first_ms": 0.21533295512199402,
+        "warm_ms": 0.18700025975704193,
+        "summary": [
+          5000,
+          "41/5",
+          "289",
+          "45/2"
+        ],
+        "first_summary_matches": true
+      },
+      {
+        "name": "QQ.polynomial.multiply",
+        "family": "polynomial",
+        "comparable": true,
+        "ok": true,
+        "process_ms": 2329.341916999998,
+        "first_ms": 0.41899923235177994,
+        "warm_ms": 0.2354579046368599,
+        "summary": [
+          4000,
+          "-49051/36",
+          "1",
+          "-422506136502822286361/83032042913820"
+        ],
+        "first_summary_matches": true
+      },
+      {
+        "name": "QQ.polynomial.gcd",
+        "family": "polynomial",
+        "comparable": true,
+        "ok": true,
+        "process_ms": 2322.063666999995,
+        "first_ms": 0.5329996347427368,
+        "warm_ms": 0.40458235889673233,
+        "summary": [
+          500,
+          "356/15",
+          "1",
+          "502"
+        ],
+        "first_summary_matches": true
+      },
+      {
+        "name": "QQ.polynomial.factor",
+        "family": "polynomial",
+        "comparable": false,
+        "ok": true,
+        "process_ms": 2334.5375420000055,
+        "first_ms": 3.7656258791685104,
+        "warm_ms": 1.939665526151657,
+        "summary": [
+          16,
+          "16"
+        ],
+        "first_summary_matches": true
+      },
+      {
+        "name": "QQ.polynomial.str",
+        "family": "polynomial",
+        "comparable": true,
+        "ok": true,
+        "process_ms": 2355.6181249999936,
+        "first_ms": 1.7149578779935837,
+        "warm_ms": 0.8132494986057281,
+        "summary": [
+          28,
+          "x^5000 - 3*x^2500 + 7*x - 11",
+          "x^5000 - 3*x^2500 + 7*x - 11"
+        ],
+        "first_summary_matches": true
+      },
+      {
+        "name": "QQ.polynomial.dump",
+        "family": "polynomial",
+        "comparable": false,
+        "ok": true,
+        "process_ms": 2457.225000000006,
+        "first_ms": 11.390374973416328,
+        "warm_ms": 11.226249858736992,
+        "summary": [
+          50228,
+          true
+        ],
+        "first_summary_matches": true
+      },
+      {
+        "name": "QQ.polynomial.load",
+        "family": "polynomial",
+        "comparable": false,
+        "ok": true,
+        "process_ms": 2354.5206250000047,
+        "first_ms": 3.4904172644019127,
+        "warm_ms": 3.407667391002178,
+        "summary": [
+          5000,
+          "303/10",
+          "1",
+          "413/30",
+          true
+        ],
+        "first_summary_matches": true
+      },
+      {
+        "name": "GF7.polynomial.construct",
+        "family": "polynomial",
+        "comparable": true,
+        "ok": true,
+        "process_ms": 2347.9989160000114,
+        "first_ms": 1.1665839701890945,
+        "warm_ms": 0.6598755717277527,
+        "summary": [
+          5000,
+          "2",
+          "6",
+          "0"
+        ],
+        "first_summary_matches": true
+      },
+      {
+        "name": "GF7.polynomial.multiply",
+        "family": "polynomial",
+        "comparable": true,
+        "ok": true,
+        "process_ms": 2348.425457999998,
+        "first_ms": 0.17224997282028198,
+        "warm_ms": 0.020333565771579742,
+        "summary": [
+          4000,
+          "2",
+          "1",
+          "5"
+        ],
+        "first_summary_matches": true
+      },
+      {
+        "name": "GF7.polynomial.gcd",
+        "family": "polynomial",
+        "comparable": true,
+        "ok": true,
+        "process_ms": 2340.7037500000006,
+        "first_ms": 0.08987542241811752,
+        "warm_ms": 0.048208050429821014,
+        "summary": [
+          500,
+          "5",
+          "1",
+          "5"
+        ],
+        "first_summary_matches": true
+      },
+      {
+        "name": "GF7.polynomial.factor",
+        "family": "polynomial",
+        "comparable": false,
+        "ok": true,
+        "process_ms": 2351.707791000008,
+        "first_ms": 1.194375567138195,
+        "warm_ms": 0.481458380818367,
+        "summary": [
+          39,
+          "39"
+        ],
+        "first_summary_matches": true
+      },
+      {
+        "name": "GF7.polynomial.str",
+        "family": "polynomial",
+        "comparable": true,
+        "ok": true,
+        "process_ms": 2390.2894579999993,
+        "first_ms": 2.985832281410694,
+        "warm_ms": 2.2485004737973213,
+        "summary": [
+          21,
+          "x^5000 + 4*x^2500 + 3",
+          "x^5000 + 4*x^2500 + 3"
+        ],
+        "first_summary_matches": true
+      },
+      {
+        "name": "GF7.polynomial.dump",
+        "family": "polynomial",
+        "comparable": false,
+        "ok": true,
+        "process_ms": 2506.82654200001,
+        "first_ms": 16.16083364933729,
+        "warm_ms": 15.899875201284885,
+        "summary": [
+          46097,
+          true
+        ],
+        "first_summary_matches": true
+      },
+      {
+        "name": "GF7.polynomial.load",
+        "family": "polynomial",
+        "comparable": false,
+        "ok": true,
+        "process_ms": 2436.063540999996,
+        "first_ms": 4.326458089053631,
+        "warm_ms": 4.316166043281555,
+        "summary": [
+          5000,
+          "2",
+          "1",
+          "0",
+          true
+        ],
+        "first_summary_matches": true
+      },
+      {
+        "name": "GFword.polynomial.construct",
+        "family": "polynomial",
+        "comparable": true,
+        "ok": true,
+        "process_ms": 2355.8019170000043,
+        "first_ms": 1.9352072849869728,
+        "warm_ms": 1.4343755319714546,
+        "summary": [
+          5000,
+          "336861275000155735",
+          "384453359988656935",
+          "360657317494406335"
+        ],
+        "first_summary_matches": true
+      },
+      {
+        "name": "GFword.polynomial.multiply",
+        "family": "polynomial",
+        "comparable": true,
+        "ok": true,
+        "process_ms": 2355.008707999994,
+        "first_ms": 0.31729042530059814,
+        "warm_ms": 0.14541763812303543,
+        "summary": [
+          4000,
+          "1011336248186754817",
+          "1",
+          "1954375002789348002"
+        ],
+        "first_summary_matches": true
+      },
+      {
+        "name": "GFword.polynomial.gcd",
+        "family": "polynomial",
+        "comparable": true,
+        "ok": true,
+        "process_ms": 2350.867333000002,
+        "first_ms": 0.1760842278599739,
+        "warm_ms": 0.12970902025699615,
+        "summary": [
+          500,
+          "613676657109771412",
+          "1",
+          "616056261359196472"
+        ],
+        "first_summary_matches": true
+      },
+      {
+        "name": "GFword.polynomial.factor",
+        "family": "polynomial",
+        "comparable": false,
+        "ok": true,
+        "process_ms": 2394.118791999994,
+        "first_ms": 7.344499230384827,
+        "warm_ms": 6.403333507478237,
+        "summary": [
+          75,
+          "75"
+        ],
+        "first_summary_matches": true
+      },
+      {
+        "name": "GFword.polynomial.str",
+        "family": "polynomial",
+        "comparable": true,
+        "ok": true,
+        "process_ms": 2394.45425000001,
+        "first_ms": 3.2256674021482468,
+        "warm_ms": 2.447250299155712,
+        "summary": [
+          63,
+          "x^5000 + 2305843009213693948*x^2",
+          "2500 + 7*x + 2305843009213693940"
+        ],
+        "first_summary_matches": true
+      },
+      {
+        "name": "GFword.polynomial.dump",
+        "family": "polynomial",
+        "comparable": false,
+        "ok": true,
+        "process_ms": 2552.618374999991,
+        "first_ms": 21.50920871645212,
+        "warm_ms": 21.178333088755608,
+        "summary": [
+          108573,
+          true
+        ],
+        "first_summary_matches": true
+      },
+      {
+        "name": "GFword.polynomial.load",
+        "family": "polynomial",
+        "comparable": false,
+        "ok": true,
+        "process_ms": 2445.023499999981,
+        "first_ms": 6.864042021334171,
+        "warm_ms": 6.823291070759296,
+        "summary": [
+          5000,
+          "2089549440844503344",
+          "1",
+          "2113345483338753944",
+          true
+        ],
+        "first_summary_matches": true
+      }
+    ]
+  },
+  "comparison": [
+    {
+      "name": "ZZ.matrix.str",
+      "sagejs_over_sage": 0.1279543350181369,
+      "summaries_match": true
+    },
+    {
+      "name": "ZZ.matrix.dump",
+      "sagejs_over_sage": 0.28901135933375,
+      "summaries_match": null
+    },
+    {
+      "name": "ZZ.matrix.load",
+      "sagejs_over_sage": 0.2160503231818943,
+      "summaries_match": null
+    },
+    {
+      "name": "QQ.matrix.str",
+      "sagejs_over_sage": 0.17027190853363158,
+      "summaries_match": true
+    },
+    {
+      "name": "QQ.matrix.dump",
+      "sagejs_over_sage": 0.07715913993858312,
+      "summaries_match": null
+    },
+    {
+      "name": "QQ.matrix.load",
+      "sagejs_over_sage": 0.1614474217012124,
+      "summaries_match": null
+    },
+    {
+      "name": "GF2.matrix.str",
+      "sagejs_over_sage": 6.114566284779051,
+      "summaries_match": true
+    },
+    {
+      "name": "GF2.matrix.dump",
+      "sagejs_over_sage": 0.30273057601274644,
+      "summaries_match": null
+    },
+    {
+      "name": "GF2.matrix.load",
+      "sagejs_over_sage": 2.364128179770217,
+      "summaries_match": null
+    },
+    {
+      "name": "GF7.matrix.str",
+      "sagejs_over_sage": 0.037570449236608745,
+      "summaries_match": true
+    },
+    {
+      "name": "GF7.matrix.dump",
+      "sagejs_over_sage": 0.446419761333659,
+      "summaries_match": null
+    },
+    {
+      "name": "GF7.matrix.load",
+      "sagejs_over_sage": 8.939389846786417,
+      "summaries_match": null
+    },
+    {
+      "name": "GFword.matrix.str",
+      "sagejs_over_sage": 13.09942281497557,
+      "summaries_match": true
+    },
+    {
+      "name": "GFword.matrix.dump",
+      "sagejs_over_sage": 3.8727492461252115,
+      "summaries_match": null
+    },
+    {
+      "name": "GFword.matrix.load",
+      "sagejs_over_sage": 3.8605790381756186,
+      "summaries_match": null
+    },
+    {
+      "name": "ZZ.polynomial.construct",
+      "sagejs_over_sage": 18.47879672698876,
+      "summaries_match": true
+    },
+    {
+      "name": "ZZ.polynomial.multiply",
+      "sagejs_over_sage": 2.598658133374582,
+      "summaries_match": true
+    },
+    {
+      "name": "ZZ.polynomial.gcd",
+      "sagejs_over_sage": 1.3743231169638348,
+      "summaries_match": true
+    },
+    {
+      "name": "ZZ.polynomial.factor",
+      "sagejs_over_sage": 4.531637125510706,
+      "summaries_match": null
+    },
+    {
+      "name": "ZZ.polynomial.str",
+      "sagejs_over_sage": 2.021214705946679,
+      "summaries_match": true
+    },
+    {
+      "name": "ZZ.polynomial.dump",
+      "sagejs_over_sage": 0.020724377288582323,
+      "summaries_match": null
+    },
+    {
+      "name": "ZZ.polynomial.load",
+      "sagejs_over_sage": 0.1472114555393219,
+      "summaries_match": null
+    },
+    {
+      "name": "QQ.polynomial.construct",
+      "sagejs_over_sage": 25.78231983664525,
+      "summaries_match": true
+    },
+    {
+      "name": "QQ.polynomial.multiply",
+      "sagejs_over_sage": 1.3700127758374503,
+      "summaries_match": true
+    },
+    {
+      "name": "QQ.polynomial.gcd",
+      "sagejs_over_sage": 1.1726981218506642,
+      "summaries_match": true
+    },
+    {
+      "name": "QQ.polynomial.factor",
+      "sagejs_over_sage": 4.464973351898977,
+      "summaries_match": null
+    },
+    {
+      "name": "QQ.polynomial.str",
+      "sagejs_over_sage": 0.1421863906003069,
+      "summaries_match": true
+    },
+    {
+      "name": "QQ.polynomial.dump",
+      "sagejs_over_sage": 0.04304861070437977,
+      "summaries_match": null
+    },
+    {
+      "name": "QQ.polynomial.load",
+      "sagejs_over_sage": 0.22570815984345258,
+      "summaries_match": null
+    },
+    {
+      "name": "GF7.polynomial.construct",
+      "sagejs_over_sage": 0.3627536215520453,
+      "summaries_match": true
+    },
+    {
+      "name": "GF7.polynomial.multiply",
+      "sagejs_over_sage": 5.100535886044062,
+      "summaries_match": true
+    },
+    {
+      "name": "GF7.polynomial.gcd",
+      "sagejs_over_sage": 6.627127484883024,
+      "summaries_match": true
+    },
+    {
+      "name": "GF7.polynomial.factor",
+      "sagejs_over_sage": 4.66924841671148,
+      "summaries_match": null
+    },
+    {
+      "name": "GF7.polynomial.str",
+      "sagejs_over_sage": 0.043049998985216886,
+      "summaries_match": true
+    },
+    {
+      "name": "GF7.polynomial.dump",
+      "sagejs_over_sage": 0.025896359618918556,
+      "summaries_match": null
+    },
+    {
+      "name": "GF7.polynomial.load",
+      "sagejs_over_sage": 0.1253914166261009,
+      "summaries_match": null
+    },
+    {
+      "name": "GFword.polynomial.construct",
+      "sagejs_over_sage": 0.11169828373748254,
+      "summaries_match": true
+    },
+    {
+      "name": "GFword.polynomial.multiply",
+      "sagejs_over_sage": 1.4444380399766876,
+      "summaries_match": true
+    },
+    {
+      "name": "GFword.polynomial.gcd",
+      "sagejs_over_sage": 3.124775622154889,
+      "summaries_match": true
+    },
+    {
+      "name": "GFword.polynomial.factor",
+      "sagejs_over_sage": 1.4665534729192395,
+      "summaries_match": null
+    },
+    {
+      "name": "GFword.polynomial.str",
+      "sagejs_over_sage": 0.03809241108719934,
+      "summaries_match": true
+    },
+    {
+      "name": "GFword.polynomial.dump",
+      "sagejs_over_sage": 0.016897755160034306,
+      "summaries_match": null
+    },
+    {
+      "name": "GFword.polynomial.load",
+      "sagejs_over_sage": 0.05450932395253201,
+      "summaries_match": null
+    }
+  ]
+}
