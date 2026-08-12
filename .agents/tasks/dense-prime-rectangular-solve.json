@@ -4,7 +4,7 @@
   "id": "dense-prime-rectangular-solve",
   "title": "Dense Prime Rectangular Solve",
   "lane": "arithmetic-algebra",
-  "status": "active",
+  "status": "complete",
   "owner": "user",
   "objective": "Eliminate scalar host extraction after rectangular dense GF(p) solve_right by using one source-transparent packed typed-Python kernel, with Sage-compatible semantics and benchmarked fallback/native behavior",
   "base_commit": "3b2a208515e1013c236883dae780ac3658490a90",
