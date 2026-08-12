@@ -26,6 +26,14 @@ const {
 } = require("node:child_process");
 
 const packageRoot = resolve(__dirname, "..");
+const repositoryRoot = resolve(packageRoot, "..", "..");
+const {
+  NATIVE_MATH_DEPENDENCY_VERSIONS,
+  flintObservedCapabilities,
+  nativeMathBuildProfile,
+} = require(join(repositoryRoot, "scripts", "native-math-profile.cjs"));
+const mathBuildProfile = nativeMathBuildProfile();
+const mathBuildOptions = mathBuildProfile.buildOptions;
 const buildRoot = join(packageRoot, ".native");
 const windowsTriplet = "x64-windows-static-md-release";
 const defaultPrefix = process.platform === "win32"
@@ -52,7 +60,7 @@ const macosDeploymentTarget = process.platform === "darwin"
 const dependencies = [
   {
     name: "gmp",
-    version: "6.3.0",
+    version: NATIVE_MATH_DEPENDENCY_VERSIONS.gmp,
     url: "https://gmplib.org/download/gmp/gmp-6.3.0.tar.xz",
     mirrors: ["https://ftp.gnu.org/gnu/gmp/gmp-6.3.0.tar.xz"],
     sha256: "a3c2b80201b89e68616f4ad30bc66aee4927c3ce50e33929ca819d5c43538898",
@@ -60,35 +68,35 @@ const dependencies = [
   },
   {
     name: "mpfr",
-    version: "4.2.2",
+    version: NATIVE_MATH_DEPENDENCY_VERSIONS.mpfr,
     url: "https://ftp.gnu.org/gnu/mpfr/mpfr-4.2.2.tar.xz",
     sha256: "b67ba0383ef7e8a8563734e2e889ef5ec3c3b898a01d00fa0a6869ad81c6ce01",
     archive: process.env.SAGEJS_MPFR_TARBALL,
   },
   {
     name: "mpc",
-    version: "1.4.1",
+    version: NATIVE_MATH_DEPENDENCY_VERSIONS.mpc,
     url: "https://ftp.gnu.org/gnu/mpc/mpc-1.4.1.tar.xz",
     sha256: "91204cd32f164bd3b7c992d4a6a8ce6519511aadab30f78b6982d0bf8d73e931",
     archive: process.env.SAGEJS_MPC_TARBALL,
   },
   {
     name: "openblas",
-    version: "0.3.33",
+    version: NATIVE_MATH_DEPENDENCY_VERSIONS.openblas,
     url: "https://github.com/OpenMathLib/OpenBLAS/releases/download/v0.3.33/OpenBLAS-0.3.33.tar.gz",
     sha256: "6761af1d9f5d353ab4f0b7497be2643313b36c8f31caec0144bfef198e71e6ab",
     archive: process.env.SAGEJS_OPENBLAS_TARBALL,
   },
   {
     name: "flint",
-    version: "3.6.0",
+    version: NATIVE_MATH_DEPENDENCY_VERSIONS.flint,
     url: "https://flintlib.org/download/flint-3.6.0.tar.gz",
     sha256: "b95e2c7792f5eea4a1c8d2d42c4098434756832e57a094b295eb5dfdc9b4c36b",
     archive: process.env.SAGEJS_FLINT_TARBALL,
   },
   {
     name: "ffpoly",
-    version: "1.2.7",
+    version: NATIVE_MATH_DEPENDENCY_VERSIONS.ffpoly,
     url: "https://github.com/sagemathinc/sagejs/releases/download/native-sources-1/ff_poly_v1.2.7.tar",
     mirrors: ["https://math.mit.edu/~drew/ff_poly_v1.2.7.tar"],
     sha256: "ffbe5c7f7ce077f3fedb530656b0f7ae95268cf23a38c9adfc3f654a65973b13",
@@ -96,7 +104,7 @@ const dependencies = [
   },
   {
     name: "smalljac",
-    version: "4.1.3",
+    version: NATIVE_MATH_DEPENDENCY_VERSIONS.smalljac,
     url: "https://github.com/sagemathinc/sagejs/releases/download/native-sources-1/smalljac_v4.1.3.tar",
     mirrors: ["https://math.mit.edu/~drew/smalljac_v4.1.3.tar"],
     sha256: "5a145509e491bba19bf73d8104576083286bd35aea2a149c7c516e9ea5ca8ec7",
@@ -287,15 +295,12 @@ function extract(archive, dependency) {
 function buildGmp(source) {
   const configure = [
     `--prefix=${prefix}`,
-    "--disable-shared",
-    "--enable-static",
-    "--with-pic",
+    ...mathBuildOptions.gmp.configure,
   ];
-  if (process.arch === "x64") configure.push("--enable-fat");
   run("./configure", configure, {
     cwd: source,
     // GMP 6.3's configure probes use pre-C23 unprototyped functions.
-    env: { CFLAGS: "-O3 -fPIC -std=gnu17" },
+    env: { CFLAGS: mathBuildOptions.gmp.cflags.join(" ") },
   });
   run("make", [`-j${jobs}`], { cwd: source });
   run("make", ["check"], { cwd: source });
@@ -313,10 +318,14 @@ function buildMpfr(source) {
     ],
     {
       cwd: source,
-      env: { CFLAGS: "-O3 -fPIC" },
+      env: { CFLAGS: mathBuildOptions.mpfr.cflags.join(" ") },
     }
   );
-  run("make", [`-j${jobs}`, "CFLAGS=-O3 -fPIC"], { cwd: source });
+  run(
+    "make",
+    [`-j${jobs}`, `CFLAGS=${mathBuildOptions.mpfr.cflags.join(" ")}`],
+    { cwd: source },
+  );
   run("make", ["install"], { cwd: source });
 }
 
@@ -332,7 +341,7 @@ function buildMpc(source) {
     ],
     {
       cwd: source,
-      env: { CFLAGS: "-O3 -fPIC" },
+      env: { CFLAGS: mathBuildOptions.mpc.cflags.join(" ") },
     }
   );
   run("make", [`-j${jobs}`], { cwd: source });
@@ -368,20 +377,18 @@ function buildOpenBlas(source) {
 }
 
 function buildFlint(source) {
+  const configure = mathBuildOptions.flint.configure.map((option) =>
+    option.replace("<prefix>", prefix)
+  );
   run(
     "./configure",
     [
       `--prefix=${prefix}`,
-      "--enable-static",
-      "--disable-shared",
-      "--with-pic",
-      `--with-gmp=${prefix}`,
-      `--with-mpfr=${prefix}`,
-      `--with-blas=${prefix}`,
+      ...configure,
     ],
     {
       cwd: source,
-      env: { CFLAGS: "-O3 -fPIC" },
+      env: { CFLAGS: mathBuildOptions.flint.cflags.join(" ") },
     }
   );
   run("make", [`-j${jobs}`], { cwd: source });
@@ -466,7 +473,7 @@ async function main() {
     );
   }
   const stampPath = join(prefix, ".sagejs-flint-dependencies.json");
-  const expectedStamp = {
+  const expectedBuild = {
     ...(smalljacAccelerator
       ? { ffpoly: dependencies.find(({ name }) => name === "ffpoly").version }
       : {}),
@@ -484,6 +491,7 @@ async function main() {
         }
       : {}),
     ...(macosDeploymentTarget ? { macosDeploymentTarget } : {}),
+    mathBuildProfile,
   };
 
   if (
@@ -496,8 +504,8 @@ async function main() {
       (existsSync(join(prefix, "lib", "libff_poly.a")) &&
         existsSync(join(prefix, "lib", "libsmalljac.a")))) &&
     existsSync(stampPath) &&
-    JSON.stringify(JSON.parse(readFileSync(stampPath, "utf8"))) ===
-      JSON.stringify(expectedStamp)
+    JSON.stringify(JSON.parse(readFileSync(stampPath, "utf8")).build) ===
+      JSON.stringify(expectedBuild)
   ) {
     process.stdout.write(`Using native dependencies in ${prefix}\n`);
     return;
@@ -526,7 +534,11 @@ async function main() {
     buildFfpoly(source("ffpoly"));
     buildSmalljac(source("smalljac"));
   }
-  writeFileSync(stampPath, `${JSON.stringify(expectedStamp, null, 2)}\n`);
+  const buildStamp = {
+    build: expectedBuild,
+    observed: flintObservedCapabilities(prefix),
+  };
+  writeFileSync(stampPath, `${JSON.stringify(buildStamp, null, 2)}\n`);
   process.stdout.write(`Native dependencies installed in ${prefix}\n`);
 }
 

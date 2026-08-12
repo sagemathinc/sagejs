@@ -734,11 +734,12 @@ Regenerate the reviewed native-boundary inventory (ffi audit only).
 
 create_group(
   "native",
-  "<audit|explain|ir|emit-c|emit-core-c|emit-header|compile|benchmark> SOURCE",
+  "<profile|audit|explain|ir|emit-c|emit-core-c|emit-header|compile|benchmark> [SOURCE]",
   function () {
     /*
 Inspect or compile typed @native functions. Imported functions automatically
-use a source-hash-matched artifact when available.
+use a source-hash-matched artifact when available. `native profile` reports
+the selected and installed native mathematics dependency build provenance.
 */
   }
 );

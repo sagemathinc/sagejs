@@ -64,6 +64,44 @@ loads both through filesystem paths. The embedded ZeroMQ Node-API addon
 provides a real Jupyter wire protocol without requiring Node or `node_modules`
 beside the executable. The directory is removed when the process exits.
 
+### Native mathematics build profiles
+
+Release artifacts and ordinary source builds use the `portable` mathematics
+profile. On x86-64 it builds GMP's runtime-dispatched fat binary and keeps
+FLINT free of host-specific compiler flags, so an artifact is not silently tied
+to the CPU which happened to compile it.
+
+Controlled benchmarks and local source installations may explicitly select a
+CPU-specific stack:
+
+```sh
+SAGEJS_NATIVE_MATH_PROFILE=cpu-native pnpm --dir packages/flint build
+SAGEJS_NATIVE_MATH_PROFILE=cpu-native pnpm --dir packages/fflas build
+```
+
+The `cpu-native` profile omits GMP's `--enable-fat`, compiles GMP, FLINT, and
+the FFLAS stack with the compiler's native CPU flag when supported, and lets
+FLINT detect `fft_small` from the resulting instruction set. It is intentionally
+opt-in: moving one of these binaries to a different CPU may execute unsupported
+instructions. Native Windows x64 always falls back visibly to the portable
+profile and remains correct.
+
+The shared native-artifact cache fingerprints the effective profile, CPU model
+and feature set for CPU-native builds, target C ABI, compiler identity and
+target, exact dependency versions, and build options. Portable entries omit
+the particular CPU identity so compatible hosts can still share them. Inspect
+the selected profile, the installed dependency stamp, and observed FLINT
+capabilities without rebuilding anything:
+
+```sh
+sagejs native profile
+sagejs native profile --json
+```
+
+Record the JSON output with performance results. It distinguishes a selected
+profile from a differently built prefix and makes accidental portable/native
+benchmark comparisons apparent.
+
 If `jupyter` is available on `PATH`, either executable can register itself as
 a kernel with no additional Sage.js files:
 

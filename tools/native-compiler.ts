@@ -121,6 +121,61 @@ function writeJson(value: unknown): void {
   process.stdout.write(`${JSON.stringify(value, null, 2)}\n`);
 }
 
+function printNativeMathProfile(provenance: Record<string, any>): void {
+  const selected = provenance.selected;
+  const installed =
+    provenance.installed?.build?.mathBuildProfile ??
+    provenance.installed?.identity?.mathBuildProfile ??
+    null;
+  process.stdout.write("Native mathematics dependency profile\n");
+  process.stdout.write(`  requested: ${selected.requestedProfile}\n`);
+  process.stdout.write(`  effective: ${selected.effectiveProfile}\n`);
+  if (selected.fallbackReason) {
+    process.stdout.write(`  fallback:  ${selected.fallbackReason}\n`);
+  }
+  process.stdout.write(`  fingerprint: ${selected.fingerprint}\n`);
+  process.stdout.write(
+    `  target ABI: ${selected.abi.platform}/${selected.abi.arch}, ` +
+      `${selected.abi.wordBits ?? "unknown"}-bit ${selected.abi.endianness}\n`,
+  );
+  process.stdout.write(
+    `  C compiler: ${selected.compilers.c.command} ` +
+      `(${selected.compilers.c.target})\n`,
+  );
+  process.stdout.write(
+    `  C++ compiler: ${selected.compilers.cxx.command} ` +
+      `(${selected.compilers.cxx.target})\n`,
+  );
+  process.stdout.write(
+    `  GMP: ${selected.buildOptions.gmp.configure.includes("--enable-fat")
+      ? "portable fat binary"
+      : "CPU-specific assembly"}\n`,
+  );
+  process.stdout.write(
+    `  FLINT CFLAGS: ${selected.buildOptions.flint.cflags.join(" ")}\n`,
+  );
+  process.stdout.write(
+    `  FLINT fft_small: ${selected.buildOptions.flint.fftSmall}\n`,
+  );
+  process.stdout.write(`  dependency prefix: ${provenance.prefix}\n`);
+  if (installed === null) {
+    process.stdout.write("  installed: no fingerprinted source build found\n");
+  } else {
+    process.stdout.write(
+      `  installed: ${installed.effectiveProfile} ` +
+        `${installed.fingerprint}${
+          provenance.installedMatchesSelected ? " (selected)" : " (different)"
+        }\n`,
+    );
+    const observed = provenance.installed.observed;
+    if (observed?.flintFftSmall !== null && observed?.flintFftSmall !== undefined) {
+      process.stdout.write(
+        `  installed FLINT fft_small: ${observed.flintFftSmall ? "enabled" : "disabled"}\n`,
+      );
+    }
+  }
+}
+
 function compileJson(result: NativeCompileResult, source: string) {
   return {
     addonPath: result.addonPath,
@@ -299,10 +354,26 @@ function benchmarkImplementations(
 /** Inspect, emit, compile, or benchmark typed native mathematical code. */
 export async function runNativeCompilerCli(argv: NativeCliArguments): Promise<void> {
   const [command, source, ...extra] = argv.files;
+  if (command === "profile") {
+    if (source || extra.length !== 0) {
+      throw new Error("usage: sagejs native profile [--json]");
+    }
+    const { nativeMathBuildProvenance } = require(
+      join(__dirname, "..", "..", "scripts", "native-math-profile.cjs"),
+    ) as {
+      nativeMathBuildProvenance(root: string): Record<string, unknown>;
+    };
+    const provenance = nativeMathBuildProvenance(
+      resolve(__dirname, "..", ".."),
+    );
+    if (argv.json) writeJson(provenance);
+    else printNativeMathProfile(provenance);
+    return;
+  }
   if (!command || !source || extra.length !== 0 ||
       !["audit", "explain", "ir", "emit-c", "emit-core-c", "emit-header", "compile", "benchmark"].includes(command)) {
     throw new Error(
-      "usage: sagejs native <audit|explain|ir|emit-c|emit-core-c|emit-header|compile|benchmark> SOURCE " +
+      "usage: sagejs native <profile|audit|explain|ir|emit-c|emit-core-c|emit-header|compile|benchmark> [SOURCE] " +
       "[--function NAME] [--json]",
     );
   }
