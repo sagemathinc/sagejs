@@ -17,6 +17,7 @@ import sagejs.runtime as runtime
 _dense_prime_kernel_module_cache = runtime.undefined
 _dense_prime_flint_module_cache = runtime.undefined
 _dense_prime_fflas_module_cache = runtime.undefined
+_dense_word_prime_flint_module_cache = runtime.undefined
 _dense_binary_m4ri_kernel_module_cache = runtime.undefined
 _dense_integer_flint_module_cache = runtime.undefined
 _dense_rational_kernel_module_cache = runtime.undefined
@@ -24,6 +25,8 @@ _dense_rational_flint_module_cache = runtime.undefined
 _flint_ffi_module_cache = runtime.undefined
 _m4ri_ffi_module_cache = runtime.undefined
 _m4ri_available_cache = runtime.undefined
+_FFLAS_DOUBLE_MAX_MODULUS = 94906266
+_PACKED_PRIME_MAX_MODULUS = 256
 _matrix_selection_module_cache = runtime.undefined
 _matrix_selection_plans_module_cache = runtime.undefined
 _matrix_vector_public_module_cache = runtime.undefined
@@ -68,6 +71,18 @@ class _M4riMatrixResourceStorage:
     A row-major residue buffer may be materialized lazily for an explicitly
     requested alternative backend or a general host view.  The M4RI resource
     remains the canonical public representation.
+    """
+
+    def __init__(self, resource: Any) -> None:
+        self.resource = resource
+
+
+class _NmodMatrixResourceStorage:
+    """Own one generated FLINT word-prime matrix resource.
+
+    A row-major residue buffer is materialized only for a public host view or
+    an explicitly selected packed algorithm. The FLINT resource remains the
+    canonical representation.
     """
 
     def __init__(self, resource: Any) -> None:
@@ -170,6 +185,17 @@ def _dense_prime_fflas_module() -> Any:
     return _dense_prime_fflas_module_cache
 
 
+def _dense_word_prime_flint_module() -> Any:
+    """Load typed kernels that borrow generated word-prime resources."""
+    global _dense_word_prime_flint_module_cache
+    if _dense_word_prime_flint_module_cache is runtime.undefined:
+        _dense_word_prime_flint_module_cache = __import__(
+            "sagejs.kernels.matrix.dense_word_prime_flint",
+            fromlist=["dense_word_prime_flint"],
+        )
+    return _dense_word_prime_flint_module_cache
+
+
 def _dense_binary_m4ri_kernel_module() -> Any:
     """Load source-transparent kernels that borrow M4RI resources."""
     global _dense_binary_m4ri_kernel_module_cache
@@ -254,9 +280,9 @@ def _declared_ffi_kernel(kernel_function: Any) -> bool:
     )
 
 
-def _fflas_small_prime_available(modulus: int) -> bool:
-    """Return whether generated FFLAS kernels support this prime field."""
-    if modulus >= 256:
+def _fflas_packed_prime_available(modulus: int) -> bool:
+    """Return whether exact Givaro `Modular<double>` supports this field."""
+    if modulus >= _FFLAS_DOUBLE_MAX_MODULUS:
         return False
     try:
         kernel = _dense_prime_fflas_module().fflas_dense_prime_field_available
@@ -272,24 +298,24 @@ def _use_fflas_matrix_mul(
     modulus: int,
 ) -> bool:
     """Select FFLAS only beyond its measured small-prime crossover."""
-    return min(left_rows, inner, right_columns) >= 32 and _fflas_small_prime_available(
+    return min(left_rows, inner, right_columns) >= 32 and _fflas_packed_prime_available(
         modulus
     )
 
 
 def _use_fflas_matrix_rref(rows: int, columns: int, modulus: int) -> bool:
     """Select FFPACK only beyond its measured small-prime crossover."""
-    return min(rows, columns) >= 32 and _fflas_small_prime_available(modulus)
+    return min(rows, columns) >= 32 and _fflas_packed_prime_available(modulus)
 
 
 def _use_fflas_matrix_rank(rows: int, columns: int, modulus: int) -> bool:
     """Select FFPACK rank only beyond its measured crossover with FLINT."""
-    return min(rows, columns) >= 64 and _fflas_small_prime_available(modulus)
+    return min(rows, columns) >= 64 and _fflas_packed_prime_available(modulus)
 
 
 def _use_fflas_matrix_right_nullspace(rows: int, columns: int, modulus: int) -> bool:
     """Select FFPACK beyond its measured canonical-nullspace crossover."""
-    return min(rows, columns) >= 24 and _fflas_small_prime_available(modulus)
+    return min(rows, columns) >= 24 and _fflas_packed_prime_available(modulus)
 
 
 def _typed_python_implementation(kernel_function: Any) -> str:
@@ -363,8 +389,41 @@ def _is_packed_dense_prime_base(base: sage.Parent) -> bool:
     """Return whether canonical packed storage supports this prime field."""
     return (
         getattr(base, "_kind", None) == "GF"
-        and int(_untyped(base).characteristic()) <= 0xFFFFFFFF
+        and int(_untyped(base).characteristic()) < _PACKED_PRIME_MAX_MODULUS
     )
+
+
+def _is_word_prime_resource_base(base: sage.Parent) -> bool:
+    """Return whether generated FLINT resource storage supports `GF(p)`."""
+    if getattr(base, "_kind", None) != "GF":
+        return False
+    modulus = int(_untyped(base).characteristic())
+    # Byte-sized prime fields keep compiler-owned packed storage, the fast
+    # exact Modular<float> input for FFLAS/FFPACK. General word primes use
+    # FLINT's mature canonical nmod_mat representation; merely fitting exactly
+    # in Modular<double> is not sufficient to make conversion competitive.
+    # The Node adapter and FLINT resources in this release are 64-bit. Wasm32
+    # FLINT has 32-bit `ulong`; large moduli must remain on the portable packed
+    # path until an arbitrary-prime matrix resource is available there.
+    process = runtime.reflect.get(runtime.global_object, "process")
+    versions = (
+        runtime.undefined
+        if process is runtime.undefined
+        else runtime.reflect.get(process, "versions")
+    )
+    node = (
+        runtime.undefined
+        if versions is runtime.undefined
+        else runtime.reflect.get(versions, "node")
+    )
+    return (
+        node is not runtime.undefined
+        and _PACKED_PRIME_MAX_MODULUS <= modulus <= 0xFFFFFFFFFFFFFFFF
+    )
+
+
+def _is_dense_prime_base(base: sage.Parent) -> bool:
+    return _is_packed_dense_prime_base(base) or _is_word_prime_resource_base(base)
 
 
 def _is_dense_binary_base(base: sage.Parent) -> bool:
@@ -713,8 +772,8 @@ def _prime_residue_values(
 def _prime_residue_value(base: sage.Parent, value: Any) -> int:
     """Coerce one value to a canonical residue without temporary storage."""
     if getattr(value, "_parent", None) is base:
-        return runtime.number(_untyped(value)._value)
-    modulus = runtime.number(_untyped(base)._modulus)
+        return int(_untyped(value)._value)
+    modulus = int(_untyped(base)._modulus)
     if runtime.is_exact_integer(value):
         return int(value) % modulus
     return int(_untyped(base(value))._value)
@@ -1049,7 +1108,11 @@ class MatrixSpaceParent(sage.Parent):
 
     def _from_native(self, native_value: Any) -> Matrix:
         """Construct an element from a trusted native matrix handle."""
-        if self._base is sage.ZZ or self._base is sage.QQ:
+        if (
+            self._base is sage.ZZ
+            or self._base is sage.QQ
+            or _is_word_prime_resource_base(self._base)
+        ):
             raise RuntimeError(
                 "dense exact matrices cannot be constructed from N-API handles"
             )
@@ -1061,7 +1124,7 @@ class MatrixSpaceParent(sage.Parent):
         width: int,
     ) -> Matrix:
         """Construct a modular matrix from packed little-endian residues."""
-        if _is_packed_dense_prime_base(self._base):
+        if _is_dense_prime_base(self._base):
             count = self._rows * self._cols
             if width not in [1, 2, 4, 8]:
                 raise ValueError("unsupported packed residue width")
@@ -1104,11 +1167,20 @@ class MatrixSpaceParent(sage.Parent):
 
     def _from_uint64_residues(self, entries: Any) -> Matrix:
         """Construct `GF(p)` storage from canonical row-major residues."""
-        if not _is_packed_dense_prime_base(self._base):
+        if not _is_dense_prime_base(self._base):
             raise TypeError("uint64 residues require a prime field")
         if len(entries) != self._rows * self._cols:
             raise ValueError("matrix residue count does not match dimensions")
         storage = _prime_residue_values(self._base, entries)
+        if _is_word_prime_resource_base(self._base):
+            resource = _flint_ffi_module().nmod_matrix_from_entries(
+                storage,
+                len(storage),
+                self._rows,
+                self._cols,
+                int(_untyped(self._base).characteristic()),
+            )
+            return self._from_nmod_matrix_resource(resource)
         return self._from_canonical_uint64_residues(storage)
 
     def _from_canonical_uint64_residues(self, entries: Any) -> Matrix:
@@ -1132,6 +1204,22 @@ class MatrixSpaceParent(sage.Parent):
                 region.close()
             return self._from_m4ri_matrix_resource(resource)
         return Matrix(self, entries)
+
+    def _from_nmod_matrix_resource(self, resource: Any) -> Matrix:
+        """Take ownership of a checked generated word-prime matrix."""
+        if not _is_word_prime_resource_base(self._base):
+            resource.close()
+            raise TypeError("FLINT nmod matrix storage requires a word prime field")
+        ffi = _flint_ffi_module()
+        if (
+            int(ffi.nmod_matrix_nrows(resource)) != self._rows
+            or int(ffi.nmod_matrix_ncols(resource)) != self._cols
+            or int(ffi.nmod_matrix_modulus(resource))
+            != int(_untyped(self._base).characteristic())
+        ):
+            resource.close()
+            raise ValueError("word-prime matrix resource parent does not agree")
+        return Matrix(self, _NmodMatrixResourceStorage(resource))
 
     def _from_m4ri_matrix_resource(self, resource: Any) -> Matrix:
         """Take ownership of a checked generated M4RI matrix resource."""
@@ -1420,6 +1508,19 @@ class MatrixSpaceParent(sage.Parent):
             raise ValueError("density must be between 0 and 1")
         if probability == 1 and not self._sparse:
             count = self._rows * self._cols
+            if _is_word_prime_resource_base(self._base):
+                seed1 = _random_int(0, 4294967295)
+                seed2 = _random_int(0, 4294967295)
+                resource = _flint_ffi_module().nmod_matrix_random(
+                    self._rows,
+                    self._cols,
+                    int(_untyped(self._base).characteristic()),
+                    seed1,
+                    seed2,
+                )
+                result = self._from_nmod_matrix_resource(resource)
+                result._trace_word_prime_resource("random_element")
+                return result
             if _is_packed_dense_prime_base(self._base):
                 kernel = _dense_prime_kernel_module().dense_prime_field_matrix_space_random_fill
                 storage = _dense_prime_zeros(kernel, count)
@@ -1502,6 +1603,9 @@ class MatrixSpaceParent(sage.Parent):
                 return self._from_m4ri_matrix_resource(
                     _m4ri_ffi_module().matrix(self._rows, self._cols)
                 )
+            if _is_word_prime_resource_base(self._base):
+                storage = _packed_uint64(self._rows * self._cols)
+                return self._from_uint64_residues(storage)
             values = [0 for _ in range(self._rows * self._cols)]
         elif isinstance(entries, list):
             values = entries
@@ -1521,9 +1625,9 @@ class MatrixSpaceParent(sage.Parent):
             values = flattened
         if len(values) != self._rows * self._cols:
             raise ValueError("matrix entry count does not match its dimensions")
-        if _is_packed_dense_prime_base(self._base):
+        if _is_dense_prime_base(self._base):
             storage = _prime_residue_values(self._base, values)
-            return self._from_canonical_uint64_residues(storage)
+            return self._from_uint64_residues(storage)
         if self._base is sage.ZZ:
             return self._from_integer_values(values)
         if self._base is sage.QQ:
@@ -1999,6 +2103,10 @@ class Matrix(sage.Element):
                 native_value = _M4riMatrixResourceStorage(
                     _m4ri_ffi_module().matrix_copy(source._m4ri_resource())
                 )
+            elif source._has_nmod_matrix_resource():
+                native_value = _NmodMatrixResourceStorage(
+                    _flint_ffi_module().nmod_matrix_copy(source._nmod_resource())
+                )
             elif source._has_packed_prime_storage():
                 native_value = _copy_packed_uint64(source._prime_residues())
             elif source._has_integer_storage():
@@ -2040,6 +2148,7 @@ class Matrix(sage.Element):
         self._parent = parent
         self._native_handle: Any = runtime.undefined
         self._m4ri_storage_cache: Any = runtime.undefined
+        self._nmod_storage_cache: Any = runtime.undefined
         self._prime_residues_cache: Any = runtime.undefined
         self._prime_host_values_cache: Any = runtime.undefined
         self._integer_entries_cache: Any = runtime.undefined
@@ -2050,6 +2159,8 @@ class Matrix(sage.Element):
             self._prime_residues_cache = native_value
         elif isinstance(native_value, _M4riMatrixResourceStorage):
             self._m4ri_storage_cache = native_value
+        elif isinstance(native_value, _NmodMatrixResourceStorage):
+            self._nmod_storage_cache = native_value
         elif isinstance(native_value, _FmpzMatrixResourceStorage):
             self._integer_storage_cache = native_value
         elif isinstance(native_value, _PackedRationalStorage):
@@ -2086,7 +2197,7 @@ class Matrix(sage.Element):
         N-API implementation construct a separate oracle explicitly;
         production code cannot accidentally make a host object canonical.
         """
-        if self._has_packed_prime_storage():
+        if self._has_packed_prime_storage() or self._has_nmod_matrix_resource():
             raise RuntimeError("dense GF(p) matrices have no N-API matrix handle")
         if self._has_integer_storage():
             raise RuntimeError("generated ZZ matrices have no N-API matrix handle")
@@ -2103,6 +2214,14 @@ class Matrix(sage.Element):
             self._prime_residues_cache is not runtime.undefined
             or self._has_m4ri_matrix_resource()
         ) and _is_packed_dense_prime_base(self.base_ring())
+
+    def _has_nmod_matrix_resource(self) -> bool:
+        return isinstance(self._nmod_storage_cache, _NmodMatrixResourceStorage)
+
+    def _nmod_resource(self) -> Any:
+        if not self._has_nmod_matrix_resource():
+            raise TypeError("matrix does not own a FLINT nmod resource")
+        return self._nmod_storage_cache.resource
 
     def _has_m4ri_matrix_resource(self) -> bool:
         return isinstance(self._m4ri_storage_cache, _M4riMatrixResourceStorage)
@@ -2229,8 +2348,24 @@ class Matrix(sage.Element):
             native_value,
         )
 
+    def _trace_word_prime_resource(self, operation: str) -> None:
+        _trace_dense_prime_selection(
+            operation,
+            "generated-flint-resource",
+            self.nrows(),
+            self.ncols(),
+            int(_untyped(self.base_ring()).characteristic()),
+        )
+
     def _packed_residues(self, width: int) -> Any:
         """Return modular entries as packed little-endian residues."""
+        if self._has_nmod_matrix_resource():
+            if width not in [1, 2, 4, 8]:
+                raise ValueError("unsupported packed residue width")
+            region = _flint_ffi_module().nmod_matrix_serialize(
+                self._nmod_resource(), width
+            )
+            return region.take_bytes()
         if self._has_packed_prime_storage():
             if width not in [1, 2, 4, 8]:
                 raise ValueError("unsupported packed residue width")
@@ -2241,21 +2376,32 @@ class Matrix(sage.Element):
         return runtime.flint_backend().matrixExportPacked(self._native, width)
 
     def _prime_residues(self) -> Any:
-        """Return canonical row-major residues for a small prime field."""
-        if not _uses_dense_prime_kernel(self.base_ring()):
+        """Return canonical row-major residues for a prime field."""
+        if not (
+            _uses_dense_prime_kernel(self.base_ring())
+            or self._has_nmod_matrix_resource()
+        ):
             raise TypeError("packed dense-prime storage requires GF(p)")
         if self._prime_residues_cache is runtime.undefined:
-            packed = self._packed_residues(1 if self._has_m4ri_matrix_resource() else 4)
+            if self._has_m4ri_matrix_resource():
+                width = 1
+            elif self._has_nmod_matrix_resource():
+                width = 8
+            else:
+                width = (
+                    1 if int(_untyped(self.base_ring()).characteristic()) < 256 else 4
+                )
+            packed = self._packed_residues(width)
             self._prime_residues_cache = runtime.uint64_unpack_le(
                 packed,
-                1 if self._has_m4ri_matrix_resource() else 4,
+                width,
                 self.nrows() * self.ncols(),
             )
         return self._prime_residues_cache
 
     def _prime_host_values(self) -> list[Any]:
         """Materialize ordinary immutable field elements once per matrix."""
-        if not self._has_packed_prime_storage():
+        if not (self._has_packed_prime_storage() or self._has_nmod_matrix_resource()):
             raise TypeError("bulk prime-field host views require packed storage")
         if self._prime_host_values_cache is runtime.undefined:
             base = self.base_ring()
@@ -2390,7 +2536,7 @@ class Matrix(sage.Element):
         """Return the canonical cached immutable row vectors."""
         if self._row_vectors_cache is runtime.undefined:
             if self._column_vectors_cache is runtime.undefined:
-                if self._has_packed_prime_storage():
+                if self._has_packed_prime_storage() or self._has_nmod_matrix_resource():
                     values = self._prime_host_values()
                     width = self.ncols()
                     nested = [
@@ -2428,7 +2574,7 @@ class Matrix(sage.Element):
         """Return the canonical cached immutable column vectors."""
         if self._column_vectors_cache is runtime.undefined:
             if self._row_vectors_cache is runtime.undefined:
-                if self._has_packed_prime_storage():
+                if self._has_packed_prime_storage() or self._has_nmod_matrix_resource():
                     values = self._prime_host_values()
                     width = self.ncols()
                     nested_rows = [
@@ -2521,6 +2667,12 @@ class Matrix(sage.Element):
                 2,
             )
             return result
+        if self._has_nmod_matrix_resource():
+            result = bool(
+                _flint_ffi_module().nmod_matrix_is_zero(self._nmod_resource())
+            )
+            self._trace_word_prime_resource("is_zero")
+            return result
         if self._has_packed_prime_storage():
             kernel = _dense_prime_kernel_module().dense_prime_field_matrix_is_zero
             result = bool(
@@ -2587,6 +2739,10 @@ class Matrix(sage.Element):
                 2,
             )
             return result
+        if self._has_nmod_matrix_resource():
+            result = bool(_flint_ffi_module().nmod_matrix_is_one(self._nmod_resource()))
+            self._trace_word_prime_resource("is_one")
+            return result
         if self._has_packed_prime_storage():
             kernel = _dense_prime_kernel_module().dense_prime_field_matrix_is_one
             result = bool(
@@ -2650,6 +2806,7 @@ class Matrix(sage.Element):
             # avoidable gcd on every scalar read.
             return _untyped(sage.Rational)._from_reduced(parts[0], parts[1])
         m4ri_storage = self._m4ri_storage_cache
+        nmod_storage = self._nmod_storage_cache
         prime_storage = self._prime_residues_cache
         if isinstance(m4ri_storage, _M4riMatrixResourceStorage):
             flat_index = row * columns + col
@@ -2659,6 +2816,16 @@ class Matrix(sage.Element):
             residue = runtime.number(kernel(m4ri_storage.resource, row, col))
             if residue not in [0, 1]:
                 raise RuntimeError("M4RI returned an invalid matrix entry")
+            return _untyped(self.base_ring())._from_reduced(residue)
+        if isinstance(nmod_storage, _NmodMatrixResourceStorage):
+            flat_index = row * columns + col
+            if self._prime_host_values_cache is not runtime.undefined:
+                return self._prime_host_values_cache[flat_index]
+            residue = int(
+                _flint_ffi_module().nmod_matrix_entry(nmod_storage.resource, row, col)
+            )
+            if residue == 0xFFFFFFFFFFFFFFFF:
+                raise IndexError("matrix index out of range")
             return _untyped(self.base_ring())._from_reduced(residue)
         if _is_packed_uint64(prime_storage) and _is_packed_dense_prime_base(
             self.base_ring()
@@ -2737,7 +2904,17 @@ class Matrix(sage.Element):
             self._clear_cache()
             return
         m4ri_storage = self._m4ri_storage_cache
+        nmod_storage = self._nmod_storage_cache
         prime_storage = self._prime_residues_cache
+        if isinstance(nmod_storage, _NmodMatrixResourceStorage):
+            residue = _prime_residue_value(self.base_ring(), value)
+            _flint_ffi_module().nmod_matrix_set_entry(
+                nmod_storage.resource, row, col, residue
+            )
+            self._prime_residues_cache = runtime.undefined
+            self._native_handle = runtime.undefined
+            self._clear_cache()
+            return
         if (
             isinstance(m4ri_storage, _M4riMatrixResourceStorage)
             or _is_packed_uint64(prime_storage)
@@ -2965,6 +3142,8 @@ class Matrix(sage.Element):
                     temporary._rational_resource().close()
                 elif temporary._has_m4ri_matrix_resource():
                     temporary._m4ri_resource().close()
+                elif temporary._has_nmod_matrix_resource():
+                    temporary._nmod_resource().close()
 
     def _set_same_base_block(self, row: int, column: int, block: Matrix) -> None:
         """Set a same-base block whose temporary ownership is external."""
@@ -3000,6 +3179,14 @@ class Matrix(sage.Element):
             self._rational_storage_cache.numerators = runtime.undefined
             self._rational_storage_cache.denominators = runtime.undefined
             self._clear_cache()
+            return
+        if self._has_nmod_matrix_resource() and block._has_nmod_matrix_resource():
+            _flint_ffi_module().nmod_matrix_set_block(
+                self._nmod_resource(), row, column, block._nmod_resource()
+            )
+            self._prime_residues_cache = runtime.undefined
+            self._clear_cache()
+            self._trace_word_prime_resource("set_block")
             return
         if not self._has_packed_prime_storage():
             raise NotImplementedError(
@@ -3057,7 +3244,7 @@ class Matrix(sage.Element):
         )
 
     def list(self) -> list[Any]:
-        if self._has_packed_prime_storage():
+        if self._has_packed_prime_storage() or self._has_nmod_matrix_resource():
             return list(self._prime_host_values())
         if self._has_fmpz_matrix_resource() or self._has_fmpq_matrix_resource():
             if self._row_vectors_cache is not runtime.undefined:
@@ -3093,9 +3280,8 @@ class Matrix(sage.Element):
     ) -> Any:
         index = _normalize_named_index(index, self.nrows(), "row")
         if (
-            self._has_packed_prime_storage()
-            and self._prime_host_values_cache is not runtime.undefined
-        ):
+            self._has_packed_prime_storage() or self._has_nmod_matrix_resource()
+        ) and self._prime_host_values_cache is not runtime.undefined:
             start = index * self.ncols()
             entries = self._prime_host_values()[start : start + self.ncols()]
             answer = Vector(VectorSpace(self.base_ring(), self.ncols()), entries)
@@ -3128,9 +3314,8 @@ class Matrix(sage.Element):
     ) -> Any:
         index = _normalize_named_index(index, self.ncols(), "column")
         if (
-            self._has_packed_prime_storage()
-            and self._prime_host_values_cache is not runtime.undefined
-        ):
+            self._has_packed_prime_storage() or self._has_nmod_matrix_resource()
+        ) and self._prime_host_values_cache is not runtime.undefined:
             values = self._prime_host_values()
             entries = [
                 values[row * self.ncols() + index] for row in range(self.nrows())
@@ -3302,6 +3487,12 @@ class Matrix(sage.Element):
                 "add", "generated-m4ri-resource", left.nrows(), left.ncols(), 2
             )
             return left._parent._from_m4ri_matrix_resource(resource)
+        if left._has_nmod_matrix_resource() and right._has_nmod_matrix_resource():
+            resource = _flint_ffi_module().nmod_matrix_add(
+                left._nmod_resource(), right._nmod_resource()
+            )
+            left._trace_word_prime_resource("add")
+            return left._parent._from_nmod_matrix_resource(resource)
         if left._has_packed_prime_storage() and right._has_packed_prime_storage():
             kernel = _dense_prime_kernel_module().dense_prime_field_matrix_add
             modulus = int(_untyped(left.base_ring()).characteristic())
@@ -3403,6 +3594,12 @@ class Matrix(sage.Element):
                 2,
             )
             return left._parent._from_m4ri_matrix_resource(resource)
+        if left._has_nmod_matrix_resource() and right._has_nmod_matrix_resource():
+            resource = _flint_ffi_module().nmod_matrix_sub(
+                left._nmod_resource(), right._nmod_resource()
+            )
+            left._trace_word_prime_resource("subtract")
+            return left._parent._from_nmod_matrix_resource(resource)
         if left._has_packed_prime_storage() and right._has_packed_prime_storage():
             kernel = _dense_prime_kernel_module().dense_prime_field_matrix_subtract
             modulus = int(_untyped(left.base_ring()).characteristic())
@@ -3489,6 +3686,10 @@ class Matrix(sage.Element):
                 "negate", "generated-m4ri-resource", self.nrows(), self.ncols(), 2
             )
             return self._parent._from_m4ri_matrix_resource(resource)
+        if self._has_nmod_matrix_resource():
+            resource = _flint_ffi_module().nmod_matrix_neg(self._nmod_resource())
+            self._trace_word_prime_resource("negate")
+            return self._parent._from_nmod_matrix_resource(resource)
         if self._has_packed_prime_storage():
             kernel = _dense_prime_kernel_module().dense_prime_field_matrix_negate
             modulus = int(_untyped(self.base_ring()).characteristic())
@@ -3593,6 +3794,13 @@ class Matrix(sage.Element):
                 2,
             )
             return self._parent._from_m4ri_matrix_resource(resource)
+        if self._has_nmod_matrix_resource():
+            factor = int(_untyped(self.base_ring()(scalar))._value)
+            resource = _flint_ffi_module().nmod_matrix_scalar_mul(
+                self._nmod_resource(), factor
+            )
+            self._trace_word_prime_resource("scalar_multiply")
+            return self._parent._from_nmod_matrix_resource(resource)
         if self._has_packed_prime_storage():
             kernel = (
                 _dense_prime_kernel_module().dense_prime_field_matrix_scalar_multiply
@@ -3738,6 +3946,14 @@ class Matrix(sage.Element):
                 return MatrixSpace(
                     base, left.nrows(), right.ncols()
                 )._from_m4ri_matrix_resource(resource)
+            if left._has_nmod_matrix_resource() and right._has_nmod_matrix_resource():
+                resource = _flint_ffi_module().nmod_matrix_mul(
+                    left._nmod_resource(), right._nmod_resource()
+                )
+                left._trace_word_prime_resource("multiply")
+                return MatrixSpace(
+                    base, left.nrows(), right.ncols()
+                )._from_nmod_matrix_resource(resource)
             if left._has_packed_prime_storage() and right._has_packed_prime_storage():
                 modulus = int(_untyped(base).characteristic())
                 if _use_fflas_matrix_mul(
@@ -4082,6 +4298,15 @@ class Matrix(sage.Element):
                 2,
             )
             return answer
+        if self._has_nmod_matrix_resource():
+            resource = _flint_ffi_module().nmod_matrix_transpose(self._nmod_resource())
+            answer = MatrixSpace(
+                self.base_ring(), self.ncols(), self.nrows()
+            )._from_nmod_matrix_resource(resource)
+            answer._row_subdivisions = list(self._col_subdivisions)
+            answer._col_subdivisions = list(self._row_subdivisions)
+            self._trace_word_prime_resource("transpose")
+            return answer
         if self._has_packed_prime_storage():
             kernel = _dense_prime_kernel_module().dense_prime_field_matrix_transpose
             entries = _dense_prime_zeros(kernel, self.nrows() * self.ncols())
@@ -4237,6 +4462,12 @@ class Matrix(sage.Element):
                 2,
             )
             return self._determinant_cache
+        if self._has_nmod_matrix_resource():
+            self._determinant_cache = self.base_ring()(
+                _flint_ffi_module().nmod_matrix_det(self._nmod_resource())
+            )
+            self._trace_word_prime_resource("determinant")
+            return self._determinant_cache
         if self._has_packed_prime_storage():
             kernel = (
                 _dense_prime_flint_module().flint_dense_prime_field_matrix_determinant
@@ -4375,13 +4606,18 @@ class Matrix(sage.Element):
                     self.ncols(),
                     2,
                 )
+            elif self._has_nmod_matrix_resource():
+                self._rank_cache = runtime.number(
+                    _flint_ffi_module().nmod_matrix_rank(self._nmod_resource())
+                )
+                self._trace_word_prime_resource("rank")
             elif self._has_packed_prime_storage() and algorithm != "modp":
                 modulus = int(_untyped(self.base_ring()).characteristic())
                 if algorithm == "fflas" or (
                     algorithm is None
                     and _use_fflas_matrix_rank(self.nrows(), self.ncols(), modulus)
                 ):
-                    if not _fflas_small_prime_available(modulus):
+                    if not _fflas_packed_prime_available(modulus):
                         raise ValueError(
                             "FFLAS rank requires an available backend and p < 256"
                         )
@@ -4483,6 +4719,26 @@ class Matrix(sage.Element):
                 self.nrows(),
                 self.ncols(),
                 2,
+            )
+            return nonzero / (self.nrows() * self.ncols())
+        if self._has_nmod_matrix_resource():
+            kernel = (
+                _dense_word_prime_flint_module().flint_word_prime_matrix_nonzero_count
+            )
+            if _native_kernel_available(kernel):
+                nonzero = runtime.number(kernel(self._nmod_resource()))
+                implementation = "typed-python-isolated"
+            else:
+                nonzero = runtime.number(
+                    _flint_ffi_module().nmod_matrix_nonzero_count(self._nmod_resource())
+                )
+                implementation = "generated-flint-resource"
+            _trace_dense_prime_selection(
+                "density",
+                implementation,
+                self.nrows(),
+                self.ncols(),
+                int(_untyped(self.base_ring()).characteristic()),
             )
             return nonzero / (self.nrows() * self.ncols())
         if self._has_packed_prime_storage():
@@ -4636,6 +4892,18 @@ class Matrix(sage.Element):
                     2,
                 )
                 return self._rref_cache
+            if self._has_nmod_matrix_resource():
+                ffi = _flint_ffi_module()
+                resource = ffi.nmod_matrix_rref(self._nmod_resource())
+                self._rref_cache = self._parent._from_nmod_matrix_resource(resource)
+                self._rank_cache = runtime.number(
+                    ffi.nmod_matrix_rank(self._rref_cache._nmod_resource())
+                )
+                self._rref_cache._rank_cache = self._rank_cache
+                self._rref_cache._rref_cache = self._rref_cache
+                self._rref_cache.set_immutable()
+                self._trace_word_prime_resource("rref")
+                return self._rref_cache
             base = sage.QQ
             if _is_approximate_base(self.base_ring()):
                 base = self.base_ring()
@@ -4669,7 +4937,7 @@ class Matrix(sage.Element):
                     algorithm is None
                     and _use_fflas_matrix_rref(self.nrows(), self.ncols(), modulus)
                 ):
-                    if not _fflas_small_prime_available(modulus):
+                    if not _fflas_packed_prime_available(modulus):
                         raise ValueError(
                             "FFLAS RREF requires an available backend and p < 256"
                         )
@@ -5065,6 +5333,17 @@ class Matrix(sage.Element):
                     self.ncols(),
                     2,
                 )
+            elif self._has_nmod_matrix_resource():
+                columns = int(self.ncols())
+                ffi = _flint_ffi_module()
+                resource = ffi.nmod_matrix_right_kernel(self._nmod_resource())
+                nullity = runtime.number(ffi.nmod_matrix_nrows(resource))
+                self._rank_cache = columns - nullity
+                basis = MatrixSpace(
+                    self.base_ring(), nullity, columns
+                )._from_nmod_matrix_resource(resource)
+                basis._rank_cache = nullity
+                self._trace_word_prime_resource("right_kernel")
             elif self._has_packed_rational_storage():
                 columns = int(self.ncols())
                 reduced = self.rref()
@@ -5205,6 +5484,7 @@ class Matrix(sage.Element):
                     )
             if (
                 not self._has_packed_prime_storage()
+                and not self._has_nmod_matrix_resource()
                 and not self._has_integer_storage()
                 and not self._has_packed_rational_storage()
             ):
@@ -5553,6 +5833,17 @@ class Matrix(sage.Element):
                 self.ncols(),
             )
             return answer
+        if self._has_nmod_matrix_resource():
+            region = _flint_ffi_module().nmod_matrix_charpoly(self._nmod_resource())
+            coefficients = runtime.uint64_unpack_le(
+                region.take_bytes(), 8, self.nrows() + 1
+            )
+            answer = ring._from_coefficients(
+                [self.base_ring()(coefficient) for coefficient in coefficients]
+            )
+            self._charpoly_cache.set(variable, answer)
+            self._trace_word_prime_resource("charpoly")
+            return answer
         if self._has_packed_rational_storage():
             kernel = _dense_rational_flint_module().flint_dense_rational_matrix_charpoly
             coefficient_count = self.nrows() + 1
@@ -5686,6 +5977,18 @@ class Matrix(sage.Element):
                 self.nrows(),
                 self.ncols(),
             )
+            return answer
+        if self._has_nmod_matrix_resource():
+            ring = sage.PolynomialRing(self.base_ring(), variable)
+            region = _flint_ffi_module().nmod_matrix_minpoly(self._nmod_resource())
+            payload = region.take_bytes()
+            coefficient_count = len(payload) // 8
+            coefficients = runtime.uint64_unpack_le(payload, 8, coefficient_count)
+            answer = ring._from_coefficients(
+                [self.base_ring()(coefficient) for coefficient in coefficients]
+            )
+            self._minpoly_cache.set(variable, answer)
+            self._trace_word_prime_resource("minpoly")
             return answer
         if self._has_packed_prime_storage():
             ring = sage.PolynomialRing(self.base_ring(), variable)
@@ -5863,6 +6166,14 @@ class Matrix(sage.Element):
                 self.ncols(),
                 2,
             )
+            return self._cache_inverse_result(answer)
+        if self._has_nmod_matrix_resource():
+            try:
+                resource = _flint_ffi_module().nmod_matrix_inv(self._nmod_resource())
+            except Exception:
+                raise ZeroDivisionError("matrix must be nonsingular")  # noqa: B904
+            answer = self._parent._from_nmod_matrix_resource(resource)
+            self._trace_word_prime_resource("inverse")
             return self._cache_inverse_result(answer)
         if self._has_packed_prime_storage():
             ffi_module = _dense_prime_flint_module()
@@ -6104,6 +6415,24 @@ class Matrix(sage.Element):
             )
             return solution.column(0) if vector_result else solution
         if (
+            left_matrix._has_nmod_matrix_resource()
+            and right_matrix._has_nmod_matrix_resource()
+            and left_matrix.is_square()
+        ):
+            try:
+                resource = _flint_ffi_module().nmod_matrix_solve(
+                    left_matrix._nmod_resource(), right_matrix._nmod_resource()
+                )
+            except Exception:
+                raise ValueError("matrix equation has no solutions")  # noqa: B904
+            solution = MatrixSpace(
+                base,
+                left_matrix.ncols(),
+                right_matrix.ncols(),
+            )._from_nmod_matrix_resource(resource)
+            left_matrix._trace_word_prime_resource("solve_right")
+            return solution.column(0) if vector_result else solution
+        if (
             left_matrix._has_packed_prime_storage()
             and right_matrix._has_packed_prime_storage()
             and left_matrix.is_square()
@@ -6185,6 +6514,7 @@ class Matrix(sage.Element):
         native_value = runtime.undefined
         if (
             not left_matrix._has_packed_prime_storage()
+            and not left_matrix._has_nmod_matrix_resource()
             and not left_matrix._has_integer_storage()
             and not left_matrix._has_packed_rational_storage()
         ):
@@ -6349,6 +6679,17 @@ class Matrix(sage.Element):
                 answer.ncols(),
             )
             return answer
+        if top._has_nmod_matrix_resource() and bottom._has_nmod_matrix_resource():
+            resource = _flint_ffi_module().nmod_matrix_stack(
+                top._nmod_resource(), bottom._nmod_resource()
+            )
+            answer = MatrixSpace(
+                base, top.nrows() + bottom.nrows(), top.ncols()
+            )._from_nmod_matrix_resource(resource)
+            if subdivide:
+                answer._row_subdivisions = [top.nrows()]
+            answer._trace_word_prime_resource("stack")
+            return answer
         if top._has_packed_prime_storage() and bottom._has_packed_prime_storage():
             kernel = _dense_prime_kernel_module().dense_prime_field_matrix_stack
             modulus = int(_untyped(base).characteristic())
@@ -6497,6 +6838,17 @@ class Matrix(sage.Element):
                 answer.nrows(),
                 answer.ncols(),
             )
+            return answer
+        if left._has_nmod_matrix_resource() and right._has_nmod_matrix_resource():
+            resource = _flint_ffi_module().nmod_matrix_augment(
+                left._nmod_resource(), right._nmod_resource()
+            )
+            answer = MatrixSpace(
+                base, left.nrows(), left.ncols() + right.ncols()
+            )._from_nmod_matrix_resource(resource)
+            if subdivide:
+                answer._col_subdivisions = [left.ncols()]
+            answer._trace_word_prime_resource("augment")
             return answer
         if left._has_packed_prime_storage() and right._has_packed_prime_storage():
             kernel = _dense_prime_kernel_module().dense_prime_field_matrix_augment
@@ -6652,6 +7004,15 @@ class Matrix(sage.Element):
             return MatrixSpace(
                 self.base_ring(), len(indices), self.ncols()
             )._from_fmpz_matrix_resource(target)
+        if self._has_nmod_matrix_resource():
+            target = _flint_ffi_module().nmod_matrix_select_rows(
+                self._nmod_resource(), _packed_uint64(indices), len(indices)
+            )
+            answer = MatrixSpace(
+                self.base_ring(), len(indices), self.ncols()
+            )._from_nmod_matrix_resource(target)
+            answer._trace_word_prime_resource("matrix_from_rows")
+            return answer
         if self._has_packed_prime_storage():
             kernel = _dense_prime_kernel_module().dense_prime_field_matrix_select_rows
             modulus = int(_untyped(self.base_ring()).characteristic())
@@ -6758,6 +7119,15 @@ class Matrix(sage.Element):
             return MatrixSpace(
                 self.base_ring(), self.nrows(), len(indices)
             )._from_fmpz_matrix_resource(target)
+        if self._has_nmod_matrix_resource():
+            target = _flint_ffi_module().nmod_matrix_select_columns(
+                self._nmod_resource(), _packed_uint64(indices), len(indices)
+            )
+            answer = MatrixSpace(
+                self.base_ring(), self.nrows(), len(indices)
+            )._from_nmod_matrix_resource(target)
+            answer._trace_word_prime_resource("matrix_from_columns")
+            return answer
         if self._has_packed_prime_storage():
             kernel = (
                 _dense_prime_kernel_module().dense_prime_field_matrix_select_columns
@@ -6852,6 +7222,10 @@ class Matrix(sage.Element):
     def trace(self) -> Any:
         if not self.is_square():
             raise ValueError("trace is only defined for square matrices")
+        if self._has_nmod_matrix_resource():
+            residue = _flint_ffi_module().nmod_matrix_trace(self._nmod_resource())
+            self._trace_word_prime_resource("trace")
+            return self.base_ring()(residue)
         if self._has_packed_prime_storage():
             kernel = _dense_prime_kernel_module().dense_prime_field_matrix_trace
             modulus = int(_untyped(self.base_ring()).characteristic())
@@ -7000,6 +7374,14 @@ class Matrix(sage.Element):
                 2,
             )
             return result
+        if left._has_nmod_matrix_resource() and right._has_nmod_matrix_resource():
+            result = bool(
+                _flint_ffi_module().nmod_matrix_equal(
+                    left._nmod_resource(), right._nmod_resource()
+                )
+            )
+            left._trace_word_prime_resource("equal")
+            return result
         if left._has_packed_prime_storage() and right._has_packed_prime_storage():
             kernel = _dense_prime_kernel_module().dense_prime_field_matrix_equal
             modulus = int(_untyped(base).characteristic())
@@ -7024,6 +7406,14 @@ class Matrix(sage.Element):
         return backend.matrixEqual(left._native, right._native)
 
     def __copy__(self) -> Matrix:
+        if self._has_nmod_matrix_resource():
+            answer = self._parent._from_nmod_matrix_resource(
+                _flint_ffi_module().nmod_matrix_copy(self._nmod_resource())
+            )
+            answer._row_subdivisions = list(self._row_subdivisions)
+            answer._col_subdivisions = list(self._col_subdivisions)
+            self._trace_word_prime_resource("copy")
+            return answer
         if self._has_m4ri_matrix_resource():
             answer = self._parent._from_m4ri_matrix_resource(
                 _m4ri_ffi_module().matrix_copy(self._m4ri_resource())
@@ -7103,6 +7493,14 @@ class Matrix(sage.Element):
         """Return the full entry-by-entry matrix representation."""
         if self.nrows() == 0:
             return "[]"
+        if (
+            self._has_nmod_matrix_resource()
+            and len(self._row_subdivisions) == 0
+            and len(self._col_subdivisions) == 0
+        ):
+            region = _flint_ffi_module().nmod_matrix_format(self._nmod_resource())
+            self._trace_word_prime_resource("str")
+            return bytes(region.take_bytes()).decode("ascii")
         if (
             self._has_m4ri_matrix_resource()
             and len(self._row_subdivisions) == 0
@@ -8291,6 +8689,7 @@ def random_matrix(
     if (
         modular_ring
         and not _is_packed_dense_prime_base(base)
+        and not _is_word_prime_resource_base(base)
         and lower is None
         and density == 1
         and distribution in (None, "uniform")
@@ -8311,6 +8710,25 @@ def random_matrix(
                 [rows, cols, base._modulus, seed1, seed2],
             )
             return Matrix(MatrixSpace(base, rows, cols), native_value)
+
+    if (
+        _is_word_prime_resource_base(base)
+        and lower is None
+        and density == 1
+        and distribution in (None, "uniform")
+    ):
+        seed1 = _random_int(0, 4294967295)
+        seed2 = _random_int(0, 4294967295)
+        resource = _flint_ffi_module().nmod_matrix_random(
+            rows,
+            cols,
+            int(_untyped(base).characteristic()),
+            seed1,
+            seed2,
+        )
+        result = MatrixSpace(base, rows, cols)._from_nmod_matrix_resource(resource)
+        result._trace_word_prime_resource("random_matrix")
+        return result
 
     if (
         _is_packed_dense_prime_base(base)

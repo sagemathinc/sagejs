@@ -32,27 +32,41 @@ production execution path for large matrices.
 
 from __future__ import annotations
 
+import typing as _typing
 from collections.abc import Callable
-from operator import index as operator_index
-from typing import Any, TypeAlias, TypeVar
+from typing import Any
 
-SparseRandomSpec: TypeAlias = tuple[int, int, str, float, int, str]
-SparseRandomWrites: TypeAlias = tuple[
-    int,
-    int,
-    tuple[int, ...],
-    tuple[Any, ...],
-]
+if _typing.TYPE_CHECKING:
+    SparseRandomSpec: _typing.TypeAlias = tuple[int, int, str, float, int, str]
+    SparseRandomWrites: _typing.TypeAlias = tuple[
+        int,
+        int,
+        tuple[int, ...],
+        tuple[Any, ...],
+    ]
 
-_Result = TypeVar("_Result")
+    _Result = _typing.TypeVar("_Result")
+else:
+    # These are static contracts only. Avoid executing parameterized typing
+    # aliases while building the standalone Sage.js baselib module cache.
+    SparseRandomSpec = tuple
+    SparseRandomWrites = tuple
 
 
 def _checked_integer(value: Any, message: str) -> int:
     if isinstance(value, bool):
         raise TypeError(message)
+    if isinstance(value, int):
+        return int(value)
     try:
-        result = operator_index(value)
-    except TypeError:
+        # Special methods are resolved on the type, not through an instance
+        # attribute. This is the same protocol used by `operator.index`, but
+        # avoids importing that entire standard-library module into standalone
+        # mathematical bundles for one primitive operation.
+        result = type(value).__index__(value)
+        if not isinstance(result, int):
+            raise TypeError
+    except (AttributeError, TypeError):
         raise TypeError(message) from None
     return int(result)
 

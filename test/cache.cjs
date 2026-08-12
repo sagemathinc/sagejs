@@ -5,6 +5,7 @@ const {
   existsSync,
   mkdirSync,
   readFileSync,
+  readdirSync,
   symlinkSync,
   utimesSync,
   writeFileSync,
@@ -23,6 +24,9 @@ const {
   markModuleCacheInUse,
   MODULE_CACHE_LEASE_PREFIX,
 } = require("../dist/tools/cache-lease.js");
+const {
+  atomicWriteCacheFileSync,
+} = require("../dist/tools/cache-file.js");
 
 function temporaryRoot(t) {
   const base = require("node:fs").mkdtempSync(join(tmpdir(), "sagejs-cache-test-"));
@@ -61,6 +65,151 @@ function addVersion(root, version, { ageDays, bytes = 16, lease = false, pin = f
   }
   return directory;
 }
+
+function waitForChild(child) {
+  let stderr = "";
+  child.stderr?.setEncoding("utf8");
+  child.stderr?.on("data", (chunk) => {
+    stderr += chunk;
+  });
+  return new Promise((resolve, reject) => {
+    child.once("error", reject);
+    child.once("close", (code, signal) => {
+      if (code === 0 && signal === null) resolve();
+      else reject(new Error(
+        `cache publisher exited with code ${code}, signal ${signal}: ${stderr}`,
+      ));
+    });
+  });
+}
+
+test("cache files are atomically visible to concurrent readers and writers", async (t) => {
+  const { base } = temporaryRoot(t);
+  const directory = join(base, "publication");
+  const filename = join(directory, "module.json");
+  mkdirSync(directory);
+  atomicWriteCacheFileSync(filename, JSON.stringify({ writer: -1, sequence: -1 }));
+
+  const helper = join(__dirname, "..", "dist", "tools", "cache-file.js");
+  const publisher = `
+    const { atomicWriteCacheFileSync } = require(${JSON.stringify(helper)});
+    const filename = process.argv[1];
+    const writer = Number(process.argv[2]);
+    for (let sequence = 0; sequence < 40; sequence += 1) {
+      atomicWriteCacheFileSync(filename, JSON.stringify({
+        payload: "x".repeat(256 * 1024),
+        sequence,
+        writer,
+      }));
+    }
+  `;
+  const children = Array.from({ length: 4 }, (_, writer) => spawn(
+    process.execPath,
+    ["-e", publisher, filename, String(writer)],
+    { stdio: ["ignore", "ignore", "pipe"] },
+  ));
+  let settled = false;
+  const completed = Promise.all(children.map(waitForChild)).finally(() => {
+    settled = true;
+  });
+  while (!settled) {
+    const document = JSON.parse(readFileSync(filename, "utf8"));
+    assert.equal(Number.isInteger(document.writer), true);
+    assert.equal(Number.isInteger(document.sequence), true);
+    if (document.payload !== undefined) {
+      assert.equal(document.payload.length, 256 * 1024);
+    }
+    await new Promise((resolve) => setImmediate(resolve));
+  }
+  await completed;
+  JSON.parse(readFileSync(filename, "utf8"));
+  assert.deepEqual(
+    readdirSync(directory).filter((name) => name.startsWith(".sagejs-publish-")),
+    [],
+  );
+});
+
+test("failed cache publication removes its private temporary file", (t) => {
+  const { base } = temporaryRoot(t);
+  const directory = join(base, "failed-publication");
+  const filename = join(directory, "occupied-by-a-directory");
+  mkdirSync(filename, { recursive: true });
+  assert.throws(
+    () => atomicWriteCacheFileSync(filename, "cache payload"),
+    /EISDIR|EPERM|EACCES|EEXIST|ENOTEMPTY/,
+  );
+  assert.deepEqual(
+    readdirSync(directory).filter((name) => name.startsWith(".sagejs-publish-")),
+    [],
+  );
+});
+
+test("bounded cleanup preserves a concurrently publishing leased generation", async (t) => {
+  const { root } = temporaryRoot(t);
+  const version = versionName("9");
+  const directory = join(root, version);
+  const filename = join(directory, "module.json");
+  mkdirSync(directory);
+
+  const cacheFileHelper = join(__dirname, "..", "dist", "tools", "cache-file.js");
+  const leaseHelper = join(__dirname, "..", "dist", "tools", "cache-lease.js");
+  const publisher = `
+    const { atomicWriteCacheFileSync } = require(${JSON.stringify(cacheFileHelper)});
+    const { markModuleCacheInUse } = require(${JSON.stringify(leaseHelper)});
+    const directory = process.argv[1];
+    const filename = process.argv[2];
+    const release = markModuleCacheInUse(directory, 10);
+    let sequence = 0;
+    const publish = () => atomicWriteCacheFileSync(
+      filename,
+      JSON.stringify({ sequence: sequence++ }),
+    );
+    publish();
+    const timer = setInterval(publish, 2);
+    process.on("message", (message) => {
+      if (message !== "stop") return;
+      clearInterval(timer);
+      release();
+      process.exit(0);
+    });
+    process.send("ready");
+  `;
+  const child = spawn(
+    process.execPath,
+    ["-e", publisher, directory, filename],
+    { stdio: ["ignore", "ignore", "pipe", "ipc"] },
+  );
+  t.after(() => {
+    if (child.exitCode === null && child.signalCode === null) child.kill();
+  });
+  const completed = waitForChild(child);
+  await once(child, "message");
+  const whileActive = pruneModuleCache({
+    apply: true,
+    currentVersions: [],
+    expectedRoot: root,
+    policy: { keepVersions: 0, maxAgeDays: 0, minAgeDays: 0, maxBytes: 0 },
+    root,
+  });
+  assert.deepEqual(whileActive.removedVersions, []);
+  assert.equal(
+    whileActive.entries.find((entry) => entry.version === version).inUse,
+    true,
+  );
+  assert.equal(existsSync(filename), true);
+  child.send("stop");
+  await completed;
+
+  const afterRelease = pruneModuleCache({
+    apply: true,
+    currentVersions: [],
+    expectedRoot: root,
+    policy: { keepVersions: 0, maxAgeDays: 0, minAgeDays: 0, maxBytes: 0 },
+    root,
+  });
+  assert.deepEqual(afterRelease.removedVersions, [version]);
+  assert.equal(existsSync(directory), false);
+});
 
 test("module-cache prune preserves current, recent, pinned, and leased versions", (t) => {
   const { root } = temporaryRoot(t);

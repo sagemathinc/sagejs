@@ -1,0 +1,121 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "exact-matrix-subspaces-v1",
+  "title": "Exact Matrix Subspaces v1 contract",
+  "lane": "integration",
+  "status": "proposed",
+  "owner": "user",
+  "objective": "Route public Matrix row_space, row_module, image, column_space, column_module, and pivots over canonical ZZ, QQ, GF(2), and small GF(p) storage through the completed storage-neutral matrix_subspaces protocol, bulk row selectors, and bounded pivot metadata while preserving Sage semantics, caches, immutability, lifecycle, portable fallbacks, and representative warm performance without exporting a complete exact matrix",
+  "base_commit": "9ba858a415d6ca6c91538865526bae4effc0cb34",
+  "claims": [
+    ".agents/tasks/exact-matrix-subspaces-v1.json"
+  ],
+  "dependencies": [
+    "matrix-subspaces-contract",
+    "public-matrix-selection-v1",
+    "word-prime-matrix-public",
+    "exact-poly-bulk-impl",
+    "public-exact-vector-v1"
+  ],
+  "references": [
+    "/home/user/upstream/sage/src/sage/matrix/matrix0.pyx",
+    "/home/user/upstream/sage/src/sage/matrix/matrix2.pyx",
+    "src/lib/sagejs/linear_algebra/matrix_subspaces.py",
+    "src/lib/sagejs/linear_algebra/matrix_predicates.py",
+    "bench/linear-matrix-subspaces.cjs",
+    "planned-claim:src/baselib/matrix.py",
+    "planned-claim:src/lib/sagejs/linear_algebra/matrix_subspaces_public.py",
+    "planned-claim:ffi/flint.ffi.py",
+    "planned-claim:ffi/flint.ffi.json",
+    "planned-claim:packages/flint/include/sagejs/fmpz_matrix_ffi.h",
+    "planned-claim:packages/flint/include/sagejs/fmpq_matrix_ffi.h",
+    "planned-claim:packages/flint/generated/ffi_host.py",
+    "planned-claim:src/baselib/sagejs/ffi/flint.py",
+    "planned-claim:src/lib/sagejs/ffi/flint.py",
+    "conditional-planned-claim:ffi/m4ri.ffi.py",
+    "conditional-planned-claim:ffi/m4ri.ffi.json",
+    "conditional-planned-claim:packages/m4ri/include/sagejs/m4ri_matrix_ffi.h",
+    "conditional-planned-claim:packages/m4ri/generated/ffi_host.py",
+    "conditional-planned-claim:src/baselib/sagejs/ffi/m4ri.py",
+    "conditional-planned-claim:src/lib/sagejs/ffi/m4ri.py",
+    "conditional-planned-claim:src/lib/sagejs/kernels/matrix/dense_binary_m4ri.py",
+    "planned-claim:test/public-exact-matrix-subspaces.cjs",
+    "planned-claim:test/exact-matrix-pivot-lifecycle.cjs",
+    "planned-claim:test/node-test-manifest.cjs",
+    "planned-claim:bench/public-exact-matrix-subspaces.cjs",
+    "planned-claim:architecture/native-boundaries.json",
+    "planned-claim:pyrightconfig.json",
+    "public-route:equal-ring row and column spaces compute one canonical echelon matrix, obtain its leading generator-row count, bulk-select exactly that prefix, mark it immutable, and publish CanonicalBasis metadata without constructing host vectors",
+    "public-route:ZZ uses generated fmpz HNF plus generated fmpz row selection; QQ uses generated fmpq RREF plus generated fmpq row selection; small nonbinary GF(p) uses canonical packed residues and typed-Python bulk selection; GF(2) keeps the M4RI resource through echelonization and selection",
+    "pivot-abi:one declaration shape per exact resource writes increasing pivot columns to a caller-owned UInt64Buffer of known capacity min(nrows,ncols), returns the actual count, performs no allocation proportional to exact entry size, and rejects undersized or aliased output transactionally",
+    "pivot-abi:the exact adapter scans the already canonical HNF or RREF in native FLINT storage and never serializes entries, constructs Integer or Rational host objects, retains the borrowed resource, or recomputes echelon form",
+    "prime-route:reuse the existing M4RI and packed-prime pivot kernels; if matrix_from_rows would materialize an M4RI matrix as residues, add one generated M4RI row-prefix or row-selection resource adapter instead of accepting that conversion",
+    "cache-gate:pivots returns one immutable increasing tuple, subsequent calls return the identical cached object, and the source and its cached echelon form share the same tuple; every successful matrix mutation invalidates it",
+    "cache-gate:row-space and column-space execution reuse the source or transpose echelon cache and never call rank merely to rescan a canonical exact matrix after pivot metadata is available",
+    "semantic-gate:row_space(base_ring=None), row_module, and image preserve Sage aliases; an equal explicit base ring takes the canonical bulk path, while a genuinely different requested base ring consumes GeneratorSpan with the original generators and already_echelonized=False",
+    "semantic-gate:column_space and column_module have Sage's transpose-then-row-module convention and do not accept a cross-ring argument",
+    "semantic-gate:ZZ bases are canonical HNF module bases rather than QQ vector-space bases; QQ and prime-field bases are canonical RREF bases; zero-row, zero-column, rank-zero, tall, wide, full-rank, and skew exact matrices preserve dimensions exactly",
+    "semantic-gate:composite Zmod(n) retains its Howell-specific leading-nonzero-generator count rather than substituting rank; this fallback is differentially tested even though its production migration is outside this task",
+    "ownership-gate:every selected basis owns independent canonical storage, is immutable before publication, and remains valid after temporary transpose or echelon wrappers are deterministically released; borrowed source resources remain open and unchanged",
+    "boundary-gate:instrumented ZZ and QQ public calls fail if _exact_host_values, list, rows, row, scalar entry access, SagePack serialization, a legacy N-API matrix, or per-entry generated host calls are used",
+    "boundary-gate:instrumented GF(2) fails on full M4RI-to-UInt64 materialization; small GF(p) may borrow its canonical UInt64Buffer but must cross only one complete pivot or selector operation",
+    "differential-gate:compare basis matrices, ambient parents, dimensions or ranks, repr, aliases, membership, equality, mutability, and pivot tuples with SageMath for ZZ, QQ, GF(2), GF(3), GF(7), a prime near the packed-backend cutoff, and representative composite Zmod fixtures",
+    "differential-gate:run generated-capable, SAGEJS_NATIVE_DISABLE=1, exact-NAPI-forbidden, and forced portable capability modes; unsupported backends retain the current correct dynamic path rather than partially converting canonical storage",
+    "benchmark-baseline:on the recorded Linux x64 warm 200x300 extraction workload, scalar reconstruction versus direct bulk selection measured approximately ZZ 83.35/8.98 ms, QQ 355.96/14.18 ms, GF(7) 209.32/0.89 ms, and GF(2) 204.84/1.38 ms for rows, with analogous column measurements 10.75/1.05, 164.78/1.13, 308.20/0.60, and 306.00/1.01 ms",
+    "benchmark-gate:after one shared echelon computation each public basis extraction is at most max(2 ms, 2 times the direct bulk-selector median) and at least five times faster than the retained scalar-reconstruction oracle for every covered domain on the same host",
+    "benchmark-gate:already-echelonized 300x500 ZZ and QQ pivots are at least twenty times faster than forced full-resource serialization plus host scanning, allocate O(rank) host output rather than O(rows*columns exact-entry bytes), and exhibit linear scan scaling",
+    "benchmark:separate startup and first lazy load from warmed row_space, column_space, pivots, cached pivots, transpose, echelon, and prefix-selection measurements; record SageMath and the previous Sage.js path without hard-coding one host's absolute crossover",
+    "architecture-gate:ordinary matrix_subspaces.py remains representation-neutral and CPython-parseable, new public dispatch is lazy and strict, generated adapter source is inspectable, and no native-compiler implementation file or algorithm-specific N-API callback changes"
+  ],
+  "architecture": {
+    "strategy": "mixed",
+    "fallback": "tested-capability",
+    "oracles": [
+      "SageMath 10.9 row_space, column_space, and pivots semantics",
+      "current Sage.js scalar reconstruction path",
+      "completed storage-neutral matrix_subspaces contract",
+      "generated FLINT and M4RI resources plus compiler-owned prime residue buffers"
+    ],
+    "exceptions": [
+      "Generated exact-resource pivot metadata and a possible M4RI bulk-prefix selector are representation adapters only; all row-space and column-space planning remains ordinary storage-neutral Python, and no new mathematical C algorithm is permitted."
+    ]
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "node --test test/linear-matrix-subspaces.cjs test/public-exact-matrix-subspaces.cjs",
+    "node --expose-gc test/exact-matrix-pivot-lifecycle.cjs",
+    "node bench/public-exact-matrix-subspaces.cjs --check",
+    "pnpm ffi:check",
+    "pnpm ffi:lifecycle:fuzz",
+    "pnpm architecture:check",
+    "pnpm test:portable",
+    "pnpm test:baselib:strict",
+    "pnpm --dir packages/flint test",
+    "pnpm --dir packages/m4ri test"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "The storage-neutral matrix_subspaces contract is complete, exact and prime bulk selectors already exist, and public Matrix still bypasses them: _canonical_row_basis decodes every row into host vectors, rebuilds a matrix from scalar objects, and exact pivots serializes the complete fmpz or fmpq resource before scanning it. This proposal freezes the narrow integration: ordinary Python owns canonical subspace planning, each representation supplies a leading-row count and one bulk selector, and only ZZ/QQ gain a minimal generated pivot-metadata query. GF(2) must remain an M4RI resource rather than being flattened as residues. Only this planning manifest is claimed because the active word-prime and exact-polynomial lanes currently own central declarations and generated hosts.",
+    "risks": [
+      "The active word-prime matrix lane is changing the packed-versus-nmod cutoff and central generated declarations. Implementation before it lands would create ambiguous GF(p) ownership and overlapping FFI edits.",
+      "The exact-polynomial ingress lane also needs the central FLINT declaration and generated host files. The two exact pivot declarations must be added after that lane integrates, in one deterministic regeneration.",
+      "GF(2) currently lacks a public generated row selector and matrix_from_rows can materialize the entire M4RI resource as UInt64 residues. The implementation must add one generic M4RI selector or prove that the word-prime lane has already supplied an equivalent resource-preserving operation.",
+      "Cross-ring row_space(base_ring=...) requires a real ring-aware GeneratorSpan consumer. Reusing the equal-ring canonical basis would silently change Sage semantics, especially for rational rows viewed as a ZZ-module.",
+      "Composite residue rings use Howell generators whose leading nonzero-row count is not rank. The new field and exact fast paths must not generalize their rank rule into that fallback.",
+      "Windows and browser hosts may not yet lower every exact selector. Capability tests must retain a correct fallback and must not make unsupported generated resources the only public path."
+    ],
+    "next_steps": [
+      "Wait for word-prime-matrix-public, exact-poly-bulk-impl, and the public exact-vector contract to integrate, then create a fresh implementation lane with exact conflict-free claims from the planned list above.",
+      "Add the two symmetric generated exact pivot declarations and adapters first, including transactional undersized-buffer tests, direct dynamic and compiled borrowed-resource tests, and sanitizer-backed random lifecycle schedules.",
+      "Add or reuse one M4RI resource-preserving row selector, then implement matrix_subspaces_public.py as a small lazy adapter around the existing canonical_row_basis, canonical_column_basis, and prepare_row_space functions.",
+      "Replace Matrix._canonical_row_basis, public row or column spaces, and pivots through that adapter; preserve tuple identity and all mutation invalidation before changing performance defaults.",
+      "Run Sage differentials and forbidden-boundary tests across all domains and degenerate shapes, then ratchet the recorded warm extraction and exact-pivot benchmarks on Linux x64, Linux arm64, and macOS arm64 before integration."
+    ]
+  }
+}

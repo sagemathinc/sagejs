@@ -1,0 +1,107 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "public-finite-extension-scalars-v1",
+  "title": "Public finite-extension scalar resources v1 contract",
+  "lane": "integration",
+  "status": "proposed",
+  "owner": "user",
+  "objective": "Make word-characteristic public GF(p^n) parents canonically own generated FqContext resources and their immutable scalar elements canonically own generated FqElement resources, while preserving Sage context identity, coercion, Conway/modulus, equality, hashing, formatting, serialization, lifecycle, portable fallback, and measured performance semantics without a second canonical element representation or compiler changes",
+  "base_commit": "733f1df4ae177352967af99f835e350f2d3b894e",
+  "claims": [
+    ".agents/tasks/public-finite-extension-scalars-v1.json"
+  ],
+  "dependencies": [
+    "word-prime-matrix-public",
+    "exact-poly-bulk-impl"
+  ],
+  "references": [
+    ".agents/tasks/extension-polynomial-resource-contract.json",
+    ".agents/tasks/extension-polynomial-resource-impl.json",
+    "planned-claim:ffi/flint.ffi.py",
+    "planned-claim:packages/flint/include/sagejs/fq_polynomial_ffi.h",
+    "planned-claim:packages/flint/generated/ffi_host.py",
+    "planned-claim:src/lib/sagejs/kernels/polynomial/extension_flint.py",
+    "planned-claim:src/baselib/finite_fields.py",
+    "planned-claim:tools/serialization-codecs/polynomial.ts",
+    "conditional-planned-claim:packages/flint/src/extension_field.c",
+    "conditional-planned-claim:packages/flint/src/extension_field.h",
+    "conditional-planned-claim:packages/flint/src/addon.c",
+    "conditional-planned-claim:packages/flint/index.cjs",
+    "conditional-planned-claim:architecture/native-boundaries.json",
+    "conditional-planned-claim:architecture/native-exports.json",
+    "conditional-planned-claim:architecture/native-export-policy.json",
+    "planned-claim:test/public-extension-field-resources.cjs",
+    "planned-claim:test/extension-field-resource-serialization.cjs",
+    "planned-claim:packages/flint/test/extension-field-lifecycle.cjs",
+    "planned-claim:bench/public-extension-field-resources.cjs",
+    "generated-ffi:FqContextCreateConway and one versioned bulk normalized modulus export",
+    "generated-ffi:FqElement bulk coordinate export plus negation, division, inverse, exact signed power, is_zero, and is_one",
+    "public-semantics:factory identity is order, generator name, and normalized explicit modulus or deterministic default Conway choice",
+    "public-semantics:raw resources require exact context identity even for equal descriptors; public incompatible arithmetic raises TypeError and incompatible equality is false",
+    "public-semantics:preserve exact ZZ, prime-subfield, and QQ coercions while rejecting floats and incompatible finite fields",
+    "public-semantics:preserve zero, one, gen, gens, iteration, repr, signed powers, and zero-division behavior",
+    "conway-gate:default GF(9), GF(8), GF(2^16), and GF(3^11) moduli agree with Sage and current Sage.js; unavailable GF(65537^2) remains NotImplementedError",
+    "representation-gate:on a generated-capable host each public element stores one FqElement and never a persistent legacy value or full coordinate copy",
+    "representation-gate:on a fallback host each public element stores one legacy value and backend choice is immutable per parent",
+    "bridge-gate:still-legacy polynomial and matrix paths may use call-scoped bulk coordinate conversion but never repr parsing, per-coordinate host calls, or cached dual element storage",
+    "hash-gate:equal immutable elements have equal stable hashes, dictionary and set lookup survive equivalent reconstruction, and no resource pointer contributes to hash",
+    "serialization-gate:SagePack stores a parent descriptor and canonical low-to-high coordinates, never FLINT text or a resource handle; malformed shapes and residues fail closed",
+    "serialization-gate:wire bytes are deterministic and same-runtime round trips restore an equal element with equal hash through the cached GF parent",
+    "lifecycle-gate:dependents retain context state after the public wrapper closes; explicit close and finalization are idempotent, thread-affine, and sanitizer clean in random close order",
+    "fallback-gate:generated-unavailable, non-word-characteristic, Windows-capability, and WebAssembly hosts preserve current public behavior through a tested legacy or CoWasm path",
+    "compatibility-gate:public extension polynomial and matrix construction, coefficient or entry access, arithmetic, and result conversion pass in forced generated and forced fallback modes",
+    "architecture-gate:no native compiler implementation files change and generated adapter output remains inspectable",
+    "benchmark:separate process startup, first public call, and warmed execution for default and explicit context construction plus 100000 scalar constructions and arithmetic operations",
+    "benchmark:measure repr, hash, coordinate export, SagePack round trip, and GC churn at extension degrees 2, 11 or 16, and 128",
+    "benchmark-gate:warm generated public scalar arithmetic is at most 1.5 times the legacy N-API median on the same host",
+    "benchmark-gate:format, hash, and serialization cross one bulk boundary and degree-128 export demonstrates linear rather than quadratic scaling"
+  ],
+  "architecture": {
+    "strategy": "external-library",
+    "fallback": "tested-capability",
+    "oracles": [
+      "SageMath finite extension-field scalar semantics",
+      "current Sage.js legacy N-API finite-extension backend",
+      "generated FqContext/FqElement resource lifecycle and canonical coordinate payload"
+    ],
+    "exceptions": [
+      "Until public extension polynomials and matrices migrate, a generic call-scoped legacy fq coordinate bridge may be retained as a representation adapter; it must not add mathematical operations, parse formatted text, or become canonical element storage."
+    ]
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "fallback",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "node --test test/public-extension-field-resources.cjs test/extension-field-resource-serialization.cjs",
+    "node --expose-gc packages/flint/test/extension-field-lifecycle.cjs",
+    "node bench/public-extension-field-resources.cjs --check",
+    "pnpm ffi:check",
+    "pnpm test:serialization",
+    "pnpm architecture:check",
+    "pnpm test:portable",
+    "pnpm test:baselib:strict",
+    "pnpm ffi:lifecycle:fuzz",
+    "pnpm --dir packages/flint test"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "Read-only architecture audit found that public finite-extension parents and elements still canonically own legacy N-API state, while generated explicit-modulus FqContext, FqElement, and structural FqPolynomial resources now exist. This proposal freezes the scalar ownership and interchange contract needed before public extension-polynomial or matrix migration. Only this planning manifest is claimed; every implementation path is recorded above as a planned or conditional future claim.",
+    "risks": [
+      "Public extension polynomials and matrices still consume legacy fq objects, so the implementation must preserve them through an explicit call-scoped bulk coordinate bridge until their own resource migrations land; storing both forms on a public element would invalidate this proposal.",
+      "The generated context currently accepts only explicit word-characteristic moduli. Default Conway construction and deterministic modulus export must match Sage and the legacy backend exactly rather than silently choosing an isomorphic but incompatible presentation.",
+      "Current declarations are wasm-disabled and native Windows support may not yet expose generated resources. These platforms require an explicit, tested capability fallback and must not lose already working public finite fields.",
+      "Central FFI declarations, generated hosts, architecture inventories, and FLINT package surfaces overlap active shared lanes; implementation must wait for those lanes to integrate and then take fresh narrow claims."
+    ],
+    "next_steps": [
+      "Stage 1: integrate word-prime-matrix-public and exact-poly-bulk-impl, rebase on their reviewed tips, and audit the resulting shared FFI declarations and generated host adapter before assigning implementation claims.",
+      "Stage 2: create a separate implementation contract or deliberately activate and expand this proposal with exact conflict-free claims; first add Conway context creation, bulk modulus and element export, and the missing scalar operations without compiler changes.",
+      "Stage 3: wire public finite-field parents and elements to one immutable backend-selected canonical resource, add only the generic temporary legacy coordinate bridge needed by existing polynomial and matrix paths, and prove forced-generated and forced-fallback parity.",
+      "Stage 4: complete SagePack coordinate serialization, equality and hashing, lifecycle fuzzing, cross-host validation, and the recorded benchmark gates before making generated resources the native default.",
+      "Stage 5: migrate public extension polynomials using the frozen context and coordinate contract, including divrem, gcd, xgcd, factor, roots, evaluate, format, and serialization; then migrate dense extension matrices and delete the temporary bridge and legacy scalar N-API paths."
+    ]
+  }
+}

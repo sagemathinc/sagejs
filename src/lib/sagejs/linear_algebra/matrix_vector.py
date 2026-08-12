@@ -27,11 +27,17 @@ arithmetic is the production implementation for a large dense matrix.
 
 from __future__ import annotations
 
+import typing as _typing
 from collections.abc import Callable, Sequence
 from typing import Any, Literal
 
-ProductSide = Literal["right", "left"]
-BulkProduct = Callable[[Any, Any, int, int], Any]
+if _typing.TYPE_CHECKING:
+    ProductSide = Literal["right", "left"]
+    BulkProduct = Callable[[Any, Any, int, int], Any]
+else:
+    # Static aliases need no runtime subscription in the standalone baselib.
+    ProductSide = str
+    BulkProduct = object
 
 
 class MatrixVectorProductPlan:
