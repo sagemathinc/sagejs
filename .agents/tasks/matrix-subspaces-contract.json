@@ -4,7 +4,7 @@
   "id": "matrix-subspaces-contract",
   "title": "Matrix Subspaces Contract",
   "lane": "arithmetic-algebra",
-  "status": "active",
+  "status": "review",
   "owner": "user",
   "objective": "Define storage-neutral canonical row/column-space planning and execution that reuses one echelon result and bulk-selects its first rank rows, with Sage differential semantics and performance witnesses, ready for later Matrix API wiring",
   "base_commit": "5a1cc59fc7fddad7648e98dc2d341a2455853754",
@@ -150,6 +150,66 @@
       "started_at": "2026-08-12T10:50:28.443Z",
       "commit": "ed6ff750fdcbcdb24a3f0d89dbca933f1ec7f85a",
       "workspace_fingerprint": "7d6d2c3dfb3abc6607ed7783b3905557171966631c111fde286df52461187d70",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/linear-matrix-subspaces.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.607,
+      "started_at": "2026-08-12T10:58:59.410Z",
+      "commit": "75e595d5f00c91ba63d74e564b3e1229bbee0016",
+      "workspace_fingerprint": "b6d1f4902e9531782233eef21e7bb04e0aae4dee1ca35e74c98ef9c0ad2d24c4",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/linear-matrix-subspaces.cjs --check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 22.399,
+      "started_at": "2026-08-12T10:59:05.388Z",
+      "commit": "75e595d5f00c91ba63d74e564b3e1229bbee0016",
+      "workspace_fingerprint": "b6d1f4902e9531782233eef21e7bb04e0aae4dee1ca35e74c98ef9c0ad2d24c4",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm exec pyright src/lib/sagejs/linear_algebra/matrix_subspaces.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.11,
+      "started_at": "2026-08-12T10:59:35.074Z",
+      "commit": "75e595d5f00c91ba63d74e564b3e1229bbee0016",
+      "workspace_fingerprint": "b6d1f4902e9531782233eef21e7bb04e0aae4dee1ca35e74c98ef9c0ad2d24c4",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 13.077,
+      "started_at": "2026-08-12T10:59:36.775Z",
+      "commit": "75e595d5f00c91ba63d74e564b3e1229bbee0016",
+      "workspace_fingerprint": "b6d1f4902e9531782233eef21e7bb04e0aae4dee1ca35e74c98ef9c0ad2d24c4",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 13.214,
+      "started_at": "2026-08-12T10:59:50.447Z",
+      "commit": "75e595d5f00c91ba63d74e564b3e1229bbee0016",
+      "workspace_fingerprint": "b6d1f4902e9531782233eef21e7bb04e0aae4dee1ca35e74c98ef9c0ad2d24c4",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:native",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 570.39,
+      "started_at": "2026-08-12T11:00:08.626Z",
+      "commit": "75e595d5f00c91ba63d74e564b3e1229bbee0016",
+      "workspace_fingerprint": "b6d1f4902e9531782233eef21e7bb04e0aae4dee1ca35e74c98ef9c0ad2d24c4",
       "platform": "linux-x64"
     }
   ],
