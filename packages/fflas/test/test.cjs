@@ -1,7 +1,7 @@
 "use strict";
 
 const assert = require("node:assert/strict");
-const { readFileSync } = require("node:fs");
+const { existsSync, readFileSync } = require("node:fs");
 const { join } = require("node:path");
 const { spawnSync } = require("node:child_process");
 const test = require("node:test");
@@ -112,6 +112,19 @@ test("native BLAS selection is explicit and Darwin links Accelerate", {
       : "openblas-from-sagejs-flint",
   );
   if (process.platform !== "darwin") return;
+  assert.doesNotMatch(JSON.stringify(stamp), /openblas/i);
+  assert.equal(
+    readFileSync(join(prefix, "lib", "Accelerate.tbd"), "utf8")
+      .includes("install-name"),
+    true,
+  );
+  assert.equal(
+    readFileSync(join(prefix, "include", "cblas.h"), "utf8")
+      .includes("cblas_sgemm"),
+    true,
+  );
+  assert.equal(existsSync(join(prefix, "lib", "libopenblas.a")), false);
+  assert.equal(existsSync(join(prefix, "include", "openblas_config.h")), false);
 
   const addon = join(
     __dirname,

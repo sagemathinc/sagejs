@@ -17,12 +17,24 @@
           "libgmpxx.a",
           "libgmp.a"
         ],
-        "windows": []
+        "windows": [],
+        "linux": [
+          "libgivaro.a",
+          "libopenblas.a",
+          "libgmpxx.a",
+          "libgmp.a"
+        ],
+        "darwin": [
+          "libgivaro.a",
+          "Accelerate.tbd",
+          "libgmpxx.a",
+          "libgmp.a"
+        ]
       },
       "dependencies": [
         "FFLAS-FFPACK",
         "Givaro",
-        "OpenBLAS",
+        "BLAS",
         "GMP"
       ],
       "toolchain": {

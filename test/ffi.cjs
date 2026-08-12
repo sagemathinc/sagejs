@@ -23,6 +23,7 @@ const hostAdapters = require("../tools/ffi/host-adapters.cjs");
 const {
   bindingGyp,
   compileKernel,
+  foreignCompilationInputs,
   generatedCxxLanguageSettings,
 } = require("../tools/native-kernel/compiler.cjs");
 const {
@@ -559,6 +560,34 @@ test("FFI v7 source parser is formatting-independent and reports source location
       ),
       new RegExp(`FFI source .*invalid\\.ffi\\.py:[0-9]+:[0-9]+: ` +
         "Effects has unknown keyword mystery"),
+    );
+  } finally {
+    rmSync(temporary, { recursive: true, force: true });
+  }
+});
+
+test("FFI declarations preserve explicit Linux and Darwin link overrides", async () => {
+  const sourceRegistry = await sourceDeclarations.loadSourceRegistry({ root });
+  const source = sourceRegistry.byId.get("fflas");
+  assert.deepEqual(source.declaration.library.native.link.linux, [
+    "libgivaro.a", "libopenblas.a", "libgmpxx.a", "libgmp.a",
+  ]);
+  assert.deepEqual(source.declaration.library.native.link.darwin, [
+    "libgivaro.a", "Accelerate.tbd", "libgmpxx.a", "libgmp.a",
+  ]);
+
+  const original = readFileSync(join(root, "ffi", "igraph.ffi.py"), "utf8");
+  const temporary = mkdtempSync(join(tmpdir(), "sagejs-ffi-link-platform-"));
+  try {
+    const invalid = original.replace(
+      "link_windows=[\"igraph.lib\"],",
+      "link_windows=[\"igraph.lib\"],\n    link_darwin=[\"../escape.tbd\"],",
+    );
+    const filename = join(temporary, "invalid.ffi.py");
+    writeFileSync(filename, invalid);
+    await assert.rejects(
+      () => sourceDeclarations.parseDeclarationSource(filename),
+      /library\.native\.link\.darwin contains unsafe value/,
     );
   } finally {
     rmSync(temporary, { recursive: true, force: true });
@@ -2030,7 +2059,8 @@ test("generated binding.gyp pins portable C++17 settings on every host", () => {
     GCC_ENABLE_CPP_EXCEPTIONS: "YES",
     GCC_ENABLE_CPP_RTTI: "YES",
     GCC_OPTIMIZATION_LEVEL: "3",
-    MACOSX_DEPLOYMENT_TARGET: "13.0",
+    MACOSX_DEPLOYMENT_TARGET:
+      process.env.MACOSX_DEPLOYMENT_TARGET || "13.0",
   });
 
   const windows = bindingGyp(ir, true, true, "win32").targets[0];
@@ -2042,6 +2072,91 @@ test("generated binding.gyp pins portable C++17 settings on every host", () => {
     WarningLevel: 3,
   });
   assert.equal(windows.cflags_cc, undefined);
+});
+
+test("generated binding.gyp selects exact-platform link declarations", () => {
+  const prefix = join(root, "packages", "fflas", ".native", "prefix", "lib");
+  const ir = {
+    foreignLibraries: [{
+      id: "platform_witness",
+      native: {
+        link: {
+          unix: ["fallback.a"],
+          windows: ["witness.lib"],
+          linux: ["linux.a"],
+          darwin: ["Darwin.tbd"],
+        },
+        toolchain: {
+          prefix_environment: "SAGEJS_FFLAS_PREFIX",
+          unix_default: "packages/fflas/.native/prefix",
+          windows_default: "packages/fflas/.native/prefix",
+          include_dirs: ["include"],
+          source_include_dirs: ["packages/fflas/include"],
+        },
+      },
+    }],
+    functions: [{ kernelKind: "prime-field-matrix" }],
+  };
+  assert.ok(bindingGyp(ir, true, false, "linux").targets[0].libraries
+    .includes(join(prefix, "linux.a")));
+  assert.deepEqual(
+    bindingGyp(ir, true, false, "linux").targets[0].include_dirs.slice(0, 2),
+    [
+      join(root, "packages", "fflas", "include"),
+      join(root, "packages", "fflas", ".native", "prefix", "include"),
+    ],
+  );
+  assert.ok(bindingGyp(ir, true, false, "darwin").targets[0].libraries
+    .includes(join(prefix, "Darwin.tbd")));
+  delete ir.foreignLibraries[0].native.link.darwin;
+  assert.ok(bindingGyp(ir, true, false, "darwin").targets[0].libraries
+    .includes(join(prefix, "fallback.a")));
+  ir.foreignLibraries[0].native.link.darwin = [];
+  assert.equal(bindingGyp(ir, true, false, "darwin").targets[0].libraries
+    .includes(join(prefix, "fallback.a")), false);
+});
+
+test("native foreign input identity hashes only selected platform links", () => {
+  const temporary = mkdtempSync(join(tmpdir(), "sagejs-platform-link-inputs-"));
+  const previous = process.env.SAGEJS_PLATFORM_LINK_TEST_PREFIX;
+  try {
+    mkdirSync(join(temporary, "lib"), { recursive: true });
+    const selected = process.platform === "win32"
+      ? "selected.lib"
+      : process.platform === "darwin" ? "selected.tbd" : "selected.a";
+    writeFileSync(join(temporary, "lib", selected), "selected platform input\n");
+    process.env.SAGEJS_PLATFORM_LINK_TEST_PREFIX = temporary;
+    const link = {
+      unix: ["missing-fallback.a"],
+      windows: ["selected.lib"],
+      linux: ["selected.a"],
+      darwin: ["selected.tbd"],
+    };
+    const inputs = foreignCompilationInputs({
+      foreignLibraries: [{
+        id: "platform_link_test",
+        native: {
+          headers: [],
+          link,
+          toolchain: {
+            prefix_environment: "SAGEJS_PLATFORM_LINK_TEST_PREFIX",
+            unix_default: "unused",
+            windows_default: "unused",
+            include_dirs: [],
+            source_include_dirs: [],
+          },
+        },
+      }],
+    });
+    assert.deepEqual(inputs[0].libraries.map(({ name }) => name), [selected]);
+  } finally {
+    if (previous === undefined) {
+      delete process.env.SAGEJS_PLATFORM_LINK_TEST_PREFIX;
+    } else {
+      process.env.SAGEJS_PLATFORM_LINK_TEST_PREFIX = previous;
+    }
+    rmSync(temporary, { recursive: true, force: true });
+  }
 });
 
 test("compiled packed slices agree with fallbacks and commit outputs transactionally", async () => {

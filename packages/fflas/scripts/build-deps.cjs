@@ -35,10 +35,6 @@ if (configuredJobs !== undefined && !/^[1-9][0-9]*$/.test(configuredJobs)) {
 const jobs =
   configuredJobs ||
   String(Math.min(8, availableParallelism?.() || cpus().length || 2));
-const macosDeploymentTarget =
-  process.platform === "darwin"
-    ? process.env.MACOSX_DEPLOYMENT_TARGET || "13.0"
-    : undefined;
 const publicHeader = join(
   packageRoot,
   "include",
@@ -49,7 +45,15 @@ const {
   NATIVE_MATH_DEPENDENCY_VERSIONS,
   nativeMathBuildProfile,
 } = require(join(repositoryRoot, "scripts", "native-math-profile.cjs"));
-const mathBuildProfile = nativeMathBuildProfile();
+const {
+  appleAccelerateSdkInputs,
+  fflasMathBuildProfile,
+  macosDeploymentTarget: selectedMacosDeploymentTarget,
+} = require(join(repositoryRoot, "scripts", "darwin-native.cjs"));
+const macosDeploymentTarget = process.platform === "darwin"
+  ? selectedMacosDeploymentTarget()
+  : undefined;
+const mathBuildProfile = fflasMathBuildProfile(nativeMathBuildProfile());
 const mathBuildOptions = mathBuildProfile.buildOptions;
 
 const dependencies = [
@@ -100,54 +104,13 @@ function digest(filename) {
   return createHash("sha256").update(readFileSync(filename)).digest("hex");
 }
 
-function darwinAccelerateStub() {
-  const result = spawnSync(
-    "xcrun",
-    ["--sdk", "macosx", "--show-sdk-path"],
-    { encoding: "utf8" },
-  );
-  if (result.error || result.status !== 0) {
-    throw new Error(
-      "unable to locate the macOS SDK for Apple Accelerate: " +
-        (result.error?.message || result.stderr?.trim() || result.status),
-    );
-  }
-  const sdk = result.stdout.trim();
-  const candidates = [
-    join(
-      sdk,
-      "System",
-      "Library",
-      "Frameworks",
-      "Accelerate.framework",
-      "Accelerate.tbd",
-    ),
-    join(
-      sdk,
-      "System",
-      "Library",
-      "Frameworks",
-      "Accelerate.framework",
-      "Versions",
-      "A",
-      "Accelerate.tbd",
-    ),
-  ];
-  const stub = candidates.find((candidate) => existsSync(candidate));
-  if (stub === undefined) {
-    throw new Error(
-      `Apple Accelerate is unavailable in the macOS SDK at ${sdk}`,
-    );
-  }
-  return stub;
-}
-
 function blasIdentity() {
   if (process.platform === "darwin") {
-    const stub = darwinAccelerateStub();
+    const { stub, cblasHeader } = appleAccelerateSdkInputs();
     return {
       provider: "apple-accelerate",
       sdkStubSha256: digest(stub),
+      sdkCblasHeaderSha256: digest(cblasHeader),
     };
   }
   return { provider: "openblas-from-sagejs-flint" };
@@ -212,24 +175,28 @@ function installHeader() {
 function installBlasLinkArtifact() {
   mkdirSync(join(prefix, "lib"), { recursive: true });
   mkdirSync(join(prefix, "include"), { recursive: true });
-  const destination = join(prefix, "lib", "libopenblas.a");
   if (process.platform === "darwin") {
-    // The native compiler resolves declared libraries as content-addressed
-    // files. A TAPI text stub is such a linker input, so retain the existing
-    // declaration name while making the resulting Mach-O addon depend on the
-    // stable system Accelerate framework. No framework file is redistributed.
-    copyFileSync(darwinAccelerateStub(), destination);
+    rmSync(join(prefix, "lib", "libopenblas.a"), { force: true });
+    rmSync(join(prefix, "include", "f77blas.h"), { force: true });
+    rmSync(join(prefix, "include", "openblas_config.h"), { force: true });
+    const { stub, cblasHeader } = appleAccelerateSdkInputs();
+    copyFileSync(stub, join(prefix, "lib", "Accelerate.tbd"));
+    copyFileSync(cblasHeader, join(prefix, "include", "cblas.h"));
   } else {
+    rmSync(join(prefix, "lib", "Accelerate.tbd"), { force: true });
     const library = join(flintPrefix, "lib", "libopenblas.a");
     if (!existsSync(library)) {
       throw new Error(
         `OpenBLAS is unavailable at ${library}; build packages/flint first`,
       );
     }
-    copyFileSync(library, destination);
-  }
-  for (const name of ["cblas.h", "f77blas.h", "openblas_config.h"]) {
-    copyFileSync(join(flintPrefix, "include", name), join(prefix, "include", name));
+    copyFileSync(library, join(prefix, "lib", "libopenblas.a"));
+    for (const name of ["cblas.h", "f77blas.h", "openblas_config.h"]) {
+      copyFileSync(
+        join(flintPrefix, "include", name),
+        join(prefix, "include", name),
+      );
+    }
   }
 }
 
@@ -318,6 +285,9 @@ function buildGivaro(source) {
 function buildFflasFfpack(source) {
   const include = join(prefix, "include");
   const library = join(prefix, "lib");
+  const blasLibraries = process.platform === "darwin"
+    ? "-framework Accelerate"
+    : `-L${library} -lopenblas`;
   run(
     "./configure",
     [
@@ -334,11 +304,11 @@ function buildFflasFfpack(source) {
         CPPFLAGS: `-I${include}`,
         CXXFLAGS: mathBuildOptions.fflas.cxxflags.join(" "),
         LDFLAGS: `-L${library}`,
-        LIBS: "-lgivaro -lgmpxx -lgmp -lopenblas",
+        LIBS: `-lgivaro -lgmpxx -lgmp ${blasLibraries}`,
         GIVARO_CFLAGS: `-I${include}`,
         GIVARO_LIBS: `-L${library} -lgivaro -lgmpxx -lgmp`,
         BLAS_CFLAGS: `-I${include}`,
-        BLAS_LIBS: `-L${library} -lopenblas`,
+        BLAS_LIBS: blasLibraries,
       },
     },
   );
@@ -379,7 +349,11 @@ async function buildDependencies() {
   if (
     existsSync(join(prefix, "lib", "libgmpxx.a")) &&
     existsSync(join(prefix, "lib", "libgivaro.a")) &&
-    existsSync(join(prefix, "lib", "libopenblas.a")) &&
+    existsSync(join(
+      prefix,
+      "lib",
+      process.platform === "darwin" ? "Accelerate.tbd" : "libopenblas.a",
+    )) &&
     existsSync(join(prefix, "include", "fflas-ffpack", "fflas-ffpack.h")) &&
     existsSync(stampPath) &&
     JSON.stringify(JSON.parse(readFileSync(stampPath, "utf8"))) ===
@@ -431,10 +405,8 @@ async function main() {
       }
       return;
     }
-    const results = prepareNativeDependencies(
-      repositoryRoot,
-      ["flint", "fflas"],
-    );
+    const results = prepareNativeDependencies(repositoryRoot,
+      process.platform === "darwin" ? ["fflas"] : ["flint", "fflas"]);
     for (const result of results) {
       process.stdout.write(`Native cache ${result.id}: ${result.status}\n`);
     }

@@ -26,8 +26,9 @@ tested fallback.
 FFLAS-FFPACK prefix through Sage.js's content-addressed native artifact cache.
 Linux uses the pinned OpenBLAS archive from Sage.js's FLINT prefix. Native
 macOS builds use Apple's system Accelerate framework through the active macOS
-SDK's text-based linker stub; the built addon records the stable system
-framework install name and does not redistribute the SDK stub. On supported
+SDK's CBLAS header and text-based linker stub; no OpenBLAS payload or headers
+are placed in the Darwin dependency prefix. The built addon records the stable
+system framework install name and does not redistribute the SDK stub. On supported
 Unix hosts the cache publishes the resulting prefix once, makes it read-only,
 and links every Git worktree to the same immutable payload.
 Concurrent cold builds serialize on the artifact key, so only one worktree

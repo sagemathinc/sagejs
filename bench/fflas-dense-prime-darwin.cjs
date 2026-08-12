@@ -51,6 +51,7 @@ print(json.dumps({
     env: {
       ...process.env,
       SAGEJS_NATIVE_REQUIRED: "1",
+      SAGEJS_NATIVE_TRACE: "1",
       // Small exact matrices benchmark more reproducibly with a single BLAS
       // worker. This also makes CPU and wall time directly comparable with
       // SageMath's single-threaded reference measurement.
@@ -60,7 +61,16 @@ print(json.dumps({
   });
   if (result.error) throw result.error;
   assert.equal(result.status, 0, result.stderr || result.stdout);
-  const measurement = JSON.parse(result.stdout.trim());
+  assert.match(
+    result.stdout,
+    /Matrix\.multiply GF\(7\) 300x300 -> declared-fflas-isolated/,
+  );
+  assert.match(
+    result.stdout,
+    /Matrix\.multiply GF\(7\) 500x500 -> declared-fflas-isolated/,
+  );
+  const lines = result.stdout.trim().split("\n");
+  const measurement = JSON.parse(lines[lines.length - 1]);
   process.stdout.write(`${JSON.stringify(measurement, null, 2)}\n`);
   if (process.argv.includes("--check")) {
     assert.ok(

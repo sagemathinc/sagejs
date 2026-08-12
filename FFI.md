@@ -177,6 +177,9 @@ flint = Library(
     package="@sagemath/sagejs-flint",
     headers=["flint/ulong_extras.h"],
     link_unix=["libflint.a"],
+    # Optional exact-platform overrides; omission falls back to link_unix.
+    link_linux=["libflint.a"],
+    link_darwin=["libflint.a"],
     link_windows=["flint.lib"],
     dependencies=["GMP"],
     prefix_environment="SAGEJS_FLINT_PREFIX",
