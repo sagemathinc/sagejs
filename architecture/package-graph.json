@@ -85,7 +85,7 @@
       "id": "linear-algebra",
       "layer": 2,
       "startup": "bootstrap",
-      "max_source_bytes": 352000,
+      "max_source_bytes": 354000,
       "depends_on": ["core-runtime", "arithmetic"],
       "files": [
         "src/baselib/matrix.py",

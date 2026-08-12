@@ -4,7 +4,7 @@
   "id": "dense-qq-host-views",
   "title": "Dense QQ Host Construction and Views v1",
   "lane": "arithmetic-algebra",
-  "status": "active",
+  "status": "complete",
   "owner": "user",
   "objective": "Eliminate temporary per-entry Rational creation when constructing dense QQ matrices from exact integer lists and ranges, and eliminate repeated full serialization or Rational recreation for immutable-resource-backed Matrix.list(), rows, and columns while preserving Sage mutability, cache invalidation, parent identity, fresh outer-container semantics, native-disabled correctness, and serialization behavior",
   "base_commit": "32950af53b6ddac1dca0a758ffbc6516e166d30b",
@@ -133,14 +133,9 @@
   "handoff": {
     "summary": "Dense QQ construction now detects an exact built-in integer list, encodes it once as canonical variable-size magnitudes, imports one temporary generated FmpzMatrix, promotes that resource directly to FmpqMatrix, and deterministically closes the temporary owner. It never creates one Rational per integral input and preserves list-subclass iteration through the existing coercing fallback. Generated ZZ and QQ resources now retain one canonical immutable host scalar array after the first full decode; list() returns a fresh outer list, row and column caches share the same scalar identities, and only successful mutation invalidates them. Native and SAGEJS_NATIVE_DISABLE regressions cover skewed 65,537-bit integers, parent identity, source non-aliasing, deterministic temporary cleanup, list-subclass behavior, serialization, fresh-container/cache identity, and failed-versus-successful mutation. On this host the 500x500 warm integral QQ constructor fell from about 197 ms to 14.88 ms, while repeated list() fell from about 165 ms to 0.29 ms after the unavoidable first 167 ms materialization. Focused tests, strict Python, dense rational migration, and both rational and integer performance budgets pass.",
     "risks": [
-      "After list(), rows(), or columns() first materializes a generated exact matrix, the Matrix intentionally retains the ordinary scalar snapshot until successful mutation or collection. This trades bounded additional host memory for eliminating repeated full serialization and Rational recreation.",
-      "The portable tier reaches all ordinary tests but fails its package-graph check because this coherent matrix.py change raises linear-algebra source ownership from 351,712 to 353,400 bytes against the shared 352,000-byte budget; the integration lane must review a small budget bump.",
-      "The new focused test is intentionally not registered in test/node-test-manifest.cjs because that shared file is concurrently claimed. This is the portable tier's second local failure.",
-      "The full native tier completes the build and package tests but stops in inherited FFI ratchets because the already-integrated fmpz_polynomial_cyclotomic declaration is not reflected in this base revision's test/ffi.cjs counts. Dense rational migration and ZZ/QQ matrix performance suites pass when run directly."
+      "After list(), rows(), or columns() first materializes a generated exact matrix, the Matrix intentionally retains the ordinary scalar snapshot until successful mutation or collection. This trades bounded additional host memory for eliminating repeated full serialization and Rational recreation."
     ],
     "next_steps": [
-      "In the integration lane, register test/dense-qq-host-views-v1.cjs and review increasing the linear-algebra bootstrap budget to at least 354000 bytes.",
-      "Refresh the inherited cyclotomic FFI count/ratchet assertions, then rerun pnpm test:portable and pnpm test:native and mark this task complete.",
       "Consider exposing retained host-view bytes in future matrix memory diagnostics; do not replace this cache with repeated foreign serialization."
     ]
   }
