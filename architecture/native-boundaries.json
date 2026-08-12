@@ -13,9 +13,9 @@
     "new_boundaries_require": "explicit-regeneration-and-review"
   },
   "counts": {
-    "classified-native-file": 57,
-    "declared-ffi": 189,
-    "declared-ffi-resource": 12,
+    "classified-native-file": 58,
+    "declared-ffi": 211,
+    "declared-ffi-resource": 14,
     "napi-export": 292,
     "runtime-intrinsic": 135,
     "wasm-export": 46
@@ -173,6 +173,43 @@
       "abi_type": "sagejs_igraph_graph_t",
       "close_export": "ffiGraphClose",
       "clear_symbol": "sagejs_igraph_graph_clear",
+      "disposition": "declared-owned-ffi-resource"
+    },
+    {
+      "id": "ffi-resource:m4ri:byte_region",
+      "kind": "declared-ffi-resource",
+      "path": "ffi/m4ri.ffi.json",
+      "library": "m4ri",
+      "export": "M4riByteRegion",
+      "abi_type": "sagejs_m4ri_byte_region_t",
+      "close_export": "ffiM4riByteRegionClose",
+      "clear_symbol": "sagejs_m4ri_byte_region_clear",
+      "size_symbol": "sagejs_m4ri_byte_region_allocated_bytes",
+      "host_transfer": {
+        "kind": "copied_bytes",
+        "dynamic_export": "ffiM4riByteRegionCopyBytes",
+        "data_symbol": "sagejs_m4ri_byte_region_data",
+        "length_symbol": "sagejs_m4ri_byte_region_length",
+        "wasm": false
+      },
+      "host_ingress": {
+        "kind": "copied_bytes",
+        "dynamic_export": "ffiM4riByteRegionFromBytes",
+        "init_symbol": "sagejs_m4ri_byte_region_init_copy",
+        "wasm": false
+      },
+      "disposition": "declared-owned-ffi-resource"
+    },
+    {
+      "id": "ffi-resource:m4ri:matrix",
+      "kind": "declared-ffi-resource",
+      "path": "ffi/m4ri.ffi.json",
+      "library": "m4ri",
+      "export": "M4riMatrix",
+      "abi_type": "sagejs_m4ri_matrix_t",
+      "close_export": "ffiM4riMatrixClose",
+      "clear_symbol": "sagejs_m4ri_matrix_clear",
+      "size_symbol": "sagejs_m4ri_matrix_allocated_bytes",
       "disposition": "declared-owned-ffi-resource"
     },
     {
@@ -2252,6 +2289,248 @@
       "dynamic_package": "@sagemath/sagejs-graph",
       "dynamic_export": "ffiGraphVertexCount",
       "symbol": "sagejs_igraph_vertex_count",
+      "disposition": "declared-safe-ffi"
+    },
+    {
+      "id": "ffi:m4ri:available",
+      "kind": "declared-ffi",
+      "path": "ffi/m4ri.ffi.json",
+      "library": "m4ri",
+      "export": "available",
+      "dynamic_package": "@sagemath/sagejs-m4ri",
+      "dynamic_export": "ffiM4riAvailable",
+      "symbol": "sagejs_m4ri_available",
+      "disposition": "declared-safe-ffi"
+    },
+    {
+      "id": "ffi:m4ri:matrix",
+      "kind": "declared-ffi",
+      "path": "ffi/m4ri.ffi.json",
+      "library": "m4ri",
+      "export": "matrix",
+      "dynamic_package": "@sagemath/sagejs-m4ri",
+      "dynamic_export": "ffiM4riMatrixCreate",
+      "symbol": "sagejs_m4ri_matrix_init",
+      "disposition": "declared-safe-ffi"
+    },
+    {
+      "id": "ffi:m4ri:matrix_add",
+      "kind": "declared-ffi",
+      "path": "ffi/m4ri.ffi.json",
+      "library": "m4ri",
+      "export": "matrix_add",
+      "dynamic_package": "@sagemath/sagejs-m4ri",
+      "dynamic_export": "ffiM4riMatrixAdd",
+      "symbol": "sagejs_m4ri_matrix_add",
+      "disposition": "declared-safe-ffi"
+    },
+    {
+      "id": "ffi:m4ri:matrix_copy",
+      "kind": "declared-ffi",
+      "path": "ffi/m4ri.ffi.json",
+      "library": "m4ri",
+      "export": "matrix_copy",
+      "dynamic_package": "@sagemath/sagejs-m4ri",
+      "dynamic_export": "ffiM4riMatrixCopy",
+      "symbol": "sagejs_m4ri_matrix_init_set",
+      "disposition": "declared-safe-ffi"
+    },
+    {
+      "id": "ffi:m4ri:matrix_determinant_code",
+      "kind": "declared-ffi",
+      "path": "ffi/m4ri.ffi.json",
+      "library": "m4ri",
+      "export": "matrix_determinant_code",
+      "dynamic_package": "@sagemath/sagejs-m4ri",
+      "dynamic_export": "ffiM4riMatrixDeterminantCode",
+      "symbol": "sagejs_m4ri_matrix_determinant_code",
+      "disposition": "declared-safe-ffi"
+    },
+    {
+      "id": "ffi:m4ri:matrix_entry_code",
+      "kind": "declared-ffi",
+      "path": "ffi/m4ri.ffi.json",
+      "library": "m4ri",
+      "export": "matrix_entry_code",
+      "dynamic_package": "@sagemath/sagejs-m4ri",
+      "dynamic_export": "ffiM4riMatrixEntryCode",
+      "symbol": "sagejs_m4ri_matrix_entry_code",
+      "disposition": "declared-safe-ffi"
+    },
+    {
+      "id": "ffi:m4ri:matrix_equal",
+      "kind": "declared-ffi",
+      "path": "ffi/m4ri.ffi.json",
+      "library": "m4ri",
+      "export": "matrix_equal",
+      "dynamic_package": "@sagemath/sagejs-m4ri",
+      "dynamic_export": "ffiM4riMatrixEqual",
+      "symbol": "sagejs_m4ri_matrix_equal",
+      "disposition": "declared-safe-ffi"
+    },
+    {
+      "id": "ffi:m4ri:matrix_format",
+      "kind": "declared-ffi",
+      "path": "ffi/m4ri.ffi.json",
+      "library": "m4ri",
+      "export": "matrix_format",
+      "dynamic_package": "@sagemath/sagejs-m4ri",
+      "dynamic_export": "ffiM4riMatrixFormat",
+      "symbol": "sagejs_m4ri_matrix_format",
+      "disposition": "declared-safe-ffi"
+    },
+    {
+      "id": "ffi:m4ri:matrix_from_logical_words",
+      "kind": "declared-ffi",
+      "path": "ffi/m4ri.ffi.json",
+      "library": "m4ri",
+      "export": "matrix_from_logical_words",
+      "dynamic_package": "@sagemath/sagejs-m4ri",
+      "dynamic_export": "ffiM4riMatrixFromLogicalWords",
+      "symbol": "sagejs_m4ri_matrix_init_logical_words",
+      "disposition": "declared-safe-ffi"
+    },
+    {
+      "id": "ffi:m4ri:matrix_from_sagepack_bytes",
+      "kind": "declared-ffi",
+      "path": "ffi/m4ri.ffi.json",
+      "library": "m4ri",
+      "export": "matrix_from_sagepack_bytes",
+      "dynamic_package": "@sagemath/sagejs-m4ri",
+      "dynamic_export": "ffiM4riMatrixFromSagepackBytes",
+      "symbol": "sagejs_m4ri_matrix_init_sagepack_bytes",
+      "disposition": "declared-safe-ffi"
+    },
+    {
+      "id": "ffi:m4ri:matrix_inverse",
+      "kind": "declared-ffi",
+      "path": "ffi/m4ri.ffi.json",
+      "library": "m4ri",
+      "export": "matrix_inverse",
+      "dynamic_package": "@sagemath/sagejs-m4ri",
+      "dynamic_export": "ffiM4riMatrixInverse",
+      "symbol": "sagejs_m4ri_matrix_inverse",
+      "disposition": "declared-safe-ffi"
+    },
+    {
+      "id": "ffi:m4ri:matrix_logical_words",
+      "kind": "declared-ffi",
+      "path": "ffi/m4ri.ffi.json",
+      "library": "m4ri",
+      "export": "matrix_logical_words",
+      "dynamic_package": "@sagemath/sagejs-m4ri",
+      "dynamic_export": "ffiM4riMatrixLogicalWords",
+      "symbol": "sagejs_m4ri_matrix_logical_words",
+      "disposition": "declared-safe-ffi"
+    },
+    {
+      "id": "ffi:m4ri:matrix_mul",
+      "kind": "declared-ffi",
+      "path": "ffi/m4ri.ffi.json",
+      "library": "m4ri",
+      "export": "matrix_mul",
+      "dynamic_package": "@sagemath/sagejs-m4ri",
+      "dynamic_export": "ffiM4riMatrixMul",
+      "symbol": "sagejs_m4ri_matrix_mul",
+      "disposition": "declared-safe-ffi"
+    },
+    {
+      "id": "ffi:m4ri:matrix_ncols",
+      "kind": "declared-ffi",
+      "path": "ffi/m4ri.ffi.json",
+      "library": "m4ri",
+      "export": "matrix_ncols",
+      "dynamic_package": "@sagemath/sagejs-m4ri",
+      "dynamic_export": "ffiM4riMatrixNcols",
+      "symbol": "sagejs_m4ri_matrix_ncols",
+      "disposition": "declared-safe-ffi"
+    },
+    {
+      "id": "ffi:m4ri:matrix_nrows",
+      "kind": "declared-ffi",
+      "path": "ffi/m4ri.ffi.json",
+      "library": "m4ri",
+      "export": "matrix_nrows",
+      "dynamic_package": "@sagemath/sagejs-m4ri",
+      "dynamic_export": "ffiM4riMatrixNrows",
+      "symbol": "sagejs_m4ri_matrix_nrows",
+      "disposition": "declared-safe-ffi"
+    },
+    {
+      "id": "ffi:m4ri:matrix_rank",
+      "kind": "declared-ffi",
+      "path": "ffi/m4ri.ffi.json",
+      "library": "m4ri",
+      "export": "matrix_rank",
+      "dynamic_package": "@sagemath/sagejs-m4ri",
+      "dynamic_export": "ffiM4riMatrixRank",
+      "symbol": "sagejs_m4ri_matrix_rank",
+      "disposition": "declared-safe-ffi"
+    },
+    {
+      "id": "ffi:m4ri:matrix_right_kernel",
+      "kind": "declared-ffi",
+      "path": "ffi/m4ri.ffi.json",
+      "library": "m4ri",
+      "export": "matrix_right_kernel",
+      "dynamic_package": "@sagemath/sagejs-m4ri",
+      "dynamic_export": "ffiM4riMatrixRightKernel",
+      "symbol": "sagejs_m4ri_matrix_right_kernel",
+      "disposition": "declared-safe-ffi"
+    },
+    {
+      "id": "ffi:m4ri:matrix_rref",
+      "kind": "declared-ffi",
+      "path": "ffi/m4ri.ffi.json",
+      "library": "m4ri",
+      "export": "matrix_rref",
+      "dynamic_package": "@sagemath/sagejs-m4ri",
+      "dynamic_export": "ffiM4riMatrixRref",
+      "symbol": "sagejs_m4ri_matrix_rref",
+      "disposition": "declared-safe-ffi"
+    },
+    {
+      "id": "ffi:m4ri:matrix_sagepack_bytes",
+      "kind": "declared-ffi",
+      "path": "ffi/m4ri.ffi.json",
+      "library": "m4ri",
+      "export": "matrix_sagepack_bytes",
+      "dynamic_package": "@sagemath/sagejs-m4ri",
+      "dynamic_export": "ffiM4riMatrixSagepackBytes",
+      "symbol": "sagejs_m4ri_matrix_sagepack_bytes",
+      "disposition": "declared-safe-ffi"
+    },
+    {
+      "id": "ffi:m4ri:matrix_set_entry",
+      "kind": "declared-ffi",
+      "path": "ffi/m4ri.ffi.json",
+      "library": "m4ri",
+      "export": "matrix_set_entry",
+      "dynamic_package": "@sagemath/sagejs-m4ri",
+      "dynamic_export": "ffiM4riMatrixSetEntry",
+      "symbol": "sagejs_m4ri_matrix_set_entry",
+      "disposition": "declared-safe-ffi"
+    },
+    {
+      "id": "ffi:m4ri:matrix_solve",
+      "kind": "declared-ffi",
+      "path": "ffi/m4ri.ffi.json",
+      "library": "m4ri",
+      "export": "matrix_solve",
+      "dynamic_package": "@sagemath/sagejs-m4ri",
+      "dynamic_export": "ffiM4riMatrixSolve",
+      "symbol": "sagejs_m4ri_matrix_solve",
+      "disposition": "declared-safe-ffi"
+    },
+    {
+      "id": "ffi:m4ri:matrix_transpose",
+      "kind": "declared-ffi",
+      "path": "ffi/m4ri.ffi.json",
+      "library": "m4ri",
+      "export": "matrix_transpose",
+      "dynamic_package": "@sagemath/sagejs-m4ri",
+      "dynamic_export": "ffiM4riMatrixTranspose",
+      "symbol": "sagejs_m4ri_matrix_transpose",
       "disposition": "declared-safe-ffi"
     },
     {
@@ -5524,6 +5803,14 @@
       "disposition": "host-adapter",
       "review_status": "audited",
       "lane": "combinatorics-groups"
+    },
+    {
+      "id": "native-file:packages/m4ri/include/sagejs/m4ri_matrix_ffi.h",
+      "kind": "classified-native-file",
+      "path": "packages/m4ri/include/sagejs/m4ri_matrix_ffi.h",
+      "disposition": "external-library-bridge",
+      "review_status": "accepted",
+      "lane": "integration"
     },
     {
       "id": "native-file:tools/maple/src/parser.c",
