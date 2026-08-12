@@ -4,7 +4,10 @@
 const assert = require("node:assert/strict");
 const { resolve } = require("node:path");
 const { spawnSync } = require("node:child_process");
-const { parseOutput } = require("../bench/dense-matrix-public-audit.cjs");
+const {
+  parseOutput,
+  validate,
+} = require("../bench/dense-matrix-public-audit.cjs");
 
 const root = resolve(__dirname, "..");
 
@@ -102,6 +105,22 @@ assert.ok(
     (item) =>
       item.kind === "backend-classification-gap" && item.domain === "GFWORD",
   ),
+);
+
+const sageOnlyReport = {
+  ...report,
+  policy: { ...report.policy, runtimes: ["sage"] },
+  runtimes: { sage: report.runtimes.sagejs },
+  findings: [],
+};
+validate(sageOnlyReport);
+assert.throws(
+  () =>
+    validate({
+      ...sageOnlyReport,
+      policy: { ...sageOnlyReport.policy, runtimes: ["sagejs", "sage"] },
+    }),
+  /requested sagejs runtime/,
 );
 
 console.log("dense matrix public audit quick contract ok");

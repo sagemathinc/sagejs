@@ -48,7 +48,8 @@ function parseArguments(argv) {
   --quick             Small correctness/audit workload suitable for a focused check
   --full              Larger workload and SageMath comparison when Sage is available
   --runtime VALUE     sagejs, sage, or all (default: sagejs; full default: all)
-  --check             Fail on semantic, process, coverage, or trace-classification gaps
+  --check             Require every requested runtime and validate execution,
+                      semantic witnesses, and operation coverage
   --json              Emit compact rather than indented JSON
 `);
       process.exit(0);
@@ -698,22 +699,45 @@ function validate(report) {
     0,
     `explicitly requested runtime unavailable: ${report.unavailable.map((item) => item.runtime).join(", ")}`,
   );
-  const sagejs = report.runtimes.sagejs;
-  assert.ok(sagejs, "check mode requires the Sage.js runtime");
-  assert.equal(sagejs.length, domains.length);
-  for (const domain of sagejs) {
-    assert.equal(domain.ok, true, `${domain.domain}: ${domain.error}`);
-    assert.deepEqual(domain.cases.map((item) => item.operation), expectedOperations);
-    for (const item of domain.cases) {
-      if (item.status !== undefined) {
-        assert.equal(item.status, "unsupported", `${domain.domain}.${item.operation}: ${item.detail}`);
-        continue;
-      }
-      assert.equal(item.witness, "verified");
-      assert.ok(
-        Number.isFinite(item.first_measured_ms) && item.first_measured_ms >= 0,
+  const requestedRuntimes = report.policy.runtimes;
+  assert.ok(
+    Array.isArray(requestedRuntimes) && requestedRuntimes.length > 0,
+    "check mode requires at least one requested runtime",
+  );
+  for (const runtime of requestedRuntimes) {
+    const runtimeDomains = report.runtimes[runtime];
+    assert.ok(
+      runtimeDomains,
+      `check mode requires the requested ${runtime} runtime`,
+    );
+    assert.equal(runtimeDomains.length, domains.length);
+    for (const domain of runtimeDomains) {
+      assert.equal(
+        domain.ok,
+        true,
+        `${runtime}.${domain.domain}: ${domain.error}`,
       );
-      assert.ok(Number.isFinite(item.warm_median_ms) && item.warm_median_ms >= 0);
+      assert.deepEqual(
+        domain.cases.map((item) => item.operation),
+        expectedOperations,
+      );
+      for (const item of domain.cases) {
+        if (item.status !== undefined) {
+          assert.equal(
+            item.status,
+            "unsupported",
+            `${runtime}.${domain.domain}.${item.operation}: ${item.detail}`,
+          );
+          continue;
+        }
+        assert.equal(item.witness, "verified");
+        assert.ok(
+          Number.isFinite(item.first_measured_ms) && item.first_measured_ms >= 0,
+        );
+        assert.ok(
+          Number.isFinite(item.warm_median_ms) && item.warm_median_ms >= 0,
+        );
+      }
     }
   }
   assert.equal(
@@ -806,4 +830,4 @@ if (require.main === module) {
   }
 }
 
-module.exports = { parseOutput };
+module.exports = { parseOutput, validate };
