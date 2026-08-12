@@ -37,6 +37,10 @@ test("the checked-in package graph owns every Python source and respects budgets
     "linear-algebra",
   );
   assert.equal(
+    result.ownership.get("src/lib/sagejs/linear_algebra/__init__.py"),
+    "linear-algebra-algorithms",
+  );
+  assert.equal(
     result.typescriptOwnership.get("tools/serialization-codecs/number-fields.ts"),
     "arithmetic",
   );

@@ -124,6 +124,21 @@
       "prefixes": []
     },
     {
+      "id": "linear-algebra-algorithms",
+      "layer": 4,
+      "startup": "lazy",
+      "max_source_bytes": 250000,
+      "depends_on": [
+        "core-runtime",
+        "native-integration",
+        "arithmetic",
+        "linear-algebra"
+      ],
+      "modules": ["sagejs.linear_algebra"],
+      "files": [],
+      "prefixes": ["src/lib/sagejs/linear_algebra/"]
+    },
+    {
       "id": "symbolics",
       "layer": 3,
       "startup": "bootstrap",

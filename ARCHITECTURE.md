@@ -94,6 +94,16 @@ global mutation, closure behavior, introspection, import caching, duplicate
 private names, and accidental public collisions are regression-tested as one
 contract.
 
+Large public mathematical types keep a small, stable bootstrap interface and
+load substantial algorithm families from ordinary Python modules on first use.
+For example, the unified public matrix API may delegate decompositions,
+selection, or combinatorial algorithms to the lazy `sagejs.linear_algebra`
+package. This is a deliberate dependency inversion: the lazy implementation
+depends on the public type contract, while bootstrap code refers to it only by
+its module name. Domain algorithms therefore remain independently readable,
+claimable by parallel projects, and removable from startup without fragmenting
+the public API into representation-specific classes.
+
 ## Native code and exceptions
 
 Every tracked C/C++ source or header is classified in
