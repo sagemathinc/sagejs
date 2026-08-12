@@ -92,8 +92,8 @@ print(repr(powered.unit()))
   assert.equal(
     output,
     [
-      "2 * (x + 1)",
-      "1/4 * (x + 1)^-2",
+      "(2) * (x + 1)",
+      "(1/4) * (x + 1)^-2",
       "1/4",
       "[('x + 1', -2)]",
       "[('x + 2', -2), ('x + 1', -4), ('x + 2', -6)]",
@@ -102,7 +102,7 @@ print(repr(powered.unit()))
   );
 });
 
-test("negative powers fail when the unit cannot be inverted", () => {
+test("negative powers enter polynomial fraction fields and reject zero", () => {
   const output = run(`
 def capture(operation):
     try:
@@ -116,14 +116,29 @@ capture(lambda: Factorization([(2, 1)], unit=0)**-1)
 
 R = PolynomialRing(ZZ, 'x')
 x = R.gen()
-capture(lambda: Factorization([(x + 1, 1)], unit=x)**-1)
+polynomial_unit = Factorization([(x + 1, 1)], unit=x)**-1
+print(repr(polynomial_unit))
+print(repr(polynomial_unit.unit()))
+print(repr(polynomial_unit.value()))
+
+capture(lambda: Factorization([(x + 1, 1)], unit=R(0))**-1)
+
+rational_factor = Factorization([(QQ(3, 2), 1)], unit=QQ(2))
+polynomial_factor = Factorization([(x + 1, 1)], unit=QQ(2))
+print(repr(rational_factor))
+print(repr(polynomial_factor))
 `);
 
   assert.equal(
     output,
     [
       "ZeroDivisionError: rational division by zero",
-      "ValueError: negative polynomial exponent",
+      "(1/x) * (x + 1)^-1",
+      "1/x",
+      "1/(x^2 + x)",
+      "ZeroDivisionError: rational function denominator is zero",
+      "2 * 3/2",
+      "(2) * (x + 1)",
     ].join("\n"),
   );
 });
