@@ -16,7 +16,7 @@
       "object": "Matrix",
       "base_ring": "ZZ",
       "operation": "construction",
-      "path": "packed-compiler-owned",
+      "path": "generated-owned-resource",
       "expression": "matrix(ZZ, 80, 80, _audit_zz_values)",
       "iterations": 2,
       "budget_ms": 80
@@ -26,7 +26,7 @@
       "object": "Matrix",
       "base_ring": "ZZ",
       "operation": "add",
-      "path": "packed-compiler-owned",
+      "path": "generated-owned-resource",
       "expression": "_audit_zz_left + _audit_zz_right",
       "iterations": 3,
       "budget_ms": 40
@@ -36,7 +36,7 @@
       "object": "Matrix",
       "base_ring": "ZZ",
       "operation": "multiply",
-      "path": "generated-packed-ffi",
+      "path": "generated-owned-resource",
       "expression": "_audit_zz_square * _audit_zz_square",
       "iterations": 2,
       "budget_ms": 80
@@ -46,7 +46,7 @@
       "object": "Matrix",
       "base_ring": "ZZ",
       "operation": "rank",
-      "path": "generated-packed-ffi",
+      "path": "generated-owned-resource",
       "expression": "_audit_zz_square.__copy__().rank()",
       "iterations": 2,
       "budget_ms": 100
@@ -76,7 +76,7 @@
       "object": "Matrix",
       "base_ring": "QQ",
       "operation": "construction",
-      "path": "packed-compiler-owned",
+      "path": "generated-owned-resource",
       "expression": "matrix(QQ, 80, 80, _audit_qq_values)",
       "iterations": 2,
       "budget_ms": 120
@@ -86,7 +86,7 @@
       "object": "Matrix",
       "base_ring": "QQ",
       "operation": "add",
-      "path": "packed-compiler-owned",
+      "path": "generated-owned-resource",
       "expression": "_audit_qq_left + _audit_qq_right",
       "iterations": 3,
       "budget_ms": 60
@@ -96,7 +96,7 @@
       "object": "Matrix",
       "base_ring": "QQ",
       "operation": "multiply",
-      "path": "generated-packed-ffi",
+      "path": "generated-owned-resource",
       "expression": "_audit_qq_square * _audit_qq_square",
       "iterations": 2,
       "budget_ms": 120
@@ -106,7 +106,7 @@
       "object": "Matrix",
       "base_ring": "QQ",
       "operation": "rank",
-      "path": "generated-packed-ffi",
+      "path": "generated-owned-resource",
       "expression": "_audit_qq_square.__copy__().rank()",
       "iterations": 2,
       "budget_ms": 140

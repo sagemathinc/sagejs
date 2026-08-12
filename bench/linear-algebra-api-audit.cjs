@@ -41,10 +41,19 @@ function validateRatchets(ratchets) {
   }
   const ids = new Set();
   const coverage = new Set();
+  const allowedPaths = new Set([
+    "generated-owned-resource",
+    "packed-compiler-owned",
+    "generated-packed-ffi",
+    "dynamic-python",
+  ]);
   for (const testCase of ratchets.cases) {
     if (ids.has(testCase.id)) throw new Error(`duplicate case ${testCase.id}`);
     ids.add(testCase.id);
     coverage.add(`${testCase.object}:${testCase.base_ring}`);
+    if (!allowedPaths.has(testCase.path)) {
+      throw new Error(`${testCase.id} has invalid path ${testCase.path}`);
+    }
     if (!Number.isInteger(testCase.iterations) || testCase.iterations <= 0) {
       throw new Error(`${testCase.id} has invalid iterations`);
     }
@@ -137,6 +146,9 @@ async function nativeAvailability(session) {
 
 function implementationFor(testCase, availability) {
   if (testCase.path === "dynamic-python") return "dynamic-python";
+  if (testCase.path === "generated-owned-resource") {
+    return "generated-owned-resource-host-adapter";
+  }
   const compiled = testCase.path === "packed-compiler-owned"
     ? availability[testCase.base_ring].structural
     : availability[testCase.base_ring].ffi;

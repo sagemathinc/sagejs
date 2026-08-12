@@ -10,8 +10,9 @@
     "sagejs_method": "sorted public names from dir() on the corresponding Sage.js value"
   },
   "path_kinds": {
+    "generated-owned-resource": "The public value owns a generated safe FLINT resource whose wrapper controls lifetime. Dynamic execution uses the generated N-API host adapter and compiled or WebAssembly execution uses the generated resource ABI; the public Matrix never exposes a raw host handle.",
     "packed-compiler-owned": "The public value owns a host-independent packed buffer and executes an ordinary typed-Python structural kernel.",
-    "generated-packed-ffi": "A generated declaration adapter copies compiler-owned packed buffers through a lexical FLINT value; dynamic execution uses the generated N-API host adapter and compiled execution is host-isolated.",
+    "generated-packed-ffi": "A generated declaration adapter copies compiler-owned packed buffers through a lexical library value. This is the canonical mature-library path for GF(7) and an audited compatibility path for exact matrices.",
     "dynamic-python": "The public implementation is ordinary dynamic Python over public values, without a packed native kernel.",
     "mixed": "The operation composes two or more of the preceding production paths.",
     "napi-oracle-only": "A legacy opaque FLINT matrix is constructed only by differential tests; it is not public production state or a fallback for the target rings.",
@@ -40,11 +41,11 @@
         ]
       },
       "Vector": {
-        "count": 9,
-        "sha256": "76e21c61467f891a4540713dee688501b25e593266524f9347dcaa9a71eeae23",
+        "count": 12,
+        "sha256": "c73c8e9734888b6d4acd39ac207efa54bfe713639101bfc2d9fd9727470d587f",
         "names": [
           "base_ring", "change_ring", "column", "degree", "dimension", "dot_product",
-          "list", "parent", "row"
+          "is_immutable", "is_mutable", "list", "parent", "row", "set_immutable"
         ]
       }
     },
@@ -61,10 +62,10 @@
         "Vector": {
           "sage_count": 95,
           "sage_sha256": "9200d18c13921395cd68870be5e98b3489d2bcf719098d394866ffb42d8d43b8",
-          "common_count": 8,
-          "missing_count": 87,
+          "common_count": 11,
+          "missing_count": 84,
           "sagejs_only_count": 1,
-          "coverage": 0.08421052631578947
+          "coverage": 0.11578947368421053
         }
       },
       "QQ": {
@@ -79,10 +80,10 @@
         "Vector": {
           "sage_count": 95,
           "sage_sha256": "9200d18c13921395cd68870be5e98b3489d2bcf719098d394866ffb42d8d43b8",
-          "common_count": 8,
-          "missing_count": 87,
+          "common_count": 11,
+          "missing_count": 84,
           "sagejs_only_count": 1,
-          "coverage": 0.08421052631578947
+          "coverage": 0.11578947368421053
         }
       },
       "GF(7)": {
@@ -97,10 +98,10 @@
         "Vector": {
           "sage_count": 96,
           "sage_sha256": "92d9e598d6be6b3b8ccae7b8e7a12bf0be9faa459990d3911a154c61f587785a",
-          "common_count": 8,
-          "missing_count": 88,
+          "common_count": 11,
+          "missing_count": 85,
           "sagejs_only_count": 1,
-          "coverage": 0.08333333333333333
+          "coverage": 0.11458333333333333
         }
       }
     },
@@ -113,11 +114,13 @@
   "representations": {
     "ZZ": {
       "Matrix": {
-        "storage": "IntegerBuffer",
-        "production_path": "packed-compiler-owned",
+        "storage": "generated owned FmpzMatrix resource; IntegerBuffer is materialized only at audited compatibility boundaries",
+        "production_path": "generated-owned-resource",
         "typed_python_kernels": 19,
+        "generated_resource_functions": 40,
         "generated_packed_ffi_functions": 8,
-        "generated_owned_resources": 0,
+        "generated_owned_resources": 1,
+        "napi_host_adapter": true,
         "napi_public_state": false,
         "napi_oracle": true
       },
@@ -125,19 +128,23 @@
         "storage": "Python list of Integer elements",
         "production_path": "dynamic-python",
         "typed_python_kernels": 0,
+        "generated_resource_functions": 0,
         "generated_packed_ffi_functions": 0,
         "generated_owned_resources": 0,
+        "napi_host_adapter": false,
         "napi_public_state": false,
         "napi_oracle": false
       }
     },
     "QQ": {
       "Matrix": {
-        "storage": "normalized RationalBuffer pair of IntegerBuffer numerators and denominators",
-        "production_path": "packed-compiler-owned",
+        "storage": "generated owned FmpqMatrix resource; normalized numerator/denominator IntegerBuffers are materialized only at audited compatibility boundaries",
+        "production_path": "generated-owned-resource",
         "typed_python_kernels": 25,
+        "generated_resource_functions": 38,
         "generated_packed_ffi_functions": 7,
-        "generated_owned_resources": 0,
+        "generated_owned_resources": 1,
+        "napi_host_adapter": true,
         "napi_public_state": false,
         "napi_oracle": true
       },
@@ -145,8 +152,10 @@
         "storage": "Python list of Rational elements",
         "production_path": "dynamic-python",
         "typed_python_kernels": 0,
+        "generated_resource_functions": 0,
         "generated_packed_ffi_functions": 0,
         "generated_owned_resources": 0,
+        "napi_host_adapter": false,
         "napi_public_state": false,
         "napi_oracle": false
       }
@@ -155,9 +164,11 @@
       "Matrix": {
         "storage": "row-major UInt64Buffer residues; DensePrimeMatrix is a compiler-owned borrowed NativeRecord",
         "production_path": "packed-compiler-owned",
-        "typed_python_kernels": 22,
+        "typed_python_kernels": 27,
+        "generated_resource_functions": 0,
         "generated_packed_ffi_functions": 9,
         "generated_owned_resources": 0,
+        "napi_host_adapter": true,
         "napi_public_state": false,
         "napi_oracle": true
       },
@@ -165,8 +176,10 @@
         "storage": "Python list of finite-field elements",
         "production_path": "dynamic-python",
         "typed_python_kernels": 0,
+        "generated_resource_functions": 0,
         "generated_packed_ffi_functions": 0,
         "generated_owned_resources": 0,
+        "napi_host_adapter": false,
         "napi_public_state": false,
         "napi_oracle": false
       }
@@ -174,19 +187,35 @@
   },
   "operation_paths": {
     "Matrix": {
+      "generated-owned-resource": {
+        "ZZ": [
+          "construction", "entry_get", "entry_set", "add", "subtract", "negate",
+          "scalar_multiply", "multiply", "power", "transpose", "equal", "is_zero",
+          "is_one", "determinant", "rank", "trace", "density", "charpoly", "minpoly",
+          "hermite_form", "smith_form", "right_kernel", "stack", "augment",
+          "matrix_from_rows", "matrix_from_columns", "copy"
+        ],
+        "QQ": [
+          "construction", "random_matrix", "entry_get", "entry_set", "add", "subtract",
+          "negate", "scalar_multiply", "multiply", "transpose", "equal", "is_zero",
+          "is_one", "determinant", "rank", "trace", "density", "rref", "inverse",
+          "solve_right", "right_kernel", "charpoly", "minpoly", "stack", "augment",
+          "matrix_from_rows", "matrix_from_columns", "copy"
+        ]
+      },
       "packed-compiler-owned": {
-        "all_target_rings": [
+        "GF(7)": [
           "construction", "entry_get", "entry_set", "add", "subtract", "negate",
           "scalar_multiply", "transpose", "equal", "is_zero", "is_one", "density",
           "trace", "stack", "augment", "matrix_from_rows", "matrix_from_columns", "copy"
         ]
       },
       "generated-packed-ffi": {
-        "ZZ": [
+        "ZZ_compatibility": [
           "multiply", "determinant", "rank", "charpoly", "hermite_form",
           "hermite_form_transformation", "smith_form", "right_kernel"
         ],
-        "QQ": [
+        "QQ_compatibility": [
           "multiply", "determinant", "rank", "rref", "inverse", "solve_right", "charpoly"
         ],
         "GF(7)": [
@@ -197,15 +226,13 @@
       "dynamic-python": {
         "all_target_rings": [
           "dimensions", "is_square", "list", "row", "rows", "column", "columns",
-          "diagonal", "power", "left_kernel", "row_space", "column_space", "pivots"
+          "diagonal", "left_kernel", "row_space", "column_space", "pivots"
         ],
-        "ZZ": ["minpoly"],
-        "QQ": ["minpoly"]
+        "GF(7)": ["power"]
       },
       "mixed": {
-        "ZZ": ["rref_via_QQ", "inverse_via_QQ", "solve_right_via_QQ"],
-        "QQ": ["right_kernel_via_rref_and_typed_basis"],
-        "GF(7)": ["rank_algorithm_modp", "rref_algorithm_modp"]
+        "ZZ": ["rref_via_QQ_resource", "inverse_via_QQ_resource", "solve_right_via_QQ_resource"],
+        "GF(7)": ["optional_FFLAS_multiply_rank_rref_kernel", "rank_algorithm_modp", "rref_algorithm_modp"]
       },
       "napi-oracle-only": {
         "all_target_rings": ["legacy opaque FLINT matrix differential comparisons"]
@@ -227,7 +254,7 @@
         ]
       },
       "missing_priority_surface": [
-        "is_zero", "is_immutable", "set_immutable", "nonzero_positions", "support",
+        "is_zero", "nonzero_positions", "support",
         "pairwise_product", "outer_product", "norm", "normalized", "numpy"
       ]
     }
@@ -248,11 +275,13 @@
   "ratchets": {
     "minimum_sage_name_intersection": {
       "Matrix": {"ZZ": 67, "QQ": 67, "GF(7)": 67},
-      "Vector": {"ZZ": 8, "QQ": 8, "GF(7)": 8}
+      "Vector": {"ZZ": 11, "QQ": 11, "GF(7)": 11}
     },
-    "minimum_sagejs_public_names": {"Matrix": 69, "Vector": 9},
+    "minimum_sagejs_public_names": {"Matrix": 69, "Vector": 12},
     "target_matrix_napi_public_state": false,
+    "expected_generated_matrix_resource_ids": ["fmpz_matrix", "fmpq_matrix"],
+    "minimum_generated_resource_functions": {"ZZ": 40, "QQ": 38, "GF(7)": 0},
     "minimum_generated_packed_ffi_functions": {"ZZ": 8, "QQ": 7, "GF(7)": 9},
-    "minimum_operational_witnesses_per_ring": {"Matrix": 12, "Vector": 8}
+    "minimum_operational_witnesses_per_ring": {"Matrix": 12, "Vector": 11}
   }
 }
