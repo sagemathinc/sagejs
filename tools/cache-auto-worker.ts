@@ -12,6 +12,7 @@ import { basename, join, resolve } from "node:path";
 
 import {
   DEFAULT_CACHE_POLICY,
+  defaultModuleCacheRoot,
   parseByteSize,
   pruneModuleCache,
   validateModuleCacheRoot,
@@ -283,7 +284,7 @@ if (require.main === module) {
     }
     runAutomaticModuleCacheCleanup({
       currentVersion,
-      expectedRoot: root,
+      expectedRoot: defaultModuleCacheRoot(),
       root,
     });
   } catch (_error) {

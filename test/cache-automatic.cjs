@@ -15,6 +15,7 @@ const {
 } = require("node:fs");
 const { tmpdir } = require("node:os");
 const { join } = require("node:path");
+const { spawnSync } = require("node:child_process");
 const { test } = require("node:test");
 
 const {
@@ -285,4 +286,31 @@ test("automatic cleanup never exceeds its byte budget", (t) => {
   assert.deepEqual(result.report.removedVersions, []);
   assert.deepEqual(result.report.deferredVersions, [expired]);
   assert.equal(existsSync(join(root, expired)), true);
+});
+
+test("the detached worker cannot be redirected to a nonstandard cache root", (t) => {
+  const { base, root } = temporaryRoot(t);
+  const current = versionName("9");
+  const expired = versionName("a");
+  addVersion(root, current, { ageDays: 100 });
+  addVersion(root, expired, { ageDays: 100 });
+  const result = spawnSync(
+    process.execPath,
+    [
+      join(__dirname, "..", "dist", "tools", "cache-auto-worker.js"),
+      "--root",
+      root,
+      "--version",
+      current,
+    ],
+    {
+      env: automaticEnvironment(join(base, "different-cache-base")),
+      encoding: "utf8",
+    },
+  );
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(result.stdout, "");
+  assert.equal(result.stderr, "");
+  assert.equal(existsSync(join(root, expired)), true);
+  assert.equal(existsSync(join(root, AUTOMATIC_CACHE_STATE_FILENAME)), false);
 });
