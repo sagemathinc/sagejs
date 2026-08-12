@@ -291,6 +291,49 @@ print("failed-allocation-rng-ok")
   "failed-allocation-rng-ok",
 );
 
+// A successful private allocation is not enough to publish the RNG state:
+// the host-owned deep copy must also succeed.  Replace that exact publication
+// boundary with a deterministic failure and make several calls in one stream.
+// Each public random word must match the untouched reference stream, proving
+// that neither the private generator nor its cleanup commits hidden state.
+assert.equal(
+  runSageJs(String.raw`
+import sagejs.ffi.flint as flint
+
+set_random_seed(20260812)
+expected = [random() for _index in range(6)]
+set_random_seed(20260812)
+
+original_copy = flint.fmpq_matrix_copy
+copy_attempts = 0
+
+def fail_copy(source):
+    global copy_attempts
+    copy_attempts += 1
+    raise RuntimeError("injected host-copy failure")
+
+flint.fmpq_matrix_copy = fail_copy
+try:
+    for expected_word in expected:
+        try:
+            random_matrix(
+                QQ, 5, 7, density=0.4,
+                num_bound=2**80, den_bound=2**97,
+            )
+        except RuntimeError as error:
+            assert "injected host-copy failure" in str(error)
+        else:
+            raise AssertionError("expected host-copy failure")
+        assert random() == expected_word
+finally:
+    flint.fmpq_matrix_copy = original_copy
+
+assert copy_attempts == len(expected)
+print("failed-host-copy-rng-ok")
+`),
+  "failed-host-copy-rng-ok",
+);
+
 // Run the same semantic distinction against Sage when the configured oracle
 // is present. Exact entries intentionally differ because Sage.js has its own
 // reproducible stream; zero admissibility and None/omission behavior do not.
