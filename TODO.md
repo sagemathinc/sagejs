@@ -26,8 +26,10 @@
   ratchet. Keep the public `Matrix` API unified while making exact-integer,
   rational, prime-field, and generic host dispatch independently readable and
   claimable by parallel agents.
+
 ## Measurement and performance ergonomics
 
 - Ratchet cold production-kernel loading separately from warm mathematical
   execution, and never silently compile a missing production kernel in an
   ordinary installed session.
+
