@@ -1,0 +1,46 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "darwin-accelerate-fflas",
+  "title": "Darwin Accelerate-backed FFLAS",
+  "lane": "integration",
+  "status": "active",
+  "owner": "user",
+  "objective": "Use Apple Accelerate as the generated FFLAS/FFPACK BLAS backend on native macOS while preserving Linux OpenBLAS and Windows capability fallback, with ARM64 differential tests and a forced-result GF(7) matrix multiplication benchmark.",
+  "base_commit": "7792f9072335667b539ee79e7babff82bab9056c",
+  "claims": [
+    "packages/fflas/scripts/build-deps.cjs",
+    "packages/fflas/test/test.cjs",
+    "packages/fflas/README.md",
+    "scripts/native-worktree-cache.cjs",
+    "bench/fflas-dense-prime-darwin.cjs"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "external-library",
+    "fallback": "tested-capability",
+    "oracles": [
+      "Existing FLINT differential matrix oracle",
+      "SageMath 10.9 matrix_modn_dense_float on Apple M1"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "fallback",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm architecture:check",
+    "pnpm test:portable",
+    "pnpm test:baselib:strict"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "",
+    "risks": [],
+    "next_steps": []
+  }
+}

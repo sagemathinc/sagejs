@@ -1867,8 +1867,10 @@ function nativePackageCacheable(packageId) {
   if (process.env[`SAGEJS_${packageId.toUpperCase()}_PREFIX`] !== undefined) {
     return false;
   }
-  // FFLAS copies the exact OpenBLAS archive selected by the FLINT prefix.
-  // An externally managed FLINT prefix has no content identity in this cache.
+  // FFLAS obtains its BLAS build input from the FLINT prefix on Linux and its
+  // CBLAS headers from that prefix on Darwin, where the link artifact selects
+  // Apple Accelerate. An externally managed FLINT prefix has no content
+  // identity in this cache on either host.
   return packageId !== "fflas" || process.env.SAGEJS_FLINT_PREFIX === undefined;
 }
 

@@ -100,6 +100,59 @@ function digest(filename) {
   return createHash("sha256").update(readFileSync(filename)).digest("hex");
 }
 
+function darwinAccelerateStub() {
+  const result = spawnSync(
+    "xcrun",
+    ["--sdk", "macosx", "--show-sdk-path"],
+    { encoding: "utf8" },
+  );
+  if (result.error || result.status !== 0) {
+    throw new Error(
+      "unable to locate the macOS SDK for Apple Accelerate: " +
+        (result.error?.message || result.stderr?.trim() || result.status),
+    );
+  }
+  const sdk = result.stdout.trim();
+  const candidates = [
+    join(
+      sdk,
+      "System",
+      "Library",
+      "Frameworks",
+      "Accelerate.framework",
+      "Accelerate.tbd",
+    ),
+    join(
+      sdk,
+      "System",
+      "Library",
+      "Frameworks",
+      "Accelerate.framework",
+      "Versions",
+      "A",
+      "Accelerate.tbd",
+    ),
+  ];
+  const stub = candidates.find((candidate) => existsSync(candidate));
+  if (stub === undefined) {
+    throw new Error(
+      `Apple Accelerate is unavailable in the macOS SDK at ${sdk}`,
+    );
+  }
+  return stub;
+}
+
+function blasIdentity() {
+  if (process.platform === "darwin") {
+    const stub = darwinAccelerateStub();
+    return {
+      provider: "apple-accelerate",
+      sdkStubSha256: digest(stub),
+    };
+  }
+  return { provider: "openblas-from-sagejs-flint" };
+}
+
 async function obtainArchive(dependency) {
   mkdirSync(downloads, { recursive: true });
   const filename = dependency.archive
@@ -156,16 +209,25 @@ function installHeader() {
   copyFileSync(publicHeader, destination);
 }
 
-function copyOpenBlas() {
-  const library = join(flintPrefix, "lib", "libopenblas.a");
-  if (!existsSync(library)) {
-    throw new Error(
-      `OpenBLAS is unavailable at ${library}; build packages/flint first`,
-    );
-  }
+function installBlasLinkArtifact() {
   mkdirSync(join(prefix, "lib"), { recursive: true });
   mkdirSync(join(prefix, "include"), { recursive: true });
-  copyFileSync(library, join(prefix, "lib", "libopenblas.a"));
+  const destination = join(prefix, "lib", "libopenblas.a");
+  if (process.platform === "darwin") {
+    // The native compiler resolves declared libraries as content-addressed
+    // files. A TAPI text stub is such a linker input, so retain the existing
+    // declaration name while making the resulting Mach-O addon depend on the
+    // stable system Accelerate framework. No framework file is redistributed.
+    copyFileSync(darwinAccelerateStub(), destination);
+  } else {
+    const library = join(flintPrefix, "lib", "libopenblas.a");
+    if (!existsSync(library)) {
+      throw new Error(
+        `OpenBLAS is unavailable at ${library}; build packages/flint first`,
+      );
+    }
+    copyFileSync(library, destination);
+  }
   for (const name of ["cblas.h", "f77blas.h", "openblas_config.h"]) {
     copyFileSync(join(flintPrefix, "include", name), join(prefix, "include", name));
   }
@@ -291,7 +353,7 @@ async function buildDependencies() {
     fflasFfpack: "2.5.0",
     givaro: "4.2.2",
     gmp: "6.3.0-cxx",
-    openblas: "from-sagejs-flint",
+    blas: blasIdentity(),
     mathBuildProfile,
     ...(macosDeploymentTarget ? { macosDeploymentTarget } : {}),
   };
@@ -329,7 +391,7 @@ async function buildDependencies() {
 
   mkdirSync(prefix, { recursive: true });
   mkdirSync(sources, { recursive: true });
-  copyOpenBlas();
+  installBlasLinkArtifact();
   const archives = new Map();
   for (const dependency of dependencies) {
     archives.set(dependency.name, await obtainArchive(dependency));

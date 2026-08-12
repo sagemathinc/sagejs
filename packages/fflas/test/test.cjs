@@ -1,6 +1,9 @@
 "use strict";
 
 const assert = require("node:assert/strict");
+const { readFileSync } = require("node:fs");
+const { join } = require("node:path");
+const { spawnSync } = require("node:child_process");
 const test = require("node:test");
 const fflas = require("..");
 const flint = require("../../flint");
@@ -90,6 +93,37 @@ function flintRightNullspace(source, rows, columns, modulus) {
 
 test("FFLAS capability is explicit", () => {
   assert.equal(fflas.ffiFflasModularFloatAvailable(), process.platform !== "win32");
+});
+
+test("native BLAS selection is explicit and Darwin links Accelerate", {
+  skip: process.platform === "win32",
+}, () => {
+  const prefix = join(__dirname, "..", ".native", "prefix");
+  const stamp = JSON.parse(
+    readFileSync(
+      join(prefix, ".sagejs-fflas-dependencies.json"),
+      "utf8",
+    ),
+  );
+  assert.equal(
+    stamp.blas.provider,
+    process.platform === "darwin"
+      ? "apple-accelerate"
+      : "openblas-from-sagejs-flint",
+  );
+  if (process.platform !== "darwin") return;
+
+  const addon = join(
+    __dirname,
+    "..",
+    "build",
+    "generated-ffi",
+    "sagejs_fflas_ffi.node",
+  );
+  const linked = spawnSync("otool", ["-L", addon], { encoding: "utf8" });
+  assert.equal(linked.status, 0, linked.stderr);
+  assert.match(linked.stdout, /Accelerate\.framework\/Versions\/A\/Accelerate/);
+  assert.doesNotMatch(linked.stdout, /openblas/i);
 });
 
 test("FFPACK produces FLINT's complete canonical RREF exhaustively", {
