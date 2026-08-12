@@ -121,6 +121,28 @@ test("recorded evidence separates setup, first use, warm work, and process time"
       assert.ok(value.process_ms >= value.first_ms);
     }
   }
+  const labels = new Set(report.additional_host_evidence.map((entry) => entry.label));
+  assert.ok(labels.has("m1-after-build"));
+  assert.ok(labels.has("m1-warm-artifact-cache"));
+  for (const evidence of report.additional_host_evidence) {
+    assert.equal(evidence.host.platform, "darwin");
+    assert.equal(evidence.host.architecture, "arm64");
+    assert.equal(evidence.host.cpu, "Apple M1 Max");
+    for (const domain of ["ZZ", "QQ"]) {
+      assert.equal(evidence.comparisons[domain].summaries_match, true);
+      assert.ok(evidence.comparisons[domain].sagejs_over_sage > 1);
+    }
+  }
+  const artifactCold = report.additional_host_evidence.find(
+    (entry) => entry.label === "m1-after-build",
+  );
+  const artifactWarm = report.additional_host_evidence.find(
+    (entry) => entry.label === "m1-warm-artifact-cache",
+  );
+  assert.ok(
+    artifactCold.measurements.sagejs.ZZ.first_ms >
+      artifactWarm.measurements.sagejs.ZZ.first_ms,
+  );
 });
 
 test("stage evidence demonstrates the existing BigInt detour and byte-region primitive", () => {
@@ -133,6 +155,10 @@ test("stage evidence demonstrates the existing BigInt detour and byte-region pri
     assert.ok(stages.bytes_to_bigint_ms >= 0);
     assert.ok(stages.generated_deserialize_ms >= 0);
     assert.ok(stages.proposed_byte_region_ingress_ms >= 0);
+    assert.ok(stages.skew_checked_host_list_pack_ms >= 0);
+    assert.ok(stages.skew_public_construct_ms >= 0);
+    assert.ok(stages.skew_encoded_bytes > stages.encoded_bytes);
+    assert.equal(stages.skew_bits, 65_538);
   }
   assert.match(
     report.contract.current_bottleneck.diagnosis,

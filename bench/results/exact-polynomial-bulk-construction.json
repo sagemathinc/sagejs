@@ -1,6 +1,6 @@
 {
   "schema": "sagejs.benchmark/exact-polynomial-bulk-construction-v1",
-  "generated_at": "2026-08-12T14:41:13.661Z",
+  "generated_at": "2026-08-12T14:47:25.286Z",
   "host": {
     "platform": "linux",
     "architecture": "x64",
@@ -8,7 +8,7 @@
     "cpu": "AMD EPYC 7B13"
   },
   "repository": {
-    "commit": "05a837eec3377889922b9ee286887ea412b8db7d",
+    "commit": "78655f0df6b25cd800c701b9d28a3d4e4d647f71",
     "branch": "agent/exact-poly-bulk-contract",
     "dirty": true
   },
@@ -110,11 +110,11 @@
     "sagejs": {
       "ZZ": {
         "ok": true,
-        "process_ms": 620.373466,
-        "setup_ms": 10.756731033325195,
-        "first_ms": 53.16162109375,
-        "warm_ms": 3.126382827758789,
-        "first_delta_ms": 50.03523826599121,
+        "process_ms": 719.560539,
+        "setup_ms": 17.7459716796875,
+        "first_ms": 65.55294990539551,
+        "warm_ms": 3.0050277709960938,
+        "first_delta_ms": 62.547922134399414,
         "summary": [
           5000,
           "-823",
@@ -125,11 +125,11 @@
       },
       "QQ": {
         "ok": true,
-        "process_ms": 760.1946170000001,
-        "setup_ms": 78.33671569824219,
-        "first_ms": 68.54605674743652,
-        "warm_ms": 9.075641632080078,
-        "first_delta_ms": 59.470415115356445,
+        "process_ms": 935.5296240000002,
+        "setup_ms": 108.69479179382324,
+        "first_ms": 81.08353614807129,
+        "warm_ms": 9.313106536865234,
+        "first_delta_ms": 71.77042961120605,
         "summary": [
           5000,
           "-823/25",
@@ -143,28 +143,304 @@
   "diagnostic_stages": {
     "ZZ": {
       "ok": true,
-      "process_ms": 642.6613449999999,
-      "normalize_ms": 1.0187625885009766,
-      "pack_body_ms": 1.1115074157714844,
-      "checked_host_list_pack_ms": 0.2727508544921875,
-      "full_current_payload_ms": 1.3706684112548828,
-      "bytes_to_bigint_ms": 0.2224445343017578,
-      "generated_deserialize_ms": 0.2086162567138672,
-      "proposed_byte_region_ingress_ms": 0.06794929504394531,
-      "encoded_bytes": 28746
+      "process_ms": 908.3369659999998,
+      "normalize_ms": 1.0402202606201172,
+      "pack_body_ms": 1.0821819305419922,
+      "checked_host_list_pack_ms": 0.25773048400878906,
+      "full_current_payload_ms": 1.1394023895263672,
+      "bytes_to_bigint_ms": 0.13375282287597656,
+      "generated_deserialize_ms": 0.18405914306640625,
+      "proposed_byte_region_ingress_ms": 0.06985664367675781,
+      "encoded_bytes": 28746,
+      "skew_checked_host_list_pack_ms": 0.25916099548339844,
+      "skew_public_construct_ms": 2.1212100982666016,
+      "skew_encoded_bytes": 33213,
+      "skew_bits": 65538
     },
     "QQ": {
       "ok": true,
-      "process_ms": 1027.3260269999996,
-      "normalize_ms": 26.824235916137695,
-      "pack_body_ms": 1.5015602111816406,
-      "checked_host_list_pack_ms": 2.156496047973633,
-      "full_current_payload_ms": 1.1627674102783203,
-      "bytes_to_bigint_ms": 0.21600723266601562,
-      "generated_deserialize_ms": 0.5350112915039062,
-      "proposed_byte_region_ingress_ms": 0.05745887756347656,
-      "encoded_bytes": 53033
+      "process_ms": 1350.1842539999998,
+      "normalize_ms": 26.856184005737305,
+      "pack_body_ms": 1.6021728515625,
+      "checked_host_list_pack_ms": 2.317667007446289,
+      "full_current_payload_ms": 1.1947154998779297,
+      "bytes_to_bigint_ms": 0.23126602172851562,
+      "generated_deserialize_ms": 0.5326271057128906,
+      "proposed_byte_region_ingress_ms": 0.06270408630371094,
+      "encoded_bytes": 53033,
+      "skew_checked_host_list_pack_ms": 1.8649101257324219,
+      "skew_public_construct_ms": 23.27275276184082,
+      "skew_encoded_bytes": 62313,
+      "skew_bits": 65538
     }
   },
-  "comparisons": {}
+  "comparisons": {},
+  "additional_host_evidence": [
+    {
+      "label": "m1-after-build",
+      "generated_at": "2026-08-12T14:45:18.941Z",
+      "host": {
+        "platform": "darwin",
+        "architecture": "arm64",
+        "uname": "Darwin studio.local 25.4.0 Darwin Kernel Version 25.4.0: Thu Mar 19 19:30:44 PDT 2026; root:xnu-12377.101.15~1/RELEASE_ARM64_T6000 arm64",
+        "cpu": "Apple M1 Max"
+      },
+      "repository": {
+        "commit": "78655f0df6b25cd800c701b9d28a3d4e4d647f71",
+        "branch": "agent/exact-poly-bulk-contract",
+        "dirty": false
+      },
+      "configuration": {
+        "count": 5001,
+        "samples": 7,
+        "timing": "fresh process per domain; setup, first invocation, warm median, and complete process wall time reported separately",
+        "threads": 1
+      },
+      "runtimes": {
+        "sagejs": {
+          "executable": "/Volumes/sage/sagejs/bin/sagejs",
+          "version": "0.2.0"
+        },
+        "sage": {
+          "executable": "/Volumes/sage/sagelite-build/smoke/public-dev-cp314-20260704-004400/bin/sage",
+          "version": "10.9.post2"
+        }
+      },
+      "measurements": {
+        "sagejs": {
+          "ZZ": {
+            "ok": true,
+            "process_ms": 2931.1075419999997,
+            "setup_ms": 6.870031356811523,
+            "first_ms": 2234.7004413604736,
+            "warm_ms": 1.4219284057617188,
+            "first_delta_ms": 2233.278512954712,
+            "summary": [
+              5000,
+              "-823",
+              "770",
+              "974"
+            ],
+            "first_summary_matches": true
+          },
+          "QQ": {
+            "ok": true,
+            "process_ms": 393.41041700000005,
+            "setup_ms": 38.27357292175293,
+            "first_ms": 40.31777381896973,
+            "warm_ms": 5.120038986206055,
+            "first_delta_ms": 35.19773483276367,
+            "summary": [
+              5000,
+              "-823/25",
+              "770/3",
+              "487/7"
+            ],
+            "first_summary_matches": true
+          }
+        },
+        "sage": {
+          "ZZ": {
+            "ok": true,
+            "process_ms": 3365.703125,
+            "setup_ms": 1.3549579307436943,
+            "first_ms": 0.13062451034784317,
+            "warm_ms": 0.08962489664554596,
+            "first_delta_ms": 0.04099961370229721,
+            "summary": [
+              5000,
+              "-823",
+              "770",
+              "974"
+            ],
+            "first_summary_matches": true
+          },
+          "QQ": {
+            "ok": true,
+            "process_ms": 2399.393833,
+            "setup_ms": 5.036374554038048,
+            "first_ms": 0.2021249383687973,
+            "warm_ms": 0.1894598826766014,
+            "first_delta_ms": 0.012665055692195892,
+            "summary": [
+              5000,
+              "-823/25",
+              "770/3",
+              "487/7"
+            ],
+            "first_summary_matches": true
+          }
+        }
+      },
+      "diagnostic_stages": {
+        "ZZ": {
+          "ok": true,
+          "process_ms": 345.38283299999966,
+          "normalize_ms": 0.41222572326660156,
+          "pack_body_ms": 0.7729530334472656,
+          "checked_host_list_pack_ms": 0.2048015594482422,
+          "full_current_payload_ms": 0.6287097930908203,
+          "bytes_to_bigint_ms": 0.10633468627929688,
+          "generated_deserialize_ms": 0.1327991485595703,
+          "proposed_byte_region_ingress_ms": 0.027418136596679688,
+          "encoded_bytes": 28746
+        },
+        "QQ": {
+          "ok": true,
+          "process_ms": 552.4433749999998,
+          "normalize_ms": 13.074874877929688,
+          "pack_body_ms": 1.2784004211425781,
+          "checked_host_list_pack_ms": 1.5485286712646484,
+          "full_current_payload_ms": 0.9086132049560547,
+          "bytes_to_bigint_ms": 0.16069412231445312,
+          "generated_deserialize_ms": 0.4723072052001953,
+          "proposed_byte_region_ingress_ms": 0.029087066650390625,
+          "encoded_bytes": 53033
+        }
+      },
+      "comparisons": {
+        "ZZ": {
+          "summaries_match": true,
+          "sagejs_over_sage": 15.865328262360496
+        },
+        "QQ": {
+          "summaries_match": true,
+          "sagejs_over_sage": 27.02439647841283
+        }
+      }
+    },
+    {
+      "label": "m1-warm-artifact-cache",
+      "generated_at": "2026-08-12T14:45:46.804Z",
+      "host": {
+        "platform": "darwin",
+        "architecture": "arm64",
+        "uname": "Darwin studio.local 25.4.0 Darwin Kernel Version 25.4.0: Thu Mar 19 19:30:44 PDT 2026; root:xnu-12377.101.15~1/RELEASE_ARM64_T6000 arm64",
+        "cpu": "Apple M1 Max"
+      },
+      "repository": {
+        "commit": "78655f0df6b25cd800c701b9d28a3d4e4d647f71",
+        "branch": "agent/exact-poly-bulk-contract",
+        "dirty": false
+      },
+      "configuration": {
+        "count": 5001,
+        "samples": 7,
+        "timing": "fresh process per domain; setup, first invocation, warm median, and complete process wall time reported separately",
+        "threads": 1
+      },
+      "runtimes": {
+        "sagejs": {
+          "executable": "/Volumes/sage/sagejs/bin/sagejs",
+          "version": "0.2.0"
+        },
+        "sage": {
+          "executable": "/Volumes/sage/sagelite-build/smoke/public-dev-cp314-20260704-004400/bin/sage",
+          "version": "10.9.post2"
+        }
+      },
+      "measurements": {
+        "sagejs": {
+          "ZZ": {
+            "ok": true,
+            "process_ms": 318.479459,
+            "setup_ms": 6.690740585327148,
+            "first_ms": 34.9428653717041,
+            "warm_ms": 1.634359359741211,
+            "first_delta_ms": 33.30850601196289,
+            "summary": [
+              5000,
+              "-823",
+              "770",
+              "974"
+            ],
+            "first_summary_matches": true
+          },
+          "QQ": {
+            "ok": true,
+            "process_ms": 396.7505829999999,
+            "setup_ms": 37.71829605102539,
+            "first_ms": 39.88146781921387,
+            "warm_ms": 5.40471076965332,
+            "first_delta_ms": 34.47675704956055,
+            "summary": [
+              5000,
+              "-823/25",
+              "770/3",
+              "487/7"
+            ],
+            "first_summary_matches": true
+          }
+        },
+        "sage": {
+          "ZZ": {
+            "ok": true,
+            "process_ms": 2398.881375,
+            "setup_ms": 1.3915421441197395,
+            "first_ms": 0.13729184865951538,
+            "warm_ms": 0.08966680616140366,
+            "first_delta_ms": 0.047625042498111725,
+            "summary": [
+              5000,
+              "-823",
+              "770",
+              "974"
+            ],
+            "first_summary_matches": true
+          },
+          "QQ": {
+            "ok": true,
+            "process_ms": 2405.858709,
+            "setup_ms": 4.673083312809467,
+            "first_ms": 0.2071671187877655,
+            "warm_ms": 0.1914994791150093,
+            "first_delta_ms": 0.015667639672756195,
+            "summary": [
+              5000,
+              "-823/25",
+              "770/3",
+              "487/7"
+            ],
+            "first_summary_matches": true
+          }
+        }
+      },
+      "diagnostic_stages": {
+        "ZZ": {
+          "ok": true,
+          "process_ms": 345.367875,
+          "normalize_ms": 0.4303455352783203,
+          "pack_body_ms": 0.7848739624023438,
+          "checked_host_list_pack_ms": 0.1742839813232422,
+          "full_current_payload_ms": 0.8053779602050781,
+          "bytes_to_bigint_ms": 0.11086463928222656,
+          "generated_deserialize_ms": 0.13399124145507812,
+          "proposed_byte_region_ingress_ms": 0.027179718017578125,
+          "encoded_bytes": 28746
+        },
+        "QQ": {
+          "ok": true,
+          "process_ms": 530.379917,
+          "normalize_ms": 12.210607528686523,
+          "pack_body_ms": 1.1262893676757812,
+          "checked_host_list_pack_ms": 1.4355182647705078,
+          "full_current_payload_ms": 0.8425712585449219,
+          "bytes_to_bigint_ms": 0.1575946807861328,
+          "generated_deserialize_ms": 0.47206878662109375,
+          "proposed_byte_region_ingress_ms": 0.027894973754882812,
+          "encoded_bytes": 53033
+        }
+      },
+      "comparisons": {
+        "ZZ": {
+          "summaries_match": true,
+          "sagejs_over_sage": 18.22702770074471
+        },
+        "QQ": {
+          "summaries_match": true,
+          "sagejs_over_sage": 28.223109507297405
+        }
+      }
+    }
+  ]
 }
