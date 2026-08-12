@@ -2,15 +2,18 @@
 
 The public `Vector` type owns Sage coercion and mutability semantics.  This
 module owns the representation boundary: exact vectors live in generated
-`FmpzVector` or `FmpqVector` resources, while host lists are constructed only
-for explicit presentation operations such as `.list()`, iteration, and text
-formatting.
+`FmpzVector` or `FmpqVector` resources. Same-base arithmetic remains entirely
+on those resources. Host lists are constructed for explicit presentation
+operations such as `.list()`, iteration, text formatting, and slicing, and
+currently when converting an integer vector to the rational field.
 
 The current matrix-vector ABI still exchanges canonical serialized byte
-regions.  This module adopts such a result directly into a vector resource,
-avoiding any intermediate host element list.  A future declaration can pass
-the vector resource itself and remove that remaining resource-to-resource
-copy without changing the public `Vector` API.
+regions. On input it serializes the vector resource and parses those bytes into
+the temporary FLINT vector used by the matrix adapter. On output the adapter
+serializes its temporary result and this module parses/copies those bytes into
+the public vector resource. This avoids an intermediate host element list but
+is not zero-copy. A future declaration can pass vector resources directly
+without changing the public `Vector` API.
 """
 
 from __future__ import annotations
@@ -69,6 +72,13 @@ def rational_from_region(
     return flint.fmpq_vector_from_byte_region(region, length)
 
 
+def copy(resource: Any, rational: bool) -> Any:
+    """Return an independent generated-resource copy."""
+    if rational:
+        return flint.fmpq_vector_copy(resource)
+    return flint.fmpz_vector_copy(resource)
+
+
 def integer_values(resource: flint.FmpzVector, length: int) -> list[Any]:
     """Materialize one integer resource as host Sage integers."""
     region = flint.fmpz_vector_serialize(resource)
@@ -77,6 +87,16 @@ def integer_values(resource: flint.FmpzVector, length: int) -> list[Any]:
         length,
     )
     return [runtime.normalize_integer(value) for value in values]
+
+
+def integer_length(resource: flint.FmpzVector) -> int:
+    """Return an integer resource's logical length."""
+    return int(flint.fmpz_vector_length(resource))
+
+
+def rational_length(resource: flint.FmpqVector) -> int:
+    """Return a rational resource's logical length."""
+    return int(flint.fmpq_vector_length(resource))
 
 
 def rational_values(resource: flint.FmpqVector, length: int) -> list[Any]:

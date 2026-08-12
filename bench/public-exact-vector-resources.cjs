@@ -56,9 +56,9 @@ def _exact_vector_measure(function):
       host: `${process.platform}-${process.arch}`,
       vector_length: 100000,
       notes: [
-        "Arithmetic and dot products remain inside generated FmpzVector/FmpqVector resources.",
-        "Explicit list(), iteration, and formatting are the host-materialization boundary.",
-        "Exact matrix-vector calls currently serialize once to a canonical ByteRegion and parse the result directly into a vector resource; a direct resource ABI can later remove that copy.",
+        "Same-base arithmetic and dot products remain inside generated FmpzVector/FmpqVector resources.",
+        "Explicit list(), iteration, formatting, slicing, and current ZZ-to-QQ conversion are host-materialization boundaries.",
+        "Exact matrix-vector input serializes and reparses through a canonical ByteRegion; output serializes the temporary FLINT result and parses/copies it into the public vector resource. This is list-free but not zero-copy.",
       ],
       results,
     }, null, 2));

@@ -6,7 +6,7 @@
   "lane": "arithmetic-algebra",
   "status": "active",
   "owner": "user",
-  "objective": "Route public dense vectors over ZZ and QQ through generated FmpzVector and FmpqVector resources while preserving Sage semantics and eliminating list materialization from arithmetic and exact matrix-vector result publication",
+  "objective": "Route public dense vectors over ZZ and QQ through generated FmpzVector and FmpqVector resources while preserving Sage semantics and eliminating list materialization from same-base arithmetic and exact matrix-vector result publication",
   "base_commit": "994c32b2719da5f5576ac058a544ace83589e538",
   "claims": [
     "src/baselib/matrix.py",
@@ -100,13 +100,15 @@
     }
   ],
   "handoff": {
-    "summary": "Public dense vectors over ZZ and QQ canonically own generated FmpzVector/FmpqVector resources. Construction, mutation, arithmetic, scalar products, and equality stay on the resource; exact matrix-vector results are adopted directly without materializing a host element list. SageMath and native-disabled differential tests cover the public contract, and a 100000-entry benchmark records warmed resource arithmetic.",
+    "summary": "Public dense vectors over ZZ and QQ canonically own generated FmpzVector/FmpqVector resources. Construction, mutation, same-base arithmetic, scalar products, and equality stay on the resource; exact matrix-vector results are adopted without materializing a host element list. SageMath and native-disabled differential tests cover the public contract, and a 100000-entry benchmark records warmed resource arithmetic.",
     "risks": [
-      "The current exact matrix-vector ABI exchanges a canonical ByteRegion, so each operand/result is copied once between generated resources even though no host element list is constructed.",
+      "The current exact matrix-vector ABI exchanges a canonical ByteRegion: input serializes and reparses the vector, while output serializes a temporary FLINT result and parses/copies it into the public resource. No host element list is constructed, but this is not zero-copy.",
+      "Exact slicing bulk-materializes and re-imports once, and mixed ZZ/QQ arithmetic currently materializes during FmpzVector-to-FmpqVector conversion; neither path has a direct generated resource declaration yet.",
       "This lane deliberately overlaps src/baselib/matrix.py with its declared qq-sparse-random dependency and must be integrated after that lane."
     ],
     "next_steps": [
       "Add direct FmpzVector/FmpqVector matrix-vector declarations to remove the remaining canonical-byte copy.",
+      "Add generated exact-vector slicing and FmpzVector-to-FmpqVector conversion declarations to remove the remaining host-list boundaries.",
       "Register exact_vector_public.py in pyrightconfig.json through the shared integration lane.",
       "Extend resource-backed bulk publication to exact matrix rows, columns, and diagonals when profiling justifies it."
     ]

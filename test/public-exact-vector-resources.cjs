@@ -34,6 +34,8 @@ function runSagejs(source, environment = {}) {
 }
 
 const semantics = String.raw`
+import copy
+
 def check(base, left_entries, right_entries, scalar, expected_dot):
     left = vector(base, left_entries)
     right = vector(base, right_entries)
@@ -45,6 +47,9 @@ def check(base, left_entries, right_entries, scalar, expected_dot):
     assert left[0] == original[0]
     assert left[-1] == original[-1]
     assert list(left[1:]) == original[1:]
+    assert list(left[::-1]) == original[::-1]
+    assert list(left[3:0:-2]) == original[3:0:-2]
+    assert list(left[2:2]) == []
     assert left + right == vector(base, [
         original[index] + right_entries[index]
         for index in range(len(left))])
@@ -58,9 +63,25 @@ def check(base, left_entries, right_entries, scalar, expected_dot):
     assert left.dot_product(right) == expected_dot
     assert left == vector(base, original)
     assert left != right
+    shallow = copy.copy(left)
+    deep = copy.deepcopy(left)
+    shallow[0] = scalar
+    deep[1] = scalar
+    assert left.list() == original
+    assert shallow[0] == base(scalar)
+    assert deep[1] == base(scalar)
+    restored = loads(dumps(left))
+    assert restored == left
+    assert restored.parent() == left.parent()
+    restored[0] = scalar
+    assert left.list() == original
     left[-1] = scalar
     assert left[-1] == base(scalar)
     left.set_immutable()
+    immutable_shallow = copy.copy(left)
+    immutable_deep = copy.deepcopy(left)
+    assert immutable_shallow.is_mutable()
+    assert immutable_deep.is_immutable()
     try:
         left[0] = 0
         raise AssertionError("immutable exact vector changed")
@@ -95,6 +116,13 @@ assert z.row() == matrix(ZZ, 1, 3, [1, 2, 3])
 assert z.column() == matrix(ZZ, 3, 1, [1, 2, 3])
 assert A.row(0) == vector(ZZ, [1, 2, 3])
 assert A.column(1) == vector(ZZ, [2, 5])
+
+finite = vector(GF(7), [1, 2, 3])
+finite_copy = copy.copy(finite)
+finite_deep = copy.deepcopy(finite)
+finite_copy[0] = 6
+finite_deep[1] = 5
+assert finite == vector(GF(7), [1, 2, 3])
 print("public-exact-vector-semantics-ok")
 `;
 
@@ -111,6 +139,7 @@ if (existsSync(sage)) {
 
 const representation = String.raw`
 import sagejs.runtime as runtime
+import sagejs.ffi.flint as ffi
 
 z = vector(ZZ, [2^521 + 1, -2, 3])
 q = vector(QQ, [1/2, 2/3, 3/5])
@@ -150,6 +179,25 @@ finally:
 
 assert total.list()[0] == 2*(2^521 + 1)
 assert rational_result.list()[0] == 1/4 + 4/9 + 9/25
+
+integer_region = ffi.FlintByteRegion.from_bytes(
+    runtime.exact_integer_values_to_packed_bytes([1, 2]))
+rational_region = ffi.FlintByteRegion.from_bytes(
+    runtime.exact_integer_values_to_packed_bytes([1, 2, 3, 4]))
+integer_resource = ffi.fmpz_vector_from_byte_region(integer_region, 2)
+rational_resource = ffi.fmpq_vector_from_byte_region(rational_region, 2)
+integer_region.close()
+rational_region.close()
+try:
+    VectorSpace(ZZ, 3)._from_fmpz_vector_resource(integer_resource)
+    raise AssertionError("mismatched integer vector resource adopted")
+except ValueError:
+    assert integer_resource.closed
+try:
+    VectorSpace(QQ, 3)._from_fmpq_vector_resource(rational_resource)
+    raise AssertionError("mismatched rational vector resource adopted")
+except ValueError:
+    assert rational_resource.closed
 print("public-exact-vector-resource-ok")
 `;
 
