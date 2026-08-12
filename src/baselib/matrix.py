@@ -1095,6 +1095,13 @@ class MatrixSpaceParent(sage.Parent):
                     if integer_resource is not runtime.undefined:
                         integer_resource.close()
                     region.close()
+            packed_rationals = runtime.canonical_rational_values_to_packed_bytes(
+                entries,
+                _untyped(sage.Rational),
+                sage.QQ,
+            )
+            if packed_rationals is not runtime.undefined:
+                return self._from_packed_rationals(packed_rationals)
         parts = []
         for entry in entries:
             if runtime.is_exact_integer(entry):

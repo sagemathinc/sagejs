@@ -1,0 +1,52 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "dense-qq-bulk-construction",
+  "title": "Dense Qq Bulk Construction",
+  "lane": "integration",
+  "status": "active",
+  "owner": "user",
+  "objective": "Bulk-construct dense QQ FLINT resources from already-normalized rational values without a Python per-entry packing loop, preserving all constructor semantics and fallbacks",
+  "base_commit": "33a292ac998dc797bfae0e762953d6008fc3fb6e",
+  "claims": [
+    "src/baselib/matrix.py",
+    "src/baselib/sagejs/runtime.py",
+    "src/baselib/sagejs/runtime.pyi",
+    "src/baselib/sagejs_bootstrap.py",
+    "tools/python/contract.ts",
+    "test/dense-qq-bulk-construction.cjs",
+    "test/runtime-intrinsics.cjs",
+    "test/node-test-manifest.cjs",
+    "bench/dense-qq-bulk-construction.cjs",
+    "architecture/package-graph.json",
+    "architecture/native-boundaries.json"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "compiler-infrastructure",
+    "fallback": "tested-capability",
+    "oracles": [
+      "Existing generated fmpq_matrix_deserialize resource boundary",
+      "SageMath dense QQ constructor semantics"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm architecture:check",
+    "pnpm test:portable",
+    "pnpm test:baselib:strict"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "",
+    "risks": [],
+    "next_steps": []
+  }
+}

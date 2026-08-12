@@ -633,6 +633,142 @@ def ρσ_exact_integer_values_to_packed_bytes(values):
     })()"""
 
 
+def ρσ_canonical_rational_values_to_packed_bytes(values, rational_class, parent):
+    """Encode canonical exact scalars without invoking language coercion."""
+    return r"""%js (() => {
+        const source = Array.isArray(values) ? values : Array.from(values);
+        const rationalPrototype = Reflect.get(rational_class, "prototype");
+        const magnitudes = new Array(2 * source.length);
+        const hexadecimal = new Array(2 * source.length);
+        const headers = new Uint32Array(2 * source.length);
+        let byteLength = 0;
+
+        function exactInteger(value) {
+            return typeof value === "bigint" || Number.isSafeInteger(value);
+        }
+
+        function describe(value, part) {
+            if (!exactInteger(value)) return false;
+            let negative;
+            let magnitude;
+            let text = null;
+            let bytes = 0;
+            if (typeof value === "number") {
+                negative = value < 0;
+                magnitude = negative ? -value : value;
+                bytes = magnitude === 0 ? 0 :
+                    magnitude <= 0xff ? 1 :
+                    magnitude <= 0xffff ? 2 :
+                    magnitude <= 0xffffff ? 3 :
+                    magnitude <= 0xffffffff ? 4 :
+                    magnitude <= 0xffffffffff ? 5 :
+                    magnitude <= 0xffffffffffff ? 6 : 7;
+            } else {
+                negative = value < 0n;
+                magnitude = negative ? -value : value;
+                if (magnitude <= 0xffffffffffffffffffffffffffffffffn) {
+                    let remaining = magnitude;
+                    while (remaining !== 0n) {
+                        bytes += 1;
+                        remaining >>= 8n;
+                    }
+                } else {
+                    text = magnitude.toString(16);
+                    if (text.length % 2 !== 0) text = `0${text}`;
+                    bytes = text.length / 2;
+                }
+            }
+            if (bytes > 0x7fffffff ||
+                byteLength > Number.MAX_SAFE_INTEGER - 4 - bytes) {
+                throw new RangeError("packed exact rational output is too large");
+            }
+            magnitudes[part] = magnitude;
+            hexadecimal[part] = text;
+            headers[part] = bytes + (negative ? 0x80000000 : 0);
+            byteLength += 4 + bytes;
+            return true;
+        }
+
+        for (let index = 0; index < source.length; index += 1) {
+            const value = source[index];
+            let numerator;
+            let denominator;
+            if (exactInteger(value)) {
+                numerator = value;
+                denominator = 1;
+            } else if (
+                value !== null && typeof value === "object" &&
+                Object.getPrototypeOf(value) === rationalPrototype &&
+                Object.isFrozen(value)
+            ) {
+                const numeratorField = Object.getOwnPropertyDescriptor(
+                    value, "_numerator"
+                );
+                const denominatorField = Object.getOwnPropertyDescriptor(
+                    value, "_denominator"
+                );
+                const parentField = Object.getOwnPropertyDescriptor(
+                    value, "_parent"
+                );
+                if (numeratorField === undefined ||
+                    denominatorField === undefined ||
+                    parentField === undefined ||
+                    !("value" in numeratorField) ||
+                    !("value" in denominatorField) ||
+                    !("value" in parentField) ||
+                    parentField.value !== parent) {
+                    return undefined;
+                }
+                numerator = numeratorField.value;
+                denominator = denominatorField.value;
+                if (!exactInteger(denominator) || denominator <= 0) {
+                    return undefined;
+                }
+            } else {
+                return undefined;
+            }
+            if (!describe(numerator, 2 * index) ||
+                !describe(denominator, 2 * index + 1)) {
+                return undefined;
+            }
+        }
+
+        const output = new Uint8Array(byteLength);
+        const view = new DataView(output.buffer);
+        let offset = 0;
+        function digit(code) {
+            return code <= 57 ? code - 48 : code - 87;
+        }
+        for (let part = 0; part < magnitudes.length; part += 1) {
+            view.setUint32(offset, headers[part], true);
+            offset += 4;
+            const bytes = headers[part] & 0x7fffffff;
+            const text = hexadecimal[part];
+            if (text !== null) {
+                for (let position = text.length - 2;
+                    position >= 0; position -= 2) {
+                    output[offset++] =
+                        16 * digit(text.charCodeAt(position)) +
+                        digit(text.charCodeAt(position + 1));
+                }
+            } else if (typeof magnitudes[part] === "number") {
+                let magnitude = magnitudes[part];
+                for (let byte = 0; byte < bytes; byte += 1) {
+                    output[offset++] = magnitude % 256;
+                    magnitude = Math.floor(magnitude / 256);
+                }
+            } else {
+                let magnitude = magnitudes[part];
+                for (let byte = 0; byte < bytes; byte += 1) {
+                    output[offset++] = Number(magnitude & 0xffn);
+                    magnitude >>= 8n;
+                }
+            }
+        }
+        return output;
+    })()"""
+
+
 def ρσ_exact_integer_range_values(start, step, length):
     """Materialize a trusted exact range into a preallocated native array."""
     return r"""%js (() => {

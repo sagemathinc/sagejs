@@ -283,6 +283,48 @@ assert.equal(codecExecution.status, 0, codecExecution.stderr);
 assert.equal(codecExecution.stderr, "");
 assert.match(codecExecution.stdout, /True 5 [1-9][0-9]*/);
 
+const rationalCodecDirectory = mkdtempSync(
+  join(tmpdir(), "sagejs-rational-codec-"),
+);
+const rationalCodecPath = join(rationalCodecDirectory, "codec.py");
+let rationalCodecExecution;
+try {
+  writeFileSync(
+    rationalCodecPath,
+    [
+      "import sagejs.runtime as runtime",
+      "values = [0, -1, QQ(2, 3), QQ(-(2**521 + 1), 2**257 + 9)]",
+      "packed = runtime.canonical_rational_values_to_packed_bytes(",
+      "    values, runtime.rational_class, QQ",
+      ")",
+      "parts = runtime.exact_integer_values_from_packed_bytes(",
+      "    packed, 2 * len(values)",
+      ")",
+      "class Candidate:",
+      "    calls = 0",
+      "    def _rational_(self):",
+      "        Candidate.calls += 1",
+      "        return QQ(5, 7)",
+      "candidate = Candidate()",
+      "rejected = runtime.canonical_rational_values_to_packed_bytes(",
+      "    [candidate], runtime.rational_class, QQ",
+      ")",
+      "print(parts[:6], rejected is runtime.undefined, Candidate.calls)",
+      "",
+    ].join("\n"),
+  );
+  rationalCodecExecution = spawnSync(
+    process.execPath,
+    [join(root, "bin", "sagejs"), rationalCodecPath],
+    { cwd: root, encoding: "utf8" },
+  );
+} finally {
+  rmSync(rationalCodecDirectory, { recursive: true, force: true });
+}
+assert.equal(rationalCodecExecution.status, 0, rationalCodecExecution.stderr);
+assert.equal(rationalCodecExecution.stderr, "");
+assert.match(rationalCodecExecution.stdout, /\[0, 1, -1, 1, 2, 3\] True 0/);
+
 console.log("Sage.js runtime intrinsic lowering passed.");
 frontend.close();
 })().catch((error) => {
