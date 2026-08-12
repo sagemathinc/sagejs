@@ -1,0 +1,49 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "macos-arm64-math-witness",
+  "title": "macOS arm64 mathematical performance witness",
+  "lane": "arithmetic-algebra",
+  "status": "active",
+  "owner": "user",
+  "objective": "Establish a reproducible macOS arm64 compatibility and performance witness for representative dense exact and finite-field matrices and univariate polynomials, recording cold and warm Sage.js timings, SageMath comparison when available, exact host/toolchain/commit metadata, and platform-specific regressions without changing mathematical implementations",
+  "base_commit": "d9831968c7bfd5936a95df2517278c3b3dcd5064",
+  "claims": [
+    "bench/macos-arm64-math-witness.cjs",
+    "bench/MACOS-ARM64-MATH-WITNESS.md",
+    "bench/results/macos-arm64-m1-max-dense-matrix-2026-08-12.json",
+    "bench/results/macos-arm64-m1-max-format-polynomial-2026-08-12.json"
+  ],
+  "dependencies": [],
+  "references": [
+    "SageMath behavior and timing on the authorized Apple M1 host"
+  ],
+  "architecture": {
+    "strategy": "dynamic-python",
+    "fallback": "same-source",
+    "oracles": [
+      "SageMath on the same Apple M1 host when available",
+      "Sage.js mathematical identities and serialization round trips"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "not-applicable",
+    "windows-x64": "not-applicable",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "node --check bench/macos-arm64-math-witness.cjs",
+    "node --test test/dense-matrix-public-audit.cjs",
+    "pnpm test:baselib:strict",
+    "pnpm test:native",
+    "node bench/macos-arm64-math-witness.cjs --runtime sage --sage /home/user/bin/sagelite --quick --samples 1 --check"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "",
+    "risks": [],
+    "next_steps": []
+  }
+}
