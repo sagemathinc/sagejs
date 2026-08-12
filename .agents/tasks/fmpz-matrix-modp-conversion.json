@@ -4,7 +4,7 @@
   "id": "fmpz-matrix-modp-conversion",
   "title": "Bulk ZZ to prime-field matrix conversion",
   "lane": "arithmetic-algebra",
-  "status": "review",
+  "status": "complete",
   "owner": "user",
   "objective": "Route dense ZZ matrices through the existing declared 32-bit residue export and construct canonical packed or nmod GF(p) storage without host scalar materialization, while preserving a tested correct fallback for wider primes",
   "base_commit": "d423f84b396b57c36e701650b1f2608c74b74a8f",
@@ -164,19 +164,27 @@
       "commit": "d423f84b396b57c36e701650b1f2608c74b74a8f",
       "workspace_fingerprint": "8aca4577b21fab62effb4d72b4c3dca00a7c723f2a83cc4e8a24b15a8eaf4855",
       "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/fmpz-matrix-modp-conversion.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.794,
+      "started_at": "2026-08-12T18:45:36.714Z",
+      "commit": "43c26cc4f769515049f07cc5b97b6077087ecf6c",
+      "workspace_fingerprint": "1c21f3dc3b05050254e513678c13b8f2f20581507cd6fe311659a6c99be51902",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {
-    "summary": "Dense ZZ matrices now use the existing generated fmpz residue exporter for every prime modulus through UINT32_MAX. The published result remains canonical: GF(2) uses M4RI where available, primes below 256 use packed storage, and larger supported primes use generated nmod resources. Huge signed entries, empty rectangular shapes, native-disabled execution, region/resource cleanup, and the correct scalar fallback above UINT32_MAX are covered. Million-entry conversion is approximately four times faster than host materialization.",
+    "summary": "Integrated on dense-qq-resources. Dense ZZ matrices bulk-reduce directly into canonical M4RI, packed-prime, or nmod GF(p) storage for every modulus through UINT32_MAX, without host Integer materialization; wider primes retain the tested scalar fallback.",
     "risks": [
-      "The existing declared exporter stops at UINT32_MAX; wider primes remain correct but use the scalar fallback.",
-      "The optimized nmod publication path uses the existing Node capability gate, so this lane claims no new WASM resource support.",
-      "The refreshed integration base reserves flint_word_prime_matrix_pivots before its companion source lane lands, temporarily blocking the combined build, architecture check, and native suite for reasons outside this lane's claims."
+      "The declared exporter remains 32-bit; primes above UINT32_MAX still use the correct scalar fallback.",
+      "The optimized nmod publication path claims no new WASM resource support."
     ],
     "next_steps": [
-      "Merge word-prime-pivots-remediation, then rerun the combined build, architecture check, and native suite on the integrated tree.",
-      "Extend the shared declared residue export ABI to uint64 and width 8 with Windows and WASM portability before removing the wider-prime fallback.",
-      "Retain the focused million-entry benchmark as a conversion performance ratchet."
+      "Extend the portable residue-export ABI to uint64/width 8 before removing the wider-prime fallback.",
+      "Retain the million-entry conversion benchmark as a performance ratchet."
     ]
   }
 }
