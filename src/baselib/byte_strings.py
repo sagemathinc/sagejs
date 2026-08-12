@@ -143,6 +143,73 @@ def _decode_utf8(values: list[_Int], errors: _Str) -> _Str:
     return answer
 
 
+def _decode_ascii(values: list[_Int], errors: _Str) -> _Str:
+    """Decode ASCII with one host-native bulk conversion when available."""
+    decoder_class = runtime.reflect.get(runtime.global_object, "TextDecoder")
+    uint8_array = runtime.reflect.get(runtime.global_object, "Uint8Array")
+    if decoder_class is not runtime.undefined and uint8_array is not runtime.undefined:
+        # The Encoding Standard maps every byte through the single-byte
+        # iso-8859-1 label, yielding one JavaScript code unit per input byte.
+        # That makes the first non-ASCII position exact, while avoiding a
+        # Python-level loop and repeated string concatenation for valid data.
+        decoder = runtime.reflect.construct(decoder_class, ["iso-8859-1"])
+        encoded = (
+            values
+            if runtime.instance_of(values, uint8_array)
+            else runtime.reflect.construct(uint8_array, [values])
+        )
+        answer = runtime.reflect.apply(
+            runtime.reflect.get(decoder, "decode"), decoder, [encoded]
+        )
+        invalid = runtime.regexp(r"[^\x00-\x7f]")
+        position = runtime.reflect.apply(
+            runtime.string_class.prototype.search, answer, [invalid]
+        )
+        if position < 0:
+            return answer
+        if errors == "ignore":
+            invalid = runtime.regexp(r"[^\x00-\x7f]", "g")
+            return runtime.reflect.apply(
+                runtime.string_class.prototype.replace, answer, [invalid, ""]
+            )
+        if errors == "replace":
+            invalid = runtime.regexp(r"[^\x00-\x7f]", "g")
+            return runtime.reflect.apply(
+                runtime.string_class.prototype.replace, answer, [invalid, "\ufffd"]
+            )
+        if errors != "strict":
+            raise LookupError("unknown error handler name '" + str(errors) + "'")
+        error_source: Any = bytes(values)
+        raise UnicodeDecodeError(
+            "ascii",
+            error_source,
+            position,
+            position + 1,
+            "ordinal not in range(128)",
+        )
+
+    answer = ""
+    for position, value in enumerate(values):
+        if value <= 127:
+            answer += chr(value)
+        elif errors == "ignore":
+            continue
+        elif errors == "replace":
+            answer += "\ufffd"
+        else:
+            if errors != "strict":
+                raise LookupError("unknown error handler name '" + str(errors) + "'")
+            error_source = bytes(values)
+            raise UnicodeDecodeError(
+                "ascii",
+                error_source,
+                position,
+                position + 1,
+                "ordinal not in range(128)",
+            )
+    return answer
+
+
 def _coerce_index(value: Any) -> _Int:
     if value is True:
         return 1
@@ -424,17 +491,7 @@ class SageBytes:
         if normalised in ("utf-8", "utf8"):
             return _decode_utf8(self._values, errors)
         if normalised in ("ascii", "us-ascii"):
-            answer = ""
-            for value in self._values:
-                if value <= 127:
-                    answer += chr(value)
-                elif errors == "ignore":
-                    continue
-                elif errors == "replace":
-                    answer += "\ufffd"
-                else:
-                    raise ValueError("ordinal not in range(128)")
-            return answer
+            return _decode_ascii(self._values, errors)
         if normalised in ("latin-1", "latin1", "iso-8859-1"):
             return self._binary_string()
         if normalised == "punycode":
