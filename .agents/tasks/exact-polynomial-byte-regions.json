@@ -37,14 +37,147 @@
   "validation": [
     "pnpm exec pyright src/lib/sagejs/polynomial_algorithms/exact_coefficient_bytes_contract.py",
     "node test/exact-polynomial-byte-regions.cjs",
-    "SAGEJS_FORBID_POLYNOMIAL_NAPI=1 ./bin/sagejs --python bench/exact-polynomial-byte-regions.sage",
+    "env SAGEJS_FORBID_POLYNOMIAL_NAPI=1 ./bin/sagejs --python bench/exact-polynomial-byte-regions.sage",
+    "pnpm architecture:check",
     "pnpm test:baselib:strict",
     "pnpm test:native"
   ],
-  "runs": [],
+  "runs": [
+    {
+      "command": "pnpm exec pyright src/lib/sagejs/polynomial_algorithms/exact_coefficient_bytes_contract.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.115,
+      "started_at": "2026-08-12T11:33:18.439Z",
+      "commit": "7498fa625737b9d4e170a10bfc3958967d17bf76",
+      "workspace_fingerprint": "84d9d11bf122aefd24d8c84a3c304727cc67927f5fd49437443d9b5d678da54a",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node test/exact-polynomial-byte-regions.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.649,
+      "started_at": "2026-08-12T11:33:20.150Z",
+      "commit": "7498fa625737b9d4e170a10bfc3958967d17bf76",
+      "workspace_fingerprint": "84d9d11bf122aefd24d8c84a3c304727cc67927f5fd49437443d9b5d678da54a",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "env SAGEJS_FORBID_POLYNOMIAL_NAPI=1 ./bin/sagejs --python bench/exact-polynomial-byte-regions.sage",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 4.88,
+      "started_at": "2026-08-12T11:33:22.401Z",
+      "commit": "7498fa625737b9d4e170a10bfc3958967d17bf76",
+      "workspace_fingerprint": "84d9d11bf122aefd24d8c84a3c304727cc67927f5fd49437443d9b5d678da54a",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 12.929,
+      "started_at": "2026-08-12T11:33:42.584Z",
+      "commit": "7498fa625737b9d4e170a10bfc3958967d17bf76",
+      "workspace_fingerprint": "84d9d11bf122aefd24d8c84a3c304727cc67927f5fd49437443d9b5d678da54a",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:native",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 161.285,
+      "started_at": "2026-08-12T11:34:02.960Z",
+      "commit": "7498fa625737b9d4e170a10bfc3958967d17bf76",
+      "workspace_fingerprint": "2d29296a3f874a2f25d1b63f4fc57c5acbd6bfd44f2c6f8516ed4b07d14709c8",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:native",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 436.634,
+      "started_at": "2026-08-12T11:37:14.993Z",
+      "commit": "7498fa625737b9d4e170a10bfc3958967d17bf76",
+      "workspace_fingerprint": "2d29296a3f874a2f25d1b63f4fc57c5acbd6bfd44f2c6f8516ed4b07d14709c8",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 3.219,
+      "started_at": "2026-08-12T11:45:23.473Z",
+      "commit": "7498fa625737b9d4e170a10bfc3958967d17bf76",
+      "workspace_fingerprint": "2d29296a3f874a2f25d1b63f4fc57c5acbd6bfd44f2c6f8516ed4b07d14709c8",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 13.222,
+      "started_at": "2026-08-12T11:45:58.555Z",
+      "commit": "7498fa625737b9d4e170a10bfc3958967d17bf76",
+      "workspace_fingerprint": "5140677d31810b383b3482903e4bc75a37900af53c6b1825f7d837e78dfb3ff6",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm exec pyright src/lib/sagejs/polynomial_algorithms/exact_coefficient_bytes_contract.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.14,
+      "started_at": "2026-08-12T11:46:18.358Z",
+      "commit": "7498fa625737b9d4e170a10bfc3958967d17bf76",
+      "workspace_fingerprint": "5140677d31810b383b3482903e4bc75a37900af53c6b1825f7d837e78dfb3ff6",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node test/exact-polynomial-byte-regions.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.183,
+      "started_at": "2026-08-12T11:46:20.086Z",
+      "commit": "7498fa625737b9d4e170a10bfc3958967d17bf76",
+      "workspace_fingerprint": "5140677d31810b383b3482903e4bc75a37900af53c6b1825f7d837e78dfb3ff6",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "env SAGEJS_FORBID_POLYNOMIAL_NAPI=1 ./bin/sagejs --python bench/exact-polynomial-byte-regions.sage",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 4.582,
+      "started_at": "2026-08-12T11:46:21.852Z",
+      "commit": "7498fa625737b9d4e170a10bfc3958967d17bf76",
+      "workspace_fingerprint": "5140677d31810b383b3482903e4bc75a37900af53c6b1825f7d837e78dfb3ff6",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 13.092,
+      "started_at": "2026-08-12T11:46:27.027Z",
+      "commit": "7498fa625737b9d4e170a10bfc3958967d17bf76",
+      "workspace_fingerprint": "5140677d31810b383b3482903e4bc75a37900af53c6b1825f7d837e78dfb3ff6",
+      "platform": "linux-x64"
+    }
+  ],
   "handoff": {
-    "summary": "",
-    "risks": [],
-    "next_steps": []
+    "summary": "Defined an implementation-ready, storage-neutral SJPZ/SJPQ v1 byte-region contract without changing shared FFI or public polynomial code. The ordinary Python oracle normalizes encoder input, strictly validates selected offset/length ranges, signed magnitudes, reduced rational pairs, zero and trailing-zero rules, and constructs results transactionally. CPython and Sage.js witnesses pass by default; the same witness passed SageMath 10.9.post30 with SAGEJS_SAGE_ORACLE=/home/user/sagelite/sage. Current generated FLINT egress is byte-for-byte identical. The later ABI reuses FlintByteRegion.from_bytes for one host-to-native copy and adds non-consuming fmpz/fmpq_polynomial_from_byte_region(region, offset, length) resource constructors. Warm measurements on linux-x64 show the current bytes-to-BigInt stage at 8.4 ms for 0.5 MB dense ZZ, 12.5 ms for 1 MB dense QQ, and 12.8 ms for one 1 MB skewed coefficient, versus 0.11, 0.13, and 0.10 ms for the existing generated byte-region copy. Current deserialization adds 2.3, 8.5, and 19.6 ms respectively; egress is already efficient and remains unchanged.",
+    "risks": [
+      "This lane specifies and tests the contract but deliberately does not implement the native primitive; sanitizer, lifecycle, Node, and Wasm proof belongs to the later shared-FFI lane.",
+      "The exact polynomial resources currently declare wasm=False. The byte-region resource and synchronous borrowed-copy model are Wasm-capable, but exact polynomial resource lowering must be enabled and verified separately.",
+      "Dense QQ construction remains dominated by rational coercion and numerator/denominator extraction (about 163 ms for 100000 small coefficients here); removing the roughly 21 ms byte transport is valuable but not the complete QQ construction optimization.",
+      "A full pnpm test:native run is recorded as an inherited failure: after 437 seconds it reached test/native-kernel.cjs:1042 and found the source_include_dirs fmpq_matrix_ffi.h where the base test expected its copied temporary-prefix header. A separate extension lane reproduced the same shared-base issue. The first attempt also exposed that the parallel native cache does not provision M4RI; building packages/m4ri locally allowed the suite to proceed. Neither failure involves files claimed here."
+    ],
+    "next_steps": [
+      "Refactor the existing exact-polynomial parser helpers to read const unsigned char ranges directly, construct a temporary sealed resource, and publish it only after full validation; do not reconstruct a ulong stream from fmpz transport.",
+      "Declare fmpz_polynomial_from_byte_region and fmpq_polynomial_from_byte_region using the existing FlintByteRegion argument plus checked uint64 offset/length, Status(1, exception=ValueError, ...), non-consuming ownership, and Node/Wasm capability metadata.",
+      "Change public exact construction and SagePack restore to create one FlintByteRegion from the canonical Uint8Array, call the resource constructor, and close the byte region in finally; then delete the bytes-to-hex-to-BigInt helper and old payload:fmpz_t deserializers under the greenfield rule.",
+      "Differentially fuzz the new native parser against this oracle, add ASan/UBSan lifecycle coverage, prove malformed calls leave no result and do not consume the region, and rerun this benchmark plus the public construction benchmarks.",
+      "Optimize QQ coefficient coercion/extraction independently after the byte boundary is fixed; it is now the larger measured cost for dense small rational coefficients."
+    ]
   }
 }
