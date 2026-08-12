@@ -9,6 +9,7 @@
 #include <flint/flint.h>
 #include <flint/fmpz.h>
 #include <flint/fmpz_mat.h>
+#include <flint/nmod_mat.h>
 
 #include "sagejs/exact_polynomial_ffi.h"
 #include "sagejs/fmpq_matrix_ffi.h"
@@ -263,6 +264,29 @@ static inline uint64_t sagejs_fmpz_matrix_rank(
     const sagejs_fmpz_matrix_t matrix)
 {
     return (uint64_t) fmpz_mat_rank(matrix->value);
+}
+
+/*
+ * A nonzero maximal minor modulo any prime proves that the same integer
+ * minor is nonzero.  Thus maximal rank modulo this fixed prime is an exact
+ * full-rank certificate over ZZ; a smaller modular rank is only
+ * inconclusive, since a nonzero integer minor can vanish modulo the prime.
+ *
+ * Keep the prime part of the ABI name.  Callers must never mistake this
+ * one-sided certificate for an exact rank algorithm on deficient matrices.
+ */
+static inline uint64_t sagejs_fmpz_matrix_rank_mod_46337(
+    const sagejs_fmpz_matrix_t matrix)
+{
+    nmod_mat_t modular;
+    nmod_mat_init(modular,
+        fmpz_mat_nrows(matrix->value),
+        fmpz_mat_ncols(matrix->value),
+        UWORD(46337));
+    fmpz_mat_get_nmod_mat(modular, matrix->value);
+    const slong rank = nmod_mat_rank(modular);
+    nmod_mat_clear(modular);
+    return (uint64_t) rank;
 }
 
 static inline int sagejs_fmpz_matrix_det(

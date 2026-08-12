@@ -163,7 +163,8 @@ test("FFI declarations are strict and generated modules are current", () => {
       "fmpz_matrix_neg", "fmpz_matrix_scalar_mul", "fmpz_matrix_equal",
       "fmpz_matrix_is_zero", "fmpz_matrix_is_one", "fmpz_matrix_add",
       "fmpz_matrix_sub", "fmpz_matrix_transpose", "fmpz_matrix_mul",
-      "fmpz_matrix_pow", "fmpz_matrix_rank", "fmpz_matrix_det",
+      "fmpz_matrix_pow", "fmpz_matrix_rank",
+      "fmpz_matrix_rank_mod_46337", "fmpz_matrix_det",
       "fmpz_matrix_trace", "fmpz_matrix_hnf", "fmpz_matrix_snf",
       "fmpz_matrix_hnf_transform", "fmpz_matrix_snf_transform",
       "fmpz_matrix_right_kernel", "fmpz_matrix_charpoly",
@@ -272,7 +273,7 @@ test("FFI declarations are strict and generated modules are current", () => {
     { resource: "graph", ownership: "owned", owner: null, root: "graph" },
     { resource: "edges", ownership: "borrowed", owner: "graph", root: "graph" },
   ]);
-  assert.match(runSage(["ffi", "check"]), /189 function\(s\)/);
+  assert.match(runSage(["ffi", "check"]), /190 function\(s\)/);
   const inspection = JSON.parse(
     runSage(["ffi", "explain", "flint", "--json"]),
   );
@@ -322,7 +323,7 @@ test("generated host adapters cover values and safe owned resources", async () =
     assert.doesNotMatch(source, /sagejs\.runtime|ffi_call/);
     assert.equal(functions.length, {
       fflas: 4,
-      flint: 178,
+      flint: 179,
       igraph: 2,
     }[declaration.library.id]);
     if (declaration.library.id === "flint") {
@@ -347,7 +348,7 @@ test("generated host adapters cover values and safe owned resources", async () =
 
 test("packages publish every generated host adapter as the canonical export", () => {
   for (const [packagePath, expected] of [
-    ["../packages/flint", 179],
+    ["../packages/flint", 180],
     ["../packages/fflas", 4],
     ["../packages/graph", 2],
   ]) {
@@ -491,7 +492,7 @@ test("native-boundary audit is a reviewed exact ratchet", () => {
   const current = boundaryAudit.validateBoundarySnapshot(snapshot, { root });
   assert.ok(current.counts["napi-export"] >= 280);
   assert.ok(current.counts["runtime-intrinsic"] >= 100);
-  assert.equal(current.counts["declared-ffi"], 189);
+  assert.equal(current.counts["declared-ffi"], 190);
   assert.equal(current.counts["declared-ffi-resource"], 12);
   assert.match(runSage(["ffi", "audit"]), /inventoried native boundaries/);
   assert.equal(

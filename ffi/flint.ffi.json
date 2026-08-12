@@ -5615,6 +5615,65 @@
       }
     },
     {
+      "id": "fmpz_matrix_rank_mod_46337",
+      "python_name": "fmpz_matrix_rank_mod_46337",
+      "signature": {
+        "parameters": [
+          {
+            "name": "matrix",
+            "type": "FmpzMatrix",
+            "ownership": "borrowed",
+            "mutability": "read",
+            "aliasing": "allowed"
+          }
+        ],
+        "return_type": "uint64",
+        "return_ownership": "value",
+        "borrow_from": null
+      },
+      "dynamic": {
+        "export": "ffiFmpzMatrixRankMod46337"
+      },
+      "native": {
+        "symbol": "sagejs_fmpz_matrix_rank_mod_46337",
+        "return_type": "uint64_t",
+        "arguments": [
+          {
+            "source": "matrix",
+            "abi_type": "sagejs_fmpz_matrix_t",
+            "direction": "in",
+            "adapter": null
+          }
+        ]
+      },
+      "effects": {
+        "pure": true,
+        "deterministic": true,
+        "thread_safe": true,
+        "may_allocate": true,
+        "may_raise": [],
+        "writes": []
+      },
+      "result": {
+        "domain": "direct",
+        "success": [],
+        "absence": null
+      },
+      "errors": {
+        "exception": null,
+        "message": null
+      },
+      "exceptions": {
+        "policy": "none",
+        "failure_status": null
+      },
+      "targets": {
+        "dynamic": true,
+        "native": true,
+        "wasm": false
+      }
+    },
+    {
       "id": "fmpz_matrix_det",
       "python_name": "fmpz_matrix_det",
       "signature": {
