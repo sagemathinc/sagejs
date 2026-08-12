@@ -72,6 +72,10 @@ Importing `algorithms` normally in a fresh Sage.js process then resolves every
 decorated function from that artifact. `SAGEJS_NATIVE_AUTOLOAD=0` forces the
 original Python implementation. `SAGEJS_NATIVE_CACHE_DIR` selects a hermetic
 cache instead of the default `.sagejs-native-kernels` beside the source.
+For `# sagejs: native-bitwise` modules, that dynamic Sage.js implementation
+uses checked full-word helpers rather than JavaScript's 32-bit bitwise
+operators, so it is a differential oracle for the portable IR and native C
+paths.
 
 ## Transparent compiler tooling
 
@@ -188,10 +192,11 @@ v22 supports:
   64-bit word: left shift wraps modulo `2^64`, right shift is logical, and
   counts outside `0..63` raise `OverflowError` before generated C executes a
   shift. A `# sagejs: native-bitwise` source marker preserves CPython's `^`
-  spelling in Sage mode without changing ordinary Sage exponentiation. The
-  CPython fallback keeps Python `int` shift behavior because `uint64` is an
-  annotation-only alias there; portable source that can overflow a left shift
-  must mask explicitly;
+  spelling in Sage mode without changing ordinary Sage exponentiation. Marked
+  dynamic Sage.js source uses the same bounded contract across mixed exact
+  Number/BigInt representations. CPython still treats the annotation-only
+  `uint64` alias as `int`, so sources whose CPython oracle reaches an
+  overflowing or out-of-range shift must make that boundary explicit;
 - borrowed packed `Float64Buffer` parameters, bounded `Float64Record` views,
   checked indexed reads/writes, buffer aliasing, `sqrt`, dynamic one- and
   two-bound ranges, and arbitrarily nested counted loops;

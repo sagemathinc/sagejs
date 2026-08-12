@@ -11,6 +11,8 @@
   "claims": [
     "tools/native-kernel/",
     "tools/python/lowerer.ts",
+    "src/output/operators.py",
+    "src/baselib/builtins.py",
     "test/native-kernel.cjs",
     "test/ffi.cjs",
     "test/node-test-manifest.cjs",
@@ -46,13 +48,14 @@
   },
   "validation": [
     "node --test test/native-uint64-bitwise.cjs",
+    "node test/native-kernel.cjs",
+    "node --test test/python-cst-lowerer.cjs test/python-syntax-frontend.cjs test/operator-module.cjs test/test-manifest.test.cjs",
     "node bench/native-uint64-bitwise.cjs",
     "pnpm build",
     "pnpm test:compiler",
     "pnpm test:integration",
     "pnpm architecture:check",
-    "pnpm test:baselib:strict",
-    "pnpm test:native"
+    "pnpm test:baselib:strict"
   ],
   "runs": [
     {
@@ -177,14 +180,14 @@
     }
   ],
   "handoff": {
-    "summary": "Implemented canonical typed uint64 &, |, ^, <<, and >> operations across exact, binary64, and source-transparent prime IR plus portable JavaScript, isolated C, word, tagged, and prime-source backends. Added augmented scalar and UInt64Buffer lowering with Python target-before-RHS evaluation order, explicit 0..63 shift guards, logical right shift, modulo-2^64 left shift, Sage-mode xor marker preservation, IR v22, cache fingerprinting, explain metadata, focused differential/property coverage, benchmark coverage, compiler documentation, and Node test-manifest registration.",
+    "summary": "Implemented canonical typed uint64 &, |, ^, <<, and >> operations across exact, binary64, and source-transparent prime IR plus portable JavaScript, isolated C, word, tagged, and prime-source backends. Augmented scalar and UInt64Buffer lowering preserves Python target-before-RHS evaluation order, uses explicit 0..63 shift guards, logical right shift, and modulo-2^64 left shift. Sage-mode native-bitwise source now preserves xor and uses checked full-word dynamic helpers for mixed exact Number/BigInt values rather than JavaScript 32-bit operators. Prime-source Node returns preserve the full unsigned range as BigInt, exposed JavaScript fallbacks validate the public ABI, and adversarial tests cover 2^40, 2^63, 2^64-1, invalid operands, shift 64, mixed representations, dynamic fallback, native C, and portable JavaScript. IR v22, cache fingerprinting, explain metadata, host/policy benchmark metadata, compiler documentation, and Node test-manifest registration are included.",
     "risks": [
       "The broad compiler tier failed outside this claim: compiler/algebra.py timed out and compiler/matrix.py hit an existing sparse-random runtime error under Node 26.7.0.",
       "The broad integration tier passed 371/380 tests but failed eight matrix/polynomial runtime tests outside this claim; focused native-kernel, FFI, build, architecture, and strict checks pass.",
-      "CPython's annotation-only uint64 fallback retains Python int left-shift behavior; full-word wrapping and 0..63 guards are the documented typed-IR/native/portable-JavaScript contract, so cross-path source that can overflow must mask explicitly."
+      "CPython's annotation-only uint64 fallback retains Python int left-shift behavior; full-word wrapping and 0..63 guards are the documented typed-IR/native/portable-JavaScript contract, so a CPython oracle that reaches overflow or an out-of-range shift must make that boundary explicit."
     ],
     "next_steps": [
-      "Integration lane: in src/lib/sagejs/native.py, change the module docstring's `Native Kernel v21` to `Native Kernel v22` and add the documented typed uint64 contract: &, |, and ^ operate on the full unsigned word; left shift wraps modulo 2^64; right shift is logical; compiled/typed-JavaScript shift counts are 0..63 with OverflowError for 64+, negative values fail the uint64 boundary, `# sagejs: native-bitwise` preserves ^ as xor in Sage mode, and CPython's annotation-only fallback retains int shift behavior.",
+      "Integration lane exact native.py patch: change `Native Kernel v21` to `Native Kernel v22`. After the sentence ending `decompositions over prime fields.`, insert: `Typed uint64 kernels support full-word &, |, ^, <<, and >>, plus augmented scalar/buffer forms. Left shift wraps modulo 2^64; right shift is logical. Counts are 0..63 (64+ raises OverflowError; negative counts fail uint64 validation). The native-bitwise marker preserves Sage-mode xor and gives dynamic Sage.js checked exact Number/BigInt behavior; CPython's annotation alias remains int.` Format every code/token name with Markdown backticks in the actual docstring.",
       "Integration lane: rerun pnpm test:compiler and pnpm test:integration after rebasing onto the current integration base and preparing its native cache; investigate only if the recorded unrelated matrix/polynomial failures remain.",
       "The test manifest follow-up is already complete in this lane: test/native-uint64-bitwise.cjs is registered in test/node-test-manifest.cjs."
     ]

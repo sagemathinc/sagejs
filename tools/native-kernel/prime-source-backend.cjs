@@ -1073,7 +1073,7 @@ function emitPrimeSourceNodeAdapter(fn) {
       ].join("\n")
       : [
       "    if (!sagejs_native_check_napi(env,",
-      "            napi_create_int64(env, (int64_t) output, &result)))",
+      "            napi_create_bigint_uint64(env, output, &result)))",
       "        return NULL;",
       "    return result;",
       ].join("\n");

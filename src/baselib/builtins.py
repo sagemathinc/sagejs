@@ -1649,6 +1649,44 @@ def ρσ_operator_irshift(left: Any, right: Any) -> Any:
     return _builtins_inplace(left, right, "__irshift__", ρσ_operator_rshift)
 
 
+_BUILTINS_UINT64_LIMIT = runtime.bigint("18446744073709551616")
+
+
+def _builtins_native_uint64_operand(value: Any) -> Any:
+    if not _builtins_exact_integer_primitive(value) or value is True or value is False:
+        raise TypeError("uint64 operand must be an exact integer")
+    exact = runtime.bigint(value)
+    if exact < 0 or exact >= _BUILTINS_UINT64_LIMIT:
+        raise OverflowError("uint64 operand is outside uint64")
+    return exact
+
+
+def ρσ_native_uint64_binary(
+    operation: _Str,
+    left: Any,
+    right: Any,
+) -> Any:
+    value = _builtins_native_uint64_operand(left)
+    operand = _builtins_native_uint64_operand(right)
+    if (operation == "<<" or operation == ">>") and operand >= runtime.bigint(64):
+        raise OverflowError("uint64 shift count must be between 0 and 63")
+    if operation == "&":
+        result = runtime.native_bitand(value, operand)
+    elif operation == "|":
+        result = runtime.native_bitor(value, operand)
+    elif operation == "^":
+        result = runtime.native_bitxor(value, operand)
+    elif operation == "<<":
+        result = runtime.native_mod(
+            runtime.native_lshift(value, operand), _BUILTINS_UINT64_LIMIT
+        )
+    elif operation == ">>":
+        result = runtime.native_rshift(value, operand)
+    else:
+        raise RuntimeError("unsupported uint64 operation")
+    return runtime.normalize_integer(result)
+
+
 def ρσ_operator_bitand(left: Any, right: Any) -> Any:
     if left is True or left is False:
         if right is True or right is False:

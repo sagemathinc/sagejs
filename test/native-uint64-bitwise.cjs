@@ -105,6 +105,12 @@ def mutate_word(
     span.data[0] <<= count
     span.data[0] >>= count
     return span.data[0]
+
+
+@native
+def mask_word(span: WordSpan, mask: uint64) -> uint64:
+    span.data[0] &= mask
+    return span.data[0]
 `;
 
 function walkOperations(statements, output = []) {
@@ -163,6 +169,31 @@ async function parseSage(text) {
   }
 }
 
+function runDynamicSource(text) {
+  const directory = mkdtempSync(join(tmpdir(), "sagejs-uint64-dynamic-"));
+  try {
+    const sourcePath = join(directory, "uint64_dynamic.py");
+    writeFileSync(sourcePath, text);
+    const result = spawnSync(
+      process.execPath,
+      [join(root, "bin", "sagejs"), sourcePath],
+      {
+        cwd: root,
+        encoding: "utf8",
+        env: {
+          ...process.env,
+          SAGEJS_NATIVE_MODE: "dynamic",
+          SAGEJS_NATIVE_AUTOLOAD: "0",
+        },
+      },
+    );
+    assert.equal(result.status, 0, result.stdout + result.stderr);
+    return result.stdout.trim().split("\n");
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+}
+
 test("native-bitwise marker preserves CPython xor without changing Sage power", async () => {
   const ordinary = await parseSage("value = 2 ^ 3\nvalue ^= 2\n");
   assert.equal(ordinary.body[0].body.right.operator, "**");
@@ -175,8 +206,111 @@ test("native-bitwise marker preserves CPython xor without changing Sage power", 
   );
   assert.equal(opted.body[0].body.right.operator, "^");
   assert.equal(opted.body[0].body.right.native_operator, true);
+  assert.equal(opted.body[0].body.right.inferred_type, "uint64");
   assert.equal(opted.body[1].body.operator, "^=");
   assert.equal(opted.body[1].body.native_operator, true);
+  assert.equal(opted.body[1].body.inferred_type, "uint64");
+});
+
+test("native-bitwise dynamic source uses checked full uint64 semantics", () => {
+  const program = `# sagejs: native-bitwise
+from sagejs.native import UInt64Buffer, native, uint64
+
+
+@native
+def bitand_word(left: uint64, right: uint64) -> uint64:
+    return left & right
+
+
+@native
+def bitor_word(left: uint64, right: uint64) -> uint64:
+    return left | right
+
+
+@native
+def bitxor_word(left: uint64, right: uint64) -> uint64:
+    return left ^ right
+
+
+@native
+def lshift_word(value: uint64, count: uint64) -> uint64:
+    return value << count
+
+
+@native
+def rshift_word(value: uint64, count: uint64) -> uint64:
+    return value >> count
+
+
+@native
+def augmented_word(
+    value: uint64, mask: uint64, count: uint64
+) -> uint64:
+    word: uint64 = value
+    word &= mask
+    word |= value
+    word ^= mask
+    word <<= count
+    word >>= count
+    return word
+
+
+@native
+def mutate_buffer(
+    data: UInt64Buffer, value: uint64, mask: uint64, count: uint64
+) -> uint64:
+    data[0] &= mask
+    data[0] |= value
+    data[0] ^= mask
+    data[0] <<= count
+    data[0] >>= count
+    return data[0]
+
+
+import sagejs.runtime as runtime
+from sagejs.native import is_compiled
+
+print(is_compiled(bitxor_word))
+print(bitxor_word(7, runtime.bigint("1099511627776")))
+print(bitor_word(runtime.bigint("1099511627776"), 3))
+print(bitand_word(runtime.bigint("18446744073709551615"), 2**63))
+print(lshift_word(1, 40))
+print(lshift_word(2**63, 1))
+print(rshift_word(runtime.bigint("18446744073709551615"), 63))
+print(augmented_word(2**40 + 7, runtime.bigint("1099511627779"), 5))
+words = [2**40 + 7]
+print(mutate_buffer(words, 2**40 + 7, runtime.bigint("1099511627779"), 5))
+print(words[0])
+for operation in (lshift_word, rshift_word):
+    try:
+        operation(1, 64)
+    except OverflowError as error:
+        print(str(error))
+try:
+    lshift_word(1, -1)
+except OverflowError as error:
+    print(str(error))
+try:
+    bitand_word(2**64, 1)
+except OverflowError as error:
+    print(str(error))
+`;
+  assert.deepEqual(runDynamicSource(program), [
+    "False",
+    "1099511627783",
+    "1099511627779",
+    "9223372036854775808",
+    "1099511627776",
+    "0",
+    "1",
+    String(augmentedExpected((1n << 40n) + 7n, (1n << 40n) + 3n, 5)),
+    String(augmentedExpected((1n << 40n) + 7n, (1n << 40n) + 3n, 5)),
+    String(augmentedExpected((1n << 40n) + 7n, (1n << 40n) + 3n, 5)),
+    "uint64 shift count must be between 0 and 63",
+    "uint64 shift count must be between 0 and 63",
+    "uint64 operand is outside uint64",
+    "uint64 operand is outside uint64",
+  ]);
 });
 
 test("uint64 bitwise IR is canonical, typed, and inspectable", async () => {
@@ -252,6 +386,21 @@ test("uint64 native, JavaScript, and CPython paths agree", async () => {
       }
     }
 
+    assert.equal(
+      kernel.bitxor_word(7, 1n << 40n),
+      (1n << 40n) ^ 7n,
+    );
+    assert.equal(
+      kernel.bitxor_word.javascript(7, 1n << 40n),
+      (1n << 40n) ^ 7n,
+    );
+    for (const invalid of [-1, 1.5, 1n << 64n]) {
+      assert.throws(
+        () => kernel.bitand_word.javascript(invalid, 1),
+        /exact integer|outside uint64/,
+      );
+    }
+
     for (const fn of [kernel.lshift_word, kernel.rshift_word]) {
       for (const count of [64, 65n, (1n << 64n) - 1n]) {
         assert.throws(
@@ -276,6 +425,10 @@ test("uint64 native, JavaScript, and CPython paths agree", async () => {
       () => kernel.shifted_float.javascript(1n, 64),
       /uint64 shift count must be between 0 and 63/,
     );
+    assert.throws(
+      () => kernel.shifted_float.javascript(1n, -1),
+      /outside uint64/,
+    );
 
     const words = new BigUint64Array([3n]);
     const span = { data: words, length: 1n, modulus: 97n };
@@ -285,12 +438,19 @@ test("uint64 native, JavaScript, and CPython paths agree", async () => {
     expected ^= 6n;
     expected = uint64Shift(expected, 4, true);
     expected = uint64Shift(expected, 4, false);
-    assert.equal(kernel.mutate_word(span, 5n, 6n, 4n), Number(expected));
+    assert.equal(kernel.mutate_word(span, 5n, 6n, 4n), expected);
     assert.equal(words[0], expected);
     assert.throws(
       () => kernel.mutate_word(span, 5n, 6n, 64n),
       /uint64 shift count must be between 0 and 63/,
     );
+
+    for (const value of [1n << 63n, (1n << 64n) - 1n]) {
+      const retained = new BigUint64Array([value]);
+      const retainedSpan = { data: retained, length: 1n, modulus: 97n };
+      assert.equal(kernel.mask_word(retainedSpan, (1n << 64n) - 1n), value);
+      assert.equal(retained[0], value);
+    }
 
     const explanation = await explainKernel({ sourcePath });
     assert.equal(explanation.eligible, true);
