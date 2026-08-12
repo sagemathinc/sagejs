@@ -18,8 +18,19 @@ const temporary = mkdtempSync(join(tmpdir(), "sagejs-fmpz-mod-poly-"));
 const source = join(temporary, "witness.c");
 const executable = join(temporary, "witness");
 const sanitize = process.env.SAGEJS_FFI_SANITIZE === "1";
-const resultStressRounds = sanitize && process.platform === "darwin" ? 1 : 4096;
-const aggregateStressRounds = sanitize && process.platform === "darwin" ? 1 : 256;
+const resultStressRounds = 4096;
+const aggregateStressRounds = 256;
+
+if (sanitize && process.platform === "darwin") {
+  process.stdout.write(`${JSON.stringify({
+    schema: "sagejs.ffi/arbitrary-prime-polynomial-resource-v1",
+    capability: "sanitizers",
+    supported: false,
+    reason: "Apple ASan lacks LeakSanitizer and static-FLINT lifecycle instrumentation exceeds the macOS CI budget",
+  })}\n`);
+  rmSync(temporary, { recursive: true, force: true });
+  process.exit(0);
+}
 
 writeFileSync(
   source,

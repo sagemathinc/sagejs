@@ -13,14 +13,16 @@ const flintPrefix = resolve(
   process.env.SAGEJS_FLINT_PREFIX ||
     join(root, "packages", "flint", ".native", "prefix"),
 );
-const lifecycleRounds = process.platform === "darwin" ? 1 : 1000;
+const lifecycleRounds = 1000;
 
-if (process.platform === "win32") {
+if (process.platform === "win32" || process.platform === "darwin") {
   process.stdout.write(JSON.stringify({
     schema: "sagejs.ffi/extension-polynomial-resource-v1",
     capability: "sanitizers",
     supported: false,
-    reason: "ASan/UBSan lifecycle execution is currently a Unix CI capability",
+    reason: process.platform === "darwin"
+      ? "Apple ASan lacks LeakSanitizer and one complete static-FLINT lifecycle schedule exceeds six minutes on the M1 witness host"
+      : "ASan/UBSan lifecycle execution is currently a Unix CI capability",
   }) + "\n");
   process.exit(0);
 }
