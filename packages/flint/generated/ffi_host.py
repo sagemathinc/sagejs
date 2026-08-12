@@ -150,6 +150,7 @@ from sagejs.ffi.flint import (
     fmpz_matrix_stack as _ffi_fmpz_matrix_stack,
     fmpz_matrix_augment as _ffi_fmpz_matrix_augment,
     fmpz_matrix_nonzero_count as _ffi_fmpz_matrix_nonzero_count,
+    fmpz_matrix_echelon_pivots as _ffi_fmpz_matrix_echelon_pivots,
     fmpz_matrix_format as _ffi_fmpz_matrix_format,
     fmpz_matrix_serialize as _ffi_fmpz_matrix_serialize,
     fmpz_matrix_serialize_sequence as _ffi_fmpz_matrix_serialize_sequence,
@@ -196,6 +197,7 @@ from sagejs.ffi.flint import (
     fmpq_matrix_stack as _ffi_fmpq_matrix_stack,
     fmpq_matrix_augment as _ffi_fmpq_matrix_augment,
     fmpq_matrix_nonzero_count as _ffi_fmpq_matrix_nonzero_count,
+    fmpq_matrix_echelon_pivots as _ffi_fmpq_matrix_echelon_pivots,
     fmpq_value_numerator as _ffi_fmpq_value_numerator,
     fmpq_value_denominator as _ffi_fmpq_value_denominator,
     fmpq_matrix_format as _ffi_fmpq_matrix_format,
@@ -1619,6 +1621,15 @@ def ffiFmpzMatrixNonzeroCount(
 
 
 @native
+def ffiFmpzMatrixEchelonPivots(
+    source: FmpzMatrix,
+) -> FlintByteRegion:
+    return _ffi_fmpz_matrix_echelon_pivots(
+        source,
+    )
+
+
+@native
 def ffiFmpzMatrixFormat(
     source: FmpzMatrix,
 ) -> FlintByteRegion:
@@ -2134,6 +2145,15 @@ def ffiFmpqMatrixNonzeroCount(
     source: FmpqMatrix,
 ) -> uint64:
     return _ffi_fmpq_matrix_nonzero_count(
+        source,
+    )
+
+
+@native
+def ffiFmpqMatrixEchelonPivots(
+    source: FmpqMatrix,
+) -> FlintByteRegion:
+    return _ffi_fmpq_matrix_echelon_pivots(
         source,
     )
 

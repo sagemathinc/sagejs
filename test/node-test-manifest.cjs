@@ -103,6 +103,7 @@ const integration = [
   "test/fmpz-matrix-modp-conversion.cjs",
   "test/fmpz-matrix-resource-selectors.cjs",
   "test/fmpz-matrix-selector-lifecycle.cjs",
+  "test/exact-matrix-pivot-ffi.cjs",
   "test/dense-rational-migration.cjs",
   "test/dense-qq-host-views-v1.cjs",
   "test/dense-qq-bulk-construction.cjs",

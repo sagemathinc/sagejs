@@ -2804,6 +2804,27 @@ def fmpz_matrix_nonzero_count(source: FmpzMatrix) -> uint64: ...
 
 
 @flint.function(
+    dynamic="ffiFmpzMatrixEchelonPivots",
+    symbol="sagejs_fmpz_matrix_echelon_pivots",
+    returns=int,
+    abi=[
+        out("result", sagejs_flint_byte_region_t),
+        in_("source", sagejs_fmpz_matrix_t),
+    ],
+    effects=Effects(pure=False, allocates=True, raises=[RuntimeError]),
+    result=Status(
+        1,
+        exception=RuntimeError,
+        message="integer matrix pivot query failed",
+    ),
+    wasm=True,
+)
+def fmpz_matrix_echelon_pivots(source: FmpzMatrix) -> FlintByteRegion:
+    """Return pivot columns as packed little-endian `uint64` values."""
+    ...
+
+
+@flint.function(
     dynamic="ffiFmpzMatrixFormat",
     symbol="sagejs_fmpz_matrix_format",
     returns=int,
@@ -3772,6 +3793,27 @@ def fmpq_matrix_augment(
     wasm=False,
 )
 def fmpq_matrix_nonzero_count(source: FmpqMatrix) -> uint64: ...
+
+
+@flint.function(
+    dynamic="ffiFmpqMatrixEchelonPivots",
+    symbol="sagejs_fmpq_matrix_echelon_pivots",
+    returns=int,
+    abi=[
+        out("result", sagejs_flint_byte_region_t),
+        in_("source", sagejs_fmpq_matrix_t),
+    ],
+    effects=Effects(pure=False, allocates=True, raises=[RuntimeError]),
+    result=Status(
+        1,
+        exception=RuntimeError,
+        message="rational matrix pivot query failed",
+    ),
+    wasm=True,
+)
+def fmpq_matrix_echelon_pivots(source: FmpqMatrix) -> FlintByteRegion:
+    """Return pivot columns as packed little-endian `uint64` values."""
+    ...
 
 
 @flint.function(
