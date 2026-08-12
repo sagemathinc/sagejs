@@ -312,6 +312,13 @@ test("optimized own-field lookup preserves descriptor precedence", async (t) => 
     "    divmod(DivmodBoth(), DivmodBad())",
     "except TypeError:",
     "    print('noncallable-reflected')",
+    "class DivmodClassLeft:",
+    "    @classmethod",
+    "    def __divmod__(cls, other): return cls is DivmodClassLeft",
+    "class DivmodClassRight:",
+    "    @classmethod",
+    "    def __rdivmod__(cls, other): return cls is DivmodClassRight",
+    "print(divmod(DivmodClassLeft(), 2), divmod(2, DivmodClassRight()))",
     "class Applicable:",
     "    def __init__(self): self.ready = True",
     "    def apply(self): return 127",
@@ -324,7 +331,8 @@ test("optimized own-field lookup preserves descriptor precedence", async (t) => 
       "71", "101", "103", "79", "107", "109", "True", "113",
       "True True", "13 14", "12 11", "21", "21", "30 30 40 40", "41",
       "reflected-subclass", "inherited-left", "inherited-left", "dynamic-right",
-      "inherited-left inherited-right", "noncallable-reflected", "True 127",
+      "inherited-left inherited-right", "noncallable-reflected", "True True",
+      "True 127",
     ].join("\n"),
   );
 });

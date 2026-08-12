@@ -544,6 +544,13 @@ def _builtins_call_selected_special(
     call_args: list[Any],
 ) -> Any:
     """Bind and invoke one special method selected from the operand type."""
+    if _builtins_get_member(method, "__classmethod__") is True:
+        owner = _builtins_get_member(value, "constructor")
+        class_target = _builtins_get_member(method, "__func__")
+        if runtime.strict_equal(runtime.jstype(class_target), "function"):
+            bound = _builtins_bind_python_function(class_target, owner)
+            return runtime.reflect.apply(bound, runtime.undefined, call_args)
+        return runtime.reflect.apply(method, owner, call_args)
     if _builtins_get_member(method, "__staticmethod__") is True:
         static_target = _builtins_get_member(method, "__func__")
         if runtime.strict_equal(runtime.jstype(static_target), "function"):

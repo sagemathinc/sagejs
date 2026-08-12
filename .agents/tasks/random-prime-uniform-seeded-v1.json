@@ -4,7 +4,7 @@
   "id": "random-prime-uniform-seeded-v1",
   "title": "Uniform seeded random primes",
   "lane": "compiler-runtime",
-  "status": "active",
+  "status": "complete",
   "owner": "user",
   "objective": "Make Sage.js exact integer interval sampling and random_prime deterministic under set_random_seed, unbiased over exact intervals including widths above 2^53, and Sage-compatible for inclusive bounds, empty prime intervals, and uniform prime selection using ordinary CPython-parseable Python",
   "base_commit": "dcc1302a3f305b00a0e09ba25edee45ac2ee2bf1",

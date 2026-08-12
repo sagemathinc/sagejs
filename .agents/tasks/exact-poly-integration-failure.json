@@ -4,7 +4,7 @@
   "id": "exact-poly-integration-failure",
   "title": "Exact polynomial byte-region integration diagnosis",
   "lane": "arithmetic-algebra",
-  "status": "active",
+  "status": "complete",
   "owner": "user",
   "objective": "Diagnose and, if bounded to the exact-polynomial byte-region integration, correct huge rational polynomial evaluation and exact rational matrix minimal-polynomial equality without masking semantics",
   "base_commit": "dcc1302a3f305b00a0e09ba25edee45ac2ee2bf1",
