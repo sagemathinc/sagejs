@@ -6,12 +6,13 @@
  * architecture, then compiles the unchanged source normally.
  */
 
-import { mkdirSync, statSync, writeFileSync } from "fs";
+import { mkdirSync, statSync } from "fs";
 import { homedir } from "os";
 import { dirname, join, resolve } from "path";
 import { Script } from "vm";
 
 import { markModuleCacheInUse } from "./cache-lease";
+import { atomicWriteCacheFileSync } from "./cache-file";
 import type { Compiler } from "./compiler";
 import dynamicCode from "./dynamic-code";
 import {
@@ -721,7 +722,7 @@ export function runRuntimeBootstrap(
         try {
           cachedData = moduleScript.createCachedData();
           mkdirSync(dirname(cacheFilename), { recursive: true });
-          writeFileSync(cacheFilename, JSON.stringify({
+          atomicWriteCacheFileSync(cacheFilename, JSON.stringify({
             version: compiler.get_compiler_version(),
             signature: sourceHash,
             mode: moduleMode,

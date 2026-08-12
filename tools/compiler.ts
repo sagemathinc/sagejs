@@ -9,8 +9,9 @@
 // export the compiler's symbols safely.
 
 import { join, relative } from "path";
-import { readFileSync, writeFileSync as writefile } from "fs";
+import { readFileSync } from "fs";
 import { createContext, Script } from "vm";
+import { atomicWriteCacheFileSync } from "./cache-file";
 import { sha1sum } from "./utils";
 import {
   readCompilerCachedData,
@@ -48,7 +49,7 @@ function evaluateCompiler(
   const compiler_context = createContext({
     console: options.console ?? console,
     readfile: readResourceText,
-    writefile,
+    writefile: atomicWriteCacheFileSync,
     sha1sum,
     require: runtimeRequire,
     __sagejs_runtime_require__: runtimeRequire,

@@ -1,0 +1,81 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "atomic-module-cache-publication",
+  "title": "Atomic module cache publication",
+  "lane": "compiler-runtime",
+  "status": "active",
+  "owner": "user",
+  "objective": "Publish compiler module cache files atomically and prove concurrent readers, writers, and bounded pruning never observe partial entries or delete actively leased publications",
+  "base_commit": "511e0d6d48cf5568721c96463ceaae699a0be86c",
+  "claims": [
+    "tools/cache-file.ts",
+    "tools/compiler.ts",
+    "tools/runtime-bootstrap.ts",
+    "test/cache.cjs"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "compiler-infrastructure",
+    "fallback": "not-applicable",
+    "oracles": [
+      "deterministic temporary-directory concurrent publication and cleanup tests"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm build",
+    "pnpm test:compiler",
+    "pnpm test:integration"
+  ],
+  "runs": [
+    {
+      "command": "pnpm build",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 156.43,
+      "started_at": "2026-08-12T15:52:27.161Z",
+      "commit": "511e0d6d48cf5568721c96463ceaae699a0be86c",
+      "workspace_fingerprint": "933f568ac13dbb09c7ed27f1569935ea3056d0106b793ac26f9875ebec513f41",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/cache.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.902,
+      "started_at": "2026-08-12T15:55:08.842Z",
+      "commit": "511e0d6d48cf5568721c96463ceaae699a0be86c",
+      "workspace_fingerprint": "933f568ac13dbb09c7ed27f1569935ea3056d0106b793ac26f9875ebec513f41",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node test/module-cache.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 44.063,
+      "started_at": "2026-08-12T15:55:10.382Z",
+      "commit": "511e0d6d48cf5568721c96463ceaae699a0be86c",
+      "workspace_fingerprint": "933f568ac13dbb09c7ed27f1569935ea3056d0106b793ac26f9875ebec513f41",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Publishes both compiler-generated imported-module metadata and lazy runtime JavaScript/bytecode cache documents through a shared same-directory temporary-file-and-rename primitive. Concurrent publishers can replace one complete cache value with another, while readers never observe a truncated JSON document. Publication failures remain advisory cache misses, and private temporary files are removed on failure. Temporary-root regressions exercise four concurrent large publishers plus readers, failure cleanup, and an active leased publisher racing applied bounded cleanup; the established compiler and REPL cache integration suite also passes.",
+    "risks": [
+      "The full compiler tier has an unrelated existing matrix fixture failure because its standalone runtime cannot import sagejs.linear_algebra.matrix_vector_public.",
+      "The full integration tier has an unrelated existing higher-weight Hecke failure because p1_gcd is absent from the published native artifact set in this worktree.",
+      "Windows, macOS arm64, and Linux arm64 were not available in this lane; the implementation uses only Node's cross-platform exclusive create, write, close, rename, and unlink primitives and should be exercised by platform CI."
+    ],
+    "next_steps": [
+      "Integrate the focused cache publication change and let ordinary platform CI exercise the helper on Windows and arm64 hosts."
+    ]
+  }
+}
