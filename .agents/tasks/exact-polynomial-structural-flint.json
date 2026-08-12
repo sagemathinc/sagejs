@@ -4,7 +4,7 @@
   "id": "exact-polynomial-structural-flint",
   "title": "Exact Polynomial Structural FLINT",
   "lane": "integration",
-  "status": "review",
+  "status": "complete",
   "owner": "user",
   "objective": "Add generated declared-FLINT production adapters and lazy kernels for composition, reversal, shifts, truncation, integration where valid, resultant, and discriminant over exact polynomial resources and word-sized prime fields, without public Polynomial wiring",
   "base_commit": "5a1cc59fc7fddad7648e98dc2d341a2455853754",
