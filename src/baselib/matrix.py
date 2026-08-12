@@ -3382,21 +3382,27 @@ class Matrix(sage.Element):
             return matrix(base, self.nrows(), self.ncols(), self.list())
         if (
             self.base_ring() is sage.ZZ
-            and _is_packed_dense_prime_base(base)
+            and _is_dense_prime_base(base)
             and self._has_fmpz_matrix_resource()
         ):
             modulus = int(_untyped(base).characteristic())
-            width = 1 if modulus <= 0x100 else 2 if modulus <= 0x10000 else 4
-            region = _flint_ffi_module().fmpz_matrix_export_mod_ui(
-                self._integer_resource(),
-                modulus,
-                width,
-            )
-            return MatrixSpace(
-                base,
-                self.nrows(),
-                self.ncols(),
-            )._from_packed_residues(region.take_bytes(), width)
+            # The declared bulk reducer currently accepts every prime that
+            # fits in a 32-bit residue. Small fields publish packed/M4RI
+            # storage; larger fields feed the same bytes into the generated
+            # nmod resource constructor. Wider word primes retain the correct
+            # scalar fallback until the reducer's portable ABI grows to 64 bits.
+            if modulus <= 0xFFFFFFFF:
+                width = 1 if modulus <= 0x100 else 2 if modulus <= 0x10000 else 4
+                region = _flint_ffi_module().fmpz_matrix_export_mod_ui(
+                    self._integer_resource(),
+                    modulus,
+                    width,
+                )
+                return MatrixSpace(
+                    base,
+                    self.nrows(),
+                    self.ncols(),
+                )._from_packed_residues(region.take_bytes(), width)
         if self.base_ring() is sage.ZZ and (
             _is_modular_base(base)
             or _is_extension_field_base(base)
