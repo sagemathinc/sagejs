@@ -32,6 +32,21 @@
       "platforms": ["linux-x64", "linux-arm64", "windows-x64", "macos-arm64"]
     },
     {
+      "id": "dense-binary-m4ri-production",
+      "source": "src/lib/sagejs/kernels/matrix/dense_binary_m4ri.py",
+      "functions": [
+        "m4ri_dense_matrix_nonzero_count",
+        "m4ri_dense_matrix_nonzero_rows",
+        "m4ri_dense_matrix_is_one"
+      ],
+      "semantic_domain": "source-transparent traversal of generated borrowed M4RI resources used by public dense GF(2) matrices",
+      "fallback": "same-source",
+      "host_isolation": "certified",
+      "oracles": ["cpython", "javascript", "m4ri", "packed-gf2"],
+      "benchmark": "test:m4ri",
+      "platforms": ["linux-x64", "linux-arm64", "windows-x64", "macos-arm64"]
+    },
+    {
       "id": "dense-prime-production",
       "source": "src/lib/sagejs/kernels/matrix/dense_prime_field.py",
       "functions": [

@@ -106,11 +106,12 @@
       "id": "linear-algebra",
       "layer": 3,
       "startup": "bootstrap",
-      "max_source_bytes": 361000,
+      "max_source_bytes": 380000,
       "depends_on": ["core-runtime", "native-integration", "arithmetic"],
       "files": [
         "src/baselib/matrix.py",
         "src/lib/sagejs/kernels/matrix/__init__.py",
+        "src/lib/sagejs/kernels/matrix/dense_binary_m4ri.py",
         "src/lib/sagejs/kernels/matrix/dense_integer.py",
         "src/lib/sagejs/kernels/matrix/dense_integer_flint.py",
         "src/lib/sagejs/kernels/matrix/dense_prime_field.py",

@@ -1,0 +1,89 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "m4ri-public-matrix-v1",
+  "title": "M4ri Public Matrix V1",
+  "lane": "integration",
+  "status": "review",
+  "owner": "user",
+  "objective": "Make public dense GF(2) matrices canonically own generated M4RI resources when available, preserve packed fallback and explicit alternate backends, and verify direct algebra, lifecycle, serialization, formatting, and typed-Python borrowing without hidden exports",
+  "base_commit": "ca058ce3d62b5072cc4af32488bd9ad8a59a0bad",
+  "claims": [
+    "src/baselib/matrix.py",
+    "src/lib/sagejs/kernels/matrix/dense_binary_m4ri.py",
+    "architecture/package-graph.json",
+    "architecture/native-kernels.json",
+    "pyrightconfig.json",
+    "test/m4ri-public-matrix.cjs",
+    "test/dense-prime-migration.cjs",
+    "test/dense-prime-structural.cjs",
+    "test/serialization.cjs"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "mixed",
+    "fallback": "tested-capability",
+    "oracles": [
+      "Current packed GF(2) implementation",
+      "Generated M4RI package differential tests"
+    ],
+    "exceptions": [
+      "Public ordinary Python matrix semantics combine generated M4RI external resources with one source-transparent typed-Python borrowing witness"
+    ]
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "fallback",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm architecture:check",
+    "pnpm test:portable",
+    "pnpm test:baselib:strict"
+  ],
+  "runs": [
+    {
+      "command": "node test/m4ri-public-matrix.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 3.099,
+      "started_at": "2026-08-12T02:39:42.850Z",
+      "commit": "3ffc9af11283a205c674741779e88d148590fac7",
+      "workspace_fingerprint": "af530094dde0bb4324d14a85ca0a375fb9d919f0a74c8293aa1a189beb55fa74",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 12.756,
+      "started_at": "2026-08-12T02:39:46.549Z",
+      "commit": "3ffc9af11283a205c674741779e88d148590fac7",
+      "workspace_fingerprint": "af530094dde0bb4324d14a85ca0a375fb9d919f0a74c8293aa1a189beb55fa74",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 12.578,
+      "started_at": "2026-08-12T02:39:59.952Z",
+      "commit": "3ffc9af11283a205c674741779e88d148590fac7",
+      "workspace_fingerprint": "af530094dde0bb4324d14a85ca0a375fb9d919f0a74c8293aa1a189beb55fa74",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Dense GF(2) matrices now canonically own generated M4RI resources where the capability is available. Construction, access, mutation, copying, arithmetic, structural algorithms, formatting, serialization, and lifecycle stay on the resource path; explicit FLINT/FFLAS/modp selections remain available through a compatibility export. Three compiled typed-Python kernels safely borrow M4RI matrices for traversal without exporting packed data.",
+    "risks": [
+      "The Windows capability fallback remains the existing packed dense-prime implementation.",
+      "Public-path browser execution should be covered by the integration lane even though the generated M4RI Wasm package itself is already tested."
+    ],
+    "next_steps": [
+      "Integrate this commit onto dense-qq-resources and run the root portable/browser matrix suite.",
+      "Migrate explicit alternative GF(2) algorithm paths to resource-to-resource adapters if eliminating their compatibility exports becomes worthwhile."
+    ]
+  }
+}
