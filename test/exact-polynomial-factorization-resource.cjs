@@ -59,6 +59,14 @@ function closeTwice(resource, close) {
   assert.equal(accounted(resource), 0n);
 }
 
+function readU64(source, offset) {
+  let result = 0n;
+  for (let byte = 7; byte >= 0; byte -= 1) {
+    result = (result << 8n) | BigInt(source[offset + byte]);
+  }
+  return result;
+}
+
 {
   const source = integerPolynomial([24n, 0n, -18n, -6n]);
   const factorization = flint.ffiFmpzPolynomialFactorResource(source);
@@ -70,6 +78,9 @@ function closeTwice(resource, close) {
     flint.ffiExactPolynomialFactorizationUnitDenominator(factorization), 1n,
   );
   assert.ok(accounted(factorization) > 0n);
+  const bulk = flint.ffiExactPolynomialFactorizationCopyBytes(factorization);
+  assert.deepEqual([...bulk.subarray(0, 5)], [83, 74, 80, 70, 1]);
+  assert.equal(readU64(bulk, 8), 2n);
   const factors = [0n, 1n].map((index) => ({
     exponent: flint.ffiExactPolynomialFactorizationExponent(
       factorization, index,
@@ -183,32 +194,51 @@ const publicSource = [
   "flint.fmpz_polynomial_coefficient = forbidden",
   "flint.fmpq_polynomial_coefficient_numerator = forbidden",
   "flint.fmpq_polynomial_coefficient_denominator = forbidden",
+  "flint.exact_polynomial_factorization_count = forbidden",
+  "flint.exact_polynomial_factorization_exponent = forbidden",
+  "flint.exact_polynomial_factorization_unit_numerator = forbidden",
+  "flint.exact_polynomial_factorization_unit_denominator = forbidden",
+  "flint.exact_polynomial_factorization_fmpz_factor = forbidden",
+  "flint.exact_polynomial_factorization_fmpq_factor = forbidden",
   "def forbid_materialization(self):",
   "    raise AssertionError('compatibility storage was materialized')",
   "setattr(type(x), '_materialize_exact_compatibility_storage', forbid_materialization)",
   "z_calls = 0",
   "q_calls = 0",
+  "factorization_resources = []",
   "z_original = flint.fmpz_polynomial_factor_resource",
   "q_original = flint.fmpq_polynomial_factor_resource",
   "def z_counted(source):",
   "    global z_calls",
   "    z_calls += 1",
-  "    return z_original(source)",
+  "    answer = z_original(source)",
+  "    factorization_resources.append(answer)",
+  "    return answer",
   "def q_counted(source):",
   "    global q_calls",
   "    q_calls += 1",
-  "    return q_original(source)",
+  "    answer = q_original(source)",
+  "    factorization_resources.append(answer)",
+  "    return answer",
   "flint.fmpz_polynomial_factor_resource = z_counted",
   "flint.fmpq_polynomial_factor_resource = q_counted",
+  "import sagejs.runtime as runtime",
+  "copy_calls = 0",
+  "original_copy = runtime.ffi_resource_copy_bytes",
+  "def counted_copy(*args):",
+  "    global copy_calls",
+  "    copy_calls += 1",
+  "    return original_copy(*args)",
+  "runtime.ffi_resource_copy_bytes = counted_copy",
   "huge = 2**65537 + 17",
   "z = -huge*(x - 1)**3*(x + 2)**2*(x**2 + x + 1)",
   "zf = z.factor()",
-  "assert z_calls == 1 and zf.value() == z and zf.unit() == -huge",
+  "assert z_calls == 1 and copy_calls == 1 and zf.value() == z and zf.unit() == -huge",
   "assert all(factor._has_fmpz_polynomial_resource() for factor, exponent in zf)",
   "assert sorted(exponent for factor, exponent in zf) == [1, 2, 3]",
   "q = QQ(-huge, 2**32771 + 9)*(y - 1)**3*(y + 2)**2*(y**2 + y + 1)",
   "qf = q.factor()",
-  "assert q_calls == 1 and qf.value() == q",
+  "assert q_calls == 1 and copy_calls == 2 and qf.value() == q",
   "assert qf.unit() == QQ(-huge, 2**32771 + 9)",
   "assert all(factor._has_fmpq_polynomial_resource() for factor, exponent in qf)",
   "assert sorted(exponent for factor, exponent in qf) == [1, 2, 3]",
@@ -222,20 +252,17 @@ const publicSource = [
   "        pass",
   "    else:",
   "        raise AssertionError('zero factorization was accepted')",
-  "captured = []",
-  "original_count = flint.exact_polynomial_factorization_count",
-  "def failing_count(value):",
-  "    captured.append(value)",
-  "    raise RuntimeError('injected metadata failure')",
-  "flint.exact_polynomial_factorization_count = failing_count",
+  "def failing_copy(*args):",
+  "    raise RuntimeError('injected bulk transfer failure')",
+  "runtime.ffi_resource_copy_bytes = failing_copy",
   "try:",
   "    (x + 1).factor()",
   "except RuntimeError:",
   "    pass",
   "else:",
   "    raise AssertionError('injected failure was ignored')",
-  "assert captured[-1].closed",
-  "flint.exact_polynomial_factorization_count = original_count",
+  "assert factorization_resources[-1].closed",
+  "runtime.ffi_resource_copy_bytes = original_copy",
   "print('exact-polynomial-factorization-resource-ok')",
   "",
 ].join("\n");
@@ -284,6 +311,8 @@ int main(void)
         sagejs_fmpz_polynomial_t z, zzero, zunsealed, zfactor;
         sagejs_fmpq_polynomial_t q, qfactor;
         sagejs_exact_polynomial_factorization_t zf, qf;
+        unsigned char *factor_bytes = NULL;
+        uint64_t factor_byte_count = 0;
         if (!sagejs_fmpz_polynomial_init(z, 4) ||
             !sagejs_fmpq_polynomial_init(q, 4) ||
             !sagejs_fmpz_polynomial_init(zzero, 0) ||
@@ -324,9 +353,15 @@ int main(void)
             !sagejs_exact_polynomial_factorization_exponent(exponent, zf, 0) ||
             !sagejs_exact_polynomial_factorization_fmpz_factor(zfactor, zf, 0) ||
             !sagejs_exact_polynomial_factorization_fmpq_factor(qfactor, qf, 0) ||
+            !sagejs_exact_polynomial_factorization_copy_bytes(
+                &factor_bytes, &factor_byte_count, zf) ||
+            factor_byte_count < 16 || factor_bytes[0] != 'S' ||
+            factor_bytes[1] != 'J' || factor_bytes[2] != 'P' ||
+            factor_bytes[3] != 'F' ||
             sagejs_exact_polynomial_factorization_exponent(exponent, zf, 2) ||
             sagejs_exact_polynomial_factorization_allocated_bytes(zf) == 0)
             return 4;
+        sagejs_exact_polynomial_factorization_free_bytes(factor_bytes);
         sagejs_exact_polynomial_factorization_clear(qf);
         sagejs_exact_polynomial_factorization_clear(zf);
         if (!zfactor->sealed || !qfactor->sealed)

@@ -8,6 +8,7 @@ from sagejs.ffi.declare import (
     Status,
     Writable,
     copied_bytes,
+    computed_bytes,
     in_,
     out,
     packed_fmpz_matrix,
@@ -126,6 +127,12 @@ ExactPolynomialFactorization = flint.resource(
     close="ffiExactPolynomialFactorizationClose",
     clear="sagejs_exact_polynomial_factorization_clear",
     size="sagejs_exact_polynomial_factorization_allocated_bytes",
+    host_transfer=computed_bytes(
+        dynamic="ffiExactPolynomialFactorizationCopyBytes",
+        copy="sagejs_exact_polynomial_factorization_copy_bytes",
+        clear="sagejs_exact_polynomial_factorization_free_bytes",
+        wasm=False,
+    ),
     wasm=False,
 )
 

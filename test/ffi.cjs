@@ -241,6 +241,18 @@ test("FFI declarations are strict and generated modules are current", () => {
     native: { init_symbol: "sagejs_flint_byte_region_init_copy" },
     targets: { dynamic: true, wasm: true },
   });
+  const exactFactors = flint.byResourceType.get(
+    "ExactPolynomialFactorization",
+  );
+  assert.deepEqual(exactFactors.host_transfer, {
+    kind: "copied_bytes",
+    dynamic: { export: "ffiExactPolynomialFactorizationCopyBytes" },
+    native: {
+      copy_symbol: "sagejs_exact_polynomial_factorization_copy_bytes",
+      clear_symbol: "sagejs_exact_polynomial_factorization_free_bytes",
+    },
+    targets: { dynamic: true, wasm: false },
+  });
   assert.match(flint.identity, /^flint@[0-9a-f]{64}$/);
   const generated = declarations.generatedModulePath(root, flint);
   assert.match(
@@ -344,6 +356,36 @@ test("generated host adapters cover values and safe owned resources", async () =
       );
     }
   }
+});
+
+test("computed resource byte transfers lower to one generated copy", async () => {
+  const registry = declarations.loadRegistry({ root });
+  const flint = registry.byId.get("flint");
+  const resource = flint.byResourceType.get(
+    "ExactPolynomialFactorization",
+  );
+  assert.deepEqual(resource.host_transfer, {
+    kind: "copied_bytes",
+    dynamic: { export: "ffiExactPolynomialFactorizationCopyBytes" },
+    native: {
+      copy_symbol: "sagejs_exact_polynomial_factorization_copy_bytes",
+      clear_symbol: "sagejs_exact_polynomial_factorization_free_bytes",
+    },
+    targets: { dynamic: true, wasm: false },
+  });
+
+  const filename = hostAdapters.generatedHostAdapterPath(root, flint);
+  const source = hostAdapters.generatedHostAdapterSource(flint);
+  const ir = await lowerSource(source, filename);
+  const adapter = generateC(ir);
+  assert.match(
+    adapter,
+    /sagejs_exact_polynomial_factorization_copy_bytes\(/,
+  );
+  assert.match(
+    adapter,
+    /sagejs_exact_polynomial_factorization_free_bytes\(/,
+  );
 });
 
 test("packages publish every generated host adapter as the canonical export", () => {
@@ -661,6 +703,14 @@ test("FFI declarations reject incompatible ownership and ABI mappings", () => {
       ).host_transfer.native.data_symbol = "region->data";
     },
     /byte-copy data_symbol must be an identifier/,
+  );
+  invalid(
+    (document) => {
+      document.resources.find(
+        (resource) => resource.id === "exact_polynomial_factorization",
+      ).host_transfer.native.clear_symbol = "free(bytes)";
+    },
+    /byte-copy clear_symbol must be an identifier/,
   );
   invalid(
     (document) => {

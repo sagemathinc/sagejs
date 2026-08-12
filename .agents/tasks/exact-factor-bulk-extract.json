@@ -1,0 +1,146 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "exact-factor-bulk-extract",
+  "title": "Exact Factor Bulk Extract",
+  "lane": "integration",
+  "status": "review",
+  "owner": "user",
+  "objective": "Extract all exact polynomial factors and exponents through one generated host boundary for fast public ZZ and QQ factorization",
+  "base_commit": "f7413695a8af8907441f189f7168c11b05a8ee17",
+  "claims": [
+    "ffi/flint.ffi.py",
+    "ffi/flint.ffi.json",
+    "architecture/native-boundaries.json",
+    "architecture/package-graph.json",
+    "tools/ffi/",
+    "tools/native-kernel/c-backend.cjs",
+    "tools/native-kernel/ffi-codegen.cjs",
+    "src/baselib/polynomial.py",
+    "src/baselib/sagejs/ffi/flint.py",
+    "src/lib/sagejs/ffi/flint.py",
+    "packages/flint/include/sagejs/exact_polynomial_ffi.h",
+    "packages/flint/generated/",
+    "test/ffi.cjs",
+    "test/exact-polynomial-factorization-resource.cjs",
+    "test/exact-polynomial-resource-ffi.cjs"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "mixed",
+    "fallback": "same-source",
+    "oracles": [
+      "existing dynamic packed factorization",
+      "SageMath exact factorization"
+    ],
+    "exceptions": [
+      "Generated host collection adapter is a reusable representation boundary required to transfer variable-size owned FLINT results safely in one crossing."
+    ]
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm architecture:check",
+    "pnpm test:portable",
+    "pnpm test:baselib:strict",
+    "node --expose-gc test/exact-polynomial-factorization-resource.cjs"
+  ],
+  "runs": [
+    {
+      "command": "node --expose-gc test/exact-polynomial-factorization-resource.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 6.491,
+      "started_at": "2026-08-12T03:38:13.741Z",
+      "commit": "f7413695a8af8907441f189f7168c11b05a8ee17",
+      "workspace_fingerprint": "1fd995b2475b9bf41705956151ddf369cffb19f31559d0e43b3b612b0ac66140",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 12.135,
+      "started_at": "2026-08-12T03:38:20.891Z",
+      "commit": "f7413695a8af8907441f189f7168c11b05a8ee17",
+      "workspace_fingerprint": "1fd995b2475b9bf41705956151ddf369cffb19f31559d0e43b3b612b0ac66140",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm ffi:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.821,
+      "started_at": "2026-08-12T03:38:33.648Z",
+      "commit": "f7413695a8af8907441f189f7168c11b05a8ee17",
+      "workspace_fingerprint": "1fd995b2475b9bf41705956151ddf369cffb19f31559d0e43b3b612b0ac66140",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:native",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 9.73,
+      "started_at": "2026-08-12T03:38:36.074Z",
+      "commit": "f7413695a8af8907441f189f7168c11b05a8ee17",
+      "workspace_fingerprint": "1fd995b2475b9bf41705956151ddf369cffb19f31559d0e43b3b612b0ac66140",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 12.457,
+      "started_at": "2026-08-12T03:39:59.582Z",
+      "commit": "f7413695a8af8907441f189f7168c11b05a8ee17",
+      "workspace_fingerprint": "af37c616e49b1240a82d50f24ad2c37d331f0cbd3a4e7e3cc28e59ea9580585c",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 37.725,
+      "started_at": "2026-08-12T03:40:12.656Z",
+      "commit": "f7413695a8af8907441f189f7168c11b05a8ee17",
+      "workspace_fingerprint": "af37c616e49b1240a82d50f24ad2c37d331f0cbd3a4e7e3cc28e59ea9580585c",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 12.136,
+      "started_at": "2026-08-12T03:41:05.866Z",
+      "commit": "f7413695a8af8907441f189f7168c11b05a8ee17",
+      "workspace_fingerprint": "af37c616e49b1240a82d50f24ad2c37d331f0cbd3a4e7e3cc28e59ea9580585c",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --expose-gc test/exact-polynomial-factorization-resource.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 3.652,
+      "started_at": "2026-08-12T03:41:18.600Z",
+      "commit": "f7413695a8af8907441f189f7168c11b05a8ee17",
+      "workspace_fingerprint": "af37c616e49b1240a82d50f24ad2c37d331f0cbd3a4e7e3cc28e59ea9580585c",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Adds a reusable computed-bytes resource transfer, serializes an entire FLINT ZZ/QQ polynomial factorization through one generated boundary, and reconstructs independent lazy exact polynomial resources. Products of 40 linear factors benchmark at 3.5 ms over ZZ and 3.8 ms over QQ, versus the 7 ms acceptance gate.",
+    "risks": [
+      "Computed resource byte transfer is intentionally Node-only for now; the existing portable factorization fallback remains active because the declaration has wasm=False.",
+      "Computed factorization transfer performs one deliberate copy into the Node-owned byte buffer; a future external ArrayBuffer path could remove that copy if measurement justifies the added lifetime complexity."
+    ],
+    "next_steps": [
+      "Rebase dependent exact-polynomial lanes after integrating this commit.",
+      "Add a computed-bytes WASM lowering when exact resource factorization is enabled in browsers."
+    ]
+  }
+}

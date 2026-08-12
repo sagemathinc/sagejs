@@ -17,7 +17,7 @@ const allowedImports = new Set([
   "CxxToStatus", "Direct", "Effects", "Library", "Min", "Nullable",
   "Status", "Writable", "in_", "out", "packed_fmpz_matrix",
   "packed_nmod_matrix",
-  "packed_slice", "record", "copied_bytes",
+  "packed_slice", "record", "copied_bytes", "computed_bytes",
 ]);
 
 function nodeType(node) {
@@ -228,23 +228,47 @@ function parseResource(filename, callNode, libraryVariable, pythonName) {
   }
   let hostTransfer;
   if (hostTransferNode !== undefined) {
-    const transfer = callParts(filename, hostTransferNode, "copied_bytes", {
-      positional: [0],
-      required: ["dynamic", "data", "length", "wasm"],
-      keywords: ["dynamic", "data", "length", "wasm"],
-    });
-    hostTransfer = {
-      kind: "copied_bytes",
-      dynamic: { export: requiredString(filename, transfer, "dynamic") },
-      native: {
-        data_symbol: requiredString(filename, transfer, "data"),
-        length_symbol: requiredString(filename, transfer, "length"),
-      },
-      targets: {
-        dynamic: true,
-        wasm: requiredBoolean(filename, transfer, "wasm"),
-      },
-    };
+    const transferName = expressionName(hostTransferNode.expression);
+    expect(filename, hostTransferNode,
+      transferName === "copied_bytes" || transferName === "computed_bytes",
+      "host_transfer must be copied_bytes(...) or computed_bytes(...)");
+    if (transferName === "copied_bytes") {
+      const transfer = callParts(filename, hostTransferNode, "copied_bytes", {
+        positional: [0],
+        required: ["dynamic", "data", "length", "wasm"],
+        keywords: ["dynamic", "data", "length", "wasm"],
+      });
+      hostTransfer = {
+        kind: "copied_bytes",
+        dynamic: { export: requiredString(filename, transfer, "dynamic") },
+        native: {
+          data_symbol: requiredString(filename, transfer, "data"),
+          length_symbol: requiredString(filename, transfer, "length"),
+        },
+        targets: {
+          dynamic: true,
+          wasm: requiredBoolean(filename, transfer, "wasm"),
+        },
+      };
+    } else {
+      const transfer = callParts(filename, hostTransferNode, "computed_bytes", {
+        positional: [0],
+        required: ["dynamic", "copy", "clear", "wasm"],
+        keywords: ["dynamic", "copy", "clear", "wasm"],
+      });
+      hostTransfer = {
+        kind: "copied_bytes",
+        dynamic: { export: requiredString(filename, transfer, "dynamic") },
+        native: {
+          copy_symbol: requiredString(filename, transfer, "copy"),
+          clear_symbol: requiredString(filename, transfer, "clear"),
+        },
+        targets: {
+          dynamic: true,
+          wasm: requiredBoolean(filename, transfer, "wasm"),
+        },
+      };
+    }
   }
   let hostIngress;
   if (hostIngressNode !== undefined) {

@@ -152,8 +152,15 @@ function declaredResources(registry) {
           host_transfer: {
             kind: resource.host_transfer.kind,
             dynamic_export: resource.host_transfer.dynamic.export,
-            data_symbol: resource.host_transfer.native.data_symbol,
-            length_symbol: resource.host_transfer.native.length_symbol,
+            ...(resource.host_transfer.native.copy_symbol === undefined
+              ? {
+                  data_symbol: resource.host_transfer.native.data_symbol,
+                  length_symbol: resource.host_transfer.native.length_symbol,
+                }
+              : {
+                  copy_symbol: resource.host_transfer.native.copy_symbol,
+                  clear_symbol: resource.host_transfer.native.clear_symbol,
+                }),
             wasm: resource.host_transfer.targets.wasm,
           },
         }),

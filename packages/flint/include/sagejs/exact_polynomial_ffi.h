@@ -987,6 +987,168 @@ static inline void sagejs_exact_polynomial_write_fmpz(
              (8 * (byte % sizeof(ulong))));
 }
 
+/*
+ * Materialize a complete factorization as one self-describing byte stream.
+ *
+ * The fixed section contains the factor count followed by (exponent,
+ * coefficient-count) pairs.  The variable section uses the same canonical
+ * signed-magnitude integer encoding as exact polynomial serialization: unit
+ * numerator, unit denominator, then every factor's low-to-high coefficients.
+ * This lets generated hosts cross into native code once, close the FLINT
+ * factorization immediately, and construct independent lazy polynomial
+ * values without one child-resource call per factor.
+ */
+static inline int sagejs_exact_polynomial_factorization_copy_bytes(
+    unsigned char **output, uint64_t *output_length,
+    const sagejs_exact_polynomial_factorization_t factorization)
+{
+    *output = NULL;
+    *output_length = 0;
+    const slong count = factorization->value->num;
+    if (count < 0 ||
+        (uint64_t) count > (uint64_t) ((SIZE_MAX - 16) / 16))
+        return 0;
+    size_t length = 16 + 16 * (size_t) count;
+    size_t maximum_bytes = 0;
+    if (!sagejs_exact_polynomial_serialized_size(
+            &length, &maximum_bytes, &factorization->value->c) ||
+        !sagejs_exact_polynomial_serialized_size(
+            &length, &maximum_bytes, factorization->denominator))
+        return 0;
+    for (slong factor_index = 0; factor_index < count; factor_index++)
+    {
+        const fmpz_poly_struct *factor =
+            factorization->value->p + factor_index;
+        if (factorization->value->exp[factor_index] < 0)
+            return 0;
+        for (slong coefficient = 0;
+             coefficient < factor->length; coefficient++)
+            if (!sagejs_exact_polynomial_serialized_size(
+                    &length, &maximum_bytes,
+                    factor->coeffs + coefficient))
+                return 0;
+    }
+    slong *order = count == 0 ? NULL :
+        (slong *) malloc((size_t) count * sizeof(slong));
+    char **sort_keys = count == 0 ? NULL :
+        (char **) calloc((size_t) count, sizeof(char *));
+    if (count != 0 && (order == NULL || sort_keys == NULL))
+    {
+        free(order);
+        free(sort_keys);
+        return 0;
+    }
+    for (slong factor_index = 0; factor_index < count; factor_index++)
+    {
+        order[factor_index] = factor_index;
+        sort_keys[factor_index] = fmpz_poly_get_str_pretty(
+            factorization->value->p + factor_index, "x");
+        if (sort_keys[factor_index] == NULL)
+        {
+            for (slong clear_index = 0;
+                 clear_index < factor_index; clear_index++)
+                flint_free(sort_keys[clear_index]);
+            free(sort_keys);
+            free(order);
+            return 0;
+        }
+    }
+    /* Sage.js Factorization historically sorts polynomial keys by display
+       text.  Perform the same stable ordering while the factors are still in
+       FLINT, rather than formatting every lazy child through another host
+       crossing. */
+    for (slong index = 1; index < count; index++)
+    {
+        const slong current = order[index];
+        slong position = index;
+        while (position > 0 &&
+               strcmp(sort_keys[order[position - 1]], sort_keys[current]) > 0)
+        {
+            order[position] = order[position - 1];
+            position--;
+        }
+        order[position] = current;
+    }
+    unsigned char *data = (unsigned char *) malloc(length == 0 ? 1 : length);
+    if (data == NULL)
+    {
+        for (slong factor_index = 0; factor_index < count; factor_index++)
+            flint_free(sort_keys[factor_index]);
+        free(sort_keys);
+        free(order);
+        return 0;
+    }
+    data[0] = 'S';
+    data[1] = 'J';
+    data[2] = 'P';
+    data[3] = 'F';
+    data[4] = 1;
+    data[5] = 0;
+    data[6] = 0;
+    data[7] = 0;
+    sagejs_exact_polynomial_write_u64(data, 8, (uint64_t) count);
+    for (slong factor_index = 0; factor_index < count; factor_index++)
+    {
+        const slong source_index = order[factor_index];
+        const size_t metadata = 16 + 16 * (size_t) factor_index;
+        sagejs_exact_polynomial_write_u64(data, metadata,
+            (uint64_t) factorization->value->exp[source_index]);
+        sagejs_exact_polynomial_write_u64(data, metadata + 8,
+            (uint64_t) factorization->value->p[source_index].length);
+    }
+    const size_t maximum_words =
+        (maximum_bytes + sizeof(ulong) - 1) / sizeof(ulong);
+    ulong *words = maximum_words == 0 ? NULL :
+        (ulong *) calloc(maximum_words, sizeof(ulong));
+    if (maximum_words != 0 && words == NULL)
+    {
+        free(data);
+        for (slong factor_index = 0; factor_index < count; factor_index++)
+            flint_free(sort_keys[factor_index]);
+        free(sort_keys);
+        free(order);
+        return 0;
+    }
+    fmpz_t magnitude;
+    fmpz_init(magnitude);
+    size_t offset = 16 + 16 * (size_t) count;
+    sagejs_exact_polynomial_write_fmpz(
+        data, &offset, &factorization->value->c, magnitude, words);
+    sagejs_exact_polynomial_write_fmpz(
+        data, &offset, factorization->denominator, magnitude, words);
+    for (slong factor_index = 0; factor_index < count; factor_index++)
+    {
+        const slong source_index = order[factor_index];
+        const fmpz_poly_struct *factor =
+            factorization->value->p + source_index;
+        for (slong coefficient = 0;
+             coefficient < factor->length; coefficient++)
+            sagejs_exact_polynomial_write_fmpz(
+                data, &offset, factor->coeffs + coefficient,
+                magnitude, words);
+    }
+    fmpz_clear(magnitude);
+    free(words);
+    for (slong factor_index = 0; factor_index < count; factor_index++)
+        flint_free(sort_keys[factor_index]);
+    free(sort_keys);
+    free(order);
+    if (offset != length)
+    {
+        free(data);
+        return 0;
+    }
+    *output = data;
+    *output_length = (uint64_t) length;
+    return 1;
+}
+
+static inline void sagejs_exact_polynomial_factorization_free_bytes(
+    unsigned char *data)
+{
+    free(data);
+}
+
 static inline int sagejs_exact_polynomial_prepare_region(
     sagejs_flint_byte_region_t result, const char magic[4],
     uint64_t coefficient_count, size_t length, size_t maximum_bytes,

@@ -138,9 +138,12 @@ function validateResource(filename, resource, ids, pythonNames, abiNames) {
     if (!identifier(resource.host_transfer.dynamic.export)) {
       fail(filename, `${resource.id} byte-copy export must be an identifier`);
     }
+    const computedTransfer =
+      resource.host_transfer.native.copy_symbol !== undefined;
+    const nativeTransferKeys = computedTransfer
+      ? ["copy_symbol", "clear_symbol"] : ["data_symbol", "length_symbol"];
     exactKeys(filename, resource.host_transfer.native,
-      ["data_symbol", "length_symbol"],
-      `${resource.id}.host_transfer.native`);
+      nativeTransferKeys, `${resource.id}.host_transfer.native`);
     for (const [name, symbol] of Object.entries(
       resource.host_transfer.native,
     )) {
@@ -150,6 +153,10 @@ function validateResource(filename, resource, ids, pythonNames, abiNames) {
     }
     exactKeys(filename, resource.host_transfer.targets, ["dynamic", "wasm"],
       `${resource.id}.host_transfer.targets`);
+    if (computedTransfer && resource.host_transfer.targets.wasm) {
+      fail(filename,
+        `${resource.id} computed byte transfer does not yet support wasm`);
+    }
     if (resource.host_transfer.targets.dynamic !== true ||
         typeof resource.host_transfer.targets.wasm !== "boolean") {
       fail(filename,
