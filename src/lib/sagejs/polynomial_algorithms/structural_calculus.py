@@ -106,16 +106,14 @@ def dense_truncate(
 ) -> list[Any]:
     """Return Sage's dense `f.truncate(precision)` coefficient contract.
 
-    Sage's dense implementation uses coefficient slicing even for negative
-    values.  Consequently, negative precision removes entries from the high
-    end (`truncate(-1)` drops the leading coefficient).  Although the public
-    documentation normally uses nonnegative precision, preserving that
-    behavior here makes the boundary differential rather than aspirational.
+    Sage treats every negative precision as lying below the constant term, so
+    the result is zero. Nonnegative precision retains the coefficients with
+    exponent strictly below `precision`.
     """
     if not isinstance(precision, int):
         raise TypeError("polynomial truncation precision must be an integer")
     normalized = _normalize(coefficients, zero)
-    end = precision if precision >= 0 else max(0, len(normalized) + precision)
+    end = max(0, precision)
     return _normalize(normalized[:end], zero)
 
 

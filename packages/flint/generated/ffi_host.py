@@ -133,6 +133,8 @@ from sagejs.ffi.flint import (
     fmpz_matrix_submatrix as _ffi_fmpz_matrix_submatrix,
     fmpz_matrix_select_rows as _ffi_fmpz_matrix_select_rows,
     fmpz_matrix_select_columns as _ffi_fmpz_matrix_select_columns,
+    fmpz_matrix_swap_rows as _ffi_fmpz_matrix_swap_rows,
+    fmpz_matrix_swap_columns as _ffi_fmpz_matrix_swap_columns,
     fmpz_matrix_set_block as _ffi_fmpz_matrix_set_block,
     fmpz_matrix_stack as _ffi_fmpz_matrix_stack,
     fmpz_matrix_augment as _ffi_fmpz_matrix_augment,
@@ -175,6 +177,8 @@ from sagejs.ffi.flint import (
     fmpq_matrix_submatrix as _ffi_fmpq_matrix_submatrix,
     fmpq_matrix_select_rows as _ffi_fmpq_matrix_select_rows,
     fmpq_matrix_select_columns as _ffi_fmpq_matrix_select_columns,
+    fmpq_matrix_swap_rows as _ffi_fmpq_matrix_swap_rows,
+    fmpq_matrix_swap_columns as _ffi_fmpq_matrix_swap_columns,
     fmpq_matrix_set_block as _ffi_fmpq_matrix_set_block,
     fmpq_matrix_stack as _ffi_fmpq_matrix_stack,
     fmpq_matrix_augment as _ffi_fmpq_matrix_augment,
@@ -1413,6 +1417,32 @@ def ffiFmpzMatrixSelectColumns(
 
 
 @native
+def ffiFmpzMatrixSwapRows(
+    matrix: FmpzMatrix,
+    first: uint64,
+    second: uint64,
+) -> bool:
+    return _ffi_fmpz_matrix_swap_rows(
+        matrix,
+        first,
+        second,
+    )
+
+
+@native
+def ffiFmpzMatrixSwapColumns(
+    matrix: FmpzMatrix,
+    first: uint64,
+    second: uint64,
+) -> bool:
+    return _ffi_fmpz_matrix_swap_columns(
+        matrix,
+        first,
+        second,
+    )
+
+
+@native
 def ffiFmpzMatrixSetBlock(
     target: FmpzMatrix,
     target_row: uint64,
@@ -1881,6 +1911,32 @@ def ffiFmpqMatrixSelectColumns(
         source,
         indices,
         count,
+    )
+
+
+@native
+def ffiFmpqMatrixSwapRows(
+    matrix: FmpqMatrix,
+    first: uint64,
+    second: uint64,
+) -> bool:
+    return _ffi_fmpq_matrix_swap_rows(
+        matrix,
+        first,
+        second,
+    )
+
+
+@native
+def ffiFmpqMatrixSwapColumns(
+    matrix: FmpqMatrix,
+    first: uint64,
+    second: uint64,
+) -> bool:
+    return _ffi_fmpq_matrix_swap_columns(
+        matrix,
+        first,
+        second,
     )
 
 

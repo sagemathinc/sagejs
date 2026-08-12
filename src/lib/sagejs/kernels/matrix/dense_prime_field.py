@@ -420,6 +420,52 @@ def dense_prime_field_matrix_set_sequence(
 
 
 @native
+def dense_prime_field_matrix_swap_rows(
+    target: UInt64Buffer,
+    rows: uint64,
+    columns: uint64,
+    first: uint64,
+    second: uint64,
+    modulus: PrimeFieldModulus,
+) -> bool:
+    """Swap two checked rows in borrowed row-major storage."""
+    if len(target) != rows * columns:
+        return False
+    if first >= rows or second >= rows:
+        return False
+    for column in range(columns):
+        left = first * columns + column
+        right = second * columns + column
+        value = target[left]
+        target[left] = target[right]
+        target[right] = value
+    return True
+
+
+@native
+def dense_prime_field_matrix_swap_columns(
+    target: UInt64Buffer,
+    rows: uint64,
+    columns: uint64,
+    first: uint64,
+    second: uint64,
+    modulus: PrimeFieldModulus,
+) -> bool:
+    """Swap two checked columns in borrowed row-major storage."""
+    if len(target) != rows * columns:
+        return False
+    if first >= columns or second >= columns:
+        return False
+    for row in range(rows):
+        left = row * columns + first
+        right = row * columns + second
+        value = target[left]
+        target[left] = target[right]
+        target[right] = value
+    return True
+
+
+@native
 def dense_prime_field_matrix_set_block(
     target: DensePrimeMatrix,
     target_row: uint64,

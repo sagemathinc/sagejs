@@ -80,11 +80,8 @@ for base in [ZZ, QQ, GF(2), GF(5)]:
 
     assert dense_truncate(value, zero, 0) == []
     assert dense_truncate(value, zero, 1) == [base(3)]
-    truncate_minus_one = [base(3)]
-    if base(2) != zero:
-        truncate_minus_one.append(base(2))
-    assert dense_truncate(value, zero, -1) == truncate_minus_one
-    assert dense_truncate(value, zero, -2) == [base(3)]
+    assert dense_truncate(value, zero, -1) == []
+    assert dense_truncate(value, zero, -2) == []
     assert dense_shift(value, zero, 2) == [zero, zero] + value
     assert dense_shift(value, zero, -1) == [base(2), one]
     assert dense_shift(value, zero, -5) == []
@@ -252,7 +249,7 @@ divide = lambda numerator, denominator: numerator / denominator
 value = [Fraction(3), Fraction(2), Fraction(1)]
 assert dense_compose(value, [one, one], zero) == [6*one, 4*one, one]
 assert dense_reverse(value, zero, 4) == [zero, zero, one, 2*one, 3*one]
-assert dense_truncate(value, zero, -1) == [3*one, 2*one]
+assert dense_truncate(value, zero, -1) == []
 assert dense_shift(value, zero, -1) == [2*one, one]
 assert dense_integral(value, zero, lambda coefficient, n: coefficient/n) == [
     zero, 3*one, one, one/3

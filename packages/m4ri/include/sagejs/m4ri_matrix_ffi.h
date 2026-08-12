@@ -220,6 +220,26 @@ static inline int sagejs_m4ri_matrix_set_entry(
     return 1;
 }
 
+static inline int sagejs_m4ri_matrix_swap_rows(
+    sagejs_m4ri_matrix_t matrix, uint64_t first, uint64_t second)
+{
+    if (first >= (uint64_t) matrix->value->nrows ||
+        second >= (uint64_t) matrix->value->nrows)
+        return 0;
+    mzd_row_swap(matrix->value, (rci_t) first, (rci_t) second);
+    return 1;
+}
+
+static inline int sagejs_m4ri_matrix_swap_columns(
+    sagejs_m4ri_matrix_t matrix, uint64_t first, uint64_t second)
+{
+    if (first >= (uint64_t) matrix->value->ncols ||
+        second >= (uint64_t) matrix->value->ncols)
+        return 0;
+    mzd_col_swap(matrix->value, (rci_t) first, (rci_t) second);
+    return 1;
+}
+
 static inline uint64_t sagejs_m4ri_matrix_entry_code(
     const sagejs_m4ri_matrix_t matrix, uint64_t row, uint64_t column)
 {
@@ -674,6 +694,12 @@ static inline uint64_t sagejs_m4ri_matrix_entry_code(
 static inline int sagejs_m4ri_matrix_set_entry(
     sagejs_m4ri_matrix_t matrix, uint64_t row, uint64_t column, uint64_t value)
 { (void) matrix; (void) row; (void) column; (void) value; return 0; }
+static inline int sagejs_m4ri_matrix_swap_rows(
+    sagejs_m4ri_matrix_t matrix, uint64_t first, uint64_t second)
+{ (void) matrix; (void) first; (void) second; return 0; }
+static inline int sagejs_m4ri_matrix_swap_columns(
+    sagejs_m4ri_matrix_t matrix, uint64_t first, uint64_t second)
+{ (void) matrix; (void) first; (void) second; return 0; }
 static inline int sagejs_m4ri_matrix_equal(
     const sagejs_m4ri_matrix_t left, const sagejs_m4ri_matrix_t right)
 { (void) left; (void) right; return 0; }

@@ -98,6 +98,19 @@ for base in [ZZ, QQ, GF(2), GF(97)]:
     )
 
     swapped = source.__copy__()
+    owned_resource = None
+    if base is ZZ:
+        owned_resource = swapped._integer_resource()
+    elif base is QQ:
+        owned_resource = swapped._rational_resource()
+    elif base == GF(2) and swapped._has_m4ri_matrix_resource():
+        owned_resource = swapped._m4ri_resource()
+
+    def selection_copy_forbidden(*values):
+        raise AssertionError("matrix swap copied the complete matrix")
+
+    swapped.matrix_from_rows = selection_copy_forbidden
+    swapped.matrix_from_columns = selection_copy_forbidden
     stale_rref = swapped.rref()
     swapped.swap_rows(0, 2)
     assert swapped.rref() is not stale_rref
@@ -105,6 +118,14 @@ for base in [ZZ, QQ, GF(2), GF(97)]:
     assert swapped.list() == [
         base(value) for value in [11, 9, 10, 8, 7, 5, 6, 4, 3, 1, 2, 0]
     ]
+    if owned_resource is not None:
+        if base is ZZ:
+            assert swapped._integer_resource() is owned_resource
+        elif base is QQ:
+            assert swapped._rational_resource() is owned_resource
+        else:
+            assert swapped._m4ri_resource() is owned_resource
+        assert not owned_resource.closed
     assert source == original
     assert source.with_swapped_rows(0, 2).row(0) == source.row(2)
     assert source.with_swapped_columns(0, 3).column(0) == source.column(3)

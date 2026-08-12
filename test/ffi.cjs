@@ -197,6 +197,7 @@ test("FFI declarations are strict and generated modules are current", () => {
       "fmpz_matrix_minpoly", "fmpq_matrix_from_fmpz",
       "fmpz_matrix_from_fmpq_integral", "fmpz_matrix_submatrix",
       "fmpz_matrix_select_rows", "fmpz_matrix_select_columns",
+      "fmpz_matrix_swap_rows", "fmpz_matrix_swap_columns",
       "fmpz_matrix_set_block", "fmpz_matrix_stack",
       "fmpz_matrix_augment", "fmpz_matrix_nonzero_count",
       "fmpz_matrix_format", "fmpz_matrix_serialize",
@@ -217,7 +218,9 @@ test("FFI declarations are strict and generated modules are current", () => {
       "fmpq_matrix_charpoly", "fmpq_matrix_minpoly",
       "fmpq_matrix_rank", "fmpq_matrix_det", "fmpq_matrix_trace",
       "fmpq_matrix_submatrix", "fmpq_matrix_select_rows",
-      "fmpq_matrix_select_columns", "fmpq_matrix_set_block",
+      "fmpq_matrix_select_columns",
+      "fmpq_matrix_swap_rows", "fmpq_matrix_swap_columns",
+      "fmpq_matrix_set_block",
       "fmpq_matrix_stack", "fmpq_matrix_augment",
       "fmpq_matrix_nonzero_count",
       "fmpq_value_numerator",
@@ -322,7 +325,7 @@ test("FFI declarations are strict and generated modules are current", () => {
     { resource: "graph", ownership: "owned", owner: null, root: "graph" },
     { resource: "edges", ownership: "borrowed", owner: "graph", root: "graph" },
   ]);
-  assert.match(runSage(["ffi", "check"]), /257 function\(s\)/);
+  assert.match(runSage(["ffi", "check"]), /263 function\(s\)/);
   const inspection = JSON.parse(
     runSage(["ffi", "explain", "flint", "--json"]),
   );
@@ -372,9 +375,9 @@ test("generated host adapters cover values and safe owned resources", async () =
     assert.doesNotMatch(source, /sagejs\.runtime|ffi_call/);
     assert.equal(functions.length, {
       fflas: 5,
-      flint: 223,
+      flint: 227,
       igraph: 2,
-      m4ri: 22,
+      m4ri: 24,
     }[declaration.library.id]);
     if (declaration.library.id === "flint") {
       const ir = await lowerSource(source, filename);
@@ -428,7 +431,7 @@ test("computed resource byte transfers lower to one generated copy", async () =>
 
 test("packages publish every generated host adapter as the canonical export", () => {
   for (const [packagePath, expected] of [
-    ["../packages/flint", 224],
+    ["../packages/flint", 228],
     ["../packages/fflas", 5],
     ["../packages/graph", 2],
   ]) {
@@ -600,7 +603,7 @@ test("native-boundary audit is a reviewed exact ratchet", () => {
   const current = boundaryAudit.validateBoundarySnapshot(snapshot, { root });
   assert.ok(current.counts["napi-export"] >= 280);
   assert.ok(current.counts["runtime-intrinsic"] >= 100);
-  assert.equal(current.counts["declared-ffi"], 257);
+  assert.equal(current.counts["declared-ffi"], 263);
   assert.equal(current.counts["declared-ffi-resource"], 16);
   assert.match(runSage(["ffi", "audit"]), /inventoried native boundaries/);
   assert.equal(
