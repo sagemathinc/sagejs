@@ -64,7 +64,7 @@ const nativeCacheArtifactIds = new Set(
   ]),
 );
 const nativeCacheSleep = new Int32Array(new SharedArrayBuffer(4));
-const nativeCompilerStampSchema = "sagejs.native-compiler-inputs-v1";
+const nativeCompilerStampSchema = "sagejs.native-compiler-inputs-v2";
 const nativeCompilerInputPaths = [
   "bootstrap",
   "package.json",
@@ -1807,8 +1807,27 @@ function nativeCompilerStamp(workspace) {
   });
 }
 
-function ensureNativeCompiler(workspace, options = {}) {
+function validateNativeCompiler(workspace) {
+  runCommand(process.execPath, [
+    "-e",
+    [
+      "const createCompiler = require(process.argv[1]).default;",
+      "const compiler = createCompiler();",
+      "if (typeof compiler.get_compiler_version !== 'function') {",
+      "  throw new Error('native-cache compiler is not self-hosted');",
+      "}",
+      "const version = compiler.get_compiler_version();",
+      "if (typeof version !== 'string' || version.length === 0) {",
+      "  throw new Error('native-cache compiler has no version');",
+      "}",
+    ].join("\n"),
+    join(workspace, "dist", "tools", "compiler.js"),
+  ], workspace);
+}
+
+function ensureNativeCompilerUnlocked(workspace, options = {}) {
   const stampPath = join(workspace, "dist", ".sagejs-native-compiler.json");
+  const compilerDirectory = join(workspace, "dist", "compiler");
   const required = [
     join(workspace, "dist", "compiler", "compiler.js"),
     join(workspace, "dist", "tools", "compiler.js"),
@@ -1826,35 +1845,74 @@ function ensureNativeCompiler(workspace, options = {}) {
   ) {
     return { status: "present", compiler };
   }
-  if (typeof options.buildCompiler === "function") {
-    options.buildCompiler(workspace, required);
-  } else {
-    mkdirSync(join(workspace, "dist", "compiler"), { recursive: true });
-    cpSync(
-      join(workspace, "bootstrap"),
-      join(workspace, "dist", "compiler"),
-      { recursive: true },
-    );
-    runCommand(process.execPath, [
-      join(workspace, "node_modules", "typescript", "bin", "tsc"),
-      "--project",
-      join(workspace, "tsconfig.json"),
-    ], workspace);
-    runCommand(process.execPath, [
-      join(workspace, "scripts", "build-vendor.cjs"),
-      "--compiler",
-    ], workspace);
+  const backup = existsSync(compilerDirectory)
+    ? mkdtempSync(join(workspace, "dist", ".sagejs-native-compiler-backup-"))
+    : null;
+  if (backup !== null) {
+    cpSync(compilerDirectory, join(backup, "compiler"), { recursive: true });
   }
-  const missing = required.filter((path) => !existsSync(path));
-  if (missing.length !== 0) {
-    throw new Error(
-      "native-cache addon preparation requires the compiled Python frontend; " +
-        `the compiler build omitted ${missing.join(", ")}`,
-    );
+  try {
+    if (typeof options.buildCompiler === "function") {
+      options.buildCompiler(workspace, required);
+    } else {
+      if (!existsSync(join(compilerDirectory, "compiler.js"))) {
+        mkdirSync(compilerDirectory, { recursive: true });
+        cpSync(
+          join(workspace, "bootstrap"),
+          compilerDirectory,
+          { recursive: true },
+        );
+      }
+      const runner = options.runner || runCommand;
+      runner(process.execPath, [
+        join(workspace, "node_modules", "typescript", "bin", "tsc"),
+        "--project",
+        join(workspace, "tsconfig.json"),
+      ], workspace);
+      runner(process.execPath, [
+        join(workspace, "scripts", "build-vendor.cjs"),
+        "--compiler",
+      ], workspace);
+      runner(process.execPath, [
+        join(workspace, "bin", "sagejs-source.cjs"),
+        "self",
+        "--complete",
+      ], workspace);
+      (options.validateCompiler || validateNativeCompiler)(workspace);
+    }
+    const missing = required.filter((path) => !existsSync(path));
+    if (missing.length !== 0) {
+      throw new Error(
+        "native-cache addon preparation requires the compiled Python frontend; " +
+          `the compiler build omitted ${missing.join(", ")}`,
+      );
+    }
+    mkdirSync(dirname(stampPath), { recursive: true });
+    writeFileSync(stampPath, `${JSON.stringify(expectedStamp, null, 2)}${EOL}`);
+    return { status: "built", compiler };
+  } catch (error) {
+    rmSync(compilerDirectory, { recursive: true, force: true });
+    if (backup !== null) {
+      renameSync(join(backup, "compiler"), compilerDirectory);
+    }
+    throw error;
+  } finally {
+    if (backup !== null) rmSync(backup, { recursive: true, force: true });
   }
-  mkdirSync(dirname(stampPath), { recursive: true });
-  writeFileSync(stampPath, `${JSON.stringify(expectedStamp, null, 2)}${EOL}`);
-  return { status: "built", compiler };
+}
+
+function ensureNativeCompiler(workspace, options = {}) {
+  const dist = join(workspace, "dist");
+  mkdirSync(dist, { recursive: true });
+  const lock = join(dist, ".sagejs-native-compiler.lock");
+  const lockToken = acquireNativeCacheLock(lock, options);
+  const stopHeartbeat = startNativeCacheHeartbeat(lock, lockToken, options);
+  try {
+    return ensureNativeCompilerUnlocked(workspace, options);
+  } finally {
+    stopHeartbeat();
+    releaseNativeCacheLock(lock, lockToken);
+  }
 }
 
 function prepareNativeArtifact(workspace, cacheRoot, spec, options = {}) {
