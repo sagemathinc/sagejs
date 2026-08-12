@@ -143,6 +143,7 @@ const integration = [
   "test/polynomial-invariants-contract.cjs",
   "test/polynomial-extension-resource-contract.cjs",
   "test/extension-polynomial-resource-ffi.cjs",
+  "test/extension-polynomial-resource-kernels.cjs",
   "test/arbitrary-prime-polynomial-contract.cjs",
   "test/prime-polynomial-bulk-views.cjs",
   "test/prime-polynomial-divrem.cjs",

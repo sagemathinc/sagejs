@@ -2990,7 +2990,7 @@
       "export": "fq_element_coordinate",
       "dynamic_package": "@sagemath/sagejs-flint",
       "dynamic_export": "ffiFqElementCoordinate",
-      "symbol": "sagejs_fq_element_coordinate",
+      "symbol": "sagejs_fq_element_coordinate_checked",
       "disposition": "declared-safe-ffi"
     },
     {
@@ -3005,17 +3005,6 @@
       "disposition": "declared-safe-ffi"
     },
     {
-      "id": "ffi:flint:fq_element_degree",
-      "kind": "declared-ffi",
-      "path": "ffi/flint.ffi.json",
-      "library": "flint",
-      "export": "fq_element_degree",
-      "dynamic_package": "@sagemath/sagejs-flint",
-      "dynamic_export": "ffiFqElementDegree",
-      "symbol": "sagejs_fq_element_degree",
-      "disposition": "declared-safe-ffi"
-    },
-    {
       "id": "ffi:flint:fq_element_equal",
       "kind": "declared-ffi",
       "path": "ffi/flint.ffi.json",
@@ -3024,6 +3013,17 @@
       "dynamic_package": "@sagemath/sagejs-flint",
       "dynamic_export": "ffiFqElementEqual",
       "symbol": "sagejs_fq_element_equal",
+      "disposition": "declared-safe-ffi"
+    },
+    {
+      "id": "ffi:flint:fq_element_extension_degree",
+      "kind": "declared-ffi",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "fq_element_extension_degree",
+      "dynamic_package": "@sagemath/sagejs-flint",
+      "dynamic_export": "ffiFqElementExtensionDegree",
+      "symbol": "sagejs_fq_element_extension_degree",
       "disposition": "declared-safe-ffi"
     },
     {
@@ -3078,7 +3078,7 @@
       "export": "fq_polynomial_coordinate",
       "dynamic_package": "@sagemath/sagejs-flint",
       "dynamic_export": "ffiFqPolynomialCoordinate",
-      "symbol": "sagejs_fq_polynomial_coordinate",
+      "symbol": "sagejs_fq_polynomial_coordinate_checked",
       "disposition": "declared-safe-ffi"
     },
     {
@@ -3104,17 +3104,6 @@
       "disposition": "declared-safe-ffi"
     },
     {
-      "id": "ffi:flint:fq_polynomial_degree",
-      "kind": "declared-ffi",
-      "path": "ffi/flint.ffi.json",
-      "library": "flint",
-      "export": "fq_polynomial_degree",
-      "dynamic_package": "@sagemath/sagejs-flint",
-      "dynamic_export": "ffiFqPolynomialDegree",
-      "symbol": "sagejs_fq_polynomial_degree",
-      "disposition": "declared-safe-ffi"
-    },
-    {
       "id": "ffi:flint:fq_polynomial_equal",
       "kind": "declared-ffi",
       "path": "ffi/flint.ffi.json",
@@ -3123,6 +3112,17 @@
       "dynamic_package": "@sagemath/sagejs-flint",
       "dynamic_export": "ffiFqPolynomialEqual",
       "symbol": "sagejs_fq_polynomial_equal",
+      "disposition": "declared-safe-ffi"
+    },
+    {
+      "id": "ffi:flint:fq_polynomial_extension_degree",
+      "kind": "declared-ffi",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "fq_polynomial_extension_degree",
+      "dynamic_package": "@sagemath/sagejs-flint",
+      "dynamic_export": "ffiFqPolynomialExtensionDegree",
+      "symbol": "sagejs_fq_polynomial_extension_degree",
       "disposition": "declared-safe-ffi"
     },
     {

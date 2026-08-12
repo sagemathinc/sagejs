@@ -22826,8 +22826,8 @@
       }
     },
     {
-      "id": "fq_element_degree",
-      "python_name": "fq_element_degree",
+      "id": "fq_element_extension_degree",
+      "python_name": "fq_element_extension_degree",
       "signature": {
         "parameters": [
           {
@@ -22843,10 +22843,10 @@
         "borrow_from": null
       },
       "dynamic": {
-        "export": "ffiFqElementDegree"
+        "export": "ffiFqElementExtensionDegree"
       },
       "native": {
-        "symbol": "sagejs_fq_element_degree",
+        "symbol": "sagejs_fq_element_extension_degree",
         "return_type": "uint64_t",
         "arguments": [
           {
@@ -22912,8 +22912,8 @@
         "export": "ffiFqElementCoordinate"
       },
       "native": {
-        "symbol": "sagejs_fq_element_coordinate",
-        "return_type": "uint64_t",
+        "symbol": "sagejs_fq_element_coordinate_checked",
+        "return_type": "const_uint64_t_ptr",
         "arguments": [
           {
             "source": "element",
@@ -22934,17 +22934,19 @@
         "deterministic": true,
         "thread_safe": false,
         "may_allocate": false,
-        "may_raise": [],
+        "may_raise": [
+          "IndexError"
+        ],
         "writes": []
       },
       "result": {
-        "domain": "direct",
+        "domain": "nullable",
         "success": [],
-        "absence": null
+        "absence": "error"
       },
       "errors": {
-        "exception": null,
-        "message": null
+        "exception": "IndexError",
+        "message": "finite extension basis index out of range"
       },
       "exceptions": {
         "policy": "none",
@@ -23085,7 +23087,7 @@
         "thread_safe": false,
         "may_allocate": true,
         "may_raise": [
-          "ValueError"
+          "TypeError"
         ],
         "writes": []
       },
@@ -23097,7 +23099,7 @@
         "absence": null
       },
       "errors": {
-        "exception": "ValueError",
+        "exception": "TypeError",
         "message": "finite extension contexts differ"
       },
       "exceptions": {
@@ -23167,7 +23169,7 @@
         "thread_safe": false,
         "may_allocate": true,
         "may_raise": [
-          "ValueError"
+          "TypeError"
         ],
         "writes": []
       },
@@ -23179,7 +23181,7 @@
         "absence": null
       },
       "errors": {
-        "exception": "ValueError",
+        "exception": "TypeError",
         "message": "finite extension contexts differ"
       },
       "exceptions": {
@@ -23249,7 +23251,7 @@
         "thread_safe": false,
         "may_allocate": true,
         "may_raise": [
-          "ValueError"
+          "TypeError"
         ],
         "writes": []
       },
@@ -23261,7 +23263,7 @@
         "absence": null
       },
       "errors": {
-        "exception": "ValueError",
+        "exception": "TypeError",
         "message": "finite extension contexts differ"
       },
       "exceptions": {
@@ -23518,8 +23520,8 @@
       }
     },
     {
-      "id": "fq_polynomial_degree",
-      "python_name": "fq_polynomial_degree",
+      "id": "fq_polynomial_extension_degree",
+      "python_name": "fq_polynomial_extension_degree",
       "signature": {
         "parameters": [
           {
@@ -23535,10 +23537,10 @@
         "borrow_from": null
       },
       "dynamic": {
-        "export": "ffiFqPolynomialDegree"
+        "export": "ffiFqPolynomialExtensionDegree"
       },
       "native": {
-        "symbol": "sagejs_fq_polynomial_degree",
+        "symbol": "sagejs_fq_polynomial_extension_degree",
         "return_type": "uint64_t",
         "arguments": [
           {
@@ -23611,8 +23613,8 @@
         "export": "ffiFqPolynomialCoordinate"
       },
       "native": {
-        "symbol": "sagejs_fq_polynomial_coordinate",
-        "return_type": "uint64_t",
+        "symbol": "sagejs_fq_polynomial_coordinate_checked",
+        "return_type": "const_uint64_t_ptr",
         "arguments": [
           {
             "source": "polynomial",
@@ -23639,17 +23641,19 @@
         "deterministic": true,
         "thread_safe": false,
         "may_allocate": false,
-        "may_raise": [],
+        "may_raise": [
+          "IndexError"
+        ],
         "writes": []
       },
       "result": {
-        "domain": "direct",
+        "domain": "nullable",
         "success": [],
-        "absence": null
+        "absence": "error"
       },
       "errors": {
-        "exception": null,
-        "message": null
+        "exception": "IndexError",
+        "message": "extension polynomial coordinate index out of range"
       },
       "exceptions": {
         "policy": "none",
@@ -23790,7 +23794,7 @@
         "thread_safe": false,
         "may_allocate": true,
         "may_raise": [
-          "ValueError"
+          "TypeError"
         ],
         "writes": []
       },
@@ -23802,7 +23806,7 @@
         "absence": null
       },
       "errors": {
-        "exception": "ValueError",
+        "exception": "TypeError",
         "message": "extension polynomial contexts differ"
       },
       "exceptions": {
@@ -23872,7 +23876,7 @@
         "thread_safe": false,
         "may_allocate": true,
         "may_raise": [
-          "ValueError"
+          "TypeError"
         ],
         "writes": []
       },
@@ -23884,7 +23888,7 @@
         "absence": null
       },
       "errors": {
-        "exception": "ValueError",
+        "exception": "TypeError",
         "message": "extension polynomial contexts differ"
       },
       "exceptions": {
@@ -23954,7 +23958,7 @@
         "thread_safe": false,
         "may_allocate": true,
         "may_raise": [
-          "ValueError"
+          "TypeError"
         ],
         "writes": []
       },
@@ -23966,7 +23970,7 @@
         "absence": null
       },
       "errors": {
-        "exception": "ValueError",
+        "exception": "TypeError",
         "message": "extension polynomial contexts differ"
       },
       "exceptions": {

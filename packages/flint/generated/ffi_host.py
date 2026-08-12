@@ -265,7 +265,7 @@ from sagejs.ffi.flint import (
     fq_context_degree as _ffi_fq_context_degree,
     fq_element as _ffi_fq_element,
     fq_element_copy as _ffi_fq_element_copy,
-    fq_element_degree as _ffi_fq_element_degree,
+    fq_element_extension_degree as _ffi_fq_element_extension_degree,
     fq_element_coordinate as _ffi_fq_element_coordinate,
     fq_element_equal as _ffi_fq_element_equal,
     fq_element_add as _ffi_fq_element_add,
@@ -274,7 +274,7 @@ from sagejs.ffi.flint import (
     fq_polynomial as _ffi_fq_polynomial,
     fq_polynomial_copy as _ffi_fq_polynomial_copy,
     fq_polynomial_length as _ffi_fq_polynomial_length,
-    fq_polynomial_degree as _ffi_fq_polynomial_degree,
+    fq_polynomial_extension_degree as _ffi_fq_polynomial_extension_degree,
     fq_polynomial_coordinate as _ffi_fq_polynomial_coordinate,
     fq_polynomial_equal as _ffi_fq_polynomial_equal,
     fq_polynomial_add as _ffi_fq_polynomial_add,
@@ -3312,10 +3312,10 @@ def ffiFqElementCopy(
 
 
 @native
-def ffiFqElementDegree(
+def ffiFqElementExtensionDegree(
     element: FqElement,
 ) -> uint64:
-    return _ffi_fq_element_degree(
+    return _ffi_fq_element_extension_degree(
         element,
     )
 
@@ -3409,10 +3409,10 @@ def ffiFqPolynomialLength(
 
 
 @native
-def ffiFqPolynomialDegree(
+def ffiFqPolynomialExtensionDegree(
     polynomial: FqPolynomial,
 ) -> uint64:
-    return _ffi_fq_polynomial_degree(
+    return _ffi_fq_polynomial_extension_degree(
         polynomial,
     )
 

@@ -5,6 +5,7 @@ from sagejs.ffi.declare import (
     Effects,
     Library,
     Min,
+    Nullable,
     Status,
     Writable,
     copied_bytes,
@@ -7422,27 +7423,30 @@ def fq_element_copy(source: FqElement) -> FqElement: ...
 
 
 @flint.function(
-    dynamic="ffiFqElementDegree",
-    symbol="sagejs_fq_element_degree",
+    dynamic="ffiFqElementExtensionDegree",
+    symbol="sagejs_fq_element_extension_degree",
     returns=uint64_t,
     abi=[in_("element", sagejs_fq_element_t)],
     effects=Effects(pure=True, thread_safe=False),
     result=Direct(),
     wasm=False,
 )
-def fq_element_degree(element: FqElement) -> uint64: ...
+def fq_element_extension_degree(element: FqElement) -> uint64: ...
 
 
 @flint.function(
     dynamic="ffiFqElementCoordinate",
-    symbol="sagejs_fq_element_coordinate",
-    returns=uint64_t,
+    symbol="sagejs_fq_element_coordinate_checked",
+    returns=const_uint64_t_ptr,
     abi=[
         in_("element", sagejs_fq_element_t),
         in_("basis_index", uint64_t),
     ],
-    effects=Effects(pure=True, thread_safe=False),
-    result=Direct(),
+    effects=Effects(pure=True, thread_safe=False, raises=[IndexError]),
+    result=Nullable(
+        exception=IndexError,
+        message="finite extension basis index out of range",
+    ),
     wasm=False,
 )
 def fq_element_coordinate(element: FqElement, basis_index: uint64) -> uint64: ...
@@ -7476,9 +7480,9 @@ def fq_element_equal(left: FqElement, right: FqElement) -> bool: ...
         pure=False,
         thread_safe=False,
         allocates=True,
-        raises=[ValueError],
+        raises=[TypeError],
     ),
-    result=Status(1, exception=ValueError, message="finite extension contexts differ"),
+    result=Status(1, exception=TypeError, message="finite extension contexts differ"),
     wasm=False,
 )
 def fq_element_add(left: FqElement, right: FqElement) -> FqElement: ...
@@ -7497,9 +7501,9 @@ def fq_element_add(left: FqElement, right: FqElement) -> FqElement: ...
         pure=False,
         thread_safe=False,
         allocates=True,
-        raises=[ValueError],
+        raises=[TypeError],
     ),
-    result=Status(1, exception=ValueError, message="finite extension contexts differ"),
+    result=Status(1, exception=TypeError, message="finite extension contexts differ"),
     wasm=False,
 )
 def fq_element_sub(left: FqElement, right: FqElement) -> FqElement: ...
@@ -7518,9 +7522,9 @@ def fq_element_sub(left: FqElement, right: FqElement) -> FqElement: ...
         pure=False,
         thread_safe=False,
         allocates=True,
-        raises=[ValueError],
+        raises=[TypeError],
     ),
-    result=Status(1, exception=ValueError, message="finite extension contexts differ"),
+    result=Status(1, exception=TypeError, message="finite extension contexts differ"),
     wasm=False,
 )
 def fq_element_mul(left: FqElement, right: FqElement) -> FqElement: ...
@@ -7604,28 +7608,31 @@ def fq_polynomial_length(polynomial: FqPolynomial) -> uint64: ...
 
 
 @flint.function(
-    dynamic="ffiFqPolynomialDegree",
-    symbol="sagejs_fq_polynomial_degree",
+    dynamic="ffiFqPolynomialExtensionDegree",
+    symbol="sagejs_fq_polynomial_extension_degree",
     returns=uint64_t,
     abi=[in_("polynomial", sagejs_fq_polynomial_t)],
     effects=Effects(pure=True, thread_safe=False),
     result=Direct(),
     wasm=False,
 )
-def fq_polynomial_degree(polynomial: FqPolynomial) -> uint64: ...
+def fq_polynomial_extension_degree(polynomial: FqPolynomial) -> uint64: ...
 
 
 @flint.function(
     dynamic="ffiFqPolynomialCoordinate",
-    symbol="sagejs_fq_polynomial_coordinate",
-    returns=uint64_t,
+    symbol="sagejs_fq_polynomial_coordinate_checked",
+    returns=const_uint64_t_ptr,
     abi=[
         in_("polynomial", sagejs_fq_polynomial_t),
         in_("coefficient_index", uint64_t),
         in_("basis_index", uint64_t),
     ],
-    effects=Effects(pure=True, thread_safe=False),
-    result=Direct(),
+    effects=Effects(pure=True, thread_safe=False, raises=[IndexError]),
+    result=Nullable(
+        exception=IndexError,
+        message="extension polynomial coordinate index out of range",
+    ),
     wasm=False,
 )
 def fq_polynomial_coordinate(
@@ -7663,10 +7670,10 @@ def fq_polynomial_equal(left: FqPolynomial, right: FqPolynomial) -> bool: ...
         pure=False,
         thread_safe=False,
         allocates=True,
-        raises=[ValueError],
+        raises=[TypeError],
     ),
     result=Status(
-        1, exception=ValueError, message="extension polynomial contexts differ"
+        1, exception=TypeError, message="extension polynomial contexts differ"
     ),
     wasm=False,
 )
@@ -7686,10 +7693,10 @@ def fq_polynomial_add(left: FqPolynomial, right: FqPolynomial) -> FqPolynomial: 
         pure=False,
         thread_safe=False,
         allocates=True,
-        raises=[ValueError],
+        raises=[TypeError],
     ),
     result=Status(
-        1, exception=ValueError, message="extension polynomial contexts differ"
+        1, exception=TypeError, message="extension polynomial contexts differ"
     ),
     wasm=False,
 )
@@ -7709,10 +7716,10 @@ def fq_polynomial_sub(left: FqPolynomial, right: FqPolynomial) -> FqPolynomial: 
         pure=False,
         thread_safe=False,
         allocates=True,
-        raises=[ValueError],
+        raises=[TypeError],
     ),
     result=Status(
-        1, exception=ValueError, message="extension polynomial contexts differ"
+        1, exception=TypeError, message="extension polynomial contexts differ"
     ),
     wasm=False,
 )

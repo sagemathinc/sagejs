@@ -310,6 +310,24 @@
       "platforms": ["linux-x64", "linux-arm64", "windows-x64", "macos-arm64"]
     },
     {
+      "id": "extension-polynomial-flint-production",
+      "source": "src/lib/sagejs/kernels/polynomial/extension_flint.py",
+      "functions": [
+        "flint_extension_polynomial_from_coordinates",
+        "flint_extension_polynomial_add",
+        "flint_extension_polynomial_multiply",
+        "flint_extension_element_coordinate",
+        "flint_extension_polynomial_coordinate",
+        "flint_extension_polynomial_coordinate_sum"
+      ],
+      "semantic_domain": "word-characteristic finite extension polynomials over generated thread-affine FLINT resources with checked bulk power-basis ingress and safe borrowed traversal",
+      "fallback": "same-source",
+      "host_isolation": "certified",
+      "oracles": ["cpython", "javascript", "flint", "sage"],
+      "benchmark": "bench:native:ffi:extension-polynomial",
+      "platforms": ["linux-x64", "linux-arm64", "windows-x64", "macos-arm64"]
+    },
+    {
       "id": "compiler-owned-record-witness",
       "source": "bench/native_record_witness.py",
       "functions": ["scaled_sum", "scale_first", "scaled_sum_constructed"],

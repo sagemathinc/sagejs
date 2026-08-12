@@ -119,6 +119,7 @@
       "files": [
         "src/lib/sagejs/kernels/polynomial/__init__.py",
         "src/lib/sagejs/kernels/polynomial/arbitrary_prime_flint.py",
+        "src/lib/sagejs/kernels/polynomial/extension_flint.py",
         "src/lib/sagejs/kernels/polynomial/packed_flint.py",
         "src/lib/sagejs/kernels/polynomial/packed_integer.py",
         "src/lib/sagejs/kernels/polynomial/packed_prime_field.py",
