@@ -132,7 +132,10 @@ static inline size_t sagejs_fmpz_mod_polynomial_allocated_bytes(
 static inline int sagejs_fmpz_mod_polynomial_valid_modulus(
     const fmpz_t modulus)
 {
-    return fmpz_cmp_ui(modulus, 2) >= 0;
+    /* The public finite-field parent has normally certified this already, but
+       the generated safe FFI is independently callable.  Recheck at resource
+       ingress so composite input can never reach FLINT field algorithms. */
+    return fmpz_cmp_ui(modulus, 2) >= 0 && fmpz_is_prime(modulus);
 }
 
 static inline int sagejs_fmpz_mod_polynomial_same_modulus(

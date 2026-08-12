@@ -87,6 +87,12 @@ int main(void)
     fmpz_one(p521);
     fmpz_mul_2exp(p521, p521, 521);
     fmpz_sub_ui(p521, p521, 1);
+    fmpz_t composite;
+    fmpz_init_set_ui(composite, 15);
+    sagejs_fmpz_mod_polynomial_t rejected_composite;
+    assert(!sagejs_fmpz_mod_polynomial_init(
+        rejected_composite, composite, 1));
+    fmpz_clear(composite);
 
     const slong left_values[] = {-1, 0, 1};
     const slong divisor_values[] = {-1, 1};
