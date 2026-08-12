@@ -18,10 +18,15 @@ The output is machine-readable JSON with explicit host, revision, workload,
 runtime, domain, and operation fields. Each domain runs in a fresh process.
 The report separates total fresh-process time, estimated bootstrap time, first
 invocation time, and warm median/minimum/maximum. Every timed result is consumed
-by a semantic witness: sampled entries for structural operations, exact matrix
+by a semantic witness: complete round-trip traversal for random construction,
+sampled entries for structural operations, exact matrix
 identities for solving and kernels, and known results for rank, RREF,
 determinant, and characteristic polynomial. Destructive or cacheable algorithms
 receive a fresh matrix copy on every invocation.
+
+Backend routes are collected only between an explicit trace begin/end pair
+around each timed invocation. Setup and result verification happen outside that
+window and therefore cannot be misattributed to the operation under test.
 
 ## Initial audit, 2026-08-12
 

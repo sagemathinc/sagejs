@@ -182,18 +182,27 @@ def _median(values):
     values.sort()
     return values[len(values) // 2]
 
+def _timed_invoke(label, sample, function):
+    print("AUDIT_TRACE_BEGIN|" + label + "|" + sample)
+    started = time.perf_counter()
+    try:
+        result = function()
+        elapsed_ms = 1000 * (time.perf_counter() - started)
+    finally:
+        print("AUDIT_TRACE_END|" + label + "|" + sample)
+    return result, elapsed_ms
+
 def _measure(label, function, verify):
     print("AUDIT_CASE|" + label)
     try:
-        started = time.perf_counter()
-        result = function()
-        cold_ms = 1000 * (time.perf_counter() - started)
+        result, cold_ms = _timed_invoke(label, "first", function)
         verify(result)
         samples = []
         for _sample in range(_samples):
-            started = time.perf_counter()
-            result = function()
-            samples.append(1000 * (time.perf_counter() - started))
+            result, elapsed_ms = _timed_invoke(
+                label, "warm-" + str(_sample), function
+            )
+            samples.append(elapsed_ms)
             verify(result)
         print(
             "AUDIT_RESULT|" + label + "|" + str(cold_ms) + "|" +
@@ -242,10 +251,20 @@ def _verify_range(result):
 def _verify_random(result):
     assert result.dimensions() == (_construct_rows, _construct_columns)
     assert result.base_ring() == _base
-    assert result[0, 0] == _base(result[0, 0])
-    assert result[_construct_rows - 1, _construct_columns - 1] == _base(
-        result[_construct_rows - 1, _construct_columns - 1]
-    )
+    entries = result.list()
+    assert len(entries) == _construct_rows * _construct_columns
+    assert matrix(_base, _construct_rows, _construct_columns, entries) == result
+    nonzero = 0
+    differs_from_first = False
+    first = entries[0]
+    for entry in entries:
+        assert entry == _base(entry)
+        if entry != _base(0):
+            nonzero += 1
+        if entry != first:
+            differs_from_first = True
+    assert nonzero > 0
+    assert differs_from_first
 
 set_random_seed(20260812)
 _measure(
@@ -419,12 +438,24 @@ function findSage() {
 function parseOutput(stdout) {
   const routes = new Map();
   const cases = [];
-  let currentCase;
+  let traceWindow;
   let scriptMs;
   for (const line of stdout.split(/\r?\n/)) {
-    if (line.startsWith("AUDIT_CASE|")) {
-      currentCase = line.slice("AUDIT_CASE|".length);
-      if (!routes.has(currentCase)) routes.set(currentCase, new Set());
+    if (line.startsWith("AUDIT_TRACE_BEGIN|")) {
+      const [, operation, sample] = line.split("|");
+      assert.equal(traceWindow, undefined, "nested audit trace window");
+      traceWindow = { operation, sample };
+      if (!routes.has(operation)) routes.set(operation, new Set());
+      continue;
+    }
+    if (line.startsWith("AUDIT_TRACE_END|")) {
+      const [, operation, sample] = line.split("|");
+      assert.deepEqual(
+        traceWindow,
+        { operation, sample },
+        "mismatched audit trace window",
+      );
+      traceWindow = undefined;
       continue;
     }
     if (line.startsWith("AUDIT_RESULT|")) {
@@ -449,10 +480,11 @@ function parseOutput(stdout) {
       continue;
     }
     const trace = line.match(/^\[sagejs native\] (Matrix\.[^ ]+).* -> ([^ ]+)$/);
-    if (trace && currentCase !== undefined) {
-      routes.get(currentCase).add(`${trace[1]}:${trace[2]}`);
+    if (trace && traceWindow !== undefined) {
+      routes.get(traceWindow.operation).add(`${trace[1]}:${trace[2]}`);
     }
   }
+  assert.equal(traceWindow, undefined, "unterminated audit trace window");
   for (const item of cases) {
     item.backends = [...(routes.get(item.operation) ?? [])].sort();
   }
@@ -494,12 +526,18 @@ function runDomain(runtime, domain, mode, sageCommand) {
       };
     }
     const parsed = parseOutput(result.stdout);
+    const capabilityHoles = parsed.cases
+      .filter((item) => item.status === "unsupported")
+      .map((item) => item.operation);
     return {
       domain,
       ok: true,
       fresh_process_ms: processMs,
       script_ms: parsed.scriptMs,
       runtime_bootstrap_estimate_ms: Math.max(0, processMs - parsed.scriptMs),
+      audited_operations: parsed.cases.length,
+      verified_operations: parsed.cases.length - capabilityHoles.length,
+      capability_holes: capabilityHoles,
       cases: parsed.cases,
       stderr: result.stderr.trim() || undefined,
     };
@@ -714,9 +752,13 @@ function main() {
   if (options.check) validate(report);
 }
 
-try {
-  main();
-} catch (error) {
-  console.error(error.stack || error.message || error);
-  process.exitCode = 1;
+if (require.main === module) {
+  try {
+    main();
+  } catch (error) {
+    console.error(error.stack || error.message || error);
+    process.exitCode = 1;
+  }
 }
+
+module.exports = { parseOutput };
