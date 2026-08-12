@@ -127,8 +127,10 @@ test("FFI declarations are strict and generated modules are current", () => {
       "fmpz_polynomial_gcd", "fmpz_polynomial_factor_resource",
       "fmpz_polynomial_divexact",
       "fmpz_polynomial_pow",
+      "fmpz_polynomial_cyclotomic",
       "fmpz_polynomial_evaluate",
       "fmpz_polynomial_evaluate_rational", "fmpz_polynomial_serialize",
+      "fmpz_polynomial_format",
       "fmpz_polynomial_deserialize",
       "fmpq_polynomial", "fmpq_polynomial_set_coefficient",
       "fmpq_polynomial_seal", "fmpq_polynomial_length",
@@ -146,6 +148,7 @@ test("FFI declarations are strict and generated modules are current", () => {
       "fmpq_polynomial_divexact",
       "fmpq_polynomial_pow",
       "fmpq_polynomial_evaluate", "fmpq_polynomial_serialize",
+      "fmpq_polynomial_format",
       "fmpq_polynomial_deserialize",
       "fmpz_matrix", "fmpz_matrix_nrows", "fmpz_matrix_ncols",
       "fmpz_matrix_set_entry", "fmpz_matrix_entry", "fmpz_matrix_copy",
@@ -260,7 +263,7 @@ test("FFI declarations are strict and generated modules are current", () => {
     { resource: "graph", ownership: "owned", owner: null, root: "graph" },
     { resource: "edges", ownership: "borrowed", owner: "graph", root: "graph" },
   ]);
-  assert.match(runSage(["ffi", "check"]), /178 function\(s\)/);
+  assert.match(runSage(["ffi", "check"]), /181 function\(s\)/);
   const inspection = JSON.parse(
     runSage(["ffi", "explain", "flint", "--json"]),
   );
@@ -310,7 +313,7 @@ test("generated host adapters cover values and safe owned resources", async () =
     assert.doesNotMatch(source, /sagejs\.runtime|ffi_call/);
     assert.equal(functions.length, {
       fflas: 4,
-      flint: 167,
+      flint: 170,
       igraph: 2,
     }[declaration.library.id]);
     if (declaration.library.id === "flint") {
@@ -335,7 +338,7 @@ test("generated host adapters cover values and safe owned resources", async () =
 
 test("packages publish every generated host adapter as the canonical export", () => {
   for (const [packagePath, expected] of [
-    ["../packages/flint", 168],
+    ["../packages/flint", 171],
     ["../packages/fflas", 4],
     ["../packages/graph", 2],
   ]) {
@@ -479,7 +482,7 @@ test("native-boundary audit is a reviewed exact ratchet", () => {
   const current = boundaryAudit.validateBoundarySnapshot(snapshot, { root });
   assert.ok(current.counts["napi-export"] >= 280);
   assert.ok(current.counts["runtime-intrinsic"] >= 100);
-  assert.equal(current.counts["declared-ffi"], 178);
+  assert.equal(current.counts["declared-ffi"], 181);
   assert.equal(current.counts["declared-ffi-resource"], 10);
   assert.match(runSage(["ffi", "audit"]), /inventoried native boundaries/);
   assert.equal(

@@ -393,14 +393,19 @@ def _decode_exact_polynomial_bytes(source: Any, base: Any) -> list[Any]:
     )
     if not rational:
         return runtime.list_constructor(parts)
-    answer = []
-    for index in range(count):
-        answer.append(
-            _untyped(sage.Rational)._from_reduced(
-                parts[2 * index], parts[2 * index + 1]
-            )
-        )
-    return answer
+    return runtime.reduced_rational_values_from_parts(
+        parts, _untyped(sage.Rational), base
+    )
+
+
+def _format_exact_polynomial_resource(raw: str, variable: str) -> str:
+    """Normalize FLINT's sentinel-variable output to Sage display syntax."""
+    raw = raw.replace(runtime.regexp(r"\s+", "g"), "")
+    raw = raw.replace(runtime.regexp(r"\+", "g"), " + ").replace(
+        runtime.regexp(r"([^-])-+", "g"), "$1 - "
+    )
+    raw = raw.replace(runtime.regexp(r"(^|[+-] )1\*", "g"), "$1")
+    return raw.replace(runtime.regexp(r"x", "g"), variable)
 
 
 def _trim_integer_buffer(source: Any) -> Any:
@@ -1829,6 +1834,22 @@ class PolynomialElement(sage.Element):
         if kind == "GF":
             return runtime.uint64_polynomial_format(
                 self._storage,
+                self._parent.variable_name(),
+            )
+        if self._has_fmpz_polynomial_resource():
+            region = _flint_ffi_module().fmpz_polynomial_format(
+                self._exact_polynomial_resource()
+            )
+            return _format_exact_polynomial_resource(
+                bytes(region.take_bytes()).decode("ascii"),
+                self._parent.variable_name(),
+            )
+        if self._has_fmpq_polynomial_resource():
+            region = _flint_ffi_module().fmpq_polynomial_format(
+                self._exact_polynomial_resource()
+            )
+            return _format_exact_polynomial_resource(
+                bytes(region.take_bytes()).decode("ascii"),
                 self._parent.variable_name(),
             )
         if kind != "legacy":
