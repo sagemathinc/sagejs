@@ -70,7 +70,7 @@ def gf2_packed_coefficient(
     if index < source.bit_length:
         word = source.words[index // 64]
         offset = index % 64
-        for step in range(offset):
+        for _step in range(offset):
             word = word // 2
         result = word % 2
     return result
@@ -194,10 +194,10 @@ def gf2_packed_shift_left(
                 output[word_shift + index] = source.words[index]
         else:
             place = 1
-            for step in range(bit_shift):
+            for _step in range(bit_shift):
                 place *= 2
             carry_divisor = 1
-            for step in range(64 - bit_shift):
+            for _step in range(64 - bit_shift):
                 carry_divisor *= 2
             for index in range(len(source.words)):
                 word = source.words[index]
@@ -240,10 +240,10 @@ def gf2_packed_shift_right(
                 output[index] = source.words[word_shift + index]
         else:
             divisor = 1
-            for step in range(bit_shift):
+            for _step in range(bit_shift):
                 divisor *= 2
             place = 1
-            for step in range(64 - bit_shift):
+            for _step in range(64 - bit_shift):
                 place *= 2
             for index in range(len(output)):
                 source_index = word_shift + index

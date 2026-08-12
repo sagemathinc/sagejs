@@ -3,8 +3,8 @@
   "schema_version": 2,
   "id": "gf2-polynomial-packed-core-v1",
   "title": "Compiler-owned GF(2) polynomial packed core",
-  "lane": "arithmetic-algebra",
-  "status": "review",
+  "lane": "integration",
+  "status": "active",
   "owner": "user",
   "objective": "Implement canonical compiler-owned bit-packed GF(2)[x] storage and source-transparent read-only traversal, XOR, shifts, equality, formatting, and serialization primitives without changing the public polynomial API or shared FFI",
   "base_commit": "dcc1302a3f305b00a0e09ba25edee45ac2ee2bf1",
@@ -12,7 +12,10 @@
     "src/lib/sagejs/kernels/polynomial/gf2_packed.py",
     "src/lib/sagejs/polynomial_algorithms/gf2_packed_core.py",
     "test/gf2-polynomial-packed-core.cjs",
-    "bench/gf2-polynomial-packed-core.cjs"
+    "bench/gf2-polynomial-packed-core.cjs",
+    "pyrightconfig.json",
+    "architecture/package-graph.json",
+    "test/node-test-manifest.cjs"
   ],
   "dependencies": [
     "math-dispatch-profiles-v1"
@@ -38,6 +41,8 @@
     "macos-arm64": "required"
   },
   "validation": [
+    "pnpm architecture:check",
+    "pnpm test:portable",
     "pnpm test:baselib:strict",
     "pnpm test:native"
   ],
@@ -81,17 +86,207 @@
       "commit": "dcc1302a3f305b00a0e09ba25edee45ac2ee2bf1",
       "workspace_fingerprint": "c0c2395d273ce9ce3d880b079c0624d07328f02fe559657c2de31c112bc19fed",
       "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 14.992,
+      "started_at": "2026-08-12T19:50:45.618Z",
+      "commit": "ab38553d960282e5209919cd8936f77875fe66f5",
+      "workspace_fingerprint": "21fade83d77ea15472d79553c71410113654bf04e420b3fb8ab613ba018fefe1",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 68.442,
+      "started_at": "2026-08-12T19:51:01.236Z",
+      "commit": "ab38553d960282e5209919cd8936f77875fe66f5",
+      "workspace_fingerprint": "21fade83d77ea15472d79553c71410113654bf04e420b3fb8ab613ba018fefe1",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 65.804,
+      "started_at": "2026-08-12T19:52:39.246Z",
+      "commit": "ab38553d960282e5209919cd8936f77875fe66f5",
+      "workspace_fingerprint": "450b21f13a15aa8a9766797e3aba7c108e4a91c2e2a2be8d721b6c1dd84c1f4c",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 69.418,
+      "started_at": "2026-08-12T19:53:52.737Z",
+      "commit": "ab38553d960282e5209919cd8936f77875fe66f5",
+      "workspace_fingerprint": "450b21f13a15aa8a9766797e3aba7c108e4a91c2e2a2be8d721b6c1dd84c1f4c",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 14.49,
+      "started_at": "2026-08-12T19:57:06.039Z",
+      "commit": "ab38553d960282e5209919cd8936f77875fe66f5",
+      "workspace_fingerprint": "450b21f13a15aa8a9766797e3aba7c108e4a91c2e2a2be8d721b6c1dd84c1f4c",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 15.076,
+      "started_at": "2026-08-12T19:57:21.148Z",
+      "commit": "ab38553d960282e5209919cd8936f77875fe66f5",
+      "workspace_fingerprint": "450b21f13a15aa8a9766797e3aba7c108e4a91c2e2a2be8d721b6c1dd84c1f4c",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/gf2-polynomial-packed-core.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 5.203,
+      "started_at": "2026-08-12T19:57:36.848Z",
+      "commit": "ab38553d960282e5209919cd8936f77875fe66f5",
+      "workspace_fingerprint": "450b21f13a15aa8a9766797e3aba7c108e4a91c2e2a2be8d721b6c1dd84c1f4c",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/gf2-polynomial-packed-core.cjs --check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 44.372,
+      "started_at": "2026-08-12T19:57:48.084Z",
+      "commit": "ab38553d960282e5209919cd8936f77875fe66f5",
+      "workspace_fingerprint": "450b21f13a15aa8a9766797e3aba7c108e4a91c2e2a2be8d721b6c1dd84c1f4c",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/gf2-polynomial-packed-core.cjs --check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 43.875,
+      "started_at": "2026-08-12T19:59:17.751Z",
+      "commit": "ab38553d960282e5209919cd8936f77875fe66f5",
+      "workspace_fingerprint": "450b21f13a15aa8a9766797e3aba7c108e4a91c2e2a2be8d721b6c1dd84c1f4c",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/gf2-polynomial-packed-core.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 6.516,
+      "started_at": "2026-08-12T20:10:54.417Z",
+      "commit": "ab38553d960282e5209919cd8936f77875fe66f5",
+      "workspace_fingerprint": "ed101872208917e84384242162dd83c675bdb1eee0bc9a8a8e1edd277c166296",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/gf2-polynomial-packed-core.cjs --check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 44.696,
+      "started_at": "2026-08-12T20:11:01.695Z",
+      "commit": "ab38553d960282e5209919cd8936f77875fe66f5",
+      "workspace_fingerprint": "ed101872208917e84384242162dd83c675bdb1eee0bc9a8a8e1edd277c166296",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 15.281,
+      "started_at": "2026-08-12T20:16:20.105Z",
+      "commit": "ab38553d960282e5209919cd8936f77875fe66f5",
+      "workspace_fingerprint": "ed101872208917e84384242162dd83c675bdb1eee0bc9a8a8e1edd277c166296",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 14.754,
+      "started_at": "2026-08-12T20:16:36.041Z",
+      "commit": "ab38553d960282e5209919cd8936f77875fe66f5",
+      "workspace_fingerprint": "ed101872208917e84384242162dd83c675bdb1eee0bc9a8a8e1edd277c166296",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 63.533,
+      "started_at": "2026-08-12T20:16:51.459Z",
+      "commit": "ab38553d960282e5209919cd8936f77875fe66f5",
+      "workspace_fingerprint": "ed101872208917e84384242162dd83c675bdb1eee0bc9a8a8e1edd277c166296",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/gf2-polynomial-packed-core.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 6.262,
+      "started_at": "2026-08-12T20:29:30.344Z",
+      "commit": "ab38553d960282e5209919cd8936f77875fe66f5",
+      "workspace_fingerprint": "228e372a82a9429922e9c73077ea94d8162ecbd6185d1bb75553e7dbbe5b3210",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/gf2-polynomial-packed-core.cjs --check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 43.298,
+      "started_at": "2026-08-12T20:29:37.211Z",
+      "commit": "ab38553d960282e5209919cd8936f77875fe66f5",
+      "workspace_fingerprint": "228e372a82a9429922e9c73077ea94d8162ecbd6185d1bb75553e7dbbe5b3210",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 15.043,
+      "started_at": "2026-08-12T20:30:37.917Z",
+      "commit": "ab38553d960282e5209919cd8936f77875fe66f5",
+      "workspace_fingerprint": "228e372a82a9429922e9c73077ea94d8162ecbd6185d1bb75553e7dbbe5b3210",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 15.314,
+      "started_at": "2026-08-12T20:30:53.604Z",
+      "commit": "ab38553d960282e5209919cd8936f77875fe66f5",
+      "workspace_fingerprint": "228e372a82a9429922e9c73077ea94d8162ecbd6185d1bb75553e7dbbe5b3210",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 64.585,
+      "started_at": "2026-08-12T20:31:09.604Z",
+      "commit": "ab38553d960282e5209919cd8936f77875fe66f5",
+      "workspace_fingerprint": "228e372a82a9429922e9c73077ea94d8162ecbd6185d1bb75553e7dbbe5b3210",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {
-    "summary": "Adds an immutable canonical BitPolynomialStorage with 64 low-to-high GF(2) coefficients per uint64 word, versioned minimal serialization, Sage-style formatting, and source-transparent borrowed-record kernels for validation, coefficient access, population count, equality, XOR, and left/right shifts. CPython, Sage.js dynamic fallback, and AOT native execution agree at 0/63/64/65 boundaries and malformed writes remain transactional. The retained degree-262143 benchmark records 32768 packed bytes versus 2097152 bytes for one uint64 per coefficient, native XOR near 20 ms, native word shifts near 18 ms, and native weight near 1 ms on linux-x64.",
+    "summary": "Adds canonical BitPolynomialStorage with 64 low-to-high GF(2) coefficients per uint64 word, persistent BigUint64Array storage whenever any packed kernel is compiled, versioned minimal serialization, bulk local formatting/coefficient traversal, and source-transparent borrowed-record kernels for validation, coefficient access, population count, equality, XOR, and left/right shifts. Selective native artifacts preserve the packed carrier across interleaved dynamic operations, so a later compiled call does not remarshal stored lists. CPython, SageMath, Sage.js dynamic fallback, selective AOT, and full-module AOT execution agree at 0/63/64/65 and maximum-word boundaries; zero shifts above uint64 and malformed transactional writes are covered. The retained degree-262143 benchmark records a 32768-byte logical packed payload versus 2097152 bytes for one uint64 per coefficient and gates formatting and coefficient materialization against per-coefficient boundary regressions.",
     "risks": [
       "The source-transparent compiler currently lacks uint64 bitwise operators, so XOR deliberately performs 64 arithmetic bit steps per word; a future representation-level compiler primitive can optimize this without changing the storage contract.",
       "Only linux-x64 execution was available in this lane; required linux-arm64, Windows x64, and macOS arm64 validation remains CI or integration work.",
+      "The final broad native tier was stopped at integration-owner request after cache/build, FLINT, FFLAS, graph, M4RI, FFI, and initial lifecycle suites passed; the current workspace has final focused, benchmark, architecture, strict, and portable receipts but no completed final broad-native receipt.",
       "This is a disjoint core lane and does not modify the public polynomial API, production native-kernel manifest, dispatch profiles, or external NTL integration."
     ],
     "next_steps": [
-      "Integration must add src/lib/sagejs/kernels/polynomial/gf2_packed.py to the polynomial-native-kernels owner in architecture/package-graph.json before architecture:check.",
       "Adopt BitPolynomialStorage as the public GF(2)[x] canonical representation in a separate integration lane, with retained Sage differential tests.",
       "Add a generated opaque NTL GF2X resource for measured large multiplication, division, GCD, and factorization crossovers while preserving packed core storage at the public boundary.",
       "Consider a general compiler uint64 bitwise intrinsic/lowering only after this storage contract lands; this lane intentionally changes no compiler internals."

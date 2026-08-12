@@ -120,6 +120,7 @@
         "src/lib/sagejs/kernels/polynomial/__init__.py",
         "src/lib/sagejs/kernels/polynomial/arbitrary_prime_flint.py",
         "src/lib/sagejs/kernels/polynomial/extension_flint.py",
+        "src/lib/sagejs/kernels/polynomial/gf2_packed.py",
         "src/lib/sagejs/kernels/polynomial/packed_flint.py",
         "src/lib/sagejs/kernels/polynomial/packed_integer.py",
         "src/lib/sagejs/kernels/polynomial/packed_prime_field.py",
@@ -156,13 +157,14 @@
     },
     {
       "id": "polynomial-algorithms",
-      "layer": 3,
+      "layer": 4,
       "startup": "lazy",
       "max_source_bytes": 250000,
       "depends_on": [
         "core-runtime",
         "native-integration",
         "arithmetic",
+        "polynomial-native-kernels",
         "python-stdlib"
       ],
       "modules": ["sagejs.polynomial_algorithms"],

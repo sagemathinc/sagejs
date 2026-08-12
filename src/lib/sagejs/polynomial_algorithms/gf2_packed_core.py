@@ -26,7 +26,12 @@ from sagejs.kernels.polynomial.gf2_packed import (
     gf2_packed_weight,
     gf2_packed_xor,
 )
-
+from sagejs.native import (
+    UInt64Buffer,
+    is_compiled,
+    kernel_uint64_buffer,
+    kernel_uint64_zeros,
+)
 
 _WORD_BITS = 64
 _WORD_LIMIT = 1 << _WORD_BITS
@@ -51,10 +56,38 @@ def _exact_index(value: Any, description: str) -> int:
     return int(answer)
 
 
+def _storage_kernel() -> Any:
+    """Return a compiled packed kernel when this module has any native ABI."""
+    kernel = gf2_packed_valid
+    for candidate in (
+        gf2_packed_xor,
+        gf2_packed_shift_left,
+        gf2_packed_shift_right,
+        gf2_packed_coefficient,
+        gf2_packed_equal,
+        gf2_packed_weight,
+        gf2_packed_valid,
+    ):
+        if is_compiled(candidate):
+            kernel = candidate
+            break
+    return kernel
+
+
+def _canonical_word_buffer(words: Iterable[Any]) -> UInt64Buffer:
+    """Return packed host storage in Sage.js and an ordinary list in CPython."""
+    return kernel_uint64_buffer(_storage_kernel(), words)
+
+
+def _kernel_word_zeros(kernel: Any, length: int) -> UInt64Buffer:
+    """Allocate packed output storage for the active kernel implementation."""
+    return kernel_uint64_zeros(kernel, length)
+
+
 class BitPolynomialStorage:
     """An immutable canonical bit-packed polynomial value over `GF(2)`."""
 
-    __slots__ = ("_bit_length", "_hash", "_words")
+    __slots__ = ("_bit_length", "_words")
 
     def __init__(self, words: Iterable[Any], bit_length: Any) -> None:
         logical_length = _exact_index(bit_length, "bit length")
@@ -66,12 +99,27 @@ class BitPolynomialStorage:
             if word < 0 or word >= _WORD_LIMIT:
                 raise OverflowError("packed word is outside the unsigned 64-bit range")
             packed.append(word)
-        view = BitPolynomialView(packed, logical_length)
+        canonical_words = _canonical_word_buffer(packed)
+        view = BitPolynomialView(canonical_words, logical_length)
         if not gf2_packed_valid(view):
             raise ValueError("noncanonical packed GF(2) polynomial storage")
-        self._words = packed
+        self._words = canonical_words
         self._bit_length = logical_length
-        self._hash: int | None = None
+
+    @classmethod
+    def _from_kernel_output(
+        cls,
+        words: UInt64Buffer,
+        bit_length: int,
+        kernel: Any,
+    ) -> BitPolynomialStorage:
+        """Adopt canonical caller-owned kernel output without repacking it."""
+        if not is_compiled(kernel) and is_compiled(_storage_kernel()):
+            words = _canonical_word_buffer(words)
+        answer = cls.__new__(cls)
+        answer._words = words
+        answer._bit_length = bit_length
+        return answer
 
     @classmethod
     def zero(cls) -> BitPolynomialStorage:
@@ -150,7 +198,7 @@ class BitPolynomialStorage:
     @property
     def words(self) -> tuple[int, ...]:
         """Return an immutable snapshot of the canonical packed words."""
-        return tuple(self._words)
+        return tuple(int(self._words[index]) for index in range(len(self._words)))
 
     def _view(self) -> BitPolynomialView:
         return BitPolynomialView(self._words, self._bit_length)
@@ -170,7 +218,16 @@ class BitPolynomialStorage:
 
     def to_coefficients(self) -> list[int]:
         """Return canonical low-to-high coefficients without trailing zeros."""
-        return [self.coefficient(index) for index in range(self._bit_length)]
+        coefficients: list[int] = []
+        remaining = self._bit_length
+        for index in range(len(self._words)):
+            word = int(self._words[index])
+            count = min(_WORD_BITS, remaining)
+            for _offset in range(count):
+                coefficients.append(word % 2)
+                word //= 2
+            remaining -= count
+        return coefficients
 
     def __bool__(self) -> bool:
         return self._bit_length != 0
@@ -181,19 +238,30 @@ class BitPolynomialStorage:
         return bool(gf2_packed_equal(self._view(), other._view()))
 
     def __hash__(self) -> int:
-        if self._hash is None:
-            self._hash = hash((self._bit_length, tuple(self._words)))
-        return self._hash
+        return hash((self._bit_length, self.words))
 
     def __add__(self, other: object) -> BitPolynomialStorage:
         if not isinstance(other, BitPolynomialStorage):
             return NotImplemented
-        output = [0] * max(len(self._words), len(other._words))
-        output_length = [0]
+        output = _kernel_word_zeros(
+            gf2_packed_xor,
+            max(len(self._words), len(other._words)),
+        )
+        output_length = _kernel_word_zeros(gf2_packed_xor, 1)
         if not gf2_packed_xor(output, output_length, self._view(), other._view()):
             raise RuntimeError("packed GF(2) addition contract failed")
-        del output[_word_count(output_length[0]) :]
-        return type(self)(output, output_length[0])
+        logical_length = int(output_length[0])
+        logical_words = _word_count(logical_length)
+        if logical_words == len(output):
+            return type(self)._from_kernel_output(
+                output,
+                logical_length,
+                gf2_packed_xor,
+            )
+        return type(self)(
+            (int(output[index]) for index in range(logical_words)),
+            logical_length,
+        )
 
     def __xor__(self, other: object) -> BitPolynomialStorage:
         return self.__add__(other)
@@ -203,48 +271,79 @@ class BitPolynomialStorage:
         shift = _exact_index(amount, "shift amount")
         if shift < 0:
             raise ValueError("shift amount must be nonnegative")
+        if not self:
+            return type(self).zero()
         if self._bit_length != 0 and shift > _UINT64_LIMIT - self._bit_length:
             raise OverflowError("shifted bit length exceeds unsigned 64-bit range")
         output_length_value = 0 if not self else self._bit_length + shift
-        output = [0] * _word_count(output_length_value)
-        output_length = [0]
+        output = _kernel_word_zeros(
+            gf2_packed_shift_left,
+            _word_count(output_length_value),
+        )
+        output_length = _kernel_word_zeros(gf2_packed_shift_left, 1)
         if not gf2_packed_shift_left(output, output_length, self._view(), shift):
             raise RuntimeError("packed GF(2) left-shift contract failed")
-        return type(self)(output, output_length[0])
+        return type(self)._from_kernel_output(
+            output,
+            int(output_length[0]),
+            gf2_packed_shift_left,
+        )
 
     def shift_right(self, amount: Any) -> BitPolynomialStorage:
         """Return floor division by `x^amount`."""
         shift = _exact_index(amount, "shift amount")
         if shift < 0:
             raise ValueError("shift amount must be nonnegative")
+        if not self:
+            return type(self).zero()
         if shift > _UINT64_LIMIT:
             return type(self).zero()
         output_length_value = max(0, self._bit_length - shift)
-        output = [0] * _word_count(output_length_value)
-        output_length = [0]
+        output = _kernel_word_zeros(
+            gf2_packed_shift_right,
+            _word_count(output_length_value),
+        )
+        output_length = _kernel_word_zeros(gf2_packed_shift_right, 1)
         if not gf2_packed_shift_right(output, output_length, self._view(), shift):
             raise RuntimeError("packed GF(2) right-shift contract failed")
-        return type(self)(output, output_length[0])
+        return type(self)._from_kernel_output(
+            output,
+            int(output_length[0]),
+            gf2_packed_shift_right,
+        )
 
     def format(self, variable: str = "x") -> str:
         """Return Sage-style polynomial text over `GF(2)`."""
         if not isinstance(variable, str):
             raise TypeError("polynomial variable name must be a string")
         terms: list[str] = []
-        for exponent in range(self._bit_length - 1, -1, -1):
-            if self.coefficient(exponent) == 0:
-                continue
-            if exponent == 0:
-                terms.append("1")
-            elif exponent == 1:
-                terms.append(variable)
-            else:
-                terms.append(variable + "^" + str(exponent))
+        for word_index in range(len(self._words) - 1, -1, -1):
+            word = int(self._words[word_index])
+            top_offset = _WORD_BITS - 1
+            if word_index == len(self._words) - 1:
+                top_offset = (self._bit_length - 1) % _WORD_BITS
+            divisor = 1
+            for _offset in range(top_offset):
+                divisor *= 2
+            for offset in range(top_offset, -1, -1):
+                if word // divisor % 2 != 0:
+                    exponent = word_index * _WORD_BITS + offset
+                    if exponent == 0:
+                        terms.append("1")
+                    elif exponent == 1:
+                        terms.append(variable)
+                    else:
+                        terms.append(variable + "^" + str(exponent))
+                if divisor != 1:
+                    divisor //= 2
         return " + ".join(terms) if terms else "0"
 
     def to_bytes(self) -> bytes:
         """Return a stable versioned encoding of logical length and packed bits."""
-        payload = b"".join(word.to_bytes(8, "little") for word in self._words)
+        payload = b"".join(
+            int(self._words[index]).to_bytes(8, "little")
+            for index in range(len(self._words))
+        )
         payload = payload[: (self._bit_length + 7) // 8]
         return _SERIALIZATION_MAGIC + self._bit_length.to_bytes(8, "little") + payload
 
