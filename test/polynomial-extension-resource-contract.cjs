@@ -58,15 +58,20 @@ descriptor = extension_context_descriptor(3, 2, [1, 0, 1], "a")
 assert descriptor == (3, 2, (1, 0, 1), "a")
 unicode_descriptor = extension_context_descriptor(3, 2, [1, 0, 1], "α")
 assert unicode_descriptor[-1] == "α"
+subscript_descriptor = extension_context_descriptor(3, 2, [1, 0, 1], "a₁")
+assert subscript_descriptor[-1] == "a₁"
 
 # Context-dependent resources retain their own context reference. Closing the
 # public wrapper does not invalidate them; destruction waits for the last
 # dependent clear.
 assert context_lifetime_schedule([
-    "retain", "retain", "close_context", "release", "release",
+    "retain", "retain", "close_context", "retain_dependent",
+    "release", "release", "release",
 ]) == [
     (True, 1, False),
     (True, 2, False),
+    (False, 2, False),
+    (False, 3, False),
     (False, 2, False),
     (False, 1, False),
     (False, 0, True),
@@ -78,6 +83,16 @@ assert context_lifetime_schedule(["close_context", "close_context"]) == [
 assert_raises(
     ValueError,
     lambda: context_lifetime_schedule(["close_context", "retain"]),
+)
+assert_raises(
+    ValueError,
+    lambda: context_lifetime_schedule(["close_context", "retain_dependent"]),
+)
+assert_raises(
+    ValueError,
+    lambda: context_lifetime_schedule([
+        "retain", "close_context", "release", "retain_dependent"
+    ]),
 )
 assert_raises(ValueError, lambda: context_lifetime_schedule(["release"]))
 
@@ -186,6 +201,10 @@ assert_raises(
 assert_raises(
     TypeError,
     lambda: extension_context_descriptor(3, 2, [1, 0, 1], "_a"),
+)
+assert_raises(
+    TypeError,
+    lambda: extension_context_descriptor(3, 2, [1, 0, 1], "℘"),
 )
 assert_raises(
     ValueError,
@@ -347,17 +366,25 @@ a = field.gen()
 ring = PolynomialRing(field, "x")
 value = ring([1 + 2*a + 3*a**2, 4 + a**2, 2*a])
 unicode_name = GF(9, "α").variable_name()
+subscript_name = GF(9, "a₁").variable_name()
 try:
     GF(9, "_a")
     underscore_name_rejected = False
 except (TypeError, ValueError):
     underscore_name_rejected = True
+try:
+    GF(9, "℘")
+    nonalphanumeric_name_rejected = False
+except (TypeError, ValueError):
+    nonalphanumeric_name_rejected = True
 print(json.dumps({
     "coordinates": [[int(value) for value in coefficient.list()]
                     for coefficient in value.list()],
     "strings": [str(coefficient) for coefficient in value.list()],
     "unicodeName": unicode_name,
+    "subscriptName": subscript_name,
     "underscoreNameRejected": underscore_name_rejected,
+    "nonalphanumericNameRejected": nonalphanumeric_name_rejected,
 }))
 `;
   const output = run(sage, ["-c", sageOracle]);
@@ -367,6 +394,8 @@ print(json.dumps({
       coordinates.slice(6, 9)],
     strings,
     unicodeName: "α",
+    subscriptName: "a₁",
     underscoreNameRejected: true,
+    nonalphanumericNameRejected: true,
   });
 });
