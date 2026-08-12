@@ -1070,6 +1070,31 @@ class MatrixSpaceParent(sage.Parent):
             raise TypeError("rational storage requires QQ")
         if len(entries) != self._rows * self._cols:
             raise ValueError("matrix entry count does not match dimensions")
+        if type(entries) is list:
+            try:
+                packed_integers = runtime.exact_integer_values_to_packed_bytes(entries)
+            except TypeError:
+                packed_integers = runtime.undefined
+            if packed_integers is not runtime.undefined:
+                ffi = _flint_ffi_module()
+                region = ffi.FlintByteRegion.from_bytes(packed_integers)
+                integer_resource = runtime.undefined
+                try:
+                    integer_resource = ffi.fmpz_matrix_deserialize_entries(
+                        region,
+                        self._rows,
+                        self._cols,
+                    )
+                    rational_resource = ffi.fmpq_matrix_from_fmpz(integer_resource)
+                    try:
+                        return self._from_fmpq_matrix_resource(rational_resource)
+                    except Exception:
+                        rational_resource.close()
+                        raise
+                finally:
+                    if integer_resource is not runtime.undefined:
+                        integer_resource.close()
+                    region.close()
         parts = []
         for entry in entries:
             if runtime.is_exact_integer(entry):
@@ -1797,6 +1822,7 @@ class Matrix(sage.Element):
         self._integer_entries_cache: Any = runtime.undefined
         self._integer_storage_cache: Any = runtime.undefined
         self._rational_storage_cache: Any = runtime.undefined
+        self._exact_host_values_cache: Any = runtime.undefined
         if _is_packed_uint64(native_value):
             self._prime_residues_cache = native_value
         elif isinstance(native_value, _FmpzMatrixResourceStorage):
@@ -2065,22 +2091,33 @@ class Matrix(sage.Element):
         `QQ` resources.  It deliberately does not populate the uniform-limb
         compatibility buffers used by a few legacy compiled kernels.
         """
-        count = self.nrows() * self.ncols()
-        if self._has_fmpz_matrix_resource():
-            region = _flint_ffi_module().fmpz_matrix_serialize(self._integer_resource())
-            values = runtime.exact_integer_values_from_packed_bytes(
-                region.take_bytes(), count, 24
-            )
-            return [runtime.normalize_integer(value) for value in values]
-        if self._has_fmpq_matrix_resource():
-            parts = runtime.exact_integer_values_from_packed_bytes(
-                self._packed_rationals(),
-                2 * count,
-            )
-            return runtime.reduced_rational_values_from_parts(
-                parts, _untyped(sage.Rational), sage.QQ
-            )
-        raise TypeError("bulk exact host views require a generated matrix resource")
+        if self._exact_host_values_cache is runtime.undefined:
+            count = self.nrows() * self.ncols()
+            if self._has_fmpz_matrix_resource():
+                region = _flint_ffi_module().fmpz_matrix_serialize(
+                    self._integer_resource()
+                )
+                values = runtime.exact_integer_values_from_packed_bytes(
+                    region.take_bytes(), count, 24
+                )
+                self._exact_host_values_cache = [
+                    runtime.normalize_integer(value) for value in values
+                ]
+            elif self._has_fmpq_matrix_resource():
+                parts = runtime.exact_integer_values_from_packed_bytes(
+                    self._packed_rationals(),
+                    2 * count,
+                )
+                self._exact_host_values_cache = (
+                    runtime.reduced_rational_values_from_parts(
+                        parts, _untyped(sage.Rational), sage.QQ
+                    )
+                )
+            else:
+                raise TypeError(
+                    "bulk exact host views require a generated matrix resource"
+                )
+        return self._exact_host_values_cache
 
     def _exact_host_sequence(
         self,
@@ -2483,7 +2520,7 @@ class Matrix(sage.Element):
                     self.nrows(),
                     self.ncols(),
                 )
-            return self._exact_host_values()
+            return list(self._exact_host_values())
         if self._has_packed_rational_storage():
             numerators = _integer_buffer_values(self._rational_numerators())
             denominators = _integer_buffer_values(self._rational_denominators())
@@ -3544,6 +3581,7 @@ class Matrix(sage.Element):
         self._charpoly_cache = runtime.map()
         self._minpoly_cache = runtime.map()
         self._prime_host_values_cache = runtime.undefined
+        self._exact_host_values_cache = runtime.undefined
         self._row_vectors_cache = runtime.undefined
         self._column_vectors_cache = runtime.undefined
 
