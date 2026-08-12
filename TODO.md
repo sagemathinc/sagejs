@@ -13,9 +13,6 @@
   better served by FLINT.
 - Give dense `ZZ` rank a cheap generated modular full-rank certificate before
   exact FLINT elimination, while preserving an explicit exact-algorithm path.
-- Finish the public `ZZ[x]`, `QQ[x]`, and small-prime `GF(p)[x]` core API with
-  single-computation quotient/remainder, indexing, derivatives, and Sage
-  differential tests.
 - Make generated-resource lifetime accounting and finalizer backpressure
   uniformly cheap for large temporary exact objects; explicit close remains
   deterministic and finalization remains a safe fallback.
