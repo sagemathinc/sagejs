@@ -535,6 +535,15 @@ def _builtins_call_special(
     call_args: list[Any],
 ) -> Any:
     method = _builtins_get_special_member(value, name)
+    return _builtins_call_selected_special(value, method, call_args)
+
+
+def _builtins_call_selected_special(
+    value: Any,
+    method: Any,
+    call_args: list[Any],
+) -> Any:
+    """Bind and invoke one special method selected from the operand type."""
     if _builtins_get_member(method, "__staticmethod__") is True:
         static_target = _builtins_get_member(method, "__func__")
         if runtime.strict_equal(runtime.jstype(static_target), "function"):
@@ -544,6 +553,13 @@ def _builtins_call_special(
         explicit_args = call_args
         explicit_args.unshift(value)  # type: ignore[attr-defined]
         return runtime.reflect.apply(method, runtime.undefined, explicit_args)
+    if _builtins_member_is_function(method, "__get__"):
+        bound = _builtins_call_member(
+            method,
+            "__get__",
+            [value, _builtins_get_member(value, "constructor")],
+        )
+        return runtime.reflect.apply(bound, runtime.undefined, call_args)
     return runtime.reflect.apply(method, value, call_args)
 
 
@@ -4419,11 +4435,51 @@ def ρσ_setattr(value: Any, name: _Str, member: Any) -> None:
             return _builtins_call_member(descriptor, "__set__", [value, member])
     if _builtins_is_python_class(value):
         _builtins_descriptor_epoch += 1
+        prototype_member = member
+        if (
+            runtime.strict_equal(runtime.jstype(member), "function")
+            and not _builtins_is_python_class(member)
+            and _builtins_get_member(member, "__staticmethod__") is not True
+            and _builtins_get_member(member, "__classmethod__") is not True
+        ):
+            # Python function objects always implement the non-data descriptor
+            # protocol when they are installed on a class, including functions
+            # assigned after class creation with `setattr`. Compiler-emitted
+            # instance calls to an existing source method use JavaScript
+            # receiver syntax. When such a method is replaced, its prototype
+            # needs the same explicit-self adapter used by `dataclasses` while
+            # class lookup continues to expose the original function. New and
+            # inherited methods continue through normal descriptor lookup.
+            runtime.reflect.set(member, "__python_descriptor__", True)
+            if (
+                _builtins_get_member(member, "__func__") is not runtime.undefined
+                and _builtins_get_member(member, "__self__") is runtime.undefined
+            ):
+                # Class access to a compiler-emitted instance method produces
+                # an explicit-receiver adapter. Installing that value back on
+                # a class restores the underlying receiver-style method.
+                prototype_member = _builtins_get_member(member, "__func__")
+            else:
+                existing_member = runtime.undefined
+                existing_descriptor = runtime.object.getOwnPropertyDescriptor(
+                    value.prototype, name
+                )
+                if existing_descriptor is not runtime.undefined:
+                    existing_member = runtime.reflect.get(existing_descriptor, "value")
+                if (
+                    _builtins_get_member(member, "__self__") is runtime.undefined
+                    and _builtins_get_member(
+                        existing_member,
+                        "__sagejs_method_signature_excludes_self__",
+                    )
+                    is True
+                ):
+                    prototype_member = runtime.native_method_adapter(member)
         if _builtins_member_is_function(
             member, "__set__"
         ) or _builtins_member_is_function(member, "__delete__"):
             _builtins_data_descriptor_names.add(name)
-        runtime.reflect.set(value.prototype, name, member)
+        runtime.reflect.set(value.prototype, name, prototype_member)
         if _builtins_member_is_function(member, "__set_name__"):
             _builtins_call_member(member, "__set_name__", [value, name])
     if not runtime.reflect.set(value, name, member):
@@ -5403,6 +5459,54 @@ def ρσ_divmod(left: Any, right: Any) -> Any:
         quotient = runtime.math.floor(runtime.native_div(left, right))
         remainder = runtime.native_sub(left, runtime.native_mul(quotient, right))
         return runtime.math_tuple([quotient, remainder])
+    left_class = _builtins_get_member(left, "constructor")
+    right_class = _builtins_get_member(right, "constructor")
+    right_reflected_descriptor = runtime.object.getOwnPropertyDescriptor(
+        _builtins_get_member(right_class, "prototype"),
+        "__rdivmod__",
+    )
+    right_reflected = (
+        runtime.undefined
+        if right_reflected_descriptor is runtime.undefined
+        else runtime.reflect.get(right_reflected_descriptor, "value")
+    )
+    left_reflected = _builtins_prototype_member(
+        _builtins_get_member(left_class, "prototype"),
+        "__rdivmod__",
+    )
+    left_direct = _builtins_get_special_member(left, "__divmod__")
+    right_reflected_selected = _builtins_get_special_member(right, "__rdivmod__")
+    right_reflected_function = _builtins_get_member(right_reflected, "__func__")
+    if right_reflected_function is runtime.undefined:
+        right_reflected_function = right_reflected
+    left_reflected_function = _builtins_get_member(left_reflected, "__func__")
+    if left_reflected_function is runtime.undefined:
+        left_reflected_function = left_reflected
+    reflected_first = (
+        _builtins_is_python_class(left_class)
+        and _builtins_is_python_class(right_class)
+        and left_class is not right_class
+        and ρσ_issubclass(right_class, left_class)
+        and right_reflected_descriptor is not runtime.undefined
+        and right_reflected_function is not left_reflected_function
+        and right_reflected_selected is not runtime.undefined
+    )
+    if reflected_first:
+        result = _builtins_call_selected_special(
+            right, right_reflected_selected, [left]
+        )
+        if result is not NotImplemented:
+            return result
+    if left_direct is not runtime.undefined:
+        result = _builtins_call_selected_special(left, left_direct, [right])
+        if result is not NotImplemented:
+            return result
+    if not reflected_first and right_reflected_selected is not runtime.undefined:
+        result = _builtins_call_selected_special(
+            right, right_reflected_selected, [left]
+        )
+        if result is not NotImplemented:
+            return result
     if runtime.equals(right, 0):
         raise runtime.zero_division_error("integer division or modulo by zero")
     quotient = ρσ_operator_floordiv(left, right)

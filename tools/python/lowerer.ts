@@ -2779,6 +2779,28 @@ export class PythonCstLowerer {
             args,
           });
         }
+        if (details?.python_class) {
+          // Any Python class can be mutated after construction, including
+          // through aliased `setattr`, helpers, metaclasses, or imported code.
+          // All class-level calls therefore require live descriptor lookup;
+          // otherwise replacement of an instance, static, or class method by
+          // an arbitrary descriptor could retain a stale binding mode.
+          return this.make("AST_Call", node, {
+            expression: this.make("AST_Call", functionNode, {
+              expression: this.make("AST_SymbolRef", functionNode, {
+                name: "ρσ_getattr_internal",
+              }),
+              args: [
+                this.lowerExpression(ownerNode),
+                this.make("AST_String", functionNode, { value: method }),
+                this.make("AST_SymbolRef", functionNode, {
+                  name: "ρσ_getattr_missing",
+                }),
+              ],
+            }),
+            args,
+          });
+        }
         if (!staticMethod && !classvar && hasKeywordArguments) {
           return this.make("AST_Call", node, {
             expression: callable,

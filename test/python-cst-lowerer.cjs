@@ -962,6 +962,53 @@ test("callable class variables retain runtime descriptor lookup", async () => {
   }
 });
 
+test("dynamically installed class methods retain live descriptor lookup", async () => {
+  const compiler = createCompiler();
+  const frontend = await createPythonCompilerFrontend(compiler, "python");
+  try {
+    const ast = frontend.parse(
+      "class Dynamic:\n" +
+        "    pass\n" +
+        "name = 'add'\n" +
+        "setattr(Dynamic, name, late_method)\n" +
+        "result = Dynamic.add(Dynamic(), 3)\n",
+      parserOptions,
+    );
+    const output = new compiler.OutputStream(outputOptions);
+    ast.print(output);
+    const javascript = output.get();
+    assert.match(javascript, /ρσ_getattr_internal/);
+    assert.match(javascript, /Dynamic, "add", ρσ_getattr_missing/);
+    assert.doesNotMatch(javascript, /Dynamic\.prototype\.add\.call/);
+  } finally {
+    frontend.close();
+  }
+});
+
+test("keyword instance calls retain live descriptor lookup", async () => {
+  const compiler = createCompiler();
+  const frontend = await createPythonCompilerFrontend(compiler, "python");
+  try {
+    const ast = frontend.parse(
+      "class Dynamic:\n" +
+        "    pass\n" +
+        "setattr(Dynamic, 'compute', late_method)\n" +
+        "result = Dynamic().compute(value=3)\n",
+      parserOptions,
+    );
+    const output = new compiler.OutputStream(outputOptions);
+    ast.print(output);
+    const javascript = output.get();
+    assert.match(
+      javascript,
+      /ρσ_getattr_internal\(ρσ_expr_temp, "compute", ρσ_getattr_missing\)/,
+    );
+    assert.doesNotMatch(javascript, /ρσ_expr_temp\.compute/);
+  } finally {
+    frontend.close();
+  }
+});
+
 test("context managers receive Python exception metadata", async () => {
   const compiler = createCompiler();
   const frontend = await createPythonCompilerFrontend(compiler, "python");
@@ -1007,7 +1054,11 @@ test("known class methods with keywords receive the class object", async () => {
     const javascript = output.get();
     assert.match(
       javascript,
-      /ρσ_interpolate_kwargs\(Cache, Cache\.for_config/,
+      /ρσ_getattr_internal\)\(Cache, "for_config", ρσ_getattr_missing\)/,
+    );
+    assert.match(
+      javascript,
+      /ρσ_interpolate_kwargs\(ρσ_expr_temp/,
     );
   } finally {
     frontend.close();
@@ -1035,7 +1086,7 @@ test("inherited class methods with keywords receive the referenced class", async
     const javascript = output.get();
     assert.match(
       javascript,
-      /Function, Function\.from_parent/,
+      /ρσ_getattr_internal\)\(Function, "from_parent", ρσ_getattr_missing\)/,
     );
     assert.doesNotMatch(
       javascript,

@@ -2362,6 +2362,8 @@ class Matrix(sage.Element):
         if self._has_nmod_matrix_resource():
             if width not in [1, 2, 4, 8]:
                 raise ValueError("unsupported packed residue width")
+            if int(_untyped(self.base_ring()).characteristic()) - 1 >= 1 << (8 * width):
+                raise OverflowError("a matrix residue does not fit the requested width")
             region = _flint_ffi_module().nmod_matrix_serialize(
                 self._nmod_resource(), width
             )

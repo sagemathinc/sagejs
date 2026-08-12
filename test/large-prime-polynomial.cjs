@@ -27,7 +27,6 @@ function run(source, environment = {}) {
 }
 
 const source = String.raw`
-import sagejs.runtime as runtime
 from sagejs.kernels.polynomial.packed_flint import (
     flint_packed_prime_field_polynomial_add,
     flint_packed_prime_field_polynomial_derivative,
@@ -57,8 +56,8 @@ expected_coefficients = [
 ]
 assert f.coefficients(sparse=False) == expected_coefficients
 assert list(f) == expected_coefficients
-assert f._native is runtime.undefined
-assert g._native is runtime.undefined
+assert not hasattr(f, "_native")
+assert not hasattr(g, "_native")
 assert str(f + g) == "2305843009213693950*x^5 + 2305843009213693946*x^3 + 12*x + 14"
 assert str(f - g) == "2305843009213693950*x^5 + x^3 + 2*x + 2305843009213693943"
 assert str(-f) == "x^5 + 2*x^3 + 2305843009213693944*x + 2305843009213693948"

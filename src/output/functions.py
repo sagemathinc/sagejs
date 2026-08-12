@@ -987,8 +987,25 @@ def print_function_call(self, output):
         else:
             if not is_repeatable:
                 if is_node_type(self.expression, AST_Dot):
-                    output.print("ρσ_expr_temp")
-                    print_getattr(self.expression, output, True)
+                    if (
+                        output.options.python_attributes
+                        and not self.expression.property.startswith("ρσ_")
+                        and "." not in self.expression.property
+                    ):
+                        # Keyword interpolation must receive the result of
+                        # Python descriptor lookup, not the raw JavaScript
+                        # prototype member.  This matters for descriptors and
+                        # methods installed after class construction.  The
+                        # receiver expression has already been evaluated into
+                        # the temporary, so spell the live lookup explicitly.
+                        output.print("ρσ_getattr_internal(ρσ_expr_temp")
+                        output.comma()
+                        output.print(JSON.stringify(self.expression.property))
+                        output.comma()
+                        output.print("ρσ_getattr_missing)")
+                    else:
+                        output.print("ρσ_expr_temp")
+                        print_getattr(self.expression, output, True)
                 elif no_call and not self.direct_call:
                     output.print(
                         "(ρσ_expr_temp?.__call__?.bind(ρσ_expr_temp) ?? ρσ_expr_temp)"

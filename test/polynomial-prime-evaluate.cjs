@@ -18,6 +18,24 @@ const kernelSource = join(
   "polynomial",
   "packed_prime_field.py",
 );
+const matrixKernelSource = join(
+  root,
+  "src",
+  "lib",
+  "sagejs",
+  "kernels",
+  "matrix",
+  "dense_prime_field.py",
+);
+const matrixFlintKernelSource = join(
+  root,
+  "src",
+  "lib",
+  "sagejs",
+  "kernels",
+  "matrix",
+  "dense_prime_field_flint.py",
+);
 
 function runSage(source, environment) {
   const result = spawnSync(sagejs, ["--python"], {
@@ -135,13 +153,19 @@ test("packed prime polynomial scalar evaluation is native and source-transparent
     assert.match(explanation.stdout, /host-isolated core: yes/);
     assert.match(explanation.stdout, /0 callbacks inside core/);
 
-    const compilation = spawnSync(
-      sagejs,
-      ["native", "compile", kernelSource, "--cache-root", cache],
-      { cwd: root, encoding: "utf8", timeout: 60_000 },
-    );
-    if (compilation.error) throw compilation.error;
-    assert.equal(compilation.status, 0, compilation.stderr || compilation.stdout);
+    for (const source of [
+      kernelSource,
+      matrixKernelSource,
+      matrixFlintKernelSource,
+    ]) {
+      const compilation = spawnSync(
+        sagejs,
+        ["native", "compile", source, "--cache-root", cache],
+        { cwd: root, encoding: "utf8", timeout: 60_000 },
+      );
+      if (compilation.error) throw compilation.error;
+      assert.equal(compilation.status, 0, compilation.stderr || compilation.stdout);
+    }
 
     const native = runSage(witness, {
       SAGEJS_NATIVE_CACHE_DIR: cache,

@@ -2127,9 +2127,9 @@ class PolynomialElement(sage.Element):
         return self._coefficient_length() == 0
 
     def is_one(self) -> bool:
-        return self._coefficient_length() == 1 and self[0] == self._parent.base_ring()(
-            1
-        )
+        return self._coefficient_length() == 1 and self.__getitem__(
+            0
+        ) == self._parent.base_ring()(1)
 
     def __bool__(self) -> bool:
         return not self.is_zero()
@@ -2920,12 +2920,12 @@ class PolynomialElement(sage.Element):
             finally:
                 result.close()
         base = self._parent.base_ring()
+        value_parent = runtime.coercion_model.parentOf(value)
         # Exact integers and elements of this precise prime field have one
         # canonical residue. Other parents must keep using the coercion model
         # below, including extension fields, matrices, and incompatible fields.
         if _packed_polynomial_kind(base) == "GF_ARB" and (
-            runtime.is_exact_integer(value)
-            or getattr(value, "_parent", runtime.undefined) is base
+            runtime.is_exact_integer(value) or value_parent is base
         ):
             scalar = _untyped(base)(value)
             result = _flint_ffi_module().fmpz_mod_polynomial_evaluate(
@@ -2933,8 +2933,7 @@ class PolynomialElement(sage.Element):
             )
             return scalar._new_reduced(result)
         if _packed_polynomial_kind(base) == "GF" and (
-            runtime.is_exact_integer(value)
-            or getattr(value, "_parent", runtime.undefined) is base
+            runtime.is_exact_integer(value) or value_parent is base
         ):
             scalar = _untyped(base)(value)
             if _wide_prime_polynomial(base):
@@ -2958,6 +2957,11 @@ class PolynomialElement(sage.Element):
                     base._modulus,
                 )
             return scalar._new_reduced(result)
+        # Validate that Horner evaluation has a canonical common parent before
+        # entering overloaded arithmetic. This converts parentless values and
+        # incompatible numerical domains into Python `TypeError` instead of
+        # leaking internal attribute lookup failures.
+        runtime.coercion_model.resolveParents(base, value_parent)
         coefficients = self.coefficients()
         answer = self._parent.base_ring()(0)
         for coefficient in reversed(coefficients):
