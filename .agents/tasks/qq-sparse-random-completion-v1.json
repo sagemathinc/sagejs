@@ -1,0 +1,97 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "qq-sparse-random-completion-v1",
+  "title": "QQ Sparse Random Completion v1 contract",
+  "lane": "integration",
+  "status": "proposed",
+  "owner": "user",
+  "objective": "Freeze the source-transparent generated-resource completion contract for Sage-compatible dense QQ random_matrix with reciprocal-uniform 1/n values and arbitrary exact numerator/denominator bounds, eliminating host entry loops while preserving seeded stream publication, portable fallback, lifecycle safety, and competitive warm performance",
+  "base_commit": "9ba858a415d6ca6c91538865526bae4effc0cb34",
+  "claims": [
+    ".agents/tasks/qq-sparse-random-completion-v1.json"
+  ],
+  "dependencies": [
+    "word-prime-matrix-public"
+  ],
+  "references": [
+    ".agents/tasks/sparse-random-matrix-contract.json",
+    ".agents/tasks/sparse-random-public.json",
+    "/home/user/upstream/sage/src/sage/matrix/matrix_rational_dense.pyx",
+    "/home/user/upstream/sage/src/sage/libs/gmp/randomize.pxd",
+    "planned-claim:src/lib/sagejs/linear_algebra/sparse_random_public.py",
+    "planned-claim:src/baselib/matrix.py",
+    "planned-claim:test/public-sparse-random.cjs",
+    "planned-claim:test/linear-sparse-random.cjs",
+    "planned-claim:bench/public-sparse-random.cjs",
+    "planned-claim:bench/results/linux-x64-qq-sparse-random-completion-v1.json",
+    "conditional-planned-claim:architecture/native-kernels.json",
+    "implementation:extend the existing typed-Python FmpqMatrix fill boundary; do not add a handwritten C randomizer, an operation-specific host adapter, or a packed intermediate matrix",
+    "implementation:generate an unbiased arbitrary-width integer from the shared 32-bit LCG by concatenating the minimum number of words and rejecting above floor(2^(32k)/bound)*bound",
+    "implementation:preserve the one-word path bit for bit for bounds at most 2^32, including rejection, signs, collision replacement, and publication of the last consumed word",
+    "implementation:lower exact numerator and denominator widths as exact int values and pass each completed value directly to the already-declared fmpq_matrix_set_entry inside the isolated native call",
+    "implementation:lower reciprocal-uniform 1/n generation in typed Python using the existing 31-bit centered-numerator and positive-denominator word rules, including nonzero retry semantics",
+    "boundary-gate:one preallocated owned FmpqMatrix resource enters one synchronous compiled fill call and becomes public only after success; no position list, rational list, per-entry host call, repr parsing, or full-matrix conversion is permitted",
+    "boundary-gate:the compiled body may call the declared fmpq_matrix_set_entry for each selected entry because those calls remain inside the isolated C core and never cross the JavaScript host boundary",
+    "lifecycle-gate:all parameter validation that can fail occurs before publication; failure closes the sole resource exactly once and leaves the shared random state unchanged unless the current portable semantics already consumed a word",
+    "semantic-gate:numeric density uses nonzero values, floor(density*ncols) column draws per row with replacement, and last-value-wins collisions; omitted or None density fills row-major and permits zero",
+    "semantic-gate:density at most zero returns before bound coercion; positive density coerces both bound+1 expressions before a zero-draw or zero-axis return, matching Sage's observable order",
+    "semantic-gate:distribution 1/n ignores bound magnitudes for sampling but still performs Sage's eager bound coercions; every other distribution label selects the bounded rational rule",
+    "semantic-gate:den_bound=0 produces integral values, num_bound must remain positive, denominators are positive, results are canonical, and explicit density=1 never emits zero",
+    "determinism-gate:for seeds 0, 1, 7, 31, and 2^32-1 compare exact small-matrix entries plus the next random() value between native and SAGEJS_NATIVE_DISABLE=1 for one-word bounded, 80/97-bit bounded, 521-bit skewed, sparse 1/n, omitted-density 1/n, and collision-heavy shapes",
+    "compatibility-gate:the existing seeded one-word bounded witnesses are unchanged byte for byte; the optimized and portable paths consume exactly the same number and order of shared 32-bit words even after rejection or nonzero retry",
+    "sage-oracle-gate:SageMath comparisons cover density, collision replacement, zero admissibility, nonzero enforcement, rational bounds, denominator positivity, 1/n support, eager coercion order, and deterministic reseeding; exact Sage and Sage.js entries are not equated because their PRNG implementations intentionally differ",
+    "scaling-gate:80-bit, 521-bit, and strongly skewed numerator/denominator bounds demonstrate work proportional to selected entries times generated words, not matrix area times maximum limb capacity",
+    "inspectability-gate:sagejs native explain reports the actual typed source body, direct generated FLINT calls, exact-integer promotion, and no host callback or implementation selected by function name",
+    "architecture-gate:no native compiler implementation file and no shared FFI declaration should change; if exact int parameters or direct FmpqMatrix mutation expose a generic compiler defect, stop and coordinate a separate compiler-infrastructure lane rather than adding a special-case adapter",
+    "benchmark-baseline:2026-08-12 linux-x64 warm 200x300 density=.2 medians were about 1000 ms for 80-bit bounds and 597 ms for 1/n in Sage.js, versus 1.81 ms and 1.35 ms in SageMath; same-shape small bounded Sage.js was about 1.93 ms",
+    "benchmark:measure separate startup, first-call compilation/loading, and at least five warm medians for 200x300 density=.2 with bounds 5, 2^80, asymmetric 2^17/2^521, and 1/n, plus a 1000x1000 density=.1 scaling witness",
+    "benchmark-gate:on an uncontended linux-x64 host each 200x300 arbitrary-bound and 1/n warm median is at most four times SageMath and at most five times the same-shape small-bound Sage.js native median; retain raw environment and sample data rather than hard-coding one host's milliseconds"
+  ],
+  "architecture": {
+    "strategy": "source-transparent-native",
+    "fallback": "same-source",
+    "oracles": [
+      "sage",
+      "cpython",
+      "javascript",
+      "Sage.js native-disabled seeded sparse-random path"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "node test/public-sparse-random.cjs",
+    "node test/linear-sparse-random.cjs",
+    "node bench/public-sparse-random.cjs --check",
+    "sagejs native explain src/lib/sagejs/linear_algebra/sparse_random_public.py --function sparse_random_fmpq",
+    "pnpm architecture:check",
+    "pnpm test:portable",
+    "pnpm test:baselib:strict",
+    "pnpm test:native"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "Current public QQ sparse random construction already has the right ownership boundary: one generated FmpqMatrix resource is filled by source-transparent typed Python and published transactionally. Its bounded executor is fast only while both widths fit one 32-bit word. Wider exact bounds and reciprocal-uniform 1/n deliberately fall back to Python-level rational construction, giving measured 200x300 density=.2 warm medians near 1000 ms and 597 ms while SageMath takes about 1.81 ms and 1.35 ms. This proposal completes those two value generators inside the existing isolated resource call. Arbitrary-width uniform sampling concatenates the same deterministic 32-bit stream with unbiased rejection; 1/n copies the already-public Sage.js stream semantics. No new C, resource representation, FFI declaration, packed matrix, or compiler specialization is expected.",
+    "risks": [
+      "The active word-prime matrix lane currently owns matrix.py, sparse_random.py, and adjacent public executors. Implementation must wait for that lane to integrate, then take fresh narrow claims and revalidate its random-stream fixtures.",
+      "Exact multiword rejection must treat the first host-consumed state as the first high word and publish the last consumed state. Advancing once too early or combining words in the opposite order will preserve distributions while silently breaking seeded reproducibility.",
+      "SageMath uses separate GMP and c_random state internally, whereas Sage.js intentionally has one 32-bit LCG. Sage is therefore a semantic and statistical oracle here; forced-native versus native-disabled Sage.js is the exact entry and next-state oracle.",
+      "A naive exact implementation can allocate temporary GMP values for every word. Benchmark and scaling gates must distinguish unavoidable arbitrary-precision work from accidental per-word host calls or quadratic temporary growth.",
+      "The current generated fmpq_matrix_set_entry updates retained-byte accounting after every entry. It is already competitive for one-word values, but 521-bit stress measurements should confirm that accounting does not dominate; any optimization must remain generic resource bookkeeping rather than a random-matrix exception.",
+      "Windows and portable hosts must retain correct same-source or storage-neutral fallback behavior when native kernels or generated FLINT resources are unavailable; optimizing Linux must not make native execution mandatory."
+    ],
+    "next_steps": [
+      "Wait for word-prime-matrix-public to integrate and release matrix.py plus sparse_random.py; rebase this proposal on that reviewed tip before activating implementation claims.",
+      "Prototype the arbitrary-width unbiased word combiner as an ordinary exact-int helper and confirm with sagejs native explain that it lowers generically without a compiler change.",
+      "Extend the existing FmpqMatrix executor with explicit bounded and reciprocal modes, keeping one-word output and next-state fixtures unchanged before adding large-bound cases.",
+      "Add exact native-versus-disabled fixtures, Sage semantic probes, direct invalid-parameter and resource cleanup tests, then record clean warm comparative samples on linux-x64 and macos-arm64.",
+      "Integrate only if the one-call trace and ratio gates pass; otherwise profile the isolated core and open a generic exact-integer or resource-accounting lane rather than restoring host loops."
+    ]
+  }
+}
