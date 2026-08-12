@@ -169,6 +169,7 @@ from sagejs.kernels.matrix.dense_prime_field import (
     dense_prime_field_matrix_rank,
     dense_prime_field_matrix_rref,
     dense_prime_field_matrix_right_kernel,
+    dense_prime_field_matrix_solution_from_rref,
     dense_prime_field_matrix_solve,
 )
 
@@ -347,6 +348,91 @@ for modulus in [2, 3, 5, 101, 65521, 4294967291]:
     packed_legacy_solution = matrix(
         field, size, 3, legacy_solution.list())
     assert left * packed_legacy_solution == right
+
+for modulus in [2, 7, 97]:
+    field = GF(modulus)
+
+    # Sage chooses a particular solution by setting every free variable to
+    # zero. Exercise missing pivot columns and multiple right-hand sides.
+    under_left = matrix(field, 2, 4, [
+        0, 1, 2, 0,
+        0, 0, 0, 1,
+    ])
+    under_right = matrix(field, 2, 2, [3, 4, 5, 6])
+    under_solution = under_left.solve_right(under_right)
+    assert under_solution == matrix(field, 4, 2, [
+        0, 0,
+        3, 4,
+        0, 0,
+        5, 6,
+    ])
+    assert under_left * under_solution == under_right
+
+    expected = matrix(field, 2, 2, [3, 4, 5, 6])
+    over_left = matrix(field, 3, 2, [
+        1, 2,
+        2, 4,
+        0, 1,
+    ])
+    over_right = over_left * expected
+    over_solution = over_left.solve_right(over_right)
+    assert over_solution == expected
+    assert over_left * over_solution == over_right
+
+    inconsistent = matrix(field, 3, 2, over_right.list())
+    inconsistent[1, 0] += 1
+    try:
+        over_left.solve_right(inconsistent)
+        raise AssertionError('inconsistent rectangular system unexpectedly solved')
+    except ValueError:
+        pass
+
+    singular = matrix(field, 2, 2, [1, 2, 2, 4])
+    singular_right = vector(field, [3, 6])
+    singular_solution = singular.solve_right(singular_right)
+    assert singular_solution == vector(field, [3, 0])
+    assert singular * singular_solution == singular_right
+    try:
+        singular.solve_right(vector(field, [3, 1]))
+        raise AssertionError('inconsistent singular system unexpectedly solved')
+    except ValueError:
+        pass
+
+    empty_rows = matrix(field, 0, 3).solve_right(matrix(field, 0, 2))
+    assert empty_rows.dimensions() == (3, 2)
+    assert empty_rows.list() == [field(0) for _index in range(6)]
+    empty_columns = matrix(field, 3, 0).solve_right(matrix(field, 3, 2, 0))
+    assert empty_columns.dimensions() == (0, 2)
+    assert empty_columns.list() == []
+    empty_right = under_left.solve_right(matrix(field, 2, 0))
+    assert empty_right.dimensions() == (4, 0)
+    try:
+        matrix(field, 3, 0).solve_right(matrix(field, 3, 1, [0, 1, 0]))
+        raise AssertionError('inconsistent empty-column system unexpectedly solved')
+    except ValueError:
+        pass
+
+reduced_entries = [
+    1, 0, 2, 3, 4,
+    0, 1, 5, 6, 1,
+    0, 0, 0, 0, 0,
+]
+particular = [99 for _index in range(6)]
+assert dense_prime_field_matrix_solution_from_rref(
+    DensePrimeMatrix(reduced_entries, 3, 5, 7),
+    3,
+    2,
+    particular,
+)
+assert particular == [3, 4, 6, 1, 0, 0]
+unchanged = [42 for _index in range(6)]
+assert not dense_prime_field_matrix_solution_from_rref(
+    DensePrimeMatrix([0, 0, 0, 1, 0], 1, 5, 7),
+    3,
+    2,
+    unchanged,
+)
+assert unchanged == [42 for _index in range(6)]
 print("dense-prime-production-ok")
 `;
 
@@ -428,6 +514,11 @@ print("dense-prime-independent-ok")
       functions.get("dense_prime_field_matrix_solve").dependencies,
       ["_dense_prime_field_matrix_rref_inplace"],
     );
+    const solutionFromRref = functions.get(
+      "dense_prime_field_matrix_solution_from_rref",
+    );
+    assert.deepEqual(solutionFromRref.dependencies, []);
+    assert.equal(solutionFromRref.kernelKind, "prime-field-source");
     assert.equal(
       functions.get("dense_prime_field_matrix_random_fill").kernelKind,
       "prime-field-source",
@@ -444,6 +535,7 @@ print("dense-prime-independent-ok")
     assert.match(header, /sagejs_source_u64_buffer/);
     assert.match(header, /sagejs_native_record_DensePrimeMatrix/);
     assert.doesNotMatch(header, /\bsagejs_matrix\s*\*|napi_value/);
+    assert.match(core, /dense_prime_field_matrix_solution_from_rref/);
 
     for (const [length, modulus, seed] of [
       [0, 2n, 0n],
@@ -663,6 +755,48 @@ print("dense-prime-independent-ok")
       ),
       0,
     );
+    const reduced = packed(kernel, [
+      1n, 0n, 2n, 3n, 4n,
+      0n, 1n, 5n, 6n, 1n,
+      0n, 0n, 0n, 0n, 0n,
+    ]);
+    const particular = packed(kernel, 6);
+    assert.equal(
+      kernel.dense_prime_field_matrix_solution_from_rref(
+        denseRecord(reduced, 3, 5, 7n),
+        3,
+        2,
+        particular,
+      ),
+      true,
+    );
+    assert.deepEqual(
+      Array.from(particular),
+      [3n, 4n, 6n, 1n, 0n, 0n],
+    );
+    const unchanged = packed(kernel, [42n, 42n, 42n, 42n, 42n, 42n]);
+    assert.equal(
+      kernel.dense_prime_field_matrix_solution_from_rref(
+        denseRecord(packed(kernel, [0n, 0n, 0n, 1n, 0n]), 1, 5, 7n),
+        3,
+        2,
+        unchanged,
+      ),
+      false,
+    );
+    assert.deepEqual(
+      Array.from(unchanged),
+      [42n, 42n, 42n, 42n, 42n, 42n],
+    );
+    assert.throws(
+      () => kernel.dense_prime_field_matrix_solution_from_rref(
+        denseRecord(reduced, 3, 5, 7n),
+        2,
+        2,
+        packed(kernel, 4),
+      ),
+      /shape mismatch/,
+    );
     assert.throws(
       () => kernel.dense_prime_field_matrix_rank(
         denseRecord(packed(kernel, 3), 2, 2, 5n), packed(kernel, 4),
@@ -697,6 +831,9 @@ source = matrix(GF(97), 2, 2, [1, 2, 3, 4])
 random_matrix(GF(97), 2, 2)
 source * source
 source.rref()
+source.solve_right(identity_matrix(GF(97), 2))
+matrix(GF(97), 2, 3, [1, 2, 0, 0, 1, 1]).solve_right(
+    matrix(GF(97), 2, 2, [3, 4, 5, 6]))
 print("trace-ok")
 `;
     assert.match(
@@ -723,6 +860,20 @@ print("trace-ok")
     assert.match(
       runSage(traceScript, {
         SAGEJS_NATIVE_CACHE_DIR: temporary,
+        SAGEJS_NATIVE_TRACE: "1",
+      }),
+      /Matrix\.solve_right GF\(97\) 2x2 -> declared-flint-isolated/,
+    );
+    assert.match(
+      runSage(traceScript, {
+        SAGEJS_NATIVE_CACHE_DIR: temporary,
+        SAGEJS_NATIVE_TRACE: "1",
+      }),
+      /Matrix\.solve_right GF\(97\) 2x2 -> typed-python-isolated/,
+    );
+    assert.match(
+      runSage(traceScript, {
+        SAGEJS_NATIVE_CACHE_DIR: temporary,
         SAGEJS_NATIVE_AUTOLOAD: "0",
         SAGEJS_NATIVE_TRACE: "1",
       }),
@@ -743,6 +894,14 @@ print("trace-ok")
         SAGEJS_NATIVE_TRACE: "1",
       }),
       /Matrix\.rref GF\(97\) 2x2 -> declared-flint-adapter/,
+    );
+    assert.match(
+      runSage(traceScript, {
+        SAGEJS_NATIVE_CACHE_DIR: temporary,
+        SAGEJS_NATIVE_AUTOLOAD: "0",
+        SAGEJS_NATIVE_TRACE: "1",
+      }),
+      /Matrix\.solve_right GF\(97\) 2x2 -> dynamic-python-explicit/,
     );
 
     const importKernel = String.raw`

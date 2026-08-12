@@ -1,0 +1,115 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "dense-prime-rectangular-solve",
+  "title": "Dense Prime Rectangular Solve",
+  "lane": "arithmetic-algebra",
+  "status": "active",
+  "owner": "user",
+  "objective": "Eliminate scalar host extraction after rectangular dense GF(p) solve_right by using one source-transparent packed typed-Python kernel, with Sage-compatible semantics and benchmarked fallback/native behavior",
+  "base_commit": "3b2a208515e1013c236883dae780ac3658490a90",
+  "claims": [
+    "src/baselib/matrix.py",
+    "src/lib/sagejs/kernels/matrix/dense_prime_field.py",
+    "test/dense-prime-migration.cjs",
+    "bench/dense-prime-rectangular-solve.sage"
+  ],
+  "dependencies": [],
+  "references": [
+    "bench/DENSE-PRIME-MIGRATION.md"
+  ],
+  "architecture": {
+    "strategy": "source-transparent-native",
+    "fallback": "same-source",
+    "oracles": [
+      "cpython",
+      "javascript",
+      "Sage solve_right semantics over GF(2), GF(7), and GF(97)",
+      "A * X == B differential identity"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "pnpm test:native"
+  ],
+  "runs": [
+    {
+      "command": "pnpm test:native",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 205.665,
+      "started_at": "2026-08-12T01:05:31.632Z",
+      "commit": "06a6d88805844d15d4247a64574883992a44d091",
+      "workspace_fingerprint": "417379d2f2e716d629650fc79892e56d133feeb46b510954814d33921709bfcf",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 12.737,
+      "started_at": "2026-08-12T01:09:48.903Z",
+      "commit": "3b2a208515e1013c236883dae780ac3658490a90",
+      "workspace_fingerprint": "ab0648515b4b82c0dcad5aee0a6d0116654a747547a15821bd083c666f5e084f",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:native",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 273.095,
+      "started_at": "2026-08-12T01:10:08.236Z",
+      "commit": "3b2a208515e1013c236883dae780ac3658490a90",
+      "workspace_fingerprint": "ab0648515b4b82c0dcad5aee0a6d0116654a747547a15821bd083c666f5e084f",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node test/dense-prime-migration.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 14.924,
+      "started_at": "2026-08-12T01:16:19.101Z",
+      "commit": "3b2a208515e1013c236883dae780ac3658490a90",
+      "workspace_fingerprint": "ab0648515b4b82c0dcad5aee0a6d0116654a747547a15821bd083c666f5e084f",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "./bin/sagejs bench/dense-prime-rectangular-solve.sage",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.782,
+      "started_at": "2026-08-12T01:16:34.622Z",
+      "commit": "3b2a208515e1013c236883dae780ac3658490a90",
+      "workspace_fingerprint": "ab0648515b4b82c0dcad5aee0a6d0116654a747547a15821bd083c666f5e084f",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "env SAGEJS_NATIVE_AUTOLOAD=0 ./bin/sagejs bench/dense-prime-rectangular-solve.sage",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 4.117,
+      "started_at": "2026-08-12T01:16:35.996Z",
+      "commit": "3b2a208515e1013c236883dae780ac3658490a90",
+      "workspace_fingerprint": "ab0648515b4b82c0dcad5aee0a6d0116654a747547a15821bd083c666f5e084f",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Rectangular and rank-deficient packed GF(p) solve_right now keeps the existing FLINT/FFLAS augmented RREF and extracts one particular solution through a single source-transparent native kernel. The kernel validates all shapes, detects inconsistent zero-left rows transactionally, and sets free variables to zero. Differential coverage includes underdetermined, overdetermined, singular, inconsistent, vector, multiple-RHS, and empty systems over GF(2), GF(7), and GF(97), plus native-disabled execution and inspectable isolated output. Warm 4-RHS medians for 120x180/180x120 fell from 672/677ms to 2.73/1.73ms over GF(2), 234/460ms to 1.55/1.51ms over GF(7), and 232/462ms to 1.45/1.36ms over GF(97).",
+    "risks": [
+      "The complete pnpm test:native command reaches an unrelated pre-existing copied-byte Wasm expectation mismatch in test/ffi.cjs: the current declaration and lowered IR say wasm=true while the test still expects false.",
+      "architecture:packages requires an integration-owned linear-algebra bootstrap budget ratchet: actual size is 357586 bytes versus the current 354000-byte budget."
+    ],
+    "next_steps": [
+      "At integration, ratchet the shared linear-algebra source budget to at least 357586 bytes with narrow headroom.",
+      "Resolve the base branch FlintByteRegion Wasm target expectation, then rerun pnpm test:native and mark this task review/complete."
+    ]
+  }
+}
