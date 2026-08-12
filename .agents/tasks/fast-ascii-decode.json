@@ -4,7 +4,7 @@
   "id": "fast-ascii-decode",
   "title": "Fast Ascii Decode",
   "lane": "compiler-runtime",
-  "status": "active",
+  "status": "review",
   "owner": "user",
   "objective": "Make Python bytes.decode('ascii') and exact FLINT matrix and polynomial formatting use a semantics-preserving host-native fast path, with focused differential tests and measured public formatting performance",
   "base_commit": "86e6b0f65e957074cc0988dd3d2b9882c1e4ab96",
@@ -37,10 +37,87 @@
     "pnpm test:compiler",
     "pnpm test:integration"
   ],
-  "runs": [],
+  "runs": [
+    {
+      "command": "pnpm build",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 12.163,
+      "started_at": "2026-08-12T04:42:36.742Z",
+      "commit": "93539d22e4e04dd0de2a9d2a1b6bebda97261394",
+      "workspace_fingerprint": "bc9de8da794e208ce600f7e6738502e19952f034f3b1e9a68ef6fe72343b4f4a",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm build",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 143.595,
+      "started_at": "2026-08-12T04:43:30.106Z",
+      "commit": "2bb1fc8779d1724ddf3a8eb12ab3eda3b9ed4b3b",
+      "workspace_fingerprint": "a65308742e93ff6bea8b2fd5eac3941ad99001ab2a8145e3313443d31227da55",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:compiler",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 79.383,
+      "started_at": "2026-08-12T04:45:59.824Z",
+      "commit": "2bb1fc8779d1724ddf3a8eb12ab3eda3b9ed4b3b",
+      "workspace_fingerprint": "a65308742e93ff6bea8b2fd5eac3941ad99001ab2a8145e3313443d31227da55",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:integration",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 241.072,
+      "started_at": "2026-08-12T04:47:29.347Z",
+      "commit": "2bb1fc8779d1724ddf3a8eb12ab3eda3b9ed4b3b",
+      "workspace_fingerprint": "a65308742e93ff6bea8b2fd5eac3941ad99001ab2a8145e3313443d31227da55",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/bytes.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.931,
+      "started_at": "2026-08-12T04:51:54.654Z",
+      "commit": "2bb1fc8779d1724ddf3a8eb12ab3eda3b9ed4b3b",
+      "workspace_fingerprint": "a65308742e93ff6bea8b2fd5eac3941ad99001ab2a8145e3313443d31227da55",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/bytes-ascii-decode.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.891,
+      "started_at": "2026-08-12T04:51:57.272Z",
+      "commit": "2bb1fc8779d1724ddf3a8eb12ab3eda3b9ed4b3b",
+      "workspace_fingerprint": "a65308742e93ff6bea8b2fd5eac3941ad99001ab2a8145e3313443d31227da55",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 12.662,
+      "started_at": "2026-08-12T04:51:59.853Z",
+      "commit": "2bb1fc8779d1724ddf3a8eb12ab3eda3b9ed4b3b",
+      "workspace_fingerprint": "a65308742e93ff6bea8b2fd5eac3941ad99001ab2a8145e3313443d31227da55",
+      "platform": "linux-x64"
+    }
+  ],
   "handoff": {
-    "summary": "",
-    "risks": [],
-    "next_steps": []
+    "summary": "Replaced per-character ASCII decoding with a CPython-compatible bulk TextDecoder/Uint8Array path in ordinary byte_strings.py, retaining its same-source fallback. Added direct CPython differential coverage for bytes, bytearray, strict, ignore, replace, invalid positions, and lazy unknown handlers; classified the new host test and added direct plus public exact-formatting benchmarks. Expanded the prepared claim narrowly to test/node-test-manifest.cjs with integration approval. Warm 1 MiB decode improved from 225.9 ms to 0.876 ms; public 200x200 ZZ str improved from 53.6 ms to 2.60 ms, QQ from roughly 62-89 ms to 3.66 ms, and a 10,000-term ZZ polynomial from 24.4 ms to 2.67 ms.",
+    "risks": [
+      "The full integration run passed 287 tests but had seven unrelated failures because this worktree predates current generated-adapter/test synchronization and lacks its own graph addon; root integration must rerun after cherry-picking onto the current branch.",
+      "The host-native path relies only on standard TextDecoder, Uint8Array, RegExp, and String operations available in supported Node and browser hosts; the existing Python fallback remains active when those constructors are absent."
+    ],
+    "next_steps": [
+      "Cherry-pick 93539d2 and 2bb1fc8 onto the integration branch, retaining the integration branch's newer test-manifest entries.",
+      "Rerun pnpm test:integration in the fully provisioned root workspace."
+    ]
   }
 }
