@@ -85,8 +85,15 @@ rational = random_matrix(QQ, 20, 30, density=0.2, num_bound=5, den_bound=5)
 assert any(value.denominator() > 1 for value in rational.list())
 set_random_seed(7)
 huge = random_matrix(QQ, 6, 8, density=0.5,
-                     num_bound=2**40, den_bound=2**40)
-assert any(value.denominator() > 2**32 for value in huge.list())
+                     num_bound=2**80, den_bound=2**97)
+assert any(value.denominator() > 2**64 for value in huge.list())
+set_random_seed(7)
+skewed = random_matrix(QQ, 6, 8, density=0.5,
+                       num_bound=2**17, den_bound=2**521)
+assert any(value.denominator() > 2**256 for value in skewed.list())
+integral = random_matrix(QQ, 6, 8, density=0.5,
+                         num_bound=2**80, den_bound=0)
+assert all(value.denominator() == 1 for value in integral.list())
 reciprocal = random_matrix(QQ, 20, 30, density=0.2, distribution="1/n")
 assert any(value.denominator() > 1 for value in reciprocal.list())
 # Sage accepts arbitrary non-'1/n' names as aliases for the default bounded
@@ -203,8 +210,6 @@ cases = [
     capture(ZZ, 1, density=0.99),
     capture(QQ, 1, density=0.99),
     capture(GF(7), 1, density=0.99),
-    capture(QQ, 7, density=0.5, num_bound=2**40, den_bound=2**40),
-    capture(QQ, 7, density=0.5, distribution="1/n"),
     capture(GF(4294967291), 7, density=0.5),
     capture(GF(2), 19, density=float("nan")),
     capture(QQ, 0, num_bound=2, den_bound=2),
@@ -215,12 +220,47 @@ cases = [
     capture(GF(2), 31, density=None),
     capture(GF(7), 31, density=None),
 ]
+for seed in [0, 1, 7, 31, 2**32 - 1]:
+    cases.extend([
+        capture(QQ, seed, density=0.5, num_bound=5, den_bound=5),
+        capture(QQ, seed, density=0.5,
+                num_bound=2**80, den_bound=2**97),
+        capture(QQ, seed, density=0.5,
+                num_bound=2**17, den_bound=2**521),
+        capture(QQ, seed, density=0.5,
+                num_bound=2**80, den_bound=0),
+        capture(QQ, seed, density=0.99, distribution="1/n"),
+        capture(QQ, seed, distribution="1/n"),
+    ])
 print(repr(cases))
 `;
 assert.equal(
   runSageJs(parityWitness),
   runSageJs(parityWitness, { SAGEJS_NATIVE_DISABLE: "1" }),
   "native and disabled-native sparse results and next RNG state differ",
+);
+
+// Variable-size FLINT entries must be allocated and destroyed by the same
+// native addon.  This subprocess regression catches the allocator-domain bug
+// that occurs if a host-created resource is borrowed by a statically linked
+// kernel which then grows its fmpz limbs. Explicit close is deliberately
+// repeated to verify deterministic, idempotent ownership cleanup.
+assert.equal(
+  runSageJs(String.raw`
+set_random_seed(7)
+value = random_matrix(
+    QQ, 1, 1, density=1,
+    num_bound=2**80, den_bound=2**97,
+)
+assert abs(value[0, 0].numerator()) > 2**64
+assert value[0, 0].denominator() > 2**64
+resource = value._rational_resource()
+resource.close()
+resource.close()
+assert resource.closed
+print("wide-entry-close-ok")
+`),
+  "wide-entry-close-ok",
 );
 
 // Run the same semantic distinction against Sage when the configured oracle

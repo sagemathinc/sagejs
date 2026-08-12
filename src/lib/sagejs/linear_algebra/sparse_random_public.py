@@ -9,11 +9,12 @@ canonical FLINT, M4RI, or packed storage.
 
 from __future__ import annotations
 
+from typing import Tuple
+
 from sagejs.ffi.flint import (
     FmpqMatrix,
     FmpzMatrix,
-    fmpq_matrix_ncols,
-    fmpq_matrix_nrows,
+    fmpq_matrix,
     fmpq_matrix_set_entry,
     fmpz_matrix_entry,
     fmpz_matrix_ncols,
@@ -33,6 +34,40 @@ from sagejs.native import (
     native,
     uint64,
 )
+
+
+@native
+def _sparse_random_bounded_exact(
+    bound: int,
+    state: uint64,
+    consumed: int,
+    word_base: uint64,
+    multiplier: uint64,
+    increment: uint64,
+) -> Tuple[int, uint64, int]:
+    """Draw uniformly from `range(bound)` using whole 32-bit words.
+
+    `state` is the most recently consumed word.  A false `consumed` flag
+    makes that word the first digit of this draw; every later digit advances
+    the shared LCG.  This is the isolated equivalent of `matrix._random_int`
+    and deliberately consumes no word when `bound == 1`.
+    """
+    span = 1
+    words = 0
+    while span < bound:
+        span *= word_base
+        words += 1
+
+    while True:
+        value = 0
+        for _word in range(words):
+            if consumed != 0:
+                state = (multiplier * state + increment) % word_base
+            value = value * word_base + state
+            consumed = 1
+        limit = span - span % bound
+        if value < limit:
+            return value % bound, state, consumed
 
 
 @native
@@ -144,116 +179,137 @@ def sparse_random_fmpz(
 
 @native
 def sparse_random_fmpq(
-    target: FmpqMatrix,
+    rows: uint64,
+    columns: uint64,
     draws_per_row: uint64,
     full_nonzero: uint64,
     require_nonzero: uint64,
-    numerator_bound: uint64,
-    denominator_bound: uint64,
+    value_mode: uint64,
+    numerator_bound: int,
+    denominator_bound: int,
     initial_state: uint64,
     final_state: IntegerBuffer,
     word_base: uint64,
     multiplier: uint64,
     increment: uint64,
-) -> bool:
-    """Fill `QQ` storage with bounded canonical rational entries."""
-    rows: uint64 = fmpq_matrix_nrows(target)
-    columns: uint64 = fmpq_matrix_ncols(target)
+) -> FmpqMatrix:
+    """Construct `QQ` storage with bounded or reciprocal-uniform entries."""
+    target = fmpq_matrix(rows, columns)
     if len(final_state) != 1 or word_base == 0 or initial_state >= word_base:
-        return False
-    if numerator_bound == 0 or denominator_bound == 0:
-        return False
+        return target
+    if value_mode > 1:
+        return target
+    if value_mode == 0 and (numerator_bound <= 0 or denominator_bound <= 0):
+        return target
+
+    numerator_words = 0
+    numerator_limit = 1
+    denominator_words = 0
+    denominator_limit = 1
+    if value_mode == 0:
+        numerator_span = 1
+        while numerator_span < numerator_bound:
+            numerator_span *= word_base
+            numerator_words += 1
+        numerator_limit = numerator_span - numerator_span % numerator_bound
+        denominator_span = 1
+        while denominator_span < denominator_bound:
+            denominator_span *= word_base
+            denominator_words += 1
+        denominator_limit = denominator_span - denominator_span % denominator_bound
 
     state: uint64 = initial_state
     consumed = 0
     for row in range(rows):
-        if full_nonzero == 0:
-            for _draw in range(draws_per_row):
+        for draw in range(draws_per_row):
+            column: uint64 = draw
+            if full_nonzero == 0:
                 if consumed != 0:
                     state = (multiplier * state + increment) % word_base
                 limit: uint64 = word_base - word_base % columns
                 while state >= limit:
                     state = (multiplier * state + increment) % word_base
-                column: uint64 = state % columns
+                column = state % columns
                 consumed = 1
-                unsigned_numerator: uint64 = 0
-                denominator: uint64 = word_base // word_base
-                while unsigned_numerator == 0:
-                    state = (multiplier * state + increment) % word_base
-                    limit = word_base - word_base % numerator_bound
-                    while state >= limit:
-                        state = (multiplier * state + increment) % word_base
-                    unsigned_numerator = state % numerator_bound
-                    state = (multiplier * state + increment) % word_base
-                    limit = word_base - word_base % denominator_bound
-                    while state >= limit:
-                        state = (multiplier * state + increment) % word_base
-                    denominator = state % denominator_bound
+            numerator = 0
+            denominator = 1
+            retry = 1
+            while retry != 0:
+                if value_mode == 0:
+                    accepted = 0
+                    while accepted == 0:
+                        numerator = 0
+                        for _word in range(numerator_words):
+                            if consumed != 0:
+                                state = (multiplier * state + increment) % word_base
+                            numerator *= word_base
+                            numerator += state
+                            consumed = 1
+                        if numerator < numerator_limit:
+                            accepted = 1
+                            numerator %= numerator_bound
+                    accepted = 0
+                    while accepted == 0:
+                        denominator = 0
+                        for _word in range(denominator_words):
+                            if consumed != 0:
+                                state = (multiplier * state + increment) % word_base
+                            denominator *= word_base
+                            denominator += state
+                            consumed = 1
+                        if denominator < denominator_limit:
+                            accepted = 1
+                            denominator %= denominator_bound
                     if denominator == 0:
-                        denominator = word_base // word_base
-                    state = (multiplier * state + increment) % word_base
-                if state % 2 == 0:
-                    if not fmpq_matrix_set_entry(
-                        target,
-                        row,
-                        column,
-                        unsigned_numerator,
-                        denominator,
-                    ):
-                        return False
-                else:
-                    if not fmpq_matrix_set_entry(
-                        target,
-                        row,
-                        column,
-                        -unsigned_numerator,
-                        denominator,
-                    ):
-                        return False
-        else:
-            for column in range(draws_per_row):
-                unsigned_numerator = word_base - word_base
-                denominator = word_base // word_base
-                retry = 1
-                while retry != 0:
+                        denominator = 1
                     if consumed != 0:
                         state = (multiplier * state + increment) % word_base
-                    limit = word_base - word_base % numerator_bound
-                    while state >= limit:
+                    sign_modulus: uint64 = 2
+                    sign_limit: uint64 = word_base - word_base % sign_modulus
+                    while state >= sign_limit:
                         state = (multiplier * state + increment) % word_base
-                    unsigned_numerator = state % numerator_bound
-                    consumed = 1
-                    state = (multiplier * state + increment) % word_base
-                    limit = word_base - word_base % denominator_bound
-                    while state >= limit:
-                        state = (multiplier * state + increment) % word_base
-                    denominator = state % denominator_bound
-                    if denominator == 0:
-                        denominator = word_base // word_base
-                    state = (multiplier * state + increment) % word_base
-                    retry = 0
-                    if require_nonzero != 0 and unsigned_numerator == 0:
-                        retry = 1
-                if state % 2 == 0:
-                    if not fmpq_matrix_set_entry(
-                        target,
-                        row,
-                        column,
-                        unsigned_numerator,
-                        denominator,
-                    ):
-                        return False
+                    if state % sign_modulus != 0:
+                        numerator = -numerator
                 else:
-                    if not fmpq_matrix_set_entry(
-                        target,
-                        row,
-                        column,
-                        -unsigned_numerator,
-                        denominator,
-                    ):
-                        return False
+                    centered_word, state, consumed = _sparse_random_bounded_exact(
+                        2147483648,
+                        state,
+                        consumed,
+                        word_base,
+                        multiplier,
+                        increment,
+                    )
+                    centered = centered_word - 1073741823
+                    if centered == 0:
+                        centered = 1
+                    magnitude = 858993458 // abs(centered)
+                    if centered > 0:
+                        numerator = magnitude
+                    else:
+                        numerator = -magnitude
+                    denominator_word, state, consumed = _sparse_random_bounded_exact(
+                        2147483648,
+                        state,
+                        consumed,
+                        word_base,
+                        multiplier,
+                        increment,
+                    )
+                    if denominator_word == 0:
+                        denominator_word = 1
+                    denominator = 2147483647 // denominator_word
+                retry = 0
+                if require_nonzero != 0 and numerator == 0:
+                    retry = 1
+            _updated = fmpq_matrix_set_entry(
+                target,
+                row,
+                column,
+                numerator,
+                denominator,
+            )
     final_state[0] = state
-    return True
+    return target
 
 
 @native
