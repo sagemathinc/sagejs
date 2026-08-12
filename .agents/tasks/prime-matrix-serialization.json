@@ -1,0 +1,95 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "prime-matrix-serialization",
+  "title": "Prime Matrix Serialization",
+  "lane": "integration",
+  "status": "review",
+  "owner": "user",
+  "objective": "Optimize public SagePack serialization and deserialization for packed dense GF(p) matrices with exact format compatibility, host-independent bulk transfers, malformed-input validation, ownership safety, and warm benchmark gates",
+  "base_commit": "f1f072862c390e96553b1c9e3e0c613b4afd7c7b",
+  "claims": [
+    "tools/serialization.ts",
+    "src/baselib/sagejs/runtime.py",
+    "src/baselib/sagejs_bootstrap.py",
+    "test/prime-matrix-serialization.cjs",
+    "test/node-test-manifest.cjs"
+  ],
+  "dependencies": [],
+  "references": [
+    "Sage dense_mod_packed matrix serialization timings"
+  ],
+  "architecture": {
+    "strategy": "mixed",
+    "fallback": "tested-capability",
+    "oracles": [
+      "byte-for-byte current SagePack v1 format",
+      "public Sage.js round-trip and malformed-input behavior"
+    ],
+    "exceptions": [
+      "The stable SagePack envelope is implemented in TypeScript at the host serialization boundary; this lane adds no handwritten native mathematics and keeps packed GF(p) storage canonical."
+    ]
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm architecture:check",
+    "pnpm test:portable",
+    "pnpm test:baselib:strict"
+  ],
+  "runs": [
+    {
+      "command": "pnpm architecture:check",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 3.122,
+      "started_at": "2026-08-12T04:13:06.624Z",
+      "commit": "f1f072862c390e96553b1c9e3e0c613b4afd7c7b",
+      "workspace_fingerprint": "b1c8150de6fa8c47f0828f887088620a191b8cf5971be0b749ded41b2d25cc26",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 12.488,
+      "started_at": "2026-08-12T04:17:14.552Z",
+      "commit": "f1f072862c390e96553b1c9e3e0c613b4afd7c7b",
+      "workspace_fingerprint": "3f176159e8d02161a37f3777dc16a2b27fed0d51af7a2369b8bc76165449679f",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 12.433,
+      "started_at": "2026-08-12T04:17:31.371Z",
+      "commit": "f1f072862c390e96553b1c9e3e0c613b4afd7c7b",
+      "workspace_fingerprint": "3f176159e8d02161a37f3777dc16a2b27fed0d51af7a2369b8bc76165449679f",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 38.123,
+      "started_at": "2026-08-12T04:17:47.212Z",
+      "commit": "f1f072862c390e96553b1c9e3e0c613b4afd7c7b",
+      "workspace_fingerprint": "3f176159e8d02161a37f3777dc16a2b27fed0d51af7a2369b8bc76165449679f",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Replaced per-entry BigInt shifts in the portable uint64 SagePack primitives with endian-aware typed-array bulk paths; skipped redundant built-in codec dispatch only for codec-produced payload records; and validated/decoded packed prime residues directly into fresh canonical Matrix storage. GF(97) 500x500 warm SagePack improved from roughly 22-37 ms serialization and 7-12 ms deserialization to about 1.5-1.7 ms and 1.7-3.0 ms respectively, while preserving the existing golden bytes. Bootstrap changes are confined to rho-sigma uint64_pack_le and uint64_unpack_le.",
+    "risks": [
+      "The explicit big-endian fallback is covered by byte-pattern oracles but was not executed on physical big-endian CI hardware."
+    ],
+    "next_steps": [
+      "Integrate before the dynamic FFI cache lane, which must preserve the two updated bootstrap uint64 primitive bodies when rebasing."
+    ]
+  }
+}

@@ -66,7 +66,9 @@ export class SageSerializationError extends Error {
 
 const codecs: SageCodec[] = [];
 const codecsByType = new Map<string, SageCodec>();
+const builtinCodecs = new WeakSet<SageCodec>();
 let builtinCodecsLoaded = false;
+let registeringBuiltinCodecs = false;
 
 /**
  * Load codecs owned by the mathematical packages on first use.  Keeping this
@@ -76,20 +78,25 @@ let builtinCodecsLoaded = false;
 function ensureBuiltinCodecs(): void {
   if (builtinCodecsLoaded) return;
   builtinCodecsLoaded = true;
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  require("./serialization-codecs/arithmetic").registerArithmeticCodecs();
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  require("./serialization-codecs/linear-algebra").registerLinearAlgebraCodecs();
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  require("./serialization-codecs/number-fields").registerNumberFieldCodecs();
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  require("./serialization-codecs/polynomial").registerPolynomialCodecs();
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  require("./serialization-codecs/series").registerSeriesCodecs();
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  require("./serialization-codecs/elliptic-curves").registerEllipticCurveCodecs();
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  require("./serialization-codecs/modular-forms").registerModularFormsCodecs();
+  registeringBuiltinCodecs = true;
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    require("./serialization-codecs/arithmetic").registerArithmeticCodecs();
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    require("./serialization-codecs/linear-algebra").registerLinearAlgebraCodecs();
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    require("./serialization-codecs/number-fields").registerNumberFieldCodecs();
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    require("./serialization-codecs/polynomial").registerPolynomialCodecs();
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    require("./serialization-codecs/series").registerSeriesCodecs();
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    require("./serialization-codecs/elliptic-curves").registerEllipticCurveCodecs();
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    require("./serialization-codecs/modular-forms").registerModularFormsCodecs();
+  } finally {
+    registeringBuiltinCodecs = false;
+  }
 }
 
 function isUint8Array(value: unknown): value is Uint8Array {
@@ -105,10 +112,12 @@ export function registerCodec(codec: SageCodec): () => void {
   }
   codecs.push(codec);
   codecsByType.set(codec.type, codec);
+  if (registeringBuiltinCodecs) builtinCodecs.add(codec);
   return () => {
     const index = codecs.indexOf(codec);
     if (index >= 0) codecs.splice(index, 1);
     if (codecsByType.get(codec.type) === codec) codecsByType.delete(codec.type);
+    builtinCodecs.delete(codec);
   };
 }
 
@@ -160,6 +169,7 @@ function encodePacket(value: unknown, transferOwnedBuffers: boolean): SagePacket
   const buffers: ArrayBuffer[] = [];
   const seen = new Map<object, number>();
   const transferable = new WeakSet<object>();
+  const builtinPayloads = new WeakSet<object>();
 
   const context: EncodeContext = {
     encode: encodeValue,
@@ -286,11 +296,27 @@ function encodePacket(value: unknown, transferOwnedBuffers: boolean): SagePacket
     // Sage parents are callable-instance functions.  Load their package-owned
     // codecs only after all core container types have been ruled out.
     ensureBuiltinCodecs();
+    const skipBuiltinCodecs = isPlainObject(item) && builtinPayloads.has(item);
     for (const codec of codecs) {
+      // Built-in mathematical codecs operate on Sage objects and callable
+      // parents. Do not make their Python-style duck-typing probes re-inspect
+      // the plain payload object that a built-in codec has just produced.
+      // Ordinary plain objects (including lightweight test doubles) and
+      // third-party codecs retain their historical dispatch behavior.
+      if (skipBuiltinCodecs && builtinCodecs.has(codec)) continue;
       if (codec.test(item)) {
         return record(object, codec.type, codec.version, () => {
           try {
-            return codec.encode(item, context);
+            if (!builtinCodecs.has(codec)) return codec.encode(item, context);
+            return codec.encode(item, {
+              ...context,
+              encode(payloadValue: unknown): WireValue {
+                if (isPlainObject(payloadValue)) {
+                  builtinPayloads.add(payloadValue);
+                }
+                return encodeValue(payloadValue);
+              },
+            });
           } catch (error) {
             if (error instanceof SageSerializationError) {
               error.message += ` while encoding ${codec.type}`;
@@ -1414,6 +1440,60 @@ function unpackResidues(bytes: Uint8Array, width: number, count: number): number
   return entries;
 }
 
+function primeMatrixFromCanonicalResidues(
+  parent: unknown,
+  bytes: Uint8Array,
+  widthValue: unknown,
+  countValue: unknown,
+): unknown | undefined {
+  const restore = Reflect.get(Object(parent), "_from_canonical_uint64_residues");
+  if (typeof restore !== "function") return undefined;
+  const base = callMethod(parent, "base_ring");
+  if (parentKind(base) !== "GF") return undefined;
+  const modulus = Number(Reflect.get(Object(base), "_order"));
+  const expectedWidth = compactResidueWidth(modulus);
+  if (
+    expectedWidth === undefined ||
+    typeof widthValue !== "number" ||
+    !Number.isInteger(widthValue) ||
+    widthValue !== expectedWidth
+  ) {
+    throw new SageSerializationError("compact matrix residue width is noncanonical");
+  }
+  if (
+    typeof countValue !== "number" ||
+    !Number.isSafeInteger(countValue) ||
+    countValue < 0 ||
+    countValue > Math.floor(Number.MAX_SAFE_INTEGER / expectedWidth) ||
+    bytes.byteLength !== countValue * expectedWidth
+  ) {
+    throw new SageSerializationError("compact matrix entry buffer is invalid");
+  }
+
+  // Decode, validate, and publish the fixed-size residues in one pass. The
+  // output is fresh caller-owned storage, so a mutable matrix cannot alias the
+  // SagePack input. Uint32 views avoid constructing one BigInt per entry while
+  // the explicit word positions preserve little-endian SagePack bytes on both
+  // little- and big-endian hosts.
+  const entries = new BigUint64Array(countValue);
+  const words = new Uint32Array(entries.buffer);
+  const littleEndian = new Uint8Array(new Uint16Array([1]).buffer)[0] === 1;
+  const lowWord = littleEndian ? 0 : 1;
+  const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+  for (let index = 0; index < countValue; index += 1) {
+    const value = expectedWidth === 1
+      ? bytes[index]
+      : expectedWidth === 2
+        ? view.getUint16(index * 2, true)
+        : view.getUint32(index * 4, true);
+    if (value >= modulus) {
+      throw new SageSerializationError("compact matrix residue is outside its field");
+    }
+    words[index * 2 + lowWord] = value;
+  }
+  return invoke(restore, parent, [entries]);
+}
+
 function unpackPrimePolynomialResidues(
   parent: unknown,
   bytes: Uint8Array,
@@ -1579,6 +1659,13 @@ function decodeElement(payload: WireValue, context: DecodeContext): unknown {
           unpackRationals(data.entries, Number(data.entryCount)),
         ]);
       }
+      const canonicalPrimeMatrix = primeMatrixFromCanonicalResidues(
+        parent,
+        data.entries,
+        data.entryWidth,
+        data.entryCount,
+      );
+      if (canonicalPrimeMatrix !== undefined) return canonicalPrimeMatrix;
       const fromPacked = Reflect.get(Object(parent), "_from_packed_residues");
       if (typeof fromPacked === "function") {
         return invoke(fromPacked, parent, [

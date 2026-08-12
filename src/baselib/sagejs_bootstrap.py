@@ -1046,6 +1046,9 @@ def ρσ_uint64_pack_le(source, width):
         if (!(source instanceof BigUint64Array)) {
             throw new TypeError("source must be a BigUint64Array");
         }
+        if (source.buffer.detached === true) {
+            throw new TypeError("source buffer is detached");
+        }
         if (width !== 1 && width !== 2 && width !== 4 && width !== 8) {
             throw new RangeError("uint64 packed width must be 1, 2, 4, or 8");
         }
@@ -1053,21 +1056,42 @@ def ρσ_uint64_pack_le(source, width):
             throw new RangeError("packed uint64 byte length is too large");
         }
         const output = new Uint8Array(source.length * width);
-        const maximum = width === 8
-            ? 0xffffffffffffffffn
-            : (1n << BigInt(width * 8)) - 1n;
+        const littleEndian = new Uint8Array(
+            new Uint16Array([1]).buffer
+        )[0] === 1;
+        if (width === 8) {
+            const bytes = new Uint8Array(
+                source.buffer, source.byteOffset, source.byteLength
+            );
+            if (littleEndian) {
+                output.set(bytes);
+            } else {
+                for (let index = 0; index < source.length; index += 1) {
+                    const offset = index * 8;
+                    for (let byte = 0; byte < 8; byte += 1) {
+                        output[offset + byte] = bytes[offset + 7 - byte];
+                    }
+                }
+            }
+            return output;
+        }
+        const words = new Uint32Array(
+            source.buffer, source.byteOffset, source.length * 2
+        );
+        const lowWord = littleEndian ? 0 : 1;
+        const highWord = littleEndian ? 1 : 0;
+        const maximum = width === 1 ? 0xff : width === 2 ? 0xffff : 0xffffffff;
+        const view = new DataView(output.buffer);
         for (let index = 0; index < source.length; index += 1) {
-            let value = source[index];
-            if (value > maximum) {
+            const value = words[index * 2 + lowWord];
+            if (words[index * 2 + highWord] !== 0 || value > maximum) {
                 throw new RangeError(
                     "uint64 entry does not fit the requested packed width"
                 );
             }
-            const offset = index * width;
-            for (let byte = 0; byte < width; byte += 1) {
-                output[offset + byte] = Number(value & 0xffn);
-                value >>= 8n;
-            }
+            if (width === 1) output[index] = value;
+            else if (width === 2) view.setUint16(index * 2, value, true);
+            else view.setUint32(index * 4, value, true);
         }
         return output;
     })()"""
@@ -1078,6 +1102,9 @@ def ρσ_uint64_unpack_le(source, width, length):
     return r"""%js (() => {
         if (!(source instanceof Uint8Array)) {
             throw new TypeError("source must be a Uint8Array");
+        }
+        if (source.buffer.detached === true) {
+            throw new TypeError("source buffer is detached");
         }
         if (width !== 1 && width !== 2 && width !== 4 && width !== 8) {
             throw new RangeError("uint64 packed width must be 1, 2, 4, or 8");
@@ -1095,13 +1122,33 @@ def ρσ_uint64_unpack_le(source, width, length):
             );
         }
         const output = new BigUint64Array(length);
-        for (let index = 0; index < length; index += 1) {
-            const offset = index * width;
-            let value = 0n;
-            for (let byte = width - 1; byte >= 0; byte -= 1) {
-                value = (value << 8n) + BigInt(source[offset + byte]);
+        const littleEndian = new Uint8Array(
+            new Uint16Array([1]).buffer
+        )[0] === 1;
+        if (width === 8) {
+            const bytes = new Uint8Array(output.buffer);
+            if (littleEndian) {
+                bytes.set(source);
+            } else {
+                for (let index = 0; index < length; index += 1) {
+                    const offset = index * 8;
+                    for (let byte = 0; byte < 8; byte += 1) {
+                        bytes[offset + 7 - byte] = source[offset + byte];
+                    }
+                }
             }
-            output[index] = value;
+            return output;
+        }
+        const words = new Uint32Array(output.buffer);
+        const lowWord = littleEndian ? 0 : 1;
+        const view = new DataView(source.buffer, source.byteOffset, source.byteLength);
+        for (let index = 0; index < length; index += 1) {
+            const value = width === 1
+                ? source[index]
+                : width === 2
+                    ? view.getUint16(index * 2, true)
+                    : view.getUint32(index * 4, true);
+            words[index * 2 + lowWord] = value;
         }
         return output;
     })()"""
