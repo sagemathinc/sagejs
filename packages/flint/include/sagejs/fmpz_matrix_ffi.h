@@ -37,12 +37,11 @@ static inline size_t sagejs_fmpz_matrix_structural_bytes(
 {
     const size_t entries = sagejs_retained_size_multiply(
         (size_t) rows, (size_t) columns);
-    size_t retained = sizeof(sagejs_fmpz_matrix_struct);
-    retained = sagejs_retained_size_add(retained,
+    /* Current FLINT fmpz_mat storage is one contiguous fmpz entry array.
+       Its public struct contains no separately allocated row-pointer table. */
+    return sagejs_retained_size_add(
+        sizeof(sagejs_fmpz_matrix_struct),
         sagejs_retained_size_multiply(entries, sizeof(fmpz)));
-    retained = sagejs_retained_size_add(retained,
-        sagejs_retained_size_multiply((size_t) rows, sizeof(fmpz *)));
-    return retained;
 }
 
 static inline void sagejs_fmpz_matrix_recompute_allocated_bytes(
