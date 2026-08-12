@@ -4,7 +4,7 @@
   "id": "darwin-accelerate-fflas",
   "title": "Darwin Accelerate-backed FFLAS",
   "lane": "integration",
-  "status": "active",
+  "status": "review",
   "owner": "user",
   "objective": "Use Apple Accelerate as the generated FFLAS/FFPACK BLAS backend on native macOS while preserving Linux OpenBLAS and Windows capability fallback, with ARM64 differential tests and a forced-result GF(7) matrix multiplication benchmark.",
   "base_commit": "7792f9072335667b539ee79e7babff82bab9056c",
@@ -33,14 +33,63 @@
     "macos-arm64": "required"
   },
   "validation": [
+    "pnpm --dir packages/fflas test",
     "pnpm architecture:check",
     "pnpm test:portable",
     "pnpm test:baselib:strict"
   ],
-  "runs": [],
+  "runs": [
+    {
+      "command": "pnpm --dir packages/fflas test",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.703,
+      "started_at": "2026-08-12T10:09:08.434Z",
+      "commit": "3049ecbd432afa38392127370701e007e5588552",
+      "workspace_fingerprint": "ea9093e6e922fcc976087e7401e182ae19f89f3d2dadd9a8f5d97ce3e8c7d5ec",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 13.11,
+      "started_at": "2026-08-12T10:09:09.751Z",
+      "commit": "3049ecbd432afa38392127370701e007e5588552",
+      "workspace_fingerprint": "ea9093e6e922fcc976087e7401e182ae19f89f3d2dadd9a8f5d97ce3e8c7d5ec",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 41.771,
+      "started_at": "2026-08-12T10:09:23.482Z",
+      "commit": "3049ecbd432afa38392127370701e007e5588552",
+      "workspace_fingerprint": "ea9093e6e922fcc976087e7401e182ae19f89f3d2dadd9a8f5d97ce3e8c7d5ec",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 13.761,
+      "started_at": "2026-08-12T10:10:05.863Z",
+      "commit": "3049ecbd432afa38392127370701e007e5588552",
+      "workspace_fingerprint": "ea9093e6e922fcc976087e7401e182ae19f89f3d2dadd9a8f5d97ce3e8c7d5ec",
+      "platform": "linux-x64"
+    }
+  ],
   "handoff": {
-    "summary": "",
-    "risks": [],
-    "next_steps": []
+    "summary": "Native macOS FFLAS/FFPACK adapters now link Apple's system Accelerate framework through the active SDK's TAPI stub while Linux continues to link the pinned FLINT-prefix OpenBLAS archive and Windows retains its explicit tested capability fallback. The provider and Darwin SDK-stub digest are part of the relocatable content-addressed dependency identity. A clean Apple M1 build links only Accelerate, libSystem, and libc++; all nine package differential, canonical-form, aliasing, and transactional tests pass, as does the public routing suite. With one controlled BLAS worker, warm forced-result GF(7) medians were about 0.50 ms for 300x300 squaring and 1.19 ms for 500x500, compared with roughly 1.1 ms and 4.0 ms for the former M1 OpenBLAS build. Raw GF(97) multiplication at 512x512 fell from roughly 3.4 ms to 0.81 ms. Linux x64 retains OpenBLAS and passes package, architecture, portable, and strict-Python gates.",
+    "risks": [
+      "The Apple Accelerate implementation is a system framework dependency and therefore intentionally native-macOS-only; browser and Windows capability behavior is unchanged.",
+      "Accelerate's default worker selection was variable for these small matrices, so the focused benchmark fixes VECLIB_MAXIMUM_THREADS=1. Production remains unconstrained so larger workloads can use the framework's normal threading policy.",
+      "Linux ARM64 was not separately executed in this lane; it follows the unchanged Linux OpenBLAS path, which is covered on Linux x64 and by the native-cache platform identity tests."
+    ],
+    "next_steps": [
+      "Retain multi-host benchmark history before changing public FFLAS crossover thresholds; this lane deliberately changes only the Darwin BLAS provider.",
+      "Investigate whether public packed-to-float conversion can be reduced for large dense GF(p) multiplication, since raw Accelerate 512x512 multiplication is about 0.81 ms while public 500x500 squaring remains about 1.19 ms."
+    ]
   }
 }
