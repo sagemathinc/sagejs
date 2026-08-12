@@ -14,9 +14,11 @@
     "test/extension-polynomial-resource-ffi.cjs",
     "test/extension-polynomial-resource-kernels.cjs",
     "test/fixtures/native-ffi-flint-extension",
+    "test/fixtures/native-ffi-flint-extension/witness.py",
     "bench/extension-polynomial-resources.cjs",
     "architecture/native-kernels.json",
     "architecture/native-code.json",
+    "architecture/package-graph.json",
     "tools/ffi/declarations.cjs",
     "test/ffi-resource-aggregate.cjs",
     "ffi/abi-types.json",
@@ -33,7 +35,8 @@
     "src/baselib/sagejs/ffi/igraph.py",
     "src/lib/sagejs/ffi/igraph.py",
     "src/baselib/sagejs/ffi/m4ri.py",
-    "src/lib/sagejs/ffi/m4ri.py"
+    "src/lib/sagejs/ffi/m4ri.py",
+    "pyrightconfig.json"
   ],
   "dependencies": [
     "extension-polynomial-resource-contract"

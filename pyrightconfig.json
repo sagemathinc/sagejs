@@ -77,6 +77,7 @@
     "src/lib/sagejs/kernels/matrix/dense_rational.py",
     "src/lib/sagejs/kernels/matrix/dense_rational_flint.py",
     "src/lib/sagejs/kernels/polynomial/__init__.py",
+    "src/lib/sagejs/kernels/polynomial/extension_flint.py",
     "src/lib/sagejs/kernels/polynomial/packed_integer.py",
     "src/lib/sagejs/kernels/polynomial/packed_rational.py",
     "src/lib/sagejs/kernels/polynomial/packed_prime_field.py",
