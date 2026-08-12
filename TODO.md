@@ -22,6 +22,10 @@
   ratchet. Keep the public `Matrix` API unified while making exact-integer,
   rational, prime-field, and generic host dispatch independently readable and
   claimable by parallel agents.
+- Make the ordinary build graph regenerate and rebuild a foreign-library host
+  adapter whenever its declaration or generated adapter source changes.
+  Focused FFI tests must not accidentally load a stale addon that predates the
+  declarations under test.
 
 ## Measurement and performance ergonomics
 
