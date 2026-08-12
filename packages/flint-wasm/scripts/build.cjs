@@ -41,6 +41,10 @@ const dependencies = ["flint", "mpfr", "gmp"].map((name) => ({
   name,
   prefix: path.join(cowasmRoot, "sagemath", name, "dist", "wasi-sdk"),
 }));
+const m4riDependency = {
+  name: "m4ri",
+  prefix: path.join(cowasmRoot, "sagemath", "m4ri", "dist", "wasi-sdk"),
+};
 const outputDirectory = path.join(packageRoot, "dist");
 const rawOutput = path.join(outputDirectory, "flint-factor.unstripped.wasm");
 const output = path.join(outputDirectory, "flint-factor.wasm");
@@ -55,6 +59,23 @@ const resourceBackendOutput = path.join(
 const resourceManifestOutput = path.join(
   outputDirectory,
   "ffi-resource-manifest.json",
+);
+const m4riRawOutput = path.join(
+  outputDirectory,
+  "m4ri-resource.unstripped.wasm",
+);
+const m4riOutput = path.join(outputDirectory, "m4ri-resource.wasm");
+const m4riAdapterSource = path.join(
+  outputDirectory,
+  "m4ri-resource-adapter.c",
+);
+const m4riBackendOutput = path.join(
+  outputDirectory,
+  "m4ri-resource-backend.mjs",
+);
+const m4riManifestOutput = path.join(
+  outputDirectory,
+  "m4ri-resource-manifest.json",
 );
 const compilerOutput = path.join(outputDirectory, "compiler.js");
 const compilerFrontendOutput = path.join(
@@ -87,6 +108,10 @@ const standardLibraryCacheDirectory = path.join(
   "dist",
   "module-cache",
 );
+const browserAdditionalModules = [
+  "sagejs.ffi.flint",
+  "sagejs.ffi.m4ri",
+];
 const vendorDirectory = path.join(repositoryRoot, "dist", "vendor");
 const compilerResourceShim = path.join(
   packageRoot,
@@ -149,6 +174,14 @@ for (const dependency of dependencies) {
     path.join(dependency.prefix, "lib", `lib${dependency.name}.a`),
   );
 }
+requirePath(
+  "m4ri headers",
+  path.join(m4riDependency.prefix, "include"),
+);
+requirePath(
+  "m4ri archive",
+  path.join(m4riDependency.prefix, "lib", "libm4ri.a"),
+);
 
 fs.mkdirSync(outputDirectory, { recursive: true });
 
@@ -197,6 +230,49 @@ fs.writeFileSync(
     ");\n",
 );
 fs.writeFileSync(resourceManifestOutput, resourceAdapter.manifestSource);
+
+const m4riDeclaration = loadRegistry({ root: repositoryRoot }).byId.get(
+  "m4ri",
+);
+if (m4riDeclaration === undefined) {
+  throw new Error("the generated M4RI FFI declaration is unavailable");
+}
+const m4riAdapter = generatedWasmResourceAdapter(m4riDeclaration, {
+  resourceIds: ["matrix", "byte_region"],
+  functionIds: [
+    "available",
+    "matrix",
+    "matrix_nrows",
+    "matrix_ncols",
+    "matrix_set_entry",
+    "matrix_entry_code",
+    "matrix_copy",
+    "matrix_equal",
+    "matrix_add",
+    "matrix_mul",
+    "matrix_transpose",
+    "matrix_rank",
+    "matrix_rref",
+    "matrix_determinant_code",
+    "matrix_inverse",
+    "matrix_solve",
+    "matrix_right_kernel",
+    "matrix_logical_words",
+    "matrix_from_logical_words",
+    "matrix_sagepack_bytes",
+    "matrix_from_sagepack_bytes",
+    "matrix_format",
+  ],
+});
+fs.writeFileSync(m4riAdapterSource, m4riAdapter.cSource);
+fs.writeFileSync(
+  m4riBackendOutput,
+  m4riAdapter.javascriptSource +
+    "\nexport const generatedWasmManifest = Object.freeze(" +
+    JSON.stringify(m4riAdapter.manifest) +
+    ");\n",
+);
+fs.writeFileSync(m4riManifestOutput, m4riAdapter.manifestSource);
 
 const includeArguments = dependencies.flatMap(({ prefix }) => [
   "-isystem",
@@ -288,6 +364,30 @@ run(clang, [
 ]);
 run(wasmStrip, [rawOutput, "-o", output]);
 fs.rmSync(rawOutput);
+run(clang, [
+  "--target=wasm32-wasip1",
+  `--sysroot=${sysroot}`,
+  "-mexec-model=reactor",
+  "-O2",
+  "-fvisibility=hidden",
+  "-Wall",
+  "-Wextra",
+  "-Werror",
+  "-isystem",
+  path.join(m4riDependency.prefix, "include"),
+  `-I${path.join(repositoryRoot, "packages", "m4ri", "include")}`,
+  m4riAdapterSource,
+  `-L${path.join(m4riDependency.prefix, "lib")}`,
+  "-lm4ri",
+  "-lm",
+  ...m4riAdapter.manifest.exports.map((name) => `-Wl,--export=${name}`),
+  "-Wl,--export-memory",
+  "-Wl,--gc-sections",
+  "-o",
+  m4riRawOutput,
+]);
+run(wasmStrip, [m4riRawOutput, "-o", m4riOutput]);
+fs.rmSync(m4riRawOutput);
 esbuild.buildSync({
   entryPoints: [path.join(packageRoot, "src", "wasi-runtime.mjs")],
   bundle: true,
@@ -367,6 +467,69 @@ function pythonSources(directory) {
   return sources.sort();
 }
 
+function compilerCacheFilename(sourceFilename) {
+  return (
+    sourceFilename
+      .replaceAll("\\", "/")
+      .replace(/[<>:"|?*\x00-\x1f]/g, "-")
+      .replaceAll("/", "-")
+      .replace(/^-+/, "") + ".json"
+  );
+}
+
+function sourceFilenameForModule(name) {
+  const base = path.join(
+    standardLibrarySourceDirectory,
+    ...name.split("."),
+  );
+  for (const filename of [`${base}.py`, path.join(base, "__init__.py")]) {
+    if (fs.existsSync(filename)) return filename;
+  }
+  throw new Error(`source for browser module ${name} does not exist`);
+}
+
+function compileBrowserModuleCache(name) {
+  const output = path.join(standardLibraryCacheDirectory, `${name}.json`);
+  const temporary = fs.mkdtempSync(
+    path.join(os.tmpdir(), "sagejs-browser-module-"),
+  );
+  try {
+    const result = spawnSync(
+      process.execPath,
+      [
+        path.join(repositoryRoot, "bin", "sagejs"),
+        "compile",
+        "--sage",
+        "--omit-baselib",
+        "--cache-dir",
+        temporary,
+      ],
+      {
+        cwd: repositoryRoot,
+        encoding: "utf8",
+        input: `import ${name}\n`,
+        stdio: ["pipe", "ignore", "inherit"],
+      },
+    );
+    if (result.error) throw result.error;
+    if (result.status !== 0) process.exit(result.status ?? 1);
+    const source = sourceFilenameForModule(name);
+    const generated = path.join(
+      temporary,
+      compilerCacheFilename(source),
+    );
+    requirePath(`compiled browser module ${name}`, generated);
+    fs.mkdirSync(standardLibraryCacheDirectory, { recursive: true });
+    fs.copyFileSync(generated, output);
+  } finally {
+    fs.rmSync(temporary, { recursive: true, force: true });
+  }
+}
+
+for (const name of browserAdditionalModules) {
+  compileBrowserModuleCache(name);
+}
+
 const standardLibraryModules = {};
 for (const filename of pythonSources(standardLibrarySourceDirectory)) {
   const relative = path.relative(standardLibrarySourceDirectory, filename);
@@ -400,9 +563,14 @@ fs.copyFileSync(
 );
 
 const bytes = fs.statSync(output).size;
+const m4riBytes = fs.statSync(m4riOutput).size;
 console.log(
   `Built ${path.relative(repositoryRoot, output)} ` +
     `(${(bytes / 1024 / 1024).toFixed(2)} MiB)`,
+);
+console.log(
+  `Built ${path.relative(repositoryRoot, m4riOutput)} ` +
+    `(${(m4riBytes / 1024 / 1024).toFixed(2)} MiB)`,
 );
 console.log(
   `Copied browser evaluator assets to ` +

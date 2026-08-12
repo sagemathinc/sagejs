@@ -1,4 +1,5 @@
 import { instantiateFlintFactor } from "./index.mjs";
+import { instantiateM4ri } from "./m4ri.mjs";
 
 function deserializeError(serialized) {
   const error = new Error(serialized.message);
@@ -89,6 +90,7 @@ export async function instantiateSageEvaluator({
   baselib,
   standardLibrary,
   flint,
+  m4ri,
   symbolic = new URL("./dist/symbolic-backend.mjs", import.meta.url),
   compilerWorker = new URL("./compiler-worker.mjs", import.meta.url),
   compilerFrontend = new URL("./dist/compiler-frontend.mjs", import.meta.url),
@@ -99,9 +101,15 @@ export async function instantiateSageEvaluator({
   const language = new CompilerWorker(compilerWorker);
   let initialization;
   let flintBackend;
+  let m4riBackend;
   let symbolicBackendModule;
   try {
-    [initialization, flintBackend, symbolicBackendModule] = await Promise.all([
+    [
+      initialization,
+      flintBackend,
+      m4riBackend,
+      symbolicBackendModule,
+    ] = await Promise.all([
       language.request("initialize", {
         compiler: String(compiler),
         baselib: String(baselib),
@@ -112,6 +120,7 @@ export async function instantiateSageEvaluator({
         sageGrammar: String(sageGrammar),
       }),
       instantiateFlintFactor(flint),
+      instantiateM4ri(m4ri),
       import(String(symbolic)),
     ]);
   } catch (error) {
@@ -124,6 +133,9 @@ export async function instantiateSageEvaluator({
   const runtimeRequire = (name) => {
     if (name === "@sagemath/sagejs-flint") {
       return flintBackend;
+    }
+    if (name === "@sagemath/sagejs-m4ri") {
+      return m4riBackend;
     }
     if (name === "@sagemath/sagejs-symbolic") {
       return symbolicBackendModule;

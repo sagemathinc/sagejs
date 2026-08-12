@@ -149,6 +149,11 @@ try {
     "runtime.reflect.apply(runtime.reflect.get(runtime.flint_backend(),",
     "    '__sagejs_wasm_resource_live_count__'), runtime.undefined, [])",
   ].join("\n");
+  const m4riLiveCount = [
+    "runtime.reflect.apply(runtime.reflect.get(",
+    "    runtime.require_module('@sagemath/sagejs-m4ri'),",
+    "    '__sagejs_wasm_resource_live_count__'), runtime.undefined, [])",
+  ].join("\n");
   assert.equal(await runSource([
     "import sagejs.runtime as runtime",
     "from sagejs.ffi.flint import dirichlet_group, dirichlet_group_size, dirichlet_group_num_primitive",
@@ -205,6 +210,56 @@ try {
     "(-7/6, '[11/12  -1/6]\\n[   -1   5/3]', '[1 0]\\n[0 1]', 40, 1, 1, True)",
     "None",
   ].join("\n"));
+
+  assert.equal(await runSource([
+    "import sagejs.runtime as runtime",
+    "from sagejs.ffi.m4ri import matrix as m4ri_matrix, matrix_set_entry, matrix_entry_code, matrix_mul, matrix_rank, matrix_determinant_code, matrix_rref, matrix_nrows, matrix_ncols",
+    "resource = m4ri_matrix(2, 2)",
+    "matrix_set_entry(resource, 0, 0, 1)",
+    "matrix_set_entry(resource, 0, 1, 1)",
+    "matrix_set_entry(resource, 1, 0, 1)",
+    "square = matrix_mul(resource, resource)",
+    "reduced = matrix_rref(resource)",
+    "oracle = runtime.flint_backend()",
+    "public = oracle.nmodMatrix(2, 2, [1, 1, 1, 0], 2)",
+    "public_square = oracle.matrixMul(public, public)",
+    "print([matrix_entry_code(square, i, j) for i in range(2) for j in range(2)] == [int(oracle.matrixEntry(public_square, i, j)) for i in range(2) for j in range(2)])",
+    "print(matrix_rank(resource) == oracle.matrixRank(public), matrix_determinant_code(resource) == int(oracle.matrixDet(public)))",
+    "print(matrix_nrows(reduced), matrix_ncols(reduced), reduced.closed)",
+    "resource.close(); square.close(); reduced.close()",
+    "print(resource.closed, square.closed, reduced.closed)",
+    `print(${m4riLiveCount})`,
+  ].join("\n")), [
+    "True",
+    "True True",
+    "2 2 False",
+    "True True True",
+    "0",
+    "None",
+  ].join("\n"));
+
+  assert.equal(await runSource([
+    "import sagejs.runtime as runtime",
+    "from sagejs.ffi.m4ri import matrix as m4ri_matrix",
+    "def use_temporary_m4ri_matrix():",
+    "    temporary = m4ri_matrix(129, 129)",
+    "    return temporary.closed",
+    "assert use_temporary_m4ri_matrix() == False",
+    m4riLiveCount,
+  ].join("\n")), "1");
+
+  remaining = "1";
+  for (let attempt = 0; attempt < 30 && remaining !== "0"; attempt += 1) {
+    remaining = (await runSource([
+      "import sagejs.runtime as runtime",
+      "runtime.reflect.apply(runtime.reflect.get(runtime.global_object, 'gc'), runtime.undefined, [])",
+      m4riLiveCount,
+    ].join("\n"))).trim();
+    if (remaining !== "0") {
+      await new Promise((resolve) => setTimeout(resolve, 25));
+    }
+  }
+  assert.equal(remaining, "0");
 
   remaining = "1";
   for (let attempt = 0; attempt < 50 && remaining !== "0"; attempt += 1) {

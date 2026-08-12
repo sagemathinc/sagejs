@@ -1,0 +1,70 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "m4ri-wasm-distribution-v1",
+  "title": "M4RI browser backend distribution",
+  "lane": "distribution",
+  "status": "active",
+  "owner": "user",
+  "objective": "Build, package, route, and browser-test a separately owned generated M4RI Wasm backend for Sage.js browser sessions.",
+  "base_commit": "33a292ac998dc797bfae0e762953d6008fc3fb6e",
+  "claims": [
+    "packages/flint-wasm/"
+  ],
+  "dependencies": [
+    "m4ri-wasm-core-v1"
+  ],
+  "references": [
+    "/home/user/cowasm/sagemath/m4ri"
+  ],
+  "architecture": {
+    "strategy": "external-library",
+    "fallback": "tested-capability",
+    "oracles": [
+      "generated M4RI Wasm core adapter tests",
+      "browser Sage.js lifecycle smoke tests"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "fallback",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:portable",
+    "pnpm test:native",
+    "pnpm test:sea",
+    "pnpm --filter @sagemath/sagejs-flint-wasm test",
+    "node packages/flint-wasm/test/resource-browser-smoke.mjs",
+    "pnpm architecture:check"
+  ],
+  "runs": [
+    {
+      "command": "pnpm --filter @sagemath/sagejs-flint-wasm test",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 8.191,
+      "started_at": "2026-08-12T02:17:02.542Z",
+      "commit": "c45693503d809bba7e58fb9e8d31a0840bf33a9b",
+      "workspace_fingerprint": "be889ce70dc62d301d8059af6708eba4b4c1420184f83b9147f00a4a863bebf4",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node packages/flint-wasm/test/resource-browser-smoke.mjs",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 2.777,
+      "started_at": "2026-08-12T02:17:18.010Z",
+      "commit": "c45693503d809bba7e58fb9e8d31a0840bf33a9b",
+      "workspace_fingerprint": "be889ce70dc62d301d8059af6708eba4b4c1420184f83b9147f00a4a863bebf4",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "",
+    "risks": [],
+    "next_steps": []
+  }
+}
