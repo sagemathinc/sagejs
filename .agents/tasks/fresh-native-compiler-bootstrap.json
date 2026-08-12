@@ -76,7 +76,7 @@
     }
   ],
   "handoff": {
-    "summary": "Native package preparation now serializes compiler provisioning, preserves an existing converged compiler, self-hosts stage zero to convergence, validates the public compiler-version export, and rolls back a failed replacement. The v2 stamp invalidates every artifact produced by the incomplete v1 bootstrap path.",
+    "summary": "Native package preparation now serializes compiler provisioning, preserves an existing converged compiler, self-hosts stage zero to convergence through the worktree source entry point (never an installed native launcher), validates the public compiler-version export, and rolls back a failed replacement. The v2 stamp invalidates every artifact produced by the incomplete v1 bootstrap path.",
     "risks": [
       "A genuinely stale compiler now incurs the full two-pass self-host build before native addon preparation; the stamp makes this a one-time cost per compiler input set."
     ],

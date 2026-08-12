@@ -788,7 +788,7 @@ function nativeCompilerBuildRunner(directory, observations) {
       }
       return;
     }
-    if (program === join(directory, "bin", "sagejs")) {
+    if (program === join(directory, "bin", "sagejs-source.cjs")) {
       assert.deepEqual(arguments_.slice(1), ["self", "--complete"]);
       const compilerPath = join(directory, "dist", "compiler", "compiler.js");
       observations.beforeSelf.push(readFileSync(compilerPath, "utf8"));
@@ -838,6 +838,53 @@ test("native compiler preparation self-hosts without downgrading an existing com
     } finally {
       rmSync(directory, { recursive: true, force: true });
     }
+  }
+});
+
+test("native compiler self-host bypasses an installed platform launcher", () => {
+  const directory = mkdtempSync(join(tmpdir(), "sagejs-native-source-test-"));
+  const observations = { beforeSelf: [] };
+  const nativeSentinel = join(directory, "native-launch-was-used");
+  try {
+    mkdirSync(join(directory, "bootstrap"), { recursive: true });
+    writeFileSync(join(directory, "bootstrap", "compiler.js"), "stage zero\n");
+    const packageName = `sagejs-${process.platform}-${process.arch}`;
+    const packageDirectory = join(
+      directory,
+      "node_modules",
+      "@sagemath",
+      packageName,
+    );
+    mkdirSync(join(packageDirectory, "bin"), { recursive: true });
+    writeFileSync(
+      join(packageDirectory, "package.json"),
+      `${JSON.stringify({ name: `@sagemath/${packageName}` })}\n`,
+    );
+    const nativeExecutable = join(
+      packageDirectory,
+      "bin",
+      process.platform === "win32" ? "sagejs.exe" : "sagejs",
+    );
+    writeFileSync(
+      nativeExecutable,
+      `fake native executable would create ${nativeSentinel}\n`,
+    );
+    assert.equal(
+      require.resolve(`@sagemath/${packageName}/package.json`, {
+        paths: [directory],
+      }),
+      join(packageDirectory, "package.json"),
+    );
+
+    assert.equal(ensureNativeCompiler(directory, {
+      runner: nativeCompilerBuildRunner(directory, observations),
+      validateCompiler() {},
+    }).status, "built");
+    assert.deepEqual(observations.beforeSelf, ["stage zero\n"]);
+    assert.equal(existsSync(nativeExecutable), true);
+    assert.equal(existsSync(nativeSentinel), false);
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
   }
 });
 

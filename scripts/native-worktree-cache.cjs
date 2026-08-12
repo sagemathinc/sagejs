@@ -1874,7 +1874,7 @@ function ensureNativeCompilerUnlocked(workspace, options = {}) {
         "--compiler",
       ], workspace);
       runner(process.execPath, [
-        join(workspace, "bin", "sagejs"),
+        join(workspace, "bin", "sagejs-source.cjs"),
         "self",
         "--complete",
       ], workspace);
