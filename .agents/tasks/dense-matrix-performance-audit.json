@@ -4,7 +4,7 @@
   "id": "dense-matrix-performance-audit",
   "title": "Dense matrix public performance audit",
   "lane": "arithmetic-algebra",
-  "status": "active",
+  "status": "complete",
   "owner": "user",
   "objective": "Provide a machine-readable, reproducible correctness and performance audit of public dense matrix operations over ZZ, QQ, GF(2), GF(7), and a large word prime, with separated process/bootstrap/first-measured/warm measurements, backend traces, bounded routine mode, opt-in full Sage comparison, and a prioritized remediation handoff",
   "base_commit": "d9831968c7bfd5936a95df2517278c3b3dcd5064",
