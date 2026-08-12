@@ -1104,6 +1104,129 @@ static int region_payload(
     return 1;
 }
 
+static int rejected_integer_region(
+    const unsigned char *source, size_t length)
+{
+    unsigned char *copy = (unsigned char *) malloc(length == 0 ? 1 : length);
+    if (copy == NULL)
+        return 0;
+    memcpy(copy, source, length);
+    sagejs_flint_byte_region_struct region = {copy, length};
+    sagejs_fmpz_polynomial_t result = {0};
+    const int rejected =
+        !sagejs_fmpz_polynomial_from_byte_region(
+            result, &region, 0, (uint64_t) length) &&
+        result->retained_bytes == 0 && result->sealed == 0 &&
+        result->builder_length == 0 &&
+        memcmp(copy, source, length) == 0 &&
+        !sagejs_fmpz_polynomial_from_byte_region(
+            result, &region, 0, (uint64_t) length) &&
+        memcmp(copy, source, length) == 0;
+    free(copy);
+    return rejected;
+}
+
+static int rejected_rational_region(
+    const unsigned char *source, size_t length)
+{
+    unsigned char *copy = (unsigned char *) malloc(length == 0 ? 1 : length);
+    if (copy == NULL)
+        return 0;
+    memcpy(copy, source, length);
+    sagejs_flint_byte_region_struct region = {copy, length};
+    sagejs_fmpq_polynomial_t result = {0};
+    const int rejected =
+        !sagejs_fmpq_polynomial_from_byte_region(
+            result, &region, 0, (uint64_t) length) &&
+        result->retained_bytes == 0 && result->sealed == 0 &&
+        result->builder_length == 0 &&
+        memcmp(copy, source, length) == 0 &&
+        !sagejs_fmpq_polynomial_from_byte_region(
+            result, &region, 0, (uint64_t) length) &&
+        memcmp(copy, source, length) == 0;
+    free(copy);
+    return rejected;
+}
+
+static int exact_region_rejection_matrix(void)
+{
+    const unsigned char valid_integer[] = {
+        'S', 'J', 'P', 'Z', 1, 0, 0, 0,
+        1, 0, 0, 0, 0, 0, 0, 0,
+        1, 0, 0, 0, 1
+    };
+    unsigned char damaged[sizeof(valid_integer) + 1];
+    memcpy(damaged, valid_integer, sizeof(valid_integer));
+    damaged[0] = 'X';
+    if (!rejected_integer_region(damaged, sizeof(valid_integer)))
+        return 0;
+    memcpy(damaged, valid_integer, sizeof(valid_integer));
+    damaged[4] = 2;
+    if (!rejected_integer_region(damaged, sizeof(valid_integer)))
+        return 0;
+    memcpy(damaged, valid_integer, sizeof(valid_integer));
+    damaged[5] = 1;
+    if (!rejected_integer_region(damaged, sizeof(valid_integer)) ||
+        !rejected_integer_region(valid_integer, sizeof(valid_integer) - 1))
+        return 0;
+    memcpy(damaged, valid_integer, sizeof(valid_integer));
+    damaged[sizeof(valid_integer)] = 0;
+    if (!rejected_integer_region(damaged, sizeof(damaged)))
+        return 0;
+    const unsigned char leading_zero[] = {
+        'S', 'J', 'P', 'Z', 1, 0, 0, 0,
+        1, 0, 0, 0, 0, 0, 0, 0,
+        2, 0, 0, 0, 1, 0
+    };
+    const unsigned char negative_zero[] = {
+        'S', 'J', 'P', 'Z', 1, 0, 0, 0,
+        1, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 128
+    };
+    if (!rejected_integer_region(leading_zero, sizeof(leading_zero)) ||
+        !rejected_integer_region(negative_zero, sizeof(negative_zero)))
+        return 0;
+    const unsigned char zero_denominator[] = {
+        'S', 'J', 'P', 'Q', 1, 0, 0, 0,
+        1, 0, 0, 0, 0, 0, 0, 0,
+        1, 0, 0, 0, 1,
+        0, 0, 0, 0
+    };
+    const unsigned char negative_denominator[] = {
+        'S', 'J', 'P', 'Q', 1, 0, 0, 0,
+        1, 0, 0, 0, 0, 0, 0, 0,
+        1, 0, 0, 0, 1,
+        1, 0, 0, 128, 2
+    };
+    const unsigned char nonreduced[] = {
+        'S', 'J', 'P', 'Q', 1, 0, 0, 0,
+        1, 0, 0, 0, 0, 0, 0, 0,
+        1, 0, 0, 0, 2,
+        1, 0, 0, 0, 4
+    };
+    const unsigned char noncanonical_zero[] = {
+        'S', 'J', 'P', 'Q', 1, 0, 0, 0,
+        1, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0,
+        1, 0, 0, 0, 2
+    };
+    const unsigned char rational_negative_zero[] = {
+        'S', 'J', 'P', 'Q', 1, 0, 0, 0,
+        1, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 128,
+        1, 0, 0, 0, 1
+    };
+    return rejected_rational_region(
+            zero_denominator, sizeof(zero_denominator)) &&
+        rejected_rational_region(
+            negative_denominator, sizeof(negative_denominator)) &&
+        rejected_rational_region(nonreduced, sizeof(nonreduced)) &&
+        rejected_rational_region(
+            noncanonical_zero, sizeof(noncanonical_zero)) &&
+        rejected_rational_region(
+            rational_negative_zero, sizeof(rational_negative_zero));
+}
+
 int main(void)
 {
     fmpz_t coefficient, denominator, argument, result, zpayload, qpayload;
@@ -1113,6 +1236,8 @@ int main(void)
     fmpz_init(result);
     fmpz_init(zpayload);
     fmpz_init(qpayload);
+    if (!exact_region_rejection_matrix())
+        return 23;
     for (slong round = 0; round < 300; round++)
     {
         sagejs_fmpz_polynomial_t z, zsum, zproduct, zquotient, zgcd, zpower;

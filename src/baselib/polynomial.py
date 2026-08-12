@@ -622,6 +622,27 @@ def _packed_uint8_suffix(source: Any, offset: int) -> Any:
     return runtime.reflect.construct(constructor, [view])
 
 
+def _packed_uint8_prefix(source: Any, length: int) -> Any:
+    """Return a copied byte prefix through the host's typed-array primitive."""
+    if length == _buffer_length(source):
+        return source
+    subarray = runtime.reflect.get(source, "subarray")
+    view = runtime.reflect.apply(subarray, source, [0, length])
+    constructor = runtime.reflect.get(runtime.global_object, "Uint8Array")
+    return runtime.reflect.construct(constructor, [view])
+
+
+def _packed_exact_parts_prefix(source: Any, part_count: int) -> Any:
+    """Select complete packed magnitudes without inspecting host values."""
+    offset = 0
+    for _index in range(part_count):
+        header = 0
+        for byte_index in range(4):
+            header += int(source[offset + byte_index]) * (256**byte_index)
+        offset += 4 + header % 0x80000000
+    return _packed_uint8_prefix(source, offset)
+
+
 def _exact_polynomial_bytes(
     body: Any,
     coefficient_count: int,
@@ -3201,12 +3222,8 @@ class PolynomialRingParent(sage.Parent):
         if kind == "ZZ":
             if _generated_flint_resources_available():
                 values = coefficients
-                length = len(values)
-                while length > 0 and values[length - 1] == 0:
-                    length -= 1
-                candidate = values if length == len(values) else values[:length]
                 try:
-                    body = runtime.exact_integer_values_to_packed_bytes(candidate)
+                    body = runtime.exact_integer_values_to_packed_bytes(values)
                 except TypeError:
                     body = runtime.undefined
                 if body is runtime.undefined:
@@ -3214,12 +3231,14 @@ class PolynomialRingParent(sage.Parent):
                         runtime.integer_bigint(self._base(value))
                         for value in coefficients
                     ]
-                    length = len(values)
-                    while length > 0 and values[length - 1] == 0:
-                        length -= 1
-                    body = runtime.exact_integer_values_to_packed_bytes(
-                        values if length == len(values) else values[:length]
-                    )
+                    body = runtime.exact_integer_values_to_packed_bytes(values)
+                # `body` proves that every raw value is a primitive exact
+                # integer, or `values` is the ordinary-coercion result. Only
+                # now is equality safe to consult for canonical trimming.
+                length = len(values)
+                while length > 0 and values[length - 1] == 0:
+                    length -= 1
+                body = _packed_exact_parts_prefix(body, length)
                 return self._from_fmpz_polynomial_resource(
                     _exact_polynomial_resource_from_bytes(
                         _exact_polynomial_bytes(body, length, False), False
@@ -3237,23 +3256,22 @@ class PolynomialRingParent(sage.Parent):
             )
         if kind == "QQ" and _generated_flint_resources_available():
             values = coefficients
-            length = len(values)
-            while length > 0 and values[length - 1] == 0:
-                length -= 1
-            candidate = values if length == len(values) else values[:length]
             body = runtime.canonical_rational_values_to_packed_bytes(
-                candidate, _untyped(sage.Rational), sage.QQ
+                values, _untyped(sage.Rational), sage.QQ
             )
             if body is runtime.undefined:
                 values = [self._base(value) for value in coefficients]
-                length = len(values)
-                while length > 0 and values[length - 1] == 0:
-                    length -= 1
                 body = runtime.canonical_rational_values_to_packed_bytes(
-                    values if length == len(values) else values[:length],
+                    values,
                     _untyped(sage.Rational),
                     sage.QQ,
                 )
+            # Fast packing proves primitive integers or frozen canonical
+            # rationals; otherwise ordinary coercion has already completed.
+            length = len(values)
+            while length > 0 and values[length - 1] == 0:
+                length -= 1
+            body = _packed_exact_parts_prefix(body, 2 * length)
             return self._from_fmpq_polynomial_resource(
                 _exact_polynomial_resource_from_bytes(
                     _exact_polynomial_bytes(body, length, True), True

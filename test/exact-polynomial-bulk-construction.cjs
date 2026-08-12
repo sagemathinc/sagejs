@@ -115,6 +115,35 @@ coerced = R([Coercible(3), Coercible(-4)])
 assert coerced == R([3, -4])
 assert events[:2] == ['pack-z', 'pack-z']
 
+# Fast-path recognition must happen before any user equality method. Sage
+# coerces these ZZ values through lift; a misleading or raising comparison
+# may not turn a nonzero coefficient into a trailing zero.
+class MisleadingZero:
+    def __eq__(self, other):
+        return True
+    def lift(self):
+        return 7
+
+class RaisingEquality:
+    def __eq__(self, other):
+        raise AssertionError('equality was called before coefficient coercion')
+    def lift(self):
+        return 11
+
+assert R([MisleadingZero()]) == R([7])
+assert R([RaisingEquality()]) == R([11])
+
+# QQ currently rejects these arbitrary objects, but it must reject by ordinary
+# coercion rather than consulting their hostile equality and silently yielding
+# the zero polynomial.
+for hostile in [MisleadingZero(), RaisingEquality()]:
+    try:
+        S([hostile])
+    except TypeError:
+        pass
+    else:
+        raise AssertionError('uncoercible QQ coefficient was silently trimmed')
+
 assert loads(dumps(z)) == z
 assert loads(dumps(q)) == q
 assert all(region.closed for region in regions)
