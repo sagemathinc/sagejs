@@ -1,6 +1,6 @@
 {
   "schema": "sagejs.benchmark/exact-polynomial-bulk-construction-v1",
-  "generated_at": "2026-08-12T14:48:56.453Z",
+  "generated_at": "2026-08-12T17:58:50.241Z",
   "host": {
     "platform": "linux",
     "architecture": "x64",
@@ -8,8 +8,8 @@
     "cpu": "AMD EPYC 7B13"
   },
   "repository": {
-    "commit": "37048b4604a18799cc56b17b204dada6121294b5",
-    "branch": "agent/exact-poly-bulk-contract",
+    "commit": "8b01a9ac96fc65752386948cbf7c0ad80d779805",
+    "branch": "agent/exact-poly-bulk-impl",
     "dirty": false
   },
   "configuration": {
@@ -24,7 +24,7 @@
       "ZZ[x] public dense construction",
       "QQ[x] public dense construction"
     ],
-    "current_bottleneck": {
+    "eliminated_bottleneck": {
       "path": [
         "coerce and normalize every host coefficient",
         "encode variable-size signed magnitudes as canonical SJPZ/SJPQ bytes",
@@ -34,7 +34,7 @@
         "marshal that BigInt as fmpz across generated FFI",
         "reconstruct the bytes and deserialize into FLINT"
       ],
-      "diagnosis": "The public path is bulk rather than coefficient-at-a-time. It nevertheless rebuilds normalized part lists in ordinary Python, converts already-exact ZZ entries to BigInt, and then unnecessarily round-trips its byte stream through one enormous exact integer."
+      "diagnosis": "The former bulk path unnecessarily round-tripped its canonical byte stream through one enormous exact integer. Production now packs a checked host list once and parses one borrowed FlintByteRegion directly."
     },
     "required_api": [
       {
@@ -89,7 +89,8 @@
     "acceptance": {
       "correctness": "All semantic differentials agree between generated-resource execution, capability-disabled packed execution, and SageMath where formats are comparable.",
       "boundary": "Generated adapter audit proves one checked host-list packing operation, one byte-region creation, one borrowed parse, zero scalar coefficient calls, and no stream-sized BigInt.",
-      "performance": "On each measured host, report fresh-process setup, first invocation, and a warm median separately. For 5001 small dense coefficients, warm public construction for both ZZ[x] and QQ[x] must be no slower than 2.0x SageMath on the same host. Also test 20001 coefficients and skewed inputs for linear scaling in coefficient count plus encoded bytes; never encode a single-host crossover as a universal constant.",
+      "performance": "On each measured host, report fresh-process setup, first invocation, and a warm median separately, including a same-host SageMath ratio whenever a usable SageMath oracle is installed. Test 5001 and 20001 coefficients plus skewed inputs for linear scaling in coefficient count and encoded bytes; record generated-copy and borrowed-parse costs without turning one host's timing into a universal acceptance constant.",
+      "remaining_performance_goal": "The originally proposed public warm-construction target of at most 2x same-host SageMath remains unmet, especially for QQ[x]. It is an explicit follow-up optimization goal rather than being silently weakened or misreported as an FFI correctness gate.",
       "portability": "Linux x64 and macOS arm64 must exercise the generated resource; Windows x64 and Wasm require either that path or a tested correct capability fallback.",
       "maintainability": "The implementation adds declarations and ordinary Python wiring but no compiler branch specific to polynomial construction.",
       "stage_gates": {
@@ -102,19 +103,23 @@
   },
   "runtimes": {
     "sagejs": {
-      "executable": "/home/user/sagejs-worktrees/exact-poly-bulk-contract/bin/sagejs",
+      "executable": "/home/user/sagejs-worktrees/exact-poly-bulk-impl/bin/sagejs",
       "version": "0.2.0"
+    },
+    "sage": {
+      "executable": "/home/user/sagelite/sage",
+      "version": "SageMath version 10.9.post30, Release Date: 2026-07-14"
     }
   },
   "measurements": {
     "sagejs": {
       "ZZ": {
         "ok": true,
-        "process_ms": 594.029168,
-        "setup_ms": 10.276556015014648,
-        "first_ms": 52.81710624694824,
-        "warm_ms": 2.972841262817383,
-        "first_delta_ms": 49.84426498413086,
+        "process_ms": 573.550309,
+        "setup_ms": 10.362386703491211,
+        "first_ms": 56.732892990112305,
+        "warm_ms": 0.5583763122558594,
+        "first_delta_ms": 56.174516677856445,
         "summary": [
           5000,
           "-823",
@@ -125,11 +130,43 @@
       },
       "QQ": {
         "ok": true,
-        "process_ms": 768.1702660000001,
-        "setup_ms": 72.67379760742188,
-        "first_ms": 71.34842872619629,
-        "warm_ms": 9.458065032958984,
-        "first_delta_ms": 61.890363693237305,
+        "process_ms": 710.206281,
+        "setup_ms": 73.26817512512207,
+        "first_ms": 70.76764106750488,
+        "warm_ms": 5.838871002197266,
+        "first_delta_ms": 64.92877006530762,
+        "summary": [
+          5000,
+          "-823/25",
+          "770/3",
+          "487/7"
+        ],
+        "first_summary_matches": true
+      }
+    },
+    "sage": {
+      "ZZ": {
+        "ok": true,
+        "process_ms": 1173.9225970000002,
+        "setup_ms": 1.8911700026364997,
+        "first_ms": 0.2775089960778132,
+        "warm_ms": 0.15292000898625702,
+        "first_delta_ms": 0.12458898709155619,
+        "summary": [
+          5000,
+          "-823",
+          "770",
+          "974"
+        ],
+        "first_summary_matches": true
+      },
+      "QQ": {
+        "ok": true,
+        "process_ms": 1193.487806,
+        "setup_ms": 7.066359001328237,
+        "first_ms": 0.3731299948412925,
+        "warm_ms": 0.28221000684425235,
+        "first_delta_ms": 0.09091998799704015,
         "summary": [
           5000,
           "-823/25",
@@ -143,316 +180,45 @@
   "diagnostic_stages": {
     "ZZ": {
       "ok": true,
-      "process_ms": 697.1711709999998,
-      "normalize_ms": 0.7176399230957031,
-      "pack_body_ms": 1.417398452758789,
-      "checked_host_list_pack_ms": 0.3516674041748047,
-      "full_current_payload_ms": 0.7333755493164062,
-      "bytes_to_bigint_ms": 0.1270771026611328,
-      "generated_deserialize_ms": 0.20241737365722656,
-      "byte_region_creation_ms": 0.06628036499023438,
+      "process_ms": 623.2814459999998,
+      "checked_host_list_pack_ms": 0.16760826110839844,
+      "canonical_envelope_ms": 0.029802322387695312,
+      "byte_region_creation_ms": 0.07843971252441406,
+      "borrowed_parse_ms": 0.1785755157470703,
       "encoded_bytes": 28746,
-      "skew_checked_host_list_pack_ms": 0.24271011352539062,
-      "skew_public_construct_ms": 2.057313919067383,
+      "skew_checked_host_list_pack_ms": 0.2727508544921875,
+      "skew_public_construct_ms": 0.6098747253417969,
       "skew_encoded_bytes": 33213,
       "skew_bits": 65538
     },
     "QQ": {
       "ok": true,
-      "process_ms": 1328.0154870000001,
-      "normalize_ms": 26.447057723999023,
-      "pack_body_ms": 1.5647411346435547,
-      "checked_host_list_pack_ms": 2.3207664489746094,
-      "full_current_payload_ms": 1.1489391326904297,
-      "bytes_to_bigint_ms": 0.21386146545410156,
-      "generated_deserialize_ms": 0.5452632904052734,
-      "byte_region_creation_ms": 0.06461143493652344,
+      "process_ms": 1001.3333299999999,
+      "checked_host_list_pack_ms": 4.954338073730469,
+      "canonical_envelope_ms": 0.03838539123535156,
+      "byte_region_creation_ms": 0.10180473327636719,
+      "borrowed_parse_ms": 0.5421638488769531,
       "encoded_bytes": 53033,
-      "skew_checked_host_list_pack_ms": 1.931905746459961,
-      "skew_public_construct_ms": 22.83191680908203,
+      "skew_checked_host_list_pack_ms": 5.057334899902344,
+      "skew_public_construct_ms": 19.039630889892578,
       "skew_encoded_bytes": 62313,
       "skew_bits": 65538
     }
   },
-  "comparisons": {},
+  "comparisons": {
+    "ZZ": {
+      "summaries_match": true,
+      "sagejs_over_sage": 3.6514274093852617
+    },
+    "QQ": {
+      "summaries_match": true,
+      "sagejs_over_sage": 20.689808513486394
+    }
+  },
   "additional_host_evidence": [
     {
-      "label": "m1-after-build",
-      "generated_at": "2026-08-12T14:45:18.941Z",
-      "host": {
-        "platform": "darwin",
-        "architecture": "arm64",
-        "uname": "Darwin studio.local 25.4.0 Darwin Kernel Version 25.4.0: Thu Mar 19 19:30:44 PDT 2026; root:xnu-12377.101.15~1/RELEASE_ARM64_T6000 arm64",
-        "cpu": "Apple M1 Max"
-      },
-      "repository": {
-        "commit": "78655f0df6b25cd800c701b9d28a3d4e4d647f71",
-        "branch": "agent/exact-poly-bulk-contract",
-        "dirty": false
-      },
-      "configuration": {
-        "count": 5001,
-        "samples": 7,
-        "timing": "fresh process per domain; setup, first invocation, warm median, and complete process wall time reported separately",
-        "threads": 1
-      },
-      "runtimes": {
-        "sagejs": {
-          "executable": "/Volumes/sage/sagejs/bin/sagejs",
-          "version": "0.2.0"
-        },
-        "sage": {
-          "executable": "/Volumes/sage/sagelite-build/smoke/public-dev-cp314-20260704-004400/bin/sage",
-          "version": "10.9.post2"
-        }
-      },
-      "measurements": {
-        "sagejs": {
-          "ZZ": {
-            "ok": true,
-            "process_ms": 2931.1075419999997,
-            "setup_ms": 6.870031356811523,
-            "first_ms": 2234.7004413604736,
-            "warm_ms": 1.4219284057617188,
-            "first_delta_ms": 2233.278512954712,
-            "summary": [
-              5000,
-              "-823",
-              "770",
-              "974"
-            ],
-            "first_summary_matches": true
-          },
-          "QQ": {
-            "ok": true,
-            "process_ms": 393.41041700000005,
-            "setup_ms": 38.27357292175293,
-            "first_ms": 40.31777381896973,
-            "warm_ms": 5.120038986206055,
-            "first_delta_ms": 35.19773483276367,
-            "summary": [
-              5000,
-              "-823/25",
-              "770/3",
-              "487/7"
-            ],
-            "first_summary_matches": true
-          }
-        },
-        "sage": {
-          "ZZ": {
-            "ok": true,
-            "process_ms": 3365.703125,
-            "setup_ms": 1.3549579307436943,
-            "first_ms": 0.13062451034784317,
-            "warm_ms": 0.08962489664554596,
-            "first_delta_ms": 0.04099961370229721,
-            "summary": [
-              5000,
-              "-823",
-              "770",
-              "974"
-            ],
-            "first_summary_matches": true
-          },
-          "QQ": {
-            "ok": true,
-            "process_ms": 2399.393833,
-            "setup_ms": 5.036374554038048,
-            "first_ms": 0.2021249383687973,
-            "warm_ms": 0.1894598826766014,
-            "first_delta_ms": 0.012665055692195892,
-            "summary": [
-              5000,
-              "-823/25",
-              "770/3",
-              "487/7"
-            ],
-            "first_summary_matches": true
-          }
-        }
-      },
-      "diagnostic_stages": {
-        "ZZ": {
-          "ok": true,
-          "process_ms": 345.38283299999966,
-          "normalize_ms": 0.41222572326660156,
-          "pack_body_ms": 0.7729530334472656,
-          "checked_host_list_pack_ms": 0.2048015594482422,
-          "full_current_payload_ms": 0.6287097930908203,
-          "bytes_to_bigint_ms": 0.10633468627929688,
-          "generated_deserialize_ms": 0.1327991485595703,
-          "byte_region_creation_ms": 0.027418136596679688,
-          "encoded_bytes": 28746
-        },
-        "QQ": {
-          "ok": true,
-          "process_ms": 552.4433749999998,
-          "normalize_ms": 13.074874877929688,
-          "pack_body_ms": 1.2784004211425781,
-          "checked_host_list_pack_ms": 1.5485286712646484,
-          "full_current_payload_ms": 0.9086132049560547,
-          "bytes_to_bigint_ms": 0.16069412231445312,
-          "generated_deserialize_ms": 0.4723072052001953,
-          "byte_region_creation_ms": 0.029087066650390625,
-          "encoded_bytes": 53033
-        }
-      },
-      "comparisons": {
-        "ZZ": {
-          "summaries_match": true,
-          "sagejs_over_sage": 15.865328262360496
-        },
-        "QQ": {
-          "summaries_match": true,
-          "sagejs_over_sage": 27.02439647841283
-        }
-      }
-    },
-    {
-      "label": "m1-current-warm-artifact-cache",
-      "generated_at": "2026-08-12T14:48:17.377Z",
-      "host": {
-        "platform": "darwin",
-        "architecture": "arm64",
-        "uname": "Darwin studio.local 25.4.0 Darwin Kernel Version 25.4.0: Thu Mar 19 19:30:44 PDT 2026; root:xnu-12377.101.15~1/RELEASE_ARM64_T6000 arm64",
-        "cpu": "Apple M1 Max"
-      },
-      "repository": {
-        "commit": "9701542db9fac6a7c66f43835f6f6b16842799f5",
-        "branch": "agent/exact-poly-bulk-contract",
-        "dirty": false
-      },
-      "configuration": {
-        "count": 5001,
-        "samples": 7,
-        "timing": "fresh process per domain; setup, first invocation, warm median, and complete process wall time reported separately",
-        "threads": 1
-      },
-      "runtimes": {
-        "sagejs": {
-          "executable": "/Volumes/sage/sagejs/bin/sagejs",
-          "version": "0.2.0"
-        },
-        "sage": {
-          "executable": "/Volumes/sage/sagelite-build/smoke/public-dev-cp314-20260704-004400/bin/sage",
-          "version": "10.9.post2"
-        }
-      },
-      "measurements": {
-        "sagejs": {
-          "ZZ": {
-            "ok": true,
-            "process_ms": 327.368166,
-            "setup_ms": 7.50422477722168,
-            "first_ms": 35.017967224121094,
-            "warm_ms": 1.7647743225097656,
-            "first_delta_ms": 33.25319290161133,
-            "summary": [
-              5000,
-              "-823",
-              "770",
-              "974"
-            ],
-            "first_summary_matches": true
-          },
-          "QQ": {
-            "ok": true,
-            "process_ms": 395.4508750000001,
-            "setup_ms": 38.33270072937012,
-            "first_ms": 39.49880599975586,
-            "warm_ms": 5.221366882324219,
-            "first_delta_ms": 34.27743911743164,
-            "summary": [
-              5000,
-              "-823/25",
-              "770/3",
-              "487/7"
-            ],
-            "first_summary_matches": true
-          }
-        },
-        "sage": {
-          "ZZ": {
-            "ok": true,
-            "process_ms": 2390.791833,
-            "setup_ms": 1.4337925240397453,
-            "first_ms": 0.13654213398694992,
-            "warm_ms": 0.08974969387054443,
-            "first_delta_ms": 0.04679244011640549,
-            "summary": [
-              5000,
-              "-823",
-              "770",
-              "974"
-            ],
-            "first_summary_matches": true
-          },
-          "QQ": {
-            "ok": true,
-            "process_ms": 2390.3051670000004,
-            "setup_ms": 4.742208868265152,
-            "first_ms": 0.2009579911828041,
-            "warm_ms": 0.1882920041680336,
-            "first_delta_ms": 0.012665987014770508,
-            "summary": [
-              5000,
-              "-823/25",
-              "770/3",
-              "487/7"
-            ],
-            "first_summary_matches": true
-          }
-        }
-      },
-      "diagnostic_stages": {
-        "ZZ": {
-          "ok": true,
-          "process_ms": 383.5725,
-          "normalize_ms": 0.47206878662109375,
-          "pack_body_ms": 0.6918907165527344,
-          "checked_host_list_pack_ms": 0.1990795135498047,
-          "full_current_payload_ms": 0.8227825164794922,
-          "bytes_to_bigint_ms": 0.08821487426757812,
-          "generated_deserialize_ms": 0.1270771026611328,
-          "byte_region_creation_ms": 0.02574920654296875,
-          "encoded_bytes": 28746,
-          "skew_checked_host_list_pack_ms": 0.6184577941894531,
-          "skew_public_construct_ms": 1.4905929565429688,
-          "skew_encoded_bytes": 33213,
-          "skew_bits": 65538
-        },
-        "QQ": {
-          "ok": true,
-          "process_ms": 745.5415420000002,
-          "normalize_ms": 12.441873550415039,
-          "pack_body_ms": 1.1348724365234375,
-          "checked_host_list_pack_ms": 1.4133453369140625,
-          "full_current_payload_ms": 0.8397102355957031,
-          "bytes_to_bigint_ms": 0.1556873321533203,
-          "generated_deserialize_ms": 0.4730224609375,
-          "byte_region_creation_ms": 0.026941299438476562,
-          "encoded_bytes": 53033,
-          "skew_checked_host_list_pack_ms": 1.2395381927490234,
-          "skew_public_construct_ms": 17.743349075317383,
-          "skew_encoded_bytes": 62313,
-          "skew_bits": 65538
-        }
-      },
-      "comparisons": {
-        "ZZ": {
-          "summaries_match": true,
-          "sagejs_over_sage": 19.66329071891084
-        },
-        "QQ": {
-          "summaries_match": true,
-          "sagejs_over_sage": 27.73015723845937
-        }
-      }
-    },
-    {
       "label": "linux-x64-20001",
-      "generated_at": "2026-08-12T14:47:55.823Z",
+      "generated_at": "2026-08-12T17:55:25.122Z",
       "host": {
         "platform": "linux",
         "architecture": "x64",
@@ -460,8 +226,8 @@
         "cpu": "AMD EPYC 7B13"
       },
       "repository": {
-        "commit": "9701542db9fac6a7c66f43835f6f6b16842799f5",
-        "branch": "agent/exact-poly-bulk-contract",
+        "commit": "8b01a9ac96fc65752386948cbf7c0ad80d779805",
+        "branch": "agent/exact-poly-bulk-impl",
         "dirty": false
       },
       "configuration": {
@@ -472,19 +238,23 @@
       },
       "runtimes": {
         "sagejs": {
-          "executable": "/home/user/sagejs-worktrees/exact-poly-bulk-contract/bin/sagejs",
+          "executable": "/home/user/sagejs-worktrees/exact-poly-bulk-impl/bin/sagejs",
           "version": "0.2.0"
+        },
+        "sage": {
+          "executable": "/home/user/sagelite/sage",
+          "version": "SageMath version 10.9.post30, Release Date: 2026-07-14"
         }
       },
       "measurements": {
         "sagejs": {
           "ZZ": {
             "ok": true,
-            "process_ms": 669.7057729999999,
-            "setup_ms": 24.045467376708984,
-            "first_ms": 59.75198745727539,
-            "warm_ms": 7.935762405395508,
-            "first_delta_ms": 51.81622505187988,
+            "process_ms": 587.401339,
+            "setup_ms": 23.99921417236328,
+            "first_ms": 58.57348442077637,
+            "warm_ms": 1.5325546264648438,
+            "first_delta_ms": 57.04092979431152,
             "summary": [
               20000,
               "-823",
@@ -495,11 +265,43 @@
           },
           "QQ": {
             "ok": true,
-            "process_ms": 1114.838651,
-            "setup_ms": 246.01244926452637,
-            "first_ms": 87.67938613891602,
-            "warm_ms": 34.455060958862305,
-            "first_delta_ms": 53.22432518005371,
+            "process_ms": 1000.2720289999997,
+            "setup_ms": 240.78035354614258,
+            "first_ms": 83.04452896118164,
+            "warm_ms": 22.74775505065918,
+            "first_delta_ms": 60.29677391052246,
+            "summary": [
+              20000,
+              "-823/25",
+              "-227/15",
+              "181/6"
+            ],
+            "first_summary_matches": true
+          }
+        },
+        "sage": {
+          "ZZ": {
+            "ok": true,
+            "process_ms": 1197.7151759999997,
+            "setup_ms": 7.324189995415509,
+            "first_ms": 0.9007600019685924,
+            "warm_ms": 0.6079199956730008,
+            "first_delta_ms": 0.2928400062955916,
+            "summary": [
+              20000,
+              "-823",
+              "-454",
+              "362"
+            ],
+            "first_summary_matches": true
+          },
+          "QQ": {
+            "ok": true,
+            "process_ms": 1206.0296749999998,
+            "setup_ms": 29.3930879997788,
+            "first_ms": 1.4417499914998189,
+            "warm_ms": 0.9898000134853646,
+            "first_delta_ms": 0.45194997801445425,
             "summary": [
               20000,
               "-823/25",
@@ -513,34 +315,127 @@
       "diagnostic_stages": {
         "ZZ": {
           "ok": true,
-          "process_ms": 860.48774,
-          "normalize_ms": 4.060268402099609,
-          "pack_body_ms": 2.398967742919922,
-          "checked_host_list_pack_ms": 1.1243820190429688,
-          "full_current_payload_ms": 2.9184818267822266,
-          "bytes_to_bigint_ms": 0.6859302520751953,
-          "generated_deserialize_ms": 0.5311965942382812,
-          "byte_region_creation_ms": 0.06699562072753906,
+          "process_ms": 668.936742,
+          "checked_host_list_pack_ms": 0.8628368377685547,
+          "canonical_envelope_ms": 0.03600120544433594,
+          "byte_region_creation_ms": 0.08869171142578125,
+          "borrowed_parse_ms": 0.48661231994628906,
           "encoded_bytes": 114924,
-          "skew_checked_host_list_pack_ms": 0.8254051208496094,
-          "skew_public_construct_ms": 7.345914840698242,
+          "skew_checked_host_list_pack_ms": 2.166271209716797,
+          "skew_public_construct_ms": 1.7659664154052734,
           "skew_encoded_bytes": 108213,
           "skew_bits": 65538
         },
         "QQ": {
           "ok": true,
-          "process_ms": 2875.3902980000003,
-          "normalize_ms": 105.45921325683594,
-          "pack_body_ms": 4.412412643432617,
-          "checked_host_list_pack_ms": 9.760856628417969,
-          "full_current_payload_ms": 6.087541580200195,
-          "bytes_to_bigint_ms": 1.3546943664550781,
-          "generated_deserialize_ms": 1.9619464874267578,
-          "byte_region_creation_ms": 0.08916854858398438,
+          "process_ms": 1898.1355060000005,
+          "checked_host_list_pack_ms": 20.046472549438477,
+          "canonical_envelope_ms": 0.05793571472167969,
+          "byte_region_creation_ms": 0.08392333984375,
+          "borrowed_parse_ms": 1.8432140350341797,
           "encoded_bytes": 212134,
-          "skew_checked_host_list_pack_ms": 7.575750350952148,
-          "skew_public_construct_ms": 105.62944412231445,
+          "skew_checked_host_list_pack_ms": 18.959522247314453,
+          "skew_public_construct_ms": 80.68585395812988,
           "skew_encoded_bytes": 212313,
+          "skew_bits": 65538
+        }
+      },
+      "comparisons": {
+        "ZZ": {
+          "summaries_match": true,
+          "sagejs_over_sage": 2.520980782624565
+        },
+        "QQ": {
+          "summaries_match": true,
+          "sagejs_over_sage": 22.982172904360677
+        }
+      }
+    },
+    {
+      "label": "macos-arm64-5001",
+      "generated_at": "2026-08-12T17:58:32.251Z",
+      "host": {
+        "platform": "darwin",
+        "architecture": "arm64",
+        "uname": "Darwin studio.local 25.4.0 Darwin Kernel Version 25.4.0: Thu Mar 19 19:30:44 PDT 2026; root:xnu-12377.101.15~1/RELEASE_ARM64_T6000 arm64",
+        "cpu": "Apple M1 Max"
+      },
+      "repository": {
+        "commit": "8b01a9ac96fc65752386948cbf7c0ad80d779805",
+        "branch": "",
+        "dirty": false
+      },
+      "configuration": {
+        "count": 5001,
+        "samples": 5,
+        "timing": "fresh process per domain; setup, first invocation, warm median, and complete process wall time reported separately",
+        "threads": 1
+      },
+      "runtimes": {
+        "sagejs": {
+          "executable": "/Volumes/sage/sagejs-worktrees/exact-poly-bulk-impl/bin/sagejs",
+          "version": "0.2.0"
+        }
+      },
+      "measurements": {
+        "sagejs": {
+          "ZZ": {
+            "ok": true,
+            "process_ms": 315.370417,
+            "setup_ms": 6.723165512084961,
+            "first_ms": 36.91387176513672,
+            "warm_ms": 0.27871131896972656,
+            "first_delta_ms": 36.63516044616699,
+            "summary": [
+              5000,
+              "-823",
+              "770",
+              "974"
+            ],
+            "first_summary_matches": true
+          },
+          "QQ": {
+            "ok": true,
+            "process_ms": 373.4743329999999,
+            "setup_ms": 43.396949768066406,
+            "first_ms": 41.639089584350586,
+            "warm_ms": 2.2056102752685547,
+            "first_delta_ms": 39.43347930908203,
+            "summary": [
+              5000,
+              "-823/25",
+              "770/3",
+              "487/7"
+            ],
+            "first_summary_matches": true
+          }
+        }
+      },
+      "diagnostic_stages": {
+        "ZZ": {
+          "ok": true,
+          "process_ms": 332.13187500000004,
+          "checked_host_list_pack_ms": 0.14328956604003906,
+          "canonical_envelope_ms": 0.019073486328125,
+          "byte_region_creation_ms": 0.03266334533691406,
+          "borrowed_parse_ms": 0.11777877807617188,
+          "encoded_bytes": 28746,
+          "skew_checked_host_list_pack_ms": 0.17642974853515625,
+          "skew_public_construct_ms": 0.40841102600097656,
+          "skew_encoded_bytes": 33213,
+          "skew_bits": 65538
+        },
+        "QQ": {
+          "ok": true,
+          "process_ms": 502.046875,
+          "checked_host_list_pack_ms": 1.4078617095947266,
+          "canonical_envelope_ms": 0.0152587890625,
+          "byte_region_creation_ms": 0.0362396240234375,
+          "borrowed_parse_ms": 0.4038810729980469,
+          "encoded_bytes": 53033,
+          "skew_checked_host_list_pack_ms": 1.2900829315185547,
+          "skew_public_construct_ms": 13.191699981689453,
+          "skew_encoded_bytes": 62313,
           "skew_bits": 65538
         }
       },

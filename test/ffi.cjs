@@ -151,7 +151,7 @@ test("FFI declarations are strict and generated modules are current", () => {
       "fmpz_polynomial_evaluate",
       "fmpz_polynomial_evaluate_rational", "fmpz_polynomial_serialize",
       "fmpz_polynomial_format",
-      "fmpz_polynomial_deserialize",
+      "fmpz_polynomial_from_byte_region",
       "fmpq_polynomial", "fmpq_polynomial_set_coefficient",
       "fmpq_polynomial_seal", "fmpq_polynomial_length",
       "fmpq_polynomial_equal", "fmpq_polynomial_coefficient_numerator",
@@ -182,7 +182,7 @@ test("FFI declarations are strict and generated modules are current", () => {
       "fmpq_polynomial_pow",
       "fmpq_polynomial_evaluate", "fmpq_polynomial_serialize",
       "fmpq_polynomial_format",
-      "fmpq_polynomial_deserialize",
+      "fmpq_polynomial_from_byte_region",
       "fmpz_matrix", "fmpz_matrix_nrows", "fmpz_matrix_ncols",
       "fmpz_matrix_set_entry", "fmpz_matrix_entry",
       "fmpz_matrix_export_mod_ui", "fmpz_matrix_copy",
@@ -240,6 +240,20 @@ test("FFI declarations are strict and generated modules are current", () => {
       "fmpq_mat_rank", "fmpq_mat_mul", "fmpq_mat_rref",
       "fmpq_mat_inv", "fmpq_mat_solve", "fmpq_mat_det",
       "fmpq_mat_charpoly",
+      "nmod_matrix_from_entries", "nmod_matrix_random",
+      "nmod_matrix_nrows", "nmod_matrix_ncols", "nmod_matrix_modulus",
+      "nmod_matrix_entry", "nmod_matrix_set_entry", "nmod_matrix_copy",
+      "nmod_matrix_equal", "nmod_matrix_is_zero", "nmod_matrix_is_one",
+      "nmod_matrix_nonzero_count", "nmod_matrix_add", "nmod_matrix_sub",
+      "nmod_matrix_neg", "nmod_matrix_scalar_mul", "nmod_matrix_transpose",
+      "nmod_matrix_mul", "nmod_matrix_inv", "nmod_matrix_solve",
+      "nmod_matrix_rank", "nmod_matrix_rref", "nmod_matrix_right_kernel",
+      "nmod_matrix_det", "nmod_matrix_trace", "nmod_matrix_select_rows",
+      "nmod_matrix_select_columns", "nmod_matrix_set_block",
+      "nmod_matrix_mul_vector", "nmod_vector_mul_matrix",
+      "nmod_matrix_stack", "nmod_matrix_augment", "nmod_matrix_swap_rows",
+      "nmod_matrix_swap_columns", "nmod_matrix_format",
+      "nmod_matrix_serialize", "nmod_matrix_charpoly", "nmod_matrix_minpoly",
       "nmod_mat_rank", "nmod_mat_det", "nmod_mat_charpoly",
       "nmod_mat_minpoly", "nmod_mat_inv", "nmod_mat_rref",
       "nmod_mat_mul", "nmod_mat_right_kernel", "nmod_mat_solve",
@@ -288,7 +302,7 @@ test("FFI declarations are strict and generated modules are current", () => {
   assert.deepEqual(
     flint.resources.map((resource) => resource.python_name),
     [
-      "FmpzMatrix", "FmpqMatrix", "FmpqValue", "FlintByteRegion",
+      "FmpzMatrix", "FmpqMatrix", "NmodMatrix", "FmpqValue", "FlintByteRegion",
       "FmpzPolynomial", "FmpqPolynomial", "FmpzModPolynomial",
       "FmpzModPolynomialDivisionResult", "FmpzModPolynomialXgcdResult",
       "FmpzModPolynomialFactorization", "FmpzModPolynomialRoots",
@@ -359,7 +373,7 @@ test("FFI declarations are strict and generated modules are current", () => {
     { resource: "graph", ownership: "owned", owner: null, root: "graph" },
     { resource: "edges", ownership: "borrowed", owner: "graph", root: "graph" },
   ]);
-  assert.match(runSage(["ffi", "check"]), /320 function\(s\)/);
+  assert.match(runSage(["ffi", "check"]), /363 function\(s\)/);
   const inspection = JSON.parse(
     runSage(["ffi", "explain", "flint", "--json"]),
   );
@@ -408,8 +422,8 @@ test("generated host adapters cover values and safe owned resources", async () =
     assert.match(source, /whose core calls the declared foreign symbols/);
     assert.doesNotMatch(source, /sagejs\.runtime|ffi_call/);
     assert.equal(functions.length, {
-      fflas: 5,
-      flint: 284,
+      fflas: 10,
+      flint: 322,
       igraph: 2,
       m4ri: 24,
     }[declaration.library.id]);
@@ -465,8 +479,8 @@ test("computed resource byte transfers lower to one generated copy", async () =>
 
 test("packages publish every generated host adapter as the canonical export", () => {
   for (const [packagePath, expected] of [
-    ["../packages/flint", 285],
-    ["../packages/fflas", 5],
+    ["../packages/flint", 323],
+    ["../packages/fflas", 10],
     ["../packages/graph", 2],
   ]) {
     const backend = require(packagePath);
@@ -637,8 +651,8 @@ test("native-boundary audit is a reviewed exact ratchet", () => {
   const current = boundaryAudit.validateBoundarySnapshot(snapshot, { root });
   assert.ok(current.counts["napi-export"] >= 280);
   assert.ok(current.counts["runtime-intrinsic"] >= 100);
-  assert.equal(current.counts["declared-ffi"], 320);
-  assert.equal(current.counts["declared-ffi-resource"], 24);
+  assert.equal(current.counts["declared-ffi"], 363);
+  assert.equal(current.counts["declared-ffi-resource"], 25);
   assert.match(runSage(["ffi", "audit"]), /inventoried native boundaries/);
   assert.equal(
     current.boundaries.filter((item) =>

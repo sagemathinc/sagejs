@@ -36,21 +36,26 @@ function bytes(region) {
   );
 }
 
-function payload(source) {
-  const hexadecimal = Buffer.from(source).reverse().toString("hex");
-  return hexadecimal.length === 0 ? 0n : BigInt(`0x${hexadecimal}`);
-}
-
 function deserializeInteger(source) {
-  return flint.ffiFmpzPolynomialDeserialize(
-    payload(source), BigInt(source.byteLength),
-  );
+  const region = flint.ffiFlintByteRegionFromBytes(source);
+  try {
+    return flint.ffiFmpzPolynomialFromByteRegion(
+      region, 0n, BigInt(source.byteLength),
+    );
+  } finally {
+    flint.ffiFlintByteRegionClose(region);
+  }
 }
 
 function deserializeRational(source) {
-  return flint.ffiFmpqPolynomialDeserialize(
-    payload(source), BigInt(source.byteLength),
-  );
+  const region = flint.ffiFlintByteRegionFromBytes(source);
+  try {
+    return flint.ffiFmpqPolynomialFromByteRegion(
+      region, 0n, BigInt(source.byteLength),
+    );
+  } finally {
+    flint.ffiFlintByteRegionClose(region);
+  }
 }
 
 function polynomialBytes(magic, coefficients) {
@@ -704,20 +709,27 @@ function fmpqPolynomial(coefficients) {
       /invalid SJPZ v1 integer polynomial serialization/,
     );
   }
-  assert.throws(
-    () => flint.ffiFmpzPolynomialDeserialize(-1n, 16n),
-    /invalid SJPZ v1 integer polynomial serialization/,
-  );
-  assert.throws(
-    () => flint.ffiFmpzPolynomialDeserialize(
-      1n << BigInt(8 * validInteger.length), BigInt(validInteger.length),
-    ),
-    /invalid SJPZ v1 integer polynomial serialization/,
-  );
-  assert.throws(
-    () => flint.ffiFmpzPolynomialDeserialize(payload(validInteger), 2n ** 64n - 1n),
-    /invalid SJPZ v1 integer polynomial serialization/,
-  );
+  const validRegion = flint.ffiFlintByteRegionFromBytes(validInteger);
+  try {
+    assert.throws(
+      () => flint.ffiFmpzPolynomialFromByteRegion(validRegion, 1n, 16n),
+      /invalid SJPZ v1 integer polynomial serialization/,
+    );
+    assert.throws(
+      () => flint.ffiFmpzPolynomialFromByteRegion(
+        validRegion, 0n, BigInt(validInteger.length + 1),
+      ),
+      /invalid SJPZ v1 integer polynomial serialization/,
+    );
+    assert.throws(
+      () => flint.ffiFmpzPolynomialFromByteRegion(
+        validRegion, 0n, 2n ** 64n - 1n,
+      ),
+      /invalid SJPZ v1 integer polynomial serialization/,
+    );
+  } finally {
+    flint.ffiFlintByteRegionClose(validRegion);
+  }
 
   const invalidRational = [
     polynomialBytes("SJPQ", [[1n, 0n]]),
@@ -1083,36 +1095,138 @@ if (process.platform !== "win32") {
 #include <stdint.h>
 #include <sagejs/exact_polynomial_ffi.h>
 
-static int region_payload(
-    fmpz_t result, const sagejs_flint_byte_region_t region)
+static int rejected_integer_region(
+    const unsigned char *source, size_t length)
 {
-    const size_t word_count =
-        region->length / sizeof(ulong) +
-        (region->length % sizeof(ulong) != 0);
-    if (word_count > (size_t) WORD_MAX ||
-        word_count > SIZE_MAX / sizeof(ulong))
+    unsigned char *copy = (unsigned char *) malloc(length == 0 ? 1 : length);
+    if (copy == NULL)
         return 0;
-    ulong *words = (ulong *) calloc(word_count, sizeof(ulong));
-    if (words == NULL)
+    memcpy(copy, source, length);
+    sagejs_flint_byte_region_struct region = {copy, length};
+    sagejs_fmpz_polynomial_t result = {0};
+    const int rejected =
+        !sagejs_fmpz_polynomial_from_byte_region(
+            result, &region, 0, (uint64_t) length) &&
+        result->retained_bytes == 0 && result->sealed == 0 &&
+        result->builder_length == 0 &&
+        memcmp(copy, source, length) == 0 &&
+        !sagejs_fmpz_polynomial_from_byte_region(
+            result, &region, 0, (uint64_t) length) &&
+        memcmp(copy, source, length) == 0;
+    free(copy);
+    return rejected;
+}
+
+static int rejected_rational_region(
+    const unsigned char *source, size_t length)
+{
+    unsigned char *copy = (unsigned char *) malloc(length == 0 ? 1 : length);
+    if (copy == NULL)
         return 0;
-    for (size_t byte = 0; byte < region->length; byte++)
-        words[byte / sizeof(ulong)] |=
-            (ulong) region->data[byte] <<
-            (8 * (byte % sizeof(ulong)));
-    fmpz_set_ui_array(result, words, (slong) word_count);
-    free(words);
-    return 1;
+    memcpy(copy, source, length);
+    sagejs_flint_byte_region_struct region = {copy, length};
+    sagejs_fmpq_polynomial_t result = {0};
+    const int rejected =
+        !sagejs_fmpq_polynomial_from_byte_region(
+            result, &region, 0, (uint64_t) length) &&
+        result->retained_bytes == 0 && result->sealed == 0 &&
+        result->builder_length == 0 &&
+        memcmp(copy, source, length) == 0 &&
+        !sagejs_fmpq_polynomial_from_byte_region(
+            result, &region, 0, (uint64_t) length) &&
+        memcmp(copy, source, length) == 0;
+    free(copy);
+    return rejected;
+}
+
+static int exact_region_rejection_matrix(void)
+{
+    const unsigned char valid_integer[] = {
+        'S', 'J', 'P', 'Z', 1, 0, 0, 0,
+        1, 0, 0, 0, 0, 0, 0, 0,
+        1, 0, 0, 0, 1
+    };
+    unsigned char damaged[sizeof(valid_integer) + 1];
+    memcpy(damaged, valid_integer, sizeof(valid_integer));
+    damaged[0] = 'X';
+    if (!rejected_integer_region(damaged, sizeof(valid_integer)))
+        return 0;
+    memcpy(damaged, valid_integer, sizeof(valid_integer));
+    damaged[4] = 2;
+    if (!rejected_integer_region(damaged, sizeof(valid_integer)))
+        return 0;
+    memcpy(damaged, valid_integer, sizeof(valid_integer));
+    damaged[5] = 1;
+    if (!rejected_integer_region(damaged, sizeof(valid_integer)) ||
+        !rejected_integer_region(valid_integer, sizeof(valid_integer) - 1))
+        return 0;
+    memcpy(damaged, valid_integer, sizeof(valid_integer));
+    damaged[sizeof(valid_integer)] = 0;
+    if (!rejected_integer_region(damaged, sizeof(damaged)))
+        return 0;
+    const unsigned char leading_zero[] = {
+        'S', 'J', 'P', 'Z', 1, 0, 0, 0,
+        1, 0, 0, 0, 0, 0, 0, 0,
+        2, 0, 0, 0, 1, 0
+    };
+    const unsigned char negative_zero[] = {
+        'S', 'J', 'P', 'Z', 1, 0, 0, 0,
+        1, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 128
+    };
+    if (!rejected_integer_region(leading_zero, sizeof(leading_zero)) ||
+        !rejected_integer_region(negative_zero, sizeof(negative_zero)))
+        return 0;
+    const unsigned char zero_denominator[] = {
+        'S', 'J', 'P', 'Q', 1, 0, 0, 0,
+        1, 0, 0, 0, 0, 0, 0, 0,
+        1, 0, 0, 0, 1,
+        0, 0, 0, 0
+    };
+    const unsigned char negative_denominator[] = {
+        'S', 'J', 'P', 'Q', 1, 0, 0, 0,
+        1, 0, 0, 0, 0, 0, 0, 0,
+        1, 0, 0, 0, 1,
+        1, 0, 0, 128, 2
+    };
+    const unsigned char nonreduced[] = {
+        'S', 'J', 'P', 'Q', 1, 0, 0, 0,
+        1, 0, 0, 0, 0, 0, 0, 0,
+        1, 0, 0, 0, 2,
+        1, 0, 0, 0, 4
+    };
+    const unsigned char noncanonical_zero[] = {
+        'S', 'J', 'P', 'Q', 1, 0, 0, 0,
+        1, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0,
+        1, 0, 0, 0, 2
+    };
+    const unsigned char rational_negative_zero[] = {
+        'S', 'J', 'P', 'Q', 1, 0, 0, 0,
+        1, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 128,
+        1, 0, 0, 0, 1
+    };
+    return rejected_rational_region(
+            zero_denominator, sizeof(zero_denominator)) &&
+        rejected_rational_region(
+            negative_denominator, sizeof(negative_denominator)) &&
+        rejected_rational_region(nonreduced, sizeof(nonreduced)) &&
+        rejected_rational_region(
+            noncanonical_zero, sizeof(noncanonical_zero)) &&
+        rejected_rational_region(
+            rational_negative_zero, sizeof(rational_negative_zero));
 }
 
 int main(void)
 {
-    fmpz_t coefficient, denominator, argument, result, zpayload, qpayload;
+    fmpz_t coefficient, denominator, argument, result;
     fmpz_init(coefficient);
     fmpz_init(denominator);
     fmpz_init(argument);
     fmpz_init(result);
-    fmpz_init(zpayload);
-    fmpz_init(qpayload);
+    if (!exact_region_rejection_matrix())
+        return 23;
     for (slong round = 0; round < 300; round++)
     {
         sagejs_fmpz_polynomial_t z, zsum, zproduct, zquotient, zgcd, zpower;
@@ -1125,8 +1239,8 @@ int main(void)
         sagejs_fmpq_polynomial_t qrejected, qzero;
         sagejs_fmpz_polynomial_t zunsealed;
         sagejs_fmpq_polynomial_t qunsealed;
-        sagejs_fmpz_polynomial_t zdecoded;
-        sagejs_fmpq_polynomial_t qdecoded;
+        sagejs_fmpz_polynomial_t zregiondecoded;
+        sagejs_fmpq_polynomial_t qregiondecoded;
         sagejs_fmpq_value_t qvalue, zqvalue;
         sagejs_flint_byte_region_t zbytes, qbytes;
         if (!sagejs_fmpz_polynomial_init(z, 32) ||
@@ -1230,31 +1344,48 @@ int main(void)
             !sagejs_fmpz_polynomial_serialize(zbytes, zpower) ||
             !sagejs_fmpq_polynomial_serialize(qbytes, qpower))
             return 6;
-        if (!region_payload(zpayload, zbytes) ||
-            !region_payload(qpayload, qbytes) ||
-            !sagejs_fmpz_polynomial_deserialize_packed(
-                zdecoded, zpayload, (uint64_t) zbytes->length) ||
-            !sagejs_fmpq_polynomial_deserialize_packed(
-                qdecoded, qpayload, (uint64_t) qbytes->length) ||
-            !fmpz_poly_equal(zdecoded->value, zpower->value) ||
-            !fmpq_poly_equal(qdecoded->value, qpower->value))
-            return 10;
+        if (!sagejs_fmpz_polynomial_from_byte_region(
+                zregiondecoded, zbytes, 0, (uint64_t) zbytes->length) ||
+            !sagejs_fmpq_polynomial_from_byte_region(
+                qregiondecoded, qbytes, 0, (uint64_t) qbytes->length) ||
+            !fmpz_poly_equal(zregiondecoded->value, zpower->value) ||
+            !fmpq_poly_equal(qregiondecoded->value, qpower->value))
+            return 19;
+        {
+            unsigned char noncanonical[] = {
+                'S', 'J', 'P', 'Q', 1, 0, 0, 0,
+                1, 0, 0, 0, 0, 0, 0, 0,
+                1, 0, 0, 0, 2,
+                1, 0, 0, 0, 4
+            };
+            sagejs_flint_byte_region_struct region = {
+                noncanonical, sizeof(noncanonical)
+            };
+            sagejs_fmpq_polynomial_t rejected_region = {0};
+            if (sagejs_fmpq_polynomial_from_byte_region(
+                    rejected_region, &region, 0, sizeof(noncanonical)) ||
+                rejected_region->retained_bytes != 0 ||
+                sagejs_fmpq_polynomial_from_byte_region(
+                    rejected_region, &region, 1, sizeof(noncanonical)))
+                return 20;
+        }
         if (sagejs_fmpz_polynomial_allocated_bytes(z) == 0 ||
             sagejs_fmpq_polynomial_allocated_bytes(q) == 0 ||
             sagejs_flint_byte_region_length(zbytes) < 16 ||
             sagejs_flint_byte_region_length(qbytes) < 16)
             return 7;
-        sagejs_fmpq_polynomial_clear(qdecoded);
-        sagejs_fmpz_polynomial_clear(zdecoded);
         zbytes->data[0] = 0;
-        if (!region_payload(zpayload, zbytes))
-            return 11;
+        if (!fmpz_poly_equal(zregiondecoded->value, zpower->value) ||
+            !fmpq_poly_equal(qregiondecoded->value, qpower->value))
+            return 21;
         sagejs_fmpz_polynomial_t rejected;
-        if (sagejs_fmpz_polynomial_deserialize_packed(
-                rejected, zpayload, (uint64_t) zbytes->length))
+        if (sagejs_fmpz_polynomial_from_byte_region(
+                rejected, zbytes, 0, (uint64_t) zbytes->length))
             return 12;
         sagejs_flint_byte_region_clear(qbytes);
         sagejs_flint_byte_region_clear(zbytes);
+        sagejs_fmpq_polynomial_clear(qregiondecoded);
+        sagejs_fmpz_polynomial_clear(zregiondecoded);
         sagejs_fmpq_value_clear(zqvalue);
         sagejs_fmpq_value_clear(qvalue);
         sagejs_fmpq_polynomial_clear(qzero);
@@ -1288,26 +1419,52 @@ int main(void)
         fmpz_poly_clear(zterm);
         fmpz_poly_clear(zidentity);
     }
+    /*
+     * One 1,048,577-bit coefficient among 19,999 tiny entries is a hostile
+     * skew witness. Region parsing must scale with encoded bytes, not clear
+     * the maximum-sized coefficient scratch once per entry.
+     */
     fmpz_one(coefficient);
-    fmpz_mul_2exp(coefficient, coefficient, 8192);
+    fmpz_mul_2exp(coefficient, coefficient, 1048576);
     sagejs_fmpz_polynomial_t skew_z;
+    sagejs_fmpz_polynomial_t parsed_skew_z;
     sagejs_fmpq_polynomial_t skew_q;
+    sagejs_fmpq_polynomial_t parsed_skew_q;
+    sagejs_flint_byte_region_t skew_z_bytes, skew_q_bytes;
     if (!sagejs_fmpz_polynomial_init(skew_z, 20000) ||
-        !sagejs_fmpz_polynomial_set_coefficient(skew_z, 19999, coefficient) ||
+        !sagejs_fmpz_polynomial_set_coefficient(skew_z, 0, coefficient))
+        return 8;
+    fmpz_one(argument);
+    if (!sagejs_fmpz_polynomial_set_coefficient(skew_z, 19999, argument) ||
         !sagejs_fmpz_polynomial_seal(skew_z) ||
         sagejs_fmpz_polynomial_allocated_bytes(skew_z) >= 1024 * 1024)
         return 8;
     fmpz_set_ui(denominator, 3);
     if (!sagejs_fmpq_polynomial_init(skew_q, 20000) ||
         !sagejs_fmpq_polynomial_set_coefficient(
-            skew_q, 19999, coefficient, denominator) ||
+            skew_q, 0, coefficient, denominator) ||
+        !sagejs_fmpq_polynomial_set_coefficient(
+            skew_q, 19999, argument, denominator) ||
         !sagejs_fmpq_polynomial_seal(skew_q) ||
         sagejs_fmpq_polynomial_allocated_bytes(skew_q) >= 1024 * 1024)
         return 9;
+    if (!sagejs_fmpz_polynomial_serialize(skew_z_bytes, skew_z) ||
+        !sagejs_fmpq_polynomial_serialize(skew_q_bytes, skew_q) ||
+        !sagejs_fmpz_polynomial_from_byte_region(
+            parsed_skew_z, skew_z_bytes, 0,
+            (uint64_t) skew_z_bytes->length) ||
+        !sagejs_fmpq_polynomial_from_byte_region(
+            parsed_skew_q, skew_q_bytes, 0,
+            (uint64_t) skew_q_bytes->length) ||
+        !fmpz_poly_equal(skew_z->value, parsed_skew_z->value) ||
+        !fmpq_poly_equal(skew_q->value, parsed_skew_q->value))
+        return 22;
+    sagejs_fmpq_polynomial_clear(parsed_skew_q);
+    sagejs_fmpz_polynomial_clear(parsed_skew_z);
+    sagejs_flint_byte_region_clear(skew_q_bytes);
+    sagejs_flint_byte_region_clear(skew_z_bytes);
     sagejs_fmpq_polynomial_clear(skew_q);
     sagejs_fmpz_polynomial_clear(skew_z);
-    fmpz_clear(qpayload);
-    fmpz_clear(zpayload);
     fmpz_clear(result);
     fmpz_clear(argument);
     fmpz_clear(denominator);

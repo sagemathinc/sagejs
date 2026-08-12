@@ -66,7 +66,7 @@ from sagejs.ffi.flint import (
     fmpz_polynomial_evaluate_rational as _ffi_fmpz_polynomial_evaluate_rational,
     fmpz_polynomial_serialize as _ffi_fmpz_polynomial_serialize,
     fmpz_polynomial_format as _ffi_fmpz_polynomial_format,
-    fmpz_polynomial_deserialize as _ffi_fmpz_polynomial_deserialize,
+    fmpz_polynomial_from_byte_region as _ffi_fmpz_polynomial_from_byte_region,
     fmpq_polynomial as _ffi_fmpq_polynomial,
     fmpq_polynomial_set_coefficient as _ffi_fmpq_polynomial_set_coefficient,
     fmpq_polynomial_seal as _ffi_fmpq_polynomial_seal,
@@ -108,7 +108,7 @@ from sagejs.ffi.flint import (
     fmpq_polynomial_evaluate as _ffi_fmpq_polynomial_evaluate,
     fmpq_polynomial_serialize as _ffi_fmpq_polynomial_serialize,
     fmpq_polynomial_format as _ffi_fmpq_polynomial_format,
-    fmpq_polynomial_deserialize as _ffi_fmpq_polynomial_deserialize,
+    fmpq_polynomial_from_byte_region as _ffi_fmpq_polynomial_from_byte_region,
     fmpz_matrix as _ffi_fmpz_matrix,
     fmpz_matrix_nrows as _ffi_fmpz_matrix_nrows,
     fmpz_matrix_ncols as _ffi_fmpz_matrix_ncols,
@@ -725,13 +725,15 @@ def ffiFmpzPolynomialFormat(
 
 
 @native
-def ffiFmpzPolynomialDeserialize(
-    payload: Integer,
-    byte_length: uint64,
+def ffiFmpzPolynomialFromByteRegion(
+    source: FlintByteRegion,
+    offset: uint64,
+    length: uint64,
 ) -> FmpzPolynomial:
-    return _ffi_fmpz_polynomial_deserialize(
-        payload,
-        byte_length,
+    return _ffi_fmpz_polynomial_from_byte_region(
+        source,
+        offset,
+        length,
     )
 
 
@@ -1159,13 +1161,15 @@ def ffiFmpqPolynomialFormat(
 
 
 @native
-def ffiFmpqPolynomialDeserialize(
-    payload: Integer,
-    byte_length: uint64,
+def ffiFmpqPolynomialFromByteRegion(
+    source: FlintByteRegion,
+    offset: uint64,
+    length: uint64,
 ) -> FmpqPolynomial:
-    return _ffi_fmpq_polynomial_deserialize(
-        payload,
-        byte_length,
+    return _ffi_fmpq_polynomial_from_byte_region(
+        source,
+        offset,
+        length,
     )
 
 

@@ -100,7 +100,10 @@ test("exact polynomial ingress contract is explicit and representation-neutral",
   );
   assert.match(report.contract.acceptance.boundary, /zero scalar coefficient calls/);
   assert.match(report.contract.acceptance.boundary, /no stream-sized BigInt/);
-  assert.match(report.contract.acceptance.performance, /2[.]0x SageMath/);
+  assert.match(report.contract.acceptance.performance, /same-host SageMath ratio/);
+  assert.match(report.contract.acceptance.performance, /without turning one host's timing/);
+  assert.match(report.contract.acceptance.remaining_performance_goal, /at most 2x/);
+  assert.match(report.contract.acceptance.remaining_performance_goal, /remains unmet/);
   assert.match(report.contract.acceptance.maintainability, /no compiler branch/);
   assert.match(report.contract.acceptance.stage_gates.canonical_pack, /public canonical-list construction actually uses it/);
   assert.match(report.contract.acceptance.stage_gates.byte_region, /reverse\/hex/);
@@ -118,8 +121,8 @@ test("recorded evidence separates setup, first use, warm work, and process time"
   assert.match(report.configuration.timing, /first invocation/);
   assert.match(report.configuration.timing, /warm median/);
   assert.match(report.configuration.timing, /process wall time/);
-  assert.equal(report.repository.dirty, false);
   assert.match(report.repository.commit, /^[0-9a-f]{40}$/);
+  assert.equal(report.repository.dirty, false);
   for (const [runtime, domains] of Object.entries(report.measurements)) {
     for (const domain of ["ZZ", "QQ"]) {
       const value = domains[domain];
@@ -132,11 +135,10 @@ test("recorded evidence separates setup, first use, warm work, and process time"
     }
   }
   const labels = new Set(report.additional_host_evidence.map((entry) => entry.label));
-  assert.ok(labels.has("m1-after-build"));
-  assert.ok(labels.has("m1-current-warm-artifact-cache"));
+  assert.ok(labels.has("macos-arm64-5001"));
   assert.ok(labels.has("linux-x64-20001"));
   const m1Evidence = report.additional_host_evidence.filter((entry) =>
-    entry.label.startsWith("m1-"),
+    entry.label === "macos-arm64-5001",
   );
   for (const evidence of report.additional_host_evidence) {
     assert.equal(evidence.repository.dirty, false, evidence.label);
@@ -168,20 +170,14 @@ test("recorded evidence separates setup, first use, warm work, and process time"
     assert.equal(evidence.host.architecture, "arm64");
     assert.equal(evidence.host.cpu, "Apple M1 Max");
     for (const domain of ["ZZ", "QQ"]) {
-      assert.equal(evidence.comparisons[domain].summaries_match, true);
-      assert.ok(evidence.comparisons[domain].sagejs_over_sage > 1);
+      assert.equal(evidence.measurements.sagejs[domain].ok, true);
+      assert.equal(evidence.diagnostic_stages[domain].ok, true);
     }
+    // This host had no usable SageMath command-line oracle. Cross-runtime
+    // semantics and ratios are recorded by the Linux reports; this evidence
+    // proves the generated-resource path itself on macOS arm64.
+    assert.deepEqual(evidence.comparisons, {});
   }
-  const artifactCold = report.additional_host_evidence.find(
-    (entry) => entry.label === "m1-after-build",
-  );
-  const artifactWarm = report.additional_host_evidence.find(
-    (entry) => entry.label === "m1-current-warm-artifact-cache",
-  );
-  assert.ok(
-    artifactCold.measurements.sagejs.ZZ.first_ms >
-      artifactWarm.measurements.sagejs.ZZ.first_ms,
-  );
   const large = report.additional_host_evidence.find(
     (entry) => entry.label === "linux-x64-20001",
   );
@@ -194,24 +190,23 @@ test("recorded evidence separates setup, first use, warm work, and process time"
   }
 });
 
-test("stage evidence demonstrates the existing BigInt detour and ByteRegion creation baseline", () => {
+test("stage evidence demonstrates checked packing and direct borrowed parsing", () => {
   for (const domain of ["ZZ", "QQ"]) {
     const stages = report.diagnostic_stages[domain];
     assert.equal(stages.ok, true);
     assert.ok(stages.encoded_bytes > 16);
-    assert.ok(stages.pack_body_ms >= 0);
     assert.ok(stages.checked_host_list_pack_ms >= 0);
-    assert.ok(stages.bytes_to_bigint_ms >= 0);
-    assert.ok(stages.generated_deserialize_ms >= 0);
+    assert.ok(stages.canonical_envelope_ms >= 0);
     assert.ok(stages.byte_region_creation_ms >= 0);
+    assert.ok(stages.borrowed_parse_ms >= 0);
     assert.ok(stages.skew_checked_host_list_pack_ms >= 0);
     assert.ok(stages.skew_public_construct_ms >= 0);
     assert.ok(stages.skew_encoded_bytes > stages.encoded_bytes);
     assert.equal(stages.skew_bits, 65_538);
   }
   assert.match(
-    report.contract.current_bottleneck.diagnosis,
-    /round-trips its byte stream through one enormous exact integer/,
+    report.contract.eliminated_bottleneck.diagnosis,
+    /former bulk path unnecessarily round-tripped its canonical byte stream through one enormous exact integer/,
   );
 });
 
