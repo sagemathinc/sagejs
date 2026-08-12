@@ -6,9 +6,15 @@ function createCompiler(compilerSource, standardLibrary) {
   const files = new Map();
   const signatures = new Map();
   for (const [name, module] of Object.entries(standardLibrary.modules)) {
-    files.set(`__stdlib__/${name}.py`, module.source);
+    const modulePath = name.replaceAll(".", "/");
     files.set(
-      `__module_cache__/${name}.json`,
+      module.package
+        ? `__stdlib__/${modulePath}/__init__.py`
+        : `__stdlib__/${modulePath}.py`,
+      module.source,
+    );
+    files.set(
+      `__module_cache__/${name.replaceAll(".", "-")}.json`,
       JSON.stringify(module.cache),
     );
     signatures.set(module.source, module.cache.signature);
