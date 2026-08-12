@@ -4,7 +4,7 @@
   "id": "arbitrary-prime-resource-impl",
   "title": "Arbitrary Prime Resource Impl",
   "lane": "integration",
-  "status": "active",
+  "status": "review",
   "owner": "user",
   "objective": "Implement production generated FLINT fmpz_mod_ctx plus fmpz_mod_poly resources for arbitrary-prime GF(p)[x], with sealed self-contained ownership, exact modulus checks, callee-owned operations, public integration, serialization, lifecycle fuzzing, Sage differentials, and competitive performance",
   "base_commit": "0c4e1a6e06baf12ca907e1e369307321f54eee4e",
@@ -131,11 +131,40 @@
       "commit": "ef20bc1021fb62e5c2ba1b2dc41da8b3d4464133",
       "workspace_fingerprint": "e677666475c060eb4843e6c6e5ced93fb08e587afd2659bc449b6b70f024e77a",
       "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 47.419,
+      "started_at": "2026-08-12T14:28:55.015Z",
+      "commit": "2412539c0470d49f6ea6b697c8f491babd933cb4",
+      "workspace_fingerprint": "3cdd4fee9ef1a9d0a45a82cd69b2ee7be7ff69279fd2e6dcbc02570d20a2ae1c",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/production-native-kernels.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 7.727,
+      "started_at": "2026-08-12T14:29:43.062Z",
+      "commit": "2412539c0470d49f6ea6b697c8f491babd933cb4",
+      "workspace_fingerprint": "3cdd4fee9ef1a9d0a45a82cd69b2ee7be7ff69279fd2e6dcbc02570d20a2ae1c",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {
-    "summary": "",
-    "risks": [],
-    "next_steps": []
+    "summary": "Arbitrary-prime GF(p)[x] for p larger than a FLINT word now uses generated self-contained fmpz_mod_ctx plus fmpz_mod_poly resources in production. Public construction, sealed ownership, coefficient access, arithmetic, power, division, gcd/xgcd, evaluation, formatting, factorization, roots, and deterministic SagePack serialization avoid legacy polynomial N-API and uniform-limb buffers. Arithmetic remains resource-to-resource; factorization and roots each cross the host boundary once as a canonical byte payload. The typed borrowed-traversal kernel is registered and published by the normal production build. Native and same-source dynamic programs pass at p=2^89-1, 2^127-1, and 2^521-1; their deterministic divrem, xgcd, evaluation, factor, and roots vector is identical to SageMath 10.9.post1. Sanitizer-backed aggregate lifecycle stress, strict Python, architecture, portable, benchmark, and required production-cache gates pass on Linux x64. Independent review verdict: integrate commit 2412539c0470d49f6ea6b697c8f491babd933cb4.",
+    "risks": [
+      "Execution was validated locally only on Linux x64; Linux arm64, macOS arm64, and Windows x64 remain required and must be exercised by their CI hosts.",
+      "The generated resource core and arithmetic declarations have a credible Wasm lowering, but public factorization, roots, and formatting use aggregate/result declarations whose Wasm lowering is explicitly future work. When generated resources are unavailable, greater-than-word prime polynomial construction retains the pre-lane explicit unsupported behavior.",
+      "Low-level construction resources remain mutable until sealed; public PolynomialElement construction publishes only sealed owners and rejects or closes mismatched adopted resources.",
+      "The recorded portable failure at ef20bc1 was the review-discovered missing registry/test-manifest integration; the later portable receipt at 2412539 passes all 189 tests."
+    ],
+    "next_steps": [
+      "Run the focused public, lifecycle, and production-cache tests on Linux arm64, macOS arm64, and Windows x64 CI hosts.",
+      "Implement generated Wasm lowering for computed byte-region aggregates, then enable arbitrary-prime factorization, roots, and formatting in browsers without changing the public resource contract.",
+      "Profile the 512-coefficient public export path, currently about 39-48 ms, and add a resource-level bulk coefficient view only if measured workloads justify it."
+    ]
   }
 }
