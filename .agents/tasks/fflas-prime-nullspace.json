@@ -4,7 +4,7 @@
   "id": "fflas-prime-nullspace",
   "title": "FFLAS prime right nullspace",
   "lane": "integration",
-  "status": "review",
+  "status": "complete",
   "owner": "user",
   "objective": "Generate and route a fast canonical Sage-compatible right-nullspace basis for dense GF(p), p < 256, through declared FFLAS/FFPACK packed FFI with FLINT capability fallback",
   "base_commit": "804b2c7b09a37c1dd9754118f31948b5282d4660",

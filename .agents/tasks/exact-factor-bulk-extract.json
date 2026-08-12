@@ -4,7 +4,7 @@
   "id": "exact-factor-bulk-extract",
   "title": "Exact Factor Bulk Extract",
   "lane": "integration",
-  "status": "review",
+  "status": "complete",
   "owner": "user",
   "objective": "Extract all exact polynomial factors and exponents through one generated host boundary for fast public ZZ and QQ factorization",
   "base_commit": "f7413695a8af8907441f189f7168c11b05a8ee17",

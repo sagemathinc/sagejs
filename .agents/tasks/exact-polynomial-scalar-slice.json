@@ -4,7 +4,7 @@
   "id": "exact-polynomial-scalar-slice",
   "title": "Exact polynomial scalar division and slicing",
   "lane": "integration",
-  "status": "review",
+  "status": "complete",
   "owner": "user",
   "objective": "Route ZZ[x] and QQ[x] scalar floor division and truncating prefix slices through generated FLINT resources without whole-polynomial serialization, preserving Sage semantics and lifecycle safety with differential and performance coverage.",
   "base_commit": "b448cf50dcee6bed31d176bbdb841dc74d6abc9e",

@@ -4,7 +4,7 @@
   "id": "macos-fflas-cxx-compat",
   "title": "Portable generated C++ standard compatibility",
   "lane": "integration",
-  "status": "review",
+  "status": "complete",
   "owner": "user",
   "objective": "Make generated FFLAS exception-shim adapters compile on Apple Clang/libc++ arm64 by selecting the oldest portable supported C++ language standard consistently across Unix, Xcode, and MSVC without changing pure-C kernels, with deterministic binding.gyp regression coverage and real macOS validation.",
   "base_commit": "49f32404c1fa0d464e40506d1395cc3b66f5bc62",

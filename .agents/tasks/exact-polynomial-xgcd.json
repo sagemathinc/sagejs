@@ -4,7 +4,7 @@
   "id": "exact-polynomial-xgcd",
   "title": "Exact Polynomial Xgcd",
   "lane": "integration",
-  "status": "review",
+  "status": "complete",
   "owner": "user",
   "objective": "Implement Sage-compatible exact polynomial xgcd over ZZ and QQ using generated owned FLINT aggregate resources",
   "base_commit": "d2088072b67cb793a343d979bd8832294ab5178d",

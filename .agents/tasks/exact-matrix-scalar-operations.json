@@ -4,7 +4,7 @@
   "id": "exact-matrix-scalar-operations",
   "title": "Exact Matrix Scalar Operations",
   "lane": "arithmetic-algebra",
-  "status": "review",
+  "status": "complete",
   "owner": "user",
   "objective": "Measure and accelerate public dense ZZ and QQ negation, scalar multiplication, and supported scalar division through existing generated FLINT resources without entrywise host reconstruction or algorithm-specific Node-API",
   "base_commit": "098afe93dc9a9451e1f5a60505d53d4d13c3d1bf",

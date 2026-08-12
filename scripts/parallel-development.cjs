@@ -267,6 +267,14 @@ function taskForBranch(entries, branch) {
   return matches.length === 1 ? matches[0] : undefined;
 }
 
+function statusEntriesForBranch(entries, branch) {
+  const live = entries.filter(({ task }) =>
+    ["active", "review", "blocked"].includes(task.status)
+  );
+  const branchTask = taskForBranch(live, branch);
+  return branchTask === undefined ? [] : [branchTask];
+}
+
 function currentTask(taskId) {
   const entries = readTasks(join(root, ".agents", "tasks"));
   if (taskId) {
@@ -378,8 +386,9 @@ function projectStatus(rawArgs) {
   }
   if (args.length) throw new Error(`unknown arguments: ${args.join(" ")}`);
   const worktrees = parseWorktrees().map((worktree) => {
-    const entries = readTasks(join(worktree.path, ".agents", "tasks")).filter(
-      ({ task }) => ["active", "review", "blocked"].includes(task.status),
+    const entries = statusEntriesForBranch(
+      readTasks(join(worktree.path, ".agents", "tasks")),
+      worktree.branch,
     );
     const dirty = git(["status", "--porcelain"], worktree.path)
       .split("\n").filter(Boolean).length;
@@ -684,5 +693,6 @@ if (require.main === module) {
 
 module.exports = {
   resolveProjectBase,
+  statusEntriesForBranch,
   taskForBranch,
 };

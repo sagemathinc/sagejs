@@ -4,7 +4,7 @@
   "id": "audit-linear-algebra-api",
   "title": "P1 linear algebra API audit",
   "lane": "arithmetic-algebra",
-  "status": "review",
+  "status": "complete",
   "owner": "user",
   "objective": "Measure and ratchet Sage-compatible public Matrix and Vector API coverage and representative performance over ZZ, QQ, and small GF(p), classify each execution path, and publish an independent implementation-lane decomposition without changing math implementations or shared registries",
   "base_commit": "3b0658fa3880a5efba21c80c3699071cdfb6a6c1",

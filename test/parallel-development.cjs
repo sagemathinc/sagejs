@@ -37,6 +37,7 @@ const {
 const taskSchema = require("../.agents/task.schema.json");
 const {
   resolveProjectBase,
+  statusEntriesForBranch,
   taskForBranch,
 } = require("../scripts/parallel-development.cjs");
 const {
@@ -176,6 +177,19 @@ test("the current agent branch selects its task among inherited live manifests",
   );
   assert.equal(taskForBranch(entries, "main"), undefined);
   assert.equal(taskForBranch(entries, ""), undefined);
+});
+
+test("status reports only the task owned by each worktree branch", () => {
+  const entries = [
+    { task: task({ id: "inherited-active" }) },
+    { task: task({ id: "current-task" }) },
+    { task: task({ id: "historical", status: "complete" }) },
+  ];
+  assert.deepEqual(
+    statusEntriesForBranch(entries, "agent/current-task"),
+    [entries[1]],
+  );
+  assert.deepEqual(statusEntriesForBranch(entries, "integration-branch"), []);
 });
 
 test("new projects inherit the invoking worktree unless a base is explicit", () => {

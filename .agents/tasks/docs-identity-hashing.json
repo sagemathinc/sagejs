@@ -4,7 +4,7 @@
   "id": "docs-identity-hashing",
   "title": "Docs Identity Hashing",
   "lane": "documentation-compat",
-  "status": "review",
+  "status": "complete",
   "owner": "user",
   "objective": "Replace volatile verified-documentation example IDs with content-addressed source-path/input/output identities while retaining line provenance and deterministic verification artifacts",
   "base_commit": "055d03835e0a371da135fe67bced9bdb13eae4a0",

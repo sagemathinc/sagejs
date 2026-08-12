@@ -123,8 +123,10 @@ steps. `parallel:check` then requires fresh passing receipts for every declared
 validation command.
 
 The coordinator runs `pnpm parallel:status` from any worktree. It discovers all
-Git worktrees, reads their task contracts, reports dirty/ahead/behind state, and
-fails if active projects have overlapping claims. `--json` provides the same
+Git worktrees, selects the one live contract named by each `agent/ID` branch,
+reports dirty/ahead/behind state, and fails if those active projects have
+overlapping claims. Inherited historical or unrelated live manifests are not
+mistaken for projects owned by every worktree. `--json` provides the same
 information to agents and orchestration software.
 
 ## Project sizing and integration

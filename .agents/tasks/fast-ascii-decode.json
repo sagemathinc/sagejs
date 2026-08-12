@@ -4,7 +4,7 @@
   "id": "fast-ascii-decode",
   "title": "Fast Ascii Decode",
   "lane": "compiler-runtime",
-  "status": "review",
+  "status": "complete",
   "owner": "user",
   "objective": "Make Python bytes.decode('ascii') and exact FLINT matrix and polynomial formatting use a semantics-preserving host-native fast path, with focused differential tests and measured public formatting performance",
   "base_commit": "86e6b0f65e957074cc0988dd3d2b9882c1e4ab96",

@@ -4,7 +4,7 @@
   "id": "cache-observability-cleanup",
   "title": "Native cache observability and cleanup",
   "lane": "integration",
-  "status": "review",
+  "status": "complete",
   "owner": "user",
   "objective": "Report native artifact cache size and retained toolchain/profile generations, and safely dry-run or boundedly remove obsolete generations while preserving selected/installed profiles and live leases or locks",
   "base_commit": "098afe93dc9a9451e1f5a60505d53d4d13c3d1bf",

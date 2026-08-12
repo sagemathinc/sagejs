@@ -4,7 +4,7 @@
   "id": "timing-load-breakdown",
   "title": "Timing Load Breakdown",
   "lane": "compiler-runtime",
-  "status": "review",
+  "status": "complete",
   "owner": "user",
   "objective": "Add opt-in execution timing breakdowns for observed module, addon, and native-kernel initialization without distorting statement timing",
   "base_commit": "c592988d8f93aeb9f54190bb28d1cabdeace6887",

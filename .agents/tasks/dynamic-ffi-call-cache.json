@@ -4,7 +4,7 @@
   "id": "dynamic-ffi-call-cache",
   "title": "Dynamic Ffi Call Cache",
   "lane": "compiler-runtime",
-  "status": "review",
+  "status": "complete",
   "owner": "user",
   "objective": "Resolve invariant declared-FFI backend, export, parameter-plan, constraint, and result-domain metadata once per generated declaration call site while retaining all per-call value, ownership, range, transaction, and exception validation",
   "base_commit": "d2088079f87bcc86eda7d5b21ec5f855c16c1061",

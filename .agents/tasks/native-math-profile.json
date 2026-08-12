@@ -4,7 +4,7 @@
   "id": "native-math-profile",
   "title": "CPU-native math dependency profile",
   "lane": "integration",
-  "status": "review",
+  "status": "complete",
   "owner": "user",
   "objective": "Implement a fingerprinted opt-in CPU-native GMP/FLINT source-build profile while retaining the portable default, expose complete build provenance, and validate identity without expensive rebuilds",
   "base_commit": "4b90e55170af4cdef06d9b24b96adaf018251595",

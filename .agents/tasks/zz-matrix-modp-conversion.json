@@ -4,7 +4,7 @@
   "id": "zz-matrix-modp-conversion",
   "title": "Zz Matrix Modp Conversion",
   "lane": "integration",
-  "status": "review",
+  "status": "complete",
   "owner": "user",
   "objective": "Convert canonical generated FmpzMatrix resources directly to packed dense GF(p) storage for Matrix.change_ring without host Integer materialization, including p=2, fallbacks, differential tests, and benchmarks",
   "base_commit": "1926aca74d0b16b985f63a8a2aa763d473239ceb",

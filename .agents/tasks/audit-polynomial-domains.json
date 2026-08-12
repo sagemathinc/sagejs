@@ -4,7 +4,7 @@
   "id": "audit-polynomial-domains",
   "title": "P1 polynomial domains audit",
   "lane": "arithmetic-algebra",
-  "status": "review",
+  "status": "complete",
   "owner": "user",
   "objective": "Inventory public univariate polynomial workflows and implementation boundaries across ZZ[x], QQ[x], GF(p)[x], extension fields, and cyclotomic-relevant domains; record correctness, performance, and oracle coverage; and define prioritized independent contribution lanes with deterministic audit validation",
   "base_commit": "3b0658fa3880a5efba21c80c3699071cdfb6a6c1",

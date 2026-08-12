@@ -4,7 +4,7 @@
   "id": "modsym-higher-weight-resource",
   "title": "Modsym Higher Weight Resource",
   "lane": "modular-forms",
-  "status": "review",
+  "status": "complete",
   "owner": "user",
   "objective": "Return production higher-weight Hecke matrices as owned generated FmpqMatrix resources without packed rational retries or host reconstruction",
   "base_commit": "49f32404c1fa0d464e40506d1395cc3b66f5bc62",

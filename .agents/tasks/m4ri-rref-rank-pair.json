@@ -4,7 +4,7 @@
   "id": "m4ri-rref-rank-pair",
   "title": "M4RI single-pass RREF rank",
   "lane": "integration",
-  "status": "review",
+  "status": "complete",
   "owner": "user",
   "objective": "Make generated M4RI RREF resources retain and expose the rank computed by the same elimination, so public GF(2) RREF never performs a second elimination and remains fast on native and Wasm",
   "base_commit": "200e275c8a13507e5e880a0f311ef0b3a1382acd",

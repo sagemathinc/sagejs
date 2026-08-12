@@ -4,7 +4,7 @@
   "id": "exact-matrix-scalar-fastpath",
   "title": "Exact Matrix Scalar Fastpath",
   "lane": "arithmetic-algebra",
-  "status": "review",
+  "status": "complete",
   "owner": "user",
   "objective": "Reduce interpreted dense ZZ and QQ scalar entry read/write overhead through semantics-preserving resource fast paths, trusted reduced Rational construction, and amortized mutation cache invalidation, without weakening bounds, coercion, or mutability checks",
   "base_commit": "ebb140ee7cd0e8bd5471f06eb7616de6bc5dbbef",
