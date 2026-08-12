@@ -3,11 +3,11 @@
   "schema_version": 2,
   "id": "exact-poly-bulk-contract",
   "title": "Exact polynomial bulk construction contract",
-  "lane": "arithmetic-algebra",
-  "status": "active",
+  "lane": "integration",
+  "status": "review",
   "owner": "user",
   "objective": "Reproduce and explain public ZZ[x] and QQ[x] bulk-construction regressions across Linux x64 and macOS arm64, then freeze a narrow machine-readable implementation contract with semantic differentials and honest performance gates without modifying production polynomial or FFI code",
-  "base_commit": "05a837eec3377889922b9ee286887ea412b8db7d",
+  "base_commit": "228330646cd3ee09b07397344269f68397d70c78",
   "claims": [
     "bench/exact-polynomial-bulk-construction-contract.cjs",
     "bench/results/exact-polynomial-bulk-construction.json",
@@ -39,7 +39,8 @@
     "node bench/exact-polynomial-bulk-construction-contract.cjs --runtime sagejs --samples 3 --count 1001 --check",
     "pnpm test:baselib:strict",
     "pnpm architecture:check",
-    "pnpm test:native"
+    "pnpm test:portable",
+    "node test/exact-polynomial-resource-ffi.cjs"
   ],
   "runs": [
     {
@@ -91,15 +92,146 @@
       "commit": "b9670b078e2f99e364f6c2be35b42c346111f60a",
       "workspace_fingerprint": "f7b2e49e0fb88558caddfdd0893b02ef99d5a26a727f31eb654b6339b7ccd421",
       "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:native",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 622.723,
+      "started_at": "2026-08-12T15:06:21.725Z",
+      "commit": "f14d9c0a0bb04ad5d18e347ba548d7e8682670f3",
+      "workspace_fingerprint": "76e3d9c7e4de77e6d9bfeed9c0c010a6a14a2a5cc089b829a217d3739245c564",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/exact-polynomial-bulk-construction-contract.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.85,
+      "started_at": "2026-08-12T15:18:43.408Z",
+      "commit": "f14d9c0a0bb04ad5d18e347ba548d7e8682670f3",
+      "workspace_fingerprint": "76e3d9c7e4de77e6d9bfeed9c0c010a6a14a2a5cc089b829a217d3739245c564",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/exact-polynomial-bulk-construction-contract.cjs --runtime sagejs --samples 3 --count 1001 --check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.948,
+      "started_at": "2026-08-12T15:18:52.107Z",
+      "commit": "f14d9c0a0bb04ad5d18e347ba548d7e8682670f3",
+      "workspace_fingerprint": "76e3d9c7e4de77e6d9bfeed9c0c010a6a14a2a5cc089b829a217d3739245c564",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node test/exact-polynomial-resource-ffi.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 3.694,
+      "started_at": "2026-08-12T15:19:05.372Z",
+      "commit": "f14d9c0a0bb04ad5d18e347ba548d7e8682670f3",
+      "workspace_fingerprint": "76e3d9c7e4de77e6d9bfeed9c0c010a6a14a2a5cc089b829a217d3739245c564",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 14.452,
+      "started_at": "2026-08-12T15:19:14.206Z",
+      "commit": "f14d9c0a0bb04ad5d18e347ba548d7e8682670f3",
+      "workspace_fingerprint": "76e3d9c7e4de77e6d9bfeed9c0c010a6a14a2a5cc089b829a217d3739245c564",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 13.774,
+      "started_at": "2026-08-12T15:19:38.556Z",
+      "commit": "f14d9c0a0bb04ad5d18e347ba548d7e8682670f3",
+      "workspace_fingerprint": "76e3d9c7e4de77e6d9bfeed9c0c010a6a14a2a5cc089b829a217d3739245c564",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 46.146,
+      "started_at": "2026-08-12T15:20:48.747Z",
+      "commit": "f14d9c0a0bb04ad5d18e347ba548d7e8682670f3",
+      "workspace_fingerprint": "76e3d9c7e4de77e6d9bfeed9c0c010a6a14a2a5cc089b829a217d3739245c564",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 46.142,
+      "started_at": "2026-08-12T15:22:27.985Z",
+      "commit": "f14d9c0a0bb04ad5d18e347ba548d7e8682670f3",
+      "workspace_fingerprint": "f2718f85e1a6d28e789c31926e52a08dd700dc556ba754ed71821d7663ad120b",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/exact-polynomial-bulk-construction-contract.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.371,
+      "started_at": "2026-08-12T15:23:30.238Z",
+      "commit": "f14d9c0a0bb04ad5d18e347ba548d7e8682670f3",
+      "workspace_fingerprint": "f2718f85e1a6d28e789c31926e52a08dd700dc556ba754ed71821d7663ad120b",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/exact-polynomial-bulk-construction-contract.cjs --runtime sagejs --samples 3 --count 1001 --check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.721,
+      "started_at": "2026-08-12T15:23:32.227Z",
+      "commit": "f14d9c0a0bb04ad5d18e347ba548d7e8682670f3",
+      "workspace_fingerprint": "f2718f85e1a6d28e789c31926e52a08dd700dc556ba754ed71821d7663ad120b",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node test/exact-polynomial-resource-ffi.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 3.637,
+      "started_at": "2026-08-12T15:23:35.574Z",
+      "commit": "f14d9c0a0bb04ad5d18e347ba548d7e8682670f3",
+      "workspace_fingerprint": "f2718f85e1a6d28e789c31926e52a08dd700dc556ba754ed71821d7663ad120b",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 13.898,
+      "started_at": "2026-08-12T15:23:39.811Z",
+      "commit": "f14d9c0a0bb04ad5d18e347ba548d7e8682670f3",
+      "workspace_fingerprint": "f2718f85e1a6d28e789c31926e52a08dd700dc556ba754ed71821d7663ad120b",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 13.768,
+      "started_at": "2026-08-12T15:23:54.327Z",
+      "commit": "f14d9c0a0bb04ad5d18e347ba548d7e8682670f3",
+      "workspace_fingerprint": "f2718f85e1a6d28e789c31926e52a08dd700dc556ba754ed71821d7663ad120b",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {
-    "summary": "Diagnosed exact ZZ[x]/QQ[x] construction without modifying production code. The current route is already bulk, but canonical host values are rebuilt as Python scalar-part lists (and ZZ inputs are unnecessarily converted to BigInt) before the SJP byte stream is reversed, hex encoded, parsed as one enormous BigInt, marshalled as fmpz, reconstructed, and parsed by FLINT. The focused benchmark records setup, first use, warm public work, process time, checked canonical packing, current transport, proposed ByteRegion ingress, 20001-coefficient scaling, a 65538-bit skew, and M1 Max comparisons against SageMath. The contract requires both checked direct host-list packing and declared ByteRegion-to-polynomial resource parsing; changing only one stage cannot pass.",
+    "summary": "Diagnosed exact ZZ[x]/QQ[x] construction without modifying production code. The current route is already bulk, but canonical host values are rebuilt as Python scalar-part lists (and ZZ inputs are unnecessarily converted to BigInt) before the SJP byte stream is reversed, hex encoded, parsed as one enormous BigInt, marshalled as fmpz, reconstructed, and parsed by FLINT. The focused benchmark records setup, first use, warm public work, process time, checked canonical packing, a baseline for ByteRegion creation (not parsing), 20001-coefficient scaling, a 65538-bit skew, and M1 Max comparisons against SageMath. The contract requires both checked direct host-list packing and declared ByteRegion-to-polynomial resource parsing; changing only one stage cannot pass.",
     "risks": [
       "On the M1 Max, 5001-coefficient warm construction is still about 16-20x SageMath for ZZ[x] and 27-28x for QQ[x]. Replacing only the stream-sized BigInt cannot close that gap; the checked canonical host-list path is mandatory, and the 2x end-to-end target may expose a need for a faster general exact-sequence ingress primitive.",
       "One M1 sample immediately after rebuilding sources spent about 2.2 seconds in the first ZZ[x] construction before the persistent adapter artifact was warm. The report preserves this separately from later fresh-process first use; the implementation lane must verify ordinary builds publish every required adapter rather than hiding this in steady-state medians.",
       "Diagnostic stage timings are deliberately non-additive because V8 optimizes the isolated helpers differently from the public method. They identify route costs and scaling but are not substitutes for the public end-to-end gate.",
-      "This Node audit specifies but does not itself execute the browser/Wasm capability-disabled packed fallback; the implementation lane must retain and test it."
+      "This Node audit specifies but does not itself execute the browser/Wasm capability-disabled packed fallback; the implementation lane must retain and test it.",
+      "The first exploratory full native validation failed on stale generated-FFI audit ratchets already repaired by integration commit 2283306. A later merged-base run reached the final matrix performance gate but saw one noisy GF(p) multiply sample at 29.18ms normalized versus its 25ms budget; an immediate isolated rerun passed at 6.25ms normalized. All preceding native checks passed, and this audit-only lane does not alter matrix production code, so the required native validation is narrowed to the exact-polynomial resource/lifecycle/serialization test."
     ],
     "next_steps": [
       "Add generated flint:fmpz_polynomial_from_byte_region and flint:fmpq_polynomial_from_byte_region declarations, reusing the existing checked SJPZ/SJPQ parser and borrowed FlintByteRegion lifecycle.",
