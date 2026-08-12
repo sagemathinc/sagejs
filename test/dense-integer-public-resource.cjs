@@ -69,8 +69,9 @@ assert A.augment(B).matrix_from_columns([4, 0]).list() == [
 ]
 
 # Selection is one generated resource operation. It preserves order,
-# duplicates, Python negative indices, skewed exact values, empty dimensions,
-# and the source matrix.
+# duplicates, skewed exact values, empty dimensions, and the source matrix.
+# Matrix selection follows Sage rather than scalar Python indexing: negative
+# row and column indices are rejected.
 huge = 2**4096 + 12345
 skew = matrix(ZZ, 3, 4, [
     huge, 2, 3, -huge,
@@ -79,11 +80,11 @@ skew = matrix(ZZ, 3, 4, [
 ])
 skew_before = skew.__copy__()
 skew._packed_integers = packed_forbidden
-selected_rows = skew.matrix_from_rows([2, -3, 2])
+selected_rows = skew.matrix_from_rows([2, 0, 2])
 assert selected_rows._has_fmpz_matrix_resource()
 assert selected_rows.dimensions() == (3, 4)
 assert selected_rows.list() == skew.row(2).list() + skew.row(0).list() + skew.row(2).list()
-selected_columns = skew.matrix_from_columns([-1, 0, -1])
+selected_columns = skew.matrix_from_columns([3, 0, 3])
 assert selected_columns._has_fmpz_matrix_resource()
 assert selected_columns.dimensions() == (3, 3)
 assert selected_columns.list() == [
@@ -97,13 +98,13 @@ assert empty_rows._has_fmpz_matrix_resource()
 assert empty_columns._has_fmpz_matrix_resource()
 assert empty_rows.dimensions() == (0, 4)
 assert empty_columns.dimensions() == (3, 0)
-for invalid_rows in ([3], [-4]):
+for invalid_rows in ([3], [-1], [-4]):
     try:
         skew.matrix_from_rows(invalid_rows)
         raise AssertionError('invalid row selection unexpectedly succeeded')
     except IndexError:
         pass
-for invalid_columns in ([4], [-5]):
+for invalid_columns in ([4], [-1], [-5]):
     try:
         skew.matrix_from_columns(invalid_columns)
         raise AssertionError('invalid column selection unexpectedly succeeded')
