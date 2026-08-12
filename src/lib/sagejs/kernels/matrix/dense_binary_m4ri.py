@@ -8,6 +8,8 @@ from sagejs.ffi.m4ri import (
     matrix_ncols,
     matrix_nrows,
     matrix_set_entry,
+    matrix_swap_columns,
+    matrix_swap_rows,
 )
 from sagejs.native import Int64Buffer, native, uint64
 
@@ -33,6 +35,30 @@ def m4ri_dense_matrix_set_entry(
     if value > 1:
         return False
     return matrix_set_entry(target, row, column, value)
+
+
+@native
+def m4ri_dense_matrix_swap_rows(
+    target: M4riMatrix,
+    first: uint64,
+    second: uint64,
+) -> bool:
+    """Swap two checked rows through one generated M4RI resource call."""
+    if first >= matrix_nrows(target) or second >= matrix_nrows(target):
+        return False
+    return matrix_swap_rows(target, first, second)
+
+
+@native
+def m4ri_dense_matrix_swap_columns(
+    target: M4riMatrix,
+    first: uint64,
+    second: uint64,
+) -> bool:
+    """Swap two checked columns through one generated M4RI resource call."""
+    if first >= matrix_ncols(target) or second >= matrix_ncols(target):
+        return False
+    return matrix_swap_columns(target, first, second)
 
 
 @native

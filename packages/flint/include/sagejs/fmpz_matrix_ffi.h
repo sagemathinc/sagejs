@@ -659,6 +659,27 @@ static inline int sagejs_fmpz_matrix_select_columns(
     return 1;
 }
 
+/* Mutate only the requested axis after validating it in the adapter. */
+static inline int sagejs_fmpz_matrix_swap_rows(
+    sagejs_fmpz_matrix_t matrix, uint64_t first, uint64_t second)
+{
+    const uint64_t rows = (uint64_t) fmpz_mat_nrows(matrix->value);
+    if (first >= rows || second >= rows)
+        return 0;
+    fmpz_mat_swap_rows(matrix->value, NULL, (slong) first, (slong) second);
+    return 1;
+}
+
+static inline int sagejs_fmpz_matrix_swap_columns(
+    sagejs_fmpz_matrix_t matrix, uint64_t first, uint64_t second)
+{
+    const uint64_t columns = (uint64_t) fmpz_mat_ncols(matrix->value);
+    if (first >= columns || second >= columns)
+        return 0;
+    fmpz_mat_swap_cols(matrix->value, NULL, (slong) first, (slong) second);
+    return 1;
+}
+
 static inline int sagejs_fmpz_matrix_set_block(
     sagejs_fmpz_matrix_t target, uint64_t target_row,
     uint64_t target_column, const sagejs_fmpz_matrix_t source)

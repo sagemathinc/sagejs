@@ -1,0 +1,127 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "direct-matrix-swaps-ffi",
+  "title": "Direct matrix swaps through canonical storage",
+  "lane": "integration",
+  "status": "review",
+  "owner": "user",
+  "objective": "Replace whole-matrix-copy row and column swaps with checked O(n)/O(m) direct mutation for canonical ZZ, QQ, packed small GF(p), and M4RI GF(2) matrices; preserve Sage semantics and prove backend selection and scaling.",
+  "base_commit": "29913192fbb075b55c7b7c14b49ed1ff7849f036",
+  "claims": [
+    "ffi/flint.ffi.py",
+    "ffi/flint.ffi.json",
+    "ffi/m4ri.ffi.py",
+    "ffi/m4ri.ffi.json",
+    "packages/flint/include/sagejs/fmpz_matrix_ffi.h",
+    "packages/flint/include/sagejs/fmpq_matrix_ffi.h",
+    "packages/flint/generated/ffi_host.py",
+    "packages/m4ri/include/sagejs/m4ri_matrix_ffi.h",
+    "packages/m4ri/generated/ffi_host.py",
+    "src/lib/sagejs/ffi/flint.py",
+    "src/lib/sagejs/ffi/m4ri.py",
+    "src/baselib/sagejs/ffi/flint.py",
+    "src/baselib/sagejs/ffi/m4ri.py",
+    "src/lib/sagejs/kernels/matrix/dense_prime_field.py",
+    "src/lib/sagejs/kernels/matrix/dense_binary_m4ri.py",
+    "src/lib/sagejs/linear_algebra/matrix_selection_public.py",
+    "src/baselib/matrix.py",
+    "architecture/native-boundaries.json",
+    "architecture/package-graph.json",
+    "test/ffi.cjs",
+    "test/public-matrix-selection-v1.cjs",
+    "test/direct-matrix-swaps.cjs",
+    "test/node-test-manifest.cjs",
+    "bench/direct-matrix-swaps.cjs"
+  ],
+  "dependencies": [],
+  "references": [
+    "FLINT fmpz_mat/fmpq_mat swap APIs",
+    "M4RI mzd row/column swap APIs"
+  ],
+  "architecture": {
+    "strategy": "mixed",
+    "fallback": "same-source",
+    "oracles": [
+      "SageMath row/column swap semantics",
+      "Existing matrix selection implementation as differential oracle"
+    ],
+    "exceptions": [
+      "Thin host-neutral inline adapters unwrap generated owned resources to mature FLINT/M4RI swap primitives; packed GF(p) remains source-transparent typed Python and no handwritten mathematical algorithm or N-API callback is added."
+    ]
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "fallback",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm architecture:check",
+    "pnpm test:portable",
+    "pnpm test:baselib:strict"
+  ],
+  "runs": [
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 13.165,
+      "started_at": "2026-08-12T11:18:47.240Z",
+      "commit": "29913192fbb075b55c7b7c14b49ed1ff7849f036",
+      "workspace_fingerprint": "77533c2f83c94ce9dc6f4cb4b07f284308f973b482e651daebc913e25629ab48",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 13.305,
+      "started_at": "2026-08-12T11:19:06.138Z",
+      "commit": "29913192fbb075b55c7b7c14b49ed1ff7849f036",
+      "workspace_fingerprint": "77533c2f83c94ce9dc6f4cb4b07f284308f973b482e651daebc913e25629ab48",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node test/direct-matrix-swaps.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.073,
+      "started_at": "2026-08-12T11:19:20.124Z",
+      "commit": "29913192fbb075b55c7b7c14b49ed1ff7849f036",
+      "workspace_fingerprint": "77533c2f83c94ce9dc6f4cb4b07f284308f973b482e651daebc913e25629ab48",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 42.012,
+      "started_at": "2026-08-12T11:19:26.487Z",
+      "commit": "29913192fbb075b55c7b7c14b49ed1ff7849f036",
+      "workspace_fingerprint": "77533c2f83c94ce9dc6f4cb4b07f284308f973b482e651daebc913e25629ab48",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:native",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 585.996,
+      "started_at": "2026-08-12T11:20:16.235Z",
+      "commit": "29913192fbb075b55c7b7c14b49ed1ff7849f036",
+      "workspace_fingerprint": "77533c2f83c94ce9dc6f4cb4b07f284308f973b482e651daebc913e25629ab48",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Added checked generated FLINT and M4RI row/column swap declarations, host-neutral adapters, source-transparent packed GF(p) kernels, and public in-place routing with cache invalidation and preserved resource identity. Native and disabled-native behavior agree across ZZ, QQ, GF(2), and GF(97). Warm 100-swap measurements on 1000x1000 matrices were 8.25/8.52 ms for ZZ rows/columns, 23.01/10.03 ms for QQ, 8.73/8.00 ms for GF(2), and 8.16/10.03 ms for GF(97); a single direct row swap was 19x to 143x faster than the superseded whole-matrix selection strategy. The generated adapter growth raised the measured native-integration lazy footprint by 7826 bytes, so its ratchet moved minimally from 600000 to 605000 bytes.",
+    "risks": [
+      "The full validated run was linux-x64; macOS ARM64 and browser/WASM should exercise the same declared symbols during integration before release.",
+      "The broad changed-file suite hit one pre-existing timing-sensitive uint64 packing ratio assertion under concurrent load; its immediate isolated rerun passed (1.49 ms for 500x500 versus 0.85 ms small)."
+    ],
+    "next_steps": [
+      "Review generated declaration identity churn and the public no-copy/storage-identity assertions before cherry-picking.",
+      "Run the focused swap test and benchmark on the M1 portability host after integration."
+    ]
+  }
+}

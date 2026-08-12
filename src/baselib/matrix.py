@@ -2828,6 +2828,67 @@ class Matrix(sage.Element):
             modulus,
         )
 
+    def _swap_dense_prime_axis(
+        self,
+        first: int,
+        second: int,
+        swap_columns: bool,
+    ) -> None:
+        """Swap one checked packed-prime axis without copying the matrix."""
+        modulus = int(_untyped(self.base_ring()).characteristic())
+        operation = "swap_columns" if swap_columns else "swap_rows"
+        if self._has_m4ri_matrix_resource():
+            kernel_module = _dense_binary_m4ri_kernel_module()
+            kernel = (
+                kernel_module.m4ri_dense_matrix_swap_columns
+                if swap_columns
+                else kernel_module.m4ri_dense_matrix_swap_rows
+            )
+            valid = kernel(
+                self._m4ri_resource(),
+                runtime.bigint(first),
+                runtime.bigint(second),
+            )
+            if not valid:
+                raise RuntimeError("M4RI matrix swap validation failed")
+            self._prime_residues_cache = runtime.undefined
+        elif _is_packed_uint64(self._prime_residues_cache):
+            kernel_module = _dense_prime_kernel_module()
+            kernel = (
+                kernel_module.dense_prime_field_matrix_swap_columns
+                if swap_columns
+                else kernel_module.dense_prime_field_matrix_swap_rows
+            )
+            target = self._prime_kernel_buffer(kernel)
+            valid = kernel(
+                target,
+                self.nrows(),
+                self.ncols(),
+                first,
+                second,
+                modulus,
+            )
+            if not valid:
+                raise RuntimeError("dense prime matrix swap validation failed")
+            if not _native_kernel_available(kernel):
+                # The ordinary Python fallback owns a list copy.  Native
+                # execution borrows the canonical BigUint64Array itself and
+                # has already committed the in-place permutation; repacking
+                # that path would copy every matrix entry and destroy the
+                # axis-linear complexity guarantee.
+                self._prime_residues_cache = _packed_uint64(target)
+        else:
+            raise NotImplementedError("matrix swap requires packed GF(p) storage")
+        self._native_handle = runtime.undefined
+        self._clear_cache()
+        _trace_dense_prime_selection(
+            operation,
+            _typed_python_implementation(kernel),
+            self.nrows(),
+            self.ncols(),
+            modulus,
+        )
+
     def set_row(self, row: int, values: Any) -> None:
         """Set one row after staging and coercing every source entry."""
         _matrix_selection_module().set_row(self, row, values)
