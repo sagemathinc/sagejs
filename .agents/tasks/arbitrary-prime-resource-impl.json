@@ -156,13 +156,13 @@
   "handoff": {
     "summary": "Arbitrary-prime GF(p)[x] for p larger than a FLINT word now uses generated self-contained fmpz_mod_ctx plus fmpz_mod_poly resources in production. Public construction, sealed ownership, coefficient access, arithmetic, power, division, gcd/xgcd, evaluation, formatting, factorization, roots, and deterministic SagePack serialization avoid legacy polynomial N-API and uniform-limb buffers. Arithmetic remains resource-to-resource; factorization and roots each cross the host boundary once as a canonical byte payload. The typed borrowed-traversal kernel is registered and published by the normal production build. Native and same-source dynamic programs pass at p=2^89-1, 2^127-1, and 2^521-1; their deterministic divrem, xgcd, evaluation, factor, and roots vector is identical to SageMath 10.9.post1. Sanitizer-backed aggregate lifecycle stress, strict Python, architecture, portable, benchmark, and required production-cache gates pass on Linux x64. Independent review verdict: integrate commit 2412539c0470d49f6ea6b697c8f491babd933cb4.",
     "risks": [
-      "Execution was validated locally only on Linux x64; Linux arm64, macOS arm64, and Windows x64 remain required and must be exercised by their CI hosts.",
+      "Generated adapters, public p89/p127/p521 semantics, typed kernels, and production-cache publication pass on native macOS arm64 as well as Linux x64. Linux arm64 and Windows x64 remain required CI hosts; Apple ASan lacks LeakSanitizer and static-FLINT lifecycle instrumentation exceeds the macOS CI budget, so high-round ASAN/LSAN fuzzing remains a Linux gate.",
       "The generated resource core and arithmetic declarations have a credible Wasm lowering, but public factorization, roots, and formatting use aggregate/result declarations whose Wasm lowering is explicitly future work. When generated resources are unavailable, greater-than-word prime polynomial construction retains the pre-lane explicit unsupported behavior.",
       "Low-level construction resources remain mutable until sealed; public PolynomialElement construction publishes only sealed owners and rejects or closes mismatched adopted resources.",
       "The recorded portable failure at ef20bc1 was the review-discovered missing registry/test-manifest integration; the later portable receipt at 2412539 passes all 189 tests."
     ],
     "next_steps": [
-      "Run the focused public, lifecycle, and production-cache tests on Linux arm64, macOS arm64, and Windows x64 CI hosts.",
+      "Run the focused public, lifecycle, and production-cache tests on Linux arm64 and Windows x64 CI hosts.",
       "Implement generated Wasm lowering for computed byte-region aggregates, then enable arbitrary-prime factorization, roots, and formatting in browsers without changing the public resource contract.",
       "Profile the 512-coefficient public export path, currently about 39-48 ms, and add a resource-level bulk coefficient view only if measured workloads justify it."
     ]

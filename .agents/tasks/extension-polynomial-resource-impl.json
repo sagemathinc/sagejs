@@ -135,12 +135,13 @@
       "This v1 resource ingress is intentionally word-characteristic only; large-prime coordinates retain the portable path until IntegerBuffer ingress is generated.",
       "The resources are explicitly thread-affine because FLINT context access and non-atomic reference counts are serialized by the owning execution thread.",
       "Closing the public context wrapper while dependents survive temporarily under-reports the shared context allocation; it does not double-count, leak, or free early, and the repository TODO records shared accounting tokens if measured GC pressure warrants them.",
+      "Native generated adapters, typed kernels, GF(9)/GF(125) differentials, and production publication pass on macOS arm64. Apple ASan lacks LeakSanitizer and one complete statically linked FLINT lifecycle schedule exceeded six minutes on the M1 witness host, so high-round sanitizer fuzzing remains a Linux gate.",
       "Browser/Wasm lowering remains capability-gated (wasm=False); dynamic same-source correctness is tested but FLINT resource publication in Wasm is a later platform lane."
     ],
     "next_steps": [
       "Wire public finite-extension polynomial construction and arithmetic to the generated resources so the measured bulk-ingress speedup reaches ordinary Sage.js users.",
       "Represent public serialization as the complete field descriptor plus SJFC-equivalent coordinate content; never treat the coordinate frame alone as field identity.",
-      "Run the sanitizer and performance witness on macOS arm64 and Linux arm64, then add the future Wasm resource-lifetime implementation.",
+      "Run the sanitizer and performance witness on Linux arm64, then add the future Wasm resource-lifetime implementation.",
       "Extend exact-integer coordinate ingress for characteristics larger than one machine word."
     ]
   }
