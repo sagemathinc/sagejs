@@ -62,6 +62,46 @@
       "commit": "72137bc598037c2a3d9a91d4d6df224c28e75eab",
       "workspace_fingerprint": "d6b1f4aefbe725c150b406045131f0ca1e58b922c1a9477da9c147b91d169cbe",
       "platform": "linux-x64"
+    },
+    {
+      "command": "node test/public-sparse-random.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 8.245,
+      "started_at": "2026-08-12T13:21:28.985Z",
+      "commit": "93b9882599eccb00e1f7c77f970301571db5d96b",
+      "workspace_fingerprint": "75497afcbdd98f43b8ff108d96397eb7e8021602eef602a9e94825bcc74f057a",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/public-sparse-random.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.657,
+      "started_at": "2026-08-12T13:21:38.013Z",
+      "commit": "93b9882599eccb00e1f7c77f970301571db5d96b",
+      "workspace_fingerprint": "75497afcbdd98f43b8ff108d96397eb7e8021602eef602a9e94825bcc74f057a",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 14.353,
+      "started_at": "2026-08-12T13:21:47.547Z",
+      "commit": "93b9882599eccb00e1f7c77f970301571db5d96b",
+      "workspace_fingerprint": "75497afcbdd98f43b8ff108d96397eb7e8021602eef602a9e94825bcc74f057a",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 14.295,
+      "started_at": "2026-08-12T13:22:02.679Z",
+      "commit": "93b9882599eccb00e1f7c77f970301571db5d96b",
+      "workspace_fingerprint": "75497afcbdd98f43b8ff108d96397eb7e8021602eef602a9e94825bcc74f057a",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {
@@ -73,7 +113,7 @@
     ],
     "next_steps": [
       "Add test/public-sparse-random.cjs to the shared node test manifest in the integration lane.",
-      "Run the focused trace regression after the concurrent matrix-vector trace visibility repair lands.",
+      "Keep the focused trace regression in the shared host-test manifest after integration; it now passes after rebuilding the merged generated FLINT adapter.",
       "Consider a declared reciprocal-uniform rational generator before claiming optimized distribution='1/n'; it currently retains the general fallback."
     ]
   }
