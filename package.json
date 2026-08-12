@@ -143,6 +143,7 @@
     "test:matrix:rational": "node test/dense-rational-migration.cjs",
     "test:matrix:rational-performance": "node scripts/check-rational-matrix-budget.cjs",
     "test:polynomial:performance": "node scripts/check-polynomial-budget.cjs",
+    "bench:matrix:sparse-random": "node bench/public-sparse-random.cjs",
     "bench:dense-prime:public": "./bin/sagejs bench/dense-prime-v2.sage",
     "matrix:report": "pnpm run build && node scripts/run-sage-doctests.cjs upstream-tests/sage/matrix/matrix_integer_dense_core.doctests.json --allow-failures --verbose && node scripts/run-sage-doctests.cjs upstream-tests/sage/matrix/matrix_modn_dense_core.doctests.json --allow-failures --verbose",
     "test:cowasm": "pnpm run build && pnpm run test:cowasm:run",

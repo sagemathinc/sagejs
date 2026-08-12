@@ -81,6 +81,7 @@ const integration = [
   "test/linear-matrix-subspaces.cjs",
   "test/linear-matrix-vector.cjs",
   "test/linear-sparse-random.cjs",
+  "test/public-sparse-random.cjs",
   "test/dense-matrix-public-audit.cjs",
   "test/exact-polynomial-byte-regions.cjs",
   "test/public-polynomial-structural.cjs",

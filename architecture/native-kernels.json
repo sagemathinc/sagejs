@@ -47,6 +47,23 @@
       "platforms": ["linux-x64", "linux-arm64", "windows-x64", "macos-arm64"]
     },
     {
+      "id": "sparse-random-matrix-production",
+      "source": "src/lib/sagejs/linear_algebra/sparse_random_public.py",
+      "functions": [
+        "sparse_random_fmpz",
+        "sparse_random_fmpq",
+        "sparse_random_binary",
+        "sparse_random_prime",
+        "sparse_random_m4ri"
+      ],
+      "semantic_domain": "one-boundary sparse random construction over exact integers, rationals, binary fields, and packed word-prime fields with Sage-compatible seeded stream semantics",
+      "fallback": "same-source",
+      "host_isolation": "certified",
+      "oracles": ["cpython", "javascript", "sage", "flint", "m4ri", "packed-prime"],
+      "benchmark": "bench:matrix:sparse-random",
+      "platforms": ["linux-x64", "linux-arm64", "windows-x64", "macos-arm64"]
+    },
+    {
       "id": "dense-prime-production",
       "source": "src/lib/sagejs/kernels/matrix/dense_prime_field.py",
       "functions": [

@@ -4,7 +4,7 @@
   "id": "sparse-random-public",
   "title": "Public Sparse Random Matrix Construction",
   "lane": "arithmetic-algebra",
-  "status": "review",
+  "status": "complete",
   "owner": "user",
   "objective": "Wire Sage-compatible sparse random construction into public random_matrix over ZZ, QQ, GF(2), and word GF(p) through one storage-level bulk boundary with competitive warm performance",
   "base_commit": "91522d6bba7eccfb75010c4d4f15868b258bfde0",
