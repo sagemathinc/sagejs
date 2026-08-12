@@ -44,8 +44,28 @@ function runError(args, input) {
     encoding: "utf8",
     input,
   });
+  assert.equal(
+    result.status,
+    1,
+    `failing command returned ${result.status}: sagejs ${args.join(" ")}\n${result.stderr}`,
+  );
   assert.notEqual(result.stderr, "", "command unexpectedly produced no error");
   return result.stderr;
+}
+
+function runFailure(args, input) {
+  const result = spawnSync(process.execPath, [cli, ...args], {
+    cwd: root,
+    encoding: "utf8",
+    input,
+  });
+  assert.equal(
+    result.status,
+    1,
+    `failing command returned ${result.status}: sagejs ${args.join(" ")}\n` +
+      `stdout:\n${result.stdout}\nstderr:\n${result.stderr}`,
+  );
+  return result;
 }
 
 assert.equal(run(["--version"]).trim(), `sagejs ${packageVersion}`);
@@ -168,6 +188,95 @@ assert.match(
   /^[\d.]+ (?:ns|µs|ms|s) ± [\d.]+ (?:ns|µs|ms|s) per loop \(mean ± std\. dev\. of 1 run, 1 loop each\)\n1\s*$/,
 );
 assert.equal(run(["--python"], "value = 17\n").trim(), "");
+const pythonRuntimeFailure = runFailure(
+  ["--python"],
+  "raise RuntimeError('piped Python failure')\n",
+);
+assert.match(pythonRuntimeFailure.stderr, /piped Python failure/);
+const sageRuntimeFailure = runFailure([], "1/0\n");
+assert.match(sageRuntimeFailure.stderr, /rational division by zero/);
+const pythonCompileFailure = runFailure(
+  ["--python"],
+  "if True print('invalid')\n",
+);
+assert.match(pythonCompileFailure.stdout, /Unexpected token/);
+const eofRuntimeFailure = runFailure(
+  ["--python"],
+  "if True:\n    raise RuntimeError('EOF-flushed failure')\n",
+);
+assert.match(eofRuntimeFailure.stderr, /EOF-flushed failure/);
+const asyncFunctionFailure = runFailure(
+  ["--python"],
+  [
+    "async def fail_after_start():",
+    "    raise RuntimeError('async function failure')",
+    "",
+    "fail_after_start().send(None)",
+    "",
+  ].join("\n"),
+);
+assert.match(asyncFunctionFailure.stderr, /async function failure/);
+
+const interactiveFailureHarness = `
+  const { PassThrough } = require("node:stream");
+  const Repl = require(${JSON.stringify(join(root, "dist", "tools", "repl.js"))}).default;
+  (async () => {
+    const input = new PassThrough();
+    input.isTTY = true;
+    const output = new PassThrough();
+    output.resume();
+    const repl = await Repl({
+      input,
+      output,
+      terminal: false,
+      histfile: false,
+      show_js: false,
+    });
+    input.end("raise RuntimeError('interactive failure')\\n");
+    await repl.finished();
+    if (process.exitCode !== undefined && process.exitCode !== 0) {
+      throw new Error("interactive input changed the process exit status");
+    }
+  })().catch((error) => {
+    console.error(error.stack || error);
+    process.exitCode = 1;
+  });
+`;
+const interactiveFailureResult = spawnSync(
+  process.execPath,
+  ["-e", interactiveFailureHarness],
+  { cwd: root, encoding: "utf8", timeout: 20000 },
+);
+assert.equal(interactiveFailureResult.status, 0, interactiveFailureResult.stderr);
+assert.match(interactiveFailureResult.stderr, /interactive failure/);
+
+const brokenPipeHarness = `
+  const { spawn } = require("node:child_process");
+  const child = spawn(process.execPath, [${JSON.stringify(cli)}, "--python"], {
+    cwd: ${JSON.stringify(root)},
+    stdio: ["pipe", "pipe", "pipe"],
+  });
+  const timeout = setTimeout(() => {
+    child.kill();
+    process.exitCode = 2;
+  }, 15000);
+  child.stderr.pipe(process.stderr);
+  child.stdout.destroy();
+  setTimeout(() => child.stdin.end("print('x' * 1048576)\\n"), 20);
+  child.on("close", (code, signal) => {
+    clearTimeout(timeout);
+    if (signal || code !== 0) {
+      console.error(JSON.stringify({ code, signal }));
+      process.exitCode = 1;
+    }
+  });
+`;
+const brokenPipeResult = spawnSync(process.execPath, ["-e", brokenPipeHarness], {
+  cwd: root,
+  encoding: "utf8",
+  timeout: 20000,
+});
+assert.equal(brokenPipeResult.status, 0, brokenPipeResult.stderr);
 assert.equal(
   run(
     [],
@@ -441,11 +550,11 @@ assert.deepEqual(
   ],
 );
 assert.match(
-  run([], "GF(5)[]\n"),
+  runFailure([], "GF(5)[]\n").stdout,
   /Unexpected token/,
 );
 assert.match(
-  run(["--python"], "R.<x> = ZZ[]\n"),
+  runFailure(["--python"], "R.<x> = ZZ[]\n").stdout,
   /Unexpected token/,
 );
 assert.deepEqual(
@@ -468,7 +577,7 @@ assert.deepEqual(
   ],
 );
 assert.match(
-  run(["--python"], "f(x) = x**2\n"),
+  runFailure(["--python"], "f(x) = x**2\n").stdout,
   /cannot assign to a function call/,
 );
 assert.deepEqual(

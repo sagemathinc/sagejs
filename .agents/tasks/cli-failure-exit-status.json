@@ -1,0 +1,140 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "cli-failure-exit-status",
+  "title": "Noninteractive CLI failure exit status",
+  "lane": "integration",
+  "status": "complete",
+  "owner": "user",
+  "objective": "Make uncaught compile and runtime failures from piped or redirected Sage.js CLI input exit nonzero without changing interactive REPL behavior or broken-pipe handling",
+  "base_commit": "fb404dd803a3e79cc01bb9311903f5a932a8314b",
+  "claims": [
+    "tools/repl.ts",
+    "test/cli-smoke.cjs"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "not-applicable",
+    "fallback": "not-applicable",
+    "oracles": [
+      "Node subprocess exit-status assertions in Python and Sage modes"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm architecture:check",
+    "pnpm test:portable",
+    "pnpm test:baselib:strict",
+    "pnpm test:cli"
+  ],
+  "runs": [
+    {
+      "command": "node test/cli-smoke.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 68.672,
+      "started_at": "2026-08-12T17:02:14.965Z",
+      "commit": "fe8fdaeb721c4959f6fe2802d5554d18b88ff800",
+      "workspace_fingerprint": "9023746325f02948529fb217ca573a0ecd0dd3f3f9463e12eb02f3559dd0714f",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node test/cli-smoke.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 69.093,
+      "started_at": "2026-08-12T17:03:29.516Z",
+      "commit": "fe8fdaeb721c4959f6fe2802d5554d18b88ff800",
+      "workspace_fingerprint": "9023746325f02948529fb217ca573a0ecd0dd3f3f9463e12eb02f3559dd0714f",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 14.234,
+      "started_at": "2026-08-12T17:15:44.202Z",
+      "commit": "1ffee5ff2c158fedda3f36cf3a901c3d1db61006",
+      "workspace_fingerprint": "c5835cf8afcd31cf64e4b000a40f9b797dd53e9a3826c115ad9dc44f05567d0b",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 14.038,
+      "started_at": "2026-08-12T17:16:43.493Z",
+      "commit": "1ffee5ff2c158fedda3f36cf3a901c3d1db61006",
+      "workspace_fingerprint": "c5835cf8afcd31cf64e4b000a40f9b797dd53e9a3826c115ad9dc44f05567d0b",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:cli",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 186.022,
+      "started_at": "2026-08-12T17:29:06.360Z",
+      "commit": "1ffee5ff2c158fedda3f36cf3a901c3d1db61006",
+      "workspace_fingerprint": "c5835cf8afcd31cf64e4b000a40f9b797dd53e9a3826c115ad9dc44f05567d0b",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 18.096,
+      "started_at": "2026-08-12T17:34:40.747Z",
+      "commit": "cbee67100767f99ea5d49686d592c965baab4645",
+      "workspace_fingerprint": "e24393d7ecde1166d6af565cde3ec43b122a27d4fa58f02a4f8fd70b99d62b3e",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 83.075,
+      "started_at": "2026-08-12T17:35:03.917Z",
+      "commit": "cbee67100767f99ea5d49686d592c965baab4645",
+      "workspace_fingerprint": "e24393d7ecde1166d6af565cde3ec43b122a27d4fa58f02a4f8fd70b99d62b3e",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 19.657,
+      "started_at": "2026-08-12T17:36:32.052Z",
+      "commit": "cbee67100767f99ea5d49686d592c965baab4645",
+      "workspace_fingerprint": "e24393d7ecde1166d6af565cde3ec43b122a27d4fa58f02a4f8fd70b99d62b3e",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node test/cli-smoke.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 60.498,
+      "started_at": "2026-08-12T17:36:57.077Z",
+      "commit": "cbee67100767f99ea5d49686d592c965baab4645",
+      "workspace_fingerprint": "e24393d7ecde1166d6af565cde3ec43b122a27d4fa58f02a4f8fd70b99d62b3e",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Noninteractive REPL input now latches exit status 1 whenever an uncaught user compile, lowering, load, timing, runtime, or result-print failure is reported. TTY input retains the interactive contract of reporting errors and continuing without changing the process status. Focused CLI coverage includes successful Python input; Python and Sage runtime failures; syntax failures; an async-function failure; an EOF-flushed compound suite; a synthetic TTY session; and an early-closing stdout consumer. Independent review approved the behavior, including preservation of explicit SystemExit and EPIPE semantics.",
+    "risks": [
+      "The full CLI suite now correctly fails when child Sage.js processes print uncaught tracebacks. False-green semantic tests exposed by the change are dense-prime-host-boundary, exact-polynomial-resources, exact-rational-matrix-polynomials, large-prime-polynomial, polynomial-core-correctness, polynomial-prime-evaluate, and public-sparse-random. Separately observed integration drift includes dense-matrix-public-audit, FFI generated-host/package-current checks, native-boundary ratchets, fmpz-matrix-modp-conversion, higher-weight-hecke native artifacts, and duplicate test-manifest tier membership. These failures must be corrected rather than hidden by restoring status-zero behavior.",
+      "The current portable tier is otherwise green but fails its independent manifest-integrity assertion because one host test occurs in more than one tier."
+    ],
+    "next_steps": [
+      "Split the newly exposed semantic failures into focused matrix and polynomial correction lanes.",
+      "Refresh generated-artifact, native-boundary, audit-count, and test-tier expectations only after verifying their new resource surfaces are intentional."
+    ]
+  }
+}
