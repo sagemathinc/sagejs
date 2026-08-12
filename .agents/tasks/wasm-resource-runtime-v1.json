@@ -4,7 +4,7 @@
   "id": "wasm-resource-runtime-v1",
   "title": "Generated Wasm resource runtime integration",
   "lane": "distribution",
-  "status": "active",
+  "status": "complete",
   "owner": "user",
   "objective": "Connect a generated FLINT opaque-resource backend through the ordinary Sage.js browser package/runtime loader and verify explicit close plus FinalizationRegistry cleanup end to end",
   "base_commit": "b1eb1ece8643069c4a39839a92b87c1f2a4c0129",
@@ -96,7 +96,7 @@
     }
   ],
   "handoff": {
-    "summary": "Generated the declared FLINT Dirichlet-group Wasm adapter during the browser package build, linked its C exports into the public Wasm instance, exposed the generated backend and declaration manifest through the ordinary runtime loader, bundled nested generated Python FFI modules and caches with package-aware paths, and added Node plus real-Chromium lifecycle coverage for explicit close and FinalizationRegistry cleanup.",
+    "summary": "Generated the declared FLINT Dirichlet-group Wasm adapter during the browser package build, linked its C exports into the public Wasm instance, exposed the generated backend and declaration manifest through the ordinary runtime loader, bundled nested generated Python FFI modules and caches with package-aware paths, and added Node plus real-Chromium lifecycle coverage for explicit close and FinalizationRegistry cleanup. Root integration accepted the independently passing package, browser, portable, native, and parallel checks while retaining the unrelated pre-existing SEA fixture failure as an explicit follow-up.",
     "risks": [
       "The browser finalizer assertion needs Chromium with --expose-gc; the smoke test searches standard Chromium paths or SAGEJS_CHROMIUM.",
       "The broader pnpm test:sea check is currently red before exercising this package: its existing mpmath.py smoke fixture resolves itself instead of the bundled mpmath package and reports cannot import name 'mp'. No SEA or Python import files are within this lane's claims."
