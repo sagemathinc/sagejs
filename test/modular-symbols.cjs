@@ -498,6 +498,32 @@ test("production P1 retains FLINT and same-source capability fallbacks", () => {
   );
 });
 
+test("P1List sequence iteration works in Sage and Python modes", () => {
+  const program = [
+    "P = P1List(10)",
+    "print(len(P), list(P), P[-1])",
+  ].join("\n");
+  const expected =
+    "18 [(0, 1), (1, 0), (1, 1), (1, 2), (1, 3), (1, 4), " +
+    "(1, 5), (1, 6), (1, 7), (1, 8), (1, 9), (2, 1), (2, 3), " +
+    "(2, 5), (2, 7), (2, 9), (5, 1), (5, 2)] (5, 2)";
+
+  for (const mode of ["--sage", "--python"]) {
+    const result = spawnSync(
+      process.execPath,
+      [join(root, "bin", "sagejs"), mode],
+      {
+        cwd: root,
+        encoding: "utf8",
+        env: { ...process.env },
+        input: program,
+      },
+    );
+    assert.equal(result.status, 0, result.stderr);
+    assert.equal(result.stdout.trim(), expected);
+  }
+});
+
 test("native P1List representatives, normalization, and actions", async () => {
   const session = await createSage();
   try {
@@ -533,6 +559,67 @@ test("native P1List representatives, normalization, and actions", async () => {
       ).repr,
       "[('IndexError', 'list index out of range'), " +
         "('IndexError', 'list index out of range')]",
+    );
+    assert.equal(
+      (
+        await session.evaluate(
+          [
+            "levels = [1, 2, 5, 12]",
+            "lines = [P1List(level) for level in levels]",
+            "[list(line) for line in lines]",
+          ].join("\n"),
+        )
+      ).repr,
+      "[[(0, 0)], [(0, 1), (1, 0), (1, 1)], " +
+        "[(0, 1), (1, 0), (1, 1), (1, 2), (1, 3), (1, 4)], " +
+        "[(0, 1), (1, 0), (1, 1), (1, 2), (1, 3), (1, 4), " +
+        "(1, 5), (1, 6), (1, 7), (1, 8), (1, 9), (1, 10), " +
+        "(1, 11), (2, 1), (2, 3), (2, 5), (3, 1), (3, 2), " +
+        "(3, 4), (3, 7), (4, 1), (4, 3), (4, 5), (6, 1)]]",
+    );
+    assert.equal(
+      (
+        await session.evaluate(
+          [
+            "checks = []",
+            "for line in lines:",
+            "    iterator = iter(line)",
+            "    iterated = list(iterator)",
+            "    exhausted = False",
+            "    try:",
+            "        next(iterator)",
+            "    except StopIteration:",
+            "        exhausted = True",
+            "    checks.append((iterated == line.list(), exhausted, " +
+              "line[-len(line)], line[-1]))",
+            "checks",
+          ].join("\n"),
+        )
+      ).repr,
+      "[(True, True, (0, 0), (0, 0)), " +
+        "(True, True, (0, 1), (1, 1)), " +
+        "(True, True, (0, 1), (1, 4)), " +
+        "(True, True, (0, 1), (6, 1))]",
+    );
+    assert.equal(
+      (
+        await session.evaluate(
+          [
+            "errors = []",
+            "for line in lines:",
+            "    line_errors = []",
+            "    for index in [len(line), -len(line)-1]:",
+            "        try:",
+            "            line[index]",
+            "        except Exception as error:",
+            "            line_errors.append(type(error).__name__)",
+            "    errors.append(line_errors)",
+            "errors",
+          ].join("\n"),
+        )
+      ).repr,
+      "[['IndexError', 'IndexError'], ['IndexError', 'IndexError'], " +
+        "['IndexError', 'IndexError'], ['IndexError', 'IndexError']]",
     );
     assert.equal(
       (

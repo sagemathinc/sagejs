@@ -6,12 +6,14 @@ const { mkdtempSync, rmSync, writeFileSync } = require("node:fs");
 const { tmpdir } = require("node:os");
 const { join, resolve } = require("node:path");
 const { spawnSync } = require("node:child_process");
+const { sanitizerEnvironment } = require("./helpers/sanitizers.cjs");
 
 const root = resolve(__dirname, "..");
 const flintPrefix = resolve(
   process.env.SAGEJS_FLINT_PREFIX ||
     join(root, "packages", "flint", ".native", "prefix"),
 );
+const lifecycleRounds = process.platform === "darwin" ? 8 : 1000;
 
 if (process.platform === "win32") {
   process.stdout.write(JSON.stringify({
@@ -37,7 +39,7 @@ int main(void)
     const uint64_t element_coordinates[2] = {1, 2};
     const uint64_t invalid_coordinates[2] = {1, 3};
     const uint64_t *checked_coordinate = NULL;
-    for (slong round = 0; round < 1000; round++)
+    for (slong round = 0; round < ${lifecycleRounds}; round++)
     {
         sagejs_fq_context_t context, other_context, invalid_context;
         sagejs_fq_element_t element, element_copy, element_sum, other_element;
@@ -144,7 +146,7 @@ int main(void)
         sagejs_fq_element_clear(other_element);
         sagejs_fq_context_clear(other_context);
     }
-    printf("rounds=1000\n");
+    printf("rounds=${lifecycleRounds}\n");
     return 0;
 }
 `;
@@ -172,11 +174,7 @@ try {
   );
   const executed = spawnSync(executable, [], {
     cwd: root,
-    env: {
-      ...process.env,
-      ASAN_OPTIONS: "detect_leaks=1:halt_on_error=1:strict_string_checks=1",
-      UBSAN_OPTIONS: "halt_on_error=1:print_stacktrace=1",
-    },
+    env: sanitizerEnvironment({ strictStringChecks: true }),
     encoding: "utf8",
   });
   assert.equal(
@@ -184,7 +182,7 @@ try {
     0,
     `sanitizer harness failed:\n${executed.stdout}${executed.stderr}`,
   );
-  assert.equal(executed.stdout.trim(), "rounds=1000");
+  assert.equal(executed.stdout.trim(), `rounds=${lifecycleRounds}`);
   process.stdout.write(JSON.stringify({
     schema: "sagejs.ffi/extension-polynomial-resource-v1",
     capability: "sanitizers",

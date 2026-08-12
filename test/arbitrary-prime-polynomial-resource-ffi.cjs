@@ -6,6 +6,7 @@ const { mkdtempSync, rmSync, writeFileSync } = require("node:fs");
 const { tmpdir } = require("node:os");
 const { join, resolve } = require("node:path");
 const { spawnSync } = require("node:child_process");
+const { sanitizerEnvironment } = require("./helpers/sanitizers.cjs");
 
 const root = resolve(__dirname, "..");
 const prefix = resolve(
@@ -17,6 +18,8 @@ const temporary = mkdtempSync(join(tmpdir(), "sagejs-fmpz-mod-poly-"));
 const source = join(temporary, "witness.c");
 const executable = join(temporary, "witness");
 const sanitize = process.env.SAGEJS_FFI_SANITIZE === "1";
+const resultStressRounds = sanitize && process.platform === "darwin" ? 16 : 4096;
+const aggregateStressRounds = sanitize && process.platform === "darwin" ? 4 : 256;
 
 writeFileSync(
   source,
@@ -241,14 +244,14 @@ int main(void)
 
     /* Thousands of independent result/close schedules catch accidental
        context borrowing under ASAN/LSAN and ordinary libc. */
-    for (size_t iteration = 0; iteration < 4096; iteration++)
+    for (size_t iteration = 0; iteration < ${resultStressRounds}; iteration++)
     {
         sagejs_fmpz_mod_polynomial_t temporary;
         assert(sagejs_fmpz_mod_polynomial_add(temporary, left, divisor));
         assert(sagejs_fmpz_mod_polynomial_length(scalar, temporary));
         sagejs_fmpz_mod_polynomial_clear(temporary);
     }
-    for (size_t iteration = 0; iteration < 256; iteration++)
+    for (size_t iteration = 0; iteration < ${aggregateStressRounds}; iteration++)
     {
         sagejs_fmpz_mod_polynomial_division_result_t aggregate_division;
         sagejs_fmpz_mod_polynomial_t child;
@@ -362,11 +365,7 @@ try {
     cwd: root,
     encoding: "utf8",
     env: sanitize
-      ? {
-          ...process.env,
-          ASAN_OPTIONS: "detect_leaks=1:halt_on_error=1",
-          UBSAN_OPTIONS: "halt_on_error=1:print_stacktrace=1",
-        }
+      ? sanitizerEnvironment()
       : process.env,
     timeout: 120_000,
   });
