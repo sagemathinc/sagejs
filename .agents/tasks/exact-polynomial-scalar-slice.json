@@ -67,6 +67,16 @@
       "commit": "ecd569992f7bd4cd755774622efced888d834eca",
       "workspace_fingerprint": "7e6a05a905f66005d2236e9c636e5282d04ce6f93b20893451601058cb665b24",
       "platform": "linux-x64"
+    },
+    {
+      "command": "node test/exact-polynomial-scalar-slice-resource.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 4.503,
+      "started_at": "2026-08-12T06:23:42.330Z",
+      "commit": "2994da45f2450d4779f5e95943b28e986374dcef",
+      "workspace_fingerprint": "251c4645018bab7bc2f8343ab3ab032ab0d54b32ef67fdb5f278e60c7d725c96",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {
