@@ -1,6 +1,54 @@
 # Declarative mathematical dispatch profiles
 
-Status: implementation plan, not the current runtime API.
+Status: declaration and selection foundation implemented; public matrix and
+polynomial methods do not consume it yet.
+
+## Implemented foundation
+
+The first non-invasive vertical slice lives under `dispatch/` and
+`tools/math-dispatch/`. It models dense prime-matrix representation policy and
+the existing multiply, RREF, rank, and right-nullspace crossover choices, but
+does not yet change `matrix.py`.
+
+The checked contract is:
+
+- `.dispatch.py` authority is parsed from Sage.js's pinned Python AST and is
+  never imported or executed;
+- lowering records repository-relative source locations and produces
+  byte-stable, sorted-key JSON under `dispatch/generated/`;
+- family declarations own closed feature types, capabilities, canonical
+  representations, algorithms, conversions, and ordered fallback chains;
+- profiles can select only declared algorithms. Their schema has no mechanism
+  to widen a capability or replace canonical representation policy;
+- the selector normalizes the complete operation feature set, evaluates hard
+  capabilities, honors a checked explicit override, matches at most one most-
+  specific profile, walks declared fallbacks, and returns one frozen decision
+  record used by both explanation and trace;
+- `uint64` features accept the full unsigned 64-bit range. Values beyond
+  JavaScript's safe integer range remain canonical decimal strings in JSON and
+  are compared internally as exact integers;
+- benchmark evidence is correctness-stamped and binds source, declaration,
+  profile-set, native-build, host, timing-scope, and conversion identities.
+  The initial fitter can emit an inert adjacent integer-threshold proposal from
+  separate training and validation grids; it never edits authority.
+
+The developer commands are:
+
+```sh
+sagejs math check
+sagejs math generate
+sagejs math emit-json dense-prime-matrix
+sagejs math explain dense-prime-matrix.multiply \
+  --features '{"canonical_output":true,"inner":64,"left_rows":64,"modulus":97,"right_columns":64}' \
+  --capabilities fflas,flint-prime-matrix
+sagejs math evidence report.json
+node bench/math-dispatch-profile.cjs report-a.json report-b.json
+```
+
+`sagejs math check` rejects stale generated JSON. The next integration phase
+must add this command to the repository-wide architecture/build gate, route
+public dense-prime methods through the same decision record, and then delete
+the corresponding hard-coded crossover predicates.
 
 ## Decision
 

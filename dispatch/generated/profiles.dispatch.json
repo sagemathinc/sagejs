@@ -1,0 +1,598 @@
+{
+  "profiles": [
+    {
+      "declarations": {},
+      "evidence": [
+        "dense-prime-fflas-v1",
+        "dense-prime-m4ri-v1",
+        "dense-prime-portable-v1"
+      ],
+      "generation": 1,
+      "id": "portable",
+      "kind": "portable",
+      "match": {},
+      "operations": [
+        {
+          "family": "dense-prime-matrix",
+          "operation": "multiply",
+          "rules": [
+            {
+              "choose": "m4ri",
+              "evidence": "dense-prime-m4ri-v1",
+              "id": "gf2-m4ri",
+              "reason": "prefer the dedicated packed-bit backend for GF(2)",
+              "source": {
+                "column": 17,
+                "line": 21,
+                "path": "dispatch/profiles/portable.dispatch.py"
+              },
+              "when": {
+                "left": {
+                  "name": "modulus",
+                  "op": "feature",
+                  "source": {
+                    "column": 26,
+                    "line": 24,
+                    "path": "dispatch/profiles/portable.dispatch.py"
+                  }
+                },
+                "op": "compare",
+                "operator": "eq",
+                "right": {
+                  "op": "integer",
+                  "source": {
+                    "column": 48,
+                    "line": 24,
+                    "path": "dispatch/profiles/portable.dispatch.py"
+                  },
+                  "value": "2"
+                },
+                "source": {
+                  "column": 26,
+                  "line": 24,
+                  "path": "dispatch/profiles/portable.dispatch.py"
+                }
+              }
+            },
+            {
+              "choose": "fflas-float",
+              "evidence": "dense-prime-fflas-v1",
+              "id": "large-fflas",
+              "reason": "FFLAS is a robust win once all multiplication dimensions reach 32",
+              "source": {
+                "column": 17,
+                "line": 28,
+                "path": "dispatch/profiles/portable.dispatch.py"
+              },
+              "when": {
+                "arguments": [
+                  {
+                    "left": {
+                      "name": "left_rows",
+                      "op": "feature",
+                      "source": {
+                        "column": 25,
+                        "line": 32,
+                        "path": "dispatch/profiles/portable.dispatch.py"
+                      }
+                    },
+                    "op": "compare",
+                    "operator": "ge",
+                    "right": {
+                      "op": "integer",
+                      "source": {
+                        "column": 49,
+                        "line": 32,
+                        "path": "dispatch/profiles/portable.dispatch.py"
+                      },
+                      "value": "32"
+                    },
+                    "source": {
+                      "column": 25,
+                      "line": 32,
+                      "path": "dispatch/profiles/portable.dispatch.py"
+                    }
+                  },
+                  {
+                    "left": {
+                      "name": "inner",
+                      "op": "feature",
+                      "source": {
+                        "column": 25,
+                        "line": 33,
+                        "path": "dispatch/profiles/portable.dispatch.py"
+                      }
+                    },
+                    "op": "compare",
+                    "operator": "ge",
+                    "right": {
+                      "op": "integer",
+                      "source": {
+                        "column": 45,
+                        "line": 33,
+                        "path": "dispatch/profiles/portable.dispatch.py"
+                      },
+                      "value": "32"
+                    },
+                    "source": {
+                      "column": 25,
+                      "line": 33,
+                      "path": "dispatch/profiles/portable.dispatch.py"
+                    }
+                  },
+                  {
+                    "left": {
+                      "name": "right_columns",
+                      "op": "feature",
+                      "source": {
+                        "column": 25,
+                        "line": 34,
+                        "path": "dispatch/profiles/portable.dispatch.py"
+                      }
+                    },
+                    "op": "compare",
+                    "operator": "ge",
+                    "right": {
+                      "op": "integer",
+                      "source": {
+                        "column": 53,
+                        "line": 34,
+                        "path": "dispatch/profiles/portable.dispatch.py"
+                      },
+                      "value": "32"
+                    },
+                    "source": {
+                      "column": 25,
+                      "line": 34,
+                      "path": "dispatch/profiles/portable.dispatch.py"
+                    }
+                  }
+                ],
+                "op": "all",
+                "source": {
+                  "column": 26,
+                  "line": 31,
+                  "path": "dispatch/profiles/portable.dispatch.py"
+                }
+              }
+            },
+            {
+              "choose": "flint",
+              "evidence": "dense-prime-portable-v1",
+              "id": "portable-flint",
+              "reason": "use the mature exact backend near the crossover",
+              "source": {
+                "column": 17,
+                "line": 39,
+                "path": "dispatch/profiles/portable.dispatch.py"
+              },
+              "when": true
+            }
+          ],
+          "source": {
+            "column": 9,
+            "line": 17,
+            "path": "dispatch/profiles/portable.dispatch.py"
+          }
+        },
+        {
+          "family": "dense-prime-matrix",
+          "operation": "rank",
+          "rules": [
+            {
+              "choose": "m4ri",
+              "evidence": "dense-prime-m4ri-v1",
+              "id": "gf2-m4ri",
+              "reason": "prefer the dedicated packed-bit backend for GF(2)",
+              "source": {
+                "column": 17,
+                "line": 52,
+                "path": "dispatch/profiles/portable.dispatch.py"
+              },
+              "when": {
+                "left": {
+                  "name": "modulus",
+                  "op": "feature",
+                  "source": {
+                    "column": 26,
+                    "line": 55,
+                    "path": "dispatch/profiles/portable.dispatch.py"
+                  }
+                },
+                "op": "compare",
+                "operator": "eq",
+                "right": {
+                  "op": "integer",
+                  "source": {
+                    "column": 48,
+                    "line": 55,
+                    "path": "dispatch/profiles/portable.dispatch.py"
+                  },
+                  "value": "2"
+                },
+                "source": {
+                  "column": 26,
+                  "line": 55,
+                  "path": "dispatch/profiles/portable.dispatch.py"
+                }
+              }
+            },
+            {
+              "choose": "ffpack",
+              "evidence": "dense-prime-fflas-v1",
+              "id": "large-ffpack",
+              "reason": "FFPACK rank is a robust win once both dimensions reach 64",
+              "source": {
+                "column": 17,
+                "line": 59,
+                "path": "dispatch/profiles/portable.dispatch.py"
+              },
+              "when": {
+                "arguments": [
+                  {
+                    "left": {
+                      "name": "rows",
+                      "op": "feature",
+                      "source": {
+                        "column": 33,
+                        "line": 62,
+                        "path": "dispatch/profiles/portable.dispatch.py"
+                      }
+                    },
+                    "op": "compare",
+                    "operator": "ge",
+                    "right": {
+                      "op": "integer",
+                      "source": {
+                        "column": 52,
+                        "line": 62,
+                        "path": "dispatch/profiles/portable.dispatch.py"
+                      },
+                      "value": "64"
+                    },
+                    "source": {
+                      "column": 33,
+                      "line": 62,
+                      "path": "dispatch/profiles/portable.dispatch.py"
+                    }
+                  },
+                  {
+                    "left": {
+                      "name": "columns",
+                      "op": "feature",
+                      "source": {
+                        "column": 56,
+                        "line": 62,
+                        "path": "dispatch/profiles/portable.dispatch.py"
+                      }
+                    },
+                    "op": "compare",
+                    "operator": "ge",
+                    "right": {
+                      "op": "integer",
+                      "source": {
+                        "column": 78,
+                        "line": 62,
+                        "path": "dispatch/profiles/portable.dispatch.py"
+                      },
+                      "value": "64"
+                    },
+                    "source": {
+                      "column": 56,
+                      "line": 62,
+                      "path": "dispatch/profiles/portable.dispatch.py"
+                    }
+                  }
+                ],
+                "op": "all",
+                "source": {
+                  "column": 26,
+                  "line": 62,
+                  "path": "dispatch/profiles/portable.dispatch.py"
+                }
+              }
+            },
+            {
+              "choose": "flint",
+              "evidence": "dense-prime-portable-v1",
+              "id": "portable-flint",
+              "reason": "use the mature exact backend near the crossover",
+              "source": {
+                "column": 17,
+                "line": 66,
+                "path": "dispatch/profiles/portable.dispatch.py"
+              },
+              "when": true
+            }
+          ],
+          "source": {
+            "column": 9,
+            "line": 48,
+            "path": "dispatch/profiles/portable.dispatch.py"
+          }
+        },
+        {
+          "family": "dense-prime-matrix",
+          "operation": "right-nullspace",
+          "rules": [
+            {
+              "choose": "m4ri",
+              "evidence": "dense-prime-m4ri-v1",
+              "id": "gf2-m4ri",
+              "reason": "prefer the dedicated packed-bit backend for GF(2)",
+              "source": {
+                "column": 17,
+                "line": 79,
+                "path": "dispatch/profiles/portable.dispatch.py"
+              },
+              "when": {
+                "left": {
+                  "name": "modulus",
+                  "op": "feature",
+                  "source": {
+                    "column": 26,
+                    "line": 82,
+                    "path": "dispatch/profiles/portable.dispatch.py"
+                  }
+                },
+                "op": "compare",
+                "operator": "eq",
+                "right": {
+                  "op": "integer",
+                  "source": {
+                    "column": 48,
+                    "line": 82,
+                    "path": "dispatch/profiles/portable.dispatch.py"
+                  },
+                  "value": "2"
+                },
+                "source": {
+                  "column": 26,
+                  "line": 82,
+                  "path": "dispatch/profiles/portable.dispatch.py"
+                }
+              }
+            },
+            {
+              "choose": "ffpack",
+              "evidence": "dense-prime-fflas-v1",
+              "id": "large-ffpack",
+              "reason": "FFPACK nullspace is a robust win once both dimensions reach 24",
+              "source": {
+                "column": 17,
+                "line": 86,
+                "path": "dispatch/profiles/portable.dispatch.py"
+              },
+              "when": {
+                "arguments": [
+                  {
+                    "left": {
+                      "name": "rows",
+                      "op": "feature",
+                      "source": {
+                        "column": 33,
+                        "line": 89,
+                        "path": "dispatch/profiles/portable.dispatch.py"
+                      }
+                    },
+                    "op": "compare",
+                    "operator": "ge",
+                    "right": {
+                      "op": "integer",
+                      "source": {
+                        "column": 52,
+                        "line": 89,
+                        "path": "dispatch/profiles/portable.dispatch.py"
+                      },
+                      "value": "24"
+                    },
+                    "source": {
+                      "column": 33,
+                      "line": 89,
+                      "path": "dispatch/profiles/portable.dispatch.py"
+                    }
+                  },
+                  {
+                    "left": {
+                      "name": "columns",
+                      "op": "feature",
+                      "source": {
+                        "column": 56,
+                        "line": 89,
+                        "path": "dispatch/profiles/portable.dispatch.py"
+                      }
+                    },
+                    "op": "compare",
+                    "operator": "ge",
+                    "right": {
+                      "op": "integer",
+                      "source": {
+                        "column": 78,
+                        "line": 89,
+                        "path": "dispatch/profiles/portable.dispatch.py"
+                      },
+                      "value": "24"
+                    },
+                    "source": {
+                      "column": 56,
+                      "line": 89,
+                      "path": "dispatch/profiles/portable.dispatch.py"
+                    }
+                  }
+                ],
+                "op": "all",
+                "source": {
+                  "column": 26,
+                  "line": 89,
+                  "path": "dispatch/profiles/portable.dispatch.py"
+                }
+              }
+            },
+            {
+              "choose": "flint",
+              "evidence": "dense-prime-portable-v1",
+              "id": "portable-flint",
+              "reason": "use the mature exact backend near the crossover",
+              "source": {
+                "column": 17,
+                "line": 93,
+                "path": "dispatch/profiles/portable.dispatch.py"
+              },
+              "when": true
+            }
+          ],
+          "source": {
+            "column": 9,
+            "line": 75,
+            "path": "dispatch/profiles/portable.dispatch.py"
+          }
+        },
+        {
+          "family": "dense-prime-matrix",
+          "operation": "rref",
+          "rules": [
+            {
+              "choose": "m4ri",
+              "evidence": "dense-prime-m4ri-v1",
+              "id": "gf2-m4ri",
+              "reason": "prefer the dedicated packed-bit backend for GF(2)",
+              "source": {
+                "column": 17,
+                "line": 106,
+                "path": "dispatch/profiles/portable.dispatch.py"
+              },
+              "when": {
+                "left": {
+                  "name": "modulus",
+                  "op": "feature",
+                  "source": {
+                    "column": 26,
+                    "line": 109,
+                    "path": "dispatch/profiles/portable.dispatch.py"
+                  }
+                },
+                "op": "compare",
+                "operator": "eq",
+                "right": {
+                  "op": "integer",
+                  "source": {
+                    "column": 48,
+                    "line": 109,
+                    "path": "dispatch/profiles/portable.dispatch.py"
+                  },
+                  "value": "2"
+                },
+                "source": {
+                  "column": 26,
+                  "line": 109,
+                  "path": "dispatch/profiles/portable.dispatch.py"
+                }
+              }
+            },
+            {
+              "choose": "ffpack",
+              "evidence": "dense-prime-fflas-v1",
+              "id": "large-ffpack",
+              "reason": "FFPACK RREF is a robust win once both dimensions reach 32",
+              "source": {
+                "column": 17,
+                "line": 113,
+                "path": "dispatch/profiles/portable.dispatch.py"
+              },
+              "when": {
+                "arguments": [
+                  {
+                    "left": {
+                      "name": "rows",
+                      "op": "feature",
+                      "source": {
+                        "column": 33,
+                        "line": 116,
+                        "path": "dispatch/profiles/portable.dispatch.py"
+                      }
+                    },
+                    "op": "compare",
+                    "operator": "ge",
+                    "right": {
+                      "op": "integer",
+                      "source": {
+                        "column": 52,
+                        "line": 116,
+                        "path": "dispatch/profiles/portable.dispatch.py"
+                      },
+                      "value": "32"
+                    },
+                    "source": {
+                      "column": 33,
+                      "line": 116,
+                      "path": "dispatch/profiles/portable.dispatch.py"
+                    }
+                  },
+                  {
+                    "left": {
+                      "name": "columns",
+                      "op": "feature",
+                      "source": {
+                        "column": 56,
+                        "line": 116,
+                        "path": "dispatch/profiles/portable.dispatch.py"
+                      }
+                    },
+                    "op": "compare",
+                    "operator": "ge",
+                    "right": {
+                      "op": "integer",
+                      "source": {
+                        "column": 78,
+                        "line": 116,
+                        "path": "dispatch/profiles/portable.dispatch.py"
+                      },
+                      "value": "32"
+                    },
+                    "source": {
+                      "column": 56,
+                      "line": 116,
+                      "path": "dispatch/profiles/portable.dispatch.py"
+                    }
+                  }
+                ],
+                "op": "all",
+                "source": {
+                  "column": 26,
+                  "line": 116,
+                  "path": "dispatch/profiles/portable.dispatch.py"
+                }
+              }
+            },
+            {
+              "choose": "flint",
+              "evidence": "dense-prime-portable-v1",
+              "id": "portable-flint",
+              "reason": "use the mature exact backend near the crossover",
+              "source": {
+                "column": 17,
+                "line": 120,
+                "path": "dispatch/profiles/portable.dispatch.py"
+              },
+              "when": true
+            }
+          ],
+          "source": {
+            "column": 9,
+            "line": 102,
+            "path": "dispatch/profiles/portable.dispatch.py"
+          }
+        }
+      ],
+      "schema": "sagejs.math-dispatch/profile-v1",
+      "schema_version": 1,
+      "source": {
+        "column": 12,
+        "line": 4,
+        "path": "dispatch/profiles/portable.dispatch.py"
+      }
+    }
+  ],
+  "schema": "sagejs.math-dispatch/profile-set-v1",
+  "schema_version": 1
+}

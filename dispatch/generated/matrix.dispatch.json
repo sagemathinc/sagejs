@@ -1,0 +1,914 @@
+{
+  "capabilities": [
+    {
+      "id": "fflas-modular-float",
+      "reason": "FFLAS is unavailable or the modulus exceeds its exact Modular<float> range",
+      "requires": {
+        "arguments": [
+          {
+            "name": "fflas",
+            "op": "available",
+            "source": {
+              "column": 17,
+              "line": 32,
+              "path": "dispatch/matrix.dispatch.py"
+            }
+          },
+          {
+            "left": {
+              "name": "modulus",
+              "op": "feature",
+              "source": {
+                "column": 17,
+                "line": 33,
+                "path": "dispatch/matrix.dispatch.py"
+              }
+            },
+            "op": "compare",
+            "operator": "lt",
+            "right": {
+              "op": "integer",
+              "source": {
+                "column": 38,
+                "line": 33,
+                "path": "dispatch/matrix.dispatch.py"
+              },
+              "value": "94906266"
+            },
+            "source": {
+              "column": 17,
+              "line": 33,
+              "path": "dispatch/matrix.dispatch.py"
+            }
+          },
+          {
+            "name": "canonical_output",
+            "op": "feature",
+            "source": {
+              "column": 17,
+              "line": 34,
+              "path": "dispatch/matrix.dispatch.py"
+            }
+          }
+        ],
+        "op": "all",
+        "source": {
+          "column": 22,
+          "line": 31,
+          "path": "dispatch/matrix.dispatch.py"
+        }
+      },
+      "source": {
+        "column": 9,
+        "line": 29,
+        "path": "dispatch/matrix.dispatch.py"
+      }
+    },
+    {
+      "id": "flint-prime-matrix",
+      "reason": "the generated FLINT prime-matrix boundary is unavailable",
+      "requires": {
+        "name": "flint-prime-matrix",
+        "op": "available",
+        "source": {
+          "column": 22,
+          "line": 40,
+          "path": "dispatch/matrix.dispatch.py"
+        }
+      },
+      "source": {
+        "column": 9,
+        "line": 38,
+        "path": "dispatch/matrix.dispatch.py"
+      }
+    },
+    {
+      "id": "m4ri-gf2",
+      "reason": "M4RI is unavailable or the field is not GF(2)",
+      "requires": {
+        "arguments": [
+          {
+            "name": "m4ri",
+            "op": "available",
+            "source": {
+              "column": 17,
+              "line": 46,
+              "path": "dispatch/matrix.dispatch.py"
+            }
+          },
+          {
+            "left": {
+              "name": "modulus",
+              "op": "feature",
+              "source": {
+                "column": 17,
+                "line": 47,
+                "path": "dispatch/matrix.dispatch.py"
+              }
+            },
+            "op": "compare",
+            "operator": "eq",
+            "right": {
+              "op": "integer",
+              "source": {
+                "column": 39,
+                "line": 47,
+                "path": "dispatch/matrix.dispatch.py"
+              },
+              "value": "2"
+            },
+            "source": {
+              "column": 17,
+              "line": 47,
+              "path": "dispatch/matrix.dispatch.py"
+            }
+          },
+          {
+            "name": "canonical_output",
+            "op": "feature",
+            "source": {
+              "column": 17,
+              "line": 48,
+              "path": "dispatch/matrix.dispatch.py"
+            }
+          }
+        ],
+        "op": "all",
+        "source": {
+          "column": 22,
+          "line": 45,
+          "path": "dispatch/matrix.dispatch.py"
+        }
+      },
+      "source": {
+        "column": 9,
+        "line": 43,
+        "path": "dispatch/matrix.dispatch.py"
+      }
+    }
+  ],
+  "features": {
+    "canonical_output": "boolean",
+    "columns": "uint64",
+    "inner": "uint64",
+    "left_rows": "uint64",
+    "modulus": "uint64",
+    "right_columns": "uint64",
+    "rows": "uint64"
+  },
+  "generation": 1,
+  "id": "dense-prime-matrix",
+  "kind": "family",
+  "operations": [
+    {
+      "algorithms": [
+        {
+          "conversions": [
+            "packed-u64-fflas"
+          ],
+          "fallback": [
+            "flint",
+            "typed-python"
+          ],
+          "id": "fflas-float",
+          "reason": "FFLAS/FFPACK dense modular multiplication",
+          "requires": [
+            "fflas-modular-float"
+          ],
+          "source": {
+            "column": 17,
+            "line": 87,
+            "path": "dispatch/matrix.dispatch.py"
+          },
+          "when": {
+            "left": {
+              "name": "modulus",
+              "op": "feature",
+              "source": {
+                "column": 26,
+                "line": 90,
+                "path": "dispatch/matrix.dispatch.py"
+              }
+            },
+            "op": "compare",
+            "operator": "ne",
+            "right": {
+              "op": "integer",
+              "source": {
+                "column": 48,
+                "line": 90,
+                "path": "dispatch/matrix.dispatch.py"
+              },
+              "value": "2"
+            },
+            "source": {
+              "column": 26,
+              "line": 90,
+              "path": "dispatch/matrix.dispatch.py"
+            }
+          }
+        },
+        {
+          "conversions": [],
+          "fallback": [
+            "typed-python"
+          ],
+          "id": "flint",
+          "reason": "generated FLINT exact prime-matrix multiplication",
+          "requires": [
+            "flint-prime-matrix"
+          ],
+          "source": {
+            "column": 17,
+            "line": 95,
+            "path": "dispatch/matrix.dispatch.py"
+          },
+          "when": true
+        },
+        {
+          "conversions": [],
+          "fallback": [
+            "flint",
+            "typed-python"
+          ],
+          "id": "m4ri",
+          "reason": "M4RI packed GF(2) multiplication",
+          "requires": [
+            "m4ri-gf2"
+          ],
+          "source": {
+            "column": 17,
+            "line": 101,
+            "path": "dispatch/matrix.dispatch.py"
+          },
+          "when": true
+        },
+        {
+          "conversions": [],
+          "fallback": [],
+          "id": "typed-python",
+          "reason": "portable typed-Python packed-residue multiplication",
+          "requires": [],
+          "source": {
+            "column": 17,
+            "line": 107,
+            "path": "dispatch/matrix.dispatch.py"
+          },
+          "when": {
+            "left": {
+              "name": "modulus",
+              "op": "feature",
+              "source": {
+                "column": 26,
+                "line": 109,
+                "path": "dispatch/matrix.dispatch.py"
+              }
+            },
+            "op": "compare",
+            "operator": "lt",
+            "right": {
+              "op": "integer",
+              "source": {
+                "column": 47,
+                "line": 109,
+                "path": "dispatch/matrix.dispatch.py"
+              },
+              "value": "256"
+            },
+            "source": {
+              "column": 26,
+              "line": 109,
+              "path": "dispatch/matrix.dispatch.py"
+            }
+          }
+        }
+      ],
+      "features": [
+        "canonical_output",
+        "inner",
+        "left_rows",
+        "modulus",
+        "right_columns"
+      ],
+      "id": "multiply",
+      "source": {
+        "column": 9,
+        "line": 77,
+        "path": "dispatch/matrix.dispatch.py"
+      }
+    },
+    {
+      "algorithms": [
+        {
+          "conversions": [
+            "packed-u64-fflas"
+          ],
+          "fallback": [
+            "flint",
+            "typed-python"
+          ],
+          "id": "ffpack",
+          "reason": "FFPACK dense modular rank",
+          "requires": [
+            "fflas-modular-float"
+          ],
+          "source": {
+            "column": 17,
+            "line": 118,
+            "path": "dispatch/matrix.dispatch.py"
+          },
+          "when": {
+            "left": {
+              "name": "modulus",
+              "op": "feature",
+              "source": {
+                "column": 26,
+                "line": 121,
+                "path": "dispatch/matrix.dispatch.py"
+              }
+            },
+            "op": "compare",
+            "operator": "ne",
+            "right": {
+              "op": "integer",
+              "source": {
+                "column": 48,
+                "line": 121,
+                "path": "dispatch/matrix.dispatch.py"
+              },
+              "value": "2"
+            },
+            "source": {
+              "column": 26,
+              "line": 121,
+              "path": "dispatch/matrix.dispatch.py"
+            }
+          }
+        },
+        {
+          "conversions": [],
+          "fallback": [
+            "typed-python"
+          ],
+          "id": "flint",
+          "reason": "generated FLINT exact prime-matrix rank",
+          "requires": [
+            "flint-prime-matrix"
+          ],
+          "source": {
+            "column": 17,
+            "line": 126,
+            "path": "dispatch/matrix.dispatch.py"
+          },
+          "when": true
+        },
+        {
+          "conversions": [],
+          "fallback": [
+            "flint",
+            "typed-python"
+          ],
+          "id": "m4ri",
+          "reason": "M4RI packed GF(2) rank",
+          "requires": [
+            "m4ri-gf2"
+          ],
+          "source": {
+            "column": 17,
+            "line": 132,
+            "path": "dispatch/matrix.dispatch.py"
+          },
+          "when": true
+        },
+        {
+          "conversions": [],
+          "fallback": [],
+          "id": "typed-python",
+          "reason": "portable typed-Python packed-residue rank",
+          "requires": [],
+          "source": {
+            "column": 17,
+            "line": 138,
+            "path": "dispatch/matrix.dispatch.py"
+          },
+          "when": {
+            "left": {
+              "name": "modulus",
+              "op": "feature",
+              "source": {
+                "column": 26,
+                "line": 140,
+                "path": "dispatch/matrix.dispatch.py"
+              }
+            },
+            "op": "compare",
+            "operator": "lt",
+            "right": {
+              "op": "integer",
+              "source": {
+                "column": 47,
+                "line": 140,
+                "path": "dispatch/matrix.dispatch.py"
+              },
+              "value": "256"
+            },
+            "source": {
+              "column": 26,
+              "line": 140,
+              "path": "dispatch/matrix.dispatch.py"
+            }
+          }
+        }
+      ],
+      "features": [
+        "canonical_output",
+        "columns",
+        "modulus",
+        "rows"
+      ],
+      "id": "rank",
+      "source": {
+        "column": 9,
+        "line": 114,
+        "path": "dispatch/matrix.dispatch.py"
+      }
+    },
+    {
+      "algorithms": [
+        {
+          "conversions": [
+            "packed-u64-fflas"
+          ],
+          "fallback": [
+            "flint",
+            "typed-python"
+          ],
+          "id": "ffpack",
+          "reason": "FFPACK dense modular right nullspace",
+          "requires": [
+            "fflas-modular-float"
+          ],
+          "source": {
+            "column": 17,
+            "line": 149,
+            "path": "dispatch/matrix.dispatch.py"
+          },
+          "when": {
+            "left": {
+              "name": "modulus",
+              "op": "feature",
+              "source": {
+                "column": 26,
+                "line": 152,
+                "path": "dispatch/matrix.dispatch.py"
+              }
+            },
+            "op": "compare",
+            "operator": "ne",
+            "right": {
+              "op": "integer",
+              "source": {
+                "column": 48,
+                "line": 152,
+                "path": "dispatch/matrix.dispatch.py"
+              },
+              "value": "2"
+            },
+            "source": {
+              "column": 26,
+              "line": 152,
+              "path": "dispatch/matrix.dispatch.py"
+            }
+          }
+        },
+        {
+          "conversions": [],
+          "fallback": [
+            "typed-python"
+          ],
+          "id": "flint",
+          "reason": "generated FLINT exact prime-matrix right nullspace",
+          "requires": [
+            "flint-prime-matrix"
+          ],
+          "source": {
+            "column": 17,
+            "line": 157,
+            "path": "dispatch/matrix.dispatch.py"
+          },
+          "when": true
+        },
+        {
+          "conversions": [],
+          "fallback": [
+            "flint",
+            "typed-python"
+          ],
+          "id": "m4ri",
+          "reason": "M4RI packed GF(2) right nullspace",
+          "requires": [
+            "m4ri-gf2"
+          ],
+          "source": {
+            "column": 17,
+            "line": 163,
+            "path": "dispatch/matrix.dispatch.py"
+          },
+          "when": true
+        },
+        {
+          "conversions": [],
+          "fallback": [],
+          "id": "typed-python",
+          "reason": "portable typed-Python packed-residue right nullspace",
+          "requires": [],
+          "source": {
+            "column": 17,
+            "line": 169,
+            "path": "dispatch/matrix.dispatch.py"
+          },
+          "when": {
+            "left": {
+              "name": "modulus",
+              "op": "feature",
+              "source": {
+                "column": 26,
+                "line": 171,
+                "path": "dispatch/matrix.dispatch.py"
+              }
+            },
+            "op": "compare",
+            "operator": "lt",
+            "right": {
+              "op": "integer",
+              "source": {
+                "column": 47,
+                "line": 171,
+                "path": "dispatch/matrix.dispatch.py"
+              },
+              "value": "256"
+            },
+            "source": {
+              "column": 26,
+              "line": 171,
+              "path": "dispatch/matrix.dispatch.py"
+            }
+          }
+        }
+      ],
+      "features": [
+        "canonical_output",
+        "columns",
+        "modulus",
+        "rows"
+      ],
+      "id": "right-nullspace",
+      "source": {
+        "column": 9,
+        "line": 145,
+        "path": "dispatch/matrix.dispatch.py"
+      }
+    },
+    {
+      "algorithms": [
+        {
+          "conversions": [
+            "packed-u64-fflas"
+          ],
+          "fallback": [
+            "flint",
+            "typed-python"
+          ],
+          "id": "ffpack",
+          "reason": "FFPACK dense modular reduced row echelon form",
+          "requires": [
+            "fflas-modular-float"
+          ],
+          "source": {
+            "column": 17,
+            "line": 180,
+            "path": "dispatch/matrix.dispatch.py"
+          },
+          "when": {
+            "left": {
+              "name": "modulus",
+              "op": "feature",
+              "source": {
+                "column": 26,
+                "line": 183,
+                "path": "dispatch/matrix.dispatch.py"
+              }
+            },
+            "op": "compare",
+            "operator": "ne",
+            "right": {
+              "op": "integer",
+              "source": {
+                "column": 48,
+                "line": 183,
+                "path": "dispatch/matrix.dispatch.py"
+              },
+              "value": "2"
+            },
+            "source": {
+              "column": 26,
+              "line": 183,
+              "path": "dispatch/matrix.dispatch.py"
+            }
+          }
+        },
+        {
+          "conversions": [],
+          "fallback": [
+            "typed-python"
+          ],
+          "id": "flint",
+          "reason": "generated FLINT exact prime-matrix reduced row echelon form",
+          "requires": [
+            "flint-prime-matrix"
+          ],
+          "source": {
+            "column": 17,
+            "line": 188,
+            "path": "dispatch/matrix.dispatch.py"
+          },
+          "when": true
+        },
+        {
+          "conversions": [],
+          "fallback": [
+            "flint",
+            "typed-python"
+          ],
+          "id": "m4ri",
+          "reason": "M4RI packed GF(2) reduced row echelon form",
+          "requires": [
+            "m4ri-gf2"
+          ],
+          "source": {
+            "column": 17,
+            "line": 194,
+            "path": "dispatch/matrix.dispatch.py"
+          },
+          "when": true
+        },
+        {
+          "conversions": [],
+          "fallback": [],
+          "id": "typed-python",
+          "reason": "portable typed-Python packed-residue reduced row echelon form",
+          "requires": [],
+          "source": {
+            "column": 17,
+            "line": 200,
+            "path": "dispatch/matrix.dispatch.py"
+          },
+          "when": {
+            "left": {
+              "name": "modulus",
+              "op": "feature",
+              "source": {
+                "column": 26,
+                "line": 202,
+                "path": "dispatch/matrix.dispatch.py"
+              }
+            },
+            "op": "compare",
+            "operator": "lt",
+            "right": {
+              "op": "integer",
+              "source": {
+                "column": 47,
+                "line": 202,
+                "path": "dispatch/matrix.dispatch.py"
+              },
+              "value": "256"
+            },
+            "source": {
+              "column": 26,
+              "line": 202,
+              "path": "dispatch/matrix.dispatch.py"
+            }
+          }
+        }
+      ],
+      "features": [
+        "canonical_output",
+        "columns",
+        "modulus",
+        "rows"
+      ],
+      "id": "rref",
+      "source": {
+        "column": 9,
+        "line": 176,
+        "path": "dispatch/matrix.dispatch.py"
+      }
+    }
+  ],
+  "representations": [
+    {
+      "id": "flint-nmod-resource",
+      "policy": "canonical-when-capable",
+      "reason": "word-prime matrices canonically use a generated FLINT nmod_mat resource",
+      "source": {
+        "column": 9,
+        "line": 69,
+        "path": "dispatch/matrix.dispatch.py"
+      },
+      "when": {
+        "left": {
+          "name": "modulus",
+          "op": "feature",
+          "source": {
+            "column": 18,
+            "line": 71,
+            "path": "dispatch/matrix.dispatch.py"
+          }
+        },
+        "op": "compare",
+        "operator": "ge",
+        "right": {
+          "op": "integer",
+          "source": {
+            "column": 40,
+            "line": 71,
+            "path": "dispatch/matrix.dispatch.py"
+          },
+          "value": "256"
+        },
+        "source": {
+          "column": 18,
+          "line": 71,
+          "path": "dispatch/matrix.dispatch.py"
+        }
+      }
+    },
+    {
+      "id": "m4ri-gf2",
+      "policy": "canonical-when-capable",
+      "reason": "GF(2) has a dedicated packed-bit representation",
+      "source": {
+        "column": 9,
+        "line": 54,
+        "path": "dispatch/matrix.dispatch.py"
+      },
+      "when": {
+        "arguments": [
+          {
+            "left": {
+              "name": "modulus",
+              "op": "feature",
+              "source": {
+                "column": 25,
+                "line": 56,
+                "path": "dispatch/matrix.dispatch.py"
+              }
+            },
+            "op": "compare",
+            "operator": "eq",
+            "right": {
+              "op": "integer",
+              "source": {
+                "column": 47,
+                "line": 56,
+                "path": "dispatch/matrix.dispatch.py"
+              },
+              "value": "2"
+            },
+            "source": {
+              "column": 25,
+              "line": 56,
+              "path": "dispatch/matrix.dispatch.py"
+            }
+          },
+          {
+            "name": "m4ri",
+            "op": "available",
+            "source": {
+              "column": 50,
+              "line": 56,
+              "path": "dispatch/matrix.dispatch.py"
+            }
+          }
+        ],
+        "op": "all",
+        "source": {
+          "column": 18,
+          "line": 56,
+          "path": "dispatch/matrix.dispatch.py"
+        }
+      }
+    },
+    {
+      "id": "packed-u64",
+      "policy": "canonical",
+      "reason": "small prime matrices canonically own packed row-major residues",
+      "source": {
+        "column": 9,
+        "line": 60,
+        "path": "dispatch/matrix.dispatch.py"
+      },
+      "when": {
+        "arguments": [
+          {
+            "left": {
+              "name": "modulus",
+              "op": "feature",
+              "source": {
+                "column": 17,
+                "line": 63,
+                "path": "dispatch/matrix.dispatch.py"
+              }
+            },
+            "op": "compare",
+            "operator": "lt",
+            "right": {
+              "op": "integer",
+              "source": {
+                "column": 38,
+                "line": 63,
+                "path": "dispatch/matrix.dispatch.py"
+              },
+              "value": "256"
+            },
+            "source": {
+              "column": 17,
+              "line": 63,
+              "path": "dispatch/matrix.dispatch.py"
+            }
+          },
+          {
+            "arguments": [
+              {
+                "left": {
+                  "name": "modulus",
+                  "op": "feature",
+                  "source": {
+                    "column": 24,
+                    "line": 64,
+                    "path": "dispatch/matrix.dispatch.py"
+                  }
+                },
+                "op": "compare",
+                "operator": "ne",
+                "right": {
+                  "op": "integer",
+                  "source": {
+                    "column": 46,
+                    "line": 64,
+                    "path": "dispatch/matrix.dispatch.py"
+                  },
+                  "value": "2"
+                },
+                "source": {
+                  "column": 24,
+                  "line": 64,
+                  "path": "dispatch/matrix.dispatch.py"
+                }
+              },
+              {
+                "arguments": [
+                  {
+                    "name": "m4ri",
+                    "op": "available",
+                    "source": {
+                      "column": 54,
+                      "line": 64,
+                      "path": "dispatch/matrix.dispatch.py"
+                    }
+                  }
+                ],
+                "op": "not",
+                "source": {
+                  "column": 49,
+                  "line": 64,
+                  "path": "dispatch/matrix.dispatch.py"
+                }
+              }
+            ],
+            "op": "any",
+            "source": {
+              "column": 17,
+              "line": 64,
+              "path": "dispatch/matrix.dispatch.py"
+            }
+          }
+        ],
+        "op": "all",
+        "source": {
+          "column": 18,
+          "line": 62,
+          "path": "dispatch/matrix.dispatch.py"
+        }
+      }
+    }
+  ],
+  "schema": "sagejs.math-dispatch/family-v1",
+  "schema_version": 1,
+  "source": {
+    "column": 22,
+    "line": 15,
+    "path": "dispatch/matrix.dispatch.py"
+  }
+}
