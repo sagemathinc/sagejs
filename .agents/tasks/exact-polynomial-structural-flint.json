@@ -44,14 +44,26 @@
     "macos-arm64": "required"
   },
   "validation": [
+    "pnpm build",
     "pnpm architecture:check",
     "pnpm test:portable",
-    "pnpm test:baselib:strict"
+    "pnpm test:baselib:strict",
+    "node --test test/ffi.cjs",
+    "node --test test/polynomial-structural-flint.cjs",
+    "node bench/polynomial-structural-flint.cjs"
   ],
   "runs": [],
   "handoff": {
-    "summary": "",
-    "risks": [],
-    "next_steps": []
+    "summary": "Generated 22 declared FLINT operations plus 24 source-transparent typed-Python wrappers for integer/rational resource and word-prime structural polynomial calculus. Exact outputs are callee-owned resources; packed prime outputs commit transactionally. Focused tests cover Sage fixtures, zero/constant resultants and discriminants, positive-characteristic derivative degree loss, canonical reverse/truncate normalization, native/dynamic parity, and 200-round ASan/UBSan lifecycle fuzzing. Warm direct-adapter medians include 0.58 ms integer composition, 0.42 ms integer resultant, 0.20 ms rational integration, 0.95 ms prime composition, and 0.010 ms prime resultant on the lane host.",
+    "risks": [
+      "Exact FLINT resources remain wasm-disabled in the current declaration system; packed word-prime adapters are wasm-enabled.",
+      "The packed nmod integral is deliberately restricted to source length below the characteristic. Longer inputs with zero exceptional coefficients can be semantically integrable and must route to the portable same-source implementation; focused tests pin this as a transactional capability rejection.",
+      "Full pnpm test:native reached the pre-existing volatile dense GF(p) multiply_300 performance gate and failed at 20.91 normalized ms versus a 15 ms budget; an immediate isolated rerun reproduced host variability and no structural-polynomial failure. All preceding native package, compiler, migration, and resource tests passed."
+    ],
+    "next_steps": [
+      "Rebase onto the corrected structural_calculus implementation and wire public Polynomial dispatch separately, preserving its negative-truncate and characteristic-hole semantics.",
+      "Normalize fixed-width packed prime outputs at the public Polynomial constructor boundary.",
+      "Exercise the wasm-enabled nmod declarations in the browser build and add exact-resource wasm lowering when the generic generated resource backend lands."
+    ]
   }
 }
