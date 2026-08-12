@@ -103,6 +103,10 @@ function resolveBase(requested) {
   }
 }
 
+function resolveProjectBase(requested) {
+  return requested || "HEAD";
+}
+
 function createProject(rawArgs) {
   const args = [...rawArgs];
   if (flag(args, "--help")) {
@@ -115,7 +119,7 @@ Required:
 Options:
   --title TEXT           Human-readable title
   --owner NAME           Defaults to CODEX_AGENT_NAME or USER
-  --base REF             Defaults to origin/main
+  --base REF             Defaults to the invoking worktree's HEAD
   --branch NAME          Defaults to agent/ID
   --path DIRECTORY       Defaults to ../sagejs-worktrees/ID
   --reference VALUE      Paper, upstream source, or URL; repeatable
@@ -138,7 +142,7 @@ Options:
     "--owner",
     process.env.CODEX_AGENT_NAME || process.env.USER || "unassigned",
   );
-  const base = resolveBase(value(args, "--base"));
+  const base = resolveProjectBase(value(args, "--base"));
   const branchOption = value(args, "--branch");
   const pathOption = value(args, "--path");
   const windows = value(args, "--windows", "required");
@@ -679,5 +683,6 @@ if (require.main === module) {
 }
 
 module.exports = {
+  resolveProjectBase,
   taskForBranch,
 };

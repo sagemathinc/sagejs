@@ -31,6 +31,12 @@ the pinned dependency graph, initializes submodules, and writes
 - Linux, Windows, macOS, and architecture policy;
 - reproducible validation receipts and a concise handoff.
 
+The new branch starts at the invoking worktree's current `HEAD`. This matters
+for coordinated work on an integration branch that is intentionally ahead of
+`main`: workers inherit the exact reviewed foundation from which they were
+launched. Use `--base REF` when a different base is deliberate; the resolved
+commit is always recorded in the task contract.
+
 Every contract also records an architecture strategy, fallback, correctness
 oracles, and exceptions. Mathematical lanes default to ordinary Python.
 Source-transparent compiler work declares `source-transparent-native` and the

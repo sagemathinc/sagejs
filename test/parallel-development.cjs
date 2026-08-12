@@ -36,6 +36,7 @@ const {
 } = require("../scripts/parallel-lib.cjs");
 const taskSchema = require("../.agents/task.schema.json");
 const {
+  resolveProjectBase,
   taskForBranch,
 } = require("../scripts/parallel-development.cjs");
 const {
@@ -175,6 +176,15 @@ test("the current agent branch selects its task among inherited live manifests",
   );
   assert.equal(taskForBranch(entries, "main"), undefined);
   assert.equal(taskForBranch(entries, ""), undefined);
+});
+
+test("new projects inherit the invoking worktree unless a base is explicit", () => {
+  assert.equal(resolveProjectBase(undefined), "HEAD");
+  assert.equal(resolveProjectBase("origin/main"), "origin/main");
+  assert.equal(
+    resolveProjectBase("origin/dense-qq-resources"),
+    "origin/dense-qq-resources",
+  );
 });
 
 test("changed-file checks rebuild native code before testing it", () => {
