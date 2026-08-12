@@ -1,6 +1,7 @@
 "use strict";
 
 const fs = require("node:fs");
+const os = require("node:os");
 const path = require("node:path");
 const { spawnSync } = require("node:child_process");
 const esbuild = require("esbuild");
@@ -11,10 +12,11 @@ const {
 
 const packageRoot = path.resolve(__dirname, "..");
 const repositoryRoot = path.resolve(packageRoot, "..", "..");
-const cowasmRoot = path.resolve(
-  process.env.SAGEJS_COWASM_ROOT ||
-    path.join(repositoryRoot, "..", "cowasm"),
-);
+const cowasmRoot = path.resolve(process.env.SAGEJS_COWASM_ROOT || [
+  path.join(repositoryRoot, "..", "cowasm"),
+  path.join(os.homedir(), "cowasm"),
+].find((candidate) => fs.existsSync(candidate)) ||
+  path.join(repositoryRoot, "..", "cowasm"));
 const wasiSdkRoot = path.join(
   cowasmRoot,
   "core",
@@ -157,11 +159,33 @@ if (flintDeclaration === undefined) {
   throw new Error("the generated FLINT FFI declaration is unavailable");
 }
 const resourceAdapter = generatedWasmResourceAdapter(flintDeclaration, {
-  resourceIds: ["dirichlet_group"],
+  resourceIds: [
+    "byte_region",
+    "dirichlet_group",
+    "fmpq_matrix",
+    "fmpq_value",
+  ],
   functionIds: [
     "dirichlet_group_init",
     "dirichlet_group_size",
     "dirichlet_group_num_primitive",
+    "fmpq_matrix",
+    "fmpq_matrix_copy",
+    "fmpq_matrix_deserialize",
+    "fmpq_matrix_det",
+    "fmpq_matrix_entry_denominator",
+    "fmpq_matrix_entry_is_zero",
+    "fmpq_matrix_entry_numerator",
+    "fmpq_matrix_format",
+    "fmpq_matrix_mul",
+    "fmpq_matrix_ncols",
+    "fmpq_matrix_nrows",
+    "fmpq_matrix_rank",
+    "fmpq_matrix_rref",
+    "fmpq_matrix_serialize",
+    "fmpq_matrix_set_entry",
+    "fmpq_value_denominator",
+    "fmpq_value_numerator",
   ],
 });
 fs.writeFileSync(resourceAdapterSource, resourceAdapter.cSource);

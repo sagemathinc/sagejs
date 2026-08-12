@@ -38,13 +38,16 @@ boundary and cuspidal subspaces; signed star eigenspaces; and exact prime
 Hecke matrices. The headless-browser suite exercises all of those layers
 through the public evaluator instead of calling a private smoke-test ABI.
 
-The exact matrices currently become portable JavaScript matrix objects after
-their entries cross the C ABI. This is deliberately correct and debuggable,
-but it is not the eventual scalable representation for thousands-dimensional
-signed spaces: a subsequent layer will keep FLINT matrix handles inside WASM
-and transfer only requested entries or serialized results. Higher-weight and
-Dirichlet-character Manin presentations also still require host-neutral core
-extraction from the Node adapter.
+Dense rational matrices can remain generated, type-tagged FLINT resources in
+Wasm linear memory. Construction, bulk import, copying, multiplication, RREF,
+rank, determinant, formatting, and serialization use the same declarations
+and host-neutral C ABI as Node. Variable-size results remain owned by FLINT;
+only an explicitly requested serialization or formatted result is copied into
+host-owned bytes. The generated wrapper validates handles, closes resources
+deterministically, and supplies a tracing-GC finalizer fallback. Other exact
+matrix families still use portable JavaScript matrix objects after crossing
+the C ABI. Higher-weight and Dirichlet-character Manin presentations also
+still require host-neutral core extraction from the Node adapter.
 
 The JavaScript loader has no host Node.js dependency. Its browser bundle uses
 CoWasm's `wasi-js` with `@cowasm/memfs`, so FLINT can create, seek, reopen, and
