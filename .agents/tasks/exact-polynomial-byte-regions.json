@@ -1,0 +1,50 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "exact-polynomial-byte-regions",
+  "title": "Exact polynomial byte-region contract",
+  "lane": "arithmetic-algebra",
+  "status": "active",
+  "owner": "user",
+  "objective": "Specify and differentially verify a single-copy signed byte-region ingress and egress contract for packed ZZ[x] and QQ[x] coefficients, with implementation-ready ABI and measured current overhead",
+  "base_commit": "e2ad41d6662c924b3db35e11a533caef7a71b825",
+  "claims": [
+    "src/lib/sagejs/polynomial_algorithms/exact_coefficient_bytes_contract.py",
+    "test/exact-polynomial-byte-regions.cjs",
+    "bench/exact-polynomial-byte-regions.sage"
+  ],
+  "dependencies": [],
+  "references": [
+    "ARCHITECTURE.md",
+    "FFI.md"
+  ],
+  "architecture": {
+    "strategy": "external-library",
+    "fallback": "tested-capability",
+    "oracles": [
+      "CPython reference encoder/decoder",
+      "Sage.js generated JavaScript fallback",
+      "SageMath ZZ[x]/QQ[x] coefficient semantics"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm exec pyright src/lib/sagejs/polynomial_algorithms/exact_coefficient_bytes_contract.py",
+    "node test/exact-polynomial-byte-regions.cjs",
+    "SAGEJS_FORBID_POLYNOMIAL_NAPI=1 ./bin/sagejs --python bench/exact-polynomial-byte-regions.sage",
+    "pnpm test:baselib:strict",
+    "pnpm test:native"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "",
+    "risks": [],
+    "next_steps": []
+  }
+}
