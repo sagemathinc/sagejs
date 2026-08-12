@@ -229,6 +229,86 @@
       "commit": "9e0ddb4f898e750917d02572b0cf78aaaca571c1",
       "workspace_fingerprint": "a3f97f87885bc12f7b7c32fe2b6f7b9853ab9327933f6b042e3d01a1814b8dad",
       "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/fflas-dense-prime.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.059,
+      "started_at": "2026-08-12T16:50:28.734Z",
+      "commit": "281476b6fbad136654d4be72c8adfd82fca82bf5",
+      "workspace_fingerprint": "02da8ab5f15be4b3935bf01f2f0aa680a55daf074ea049bc50036cc460fa20d8",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node test/linear-sparse-random.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.019,
+      "started_at": "2026-08-12T16:50:31.406Z",
+      "commit": "281476b6fbad136654d4be72c8adfd82fca82bf5",
+      "workspace_fingerprint": "02da8ab5f15be4b3935bf01f2f0aa680a55daf074ea049bc50036cc460fa20d8",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/word-prime-matrix-resource-ffi.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.139,
+      "started_at": "2026-08-12T16:50:34.040Z",
+      "commit": "281476b6fbad136654d4be72c8adfd82fca82bf5",
+      "workspace_fingerprint": "02da8ab5f15be4b3935bf01f2f0aa680a55daf074ea049bc50036cc460fa20d8",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node test/word-prime-matrix-public.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 3.303,
+      "started_at": "2026-08-12T16:50:34.786Z",
+      "commit": "281476b6fbad136654d4be72c8adfd82fca82bf5",
+      "workspace_fingerprint": "02da8ab5f15be4b3935bf01f2f0aa680a55daf074ea049bc50036cc460fa20d8",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node test/nmod-matrix-resource-lifecycle.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.607,
+      "started_at": "2026-08-12T16:50:38.757Z",
+      "commit": "281476b6fbad136654d4be72c8adfd82fca82bf5",
+      "workspace_fingerprint": "02da8ab5f15be4b3935bf01f2f0aa680a55daf074ea049bc50036cc460fa20d8",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 14.402,
+      "started_at": "2026-08-12T16:50:41.213Z",
+      "commit": "281476b6fbad136654d4be72c8adfd82fca82bf5",
+      "workspace_fingerprint": "02da8ab5f15be4b3935bf01f2f0aa680a55daf074ea049bc50036cc460fa20d8",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 13.971,
+      "started_at": "2026-08-12T16:50:56.209Z",
+      "commit": "281476b6fbad136654d4be72c8adfd82fca82bf5",
+      "workspace_fingerprint": "02da8ab5f15be4b3935bf01f2f0aa680a55daf074ea049bc50036cc460fa20d8",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 60.955,
+      "started_at": "2026-08-12T16:51:10.785Z",
+      "commit": "281476b6fbad136654d4be72c8adfd82fca82bf5",
+      "workspace_fingerprint": "02da8ab5f15be4b3935bf01f2f0aa680a55daf074ea049bc50036cc460fa20d8",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {
