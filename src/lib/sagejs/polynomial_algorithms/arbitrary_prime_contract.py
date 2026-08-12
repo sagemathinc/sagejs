@@ -38,6 +38,9 @@ from __future__ import annotations
 from typing import Any, Iterable
 
 
+_RESOURCE_SERIALIZATION_MAGIC = b"SJMP\x01\x00\x00\x00"
+
+
 def _index(value: Any) -> int:
     """Return an exact Python index without accepting truncating conversion."""
     if isinstance(value, int):
@@ -274,6 +277,154 @@ def polynomial_format_mod(
     return " + ".join(pieces) if pieces else "0"
 
 
+def factorization_adapter_input(
+    coefficients: Iterable[Any], modulus: Any
+) -> tuple[int, list[int]]:
+    """Return the Sage unit and monic input required by FLINT factorization.
+
+    `fmpz_mod_poly_factor_t` stores factors and exponents but no leading unit.
+    The generated adapter must therefore reject zero, retain the input leading
+    coefficient as the public Sage unit, and factor a monic copy.
+    """
+    prime = checked_prime_modulus(modulus)
+    source = normalized_residues(coefficients, prime)
+    if not source:
+        raise ArithmeticError("factorization of 0 is not defined")
+    unit = source[-1]
+    return unit, _scalar_multiply(source, pow(unit, -1, prime), prime)
+
+
+def validate_factorization_adapter_output(
+    coefficients: Iterable[Any],
+    unit: Any,
+    factors: Iterable[tuple[Iterable[Any], Any]],
+    modulus: Any,
+) -> None:
+    """Validate the unit, monicity, and reconstruction of adapter output."""
+    prime = checked_prime_modulus(modulus)
+    expected_unit, _monic_input = factorization_adapter_input(coefficients, prime)
+    canonical_unit = _index(unit) % prime
+    if canonical_unit != expected_unit:
+        raise ValueError("factorization unit is not the source leading coefficient")
+    product = [canonical_unit]
+    for raw_factor, raw_exponent in factors:
+        factor = normalized_residues(raw_factor, prime)
+        exponent = _index(raw_exponent)
+        if not factor or factor[-1] != 1:
+            raise ValueError("factorization contains a nonmonic factor")
+        if exponent <= 0:
+            raise ValueError("factorization exponent must be positive")
+        for _repeat in range(exponent):
+            product = polynomial_multiply_mod(product, factor, prime)
+    if product != normalized_residues(coefficients, prime):
+        raise ValueError("factorization does not reconstruct the source")
+
+
+def _root_multiplicity(coefficients: list[int], root: int, prime: int) -> int:
+    divisor = [(-root) % prime, 1]
+    quotient = coefficients
+    multiplicity = 0
+    while quotient:
+        next_quotient, remainder = polynomial_divrem_mod(quotient, divisor, prime)
+        if remainder:
+            break
+        multiplicity += 1
+        quotient = next_quotient
+    return multiplicity
+
+
+def validate_roots_adapter_output(
+    coefficients: Iterable[Any],
+    roots: Iterable[Any],
+    multiplicities: Iterable[Any],
+    modulus: Any,
+) -> None:
+    """Validate canonical, distinct roots with their exact multiplicities."""
+    prime = checked_prime_modulus(modulus)
+    source = normalized_residues(coefficients, prime)
+    if not source:
+        raise ArithmeticError("factorization of 0 is not defined")
+    root_values = [_index(root) for root in roots]
+    exponent_values = [_index(exponent) for exponent in multiplicities]
+    if len(root_values) != len(exponent_values):
+        raise ValueError("root and multiplicity counts differ")
+    if len(set(root_values)) != len(root_values):
+        raise ValueError("root output contains duplicates")
+    for root, exponent in zip(root_values, exponent_values):
+        if not 0 <= root < prime:
+            raise ValueError("root is not a canonical residue")
+        if exponent <= 0 or exponent != _root_multiplicity(source, root, prime):
+            raise ValueError("root multiplicity is incorrect")
+
+
+def _encode_unsigned(value: int) -> bytes:
+    length = max(1, (value.bit_length() + 7) // 8)
+    return length.to_bytes(8, "little") + value.to_bytes(length, "little")
+
+
+def _decode_unsigned(source: bytes, offset: int) -> tuple[int, int]:
+    if offset + 8 > len(source):
+        raise ValueError("truncated arbitrary-prime polynomial serialization")
+    length = int.from_bytes(source[offset : offset + 8], "little")
+    offset += 8
+    if length == 0 or offset + length > len(source):
+        raise ValueError("invalid arbitrary-prime polynomial integer length")
+    payload = source[offset : offset + length]
+    if length > 1 and payload[-1] == 0:
+        raise ValueError("noncanonical arbitrary-prime polynomial integer")
+    return int.from_bytes(payload, "little"), offset + length
+
+
+def serialize_resource_payload(coefficients: Iterable[Any], modulus: Any) -> bytes:
+    """Serialize native modulus and coefficients, excluding parent metadata."""
+    prime = checked_prime_modulus(modulus)
+    values = normalized_residues(coefficients, prime)
+    parts = [_RESOURCE_SERIALIZATION_MAGIC, _encode_unsigned(prime)]
+    parts.append(len(values).to_bytes(8, "little"))
+    parts.extend(_encode_unsigned(value) for value in values)
+    return b"".join(parts)
+
+
+def deserialize_resource_payload(source: bytes) -> tuple[int, list[int]]:
+    """Decode the versioned native payload and reject noncanonical bytes."""
+    if not isinstance(source, bytes):
+        raise TypeError("resource serialization must be bytes")
+    if not source.startswith(_RESOURCE_SERIALIZATION_MAGIC):
+        raise ValueError("invalid arbitrary-prime polynomial serialization magic")
+    offset = len(_RESOURCE_SERIALIZATION_MAGIC)
+    modulus, offset = _decode_unsigned(source, offset)
+    prime = checked_prime_modulus(modulus)
+    if offset + 8 > len(source):
+        raise ValueError("truncated arbitrary-prime polynomial serialization")
+    count = int.from_bytes(source[offset : offset + 8], "little")
+    offset += 8
+    if count > (len(source) - offset) // 9:
+        raise ValueError("invalid arbitrary-prime polynomial coefficient count")
+    values: list[int] = []
+    for _index_value in range(count):
+        value, offset = _decode_unsigned(source, offset)
+        if value >= prime:
+            raise ValueError("serialized coefficient is not a canonical residue")
+        values.append(value)
+    if offset != len(source) or (values and values[-1] == 0):
+        raise ValueError("noncanonical arbitrary-prime polynomial serialization")
+    return prime, values
+
+
+def sagepack_parent_envelope(
+    payload: bytes, variable: str, sparse: bool = False
+) -> dict[str, Any]:
+    """Wrap a native payload with public parent metadata owned by SagePack."""
+    if not isinstance(variable, str):
+        raise TypeError("polynomial variable name must be a string")
+    return {
+        "schema": "sagejs.sagepack/fmpz-mod-polynomial-parent-v1",
+        "variable": variable,
+        "sparse": bool(sparse),
+        "resourcePayload": payload,
+    }
+
+
 def arbitrary_prime_resource_contract() -> dict[str, Any]:
     """Return the machine-readable generated-resource design contract.
 
@@ -291,8 +442,11 @@ def arbitrary_prime_resource_contract() -> dict[str, Any]:
         "operands": "synchronously-borrowed-and-rooted",
         "result": "fresh-callee-owned-self-contained-resource",
         "contextCompatibility": "equal-modulus-not-pointer-identity",
+        "multiResourcePrecondition": "compare exact moduli before every FLINT call",
         "crossResourceLifetimeDependency": False,
         "callerPredictsCapacity": False,
+        "construction": "mutable only inside generated constructor before publication",
+        "publishedState": "sealed immutable resource",
         "variable": "public-parent-metadata-not-native-resource-state",
         "operations": (
             "construct",
@@ -326,18 +480,34 @@ def arbitrary_prime_resource_contract() -> dict[str, Any]:
             "serialize": "callee-owned byte region copied once then freed",
             "polynomial": "callee-owned resource; no packed output capacity",
         },
+        "serializationLayers": {
+            "resource": "SJMP v1 little-endian modulus and canonical coefficients",
+            "sagepack": "versioned parent envelope owns variable and sparse metadata",
+            "parentIdentity": "canonical parent registry restores identity from the SagePack envelope",
+        },
+        "factorAdapter": {
+            "zero": "ArithmeticError before FLINT",
+            "unit": "capture source leading coefficient outside fmpz_mod_poly_factor_t",
+            "input": "factor a monic copy",
+            "output": "independently owned monic factors with positive exponents",
+        },
+        "rootsAdapter": {
+            "zero": "ArithmeticError before FLINT",
+            "output": "distinct arbitrary-precision canonical residues with exact multiplicities",
+        },
         "publicSemantics": {
             "canonicalCoefficients": "least nonnegative residues, trailing zeros removed",
             "explicitPolynomialCoercion": "lift coefficients then reduce in target parent",
             "binaryParentMismatch": "TypeError before the foreign call",
             "resourceModulusMismatch": "checked rejection before FLINT arithmetic",
+            "divisionByZero": "ZeroDivisionError; intentionally normalize Sage's backend-specific NTL error",
             "gcdNormalization": "monic, with gcd(0, 0) equal to zero",
             "xgcdNormalization": "monic gcd and Bezout identity; xgcd(0, 0)=(0,1,0)",
             "factorNormalization": "leading coefficient is the unit; factors are monic",
             "roots": "multiplicities retained; ordering is not a semantic promise",
-            "serialization": "modulus, variable, and coefficients round-trip exactly",
+            "serialization": "resource payload round-trips modulus and coefficients; SagePack adds parent metadata",
         },
         "portableFallback": "normalized dense integer residues",
-        "windows": "same-source fallback until generated FLINT capability is available",
+        "windows": "generated FLINT resource required; no incomplete arithmetic-only fallback",
         "wasm": "same declaration owns context and polynomial in Wasm linear memory",
     }

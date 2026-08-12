@@ -6,23 +6,28 @@ const { join } = require("node:path");
 const { spawnSync } = require("node:child_process");
 
 const root = join(__dirname, "..");
-const flint = require(join(root, "packages", "flint"));
-const prime89 = (1n << 89n) - 1n;
 const checkOnly = process.argv.includes("--check");
 
-let currentSagejsFailure;
-try {
-  flint.nmodPolyGen(prime89);
-  currentSagejsFailure = { unexpectedlySucceeded: true };
-} catch (error) {
-  currentSagejsFailure = {
-    operation: "PolynomialRing(GF(2^89-1), 'x').gen() legacy backend",
-    error: error.name,
-    message: error.message,
-  };
-}
+const publicFailure = spawnSync(join(root, "bin", "sagejs"), ["--sage"], {
+  cwd: root,
+  encoding: "utf8",
+  input: String.raw`try:
+    PolynomialRing(GF(2^89-1), "x").gen()
+except Exception as error:
+    print(str(error))
+`,
+  timeout: 120_000,
+});
+if (publicFailure.error) throw publicFailure.error;
+assert.equal(publicFailure.status, 0, publicFailure.stderr);
+const [error, ...messageParts] = publicFailure.stdout.trim().split(": ");
+const currentSagejsFailure = {
+  operation: "public PolynomialRing(GF(2^89-1), 'x').gen()",
+  error,
+  message: messageParts.join(": "),
+};
 assert.deepEqual(currentSagejsFailure, {
-  operation: "PolynomialRing(GF(2^89-1), 'x').gen() legacy backend",
+  operation: "public PolynomialRing(GF(2^89-1), 'x').gen()",
   error: "RangeError",
   message: "BigInt does not fit in an unsigned FLINT word",
 });
