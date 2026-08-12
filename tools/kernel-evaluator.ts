@@ -24,6 +24,8 @@ import {
   formatExecutionTiming,
   installTimingHooks,
   measureExecution,
+  parseTimeitDirective,
+  TimeitOptions,
 } from "./timing";
 
 export type SageLanguageMode = "sage" | "python";
@@ -241,12 +243,31 @@ export function createKernelEvaluator({
     source: string,
     filename: string,
     language: SageLanguageMode,
+    timeitOptions?: TimeitOptions,
   ): string {
     const classes = toplevel?.classes;
     toplevel = compilerFrontends.get(language)!.parse(
       source,
       parserOptions(filename, false, language),
     );
+    if (timeitOptions) {
+      const statements = toplevel.body;
+      const body = statements.length === 1
+        ? statements[0]
+        : new compiler.AST_BlockStatement({
+          start: statements[0]?.start ?? toplevel.start,
+          end: statements.at(-1)?.end ?? toplevel.end,
+          body: statements,
+        });
+      const statement = new compiler.AST_TimedStatement({
+        start: body.start,
+        end: body.end,
+        body,
+      });
+      statement.timeit_number = timeitOptions.number ?? null;
+      statement.timeit_repeat = timeitOptions.repeat ?? 7;
+      toplevel.body = [statement];
+    }
     const finalStatement = toplevel.body[toplevel.body.length - 1];
     finalStatementIsAssignment =
       finalStatement instanceof compiler.AST_SimpleStatement &&
@@ -400,6 +421,8 @@ export function createKernelEvaluator({
         suppressResult?: boolean;
       } = {},
     ): KernelEvaluation {
+      const timeit = parseTimeitDirective(source);
+      if (timeit) source = timeit.source;
       let timed = false;
       const timingMatch =
         source.match(/^[ \t]*%time[ \t]+/) ??
@@ -410,7 +433,7 @@ export function createKernelEvaluator({
         timed = true;
         source = source.slice(timingMatch[0].length);
       }
-      const javascript = compile(source, filename, language);
+      const javascript = compile(source, filename, language, timeit?.options);
       const execution = measureExecution(() => {
         if (interruptState) Atomics.store(interruptState, 1, 1);
         try {
@@ -493,6 +516,8 @@ export function createKernelEvaluator({
     ): KernelCompleteness {
       if (!source.trim()) return { status: "complete" };
       try {
+        const timeit = parseTimeitDirective(source);
+        if (timeit) source = timeit.source;
         compilerFrontends.get(language)!.parse(
           source,
           parserOptions("<kernel-is-complete>", true, language),

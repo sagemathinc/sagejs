@@ -1,0 +1,119 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "timeit-v1",
+  "title": "Timing Ergonomics v2",
+  "lane": "compiler-runtime",
+  "status": "review",
+  "owner": "user",
+  "objective": "Implement Sage/IPython-style %timeit with compile-once execution, warmup, calibrated loops, repeats, wall-time statistics, scope-preserving semantics, and bounded tests",
+  "base_commit": "bcba716dc3fa1e098487556b8364718bf6c7f608",
+  "claims": [
+    "tools/timing.ts",
+    "tools/repl.ts",
+    "tools/kernel-evaluator.ts",
+    "src/output/codegen.py",
+    "test/timing-core.cjs",
+    "test/kernel.cjs",
+    "test/cli-smoke.cjs",
+    "test/python-cst-lowerer.cjs",
+    "docs/index.md",
+    "docs/timing.md"
+  ],
+  "dependencies": [],
+  "references": [
+    "IPython %timeit user semantics"
+  ],
+  "architecture": {
+    "strategy": "compiler-infrastructure",
+    "fallback": "not-applicable",
+    "oracles": [
+      "IPython-style option and output semantics"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm build",
+    "pnpm test:compiler",
+    "pnpm test:integration"
+  ],
+  "runs": [
+    {
+      "command": "pnpm build",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 140.871,
+      "started_at": "2026-08-12T01:00:29.116Z",
+      "commit": "bcba716dc3fa1e098487556b8364718bf6c7f608",
+      "workspace_fingerprint": "75ed40770e5fa1d7b7b928739f7dd728d7c2fb55903621e4d2e5f8c90a2a3be7",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:compiler",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 77.902,
+      "started_at": "2026-08-12T01:03:24.562Z",
+      "commit": "bcba716dc3fa1e098487556b8364718bf6c7f608",
+      "workspace_fingerprint": "75ed40770e5fa1d7b7b928739f7dd728d7c2fb55903621e4d2e5f8c90a2a3be7",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:integration",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 208.867,
+      "started_at": "2026-08-12T01:04:47.887Z",
+      "commit": "bcba716dc3fa1e098487556b8364718bf6c7f608",
+      "workspace_fingerprint": "75ed40770e5fa1d7b7b928739f7dd728d7c2fb55903621e4d2e5f8c90a2a3be7",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm build",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 140.339,
+      "started_at": "2026-08-12T01:16:42.084Z",
+      "commit": "bcba716dc3fa1e098487556b8364718bf6c7f608",
+      "workspace_fingerprint": "4051663242e09cd4c881f974e6fe0ac590e77546bbe2880aeb14c355fa467bda",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:compiler",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 76.538,
+      "started_at": "2026-08-12T01:19:03.046Z",
+      "commit": "bcba716dc3fa1e098487556b8364718bf6c7f608",
+      "workspace_fingerprint": "4051663242e09cd4c881f974e6fe0ac590e77546bbe2880aeb14c355fa467bda",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:integration",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 205.004,
+      "started_at": "2026-08-12T01:20:20.248Z",
+      "commit": "bcba716dc3fa1e098487556b8364718bf6c7f608",
+      "workspace_fingerprint": "4051663242e09cd4c881f974e6fe0ac590e77546bbe2880aeb14c355fa467bda",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Adds Sage/IPython-style %timeit to Node REPL and embedded kernels without changing Python grammar. The host parses the directive and the body once in the active language mode, codegen emits one lexical inline loop around only the lowered statement, and shared timing hooks perform one warmup, optional power-of-ten calibration, repeated high-resolution wall samples, statistics, initialization reporting, and exception-safe abort. Tests cover -n/-r parsing, deterministic calibration, current-scope assignment/import behavior, result suppression, Python XOR semantics, lexical temporary isolation, and cooperative interruption with a reusable kernel.",
+    "risks": [
+      "Automatic calibration deliberately targets about 200ms per sample and may make extremely fast expressions run for several seconds, matching the documented benchmarking tradeoff.",
+      "pnpm test:changed compared this older lane base with a much newer origin/main and therefore selected 246 upstream files; 134 unit checks passed before an unrelated stale website reference-data ratchet failed with 21 unverified examples. The lane's required build, compiler, and 272-test integration suites pass on the final workspace fingerprint."
+    ],
+    "next_steps": [
+      "Integrate the focused commit onto current main and rerun the current-main changed-file selector so upstream website data and this feature are evaluated from the same base.",
+      "Exercise the wall-only hooks in browser CI when the timing UI is exposed there; the shared controller intentionally does not depend on a Node CPU clock."
+    ]
+  }
+}
