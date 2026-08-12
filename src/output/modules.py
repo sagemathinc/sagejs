@@ -455,18 +455,7 @@ def bind_module_namespace(module, output, hidden_names=None):
             output.comma()
         output.print_string(name)
         output.colon()
-        if output.options.baselib_module_id:
-            output.print(descriptor_prefix + "enumerable:true,get:()=>")
-            output.print_name(name)
-            output.print(",set:function(){")
-            output.print_name(name)
-            output.print("=arguments[0]}}")
-        else:
-            output.print(descriptor_prefix + "enumerable:true,get:function(){return ")
-            output.print_name(name)
-            output.print("},set:function(){")
-            output.print_name(name)
-            output.print("=arguments[0]}}")
+        print_lexical_namespace_descriptor(output, name, descriptor_prefix, True, True)
     wrote_property = names.length > 0
     for entry in hidden_names:
         name = entry.name if entry.name else entry
@@ -477,14 +466,9 @@ def bind_module_namespace(module, output, hidden_names=None):
         wrote_property = True
         output.print_string(name)
         output.colon()
-        if output.options.baselib_module_id:
-            output.print(descriptor_prefix + "enumerable:false,get:()=>")
-            output.print_name(name)
-            output.print("}")
-        else:
-            output.print(descriptor_prefix + "enumerable:false,get:function(){return ")
-            output.print_name(name)
-            output.print("}}")
+        print_lexical_namespace_descriptor(
+            output, name, descriptor_prefix, False, False
+        )
     output.print("})")
     output.end_statement()
 
@@ -503,6 +487,32 @@ def bind_module_namespace(module, output, hidden_names=None):
     output.print(JSON.stringify("<module '" + display_module_id + "'>"))
     output.print("}})")
     output.end_statement()
+
+
+def print_lexical_namespace_descriptor(
+    output, name, descriptor_prefix, enumerable, writable
+):
+    """Print an accessor without shadowing its module lexical binding."""
+    target_name = output.make_name(name)
+    output.print(descriptor_prefix + "enumerable:")
+    output.print("true" if enumerable else "false")
+    output.print(",get:()=>")
+    output.print(target_name)
+    if writable:
+        # An arrow getter has no local `arguments` binding.  A setter must
+        # have a parameter, but that parameter only needs to differ from the
+        # one module lexical it assigns.  Choosing between two compiler names
+        # therefore stays hygienic even when either spelling is valid Python.
+        setter_parameter = "ρσ_module_incoming"
+        if setter_parameter == target_name:
+            setter_parameter = "ρσ_module_incoming_"
+        output.print(",set:(")
+        output.print(setter_parameter)
+        output.print(")=>")
+        output.print(target_name)
+        output.print("=")
+        output.print(setter_parameter)
+    output.print("}")
 
 
 def declare_exports(module_id, exports, output, docstrings):
@@ -928,13 +938,11 @@ def print_imports(container, output):
                 output.print_string(name)
                 output.print(")) Object.defineProperty(ρσ_modules.__main__,")
                 output.print_string(name)
-                output.print(
-                    ",{configurable:true,enumerable:true,get:function(){return "
+                output.print(",")
+                print_lexical_namespace_descriptor(
+                    output, name, "{configurable:true,", True, True
                 )
-                output.print_name(name)
-                output.print("},set:function(){")
-                output.print_name(name)
-                output.print("=arguments[0]}})")
+                output.print(")")
                 output.end_statement()
                 return
             output.indent()
@@ -1069,13 +1077,11 @@ def print_imports(container, output):
                 output.indent()
                 output.print("Object.defineProperty(ρσ_modules.__main__,")
                 output.print_string(local_name)
-                output.print(
-                    ",{configurable:true,enumerable:true,get:function(){return "
+                output.print(",")
+                print_lexical_namespace_descriptor(
+                    output, local_name, "{configurable:true,", True, True
                 )
-                output.print_name(local_name)
-                output.print("},set:function(){")
-                output.print_name(local_name)
-                output.print("=arguments[0]}})")
+                output.print(")")
                 output.end_statement()
             continue
         if self.dynamic and self.key != "builtins":

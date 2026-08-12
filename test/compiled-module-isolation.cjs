@@ -311,6 +311,32 @@ test("kernel cells initialize magic globals once", async (t) => {
   );
 });
 
+test("kernel live namespace accessors preserve an arguments global", async (t) => {
+  const session = await createSage({ mode: "python" });
+  t.after(() => session.close());
+
+  await session.evaluate("arguments = 'lexical-value'\nimport __main__");
+  assert.equal(
+    (await session.evaluate("arguments, __main__.arguments")).repr,
+    "('lexical-value', 'lexical-value')",
+  );
+  await session.evaluate("__main__.arguments = 'module-write'");
+  assert.equal(
+    (await session.evaluate("arguments, __main__.arguments")).repr,
+    "('module-write', 'module-write')",
+  );
+  await session.evaluate(
+    "def write_arguments():\n" +
+      "    global arguments\n" +
+      "    arguments = 'global-write'",
+  );
+  await session.evaluate("write_arguments()");
+  assert.equal(
+    (await session.evaluate("arguments, __main__.arguments")).repr,
+    "('global-write', 'global-write')",
+  );
+});
+
 test("kernel intrinsic aliases follow later Python bindings", async (t) => {
   const session = await createSage({ mode: "python" });
   t.after(() => session.close());

@@ -869,6 +869,34 @@ def generate_code():
                     break
             return False
 
+        def is_reusable_main_global():
+            if not output.options.reuse_main_module:
+                return False
+            stack = output.stack()
+            for index in range(stack.length - 2, -1, -1):
+                scope = stack[index]
+                if is_node_type(scope, AST_Toplevel):
+                    return False
+                if is_node_type(scope, AST_Scope):
+                    return (
+                        scope.declared_globals
+                        and scope.declared_globals.indexOf(self.name) is not -1
+                    )
+            return False
+
+        if is_reusable_main_global():
+            assignment_target = output.assignment_target or is_assignment_target()
+            if not assignment_target:
+                output.print("ρσ_check_unbound(")
+            output.print("ρσ_modules.__main__[")
+            output.print(JSON.stringify(self.name))
+            output.print("]")
+            if not assignment_target:
+                output.comma()
+                output.print(JSON.stringify(self.name))
+                output.print(")")
+            return
+
         check_unbound = False
         class_namespace = None
         module_name_fallback = False

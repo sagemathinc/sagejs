@@ -237,6 +237,31 @@ assert.equal(
     "piped-main piped-main",
   ].join("\n"),
 );
+assert.equal(
+  run(
+    ["--python"],
+    [
+      "arguments = 'lexical-value'",
+      "import __main__",
+      "print(arguments, __main__.arguments)",
+      "__main__.arguments = 'module-write'",
+      "print(arguments, __main__.arguments)",
+      "",
+      "def write_arguments():",
+      "    global arguments",
+      "    arguments = 'global-write'",
+      "",
+      "write_arguments()",
+      "print(arguments, __main__.arguments)",
+      "",
+    ].join("\n"),
+  ).trim(),
+  [
+    "lexical-value lexical-value",
+    "module-write module-write",
+    "global-write global-write",
+  ].join("\n"),
+);
 const pythonRuntimeFailure = runFailure(
   ["--python"],
   "raise RuntimeError('piped Python failure')\n",
