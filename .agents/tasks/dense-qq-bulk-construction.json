@@ -4,7 +4,7 @@
   "id": "dense-qq-bulk-construction",
   "title": "Dense Qq Bulk Construction",
   "lane": "integration",
-  "status": "active",
+  "status": "complete",
   "owner": "user",
   "objective": "Bulk-construct dense QQ FLINT resources from already-normalized rational values without a Python per-entry packing loop, preserving all constructor semantics and fallbacks",
   "base_commit": "33a292ac998dc797bfae0e762953d6008fc3fb6e",
