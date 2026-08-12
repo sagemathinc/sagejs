@@ -1718,6 +1718,11 @@ class VectorSpaceParent(sage.Parent):
             resource.close()
             raise TypeError("FLINT integer vector storage requires ZZ")
         try:
+            if (
+                runtime.number(_exact_vector_public_module().integer_length(resource))
+                != self._degree
+            ):
+                raise ValueError("integer vector resource dimension does not agree")
             return Vector(self, runtime.undefined, resource)
         except Exception:
             resource.close()
@@ -1729,6 +1734,11 @@ class VectorSpaceParent(sage.Parent):
             resource.close()
             raise TypeError("FLINT rational vector storage requires QQ")
         try:
+            if (
+                runtime.number(_exact_vector_public_module().rational_length(resource))
+                != self._degree
+            ):
+                raise ValueError("rational vector resource dimension does not agree")
             return Vector(self, runtime.undefined, resource)
         except Exception:
             resource.close()
@@ -1798,9 +1808,13 @@ class Vector(sage.Element):
     def __getitem__(self, index: int) -> Any:
         if isinstance(index, slice):
             start, stop, step = index.indices(len(self))
+            # Exact vector slice ABIs are not declared yet. Materialize once
+            # through the bulk presentation boundary rather than making one
+            # scalar foreign call per selected entry.
+            source = self.list()
             values = []
             for position in range(start, stop, step):
-                values.append(self[position])
+                values.append(source[position])
             return VectorSpace(self.base_ring(), len(values))(values)
         if self._native_value is runtime.undefined:
             return self._entries[index]
@@ -1835,6 +1849,22 @@ class Vector(sage.Element):
 
     def list(self) -> list[Any]:
         return self._exact_values()
+
+    def __copy__(self) -> Vector:
+        if self._native_value is runtime.undefined:
+            return Vector(self._parent, list(self._entries))
+        resource = _exact_vector_public_module().copy(
+            self._exact_vector_resource(),
+            self.base_ring() is sage.QQ,
+        )
+        return self._from_exact_vector_resource(resource)
+
+    def __deepcopy__(self, memo: dict[int, Any]) -> Vector:
+        answer = self.__copy__()
+        if self._immutable:
+            answer.set_immutable()
+        memo[id(self)] = answer
+        return answer
 
     def change_ring(self, base: sage.Parent) -> Vector:
         base = _canonical_base(base)
