@@ -267,6 +267,56 @@ print(added.format(), cancelled == B.zero(), mixed.format())
   }
 });
 
+test("bit-length-only artifacts retain persistent UInt64Buffer storage", () => {
+  const cache = mkdtempSync(join(tmpdir(), "sagejs-gf2-packed-bit-length-"));
+  try {
+    const compilation = spawnSync(
+      sagejs,
+      [
+        "native",
+        "compile",
+        kernelSource,
+        "--functions",
+        "gf2_packed_bit_length",
+        "--cache-root",
+        cache,
+      ],
+      { cwd: root, encoding: "utf8", timeout: 60_000 },
+    );
+    if (compilation.error) throw compilation.error;
+    assert.equal(compilation.status, 0, compilation.stderr || compilation.stdout);
+    assert.match(compilation.stdout, /built 1 native function/);
+
+    const output = runSage(
+      String.raw`
+from sagejs.native import is_compiled
+from sagejs.kernels.polynomial.gf2_packed import (
+    gf2_packed_bit_length,
+    gf2_packed_valid,
+)
+from sagejs.polynomial_algorithms.gf2_packed_core import BitPolynomialStorage as B
+
+value = B.from_coefficients([1, 0, 1] + [0] * 62 + [1])
+carrier = value._words
+print(is_compiled(gf2_packed_bit_length), is_compiled(gf2_packed_valid))
+print(type(carrier), value._words is carrier)
+print(gf2_packed_bit_length(value._view()))
+print(gf2_packed_bit_length(value._view()))
+print(type(value._words), value._words is carrier)
+`,
+      {
+        SAGEJS_NATIVE_CACHE_DIR: cache,
+      },
+    );
+    assert.match(output, /^True False/m);
+    assert.equal((output.match(/BigUint64Array/g) || []).length, 2);
+    assert.match(output, /BigUint64Array[^\n]* True\n66\n66\n/);
+    assert.match(output, /BigUint64Array[^\n]* True$/);
+  } finally {
+    rmSync(cache, { recursive: true, force: true });
+  }
+});
+
 test(
   "packed GF(2) semantics agree with SageMath",
   { skip: !existsSync(sage) },
