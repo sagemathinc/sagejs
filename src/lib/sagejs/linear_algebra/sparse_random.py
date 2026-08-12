@@ -33,6 +33,7 @@ production execution path for large matrices.
 from __future__ import annotations
 
 from collections.abc import Callable
+from operator import index as operator_index
 from typing import Any, TypeAlias, TypeVar
 
 SparseRandomSpec: TypeAlias = tuple[int, int, str, float, int, str]
@@ -46,10 +47,22 @@ SparseRandomWrites: TypeAlias = tuple[
 _Result = TypeVar("_Result")
 
 
+def _checked_integer(value: Any, message: str) -> int:
+    if isinstance(value, bool):
+        raise TypeError(message)
+    try:
+        result = operator_index(value)
+    except TypeError:
+        raise TypeError(message) from None
+    return int(result)
+
+
 def _checked_shape(nrows: int, ncols: int) -> tuple[int, int]:
-    if nrows < 0 or ncols < 0:
+    rows = _checked_integer(nrows, "matrix dimensions must be integers")
+    columns = _checked_integer(ncols, "matrix dimensions must be integers")
+    if rows < 0 or columns < 0:
         raise ValueError("matrix dimensions must be nonnegative")
-    return nrows, ncols
+    return rows, columns
 
 
 def _normalized_density(density: Any) -> float:
@@ -188,7 +201,10 @@ def _checked_nonzero(draw_nonzero: Callable[[], Any]) -> Any:
 
 
 def _checked_column(draw_index: Callable[[int], int], ncols: int) -> int:
-    column = draw_index(ncols)
+    column = _checked_integer(
+        draw_index(ncols),
+        "draw_index returned a noninteger column",
+    )
     if column < 0 or column >= ncols:
         raise ValueError("draw_index returned a column outside the matrix")
     return column
