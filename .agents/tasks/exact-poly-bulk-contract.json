@@ -34,8 +34,10 @@
     "macos-arm64": "required"
   },
   "validation": [
+    "node --test test/exact-polynomial-bulk-construction-contract.cjs",
+    "node bench/exact-polynomial-bulk-construction-contract.cjs --runtime sagejs --samples 3 --count 1001 --check",
     "pnpm test:baselib:strict",
-    "pnpm test:native"
+    "pnpm architecture:check"
   ],
   "runs": [],
   "handoff": {
