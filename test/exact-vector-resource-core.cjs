@@ -222,10 +222,17 @@ function rationalEntries(vector) {
     );
     assert.equal(flint.ffiFmpqVectorSetEntry(copy, 1n, 6n, -8n), true);
     assert.deepEqual(rationalEntries(copy)[1], [-3n, 4n]);
+    const entriesBeforeFailures = rationalEntries(copy);
     assert.throws(
       () => flint.ffiFmpqVectorSetEntry(copy, 0n, 1n, 0n),
       /invalid rational vector entry/,
     );
+    assert.deepEqual(rationalEntries(copy), entriesBeforeFailures);
+    assert.throws(
+      () => flint.ffiFmpqVectorSetEntry(copy, 3n, 1n, 2n),
+      /invalid rational vector entry/,
+    );
+    assert.deepEqual(rationalEntries(copy), entriesBeforeFailures);
     assert.throws(
       () => flint.ffiFmpqVectorEntryNumerator(copy, 3n),
       /rational vector index is out of range/,
@@ -355,6 +362,8 @@ int main(void)
             return 2;
         if (sagejs_fmpz_vector_length(z) != 3 ||
             sagejs_fmpq_vector_length(q) != 3 ||
+            sagejs_fmpz_vector_allocated_bytes(z) !=
+                sizeof(sagejs_fmpz_vector_struct) + 3 * sizeof(fmpz) ||
             !sagejs_fmpz_vector_equal(z, zdifference) ||
             !sagejs_fmpq_vector_equal(q, qdifference) ||
             !fmpz_equal_ui(integer_dot, 14) ||

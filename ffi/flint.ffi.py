@@ -2147,7 +2147,7 @@ def fmpz_vector_set_entry(
     effects=Effects(
         pure=False,
         allocates=True,
-        raises=[IndexError, ValueError],
+        raises=[ValueError],
         writes=["vector"],
     ),
     result=Status(

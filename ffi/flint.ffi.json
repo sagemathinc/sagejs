@@ -7387,7 +7387,6 @@
         "thread_safe": true,
         "may_allocate": true,
         "may_raise": [
-          "IndexError",
           "ValueError"
         ],
         "writes": [
