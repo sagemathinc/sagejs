@@ -1,0 +1,125 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "cyclotomic-polynomial-core",
+  "title": "Cyclotomic Polynomial Core",
+  "lane": "arithmetic-algebra",
+  "status": "active",
+  "owner": "user",
+  "objective": "Implement ordinary exact Python helper algorithms for CyclotomicField(n)[x] dense construction, derivative, divrem, gcd, xgcd, roots, formatting and serialization contracts",
+  "base_commit": "1bd487f2f38589b1e186b6c6a6a84860a115f9bf",
+  "claims": [
+    "src/lib/sagejs/polynomial_algorithms/cyclotomic_core.py",
+    "test/cyclotomic-field-polynomial.cjs",
+    "bench/cyclotomic-field-polynomial.cjs"
+  ],
+  "dependencies": [],
+  "references": [
+    "SageMath 10.9.post1 CyclotomicField(5)[x] and CyclotomicField(12)[x]"
+  ],
+  "architecture": {
+    "strategy": "dynamic-python",
+    "fallback": "same-source",
+    "oracles": [
+      "sage"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "node --test test/cyclotomic-field-polynomial.cjs",
+    "node bench/cyclotomic-field-polynomial.cjs",
+    "pnpm test:native"
+  ],
+  "runs": [
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 13.058,
+      "started_at": "2026-08-12T08:38:38.656Z",
+      "commit": "97116b99d9b24ded43c80ec547fd9c1e8f77efbd",
+      "workspace_fingerprint": "cfa8aff6585021798edbb24e3611713fcddc8b1cb910a19c65f5534b1b30d6d8",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/cyclotomic-field-polynomial.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.399,
+      "started_at": "2026-08-12T08:39:22.161Z",
+      "commit": "97116b99d9b24ded43c80ec547fd9c1e8f77efbd",
+      "workspace_fingerprint": "cfa8aff6585021798edbb24e3611713fcddc8b1cb910a19c65f5534b1b30d6d8",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/cyclotomic-field-polynomial.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.327,
+      "started_at": "2026-08-12T08:39:32.756Z",
+      "commit": "97116b99d9b24ded43c80ec547fd9c1e8f77efbd",
+      "workspace_fingerprint": "cfa8aff6585021798edbb24e3611713fcddc8b1cb910a19c65f5534b1b30d6d8",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:native",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 571.315,
+      "started_at": "2026-08-12T08:40:13.560Z",
+      "commit": "97116b99d9b24ded43c80ec547fd9c1e8f77efbd",
+      "workspace_fingerprint": "cfa8aff6585021798edbb24e3611713fcddc8b1cb910a19c65f5534b1b30d6d8",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/cyclotomic-field-polynomial.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.348,
+      "started_at": "2026-08-12T08:52:06.215Z",
+      "commit": "1bd487f2f38589b1e186b6c6a6a84860a115f9bf",
+      "workspace_fingerprint": "e8ef82529cdef783a2166920bf1c2c0291c34616d272492adda95d85d8982b29",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/cyclotomic-field-polynomial.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.599,
+      "started_at": "2026-08-12T08:52:08.222Z",
+      "commit": "1bd487f2f38589b1e186b6c6a6a84860a115f9bf",
+      "workspace_fingerprint": "e8ef82529cdef783a2166920bf1c2c0291c34616d272492adda95d85d8982b29",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 15.562,
+      "started_at": "2026-08-12T08:52:11.495Z",
+      "commit": "1bd487f2f38589b1e186b6c6a6a84860a115f9bf",
+      "workspace_fingerprint": "e8ef82529cdef783a2166920bf1c2c0291c34616d272492adda95d85d8982b29",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Added host-independent low-to-high dense helpers for exact cyclotomic polynomial construction, structural arithmetic, derivatives, field divrem, monic gcd/xgcd, exact roots from split factors or candidates, Sage-compatible formatting, and normalized power-basis serialization. SageMath 10.9.post1 differentials for orders 5 and 12 cover reconstruction, Bezout, factorization, roots, formatting, and coordinates; a CPython Fraction witness proves the source remains ordinary Python. The benchmark records the dynamic baseline before any native lowering.",
+    "risks": [
+      "Complete cyclotomic factorization is deliberately not reimplemented here; the integration must obtain exact factors from a mature declared resource backend and use dense_roots_from_factorization only for the public root projection.",
+      "The helper is not yet wired into ApproximatePolynomialElement, so this commit prepares semantics without changing the current public CyclotomicField(n)[x] surface."
+    ],
+    "next_steps": [
+      "Register src/lib/sagejs/polynomial_algorithms/cyclotomic_core.py in pyrightconfig.json.",
+      "Register test/cyclotomic-field-polynomial.cjs in test/node-test-manifest.cjs.",
+      "Wire univariate CyclotomicField parents to dense storage and these helpers in polynomial.py; keep factorization as a declared FLINT resource operation.",
+      "Use the recorded degree-12 dynamic costs (roughly 15 ms divrem and 85-95 ms gcd/xgcd on linux-x64) to decide which operations need resource-to-resource acceleration."
+    ]
+  }
+}
