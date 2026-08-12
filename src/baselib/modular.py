@@ -1974,7 +1974,7 @@ class HigherWeightManinPresentation:
     ) -> tuple[list[int], list[int], list[int]]:
         if self._native_kernel_data_cache is None:
             native_api, kernels = _native_p1_modules()
-            kernel = kernels.heilbronn_higher_weight_hecke_fill
+            kernel = kernels.heilbronn_higher_weight_hecke_matrix
             numerators = []
             denominators = []
             for entry in self.reduction_matrix().list():
@@ -2065,7 +2065,7 @@ class P1List:
                 entries.append(u)
                 entries.append(v)
             self._native_kernel_pairs_cache = native_api.kernel_int64_buffer(
-                kernels.heilbronn_higher_weight_hecke_fill,
+                kernels.heilbronn_higher_weight_hecke_matrix,
                 entries,
             )
         return self._native_kernel_pairs_cache
@@ -2080,7 +2080,7 @@ class P1List:
             native_api, kernels = _native_p1_modules()
             count = runtime.number(kernels.heilbronn_cremona_count(prime))
             matrices = native_api.kernel_int64_zeros(
-                kernels.heilbronn_higher_weight_hecke_fill,
+                kernels.heilbronn_higher_weight_hecke_matrix,
                 count * 4,
             )
             written = runtime.number(kernels.heilbronn_cremona_fill(prime, matrices))
@@ -2207,68 +2207,29 @@ class P1List:
         if cached is not runtime.undefined:
             return cached
         presentation = self.higher_weight_presentation(weight, sign)
-        native_api, kernels = _native_p1_modules()
-        kernel = kernels.heilbronn_higher_weight_hecke_fill
-        if not native_api.is_compiled(kernel) or not getattr(
-            kernel, "nativeAvailable", False
-        ):
-            cached = self._higher_weight_hecke_matrix_flint(
-                weight, sign, prime, presentation
-            )
-            self._higher_weight_hecke_cache.set(key, cached)
-            return cached
+        _, kernels = _native_p1_modules()
+        kernel = kernels.heilbronn_higher_weight_hecke_matrix
         dimension = presentation.dimension()
         pairs = self._native_kernel_pairs()
         matrix_count, matrices = self._native_kernel_heilbronn(prime)
         basis, reduction_numerators, reduction_denominators = (
             presentation._native_kernel_data()
         )
-        output_length = dimension * dimension
-        word_capacity = 16
-        while True:
-            output_numerators = native_api.kernel_integer_zeros(
-                kernel, output_length, word_capacity
-            )
-            output_denominators = native_api.kernel_integer_zeros(
-                kernel, output_length, word_capacity
-            )
-            try:
-                kernel(
-                    weight,
-                    self._level,
-                    pairs,
-                    len(self),
-                    matrices,
-                    matrix_count,
-                    basis,
-                    dimension,
-                    reduction_numerators,
-                    reduction_denominators,
-                    output_numerators,
-                    output_denominators,
-                )
-                break
-            except Exception as error:
-                if (
-                    not native_api.is_compiled(kernel)
-                    or "word capacity exceeded" not in str(error)
-                    or word_capacity >= 65536
-                ):
-                    raise
-                word_capacity *= 2
-        numerator_values = native_api.integer_buffer_values(output_numerators)
-        denominator_values = native_api.integer_buffer_values(output_denominators)
-        rational_class = runtime.rational_class
-        entries = [
-            rational_class._from_reduced(
-                numerator_values[index],
-                denominator_values[index],
-            )
-            for index in range(output_length)
-        ]
+        resource = kernel(
+            weight,
+            self._level,
+            pairs,
+            len(self),
+            matrices,
+            matrix_count,
+            basis,
+            dimension,
+            reduction_numerators,
+            reduction_denominators,
+        )
         cached = MatrixSpace(  # type: ignore[name-defined]  # noqa: F821
             sage.QQ, dimension, dimension
-        )(entries)
+        )._from_fmpq_matrix_resource(resource)
         self._higher_weight_hecke_cache.set(key, cached)
         return cached
 

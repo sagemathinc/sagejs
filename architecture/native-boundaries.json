@@ -14,7 +14,7 @@
   },
   "counts": {
     "classified-native-file": 58,
-    "declared-ffi": 227,
+    "declared-ffi": 228,
     "declared-ffi-resource": 16,
     "napi-export": 292,
     "runtime-intrinsic": 136,
@@ -538,6 +538,17 @@
       "dynamic_package": "@sagemath/sagejs-flint",
       "dynamic_export": "ffiFmpqMatrixAdd",
       "symbol": "sagejs_fmpq_matrix_add",
+      "disposition": "declared-safe-ffi"
+    },
+    {
+      "id": "ffi:flint:fmpq_matrix_add_scaled_entry",
+      "kind": "declared-ffi",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "fmpq_matrix_add_scaled_entry",
+      "dynamic_package": "@sagemath/sagejs-flint",
+      "dynamic_export": "ffiFmpqMatrixAddScaledEntry",
+      "symbol": "sagejs_fmpq_matrix_add_scaled_entry",
       "disposition": "declared-safe-ffi"
     },
     {

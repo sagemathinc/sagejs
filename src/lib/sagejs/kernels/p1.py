@@ -11,6 +11,11 @@ from __future__ import annotations
 
 from typing import Tuple
 
+from sagejs.ffi.flint import (
+    FmpqMatrix,
+    fmpq_matrix,
+    fmpq_matrix_add_scaled_entry,
+)
 from sagejs.native import (
     Int64Buffer,
     IntegerBuffer,
@@ -708,6 +713,34 @@ def p1_rational_add_scaled_at(
 
 
 @native
+def p1_rational_matrix_add_scaled_at(
+    matrix: FmpqMatrix,
+    row: uint64,
+    column: uint64,
+    term_numerator: int,
+    term_denominator: int,
+    scale: int,
+) -> int:
+    """Add one scaled exact rational directly to an owned FLINT matrix.
+
+    The matrix is borrowed for this synchronous call. Its variable-size FLINT
+    entries grow as required, so neither the caller nor this kernel predicts a
+    uniform limb capacity.
+    """
+    valid = fmpq_matrix_add_scaled_entry(
+        matrix,
+        row,
+        column,
+        term_numerator,
+        term_denominator,
+        scale,
+    )
+    if not valid:
+        return 0
+    return 1
+
+
+@native
 def heilbronn_reduce_transported_action(
     weight: uint64,
     matrix_count: uint64,
@@ -766,7 +799,7 @@ def heilbronn_reduce_transported_action(
 
 
 @native
-def heilbronn_higher_weight_hecke_fill(
+def heilbronn_higher_weight_hecke_matrix(
     weight: uint64,
     level: uint64,
     pairs: Int64Buffer,
@@ -777,32 +810,26 @@ def heilbronn_higher_weight_hecke_fill(
     dimension: uint64,
     reduction_numerators: IntegerBuffer,
     reduction_denominators: IntegerBuffer,
-    output_numerators: IntegerBuffer,
-    output_denominators: IntegerBuffer,
-) -> int:
-    """Assemble and reduce a higher-weight Hecke matrix in one traversal.
+) -> FmpqMatrix:
+    """Assemble and return a higher-weight Hecke matrix in one traversal.
 
     This is the production-shaped counterpart to the two inspectable stages
     above. It visits only the presentation's chosen source generators and
-    reduces each exact coefficient immediately, avoiding a large temporary
-    stream while lowering the same mathematical operations.
+    reduces each exact coefficient immediately into a generated owned FLINT
+    resource. FLINT grows each rational entry independently; the host neither
+    predicts output sizes nor reconstructs the result from packed parts.
     """
+    output = fmpq_matrix(dimension, dimension)
     if weight < 2:
-        return 0
+        return output
     width = weight - 1
     weight_degree = weight - 2
-    output_length = dimension * dimension
-    for output_index in range(output_length):
-        output_numerators[output_index] = 0
-        output_denominators[output_index] = 1
-    contributions = 0
     for source in range(dimension):
         generator = basis_generators[source]
         source_degree = generator // pair_count
         coset = generator % pair_count
         u = pairs[coset * 2]
         v = pairs[coset * 2 + 1]
-        output_start = source * dimension
         for matrix_index in range(matrix_count):
             matrix = int64_record(matrices, matrix_index * 4, 4)
             a = matrix[0]
@@ -836,13 +863,12 @@ def heilbronn_higher_weight_hecke_fill(
                             reduction_index = reduction_start + target
                             term_numerator = reduction_numerators[reduction_index]
                             if term_numerator != 0:
-                                _updated_numerator = p1_rational_add_scaled_at(
-                                    output_numerators,
-                                    output_denominators,
-                                    output_start + target,
+                                _updated_numerator = p1_rational_matrix_add_scaled_at(
+                                    output,
+                                    source,
+                                    target,
                                     term_numerator,
                                     reduction_denominators[reduction_index],
                                     coefficient,
                                 )
-                                contributions += 1
-    return contributions
+    return output

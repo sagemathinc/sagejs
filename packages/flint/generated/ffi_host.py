@@ -135,6 +135,7 @@ from sagejs.ffi.flint import (
     fmpq_matrix_nrows as _ffi_fmpq_matrix_nrows,
     fmpq_matrix_ncols as _ffi_fmpq_matrix_ncols,
     fmpq_matrix_set_entry as _ffi_fmpq_matrix_set_entry,
+    fmpq_matrix_add_scaled_entry as _ffi_fmpq_matrix_add_scaled_entry,
     fmpq_matrix_entry_numerator as _ffi_fmpq_matrix_entry_numerator,
     fmpq_matrix_entry_denominator as _ffi_fmpq_matrix_entry_denominator,
     fmpq_matrix_entry_is_zero as _ffi_fmpq_matrix_entry_is_zero,
@@ -1419,6 +1420,25 @@ def ffiFmpqMatrixSetEntry(
         column,
         numerator,
         denominator,
+    )
+
+
+@native
+def ffiFmpqMatrixAddScaledEntry(
+    matrix: FmpqMatrix,
+    row: uint64,
+    column: uint64,
+    numerator: Integer,
+    denominator: Integer,
+    scale: Integer,
+) -> bool:
+    return _ffi_fmpq_matrix_add_scaled_entry(
+        matrix,
+        row,
+        column,
+        numerator,
+        denominator,
+        scale,
     )
 
 

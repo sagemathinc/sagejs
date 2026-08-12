@@ -39,6 +39,14 @@ function dynamicLifecycleFuzz() {
         BigInt(1 + (round + index) % 7),
       ), true);
     }
+    assert.equal(
+      flint.ffiFmpqMatrixAddScaledEntry(left, 0n, 2n, -5n, 7n, 2n),
+      true,
+    );
+    assert.throws(
+      () => flint.ffiFmpqMatrixAddScaledEntry(left, 0n, 2n, 1n, 0n, 1n),
+      /invalid rational matrix entry update/,
+    );
     const sum = flint.ffiFmpqMatrixAdd(left, right);
     const difference = flint.ffiFmpqMatrixSub(sum, right);
     const negated = flint.ffiFmpqMatrixNeg(left);
@@ -156,7 +164,7 @@ const source = String.raw`
 
 int main(void)
 {
-    fmpz_t numerator, denominator;
+    fmpz_t numerator, denominator, scale;
     uint64_t dimension_sum = 0;
     if (sagejs_fmpq_matrix_dimension_add(
             &dimension_sum, UINT64_MAX, UINT64_C(1)) ||
@@ -166,6 +174,7 @@ int main(void)
         return 1;
     fmpz_init(numerator);
     fmpz_init(denominator);
+    fmpz_init(scale);
     for (slong round = 0; round < 500; round++)
     {
         sagejs_fmpq_matrix_t left, right, sum, difference;
@@ -199,6 +208,12 @@ int main(void)
                         numerator, denominator))
                     return 3;
             }
+        fmpz_set_si(numerator, -5);
+        fmpz_set_ui(denominator, 7);
+        fmpz_set_si(scale, 2);
+        if (!sagejs_fmpq_matrix_add_scaled_entry(
+                left, 0, 2, numerator, denominator, scale))
+            return 3;
         if (!sagejs_fmpq_matrix_add(sum, left, right) ||
             !sagejs_fmpq_matrix_sub(difference, sum, right) ||
             !sagejs_fmpq_matrix_neg(negated, left) ||
@@ -254,6 +269,10 @@ int main(void)
             sagejs_fmpq_matrix_sub(failed, left, singular) ||
             sagejs_fmpq_matrix_scalar_mul(
                 failed, singular, numerator, denominator) ||
+            sagejs_fmpq_matrix_add_scaled_entry(
+                singular, 0, 0, numerator, denominator, scale) ||
+            sagejs_fmpq_matrix_add_scaled_entry(
+                singular, 2, 0, numerator, scale, scale) ||
             sagejs_fmpq_matrix_select_rows(
                 failed, singular, NULL, 1) ||
             sagejs_fmpq_matrix_select_rows(
@@ -313,6 +332,7 @@ int main(void)
         sagejs_fmpq_matrix_clear(no_columns);
         sagejs_fmpq_matrix_clear(no_rows);
     }
+    fmpz_clear(scale);
     fmpz_clear(denominator);
     fmpz_clear(numerator);
     printf("rounds=500\n");

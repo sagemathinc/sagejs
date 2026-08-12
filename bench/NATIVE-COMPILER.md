@@ -408,33 +408,34 @@ The same benchmark now includes complete higher-weight P1 transport and
 rational quotient reduction. The full diagnostic pipeline materializes all
 44,496 arbitrary-precision source-generator coefficients; the production-shaped
 typed body fuses transport and reduction for the 7,416 coefficients belonging
-to the chosen quotient-basis generators. On the dedicated 16-vCPU AMD EPYC
-7B13 host, level 11, weight 4, and `T_101` produces a 6-by-6 rational matrix in
-median 1.908 ms with GCC. The generated JavaScript fallback takes 57.359 ms and
-the production FLINT C path takes 1.752 ms: compilation is 30.1x faster than
-the same-source fallback and only 1.09x behind the mature specialized C.
-Presentation construction is excluded for both paths. The compiled benchmark
-reuses its explicit output storage, whereas the current FLINT API allocates its
-returned matrix, so this is a close architectural comparison rather than a
-claim of identical allocation policy. Every rational entry is checked against
-FLINT before timing. An independent Clang 18 build of the generated kernel
-takes 1.890 ms on the same host and produces the same result, 1.08x the
-contemporaneous 1.748 ms FLINT measurement. These figures are medians across
-five complete benchmark invocations, each with its own internal warmups and
-sample medians.
+to the chosen quotient-basis generators. Its result is an owned generated
+`FmpqMatrix`: FLINT grows each exact entry independently, and the host neither
+predicts a uniform limb capacity nor reconstructs the output from packed
+rational parts. A generic declared `fmpq_matrix_add_scaled_entry` operation
+performs each exact `entry += scale * numerator / denominator` update in one
+foreign call; bounds, zero denominators, ownership, and status failures remain
+checked by the declaration system. On the 16-vCPU AMD EPYC 7B13 host, level
+11, weight 4, and `T_101` produces a 6-by-6 rational matrix in median 2.446 ms
+with GCC. The generated JavaScript fallback takes 55.046 ms and the production
+FLINT C path takes 1.673 ms: compilation is 22.5x faster than the same-source
+fallback and 1.46x the mature specialized C. Presentation construction is
+excluded for both paths; allocation and deterministic release of the returned
+resource are included. Every rational entry is checked against FLINT before
+timing. These figures are medians from seven samples of 20 calls on 2026-08-12.
 
 The production `P1List.higher_weight_hecke_matrix` path now invokes this fused
-typed body directly. It caches packed signed and arbitrary-precision inputs,
-grows exact output capacity on an explicit capacity diagnostic, and retains
-the previous FLINT implementation as a private differential oracle and as the
-public capability fallback when no compiled artifact is available. The typed
-function itself still retains and differentially tests its same-source dynamic
-fallback. On the
-same dedicated host, seven interleaved samples of 100 level-11, weight-4,
-`T_101` calls measured 2.190 ms for the complete public typed route and
-1.690 ms for the FLINT oracle (1.30x). Unlike the lower-level 1.08--1.09x
-comparison, this includes exact result materialization and public matrix
-construction. `pnpm bench:native:p1` reports both measurements.
+typed body directly. It caches packed signed and arbitrary-precision inputs
+and takes ownership of the returned generated matrix resource without a
+legacy N-API result or output serialization. The previous FLINT implementation
+remains a private differential oracle. The typed function itself still retains
+and differentially tests its same-source dynamic fallback. On the
+same host, seven interleaved samples of 20 level-11, weight-4, `T_101` calls
+measured 2.656 ms for the complete public typed route and 1.920 ms for the
+FLINT oracle (1.38x). This includes generated-resource allocation and public
+matrix construction, but no host-side exact-entry materialization. The
+benchmark also reports process peak-RSS growth so representation changes are
+not accepted on latency alone.
+`pnpm bench:native:p1` reports both measurements.
 
 Run the exact-integer comparisons with:
 

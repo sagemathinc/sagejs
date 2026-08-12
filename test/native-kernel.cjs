@@ -1464,7 +1464,7 @@ compileKernel({
     entries: [1], length: 1, modulus: 1,
   }, 7), /must be a prime/);
   const nativeP1Module = require(nativeP1Kernel.modulePath);
-  const p1Fused = nativeP1Module.heilbronn_higher_weight_hecke_fill;
+  const p1Fused = nativeP1Module.heilbronn_higher_weight_hecke_matrix;
   assert.ok(p1Fused.createInt64Buffer([1, -2, 3]) instanceof BigInt64Array);
   assert.deepEqual(
     p1Fused.packIntegerBuffer([1n << 700n, -(1n << 900n)]).toArray(),
@@ -1737,6 +1737,13 @@ compileKernel({
     ).primeFieldTuning.blockThresholdU32,
     33,
   );
+  // This test loads the generated CommonJS module directly, outside the
+  // ordinary Sage.js module loader. Publish owned results through a minimal
+  // checked resource facade so both native and JavaScript wrappers exercise
+  // the production ownership path.
+  globalThis.__sagejs_load_module__ = () => ({
+    FmpqMatrix(token) { return token; },
+  });
   const flint = require("../packages/flint");
   for (const [level, weight, sign, prime] of [
     [5, 2, 0, 2],
@@ -1804,26 +1811,40 @@ compileKernel({
     );
     assert.deepEqual(outputNumerators, fallbackNumerators);
     assert.deepEqual(outputDenominators, fallbackDenominators);
-    const fusedNumerators = Array(outputLength).fill(0n);
-    const fusedDenominators = Array(outputLength).fill(0n);
-    nativeP1Module.heilbronn_higher_weight_hecke_fill(
+    const fused = nativeP1Module.heilbronn_higher_weight_hecke_matrix(
       weight, level, pairs, pairCount, matrices, matrixCount,
       presentation.basisGenerators, presentation.dimension,
       reductionNumerators, reductionDenominators,
-      fusedNumerators, fusedDenominators,
     );
-    assert.deepEqual(fusedNumerators, outputNumerators);
-    assert.deepEqual(fusedDenominators, outputDenominators);
-    const fallbackFusedNumerators = Array(outputLength).fill(0n);
-    const fallbackFusedDenominators = Array(outputLength).fill(0n);
-    nativeP1Module.heilbronn_higher_weight_hecke_fill.javascript(
+    const fallbackFused =
+      nativeP1Module.heilbronn_higher_weight_hecke_matrix.javascript(
       weight, level, pairs, pairCount, matrices, matrixCount,
       presentation.basisGenerators, presentation.dimension,
       reductionNumerators, reductionDenominators,
-      fallbackFusedNumerators, fallbackFusedDenominators,
     );
-    assert.deepEqual(fallbackFusedNumerators, outputNumerators);
-    assert.deepEqual(fallbackFusedDenominators, outputDenominators);
+    const resourceHandle = (resource) => {
+      const tag = globalThis.__sagejs_ffi_resource_tag__;
+      return (tag === undefined ? undefined : resource?.[tag]?.handle) ??
+        resource?.handle ?? resource;
+    };
+    const closeResource = (resource) => {
+      const tag = globalThis.__sagejs_ffi_resource_tag__;
+      const state = tag === undefined ? undefined : resource?.[tag];
+      if (state !== undefined) {
+        Reflect.apply(state.close, state.backend, [state.handle]);
+        state.closed = true;
+        state.handle = null;
+        state.registry?.unregister(resource);
+      } else if (typeof resource?.close === "function") {
+        Reflect.apply(resource.close, resource.backend, [resource.handle]);
+        resource.closed = true;
+        resource.handle = null;
+      } else {
+        flint.ffiFmpqMatrixClose(resource);
+      }
+    };
+    const fusedHandle = resourceHandle(fused);
+    const fallbackFusedHandle = resourceHandle(fallbackFused);
     const expected = flint.p1ListHigherWeightHeckeMatrix(
       line, weight, sign, prime, presentation,
     );
@@ -1833,8 +1854,26 @@ compileKernel({
         const entry = flint.matrixEntry(expected, row, column);
         assert.equal(outputNumerators[index], entry.numerator);
         assert.equal(outputDenominators[index], entry.denominator);
+        assert.equal(
+          flint.ffiFmpqMatrixEntryNumerator(fusedHandle, row, column),
+          entry.numerator,
+        );
+        assert.equal(
+          flint.ffiFmpqMatrixEntryDenominator(fusedHandle, row, column),
+          entry.denominator,
+        );
+        assert.equal(
+          flint.ffiFmpqMatrixEntryNumerator(fallbackFusedHandle, row, column),
+          entry.numerator,
+        );
+        assert.equal(
+          flint.ffiFmpqMatrixEntryDenominator(fallbackFusedHandle, row, column),
+          entry.denominator,
+        );
       }
     }
+    closeResource(fused);
+    closeResource(fallbackFused);
   }
   assert.ok(
     statSync(primeFieldKernel.addonPath).size < 1024 * 1024,

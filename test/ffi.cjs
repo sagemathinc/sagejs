@@ -195,7 +195,8 @@ test("FFI declarations are strict and generated modules are current", () => {
       "fmpz_matrix_deserialize_entries",
       "fmpq_matrix", "fmpq_matrix_randbits", "fmpq_matrix_nrows",
       "fmpq_matrix_ncols",
-      "fmpq_matrix_set_entry", "fmpq_matrix_entry_numerator",
+      "fmpq_matrix_set_entry", "fmpq_matrix_add_scaled_entry",
+      "fmpq_matrix_entry_numerator",
       "fmpq_matrix_entry_denominator", "fmpq_matrix_entry_is_zero",
       "fmpq_matrix_copy", "fmpq_matrix_neg", "fmpq_matrix_scalar_mul",
       "fmpq_matrix_equal", "fmpq_matrix_is_zero", "fmpq_matrix_is_one",
@@ -303,7 +304,7 @@ test("FFI declarations are strict and generated modules are current", () => {
     { resource: "graph", ownership: "owned", owner: null, root: "graph" },
     { resource: "edges", ownership: "borrowed", owner: "graph", root: "graph" },
   ]);
-  assert.match(runSage(["ffi", "check"]), /227 function\(s\)/);
+  assert.match(runSage(["ffi", "check"]), /228 function\(s\)/);
   const inspection = JSON.parse(
     runSage(["ffi", "explain", "flint", "--json"]),
   );
@@ -353,7 +354,7 @@ test("generated host adapters cover values and safe owned resources", async () =
     assert.doesNotMatch(source, /sagejs\.runtime|ffi_call/);
     assert.equal(functions.length, {
       fflas: 5,
-      flint: 193,
+      flint: 194,
       igraph: 2,
       m4ri: 22,
     }[declaration.library.id]);
@@ -409,7 +410,7 @@ test("computed resource byte transfers lower to one generated copy", async () =>
 
 test("packages publish every generated host adapter as the canonical export", () => {
   for (const [packagePath, expected] of [
-    ["../packages/flint", 194],
+    ["../packages/flint", 195],
     ["../packages/fflas", 5],
     ["../packages/graph", 2],
   ]) {
@@ -553,7 +554,7 @@ test("native-boundary audit is a reviewed exact ratchet", () => {
   const current = boundaryAudit.validateBoundarySnapshot(snapshot, { root });
   assert.ok(current.counts["napi-export"] >= 280);
   assert.ok(current.counts["runtime-intrinsic"] >= 100);
-  assert.equal(current.counts["declared-ffi"], 227);
+  assert.equal(current.counts["declared-ffi"], 228);
   assert.equal(current.counts["declared-ffi-resource"], 16);
   assert.match(runSage(["ffi", "audit"]), /inventoried native boundaries/);
   assert.equal(
@@ -1142,6 +1143,30 @@ test("generated rational matrix resources execute direct FLINT operations", () =
   const originalRight = resourceEntries(right);
   const results = [];
   try {
+    const accumulator = resourceMatrix(1, 1, [[1n, 3n]]);
+    try {
+      assert.equal(
+        flint.ffiFmpqMatrixAddScaledEntry(
+          accumulator, 0n, 0n, 5n, 7n, -2n,
+        ),
+        true,
+      );
+      assert.deepEqual(resourceEntries(accumulator), [[-23n, 21n]]);
+      assert.throws(
+        () => flint.ffiFmpqMatrixAddScaledEntry(
+          accumulator, 0n, 0n, 1n, 0n, 1n,
+        ),
+        /invalid rational matrix entry update/,
+      );
+      assert.throws(
+        () => flint.ffiFmpqMatrixAddScaledEntry(
+          accumulator, 1n, 0n, 1n, 1n, 1n,
+        ),
+        /invalid rational matrix entry update/,
+      );
+    } finally {
+      flint.ffiFmpqMatrixClose(accumulator);
+    }
     for (const [resourceResult, oracleResult, rows, columns] of [
       [flint.ffiFmpqMatrixNeg(left), flint.matrixNeg(oracleLeft), 2, 2],
       [flint.ffiFmpqMatrixScalarMul(left, -17n, 19n),

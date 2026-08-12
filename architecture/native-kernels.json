@@ -365,7 +365,7 @@
         "heilbronn_transported_action_fill",
         "p1_rational_add_scaled_at",
         "heilbronn_reduce_transported_action",
-        "heilbronn_higher_weight_hecke_fill"
+        "heilbronn_higher_weight_hecke_matrix"
       ],
       "semantic_domain": "packed Heilbronn representatives, P1 coset transport, arbitrary-precision polynomial action, and rational quotient reduction used by modular symbols",
       "fallback": "same-source",
