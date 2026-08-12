@@ -4,7 +4,7 @@
   "id": "polynomial-structural-calculus",
   "title": "Polynomial Structural Calculus",
   "lane": "arithmetic-algebra",
-  "status": "review",
+  "status": "complete",
   "owner": "user",
   "objective": "Implement ordinary exact Python contracts for univariate polynomial composition, reversal, truncation, shifts, integral, resultant, and discriminant across ZZ, QQ, and GF(p), with Sage-compatible edge semantics and representative benchmarks",
   "base_commit": "3fbce0b1111129ce3de879fefb2e6b08a70d9840",
