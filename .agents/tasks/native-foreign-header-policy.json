@@ -4,7 +4,7 @@
   "id": "native-foreign-header-policy",
   "title": "Foreign header materialization policy",
   "lane": "integration",
-  "status": "review",
+  "status": "complete",
   "owner": "user",
   "objective": "Resolve the native-kernel foreign-header include expectation mismatch by establishing and testing the intended declaration/compiler/cache materialization policy, and provision M4RI dependencies and generated addons through the shared parallel-worktree cache",
   "base_commit": "e84feccdd2404715491bf4a954b34bc01837fdf6",
