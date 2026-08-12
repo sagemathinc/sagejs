@@ -2248,7 +2248,7 @@ def legacy_oracle(source):
 
 A = legacy_oracle(matrix(GF(5), 2, 2, [1, 2, 3, 4]))
 B = legacy_oracle(matrix(GF(5), 2, 1, [1, 0]))
-C = matrix(GF(2305843009213693951), 1, 1, [1])
+C = legacy_oracle(matrix(GF(2305843009213693951), 1, 1, [1]))
 X = prime_field_solve(A, B)
 D = prime_field_factor(A)
 print(prime_field_rank(A))
