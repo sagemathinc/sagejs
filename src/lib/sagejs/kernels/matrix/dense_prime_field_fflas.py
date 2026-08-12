@@ -17,6 +17,7 @@ from sagejs.ffi.fflas import (
     modular_float_mul,
     modular_float_rank,
     modular_float_rref,
+    modular_float_right_nullspace,
 )
 
 
@@ -94,9 +95,34 @@ def fflas_dense_prime_field_matrix_rank(
     )
 
 
+@native
+def fflas_dense_prime_field_matrix_right_nullspace(
+    output: UInt64Buffer,
+    nullity_output: UInt64Buffer,
+    source: UInt64Buffer,
+    rows: uint64,
+    columns: uint64,
+    modulus: uint64,
+) -> bool:
+    """Compute the canonical row basis of the right nullspace with FFPACK."""
+    nullity_length: uint64 = 1
+    return modular_float_right_nullspace(
+        output,
+        nullity_output,
+        source,
+        columns * columns,
+        nullity_length,
+        rows * columns,
+        rows,
+        columns,
+        modulus,
+    )
+
+
 __all__ = [
     "fflas_dense_prime_field_available",
     "fflas_dense_prime_field_matrix_mul",
     "fflas_dense_prime_field_matrix_rank",
     "fflas_dense_prime_field_matrix_rref",
+    "fflas_dense_prime_field_matrix_right_nullspace",
 ]

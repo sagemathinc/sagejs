@@ -1,0 +1,56 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "fflas-prime-nullspace",
+  "title": "FFLAS prime right nullspace",
+  "lane": "integration",
+  "status": "active",
+  "owner": "user",
+  "objective": "Generate and route a fast canonical Sage-compatible right-nullspace basis for dense GF(p), p < 256, through declared FFLAS/FFPACK packed FFI with FLINT capability fallback",
+  "base_commit": "f1f072862c390e96553b1c9e3e0c613b4afd7c7b",
+  "claims": [
+    "ffi/fflas.ffi.py",
+    "ffi/fflas.ffi.json",
+    "packages/fflas/include/sagejs/fflas_matrix_ffi.h",
+    "packages/fflas/generated/",
+    "packages/fflas/test/test.cjs",
+    "src/lib/sagejs/ffi/fflas.py",
+    "src/baselib/sagejs/ffi/fflas.py",
+    "src/lib/sagejs/kernels/matrix/dense_prime_field_fflas.py",
+    "test/fflas-dense-prime.cjs",
+    "bench/fflas-dense-prime-nullspace.cjs",
+    "architecture/native-boundaries.json",
+    ".agents/tasks/fflas-prime-nullspace.json"
+  ],
+  "dependencies": [],
+  "references": [
+    "FFLAS-FFPACK NullSpaceBasis API",
+    "SageMath dense GF(p) right kernel semantics"
+  ],
+  "architecture": {
+    "strategy": "external-library",
+    "fallback": "tested-capability",
+    "oracles": [
+      "Declared FLINT nmod right kernel",
+      "SageMath canonical right_kernel_matrix"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "fallback",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm architecture:check",
+    "pnpm test:portable",
+    "pnpm test:baselib:strict"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "",
+    "risks": [],
+    "next_steps": []
+  }
+}
