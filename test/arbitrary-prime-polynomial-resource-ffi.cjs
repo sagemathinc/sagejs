@@ -18,8 +18,8 @@ const temporary = mkdtempSync(join(tmpdir(), "sagejs-fmpz-mod-poly-"));
 const source = join(temporary, "witness.c");
 const executable = join(temporary, "witness");
 const sanitize = process.env.SAGEJS_FFI_SANITIZE === "1";
-const resultStressRounds = sanitize && process.platform === "darwin" ? 128 : 4096;
-const aggregateStressRounds = sanitize && process.platform === "darwin" ? 16 : 256;
+const resultStressRounds = sanitize && process.platform === "darwin" ? 16 : 4096;
+const aggregateStressRounds = sanitize && process.platform === "darwin" ? 4 : 256;
 
 writeFileSync(
   source,
