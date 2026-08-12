@@ -29,15 +29,6 @@
 
 ## Measurement and performance ergonomics
 
-- Extend Sage mode's `time` output to separate user CPU, system CPU, wall
-  time, and one-time initialization/native-loading work, so cold startup is
-  not mistaken for mathematical execution.
 - Ratchet cold production-kernel loading separately from warm mathematical
   execution, and never silently compile a missing production kernel in an
   ordinary installed session.
-- Implement Sage/IPython-compatible `%timeit`, including automatic loop-count
-  selection, repeated samples, and concise mean/standard-deviation reporting.
-- Add bounded inspection and cleanup for the content-addressed user module
-  cache under `~/.cache/sagejs/modules`. Retain current and recently used
-  artifacts, protect active publications, default to a dry run, and impose
-  explicit generation/byte caps on destructive cleanup.
