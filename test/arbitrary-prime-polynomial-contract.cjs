@@ -29,6 +29,7 @@ from sagejs.polynomial_algorithms.arbitrary_prime_contract import (
     polynomial_add_mod,
     polynomial_divrem_mod,
     polynomial_evaluate_mod,
+    factorization_adapter_input,
     polynomial_format_mod,
     polynomial_gcd_mod,
     polynomial_multiply_mod,
@@ -36,6 +37,8 @@ from sagejs.polynomial_algorithms.arbitrary_prime_contract import (
     polynomial_subtract_mod,
     polynomial_xgcd_mod,
     require_same_prime_modulus,
+    validate_factorization_adapter_output,
+    validate_roots_adapter_output,
 )
 
 primes = [2**89 - 1, 2**127 - 1, 2**521 - 1]
@@ -84,6 +87,30 @@ except ZeroDivisionError:
 else:
     raise AssertionError("division by zero polynomial was accepted")
 
+unit, monic = factorization_adapter_input([6, -9, 3], primes[0])
+assert unit == 3
+assert monic == [2, primes[0] - 3, 1]
+validate_factorization_adapter_output(
+    [6, -9, 3], unit, [([primes[0] - 1, 1], 1), ([primes[0] - 2, 1], 1)], primes[0]
+)
+try:
+    factorization_adapter_input([], primes[0])
+except ArithmeticError:
+    pass
+else:
+    raise AssertionError("zero polynomial factorization was accepted")
+
+root_source = polynomial_multiply_mod(
+    polynomial_multiply_mod([-2, 1], [-2, 1], primes[0]), [-3, 1], primes[0]
+)
+validate_roots_adapter_output(root_source, [3, 2], [1, 2], primes[0])
+try:
+    validate_roots_adapter_output([], [], [], primes[0])
+except ArithmeticError:
+    pass
+else:
+    raise AssertionError("zero polynomial roots were accepted")
+
 print("arbitrary-prime-polynomial-fallback-ok")
 `);
   assert.equal(output, "arbitrary-prime-polynomial-fallback-ok");
@@ -103,8 +130,10 @@ assert contract["initialize"] == ("fmpz_mod_ctx_init", "fmpz_mod_poly_init")
 assert contract["close"] == ("fmpz_mod_poly_clear", "fmpz_mod_ctx_clear")
 assert contract["result"] == "fresh-callee-owned-self-contained-resource"
 assert contract["contextCompatibility"] == "equal-modulus-not-pointer-identity"
+assert contract["multiResourcePrecondition"].startswith("compare exact moduli")
 assert contract["crossResourceLifetimeDependency"] is False
 assert contract["callerPredictsCapacity"] is False
+assert contract["publishedState"] == "sealed immutable resource"
 assert contract["variable"] == "public-parent-metadata-not-native-resource-state"
 
 required = {
@@ -121,10 +150,47 @@ assert all(
 assert contract["aggregateResults"]["roots"].endswith("integer residues")
 assert "no packed output capacity" in contract["variableSizeResults"]["polynomial"]
 assert contract["publicSemantics"]["roots"].endswith("not a semantic promise")
+assert contract["publicSemantics"]["divisionByZero"].startswith("ZeroDivisionError")
+assert contract["factorAdapter"]["input"] == "factor a monic copy"
+assert contract["rootsAdapter"]["zero"].startswith("ArithmeticError")
+assert contract["windows"].startswith("generated FLINT resource required")
 assert contract["wasm"].startswith("same declaration")
 print("arbitrary-prime-polynomial-resource-contract-ok")
 `);
   assert.equal(output, "arbitrary-prime-polynomial-resource-contract-ok");
+});
+
+test("native serialization excludes and SagePack owns parent metadata", () => {
+  const output = runPython(String.raw`
+import sys
+sys.path.insert(0, ${JSON.stringify(moduleDirectory)})
+from sagejs.polynomial_algorithms.arbitrary_prime_contract import (
+    deserialize_resource_payload,
+    sagepack_parent_envelope,
+    serialize_resource_payload,
+)
+
+prime = 2**127 - 1
+payload = serialize_resource_payload([1, -1, prime + 2, 0], prime)
+assert payload.startswith(b"SJMP\x01\x00\x00\x00")
+assert deserialize_resource_payload(payload) == (prime, [1, prime - 1, 2])
+envelope = sagepack_parent_envelope(payload, "theta", True)
+assert envelope == {
+    "schema": "sagejs.sagepack/fmpz-mod-polynomial-parent-v1",
+    "variable": "theta",
+    "sparse": True,
+    "resourcePayload": payload,
+}
+for invalid in (payload + b"\x00", payload[:-1]):
+    try:
+        deserialize_resource_payload(invalid)
+    except ValueError:
+        pass
+    else:
+        raise AssertionError("noncanonical serialization was accepted")
+print("arbitrary-prime-polynomial-serialization-contract-ok")
+`);
+  assert.equal(output, "arbitrary-prime-polynomial-serialization-contract-ok");
 });
 
 test("Sage 10.9 arbitrary-prime compatibility observations remain explicit", () => {
@@ -139,7 +205,7 @@ test("Sage 10.9 arbitrary-prime compatibility observations remain explicit", () 
     crossVariableBinaryOperation: "TypeError",
     crossModulusBinaryOperation: "TypeError",
     incompatibleEvaluation: "TypeError",
-    divisionByZero: "NTLError",
+    divisionByZero: "NTLError in Sage 10.9; ZeroDivisionError in Sage.js",
     gcdNormalization: "monic",
     xgcdZeroPair: ["0", "1", "0"],
     zeroFactorization: "ArithmeticError",
