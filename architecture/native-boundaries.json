@@ -14,8 +14,8 @@
   },
   "counts": {
     "classified-native-file": 58,
-    "declared-ffi": 214,
-    "declared-ffi-resource": 14,
+    "declared-ffi": 222,
+    "declared-ffi-resource": 16,
     "napi-export": 292,
     "runtime-intrinsic": 136,
     "wasm-export": 46
@@ -113,6 +113,18 @@
       "disposition": "declared-owned-ffi-resource"
     },
     {
+      "id": "ffi-resource:flint:fmpq_polynomial_xgcd_result",
+      "kind": "declared-ffi-resource",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "FmpqPolynomialXgcdResult",
+      "abi_type": "sagejs_fmpq_polynomial_xgcd_result_t",
+      "close_export": "ffiFmpqPolynomialXgcdResultClose",
+      "clear_symbol": "sagejs_fmpq_polynomial_xgcd_result_clear",
+      "size_symbol": "sagejs_fmpq_polynomial_xgcd_result_allocated_bytes",
+      "disposition": "declared-owned-ffi-resource"
+    },
+    {
       "id": "ffi-resource:flint:fmpq_value",
       "kind": "declared-ffi-resource",
       "path": "ffi/flint.ffi.json",
@@ -158,6 +170,18 @@
       "close_export": "ffiFmpzPolynomialDivisionResultClose",
       "clear_symbol": "sagejs_fmpz_polynomial_division_result_clear",
       "size_symbol": "sagejs_fmpz_polynomial_division_result_allocated_bytes",
+      "disposition": "declared-owned-ffi-resource"
+    },
+    {
+      "id": "ffi-resource:flint:fmpz_polynomial_xgcd_result",
+      "kind": "declared-ffi-resource",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "FmpzPolynomialXgcdResult",
+      "abi_type": "sagejs_fmpz_polynomial_xgcd_result_t",
+      "close_export": "ffiFmpzPolynomialXgcdResultClose",
+      "clear_symbol": "sagejs_fmpz_polynomial_xgcd_result_clear",
+      "size_symbol": "sagejs_fmpz_polynomial_xgcd_result_allocated_bytes",
       "disposition": "declared-owned-ffi-resource"
     },
     {
@@ -1210,6 +1234,50 @@
       "disposition": "declared-safe-ffi"
     },
     {
+      "id": "ffi:flint:fmpq_polynomial_xgcd_resource",
+      "kind": "declared-ffi",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "fmpq_polynomial_xgcd_resource",
+      "dynamic_package": "@sagemath/sagejs-flint",
+      "dynamic_export": "ffiFmpqPolynomialXgcdResource",
+      "symbol": "sagejs_fmpq_polynomial_xgcd_resource",
+      "disposition": "declared-safe-ffi"
+    },
+    {
+      "id": "ffi:flint:fmpq_polynomial_xgcd_result_gcd",
+      "kind": "declared-ffi",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "fmpq_polynomial_xgcd_result_gcd",
+      "dynamic_package": "@sagemath/sagejs-flint",
+      "dynamic_export": "ffiFmpqPolynomialXgcdResultGcd",
+      "symbol": "sagejs_fmpq_polynomial_xgcd_result_gcd",
+      "disposition": "declared-safe-ffi"
+    },
+    {
+      "id": "ffi:flint:fmpq_polynomial_xgcd_result_left_coefficient",
+      "kind": "declared-ffi",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "fmpq_polynomial_xgcd_result_left_coefficient",
+      "dynamic_package": "@sagemath/sagejs-flint",
+      "dynamic_export": "ffiFmpqPolynomialXgcdResultLeftCoefficient",
+      "symbol": "sagejs_fmpq_polynomial_xgcd_result_left_coefficient",
+      "disposition": "declared-safe-ffi"
+    },
+    {
+      "id": "ffi:flint:fmpq_polynomial_xgcd_result_right_coefficient",
+      "kind": "declared-ffi",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "fmpq_polynomial_xgcd_result_right_coefficient",
+      "dynamic_package": "@sagemath/sagejs-flint",
+      "dynamic_export": "ffiFmpqPolynomialXgcdResultRightCoefficient",
+      "symbol": "sagejs_fmpq_polynomial_xgcd_result_right_coefficient",
+      "disposition": "declared-safe-ffi"
+    },
+    {
       "id": "ffi:flint:fmpq_value_denominator",
       "kind": "declared-ffi",
       "path": "ffi/flint.ffi.json",
@@ -2065,6 +2133,50 @@
       "dynamic_package": "@sagemath/sagejs-flint",
       "dynamic_export": "ffiFmpzPolynomialSub",
       "symbol": "sagejs_fmpz_polynomial_sub",
+      "disposition": "declared-safe-ffi"
+    },
+    {
+      "id": "ffi:flint:fmpz_polynomial_xgcd_resource",
+      "kind": "declared-ffi",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "fmpz_polynomial_xgcd_resource",
+      "dynamic_package": "@sagemath/sagejs-flint",
+      "dynamic_export": "ffiFmpzPolynomialXgcdResource",
+      "symbol": "sagejs_fmpz_polynomial_xgcd_resource",
+      "disposition": "declared-safe-ffi"
+    },
+    {
+      "id": "ffi:flint:fmpz_polynomial_xgcd_result_gcd",
+      "kind": "declared-ffi",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "fmpz_polynomial_xgcd_result_gcd",
+      "dynamic_package": "@sagemath/sagejs-flint",
+      "dynamic_export": "ffiFmpzPolynomialXgcdResultGcd",
+      "symbol": "sagejs_fmpz_polynomial_xgcd_result_gcd",
+      "disposition": "declared-safe-ffi"
+    },
+    {
+      "id": "ffi:flint:fmpz_polynomial_xgcd_result_left_coefficient",
+      "kind": "declared-ffi",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "fmpz_polynomial_xgcd_result_left_coefficient",
+      "dynamic_package": "@sagemath/sagejs-flint",
+      "dynamic_export": "ffiFmpzPolynomialXgcdResultLeftCoefficient",
+      "symbol": "sagejs_fmpz_polynomial_xgcd_result_left_coefficient",
+      "disposition": "declared-safe-ffi"
+    },
+    {
+      "id": "ffi:flint:fmpz_polynomial_xgcd_result_right_coefficient",
+      "kind": "declared-ffi",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "fmpz_polynomial_xgcd_result_right_coefficient",
+      "dynamic_package": "@sagemath/sagejs-flint",
+      "dynamic_export": "ffiFmpzPolynomialXgcdResultRightCoefficient",
+      "symbol": "sagejs_fmpz_polynomial_xgcd_result_right_coefficient",
       "disposition": "declared-safe-ffi"
     },
     {

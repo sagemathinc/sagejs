@@ -90,6 +90,34 @@ typedef struct
 typedef sagejs_fmpq_polynomial_division_result_struct
     sagejs_fmpq_polynomial_division_result_t[1];
 
+/*
+ * Extended GCD returns three independently variable-size polynomials.  Keep
+ * the complete FLINT result behind one generated owner so the mathematical
+ * operation runs once and callers never predict coefficient capacities.
+ */
+
+typedef struct
+{
+    sagejs_fmpz_polynomial_struct gcd;
+    sagejs_fmpz_polynomial_struct left_coefficient;
+    sagejs_fmpz_polynomial_struct right_coefficient;
+    size_t retained_bytes;
+} sagejs_fmpz_polynomial_xgcd_result_struct;
+
+typedef sagejs_fmpz_polynomial_xgcd_result_struct
+    sagejs_fmpz_polynomial_xgcd_result_t[1];
+
+typedef struct
+{
+    sagejs_fmpq_polynomial_struct gcd;
+    sagejs_fmpq_polynomial_struct left_coefficient;
+    sagejs_fmpq_polynomial_struct right_coefficient;
+    size_t retained_bytes;
+} sagejs_fmpq_polynomial_xgcd_result_struct;
+
+typedef sagejs_fmpq_polynomial_xgcd_result_struct
+    sagejs_fmpq_polynomial_xgcd_result_t[1];
+
 static inline void sagejs_exact_polynomial_adjust_retained_bytes(
     size_t *retained, size_t previous, size_t current)
 {
@@ -1654,5 +1682,245 @@ static inline int sagejs_fmpq_polynomial_deserialize_packed(
     result[0] = temporary[0];
     return 1;
 }
+
+static inline size_t sagejs_exact_polynomial_three_result_bytes(
+    size_t structure_bytes, size_t first, size_t first_structure,
+    size_t second, size_t second_structure,
+    size_t third, size_t third_structure)
+{
+    size_t retained = structure_bytes;
+    if (first < first_structure || second < second_structure ||
+        third < third_structure)
+        return SIZE_MAX;
+    retained = sagejs_retained_size_add(retained, first - first_structure);
+    retained = sagejs_retained_size_add(retained, second - second_structure);
+    return sagejs_retained_size_add(retained, third - third_structure);
+}
+
+static inline void sagejs_fmpz_polynomial_xgcd_result_finish(
+    sagejs_fmpz_polynomial_xgcd_result_t result)
+{
+    sagejs_fmpz_polynomial_finish_result(&result->gcd);
+    sagejs_fmpz_polynomial_finish_result(&result->left_coefficient);
+    sagejs_fmpz_polynomial_finish_result(&result->right_coefficient);
+    result->retained_bytes = sagejs_exact_polynomial_three_result_bytes(
+        sizeof(*result),
+        result->gcd.retained_bytes, sizeof(result->gcd),
+        result->left_coefficient.retained_bytes,
+        sizeof(result->left_coefficient),
+        result->right_coefficient.retained_bytes,
+        sizeof(result->right_coefficient));
+}
+
+static inline size_t sagejs_fmpz_polynomial_xgcd_result_allocated_bytes(
+    const sagejs_fmpz_polynomial_xgcd_result_t result)
+{
+    return result->retained_bytes;
+}
+
+static inline void sagejs_fmpz_polynomial_xgcd_result_clear(
+    sagejs_fmpz_polynomial_xgcd_result_t result)
+{
+    sagejs_fmpz_polynomial_clear(&result->gcd);
+    sagejs_fmpz_polynomial_clear(&result->left_coefficient);
+    sagejs_fmpz_polynomial_clear(&result->right_coefficient);
+    result->retained_bytes = 0;
+}
+
+static inline void sagejs_fmpz_polynomial_set_scaled_fmpq(
+    fmpz_poly_t result, const fmpq_poly_t source, const fmpz_t scale)
+{
+    fmpq_poly_t scaled;
+    fmpq_poly_init(scaled);
+    fmpq_poly_scalar_mul_fmpz(scaled, source, scale);
+    fmpq_poly_get_numerator(result, scaled);
+    fmpq_poly_clear(scaled);
+}
+
+static inline int sagejs_fmpz_polynomial_xgcd_resource(
+    sagejs_fmpz_polynomial_xgcd_result_t result,
+    const sagejs_fmpz_polynomial_t left,
+    const sagejs_fmpz_polynomial_t right)
+{
+    if (!left->sealed || !right->sealed)
+        return 0;
+
+    fmpz_poly_init(result->gcd.value);
+    fmpz_poly_init(result->left_coefficient.value);
+    fmpz_poly_init(result->right_coefficient.value);
+
+    if (fmpz_poly_is_zero(left->value))
+    {
+        fmpz_poly_set(result->gcd.value, right->value);
+        fmpz_poly_one(result->right_coefficient.value);
+    }
+    else if (fmpz_poly_is_zero(right->value))
+    {
+        fmpz_poly_set(result->gcd.value, left->value);
+        fmpz_poly_one(result->left_coefficient.value);
+    }
+    else if (fmpz_poly_length(left->value) == 1 &&
+             fmpz_poly_length(right->value) == 1)
+    {
+        fmpz_t gcd;
+        fmpz_t left_coefficient;
+        fmpz_t right_coefficient;
+        fmpz_init(gcd);
+        fmpz_init(left_coefficient);
+        fmpz_init(right_coefficient);
+        fmpz_xgcd(gcd, left_coefficient, right_coefficient,
+            left->value->coeffs, right->value->coeffs);
+        fmpz_poly_set_fmpz(result->gcd.value, gcd);
+        fmpz_poly_set_fmpz(result->left_coefficient.value, left_coefficient);
+        fmpz_poly_set_fmpz(result->right_coefficient.value, right_coefficient);
+        fmpz_clear(right_coefficient);
+        fmpz_clear(left_coefficient);
+        fmpz_clear(gcd);
+    }
+    else
+    {
+        fmpz_t resultant;
+        fmpz_init(resultant);
+        fmpz_poly_xgcd(resultant,
+            result->left_coefficient.value,
+            result->right_coefficient.value,
+            left->value, right->value);
+        if (!fmpz_is_zero(resultant))
+        {
+            fmpz_poly_set_fmpz(result->gcd.value, resultant);
+        }
+        else
+        {
+            fmpq_poly_t rational_left;
+            fmpq_poly_t rational_right;
+            fmpq_poly_t rational_gcd;
+            fmpq_poly_t rational_left_coefficient;
+            fmpq_poly_t rational_right_coefficient;
+            fmpz_t denominator;
+            fmpq_poly_init(rational_left);
+            fmpq_poly_init(rational_right);
+            fmpq_poly_init(rational_gcd);
+            fmpq_poly_init(rational_left_coefficient);
+            fmpq_poly_init(rational_right_coefficient);
+            fmpz_init(denominator);
+            fmpq_poly_set_fmpz_poly(rational_left, left->value);
+            fmpq_poly_set_fmpz_poly(rational_right, right->value);
+            fmpq_poly_xgcd(rational_gcd,
+                rational_left_coefficient,
+                rational_right_coefficient,
+                rational_left, rational_right);
+            fmpz_lcm(denominator,
+                fmpq_poly_denref(rational_gcd),
+                fmpq_poly_denref(rational_left_coefficient));
+            fmpz_lcm(denominator, denominator,
+                fmpq_poly_denref(rational_right_coefficient));
+            sagejs_fmpz_polynomial_set_scaled_fmpq(
+                result->gcd.value, rational_gcd, denominator);
+            sagejs_fmpz_polynomial_set_scaled_fmpq(
+                result->left_coefficient.value,
+                rational_left_coefficient, denominator);
+            sagejs_fmpz_polynomial_set_scaled_fmpq(
+                result->right_coefficient.value,
+                rational_right_coefficient, denominator);
+            fmpz_clear(denominator);
+            fmpq_poly_clear(rational_right_coefficient);
+            fmpq_poly_clear(rational_left_coefficient);
+            fmpq_poly_clear(rational_gcd);
+            fmpq_poly_clear(rational_right);
+            fmpq_poly_clear(rational_left);
+        }
+        fmpz_clear(resultant);
+    }
+    sagejs_fmpz_polynomial_xgcd_result_finish(result);
+    return 1;
+}
+
+#define SAGEJS_FMPZ_POLYNOMIAL_XGCD_SELECTOR(name, field)                \
+static inline int name(                                                  \
+    sagejs_fmpz_polynomial_t result,                                    \
+    const sagejs_fmpz_polynomial_xgcd_result_t xgcd)                    \
+{                                                                        \
+    fmpz_poly_init(result->value);                                       \
+    fmpz_poly_set(result->value, xgcd->field.value);                     \
+    sagejs_fmpz_polynomial_finish_result(result);                        \
+    return 1;                                                            \
+}
+
+SAGEJS_FMPZ_POLYNOMIAL_XGCD_SELECTOR(
+    sagejs_fmpz_polynomial_xgcd_result_gcd, gcd)
+SAGEJS_FMPZ_POLYNOMIAL_XGCD_SELECTOR(
+    sagejs_fmpz_polynomial_xgcd_result_left_coefficient, left_coefficient)
+SAGEJS_FMPZ_POLYNOMIAL_XGCD_SELECTOR(
+    sagejs_fmpz_polynomial_xgcd_result_right_coefficient, right_coefficient)
+
+#undef SAGEJS_FMPZ_POLYNOMIAL_XGCD_SELECTOR
+
+static inline void sagejs_fmpq_polynomial_xgcd_result_finish(
+    sagejs_fmpq_polynomial_xgcd_result_t result)
+{
+    sagejs_fmpq_polynomial_finish_result(&result->gcd);
+    sagejs_fmpq_polynomial_finish_result(&result->left_coefficient);
+    sagejs_fmpq_polynomial_finish_result(&result->right_coefficient);
+    result->retained_bytes = sagejs_exact_polynomial_three_result_bytes(
+        sizeof(*result),
+        result->gcd.retained_bytes, sizeof(result->gcd),
+        result->left_coefficient.retained_bytes,
+        sizeof(result->left_coefficient),
+        result->right_coefficient.retained_bytes,
+        sizeof(result->right_coefficient));
+}
+
+static inline size_t sagejs_fmpq_polynomial_xgcd_result_allocated_bytes(
+    const sagejs_fmpq_polynomial_xgcd_result_t result)
+{
+    return result->retained_bytes;
+}
+
+static inline void sagejs_fmpq_polynomial_xgcd_result_clear(
+    sagejs_fmpq_polynomial_xgcd_result_t result)
+{
+    sagejs_fmpq_polynomial_clear(&result->gcd);
+    sagejs_fmpq_polynomial_clear(&result->left_coefficient);
+    sagejs_fmpq_polynomial_clear(&result->right_coefficient);
+    result->retained_bytes = 0;
+}
+
+static inline int sagejs_fmpq_polynomial_xgcd_resource(
+    sagejs_fmpq_polynomial_xgcd_result_t result,
+    const sagejs_fmpq_polynomial_t left,
+    const sagejs_fmpq_polynomial_t right)
+{
+    if (!left->sealed || !right->sealed)
+        return 0;
+    fmpq_poly_init(result->gcd.value);
+    fmpq_poly_init(result->left_coefficient.value);
+    fmpq_poly_init(result->right_coefficient.value);
+    fmpq_poly_xgcd(result->gcd.value,
+        result->left_coefficient.value,
+        result->right_coefficient.value,
+        left->value, right->value);
+    sagejs_fmpq_polynomial_xgcd_result_finish(result);
+    return 1;
+}
+
+#define SAGEJS_FMPQ_POLYNOMIAL_XGCD_SELECTOR(name, field)                \
+static inline int name(                                                  \
+    sagejs_fmpq_polynomial_t result,                                    \
+    const sagejs_fmpq_polynomial_xgcd_result_t xgcd)                    \
+{                                                                        \
+    fmpq_poly_init(result->value);                                       \
+    fmpq_poly_set(result->value, xgcd->field.value);                     \
+    sagejs_fmpq_polynomial_finish_result(result);                        \
+    return 1;                                                            \
+}
+
+SAGEJS_FMPQ_POLYNOMIAL_XGCD_SELECTOR(
+    sagejs_fmpq_polynomial_xgcd_result_gcd, gcd)
+SAGEJS_FMPQ_POLYNOMIAL_XGCD_SELECTOR(
+    sagejs_fmpq_polynomial_xgcd_result_left_coefficient, left_coefficient)
+SAGEJS_FMPQ_POLYNOMIAL_XGCD_SELECTOR(
+    sagejs_fmpq_polynomial_xgcd_result_right_coefficient, right_coefficient)
+
+#undef SAGEJS_FMPQ_POLYNOMIAL_XGCD_SELECTOR
 
 #endif

@@ -1,0 +1,201 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "exact-polynomial-xgcd",
+  "title": "Exact Polynomial Xgcd",
+  "lane": "integration",
+  "status": "review",
+  "owner": "user",
+  "objective": "Implement Sage-compatible exact polynomial xgcd over ZZ and QQ using generated owned FLINT aggregate resources",
+  "base_commit": "d2088072b67cb793a343d979bd8832294ab5178d",
+  "claims": [
+    "ffi/flint.ffi.py",
+    "ffi/flint.ffi.json",
+    "packages/flint/include/sagejs/exact_polynomial_ffi.h",
+    "packages/flint/generated/ffi_host.py",
+    "src/baselib/polynomial.py",
+    "src/baselib/sagejs/ffi/flint.py",
+    "src/lib/sagejs/ffi/flint.py",
+    "test/exact-polynomial-xgcd-resource.cjs",
+    "test/exact-polynomial-resource-ffi.cjs",
+    "test/ffi.cjs",
+    "test/node-test-manifest.cjs",
+    "architecture/native-boundaries.json",
+    "architecture/package-graph.json",
+    "scripts/check-polynomial-budget.cjs",
+    ".agents/tasks/exact-polynomial-xgcd.json"
+  ],
+  "dependencies": [],
+  "references": [
+    "/home/user/upstream/sage/src/sage/rings/polynomial/polynomial_integer_dense_flint.pyx",
+    "/home/user/upstream/sage/src/sage/rings/polynomial/polynomial_rational_flint.pyx",
+    "packages/flint/.native/sources/flint-3.5.0/doc/source/fmpz_poly.rst",
+    "packages/flint/.native/sources/flint-3.5.0/doc/source/fmpq_poly.rst"
+  ],
+  "architecture": {
+    "strategy": "external-library",
+    "fallback": "tested-capability",
+    "oracles": [
+      "SageMath ZZ[x]/QQ[x] xgcd",
+      "Bézout identity and generated dynamic/native differential"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "fallback",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "node test/exact-polynomial-xgcd-resource.cjs",
+    "node test/exact-polynomial-resource-ffi.cjs",
+    "env SAGEJS_POLYNOMIAL_SAMPLES=3 node scripts/check-polynomial-budget.cjs",
+    "pnpm architecture:check",
+    "pnpm test:portable",
+    "pnpm test:baselib:strict"
+  ],
+  "runs": [
+    {
+      "command": "node test/exact-polynomial-xgcd-resource.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 6.456,
+      "started_at": "2026-08-12T04:51:12.858Z",
+      "commit": "d2088079f87bcc86eda7d5b21ec5f855c16c1061",
+      "workspace_fingerprint": "9c291679d96738e8bc163426943b84c14cf8a2bb499ecc933d25ea231f954d1c",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node test/exact-polynomial-resource-ffi.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 4.156,
+      "started_at": "2026-08-12T04:51:24.571Z",
+      "commit": "d2088079f87bcc86eda7d5b21ec5f855c16c1061",
+      "workspace_fingerprint": "9c291679d96738e8bc163426943b84c14cf8a2bb499ecc933d25ea231f954d1c",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "env SAGEJS_POLYNOMIAL_SAMPLES=3 node scripts/check-polynomial-budget.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 12.096,
+      "started_at": "2026-08-12T04:51:40.019Z",
+      "commit": "d2088079f87bcc86eda7d5b21ec5f855c16c1061",
+      "workspace_fingerprint": "9c291679d96738e8bc163426943b84c14cf8a2bb499ecc933d25ea231f954d1c",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 3.122,
+      "started_at": "2026-08-12T04:51:57.486Z",
+      "commit": "d2088079f87bcc86eda7d5b21ec5f855c16c1061",
+      "workspace_fingerprint": "9c291679d96738e8bc163426943b84c14cf8a2bb499ecc933d25ea231f954d1c",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 13.6,
+      "started_at": "2026-08-12T04:52:19.689Z",
+      "commit": "d2088079f87bcc86eda7d5b21ec5f855c16c1061",
+      "workspace_fingerprint": "1feb672f7a958ae6a0d2fe642935230a5c449b92cfcf9cc86f9637a80389327d",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 40.182,
+      "started_at": "2026-08-12T04:52:37.346Z",
+      "commit": "d2088079f87bcc86eda7d5b21ec5f855c16c1061",
+      "workspace_fingerprint": "1feb672f7a958ae6a0d2fe642935230a5c449b92cfcf9cc86f9637a80389327d",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 13.237,
+      "started_at": "2026-08-12T04:53:47.783Z",
+      "commit": "d2088079f87bcc86eda7d5b21ec5f855c16c1061",
+      "workspace_fingerprint": "767b43b0bc28f79859c71b90d92792ab4dfc5a22afc4a561348395a0857518a4",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 38.05,
+      "started_at": "2026-08-12T04:55:13.344Z",
+      "commit": "d2088079f87bcc86eda7d5b21ec5f855c16c1061",
+      "workspace_fingerprint": "71bc4f53c30f76fcdaea0d5d787b01c037e5310ee341b2cb4f7df198fff66ef3",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node test/exact-polynomial-xgcd-resource.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.677,
+      "started_at": "2026-08-12T04:56:34.457Z",
+      "commit": "d2088079f87bcc86eda7d5b21ec5f855c16c1061",
+      "workspace_fingerprint": "71bc4f53c30f76fcdaea0d5d787b01c037e5310ee341b2cb4f7df198fff66ef3",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node test/exact-polynomial-resource-ffi.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 3.403,
+      "started_at": "2026-08-12T04:56:49.421Z",
+      "commit": "d2088079f87bcc86eda7d5b21ec5f855c16c1061",
+      "workspace_fingerprint": "71bc4f53c30f76fcdaea0d5d787b01c037e5310ee341b2cb4f7df198fff66ef3",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "env SAGEJS_POLYNOMIAL_SAMPLES=3 node scripts/check-polynomial-budget.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 10.322,
+      "started_at": "2026-08-12T04:56:59.903Z",
+      "commit": "d2088079f87bcc86eda7d5b21ec5f855c16c1061",
+      "workspace_fingerprint": "71bc4f53c30f76fcdaea0d5d787b01c037e5310ee341b2cb4f7df198fff66ef3",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 12.356,
+      "started_at": "2026-08-12T04:57:17.527Z",
+      "commit": "d2088079f87bcc86eda7d5b21ec5f855c16c1061",
+      "workspace_fingerprint": "71bc4f53c30f76fcdaea0d5d787b01c037e5310ee341b2cb4f7df198fff66ef3",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 12.001,
+      "started_at": "2026-08-12T04:57:34.299Z",
+      "commit": "d2088079f87bcc86eda7d5b21ec5f855c16c1061",
+      "workspace_fingerprint": "71bc4f53c30f76fcdaea0d5d787b01c037e5310ee341b2cb4f7df198fff66ef3",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Added Sage-compatible ZZ[x]/QQ[x] xgcd through two generated owned three-polynomial FLINT aggregate resources and selectors, with exact portable fallbacks, upstream Sage oracle fixtures, deterministic close/failure and sanitizer lifecycle coverage, and warm performance budgets.",
+    "risks": [
+      "The aggregate declarations use wasm=False because generated exact-polynomial resource ownership is not yet available in Wasm; browsers use the tested ordinary-Python fallback, matching the pre-existing exact-polynomial limitation rather than adding a new architecture blocker.",
+      "The portable ZZ[x] fallback computes a Sylvester determinant with Bareiss elimination to preserve Sage's resultant-valued semantics; it is correctness-oriented rather than intended to compete with FLINT for large inputs."
+    ],
+    "next_steps": [
+      "Integrate generated exact-polynomial resource ownership into the Wasm host when that shared resource path is implemented.",
+      "Consider extending xgcd to finite-field polynomial parents in a separate focused lane."
+    ]
+  }
+}

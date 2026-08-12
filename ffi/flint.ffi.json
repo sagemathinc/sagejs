@@ -261,6 +261,44 @@
       }
     },
     {
+      "id": "fmpz_polynomial_xgcd_result",
+      "python_name": "FmpzPolynomialXgcdResult",
+      "abi_type": "sagejs_fmpz_polynomial_xgcd_result_t",
+      "ownership": "owned",
+      "owner": null,
+      "dynamic": {
+        "close_export": "ffiFmpzPolynomialXgcdResultClose"
+      },
+      "native": {
+        "clear_symbol": "sagejs_fmpz_polynomial_xgcd_result_clear",
+        "size_symbol": "sagejs_fmpz_polynomial_xgcd_result_allocated_bytes"
+      },
+      "targets": {
+        "dynamic": true,
+        "native": true,
+        "wasm": false
+      }
+    },
+    {
+      "id": "fmpq_polynomial_xgcd_result",
+      "python_name": "FmpqPolynomialXgcdResult",
+      "abi_type": "sagejs_fmpq_polynomial_xgcd_result_t",
+      "ownership": "owned",
+      "owner": null,
+      "dynamic": {
+        "close_export": "ffiFmpqPolynomialXgcdResultClose"
+      },
+      "native": {
+        "clear_symbol": "sagejs_fmpq_polynomial_xgcd_result_clear",
+        "size_symbol": "sagejs_fmpq_polynomial_xgcd_result_allocated_bytes"
+      },
+      "targets": {
+        "dynamic": true,
+        "native": true,
+        "wasm": false
+      }
+    },
+    {
       "id": "dirichlet_group",
       "python_name": "DirichletGroup",
       "abi_type": "dirichlet_group_t",
@@ -1193,6 +1231,295 @@
       "errors": {
         "exception": "ValueError",
         "message": "integer polynomial is unsealed"
+      },
+      "exceptions": {
+        "policy": "none",
+        "failure_status": null
+      },
+      "targets": {
+        "dynamic": true,
+        "native": true,
+        "wasm": false
+      }
+    },
+    {
+      "id": "fmpz_polynomial_xgcd_resource",
+      "python_name": "fmpz_polynomial_xgcd_resource",
+      "signature": {
+        "parameters": [
+          {
+            "name": "left",
+            "type": "FmpzPolynomial",
+            "ownership": "borrowed",
+            "mutability": "read",
+            "aliasing": "allowed"
+          },
+          {
+            "name": "right",
+            "type": "FmpzPolynomial",
+            "ownership": "borrowed",
+            "mutability": "read",
+            "aliasing": "allowed"
+          }
+        ],
+        "return_type": "FmpzPolynomialXgcdResult",
+        "return_ownership": "owned",
+        "borrow_from": null
+      },
+      "dynamic": {
+        "export": "ffiFmpzPolynomialXgcdResource"
+      },
+      "native": {
+        "symbol": "sagejs_fmpz_polynomial_xgcd_resource",
+        "return_type": "int",
+        "arguments": [
+          {
+            "source": "result",
+            "abi_type": "sagejs_fmpz_polynomial_xgcd_result_t",
+            "direction": "out",
+            "adapter": null
+          },
+          {
+            "source": "left",
+            "abi_type": "sagejs_fmpz_polynomial_t",
+            "direction": "in",
+            "adapter": null
+          },
+          {
+            "source": "right",
+            "abi_type": "sagejs_fmpz_polynomial_t",
+            "direction": "in",
+            "adapter": null
+          }
+        ]
+      },
+      "effects": {
+        "pure": false,
+        "deterministic": true,
+        "thread_safe": true,
+        "may_allocate": true,
+        "may_raise": [
+          "ValueError"
+        ],
+        "writes": []
+      },
+      "result": {
+        "domain": "status",
+        "success": [
+          1
+        ],
+        "absence": null
+      },
+      "errors": {
+        "exception": "ValueError",
+        "message": "integer polynomial is unsealed"
+      },
+      "exceptions": {
+        "policy": "none",
+        "failure_status": null
+      },
+      "targets": {
+        "dynamic": true,
+        "native": true,
+        "wasm": false
+      }
+    },
+    {
+      "id": "fmpz_polynomial_xgcd_result_gcd",
+      "python_name": "fmpz_polynomial_xgcd_result_gcd",
+      "signature": {
+        "parameters": [
+          {
+            "name": "xgcd",
+            "type": "FmpzPolynomialXgcdResult",
+            "ownership": "borrowed",
+            "mutability": "read",
+            "aliasing": "allowed"
+          }
+        ],
+        "return_type": "FmpzPolynomial",
+        "return_ownership": "owned",
+        "borrow_from": null
+      },
+      "dynamic": {
+        "export": "ffiFmpzPolynomialXgcdResultGcd"
+      },
+      "native": {
+        "symbol": "sagejs_fmpz_polynomial_xgcd_result_gcd",
+        "return_type": "int",
+        "arguments": [
+          {
+            "source": "result",
+            "abi_type": "sagejs_fmpz_polynomial_t",
+            "direction": "out",
+            "adapter": null
+          },
+          {
+            "source": "xgcd",
+            "abi_type": "sagejs_fmpz_polynomial_xgcd_result_t",
+            "direction": "in",
+            "adapter": null
+          }
+        ]
+      },
+      "effects": {
+        "pure": false,
+        "deterministic": true,
+        "thread_safe": true,
+        "may_allocate": true,
+        "may_raise": [
+          "ValueError"
+        ],
+        "writes": []
+      },
+      "result": {
+        "domain": "status",
+        "success": [
+          1
+        ],
+        "absence": null
+      },
+      "errors": {
+        "exception": "ValueError",
+        "message": "invalid integer xgcd result"
+      },
+      "exceptions": {
+        "policy": "none",
+        "failure_status": null
+      },
+      "targets": {
+        "dynamic": true,
+        "native": true,
+        "wasm": false
+      }
+    },
+    {
+      "id": "fmpz_polynomial_xgcd_result_left_coefficient",
+      "python_name": "fmpz_polynomial_xgcd_result_left_coefficient",
+      "signature": {
+        "parameters": [
+          {
+            "name": "xgcd",
+            "type": "FmpzPolynomialXgcdResult",
+            "ownership": "borrowed",
+            "mutability": "read",
+            "aliasing": "allowed"
+          }
+        ],
+        "return_type": "FmpzPolynomial",
+        "return_ownership": "owned",
+        "borrow_from": null
+      },
+      "dynamic": {
+        "export": "ffiFmpzPolynomialXgcdResultLeftCoefficient"
+      },
+      "native": {
+        "symbol": "sagejs_fmpz_polynomial_xgcd_result_left_coefficient",
+        "return_type": "int",
+        "arguments": [
+          {
+            "source": "result",
+            "abi_type": "sagejs_fmpz_polynomial_t",
+            "direction": "out",
+            "adapter": null
+          },
+          {
+            "source": "xgcd",
+            "abi_type": "sagejs_fmpz_polynomial_xgcd_result_t",
+            "direction": "in",
+            "adapter": null
+          }
+        ]
+      },
+      "effects": {
+        "pure": false,
+        "deterministic": true,
+        "thread_safe": true,
+        "may_allocate": true,
+        "may_raise": [
+          "ValueError"
+        ],
+        "writes": []
+      },
+      "result": {
+        "domain": "status",
+        "success": [
+          1
+        ],
+        "absence": null
+      },
+      "errors": {
+        "exception": "ValueError",
+        "message": "invalid integer xgcd result"
+      },
+      "exceptions": {
+        "policy": "none",
+        "failure_status": null
+      },
+      "targets": {
+        "dynamic": true,
+        "native": true,
+        "wasm": false
+      }
+    },
+    {
+      "id": "fmpz_polynomial_xgcd_result_right_coefficient",
+      "python_name": "fmpz_polynomial_xgcd_result_right_coefficient",
+      "signature": {
+        "parameters": [
+          {
+            "name": "xgcd",
+            "type": "FmpzPolynomialXgcdResult",
+            "ownership": "borrowed",
+            "mutability": "read",
+            "aliasing": "allowed"
+          }
+        ],
+        "return_type": "FmpzPolynomial",
+        "return_ownership": "owned",
+        "borrow_from": null
+      },
+      "dynamic": {
+        "export": "ffiFmpzPolynomialXgcdResultRightCoefficient"
+      },
+      "native": {
+        "symbol": "sagejs_fmpz_polynomial_xgcd_result_right_coefficient",
+        "return_type": "int",
+        "arguments": [
+          {
+            "source": "result",
+            "abi_type": "sagejs_fmpz_polynomial_t",
+            "direction": "out",
+            "adapter": null
+          },
+          {
+            "source": "xgcd",
+            "abi_type": "sagejs_fmpz_polynomial_xgcd_result_t",
+            "direction": "in",
+            "adapter": null
+          }
+        ]
+      },
+      "effects": {
+        "pure": false,
+        "deterministic": true,
+        "thread_safe": true,
+        "may_allocate": true,
+        "may_raise": [
+          "ValueError"
+        ],
+        "writes": []
+      },
+      "result": {
+        "domain": "status",
+        "success": [
+          1
+        ],
+        "absence": null
+      },
+      "errors": {
+        "exception": "ValueError",
+        "message": "invalid integer xgcd result"
       },
       "exceptions": {
         "policy": "none",
@@ -3131,6 +3458,295 @@
       "errors": {
         "exception": "ValueError",
         "message": "rational polynomial is unsealed"
+      },
+      "exceptions": {
+        "policy": "none",
+        "failure_status": null
+      },
+      "targets": {
+        "dynamic": true,
+        "native": true,
+        "wasm": false
+      }
+    },
+    {
+      "id": "fmpq_polynomial_xgcd_resource",
+      "python_name": "fmpq_polynomial_xgcd_resource",
+      "signature": {
+        "parameters": [
+          {
+            "name": "left",
+            "type": "FmpqPolynomial",
+            "ownership": "borrowed",
+            "mutability": "read",
+            "aliasing": "allowed"
+          },
+          {
+            "name": "right",
+            "type": "FmpqPolynomial",
+            "ownership": "borrowed",
+            "mutability": "read",
+            "aliasing": "allowed"
+          }
+        ],
+        "return_type": "FmpqPolynomialXgcdResult",
+        "return_ownership": "owned",
+        "borrow_from": null
+      },
+      "dynamic": {
+        "export": "ffiFmpqPolynomialXgcdResource"
+      },
+      "native": {
+        "symbol": "sagejs_fmpq_polynomial_xgcd_resource",
+        "return_type": "int",
+        "arguments": [
+          {
+            "source": "result",
+            "abi_type": "sagejs_fmpq_polynomial_xgcd_result_t",
+            "direction": "out",
+            "adapter": null
+          },
+          {
+            "source": "left",
+            "abi_type": "sagejs_fmpq_polynomial_t",
+            "direction": "in",
+            "adapter": null
+          },
+          {
+            "source": "right",
+            "abi_type": "sagejs_fmpq_polynomial_t",
+            "direction": "in",
+            "adapter": null
+          }
+        ]
+      },
+      "effects": {
+        "pure": false,
+        "deterministic": true,
+        "thread_safe": true,
+        "may_allocate": true,
+        "may_raise": [
+          "ValueError"
+        ],
+        "writes": []
+      },
+      "result": {
+        "domain": "status",
+        "success": [
+          1
+        ],
+        "absence": null
+      },
+      "errors": {
+        "exception": "ValueError",
+        "message": "rational polynomial is unsealed"
+      },
+      "exceptions": {
+        "policy": "none",
+        "failure_status": null
+      },
+      "targets": {
+        "dynamic": true,
+        "native": true,
+        "wasm": false
+      }
+    },
+    {
+      "id": "fmpq_polynomial_xgcd_result_gcd",
+      "python_name": "fmpq_polynomial_xgcd_result_gcd",
+      "signature": {
+        "parameters": [
+          {
+            "name": "xgcd",
+            "type": "FmpqPolynomialXgcdResult",
+            "ownership": "borrowed",
+            "mutability": "read",
+            "aliasing": "allowed"
+          }
+        ],
+        "return_type": "FmpqPolynomial",
+        "return_ownership": "owned",
+        "borrow_from": null
+      },
+      "dynamic": {
+        "export": "ffiFmpqPolynomialXgcdResultGcd"
+      },
+      "native": {
+        "symbol": "sagejs_fmpq_polynomial_xgcd_result_gcd",
+        "return_type": "int",
+        "arguments": [
+          {
+            "source": "result",
+            "abi_type": "sagejs_fmpq_polynomial_t",
+            "direction": "out",
+            "adapter": null
+          },
+          {
+            "source": "xgcd",
+            "abi_type": "sagejs_fmpq_polynomial_xgcd_result_t",
+            "direction": "in",
+            "adapter": null
+          }
+        ]
+      },
+      "effects": {
+        "pure": false,
+        "deterministic": true,
+        "thread_safe": true,
+        "may_allocate": true,
+        "may_raise": [
+          "ValueError"
+        ],
+        "writes": []
+      },
+      "result": {
+        "domain": "status",
+        "success": [
+          1
+        ],
+        "absence": null
+      },
+      "errors": {
+        "exception": "ValueError",
+        "message": "invalid rational xgcd result"
+      },
+      "exceptions": {
+        "policy": "none",
+        "failure_status": null
+      },
+      "targets": {
+        "dynamic": true,
+        "native": true,
+        "wasm": false
+      }
+    },
+    {
+      "id": "fmpq_polynomial_xgcd_result_left_coefficient",
+      "python_name": "fmpq_polynomial_xgcd_result_left_coefficient",
+      "signature": {
+        "parameters": [
+          {
+            "name": "xgcd",
+            "type": "FmpqPolynomialXgcdResult",
+            "ownership": "borrowed",
+            "mutability": "read",
+            "aliasing": "allowed"
+          }
+        ],
+        "return_type": "FmpqPolynomial",
+        "return_ownership": "owned",
+        "borrow_from": null
+      },
+      "dynamic": {
+        "export": "ffiFmpqPolynomialXgcdResultLeftCoefficient"
+      },
+      "native": {
+        "symbol": "sagejs_fmpq_polynomial_xgcd_result_left_coefficient",
+        "return_type": "int",
+        "arguments": [
+          {
+            "source": "result",
+            "abi_type": "sagejs_fmpq_polynomial_t",
+            "direction": "out",
+            "adapter": null
+          },
+          {
+            "source": "xgcd",
+            "abi_type": "sagejs_fmpq_polynomial_xgcd_result_t",
+            "direction": "in",
+            "adapter": null
+          }
+        ]
+      },
+      "effects": {
+        "pure": false,
+        "deterministic": true,
+        "thread_safe": true,
+        "may_allocate": true,
+        "may_raise": [
+          "ValueError"
+        ],
+        "writes": []
+      },
+      "result": {
+        "domain": "status",
+        "success": [
+          1
+        ],
+        "absence": null
+      },
+      "errors": {
+        "exception": "ValueError",
+        "message": "invalid rational xgcd result"
+      },
+      "exceptions": {
+        "policy": "none",
+        "failure_status": null
+      },
+      "targets": {
+        "dynamic": true,
+        "native": true,
+        "wasm": false
+      }
+    },
+    {
+      "id": "fmpq_polynomial_xgcd_result_right_coefficient",
+      "python_name": "fmpq_polynomial_xgcd_result_right_coefficient",
+      "signature": {
+        "parameters": [
+          {
+            "name": "xgcd",
+            "type": "FmpqPolynomialXgcdResult",
+            "ownership": "borrowed",
+            "mutability": "read",
+            "aliasing": "allowed"
+          }
+        ],
+        "return_type": "FmpqPolynomial",
+        "return_ownership": "owned",
+        "borrow_from": null
+      },
+      "dynamic": {
+        "export": "ffiFmpqPolynomialXgcdResultRightCoefficient"
+      },
+      "native": {
+        "symbol": "sagejs_fmpq_polynomial_xgcd_result_right_coefficient",
+        "return_type": "int",
+        "arguments": [
+          {
+            "source": "result",
+            "abi_type": "sagejs_fmpq_polynomial_t",
+            "direction": "out",
+            "adapter": null
+          },
+          {
+            "source": "xgcd",
+            "abi_type": "sagejs_fmpq_polynomial_xgcd_result_t",
+            "direction": "in",
+            "adapter": null
+          }
+        ]
+      },
+      "effects": {
+        "pure": false,
+        "deterministic": true,
+        "thread_safe": true,
+        "may_allocate": true,
+        "may_raise": [
+          "ValueError"
+        ],
+        "writes": []
+      },
+      "result": {
+        "domain": "status",
+        "success": [
+          1
+        ],
+        "absence": null
+      },
+      "errors": {
+        "exception": "ValueError",
+        "message": "invalid rational xgcd result"
       },
       "exceptions": {
         "policy": "none",

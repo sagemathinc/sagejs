@@ -296,6 +296,194 @@ def _dynamic_exact_polynomial_gcd(
     )
 
 
+def _dynamic_field_polynomial_xgcd(
+    left: PolynomialElement, right: PolynomialElement
+) -> tuple[PolynomialElement, PolynomialElement, PolynomialElement]:
+    """Return the monic extended GCD over `QQ` without a native backend."""
+    parent = left.parent()
+    old_remainder = left
+    remainder = right
+    old_left = parent(1)
+    left_coefficient = parent(0)
+    old_right = parent(0)
+    right_coefficient = parent(1)
+    while remainder:
+        quotient, next_remainder = old_remainder._quo_rem_same_parent(remainder)
+        old_remainder, remainder = remainder, next_remainder
+        old_left, left_coefficient = (
+            left_coefficient,
+            old_left - quotient * left_coefficient,
+        )
+        old_right, right_coefficient = (
+            right_coefficient,
+            old_right - quotient * right_coefficient,
+        )
+    if not old_remainder:
+        return runtime.math_tuple([old_remainder, old_left, old_right])
+    old_coefficients = old_remainder.coefficients()
+    leading_coefficient = old_coefficients[len(old_coefficients) - 1]
+    scale = parent.base_ring()(1) / leading_coefficient
+    return runtime.math_tuple(
+        [old_remainder * scale, old_left * scale, old_right * scale]
+    )
+
+
+def _integer_xgcd_values(left: Any, right: Any) -> tuple[Any, Any, Any]:
+    """Return Sage-normalized integer extended GCD coefficients."""
+    old_remainder = runtime.bigint(left)
+    remainder = runtime.bigint(right)
+    old_left = runtime.bigint(1)
+    left_coefficient = runtime.bigint(0)
+    old_right = runtime.bigint(0)
+    right_coefficient = runtime.bigint(1)
+    while remainder != runtime.bigint(0):
+        quotient = runtime.native_div(old_remainder, remainder)
+        old_remainder, remainder = (
+            remainder,
+            runtime.native_sub(old_remainder, runtime.native_mul(quotient, remainder)),
+        )
+        old_left, left_coefficient = (
+            left_coefficient,
+            runtime.native_sub(
+                old_left, runtime.native_mul(quotient, left_coefficient)
+            ),
+        )
+        old_right, right_coefficient = (
+            right_coefficient,
+            runtime.native_sub(
+                old_right, runtime.native_mul(quotient, right_coefficient)
+            ),
+        )
+    if old_remainder < runtime.bigint(0):
+        old_remainder = -old_remainder
+        old_left = -old_left
+        old_right = -old_right
+    return runtime.math_tuple(
+        [
+            runtime.normalize_integer(old_remainder),
+            runtime.normalize_integer(old_left),
+            runtime.normalize_integer(old_right),
+        ]
+    )
+
+
+def _bareiss_integer_determinant(rows: list[list[Any]]) -> Any:
+    """Return the exact determinant of a square integer matrix."""
+    dimension = len(rows)
+    if dimension == 0:
+        return runtime.bigint(1)
+    matrix = [[runtime.integer_bigint(value) for value in row] for row in rows]
+    previous = runtime.bigint(1)
+    sign = runtime.bigint(1)
+    for pivot_index in range(dimension - 1):
+        pivot_row = pivot_index
+        while pivot_row < dimension and matrix[pivot_row][
+            pivot_index
+        ] == runtime.bigint(0):
+            pivot_row += 1
+        if pivot_row == dimension:
+            return runtime.bigint(0)
+        if pivot_row != pivot_index:
+            matrix[pivot_index], matrix[pivot_row] = (
+                matrix[pivot_row],
+                matrix[pivot_index],
+            )
+            sign = -sign
+        pivot = matrix[pivot_index][pivot_index]
+        for row in range(pivot_index + 1, dimension):
+            for column in range(pivot_index + 1, dimension):
+                numerator = (
+                    matrix[row][column] * pivot
+                    - matrix[row][pivot_index] * matrix[pivot_index][column]
+                )
+                matrix[row][column] = runtime.bigint_divexact(numerator, previous)
+            matrix[row][pivot_index] = runtime.bigint(0)
+        previous = pivot
+    return sign * matrix[dimension - 1][dimension - 1]
+
+
+def _integer_polynomial_resultant(
+    left: PolynomialElement, right: PolynomialElement
+) -> Any:
+    """Return the signed Sylvester resultant of nonconstant `ZZ` polynomials."""
+    left_coefficients = [
+        runtime.integer_bigint(value) for value in reversed(left.coefficients())
+    ]
+    right_coefficients = [
+        runtime.integer_bigint(value) for value in reversed(right.coefficients())
+    ]
+    left_degree = len(left_coefficients) - 1
+    right_degree = len(right_coefficients) - 1
+    dimension = left_degree + right_degree
+    rows = []
+    for shift in range(right_degree):
+        rows.append(
+            [runtime.bigint(0) for _index in range(shift)]
+            + left_coefficients
+            + [runtime.bigint(0) for _index in range(right_degree - shift - 1)]
+        )
+    for shift in range(left_degree):
+        rows.append(
+            [runtime.bigint(0) for _index in range(shift)]
+            + right_coefficients
+            + [runtime.bigint(0) for _index in range(left_degree - shift - 1)]
+        )
+    if len(rows) != dimension:
+        raise RuntimeError("invalid Sylvester matrix dimensions")
+    return _bareiss_integer_determinant(rows)
+
+
+def _rational_coefficients_denominator(polynomials: list[Any]) -> Any:
+    denominator = runtime.bigint(1)
+    for polynomial in polynomials:
+        for coefficient in polynomial.coefficients():
+            value = runtime.integer_bigint(coefficient._denominator)
+            denominator = (
+                runtime.bigint_divexact(
+                    denominator,
+                    runtime.bigint_gcd(denominator, value),
+                )
+                * value
+            )
+    return denominator
+
+
+def _dynamic_integer_polynomial_xgcd(
+    left: PolynomialElement, right: PolynomialElement
+) -> tuple[PolynomialElement, PolynomialElement, PolynomialElement]:
+    """Mirror Sage's resultant-valued extended GCD over `ZZ`."""
+    parent = left.parent()
+    rational_parent = PolynomialRing(sage.QQ, parent.variable_name())
+    rational_gcd, rational_left, rational_right = _dynamic_field_polynomial_xgcd(
+        rational_parent._from_coefficients(left.coefficients()),
+        rational_parent._from_coefficients(right.coefficients()),
+    )
+    resultant = _integer_polynomial_resultant(left, right)
+    scale = (
+        resultant
+        if resultant != runtime.bigint(0)
+        else _rational_coefficients_denominator(
+            [rational_gcd, rational_left, rational_right]
+        )
+    )
+
+    def integral_polynomial(source: PolynomialElement) -> PolynomialElement:
+        coefficients = []
+        for coefficient in source.coefficients():
+            numerator = runtime.integer_bigint(coefficient._numerator) * scale
+            denominator = runtime.integer_bigint(coefficient._denominator)
+            coefficients.append(runtime.bigint_divexact(numerator, denominator))
+        return parent._from_coefficients(coefficients)
+
+    return runtime.math_tuple(
+        [
+            integral_polynomial(rational_gcd),
+            integral_polynomial(rational_left),
+            integral_polynomial(rational_right),
+        ]
+    )
+
+
 def _integer_buffer_values(source: Any) -> list[Any]:
     converter = runtime.reflect.get(source, "toArray")
     if runtime.jstype(converter) == "function":
@@ -1863,6 +2051,94 @@ class PolynomialElement(sage.Element):
                 "polynomial gcd is implemented over ZZ, QQ, and finite fields"
             )
         return operands.parent._from_legacy_native(native_value)
+
+    def xgcd(self, other: object) -> Any:
+        """Return an extended GCD triple `(g, s, t)`.
+
+        Over `QQ`, `g` is the monic gcd and `g == s*self + t*other`.
+        Integer polynomials do not form a principal ideal domain, so over
+        `ZZ`, `g` can instead be the resultant or another integer multiple of
+        the polynomial gcd. This follows Sage's FLINT semantics exactly. In
+        particular, constant `ZZ` inputs return the integer xgcd triple.
+        """
+        operands = runtime.coercion_model.coercePair(self, other)
+        if not isinstance(operands.left, PolynomialElement) or not isinstance(
+            operands.right, PolynomialElement
+        ):
+            raise TypeError("polynomial xgcd requires polynomials")
+        left = operands.left
+        right = operands.right
+        parent = operands.parent
+        kind = _packed_polynomial_kind(parent.base_ring())
+        if kind == "ZZ":
+            if left.is_zero():
+                return runtime.math_tuple([right, 0, 1])
+            if right.is_zero():
+                return runtime.math_tuple([left, 1, 0])
+            if left.degree() == 0 and right.degree() == 0:
+                left_constant = left.__getitem__(0)
+                right_constant = right.__getitem__(0)
+                return _integer_xgcd_values(left_constant, right_constant)
+            if (
+                left._has_fmpz_polynomial_resource()
+                and right._has_fmpz_polynomial_resource()
+            ):
+                ffi = _flint_ffi_module()
+                result = ffi.fmpz_polynomial_xgcd_resource(
+                    left._exact_polynomial_resource(),
+                    right._exact_polynomial_resource(),
+                )
+                try:
+                    return runtime.math_tuple(
+                        [
+                            parent._from_fmpz_polynomial_resource(
+                                ffi.fmpz_polynomial_xgcd_result_gcd(result)
+                            ),
+                            parent._from_fmpz_polynomial_resource(
+                                ffi.fmpz_polynomial_xgcd_result_left_coefficient(result)
+                            ),
+                            parent._from_fmpz_polynomial_resource(
+                                ffi.fmpz_polynomial_xgcd_result_right_coefficient(
+                                    result
+                                )
+                            ),
+                        ]
+                    )
+                finally:
+                    result.close()
+            return _dynamic_integer_polynomial_xgcd(left, right)
+        if kind == "QQ":
+            if left.is_zero() and right.is_zero():
+                return runtime.math_tuple([left, left, left])
+            if (
+                left._has_fmpq_polynomial_resource()
+                and right._has_fmpq_polynomial_resource()
+            ):
+                ffi = _flint_ffi_module()
+                result = ffi.fmpq_polynomial_xgcd_resource(
+                    left._exact_polynomial_resource(),
+                    right._exact_polynomial_resource(),
+                )
+                try:
+                    return runtime.math_tuple(
+                        [
+                            parent._from_fmpq_polynomial_resource(
+                                ffi.fmpq_polynomial_xgcd_result_gcd(result)
+                            ),
+                            parent._from_fmpq_polynomial_resource(
+                                ffi.fmpq_polynomial_xgcd_result_left_coefficient(result)
+                            ),
+                            parent._from_fmpq_polynomial_resource(
+                                ffi.fmpq_polynomial_xgcd_result_right_coefficient(
+                                    result
+                                )
+                            ),
+                        ]
+                    )
+                finally:
+                    result.close()
+            return _dynamic_field_polynomial_xgcd(left, right)
+        raise TypeError("polynomial xgcd is implemented over ZZ and QQ")
 
     def is_irreducible(self) -> bool:
         if self._parent.base_ring()._kind == "GF_EXTENSION":
