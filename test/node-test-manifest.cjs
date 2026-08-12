@@ -80,6 +80,7 @@ const integration = [
   "test/linear-matrix-subspaces.cjs",
   "test/linear-matrix-vector.cjs",
   "test/linear-sparse-random.cjs",
+  "test/exact-polynomial-byte-regions.cjs",
   "test/public-matrix-selection-v1.cjs",
   "test/linear-vector-contract.cjs",
   "test/dense-integer-solve-resource.cjs",

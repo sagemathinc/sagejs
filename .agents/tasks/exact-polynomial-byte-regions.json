@@ -4,7 +4,7 @@
   "id": "exact-polynomial-byte-regions",
   "title": "Exact polynomial byte-region contract",
   "lane": "arithmetic-algebra",
-  "status": "review",
+  "status": "complete",
   "owner": "user",
   "objective": "Specify and differentially verify a direct signed byte-region ingress and egress contract for packed ZZ[x] and QQ[x] coefficients, with implementation-ready ABI and measured current overhead",
   "base_commit": "e84feccdd2404715491bf4a954b34bc01837fdf6",
