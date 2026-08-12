@@ -1,0 +1,48 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "sparse-random-public",
+  "title": "Public Sparse Random Matrix Construction",
+  "lane": "arithmetic-algebra",
+  "status": "active",
+  "owner": "user",
+  "objective": "Wire Sage-compatible sparse random construction into public random_matrix over ZZ, QQ, GF(2), and word GF(p) through one storage-level bulk boundary with competitive warm performance",
+  "base_commit": "91522d6bba7eccfb75010c4d4f15868b258bfde0",
+  "claims": [
+    "src/baselib/matrix.py",
+    "src/lib/sagejs/linear_algebra/sparse_random_public.py",
+    "test/public-sparse-random.cjs",
+    "bench/public-sparse-random.cjs"
+  ],
+  "dependencies": [
+    "sparse-random-matrix-contract"
+  ],
+  "references": [],
+  "architecture": {
+    "strategy": "source-transparent-native",
+    "fallback": "same-source",
+    "oracles": [
+      "sage",
+      "cpython",
+      "javascript",
+      "src/lib/sagejs/linear_algebra/sparse_random.py"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "pnpm test:native"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "",
+    "risks": [],
+    "next_steps": []
+  }
+}
