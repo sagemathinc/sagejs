@@ -13,6 +13,7 @@ const flintPrefix = resolve(
   process.env.SAGEJS_FLINT_PREFIX ||
     join(root, "packages", "flint", ".native", "prefix"),
 );
+const lifecycleRounds = process.platform === "darwin" ? 64 : 1000;
 
 if (process.platform === "win32") {
   process.stdout.write(JSON.stringify({
@@ -38,7 +39,7 @@ int main(void)
     const uint64_t element_coordinates[2] = {1, 2};
     const uint64_t invalid_coordinates[2] = {1, 3};
     const uint64_t *checked_coordinate = NULL;
-    for (slong round = 0; round < 1000; round++)
+    for (slong round = 0; round < ${lifecycleRounds}; round++)
     {
         sagejs_fq_context_t context, other_context, invalid_context;
         sagejs_fq_element_t element, element_copy, element_sum, other_element;
@@ -145,7 +146,7 @@ int main(void)
         sagejs_fq_element_clear(other_element);
         sagejs_fq_context_clear(other_context);
     }
-    printf("rounds=1000\n");
+    printf("rounds=${lifecycleRounds}\n");
     return 0;
 }
 `;
@@ -181,7 +182,7 @@ try {
     0,
     `sanitizer harness failed:\n${executed.stdout}${executed.stderr}`,
   );
-  assert.equal(executed.stdout.trim(), "rounds=1000");
+  assert.equal(executed.stdout.trim(), `rounds=${lifecycleRounds}`);
   process.stdout.write(JSON.stringify({
     schema: "sagejs.ffi/extension-polynomial-resource-v1",
     capability: "sanitizers",

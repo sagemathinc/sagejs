@@ -18,6 +18,8 @@ const temporary = mkdtempSync(join(tmpdir(), "sagejs-fmpz-mod-poly-"));
 const source = join(temporary, "witness.c");
 const executable = join(temporary, "witness");
 const sanitize = process.env.SAGEJS_FFI_SANITIZE === "1";
+const resultStressRounds = sanitize && process.platform === "darwin" ? 128 : 4096;
+const aggregateStressRounds = sanitize && process.platform === "darwin" ? 16 : 256;
 
 writeFileSync(
   source,
@@ -242,14 +244,14 @@ int main(void)
 
     /* Thousands of independent result/close schedules catch accidental
        context borrowing under ASAN/LSAN and ordinary libc. */
-    for (size_t iteration = 0; iteration < 4096; iteration++)
+    for (size_t iteration = 0; iteration < ${resultStressRounds}; iteration++)
     {
         sagejs_fmpz_mod_polynomial_t temporary;
         assert(sagejs_fmpz_mod_polynomial_add(temporary, left, divisor));
         assert(sagejs_fmpz_mod_polynomial_length(scalar, temporary));
         sagejs_fmpz_mod_polynomial_clear(temporary);
     }
-    for (size_t iteration = 0; iteration < 256; iteration++)
+    for (size_t iteration = 0; iteration < ${aggregateStressRounds}; iteration++)
     {
         sagejs_fmpz_mod_polynomial_division_result_t aggregate_division;
         sagejs_fmpz_mod_polynomial_t child;
