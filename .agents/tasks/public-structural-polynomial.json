@@ -97,14 +97,85 @@
       "commit": "29913192fbb075b55c7b7c14b49ed1ff7849f036",
       "workspace_fingerprint": "fa89390001b33ad4d47a536b346a9eb8f2c8a26a076231258b41974ea91a0e68",
       "platform": "linux-x64"
+    },
+    {
+      "command": "node test/public-polynomial-structural.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.677,
+      "started_at": "2026-08-12T11:57:10.188Z",
+      "commit": "57ae155342572b8212fae41ad7f16526a3f18d8a",
+      "workspace_fingerprint": "9def4a9821b499fc39b3a10016bb7c1ce65ce85e5e7e0e6a2292ed336d2bd65e",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node test/polynomial-structural-calculus.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.34,
+      "started_at": "2026-08-12T11:57:13.519Z",
+      "commit": "57ae155342572b8212fae41ad7f16526a3f18d8a",
+      "workspace_fingerprint": "9def4a9821b499fc39b3a10016bb7c1ce65ce85e5e7e0e6a2292ed336d2bd65e",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/public-polynomial-structural.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.93,
+      "started_at": "2026-08-12T11:57:15.538Z",
+      "commit": "57ae155342572b8212fae41ad7f16526a3f18d8a",
+      "workspace_fingerprint": "9def4a9821b499fc39b3a10016bb7c1ce65ce85e5e7e0e6a2292ed336d2bd65e",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 13.996,
+      "started_at": "2026-08-12T11:57:20.491Z",
+      "commit": "57ae155342572b8212fae41ad7f16526a3f18d8a",
+      "workspace_fingerprint": "9def4a9821b499fc39b3a10016bb7c1ce65ce85e5e7e0e6a2292ed336d2bd65e",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 13.472,
+      "started_at": "2026-08-12T11:57:41.862Z",
+      "commit": "57ae155342572b8212fae41ad7f16526a3f18d8a",
+      "workspace_fingerprint": "9def4a9821b499fc39b3a10016bb7c1ce65ce85e5e7e0e6a2292ed336d2bd65e",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 44.613,
+      "started_at": "2026-08-12T11:57:58.995Z",
+      "commit": "57ae155342572b8212fae41ad7f16526a3f18d8a",
+      "workspace_fingerprint": "9def4a9821b499fc39b3a10016bb7c1ce65ce85e5e7e0e6a2292ed336d2bd65e",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 44.232,
+      "started_at": "2026-08-12T11:58:52.243Z",
+      "commit": "57ae155342572b8212fae41ad7f16526a3f18d8a",
+      "workspace_fingerprint": "9def4a9821b499fc39b3a10016bb7c1ce65ce85e5e7e0e6a2292ed336d2bd65e",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {
-    "summary": "Adds public same-parent composition, reverse, signed shifts, truncation, integral, resultant, and discriminant for dense univariate polynomials over ZZ, QQ, and packed word-prime GF(p). Exact Node polynomials remain sealed generated FLINT resources, prime-field calls cross one packed UInt64 boundary, rational scalar resources close deterministically, and portable hosts use the reviewed ordinary structural calculus. The dispatch lives in a strict lazy module so the arithmetic bootstrap stays within budget. The focused witness forbids exact coefficient materialization and runs with normal and native-disabled execution. Warm Linux x64 medians were 0.79 ms for degree-64-by-8 ZZ composition, 0.60 ms for the degree-64 ZZ resultant, 0.41 ms for degree-1000 QQ integration, 1.17 ms for degree-256-by-8 61-bit GF(p) composition, and 0.15 ms for the degree-256 GF(p) resultant.",
+    "summary": "Adds public same-parent composition, reverse, signed shifts, truncation, integral, resultant, and discriminant for dense univariate polynomials over ZZ, QQ, and packed word-prime GF(p). Exact Node polynomials remain sealed generated FLINT resources, prime-field calls cross one packed UInt64 boundary, rational scalar resources close deterministically, and portable hosts use the reviewed ordinary structural calculus. Sage edge semantics include zero for every negative truncation, zero prime-field integration, finite-characteristic integration holes, and zero for arbitrarily large negative shifts that exhaust the source while impossible positive allocations still fail. The strict lazy dispatch keeps the arithmetic bootstrap within budget. Focused witnesses run normal generated-resource, native-disabled dynamic-FFI, and forced portable packed modes; the exact witness traps both compatibility materialization and direct coefficients() requests. Warm Linux x64 medians were 0.88 ms for degree-64-by-8 ZZ composition, 0.58 ms for the degree-64 ZZ resultant, 0.42 ms for degree-1000 QQ integration, 1.21 ms for degree-256-by-8 61-bit GF(p) composition, and 0.19 ms for the degree-256 GF(p) resultant.",
     "risks": [
       "The generated structural FLINT wrappers currently execute through the safe dynamic FFI path because structural_flint is not yet selected as a production compiled kernel; making that shared selection is intentionally left to the integration lane.",
       "Linux x64 is validated locally. Portable tests prove the storage-neutral fallback infrastructure, but Linux arm64, macOS arm64, Windows fallback, and browser/WASM execution still rely on their normal CI lanes.",
-      "The repository-wide test:changed gate reached two unrelated inherited failures: compiler/algebra.py exceeded its fixture timeout, and compiler/matrix.py could not load the already-tracked lazy matrix_selection_public module from the standalone compiler fixture. All claimed focused, architecture, strict, and portable gates pass."
+      "The repository-wide test:changed gate reached two unrelated inherited failures: compiler/algebra.py exceeded its fixture timeout, and compiler/matrix.py could not load the already-tracked lazy matrix_selection_public module from the standalone compiler fixture. All claimed focused, architecture, strict, and portable gates pass.",
+      "The first portable-suite receipt missed an unrelated UInt64 packing timing-ratio guard under host noise (4.04 ms for its 500x500 sample); the unchanged rerun passed all 182 tests with a 1.50 ms sample."
     ],
     "next_steps": [
       "Have the integration lane decide whether structural_flint should become a production compiled kernel after comparing compiled and generated dynamic-FFI startup and steady-state costs.",
