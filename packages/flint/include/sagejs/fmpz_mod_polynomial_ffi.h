@@ -84,6 +84,16 @@ typedef struct
 typedef sagejs_fmpz_mod_polynomial_roots_struct
     sagejs_fmpz_mod_polynomial_roots_t[1];
 
+/* Shared canonical unsigned-integer encoding helpers are defined with the
+   ordinary polynomial serializer below, but factor and roots aggregate
+   transfers use the same encoding earlier in this header. */
+static inline int sagejs_fmpz_mod_polynomial_unsigned_size(
+    size_t *total, size_t *maximum, const fmpz_t value);
+
+static inline void sagejs_fmpz_mod_polynomial_write_unsigned(
+    unsigned char *data, size_t *offset, const fmpz_t value,
+    fmpz_t scratch, ulong *words);
+
 static inline size_t sagejs_fmpz_mod_polynomial_fmpz_bytes(
     const fmpz_t value)
 {
@@ -225,6 +235,16 @@ static inline int sagejs_fmpz_mod_polynomial_modulus(
     if (!polynomial->sealed)
         return 0;
     fmpz_set(result, fmpz_mod_ctx_modulus(polynomial->context));
+    return 1;
+}
+
+static inline int sagejs_fmpz_mod_polynomial_is_zero(
+    fmpz_t result, const sagejs_fmpz_mod_polynomial_t polynomial)
+{
+    if (!polynomial->sealed)
+        return 0;
+    fmpz_set_ui(result, (ulong) fmpz_mod_poly_is_zero(
+        polynomial->value, polynomial->context));
     return 1;
 }
 
@@ -590,6 +610,84 @@ static inline int sagejs_fmpz_mod_polynomial_factorization_factor(
     return 1;
 }
 
+static inline int sagejs_fmpz_mod_polynomial_factorization_take_bytes(
+    unsigned char **output, uint64_t *output_length,
+    const sagejs_fmpz_mod_polynomial_factorization_t factorization)
+{
+    *output = NULL;
+    *output_length = 0;
+    const slong count = factorization->value->num;
+    if (count < 0 || (uint64_t) count >
+            (uint64_t) ((SIZE_MAX - 16) / 16))
+        return 0;
+    size_t length = 16 + 16 * (size_t) count;
+    size_t maximum = 0;
+    if (!sagejs_fmpz_mod_polynomial_unsigned_size(&length, &maximum,
+            fmpz_mod_ctx_modulus(factorization->context)) ||
+        !sagejs_fmpz_mod_polynomial_unsigned_size(&length, &maximum,
+            factorization->unit))
+        return 0;
+    for (slong factor = 0; factor < count; factor++)
+        for (slong coefficient = 0;
+             coefficient < factorization->value->poly[factor].length;
+             coefficient++)
+            if (!sagejs_fmpz_mod_polynomial_unsigned_size(&length, &maximum,
+                    factorization->value->poly[factor].coeffs + coefficient))
+                return 0;
+    unsigned char *data = (unsigned char *) malloc(length == 0 ? 1 : length);
+    if (data == NULL)
+        return 0;
+    memcpy(data, "SJFPM\1\0\0", 8);
+    sagejs_exact_polynomial_write_u64(data, 8, (uint64_t) count);
+    for (slong factor = 0; factor < count; factor++)
+    {
+        const size_t metadata = 16 + 16 * (size_t) factor;
+        sagejs_exact_polynomial_write_u64(data, metadata,
+            (uint64_t) factorization->value->exp[factor]);
+        sagejs_exact_polynomial_write_u64(data, metadata + 8,
+            (uint64_t) factorization->value->poly[factor].length);
+    }
+    const size_t maximum_words =
+        (maximum + sizeof(ulong) - 1) / sizeof(ulong);
+    ulong *words = maximum_words == 0 ? NULL :
+        (ulong *) calloc(maximum_words, sizeof(ulong));
+    if (maximum_words != 0 && words == NULL)
+    {
+        free(data);
+        return 0;
+    }
+    fmpz_t scratch;
+    fmpz_init(scratch);
+    size_t offset = 16 + 16 * (size_t) count;
+    sagejs_fmpz_mod_polynomial_write_unsigned(data, &offset,
+        fmpz_mod_ctx_modulus(factorization->context), scratch, words);
+    sagejs_fmpz_mod_polynomial_write_unsigned(data, &offset,
+        factorization->unit, scratch, words);
+    for (slong factor = 0; factor < count; factor++)
+        for (slong coefficient = 0;
+             coefficient < factorization->value->poly[factor].length;
+             coefficient++)
+            sagejs_fmpz_mod_polynomial_write_unsigned(data, &offset,
+                factorization->value->poly[factor].coeffs + coefficient,
+                scratch, words);
+    fmpz_clear(scratch);
+    free(words);
+    if (offset != length)
+    {
+        free(data);
+        return 0;
+    }
+    *output = data;
+    *output_length = (uint64_t) length;
+    return 1;
+}
+
+static inline void sagejs_fmpz_mod_polynomial_free_bytes(
+    unsigned char *data)
+{
+    free(data);
+}
+
 static inline size_t sagejs_fmpz_mod_polynomial_roots_allocated_bytes(
     const sagejs_fmpz_mod_polynomial_roots_t roots)
 {
@@ -652,6 +750,80 @@ static inline int sagejs_fmpz_mod_polynomial_roots_root(
         roots->value->poly + (slong) index;
     fmpz_neg(output, factor->coeffs + 0);
     fmpz_mod_set_fmpz(output, output, roots->context);
+    return 1;
+}
+
+static inline int sagejs_fmpz_mod_polynomial_roots_take_bytes(
+    unsigned char **output, uint64_t *output_length,
+    const sagejs_fmpz_mod_polynomial_roots_t roots)
+{
+    *output = NULL;
+    *output_length = 0;
+    const slong count = roots->value->num;
+    if (count < 0 || (uint64_t) count >
+            (uint64_t) ((SIZE_MAX - 16) / 8))
+        return 0;
+    size_t length = 16 + 8 * (size_t) count;
+    size_t maximum = 0;
+    if (!sagejs_fmpz_mod_polynomial_unsigned_size(&length, &maximum,
+            fmpz_mod_ctx_modulus(roots->context)))
+        return 0;
+    fmpz_t root;
+    fmpz_init(root);
+    for (slong index = 0; index < count; index++)
+    {
+        if (!sagejs_fmpz_mod_polynomial_roots_root(
+                root, roots, (uint64_t) index) ||
+            !sagejs_fmpz_mod_polynomial_unsigned_size(
+                &length, &maximum, root))
+        {
+            fmpz_clear(root);
+            return 0;
+        }
+    }
+    unsigned char *data = (unsigned char *) malloc(length == 0 ? 1 : length);
+    if (data == NULL)
+    {
+        fmpz_clear(root);
+        return 0;
+    }
+    memcpy(data, "SJRPM\1\0\0", 8);
+    sagejs_exact_polynomial_write_u64(data, 8, (uint64_t) count);
+    for (slong index = 0; index < count; index++)
+        sagejs_exact_polynomial_write_u64(data, 16 + 8 * (size_t) index,
+            (uint64_t) roots->value->exp[index]);
+    const size_t maximum_words =
+        (maximum + sizeof(ulong) - 1) / sizeof(ulong);
+    ulong *words = maximum_words == 0 ? NULL :
+        (ulong *) calloc(maximum_words, sizeof(ulong));
+    if (maximum_words != 0 && words == NULL)
+    {
+        free(data);
+        fmpz_clear(root);
+        return 0;
+    }
+    fmpz_t scratch;
+    fmpz_init(scratch);
+    size_t offset = 16 + 8 * (size_t) count;
+    sagejs_fmpz_mod_polynomial_write_unsigned(data, &offset,
+        fmpz_mod_ctx_modulus(roots->context), scratch, words);
+    for (slong index = 0; index < count; index++)
+    {
+        (void) sagejs_fmpz_mod_polynomial_roots_root(
+            root, roots, (uint64_t) index);
+        sagejs_fmpz_mod_polynomial_write_unsigned(data, &offset,
+            root, scratch, words);
+    }
+    fmpz_clear(scratch);
+    fmpz_clear(root);
+    free(words);
+    if (offset != length)
+    {
+        free(data);
+        return 0;
+    }
+    *output = data;
+    *output_length = (uint64_t) length;
     return 1;
 }
 

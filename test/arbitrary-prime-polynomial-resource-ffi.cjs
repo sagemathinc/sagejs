@@ -146,6 +146,14 @@ int main(void)
     assert(sagejs_fmpz_mod_polynomial_factorization_count(
         scalar, factorization));
     assert(fmpz_equal_ui(scalar, 2));
+    unsigned char *factor_bytes = NULL;
+    uint64_t factor_bytes_length = 0;
+    assert(sagejs_fmpz_mod_polynomial_factorization_take_bytes(
+        &factor_bytes, &factor_bytes_length, factorization));
+    assert(factor_bytes_length > 32);
+    assert(memcmp(factor_bytes, "SJFPM\1\0\0", 8) == 0);
+    assert(sagejs_fmpz_mod_polynomial_read_u64(factor_bytes, 8) == 2);
+    sagejs_fmpz_mod_polynomial_free_bytes(factor_bytes);
     sagejs_fmpz_mod_polynomial_t factor;
     assert(sagejs_fmpz_mod_polynomial_factorization_factor(
         factor, factorization, 0));
@@ -157,6 +165,14 @@ int main(void)
     assert(sagejs_fmpz_mod_polynomial_roots_resource(roots, left));
     assert(sagejs_fmpz_mod_polynomial_roots_count(scalar, roots));
     assert(fmpz_equal_ui(scalar, 2));
+    unsigned char *root_bytes = NULL;
+    uint64_t root_bytes_length = 0;
+    assert(sagejs_fmpz_mod_polynomial_roots_take_bytes(
+        &root_bytes, &root_bytes_length, roots));
+    assert(root_bytes_length > 24);
+    assert(memcmp(root_bytes, "SJRPM\1\0\0", 8) == 0);
+    assert(sagejs_fmpz_mod_polynomial_read_u64(root_bytes, 8) == 2);
+    sagejs_fmpz_mod_polynomial_free_bytes(root_bytes);
     fmpz_t root;
     fmpz_init(root);
     assert(sagejs_fmpz_mod_polynomial_roots_root(root, roots, 0));
