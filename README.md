@@ -755,14 +755,16 @@ Inspect obsolete compiler-version caches without changing anything with:
 sagejs cache prune
 ```
 
-The command is a dry run unless `--apply` is present. Its conservative default
-policy keeps the current compiler, caches leased by running Sage.js processes,
-the five newest compiler versions, and everything written in the last seven
-days. It selects versions older than 30 days and, when safe, the oldest
-remaining versions toward a best-effort 2 GiB limit. Protected versions may
-keep the cache above that limit. Pin a version manually by placing an empty
-`.sagejs-keep` file in its directory. Run `sagejs cache --help` to inspect or
-override the size and age limits, then apply the displayed plan explicitly:
+The command is a dry run unless `--apply` is present. Its default policy always
+keeps the current compiler, caches leased by running Sage.js processes, pinned
+versions, and the five newest compiler versions. Obsolete versions at least
+seven days old are preferred for size-based cleanup; if they are insufficient
+to approach the best-effort 2 GiB target, newer obsolete versions may also be
+selected. Independently, unprotected versions older than 30 days expire.
+Hard-protected versions may keep the cache above the target. Pin a version
+manually by placing an empty `.sagejs-keep` file in its directory. Run
+`sagejs cache --help` to inspect or override the size and age limits, then apply
+the displayed plan explicitly:
 
 ```sh
 sagejs cache prune --apply
