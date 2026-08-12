@@ -4,7 +4,7 @@
   "id": "math-dispatch-engine-v1",
   "title": "Declarative mathematical dispatch engine",
   "lane": "integration",
-  "status": "active",
+  "status": "complete",
   "owner": "user",
   "objective": "Implement CPython-parseable mathematical dispatch declarations, deterministic JSON lowering, pure explainable selection, checked portable and host profiles, and benchmark-evidence validation without yet changing public matrix or polynomial dispatch",
   "base_commit": "d88412c256d63ab3fe288a93ad62567ddd0c4cdf",
