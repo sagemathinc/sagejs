@@ -1574,6 +1574,290 @@ static inline int sagejs_fmpq_polynomial_format(
 }
 
 /*
+ * Parse a selected SJPZ/SJPQ v1 byte-region range without converting the
+ * complete stream to an fmpz transport token.  Only one coefficient
+ * magnitude at a time is copied into reusable FLINT words.  The borrowed
+ * byte region is never retained or mutated, and result is published only
+ * after a complete temporary polynomial has been validated and sealed.
+ */
+
+static inline uint32_t sagejs_exact_polynomial_region_u32(
+    const unsigned char *source, size_t offset)
+{
+    uint32_t result = 0;
+    for (size_t byte = 0; byte < 4; byte++)
+        result |= (uint32_t) source[offset + byte] << (8 * byte);
+    return result;
+}
+
+static inline uint64_t sagejs_exact_polynomial_region_u64(
+    const unsigned char *source, size_t offset)
+{
+    uint64_t result = 0;
+    for (size_t byte = 0; byte < 8; byte++)
+        result |= (uint64_t) source[offset + byte] << (8 * byte);
+    return result;
+}
+
+static inline int sagejs_exact_polynomial_validate_region_integer(
+    const unsigned char *source, size_t length, size_t *offset,
+    size_t *byte_count, int *negative, size_t *maximum_bytes)
+{
+    if (*offset > length || length - *offset < 4)
+        return 0;
+    const uint32_t header = sagejs_exact_polynomial_region_u32(
+        source, *offset);
+    *offset += 4;
+    *byte_count = (size_t) (header & UINT32_C(0x7fffffff));
+    *negative = (header & UINT32_C(0x80000000)) != 0;
+    if (*byte_count > length - *offset ||
+        (*byte_count != 0 && source[*offset + *byte_count - 1] == 0) ||
+        (*negative && *byte_count == 0))
+        return 0;
+    if (*byte_count > *maximum_bytes)
+        *maximum_bytes = *byte_count;
+    *offset += *byte_count;
+    return 1;
+}
+
+static inline int sagejs_exact_polynomial_validate_region(
+    const unsigned char *source, size_t length, const char magic[4],
+    int rational, slong *coefficient_count, size_t *maximum_bytes)
+{
+    if (source == NULL || length < 16)
+        return 0;
+    for (size_t index = 0; index < 4; index++)
+        if (source[index] != (unsigned char) magic[index])
+            return 0;
+    if (source[4] != 1 || source[5] != 0 ||
+        source[6] != 0 || source[7] != 0)
+        return 0;
+    const uint64_t count_value =
+        sagejs_exact_polynomial_region_u64(source, 8);
+    if (count_value > (uint64_t) WORD_MAX ||
+        count_value > (uint64_t) SIZE_MAX)
+        return 0;
+    const size_t count = (size_t) count_value;
+    const size_t minimum_coefficient_bytes = rational ? 8 : 4;
+    if (count > (length - 16) / minimum_coefficient_bytes)
+        return 0;
+    size_t offset = 16;
+    *maximum_bytes = 0;
+    for (size_t index = 0; index < count; index++)
+    {
+        size_t numerator_bytes;
+        int numerator_negative;
+        if (!sagejs_exact_polynomial_validate_region_integer(
+                source, length, &offset, &numerator_bytes,
+                &numerator_negative, maximum_bytes))
+            return 0;
+        if (rational)
+        {
+            size_t denominator_bytes;
+            int denominator_negative;
+            if (!sagejs_exact_polynomial_validate_region_integer(
+                    source, length, &offset, &denominator_bytes,
+                    &denominator_negative, maximum_bytes) ||
+                denominator_negative || denominator_bytes == 0)
+                return 0;
+        }
+        if (index + 1 == count && numerator_bytes == 0)
+            return 0;
+    }
+    if (offset != length)
+        return 0;
+    *coefficient_count = (slong) count;
+    return 1;
+}
+
+static inline void sagejs_exact_polynomial_read_region_fmpz(
+    fmpz_t result, const unsigned char *source, size_t *offset,
+    ulong *words, size_t word_capacity)
+{
+    const uint32_t header = sagejs_exact_polynomial_region_u32(
+        source, *offset);
+    *offset += 4;
+    const size_t byte_count =
+        (size_t) (header & UINT32_C(0x7fffffff));
+    const size_t word_count =
+        (byte_count + sizeof(ulong) - 1) / sizeof(ulong);
+    if (word_capacity != 0)
+        memset(words, 0, word_capacity * sizeof(ulong));
+    for (size_t byte = 0; byte < byte_count; byte++)
+        words[byte / sizeof(ulong)] |=
+            (ulong) source[*offset + byte] <<
+            (8 * (byte % sizeof(ulong)));
+    if (word_count == 0)
+        fmpz_zero(result);
+    else
+        fmpz_set_ui_array(result, words, (slong) word_count);
+    if ((header & UINT32_C(0x80000000)) != 0)
+        fmpz_neg(result, result);
+    *offset += byte_count;
+}
+
+static inline ulong *sagejs_exact_polynomial_region_words(
+    size_t maximum_bytes, size_t *word_capacity)
+{
+    *word_capacity =
+        (maximum_bytes + sizeof(ulong) - 1) / sizeof(ulong);
+    if (*word_capacity == 0)
+        return NULL;
+    if (*word_capacity > SIZE_MAX / sizeof(ulong) ||
+        *word_capacity > (size_t) WORD_MAX)
+        return NULL;
+    return (ulong *) calloc(*word_capacity, sizeof(ulong));
+}
+
+static inline int sagejs_fmpz_polynomial_parse_region(
+    sagejs_fmpz_polynomial_t result,
+    const unsigned char *source, size_t length)
+{
+    slong count;
+    size_t maximum_bytes;
+    if (!sagejs_exact_polynomial_validate_region(
+            source, length, "SJPZ", 0, &count, &maximum_bytes))
+        return 0;
+    size_t word_capacity;
+    ulong *words = sagejs_exact_polynomial_region_words(
+        maximum_bytes, &word_capacity);
+    if (word_capacity != 0 && words == NULL)
+        return 0;
+    sagejs_fmpz_polynomial_t temporary;
+    memset(temporary, 0, sizeof(temporary));
+    if (!sagejs_fmpz_polynomial_init(temporary, (uint64_t) count))
+    {
+        free(words);
+        return 0;
+    }
+    fmpz_t coefficient;
+    fmpz_init(coefficient);
+    size_t offset = 16;
+    for (slong index = 0; index < count; index++)
+    {
+        sagejs_exact_polynomial_read_region_fmpz(
+            coefficient, source, &offset, words, word_capacity);
+        if (!sagejs_fmpz_polynomial_set_coefficient(
+                temporary, (uint64_t) index, coefficient))
+        {
+            fmpz_clear(coefficient);
+            sagejs_fmpz_polynomial_clear(temporary);
+            free(words);
+            return 0;
+        }
+    }
+    fmpz_clear(coefficient);
+    free(words);
+    if (!sagejs_fmpz_polynomial_seal(temporary))
+    {
+        sagejs_fmpz_polynomial_clear(temporary);
+        return 0;
+    }
+    result[0] = temporary[0];
+    return 1;
+}
+
+static inline int sagejs_fmpq_polynomial_parse_region(
+    sagejs_fmpq_polynomial_t result,
+    const unsigned char *source, size_t length)
+{
+    slong count;
+    size_t maximum_bytes;
+    if (!sagejs_exact_polynomial_validate_region(
+            source, length, "SJPQ", 1, &count, &maximum_bytes))
+        return 0;
+    size_t word_capacity;
+    ulong *words = sagejs_exact_polynomial_region_words(
+        maximum_bytes, &word_capacity);
+    if (word_capacity != 0 && words == NULL)
+        return 0;
+    sagejs_fmpq_polynomial_t temporary;
+    memset(temporary, 0, sizeof(temporary));
+    if (!sagejs_fmpq_polynomial_init(temporary, (uint64_t) count))
+    {
+        free(words);
+        return 0;
+    }
+    fmpz_t numerator;
+    fmpz_t denominator;
+    fmpz_t divisor;
+    fmpz_init(numerator);
+    fmpz_init(denominator);
+    fmpz_init(divisor);
+    size_t offset = 16;
+    for (slong index = 0; index < count; index++)
+    {
+        sagejs_exact_polynomial_read_region_fmpz(
+            numerator, source, &offset, words, word_capacity);
+        sagejs_exact_polynomial_read_region_fmpz(
+            denominator, source, &offset, words, word_capacity);
+        fmpz_gcd(divisor, numerator, denominator);
+        if (!fmpz_is_one(divisor) ||
+            !sagejs_fmpq_polynomial_set_coefficient(
+                temporary, (uint64_t) index, numerator, denominator))
+        {
+            fmpz_clear(divisor);
+            fmpz_clear(denominator);
+            fmpz_clear(numerator);
+            sagejs_fmpq_polynomial_clear(temporary);
+            free(words);
+            return 0;
+        }
+    }
+    fmpz_clear(divisor);
+    fmpz_clear(denominator);
+    fmpz_clear(numerator);
+    free(words);
+    if (!sagejs_fmpq_polynomial_seal(temporary))
+    {
+        sagejs_fmpq_polynomial_clear(temporary);
+        return 0;
+    }
+    result[0] = temporary[0];
+    return 1;
+}
+
+static inline int sagejs_exact_polynomial_selected_region(
+    const sagejs_flint_byte_region_t source,
+    uint64_t offset_value, uint64_t length_value,
+    const unsigned char **selected, size_t *selected_length)
+{
+    if (source->data == NULL ||
+        offset_value > (uint64_t) source->length ||
+        length_value > (uint64_t) source->length - offset_value)
+        return 0;
+    *selected = source->data + (size_t) offset_value;
+    *selected_length = (size_t) length_value;
+    return 1;
+}
+
+static inline int sagejs_fmpz_polynomial_from_byte_region(
+    sagejs_fmpz_polynomial_t result,
+    const sagejs_flint_byte_region_t source,
+    uint64_t offset, uint64_t length)
+{
+    const unsigned char *selected;
+    size_t selected_length;
+    return sagejs_exact_polynomial_selected_region(
+            source, offset, length, &selected, &selected_length) &&
+        sagejs_fmpz_polynomial_parse_region(
+            result, selected, selected_length);
+}
+
+static inline int sagejs_fmpq_polynomial_from_byte_region(
+    sagejs_fmpq_polynomial_t result,
+    const sagejs_flint_byte_region_t source,
+    uint64_t offset, uint64_t length)
+{
+    const unsigned char *selected;
+    size_t selected_length;
+    return sagejs_exact_polynomial_selected_region(
+            source, offset, length, &selected, &selected_length) &&
+        sagejs_fmpq_polynomial_parse_region(
+            result, selected, selected_length);
+}
+
+/*
  * Decode the stable SJPZ/SJPQ v1 stream from one nonnegative exact-integer
  * transport token. The public serialization is still an exact byte stream;
  * the generated exact-integer adapter merely moves its little-endian bytes

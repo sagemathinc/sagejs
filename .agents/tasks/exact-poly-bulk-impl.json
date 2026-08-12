@@ -1,0 +1,51 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "exact-poly-bulk-impl",
+  "title": "Exact polynomial bulk resource ingress",
+  "lane": "integration",
+  "status": "active",
+  "owner": "user",
+  "objective": "Make public dense ZZ[x] and QQ[x] construction use checked canonical host-list packing followed by one generated FlintByteRegion-to-owned-resource parse, preserving exact Sage semantics, portable fallback, lifecycle safety, and cross-host performance",
+  "base_commit": "576db728015f2c18faeb4db43c2b8c73cf5cf85d",
+  "claims": [
+    "packages/flint/include/sagejs/exact_polynomial_ffi.h",
+    "src/baselib/polynomial.py",
+    "test/exact-polynomial-bulk-construction.cjs",
+    "test/exact-polynomial-resource-ffi.cjs",
+    "tools/ffi/lifecycle-fuzz.cjs",
+    "bench/exact-polynomial-bulk-construction.cjs",
+    "bench/results/exact-polynomial-bulk-construction-implementation.json"
+  ],
+  "dependencies": [],
+  "references": [
+    ".agents/tasks/exact-poly-bulk-contract.json",
+    "FLINT fmpz_poly/fmpq_poly resource APIs"
+  ],
+  "architecture": {
+    "strategy": "external-library",
+    "fallback": "tested-capability",
+    "oracles": [
+      "SageMath ZZ[x] and QQ[x] construction and serialization",
+      "Sage.js capability-disabled packed polynomial path"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "fallback",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm architecture:check",
+    "pnpm test:portable",
+    "pnpm test:baselib:strict"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "",
+    "risks": [],
+    "next_steps": []
+  }
+}

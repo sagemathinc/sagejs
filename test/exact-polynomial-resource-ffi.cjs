@@ -1125,8 +1125,8 @@ int main(void)
         sagejs_fmpq_polynomial_t qrejected, qzero;
         sagejs_fmpz_polynomial_t zunsealed;
         sagejs_fmpq_polynomial_t qunsealed;
-        sagejs_fmpz_polynomial_t zdecoded;
-        sagejs_fmpq_polynomial_t qdecoded;
+        sagejs_fmpz_polynomial_t zdecoded, zregiondecoded;
+        sagejs_fmpq_polynomial_t qdecoded, qregiondecoded;
         sagejs_fmpq_value_t qvalue, zqvalue;
         sagejs_flint_byte_region_t zbytes, qbytes;
         if (!sagejs_fmpz_polynomial_init(z, 32) ||
@@ -1230,6 +1230,31 @@ int main(void)
             !sagejs_fmpz_polynomial_serialize(zbytes, zpower) ||
             !sagejs_fmpq_polynomial_serialize(qbytes, qpower))
             return 6;
+        if (!sagejs_fmpz_polynomial_from_byte_region(
+                zregiondecoded, zbytes, 0, (uint64_t) zbytes->length) ||
+            !sagejs_fmpq_polynomial_from_byte_region(
+                qregiondecoded, qbytes, 0, (uint64_t) qbytes->length) ||
+            !fmpz_poly_equal(zregiondecoded->value, zpower->value) ||
+            !fmpq_poly_equal(qregiondecoded->value, qpower->value))
+            return 19;
+        {
+            unsigned char noncanonical[] = {
+                'S', 'J', 'P', 'Q', 1, 0, 0, 0,
+                1, 0, 0, 0, 0, 0, 0, 0,
+                1, 0, 0, 0, 2,
+                1, 0, 0, 0, 4
+            };
+            sagejs_flint_byte_region_struct region = {
+                noncanonical, sizeof(noncanonical)
+            };
+            sagejs_fmpq_polynomial_t rejected_region = {0};
+            if (sagejs_fmpq_polynomial_from_byte_region(
+                    rejected_region, &region, 0, sizeof(noncanonical)) ||
+                rejected_region->retained_bytes != 0 ||
+                sagejs_fmpq_polynomial_from_byte_region(
+                    rejected_region, &region, 1, sizeof(noncanonical)))
+                return 20;
+        }
         if (!region_payload(zpayload, zbytes) ||
             !region_payload(qpayload, qbytes) ||
             !sagejs_fmpz_polynomial_deserialize_packed(
@@ -1247,6 +1272,9 @@ int main(void)
         sagejs_fmpq_polynomial_clear(qdecoded);
         sagejs_fmpz_polynomial_clear(zdecoded);
         zbytes->data[0] = 0;
+        if (!fmpz_poly_equal(zregiondecoded->value, zpower->value) ||
+            !fmpq_poly_equal(qregiondecoded->value, qpower->value))
+            return 21;
         if (!region_payload(zpayload, zbytes))
             return 11;
         sagejs_fmpz_polynomial_t rejected;
@@ -1255,6 +1283,8 @@ int main(void)
             return 12;
         sagejs_flint_byte_region_clear(qbytes);
         sagejs_flint_byte_region_clear(zbytes);
+        sagejs_fmpq_polynomial_clear(qregiondecoded);
+        sagejs_fmpz_polynomial_clear(zregiondecoded);
         sagejs_fmpq_value_clear(zqvalue);
         sagejs_fmpq_value_clear(qvalue);
         sagejs_fmpq_polynomial_clear(qzero);

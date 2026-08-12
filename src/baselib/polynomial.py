@@ -622,36 +622,12 @@ def _packed_uint8_suffix(source: Any, offset: int) -> Any:
     return runtime.reflect.construct(constructor, [view])
 
 
-def _little_endian_bytes_payload(source: Any) -> Any:
-    """Lower stable bytes to the declared nonnegative `Integer` transport.
-
-    This is an ABI transport conversion, not a polynomial representation.
-    Generated exact-polynomial deserializers currently accept one exact integer
-    plus its significant byte length. Node's byte buffer converts the complete
-    stream through hexadecimal in linear time, avoiding repeated growth of one
-    enormous integer while the variable-length stream is assembled.
-    """
-    buffer = runtime.reflect.get(runtime.global_object, "Buffer")
-    from_bytes = runtime.reflect.get(buffer, "from")
-    if runtime.jstype(from_bytes) != "function":
-        raise RuntimeError("the exact polynomial byte transport is unavailable")
-    copy = runtime.reflect.apply(from_bytes, buffer, [source])
-    runtime.reflect.apply(runtime.reflect.get(copy, "reverse"), copy, [])
-    hexadecimal = runtime.reflect.apply(
-        runtime.reflect.get(copy, "toString"), copy, ["hex"]
-    )
-    if len(hexadecimal) == 0:
-        return runtime.bigint(0)
-    return runtime.bigint("0x" + hexadecimal)
-
-
-def _exact_polynomial_payload(
-    parts: list[Any],
+def _exact_polynomial_bytes(
+    body: Any,
     coefficient_count: int,
     rational: bool,
-) -> tuple[Any, int]:
-    """Add the SJP envelope and lower its bytes to one declared argument."""
-    body = runtime.exact_integer_values_to_packed_bytes(parts)
+) -> Any:
+    """Add the canonical SJP envelope to packed exact magnitudes."""
     output = _packed_uint8(16 + _buffer_length(body))
     magic = [83, 74, 80, 81 if rational else 90]
     for index in range(4):
@@ -665,7 +641,21 @@ def _exact_polynomial_payload(
         output[8 + byte_index] = count % 256
         count //= 256
     runtime.reflect.apply(runtime.reflect.get(output, "set"), output, [body, 16])
-    return _little_endian_bytes_payload(output), _buffer_length(output)
+    return output
+
+
+def _exact_polynomial_resource_from_bytes(source: Any, rational: bool) -> Any:
+    """Parse one canonical stream through a temporary borrowed byte region."""
+    ffi = _flint_ffi_module()
+    region = ffi.FlintByteRegion.from_bytes(source)
+    try:
+        if rational:
+            return ffi.fmpq_polynomial_from_byte_region(
+                region, 0, _buffer_length(source)
+            )
+        return ffi.fmpz_polynomial_from_byte_region(region, 0, _buffer_length(source))
+    finally:
+        region.close()
 
 
 def _decode_exact_polynomial_bytes(source: Any, base: Any) -> list[Any]:
@@ -923,17 +913,11 @@ class PolynomialElement(sage.Element):
         ):
             raise TypeError("polynomial does not own an exact FLINT resource")
         if self._storage.resource is runtime.undefined:
-            ffi = _flint_ffi_module()
             if self._has_fmpz_polynomial_resource():
                 values = _integer_buffer_values(self._storage.coefficients)
-                payload, byte_length = _exact_polynomial_payload(
-                    values,
-                    len(values),
-                    False,
-                )
-                self._storage.resource = ffi.fmpz_polynomial_deserialize(
-                    payload,
-                    byte_length,
+                body = runtime.exact_integer_values_to_packed_bytes(values)
+                self._storage.resource = _exact_polynomial_resource_from_bytes(
+                    _exact_polynomial_bytes(body, len(values), False), False
                 )
                 self._storage.coefficients = runtime.undefined
             else:
@@ -943,14 +927,9 @@ class PolynomialElement(sage.Element):
                 for index in range(len(numerators)):
                     parts.append(numerators[index])
                     parts.append(denominators[index])
-                payload, byte_length = _exact_polynomial_payload(
-                    parts,
-                    len(numerators),
-                    True,
-                )
-                self._storage.resource = ffi.fmpq_polynomial_deserialize(
-                    payload,
-                    byte_length,
+                body = runtime.exact_integer_values_to_packed_bytes(parts)
+                self._storage.resource = _exact_polynomial_resource_from_bytes(
+                    _exact_polynomial_bytes(body, len(numerators), True), True
                 )
                 self._storage.numerators = runtime.undefined
                 self._storage.denominators = runtime.undefined
@@ -3198,13 +3177,14 @@ class PolynomialRingParent(sage.Parent):
         """Restore one canonical SagePack stream through generated FLINT FFI."""
         if not self._supports_exact_polynomial_resource_deserialization(encoding):
             raise ValueError("exact polynomial resource deserialization is unavailable")
-        ffi = _flint_ffi_module()
+        if byte_length != _buffer_length(payload):
+            raise ValueError("exact polynomial byte length does not match its payload")
         if self._base is sage.ZZ:
             return self._from_fmpz_polynomial_resource(
-                ffi.fmpz_polynomial_deserialize(payload, byte_length)
+                _exact_polynomial_resource_from_bytes(payload, False)
             )
         return self._from_fmpq_polynomial_resource(
-            ffi.fmpq_polynomial_deserialize(payload, byte_length)
+            _exact_polynomial_resource_from_bytes(payload, True)
         )
 
     def _from_coefficients(
@@ -3219,44 +3199,65 @@ class PolynomialRingParent(sage.Parent):
         """
         kind = _packed_polynomial_kind(self._base)
         if kind == "ZZ":
+            if _generated_flint_resources_available():
+                values = coefficients
+                length = len(values)
+                while length > 0 and values[length - 1] == 0:
+                    length -= 1
+                candidate = values if length == len(values) else values[:length]
+                try:
+                    body = runtime.exact_integer_values_to_packed_bytes(candidate)
+                except TypeError:
+                    body = runtime.undefined
+                if body is runtime.undefined:
+                    values = [
+                        runtime.integer_bigint(self._base(value))
+                        for value in coefficients
+                    ]
+                    length = len(values)
+                    while length > 0 and values[length - 1] == 0:
+                        length -= 1
+                    body = runtime.exact_integer_values_to_packed_bytes(
+                        values if length == len(values) else values[:length]
+                    )
+                return self._from_fmpz_polynomial_resource(
+                    _exact_polynomial_resource_from_bytes(
+                        _exact_polynomial_bytes(body, length, False), False
+                    )
+                )
             values = [
                 runtime.integer_bigint(
                     value if runtime.is_exact_integer(value) else self._base(value)
                 )
                 for value in coefficients
             ]
-            if _generated_flint_resources_available():
-                length = len(values)
-                while length > 0 and values[length - 1] == 0:
-                    length -= 1
-                if length != len(values):
-                    values = values[:length]
-                ffi = _flint_ffi_module()
-                payload, byte_length = _exact_polynomial_payload(values, length, False)
-                return self._from_fmpz_polynomial_resource(
-                    ffi.fmpz_polynomial_deserialize(payload, byte_length)
-                )
             return PolynomialElement(
                 self,
                 _PackedIntegerPolynomialStorage(runtime.integer_buffer(values, 1)),
             )
         if kind == "QQ" and _generated_flint_resources_available():
-            parts = []
-            for value in coefficients:
-                rational = (
-                    value if isinstance(value, sage.Rational) else self._base(value)
-                )
-                parts.append(rational._numerator)
-                parts.append(rational._denominator)
-            length = len(parts) // 2
-            while length > 0 and parts[2 * length - 2] == 0:
+            values = coefficients
+            length = len(values)
+            while length > 0 and values[length - 1] == 0:
                 length -= 1
-            if 2 * length != len(parts):
-                parts = parts[: 2 * length]
-            ffi = _flint_ffi_module()
-            payload, byte_length = _exact_polynomial_payload(parts, length, True)
+            candidate = values if length == len(values) else values[:length]
+            body = runtime.canonical_rational_values_to_packed_bytes(
+                candidate, _untyped(sage.Rational), sage.QQ
+            )
+            if body is runtime.undefined:
+                values = [self._base(value) for value in coefficients]
+                length = len(values)
+                while length > 0 and values[length - 1] == 0:
+                    length -= 1
+                body = runtime.canonical_rational_values_to_packed_bytes(
+                    values if length == len(values) else values[:length],
+                    _untyped(sage.Rational),
+                    sage.QQ,
+                )
             return self._from_fmpq_polynomial_resource(
-                ffi.fmpq_polynomial_deserialize(payload, byte_length)
+                _exact_polynomial_resource_from_bytes(
+                    _exact_polynomial_bytes(body, length, True), True
+                )
             )
         if kind == "QQ":
             numerators = []
