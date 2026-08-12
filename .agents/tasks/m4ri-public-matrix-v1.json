@@ -4,7 +4,7 @@
   "id": "m4ri-public-matrix-v1",
   "title": "M4ri Public Matrix V1",
   "lane": "integration",
-  "status": "review",
+  "status": "complete",
   "owner": "user",
   "objective": "Make public dense GF(2) matrices canonically own generated M4RI resources when available, preserve packed fallback and explicit alternate backends, and verify direct algebra, lifecycle, serialization, formatting, and typed-Python borrowing without hidden exports",
   "base_commit": "ca058ce3d62b5072cc4af32488bd9ad8a59a0bad",

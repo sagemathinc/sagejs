@@ -4151,11 +4151,8 @@ class Matrix(sage.Element):
             if self._has_m4ri_matrix_resource() and algorithm in [None, "m4ri"]:
                 resource = _m4ri_ffi_module().matrix_rref(self._m4ri_resource())
                 self._rref_cache = self._parent._from_m4ri_matrix_resource(resource)
-                rank_kernel = (
-                    _dense_binary_m4ri_kernel_module().m4ri_dense_matrix_nonzero_rows
-                )
                 self._rank_cache = runtime.number(
-                    rank_kernel(self._rref_cache._m4ri_resource())
+                    _m4ri_ffi_module().matrix_rank(self._rref_cache._m4ri_resource())
                 )
                 self._rref_cache._rank_cache = self._rank_cache
                 self._rref_cache._rref_cache = self._rref_cache
