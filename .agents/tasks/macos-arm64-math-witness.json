@@ -4,7 +4,7 @@
   "id": "macos-arm64-math-witness",
   "title": "macOS arm64 mathematical performance witness",
   "lane": "arithmetic-algebra",
-  "status": "review",
+  "status": "complete",
   "owner": "user",
   "objective": "Establish a reproducible macOS arm64 compatibility and performance witness for representative dense exact and finite-field matrices and univariate polynomials, recording cold and warm Sage.js timings, SageMath comparison when available, exact host/toolchain/commit metadata, and platform-specific regressions without changing mathematical implementations",
   "base_commit": "7b873685f617fc0046fb9673838ff2f6588ac933",
