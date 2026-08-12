@@ -161,7 +161,7 @@ canonical cross-runtime equivalence witness.
    measured with dedicated process-isolated probes before changing loading
    policy.
 4. **Exact polynomial construction needs a lane.** `ZZ[x]` and `QQ[x]`
-   construction is 18-26 times slower on these deterministic inputs, while
+   construction is about 14-25 times slower on these deterministic inputs, while
    multiply/GCD remain close and SagePack round trips are fast. Bulk resource
    construction is the likely narrow target.
 

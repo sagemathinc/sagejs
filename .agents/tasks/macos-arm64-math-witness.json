@@ -4,7 +4,7 @@
   "id": "macos-arm64-math-witness",
   "title": "macOS arm64 mathematical performance witness",
   "lane": "arithmetic-algebra",
-  "status": "review",
+  "status": "active",
   "owner": "user",
   "objective": "Establish a reproducible macOS arm64 compatibility and performance witness for representative dense exact and finite-field matrices and univariate polynomials, recording cold and warm Sage.js timings, SageMath comparison when available, exact host/toolchain/commit metadata, and platform-specific regressions without changing mathematical implementations",
   "base_commit": "7b873685f617fc0046fb9673838ff2f6588ac933",
@@ -40,6 +40,7 @@
     "pnpm test:baselib:strict",
     "pnpm test:native",
     "node bench/macos-arm64-math-witness.cjs --render-report bench/results/macos-arm64-m1-max-format-polynomial-2026-08-12.json",
+    "ssh m1 cd /Volumes/sage/sagejs && /opt/homebrew/bin/node bench/macos-arm64-math-witness.cjs --runtime all --sage /Volumes/sage/sagelite-build/smoke/public-dev-cp314-20260704-004400/bin/sage --samples 5 --check --require-macos --output /tmp/macos-arm64-witness-full-recheck.json --markdown /tmp/macos-arm64-witness-full-recheck.md",
     "ssh m1 cd /Volumes/sage/sagejs && /opt/homebrew/bin/node bench/macos-arm64-math-witness.cjs --runtime all --sage /Volumes/sage/sagelite-build/smoke/public-dev-cp314-20260704-004400/bin/sage --quick --samples 1 --check --require-macos"
   ],
   "runs": [
@@ -257,7 +258,7 @@
   "handoff": {
     "summary": "Added a reproducible process-isolated macOS arm64 witness and recorded full verified M1 Max results against SageMath 10.9.post2. Native FLINT, M4RI, and FFLAS-FFPACK production kernels build and run as Mach-O arm64; the checked JSON now persists exact pnpm, clang, FLINT, file-identity, linkage, and Accelerate evidence. Unlike serialization formats have null ratios and single-runtime Markdown is explicitly labeled. The witness isolates general word-prime public representation and exact polynomial construction as the main boundary regressions.",
     "risks": [
-      "General word-prime matrix construction, formatting, and SagePack are 4-15x slower than SageMath; row and column swaps are not implemented and successful backend routes are not traced.",
+      "General word-prime matrix construction is 15.38x and formatting is 13.43x slower than SageMath; the runtime-local 300 by 300 SagePack witness takes 1.37 seconds to dump and 0.47 seconds to load, without comparison to SageMath's different serialization format. Row and column swaps are not implemented and successful backend routes are not traced.",
       "The first pnpm native:precompile:production run on macOS linked its addon but hit a transient node-gyp ENOENT for build/node_gyp_bins; a cached rerun completed all twelve kernels.",
       "Sage.js SagePack and SageMath Python serialization are different formats, so serialization bytes and absolute timings are intentionally not treated as cross-runtime equivalence claims.",
       "Early Linux validation attempts in the receipt history failed before this worktree was built and its shared native cache restored; the later full native suite and all focused checks pass."
