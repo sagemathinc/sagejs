@@ -90,6 +90,8 @@ def compose(
     """Compose two polynomials without crossing the boundary per coefficient."""
     base = self._parent.base_ring()
     kind = _polynomial_kind(base)
+    if kind == "GF" and self.is_zero():
+        return self
     if kind == "ZZ" and self._has_fmpz_polynomial_resource():
         if inner._has_fmpz_polynomial_resource():
             kernel = _polynomial_structural_flint_module()
@@ -202,12 +204,14 @@ def shift(self: Any, amount: Any) -> Any:
     if not runtime.is_exact_integer(amount):
         raise TypeError("polynomial shift amount must be an integer")
     exact_amount = runtime.integer_bigint(amount)
+    if exact_amount == 0 or self.is_zero():
+        return self
+    source_length = self._coefficient_length()
+    if exact_amount < 0 and -exact_amount >= runtime.integer_bigint(source_length):
+        return self._parent(0)
     if abs(exact_amount) >= runtime.integer_bigint(runtime.number.MAX_SAFE_INTEGER):
         raise OverflowError("polynomial shift amount is too large")
     shift_amount = runtime.number(exact_amount)
-    if shift_amount == 0 or self.is_zero():
-        return self
-    source_length = self._coefficient_length()
     left = shift_amount > 0
     magnitude = abs(shift_amount)
     output_length = (
@@ -281,17 +285,14 @@ def truncate(self: Any, precision: Any) -> Any:
         raise TypeError("polynomial truncation precision must be an integer")
     exact_precision = runtime.integer_bigint(precision)
     if exact_precision < 0:
-        coefficients = _polynomial_structural_calculus_module().dense_truncate(
-            self.coefficients(),
-            self._parent.base_ring()(0),
-            runtime.number(exact_precision),
-        )
-        return self._parent._from_coefficients(coefficients)
+        return self._parent(0)
     if exact_precision >= runtime.integer_bigint(runtime.number.MAX_SAFE_INTEGER):
         return self
     stop = min(runtime.number(exact_precision), self._coefficient_length())
     base = self._parent.base_ring()
     kind = _polynomial_kind(base)
+    if kind == "GF" and self.is_zero():
+        return self
     if kind == "ZZ" and self._has_fmpz_polynomial_resource():
         kernel = _polynomial_structural_flint_module()
         return self._parent._from_fmpz_polynomial_resource(
@@ -333,6 +334,8 @@ def integral(self: Any, variable: Any = None) -> Any:
         raise ValueError("polynomial integration variable is not a generator")
     base = self._parent.base_ring()
     kind = _polynomial_kind(base)
+    if kind == "GF" and self.is_zero():
+        return self
     if kind == "ZZ" and self._has_fmpz_polynomial_resource():
         kernel = _polynomial_structural_flint_module()
         parent = sage.PolynomialRing(sage.QQ, self._parent.variable_name())

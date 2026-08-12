@@ -11,9 +11,13 @@
   "claims": [
     "src/baselib/polynomial.py",
     "src/lib/sagejs/polynomial_algorithms/public_structural.py",
+    "src/lib/sagejs/polynomial_algorithms/structural_calculus.py",
     "test/public-polynomial-structural.cjs",
+    "test/polynomial-structural-calculus.cjs",
     "bench/public-polynomial-structural.cjs",
     "test/node-test-manifest.cjs",
+    "scripts/parallel-lib.cjs",
+    "test/parallel-development.cjs",
     "pyrightconfig.json",
     ".agents/tasks/public-structural-polynomial.json"
   ],
