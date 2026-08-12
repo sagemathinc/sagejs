@@ -1,0 +1,51 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "extension-polynomial-resource-contract",
+  "title": "Finite extension polynomial resource contract",
+  "lane": "arithmetic-algebra",
+  "status": "active",
+  "owner": "user",
+  "objective": "Specify and validate a storage-neutral generated-resource contract for dense univariate polynomials over finite extension fields, including exact Sage semantics, one bulk coordinate boundary, differential oracles, and measured scalar-boundary costs without implementing shared FFI",
+  "base_commit": "e2ad41d6662c924b3db35e11a533caef7a71b825",
+  "claims": [
+    "src/lib/sagejs/polynomial_algorithms/extension_resource_contract.py",
+    "test/polynomial-extension-resource-contract.cjs",
+    "bench/polynomial-extension-resource-contract.cjs"
+  ],
+  "dependencies": [],
+  "references": [
+    "SageMath finite field and polynomial semantics",
+    "FLINT fq, fq_nmod, and fq_default APIs"
+  ],
+  "architecture": {
+    "strategy": "external-library",
+    "fallback": "tested-capability",
+    "oracles": [
+      "CPython contract tests",
+      "Sage.js dynamic execution",
+      "SageMath finite-extension polynomial behavior"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "fallback",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "node test/polynomial-extension-resource-contract.cjs",
+    "node bench/polynomial-extension-resource-contract.cjs",
+    "pnpm exec pyright --pythonversion 3.11 src/lib/sagejs/polynomial_algorithms/extension_resource_contract.py",
+    "pnpm architecture:check",
+    "pnpm test:baselib:strict",
+    "pnpm test:native"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "",
+    "risks": [],
+    "next_steps": []
+  }
+}
