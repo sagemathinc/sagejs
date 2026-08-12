@@ -428,6 +428,159 @@ def fmpz_polynomial_truncate(
 
 
 @flint.function(
+    dynamic="ffiFmpzPolynomialCompose",
+    symbol="sagejs_fmpz_polynomial_compose",
+    returns=int,
+    abi=[
+        out("result", sagejs_fmpz_polynomial_t),
+        in_("outer", sagejs_fmpz_polynomial_t),
+        in_("inner", sagejs_fmpz_polynomial_t),
+    ],
+    effects=Effects(pure=False, allocates=True, raises=[ValueError]),
+    result=Status(
+        1,
+        exception=ValueError,
+        message="integer polynomial composition requires sealed resources",
+    ),
+    wasm=False,
+)
+def fmpz_polynomial_compose(
+    outer: FmpzPolynomial,
+    inner: FmpzPolynomial,
+) -> FmpzPolynomial: ...
+
+
+@flint.function(
+    dynamic="ffiFmpzPolynomialReverse",
+    symbol="sagejs_fmpz_polynomial_reverse",
+    returns=int,
+    abi=[
+        out("result", sagejs_fmpz_polynomial_t),
+        in_("source", sagejs_fmpz_polynomial_t),
+        in_("length", uint64_t),
+    ],
+    effects=Effects(pure=False, allocates=True, raises=[ValueError, OverflowError]),
+    result=Status(
+        1,
+        exception=ValueError,
+        message="integer polynomial reversal requires a sealed resource and supported length",
+    ),
+    wasm=False,
+)
+def fmpz_polynomial_reverse(
+    source: FmpzPolynomial,
+    length: uint64,
+) -> FmpzPolynomial: ...
+
+
+@flint.function(
+    dynamic="ffiFmpzPolynomialShiftLeft",
+    symbol="sagejs_fmpz_polynomial_shift_left",
+    returns=int,
+    abi=[
+        out("result", sagejs_fmpz_polynomial_t),
+        in_("source", sagejs_fmpz_polynomial_t),
+        in_("amount", uint64_t),
+    ],
+    effects=Effects(pure=False, allocates=True, raises=[ValueError, OverflowError]),
+    result=Status(
+        1,
+        exception=ValueError,
+        message="integer polynomial left shift requires a sealed resource and supported amount",
+    ),
+    wasm=False,
+)
+def fmpz_polynomial_shift_left(
+    source: FmpzPolynomial,
+    amount: uint64,
+) -> FmpzPolynomial: ...
+
+
+@flint.function(
+    dynamic="ffiFmpzPolynomialShiftRight",
+    symbol="sagejs_fmpz_polynomial_shift_right",
+    returns=int,
+    abi=[
+        out("result", sagejs_fmpz_polynomial_t),
+        in_("source", sagejs_fmpz_polynomial_t),
+        in_("amount", uint64_t),
+    ],
+    effects=Effects(pure=False, allocates=True, raises=[ValueError, OverflowError]),
+    result=Status(
+        1,
+        exception=ValueError,
+        message="integer polynomial right shift requires a sealed resource and supported amount",
+    ),
+    wasm=False,
+)
+def fmpz_polynomial_shift_right(
+    source: FmpzPolynomial,
+    amount: uint64,
+) -> FmpzPolynomial: ...
+
+
+@flint.function(
+    dynamic="ffiFmpzPolynomialIntegral",
+    symbol="sagejs_fmpq_polynomial_from_fmpz_integral",
+    returns=int,
+    abi=[
+        out("result", sagejs_fmpq_polynomial_t),
+        in_("source", sagejs_fmpz_polynomial_t),
+    ],
+    effects=Effects(pure=False, allocates=True, raises=[ValueError]),
+    result=Status(
+        1,
+        exception=ValueError,
+        message="integer polynomial integration requires a sealed resource",
+    ),
+    wasm=False,
+)
+def fmpz_polynomial_integral(source: FmpzPolynomial) -> FmpqPolynomial: ...
+
+
+@flint.function(
+    dynamic="ffiFmpzPolynomialResultant",
+    symbol="sagejs_fmpz_polynomial_resultant",
+    returns=int,
+    abi=[
+        out("result", fmpz_t),
+        in_("left", sagejs_fmpz_polynomial_t),
+        in_("right", sagejs_fmpz_polynomial_t),
+    ],
+    effects=Effects(pure=True, allocates=True, raises=[ValueError]),
+    result=Status(
+        1,
+        exception=ValueError,
+        message="integer polynomial resultant requires sealed resources",
+    ),
+    wasm=False,
+)
+def fmpz_polynomial_resultant(
+    left: FmpzPolynomial,
+    right: FmpzPolynomial,
+) -> Integer: ...
+
+
+@flint.function(
+    dynamic="ffiFmpzPolynomialDiscriminant",
+    symbol="sagejs_fmpz_polynomial_discriminant",
+    returns=int,
+    abi=[
+        out("result", fmpz_t),
+        in_("source", sagejs_fmpz_polynomial_t),
+    ],
+    effects=Effects(pure=True, allocates=True, raises=[ValueError]),
+    result=Status(
+        1,
+        exception=ValueError,
+        message="integer polynomial discriminant requires a sealed resource",
+    ),
+    wasm=False,
+)
+def fmpz_polynomial_discriminant(source: FmpzPolynomial) -> Integer: ...
+
+
+@flint.function(
     dynamic="ffiFmpzPolynomialDerivative",
     symbol="sagejs_fmpz_polynomial_derivative",
     returns=int,
@@ -1059,6 +1212,159 @@ def fmpq_polynomial_truncate(
     source: FmpqPolynomial,
     stop: uint64,
 ) -> FmpqPolynomial: ...
+
+
+@flint.function(
+    dynamic="ffiFmpqPolynomialCompose",
+    symbol="sagejs_fmpq_polynomial_compose",
+    returns=int,
+    abi=[
+        out("result", sagejs_fmpq_polynomial_t),
+        in_("outer", sagejs_fmpq_polynomial_t),
+        in_("inner", sagejs_fmpq_polynomial_t),
+    ],
+    effects=Effects(pure=False, allocates=True, raises=[ValueError]),
+    result=Status(
+        1,
+        exception=ValueError,
+        message="rational polynomial composition requires sealed resources",
+    ),
+    wasm=False,
+)
+def fmpq_polynomial_compose(
+    outer: FmpqPolynomial,
+    inner: FmpqPolynomial,
+) -> FmpqPolynomial: ...
+
+
+@flint.function(
+    dynamic="ffiFmpqPolynomialReverse",
+    symbol="sagejs_fmpq_polynomial_reverse",
+    returns=int,
+    abi=[
+        out("result", sagejs_fmpq_polynomial_t),
+        in_("source", sagejs_fmpq_polynomial_t),
+        in_("length", uint64_t),
+    ],
+    effects=Effects(pure=False, allocates=True, raises=[ValueError, OverflowError]),
+    result=Status(
+        1,
+        exception=ValueError,
+        message="rational polynomial reversal requires a sealed resource and supported length",
+    ),
+    wasm=False,
+)
+def fmpq_polynomial_reverse(
+    source: FmpqPolynomial,
+    length: uint64,
+) -> FmpqPolynomial: ...
+
+
+@flint.function(
+    dynamic="ffiFmpqPolynomialShiftLeft",
+    symbol="sagejs_fmpq_polynomial_shift_left",
+    returns=int,
+    abi=[
+        out("result", sagejs_fmpq_polynomial_t),
+        in_("source", sagejs_fmpq_polynomial_t),
+        in_("amount", uint64_t),
+    ],
+    effects=Effects(pure=False, allocates=True, raises=[ValueError, OverflowError]),
+    result=Status(
+        1,
+        exception=ValueError,
+        message="rational polynomial left shift requires a sealed resource and supported amount",
+    ),
+    wasm=False,
+)
+def fmpq_polynomial_shift_left(
+    source: FmpqPolynomial,
+    amount: uint64,
+) -> FmpqPolynomial: ...
+
+
+@flint.function(
+    dynamic="ffiFmpqPolynomialShiftRight",
+    symbol="sagejs_fmpq_polynomial_shift_right",
+    returns=int,
+    abi=[
+        out("result", sagejs_fmpq_polynomial_t),
+        in_("source", sagejs_fmpq_polynomial_t),
+        in_("amount", uint64_t),
+    ],
+    effects=Effects(pure=False, allocates=True, raises=[ValueError, OverflowError]),
+    result=Status(
+        1,
+        exception=ValueError,
+        message="rational polynomial right shift requires a sealed resource and supported amount",
+    ),
+    wasm=False,
+)
+def fmpq_polynomial_shift_right(
+    source: FmpqPolynomial,
+    amount: uint64,
+) -> FmpqPolynomial: ...
+
+
+@flint.function(
+    dynamic="ffiFmpqPolynomialIntegral",
+    symbol="sagejs_fmpq_polynomial_integral",
+    returns=int,
+    abi=[
+        out("result", sagejs_fmpq_polynomial_t),
+        in_("source", sagejs_fmpq_polynomial_t),
+    ],
+    effects=Effects(pure=False, allocates=True, raises=[ValueError]),
+    result=Status(
+        1,
+        exception=ValueError,
+        message="rational polynomial integration requires a sealed resource",
+    ),
+    wasm=False,
+)
+def fmpq_polynomial_integral(source: FmpqPolynomial) -> FmpqPolynomial: ...
+
+
+@flint.function(
+    dynamic="ffiFmpqPolynomialResultant",
+    symbol="sagejs_fmpq_polynomial_resultant",
+    returns=int,
+    abi=[
+        out("result", sagejs_fmpq_value_t),
+        in_("left", sagejs_fmpq_polynomial_t),
+        in_("right", sagejs_fmpq_polynomial_t),
+    ],
+    effects=Effects(pure=False, allocates=True, raises=[ValueError]),
+    result=Status(
+        1,
+        exception=ValueError,
+        message="rational polynomial resultant requires sealed resources",
+    ),
+    wasm=False,
+)
+def fmpq_polynomial_resultant(
+    left: FmpqPolynomial,
+    right: FmpqPolynomial,
+) -> FmpqValue: ...
+
+
+@flint.function(
+    dynamic="ffiFmpqPolynomialDiscriminant",
+    symbol="sagejs_fmpq_polynomial_discriminant",
+    returns=int,
+    abi=[
+        out("result", sagejs_fmpq_value_t),
+        in_("source", sagejs_fmpq_polynomial_t),
+    ],
+    effects=Effects(pure=False, allocates=True, raises=[ValueError]),
+    result=Status(
+        1,
+        exception=ValueError,
+        message="rational polynomial discriminant requires a sealed resource",
+    ),
+    wasm=False,
+)
+def fmpq_polynomial_discriminant(source: FmpqPolynomial) -> FmpqValue: ...
 
 
 @flint.function(
@@ -5284,6 +5590,398 @@ def nmod_poly_evaluate(
     output_length: Min[uint64, 1],
     source_length: uint64,
     argument: uint64,
+    modulus: uint64,
+) -> bool: ...
+
+
+@flint.function(
+    dynamic="ffiNmodPolyCompose",
+    symbol="sagejs_flint_nmod_poly_compose_packed",
+    returns=int,
+    abi=[
+        out(
+            "result",
+            uint64_t_ptr,
+            packed_slice(
+                data="output",
+                length="output_length",
+                access="write",
+                aliasing="allowed",
+                transactional=True,
+            ),
+        ),
+        in_(
+            "outer_data",
+            uint64_t_ptr,
+            packed_slice(
+                data="outer",
+                length="outer_length",
+                access="read",
+                aliasing="allowed",
+                transactional=False,
+            ),
+        ),
+        in_(
+            "inner_data",
+            uint64_t_ptr,
+            packed_slice(
+                data="inner",
+                length="inner_length",
+                access="read",
+                aliasing="allowed",
+                transactional=False,
+            ),
+        ),
+        in_("output_length", uint64_t),
+        in_("outer_length", uint64_t),
+        in_("inner_length", uint64_t),
+        in_("modulus", uint64_t),
+    ],
+    effects=Effects(pure=False, allocates=True, raises=[ValueError], writes=["output"]),
+    result=Status(1, exception=ValueError, message="invalid polynomial composition"),
+    wasm=True,
+)
+def nmod_poly_compose(
+    output: Writable[UInt64Buffer],
+    outer: UInt64Buffer,
+    inner: UInt64Buffer,
+    output_length: uint64,
+    outer_length: uint64,
+    inner_length: uint64,
+    modulus: uint64,
+) -> bool: ...
+
+
+@flint.function(
+    dynamic="ffiNmodPolyReverse",
+    symbol="sagejs_flint_nmod_poly_reverse_packed",
+    returns=int,
+    abi=[
+        out(
+            "result",
+            uint64_t_ptr,
+            packed_slice(
+                data="output",
+                length="output_length",
+                access="write",
+                aliasing="allowed",
+                transactional=True,
+            ),
+        ),
+        in_(
+            "source_data",
+            uint64_t_ptr,
+            packed_slice(
+                data="source",
+                length="source_length",
+                access="read",
+                aliasing="allowed",
+                transactional=False,
+            ),
+        ),
+        in_("output_length", uint64_t),
+        in_("source_length", uint64_t),
+        in_("reverse_length", uint64_t),
+        in_("modulus", uint64_t),
+    ],
+    effects=Effects(pure=False, allocates=True, raises=[ValueError], writes=["output"]),
+    result=Status(1, exception=ValueError, message="invalid polynomial reversal"),
+    wasm=True,
+)
+def nmod_poly_reverse(
+    output: Writable[UInt64Buffer],
+    source: UInt64Buffer,
+    output_length: uint64,
+    source_length: uint64,
+    reverse_length: uint64,
+    modulus: uint64,
+) -> bool: ...
+
+
+@flint.function(
+    dynamic="ffiNmodPolyShiftLeft",
+    symbol="sagejs_flint_nmod_poly_shift_left_packed",
+    returns=int,
+    abi=[
+        out(
+            "result",
+            uint64_t_ptr,
+            packed_slice(
+                data="output",
+                length="output_length",
+                access="write",
+                aliasing="allowed",
+                transactional=True,
+            ),
+        ),
+        in_(
+            "source_data",
+            uint64_t_ptr,
+            packed_slice(
+                data="source",
+                length="source_length",
+                access="read",
+                aliasing="allowed",
+                transactional=False,
+            ),
+        ),
+        in_("output_length", uint64_t),
+        in_("source_length", uint64_t),
+        in_("amount", uint64_t),
+        in_("modulus", uint64_t),
+    ],
+    effects=Effects(pure=False, allocates=True, raises=[ValueError], writes=["output"]),
+    result=Status(1, exception=ValueError, message="invalid polynomial left shift"),
+    wasm=True,
+)
+def nmod_poly_shift_left(
+    output: Writable[UInt64Buffer],
+    source: UInt64Buffer,
+    output_length: uint64,
+    source_length: uint64,
+    amount: uint64,
+    modulus: uint64,
+) -> bool: ...
+
+
+@flint.function(
+    dynamic="ffiNmodPolyShiftRight",
+    symbol="sagejs_flint_nmod_poly_shift_right_packed",
+    returns=int,
+    abi=[
+        out(
+            "result",
+            uint64_t_ptr,
+            packed_slice(
+                data="output",
+                length="output_length",
+                access="write",
+                aliasing="allowed",
+                transactional=True,
+            ),
+        ),
+        in_(
+            "source_data",
+            uint64_t_ptr,
+            packed_slice(
+                data="source",
+                length="source_length",
+                access="read",
+                aliasing="allowed",
+                transactional=False,
+            ),
+        ),
+        in_("output_length", uint64_t),
+        in_("source_length", uint64_t),
+        in_("amount", uint64_t),
+        in_("modulus", uint64_t),
+    ],
+    effects=Effects(pure=False, allocates=True, raises=[ValueError], writes=["output"]),
+    result=Status(1, exception=ValueError, message="invalid polynomial right shift"),
+    wasm=True,
+)
+def nmod_poly_shift_right(
+    output: Writable[UInt64Buffer],
+    source: UInt64Buffer,
+    output_length: uint64,
+    source_length: uint64,
+    amount: uint64,
+    modulus: uint64,
+) -> bool: ...
+
+
+@flint.function(
+    dynamic="ffiNmodPolyTruncate",
+    symbol="sagejs_flint_nmod_poly_truncate_packed",
+    returns=int,
+    abi=[
+        out(
+            "result",
+            uint64_t_ptr,
+            packed_slice(
+                data="output",
+                length="output_length",
+                access="write",
+                aliasing="allowed",
+                transactional=True,
+            ),
+        ),
+        in_(
+            "source_data",
+            uint64_t_ptr,
+            packed_slice(
+                data="source",
+                length="source_length",
+                access="read",
+                aliasing="allowed",
+                transactional=False,
+            ),
+        ),
+        in_("output_length", uint64_t),
+        in_("source_length", uint64_t),
+        in_("stop", uint64_t),
+        in_("modulus", uint64_t),
+    ],
+    effects=Effects(pure=False, allocates=True, raises=[ValueError], writes=["output"]),
+    result=Status(1, exception=ValueError, message="invalid polynomial truncation"),
+    wasm=True,
+)
+def nmod_poly_truncate(
+    output: Writable[UInt64Buffer],
+    source: UInt64Buffer,
+    output_length: uint64,
+    source_length: uint64,
+    stop: uint64,
+    modulus: uint64,
+) -> bool: ...
+
+
+@flint.function(
+    dynamic="ffiNmodPolyIntegral",
+    symbol="sagejs_flint_nmod_poly_integral_packed",
+    returns=int,
+    abi=[
+        out(
+            "result",
+            uint64_t_ptr,
+            packed_slice(
+                data="output",
+                length="output_length",
+                access="write",
+                aliasing="allowed",
+                transactional=True,
+            ),
+        ),
+        in_(
+            "source_data",
+            uint64_t_ptr,
+            packed_slice(
+                data="source",
+                length="source_length",
+                access="read",
+                aliasing="allowed",
+                transactional=False,
+            ),
+        ),
+        in_("output_length", uint64_t),
+        in_("source_length", uint64_t),
+        in_("modulus", uint64_t),
+    ],
+    effects=Effects(pure=False, allocates=True, raises=[ValueError], writes=["output"]),
+    result=Status(
+        1,
+        exception=ValueError,
+        message="prime polynomial integration requires degree smaller than the characteristic",
+    ),
+    wasm=True,
+)
+def nmod_poly_integral(
+    output: Writable[UInt64Buffer],
+    source: UInt64Buffer,
+    output_length: uint64,
+    source_length: uint64,
+    modulus: uint64,
+) -> bool: ...
+
+
+@flint.function(
+    dynamic="ffiNmodPolyResultant",
+    symbol="sagejs_flint_nmod_poly_resultant_packed",
+    returns=int,
+    abi=[
+        out(
+            "result",
+            uint64_t_ptr,
+            packed_slice(
+                data="output",
+                length="one",
+                access="write",
+                aliasing="allowed",
+                transactional=True,
+            ),
+        ),
+        in_(
+            "left_data",
+            uint64_t_ptr,
+            packed_slice(
+                data="left",
+                length="left_length",
+                access="read",
+                aliasing="allowed",
+                transactional=False,
+            ),
+        ),
+        in_(
+            "right_data",
+            uint64_t_ptr,
+            packed_slice(
+                data="right",
+                length="right_length",
+                access="read",
+                aliasing="allowed",
+                transactional=False,
+            ),
+        ),
+        in_("one", uint64_t),
+        in_("left_length", uint64_t),
+        in_("right_length", uint64_t),
+        in_("modulus", uint64_t),
+    ],
+    effects=Effects(pure=False, allocates=True, raises=[ValueError], writes=["output"]),
+    result=Status(1, exception=ValueError, message="invalid polynomial resultant"),
+    wasm=True,
+)
+def nmod_poly_resultant(
+    output: Writable[UInt64Buffer],
+    left: UInt64Buffer,
+    right: UInt64Buffer,
+    one: Min[uint64, 1],
+    left_length: uint64,
+    right_length: uint64,
+    modulus: uint64,
+) -> bool: ...
+
+
+@flint.function(
+    dynamic="ffiNmodPolyDiscriminant",
+    symbol="sagejs_flint_nmod_poly_discriminant_packed",
+    returns=int,
+    abi=[
+        out(
+            "result",
+            uint64_t_ptr,
+            packed_slice(
+                data="output",
+                length="one",
+                access="write",
+                aliasing="allowed",
+                transactional=True,
+            ),
+        ),
+        in_(
+            "source_data",
+            uint64_t_ptr,
+            packed_slice(
+                data="source",
+                length="source_length",
+                access="read",
+                aliasing="allowed",
+                transactional=False,
+            ),
+        ),
+        in_("one", uint64_t),
+        in_("source_length", uint64_t),
+        in_("modulus", uint64_t),
+    ],
+    effects=Effects(pure=False, allocates=True, raises=[ValueError], writes=["output"]),
+    result=Status(1, exception=ValueError, message="invalid polynomial discriminant"),
+    wasm=True,
+)
+def nmod_poly_discriminant(
+    output: Writable[UInt64Buffer],
+    source: UInt64Buffer,
+    one: Min[uint64, 1],
+    source_length: uint64,
     modulus: uint64,
 ) -> bool: ...
 

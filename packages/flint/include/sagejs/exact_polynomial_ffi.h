@@ -311,6 +311,81 @@ static inline int sagejs_fmpz_polynomial_truncate(
     return 1;
 }
 
+static inline int sagejs_fmpz_polynomial_compose(
+    sagejs_fmpz_polynomial_t result,
+    const sagejs_fmpz_polynomial_t outer,
+    const sagejs_fmpz_polynomial_t inner)
+{
+    if (!outer->sealed || !inner->sealed)
+        return 0;
+    fmpz_poly_init(result->value);
+    fmpz_poly_compose(result->value, outer->value, inner->value);
+    sagejs_fmpz_polynomial_finish_result(result);
+    return 1;
+}
+
+static inline int sagejs_fmpz_polynomial_reverse(
+    sagejs_fmpz_polynomial_t result,
+    const sagejs_fmpz_polynomial_t source,
+    uint64_t length)
+{
+    if (!source->sealed || length > (uint64_t) WORD_MAX)
+        return 0;
+    fmpz_poly_init(result->value);
+    fmpz_poly_reverse(result->value, source->value, (slong) length);
+    sagejs_fmpz_polynomial_finish_result(result);
+    return 1;
+}
+
+static inline int sagejs_fmpz_polynomial_shift_left(
+    sagejs_fmpz_polynomial_t result,
+    const sagejs_fmpz_polynomial_t source,
+    uint64_t amount)
+{
+    if (!source->sealed || amount > (uint64_t) WORD_MAX ||
+        (uint64_t) fmpz_poly_length(source->value) >
+            (uint64_t) WORD_MAX - amount)
+        return 0;
+    fmpz_poly_init(result->value);
+    fmpz_poly_shift_left(result->value, source->value, (slong) amount);
+    sagejs_fmpz_polynomial_finish_result(result);
+    return 1;
+}
+
+static inline int sagejs_fmpz_polynomial_shift_right(
+    sagejs_fmpz_polynomial_t result,
+    const sagejs_fmpz_polynomial_t source,
+    uint64_t amount)
+{
+    if (!source->sealed || amount > (uint64_t) WORD_MAX)
+        return 0;
+    fmpz_poly_init(result->value);
+    fmpz_poly_shift_right(result->value, source->value, (slong) amount);
+    sagejs_fmpz_polynomial_finish_result(result);
+    return 1;
+}
+
+static inline int sagejs_fmpz_polynomial_resultant(
+    fmpz_t result,
+    const sagejs_fmpz_polynomial_t left,
+    const sagejs_fmpz_polynomial_t right)
+{
+    if (!left->sealed || !right->sealed)
+        return 0;
+    fmpz_poly_resultant(result, left->value, right->value);
+    return 1;
+}
+
+static inline int sagejs_fmpz_polynomial_discriminant(
+    fmpz_t result,
+    const sagejs_fmpz_polynomial_t source)
+{
+    if (!source->sealed)
+        return 0;
+    fmpz_poly_discriminant(result, source->value);
+    return 1;
+}
+
 static inline int sagejs_fmpz_polynomial_derivative(
     sagejs_fmpz_polynomial_t result,
     const sagejs_fmpz_polynomial_t source)
@@ -870,6 +945,111 @@ SAGEJS_FMPQ_POLYNOMIAL_BINARY(
     sagejs_fmpq_polynomial_gcd, fmpq_poly_gcd)
 
 #undef SAGEJS_FMPQ_POLYNOMIAL_BINARY
+
+static inline int sagejs_fmpq_polynomial_from_fmpz_integral(
+    sagejs_fmpq_polynomial_t result,
+    const sagejs_fmpz_polynomial_t source)
+{
+    fmpq_poly_t rational_source;
+    if (!source->sealed)
+        return 0;
+    fmpq_poly_init(rational_source);
+    fmpq_poly_set_fmpz_poly(rational_source, source->value);
+    fmpq_poly_init(result->value);
+    fmpq_poly_integral(result->value, rational_source);
+    fmpq_poly_clear(rational_source);
+    sagejs_fmpq_polynomial_finish_result(result);
+    return 1;
+}
+
+static inline int sagejs_fmpq_polynomial_compose(
+    sagejs_fmpq_polynomial_t result,
+    const sagejs_fmpq_polynomial_t outer,
+    const sagejs_fmpq_polynomial_t inner)
+{
+    if (!outer->sealed || !inner->sealed)
+        return 0;
+    fmpq_poly_init(result->value);
+    fmpq_poly_compose(result->value, outer->value, inner->value);
+    sagejs_fmpq_polynomial_finish_result(result);
+    return 1;
+}
+
+static inline int sagejs_fmpq_polynomial_reverse(
+    sagejs_fmpq_polynomial_t result,
+    const sagejs_fmpq_polynomial_t source,
+    uint64_t length)
+{
+    if (!source->sealed || length > (uint64_t) WORD_MAX)
+        return 0;
+    fmpq_poly_init(result->value);
+    fmpq_poly_reverse(result->value, source->value, (slong) length);
+    sagejs_fmpq_polynomial_finish_result(result);
+    return 1;
+}
+
+static inline int sagejs_fmpq_polynomial_shift_left(
+    sagejs_fmpq_polynomial_t result,
+    const sagejs_fmpq_polynomial_t source,
+    uint64_t amount)
+{
+    if (!source->sealed || amount > (uint64_t) WORD_MAX ||
+        (uint64_t) fmpq_poly_length(source->value) >
+            (uint64_t) WORD_MAX - amount)
+        return 0;
+    fmpq_poly_init(result->value);
+    fmpq_poly_shift_left(result->value, source->value, (slong) amount);
+    sagejs_fmpq_polynomial_finish_result(result);
+    return 1;
+}
+
+static inline int sagejs_fmpq_polynomial_shift_right(
+    sagejs_fmpq_polynomial_t result,
+    const sagejs_fmpq_polynomial_t source,
+    uint64_t amount)
+{
+    if (!source->sealed || amount > (uint64_t) WORD_MAX)
+        return 0;
+    fmpq_poly_init(result->value);
+    fmpq_poly_shift_right(result->value, source->value, (slong) amount);
+    sagejs_fmpq_polynomial_finish_result(result);
+    return 1;
+}
+
+static inline int sagejs_fmpq_polynomial_integral(
+    sagejs_fmpq_polynomial_t result,
+    const sagejs_fmpq_polynomial_t source)
+{
+    if (!source->sealed)
+        return 0;
+    fmpq_poly_init(result->value);
+    fmpq_poly_integral(result->value, source->value);
+    sagejs_fmpq_polynomial_finish_result(result);
+    return 1;
+}
+
+static inline int sagejs_fmpq_polynomial_resultant(
+    sagejs_fmpq_value_t result,
+    const sagejs_fmpq_polynomial_t left,
+    const sagejs_fmpq_polynomial_t right)
+{
+    if (!left->sealed || !right->sealed)
+        return 0;
+    fmpq_init(result);
+    fmpq_poly_resultant(result, left->value, right->value);
+    return 1;
+}
+
+static inline int sagejs_fmpq_polynomial_discriminant(
+    sagejs_fmpq_value_t result,
+    const sagejs_fmpq_polynomial_t source)
+{
+    if (!source->sealed)
+        return 0;
+    fmpq_init(result);
+    fmpq_poly_discriminant(result, source->value);
+    return 1;
+}
 
 static inline int sagejs_fmpq_polynomial_divexact(
     sagejs_fmpq_polynomial_t result,

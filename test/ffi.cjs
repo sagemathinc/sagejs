@@ -52,6 +52,7 @@ function runSage(args, input = undefined, env = {}) {
     encoding: "utf8",
     env: { ...process.env, ...env },
     input,
+    maxBuffer: 32 * 1024 * 1024,
   });
   assert.equal(
     result.status,
@@ -129,7 +130,11 @@ test("FFI declarations are strict and generated modules are current", () => {
       "fmpz_polynomial_equal", "fmpz_polynomial_coefficient",
       "fmpz_polynomial_add", "fmpz_polynomial_sub",
       "fmpz_polynomial_neg", "fmpz_polynomial_scalar_floor_div",
-      "fmpz_polynomial_truncate", "fmpz_polynomial_derivative",
+      "fmpz_polynomial_truncate", "fmpz_polynomial_compose",
+      "fmpz_polynomial_reverse", "fmpz_polynomial_shift_left",
+      "fmpz_polynomial_shift_right", "fmpz_polynomial_integral",
+      "fmpz_polynomial_resultant", "fmpz_polynomial_discriminant",
+      "fmpz_polynomial_derivative",
       "fmpz_polynomial_mul",
       "fmpz_polynomial_gcd", "fmpz_polynomial_xgcd_resource",
       "fmpz_polynomial_xgcd_result_gcd",
@@ -152,6 +157,10 @@ test("FFI declarations are strict and generated modules are current", () => {
       "fmpq_polynomial_coefficient_denominator", "fmpq_polynomial_add",
       "fmpq_polynomial_sub", "fmpq_polynomial_neg",
       "fmpq_polynomial_scalar_div", "fmpq_polynomial_truncate",
+      "fmpq_polynomial_compose", "fmpq_polynomial_reverse",
+      "fmpq_polynomial_shift_left", "fmpq_polynomial_shift_right",
+      "fmpq_polynomial_integral", "fmpq_polynomial_resultant",
+      "fmpq_polynomial_discriminant",
       "fmpq_polynomial_derivative",
       "fmpq_polynomial_mul", "fmpq_polynomial_gcd",
       "fmpq_polynomial_xgcd_resource",
@@ -230,6 +239,10 @@ test("FFI declarations are strict and generated modules are current", () => {
       "fmpz_poly_mul", "fmpq_poly_mul",
       "nmod_poly_add", "nmod_poly_sub", "nmod_poly_neg",
       "nmod_poly_equal", "nmod_poly_derivative", "nmod_poly_evaluate",
+      "nmod_poly_compose", "nmod_poly_reverse",
+      "nmod_poly_shift_left", "nmod_poly_shift_right",
+      "nmod_poly_truncate", "nmod_poly_integral",
+      "nmod_poly_resultant", "nmod_poly_discriminant",
       "nmod_poly_mul",
       "nmod_poly_divexact", "nmod_poly_divrem",
       "fmpz_poly_divexact", "fmpq_poly_divexact",
@@ -308,7 +321,7 @@ test("FFI declarations are strict and generated modules are current", () => {
     { resource: "graph", ownership: "owned", owner: null, root: "graph" },
     { resource: "edges", ownership: "borrowed", owner: "graph", root: "graph" },
   ]);
-  assert.match(runSage(["ffi", "check"]), /235 function\(s\)/);
+  assert.match(runSage(["ffi", "check"]), /257 function\(s\)/);
   const inspection = JSON.parse(
     runSage(["ffi", "explain", "flint", "--json"]),
   );
@@ -358,7 +371,7 @@ test("generated host adapters cover values and safe owned resources", async () =
     assert.doesNotMatch(source, /sagejs\.runtime|ffi_call/);
     assert.equal(functions.length, {
       fflas: 5,
-      flint: 201,
+      flint: 223,
       igraph: 2,
       m4ri: 22,
     }[declaration.library.id]);
@@ -414,7 +427,7 @@ test("computed resource byte transfers lower to one generated copy", async () =>
 
 test("packages publish every generated host adapter as the canonical export", () => {
   for (const [packagePath, expected] of [
-    ["../packages/flint", 202],
+    ["../packages/flint", 224],
     ["../packages/fflas", 5],
     ["../packages/graph", 2],
   ]) {
@@ -558,7 +571,7 @@ test("native-boundary audit is a reviewed exact ratchet", () => {
   const current = boundaryAudit.validateBoundarySnapshot(snapshot, { root });
   assert.ok(current.counts["napi-export"] >= 280);
   assert.ok(current.counts["runtime-intrinsic"] >= 100);
-  assert.equal(current.counts["declared-ffi"], 235);
+  assert.equal(current.counts["declared-ffi"], 257);
   assert.equal(current.counts["declared-ffi-resource"], 16);
   assert.match(runSage(["ffi", "audit"]), /inventoried native boundaries/);
   assert.equal(
