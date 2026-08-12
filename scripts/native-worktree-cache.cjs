@@ -36,10 +36,14 @@ const {
   release: operatingSystemRelease,
 } = require("node:os");
 const {
+  basename,
   dirname,
   isAbsolute,
   join,
+  parse,
+  relative,
   resolve,
+  sep,
 } = require("node:path");
 const { spawn, spawnSync } = require("node:child_process");
 const { git } = require("./parallel-lib.cjs");
@@ -47,7 +51,14 @@ const { pnpmInvocation } = require("./pnpm-invocation.cjs");
 const { nativeMathBuildProfile } = require("./native-math-profile.cjs");
 
 const nativeCacheSchema = "sagejs.parallel-native-artifact-cache-v1";
+const nativeCacheMaintenanceSchema = "sagejs.parallel-native-cache-status-v1";
 const nativeCachePackages = new Set(["flint", "fflas", "graph"]);
+const nativeCacheArtifactIds = new Set(
+  [...nativeCachePackages].flatMap((packageId) => [
+    `${packageId}-dependencies`,
+    `${packageId}-addon`,
+  ]),
+);
 const nativeCacheSleep = new Int32Array(new SharedArrayBuffer(4));
 const nativeCompilerStampSchema = "sagejs.native-compiler-inputs-v1";
 const nativeCompilerInputPaths = [
@@ -584,6 +595,9 @@ function nativeArtifactSpecs(workspace, overrides = {}) {
         stage: "dependencies",
         key: dependencyKey,
         identity,
+        mathProfile: ["flint", "fflas"].includes(packageId)
+          ? mathProfile
+          : null,
         inputPaths: description.dependencyInputs,
         inputs: dependencyInputs,
         outputRoots: [dependencyPrefix(packageId)],
@@ -603,6 +617,9 @@ function nativeArtifactSpecs(workspace, overrides = {}) {
         stage: "addon",
         key: addonKey,
         identity,
+        mathProfile: ["flint", "fflas"].includes(packageId)
+          ? mathProfile
+          : null,
         inputPaths: description.addonInputs,
         inputs: addonInputs,
         outputRoots: description.addonOutputs,
@@ -646,6 +663,27 @@ function materializationForSpec(spec) {
   return spec.materialization || "copy";
 }
 
+function generationForSpec(spec) {
+  if (!spec.packageId || !spec.stage) return null;
+  const identity = spec.stage === "dependencies"
+    ? spec.identity?.native ?? spec.identity
+    : spec.identity;
+  return stableJson({
+    identity_hash: identity === undefined
+      ? null
+      : sha256(JSON.stringify(stableJson(identity))),
+    math_profile: spec.mathProfile
+      ? {
+        effective: spec.mathProfile.effectiveProfile ?? null,
+        fingerprint: spec.mathProfile.fingerprint ?? null,
+        requested: spec.mathProfile.requestedProfile ?? null,
+      }
+      : null,
+    package_id: spec.packageId,
+    stage: spec.stage,
+  });
+}
+
 function pathIsWithin(path, root) {
   return path === root || path.startsWith(`${root}/`);
 }
@@ -661,6 +699,9 @@ function validCacheEntry(entry, spec) {
       manifest.input_hash !== snapshotHash(spec.inputs) ||
       JSON.stringify(manifest.output_roots) !== JSON.stringify(spec.outputRoots) ||
       (manifest.materialization || "copy") !== materializationForSpec(spec) ||
+      (manifest.generation !== undefined &&
+        JSON.stringify(manifest.generation) !==
+          JSON.stringify(generationForSpec(spec))) ||
       !Array.isArray(manifest.files)
     ) return false;
     const outputRoots = spec.outputRoots.map(safeRelativePath);
@@ -778,6 +819,533 @@ function quarantineCacheEntry(entry) {
   }
 }
 
+function sameNativeCachePath(left, right) {
+  return process.platform === "win32"
+    ? left.toLowerCase() === right.toLowerCase()
+    : left === right;
+}
+
+function assertExactNativeCacheRoot(
+  workspace,
+  requestedRoot,
+  expectedRoot = defaultNativeCacheRoot(workspace),
+) {
+  if (typeof requestedRoot !== "string" || requestedRoot === "") {
+    throw new Error("native-cache maintenance needs an absolute cache root");
+  }
+  if (!isAbsolute(requestedRoot) || resolve(requestedRoot) !== requestedRoot) {
+    throw new Error(`native-cache maintenance root is not exact: ${requestedRoot}`);
+  }
+  const cacheRoot = requestedRoot;
+  const expected = resolve(expectedRoot);
+  if (!sameNativeCachePath(cacheRoot, expected)) {
+    throw new Error(
+      `native-cache maintenance refused unexpected root: ${cacheRoot}`,
+    );
+  }
+  const filesystemRoot = parse(cacheRoot).root;
+  const workspaceRoot = resolvedWorkspaceRoot(workspace);
+  const broadRoots = new Set([
+    filesystemRoot,
+    resolve(homedir()),
+    workspaceRoot,
+  ]);
+  if (
+    broadRoots.has(cacheRoot) ||
+    dirname(cacheRoot) === filesystemRoot ||
+    basename(cacheRoot) === ""
+  ) {
+    throw new Error(`native-cache maintenance refused broad root: ${cacheRoot}`);
+  }
+  let current = filesystemRoot;
+  const suffix = relative(filesystemRoot, cacheRoot);
+  for (const component of suffix.split(sep).filter(Boolean)) {
+    current = join(current, component);
+    const metadata = pathMetadata(current);
+    if (metadata === null) break;
+    if (metadata.isSymbolicLink()) {
+      throw new Error(
+        `native-cache maintenance root has a symlinked component: ${current}`,
+      );
+    }
+    if (!metadata.isDirectory()) {
+      throw new Error(
+        `native-cache maintenance root has a non-directory component: ${current}`,
+      );
+    }
+  }
+  return cacheRoot;
+}
+
+function cacheTreeUsage(path) {
+  const metadata = pathMetadata(path);
+  if (metadata === null) return { bytes: 0, files: 0, symlinks: 0 };
+  if (metadata.isSymbolicLink()) {
+    return { bytes: metadata.size, files: 0, symlinks: 1 };
+  }
+  if (metadata.isFile()) {
+    return { bytes: metadata.size, files: 1, symlinks: 0 };
+  }
+  if (!metadata.isDirectory()) {
+    return { bytes: metadata.size, files: 1, symlinks: 0 };
+  }
+  const result = { bytes: 0, files: 0, symlinks: 0 };
+  for (const name of readdirSync(path)) {
+    const child = cacheTreeUsage(join(path, name));
+    result.bytes += child.bytes;
+    result.files += child.files;
+    result.symlinks += child.symlinks;
+  }
+  return result;
+}
+
+function inspectCacheGeneration(category, id, key) {
+  const issues = [];
+  const entry = join(category, key);
+  const metadata = pathMetadata(entry);
+  if (metadata === null || !metadata.isDirectory() || metadata.isSymbolicLink()) {
+    issues.push(`${id}/${key} is not an ordinary generation directory`);
+    return { entry, issues, manifest: null };
+  }
+  const names = readdirSync(entry).sort();
+  const unexpected = names.filter((name) =>
+    name !== "manifest.json" && name !== "payload"
+  );
+  if (unexpected.length !== 0) {
+    issues.push(`${id}/${key} has unexpected entries: ${unexpected.join(", ")}`);
+  }
+  const manifestMetadata = pathMetadata(join(entry, "manifest.json"));
+  const payloadMetadata = pathMetadata(join(entry, "payload"));
+  if (
+    manifestMetadata === null || !manifestMetadata.isFile() ||
+    manifestMetadata.isSymbolicLink()
+  ) {
+    issues.push(`${id}/${key} has no ordinary manifest.json`);
+  }
+  if (
+    payloadMetadata === null || !payloadMetadata.isDirectory() ||
+    payloadMetadata.isSymbolicLink()
+  ) {
+    issues.push(`${id}/${key} has no ordinary payload directory`);
+  }
+  const manifest = manifestMetadata?.isFile()
+    ? manifestForEntry(entry)
+    : null;
+  if (
+    manifest?.schema !== nativeCacheSchema ||
+    manifest.id !== id ||
+    manifest.key !== key ||
+    !Array.isArray(manifest.output_roots) ||
+    !Array.isArray(manifest.files)
+  ) {
+    issues.push(`${id}/${key} has an invalid native-cache manifest`);
+  } else {
+    try {
+      const roots = manifest.output_roots.map(safeRelativePath);
+      const declared = new Map();
+      for (const file of manifest.files) {
+        const path = safeRelativePath(file?.path);
+        if (declared.has(path)) throw new Error(`duplicate manifest path ${path}`);
+        declared.set(path, file);
+        if (!roots.some((root) => pathIsWithin(path, root))) {
+          throw new Error(`manifest path is outside output roots: ${path}`);
+        }
+        if (!["directory", "file", "symlink"].includes(file.type)) {
+          throw new Error(`unknown manifest entry type at ${path}`);
+        }
+      }
+      const actual = snapshot(join(entry, "payload"), roots);
+      if (actual.length !== declared.size) {
+        throw new Error("payload entries do not match the manifest");
+      }
+      for (const file of actual) {
+        const expected = declared.get(file.path);
+        if (
+          expected?.type !== file.type ||
+          (file.type === "file" &&
+            (expected.size !== file.size || expected.sha256 !== file.sha256)) ||
+          (file.type === "symlink" && expected.target !== file.target)
+        ) {
+          throw new Error(`payload differs from the manifest at ${file.path}`);
+        }
+      }
+    } catch (error) {
+      issues.push(`${id}/${key} is unsafe: ${error.message || error}`);
+    }
+  }
+  return { entry, issues, manifest };
+}
+
+function protectionKey(id, key) {
+  return `${id}/${key}`;
+}
+
+function discoverNativeCacheProtections(workspace, cacheRoot, options = {}) {
+  const reasons = new Map();
+  const issues = [];
+  const add = (id, key, reason) => {
+    if (!nativeCacheArtifactIds.has(id) || !/^[a-f0-9]{64}$/.test(key)) return;
+    const identity = protectionKey(id, key);
+    if (!reasons.has(identity)) reasons.set(identity, new Set());
+    reasons.get(identity).add(reason);
+  };
+  const currentSpecs = options.currentSpecs || nativeArtifactSpecs(workspace);
+  for (const spec of currentSpecs) add(spec.id, spec.key, "current-selected");
+  for (const item of options.protectedEntries || []) {
+    add(item.id, item.key, item.reason || "explicitly-protected");
+  }
+  const workspaces = options.workspaces || [workspace];
+  for (const requestedWorkspace of workspaces) {
+    const workspaceMetadata = pathMetadata(resolve(requestedWorkspace));
+    if (workspaceMetadata === null) continue;
+    let root;
+    try {
+      root = resolvedWorkspaceRoot(requestedWorkspace);
+    } catch (error) {
+      issues.push(
+        `cannot validate worktree ${requestedWorkspace}: ${error.message || error}`,
+      );
+      continue;
+    }
+    for (const spec of currentSpecs) {
+      if (!nativeCacheArtifactIds.has(spec.id)) continue;
+      for (const outputRoot of spec.outputRoots || []) {
+        let output;
+        try {
+          output = workspacePath(root, outputRoot, { allowLeafSymlink: true });
+        } catch (error) {
+          issues.push(
+            `cannot validate installed output ${root}/${outputRoot}: ` +
+              `${error.message || error}`,
+          );
+          continue;
+        }
+        const metadata = pathMetadata(output);
+        if (metadata === null || !metadata.isSymbolicLink()) continue;
+        const target = resolve(dirname(output), readlinkSync(output));
+        const targetRelative = relative(cacheRoot, target);
+        const components = targetRelative.split(sep);
+        if (
+          targetRelative.startsWith("..") || isAbsolute(targetRelative) ||
+          components.length < 4 ||
+          components[0] !== spec.id ||
+          !/^[a-f0-9]{64}$/.test(components[1]) ||
+          components[2] !== "payload" ||
+          target !== join(cacheRoot, spec.id, components[1], "payload", outputRoot)
+        ) {
+          continue;
+        }
+        add(spec.id, components[1], `installed-link:${root}`);
+      }
+    }
+  }
+  return { currentSpecs, issues, reasons };
+}
+
+function nativeCacheStatus(workspace, requestedRoot, options = {}) {
+  const cacheRoot = assertExactNativeCacheRoot(
+    workspace,
+    requestedRoot,
+    options.expectedRoot,
+  );
+  const protection = discoverNativeCacheProtections(
+    workspace,
+    cacheRoot,
+    options,
+  );
+  const selectedGenerations = protection.currentSpecs
+    .filter(({ id, key }) =>
+      nativeCacheArtifactIds.has(id) && /^[a-f0-9]{64}$/.test(key)
+    )
+    .map(({ id, key, mathProfile }) => ({
+      id,
+      key,
+      math_profile: mathProfile
+        ? {
+          effective: mathProfile.effectiveProfile ?? null,
+          fingerprint: mathProfile.fingerprint ?? null,
+          requested: mathProfile.requestedProfile ?? null,
+        }
+        : null,
+    }));
+  const issues = [...protection.issues];
+  const artifacts = [];
+  const totals = {
+    bytes: 0,
+    files: 0,
+    generations: 0,
+    locks: 0,
+    obsolete_bytes: 0,
+    obsolete_generations: 0,
+    retained_bytes: 0,
+    retained_generations: 0,
+    symlinks: 0,
+  };
+  const rootMetadata = pathMetadata(cacheRoot);
+  if (rootMetadata === null) {
+    return {
+      schema: nativeCacheMaintenanceSchema,
+      cache_root: cacheRoot,
+      safe: issues.length === 0,
+      issues,
+      selected_generations: selectedGenerations,
+      totals,
+      artifacts,
+    };
+  }
+  if (!rootMetadata.isDirectory() || rootMetadata.isSymbolicLink()) {
+    throw new Error(`native-cache maintenance root is not an ordinary directory: ${cacheRoot}`);
+  }
+  for (const name of readdirSync(cacheRoot).sort()) {
+    if (!nativeCacheArtifactIds.has(name)) {
+      issues.push(`unexpected cache-root entry: ${name}`);
+      continue;
+    }
+    const category = join(cacheRoot, name);
+    const categoryMetadata = pathMetadata(category);
+    if (
+      categoryMetadata === null || !categoryMetadata.isDirectory() ||
+      categoryMetadata.isSymbolicLink()
+    ) {
+      issues.push(`${name} is not an ordinary artifact directory`);
+      continue;
+    }
+    const names = readdirSync(category).sort();
+    const lockedKeys = new Set();
+    let lockBytes = 0;
+    for (const child of names) {
+      const match = child.match(/^([a-f0-9]{64})\.lock$/);
+      if (!match) continue;
+      const lock = join(category, child);
+      const metadata = pathMetadata(lock);
+      if (metadata === null || !metadata.isDirectory() || metadata.isSymbolicLink()) {
+        issues.push(`${name}/${child} is not an ordinary lock directory`);
+        continue;
+      }
+      lockedKeys.add(match[1]);
+      const usage = cacheTreeUsage(lock);
+      lockBytes += usage.bytes;
+      totals.bytes += usage.bytes;
+      totals.files += usage.files;
+      totals.symlinks += usage.symlinks;
+      totals.locks += 1;
+    }
+    const generations = [];
+    for (const key of names) {
+      if (/^[a-f0-9]{64}\.lock$/.test(key)) continue;
+      if (!/^[a-f0-9]{64}$/.test(key)) {
+        issues.push(`unexpected artifact entry: ${name}/${key}`);
+        continue;
+      }
+      const inspected = inspectCacheGeneration(category, name, key);
+      issues.push(...inspected.issues);
+      const usage = cacheTreeUsage(inspected.entry);
+      const reasons = new Set(
+        protection.reasons.get(protectionKey(name, key)) || [],
+      );
+      if (lockedKeys.has(key)) reasons.add("build-lock");
+      if (inspected.issues.length !== 0) reasons.add("unsafe-layout");
+      const retained = reasons.size !== 0;
+      const metadata = pathMetadata(inspected.entry);
+      const generation = {
+        bytes: usage.bytes,
+        files: usage.files,
+        id: name,
+        identity_hash: inspected.manifest?.generation?.identity_hash ?? null,
+        key,
+        math_profile: inspected.manifest?.generation?.math_profile ?? null,
+        modified_at: metadata
+          ? new Date(metadata.mtimeMs).toISOString()
+          : null,
+        modified_ms: metadata?.mtimeMs ?? 0,
+        reasons: [...reasons].sort(),
+        state: retained ? "retained" : "obsolete",
+        symlinks: usage.symlinks,
+      };
+      generations.push(generation);
+      totals.bytes += usage.bytes;
+      totals.files += usage.files;
+      totals.generations += 1;
+      totals.symlinks += usage.symlinks;
+      if (retained) {
+        totals.retained_bytes += usage.bytes;
+        totals.retained_generations += 1;
+      } else {
+        totals.obsolete_bytes += usage.bytes;
+        totals.obsolete_generations += 1;
+      }
+    }
+    artifacts.push({
+      bytes: generations.reduce((sum, generation) => sum + generation.bytes, 0) +
+        lockBytes,
+      generations,
+      id: name,
+      locks: lockedKeys.size,
+    });
+  }
+  return {
+    schema: nativeCacheMaintenanceSchema,
+    cache_root: cacheRoot,
+    safe: issues.length === 0,
+    issues,
+    selected_generations: selectedGenerations,
+    totals,
+    artifacts,
+  };
+}
+
+function validateCleanupLimit(name, value) {
+  if (!Number.isSafeInteger(value) || value <= 0) {
+    throw new Error(`native-cache cleanup ${name} must be a positive integer`);
+  }
+  return value;
+}
+
+function removeObsoleteGeneration(workspace, cacheRoot, generation, options) {
+  options.beforeRemove?.(generation);
+  assertExactNativeCacheRoot(
+    workspace,
+    cacheRoot,
+    options.expectedRoot ?? cacheRoot,
+  );
+  if (
+    !nativeCacheArtifactIds.has(generation.id) ||
+    !/^[a-f0-9]{64}$/.test(generation.key)
+  ) {
+    throw new Error("native-cache cleanup refused an invalid generation identity");
+  }
+  const category = join(cacheRoot, generation.id);
+  const entry = join(category, generation.key);
+  const categoryMetadata = pathMetadata(category);
+  const entryMetadata = pathMetadata(entry);
+  if (entryMetadata === null) return { ...generation, result: "already-absent" };
+  if (
+    categoryMetadata === null || !categoryMetadata.isDirectory() ||
+    categoryMetadata.isSymbolicLink() ||
+    !entryMetadata.isDirectory() || entryMetadata.isSymbolicLink()
+  ) {
+    throw new Error(
+      `native-cache cleanup refused changed path ${generation.id}/${generation.key}`,
+    );
+  }
+  if (pathMetadata(`${entry}.lock`) !== null) {
+    return { ...generation, result: "new-lock" };
+  }
+  const protection = discoverNativeCacheProtections(workspace, cacheRoot, options);
+  if (protection.issues.length !== 0) {
+    throw new Error(`native-cache cleanup protection check failed: ${protection.issues.join("; ")}`);
+  }
+  const newReasons = protection.reasons.get(
+    protectionKey(generation.id, generation.key),
+  );
+  if (newReasons?.size) {
+    return {
+      ...generation,
+      reasons: [...newReasons].sort(),
+      result: "new-protection",
+    };
+  }
+  const inspected = inspectCacheGeneration(
+    category,
+    generation.id,
+    generation.key,
+  );
+  if (inspected.issues.length !== 0) {
+    throw new Error(
+      `native-cache cleanup generation changed: ${inspected.issues.join("; ")}`,
+    );
+  }
+  const temporary = join(
+    category,
+    `.cleanup-${generation.key}-${process.pid}-${randomUUID()}`,
+  );
+  try {
+    renameSync(entry, temporary);
+  } catch (error) {
+    if (error.code === "ENOENT") return { ...generation, result: "already-absent" };
+    throw error;
+  }
+  removeCacheTree(temporary);
+  return { ...generation, result: "removed" };
+}
+
+function cleanupNativeCache(workspace, requestedRoot, options = {}) {
+  const maxGenerations = validateCleanupLimit(
+    "maxGenerations",
+    options.maxGenerations ?? 8,
+  );
+  const maxBytes = validateCleanupLimit(
+    "maxBytes",
+    options.maxBytes ?? 20 * 1024 * 1024 * 1024,
+  );
+  const before = nativeCacheStatus(workspace, requestedRoot, options);
+  if (!before.safe) {
+    throw new Error(
+      `native-cache cleanup refused unsafe layout: ${before.issues.join("; ")}`,
+    );
+  }
+  const eligible = before.artifacts.flatMap(({ generations }) => generations)
+    .filter(({ state }) => state === "obsolete")
+    .sort((left, right) =>
+      left.modified_ms - right.modified_ms ||
+      left.id.localeCompare(right.id) ||
+      left.key.localeCompare(right.key)
+    );
+  const selected = [];
+  let selectedBytes = 0;
+  for (const generation of eligible) {
+    if (selected.length >= maxGenerations) break;
+    if (selectedBytes + generation.bytes > maxBytes) continue;
+    selected.push(generation);
+    selectedBytes += generation.bytes;
+  }
+  const outcomes = options.apply
+    ? selected.map((generation) =>
+      removeObsoleteGeneration(workspace, before.cache_root, generation, options)
+    )
+    : [];
+  const removed = outcomes.filter(({ result }) => result === "removed");
+  const skipped = outcomes.filter(({ result }) => result !== "removed");
+  const after = options.apply
+    ? nativeCacheStatus(workspace, before.cache_root, options)
+    : before;
+  return {
+    schema: nativeCacheMaintenanceSchema,
+    action: "cleanup",
+    applied: options.apply === true,
+    cache_root: before.cache_root,
+    limits: {
+      max_bytes: maxBytes,
+      max_generations: maxGenerations,
+    },
+    before: before.totals,
+    eligible: {
+      bytes: eligible.reduce((sum, generation) => sum + generation.bytes, 0),
+      generations: eligible.length,
+    },
+    selected: {
+      bytes: selectedBytes,
+      generations: selected.map(({ id, key, bytes, modified_at }) => ({
+        bytes,
+        id,
+        key,
+        modified_at,
+      })),
+    },
+    removed: {
+      bytes: removed.reduce((sum, generation) => sum + generation.bytes, 0),
+      generations: removed.map(({ id, key, bytes }) => ({ bytes, id, key })),
+    },
+    skipped: skipped.map(({ id, key, result, reasons }) => ({
+      id,
+      key,
+      reasons,
+      result,
+    })),
+    after: after.totals,
+  };
+}
+
 function publishNativeArtifact(workspace, cacheRoot, spec) {
   assertInputsCurrent(workspace, spec);
   const workspaceRoot = resolvedWorkspaceRoot(workspace);
@@ -809,6 +1377,7 @@ function publishNativeArtifact(workspace, cacheRoot, spec) {
       output_roots: spec.outputRoots,
       input_hash: snapshotHash(spec.inputs),
       materialization: materializationForSpec(spec),
+      generation: generationForSpec(spec),
       files,
     };
     writeFileSync(join(temporary, "manifest.json"), `${JSON.stringify(manifest, null, 2)}${EOL}`);
@@ -1395,11 +1964,16 @@ function restoreNativePackages(workspace, packageIds, options = {}) {
 }
 
 module.exports = {
+  assertExactNativeCacheRoot,
+  cleanupNativeCache,
   defaultNativeCacheRoot,
+  discoverNativeCacheProtections,
   ensureNativeCompiler,
   nativeArtifactSpecs,
+  nativeCacheArtifactIds,
   nativeCachePackages,
   nativeCacheProcessIdentity,
+  nativeCacheStatus,
   prepareNativeArtifact,
   prepareNativeDependencies,
   prepareNativePackages,

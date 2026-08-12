@@ -26,10 +26,3 @@
 - Ratchet cold production-kernel loading separately from warm mathematical
   execution, and never silently compile a missing production kernel in an
   ordinary installed session.
-
-## Development infrastructure
-
-- Improve cache cleanup and observability beyond the bounded automatic module
-  cache collector: report cache size and retained generations, provide a safe
-  explicit cleanup command for obsolete native toolchain/profile artifacts,
-  and keep all cleanup lease-aware and fail-closed around unexpected paths.
