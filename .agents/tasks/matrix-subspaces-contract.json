@@ -1,0 +1,120 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "matrix-subspaces-contract",
+  "title": "Matrix Subspaces Contract",
+  "lane": "arithmetic-algebra",
+  "status": "review",
+  "owner": "user",
+  "objective": "Define storage-neutral canonical row/column-space planning and execution that reuses one echelon result and bulk-selects its first rank rows, with Sage differential semantics and performance witnesses, ready for later Matrix API wiring",
+  "base_commit": "5a1cc59fc7fddad7648e98dc2d341a2455853754",
+  "claims": [
+    "src/lib/sagejs/linear_algebra/matrix_subspaces.py",
+    "test/linear-matrix-subspaces.cjs",
+    "bench/linear-matrix-subspaces.cjs"
+  ],
+  "dependencies": [],
+  "references": [
+    "/home/user/upstream/sage/src/sage/matrix/matrix2.pyx",
+    "https://doc.sagemath.org/html/en/reference/matrices/"
+  ],
+  "architecture": {
+    "strategy": "dynamic-python",
+    "fallback": "same-source",
+    "oracles": [
+      "SageMath 10.9 row_space and column_space semantics",
+      "CPython direct execution"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "node --test test/linear-matrix-subspaces.cjs",
+    "node bench/linear-matrix-subspaces.cjs --check",
+    "pnpm exec pyright src/lib/sagejs/linear_algebra/matrix_subspaces.py",
+    "pnpm test:baselib:strict",
+    "pnpm architecture:check",
+    "pnpm test:native"
+  ],
+  "runs": [
+    {
+      "command": "node --test test/linear-matrix-subspaces.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.103,
+      "started_at": "2026-08-12T10:19:27.278Z",
+      "commit": "5a1cc59fc7fddad7648e98dc2d341a2455853754",
+      "workspace_fingerprint": "3ede5d831e1f2466f5ad551acaad0d262adb7e34755c8f855fd312d3594999ee",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/linear-matrix-subspaces.cjs --check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 18.787,
+      "started_at": "2026-08-12T10:19:28.971Z",
+      "commit": "5a1cc59fc7fddad7648e98dc2d341a2455853754",
+      "workspace_fingerprint": "3ede5d831e1f2466f5ad551acaad0d262adb7e34755c8f855fd312d3594999ee",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm exec pyright src/lib/sagejs/linear_algebra/matrix_subspaces.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.076,
+      "started_at": "2026-08-12T10:19:48.358Z",
+      "commit": "5a1cc59fc7fddad7648e98dc2d341a2455853754",
+      "workspace_fingerprint": "3ede5d831e1f2466f5ad551acaad0d262adb7e34755c8f855fd312d3594999ee",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 12.916,
+      "started_at": "2026-08-12T10:19:55.915Z",
+      "commit": "5a1cc59fc7fddad7648e98dc2d341a2455853754",
+      "workspace_fingerprint": "3ede5d831e1f2466f5ad551acaad0d262adb7e34755c8f855fd312d3594999ee",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 13.092,
+      "started_at": "2026-08-12T10:20:09.438Z",
+      "commit": "5a1cc59fc7fddad7648e98dc2d341a2455853754",
+      "workspace_fingerprint": "3ede5d831e1f2466f5ad551acaad0d262adb7e34755c8f855fd312d3594999ee",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:native",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 548.848,
+      "started_at": "2026-08-12T10:23:43.995Z",
+      "commit": "5a1cc59fc7fddad7648e98dc2d341a2455853754",
+      "workspace_fingerprint": "3ede5d831e1f2466f5ad551acaad0d262adb7e34755c8f855fd312d3594999ee",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Added an ordinary CPython-parseable, representation-neutral protocol for canonical row and column bases. It computes one echelon result, reads its rank metadata, bulk-selects exactly the first rank rows, validates degenerate shapes, marks the basis immutable through an explicit callback, and returns already-echelonized metadata for the future subspace adapter. Cross-ring row_space(base_ring=...) is represented separately as a noncanonical GeneratorSpan, preserving Sage's subtle semantics rather than incorrectly changing the source matrix ring. CPython call-count tests and Sage.js differentials cover ZZ HNF lattice bases, QQ/GF(7)/GF(2) field bases, rank zero, 0xn, nx0, exact canonical forms, immutability, and base-ring planning. On warm 200x300 extraction after one shared echelon computation, direct row-basis selection measured 11.6x faster over ZZ, 25.4x over QQ, 236x over GF(7), and 150x over GF(2); the transpose/column-basis witness measured 9.7x to 583x faster.",
+    "risks": [
+      "This lane deliberately does not modify public matrix.py, so Matrix.row_space() and Matrix.column_space() still use the scalar-decoding implementation until the integration lane wires this protocol.",
+      "The shared test/node-test-manifest.cjs and pyrightconfig.json were not claimed because another active lane owns the manifest and the task was scoped to new files. Focused Pyright passed, but integration must register both the test and module before the global runner can accept the new files.",
+      "Cross-ring GeneratorSpan records Sage's required already_echelonized=False path, but the eventual public subspace constructor must implement that ring-aware generator canonicalization; it cannot use the same fast echelon basis as the equal-ring case."
+    ],
+    "next_steps": [
+      "Register test/linear-matrix-subspaces.cjs in the unit tier and add src/lib/sagejs/linear_algebra/matrix_subspaces.py to pyrightconfig.json during integration.",
+      "Wire Matrix.row_space(), row_module(), image(), column_space(), and column_module() through the new canonical-basis protocol once public matrix.py is no longer under an overlapping selection lane.",
+      "Teach VectorSubspaceParent or its constructor adapter to consume already_echelonized and immutable metadata without canonicalizing the selected basis again, and implement the GeneratorSpan fallback for a distinct row-space base ring.",
+      "Run the full native/integration suite after shared registrations and public wiring; this representation-neutral lane itself adds no native boundary."
+    ]
+  }
+}
