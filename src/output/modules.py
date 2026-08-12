@@ -203,19 +203,8 @@ def write_imports(module, output):
                 "ρσ_modules.__main__ = new Proxy("
                 "ρσ_modules.__main__ || Object.create(null), {"
                 "set:function(target,name,incoming,receiver){"
-                "if (typeof name === 'string' && "
-                "!Object.prototype.hasOwnProperty.call(target,name)) {"
-                "if(Object.prototype.hasOwnProperty.call(globalThis,name)) "
-                "Reflect.set(globalThis,name,incoming,globalThis);"
-                "else Reflect.defineProperty(globalThis,name,{value:incoming,"
-                "writable:true,enumerable:true,configurable:true})}"
                 "return Reflect.set(target,name,incoming,receiver)},"
                 "deleteProperty:function(target,name){"
-                "if (typeof name === 'string') {"
-                "if(Object.prototype.hasOwnProperty.call(globalThis,name)) "
-                "Reflect.set(globalThis,name,undefined,globalThis);"
-                "else Reflect.defineProperty(globalThis,name,{value:undefined,"
-                "writable:true,enumerable:true,configurable:true})}"
                 "var descriptor=Reflect.getOwnPropertyDescriptor(target,name);"
                 "if (descriptor && typeof descriptor.set === 'function') "
                 "return Reflect.set(target,name,undefined,target);"
@@ -393,6 +382,10 @@ def bind_module_namespace(module, output, hidden_names=None):
     )
     names = []
     seen = {}
+    python_bindings = {}
+    for symbol in (module.localvars or []).concat(module.exports or []):
+        if symbol.python_identifier:
+            python_bindings[symbol.name] = True
     for symbol in module.localvars:
         if not seen[symbol.name]:
             seen[symbol.name] = True
@@ -454,6 +447,27 @@ def bind_module_namespace(module, output, hidden_names=None):
             seen[name] = True
             names.push(name)
 
+    # Each interactive fragment has fresh JavaScript lexical declarations but
+    # shares one Python module.  Capture an existing live value before the new
+    # accessor replaces the preceding fragment's accessor; this preserves
+    # augmented assignment, deletion, and read-before-write semantics without
+    # publishing Python bindings onto `globalThis`.
+    if module_id == "__main__" and output.options.reuse_main_module:
+        for name in names:
+            if not python_bindings[name]:
+                continue
+            output.indent()
+            output.print(
+                "if (Object.prototype.hasOwnProperty.call(ρσ_modules.__main__,"
+            )
+            output.print_string(name)
+            output.print(")) ")
+            output.print_python_name(name)
+            output.print(" = ρσ_modules.__main__[")
+            output.print_string(name)
+            output.print("]")
+            output.end_statement()
+
     output.indent()
     output.print("Object.defineProperties(")
     if module_id.indexOf(".") is -1:
@@ -469,7 +483,14 @@ def bind_module_namespace(module, output, hidden_names=None):
         output.print_string(name)
         output.print("]")
         output.colon()
-        print_lexical_namespace_descriptor(output, name, descriptor_prefix, True, True)
+        print_lexical_namespace_descriptor(
+            output,
+            name,
+            descriptor_prefix,
+            True,
+            True,
+            bool(python_bindings[name]),
+        )
     wrote_property = names.length > 0
     for entry in hidden_names:
         name = entry.name if entry.name else entry
@@ -483,7 +504,7 @@ def bind_module_namespace(module, output, hidden_names=None):
         output.print("]")
         output.colon()
         print_lexical_namespace_descriptor(
-            output, name, descriptor_prefix, False, False
+            output, name, descriptor_prefix, False, False, False
         )
     output.print("}))")
     output.end_statement()
@@ -506,10 +527,12 @@ def bind_module_namespace(module, output, hidden_names=None):
 
 
 def print_lexical_namespace_descriptor(
-    output, name, descriptor_prefix, enumerable, writable
+    output, name, descriptor_prefix, enumerable, writable, python_binding
 ):
     """Print an accessor without shadowing its module lexical binding."""
-    target_name = output.make_name(name)
+    target_name = (
+        output.make_python_name(name) if python_binding else output.make_name(name)
+    )
     output.print(descriptor_prefix + "enumerable:")
     output.print("true" if enumerable else "false")
     output.print(",get:()=>")
@@ -531,7 +554,11 @@ def print_lexical_namespace_descriptor(
     output.print("}")
 
 
-def declare_exports(module_id, exports, output, docstrings):
+def declare_exports(module, exports, output, docstrings):
+    module_id = module.module_id
+    python_bindings = {
+        symbol.name: True for symbol in exports if symbol.python_identifier
+    }
     seen = {}
     exported_symbols = list(exports)
     if output.options.keep_docstrings and docstrings and docstrings.length:
@@ -560,7 +587,14 @@ def declare_exports(module_id, exports, output, docstrings):
                 output.space(),
                 output.print("="),
                 output.space(),
-                output.print(symbol.refname or symbol.name),
+                output.print(
+                    symbol.refname
+                    or (
+                        output.make_python_name(symbol.name)
+                        if python_bindings[symbol.name]
+                        else output.make_name(symbol.name)
+                    )
+                ),
             )
             seen[symbol.name] = True
             output.end_statement()
@@ -754,7 +788,7 @@ def print_module(self, output):
         declare_vars(self.localvars, output)
         bind_module_namespace(self, output, numeric_literal_pool)
         display_body(self.body, True, output)
-        declare_exports(self.module_id, self.exports, output, self.docstrings)
+        declare_exports(self, self.exports, output, self.docstrings)
 
     output.newline()
     output.indent()
@@ -847,6 +881,23 @@ def print_module(self, output):
 
 def print_imports(container, output):
     is_first_aname = True
+    # Scope metadata attached by the frontend is not guaranteed to survive
+    # every compressor/cache round trip.  The semantic definitions are the
+    # durable authority used by the rest of code generation, so derive import
+    # spellings from the same symbols as module namespace descriptors.
+    python_bindings = {}
+    if container.python_lexical_hygiene:
+        for name in container.python_scope_bindings or []:
+            python_bindings[name] = True
+    for symbol in (container.localvars or []).concat(container.exports or []):
+        if symbol.python_identifier:
+            python_bindings[symbol.name] = True
+
+    def print_local_name(name):
+        if python_bindings[name]:
+            output.print_python_name(name)
+        else:
+            output.print_name(name)
 
     def add_aname(aname, key, from_import):
         nonlocal is_first_aname
@@ -872,7 +923,7 @@ def print_imports(container, output):
             output.end_statement()
         output.indent()
         output.print("var ")
-        output.print_name(aname)
+        print_local_name(aname)
         output.space()
         output.print("=")
         output.space()
@@ -956,7 +1007,12 @@ def print_imports(container, output):
                 output.print_string(name)
                 output.print(",")
                 print_lexical_namespace_descriptor(
-                    output, name, "{configurable:true,", True, True
+                    output,
+                    name,
+                    "{configurable:true,",
+                    True,
+                    True,
+                    bool(python_bindings[name]),
                 )
                 output.print(")")
                 output.end_statement()
@@ -967,7 +1023,7 @@ def print_imports(container, output):
             output.print("][")
             output.print_string(name)
             output.print("] = ")
-            output.print_name(name)
+            print_local_name(name)
             output.end_statement()
 
         output.print("var ρσ_imported_module")
@@ -1045,7 +1101,7 @@ def print_imports(container, output):
                 output.end_statement()
                 output.indent()
                 output.print("var ")
-                output.print_name(local_name)
+                print_local_name(local_name)
                 output.space()
                 output.print("=")
                 output.space()
@@ -1060,7 +1116,7 @@ def print_imports(container, output):
             local_name = self.alias.name if self.alias else self.key.split(".")[0]
             output.indent()
             output.print("var ")
-            output.print_name(local_name)
+            print_local_name(local_name)
             output.space()
             output.print("=")
             output.space()
@@ -1078,7 +1134,7 @@ def print_imports(container, output):
                 local_name = self.alias.name
                 output.indent()
                 output.print("var ")
-                output.print_name(local_name)
+                print_local_name(local_name)
                 output.space()
                 output.print("=")
                 output.space()
@@ -1095,7 +1151,12 @@ def print_imports(container, output):
                 output.print_string(local_name)
                 output.print(",")
                 print_lexical_namespace_descriptor(
-                    output, local_name, "{configurable:true,", True, True
+                    output,
+                    local_name,
+                    "{configurable:true,",
+                    True,
+                    True,
+                    bool(python_bindings[local_name]),
                 )
                 output.print(")")
                 output.end_statement()

@@ -4449,6 +4449,7 @@ def ρσ_setattr(value: Any, name: _Str, member: Any) -> None:
 def ρσ_resolve_module_name(
     value: Any,
     name: _Str,
+    module_namespace: Any,
     module_builtins: Any,
 ) -> Any:
     """Resolve a module name declared only inside control flow.
@@ -4458,6 +4459,13 @@ def ρσ_resolve_module_name(
     hoisted, so a direct read would instead yield `undefined` and suppress
     idioms such as `try: set; except NameError: ...`.
     """
+    if module_namespace is not None and _builtins_has_member(
+        module_namespace, name
+    ):
+        # A present-but-undefined live cell is a deleted/uninitialized Python
+        # module binding.  Return it so the surrounding unbound check raises
+        # NameError instead of accidentally exposing a same-named JS host.
+        return _builtins_get_member(module_namespace, name)
     if value is not runtime.undefined:
         return value
     if _builtins_has_member(module_builtins, name):

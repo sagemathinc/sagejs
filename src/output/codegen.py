@@ -36,6 +36,7 @@ from ast_types import (
     AST_Imports,
     AST_Infinity,
     AST_Lambda,
+    AST_Method,
     AST_ListComprehension,
     AST_LoopControl,
     AST_NaN,
@@ -819,6 +820,77 @@ def generate_code():
         name = self.name
         if def_:
             name = def_.mangled_name or def_.name
+
+        def python_lexically_bound():
+            if not self.python_identifier:
+                return False
+            stack = output.stack()
+            for index in range(stack.length - 1, -1, -1):
+                scope = stack[index]
+                if (
+                    is_node_type(scope, AST_Method)
+                    and not scope["static"]
+                    and scope.argnames
+                    and scope.argnames[0].name is self.name
+                ):
+                    # Instance/class receivers are materialized as the
+                    # compiler-owned `this` alias, not an ordinary formal.
+                    return False
+            if self.python_lexical_binding:
+                return True
+            # Definition provenance survives module-output caching, whereas
+            # the enclosing AST scope is intentionally absent while a cached
+            # module body is rendered.  Prefer that durable authority before
+            # consulting the live output stack.
+            if def_ and def_.python_identifier:
+                return True
+            for index in range(stack.length - 1, -1, -1):
+                scope = stack[index]
+                if not is_node_type(scope, AST_Scope):
+                    continue
+                if is_node_type(scope, AST_Class):
+                    continue
+                if (
+                    not is_node_type(scope, AST_Toplevel)
+                    and scope.declared_globals
+                    and scope.declared_globals.indexOf(self.name) is not -1
+                ):
+                    continue
+                if (
+                    not is_node_type(scope, AST_Toplevel)
+                    and scope.declared_nonlocals
+                    and scope.declared_nonlocals.indexOf(self.name) is not -1
+                ):
+                    continue
+                if (
+                    scope.python_scope_bindings
+                    and scope.python_scope_bindings.indexOf(self.name) is not -1
+                ):
+                    return True
+            return False
+
+        python_binding = python_lexically_bound()
+        qualified_python_binding = False
+        if (
+            not python_binding
+            and self.python_identifier
+            and name.indexOf(".") is not -1
+        ):
+            prefix = name.split(".")[0]
+            stack = output.stack()
+            for index in range(stack.length - 1, -1, -1):
+                scope = stack[index]
+                if (
+                    is_node_type(scope, AST_Scope)
+                    and not is_node_type(scope, AST_Class)
+                    and scope.python_scope_bindings
+                    and scope.python_scope_bindings.indexOf(prefix) is not -1
+                ):
+                    name = output.make_python_name(prefix) + name.slice(prefix.length)
+                    qualified_python_binding = True
+                    break
+        if python_binding:
+            name = output.make_python_name(name)
         if RESERVED_WORDS[name] and (
             name is not "this" or output.options.python_attributes
         ):
@@ -900,15 +972,24 @@ def generate_code():
         check_unbound = False
         class_namespace = None
         module_name_fallback = False
+        module_scope = None
         if (
             is_node_type(self, AST_SymbolRef)
-            and not output.assignment_target
-            and not is_assignment_target()
+            and (
+                not output.assignment_target
+                and not is_assignment_target()
+                or (
+                    is_node_type(output.parent(), AST_Dot)
+                    and output.parent().expression is self
+                )
+            )
         ):
             stack = output.stack()
             for index in range(stack.length - 2, -1, -1):
                 scope = stack[index]
                 if is_node_type(scope, AST_Scope):
+                    if is_node_type(scope, AST_Toplevel):
+                        module_scope = scope
                     if is_node_type(scope, AST_Class) and (
                         scope.parent is self or scope.bases.indexOf(self) is not -1
                     ):
@@ -928,6 +1009,7 @@ def generate_code():
                     ) or (
                         output.options.reuse_main_module
                         and is_node_type(scope, AST_Toplevel)
+                        and self.python_identifier
                     )
                     module_name_fallback = (
                         (is_node_type(scope, AST_Toplevel) and check_unbound)
@@ -942,6 +1024,21 @@ def generate_code():
                         )
                     )
                     break
+            if output.options.reuse_main_module and self.python_identifier:
+                # A later interactive cell has no lexical declaration for a
+                # name bound by an earlier cell.  Resolve such source names
+                # through the canonical module before considering builtins or
+                # host extensions; generated helper identifiers deliberately
+                # do not carry `python_identifier`.
+                if not python_binding:
+                    check_unbound = True
+                    module_name_fallback = True
+            if not module_scope:
+                for index in range(stack.length - 2, -1, -1):
+                    candidate = stack[index]
+                    if is_node_type(candidate, AST_Toplevel):
+                        module_scope = candidate
+                        break
         if class_namespace:
             output.print("(")
             class_namespace.name.print(output)
@@ -969,10 +1066,25 @@ def generate_code():
             output.print("ρσ_check_unbound(")
         if module_name_fallback:
             output.print("ρσ_resolve_module_name(")
-        output.print_name(name)
+        if (
+            output.options.reuse_main_module
+            and check_unbound
+            and self.python_identifier
+            and not python_binding
+        ):
+            output.print("void 0")
+        else:
+            output.print_name(name)
         if module_name_fallback:
             output.comma()
             output.print(JSON.stringify(self.name))
+            output.comma()
+            if module_scope:
+                output.print("ρσ_modules[")
+                output.print(JSON.stringify(module_scope.module_id))
+                output.print("]")
+            else:
+                output.print("null")
             output.comma()
             output.print(
                 '(typeof __builtins__ !== "undefined" ? __builtins__ : '

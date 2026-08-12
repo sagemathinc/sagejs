@@ -69,8 +69,25 @@ def function_preamble(node, output, offset, javascript_name):
     a = node.argnames
     if not a:
         return
-    fname = javascript_name or (node.name.name if node.name else anonfunc)
+    fname = javascript_name or (
+        output.make_python_name(node.name.name)
+        if node.name and node.name.python_identifier
+        else node.name.name if node.name else anonfunc
+    )
     fname = output.make_name(fname)
+
+    def python_argument_name(argument):
+        return (
+            output.make_python_name(argument.name)
+            if argument.python_identifier
+            or (
+                node.python_lexical_hygiene
+                and
+                node.python_scope_bindings
+                and node.python_scope_bindings.indexOf(argument.name) is not -1
+            )
+            else output.make_name(argument.name)
+        )
 
     # Methods omit their first Python argument from the JavaScript formal
     # parameter list and receive it as ``this``.  A descriptor or decorator
@@ -105,7 +122,7 @@ def function_preamble(node, output, offset, javascript_name):
             if not Object.prototype.hasOwnProperty.call(a.defaults, argument.name):
                 output.indent()
                 output.print("if (typeof ")
-                argument.print(output)
+                output.print(python_argument_name(argument))
                 output.print(' === "undefined") ')
                 output.print(
                     "throw ρσ_function_argument_error("
@@ -116,7 +133,7 @@ def function_preamble(node, output, offset, javascript_name):
             if not Object.prototype.hasOwnProperty.call(a.defaults, argument.name):
                 output.indent()
                 output.print("if (typeof ")
-                argument.print(output)
+                output.print(python_argument_name(argument))
                 output.print(' === "undefined") ')
                 output.print(
                     "throw ρσ_function_argument_error("
@@ -141,7 +158,7 @@ def function_preamble(node, output, offset, javascript_name):
             output.indent()
             output.print("var")
             output.space()
-            output.assign(arg)
+            output.assign(python_argument_name(arg))
             if Object.prototype.hasOwnProperty.call(a.defaults, arg.name):
                 output.spaced(
                     "(arguments[" + i + "]",
@@ -202,7 +219,7 @@ def function_preamble(node, output, offset, javascript_name):
         # Look for an options object
         kw = "ρσ_kwargs_obj"
         if a.kwargs:
-            kw = output.make_name(a.kwargs.name)
+            kw = python_argument_name(a.kwargs)
         output.indent()
         output.spaced("var", kw, "=", "arguments[arguments.length-1]")
         output.end_statement()
@@ -246,9 +263,18 @@ def function_preamble(node, output, offset, javascript_name):
                 )
 
                 def f():
+                    default_argument = None
+                    for candidate in a:
+                        if candidate.name is dname:
+                            default_argument = candidate
+                            break
                     output.indent()
                     output.spaced(
-                        output.make_name(dname),
+                        (
+                            python_argument_name(default_argument)
+                            if default_argument
+                            else output.make_name(dname)
+                        ),
                         "=",
                         kw + "[" + JSON.stringify(dname) + "]",
                     )
@@ -264,7 +290,7 @@ def function_preamble(node, output, offset, javascript_name):
         for argument in a.kwonly:
             output.indent()
             output.print("var ")
-            output.assign(argument)
+            output.assign(python_argument_name(argument))
             if Object.prototype.hasOwnProperty.call(a.defaults, argument.name):
                 output.print(
                     fname + ".__defaults__[" + JSON.stringify(argument.name) + "]"
@@ -283,7 +309,7 @@ def function_preamble(node, output, offset, javascript_name):
 
             def assign_keyword_only():
                 output.indent()
-                output.assign(argument)
+                output.assign(python_argument_name(argument))
                 output.print(kw + "[" + JSON.stringify(argument.name) + "]")
                 output.end_statement()
                 if a.kwargs:
@@ -300,7 +326,7 @@ def function_preamble(node, output, offset, javascript_name):
         # Define the *args parameter, putting in whatever is left after assigning the formal parameters and the options object
         nargs = a.length - offset
         output.indent()
-        starargs_name = output.make_name(a.starargs.name)
+        starargs_name = python_argument_name(a.starargs)
         output.spaced(
             "var",
             starargs_name,
@@ -338,7 +364,7 @@ def function_preamble(node, output, offset, javascript_name):
 
     if a.kwargs is not undefined and output.options.python_attributes:
         output.indent()
-        kwargs_name = output.make_name(a.kwargs.name)
+        kwargs_name = python_argument_name(a.kwargs)
         output.assign(kwargs_name)
         output.print("ρσ_dict(" + kwargs_name + ")")
         output.end_statement()
@@ -396,7 +422,11 @@ def print_annotation_text(self, output, strip_first):
 
 
 def function_annotation(self, output, strip_first, name):
-    fname = name or (self.name.name if self.name else anonfunc)
+    fname = name or (
+        output.make_python_name(self.name.name)
+        if self.name and self.name.python_identifier
+        else self.name.name if self.name else anonfunc
+    )
     props = Object.create(None)
 
     # Preserve the Python-facing name independently of JavaScript's inferred
@@ -759,7 +789,11 @@ def print_function(output):
     if self.decorators and self.decorators.length:
         output.print("var")
         output.space()
-        output.assign(self.name.name)
+        output.assign(
+            output.make_python_name(self.name.name)
+            if self.name.python_identifier
+            else self.name.name
+        )
 
         def output_function_definition():
             function_definition(self, output, False, True)
@@ -774,7 +808,11 @@ def print_function(output):
         ):
             output.print("var")
             output.space()
-            output.assign(self.name.name)
+            output.assign(
+                output.make_python_name(self.name.name)
+                if self.name.python_identifier
+                else self.name.name
+            )
         function_definition(self, output, False)
         if not self.is_expression and not self.is_anonymous:
             output.end_statement()

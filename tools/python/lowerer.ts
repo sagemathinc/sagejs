@@ -136,6 +136,7 @@ export class PythonCstLowerer {
     isCoroutine: boolean;
     superClass: string | null;
     superReceiver: string | null;
+    receiverAlias: string | null;
     bindings: Set<string>;
     globals: Set<string>;
     nonlocals: Set<string>;
@@ -196,6 +197,16 @@ export class PythonCstLowerer {
       new Set(),
       new Set(),
     );
+    // A `global` declaration nested in a function can create or mutate a
+    // module binding even when no assignment to that name appears at module
+    // level.  Include those source names in the module's lexical hygiene map.
+    for (const declaration of root.descendantsOfType("global_statement")) {
+      for (const name of significantChildren(declaration)) {
+        if (name.type === "identifier") {
+          this.moduleBindings.add(this.manglePrivateName(name.text));
+        }
+      }
+    }
     this.annotationsMode = root.namedChildren.some(
       (node) => node.type === "future_import_statement" &&
         /\bannotations\b/.test(node.text),
@@ -204,6 +215,8 @@ export class PythonCstLowerer {
       this.lowerStatement(node)
     );
     const ast = new this.compiler.AST_Toplevel(finalizedToplevel);
+    ast.python_lexical_hygiene = !this.options.compiler_bootstrap;
+    ast.python_scope_bindings = [...this.moduleBindings];
     const extracted = this.extractDocstrings(body);
     ast.body = extracted.body;
     ast.docstrings = extracted.docstrings;
@@ -242,6 +255,37 @@ export class PythonCstLowerer {
       file: this.options.filename ?? null,
       leading_whitespace: "",
     });
+  }
+
+  private pythonSymbol(
+    constructor: string,
+    node: SyntaxNode,
+    properties: Record<string, any>,
+  ): any {
+    const symbol = this.make(constructor, node, properties);
+    symbol.python_identifier = !this.options.compiler_bootstrap;
+    if (constructor === "AST_SymbolRef") {
+      symbol.python_lexical_binding = !this.options.compiler_bootstrap &&
+        this.sourceNameIsLexicallyBound(properties.name);
+    }
+    return symbol;
+  }
+
+  /** Whether a source reference is backed by a Python lexical cell here. */
+  private sourceNameIsLexicallyBound(name: string): boolean {
+    for (let index = this.functionFrames.length - 1; index >= 0; index -= 1) {
+      const frame = this.functionFrames[index];
+      if (frame.receiverAlias === name) return false;
+      if (frame.globals.has(name)) return this.moduleBindings.has(name);
+      if (frame.bindings.has(name) || frame.nonlocals.has(name)) return true;
+    }
+    const classFrame = this.classBindings.at(-1);
+    if (
+      classFrame &&
+      this.functionFrames.length === classFrame.functionDepth &&
+      classFrame.names.has(name)
+    ) return false;
+    return this.moduleBindings.has(name);
   }
 
   private make(name: string, node: SyntaxNode, properties = {}): any {
@@ -704,7 +748,9 @@ export class PythonCstLowerer {
   private lowerDottedPatternName(node: SyntaxNode): any {
     const names = significantChildren(node);
     if (!names.length) throw new UnsupportedPythonCstNode(node, "empty name");
-    let value = this.make("AST_SymbolRef", names[0], { name: names[0].text });
+    let value = this.pythonSymbol("AST_SymbolRef", names[0], {
+      name: names[0].text,
+    });
     for (const name of names.slice(1)) {
       value = this.make("AST_Dot", node, {
         expression: value, property: name.text,
@@ -786,7 +832,9 @@ export class PythonCstLowerer {
     return this.make("AST_Var", node, {
       definitions: significantChildren(node).map((name) =>
         this.make("AST_VarDef", name, {
-          name: this.make("AST_SymbolNonlocal", name, { name: name.text }),
+          name: this.pythonSymbol("AST_SymbolNonlocal", name, {
+            name: name.text,
+          }),
           value: null,
           is_global: isGlobal ? true : undefined,
         })
@@ -904,7 +952,7 @@ export class PythonCstLowerer {
       case "identifier":
       case "keyword_identifier":
         if (node.text === "__debug__") return this.make("AST_True", node);
-        return this.make("AST_SymbolRef", node, {
+        return this.pythonSymbol("AST_SymbolRef", node, {
           name: this.manglePrivateName(node.text),
         });
       case "integer":
@@ -1598,7 +1646,7 @@ export class PythonCstLowerer {
     };
 
     const makeArgument = (nameNode: SyntaxNode, typeNode: SyntaxNode | null) =>
-      this.make("AST_SymbolFunarg", nameNode, {
+      this.pythonSymbol("AST_SymbolFunarg", nameNode, {
         name: this.manglePrivateName(nameNode.text),
         annotation: typeNode ? this.lowerType(typeNode) : null,
         annotation_text: typeNode ? typeNode.text : null,
@@ -1914,21 +1962,23 @@ export class PythonCstLowerer {
     const inherited = this.functionFrames.at(-1);
     const globals = new Set<string>();
     const nonlocals = new Set<string>();
-    this.functionFrames.push({
+    const frame = {
       isCoroutine: false,
       superClass: inherited?.superClass ?? null,
       superReceiver: inherited?.superReceiver ?? null,
+      receiverAlias: null,
       bindings: this.functionBindingNames(body, args, globals, nonlocals),
       globals,
       nonlocals,
-    });
+    };
+    this.functionFrames.push(frame);
     let loweredBody: any;
     try {
       loweredBody = this.lowerExpression(body);
     } finally {
       this.functionFrames.pop();
     }
-    return this.make("AST_Function", node, {
+    const definition = this.make("AST_Function", node, {
       name: null,
       argnames: args,
       decorators: [],
@@ -1949,6 +1999,9 @@ export class PythonCstLowerer {
       docstrings: [],
       body: loweredBody,
     });
+    definition.python_lexical_hygiene = !this.options.compiler_bootstrap;
+    definition.python_scope_bindings = [...frame.bindings];
+    return definition;
   }
 
   private argumentNames(args: any): string[] {
@@ -1988,6 +2041,13 @@ export class PythonCstLowerer {
     const returnAnnotationText = returnType ? returnType.text : null;
     const bodyNode = this.field(node, "body");
     const isCoroutine = node.children.some((part) => part.text === "async");
+    const methodDecoratorNames = decorators.map((decorator) =>
+      decorator.expression?.property ?? decorator.expression?.name
+    );
+    const receiverAlias = isMethod && !methodDecoratorNames.includes("staticmethod")
+      ? args[0]?.name ?? null
+      : null;
+    if (receiverAlias && args[0]) args[0].python_identifier = false;
     const inherited = this.functionFrames.at(-1);
     const declaredGlobals = new Set(
       this.declaredNames(bodyNode, "global_statement"),
@@ -1998,7 +2058,7 @@ export class PythonCstLowerer {
     if (!isMethod && this.functionFrames.length === 0 && !this.classStack.length) {
       this.intrinsicModules.delete(nameNode.text);
     }
-    this.functionFrames.push({
+    const frame = {
       isCoroutine,
       superClass: isMethod
         ? this.classStack.at(-1) ?? null
@@ -2006,6 +2066,7 @@ export class PythonCstLowerer {
       superReceiver: isMethod
         ? args[0]?.name ?? null
         : inherited?.superReceiver ?? null,
+      receiverAlias,
       bindings: this.functionBindingNames(
         bodyNode,
         args,
@@ -2014,7 +2075,8 @@ export class PythonCstLowerer {
       ),
       globals: declaredGlobals,
       nonlocals: declaredNonlocals,
-    });
+    };
+    this.functionFrames.push(frame);
     let loweredBody: any[];
     try {
       loweredBody = this.withLexicalImportScope(() =>
@@ -2028,7 +2090,7 @@ export class PythonCstLowerer {
     const extracted = this.extractDocstrings(loweredBody);
     const Constructor = isMethod ? "AST_Method" : "AST_Function";
     const properties: Record<string, any> = {
-      name: this.make("AST_SymbolDefun", nameNode, {
+      name: this.pythonSymbol("AST_SymbolDefun", nameNode, {
         name: this.manglePrivateName(nameNode.text),
       }),
       argnames: args,
@@ -2077,7 +2139,10 @@ export class PythonCstLowerer {
         this.manglePrivateName(nameNode.text),
       );
     }
-    return this.make(Constructor, node, properties);
+    const definition = this.make(Constructor, node, properties);
+    definition.python_lexical_hygiene = !this.options.compiler_bootstrap;
+    definition.python_scope_bindings = [...frame.bindings];
+    return definition;
   }
 
   private extractDocstrings(body: any[]): { body: any[]; docstrings: any[] } {
@@ -2393,7 +2458,9 @@ export class PythonCstLowerer {
         .map((statement) => statement.target.name)
       : [];
     const definition = this.make("AST_Class", node, {
-      name: this.make("AST_SymbolDefun", nameNode, { name: nameNode.text }),
+      name: this.pythonSymbol("AST_SymbolDefun", nameNode, {
+        name: nameNode.text,
+      }),
       parent,
       bases: effectiveBases,
       metaclass,
@@ -2687,7 +2754,14 @@ export class PythonCstLowerer {
         );
       }
     }
-    return this.make("AST_Imports", node, { imports });
+    const statement = this.make("AST_Imports", node, { imports });
+    statement.python_lexical_hygiene = !this.options.compiler_bootstrap;
+    statement.python_scope_bindings = this.classStack.length > 0
+      ? [...(this.classBindings.at(-1)?.names ?? [])]
+      : this.functionFrames.length > 0
+      ? [...this.functionFrames.at(-1)!.bindings]
+      : [...this.moduleBindings];
+    return statement;
   }
 
   private registerImportedClasses(imported: any): void {
@@ -2711,7 +2785,7 @@ export class PythonCstLowerer {
 
   private dottedName(node: SyntaxNode): any {
     const names = node.text.replace(/^\.+/, "").split(".").filter(Boolean);
-    let expression: any = this.make("AST_SymbolRef", node, {
+    let expression: any = this.pythonSymbol("AST_SymbolRef", node, {
       name: names.shift() ?? "",
     });
     for (const property of names) {
@@ -2780,13 +2854,13 @@ export class PythonCstLowerer {
       ]);
     }
     const targets = [parent, ...additional].map((target) =>
-      this.make("AST_SymbolRef", target, { name: target.text })
+      this.pythonSymbol("AST_SymbolRef", target, { name: target.text })
     );
     const parentTarget = targets.length === 1
       ? targets[0]
       : this.make("AST_Array", node, { elements: targets, is_tuple: false });
     const generatorTargets = generators.map((generator) =>
-      this.make("AST_SymbolRef", generator, { name: generator.text })
+      this.pythonSymbol("AST_SymbolRef", generator, { name: generator.text })
     );
     const assignParent = this.make("AST_Assign", node, {
       left: parentTarget,
@@ -2795,7 +2869,9 @@ export class PythonCstLowerer {
     });
     const firstNgens = this.make("AST_Call", node, {
       expression: this.make("AST_Dot", node, {
-        expression: this.make("AST_SymbolRef", parent, { name: parent.text }),
+        expression: this.pythonSymbol("AST_SymbolRef", parent, {
+          name: parent.text,
+        }),
         property: "_first_ngens",
       }),
       args: [this.make("AST_Number", node, { value: generators.length })],
@@ -2829,7 +2905,9 @@ export class PythonCstLowerer {
       })
     );
     return this.make("AST_Assign", node, {
-      left: this.make("AST_SymbolRef", functionNode, { name: functionNode.text }),
+      left: this.pythonSymbol("AST_SymbolRef", functionNode, {
+        name: functionNode.text,
+      }),
       operator: "=",
       right: this.make("AST_Call", node, {
         expression: this.make("AST_SymbolRef", node, {
@@ -2871,6 +2949,7 @@ export class PythonCstLowerer {
       isCoroutine: inherited?.isCoroutine ?? false,
       superClass: inherited?.superClass ?? null,
       superReceiver: inherited?.superReceiver ?? null,
+      receiverAlias: null,
       bindings: comprehensionBindings,
       globals: new Set(),
       nonlocals: new Set(),
@@ -2925,7 +3004,10 @@ export class PythonCstLowerer {
       } else {
         properties.statement = this.lowerExpression(body);
       }
-      return this.make(constructor, node, properties);
+      const comprehension = this.make(constructor, node, properties);
+      comprehension.python_lexical_hygiene = !this.options.compiler_bootstrap;
+      comprehension.python_scope_bindings = [...comprehensionBindings];
+      return comprehension;
     } finally {
       this.functionFrames.pop();
     }

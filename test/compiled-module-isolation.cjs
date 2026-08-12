@@ -233,7 +233,10 @@ test("kernel cells share one live __main__ module namespace", async (t) => {
     )).repr,
     "(False, False, False)",
   );
-  await assert.rejects(session.evaluate("value"), /value.*not defined|NameError/);
+  await assert.rejects(
+    session.evaluate("value"),
+    /value.*(?:not defined|referenced before assignment)|NameError/,
+  );
   await session.evaluate("dictionary_value = 17");
   await session.evaluate("del globals()['dictionary_value']");
   assert.equal(
@@ -497,6 +500,70 @@ test("kernel namespace builtins follow persistent rebinding", async (t) => {
   );
 });
 
+test("kernel Python globals cannot overwrite host or compiler bindings", async (t) => {
+  const session = await createSage({ mode: "python" });
+  t.after(() => session.close());
+
+  await session.evaluate(
+    "import sagejs.runtime as runtime\n" +
+      "host_names = ['Object', 'Reflect', 'Symbol', 'globalThis', 'Math', 'Map', 'console']\n" +
+      "host_values = [runtime.reflect.get(runtime.global_object, name) for name in host_names]",
+  );
+  await session.evaluate(
+    "Object = 'Object-value'\n" +
+      "Reflect = 'Reflect-value'\n" +
+      "Symbol = 'Symbol-value'\n" +
+      "globalThis = 'globalThis-value'\n" +
+      "Math = 'Math-value'\n" +
+      "Map = 'Map-value'\n" +
+      "console = 'console-value'\n" +
+      "ρσ_modules = 'registry-value'\n" +
+      "ordinary_name = 'ordinary-value'",
+  );
+  assert.equal(
+    (await session.evaluate(
+      "Object, Reflect, Symbol, globalThis, Math, Map, console, ρσ_modules, ordinary_name",
+    )).repr,
+    "('Object-value', 'Reflect-value', 'Symbol-value', 'globalThis-value', " +
+      "'Math-value', 'Map-value', 'console-value', 'registry-value', 'ordinary-value')",
+  );
+  assert.equal(
+    (await session.evaluate(
+      "all(runtime.reflect.get(runtime.global_object, name) is value " +
+        "for name, value in zip(host_names, host_values))",
+    )).repr,
+    "True",
+  );
+  await session.evaluate(
+    "def read_collisions():\n" +
+      "    return Object, Reflect, ρσ_modules, console\n" +
+      "def parameter_and_closure(Object):\n" +
+      "    Math = 'local-Math'\n" +
+      "    def inner():\n" +
+      "        return Object, Math\n" +
+      "    return inner\n" +
+      "def mutate_global():\n" +
+      "    global Object\n" +
+      "    Object = 'mutated-Object'",
+  );
+  assert.equal(
+    (await session.evaluate(
+      "read_collisions(), parameter_and_closure('parameter-Object')()",
+    )).repr,
+    "(('Object-value', 'Reflect-value', 'registry-value', 'console-value'), " +
+      "('parameter-Object', 'local-Math'))",
+  );
+  await session.evaluate("mutate_global()\ndel Reflect");
+  assert.equal((await session.evaluate("Object")).repr, "'mutated-Object'");
+  await assert.rejects(session.evaluate("Reflect"), /Reflect|NameError/);
+  assert.equal(
+    (await session.evaluate(
+      "runtime.reflect.get(runtime.global_object, 'Reflect') is host_values[1]",
+    )).repr,
+    "True",
+  );
+});
+
 test("ordinary compiled imports preserve globals, closures, and cache identity", () => {
   const directory = mkdtempSync(join(tmpdir(), "sagejs-module-isolation-"));
   try {
@@ -518,6 +585,24 @@ test("ordinary compiled imports preserve globals, closures, and cache identity",
     writeFileSync(
       join(directory, "beta.py"),
       "value = 99\ndef read(): return value\n",
+    );
+    writeFileSync(
+      join(directory, "collisions.py"),
+      [
+        "Object = 37",
+        "ρσ_modules = 38",
+        "console = 39",
+        "Reflect = 40",
+        "def read(): return Object, ρσ_modules, console, Reflect",
+        "def parameter(Object): return Object",
+        "def closure(Math):",
+        "    def inner(): return Math",
+        "    return inner",
+        "class Symbol:",
+        "    marker = 41",
+        "    def read(self): return self.marker",
+        "",
+      ].join("\n"),
     );
     writeFileSync(
       join(directory, "cycle_a.py"),
@@ -544,9 +629,14 @@ test("ordinary compiled imports preserve globals, closures, and cache identity",
         "import alpha",
         "import alpha as alpha_again",
         "import beta",
+        "import collisions",
         "print(alpha is alpha_again)",
         "print(alpha.__name__, alpha.__package__, repr(alpha))",
         "print(alpha.read(), beta.read())",
+        "print(collisions.read())",
+        "print(collisions.parameter(42), collisions.closure(43)())",
+        "print(collisions.Symbol.__name__, collisions.Symbol.__qualname__, collisions.Symbol().read())",
+        "print(collisions.read.__globals__ is collisions.__dict__)",
         "closure = alpha.factory(2)",
         "alpha.write(30)",
         "print(alpha.read(), beta.read(), closure(3))",
@@ -574,6 +664,10 @@ test("ordinary compiled imports preserve globals, closures, and cache identity",
         "True",
         "alpha  <module 'alpha'>",
         "10 99",
+        "(37, 38, 39, 40)",
+        "42 43",
+        "Symbol Symbol 41",
+        "True",
         "30 99 35",
         "45",
         "alpha",

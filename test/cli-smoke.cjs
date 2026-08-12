@@ -308,6 +308,27 @@ assert.equal(
   ).trim(),
   "globals-shadow locals-shadow vars-shadow ['dir-shadow']",
 );
+assert.equal(
+  run(
+    ["--python"],
+    [
+      "Object = 'Object-value'",
+      "Reflect = 'Reflect-value'",
+      "Symbol = 'Symbol-value'",
+      "globalThis = 'globalThis-value'",
+      "Math = 'Math-value'",
+      "Map = 'Map-value'",
+      "console = 'console-value'",
+      "ρσ_modules = 'registry-value'",
+      "ordinary_name = 'ordinary-value'",
+      "",
+      "print(Object, Reflect, Symbol, globalThis, Math, Map, console, ρσ_modules, ordinary_name)",
+      "",
+    ].join("\n"),
+  ).trim(),
+  "Object-value Reflect-value Symbol-value globalThis-value Math-value " +
+    "Map-value console-value registry-value ordinary-value",
+);
 const pythonRuntimeFailure = runFailure(
   ["--python"],
   "raise RuntimeError('piped Python failure')\n",

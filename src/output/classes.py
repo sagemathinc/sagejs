@@ -98,7 +98,11 @@ def print_class(output):
             if not is_property:
                 output.end_statement()
                 fname = (
-                    output.make_name(self.name.name)
+                    (
+                        output.make_python_name(self.name.name)
+                        if self.name.python_identifier
+                        else output.make_name(self.name.name)
+                    )
                     + ("." if is_static else ".prototype.")
                     + name
                 )
@@ -680,16 +684,33 @@ def print_class(output):
                 continue
             if stmt.name.name in self.nonlocal_names:
                 output.indent()
-                output.assign(stmt.name.name)
+                output.assign(
+                    output.make_python_name(stmt.name.name)
+                    if stmt.name.python_identifier
+                    else stmt.name.name
+                )
                 function_definition(
                     stmt,
                     output,
                     False,
                     False,
-                    stmt.name.name,
+                    (
+                        output.make_python_name(stmt.name.name)
+                        if stmt.name.python_identifier
+                        else stmt.name.name
+                    ),
                 )
                 output.end_statement()
-                function_annotation(stmt, output, False, stmt.name.name)
+                function_annotation(
+                    stmt,
+                    output,
+                    False,
+                    (
+                        output.make_python_name(stmt.name.name)
+                        if stmt.name.python_identifier
+                        else stmt.name.name
+                    ),
+                )
                 continue
             define_method(stmt)
             defined_methods[stmt.name.name] = True
