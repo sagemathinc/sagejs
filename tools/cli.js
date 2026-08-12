@@ -658,6 +658,8 @@ versions, and versions leased by running Sage.js processes are always
 preserved. Recent obsolete versions are protected from age-based expiry, but
 are selected when older obsolete versions cannot meet the size target.
 `status` reports the last quiet automatic-cleanup result and its next retry.
+Automatic cleanup may exceed its per-pass byte cap for one eligible obsolete
+tree, preventing a single large generation from remaining forever.
 */
   },
   function () {

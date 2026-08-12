@@ -247,6 +247,24 @@ function acquireDirectoryMutex(
   return undefined;
 }
 
+const releaseWaitArray = new Int32Array(new SharedArrayBuffer(4));
+
+function acquireDirectoryMutexForRelease(
+  directory: string,
+  staleMs: number,
+): (() => void) | undefined {
+  // Release is rare and bounded. Unlike startup acquisition it must not
+  // abandon a live canonical lock merely because another startup briefly owns
+  // the guard; wait a short bounded interval for that ordinary contention.
+  const deadline = Date.now() + 2_000;
+  do {
+    const release = acquireDirectoryMutex(directory, Date.now(), staleMs);
+    if (release) return release;
+    Atomics.wait(releaseWaitArray, 0, 0, 10);
+  } while (Date.now() < deadline);
+  return undefined;
+}
+
 function acquireLock(
   filename: string,
   now: number,
@@ -300,7 +318,7 @@ function acquireLock(
   }
 
   return () => {
-    const releaseOperation = acquireDirectoryMutex(guard, Date.now(), staleMs);
+    const releaseOperation = acquireDirectoryMutexForRelease(guard, staleMs);
     if (!releaseOperation) return;
     try {
       const metadata = lstatSync(filename);

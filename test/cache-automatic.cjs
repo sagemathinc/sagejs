@@ -404,6 +404,46 @@ test("abandoned guard directories recover only after becoming stale", (t) => {
   assert.equal(existsSync(guard), false);
 });
 
+test("owner release waits through fresh guard contention", (t) => {
+  const { base, root } = temporaryRoot(t);
+  const current = versionName("5");
+  const expired = versionName("6");
+  addVersion(root, current, { ageDays: 100 });
+  addVersion(root, expired, { ageDays: 100 });
+  const guard = join(root, `${AUTOMATIC_CACHE_LOCK_FILENAME}.guard`);
+  let helper;
+  const result = runAutomaticModuleCacheCleanup({
+    beforeRemove: () => {
+      if (helper) return;
+      const source = `
+        const { mkdirSync, writeFileSync, rmSync } = require("node:fs");
+        const { join } = require("node:path");
+        const guard = process.argv[1];
+        mkdirSync(guard);
+        writeFileSync(join(guard, "owner"), "contender\\n");
+        process.send("held");
+        setTimeout(() => { rmSync(guard, { recursive: true }); process.exit(0); }, 100);
+      `;
+      helper = spawn(process.execPath, ["-e", source, guard], {
+        stdio: ["ignore", "ignore", "pipe", "ipc"],
+      });
+      const deadline = Date.now() + 1_000;
+      while (!existsSync(join(guard, AUTOMATIC_CACHE_LOCK_OWNER_FILENAME))) {
+        assert.ok(Date.now() < deadline, "guard helper did not become ready");
+      }
+    },
+    currentVersion: current,
+    environment: automaticEnvironment(base),
+    expectedRoot: root,
+    root,
+  });
+  t.after(() => {
+    if (helper?.exitCode === null) helper.kill();
+  });
+  assert.equal(result.status, "applied");
+  assert.equal(existsSync(join(root, AUTOMATIC_CACHE_LOCK_FILENAME)), false);
+});
+
 test("automatic cleanup may remove one oversized eligible generation", (t) => {
   const { base, root } = temporaryRoot(t);
   const current = versionName("7");
