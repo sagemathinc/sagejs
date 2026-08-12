@@ -32,6 +32,8 @@ def _close_matrix_resource(matrix: Any) -> None:
         matrix._rational_resource().close()
     elif matrix._has_m4ri_matrix_resource():
         matrix._m4ri_resource().close()
+    elif matrix._has_nmod_matrix_resource():
+        matrix._nmod_resource().close()
 
 
 def set_row(target: Any, row: int, values: Any) -> None:
@@ -193,6 +195,12 @@ def swap_rows(target: Any, first: int, second: int) -> None:
         target._rational_storage_cache.denominators = runtime.undefined
         target._clear_cache()
         return
+    if target._has_nmod_matrix_resource():
+        flint.nmod_matrix_swap_rows(target._nmod_resource(), first, second)
+        target._prime_residues_cache = runtime.undefined
+        target._clear_cache()
+        target._trace_word_prime_resource("swap_rows")
+        return
     if target._has_packed_prime_storage():
         target._swap_dense_prime_axis(first, second, False, plan)
         return
@@ -221,6 +229,12 @@ def swap_columns(target: Any, first: int, second: int) -> None:
         target._rational_storage_cache.numerators = runtime.undefined
         target._rational_storage_cache.denominators = runtime.undefined
         target._clear_cache()
+        return
+    if target._has_nmod_matrix_resource():
+        flint.nmod_matrix_swap_columns(target._nmod_resource(), first, second)
+        target._prime_residues_cache = runtime.undefined
+        target._clear_cache()
+        target._trace_word_prime_resource("swap_columns")
         return
     if target._has_packed_prime_storage():
         target._swap_dense_prime_axis(first, second, True, plan)

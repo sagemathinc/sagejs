@@ -135,6 +135,10 @@ cases = [
     (GF(97), [0, 1, 96, 42, 17, 88]),
     (GF(65521), [0, 1, 65520, 256, 4097, 17]),
     (GF(65537), [0, 1, 65536, 0x1234, 0xABCD, 17]),
+    (
+        GF(2305843009213693951),
+        [0, 1, 2305843009213693950, 0x123456789ABC, 17, 99],
+    ),
 ]
 for field, entries in cases:
     source = matrix(field, 2, 3, entries)
@@ -165,6 +169,29 @@ assert position >= 0
 noncanonical_width[position + len(marker) - 1] = ord("2")
 expect_failure(
     lambda: loads(bytes(noncanonical_width)),
+    "compact matrix residue width is noncanonical",
+)
+
+word_prime = 2305843009213693951
+malformed_word = bytearray(
+    dumps(matrix(GF(word_prime), 1, 1, [word_prime - 1]))
+)
+for byte_index in range(8):
+    malformed_word[-8 + byte_index] = (word_prime >> (8 * byte_index)) & 255
+expect_failure(
+    lambda: loads(bytes(malformed_word)),
+    "compact matrix residue is outside its field",
+)
+
+noncanonical_word_width = bytearray(
+    dumps(matrix(GF(word_prime), 1, 1, [word_prime - 1]))
+)
+word_marker = b'"entryWidth",8'
+word_position = bytes(noncanonical_word_width).find(word_marker)
+assert word_position >= 0
+noncanonical_word_width[word_position + len(word_marker) - 1] = ord("4")
+expect_failure(
+    lambda: loads(bytes(noncanonical_word_width)),
     "compact matrix residue width is noncanonical",
 )
 `);

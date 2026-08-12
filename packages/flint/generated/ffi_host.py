@@ -29,6 +29,7 @@ from sagejs.ffi.flint import (
     FqContext,
     FqElement,
     FqPolynomial,
+    NmodMatrix,
     fmpz_polynomial as _ffi_fmpz_polynomial,
     fmpz_polynomial_set_coefficient as _ffi_fmpz_polynomial_set_coefficient,
     fmpz_polynomial_seal as _ffi_fmpz_polynomial_seal,
@@ -223,6 +224,37 @@ from sagejs.ffi.flint import (
     fmpq_mat_solve as _ffi_fmpq_mat_solve,
     fmpq_mat_det as _ffi_fmpq_mat_det,
     fmpq_mat_charpoly as _ffi_fmpq_mat_charpoly,
+    nmod_matrix_from_entries as _ffi_nmod_matrix_from_entries,
+    nmod_matrix_random as _ffi_nmod_matrix_random,
+    nmod_matrix_nrows as _ffi_nmod_matrix_nrows,
+    nmod_matrix_ncols as _ffi_nmod_matrix_ncols,
+    nmod_matrix_modulus as _ffi_nmod_matrix_modulus,
+    nmod_matrix_entry as _ffi_nmod_matrix_entry,
+    nmod_matrix_set_entry as _ffi_nmod_matrix_set_entry,
+    nmod_matrix_copy as _ffi_nmod_matrix_copy,
+    nmod_matrix_equal as _ffi_nmod_matrix_equal,
+    nmod_matrix_is_zero as _ffi_nmod_matrix_is_zero,
+    nmod_matrix_is_one as _ffi_nmod_matrix_is_one,
+    nmod_matrix_nonzero_count as _ffi_nmod_matrix_nonzero_count,
+    nmod_matrix_add as _ffi_nmod_matrix_add,
+    nmod_matrix_sub as _ffi_nmod_matrix_sub,
+    nmod_matrix_neg as _ffi_nmod_matrix_neg,
+    nmod_matrix_scalar_mul as _ffi_nmod_matrix_scalar_mul,
+    nmod_matrix_transpose as _ffi_nmod_matrix_transpose,
+    nmod_matrix_mul as _ffi_nmod_matrix_mul,
+    nmod_matrix_inv as _ffi_nmod_matrix_inv,
+    nmod_matrix_solve as _ffi_nmod_matrix_solve,
+    nmod_matrix_rank as _ffi_nmod_matrix_rank,
+    nmod_matrix_rref as _ffi_nmod_matrix_rref,
+    nmod_matrix_right_kernel as _ffi_nmod_matrix_right_kernel,
+    nmod_matrix_det as _ffi_nmod_matrix_det,
+    nmod_matrix_trace as _ffi_nmod_matrix_trace,
+    nmod_matrix_swap_rows as _ffi_nmod_matrix_swap_rows,
+    nmod_matrix_swap_columns as _ffi_nmod_matrix_swap_columns,
+    nmod_matrix_format as _ffi_nmod_matrix_format,
+    nmod_matrix_serialize as _ffi_nmod_matrix_serialize,
+    nmod_matrix_charpoly as _ffi_nmod_matrix_charpoly,
+    nmod_matrix_minpoly as _ffi_nmod_matrix_minpoly,
     nmod_mat_rank as _ffi_nmod_mat_rank,
     nmod_mat_det as _ffi_nmod_mat_det,
     nmod_mat_charpoly as _ffi_nmod_mat_charpoly,
@@ -2500,6 +2532,333 @@ def ffiFmpqMatCharpoly(
         coefficient_count,
         size,
         one,
+    )
+
+
+@native
+def ffiNmodMatrixFromEntries(
+    entries: UInt64Buffer,
+    entry_count: uint64,
+    rows: uint64,
+    columns: uint64,
+    modulus: uint64,
+) -> NmodMatrix:
+    return _ffi_nmod_matrix_from_entries(
+        entries,
+        entry_count,
+        rows,
+        columns,
+        modulus,
+    )
+
+
+@native
+def ffiNmodMatrixRandom(
+    rows: uint64,
+    columns: uint64,
+    modulus: uint64,
+    seed1: uint64,
+    seed2: uint64,
+) -> NmodMatrix:
+    return _ffi_nmod_matrix_random(
+        rows,
+        columns,
+        modulus,
+        seed1,
+        seed2,
+    )
+
+
+@native
+def ffiNmodMatrixNrows(
+    matrix: NmodMatrix,
+) -> uint64:
+    return _ffi_nmod_matrix_nrows(
+        matrix,
+    )
+
+
+@native
+def ffiNmodMatrixNcols(
+    matrix: NmodMatrix,
+) -> uint64:
+    return _ffi_nmod_matrix_ncols(
+        matrix,
+    )
+
+
+@native
+def ffiNmodMatrixModulus(
+    matrix: NmodMatrix,
+) -> uint64:
+    return _ffi_nmod_matrix_modulus(
+        matrix,
+    )
+
+
+@native
+def ffiNmodMatrixEntry(
+    matrix: NmodMatrix,
+    row: uint64,
+    column: uint64,
+) -> uint64:
+    return _ffi_nmod_matrix_entry(
+        matrix,
+        row,
+        column,
+    )
+
+
+@native
+def ffiNmodMatrixSetEntry(
+    matrix: NmodMatrix,
+    row: uint64,
+    column: uint64,
+    value: uint64,
+) -> bool:
+    return _ffi_nmod_matrix_set_entry(
+        matrix,
+        row,
+        column,
+        value,
+    )
+
+
+@native
+def ffiNmodMatrixCopy(
+    source: NmodMatrix,
+) -> NmodMatrix:
+    return _ffi_nmod_matrix_copy(
+        source,
+    )
+
+
+@native
+def ffiNmodMatrixEqual(
+    left: NmodMatrix,
+    right: NmodMatrix,
+) -> bool:
+    return _ffi_nmod_matrix_equal(
+        left,
+        right,
+    )
+
+
+@native
+def ffiNmodMatrixIsZero(
+    matrix: NmodMatrix,
+) -> bool:
+    return _ffi_nmod_matrix_is_zero(
+        matrix,
+    )
+
+
+@native
+def ffiNmodMatrixIsOne(
+    matrix: NmodMatrix,
+) -> bool:
+    return _ffi_nmod_matrix_is_one(
+        matrix,
+    )
+
+
+@native
+def ffiNmodMatrixNonzeroCount(
+    matrix: NmodMatrix,
+) -> uint64:
+    return _ffi_nmod_matrix_nonzero_count(
+        matrix,
+    )
+
+
+@native
+def ffiNmodMatrixAdd(
+    left: NmodMatrix,
+    right: NmodMatrix,
+) -> NmodMatrix:
+    return _ffi_nmod_matrix_add(
+        left,
+        right,
+    )
+
+
+@native
+def ffiNmodMatrixSub(
+    left: NmodMatrix,
+    right: NmodMatrix,
+) -> NmodMatrix:
+    return _ffi_nmod_matrix_sub(
+        left,
+        right,
+    )
+
+
+@native
+def ffiNmodMatrixNeg(
+    source: NmodMatrix,
+) -> NmodMatrix:
+    return _ffi_nmod_matrix_neg(
+        source,
+    )
+
+
+@native
+def ffiNmodMatrixScalarMul(
+    source: NmodMatrix,
+    scalar: uint64,
+) -> NmodMatrix:
+    return _ffi_nmod_matrix_scalar_mul(
+        source,
+        scalar,
+    )
+
+
+@native
+def ffiNmodMatrixTranspose(
+    source: NmodMatrix,
+) -> NmodMatrix:
+    return _ffi_nmod_matrix_transpose(
+        source,
+    )
+
+
+@native
+def ffiNmodMatrixMul(
+    left: NmodMatrix,
+    right: NmodMatrix,
+) -> NmodMatrix:
+    return _ffi_nmod_matrix_mul(
+        left,
+        right,
+    )
+
+
+@native
+def ffiNmodMatrixInv(
+    source: NmodMatrix,
+) -> NmodMatrix:
+    return _ffi_nmod_matrix_inv(
+        source,
+    )
+
+
+@native
+def ffiNmodMatrixSolve(
+    left: NmodMatrix,
+    right: NmodMatrix,
+) -> NmodMatrix:
+    return _ffi_nmod_matrix_solve(
+        left,
+        right,
+    )
+
+
+@native
+def ffiNmodMatrixRank(
+    matrix: NmodMatrix,
+) -> uint64:
+    return _ffi_nmod_matrix_rank(
+        matrix,
+    )
+
+
+@native
+def ffiNmodMatrixRref(
+    source: NmodMatrix,
+) -> NmodMatrix:
+    return _ffi_nmod_matrix_rref(
+        source,
+    )
+
+
+@native
+def ffiNmodMatrixRightKernel(
+    source: NmodMatrix,
+) -> NmodMatrix:
+    return _ffi_nmod_matrix_right_kernel(
+        source,
+    )
+
+
+@native
+def ffiNmodMatrixDet(
+    source: NmodMatrix,
+) -> uint64:
+    return _ffi_nmod_matrix_det(
+        source,
+    )
+
+
+@native
+def ffiNmodMatrixTrace(
+    source: NmodMatrix,
+) -> uint64:
+    return _ffi_nmod_matrix_trace(
+        source,
+    )
+
+
+@native
+def ffiNmodMatrixSwapRows(
+    matrix: NmodMatrix,
+    first: uint64,
+    second: uint64,
+) -> bool:
+    return _ffi_nmod_matrix_swap_rows(
+        matrix,
+        first,
+        second,
+    )
+
+
+@native
+def ffiNmodMatrixSwapColumns(
+    matrix: NmodMatrix,
+    first: uint64,
+    second: uint64,
+) -> bool:
+    return _ffi_nmod_matrix_swap_columns(
+        matrix,
+        first,
+        second,
+    )
+
+
+@native
+def ffiNmodMatrixFormat(
+    source: NmodMatrix,
+) -> FlintByteRegion:
+    return _ffi_nmod_matrix_format(
+        source,
+    )
+
+
+@native
+def ffiNmodMatrixSerialize(
+    source: NmodMatrix,
+    width: uint64,
+) -> FlintByteRegion:
+    return _ffi_nmod_matrix_serialize(
+        source,
+        width,
+    )
+
+
+@native
+def ffiNmodMatrixCharpoly(
+    source: NmodMatrix,
+) -> FlintByteRegion:
+    return _ffi_nmod_matrix_charpoly(
+        source,
+    )
+
+
+@native
+def ffiNmodMatrixMinpoly(
+    source: NmodMatrix,
+) -> FlintByteRegion:
+    return _ffi_nmod_matrix_minpoly(
+        source,
     )
 
 

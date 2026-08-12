@@ -34,6 +34,7 @@ flint = Library(
         "sagejs/fmpq_matrix_ffi.h",
         "sagejs/fmpz_mod_polynomial_ffi.h",
         "sagejs/fq_polynomial_ffi.h",
+        "sagejs/nmod_matrix_ffi.h",
     ],
     link_unix=["libflint.a", "libopenblas.a"],
     link_windows=["flint.lib", "openblas.lib", "pthreadVC3.lib"],
@@ -64,6 +65,17 @@ FmpqMatrix = flint.resource(
     close="ffiFmpqMatrixClose",
     clear="sagejs_fmpq_matrix_clear",
     size="sagejs_fmpq_matrix_allocated_bytes",
+    wasm=True,
+)
+
+
+NmodMatrix = flint.resource(
+    id="nmod_matrix",
+    abi=sagejs_nmod_matrix_t,
+    ownership="owned",
+    close="ffiNmodMatrixClose",
+    clear="sagejs_nmod_matrix_clear",
+    size="sagejs_nmod_matrix_allocated_bytes",
     wasm=True,
 )
 
@@ -4953,6 +4965,544 @@ def fmpq_mat_charpoly(
     size: uint64,
     one: Min[uint64, 1],
 ) -> bool: ...
+
+
+@flint.function(
+    dynamic="ffiNmodMatrixFromEntries",
+    symbol="sagejs_nmod_matrix_from_entries",
+    returns=int,
+    abi=[
+        out("result", sagejs_nmod_matrix_t),
+        in_(
+            "source",
+            uint64_t_ptr,
+            packed_slice(
+                data="entries",
+                length="entry_count",
+                access="read",
+                aliasing="allowed",
+                transactional=False,
+            ),
+        ),
+        in_("entry_count", uint64_t),
+        in_("rows", uint64_t),
+        in_("columns", uint64_t),
+        in_("modulus", uint64_t),
+    ],
+    effects=Effects(pure=False, allocates=True, raises=[ValueError, OverflowError]),
+    result=Status(
+        1,
+        exception=ValueError,
+        message="invalid word-prime matrix packed input",
+    ),
+    wasm=True,
+)
+def nmod_matrix_from_entries(
+    entries: UInt64Buffer,
+    entry_count: uint64,
+    rows: uint64,
+    columns: uint64,
+    modulus: uint64,
+) -> NmodMatrix: ...
+
+
+@flint.function(
+    dynamic="ffiNmodMatrixRandom",
+    symbol="sagejs_nmod_matrix_random",
+    returns=int,
+    abi=[
+        out("result", sagejs_nmod_matrix_t),
+        in_("rows", uint64_t),
+        in_("columns", uint64_t),
+        in_("modulus", uint64_t),
+        in_("seed1", uint64_t),
+        in_("seed2", uint64_t),
+    ],
+    effects=Effects(pure=False, allocates=True, raises=[ValueError, OverflowError]),
+    result=Status(
+        1,
+        exception=ValueError,
+        message="invalid word-prime random matrix parameters",
+    ),
+    wasm=True,
+)
+def nmod_matrix_random(
+    rows: uint64,
+    columns: uint64,
+    modulus: uint64,
+    seed1: uint64,
+    seed2: uint64,
+) -> NmodMatrix: ...
+
+
+@flint.function(
+    dynamic="ffiNmodMatrixNrows",
+    symbol="sagejs_nmod_matrix_nrows",
+    returns=uint64_t,
+    abi=[in_("matrix", sagejs_nmod_matrix_t)],
+    effects=Effects(pure=True),
+    result=Direct(),
+    wasm=True,
+)
+def nmod_matrix_nrows(matrix: NmodMatrix) -> uint64: ...
+
+
+@flint.function(
+    dynamic="ffiNmodMatrixNcols",
+    symbol="sagejs_nmod_matrix_ncols",
+    returns=uint64_t,
+    abi=[in_("matrix", sagejs_nmod_matrix_t)],
+    effects=Effects(pure=True),
+    result=Direct(),
+    wasm=True,
+)
+def nmod_matrix_ncols(matrix: NmodMatrix) -> uint64: ...
+
+
+@flint.function(
+    dynamic="ffiNmodMatrixModulus",
+    symbol="sagejs_nmod_matrix_modulus",
+    returns=uint64_t,
+    abi=[in_("matrix", sagejs_nmod_matrix_t)],
+    effects=Effects(pure=True),
+    result=Direct(),
+    wasm=True,
+)
+def nmod_matrix_modulus(matrix: NmodMatrix) -> uint64: ...
+
+
+@flint.function(
+    dynamic="ffiNmodMatrixEntry",
+    symbol="sagejs_nmod_matrix_entry",
+    returns=uint64_t,
+    abi=[
+        in_("matrix", sagejs_nmod_matrix_t),
+        in_("row", uint64_t),
+        in_("column", uint64_t),
+    ],
+    effects=Effects(pure=True),
+    result=Direct(),
+    wasm=True,
+)
+def nmod_matrix_entry(
+    matrix: NmodMatrix,
+    row: uint64,
+    column: uint64,
+) -> uint64: ...
+
+
+@flint.function(
+    dynamic="ffiNmodMatrixSetEntry",
+    symbol="sagejs_nmod_matrix_set_entry",
+    returns=int,
+    abi=[
+        in_("matrix", sagejs_nmod_matrix_t),
+        in_("row", uint64_t),
+        in_("column", uint64_t),
+        in_("value", uint64_t),
+    ],
+    effects=Effects(
+        pure=False,
+        raises=[ValueError],
+        writes=["matrix"],
+    ),
+    result=Status(1, exception=ValueError, message="invalid word-prime matrix entry"),
+    wasm=True,
+)
+def nmod_matrix_set_entry(
+    matrix: Writable[NmodMatrix],
+    row: uint64,
+    column: uint64,
+    value: uint64,
+) -> bool: ...
+
+
+@flint.function(
+    dynamic="ffiNmodMatrixCopy",
+    symbol="sagejs_nmod_matrix_init_set",
+    returns=int,
+    abi=[
+        out("result", sagejs_nmod_matrix_t),
+        in_("source", sagejs_nmod_matrix_t),
+    ],
+    effects=Effects(pure=False, allocates=True, raises=[RuntimeError]),
+    result=Status(1, exception=RuntimeError, message="word-prime matrix copy failed"),
+    wasm=True,
+)
+def nmod_matrix_copy(source: NmodMatrix) -> NmodMatrix: ...
+
+
+@flint.function(
+    dynamic="ffiNmodMatrixEqual",
+    symbol="sagejs_nmod_matrix_equal",
+    returns=int,
+    abi=[
+        in_("left", sagejs_nmod_matrix_t),
+        in_("right", sagejs_nmod_matrix_t),
+    ],
+    effects=Effects(pure=True),
+    result=Direct(),
+    wasm=True,
+)
+def nmod_matrix_equal(left: NmodMatrix, right: NmodMatrix) -> bool: ...
+
+
+@flint.function(
+    dynamic="ffiNmodMatrixIsZero",
+    symbol="sagejs_nmod_matrix_is_zero",
+    returns=int,
+    abi=[in_("matrix", sagejs_nmod_matrix_t)],
+    effects=Effects(pure=True),
+    result=Direct(),
+    wasm=True,
+)
+def nmod_matrix_is_zero(matrix: NmodMatrix) -> bool: ...
+
+
+@flint.function(
+    dynamic="ffiNmodMatrixIsOne",
+    symbol="sagejs_nmod_matrix_is_one",
+    returns=int,
+    abi=[in_("matrix", sagejs_nmod_matrix_t)],
+    effects=Effects(pure=True),
+    result=Direct(),
+    wasm=True,
+)
+def nmod_matrix_is_one(matrix: NmodMatrix) -> bool: ...
+
+
+@flint.function(
+    dynamic="ffiNmodMatrixNonzeroCount",
+    symbol="sagejs_nmod_matrix_nonzero_count",
+    returns=uint64_t,
+    abi=[in_("matrix", sagejs_nmod_matrix_t)],
+    effects=Effects(pure=True),
+    result=Direct(),
+    wasm=True,
+)
+def nmod_matrix_nonzero_count(matrix: NmodMatrix) -> uint64: ...
+
+
+@flint.function(
+    dynamic="ffiNmodMatrixAdd",
+    symbol="sagejs_nmod_matrix_add",
+    returns=int,
+    abi=[
+        out("result", sagejs_nmod_matrix_t),
+        in_("left", sagejs_nmod_matrix_t),
+        in_("right", sagejs_nmod_matrix_t),
+    ],
+    effects=Effects(pure=False, allocates=True, raises=[ValueError]),
+    result=Status(1, exception=ValueError, message="word-prime matrix add mismatch"),
+    wasm=True,
+)
+def nmod_matrix_add(left: NmodMatrix, right: NmodMatrix) -> NmodMatrix: ...
+
+
+@flint.function(
+    dynamic="ffiNmodMatrixSub",
+    symbol="sagejs_nmod_matrix_sub",
+    returns=int,
+    abi=[
+        out("result", sagejs_nmod_matrix_t),
+        in_("left", sagejs_nmod_matrix_t),
+        in_("right", sagejs_nmod_matrix_t),
+    ],
+    effects=Effects(pure=False, allocates=True, raises=[ValueError]),
+    result=Status(
+        1, exception=ValueError, message="word-prime matrix subtract mismatch"
+    ),
+    wasm=True,
+)
+def nmod_matrix_sub(left: NmodMatrix, right: NmodMatrix) -> NmodMatrix: ...
+
+
+@flint.function(
+    dynamic="ffiNmodMatrixNeg",
+    symbol="sagejs_nmod_matrix_neg",
+    returns=int,
+    abi=[
+        out("result", sagejs_nmod_matrix_t),
+        in_("source", sagejs_nmod_matrix_t),
+    ],
+    effects=Effects(pure=False, allocates=True, raises=[RuntimeError]),
+    result=Status(
+        1, exception=RuntimeError, message="word-prime matrix negation failed"
+    ),
+    wasm=True,
+)
+def nmod_matrix_neg(source: NmodMatrix) -> NmodMatrix: ...
+
+
+@flint.function(
+    dynamic="ffiNmodMatrixScalarMul",
+    symbol="sagejs_nmod_matrix_scalar_mul",
+    returns=int,
+    abi=[
+        out("result", sagejs_nmod_matrix_t),
+        in_("source", sagejs_nmod_matrix_t),
+        in_("scalar", uint64_t),
+    ],
+    effects=Effects(pure=False, allocates=True, raises=[ValueError]),
+    result=Status(1, exception=ValueError, message="invalid word-prime matrix scalar"),
+    wasm=True,
+)
+def nmod_matrix_scalar_mul(
+    source: NmodMatrix,
+    scalar: uint64,
+) -> NmodMatrix: ...
+
+
+@flint.function(
+    dynamic="ffiNmodMatrixTranspose",
+    symbol="sagejs_nmod_matrix_transpose",
+    returns=int,
+    abi=[
+        out("result", sagejs_nmod_matrix_t),
+        in_("source", sagejs_nmod_matrix_t),
+    ],
+    effects=Effects(pure=False, allocates=True, raises=[RuntimeError]),
+    result=Status(
+        1, exception=RuntimeError, message="word-prime matrix transpose failed"
+    ),
+    wasm=True,
+)
+def nmod_matrix_transpose(source: NmodMatrix) -> NmodMatrix: ...
+
+
+@flint.function(
+    dynamic="ffiNmodMatrixMul",
+    symbol="sagejs_nmod_matrix_mul",
+    returns=int,
+    abi=[
+        out("result", sagejs_nmod_matrix_t),
+        in_("left", sagejs_nmod_matrix_t),
+        in_("right", sagejs_nmod_matrix_t),
+    ],
+    effects=Effects(pure=False, allocates=True, raises=[ValueError]),
+    result=Status(
+        1, exception=ValueError, message="word-prime matrix multiply mismatch"
+    ),
+    wasm=True,
+)
+def nmod_matrix_mul(left: NmodMatrix, right: NmodMatrix) -> NmodMatrix: ...
+
+
+@flint.function(
+    dynamic="ffiNmodMatrixInv",
+    symbol="sagejs_nmod_matrix_inv",
+    returns=int,
+    abi=[
+        out("result", sagejs_nmod_matrix_t),
+        in_("source", sagejs_nmod_matrix_t),
+    ],
+    effects=Effects(pure=False, allocates=True, raises=[ValueError]),
+    result=Status(1, exception=ValueError, message="word-prime matrix is singular"),
+    wasm=True,
+)
+def nmod_matrix_inv(source: NmodMatrix) -> NmodMatrix: ...
+
+
+@flint.function(
+    dynamic="ffiNmodMatrixSolve",
+    symbol="sagejs_nmod_matrix_solve",
+    returns=int,
+    abi=[
+        out("result", sagejs_nmod_matrix_t),
+        in_("left", sagejs_nmod_matrix_t),
+        in_("right", sagejs_nmod_matrix_t),
+    ],
+    effects=Effects(pure=False, allocates=True, raises=[ValueError]),
+    result=Status(1, exception=ValueError, message="word-prime matrix solve failed"),
+    wasm=True,
+)
+def nmod_matrix_solve(left: NmodMatrix, right: NmodMatrix) -> NmodMatrix: ...
+
+
+@flint.function(
+    dynamic="ffiNmodMatrixRank",
+    symbol="sagejs_nmod_matrix_rank",
+    returns=uint64_t,
+    abi=[in_("matrix", sagejs_nmod_matrix_t)],
+    effects=Effects(pure=False, allocates=True, writes=["matrix"]),
+    result=Direct(),
+    wasm=True,
+)
+def nmod_matrix_rank(matrix: Writable[NmodMatrix]) -> uint64: ...
+
+
+@flint.function(
+    dynamic="ffiNmodMatrixRref",
+    symbol="sagejs_nmod_matrix_rref",
+    returns=int,
+    abi=[
+        out("result", sagejs_nmod_matrix_t),
+        in_("source", sagejs_nmod_matrix_t),
+    ],
+    effects=Effects(pure=False, allocates=True, raises=[RuntimeError]),
+    result=Status(1, exception=RuntimeError, message="word-prime matrix RREF failed"),
+    wasm=True,
+)
+def nmod_matrix_rref(source: NmodMatrix) -> NmodMatrix: ...
+
+
+@flint.function(
+    dynamic="ffiNmodMatrixRightKernel",
+    symbol="sagejs_nmod_matrix_right_kernel",
+    returns=int,
+    abi=[
+        out("result", sagejs_nmod_matrix_t),
+        in_("source", sagejs_nmod_matrix_t),
+    ],
+    effects=Effects(pure=False, allocates=True, raises=[RuntimeError]),
+    result=Status(1, exception=RuntimeError, message="word-prime right kernel failed"),
+    wasm=True,
+)
+def nmod_matrix_right_kernel(source: NmodMatrix) -> NmodMatrix: ...
+
+
+@flint.function(
+    dynamic="ffiNmodMatrixDet",
+    symbol="sagejs_nmod_matrix_det",
+    returns=uint64_t,
+    abi=[in_("source", sagejs_nmod_matrix_t)],
+    effects=Effects(pure=True, allocates=True),
+    result=Direct(),
+    wasm=True,
+)
+def nmod_matrix_det(source: NmodMatrix) -> uint64: ...
+
+
+@flint.function(
+    dynamic="ffiNmodMatrixTrace",
+    symbol="sagejs_nmod_matrix_trace",
+    returns=uint64_t,
+    abi=[in_("source", sagejs_nmod_matrix_t)],
+    effects=Effects(pure=True),
+    result=Direct(),
+    wasm=True,
+)
+def nmod_matrix_trace(source: NmodMatrix) -> uint64: ...
+
+
+@flint.function(
+    dynamic="ffiNmodMatrixSwapRows",
+    symbol="sagejs_nmod_matrix_swap_rows",
+    returns=int,
+    abi=[
+        in_("matrix", sagejs_nmod_matrix_t),
+        in_("first", uint64_t),
+        in_("second", uint64_t),
+    ],
+    effects=Effects(pure=False, raises=[IndexError], writes=["matrix"]),
+    result=Status(
+        1, exception=IndexError, message="word-prime row index is out of range"
+    ),
+    wasm=True,
+)
+def nmod_matrix_swap_rows(
+    matrix: Writable[NmodMatrix],
+    first: uint64,
+    second: uint64,
+) -> bool: ...
+
+
+@flint.function(
+    dynamic="ffiNmodMatrixSwapColumns",
+    symbol="sagejs_nmod_matrix_swap_columns",
+    returns=int,
+    abi=[
+        in_("matrix", sagejs_nmod_matrix_t),
+        in_("first", uint64_t),
+        in_("second", uint64_t),
+    ],
+    effects=Effects(pure=False, raises=[IndexError], writes=["matrix"]),
+    result=Status(
+        1, exception=IndexError, message="word-prime column index is out of range"
+    ),
+    wasm=True,
+)
+def nmod_matrix_swap_columns(
+    matrix: Writable[NmodMatrix],
+    first: uint64,
+    second: uint64,
+) -> bool: ...
+
+
+@flint.function(
+    dynamic="ffiNmodMatrixFormat",
+    symbol="sagejs_nmod_matrix_format",
+    returns=int,
+    abi=[
+        out("result", sagejs_flint_byte_region_t),
+        in_("source", sagejs_nmod_matrix_t),
+    ],
+    effects=Effects(pure=False, allocates=True, raises=[RuntimeError]),
+    result=Status(
+        1, exception=RuntimeError, message="word-prime matrix formatting failed"
+    ),
+    wasm=True,
+)
+def nmod_matrix_format(source: NmodMatrix) -> FlintByteRegion: ...
+
+
+@flint.function(
+    dynamic="ffiNmodMatrixSerialize",
+    symbol="sagejs_nmod_matrix_serialize",
+    returns=int,
+    abi=[
+        out("result", sagejs_flint_byte_region_t),
+        in_("source", sagejs_nmod_matrix_t),
+        in_("width", uint64_t),
+    ],
+    effects=Effects(pure=False, allocates=True, raises=[ValueError, OverflowError]),
+    result=Status(
+        1, exception=ValueError, message="invalid word-prime matrix serialization width"
+    ),
+    wasm=True,
+)
+def nmod_matrix_serialize(
+    source: NmodMatrix,
+    width: uint64,
+) -> FlintByteRegion: ...
+
+
+@flint.function(
+    dynamic="ffiNmodMatrixCharpoly",
+    symbol="sagejs_nmod_matrix_charpoly",
+    returns=int,
+    abi=[
+        out("result", sagejs_flint_byte_region_t),
+        in_("source", sagejs_nmod_matrix_t),
+    ],
+    effects=Effects(pure=False, allocates=True, raises=[ValueError]),
+    result=Status(
+        1,
+        exception=ValueError,
+        message="word-prime characteristic polynomial requires a square matrix",
+    ),
+    wasm=True,
+)
+def nmod_matrix_charpoly(source: NmodMatrix) -> FlintByteRegion: ...
+
+
+@flint.function(
+    dynamic="ffiNmodMatrixMinpoly",
+    symbol="sagejs_nmod_matrix_minpoly",
+    returns=int,
+    abi=[
+        out("result", sagejs_flint_byte_region_t),
+        in_("source", sagejs_nmod_matrix_t),
+    ],
+    effects=Effects(pure=False, allocates=True, raises=[ValueError]),
+    result=Status(
+        1,
+        exception=ValueError,
+        message="word-prime minimal polynomial requires a square matrix",
+    ),
+    wasm=True,
+)
+def nmod_matrix_minpoly(source: NmodMatrix) -> FlintByteRegion: ...
 
 
 @flint.function(

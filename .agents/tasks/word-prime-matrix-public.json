@@ -1,0 +1,66 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "word-prime-matrix-public",
+  "title": "Word-prime matrix public resource",
+  "lane": "integration",
+  "status": "active",
+  "owner": "user",
+  "objective": "Implement generated FLINT nmod_mat resource ownership and a uniformly efficient, traceable public dense GF(p) matrix vertical slice for general word-size primes: bulk construction and random ingress, formatting, SagePack serialization, direct swaps, and preserved FFLAS/FFPACK algorithms",
+  "base_commit": "62d9f6577c055b230dd089ade5895a1824e6463a",
+  "claims": [
+    "packages/flint/include/sagejs/nmod_matrix_ffi.h",
+    "ffi/flint.ffi.py",
+    "ffi/flint.ffi.json",
+    "packages/flint/generated/ffi_host.py",
+    "src/lib/sagejs/ffi/flint.py",
+    "src/baselib/sagejs/ffi/flint.py",
+    "architecture/native-boundaries.json",
+    "architecture/native-code.json",
+    "architecture/package-graph.json",
+    "src/lib/sagejs/kernels/matrix/dense_word_prime_flint.py",
+    "src/baselib/matrix.py",
+    "src/lib/sagejs/linear_algebra/matrix_selection_public.py",
+    "tools/serialization.ts",
+    "test/serialization.cjs",
+    "test/prime-matrix-serialization.cjs",
+    "test/node-test-manifest.cjs",
+    "architecture/native-kernels.json",
+    "pyrightconfig.json",
+    "package.json",
+    "test/word-prime-matrix-resource-ffi.cjs",
+    "test/word-prime-matrix-public.cjs",
+    "bench/word-prime-matrix-public.cjs"
+  ],
+  "dependencies": [],
+  "references": [
+    "FLINT nmod_mat API",
+    "bench/MACOS-ARM64-MATH-WITNESS.md"
+  ],
+  "architecture": {
+    "strategy": "external-library",
+    "fallback": "tested-capability",
+    "oracles": [
+      "SageMath dense matrices over GF(2^61-1)",
+      "legacy Sage.js N-API backend as differential oracle"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "fallback",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm architecture:check",
+    "pnpm test:portable",
+    "pnpm test:baselib:strict"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "",
+    "risks": [],
+    "next_steps": []
+  }
+}
