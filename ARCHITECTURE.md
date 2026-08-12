@@ -96,13 +96,13 @@ contract.
 
 Large public mathematical types keep a small, stable bootstrap interface and
 load substantial algorithm families from ordinary Python modules on first use.
-For example, the unified public matrix API may delegate decompositions,
-selection, or combinatorial algorithms to the lazy `sagejs.linear_algebra`
-package. This is a deliberate dependency inversion: the lazy implementation
-depends on the public type contract, while bootstrap code refers to it only by
-its module name. Domain algorithms therefore remain independently readable,
-claimable by parallel projects, and removable from startup without fragmenting
-the public API into representation-specific classes.
+For example, the unified public matrix and polynomial APIs may delegate to the
+lazy `sagejs.linear_algebra` and `sagejs.polynomial_algorithms` packages. This
+is a deliberate dependency inversion: each lazy implementation depends on the
+public type contract, while bootstrap code refers to it only by module name.
+Domain algorithms therefore remain independently readable, claimable by
+parallel projects, and removable from startup without fragmenting public APIs
+into representation-specific classes.
 
 ## Native code and exceptions
 

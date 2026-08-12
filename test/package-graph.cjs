@@ -41,6 +41,10 @@ test("the checked-in package graph owns every Python source and respects budgets
     "linear-algebra-algorithms",
   );
   assert.equal(
+    result.ownership.get("src/lib/sagejs/polynomial_algorithms/__init__.py"),
+    "polynomial-algorithms",
+  );
+  assert.equal(
     result.typescriptOwnership.get("tools/serialization-codecs/number-fields.ts"),
     "arithmetic",
   );

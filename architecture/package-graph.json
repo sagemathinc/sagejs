@@ -124,6 +124,16 @@
       "prefixes": []
     },
     {
+      "id": "polynomial-algorithms",
+      "layer": 3,
+      "startup": "lazy",
+      "max_source_bytes": 250000,
+      "depends_on": ["core-runtime", "native-integration", "arithmetic"],
+      "modules": ["sagejs.polynomial_algorithms"],
+      "files": [],
+      "prefixes": ["src/lib/sagejs/polynomial_algorithms/"]
+    },
+    {
       "id": "linear-algebra-algorithms",
       "layer": 4,
       "startup": "lazy",
