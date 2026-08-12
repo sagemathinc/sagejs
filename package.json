@@ -221,6 +221,7 @@
     "bench:native:ffi:matrix": "node bench/compare-native-ffi-matrix.cjs",
     "bench:native:ffi:resource": "node bench/compare-native-ffi-resource.cjs",
     "bench:native:ffi:extension-polynomial": "node bench/extension-polynomial-resources.cjs --check",
+    "bench:native:ffi:arbitrary-prime-polynomial": "node bench/arbitrary-prime-polynomial-resources.cjs",
     "bench:native:ffi:slices": "node bench/compare-native-ffi-slices.cjs",
     "bench:native:polynomial": "node scripts/check-polynomial-budget.cjs",
     "bench:native:cowasm": "node bench/compare-native-cowasm.cjs",
