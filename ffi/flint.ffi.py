@@ -31,6 +31,7 @@ flint = Library(
         "sagejs/ffi_algorithms.h",
         "sagejs/fmpz_matrix_ffi.h",
         "sagejs/fmpq_matrix_ffi.h",
+        "sagejs/fmpz_mod_polynomial_ffi.h",
         "sagejs/fq_polynomial_ffi.h",
     ],
     link_unix=["libflint.a", "libopenblas.a"],
@@ -117,6 +118,73 @@ FmpqPolynomial = flint.resource(
     close="ffiFmpqPolynomialClose",
     clear="sagejs_fmpq_polynomial_clear",
     size="sagejs_fmpq_polynomial_allocated_bytes",
+    wasm=False,
+)
+
+
+FmpzModPolynomial = flint.resource(
+    id="fmpz_mod_polynomial",
+    abi=sagejs_fmpz_mod_polynomial_t,
+    ownership="owned",
+    close="ffiFmpzModPolynomialClose",
+    clear="sagejs_fmpz_mod_polynomial_clear",
+    size="sagejs_fmpz_mod_polynomial_allocated_bytes",
+    wasm=True,
+)
+
+
+FmpzModPolynomialDivisionResult = flint.resource(
+    id="fmpz_mod_polynomial_division_result",
+    abi=sagejs_fmpz_mod_polynomial_division_result_t,
+    ownership="owned",
+    close="ffiFmpzModPolynomialDivisionResultClose",
+    clear="sagejs_fmpz_mod_polynomial_division_result_clear",
+    size="sagejs_fmpz_mod_polynomial_division_result_allocated_bytes",
+    wasm=True,
+)
+
+
+FmpzModPolynomialXgcdResult = flint.resource(
+    id="fmpz_mod_polynomial_xgcd_result",
+    abi=sagejs_fmpz_mod_polynomial_xgcd_result_t,
+    ownership="owned",
+    close="ffiFmpzModPolynomialXgcdResultClose",
+    clear="sagejs_fmpz_mod_polynomial_xgcd_result_clear",
+    size="sagejs_fmpz_mod_polynomial_xgcd_result_allocated_bytes",
+    wasm=True,
+)
+
+
+FmpzModPolynomialFactorization = flint.resource(
+    id="fmpz_mod_polynomial_factorization",
+    abi=sagejs_fmpz_mod_polynomial_factorization_t,
+    ownership="owned",
+    close="ffiFmpzModPolynomialFactorizationClose",
+    clear="sagejs_fmpz_mod_polynomial_factorization_clear",
+    size="sagejs_fmpz_mod_polynomial_factorization_allocated_bytes",
+    host_transfer=computed_bytes(
+        dynamic="ffiFmpzModPolynomialFactorizationCopyBytes",
+        copy="sagejs_fmpz_mod_polynomial_factorization_copy_bytes",
+        clear="sagejs_fmpz_mod_polynomial_free_bytes",
+        wasm=False,
+    ),
+    wasm=False,
+)
+
+
+FmpzModPolynomialRoots = flint.resource(
+    id="fmpz_mod_polynomial_roots",
+    abi=sagejs_fmpz_mod_polynomial_roots_t,
+    ownership="owned",
+    close="ffiFmpzModPolynomialRootsClose",
+    clear="sagejs_fmpz_mod_polynomial_roots_clear",
+    size="sagejs_fmpz_mod_polynomial_roots_allocated_bytes",
+    host_transfer=computed_bytes(
+        dynamic="ffiFmpzModPolynomialRootsCopyBytes",
+        copy="sagejs_fmpz_mod_polynomial_roots_copy_bytes",
+        clear="sagejs_fmpz_mod_polynomial_free_bytes",
+        wasm=False,
+    ),
     wasm=False,
 )
 
@@ -7716,3 +7784,531 @@ def fq_polynomial_pow(source: FqPolynomial, exponent: uint64) -> FqPolynomial: .
     wasm=False,
 )
 def fq_polynomial_coordinate_bytes(polynomial: FqPolynomial) -> FlintByteRegion: ...
+
+
+# Arbitrary-prime `GF(p)[x]` values own both an `fmpz_mod_ctx_t` and their
+# `fmpz_mod_poly_t`.  Every result below is therefore self-contained: operands
+# are borrowed only for the synchronous call and no result borrows a context.
+@flint.function(
+    dynamic="ffiFmpzModPolynomialCreate",
+    symbol="sagejs_fmpz_mod_polynomial_init",
+    returns=int,
+    abi=[
+        out("result", sagejs_fmpz_mod_polynomial_t),
+        in_("modulus", fmpz_t),
+        in_("length", uint64_t),
+    ],
+    effects=Effects(pure=False, allocates=True, raises=[ValueError]),
+    result=Status(
+        1,
+        exception=ValueError,
+        message="modulus must be prime and polynomial length must fit the host",
+    ),
+    wasm=True,
+)
+def fmpz_mod_polynomial(modulus: Integer, length: uint64) -> FmpzModPolynomial: ...
+
+
+@flint.function(
+    dynamic="ffiFmpzModPolynomialSetCoefficient",
+    symbol="sagejs_fmpz_mod_polynomial_set_coefficient",
+    returns=int,
+    abi=[
+        in_("polynomial", sagejs_fmpz_mod_polynomial_t),
+        in_("index", uint64_t),
+        in_("coefficient", fmpz_t),
+    ],
+    effects=Effects(pure=False, raises=[ValueError], writes=["polynomial"]),
+    result=Status(
+        1,
+        exception=ValueError,
+        message="coefficient write requires an in-range unsealed polynomial",
+    ),
+    wasm=True,
+)
+def fmpz_mod_polynomial_set_coefficient(
+    polynomial: Writable[FmpzModPolynomial],
+    index: uint64,
+    coefficient: Integer,
+) -> bool: ...
+
+
+@flint.function(
+    dynamic="ffiFmpzModPolynomialSeal",
+    symbol="sagejs_fmpz_mod_polynomial_seal",
+    returns=int,
+    abi=[in_("polynomial", sagejs_fmpz_mod_polynomial_t)],
+    effects=Effects(pure=False, raises=[ValueError], writes=["polynomial"]),
+    result=Status(
+        1,
+        exception=ValueError,
+        message="polynomial resource is already sealed",
+    ),
+    wasm=True,
+)
+def fmpz_mod_polynomial_seal(
+    polynomial: Writable[FmpzModPolynomial],
+) -> bool: ...
+
+
+@flint.function(
+    dynamic="ffiFmpzModPolynomialModulus",
+    symbol="sagejs_fmpz_mod_polynomial_modulus",
+    returns=int,
+    abi=[out("result", fmpz_t), in_("source", sagejs_fmpz_mod_polynomial_t)],
+    effects=Effects(pure=True, allocates=True, raises=[ValueError]),
+    result=Status(1, exception=ValueError, message="polynomial is unsealed"),
+    wasm=True,
+)
+def fmpz_mod_polynomial_modulus(source: FmpzModPolynomial) -> Integer: ...
+
+
+@flint.function(
+    dynamic="ffiFmpzModPolynomialIsZero",
+    symbol="sagejs_fmpz_mod_polynomial_is_zero",
+    returns=int,
+    abi=[out("result", fmpz_t), in_("source", sagejs_fmpz_mod_polynomial_t)],
+    effects=Effects(pure=True, allocates=True, raises=[ValueError]),
+    result=Status(1, exception=ValueError, message="polynomial is unsealed"),
+    wasm=True,
+)
+def fmpz_mod_polynomial_is_zero(source: FmpzModPolynomial) -> Integer: ...
+
+
+@flint.function(
+    dynamic="ffiFmpzModPolynomialLength",
+    symbol="sagejs_fmpz_mod_polynomial_length",
+    returns=int,
+    abi=[out("result", fmpz_t), in_("source", sagejs_fmpz_mod_polynomial_t)],
+    effects=Effects(pure=True, allocates=True, raises=[ValueError]),
+    result=Status(1, exception=ValueError, message="polynomial is unsealed"),
+    wasm=True,
+)
+def fmpz_mod_polynomial_length(source: FmpzModPolynomial) -> Integer: ...
+
+
+@flint.function(
+    dynamic="ffiFmpzModPolynomialEntryCount",
+    symbol="sagejs_fmpz_mod_polynomial_entry_count",
+    returns=uint64_t,
+    abi=[in_("source", sagejs_fmpz_mod_polynomial_t)],
+    effects=Effects(pure=True),
+    result=Direct(),
+    wasm=True,
+)
+def fmpz_mod_polynomial_entry_count(source: FmpzModPolynomial) -> uint64: ...
+
+
+@flint.function(
+    dynamic="ffiFmpzModPolynomialCoefficient",
+    symbol="sagejs_fmpz_mod_polynomial_coefficient",
+    returns=int,
+    abi=[
+        out("result", fmpz_t),
+        in_("source", sagejs_fmpz_mod_polynomial_t),
+        in_("index", uint64_t),
+    ],
+    effects=Effects(pure=True, allocates=True, raises=[ValueError]),
+    result=Status(
+        1,
+        exception=ValueError,
+        message="coefficient access requires a sealed polynomial and host-sized index",
+    ),
+    wasm=True,
+)
+def fmpz_mod_polynomial_coefficient(
+    source: FmpzModPolynomial, index: uint64
+) -> Integer: ...
+
+
+@flint.function(
+    dynamic="ffiFmpzModPolynomialCopy",
+    symbol="sagejs_fmpz_mod_polynomial_copy",
+    returns=int,
+    abi=[
+        out("result", sagejs_fmpz_mod_polynomial_t),
+        in_("source", sagejs_fmpz_mod_polynomial_t),
+    ],
+    effects=Effects(pure=False, allocates=True, raises=[ValueError]),
+    result=Status(1, exception=ValueError, message="polynomial is unsealed"),
+    wasm=True,
+)
+def fmpz_mod_polynomial_copy(source: FmpzModPolynomial) -> FmpzModPolynomial: ...
+
+
+@flint.function(
+    dynamic="ffiFmpzModPolynomialEqual",
+    symbol="sagejs_fmpz_mod_polynomial_equal",
+    returns=int,
+    abi=[
+        out("result", fmpz_t),
+        in_("left", sagejs_fmpz_mod_polynomial_t),
+        in_("right", sagejs_fmpz_mod_polynomial_t),
+    ],
+    effects=Effects(pure=True, allocates=True, raises=[ValueError]),
+    result=Status(
+        1, exception=ValueError, message="polynomial moduli do not match"
+    ),
+    wasm=True,
+)
+def fmpz_mod_polynomial_equal(
+    left: FmpzModPolynomial, right: FmpzModPolynomial
+) -> Integer: ...
+
+
+@flint.function(
+    dynamic="ffiFmpzModPolynomialAdd",
+    symbol="sagejs_fmpz_mod_polynomial_add",
+    returns=int,
+    abi=[
+        out("result", sagejs_fmpz_mod_polynomial_t),
+        in_("left", sagejs_fmpz_mod_polynomial_t),
+        in_("right", sagejs_fmpz_mod_polynomial_t),
+    ],
+    effects=Effects(pure=False, allocates=True, raises=[ValueError]),
+    result=Status(1, exception=ValueError, message="polynomial moduli do not match"),
+    wasm=True,
+)
+def fmpz_mod_polynomial_add(
+    left: FmpzModPolynomial, right: FmpzModPolynomial
+) -> FmpzModPolynomial: ...
+
+
+@flint.function(
+    dynamic="ffiFmpzModPolynomialSub",
+    symbol="sagejs_fmpz_mod_polynomial_sub",
+    returns=int,
+    abi=[
+        out("result", sagejs_fmpz_mod_polynomial_t),
+        in_("left", sagejs_fmpz_mod_polynomial_t),
+        in_("right", sagejs_fmpz_mod_polynomial_t),
+    ],
+    effects=Effects(pure=False, allocates=True, raises=[ValueError]),
+    result=Status(1, exception=ValueError, message="polynomial moduli do not match"),
+    wasm=True,
+)
+def fmpz_mod_polynomial_sub(
+    left: FmpzModPolynomial, right: FmpzModPolynomial
+) -> FmpzModPolynomial: ...
+
+
+@flint.function(
+    dynamic="ffiFmpzModPolynomialMul",
+    symbol="sagejs_fmpz_mod_polynomial_mul",
+    returns=int,
+    abi=[
+        out("result", sagejs_fmpz_mod_polynomial_t),
+        in_("left", sagejs_fmpz_mod_polynomial_t),
+        in_("right", sagejs_fmpz_mod_polynomial_t),
+    ],
+    effects=Effects(pure=False, allocates=True, raises=[ValueError]),
+    result=Status(1, exception=ValueError, message="polynomial moduli do not match"),
+    wasm=True,
+)
+def fmpz_mod_polynomial_mul(
+    left: FmpzModPolynomial, right: FmpzModPolynomial
+) -> FmpzModPolynomial: ...
+
+
+@flint.function(
+    dynamic="ffiFmpzModPolynomialNeg",
+    symbol="sagejs_fmpz_mod_polynomial_neg",
+    returns=int,
+    abi=[
+        out("result", sagejs_fmpz_mod_polynomial_t),
+        in_("source", sagejs_fmpz_mod_polynomial_t),
+    ],
+    effects=Effects(pure=False, allocates=True, raises=[ValueError]),
+    result=Status(1, exception=ValueError, message="polynomial is unsealed"),
+    wasm=True,
+)
+def fmpz_mod_polynomial_neg(source: FmpzModPolynomial) -> FmpzModPolynomial: ...
+
+
+@flint.function(
+    dynamic="ffiFmpzModPolynomialPow",
+    symbol="sagejs_fmpz_mod_polynomial_pow",
+    returns=int,
+    abi=[
+        out("result", sagejs_fmpz_mod_polynomial_t),
+        in_("source", sagejs_fmpz_mod_polynomial_t),
+        in_("exponent", uint64_t),
+    ],
+    effects=Effects(pure=False, allocates=True, raises=[OverflowError]),
+    result=Status(
+        1, exception=OverflowError, message="polynomial exponent is too large"
+    ),
+    wasm=True,
+)
+def fmpz_mod_polynomial_pow(
+    source: FmpzModPolynomial, exponent: uint64
+) -> FmpzModPolynomial: ...
+
+
+@flint.function(
+    dynamic="ffiFmpzModPolynomialDerivative",
+    symbol="sagejs_fmpz_mod_polynomial_derivative",
+    returns=int,
+    abi=[
+        out("result", sagejs_fmpz_mod_polynomial_t),
+        in_("source", sagejs_fmpz_mod_polynomial_t),
+    ],
+    effects=Effects(pure=False, allocates=True, raises=[ValueError]),
+    result=Status(1, exception=ValueError, message="polynomial is unsealed"),
+    wasm=True,
+)
+def fmpz_mod_polynomial_derivative(
+    source: FmpzModPolynomial,
+) -> FmpzModPolynomial: ...
+
+
+@flint.function(
+    dynamic="ffiFmpzModPolynomialEvaluate",
+    symbol="sagejs_fmpz_mod_polynomial_evaluate",
+    returns=int,
+    abi=[
+        out("result", fmpz_t),
+        in_("source", sagejs_fmpz_mod_polynomial_t),
+        in_("argument", fmpz_t),
+    ],
+    effects=Effects(pure=True, allocates=True, raises=[ValueError]),
+    result=Status(1, exception=ValueError, message="polynomial is unsealed"),
+    wasm=True,
+)
+def fmpz_mod_polynomial_evaluate(
+    source: FmpzModPolynomial, argument: Integer
+) -> Integer: ...
+
+
+@flint.function(
+    dynamic="ffiFmpzModPolynomialGcd",
+    symbol="sagejs_fmpz_mod_polynomial_gcd",
+    returns=int,
+    abi=[
+        out("result", sagejs_fmpz_mod_polynomial_t),
+        in_("left", sagejs_fmpz_mod_polynomial_t),
+        in_("right", sagejs_fmpz_mod_polynomial_t),
+    ],
+    effects=Effects(pure=False, allocates=True, raises=[ValueError]),
+    result=Status(1, exception=ValueError, message="polynomial moduli do not match"),
+    wasm=True,
+)
+def fmpz_mod_polynomial_gcd(
+    left: FmpzModPolynomial, right: FmpzModPolynomial
+) -> FmpzModPolynomial: ...
+
+
+@flint.function(
+    dynamic="ffiFmpzModPolynomialDivremResource",
+    symbol="sagejs_fmpz_mod_polynomial_divrem_resource",
+    returns=int,
+    abi=[
+        out("result", sagejs_fmpz_mod_polynomial_division_result_t),
+        in_("dividend", sagejs_fmpz_mod_polynomial_t),
+        in_("divisor", sagejs_fmpz_mod_polynomial_t),
+    ],
+    effects=Effects(pure=False, allocates=True, raises=[ValueError]),
+    result=Status(
+        1,
+        exception=ValueError,
+        message="polynomial division requires equal moduli and a nonzero divisor",
+    ),
+    wasm=True,
+)
+def fmpz_mod_polynomial_divrem_resource(
+    dividend: FmpzModPolynomial, divisor: FmpzModPolynomial
+) -> FmpzModPolynomialDivisionResult: ...
+
+
+@flint.function(
+    dynamic="ffiFmpzModPolynomialDivisionResultQuotient",
+    symbol="sagejs_fmpz_mod_polynomial_division_result_quotient",
+    returns=int,
+    abi=[
+        out("result", sagejs_fmpz_mod_polynomial_t),
+        in_("division", sagejs_fmpz_mod_polynomial_division_result_t),
+    ],
+    effects=Effects(pure=False, allocates=True, raises=[ValueError]),
+    result=Status(1, exception=ValueError, message="invalid division result"),
+    wasm=True,
+)
+def fmpz_mod_polynomial_division_result_quotient(
+    division: FmpzModPolynomialDivisionResult,
+) -> FmpzModPolynomial: ...
+
+
+@flint.function(
+    dynamic="ffiFmpzModPolynomialDivisionResultRemainder",
+    symbol="sagejs_fmpz_mod_polynomial_division_result_remainder",
+    returns=int,
+    abi=[
+        out("result", sagejs_fmpz_mod_polynomial_t),
+        in_("division", sagejs_fmpz_mod_polynomial_division_result_t),
+    ],
+    effects=Effects(pure=False, allocates=True, raises=[ValueError]),
+    result=Status(1, exception=ValueError, message="invalid division result"),
+    wasm=True,
+)
+def fmpz_mod_polynomial_division_result_remainder(
+    division: FmpzModPolynomialDivisionResult,
+) -> FmpzModPolynomial: ...
+
+
+@flint.function(
+    dynamic="ffiFmpzModPolynomialXgcdResource",
+    symbol="sagejs_fmpz_mod_polynomial_xgcd_resource",
+    returns=int,
+    abi=[
+        out("result", sagejs_fmpz_mod_polynomial_xgcd_result_t),
+        in_("left", sagejs_fmpz_mod_polynomial_t),
+        in_("right", sagejs_fmpz_mod_polynomial_t),
+    ],
+    effects=Effects(pure=False, allocates=True, raises=[ValueError]),
+    result=Status(1, exception=ValueError, message="polynomial moduli do not match"),
+    wasm=True,
+)
+def fmpz_mod_polynomial_xgcd_resource(
+    left: FmpzModPolynomial, right: FmpzModPolynomial
+) -> FmpzModPolynomialXgcdResult: ...
+
+
+@flint.function(
+    dynamic="ffiFmpzModPolynomialXgcdResultGcd",
+    symbol="sagejs_fmpz_mod_polynomial_xgcd_result_gcd",
+    returns=int,
+    abi=[
+        out("result", sagejs_fmpz_mod_polynomial_t),
+        in_("xgcd", sagejs_fmpz_mod_polynomial_xgcd_result_t),
+    ],
+    effects=Effects(pure=False, allocates=True, raises=[ValueError]),
+    result=Status(1, exception=ValueError, message="invalid xgcd result"),
+    wasm=True,
+)
+def fmpz_mod_polynomial_xgcd_result_gcd(
+    xgcd: FmpzModPolynomialXgcdResult,
+) -> FmpzModPolynomial: ...
+
+
+@flint.function(
+    dynamic="ffiFmpzModPolynomialXgcdResultLeftCoefficient",
+    symbol="sagejs_fmpz_mod_polynomial_xgcd_result_left_coefficient",
+    returns=int,
+    abi=[
+        out("result", sagejs_fmpz_mod_polynomial_t),
+        in_("xgcd", sagejs_fmpz_mod_polynomial_xgcd_result_t),
+    ],
+    effects=Effects(pure=False, allocates=True, raises=[ValueError]),
+    result=Status(1, exception=ValueError, message="invalid xgcd result"),
+    wasm=True,
+)
+def fmpz_mod_polynomial_xgcd_result_left_coefficient(
+    xgcd: FmpzModPolynomialXgcdResult,
+) -> FmpzModPolynomial: ...
+
+
+@flint.function(
+    dynamic="ffiFmpzModPolynomialXgcdResultRightCoefficient",
+    symbol="sagejs_fmpz_mod_polynomial_xgcd_result_right_coefficient",
+    returns=int,
+    abi=[
+        out("result", sagejs_fmpz_mod_polynomial_t),
+        in_("xgcd", sagejs_fmpz_mod_polynomial_xgcd_result_t),
+    ],
+    effects=Effects(pure=False, allocates=True, raises=[ValueError]),
+    result=Status(1, exception=ValueError, message="invalid xgcd result"),
+    wasm=True,
+)
+def fmpz_mod_polynomial_xgcd_result_right_coefficient(
+    xgcd: FmpzModPolynomialXgcdResult,
+) -> FmpzModPolynomial: ...
+
+
+@flint.function(
+    dynamic="ffiFmpzModPolynomialFactorResource",
+    symbol="sagejs_fmpz_mod_polynomial_factor_resource",
+    returns=int,
+    abi=[
+        out("result", sagejs_fmpz_mod_polynomial_factorization_t),
+        in_("source", sagejs_fmpz_mod_polynomial_t),
+    ],
+    effects=Effects(pure=False, allocates=True, raises=[ValueError]),
+    result=Status(
+        1, exception=ValueError, message="factorization of 0 is not defined"
+    ),
+    wasm=False,
+)
+def fmpz_mod_polynomial_factor_resource(
+    source: FmpzModPolynomial,
+) -> FmpzModPolynomialFactorization: ...
+
+
+@flint.function(
+    dynamic="ffiFmpzModPolynomialRootsResource",
+    symbol="sagejs_fmpz_mod_polynomial_roots_resource",
+    returns=int,
+    abi=[
+        out("result", sagejs_fmpz_mod_polynomial_roots_t),
+        in_("source", sagejs_fmpz_mod_polynomial_t),
+    ],
+    effects=Effects(pure=False, allocates=True, raises=[ValueError]),
+    result=Status(
+        1, exception=ValueError, message="factorization of 0 is not defined"
+    ),
+    wasm=False,
+)
+def fmpz_mod_polynomial_roots_resource(
+    source: FmpzModPolynomial,
+) -> FmpzModPolynomialRoots: ...
+
+
+@flint.function(
+    dynamic="ffiFmpzModPolynomialFormat",
+    symbol="sagejs_fmpz_mod_polynomial_format",
+    returns=int,
+    abi=[
+        out("result", sagejs_flint_byte_region_t),
+        in_("source", sagejs_fmpz_mod_polynomial_t),
+    ],
+    effects=Effects(pure=False, allocates=True, raises=[ValueError]),
+    result=Status(1, exception=ValueError, message="polynomial is unsealed"),
+    wasm=False,
+)
+def fmpz_mod_polynomial_format(source: FmpzModPolynomial) -> FlintByteRegion: ...
+
+
+@flint.function(
+    dynamic="ffiFmpzModPolynomialSerialize",
+    symbol="sagejs_fmpz_mod_polynomial_serialize",
+    returns=int,
+    abi=[
+        out("result", sagejs_flint_byte_region_t),
+        in_("source", sagejs_fmpz_mod_polynomial_t),
+    ],
+    effects=Effects(pure=False, allocates=True, raises=[ValueError]),
+    result=Status(1, exception=ValueError, message="polynomial is unsealed"),
+    wasm=True,
+)
+def fmpz_mod_polynomial_serialize(
+    source: FmpzModPolynomial,
+) -> FlintByteRegion: ...
+
+
+@flint.function(
+    dynamic="ffiFmpzModPolynomialDeserialize",
+    symbol="sagejs_fmpz_mod_polynomial_deserialize",
+    returns=int,
+    abi=[
+        out("result", sagejs_fmpz_mod_polynomial_t),
+        in_("source", sagejs_flint_byte_region_t),
+    ],
+    effects=Effects(pure=False, allocates=True, raises=[ValueError]),
+    result=Status(
+        1,
+        exception=ValueError,
+        message="invalid arbitrary-prime polynomial serialization",
+    ),
+    wasm=True,
+)
+def fmpz_mod_polynomial_deserialize(
+    source: FlintByteRegion,
+) -> FmpzModPolynomial: ...

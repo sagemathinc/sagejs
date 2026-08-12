@@ -81,6 +81,13 @@
       "rationale": "Host-neutral generated owned-resource ABI over FLINT exact univariate polynomials and callee-owned factorizations, including immutable sealing, retained-size accounting, structural arithmetic, exact evaluation, stable serialization, and variable-size factor results computed once."
     },
     {
+      "path": "packages/flint/include/sagejs/fmpz_mod_polynomial_ffi.h",
+      "category": "external-library-bridge",
+      "review_status": "accepted",
+      "lane": "integration",
+      "rationale": "Host-neutral generated owned-resource ABI over arbitrary-prime FLINT polynomial contexts and values, with immutable sealing, exact modulus guards, callee-owned arithmetic and aggregate results, one-copy factor and roots transfer, stable serialization, and deterministic lifecycle accounting."
+    },
+    {
       "path": "packages/flint/include/sagejs/fmpz_matrix_ffi.h",
       "category": "external-library-bridge",
       "review_status": "accepted",

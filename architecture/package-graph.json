@@ -61,7 +61,7 @@
       "id": "native-integration",
       "layer": 1,
       "startup": "lazy",
-      "max_source_bytes": 612000,
+      "max_source_bytes": 725000,
       "depends_on": ["core-runtime"],
       "modules": ["sagejs.native", "sagejs.ffi"],
       "files": [
@@ -118,6 +118,7 @@
       "modules": ["sagejs.kernels.polynomial"],
       "files": [
         "src/lib/sagejs/kernels/polynomial/__init__.py",
+        "src/lib/sagejs/kernels/polynomial/arbitrary_prime_flint.py",
         "src/lib/sagejs/kernels/polynomial/packed_flint.py",
         "src/lib/sagejs/kernels/polynomial/packed_integer.py",
         "src/lib/sagejs/kernels/polynomial/packed_prime_field.py",
