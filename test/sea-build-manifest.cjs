@@ -674,6 +674,69 @@ test(
       );
 
       unlinkSync(installedPrefix);
+      const outsidePrefix = join(dirname(root), "outside-workspace", "prefix");
+      const outsideRelative = join("outside-workspace", "prefix");
+      const outsideCachedPrefix = join(
+        cacheRoot,
+        "m4ri-dependencies",
+        "3".repeat(64),
+        outsideRelative,
+      );
+      const outsideStamp = join(outsideCachedPrefix, first.stampName);
+      dependencyReceipt(root, "m4ri", {
+        prefix: outsideCachedPrefix,
+        stamp: outsideStamp,
+      });
+      chmodSync(outsideStamp, 0o444);
+      for (const directory of [
+        outsideCachedPrefix,
+        dirname(outsideCachedPrefix),
+        dirname(dirname(outsideCachedPrefix)),
+      ]) chmodSync(directory, 0o555);
+      mkdirSync(dirname(outsidePrefix), { recursive: true });
+      symlinkSync(outsideCachedPrefix, outsidePrefix, "dir");
+      try {
+        assert.throws(
+          () => nativeDependencyReceiptSource(
+            root,
+            "m4ri",
+            outsidePrefix,
+            first.stampName,
+            { cacheRoot },
+          ),
+          /must be strictly inside the workspace/,
+        );
+      } finally {
+        unlinkSync(outsidePrefix);
+      }
+
+      const ancestorRoot = mkdtempSync(join(tmpdir(), "sagejs-sea-ancestor-"));
+      const ancestorPrefix = join(
+        root,
+        "ancestor-workspace",
+        "packages",
+        "m4ri",
+        ".native",
+        "prefix",
+      );
+      mkdirSync(dirname(dirname(ancestorPrefix)), { recursive: true });
+      symlinkSync(ancestorRoot, dirname(ancestorPrefix), "dir");
+      symlinkSync(first.prefix, join(ancestorRoot, "prefix"), "dir");
+      try {
+        assert.throws(
+          () => nativeDependencyReceiptSource(
+            root,
+            "m4ri",
+            ancestorPrefix,
+            first.stampName,
+            { cacheRoot },
+          ),
+          /symlinked or non-directory ancestor/,
+        );
+      } finally {
+        rmSync(ancestorRoot, { force: true, recursive: true });
+      }
+
       symlinkSync(first.prefix, installedPrefix, "dir");
       chmodSync(first.stamp, 0o644);
       assert.throws(
