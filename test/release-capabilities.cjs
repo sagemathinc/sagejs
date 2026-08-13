@@ -286,7 +286,6 @@ function nativeBinaryReceipt(assets, target) {
       role: entry.role,
       sha256: digestBytes(entry.bytes),
       size: entry.bytes.length,
-      wordSize: 64,
     };
     if (format === "elf") {
       return {
@@ -308,6 +307,7 @@ function nativeBinaryReceipt(assets, target) {
             versions: [target.libc.version],
           },
         },
+        wordSize: 64,
       };
     }
     if (format === "macho") {
@@ -335,6 +335,7 @@ function nativeBinaryReceipt(assets, target) {
       delayDependencies: [],
       machine: 0x8664,
       subsystem: 3,
+      wordSize: 64,
     };
   });
   const aggregate = {
@@ -918,6 +919,75 @@ test("SEA native binary evidence rejects omitted, extra, tampered, and wrong-tar
     } finally {
       rmSync(item.directory, { recursive: true, force: true });
     }
+  }
+});
+
+test("native binary receipts validate word size in each format's canonical location", () => {
+  const fixtureFor = (target) => {
+    const index = kernelIndex();
+    const assets = { "compiler/compiler.js": "compiler" };
+    for (const id of ["flint", "fflas", "igraph", "m4ri"]) {
+      if (!(id === "m4ri" && target.platform === "win32")) {
+        embedAdapter(assets, id);
+      }
+    }
+    addKernelAssets(assets, index);
+    const manifest = embedBuildManifest(assets, index, {
+      manifest: { target },
+    });
+    return {
+      assets,
+      embedded: {
+        assets: new Set(Object.keys(assets)),
+        bytes: (name) => Object.hasOwn(assets, name) ? bytes(assets[name]) : null,
+      },
+      manifest,
+    };
+  };
+
+  const darwin = fixtureFor({
+    arch: "arm64",
+    endianness: "LE",
+    libc: null,
+    nodeAbi: "127",
+    nodeNapi: "10",
+    platform: "darwin",
+    wordBits: 64,
+  });
+  assert.ok(darwin.manifest.toolchain.nativeBinaries.report.files.every(
+    (file) => !Object.hasOwn(file, "wordSize") &&
+      file.slices.every((slice) => slice.wordSize === 64),
+  ));
+  assert.equal(nativeBinaryReceiptContract(darwin.manifest, darwin.embedded), true);
+  darwin.manifest.toolchain.nativeBinaries.report.files[0].slices[0].wordSize = 32;
+  refreshNativeBinaryReceipt(darwin.manifest.toolchain.nativeBinaries);
+  assert.equal(nativeBinaryReceiptContract(darwin.manifest, darwin.embedded), false);
+
+  for (const target of [
+    {
+      arch: "x64",
+      endianness: "LE",
+      libc: { family: "glibc", version: "2.28" },
+      nodeAbi: "127",
+      nodeNapi: "10",
+      platform: "linux",
+      wordBits: 64,
+    },
+    {
+      arch: "x64",
+      endianness: "LE",
+      libc: null,
+      nodeAbi: "127",
+      nodeNapi: "10",
+      platform: "win32",
+      wordBits: 64,
+    },
+  ]) {
+    const receipt = fixtureFor(target);
+    assert.equal(nativeBinaryReceiptContract(receipt.manifest, receipt.embedded), true);
+    delete receipt.manifest.toolchain.nativeBinaries.report.files[0].wordSize;
+    refreshNativeBinaryReceipt(receipt.manifest.toolchain.nativeBinaries);
+    assert.equal(nativeBinaryReceiptContract(receipt.manifest, receipt.embedded), false);
   }
 });
 

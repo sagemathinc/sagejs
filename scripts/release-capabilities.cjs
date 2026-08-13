@@ -401,7 +401,6 @@ function nativeBinaryReceiptContract(buildManifest, embedded) {
     if (
       file.role !== expectedRole ||
       file.format !== expectedFormat ||
-      file.wordSize !== 64 ||
       !Number.isSafeInteger(file.size) ||
       file.size < 0 ||
       !/^[0-9a-f]{64}$/.test(file.sha256 ?? "") ||
