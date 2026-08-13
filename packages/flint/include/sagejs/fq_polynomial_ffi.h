@@ -378,6 +378,128 @@ static inline int sagejs_fq_element_mul(
     return sagejs_fq_element_binary(result, left, right, 2);
 }
 
+static inline int sagejs_fq_element_neg(
+    sagejs_fq_element_t result, const sagejs_fq_element_t source)
+{
+    result->context = NULL;
+    if (source->context == NULL)
+        return 0;
+    result->context = source->context;
+    if (!sagejs_fq_context_state_retain(result->context))
+    {
+        result->context = NULL;
+        return 0;
+    }
+    fq_default_init(result->value, result->context->value);
+    fq_default_neg(result->value, source->value, result->context->value);
+    return 1;
+}
+
+static inline int sagejs_fq_element_inverse(
+    sagejs_fq_element_t result, const sagejs_fq_element_t source)
+{
+    result->context = NULL;
+    if (source->context == NULL ||
+        fq_default_is_zero(source->value, source->context->value))
+        return 0;
+    result->context = source->context;
+    if (!sagejs_fq_context_state_retain(result->context))
+    {
+        result->context = NULL;
+        return 0;
+    }
+    fq_default_init(result->value, result->context->value);
+    fq_default_inv(result->value, source->value, result->context->value);
+    return 1;
+}
+
+static inline int sagejs_fq_element_pow(
+    sagejs_fq_element_t result, const sagejs_fq_element_t source,
+    const fmpz_t exponent)
+{
+    fq_default_t inverse;
+    fmpz_t nonnegative_exponent;
+
+    result->context = NULL;
+    if (source->context == NULL ||
+        (fmpz_sgn(exponent) < 0 &&
+            fq_default_is_zero(source->value, source->context->value)))
+        return 0;
+    result->context = source->context;
+    if (!sagejs_fq_context_state_retain(result->context))
+    {
+        result->context = NULL;
+        return 0;
+    }
+    fq_default_init(result->value, result->context->value);
+    if (fmpz_sgn(exponent) < 0)
+    {
+        /* fq_default_pow requires a nonnegative exponent. */
+        fq_default_init(inverse, result->context->value);
+        fq_default_inv(inverse, source->value, result->context->value);
+        fmpz_init(nonnegative_exponent);
+        fmpz_neg(nonnegative_exponent, exponent);
+        fq_default_pow(result->value, inverse, nonnegative_exponent,
+            result->context->value);
+        fmpz_clear(nonnegative_exponent);
+        fq_default_clear(inverse, result->context->value);
+    }
+    else
+    {
+        fq_default_pow(
+            result->value, source->value, exponent, result->context->value);
+    }
+    return 1;
+}
+
+static inline int sagejs_fq_element_is_zero(
+    const sagejs_fq_element_t source)
+{
+    return source->context != NULL &&
+        fq_default_is_zero(source->value, source->context->value);
+}
+
+static inline int sagejs_fq_element_is_one(
+    const sagejs_fq_element_t source)
+{
+    return source->context != NULL &&
+        fq_default_is_one(source->value, source->context->value);
+}
+
+static inline void sagejs_fq_write_u64(
+    unsigned char *target, uint64_t value);
+
+static inline int sagejs_fq_element_coordinate_bytes(
+    sagejs_flint_byte_region_t result,
+    const sagejs_fq_element_t element)
+{
+    const uint64_t degree = sagejs_fq_element_extension_degree(element);
+    size_t payload_bytes;
+    size_t total_bytes;
+
+    result->data = NULL;
+    result->length = 0;
+    if (element->context == NULL ||
+        !sagejs_fq_size_multiply(
+            (size_t) degree, sizeof(uint64_t), &payload_bytes) ||
+        payload_bytes > SIZE_MAX - 16)
+        return 0;
+    total_bytes = payload_bytes + 16;
+    result->data = (unsigned char *) malloc(total_bytes);
+    if (result->data == NULL)
+        return 0;
+    result->length = total_bytes;
+    memcpy(result->data, "SJFE", 4);
+    result->data[4] = 1;
+    result->data[5] = result->data[6] = result->data[7] = 0;
+    sagejs_fq_write_u64(result->data + 8, degree);
+    for (uint64_t basis = 0; basis < degree; basis++)
+        sagejs_fq_write_u64(
+            result->data + 16 + sizeof(uint64_t) * basis,
+            sagejs_fq_element_coordinate_unchecked(element, basis));
+    return 1;
+}
+
 static inline int sagejs_fq_polynomial_init_coordinates(
     sagejs_fq_polynomial_t result, const sagejs_fq_context_t context,
     const uint64_t *coordinates, uint64_t coordinate_length,

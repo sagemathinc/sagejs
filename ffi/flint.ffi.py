@@ -8836,6 +8836,125 @@ def fq_element_mul(left: FqElement, right: FqElement) -> FqElement: ...
 
 
 @flint.function(
+    dynamic="ffiFqElementNeg",
+    symbol="sagejs_fq_element_neg",
+    returns=int,
+    abi=[
+        out("result", sagejs_fq_element_t),
+        in_("source", sagejs_fq_element_t),
+    ],
+    effects=Effects(
+        pure=False,
+        thread_safe=False,
+        allocates=True,
+        raises=[RuntimeError],
+    ),
+    result=Status(
+        1, exception=RuntimeError, message="finite extension negation failed"
+    ),
+    wasm=False,
+)
+def fq_element_neg(source: FqElement) -> FqElement: ...
+
+
+@flint.function(
+    dynamic="ffiFqElementInverse",
+    symbol="sagejs_fq_element_inverse",
+    returns=int,
+    abi=[
+        out("result", sagejs_fq_element_t),
+        in_("source", sagejs_fq_element_t),
+    ],
+    effects=Effects(
+        pure=False,
+        thread_safe=False,
+        allocates=True,
+        raises=[RuntimeError],
+    ),
+    result=Status(
+        1,
+        exception=RuntimeError,
+        message="finite extension inverse failed",
+    ),
+    wasm=False,
+)
+def fq_element_inverse(source: FqElement) -> FqElement: ...
+
+
+@flint.function(
+    dynamic="ffiFqElementPow",
+    symbol="sagejs_fq_element_pow",
+    returns=int,
+    abi=[
+        out("result", sagejs_fq_element_t),
+        in_("source", sagejs_fq_element_t),
+        in_("exponent", fmpz_t),
+    ],
+    effects=Effects(
+        pure=False,
+        thread_safe=False,
+        allocates=True,
+        raises=[RuntimeError],
+    ),
+    result=Status(
+        1,
+        exception=RuntimeError,
+        message="finite extension power failed",
+    ),
+    wasm=False,
+)
+def fq_element_pow(source: FqElement, exponent: Integer) -> FqElement: ...
+
+
+@flint.function(
+    dynamic="ffiFqElementIsZero",
+    symbol="sagejs_fq_element_is_zero",
+    returns=int,
+    abi=[in_("source", sagejs_fq_element_t)],
+    effects=Effects(pure=True, thread_safe=False),
+    result=Direct(),
+    wasm=False,
+)
+def fq_element_is_zero(source: FqElement) -> bool: ...
+
+
+@flint.function(
+    dynamic="ffiFqElementIsOne",
+    symbol="sagejs_fq_element_is_one",
+    returns=int,
+    abi=[in_("source", sagejs_fq_element_t)],
+    effects=Effects(pure=True, thread_safe=False),
+    result=Direct(),
+    wasm=False,
+)
+def fq_element_is_one(source: FqElement) -> bool: ...
+
+
+@flint.function(
+    dynamic="ffiFqElementCoordinateBytes",
+    symbol="sagejs_fq_element_coordinate_bytes",
+    returns=int,
+    abi=[
+        out("result", sagejs_flint_byte_region_t),
+        in_("element", sagejs_fq_element_t),
+    ],
+    effects=Effects(
+        pure=False,
+        thread_safe=False,
+        allocates=True,
+        raises=[OverflowError],
+    ),
+    result=Status(
+        1,
+        exception=OverflowError,
+        message="finite extension element export is too large",
+    ),
+    wasm=False,
+)
+def fq_element_coordinate_bytes(element: FqElement) -> FlintByteRegion: ...
+
+
+@flint.function(
     dynamic="ffiFqPolynomialCreate",
     symbol="sagejs_fq_polynomial_init_coordinates",
     returns=int,

@@ -339,6 +339,12 @@ from sagejs.ffi.flint import (
     fq_element_add as _ffi_fq_element_add,
     fq_element_sub as _ffi_fq_element_sub,
     fq_element_mul as _ffi_fq_element_mul,
+    fq_element_neg as _ffi_fq_element_neg,
+    fq_element_inverse as _ffi_fq_element_inverse,
+    fq_element_pow as _ffi_fq_element_pow,
+    fq_element_is_zero as _ffi_fq_element_is_zero,
+    fq_element_is_one as _ffi_fq_element_is_one,
+    fq_element_coordinate_bytes as _ffi_fq_element_coordinate_bytes,
     fq_polynomial as _ffi_fq_polynomial,
     fq_polynomial_copy as _ffi_fq_polynomial_copy,
     fq_polynomial_length as _ffi_fq_polynomial_length,
@@ -4149,6 +4155,62 @@ def ffiFqElementMul(
     return _ffi_fq_element_mul(
         left,
         right,
+    )
+
+
+@native
+def ffiFqElementNeg(
+    source: FqElement,
+) -> FqElement:
+    return _ffi_fq_element_neg(
+        source,
+    )
+
+
+@native
+def ffiFqElementInverse(
+    source: FqElement,
+) -> FqElement:
+    return _ffi_fq_element_inverse(
+        source,
+    )
+
+
+@native
+def ffiFqElementPow(
+    source: FqElement,
+    exponent: Integer,
+) -> FqElement:
+    return _ffi_fq_element_pow(
+        source,
+        exponent,
+    )
+
+
+@native
+def ffiFqElementIsZero(
+    source: FqElement,
+) -> bool:
+    return _ffi_fq_element_is_zero(
+        source,
+    )
+
+
+@native
+def ffiFqElementIsOne(
+    source: FqElement,
+) -> bool:
+    return _ffi_fq_element_is_one(
+        source,
+    )
+
+
+@native
+def ffiFqElementCoordinateBytes(
+    element: FqElement,
+) -> FlintByteRegion:
+    return _ffi_fq_element_coordinate_bytes(
+        element,
     )
 
 

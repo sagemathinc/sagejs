@@ -14,7 +14,7 @@
   },
   "counts": {
     "classified-native-file": 62,
-    "declared-ffi": 392,
+    "declared-ffi": 398,
     "declared-ffi-resource": 27,
     "napi-export": 292,
     "runtime-intrinsic": 136,
@@ -3382,6 +3382,17 @@
       "disposition": "declared-safe-ffi"
     },
     {
+      "id": "ffi:flint:fq_element_coordinate_bytes",
+      "kind": "declared-ffi",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "fq_element_coordinate_bytes",
+      "dynamic_package": "@sagemath/sagejs-flint",
+      "dynamic_export": "ffiFqElementCoordinateBytes",
+      "symbol": "sagejs_fq_element_coordinate_bytes",
+      "disposition": "declared-safe-ffi"
+    },
+    {
       "id": "ffi:flint:fq_element_copy",
       "kind": "declared-ffi",
       "path": "ffi/flint.ffi.json",
@@ -3415,6 +3426,39 @@
       "disposition": "declared-safe-ffi"
     },
     {
+      "id": "ffi:flint:fq_element_inverse",
+      "kind": "declared-ffi",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "fq_element_inverse",
+      "dynamic_package": "@sagemath/sagejs-flint",
+      "dynamic_export": "ffiFqElementInverse",
+      "symbol": "sagejs_fq_element_inverse",
+      "disposition": "declared-safe-ffi"
+    },
+    {
+      "id": "ffi:flint:fq_element_is_one",
+      "kind": "declared-ffi",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "fq_element_is_one",
+      "dynamic_package": "@sagemath/sagejs-flint",
+      "dynamic_export": "ffiFqElementIsOne",
+      "symbol": "sagejs_fq_element_is_one",
+      "disposition": "declared-safe-ffi"
+    },
+    {
+      "id": "ffi:flint:fq_element_is_zero",
+      "kind": "declared-ffi",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "fq_element_is_zero",
+      "dynamic_package": "@sagemath/sagejs-flint",
+      "dynamic_export": "ffiFqElementIsZero",
+      "symbol": "sagejs_fq_element_is_zero",
+      "disposition": "declared-safe-ffi"
+    },
+    {
       "id": "ffi:flint:fq_element_mul",
       "kind": "declared-ffi",
       "path": "ffi/flint.ffi.json",
@@ -3423,6 +3467,28 @@
       "dynamic_package": "@sagemath/sagejs-flint",
       "dynamic_export": "ffiFqElementMul",
       "symbol": "sagejs_fq_element_mul",
+      "disposition": "declared-safe-ffi"
+    },
+    {
+      "id": "ffi:flint:fq_element_neg",
+      "kind": "declared-ffi",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "fq_element_neg",
+      "dynamic_package": "@sagemath/sagejs-flint",
+      "dynamic_export": "ffiFqElementNeg",
+      "symbol": "sagejs_fq_element_neg",
+      "disposition": "declared-safe-ffi"
+    },
+    {
+      "id": "ffi:flint:fq_element_pow",
+      "kind": "declared-ffi",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "fq_element_pow",
+      "dynamic_package": "@sagemath/sagejs-flint",
+      "dynamic_export": "ffiFqElementPow",
+      "symbol": "sagejs_fq_element_pow",
       "disposition": "declared-safe-ffi"
     },
     {
