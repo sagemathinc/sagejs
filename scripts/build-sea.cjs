@@ -387,7 +387,45 @@ function nativeDependencyReceiptSource(
   stampName,
   options = {},
 ) {
+  const workspaceRoot = resolve(rootDirectory);
+  const workspaceInformation = lstatSync(workspaceRoot);
+  if (
+    !workspaceInformation.isDirectory() ||
+    workspaceInformation.isSymbolicLink() ||
+    !sameFilesystemPath(realpathSync.native(workspaceRoot), workspaceRoot)
+  ) {
+    throw new Error("native dependency workspace root must be a real directory");
+  }
   const absolutePrefix = resolve(prefix);
+  const workspaceRelativePrefix = relative(workspaceRoot, absolutePrefix);
+  const workspaceComponents = workspaceRelativePrefix.split(sep);
+  if (
+    workspaceRelativePrefix === "" ||
+    workspaceRelativePrefix === ".." ||
+    workspaceRelativePrefix.startsWith(`..${sep}`) ||
+    isAbsolute(workspaceRelativePrefix) ||
+    workspaceComponents.some((component) =>
+      component === "" || component === "." || component === ".."
+    )
+  ) {
+    throw new Error(
+      `${id} native dependency prefix must be strictly inside the workspace`,
+    );
+  }
+  let installedAncestor = workspaceRoot;
+  for (const component of workspaceComponents.slice(0, -1)) {
+    installedAncestor = join(installedAncestor, component);
+    const information = lstatSync(installedAncestor);
+    if (
+      !information.isDirectory() ||
+      information.isSymbolicLink() ||
+      !sameFilesystemPath(realpathSync.native(installedAncestor), installedAncestor)
+    ) {
+      throw new Error(
+        `${id} native dependency prefix has a symlinked or non-directory ancestor`,
+      );
+    }
+  }
   const prefixInformation = lstatSync(absolutePrefix);
   if (!prefixInformation.isSymbolicLink()) {
     if (!prefixInformation.isDirectory()) {
@@ -425,7 +463,7 @@ function nativeDependencyReceiptSource(
         `${packageId}-dependencies`,
         key,
         "payload",
-        relative(rootDirectory, absolutePrefix),
+        workspaceRelativePrefix,
       )
     : null;
   if (
@@ -445,7 +483,7 @@ function nativeDependencyReceiptSource(
   const payload = join(entry, "payload");
   const directories = [entry, payload];
   let current = payload;
-  for (const component of relative(rootDirectory, absolutePrefix).split(sep)) {
+  for (const component of workspaceComponents) {
     current = join(current, component);
     directories.push(current);
   }
