@@ -1,0 +1,74 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "windows-vcpkg-msys-source",
+  "title": "Durable Windows vcpkg MSYS source",
+  "lane": "distribution",
+  "status": "active",
+  "owner": "user",
+  "objective": "Make the pinned Windows FLINT bootstrap independent of garbage-collected MSYS2 package archives while retaining locked, verified dependency bytes.",
+  "base_commit": "347c3d475ee817fad27bb7da72a33006cfc9df74",
+  "claims": [
+    "packages/flint/scripts/build-deps.cjs",
+    "packages/flint/scripts/vcpkg-ports/gmp/",
+    "packages/flint/test/",
+    "packages/flint/package.json",
+    "packages/flint/README.md"
+  ],
+  "dependencies": [],
+  "references": [
+    "https://github.com/microsoft/vcpkg/blob/39344dff01c5a5a0134caf2624cdd492f05d30ea/ports/gmp/portfile.cmake",
+    "https://github.com/sagemathinc/sagejs/releases/tag/native-sources-1"
+  ],
+  "architecture": {
+    "strategy": "external-library",
+    "fallback": "tested-capability",
+    "oracles": [
+      "Pinned vcpkg Windows x64 FLINT build"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:portable",
+    "pnpm test:native",
+    "pnpm test:sea"
+  ],
+  "runs": [
+    {
+      "command": "node --test packages/flint/test/windows-vcpkg-source.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.112,
+      "started_at": "2026-08-13T15:36:37.247Z",
+      "commit": "347c3d475ee817fad27bb7da72a33006cfc9df74",
+      "workspace_fingerprint": "efaa578100dff8fbebd85d050ac0be5ddbde6b42ce9a5a7bea46356447b62a6f",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm --dir packages/flint test",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 4.393,
+      "started_at": "2026-08-13T15:36:42.297Z",
+      "commit": "347c3d475ee817fad27bb7da72a33006cfc9df74",
+      "workspace_fingerprint": "efaa578100dff8fbebd85d050ac0be5ddbde6b42ce9a5a7bea46356447b62a6f",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Mirrored MSYS2 autoconf 2.71 revision 4 in the immutable native-sources-1 release and added a GMP overlay copied from pinned vcpkg baseline 39344dff with only that SHA-512-verified source stanza changed. The Windows build fetched the mirrored asset, completed GMP autoreconf plus debug and release configuration, and entered both GMP builds before the Windows host became unreachable. Linux built the FLINT addon and all package tests passed.",
+    "risks": [
+      "The Windows host disconnected while release GMP was compiling, so the complete GMP/MPFR/MPC/FLINT/addon build still needs a resumed end-to-end receipt."
+    ],
+    "next_steps": [
+      "Resume the cached Windows build and run the native FLINT package tests when the host returns.",
+      "Remove the temporary untracked GMP overlay from C:\\build\\sagejs-windows-lf after validation; C:\\src\\sagejs was never touched."
+    ]
+  }
+}
