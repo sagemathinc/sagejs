@@ -113,6 +113,16 @@
       "commit": "01efae3f570f8dbd6f5e66e0de1873f041d18f97",
       "workspace_fingerprint": "bd1b11fcbabd36cc5996903f8c66c5c5f206c71ca48383db5c9b7a88a4f6cd04",
       "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/cache.cjs test/cache-automatic.cjs test/module-cache.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 10.934,
+      "started_at": "2026-08-13T03:44:49.441Z",
+      "commit": "d81023c2a054c2e84c0b3392111cdd85ec6ac0e7",
+      "workspace_fingerprint": "11472ca6ddf586431a4ff037b3dafe3b4956c9bd2f17c7db82ed72666fdd18c7",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {

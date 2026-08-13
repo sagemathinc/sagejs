@@ -365,6 +365,43 @@ test("a real process lease is idempotent and released explicitly", (t) => {
   assert.equal(existsSync(join(directory, lease)), false);
 });
 
+test("the real dynamic compiler shares and releases its generation lease", async (t) => {
+  const { base, root } = temporaryDynamicRoot(t);
+  const helper = join(__dirname, "..", "dist", "tools", "dynamic-code.js");
+  const source = `
+    globalThis.__sagejs_parse_python__ = () => ({});
+    const { compileDynamic } = require(process.argv[1]);
+    const first = compileDynamic("1", "<lease-one>", "eval");
+    const second = compileDynamic("2", "<lease-two>", "eval");
+    process.send({ first: first.version, second: second.version });
+    process.on("message", (message) => {
+      if (message === "stop") process.exit(0);
+    });
+  `;
+  const child = spawn(process.execPath, ["-e", source, helper], {
+    env: {
+      ...process.env,
+      HOME: base,
+      XDG_CACHE_HOME: base,
+    },
+    stdio: ["ignore", "ignore", "pipe", "ipc"],
+  });
+  t.after(() => {
+    if (child.exitCode === null && child.signalCode === null) child.kill();
+  });
+  const completed = waitForChild(child);
+  const [message] = await once(child, "message");
+  assert.equal(message.first, message.second);
+  const directory = join(root, message.first);
+  const leases = readdirSync(directory).filter((name) =>
+    name.startsWith(MODULE_CACHE_LEASE_PREFIX)
+  );
+  assert.equal(leases.length, 1);
+  child.send("stop");
+  await completed;
+  assert.equal(existsSync(join(directory, leases[0])), false);
+});
+
 test("cache pruning rejects broad and symlinked roots", (t) => {
   const { base, root } = temporaryRoot(t);
   assert.throws(
