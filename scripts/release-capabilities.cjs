@@ -438,7 +438,7 @@ function inspectAdapter(definition, context) {
   } else if (embeddedIntegrity) {
     candidate = "bundled";
     manifestIntegrity = "verified-embedded";
-  } else if (compiled) {
+  } else if (context.embedded === null && compiled) {
     candidate = "compiled";
     manifestIntegrity = "verified";
   } else {
@@ -567,7 +567,7 @@ function inspectNativeKernels(context) {
     const complete = validateEmbeddedKernelIndex(context, index, indexBytes);
     integrity = complete ? "complete" : "incomplete";
     candidate = complete ? "bundled" : "unavailable";
-  } else {
+  } else if (context.embedded === null) {
     const index = readJson(join(context.nativeKernelCache, "index.json"));
     if (index !== null) {
       const complete = validateKernelIndex(
@@ -607,9 +607,26 @@ function findInstalledMathProfile(root, platform, environment) {
     : join(root, "packages", "flint", ".native", "prefix");
   const prefix = resolve(environment.SAGEJS_FLINT_PREFIX || defaultPrefix);
   const stamp = readJson(join(prefix, ".sagejs-flint-dependencies.json"));
-  const profile = stamp?.build?.mathBuildProfile ??
+  const candidate = stamp?.build?.mathBuildProfile ??
     stamp?.identity?.mathBuildProfile ?? null;
-  return { prefix, profile };
+  return { prefix, profile: validatedMathProfile(candidate) };
+}
+
+function validatedMathProfile(profile) {
+  if (
+    profile === null ||
+    typeof profile !== "object" ||
+    Array.isArray(profile) ||
+    profile.schema !== "sagejs.native-math-profile-v1" ||
+    !["portable", "cpu-native"].includes(profile.requestedProfile) ||
+    !["portable", "cpu-native"].includes(profile.effectiveProfile) ||
+    !/^[0-9a-f]{64}$/.test(profile.fingerprint ?? "")
+  ) return null;
+  const identity = { ...profile };
+  delete identity.fingerprint;
+  return sha256Bytes(Buffer.from(canonicalJson(identity))) === profile.fingerprint
+    ? profile
+    : null;
 }
 
 function requestedMathBuildProfile(platform, arch, environment) {
@@ -667,7 +684,7 @@ function collectReleaseCapabilities(options = {}) {
     embedded.assets.has("compiler/compiler.js");
   const runtimeCandidate = runtimeBundled
     ? "bundled"
-    : runtimeCompiled ? "compiled" : "unavailable";
+    : embedded === null && runtimeCompiled ? "compiled" : "unavailable";
   const cacheBase = resolve(environment.XDG_CACHE_HOME || join(home, ".cache"));
   const moduleCache = join(cacheBase, "sagejs", "modules");
   const dynamicCache = resolve(
@@ -701,7 +718,9 @@ function collectReleaseCapabilities(options = {}) {
     ? findInstalledMathProfile(root, platform, environment)
     : { prefix: null, profile: null };
   const builtMath = immutableIdentity.availability === "available"
-    ? immutableIdentity.manifest.toolchain.nativeMathProfile ?? null
+    ? validatedMathProfile(
+        immutableIdentity.manifest.toolchain.nativeMathProfile ?? null,
+      )
     : null;
   const observedMath = builtMath ?? installedMath.profile;
   const capabilityContext = {
@@ -855,6 +874,7 @@ module.exports = {
   formatReleaseCapabilities,
   parseArguments,
   stable,
+  validatedMathProfile,
 };
 
 if (require.main === module) {

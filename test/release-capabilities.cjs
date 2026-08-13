@@ -142,17 +142,31 @@ function installNativeKernels(root, complete = true) {
   return index;
 }
 
+function mathProfile(profile = "portable") {
+  const identity = {
+    abi: {
+      arch: "x64",
+      endianness: "LE",
+      platform: "linux",
+      wordBits: 64,
+    },
+    effectiveProfile: profile,
+    requestedProfile: profile,
+    schema: "sagejs.native-math-profile-v1",
+  };
+  return {
+    ...identity,
+    fingerprint: digestBytes(canonicalJson(identity)),
+  };
+}
+
 function installMathProfile(root, profile = "portable") {
   const prefix = join(root, "packages", "flint", ".native", "prefix");
   write(
     join(prefix, ".sagejs-flint-dependencies.json"),
     `${JSON.stringify({
       build: {
-        mathBuildProfile: {
-          effectiveProfile: profile,
-          fingerprint: `${profile}-fingerprint`,
-          requestedProfile: profile,
-        },
+        mathBuildProfile: mathProfile(profile),
       },
     })}\n`,
   );
@@ -180,11 +194,7 @@ function buildManifest(overrides = {}) {
     },
     toolchain: {
       compiler: { id: "clang", version: "20.1.0" },
-      nativeMathProfile: {
-        effectiveProfile: "portable",
-        fingerprint: "release-profile-fingerprint",
-        requestedProfile: "portable",
-      },
+      nativeMathProfile: mathProfile(),
       node: "v22.22.2",
     },
     ...overrides,
@@ -481,7 +491,7 @@ test("SEA identity, FFI, and native kernels require canonical receipts for exact
     assert.equal(report.artifactIdentity.manifest.source.commit, commit);
     assert.equal(
       report.artifactIdentity.manifest.toolchain.nativeMathProfile.fingerprint,
-      "release-profile-fingerprint",
+      mathProfile().fingerprint,
     );
     assert.equal(report.nativeMathProfile.observedBuild.source, "build-manifest");
     assert.equal(report.nativeMathProfile.installedPrefix, null);
@@ -593,6 +603,58 @@ test("invalid build manifests expose no arbitrary identity data", () => {
       assert.ok(!Object.hasOwn(report.artifactIdentity, "manifest"));
       assert.ok(!JSON.stringify(report.artifactIdentity).includes("attacker-controlled"));
     }
+  } finally {
+    rmSync(item.directory, { recursive: true, force: true });
+  }
+});
+
+test("SEA observations never borrow capabilities from a neighboring checkout", () => {
+  const item = fixture();
+  try {
+    installAdapter(item.root, "flint", "sagejs_flint_ffi.node");
+    installNativeKernels(item.root);
+    const report = collectReleaseCapabilities(fixedOptions(item, {
+      artifactKind: "single-executable",
+      embeddedAssets: {},
+    }));
+    assert.equal(capability(report, "python-sage-compiler").candidate, "unavailable");
+    assert.equal(capability(report, "flint").candidate, "unavailable");
+    assert.equal(
+      capability(report, "typed-python-native-kernels").candidate,
+      "unavailable",
+    );
+  } finally {
+    rmSync(item.directory, { recursive: true, force: true });
+  }
+});
+
+test("forged installed and embedded mathematics profiles are ignored", () => {
+  const item = fixture();
+  try {
+    installMathProfile(item.root);
+    const stamp = join(
+      item.root,
+      "packages",
+      "flint",
+      ".native",
+      "prefix",
+      ".sagejs-flint-dependencies.json",
+    );
+    const forged = mathProfile();
+    forged.effectiveProfile = "cpu-native";
+    write(stamp, JSON.stringify({ build: { mathBuildProfile: forged } }));
+    const source = collectReleaseCapabilities(fixedOptions(item));
+    assert.equal(source.nativeMathProfile.observedBuild, null);
+    assert.equal(source.nativeMathProfile.compatibility, "not-observed");
+
+    const manifest = buildManifest({
+      toolchain: { nativeMathProfile: forged },
+    });
+    const embedded = collectReleaseCapabilities(fixedOptions(item, {
+      buildManifest: manifest,
+      embeddedAssets: {},
+    }));
+    assert.equal(embedded.nativeMathProfile.observedBuild, null);
   } finally {
     rmSync(item.directory, { recursive: true, force: true });
   }
