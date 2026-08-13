@@ -1,0 +1,42 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "rc-native-binary-inspector",
+  "title": "Rc Native Binary Inspector",
+  "lane": "integration",
+  "status": "active",
+  "owner": "user",
+  "objective": "Provide a portable release-time inspector for Linux ELF, macOS Mach-O, and Windows PE native SEA inputs, with explicit architecture, ABI/deployment, dependency, and rpath policy checks",
+  "base_commit": "2b6d157ced00ba7f61ca7bddc92f8e5fb1497b07",
+  "claims": [
+    "scripts/release-native-binary-inspector.cjs",
+    "test/release-native-binary-inspector.cjs"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "not-applicable",
+    "fallback": "not-applicable",
+    "oracles": [
+      "Synthetic parser fixtures and host-tool-independent regression tests"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm architecture:check",
+    "pnpm test:portable",
+    "pnpm test:baselib:strict"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "",
+    "risks": [],
+    "next_steps": []
+  }
+}
