@@ -210,6 +210,33 @@ function visitFiles(directory, prefix = "") {
   return result.sort();
 }
 
+function runtimeTargetIdentity(target) {
+  return {
+    arch: target.arch,
+    endianness: target.endianness,
+    libcFamily: target.libc?.family ?? null,
+    nodeAbi: target.nodeAbi,
+    nodeNapi: target.nodeNapi,
+    platform: target.platform,
+    wordBits: target.wordBits,
+  };
+}
+
+function compareNumericVersions(left, right) {
+  const parse = (value) => String(value).split(".").map((part) => {
+    assert.match(part, /^\d+$/, `invalid numeric version ${value}`);
+    return Number(part);
+  });
+  const leftParts = parse(left);
+  const rightParts = parse(right);
+  const length = Math.max(leftParts.length, rightParts.length);
+  for (let index = 0; index < length; index += 1) {
+    const difference = (leftParts[index] ?? 0) - (rightParts[index] ?? 0);
+    if (difference !== 0) return Math.sign(difference);
+  }
+  return 0;
+}
+
 function validateExecutableReceipts(options) {
   const math = readBuildManifest(options.mathReceipt);
   const python = readBuildManifest(options.pythonReceipt);
@@ -227,7 +254,15 @@ function validateExecutableReceipts(options) {
     );
   }
   assert.deepEqual(math.source, python.source, "SEA executables have different source identities");
-  assert.deepEqual(math.target, python.target, "SEA executables have different targets");
+  assert.deepEqual(
+    runtimeTargetIdentity(math.target),
+    runtimeTargetIdentity(python.target),
+    "SEA executables have different runtime target identities",
+  );
+  assert.ok(
+    compareNumericVersions(math.target.libc.version, python.target.libc.version) >= 0,
+    "mathematics SEA cannot require an older libc than its Node runtime",
+  );
   const profile = validateNativeMathBuildProfile(
     math.toolchain.nativeMathProfile,
     math.target,
