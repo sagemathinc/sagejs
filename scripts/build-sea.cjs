@@ -366,7 +366,7 @@ function nativeMathProfile(rootDirectory, target, options = {}) {
   }
 }
 
-function nativeDependencyReceiptAssets(rootDirectory, platform) {
+function nativeDependencyReceiptInputs(rootDirectory, platform) {
   const prefixes = {
     igraph: process.env.SAGEJS_GRAPH_PREFIX || join(
       rootDirectory,
@@ -388,18 +388,49 @@ function nativeDependencyReceiptAssets(rootDirectory, platform) {
     m4ri: ".sagejs-m4ri-dependencies.json",
   };
   const assets = {};
+  const sources = {};
   for (const definition of seaNativeDependencyDefinitions(platform)) {
     const prefix = prefixes[definition.id];
     const stamp = join(prefix, stampNames[definition.id]);
-    if (readNativeDependencyReceipt(stamp, { prefix }) === null) {
+    const receipt = readNativeDependencyReceipt(stamp, { prefix });
+    if (receipt === null) {
       throw new Error(
         `${definition.id} native dependency receipt is missing, stale, or ` +
           `does not describe its installed prefix: ${relative(rootDirectory, stamp)}`,
       );
     }
     assets[definition.receiptAsset] = stamp;
+    sources[definition.id] = {
+      identitySha256: receipt.identitySha256,
+      prefix,
+      stamp,
+    };
   }
-  return assets;
+  return { assets, sources };
+}
+
+function nativeDependencyReceiptAssets(rootDirectory, platform) {
+  return nativeDependencyReceiptInputs(rootDirectory, platform).assets;
+}
+
+function validateNativeDependencyReceiptSources(sources) {
+  if (sources === undefined) return undefined;
+  const identities = {};
+  for (const [id, source] of Object.entries(sources)) {
+    const receipt = readNativeDependencyReceipt(source.stamp, {
+      prefix: source.prefix,
+    });
+    if (
+      receipt === null ||
+      receipt.identitySha256 !== source.identitySha256
+    ) {
+      throw new Error(
+        `${id} native dependency prefix changed during SEA assembly`,
+      );
+    }
+    identities[id] = receipt.identitySha256;
+  }
+  return identities;
 }
 
 function stableJson(value) {
@@ -510,7 +541,12 @@ function createSeaBuildManifest(options) {
   const nativeDependencies = options.withFlint
     ? createSeaNativeDependencyBindings({
         assets: options.assets,
+        expectedReceiptIdentities: validateNativeDependencyReceiptSources(
+          options.nativeDependencySources,
+        ),
         mathProfile,
+        maximumMinimumMacos:
+          nativeBinaries.report.aggregate.maximumMinimumMacos,
         target,
       })
     : null;
@@ -895,6 +931,7 @@ function buildExecutable(name, withFlint, sourceIdentity) {
       "tree-sitter-wolfram.wasm",
     ),
   };
+  let nativeDependencySources;
   if (withFlint) {
     assets["native/sagejs_flint.node"] = flintAddon;
     assets["native/sagejs_flint_ffi.node"] = flintFfiAddon;
@@ -908,7 +945,12 @@ function buildExecutable(name, withFlint, sourceIdentity) {
       assets["native/sagejs_m4ri_ffi.node"] = m4riFfiAddon;
       assets["native/sagejs_m4ri_ffi_manifest.json"] = m4riFfiManifest;
     }
-    Object.assign(assets, nativeDependencyReceiptAssets(root, builder.platform));
+    const dependencyInputs = nativeDependencyReceiptInputs(
+      root,
+      builder.platform,
+    );
+    Object.assign(assets, dependencyInputs.assets);
+    nativeDependencySources = dependencyInputs.sources;
     Object.assign(assets, collectNativeKernelAssets());
   }
 
@@ -918,6 +960,7 @@ function buildExecutable(name, withFlint, sourceIdentity) {
     const buildManifest = createSeaBuildManifest({
       assets: staged.assets,
       mainBundle: staged.mainBundle,
+      nativeDependencySources,
       root,
       seaNode: staged.seaNode,
       sourceIdentity,
@@ -957,6 +1000,7 @@ function buildExecutable(name, withFlint, sourceIdentity) {
     const observedAfterBuild = createSeaBuildManifest({
       assets: staged.assets,
       mainBundle: staged.mainBundle,
+      nativeDependencySources,
       root,
       seaNode: staged.seaNode,
       sourceIdentity,
@@ -1044,6 +1088,7 @@ module.exports = {
   nativeBinaryPolicy,
   nativeBinaryReceipt,
   nativeDependencyReceiptAssets,
+  nativeDependencyReceiptInputs,
   observeSeaBuilder,
   productionKernelReceipt,
   SEA_ASSEMBLY_POLICY,

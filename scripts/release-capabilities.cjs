@@ -537,6 +537,9 @@ function embeddedReceiptContract(buildManifest, embedded) {
         .map(({ label }) => label),
       bytes: embedded.bytes,
       mathProfile: nativeProfile,
+      maximumMinimumMacos:
+        buildManifest.toolchain.nativeBinaries.report.aggregate
+          .maximumMinimumMacos,
       target: buildManifest.target,
     });
   } catch {

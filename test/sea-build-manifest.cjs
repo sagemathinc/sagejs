@@ -100,17 +100,36 @@ function builderObservation() {
 function dependencyReceipt(root, id) {
   const prefix = join(root, "dependency-prefixes", id);
   const stamp = join(prefix, `.sagejs-${id}-receipt.json`);
-  write(join(prefix, "lib", `lib${id}.a`), `${id} archive\n`);
-  return createNativeDependencyReceipt(
+  const header = id === "igraph" ? "igraph_ffi.h" : "m4ri_matrix_ffi.h";
+  const headerContents = readFileSync(join(
+    __dirname,
+    "..",
+    "packages",
+    id === "igraph" ? "graph" : "m4ri",
+    "include",
+    "sagejs",
+    header,
+  ));
+  write(join(prefix, "include", "sagejs", header), headerContents);
+  write(
+    join(prefix, "lib", id === "igraph" ? "libigraph.a" : "libm4ri.a"),
+    `${id} archive\n`,
+  );
+  const receipt = createNativeDependencyReceipt(
     {
       build: { configuration: "fixture" },
       dependency: {
         name: id,
-        sha256: id === "igraph" ? "a".repeat(64) : "b".repeat(64),
-        version: "1.0",
+        sha256: id === "igraph"
+          ? "969f2d7d22f67e788d8638c9a8c96615f50d7819c08978b3ef4a787bb6daa96c"
+          : "7e033ca1fd36be8861e2f67d9d124c398fc0d830209bb0226462485876346404",
+        version: id === "igraph" ? "1.0.1" : "20260122",
       },
       deployment: null,
-      interface: null,
+      interface: {
+        header: `include/sagejs/${header}`,
+        sha256: sha256(headerContents),
+      },
       mathProfile: mathProfile(),
       package: id,
       toolchain: { compiler: "fixture" },
@@ -118,6 +137,8 @@ function dependencyReceipt(root, id) {
     prefix,
     stamp,
   );
+  write(stamp, `${JSON.stringify(receipt, null, 2)}\n`);
+  return receipt;
 }
 
 function nativeBinaryReport(item, glibc = "2.28") {
@@ -271,6 +292,15 @@ function fixture() {
     assets,
     cleanup: () => rmSync(root, { force: true, recursive: true }),
     mainBundle,
+    nativeDependencySources: Object.fromEntries(["igraph", "m4ri"].map((id) => {
+      const prefix = join(root, "dependency-prefixes", id);
+      const stamp = join(prefix, `.sagejs-${id}-receipt.json`);
+      return [id, {
+        identitySha256: JSON.parse(readFileSync(stamp, "utf8")).identitySha256,
+        prefix,
+        stamp,
+      }];
+    })),
     root,
     seaNode,
     sources,
@@ -656,6 +686,30 @@ test("mathematics SEA requires target-matched igraph and M4RI dependency receipt
     assert.throws(
       () => createSeaBuildManifest(options(item)),
       /m4ri SEA dependency receipt is invalid/,
+    );
+  } finally {
+    item.cleanup();
+  }
+});
+
+test("staged dependency receipts remain identical to validated source prefixes", () => {
+  const item = fixture();
+  try {
+    assert.doesNotThrow(() => createSeaBuildManifest(options(item, {
+      nativeDependencySources: item.nativeDependencySources,
+    })));
+    const receiptAsset = item.assets["native/dependencies/m4ri-receipt.json"];
+    const replaced = JSON.parse(readFileSync(receiptAsset, "utf8"));
+    replaced.build = { substituted: true };
+    const identity = { ...replaced };
+    delete identity.identitySha256;
+    replaced.identitySha256 = sha256(JSON.stringify(stable(identity)));
+    writeFileSync(receiptAsset, `${JSON.stringify(replaced, null, 2)}\n`);
+    assert.throws(
+      () => createSeaBuildManifest(options(item, {
+        nativeDependencySources: item.nativeDependencySources,
+      })),
+      /staged dependency receipt changed after prefix validation/,
     );
   } finally {
     item.cleanup();
