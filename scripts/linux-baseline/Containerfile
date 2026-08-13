@@ -16,7 +16,7 @@ RUN curl --fail --location --retry 3 \
  && cd "node-v${NODE_VERSION}" \
  && CC=gcc CXX=g++ ./configure --prefix=/opt/sagejs-node --partly-static \
  && make -j"$(nproc)" \
- && make install \
+ && make -j"$(nproc)" install \
  && strip /opt/sagejs-node/bin/node \
  && /opt/sagejs-node/bin/node --version
 
