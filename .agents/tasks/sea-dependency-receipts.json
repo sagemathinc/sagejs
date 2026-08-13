@@ -4,7 +4,7 @@
   "id": "sea-dependency-receipts",
   "title": "Sea Dependency Receipts",
   "lane": "integration",
-  "status": "review",
+  "status": "complete",
   "owner": "user",
   "objective": "Bind every embedded M4RI and igraph adapter and FFI manifest to an exact target-matched native dependency receipt and validate it fail-closed",
   "base_commit": "9c8726aa3ebaa4bc93e9a84a86c2a8a3215bbeb1",

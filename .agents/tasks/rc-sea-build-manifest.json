@@ -4,7 +4,7 @@
   "id": "rc-sea-build-manifest",
   "title": "Embed exact SEA build manifests",
   "lane": "distribution",
-  "status": "review",
+  "status": "complete",
   "owner": "user",
   "objective": "Generate and embed exact sagejs.release-build-manifest-v1 receipts in Python-only and mathematical SEA artifacts with deterministic provenance and focused tests",
   "base_commit": "43b4bb8e0a891651c0c47ca28e7a5e947c5fffe7",

@@ -4,7 +4,7 @@
   "id": "macos-receipt-wordsize",
   "title": "Macos Receipt Wordsize",
   "lane": "integration",
-  "status": "review",
+  "status": "complete",
   "owner": "user",
   "objective": "Validate Mach-O word size at its per-slice location so exact embedded macOS SEA receipts remain fail-closed and usable",
   "base_commit": "9d7522ec8c0195bc41f4b2b2ccb6dfeefdc3eeff",

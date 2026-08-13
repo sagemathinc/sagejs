@@ -4,7 +4,7 @@
   "id": "rc-native-dependency-receipts",
   "title": "Rc Native Dependency Receipts",
   "lane": "integration",
-  "status": "review",
+  "status": "complete",
   "owner": "user",
   "objective": "Give M4RI and igraph exact cross-platform dependency build receipts binding source, target ABI, deployment target, build flags, toolchain, output bytes, and portable/cpu-native profile semantics for SEA validation",
   "base_commit": "160313aad07cbf0f241c8cffde0b6b2bdace55cf",
