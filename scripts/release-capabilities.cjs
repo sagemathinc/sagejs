@@ -28,10 +28,15 @@ const {
   sep,
 } = require("node:path");
 const { spawnSync } = require("node:child_process");
+const {
+  BUILD_MANIFEST_SCHEMA,
+  canonicalJson,
+  validateBuildManifest,
+} = require("./release-manifest.cjs");
 
-const SCHEMA = "sagejs.release-capabilities-v2";
-const BUILD_MANIFEST_SCHEMA = "sagejs.release-build-manifest-v1";
+const SCHEMA = "sagejs.release-capabilities-v3";
 const BUILD_MANIFEST_ASSET = "release/build-manifest.json";
+const EMBEDDED_ASSET_SCHEMA = "sagejs.embedded-assets/v1";
 const MATH_PROFILE_VARIABLE = "SAGEJS_NATIVE_MATH_PROFILE";
 
 const ADAPTERS = Object.freeze([
@@ -143,11 +148,40 @@ function sha256(filename) {
   }
 }
 
-function hasDirectoryEntries(filename) {
+function sha256Bytes(bytes) {
+  return createHash("sha256").update(bytes).digest("hex");
+}
+
+function embeddedAssetReceipt(buildManifest, name, bytes) {
+  if (bytes === null) return "missing";
+  const declaration = buildManifest?.capabilities?.embeddedAssets;
+  if (
+    declaration?.schema !== EMBEDDED_ASSET_SCHEMA ||
+    declaration.assets === null ||
+    typeof declaration.assets !== "object" ||
+    Array.isArray(declaration.assets)
+  ) return "receipt-unavailable";
+  const receipt = declaration.assets[name];
+  if (
+    receipt === null ||
+    typeof receipt !== "object" ||
+    Array.isArray(receipt) ||
+    Object.keys(receipt).sort().join(",") !== "sha256,size" ||
+    !/^[0-9a-f]{64}$/.test(receipt.sha256 ?? "") ||
+    !Number.isSafeInteger(receipt.size) ||
+    receipt.size < 0
+  ) return "receipt-invalid";
+  return receipt.size === bytes.length && receipt.sha256 === sha256Bytes(bytes)
+    ? "verified"
+    : "receipt-mismatch";
+}
+
+function directoryPresence(filename) {
   try {
-    return statSync(filename).isDirectory() && readdirSync(filename).length !== 0;
+    if (!statSync(filename).isDirectory()) return "absent";
+    return readdirSync(filename).length === 0 ? "empty" : "nonempty";
   } catch {
-    return false;
+    return "absent";
   }
 }
 
@@ -251,18 +285,6 @@ function artifactContext(root, options, embedded) {
   };
 }
 
-function validBuildManifest(value) {
-  return value !== null &&
-    typeof value === "object" &&
-    value.schema === BUILD_MANIFEST_SCHEMA &&
-    typeof value.version === "string" &&
-    /^[0-9a-f]{40}$/.test(value.commit) &&
-    value.target !== null &&
-    typeof value.target === "object" &&
-    typeof value.target.platform === "string" &&
-    typeof value.target.arch === "string";
-}
-
 function artifactIdentity(options, embedded) {
   let source = null;
   let manifest = null;
@@ -273,7 +295,9 @@ function artifactIdentity(options, embedded) {
     source = "embedded";
     manifest = parseJson(embedded.text(BUILD_MANIFEST_ASSET));
   }
-  if (!validBuildManifest(manifest)) {
+  try {
+    validateBuildManifest(manifest);
+  } catch {
     return {
       availability: "unavailable",
       reason: source === null
@@ -298,21 +322,35 @@ function runtimePolicy(environment) {
   const disableRequested = environment.SAGEJS_NATIVE_DISABLE === "1";
   const nativeRequired = modeValid &&
     (mode === "native" || (mode === "auto" && requiredRequested));
+  const cacheDiscovery = !modeValid
+    ? "invalid"
+    : mode === "dynamic"
+      ? "disabled-by-mode"
+      : mode === "auto" && autoloadRequested === "0"
+        ? "disabled-by-autoload"
+        : "enabled";
+  const addonLoading = !modeValid
+    ? "invalid"
+    : mode === "dynamic" || mode === "javascript"
+      ? "disabled-by-mode"
+      : mode === "auto" && disableRequested
+        ? "disabled-by-disable"
+        : "enabled";
   return {
-    autoload: {
-      effective: modeValid && mode === "auto" && autoloadRequested === "0"
-        ? "disabled"
-        : "enabled",
-      requested: autoloadRequested,
+    addonLoading: {
+      disableRequested,
+      effective: addonLoading,
+      scope: "generated @native addon loading; not generated FFI",
+    },
+    cacheDiscovery: {
+      autoloadRequested,
+      effective: cacheDiscovery,
       scope: "@native cache discovery",
     },
-    disable: {
-      effective: modeValid && mode === "auto" && disableRequested,
-      requested: disableRequested,
-      scope: "@native addon loading in auto mode only; not generated FFI",
-    },
     fallback: {
-      effective: nativeRequired
+      effective: !modeValid
+        ? "invalid"
+        : nativeRequired
         ? "required"
         : warnRequested ? "warn" : "allow",
       warnRequested,
@@ -327,7 +365,7 @@ function runtimePolicy(environment) {
       valid: modeValid,
     },
     required: {
-      effective: nativeRequired,
+      effective: modeValid ? nativeRequired : "invalid",
       requested: requiredRequested,
       scope: "@native resolution",
     },
@@ -368,8 +406,15 @@ function inspectAdapter(definition, context) {
       existsSync(
         join(context.root, "packages", definition.package, filename),
       ));
-  const embeddedFilesPresent = context.embedded !== null &&
-    definition.seaAssets.every((asset) => context.embedded.assets.has(asset));
+  const embeddedReceipts = context.embedded === null
+    ? []
+    : definition.seaAssets.map((asset) => embeddedAssetReceipt(
+        context.buildManifest,
+        asset,
+        context.embedded.bytes(asset),
+      ));
+  const embeddedFilesVerified = embeddedReceipts.length !== 0 &&
+    embeddedReceipts.every((receipt) => receipt === "verified");
   const embeddedManifestAsset = definition.seaAssets.find((asset) =>
     asset.endsWith("_manifest.json"));
   const embeddedAddonAsset = `native/${definition.addon}`;
@@ -377,13 +422,12 @@ function inspectAdapter(definition, context) {
     ? null
     : parseJson(context.embedded?.text(embeddedManifestAsset));
   const embeddedAddon = context.embedded?.bytes(embeddedAddonAsset) ?? null;
-  const embeddedIntegrity = embeddedFilesPresent &&
+  const embeddedIntegrity = embeddedFilesVerified &&
     embeddedManifest?.schema === "sagejs.ffi/generated-host-adapter-v1" &&
     embeddedManifest.addon === definition.addon &&
     typeof embeddedManifest.addon_hash === "string" &&
     embeddedAddon !== null &&
-    createHash("sha256").update(embeddedAddon).digest("hex") ===
-      embeddedManifest.addon_hash;
+    sha256Bytes(embeddedAddon) === embeddedManifest.addon_hash;
   const platformUnavailable =
     definition.id === "m4ri" && context.platform === "win32";
   let candidate;
@@ -399,16 +443,21 @@ function inspectAdapter(definition, context) {
     manifestIntegrity = "verified";
   } else {
     candidate = "unavailable";
-    manifestIntegrity = embeddedFilesPresent
-      ? "embedded-mismatch"
+    manifestIntegrity = embeddedReceipts.length !== 0
+      ? embeddedReceipts.includes("missing")
+        ? "embedded-missing"
+        : "embedded-receipt-mismatch"
       : manifest !== null && !manifestCurrent
         ? "mismatch"
         : "not-installed";
   }
   return {
     candidate,
-    fallbackCandidate: context.runtimeAvailable ? "available" : "unavailable",
-    fallbackImplementation: definition.fallback,
+    fallback: {
+      availability: "not-probed",
+      declaration: "declared",
+      implementation: definition.fallback,
+    },
     id: definition.id,
     kind: "generated-ffi-adapter",
     loadability: "not-probed",
@@ -457,17 +506,65 @@ function validateKernelIndex(index, readAsset, expectedSources) {
   });
 }
 
+function embeddedKernelDeclaration(buildManifest) {
+  const declaration = buildManifest?.capabilities?.nativeKernels;
+  if (
+    declaration === null ||
+    typeof declaration !== "object" ||
+    Array.isArray(declaration) ||
+    !Number.isSafeInteger(declaration.expected) ||
+    declaration.expected <= 0 ||
+    !/^[0-9a-f]{64}$/.test(declaration.indexIdentitySha256 ?? "") ||
+    !Array.isArray(declaration.logicalSources) ||
+    declaration.logicalSources.some((source) =>
+      typeof source !== "string" || source.length === 0) ||
+    new Set(declaration.logicalSources).size !== declaration.logicalSources.length ||
+    declaration.expected !== declaration.logicalSources.length
+  ) return null;
+  return {
+    indexIdentitySha256: declaration.indexIdentitySha256,
+    logicalSources: [...declaration.logicalSources].sort(),
+  };
+}
+
+function validateEmbeddedKernelIndex(context, index, indexBytes) {
+  const declaration = embeddedKernelDeclaration(context.buildManifest);
+  if (declaration === null || indexBytes === null) return false;
+  if (
+    embeddedAssetReceipt(
+      context.buildManifest,
+      "native-kernels/index.json",
+      indexBytes,
+    ) !== "verified" ||
+    sha256Bytes(Buffer.from(canonicalJson(index))) !==
+      declaration.indexIdentitySha256
+  ) return false;
+  return validateKernelIndex(
+    index,
+    (name) => {
+      const asset = `native-kernels/${name}`;
+      return embeddedAssetReceipt(
+        context.buildManifest,
+        asset,
+        context.embedded.bytes(asset),
+      ) === "verified";
+    },
+    declaration.logicalSources,
+  );
+}
+
 function inspectNativeKernels(context) {
-  const expected = expectedProductionSources(context.root);
+  // A relocated SEA has no authoritative neighboring checkout. Its immutable
+  // build receipt declares the exact logical source set instead.
+  const expected = context.embedded === null
+    ? expectedProductionSources(context.root)
+    : null;
   let candidate = "unavailable";
   let integrity = "not-installed";
   if (context.embedded?.assets.has("native-kernels/index.json")) {
-    const index = parseJson(context.embedded.text("native-kernels/index.json"));
-    const complete = validateKernelIndex(
-      index,
-      (name) => context.embedded.assets.has(`native-kernels/${name}`),
-      expected,
-    );
+    const indexBytes = context.embedded.bytes("native-kernels/index.json");
+    const index = parseJson(indexBytes?.toString("utf8") ?? "");
+    const complete = validateEmbeddedKernelIndex(context, index, indexBytes);
     integrity = complete ? "complete" : "incomplete";
     candidate = complete ? "bundled" : "unavailable";
   } else {
@@ -484,8 +581,11 @@ function inspectNativeKernels(context) {
   }
   return {
     candidate,
-    fallbackCandidate: context.runtimeAvailable ? "available" : "unavailable",
-    fallbackImplementation: "the same typed Python source body",
+    fallback: {
+      availability: "not-probed",
+      declaration: "declared",
+      implementation: "the same typed Python source body",
+    },
     id: "typed-python-native-kernels",
     integrity,
     kind: "@native-production-cache",
@@ -512,7 +612,7 @@ function findInstalledMathProfile(root, platform, environment) {
   return { prefix, profile };
 }
 
-function selectedMathProfile(platform, arch, environment) {
+function requestedMathBuildProfile(platform, arch, environment) {
   const requested = environment[MATH_PROFILE_VARIABLE] || "portable";
   const requestValid = ["portable", "cpu-native"].includes(requested);
   const cpuNativeSupported = ["linux", "darwin"].includes(platform) &&
@@ -523,24 +623,25 @@ function selectedMathProfile(platform, arch, environment) {
       : "portable",
     requestValid,
     requested,
-    selectionProbe: "not-run",
+    buildProbe: "not-run",
   };
 }
 
-function profileCompatibility(selected, installed) {
+function profileCompatibility(request, installed) {
   if (installed === null) return "not-observed";
-  if (!selected.requestValid) return "invalid-selection";
+  if (!request.requestValid) return "invalid-build-request";
   if (installed.effectiveProfile === undefined) return "unknown";
-  return installed.effectiveProfile === selected.effective
-    ? "effective-profile-match"
-    : "profile-mismatch";
+  return installed.effectiveProfile === request.effective
+    ? "effective-build-request-match"
+    : "build-request-mismatch";
 }
 
 function cacheRecord(id, filename, context) {
   return {
     id,
+    inspection: "not-inspected",
     path: displayedPath(filename, context),
-    readiness: hasDirectoryEntries(filename) ? "warm" : "cold",
+    presence: directoryPresence(filename),
   };
 }
 
@@ -567,7 +668,6 @@ function collectReleaseCapabilities(options = {}) {
   const runtimeCandidate = runtimeBundled
     ? "bundled"
     : runtimeCompiled ? "compiled" : "unavailable";
-  const runtimeAvailable = runtimeCandidate !== "unavailable";
   const cacheBase = resolve(environment.XDG_CACHE_HOME || join(home, ".cache"));
   const moduleCache = join(cacheBase, "sagejs", "modules");
   const dynamicCache = resolve(
@@ -590,22 +690,28 @@ function collectReleaseCapabilities(options = {}) {
     includePaths: options.includePaths === true,
     root,
   };
-  const selectedMath = selectedMathProfile(platform, arch, environment);
+  const mathBuildRequest = requestedMathBuildProfile(
+    platform,
+    arch,
+    environment,
+  );
   // A SEA's nearby checkout is not part of its immutable identity. Observe an
   // installed dependency prefix only for non-SEA source/package execution.
   const installedMath = embedded === null
     ? findInstalledMathProfile(root, platform, environment)
     : { prefix: null, profile: null };
   const builtMath = immutableIdentity.availability === "available"
-    ? immutableIdentity.manifest.nativeMathProfile ?? null
+    ? immutableIdentity.manifest.toolchain.nativeMathProfile ?? null
     : null;
   const observedMath = builtMath ?? installedMath.profile;
   const capabilityContext = {
+    buildManifest: immutableIdentity.availability === "available"
+      ? immutableIdentity.manifest
+      : null,
     embedded,
     nativeKernelCache,
     platform,
     root,
-    runtimeAvailable,
   };
   const capabilities = [
     {
@@ -629,7 +735,8 @@ function collectReleaseCapabilities(options = {}) {
     ],
     capabilities,
     nativeMathProfile: {
-      compatibility: profileCompatibility(selectedMath, observedMath),
+      buildRequest: mathBuildRequest,
+      compatibility: profileCompatibility(mathBuildRequest, observedMath),
       observedBuild: observedMath === null
         ? null
         : {
@@ -643,7 +750,6 @@ function collectReleaseCapabilities(options = {}) {
       installedPrefix: installedMath.prefix === null
         ? null
         : displayedPath(installedMath.prefix, displayContext),
-      runtimeSelection: selectedMath,
     },
     nativePolicy: runtimePolicy(environment),
     observation: {
@@ -683,8 +789,8 @@ function formatReleaseCapabilities(report) {
   const runtime = report.runtimeObservation;
   const artifactIdentity = report.artifactIdentity;
   const identity = artifactIdentity.availability === "available"
-    ? `${artifactIdentity.manifest.version} ` +
-      `(${artifactIdentity.manifest.commit.slice(0, 12)})`
+    ? `${artifactIdentity.manifest.sagejsVersion} ` +
+      `(${artifactIdentity.manifest.source.commit.slice(0, 12)})`
     : "unavailable";
   return [
     `Sage.js runtime ${runtime.package.version ?? "unknown"} ` +
@@ -695,10 +801,11 @@ function formatReleaseCapabilities(report) {
     `Host: ${runtime.host.platform}/${runtime.host.arch} ${runtime.host.libc}; ` +
       `Node ${runtime.host.node.version} ABI ${runtime.host.node.abi}`,
     `@native policy: mode=${report.nativePolicy.mode.requested}, ` +
-      `autoload=${report.nativePolicy.autoload.effective}, ` +
+      `cache=${report.nativePolicy.cacheDiscovery.effective}, ` +
+      `addon=${report.nativePolicy.addonLoading.effective}, ` +
       `required=${report.nativePolicy.required.effective}, ` +
       `fallback=${report.nativePolicy.fallback.effective}`,
-    `Native math profile: runtime=${report.nativeMathProfile.runtimeSelection.effective}, ` +
+    `Native math profile: build-request=${report.nativeMathProfile.buildRequest.effective}, ` +
       `observed=${report.nativeMathProfile.observedBuild?.effective ?? "none"}, ` +
       `compatibility=${report.nativeMathProfile.compatibility}`,
     "Capability candidates (loadability and selection are not probed):",
@@ -707,7 +814,8 @@ function formatReleaseCapabilities(report) {
       `load=${capability.loadability} select=${capability.selection}`),
     "Caches:",
     ...report.caches.map((cache) =>
-      `  ${cache.id.padEnd(29)} ${cache.readiness} ${cache.path}`),
+      `  ${cache.id.padEnd(29)} ${cache.presence}; ` +
+      `${cache.inspection} ${cache.path}`),
   ].join("\n");
 }
 
@@ -741,6 +849,7 @@ function main() {
 module.exports = {
   BUILD_MANIFEST_ASSET,
   BUILD_MANIFEST_SCHEMA,
+  EMBEDDED_ASSET_SCHEMA,
   SCHEMA,
   collectReleaseCapabilities,
   formatReleaseCapabilities,
