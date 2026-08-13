@@ -19,6 +19,8 @@ const {
 } = require("../../../scripts/native-math-profile.cjs");
 const {
   commandIdentity,
+  canonicalJson,
+  nativeDependencyExpectation,
   readNativeDependencyReceipt,
   writeNativeDependencyReceipt,
 } = require("../../../scripts/native-dependency-receipt.cjs");
@@ -107,14 +109,22 @@ const inheritedBuildEnvironment = Object.freeze([
 ]);
 
 function selectedEnvironment(environment) {
+  if (environment.DESTDIR !== undefined) {
+    throw new Error("DESTDIR is unsupported for igraph dependency builds");
+  }
+  if (environment.CMAKE_TOOLCHAIN_FILE !== undefined) {
+    throw new Error(
+      "CMAKE_TOOLCHAIN_FILE is unsupported for reproducible igraph dependency builds",
+    );
+  }
   const names = new Set(inheritedBuildEnvironment);
   for (const name of Object.keys(environment)) {
     if (name.startsWith("CMAKE_")) names.add(name);
   }
-  return Object.fromEntries([...names].sort().map((name) => [
-    name,
-    environment[name] ?? null,
-  ]));
+  return Object.fromEntries([...names].sort().map((name) => {
+    const value = environment[name] ?? null;
+    return [name, value];
+  }));
 }
 
 function igraphLtoSetting(platform = process.platform) {
@@ -185,6 +195,9 @@ function expectedBuild(options = {}) {
     mathProfile,
     package: "igraph",
     toolchain: options.toolchain || {
+      archiver: platform === "win32"
+        ? null
+        : commandIdentity(environment.AR || "ar"),
       build: commandIdentity("cmake"),
       compilers: platform === "win32"
         ? {
@@ -193,6 +206,12 @@ function expectedBuild(options = {}) {
           selection: "cmake-visual-studio-x64-default",
         }
         : mathProfile.compilers,
+      linker: platform === "win32"
+        ? null
+        : commandIdentity(environment.LD || "ld"),
+      ranlib: platform === "win32"
+        ? null
+        : commandIdentity(environment.RANLIB || "ranlib"),
     },
   };
 }
@@ -202,29 +221,46 @@ function cmakeValue(contents, name) {
   return match ? match[1] : null;
 }
 
-function observedWindowsToolchain() {
-  const compilerFiles = [];
+function configuredCommandIdentity(contents, name) {
+  const command = cmakeValue(contents, name);
+  return command ? commandIdentity(command, []) : null;
+}
+
+function observedCmakeToolchain() {
+  const compilerFiles = { C: [], CXX: [] };
   const visit = (directory) => {
     if (!existsSync(directory)) return;
     for (const entry of readdirSync(directory, { withFileTypes: true })) {
       const filename = join(directory, entry.name);
       if (entry.isDirectory()) visit(filename);
-      else if (entry.name === "CMakeCCompiler.cmake") compilerFiles.push(filename);
+      else if (entry.name === "CMakeCCompiler.cmake") compilerFiles.C.push(filename);
+      else if (entry.name === "CMakeCXXCompiler.cmake") compilerFiles.CXX.push(filename);
     }
   };
   visit(join(build, "CMakeFiles"));
-  if (compilerFiles.length !== 1) {
-    throw new Error("unable to identify the configured Windows C compiler");
+  if (compilerFiles.C.length !== 1 || compilerFiles.CXX.length !== 1) {
+    throw new Error("unable to identify the configured CMake C/C++ compilers");
   }
-  const compiler = readFileSync(compilerFiles[0], "utf8");
+  const compiler = readFileSync(compilerFiles.C[0], "utf8");
+  const cxxCompiler = readFileSync(compilerFiles.CXX[0], "utf8");
   const cache = readFileSync(join(build, "CMakeCache.txt"), "utf8");
   const cacheValue = (name) => {
     const match = cache.match(new RegExp(`^${name}:[^=]*=(.*)$`, "m"));
     return match ? match[1] : null;
   };
   const command = cmakeValue(compiler, "CMAKE_C_COMPILER");
-  if (!command) throw new Error("configured Windows C compiler path is absent");
+  const cxxCommand = cmakeValue(cxxCompiler, "CMAKE_CXX_COMPILER");
+  if (!command || !cxxCommand) {
+    throw new Error("configured CMake C/C++ compiler path is absent");
+  }
+  const archiver = configuredCommandIdentity(compiler, "CMAKE_C_COMPILER_AR") ||
+    configuredCommandIdentity(cxxCompiler, "CMAKE_CXX_COMPILER_AR") ||
+    configuredCommandIdentity(compiler, "CMAKE_AR");
+  if (archiver === null) {
+    throw new Error("configured CMake static-library archiver is absent");
+  }
   return {
+    archiver,
     build: commandIdentity("cmake"),
     compilers: {
       c: {
@@ -232,13 +268,49 @@ function observedWindowsToolchain() {
         id: cmakeValue(compiler, "CMAKE_C_COMPILER_ID"),
         version: cmakeValue(compiler, "CMAKE_C_COMPILER_VERSION"),
       },
+      cxx: {
+        ...commandIdentity(cxxCommand, []),
+        id: cmakeValue(cxxCompiler, "CMAKE_CXX_COMPILER_ID"),
+        version: cmakeValue(cxxCompiler, "CMAKE_CXX_COMPILER_VERSION"),
+      },
       generator: cacheValue("CMAKE_GENERATOR"),
       generatorInstance: cacheValue("CMAKE_GENERATOR_INSTANCE"),
       generatorPlatform: cacheValue("CMAKE_GENERATOR_PLATFORM"),
       generatorToolset: cacheValue("CMAKE_GENERATOR_TOOLSET"),
       selection: "cmake-configured-toolchain",
     },
+    linker: configuredCommandIdentity(compiler, "CMAKE_LINKER"),
+    ranlib: configuredCommandIdentity(compiler, "CMAKE_C_COMPILER_RANLIB") ||
+      configuredCommandIdentity(cxxCompiler, "CMAKE_CXX_COMPILER_RANLIB") ||
+      configuredCommandIdentity(compiler, "CMAKE_RANLIB"),
   };
+}
+
+function currentCommandMatches(recorded) {
+  if (recorded === null) return true;
+  if (!recorded || typeof recorded.command !== "string") return false;
+  if (!Array.isArray(recorded.arguments)) return false;
+  const observed = commandIdentity(recorded.command, recorded.arguments);
+  return observed.command === recorded.command &&
+    observed.output === recorded.output &&
+    observed.status === recorded.status;
+}
+
+function reusableCmakeReceipt(receipt, expected) {
+  if (receipt === null) return false;
+  const actual = { ...receipt };
+  delete actual.identitySha256;
+  delete actual.outputs;
+  delete actual.toolchain;
+  const selected = nativeDependencyExpectation(expected);
+  delete selected.toolchain;
+  return canonicalJson(actual) === canonicalJson(selected) &&
+    currentCommandMatches(receipt.toolchain?.build) &&
+    currentCommandMatches(receipt.toolchain?.compilers?.c) &&
+    currentCommandMatches(receipt.toolchain?.compilers?.cxx) &&
+    currentCommandMatches(receipt.toolchain?.archiver) &&
+    currentCommandMatches(receipt.toolchain?.linker) &&
+    currentCommandMatches(receipt.toolchain?.ranlib);
 }
 
 function run(command, arguments_, options = {}) {
@@ -326,9 +398,7 @@ function configureAndBuild(source, expected) {
       CXXFLAGS: expected.build.cxxflags.join(" "),
     },
   });
-  if (process.platform === "win32") {
-    expected = expectedBuild({ toolchain: observedWindowsToolchain() });
-  }
+  expected = expectedBuild({ toolchain: observedCmakeToolchain() });
   run("cmake", [
     "--build",
     build,
@@ -339,6 +409,12 @@ function configureAndBuild(source, expected) {
     "--parallel",
     jobs,
   ]);
+  const library = process.platform === "win32"
+    ? join(prefix, "lib", "igraph.lib")
+    : join(prefix, "lib", "libigraph.a");
+  if (!existsSync(library)) {
+    throw new Error(`igraph build did not install ${library}`);
+  }
   mkdirSync(prefix, { recursive: true });
   installSagejsHeader();
   makePrefixRelocatable();
@@ -347,10 +423,8 @@ function configureAndBuild(source, expected) {
 
 async function main() {
   const expected = expectedBuild();
-  if (
-    process.platform !== "win32" &&
-    readNativeDependencyReceipt(stamp, { expectation: expected, prefix })
-  ) {
+  const installed = readNativeDependencyReceipt(stamp, { prefix });
+  if (reusableCmakeReceipt(installed, expected)) {
     installSagejsHeader();
     process.stdout.write(`Reusing igraph ${dependency.version} from ${prefix}\n`);
     return;
@@ -382,4 +456,5 @@ module.exports = {
   expectedBuild,
   igraphLtoSetting,
   selectedEnvironment,
+  reusableCmakeReceipt,
 };

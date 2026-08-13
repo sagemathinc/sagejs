@@ -7,11 +7,16 @@ const {
   cmakeOptions,
   expectedBuild,
   igraphLtoSetting,
+  reusableCmakeReceipt,
   selectedEnvironment,
 } = require("../scripts/build-deps.cjs");
 const {
   nativeMathBuildProfile,
 } = require("../../../scripts/native-math-profile.cjs");
+const {
+  commandIdentity,
+  nativeDependencyExpectation,
+} = require("../../../scripts/native-dependency-receipt.cjs");
 
 function profile(platform, arch = "x64") {
   const compiler = {
@@ -62,6 +67,17 @@ test("igraph declaration binds inherited CMake and linker environment", () => {
   assert.equal(selectedEnvironment({}).CMAKE_TOOLCHAIN_FILE, null);
 });
 
+test("igraph rejects unbounded install and toolchain indirection", () => {
+  assert.throws(
+    () => selectedEnvironment({ DESTDIR: "/tmp/stage" }),
+    /DESTDIR is unsupported/,
+  );
+  assert.throws(
+    () => selectedEnvironment({ CMAKE_TOOLCHAIN_FILE: "/tmp/toolchain.cmake" }),
+    /CMAKE_TOOLCHAIN_FILE is unsupported/,
+  );
+});
+
 test("igraph receipt declaration binds profile, target, source, and flags", () => {
   const linux = expectedBuild({
     arch: "x64",
@@ -76,6 +92,7 @@ test("igraph receipt declaration binds profile, target, source, and flags", () =
   );
   assert.deepEqual(linux.deployment, null);
   assert.ok(linux.build.cflags.includes("-O3"));
+  assert.equal(linux.toolchain.archiver.command, "ar");
   assert.ok(linux.build.cmake.includes("-DIGRAPH_ENABLE_LTO=ON"));
 
   const windows = expectedBuild({
@@ -94,4 +111,37 @@ test("igraph receipt declaration binds profile, target, source, and flags", () =
     platform: "darwin",
   });
   assert.deepEqual(darwin.deployment, { macos: "13.5" });
+});
+
+test("Windows reuse verifies both compilers and binary tools", () => {
+  const expected = expectedBuild({
+    arch: "x64",
+    environment: {},
+    mathProfile: profile("win32"),
+    platform: "win32",
+  });
+  const executable = commandIdentity(process.execPath, []);
+  const receipt = nativeDependencyExpectation({
+    ...expected,
+    toolchain: {
+      archiver: executable,
+      build: commandIdentity("cmake"),
+      compilers: {
+        c: executable,
+        cxx: executable,
+        generator: "Visual Studio 17 2022",
+        generatorInstance: "C:/VS",
+        generatorPlatform: "x64",
+        generatorToolset: "v143",
+        selection: "cmake-configured-toolchain",
+      },
+      linker: executable,
+      ranlib: null,
+    },
+  });
+  receipt.identitySha256 = "0".repeat(64);
+  receipt.outputs = { files: [], identitySha256: "0".repeat(64), schema: "test" };
+  assert.equal(reusableCmakeReceipt(receipt, expected), true);
+  receipt.toolchain.compilers.cxx = { ...executable, output: "changed" };
+  assert.equal(reusableCmakeReceipt(receipt, expected), false);
 });

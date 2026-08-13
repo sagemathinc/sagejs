@@ -52,6 +52,8 @@ test("M4RI dependency declaration preserves portable and tuned semantics", () =>
     "x86-64-sse2-baseline",
   );
   assert.ok(!portable.build.cflags.includes("-march=native"));
+  assert.equal(portable.toolchain.archiver.command, "ar");
+  assert.equal(portable.toolchain.ranlib.command, "ranlib");
   assert.deepEqual(portable.build.cachePolicy, {
     kind: "fixed-portable",
     ...portableCacheBytes,
@@ -115,4 +117,12 @@ test("M4RI declaration binds inherited build environment", () => {
   assert.notDeepEqual(baseline.build.environment, changed.build.environment);
   assert.equal(changed.build.environment.LDFLAGS, "-Wl,changed");
   assert.equal(selectedEnvironment({}).CPPFLAGS, null);
+  assert.throws(
+    () => selectedEnvironment({ CONFIG_SITE: "/tmp/site" }),
+    /CONFIG_SITE is unsupported/,
+  );
+  assert.throws(
+    () => selectedEnvironment({ DESTDIR: "/tmp/stage" }),
+    /DESTDIR is unsupported/,
+  );
 });

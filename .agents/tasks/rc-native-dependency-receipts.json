@@ -7,7 +7,7 @@
   "status": "review",
   "owner": "user",
   "objective": "Give M4RI and igraph exact cross-platform dependency build receipts binding source, target ABI, deployment target, build flags, toolchain, output bytes, and portable/cpu-native profile semantics for SEA validation",
-  "base_commit": "5bb3a7ffe3ffa3efa460ecdb4be5b12ff3c4687e",
+  "base_commit": "160313aad07cbf0f241c8cffde0b6b2bdace55cf",
   "claims": [
     "scripts/native-dependency-receipt.cjs",
     "scripts/native-worktree-cache.cjs",
@@ -167,7 +167,8 @@
     "risks": [
       "Generated adapter manifests do not yet name their dependency receipt. SEA integration must explicitly map each embedded adapter to its corresponding dependency receipt rather than treating two independent hashes as provenance.",
       "Static archives can still contain compiler source paths. Exact output receipts expose this drift but deterministic prefix-map flags are a separate reproducible-build follow-up.",
-      "The new receipts require fresh M4RI and igraph prefixes on every release platform; legacy stamps intentionally fail closed and rebuild."
+      "The new receipts require fresh M4RI and igraph prefixes on every release platform; legacy stamps intentionally fail closed and rebuild.",
+      "Windows igraph intentionally rebuilds rather than reusing a pre-configuration receipt, because CMake can resolve Visual Studio outside PATH; the published receipt records the resolved compiler and generator/toolset."
     ],
     "next_steps": [
       "Embed and validate the M4RI and igraph receipts in the SEA build manifest, requiring their math profile fingerprints to match FLINT and FFLAS.",
