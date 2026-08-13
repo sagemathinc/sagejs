@@ -4459,9 +4459,7 @@ def ρσ_resolve_module_name(
     hoisted, so a direct read would instead yield `undefined` and suppress
     idioms such as `try: set; except NameError: ...`.
     """
-    if module_namespace is not None and _builtins_has_member(
-        module_namespace, name
-    ):
+    if module_namespace is not None and _builtins_has_member(module_namespace, name):
         # A present-but-undefined live cell is a deleted/uninitialized Python
         # module binding.  Return it so the surrounding unbound check raises
         # NameError instead of accidentally exposing a same-named JS host.

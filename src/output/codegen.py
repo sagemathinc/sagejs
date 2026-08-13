@@ -961,15 +961,12 @@ def generate_code():
         class_namespace = None
         module_name_fallback = False
         module_scope = None
-        if (
-            is_node_type(self, AST_SymbolRef)
-            and (
-                not output.assignment_target
-                and not is_assignment_target()
-                or (
-                    is_node_type(output.parent(), AST_Dot)
-                    and output.parent().expression is self
-                )
+        if is_node_type(self, AST_SymbolRef) and (
+            not output.assignment_target
+            and not is_assignment_target()
+            or (
+                is_node_type(output.parent(), AST_Dot)
+                and output.parent().expression is self
             )
         ):
             stack = output.stack()
