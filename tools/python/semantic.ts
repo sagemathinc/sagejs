@@ -64,7 +64,10 @@ export class PythonAstSemanticAnalyzer {
         : []),
     ]);
     this.walk(toplevel.body, (node) => {
-      if (node instanceof this.compiler.AST_Lambda) {
+      if (
+        node instanceof this.compiler.AST_Lambda ||
+        node instanceof this.compiler.AST_Class
+      ) {
         const guarded = (node.declared_globals ?? []).filter(
           (name) => deletedGlobals.includes(name),
         );
@@ -270,6 +273,9 @@ export class PythonAstSemanticAnalyzer {
     definition.annotated_locals = unique([
       ...(definition.annotated_locals ?? []),
       ...this.scanAnnotatedNames(body),
+      // A class-body global read must bypass the class namespace and retain
+      // Python's NameError behavior before assignment and after deletion.
+      ...(definition.declared_globals ?? []),
     ]);
   }
 
@@ -374,7 +380,10 @@ export class PythonAstSemanticAnalyzer {
   private scanNestedGlobals(body: any[]): string[] {
     const names: string[] = [];
     this.walk(body, (node) => {
-      if (node instanceof this.compiler.AST_Lambda) {
+      if (
+        node instanceof this.compiler.AST_Lambda ||
+        node instanceof this.compiler.AST_Class
+      ) {
         names.push(...(node.declared_globals ?? []));
       }
       return false;
@@ -385,7 +394,10 @@ export class PythonAstSemanticAnalyzer {
   private scanNestedDeletedGlobals(body: any[]): string[] {
     const names: string[] = [];
     this.walk(body, (node) => {
-      if (node instanceof this.compiler.AST_Lambda) {
+      if (
+        node instanceof this.compiler.AST_Lambda ||
+        node instanceof this.compiler.AST_Class
+      ) {
         const deleted = new Set(this.scanAnnotatedNames(node.body ?? []));
         for (const name of node.declared_globals ?? []) {
           if (deleted.has(name)) names.push(name);

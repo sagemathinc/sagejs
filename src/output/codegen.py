@@ -961,9 +961,9 @@ def generate_code():
         class_namespace = None
         module_name_fallback = False
         module_scope = None
+        assignment_target = output.assignment_target or is_assignment_target()
         if is_node_type(self, AST_SymbolRef) and (
-            not output.assignment_target
-            and not is_assignment_target()
+            not assignment_target
             or (
                 is_node_type(output.parent(), AST_Dot)
                 and output.parent().expression is self
@@ -1008,7 +1008,11 @@ def generate_code():
                         )
                     )
                     break
-            if output.options.reuse_main_module and self.python_identifier:
+            if (
+                output.options.reuse_main_module
+                and self.python_identifier
+                and not assignment_target
+            ):
                 # A later interactive cell has no lexical declaration for a
                 # name bound by an earlier cell.  Resolve such source names
                 # through the canonical module before considering builtins or

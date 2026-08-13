@@ -126,6 +126,7 @@ export class PythonCstLowerer {
   private moduleBindings = new Set<string>();
   private readonly classBindings: Array<{
     names: Set<string>;
+    globals: Set<string>;
     functionDepth: number;
   }> = [];
   private nativeBitwise = false;
@@ -150,7 +151,14 @@ export class PythonCstLowerer {
 
   /** Apply Python's lexical private-name transformation inside a class. */
   private manglePrivateName(name: string): string {
-    const className = this.classStack.at(-1)?.replace(/^_+/, "") ?? "";
+    return this.manglePrivateNameForClass(name, this.classStack.at(-1));
+  }
+
+  private manglePrivateNameForClass(
+    name: string,
+    enclosingClass: string | undefined,
+  ): string {
+    const className = enclosingClass?.replace(/^_+/, "") ?? "";
     if (
       !className ||
       !name.startsWith("__") ||
@@ -158,6 +166,30 @@ export class PythonCstLowerer {
       name.includes(".")
     ) return name;
     return `_${className}${name}`;
+  }
+
+  /** Collect module cells introduced by nested `global` declarations. */
+  private nestedModuleGlobalBindings(root: SyntaxNode): Set<string> {
+    const names = new Set<string>();
+    const visit = (
+      node: SyntaxNode,
+      enclosingClass: string | undefined,
+    ): void => {
+      let activeClass = enclosingClass;
+      if (node.type === "class_definition") {
+        activeClass = node.childForFieldName("name")?.text ?? activeClass;
+      }
+      if (node.type === "global_statement") {
+        for (const name of significantChildren(node)) {
+          if (name.type === "identifier") {
+            names.add(this.manglePrivateNameForClass(name.text, activeClass));
+          }
+        }
+      }
+      for (const child of node.namedChildren) visit(child, activeClass);
+    };
+    visit(root, undefined);
+    return names;
   }
 
   lowerModule(finalizedToplevel: any): CstLoweringResult {
@@ -200,12 +232,8 @@ export class PythonCstLowerer {
     // A `global` declaration nested in a function can create or mutate a
     // module binding even when no assignment to that name appears at module
     // level.  Include those source names in the module's lexical hygiene map.
-    for (const declaration of root.descendantsOfType("global_statement")) {
-      for (const name of significantChildren(declaration)) {
-        if (name.type === "identifier") {
-          this.moduleBindings.add(this.manglePrivateName(name.text));
-        }
-      }
+    for (const name of this.nestedModuleGlobalBindings(root)) {
+      this.moduleBindings.add(name);
     }
     this.annotationsMode = root.namedChildren.some(
       (node) => node.type === "future_import_statement" &&
@@ -287,9 +315,11 @@ export class PythonCstLowerer {
     const classFrame = this.classBindings.at(-1);
     if (
       classFrame &&
-      this.functionFrames.length === classFrame.functionDepth &&
-      classFrame.names.has(name)
-    ) return false;
+      this.functionFrames.length === classFrame.functionDepth
+    ) {
+      if (classFrame.globals.has(name)) return this.moduleBindings.has(name);
+      if (classFrame.names.has(name)) return false;
+    }
     return this.moduleBindings.has(name);
   }
 
@@ -808,11 +838,20 @@ export class PythonCstLowerer {
   }
 
   private invalidateIntrinsicBinding(node: SyntaxNode): void {
-    if (this.functionFrames.length > 0) return;
     if (node.type === "identifier") {
       const name = this.manglePrivateName(node.text);
-      if (this.classStack.length > 0) {
-        this.classBindings.at(-1)?.names.add(name);
+      const classFrame = this.classBindings.at(-1);
+      if (
+        classFrame &&
+        classFrame.functionDepth === this.functionFrames.length
+      ) {
+        if (classFrame.globals.has(name)) {
+          this.intrinsicModules.delete(name);
+        } else {
+          classFrame.names.add(name);
+        }
+      } else if (this.functionFrames.length > 0) {
+        return;
       } else {
         this.intrinsicModules.delete(name);
       }
@@ -829,10 +868,19 @@ export class PythonCstLowerer {
   }
 
   private invalidateIntrinsicNames(names: Iterable<string>): void {
-    if (this.functionFrames.length > 0) return;
     for (const name of names) {
-      if (this.classStack.length > 0) {
-        this.classBindings.at(-1)?.names.add(name);
+      const classFrame = this.classBindings.at(-1);
+      if (
+        classFrame &&
+        classFrame.functionDepth === this.functionFrames.length
+      ) {
+        if (classFrame.globals.has(name)) {
+          this.intrinsicModules.delete(name);
+        } else {
+          classFrame.names.add(name);
+        }
+      } else if (this.functionFrames.length > 0) {
+        return;
       } else {
         this.intrinsicModules.delete(name);
       }
@@ -843,11 +891,30 @@ export class PythonCstLowerer {
     if (!isGlobal && this.functionFrames.length === 0) {
       throw new SyntaxError("nonlocal declaration not allowed at module level");
     }
+    if (
+      isGlobal &&
+      this.functionFrames.length === 0 &&
+      this.classStack.length === 0
+    ) {
+      // In Python a module-level `global` declaration is a semantic no-op:
+      // the surrounding namespace is already the module.  Retaining an
+      // AST_SymbolNonlocal here incorrectly suppresses the module's lexical
+      // cell and can make its live namespace descriptor read a host global.
+      return this.make("AST_EmptyStatement", node, { stype: "global" });
+    }
+    if (isGlobal && this.classStack.length > 0) {
+      const classFrame = this.classBindings.at(-1);
+      if (classFrame?.functionDepth === this.functionFrames.length) {
+        for (const name of significantChildren(node)) {
+          classFrame.globals.add(this.manglePrivateName(name.text));
+        }
+      }
+    }
     return this.make("AST_Var", node, {
       definitions: significantChildren(node).map((name) =>
         this.make("AST_VarDef", name, {
           name: this.pythonSymbol("AST_SymbolNonlocal", name, {
-            name: name.text,
+            name: this.manglePrivateName(name.text),
           }),
           value: null,
           is_global: isGlobal ? true : undefined,
@@ -1950,10 +2017,10 @@ export class PythonCstLowerer {
     const classFrame = this.classBindings.at(-1);
     if (
       classFrame &&
-      this.functionFrames.length === classFrame.functionDepth &&
-      classFrame.names.has(name)
+      this.functionFrames.length === classFrame.functionDepth
     ) {
-      return true;
+      if (classFrame.globals.has(name)) return this.moduleBindings.has(name);
+      if (classFrame.names.has(name)) return true;
     }
     for (let index = this.functionFrames.length - 1; index >= 0; index -= 1) {
       const frame = this.functionFrames[index];
@@ -1967,10 +2034,10 @@ export class PythonCstLowerer {
     const classFrame = this.classBindings.at(-1);
     if (
       classFrame &&
-      this.functionFrames.length === classFrame.functionDepth &&
-      classFrame.names.has(name)
+      this.functionFrames.length === classFrame.functionDepth
     ) {
-      return true;
+      if (classFrame.globals.has(name)) return this.moduleBindings.has(name);
+      if (classFrame.names.has(name)) return true;
     }
     for (let index = this.functionFrames.length - 1; index >= 0; index -= 1) {
       const frame = this.functionFrames[index];
@@ -2159,9 +2226,11 @@ export class PythonCstLowerer {
         ].includes(name);
       });
       properties.sequential_definition = false;
-      this.classBindings.at(-1)?.names.add(
-        this.manglePrivateName(nameNode.text),
-      );
+      const classFrame = this.classBindings.at(-1);
+      const mangledName = this.manglePrivateName(nameNode.text);
+      if (!classFrame?.globals.has(mangledName)) {
+        classFrame?.names.add(mangledName);
+      }
     }
     const definition = this.make(Constructor, node, properties);
     definition.python_lexical_hygiene = !this.options.compiler_bootstrap;
@@ -2204,7 +2273,9 @@ export class PythonCstLowerer {
         current.type === "class_definition"
       )) return;
       if (current.type === type) {
-        result.push(...significantChildren(current).map((child) => child.text));
+        result.push(...significantChildren(current).map((child) =>
+          this.manglePrivateName(child.text)
+        ));
         return;
       }
       for (const child of current.namedChildren) visit(child);
@@ -2296,6 +2367,7 @@ export class PythonCstLowerer {
     this.classStack.push(nameNode.text);
     this.classBindings.push({
       names: new Set(),
+      globals: new Set(),
       functionDepth: this.functionFrames.length,
     });
     let statements: any[];
@@ -2346,6 +2418,7 @@ export class PythonCstLowerer {
     const classMethods: Record<string, boolean> = Object.create(null);
     const dynamicProperties: Record<string, any> = Object.create(null);
     const nonlocalNames: string[] = [];
+    const globalNames: string[] = [];
     for (const base of bases) {
       if (!(base instanceof this.compiler.AST_SymbolRef)) continue;
       const inherited = this.knownClasses.get(base.name);
@@ -2366,8 +2439,12 @@ export class PythonCstLowerer {
       const body = statement?.body;
       if (statement instanceof this.compiler.AST_Var) {
         for (const declaration of statement.definitions ?? []) {
-          if (!declaration.is_global && declaration.name?.name) {
-            nonlocalNames.push(declaration.name.name);
+          if (declaration.name?.name) {
+            if (declaration.is_global) {
+              globalNames.push(declaration.name.name);
+            } else {
+              nonlocalNames.push(declaration.name.name);
+            }
           }
         }
       }
@@ -2392,6 +2469,7 @@ export class PythonCstLowerer {
       }
     }
     for (const name of nonlocalNames) delete classvars[name];
+    for (const name of globalNames) delete classvars[name];
     // A descriptor remains an ordinary namespace value until class creation.
     // Preserve aliases such as ``oldName = new_name`` when ``new_name`` is a
     // property; reading it from the partly built JavaScript prototype would
@@ -2423,13 +2501,14 @@ export class PythonCstLowerer {
       nameNode.text,
       classStatements,
       classvars,
-      new Set(nonlocalNames),
+      new Set([...nonlocalNames, ...globalNames]),
     );
     const useBoundMethods = this.currentToplevel?.scoped_flags
       ?.bound_methods ?? this.options.scoped_flags?.bound_methods ?? true;
     const bound = useBoundMethods
       ? classStatements
         .filter((statement) => statement instanceof this.compiler.AST_Method)
+        .filter((method) => !globalNames.includes(method.name.name))
         .filter((method) =>
           method.name.name !== "__init__" && !method.static
         )
@@ -2512,7 +2591,11 @@ export class PythonCstLowerer {
       ),
       dynamic_properties: dynamicProperties,
       classvars,
-      nonlocal_names: nonlocalNames,
+      // Both declarations bypass the class namespace.  The output layer's
+      // historical `nonlocal_names` routing is precisely that mechanical
+      // distinction; `declared_globals` preserves the Python authority.
+      nonlocal_names: [...nonlocalNames, ...globalNames],
+      declared_globals: globalNames,
       localvars: [],
       annotated_locals: [],
       docstrings: extracted.docstrings,
@@ -2522,7 +2605,11 @@ export class PythonCstLowerer {
     this.specializeBigintClass(definition);
     // Class constructor calls later in the same suite must lower as `new`.
     this.knownClasses.set(nameNode.text, definition);
-    this.classBindings.at(-1)?.names.add(this.manglePrivateName(nameNode.text));
+    const outerClassFrame = this.classBindings.at(-1);
+    const mangledName = this.manglePrivateName(nameNode.text);
+    if (!outerClassFrame?.globals.has(mangledName)) {
+      outerClassFrame?.names.add(mangledName);
+    }
     return definition;
   }
 
@@ -2754,13 +2841,18 @@ export class PythonCstLowerer {
       this.registerImportedClasses(imported);
       if (this.functionFrames.length > 0) continue;
       if (this.classStack.length > 0) {
-        const bindings = this.classBindings.at(-1)?.names;
+        const frame = this.classBindings.at(-1);
+        const registerClassImport = (name: string): void => {
+          if (!frame?.globals.has(name)) frame?.names.add(name);
+        };
         if (imported.argnames) {
           for (const argument of imported.argnames) {
-            bindings?.add(argument.alias?.name ?? argument.name);
+            registerClassImport(argument.alias?.name ?? argument.name);
           }
         } else if (!imported.star) {
-          bindings?.add(imported.alias?.name ?? imported.key.split(".")[0]);
+          registerClassImport(
+            imported.alias?.name ?? imported.key.split(".")[0],
+          );
         }
         continue;
       }
@@ -2786,7 +2878,10 @@ export class PythonCstLowerer {
     const statement = this.make("AST_Imports", node, { imports });
     statement.python_lexical_hygiene = !this.options.compiler_bootstrap;
     statement.python_scope_bindings = this.classStack.length > 0
-      ? [...(this.classBindings.at(-1)?.names ?? [])]
+      ? [
+        ...(this.classBindings.at(-1)?.names ?? []),
+        ...(this.classBindings.at(-1)?.globals ?? []),
+      ]
       : this.functionFrames.length > 0
       ? [...this.functionFrames.at(-1)!.bindings]
       : [...this.moduleBindings];
@@ -3190,8 +3285,10 @@ export class PythonCstLowerer {
       const frame = this.functionFrames.at(-1);
       if (frame?.superClass && frame.superReceiver) {
         args.push(
-          this.make("AST_SymbolRef", node, { name: frame.superClass }),
-          this.make("AST_SymbolRef", node, { name: frame.superReceiver }),
+          this.pythonSymbol("AST_SymbolRef", node, { name: frame.superClass }),
+          this.pythonSymbol("AST_SymbolRef", node, {
+            name: frame.superReceiver,
+          }),
         );
       }
     }

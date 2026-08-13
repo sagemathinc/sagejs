@@ -429,6 +429,19 @@ test("comprehension targets stay in their implicit Python 3 scope", async () => 
     ast.print(output);
     const javascript = output.get();
     assert.doesNotMatch(javascript.split("\n")[0], /\bv\b/);
+    assert.match(
+      javascript,
+      /var ρσ_Result\s+= \[\], \$ρσ\$py\$v;/,
+    );
+    assert.match(
+      javascript,
+      /var ρσ_Result\s+= ρσ_dict\(\), \$ρσ\$py\$key, \$ρσ\$py\$value;/,
+    );
+    assert.doesNotMatch(
+      javascript,
+      /ρσ_resolve_module_name\(\$ρσ\$py\$(?:v|key|value)/,
+    );
+    assert.doesNotMatch(javascript, /\["(?:v|key|value)"\]:/);
   } finally {
     frontend.close();
   }
@@ -449,13 +462,68 @@ test("module fallback names and explicit line continuations preserve Python sema
     const javascript = output.get();
     assert.match(
       javascript,
-      /ρσ_check_unbound\(ρσ_resolve_module_name\(optional_name/,
+      /ρσ_check_unbound\(ρσ_resolve_module_name\(\$ρσ\$py\$optional_name/,
     );
     assert.match(
       javascript,
-      /ρσ_resolve_module_name\(optional_name, "optional_name"/,
+      /ρσ_resolve_module_name\(\$ρσ\$py\$optional_name, "optional_name"/,
     );
     assert.doesNotMatch(javascript, /<= \\/);
+  } finally {
+    frontend.close();
+  }
+});
+
+test("module-level global declarations retain isolated lexical cells", async () => {
+  const compiler = createCompiler();
+  const frontend = await createPythonCompilerFrontend(compiler, "python");
+  try {
+    const ast = frontend.parse(
+      "global Object\nObject = 'module value'\n",
+      parserOptions,
+    );
+    const output = new compiler.OutputStream(outputOptions);
+    ast.print(output);
+    const javascript = output.get();
+    assert.match(javascript, /var [^;]*\$ρσ\$py\$Object[^;]*;/);
+    assert.match(
+      javascript,
+      /\["Object"\]: \{enumerable:true,get:\(\)=>\$ρσ\$py\$Object/,
+    );
+    assert.match(javascript, /\$ρσ\$py\$Object = "module value"/);
+    assert.doesNotMatch(javascript, /(?:^|\n)var Object;/);
+  } finally {
+    frontend.close();
+  }
+});
+
+test("class-body global declarations bind the isolated module cell", async () => {
+  const compiler = createCompiler();
+  const frontend = await createPythonCompilerFrontend(compiler, "python");
+  try {
+    const ast = frontend.parse(
+      "import sagejs.runtime as runtime\n" +
+        "class Holder:\n" +
+        "    global Object\n" +
+        "    Object = 'class value'\n" +
+        "    global runtime\n" +
+        "    runtime = replacement\n" +
+        "answer = runtime.native_get(target, property_name)\n",
+      parserOptions,
+    );
+    const output = new compiler.OutputStream(outputOptions);
+    ast.print(output);
+    const javascript = output.get();
+    assert.match(javascript, /var [^;]*\$ρσ\$py\$Object[^;]*;/);
+    assert.match(javascript, /\$ρσ\$py\$Object = "class value"/);
+    assert.doesNotMatch(javascript, /Holder\.prototype\.Object/);
+    assert.doesNotMatch(javascript, /(?:^|\n)var Object;/);
+    assert.match(javascript, /\$ρσ\$py\$runtime = replacement/);
+    assert.match(
+      javascript,
+      /ρσ_getattr_internal\([^;\n]*\$ρσ\$py\$runtime[^;\n]*"native_get"/,
+    );
+    assert.doesNotMatch(javascript, /\$ρσ\$py\$answer = target\[property_name\]/);
   } finally {
     frontend.close();
   }
@@ -474,7 +542,7 @@ test("same-named module assignments fall back to Python builtins", async () => {
     const javascript = output.get();
     assert.match(
       javascript,
-      /next = ρσ_check_unbound\(ρσ_resolve_module_name\(next, "next"/,
+      /\$ρσ\$py\$next = ρσ_check_unbound\(ρσ_resolve_module_name\(\$ρσ\$py\$next, "next"/,
     );
   } finally {
     frontend.close();
@@ -503,10 +571,13 @@ test("lowering preserves tuple, assignment-target, class, and native-object boun
     assert.equal((javascript.match(/ρσ_setitem/g) ?? []).length >= 2, true);
     assert.match(
       javascript,
-      /Object\.defineProperty\(targets, "answer", \{"value":/,
+      /Object\.defineProperty\(\$ρσ\$py\$targets, "answer", \{"value":/,
     );
     assert.doesNotMatch(javascript, /Object\.defineProperty\([^\n]+ρσ_dict/);
-    assert.match(javascript, /ρσ_interpolate_kwargs_constructor[^\n]+Point/);
+    assert.match(
+      javascript,
+      /ρσ_interpolate_kwargs_constructor[^\n]+\$ρσ\$py\$Point/,
+    );
   } finally {
     frontend.close();
   }
@@ -592,8 +663,11 @@ test("chained assignment initializes annotated names without reading them", asyn
     const output = new compiler.OutputStream(outputOptions);
     ast.print(output);
     const javascript = output.get();
-    assert.match(javascript, /__version__ = version = "9\.1\.1"/);
-    assert.doesNotMatch(javascript, /ρσ_check_unbound\(version/);
+    assert.match(
+      javascript,
+      /\$ρσ\$py\$__version__ = \$ρσ\$py\$version = "9\.1\.1"/,
+    );
+    assert.doesNotMatch(javascript, /ρσ_check_unbound\(\$ρσ\$py\$version/);
   } finally {
     frontend.close();
   }
@@ -744,7 +818,7 @@ test("Python bindings shadow JavaScript native namespace names", async () => {
     const javascript = output.get();
     assert.match(
       javascript,
-      /ρσ_getattr_internal\(ρσ_getattr_internal\(Number, "Integer", ρσ_getattr_missing\), "Long", ρσ_getattr_missing\)/,
+      /ρσ_getattr_internal\(ρσ_getattr_internal\(\$ρσ\$py\$Number, "Integer", ρσ_getattr_missing\), "Long", ρσ_getattr_missing\)/,
     );
     assert.doesNotMatch(javascript, /Number\.Integer\.Long/);
   } finally {
@@ -760,8 +834,8 @@ test("Python identifiers named this are mangled away from JavaScript syntax", as
     const output = new compiler.OutputStream(outputOptions);
     ast.print(output);
     const javascript = output.get();
-    assert.match(javascript, /var [^;]*ρσ_py_this/);
-    assert.match(javascript, /answer = ρσ_py_this/);
+    assert.match(javascript, /var [^;]*\$ρσ\$py\$this/);
+    assert.match(javascript, /\$ρσ\$py\$answer = \$ρσ\$py\$this/);
     assert.doesNotMatch(javascript, /\bvar\s+this\b/);
   } finally {
     frontend.close();
@@ -779,8 +853,34 @@ test("reserved Python class names stay mangled in method metadata", async () => 
     const output = new compiler.OutputStream(outputOptions);
     ast.print(output);
     const javascript = output.get();
-    assert.match(javascript, /ρσ_py_default\.prototype\.__init__\.__name__/);
-    assert.doesNotMatch(javascript, /\bdefault\.prototype/);
+    assert.match(
+      javascript,
+      /\$ρσ\$py\$default\.prototype\.__init__\.__name__/,
+    );
+    assert.doesNotMatch(javascript, /(?:^|[^\w$])default\.prototype/);
+  } finally {
+    frontend.close();
+  }
+});
+
+test("zero-argument super uses hygienic class and receiver bindings", async () => {
+  const compiler = createCompiler();
+  const frontend = await createPythonCompilerFrontend(compiler, "python");
+  try {
+    const ast = frontend.parse(
+      "class Object(Base):\n" +
+        "    def __init__(Reflect, value):\n" +
+        "        super().__init__(value)\n",
+      parserOptions,
+    );
+    const output = new compiler.OutputStream(outputOptions);
+    ast.print(output);
+    const javascript = output.get();
+    assert.match(
+      javascript,
+      /ρσ_py_super\)\(\$ρσ\$py\$Object, \$ρσ\$py\$Reflect\)/,
+    );
+    assert.doesNotMatch(javascript, /ρσ_py_super\)\(Object, Reflect\)/);
   } finally {
     frontend.close();
   }
@@ -803,7 +903,10 @@ test("explicit class metaclasses are lowered before decorators", async () => {
     const output = new compiler.OutputStream(outputOptions);
     ast.print(output);
     const javascript = output.get();
-    assert.match(javascript, /ρσ_apply_metaclass\(Meta, "Example"/);
+    assert.match(
+      javascript,
+      /ρσ_apply_metaclass\(\$ρσ\$py\$Meta, "Example"/,
+    );
   } finally {
     frontend.close();
   }
@@ -821,7 +924,7 @@ test("parameterized builtin bases lower to their runtime origins", async () => {
     assert.equal(definition.parent.name, "list");
     const output = new compiler.OutputStream(outputOptions);
     ast.print(output);
-    assert.match(output.get(), /ρσ_extends\(Entries, list\)/);
+    assert.match(output.get(), /ρσ_extends\(\$ρσ\$py\$Entries, list\)/);
   } finally {
     frontend.close();
   }
@@ -924,7 +1027,7 @@ test("same-class static calls are not guessed to be unbound methods", async () =
     const javascript = output.get();
     assert.match(
       javascript,
-      /ρσ_getattr_internal\(Config, "name", ρσ_getattr_missing\)/,
+      /ρσ_getattr_internal\(\$ρσ\$py\$Config, "name", ρσ_getattr_missing\)/,
     );
     assert.doesNotMatch(
       javascript,
@@ -953,7 +1056,7 @@ test("callable class variables retain runtime descriptor lookup", async () => {
     const javascript = output.get();
     assert.match(
       javascript,
-      /ρσ_getattr_internal\(Config, "selected", ρσ_getattr_missing\)/,
+      /ρσ_getattr_internal\(\$ρσ\$py\$Config, "selected", ρσ_getattr_missing\)/,
     );
     assert.doesNotMatch(javascript, /Config\.prototype\.selected\(\)/);
     assert.match(javascript, /delete this\.selected/);
@@ -1007,7 +1110,7 @@ test("known class methods with keywords receive the class object", async () => {
     const javascript = output.get();
     assert.match(
       javascript,
-      /ρσ_interpolate_kwargs\(Cache, Cache\.for_config/,
+      /ρσ_interpolate_kwargs\(\$ρσ\$py\$Cache, \$ρσ\$py\$Cache\.for_config/,
     );
   } finally {
     frontend.close();
@@ -1035,7 +1138,7 @@ test("inherited class methods with keywords receive the referenced class", async
     const javascript = output.get();
     assert.match(
       javascript,
-      /Function, Function\.from_parent/,
+      /\$ρσ\$py\$Function, \$ρσ\$py\$Function\.from_parent/,
     );
     assert.doesNotMatch(
       javascript,

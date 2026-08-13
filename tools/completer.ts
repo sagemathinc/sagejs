@@ -14,15 +14,34 @@ export default function Completer(_compiler: Compiler) {
 
   function globalNames(): string[] {
     try {
-      const names: string[] = runInThisContext(
+      const hostNames: string[] = runInThisContext(
         "typeof ρσ_dir === 'function' ? " +
           "ρσ_dir(globalThis) : Object.getOwnPropertyNames(globalThis)"
       );
-      return [...new Set(names.concat(allKeywords))].sort();
+      const moduleNamespace = global.ρσ_modules?.__main__;
+      const moduleNames: string[] = moduleNamespace == null
+        ? []
+        : typeof global.ρσ_dir === "function"
+          ? global.ρσ_dir(moduleNamespace)
+          : Object.getOwnPropertyNames(moduleNamespace);
+      const liveModuleNames = moduleNames.filter((name) =>
+        Reflect.get(moduleNamespace, name) !== undefined
+      );
+      return [...new Set(hostNames.concat(liveModuleNames, allKeywords))].sort();
     } catch (e) {
       console.log(e.stack || e.toString());
     }
     return [];
+  }
+
+  function resolveExpression(expression: string): unknown {
+    const [first, ...properties] = expression.split(".");
+    const moduleNamespace = global.ρσ_modules?.__main__;
+    let value = moduleNamespace != null && Reflect.has(moduleNamespace, first)
+      ? Reflect.get(moduleNamespace, first)
+      : runInThisContext(first);
+    for (const property of properties) value = Reflect.get(value, property);
+    return value;
   }
 
   function objectNames(obj: any, prefix: string): string[] {
@@ -82,7 +101,7 @@ export default function Completer(_compiler: Compiler) {
     const prefix = match[2] ?? "";
     if (!expression) return [prefixMatches(prefix, globalNames()), prefix];
     try {
-      return [objectNames(runInThisContext(expression), prefix), prefix];
+      return [objectNames(resolveExpression(expression), prefix), prefix];
     } catch (_error) {
       return [];
     }

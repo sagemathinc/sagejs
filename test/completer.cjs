@@ -53,6 +53,9 @@ const source = [
   "        return n",
   "",
   "example = Example();",
+  "Object = Example();",
+  "deleted = Example();",
+  "del deleted;",
   'R = PolynomialRing(ZZ, "x");',
   "",
 ].join("\n");
@@ -77,6 +80,8 @@ assert.equal(prefix, "");
 assert.ok(items.includes("dir"));
 assert.ok(items.includes("help"));
 assert.ok(items.includes("example"));
+assert.ok(items.includes("Object"));
+assert.ok(!items.includes("deleted"));
 assert.ok(!items.some((name) => name.startsWith("ρσ")));
 assert.ok(!items.some((name) => name.startsWith("_builtins_")));
 
@@ -94,6 +99,13 @@ assert.ok(!items.some((name) => name.startsWith("ρσ")));
 [items, prefix] = completions("example.va");
 assert.equal(prefix, "va");
 assert.deepEqual(items, ["value"]);
+
+[items, prefix] = completions("Object.va");
+assert.equal(prefix, "va");
+assert.deepEqual(items, ["value"]);
+
+[items, prefix] = completions("deleted.");
+assert.deepEqual([items, prefix], [[], ""]);
 
 [items, prefix] = completions("R.");
 assert.equal(prefix, "");

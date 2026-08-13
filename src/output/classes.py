@@ -741,11 +741,15 @@ def print_class(output):
 
         elif is_node_type(stmt, AST_Class):
             stmt.print(output)
-            class_def(JSON.stringify(stmt.name.name), True)
-            stmt.name.print(output)
-            output.end_statement()
+            if stmt.name.name not in self.nonlocal_names:
+                class_def(JSON.stringify(stmt.name.name), True)
+                stmt.name.print(output)
+                output.end_statement()
 
-        elif self.statements.indexOf(stmt) is not -1:
+        elif (
+            self.statements.indexOf(stmt) is not -1
+            and emitted_statements.indexOf(stmt) is -1
+        ):
             # Class namespaces execute sequentially.  In particular, an
             # alias made between two definitions of the same method must keep
             # the first function object rather than resolving the final

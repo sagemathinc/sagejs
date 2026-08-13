@@ -229,8 +229,11 @@ test("JavaScript truth testing remains an explicit escape hatch", async () => {
     "right = []\nwhile right:\n    break\n",
     { omit_baselib: true, python_truthiness: false },
   );
-  assert.match(javascript, /while \(right\)/);
-  assert.doesNotMatch(javascript, /while \(ρσ_bool\(right\)\)/);
+  assert.match(javascript, /while \(\$ρσ\$py\$right\)/);
+  assert.doesNotMatch(
+    javascript,
+    /while \(ρσ_bool\(\$ρσ\$py\$right\)\)/,
+  );
 });
 
 test("the truth primitive exception cannot be selected by a user name", async () => {
@@ -238,9 +241,9 @@ test("the truth primitive exception cannot be selected by a user name", async ()
     "def ρσ_bool(value):\n    if value:\n        return 1\n    return 0\n",
     { omit_baselib: true },
   );
-  const userFunction = generatedFunctionBody(javascript, "ρσ_bool");
-  assert.match(userFunction, /if \(ρσ_bool\(value\)\)/);
-  assert.doesNotMatch(userFunction, /if \(value\)/);
+  const userFunction = generatedFunctionBody(javascript, "$ρσ$py$ρσ_bool");
+  assert.match(userFunction, /if \(ρσ_bool\(\$ρσ\$py\$value\)\)/);
+  assert.doesNotMatch(userFunction, /if \(\$ρσ\$py\$value\)/);
 });
 
 test("truth testing and rich ordering are independent policies", async () => {
@@ -249,12 +252,21 @@ test("truth testing and rich ordering are independent policies", async () => {
     omit_baselib: true,
     python_truthiness: false,
   });
-  assert.match(richOrdering, /ρσ_operator_lt\(left, right\)/);
+  assert.match(
+    richOrdering,
+    /ρσ_operator_lt\(\$ρσ\$py\$left, \$ρσ\$py\$right\)/,
+  );
 
   const nativeOrdering = await compileWithDefaultTruthiness(
     program,
     { omit_baselib: true, python_ordering: false },
   );
-  assert.match(nativeOrdering, /if \(ρσ_bool\(left < right\)\)/);
-  assert.doesNotMatch(nativeOrdering, /ρσ_operator_lt\(left, right\)/);
+  assert.match(
+    nativeOrdering,
+    /if \(ρσ_bool\(\$ρσ\$py\$left < \$ρσ\$py\$right\)\)/,
+  );
+  assert.doesNotMatch(
+    nativeOrdering,
+    /ρσ_operator_lt\(\$ρσ\$py\$left, \$ρσ\$py\$right\)/,
+  );
 });

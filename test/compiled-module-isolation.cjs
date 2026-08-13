@@ -290,6 +290,107 @@ test("kernel cells share one live __main__ module namespace", async (t) => {
   assert.equal((await session.evaluate("runtime")).repr, "'shadowed'");
 });
 
+test("class global declarations bypass the class and JavaScript hosts", async (t) => {
+  const session = await createSage({ mode: "python" });
+  t.after(() => session.close());
+
+  await session.evaluate(
+    "import sagejs.runtime as runtime\n" +
+      "import __main__\n" +
+      "host_object = runtime.reflect.get(runtime.global_object, 'Object')\n" +
+      "events = []\n" +
+      "def record(value):\n" +
+      "    events.append(value)\n" +
+      "    return value\n" +
+      "Object = 'before-class'",
+  );
+  await session.evaluate(
+    "class GlobalAssignments:\n" +
+      "    global Object\n" +
+      "    Object = record('module-assignment')\n" +
+      "    ordinary = record('ordinary-class-value')",
+  );
+  assert.equal(
+    (await session.evaluate(
+      "Object, __main__.Object, events, " +
+        "hasattr(GlobalAssignments, 'Object'), GlobalAssignments.ordinary, " +
+        "runtime.reflect.get(runtime.global_object, 'Object') is host_object",
+    )).repr,
+    "('module-assignment', 'module-assignment', " +
+      "['module-assignment', 'ordinary-class-value'], False, " +
+      "'ordinary-class-value', True)",
+  );
+
+  await session.evaluate(
+    "method_value = 'before-method'\n" +
+      "class MethodGlobal:\n" +
+      "    def write(self):\n" +
+      "        global method_value\n" +
+      "        method_value = 'from-method'\n" +
+      "MethodGlobal().write()\n" +
+      "class FunctionGlobal:\n" +
+      "    global exported_function\n" +
+      "    def exported_function():\n" +
+      "        return 'module-function'\n" +
+      "class Private:\n" +
+      "    global __value\n" +
+      "    __value = 'private-module-value'\n" +
+      "class GlobalContext:\n" +
+      "    def __enter__(self):\n" +
+      "        return 'with-module-value'\n" +
+      "    def __exit__(self, kind, value, traceback):\n" +
+      "        return False\n" +
+      "class GlobalBindingForms:\n" +
+      "    global imported_runtime\n" +
+      "    import sagejs.runtime as imported_runtime\n" +
+      "    global loop_global\n" +
+      "    for loop_global in ['loop-module-value']:\n" +
+      "        pass\n" +
+      "    global with_global\n" +
+      "    with GlobalContext() as with_global:\n" +
+      "        pass\n" +
+      "    global ExportedClass\n" +
+      "    class ExportedClass:\n" +
+      "        marker = 'nested-module-class'",
+  );
+  assert.equal(
+    (await session.evaluate(
+      "method_value, __main__.method_value, exported_function(), " +
+      "hasattr(FunctionGlobal, 'exported_function'), _Private__value, " +
+        "hasattr(Private, '_Private__value'), " +
+        "imported_runtime is runtime, loop_global, with_global, " +
+        "ExportedClass.marker, " +
+        "hasattr(GlobalBindingForms, 'imported_runtime'), " +
+        "hasattr(GlobalBindingForms, 'loop_global'), " +
+        "hasattr(GlobalBindingForms, 'with_global'), " +
+        "hasattr(GlobalBindingForms, 'ExportedClass')",
+    )).repr,
+    "('from-method', 'from-method', 'module-function', False, " +
+      "'private-module-value', False, True, 'loop-module-value', " +
+      "'with-module-value', 'nested-module-class', False, False, False, False)",
+  );
+
+  await assert.rejects(
+    session.evaluate(
+      "class ReadBeforeGlobalAssignment:\n" +
+        "    global not_yet_bound\n" +
+        "    observed = not_yet_bound\n" +
+        "    not_yet_bound = 1",
+    ),
+    /not_yet_bound|NameError|referenced before assignment/,
+  );
+  await assert.rejects(
+    session.evaluate(
+      "class ReadAfterGlobalDelete:\n" +
+        "    global deleted_global\n" +
+        "    deleted_global = 1\n" +
+        "    del deleted_global\n" +
+        "    observed = deleted_global",
+    ),
+    /deleted_global|NameError|referenced before assignment/,
+  );
+});
+
 test("kernel cells initialize magic globals once", async (t) => {
   const session = await createSage({ mode: "python" });
   t.after(() => session.close());
