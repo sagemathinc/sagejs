@@ -374,7 +374,6 @@ function nativeBinaryReceipt(assets, target) {
       role: entry.role,
       sha256: digestBytes(entry.bytes),
       size: entry.bytes.length,
-      wordSize: 64,
     };
     if (format === "elf") {
       return {
@@ -396,6 +395,7 @@ function nativeBinaryReceipt(assets, target) {
             versions: [target.libc.version],
           },
         },
+        wordSize: 64,
       };
     }
     if (format === "macho") {
@@ -423,6 +423,7 @@ function nativeBinaryReceipt(assets, target) {
       delayDependencies: [],
       machine: 0x8664,
       subsystem: 3,
+      wordSize: 64,
     };
   });
   const aggregate = {
