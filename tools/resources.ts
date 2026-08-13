@@ -45,6 +45,36 @@ const NATIVE_RUNTIME_MODULES = new Set([
   "@sagemath/sagejs-m4ri",
   "zeromq",
 ]);
+const SAGEJS_NATIVE_RUNTIME_MODULES = new Set([
+  "@sagemath/sagejs-flint",
+  "@sagemath/sagejs-fflas",
+  "@sagemath/sagejs-graph",
+  "@sagemath/sagejs-m4ri",
+]);
+
+export function publishedNativeModuleError(
+  name: string,
+  error: unknown,
+  directory = __dirname,
+): Error | undefined {
+  const code = (error as NodeJS.ErrnoException)?.code;
+  if (
+    code !== "MODULE_NOT_FOUND" ||
+    !SAGEJS_NATIVE_RUNTIME_MODULES.has(name) ||
+    !directory.split(/[\\/]/).includes("node_modules")
+  ) {
+    return undefined;
+  }
+  return new Error(
+    `The published Sage.js JavaScript API cannot load native backend ${name}. ` +
+      "The current platform npm package provides the self-contained sagejs " +
+      "and sagepython command-line runtimes, but does not yet publish " +
+      "relocatable Node addon assets for programmatic native exact " +
+      "mathematics. Use the Sage.js CLI for native mathematics, or set " +
+      "SAGEJS_NATIVE_DISABLE=1 for supported portable JavaScript operations.",
+    { cause: error },
+  );
+}
 
 let flintModule: unknown;
 let graphModule: unknown;
@@ -515,7 +545,13 @@ export function runtimeRequire(name: string): unknown {
     } else if (name === "@sagemath/sagejs-symbolic") {
       module = require("../vendor/symbolic-backend.cjs");
     } else {
-      module = require(name);
+      try {
+        module = require(name);
+      } catch (error) {
+        const publishedError = publishedNativeModuleError(name, error);
+        if (publishedError) throw publishedError;
+        throw error;
+      }
     }
     runtimeModuleCache.set(name, module);
     return module;
