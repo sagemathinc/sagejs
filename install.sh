@@ -69,12 +69,13 @@ case "$expected" in
 esac
 [ "${#expected}" -eq 64 ] || fail "invalid SHA-256 length for $archive"
 if command -v sha256sum >/dev/null 2>&1; then
-  actual=$(sha256sum "$archive_path" | awk '{ print $1 }')
+  sha256_file() { sha256sum "$1" | awk '{ print $1 }'; }
 elif command -v shasum >/dev/null 2>&1; then
-  actual=$(shasum -a 256 "$archive_path" | awk '{ print $1 }')
+  sha256_file() { shasum -a 256 "$1" | awk '{ print $1 }'; }
 else
   fail "sha256sum or shasum is required"
 fi
+actual=$(sha256_file "$archive_path")
 [ "$actual" = "$expected" ] || fail "SHA-256 verification failed for $archive"
 
 case "$platform" in
@@ -106,24 +107,39 @@ generation_name=$(printf '%s' "$installed_version" | sed 's/[^A-Za-z0-9._-]/-/g'
 generation_name="$generation_name-$actual"
 generation_target="$install_root/$generation_name"
 if [ -e "$generation_target" ]; then
-  rm -rf "$generation"
+  generation_matches=1
+  for executable in sagejs sagepython; do
+    existing="$generation_target/$executable"
+    if [ ! -f "$existing" ] || [ -L "$existing" ] || [ ! -x "$existing" ] || \
+      [ "$(sha256_file "$existing")" != "$(sha256_file "$distribution/$executable")" ]; then
+      generation_matches=0
+      break
+    fi
+  done
+  if [ "$generation_matches" -eq 1 ]; then
+    rm -rf "$generation"
+  else
+    # Never reuse or replace a damaged immutable generation. Publish the newly
+    # validated staging tree under a distinct repair name, then point current
+    # at it atomically. Existing processes keep their old directory identity.
+    generation_name="$generation_name-repair-$$"
+    generation_target="$install_root/$generation_name"
+    [ ! -e "$generation_target" ] || fail "repair generation already exists"
+    mv "$generation" "$generation_target"
+  fi
 else
   mv "$generation" "$generation_target"
 fi
 generation=""
 link_target=".sagejs-installations/$generation_name"
-managed_launchers=0
 for executable in sagejs sagepython; do
   launcher="$install_directory/$executable"
   if [ -e "$launcher" ] || [ -L "$launcher" ]; then
     [ -L "$launcher" ] || fail "$launcher is not managed by the Sage.js installer"
     [ "$(readlink "$launcher")" = ".sagejs-current/$executable" ] || \
       fail "$launcher has an unexpected link target"
-    managed_launchers=$((managed_launchers + 1))
   fi
 done
-[ "$managed_launchers" -eq 0 ] || [ "$managed_launchers" -eq 2 ] || \
-  fail "Sage.js installation has an incomplete launcher pair"
 temporary_link="$install_directory/.sagejs-current.$$"
 ln -s "$link_target" "$temporary_link"
 if [ "${SAGEJS_INSTALL_FAIL_BEFORE_SWITCH:-0}" = "1" ]; then
@@ -136,15 +152,15 @@ else
   mv -fh "$temporary_link" "$install_directory/.sagejs-current"
 fi
 temporary_link=""
-if [ "$managed_launchers" -eq 0 ]; then
-  for executable in sagejs sagepython; do
-    launcher="$install_directory/$executable"
+for executable in sagejs sagepython; do
+  launcher="$install_directory/$executable"
+  if [ ! -e "$launcher" ] && [ ! -L "$launcher" ]; then
     temporary_launcher="$install_directory/.$executable.link.$$"
     ln -s ".sagejs-current/$executable" "$temporary_launcher"
     mv -f "$temporary_launcher" "$launcher"
     temporary_launcher=""
-  done
-fi
+  fi
+done
 
 echo "Installed $installed_version in $install_directory"
 case ":${PATH}:" in

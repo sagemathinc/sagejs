@@ -11,9 +11,11 @@ const {
   mkdirSync,
   mkdtempSync,
   readFileSync,
+  readlinkSync,
   readdirSync,
   renameSync,
   rmSync,
+  statSync,
   writeFileSync,
 } = require("node:fs");
 const { tmpdir } = require("node:os");
@@ -190,13 +192,16 @@ function installerEnvironment(directory, values, extra = {}) {
 }
 
 function artifactMetadata(filename) {
-  const stat = lstatSync(filename);
-  return {
-    bytes: stat.size,
+  const linkStat = lstatSync(filename);
+  const targetStat = statSync(filename);
+  const result = {
+    bytes: targetStat.size,
     filename: basename(filename),
-    mode: (stat.mode & 0o777).toString(8).padStart(3, "0"),
+    mode: (targetStat.mode & 0o777).toString(8).padStart(3, "0"),
     sha256: sha256(filename),
   };
+  if (linkStat.isSymbolicLink()) result.symbolicLink = readlinkSync(filename);
+  return result;
 }
 
 function visitFiles(directory, prefix = "") {
