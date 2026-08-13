@@ -4,6 +4,7 @@ const assert = require("node:assert/strict");
 const { execFileSync } = require("node:child_process");
 const { createHash } = require("node:crypto");
 const {
+  existsSync,
   mkdirSync,
   mkdtempSync,
   readFileSync,
@@ -21,6 +22,7 @@ const {
   SEA_ASSEMBLY_POLICY,
   stageSeaInputs,
   targetFromSeaBuilder,
+  withSeaBuildLock,
 } = require("../scripts/build-sea.cjs");
 const {
   serialize,
@@ -393,6 +395,14 @@ test("SEA inputs are copied into an immutable logical staging layout", () => {
       Object.fromEntries(Object.entries(item.assets).reverse()),
       { outputDirectory: stagingRoot },
     );
+    const concurrent = stageSeaInputs(
+      "sagejs",
+      item.seaNode,
+      item.mainBundle,
+      item.assets,
+      { outputDirectory: stagingRoot },
+    );
+    assert.notEqual(staged.directory, concurrent.directory);
     assert.deepEqual(Object.keys(staged.assets), Object.keys(item.assets).sort());
     assert.equal(readFileSync(staged.mainBundle, "utf8"), "main bundle bytes");
     assert.equal(readFileSync(staged.seaNode, "utf8"), "node template bytes");
@@ -410,6 +420,27 @@ test("SEA inputs are copied into an immutable logical staging layout", () => {
     assert.equal(readFileSync(staged.mainBundle, "utf8"), "main bundle bytes");
   } finally {
     item.cleanup();
+  }
+});
+
+test("one checkout cannot assemble overlapping SEA outputs", () => {
+  const root = mkdtempSync(join(tmpdir(), "sagejs-sea-build-lock-"));
+  const lock = join(root, ".sea-build.lock");
+  try {
+    assert.equal(
+      withSeaBuildLock(lock, () => {
+        assert.equal(existsSync(lock), true);
+        assert.throws(
+          () => withSeaBuildLock(lock, () => undefined),
+          /another SEA build owns/,
+        );
+        return "built";
+      }),
+      "built",
+    );
+    assert.equal(existsSync(lock), false);
+  } finally {
+    rmSync(root, { force: true, recursive: true });
   }
 });
 

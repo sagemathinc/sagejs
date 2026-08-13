@@ -2,14 +2,18 @@
 
 const { buildSync } = require("esbuild");
 const {
+  closeSync,
   chmodSync,
   copyFileSync,
   existsSync,
+  mkdtempSync,
   mkdirSync,
+  openSync,
   readFileSync,
   readdirSync,
   rmSync,
   statSync,
+  unlinkSync,
   writeFileSync,
 } = require("fs");
 const { createHash } = require("crypto");
@@ -151,12 +155,9 @@ function stageRegularFile(source, destination, label) {
 }
 
 function stageSeaInputs(name, seaNode, mainBundle, assets, options = {}) {
-  const directory = join(
-    options.outputDirectory || outputDirectory,
-    `.inputs-${name}`,
-  );
-  rmSync(directory, { recursive: true, force: true });
-  mkdirSync(directory, { recursive: true });
+  const stagingRoot = options.outputDirectory || outputDirectory;
+  mkdirSync(stagingRoot, { recursive: true });
+  const directory = mkdtempSync(join(stagingRoot, `.inputs-${name}-`));
   const stagedAssets = {};
   for (const [asset, filename] of Object.entries(assets).sort(
     ([left], [right]) => left.localeCompare(right),
@@ -187,6 +188,30 @@ function stageSeaInputs(name, seaNode, mainBundle, assets, options = {}) {
       "SEA Node template",
     ),
   };
+}
+
+function withSeaBuildLock(lockFilename, callback) {
+  mkdirSync(dirname(lockFilename), { recursive: true });
+  let descriptor;
+  try {
+    descriptor = openSync(lockFilename, "wx", 0o600);
+  } catch (error) {
+    if (error?.code === "EEXIST") {
+      throw new Error(
+        `another SEA build owns ${lockFilename}; wait for it to finish or ` +
+        "remove the lock only after verifying that build is no longer running",
+        { cause: error },
+      );
+    }
+    throw error;
+  }
+  try {
+    writeFileSync(descriptor, `${process.pid}\n`);
+    return callback();
+  } finally {
+    closeSync(descriptor);
+    unlinkSync(lockFilename);
+  }
 }
 
 function compareVersions(left, right) {
@@ -882,7 +907,7 @@ function buildExecutable(name, withFlint, sourceIdentity) {
   }
 }
 
-function main() {
+function buildAll() {
   rmSync(outputDirectory, { recursive: true, force: true });
   mkdirSync(outputDirectory, { recursive: true });
   const sourceIdentity = gitSourceIdentity(root, { allowDirty: true });
@@ -928,6 +953,10 @@ function main() {
   }
 }
 
+function main() {
+  return withSeaBuildLock(join(root, "build", ".sea-build.lock"), buildAll);
+}
+
 if (require.main === module) main();
 
 module.exports = {
@@ -942,4 +971,5 @@ module.exports = {
   stageRegularFile,
   stageSeaInputs,
   targetFromSeaBuilder,
+  withSeaBuildLock,
 };
