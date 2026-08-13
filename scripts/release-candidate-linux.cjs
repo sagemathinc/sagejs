@@ -303,7 +303,7 @@ function validateEmbeddedExecutable(executable, expectedReceipt) {
     expectedReceipt,
     `${basename(executable)} embedded receipt does not match its sidecar`,
   );
-  assert.equal(report.artifact.kind, "sea");
+  assert.equal(report.artifact.kind, "single-executable");
   return report;
 }
 
