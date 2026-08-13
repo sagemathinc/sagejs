@@ -559,6 +559,8 @@ function nativeArtifactSpecs(workspace, overrides = {}) {
     },
     graph: {
       dependencyInputs: [
+        "scripts/native-dependency-receipt.cjs",
+        "scripts/native-math-profile.cjs",
         "packages/graph/scripts/build-deps.cjs",
         "packages/graph/include/sagejs/igraph_ffi.h",
       ],
@@ -594,6 +596,8 @@ function nativeArtifactSpecs(workspace, overrides = {}) {
         ? "copy"
         : "shared-readonly",
       dependencyInputs: [
+        "scripts/native-dependency-receipt.cjs",
+        "scripts/native-math-profile.cjs",
         "packages/m4ri/package.json",
         "packages/m4ri/scripts/build-deps.cjs",
         "packages/m4ri/include/sagejs/m4ri_matrix_ffi.h",
@@ -654,9 +658,7 @@ function nativeArtifactSpecs(workspace, overrides = {}) {
     const dependencyKey = sha256(JSON.stringify(stableJson({
       identity: dependencyIdentity,
       inputs: dependencyInputs,
-      mathProfile: ["flint", "fflas"].includes(packageId)
-        ? mathProfile
-        : null,
+      mathProfile,
       materialization: description.dependencyMaterialization,
       ...(packageId === "flint" && platform === "win32"
         ? { outputLayout: "complete-vcpkg-installation-v1" }
@@ -684,9 +686,7 @@ function nativeArtifactSpecs(workspace, overrides = {}) {
         stage: "dependencies",
         key: dependencyKey,
         identity,
-        mathProfile: ["flint", "fflas"].includes(packageId)
-          ? mathProfile
-          : null,
+        mathProfile,
         inputPaths: description.dependencyInputs,
         inputs: dependencyInputs,
         platformInputs,
@@ -707,9 +707,7 @@ function nativeArtifactSpecs(workspace, overrides = {}) {
         stage: "addon",
         key: addonKey,
         identity,
-        mathProfile: ["flint", "fflas"].includes(packageId)
-          ? mathProfile
-          : null,
+        mathProfile,
         inputPaths: description.addonInputs,
         inputs: addonInputs,
         outputRoots: description.addonOutputs,

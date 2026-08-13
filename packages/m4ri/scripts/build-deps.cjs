@@ -14,6 +14,15 @@ const {
 const { basename, dirname, join, resolve } = require("node:path");
 const { spawnSync } = require("node:child_process");
 
+const {
+  nativeMathBuildProfile,
+} = require("../../../scripts/native-math-profile.cjs");
+const {
+  commandIdentity,
+  readNativeDependencyReceipt,
+  writeNativeDependencyReceipt,
+} = require("../../../scripts/native-dependency-receipt.cjs");
+
 const packageRoot = resolve(__dirname, "..");
 const repositoryRoot = resolve(packageRoot, "..", "..");
 const buildRoot = join(packageRoot, ".native");
@@ -40,11 +49,92 @@ const macosDeploymentTarget = process.platform === "darwin"
   ? process.env.MACOSX_DEPLOYMENT_TARGET || "13.0"
   : undefined;
 const dependency = {
+  name: "m4ri",
   version: "20260122",
   url: "https://github.com/malb/m4ri/releases/download/20260122/m4ri-20260122.tar.gz",
   sha256: "7e033ca1fd36be8861e2f67d9d124c398fc0d830209bb0226462485876346404",
   archive: process.env.SAGEJS_M4RI_TARBALL,
 };
+
+const baseConfigureOptions = [
+  "--disable-shared",
+  "--enable-static",
+  "--with-pic",
+  "--disable-png",
+  "--disable-openmp",
+  "--without-papi",
+  "--enable-thread-safe",
+  "--disable-dependency-tracking",
+];
+
+const portableCacheBytes = Object.freeze({
+  l1: 32 * 1024,
+  l2: 256 * 1024,
+  l3: 8 * 1024 * 1024,
+});
+
+function configureOptions(mathProfile) {
+  const options = [...baseConfigureOptions];
+  if (mathProfile.effectiveProfile === "portable") {
+    options.push(
+      `--with-cachesize=${portableCacheBytes.l1}:` +
+      `${portableCacheBytes.l2}:${portableCacheBytes.l3}`,
+    );
+  }
+  return options;
+}
+
+function expectedBuild(options = {}) {
+  const platform = options.platform || process.platform;
+  const arch = options.arch || process.arch;
+  const mathProfile = options.mathProfile || nativeMathBuildProfile({
+    arch,
+    environment: options.environment || process.env,
+    platform,
+  });
+  const cflags = platform === "win32"
+    ? []
+    : [...mathProfile.buildOptions.flint.cflags, "-std=gnu17"];
+  const deployment = platform === "darwin"
+    ? { macos: options.macosDeploymentTarget || macosDeploymentTarget }
+    : null;
+  return {
+    build: {
+      cflags,
+      cachePolicy: platform === "win32"
+        ? "unavailable"
+        : mathProfile.effectiveProfile === "portable"
+          ? { kind: "fixed-portable", ...portableCacheBytes }
+          : { kind: "configure-detected" },
+      configure: platform === "win32" ? [] : configureOptions(mathProfile),
+      instructionPolicy: platform === "win32"
+        ? "unavailable"
+        : mathProfile.effectiveProfile === "cpu-native"
+          ? "compiler-native"
+          : arch === "x64"
+            ? "x86-64-sse2-baseline"
+            : "compiler-target-baseline",
+      threadSafe: platform !== "win32",
+    },
+    capability: platform !== "win32",
+    dependency: {
+      name: dependency.name,
+      sha256: dependency.sha256,
+      version: dependency.version,
+    },
+    deployment,
+    interface: {
+      header: "include/sagejs/m4ri_matrix_ffi.h",
+      sha256: digest(publicHeader),
+    },
+    mathProfile,
+    package: "m4ri",
+    toolchain: {
+      build: platform === "win32" ? null : commandIdentity("make"),
+      compilers: mathProfile.compilers,
+    },
+  };
+}
 
 function run(command, arguments_, options = {}) {
   process.stdout.write(`+ ${command} ${arguments_.join(" ")}\n`);
@@ -128,30 +218,27 @@ function makePrefixRelocatable() {
 
 async function buildDependencies() {
   const stamp = join(prefix, ".sagejs-m4ri-dependencies.json");
+  const expected = expectedBuild();
   const supported =
     ((process.platform === "linux" || process.platform === "darwin") &&
       (process.arch === "x64" || process.arch === "arm64"));
   if (process.platform === "win32") {
+    if (readNativeDependencyReceipt(stamp, { expectation: expected, prefix })) {
+      installHeader();
+      process.stdout.write("Reusing disabled native Windows M4RI capability\n");
+      return;
+    }
+    rmSync(prefix, { recursive: true, force: true });
     mkdirSync(prefix, { recursive: true });
     installHeader();
-    writeFileSync(
-      stamp,
-      `${JSON.stringify({ capability: false, platform: "win32" }, null, 2)}\n`,
-    );
+    writeNativeDependencyReceipt(stamp, expected, prefix);
     process.stdout.write("M4RI capability disabled on native Windows\n");
     return;
   }
   if (!supported) throw new Error(`unsupported M4RI host ${process.platform}/${process.arch}`);
-  const expected = {
-    version: dependency.version,
-    sha256: dependency.sha256,
-    threadSafe: true,
-    ...(macosDeploymentTarget ? { macosDeploymentTarget } : {}),
-  };
   if (
-    existsSync(stamp) &&
     existsSync(join(prefix, "lib", "libm4ri.a")) &&
-    JSON.stringify(JSON.parse(readFileSync(stamp, "utf8"))) === JSON.stringify(expected)
+    readNativeDependencyReceipt(stamp, { expectation: expected, prefix }) !== null
   ) {
     installHeader();
     process.stdout.write(`Reusing M4RI ${dependency.version} from ${prefix}\n`);
@@ -167,22 +254,15 @@ async function buildDependencies() {
     "./configure",
     [
       `--prefix=${prefix}`,
-      "--disable-shared",
-      "--enable-static",
-      "--with-pic",
-      "--disable-png",
-      "--disable-openmp",
-      "--without-papi",
-      "--enable-thread-safe",
-      "--disable-dependency-tracking",
+      ...expected.build.configure,
     ],
-    { cwd: source, env: { CFLAGS: "-O3 -fPIC -std=gnu17" } },
+    { cwd: source, env: { CFLAGS: expected.build.cflags.join(" ") } },
   );
   run("make", [`-j${jobs}`], { cwd: source });
   run("make", ["install"], { cwd: source });
   installHeader();
   makePrefixRelocatable();
-  writeFileSync(stamp, `${JSON.stringify(expected, null, 2)}\n`);
+  writeNativeDependencyReceipt(stamp, expected, prefix);
   rmSync(sources, { recursive: true, force: true });
 }
 
@@ -213,7 +293,11 @@ async function main() {
   await buildDependencies();
 }
 
-main().catch((error) => {
-  process.stderr.write(`${error.stack || error}\n`);
-  process.exitCode = 1;
-});
+if (require.main === module) {
+  main().catch((error) => {
+    process.stderr.write(`${error.stack || error}\n`);
+    process.exitCode = 1;
+  });
+}
+
+module.exports = { configureOptions, expectedBuild, portableCacheBytes };
