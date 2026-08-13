@@ -134,7 +134,7 @@ test("scalar payload validation remains ordinary CPython", () => {
   const source = [
     "import sys",
     `sys.path.append(${JSON.stringify(join(root, "src/lib"))})`,
-    "from sagejs.polynomial_algorithms.extension_scalar_resource import canonical_element_payload, decode_coordinate_bytes, deserialize_element_payload, stable_element_hash",
+    "from sagejs.polynomial_algorithms.extension_scalar_contract import canonical_element_payload, decode_coordinate_bytes, deserialize_element_payload, stable_element_hash",
     "payload = canonical_element_payload((3, 2, (1, 0, 1), 'a'), (1, 2))",
     "assert deserialize_element_payload(payload) == payload",
     "assert stable_element_hash(payload) == 1322546476",

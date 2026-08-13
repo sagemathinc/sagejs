@@ -15,6 +15,7 @@
     "packages/flint/generated/ffi_host.py",
     "src/baselib/sagejs/ffi/flint.py",
     "src/lib/sagejs/ffi/flint.py",
+    "src/lib/sagejs/polynomial_algorithms/extension_scalar_contract.py",
     "src/lib/sagejs/polynomial_algorithms/extension_scalar_resource.py",
     "src/lib/sagejs/kernels/polynomial/extension_flint.py",
     "test/finite-extension-scalar-resource.cjs",
