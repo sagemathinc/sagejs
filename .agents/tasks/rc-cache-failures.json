@@ -1,0 +1,86 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "rc-cache-failures",
+  "title": "Rc Cache Failures",
+  "lane": "integration",
+  "status": "active",
+  "owner": "user",
+  "objective": "Validate bounded runtime/native caches and release failure behavior for unwritable, corrupt, interrupted, missing-compiler, and concurrent cases.",
+  "base_commit": "950f0134dd51ca66776dc3d6290a5807cf3fd77f",
+  "claims": [
+    "test/release-cache-lifecycle.cjs",
+    "scripts/release-cache-smoke.cjs"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "not-applicable",
+    "fallback": "not-applicable",
+    "oracles": [],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm architecture:check",
+    "pnpm test:portable",
+    "pnpm test:baselib:strict"
+  ],
+  "runs": [
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 7.969,
+      "started_at": "2026-08-13T19:53:35.072Z",
+      "commit": "950f0134dd51ca66776dc3d6290a5807cf3fd77f",
+      "workspace_fingerprint": "ac80682faca573b28d7c7fce119c38e602514a2088b818f4aef53774b935df95",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 44.406,
+      "started_at": "2026-08-13T19:53:55.825Z",
+      "commit": "950f0134dd51ca66776dc3d6290a5807cf3fd77f",
+      "workspace_fingerprint": "ac80682faca573b28d7c7fce119c38e602514a2088b818f4aef53774b935df95",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/release-cache-lifecycle.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.148,
+      "started_at": "2026-08-13T19:55:18.353Z",
+      "commit": "950f0134dd51ca66776dc3d6290a5807cf3fd77f",
+      "workspace_fingerprint": "ac80682faca573b28d7c7fce119c38e602514a2088b818f4aef53774b935df95",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 15.24,
+      "started_at": "2026-08-13T19:55:34.287Z",
+      "commit": "950f0134dd51ca66776dc3d6290a5807cf3fd77f",
+      "workspace_fingerprint": "ac80682faca573b28d7c7fce119c38e602514a2088b818f4aef53774b935df95",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Added a hermetic release cache smoke command and focused regression covering the public module/dynamic cache CLI plus native cold/warm restore, corruption recovery, interrupted publication, bounded cleanup, broad-path refusal, unusable roots, missing compiler recovery, live leases, and concurrent single-publication behavior.",
+    "risks": [
+      "The portable tier was not accepted as a lane receipt because this isolated worktree did not provision optional FLINT artifacts; its cache-independent failures were missing native addons. The smoke itself passed 6/6 on Linux x64 and contains no POSIX-only filesystem operations."
+    ],
+    "next_steps": [
+      "The integration lane must add test/release-cache-lifecycle.cjs to test/node-test-manifest.cjs because that shared registry is outside this lane's claims.",
+      "Run the smoke from unsigned macOS arm64 and Windows x64 release candidates as part of the coordinated platform validation."
+    ]
+  }
+}
