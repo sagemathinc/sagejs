@@ -1,0 +1,58 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "linux-rc-hardening",
+  "title": "Linux release candidate hardening",
+  "lane": "integration",
+  "status": "active",
+  "owner": "user",
+  "objective": "Harden the Linux x64 release candidate packager and validator with hermetic deterministic environments, artifact-bound receipts, authoritative native mathematics smoke tests, complete cleanup, atomic publication, and upgrade/corruption failure coverage",
+  "base_commit": "354b0588e8d8d7ac98df8a7683a9cddae6cbbd5a",
+  "claims": [
+    ".agents/",
+    "TODO.md",
+    "architecture/package-graph.json",
+    "install.sh",
+    "scripts/build-sea.cjs",
+    "scripts/release-candidate-linux.cjs",
+    "scripts/release-math-smoke.cjs",
+    "scripts/release-native-binary-inspector.cjs",
+    "test/node-test-manifest.cjs",
+    "test/release-candidate-linux.cjs",
+    "test/release-native-binary-inspector.cjs",
+    "scripts/test-installer.cjs",
+    "test/release-math-smoke.cjs",
+    "test/sea-build-manifest.cjs",
+    "test/sea-smoke.cjs",
+    "test/startup-budget.cjs",
+    "tools/sea-entry.ts"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "not-applicable",
+    "fallback": "not-applicable",
+    "oracles": [
+      "Existing SEA release manifest validators",
+      "Shared release-math-smoke --require-native"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "not-applicable",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm architecture:check",
+    "pnpm test:portable",
+    "pnpm test:baselib:strict"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "",
+    "risks": [],
+    "next_steps": []
+  }
+}
