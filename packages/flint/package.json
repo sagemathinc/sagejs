@@ -24,7 +24,7 @@
     "build:addon": "node-gyp rebuild",
     "build:ffi": "node ../../scripts/build-ffi-host-adapter.cjs flint",
     "build": "node scripts/build.cjs",
-    "test": "node --expose-gc --test --test-concurrency=3 --test-reporter=spec test/test.cjs test/dirichlet.cjs test/modular.cjs test/extension-field-lifecycle.cjs test/lazy-factor.cjs",
+    "test": "node --expose-gc --test --test-concurrency=3 --test-reporter=spec test/test.cjs test/dirichlet.cjs test/modular.cjs test/extension-field-lifecycle.cjs test/lazy-factor.cjs test/windows-vcpkg-source.cjs",
     "bench": "node bench/benchmark.cjs"
   },
   "devDependencies": {

@@ -183,6 +183,13 @@ runtime. The Node addon uses clang-cl because its machine-word kernels rely on
 portable 128-bit integer operations. Windows does not require WSL, MSYS2, or
 MinGW.
 
+The pinned vcpkg GMP port needs autoconf 2.71 while compiling for MSVC. MSYS2
+garbage-collects superseded package revisions, so Sage.js carries a provenance-
+preserving GMP overlay whose only material change is to download the exact
+SHA-512-verified autoconf archive from the immutable `native-sources-1` release.
+This keeps a fresh Windows build reproducible even after the rolling MSYS2
+mirrors discard that revision.
+
 The current `ffpoly` release's assembly implementation is Linux x64-specific.
 On Linux arm64, macOS, and Windows, `smalljacVersion()` returns `null` and the
 elliptic-curve API uses its tested portable point-count fallback. Porting ffpoly/smalljac to
