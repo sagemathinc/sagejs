@@ -1,0 +1,43 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "reproducible-native-paths",
+  "title": "Reproducible Native Paths",
+  "lane": "integration",
+  "status": "active",
+  "owner": "user",
+  "objective": "Publish production native-kernel metadata without checkout-local paths and define a safe path-remapping plan for release-native builds",
+  "base_commit": "354b0588e8d8d7ac98df8a7683a9cddae6cbbd5a",
+  "claims": [
+    "scripts/build-production-native-kernels.cjs",
+    "test/production-native-kernels.cjs",
+    "TODO.md"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "compiler-infrastructure",
+    "fallback": "not-applicable",
+    "oracles": [
+      "Published index relocation and source-tree privacy tests"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm architecture:check",
+    "pnpm test:portable",
+    "pnpm test:baselib:strict"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "",
+    "risks": [],
+    "next_steps": []
+  }
+}

@@ -85,3 +85,14 @@
 - Ratchet cold production-kernel loading separately from warm mathematical
   execution, and never silently compile a missing production kernel in an
   ordinary installed session.
+- Make release-native objects byte-reproducible across independent checkouts in
+  three explicit stages: (1) teach the native compiler to use logical source
+  provenance for cache identity, generated wrapper registration, IR, and
+  `#line` directives while retaining absolute paths only in private diagnostics;
+  (2) build node-gyp addons and static dependencies in a canonical staging root
+  with compiler-supported file, macro, and debug prefix maps whose normalized
+  policy is part of the native profile/cache identity, plus fixed source epochs
+  and deterministic archive/link settings (including ClangCL `/pathmap` and
+  `/Brepro` equivalents on Windows); and (3) compare independently built
+  archives and addons byte-for-byte and scan them for checkout/build prefixes.
+  Do not claim reproducibility merely because published metadata is relocatable.
