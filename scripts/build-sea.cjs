@@ -12,6 +12,9 @@ const {
 const { createHash } = require("crypto");
 const { execFileSync } = require("child_process");
 const { dirname, join, relative } = require("path");
+const {
+  standaloneModuleInventory,
+} = require("../tools/standalone-library.cjs");
 
 const root = join(__dirname, "..");
 const outputDirectory = join(root, "build", "sea");
@@ -67,6 +70,9 @@ const fflasFfiAddon = join(
 const fflasFfiManifest = join(dirname(fflasFfiAddon), "manifest.json");
 
 const args = new Set(process.argv.slice(2));
+const standaloneModuleDefinition = JSON.stringify(
+  standaloneModuleInventory(),
+);
 const buildPython = args.size === 0 || args.has("--all") || args.has("--python");
 const buildMath = args.has("--all") || args.has("--with-flint");
 const executableSuffix = process.platform === "win32" ? ".exe" : "";
@@ -469,6 +475,9 @@ buildSync({
   sourcemap: false,
   minify: false,
   external: ["plotly.js-dist-min/plotly.min.js"],
+  define: {
+    __SAGEJS_STANDALONE_MODULES__: standaloneModuleDefinition,
+  },
 });
 
 buildSync({
@@ -481,6 +490,9 @@ buildSync({
   sourcemap: false,
   minify: false,
   external: ["plotly.js-dist-min/plotly.min.js"],
+  define: {
+    __SAGEJS_STANDALONE_MODULES__: standaloneModuleDefinition,
+  },
 });
 
 buildSync({
@@ -493,6 +505,9 @@ buildSync({
   sourcemap: false,
   minify: false,
   external: ["plotly.js-dist-min/plotly.min.js"],
+  define: {
+    __SAGEJS_STANDALONE_MODULES__: standaloneModuleDefinition,
+  },
 });
 
 if (buildPython) buildExecutable(`sagepython${executableSuffix}`, false);
