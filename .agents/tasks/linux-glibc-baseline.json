@@ -11,7 +11,8 @@
   "claims": [
     "scripts/linux-baseline/",
     "docs/linux-release-baseline.md",
-    "test/linux-release-baseline.cjs"
+    "test/linux-release-baseline.cjs",
+    "test/node-test-manifest.cjs"
   ],
   "dependencies": [],
   "references": [
