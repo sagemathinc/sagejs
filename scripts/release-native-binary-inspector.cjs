@@ -458,6 +458,23 @@ function peRvaToOffset(rva, size, sections) {
   throw new BinaryFormatError(`PE RVA 0x${rva.toString(16)} is not mapped by a section`);
 }
 
+function peRvaString(buffer, rva, sections) {
+  for (const section of sections) {
+    const extent = Math.max(section.virtualSize, section.rawSize);
+    if (rva < section.virtualAddress || rva >= section.virtualAddress + extent) continue;
+    const relative = rva - section.virtualAddress;
+    if (relative >= section.rawSize) {
+      throw new BinaryFormatError("PE string RVA refers to virtual data absent from the file");
+    }
+    return cString(
+      buffer,
+      section.rawOffset + relative,
+      section.rawOffset + section.rawSize,
+    );
+  }
+  throw new BinaryFormatError(`PE string RVA 0x${rva.toString(16)} is not mapped`);
+}
+
 function inspectPe(buffer) {
   requireRange(buffer, 0, 0x40, "DOS header");
   const peOffset = buffer.readUInt32LE(0x3c);
@@ -474,6 +491,10 @@ function inspectPe(buffer) {
   const magic = buffer.readUInt16LE(optional);
   const is64 = magic === 0x20b;
   if (!is64 && magic !== 0x10b) throw new BinaryFormatError("unsupported PE optional header");
+  const requiredOptionalSize = is64 ? 112 : 96;
+  if (optionalSize < requiredOptionalSize) {
+    throw new BinaryFormatError("PE optional header is too small for its data directories");
+  }
   const dataDirectory = optional + (is64 ? 112 : 96);
   const directoryCountOffset = optional + (is64 ? 108 : 92);
   const directoryCount = buffer.readUInt32LE(directoryCountOffset);
@@ -505,31 +526,44 @@ function inspectPe(buffer) {
   const imports = [];
   const ordinary = directory(1);
   if (ordinary.rva !== 0 && ordinary.size !== 0) {
-    const start = peRvaToOffset(ordinary.rva, Math.min(ordinary.size, 20), sections);
+    if (ordinary.size < 20) throw new BinaryFormatError("truncated PE import directory");
+    const start = peRvaToOffset(ordinary.rva, ordinary.size, sections);
     const end = Math.min(start + ordinary.size, buffer.length);
+    let terminated = false;
     for (let offset = start; offset + 20 <= end; offset += 20) {
       const fields = Array.from({ length: 5 }, (_, index) => buffer.readUInt32LE(offset + index * 4));
-      if (fields.every((value) => value === 0)) break;
-      const nameOffset = peRvaToOffset(fields[3], 1, sections);
-      imports.push(cString(buffer, nameOffset));
+      if (fields.every((value) => value === 0)) {
+        terminated = true;
+        break;
+      }
+      imports.push(peRvaString(buffer, fields[3], sections));
     }
+    if (!terminated) throw new BinaryFormatError("unterminated PE import directory");
   }
 
   const delayed = [];
   const delayDirectory = directory(13);
   if (delayDirectory.rva !== 0 && delayDirectory.size !== 0) {
-    const start = peRvaToOffset(delayDirectory.rva, Math.min(delayDirectory.size, 32), sections);
+    if (delayDirectory.size < 32) {
+      throw new BinaryFormatError("truncated PE delay-import directory");
+    }
+    const start = peRvaToOffset(delayDirectory.rva, delayDirectory.size, sections);
     const end = Math.min(start + delayDirectory.size, buffer.length);
+    let terminated = false;
     for (let offset = start; offset + 32 <= end; offset += 32) {
       const attributes = buffer.readUInt32LE(offset);
       let name = buffer.readUInt32LE(offset + 4);
-      if (attributes === 0 && name === 0) break;
+      if (attributes === 0 && name === 0) {
+        terminated = true;
+        break;
+      }
       if ((attributes & 1) === 0) {
         if (name < imageBase) throw new BinaryFormatError("invalid PE delay-import address");
         name -= imageBase;
       }
-      delayed.push(cString(buffer, peRvaToOffset(name, 1, sections)));
+      delayed.push(peRvaString(buffer, name, sections));
     }
+    if (!terminated) throw new BinaryFormatError("unterminated PE delay-import directory");
   }
   return {
     format: "pe",
