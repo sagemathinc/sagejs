@@ -6,13 +6,15 @@
   "lane": "integration",
   "status": "active",
   "owner": "user",
-  "objective": "Implement a machine-readable release capability and provenance report that distinguishes compiled, bundled, fallback, unavailable, cold, and warm state without triggering builds.",
+  "objective": "Implement a machine-readable release capability and provenance report that distinguishes compiled, bundled, declared fallback, unavailable, and cache-presence evidence without triggering builds or claiming unprobed usability.",
   "base_commit": "950f0134dd51ca66776dc3d6290a5807cf3fd77f",
   "claims": [
     "scripts/release-capabilities.cjs",
     "test/release-capabilities.cjs"
   ],
-  "dependencies": [],
+  "dependencies": [
+    "rc-manifest"
+  ],
   "references": [],
   "architecture": {
     "strategy": "not-applicable",
@@ -132,19 +134,49 @@
       "commit": "06f20e6dc4fe97ddf1d54312c709fb15f67b5a02",
       "workspace_fingerprint": "2d205346a0a2b5c1101f2cd890f2ad25566b3cc530e5e3c6e4bd2289f4dff828",
       "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/release-capabilities.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.239,
+      "started_at": "2026-08-13T20:44:03.097Z",
+      "commit": "da88dd49736c1777fe4739f16a23823b7d0ce6f3",
+      "workspace_fingerprint": "9dd67583d772b1026853a2d1972d9f1bcfcf9648570a09d9d24c0d31eed6bd16",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 5.347,
+      "started_at": "2026-08-13T20:44:03.951Z",
+      "commit": "da88dd49736c1777fe4739f16a23823b7d0ce6f3",
+      "workspace_fingerprint": "9dd67583d772b1026853a2d1972d9f1bcfcf9648570a09d9d24c0d31eed6bd16",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 14.358,
+      "started_at": "2026-08-13T20:44:09.904Z",
+      "commit": "da88dd49736c1777fe4739f16a23823b7d0ce6f3",
+      "workspace_fingerprint": "9dd67583d772b1026853a2d1972d9f1bcfcf9648570a09d9d24c0d31eed6bd16",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {
-    "summary": "Added a standalone stable runtime observation report with deterministic JSON serialization and concise human output. Static generated FFI and production-kernel evidence is reported only as a candidate: loadability and selection remain explicitly not-probed, and SAGEJS_NATIVE_DISABLE plus MODE/AUTOLOAD/REQUIRED/WARN settings are separately described as @native runtime policy. A production-kernel candidate requires the complete declared production set with valid records, wrappers, and addons; missing or partial caches retain only their same-source fallback candidate. Mutable checkout/package/host observations are separate from immutable artifact identity, which requires an explicit valid build manifest or a verified embedded build-manifest asset. Embedded FFI manifests are checked against embedded addon bytes, source adapters are hash-checked without loading, nearby SEA checkout state is ignored, and cache paths are redacted by default. Ten focused tests cover these boundaries, including actual native-disable semantics, other @native policy combinations, incomplete kernels, tampering, valid and invalid SEA identity, explicit package identity, Windows M4RI, privacy, and read-only behavior.",
+    "summary": "Hardened the standalone release capability observation to consume the exact canonical build-manifest validator and expose valid sagejsVersion, source.commit, target, and toolchain.nativeMathProfile identity only. Invalid manifests fail closed without reflecting arbitrary content. Relocated SEA FFI and production-kernel candidates now require a generic immutable size/SHA-256 receipt for every embedded manifest, generated addon, required base addon, kernel index, wrapper, and kernel addon; the exact native-kernel source set and canonical index identity come from buildManifest.capabilities.nativeKernels, never a neighboring checkout. Static fallbacks are declared with availability not-probed, caches report only absent/empty/nonempty plus not-inspected, and SAGEJS_NATIVE_MATH_PROFILE is explicitly a build request. The @native policy model now distinguishes cache discovery from addon loading and exactly covers auto, native, dynamic, javascript, and invalid modes. Thirteen focused tests include byte tampering, missing receipts, manifest identity tampering, conflicting nearby architecture, policy combinations, and conservative cache semantics.",
     "risks": [
-      "Exact runtime-selected native-math fingerprints require compiler/toolchain probes, so this observational report labels the runtime selection probe not-run and only compares the effective requested profile with an observed immutable build or installed-prefix profile.",
-      "Platform behavior is simulated in the focused corpus; integration should exercise the standalone report inside real Linux and macOS release artifacts.",
-      "The full portable tier currently also needs native dependencies materialized in this isolated worktree."
+      "The native-math environment input is a prospective build request, not runtime selection; exact build fingerprints still require the build toolchain probe recorded by release assembly.",
+      "Platform behavior is simulated in the focused corpus; integration should exercise the standalone report inside real Linux, Windows, and macOS release artifacts.",
+      "The old-base portable tier reaches unrelated missing FLINT artifacts and lacks the integration-owned release test registrations; focused, architecture, and strict-library checks pass."
     ],
     "next_steps": [
-      "The integration lane must register test/release-capabilities.cjs in test/node-test-manifest.cjs, which is outside this lane's claims, then run the portable tier with its native dependencies materialized.",
+      "The integration lane must use its existing test/node-test-manifest.cjs registrations and materialized native dependencies to run the complete portable tier.",
       "Wire collectReleaseCapabilities and formatReleaseCapabilities into the public release diagnostics command without changing their observational-only contract.",
-      "Generate and embed sagejs.release-build-manifest-v1, then run the report from clean npm and SEA artifacts and retain its JSON beside release checksums and provenance."
+      "Release assembly must populate capabilities.embeddedAssets and capabilities.nativeKernels in the canonical build receipt, then retain the reporter JSON beside release checksums and provenance."
     ]
   }
 }
