@@ -1771,14 +1771,59 @@ class Vector(sage.Element):
         self._native_value = native_value
         self._immutable = False
 
+    def _coordinate_ring(self) -> sage.Parent:
+        """Return the ring containing entries, distinct from coefficients.
+
+        Usually this is `base_ring()`.  An embedded module such as a rational
+        lattice with `ZZ` coefficients instead has rational coordinates.
+        """
+        getter = getattr(self._parent, "_vector_coordinate_ring", None)
+        if callable(getter):
+            return _untyped(getter())
+        return self.base_ring()
+
+    def _preserve_parent(self) -> bool:
+        return callable(getattr(self._parent, "_vector_coordinate_ring", None))
+
+    def _from_coordinate_values(
+        self,
+        values: Any,
+        preserve_parent: bool = True,
+    ) -> Vector:
+        if preserve_parent and self._preserve_parent():
+            # Invoke the mathematical parent's coercion directly.  The
+            # compiler-level callable-instance wrapper intentionally returns
+            # an ambient coercion, which would discard this subspace parent.
+            return self._parent.__call__(values)
+        return VectorSpace(self._coordinate_ring(), len(self))(values)
+
+    def _from_coordinate_resource(
+        self,
+        resource: Any,
+        preserve_parent: bool = True,
+    ) -> Vector:
+        target = (
+            self._parent
+            if preserve_parent and self._preserve_parent()
+            else VectorSpace(self._coordinate_ring(), len(self))
+        )
+        if self._coordinate_ring() is sage.ZZ:
+            return target._from_fmpz_vector_resource(resource)
+        if self._coordinate_ring() is sage.QQ:
+            return target._from_fmpq_vector_resource(resource)
+        resource.close()
+        raise TypeError("exact vector resource requires ZZ or QQ coordinates")
+
     def _has_fmpz_vector_resource(self) -> bool:
         return (
-            self.base_ring() is sage.ZZ and self._native_value is not runtime.undefined
+            self._coordinate_ring() is sage.ZZ
+            and self._native_value is not runtime.undefined
         )
 
     def _has_fmpq_vector_resource(self) -> bool:
         return (
-            self.base_ring() is sage.QQ and self._native_value is not runtime.undefined
+            self._coordinate_ring() is sage.QQ
+            and self._native_value is not runtime.undefined
         )
 
     def _exact_vector_resource(self) -> Any:
@@ -1787,12 +1832,7 @@ class Vector(sage.Element):
         return self._native_value
 
     def _from_exact_vector_resource(self, resource: Any) -> Vector:
-        if self.base_ring() is sage.ZZ:
-            return self._parent._from_fmpz_vector_resource(resource)
-        if self.base_ring() is sage.QQ:
-            return self._parent._from_fmpq_vector_resource(resource)
-        resource.close()
-        raise TypeError("exact vector resource requires ZZ or QQ")
+        return self._from_coordinate_resource(resource)
 
     def _exact_values(self) -> list[Any]:
         exact = _exact_vector_public_module()
@@ -1827,7 +1867,7 @@ class Vector(sage.Element):
             values = []
             for position in range(start, stop, step):
                 values.append(source[position])
-            return VectorSpace(self.base_ring(), len(values))(values)
+            return VectorSpace(self._coordinate_ring(), len(values))(values)
         if self._native_value is runtime.undefined:
             return self._entries[index]
         position = _normalize_index(int(index), len(self))
@@ -1840,10 +1880,10 @@ class Vector(sage.Element):
         if self._immutable:
             raise ValueError("vector is immutable; change a copy instead")
         if self._native_value is runtime.undefined:
-            self._entries[index] = self.base_ring()(value)
+            self._entries[index] = self._coordinate_ring()(value)
             return
         position = _normalize_index(int(index), len(self))
-        coerced = self.base_ring()(value)
+        coerced = self._coordinate_ring()(value)
         exact = _exact_vector_public_module()
         if self._has_fmpz_vector_resource():
             exact.integer_set(self._exact_vector_resource(), position, coerced)
@@ -1880,9 +1920,12 @@ class Vector(sage.Element):
 
     def change_ring(self, base: sage.Parent) -> Vector:
         base = _canonical_base(base)
-        if base is self.base_ring():
+        coordinate_ring = self._coordinate_ring()
+        if base is self.base_ring() and coordinate_ring is self.base_ring():
             return self
-        if self.base_ring() is sage.ZZ and (
+        if base is coordinate_ring:
+            return VectorSpace(base, len(self))(self.list())
+        if coordinate_ring is sage.ZZ and (
             base is sage.QQ
             or _is_modular_base(base)
             or _is_extension_field_base(base)
@@ -1890,9 +1933,9 @@ class Vector(sage.Element):
             or _is_approximate_base(base)
         ):
             return VectorSpace(base, len(self))(_coerce_values(base, self.list()))
-        if base is not sage.QQ or self.base_ring() is not sage.ZZ:
+        if base is not sage.QQ or coordinate_ring is not sage.ZZ:
             if _is_algebraic_base(base) and (
-                self.base_ring() is sage.QQ or _is_algebraic_base(self.base_ring())
+                coordinate_ring is sage.QQ or _is_algebraic_base(coordinate_ring)
             ):
                 return VectorSpace(base, len(self))(_coerce_values(base, self.list()))
             raise TypeError("unsupported vector base-ring conversion")
@@ -1901,48 +1944,52 @@ class Vector(sage.Element):
     def _pair(self, other: object) -> tuple[Vector, Vector]:
         if not isinstance(other, Vector) or len(self) != len(other):
             raise TypeError("vector dimensions must agree")
-        base = _common_base(self.base_ring(), other.base_ring())
-        return self.change_ring(base), other.change_ring(base)
+        if self._parent is other._parent:
+            return self, other
+        base = _common_base(self._coordinate_ring(), other._coordinate_ring())
+        left = VectorSpace(base, len(self))(_coerce_values(base, self.list()))
+        right = VectorSpace(base, len(other))(_coerce_values(base, other.list()))
+        return left, right
 
     def __add__(self, other: object) -> Vector:
+        preserve_parent = isinstance(other, Vector) and self._parent is other._parent
         left, right = self._pair(other)
         if left._native_value is not runtime.undefined:
             resource = _exact_vector_public_module().add(
                 left._exact_vector_resource(),
                 right._exact_vector_resource(),
-                left.base_ring() is sage.QQ,
+                left._coordinate_ring() is sage.QQ,
             )
-            return left._from_exact_vector_resource(resource)
+            return left._from_coordinate_resource(resource, preserve_parent)
         values = []
         for index in range(len(left)):
             values.append(left._entries[index] + right._entries[index])
-        return VectorSpace(left.base_ring(), len(left))(values)
+        return left._from_coordinate_values(values, preserve_parent)
 
     def __sub__(self, other: object) -> Vector:
+        preserve_parent = isinstance(other, Vector) and self._parent is other._parent
         left, right = self._pair(other)
         if left._native_value is not runtime.undefined:
             resource = _exact_vector_public_module().sub(
                 left._exact_vector_resource(),
                 right._exact_vector_resource(),
-                left.base_ring() is sage.QQ,
+                left._coordinate_ring() is sage.QQ,
             )
-            return left._from_exact_vector_resource(resource)
+            return left._from_coordinate_resource(resource, preserve_parent)
         values = []
         for index in range(len(left)):
             values.append(left._entries[index] - right._entries[index])
-        return VectorSpace(left.base_ring(), len(left))(values)
+        return left._from_coordinate_values(values, preserve_parent)
 
     def __neg__(self) -> Vector:
         if self._native_value is not runtime.undefined:
             resource = _exact_vector_public_module().scalar_mul(
                 self._exact_vector_resource(),
-                self.base_ring()(-1),
-                self.base_ring() is sage.QQ,
+                self._coordinate_ring()(-1),
+                self._coordinate_ring() is sage.QQ,
             )
             return self._from_exact_vector_resource(resource)
-        return VectorSpace(self.base_ring(), len(self))(
-            [-value for value in self._entries]
-        )
+        return self._from_coordinate_values([-value for value in self._entries])
 
     def __mul__(self, other: object) -> Any:
         if isinstance(other, Vector):
@@ -1951,20 +1998,20 @@ class Vector(sage.Element):
                 return _exact_vector_public_module().dot(
                     left._exact_vector_resource(),
                     right._exact_vector_resource(),
-                    left.base_ring() is sage.QQ,
+                    left._coordinate_ring() is sage.QQ,
                 )
-            total = left.base_ring()(0)
+            total = left._coordinate_ring()(0)
             for index in range(len(left)):
                 total += left._entries[index] * right._entries[index]
             return total
         if isinstance(other, Matrix):
             return other._vector_product(self, "left")
-        if _is_extension_field_base(self.base_ring()):
+        if _is_extension_field_base(self.base_ring()) and not self._preserve_parent():
             scalar = self.base_ring()(other)
             return VectorSpace(self.base_ring(), len(self))(
                 [value * scalar for value in self]
             )
-        if _is_approximate_base(self.base_ring()):
+        if _is_approximate_base(self.base_ring()) and not self._preserve_parent():
             scalar = self.base_ring()(other)
             return VectorSpace(self.base_ring(), len(self))(
                 [value * scalar for value in self]
@@ -1973,16 +2020,23 @@ class Vector(sage.Element):
             self.base_ring(), other
         )
         base = _common_base(self.base_ring(), scalar_base)
-        source = self.change_ring(base)
-        scalar = base(other)
+        preserve_parent = base is self.base_ring() and self._preserve_parent()
+        if preserve_parent:
+            source = self
+            scalar = self._coordinate_ring()(base(other))
+        else:
+            source = self.change_ring(base)
+            scalar = base(other)
         if source._native_value is not runtime.undefined:
             resource = _exact_vector_public_module().scalar_mul(
                 source._exact_vector_resource(),
                 scalar,
-                base is sage.QQ,
+                source._coordinate_ring() is sage.QQ,
             )
-            return source._from_exact_vector_resource(resource)
-        return VectorSpace(base, len(source))([value * scalar for value in source])
+            return source._from_coordinate_resource(resource, preserve_parent)
+        return source._from_coordinate_values(
+            [value * scalar for value in source], preserve_parent
+        )
 
     def __rmul__(self, other: object) -> Vector:
         return self * other
@@ -2007,10 +2061,10 @@ class Vector(sage.Element):
         return self * other
 
     def column(self) -> Matrix:
-        return matrix(self.base_ring(), len(self), 1, self.list())
+        return matrix(self._coordinate_ring(), len(self), 1, self.list())
 
     def row(self) -> Matrix:
-        return matrix(self.base_ring(), 1, len(self), self.list())
+        return matrix(self._coordinate_ring(), 1, len(self), self.list())
 
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, Vector) or len(self) != len(other):
@@ -2063,6 +2117,10 @@ class VectorSubspaceParent(sage.Parent):
 
     def base_ring(self) -> sage.Parent:
         return self._ambient.base_ring()
+
+    def _vector_coordinate_ring(self) -> sage.Parent:
+        """Return the ring in which embedded vector coordinates are stored."""
+        return self._coordinate_ring
 
     def ambient_module(self) -> VectorSpaceParent:
         return self._ambient
@@ -7977,12 +8035,11 @@ def _cross_ring_row_basis(source: Matrix, base_ring: sage.Parent) -> Matrix:
         )
         answer.set_immutable()
         return answer
-    if base_ring is sage.ZZ and getattr(source.base_ring(), "_kind", None) in [
-        "GF",
-        "ZMOD",
-    ]:
+    if base_ring in [sage.ZZ, sage.QQ] and getattr(
+        source.base_ring(), "_kind", None
+    ) in ["GF", "ZMOD"]:
         changed = matrix(
-            sage.ZZ,
+            base_ring,
             source.nrows(),
             source.ncols(),
             [value.lift() for value in source.list()],
