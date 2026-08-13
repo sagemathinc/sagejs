@@ -101,7 +101,6 @@ async function main() {
       );
     }
     built.push({
-      absoluteSource,
       cacheKey: compiled.cacheKey,
       logicalSource,
       sourceHash: createHash("sha256")
@@ -118,13 +117,13 @@ async function main() {
   }
 
   // Publish only runtime inputs. The persistent build cache also contains C,
-  // headers, provenance, and node-gyp state for inspection and incremental
-  // rebuilds; shipped runtimes need the wrapper and its native addon.
+  // headers, provenance, node-gyp state, and an absolute-path discovery table
+  // for inspection and incremental rebuilds. Shipped runtimes use only stable
+  // logical source identities plus the wrapper and native addon.
   rmSync(options.outputRoot, { recursive: true, force: true });
   mkdirSync(options.outputRoot, { recursive: true });
   const index = {
     schema: "sagejs.native-cache/v3",
-    sources: {},
     logicalSources: {},
   };
   for (const item of built) {
@@ -134,7 +133,6 @@ async function main() {
       nativeAbi: item.nativeAbi,
       foreignDeclarations: item.foreignDeclarations,
     };
-    index.sources[item.absoluteSource] = sourceRecord;
     index.logicalSources[item.logicalSource] = sourceRecord;
     const destination = join(options.outputRoot, item.cacheKey);
     mkdirSync(join(destination, "build", "Release"), { recursive: true });

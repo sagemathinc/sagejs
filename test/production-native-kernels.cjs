@@ -93,8 +93,18 @@ test("all production native kernels are published and autoloadable", () => {
     join(root, "architecture", "native-kernels.json"),
     "utf8",
   ));
-  const index = JSON.parse(readFileSync(join(published, "index.json"), "utf8"));
+  const indexText = readFileSync(join(published, "index.json"), "utf8");
+  const index = JSON.parse(indexText);
   assert.equal(index.schema, "sagejs.native-cache/v3");
+  assert.deepEqual(
+    Object.keys(index).sort(),
+    ["logicalSources", "schema"],
+    "the published index must contain logical source identities only",
+  );
+  assert.ok(
+    !indexText.includes(root),
+    "the published index must not disclose its build checkout",
+  );
   assert.equal(NATIVE_KERNEL_ABI_VERSION, NATIVE_ABI_VERSION);
   const production = manifest.kernels.filter((kernel) =>
     kernel.id.endsWith("-production"),
@@ -103,7 +113,17 @@ test("all production native kernels are published and autoloadable", () => {
   for (const kernel of production) {
     assert.match(kernel.source, /^src\/lib\//);
     const sourceKey = kernel.source.slice("src/lib/".length);
+    assert.match(
+      sourceKey,
+      /^[A-Za-z0-9_.-]+(?:\/[A-Za-z0-9_.-]+)*$/,
+      "production source identities must be portable relative paths",
+    );
     const record = index.logicalSources[sourceKey];
+    assert.deepEqual(
+      Object.keys(record ?? {}).sort(),
+      ["cacheKey", "foreignDeclarations", "nativeAbi", "sourceHash"],
+      "published kernel records must contain compatibility identities only",
+    );
     assert.match(record?.sourceHash ?? "", /^[a-f0-9]{64}$/);
     assert.match(record?.cacheKey ?? "", /^[a-f0-9]{64}$/);
     assert.equal(record?.nativeAbi, NATIVE_ABI_VERSION);
