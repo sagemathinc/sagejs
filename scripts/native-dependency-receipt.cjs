@@ -38,12 +38,14 @@ function commandIdentity(command, arguments_ = ["--version"], environment = proc
   });
   if (result.error) {
     return {
+      arguments: arguments_,
       command,
       error: result.error.code || result.error.message,
       status: null,
     };
   }
   return {
+    arguments: arguments_,
     command,
     output: [result.stdout, result.stderr]
       .map((part) => String(part ?? "").trim())

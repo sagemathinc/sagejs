@@ -101,6 +101,14 @@ const inheritedBuildEnvironment = Object.freeze([
 ]);
 
 function selectedEnvironment(environment) {
+  if (environment.CONFIG_SITE !== undefined) {
+    throw new Error(
+      "CONFIG_SITE is unsupported for reproducible M4RI dependency builds",
+    );
+  }
+  if (environment.DESTDIR !== undefined) {
+    throw new Error("DESTDIR is unsupported for M4RI dependency builds");
+  }
   return Object.fromEntries(inheritedBuildEnvironment.map((name) => [
     name,
     environment[name] ?? null,
@@ -166,8 +174,17 @@ function expectedBuild(options = {}) {
     mathProfile,
     package: "m4ri",
     toolchain: {
+      archiver: platform === "win32"
+        ? null
+        : commandIdentity(environment.AR || "ar"),
       build: platform === "win32" ? null : commandIdentity("make"),
       compilers: mathProfile.compilers,
+      linker: platform === "win32"
+        ? null
+        : commandIdentity(environment.LD || "ld"),
+      ranlib: platform === "win32"
+        ? null
+        : commandIdentity(environment.RANLIB || "ranlib"),
     },
   };
 }
@@ -306,6 +323,9 @@ async function buildDependencies() {
   );
   run("make", [`-j${jobs}`], { cwd: source });
   run("make", ["install"], { cwd: source });
+  if (!existsSync(join(prefix, "lib", "libm4ri.a"))) {
+    throw new Error("M4RI build did not install libm4ri.a into its prefix");
+  }
   installHeader();
   makePrefixRelocatable();
   writeNativeDependencyReceipt(stamp, expected, prefix);
