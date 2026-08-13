@@ -1,0 +1,50 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "rc-sea-build-manifest",
+  "title": "Embed exact SEA build manifests",
+  "lane": "distribution",
+  "status": "review",
+  "owner": "user",
+  "objective": "Generate and embed exact sagejs.release-build-manifest-v1 receipts in Python-only and mathematical SEA artifacts with deterministic provenance and focused tests",
+  "base_commit": "43b4bb8e0a891651c0c47ca28e7a5e947c5fffe7",
+  "claims": [
+    "scripts/build-sea.cjs",
+    "test/sea-build-manifest.cjs"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "not-applicable",
+    "fallback": "not-applicable",
+    "oracles": [
+      "scripts/release-manifest.cjs",
+      "test/sea-build-manifest.cjs"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:portable",
+    "pnpm test:native",
+    "pnpm test:sea"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "SEA assembly now creates and embeds canonical sagejs.release-build-manifest-v1 receipts for Python-only and native-mathematics executables, deriving target identity from the actual Node template and binding source, toolchain, math profile, native assets, and production-kernel authority/index bytes.",
+    "risks": [
+      "Full SEA validation is owned by the release integration lane; this lane uses focused deterministic tests without constructing an executable.",
+      "The build intentionally fails if Linux binutils cannot inspect the Node template maximum GLIBC requirement."
+    ],
+    "next_steps": [
+      "Register test/sea-build-manifest.cjs in the shared test manifest.",
+      "Tighten release-capabilities v3 validation to the exact embedded receipt schemas.",
+      "Run clean Linux and macOS SEA builds after integration."
+    ]
+  }
+}
