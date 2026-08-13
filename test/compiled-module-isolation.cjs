@@ -3,6 +3,7 @@
 const assert = require("node:assert/strict");
 const {
   mkdtempSync,
+  mkdirSync,
   readFileSync,
   readdirSync,
   rmSync,
@@ -20,6 +21,19 @@ const {
 } = require("../tools/baselib-modules.cjs");
 
 const root = join(__dirname, "..");
+
+function findFile(directory, predicate) {
+  for (const entry of readdirSync(directory, { withFileTypes: true })) {
+    const path = join(directory, entry.name);
+    if (entry.isDirectory()) {
+      const found = findFile(path, predicate);
+      if (found) return found;
+    } else if (predicate(entry.name)) {
+      return path;
+    }
+  }
+  return null;
+}
 
 function moduleFixture(filename, exports, references = []) {
   return { filename, exports, references };
@@ -609,9 +623,12 @@ test("ordinary compiled imports preserve globals, closures, and cache identity",
         "def closure(Math):",
         "    def inner(): return Math",
         "    return inner",
+        "def Map(Map): return Map",
         "class Symbol:",
         "    marker = 41",
         "    def read(self): return self.marker",
+        "class KodairaSymbol:",
+        "    def code(self): return 42",
         "",
       ].join("\n"),
     );
@@ -634,6 +651,13 @@ test("ordinary compiled imports preserve globals, closures, and cache identity",
         "",
       ].join("\n"),
     );
+    mkdirSync(join(directory, "package_root", "child"), { recursive: true });
+    writeFileSync(join(directory, "package_root", "__init__.py"), "");
+    writeFileSync(join(directory, "package_root", "child", "__init__.py"), "");
+    writeFileSync(
+      join(directory, "package_root", "child", "leaf.py"),
+      "value = 46\n",
+    );
     writeFileSync(
       join(directory, "main.py"),
       [
@@ -646,7 +670,9 @@ test("ordinary compiled imports preserve globals, closures, and cache identity",
         "print(alpha.read(), beta.read())",
         "print(collisions.read())",
         "print(collisions.parameter(42), collisions.closure(43)())",
+        "print(collisions.Map(44))",
         "print(collisions.Symbol.__name__, collisions.Symbol.__qualname__, collisions.Symbol().read())",
+        "print(collisions.KodairaSymbol().code())",
         "print(collisions.read.__globals__ is collisions.__dict__)",
         "closure = alpha.factory(2)",
         "alpha.write(30)",
@@ -661,6 +687,8 @@ test("ordinary compiled imports preserve globals, closures, and cache identity",
         "import cycle_a",
         "import cycle_b",
         "print(cycle_a.seen(), cycle_b.current(), cycle_a is cycle_b.cycle_a)",
+        "import package_root.child.leaf",
+        "print(package_root.child.leaf.value)",
         "",
       ].join("\n"),
     );
@@ -677,7 +705,9 @@ test("ordinary compiled imports preserve globals, closures, and cache identity",
         "10 99",
         "(37, 38, 39, 40)",
         "42 43",
+        "44",
         "Symbol Symbol 41",
+        "42",
         "True",
         "30 99 35",
         "45",
@@ -686,8 +716,62 @@ test("ordinary compiled imports preserve globals, closures, and cache identity",
         "True",
         "True True",
         "a-start a-done True",
+        "46",
       ].join("\n"),
     );
+
+    const cacheDirectory = join(directory, "module-cache");
+    const compileResult = spawnSync(
+      join(root, "bin", "sagejs"),
+      [
+        "compile",
+        "--cache-dir",
+        cacheDirectory,
+        "--output",
+        join(directory, "main.js"),
+        "main.py",
+      ],
+      { cwd: directory, encoding: "utf8" },
+    );
+    assert.equal(compileResult.status, 0, compileResult.stderr);
+    const compiledMain = readFileSync(join(directory, "main.js"), "utf8");
+    assert.match(
+      compiledMain,
+      /\$ρσ\$py\$package_root\["child"\]\["leaf"\]\s*=\s*ρσ_modules\["package_root\.child\.leaf"\]/,
+    );
+    assert.doesNotMatch(
+      compiledMain,
+      /(?:^|[;{}]\s*)package_root\.child\s*=\s*\rho\sigma_modules/m,
+    );
+    const collisionCache = findFile(
+      cacheDirectory,
+      (name) => name.includes("collisions.py") && name.endsWith(".json"),
+    );
+    assert.ok(collisionCache, "the collision fixture must produce a module cache");
+    const cached = JSON.parse(readFileSync(collisionCache, "utf8"));
+    for (const generated of Object.values(cached.outputs)) {
+      assert.match(
+        generated,
+        /var\s+\$ρσ\$py\$Symbol\s*=\s*function\s+\$ρσ\$py\$Symbol/,
+      );
+      assert.doesNotMatch(generated, /var\s+Symbol\s*=\s*function\s+Symbol/);
+      assert.match(
+        generated,
+        /var\s+\$ρσ\$py\$Map\s*=\s*function\s+\$ρσ\$py\$Map/,
+      );
+      assert.doesNotMatch(generated, /var\s+Map\s*=\s*function\s+Map/);
+      assert.match(generated, /\$ρσ\$py\$Symbol\.prototype\.read/);
+      assert.match(generated, /\$ρσ\$py\$Map\.__name__/);
+      assert.match(
+        generated,
+        /var\s+\$ρσ\$py\$KodairaSymbol\s*=\s*function\s+\$ρσ\$py\$KodairaSymbol/,
+      );
+      assert.doesNotMatch(
+        generated,
+        /var\s+KodairaSymbol\s*=\s*function\s+KodairaSymbol/,
+      );
+      assert.match(generated, /\$ρσ\$py\$KodairaSymbol\.prototype\.code/);
+    }
   } finally {
     rmSync(directory, { recursive: true, force: true });
   }

@@ -267,6 +267,12 @@ export class PythonCstLowerer {
     if (constructor === "AST_SymbolRef") {
       symbol.python_lexical_binding = !this.options.compiler_bootstrap &&
         this.sourceNameIsLexicallyBound(properties.name);
+    } else {
+      // Cached module variants are rendered through a secondary OutputStream
+      // without the original AST scope on its stack.  Preserve declaration
+      // authority on the symbol itself so declarations and later references
+      // always choose the same collision-proof JavaScript spelling.
+      symbol.python_lexical_binding = !this.options.compiler_bootstrap;
     }
     return symbol;
   }
@@ -2599,9 +2605,14 @@ export class PythonCstLowerer {
     nonlocals = new Set<string>(),
   ): void {
     const known = new Set<string>();
-    const definition = (name: string) => new this.compiler.AST_SymbolDefun({
-      name: `${className}.prototype.${name}`,
-    });
+    const definition = (name: string) => {
+      const symbol = new this.compiler.AST_SymbolDefun({
+        name: `${className}.prototype.${name}`,
+      });
+      symbol.python_identifier = !this.options.compiler_bootstrap;
+      symbol.python_lexical_binding = symbol.python_identifier;
+      return symbol;
+    };
     const visit = (value: any, seen = new Set<any>()): void => {
       if (!value || typeof value !== "object" || seen.has(value)) return;
       seen.add(value);

@@ -1183,7 +1183,17 @@ def print_imports(container, output):
                     else:
                         q = parts[: i + 1].join(".")
                         output.indent()
-                        output.spaced(q, "=", 'ρσ_modules["' + q + '"]')
+                        print_local_name(parts[0])
+                        for child in parts.slice(1, i + 1):
+                            output.print("[")
+                            output.print_string(child)
+                            output.print("]")
+                        output.space()
+                        output.print("=")
+                        output.space()
+                        output.print("ρσ_modules[")
+                        output.print_string(q)
+                        output.print("]")
                         output.end_statement()
     if container.imports.length:
         # JavaScript reports the last assignment performed inside an import

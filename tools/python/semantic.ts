@@ -80,6 +80,7 @@ export class PythonAstSemanticAnalyzer {
       .map((name) => {
         const symbol = new this.compiler.AST_SymbolVar({ name });
         symbol.python_identifier = this.lexicalHygiene && pythonBindings.has(name);
+        symbol.python_lexical_binding = symbol.python_identifier;
         return symbol;
       });
     const exported = unique([
@@ -92,6 +93,7 @@ export class PythonAstSemanticAnalyzer {
     toplevel.exports = exported.map((name) => {
       const symbol = new this.compiler.AST_SymbolVar({ name });
       symbol.python_identifier = this.lexicalHygiene && pythonBindings.has(name);
+      symbol.python_lexical_binding = symbol.python_identifier;
       return symbol;
     });
     toplevel.classes = Object.create(null);
@@ -203,6 +205,7 @@ export class PythonAstSemanticAnalyzer {
       .map((name) => {
         const symbol = new this.compiler.AST_SymbolVar({ name });
         symbol.python_identifier = this.lexicalHygiene && pythonBindings.has(name);
+        symbol.python_lexical_binding = symbol.python_identifier;
         return symbol;
       });
     definition.annotated_locals = unique([
