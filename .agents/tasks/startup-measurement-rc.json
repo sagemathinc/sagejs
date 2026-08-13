@@ -1,0 +1,104 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "startup-measurement-rc",
+  "title": "Startup Measurement Rc",
+  "lane": "integration",
+  "status": "review",
+  "owner": "user",
+  "objective": "Diagnose and harden SEA startup performance by separating launch, bootstrap, evaluation, and cache overhead without weakening strict budgets",
+  "base_commit": "9d7522ec8c0195bc41f4b2b2ccb6dfeefdc3eeff",
+  "claims": [
+    "scripts/release-startup-measure.cjs",
+    "scripts/release-smoke.cjs",
+    "test/sea-startup-budget.test.cjs",
+    "test/node-test-manifest.cjs",
+    "package.json"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "not-applicable",
+    "fallback": "not-applicable",
+    "oracles": [
+      "Repeated uncontended component measurements on current SEA artifacts and source runtime"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm architecture:check",
+    "pnpm test:portable",
+    "pnpm test:baselib:strict"
+  ],
+  "runs": [
+    {
+      "command": "node --test test/sea-startup-budget.test.cjs test/test-manifest.test.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.188,
+      "started_at": "2026-08-13T22:26:43.876Z",
+      "commit": "9d7522ec8c0195bc41f4b2b2ccb6dfeefdc3eeff",
+      "workspace_fingerprint": "7b1fd27033e19e0551e320ccbe527fcfd8e5e0a1ec236dbec09e8c4a17f284dc",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm parallel:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.583,
+      "started_at": "2026-08-13T22:26:45.131Z",
+      "commit": "9d7522ec8c0195bc41f4b2b2ccb6dfeefdc3eeff",
+      "workspace_fingerprint": "7b1fd27033e19e0551e320ccbe527fcfd8e5e0a1ec236dbec09e8c4a17f284dc",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 5.422,
+      "started_at": "2026-08-13T22:28:42.618Z",
+      "commit": "9d7522ec8c0195bc41f4b2b2ccb6dfeefdc3eeff",
+      "workspace_fingerprint": "7b1fd27033e19e0551e320ccbe527fcfd8e5e0a1ec236dbec09e8c4a17f284dc",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 14.232,
+      "started_at": "2026-08-13T22:28:48.730Z",
+      "commit": "9d7522ec8c0195bc41f4b2b2ccb6dfeefdc3eeff",
+      "workspace_fingerprint": "7b1fd27033e19e0551e320ccbe527fcfd8e5e0a1ec236dbec09e8c4a17f284dc",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 20.613,
+      "started_at": "2026-08-13T22:29:03.730Z",
+      "commit": "9d7522ec8c0195bc41f4b2b2ccb6dfeefdc3eeff",
+      "workspace_fingerprint": "7b1fd27033e19e0551e320ccbe527fcfd8e5e0a1ec236dbec09e8c4a17f284dc",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Added a cross-platform fresh-process startup component reporter for release SEAs. It independently measures bare Node launch, SEA entry/deserialization, empty compiler/REPL setup, first parse/runtime/evaluation, embedded capability-receipt verification, and cold versus warm mpmath import under isolated caches. Every probe validates semantics and fails immediately on any V8 code-cache rejection. Controlled comparison on Linux x64 found that current SEA entry and empty startup remain healthy, while first-code startup regressed from about 226 ms at historical commit 802d2ca to 344 ms in Python mode and 385 ms in Sage mode. The generated compiler grew from 5.86 MB to 10.91 MB and the runtime bootstrap from 4.45 MB to 9.41 MB; CPU profiles attribute the cost to executing those eager generated programs, not Tree-sitter or SEA code-cache rejection.",
+    "risks": [
+      "The strict 300 ms full-startup gate is still genuinely red on current Linux x64 artifacts; this lane deliberately does not conceal the regression by changing its budget.",
+      "Current self-hosting compiles every src/baselib module, including matrices, polynomials, elliptic curves, and graphics, into both the isolated compiler prologue and user runtime. Splitting a minimal compiler prologue is a compiler-runtime architecture change requiring broad differential validation.",
+      "The full unit tier was attempted after a clean build and reached 335 of 344 passing tests; eight failures required FLINT/native artifacts absent from this isolated worktree, and the newly introduced manifest failure was fixed. Focused startup and manifest tests pass."
+    ],
+    "next_steps": [
+      "Create a compiler-runtime lane that generates and validates a core-only self-hosted compiler prologue separately from the full Sage runtime, then require the current reporter to bring both Sage and Python full startup back below 300 ms.",
+      "Run the component report on unsigned macOS arm64 and Windows x64 release artifacts and retain its JSON beside the release-candidate evidence.",
+      "Later make non-core Sage facade domains lazy so release startup does not eagerly execute unrelated mathematical implementations."
+    ]
+  }
+}

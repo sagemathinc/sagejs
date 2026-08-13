@@ -25,6 +25,7 @@ const unit = [
   "test/foreign-adapter-build-graph.cjs",
   "test/runtime-cache.cjs",
   "test/startup-budget.cjs",
+  "test/sea-startup-budget.test.cjs",
   "test/timing-core.cjs",
   "test/typed-math-lowering.cjs",
   "test/runtime-intrinsics.cjs",

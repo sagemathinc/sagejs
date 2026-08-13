@@ -164,6 +164,7 @@
     "test:startup": "pnpm run build && pnpm run test:startup:run",
     "test:startup:run": "node scripts/check-startup-budget.cjs",
     "test:startup:sea": "node scripts/check-startup-budget.cjs --sea",
+    "test:startup:components": "node --test test/sea-startup-budget.test.cjs",
     "test:wasm": "pnpm run build:wasm && node --test packages/flint-wasm/test/factor.test.mjs",
     "test:wasm:browser": "pnpm run build:wasm && node packages/flint-wasm/test/browser-smoke.mjs",
     "python:conformance": "pnpm run build && node scripts/run-python-conformance.cjs",
