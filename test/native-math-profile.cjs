@@ -4,8 +4,10 @@ const assert = require("node:assert/strict");
 const {
   mkdirSync,
   mkdtempSync,
+  readFileSync,
   writeFileSync,
   rmSync,
+  symlinkSync,
 } = require("node:fs");
 const { execFileSync } = require("node:child_process");
 const { tmpdir } = require("node:os");
@@ -21,6 +23,12 @@ const {
 const {
   nativeArtifactSpecs,
 } = require("../scripts/native-worktree-cache.cjs");
+const {
+  createNativeDependencyReceipt,
+  readNativeDependencyReceipt,
+  validateNativeDependencyReceipt,
+  writeNativeDependencyReceipt,
+} = require("../scripts/native-dependency-receipt.cjs");
 
 const compiler = (overrides = {}) => ({
   command: "cc",
@@ -162,9 +170,13 @@ test("worktree dependency cache keys include the complete math profile", () => {
     portableKeys.get("fflas-dependencies"),
     nativeKeys.get("fflas-dependencies"),
   );
-  assert.equal(
+  assert.notEqual(
     portableKeys.get("graph-dependencies"),
     nativeKeys.get("graph-dependencies"),
+  );
+  assert.notEqual(
+    portableKeys.get("m4ri-dependencies"),
+    nativeKeys.get("m4ri-dependencies"),
   );
 });
 
@@ -231,4 +243,171 @@ test("native profile CLI exposes human and structured provenance", () => {
   assert.equal(structured.selected.effectiveProfile, PORTABLE_PROFILE);
   assert.match(structured.selected.fingerprint, /^[a-f0-9]{64}$/);
   assert.equal(typeof structured.installedMatchesSelected, "boolean");
+});
+
+const receiptCompiler = {
+  command: "cc",
+  nativeFlag: null,
+  nativeFlagSupported: false,
+  target: "x86_64-unknown-linux-gnu",
+  version: "cc receipt test",
+};
+
+function receiptProfile() {
+  return nativeMathBuildProfile({
+    arch: "x64",
+    compiler: receiptCompiler,
+    cxxCompiler: { ...receiptCompiler, command: "c++" },
+    endianness: "LE",
+    environment: {},
+    platform: "linux",
+  });
+}
+
+function receiptExpectation(overrides = {}) {
+  return {
+    build: {
+      cflags: ["-O3", "-fPIC"],
+      configure: ["--disable-shared", "--enable-static"],
+    },
+    dependency: {
+      name: "example",
+      sha256: "a".repeat(64),
+      version: "1.2.3",
+    },
+    deployment: null,
+    interface: { header: "include/example.h", sha256: "b".repeat(64) },
+    mathProfile: receiptProfile(),
+    package: "example",
+    toolchain: { compiler: "cc receipt test" },
+    ...overrides,
+  };
+}
+
+function receiptFixture() {
+  const root = mkdtempSync(join(tmpdir(), "sagejs-dependency-receipt-"));
+  const prefix = join(root, "prefix");
+  const stamp = join(prefix, ".sagejs-example-dependencies.json");
+  mkdirSync(join(prefix, "include"), { recursive: true });
+  mkdirSync(join(prefix, "lib"), { recursive: true });
+  writeFileSync(join(prefix, "include", "example.h"), "header\n");
+  writeFileSync(join(prefix, "lib", "libexample.a"), "archive\n");
+  return { prefix, root, stamp };
+}
+
+test("dependency receipts bind declarations and every installed output byte", () => {
+  const item = receiptFixture();
+  try {
+    const written = writeNativeDependencyReceipt(
+      item.stamp,
+      receiptExpectation(),
+      item.prefix,
+    );
+    assert.match(written.identitySha256, /^[0-9a-f]{64}$/);
+    assert.deepEqual(
+      written.outputs.files.map(({ path }) => path),
+      ["include/example.h", "lib/libexample.a"],
+    );
+    assert.deepEqual(
+      readNativeDependencyReceipt(item.stamp, {
+        expectation: receiptExpectation(),
+        prefix: item.prefix,
+      }),
+      written,
+    );
+
+    writeFileSync(join(item.prefix, "lib", "libexample.a"), "tampered\n");
+    assert.equal(
+      readNativeDependencyReceipt(item.stamp, {
+        expectation: receiptExpectation(),
+        prefix: item.prefix,
+      }),
+      null,
+    );
+  } finally {
+    rmSync(item.root, { recursive: true, force: true });
+  }
+});
+
+test("receipt validation fails closed on profile, target, flags, and identity drift", () => {
+  const item = receiptFixture();
+  try {
+    const receipt = createNativeDependencyReceipt(
+      receiptExpectation(),
+      item.prefix,
+      item.stamp,
+    );
+    for (const changed of [
+      receiptExpectation({ deployment: { macos: "14.0" } }),
+      receiptExpectation({
+        build: { cflags: ["-O2"], configure: ["--disable-shared"] },
+      }),
+      receiptExpectation({
+        dependency: {
+          name: "example",
+          sha256: "c".repeat(64),
+          version: "1.2.3",
+        },
+      }),
+    ]) {
+      assert.throws(
+        () => validateNativeDependencyReceipt(receipt, {
+          expectation: changed,
+        }),
+        /does not match the selected build/,
+      );
+    }
+    const forged = structuredClone(receipt);
+    forged.build.cflags = ["-Ofast"];
+    assert.throws(
+      () => validateNativeDependencyReceipt(forged),
+      /receipt identity is invalid/,
+    );
+  } finally {
+    rmSync(item.root, { recursive: true, force: true });
+  }
+});
+
+test("output inventories are deterministic and permit only contained symlinks", () => {
+  const first = receiptFixture();
+  const second = receiptFixture();
+  try {
+    symlinkSync("../lib/libexample.a", join(first.prefix, "include", "alias.a"));
+    symlinkSync("../lib/libexample.a", join(second.prefix, "include", "alias.a"));
+    const a = createNativeDependencyReceipt(
+      receiptExpectation(),
+      first.prefix,
+      first.stamp,
+    );
+    const b = createNativeDependencyReceipt(
+      receiptExpectation(),
+      second.prefix,
+      second.stamp,
+    );
+    assert.equal(a.identitySha256, b.identitySha256);
+    assert.equal(a.outputs.files[0].type, "symlink");
+    rmSync(join(second.prefix, "include", "alias.a"));
+    symlinkSync("../../outside", join(second.prefix, "include", "alias.a"));
+    assert.throws(
+      () => createNativeDependencyReceipt(
+        receiptExpectation(),
+        second.prefix,
+        second.stamp,
+      ),
+      /symlink escapes its prefix/,
+    );
+  } finally {
+    rmSync(first.root, { recursive: true, force: true });
+    rmSync(second.root, { recursive: true, force: true });
+  }
+});
+
+test("truncated and noncanonical receipt files are rejected without throwing", () => {
+  const item = receiptFixture();
+  try {
+    writeFileSync(item.stamp, readFileSync(__filename).subarray(0, 20));
+    assert.equal(readNativeDependencyReceipt(item.stamp), null);
+  } finally {
+    rmSync(item.root, { recursive: true, force: true });
+  }
 });
