@@ -603,6 +603,12 @@ async function runSmoke(options) {
       JSON.stringify(classification.unknown),
     );
   }
+  if (options.requireNative && classification.fallback.length > 0) {
+    throw new Error(
+      "--require-native encountered fallback implementations: " +
+      JSON.stringify(classification.fallback),
+    );
+  }
   if (options.requireNative && !classification.requiredSatisfied) {
     const missing = classification.witnesses
       .filter(({ observed }) => !observed)

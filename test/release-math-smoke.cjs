@@ -147,7 +147,7 @@ test("release mathematics smoke reports fallback and enforces named native witne
   assert.equal(report.native.status, "explicit-fallback");
   await assert.rejects(
     () => runSmoke({ ...options, requireNative: true }),
-    /required native witnesses were missing/,
+    /fallback implementations/,
   );
 
   const nativeSelections = requiredNativeWitnesses.map((witness) => ({
@@ -166,6 +166,15 @@ test("release mathematics smoke reports fallback and enforces named native witne
   await assert.rejects(
     () => runSmoke({ ...options, requireNative: true }),
     /unclassified implementation names/,
+  );
+
+  writeFakeRunner(fakeRoot, fakeSmokeSource([
+    ...nativeSelections,
+    { operation: "unexpected fallback", implementation: "typed-python-dynamic-fallback" },
+  ]));
+  await assert.rejects(
+    () => runSmoke({ ...options, requireNative: true }),
+    /fallback implementations/,
   );
 });
 
