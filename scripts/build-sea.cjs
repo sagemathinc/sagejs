@@ -358,9 +358,13 @@ function nativeMathProfile(rootDirectory, target, options = {}) {
         `native mathematics build stamp not found at ${relative(rootDirectory, stamp)}`,
       );
     }
-    const contents = JSON.parse(readFileSync(stamp, "utf8"));
-    profile = contents?.build?.mathBuildProfile ??
-      contents?.identity?.mathBuildProfile;
+    const receipt = readNativeDependencyReceipt(stamp, { prefix });
+    if (receipt === null) {
+      throw new Error(
+        `native mathematics dependency receipt is stale or invalid: ${stamp}`,
+      );
+    }
+    profile = receipt.mathProfile;
   }
   try {
     return validateNativeMathBuildProfile(profile, target);

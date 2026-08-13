@@ -168,13 +168,28 @@ function mathProfile(profile = "portable") {
 
 function installMathProfile(root, profile = "portable") {
   const prefix = join(root, "packages", "flint", ".native", "prefix");
-  write(
-    join(prefix, ".sagejs-flint-dependencies.json"),
-    `${JSON.stringify({
-      build: {
-        mathBuildProfile: mathProfile(profile),
+  const stamp = join(prefix, ".sagejs-flint-dependencies.json");
+  mkdirSync(prefix, { recursive: true });
+  const selected = mathProfile(profile);
+  const receipt = createNativeDependencyReceipt(
+    {
+      build: { configuration: "test", observed: {} },
+      dependency: {
+        name: "flint-stack",
+        sha256: "f".repeat(64),
+        version: "test",
       },
-    })}\n`,
+      interface: null,
+      mathProfile: selected,
+      package: "flint",
+      toolchain: { compiler: "test" },
+    },
+    prefix,
+    stamp,
+  );
+  write(
+    stamp,
+    `${JSON.stringify(receipt)}\n`,
   );
 }
 

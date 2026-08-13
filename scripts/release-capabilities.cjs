@@ -38,6 +38,7 @@ const {
   validateNativeMathBuildProfile,
 } = require("./native-math-profile.cjs");
 const {
+  readNativeDependencyReceipt,
   validateSeaNativeDependencyBindings,
 } = require("./native-dependency-receipt.cjs");
 
@@ -1019,9 +1020,11 @@ function findInstalledMathProfile(root, target, environment) {
       )
     : join(root, "packages", "flint", ".native", "prefix");
   const prefix = resolve(environment.SAGEJS_FLINT_PREFIX || defaultPrefix);
-  const stamp = readJson(join(prefix, ".sagejs-flint-dependencies.json"));
-  const candidate = stamp?.build?.mathBuildProfile ??
-    stamp?.identity?.mathBuildProfile ?? null;
+  const stamp = readNativeDependencyReceipt(
+    join(prefix, ".sagejs-flint-dependencies.json"),
+    { prefix },
+  );
+  const candidate = stamp?.mathProfile ?? null;
   return { prefix, profile: validatedMathProfile(candidate, target) };
 }
 

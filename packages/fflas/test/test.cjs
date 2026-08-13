@@ -107,7 +107,7 @@ test("native BLAS selection is explicit and Darwin links Accelerate", {
     ),
   );
   assert.equal(
-    stamp.blas.provider,
+    stamp.build.configuration.blas.provider,
     process.platform === "darwin"
       ? "apple-accelerate"
       : "openblas-from-sagejs-flint",
