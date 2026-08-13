@@ -985,6 +985,10 @@ test("native binary receipts validate word size in each format's canonical locat
   ]) {
     const receipt = fixtureFor(target);
     assert.equal(nativeBinaryReceiptContract(receipt.manifest, receipt.embedded), true);
+    receipt.manifest.toolchain.nativeBinaries.report.files[0].wordSize = 32;
+    refreshNativeBinaryReceipt(receipt.manifest.toolchain.nativeBinaries);
+    assert.equal(nativeBinaryReceiptContract(receipt.manifest, receipt.embedded), false);
+    receipt.manifest.toolchain.nativeBinaries.report.files[0].wordSize = 64;
     delete receipt.manifest.toolchain.nativeBinaries.report.files[0].wordSize;
     refreshNativeBinaryReceipt(receipt.manifest.toolchain.nativeBinaries);
     assert.equal(nativeBinaryReceiptContract(receipt.manifest, receipt.embedded), false);
