@@ -41,6 +41,11 @@ const {
 const SCHEMA = "sagejs.release-capabilities-v3";
 const BUILD_MANIFEST_ASSET = "release/build-manifest.json";
 const EMBEDDED_ASSET_SCHEMA = "sagejs.embedded-assets/v1";
+const NATIVE_BINARY_RECEIPT_SCHEMA = "sagejs.native-binary-receipt/v1";
+const NATIVE_BINARY_REPORT_SCHEMA = "sagejs.native-binary-inspection-v1";
+const NODE_TEMPLATE_LABEL = "sea/node-template";
+const NODE_TEMPLATE_ROLE = "executable-template";
+const EMBEDDED_ADDON_ROLE = "embedded-node-addon";
 const MATH_PROFILE_VARIABLE = "SAGEJS_NATIVE_MATH_PROFILE";
 
 const ADAPTERS = Object.freeze([
@@ -187,6 +192,288 @@ function exactKeys(value, keys) {
     Object.keys(value).sort().join(",") === [...keys].sort().join(",");
 }
 
+function uniqueSortedStrings(value) {
+  return Array.isArray(value) &&
+    value.every((item) => typeof item === "string") &&
+    JSON.stringify(value) === JSON.stringify(
+      [...new Set(value)].sort((left, right) => left.localeCompare(right)),
+    );
+}
+
+function compareVersions(left, right) {
+  const a = String(left).split(".").map(Number);
+  const b = String(right).split(".").map(Number);
+  for (let index = 0; index < Math.max(a.length, b.length); index += 1) {
+    const difference = (a[index] ?? 0) - (b[index] ?? 0);
+    if (difference !== 0) return Math.sign(difference);
+  }
+  return 0;
+}
+
+function uniqueNumericVersions(value) {
+  return Array.isArray(value) &&
+    value.every((item) => typeof item === "string") &&
+    new Set(value).size === value.length &&
+    JSON.stringify(value) === JSON.stringify([...value].sort(compareVersions));
+}
+
+function maximumVersion(values) {
+  return values.reduce(
+    (maximum, value) =>
+      maximum === null || compareVersions(value, maximum) > 0 ? value : maximum,
+    null,
+  );
+}
+
+function binaryArchitectures(file) {
+  return file.format === "macho" ? file.architectures : [file.architecture];
+}
+
+function validSymbolFamilies(file) {
+  if (file.format !== "elf") return true;
+  const families = file.symbolVersionFamilies;
+  if (families === null || typeof families !== "object" || Array.isArray(families)) {
+    return false;
+  }
+  const allowed = new Set(["CXXABI", "GCC", "GLIBC", "GLIBCXX"]);
+  for (const [family, record] of Object.entries(families)) {
+    if (
+      !allowed.has(family) ||
+      !exactKeys(record, ["maximum", "versions"]) ||
+      !uniqueNumericVersions(record.versions) ||
+      typeof record.maximum !== "string" ||
+      maximumVersion(record.versions) !== record.maximum
+    ) return false;
+  }
+  return (families.GLIBC?.maximum ?? null) === (file.maximumGlibc ?? null);
+}
+
+function validNativeBinaryFileShape(file) {
+  const common = ["dependencies", "format", "label", "role", "sha256", "size"];
+  if (file.format === "elf") {
+    if (!exactKeys(file, [...common,
+      "architecture",
+      "endianness",
+      "glibcVersions",
+      "interpreter",
+      "machine",
+      "maximumGlibc",
+      "osAbi",
+      "requiredSymbolVersions",
+      "rpaths",
+      "symbolVersionFamilies",
+      "wordSize",
+    ])) return false;
+    return file.endianness === "little" &&
+      Number.isSafeInteger(file.machine) &&
+      Number.isSafeInteger(file.osAbi) &&
+      (file.interpreter === null || typeof file.interpreter === "string") &&
+      uniqueSortedStrings(file.rpaths) &&
+      uniqueSortedStrings(file.requiredSymbolVersions) &&
+      Array.isArray(file.glibcVersions) &&
+      JSON.stringify(file.glibcVersions) ===
+        JSON.stringify(file.symbolVersionFamilies.GLIBC?.versions ?? []);
+  }
+  if (file.format === "macho") {
+    if (!exactKeys(file, [...common,
+      "architectures",
+      "maximumMinimumMacos",
+      "rpaths",
+      "slices",
+      "universal",
+    ]) ||
+      !uniqueSortedStrings(file.architectures) ||
+      !uniqueSortedStrings(file.rpaths) ||
+      !Array.isArray(file.slices) ||
+      file.universal !== (file.slices.length > 1)
+    ) return false;
+    for (const slice of file.slices) {
+      if (
+        !exactKeys(slice, [
+          "architecture",
+          "declaredMinimumMacos",
+          "dependencies",
+          "endianness",
+          "machine",
+          "minimumMacos",
+          "rpaths",
+          "wordSize",
+        ]) ||
+        typeof slice.architecture !== "string" ||
+        !Number.isSafeInteger(slice.machine) ||
+        slice.wordSize !== 64 ||
+        slice.endianness !== "little" ||
+        (slice.minimumMacos !== null && typeof slice.minimumMacos !== "string") ||
+        !uniqueNumericVersions(slice.declaredMinimumMacos) ||
+        !uniqueSortedStrings(slice.dependencies) ||
+        !uniqueSortedStrings(slice.rpaths)
+      ) return false;
+    }
+    return JSON.stringify(file.architectures) ===
+      JSON.stringify(file.slices.map(({ architecture }) => architecture)) &&
+      JSON.stringify(file.dependencies) === JSON.stringify(
+        [...new Set(file.slices.flatMap(({ dependencies }) => dependencies))]
+          .sort((left, right) => left.localeCompare(right)),
+      ) &&
+      JSON.stringify(file.rpaths) === JSON.stringify(
+        [...new Set(file.slices.flatMap(({ rpaths }) => rpaths))]
+          .sort((left, right) => left.localeCompare(right)),
+      ) &&
+      file.maximumMinimumMacos === maximumVersion(
+        file.slices.map(({ minimumMacos }) => minimumMacos).filter(Boolean),
+      );
+  }
+  if (file.format === "pe") {
+    return exactKeys(file, [...common,
+      "architecture",
+      "delayDependencies",
+      "machine",
+      "subsystem",
+      "wordSize",
+    ]) &&
+      Number.isSafeInteger(file.machine) &&
+      Number.isSafeInteger(file.subsystem) &&
+      uniqueSortedStrings(file.delayDependencies);
+  }
+  return false;
+}
+
+function nativeBinaryReceiptContract(buildManifest, embedded) {
+  const receipt = buildManifest?.toolchain?.nativeBinaries;
+  if (
+    !exactKeys(receipt, ["report", "reportSha256", "schema"]) ||
+    receipt.schema !== NATIVE_BINARY_RECEIPT_SCHEMA ||
+    !/^[0-9a-f]{64}$/.test(receipt.reportSha256 ?? "") ||
+    receipt.reportSha256 !== sha256Bytes(canonicalJson(receipt.report))
+  ) return false;
+  const report = receipt.report;
+  if (
+    !exactKeys(report, [
+      "aggregate",
+      "files",
+      "inputSetSha256",
+      "ok",
+      "policy",
+      "schema",
+      "violations",
+    ]) ||
+    report.schema !== NATIVE_BINARY_REPORT_SCHEMA ||
+    report.ok !== true ||
+    !Array.isArray(report.violations) ||
+    report.violations.length !== 0 ||
+    !Array.isArray(report.files) ||
+    report.files.length === 0 ||
+    !/^[0-9a-f]{64}$/.test(report.inputSetSha256 ?? "")
+  ) return false;
+
+  const target = buildManifest.target;
+  const expectedFormat = { darwin: "macho", linux: "elf", win32: "pe" }[
+    target.platform
+  ];
+  const expectedLabels = [
+    NODE_TEMPLATE_LABEL,
+    ...[...embedded.assets].filter((name) => name.endsWith(".node")),
+  ].sort((left, right) => left.localeCompare(right));
+  const policy = report.policy;
+  if (
+    !exactKeys(policy, [
+      "architectures",
+      "exactArchitectures",
+      "format",
+      "requiredLabels",
+    ]) ||
+    JSON.stringify(policy.architectures) !== JSON.stringify([target.arch]) ||
+    policy.exactArchitectures !== true ||
+    policy.format !== expectedFormat ||
+    JSON.stringify(policy.requiredLabels) !== JSON.stringify(expectedLabels)
+  ) return false;
+  const files = [...report.files].sort((left, right) =>
+    String(left?.label).localeCompare(String(right?.label)));
+  if (
+    JSON.stringify(files.map((file) => file?.label)) !== JSON.stringify(expectedLabels) ||
+    new Set(files.map((file) => file?.label)).size !== files.length
+  ) return false;
+
+  for (const file of files) {
+    const expectedRole = file.label === NODE_TEMPLATE_LABEL
+      ? NODE_TEMPLATE_ROLE
+      : EMBEDDED_ADDON_ROLE;
+    if (
+      file.role !== expectedRole ||
+      file.format !== expectedFormat ||
+      file.wordSize !== 64 ||
+      !Number.isSafeInteger(file.size) ||
+      file.size < 0 ||
+      !/^[0-9a-f]{64}$/.test(file.sha256 ?? "") ||
+      !uniqueSortedStrings(file.dependencies) ||
+      !validNativeBinaryFileShape(file) ||
+      (file.delayDependencies !== undefined &&
+        !uniqueSortedStrings(file.delayDependencies)) ||
+      !validSymbolFamilies(file) ||
+      JSON.stringify([...binaryArchitectures(file)].sort()) !==
+        JSON.stringify([target.arch])
+    ) return false;
+    if (file.label === NODE_TEMPLATE_LABEL) {
+      if (file.sha256 !== buildManifest.toolchain?.seaNode?.executableSha256) {
+        return false;
+      }
+    } else {
+      const bytes = embedded.bytes(file.label);
+      if (
+        bytes === null ||
+        file.size !== bytes.length ||
+        file.sha256 !== sha256Bytes(bytes)
+      ) return false;
+    }
+  }
+  const expectedInputSetSha256 = sha256Bytes(JSON.stringify(files.map(
+    ({ label, role, sha256, size }) => ({ label, role, sha256, size }),
+  )));
+  if (report.inputSetSha256 !== expectedInputSetSha256) return false;
+
+  const aggregate = report.aggregate;
+  if (!exactKeys(aggregate, [
+    "architectures",
+    "dependencies",
+    "formats",
+    "maximumGlibc",
+    "maximumMinimumMacos",
+    "maximumSymbolVersions",
+  ])) return false;
+  const architectures = [...new Set(files.flatMap(binaryArchitectures))]
+    .sort((left, right) => left.localeCompare(right));
+  const dependencies = [...new Set(files.flatMap((file) => [
+    ...file.dependencies,
+    ...(file.delayDependencies ?? []),
+  ]))].sort((left, right) => left.localeCompare(right));
+  const formats = [...new Set(files.map((file) => file.format))]
+    .sort((left, right) => left.localeCompare(right));
+  const maximumGlibc = maximumVersion(
+    files.map((file) => file.maximumGlibc).filter(Boolean),
+  );
+  const maximumMinimumMacos = maximumVersion(
+    files.map((file) => file.maximumMinimumMacos).filter(Boolean),
+  );
+  const maximumSymbolVersions = {};
+  for (const family of ["CXXABI", "GCC", "GLIBC", "GLIBCXX"]) {
+    const maximum = maximumVersion(
+      files.map((file) => file.symbolVersionFamilies?.[family]?.maximum).filter(Boolean),
+    );
+    if (maximum !== null) maximumSymbolVersions[family] = maximum;
+  }
+  if (
+    JSON.stringify(aggregate.architectures) !== JSON.stringify(architectures) ||
+    JSON.stringify(aggregate.dependencies) !== JSON.stringify(dependencies) ||
+    JSON.stringify(aggregate.formats) !== JSON.stringify(formats) ||
+    aggregate.maximumGlibc !== maximumGlibc ||
+    aggregate.maximumMinimumMacos !== maximumMinimumMacos ||
+    JSON.stringify(aggregate.maximumSymbolVersions) !==
+      JSON.stringify(maximumSymbolVersions)
+  ) return false;
+  return target.platform !== "linux" ||
+    (target.libc?.family === "glibc" && target.libc.version === maximumGlibc);
+}
+
 function embeddedReceiptContract(buildManifest, embedded) {
   if (buildManifest === null) return false;
   const capabilities = buildManifest.capabilities;
@@ -216,6 +503,7 @@ function embeddedReceiptContract(buildManifest, embedded) {
     embeddedAssetReceipt(buildManifest, name, embedded.bytes(name)) !== "verified")) {
     return false;
   }
+  if (!nativeBinaryReceiptContract(buildManifest, embedded)) return false;
   const nativeProfile = buildManifest.toolchain.nativeMathProfile;
   if (!artifact.nativeMathematics) {
     if (capabilities.nativeKernels !== null || nativeProfile !== null) return false;
@@ -988,6 +1276,7 @@ module.exports = {
   SCHEMA,
   collectReleaseCapabilities,
   formatReleaseCapabilities,
+  nativeBinaryReceiptContract,
   parseArguments,
   stable,
   validatedMathProfile,

@@ -17,7 +17,7 @@ const {
   writeFileSync,
 } = require("fs");
 const { createHash } = require("crypto");
-const { execFileSync, spawnSync } = require("child_process");
+const { execFileSync } = require("child_process");
 const { dirname, join, relative } = require("path");
 const {
   canonicalJson,
@@ -32,6 +32,10 @@ const {
 const {
   validateNativeMathBuildProfile,
 } = require("./native-math-profile.cjs");
+const {
+  REPORT_SCHEMA: NATIVE_BINARY_REPORT_SCHEMA,
+  assertNativeInputs,
+} = require("./release-native-binary-inspector.cjs");
 
 const root = join(__dirname, "..");
 const outputDirectory = join(root, "build", "sea");
@@ -106,6 +110,10 @@ const SEA_ASSEMBLY_POLICY = Object.freeze({
   useCodeCache: false,
   useSnapshot: false,
 });
+const NATIVE_BINARY_RECEIPT_SCHEMA = "sagejs.native-binary-receipt/v1";
+const NODE_TEMPLATE_LABEL = "sea/node-template";
+const NODE_TEMPLATE_ROLE = "executable-template";
+const EMBEDDED_ADDON_ROLE = "embedded-node-addon";
 
 const args = new Set(process.argv.slice(2));
 const standaloneModuleDefinition = JSON.stringify(
@@ -213,52 +221,6 @@ function withSeaBuildLock(lockFilename, callback) {
     unlinkSync(lockFilename);
   }
 }
-
-function compareVersions(left, right) {
-  const parts = (value) => value.split(".").map((part) => Number(part));
-  const leftParts = parts(left);
-  const rightParts = parts(right);
-  for (let index = 0; index < Math.max(leftParts.length, rightParts.length); index += 1) {
-    const difference = (leftParts[index] || 0) - (rightParts[index] || 0);
-    if (difference !== 0) return difference;
-  }
-  return 0;
-}
-
-function maximumGlibcVersion(text) {
-  const versions = [...String(text).matchAll(/\bGLIBC_(\d+(?:\.\d+)+)\b/g)]
-    .map((match) => match[1]);
-  return versions.sort(compareVersions).at(-1) || null;
-}
-
-function maximumRequiredGlibc(executable, options = {}) {
-  if (options.glibcVersion !== undefined) return options.glibcVersion;
-  const run = options.spawn || spawnSync;
-  for (const [command, arguments_] of [
-    ["objdump", ["-T", executable]],
-    ["readelf", ["--version-info", executable]],
-  ]) {
-    const result = run(command, arguments_, {
-      encoding: "utf8",
-      stdio: ["ignore", "pipe", "ignore"],
-    });
-    if (!result.error && result.status === 0) {
-      const version = maximumGlibcVersion(result.stdout);
-      if (version !== null) return version;
-    }
-  }
-  throw new Error(
-    `cannot determine the maximum required GLIBC symbol version of ${executable}`,
-  );
-}
-
-function maximumRequiredGlibcAcross(executables, options = {}) {
-  if (options.glibcVersion !== undefined) return options.glibcVersion;
-  const requirements = executables.map((executable) =>
-    maximumRequiredGlibc(executable, options));
-  return requirements.sort(compareVersions).at(-1);
-}
-
 function observeSeaBuilder(executable, options = {}) {
   if (options.builderObservation !== undefined) {
     return structuredClone(options.builderObservation);
@@ -275,6 +237,56 @@ function observeSeaBuilder(executable, options = {}) {
   }));
 }
 
+function nativeBinaryInputs(seaNode, assets) {
+  return [
+    {
+      label: NODE_TEMPLATE_LABEL,
+      path: seaNode,
+      role: NODE_TEMPLATE_ROLE,
+    },
+    ...Object.entries(assets)
+      .filter(([asset]) => asset.endsWith(".node"))
+      .sort(([left], [right]) => left.localeCompare(right))
+      .map(([asset, path]) => ({
+        label: asset,
+        path,
+        role: EMBEDDED_ADDON_ROLE,
+      })),
+  ];
+}
+
+function nativeBinaryPolicy(builder, labels) {
+  const formats = { darwin: "macho", linux: "elf", win32: "pe" };
+  const format = formats[builder.platform];
+  if (!format) throw new Error(`unsupported native binary platform ${builder.platform}`);
+  return {
+    architectures: [builder.arch],
+    exactArchitectures: true,
+    format,
+    requiredLabels: [...labels].sort((left, right) => left.localeCompare(right)),
+  };
+}
+
+function nativeBinaryReceipt(seaNode, assets, builder, options = {}) {
+  const inputs = nativeBinaryInputs(seaNode, assets);
+  const report = options.nativeBinaryReport === undefined
+    ? assertNativeInputs(
+        inputs,
+        nativeBinaryPolicy(builder, inputs.map(({ label }) => label)),
+      )
+    : structuredClone(options.nativeBinaryReport);
+  if (report?.schema !== NATIVE_BINARY_REPORT_SCHEMA) {
+    throw new Error("native binary inspection has an unsupported schema");
+  }
+  return {
+    report,
+    reportSha256: createHash("sha256")
+      .update(canonicalJson(report))
+      .digest("hex"),
+    schema: NATIVE_BINARY_RECEIPT_SCHEMA,
+  };
+}
+
 function targetFromSeaBuilder(executable, options = {}) {
   const builder = observeSeaBuilder(executable, options);
   const supported = new Set([
@@ -288,16 +300,21 @@ function targetFromSeaBuilder(executable, options = {}) {
       `unsupported SEA builder target ${builder.platform}-${builder.arch}`,
     );
   }
+  const report = options.nativeBinaryReport;
+  if (report?.schema !== NATIVE_BINARY_REPORT_SCHEMA || report.ok !== true) {
+    throw new Error("target identity requires a successful native binary inspection");
+  }
+  const glibc = report.aggregate?.maximumGlibc ?? null;
+  if (builder.platform === "linux" && glibc === null) {
+    throw new Error("Linux native binary inspection did not report a GLIBC requirement");
+  }
   return {
     arch: builder.arch,
     endianness: builder.endianness,
     libc: builder.platform === "linux"
       ? {
           family: "glibc",
-          version: maximumRequiredGlibcAcross(
-            [executable, ...(options.nativeExecutables || [])],
-            options,
-          ),
+          version: glibc,
         }
       : null,
     nodeAbi: builder.versions.modules,
@@ -426,7 +443,17 @@ function productionKernelReceipt(rootDirectory, assets) {
 }
 
 function createSeaBuildManifest(options) {
-  const target = targetFromSeaBuilder(options.seaNode, options);
+  const builder = observeSeaBuilder(options.seaNode, options);
+  const nativeBinaries = nativeBinaryReceipt(
+    options.seaNode,
+    options.assets,
+    builder,
+    options,
+  );
+  const target = targetFromSeaBuilder(options.seaNode, {
+    ...options,
+    nativeBinaryReport: nativeBinaries.report,
+  });
   const embeddedAssets = Object.fromEntries(
     Object.keys(options.assets)
       .filter((asset) => asset !== "release/build-manifest.json")
@@ -460,6 +487,7 @@ function createSeaBuildManifest(options) {
       nativeMathProfile: options.withFlint
         ? nativeMathProfile(options.root, target, options)
         : null,
+      nativeBinaries,
       seaNode: {
         executableSha256: sha256(options.seaNode),
         version: observeSeaBuilder(options.seaNode, options).versions.node,
@@ -836,13 +864,9 @@ function buildExecutable(name, withFlint, sourceIdentity) {
   const buildManifestFilename = join(outputDirectory, `${name}-build-manifest.json`);
   const staged = stageSeaInputs(name, seaNode, bundle, assets);
   try {
-    const nativeExecutables = Object.entries(staged.assets)
-      .filter(([asset]) => asset.endsWith(".node"))
-      .map(([, filename]) => filename);
     const buildManifest = createSeaBuildManifest({
       assets: staged.assets,
       mainBundle: staged.mainBundle,
-      nativeExecutables,
       root,
       seaNode: staged.seaNode,
       sourceIdentity,
@@ -882,7 +906,6 @@ function buildExecutable(name, withFlint, sourceIdentity) {
     const observedAfterBuild = createSeaBuildManifest({
       assets: staged.assets,
       mainBundle: staged.mainBundle,
-      nativeExecutables,
       root,
       seaNode: staged.seaNode,
       sourceIdentity,
@@ -962,9 +985,13 @@ if (require.main === module) main();
 module.exports = {
   assetReceipt,
   createSeaBuildManifest,
-  maximumGlibcVersion,
-  maximumRequiredGlibc,
-  maximumRequiredGlibcAcross,
+  EMBEDDED_ADDON_ROLE,
+  NATIVE_BINARY_RECEIPT_SCHEMA,
+  NODE_TEMPLATE_LABEL,
+  NODE_TEMPLATE_ROLE,
+  nativeBinaryInputs,
+  nativeBinaryPolicy,
+  nativeBinaryReceipt,
   observeSeaBuilder,
   productionKernelReceipt,
   SEA_ASSEMBLY_POLICY,

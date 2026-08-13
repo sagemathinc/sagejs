@@ -1,0 +1,85 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "binary-receipt-integration",
+  "title": "Exact native binary release receipts",
+  "lane": "integration",
+  "status": "review",
+  "owner": "user",
+  "objective": "Bind every SEA native executable to a validated target-specific binary compatibility receipt and make capability reporting reject incomplete or tampered evidence",
+  "base_commit": "160313aad07cbf0f241c8cffde0b6b2bdace55cf",
+  "claims": [
+    "scripts/build-sea.cjs",
+    "scripts/release-capabilities.cjs",
+    "scripts/release-native-binary-inspector.cjs",
+    "test/release-capabilities.cjs",
+    "test/sea-build-manifest.cjs",
+    "test/release-native-binary-inspector.cjs"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "not-applicable",
+    "fallback": "not-applicable",
+    "oracles": [
+      "Exact build-receipt schema and adversarial fixture tests"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm architecture:check",
+    "pnpm test:portable",
+    "pnpm test:baselib:strict"
+  ],
+  "runs": [
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 5.851,
+      "started_at": "2026-08-13T21:37:13.009Z",
+      "commit": "160313aad07cbf0f241c8cffde0b6b2bdace55cf",
+      "workspace_fingerprint": "859aa106a32e5df8fcb5d7320d0d1416f7159ed4e21f643c3aa010f1536e9db9",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 18.654,
+      "started_at": "2026-08-13T21:37:25.603Z",
+      "commit": "160313aad07cbf0f241c8cffde0b6b2bdace55cf",
+      "workspace_fingerprint": "859aa106a32e5df8fcb5d7320d0d1416f7159ed4e21f643c3aa010f1536e9db9",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 27.367,
+      "started_at": "2026-08-13T21:37:51.027Z",
+      "commit": "160313aad07cbf0f241c8cffde0b6b2bdace55cf",
+      "workspace_fingerprint": "859aa106a32e5df8fcb5d7320d0d1416f7159ed4e21f643c3aa010f1536e9db9",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "SEA assembly now inspects the exact staged Node template and every embedded .node through the portable native-binary inspector, binds the complete labelled report and its canonical hash into the immutable build receipt, and derives Linux GLIBC identity from that report rather than shell tools. Capability reporting validates the report schema, policy, exact input set, per-format records, aggregate evidence, hashes, target, and embedded addon bytes without loading native code. Adversarial tests cover omitted, extra, report-tampered, and wrong-target evidence. The real current Linux inputs produce a seven-file report with GLIBC 2.38 and expose libatomic.so.1, proving the receipt surfaces the known release blocker.",
+    "risks": [
+      "The assembly policy currently enforces exact input labels, format, and architecture; oldest-GLIBC and allowed-dependency release thresholds should be imposed by the release-candidate policy so ordinary developer SEA builds remain possible while evidence remains exact.",
+      "The Node template is not an embedded asset, so its bytes are bound through the native-binary report and the existing seaNode executable hash; final artifact signing and external checksums remain the publication trust anchor.",
+      "Synthetic ELF, Mach-O, and PE tests validate cross-platform receipt semantics, but macOS and Windows release machines must still build and validate real candidate reports."
+    ],
+    "next_steps": [
+      "Cherry-pick this branch onto the integration baseline and run a full SEA build with the restored native cache.",
+      "Make Linux release-candidate packaging reject report dependencies such as libatomic.so.1 and a GLIBC maximum newer than the declared supported baseline.",
+      "Retain the nativeBinaries receipt in release manifests and expose its aggregate dependency and ABI evidence in release diagnostics."
+    ]
+  }
+}

@@ -17,7 +17,9 @@ const test = require("node:test");
 
 const {
   createSeaBuildManifest,
-  maximumGlibcVersion,
+  EMBEDDED_ADDON_ROLE,
+  NODE_TEMPLATE_LABEL,
+  NODE_TEMPLATE_ROLE,
   productionKernelReceipt,
   SEA_ASSEMBLY_POLICY,
   stageSeaInputs,
@@ -89,6 +91,63 @@ function builderObservation() {
     endianness: "LE",
     platform: "linux",
     versions: { modules: "137", napi: "10", node: "26.7.0" },
+  };
+}
+
+function nativeBinaryReport(item, glibc = "2.28") {
+  const entries = [
+    {
+      label: NODE_TEMPLATE_LABEL,
+      path: item.seaNode,
+      role: NODE_TEMPLATE_ROLE,
+    },
+    ...Object.entries(item.assets)
+      .filter(([name]) => name.endsWith(".node"))
+      .map(([label, path]) => ({ label, path, role: EMBEDDED_ADDON_ROLE })),
+  ].sort((left, right) => left.label.localeCompare(right.label));
+  const files = entries.map(({ label, path, role }) => ({
+    architecture: "x64",
+    dependencies: ["libc.so.6"],
+    endianness: "little",
+    format: "elf",
+    glibcVersions: [glibc],
+    interpreter: label === NODE_TEMPLATE_LABEL ? "/lib64/ld-linux-x86-64.so.2" : null,
+    label,
+    machine: 62,
+    maximumGlibc: glibc,
+    osAbi: 0,
+    requiredSymbolVersions: [`GLIBC_${glibc}`],
+    role,
+    rpaths: [],
+    sha256: sha256(readFileSync(path)),
+    size: readFileSync(path).length,
+    symbolVersionFamilies: {
+      GLIBC: { maximum: glibc, versions: [glibc] },
+    },
+    wordSize: 64,
+  }));
+  return {
+    aggregate: {
+      architectures: ["x64"],
+      dependencies: ["libc.so.6"],
+      formats: ["elf"],
+      maximumGlibc: glibc,
+      maximumMinimumMacos: null,
+      maximumSymbolVersions: { GLIBC: glibc },
+    },
+    files,
+    inputSetSha256: sha256(JSON.stringify(files.map(
+      ({ label, role, sha256, size }) => ({ label, role, sha256, size }),
+    ))),
+    ok: true,
+    policy: {
+      architectures: ["x64"],
+      exactArchitectures: true,
+      format: "elf",
+      requiredLabels: files.map(({ label }) => label),
+    },
+    schema: "sagejs.native-binary-inspection-v1",
+    violations: [],
   };
 }
 
@@ -172,8 +231,8 @@ function options(item, overrides = {}) {
   return {
     assets: item.assets,
     builderObservation: builderObservation(),
-    glibcVersion: "2.28",
     mainBundle: item.mainBundle,
+    nativeBinaryReport: nativeBinaryReport(item),
     nativeMathProfile: mathProfile(),
     root: item.root,
     seaNode: item.seaNode,
@@ -189,13 +248,7 @@ function profileWith(overrides) {
   return { ...identity, fingerprint: sha256(JSON.stringify(identity)) };
 }
 
-test("GLIBC target is derived from the Node executable requirement", () => {
-  assert.equal(
-    maximumGlibcVersion(
-      "GLIBC_2.2.5 GLIBCXX_3.4.30 GLIBC_2.17 GLIBC_2.28 GLIBC_2.3",
-    ),
-    "2.28",
-  );
+test("GLIBC target is derived from the exact native binary inspection", () => {
   const item = fixture();
   try {
     assert.deepEqual(
@@ -218,25 +271,11 @@ test("GLIBC target is derived from the Node executable requirement", () => {
 test("Linux compatibility covers every embedded native addon", () => {
   const item = fixture();
   try {
-    const requirements = new Map([
-      [item.seaNode, "GLIBC_2.28"],
-      [item.assets["native/sagejs_m4ri_ffi.node"], "GLIBC_2.29"],
-      [item.assets["native/sagejs_flint_ffi.node"], "GLIBC_2.38"],
-    ]);
-    const spawn = (command, arguments_) => ({
-      status: 0,
-      stdout: requirements.get(arguments_.at(-1)) ?? "GLIBC_2.17",
-    });
     assert.equal(
       targetFromSeaBuilder(
         item.seaNode,
         options(item, {
-          glibcVersion: undefined,
-          nativeExecutables: [
-            item.assets["native/sagejs_m4ri_ffi.node"],
-            item.assets["native/sagejs_flint_ffi.node"],
-          ],
-          spawn,
+          nativeBinaryReport: nativeBinaryReport(item, "2.38"),
         }),
       ).libc.version,
       "2.38",
@@ -290,6 +329,11 @@ test("mathematics SEA receipt binds authority, index, sources, and every native 
       first.toolchain.nativeMathProfile.fingerprint,
       mathProfile().fingerprint,
     );
+    assert.equal(
+      first.toolchain.nativeBinaries.report.aggregate.maximumGlibc,
+      "2.28",
+    );
+    assert.match(first.toolchain.nativeBinaries.reportSha256, /^[0-9a-f]{64}$/);
     assert.match(first.toolchain.seaNode.executableSha256, /^[0-9a-f]{64}$/);
     assert.deepEqual(first.toolchain.seaMain, {
       sha256: sha256(readFileSync(item.mainBundle)),
