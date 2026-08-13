@@ -24,6 +24,7 @@ const sourceRoot = process.env.SAGEJS_RELEASE_SOURCE_ROOT;
 function execute(command, arguments_, options = {}) {
   const result = spawnSync(command, arguments_, {
     encoding: "utf8",
+    timeout: 60_000,
     ...options,
   });
   assert.ifError(result.error);
@@ -38,29 +39,33 @@ function execute(command, arguments_, options = {}) {
 function signatureDetails(executable) {
   const result = spawnSync("codesign", ["--display", "--verbose=4", executable], {
     encoding: "utf8",
+    timeout: 30_000,
   });
   assert.equal(result.status, 0, result.stderr);
   return `${result.stdout}\n${result.stderr}`;
 }
 
-function optionalInspection(command, arguments_) {
-  const result = spawnSync(command, arguments_, { encoding: "utf8" });
-  if (result.error || result.status !== 0) return null;
-  return `${result.stdout}\n${result.stderr}`;
+function loadCommandRpaths(output) {
+  const lines = output.split("\n");
+  const rpaths = [];
+  for (let index = 0; index < lines.length; index += 1) {
+    if (lines[index].trim() !== "cmd LC_RPATH") continue;
+    for (index += 1; index < lines.length; index += 1) {
+      const match = lines[index].trim().match(/^path\s+(.+?)\s+\(offset/);
+      if (match) {
+        rpaths.push(match[1]);
+        break;
+      }
+      if (lines[index].startsWith("Load command")) break;
+    }
+  }
+  return rpaths;
 }
 
 function isolatedEnvironment(root) {
-  const environment = { ...process.env };
-  for (const name of Object.keys(environment)) {
-    if (
-      name.startsWith("SAGEJS_") ||
-      name === "NODE_OPTIONS" ||
-      name === "NODE_PATH" ||
-      name.startsWith("NPM_CONFIG_") ||
-      name.startsWith("npm_config_")
-    ) {
-      delete environment[name];
-    }
+  const environment = {};
+  for (const name of ["LANG", "LC_ALL", "LC_CTYPE", "TZ"]) {
+    if (process.env[name] !== undefined) environment[name] = process.env[name];
   }
   return {
     ...environment,
@@ -68,6 +73,7 @@ function isolatedEnvironment(root) {
     USERPROFILE: join(root, "home"),
     XDG_CACHE_HOME: join(root, "cache"),
     SAGEJS_NATIVE_CACHE_DIR: join(root, "cache", "native"),
+    PATH: "/usr/bin:/bin:/usr/sbin:/sbin",
     TMP: join(root, "tmp"),
     TEMP: join(root, "tmp"),
     TMPDIR: join(root, "tmp"),
@@ -90,9 +96,11 @@ test(
 
 test("the macOS candidate witness scrubs ambient runtime policy", () => {
   const before = {
+    dyld: process.env.DYLD_LIBRARY_PATH,
     node: process.env.NODE_OPTIONS,
     sagejs: process.env.SAGEJS_USE_SOURCE,
   };
+  process.env.DYLD_LIBRARY_PATH = "/outside/injection";
   process.env.NODE_OPTIONS = "--require=/outside/injection.cjs";
   process.env.SAGEJS_USE_SOURCE = "1";
   try {
@@ -101,8 +109,12 @@ test("the macOS candidate witness scrubs ambient runtime policy", () => {
     assert.equal(environment.NODE_PATH, undefined);
     assert.equal(environment.SAGEJS_USE_SOURCE, undefined);
     assert.equal(environment.SAGEJS_NATIVE_MODE, undefined);
+    assert.equal(environment.DYLD_LIBRARY_PATH, undefined);
+    assert.equal(environment.PATH, "/usr/bin:/bin:/usr/sbin:/sbin");
     assert.match(environment.SAGEJS_NATIVE_CACHE_DIR, /cache[\\/]native$/);
   } finally {
+    if (before.dyld === undefined) delete process.env.DYLD_LIBRARY_PATH;
+    else process.env.DYLD_LIBRARY_PATH = before.dyld;
     if (before.node === undefined) delete process.env.NODE_OPTIONS;
     else process.env.NODE_OPTIONS = before.node;
     if (before.sagejs === undefined) delete process.env.SAGEJS_USE_SOURCE;
@@ -150,8 +162,8 @@ test(
           0,
           `archive extraction lost executable mode bits: ${executable}`,
         );
-        const architectures = optionalInspection("lipo", ["-archs", executable]);
-        if (architectures) assert.match(architectures, /^arm64\s*$/);
+        const architectures = execute("lipo", ["-archs", executable]).stdout;
+        assert.match(architectures, /^arm64\s*$/);
         execute("codesign", ["--verify", "--deep", "--strict", executable]);
         const details = signatureDetails(executable);
         if (expectedSignature === "adhoc") {
@@ -162,28 +174,37 @@ test(
           assert.match(details, /Authority=Developer ID Application/);
           assert.doesNotMatch(details, /Signature=adhoc/);
         }
-        const libraries = optionalInspection("otool", ["-L", executable]);
-        if (sourceRoot && libraries) {
+        const libraries = execute("otool", ["-L", executable]).stdout;
+        if (sourceRoot) {
           assert.equal(libraries.includes(resolve(sourceRoot)), false);
         }
-        if (libraries) {
-          const nonSystem = libraries
-            .split("\n")
-            .slice(1)
-            .map((line) => line.trim().split(/\s+/)[0])
-            .filter(Boolean)
-            .filter(
-              (library) =>
-                !library.startsWith("@") &&
-                !library.startsWith("/usr/lib/") &&
-                !library.startsWith("/System/Library/"),
-            );
-          assert.deepEqual(
-            nonSystem,
-            [],
-            `release executable has non-system dynamic dependencies: ${nonSystem.join(", ")}`,
+        const nonSystem = libraries
+          .split("\n")
+          .slice(1)
+          .map((line) => line.trim().split(/\s+/)[0])
+          .filter(Boolean)
+          .filter(
+            (library) =>
+              !library.startsWith("/usr/lib/") &&
+              !library.startsWith("/System/Library/"),
           );
-        }
+        assert.deepEqual(
+          nonSystem,
+          [],
+          `release executable has unbound or non-system dependencies: ${nonSystem.join(", ")}`,
+        );
+        const unsafeRpaths = loadCommandRpaths(
+          execute("otool", ["-l", executable]).stdout,
+        ).filter(
+          (path) =>
+            !path.startsWith("/usr/lib/") &&
+            !path.startsWith("/System/Library/"),
+        );
+        assert.deepEqual(
+          unsafeRpaths,
+          [],
+          `release executable has non-system LC_RPATH entries: ${unsafeRpaths.join(", ")}`,
+        );
       }
 
       for (const filename of ["LICENSE", "README.md", "DISTRIBUTION.md", "licenses"]) {
@@ -227,6 +248,20 @@ test(
       const warm = execute(sagejs, [program], { cwd: work, env: environment });
       const warmMilliseconds = performance.now() - warmStarted;
       assert.equal(warm.stdout.trim(), "sagejs macos arm64 release candidate ok");
+
+      const authoritative = execute(
+        process.execPath,
+        [
+          join(root, "scripts", "release-math-smoke.cjs"),
+          "--executable",
+          sagejs,
+          "--require-native",
+          "--max-seconds",
+          "60",
+        ],
+        { cwd: work, env: environment },
+      );
+      assert.match(authoritative.stdout, /Release mathematics smoke passed:/);
 
       assert.ok(pythonMilliseconds < 60_000);
       assert.ok(coldMilliseconds < 60_000);

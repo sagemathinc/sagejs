@@ -71,7 +71,7 @@ if [[ $UNSIGNED -eq 1 && -n "$PUBLISH_TAG" ]]; then
   exit 2
 fi
 
-required_commands=(codesign ditto node shasum)
+required_commands=(codesign ditto lipo node otool shasum)
 if [[ $SKIP_BUILD -eq 0 ]]; then
   required_commands+=(pnpm)
 fi
@@ -88,19 +88,28 @@ done
 BUILDER_NODE="${SAGEJS_RELEASE_BUILDER_NODE:-}"
 if [[ $SKIP_BUILD -eq 0 ]]; then
   BUILDER_NODE="$(command -v node)"
-  if command -v otool >/dev/null; then
-    NON_SYSTEM_NODE_LIBRARIES="$(
-      otool -L "$BUILDER_NODE" |
-        tail -n +2 |
-        awk '{print $1}' |
-        grep -Ev '^(@|/usr/lib/|/System/Library/)' || true
-    )"
-    if [[ -n "$NON_SYSTEM_NODE_LIBRARIES" ]]; then
-      echo "The SEA builder Node is not relocatable: $BUILDER_NODE" >&2
-      echo "$NON_SYSTEM_NODE_LIBRARIES" >&2
-      echo "Use the official macOS arm64 Node distribution, not Homebrew Node." >&2
-      exit 2
-    fi
+  NON_SYSTEM_NODE_LIBRARIES="$(
+    otool -L "$BUILDER_NODE" |
+      tail -n +2 |
+      awk '{print $1}' |
+      grep -Ev '^(/usr/lib/|/System/Library/)' || true
+  )"
+  UNSAFE_NODE_RPATHS="$(
+    otool -l "$BUILDER_NODE" |
+      awk '
+        $1 == "cmd" && $2 == "LC_RPATH" { in_rpath = 1; next }
+        in_rpath && $1 == "path" {
+          if ($2 !~ "^/usr/lib/" && $2 !~ "^/System/Library/") print $2
+          in_rpath = 0
+        }
+      ' || true
+  )"
+  if [[ -n "$NON_SYSTEM_NODE_LIBRARIES" || -n "$UNSAFE_NODE_RPATHS" ]]; then
+    echo "The SEA builder Node is not relocatable: $BUILDER_NODE" >&2
+    [[ -z "$NON_SYSTEM_NODE_LIBRARIES" ]] || echo "$NON_SYSTEM_NODE_LIBRARIES" >&2
+    [[ -z "$UNSAFE_NODE_RPATHS" ]] || echo "unsafe LC_RPATH: $UNSAFE_NODE_RPATHS" >&2
+    echo "Use the official macOS arm64 Node distribution, not Homebrew Node." >&2
+    exit 2
   fi
   echo "Building and relocation-testing macOS SEA executables"
   pnpm test:sea
@@ -122,7 +131,8 @@ PACKAGE_CHECKSUM="$PACKAGE.sha256"
 BENCHMARK_REPORT="$RELEASE_ROOT/sagejs-$PLATFORM-benchmark.json"
 rm -rf \
   "$DIST" "$PAYLOAD" "$UNSIGNED_PKG" "$ARCHIVE" "$PACKAGE" \
-  "$ARCHIVE_CHECKSUM" "$PACKAGE_CHECKSUM" "$BENCHMARK_REPORT"
+  "$ARCHIVE_CHECKSUM" "$PACKAGE_CHECKSUM" "$BENCHMARK_REPORT" \
+  "$BENCHMARK_REPORT.sha256"
 mkdir -p "$DIST/licenses"
 if [[ $UNSIGNED -eq 0 ]]; then
   mkdir -p "$PAYLOAD/usr/local/bin"
@@ -177,6 +187,11 @@ if [[ "$ARCH" == "arm64" ]]; then
   SAGEJS_RELEASE_BUILDER_NODE="$BUILDER_NODE" \
     node bench/release-candidate-macos.cjs \
     --archive "$ARCHIVE" --output "$BENCHMARK_REPORT"
+  (
+    cd "$RELEASE_ROOT"
+    shasum -a 256 "$(basename "$BENCHMARK_REPORT")" > \
+      "$(basename "$BENCHMARK_REPORT").sha256"
+  )
 fi
 
 if [[ $UNSIGNED -eq 0 ]]; then
@@ -215,8 +230,11 @@ fi
 
 if [[ -n "$PUBLISH_TAG" ]]; then
   command -v gh >/dev/null || { echo "gh is required for --publish" >&2; exit 2; }
-  gh release upload "$PUBLISH_TAG" \
-    "$ARCHIVE" "$ARCHIVE.sha256" "$PACKAGE" "$PACKAGE.sha256" --clobber
+  RELEASE_ASSETS=("$ARCHIVE" "$ARCHIVE.sha256" "$PACKAGE" "$PACKAGE.sha256")
+  if [[ "$ARCH" == "arm64" ]]; then
+    RELEASE_ASSETS+=("$BENCHMARK_REPORT" "$BENCHMARK_REPORT.sha256")
+  fi
+  gh release upload "$PUBLISH_TAG" "${RELEASE_ASSETS[@]}" --clobber
 fi
 
 echo
@@ -229,6 +247,7 @@ echo "  $ARCHIVE"
 echo "  $ARCHIVE_CHECKSUM"
 if [[ "$ARCH" == "arm64" ]]; then
   echo "  $BENCHMARK_REPORT"
+  echo "  $BENCHMARK_REPORT.sha256"
 fi
 if [[ $UNSIGNED -eq 0 ]]; then
   echo "  $PACKAGE"

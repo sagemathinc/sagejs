@@ -44,7 +44,11 @@ function parseArguments(arguments_) {
 
 function run(executable, arguments_, options) {
   const started = performance.now();
-  const result = spawnSync(executable, arguments_, { encoding: "utf8", ...options });
+  const result = spawnSync(executable, arguments_, {
+    encoding: "utf8",
+    timeout: 60_000,
+    ...options,
+  });
   const milliseconds = performance.now() - started;
   if (result.error) throw result.error;
   if (result.status !== 0) {
@@ -64,17 +68,9 @@ function statistics(values) {
 }
 
 function isolatedEnvironment(home, cache, temporary) {
-  const environment = { ...process.env };
-  for (const name of Object.keys(environment)) {
-    if (
-      name.startsWith("SAGEJS_") ||
-      name === "NODE_OPTIONS" ||
-      name === "NODE_PATH" ||
-      name.startsWith("NPM_CONFIG_") ||
-      name.startsWith("npm_config_")
-    ) {
-      delete environment[name];
-    }
+  const environment = {};
+  for (const name of ["LANG", "LC_ALL", "LC_CTYPE", "TZ"]) {
+    if (process.env[name] !== undefined) environment[name] = process.env[name];
   }
   return {
     ...environment,
@@ -82,6 +78,7 @@ function isolatedEnvironment(home, cache, temporary) {
     USERPROFILE: home,
     XDG_CACHE_HOME: cache,
     SAGEJS_NATIVE_CACHE_DIR: join(cache, "native"),
+    PATH: "/usr/bin:/bin:/usr/sbin:/sbin",
     TMP: temporary,
     TEMP: temporary,
     TMPDIR: temporary,
@@ -169,7 +166,7 @@ function contentManifest(directory) {
   return files;
 }
 
-function sourceProvenance() {
+function validationCheckoutObservation() {
   const source = resolve(__dirname, "..");
   const commit = inspectCommand("git", ["-C", source, "rev-parse", "HEAD"]);
   const status = inspectCommand("git", ["-C", source, "status", "--porcelain"]);
@@ -178,6 +175,7 @@ function sourceProvenance() {
   }
   return {
     available: true,
+    artifact_identity: false,
     commit: commit.output.trim(),
     dirty: status.output.trim().length > 0,
   };
@@ -273,7 +271,7 @@ try {
       node_version:
         process.env.SAGEJS_RELEASE_NODE_VERSION ??
         (builderNode === process.execPath ? process.version : null),
-      node_executable: builderNode,
+      node_executable: builderNode ? basename(builderNode) : null,
       node_sha256: builderNodeHash,
       node_dynamic_dependencies: builderNodeDependencies?.available
         ? builderNodeDependencies.output
@@ -282,13 +280,15 @@ try {
             .map((line) => line.trim())
             .filter(Boolean)
         : builderNodeDependencies,
-      node_distribution: process.env.SAGEJS_RELEASE_NODE_DISTRIBUTION ?? null,
+      node_distribution: process.env.SAGEJS_RELEASE_NODE_DISTRIBUTION
+        ? basename(process.env.SAGEJS_RELEASE_NODE_DISTRIBUTION)
+        : null,
       node_distribution_sha256:
         process.env.SAGEJS_RELEASE_NODE_DISTRIBUTION_SHA256 ?? null,
     },
     validation_node: {
       version: process.version,
-      executable: process.execPath,
+      executable: basename(process.execPath),
       sha256: createHash("sha256")
         .update(readFileSync(process.execPath))
         .digest("hex"),
@@ -302,7 +302,7 @@ try {
         "The recipe and extracted-content manifest are reproducible; ZIP bytes " +
         "and their checksum identify this candidate but may vary with input mtimes.",
     },
-    source: sourceProvenance(),
+    validation_checkout: validationCheckoutObservation(),
     extracted_content: contentManifest(distribution),
     executable_bytes: statSync(sagejs).size,
     mach_o: {
