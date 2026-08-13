@@ -47,6 +47,11 @@ const polynomialWitness = join(
   root, "bench", "native-ffi-flint-polynomial.py",
 );
 
+test("native-boundary paths use repository separators on every host", () => {
+  assert.equal(boundaryAudit.portablePath("ffi\\flint.ffi.py"), "ffi/flint.ffi.py");
+  assert.equal(boundaryAudit.portablePath("ffi/flint.ffi.py"), "ffi/flint.ffi.py");
+});
+
 function runSage(args, input = undefined, env = {}) {
   const result = spawnSync(process.execPath, [join(root, "bin", "sagejs"), ...args], {
     cwd: root,

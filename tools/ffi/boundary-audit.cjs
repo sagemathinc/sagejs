@@ -12,6 +12,10 @@ const {
 
 const repositoryRoot = resolve(__dirname, "..", "..");
 
+function portablePath(path) {
+  return path.replaceAll("\\", "/");
+}
+
 function readJson(filename) {
   return JSON.parse(readFileSync(filename, "utf8"));
 }
@@ -122,7 +126,7 @@ function declaredFunctions(registry) {
     library.functions.map((fn) => ({
       id: `ffi:${library.library.id}:${fn.id}`,
       kind: "declared-ffi",
-      path: relative(registry.root, library.filename),
+      path: portablePath(relative(registry.root, library.filename)),
       library: library.library.id,
       export: fn.python_name,
       dynamic_package: library.library.dynamic.package,
@@ -138,7 +142,7 @@ function declaredResources(registry) {
     library.resources.map((resource) => ({
       id: `ffi-resource:${library.library.id}:${resource.id}`,
       kind: "declared-ffi-resource",
-      path: relative(registry.root, library.filename),
+      path: portablePath(relative(registry.root, library.filename)),
       library: library.library.id,
       export: resource.python_name,
       abi_type: resource.abi_type,
@@ -282,6 +286,7 @@ function validateBoundarySnapshot(snapshot, options = {}) {
 module.exports = {
   createBoundarySnapshot,
   napiExports,
+  portablePath,
   repositoryRoot,
   snapshotPath,
   trackedFiles,
