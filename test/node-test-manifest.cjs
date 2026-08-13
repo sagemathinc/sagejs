@@ -12,7 +12,6 @@ const unit = [
   "test/release-cache-lifecycle.cjs",
   "test/release-capabilities.cjs",
   "test/release-manifest.cjs",
-  "test/release-math-smoke.cjs",
   "test/release-npm-install.cjs",
   "test/native-math-profile.cjs",
   "test/math-dispatch-declarations.cjs",
@@ -56,6 +55,8 @@ const unit = [
 ];
 
 const integration = [
+  "test/release-math-smoke.cjs",
+  "test/release-macos-arm64.cjs",
   "test/coverage-python-stdlib.cjs",
   "test/coverage-graphics3d.cjs",
   "test/coverage-graphs.cjs",

@@ -63,6 +63,31 @@ function statistics(values) {
   };
 }
 
+function isolatedEnvironment(home, cache, temporary) {
+  const environment = { ...process.env };
+  for (const name of Object.keys(environment)) {
+    if (
+      name.startsWith("SAGEJS_") ||
+      name === "NODE_OPTIONS" ||
+      name === "NODE_PATH" ||
+      name.startsWith("NPM_CONFIG_") ||
+      name.startsWith("npm_config_")
+    ) {
+      delete environment[name];
+    }
+  }
+  return {
+    ...environment,
+    HOME: home,
+    USERPROFILE: home,
+    XDG_CACHE_HOME: cache,
+    SAGEJS_NATIVE_CACHE_DIR: join(cache, "native"),
+    TMP: temporary,
+    TEMP: temporary,
+    TMPDIR: temporary,
+  };
+}
+
 function inspectCommand(command, arguments_) {
   const result = spawnSync(command, arguments_, { encoding: "utf8" });
   if (result.error || result.status !== 0) {
@@ -213,25 +238,25 @@ try {
     startup.push(
       run(sagejs, ["--version"], {
         cwd: work,
-        env: { ...process.env, HOME: coldHome, XDG_CACHE_HOME: coldCache },
+        env: isolatedEnvironment(coldHome, coldCache, temporary),
       }).milliseconds,
     );
     cold.push(
       run(sagejs, [program], {
         cwd: work,
-        env: { ...process.env, HOME: coldHome, XDG_CACHE_HOME: coldCache },
+        env: isolatedEnvironment(coldHome, coldCache, temporary),
       }).milliseconds,
     );
     warm.push(
       run(sagejs, [program], {
         cwd: work,
-        env: { ...process.env, HOME: sharedHome, XDG_CACHE_HOME: sharedCache },
+        env: isolatedEnvironment(sharedHome, sharedCache, temporary),
       }).milliseconds,
     );
   }
   const version = run(sagejs, ["--version"], {
     cwd: work,
-    env: { ...process.env, HOME: sharedHome, XDG_CACHE_HOME: sharedCache },
+    env: isolatedEnvironment(sharedHome, sharedCache, temporary),
   }).stdout;
   const report = {
     schema: "sagejs.release-candidate-benchmark-v1",

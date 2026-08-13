@@ -49,6 +49,31 @@ function optionalInspection(command, arguments_) {
   return `${result.stdout}\n${result.stderr}`;
 }
 
+function isolatedEnvironment(root) {
+  const environment = { ...process.env };
+  for (const name of Object.keys(environment)) {
+    if (
+      name.startsWith("SAGEJS_") ||
+      name === "NODE_OPTIONS" ||
+      name === "NODE_PATH" ||
+      name.startsWith("NPM_CONFIG_") ||
+      name.startsWith("npm_config_")
+    ) {
+      delete environment[name];
+    }
+  }
+  return {
+    ...environment,
+    HOME: join(root, "home"),
+    USERPROFILE: join(root, "home"),
+    XDG_CACHE_HOME: join(root, "cache"),
+    SAGEJS_NATIVE_CACHE_DIR: join(root, "cache", "native"),
+    TMP: join(root, "tmp"),
+    TEMP: join(root, "tmp"),
+    TMPDIR: join(root, "tmp"),
+  };
+}
+
 test(
   "the macOS release command documents credential-free candidates",
   { skip: !existsSync(join(root, "scripts", "release-macos.sh")) },
@@ -62,6 +87,28 @@ test(
     assert.match(result.stdout, /not publishable/);
   },
 );
+
+test("the macOS candidate witness scrubs ambient runtime policy", () => {
+  const before = {
+    node: process.env.NODE_OPTIONS,
+    sagejs: process.env.SAGEJS_USE_SOURCE,
+  };
+  process.env.NODE_OPTIONS = "--require=/outside/injection.cjs";
+  process.env.SAGEJS_USE_SOURCE = "1";
+  try {
+    const environment = isolatedEnvironment("/fixture/release-root");
+    assert.equal(environment.NODE_OPTIONS, undefined);
+    assert.equal(environment.NODE_PATH, undefined);
+    assert.equal(environment.SAGEJS_USE_SOURCE, undefined);
+    assert.equal(environment.SAGEJS_NATIVE_MODE, undefined);
+    assert.match(environment.SAGEJS_NATIVE_CACHE_DIR, /cache[\\/]native$/);
+  } finally {
+    if (before.node === undefined) delete process.env.NODE_OPTIONS;
+    else process.env.NODE_OPTIONS = before.node;
+    if (before.sagejs === undefined) delete process.env.SAGEJS_USE_SOURCE;
+    else process.env.SAGEJS_USE_SOURCE = before.sagejs;
+  }
+});
 
 test(
   "the extracted macOS arm64 candidate is self-contained and mathematically sound",
@@ -81,10 +128,12 @@ test(
       const extraction = join(temporary, "extracted");
       const home = join(temporary, "home");
       const cache = join(temporary, "cache");
+      const scratch = join(temporary, "tmp");
       const work = join(temporary, "work");
       mkdirSync(extraction);
       mkdirSync(home);
       mkdirSync(cache);
+      mkdirSync(scratch);
       mkdirSync(work);
       execute("ditto", ["-x", "-k", archive, extraction]);
 
@@ -141,14 +190,7 @@ test(
         assert.equal(existsSync(join(distribution, filename)), true, `${filename} is absent`);
       }
 
-      const environment = {
-        ...process.env,
-        HOME: home,
-        XDG_CACHE_HOME: cache,
-        SAGEJS_NATIVE_CACHE: join(cache, "native"),
-      };
-      delete environment.NODE_PATH;
-      delete environment.SAGEJS_SOURCE_ROOT;
+      const environment = isolatedEnvironment(temporary);
 
       const pythonStarted = performance.now();
       const python = execute(sagepython, ["--jupyter-kernel-self-test"], {
