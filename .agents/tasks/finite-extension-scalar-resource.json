@@ -4,7 +4,7 @@
   "id": "finite-extension-scalar-resource",
   "title": "Generated finite-extension scalar resources",
   "lane": "integration",
-  "status": "active",
+  "status": "review",
   "owner": "user",
   "objective": "Implement a forced-generated standalone word-characteristic GF(p^n) scalar slice over generated FqContext/FqElement resources, covering construction, complete field arithmetic, canonical coordinates, hashing, serialization, deterministic lifecycle, and a borrowed typed-Python kernel without changing the public default or retaining legacy and generated scalar objects simultaneously.",
   "base_commit": "01efae3f570f8dbd6f5e66e0de1873f041d18f97",
@@ -59,10 +59,89 @@
     "pnpm test:portable",
     "pnpm test:baselib:strict"
   ],
-  "runs": [],
+  "runs": [
+    {
+      "command": "pnpm build",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 176.658,
+      "started_at": "2026-08-13T03:44:44.311Z",
+      "commit": "39a400f1110c2043956889ba5621ad7314357d6c",
+      "workspace_fingerprint": "e5abc637cdf7c681a0626efa20fb977059e2bfb2e23cf03e7b6d1ba3db855d17",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/finite-extension-scalar-resource.cjs test/extension-polynomial-resource-kernels.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 4.792,
+      "started_at": "2026-08-13T03:47:45.761Z",
+      "commit": "39a400f1110c2043956889ba5621ad7314357d6c",
+      "workspace_fingerprint": "e5abc637cdf7c681a0626efa20fb977059e2bfb2e23cf03e7b6d1ba3db855d17",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node test/ffi.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 49.968,
+      "started_at": "2026-08-13T03:47:54.869Z",
+      "commit": "39a400f1110c2043956889ba5621ad7314357d6c",
+      "workspace_fingerprint": "e5abc637cdf7c681a0626efa20fb977059e2bfb2e23cf03e7b6d1ba3db855d17",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm ffi:lifecycle:fuzz",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 19.651,
+      "started_at": "2026-08-13T03:48:48.917Z",
+      "commit": "39a400f1110c2043956889ba5621ad7314357d6c",
+      "workspace_fingerprint": "e5abc637cdf7c681a0626efa20fb977059e2bfb2e23cf03e7b6d1ba3db855d17",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 14.294,
+      "started_at": "2026-08-13T03:49:12.568Z",
+      "commit": "39a400f1110c2043956889ba5621ad7314357d6c",
+      "workspace_fingerprint": "e5abc637cdf7c681a0626efa20fb977059e2bfb2e23cf03e7b6d1ba3db855d17",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 14.443,
+      "started_at": "2026-08-13T03:49:33.581Z",
+      "commit": "39a400f1110c2043956889ba5621ad7314357d6c",
+      "workspace_fingerprint": "e5abc637cdf7c681a0626efa20fb977059e2bfb2e23cf03e7b6d1ba3db855d17",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 14.121,
+      "started_at": "2026-08-13T03:49:51.735Z",
+      "commit": "39a400f1110c2043956889ba5621ad7314357d6c",
+      "workspace_fingerprint": "e5abc637cdf7c681a0626efa20fb977059e2bfb2e23cf03e7b6d1ba3db855d17",
+      "platform": "linux-x64"
+    }
+  ],
   "handoff": {
-    "summary": "",
-    "risks": [],
-    "next_steps": []
+    "summary": "Implemented and pushed a forced-generated standalone GF(p^n) scalar vertical slice. Generated FqContext/FqElement resources now expose negation, inversion, arbitrary signed exact powers, predicates, and one versioned bulk coordinate transfer. The strict facade owns only generated resources and covers construction, full field arithmetic, canonical coordinates, stable hashing, portable serialization, deterministic close behavior, retained dependent lifetimes, and a source-transparent typed-Python borrowed traversal. Public finite fields and their representation remain unchanged.",
+    "risks": [
+      "The generated Fq declarations remain explicitly wasm=false. Native Node execution is complete and fail-closed, but browser/Wasm resource lowering is not implemented by this lane.",
+      "Native validation was completed on Linux x64 only. Linux arm64, macOS arm64, and native Windows CI remain integration validation rather than evidence produced in this worktree.",
+      "The broad pnpm test:changed audit diffed this old lane base against a much newer origin/main and stopped in unrelated compiler fixtures whose isolated harness could not import random and sagejs.linear_algebra.exact_vector_public; all task-scoped and required validation receipts pass."
+    ],
+    "next_steps": [
+      "Review and integrate commits eb79e1a, b6f4057, 0dd3190, and 39a400f from origin/agent/finite-extension-scalar-resource.",
+      "Add generated Wasm ownership and finalization lowering for FqContext/FqElement before considering a browser-capable public default.",
+      "Run the integrated baseline on macOS arm64, Linux arm64, and Windows x64, then use this explicit slice as the differential prototype for any later public finite-extension scalar migration."
+    ]
   }
 }
