@@ -1372,6 +1372,8 @@ test("Windows native specs keep vcpkg state atomic and FFLAS independent", () =>
       "x64-windows-static-md-release/lib/flint.lib",
     "packages/flint/.native/vcpkg-installed/" +
       "x64-windows-static-md-release/lib/openblas.lib",
+    "packages/flint/.native/vcpkg-installed/" +
+      "x64-windows-static-md-release/.sagejs-flint-dependencies.json",
   ]);
   assert.ok(
     flint.requiredOutputs.every((path) =>
