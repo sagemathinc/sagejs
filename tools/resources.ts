@@ -58,10 +58,12 @@ export function publishedNativeModuleError(
   directory = __dirname,
 ): Error | undefined {
   const code = (error as NodeJS.ErrnoException)?.code;
+  const message = String((error as Error)?.message ?? "");
   if (
     code !== "MODULE_NOT_FOUND" ||
     !SAGEJS_NATIVE_RUNTIME_MODULES.has(name) ||
-    !directory.split(/[\\/]/).includes("node_modules")
+    !directory.split(/[\\/]/).includes("node_modules") ||
+    !message.includes(`'${name}'`)
   ) {
     return undefined;
   }

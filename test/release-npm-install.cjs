@@ -59,7 +59,11 @@ test("release test environment isolates mutable state and can hide compilers", (
     assert.ok(isWithin(temporary, environment.TMPDIR));
     assert.ok(isWithin(temporary, environment.PATH));
     assert.ok(isWithin(temporary, environment.CC));
-    assert.equal(environment.NODE_PATH, "");
+    assert.equal(environment.NODE_PATH, undefined);
+    assert.equal(environment.NODE_OPTIONS, undefined);
+    assert.equal(environment.SAGEJS_USE_SOURCE, undefined);
+    assert.equal(environment.SAGEJS_NATIVE_MODE, undefined);
+    assert.equal(environment.SAGEJS_PRECOMPILED_MODULE_CACHE_DIR, undefined);
     assert.equal(environment.NPM_CONFIG_REGISTRY, "http://127.0.0.1:9");
   } finally {
     rmSync(temporary, { recursive: true, force: true });

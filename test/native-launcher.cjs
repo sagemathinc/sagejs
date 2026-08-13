@@ -40,12 +40,30 @@ test("native executable inspection distinguishes unsupported and corrupt install
     platform: "linux",
     arch: "x64",
     resolve: () => {
-      throw Object.assign(new Error("not found"), { code: "MODULE_NOT_FOUND" });
+      throw Object.assign(
+        new Error(
+          "Cannot find module '@sagemath/sagejs-linux-x64/package.json'",
+        ),
+        { code: "MODULE_NOT_FOUND" },
+      );
     },
   });
   assert.equal(missing.status, "missing-package");
   assert.equal(missing.packageName, "@sagemath/sagejs-linux-x64");
   assert.match(missingNativeMessage(missing), /optional dependencies enabled/);
+
+  assert.throws(
+    () => inspectNativeExecutable({
+      platform: "linux",
+      arch: "x64",
+      resolve: () => {
+        throw Object.assign(new Error("Cannot find module 'transitive-package'"), {
+          code: "MODULE_NOT_FOUND",
+        });
+      },
+    }),
+    /transitive-package/,
+  );
 
   const incomplete = inspectNativeExecutable({
     platform: "linux",

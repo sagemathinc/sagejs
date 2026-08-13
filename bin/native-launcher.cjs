@@ -40,6 +40,12 @@ function inspectNativeExecutable(options = {}) {
   try {
     packageJson = resolve(`${packageName}/package.json`);
   } catch (error) {
+    if (
+      error?.code !== "MODULE_NOT_FOUND" ||
+      !String(error.message).includes(`${packageName}/package.json`)
+    ) {
+      throw error;
+    }
     return { status: "missing-package", packageName, error };
   }
   const executable = join(

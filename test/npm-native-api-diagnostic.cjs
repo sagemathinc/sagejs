@@ -7,7 +7,7 @@ const {
   publishedNativeModuleError,
 } = require("../dist/tools/resources.js");
 
-const missing = Object.assign(new Error("fixture dependency missing"), {
+const missing = Object.assign(new Error("Cannot find module '@sagemath/sagejs-flint'"), {
   code: "MODULE_NOT_FOUND",
 });
 
@@ -31,6 +31,16 @@ test("source checkouts and ordinary missing modules retain original errors", () 
       "@sagemath/sagejs-flint",
       missing,
       "/fixture/sagejs/dist/tools",
+    ),
+    undefined,
+  );
+  assert.equal(
+    publishedNativeModuleError(
+      "@sagemath/sagejs-flint",
+      Object.assign(new Error("Cannot find module 'transitive-package'"), {
+        code: "MODULE_NOT_FOUND",
+      }),
+      "/fixture/node_modules/@sagemath/sagejs/dist/tools",
     ),
     undefined,
   );

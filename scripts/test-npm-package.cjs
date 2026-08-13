@@ -68,8 +68,19 @@ function isolatedEnvironment(root, { withoutCompiler = false } = {}) {
   for (const directory of [home, cache, temporary, emptyPath]) {
     mkdirSync(directory, { recursive: true });
   }
-  const environment = {
-    ...process.env,
+  const environment = { ...process.env };
+  for (const name of Object.keys(environment)) {
+    if (
+      name.startsWith("SAGEJS_") ||
+      name === "NODE_OPTIONS" ||
+      name === "NODE_PATH" ||
+      name.startsWith("NPM_CONFIG_") ||
+      name.startsWith("npm_config_")
+    ) {
+      delete environment[name];
+    }
+  }
+  Object.assign(environment, {
     HOME: home,
     USERPROFILE: home,
     XDG_CACHE_HOME: cache,
@@ -81,8 +92,7 @@ function isolatedEnvironment(root, { withoutCompiler = false } = {}) {
     TMP: temporary,
     TEMP: temporary,
     TMPDIR: temporary,
-    NODE_PATH: "",
-  };
+  });
   if (withoutCompiler) {
     environment.PATH = emptyPath;
     environment.CC = join(emptyPath, "missing-cc");
