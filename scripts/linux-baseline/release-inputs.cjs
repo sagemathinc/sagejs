@@ -3,15 +3,18 @@
 
 const assert = require("node:assert/strict");
 const { spawnSync } = require("node:child_process");
+const { createHash } = require("node:crypto");
 const {
   closeSync,
   copyFileSync,
   existsSync,
+  lstatSync,
   mkdirSync,
   mkdtempSync,
   openSync,
   readFileSync,
   readdirSync,
+  renameSync,
   rmSync,
   writeFileSync,
 } = require("node:fs");
@@ -33,6 +36,10 @@ const RUNTIME_IMAGE =
   "registry.access.redhat.com/ubi8/ubi-minimal@" +
   "sha256:cca75ce8294bd67a18520f72d58692e213428b14615d91800ad26b32860adb62";
 const POLICY_PATH = join(__dirname, "linux-x64-glibc-2.28-policy.json");
+const CONTAINERFILE_PATH = join(__dirname, "Containerfile");
+const OUTPUT_MARKER = ".sagejs-linux-baseline-output.json";
+const OUTPUT_SCHEMA = "sagejs.linux-baseline-output-v1";
+const RECEIPT_SCHEMA = "sagejs.linux-baseline-receipt-v1";
 const NODE_CONFIGURE_ARGUMENTS = Object.freeze([
   `--prefix=/opt/sagejs-node`,
   "--partly-static",
@@ -133,6 +140,21 @@ function compilerIdentity(engine) {
       .trim()
       .split("\n")
       .map((line) => line.split(/=(.*)/s).slice(0, 2)),
+  );
+}
+
+function sha256File(filename) {
+  return createHash("sha256").update(readFileSync(filename)).digest("hex");
+}
+
+function releaseAuthorityIdentity(options = {}) {
+  const files = {
+    containerfile: options.containerfile || CONTAINERFILE_PATH,
+    policy: options.policy || POLICY_PATH,
+    releaseDriver: options.releaseDriver || __filename,
+  };
+  return Object.fromEntries(
+    Object.entries(files).map(([name, filename]) => [name, { sha256: sha256File(filename) }]),
   );
 }
 
@@ -249,7 +271,7 @@ function assertPortableMathProfile(profile) {
 }
 
 function copyContainerfile(context) {
-  copyFileSync(join(__dirname, "Containerfile"), join(context, "Containerfile"));
+  copyFileSync(CONTAINERFILE_PATH, join(context, "Containerfile"));
 }
 
 function assertSafeOutputDirectory(output) {
@@ -257,6 +279,72 @@ function assertSafeOutputDirectory(output) {
   const forbidden = new Set([parse(candidate).root, resolve(homedir()), ROOT]);
   if (forbidden.has(candidate)) {
     throw new Error(`refusing broad Linux baseline output directory ${candidate}`);
+  }
+}
+
+function assertOwnedOutputDirectory(directory) {
+  const marker = join(directory, OUTPUT_MARKER);
+  let stat;
+  try {
+    if (!lstatSync(directory).isDirectory()) {
+      throw new Error("output is not a directory");
+    }
+    stat = lstatSync(marker, { throwIfNoEntry: false });
+  } catch (error) {
+    throw new Error(`refusing to replace unowned Linux baseline output ${directory}`, {
+      cause: error,
+    });
+  }
+  if (!stat?.isFile()) {
+    throw new Error(`refusing to replace unowned Linux baseline output ${directory}`);
+  }
+  let parsed;
+  try {
+    parsed = JSON.parse(readFileSync(marker, "utf8"));
+  } catch (error) {
+    throw new Error(`invalid Linux baseline ownership marker in ${directory}`, {
+      cause: error,
+    });
+  }
+  if (parsed.schema !== OUTPUT_SCHEMA) {
+    throw new Error(`invalid Linux baseline ownership marker in ${directory}`);
+  }
+}
+
+function publishReleaseOutput(source, destination, receipt) {
+  assertSafeOutputDirectory(destination);
+  mkdirSync(dirname(destination), { recursive: true });
+  const staging = mkdtempSync(
+    join(dirname(destination), `.${basename(destination)}.publish-`),
+  );
+  let previous = null;
+  try {
+    copyFileTree(source, staging);
+    writeFileSync(
+      join(staging, "linux-baseline-receipt.json"),
+      `${JSON.stringify(receipt, null, 2)}\n`,
+    );
+    writeFileSync(
+      join(staging, OUTPUT_MARKER),
+      `${JSON.stringify({ schema: OUTPUT_SCHEMA })}\n`,
+    );
+    if (existsSync(destination)) {
+      assertOwnedOutputDirectory(destination);
+      previous = mkdtempSync(
+        join(dirname(destination), `.${basename(destination)}.previous-`),
+      );
+      rmSync(previous, { recursive: true });
+      renameSync(destination, previous);
+    }
+    try {
+      renameSync(staging, destination);
+    } catch (error) {
+      if (previous) renameSync(previous, destination);
+      throw error;
+    }
+    if (previous) rmSync(previous, { recursive: true });
+  } finally {
+    rmSync(staging, { recursive: true, force: true });
   }
 }
 
@@ -325,10 +413,9 @@ function buildReleaseInputs(options) {
     }).stdout.trim();
     assert.equal(runtimeProbe, `v${NODE_VERSION}`);
     const seaProbe = proveSeaTemplate(engine, join(extracted, "node"));
-    rmSync(options.output, { recursive: true, force: true });
-    mkdirSync(dirname(options.output), { recursive: true });
-    copyFileTree(extracted, options.output);
     const receipt = {
+      schema: RECEIPT_SCHEMA,
+      authority: releaseAuthorityIdentity(),
       buildImage: BUILD_IMAGE,
       compiler: compilerIdentity(engine),
       configureArguments: NODE_CONFIGURE_ARGUMENTS,
@@ -352,10 +439,7 @@ function buildReleaseInputs(options) {
         : null,
       inspection: report,
     };
-    writeFileSync(
-      join(options.output, "linux-baseline-receipt.json"),
-      `${JSON.stringify(receipt, null, 2)}\n`,
-    );
+    publishReleaseOutput(extracted, options.output, receipt);
     process.stdout.write(`Linux baseline inputs: ${options.output}\n`);
     return receipt;
   } finally {
@@ -394,6 +478,7 @@ module.exports = {
   NODE_CONFIGURE_ARGUMENTS,
   NODE_SOURCE_SHA256,
   NODE_VERSION,
+  OUTPUT_SCHEMA,
   POLICY_PATH,
   RUNTIME_IMAGE,
   assertPortableMathProfile,
@@ -403,6 +488,8 @@ module.exports = {
   compilerIdentity,
   listNativeInputs,
   parseArguments,
+  publishReleaseOutput,
+  releaseAuthorityIdentity,
   proveSeaTemplate,
   selectEngine,
   validateReleaseInputs,

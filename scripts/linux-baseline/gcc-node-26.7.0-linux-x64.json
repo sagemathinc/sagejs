@@ -1,6 +1,18 @@
 {
   "schema": "sagejs.linux-node-gcc-witness-v1",
+  "historicalPrototype": true,
   "recipeCommit": "4a62114d2d9cb7d213f422f2694e42ca975a38c7",
+  "authority": {
+    "containerfile": {
+      "sha256": "d91720e5e6674435895b29aaf8964f784ca8cd50377812f46bd8b4eaceab566f"
+    },
+    "policy": {
+      "sha256": "0673d2550306915e60cd753becdca9e1df131d90d712a028cfce3fad9383e378"
+    },
+    "releaseDriver": {
+      "sha256": "ae5010e5760aabcbdeb8a3f74b773d3d6b7ef9e834e22d132c2c12a4388967c8"
+    }
+  },
   "node": {
     "version": "26.7.0",
     "sourceSha256": "e6b182cbeeab032d1082ca4ac4fe15e3a57de691d3bde78ecf8a761fd56ee356",
