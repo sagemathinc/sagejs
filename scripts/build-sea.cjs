@@ -7,11 +7,18 @@ const {
   readFileSync,
   readdirSync,
   rmSync,
+  statSync,
   writeFileSync,
 } = require("fs");
 const { createHash } = require("crypto");
-const { execFileSync } = require("child_process");
+const { execFileSync, spawnSync } = require("child_process");
 const { dirname, join, relative } = require("path");
+const {
+  canonicalJson,
+  createBuildManifest,
+  gitSourceIdentity,
+  serialize,
+} = require("./release-manifest.cjs");
 const {
   standaloneModuleInventory,
 } = require("../tools/standalone-library.cjs");
@@ -68,6 +75,15 @@ const fflasFfiAddon = join(
   "sagejs_fflas_ffi.node",
 );
 const fflasFfiManifest = join(dirname(fflasFfiAddon), "manifest.json");
+const m4riFfiAddon = join(
+  root,
+  "packages",
+  "m4ri",
+  "build",
+  "generated-ffi",
+  "sagejs_m4ri_ffi.node",
+);
+const m4riFfiManifest = join(dirname(m4riFfiAddon), "manifest.json");
 
 const args = new Set(process.argv.slice(2));
 const standaloneModuleDefinition = JSON.stringify(
@@ -93,6 +109,261 @@ if (!buildPython && !buildMath) {
 
 function sha256(filename) {
   return createHash("sha256").update(readFileSync(filename)).digest("hex");
+}
+
+function assetReceipt(filename) {
+  return { sha256: sha256(filename), size: statSync(filename).size };
+}
+
+function compareVersions(left, right) {
+  const parts = (value) => value.split(".").map((part) => Number(part));
+  const leftParts = parts(left);
+  const rightParts = parts(right);
+  for (let index = 0; index < Math.max(leftParts.length, rightParts.length); index += 1) {
+    const difference = (leftParts[index] || 0) - (rightParts[index] || 0);
+    if (difference !== 0) return difference;
+  }
+  return 0;
+}
+
+function maximumGlibcVersion(text) {
+  const versions = [...String(text).matchAll(/\bGLIBC_(\d+(?:\.\d+)+)\b/g)]
+    .map((match) => match[1]);
+  return versions.sort(compareVersions).at(-1) || null;
+}
+
+function maximumRequiredGlibc(executable, options = {}) {
+  if (options.glibcVersion !== undefined) return options.glibcVersion;
+  const run = options.spawn || spawnSync;
+  for (const [command, arguments_] of [
+    ["objdump", ["-T", executable]],
+    ["readelf", ["--version-info", executable]],
+  ]) {
+    const result = run(command, arguments_, {
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "ignore"],
+    });
+    if (!result.error && result.status === 0) {
+      const version = maximumGlibcVersion(result.stdout);
+      if (version !== null) return version;
+    }
+  }
+  throw new Error(
+    `cannot determine the maximum required GLIBC symbol version of ${executable}`,
+  );
+}
+
+function observeSeaBuilder(executable, options = {}) {
+  if (options.builderObservation !== undefined) {
+    return structuredClone(options.builderObservation);
+  }
+  const expression = "JSON.stringify({" +
+    "arch:process.arch," +
+    "endianness:require('node:os').endianness()," +
+    "platform:process.platform," +
+    "versions:{modules:process.versions.modules,napi:process.versions.napi,node:process.versions.node}" +
+    "})";
+  return JSON.parse(execFileSync(executable, ["-p", expression], {
+    encoding: "utf8",
+    stdio: ["ignore", "pipe", "inherit"],
+  }));
+}
+
+function targetFromSeaBuilder(executable, options = {}) {
+  const builder = observeSeaBuilder(executable, options);
+  const supported = new Set([
+    "darwin-arm64",
+    "linux-arm64",
+    "linux-x64",
+    "win32-x64",
+  ]);
+  if (!supported.has(`${builder.platform}-${builder.arch}`)) {
+    throw new Error(
+      `unsupported SEA builder target ${builder.platform}-${builder.arch}`,
+    );
+  }
+  return {
+    arch: builder.arch,
+    endianness: builder.endianness,
+    libc: builder.platform === "linux"
+      ? {
+          family: "glibc",
+          version: maximumRequiredGlibc(executable, options),
+        }
+      : null,
+    nodeAbi: builder.versions.modules,
+    nodeNapi: builder.versions.napi,
+    platform: builder.platform,
+    wordBits: ["arm64", "x64"].includes(builder.arch) ? 64 : null,
+  };
+}
+
+function nativeMathProfile(rootDirectory, target, options = {}) {
+  let profile;
+  let stamp = null;
+  if (options.nativeMathProfile !== undefined) {
+    profile = structuredClone(options.nativeMathProfile);
+  } else {
+    const defaultPrefix = target.platform === "win32"
+      ? join(
+          rootDirectory,
+          "packages",
+          "flint",
+          ".native",
+          "vcpkg-installed",
+          "x64-windows-static-md-release",
+        )
+      : join(rootDirectory, "packages", "flint", ".native", "prefix");
+    const prefix = process.env.SAGEJS_FLINT_PREFIX || defaultPrefix;
+    stamp = join(prefix, ".sagejs-flint-dependencies.json");
+    if (!existsSync(stamp)) {
+      throw new Error(
+        `native mathematics build stamp not found at ${relative(rootDirectory, stamp)}`,
+      );
+    }
+    const contents = JSON.parse(readFileSync(stamp, "utf8"));
+    profile = contents?.build?.mathBuildProfile ??
+      contents?.identity?.mathBuildProfile;
+  }
+  if (
+    profile?.schema !== "sagejs.native-math-profile-v1" ||
+    !/^[0-9a-f]{64}$/.test(profile.fingerprint || "")
+  ) {
+    throw new Error(
+      `native mathematics build profile is invalid${stamp ? `: ${stamp}` : ""}`,
+    );
+  }
+  if (
+    profile.abi?.platform !== target.platform ||
+    profile.abi?.arch !== target.arch ||
+    profile.abi?.endianness !== target.endianness ||
+    profile.abi?.wordBits !== target.wordBits
+  ) {
+    throw new Error("native mathematics profile does not match the SEA builder target");
+  }
+  const identity = { ...profile };
+  delete identity.fingerprint;
+  const canonical = JSON.stringify(stableJson(identity));
+  if (createHash("sha256").update(canonical).digest("hex") !== profile.fingerprint) {
+    throw new Error("native mathematics profile fingerprint is invalid");
+  }
+  return profile;
+}
+
+function stableJson(value) {
+  if (Array.isArray(value)) return value.map(stableJson);
+  if (value !== null && typeof value === "object") {
+    return Object.fromEntries(
+      Object.keys(value).sort().map((key) => [key, stableJson(value[key])]),
+    );
+  }
+  return value;
+}
+
+function productionKernelReceipt(rootDirectory, assets) {
+  const authorityPath = "architecture/native-kernels.json";
+  const authorityFilename = join(rootDirectory, authorityPath);
+  const authority = JSON.parse(readFileSync(authorityFilename, "utf8"));
+  const logicalSources = [...new Set(
+    authority.kernels
+      .filter((kernel) => kernel.id?.endsWith("-production"))
+      .map((kernel) => kernel.source)
+      .map((source) => {
+        if (!source.startsWith("src/lib/")) {
+          throw new Error(`production kernel source is outside src/lib: ${source}`);
+        }
+        return source.slice("src/lib/".length);
+      }),
+  )].sort();
+  const indexPath = "native-kernels/index.json";
+  const indexFilename = assets[indexPath];
+  if (!indexFilename) throw new Error("mathematics SEA omitted native-kernels/index.json");
+  const index = JSON.parse(readFileSync(indexFilename, "utf8"));
+  const actualSources = Object.keys(index.logicalSources || {}).sort();
+  if (JSON.stringify(actualSources) !== JSON.stringify(logicalSources)) {
+    throw new Error(
+      "production native-kernel index does not exactly match its authority",
+    );
+  }
+  const expectedAssets = new Set([indexPath]);
+  for (const source of logicalSources) {
+    const record = index.logicalSources[source];
+    if (!/^[0-9a-f]{64}$/.test(record?.cacheKey || "")) {
+      throw new Error(`production native-kernel ${source} has an invalid cache key`);
+    }
+    for (const suffix of [
+      "index.cjs",
+      "build/Release/sagejs_native_kernel.node",
+    ]) {
+      const asset = `native-kernels/${record.cacheKey}/${suffix}`;
+      expectedAssets.add(asset);
+      if (!assets[asset]) throw new Error(`mathematics SEA omitted ${asset}`);
+    }
+  }
+  const actualAssets = Object.keys(assets)
+    .filter((asset) => asset.startsWith("native-kernels/"));
+  if (actualAssets.some((asset) => !expectedAssets.has(asset))) {
+    throw new Error("mathematics SEA contains unaccounted production kernel assets");
+  }
+  return {
+    authorityPath,
+    authoritySha256: sha256(authorityFilename),
+    expected: logicalSources.length,
+    indexIdentitySha256: createHash("sha256")
+      .update(canonicalJson(index))
+      .digest("hex"),
+    indexPath,
+    indexSha256: sha256(indexFilename),
+    logicalSources,
+    schema: "sagejs.native-kernel-receipt/v1",
+  };
+}
+
+function createSeaBuildManifest(options) {
+  const target = targetFromSeaBuilder(options.seaNode, options);
+  const embeddedAssets = Object.fromEntries(
+    Object.keys(options.assets)
+      .filter(
+        (asset) =>
+          asset.startsWith("native/") ||
+          asset.startsWith("native-kernels/"),
+      )
+      .sort()
+      .map((asset) => [asset, assetReceipt(options.assets[asset])]),
+  );
+  const nativeKernels = options.withFlint
+    ? productionKernelReceipt(options.root, options.assets)
+    : null;
+  return createBuildManifest({
+    capabilities: {
+      artifact: {
+        kind: "single-executable",
+        nativeMathematics: options.withFlint,
+      },
+      embeddedAssets: {
+        assets: embeddedAssets,
+        schema: "sagejs.embedded-assets/v1",
+      },
+      nativeKernels,
+    },
+    sagejsVersion: JSON.parse(
+      readFileSync(join(options.root, "package.json"), "utf8"),
+    ).version,
+    source: options.sourceIdentity || gitSourceIdentity(options.root, {
+      allowDirty: true,
+    }),
+    target,
+    toolchain: {
+      esbuild: require("esbuild/package.json").version,
+      nativeMathProfile: options.withFlint
+        ? nativeMathProfile(options.root, target, options)
+        : null,
+      seaNode: {
+        executableSha256: sha256(options.seaNode),
+        version: observeSeaBuilder(options.seaNode, options).versions.node,
+      },
+    },
+  });
 }
 
 function runtimeLibc() {
@@ -261,7 +532,7 @@ function collectNativeKernelAssets() {
   return assets;
 }
 
-function buildExecutable(name, withFlint) {
+function buildExecutable(name, withFlint, sourceIdentity) {
   if (withFlint && !existsSync(flintAddon)) {
     throw new Error(
       `FLINT addon not found at ${relative(root, flintAddon)}; run ` +
@@ -311,6 +582,29 @@ function buildExecutable(name, withFlint) {
       `generated FFLAS FFI manifest not found at ` +
         `${relative(root, fflasFfiManifest)}; ` +
         "run `pnpm --dir packages/fflas build` first",
+    );
+  }
+  const seaNode = seaBuilderExecutable();
+  const builder = observeSeaBuilder(seaNode);
+  if (
+    withFlint &&
+    builder.platform !== "win32" &&
+    !existsSync(m4riFfiAddon)
+  ) {
+    throw new Error(
+      `generated M4RI FFI addon not found at ${relative(root, m4riFfiAddon)}; ` +
+        "run `pnpm --dir packages/m4ri build` first",
+    );
+  }
+  if (
+    withFlint &&
+    builder.platform !== "win32" &&
+    !existsSync(m4riFfiManifest)
+  ) {
+    throw new Error(
+      `generated M4RI FFI manifest not found at ` +
+        `${relative(root, m4riFfiManifest)}; ` +
+        "run `pnpm --dir packages/m4ri build` first",
     );
   }
   const output = join(outputDirectory, name);
@@ -426,8 +720,26 @@ function buildExecutable(name, withFlint) {
     assets["native/sagejs_igraph_ffi_manifest.json"] = graphFfiManifest;
     assets["native/sagejs_fflas_ffi.node"] = fflasFfiAddon;
     assets["native/sagejs_fflas_ffi_manifest.json"] = fflasFfiManifest;
+    if (builder.platform !== "win32") {
+      assets["native/sagejs_m4ri_ffi.node"] = m4riFfiAddon;
+      assets["native/sagejs_m4ri_ffi_manifest.json"] = m4riFfiManifest;
+    }
     Object.assign(assets, collectNativeKernelAssets());
   }
+
+  const buildManifestFilename = join(
+    outputDirectory,
+    `${name}-build-manifest.json`,
+  );
+  const buildManifest = createSeaBuildManifest({
+    assets,
+    root,
+    seaNode,
+    sourceIdentity,
+    withFlint,
+  });
+  writeFileSync(buildManifestFilename, serialize(buildManifest));
+  assets["release/build-manifest.json"] = buildManifestFilename;
 
   writeFileSync(
     configFilename,
@@ -446,11 +758,21 @@ function buildExecutable(name, withFlint) {
       2,
     )}\n`,
   );
-  const seaNode = seaBuilderExecutable();
   execFileSync(seaNode, ["--build-sea", configFilename], {
     cwd: root,
     stdio: "inherit",
   });
+  const observedAfterBuild = createSeaBuildManifest({
+    assets,
+    root,
+    seaNode,
+    sourceIdentity,
+    withFlint,
+  });
+  if (serialize(observedAfterBuild) !== serialize(buildManifest)) {
+    rmSync(output, { force: true });
+    throw new Error(`SEA inputs changed while building ${name}`);
+  }
   if (process.platform === "darwin") {
     execFileSync("codesign", ["--sign", "-", "--force", output], {
       cwd: root,
@@ -462,53 +784,60 @@ function buildExecutable(name, withFlint) {
   );
 }
 
-rmSync(outputDirectory, { recursive: true, force: true });
-mkdirSync(outputDirectory, { recursive: true });
+function main() {
+  rmSync(outputDirectory, { recursive: true, force: true });
+  mkdirSync(outputDirectory, { recursive: true });
+  const sourceIdentity = gitSourceIdentity(root, { allowDirty: true });
 
-buildSync({
-  entryPoints: [join(root, "dist", "tools", "sea-entry.js")],
-  outfile: bundle,
-  bundle: true,
-  platform: "node",
-  format: "cjs",
-  target: "node22",
-  sourcemap: false,
-  minify: false,
-  external: ["plotly.js-dist-min/plotly.min.js"],
-  define: {
-    __SAGEJS_STANDALONE_MODULES__: standaloneModuleDefinition,
-  },
-});
+  for (const [entryPoint, outfile] of [
+    [join(root, "dist", "tools", "sea-entry.js"), bundle],
+    [join(root, "dist", "tools", "kernel-worker.js"), kernelWorkerBundle],
+    [
+      join(root, "dist", "tools", "multiprocessing-worker.js"),
+      multiprocessingWorkerBundle,
+    ],
+  ]) {
+    buildSync({
+      entryPoints: [entryPoint],
+      outfile,
+      bundle: true,
+      platform: "node",
+      format: "cjs",
+      target: "node22",
+      sourcemap: false,
+      minify: false,
+      external: ["plotly.js-dist-min/plotly.min.js"],
+      define: {
+        __SAGEJS_STANDALONE_MODULES__: standaloneModuleDefinition,
+      },
+    });
+  }
 
-buildSync({
-  entryPoints: [join(root, "dist", "tools", "kernel-worker.js")],
-  outfile: kernelWorkerBundle,
-  bundle: true,
-  platform: "node",
-  format: "cjs",
-  target: "node22",
-  sourcemap: false,
-  minify: false,
-  external: ["plotly.js-dist-min/plotly.min.js"],
-  define: {
-    __SAGEJS_STANDALONE_MODULES__: standaloneModuleDefinition,
-  },
-});
+  if (buildPython) {
+    buildExecutable(`sagepython${executableSuffix}`, false, sourceIdentity);
+  }
+  if (buildMath) {
+    buildExecutable(`sagejs${executableSuffix}`, true, sourceIdentity);
+  }
+  const sourceAfterBuild = gitSourceIdentity(root, { allowDirty: true });
+  if (JSON.stringify(sourceAfterBuild) !== JSON.stringify(sourceIdentity)) {
+    for (const name of ["sagepython", "sagejs"]) {
+      rmSync(join(outputDirectory, `${name}${executableSuffix}`), {
+        force: true,
+      });
+    }
+    throw new Error("release source changed while building SEA artifacts");
+  }
+}
 
-buildSync({
-  entryPoints: [join(root, "dist", "tools", "multiprocessing-worker.js")],
-  outfile: multiprocessingWorkerBundle,
-  bundle: true,
-  platform: "node",
-  format: "cjs",
-  target: "node22",
-  sourcemap: false,
-  minify: false,
-  external: ["plotly.js-dist-min/plotly.min.js"],
-  define: {
-    __SAGEJS_STANDALONE_MODULES__: standaloneModuleDefinition,
-  },
-});
+if (require.main === module) main();
 
-if (buildPython) buildExecutable(`sagepython${executableSuffix}`, false);
-if (buildMath) buildExecutable(`sagejs${executableSuffix}`, true);
+module.exports = {
+  assetReceipt,
+  createSeaBuildManifest,
+  maximumGlibcVersion,
+  maximumRequiredGlibc,
+  observeSeaBuilder,
+  productionKernelReceipt,
+  targetFromSeaBuilder,
+};
