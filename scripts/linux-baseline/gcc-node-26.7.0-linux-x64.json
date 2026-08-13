@@ -1,0 +1,60 @@
+{
+  "schema": "sagejs.linux-node-gcc-witness-v1",
+  "recipeCommit": "4a62114d2d9cb7d213f422f2694e42ca975a38c7",
+  "node": {
+    "version": "26.7.0",
+    "sourceSha256": "e6b182cbeeab032d1082ca4ac4fe15e3a57de691d3bde78ecf8a761fd56ee356",
+    "configureArguments": [
+      "--prefix=/opt/sagejs-node",
+      "--partly-static"
+    ]
+  },
+  "build": {
+    "image": "quay.io/pypa/manylinux_2_28_x86_64@sha256:f854c50adf7b7a325bc4794316f3758d387a41d61f9e2ebca0f26c7dc8f761d4",
+    "compiler": {
+      "path": "/opt/rh/gcc-toolset-14/root/usr/bin/gcc",
+      "version": "14.2.1",
+      "target": "x86_64-redhat-linux"
+    }
+  },
+  "inspection": {
+    "sha256": "81d7adacc91665c7245cd123e639a351dcd5bee51f86a03b006033487a34ad37",
+    "size": 121519672,
+    "format": "elf",
+    "architecture": "x64",
+    "interpreter": "/lib64/ld-linux-x86-64.so.2",
+    "dependencies": [
+      "ld-linux-x86-64.so.2",
+      "libc.so.6",
+      "libdl.so.2",
+      "libm.so.6",
+      "libpthread.so.0"
+    ],
+    "maximumSymbolVersions": {
+      "GLIBC": "2.28"
+    },
+    "rpaths": []
+  },
+  "runtimeProbe": {
+    "image": "registry.access.redhat.com/ubi8/ubi-minimal@sha256:cca75ce8294bd67a18520f72d58692e213428b14615d91800ad26b32860adb62",
+    "libatomicPackagePresent": false,
+    "exitStatus": 0,
+    "stdout": "v26.7.0"
+  },
+  "seaProbe": {
+    "sha256": "ac4723e01554de7001fc66db295390f588222d5fbdf66a0dfb3cf195fb4d3877",
+    "dependencies": [
+      "ld-linux-x86-64.so.2",
+      "libc.so.6",
+      "libdl.so.2",
+      "libm.so.6",
+      "libpthread.so.0"
+    ],
+    "maximumSymbolVersions": {
+      "GLIBC": "2.28"
+    },
+    "runtimeImage": "registry.access.redhat.com/ubi8/ubi-minimal@sha256:cca75ce8294bd67a18520f72d58692e213428b14615d91800ad26b32860adb62",
+    "exitStatus": 0,
+    "stdout": "gcc-node-sea-ok"
+  }
+}

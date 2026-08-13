@@ -33,6 +33,10 @@ const RUNTIME_IMAGE =
   "registry.access.redhat.com/ubi8/ubi-minimal@" +
   "sha256:cca75ce8294bd67a18520f72d58692e213428b14615d91800ad26b32860adb62";
 const POLICY_PATH = join(__dirname, "linux-x64-glibc-2.28-policy.json");
+const NODE_CONFIGURE_ARGUMENTS = Object.freeze([
+  `--prefix=/opt/sagejs-node`,
+  "--partly-static",
+]);
 
 function parseArguments(arguments_) {
   const result = {
@@ -105,6 +109,70 @@ function assertRuntimeOmitsLibatomic(engine) {
       "the baseline runtime unexpectedly contains libatomic: " +
         `${result.stdout}${result.stderr}`,
     );
+  }
+  return {
+    image: RUNTIME_IMAGE,
+    libatomicPackagePresent: false,
+  };
+}
+
+function compilerIdentity(engine) {
+  const program = [
+    "set -eu",
+    'gcc_path=$(command -v gcc)',
+    'printf "path=%s\\n" "$gcc_path"',
+    'printf "version=%s\\n" "$(gcc -dumpfullversion -dumpversion)"',
+    'printf "target=%s\\n" "$(gcc -dumpmachine)"',
+  ].join("; ");
+  const output = run(engine, ["run", "--rm", BUILD_IMAGE, "sh", "-c", program], {
+    encoding: "utf8",
+    stdio: ["ignore", "pipe", "inherit"],
+  }).stdout;
+  return Object.fromEntries(
+    output
+      .trim()
+      .split("\n")
+      .map((line) => line.split(/=(.*)/s).slice(0, 2)),
+  );
+}
+
+function proveSeaTemplate(engine, nodeExecutable) {
+  const directory = mkdtempSync(join(tmpdir(), "sagejs-linux-sea-"));
+  try {
+    const main = join(directory, "main.cjs");
+    const config = join(directory, "sea-config.json");
+    const executable = join(directory, "sagejs-sea-smoke");
+    writeFileSync(main, 'console.log("sagejs-linux-sea-ok")\n');
+    writeFileSync(
+      config,
+      `${JSON.stringify({
+        main: "main.cjs",
+        output: "sagejs-sea-smoke",
+        disableExperimentalSEAWarning: true,
+        useSnapshot: false,
+        useCodeCache: false,
+      })}\n`,
+    );
+    run(nodeExecutable, ["--build-sea", basename(config)], { cwd: directory });
+    const inspection = assertNativeInputs(
+      [{ label: "sagejs-sea-smoke", path: executable, role: "sea-smoke" }],
+      JSON.parse(readFileSync(POLICY_PATH, "utf8")),
+    );
+    const stdout = run(engine, [
+      "run",
+      "--rm",
+      "--volume",
+      `${directory}:/candidate:ro,Z`,
+      RUNTIME_IMAGE,
+      "/candidate/sagejs-sea-smoke",
+    ], {
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "inherit"],
+    }).stdout.trim();
+    assert.equal(stdout, "sagejs-linux-sea-ok");
+    return { inspection, stdout };
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
   }
 }
 
@@ -226,7 +294,10 @@ function buildReleaseInputs(options) {
       `NODE_VERSION=${NODE_VERSION}`,
       context,
     ]);
-    container = run(engine, ["create", tag], {
+    // Scratch artifact stages have neither CMD nor ENTRYPOINT. Supplying a
+    // harmless command makes both Docker and Podman create an extractable
+    // container without changing or executing the candidate binary.
+    container = run(engine, ["create", tag, "/release-inputs/node", "--version"], {
       encoding: "utf8",
       stdio: ["ignore", "pipe", "inherit"],
     }).stdout.trim();
@@ -239,8 +310,8 @@ function buildReleaseInputs(options) {
           JSON.parse(readFileSync(join(extracted, "native-math-profile.json"), "utf8")),
         )
       : null;
-    assertRuntimeOmitsLibatomic(engine);
-    run(engine, [
+    const runtime = assertRuntimeOmitsLibatomic(engine);
+    const runtimeProbe = run(engine, [
       "run",
       "--rm",
       "--volume",
@@ -248,18 +319,30 @@ function buildReleaseInputs(options) {
       RUNTIME_IMAGE,
       "/candidate/node",
       "--version",
-    ]);
+    ], {
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "inherit"],
+    }).stdout.trim();
+    assert.equal(runtimeProbe, `v${NODE_VERSION}`);
+    const seaProbe = proveSeaTemplate(engine, join(extracted, "node"));
     rmSync(options.output, { recursive: true, force: true });
     mkdirSync(dirname(options.output), { recursive: true });
     copyFileTree(extracted, options.output);
     const receipt = {
       buildImage: BUILD_IMAGE,
+      compiler: compilerIdentity(engine),
+      configureArguments: NODE_CONFIGURE_ARGUMENTS,
       nodeSourceSha256: NODE_SOURCE_SHA256,
       nodeVersion: NODE_VERSION,
       nativeMathProfile: mathProfile,
       policy: basename(POLICY_PATH),
       runtimeImage: RUNTIME_IMAGE,
-      runtimeLibatomicPackagePresent: false,
+      runtimeProbe: {
+        ...runtime,
+        exitStatus: 0,
+        stdout: runtimeProbe,
+      },
+      seaProbe,
       sourceRef: options.allInputs
         ? run("git", ["rev-parse", `${options.sourceRef}^{commit}`], {
             cwd: ROOT,
@@ -308,6 +391,7 @@ in a minimal UBI 8 container without libatomic. By default only Node is built.
 
 module.exports = {
   BUILD_IMAGE,
+  NODE_CONFIGURE_ARGUMENTS,
   NODE_SOURCE_SHA256,
   NODE_VERSION,
   POLICY_PATH,
@@ -316,8 +400,10 @@ module.exports = {
   assertSafeOutputDirectory,
   assertRuntimeOmitsLibatomic,
   buildReleaseInputs,
+  compilerIdentity,
   listNativeInputs,
   parseArguments,
+  proveSeaTemplate,
   selectEngine,
   validateReleaseInputs,
 };
