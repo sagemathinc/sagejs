@@ -346,7 +346,7 @@ print('linear-matrix-predicates-fallback-ok')
       native.dense_prime_field_echelon_nonpivots(
         primeNonpivots, primeEchelon, 2n, 4n, 5n,
       ),
-      2,
+      2n,
     );
     assert.deepEqual(Array.from(primeNonpivots.slice(0, 2)), expectedNonpivots);
     for (const kind of ["integer", "rational"]) {

@@ -969,6 +969,7 @@ def generate_code():
                 and output.parent().expression is self
             )
         ):
+            resolution = self.python_resolution_provenance
             stack = output.stack()
             for index in range(stack.length - 2, -1, -1):
                 scope = stack[index]
@@ -984,7 +985,10 @@ def generate_code():
                     if (
                         is_node_type(scope, AST_Class)
                         and output.in_class_body
-                        and self.name in scope.classvars
+                        and (
+                            resolution is "class"
+                            or (not resolution and self.name in scope.classvars)
+                        )
                     ):
                         class_namespace = scope
                     check_unbound = (
@@ -1001,10 +1005,18 @@ def generate_code():
                             output.module_control_flow_names
                             and output.module_control_flow_names[self.name]
                         )
-                        and (
-                            is_node_type(scope, AST_Toplevel)
-                            or not def_
-                            or scope.localvars.indexOf(def_) is -1
+                    ) and (
+                        resolution in ("module", "class-fallback")
+                        or (
+                            not resolution
+                            and (
+                                is_node_type(scope, AST_Toplevel)
+                                or (
+                                    scope.module_global_names
+                                    and scope.module_global_names.indexOf(self.name)
+                                    is not -1
+                                )
+                            )
                         )
                     )
                     break

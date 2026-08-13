@@ -667,6 +667,85 @@ test("kernel intrinsic aliases follow later Python bindings", async (t) => {
   );
 });
 
+test("imports bind their authoritative Python scope", async (t) => {
+  const session = await createSage({ mode: "python" });
+  t.after(() => session.close());
+
+  await session.evaluate(
+    "import __main__\n" +
+      "if False:\n" +
+      "    import sagejs.runtime as len\n" +
+      "events = []\n" +
+      "def capture(value):\n" +
+      "    events.append(value)\n" +
+      "    def decorate(function):\n" +
+      "        return function\n" +
+      "    return decorate\n" +
+      "@capture(len([1]))\n" +
+      "def module_default(value=len([1, 2])):\n" +
+      "    return value\n" +
+      "class ConditionalFallback:\n" +
+      "    size = len([1, 2, 3])\n" +
+      "    @capture(len([1, 2, 3, 4]))\n" +
+      "    def method(self, value=len([1, 2, 3, 4, 5])):\n" +
+      "        return value\n" +
+      "class ClassImport:\n" +
+      "    import sagejs.runtime as low_level\n" +
+      "    usable = low_level.reflect is not None\n" +
+      "def bind_global():\n" +
+      "    global imported_runtime\n" +
+      "    import sagejs.runtime as imported_runtime\n" +
+      "def bind_mixed():\n" +
+      "    global global_runtime\n" +
+      "    import sagejs.runtime as global_runtime\n" +
+      "    import sagejs as local_sagejs\n" +
+      "    return local_sagejs.runtime is global_runtime\n" +
+      "def bind_mixed_from():\n" +
+      "    global imported_counter\n" +
+      "    from collections import Counter as imported_counter, deque as local_deque\n" +
+      "    return imported_counter('aba')['a'] == 2 and list(local_deque([1, 2])) == [1, 2]\n" +
+      "def bind_nonlocal():\n" +
+      "    imported = None\n" +
+      "    def inner():\n" +
+      "        nonlocal imported\n" +
+      "        import sagejs.runtime as imported\n" +
+      "    inner()\n" +
+      "    return imported\n" +
+      "if True:\n" +
+      "    def control_flow_function():\n" +
+      "        return 17\n" +
+      "    class ControlFlowClass:\n" +
+      "        value = 18\n" +
+      "bind_global()",
+  );
+  assert.equal(
+    (await session.evaluate(
+      "module_default(), ConditionalFallback.size, " +
+        "ConditionalFallback().method(), events, " +
+        "ClassImport.usable, ClassImport.low_level is imported_runtime, " +
+        "bind_mixed(), bind_mixed_from(), global_runtime is imported_runtime, " +
+        "'local_sagejs' in globals(), bind_nonlocal() is imported_runtime, " +
+        "control_flow_function(), ControlFlowClass.value, " +
+        "__main__.control_flow_function is control_flow_function, " +
+        "__main__.ControlFlowClass is ControlFlowClass",
+    )).repr,
+    "(2, 3, 5, [1, 4], True, True, True, True, True, False, True, " +
+      "17, 18, True, True)",
+  );
+
+  await session.evaluate("shadowed = 'module-value'");
+  assert.equal(
+    (await session.evaluate("[shadowed for shadowed in [1, 2, 3]], shadowed"))
+      .repr,
+    "([1, 2, 3], 'module-value')",
+  );
+
+  await assert.rejects(
+    session.evaluate("def invalid_star():\n    from collections import *"),
+    /import \* only allowed at module level|SyntaxError/,
+  );
+});
+
 test("kernel namespace metadata cannot collide with Python globals", async (t) => {
   const session = await createSage({ mode: "python" });
   t.after(() => session.close());

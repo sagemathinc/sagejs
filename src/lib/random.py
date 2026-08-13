@@ -27,7 +27,7 @@ def _u32(value):
 
 
 def _urshift(value, bits):
-    return Math.floor(value / (2**bits))
+    return value >> bits
 
 
 def _init_genrand(store, value):

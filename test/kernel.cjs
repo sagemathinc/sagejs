@@ -339,7 +339,7 @@ imported_method = ImportedMethod()
   assert.equal((await session.evaluate("preserved")).repr, "41");
 
   await session.reset();
-  await assert.rejects(session.evaluate("value"), /value is not defined/);
+  await assert.rejects(session.evaluate("value"), /name 'value' is not defined/);
 
   await session.close();
   await assert.rejects(session.evaluate("1 + 1"), SageSessionClosedError);

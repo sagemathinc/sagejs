@@ -6,6 +6,12 @@ from sagejs.native import IntegerBuffer, native, uint64
 
 
 @native
+def integer_buffer_length(source: IntegerBuffer) -> uint64:
+    """Return the exact logical length of an arbitrary-precision buffer."""
+    return len(source)
+
+
+@native
 def fill_integer_powers(
     output: IntegerBuffer,
     count: uint64,

@@ -576,6 +576,7 @@ print("dense-prime-independent-ok")
           );
           const sourceMatrix = matrix(rows, columns, modulus, entries);
           const expectedRank = flint.matrixRank(sourceMatrix);
+          const expectedRankExact = BigInt(expectedRank);
           const expectedRref = flint.matrixRref(sourceMatrix);
           const expectedKernel = flint.matrixRightKernel(sourceMatrix);
           const source = packed(kernel, entries);
@@ -589,13 +590,13 @@ print("dense-prime-independent-ok")
             kernel.dense_prime_field_matrix_rank(
               sourceRecord, rankWorkspace,
             ),
-            expectedRank,
+            expectedRankExact,
           );
 
           const rref = packed(kernel, rows * columns);
           assert.equal(
             kernel.dense_prime_field_matrix_rref(sourceRecord, rref),
-            expectedRank,
+            expectedRankExact,
           );
           assert.equal(
             flint.matrixEqual(
@@ -612,14 +613,14 @@ print("dense-prime-independent-ok")
             kernelWorkspace,
             kernelOutput,
           );
-          assert.equal(nullity, columns - expectedRank);
+          assert.equal(nullity, BigInt(columns) - expectedRankExact);
           assert.equal(
             flint.matrixEqual(
               matrix(
-                nullity,
+                Number(nullity),
                 columns,
                 modulus,
-                Array.from(kernelOutput).slice(0, nullity * columns),
+                Array.from(kernelOutput).slice(0, Number(nullity) * columns),
               ),
               expectedKernel,
             ),
@@ -641,14 +642,14 @@ print("dense-prime-independent-ok")
           const flintKernelOutput = packed(kernel, columns * columns);
           assert.equal(Number(flintKernel.flint_dense_prime_field_matrix_right_kernel(
             flintKernelOutput, source, rows, columns, modulus,
-          )), nullity);
+          )), Number(nullity));
           assert.equal(flint.matrixEqual(
             matrix(
-              nullity,
+              Number(nullity),
               columns,
               modulus,
               Array.from(flintKernelOutput).slice(
-                0, nullity * columns,
+                0, Number(nullity) * columns,
               ),
             ),
             expectedKernel,
@@ -673,7 +674,7 @@ print("dense-prime-independent-ok")
             workspace,
             output,
           ),
-          1,
+          1n,
         );
         const flintOutput = packed(kernel, size * 3);
         assert.equal(flintKernel.flint_dense_prime_field_matrix_solve(
@@ -740,7 +741,7 @@ print("dense-prime-independent-ok")
           denseRecord(source, blockedSize, blockedSize, boundaryPrime),
           workspace,
         ),
-        singular ? blockedSize - 1 : blockedSize,
+        BigInt(singular ? blockedSize - 1 : blockedSize),
       );
     }
 
@@ -753,7 +754,7 @@ print("dense-prime-independent-ok")
         packed(kernel, 6),
         packed(kernel, 2),
       ),
-      0,
+      0n,
     );
     const reduced = packed(kernel, [
       1n, 0n, 2n, 3n, 4n,

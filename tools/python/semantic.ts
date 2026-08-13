@@ -198,22 +198,13 @@ export class PythonAstSemanticAnalyzer {
       ...this.scanCallableBindings(body),
       ...parameters,
     ]).filter((name) => !globals.has(name) && !nonlocals.has(name)));
-    const moduleGlobalNames = new Set<string>();
-    this.walk(body, (node) => {
-      if (node instanceof this.compiler.AST_Scope) return true;
-      if (node instanceof this.compiler.AST_SymbolRef) {
-        if (
-          node.python_identifier &&
-          !ownBindings.has(node.name) &&
-          !nonlocals.has(node.name) &&
-          (
-            globals.has(node.name) ||
-            !enclosingFunctionBindings.some((bindings) => bindings.has(node.name))
-          )
-        ) moduleGlobalNames.add(node.name);
-      }
-      return false;
-    });
+    const moduleGlobalNames = this.scanModuleGlobalNames(
+      body,
+      ownBindings,
+      globals,
+      nonlocals,
+      enclosingFunctionBindings,
+    );
     definition.module_global_names = [...moduleGlobalNames].sort();
     this.analyzeNestedScopes(
       body,
@@ -409,13 +400,79 @@ export class PythonAstSemanticAnalyzer {
   }
 
   private topLevelCallableBindings(body: any[]): string[] {
-    const names: string[] = [];
-    for (const statement of body ?? []) {
-      if (statement instanceof this.compiler.AST_Scope && statement.name?.name) {
-        names.push(statement.name.name);
+    // A definition nested in module control flow still binds the module
+    // namespace.  Stop after collecting the definition itself so callables
+    // nested inside a function or class do not become module exports.
+    return this.scanCallableBindings(body);
+  }
+
+  private scanModuleGlobalNames(
+    body: any[],
+    ownBindings: ReadonlySet<string>,
+    globals: ReadonlySet<string>,
+    nonlocals: ReadonlySet<string>,
+    enclosingFunctionBindings: ReadonlySet<string>[],
+  ): Set<string> {
+    const names = new Set<string>();
+    const seen = new Set<any>();
+    const visit = (value: any, comprehensionBindings: ReadonlySet<string>): void => {
+      if (!value || typeof value !== "object") return;
+      if (Array.isArray(value)) {
+        for (const child of value) visit(child, comprehensionBindings);
+        return;
       }
-    }
-    return unique(names);
+      if (!(value instanceof this.compiler.AST_Node) || seen.has(value)) return;
+      seen.add(value);
+      if (value instanceof this.compiler.AST_Scope) return;
+      if (value instanceof this.compiler.AST_ListComprehension) {
+        const clauses = value.clauses ?? [];
+        const implicitBindings = new Set(comprehensionBindings);
+        for (const binding of value.python_scope_bindings ?? []) {
+          implicitBindings.add(binding);
+        }
+        // Python evaluates the first iterable before entering the implicit
+        // comprehension scope.  Targets, filters, later iterables, and the
+        // result expression all resolve inside that scope.
+        if (clauses.length) {
+          visit(clauses[0].object, comprehensionBindings);
+          for (let index = 0; index < clauses.length; index += 1) {
+            const clause = clauses[index];
+            if (index > 0) visit(clause.object, implicitBindings);
+            for (const condition of clause.conditions ?? []) {
+              visit(condition, implicitBindings);
+            }
+          }
+        } else {
+          visit(value.object, comprehensionBindings);
+          if (value.condition) visit(value.condition, implicitBindings);
+        }
+        visit(value.statement, implicitBindings);
+        if (value.value_statement) visit(value.value_statement, implicitBindings);
+        return;
+      }
+      if (value instanceof this.compiler.AST_SymbolRef) {
+        if (
+          value.python_identifier &&
+          !ownBindings.has(value.name) &&
+          !comprehensionBindings.has(value.name) &&
+          !nonlocals.has(value.name) &&
+          (
+            globals.has(value.name) ||
+            !enclosingFunctionBindings.some((bindings) => bindings.has(value.name))
+          )
+        ) names.add(value.name);
+        return;
+      }
+      for (const [key, child] of Object.entries(value)) {
+        if (
+          ["start", "end", "scope", "thedef", "imports"].includes(key) ||
+          typeof child === "function"
+        ) continue;
+        visit(child, comprehensionBindings);
+      }
+    };
+    visit(body, new Set());
+    return names;
   }
 
   private scanDeclaredNames(body: any[]): string[] {

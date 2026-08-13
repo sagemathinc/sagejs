@@ -295,6 +295,8 @@ export class PythonCstLowerer {
     const symbol = this.make(constructor, node, properties);
     symbol.python_identifier = !this.options.compiler_bootstrap;
     if (constructor === "AST_SymbolRef") {
+      symbol.python_resolution_provenance =
+        this.sourceNameResolutionProvenance(properties.name);
       symbol.python_lexical_binding = !this.options.compiler_bootstrap &&
         this.sourceNameIsLexicallyBound(properties.name);
     } else {
@@ -305,6 +307,79 @@ export class PythonCstLowerer {
       symbol.python_lexical_binding = !this.options.compiler_bootstrap;
     }
     return symbol;
+  }
+
+  /** Record which Python namespace authoritatively resolves a source read. */
+  private sourceNameResolutionProvenance(name: string): string {
+    const classFrame = this.classBindings.at(-1);
+    if (
+      classFrame &&
+      this.functionFrames.length === classFrame.functionDepth
+    ) {
+      if (classFrame.globals.has(name)) return "module";
+      if (classFrame.names.has(name)) return "class";
+      // A class body uses LOAD_NAME semantics: an as-yet-unbound class name
+      // may still resolve through an enclosing function before falling back
+      // to the defining module and its builtins.
+      for (let index = this.functionFrames.length - 1; index >= 0; index -= 1) {
+        const frame = this.functionFrames[index];
+        if (frame.globals.has(name)) return "module";
+        if (frame.bindings.has(name) || frame.nonlocals.has(name)) {
+          return "closure";
+        }
+      }
+      return "class-fallback";
+    }
+    for (let index = this.functionFrames.length - 1; index >= 0; index -= 1) {
+      const frame = this.functionFrames[index];
+      if (frame.globals.has(name)) return "module";
+      if (frame.bindings.has(name)) {
+        return index === this.functionFrames.length - 1 ? "local" : "closure";
+      }
+      if (frame.nonlocals.has(name)) return "closure";
+    }
+    return "module";
+  }
+
+  /** Resolve one import target independently of the other names it binds. */
+  private importBindingDestination(sourceName: string): Record<string, any> {
+    const name = this.manglePrivateName(sourceName);
+    const classFrame = this.classBindings.at(-1);
+    if (
+      classFrame &&
+      this.functionFrames.length === classFrame.functionDepth
+    ) {
+      if (classFrame.globals.has(name)) {
+        return {
+          kind: "module",
+          name,
+          module: this.options.module_id ?? this.currentToplevel?.module_id,
+          declare: false,
+        };
+      }
+      return { kind: "class", name, owner: this.classStack.at(-1) };
+    }
+    const functionFrame = this.functionFrames.at(-1);
+    if (functionFrame) {
+      if (functionFrame.globals.has(name)) {
+        return {
+          kind: "module",
+          name,
+          module: this.options.module_id ?? this.currentToplevel?.module_id,
+          declare: false,
+        };
+      }
+      if (functionFrame.nonlocals.has(name)) {
+        return { kind: "nonlocal", name };
+      }
+      return { kind: "local", name, declare: true };
+    }
+    return {
+      kind: "module",
+      name,
+      module: this.options.module_id ?? this.currentToplevel?.module_id,
+      declare: true,
+    };
   }
 
   /** Whether a source reference is backed by a Python lexical cell here. */
@@ -2463,6 +2538,13 @@ export class PythonCstLowerer {
       if (body instanceof this.compiler.AST_Assign && body.left?.name) {
         classvars[body.left.name] = true;
       }
+      for (const destination of Object.values(
+        statement?.python_import_bindings ?? {},
+      ) as Array<Record<string, any>>) {
+        if (destination.kind === "class") {
+          classvars[destination.name] = true;
+        }
+      }
       if (statement instanceof this.compiler.AST_Method) {
         const methodName = statement.name.name;
         if (methodName === "__new__") statement.static = true;
@@ -2720,6 +2802,16 @@ export class PythonCstLowerer {
         return;
       }
       if (value instanceof this.compiler.AST_Scope) return;
+      if (value instanceof this.compiler.AST_Imports) {
+        for (const destination of Object.values(
+          value.python_import_bindings ?? {},
+        ) as Array<Record<string, any>>) {
+          if (destination.kind !== "class") continue;
+          known.add(destination.name);
+          classvars[destination.name] = true;
+        }
+        return;
+      }
       if (value instanceof this.compiler.AST_AnnotatedAssignment &&
           value.target instanceof this.compiler.AST_SymbolRef) {
         const name = value.target.name;
@@ -2850,6 +2942,10 @@ export class PythonCstLowerer {
       ));
     }
     for (const imported of imports) {
+      if (imported.star &&
+          (this.functionFrames.length > 0 || this.classStack.length > 0)) {
+        throw new SyntaxError("import * only allowed at module level");
+      }
       this.registerImportedClasses(imported);
       if (this.functionFrames.length > 0) continue;
       if (this.classStack.length > 0) {
@@ -2889,14 +2985,29 @@ export class PythonCstLowerer {
     }
     const statement = this.make("AST_Imports", node, { imports });
     statement.python_lexical_hygiene = !this.options.compiler_bootstrap;
-    statement.python_scope_bindings = this.classStack.length > 0
+    statement.python_scope_bindings = this.functionFrames.length > 0
+      ? [...this.functionFrames.at(-1)!.bindings]
+      : this.classStack.length > 0
       ? [
         ...(this.classBindings.at(-1)?.names ?? []),
         ...(this.classBindings.at(-1)?.globals ?? []),
       ]
-      : this.functionFrames.length > 0
-      ? [...this.functionFrames.at(-1)!.bindings]
       : [...this.moduleBindings];
+    statement.python_import_bindings = Object.create(null);
+    for (const imported of imports) {
+      if (imported.star) continue;
+      if (imported.argnames) {
+        for (const argument of imported.argnames) {
+          const localName = argument.alias?.name ?? argument.name;
+          statement.python_import_bindings[localName] =
+            this.importBindingDestination(localName);
+        }
+      } else {
+        const localName = imported.alias?.name ?? imported.key.split(".")[0];
+        statement.python_import_bindings[localName] =
+          this.importBindingDestination(localName);
+      }
+    }
     return statement;
   }
 
@@ -2957,7 +3068,13 @@ export class PythonCstLowerer {
       dynamic: !!this.options.runtime_imports || !!imported?.dynamic,
       level,
       star,
-      target_module: this.options.module_id ?? this.currentToplevel?.module_id,
+      // Only a real module-body import publishes directly to the module
+      // object. Function/method imports remain lexical locals; class-body
+      // imports are copied into the class namespace by class lowering.
+      target_module: this.functionFrames.length === 0 &&
+          this.classStack.length === 0
+        ? this.options.module_id ?? this.currentToplevel?.module_id
+        : null,
     });
   }
 

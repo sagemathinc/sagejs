@@ -1545,6 +1545,10 @@ def ρσ_operator_idiv_python_exact(left: Any, right: Any) -> Any:
 
 
 def ρσ_operator_truediv(left: Any, right: Any) -> Any:
+    if _builtins_member_is_function(left, "_sage_scalar_truediv_"):
+        result = _builtins_call_member(left, "_sage_scalar_truediv_", [right])
+        if result is not NotImplemented:
+            return result
     if runtime.is_math_element(left) or runtime.is_math_element(right):
         return runtime.coercion_model.binOp("truediv", left, right)
     if _builtins_member_is_function(left, "__truediv__"):
@@ -1571,6 +1575,10 @@ def ρσ_operator_truediv(left: Any, right: Any) -> Any:
 
 
 def ρσ_operator_truediv_exact(left: Any, right: Any) -> Any:
+    if _builtins_member_is_function(left, "_sage_scalar_truediv_"):
+        result = _builtins_call_member(left, "_sage_scalar_truediv_", [right])
+        if result is not NotImplemented:
+            return result
     if runtime.is_math_element(left) or runtime.is_math_element(right):
         return runtime.coercion_model.binOp("truediv", left, right)
     if _builtins_exact_integer_primitive(left) and _builtins_exact_integer_primitive(
@@ -4489,6 +4497,7 @@ def ρσ_setattr(value: Any, name: _Str, member: Any) -> None:
             and not _builtins_is_python_class(member)
             and _builtins_get_member(member, "__staticmethod__") is not True
             and _builtins_get_member(member, "__classmethod__") is not True
+            and _builtins_get_member(member, "__sagejs_native_method__") is not True
         ):
             # Python function objects always implement the non-data descriptor
             # protocol when they are installed on a class, including functions
@@ -4562,7 +4571,7 @@ def ρσ_resolve_module_name(
     """
     if module_namespace is not None and _builtins_has_member(module_namespace, name):
         # A present-but-undefined live cell is a deleted/uninitialized Python
-        # module binding.  Return it so the surrounding unbound check raises
+        # module binding. Return it so the surrounding unbound check raises
         # NameError instead of accidentally exposing a same-named JS host.
         return _builtins_get_member(module_namespace, name)
     if value is not runtime.undefined:

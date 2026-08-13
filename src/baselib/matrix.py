@@ -1712,19 +1712,34 @@ class VectorSpaceParent(sage.Parent):
             values = list(entries)
         if len(values) != self._degree:
             raise ValueError("vector entry count does not match its dimension")
+        return self._from_coerced_values(_coerce_values(self._base, values))
+
+    def _from_coerced_values(self, values: list[Any]) -> Vector:
+        """Own exact coordinates while retaining their host presentation.
+
+        Callers must already have coerced every value into this vector space's
+        base ring. The generated resource remains canonical; the detached list
+        is only a presentation snapshot and is invalidated by mutation.
+        """
+        if len(values) != self._degree:
+            raise ValueError("vector entry count does not match its dimension")
         if self._base is sage.ZZ:
-            coerced = _coerce_values(self._base, values)
             return self._from_fmpz_vector_resource(
-                _exact_vector_public_module().integer_from_values(coerced)
+                _exact_vector_public_module().integer_from_values(values),
+                values,
             )
         if self._base is sage.QQ:
-            coerced = _coerce_values(self._base, values)
             return self._from_fmpq_vector_resource(
-                _exact_vector_public_module().rational_from_values(coerced)
+                _exact_vector_public_module().rational_from_values(values),
+                values,
             )
-        return Vector(self, _coerce_values(self._base, values))
+        return Vector(self, values)
 
-    def _from_fmpz_vector_resource(self, resource: Any) -> Vector:
+    def _from_fmpz_vector_resource(
+        self,
+        resource: Any,
+        presentation: Any = runtime.undefined,
+    ) -> Vector:
         """Take ownership of a generated exact-integer vector resource."""
         if self._base is not sage.ZZ:
             resource.close()
@@ -1735,12 +1750,16 @@ class VectorSpaceParent(sage.Parent):
                 != self._degree
             ):
                 raise ValueError("integer vector resource dimension does not agree")
-            return Vector(self, runtime.undefined, resource)
+            return Vector(self, runtime.undefined, resource, presentation)
         except Exception:
             resource.close()
             raise
 
-    def _from_fmpq_vector_resource(self, resource: Any) -> Vector:
+    def _from_fmpq_vector_resource(
+        self,
+        resource: Any,
+        presentation: Any = runtime.undefined,
+    ) -> Vector:
         """Take ownership of a generated exact-rational vector resource."""
         if self._base is not sage.QQ:
             resource.close()
@@ -1751,7 +1770,7 @@ class VectorSpaceParent(sage.Parent):
                 != self._degree
             ):
                 raise ValueError("rational vector resource dimension does not agree")
-            return Vector(self, runtime.undefined, resource)
+            return Vector(self, runtime.undefined, resource, presentation)
         except Exception:
             resource.close()
             raise
@@ -1765,10 +1784,21 @@ class Vector(sage.Element):
         parent: Any,
         entries: Any,
         native_value: Any = runtime.undefined,
+        presentation: Any = runtime.undefined,
     ) -> None:
         self._parent = parent
         self._entries = entries
         self._native_value = native_value
+        if (
+            presentation is not runtime.undefined
+            and len(presentation) != parent.degree()
+        ):
+            raise ValueError("vector presentation dimension does not agree")
+        self._presentation_cache = (
+            runtime.undefined
+            if presentation is runtime.undefined
+            else list(presentation)
+        )
         self._immutable = False
 
     def _coordinate_ring(self) -> sage.Parent:
@@ -1835,12 +1865,17 @@ class Vector(sage.Element):
         return self._from_coordinate_resource(resource)
 
     def _exact_values(self) -> list[Any]:
+        if self._presentation_cache is not runtime.undefined:
+            return self._presentation_cache
         exact = _exact_vector_public_module()
         if self._has_fmpz_vector_resource():
-            return exact.integer_values(self._exact_vector_resource(), len(self))
-        if self._has_fmpq_vector_resource():
-            return exact.rational_values(self._exact_vector_resource(), len(self))
-        return list(self._entries)
+            values = exact.integer_values(self._exact_vector_resource(), len(self))
+        elif self._has_fmpq_vector_resource():
+            values = exact.rational_values(self._exact_vector_resource(), len(self))
+        else:
+            return list(self._entries)
+        self._presentation_cache = list(values)
+        return self._presentation_cache
 
     def base_ring(self) -> sage.Parent:
         return self._parent.base_ring()
@@ -1871,6 +1906,8 @@ class Vector(sage.Element):
         if self._native_value is runtime.undefined:
             return self._entries[index]
         position = _normalize_index(int(index), len(self))
+        if self._presentation_cache is not runtime.undefined:
+            return self._presentation_cache[position]
         exact = _exact_vector_public_module()
         if self._has_fmpz_vector_resource():
             return exact.integer_entry(self._exact_vector_resource(), position)
@@ -1881,6 +1918,7 @@ class Vector(sage.Element):
             raise ValueError("vector is immutable; change a copy instead")
         if self._native_value is runtime.undefined:
             self._entries[index] = self._coordinate_ring()(value)
+            self._presentation_cache = runtime.undefined
             return
         position = _normalize_index(int(index), len(self))
         coerced = self._coordinate_ring()(value)
@@ -1889,6 +1927,7 @@ class Vector(sage.Element):
             exact.integer_set(self._exact_vector_resource(), position, coerced)
         else:
             exact.rational_set(self._exact_vector_resource(), position, coerced)
+        self._presentation_cache = runtime.undefined
 
     def is_immutable(self) -> bool:
         return self._immutable
@@ -1900,7 +1939,7 @@ class Vector(sage.Element):
         self._immutable = True
 
     def list(self) -> list[Any]:
-        return self._exact_values()
+        return list(self._exact_values())
 
     def __copy__(self) -> Vector:
         if self._native_value is runtime.undefined:
@@ -2832,7 +2871,15 @@ class Matrix(sage.Element):
                     self.nrows(),
                 )
             parent = VectorSpace(self.base_ring(), self.ncols())
-            vectors = [parent(entries) for entries in nested]
+            if (
+                self._has_packed_prime_storage()
+                or self._has_nmod_matrix_resource()
+                or self._has_fmpz_matrix_resource()
+                or self._has_fmpq_matrix_resource()
+            ):
+                vectors = [parent._from_coerced_values(entries) for entries in nested]
+            else:
+                vectors = [parent(entries) for entries in nested]
             for value in vectors:
                 value.set_immutable()
             self._row_vectors_cache = vectors
@@ -2869,7 +2916,15 @@ class Matrix(sage.Element):
                 nested_rows, self.nrows(), self.ncols()
             )
             parent = VectorSpace(self.base_ring(), self.nrows())
-            vectors = [parent(entries) for entries in nested]
+            if (
+                self._has_packed_prime_storage()
+                or self._has_nmod_matrix_resource()
+                or self._has_fmpz_matrix_resource()
+                or self._has_fmpq_matrix_resource()
+            ):
+                vectors = [parent._from_coerced_values(entries) for entries in nested]
+            else:
+                vectors = [parent(entries) for entries in nested]
             for value in vectors:
                 value.set_immutable()
             self._column_vectors_cache = vectors
@@ -3552,10 +3607,14 @@ class Matrix(sage.Element):
         ) and self._prime_host_values_cache is not runtime.undefined:
             start = index * self.ncols()
             entries = self._prime_host_values()[start : start + self.ncols()]
-            answer = VectorSpace(self.base_ring(), self.ncols())(entries)
+            answer = VectorSpace(self.base_ring(), self.ncols())._from_coerced_values(
+                entries
+            )
         elif self._has_fmpz_matrix_resource() or self._has_fmpq_matrix_resource():
             entries = self._exact_host_sequence(index * self.ncols(), 1, self.ncols())
-            answer = VectorSpace(self.base_ring(), self.ncols())(entries)
+            answer = VectorSpace(self.base_ring(), self.ncols())._from_coerced_values(
+                entries
+            )
         else:
             answer = vector(
                 self.base_ring(),
@@ -3588,10 +3647,14 @@ class Matrix(sage.Element):
             entries = [
                 values[row * self.ncols() + index] for row in range(self.nrows())
             ]
-            answer = VectorSpace(self.base_ring(), self.nrows())(entries)
+            answer = VectorSpace(self.base_ring(), self.nrows())._from_coerced_values(
+                entries
+            )
         elif self._has_fmpz_matrix_resource() or self._has_fmpq_matrix_resource():
             entries = self._exact_host_sequence(index, self.ncols(), self.nrows())
-            answer = VectorSpace(self.base_ring(), self.nrows())(entries)
+            answer = VectorSpace(self.base_ring(), self.nrows())._from_coerced_values(
+                entries
+            )
         else:
             answer = vector(
                 self.base_ring(),
@@ -8375,6 +8438,14 @@ def identity_matrix(base: sage.Parent, size: int) -> Matrix:
         for col in range(size):
             entries.append(1 if row == col else 0)
     return matrix(base, size, size, entries)
+
+
+def scalar_matrix(base: sage.Parent, size: int, value: Any = 1) -> Matrix:
+    """Return the square matrix with `value` along its diagonal."""
+    size = int(size)
+    if size < 0:
+        raise ValueError("matrix dimensions must be nonnegative")
+    return diagonal_matrix(base, [value] * size)
 
 
 def diagonal_matrix(

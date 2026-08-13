@@ -1497,7 +1497,27 @@ class PolynomialElement(sage.Element):
         return self._parent.fraction_field()(self, other)
 
     def __truediv__(self, other: object) -> Any:
+        scalar_result = self._sage_scalar_truediv_(other)
+        if scalar_result is not NotImplemented:
+            return scalar_result
         return runtime.coercion_model.binOp("truediv", self, other)
+
+    def _sage_scalar_truediv_(self, other: object) -> Any:
+        """Divide by a scalar before generic polynomial coercion hides it."""
+        if isinstance(other, PolynomialElement):
+            return NotImplemented
+        base = self._parent.base_ring()
+        try:
+            plan = runtime.coercion_model.resolveParents(
+                base,
+                runtime.coercion_model.parentOf(other),
+            )
+        except TypeError:
+            return NotImplemented
+        if plan.parent is not base:
+            return NotImplemented
+        scalar = plan.rightMap(other)
+        return self * (base(1) / scalar)
 
     def __neg__(self) -> PolynomialElement:
         base = self._parent.base_ring()

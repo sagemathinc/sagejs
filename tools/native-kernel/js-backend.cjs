@@ -201,7 +201,7 @@ function emitExactStatement(operation, indent, resourceStack = null) {
     return `${indent}${operation.target} = ${operation.source};`;
   }
   if (operation.kind === "int64.buffer.length") {
-    return `${indent}${operation.target} = ${operation.buffer}.length;`;
+    return `${indent}${operation.target} = BigInt(${operation.buffer}.length);`;
   }
   if (operation.kind === "int64.record.view") {
     return `${indent}${operation.target} = int64RecordView(` +
@@ -219,7 +219,7 @@ function emitExactStatement(operation, indent, resourceStack = null) {
     return `${indent}${operation.target} = ${operation.source};`;
   }
   if (operation.kind === "integer.buffer.length") {
-    return `${indent}${operation.target} = ${operation.buffer}.length;`;
+    return `${indent}${operation.target} = BigInt(${operation.buffer}.length);`;
   }
   if (operation.kind === "integer.buffer.get") {
     return `${indent}${operation.target} = integerBufferGet(` +

@@ -726,7 +726,7 @@ test("a first class assignment reads its same-named module global", async () => 
     const javascript = output.get();
     assert.match(
       javascript,
-      /Session\.prototype\.Interrupted = .*\["Interrupted"\]/,
+      /Session\.prototype\.Interrupted = \$ρσ\$py\$Interrupted/,
     );
     assert.doesNotMatch(
       javascript,

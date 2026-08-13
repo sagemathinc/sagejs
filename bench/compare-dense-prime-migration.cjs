@@ -166,12 +166,13 @@ function firstWin(rows, operation, implementation, baseline) {
     const declaredSolveOutput = packed(size * 4);
 
     const expectedRank = flint.matrixRank(square);
+    const expectedRankExact = BigInt(expectedRank);
     assert.equal(kernel.dense_prime_field_matrix_rank(
       squareRecord, rankWorkspace,
-    ), expectedRank);
+    ), expectedRankExact);
     assert.equal(kernel.dense_prime_field_matrix_rref(
       squareRecord, rrefOutput,
-    ), expectedRank);
+    ), expectedRankExact);
     assert.equal(flint.matrixEqual(
       flint.nmodMatrix(size, size, Array.from(rrefOutput), modulus),
       flint.matrixRref(square),
@@ -182,12 +183,12 @@ function firstWin(rows, operation, implementation, baseline) {
       kernelWorkspace,
       kernelOutput,
     );
-    assert.equal(nullity, size - expectedWideRank);
+    assert.equal(nullity, BigInt(size - expectedWideRank));
     assert.equal(flint.matrixEqual(
       flint.nmodMatrix(
-        nullity,
+        Number(nullity),
         size,
-        Array.from(kernelOutput).slice(0, nullity * size),
+        Array.from(kernelOutput).slice(0, Number(nullity) * size),
         modulus,
       ),
       flint.matrixRightKernel(wide),
@@ -197,7 +198,7 @@ function firstWin(rows, operation, implementation, baseline) {
       rightRecord,
       solveWorkspace,
       solveOutput,
-    ), 1);
+    ), 1n);
     assert.equal(flint.matrixEqual(
       flint.nmodMatrix(size, 4, Array.from(solveOutput), modulus),
       flint.matrixSolve(left, right),
@@ -218,7 +219,7 @@ function firstWin(rows, operation, implementation, baseline) {
       Number(flintKernel.flint_dense_prime_field_matrix_right_kernel(
         declaredKernelOutput, wideSource, wideRows, size, modulus,
       )),
-      nullity,
+      Number(nullity),
     );
     assert.equal(flintKernel.flint_dense_prime_field_matrix_solve(
       declaredSolveOutput,

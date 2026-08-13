@@ -152,6 +152,7 @@ assrt.ok(isinstance(F5(-1), Element))
 assrt.equal(parent(F5(-1)), F5)
 assrt.ok(F5(-1) == F5(4))
 assrt.equal(F5(-1).lift(), 4)
+assrt.equal(int(F5(-1)), 4)
 f5_element = F5(2)
 assrt.ok(F5(f5_element) is f5_element)
 f5_parent_method = f5_element.parent

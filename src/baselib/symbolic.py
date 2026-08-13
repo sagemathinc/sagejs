@@ -1058,6 +1058,16 @@ def symbolic_function_factory(name: str) -> UndefinedSymbolicFunction:
     return UndefinedSymbolicFunction(name)
 
 
+# `function` is valid Python but reserved by the self-hosted JavaScript parser.
+# Publish the canonical Python spelling in the bootstrap builtin namespace;
+# the mangled reflective alias below remains for legacy generated code.
+runtime.reflect.set(
+    runtime.global_object,
+    "function",
+    symbolic_function_factory,
+)
+
+
 runtime.reflect.set(
     runtime.global_object,
     "ρσ_py_function",

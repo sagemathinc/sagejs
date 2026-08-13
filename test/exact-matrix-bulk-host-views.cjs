@@ -163,8 +163,9 @@ def verify(source, expected, rational_source, expected_pivots):
 
     before = serializations[0]
     assert source.pivots() == expected_pivots
-    assert serializations[0] == before + 1
-    assert serialized_regions[-1].closed
+    # Exact pivot discovery exports only bounded pivot metadata through its
+    # generated FFI query; it does not serialize the unchanged matrix.
+    assert serializations[0] == before
     storage_is_unmaterialized(source)
 
     before_serializations = serializations[0]

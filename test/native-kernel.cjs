@@ -329,6 +329,7 @@ assert.deepEqual(
     fn.analysis.effects.externalWrites,
   ]),
   [
+    ["int64_buffer_length", ["Int64Buffer"], []],
     ["fill_signed_records", ["Int64Buffer", "uint64"], ["output"]],
     ["sum_signed_records", ["Int64Buffer", "uint64"], []],
     ["write_then_overflow", ["Int64Buffer", "Integer"], ["output"]],
@@ -1232,6 +1233,15 @@ compileKernel({
   const signedBuffersModule = require(signedBuffersKernel.modulePath);
   const signedRecords = Array(12).fill(0);
   assert.equal(
+    signedBuffersModule.int64_buffer_length.javascript(signedRecords),
+    12n,
+  );
+  assert.equal(signedBuffersModule.int64_buffer_length(signedRecords), 12n);
+  assert.equal(
+    typeof signedBuffersModule.int64_buffer_length.javascript(signedRecords),
+    "bigint",
+  );
+  assert.equal(
     signedBuffersModule.fill_signed_records(signedRecords, 3),
     -3n,
   );
@@ -1283,6 +1293,15 @@ compileKernel({
   });
   const integerBuffersModule = require(integerBuffersKernel.modulePath);
   const exactValues = Array(3).fill(0n);
+  assert.equal(
+    integerBuffersModule.integer_buffer_length.javascript(exactValues),
+    3n,
+  );
+  assert.equal(integerBuffersModule.integer_buffer_length(exactValues), 3n);
+  assert.equal(
+    typeof integerBuffersModule.integer_buffer_length.javascript(exactValues),
+    "bigint",
+  );
   const exactSeed = 1n << 100n;
   integerBuffersModule.fill_integer_powers(exactValues, 3, exactSeed);
   const fallbackExactValues = Array(3).fill(0n);

@@ -146,12 +146,19 @@ q = vector(QQ, [1/2, 2/3, 3/5])
 assert z._has_fmpz_vector_resource()
 assert q._has_fmpq_vector_resource()
 
-# Resource arithmetic and matrix-vector publication must not decode a host
-# element list.  Scalar indexing remains available through declared calls.
-saved = runtime.exact_integer_values_from_packed_bytes
+# Resource arithmetic and matrix-vector publication must not materialize a
+# host element list through the exact-vector presentation boundary.  Scalar
+# indexing remains available through declared calls.
+exact = __import__(
+    "sagejs.linear_algebra.exact_vector_public",
+    fromlist=["exact_vector_public"],
+)
+saved_integer_values = exact.integer_values
+saved_rational_values = exact.rational_values
 def forbid_host_list(*args):
     raise AssertionError("exact vector unexpectedly materialized a host list")
-runtime.exact_integer_values_from_packed_bytes = forbid_host_list
+exact.integer_values = forbid_host_list
+exact.rational_values = forbid_host_list
 try:
     total = z + z
     scaled = q * (7/11)
@@ -175,7 +182,8 @@ try:
     assert rational_result._has_fmpq_vector_resource()
     assert rational_result[0] == 1/4 + 4/9 + 9/25
 finally:
-    runtime.exact_integer_values_from_packed_bytes = saved
+    exact.integer_values = saved_integer_values
+    exact.rational_values = saved_rational_values
 
 assert total.list()[0] == 2*(2^521 + 1)
 assert rational_result.list()[0] == 1/4 + 4/9 + 9/25

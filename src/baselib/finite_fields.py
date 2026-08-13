@@ -133,6 +133,9 @@ class FiniteFieldElement(sage.Element):
     def lift(self) -> int:
         return runtime.normalize_integer(self._value)
 
+    def __int__(self) -> int:
+        return self.lift()
+
     integer_representation = lift
 
     def __sagejs_dict_key__(self) -> Any:

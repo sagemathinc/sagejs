@@ -410,7 +410,7 @@ async function main() {
   try {
     await assert.rejects(
       pythonSession.evaluate("x"),
-      /x is not defined/,
+      /name 'x' is not defined/,
     );
   } finally {
     await pythonSession.close();

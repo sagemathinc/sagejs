@@ -893,11 +893,41 @@ def print_imports(container, output):
         if symbol.python_identifier:
             python_bindings[symbol.name] = True
 
+    import_bindings = container.python_import_bindings or {}
+
+    def binding_destination(name):
+        return import_bindings[name]
+
     def print_local_name(name):
         if python_bindings[name]:
             output.print_python_name(name)
         else:
             output.print_name(name)
+
+    def print_bound_name(name):
+        destination = binding_destination(name)
+        if not destination:
+            print_local_name(name)
+            return
+        if destination.kind is "class":
+            output.print_python_name(destination.owner)
+            output.print(".prototype[")
+            output.print_string(destination.name)
+            output.print("]")
+            return
+        if container.python_lexical_hygiene:
+            output.print_python_name(destination.name)
+        else:
+            output.print_name(destination.name)
+
+    def print_binding_assignment(name, declare=True):
+        destination = binding_destination(name)
+        if declare and (not destination or destination.declare):
+            output.print("var ")
+        print_bound_name(name)
+        output.space()
+        output.print("=")
+        output.space()
 
     def add_aname(aname, key, from_import):
         nonlocal is_first_aname
@@ -922,11 +952,7 @@ def print_imports(container, output):
             output.print(")")
             output.end_statement()
         output.indent()
-        output.print("var ")
-        print_local_name(aname)
-        output.space()
-        output.print("=")
-        output.space()
+        print_binding_assignment(aname)
         if key.indexOf(".") is -1:
             output.print("ρσ_modules."), output.print(key)
         else:
@@ -993,37 +1019,44 @@ def print_imports(container, output):
 
     def dynamic_import(self):
         def publish_local(name):
-            if not self.target_module:
+            destination = binding_destination(name)
+            target_module = (
+                destination.module
+                if destination and destination.kind is "module"
+                else self.target_module
+            )
+            published_name = destination.name if destination else name
+            if not target_module:
                 return
-            if self.target_module is "__main__":
+            if target_module is "__main__":
                 if not output.options.reuse_main_module:
                     return
                 output.indent()
                 output.print(
                     "if (!Object.prototype.hasOwnProperty.call(ρσ_modules.__main__,"
                 )
-                output.print_string(name)
+                output.print_string(published_name)
                 output.print(")) Object.defineProperty(ρσ_modules.__main__,")
-                output.print_string(name)
+                output.print_string(published_name)
                 output.print(",")
                 print_lexical_namespace_descriptor(
                     output,
-                    name,
+                    published_name,
                     "{configurable:true,",
                     True,
                     True,
-                    bool(python_bindings[name]),
+                    bool(container.python_lexical_hygiene),
                 )
                 output.print(")")
                 output.end_statement()
                 return
             output.indent()
             output.print("ρσ_modules[")
-            output.print_string(self.target_module)
+            output.print_string(target_module)
             output.print("][")
-            output.print_string(name)
+            output.print_string(published_name)
             output.print("] = ")
-            print_local_name(name)
+            print_bound_name(name)
             output.end_statement()
 
         output.print("var ρσ_imported_module")
@@ -1100,11 +1133,7 @@ def print_imports(container, output):
                 output.print(")")
                 output.end_statement()
                 output.indent()
-                output.print("var ")
-                print_local_name(local_name)
-                output.space()
-                output.print("=")
-                output.space()
+                print_binding_assignment(local_name)
                 output.print("ρσ_getattr_internal(ρσ_imported_module, ")
                 output.print_string(argname.name)
                 output.comma()
@@ -1115,11 +1144,7 @@ def print_imports(container, output):
         else:
             local_name = self.alias.name if self.alias else self.key.split(".")[0]
             output.indent()
-            output.print("var ")
-            print_local_name(local_name)
-            output.space()
-            output.print("=")
-            output.space()
+            print_binding_assignment(local_name)
             output.print("ρσ_imported_module")
             output.end_statement()
             publish_local(local_name)
@@ -1129,11 +1154,7 @@ def print_imports(container, output):
             if self.alias:
                 local_name = self.alias.name
                 output.indent()
-                output.print("var ")
-                print_local_name(local_name)
-                output.space()
-                output.print("=")
-                output.space()
+                print_binding_assignment(local_name)
                 output.print("ρσ_modules[")
                 output.print_string(self.key)
                 output.print("] || (globalThis.__sagejs_baselib_modules__ && ")
@@ -1143,28 +1164,35 @@ def print_imports(container, output):
                 output.end_statement()
                 output.indent()
                 output.print("if (")
-                print_local_name(local_name)
+                print_bound_name(local_name)
                 output.print(" === undefined) throw new ImportError(")
                 output.print_string("No module named '" + self.key + "'")
                 output.print(")")
                 output.end_statement()
+            destination = binding_destination(self.alias.name) if self.alias else None
+            target_module = (
+                destination.module
+                if destination and destination.kind is "module"
+                else self.target_module
+            )
             if (
                 output.options.reuse_main_module
-                and self.target_module is "__main__"
+                and target_module is "__main__"
                 and self.alias
             ):
                 local_name = self.alias.name
+                published_name = destination.name if destination else local_name
                 output.indent()
                 output.print("Object.defineProperty(ρσ_modules.__main__,")
-                output.print_string(local_name)
+                output.print_string(published_name)
                 output.print(",")
                 print_lexical_namespace_descriptor(
                     output,
-                    local_name,
+                    published_name,
                     "{configurable:true,",
                     True,
                     True,
-                    bool(python_bindings[local_name]),
+                    bool(container.python_lexical_hygiene),
                 )
                 output.print(")")
                 output.end_statement()
@@ -1191,7 +1219,7 @@ def print_imports(container, output):
                     else:
                         q = parts[: i + 1].join(".")
                         output.indent()
-                        print_local_name(parts[0])
+                        print_bound_name(parts[0])
                         for child in parts.slice(1, i + 1):
                             output.print("[")
                             output.print_string(child)

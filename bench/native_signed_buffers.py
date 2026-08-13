@@ -6,6 +6,12 @@ from sagejs.native import Int64Buffer, int64_record, native, uint64
 
 
 @native
+def int64_buffer_length(source: Int64Buffer) -> uint64:
+    """Return the exact logical length of a signed fixed-width buffer."""
+    return len(source)
+
+
+@native
 def fill_signed_records(output: Int64Buffer, count: uint64) -> int:
     """Fill packed four-entry records and return the final signed entry."""
     for index in range(count):
