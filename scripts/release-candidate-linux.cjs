@@ -12,24 +12,59 @@ const {
   mkdtempSync,
   readFileSync,
   readdirSync,
+  renameSync,
   rmSync,
   writeFileSync,
 } = require("node:fs");
 const { tmpdir } = require("node:os");
-const { basename, dirname, join, resolve } = require("node:path");
+const { basename, dirname, extname, join, resolve } = require("node:path");
 const { performance } = require("node:perf_hooks");
+const { readBuildManifest } = require("./release-manifest.cjs");
+const {
+  validateNativeMathBuildProfile,
+} = require("./native-math-profile.cjs");
 
 const ROOT = resolve(__dirname, "..");
 const EXPECTED_PYTHON = "python-runtime-ok";
-const EXPECTED_MATH = "native-mathematics-ok";
 const PLATFORM = "linux-x64";
 const DISTRIBUTION_NAME = `sagejs-${PLATFORM}`;
 const PACKAGE_VERSION = require("../package.json").version;
+const SYSTEM_PATH = "/usr/bin:/bin";
+const BUILD_RECEIPTS = Object.freeze({
+  math: "sagejs-build-manifest.json",
+  python: "sagepython-build-manifest.json",
+});
+const RUNTIME_EXTRA_VARIABLES = new Set([
+  "SAGEJS_MODULE_CACHE_AUTO_CLEANUP",
+  "SAGEJS_NATIVE_REQUIRED",
+  "SAGEJS_NATIVE_TRACE",
+]);
+const INSTALLER_TEST_VARIABLES = new Set([
+  "SAGEJS_INSTALL_FAIL_BEFORE_SWITCH",
+]);
+
+function receiptBeside(executable) {
+  const extension = extname(executable);
+  const stem = extension === ".exe"
+    ? basename(executable, extension)
+    : basename(executable);
+  return join(dirname(executable), `${stem}-build-manifest.json`);
+}
+
+function withReceiptDefaults(options) {
+  return {
+    ...options,
+    mathReceipt: options.mathReceipt || receiptBeside(options.math),
+    pythonReceipt: options.pythonReceipt || receiptBeside(options.python),
+  };
+}
 
 function parseArguments(argv) {
   const result = {
     math: join(ROOT, "build", "sea", "sagejs"),
     python: join(ROOT, "build", "sea", "sagepython"),
+    mathReceipt: undefined,
+    pythonReceipt: undefined,
     output: undefined,
     releaseDirectory: join(ROOT, "build", "release"),
     keep: false,
@@ -40,6 +75,10 @@ function parseArguments(argv) {
     if (argument === "--math") result.math = resolve(argv[++index] ?? "");
     else if (argument === "--python") {
       result.python = resolve(argv[++index] ?? "");
+    } else if (argument === "--math-receipt") {
+      result.mathReceipt = resolve(argv[++index] ?? "");
+    } else if (argument === "--python-receipt") {
+      result.pythonReceipt = resolve(argv[++index] ?? "");
     } else if (argument === "--output") {
       result.output = resolve(argv[++index] ?? "");
     } else if (argument === "--release-directory") {
@@ -49,6 +88,8 @@ function parseArguments(argv) {
     } else if (argument === "--keep") result.keep = true;
     else throw new Error(`unknown argument: ${argument}`);
   }
+  result.mathReceipt ||= receiptBeside(result.math);
+  result.pythonReceipt ||= receiptBeside(result.python);
   if (!Number.isInteger(result.warmSamples) || result.warmSamples < 1) {
     throw new Error("--warm-samples must be a positive integer");
   }
@@ -88,43 +129,62 @@ function treeUsage(directory) {
       else if (entry.isFile()) {
         bytes += lstatSync(filename).size;
         files += 1;
-      }
+      } else throw new Error(`unsupported cache entry ${filename}`);
     }
   };
   visit(directory);
   return { bytes, files };
 }
 
+function fixedEnvironment(path = SYSTEM_PATH) {
+  return {
+    LANG: "C",
+    LC_ALL: "C",
+    PATH: path,
+    TZ: "UTC",
+  };
+}
+
 function isolatedEnvironment(directory, extra = {}) {
+  for (const name of Object.keys(extra)) {
+    if (!RUNTIME_EXTRA_VARIABLES.has(name)) {
+      throw new Error(`unsupported isolated runtime variable ${name}`);
+    }
+  }
   const emptyPath = join(directory, "empty-path");
   const home = join(directory, "home");
   const cache = join(directory, "cache");
   const temporary = join(directory, "tmp");
   for (const path of [emptyPath, home, cache, temporary]) {
-    mkdirSync(path, { recursive: true });
-  }
-  const environment = {};
-  for (const [name, value] of Object.entries(process.env)) {
-    if (
-      !name.startsWith("NODE_") &&
-      !name.startsWith("npm_") &&
-      !name.startsWith("PNPM_") &&
-      !name.startsWith("SAGEJS_") &&
-      name !== "NODE_PATH" &&
-      name !== "HOME" &&
-      name !== "PATH" &&
-      name !== "XDG_CACHE_HOME" &&
-      name !== "TMPDIR"
-    ) {
-      environment[name] = value;
-    }
+    mkdirSync(path, { recursive: true, mode: 0o755 });
   }
   return {
-    ...environment,
+    ...fixedEnvironment(emptyPath),
     HOME: home,
-    PATH: emptyPath,
+    SAGEJS_MODULE_CACHE_AUTO_CLEANUP: "0",
     TMPDIR: temporary,
     XDG_CACHE_HOME: cache,
+    ...extra,
+  };
+}
+
+function installerEnvironment(directory, values, extra = {}) {
+  for (const name of Object.keys(extra)) {
+    if (!INSTALLER_TEST_VARIABLES.has(name)) {
+      throw new Error(`unsupported installer test variable ${name}`);
+    }
+  }
+  const home = join(directory, "home");
+  const temporary = join(directory, "tmp");
+  mkdirSync(home, { recursive: true, mode: 0o755 });
+  mkdirSync(temporary, { recursive: true, mode: 0o755 });
+  return {
+    ...fixedEnvironment(),
+    HOME: home,
+    SAGEJS_DOWNLOAD_BASE_URL: values.downloadBaseUrl,
+    SAGEJS_INSTALL_DIR: values.installDirectory,
+    SAGEJS_INSTALL_PLATFORM: PLATFORM,
+    TMPDIR: temporary,
     ...extra,
   };
 }
@@ -150,15 +210,198 @@ function visitFiles(directory, prefix = "") {
   return result.sort();
 }
 
-function packageReleaseCandidate(options) {
+function validateExecutableReceipts(options) {
+  const math = readBuildManifest(options.mathReceipt);
+  const python = readBuildManifest(options.pythonReceipt);
+  for (const [name, receipt, nativeMathematics] of [
+    ["sagejs", math, true],
+    ["sagepython", python, false],
+  ]) {
+    assert.equal(receipt.sagejsVersion, PACKAGE_VERSION, `${name} version receipt mismatch`);
+    assert.equal(receipt.target.platform, "linux", `${name} is not a Linux build`);
+    assert.equal(receipt.target.arch, "x64", `${name} is not an x64 build`);
+    assert.equal(
+      receipt.capabilities?.artifact?.nativeMathematics,
+      nativeMathematics,
+      `${name} native mathematics receipt mismatch`,
+    );
+  }
+  assert.deepEqual(math.source, python.source, "SEA executables have different source identities");
+  assert.deepEqual(math.target, python.target, "SEA executables have different targets");
+  const profile = validateNativeMathBuildProfile(
+    math.toolchain.nativeMathProfile,
+    math.target,
+  );
+  assert.equal(
+    profile.effectiveProfile,
+    "portable",
+    "release artifact must use the portable mathematics profile",
+  );
+  assert.equal(
+    python.toolchain.nativeMathProfile,
+    null,
+    "sagepython receipt unexpectedly declares a mathematics profile",
+  );
+  return { math, python };
+}
+
+function validateEmbeddedExecutable(executable, expectedReceipt) {
+  const stateDirectory = mkdtempSync(join(tmpdir(), "sagejs-receipt-probe-"));
+  let probe;
+  try {
+    probe = spawnSync(executable, ["capabilities", "--json"], {
+      cwd: dirname(executable),
+      encoding: "utf8",
+      env: isolatedEnvironment(stateDirectory),
+      timeout: 30_000,
+    });
+  } finally {
+    rmSync(stateDirectory, { recursive: true, force: true });
+  }
+  if (probe.error) throw probe.error;
+  assert.equal(probe.status, 0, probe.stderr || probe.stdout);
+  const report = JSON.parse(probe.stdout);
+  assert.equal(report.buildReceipt?.availability, "available");
+  assert.equal(report.buildReceipt?.source, "embedded");
+  assert.deepEqual(
+    report.buildReceipt.manifest,
+    expectedReceipt,
+    `${basename(executable)} embedded receipt does not match its sidecar`,
+  );
+  assert.equal(report.artifact.kind, "sea");
+  return report;
+}
+
+function atomicWrite(filename, contents, mode = 0o644) {
+  const staged = stageAtomicWrite(filename, contents, mode);
+  try {
+    staged.commit();
+  } finally {
+    staged.cleanup();
+  }
+}
+
+function stageAtomicWrite(filename, contents, mode = 0o644) {
+  mkdirSync(dirname(filename), { recursive: true, mode: 0o755 });
+  const temporary = mkdtempSync(join(dirname(filename), ".sagejs-publish-"));
+  const staged = join(temporary, basename(filename));
+  writeFileSync(staged, contents, { mode });
+  chmodSync(staged, mode);
+  let committed = false;
+  return {
+    cleanup() {
+      rmSync(temporary, { recursive: true, force: true });
+    },
+    commit() {
+      assert.equal(committed, false, "staged write already committed");
+      renameSync(staged, filename);
+      committed = true;
+    },
+  };
+}
+
+function publishReleaseCandidate(sourceArchive, releaseDirectory) {
+  mkdirSync(releaseDirectory, { recursive: true, mode: 0o755 });
+  const temporary = mkdtempSync(join(releaseDirectory, ".sagejs-linux-publish-"));
+  const archive = join(releaseDirectory, `${DISTRIBUTION_NAME}.tar.xz`);
+  const archiveChecksum = `${archive}.sha256`;
+  try {
+    const stagedArchive = join(temporary, basename(archive));
+    const stagedChecksum = join(temporary, basename(archiveChecksum));
+    copyFileSync(sourceArchive, stagedArchive);
+    chmodSync(stagedArchive, 0o644);
+    writeFileSync(
+      stagedChecksum,
+      `${sha256(stagedArchive)}  ${basename(archive)}\n`,
+      { mode: 0o644 },
+    );
+    chmodSync(stagedChecksum, 0o644);
+    // The checksum is the readiness marker. Removing it first means an
+    // interrupted publication is absent or fails closed, never accepted as a
+    // new archive with an old checksum.
+    rmSync(archiveChecksum, { force: true });
+    renameSync(stagedArchive, archive);
+    renameSync(stagedChecksum, archiveChecksum);
+    return { archive, archiveChecksum };
+  } finally {
+    rmSync(temporary, { recursive: true, force: true });
+  }
+}
+
+function publishValidatedReleaseCandidate(
+  sourceArchive,
+  releaseDirectory,
+  report,
+  options = {},
+) {
+  mkdirSync(releaseDirectory, { recursive: true, mode: 0o755 });
+  const temporary = mkdtempSync(join(releaseDirectory, ".sagejs-linux-ready-"));
+  const names = {
+    archive: `${DISTRIBUTION_NAME}.tar.xz`,
+    checksum: `${DISTRIBUTION_NAME}.tar.xz.sha256`,
+    report: `${DISTRIBUTION_NAME}.report.json`,
+    readiness: `${DISTRIBUTION_NAME}.release.json`,
+  };
+  const paths = Object.fromEntries(
+    Object.entries(names).map(([key, name]) => [key, join(releaseDirectory, name)]),
+  );
+  try {
+    const stagedArchive = join(temporary, names.archive);
+    const stagedChecksum = join(temporary, names.checksum);
+    const stagedReport = join(temporary, names.report);
+    const stagedReadiness = join(temporary, names.readiness);
+    copyFileSync(sourceArchive, stagedArchive);
+    chmodSync(stagedArchive, 0o644);
+    writeFileSync(
+      stagedChecksum,
+      `${sha256(stagedArchive)}  ${names.archive}\n`,
+      { mode: 0o644 },
+    );
+    writeFileSync(stagedReport, `${JSON.stringify(report, null, 2)}\n`, {
+      mode: 0o644,
+    });
+    const readiness = {
+      artifacts: {
+        [names.archive]: sha256(stagedArchive),
+        [names.checksum]: sha256(stagedChecksum),
+        [names.report]: sha256(stagedReport),
+      },
+      schema: "sagejs.linux-release-readiness/v1",
+    };
+    writeFileSync(stagedReadiness, `${JSON.stringify(readiness, null, 2)}\n`, {
+      mode: 0o644,
+    });
+    // The readiness manifest is the transaction's commit record. Remove it
+    // before replacing any payload and publish it last.
+    rmSync(paths.readiness, { force: true });
+    renameSync(stagedArchive, paths.archive);
+    renameSync(stagedChecksum, paths.checksum);
+    renameSync(stagedReport, paths.report);
+    options.beforeReady?.();
+    renameSync(stagedReadiness, paths.readiness);
+    return { ...paths, readinessRecord: readiness };
+  } finally {
+    rmSync(temporary, { recursive: true, force: true });
+  }
+}
+
+function packageReleaseCandidate(options, internals = {}) {
+  options = withReceiptDefaults(options);
+  const receipts = validateExecutableReceipts(options);
+  const embeddedValidator = internals.validateEmbeddedExecutable ||
+    validateEmbeddedExecutable;
+  embeddedValidator(options.math, receipts.math);
+  embeddedValidator(options.python, receipts.python);
   const temporary = mkdtempSync(join(tmpdir(), "sagejs-linux-package-"));
   try {
     const distribution = join(temporary, DISTRIBUTION_NAME);
     const licenseDirectory = join(distribution, "licenses");
-    mkdirSync(licenseDirectory, { recursive: true });
+    mkdirSync(licenseDirectory, { recursive: true, mode: 0o755 });
     for (const [source, target, mode] of [
       [options.math, join(distribution, "sagejs"), 0o755],
       [options.python, join(distribution, "sagepython"), 0o755],
+      [options.mathReceipt, join(distribution, BUILD_RECEIPTS.math), 0o644],
+      [options.pythonReceipt, join(distribution, BUILD_RECEIPTS.python), 0o644],
       [join(ROOT, "LICENSE"), join(distribution, "LICENSE"), 0o644],
       [join(ROOT, "README.md"), join(distribution, "README.md"), 0o644],
       [join(ROOT, "DISTRIBUTION.md"), join(distribution, "DISTRIBUTION.md"), 0o644],
@@ -166,6 +409,10 @@ function packageReleaseCandidate(options) {
       copyFileSync(source, target);
       chmodSync(target, mode);
     }
+    // Re-read the copied canonical receipts so packaging cannot accidentally
+    // report one file while shipping another.
+    assert.deepEqual(readBuildManifest(join(distribution, BUILD_RECEIPTS.math)), receipts.math);
+    assert.deepEqual(readBuildManifest(join(distribution, BUILD_RECEIPTS.python)), receipts.python);
     for (const entry of readdirSync(join(ROOT, "licenses"), {
       withFileTypes: true,
     })) {
@@ -183,14 +430,11 @@ function packageReleaseCandidate(options) {
     writeFileSync(join(distribution, "SHA256SUMS"), `${checksumEntries}\n`, {
       mode: 0o644,
     });
+    chmodSync(join(distribution, "SHA256SUMS"), 0o644);
 
-    mkdirSync(options.releaseDirectory, { recursive: true });
-    const archive = join(
-      options.releaseDirectory,
-      `${DISTRIBUTION_NAME}.tar.xz`,
-    );
-    const archiveChecksum = `${archive}.sha256`;
-    rmSync(archive, { force: true });
+    const stagedRelease = join(temporary, "release");
+    mkdirSync(stagedRelease, { mode: 0o755 });
+    const stagedArchive = join(stagedRelease, `${DISTRIBUTION_NAME}.tar.xz`);
     runChecked(
       "tar",
       [
@@ -199,23 +443,20 @@ function packageReleaseCandidate(options) {
         "--owner=0",
         "--group=0",
         "--numeric-owner",
+        "--mode=u+rwX,go+rX,go-w",
         "--pax-option=delete=atime,delete=ctime",
         "-I",
         "xz -6 --threads=1",
         "-cf",
-        archive,
+        stagedArchive,
         "-C",
         temporary,
         DISTRIBUTION_NAME,
       ],
-      { cwd: ROOT },
+      { cwd: ROOT, env: fixedEnvironment() },
     );
-    writeFileSync(
-      archiveChecksum,
-      `${sha256(archive)}  ${basename(archive)}\n`,
-      { mode: 0o644 },
-    );
-    return { archive, archiveChecksum };
+    chmodSync(stagedArchive, 0o644);
+    return publishReleaseCandidate(stagedArchive, options.releaseDirectory);
   } finally {
     rmSync(temporary, { recursive: true, force: true });
   }
@@ -223,8 +464,10 @@ function packageReleaseCandidate(options) {
 
 function extractReleaseCandidate(archive, directory) {
   const extraction = join(directory, "extracted");
-  mkdirSync(extraction);
-  runChecked("tar", ["-xJf", archive, "-C", extraction]);
+  mkdirSync(extraction, { mode: 0o755 });
+  runChecked("tar", ["-xJf", archive, "-C", extraction], {
+    env: fixedEnvironment(),
+  });
   const distribution = join(extraction, DISTRIBUTION_NAME);
   assert.deepEqual(readdirSync(extraction), [DISTRIBUTION_NAME]);
   const required = [
@@ -232,11 +475,13 @@ function extractReleaseCandidate(archive, directory) {
     "LICENSE",
     "README.md",
     "SHA256SUMS",
+    BUILD_RECEIPTS.math,
+    BUILD_RECEIPTS.python,
     "licenses",
     "sagejs",
     "sagepython",
   ];
-  assert.deepEqual(readdirSync(distribution).sort(), required);
+  assert.deepEqual(readdirSync(distribution).sort(), required.sort());
   const expectedChecksums = readFileSync(join(distribution, "SHA256SUMS"), "utf8")
     .trim()
     .split("\n")
@@ -301,107 +546,238 @@ function writeFixtures(directory) {
       "",
     ].join("\n"),
   );
-
-  const math = join(directory, "math-release-smoke.sage");
-  writeFileSync(
-    math,
-    [
-      "assert str(factor(2026)) == '2 * 1013'",
-      "A = matrix(ZZ, [[2, 3, 5], [7, 11, 13], [17, 19, 23]])",
-      "assert A.det() == -78",
-      "Q = matrix(QQ, [[1/2, 2/3], [3/5, 5/7]])",
-      "assert Q.det() == -3/70",
-      "assert Q.rref() == identity_matrix(QQ, 2)",
-      "F = GF(97)",
-      "M = identity_matrix(F, 64)",
-      "assert M*M == M and M.rank() == 64 and M.rref() == M",
-      "B = matrix(GF(2), [[1, 1, 0], [0, 1, 1], [1, 0, 1]])",
-      "assert B.rank() == 2",
-      "R = PolynomialRing(ZZ, 't')",
-      "t = R.gen()",
-      "assert (t^6 - 1)(2) == 63",
-      "assert graphs.PetersenGraph().automorphism_group().order() == 120",
-      `print('${EXPECTED_MATH}')`,
-      "",
-    ].join("\n"),
-  );
-  return { math, python, startup };
+  return { python, startup };
 }
 
-function nativeMathProvenance() {
-  try {
-    const { nativeMathBuildProvenance } = require(
-      "./native-math-profile.cjs"
+function runInstaller(
+  downloadDirectory,
+  installDirectory,
+  stateDirectory,
+  cwd,
+  extra = {},
+) {
+  return spawnSync("/bin/sh", [join(ROOT, "install.sh")], {
+    cwd,
+    encoding: "utf8",
+    env: installerEnvironment(
+      stateDirectory,
+      {
+        downloadBaseUrl: `file://${downloadDirectory}`,
+        installDirectory,
+      },
+      extra,
+    ),
+    timeout: 120_000,
+  });
+}
+
+function runAuthoritativeMathSmoke(executable, cwd, stateDirectory) {
+  const run = () => {
+    const started = performance.now();
+    const result = spawnSync(
+      process.execPath,
+      [
+        join(ROOT, "scripts", "release-math-smoke.cjs"),
+        "--executable",
+        executable,
+        "--require-native",
+        "--state-directory",
+        stateDirectory,
+        "--max-seconds",
+        "60",
+        "--json",
+      ],
+      {
+        cwd,
+        encoding: "utf8",
+        env: isolatedEnvironment(join(stateDirectory, "verifier")),
+        timeout: 120_000,
+      },
     );
-    return nativeMathBuildProvenance(ROOT);
-  } catch (error) {
-    return { error: error.message };
-  }
+    const elapsedMs = performance.now() - started;
+    if (result.error) throw result.error;
+    assert.equal(result.status, 0, result.stderr || result.stdout);
+    return { elapsedMs, report: JSON.parse(result.stdout) };
+  };
+  const cold = run();
+  const coldCache = treeUsage(join(stateDirectory, "cache"));
+  const coldTemporary = treeUsage(join(stateDirectory, "tmp"));
+  const warm = run();
+  const warmCache = treeUsage(join(stateDirectory, "cache"));
+  const warmTemporary = treeUsage(join(stateDirectory, "tmp"));
+  assertStableUsage(coldCache, warmCache, "authoritative native mathematics");
+  assertEmptyTemporary(coldTemporary, "cold authoritative mathematics smoke");
+  assertEmptyTemporary(warmTemporary, "warm authoritative mathematics smoke");
+  const m4ri = cold.report.native.witnesses.find(({ name }) =>
+    name === "binary-m4ri-resource");
+  assert.equal(m4ri?.observed, true, "authoritative smoke did not observe M4RI");
+  assert.equal(
+    cold.report.native.fallback.length,
+    0,
+    "authoritative native smoke observed a fallback route",
+  );
+  return { cold, coldCache, warm, warmCache };
 }
 
-function sourceRevision() {
-  return runChecked("git", ["rev-parse", "HEAD"], { cwd: ROOT }).stdout.trim();
+function assertStableUsage(cold, warm, label) {
+  assert.ok(
+    warm.bytes <= cold.bytes + 1024 * 1024,
+    `${label} cache grew by more than 1 MiB after warm runs`,
+  );
+  assert.ok(
+    warm.files <= cold.files + 32,
+    `${label} cache created more than 32 files after warm runs`,
+  );
 }
 
-function validateReleaseCandidate(options) {
+function assertEmptyTemporary(usage, label) {
+  assert.deepEqual(usage, { bytes: 0, files: 0 }, `${label} left temporary files`);
+}
+
+function validateReleaseCandidate(options, internals = {}) {
+  options = withReceiptDefaults(options);
   assert.equal(process.platform, "linux", "Linux release validation requires Linux");
   assert.equal(process.arch, "x64", "Linux release validation requires x64");
-  for (const filename of [options.math, options.python]) {
-    assert.ok(filename, "both SEA artifact paths are required");
+  for (const filename of [
+    options.math,
+    options.python,
+    options.mathReceipt,
+    options.pythonReceipt,
+  ]) {
+    assert.ok(filename, "SEA artifacts and receipts are required");
     assert.ok(lstatSync(filename).isFile(), `${filename} is not a regular file`);
   }
 
-  const { archive, archiveChecksum } = packageReleaseCandidate(options);
   const directory = mkdtempSync(join(tmpdir(), "sagejs-linux-rc-"));
-  const workspace = join(directory, "workspace");
-  mkdirSync(workspace);
-  const distribution = extractReleaseCandidate(archive, directory);
-  const mathExecutable = join(distribution, "sagejs");
-  const pythonExecutable = join(distribution, "sagepython");
-  const fixtures = writeFixtures(workspace);
-  const installedDirectory = join(directory, "installed");
-  const installResult = spawnSync("sh", [join(ROOT, "install.sh")], {
-    cwd: workspace,
-    encoding: "utf8",
-    env: {
-      ...process.env,
-      SAGEJS_DOWNLOAD_BASE_URL: `file://${dirname(archive)}`,
-      SAGEJS_INSTALL_DIR: installedDirectory,
-      SAGEJS_INSTALL_PLATFORM: PLATFORM,
-    },
-    timeout: 120_000,
-  });
-  if (installResult.error) throw installResult.error;
-  assert.equal(installResult.status, 0, installResult.stderr || installResult.stdout);
-  assert.ok(
-    installResult.stdout.includes(`Installed sagejs ${PACKAGE_VERSION}`),
-    installResult.stdout,
-  );
-  assert.equal(sha256(join(installedDirectory, "sagejs")), sha256(mathExecutable));
-  assert.equal(
-    sha256(join(installedDirectory, "sagepython")),
-    sha256(pythonExecutable),
-  );
-  const startupEnvironment = isolatedEnvironment(join(directory, "startup-state"));
-  const pythonEnvironment = isolatedEnvironment(join(directory, "python-state"));
-  const mathEnvironment = {
-    ...isolatedEnvironment(join(directory, "math-state")),
-    SAGEJS_NATIVE_REQUIRED: "1",
-    SAGEJS_NATIVE_TRACE: "1",
-  };
-  const nodeProbe = spawnSync("node", ["--version"], {
-    cwd: workspace,
-    encoding: "utf8",
-    env: startupEnvironment,
-  });
-  assert.equal(nodeProbe.error?.code, "ENOENT", "Node unexpectedly exists on isolated PATH");
-
   try {
+    const staged = packageReleaseCandidate(
+      {
+        ...options,
+        releaseDirectory: join(directory, "candidate"),
+      },
+      internals,
+    );
+    const workspace = join(directory, "workspace");
+    mkdirSync(workspace, { mode: 0o755 });
+    const distribution = extractReleaseCandidate(staged.archive, directory);
+    const mathExecutable = join(distribution, "sagejs");
+    const pythonExecutable = join(distribution, "sagepython");
+    const fixtures = writeFixtures(workspace);
+    const embeddedReceipts = {
+      math: readBuildManifest(join(distribution, BUILD_RECEIPTS.math)),
+      python: readBuildManifest(join(distribution, BUILD_RECEIPTS.python)),
+    };
+    const embeddedValidator = internals.validateEmbeddedExecutable ||
+      validateEmbeddedExecutable;
+    const embeddedCapabilityReports = {
+      math: embeddedValidator(mathExecutable, embeddedReceipts.math),
+      python: embeddedValidator(
+        pythonExecutable,
+        embeddedReceipts.python,
+      ),
+    };
+
+    const installedDirectory = join(directory, "installed");
+
+    const corruptDirectory = join(directory, "corrupt-download");
+    mkdirSync(corruptDirectory, { mode: 0o755 });
+    copyFileSync(staged.archive, join(corruptDirectory, basename(staged.archive)));
+    writeFileSync(
+      join(corruptDirectory, basename(staged.archiveChecksum)),
+      `${"0".repeat(64)}  ${basename(staged.archive)}\n`,
+      { mode: 0o644 },
+    );
+    const failedInstallState = join(directory, "failed-install-state");
+    const failedInstall = runInstaller(
+      corruptDirectory,
+      installedDirectory,
+      failedInstallState,
+      workspace,
+    );
+    if (failedInstall.error) throw failedInstall.error;
+    assert.notEqual(failedInstall.status, 0, "corrupt archive unexpectedly installed");
+    assert.match(failedInstall.stderr, /SHA-256 verification failed/);
+    assert.equal(lstatSync(installedDirectory, { throwIfNoEntry: false }), undefined);
+    assertEmptyTemporary(
+      treeUsage(join(failedInstallState, "tmp")),
+      "failed installer",
+    );
+
+    const installState = join(directory, "install-state");
+    const installResult = runInstaller(
+      dirname(staged.archive),
+      installedDirectory,
+      installState,
+      workspace,
+    );
+    if (installResult.error) throw installResult.error;
+    assert.equal(installResult.status, 0, installResult.stderr || installResult.stdout);
+    assert.ok(
+      installResult.stdout.includes(`Installed sagejs ${PACKAGE_VERSION}`),
+      installResult.stdout,
+    );
+    assert.equal(sha256(join(installedDirectory, "sagejs")), sha256(mathExecutable));
+    assert.equal(
+      sha256(join(installedDirectory, "sagepython")),
+      sha256(pythonExecutable),
+    );
+    assert.equal(lstatSync(join(installedDirectory, "sagejs")).isSymbolicLink(), true);
+    assert.equal(lstatSync(join(installedDirectory, "sagepython")).isSymbolicLink(), true);
+    const activeBeforeFailure = readFileSync(
+      join(installedDirectory, ".sagejs-current", "sagejs"),
+    );
+    assertEmptyTemporary(treeUsage(join(installState, "tmp")), "successful installer");
+
+    // A second successful run is the real upgrade/reinstall path, including
+    // replacement of existing executable files.
+    const reinstallState = join(directory, "reinstall-state");
+    const interruptedUpgrade = runInstaller(
+      dirname(staged.archive),
+      installedDirectory,
+      reinstallState,
+      workspace,
+      { SAGEJS_INSTALL_FAIL_BEFORE_SWITCH: "1" },
+    );
+    if (interruptedUpgrade.error) throw interruptedUpgrade.error;
+    assert.notEqual(interruptedUpgrade.status, 0);
+    assert.match(interruptedUpgrade.stderr, /injected failure/);
+    assert.deepEqual(
+      readFileSync(join(installedDirectory, ".sagejs-current", "sagejs")),
+      activeBeforeFailure,
+      "failed upgrade changed the active generation",
+    );
+    const reinstall = runInstaller(
+      dirname(staged.archive),
+      installedDirectory,
+      join(directory, "reinstall-success-state"),
+      workspace,
+    );
+    if (reinstall.error) throw reinstall.error;
+    assert.equal(reinstall.status, 0, reinstall.stderr || reinstall.stdout);
+    assert.equal(sha256(join(installedDirectory, "sagejs")), sha256(mathExecutable));
+    assert.equal(
+      sha256(join(installedDirectory, "sagepython")),
+      sha256(pythonExecutable),
+    );
+    assertEmptyTemporary(treeUsage(join(reinstallState, "tmp")), "failed reinstaller");
+
+    const startupEnvironment = isolatedEnvironment(join(directory, "startup-state"));
+    const pythonEnvironment = isolatedEnvironment(join(directory, "python-state"));
+    const nodeProbe = spawnSync("node", ["--version"], {
+      cwd: workspace,
+      encoding: "utf8",
+      env: startupEnvironment,
+    });
+    assert.equal(nodeProbe.error?.code, "ENOENT", "Node unexpectedly exists on isolated PATH");
+
     const startupCold = runArtifact(mathExecutable, fixtures.startup, {
       cwd: workspace,
       env: startupEnvironment,
     });
     assert.equal(startupCold.stdout, "1267650600228229401496703205376");
+    const startupColdCache = treeUsage(
+      join(directory, "startup-state", "cache"),
+    );
     const startupWarm = [];
     for (let sample = 0; sample < options.warmSamples; sample += 1) {
       const startupRun = runArtifact(mathExecutable, fixtures.startup, {
@@ -411,29 +787,27 @@ function validateReleaseCandidate(options) {
       assert.equal(startupRun.stdout, "1267650600228229401496703205376");
       startupWarm.push(startupRun.elapsedMs);
     }
+    const installedEnvironment = isolatedEnvironment(
+      join(directory, "installed-state"),
+    );
+    const installedStartup = runArtifact(
+      join(installedDirectory, "sagejs"),
+      fixtures.startup,
+      { cwd: workspace, env: installedEnvironment },
+    );
+    assert.equal(installedStartup.stdout, "1267650600228229401496703205376");
 
     const pythonCold = runArtifact(pythonExecutable, fixtures.python, {
       cwd: workspace,
       env: pythonEnvironment,
     });
     assert.equal(pythonCold.stdout, EXPECTED_PYTHON);
-
-    const mathCold = runArtifact(mathExecutable, fixtures.math, {
-      cwd: workspace,
-      env: mathEnvironment,
-    });
-    assert.match(mathCold.stdout, new RegExp(`${EXPECTED_MATH}$`));
-    assert.match(mathCold.stdout, /Matrix\.(multiply|rank|rref)/);
-    assert.match(mathCold.stdout, /declared-(fflas|flint)-isolated/);
-    assert.match(mathCold.stdout, /generated-flint-resource/);
+    const pythonColdCache = treeUsage(join(directory, "python-state", "cache"));
     const coldCaches = {
-      math: treeUsage(join(directory, "math-state", "cache")),
-      python: treeUsage(join(directory, "python-state", "cache")),
-      startup: treeUsage(join(directory, "startup-state", "cache")),
+      python: pythonColdCache,
+      startup: startupColdCache,
     };
-
     const pythonWarm = [];
-    const mathWarm = [];
     for (let sample = 0; sample < options.warmSamples; sample += 1) {
       const pythonRun = runArtifact(pythonExecutable, fixtures.python, {
         cwd: workspace,
@@ -441,24 +815,19 @@ function validateReleaseCandidate(options) {
       });
       assert.equal(pythonRun.stdout, EXPECTED_PYTHON);
       pythonWarm.push(pythonRun.elapsedMs);
-
-      const mathRun = runArtifact(mathExecutable, fixtures.math, {
-        cwd: workspace,
-        env: mathEnvironment,
-      });
-      assert.match(mathRun.stdout, new RegExp(`${EXPECTED_MATH}$`));
-      mathWarm.push(mathRun.elapsedMs);
     }
     const warmCaches = {
-      math: treeUsage(join(directory, "math-state", "cache")),
       python: treeUsage(join(directory, "python-state", "cache")),
       startup: treeUsage(join(directory, "startup-state", "cache")),
     };
+    assertStableUsage(coldCaches.python, warmCaches.python, "sagepython");
+    assertStableUsage(coldCaches.startup, warmCaches.startup, "sagejs startup");
     const runtimeTemporary = {
-      math: treeUsage(join(directory, "math-state", "tmp")),
       python: treeUsage(join(directory, "python-state", "tmp")),
       startup: treeUsage(join(directory, "startup-state", "tmp")),
     };
+    assertEmptyTemporary(runtimeTemporary.python, "sagepython runtime");
+    assertEmptyTemporary(runtimeTemporary.startup, "sagejs runtime");
     const totalWarmCacheBytes = Object.values(warmCaches)
       .reduce((total, usage) => total + usage.bytes, 0);
     assert.ok(
@@ -466,21 +835,17 @@ function validateReleaseCandidate(options) {
       `release smoke cache unexpectedly grew to ${totalWarmCacheBytes} bytes`,
     );
 
-    const nativeMath = nativeMathProvenance();
-    assert.equal(
-      nativeMath.selected?.effectiveProfile,
-      "portable",
-      "release artifact must be built with the portable mathematics profile",
+    const mathSmokeState = join(directory, "math-smoke-state");
+    const mathSmoke = runAuthoritativeMathSmoke(
+      mathExecutable,
+      workspace,
+      mathSmokeState,
     );
-    assert.equal(
-      nativeMath.installedMatchesSelected,
-      true,
-      "installed mathematics prefix does not match the selected portable profile",
-    );
+
     const report = {
-      schemaVersion: 1,
+      schemaVersion: 2,
       generatedAt: new Date().toISOString(),
-      source: { revision: sourceRevision(), version: PACKAGE_VERSION },
+      buildReceipts: embeddedReceipts,
       host: {
         arch: process.arch,
         glibc: process.report.getReport().header.glibcVersionRuntime ?? null,
@@ -490,35 +855,48 @@ function validateReleaseCandidate(options) {
       isolation: {
         adjacentFiles: readdirSync(distribution).sort(),
         cleanHome: true,
+        environmentPolicy: "strict-allowlist-v1",
         nodeAvailableOnPath: false,
         sourceCheckoutCurrentDirectory: false,
       },
+      embeddedCapabilities: embeddedCapabilityReports,
       artifacts: {
-        archive: artifactMetadata(archive),
-        archiveChecksum: readFileSync(archiveChecksum, "utf8").trim(),
+        archive: artifactMetadata(staged.archive),
+        archiveChecksum: readFileSync(staged.archiveChecksum, "utf8").trim(),
         sagejs: artifactMetadata(mathExecutable),
+        sagejsBuildReceipt: artifactMetadata(
+          join(distribution, BUILD_RECEIPTS.math),
+        ),
         sagepython: artifactMetadata(pythonExecutable),
+        sagepythonBuildReceipt: artifactMetadata(
+          join(distribution, BUILD_RECEIPTS.python),
+        ),
         installedSagejs: artifactMetadata(join(installedDirectory, "sagejs")),
         installedSagepython: artifactMetadata(
           join(installedDirectory, "sagepython"),
         ),
       },
-      nativeMath,
+      nativeMath: embeddedReceipts.math.toolchain.nativeMathProfile,
       cache: {
-        afterCold: coldCaches,
-        afterWarm: warmCaches,
-        runtimeTemporaryAfterExit: runtimeTemporary,
+        afterCold: { ...coldCaches, math: mathSmoke.coldCache },
+        afterWarm: { ...warmCaches, math: mathSmoke.warmCache },
+        runtimeTemporaryAfterExit: {
+          ...runtimeTemporary,
+          math: treeUsage(join(mathSmokeState, "tmp")),
+        },
       },
       timingsMs: {
         startup: {
           cold: startupCold.elapsedMs,
+          installed: installedStartup.elapsedMs,
           warmMedian: median(startupWarm),
           warmSamples: startupWarm,
         },
         math: {
-          cold: mathCold.elapsedMs,
-          warmMedian: median(mathWarm),
-          warmSamples: mathWarm,
+          cold: mathSmoke.cold.elapsedMs,
+          coldReportedSeconds: mathSmoke.cold.report.seconds,
+          warm: mathSmoke.warm.elapsedMs,
+          warmReportedSeconds: mathSmoke.warm.report.seconds,
         },
         python: {
           cold: pythonCold.elapsedMs,
@@ -526,24 +904,38 @@ function validateReleaseCandidate(options) {
           warmSamples: pythonWarm,
         },
       },
-      nativeTrace: mathCold.stdout
-        .split("\n")
-        .filter((line) => line.startsWith("[sagejs native]")),
+      nativeTrace: mathSmoke.cold.report.native.selections,
       checks: {
+        artifactBoundBuildReceipts: true,
+        cacheAndTemporaryBounds: true,
+        corruptInstallRejected: true,
         deterministicReleaseArchive: true,
         exactMathematics: true,
         installer: true,
+        installerUpgrade: true,
+        m4riNativeWitness: true,
         nativeCapabilities: true,
         noAdjacentRuntime: true,
         noExternalNode: true,
         pythonRuntime: true,
       },
     };
-    if (options.output) {
-      mkdirSync(dirname(options.output), { recursive: true });
-      writeFileSync(options.output, `${JSON.stringify(report, null, 2)}\n`);
+    const reportContents = `${JSON.stringify(report, null, 2)}\n`;
+    const externalReport = options.output
+      ? stageAtomicWrite(options.output, reportContents)
+      : null;
+    try {
+      publishValidatedReleaseCandidate(
+        staged.archive,
+        options.releaseDirectory,
+        report,
+        { beforeReady: () => externalReport?.commit() },
+      );
+    } finally {
+      externalReport?.cleanup();
     }
-    return { directory, report };
+    if (!options.keep) rmSync(directory, { recursive: true, force: true });
+    return { directory: options.keep ? directory : undefined, report };
   } catch (error) {
     if (!options.keep) rmSync(directory, { recursive: true, force: true });
     throw error;
@@ -555,7 +947,6 @@ function run(argv = process.argv.slice(2)) {
   const { directory, report } = validateReleaseCandidate(options);
   process.stdout.write(`${JSON.stringify(report, null, 2)}\n`);
   if (options.keep) console.error(`Kept isolated release workspace at ${directory}`);
-  else rmSync(directory, { recursive: true, force: true });
 }
 
 if (require.main === module) {
@@ -569,10 +960,23 @@ if (require.main === module) {
 
 module.exports = {
   artifactMetadata,
+  assertEmptyTemporary,
+  assertStableUsage,
+  atomicWrite,
+  fixedEnvironment,
+  installerEnvironment,
   isolatedEnvironment,
   median,
   packageReleaseCandidate,
   parseArguments,
+  publishReleaseCandidate,
+  publishValidatedReleaseCandidate,
+  receiptBeside,
+  runInstaller,
+  stageAtomicWrite,
   treeUsage,
+  validateExecutableReceipts,
+  validateEmbeddedExecutable,
   validateReleaseCandidate,
+  withReceiptDefaults,
 };
