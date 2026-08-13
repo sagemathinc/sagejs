@@ -1,0 +1,100 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "macos-rc-followup",
+  "title": "macOS RC Follow-up",
+  "lane": "integration",
+  "status": "review",
+  "owner": "user",
+  "objective": "Stage attested native dependency receipts through immutable cache links and keep all macOS addon deployment targets consistent",
+  "base_commit": "902f061c7ca7b5e535ceae86bc6fb63eec6b5281",
+  "claims": [
+    ".agents/lanes.json",
+    "scripts/build-sea.cjs",
+    "scripts/darwin-native.cjs",
+    "packages/flint/binding.gyp",
+    "packages/graph/binding.gyp",
+    "test/sea-build-manifest.cjs",
+    "test/release-macos-arm64.cjs"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "not-applicable",
+    "fallback": "not-applicable",
+    "oracles": [],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm architecture:check",
+    "pnpm test:portable",
+    "pnpm test:baselib:strict"
+  ],
+  "runs": [
+    {
+      "command": "node --test test/sea-build-manifest.cjs test/release-macos-arm64.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.428,
+      "started_at": "2026-08-13T22:39:41.963Z",
+      "commit": "902f061c7ca7b5e535ceae86bc6fb63eec6b5281",
+      "workspace_fingerprint": "9e1d83e84d97f6d9880edc7430fc3a7b70af381b27d15095b17fbc39750bda6c",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 1.044,
+      "started_at": "2026-08-13T22:39:42.993Z",
+      "commit": "902f061c7ca7b5e535ceae86bc6fb63eec6b5281",
+      "workspace_fingerprint": "9e1d83e84d97f6d9880edc7430fc3a7b70af381b27d15095b17fbc39750bda6c",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 15.057,
+      "started_at": "2026-08-13T22:39:44.666Z",
+      "commit": "902f061c7ca7b5e535ceae86bc6fb63eec6b5281",
+      "workspace_fingerprint": "9e1d83e84d97f6d9880edc7430fc3a7b70af381b27d15095b17fbc39750bda6c",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 5.604,
+      "started_at": "2026-08-13T22:45:17.036Z",
+      "commit": "902f061c7ca7b5e535ceae86bc6fb63eec6b5281",
+      "workspace_fingerprint": "9e1d83e84d97f6d9880edc7430fc3a7b70af381b27d15095b17fbc39750bda6c",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 23.413,
+      "started_at": "2026-08-13T22:46:02.450Z",
+      "commit": "902f061c7ca7b5e535ceae86bc6fb63eec6b5281",
+      "workspace_fingerprint": "9e1d83e84d97f6d9880edc7430fc3a7b70af381b27d15095b17fbc39750bda6c",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "SEA dependency receipts can now be staged from an installed native prefix symlink only when it resolves to the exact read-only content-addressed cache payload for that package and workspace-relative prefix. The assembly rechecks the installed link and receipt identity after building. FLINT and graph handwritten addons now obtain their macOS deployment target from the same validated environment-backed helper used by native dependencies instead of hard-coding 13.0.",
+    "risks": [
+      "Focused receipt, adversarial symlink, deployment-target, strict-baselib, and architecture checks pass. Full portable/native/SEA validation is deferred until this shared release fix is independently reviewed and exercised by the clean Apple-silicon release build; the initial Linux validation worktree lacked M4RI before its cache prerequisite was prepared."
+    ],
+    "next_steps": [
+      "Independently review the exact cache path and immutability checks, integrate the branch tip, then rerun the full unsigned macOS arm64 release build at the integrated commit and inspect every Mach-O deployment target."
+    ]
+  }
+}

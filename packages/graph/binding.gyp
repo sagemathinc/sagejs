@@ -1,5 +1,6 @@
 {
   "variables": {
+    "macos_deployment_target": "<!(node ../../scripts/darwin-native.cjs --deployment-target)",
     "native_prefix": "<!(node scripts/native-prefix.cjs)"
   },
   "targets": [
@@ -19,7 +20,7 @@
           "cflags": ["-O3", "-fPIC", "-Wall", "-Wextra"],
           "xcode_settings": {
             "GCC_OPTIMIZATION_LEVEL": "3",
-            "MACOSX_DEPLOYMENT_TARGET": "13.0"
+            "MACOSX_DEPLOYMENT_TARGET": "<(macos_deployment_target)"
           }
         }],
         ["OS=='win'", {

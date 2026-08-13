@@ -6,10 +6,13 @@ const {
   chmodSync,
   copyFileSync,
   existsSync,
+  lstatSync,
   mkdtempSync,
   mkdirSync,
   openSync,
   readFileSync,
+  readlinkSync,
+  realpathSync,
   readdirSync,
   rmSync,
   statSync,
@@ -18,7 +21,7 @@ const {
 } = require("fs");
 const { createHash } = require("crypto");
 const { execFileSync } = require("child_process");
-const { dirname, join, relative } = require("path");
+const { dirname, isAbsolute, join, relative, resolve, sep } = require("path");
 const {
   canonicalJson,
   createBuildManifest,
@@ -41,6 +44,9 @@ const {
   readNativeDependencyReceipt,
   seaNativeDependencyDefinitions,
 } = require("./native-dependency-receipt.cjs");
+const {
+  defaultNativeCacheRoot,
+} = require("./native-worktree-cache.cjs");
 
 const root = join(__dirname, "..");
 const outputDirectory = join(root, "build", "sea");
@@ -366,7 +372,108 @@ function nativeMathProfile(rootDirectory, target, options = {}) {
   }
 }
 
-function nativeDependencyReceiptInputs(rootDirectory, platform) {
+function sameFilesystemPath(left, right) {
+  left = resolve(left);
+  right = resolve(right);
+  return process.platform === "win32"
+    ? left.toLowerCase() === right.toLowerCase()
+    : left === right;
+}
+
+function nativeDependencyReceiptSource(
+  rootDirectory,
+  id,
+  prefix,
+  stampName,
+  options = {},
+) {
+  const absolutePrefix = resolve(prefix);
+  const prefixInformation = lstatSync(absolutePrefix);
+  if (!prefixInformation.isSymbolicLink()) {
+    if (!prefixInformation.isDirectory()) {
+      throw new Error(`${id} native dependency prefix is not a directory`);
+    }
+    return {
+      prefix: absolutePrefix,
+      prefixLink: absolutePrefix,
+      stamp: join(absolutePrefix, stampName),
+    };
+  }
+
+  const cacheRoot = resolve(
+    options.cacheRoot || defaultNativeCacheRoot(rootDirectory),
+  );
+  const cacheInformation = lstatSync(cacheRoot);
+  if (
+    !cacheInformation.isDirectory() ||
+    cacheInformation.isSymbolicLink() ||
+    !sameFilesystemPath(realpathSync.native(cacheRoot), cacheRoot)
+  ) {
+    throw new Error("native dependency cache root must be a real directory");
+  }
+  const linkedPrefix = resolve(
+    dirname(absolutePrefix),
+    readlinkSync(absolutePrefix),
+  );
+  const cacheRelative = relative(cacheRoot, linkedPrefix);
+  const components = cacheRelative.split(sep);
+  const packageId = { igraph: "graph", m4ri: "m4ri" }[id];
+  const key = components[1];
+  const expected = packageId && /^[a-f0-9]{64}$/.test(key ?? "")
+    ? join(
+        cacheRoot,
+        `${packageId}-dependencies`,
+        key,
+        "payload",
+        relative(rootDirectory, absolutePrefix),
+      )
+    : null;
+  if (
+    cacheRelative === "" ||
+    cacheRelative === ".." ||
+    cacheRelative.startsWith(`..${sep}`) ||
+    isAbsolute(cacheRelative) ||
+    expected === null ||
+    !sameFilesystemPath(linkedPrefix, expected) ||
+    !sameFilesystemPath(realpathSync.native(absolutePrefix), linkedPrefix)
+  ) {
+    throw new Error(
+      `${id} native dependency prefix is not an exact content-addressed cache link`,
+    );
+  }
+  const entry = join(cacheRoot, `${packageId}-dependencies`, key);
+  const payload = join(entry, "payload");
+  const directories = [entry, payload];
+  let current = payload;
+  for (const component of relative(rootDirectory, absolutePrefix).split(sep)) {
+    current = join(current, component);
+    directories.push(current);
+  }
+  for (current of directories) {
+    const information = lstatSync(current);
+    if (
+      !information.isDirectory() ||
+      information.isSymbolicLink() ||
+      !sameFilesystemPath(realpathSync.native(current), current) ||
+      (process.platform !== "win32" && (information.mode & 0o222) !== 0)
+    ) {
+      throw new Error(`${id} native dependency cache payload is not immutable`);
+    }
+  }
+  const stamp = join(linkedPrefix, stampName);
+  const stampInformation = lstatSync(stamp);
+  if (
+    !stampInformation.isFile() ||
+    stampInformation.isSymbolicLink() ||
+    !sameFilesystemPath(realpathSync.native(stamp), stamp) ||
+    (process.platform !== "win32" && (stampInformation.mode & 0o222) !== 0)
+  ) {
+    throw new Error(`${id} native dependency cache receipt is not immutable`);
+  }
+  return { prefix: linkedPrefix, prefixLink: absolutePrefix, stamp };
+}
+
+function nativeDependencyReceiptInputs(rootDirectory, platform, options = {}) {
   const prefixes = {
     igraph: process.env.SAGEJS_GRAPH_PREFIX || join(
       rootDirectory,
@@ -390,20 +497,27 @@ function nativeDependencyReceiptInputs(rootDirectory, platform) {
   const assets = {};
   const sources = {};
   for (const definition of seaNativeDependencyDefinitions(platform)) {
-    const prefix = prefixes[definition.id];
-    const stamp = join(prefix, stampNames[definition.id]);
-    const receipt = readNativeDependencyReceipt(stamp, { prefix });
+    const source = nativeDependencyReceiptSource(
+      rootDirectory,
+      definition.id,
+      prefixes[definition.id],
+      stampNames[definition.id],
+      options,
+    );
+    const receipt = readNativeDependencyReceipt(source.stamp, {
+      prefix: source.prefix,
+    });
     if (receipt === null) {
       throw new Error(
         `${definition.id} native dependency receipt is missing, stale, or ` +
-          `does not describe its installed prefix: ${relative(rootDirectory, stamp)}`,
+          `does not describe its installed prefix: ` +
+          `${relative(rootDirectory, source.stamp)}`,
       );
     }
-    assets[definition.receiptAsset] = stamp;
+    assets[definition.receiptAsset] = source.stamp;
     sources[definition.id] = {
       identitySha256: receipt.identitySha256,
-      prefix,
-      stamp,
+      ...source,
     };
   }
   return { assets, sources };
@@ -417,6 +531,14 @@ function validateNativeDependencyReceiptSources(sources) {
   if (sources === undefined) return undefined;
   const identities = {};
   for (const [id, source] of Object.entries(sources)) {
+    if (
+      !sameFilesystemPath(
+        realpathSync.native(source.prefixLink),
+        source.prefix,
+      )
+    ) {
+      throw new Error(`${id} native dependency prefix changed during SEA assembly`);
+    }
     const receipt = readNativeDependencyReceipt(source.stamp, {
       prefix: source.prefix,
     });
@@ -1089,11 +1211,13 @@ module.exports = {
   nativeBinaryReceipt,
   nativeDependencyReceiptAssets,
   nativeDependencyReceiptInputs,
+  nativeDependencyReceiptSource,
   observeSeaBuilder,
   productionKernelReceipt,
   SEA_ASSEMBLY_POLICY,
   stageRegularFile,
   stageSeaInputs,
   targetFromSeaBuilder,
+  validateNativeDependencyReceiptSources,
   withSeaBuildLock,
 };

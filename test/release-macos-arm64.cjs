@@ -6,6 +6,7 @@ const {
   mkdtempSync,
   mkdirSync,
   readdirSync,
+  readFileSync,
   rmSync,
   statSync,
   writeFileSync,
@@ -93,6 +94,40 @@ test(
     assert.match(result.stdout, /not publishable/);
   },
 );
+
+test("macOS addons inherit the release dependency deployment target", () => {
+  const targetCommand =
+    "<!(node ../../scripts/darwin-native.cjs --deployment-target)";
+  for (const packageId of ["flint", "graph"]) {
+    const binding = JSON.parse(readFileSync(
+      join(root, "packages", packageId, "binding.gyp"),
+      "utf8",
+    ));
+    assert.equal(binding.variables.macos_deployment_target, targetCommand);
+    const macos = binding.targets[0].conditions.find(
+      ([condition]) => condition === "OS=='mac'",
+    )[1];
+    assert.equal(
+      macos.xcode_settings.MACOSX_DEPLOYMENT_TARGET,
+      "<(macos_deployment_target)",
+    );
+  }
+  const helper = join(root, "scripts", "darwin-native.cjs");
+  const selected = execute(process.execPath, [helper, "--deployment-target"], {
+    env: { ...process.env, MACOSX_DEPLOYMENT_TARGET: "13.5" },
+  });
+  assert.equal(selected.stdout, "13.5\n");
+  const invalid = spawnSync(
+    process.execPath,
+    [helper, "--deployment-target"],
+    {
+      encoding: "utf8",
+      env: { ...process.env, MACOSX_DEPLOYMENT_TARGET: "latest" },
+    },
+  );
+  assert.notEqual(invalid.status, 0);
+  assert.match(invalid.stderr, /must be a macOS version/);
+});
 
 test("the macOS candidate witness scrubs ambient runtime policy", () => {
   const before = {
