@@ -8,6 +8,11 @@
 > **Start instantly. Run anywhere. Scale from a laptop to a cluster. Reproduce
 > every result.**
 
+> **Sage.js does not choose JavaScript instead of Python for writing
+> mathematics. It uses Python for mathematical source, mature native libraries
+> for computation, and the JavaScript ecosystem to make that mathematics
+> portable, interactive, and accessible everywhere.**
+
 [![Sage.js CI](https://github.com/sagemathinc/sagejs/actions/workflows/ci.yml/badge.svg)](https://github.com/sagemathinc/sagejs/actions/workflows/ci.yml)
 [![Implementation dashboard](https://img.shields.io/badge/dashboard-capabilities%20%26%20roadmap-0d9488)](https://sagemathinc.github.io/sagejs/)
 
