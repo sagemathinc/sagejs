@@ -103,4 +103,7 @@ test("the full proof rejects host-tuned mathematics profiles", () => {
     () => assertPortableMathProfile({ ...portable, cpu: { model: "builder" } }),
     /Expected values to be strictly equal/,
   );
+  const tuned = structuredClone(portable);
+  tuned.buildOptions.gmp.cflags = ["-march=native"];
+  assert.throws(() => assertPortableMathProfile(tuned), /host CPU compiler flag/);
 });

@@ -163,6 +163,20 @@ function assertPortableMathProfile(profile) {
   assert.equal(profile.buildOptions?.gmp?.configure?.includes("--enable-fat"), true);
   assert.equal(profile.buildOptions?.fflas?.gmpConfigure?.includes("--enable-fat"), true);
   assert.equal(profile.buildOptions?.openblas?.dynamicArch, true);
+  const buildTokens = [];
+  const collectStrings = (value) => {
+    if (typeof value === "string") buildTokens.push(value);
+    else if (Array.isArray(value)) value.forEach(collectStrings);
+    else if (value && typeof value === "object") {
+      Object.values(value).forEach(collectStrings);
+    }
+  };
+  collectStrings(profile.buildOptions);
+  assert.deepEqual(
+    buildTokens.filter((token) => /^-(?:march|mcpu|mtune)(?:=|$)/.test(token)),
+    [],
+    "portable mathematics profile contains a host CPU compiler flag",
+  );
   return profile;
 }
 
