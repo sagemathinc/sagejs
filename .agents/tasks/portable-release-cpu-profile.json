@@ -45,12 +45,62 @@
   "validation": [
     "pnpm architecture:check",
     "pnpm test:portable",
-    "pnpm test:baselib:strict"
+    "pnpm test:baselib:strict",
+    "node --test test/native-math-profile.cjs packages/m4ri/test/build-deps.cjs packages/graph/test/build-deps.cjs"
   ],
-  "runs": [],
+  "runs": [
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 5.594,
+      "started_at": "2026-08-13T22:14:19.242Z",
+      "commit": "0f34af12a8479feec815a27e16af3acfc1d1c2c3",
+      "workspace_fingerprint": "2c703e4b0a02e29efdd7320b1dc02a4616422a25448d731ae6a33eb3de05cd2f",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 14.189,
+      "started_at": "2026-08-13T22:14:25.437Z",
+      "commit": "0f34af12a8479feec815a27e16af3acfc1d1c2c3",
+      "workspace_fingerprint": "2c703e4b0a02e29efdd7320b1dc02a4616422a25448d731ae6a33eb3de05cd2f",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/native-math-profile.cjs packages/m4ri/test/build-deps.cjs packages/graph/test/build-deps.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.572,
+      "started_at": "2026-08-13T22:14:40.222Z",
+      "commit": "0f34af12a8479feec815a27e16af3acfc1d1c2c3",
+      "workspace_fingerprint": "2c703e4b0a02e29efdd7320b1dc02a4616422a25448d731ae6a33eb3de05cd2f",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/test-manifest.test.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.105,
+      "started_at": "2026-08-13T22:14:41.392Z",
+      "commit": "0f34af12a8479feec815a27e16af3acfc1d1c2c3",
+      "workspace_fingerprint": "2c703e4b0a02e29efdd7320b1dc02a4616422a25448d731ae6a33eb3de05cd2f",
+      "platform": "linux-x64"
+    }
+  ],
   "handoff": {
-    "summary": "",
-    "risks": [],
-    "next_steps": []
+    "summary": "Declared exact portable CPU baselines and dependency dispatch for Linux x64/arm64, macOS arm64, and Windows x64. Builders now derive GMP, OpenBLAS, FFLAS, M4RI, igraph, ff_poly, and smalljac policy from one fingerprinted authority; GMP configure choices are observed and reused only when valid; a release CLI validates the complete installed profile. The Apple Silicon observation parser was checked against the real M1 GMP config.log and reported host_cpu=aarch64 with path=arm64 generic.",
+    "risks": [
+      "A full clean dependency rebuild was intentionally deferred to the integration/release builders; this lane validates builder declarations and synthetic complete receipts.",
+      "The isolated worktree's broad portable tier cannot run native integration cases without built FLINT/FFLAS artifacts; focused policy tests, architecture checks, strict Python, and the runner manifest pass.",
+      "This CPU profile is deliberately independent of the Linux glibc, libstdc++, and libatomic compatibility contract."
+    ],
+    "next_steps": [
+      "Rebase or cherry-pick onto the shared release baseline and run clean Linux x64, macOS arm64, and Windows x64 dependency builds.",
+      "Invoke scripts/release-cpu-profile.cjs from each official native packager after dependencies are staged.",
+      "Retain clean-machine old-CPU execution and binary instruction inspection as independent release gates."
+    ]
   }
 }
