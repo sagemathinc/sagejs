@@ -17,14 +17,6 @@ const ROOT = existsSync(join(TOOL_PARENT, "src"))
   : join(TOOL_PARENT, "..");
 const LIBRARY_DIRECTORY = join(ROOT, "src", "lib");
 
-// SEA builds replace this identifier with the module inventory derived from
-// the authoritative Python sources at build time. Ordinary source/compiler
-// use intentionally keeps deriving the inventory from those sources.
-const EMBEDDED_STANDALONE_MODULES =
-  typeof __SAGEJS_STANDALONE_MODULES__ === "undefined"
-    ? undefined
-    : __SAGEJS_STANDALONE_MODULES__;
-
 function sourceFilenameForModule(name) {
   const base = join(LIBRARY_DIRECTORY, ...name.split("."));
   const moduleFilename = `${base}.py`;
@@ -124,11 +116,11 @@ function baselibLazyModules(filename) {
 }
 
 const BUILTINS_STANDALONE_MODULES = Object.freeze(
-  EMBEDDED_STANDALONE_MODULES?.builtins ?? baselibLazyModules("builtins.py"),
+  baselibLazyModules("builtins.py"),
 );
 
 const MATRIX_STANDALONE_MODULES = Object.freeze(
-  EMBEDDED_STANDALONE_MODULES?.matrix ?? baselibLazyModules("matrix.py"),
+  baselibLazyModules("matrix.py"),
 );
 
 const POLYNOMIAL_STANDALONE_MODULES = Object.freeze([
@@ -139,12 +131,11 @@ const POLYNOMIAL_STANDALONE_MODULES = Object.freeze([
 ]);
 
 const BASELIB_STANDALONE_MODULES = Object.freeze([
-  ...(EMBEDDED_STANDALONE_MODULES?.baselib ??
-    new Set([
-      ...BUILTINS_STANDALONE_MODULES,
-      ...MATRIX_STANDALONE_MODULES,
-      ...POLYNOMIAL_STANDALONE_MODULES,
-    ])),
+  ...new Set([
+    ...BUILTINS_STANDALONE_MODULES,
+    ...MATRIX_STANDALONE_MODULES,
+    ...POLYNOMIAL_STANDALONE_MODULES,
+  ]),
 ]);
 
 // Cache the complete static dependency closure as separate module artifacts.
@@ -152,18 +143,8 @@ const BASELIB_STANDALONE_MODULES = Object.freeze([
 // hashes; this avoids reparsing the same library graph for every explicit
 // standalone compilation without maintaining a second module list by hand.
 const BASELIB_STANDALONE_CACHE_MODULES = Object.freeze(
-  EMBEDDED_STANDALONE_MODULES?.cache ??
-    moduleClosure(BASELIB_STANDALONE_MODULES),
+  moduleClosure(BASELIB_STANDALONE_MODULES),
 );
-
-function standaloneModuleInventory() {
-  return {
-    baselib: [...BASELIB_STANDALONE_MODULES],
-    builtins: [...BUILTINS_STANDALONE_MODULES],
-    cache: [...BASELIB_STANDALONE_CACHE_MODULES],
-    matrix: [...MATRIX_STANDALONE_MODULES],
-  };
-}
 
 function baselibStandaloneImportPrelude(modules = BASELIB_STANDALONE_MODULES) {
   return modules.map((name) => `import ${name}\n`).join("");
@@ -187,6 +168,5 @@ module.exports = {
   POLYNOMIAL_STANDALONE_MODULES,
   baselibStandaloneImportPrelude,
   moduleClosure,
-  standaloneModuleInventory,
   standaloneRuntimeRequirePrelude,
 };
