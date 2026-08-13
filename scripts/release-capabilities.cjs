@@ -268,6 +268,7 @@ function validNativeBinaryFileShape(file) {
       "wordSize",
     ])) return false;
     return file.endianness === "little" &&
+      file.wordSize === 64 &&
       Number.isSafeInteger(file.machine) &&
       Number.isSafeInteger(file.osAbi) &&
       (file.interpreter === null || typeof file.interpreter === "string") &&
@@ -334,6 +335,7 @@ function validNativeBinaryFileShape(file) {
       "subsystem",
       "wordSize",
     ]) &&
+      file.wordSize === 64 &&
       Number.isSafeInteger(file.machine) &&
       Number.isSafeInteger(file.subsystem) &&
       uniqueSortedStrings(file.delayDependencies);
