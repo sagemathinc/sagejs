@@ -1,12 +1,18 @@
 "use strict";
 
 const assert = require("node:assert/strict");
+const { mkdtempSync, rmSync, writeFileSync } = require("node:fs");
+const { tmpdir } = require("node:os");
+const { join } = require("node:path");
+const { spawnSync } = require("node:child_process");
 const test = require("node:test");
 
 const { createSage } = require("../dist/tools/kernel.js");
 const {
   createKernelEvaluatorAsync,
 } = require("../dist/tools/kernel-evaluator.js");
+
+const root = join(__dirname, "..");
 
 test("Pool.map and starmap use persistent isolated evaluators", async (t) => {
   const session = await createSage({ mode: "python" });
@@ -237,6 +243,126 @@ test("pool initializers and shutdown preserve pending result semantics", async (
       "ValueError initializer failed",
     ].join("\n"),
   );
+});
+
+test("workers preserve live compiled module globals", async (t) => {
+  const session = await createSage({ mode: "python" });
+  t.after(() => session.close());
+
+  const result = await session.evaluate(
+    [
+      "from multiprocessing import Pool",
+      "threshold = 5",
+      "α = 7",
+      "counter = 0",
+      "def helper(value):",
+      "    return value + α",
+      "def bump(value):",
+      "    global counter",
+      "    counter += value",
+      "    return counter + threshold + helper(0)",
+      "def factorial(value):",
+      "    return 1 if value <= 1 else value * factorial(value - 1)",
+      "def even(value):",
+      "    return True if value == 0 else odd(value - 1)",
+      "def odd(value):",
+      "    return False if value == 0 else even(value - 1)",
+      "def Object(value):",
+      "    return value + 1",
+      "def missing_global(value):",
+      "    return absent_worker_name + value",
+      "deleted_worker_name = 9",
+      "def deleted_global(value):",
+      "    return deleted_worker_name + value",
+      "del deleted_worker_name",
+      "def worker_module_name(value):",
+      "    return __name__",
+      "def explicit_name_error(value):",
+      "    raise NameError('explicit worker name error')",
+      "with Pool(1) as workers:",
+      "    print(workers.map(bump, [1, 2, 3]))",
+      "    print(workers.map(factorial, [5]))",
+      "    print(workers.map(even, [10, 11]))",
+      "    print(workers.map(Object, [41]))",
+      "    print(workers.map(worker_module_name, [0]))",
+      "    try:",
+      "        workers.map(missing_global, [1])",
+      "    except NameError as error:",
+      "        print(isinstance(error, NameError), 'absent_worker_name' in str(error))",
+      "    try:",
+      "        workers.map(deleted_global, [1])",
+      "    except NameError as error:",
+      "        print(isinstance(error, NameError), 'deleted_worker_name' in str(error))",
+      "    try:",
+      "        workers.map(explicit_name_error, [1])",
+      "    except NameError as error:",
+      "        print(isinstance(error, NameError), str(error))",
+    ].join("\n"),
+  );
+
+  assert.equal(
+    result.stdout.trim(),
+    "[13, 15, 18]\n[120]\n[True, False]\n[42]\n['__multiprocessing__']\n" +
+      "True True\nTrue True\nTrue explicit worker name error",
+  );
+});
+
+test("imported worker functions retain isolated live module cells", () => {
+  const directory = mkdtempSync(join(tmpdir(), "sagejs-worker-module-name-"));
+  try {
+    writeFileSync(
+      join(directory, "worker_a.py"),
+      [
+        "counter = 100",
+        "def step(value):",
+        "    global counter",
+        "    counter += value",
+        "    return (__name__, counter)",
+        "",
+      ].join("\n"),
+    );
+    writeFileSync(
+      join(directory, "worker_b.py"),
+      [
+        "counter = 200",
+        "def step(value):",
+        "    global counter",
+        "    counter += value",
+        "    return (__name__, counter)",
+        "",
+      ].join("\n"),
+    );
+    writeFileSync(
+      join(directory, "main.py"),
+      [
+        "from multiprocessing import Pool",
+        "import worker_a, worker_b",
+        "with Pool(1) as workers:",
+        "    print(workers.map(worker_a.step, [1, 2]))",
+        "    print(workers.map(worker_b.step, [1, 2]))",
+        "    print(workers.map(worker_a.step, [3]))",
+        "    print(workers.map(worker_b.step, [3]))",
+        "",
+      ].join("\n"),
+    );
+    const result = spawnSync(join(root, "bin", "sagejs"), ["main.py"], {
+      cwd: directory,
+      encoding: "utf8",
+      timeout: 120_000,
+    });
+    assert.equal(result.status, 0, result.stderr);
+    assert.equal(
+      result.stdout.trim(),
+      [
+        "[('worker_a', 101), ('worker_a', 103)]",
+        "[('worker_b', 201), ('worker_b', 203)]",
+        "[('worker_a', 106)]",
+        "[('worker_b', 206)]",
+      ].join("\n"),
+    );
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
 });
 
 test("multiprocessing imports without a worker host capability", async () => {

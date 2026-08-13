@@ -1,0 +1,225 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "piped-python-module-isolation-v1",
+  "title": "Piped Python module isolation",
+  "lane": "compiler-runtime",
+  "status": "active",
+  "owner": "user",
+  "objective": "Preserve one lexical __main__ namespace across blank-line-separated piped Python input while retaining compiled-module isolation and correct noninteractive failure status",
+  "base_commit": "dcc1302a3f305b00a0e09ba25edee45ac2ee2bf1",
+  "claims": [
+    "tools/repl.ts",
+    ".agents/lanes.json",
+    "tools/kernel-evaluator.ts",
+    "tools/runtime-bootstrap.ts",
+    "tools/python/lowerer.ts",
+    "tools/python/semantic.ts",
+    "tools/multiprocessing-host.ts",
+    "tools/multiprocessing-worker.ts",
+    "tools/task-evaluator.ts",
+    "tools/completer.ts",
+    "tools/self.js",
+    "src/ast_types.py",
+    "src/baselib/containers.py",
+    "src/output/codegen.py",
+    "src/output/classes.py",
+    "src/output/functions.py",
+    "src/output/loops.py",
+    "src/output/statements.py",
+    "src/output/modules.py",
+    "src/output/operators.py",
+    "src/output/stream.py",
+    "src/baselib/builtins.py",
+    "test/cli-smoke.cjs",
+    "test/compiled-module-isolation.cjs",
+    "test/completer.cjs",
+    "test/multiprocessing-module.cjs",
+    "test/python-container-truthiness.cjs",
+    "test/python-cst-lowerer.cjs",
+    "test/runtime-intrinsics.cjs",
+    "test/imports.py"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "compiler-infrastructure",
+    "fallback": "not-applicable",
+    "oracles": [
+      "CPython stdin session semantics and Sage.js interactive evaluation"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm build",
+    "pnpm test:compiler",
+    "pnpm test:integration",
+    "node test/cli-smoke.cjs",
+    "node --test test/compiled-module-isolation.cjs",
+    "pnpm test:baselib:strict",
+    "pnpm architecture:check"
+  ],
+  "runs": [
+    {
+      "command": "pnpm build",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 180.144,
+      "started_at": "2026-08-12T19:42:34.324Z",
+      "commit": "dcc1302a3f305b00a0e09ba25edee45ac2ee2bf1",
+      "workspace_fingerprint": "e6bb53a0324dfc9a0b39dd51736020b8bad4cd7f21fb2b7663dc77e0018bd391",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node test/cli-smoke.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 61.86,
+      "started_at": "2026-08-12T19:45:43.175Z",
+      "commit": "dcc1302a3f305b00a0e09ba25edee45ac2ee2bf1",
+      "workspace_fingerprint": "e6bb53a0324dfc9a0b39dd51736020b8bad4cd7f21fb2b7663dc77e0018bd391",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/compiled-module-isolation.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.79,
+      "started_at": "2026-08-12T19:47:28.743Z",
+      "commit": "dcc1302a3f305b00a0e09ba25edee45ac2ee2bf1",
+      "workspace_fingerprint": "e6bb53a0324dfc9a0b39dd51736020b8bad4cd7f21fb2b7663dc77e0018bd391",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 14.765,
+      "started_at": "2026-08-12T19:47:34.023Z",
+      "commit": "dcc1302a3f305b00a0e09ba25edee45ac2ee2bf1",
+      "workspace_fingerprint": "e6bb53a0324dfc9a0b39dd51736020b8bad4cd7f21fb2b7663dc77e0018bd391",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 16.241,
+      "started_at": "2026-08-12T19:47:54.810Z",
+      "commit": "dcc1302a3f305b00a0e09ba25edee45ac2ee2bf1",
+      "workspace_fingerprint": "e6bb53a0324dfc9a0b39dd51736020b8bad4cd7f21fb2b7663dc77e0018bd391",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/compiled-module-isolation.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 4.161,
+      "started_at": "2026-08-12T20:40:29.619Z",
+      "commit": "2fc1c5ee3c1e254b0102760b74537536100b10d2",
+      "workspace_fingerprint": "2c370a9296f1cb635ecc51352ea5ab8352cfa909647e9a6584e34ed8c053581d",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node test/cli-smoke.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 84.766,
+      "started_at": "2026-08-12T20:40:40.750Z",
+      "commit": "2fc1c5ee3c1e254b0102760b74537536100b10d2",
+      "workspace_fingerprint": "2c370a9296f1cb635ecc51352ea5ab8352cfa909647e9a6584e34ed8c053581d",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/compiled-module-isolation.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 3.018,
+      "started_at": "2026-08-12T21:08:41.764Z",
+      "commit": "f1f30494def783ac90039665b409258b0c7fdb86",
+      "workspace_fingerprint": "0ca1409902bbf96bef16947cd7bcc7525966f955214d4a7783696e8850c6316f",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node test/cli-smoke.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 58.423,
+      "started_at": "2026-08-12T21:08:51.689Z",
+      "commit": "f1f30494def783ac90039665b409258b0c7fdb86",
+      "workspace_fingerprint": "0ca1409902bbf96bef16947cd7bcc7525966f955214d4a7783696e8850c6316f",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/compiled-module-isolation.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 3.877,
+      "started_at": "2026-08-12T22:16:55.210Z",
+      "commit": "e78dfa6b947757bccacddab5ba24d964ae2202d8",
+      "workspace_fingerprint": "203b32f255e17d7338f5d1a2aedd5028a695303316a1706eb7641c9f20a83640",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node test/cli-smoke.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 58.165,
+      "started_at": "2026-08-12T22:17:02.908Z",
+      "commit": "e78dfa6b947757bccacddab5ba24d964ae2202d8",
+      "workspace_fingerprint": "203b32f255e17d7338f5d1a2aedd5028a695303316a1706eb7641c9f20a83640",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node test/completer.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.734,
+      "started_at": "2026-08-13T03:32:29.033Z",
+      "commit": "c4303217564cf589baa14039dedc495a8dcee7f4",
+      "workspace_fingerprint": "8331d97f0f6f950afb1aef056350b1bd36d4bea77996922ac7c22f1622e0a0f6",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/compiled-module-isolation.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 38.741,
+      "started_at": "2026-08-13T03:32:34.809Z",
+      "commit": "c4303217564cf589baa14039dedc495a8dcee7f4",
+      "workspace_fingerprint": "8331d97f0f6f950afb1aef056350b1bd36d4bea77996922ac7c22f1622e0a0f6",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 15.096,
+      "started_at": "2026-08-13T03:33:18.827Z",
+      "commit": "c4303217564cf589baa14039dedc495a8dcee7f4",
+      "workspace_fingerprint": "8331d97f0f6f950afb1aef056350b1bd36d4bea77996922ac7c22f1622e0a0f6",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Piped CLI fragments and kernel evaluations now expose one coherent live __main__ namespace. Every ordinary Python lexical binding receives an impossible-in-Python JavaScript spelling, so user globals cannot capture host or compiler helpers; reusable-main values live only in the canonical module instead of being mirrored onto globalThis. Module identity, globals, closures, magic globals, arguments, class/global binding forms, namespace metadata, builtin rebinding, deletion tombstones, multiprocessing transfer, and adversarial host-name collisions pass the complete 12-test isolation suite. Completion also treats present-but-undefined module cells as deletion tombstones rather than exposing same-named JavaScript hosts or proxy values.",
+    "risks": [
+      "The live namespace keeps deleted global accessors internally so functions compiled before deletion can restore the binding; the reusable __main__ proxy deliberately filters those undefined accessors from Python introspection.",
+      "The complete compiler suite has one known unrelated sparse-random matrix fixture failure (`sample_sparse_random_spec`: object is not iterable); all other active compiler fixtures pass or retain documented skips.",
+      "The repository-wide integration tier is not a clean acceptance oracle on this 501-commit aggregate branch: CLI smoke and the focused isolation surfaces pass, but the tier also reports broad failures in exact polynomial resources, filesystem paths, serialization, lazy modules, symbolic code, and several mathematical fixtures. These require integration-lane baseline consolidation and attribution before main is advanced.",
+      "`pnpm test:baselib:strict` passes Markdown and Ruff checks but its strict-baselib subprocess exits without a diagnostic on this aggregate branch.",
+      "Correct CPython fallback from a deleted module cell to a real builtin is intentionally not added here. It needs a separately reviewed canonical builtin authority shared by Node, standalone, and browser/portable runtimes; a Node-only bootstrap helper would be an invalid architecture shortcut."
+    ],
+    "next_steps": [
+      "Integrate this branch through the shared baseline and rerun the full compiler and integration tiers after unrelated lanes have been consolidated.",
+      "Attribute or repair the aggregate integration failures before pushing the consolidated history to main.",
+      "Implement cross-host canonical Python builtin authority as a separate foundation lane before changing deleted-name evaluator semantics."
+    ]
+  }
+}

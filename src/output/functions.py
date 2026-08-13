@@ -59,7 +59,10 @@ def function_args(argnames, output, strip_first):
             for i, arg in enumerate((argnames.slice(1) if strip_first else argnames)):
                 if i:
                     output.comma()
-                arg.print(output)
+                if arg.python_identifier:
+                    output.print_python_name(arg.name)
+                else:
+                    arg.print(output)
 
     output.with_parens(f)
     output.space()
@@ -69,8 +72,26 @@ def function_preamble(node, output, offset, javascript_name):
     a = node.argnames
     if not a:
         return
-    fname = javascript_name or (node.name.name if node.name else anonfunc)
+    fname = javascript_name or (
+        output.make_python_name(node.name.name)
+        if node.name and node.name.python_identifier
+        else node.name.name
+        if node.name
+        else anonfunc
+    )
     fname = output.make_name(fname)
+
+    def python_argument_name(argument):
+        return (
+            output.make_python_name(argument.name)
+            if argument.python_identifier
+            or (
+                node.python_lexical_hygiene
+                and node.python_scope_bindings
+                and node.python_scope_bindings.indexOf(argument.name) is not -1
+            )
+            else output.make_name(argument.name)
+        )
 
     # Methods omit their first Python argument from the JavaScript formal
     # parameter list and receive it as ``this``.  A descriptor or decorator
@@ -105,7 +126,7 @@ def function_preamble(node, output, offset, javascript_name):
             if not Object.prototype.hasOwnProperty.call(a.defaults, argument.name):
                 output.indent()
                 output.print("if (typeof ")
-                argument.print(output)
+                output.print(python_argument_name(argument))
                 output.print(' === "undefined") ')
                 output.print(
                     "throw ρσ_function_argument_error("
@@ -116,7 +137,7 @@ def function_preamble(node, output, offset, javascript_name):
             if not Object.prototype.hasOwnProperty.call(a.defaults, argument.name):
                 output.indent()
                 output.print("if (typeof ")
-                argument.print(output)
+                output.print(python_argument_name(argument))
                 output.print(' === "undefined") ')
                 output.print(
                     "throw ρσ_function_argument_error("
@@ -141,7 +162,7 @@ def function_preamble(node, output, offset, javascript_name):
             output.indent()
             output.print("var")
             output.space()
-            output.assign(arg)
+            output.assign(python_argument_name(arg))
             if Object.prototype.hasOwnProperty.call(a.defaults, arg.name):
                 output.spaced(
                     "(arguments[" + i + "]",
@@ -202,7 +223,7 @@ def function_preamble(node, output, offset, javascript_name):
         # Look for an options object
         kw = "ρσ_kwargs_obj"
         if a.kwargs:
-            kw = output.make_name(a.kwargs.name)
+            kw = python_argument_name(a.kwargs)
         output.indent()
         output.spaced("var", kw, "=", "arguments[arguments.length-1]")
         output.end_statement()
@@ -246,9 +267,18 @@ def function_preamble(node, output, offset, javascript_name):
                 )
 
                 def f():
+                    default_argument = None
+                    for candidate in a:
+                        if candidate.name is dname:
+                            default_argument = candidate
+                            break
                     output.indent()
                     output.spaced(
-                        output.make_name(dname),
+                        (
+                            python_argument_name(default_argument)
+                            if default_argument
+                            else output.make_name(dname)
+                        ),
                         "=",
                         kw + "[" + JSON.stringify(dname) + "]",
                     )
@@ -264,7 +294,7 @@ def function_preamble(node, output, offset, javascript_name):
         for argument in a.kwonly:
             output.indent()
             output.print("var ")
-            output.assign(argument)
+            output.assign(python_argument_name(argument))
             if Object.prototype.hasOwnProperty.call(a.defaults, argument.name):
                 output.print(
                     fname + ".__defaults__[" + JSON.stringify(argument.name) + "]"
@@ -283,7 +313,7 @@ def function_preamble(node, output, offset, javascript_name):
 
             def assign_keyword_only():
                 output.indent()
-                output.assign(argument)
+                output.assign(python_argument_name(argument))
                 output.print(kw + "[" + JSON.stringify(argument.name) + "]")
                 output.end_statement()
                 if a.kwargs:
@@ -300,7 +330,7 @@ def function_preamble(node, output, offset, javascript_name):
         # Define the *args parameter, putting in whatever is left after assigning the formal parameters and the options object
         nargs = a.length - offset
         output.indent()
-        starargs_name = output.make_name(a.starargs.name)
+        starargs_name = python_argument_name(a.starargs)
         output.spaced(
             "var",
             starargs_name,
@@ -338,7 +368,7 @@ def function_preamble(node, output, offset, javascript_name):
 
     if a.kwargs is not undefined and output.options.python_attributes:
         output.indent()
-        kwargs_name = output.make_name(a.kwargs.name)
+        kwargs_name = python_argument_name(a.kwargs)
         output.assign(kwargs_name)
         output.print("ρσ_dict(" + kwargs_name + ")")
         output.end_statement()
@@ -396,7 +426,13 @@ def print_annotation_text(self, output, strip_first):
 
 
 def function_annotation(self, output, strip_first, name):
-    fname = name or (self.name.name if self.name else anonfunc)
+    fname = name or (
+        output.make_python_name(self.name.name)
+        if self.name and self.name.python_identifier
+        else self.name.name
+        if self.name
+        else anonfunc
+    )
     props = Object.create(None)
 
     # Preserve the Python-facing name independently of JavaScript's inferred
@@ -608,6 +644,20 @@ def function_annotation(self, output, strip_first, name):
 
     props.__module__ = module
 
+    if self.module_global_names and self.module_global_names.length:
+
+        def module_globals():
+            output.print("{")
+            for index, python_name in enumerate(self.module_global_names):
+                if index:
+                    output.comma()
+                output.print_string(output.make_python_name(python_name))
+                output.colon()
+                output.print_string(python_name)
+            output.print("}")
+
+        props.__sagejs_module_globals__ = module_globals
+
     for name in props:
         output.print(f"{fname}.{name} = ")
         props[name]()  # calling this prints it out
@@ -759,7 +809,11 @@ def print_function(output):
     if self.decorators and self.decorators.length:
         output.print("var")
         output.space()
-        output.assign(self.name.name)
+        output.assign(
+            output.make_python_name(self.name.name)
+            if self.name.python_identifier
+            else self.name.name
+        )
 
         def output_function_definition():
             function_definition(self, output, False, True)
@@ -774,7 +828,11 @@ def print_function(output):
         ):
             output.print("var")
             output.space()
-            output.assign(self.name.name)
+            output.assign(
+                output.make_python_name(self.name.name)
+                if self.name.python_identifier
+                else self.name.name
+            )
         function_definition(self, output, False)
         if not self.is_expression and not self.is_anonymous:
             output.end_statement()
@@ -880,6 +938,7 @@ def print_function_call(self, output):
     if (
         is_node_type(self.expression, AST_SymbolRef)
         and self.expression.name in ("dir", "locals", "globals", "vars")
+        and self.namespace_builtin
         and (self.expression.name is not "dir" or output.options.python_attributes)
         and self.args.length == 0
         and not self.args.starargs
@@ -888,6 +947,20 @@ def print_function_call(self, output):
     ):
         want_globals = self.expression.name is "globals"
         want_dir = self.expression.name is "dir"
+        live_name = self.expression.name
+        reusable_guard = output.options.reuse_main_module
+        if reusable_guard:
+            output.print("(ρσ_modules.__main__[")
+            output.print(JSON.stringify(live_name))
+            output.print("] === undefined ? ")
+
+        def finish_reusable_guard():
+            if not reusable_guard:
+                return
+            output.print(" : ρσ_resolve_callable(ρσ_modules.__main__[")
+            output.print(JSON.stringify(live_name))
+            output.print("])())")
+
         scope = None
         stack = output.stack()
         for index in range(stack.length - 1, -1, -1):
@@ -933,18 +1006,30 @@ def print_function_call(self, output):
             add_name("help")
 
         if want_dir:
+            if output.options.reuse_main_module and is_node_type(scope, AST_Toplevel):
+                output.print(
+                    "(function(){var names=arguments[0];"
+                    "if(names.indexOf('help')<0)names.push('help');"
+                    "names.sort();return names})(ρσ_dir(ρσ_modules.__main__))"
+                )
+                finish_reusable_guard()
+                return
             output.print("ρσ_list_decorate([")
             for index, name in enumerate(names):
                 if index:
                     output.comma()
                 output.print(JSON.stringify(name))
             output.print("])")
+            finish_reusable_guard()
             return
 
-        if want_globals:
+        if want_globals or (
+            output.options.reuse_main_module and is_node_type(scope, AST_Toplevel)
+        ):
             output.print("ρσ_live_scope_dict(ρσ_modules[")
             output.print(JSON.stringify(scope.module_id))
             output.print("])")
+            finish_reusable_guard()
             return
 
         output.print("ρσ_scope_dict({")
@@ -959,6 +1044,7 @@ def print_function_call(self, output):
             else:
                 output.print_name(name)
         output.print("})")
+        finish_reusable_guard()
         return
 
     if self.pooled_numeric_name:

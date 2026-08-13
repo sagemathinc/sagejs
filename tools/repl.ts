@@ -287,7 +287,7 @@ export default async function Repl(
   function printAST(ast) {
     const output = new PyLang.OutputStream({
       omit_baselib: true,
-      write_name: false,
+      write_name: true,
       private_scope: false,
       beautify: true,
       keep_docstrings: true,
@@ -301,6 +301,7 @@ export default async function Repl(
         `ρσ_repl_${numericLiteralPoolCounter++}_`,
       module_cache_dir: moduleCacheDir,
       module_registry: "ρσ_modules",
+      reuse_main_module: true,
     });
     ast.print(output);
     return output.get();
@@ -325,7 +326,7 @@ export default async function Repl(
       importDirs,
       moduleCacheDir,
     );
-    runInThisContext('var __name__ = "__repl__"; show_js=false;');
+    runInThisContext('var __name__ = "__main__"; show_js=false;');
   }
 
   function resetBuffer() {
@@ -558,10 +559,12 @@ export default async function Repl(
         libdir: importPath,
         import_dirs: importDirs,
         classes,
+        intrinsic_modules: toplevel?.intrinsic_modules,
         scoped_flags,
         jsage: options.sage,
         exact_integer_literals: true,
         strict_python_scopes: true,
+        reuse_main_module: true,
         runtime_imports: true,
         module_cache_dir: moduleCacheDir,
         precompiled_module_cache_dir: precompiledModuleCacheDir,

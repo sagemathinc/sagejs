@@ -48,7 +48,10 @@ def _builtins_default_import(
     level: _Int = 0,
 ) -> Any:
     """Load a Python module through the host and return CPython-style bindings."""
-    module = runtime.reflect.get(runtime.modules, name)
+    modules = runtime.reflect.get(runtime.global_object, "ρσ_modules")
+    if modules is runtime.undefined:
+        modules = runtime.modules
+    module = runtime.reflect.get(modules, name)
     if module is runtime.undefined:
         baselib_modules = runtime.reflect.get(
             runtime.global_object,
@@ -73,7 +76,7 @@ def _builtins_default_import(
                         loader, runtime.undefined, [name + "." + item]
                     )
                     if child is runtime.undefined:
-                        child = runtime.reflect.get(runtime.modules, name + "." + item)
+                        child = runtime.reflect.get(modules, name + "." + item)
                     if child is not runtime.undefined:
                         # CPython publishes an imported child module on its
                         # parent package.  Generated from-import code then
@@ -89,7 +92,7 @@ def _builtins_default_import(
         return module
 
     top_name = name.split(".")[0]
-    top_module = runtime.reflect.get(runtime.modules, top_name)
+    top_module = runtime.reflect.get(modules, top_name)
     return module if top_module is runtime.undefined else top_module
 
 
@@ -4547,6 +4550,7 @@ def ρσ_setattr(value: Any, name: _Str, member: Any) -> None:
 def ρσ_resolve_module_name(
     value: Any,
     name: _Str,
+    module_namespace: Any,
     module_builtins: Any,
 ) -> Any:
     """Resolve a module name declared only inside control flow.
@@ -4556,12 +4560,21 @@ def ρσ_resolve_module_name(
     hoisted, so a direct read would instead yield `undefined` and suppress
     idioms such as `try: set; except NameError: ...`.
     """
+    if module_namespace is not None and _builtins_has_member(module_namespace, name):
+        # A present-but-undefined live cell is a deleted/uninitialized Python
+        # module binding.  Return it so the surrounding unbound check raises
+        # NameError instead of accidentally exposing a same-named JS host.
+        return _builtins_get_member(module_namespace, name)
     if value is not runtime.undefined:
         return value
     if _builtins_has_member(module_builtins, name):
-        return _builtins_get_member(module_builtins, name)
+        builtin_value = _builtins_get_member(module_builtins, name)
+        if builtin_value is not runtime.undefined:
+            return builtin_value
     if _builtins_has_member(runtime.global_object, name):
-        return _builtins_get_member(runtime.global_object, name)
+        global_value = _builtins_get_member(runtime.global_object, name)
+        if global_value is not runtime.undefined:
+            return global_value
     raise NameError("name '" + name + "' is not defined")
 
 
@@ -5126,7 +5139,10 @@ def ρσ_len(value: Any) -> _Int:
 
 
 def ρσ_get_module(name: _Str) -> Any:
-    module = runtime.reflect.get(runtime.modules, name)
+    modules = runtime.reflect.get(runtime.global_object, "ρσ_modules")
+    if modules is runtime.undefined:
+        modules = runtime.modules
+    module = runtime.reflect.get(modules, name)
     if module is not runtime.undefined:
         return module
     baselib_modules = runtime.reflect.get(

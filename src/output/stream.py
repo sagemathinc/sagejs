@@ -75,6 +75,9 @@ output_stream_defaults = {
     "discard_asserts": False,
     "module_cache_dir": "",
     "module_registry": "",
+    # Interactive evaluators execute one compiled fragment at a time inside
+    # the same Python `__main__` module.
+    "reuse_main_module": False,
     "write_name": True,
     "exact_integers": False,
     "rational_division": False,
@@ -165,6 +168,35 @@ class OutputStream:
 
     def print_name(self, name):
         self.print(self.make_name(name))
+
+    def make_python_name(self, name):
+        """Return a JavaScript lexical name unreachable from Python source.
+
+        Generated helpers and host intrinsics intentionally use ordinary
+        JavaScript identifiers.  A Python binding must never capture one of
+        those identifiers merely because it has the same spelling.  Dollar
+        signs are valid in JavaScript identifiers but invalid in Python
+        identifiers, which gives every Python lexical binding a disjoint
+        namespace without maintaining a reserved-name blacklist.
+        """
+        if name in (
+            "__name__",
+            "__file__",
+            "__package__",
+            "__loader__",
+            "__spec__",
+            "__cached__",
+            "__builtins__",
+            "__doc__",
+        ):
+            # These are compiler-initialized Python module bindings already;
+            # keeping their canonical spelling lets Python code intentionally
+            # replace the corresponding module metadata.
+            return self.make_name(name)
+        return self.make_name("$ρσ$py$" + name)
+
+    def print_python_name(self, name):
+        self.print(self.make_python_name(name))
 
     def make_indent(self, back):
         return repeat_string(

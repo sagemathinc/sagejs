@@ -1,6 +1,4 @@
 import { MessagePort, parentPort, workerData } from "node:worker_threads";
-import { runInThisContext } from "node:vm";
-
 import type { SageLanguageMode } from "./kernel-evaluator";
 import { createTaskEvaluator } from "./task-evaluator";
 import {
@@ -14,6 +12,10 @@ interface EncodedFunction {
   source: string;
   bindings: Record<string, EncodedValue>;
   metadata: Record<string, EncodedValue>;
+  moduleGlobals: Record<string, string>;
+  module?: string;
+  name?: string;
+  publishInModule?: boolean;
 }
 
 type EncodedValue = SagePacket | EncodedFunction;
@@ -31,6 +33,8 @@ interface CallableSpec {
   name?: string;
   source: string;
   bindings?: Record<string, EncodedValue>;
+  moduleGlobals?: Record<string, string>;
+  publishInModule?: boolean;
 }
 
 interface TaskMessage {
@@ -57,8 +61,15 @@ function errorValue(error: unknown) {
     message?: string;
     stack?: string;
   };
+  // Sage.js intentionally implements Python NameError with JavaScript's
+  // ReferenceError constructor (`NameError = runtime.reference_error`).  The
+  // worker boundary transports Python exception names rather than JavaScript
+  // implementation names, so restore the public Python identity here.
+  const name = value?.name === "ReferenceError"
+    ? "NameError"
+    : value?.name ?? "Error";
   return {
-    name: value?.name ?? "Error",
+    name,
     message: value?.message ?? String(error),
     stack: value?.stack,
   };
@@ -66,16 +77,20 @@ function errorValue(error: unknown) {
 
 function decode(value: EncodedValue): unknown {
   if (isEncodedFunction(value)) {
-    const names = Object.keys(value.bindings);
-    const factory = runInThisContext(
-      `(function(${names.join(",")}) { return (${value.source}); })`,
-      { filename: "<multiprocessing-dependency>" },
-    ) as (...values: unknown[]) => unknown;
-    const callable = Reflect.apply(
-      factory,
-      undefined,
-      names.map((name) => decode(value.bindings[name])),
-    );
+    if (!evaluator) throw new Error("multiprocessing worker did not initialize");
+    const callable = evaluator.reconstruct({
+      source: value.source,
+      module: value.module,
+      name: value.name,
+      publishInModule: value.publishInModule,
+      moduleGlobals: value.moduleGlobals,
+      bindings: Object.fromEntries(
+        Object.entries(value.bindings).map(([name, binding]) => [
+          name,
+          decode(binding),
+        ]),
+      ),
+    });
     for (const [name, property] of Object.entries(value.metadata ?? {})) {
       Reflect.set(callable as object, name, decode(property));
     }

@@ -21,6 +21,8 @@ function unique(values: string[]): string[] {
  * testable and lets the Tree-sitter lowerer remain a mechanical CST mapping.
  */
 export class PythonAstSemanticAnalyzer {
+  private lexicalHygiene = false;
+
   constructor(
     private readonly compiler: any,
     private readonly sequentialDefinitions = false,
@@ -32,6 +34,10 @@ export class PythonAstSemanticAnalyzer {
   }
 
   analyze(toplevel: any): any {
+    this.lexicalHygiene = toplevel.python_lexical_hygiene === true;
+    const pythonBindings = new Set<string>(
+      toplevel.python_scope_bindings ?? [],
+    );
     const shellExports = (toplevel.exports ?? []).map((symbol) => symbol.name);
     this.analyzeNestedScopes(toplevel.body, []);
     const topAssignments = this.scanLocalNames(toplevel.body, false);
@@ -58,7 +64,10 @@ export class PythonAstSemanticAnalyzer {
         : []),
     ]);
     this.walk(toplevel.body, (node) => {
-      if (node instanceof this.compiler.AST_Lambda) {
+      if (
+        node instanceof this.compiler.AST_Lambda ||
+        node instanceof this.compiler.AST_Class
+      ) {
         const guarded = (node.declared_globals ?? []).filter(
           (name) => deletedGlobals.includes(name),
         );
@@ -71,7 +80,12 @@ export class PythonAstSemanticAnalyzer {
     });
     toplevel.localvars = unique([...topAssignments, ...nestedGlobals])
       .filter((name) => !nonlocals.has(name))
-      .map((name) => new this.compiler.AST_SymbolVar({ name }));
+      .map((name) => {
+        const symbol = new this.compiler.AST_SymbolVar({ name });
+        symbol.python_identifier = this.lexicalHygiene && pythonBindings.has(name);
+        symbol.python_lexical_binding = symbol.python_identifier;
+        return symbol;
+      });
     const exported = unique([
       ...shellExports,
       ...topAssignments,
@@ -79,9 +93,12 @@ export class PythonAstSemanticAnalyzer {
       ...callables,
     ])
       .filter((name) => !nonlocals.has(name));
-    toplevel.exports = exported.map(
-      (name) => new this.compiler.AST_SymbolVar({ name }),
-    );
+    toplevel.exports = exported.map((name) => {
+      const symbol = new this.compiler.AST_SymbolVar({ name });
+      symbol.python_identifier = this.lexicalHygiene && pythonBindings.has(name);
+      symbol.python_lexical_binding = symbol.python_identifier;
+      return symbol;
+    });
     toplevel.classes = Object.create(null);
     for (const statement of toplevel.body ?? []) {
       if (statement instanceof this.compiler.AST_Class) {
@@ -152,6 +169,9 @@ export class PythonAstSemanticAnalyzer {
     definition: any,
     enclosingFunctionBindings: ReadonlySet<string>[],
   ): void {
+    const pythonBindings = new Set<string>(
+      definition.python_scope_bindings ?? [],
+    );
     const body = Array.isArray(definition.body) ? definition.body : [];
     const assignments = this.scanLocalNames(body);
     const parameters = this.parameterNames(definition.argnames);
@@ -178,6 +198,23 @@ export class PythonAstSemanticAnalyzer {
       ...this.scanCallableBindings(body),
       ...parameters,
     ]).filter((name) => !globals.has(name) && !nonlocals.has(name)));
+    const moduleGlobalNames = new Set<string>();
+    this.walk(body, (node) => {
+      if (node instanceof this.compiler.AST_Scope) return true;
+      if (node instanceof this.compiler.AST_SymbolRef) {
+        if (
+          node.python_identifier &&
+          !ownBindings.has(node.name) &&
+          !nonlocals.has(node.name) &&
+          (
+            globals.has(node.name) ||
+            !enclosingFunctionBindings.some((bindings) => bindings.has(node.name))
+          )
+        ) moduleGlobalNames.add(node.name);
+      }
+      return false;
+    });
+    definition.module_global_names = [...moduleGlobalNames].sort();
     this.analyzeNestedScopes(
       body,
       [...enclosingFunctionBindings, ownBindings],
@@ -185,7 +222,12 @@ export class PythonAstSemanticAnalyzer {
     definition.localvars = assignments
       .filter((name) => !parameters.includes(name))
       .filter((name) => !globals.has(name) && !nonlocals.has(name))
-      .map((name) => new this.compiler.AST_SymbolVar({ name }));
+      .map((name) => {
+        const symbol = new this.compiler.AST_SymbolVar({ name });
+        symbol.python_identifier = this.lexicalHygiene && pythonBindings.has(name);
+        symbol.python_lexical_binding = symbol.python_identifier;
+        return symbol;
+      });
     definition.annotated_locals = unique([
       ...(definition.annotated_locals ?? []),
       ...this.scanAnnotatedNames(body),
@@ -231,6 +273,9 @@ export class PythonAstSemanticAnalyzer {
     definition.annotated_locals = unique([
       ...(definition.annotated_locals ?? []),
       ...this.scanAnnotatedNames(body),
+      // A class-body global read must bypass the class namespace and retain
+      // Python's NameError behavior before assignment and after deletion.
+      ...(definition.declared_globals ?? []),
     ]);
   }
 
@@ -335,7 +380,10 @@ export class PythonAstSemanticAnalyzer {
   private scanNestedGlobals(body: any[]): string[] {
     const names: string[] = [];
     this.walk(body, (node) => {
-      if (node instanceof this.compiler.AST_Lambda) {
+      if (
+        node instanceof this.compiler.AST_Lambda ||
+        node instanceof this.compiler.AST_Class
+      ) {
         names.push(...(node.declared_globals ?? []));
       }
       return false;
@@ -346,7 +394,10 @@ export class PythonAstSemanticAnalyzer {
   private scanNestedDeletedGlobals(body: any[]): string[] {
     const names: string[] = [];
     this.walk(body, (node) => {
-      if (node instanceof this.compiler.AST_Lambda) {
+      if (
+        node instanceof this.compiler.AST_Lambda ||
+        node instanceof this.compiler.AST_Class
+      ) {
         const deleted = new Set(this.scanAnnotatedNames(node.body ?? []));
         for (const name of node.declared_globals ?? []) {
           if (deleted.has(name)) names.push(name);

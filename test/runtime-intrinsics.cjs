@@ -139,11 +139,11 @@ const exactValueCodec = compile(
 );
 assert.match(
   exactValueCodec,
-  /packed = ρσ_exact_integer_values_to_packed_bytes\(values\)/,
+  /\$ρσ\$py\$packed = ρσ_exact_integer_values_to_packed_bytes\(values\)/,
 );
 assert.match(
   exactValueCodec,
-  /restored = ρσ_exact_integer_values_from_packed_bytes\(packed, count\)/,
+  /\$ρσ\$py\$restored = ρσ_exact_integer_values_from_packed_bytes\(\$ρσ\$py\$packed, count\)/,
 );
 
 const exactRangeMaterialization = compile(

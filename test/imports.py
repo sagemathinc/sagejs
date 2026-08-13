@@ -1,4 +1,4 @@
-# globals:test_path, GLOBAL_SYMBOL, assrt
+# globals:test_path, assrt
 from _import_one import (
     toplevel_var,
     toplevel_func as tf,
@@ -72,8 +72,11 @@ inner()
 b = AClass(1)
 eq(b, this)
 
-# Test global symbol declared in other module
-eq(GLOBAL_SYMBOL, "i am global")
+# A module-level `global` statement is a Python no-op; it does not publish the
+# binding into another module or onto the JavaScript host.
+GLOBAL_SYMBOL = "i am local"
+eq(_import_one.GLOBAL_SYMBOL, "i am global")
+eq(GLOBAL_SYMBOL, "i am local")
 
 # Missing-import diagnostics are covered by the frontend/module-resolver tests;
 # this executable file focuses on successful runtime import semantics.

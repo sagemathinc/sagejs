@@ -1692,17 +1692,15 @@ def ρσ_scope_dict(values: Any) -> SageDict:
     return answer
 
 
+_LIVE_SCOPE_DICTIONARIES = runtime.reflect.construct(runtime.map_class, [])
+
+
 def ρσ_live_scope_dict(scope: Any) -> SageDict:
-    cache_name = "__sagejs_live_scope_dict__"
-    cached = runtime.reflect.get(scope, cache_name)
+    cached = _LIVE_SCOPE_DICTIONARIES.get(scope)
     if cached is not runtime.undefined:
         return cached
     answer = _LiveScopeDict(scope)
-    runtime.object.defineProperty(
-        scope,
-        cache_name,
-        {"value": answer},
-    )
+    _LIVE_SCOPE_DICTIONARIES.set(scope, answer)
     return answer
 
 

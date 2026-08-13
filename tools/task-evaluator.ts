@@ -15,10 +15,13 @@ interface CallableSpec {
   name?: string;
   source: string;
   bindings?: Record<string, unknown>;
+  moduleGlobals?: Record<string, string>;
+  publishInModule?: boolean;
 }
 
 export interface TaskEvaluator {
   invoke(callable: CallableSpec, args: unknown[]): unknown;
+  reconstruct(callable: CallableSpec): (...args: unknown[]) => unknown;
   close(): void;
 }
 
@@ -55,29 +58,113 @@ export function createTaskEvaluator({
   delete global.__sagejs_sage_mode__;
   runInThisContext('var __name__ = "__multiprocessing__"; show_js = false;');
 
+  const runtimeModules = Reflect.get(globalThis, "ρσ_modules") as
+    | Record<string, Record<string, unknown>>
+    | undefined;
+  const workerMain = runtimeModules?.__main__;
+  if (workerMain !== null && typeof workerMain === "object") {
+    Reflect.set(workerMain, "__name__", "__multiprocessing__");
+  }
+
   const callableCache = new Map<string, (...args: unknown[]) => unknown>();
 
+  function reconstruct(callable: CallableSpec): (...args: unknown[]) => unknown {
+    const bindings = callable.bindings ?? {};
+    const names = Object.keys(bindings);
+    const moduleGlobals = callable.moduleGlobals ?? {};
+    for (const [emittedName, pythonName] of Object.entries(moduleGlobals)) {
+      if (
+        !/^[$_\p{ID_Start}][$\u200c\u200d_\p{ID_Continue}]*$/u.test(emittedName) ||
+        typeof pythonName !== "string"
+      ) throw new TypeError("invalid compiled module-global metadata");
+    }
+    const moduleName = callable.module ?? "__main__";
+    const registry = Reflect.get(globalThis, "ρσ_modules") as
+      | Record<string, Record<string, unknown>>
+      | undefined;
+    const moduleNamespace = registry?.[moduleName] ??
+      (registry
+        ? registry[moduleName] = Object.create(null)
+        : Object.create(null));
+    for (const [emittedName, pythonName] of Object.entries(moduleGlobals)) {
+      if (
+        !Object.hasOwn(moduleNamespace, pythonName) &&
+        Object.hasOwn(bindings, emittedName)
+      ) Reflect.set(moduleNamespace, pythonName, bindings[emittedName]);
+    }
+    const globalScope = new Proxy(Object.create(null), {
+      has(_target, name) {
+        return typeof name === "string" && Object.hasOwn(moduleGlobals, name);
+      },
+      get(_target, name) {
+        if (name === Symbol.unscopables) return undefined;
+        if (typeof name !== "string" || !Object.hasOwn(moduleGlobals, name)) {
+          return undefined;
+        }
+        const pythonName = moduleGlobals[name];
+        const value = Reflect.get(moduleNamespace, pythonName);
+        if (value === undefined) {
+          const builtin = Reflect.get(globalThis, "ρσ_resolve_module_name");
+          if (typeof builtin === "function") {
+            return Reflect.apply(builtin, undefined, [
+              undefined,
+              pythonName,
+              moduleNamespace,
+              registry?.builtins ?? globalThis,
+            ]);
+          }
+        }
+        return value;
+      },
+      set(_target, name, value) {
+        if (typeof name !== "string" || !Object.hasOwn(moduleGlobals, name)) {
+          return false;
+        }
+        return Reflect.set(moduleNamespace, moduleGlobals[name], value);
+      },
+    });
+    const factory = runInThisContext(
+      `(function(${[...names, "__sagejs_module_scope__"].join(",")}) { ` +
+        `with (__sagejs_module_scope__) return (${callable.source}); })`,
+      { filename: "<multiprocessing-callable>" },
+    ) as (...values: unknown[]) => (...args: unknown[]) => unknown;
+    const value = Reflect.apply(
+      factory,
+      undefined,
+      [...names.map((name) => bindings[name]), globalScope],
+    );
+    if (callable.publishInModule === true) {
+      if (
+        typeof callable.name !== "string" ||
+        !/^[_\p{ID_Start}][\u200c\u200d_\p{ID_Continue}]*$/u.test(callable.name) ||
+        typeof callable.module !== "string" ||
+        callable.module.length === 0
+      ) throw new TypeError("invalid compiled module publication metadata");
+      if (!Object.hasOwn(moduleNamespace, callable.name)) {
+        Reflect.set(moduleNamespace, callable.name, value);
+      }
+    }
+    return value;
+  }
+
   return {
+    reconstruct,
     invoke(callable, args): unknown {
       const cacheKey =
         `${callable.module ?? ""}\0${callable.name ?? ""}\0${callable.source}`;
       let value: unknown = callableCache.get(cacheKey);
-      if (value === undefined && callable.name) {
-        const globalValue = Reflect.get(globalThis, callable.name);
-        if (typeof globalValue === "function") value = globalValue;
+      if (value === undefined && callable.name && callable.module) {
+        const registry = Reflect.get(globalThis, "ρσ_modules") as
+          | Record<string, Record<string, unknown>>
+          | undefined;
+        const moduleValue = registry?.[callable.module]?.[callable.name];
+        if (
+          typeof moduleValue === "function" &&
+          Function.prototype.toString.call(moduleValue) === callable.source
+        ) value = moduleValue;
       }
       if (value === undefined) {
-        const bindings = callable.bindings ?? {};
-        const names = Object.keys(bindings);
-        const factory = runInThisContext(
-          `(function(${names.join(",")}) { return (${callable.source}); })`,
-          { filename: "<multiprocessing-callable>" },
-        ) as (...values: unknown[]) => unknown;
-        value = Reflect.apply(
-          factory,
-          undefined,
-          names.map((name) => bindings[name]),
-        );
+        value = reconstruct(callable);
       }
       if (typeof value !== "function") {
         throw new TypeError("multiprocessing task target is not callable");

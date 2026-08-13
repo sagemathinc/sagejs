@@ -583,7 +583,16 @@ def print_list_comprehension(self, output):
                 body_out.space()
                 body_out.assign("")
                 body_out.print(result_obj)
+
             # make sure to locally scope loop variables
+            def print_declaration_target(target):
+                previous_assignment_target = body_out.assignment_target
+                body_out.assignment_target = True
+                try:
+                    target.print(body_out)
+                finally:
+                    body_out.assignment_target = previous_assignment_target
+
             for clause in clauses:
                 if is_node_type(clause.init, AST_Array):
                     # Nested tuple targets are destructuring patterns, not
@@ -593,10 +602,10 @@ def print_list_comprehension(self, output):
                     # ``var rho_math_tuple([x, y])``.
                     for i in clause.init.flatten():
                         body_out.comma()
-                        i.print(body_out)
+                        print_declaration_target(i)
                 else:
                     body_out.comma()
-                    clause.init.print(body_out)
+                    print_declaration_target(clause.init)
             body_out.end_statement()
 
             def print_clause(clause_index):

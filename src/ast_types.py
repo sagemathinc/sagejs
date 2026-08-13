@@ -549,6 +549,7 @@ class AST_Lambda(AST_Scope):
         "declared_globals": "[string*] names declared global directly in this function",
         "declared_nonlocals": "[string*] names declared nonlocal directly in this function",
         "scope_bindings": "[string*] names which can satisfy a nested nonlocal declaration",
+        "module_global_names": "[string*] free names resolved through the defining Python module",
     }
 
     def _walk(self, visitor):
@@ -604,6 +605,7 @@ class AST_Class(AST_Scope):
         "dynamic_properties": "[dict] map of dynamic property names to property descriptors of the form {getter:AST_Method, setter:AST_Method",
         "classvars": "[dict] map containing all class variables as keys, to be used to easily test for existence of a class variable",
         "nonlocal_names": "[string*] names explicitly rebound outside the class namespace",
+        "declared_globals": "[string*] names declared global directly in the class body",
     }
 
     def _walk(self, visitor):

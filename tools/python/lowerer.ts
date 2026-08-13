@@ -123,6 +123,12 @@ export class PythonCstLowerer {
   private annotationsMode: any = false;
   private readonly knownClasses = new Map<string, any>();
   private readonly intrinsicModules = new Map<string, Record<string, string>>();
+  private moduleBindings = new Set<string>();
+  private readonly classBindings: Array<{
+    names: Set<string>;
+    globals: Set<string>;
+    functionDepth: number;
+  }> = [];
   private nativeBitwise = false;
   private readonly classStack: string[] = [];
   private catchDepth = 0;
@@ -131,6 +137,10 @@ export class PythonCstLowerer {
     isCoroutine: boolean;
     superClass: string | null;
     superReceiver: string | null;
+    receiverAlias: string | null;
+    bindings: Set<string>;
+    globals: Set<string>;
+    nonlocals: Set<string>;
   }> = [];
 
   constructor(
@@ -141,7 +151,14 @@ export class PythonCstLowerer {
 
   /** Apply Python's lexical private-name transformation inside a class. */
   private manglePrivateName(name: string): string {
-    const className = this.classStack.at(-1)?.replace(/^_+/, "") ?? "";
+    return this.manglePrivateNameForClass(name, this.classStack.at(-1));
+  }
+
+  private manglePrivateNameForClass(
+    name: string,
+    enclosingClass: string | undefined,
+  ): string {
+    const className = enclosingClass?.replace(/^_+/, "") ?? "";
     if (
       !className ||
       !name.startsWith("__") ||
@@ -149,6 +166,30 @@ export class PythonCstLowerer {
       name.includes(".")
     ) return name;
     return `_${className}${name}`;
+  }
+
+  /** Collect module cells introduced by nested `global` declarations. */
+  private nestedModuleGlobalBindings(root: SyntaxNode): Set<string> {
+    const names = new Set<string>();
+    const visit = (
+      node: SyntaxNode,
+      enclosingClass: string | undefined,
+    ): void => {
+      let activeClass = enclosingClass;
+      if (node.type === "class_definition") {
+        activeClass = node.childForFieldName("name")?.text ?? activeClass;
+      }
+      if (node.type === "global_statement") {
+        for (const name of significantChildren(node)) {
+          if (name.type === "identifier") {
+            names.add(this.manglePrivateNameForClass(name.text, activeClass));
+          }
+        }
+      }
+      for (const child of node.namedChildren) visit(child, activeClass);
+    };
+    visit(root, undefined);
+    return names;
   }
 
   lowerModule(finalizedToplevel: any): CstLoweringResult {
@@ -177,6 +218,25 @@ export class PythonCstLowerer {
     for (const [name, details] of Object.entries(
       this.options.classes ?? {},
     )) this.knownClasses.set(name, details);
+    for (const [name, table] of Object.entries(
+      this.options.intrinsic_modules ?? {},
+    )) {
+      if (table && typeof table === "object") {
+        this.intrinsicModules.set(name, table as Record<string, string>);
+      }
+    }
+    this.moduleBindings = this.functionBindingNames(
+      root,
+      this.emptyParameters(),
+      new Set(),
+      new Set(),
+    );
+    // A `global` declaration nested in a function can create or mutate a
+    // module binding even when no assignment to that name appears at module
+    // level.  Include those source names in the module's lexical hygiene map.
+    for (const name of this.nestedModuleGlobalBindings(root)) {
+      this.moduleBindings.add(name);
+    }
     this.annotationsMode = root.namedChildren.some(
       (node) => node.type === "future_import_statement" &&
         /\bannotations\b/.test(node.text),
@@ -185,6 +245,8 @@ export class PythonCstLowerer {
       this.lowerStatement(node)
     );
     const ast = new this.compiler.AST_Toplevel(finalizedToplevel);
+    ast.python_lexical_hygiene = !this.options.compiler_bootstrap;
+    ast.python_scope_bindings = [...this.moduleBindings];
     const extracted = this.extractDocstrings(body);
     ast.body = extracted.body;
     ast.docstrings = extracted.docstrings;
@@ -197,6 +259,7 @@ export class PythonCstLowerer {
         this.options.scoped_flags?.sequential_definitions
       ),
     ).analyze(ast);
+    ast.intrinsic_modules = Object.fromEntries(this.intrinsicModules);
     return {
       ast,
       directlyLoweredNodeTypes: new Set(this.lowered),
@@ -222,6 +285,44 @@ export class PythonCstLowerer {
       file: this.options.filename ?? null,
       leading_whitespace: "",
     });
+  }
+
+  private pythonSymbol(
+    constructor: string,
+    node: SyntaxNode,
+    properties: Record<string, any>,
+  ): any {
+    const symbol = this.make(constructor, node, properties);
+    symbol.python_identifier = !this.options.compiler_bootstrap;
+    if (constructor === "AST_SymbolRef") {
+      symbol.python_lexical_binding = !this.options.compiler_bootstrap &&
+        this.sourceNameIsLexicallyBound(properties.name);
+    } else {
+      // Cached module variants are rendered through a secondary OutputStream
+      // without the original AST scope on its stack.  Preserve declaration
+      // authority on the symbol itself so declarations and later references
+      // always choose the same collision-proof JavaScript spelling.
+      symbol.python_lexical_binding = !this.options.compiler_bootstrap;
+    }
+    return symbol;
+  }
+
+  /** Whether a source reference is backed by a Python lexical cell here. */
+  private sourceNameIsLexicallyBound(name: string): boolean {
+    for (let index = this.functionFrames.length - 1; index >= 0; index -= 1) {
+      const frame = this.functionFrames[index];
+      if (frame.globals.has(name)) return this.moduleBindings.has(name);
+      if (frame.bindings.has(name) || frame.nonlocals.has(name)) return true;
+    }
+    const classFrame = this.classBindings.at(-1);
+    if (
+      classFrame &&
+      this.functionFrames.length === classFrame.functionDepth
+    ) {
+      if (classFrame.globals.has(name)) return this.moduleBindings.has(name);
+      if (classFrame.names.has(name)) return false;
+    }
+    return this.moduleBindings.has(name);
   }
 
   private make(name: string, node: SyntaxNode, properties = {}): any {
@@ -350,13 +451,15 @@ export class PythonCstLowerer {
         if (!targets.every(validDeleteTarget)) {
           throw new SyntaxError("cannot delete expression");
         }
-        const deleted = targets.map((target) =>
-          this.make("AST_UnaryPrefix", node, {
+        const deleted = targets.map((target) => {
+          const expression = this.lowerExpression(target);
+          this.invalidateIntrinsicBinding(target);
+          return this.make("AST_UnaryPrefix", node, {
             operator: "delete",
-            expression: this.lowerExpression(target),
+            expression,
             parenthesized: false,
-          })
-        );
+          });
+        });
         return deleted.map((body) =>
           this.make("AST_SimpleStatement", node, { body })
         );
@@ -455,10 +558,19 @@ export class PythonCstLowerer {
     const selectedName = `ρσ_match_selected_${id}`;
     const symbol = (name: string, owner: SyntaxNode = node) =>
       this.make("AST_SymbolRef", owner, { name });
-    const assignment = (name: string, value: any, owner: SyntaxNode = node) =>
+    const assignment = (
+      name: string,
+      value: any,
+      owner: SyntaxNode = node,
+      pythonBinding = false,
+    ) =>
       this.make("AST_SimpleStatement", owner, {
         body: this.make("AST_Assign", owner, {
-          left: symbol(name, owner), operator: "=", right: value,
+          left: pythonBinding
+            ? this.pythonSymbol("AST_SymbolRef", owner, { name })
+            : symbol(name, owner),
+          operator: "=",
+          right: value,
         }),
       });
 
@@ -483,6 +595,7 @@ export class PythonCstLowerer {
       const resultName = `ρσ_match_result_${id}_${index}`;
       const captures = new Set<string>();
       const descriptor = this.lowerMatchPattern(pattern, captures);
+      this.invalidateIntrinsicNames(captures);
       const args: any[] = [symbol(subjectName, clause), descriptor];
       (args as any).kwargs = [];
       (args as any).kwarg_items = [];
@@ -499,7 +612,7 @@ export class PythonCstLowerer {
           expression: symbol(resultName, clause),
           property: this.make("AST_String", clause, { value: name }),
           assignment: null,
-        }), clause));
+        }), clause, true));
       }
       const selected = assignment(
         selectedName,
@@ -681,7 +794,9 @@ export class PythonCstLowerer {
   private lowerDottedPatternName(node: SyntaxNode): any {
     const names = significantChildren(node);
     if (!names.length) throw new UnsupportedPythonCstNode(node, "empty name");
-    let value = this.make("AST_SymbolRef", names[0], { name: names[0].text });
+    let value = this.pythonSymbol("AST_SymbolRef", names[0], {
+      name: names[0].text,
+    });
     for (const name of names.slice(1)) {
       value = this.make("AST_Dot", node, {
         expression: value, property: name.text,
@@ -697,14 +812,14 @@ export class PythonCstLowerer {
     const alternative = significantChildren(node).find(
       (child) => child.type === "else_clause",
     );
-    const init = this.lowerBindingTarget(
-      this.lowerExpression(this.field(node, "left")),
-      this.field(node, "left"),
-    );
+    const left = this.field(node, "left");
+    const init = this.lowerBindingTarget(this.lowerExpression(left), left);
+    const object = this.lowerExpression(this.field(node, "right"));
+    this.invalidateIntrinsicBinding(left);
     return this.make(isAsync ? "AST_AsyncFor" : "AST_ForIn", node, {
       init,
       name: null,
-      object: this.lowerExpression(this.field(node, "right")),
+      object,
       body: this.lowerBlock(this.field(node, "body")),
       alternative: alternative
         ? this.lowerBlock(this.field(alternative, "body"))
@@ -724,14 +839,85 @@ export class PythonCstLowerer {
     return target;
   }
 
+  private invalidateIntrinsicBinding(node: SyntaxNode): void {
+    if (node.type === "identifier") {
+      const name = this.manglePrivateName(node.text);
+      const classFrame = this.classBindings.at(-1);
+      if (
+        classFrame &&
+        classFrame.functionDepth === this.functionFrames.length
+      ) {
+        if (classFrame.globals.has(name)) {
+          this.intrinsicModules.delete(name);
+        } else {
+          classFrame.names.add(name);
+        }
+      } else if (this.functionFrames.length > 0) {
+        return;
+      } else {
+        this.intrinsicModules.delete(name);
+      }
+      return;
+    }
+    if ([
+      "parenthesized_expression", "expression_list", "pattern_list",
+      "tuple_pattern", "list_pattern", "tuple", "list",
+    ].includes(node.type)) {
+      for (const child of significantChildren(node)) {
+        this.invalidateIntrinsicBinding(child);
+      }
+    }
+  }
+
+  private invalidateIntrinsicNames(names: Iterable<string>): void {
+    for (const name of names) {
+      const classFrame = this.classBindings.at(-1);
+      if (
+        classFrame &&
+        classFrame.functionDepth === this.functionFrames.length
+      ) {
+        if (classFrame.globals.has(name)) {
+          this.intrinsicModules.delete(name);
+        } else {
+          classFrame.names.add(name);
+        }
+      } else if (this.functionFrames.length > 0) {
+        return;
+      } else {
+        this.intrinsicModules.delete(name);
+      }
+    }
+  }
+
   private lowerDeclaration(node: SyntaxNode, isGlobal: boolean): any {
     if (!isGlobal && this.functionFrames.length === 0) {
       throw new SyntaxError("nonlocal declaration not allowed at module level");
     }
+    if (
+      isGlobal &&
+      this.functionFrames.length === 0 &&
+      this.classStack.length === 0
+    ) {
+      // In Python a module-level `global` declaration is a semantic no-op:
+      // the surrounding namespace is already the module.  Retaining an
+      // AST_SymbolNonlocal here incorrectly suppresses the module's lexical
+      // cell and can make its live namespace descriptor read a host global.
+      return this.make("AST_EmptyStatement", node, { stype: "global" });
+    }
+    if (isGlobal && this.classStack.length > 0) {
+      const classFrame = this.classBindings.at(-1);
+      if (classFrame?.functionDepth === this.functionFrames.length) {
+        for (const name of significantChildren(node)) {
+          classFrame.globals.add(this.manglePrivateName(name.text));
+        }
+      }
+    }
     return this.make("AST_Var", node, {
       definitions: significantChildren(node).map((name) =>
         this.make("AST_VarDef", name, {
-          name: this.make("AST_SymbolNonlocal", name, { name: name.text }),
+          name: this.pythonSymbol("AST_SymbolNonlocal", name, {
+            name: this.manglePrivateName(name.text),
+          }),
           value: null,
           is_global: isGlobal ? true : undefined,
         })
@@ -747,20 +933,23 @@ export class PythonCstLowerer {
       (child) => child.type === "with_clause",
     );
     if (!clause) throw new UnsupportedPythonCstNode(node, "missing with clause");
-    const clauses = significantChildren(clause).map((item) => {
+    const clauses: any[] = [];
+    for (const item of significantChildren(clause)) {
       let value = this.field(item, "value");
       let alias: SyntaxNode | null = null;
       if (value.type === "as_pattern") {
         alias = value.childForFieldName("alias")?.namedChild(0) ?? null;
         value = value.childForFieldName("value") ?? significantChildren(value)[0];
       }
-      return this.make("AST_WithClause", item, {
-        expression: this.lowerExpression(value),
+      const expression = this.lowerExpression(value);
+      if (alias) this.invalidateIntrinsicBinding(alias);
+      clauses.push(this.make("AST_WithClause", item, {
+        expression,
         alias: alias
-          ? this.make("AST_SymbolAlias", alias, { name: alias.text })
+          ? this.pythonSymbol("AST_SymbolAlias", alias, { name: alias.text })
           : null,
-      });
-    });
+      }));
+    }
     return this.make("AST_With", node, {
       clauses,
       is_async: isAsync,
@@ -785,6 +974,7 @@ export class PythonCstLowerer {
           ? significantChildren(value)
           : [value]).map((item) => this.lowerExpression(item))
         : [];
+      if (alias) this.invalidateIntrinsicBinding(alias);
       const body = significantChildren(clause).find(
         (child) => child.type === "block",
       );
@@ -800,7 +990,7 @@ export class PythonCstLowerer {
       }
       return this.make("AST_Except", clause, {
         argname: alias
-          ? this.make("AST_SymbolCatch", alias, { name: alias.text })
+          ? this.pythonSymbol("AST_SymbolCatch", alias, { name: alias.text })
           : null,
         errors,
         body: loweredBody,
@@ -845,7 +1035,7 @@ export class PythonCstLowerer {
       case "identifier":
       case "keyword_identifier":
         if (node.text === "__debug__") return this.make("AST_True", node);
-        return this.make("AST_SymbolRef", node, {
+        return this.pythonSymbol("AST_SymbolRef", node, {
           name: this.manglePrivateName(node.text),
         });
       case "integer":
@@ -1055,9 +1245,15 @@ export class PythonCstLowerer {
           const intrinsicTable = object.type === "identifier"
             ? this.intrinsicModules.get(object.text)
             : undefined;
+          const lexicalBinding = object.type === "identifier" &&
+            this.intrinsicAliasIsLexicallyBound(
+              this.manglePrivateName(object.text),
+            );
           if (
             intrinsicTable &&
             !Object.hasOwn(intrinsicTable, property) &&
+            !lexicalBinding &&
+            !this.options.reuse_main_module &&
             !this.options.for_linting
           ) {
             throw new SyntaxError(
@@ -1071,6 +1267,25 @@ export class PythonCstLowerer {
           if (intrinsic && !this.options.for_linting) {
             const symbol = this.make("AST_SymbolRef", node, { name: intrinsic });
             symbol.intrinsic_call = true;
+            if (lexicalBinding || this.options.reuse_main_module) {
+              const moduleKey = intrinsicTable === SAGEJS_RUNTIME_INTRINSICS
+                ? "sagejs.runtime"
+                : "sagejs";
+              return this.make("AST_Conditional", node, {
+                condition: this.make("AST_Binary", node, {
+                  left: this.lowerExpression(object),
+                  operator: "===",
+                  right: this.make("AST_Verbatim", node, {
+                    value: `ρσ_modules[${JSON.stringify(moduleKey)}]`,
+                  }),
+                }),
+                consequent: symbol,
+                alternative: this.make("AST_Dot", node, {
+                  expression: this.lowerExpression(object),
+                  property,
+                }),
+              });
+            }
             return symbol;
           }
           return this.make("AST_Dot", node, {
@@ -1432,10 +1647,14 @@ export class PythonCstLowerer {
     const annotation = this.optionalField(node, "type");
     if (annotation) {
       const value = this.optionalField(node, "right");
+      const loweredAnnotation = this.lowerType(annotation);
+      const loweredValue = value ? this.lowerExpression(value) : null;
+      const target = this.lowerExpression(left);
+      if (value) this.invalidateIntrinsicBinding(left);
       return this.make("AST_AnnotatedAssignment", node, {
-        target: this.lowerExpression(left),
-        annotation: this.lowerType(annotation),
-        value: value ? this.lowerExpression(value) : null,
+        target,
+        annotation: loweredAnnotation,
+        value: loweredValue,
       });
     }
     const right =
@@ -1450,8 +1669,9 @@ export class PythonCstLowerer {
     ) {
       throw new SyntaxError("illegal expression for augmented assignment");
     }
-    const loweredLeft = this.lowerExpression(left);
     const loweredRight = this.lowerExpression(right);
+    const loweredLeft = this.lowerExpression(left);
+    this.invalidateIntrinsicBinding(left);
     // A subscript or slice assignment is normally represented directly on
     // the target node for compatibility with the stage-zero AST.  In a
     // chained assignment, however, that representation would make the outer
@@ -1519,7 +1739,7 @@ export class PythonCstLowerer {
     };
 
     const makeArgument = (nameNode: SyntaxNode, typeNode: SyntaxNode | null) =>
-      this.make("AST_SymbolFunarg", nameNode, {
+      this.pythonSymbol("AST_SymbolFunarg", nameNode, {
         name: this.manglePrivateName(nameNode.text),
         annotation: typeNode ? this.lowerType(typeNode) : null,
         annotation_text: typeNode ? typeNode.text : null,
@@ -1623,23 +1843,246 @@ export class PythonCstLowerer {
     return args;
   }
 
+  private addBindingTarget(node: SyntaxNode | null, names: Set<string>): void {
+    if (!node) return;
+    if (node.type === "identifier") {
+      names.add(this.manglePrivateName(node.text));
+      return;
+    }
+    if ([
+      "parenthesized_expression", "expression_list", "pattern_list",
+      "tuple_pattern", "list_pattern", "tuple", "list",
+      "list_splat_pattern", "dictionary_splat_pattern",
+    ].includes(node.type)) {
+      for (const child of significantChildren(node)) {
+        this.addBindingTarget(child, names);
+      }
+    }
+  }
+
+  private addPatternBindings(node: SyntaxNode, names: Set<string>): void {
+    if (node.type === "identifier") {
+      if (node.text !== "_") names.add(this.manglePrivateName(node.text));
+      return;
+    }
+    if (node.type === "dotted_name") {
+      const parts = significantChildren(node);
+      if (parts.length === 1 && parts[0].text !== "_") {
+        names.add(this.manglePrivateName(parts[0].text));
+      }
+      return;
+    }
+    if (node.type === "class_pattern") {
+      for (const child of significantChildren(node).slice(1)) {
+        this.addPatternBindings(child, names);
+      }
+      return;
+    }
+    if (node.type === "keyword_pattern") {
+      const value = significantChildren(node)[1];
+      if (value) this.addPatternBindings(value, names);
+      return;
+    }
+    for (const child of significantChildren(node)) {
+      this.addPatternBindings(child, names);
+    }
+  }
+
+  private functionBindingNames(
+    body: SyntaxNode,
+    args: any[],
+    globals: Set<string>,
+    nonlocals: Set<string>,
+  ): Set<string> {
+    const names = new Set<string>(this.argumentNames(args));
+    const scan = (node: SyntaxNode): void => {
+      if (["function_definition", "class_definition"].includes(node.type)) {
+        names.add(this.manglePrivateName(this.field(node, "name").text));
+        return;
+      }
+      if (node.type === "decorated_definition") {
+        const definition = this.field(node, "definition");
+        names.add(this.manglePrivateName(this.field(definition, "name").text));
+        return;
+      }
+      if (node.type === "lambda") return;
+      if (node.type === "sage_generator_assignment") {
+        this.addBindingTarget(this.field(node, "parent"), names);
+        for (const target of node.childrenForFieldName("additional_target")) {
+          this.addBindingTarget(target, names);
+        }
+        for (const target of node.childrenForFieldName("generator")) {
+          this.addBindingTarget(target, names);
+        }
+        scan(this.field(node, "value"));
+        return;
+      }
+      if ([
+        "list_comprehension", "set_comprehension", "dictionary_comprehension",
+        "generator_expression",
+      ].includes(node.type)) {
+        const firstFor = significantChildren(node).find(
+          (child) => child.type === "for_in_clause",
+        );
+        if (firstFor) scan(this.field(firstFor, "right"));
+        for (const walrus of node.descendantsOfType("named_expression")) {
+          this.addBindingTarget(this.field(walrus, "left"), names);
+        }
+        return;
+      }
+      if (["assignment", "augmented_assignment", "named_expression"].includes(
+        node.type,
+      )) {
+        const left = this.field(node, "left");
+        this.addBindingTarget(left, names);
+        for (const child of significantChildren(node)) {
+          if (child !== left) scan(child);
+        }
+        return;
+      }
+      if (["for_statement", "async_for_statement"].includes(node.type)) {
+        const left = this.field(node, "left");
+        this.addBindingTarget(left, names);
+        for (const child of significantChildren(node)) {
+          if (child !== left) scan(child);
+        }
+        return;
+      }
+      if (node.type === "delete_statement") {
+        for (const target of significantChildren(node)) {
+          this.addBindingTarget(target, names);
+        }
+        return;
+      }
+      if (node.type === "with_clause") {
+        for (const item of significantChildren(node)) {
+          const itemValue = item.childForFieldName("value") ?? item;
+          if (itemValue.type === "as_pattern") {
+            const value = itemValue.childForFieldName("value") ??
+              significantChildren(itemValue)[0];
+            if (value) scan(value);
+            this.addBindingTarget(
+              itemValue.childForFieldName("alias")?.namedChild(0) ?? null,
+              names,
+            );
+          } else {
+            scan(itemValue);
+          }
+        }
+        return;
+      }
+      if (node.type === "except_clause") {
+        const value = node.childForFieldName("value");
+        if (value?.type === "as_pattern") {
+          const error = value.childForFieldName("value") ??
+            significantChildren(value)[0];
+          if (error) scan(error);
+          this.addBindingTarget(
+            value.childForFieldName("alias")?.namedChild(0) ?? null,
+            names,
+          );
+        }
+        for (const child of significantChildren(node)) {
+          if (child !== value) scan(child);
+        }
+        return;
+      }
+      if (node.type === "case_pattern") {
+        this.addPatternBindings(node, names);
+        return;
+      }
+      if (node.type === "import_statement") {
+        for (const entry of node.childrenForFieldName("name")) {
+          const alias = entry.type === "aliased_import"
+            ? entry.childForFieldName("alias")
+            : null;
+          const source = entry.type === "aliased_import"
+            ? this.field(entry, "name")
+            : entry;
+          names.add(this.manglePrivateName(
+            alias?.text ?? source.text.split(".")[0],
+          ));
+        }
+        return;
+      }
+      if (node.type === "import_from_statement") {
+        for (const entry of node.childrenForFieldName("name")) {
+          const alias = entry.type === "aliased_import"
+            ? entry.childForFieldName("alias")
+            : null;
+          const source = entry.type === "aliased_import"
+            ? this.field(entry, "name")
+            : entry;
+          names.add(this.manglePrivateName(alias?.text ?? source.text));
+        }
+        return;
+      }
+      for (const child of significantChildren(node)) scan(child);
+    };
+    scan(body);
+    for (const name of globals) names.delete(name);
+    for (const name of nonlocals) names.delete(name);
+    return names;
+  }
+
+  private intrinsicAliasIsLexicallyBound(name: string): boolean {
+    const classFrame = this.classBindings.at(-1);
+    if (
+      classFrame &&
+      this.functionFrames.length === classFrame.functionDepth
+    ) {
+      if (classFrame.globals.has(name)) return this.moduleBindings.has(name);
+      if (classFrame.names.has(name)) return true;
+    }
+    for (let index = this.functionFrames.length - 1; index >= 0; index -= 1) {
+      const frame = this.functionFrames[index];
+      if (frame.globals.has(name)) return false;
+      if (frame.bindings.has(name) || frame.nonlocals.has(name)) return true;
+    }
+    return false;
+  }
+
+  private namespaceBuiltinIsLexicallyShadowed(name: string): boolean {
+    const classFrame = this.classBindings.at(-1);
+    if (
+      classFrame &&
+      this.functionFrames.length === classFrame.functionDepth
+    ) {
+      if (classFrame.globals.has(name)) return this.moduleBindings.has(name);
+      if (classFrame.names.has(name)) return true;
+    }
+    for (let index = this.functionFrames.length - 1; index >= 0; index -= 1) {
+      const frame = this.functionFrames[index];
+      if (frame.globals.has(name)) break;
+      if (frame.bindings.has(name) || frame.nonlocals.has(name)) return true;
+    }
+    return this.moduleBindings.has(name);
+  }
+
   private lowerLambda(node: SyntaxNode): any {
     const parameters = node.childForFieldName("parameters");
     const body = this.field(node, "body");
     const args = parameters ? this.lowerParameters(parameters) : this.emptyParameters();
     const inherited = this.functionFrames.at(-1);
-    this.functionFrames.push({
+    const globals = new Set<string>();
+    const nonlocals = new Set<string>();
+    const frame = {
       isCoroutine: false,
       superClass: inherited?.superClass ?? null,
       superReceiver: inherited?.superReceiver ?? null,
-    });
+      receiverAlias: null,
+      bindings: this.functionBindingNames(body, args, globals, nonlocals),
+      globals,
+      nonlocals,
+    };
+    this.functionFrames.push(frame);
     let loweredBody: any;
     try {
       loweredBody = this.lowerExpression(body);
     } finally {
       this.functionFrames.pop();
     }
-    return this.make("AST_Function", node, {
+    const definition = this.make("AST_Function", node, {
       name: null,
       argnames: args,
       decorators: [],
@@ -1660,6 +2103,9 @@ export class PythonCstLowerer {
       docstrings: [],
       body: loweredBody,
     });
+    definition.python_lexical_hygiene = !this.options.compiler_bootstrap;
+    definition.python_scope_bindings = [...frame.bindings];
+    return definition;
   }
 
   private argumentNames(args: any): string[] {
@@ -1695,10 +2141,27 @@ export class PythonCstLowerer {
     const parameters = this.field(node, "parameters");
     const args = this.lowerParameters(parameters);
     const returnType = node.childForFieldName("return_type");
+    const loweredReturnType = returnType ? this.lowerType(returnType) : null;
+    const returnAnnotationText = returnType ? returnType.text : null;
     const bodyNode = this.field(node, "body");
     const isCoroutine = node.children.some((part) => part.text === "async");
+    const methodDecoratorNames = decorators.map((decorator) =>
+      decorator.expression?.property ?? decorator.expression?.name
+    );
+    const receiverAlias = isMethod && !methodDecoratorNames.includes("staticmethod")
+      ? args[0]?.name ?? null
+      : null;
     const inherited = this.functionFrames.at(-1);
-    this.functionFrames.push({
+    const declaredGlobals = new Set(
+      this.declaredNames(bodyNode, "global_statement"),
+    );
+    const declaredNonlocals = new Set(
+      this.declaredNames(bodyNode, "nonlocal_statement"),
+    );
+    if (!isMethod && this.functionFrames.length === 0 && !this.classStack.length) {
+      this.intrinsicModules.delete(nameNode.text);
+    }
+    const frame = {
       isCoroutine,
       superClass: isMethod
         ? this.classStack.at(-1) ?? null
@@ -1706,7 +2169,17 @@ export class PythonCstLowerer {
       superReceiver: isMethod
         ? args[0]?.name ?? null
         : inherited?.superReceiver ?? null,
-    });
+      receiverAlias,
+      bindings: this.functionBindingNames(
+        bodyNode,
+        args,
+        declaredGlobals,
+        declaredNonlocals,
+      ),
+      globals: declaredGlobals,
+      nonlocals: declaredNonlocals,
+    };
+    this.functionFrames.push(frame);
     let loweredBody: any[];
     try {
       loweredBody = this.withLexicalImportScope(() =>
@@ -1720,7 +2193,7 @@ export class PythonCstLowerer {
     const extracted = this.extractDocstrings(loweredBody);
     const Constructor = isMethod ? "AST_Method" : "AST_Function";
     const properties: Record<string, any> = {
-      name: this.make("AST_SymbolDefun", nameNode, {
+      name: this.pythonSymbol("AST_SymbolDefun", nameNode, {
         name: this.manglePrivateName(nameNode.text),
       }),
       argnames: args,
@@ -1738,10 +2211,10 @@ export class PythonCstLowerer {
         this.currentToplevel?.scoped_flags?.sequential_definitions ??
         this.options.scoped_flags?.sequential_definitions
       ),
-      return_annotation: returnType ? this.lowerType(returnType) : null,
-      return_annotation_text: returnType ? returnType.text : null,
-      declared_globals: this.declaredNames(bodyNode, "global_statement"),
-      declared_nonlocals: this.declaredNames(bodyNode, "nonlocal_statement"),
+      return_annotation: loweredReturnType,
+      return_annotation_text: returnAnnotationText,
+      declared_globals: [...declaredGlobals],
+      declared_nonlocals: [...declaredNonlocals],
       scope_bindings: this.argumentNames(args),
       localvars: [],
       annotated_locals: [],
@@ -1765,8 +2238,16 @@ export class PythonCstLowerer {
         ].includes(name);
       });
       properties.sequential_definition = false;
+      const classFrame = this.classBindings.at(-1);
+      const mangledName = this.manglePrivateName(nameNode.text);
+      if (!classFrame?.globals.has(mangledName)) {
+        classFrame?.names.add(mangledName);
+      }
     }
-    return this.make(Constructor, node, properties);
+    const definition = this.make(Constructor, node, properties);
+    definition.python_lexical_hygiene = !this.options.compiler_bootstrap;
+    definition.python_scope_bindings = [...frame.bindings];
+    return definition;
   }
 
   private extractDocstrings(body: any[]): { body: any[]; docstrings: any[] } {
@@ -1804,7 +2285,9 @@ export class PythonCstLowerer {
         current.type === "class_definition"
       )) return;
       if (current.type === type) {
-        result.push(...significantChildren(current).map((child) => child.text));
+        result.push(...significantChildren(current).map((child) =>
+          this.manglePrivateName(child.text)
+        ));
         return;
       }
       for (const child of current.namedChildren) visit(child);
@@ -1881,6 +2364,9 @@ export class PythonCstLowerer {
       }
       return this.lowerExpression(child);
     });
+    if (this.functionFrames.length === 0 && this.classStack.length === 0) {
+      this.intrinsicModules.delete(nameNode.text);
+    }
     const isNamedTupleClass = baseNodes.some((child) =>
       child.text === "NamedTuple" || child.text.endsWith(".NamedTuple")
     );
@@ -1891,6 +2377,11 @@ export class PythonCstLowerer {
     // replaced by the finished class definition below.
     this.knownClasses.set(nameNode.text, { provisional: true });
     this.classStack.push(nameNode.text);
+    this.classBindings.push({
+      names: new Set(),
+      globals: new Set(),
+      functionDepth: this.functionFrames.length,
+    });
     let statements: any[];
     try {
       statements = this.withLexicalImportScope(() => {
@@ -1916,6 +2407,7 @@ export class PythonCstLowerer {
         return result;
       });
     } finally {
+      this.classBindings.pop();
       this.classStack.pop();
     }
     const extracted = this.extractDocstrings(statements);
@@ -1938,6 +2430,7 @@ export class PythonCstLowerer {
     const classMethods: Record<string, boolean> = Object.create(null);
     const dynamicProperties: Record<string, any> = Object.create(null);
     const nonlocalNames: string[] = [];
+    const globalNames: string[] = [];
     for (const base of bases) {
       if (!(base instanceof this.compiler.AST_SymbolRef)) continue;
       const inherited = this.knownClasses.get(base.name);
@@ -1958,8 +2451,12 @@ export class PythonCstLowerer {
       const body = statement?.body;
       if (statement instanceof this.compiler.AST_Var) {
         for (const declaration of statement.definitions ?? []) {
-          if (!declaration.is_global && declaration.name?.name) {
-            nonlocalNames.push(declaration.name.name);
+          if (declaration.name?.name) {
+            if (declaration.is_global) {
+              globalNames.push(declaration.name.name);
+            } else {
+              nonlocalNames.push(declaration.name.name);
+            }
           }
         }
       }
@@ -1984,6 +2481,7 @@ export class PythonCstLowerer {
       }
     }
     for (const name of nonlocalNames) delete classvars[name];
+    for (const name of globalNames) delete classvars[name];
     // A descriptor remains an ordinary namespace value until class creation.
     // Preserve aliases such as ``oldName = new_name`` when ``new_name`` is a
     // property; reading it from the partly built JavaScript prototype would
@@ -2015,13 +2513,14 @@ export class PythonCstLowerer {
       nameNode.text,
       classStatements,
       classvars,
-      new Set(nonlocalNames),
+      new Set([...nonlocalNames, ...globalNames]),
     );
     const useBoundMethods = this.currentToplevel?.scoped_flags
       ?.bound_methods ?? this.options.scoped_flags?.bound_methods ?? true;
     const bound = useBoundMethods
       ? classStatements
         .filter((statement) => statement instanceof this.compiler.AST_Method)
+        .filter((method) => !globalNames.includes(method.name.name))
         .filter((method) =>
           method.name.name !== "__init__" && !method.static
         )
@@ -2074,7 +2573,9 @@ export class PythonCstLowerer {
         .map((statement) => statement.target.name)
       : [];
     const definition = this.make("AST_Class", node, {
-      name: this.make("AST_SymbolDefun", nameNode, { name: nameNode.text }),
+      name: this.pythonSymbol("AST_SymbolDefun", nameNode, {
+        name: nameNode.text,
+      }),
       parent,
       bases: effectiveBases,
       metaclass,
@@ -2102,7 +2603,11 @@ export class PythonCstLowerer {
       ),
       dynamic_properties: dynamicProperties,
       classvars,
-      nonlocal_names: nonlocalNames,
+      // Both declarations bypass the class namespace.  The output layer's
+      // historical `nonlocal_names` routing is precisely that mechanical
+      // distinction; `declared_globals` preserves the Python authority.
+      nonlocal_names: [...nonlocalNames, ...globalNames],
+      declared_globals: globalNames,
       localvars: [],
       annotated_locals: [],
       docstrings: extracted.docstrings,
@@ -2112,6 +2617,11 @@ export class PythonCstLowerer {
     this.specializeBigintClass(definition);
     // Class constructor calls later in the same suite must lower as `new`.
     this.knownClasses.set(nameNode.text, definition);
+    const outerClassFrame = this.classBindings.at(-1);
+    const mangledName = this.manglePrivateName(nameNode.text);
+    if (!outerClassFrame?.globals.has(mangledName)) {
+      outerClassFrame?.names.add(mangledName);
+    }
     return definition;
   }
 
@@ -2194,9 +2704,14 @@ export class PythonCstLowerer {
     nonlocals = new Set<string>(),
   ): void {
     const known = new Set<string>();
-    const definition = (name: string) => new this.compiler.AST_SymbolDefun({
-      name: `${className}.prototype.${name}`,
-    });
+    const definition = (name: string) => {
+      const symbol = new this.compiler.AST_SymbolDefun({
+        name: `${className}.prototype.${name}`,
+      });
+      symbol.python_identifier = !this.options.compiler_bootstrap;
+      symbol.python_lexical_binding = symbol.python_identifier;
+      return symbol;
+    };
     const visit = (value: any, seen = new Set<any>()): void => {
       if (!value || typeof value !== "object" || seen.has(value)) return;
       seen.add(value);
@@ -2334,15 +2849,55 @@ export class PythonCstLowerer {
         wildcard,
       ));
     }
-    for (const imported of imports) this.registerImportedClasses(imported);
     for (const imported of imports) {
-      if (!imported.intrinsic || !imported.alias?.name) continue;
-      const table = imported.key === "sagejs.runtime"
-        ? SAGEJS_RUNTIME_INTRINSICS
-        : SAGEJS_PUBLIC_INTRINSICS;
-      if (table) this.intrinsicModules.set(imported.alias.name, table);
+      this.registerImportedClasses(imported);
+      if (this.functionFrames.length > 0) continue;
+      if (this.classStack.length > 0) {
+        const frame = this.classBindings.at(-1);
+        const registerClassImport = (name: string): void => {
+          if (!frame?.globals.has(name)) frame?.names.add(name);
+        };
+        if (imported.argnames) {
+          for (const argument of imported.argnames) {
+            registerClassImport(argument.alias?.name ?? argument.name);
+          }
+        } else if (!imported.star) {
+          registerClassImport(
+            imported.alias?.name ?? imported.key.split(".")[0],
+          );
+        }
+        continue;
+      }
+      if (imported.intrinsic && imported.alias?.name) {
+        const table = imported.key === "sagejs.runtime"
+          ? SAGEJS_RUNTIME_INTRINSICS
+          : SAGEJS_PUBLIC_INTRINSICS;
+        if (table) this.intrinsicModules.set(imported.alias.name, table);
+        continue;
+      }
+      if (imported.star) {
+        this.intrinsicModules.clear();
+      } else if (imported.argnames) {
+        for (const argument of imported.argnames) {
+          this.intrinsicModules.delete(argument.alias?.name ?? argument.name);
+        }
+      } else {
+        this.intrinsicModules.delete(
+          imported.alias?.name ?? imported.key.split(".")[0],
+        );
+      }
     }
-    return this.make("AST_Imports", node, { imports });
+    const statement = this.make("AST_Imports", node, { imports });
+    statement.python_lexical_hygiene = !this.options.compiler_bootstrap;
+    statement.python_scope_bindings = this.classStack.length > 0
+      ? [
+        ...(this.classBindings.at(-1)?.names ?? []),
+        ...(this.classBindings.at(-1)?.globals ?? []),
+      ]
+      : this.functionFrames.length > 0
+      ? [...this.functionFrames.at(-1)!.bindings]
+      : [...this.moduleBindings];
+    return statement;
   }
 
   private registerImportedClasses(imported: any): void {
@@ -2366,7 +2921,7 @@ export class PythonCstLowerer {
 
   private dottedName(node: SyntaxNode): any {
     const names = node.text.replace(/^\.+/, "").split(".").filter(Boolean);
-    let expression: any = this.make("AST_SymbolRef", node, {
+    let expression: any = this.pythonSymbol("AST_SymbolRef", node, {
       name: names.shift() ?? "",
     });
     for (const property of names) {
@@ -2435,13 +2990,13 @@ export class PythonCstLowerer {
       ]);
     }
     const targets = [parent, ...additional].map((target) =>
-      this.make("AST_SymbolRef", target, { name: target.text })
+      this.pythonSymbol("AST_SymbolRef", target, { name: target.text })
     );
     const parentTarget = targets.length === 1
       ? targets[0]
       : this.make("AST_Array", node, { elements: targets, is_tuple: false });
     const generatorTargets = generators.map((generator) =>
-      this.make("AST_SymbolRef", generator, { name: generator.text })
+      this.pythonSymbol("AST_SymbolRef", generator, { name: generator.text })
     );
     const assignParent = this.make("AST_Assign", node, {
       left: parentTarget,
@@ -2450,7 +3005,9 @@ export class PythonCstLowerer {
     });
     const firstNgens = this.make("AST_Call", node, {
       expression: this.make("AST_Dot", node, {
-        expression: this.make("AST_SymbolRef", parent, { name: parent.text }),
+        expression: this.pythonSymbol("AST_SymbolRef", parent, {
+          name: parent.text,
+        }),
         property: "_first_ngens",
       }),
       args: [this.make("AST_Number", node, { value: generators.length })],
@@ -2484,7 +3041,9 @@ export class PythonCstLowerer {
       })
     );
     return this.make("AST_Assign", node, {
-      left: this.make("AST_SymbolRef", functionNode, { name: functionNode.text }),
+      left: this.pythonSymbol("AST_SymbolRef", functionNode, {
+        name: functionNode.text,
+      }),
       operator: "=",
       right: this.make("AST_Call", node, {
         expression: this.make("AST_SymbolRef", node, {
@@ -2503,49 +3062,91 @@ export class PythonCstLowerer {
 
   private lowerComprehension(node: SyntaxNode, constructor: string): any {
     const body = this.field(node, "body");
+    const children = significantChildren(node).slice(1);
+    const forClauses = children.filter((child) => child.type === "for_in_clause");
+    if (!forClauses.length) {
+      throw new UnsupportedPythonCstNode(node, "no for clause");
+    }
+    const comprehensionBindings = new Set<string>();
+    for (const clause of forClauses) {
+      this.addBindingTarget(this.field(clause, "left"), comprehensionBindings);
+    }
+    for (const walrus of node.descendantsOfType("named_expression")) {
+      const target = this.field(walrus, "left");
+      this.addBindingTarget(target, comprehensionBindings);
+      this.invalidateIntrinsicBinding(target);
+    }
+    // Python evaluates only the first iterable in the enclosing scope. Every
+    // target, later iterable, condition, and result lives in the implicit
+    // comprehension scope.
+    const firstIterable = this.lowerExpression(this.field(forClauses[0], "right"));
+    const inherited = this.functionFrames.at(-1);
+    this.functionFrames.push({
+      isCoroutine: inherited?.isCoroutine ?? false,
+      superClass: inherited?.superClass ?? null,
+      superReceiver: inherited?.superReceiver ?? null,
+      receiverAlias: null,
+      bindings: comprehensionBindings,
+      globals: new Set(),
+      nonlocals: new Set(),
+    });
     const clauses: any[] = [];
-    for (const child of significantChildren(node).slice(1)) {
-      if (child.type === "for_in_clause") {
-        const isAsync = child.children.some((part) => part.text === "async");
-        if (isAsync && !this.functionFrames.at(-1)?.isCoroutine) {
-          throw new SyntaxError("asynchronous comprehension outside async function");
+    try {
+      let forIndex = 0;
+      for (const child of children) {
+        if (child.type === "for_in_clause") {
+          const isAsync = child.children.some((part) => part.text === "async");
+          if (isAsync && !inherited?.isCoroutine) {
+            throw new SyntaxError(
+              "asynchronous comprehension outside async function",
+            );
+          }
+          clauses.push({
+            init: this.lowerBindingTarget(
+              this.lowerExpression(this.field(child, "left")),
+              this.field(child, "left"),
+            ),
+            name: null,
+            object: forIndex === 0
+              ? firstIterable
+              : this.lowerExpression(this.field(child, "right")),
+            conditions: [],
+            is_async: isAsync,
+          });
+          forIndex += 1;
+        } else if (child.type === "if_clause") {
+          const expression = significantChildren(child)[0];
+          if (!clauses.length) throw new UnsupportedPythonCstNode(child);
+          clauses.at(-1).conditions.push(this.lowerExpression(expression));
         }
-        clauses.push({
-          init: this.lowerBindingTarget(
-            this.lowerExpression(this.field(child, "left")),
-            this.field(child, "left"),
-          ),
-          name: null,
-          object: this.lowerExpression(this.field(child, "right")),
-          conditions: [],
-          is_async: isAsync,
-        });
-      } else if (child.type === "if_clause") {
-        const expression = significantChildren(child)[0];
-        if (!clauses.length) throw new UnsupportedPythonCstNode(child);
-        clauses.at(-1).conditions.push(this.lowerExpression(expression));
       }
+      const first = clauses[0];
+      const properties: Record<string, any> = {
+        clauses,
+        init: first.init,
+        name: first.name,
+        object: first.object,
+        condition: first.conditions[0] ?? null,
+      };
+      if (constructor === "AST_DictComprehension") {
+        const literalFlags = this.dictionaryLiteralFlags();
+        if (body.type !== "pair") throw new UnsupportedPythonCstNode(body);
+        properties.statement = this.lowerExpression(this.field(body, "key"));
+        properties.value_statement = this.lowerExpression(
+          this.field(body, "value"),
+        );
+        properties.is_pydict = literalFlags.is_pydict;
+        properties.is_jshash = literalFlags.is_jshash;
+      } else {
+        properties.statement = this.lowerExpression(body);
+      }
+      const comprehension = this.make(constructor, node, properties);
+      comprehension.python_lexical_hygiene = !this.options.compiler_bootstrap;
+      comprehension.python_scope_bindings = [...comprehensionBindings];
+      return comprehension;
+    } finally {
+      this.functionFrames.pop();
     }
-    if (!clauses.length) throw new UnsupportedPythonCstNode(node, "no for clause");
-    const first = clauses[0];
-    const properties: Record<string, any> = {
-      clauses,
-      init: first.init,
-      name: first.name,
-      object: first.object,
-      condition: first.conditions[0] ?? null,
-    };
-    if (constructor === "AST_DictComprehension") {
-      const literalFlags = this.dictionaryLiteralFlags();
-      if (body.type !== "pair") throw new UnsupportedPythonCstNode(body);
-      properties.statement = this.lowerExpression(this.field(body, "key"));
-      properties.value_statement = this.lowerExpression(this.field(body, "value"));
-      properties.is_pydict = literalFlags.is_pydict;
-      properties.is_jshash = literalFlags.is_jshash;
-    } else {
-      properties.statement = this.lowerExpression(body);
-    }
-    return this.make(constructor, node, properties);
   }
 
   private lowerTuple(node: SyntaxNode): any {
@@ -2696,8 +3297,10 @@ export class PythonCstLowerer {
       const frame = this.functionFrames.at(-1);
       if (frame?.superClass && frame.superReceiver) {
         args.push(
-          this.make("AST_SymbolRef", node, { name: frame.superClass }),
-          this.make("AST_SymbolRef", node, { name: frame.superReceiver }),
+          this.pythonSymbol("AST_SymbolRef", node, { name: frame.superClass }),
+          this.pythonSymbol("AST_SymbolRef", node, {
+            name: frame.superReceiver,
+          }),
         );
       }
     }
@@ -2877,12 +3480,20 @@ export class PythonCstLowerer {
       "ρσ_bigint_gcd",
       "ρσ_integer_bigint",
     ]).has(callableName ?? "") ? "bigint" : undefined;
-    return this.make("AST_Call", node, {
+    const call = this.make("AST_Call", node, {
       expression: callable,
       direct_call: callable.intrinsic_call === true || inferredType !== undefined,
       inferred_type: inferredType,
       args,
     });
+    if (
+      functionNode.type === "identifier" &&
+      ["dir", "globals", "locals", "vars"].includes(functionNode.text) &&
+      !this.namespaceBuiltinIsLexicallyShadowed(functionNode.text)
+    ) {
+      call.namespace_builtin = true;
+    }
+    return call;
   }
 
   /** Mark the object-shaped metadata consumed directly by native Object APIs. */

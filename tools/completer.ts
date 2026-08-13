@@ -14,15 +14,50 @@ export default function Completer(_compiler: Compiler) {
 
   function globalNames(): string[] {
     try {
-      const names: string[] = runInThisContext(
+      const hostNames: string[] = runInThisContext(
         "typeof ρσ_dir === 'function' ? " +
           "ρσ_dir(globalThis) : Object.getOwnPropertyNames(globalThis)"
       );
-      return [...new Set(names.concat(allKeywords))].sort();
+      const moduleNamespace = global.ρσ_modules?.__main__;
+      const moduleNames: string[] = moduleNamespace == null
+        ? []
+        : typeof global.ρσ_dir === "function"
+          ? global.ρσ_dir(moduleNamespace)
+          : Object.getOwnPropertyNames(moduleNamespace);
+      const liveModuleNames = moduleNames.filter((name) =>
+        Reflect.get(moduleNamespace, name) !== undefined
+      );
+      // A present-but-undefined module member is a deleted Python binding.
+      // Do not make completion disagree with evaluation by exposing a
+      // same-named JavaScript host (or proxy-provided builtin) through it.
+      const visibleHostNames = hostNames.filter((name) =>
+        moduleNamespace == null ||
+        !Reflect.has(moduleNamespace, name) ||
+        Reflect.get(moduleNamespace, name) !== undefined
+      );
+      return [
+        ...new Set(
+          visibleHostNames.concat(liveModuleNames, allKeywords),
+        ),
+      ].sort();
     } catch (e) {
       console.log(e.stack || e.toString());
     }
     return [];
+  }
+
+  function resolveExpression(expression: string): unknown {
+    const [first, ...properties] = expression.split(".");
+    const moduleNamespace = global.ρσ_modules?.__main__;
+    let value: any;
+    if (moduleNamespace != null && Reflect.has(moduleNamespace, first)) {
+      value = Reflect.get(moduleNamespace, first);
+      if (value === undefined) throw new ReferenceError(first);
+    } else {
+      value = runInThisContext(first);
+    }
+    for (const property of properties) value = Reflect.get(value, property);
+    return value;
   }
 
   function objectNames(obj: any, prefix: string): string[] {
@@ -82,9 +117,12 @@ export default function Completer(_compiler: Compiler) {
     const prefix = match[2] ?? "";
     if (!expression) return [prefixMatches(prefix, globalNames()), prefix];
     try {
-      return [objectNames(runInThisContext(expression), prefix), prefix];
+      return [objectNames(resolveExpression(expression), prefix), prefix];
     } catch (_error) {
-      return [];
+      // Keep the completion protocol stable even when the expression is an
+      // unresolved/deleted Python name.  Callers still need the typed prefix
+      // in order to leave the editor buffer untouched.
+      return [[], prefix];
     }
   }
 
