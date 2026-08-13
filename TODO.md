@@ -30,9 +30,12 @@
   `ZZ` and `QQ` vectors now canonically own generated resources; their remaining
   matrix-vector bridge is list-free but should become a direct resource ABI so
   it no longer copies through a temporary `ByteRegion`.
-- Wire public row and column spaces through the completed bulk
-  `matrix_subspaces` contract, and add one generated exact-resource pivot query
-  so `ZZ` and `QQ` echelon metadata never requires exporting every entry.
+- Make word-characteristic finite-extension scalars a complete generated
+  `FqContext`/`FqElement` resource slice behind forced routing first: cover
+  construction, arithmetic, canonical coordinates, hashing, serialization,
+  lifecycle, one borrowed typed-Python kernel, and real WebAssembly. Migrate
+  extension polynomials and matrices before flipping the public default; never
+  retain generated and legacy scalar objects simultaneously.
 - Complete generated sparse-random `QQ` construction for the `1/n`
   distribution and numerator/denominator bounds beyond 32 bits; both currently
   fall back to dense host loops.
@@ -48,6 +51,12 @@
   tuning profiles, deterministic JSON lowering, explainable selection, and
   benchmark provenance. Keep hard capability limits distinct from measured
   thresholds and permit an explicitly activated local tuning profile.
+- Add authoritative benchmark recorders for multi-host evidence. Exact-subspace
+  history must retain raw samples plus clean commit, host, native-profile,
+  build, correctness, and timing-scope identity; algorithm comparisons must
+  emit complete `sagejs.math-dispatch/benchmark-v1` training and validation
+  grids. Never reconstruct checked-in evidence from human-readable transcripts,
+  and keep fitted threshold proposals inert until independently validated.
 - Ratchet cold production-kernel loading separately from warm mathematical
   execution, and never silently compile a missing production kernel in an
   ordinary installed session.
