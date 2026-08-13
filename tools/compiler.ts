@@ -12,6 +12,7 @@ import { join, relative } from "path";
 import { readFileSync } from "fs";
 import { createContext, Script } from "vm";
 import { atomicWriteCacheFileSync } from "./cache-file";
+import { observeCodeCache } from "./code-cache";
 import { sha1sum } from "./utils";
 import {
   readCompilerCachedData,
@@ -60,6 +61,7 @@ function evaluateCompiler(
     filename,
     cachedData,
   });
+  observeCodeCache(script, "compiler");
   script.runInContext(compiler_context);
   return compiler_exports;
 }

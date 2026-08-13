@@ -217,6 +217,33 @@ try {
   });
   assert.ok(currentCacheFilename);
   const currentCache = JSON.parse(readFileSync(currentCacheFilename, "utf8"));
+  const rejectedCache = {
+    ...currentCache,
+    javascript: `${currentCache.javascript}\n`,
+  };
+  writeFileSync(currentCacheFilename, JSON.stringify(rejectedCache));
+  const rejectedResult = spawnSync(
+    process.execPath,
+    [cli, "--python"],
+    {
+      cwd: root,
+      encoding: "utf8",
+      env: {
+        ...process.env,
+        SAGEJSPATH: sourceDirectory,
+        SAGEJS_CODE_CACHE_DIAGNOSTICS: "error",
+        XDG_CACHE_HOME: replCache,
+      },
+      input: "import cached_value\n",
+    },
+  );
+  assert.notEqual(rejectedResult.status, 0);
+  assert.match(
+    rejectedResult.stderr,
+    /V8 code cache rejected: lazy module cached_value/,
+  );
+  writeFileSync(currentCacheFilename, JSON.stringify(currentCache));
+
   const filenameMarker = "__sagejs_precompiled_module_filename__";
   const filenameLiteral = JSON.stringify(currentCache.filename);
   assert.ok(currentCache.javascript.includes(filenameLiteral));

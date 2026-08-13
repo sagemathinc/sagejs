@@ -10,6 +10,7 @@ const { performance } = require("node:perf_hooks");
 const EXPECTED_POWER = "1267650600228229401496703205376";
 const EXPECTED_MPMATH = "1.4142135623730950488016887242096980785696718753769";
 const CODE_CACHE_REJECTION = /code cache(?: data)? rejected/i;
+const CODE_CACHE_DIAGNOSTICS_ENV = "SAGEJS_CODE_CACHE_DIAGNOSTICS";
 
 function usage() {
   return `Usage: node scripts/release-startup-measure.cjs --executable PATH [options]
@@ -134,7 +135,7 @@ function runProcess(command, args, options = {}) {
 }
 
 function targetArguments(mode) {
-  return mode === "sage" ? ["--sage"] : [];
+  return [mode === "sage" ? "--sage" : "--python"];
 }
 
 function probes(options, sharedCache) {
@@ -142,6 +143,7 @@ function probes(options, sharedCache) {
   const power = options.mode === "sage" ? "2^100" : "2**100";
   const baseEnvironment = {
     ...process.env,
+    [CODE_CACHE_DIAGNOSTICS_ENV]: "error",
     XDG_CACHE_HOME: sharedCache,
   };
   const definitions = [
@@ -156,9 +158,10 @@ function probes(options, sharedCache) {
       id: "sea_entry",
       description: "SEA deserialize and bundled entry",
       samples: options.samples,
-      run: () => runProcess(options.executable, ["--version"], {
-        env: baseEnvironment,
-      }),
+      run: () =>
+        runProcess(options.executable, [...modeArguments, "--version"], {
+          env: baseEnvironment,
+        }),
       validate: ({ stdout }) => /^sagejs \S+\s*$/.test(stdout),
     },
     {
@@ -213,7 +216,11 @@ function probes(options, sharedCache) {
           const cache = mkdtempSync(join(tmpdir(), "sagejs-startup-cold-"));
           try {
             return runProcess(options.executable, modeArguments, {
-              env: { ...process.env, XDG_CACHE_HOME: cache },
+              env: {
+                ...process.env,
+                [CODE_CACHE_DIAGNOSTICS_ENV]: "error",
+                XDG_CACHE_HOME: cache,
+              },
               input: source,
             });
           } finally {
@@ -297,6 +304,7 @@ function measure(options) {
         ),
       },
       code_cache_rejection_observed: false,
+      code_cache_diagnostics: "error",
     };
   } finally {
     rmSync(sharedCache, { recursive: true, force: true });
@@ -347,10 +355,13 @@ if (require.main === module) {
 
 module.exports = {
   CODE_CACHE_REJECTION,
+  CODE_CACHE_DIAGNOSTICS_ENV,
   formatReport,
   median,
   parseArguments,
   percentile,
   positiveOddInteger,
+  runProcess,
   summarize,
+  targetArguments,
 };

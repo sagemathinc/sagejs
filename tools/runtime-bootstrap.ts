@@ -13,6 +13,7 @@ import { Script } from "vm";
 
 import { markModuleCacheInUse } from "./cache-lease";
 import { atomicWriteCacheFileSync } from "./cache-file";
+import { observeCodeCache } from "./code-cache";
 import type { Compiler } from "./compiler";
 import dynamicCode from "./dynamic-code";
 import {
@@ -178,6 +179,7 @@ export function runRuntimeBootstrap(
     filename: runtimeBootstrapFilename(mode),
     cachedData,
   });
+  observeCodeCache(script, `runtime bootstrap (${mode})`);
 
   global.__sagejs_sage_mode__ = mode === "sage";
   try {
@@ -741,7 +743,7 @@ export function runRuntimeBootstrap(
         filename: `sagejs/lazy-module-${name}.js`,
         cachedData,
       });
-      if (moduleScript.cachedDataRejected) {
+      if (observeCodeCache(moduleScript, `lazy module ${name}`)) {
         cachedData = undefined;
         cacheNeedsWrite = true;
         moduleScript = new Script(scriptSource, {

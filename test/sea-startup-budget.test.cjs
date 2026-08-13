@@ -5,12 +5,15 @@ const test = require("node:test");
 
 const {
   CODE_CACHE_REJECTION,
+  CODE_CACHE_DIAGNOSTICS_ENV,
   formatReport,
   median,
   parseArguments,
   percentile,
   positiveOddInteger,
+  runProcess,
   summarize,
+  targetArguments,
 } = require("../scripts/release-startup-measure.cjs");
 
 test("release startup samples use observed medians and conservative p90", () => {
@@ -56,6 +59,23 @@ test("release startup arguments infer Sage and Python executable modes", () => {
 test("release startup rejects every spelling of V8 code-cache rejection", () => {
   assert.match("Code cache data rejected.", CODE_CACHE_REJECTION);
   assert.match("code cache rejected", CODE_CACHE_REJECTION);
+});
+
+test("release startup makes both executable modes explicit", () => {
+  assert.deepEqual(targetArguments("sage"), ["--sage"]);
+  assert.deepEqual(targetArguments("python"), ["--python"]);
+});
+
+test("release startup fails when a child reports code-cache rejection", () => {
+  assert.throws(
+    () =>
+      runProcess(process.execPath, [
+        "-e",
+        "process.stderr.write('Sage.js V8 code cache rejected: compiler\\n')",
+      ]),
+    /rejected embedded V8 code cache/,
+  );
+  assert.equal(CODE_CACHE_DIAGNOSTICS_ENV, "SAGEJS_CODE_CACHE_DIAGNOSTICS");
 });
 
 test("release startup human report keeps components distinct", () => {
