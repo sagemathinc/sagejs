@@ -262,6 +262,34 @@ test("build receipts are canonical, target-specific, and source-aligned", () => 
       () => validateExecutableReceipts(receipts),
       /different source identities/,
     );
+
+    const alignedDirectory = join(directory, "aligned");
+    mkdirSync(alignedDirectory);
+    const aligned = writeReceipts(alignedDirectory);
+    const math = JSON.parse(readFileSync(aligned.mathReceipt, "utf8"));
+    math.target.libc.version = "2.38";
+    writeFileSync(aligned.mathReceipt, serialize(createBuildManifest({
+      capabilities: math.capabilities,
+      sagejsVersion: math.sagejsVersion,
+      source: math.source,
+      target: math.target,
+      toolchain: math.toolchain,
+    })));
+    assert.doesNotThrow(() => validateExecutableReceipts(aligned));
+
+    const mismatched = JSON.parse(readFileSync(aligned.pythonReceipt, "utf8"));
+    mismatched.target.nodeAbi = "142";
+    writeFileSync(aligned.pythonReceipt, serialize(createBuildManifest({
+      capabilities: mismatched.capabilities,
+      sagejsVersion: mismatched.sagejsVersion,
+      source: mismatched.source,
+      target: mismatched.target,
+      toolchain: mismatched.toolchain,
+    })));
+    assert.throws(
+      () => validateExecutableReceipts(aligned),
+      /different runtime target identities/,
+    );
   } finally {
     rmSync(directory, { recursive: true, force: true });
   }
