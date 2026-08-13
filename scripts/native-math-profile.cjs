@@ -264,6 +264,35 @@ function nativeMathBuildProfile(options = {}) {
   };
 }
 
+function validateNativeMathBuildProfile(profile, target = undefined) {
+  if (
+    profile === null ||
+    typeof profile !== "object" ||
+    Array.isArray(profile) ||
+    profile.schema !== PROFILE_SCHEMA ||
+    ![PORTABLE_PROFILE, CPU_NATIVE_PROFILE].includes(profile.requestedProfile) ||
+    ![PORTABLE_PROFILE, CPU_NATIVE_PROFILE].includes(profile.effectiveProfile) ||
+    !/^[0-9a-f]{64}$/.test(profile.fingerprint ?? "")
+  ) {
+    throw new Error("native mathematics profile is invalid");
+  }
+  const identity = { ...profile };
+  delete identity.fingerprint;
+  if (sha256(JSON.stringify(stableJson(identity))) !== profile.fingerprint) {
+    throw new Error("native mathematics profile fingerprint is invalid");
+  }
+  if (
+    target !== undefined &&
+    (profile.abi?.platform !== target.platform ||
+      profile.abi?.arch !== target.arch ||
+      profile.abi?.endianness !== target.endianness ||
+      profile.abi?.wordBits !== target.wordBits)
+  ) {
+    throw new Error("native mathematics profile does not match its target");
+  }
+  return profile;
+}
+
 function flintObservedCapabilities(prefix) {
   const header = join(prefix, "include", "flint", "flint-config.h");
   if (!existsSync(header)) return { flintFftSmall: null };
@@ -320,4 +349,5 @@ module.exports = {
   nativeMathBuildProfile,
   nativeMathBuildProvenance,
   stableJson,
+  validateNativeMathBuildProfile,
 };

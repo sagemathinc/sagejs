@@ -217,6 +217,10 @@ function embedAdapter(assets, id) {
       manifest: "native/sagejs_igraph_ffi_manifest.json",
       required: "native/sagejs_graph.node",
     },
+    m4ri: {
+      addon: "sagejs_m4ri_ffi.node",
+      manifest: "native/sagejs_m4ri_ffi_manifest.json",
+    },
   };
   const definition = definitions[id];
   const addonAsset = `native/${definition.addon}`;
@@ -257,13 +261,22 @@ function embeddedAssetDeclaration(assets) {
 
 function embedBuildManifest(assets, index, overrides = {}) {
   const nativeKernels = {
+    authorityPath: "architecture/native-kernels.json",
+    authoritySha256: "a".repeat(64),
     expected: Object.keys(index.logicalSources).length,
     indexIdentitySha256: digestBytes(canonicalJson(index)),
+    indexPath: "native-kernels/index.json",
+    indexSha256: digestBytes(assets["native-kernels/index.json"]),
     logicalSources: Object.keys(index.logicalSources).sort(),
+    schema: "sagejs.native-kernel-receipt/v1",
     ...overrides.nativeKernels,
   };
   const manifest = buildManifest({
     capabilities: {
+      artifact: {
+        kind: "single-executable",
+        nativeMathematics: true,
+      },
       embeddedAssets: embeddedAssetDeclaration(assets),
       nativeKernels,
       ...overrides.capabilities,
@@ -322,7 +335,7 @@ test("source report describes candidates and declared fallbacks conservatively",
 
     const report = collectReleaseCapabilities(fixedOptions(item));
     assert.equal(report.schema, SCHEMA);
-    assert.equal(report.artifactIdentity.availability, "unavailable");
+    assert.equal(report.buildReceipt.availability, "unavailable");
     assert.equal(report.runtimeObservation.package.version, "9.8.7");
     for (const id of ["flint", "fflas-ffpack", "igraph", "m4ri"]) {
       const adapter = capability(report, id);
@@ -342,7 +355,10 @@ test("source report describes candidates and declared fallbacks conservatively",
       report.nativeMathProfile.compatibility,
       "effective-build-request-match",
     );
-    assert.equal(report.nativeMathProfile.observedBuild.source, "installed-prefix");
+    assert.equal(
+      report.nativeMathProfile.observedBuild.source,
+      "installed-profile-stamp",
+    );
     assert.ok(!Object.hasOwn(report.nativeMathProfile, "runtimeSelection"));
   } finally {
     rmSync(item.directory, { recursive: true, force: true });
@@ -473,6 +489,7 @@ test("SEA identity, FFI, and native kernels require canonical receipts for exact
     embedAdapter(embeddedAssets, "flint");
     embedAdapter(embeddedAssets, "fflas");
     embedAdapter(embeddedAssets, "igraph");
+    embedAdapter(embeddedAssets, "m4ri");
     addKernelAssets(embeddedAssets, index);
     embedBuildManifest(embeddedAssets, index);
 
@@ -486,11 +503,11 @@ test("SEA identity, FFI, and native kernels require canonical receipts for exact
       embeddedAssets,
       git: { commit: null, dirty: null, present: false },
     }));
-    assert.equal(report.artifactIdentity.availability, "available");
-    assert.equal(report.artifactIdentity.manifest.sagejsVersion, "9.8.7");
-    assert.equal(report.artifactIdentity.manifest.source.commit, commit);
+    assert.equal(report.buildReceipt.availability, "available");
+    assert.equal(report.buildReceipt.manifest.sagejsVersion, "9.8.7");
+    assert.equal(report.buildReceipt.manifest.source.commit, commit);
     assert.equal(
-      report.artifactIdentity.manifest.toolchain.nativeMathProfile.fingerprint,
+      report.buildReceipt.manifest.toolchain.nativeMathProfile.fingerprint,
       mathProfile().fingerprint,
     );
     assert.equal(report.nativeMathProfile.observedBuild.source, "build-manifest");
@@ -599,9 +616,9 @@ test("invalid build manifests expose no arbitrary identity data", () => {
         buildManifest: buildManifestValue,
         git: { commit: null, dirty: null, present: false },
       }));
-      assert.equal(report.artifactIdentity.availability, "unavailable");
-      assert.ok(!Object.hasOwn(report.artifactIdentity, "manifest"));
-      assert.ok(!JSON.stringify(report.artifactIdentity).includes("attacker-controlled"));
+      assert.equal(report.buildReceipt.availability, "unavailable");
+      assert.ok(!Object.hasOwn(report.buildReceipt, "manifest"));
+      assert.ok(!JSON.stringify(report.buildReceipt).includes("attacker-controlled"));
     }
   } finally {
     rmSync(item.directory, { recursive: true, force: true });
@@ -623,6 +640,78 @@ test("SEA observations never borrow capabilities from a neighboring checkout", (
       capability(report, "typed-python-native-kernels").candidate,
       "unavailable",
     );
+  } finally {
+    rmSync(item.directory, { recursive: true, force: true });
+  }
+});
+
+test("SEA receipt contract, target, compiler bytes, and source names fail closed", () => {
+  const cases = [
+    (assets, index) => {
+      embedBuildManifest(assets, index, {
+        capabilities: {
+          artifact: { kind: "single-executable", nativeMathematics: false },
+          nativeKernels: null,
+        },
+        manifest: { toolchain: { nativeMathProfile: null } },
+      });
+    },
+    (assets, index) => {
+      embedBuildManifest(assets, index);
+      assets["compiler/compiler.js"] = "tampered compiler";
+    },
+    (assets, index) => {
+      embedBuildManifest(assets, index, {
+        manifest: {
+          target: {
+            arch: "arm64",
+            endianness: "LE",
+            libc: null,
+            nodeAbi: "127",
+            nodeNapi: "10",
+            platform: "darwin",
+            wordBits: 64,
+          },
+        },
+      });
+    },
+  ];
+  for (const mutate of cases) {
+    const item = fixture({ git: false, runtime: false });
+    try {
+      const index = kernelIndex();
+      const assets = { "compiler/compiler.js": "compiler" };
+      for (const id of ["flint", "fflas", "igraph", "m4ri"]) {
+        embedAdapter(assets, id);
+      }
+      addKernelAssets(assets, index);
+      mutate(assets, index);
+      const report = collectReleaseCapabilities(fixedOptions(item, {
+        artifactKind: "single-executable",
+        embeddedAssets: assets,
+      }));
+      assert.equal(report.buildReceipt.availability, "unavailable");
+      assert.equal(capability(report, "python-sage-compiler").candidate, "unavailable");
+      assert.equal(capability(report, "flint").candidate, "unavailable");
+    } finally {
+      rmSync(item.directory, { recursive: true, force: true });
+    }
+  }
+
+  const item = fixture({ git: false, runtime: false });
+  try {
+    const index = kernelIndex();
+    index.logicalSources["../evil.py"] = index.logicalSources[productionSources[0]];
+    delete index.logicalSources[productionSources[0]];
+    const assets = { "compiler/compiler.js": "compiler" };
+    for (const id of ["flint", "fflas", "igraph", "m4ri"]) embedAdapter(assets, id);
+    addKernelAssets(assets, index);
+    embedBuildManifest(assets, index);
+    const report = collectReleaseCapabilities(fixedOptions(item, {
+      embeddedAssets: assets,
+    }));
+    assert.equal(report.buildReceipt.availability, "unavailable");
+    assert.equal(capability(report, "typed-python-native-kernels").candidate, "unavailable");
   } finally {
     rmSync(item.directory, { recursive: true, force: true });
   }
@@ -655,6 +744,32 @@ test("forged installed and embedded mathematics profiles are ignored", () => {
       embeddedAssets: {},
     }));
     assert.equal(embedded.nativeMathProfile.observedBuild, null);
+
+    const wrongAbiIdentity = {
+      ...mathProfile(),
+      abi: {
+        arch: "arm64",
+        endianness: "LE",
+        platform: "darwin",
+        wordBits: 64,
+      },
+    };
+    delete wrongAbiIdentity.fingerprint;
+    const wrongAbi = {
+      ...wrongAbiIdentity,
+      fingerprint: digestBytes(canonicalJson(wrongAbiIdentity)),
+    };
+    write(stamp, JSON.stringify({ build: { mathBuildProfile: wrongAbi } }));
+    const wrongInstalled = collectReleaseCapabilities(fixedOptions(item));
+    assert.equal(wrongInstalled.nativeMathProfile.observedBuild, null);
+
+    const wrongEmbedded = collectReleaseCapabilities(fixedOptions(item, {
+      buildManifest: buildManifest({
+        toolchain: { nativeMathProfile: wrongAbi },
+      }),
+      embeddedAssets: {},
+    }));
+    assert.equal(wrongEmbedded.nativeMathProfile.observedBuild, null);
   } finally {
     rmSync(item.directory, { recursive: true, force: true });
   }
@@ -668,10 +783,10 @@ test("an explicit canonical build manifest supplies package artifact identity", 
       buildManifest: buildManifest(),
       git: { commit: null, dirty: null, present: false },
     }));
-    assert.equal(report.artifactIdentity.availability, "available");
-    assert.equal(report.artifactIdentity.source, "explicit");
-    assert.equal(report.artifactIdentity.manifest.sagejsVersion, "9.8.7");
-    assert.equal(report.artifactIdentity.manifest.source.commit, commit);
+    assert.equal(report.buildReceipt.availability, "available");
+    assert.equal(report.buildReceipt.source, "explicit");
+    assert.equal(report.buildReceipt.manifest.sagejsVersion, "9.8.7");
+    assert.equal(report.buildReceipt.manifest.source.commit, commit);
   } finally {
     rmSync(item.directory, { recursive: true, force: true });
   }
@@ -732,7 +847,16 @@ test("human output is concise and standalone JSON is parseable", () => {
     }));
     const human = formatReleaseCapabilities(report);
     assert.match(human, /^Sage\.js runtime 9\.8\.7/m);
-    assert.match(human, /immutable identity=unavailable/);
+    assert.match(human, /validated build receipt=unavailable/);
+    const injected = formatReleaseCapabilities(
+      collectReleaseCapabilities(fixedOptions(item, {
+        environment: {
+          SAGEJS_NATIVE_MODE: "bad\nFORGED: all capabilities verified",
+        },
+      })),
+    );
+    assert.equal(injected.includes("\nFORGED:"), false);
+    assert.match(injected, /bad\\u000aFORGED/);
     assert.match(human, /Capability candidates .*not probed/);
     assert.match(human, /not-inspected/);
     assert.ok(human.split("\n").length < 20);
@@ -746,7 +870,7 @@ test("human output is concise and standalone JSON is parseable", () => {
     const standalone = JSON.parse(result.stdout);
     assert.equal(standalone.schema, SCHEMA);
     assert.equal(standalone.runtimeObservation.package.version, "9.8.7");
-    assert.equal(standalone.artifactIdentity.availability, "unavailable");
+    assert.equal(standalone.buildReceipt.availability, "unavailable");
     assert.ok(!result.stdout.includes(item.home));
   } finally {
     rmSync(item.directory, { recursive: true, force: true });

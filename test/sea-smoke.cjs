@@ -333,6 +333,31 @@ try {
     );
 
     testFflasSea();
+
+    const m4riProgram = join(temporaryDirectory, "m4ri-sea.sage");
+    writeFileSync(
+      m4riProgram,
+      [
+        "B = matrix(GF(2), [[1,1,0], [0,1,1], [1,1,1]])",
+        "assert B.det() == 1",
+        "assert B*B.inverse() == identity_matrix(GF(2), 3)",
+        "print('m4ri sea ok')",
+        "",
+      ].join("\n"),
+    );
+    const m4ri = spawnSync(relocatedMathExecutable, [m4riProgram], {
+      cwd: temporaryDirectory,
+      encoding: "utf8",
+      env: {
+        ...process.env,
+        SAGEJS_NATIVE_REQUIRED: "1",
+        SAGEJS_NATIVE_TRACE: "1",
+      },
+    });
+    if (m4ri.error) throw m4ri.error;
+    assert.equal(m4ri.status, 0, m4ri.stderr || m4ri.stdout);
+    assert.match(m4ri.stdout, /generated-m4ri-resource/);
+    assert.match(m4ri.stdout, /m4ri sea ok/);
   }
 } finally {
   rmSync(temporaryDirectory, { recursive: true, force: true });

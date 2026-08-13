@@ -151,9 +151,11 @@ function fixture() {
     }
   }
   const seaNode = write(join(root, "node-template"), "node template bytes");
+  const mainBundle = write(join(root, "sea-entry.cjs"), "main bundle bytes");
   return {
     assets,
     cleanup: () => rmSync(root, { force: true, recursive: true }),
+    mainBundle,
     root,
     seaNode,
     sources,
@@ -165,6 +167,7 @@ function options(item, overrides = {}) {
     assets: item.assets,
     builderObservation: builderObservation(),
     glibcVersion: "2.28",
+    mainBundle: item.mainBundle,
     nativeMathProfile: mathProfile(),
     root: item.root,
     seaNode: item.seaNode,
@@ -172,6 +175,12 @@ function options(item, overrides = {}) {
     withFlint: true,
     ...overrides,
   };
+}
+
+function profileWith(overrides) {
+  const identity = stable({ ...mathProfile(), ...overrides });
+  delete identity.fingerprint;
+  return { ...identity, fingerprint: sha256(JSON.stringify(identity)) };
 }
 
 test("GLIBC target is derived from the Node executable requirement", () => {
@@ -194,6 +203,37 @@ test("GLIBC target is derived from the Node executable requirement", () => {
         platform: "linux",
         wordBits: 64,
       },
+    );
+  } finally {
+    item.cleanup();
+  }
+});
+
+test("Linux compatibility covers every embedded native addon", () => {
+  const item = fixture();
+  try {
+    const requirements = new Map([
+      [item.seaNode, "GLIBC_2.28"],
+      [item.assets["native/sagejs_m4ri_ffi.node"], "GLIBC_2.29"],
+      [item.assets["native/sagejs_flint_ffi.node"], "GLIBC_2.38"],
+    ]);
+    const spawn = (command, arguments_) => ({
+      status: 0,
+      stdout: requirements.get(arguments_.at(-1)) ?? "GLIBC_2.17",
+    });
+    assert.equal(
+      targetFromSeaBuilder(
+        item.seaNode,
+        options(item, {
+          glibcVersion: undefined,
+          nativeExecutables: [
+            item.assets["native/sagejs_m4ri_ffi.node"],
+            item.assets["native/sagejs_flint_ffi.node"],
+          ],
+          spawn,
+        }),
+      ).libc.version,
+      "2.38",
     );
   } finally {
     item.cleanup();
@@ -245,6 +285,10 @@ test("mathematics SEA receipt binds authority, index, sources, and every native 
       mathProfile().fingerprint,
     );
     assert.match(first.toolchain.seaNode.executableSha256, /^[0-9a-f]{64}$/);
+    assert.deepEqual(first.toolchain.seaMain, {
+      sha256: sha256(readFileSync(item.mainBundle)),
+      size: readFileSync(item.mainBundle).length,
+    });
   } finally {
     item.cleanup();
   }
@@ -303,6 +347,31 @@ test("kernel receipt fails closed on authority, index, or asset drift", () => {
   }
 });
 
+test("build identity binds ordinary runtime assets and the SEA main bundle", () => {
+  const item = fixture();
+  try {
+    const first = createSeaBuildManifest(options(item));
+    writeFileSync(item.assets["native/zeromq.node"], "different zeromq bytes");
+    const changedAsset = createSeaBuildManifest(options(item));
+    assert.notEqual(first.identitySha256, changedAsset.identitySha256);
+
+    writeFileSync(item.mainBundle, "different main bundle bytes");
+    const changedMain = createSeaBuildManifest(options(item));
+    assert.notEqual(changedAsset.identitySha256, changedMain.identitySha256);
+
+    item.assets["release/build-manifest.json"] = write(
+      join(item.root, "self.json"),
+      "self reference excluded",
+    );
+    assert.equal(
+      createSeaBuildManifest(options(item)).identitySha256,
+      changedMain.identitySha256,
+    );
+  } finally {
+    item.cleanup();
+  }
+});
+
 test("ordinary SEA builds record an exact dirty source identity", () => {
   const item = fixture();
   try {
@@ -340,10 +409,9 @@ test("mathematics profile must exactly match the builder target", () => {
   try {
     assert.throws(
       () => createSeaBuildManifest(options(item, {
-        nativeMathProfile: {
-          ...mathProfile(),
+        nativeMathProfile: profileWith({
           abi: { ...mathProfile().abi, arch: "arm64" },
-        },
+        }),
       })),
       /does not match/,
     );

@@ -32,6 +32,8 @@ const GRAPH_FFI_ASSET = "native/sagejs_igraph_ffi.node";
 const GRAPH_FFI_MANIFEST_ASSET = "native/sagejs_igraph_ffi_manifest.json";
 const FFLAS_FFI_ASSET = "native/sagejs_fflas_ffi.node";
 const FFLAS_FFI_MANIFEST_ASSET = "native/sagejs_fflas_ffi_manifest.json";
+const M4RI_FFI_ASSET = "native/sagejs_m4ri_ffi.node";
+const M4RI_FFI_MANIFEST_ASSET = "native/sagejs_m4ri_ffi_manifest.json";
 const ZEROMQ_ASSET = "native/zeromq.node";
 const PLOTLY_ASSET = "vendor/plotly.min.js";
 const KERNEL_WORKER_ASSET = "worker/kernel-worker.cjs";
@@ -81,6 +83,7 @@ export function publishedNativeModuleError(
 let flintModule: unknown;
 let graphModule: unknown;
 let fflasModule: unknown;
+let m4riModule: unknown;
 let zeroMQModule: unknown;
 const runtimeModuleCache = new Map<string, unknown>();
 let nativeTemporaryDirectory: string | undefined;
@@ -464,6 +467,34 @@ function loadEmbeddedFflas(): unknown {
   return fflasModule;
 }
 
+function loadEmbeddedM4ri(): unknown {
+  if (m4riModule !== undefined) return m4riModule;
+  if (!hasAsset(M4RI_FFI_ASSET)) {
+    throw new Error(
+      "This Sage.js executable was built without the optional M4RI backend",
+    );
+  }
+  if (!nativeTemporaryDirectory) {
+    nativeTemporaryDirectory = mkdtempSync(join(tmpdir(), "sagejs-sea-"));
+  }
+  const addonFilename = join(
+    nativeTemporaryDirectory,
+    basename(M4RI_FFI_ASSET),
+  );
+  writeFileSync(addonFilename, Buffer.from(getAsset(M4RI_FFI_ASSET)), {
+    mode: 0o700,
+  });
+  const nativeModule = { exports: {} as Record<PropertyKey, unknown> };
+  process.dlopen(nativeModule, addonFilename);
+  attachEmbeddedFfiManifest(
+    nativeModule.exports,
+    M4RI_FFI_MANIFEST_ASSET,
+    "M4RI",
+  );
+  m4riModule = nativeModule.exports;
+  return m4riModule;
+}
+
 function loadEmbeddedZeroMQ(): unknown {
   if (zeroMQModule !== undefined) return zeroMQModule;
   if (!hasAsset(ZEROMQ_ASSET)) {
@@ -540,6 +571,8 @@ export function runtimeRequire(name: string): unknown {
       module = loadEmbeddedFflas();
     } else if (isSea() && name === "@sagemath/sagejs-graph") {
       module = loadEmbeddedGraph();
+    } else if (isSea() && name === "@sagemath/sagejs-m4ri") {
+      module = loadEmbeddedM4ri();
     } else if (isSea() && name === "zeromq") {
       module = loadEmbeddedZeroMQ();
     } else if (name === "numpy-ts") {

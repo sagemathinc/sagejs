@@ -22,6 +22,9 @@ const {
 const {
   standaloneModuleInventory,
 } = require("../tools/standalone-library.cjs");
+const {
+  validateNativeMathBuildProfile,
+} = require("./native-math-profile.cjs");
 
 const root = join(__dirname, "..");
 const outputDirectory = join(root, "build", "sea");
@@ -153,6 +156,13 @@ function maximumRequiredGlibc(executable, options = {}) {
   );
 }
 
+function maximumRequiredGlibcAcross(executables, options = {}) {
+  if (options.glibcVersion !== undefined) return options.glibcVersion;
+  const requirements = executables.map((executable) =>
+    maximumRequiredGlibc(executable, options));
+  return requirements.sort(compareVersions).at(-1);
+}
+
 function observeSeaBuilder(executable, options = {}) {
   if (options.builderObservation !== undefined) {
     return structuredClone(options.builderObservation);
@@ -188,7 +198,10 @@ function targetFromSeaBuilder(executable, options = {}) {
     libc: builder.platform === "linux"
       ? {
           family: "glibc",
-          version: maximumRequiredGlibc(executable, options),
+          version: maximumRequiredGlibcAcross(
+            [executable, ...(options.nativeExecutables || [])],
+            options,
+          ),
         }
       : null,
     nodeAbi: builder.versions.modules,
@@ -225,29 +238,14 @@ function nativeMathProfile(rootDirectory, target, options = {}) {
     profile = contents?.build?.mathBuildProfile ??
       contents?.identity?.mathBuildProfile;
   }
-  if (
-    profile?.schema !== "sagejs.native-math-profile-v1" ||
-    !/^[0-9a-f]{64}$/.test(profile.fingerprint || "")
-  ) {
+  try {
+    return validateNativeMathBuildProfile(profile, target);
+  } catch (error) {
     throw new Error(
-      `native mathematics build profile is invalid${stamp ? `: ${stamp}` : ""}`,
+      `${error.message}${stamp ? `: ${stamp}` : ""}`,
+      { cause: error },
     );
   }
-  if (
-    profile.abi?.platform !== target.platform ||
-    profile.abi?.arch !== target.arch ||
-    profile.abi?.endianness !== target.endianness ||
-    profile.abi?.wordBits !== target.wordBits
-  ) {
-    throw new Error("native mathematics profile does not match the SEA builder target");
-  }
-  const identity = { ...profile };
-  delete identity.fingerprint;
-  const canonical = JSON.stringify(stableJson(identity));
-  if (createHash("sha256").update(canonical).digest("hex") !== profile.fingerprint) {
-    throw new Error("native mathematics profile fingerprint is invalid");
-  }
-  return profile;
 }
 
 function stableJson(value) {
@@ -323,11 +321,7 @@ function createSeaBuildManifest(options) {
   const target = targetFromSeaBuilder(options.seaNode, options);
   const embeddedAssets = Object.fromEntries(
     Object.keys(options.assets)
-      .filter(
-        (asset) =>
-          asset.startsWith("native/") ||
-          asset.startsWith("native-kernels/"),
-      )
+      .filter((asset) => asset !== "release/build-manifest.json")
       .sort()
       .map((asset) => [asset, assetReceipt(options.assets[asset])]),
   );
@@ -362,6 +356,7 @@ function createSeaBuildManifest(options) {
         executableSha256: sha256(options.seaNode),
         version: observeSeaBuilder(options.seaNode, options).versions.node,
       },
+      seaMain: assetReceipt(options.mainBundle),
     },
   });
 }
@@ -733,6 +728,10 @@ function buildExecutable(name, withFlint, sourceIdentity) {
   );
   const buildManifest = createSeaBuildManifest({
     assets,
+    mainBundle: bundle,
+    nativeExecutables: Object.entries(assets)
+      .filter(([asset]) => asset.endsWith(".node"))
+      .map(([, filename]) => filename),
     root,
     seaNode,
     sourceIdentity,
@@ -764,6 +763,10 @@ function buildExecutable(name, withFlint, sourceIdentity) {
   });
   const observedAfterBuild = createSeaBuildManifest({
     assets,
+    mainBundle: bundle,
+    nativeExecutables: Object.entries(assets)
+      .filter(([asset]) => asset.endsWith(".node"))
+      .map(([, filename]) => filename),
     root,
     seaNode,
     sourceIdentity,
@@ -837,6 +840,7 @@ module.exports = {
   createSeaBuildManifest,
   maximumGlibcVersion,
   maximumRequiredGlibc,
+  maximumRequiredGlibcAcross,
   observeSeaBuilder,
   productionKernelReceipt,
   targetFromSeaBuilder,
