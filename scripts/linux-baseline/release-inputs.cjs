@@ -22,11 +22,18 @@ const {
 const { homedir, tmpdir } = require("node:os");
 const { basename, dirname, join, parse, resolve } = require("node:path");
 
+const STAGED_PROCESS = process.env.SAGEJS_LINUX_BASELINE_STAGED === "1";
 const {
   assertNativeInputs,
-} = require("../release-native-binary-inspector.cjs");
+} = require(
+  STAGED_PROCESS
+    ? "./release-native-binary-inspector.cjs"
+    : "../release-native-binary-inspector.cjs"
+);
 
-const ROOT = resolve(__dirname, "..", "..");
+const ROOT = process.env.SAGEJS_LINUX_BASELINE_ROOT
+  ? resolve(process.env.SAGEJS_LINUX_BASELINE_ROOT)
+  : resolve(__dirname, "..", "..");
 const NODE_VERSION = "26.7.0";
 const NODE_SOURCE_SHA256 =
   "e6b182cbeeab032d1082ca4ac4fe15e3a57de691d3bde78ecf8a761fd56ee356";
@@ -38,6 +45,9 @@ const RUNTIME_IMAGE =
   "sha256:cca75ce8294bd67a18520f72d58692e213428b14615d91800ad26b32860adb62";
 const POLICY_PATH = join(__dirname, "linux-x64-glibc-2.28-policy.json");
 const CONTAINERFILE_PATH = join(__dirname, "Containerfile");
+const INSPECTOR_PATH = STAGED_PROCESS
+  ? join(__dirname, "release-native-binary-inspector.cjs")
+  : join(__dirname, "..", "release-native-binary-inspector.cjs");
 const OUTPUT_MARKER = ".sagejs-linux-baseline-output.json";
 const OUTPUT_SCHEMA = "sagejs.linux-baseline-output-v1";
 const RECEIPT_SCHEMA = "sagejs.linux-baseline-receipt-v1";
@@ -62,6 +72,8 @@ function parseArguments(arguments_) {
     keepImage: false,
     output: join(ROOT, "build", "linux-baseline"),
     sourceRef: "HEAD",
+    sourceCommit: undefined,
+    stagedContext: undefined,
   };
   for (let index = 0; index < arguments_.length; index += 1) {
     const argument = arguments_[index];
@@ -70,6 +82,8 @@ function parseArguments(arguments_) {
     else if (argument === "--keep-image") result.keepImage = true;
     else if (argument === "--output") result.output = resolve(arguments_[++index] ?? "");
     else if (argument === "--source-ref") result.sourceRef = arguments_[++index] ?? "";
+    else if (argument === "--source-commit") result.sourceCommit = arguments_[++index] ?? "";
+    else if (argument === "--staged-context") result.stagedContext = resolve(arguments_[++index] ?? "");
     else if (argument === "--help" || argument === "-h") return { help: true };
     else throw new Error(`unknown argument: ${argument}`);
   }
@@ -77,6 +91,13 @@ function parseArguments(arguments_) {
     throw new Error("--engine must be docker or podman");
   }
   if (!result.sourceRef) throw new Error("--source-ref must not be empty");
+  if ((result.sourceCommit || result.stagedContext) && !STAGED_PROCESS) {
+    throw new Error("internal staged arguments require the staged release process");
+  }
+  if (STAGED_PROCESS) {
+    assert.match(result.sourceCommit, /^[0-9a-f]{40}$/);
+    if (!result.stagedContext) throw new Error("the staged release context is missing");
+  }
   return result;
 }
 
@@ -161,6 +182,7 @@ function releaseAuthorityIdentity(options = {}) {
     containerfile: options.containerfile || CONTAINERFILE_PATH,
     policy: options.policy || POLICY_PATH,
     releaseDriver: options.releaseDriver || __filename,
+    releaseInspector: options.releaseInspector || INSPECTOR_PATH,
   };
   return Object.fromEntries(
     Object.entries(files).map(([name, filename]) => [name, { sha256: sha256File(filename) }]),
@@ -181,6 +203,7 @@ function stageReleaseAuthority(directory, options = {}) {
     containerfile: options.containerfile || CONTAINERFILE_PATH,
     policy: options.policy || POLICY_PATH,
     releaseDriver: options.releaseDriver || __filename,
+    releaseInspector: options.releaseInspector || INSPECTOR_PATH,
   };
   mkdirSync(directory);
   const paths = {};
@@ -199,6 +222,64 @@ function stageReleaseAuthority(directory, options = {}) {
     paths,
     sourceCommit: readFileSync(paths.sourceCommit, "utf8").trim(),
   };
+}
+
+function loadStagedAuthority(context, sourceCommit) {
+  const directory = join(context, ".authority");
+  const paths = {
+    containerfile: join(directory, "Containerfile"),
+    policy: join(directory, "linux-x64-glibc-2.28-policy.json"),
+    releaseDriver: join(directory, "release-inputs.cjs"),
+    releaseInspector: join(directory, "release-native-binary-inspector.cjs"),
+    sourceCommit: join(directory, "source-commit"),
+  };
+  const stagedCommit = readFileSync(paths.sourceCommit, "utf8").trim();
+  assert.equal(stagedCommit, sourceCommit);
+  return {
+    identity: releaseAuthorityIdentity(paths),
+    paths,
+    sourceCommit: stagedCommit,
+  };
+}
+
+function launchStagedRelease(arguments_, options = {}) {
+  const root = options.root || ROOT;
+  const spawn = options.spawn || spawnSync;
+  const sourceRef = parseArguments(arguments_).sourceRef || "HEAD";
+  const sourceCommit = resolveSourceCommit(sourceRef, { root });
+  const temporary = mkdtempSync(join(tmpdir(), "sagejs-linux-baseline-launch-"));
+  const context = join(temporary, "context");
+  mkdirSync(context);
+  const authority = stageReleaseAuthority(join(context, ".authority"), {
+    ...(options.authoritySources || {}),
+    sourceCommit,
+  });
+  try {
+    options.beforeExec?.(authority);
+    const result = spawn(
+      options.executable || process.execPath,
+      [
+        authority.paths.releaseDriver,
+        ...arguments_,
+        "--source-commit",
+        sourceCommit,
+        "--staged-context",
+        context,
+      ],
+      {
+        env: {
+          ...process.env,
+          SAGEJS_LINUX_BASELINE_ROOT: root,
+          SAGEJS_LINUX_BASELINE_STAGED: "1",
+        },
+        stdio: "inherit",
+      },
+    );
+    if (result.error) throw result.error;
+    return result.status ?? 1;
+  } finally {
+    rmSync(temporary, { recursive: true, force: true });
+  }
 }
 
 function allocatePrivateImage(engine, options = {}) {
@@ -250,9 +331,12 @@ function proveSeaTemplate(engine, nodeExecutable, policyPath = POLICY_PATH) {
       })}\n`,
     );
     run(nodeExecutable, ["--build-sea", basename(config)], { cwd: directory });
-    const inspection = assertNativeInputs(
-      [{ label: "sagejs-sea-smoke", path: executable, role: "sea-smoke" }],
-      JSON.parse(readFileSync(policyPath, "utf8")),
+    const inspection = assertNoLibatomic(
+      assertNativeInputs(
+        [{ label: "sagejs-sea-smoke", path: executable, role: "sea-smoke" }],
+        JSON.parse(readFileSync(policyPath, "utf8")),
+      ),
+      "assembled SEA smoke",
     );
     const stdout = run(engine, [
       "run",
@@ -313,7 +397,18 @@ function validateReleaseInputs(directory, policyPath = POLICY_PATH) {
   const inputs = listNativeInputs(directory);
   assert.ok(inputs.some(({ label }) => label === "node"), "Node template is missing");
   const policy = JSON.parse(readFileSync(policyPath, "utf8"));
-  return assertNativeInputs(inputs, policy);
+  return assertNoLibatomic(assertNativeInputs(inputs, policy), "release input set");
+}
+
+function assertNoLibatomic(report, label) {
+  assert.equal(
+    (report?.aggregate?.dependencies ?? []).some(
+      (dependency) => dependency.toLowerCase() === "libatomic.so.1",
+    ),
+    false,
+    `${label} depends on libatomic.so.1`,
+  );
+  return report;
 }
 
 function assertPortableMathProfile(profile) {
@@ -420,16 +515,17 @@ function publishReleaseOutput(source, destination, receipt) {
 }
 
 function buildReleaseInputs(options) {
+  if (!STAGED_PROCESS || !options.stagedContext || !options.sourceCommit) {
+    throw new Error(
+      "authoritative Linux release builds require the staged launcher process",
+    );
+  }
   assertSafeOutputDirectory(options.output);
   const engine = selectEngine(options.engine);
-  const temporary = mkdtempSync(join(tmpdir(), "sagejs-linux-baseline-"));
-  const context = join(temporary, "context");
+  const temporary = dirname(options.stagedContext);
+  const context = options.stagedContext;
   const extracted = join(temporary, "extracted");
-  const sourceCommit = resolveSourceCommit(options.sourceRef);
-  mkdirSync(context);
-  const authority = stageReleaseAuthority(join(context, ".authority"), {
-    sourceCommit,
-  });
+  const authority = loadStagedAuthority(context, options.sourceCommit);
   const image = allocatePrivateImage(engine);
   let container = null;
   try {
@@ -530,7 +626,6 @@ function buildReleaseInputs(options) {
   } finally {
     if (container) spawnSync(engine, ["rm", "--force", container], { stdio: "ignore" });
     if (!options.keepImage) removeOwnedImage(engine, image);
-    rmSync(temporary, { recursive: true, force: true });
   }
 }
 
@@ -573,13 +668,16 @@ module.exports = {
   POLICY_PATH,
   RUNTIME_IMAGE,
   allocatePrivateImage,
+  assertNoLibatomic,
   assertPortableMathProfile,
   assertSafeOutputDirectory,
   assertRuntimeOmitsLibatomic,
   buildReleaseInputs,
   compilerIdentity,
   exportGitArchive,
+  launchStagedRelease,
   listNativeInputs,
+  loadStagedAuthority,
   parseArguments,
   publishReleaseOutput,
   releaseAuthorityIdentity,
@@ -593,9 +691,14 @@ module.exports = {
 
 if (require.main === module) {
   try {
-    const options = parseArguments(process.argv.slice(2));
-    if (options.help) help();
-    else buildReleaseInputs(options);
+    const arguments_ = process.argv.slice(2);
+    if (!STAGED_PROCESS) {
+      process.exitCode = launchStagedRelease(arguments_);
+    } else {
+      const options = parseArguments(arguments_);
+      if (options.help) help();
+      else buildReleaseInputs(options);
+    }
   } catch (error) {
     process.stderr.write(`${error.stack || error}\n`);
     process.exitCode = 1;

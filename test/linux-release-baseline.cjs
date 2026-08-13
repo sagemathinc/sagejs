@@ -30,7 +30,10 @@ const {
   assertPortableMathProfile,
   assertSafeOutputDirectory,
   allocatePrivateImage,
+  assertNoLibatomic,
+  buildReleaseInputs,
   exportGitArchive,
+  launchStagedRelease,
   parseArguments,
   publishReleaseOutput,
   releaseAuthorityIdentity,
@@ -132,6 +135,7 @@ test("release receipts bind every authoritative recipe input", () => {
     "containerfile",
     "policy",
     "releaseDriver",
+    "releaseInspector",
   ]);
   for (const value of Object.values(identity)) {
     assert.match(value.sha256, /^[0-9a-f]{64}$/);
@@ -142,15 +146,28 @@ test("release receipts bind every authoritative recipe input", () => {
     const containerfile = join(directory, "Containerfile");
     const policy = join(directory, "policy.json");
     const releaseDriver = join(directory, "driver.cjs");
+    const releaseInspector = join(directory, "inspector.cjs");
     writeFileSync(containerfile, "FROM scratch\n");
     writeFileSync(policy, "{}\n");
     writeFileSync(releaseDriver, '"use strict";\n');
-    const before = releaseAuthorityIdentity({ containerfile, policy, releaseDriver });
+    writeFileSync(releaseInspector, '"use strict";\n');
+    const before = releaseAuthorityIdentity({
+      containerfile,
+      policy,
+      releaseDriver,
+      releaseInspector,
+    });
     writeFileSync(policy, '{"tampered":true}\n');
-    const after = releaseAuthorityIdentity({ containerfile, policy, releaseDriver });
+    const after = releaseAuthorityIdentity({
+      containerfile,
+      policy,
+      releaseDriver,
+      releaseInspector,
+    });
     assert.notEqual(before.policy.sha256, after.policy.sha256);
     assert.equal(before.containerfile.sha256, after.containerfile.sha256);
     assert.equal(before.releaseDriver.sha256, after.releaseDriver.sha256);
+    assert.equal(before.releaseInspector.sha256, after.releaseInspector.sha256);
   } finally {
     rmSync(directory, { recursive: true, force: true });
   }
@@ -165,19 +182,23 @@ test("staged authority remains immutable when live inputs change", () => {
     const containerfile = join(sources, "Containerfile");
     const policy = join(sources, "policy.json");
     const releaseDriver = join(sources, "driver.cjs");
+    const releaseInspector = join(sources, "inspector.cjs");
     writeFileSync(containerfile, "FROM scratch\n");
     writeFileSync(policy, '{"format":"elf"}\n');
     writeFileSync(releaseDriver, '"use strict";\n');
+    writeFileSync(releaseInspector, '"use strict";\n');
     const sourceCommit = "a".repeat(40);
     const authority = stageReleaseAuthority(staged, {
       containerfile,
       policy,
       releaseDriver,
+      releaseInspector,
       sourceCommit,
     });
     writeFileSync(containerfile, "FROM changed\n");
     writeFileSync(policy, '{"format":"changed"}\n');
     writeFileSync(releaseDriver, 'throw Error("changed");\n');
+    writeFileSync(releaseInspector, 'throw Error("changed");\n');
     assert.equal(readFileSync(authority.paths.containerfile, "utf8"), "FROM scratch\n");
     assert.deepEqual(JSON.parse(readFileSync(authority.paths.policy, "utf8")), {
       format: "elf",
@@ -227,6 +248,80 @@ test("source references resolve once to an immutable commit", () => {
   } finally {
     rmSync(directory, { recursive: true, force: true });
   }
+});
+
+test("the launcher executes staged driver bytes after the live file changes", () => {
+  const directory = mkdtempSync(join(tmpdir(), "sagejs-linux-launch-test-"));
+  try {
+    const git = (...arguments_) =>
+      spawnSync("git", arguments_, {
+        cwd: directory,
+        encoding: "utf8",
+        env: {
+          ...process.env,
+          GIT_AUTHOR_EMAIL: "test@example.invalid",
+          GIT_AUTHOR_NAME: "Test",
+          GIT_COMMITTER_EMAIL: "test@example.invalid",
+          GIT_COMMITTER_NAME: "Test",
+        },
+      });
+    assert.equal(git("init", "--quiet").status, 0);
+    writeFileSync(join(directory, "tracked"), "value\n");
+    assert.equal(git("add", "tracked").status, 0);
+    assert.equal(git("commit", "--quiet", "-m", "source").status, 0);
+
+    const containerfile = join(directory, "Containerfile");
+    const policy = join(directory, "policy.json");
+    const releaseDriver = join(directory, "release-inputs.cjs");
+    const releaseInspector = join(directory, "release-native-binary-inspector.cjs");
+    writeFileSync(containerfile, "FROM scratch\n");
+    writeFileSync(policy, "{}\n");
+    writeFileSync(releaseDriver, 'console.log("staged")\n');
+    writeFileSync(releaseInspector, 'module.exports = {}\n');
+    let stagedDriver;
+    const status = launchStagedRelease(["--help"], {
+      authoritySources: { containerfile, policy, releaseDriver, releaseInspector },
+      beforeExec: () => writeFileSync(releaseDriver, 'console.log("changed")\n'),
+      executable: "node",
+      root: directory,
+      spawn: (_executable, arguments_) => {
+        stagedDriver = arguments_[0];
+        assert.equal(readFileSync(stagedDriver, "utf8"), 'console.log("staged")\n');
+        return { status: 0 };
+      },
+    });
+    assert.equal(status, 0);
+    assert.equal(readFileSync(releaseDriver, "utf8"), 'console.log("changed")\n');
+    assert.equal(stagedDriver.includes(".authority/release-inputs.cjs"), true);
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+test("authoritative builds fail closed outside the staged process", () => {
+  assert.throws(
+    () =>
+      buildReleaseInputs({
+        engine: "definitely-not-invoked",
+        output: join(tmpdir(), "not-created"),
+        sourceCommit: "a".repeat(40),
+        stagedContext: "/not/used",
+      }),
+    /require the staged launcher process/,
+  );
+});
+
+test("libatomic is an explicit artifact and SEA rejection invariant", () => {
+  const report = { aggregate: { dependencies: ["libc.so.6"] } };
+  assert.equal(assertNoLibatomic(report, "candidate"), report);
+  assert.throws(
+    () =>
+      assertNoLibatomic(
+        { aggregate: { dependencies: ["libatomic.so.1"] } },
+        "candidate",
+      ),
+    /depends on libatomic\.so\.1/,
+  );
 });
 
 test("private image tags are unique and cleanup is ownership checked", () => {
@@ -320,7 +415,9 @@ test("Linux baseline command-line parsing is fail closed", () => {
     engine: "podman",
     keepImage: false,
     output: require("node:path").join(__dirname, "..", "build", "linux-baseline"),
+    sourceCommit: undefined,
     sourceRef: "HEAD",
+    stagedContext: undefined,
   });
   assert.throws(() => parseArguments(["--engine", "lxc"]), /docker or podman/);
   assert.throws(() => parseArguments(["--unknown"]), /unknown argument/);
