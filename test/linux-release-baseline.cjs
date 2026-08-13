@@ -1,7 +1,15 @@
 "use strict";
 
 const assert = require("node:assert/strict");
-const { readFileSync } = require("node:fs");
+const {
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} = require("node:fs");
+const { tmpdir } = require("node:os");
+const { join } = require("node:path");
 const test = require("node:test");
 
 const {
@@ -9,11 +17,14 @@ const {
   NODE_CONFIGURE_ARGUMENTS,
   NODE_SOURCE_SHA256,
   NODE_VERSION,
+  OUTPUT_SCHEMA,
   POLICY_PATH,
   RUNTIME_IMAGE,
   assertPortableMathProfile,
   assertSafeOutputDirectory,
   parseArguments,
+  publishReleaseOutput,
+  releaseAuthorityIdentity,
 } = require("../scripts/linux-baseline/release-inputs.cjs");
 
 test("Linux baseline pins Node source and both container images", () => {
@@ -59,6 +70,11 @@ test("the GCC Node 26 witness removes libatomic at the same glibc floor", () => 
     "../scripts/linux-baseline/gcc-node-26.7.0-linux-x64.json"
   );
   assert.equal(witness.schema, "sagejs.linux-node-gcc-witness-v1");
+  assert.equal(witness.historicalPrototype, true);
+  assert.match(witness.recipeCommit, /^[0-9a-f]{40}$/);
+  for (const value of Object.values(witness.authority)) {
+    assert.match(value.sha256, /^[0-9a-f]{64}$/);
+  }
   assert.equal(witness.node.version, NODE_VERSION);
   assert.equal(witness.node.sourceSha256, NODE_SOURCE_SHA256);
   assert.deepEqual(witness.node.configureArguments, NODE_CONFIGURE_ARGUMENTS);
@@ -78,6 +94,66 @@ test("the GCC Node 26 witness removes libatomic at the same glibc floor", () => 
   assert.equal(witness.seaProbe.runtimeImage, RUNTIME_IMAGE);
   assert.equal(witness.seaProbe.exitStatus, 0);
   assert.equal(witness.seaProbe.stdout, "gcc-node-sea-ok");
+});
+
+test("release receipts bind every authoritative recipe input", () => {
+  const identity = releaseAuthorityIdentity();
+  assert.deepEqual(Object.keys(identity).sort(), [
+    "containerfile",
+    "policy",
+    "releaseDriver",
+  ]);
+  for (const value of Object.values(identity)) {
+    assert.match(value.sha256, /^[0-9a-f]{64}$/);
+  }
+
+  const directory = mkdtempSync(join(tmpdir(), "sagejs-linux-authority-test-"));
+  try {
+    const containerfile = join(directory, "Containerfile");
+    const policy = join(directory, "policy.json");
+    const releaseDriver = join(directory, "driver.cjs");
+    writeFileSync(containerfile, "FROM scratch\n");
+    writeFileSync(policy, "{}\n");
+    writeFileSync(releaseDriver, '"use strict";\n');
+    const before = releaseAuthorityIdentity({ containerfile, policy, releaseDriver });
+    writeFileSync(policy, '{"tampered":true}\n');
+    const after = releaseAuthorityIdentity({ containerfile, policy, releaseDriver });
+    assert.notEqual(before.policy.sha256, after.policy.sha256);
+    assert.equal(before.containerfile.sha256, after.containerfile.sha256);
+    assert.equal(before.releaseDriver.sha256, after.releaseDriver.sha256);
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+test("release publication refuses unowned output and replaces owned output", () => {
+  const directory = mkdtempSync(join(tmpdir(), "sagejs-linux-publish-test-"));
+  try {
+    const source = join(directory, "source");
+    const output = join(directory, "output");
+    mkdirSync(source);
+    writeFileSync(join(source, "node"), "candidate");
+    mkdirSync(output);
+    writeFileSync(join(output, "valuable.txt"), "preserve me");
+    assert.throws(
+      () => publishReleaseOutput(source, output, { schema: "test" }),
+      /refusing to replace unowned/,
+    );
+    assert.equal(readFileSync(join(output, "valuable.txt"), "utf8"), "preserve me");
+
+    rmSync(output, { recursive: true });
+    publishReleaseOutput(source, output, { schema: "test" });
+    assert.equal(readFileSync(join(output, "node"), "utf8"), "candidate");
+    assert.equal(
+      JSON.parse(readFileSync(join(output, ".sagejs-linux-baseline-output.json"))).schema,
+      OUTPUT_SCHEMA,
+    );
+    writeFileSync(join(source, "node"), "replacement");
+    publishReleaseOutput(source, output, { schema: "test-2" });
+    assert.equal(readFileSync(join(output, "node"), "utf8"), "replacement");
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
 });
 
 test("Linux baseline command-line parsing is fail closed", () => {
