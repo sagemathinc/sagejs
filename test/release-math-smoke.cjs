@@ -6,6 +6,7 @@ const {
   existsSync,
   mkdirSync,
   mkdtempSync,
+  readFileSync,
   rmSync,
   writeFileSync,
 } = require("node:fs");
@@ -56,7 +57,11 @@ function writeFakeRunner(rootDirectory, source) {
   writeFileSync(join(rootDirectory, "bin", "sagejs"), source);
 }
 
-test("release mathematics smoke is authoritative and practical", () => {
+test("release mathematics smoke is authoritative and practical", {
+  skip: !existsSync(
+    join(root, "packages", "flint", "build", "Release", "sagejs_flint.node"),
+  ),
+}, () => {
   const sourceRoot = process.env.SAGEJS_RELEASE_TEST_SOURCE_ROOT || root;
   const result = spawnSync(
     process.execPath,
@@ -157,6 +162,7 @@ test("release mathematics smoke reports fallback and enforces named native witne
   writeFakeRunner(fakeRoot, fakeSmokeSource(nativeSelections));
   const nativeReport = await runSmoke({ ...options, requireNative: true });
   assert.equal(nativeReport.native.required_satisfied, true);
+  assert.deepEqual(nativeReport.native.fallback, []);
   assert.ok(nativeReport.native.witnesses.every(({ observed }) => observed));
 
   writeFakeRunner(fakeRoot, fakeSmokeSource([
@@ -176,6 +182,44 @@ test("release mathematics smoke reports fallback and enforces named native witne
     () => runSmoke({ ...options, requireNative: true }),
     /fallback implementations/,
   );
+});
+
+test("native smoke retains caller-owned state and sets runtime required policy", async (t) => {
+  const fakeRoot = mkdtempSync(join(tmpdir(), "sagejs-release-smoke-state-"));
+  const stateDirectory = join(fakeRoot, "retained-state");
+  t.after(() => rmSync(fakeRoot, { recursive: true, force: true }));
+  const nativeSelections = requiredNativeWitnesses.map((witness) => ({
+    implementation: witness.implementations[0],
+    operation: witness.operation,
+  }));
+  writeFakeRunner(fakeRoot, [
+    '"use strict";',
+    "const { writeFileSync } = require('node:fs');",
+    "const { join } = require('node:path');",
+    "if (process.argv.includes('--version')) console.log('sagejs 0.0.0-test');",
+    "else {",
+    "  if (process.env.SAGEJS_NATIVE_REQUIRED !== '1') process.exit(77);",
+    "  writeFileSync(join(process.env.XDG_CACHE_HOME, 'native-cache'), 'retained');",
+    `  for (const name of ${JSON.stringify(checkNames)}) ` +
+      "console.log('SAGEJS_RELEASE_CHECK ' + name);",
+    ...nativeSelections.map(({ operation, implementation }) =>
+      `  console.log(${JSON.stringify(
+        `[sagejs native] ${operation} -> ${implementation}`,
+      )});`),
+    "  console.log('SAGEJS_RELEASE_SMOKE_OK');",
+    "}",
+  ].join("\n"));
+  const report = await runSmoke({
+    ...parseArguments(["--source-root", fakeRoot]),
+    requireNative: true,
+    stateDirectory,
+  });
+  assert.equal(report.native.required_satisfied, true);
+  assert.equal(
+    readFileSync(join(stateDirectory, "cache", "native-cache"), "utf8"),
+    "retained",
+  );
+  assert.equal(existsSync(join(stateDirectory, "release-math-smoke.sage")), false);
 });
 
 test("release mathematics smoke creates a hermetic home and cache", async (t) => {

@@ -234,6 +234,8 @@ Options:
   --package-root PATH    Run the sagejs bin declared by PATH/package.json
   --executable PATH      Run a standalone Sage.js/SEA executable
   --require-native       Require every declared native witness and reject unknown routes
+  --state-directory PATH
+                         Retain the hermetic home/cache/tmp below PATH for inspection
   --max-seconds N        Runtime budget (default: 30)
   --json                 Emit the result as JSON
   -h, --help             Show this help
@@ -246,6 +248,7 @@ function parseArguments(argv) {
     packageRoot: undefined,
     executable: undefined,
     requireNative: false,
+    stateDirectory: undefined,
     maxSeconds: 30,
     json: false,
   };
@@ -259,6 +262,8 @@ function parseArguments(argv) {
       options.executable = resolve(argv[++index]);
     } else if (argument === "--require-native") {
       options.requireNative = true;
+    } else if (argument === "--state-directory") {
+      options.stateDirectory = resolve(argv[++index]);
     } else if (argument === "--max-seconds") {
       options.maxSeconds = Number(argv[++index]);
     } else if (argument === "--json") {
@@ -542,7 +547,11 @@ async function targetVersion(runner, cwd, environment) {
 
 async function runSmoke(options) {
   const runner = runnerFor(options);
-  const directory = mkdtempSync(join(tmpdir(), "sagejs-release-math-smoke-"));
+  const ownsDirectory = options.stateDirectory === undefined;
+  const directory = ownsDirectory
+    ? mkdtempSync(join(tmpdir(), "sagejs-release-math-smoke-"))
+    : resolve(options.stateDirectory);
+  mkdirSync(directory, { recursive: true });
   const source = join(directory, "release-math-smoke.sage");
   writeFileSync(source, sageProgram);
   const environment = releaseEnvironment(
@@ -550,6 +559,7 @@ async function runSmoke(options) {
     runner,
     options.environment || process.env,
   );
+  if (options.requireNative) environment.SAGEJS_NATIVE_REQUIRED = "1";
   let version;
   let started;
   let child;
@@ -567,7 +577,8 @@ async function runSmoke(options) {
       },
     );
   } finally {
-    rmSync(directory, { recursive: true, force: true });
+    if (ownsDirectory) rmSync(directory, { recursive: true, force: true });
+    else rmSync(source, { force: true });
   }
   const seconds = Number(process.hrtime.bigint() - started) / 1e9;
   if (child.error) throw child.error;
@@ -637,6 +648,7 @@ async function runSmoke(options) {
       fresh_home: true,
     },
     native: {
+      fallback: classification.fallback,
       required: options.requireNative,
       observed: classification.native.length > 0,
       required_satisfied: classification.requiredSatisfied,

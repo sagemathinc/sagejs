@@ -44,7 +44,16 @@ else
 fi
 
 temporary_directory=$(mktemp -d 2>/dev/null || mktemp -d -t sagejs-install)
-trap 'rm -rf "$temporary_directory"' EXIT HUP INT TERM
+temporary_link=""
+temporary_launcher=""
+generation=""
+cleanup() {
+  rm -rf "$temporary_directory"
+  [ -z "$temporary_link" ] || rm -f "$temporary_link"
+  [ -z "$temporary_launcher" ] || rm -f "$temporary_launcher"
+  [ -z "$generation" ] || rm -rf "$generation"
+}
+trap cleanup EXIT HUP INT TERM
 archive_path="$temporary_directory/$archive"
 checksum_path="$archive_path.sha256"
 
@@ -80,13 +89,63 @@ distribution="$temporary_directory/sagejs-$platform"
 [ -x "$distribution/sagejs" ] || fail "archive does not contain sagejs"
 [ -x "$distribution/sagepython" ] || fail "archive does not contain sagepython"
 mkdir -p "$install_directory"
+# Install both programs into one immutable, versioned directory, validate that
+# complete generation, and then atomically switch a single symlink. This makes
+# an interrupted upgrade leave either the old pair or the new pair active.
+install_root="$install_directory/.sagejs-installations"
+mkdir -p "$install_root"
+generation="$install_root/.staging.$$"
+rm -rf "$generation"
+mkdir "$generation"
 for executable in sagejs sagepython; do
-  temporary_target="$install_directory/.$executable.tmp.$$"
-  install -m 755 "$distribution/$executable" "$temporary_target"
-  mv -f "$temporary_target" "$install_directory/$executable"
+  install -m 755 "$distribution/$executable" "$generation/$executable"
 done
+installed_version=$($generation/sagejs --version) || fail "installed sagejs failed its version probe"
+generation_name=$(printf '%s' "$installed_version" | sed 's/[^A-Za-z0-9._-]/-/g')
+[ -n "$generation_name" ] || fail "installed sagejs returned an invalid version"
+generation_name="$generation_name-$actual"
+generation_target="$install_root/$generation_name"
+if [ -e "$generation_target" ]; then
+  rm -rf "$generation"
+else
+  mv "$generation" "$generation_target"
+fi
+generation=""
+link_target=".sagejs-installations/$generation_name"
+managed_launchers=0
+for executable in sagejs sagepython; do
+  launcher="$install_directory/$executable"
+  if [ -e "$launcher" ] || [ -L "$launcher" ]; then
+    [ -L "$launcher" ] || fail "$launcher is not managed by the Sage.js installer"
+    [ "$(readlink "$launcher")" = ".sagejs-current/$executable" ] || \
+      fail "$launcher has an unexpected link target"
+    managed_launchers=$((managed_launchers + 1))
+  fi
+done
+[ "$managed_launchers" -eq 0 ] || [ "$managed_launchers" -eq 2 ] || \
+  fail "Sage.js installation has an incomplete launcher pair"
+temporary_link="$install_directory/.sagejs-current.$$"
+ln -s "$link_target" "$temporary_link"
+if [ "${SAGEJS_INSTALL_FAIL_BEFORE_SWITCH:-0}" = "1" ]; then
+  fail "injected failure before atomic installation switch"
+fi
+if mv -fT "$temporary_link" "$install_directory/.sagejs-current" 2>/dev/null; then
+  : # GNU mv: -T prevents following the existing directory symlink.
+else
+  # BSD/macOS mv uses -h for the same symlink-safe replacement semantics.
+  mv -fh "$temporary_link" "$install_directory/.sagejs-current"
+fi
+temporary_link=""
+if [ "$managed_launchers" -eq 0 ]; then
+  for executable in sagejs sagepython; do
+    launcher="$install_directory/$executable"
+    temporary_launcher="$install_directory/.$executable.link.$$"
+    ln -s ".sagejs-current/$executable" "$temporary_launcher"
+    mv -f "$temporary_launcher" "$launcher"
+    temporary_launcher=""
+  done
+fi
 
-installed_version=$($install_directory/sagejs --version)
 echo "Installed $installed_version in $install_directory"
 case ":${PATH}:" in
   *:"$install_directory":*) ;;
