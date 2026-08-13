@@ -4,13 +4,14 @@
   "id": "native-export-audit-perf",
   "title": "Index native export consumers once",
   "lane": "integration",
-  "status": "active",
+  "status": "review",
   "owner": "user",
   "objective": "Preserve deterministic native export inventory semantics while eliminating repeated per-export repository reads and regex scans, with focused correctness tests and Linux/Windows performance evidence.",
   "base_commit": "347c3d475ee817fad27bb7da72a33006cfc9df74",
   "claims": [
     "tools/ffi/native-export-audit.cjs",
-    "test/native-export-audit.cjs"
+    "test/native-export-audit.cjs",
+    "test/node-test-manifest.cjs"
   ],
   "dependencies": [],
   "references": [],
@@ -32,12 +33,130 @@
   "validation": [
     "pnpm architecture:check",
     "pnpm test:portable",
-    "pnpm test:baselib:strict"
+    "pnpm test:baselib:strict",
+    "node --test test/native-export-audit.cjs",
+    "node scripts/audit-native-exports.cjs --check"
   ],
-  "runs": [],
+  "runs": [
+    {
+      "command": "node --test test/native-export-audit.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.125,
+      "started_at": "2026-08-13T15:23:07.768Z",
+      "commit": "cb31ada1975afd6d8e72523312aed1a81b90d080",
+      "workspace_fingerprint": "26e6d75b7f2edecc29494614a8442448193d770484bc28e2f7b7a0174ecfb1fa",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node scripts/audit-native-exports.cjs --check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.955,
+      "started_at": "2026-08-13T15:23:08.573Z",
+      "commit": "cb31ada1975afd6d8e72523312aed1a81b90d080",
+      "workspace_fingerprint": "26e6d75b7f2edecc29494614a8442448193d770484bc28e2f7b7a0174ecfb1fa",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 6.331,
+      "started_at": "2026-08-13T15:23:10.169Z",
+      "commit": "cb31ada1975afd6d8e72523312aed1a81b90d080",
+      "workspace_fingerprint": "26e6d75b7f2edecc29494614a8442448193d770484bc28e2f7b7a0174ecfb1fa",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 14.933,
+      "started_at": "2026-08-13T15:23:42.624Z",
+      "commit": "cb31ada1975afd6d8e72523312aed1a81b90d080",
+      "workspace_fingerprint": "26e6d75b7f2edecc29494614a8442448193d770484bc28e2f7b7a0174ecfb1fa",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 19.973,
+      "started_at": "2026-08-13T15:23:58.219Z",
+      "commit": "cb31ada1975afd6d8e72523312aed1a81b90d080",
+      "workspace_fingerprint": "26e6d75b7f2edecc29494614a8442448193d770484bc28e2f7b7a0174ecfb1fa",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 18.013,
+      "started_at": "2026-08-13T15:25:17.999Z",
+      "commit": "cb31ada1975afd6d8e72523312aed1a81b90d080",
+      "workspace_fingerprint": "26e6d75b7f2edecc29494614a8442448193d770484bc28e2f7b7a0174ecfb1fa",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 19.462,
+      "started_at": "2026-08-13T15:26:37.570Z",
+      "commit": "cb31ada1975afd6d8e72523312aed1a81b90d080",
+      "workspace_fingerprint": "0f4bac2bf5c4f92c24449b0effeacd8b3a074466ee07cf3026683897d5810065",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/native-export-audit.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.118,
+      "started_at": "2026-08-13T15:27:04.888Z",
+      "commit": "cb31ada1975afd6d8e72523312aed1a81b90d080",
+      "workspace_fingerprint": "0f4bac2bf5c4f92c24449b0effeacd8b3a074466ee07cf3026683897d5810065",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node scripts/audit-native-exports.cjs --check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.948,
+      "started_at": "2026-08-13T15:27:05.626Z",
+      "commit": "cb31ada1975afd6d8e72523312aed1a81b90d080",
+      "workspace_fingerprint": "0f4bac2bf5c4f92c24449b0effeacd8b3a074466ee07cf3026683897d5810065",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 6.008,
+      "started_at": "2026-08-13T15:27:07.232Z",
+      "commit": "cb31ada1975afd6d8e72523312aed1a81b90d080",
+      "workspace_fingerprint": "0f4bac2bf5c4f92c24449b0effeacd8b3a074466ee07cf3026683897d5810065",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 16.163,
+      "started_at": "2026-08-13T15:27:13.885Z",
+      "commit": "cb31ada1975afd6d8e72523312aed1a81b90d080",
+      "workspace_fingerprint": "0f4bac2bf5c4f92c24449b0effeacd8b3a074466ee07cf3026683897d5810065",
+      "platform": "linux-x64"
+    }
+  ],
   "handoff": {
-    "summary": "",
-    "risks": [],
-    "next_steps": []
+    "summary": "Reads each candidate consumer source once and indexes all relevant N-API export references while preserving the checked inventory byte-for-byte. Also normalizes the recorded policy path, eliminating genuine Windows-only inventory drift. The audit improved from 11.2s to 1.0-1.6s on Linux and from about 28s with drift to 4.9s passing on Windows.",
+    "risks": [
+      "Package relevance remains intentionally specialized to the two currently audited native packages; a new native package must add its relevance rule.",
+      "The broad portable tier in this isolated worktree requires native addons that were intentionally not replicated; the focused audit, architecture, and strict gates pass, and integration validation should use the primary built checkout."
+    ],
+    "next_steps": [
+      "Integrate the two commits together and retain the focused synthetic indexing test."
+    ]
   }
 }
