@@ -450,6 +450,15 @@ test("malformed and unknown binaries fail instead of producing partial evidence"
   assert.throws(() => inspectBinaryBuffer(truncatedElf), BinaryFormatError);
   const truncatedPe = peFixture().subarray(0, 200);
   assert.throws(() => inspectBinaryBuffer(truncatedPe), BinaryFormatError);
+  const shortImports = peFixture();
+  shortImports.writeUInt32LE(19, 0x98 + 112 + 12);
+  assert.throws(() => inspectBinaryBuffer(shortImports), /truncated PE import directory/);
+  const unterminatedImports = peFixture();
+  unterminatedImports.writeUInt32LE(20, 0x98 + 112 + 12);
+  assert.throws(() => inspectBinaryBuffer(unterminatedImports), /unterminated PE import/);
+  const unterminatedName = peFixture();
+  unterminatedName.fill(0x41, 0x300, 0x600);
+  assert.throws(() => inspectBinaryBuffer(unterminatedName), /unterminated binary string/);
 });
 
 test("the CLI emits a deterministic machine-readable report and failure status", () => {
