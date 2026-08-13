@@ -8,6 +8,7 @@ const {
   readFileSync,
   readdirSync,
   rmSync,
+  statSync,
   writeFileSync,
 } = require("node:fs");
 const { spawnSync } = require("node:child_process");
@@ -16,6 +17,8 @@ const { dirname, join, resolve } = require("node:path");
 const test = require("node:test");
 
 const {
+  BUILD_MANIFEST_ASSET,
+  BUILD_MANIFEST_SCHEMA,
   SCHEMA,
   collectReleaseCapabilities,
   formatReleaseCapabilities,
@@ -24,6 +27,10 @@ const {
 const repositoryRoot = resolve(__dirname, "..");
 const script = join(repositoryRoot, "scripts", "release-capabilities.cjs");
 const commit = "0123456789abcdef0123456789abcdef01234567";
+const productionSources = [
+  "sagejs/kernels/first.py",
+  "sagejs/kernels/second.py",
+];
 
 function write(filename, contents = "") {
   mkdirSync(dirname(filename), { recursive: true });
@@ -40,6 +47,15 @@ function fixture(options = {}) {
     join(root, "package.json"),
     `${JSON.stringify({ name: "@sagemath/sagejs", version: "9.8.7" })}\n`,
   );
+  write(
+    join(root, "architecture", "native-kernels.json"),
+    `${JSON.stringify({
+      kernels: productionSources.map((source, index) => ({
+        id: `fixture-${index}-production`,
+        source: `src/lib/${source}`,
+      })),
+    })}\n`,
+  );
   if (options.git !== false) mkdirSync(join(root, ".git"));
   if (options.runtime !== false) {
     write(join(root, "dist", "tools", "kernel.js"));
@@ -48,15 +64,16 @@ function fixture(options = {}) {
   return { directory, home, root };
 }
 
+function digest(filename) {
+  return createHash("sha256").update(readFileSync(filename)).digest("hex");
+}
+
 function installAdapter(root, packageName, addonName) {
   const directory = join(root, "packages", packageName, "build", "generated-ffi");
   const addon = join(directory, addonName);
   const source = join(root, "packages", packageName, "generated", "ffi_host.py");
   write(addon, "native addon witness");
   write(source, "# generated adapter witness\n");
-  const digest = (filename) => createHash("sha256")
-    .update(readFileSync(filename))
-    .digest("hex");
   write(
     join(directory, "manifest.json"),
     `${JSON.stringify({
@@ -74,18 +91,42 @@ function installAdapter(root, packageName, addonName) {
   }
 }
 
-function installNativeKernels(root) {
-  const cacheKey = "a".repeat(64);
+function kernelIndex() {
+  const logicalSources = {};
+  for (const [index, source] of productionSources.entries()) {
+    logicalSources[source] = {
+      cacheKey: String(index + 1).repeat(64),
+      foreignDeclarations: [],
+      nativeAbi: 21,
+      sourceHash: String(index + 3).repeat(64),
+    };
+  }
+  return { logicalSources, schema: "sagejs.native-cache/v3", sources: {} };
+}
+
+function installNativeKernels(root, complete = true) {
+  const index = kernelIndex();
   write(
     join(root, "dist", "native-kernels", "index.json"),
-    `${JSON.stringify({
-      logicalSources: {
-        "sagejs/kernels/dense_integer.py": { cacheKey },
-      },
-      schema: "sagejs.native-cache/v3",
-    })}\n`,
+    `${JSON.stringify(index)}\n`,
   );
-  write(join(root, "dist", "native-kernels", cacheKey, "index.cjs"));
+  for (const [recordIndex, record] of Object.values(index.logicalSources).entries()) {
+    write(join(root, "dist", "native-kernels", record.cacheKey, "index.cjs"));
+    if (complete || recordIndex !== 1) {
+      write(
+        join(
+          root,
+          "dist",
+          "native-kernels",
+          record.cacheKey,
+          "build",
+          "Release",
+          "sagejs_native_kernel.node",
+        ),
+      );
+    }
+  }
+  return index;
 }
 
 function installMathProfile(root, profile = "portable") {
@@ -102,6 +143,50 @@ function installMathProfile(root, profile = "portable") {
       },
     })}\n`,
   );
+}
+
+function buildManifest(overrides = {}) {
+  return {
+    commit,
+    nativeMathProfile: {
+      effective: "portable",
+      fingerprint: "release-profile-fingerprint",
+      requested: "portable",
+    },
+    schema: BUILD_MANIFEST_SCHEMA,
+    target: { arch: "x64", platform: "linux" },
+    version: "9.8.7",
+    ...overrides,
+  };
+}
+
+function embedAdapter(assets, id) {
+  const definitions = {
+    flint: {
+      addon: "sagejs_flint_ffi.node",
+      manifest: "native/sagejs_flint_ffi_manifest.json",
+      required: "native/sagejs_flint.node",
+    },
+    fflas: {
+      addon: "sagejs_fflas_ffi.node",
+      manifest: "native/sagejs_fflas_ffi_manifest.json",
+    },
+    igraph: {
+      addon: "sagejs_igraph_ffi.node",
+      manifest: "native/sagejs_igraph_ffi_manifest.json",
+      required: "native/sagejs_graph.node",
+    },
+  };
+  const definition = definitions[id];
+  const addonAsset = `native/${definition.addon}`;
+  const addon = Buffer.from(`${id} embedded addon`);
+  assets[addonAsset] = addon;
+  assets[definition.manifest] = JSON.stringify({
+    addon: definition.addon,
+    addon_hash: createHash("sha256").update(addon).digest("hex"),
+    schema: "sagejs.ffi/generated-host-adapter-v1",
+  });
+  if (definition.required) assets[definition.required] = `${id} base addon`;
 }
 
 function fixedOptions(item, overrides = {}) {
@@ -133,14 +218,14 @@ function tree(directory, prefix = "") {
   for (const name of readdirSync(directory).sort()) {
     const filename = join(directory, name);
     const logical = prefix ? `${prefix}/${name}` : name;
-    const type = require("node:fs").statSync(filename);
+    const type = statSync(filename);
     result.push(`${type.isDirectory() ? "d" : "f"}:${logical}`);
     if (type.isDirectory()) result.push(...tree(filename, logical));
   }
   return result;
 }
 
-test("source report separates compiled installation, selection, and cache warmth", () => {
+test("source report describes FFI candidates without claiming loadability or selection", () => {
   const item = fixture();
   try {
     installAdapter(item.root, "flint", "sagejs_flint_ffi.node");
@@ -149,78 +234,112 @@ test("source report separates compiled installation, selection, and cache warmth
     installAdapter(item.root, "m4ri", "sagejs_m4ri_ffi.node");
     installNativeKernels(item.root);
     installMathProfile(item.root);
-    write(join(item.home, ".cache", "sagejs", "modules", "v1", "one.json"));
 
     const report = collectReleaseCapabilities(fixedOptions(item));
     assert.equal(report.schema, SCHEMA);
-    assert.equal(report.observational, true);
-    assert.deepEqual(report.identity, {
-      commit,
-      dirty: false,
-      name: "@sagemath/sagejs",
-      version: "9.8.7",
+    assert.deepEqual(report.observation, {
+      claim: "stable-runtime-observation",
+      observational: true,
     });
-    assert.equal(report.artifact.kind, "source-checkout");
-    assert.equal(capability(report, "python-sage-compiler").state, "compiled");
-    assert.equal(capability(report, "flint").installed, "compiled");
-    assert.equal(capability(report, "flint").integrity, "verified");
-    assert.equal(capability(report, "flint").selected, "native");
-    assert.equal(capability(report, "flint").state, "compiled");
-    assert.equal(capability(report, "typed-python-native-kernels").state, "compiled");
-    assert.equal(capability(report, "typed-python-native-kernels").readiness, "warm");
+    assert.equal(report.artifactIdentity.availability, "unavailable");
+    assert.equal(report.runtimeObservation.package.version, "9.8.7");
+    assert.equal(report.runtimeObservation.checkout.commit, commit);
+    for (const id of ["flint", "fflas-ffpack", "igraph", "m4ri"]) {
+      const adapter = capability(report, id);
+      assert.equal(adapter.candidate, "compiled");
+      assert.equal(adapter.manifestIntegrity, "verified");
+      assert.equal(adapter.loadability, "not-probed");
+      assert.equal(adapter.selection, "not-probed");
+    }
     assert.equal(
-      report.nativeMathProfile.compatibility,
-      "effective-profile-match",
+      capability(report, "python-sage-compiler").loadability,
+      "not-probed",
     );
-    assert.equal(report.nativeMathProfile.selected.selectionProbe, "not-run");
-    assert.equal(report.caches.find(({ id }) => id === "module").readiness, "warm");
-    assert.deepEqual(
-      report.capabilities.map(({ id }) => id),
-      [...report.capabilities.map(({ id }) => id)].sort(),
-    );
-  } finally {
-    rmSync(item.directory, { recursive: true, force: true });
-  }
-});
-
-test("inspection is read-only and reports cold source compilation honestly", () => {
-  const item = fixture();
-  try {
-    const before = tree(item.directory);
-    const report = collectReleaseCapabilities(fixedOptions(item));
-    const after = tree(item.directory);
-    assert.deepEqual(after, before);
     const kernels = capability(report, "typed-python-native-kernels");
-    assert.equal(kernels.installed, "unavailable");
-    assert.equal(kernels.selected, "compile-on-first-use");
-    assert.equal(kernels.state, "cold");
-    assert.equal(kernels.readiness, "cold");
-    assert.equal(capability(report, "flint").selected, "fallback");
-    assert.equal(capability(report, "flint").state, "fallback");
+    assert.equal(kernels.candidate, "compiled");
+    assert.equal(kernels.integrity, "complete");
+    assert.equal(kernels.loadability, "not-probed");
+    assert.equal(kernels.selection, "not-probed");
+    assert.equal(report.nativeMathProfile.compatibility, "effective-profile-match");
+    assert.equal(report.nativeMathProfile.observedBuild.source, "installed-prefix");
   } finally {
     rmSync(item.directory, { recursive: true, force: true });
   }
 });
 
-test("native disable selects fallbacks without hiding installed adapters", () => {
+test("SAGEJS_NATIVE_DISABLE changes @native policy but never FFI candidate status", () => {
   const item = fixture();
   try {
     installAdapter(item.root, "flint", "sagejs_flint_ffi.node");
-    const report = collectReleaseCapabilities(fixedOptions(item, {
+    const baseline = collectReleaseCapabilities(fixedOptions(item));
+    const disabled = collectReleaseCapabilities(fixedOptions(item, {
       environment: { SAGEJS_NATIVE_DISABLE: "1" },
     }));
-    const flint = capability(report, "flint");
-    assert.equal(report.nativeSelectionDisabled, true);
-    assert.equal(flint.installed, "compiled");
-    assert.equal(flint.fallback, "available");
-    assert.equal(flint.selected, "fallback");
-    assert.equal(flint.state, "fallback");
+    assert.equal(capability(baseline, "flint").candidate, "compiled");
+    assert.deepEqual(capability(disabled, "flint"), capability(baseline, "flint"));
+    assert.equal(disabled.nativePolicy.disable.requested, true);
+    assert.equal(disabled.nativePolicy.disable.effective, true);
+    assert.match(disabled.nativePolicy.disable.scope, /not generated FFI/);
+
+    const explicitNative = collectReleaseCapabilities(fixedOptions(item, {
+      environment: {
+        SAGEJS_NATIVE_AUTOLOAD: "0",
+        SAGEJS_NATIVE_DISABLE: "1",
+        SAGEJS_NATIVE_MODE: "native",
+        SAGEJS_NATIVE_REQUIRED: "0",
+        SAGEJS_NATIVE_WARN_FALLBACK: "1",
+      },
+    }));
+    assert.equal(explicitNative.nativePolicy.mode.requested, "native");
+    assert.equal(
+      explicitNative.nativePolicy.mode.effectiveCandidatePolicy,
+      "native-required",
+    );
+    assert.equal(explicitNative.nativePolicy.disable.effective, false);
+    assert.equal(explicitNative.nativePolicy.autoload.effective, "enabled");
+    assert.equal(explicitNative.nativePolicy.required.effective, true);
+    assert.equal(explicitNative.nativePolicy.fallback.effective, "required");
+
+    const dynamic = collectReleaseCapabilities(fixedOptions(item, {
+      environment: {
+        SAGEJS_NATIVE_AUTOLOAD: "0",
+        SAGEJS_NATIVE_MODE: "dynamic",
+        SAGEJS_NATIVE_WARN_FALLBACK: "1",
+      },
+    }));
+    assert.equal(dynamic.nativePolicy.autoload.effective, "enabled");
+    assert.equal(dynamic.nativePolicy.required.effective, false);
+    assert.equal(dynamic.nativePolicy.fallback.effective, "warn");
   } finally {
     rmSync(item.directory, { recursive: true, force: true });
   }
 });
 
-test("a mismatched adapter hash fails closed without loading the addon", () => {
+test("missing or incomplete production kernels are fallback candidates, never first-use claims", () => {
+  const item = fixture();
+  try {
+    const missing = collectReleaseCapabilities(fixedOptions(item));
+    const missingKernels = capability(missing, "typed-python-native-kernels");
+    assert.equal(missingKernels.candidate, "unavailable");
+    assert.equal(missingKernels.integrity, "not-installed");
+    assert.equal(missingKernels.fallbackCandidate, "available");
+    assert.equal(missingKernels.selection, "not-probed");
+    assert.ok(!JSON.stringify(missingKernels).includes("compile-on-first-use"));
+
+    installNativeKernels(item.root, false);
+    const incomplete = capability(
+      collectReleaseCapabilities(fixedOptions(item)),
+      "typed-python-native-kernels",
+    );
+    assert.equal(incomplete.candidate, "unavailable");
+    assert.equal(incomplete.integrity, "incomplete");
+    assert.equal(incomplete.loadability, "not-probed");
+  } finally {
+    rmSync(item.directory, { recursive: true, force: true });
+  }
+});
+
+test("adapter hash mismatch fails candidate validation without loading it", () => {
   const item = fixture();
   try {
     installAdapter(item.root, "flint", "sagejs_flint_ffi.node");
@@ -235,115 +354,143 @@ test("a mismatched adapter hash fails closed without loading the addon", () => {
       ),
       "tampered addon",
     );
-    const report = collectReleaseCapabilities(fixedOptions(item));
-    const flint = capability(report, "flint");
-    assert.equal(flint.integrity, "mismatch");
-    assert.equal(flint.installed, "unavailable");
-    assert.equal(flint.selected, "fallback");
+    const flint = capability(collectReleaseCapabilities(fixedOptions(item)), "flint");
+    assert.equal(flint.candidate, "unavailable");
+    assert.equal(flint.manifestIntegrity, "mismatch");
+    assert.equal(flint.loadability, "not-probed");
+    assert.equal(flint.selection, "not-probed");
   } finally {
     rmSync(item.directory, { recursive: true, force: true });
   }
 });
 
-test("simulated mathematical SEA reports bundled assets and absent M4RI fallback", () => {
+test("embedded build manifest is the immutable SEA identity and profile authority", () => {
   const item = fixture({ git: false, runtime: false });
   try {
-    const key = "b".repeat(64);
-    const seaAssets = [
-      "compiler/compiler.js",
-      "native/sagejs_flint.node",
-      "native/sagejs_flint_ffi.node",
-      "native/sagejs_flint_ffi_manifest.json",
-      "native/sagejs_fflas_ffi.node",
-      "native/sagejs_fflas_ffi_manifest.json",
-      "native/sagejs_graph.node",
-      "native/sagejs_igraph_ffi.node",
-      "native/sagejs_igraph_ffi_manifest.json",
-      "native-kernels/index.json",
-      `native-kernels/${key}/index.cjs`,
-    ];
+    // This nearby prefix must not be mistaken for the SEA's build profile.
+    installMathProfile(item.root, "cpu-native");
+    const index = kernelIndex();
+    const embeddedAssets = {
+      [BUILD_MANIFEST_ASSET]: JSON.stringify(buildManifest()),
+      "native-kernels/index.json": JSON.stringify(index),
+      "compiler/compiler.js": "compiler",
+    };
+    embedAdapter(embeddedAssets, "flint");
+    embedAdapter(embeddedAssets, "fflas");
+    embedAdapter(embeddedAssets, "igraph");
+    for (const record of Object.values(index.logicalSources)) {
+      embeddedAssets[`native-kernels/${record.cacheKey}/index.cjs`] = "wrapper";
+      embeddedAssets[
+        `native-kernels/${record.cacheKey}/build/Release/` +
+          "sagejs_native_kernel.node"
+      ] = "addon";
+    }
     const report = collectReleaseCapabilities(fixedOptions(item, {
       artifactKind: "single-executable",
+      embeddedAssets,
       git: { commit: null, dirty: null, present: false },
-      seaAssets,
     }));
-    assert.equal(report.artifact.nativeAssetsEmbedded, true);
-    assert.equal(capability(report, "python-sage-compiler").state, "bundled");
-    assert.equal(capability(report, "flint").state, "bundled");
-    assert.equal(capability(report, "fflas-ffpack").state, "bundled");
-    assert.equal(capability(report, "igraph").state, "bundled");
-    assert.equal(capability(report, "m4ri").installed, "unavailable");
-    assert.equal(capability(report, "m4ri").state, "fallback");
-    assert.equal(capability(report, "typed-python-native-kernels").state, "bundled");
+    assert.equal(report.artifactIdentity.availability, "available");
+    assert.equal(report.artifactIdentity.source, "embedded");
+    assert.equal(report.artifactIdentity.manifest.commit, commit);
+    assert.equal(report.nativeMathProfile.observedBuild.source, "build-manifest");
+    assert.equal(report.nativeMathProfile.observedBuild.effective, "portable");
+    assert.equal(report.nativeMathProfile.installedPrefix, null);
+    assert.equal(capability(report, "flint").candidate, "bundled");
+    assert.equal(
+      capability(report, "flint").manifestIntegrity,
+      "verified-embedded",
+    );
+    assert.equal(
+      capability(report, "typed-python-native-kernels").candidate,
+      "bundled",
+    );
+    assert.equal(capability(report, "m4ri").candidate, "unavailable");
   } finally {
     rmSync(item.directory, { recursive: true, force: true });
   }
 });
 
-test("Windows keeps M4RI unavailable even if a capability stub is compiled", () => {
+test("SEA without a valid build manifest has no inferred artifact identity", () => {
+  const item = fixture({ git: false, runtime: false });
+  try {
+    installMathProfile(item.root, "cpu-native");
+    for (const embeddedAssets of [
+      {},
+      { [BUILD_MANIFEST_ASSET]: "{not json" },
+    ]) {
+      const report = collectReleaseCapabilities(fixedOptions(item, {
+        embeddedAssets,
+        git: { commit: null, dirty: null, present: false },
+        seaAssets: ["compiler/compiler.js"],
+      }));
+      assert.equal(report.artifactIdentity.availability, "unavailable");
+      assert.equal(report.nativeMathProfile.observedBuild, null);
+      assert.equal(report.nativeMathProfile.installedPrefix, null);
+      assert.equal(report.runtimeObservation.checkout.commit, null);
+    }
+  } finally {
+    rmSync(item.directory, { recursive: true, force: true });
+  }
+});
+
+test("an explicit valid build manifest supplies package artifact identity", () => {
+  const item = fixture({ git: false });
+  try {
+    const report = collectReleaseCapabilities(fixedOptions(item, {
+      artifactKind: "npm-package",
+      buildManifest: buildManifest(),
+      git: { commit: null, dirty: null, present: false },
+    }));
+    assert.equal(report.artifactIdentity.availability, "available");
+    assert.equal(report.artifactIdentity.source, "explicit");
+    assert.equal(report.artifactIdentity.manifest.version, "9.8.7");
+  } finally {
+    rmSync(item.directory, { recursive: true, force: true });
+  }
+});
+
+test("Windows M4RI is an unavailable candidate independent of @native policy", () => {
   const item = fixture();
   try {
     installAdapter(item.root, "m4ri", "sagejs_m4ri_ffi.node");
     const report = collectReleaseCapabilities(fixedOptions(item, {
-      arch: "x64",
+      environment: { SAGEJS_NATIVE_DISABLE: "1" },
       libc: "msvc",
       platform: "win32",
     }));
     const m4ri = capability(report, "m4ri");
-    assert.equal(report.host.libc, "msvc");
-    assert.equal(m4ri.installed, "unavailable");
-    assert.equal(m4ri.selected, "fallback");
-    assert.equal(m4ri.state, "fallback");
+    assert.equal(m4ri.candidate, "unavailable");
+    assert.equal(m4ri.manifestIntegrity, "platform-capability-disabled");
+    assert.equal(m4ri.selection, "not-probed");
   } finally {
     rmSync(item.directory, { recursive: true, force: true });
   }
 });
 
-test("profile report is observational and diagnoses selection mismatches", () => {
-  const item = fixture();
-  try {
-    installMathProfile(item.root, "portable");
-    const report = collectReleaseCapabilities(fixedOptions(item, {
-      arch: "arm64",
-      environment: {
-        CC: "/definitely/not/a/compiler",
-        CXX: "/definitely/not/a/compiler",
-        SAGEJS_NATIVE_MATH_PROFILE: "cpu-native",
-      },
-      platform: "darwin",
-    }));
-    assert.equal(report.nativeMathProfile.selected.requested, "cpu-native");
-    assert.equal(report.nativeMathProfile.selected.effective, "cpu-native");
-    assert.equal(report.nativeMathProfile.selected.selectionProbe, "not-run");
-    assert.equal(report.nativeMathProfile.installed.effective, "portable");
-    assert.equal(report.nativeMathProfile.compatibility, "profile-mismatch");
-  } finally {
-    rmSync(item.directory, { recursive: true, force: true });
-  }
-});
-
-test("deterministic output redacts absolute paths unless explicitly requested", () => {
+test("observation is read-only, stable, and path-redacted by default", () => {
   const item = fixture();
   try {
     const external = join(item.directory, "secret-mount", "native-cache");
-    const hiddenHome = item.home;
     const options = fixedOptions(item, {
       environment: {
         SAGEJS_NATIVE_CACHE_DIR: external,
-        SAGEJS_PARALLEL_NATIVE_CACHE: join(hiddenHome, "private-cache"),
+        SAGEJS_PARALLEL_NATIVE_CACHE: join(item.home, "private-cache"),
       },
     });
+    const before = tree(item.directory);
     const first = collectReleaseCapabilities(options);
     const second = collectReleaseCapabilities(options);
     assert.deepEqual(second, first);
+    assert.deepEqual(tree(item.directory), before);
     const serialized = JSON.stringify(first);
     assert.ok(!serialized.includes(item.directory));
-    assert.ok(!serialized.includes(hiddenHome));
+    assert.ok(!serialized.includes(item.home));
     assert.match(serialized, /<external>\/native-cache/);
     assert.match(serialized, /<home>\/private-cache/);
-
-    const explicit = collectReleaseCapabilities({ ...options, includePaths: true });
-    assert.ok(JSON.stringify(explicit).includes(external));
+    assert.ok(JSON.stringify(
+      collectReleaseCapabilities({ ...options, includePaths: true }),
+    ).includes(external));
   } finally {
     rmSync(item.directory, { recursive: true, force: true });
   }
@@ -356,10 +503,9 @@ test("human output is concise and standalone JSON is parseable", () => {
       git: { commit: null, dirty: null, present: false },
     }));
     const human = formatReleaseCapabilities(report);
-    assert.match(human, /^Sage\.js 9\.8\.7/m);
-    assert.match(human, /^Artifact: npm-package for linux-x64$/m);
-    assert.match(human, /^Capabilities:$/m);
-    assert.match(human, /^Caches:$/m);
+    assert.match(human, /^Sage\.js runtime 9\.8\.7/m);
+    assert.match(human, /immutable identity=unavailable/);
+    assert.match(human, /Capability candidates .*not probed/);
     assert.ok(human.split("\n").length < 20);
 
     const result = spawnSync(
@@ -370,14 +516,9 @@ test("human output is concise and standalone JSON is parseable", () => {
     assert.equal(result.status, 0, result.stderr);
     const standalone = JSON.parse(result.stdout);
     assert.equal(standalone.schema, SCHEMA);
-    assert.equal(standalone.identity.version, "9.8.7");
+    assert.equal(standalone.runtimeObservation.package.version, "9.8.7");
+    assert.equal(standalone.artifactIdentity.availability, "unavailable");
     assert.ok(!result.stdout.includes(item.home));
-
-    const bad = spawnSync(process.execPath, [script, "--surprise"], {
-      encoding: "utf8",
-    });
-    assert.equal(bad.status, 1);
-    assert.match(bad.stderr, /usage:/);
   } finally {
     rmSync(item.directory, { recursive: true, force: true });
   }
