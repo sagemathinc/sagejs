@@ -66,6 +66,3 @@
 - Ratchet cold production-kernel loading separately from warm mathematical
   execution, and never silently compile a missing production kernel in an
   ordinary installed session.
-- Bound and age the shared native-module cache automatically. Cleanup must
-  respect active leases, retain current build identities, report reclaimed
-  space, and avoid requiring users to discover multi-gigabyte stale caches.
