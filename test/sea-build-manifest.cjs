@@ -30,6 +30,9 @@ const {
   serialize,
   validateBuildManifest,
 } = require("../scripts/release-manifest.cjs");
+const {
+  createNativeDependencyReceipt,
+} = require("../scripts/native-dependency-receipt.cjs");
 
 const COMMIT = "0123456789abcdef0123456789abcdef01234567";
 const TREE = "89abcdef0123456789abcdef0123456789abcdef";
@@ -92,6 +95,29 @@ function builderObservation() {
     platform: "linux",
     versions: { modules: "137", napi: "10", node: "26.7.0" },
   };
+}
+
+function dependencyReceipt(root, id) {
+  const prefix = join(root, "dependency-prefixes", id);
+  const stamp = join(prefix, `.sagejs-${id}-receipt.json`);
+  write(join(prefix, "lib", `lib${id}.a`), `${id} archive\n`);
+  return createNativeDependencyReceipt(
+    {
+      build: { configuration: "fixture" },
+      dependency: {
+        name: id,
+        sha256: id === "igraph" ? "a".repeat(64) : "b".repeat(64),
+        version: "1.0",
+      },
+      deployment: null,
+      interface: null,
+      mathProfile: mathProfile(),
+      package: id,
+      toolchain: { compiler: "fixture" },
+    },
+    prefix,
+    stamp,
+  );
 }
 
 function nativeBinaryReport(item, glibc = "2.28") {
@@ -196,6 +222,30 @@ function fixture() {
     "native/sagejs_m4ri_ffi.node": write(
       join(root, "assets", "sagejs_m4ri_ffi.node"),
       "m4ri ffi",
+    ),
+    "native/sagejs_m4ri_ffi_manifest.json": write(
+      join(root, "assets", "sagejs_m4ri_ffi_manifest.json"),
+      "{}\n",
+    ),
+    "native/sagejs_graph.node": write(
+      join(root, "assets", "sagejs_graph.node"),
+      "graph base",
+    ),
+    "native/sagejs_igraph_ffi.node": write(
+      join(root, "assets", "sagejs_igraph_ffi.node"),
+      "igraph ffi",
+    ),
+    "native/sagejs_igraph_ffi_manifest.json": write(
+      join(root, "assets", "sagejs_igraph_ffi_manifest.json"),
+      "{}\n",
+    ),
+    "native/dependencies/igraph-receipt.json": write(
+      join(root, "assets", "dependencies", "igraph-receipt.json"),
+      `${JSON.stringify(dependencyReceipt(root, "igraph"), null, 2)}\n`,
+    ),
+    "native/dependencies/m4ri-receipt.json": write(
+      join(root, "assets", "dependencies", "m4ri-receipt.json"),
+      `${JSON.stringify(dependencyReceipt(root, "m4ri"), null, 2)}\n`,
     ),
     "native-kernels/index.json": write(
       join(root, "assets", "index.json"),
@@ -318,6 +368,10 @@ test("mathematics SEA receipt binds authority, index, sources, and every native 
       item.sources.length,
     );
     assert.deepEqual(
+      Object.keys(first.capabilities.nativeDependencies.bindings),
+      ["igraph", "m4ri"],
+    );
+    assert.deepEqual(
       Object.keys(first.capabilities.embeddedAssets.assets),
       Object.keys(item.assets).sort(),
     );
@@ -360,6 +414,7 @@ test("Python-only SEA has a distinct receipt with no mathematical assets", () =>
       nativeMathematics: false,
     });
     assert.equal(manifest.capabilities.nativeKernels, null);
+    assert.equal(manifest.capabilities.nativeDependencies, null);
     assert.deepEqual(
       Object.keys(manifest.capabilities.embeddedAssets.assets),
       ["native/zeromq.node"],
@@ -456,7 +511,10 @@ test("SEA inputs are copied into an immutable logical staging layout", () => {
       { outputDirectory: stagingRoot },
     );
     assert.notEqual(staged.directory, concurrent.directory);
-    assert.deepEqual(Object.keys(staged.assets), Object.keys(item.assets).sort());
+    assert.deepEqual(
+      Object.keys(staged.assets),
+      Object.keys(item.assets).sort((left, right) => left.localeCompare(right)),
+    );
     assert.equal(readFileSync(staged.mainBundle, "utf8"), "main bundle bytes");
     assert.equal(readFileSync(staged.seaNode, "utf8"), "node template bytes");
     for (const [asset, filename] of Object.entries(staged.assets)) {
@@ -567,6 +625,37 @@ test("mathematics profile must exactly match the builder target", () => {
           }),
         ),
       /fingerprint is invalid/,
+    );
+  } finally {
+    item.cleanup();
+  }
+});
+
+test("mathematics SEA requires target-matched igraph and M4RI dependency receipts", () => {
+  const item = fixture();
+  try {
+    const missing = { ...item.assets };
+    delete missing["native/dependencies/igraph-receipt.json"];
+    assert.throws(
+      () => createSeaBuildManifest(options(item, { assets: missing })),
+      /omitted native\/dependencies\/igraph-receipt\.json/,
+    );
+
+    const mismatched = JSON.parse(readFileSync(
+      item.assets["native/dependencies/m4ri-receipt.json"],
+      "utf8",
+    ));
+    mismatched.mathProfile = profileWith({ effectiveProfile: "cpu-native" });
+    const identity = { ...mismatched };
+    delete identity.identitySha256;
+    mismatched.identitySha256 = sha256(JSON.stringify(stable(identity)));
+    writeFileSync(
+      item.assets["native/dependencies/m4ri-receipt.json"],
+      `${JSON.stringify(mismatched, null, 2)}\n`,
+    );
+    assert.throws(
+      () => createSeaBuildManifest(options(item)),
+      /m4ri SEA dependency receipt is invalid/,
     );
   } finally {
     item.cleanup();

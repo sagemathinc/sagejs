@@ -37,6 +37,9 @@ const {
 const {
   validateNativeMathBuildProfile,
 } = require("./native-math-profile.cjs");
+const {
+  validateSeaNativeDependencyBindings,
+} = require("./native-dependency-receipt.cjs");
 
 const SCHEMA = "sagejs.release-capabilities-v3";
 const BUILD_MANIFEST_ASSET = "release/build-manifest.json";
@@ -477,7 +480,12 @@ function nativeBinaryReceiptContract(buildManifest, embedded) {
 function embeddedReceiptContract(buildManifest, embedded) {
   if (buildManifest === null) return false;
   const capabilities = buildManifest.capabilities;
-  if (!exactKeys(capabilities, ["artifact", "embeddedAssets", "nativeKernels"])) {
+  if (!exactKeys(capabilities, [
+    "artifact",
+    "embeddedAssets",
+    "nativeDependencies",
+    "nativeKernels",
+  ])) {
     return false;
   }
   const artifact = capabilities.artifact;
@@ -506,16 +514,34 @@ function embeddedReceiptContract(buildManifest, embedded) {
   if (!nativeBinaryReceiptContract(buildManifest, embedded)) return false;
   const nativeProfile = buildManifest.toolchain.nativeMathProfile;
   if (!artifact.nativeMathematics) {
-    if (capabilities.nativeKernels !== null || nativeProfile !== null) return false;
+    if (
+      capabilities.nativeDependencies !== null ||
+      capabilities.nativeKernels !== null ||
+      nativeProfile !== null
+    ) return false;
     return !Object.keys(embeddedAssets.assets).some((name) =>
       name.startsWith("native-kernels/") ||
       /^native\/sagejs_(?:flint|fflas|igraph|graph|m4ri)/.test(name));
   }
   if (
+    capabilities.nativeDependencies === null ||
     capabilities.nativeKernels === null ||
     nativeProfile === null ||
     embeddedKernelDeclaration(buildManifest) === null
   ) return false;
+  try {
+    validateNativeMathBuildProfile(nativeProfile, buildManifest.target);
+    validateSeaNativeDependencyBindings(capabilities.nativeDependencies, {
+      assets: embedded.assets,
+      binaryLabels: buildManifest.toolchain.nativeBinaries.report.files
+        .map(({ label }) => label),
+      bytes: embedded.bytes,
+      mathProfile: nativeProfile,
+      target: buildManifest.target,
+    });
+  } catch {
+    return false;
+  }
   const required = ADAPTERS
     .filter((adapter) =>
       !(adapter.id === "m4ri" && buildManifest.target.platform === "win32"))

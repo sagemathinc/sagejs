@@ -1,6 +1,7 @@
 "use strict";
 
 const assert = require("node:assert/strict");
+const { createHash } = require("node:crypto");
 const {
   mkdirSync,
   mkdtempSync,
@@ -407,6 +408,38 @@ test("truncated and noncanonical receipt files are rejected without throwing", (
   try {
     writeFileSync(item.stamp, readFileSync(__filename).subarray(0, 20));
     assert.equal(readNativeDependencyReceipt(item.stamp), null);
+  } finally {
+    rmSync(item.root, { recursive: true, force: true });
+  }
+});
+
+test("dependency receipts reject extra fields and malformed output records", () => {
+  const item = receiptFixture();
+  try {
+    const receipt = createNativeDependencyReceipt(
+      receiptExpectation(),
+      item.prefix,
+      item.stamp,
+    );
+    const extra = { ...receipt, untrusted: true };
+    assert.throws(
+      () => validateNativeDependencyReceipt(extra),
+      /receipt is invalid/,
+    );
+    const malformed = structuredClone(receipt);
+    malformed.outputs.files[0].path = "../outside";
+    malformed.outputs.identitySha256 = createHash("sha256")
+      .update(JSON.stringify(malformed.outputs.files))
+      .digest("hex");
+    const identity = { ...malformed };
+    delete identity.identitySha256;
+    malformed.identitySha256 = createHash("sha256")
+      .update(JSON.stringify(identity))
+      .digest("hex");
+    assert.throws(
+      () => validateNativeDependencyReceipt(malformed),
+      /output receipt is invalid/,
+    );
   } finally {
     rmSync(item.root, { recursive: true, force: true });
   }

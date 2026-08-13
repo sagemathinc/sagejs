@@ -1,0 +1,46 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "sea-dependency-receipts",
+  "title": "Sea Dependency Receipts",
+  "lane": "integration",
+  "status": "active",
+  "owner": "user",
+  "objective": "Bind every embedded M4RI and igraph adapter and FFI manifest to an exact target-matched native dependency receipt and validate it fail-closed",
+  "base_commit": "9c8726aa3ebaa4bc93e9a84a86c2a8a3215bbeb1",
+  "claims": [
+    "scripts/build-sea.cjs",
+    "scripts/release-capabilities.cjs",
+    "scripts/native-dependency-receipt.cjs",
+    "test/sea-build-manifest.cjs",
+    "test/release-capabilities.cjs",
+    "test/native-dependency-receipt.cjs"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "external-library",
+    "fallback": "tested-capability",
+    "oracles": [
+      "Exact receipt identity and tamper rejection tests"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "fallback",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm architecture:check",
+    "pnpm test:portable",
+    "pnpm test:baselib:strict"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "",
+    "risks": [],
+    "next_steps": []
+  }
+}
