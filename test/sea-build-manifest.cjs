@@ -674,7 +674,32 @@ test(
       );
 
       unlinkSync(installedPrefix);
-      const outsidePrefix = join(dirname(root), "outside-workspace", "prefix");
+      const externalRoot = mkdtempSync(join(tmpdir(), "sagejs-external-prefix-"));
+      const ordinaryExternalPrefix = join(externalRoot, "ordinary");
+      const ordinaryExternalStamp = join(
+        ordinaryExternalPrefix,
+        first.stampName,
+      );
+      const ordinaryExternalReceipt = dependencyReceipt(root, "m4ri", {
+        prefix: ordinaryExternalPrefix,
+        stamp: ordinaryExternalStamp,
+      });
+      const ordinarySource = nativeDependencyReceiptSource(
+        root,
+        "m4ri",
+        ordinaryExternalPrefix,
+        first.stampName,
+        { cacheRoot },
+      );
+      assert.equal(ordinarySource.prefix, ordinaryExternalPrefix);
+      assert.deepEqual(validateNativeDependencyReceiptSources({
+        m4ri: {
+          identitySha256: ordinaryExternalReceipt.identitySha256,
+          ...ordinarySource,
+        },
+      }), { m4ri: ordinaryExternalReceipt.identitySha256 });
+
+      const outsidePrefix = join(externalRoot, "linked");
       const outsideRelative = join("outside-workspace", "prefix");
       const outsideCachedPrefix = join(
         cacheRoot,
@@ -708,6 +733,7 @@ test(
         );
       } finally {
         unlinkSync(outsidePrefix);
+        rmSync(externalRoot, { force: true, recursive: true });
       }
 
       const ancestorRoot = mkdtempSync(join(tmpdir(), "sagejs-sea-ancestor-"));

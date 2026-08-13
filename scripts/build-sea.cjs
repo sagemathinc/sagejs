@@ -387,6 +387,19 @@ function nativeDependencyReceiptSource(
   stampName,
   options = {},
 ) {
+  const absolutePrefix = resolve(prefix);
+  const prefixInformation = lstatSync(absolutePrefix);
+  if (!prefixInformation.isSymbolicLink()) {
+    if (!prefixInformation.isDirectory()) {
+      throw new Error(`${id} native dependency prefix is not a directory`);
+    }
+    return {
+      prefix: absolutePrefix,
+      prefixLink: absolutePrefix,
+      stamp: join(absolutePrefix, stampName),
+    };
+  }
+
   const workspaceRoot = resolve(rootDirectory);
   const workspaceInformation = lstatSync(workspaceRoot);
   if (
@@ -396,7 +409,6 @@ function nativeDependencyReceiptSource(
   ) {
     throw new Error("native dependency workspace root must be a real directory");
   }
-  const absolutePrefix = resolve(prefix);
   const workspaceRelativePrefix = relative(workspaceRoot, absolutePrefix);
   const workspaceComponents = workspaceRelativePrefix.split(sep);
   if (
@@ -425,17 +437,6 @@ function nativeDependencyReceiptSource(
         `${id} native dependency prefix has a symlinked or non-directory ancestor`,
       );
     }
-  }
-  const prefixInformation = lstatSync(absolutePrefix);
-  if (!prefixInformation.isSymbolicLink()) {
-    if (!prefixInformation.isDirectory()) {
-      throw new Error(`${id} native dependency prefix is not a directory`);
-    }
-    return {
-      prefix: absolutePrefix,
-      prefixLink: absolutePrefix,
-      stamp: join(absolutePrefix, stampName),
-    };
   }
 
   const cacheRoot = resolve(
