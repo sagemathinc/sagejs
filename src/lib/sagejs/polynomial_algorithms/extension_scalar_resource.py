@@ -35,6 +35,7 @@ from __future__ import annotations
 from typing import Any, Sequence
 
 import sagejs.runtime as runtime
+from sagejs.ffi import flint
 from sagejs.polynomial_algorithms.extension_resource_contract import (
     ContextDescriptor,
     checked_element_coordinates,
@@ -67,8 +68,6 @@ class ForcedGeneratedFqField:
             generator_name,
         )
         prime, extension_degree, modulus, _generator = descriptor
-        from sagejs.ffi import flint
-
         packed = runtime.uint64_buffer(modulus)
         self._descriptor = descriptor
         self._resource = flint.fq_context(packed, extension_degree + 1, prime)
@@ -85,8 +84,6 @@ class ForcedGeneratedFqField:
         self._resource.close()
 
     def element(self, coordinates: Sequence[Any]) -> ForcedGeneratedFqElement:
-        from sagejs.ffi import flint
-
         if self.closed:
             raise RuntimeError("finite-field context is closed")
         prime, degree, _modulus, _generator = self._descriptor
@@ -141,8 +138,6 @@ class ForcedGeneratedFqElement:
         self._resource.close()
 
     def copy(self) -> ForcedGeneratedFqElement:
-        from sagejs.ffi import flint
-
         return ForcedGeneratedFqElement(
             self._field,
             flint.fq_element_copy(self._resource),
@@ -159,8 +154,6 @@ class ForcedGeneratedFqElement:
         return other
 
     def __add__(self, other: object) -> ForcedGeneratedFqElement:
-        from sagejs.ffi import flint
-
         checked = self._require_same_field(other)
         return ForcedGeneratedFqElement(
             self._field,
@@ -168,8 +161,6 @@ class ForcedGeneratedFqElement:
         )
 
     def __sub__(self, other: object) -> ForcedGeneratedFqElement:
-        from sagejs.ffi import flint
-
         checked = self._require_same_field(other)
         return ForcedGeneratedFqElement(
             self._field,
@@ -177,8 +168,6 @@ class ForcedGeneratedFqElement:
         )
 
     def __mul__(self, other: object) -> ForcedGeneratedFqElement:
-        from sagejs.ffi import flint
-
         checked = self._require_same_field(other)
         return ForcedGeneratedFqElement(
             self._field,
@@ -194,16 +183,12 @@ class ForcedGeneratedFqElement:
             inverse.close()
 
     def __neg__(self) -> ForcedGeneratedFqElement:
-        from sagejs.ffi import flint
-
         return ForcedGeneratedFqElement(
             self._field,
             flint.fq_element_neg(self._resource),
         )
 
     def __pow__(self, exponent: Any) -> ForcedGeneratedFqElement:
-        from sagejs.ffi import flint
-
         exact = _exact_integer(exponent, "finite-field exponent")
         if exact < 0 and self.is_zero():
             raise ZeroDivisionError("cannot raise zero to a negative power")
@@ -213,8 +198,6 @@ class ForcedGeneratedFqElement:
         )
 
     def inverse(self) -> ForcedGeneratedFqElement:
-        from sagejs.ffi import flint
-
         if self.is_zero():
             raise ZeroDivisionError("cannot invert zero in a finite field")
         return ForcedGeneratedFqElement(
@@ -223,18 +206,12 @@ class ForcedGeneratedFqElement:
         )
 
     def is_zero(self) -> bool:
-        from sagejs.ffi import flint
-
         return bool(flint.fq_element_is_zero(self._resource))
 
     def is_one(self) -> bool:
-        from sagejs.ffi import flint
-
         return bool(flint.fq_element_is_one(self._resource))
 
     def coordinates(self) -> tuple[int, ...]:
-        from sagejs.ffi import flint
-
         region = flint.fq_element_coordinate_bytes(self._resource)
         copied = region.take_bytes()
         coordinates = decode_coordinate_bytes(copied, self._field.descriptor[1])
@@ -254,8 +231,6 @@ class ForcedGeneratedFqElement:
         return stable_element_hash(self.serialize())
 
     def __eq__(self, other: object) -> bool:
-        from sagejs.ffi import flint
-
         if not isinstance(other, ForcedGeneratedFqElement):
             return False
         if other._field is not self._field:

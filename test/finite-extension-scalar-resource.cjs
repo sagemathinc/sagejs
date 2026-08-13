@@ -124,7 +124,7 @@ field.close()
 print("forced-generated-fq-scalar-ok")
 `;
 
-test("forced generated finite-extension scalars are a complete owner slice", () => {
+test("compiled isolated finite-extension facade is a complete owner slice", () => {
   assert.equal(runSage(semantics), "forced-generated-fq-scalar-ok");
   assert.equal(
     runSage(semantics, { SAGEJS_NATIVE_DISABLE: "1" }),
