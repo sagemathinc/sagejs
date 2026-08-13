@@ -24,7 +24,8 @@
     "test/node-test-manifest.cjs",
     "pyrightconfig.json",
     "architecture/native-boundaries.json",
-    "architecture/native-kernels.json"
+    "architecture/native-kernels.json",
+    "architecture/package-graph.json"
   ],
   "dependencies": [],
   "references": [
