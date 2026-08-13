@@ -3,8 +3,9 @@
 
 const assert = require("node:assert/strict");
 const { spawnSync } = require("node:child_process");
-const { createHash } = require("node:crypto");
+const { createHash, randomBytes } = require("node:crypto");
 const {
+  chmodSync,
   closeSync,
   copyFileSync,
   existsSync,
@@ -40,6 +41,15 @@ const CONTAINERFILE_PATH = join(__dirname, "Containerfile");
 const OUTPUT_MARKER = ".sagejs-linux-baseline-output.json";
 const OUTPUT_SCHEMA = "sagejs.linux-baseline-output-v1";
 const RECEIPT_SCHEMA = "sagejs.linux-baseline-receipt-v1";
+const IMAGE_OWNER_LABEL = "org.sagemath.sagejs.linux-baseline.token";
+const GCC_PATH = "/opt/rh/gcc-toolset-14/root/usr/bin/gcc";
+const PNPM_VERSION = "11.9.0";
+const PNPM_TARBALL_URL = `https://registry.npmjs.org/pnpm/-/pnpm-${PNPM_VERSION}.tgz`;
+const PNPM_TARBALL_SHA512 =
+  "bd682d5d03fe525ef7c9fd6780c6884d1e756ac4c9c9fe00c538782824310dcf" +
+  "90e3ddc4f53835f06dfaebd5085e41855e0bcbb3b60de2ac5bbab89e5036f03b";
+const PNPM_TARBALL_INTEGRITY =
+  "sha512-vWgtXQP+Ul73yf1ngMaITR51asTJyf4AxTh4KCQxDc+Q493E9Tg18G3669UIXkGFXgvLs7YN4qxburieUDbwOw==";
 const NODE_CONFIGURE_ARGUMENTS = Object.freeze([
   `--prefix=/opt/sagejs-node`,
   "--partly-static",
@@ -126,10 +136,9 @@ function assertRuntimeOmitsLibatomic(engine) {
 function compilerIdentity(engine) {
   const program = [
     "set -eu",
-    'gcc_path=$(command -v gcc)',
-    'printf "path=%s\\n" "$gcc_path"',
-    'printf "version=%s\\n" "$(gcc -dumpfullversion -dumpversion)"',
-    'printf "target=%s\\n" "$(gcc -dumpmachine)"',
+    `printf "path=%s\\n" "${GCC_PATH}"`,
+    `printf "version=%s\\n" "$(${GCC_PATH} -dumpfullversion -dumpversion)"`,
+    `printf "target=%s\\n" "$(${GCC_PATH} -dumpmachine)"`,
   ].join("; ");
   const output = run(engine, ["run", "--rm", BUILD_IMAGE, "sh", "-c", program], {
     encoding: "utf8",
@@ -158,7 +167,72 @@ function releaseAuthorityIdentity(options = {}) {
   );
 }
 
-function proveSeaTemplate(engine, nodeExecutable) {
+function resolveSourceCommit(sourceRef, options = {}) {
+  const root = options.root || ROOT;
+  return run("git", ["rev-parse", `${sourceRef}^{commit}`], {
+    cwd: root,
+    encoding: "utf8",
+    stdio: ["ignore", "pipe", "inherit"],
+  }).stdout.trim();
+}
+
+function stageReleaseAuthority(directory, options = {}) {
+  const sources = {
+    containerfile: options.containerfile || CONTAINERFILE_PATH,
+    policy: options.policy || POLICY_PATH,
+    releaseDriver: options.releaseDriver || __filename,
+  };
+  mkdirSync(directory);
+  const paths = {};
+  for (const [name, source] of Object.entries(sources)) {
+    const destination = join(directory, basename(source));
+    copyFileSync(source, destination);
+    chmodSync(destination, 0o400);
+    paths[name] = destination;
+  }
+  const sourceCommit = options.sourceCommit;
+  assert.match(sourceCommit, /^[0-9a-f]{40}$/);
+  paths.sourceCommit = join(directory, "source-commit");
+  writeFileSync(paths.sourceCommit, `${sourceCommit}\n`, { mode: 0o400 });
+  return {
+    identity: releaseAuthorityIdentity(paths),
+    paths,
+    sourceCommit: readFileSync(paths.sourceCommit, "utf8").trim(),
+  };
+}
+
+function allocatePrivateImage(engine, options = {}) {
+  const spawn = options.spawn || spawnSync;
+  const entropy = options.randomBytes || randomBytes;
+  for (let attempt = 0; attempt < 8; attempt += 1) {
+    const token = entropy(24).toString("hex");
+    const tag = `sagejs-linux-baseline:${token}`;
+    const inspected = spawn(engine, ["image", "inspect", tag], { stdio: "ignore" });
+    if (inspected.error && inspected.error.code !== "ENOENT") throw inspected.error;
+    if (inspected.status !== 0) return { tag, token };
+  }
+  throw new Error("could not allocate a private Linux baseline image tag");
+}
+
+function removeOwnedImage(engine, image, options = {}) {
+  const spawn = options.spawn || spawnSync;
+  const inspected = spawn(engine, ["image", "inspect", image.tag], {
+    encoding: "utf8",
+    stdio: ["ignore", "pipe", "ignore"],
+  });
+  if (inspected.error || inspected.status !== 0) return false;
+  let labels;
+  try {
+    labels = JSON.parse(inspected.stdout)?.[0]?.Config?.Labels;
+  } catch {
+    return false;
+  }
+  if (labels?.[IMAGE_OWNER_LABEL] !== image.token) return false;
+  const removed = spawn(engine, ["image", "rm", image.tag], { stdio: "ignore" });
+  return !removed.error && removed.status === 0;
+}
+
+function proveSeaTemplate(engine, nodeExecutable, policyPath = POLICY_PATH) {
   const directory = mkdtempSync(join(tmpdir(), "sagejs-linux-sea-"));
   try {
     const main = join(directory, "main.cjs");
@@ -178,7 +252,7 @@ function proveSeaTemplate(engine, nodeExecutable) {
     run(nodeExecutable, ["--build-sea", basename(config)], { cwd: directory });
     const inspection = assertNativeInputs(
       [{ label: "sagejs-sea-smoke", path: executable, role: "sea-smoke" }],
-      JSON.parse(readFileSync(POLICY_PATH, "utf8")),
+      JSON.parse(readFileSync(policyPath, "utf8")),
     );
     const stdout = run(engine, [
       "run",
@@ -198,11 +272,12 @@ function proveSeaTemplate(engine, nodeExecutable) {
   }
 }
 
-function exportGitArchive(sourceRef, destination) {
+function exportGitArchive(sourceCommit, destination, options = {}) {
+  assert.match(sourceCommit, /^[0-9a-f]{40}$/);
   const descriptor = openSync(destination, "w");
   try {
-    const result = spawnSync("git", ["archive", "--format=tar", sourceRef], {
-      cwd: ROOT,
+    const result = spawnSync("git", ["archive", "--format=tar", sourceCommit], {
+      cwd: options.root || ROOT,
       stdio: ["ignore", descriptor, "inherit"],
     });
     if (result.error) throw result.error;
@@ -234,10 +309,10 @@ function listNativeInputs(directory) {
   return inputs.sort((left, right) => left.label.localeCompare(right.label));
 }
 
-function validateReleaseInputs(directory) {
+function validateReleaseInputs(directory, policyPath = POLICY_PATH) {
   const inputs = listNativeInputs(directory);
   assert.ok(inputs.some(({ label }) => label === "node"), "Node template is missing");
-  const policy = JSON.parse(readFileSync(POLICY_PATH, "utf8"));
+  const policy = JSON.parse(readFileSync(policyPath, "utf8"));
   return assertNativeInputs(inputs, policy);
 }
 
@@ -268,10 +343,6 @@ function assertPortableMathProfile(profile) {
     "portable mathematics profile contains a host CPU compiler flag",
   );
   return profile;
-}
-
-function copyContainerfile(context) {
-  copyFileSync(CONTAINERFILE_PATH, join(context, "Containerfile"));
 }
 
 function assertSafeOutputDirectory(output) {
@@ -354,14 +425,17 @@ function buildReleaseInputs(options) {
   const temporary = mkdtempSync(join(tmpdir(), "sagejs-linux-baseline-"));
   const context = join(temporary, "context");
   const extracted = join(temporary, "extracted");
-  const tag = `sagejs-linux-baseline:${process.pid}`;
+  const sourceCommit = resolveSourceCommit(options.sourceRef);
+  mkdirSync(context);
+  const authority = stageReleaseAuthority(join(context, ".authority"), {
+    sourceCommit,
+  });
+  const image = allocatePrivateImage(engine);
   let container = null;
   try {
-    mkdirSync(context);
     mkdirSync(extracted);
-    copyContainerfile(context);
     if (options.allInputs) {
-      exportGitArchive(options.sourceRef, join(context, "sagejs.tar"));
+      exportGitArchive(authority.sourceCommit, join(context, "sagejs.tar"));
     } else {
       writeFileSync(join(context, "sagejs.tar"), "");
     }
@@ -369,30 +443,36 @@ function buildReleaseInputs(options) {
     run(engine, [
       "build",
       "--file",
-      join(context, "Containerfile"),
+      authority.paths.containerfile,
       "--target",
       target,
       "--tag",
-      tag,
+      image.tag,
+      "--label",
+      `${IMAGE_OWNER_LABEL}=${image.token}`,
       "--build-arg",
       `BUILD_IMAGE=${BUILD_IMAGE}`,
       "--build-arg",
       `NODE_SOURCE_SHA256=${NODE_SOURCE_SHA256}`,
       "--build-arg",
       `NODE_VERSION=${NODE_VERSION}`,
+      "--build-arg",
+      `PNPM_TARBALL_SHA512=${PNPM_TARBALL_SHA512}`,
+      "--build-arg",
+      `PNPM_TARBALL_URL=${PNPM_TARBALL_URL}`,
       context,
     ]);
     // Scratch artifact stages have neither CMD nor ENTRYPOINT. Supplying a
     // harmless command makes both Docker and Podman create an extractable
     // container without changing or executing the candidate binary.
-    container = run(engine, ["create", tag, "/release-inputs/node", "--version"], {
+    container = run(engine, ["create", image.tag, "/release-inputs/node", "--version"], {
       encoding: "utf8",
       stdio: ["ignore", "pipe", "inherit"],
     }).stdout.trim();
     if (!container) throw new Error(`${engine} create did not return a container id`);
     run(engine, ["cp", `${container}:/release-inputs/.`, extracted]);
 
-    const report = validateReleaseInputs(extracted);
+    const report = validateReleaseInputs(extracted, authority.paths.policy);
     const mathProfile = options.allInputs
       ? assertPortableMathProfile(
           JSON.parse(readFileSync(join(extracted, "native-math-profile.json"), "utf8")),
@@ -412,17 +492,27 @@ function buildReleaseInputs(options) {
       stdio: ["ignore", "pipe", "inherit"],
     }).stdout.trim();
     assert.equal(runtimeProbe, `v${NODE_VERSION}`);
-    const seaProbe = proveSeaTemplate(engine, join(extracted, "node"));
+    const seaProbe = proveSeaTemplate(
+      engine,
+      join(extracted, "node"),
+      authority.paths.policy,
+    );
     const receipt = {
       schema: RECEIPT_SCHEMA,
-      authority: releaseAuthorityIdentity(),
+      authority: authority.identity,
       buildImage: BUILD_IMAGE,
       compiler: compilerIdentity(engine),
       configureArguments: NODE_CONFIGURE_ARGUMENTS,
       nodeSourceSha256: NODE_SOURCE_SHA256,
       nodeVersion: NODE_VERSION,
+      pnpmDistribution: {
+        integrity: PNPM_TARBALL_INTEGRITY,
+        sha512: PNPM_TARBALL_SHA512,
+        url: PNPM_TARBALL_URL,
+        version: PNPM_VERSION,
+      },
       nativeMathProfile: mathProfile,
-      policy: basename(POLICY_PATH),
+      policy: JSON.parse(readFileSync(authority.paths.policy, "utf8")),
       runtimeImage: RUNTIME_IMAGE,
       runtimeProbe: {
         ...runtime,
@@ -430,13 +520,8 @@ function buildReleaseInputs(options) {
         stdout: runtimeProbe,
       },
       seaProbe,
-      sourceRef: options.allInputs
-        ? run("git", ["rev-parse", `${options.sourceRef}^{commit}`], {
-            cwd: ROOT,
-            encoding: "utf8",
-            stdio: ["ignore", "pipe", "inherit"],
-          }).stdout.trim()
-        : null,
+      requestedSourceRef: options.sourceRef,
+      sourceCommit: authority.sourceCommit,
       inspection: report,
     };
     publishReleaseOutput(extracted, options.output, receipt);
@@ -444,7 +529,7 @@ function buildReleaseInputs(options) {
     return receipt;
   } finally {
     if (container) spawnSync(engine, ["rm", "--force", container], { stdio: "ignore" });
-    if (!options.keepImage) spawnSync(engine, ["image", "rm", tag], { stdio: "ignore" });
+    if (!options.keepImage) removeOwnedImage(engine, image);
     rmSync(temporary, { recursive: true, force: true });
   }
 }
@@ -475,23 +560,34 @@ in a minimal UBI 8 container without libatomic. By default only Node is built.
 
 module.exports = {
   BUILD_IMAGE,
+  GCC_PATH,
+  IMAGE_OWNER_LABEL,
   NODE_CONFIGURE_ARGUMENTS,
   NODE_SOURCE_SHA256,
   NODE_VERSION,
   OUTPUT_SCHEMA,
+  PNPM_TARBALL_INTEGRITY,
+  PNPM_TARBALL_SHA512,
+  PNPM_TARBALL_URL,
+  PNPM_VERSION,
   POLICY_PATH,
   RUNTIME_IMAGE,
+  allocatePrivateImage,
   assertPortableMathProfile,
   assertSafeOutputDirectory,
   assertRuntimeOmitsLibatomic,
   buildReleaseInputs,
   compilerIdentity,
+  exportGitArchive,
   listNativeInputs,
   parseArguments,
   publishReleaseOutput,
   releaseAuthorityIdentity,
+  removeOwnedImage,
+  resolveSourceCommit,
   proveSeaTemplate,
   selectEngine,
+  stageReleaseAuthority,
   validateReleaseInputs,
 };
 

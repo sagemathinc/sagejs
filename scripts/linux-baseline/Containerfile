@@ -3,6 +3,8 @@ FROM ${BUILD_IMAGE} AS node-build
 
 ARG NODE_SOURCE_SHA256
 ARG NODE_VERSION
+ARG PNPM_TARBALL_SHA512
+ARG PNPM_TARBALL_URL
 ENV PATH=/opt/rh/gcc-toolset-14/root/usr/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 ENV LC_ALL=C
 ENV SOURCE_DATE_EPOCH=0
@@ -24,6 +26,8 @@ FROM scratch AS node-artifact
 COPY --from=node-build /opt/sagejs-node/bin/node /release-inputs/node
 
 FROM ${BUILD_IMAGE} AS sagejs-build
+ARG PNPM_TARBALL_SHA512
+ARG PNPM_TARBALL_URL
 COPY --from=node-build /opt/sagejs-node /opt/sagejs-node
 ENV PATH=/opt/sagejs-node/bin:/opt/rh/gcc-toolset-14/root/usr/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 ENV CC=gcc
@@ -40,7 +44,13 @@ ENV TZ=UTC
 WORKDIR /work/sagejs
 COPY sagejs.tar /tmp/sagejs.tar
 RUN tar -xf /tmp/sagejs.tar -C /work/sagejs \
- && npm install --global pnpm@11.9.0 \
+ && curl --fail --location --retry 3 "${PNPM_TARBALL_URL}" --output /tmp/pnpm.tgz \
+ && printf '%s  %s\n' "${PNPM_TARBALL_SHA512}" /tmp/pnpm.tgz \
+      | sha512sum --check --strict \
+ && mkdir -p /opt/sagejs-pnpm \
+ && tar -xzf /tmp/pnpm.tgz --strip-components=1 -C /opt/sagejs-pnpm \
+ && ln -s /opt/sagejs-pnpm/bin/pnpm.mjs /usr/local/bin/pnpm \
+ && pnpm --version | grep -Fx '11.9.0' \
  && pnpm install --frozen-lockfile \
  && pnpm run build \
  && pnpm --dir packages/flint build \
