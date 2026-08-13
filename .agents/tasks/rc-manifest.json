@@ -1,0 +1,166 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "rc-manifest",
+  "title": "Rc Manifest",
+  "lane": "integration",
+  "status": "active",
+  "owner": "user",
+  "objective": "Generate a deterministic release artifact manifest with checksums, commit/toolchain provenance, target identity, capabilities, and verification.",
+  "base_commit": "950f0134dd51ca66776dc3d6290a5807cf3fd77f",
+  "claims": [
+    "scripts/release-manifest.cjs",
+    "test/release-manifest.cjs"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "not-applicable",
+    "fallback": "not-applicable",
+    "oracles": [],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm architecture:check",
+    "pnpm test:portable",
+    "pnpm test:baselib:strict"
+  ],
+  "runs": [
+    {
+      "command": "node --test test/release-manifest.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.726,
+      "started_at": "2026-08-13T19:50:03.001Z",
+      "commit": "950f0134dd51ca66776dc3d6290a5807cf3fd77f",
+      "workspace_fingerprint": "f354fd4d1a78e487596d202dc3397d9d43b32b3bfe6e91860790a7969353aab3",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 10.875,
+      "started_at": "2026-08-13T19:50:15.746Z",
+      "commit": "950f0134dd51ca66776dc3d6290a5807cf3fd77f",
+      "workspace_fingerprint": "f354fd4d1a78e487596d202dc3397d9d43b32b3bfe6e91860790a7969353aab3",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 16.441,
+      "started_at": "2026-08-13T19:52:17.158Z",
+      "commit": "950f0134dd51ca66776dc3d6290a5807cf3fd77f",
+      "workspace_fingerprint": "f354fd4d1a78e487596d202dc3397d9d43b32b3bfe6e91860790a7969353aab3",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 72.047,
+      "started_at": "2026-08-13T19:52:38.017Z",
+      "commit": "950f0134dd51ca66776dc3d6290a5807cf3fd77f",
+      "workspace_fingerprint": "f354fd4d1a78e487596d202dc3397d9d43b32b3bfe6e91860790a7969353aab3",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/release-manifest.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 3.462,
+      "started_at": "2026-08-13T19:57:58.554Z",
+      "commit": "950f0134dd51ca66776dc3d6290a5807cf3fd77f",
+      "workspace_fingerprint": "4c61c6a20e097a65f6aa9a35565e5892ff22d6d0d1a53d43a6c86d05ac8ca6be",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 13.555,
+      "started_at": "2026-08-13T19:59:57.993Z",
+      "commit": "950f0134dd51ca66776dc3d6290a5807cf3fd77f",
+      "workspace_fingerprint": "25390d3c3387882b5413f3e46cc78083239514824d1097028fa427cdfcd164f6",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 23.241,
+      "started_at": "2026-08-13T20:00:16.044Z",
+      "commit": "950f0134dd51ca66776dc3d6290a5807cf3fd77f",
+      "workspace_fingerprint": "25390d3c3387882b5413f3e46cc78083239514824d1097028fa427cdfcd164f6",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 34.278,
+      "started_at": "2026-08-13T20:01:43.870Z",
+      "commit": "950f0134dd51ca66776dc3d6290a5807cf3fd77f",
+      "workspace_fingerprint": "25390d3c3387882b5413f3e46cc78083239514824d1097028fa427cdfcd164f6",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 22.802,
+      "started_at": "2026-08-13T20:02:51.514Z",
+      "commit": "950f0134dd51ca66776dc3d6290a5807cf3fd77f",
+      "workspace_fingerprint": "25390d3c3387882b5413f3e46cc78083239514824d1097028fa427cdfcd164f6",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/release-manifest.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.687,
+      "started_at": "2026-08-13T20:04:08.801Z",
+      "commit": "950f0134dd51ca66776dc3d6290a5807cf3fd77f",
+      "workspace_fingerprint": "25390d3c3387882b5413f3e46cc78083239514824d1097028fa427cdfcd164f6",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 5.846,
+      "started_at": "2026-08-13T20:04:10.120Z",
+      "commit": "950f0134dd51ca66776dc3d6290a5807cf3fd77f",
+      "workspace_fingerprint": "25390d3c3387882b5413f3e46cc78083239514824d1097028fa427cdfcd164f6",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 15.119,
+      "started_at": "2026-08-13T20:04:16.571Z",
+      "commit": "950f0134dd51ca66776dc3d6290a5807cf3fd77f",
+      "workspace_fingerprint": "25390d3c3387882b5413f3e46cc78083239514824d1097028fa427cdfcd164f6",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Implemented a deterministic release artifact manifest creator and fail-closed verifier. The manifest separates reproducible artifact/source/target/capability identity from optional SOURCE_DATE_EPOCH creation provenance, streams SHA-256 checksums, records normalized Node/compiler/native-math build identity, and supports exact Git or explicit source-archive provenance. Nine focused tests cover stable output, multiple artifacts, normalized toolchain paths, artifact and manifest tampering, non-regular substitutions, malformed and noncanonical input, dirty Git sources, source archives, and the CLI.",
+    "risks": [
+      "pnpm test:portable reaches the expected shared integration boundary: test/test-manifest.test.cjs rejects the new test until test/release-manifest.cjs is registered in test/node-test-manifest.cjs. All preceding portable tests passed once deferred FLINT, M4RI, FFLAS, and graph adapters were provisioned."
+    ],
+    "next_steps": [
+      "In the integration lane, add test/release-manifest.cjs to the unit array in test/node-test-manifest.cjs, then rerun pnpm test:portable.",
+      "Wire the manifest creator into the release artifact assembly lane and supply its authoritative capability report; signing and notarization can later cover the canonical manifest and artifact set."
+    ]
+  }
+}
