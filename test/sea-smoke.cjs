@@ -3,6 +3,8 @@
 const assert = require("node:assert/strict");
 const {
   chmodSync,
+  copyFileSync,
+  mkdirSync,
   mkdtempSync,
   rmSync,
   writeFileSync,
@@ -31,6 +33,18 @@ const mathExecutable = join(
 const pythonOnly = process.argv.includes("--python-only");
 const fflasOnly = process.argv.includes("--fflas-only");
 const temporaryDirectory = mkdtempSync(join(tmpdir(), "sagejs-sea-test-"));
+const relocatedDirectory = join(temporaryDirectory, "relocated");
+mkdirSync(relocatedDirectory, { recursive: true });
+const relocatedPythonExecutable = join(
+  relocatedDirectory,
+  `sagepython${executableSuffix}`,
+);
+const relocatedMathExecutable = join(
+  relocatedDirectory,
+  `sagejs${executableSuffix}`,
+);
+if (!fflasOnly) copyFileSync(pythonExecutable, relocatedPythonExecutable);
+if (!pythonOnly) copyFileSync(mathExecutable, relocatedMathExecutable);
 
 function run(executable, filename, extraArguments = []) {
   const result = spawnSync(executable, [...extraArguments, filename], {
@@ -70,7 +84,7 @@ function testFflasSea() {
     [false, "isolated"],
     [true, "adapter"],
   ]) {
-    const result = spawnSync(mathExecutable, [fflasProgram], {
+    const result = spawnSync(relocatedMathExecutable, [fflasProgram], {
       cwd: temporaryDirectory,
       encoding: "utf8",
       env: {
@@ -102,7 +116,7 @@ function testFflasSea() {
 
 if (fflasOnly) {
   try {
-    if (process.platform !== "win32") chmodSync(mathExecutable, 0o755);
+    if (process.platform !== "win32") chmodSync(relocatedMathExecutable, 0o755);
     testFflasSea();
   } finally {
     rmSync(temporaryDirectory, { recursive: true, force: true });
@@ -115,16 +129,16 @@ try {
   // Some filesystems do not preserve an executable bit when an artifact is
   // copied into a test workspace.
   if (process.platform !== "win32") {
-    chmodSync(pythonExecutable, 0o755);
-    if (!pythonOnly) chmodSync(mathExecutable, 0o755);
+    chmodSync(relocatedPythonExecutable, 0o755);
+    if (!pythonOnly) chmodSync(relocatedMathExecutable, 0o755);
   }
 
   assert.equal(
-    runArguments(pythonExecutable, ["--jupyter-kernel-self-test"]),
+    runArguments(relocatedPythonExecutable, ["--jupyter-kernel-self-test"]),
     "Sage.js Jupyter SEA runtime passed.",
   );
 
-  testJavaScriptSea(pythonExecutable, temporaryDirectory);
+  testJavaScriptSea(relocatedPythonExecutable, temporaryDirectory);
 
   // Do not name this fixture `mpmath.py`: as in CPython, the script directory
   // has import precedence, so that name would correctly shadow the bundled
@@ -140,7 +154,7 @@ try {
     ].join("\n"),
   );
   const mpmathStarted = performance.now();
-  const mpmath = spawnSync(pythonExecutable, [mpmathProgram], {
+  const mpmath = spawnSync(relocatedPythonExecutable, [mpmathProgram], {
     cwd: temporaryDirectory,
     encoding: "utf8",
     env: {
@@ -192,7 +206,7 @@ try {
     ].join("\n"),
   );
   assert.equal(
-    run(pythonExecutable, pythonProgram),
+    run(relocatedPythonExecutable, pythonProgram),
     "55\n<class 'float'>\nTrue\nsea file io\n" +
       "12345678901234567890\n" +
       "b'sea' 4a69f19c\n" +
@@ -209,7 +223,7 @@ try {
   );
   writeFileSync(missingBackendProgram, "print(factor(2026))\n");
   const missingBackend = spawnSync(
-    pythonExecutable,
+    relocatedPythonExecutable,
     [missingBackendProgram],
     {
       cwd: temporaryDirectory,
@@ -234,14 +248,14 @@ try {
     ].join("\n"),
   );
   assert.equal(
-    run(pythonExecutable, magmaProgram, ["--magma"]),
+    run(relocatedPythonExecutable, magmaProgram, ["--magma"]),
     "42",
   );
 
   const wolframProgram = join(temporaryDirectory, "portable.wl");
   writeFileSync(wolframProgram, "Range[2, 8, 2]\n");
   assert.equal(
-    run(pythonExecutable, wolframProgram, ["--wolfram"]),
+    run(relocatedPythonExecutable, wolframProgram, ["--wolfram"]),
     "[2, 4, 6, 8]",
   );
 
@@ -251,14 +265,14 @@ try {
     ["values = 1:2:7;", "sum(values)", ""].join("\n"),
   );
   assert.equal(
-    run(pythonExecutable, matlabProgram, ["--matlab"]),
+    run(relocatedPythonExecutable, matlabProgram, ["--matlab"]),
     "16",
   );
 
   const mapleProgram = join(temporaryDirectory, "portable.mpl");
   writeFileSync(mapleProgram, "seq(n^2, n=1..4);\n");
   assert.equal(
-    run(pythonExecutable, mapleProgram, ["--maple"]),
+    run(relocatedPythonExecutable, mapleProgram, ["--maple"]),
     "[1, 4, 9, 16]",
   );
 
@@ -303,7 +317,7 @@ try {
       ].join("\n"),
     );
     assert.equal(
-      run(mathExecutable, mathProgram),
+      run(relocatedMathExecutable, mathProgram),
       "2 * 1013\n" +
         "True True\n" +
         "120 3 120 10\n" +
