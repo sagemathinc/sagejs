@@ -10,6 +10,7 @@ const {
   NODE_VERSION,
   POLICY_PATH,
   RUNTIME_IMAGE,
+  assertSafeOutputDirectory,
   parseArguments,
 } = require("../scripts/linux-baseline/release-inputs.cjs");
 
@@ -31,6 +32,18 @@ test("Linux baseline excludes libatomic and caps the complete ABI", () => {
   assert.deepEqual(policy.allowedRpaths, []);
 });
 
+test("the exact official Node 26 comparison demonstrates the libatomic gap", () => {
+  const witness = require(
+    "../scripts/linux-baseline/official-node-26.7.0-linux-x64.json"
+  );
+  assert.equal(witness.schema, "sagejs.linux-node-upstream-witness-v1");
+  assert.equal(witness.nodeVersion, NODE_VERSION);
+  assert.match(witness.archive.sha256, /^[0-9a-f]{64}$/);
+  assert.equal(witness.inspection.maximumGlibc, "2.28");
+  assert.equal(witness.inspection.dependencies.includes("libatomic.so.1"), true);
+  assert.deepEqual(witness.inspection.rpaths, []);
+});
+
 test("Linux baseline command-line parsing is fail closed", () => {
   assert.deepEqual(parseArguments(["--all-inputs", "--engine", "podman"]), {
     allInputs: true,
@@ -41,6 +54,7 @@ test("Linux baseline command-line parsing is fail closed", () => {
   });
   assert.throws(() => parseArguments(["--engine", "lxc"]), /docker or podman/);
   assert.throws(() => parseArguments(["--unknown"]), /unknown argument/);
+  assert.throws(() => assertSafeOutputDirectory("/"), /refusing broad/);
 });
 
 test("Container build uses GCC, partial static linking, and the portable math profile", () => {
@@ -50,6 +64,17 @@ test("Container build uses GCC, partial static linking, and the portable math pr
   );
   assert.match(containerfile, /CC=gcc CXX=g\+\+ \.\/configure .*--partly-static/);
   assert.match(containerfile, /SAGEJS_NATIVE_MATH_PROFILE=portable/);
+  assert.match(containerfile, /SAGEJS_FLINT_PREFIX=\/opt\/sagejs-native\/flint/);
   assert.match(containerfile, /LDFLAGS="-static-libgcc -static-libstdc\+\+"/);
+  assert.match(containerfile, /SOURCE_DATE_EPOCH=0/);
   assert.match(containerfile, /pnpm --dir packages\/m4ri build/);
+});
+
+test("the runtime proof checks that libatomic is genuinely absent", () => {
+  const source = readFileSync(
+    require("node:path").join(__dirname, "..", "scripts", "linux-baseline", "release-inputs.cjs"),
+    "utf8",
+  );
+  assert.match(source, /"rpm", "-q", "libatomic"/);
+  assert.match(source, /runtimeLibatomicPackagePresent: false/);
 });

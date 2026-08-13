@@ -4,6 +4,9 @@ FROM ${BUILD_IMAGE} AS node-build
 ARG NODE_SOURCE_SHA256
 ARG NODE_VERSION
 ENV PATH=/opt/rh/gcc-toolset-14/root/usr/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+ENV LC_ALL=C
+ENV SOURCE_DATE_EPOCH=0
+ENV TZ=UTC
 WORKDIR /build
 RUN curl --fail --location --retry 3 \
       "https://nodejs.org/dist/v${NODE_VERSION}/node-v${NODE_VERSION}.tar.xz" \
@@ -27,6 +30,13 @@ ENV CC=gcc
 ENV CXX=g++
 ENV LDFLAGS="-static-libgcc -static-libstdc++"
 ENV SAGEJS_NATIVE_MATH_PROFILE=portable
+ENV SAGEJS_FLINT_PREFIX=/opt/sagejs-native/flint
+ENV SAGEJS_FFLAS_PREFIX=/opt/sagejs-native/fflas
+ENV SAGEJS_GRAPH_PREFIX=/opt/sagejs-native/graph
+ENV SAGEJS_M4RI_PREFIX=/opt/sagejs-native/m4ri
+ENV LC_ALL=C
+ENV SOURCE_DATE_EPOCH=0
+ENV TZ=UTC
 WORKDIR /work/sagejs
 COPY sagejs.tar /tmp/sagejs.tar
 RUN tar -xf /tmp/sagejs.tar -C /work/sagejs \

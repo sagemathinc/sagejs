@@ -22,6 +22,11 @@ Node 25 and newer official Linux binaries have a `DT_NEEDED` dependency on
 before Sage.js starts, so an installer diagnostic or JavaScript fallback cannot
 repair a missing library.
 
+The byte-exact inspection of the official 26.7.0 Linux x64 archive is retained
+as [`official-node-26.7.0-linux-x64.json`](../scripts/linux-baseline/official-node-26.7.0-linux-x64.json).
+It satisfies the selected symbol-version ceilings, but the dependency allowlist
+rejects it solely because of `libatomic.so.1`.
+
 The release template is therefore built from the exact Node source tarball with
 GCC and `--partly-static` inside a digest-pinned manylinux_2_28 image. Node only
 adds `-latomic` on Linux when it is built with Clang; GCC x86-64 emits the needed
@@ -31,8 +36,9 @@ upstream-supported build variation, not a Sage.js fork of Node.
 
 The source tarball, build image, runtime image, policy, and complete native input
 inspection are recorded in `linux-baseline-receipt.json`. The output is then
-executed in digest-pinned minimal UBI 8, which provides the target glibc but does
-not need `libatomic`.
+executed in digest-pinned minimal UBI 8 after proving that image does not have
+the `libatomic` package installed. It provides the target glibc, so this tests
+the exact missing-library case rather than merely trusting an ELF report.
 
 ## Reproducing the proof
 

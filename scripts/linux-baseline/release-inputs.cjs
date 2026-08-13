@@ -15,8 +15,8 @@ const {
   rmSync,
   writeFileSync,
 } = require("node:fs");
-const { tmpdir } = require("node:os");
-const { basename, dirname, join, resolve } = require("node:path");
+const { homedir, tmpdir } = require("node:os");
+const { basename, dirname, join, parse, resolve } = require("node:path");
 
 const {
   assertNativeInputs,
@@ -93,6 +93,21 @@ function run(command, arguments_, options = {}) {
   return result;
 }
 
+function assertRuntimeOmitsLibatomic(engine) {
+  const result = spawnSync(
+    engine,
+    ["run", "--rm", RUNTIME_IMAGE, "rpm", "-q", "libatomic"],
+    { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] },
+  );
+  if (result.error) throw result.error;
+  if (result.status !== 1 || !/not installed/i.test(result.stdout + result.stderr)) {
+    throw new Error(
+      "the baseline runtime unexpectedly contains libatomic: " +
+        `${result.stdout}${result.stderr}`,
+    );
+  }
+}
+
 function exportGitArchive(sourceRef, destination) {
   const descriptor = openSync(destination, "w");
   try {
@@ -140,7 +155,16 @@ function copyContainerfile(context) {
   copyFileSync(join(__dirname, "Containerfile"), join(context, "Containerfile"));
 }
 
+function assertSafeOutputDirectory(output) {
+  const candidate = resolve(output);
+  const forbidden = new Set([parse(candidate).root, resolve(homedir()), ROOT]);
+  if (forbidden.has(candidate)) {
+    throw new Error(`refusing broad Linux baseline output directory ${candidate}`);
+  }
+}
+
 function buildReleaseInputs(options) {
+  assertSafeOutputDirectory(options.output);
   const engine = selectEngine(options.engine);
   const temporary = mkdtempSync(join(tmpdir(), "sagejs-linux-baseline-"));
   const context = join(temporary, "context");
@@ -181,6 +205,7 @@ function buildReleaseInputs(options) {
     run(engine, ["cp", `${container}:/release-inputs/.`, extracted]);
 
     const report = validateReleaseInputs(extracted);
+    assertRuntimeOmitsLibatomic(engine);
     run(engine, [
       "run",
       "--rm",
@@ -199,6 +224,7 @@ function buildReleaseInputs(options) {
       nodeVersion: NODE_VERSION,
       policy: basename(POLICY_PATH),
       runtimeImage: RUNTIME_IMAGE,
+      runtimeLibatomicPackagePresent: false,
       sourceRef: options.allInputs
         ? run("git", ["rev-parse", `${options.sourceRef}^{commit}`], {
             cwd: ROOT,
@@ -251,6 +277,8 @@ module.exports = {
   NODE_VERSION,
   POLICY_PATH,
   RUNTIME_IMAGE,
+  assertSafeOutputDirectory,
+  assertRuntimeOmitsLibatomic,
   buildReleaseInputs,
   listNativeInputs,
   parseArguments,
