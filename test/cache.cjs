@@ -17,6 +17,7 @@ const { EventEmitter, once } = require("node:events");
 const { test } = require("node:test");
 
 const {
+  defaultDynamicCacheRoot,
   parseByteSize,
   pruneModuleCache,
 } = require("../dist/tools/cache.js");
@@ -32,6 +33,16 @@ function temporaryRoot(t) {
   const base = require("node:fs").mkdtempSync(join(tmpdir(), "sagejs-cache-test-"));
   t.after(() => require("node:fs").rmSync(base, { recursive: true, force: true }));
   const root = join(base, "sagejs", "modules");
+  mkdirSync(root, { recursive: true });
+  return { base, root };
+}
+
+function temporaryDynamicRoot(t) {
+  const base = require("node:fs").mkdtempSync(
+    join(tmpdir(), "sagejs-dynamic-cache-test-"),
+  );
+  t.after(() => require("node:fs").rmSync(base, { recursive: true, force: true }));
+  const root = join(base, "sagejs", "dynamic");
   mkdirSync(root, { recursive: true });
   return { base, root };
 }
@@ -406,13 +417,89 @@ test("sagejs cache prune is a dry run by default", (t) => {
   assert.equal(result.status, 0, result.stderr);
   const report = JSON.parse(result.stdout);
   assert.equal(report.applied, false);
-  assert.equal(report.entries.length, 6);
-  assert.equal(report.entries.filter((entry) => entry.reason).length, 1);
+  assert.equal(report.families.modules.entries.length, 6);
+  assert.equal(
+    report.families.modules.entries.filter((entry) => entry.reason).length,
+    1,
+  );
+  assert.equal(report.families.dynamic.entries.length, 0);
   assert.equal(require("node:fs").readdirSync(root).length, 6);
+});
+
+test("dynamic cache uses the same lease-safe bounded policy", (t) => {
+  const { root } = temporaryDynamicRoot(t);
+  const current = versionName("a");
+  const obsolete = versionName("b");
+  const active = versionName("c");
+  addVersion(root, current, { ageDays: 100, bytes: 32 });
+  addVersion(root, obsolete, { ageDays: 100, bytes: 64 });
+  addVersion(root, active, { ageDays: 100, bytes: 128, lease: true });
+  const report = pruneModuleCache({
+    apply: true,
+    currentVersions: [current],
+    expectedRoot: root,
+    family: "dynamic",
+    policy: { keepVersions: 0, maxAgeDays: 0, minAgeDays: 0, maxBytes: 0 },
+    root,
+  });
+  assert.equal(report.family, "dynamic");
+  assert.deepEqual(report.removedVersions, [obsolete]);
+  assert.equal(existsSync(join(root, current)), true);
+  assert.equal(existsSync(join(root, active)), true);
+  assert.equal(report.entries.find((entry) => entry.version === active).inUse, true);
+  assert.throws(
+    () => pruneModuleCache({
+      currentVersions: [],
+      expectedRoot: root,
+      family: "modules",
+      root,
+    }),
+    /family modules does not match cache root/,
+  );
+});
+
+test("cache CLI can report only the selected dynamic family", (t) => {
+  const { base, root } = temporaryDynamicRoot(t);
+  addVersion(root, versionName("e"), { ageDays: 100, bytes: 64 });
+  const result = spawnSync(
+    process.execPath,
+    [
+      join(__dirname, "..", "bin", "sagejs"),
+      "cache",
+      "prune",
+      "--family",
+      "dynamic",
+      "--keep",
+      "0",
+      "--max-age",
+      "0",
+      "--min-age",
+      "0",
+      "--json",
+    ],
+    {
+      cwd: join(__dirname, ".."),
+      encoding: "utf8",
+      env: {
+        ...process.env,
+        HOME: base,
+        SAGEJS_USE_SOURCE: "1",
+        XDG_CACHE_HOME: base,
+      },
+    },
+  );
+  assert.equal(result.status, 0, result.stderr);
+  const report = JSON.parse(result.stdout);
+  assert.deepEqual(Object.keys(report.families), ["dynamic"]);
+  assert.equal(report.families.dynamic.entries.length, 1);
+  assert.equal(report.families.dynamic.entries[0].reason, "expired");
+  assert.equal(existsSync(join(root, versionName("e"))), true);
 });
 
 test("sagejs cache status reports quiet automatic cleanup state", (t) => {
   const { base, root } = temporaryRoot(t);
+  const dynamicRoot = defaultDynamicCacheRoot({ XDG_CACHE_HOME: base }, base);
+  mkdirSync(dynamicRoot, { recursive: true });
   writeFileSync(join(root, ".sagejs-auto-cleanup.json"), JSON.stringify({
     schema: "sagejs.module-cache-auto-cleanup/v1",
     last_attempt_ms: 1_000,
@@ -437,9 +524,11 @@ test("sagejs cache status reports quiet automatic cleanup state", (t) => {
   );
   assert.equal(result.status, 0, result.stderr);
   const status = JSON.parse(result.stdout);
-  assert.equal(status.root, root);
-  assert.equal(status.automatic.last_status, "deferred");
-  assert.equal(status.automatic.last_reclaimed_bytes, 4096);
+  assert.equal(status.modules.root, root);
+  assert.equal(status.modules.automatic.last_status, "deferred");
+  assert.equal(status.modules.automatic.last_reclaimed_bytes, 4096);
+  assert.equal(status.dynamic.root, dynamicRoot);
+  assert.equal(status.dynamic.automatic, undefined);
 });
 
 test("cache help distinguishes hard retention from the age grace", () => {

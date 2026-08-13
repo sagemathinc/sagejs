@@ -3,6 +3,7 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { dirname, join } from "node:path";
 import createCompiler, { type Compiler } from "./compiler";
+import { markModuleCacheInUse } from "./cache-lease";
 import {
   precompiledDynamicCacheDirectory,
   readResourceText,
@@ -208,6 +209,11 @@ export function compileDynamic(
   const identity = sha256(JSON.stringify({ version, sourceHash, filename, mode }));
   const moduleId = `__dynamic_${identity.slice(0, 24)}__`;
   const cacheFilename = join(dynamicCacheDirectory(version), `${identity}.json`);
+  if (!process.env.SAGEJS_DYNAMIC_CACHE_DIR) {
+    // Dynamic eval/exec artifacts use the same version-level lease protocol as
+    // imported modules. The shared helper de-duplicates this per process.
+    markModuleCacheInUse(dirname(cacheFilename));
+  }
   const precompiledCacheFilename = join(
     process.env.SAGEJS_PRECOMPILED_DYNAMIC_CACHE_DIR ??
       precompiledDynamicCacheDirectory(join(__dirname, "..", "dynamic-cache")),
