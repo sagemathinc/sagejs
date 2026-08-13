@@ -160,6 +160,36 @@
       "commit": "9027782efe3b1e4c43157a6d27e2f495ff9b40e5",
       "workspace_fingerprint": "912783236a932271fe2b8c977e674d2be69061d88d7f9862c69f65d0ece3fa09",
       "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 5.322,
+      "started_at": "2026-08-13T21:40:24.960Z",
+      "commit": "698cb9036d0387f9bbd98550e7b2938f1df82996",
+      "workspace_fingerprint": "e22b30154f6e2d4b1fb1e635504825361331127cb4615eeaad0a66697a4b3d04",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 15.305,
+      "started_at": "2026-08-13T21:40:37.452Z",
+      "commit": "698cb9036d0387f9bbd98550e7b2938f1df82996",
+      "workspace_fingerprint": "e22b30154f6e2d4b1fb1e635504825361331127cb4615eeaad0a66697a4b3d04",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 20.454,
+      "started_at": "2026-08-13T21:40:56.517Z",
+      "commit": "698cb9036d0387f9bbd98550e7b2938f1df82996",
+      "workspace_fingerprint": "e22b30154f6e2d4b1fb1e635504825361331127cb4615eeaad0a66697a4b3d04",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {
