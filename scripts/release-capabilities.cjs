@@ -2,13 +2,11 @@
 
 "use strict";
 
-// This reporter is deliberately observational.  In particular, do not import
-// build scripts or require native addons here: several of those paths probe a
-// compiler, reconcile generated output, or load a binary as a side effect.
+// This reporter is deliberately observational. Do not import build scripts or
+// require native addons here: those paths may probe a compiler, reconcile
+// generated output, load a binary, provision dependencies, or publish caches.
 
-const {
-  createHash,
-} = require("node:crypto");
+const { createHash } = require("node:crypto");
 const {
   existsSync,
   readFileSync,
@@ -31,14 +29,16 @@ const {
 } = require("node:path");
 const { spawnSync } = require("node:child_process");
 
-const SCHEMA = "sagejs.release-capabilities-v1";
-const NATIVE_DISABLED_VARIABLE = "SAGEJS_NATIVE_DISABLE";
+const SCHEMA = "sagejs.release-capabilities-v2";
+const BUILD_MANIFEST_SCHEMA = "sagejs.release-build-manifest-v1";
+const BUILD_MANIFEST_ASSET = "release/build-manifest.json";
 const MATH_PROFILE_VARIABLE = "SAGEJS_NATIVE_MATH_PROFILE";
 
 const ADAPTERS = Object.freeze([
   {
-    id: "flint",
     addon: "sagejs_flint_ffi.node",
+    fallback: "typed-python exact arithmetic",
+    id: "flint",
     package: "flint",
     requiredFiles: ["build/Release/sagejs_flint.node"],
     seaAssets: [
@@ -46,22 +46,22 @@ const ADAPTERS = Object.freeze([
       "native/sagejs_flint_ffi.node",
       "native/sagejs_flint_ffi_manifest.json",
     ],
-    fallback: "typed-python exact arithmetic",
   },
   {
-    id: "fflas-ffpack",
     addon: "sagejs_fflas_ffi.node",
+    fallback: "FLINT or typed-python dense prime arithmetic",
+    id: "fflas-ffpack",
     package: "fflas",
     requiredFiles: [],
     seaAssets: [
       "native/sagejs_fflas_ffi.node",
       "native/sagejs_fflas_ffi_manifest.json",
     ],
-    fallback: "FLINT or typed-python dense prime arithmetic",
   },
   {
-    id: "igraph",
     addon: "sagejs_igraph_ffi.node",
+    fallback: "ordinary Python graph algorithms",
+    id: "igraph",
     package: "graph",
     requiredFiles: ["build/Release/sagejs_graph.node"],
     seaAssets: [
@@ -69,18 +69,17 @@ const ADAPTERS = Object.freeze([
       "native/sagejs_igraph_ffi.node",
       "native/sagejs_igraph_ffi_manifest.json",
     ],
-    fallback: "ordinary Python graph algorithms",
   },
   {
-    id: "m4ri",
     addon: "sagejs_m4ri_ffi.node",
+    fallback: "compiler-owned packed GF(2) arithmetic",
+    id: "m4ri",
     package: "m4ri",
     requiredFiles: [],
     seaAssets: [
       "native/sagejs_m4ri_ffi.node",
       "native/sagejs_m4ri_ffi_manifest.json",
     ],
-    fallback: "compiler-owned packed GF(2) arithmetic",
   },
 ]);
 
@@ -117,14 +116,20 @@ function displayedPath(filename, context) {
     const name = relative(context.home, absolute);
     return name === "" ? "<home>" : `<home>/${portablePath(name)}`;
   }
-  // Do not disclose workspace names, account names, mounted-volume layouts,
-  // or arbitrary paths supplied in environment variables by default.
   return `<external>/${basename(absolute)}`;
 }
 
 function readJson(filename) {
   try {
     return JSON.parse(readFileSync(filename, "utf8"));
+  } catch {
+    return null;
+  }
+}
+
+function parseJson(value) {
+  try {
+    return JSON.parse(String(value));
   } catch {
     return null;
   }
@@ -158,9 +163,14 @@ function safeGit(root, arguments_) {
   return result.stdout.trim();
 }
 
-function gitProvenance(root, runGit = safeGit) {
+function gitObservation(root, runGit = safeGit) {
   if (!existsSync(join(root, ".git"))) {
-    return { commit: null, dirty: null, present: false };
+    return {
+      commit: null,
+      commonDirectory: null,
+      dirty: null,
+      present: false,
+    };
   }
   const commit = runGit(root, ["rev-parse", "HEAD"]);
   const changes = runGit(root, [
@@ -177,9 +187,9 @@ function gitProvenance(root, runGit = safeGit) {
   ]);
   return {
     commit: commit && /^[0-9a-f]{40}$/.test(commit) ? commit : null,
+    commonDirectory: commonDirectory || null,
     dirty: changes === null ? null : changes !== "",
     present: true,
-    commonDirectory: commonDirectory || null,
   };
 }
 
@@ -193,37 +203,135 @@ function runtimeLibc(platform, report) {
   }
 }
 
-function artifactContext(root, options, seaAssets) {
-  const kind = options.artifactKind ||
-    (seaAssets !== null ? "single-executable" :
-      existsSync(join(root, ".git")) ? "source-checkout" : "npm-package");
-  return {
-    kind,
-    nativeAssetsEmbedded: seaAssets === null
-      ? null
-      : [...seaAssets].some((name) => name.startsWith("native/")),
-    target: `${options.platform}-${options.arch}`,
-  };
-}
-
-function currentSeaAssets() {
+function currentEmbeddedContext() {
   try {
     const sea = require("node:sea");
-    return sea.isSea() ? new Set(sea.getAssetKeys()) : null;
+    if (!sea.isSea()) return null;
+    const assets = new Set(sea.getAssetKeys());
+    const bytes = (name) =>
+      assets.has(name) ? Buffer.from(sea.getAsset(name)) : null;
+    return {
+      assets,
+      bytes,
+      text: (name) => bytes(name)?.toString("utf8") ?? null,
+    };
   } catch {
     return null;
   }
 }
 
-function nativeSelection(installed, fallbackAvailable, nativeDisabled) {
-  if (!nativeDisabled && installed !== "unavailable") return "native";
-  if (fallbackAvailable) return "fallback";
-  return "unavailable";
+function embeddedContext(options) {
+  if (options.seaAssets === undefined && options.embeddedAssets === undefined) {
+    return currentEmbeddedContext();
+  }
+  const contents = options.embeddedAssets || {};
+  const assets = new Set([
+    ...(options.seaAssets || []),
+    ...Object.keys(contents),
+  ]);
+  const bytes = (name) => Object.hasOwn(contents, name)
+    ? Buffer.from(contents[name])
+    : null;
+  return {
+    assets,
+    bytes,
+    text: (name) => bytes(name)?.toString("utf8") ?? null,
+  };
 }
 
-function selectedState(installed, selected) {
-  if (selected === "native") return installed;
-  return selected;
+function artifactContext(root, options, embedded) {
+  return {
+    kind: options.artifactKind ||
+      (embedded !== null
+        ? "single-executable"
+        : existsSync(join(root, ".git"))
+          ? "source-checkout"
+          : "npm-package"),
+    target: `${options.platform}-${options.arch}`,
+  };
+}
+
+function validBuildManifest(value) {
+  return value !== null &&
+    typeof value === "object" &&
+    value.schema === BUILD_MANIFEST_SCHEMA &&
+    typeof value.version === "string" &&
+    /^[0-9a-f]{40}$/.test(value.commit) &&
+    value.target !== null &&
+    typeof value.target === "object" &&
+    typeof value.target.platform === "string" &&
+    typeof value.target.arch === "string";
+}
+
+function artifactIdentity(options, embedded) {
+  let source = null;
+  let manifest = null;
+  if (options.buildManifest !== undefined) {
+    source = "explicit";
+    manifest = options.buildManifest;
+  } else if (embedded?.assets.has(BUILD_MANIFEST_ASSET)) {
+    source = "embedded";
+    manifest = parseJson(embedded.text(BUILD_MANIFEST_ASSET));
+  }
+  if (!validBuildManifest(manifest)) {
+    return {
+      availability: "unavailable",
+      reason: source === null
+        ? "no immutable release build manifest"
+        : "invalid immutable release build manifest",
+      source,
+    };
+  }
+  return {
+    availability: "available",
+    manifest: stable(manifest),
+    source,
+  };
+}
+
+function runtimePolicy(environment) {
+  const mode = environment.SAGEJS_NATIVE_MODE || "auto";
+  const modeValid = ["auto", "dynamic", "javascript", "native"].includes(mode);
+  const autoloadRequested = environment.SAGEJS_NATIVE_AUTOLOAD ?? null;
+  const requiredRequested = environment.SAGEJS_NATIVE_REQUIRED === "1";
+  const warnRequested = environment.SAGEJS_NATIVE_WARN_FALLBACK === "1";
+  const disableRequested = environment.SAGEJS_NATIVE_DISABLE === "1";
+  const nativeRequired = modeValid &&
+    (mode === "native" || (mode === "auto" && requiredRequested));
+  return {
+    autoload: {
+      effective: modeValid && mode === "auto" && autoloadRequested === "0"
+        ? "disabled"
+        : "enabled",
+      requested: autoloadRequested,
+      scope: "@native cache discovery",
+    },
+    disable: {
+      effective: modeValid && mode === "auto" && disableRequested,
+      requested: disableRequested,
+      scope: "@native addon loading in auto mode only; not generated FFI",
+    },
+    fallback: {
+      effective: nativeRequired
+        ? "required"
+        : warnRequested ? "warn" : "allow",
+      warnRequested,
+    },
+    mode: {
+      effectiveCandidatePolicy: !modeValid
+        ? "invalid"
+        : mode === "native"
+          ? "native-required"
+          : mode,
+      requested: mode,
+      valid: modeValid,
+    },
+    required: {
+      effective: nativeRequired,
+      requested: requiredRequested,
+      scope: "@native resolution",
+    },
+  };
 }
 
 function inspectAdapter(definition, context) {
@@ -246,11 +354,12 @@ function inspectAdapter(definition, context) {
     "generated",
     "ffi_host.py",
   );
-  const manifestCurrent =
-    (typeof manifest?.addon_hash !== "string" ||
-      sha256(addonPath) === manifest.addon_hash) &&
-    (typeof manifest?.source_hash !== "string" ||
-      sha256(sourcePath) === manifest.source_hash);
+  const hashesPresent =
+    typeof manifest?.addon_hash === "string" &&
+    typeof manifest?.source_hash === "string";
+  const manifestCurrent = hashesPresent &&
+    sha256(addonPath) === manifest.addon_hash &&
+    sha256(sourcePath) === manifest.source_hash;
   const compiled =
     manifest?.schema === "sagejs.ffi/generated-host-adapter-v1" &&
     existsSync(addonPath) &&
@@ -259,72 +368,129 @@ function inspectAdapter(definition, context) {
       existsSync(
         join(context.root, "packages", definition.package, filename),
       ));
-  const bundled = context.seaAssets !== null &&
-    definition.seaAssets.every((asset) => context.seaAssets.has(asset));
+  const embeddedFilesPresent = context.embedded !== null &&
+    definition.seaAssets.every((asset) => context.embedded.assets.has(asset));
+  const embeddedManifestAsset = definition.seaAssets.find((asset) =>
+    asset.endsWith("_manifest.json"));
+  const embeddedAddonAsset = `native/${definition.addon}`;
+  const embeddedManifest = embeddedManifestAsset === undefined
+    ? null
+    : parseJson(context.embedded?.text(embeddedManifestAsset));
+  const embeddedAddon = context.embedded?.bytes(embeddedAddonAsset) ?? null;
+  const embeddedIntegrity = embeddedFilesPresent &&
+    embeddedManifest?.schema === "sagejs.ffi/generated-host-adapter-v1" &&
+    embeddedManifest.addon === definition.addon &&
+    typeof embeddedManifest.addon_hash === "string" &&
+    embeddedAddon !== null &&
+    createHash("sha256").update(embeddedAddon).digest("hex") ===
+      embeddedManifest.addon_hash;
   const platformUnavailable =
     definition.id === "m4ri" && context.platform === "win32";
-  const installed = platformUnavailable
-    ? "unavailable"
-    : bundled ? "bundled" : compiled ? "compiled" : "unavailable";
-  const fallbackAvailable = context.runtimeAvailable;
-  const selected = nativeSelection(
-    installed,
-    fallbackAvailable,
-    context.nativeDisabled || platformUnavailable,
-  );
+  let candidate;
+  let manifestIntegrity;
+  if (platformUnavailable) {
+    candidate = "unavailable";
+    manifestIntegrity = "platform-capability-disabled";
+  } else if (embeddedIntegrity) {
+    candidate = "bundled";
+    manifestIntegrity = "verified-embedded";
+  } else if (compiled) {
+    candidate = "compiled";
+    manifestIntegrity = "verified";
+  } else {
+    candidate = "unavailable";
+    manifestIntegrity = embeddedFilesPresent
+      ? "embedded-mismatch"
+      : manifest !== null && !manifestCurrent
+        ? "mismatch"
+        : "not-installed";
+  }
   return {
-    fallback: fallbackAvailable ? "available" : "unavailable",
+    candidate,
+    fallbackCandidate: context.runtimeAvailable ? "available" : "unavailable",
     fallbackImplementation: definition.fallback,
     id: definition.id,
-    installed,
-    integrity: bundled
-      ? "embedded"
-      : compiled
-        ? typeof manifest.addon_hash === "string" &&
-            typeof manifest.source_hash === "string"
-          ? "verified"
-          : "unverified"
-        : manifest !== null && !manifestCurrent
-          ? "mismatch"
-          : "not-installed",
-    readiness: selected === "unavailable" ? "cold" : "warm",
-    selected,
-    state: selectedState(installed, selected),
+    kind: "generated-ffi-adapter",
+    loadability: "not-probed",
+    manifestIntegrity,
+    selection: "not-probed",
   };
 }
 
-function inspectNativeKernels(context) {
-  const directory = context.nativeKernelCache;
-  const index = readJson(join(directory, "index.json"));
-  const diskModules = index?.schema === "sagejs.native-cache/v3" &&
-    Object.keys(index.logicalSources ?? {}).length !== 0;
-  const bundled = context.seaAssets !== null &&
-    context.seaAssets.has("native-kernels/index.json") &&
-    [...context.seaAssets].some((name) =>
-      /^native-kernels\/[0-9a-f]{64}\/index\.cjs$/.test(name));
-  const installed = bundled
-    ? "bundled"
-    : diskModules ? "compiled" : "unavailable";
-  const fallbackAvailable = context.runtimeAvailable;
-  let selected;
-  if (context.nativeDisabled) {
-    selected = fallbackAvailable ? "fallback" : "unavailable";
+function nativeKernelRecordValid(record) {
+  return record !== null &&
+    typeof record === "object" &&
+    /^[0-9a-f]{64}$/.test(record.cacheKey ?? "") &&
+    /^[0-9a-f]{64}$/.test(record.sourceHash ?? "") &&
+    Number.isSafeInteger(record.nativeAbi) &&
+    Array.isArray(record.foreignDeclarations);
+}
+
+function expectedProductionSources(root) {
+  const manifest = readJson(join(root, "architecture", "native-kernels.json"));
+  if (!Array.isArray(manifest?.kernels)) return null;
+  const sources = manifest.kernels
+    .filter((kernel) => kernel.id?.endsWith("-production"))
+    .map((kernel) => kernel.source)
+    .filter((source) => typeof source === "string" && source.startsWith("src/lib/"))
+    .map((source) => source.slice("src/lib/".length));
+  return sources.length === 0 ? null : [...new Set(sources)].sort();
+}
+
+function validateKernelIndex(index, readAsset, expectedSources) {
+  if (index?.schema !== "sagejs.native-cache/v3") return false;
+  const records = index.logicalSources;
+  if (records === null || typeof records !== "object") return false;
+  const names = Object.keys(records).sort();
+  if (expectedSources !== null &&
+      JSON.stringify(names) !== JSON.stringify(expectedSources)) {
+    return false;
   }
-  else if (installed !== "unavailable") selected = "native";
-  else if (context.artifact.kind === "source-checkout" && fallbackAvailable) {
-    selected = "compile-on-first-use";
-  } else selected = fallbackAvailable ? "fallback" : "unavailable";
+  if (names.length === 0) return false;
+  return names.every((name) => {
+    const record = records[name];
+    if (!nativeKernelRecordValid(record)) return false;
+    return readAsset(`${record.cacheKey}/index.cjs`) &&
+      readAsset(
+        `${record.cacheKey}/build/Release/sagejs_native_kernel.node`,
+      );
+  });
+}
+
+function inspectNativeKernels(context) {
+  const expected = expectedProductionSources(context.root);
+  let candidate = "unavailable";
+  let integrity = "not-installed";
+  if (context.embedded?.assets.has("native-kernels/index.json")) {
+    const index = parseJson(context.embedded.text("native-kernels/index.json"));
+    const complete = validateKernelIndex(
+      index,
+      (name) => context.embedded.assets.has(`native-kernels/${name}`),
+      expected,
+    );
+    integrity = complete ? "complete" : "incomplete";
+    candidate = complete ? "bundled" : "unavailable";
+  } else {
+    const index = readJson(join(context.nativeKernelCache, "index.json"));
+    if (index !== null) {
+      const complete = validateKernelIndex(
+        index,
+        (name) => existsSync(join(context.nativeKernelCache, name)),
+        expected,
+      );
+      integrity = complete ? "complete" : "incomplete";
+      candidate = complete ? "compiled" : "unavailable";
+    }
+  }
   return {
-    fallback: fallbackAvailable ? "available" : "unavailable",
+    candidate,
+    fallbackCandidate: context.runtimeAvailable ? "available" : "unavailable",
     fallbackImplementation: "the same typed Python source body",
     id: "typed-python-native-kernels",
-    installed,
-    readiness: selected === "compile-on-first-use" ? "cold" :
-      selected === "unavailable" ? "cold" : "warm",
-    selected,
-    state: selected === "compile-on-first-use"
-      ? "cold"
-      : selectedState(installed, selected),
+    integrity,
+    kind: "@native-production-cache",
+    loadability: "not-probed",
+    selection: "not-probed",
   };
 }
 
@@ -343,7 +509,7 @@ function findInstalledMathProfile(root, platform, environment) {
   const stamp = readJson(join(prefix, ".sagejs-flint-dependencies.json"));
   const profile = stamp?.build?.mathBuildProfile ??
     stamp?.identity?.mathBuildProfile ?? null;
-  return { prefix, profile, stampPresent: stamp !== null };
+  return { prefix, profile };
 }
 
 function selectedMathProfile(platform, arch, environment) {
@@ -351,13 +517,10 @@ function selectedMathProfile(platform, arch, environment) {
   const requestValid = ["portable", "cpu-native"].includes(requested);
   const cpuNativeSupported = ["linux", "darwin"].includes(platform) &&
     ["x64", "arm64"].includes(arch);
-  const effective = requestValid &&
-    requested === "cpu-native" &&
-    cpuNativeSupported
-    ? "cpu-native"
-    : "portable";
   return {
-    effective,
+    effective: requestValid && requested === "cpu-native" && cpuNativeSupported
+      ? "cpu-native"
+      : "portable",
     requestValid,
     requested,
     selectionProbe: "not-run",
@@ -365,7 +528,7 @@ function selectedMathProfile(platform, arch, environment) {
 }
 
 function profileCompatibility(selected, installed) {
-  if (installed === null) return "not-installed";
+  if (installed === null) return "not-observed";
   if (!selected.requestValid) return "invalid-selection";
   if (installed.effectiveProfile === undefined) return "unknown";
   return installed.effectiveProfile === selected.effective
@@ -388,23 +551,23 @@ function collectReleaseCapabilities(options = {}) {
   const arch = options.arch || osArch();
   const versions = options.versions || process.versions;
   const home = resolve(options.home || homedir());
-  const seaAssets = options.seaAssets === undefined
-    ? currentSeaAssets()
-    : new Set(options.seaAssets);
+  const embedded = embeddedContext(options);
   const packageManifest = readJson(join(root, "package.json")) || {};
-  const git = options.git || gitProvenance(root, options.runGit);
+  const git = options.git || gitObservation(root, options.runGit);
   const artifact = artifactContext(
     root,
     { ...options, platform, arch },
-    seaAssets,
+    embedded,
   );
+  const immutableIdentity = artifactIdentity(options, embedded);
   const runtimeCompiled = existsSync(join(root, "dist", "tools", "kernel.js")) &&
     existsSync(join(root, "dist", "compiler", "compiler.js"));
-  const runtimeBundled = seaAssets !== null && seaAssets.has("compiler/compiler.js");
-  const runtimeInstalled = runtimeBundled
+  const runtimeBundled = embedded !== null &&
+    embedded.assets.has("compiler/compiler.js");
+  const runtimeCandidate = runtimeBundled
     ? "bundled"
     : runtimeCompiled ? "compiled" : "unavailable";
-  const runtimeAvailable = runtimeInstalled !== "unavailable";
+  const runtimeAvailable = runtimeCandidate !== "unavailable";
   const cacheBase = resolve(environment.XDG_CACHE_HOME || join(home, ".cache"));
   const moduleCache = join(cacheBase, "sagejs", "modules");
   const dynamicCache = resolve(
@@ -427,32 +590,37 @@ function collectReleaseCapabilities(options = {}) {
     includePaths: options.includePaths === true,
     root,
   };
-  const installedMath = findInstalledMathProfile(root, platform, environment);
   const selectedMath = selectedMathProfile(platform, arch, environment);
-  const nativeDisabled = environment[NATIVE_DISABLED_VARIABLE] === "1";
+  // A SEA's nearby checkout is not part of its immutable identity. Observe an
+  // installed dependency prefix only for non-SEA source/package execution.
+  const installedMath = embedded === null
+    ? findInstalledMathProfile(root, platform, environment)
+    : { prefix: null, profile: null };
+  const builtMath = immutableIdentity.availability === "available"
+    ? immutableIdentity.manifest.nativeMathProfile ?? null
+    : null;
+  const observedMath = builtMath ?? installedMath.profile;
   const capabilityContext = {
-    artifact,
-    nativeDisabled,
+    embedded,
     nativeKernelCache,
     platform,
     root,
     runtimeAvailable,
-    seaAssets,
   };
   const capabilities = [
     {
-      fallback: "unavailable",
+      candidate: runtimeCandidate,
       id: "python-sage-compiler",
-      installed: runtimeInstalled,
-      readiness: runtimeAvailable ? "warm" : "cold",
-      selected: runtimeAvailable ? "runtime" : "unavailable",
-      state: runtimeInstalled,
+      kind: "runtime",
+      loadability: "not-probed",
+      selection: "not-probed",
     },
     inspectNativeKernels(capabilityContext),
     ...ADAPTERS.map((definition) => inspectAdapter(definition, capabilityContext)),
   ].sort((left, right) => left.id.localeCompare(right.id));
   return stable({
     artifact,
+    artifactIdentity: immutableIdentity,
     caches: [
       cacheRecord("dynamic-code", dynamicCache, displayContext),
       cacheRecord("module", moduleCache, displayContext),
@@ -460,61 +628,83 @@ function collectReleaseCapabilities(options = {}) {
       cacheRecord("shared-native-artifacts", sharedNativeCache, displayContext),
     ],
     capabilities,
-    host: {
-      arch,
-      libc: options.libc || runtimeLibc(
-        platform,
-        options.processReport || (() => process.report.getReport()),
-      ),
-      node: {
-        abi: versions.modules || null,
-        napi: versions.napi || null,
-        version: versions.node || null,
-      },
-      platform,
-      release: options.hostRelease || release(),
-    },
-    identity: {
-      commit: git.commit ?? null,
-      dirty: git.dirty ?? null,
-      name: packageManifest.name || null,
-      version: packageManifest.version || null,
-    },
     nativeMathProfile: {
-      compatibility: profileCompatibility(selectedMath, installedMath.profile),
-      installed: installedMath.profile === null
+      compatibility: profileCompatibility(selectedMath, observedMath),
+      observedBuild: observedMath === null
         ? null
         : {
-            effective: installedMath.profile.effectiveProfile ?? null,
-            fingerprint: installedMath.profile.fingerprint ?? null,
-            requested: installedMath.profile.requestedProfile ?? null,
+            effective: observedMath.effectiveProfile ??
+              observedMath.effective ?? null,
+            fingerprint: observedMath.fingerprint ?? null,
+            requested: observedMath.requestedProfile ??
+              observedMath.requested ?? null,
+            source: builtMath !== null ? "build-manifest" : "installed-prefix",
           },
-      installedPrefix: displayedPath(installedMath.prefix, displayContext),
-      selected: selectedMath,
+      installedPrefix: installedMath.prefix === null
+        ? null
+        : displayedPath(installedMath.prefix, displayContext),
+      runtimeSelection: selectedMath,
     },
-    nativeSelectionDisabled: nativeDisabled,
-    observational: true,
+    nativePolicy: runtimePolicy(environment),
+    observation: {
+      claim: "stable-runtime-observation",
+      observational: true,
+    },
+    runtimeObservation: {
+      checkout: {
+        commit: git.commit ?? null,
+        dirty: git.dirty ?? null,
+        present: git.present ?? false,
+      },
+      host: {
+        arch,
+        libc: options.libc || runtimeLibc(
+          platform,
+          options.processReport || (() => process.report.getReport()),
+        ),
+        node: {
+          abi: versions.modules || null,
+          napi: versions.napi || null,
+          version: versions.node || null,
+        },
+        platform,
+        release: options.hostRelease || release(),
+      },
+      package: {
+        name: packageManifest.name || null,
+        version: packageManifest.version || null,
+      },
+    },
     schema: SCHEMA,
   });
 }
 
 function formatReleaseCapabilities(report) {
-  const rows = report.capabilities.map((capability) =>
-    `  ${capability.id.padEnd(29)} ${capability.state.padEnd(11)} ` +
-      `${capability.readiness} (selected: ${capability.selected})`);
-  const profile = report.nativeMathProfile;
+  const runtime = report.runtimeObservation;
+  const artifactIdentity = report.artifactIdentity;
+  const identity = artifactIdentity.availability === "available"
+    ? `${artifactIdentity.manifest.version} ` +
+      `(${artifactIdentity.manifest.commit.slice(0, 12)})`
+    : "unavailable";
   return [
-    `Sage.js ${report.identity.version ?? "unknown"} ` +
-      `(${report.identity.commit?.slice(0, 12) ?? "no commit"}` +
-      `${report.identity.dirty ? ", dirty" : ""})`,
-    `Artifact: ${report.artifact.kind} for ${report.artifact.target}`,
-    `Host: ${report.host.platform}/${report.host.arch} ${report.host.libc}; ` +
-      `Node ${report.host.node.version} ABI ${report.host.node.abi}`,
-    `Native math profile: selected=${profile.selected.effective}, ` +
-      `installed=${profile.installed?.effective ?? "none"}, ` +
-      `compatibility=${profile.compatibility}`,
-    "Capabilities:",
-    ...rows,
+    `Sage.js runtime ${runtime.package.version ?? "unknown"} ` +
+      `(${runtime.checkout.commit?.slice(0, 12) ?? "no checkout commit"}` +
+      `${runtime.checkout.dirty ? ", dirty" : ""})`,
+    `Artifact: ${report.artifact.kind} for ${report.artifact.target}; ` +
+      `immutable identity=${identity}`,
+    `Host: ${runtime.host.platform}/${runtime.host.arch} ${runtime.host.libc}; ` +
+      `Node ${runtime.host.node.version} ABI ${runtime.host.node.abi}`,
+    `@native policy: mode=${report.nativePolicy.mode.requested}, ` +
+      `autoload=${report.nativePolicy.autoload.effective}, ` +
+      `required=${report.nativePolicy.required.effective}, ` +
+      `fallback=${report.nativePolicy.fallback.effective}`,
+    `Native math profile: runtime=${report.nativeMathProfile.runtimeSelection.effective}, ` +
+      `observed=${report.nativeMathProfile.observedBuild?.effective ?? "none"}, ` +
+      `compatibility=${report.nativeMathProfile.compatibility}`,
+    "Capability candidates (loadability and selection are not probed):",
+    ...report.capabilities.map((capability) =>
+      `  ${capability.id.padEnd(29)} ${capability.candidate.padEnd(11)} ` +
+      `load=${capability.loadability} select=${capability.selection}`),
     "Caches:",
     ...report.caches.map((cache) =>
       `  ${cache.id.padEnd(29)} ${cache.readiness} ${cache.path}`),
@@ -549,6 +739,8 @@ function main() {
 }
 
 module.exports = {
+  BUILD_MANIFEST_ASSET,
+  BUILD_MANIFEST_SCHEMA,
   SCHEMA,
   collectReleaseCapabilities,
   formatReleaseCapabilities,
