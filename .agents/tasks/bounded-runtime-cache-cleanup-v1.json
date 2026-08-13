@@ -20,7 +20,10 @@
     "test/module-cache.cjs"
   ],
   "dependencies": [],
-  "references": [],
+  "references": [
+    "integration-base:051d72e",
+    "source-tip:7405391"
+  ],
   "architecture": {
     "strategy": "compiler-infrastructure",
     "fallback": "not-applicable",
@@ -131,11 +134,12 @@
       "The 2 GiB target is per cache family and remains best effort: current, newest, pinned, and leased generations are hard protections and may keep either family over target.",
       "Automatic policy environment variables retain their historical SAGEJS_MODULE_CACHE names even though the same retention settings now govern the standard dynamic cache; renaming them would add configuration churn without changing behavior.",
       "pnpm test:changed compares this integration branch with the old public main and expands to 648 files; it was stopped after its rebuild invalidated dist/module-cache-build, then a clean uninterrupted build and the focused suite passed.",
-      "The branch remains active rather than review because its older base cannot produce clean lane-wide receipts: compiler fixtures miss the lazy random and exact_vector_public modules fixed by the module-isolation lane, while integration has unrelated native-profile/performance failures. These failures are recorded; the cache-focused, build, architecture, and strict gates pass."
+      "The branch remains active rather than review because its older base cannot produce clean lane-wide receipts: compiler fixtures miss the lazy random and exact_vector_public modules fixed by the module-isolation lane, while integration has unrelated native-profile/performance failures. These failures are recorded; the cache-focused, build, architecture, and strict gates pass.",
+      "The exact source tip 7405391 has a clean merge-tree against integration base 051d72e. Commit d81023c is under independent review; the follow-up 7405391 only strengthens the dynamic lease lifecycle regression and should be included in exact-tip review."
     ],
     "next_steps": [
       "Update README.md and remove the completed TODO item in the integration lane, since those shared files are outside this compiler-runtime claim.",
-      "Run the combined integration baseline after merging the module-isolation and cache lanes."
+      "Integrate exact source tip 7405391 on 051d72e or a newer shared baseline, then run the combined compiler and integration gates after the module-isolation fixes are present."
     ]
   }
 }
