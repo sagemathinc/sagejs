@@ -33,10 +33,50 @@
     "pnpm test:portable",
     "pnpm test:baselib:strict"
   ],
-  "runs": [],
+  "runs": [
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 5.521,
+      "started_at": "2026-08-13T21:13:36.147Z",
+      "commit": "7a3ef14323790baf8cec15c1e51ae57fd81effe6",
+      "workspace_fingerprint": "ec5df57bbe1fee4bedc4d72c9d9df5e905e0634bbbc310aab6bcf4eb1ba09add",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 15.136,
+      "started_at": "2026-08-13T21:13:45.637Z",
+      "commit": "7a3ef14323790baf8cec15c1e51ae57fd81effe6",
+      "workspace_fingerprint": "ec5df57bbe1fee4bedc4d72c9d9df5e905e0634bbbc310aab6bcf4eb1ba09add",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 19.048,
+      "started_at": "2026-08-13T21:14:06.323Z",
+      "commit": "7a3ef14323790baf8cec15c1e51ae57fd81effe6",
+      "workspace_fingerprint": "ec5df57bbe1fee4bedc4d72c9d9df5e905e0634bbbc310aab6bcf4eb1ba09add",
+      "platform": "linux-x64"
+    }
+  ],
   "handoff": {
-    "summary": "",
-    "risks": [],
-    "next_steps": []
+    "summary": "Added a host-tool-independent binary inspector for ELF, thin and universal Mach-O, and PE. The API hashes and binds a uniquely labelled complete input set, records every per-file observation, and enforces declarative architecture, dependency, rpath, macOS deployment-target, GLIBC, GLIBCXX, CXXABI, and GCC policies. Twelve synthetic cross-platform tests pass. Real Linux evidence proves the official Node v26.7.0 template requires libatomic.so.1 and GLIBC 2.28, while current FLINT/FFLAS addons require GLIBC 2.38 and M4RI requires 2.29, so the present candidate is not a portable GLIBC-2.28 release.",
+    "risks": [
+      "ELF inspection deliberately fails when section headers or version-requirement sections are absent; supported release outputs currently retain them, but an intentionally sectionless producer would need a program-header parser extension.",
+      "Static imports cannot prove dynamically constructed dlopen targets; completeness must come from the canonical SEA embedded-asset inventory and requiredLabels policy.",
+      "pnpm test:portable could not pass in this narrow worktree because cached native outputs were absent, and the new test is intentionally not registered in the shared test manifest until integration. Architecture, strict Python, and the focused 12-test suite pass."
+    ],
+    "next_steps": [
+      "Integration must enumerate the Node template and every embedded .node from the same canonical SEA asset inventory, pass their exact labels as requiredLabels, persist this report in the build receipt, and reject any input hash mismatch.",
+      "Register test/release-native-binary-inspector.cjs in the host test manifest.",
+      "Build Node and every addon in a reproducible oldest-supported Linux environment. Prefer GCC Node with no libatomic dependency; if it remains, statically link libatomic. Treat a shared bundled libatomic with $ORIGIN RUNPATH as a documented fallback requiring GCC Runtime Library Exception notices and minimal-host testing.",
+      "Validate the final release on an old-GLIBC minimal image with libatomic absent, not merely on the builder."
+    ]
   }
 }
