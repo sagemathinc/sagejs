@@ -133,6 +133,50 @@ try {
     if (!pythonOnly) chmodSync(relocatedMathExecutable, 0o755);
   }
 
+  // A SEA must diagnose itself exclusively from its immutable embedded
+  // receipt.  Files beside the executable are untrusted installation context,
+  // not build authority.
+  writeFileSync(
+    join(relocatedDirectory, "package.json"),
+    JSON.stringify({ name: "neighboring-checkout", version: "999.0.0" }),
+  );
+  mkdirSync(join(relocatedDirectory, ".git"), { recursive: true });
+  mkdirSync(
+    join(relocatedDirectory, "dist", "native-kernels"),
+    { recursive: true },
+  );
+  writeFileSync(
+    join(relocatedDirectory, "dist", "native-kernels", "index.json"),
+    JSON.stringify({ schema: "malicious-neighbor" }),
+  );
+  const capabilityReport = JSON.parse(
+    runArguments(relocatedPythonExecutable, ["capabilities", "--json"]),
+  );
+  assert.equal(capabilityReport.schema, "sagejs.release-capabilities-v3");
+  assert.deepEqual(capabilityReport.artifact, {
+    kind: "single-executable",
+    target: `${process.platform}-${process.arch}`,
+  });
+  assert.equal(capabilityReport.buildReceipt.availability, "available");
+  assert.equal(capabilityReport.buildReceipt.source, "embedded");
+  assert.equal(
+    capabilityReport.buildReceipt.manifest.target.platform,
+    process.platform,
+  );
+  assert.equal(
+    capabilityReport.buildReceipt.manifest.target.arch,
+    process.arch,
+  );
+  assert.equal(capabilityReport.runtimeObservation.checkout.present, false);
+  assert.equal(
+    capabilityReport.runtimeObservation.package.version,
+    capabilityReport.buildReceipt.manifest.sagejsVersion,
+  );
+  assert.match(
+    runArguments(relocatedPythonExecutable, ["--capabilities"]),
+    /Artifact: single-executable .*validated build receipt=/,
+  );
+
   assert.equal(
     runArguments(relocatedPythonExecutable, ["--jupyter-kernel-self-test"]),
     "Sage.js Jupyter SEA runtime passed.",
