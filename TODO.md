@@ -21,6 +21,12 @@
   show that explicitly closing a context wrapper while dependent generated
   resources retain that context materially distorts V8 garbage-collection
   decisions. Never count the same shared allocation once per dependent.
+- Define one canonical, cross-host Python builtin namespace authority shared by
+  generated execution, completion, standalone output, workers, Node, and the
+  browser. It must preserve live monkey-patching and custom `__builtins__`,
+  allow a deleted module binding to fall back to a real Python builtin, and
+  never expose a same-named JavaScript host global. Do not add a Node-only
+  bootstrap intrinsic as a partial solution.
 - Split the bootstrap `matrix.py` implementation into ordinary, domain-focused
   modules before the linear-algebra package reaches its temporary 410 KB source
   ratchet. Keep the public `Matrix` API unified while making exact-integer,
