@@ -7,7 +7,7 @@
   "status": "review",
   "owner": "user",
   "objective": "Expose authoritative release capability and build-receipt diagnostics inside relocated Sage.js SEA executables with real smoke coverage",
-  "base_commit": "354b0588e8d8d7ac98df8a7683a9cddae6cbbd5a",
+  "base_commit": "160313a7a36d9e0861655f37fa0bf93f0365a93a",
   "claims": [
     "tools/sea-entry.ts",
     "test/sea-smoke.cjs"
