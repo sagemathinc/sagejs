@@ -19,8 +19,19 @@ const compilerPrerequisites = [
   ),
 ];
 
-function compilerReady() {
-  return compilerPrerequisites.every((filename) => existsSync(filename));
+function compilerReady(options = {}) {
+  const prerequisites = options.prerequisites || compilerPrerequisites;
+  const loadCompiler = options.loadCompiler || require;
+  if (!prerequisites.every((filename) => existsSync(filename))) return false;
+  try {
+    const createCompiler = loadCompiler(prerequisites[1]).default;
+    const compiler = createCompiler();
+    if (typeof compiler.get_compiler_version !== "function") return false;
+    const version = compiler.get_compiler_version();
+    return typeof version === "string" && version.length > 0;
+  } catch {
+    return false;
+  }
 }
 
 function nativeBuildPlan(options = {}) {

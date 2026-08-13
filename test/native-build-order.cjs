@@ -2,12 +2,20 @@
 "use strict";
 
 const assert = require("node:assert/strict");
-const { readFileSync } = require("node:fs");
-const { join, relative } = require("node:path");
+const {
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} = require("node:fs");
+const { tmpdir } = require("node:os");
+const { dirname, join, relative } = require("node:path");
 const test = require("node:test");
 
 const {
   compilerPrerequisites,
+  compilerReady,
   executeBuildPlan,
   nativeBuildPlan,
   packageRoot,
@@ -23,9 +31,9 @@ test("a fresh FLINT build establishes the compiler before addon and FFI stages",
   assert.deepEqual(
     compilerPrerequisites.map((filename) => relative(repositoryRoot, filename)),
     [
-      "dist/compiler/compiler.js",
-      "dist/tools/compiler.js",
-      "dist/tools/python/compiler-frontend.js",
+      join("dist", "compiler", "compiler.js"),
+      join("dist", "tools", "compiler.js"),
+      join("dist", "tools", "python", "compiler-frontend.js"),
     ],
   );
   const plan = nativeBuildPlan({ compilerReady: false });
@@ -55,6 +63,38 @@ test("a fresh FLINT build establishes the compiler before addon and FFI stages",
   );
   assert.equal(plan[0].cwd, repositoryRoot);
   assert.ok(plan.slice(1).every(({ cwd }) => cwd === packageRoot));
+});
+
+function temporaryCompilerPrerequisites(compilerSource) {
+  const directory = mkdtempSync(join(tmpdir(), "sagejs-build-compiler-test-"));
+  const prerequisites = [
+    join(directory, "compiler", "compiler.js"),
+    join(directory, "tools", "compiler.js"),
+    join(directory, "tools", "python", "compiler-frontend.js"),
+  ];
+  for (const filename of prerequisites) {
+    mkdirSync(dirname(filename), { recursive: true });
+    writeFileSync(filename, filename === prerequisites[1] ? compilerSource : "");
+  }
+  return { directory, prerequisites };
+}
+
+test("present stage-zero compiler artifacts are not considered ready", (t) => {
+  const fixture = temporaryCompilerPrerequisites(`
+    module.exports.default = function createCompiler() { return {}; };
+  `);
+  t.after(() => rmSync(fixture.directory, { recursive: true, force: true }));
+  assert.equal(compilerReady({ prerequisites: fixture.prerequisites }), false);
+});
+
+test("a present self-hosted compiler is considered ready", (t) => {
+  const fixture = temporaryCompilerPrerequisites(`
+    module.exports.default = function createCompiler() {
+      return { get_compiler_version() { return "test-version"; } };
+    };
+  `);
+  t.after(() => rmSync(fixture.directory, { recursive: true, force: true }));
+  assert.equal(compilerReady({ prerequisites: fixture.prerequisites }), true);
 });
 
 test("an initialized checkout keeps addon before FFI without rebuilding the compiler", () => {
