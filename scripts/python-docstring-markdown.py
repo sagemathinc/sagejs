@@ -90,7 +90,7 @@ def main() -> int:
     changed = 0
     for path in paths:
         filename = root / path
-        source = filename.read_text()
+        source = filename.read_text(encoding="utf-8")
         tree = ast.parse(source, filename=path)
         spans = [source_offsets(source, node) for node in docstring_expressions(tree)]
         locations = exact_double_locations(path, source, spans)
@@ -99,7 +99,7 @@ def main() -> int:
         if arguments.check:
             failures.extend(locations)
             continue
-        filename.write_text(normalize(source, spans))
+        filename.write_text(normalize(source, spans), encoding="utf-8")
         changed += 1
 
     if failures:

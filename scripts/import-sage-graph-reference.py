@@ -117,7 +117,7 @@ def signature(function: ast.FunctionDef, public_name: str) -> str:
 
 
 def local_surface(filename: Path) -> list[dict[str, object]]:
-    tree = ast.parse(filename.read_text(), filename=str(filename))
+    tree = ast.parse(filename.read_text(encoding="utf-8"), filename=str(filename))
     records: list[dict[str, object]] = []
     for statement in tree.body:
         if (
@@ -181,7 +181,9 @@ def upstream_docs(root: Path) -> list[UpstreamDoc]:
     answer: list[UpstreamDoc] = []
     for filename in sorted((root / "src" / "sage" / "graphs").rglob("*.py")):
         try:
-            tree = ast.parse(filename.read_text(), filename=str(filename))
+            tree = ast.parse(
+                filename.read_text(encoding="utf-8"), filename=str(filename)
+            )
         except (SyntaxError, UnicodeDecodeError):
             continue
         relative = str(filename.relative_to(root)).replace("\\", "/")
@@ -398,7 +400,8 @@ def write_python(filename: Path, records: list[dict[str, object]]) -> None:
         "Regenerate with scripts/import-sage-graph-reference.py.\n"
         '"""\n\n'
         "from __future__ import annotations\n\n"
-        f"_GRAPH_REFERENCE_RECORDS = {body}\n"
+        f"_GRAPH_REFERENCE_RECORDS = {body}\n",
+        encoding="utf-8",
     )
 
 
@@ -459,7 +462,7 @@ def main() -> None:
     audit_output = (
         repository / "upstream-tests" / "sage" / "graphs" / "api-surface.json"
     )
-    audit_output.write_text(json.dumps(audit, indent=2) + "\n")
+    audit_output.write_text(json.dumps(audit, indent=2) + "\n", encoding="utf-8")
     print(
         f"Wrote {len(records)} graph DocSpec records ({audit['counts']['matchedUpstreamDocs']} "
         f"matched to Sage {revision[:12]})"
