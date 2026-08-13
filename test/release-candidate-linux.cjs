@@ -36,6 +36,7 @@ const {
   runInstaller,
   treeUsage,
   validateExecutableReceipts,
+  validateEmbeddedExecutable,
 } = require("../scripts/release-candidate-linux.cjs");
 
 const COMMIT = "0123456789abcdef0123456789abcdef01234567";
@@ -289,6 +290,37 @@ test("build receipts are canonical, target-specific, and source-aligned", () => 
     assert.throws(
       () => validateExecutableReceipts(aligned),
       /different runtime target identities/,
+    );
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+test("embedded executable reports the exact sidecar receipt", () => {
+  const directory = mkdtempSync(join(tmpdir(), "sagejs-rc-embedded-test-"));
+  try {
+    const receipts = writeReceipts(directory);
+    const manifest = JSON.parse(readFileSync(receipts.mathReceipt, "utf8"));
+    const executable = join(directory, "sagejs");
+    writeFileSync(
+      executable,
+      `#!${process.execPath}\nprocess.stdout.write(${JSON.stringify(JSON.stringify({
+        artifact: { kind: "single-executable" },
+        buildReceipt: {
+          availability: "available",
+          manifest,
+          source: "embedded",
+        },
+      }))});\n`,
+      { mode: 0o755 },
+    );
+    assert.equal(
+      validateEmbeddedExecutable(executable, manifest).artifact.kind,
+      "single-executable",
+    );
+    assert.throws(
+      () => validateEmbeddedExecutable(executable, { ...manifest, sagejsVersion: "0" }),
+      /embedded receipt does not match its sidecar/,
     );
   } finally {
     rmSync(directory, { recursive: true, force: true });
