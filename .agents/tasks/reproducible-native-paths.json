@@ -36,8 +36,12 @@
   ],
   "runs": [],
   "handoff": {
-    "summary": "",
-    "risks": [],
-    "next_steps": []
+    "summary": "Published production native-kernel indexes now expose only portable logical source identities. Focused tests reject absolute checkout disclosure, nonportable logical keys, and unexpected record metadata.",
+    "risks": [
+      "Generated wrappers, native compiler identities/provenance, and most current linked native binaries still contain absolute checkout or dependency-source paths; this lane deliberately does not claim byte-reproducible native artifacts."
+    ],
+    "next_steps": [
+      "Implement the staged TODO plan: logical compiler provenance, canonical native staging with identity-bound deterministic path maps, then independent binary comparison and path scans on Linux, macOS, and Windows."
+    ]
   }
 }
