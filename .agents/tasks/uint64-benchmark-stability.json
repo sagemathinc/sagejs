@@ -1,0 +1,52 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "uint64-benchmark-stability",
+  "title": "Uint64 Benchmark Stability",
+  "lane": "compiler-runtime",
+  "status": "active",
+  "owner": "user",
+  "objective": "Make the packed UInt64 structural performance regression gate statistically robust under parallel unit-tier load while preserving detection of nonlinear traversal regressions",
+  "base_commit": "98fe61f593d80cbdf372971ec60eb9d2b400f9ee",
+  "claims": [
+    "test/uint64-structural-runtime.cjs"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "not-applicable",
+    "fallback": "not-applicable",
+    "oracles": [],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "node test/uint64-structural-runtime.cjs"
+  ],
+  "runs": [
+    {
+      "command": "node test/uint64-structural-runtime.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 3.954,
+      "started_at": "2026-08-13T15:47:49.923Z",
+      "commit": "98fe61f593d80cbdf372971ec60eb9d2b400f9ee",
+      "workspace_fingerprint": "6ab3a961792e1b52193c1def40ba0906711f4aa943501db3482814694b37a928",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Replaced sub-millisecond minimum-of-three timing with warmed, alternating paired batches and median per-call measurements. The original absolute and 4x scaling gates remain, while 24 test processes completed successfully under eight-way concurrent load.",
+    "risks": [
+      "This remains a wall-clock performance smoke test, so catastrophic machine-wide contention can still delay it; batching makes ordinary unit-tier concurrency statistically robust."
+    ],
+    "next_steps": [
+      "Keep detailed cross-host performance history in benchmark infrastructure rather than tightening this unit-tier smoke gate around one machine."
+    ]
+  }
+}
