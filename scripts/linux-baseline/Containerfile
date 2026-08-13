@@ -50,6 +50,8 @@ RUN tar -xf /tmp/sagejs.tar -C /work/sagejs \
  && pnpm run python:precompile:run \
  && pnpm run native:precompile:production \
  && mkdir -p /release-inputs/addons \
+ && node -e 'process.stdout.write(JSON.stringify(require("./scripts/native-math-profile.cjs").nativeMathBuildProfile(), null, 2) + "\\n")' \
+      > /release-inputs/native-math-profile.json \
  && find packages dist node_modules -type f -name '*.node' -print0 \
       | sort -z \
       | while IFS= read -r -d '' addon; do \

@@ -10,6 +10,7 @@ const {
   NODE_VERSION,
   POLICY_PATH,
   RUNTIME_IMAGE,
+  assertPortableMathProfile,
   assertSafeOutputDirectory,
   parseArguments,
 } = require("../scripts/linux-baseline/release-inputs.cjs");
@@ -42,6 +43,10 @@ test("the exact official Node 26 comparison demonstrates the libatomic gap", () 
   assert.equal(witness.inspection.maximumGlibc, "2.28");
   assert.equal(witness.inspection.dependencies.includes("libatomic.so.1"), true);
   assert.deepEqual(witness.inspection.rpaths, []);
+  assert.equal(witness.runtimeProbe.image, RUNTIME_IMAGE);
+  assert.equal(witness.runtimeProbe.libatomicPackagePresent, false);
+  assert.equal(witness.runtimeProbe.exitStatus, 127);
+  assert.match(witness.runtimeProbe.stderrContains, /libatomic\.so\.1/);
 });
 
 test("Linux baseline command-line parsing is fail closed", () => {
@@ -77,4 +82,25 @@ test("the runtime proof checks that libatomic is genuinely absent", () => {
   );
   assert.match(source, /"rpm", "-q", "libatomic"/);
   assert.match(source, /runtimeLibatomicPackagePresent: false/);
+});
+
+test("the full proof rejects host-tuned mathematics profiles", () => {
+  const portable = {
+    schema: "sagejs.native-math-profile-v1",
+    effectiveProfile: "portable",
+    requestedProfile: "portable",
+    cpu: null,
+    abi: { platform: "linux", arch: "x64" },
+    compilers: { c: { nativeFlag: null }, cxx: { nativeFlag: null } },
+    buildOptions: {
+      gmp: { configure: ["--enable-fat"] },
+      fflas: { gmpConfigure: ["--enable-fat"] },
+      openblas: { dynamicArch: true },
+    },
+  };
+  assert.equal(assertPortableMathProfile(portable), portable);
+  assert.throws(
+    () => assertPortableMathProfile({ ...portable, cpu: { model: "builder" } }),
+    /Expected values to be strictly equal/,
+  );
 });

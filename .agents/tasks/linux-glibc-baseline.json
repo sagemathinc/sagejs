@@ -30,11 +30,12 @@
   },
   "platforms": {
     "linux-x64": "required",
-    "linux-arm64": "required",
+    "linux-arm64": "not-applicable",
     "windows-x64": "not-applicable",
-    "macos-arm64": "required"
+    "macos-arm64": "not-applicable"
   },
   "validation": [
+    "node --test test/linux-release-baseline.cjs test/release-native-binary-inspector.cjs test/test-manifest.test.cjs",
     "pnpm architecture:check",
     "pnpm test:portable",
     "pnpm test:baselib:strict"
