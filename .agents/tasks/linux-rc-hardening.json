@@ -7,7 +7,7 @@
   "status": "active",
   "owner": "user",
   "objective": "Harden the Linux x64 release candidate packager and validator with hermetic deterministic environments, artifact-bound receipts, authoritative native mathematics smoke tests, complete cleanup, atomic publication, and upgrade/corruption failure coverage",
-  "base_commit": "354b0588e8d8d7ac98df8a7683a9cddae6cbbd5a",
+  "base_commit": "9c8726aa3ebaa4bc93e9a84a86c2a8a3215bbeb1",
   "claims": [
     ".agents/",
     "TODO.md",
