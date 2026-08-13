@@ -4,7 +4,7 @@
   "id": "exact-matrix-subspaces-impl-v1",
   "title": "Public exact matrix subspaces implementation",
   "lane": "integration",
-  "status": "active",
+  "status": "complete",
   "owner": "user",
   "objective": "Route public pivots and row/column subspaces over canonical ZZ, QQ, GF(2), and small GF(p) storage through bulk selectors and bounded generated pivot metadata without full exact-matrix export",
   "base_commit": "3168d612c0e7b19e110a799e1bc89dba62e849f9",
@@ -462,12 +462,10 @@
   "handoff": {
     "summary": "Public pivots, row spaces, row modules/images, column spaces, and column modules now use bounded pivot metadata plus generated prefix-resource operations over canonical ZZ, QQ, GF(2), and small GF(p) storage. Equal-ring operations forbid full host export; bases are immutable, preserve degenerate shapes, and share pivot caches with echelon forms. Cross-ring embedded modules distinguish coefficient and coordinate rings, preserve their mathematical parent under vector arithmetic, and cover QQ/ZZ/modular conversion semantics against SageMath. Real Chromium/Wasm execution, native/dynamic behavior, lifecycle sanitizers, strict Python, and the restored 2 ms or 2x benchmark authority pass.",
     "risks": [
-      "pnpm test:portable has an unrelated baseline failure in test/gf2-polynomial-packed-core.cjs: the two packed GF(2) polynomial semantic tests raise OverflowError for a uint64 shift count. The failure reproduces on current main and is assigned outside this lane; 214 of 216 portable tests pass.",
       "The public resource paths are validated on linux-x64 and execute through real Chromium/Wasm. Native linux-arm64 and macos-arm64 validation remain integration responsibilities.",
       "Cross-ring row_space intentionally materializes original generators. The common equal-ring path remains resource-direct; embedded-module conversions and arithmetic are differentially checked against SageMath."
     ],
     "next_steps": [
-      "Integrate after the unrelated GF(2) polynomial portable failure is repaired or explicitly baseline-waived.",
       "Repeat the warmed benchmark on macOS ARM64 and a native SageMath installation; the local sagelite wrapper is an interactive CoWasm shell, not a scriptable native benchmark authority.",
       "Consider a generic caller-owned writable metadata slice only after another bounded-resource query needs the same compiler feature."
     ]
