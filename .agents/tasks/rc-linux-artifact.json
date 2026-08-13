@@ -1,0 +1,118 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "rc-linux-artifact",
+  "title": "Rc Linux Artifact",
+  "lane": "integration",
+  "status": "active",
+  "owner": "user",
+  "objective": "Build and validate a relocatable unsigned Linux x64 release candidate from a clean environment, including cold/warm startup and native capability loading.",
+  "base_commit": "2af149605c9d30b804a1e853a84597dffcf7db5f",
+  "claims": [
+    "scripts/release-candidate-linux.cjs",
+    "test/release-candidate-linux.cjs",
+    "bench/release-candidate-linux.cjs"
+  ],
+  "dependencies": [
+    "83c8bff: build-time embedded standalone module inventory"
+  ],
+  "references": [
+    "DISTRIBUTION.md",
+    "install.sh"
+  ],
+  "architecture": {
+    "strategy": "not-applicable",
+    "fallback": "not-applicable",
+    "oracles": [],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "env SAGEJS_NATIVE_MATH_PROFILE=portable pnpm build:sea",
+    "node --test test/release-candidate-linux.cjs",
+    "node scripts/release-candidate-linux.cjs --output /tmp/sagejs-linux-rc-report.json",
+    "pnpm architecture:check",
+    "pnpm test:portable",
+    "pnpm test:baselib:strict"
+  ],
+  "runs": [
+    {
+      "command": "node --test test/release-candidate-linux.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.239,
+      "started_at": "2026-08-13T20:34:02.511Z",
+      "commit": "2af149605c9d30b804a1e853a84597dffcf7db5f",
+      "workspace_fingerprint": "1887be36dd8db40e279b2e9f5203c644612ce3c1416106d0209a1339bd15aef9",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 5.546,
+      "started_at": "2026-08-13T20:34:12.238Z",
+      "commit": "2af149605c9d30b804a1e853a84597dffcf7db5f",
+      "workspace_fingerprint": "1887be36dd8db40e279b2e9f5203c644612ce3c1416106d0209a1339bd15aef9",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 14.483,
+      "started_at": "2026-08-13T20:34:21.776Z",
+      "commit": "2af149605c9d30b804a1e853a84597dffcf7db5f",
+      "workspace_fingerprint": "1887be36dd8db40e279b2e9f5203c644612ce3c1416106d0209a1339bd15aef9",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 20.019,
+      "started_at": "2026-08-13T20:34:44.661Z",
+      "commit": "2af149605c9d30b804a1e853a84597dffcf7db5f",
+      "workspace_fingerprint": "1887be36dd8db40e279b2e9f5203c644612ce3c1416106d0209a1339bd15aef9",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node scripts/release-candidate-linux.cjs --output /tmp/sagejs-linux-rc-report.json",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 307.493,
+      "started_at": "2026-08-13T20:36:13.251Z",
+      "commit": "2af149605c9d30b804a1e853a84597dffcf7db5f",
+      "workspace_fingerprint": "1887be36dd8db40e279b2e9f5203c644612ce3c1416106d0209a1339bd15aef9",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "env SAGEJS_NATIVE_MATH_PROFILE=portable pnpm build:sea",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 307.321,
+      "started_at": "2026-08-13T20:41:27.407Z",
+      "commit": "2af149605c9d30b804a1e853a84597dffcf7db5f",
+      "workspace_fingerprint": "1887be36dd8db40e279b2e9f5203c644612ce3c1416106d0209a1339bd15aef9",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Added deterministic, installer-compatible Linux x64 release packaging and a clean-environment validator for both standalone executables. The validator extracts the archive, installs it through install.sh, removes Node and package-manager paths, uses fresh runtime state, exercises Python and exact native mathematics, checks generated FLINT/FFLAS/M4RI traces, records cold/warm timing and cache evidence, and proves byte-identical archive generation. On the validated glibc 2.43 host the archive is 159180380 bytes with SHA-256 c117aeb421224d611c5f8b2063473ebb9dc4d7350aabdcabd6ee945260245718.",
+    "risks": [
+      "The candidate was built on glibc 2.43; public Linux artifacts must be rebuilt and tested on the project's oldest supported glibc baseline.",
+      "The portable tier was run and reached only the expected manifest ratchet failure because test/release-candidate-linux.cjs is not yet registered in the shared node-test manifest; that shared registration is deliberately outside this lane's claim.",
+      "Signing and publication are intentionally outside this unsigned Linux candidate lane."
+    ],
+    "next_steps": [
+      "Register test/release-candidate-linux.cjs in test/node-test-manifest.cjs and rerun pnpm test:portable in integration.",
+      "Wire the validator into release CI after the embedded build-receipt work lands, then rebuild on the oldest supported Linux runtime.",
+      "Retain the generated archive and JSON report as release evidence, but do not commit either build artifact."
+    ]
+  }
+}
