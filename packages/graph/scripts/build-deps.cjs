@@ -79,6 +79,44 @@ const dependency = {
   archive: process.env.SAGEJS_IGRAPH_TARBALL,
 };
 
+const inheritedBuildEnvironment = Object.freeze([
+  "AR",
+  "ARFLAGS",
+  "CC",
+  "CMAKE_GENERATOR",
+  "CMAKE_GENERATOR_INSTANCE",
+  "CMAKE_GENERATOR_PLATFORM",
+  "CMAKE_GENERATOR_TOOLSET",
+  "CMAKE_PREFIX_PATH",
+  "CMAKE_TOOLCHAIN_FILE",
+  "CPATH",
+  "CPPFLAGS",
+  "CXX",
+  "DESTDIR",
+  "LD",
+  "LDFLAGS",
+  "LIB",
+  "LIBPATH",
+  "MACOSX_DEPLOYMENT_TARGET",
+  "PKG_CONFIG",
+  "PKG_CONFIG_LIBDIR",
+  "PKG_CONFIG_PATH",
+  "SDKROOT",
+  "SOURCE_DATE_EPOCH",
+  "ZERO_AR_DATE",
+]);
+
+function selectedEnvironment(environment) {
+  const names = new Set(inheritedBuildEnvironment);
+  for (const name of Object.keys(environment)) {
+    if (name.startsWith("CMAKE_")) names.add(name);
+  }
+  return Object.fromEntries([...names].sort().map((name) => [
+    name,
+    environment[name] ?? null,
+  ]));
+}
+
 function igraphLtoSetting(platform = process.platform) {
   // MSVC's /GL archives contain compiler intermediate representation rather
   // than ordinary COFF objects. The generated FFI adapter is linked with
@@ -126,6 +164,7 @@ function expectedBuild(options = {}) {
         ? []
         : [...mathProfile.buildOptions.fflas.cxxflags, "-DNDEBUG"],
       generatorArchitecture: platform === "win32" ? "x64" : null,
+      environment: selectedEnvironment(environment),
       instructionPolicy: platform === "win32"
         ? "msvc-x64-baseline"
         : mathProfile.effectiveProfile === "cpu-native"
@@ -145,7 +184,7 @@ function expectedBuild(options = {}) {
     },
     mathProfile,
     package: "igraph",
-    toolchain: {
+    toolchain: options.toolchain || {
       build: commandIdentity("cmake"),
       compilers: platform === "win32"
         ? {
@@ -154,6 +193,50 @@ function expectedBuild(options = {}) {
           selection: "cmake-visual-studio-x64-default",
         }
         : mathProfile.compilers,
+    },
+  };
+}
+
+function cmakeValue(contents, name) {
+  const match = contents.match(new RegExp(`^set\\(${name} "([^"]*)"\\)$`, "m"));
+  return match ? match[1] : null;
+}
+
+function observedWindowsToolchain() {
+  const compilerFiles = [];
+  const visit = (directory) => {
+    if (!existsSync(directory)) return;
+    for (const entry of readdirSync(directory, { withFileTypes: true })) {
+      const filename = join(directory, entry.name);
+      if (entry.isDirectory()) visit(filename);
+      else if (entry.name === "CMakeCCompiler.cmake") compilerFiles.push(filename);
+    }
+  };
+  visit(join(build, "CMakeFiles"));
+  if (compilerFiles.length !== 1) {
+    throw new Error("unable to identify the configured Windows C compiler");
+  }
+  const compiler = readFileSync(compilerFiles[0], "utf8");
+  const cache = readFileSync(join(build, "CMakeCache.txt"), "utf8");
+  const cacheValue = (name) => {
+    const match = cache.match(new RegExp(`^${name}:[^=]*=(.*)$`, "m"));
+    return match ? match[1] : null;
+  };
+  const command = cmakeValue(compiler, "CMAKE_C_COMPILER");
+  if (!command) throw new Error("configured Windows C compiler path is absent");
+  return {
+    build: commandIdentity("cmake"),
+    compilers: {
+      c: {
+        ...commandIdentity(command, []),
+        id: cmakeValue(compiler, "CMAKE_C_COMPILER_ID"),
+        version: cmakeValue(compiler, "CMAKE_C_COMPILER_VERSION"),
+      },
+      generator: cacheValue("CMAKE_GENERATOR"),
+      generatorInstance: cacheValue("CMAKE_GENERATOR_INSTANCE"),
+      generatorPlatform: cacheValue("CMAKE_GENERATOR_PLATFORM"),
+      generatorToolset: cacheValue("CMAKE_GENERATOR_TOOLSET"),
+      selection: "cmake-configured-toolchain",
     },
   };
 }
@@ -243,6 +326,9 @@ function configureAndBuild(source, expected) {
       CXXFLAGS: expected.build.cxxflags.join(" "),
     },
   });
+  if (process.platform === "win32") {
+    expected = expectedBuild({ toolchain: observedWindowsToolchain() });
+  }
   run("cmake", [
     "--build",
     build,
@@ -261,7 +347,10 @@ function configureAndBuild(source, expected) {
 
 async function main() {
   const expected = expectedBuild();
-  if (readNativeDependencyReceipt(stamp, { expectation: expected, prefix })) {
+  if (
+    process.platform !== "win32" &&
+    readNativeDependencyReceipt(stamp, { expectation: expected, prefix })
+  ) {
     installSagejsHeader();
     process.stdout.write(`Reusing igraph ${dependency.version} from ${prefix}\n`);
     return;
@@ -272,6 +361,11 @@ async function main() {
   mkdirSync(sources, { recursive: true });
   run("cmake", ["-E", "tar", "xzf", archive], { cwd: sources });
   rmSync(build, { recursive: true, force: true });
+  if (process.env.SAGEJS_GRAPH_PREFIX !== undefined && existsSync(prefix)) {
+    throw new Error(
+      `refusing to replace unreceipted or stale explicit igraph prefix ${prefix}`,
+    );
+  }
   rmSync(prefix, { recursive: true, force: true });
   configureAndBuild(source, expected);
 }
@@ -283,4 +377,9 @@ if (require.main === module) {
   });
 }
 
-module.exports = { cmakeOptions, expectedBuild, igraphLtoSetting };
+module.exports = {
+  cmakeOptions,
+  expectedBuild,
+  igraphLtoSetting,
+  selectedEnvironment,
+};
