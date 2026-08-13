@@ -155,9 +155,7 @@ function expectedBuild(options = {}) {
         ? "unavailable"
         : mathProfile.effectiveProfile === "cpu-native"
           ? "compiler-native"
-          : arch === "x64"
-            ? "x86-64-sse2-baseline"
-            : "compiler-target-baseline",
+          : mathProfile.cpuPolicy.baseline,
       threadSafe: platform !== "win32",
     },
     capability: platform !== "win32",

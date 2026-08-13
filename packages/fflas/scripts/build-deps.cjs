@@ -44,6 +44,8 @@ const publicHeader = join(
 const {
   NATIVE_MATH_DEPENDENCY_VERSIONS,
   nativeMathBuildProfile,
+  parseGmpConfigureObservation,
+  validateGmpConfigureObservation,
 } = require(join(repositoryRoot, "scripts", "native-math-profile.cjs"));
 const {
   appleAccelerateSdkInputs,
@@ -255,8 +257,13 @@ function buildGmp(source) {
       CXXFLAGS: mathBuildOptions.fflas.cxxflags.join(" "),
     },
   });
+  const configureObservation = parseGmpConfigureObservation(
+    readFileSync(join(source, "config.log"), "utf8"),
+  );
+  validateGmpConfigureObservation(mathBuildProfile, configureObservation);
   run("make", [`-j${jobs}`], { cwd: source });
   run("make", ["install"], { cwd: source });
+  return configureObservation;
 }
 
 function buildGivaro(source) {
@@ -332,7 +339,11 @@ async function buildDependencies() {
     mkdirSync(prefix, { recursive: true });
     writeFileSync(
       stampPath,
-      `${JSON.stringify({ capability: false, platform: "win32" }, null, 2)}\n`,
+      `${JSON.stringify({
+        capability: false,
+        mathBuildProfile,
+        platform: "win32",
+      }, null, 2)}\n`,
     );
     process.stdout.write("FFLAS capability disabled on native Windows\n");
     return;
@@ -356,8 +367,10 @@ async function buildDependencies() {
     )) &&
     existsSync(join(prefix, "include", "fflas-ffpack", "fflas-ffpack.h")) &&
     existsSync(stampPath) &&
-    JSON.stringify(JSON.parse(readFileSync(stampPath, "utf8"))) ===
-      JSON.stringify(expectedStamp)
+    reusableBuildStamp(
+      JSON.parse(readFileSync(stampPath, "utf8")),
+      expectedStamp,
+    )
   ) {
     process.stdout.write(`Using FFLAS dependencies in ${prefix}\n`);
     return;
@@ -374,12 +387,15 @@ async function buildDependencies() {
     const dependency = dependencies.find((item) => item.name === name);
     return extract(archives.get(name), dependency);
   };
-  buildGmp(source("gmp"));
+  const gmpConfigure = buildGmp(source("gmp"));
   buildGivaro(source("givaro"));
   buildFflasFfpack(source("fflas-ffpack"));
   installHeader();
   makeFflasPrefixRelocatable();
-  writeFileSync(stampPath, `${JSON.stringify(expectedStamp, null, 2)}\n`);
+  writeFileSync(
+    stampPath,
+    `${JSON.stringify({ ...expectedStamp, observed: { gmpConfigure } }, null, 2)}\n`,
+  );
   process.stdout.write(`FFLAS dependencies installed in ${prefix}\n`);
 }
 
@@ -425,4 +441,20 @@ if (require.main === module) {
   });
 }
 
-module.exports = { makeFflasPrefixRelocatable };
+function reusableBuildStamp(stamp, expected) {
+  if (stamp === null || typeof stamp !== "object") return false;
+  const declaration = { ...stamp };
+  delete declaration.observed;
+  if (JSON.stringify(declaration) !== JSON.stringify(expected)) return false;
+  try {
+    validateGmpConfigureObservation(
+      expected.mathBuildProfile,
+      stamp.observed?.gmpConfigure,
+    );
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+module.exports = { makeFflasPrefixRelocatable, reusableBuildStamp };

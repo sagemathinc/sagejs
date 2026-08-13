@@ -49,7 +49,7 @@ test("M4RI dependency declaration preserves portable and tuned semantics", () =>
   );
   assert.equal(
     portable.build.instructionPolicy,
-    "x86-64-sse2-baseline",
+    "x86-64-v1",
   );
   assert.ok(!portable.build.cflags.includes("-march=native"));
   assert.equal(portable.toolchain.archiver.command, "ar");
@@ -88,7 +88,7 @@ test("M4RI declaration binds deployment target and Windows capability", () => {
   assert.deepEqual(darwin.deployment, { macos: "13.5" });
   assert.equal(
     darwin.build.instructionPolicy,
-    "compiler-target-baseline",
+    "apple-silicon-m1",
   );
 
   const windows = expectedBuild({

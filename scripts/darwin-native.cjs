@@ -4,6 +4,10 @@ const { existsSync } = require("node:fs");
 const { join } = require("node:path");
 const { spawnSync } = require("node:child_process");
 
+const {
+  deriveNativeMathBuildProfile,
+} = require("./native-math-profile.cjs");
+
 const defaultMacosDeploymentTarget = "13.0";
 
 function macosDeploymentTarget(environment = process.env) {
@@ -73,10 +77,11 @@ function appleAccelerateSdkInputs() {
 
 function fflasMathBuildProfile(profile, platform = process.platform) {
   if (platform !== "darwin") return profile;
-  const selected = structuredClone(profile);
-  delete selected.dependencies?.openblas;
-  delete selected.buildOptions?.openblas;
-  return selected;
+  return deriveNativeMathBuildProfile(profile, (selected) => {
+    delete selected.dependencies?.openblas;
+    delete selected.buildOptions?.openblas;
+    selected.cpuPolicy.dependencyDispatch.openblas = "apple-accelerate";
+  });
 }
 
 function main(arguments_ = process.argv.slice(2)) {

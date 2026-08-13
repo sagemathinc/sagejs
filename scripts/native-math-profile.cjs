@@ -24,6 +24,92 @@ const PROFILE_ENVIRONMENT_VARIABLE = "SAGEJS_NATIVE_MATH_PROFILE";
 const PORTABLE_PROFILE = "portable";
 const CPU_NATIVE_PROFILE = "cpu-native";
 const PROFILE_SCHEMA = "sagejs.native-math-profile-v1";
+const PORTABLE_CPU_POLICY_SCHEMA = "sagejs.portable-cpu-policy-v1";
+
+// These spellings cover the compiler switches accepted by Sage.js builders.
+// The release contract rejects every host-selected variant instead of trying
+// to infer whether a particular build machine happened to make it harmless.
+const HOST_NATIVE_FLAG_PATTERNS = Object.freeze([
+  /(?:^|[=,])native(?:$|[,])/,
+  /^-m(?:arch|cpu|tune)=native$/,
+  /^\/arch:(?:AVX|AVX2|AVX512)$/i,
+]);
+
+function portableTargetPolicy(platform, arch) {
+  if ((platform === "linux" || platform === "darwin") && arch === "x64") {
+    return Object.freeze({
+      baseline: "x86-64-v1",
+      compilerFlags: ["-march=x86-64", "-mtune=generic"],
+      deployment: platform === "darwin" ? "macos-deployment-target" : "elf-abi",
+      releaseSupported: true,
+    });
+  }
+  if (platform === "linux" && arch === "arm64") {
+    return Object.freeze({
+      baseline: "armv8-a",
+      compilerFlags: ["-march=armv8-a"],
+      deployment: "elf-abi",
+      releaseSupported: true,
+    });
+  }
+  if (platform === "darwin" && arch === "arm64") {
+    return Object.freeze({
+      // Apple Silicon starts with the M1 generation. The deployment target
+      // selects the compatible compiler target; adding -mcpu here would turn
+      // the build host into an accidental minimum requirement.
+      baseline: "apple-silicon-m1",
+      compilerFlags: [],
+      deployment: "macos-deployment-target",
+      releaseSupported: true,
+    });
+  }
+  if (platform === "win32" && arch === "x64") {
+    return Object.freeze({
+      baseline: "windows-x64",
+      compilerFlags: [],
+      deployment: "windows-sdk",
+      releaseSupported: true,
+    });
+  }
+  return Object.freeze({
+    baseline: "unsupported",
+    compilerFlags: [],
+    deployment: "unsupported",
+    releaseSupported: false,
+  });
+}
+
+function openBlasDynamicTargets(platform, arch) {
+  if (arch === "x64") return ["NEHALEM", "SANDYBRIDGE", "HASWELL", "ZEN"];
+  if (arch === "arm64") {
+    return platform === "darwin"
+      ? ["CORTEXA53", "NEOVERSEN1", "VORTEXM4"]
+      : ["CORTEXA53", "NEOVERSEN1", "NEOVERSEV1", "NEOVERSEN2"];
+  }
+  return [];
+}
+
+function hasHostNativeFlag(flags) {
+  return flags.some((flag) => HOST_NATIVE_FLAG_PATTERNS.some(
+    (pattern) => pattern.test(String(flag)),
+  ));
+}
+
+function fingerprintedProfile(identity) {
+  const canonical = stableJson(identity);
+  return {
+    ...canonical,
+    fingerprint: sha256(JSON.stringify(canonical)),
+  };
+}
+
+function deriveNativeMathBuildProfile(profile, transform) {
+  validateNativeMathBuildProfile(profile);
+  const identity = structuredClone(profile);
+  delete identity.fingerprint;
+  transform(identity);
+  return fingerprintedProfile(identity);
+}
 
 const NATIVE_MATH_DEPENDENCY_VERSIONS = Object.freeze({
   ffpoly: "1.2.7",
@@ -173,14 +259,12 @@ function nativeMathBuildProfile(options = {}) {
   const platform = options.platform || hostPlatform();
   const arch = options.arch || hostArch();
   const requested = options.requestedProfile || requestedProfile(environment);
-  const cpuNativeSupported =
+  const cpuNativeTargetSupported =
     platform !== "win32" &&
     ["linux", "darwin"].includes(platform) &&
     ["x64", "arm64"].includes(arch);
-  const effective = requested === CPU_NATIVE_PROFILE && cpuNativeSupported
-    ? CPU_NATIVE_PROFILE
-    : PORTABLE_PROFILE;
-  const proposedNativeFlag = effective === CPU_NATIVE_PROFILE
+  const proposedNativeFlag =
+    requested === CPU_NATIVE_PROFILE && cpuNativeTargetSupported
     ? nativeTuningFlag(platform, arch)
     : null;
   const compiler = compilerIdentity(
@@ -193,22 +277,65 @@ function nativeMathBuildProfile(options = {}) {
     proposedNativeFlag,
     "c++",
   );
-  const nativeFlag = compiler.nativeFlagSupported ? proposedNativeFlag : null;
-  const cxxNativeFlag = cxxCompiler.nativeFlagSupported
-    ? proposedNativeFlag
-    : null;
+  const cpuNativeCompilerSupported = proposedNativeFlag !== null &&
+    compiler.nativeFlagSupported && cxxCompiler.nativeFlagSupported;
+  const effective = requested === CPU_NATIVE_PROFILE && cpuNativeCompilerSupported
+    ? CPU_NATIVE_PROFILE
+    : PORTABLE_PROFILE;
+  const targetPolicy = portableTargetPolicy(platform, arch);
+  const nativeFlag = effective === CPU_NATIVE_PROFILE ? proposedNativeFlag : null;
+  const cxxNativeFlag = nativeFlag;
   const commonCFlags = ["-O3", "-fPIC"];
+  const portableCFlags = [...commonCFlags, ...targetPolicy.compilerFlags];
   const tunedCFlags = nativeFlag === null
-    ? commonCFlags
+    ? portableCFlags
     : [...commonCFlags, nativeFlag];
   const tunedCxxFlags = cxxNativeFlag === null
-    ? commonCFlags
+    ? portableCFlags
     : [...commonCFlags, cxxNativeFlag];
   const gmpConfigure = ["--disable-shared", "--enable-static", "--with-pic"];
-  if (effective === PORTABLE_PROFILE && arch === "x64") {
+  if (
+    effective === PORTABLE_PROFILE &&
+    arch === "x64" &&
+    platform !== "win32"
+  ) {
     gmpConfigure.push("--enable-fat");
   }
-  const identity = stableJson({
+  const openblasTargets = platform === "win32"
+    ? []
+    : openBlasDynamicTargets(platform, arch);
+  const windowsTarget = platform === "win32";
+  const cpuPolicy = {
+    baseline: effective === PORTABLE_PROFILE ? targetPolicy.baseline : "build-host",
+    dependencyDispatch: {
+      fflasFfpack: windowsTarget ? "unavailable" : "archnative-disabled",
+      flint: "compiler-baseline-plus-runtime-dispatched-dependencies",
+      gmp: effective === PORTABLE_PROFILE && arch === "x64" && !windowsTarget
+        ? "runtime-fat"
+        : windowsTarget
+          ? "vcpkg-generic-x64"
+          : "compiler-baseline",
+      igraph: "compiler-baseline",
+      m4ri: windowsTarget ? "unavailable" : "compiler-baseline-fixed-cache-model",
+      openblas: windowsTarget
+        ? "vcpkg-generic-x64"
+        : openblasTargets.length > 0
+        ? "runtime-dynamic"
+        : "unavailable",
+    },
+    forbiddenHostNativeFlags: [
+      "-march=native",
+      "-mcpu=native",
+      "-mtune=native",
+      "/arch:AVX*",
+    ],
+    releaseEligible: requested === PORTABLE_PROFILE &&
+      effective === PORTABLE_PROFILE &&
+      targetPolicy.releaseSupported,
+    schema: PORTABLE_CPU_POLICY_SCHEMA,
+    targetSelection: targetPolicy.deployment,
+  };
+  const identity = {
     abi: {
       arch,
       endianness: options.endianness || endianness(),
@@ -217,6 +344,7 @@ function nativeMathBuildProfile(options = {}) {
     },
     buildOptions: {
       fflas: {
+        archnative: false,
         cxxflags: tunedCxxFlags,
         gmpConfigure: [...gmpConfigure, "--enable-cxx"],
       },
@@ -240,28 +368,52 @@ function nativeMathBuildProfile(options = {}) {
       mpfr: { cflags: tunedCFlags },
       openblas: {
         build: "threaded-cblas-dynamic-v1",
-        cflags: commonCFlags,
-        dynamicArch: true,
+        cflags: portableCFlags,
+        dynamicArch: !windowsTarget,
+        dynamicList: openblasTargets,
+        // OpenBLAS prepends PRESCOTT on x64 and ARMV8 on arm64 whenever a
+        // DYNAMIC_LIST is supplied; record that implicit compatible fallback.
+        fallbackTarget: windowsTarget
+          ? "GENERIC"
+          : arch === "x64"
+          ? "PRESCOTT"
+          : arch === "arm64"
+            ? "ARMV8"
+            : null,
       },
+      optionalX64Accelerators: platform === "linux" && arch === "x64"
+        ? {
+            cflags: [
+              ...tunedCFlags,
+              "-fomit-frame-pointer",
+              "-funroll-loops",
+              "-m64",
+              "-std=gnu99",
+            ],
+            instructionPolicy: effective === CPU_NATIVE_PROFILE
+              ? "compiler-native"
+              : "x86-64-v1-inline-assembly",
+          }
+        : { cflags: [], instructionPolicy: "unavailable" },
     },
     compilers: { c: compiler, cxx: cxxCompiler },
     cpu: effective === CPU_NATIVE_PROFILE
       ? cpuIdentity({ ...options, environment, platform })
       : null,
+    cpuPolicy,
     dependencies: {
       ...NATIVE_MATH_DEPENDENCY_VERSIONS,
     },
     effectiveProfile: effective,
     fallbackReason: requested !== effective
-      ? `${platform}/${arch} uses the portable mathematics profile`
+      ? !cpuNativeTargetSupported
+        ? `${platform}/${arch} uses the portable mathematics profile`
+        : `the selected C and C++ compilers do not both support ${proposedNativeFlag}`
       : null,
     requestedProfile: requested,
     schema: PROFILE_SCHEMA,
-  });
-  return {
-    ...identity,
-    fingerprint: sha256(JSON.stringify(identity)),
   };
+  return fingerprintedProfile(identity);
 }
 
 function validateNativeMathBuildProfile(profile, target = undefined) {
@@ -293,6 +445,74 @@ function validateNativeMathBuildProfile(profile, target = undefined) {
   return profile;
 }
 
+function nestedStrings(value) {
+  if (typeof value === "string") return [value];
+  if (Array.isArray(value)) return value.flatMap(nestedStrings);
+  if (value !== null && typeof value === "object") {
+    return Object.values(value).flatMap(nestedStrings);
+  }
+  return [];
+}
+
+function validatePortableReleaseCpuProfile(profile) {
+  validateNativeMathBuildProfile(profile);
+  const policy = portableTargetPolicy(profile.abi.platform, profile.abi.arch);
+  if (
+    profile.requestedProfile !== PORTABLE_PROFILE ||
+    profile.effectiveProfile !== PORTABLE_PROFILE ||
+    profile.cpu !== null ||
+    !policy.releaseSupported ||
+    profile.cpuPolicy?.schema !== PORTABLE_CPU_POLICY_SCHEMA ||
+    profile.cpuPolicy?.releaseEligible !== true ||
+    profile.cpuPolicy?.baseline !== policy.baseline ||
+    profile.cpuPolicy?.targetSelection !== policy.deployment
+  ) {
+    throw new Error("native mathematics profile is not release CPU-portable");
+  }
+  const expectedFlags = ["-O3", "-fPIC", ...policy.compilerFlags];
+  for (const flags of [
+    profile.buildOptions?.flint?.cflags,
+    profile.buildOptions?.mpfr?.cflags,
+    profile.buildOptions?.mpc?.cflags,
+    profile.buildOptions?.fflas?.cxxflags,
+  ]) {
+    if (JSON.stringify(flags) !== JSON.stringify(expectedFlags)) {
+      throw new Error("portable compiler baseline flags do not match the target policy");
+    }
+  }
+  const windowsTarget = profile.abi.platform === "win32";
+  const accelerate = profile.cpuPolicy?.dependencyDispatch?.openblas ===
+    "apple-accelerate";
+  const expectedOpenBlasTargets = windowsTarget
+    ? []
+    : openBlasDynamicTargets(profile.abi.platform, profile.abi.arch);
+  if (
+    profile.buildOptions?.fflas?.archnative !== false ||
+    (
+      !windowsTarget &&
+      profile.abi.arch === "x64" &&
+      !profile.buildOptions?.gmp?.configure?.includes("--enable-fat")
+    ) ||
+    (accelerate
+      ? profile.buildOptions?.openblas !== undefined
+      : profile.buildOptions?.openblas?.dynamicArch !== !windowsTarget ||
+        profile.buildOptions?.openblas?.fallbackTarget !==
+          (windowsTarget
+            ? "GENERIC"
+            : profile.abi.arch === "x64"
+              ? "PRESCOTT"
+              : "ARMV8") ||
+        JSON.stringify(profile.buildOptions?.openblas?.dynamicList) !==
+          JSON.stringify(expectedOpenBlasTargets))
+  ) {
+    throw new Error("portable dependency dispatch policy is incomplete");
+  }
+  if (hasHostNativeFlag(nestedStrings(profile.buildOptions))) {
+    throw new Error("portable profile contains a build-host CPU tuning flag");
+  }
+  return profile;
+}
+
 function flintObservedCapabilities(prefix) {
   const header = join(prefix, "include", "flint", "flint-config.h");
   if (!existsSync(header)) return { flintFftSmall: null };
@@ -300,6 +520,38 @@ function flintObservedCapabilities(prefix) {
   return {
     flintFftSmall: /^#define FLINT_HAVE_FFT_SMALL 1$/m.test(contents),
   };
+}
+
+function parseGmpConfigureObservation(contents) {
+  const pathMatch = contents.match(/^path=\s*(.*?)\s*$/m);
+  const hostMatch = contents.match(/^host_cpu='([^']*)'$/m);
+  const cflagsMatch = contents.match(/^CFLAGS='([^']*)'$/m);
+  if (!pathMatch || !hostMatch || !cflagsMatch) {
+    throw new Error("GMP configure log is missing CPU selection evidence");
+  }
+  return stableJson({
+    cflags: cflagsMatch[1].trim().split(/\s+/).filter(Boolean),
+    hostCpu: hostMatch[1],
+    mpnPath: pathMatch[1].trim().split(/\s+/).filter(Boolean),
+  });
+}
+
+function validateGmpConfigureObservation(profile, observation) {
+  validateNativeMathBuildProfile(profile);
+  if (profile.effectiveProfile !== PORTABLE_PROFILE) return observation;
+  const expectedFlags = profile.buildOptions.gmp.cflags;
+  if (JSON.stringify(observation?.cflags) !== JSON.stringify(expectedFlags)) {
+    throw new Error("GMP configure CFLAGS do not match the portable profile");
+  }
+  if (profile.abi.platform === "darwin" && profile.abi.arch === "arm64") {
+    if (
+      observation.hostCpu !== "aarch64" ||
+      JSON.stringify(observation.mpnPath) !== JSON.stringify(["arm64", "generic"])
+    ) {
+      throw new Error("portable Apple Silicon GMP selected a host-specific MPN path");
+    }
+  }
+  return observation;
 }
 
 function nativeMathBuildProvenance(repositoryRoot, options = {}) {
@@ -344,10 +596,17 @@ module.exports = {
   CPU_NATIVE_PROFILE,
   NATIVE_MATH_DEPENDENCY_VERSIONS,
   PORTABLE_PROFILE,
+  PORTABLE_CPU_POLICY_SCHEMA,
   PROFILE_ENVIRONMENT_VARIABLE,
+  deriveNativeMathBuildProfile,
   flintObservedCapabilities,
   nativeMathBuildProfile,
   nativeMathBuildProvenance,
+  openBlasDynamicTargets,
+  parseGmpConfigureObservation,
+  portableTargetPolicy,
   stableJson,
   validateNativeMathBuildProfile,
+  validateGmpConfigureObservation,
+  validatePortableReleaseCpuProfile,
 };

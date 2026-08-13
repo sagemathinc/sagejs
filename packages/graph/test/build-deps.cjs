@@ -92,6 +92,7 @@ test("igraph receipt declaration binds profile, target, source, and flags", () =
   );
   assert.deepEqual(linux.deployment, null);
   assert.ok(linux.build.cflags.includes("-O3"));
+  assert.equal(linux.build.instructionPolicy, "x86-64-v1");
   assert.equal(linux.toolchain.archiver.command, "ar");
   assert.ok(linux.build.cmake.includes("-DIGRAPH_ENABLE_LTO=ON"));
 
@@ -101,6 +102,7 @@ test("igraph receipt declaration binds profile, target, source, and flags", () =
     platform: "win32",
   });
   assert.deepEqual(windows.build.cflags, []);
+  assert.equal(windows.build.instructionPolicy, "windows-x64");
   assert.equal(windows.build.generatorArchitecture, "x64");
   assert.ok(windows.build.cmake.includes("-DIGRAPH_ENABLE_LTO=OFF"));
 
@@ -111,6 +113,7 @@ test("igraph receipt declaration binds profile, target, source, and flags", () =
     platform: "darwin",
   });
   assert.deepEqual(darwin.deployment, { macos: "13.5" });
+  assert.equal(darwin.build.instructionPolicy, "apple-silicon-m1");
 });
 
 test("Windows reuse verifies both compilers and binary tools", () => {

@@ -67,9 +67,14 @@ beside the executable. The directory is removed when the process exits.
 ### Native mathematics build profiles
 
 Release artifacts and ordinary source builds use the `portable` mathematics
-profile. On x86-64 it builds GMP's runtime-dispatched fat binary and keeps
-FLINT free of host-specific compiler flags, so an artifact is not silently tied
-to the CPU which happened to compile it.
+profile. On x86-64 it builds GMP's runtime-dispatched fat binary, uses the
+explicit x86-64-v1 compiler baseline, and builds runtime-dispatched OpenBLAS
+kernels. Linux arm64 uses the Armv8-A baseline. Apple Silicon uses the macOS
+deployment target rather than `-mcpu`; GMP's configure result must select its
+`arm64 generic` MPN path rather than `applem1`. Givaro and FFLAS disable their
+own host-native probes, while M4RI uses a fixed portable cache model. These
+choices prevent an artifact from being silently tied to the CPU which happened
+to compile it.
 
 Controlled benchmarks and local source installations may explicitly select a
 CPU-specific stack:
@@ -101,6 +106,17 @@ sagejs native profile --json
 Record the JSON output with performance results. It distinguishes a selected
 profile from a differently built prefix and makes accidental portable/native
 benchmark comparisons apparent.
+
+Before packaging a native artifact, validate the installed dependency receipts:
+
+```sh
+node scripts/release-cpu-profile.cjs --json
+```
+
+This fails closed if any installed FLINT, FFLAS, M4RI, or igraph profile is
+host-tuned, target-mismatched, missing its required dispatch policy, or lacks
+observed GMP configure evidence. The precise contract and current limitations
+are in [`docs/native-release-cpu-profile.md`](docs/native-release-cpu-profile.md).
 
 If `jupyter` is available on `PATH`, either executable can register itself as
 a kernel with no additional Sage.js files:

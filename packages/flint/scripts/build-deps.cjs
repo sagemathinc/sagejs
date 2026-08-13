@@ -31,6 +31,8 @@ const {
   NATIVE_MATH_DEPENDENCY_VERSIONS,
   flintObservedCapabilities,
   nativeMathBuildProfile,
+  parseGmpConfigureObservation,
+  validateGmpConfigureObservation,
 } = require(join(repositoryRoot, "scripts", "native-math-profile.cjs"));
 const mathBuildProfile = nativeMathBuildProfile();
 const mathBuildOptions = mathBuildProfile.buildOptions;
@@ -219,6 +221,27 @@ function buildWindowsDependencies() {
     }
   );
   patchWindowsFlintHeaders();
+  const stampPath = join(prefix, ".sagejs-flint-dependencies.json");
+  writeFileSync(
+    stampPath,
+    `${JSON.stringify({
+      build: {
+        mathBuildProfile,
+        windows: {
+          manifestSha256: digest(join(packageRoot, "vcpkg.json")),
+          openblasTarget: "GENERIC",
+          triplet: windowsTriplet,
+          tripletSha256: digest(join(
+            packageRoot,
+            "scripts",
+            "triplets",
+            `${windowsTriplet}.cmake`,
+          )),
+        },
+      },
+      observed: { vcpkgInstalled: true },
+    }, null, 2)}\n`,
+  );
   process.stdout.write(`Native dependencies installed in ${prefix}\n`);
 }
 
@@ -302,9 +325,14 @@ function buildGmp(source) {
     // GMP 6.3's configure probes use pre-C23 unprototyped functions.
     env: { CFLAGS: mathBuildOptions.gmp.cflags.join(" ") },
   });
+  const configureObservation = parseGmpConfigureObservation(
+    readFileSync(join(source, "config.log"), "utf8"),
+  );
+  validateGmpConfigureObservation(mathBuildProfile, configureObservation);
   run("make", [`-j${jobs}`], { cwd: source });
   run("make", ["check"], { cwd: source });
   run("make", ["install"], { cwd: source });
+  return configureObservation;
 }
 
 function buildMpfr(source) {
@@ -348,7 +376,8 @@ function buildMpc(source) {
   run("make", ["install"], { cwd: source });
 }
 
-function buildOpenBlas(source) {
+function openBlasMakeOptions(profile = mathBuildProfile) {
+  const policy = profile.buildOptions.openblas;
   const options = [
     "NOFORTRAN=1",
     "NO_LAPACK=1",
@@ -358,20 +387,17 @@ function buildOpenBlas(source) {
     "NO_EXPRECISION=1",
     "USE_THREAD=1",
     "NUM_THREADS=64",
-    "DYNAMIC_ARCH=1",
-    "CFLAGS=-O3 -fPIC",
+    `DYNAMIC_ARCH=${policy.dynamicArch ? 1 : 0}`,
+    `CFLAGS=${policy.cflags.join(" ")}`,
   ];
-  if (process.arch === "x64") {
-    options.push(
-      "DYNAMIC_LIST=NEHALEM SANDYBRIDGE HASWELL ZEN",
-    );
-  } else if (process.arch === "arm64") {
-    options.push(
-      process.platform === "darwin"
-        ? "DYNAMIC_LIST=CORTEXA53 NEOVERSEN1 VORTEXM4"
-        : "DYNAMIC_LIST=CORTEXA53 NEOVERSEN1 NEOVERSEV1 NEOVERSEN2",
-    );
+  if (policy.dynamicList.length > 0) {
+    options.push(`DYNAMIC_LIST=${policy.dynamicList.join(" ")}`);
   }
+  return options;
+}
+
+function buildOpenBlas(source) {
+  const options = openBlasMakeOptions();
   run("make", [`-j${jobs}`, "libs", ...options], { cwd: source });
   run("make", [`PREFIX=${prefix}`, "install", ...options], { cwd: source });
 }
@@ -404,8 +430,7 @@ function installFiles(source, paths, destination) {
 }
 
 function buildFfpoly(source) {
-  const cflags =
-    "-O3 -fPIC -fomit-frame-pointer -funroll-loops -m64 -std=gnu99";
+  const cflags = mathBuildOptions.optionalX64Accelerators.cflags.join(" ");
   run(
     "make",
     [
@@ -439,8 +464,7 @@ function buildFfpoly(source) {
 }
 
 function buildSmalljac(source) {
-  const cflags =
-    "-O3 -fPIC -fomit-frame-pointer -funroll-loops -m64 -std=gnu99";
+  const cflags = mathBuildOptions.optionalX64Accelerators.cflags.join(" ");
   run(
     "make",
     [
@@ -453,6 +477,19 @@ function buildSmalljac(source) {
   );
   installFiles(source, ["libsmalljac.a"], join(prefix, "lib"));
   installFiles(source, ["smalljac.h"], join(prefix, "include"));
+}
+
+function reusableBuildStamp(stamp, expected) {
+  if (JSON.stringify(stamp?.build) !== JSON.stringify(expected)) return false;
+  try {
+    validateGmpConfigureObservation(
+      expected.mathBuildProfile,
+      stamp.observed?.gmpConfigure,
+    );
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 async function main() {
@@ -504,8 +541,10 @@ async function main() {
       (existsSync(join(prefix, "lib", "libff_poly.a")) &&
         existsSync(join(prefix, "lib", "libsmalljac.a")))) &&
     existsSync(stampPath) &&
-    JSON.stringify(JSON.parse(readFileSync(stampPath, "utf8")).build) ===
-      JSON.stringify(expectedBuild)
+    reusableBuildStamp(
+      JSON.parse(readFileSync(stampPath, "utf8")),
+      expectedBuild,
+    )
   ) {
     process.stdout.write(`Using native dependencies in ${prefix}\n`);
     return;
@@ -525,7 +564,7 @@ async function main() {
     const dependency = dependencies.find((entry) => entry.name === name);
     return extract(archives.get(name), dependency);
   };
-  buildGmp(source("gmp"));
+  const gmpConfigure = buildGmp(source("gmp"));
   buildMpfr(source("mpfr"));
   buildMpc(source("mpc"));
   buildOpenBlas(source("openblas"));
@@ -536,13 +575,17 @@ async function main() {
   }
   const buildStamp = {
     build: expectedBuild,
-    observed: flintObservedCapabilities(prefix),
+    observed: { ...flintObservedCapabilities(prefix), gmpConfigure },
   };
   writeFileSync(stampPath, `${JSON.stringify(buildStamp, null, 2)}\n`);
   process.stdout.write(`Native dependencies installed in ${prefix}\n`);
 }
 
-main().catch((error) => {
-  process.stderr.write(`${error.stack || error}\n`);
-  process.exitCode = 1;
-});
+if (require.main === module) {
+  main().catch((error) => {
+    process.stderr.write(`${error.stack || error}\n`);
+    process.exitCode = 1;
+  });
+}
+
+module.exports = { openBlasMakeOptions, reusableBuildStamp };

@@ -18,18 +18,35 @@ const test = require("node:test");
 const {
   CPU_NATIVE_PROFILE,
   PORTABLE_PROFILE,
+  deriveNativeMathBuildProfile,
   nativeMathBuildProfile,
   nativeMathBuildProvenance,
+  parseGmpConfigureObservation,
+  validateGmpConfigureObservation,
+  validateNativeMathBuildProfile,
+  validatePortableReleaseCpuProfile,
 } = require("../scripts/native-math-profile.cjs");
+const {
+  fflasMathBuildProfile,
+} = require("../scripts/darwin-native.cjs");
 const {
   nativeArtifactSpecs,
 } = require("../scripts/native-worktree-cache.cjs");
+const {
+  validateReleaseCpuProfile,
+} = require("../scripts/release-cpu-profile.cjs");
 const {
   createNativeDependencyReceipt,
   readNativeDependencyReceipt,
   validateNativeDependencyReceipt,
   writeNativeDependencyReceipt,
 } = require("../scripts/native-dependency-receipt.cjs");
+const {
+  reusableBuildStamp: reusableFflasBuildStamp,
+} = require("../packages/fflas/scripts/build-deps.cjs");
+const {
+  openBlasMakeOptions,
+} = require("../packages/flint/scripts/build-deps.cjs");
 
 const compiler = (overrides = {}) => ({
   command: "cc",
@@ -64,6 +81,16 @@ test("portable math builds remain the default and retain fat GMP", () => {
   assert.equal(selected.cpu, null);
   assert.ok(selected.buildOptions.gmp.configure.includes("--enable-fat"));
   assert.ok(!selected.buildOptions.flint.cflags.includes("-march=native"));
+  assert.deepEqual(
+    selected.buildOptions.flint.cflags,
+    ["-O3", "-fPIC", "-march=x86-64", "-mtune=generic"],
+  );
+  assert.equal(selected.cpuPolicy.baseline, "x86-64-v1");
+  assert.equal(selected.cpuPolicy.releaseEligible, true);
+  assert.equal(
+    validatePortableReleaseCpuProfile(selected),
+    selected,
+  );
   assert.equal(
     selected.fingerprint,
     profile({ cpu: { features: [], model: "Another CPU" } }).fingerprint,
@@ -143,7 +170,121 @@ test("Windows requests fall back explicitly to the portable profile", () => {
   assert.equal(selected.requestedProfile, CPU_NATIVE_PROFILE);
   assert.equal(selected.effectiveProfile, PORTABLE_PROFILE);
   assert.match(selected.fallbackReason, /win32\/x64/);
-  assert.ok(selected.buildOptions.gmp.configure.includes("--enable-fat"));
+  assert.ok(!selected.buildOptions.gmp.configure.includes("--enable-fat"));
+  assert.equal(selected.cpuPolicy.baseline, "windows-x64");
+  assert.equal(selected.buildOptions.openblas.dynamicArch, false);
+  assert.equal(selected.buildOptions.openblas.fallbackTarget, "GENERIC");
+});
+
+test("portable policies encode Linux arm64 and Apple Silicon baselines", () => {
+  const linuxArm = profile({
+    arch: "arm64",
+    compiler: { ...compiler(), target: "aarch64-linux-gnu" },
+  });
+  assert.equal(linuxArm.cpuPolicy.baseline, "armv8-a");
+  assert.ok(linuxArm.buildOptions.flint.cflags.includes("-march=armv8-a"));
+  assert.equal(linuxArm.buildOptions.openblas.fallbackTarget, "ARMV8");
+  validatePortableReleaseCpuProfile(linuxArm);
+
+  const appleArm = profile({
+    arch: "arm64",
+    compiler: { ...compiler(), target: "arm64-apple-darwin" },
+    platform: "darwin",
+  });
+  assert.equal(appleArm.cpuPolicy.baseline, "apple-silicon-m1");
+  assert.deepEqual(appleArm.buildOptions.flint.cflags, ["-O3", "-fPIC"]);
+  assert.equal(appleArm.cpuPolicy.targetSelection, "macos-deployment-target");
+  validatePortableReleaseCpuProfile(appleArm);
+});
+
+test("Apple Silicon GMP configure selection is captured and gated", () => {
+  const appleArm = profile({
+    arch: "arm64",
+    compiler: { ...compiler(), target: "arm64-apple-darwin" },
+    platform: "darwin",
+  });
+  const observation = parseGmpConfigureObservation(`
+CFLAGS=-O3 -fPIC -std=gnu17
+path= arm64 generic
+CFLAGS='-O3 -fPIC -std=gnu17'
+host_cpu='aarch64'
+`);
+  assert.deepEqual(observation, {
+    cflags: ["-O3", "-fPIC", "-std=gnu17"],
+    hostCpu: "aarch64",
+    mpnPath: ["arm64", "generic"],
+  });
+  assert.equal(
+    validateGmpConfigureObservation(appleArm, observation),
+    observation,
+  );
+  for (const mpnPath of [["arm64", "applem1"], ["arm64", "cora53"]]) {
+    assert.throws(
+      () => validateGmpConfigureObservation(appleArm, {
+        ...observation,
+        mpnPath,
+      }),
+      /host-specific MPN path/,
+    );
+  }
+  assert.throws(
+    () => parseGmpConfigureObservation("host_cpu='aarch64'\n"),
+    /missing CPU selection evidence/,
+  );
+});
+
+test("Apple Accelerate profile derivation preserves a valid new fingerprint", () => {
+  const appleArm = profile({
+    arch: "arm64",
+    compiler: { ...compiler(), target: "arm64-apple-darwin" },
+    platform: "darwin",
+  });
+  const fflas = fflasMathBuildProfile(appleArm, "darwin");
+  assert.notEqual(fflas.fingerprint, appleArm.fingerprint);
+  assert.equal(fflas.buildOptions.openblas, undefined);
+  assert.equal(
+    fflas.cpuPolicy.dependencyDispatch.openblas,
+    "apple-accelerate",
+  );
+  validateNativeMathBuildProfile(fflas);
+  validatePortableReleaseCpuProfile(fflas);
+});
+
+test("portable release validation rejects host-tuned or forged profiles", () => {
+  const selected = profile();
+  for (const mutate of [
+    (candidate) => candidate.buildOptions.flint.cflags.push("-march=native"),
+    (candidate) => candidate.buildOptions.openblas.dynamicList.pop(),
+    (candidate) => { candidate.cpuPolicy.releaseEligible = false; },
+  ]) {
+    const forged = deriveNativeMathBuildProfile(selected, mutate);
+    assert.throws(
+      () => validatePortableReleaseCpuProfile(forged),
+      /not release CPU-portable|baseline flags|dispatch policy|build-host CPU/,
+    );
+  }
+});
+
+test("cpu-native requests fall back when either compiler rejects tuning", () => {
+  const selected = profile({
+    compiler: compiler({
+      nativeFlag: "-march=native",
+      nativeFlagSupported: true,
+    }),
+    cxxCompiler: compiler({
+      command: "c++",
+      nativeFlag: "-march=native",
+      nativeFlagSupported: false,
+    }),
+    requestedProfile: CPU_NATIVE_PROFILE,
+  });
+  assert.equal(selected.effectiveProfile, PORTABLE_PROFILE);
+  assert.match(selected.fallbackReason, /do not both support/);
+  assert.throws(
+    () => validatePortableReleaseCpuProfile(selected),
+    /not release CPU-portable/,
+  );
+  validateNativeMathBuildProfile(selected);
 });
 
 test("worktree dependency cache keys include the complete math profile", () => {
@@ -411,6 +552,237 @@ test("truncated and noncanonical receipt files are rejected without throwing", (
   } finally {
     rmSync(item.root, { recursive: true, force: true });
   }
+});
+
+function releaseProfile(platform = "linux", arch = "x64") {
+  const selectedCompiler = {
+    command: "cc",
+    nativeFlag: null,
+    nativeFlagSupported: false,
+    target: `${arch}-test-${platform}`,
+    version: "test compiler",
+  };
+  return nativeMathBuildProfile({
+    arch,
+    compiler: selectedCompiler,
+    cxxCompiler: { ...selectedCompiler, command: "c++" },
+    endianness: "LE",
+    environment: {},
+    platform,
+  });
+}
+
+function releaseProfileFixture() {
+  const root = mkdtempSync(join(tmpdir(), "sagejs-release-cpu-"));
+  const prefixes = Object.fromEntries(
+    ["fflas", "flint", "graph", "m4ri"].map((id) => {
+      const prefix = join(root, id);
+      mkdirSync(prefix, { recursive: true });
+      return [id, prefix];
+    }),
+  );
+  const selected = releaseProfile();
+  const gmpConfigure = {
+    cflags: selected.buildOptions.gmp.cflags,
+    hostCpu: "x86_64",
+    mpnPath: ["x86_64", "fat", "x86_64", "generic"],
+  };
+  writeFileSync(
+    join(prefixes.flint, ".sagejs-flint-dependencies.json"),
+    `${JSON.stringify({
+      build: { mathBuildProfile: selected },
+      observed: { gmpConfigure },
+    })}\n`,
+  );
+  writeFileSync(
+    join(prefixes.fflas, ".sagejs-fflas-dependencies.json"),
+    `${JSON.stringify({
+      mathBuildProfile: selected,
+      observed: { gmpConfigure },
+    })}\n`,
+  );
+  for (const id of ["graph", "m4ri"]) {
+    const stamp = join(
+      prefixes[id],
+      id === "graph"
+        ? ".sagejs-igraph-1.0.1"
+        : ".sagejs-m4ri-dependencies.json",
+    );
+    writeNativeDependencyReceipt(
+      stamp,
+      {
+        build: id === "m4ri"
+          ? {
+              cachePolicy: { kind: "fixed-portable" },
+              instructionPolicy: selected.cpuPolicy.baseline,
+            }
+          : { instructionPolicy: selected.cpuPolicy.baseline },
+        dependency: {
+          name: id,
+          sha256: (id === "graph" ? "a" : "b").repeat(64),
+          version: "test",
+        },
+        mathProfile: selected,
+        package: id,
+        toolchain: { compiler: "test" },
+      },
+      prefixes[id],
+    );
+  }
+  return { prefixes, root, selected };
+}
+
+function releaseProfileOptions(item, platform = "linux") {
+  return {
+    ...Object.fromEntries(
+      Object.entries(item.prefixes).map(([id, prefix]) => [
+        `${id}Prefix`,
+        prefix,
+      ]),
+    ),
+    target: { arch: "x64", platform },
+  };
+}
+
+test("release CPU profile validates every dependency receipt", () => {
+  const item = releaseProfileFixture();
+  try {
+    const report = validateReleaseCpuProfile(releaseProfileOptions(item));
+    assert.equal(report.schema, "sagejs.release-cpu-profile-report-v1");
+    assert.deepEqual(Object.keys(report.dependencies), [
+      "fflas",
+      "flint",
+      "graph",
+      "m4ri",
+    ]);
+    assert.equal(report.dependencies.flint.baseline, "x86-64-v1");
+  } finally {
+    rmSync(item.root, { recursive: true, force: true });
+  }
+});
+
+test("release CPU profile validates explicit Windows fallbacks", () => {
+  const item = releaseProfileFixture();
+  const selected = releaseProfile("win32", "x64");
+  try {
+    writeFileSync(
+      join(item.prefixes.flint, ".sagejs-flint-dependencies.json"),
+      `${JSON.stringify({
+        build: {
+          mathBuildProfile: selected,
+          windows: {
+            manifestSha256: "c".repeat(64),
+            openblasTarget: "GENERIC",
+            triplet: "x64-windows-static-md-release",
+            tripletSha256: "d".repeat(64),
+          },
+        },
+      })}\n`,
+    );
+    writeFileSync(
+      join(item.prefixes.fflas, ".sagejs-fflas-dependencies.json"),
+      `${JSON.stringify({
+        capability: false,
+        mathBuildProfile: selected,
+        platform: "win32",
+      })}\n`,
+    );
+    for (const id of ["graph", "m4ri"]) {
+      const stamp = join(
+        item.prefixes[id],
+        id === "graph"
+          ? ".sagejs-igraph-1.0.1"
+          : ".sagejs-m4ri-dependencies.json",
+      );
+      writeNativeDependencyReceipt(
+        stamp,
+        {
+          build: id === "m4ri"
+            ? { cachePolicy: "unavailable", instructionPolicy: "unavailable" }
+            : { instructionPolicy: selected.cpuPolicy.baseline },
+          capability: id !== "m4ri",
+          dependency: {
+            name: id,
+            sha256: (id === "graph" ? "a" : "b").repeat(64),
+            version: "test",
+          },
+          mathProfile: selected,
+          package: id,
+          toolchain: { compiler: "test" },
+        },
+        item.prefixes[id],
+      );
+    }
+    const report = validateReleaseCpuProfile(
+      releaseProfileOptions(item, "win32"),
+    );
+    assert.equal(report.dependencies.flint.baseline, "windows-x64");
+  } finally {
+    rmSync(item.root, { recursive: true, force: true });
+  }
+});
+
+test("release CPU profile rejects missing observed CPU evidence", () => {
+  const item = releaseProfileFixture();
+  try {
+    const flintStamp = join(
+      item.prefixes.flint,
+      ".sagejs-flint-dependencies.json",
+    );
+    writeFileSync(
+      flintStamp,
+      `${JSON.stringify({ build: { mathBuildProfile: item.selected } })}\n`,
+    );
+    assert.throws(
+      () => validateReleaseCpuProfile(releaseProfileOptions(item)),
+      /CPU selection evidence|CFLAGS/,
+    );
+  } finally {
+    rmSync(item.root, { recursive: true, force: true });
+  }
+});
+
+test("OpenBLAS make arguments come from the receipt-bearing profile", () => {
+  const x64 = openBlasMakeOptions(releaseProfile("linux", "x64"));
+  assert.ok(x64.includes("DYNAMIC_ARCH=1"));
+  assert.ok(x64.includes("DYNAMIC_LIST=NEHALEM SANDYBRIDGE HASWELL ZEN"));
+  assert.ok(x64.includes(
+    "CFLAGS=-O3 -fPIC -march=x86-64 -mtune=generic",
+  ));
+
+  const appleArm = openBlasMakeOptions(releaseProfile("darwin", "arm64"));
+  assert.ok(appleArm.includes("DYNAMIC_ARCH=1"));
+  assert.ok(appleArm.includes(
+    "DYNAMIC_LIST=CORTEXA53 NEOVERSEN1 VORTEXM4",
+  ));
+  assert.ok(appleArm.includes("CFLAGS=-O3 -fPIC"));
+});
+
+test("FFLAS reuse requires receipted portable GMP configure evidence", () => {
+  const selected = releaseProfile("darwin", "arm64");
+  const expected = { mathBuildProfile: selected, package: "fflas" };
+  const observation = {
+    cflags: ["-O3", "-fPIC", "-std=gnu17"],
+    hostCpu: "aarch64",
+    mpnPath: ["arm64", "generic"],
+  };
+  assert.equal(
+    reusableFflasBuildStamp({
+      ...expected,
+      observed: { gmpConfigure: observation },
+    }, expected),
+    true,
+  );
+  assert.equal(reusableFflasBuildStamp(expected, expected), false);
+  assert.equal(
+    reusableFflasBuildStamp({
+      ...expected,
+      observed: {
+        gmpConfigure: { ...observation, mpnPath: ["arm64", "applem1"] },
+      },
+    }, expected),
+    false,
+  );
 });
 
 test("dependency receipts reject extra fields and malformed output records", () => {

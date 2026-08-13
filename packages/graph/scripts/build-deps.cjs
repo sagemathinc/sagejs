@@ -176,10 +176,10 @@ function expectedBuild(options = {}) {
       generatorArchitecture: platform === "win32" ? "x64" : null,
       environment: selectedEnvironment(environment),
       instructionPolicy: platform === "win32"
-        ? "msvc-x64-baseline"
+        ? mathProfile.cpuPolicy.baseline
         : mathProfile.effectiveProfile === "cpu-native"
           ? "compiler-native"
-          : "compiler-target-baseline",
+          : mathProfile.cpuPolicy.baseline,
       positionIndependentCode: platform !== "win32",
     },
     dependency: {
