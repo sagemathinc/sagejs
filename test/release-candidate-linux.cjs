@@ -9,9 +9,11 @@ const {
   mkdirSync,
   mkdtempSync,
   readFileSync,
+  readlinkSync,
   readdirSync,
   rmSync,
   symlinkSync,
+  unlinkSync,
   writeFileSync,
 } = require("node:fs");
 const { tmpdir } = require("node:os");
@@ -182,6 +184,13 @@ test("artifact evidence records stable bytes, mode, hash, and cache usage", () =
     assert.equal(metadata.filename, "sagejs");
     assert.equal(metadata.mode, "755");
     assert.equal(metadata.sha256.length, 64);
+    const link = join(directory, "artifact-link");
+    symlinkSync("sagejs", link);
+    assert.deepEqual(artifactMetadata(link), {
+      ...metadata,
+      filename: "artifact-link",
+      symbolicLink: "sagejs",
+    });
   } finally {
     rmSync(directory, { recursive: true, force: true });
   }
@@ -439,6 +448,41 @@ test("installer rejects corruption without damage and atomically upgrades", () =
     );
     assert.equal(lstatSync(join(installed, "sagejs")).isSymbolicLink(), true);
     assert.equal(lstatSync(join(installed, "sagepython")).isSymbolicLink(), true);
+    unlinkSync(join(installed, "sagepython"));
+    const repairedLaunchers = runInstaller(
+      join(directory, "download"),
+      installed,
+      join(directory, "launcher-repair-state"),
+      directory,
+    );
+    assert.equal(
+      repairedLaunchers.status,
+      0,
+      repairedLaunchers.stderr || repairedLaunchers.stdout,
+    );
+    assert.equal(lstatSync(join(installed, "sagepython")).isSymbolicLink(), true);
+
+    const generationLink = readlinkSync(join(installed, ".sagejs-current"));
+    const generation = join(installed, generationLink);
+    writeFileSync(join(generation, "sagepython"), "corrupt generation\n", {
+      mode: 0o755,
+    });
+    const repairedGeneration = runInstaller(
+      join(directory, "download"),
+      installed,
+      join(directory, "generation-repair-state"),
+      directory,
+    );
+    assert.equal(
+      repairedGeneration.status,
+      0,
+      repairedGeneration.stderr || repairedGeneration.stdout,
+    );
+    assert.notEqual(readlinkSync(join(installed, ".sagejs-current")), generationLink);
+    assert.equal(
+      readFileSync(join(installed, "sagepython"), "utf8"),
+      readFileSync(python, "utf8"),
+    );
     const activeGeneration = readFileSync(
       join(installed, ".sagejs-current", "sagejs"),
       "utf8",
