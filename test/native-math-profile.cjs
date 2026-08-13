@@ -16,6 +16,7 @@ const { dirname, join, resolve } = require("node:path");
 const test = require("node:test");
 
 const {
+  NATIVE_MATH_DEPENDENCY_VERSIONS,
   CPU_NATIVE_PROFILE,
   PORTABLE_PROFILE,
   deriveNativeMathBuildProfile,
@@ -36,6 +37,7 @@ const {
   validateReleaseCpuProfile,
 } = require("../scripts/release-cpu-profile.cjs");
 const {
+  SEA_NATIVE_DEPENDENCIES,
   createNativeDependencyReceipt,
   readNativeDependencyReceipt,
   validateNativeDependencyReceipt,
@@ -50,6 +52,10 @@ const {
   receiptExpectation: flintReceiptExpectation,
   reusableBuildReceipt: reusableFlintBuildReceipt,
 } = require("../packages/flint/scripts/build-deps.cjs");
+const {
+  configureOptions: m4riConfigureOptions,
+  portableCacheBytes,
+} = require("../packages/m4ri/scripts/build-deps.cjs");
 
 const compiler = (overrides = {}) => ({
   command: "cc",
@@ -270,11 +276,18 @@ test("portable release validation rejects host-tuned or forged profiles", () => 
     (candidate) => { candidate.cpuPolicy.dependencyDispatch.extra = "forged"; },
     (candidate) => { candidate.abi.wordBits = 32; },
     (candidate) => { candidate.abi.endianness = "BE"; },
+    (candidate) => candidate.buildOptions.gmp.configure.push("--disable-fat"),
+    (candidate) => candidate.buildOptions.gmp.configure.push("--build=haswell-linux"),
+    (candidate) => candidate.buildOptions.fflas.gmpConfigure.push("--disable-fat"),
+    (candidate) => candidate.buildOptions.flint.configure.push("--host=haswell"),
+    (candidate) => candidate.buildOptions.optionalX64Accelerators.cflags.push("-mavx2"),
+    (candidate) => candidate.buildOptions.optionalX64Accelerators.cflags.push("-march=haswell"),
+    (candidate) => { candidate.dependencies.flint = "99.0"; },
   ]) {
     const forged = deriveNativeMathBuildProfile(selected, mutate);
     assert.throws(
       () => validatePortableReleaseCpuProfile(forged),
-      /not release CPU-portable|baseline flags|GMP flags|dispatch policy|build-host CPU/,
+      /not release CPU-portable|canonical target policy|dispatch policy|build-host CPU/,
     );
   }
 });
@@ -340,11 +353,25 @@ test("provenance distinguishes installed and selected build fingerprints", () =>
   const directory = mkdtempSync(join(tmpdir(), "sagejs-native-profile-"));
   const prefix = join(directory, "prefix");
   const selected = profile();
+  const stamp = join(prefix, ".sagejs-flint-dependencies.json");
   try {
     mkdirSync(prefix, { recursive: true });
-    writeFileSync(
-      join(prefix, ".sagejs-flint-dependencies.json"),
-      `${JSON.stringify({ mathProfile: selected })}\n`,
+    writeFixtureFile(prefix, "lib/libflint.a");
+    writeNativeDependencyReceipt(
+      stamp,
+      {
+        build: { configuration: "test", observed: { flintFftSmall: true } },
+        dependency: {
+          name: "flint-stack",
+          sha256: "a".repeat(64),
+          version: "test",
+        },
+        interface: null,
+        mathProfile: selected,
+        package: "flint",
+        toolchain: { compiler: "test" },
+      },
+      prefix,
     );
     const matching = nativeMathBuildProvenance(directory, {
       arch: "x64",
@@ -356,6 +383,26 @@ test("provenance distinguishes installed and selected build fingerprints", () =>
       requestedProfile: PORTABLE_PROFILE,
     });
     assert.equal(matching.installedMatchesSelected, true);
+    assert.equal(matching.installed.build.observed.flintFftSmall, true);
+    const executable = join(resolve(__dirname, ".."), "bin", "sagejs");
+    const cliEnvironment = {
+      ...process.env,
+      SAGEJS_FLINT_PREFIX: prefix,
+      SAGEJS_NATIVE_MATH_PROFILE: PORTABLE_PROFILE,
+    };
+    const cli = JSON.parse(execFileSync(
+      process.execPath,
+      [executable, "native", "profile", "--json"],
+      { encoding: "utf8", env: cliEnvironment },
+    ));
+    assert.equal(cli.installed.mathProfile.fingerprint, selected.fingerprint);
+    assert.equal(cli.installed.build.observed.flintFftSmall, true);
+    const cliHuman = execFileSync(
+      process.execPath,
+      [executable, "native", "profile"],
+      { encoding: "utf8", env: cliEnvironment },
+    );
+    assert.match(cliHuman, /installed FLINT fft_small: enabled/);
     const changed = nativeMathBuildProvenance(directory, {
       arch: "x64",
       compiler: compiler({ version: "cc test 2" }),
@@ -366,6 +413,18 @@ test("provenance distinguishes installed and selected build fingerprints", () =>
       requestedProfile: PORTABLE_PROFILE,
     });
     assert.equal(changed.installedMatchesSelected, false);
+    writeFixtureFile(prefix, "lib/libflint.a", "tampered");
+    const tampered = nativeMathBuildProvenance(directory, {
+      arch: "x64",
+      compiler: compiler(),
+      endianness: "LE",
+      environment: {},
+      platform: "linux",
+      prefix,
+      requestedProfile: PORTABLE_PROFILE,
+    });
+    assert.equal(tampered.installedMatchesSelected, false);
+    assert.match(tampered.installed.error, /invalid or stale/);
   } finally {
     rmSync(directory, { recursive: true, force: true });
   }
@@ -592,15 +651,97 @@ function writeFixtureFile(prefix, path, contents = path) {
   writeFileSync(filename, `${contents}\n`);
 }
 
+function rewriteDependencyReceipt(stamp, receipt, prefix) {
+  writeNativeDependencyReceipt(
+    stamp,
+    {
+      build: receipt.build,
+      capability: receipt.capability,
+      dependency: receipt.dependency,
+      deployment: receipt.target.deployment,
+      interface: receipt.interface,
+      mathProfile: receipt.mathProfile,
+      package: receipt.package,
+      toolchain: receipt.toolchain,
+    },
+    prefix,
+  );
+}
+
 function stackReceiptExpectation(id, selected, configuration, observed) {
+  const flintSources = [
+        ["ffpoly", "ffbe5c7f7ce077f3fedb530656b0f7ae95268cf23a38c9adfc3f654a65973b13"],
+        ["flint", "b95e2c7792f5eea4a1c8d2d42c4098434756832e57a094b295eb5dfdc9b4c36b"],
+        ["gmp", "a3c2b80201b89e68616f4ad30bc66aee4927c3ce50e33929ca819d5c43538898"],
+        ["mpc", "91204cd32f164bd3b7c992d4a6a8ce6519511aadab30f78b6982d0bf8d73e931"],
+        ["mpfr", "b67ba0383ef7e8a8563734e2e889ef5ec3c3b898a01d00fa0a6869ad81c6ce01"],
+        ["openblas", "6761af1d9f5d353ab4f0b7497be2643313b36c8f31caec0144bfef198e71e6ab"],
+        ["smalljac", "5a145509e491bba19bf73d8104576083286bd35aea2a149c7c516e9ea5ca8ec7"],
+      ];
+  if (selected.abi.platform !== "linux" || selected.abi.arch !== "x64") {
+    flintSources.splice(0, 1);
+    flintSources.pop();
+  }
+  const sources = (id === "flint"
+    ? flintSources
+    : [
+        ["fflas-ffpack", "dafb4c0835824d28e4f823748579be6e4c8889c9570c6ce9cce1e186c3ebbb23"],
+        ["givaro", "53e9fb290deb0e20799c62d250d65c2226013d60b4cebe6b0b54c73000cb8fff"],
+        ["gmp", "a3c2b80201b89e68616f4ad30bc66aee4927c3ce50e33929ca819d5c43538898"],
+      ])
+    .map(([name, sha256]) => ({
+      name,
+      sha256,
+      version: NATIVE_MATH_DEPENDENCY_VERSIONS[
+        name === "fflas-ffpack" ? "fflasFfpack" : name
+      ],
+    }))
+    .sort((left, right) => left.name.localeCompare(right.name));
+  let dependency = {
+    name: `${id}-stack`,
+    sha256: createHash("sha256").update(JSON.stringify(sources)).digest("hex"),
+    version: id === "flint"
+      ? NATIVE_MATH_DEPENDENCY_VERSIONS.flint
+      : NATIVE_MATH_DEPENDENCY_VERSIONS.fflasFfpack,
+  };
+  if (id === "flint" && selected.abi.platform === "win32") {
+    const root = resolve(__dirname, "..");
+    const manifest = createHash("sha256").update(readFileSync(
+      join(root, "packages", "flint", "vcpkg.json"),
+    )).digest("hex");
+    const triplet = createHash("sha256").update(readFileSync(join(
+      root,
+      "packages",
+      "flint",
+      "scripts",
+      "triplets",
+      "x64-windows-static-md-release.cmake",
+    ))).digest("hex");
+    dependency = {
+      name: "vcpkg-flint-stack",
+      sha256: createHash("sha256")
+        .update(JSON.stringify({ manifest, triplet })).digest("hex"),
+      version: "vcpkg-manifest",
+    };
+  }
+  const fflasHeader = join(
+    resolve(__dirname, ".."),
+    "packages",
+    "fflas",
+    "include",
+    "sagejs",
+    "fflas_matrix_ffi.h",
+  );
   return {
     build: { configuration, observed },
-    dependency: {
-      name: `${id}-stack`,
-      sha256: (id === "flint" ? "c" : "d").repeat(64),
-      version: "test",
-    },
-    interface: null,
+    dependency,
+    interface: id === "fflas"
+      ? {
+          header: "include/sagejs/fflas_matrix_ffi.h",
+          sha256: createHash("sha256")
+            .update(readFileSync(fflasHeader)).digest("hex"),
+        }
+      : null,
     mathProfile: selected,
     package: id,
     toolchain: { compiler: "test" },
@@ -622,16 +763,39 @@ function releaseProfileFixture() {
     hostCpu: "x86_64",
     mpnPath: ["x86_64", "fat", "x86_64", "generic"],
   };
-  for (const path of ["lib/libflint.a", "lib/libgmp.a", "lib/libopenblas.a"]) {
+  for (const path of [
+    "lib/libff_poly.a",
+    "lib/libflint.a",
+    "lib/libgmp.a",
+    "lib/libmpc.a",
+    "lib/libmpfr.a",
+    "lib/libopenblas.a",
+    "lib/libsmalljac.a",
+  ]) {
     writeFixtureFile(prefixes.flint, path);
   }
   for (const path of [
     "include/sagejs/fflas_matrix_ffi.h",
+    "include/fflas-ffpack/fflas-ffpack.h",
     "lib/libgivaro.a",
+    "lib/libgmp.a",
     "lib/libgmpxx.a",
     "lib/libopenblas.a",
   ]) {
-    writeFixtureFile(prefixes.fflas, path);
+    if (path === "include/sagejs/fflas_matrix_ffi.h") {
+      const source = join(
+        resolve(__dirname, ".."),
+        "packages",
+        "fflas",
+        "include",
+        "sagejs",
+        "fflas_matrix_ffi.h",
+      );
+      mkdirSync(dirname(join(prefixes.fflas, path)), { recursive: true });
+      writeFileSync(join(prefixes.fflas, path), readFileSync(source));
+    } else {
+      writeFixtureFile(prefixes.fflas, path);
+    }
   }
   writeNativeDependencyReceipt(
     join(prefixes.flint, ".sagejs-flint-dependencies.json"),
@@ -654,6 +818,23 @@ function releaseProfileFixture() {
     prefixes.fflas,
   );
   for (const id of ["graph", "m4ri"]) {
+    const definition = SEA_NATIVE_DEPENDENCIES[id === "graph" ? "igraph" : id];
+    const headerSource = join(
+      resolve(__dirname, ".."),
+      "packages",
+      id,
+      definition.interfaceHeader,
+    );
+    for (const path of id === "graph"
+      ? [definition.interfaceHeader, "lib/libigraph.a"]
+      : [definition.interfaceHeader, "lib/libm4ri.a"]) {
+      if (path === definition.interfaceHeader) {
+        mkdirSync(dirname(join(prefixes[id], path)), { recursive: true });
+        writeFileSync(join(prefixes[id], path), readFileSync(headerSource));
+      } else {
+        writeFixtureFile(prefixes[id], path);
+      }
+    }
     const stamp = join(
       prefixes[id],
       id === "graph"
@@ -665,17 +846,23 @@ function releaseProfileFixture() {
       {
         build: id === "m4ri"
           ? {
-              cachePolicy: { kind: "fixed-portable" },
+              cflags: [...selected.buildOptions.flint.cflags, "-std=gnu17"],
+              cachePolicy: { kind: "fixed-portable", ...portableCacheBytes },
+              configure: m4riConfigureOptions(selected),
               instructionPolicy: selected.cpuPolicy.baseline,
             }
-          : { instructionPolicy: selected.cpuPolicy.baseline },
-        dependency: {
-          name: id,
-          sha256: (id === "graph" ? "a" : "b").repeat(64),
-          version: "test",
+          : {
+              cflags: [...selected.buildOptions.flint.cflags, "-DNDEBUG"],
+              cxxflags: [...selected.buildOptions.fflas.cxxflags, "-DNDEBUG"],
+              instructionPolicy: selected.cpuPolicy.baseline,
+            },
+        dependency: definition.dependency,
+        interface: {
+          header: definition.interfaceHeader,
+          sha256: definition.interfaceSha256,
         },
         mathProfile: selected,
-        package: id,
+        package: id === "graph" ? "igraph" : id,
         toolchain: { compiler: "test" },
       },
       prefixes[id],
@@ -713,12 +900,149 @@ test("release CPU profile validates every dependency receipt", () => {
   }
 });
 
+test("release CPU profile authority ignores ambient native tuning requests", () => {
+  const item = releaseProfileFixture();
+  const previous = process.env.SAGEJS_NATIVE_MATH_PROFILE;
+  try {
+    process.env.SAGEJS_NATIVE_MATH_PROFILE = CPU_NATIVE_PROFILE;
+    const report = validateReleaseCpuProfile(releaseProfileOptions(item));
+    assert.equal(report.dependencies.flint.baseline, "x86-64-v1");
+  } finally {
+    if (previous === undefined) {
+      delete process.env.SAGEJS_NATIVE_MATH_PROFILE;
+    } else {
+      process.env.SAGEJS_NATIVE_MATH_PROFILE = previous;
+    }
+    rmSync(item.root, { recursive: true, force: true });
+  }
+});
+
+test("release CPU profile independently validates the FFLAS profile", () => {
+  const item = releaseProfileFixture();
+  try {
+    const stamp = join(
+      item.prefixes.fflas,
+      ".sagejs-fflas-dependencies.json",
+    );
+    const receipt = JSON.parse(readFileSync(stamp, "utf8"));
+    const alternate = releaseProfile("linux", "arm64");
+    receipt.mathProfile = alternate;
+    receipt.build.configuration.mathBuildProfile = alternate;
+    rewriteDependencyReceipt(stamp, receipt, item.prefixes.fflas);
+    assert.throws(
+      () => validateReleaseCpuProfile(releaseProfileOptions(item)),
+      /FFLAS|fflas dependency receipt uses the wrong package CPU profile/i,
+    );
+  } finally {
+    rmSync(item.root, { recursive: true, force: true });
+  }
+});
+
+test("release CPU profile rejects incomplete and alternate dependency authority", () => {
+  for (const mutation of ["missing-output", "alternate-source"]) {
+    const item = releaseProfileFixture();
+    try {
+      const stamp = join(item.prefixes.flint, ".sagejs-flint-dependencies.json");
+      const receipt = JSON.parse(readFileSync(stamp, "utf8"));
+      if (mutation === "missing-output") {
+        rmSync(join(item.prefixes.flint, "lib", "libmpfr.a"));
+      } else {
+        receipt.dependency.sha256 = "e".repeat(64);
+        writeNativeDependencyReceipt(
+          stamp,
+          {
+            build: receipt.build,
+            dependency: receipt.dependency,
+            interface: receipt.interface,
+            mathProfile: receipt.mathProfile,
+            package: receipt.package,
+            toolchain: receipt.toolchain,
+          },
+          item.prefixes.flint,
+        );
+      }
+      assert.throws(
+        () => validateReleaseCpuProfile(releaseProfileOptions(item)),
+        /installed output does not match|source authority|does not bind/,
+      );
+    } finally {
+      rmSync(item.root, { recursive: true, force: true });
+    }
+  }
+});
+
+test("release CPU profile rejects forged package build metadata", () => {
+  const mutations = [
+    ["flint", (receipt) => {
+      receipt.build.configuration.mathBuildProfile = releaseProfile(
+        "linux",
+        "arm64",
+      );
+    }],
+    ["fflas", (receipt) => {
+      receipt.build.configuration.mathBuildProfile = releaseProfile(
+        "linux",
+        "arm64",
+      );
+    }],
+    ["graph", (receipt) => {
+      receipt.build.cflags = ["-O3", "-march=native"];
+    }],
+    ["graph", (receipt) => {
+      receipt.build.cxxflags = ["-O3", "-march=native"];
+    }],
+    ["m4ri", (receipt) => {
+      receipt.build.cflags = ["-O3", "-march=native"];
+    }],
+    ["m4ri", (receipt) => {
+      receipt.build.configure = ["--with-cachesize=host-detected"];
+    }],
+  ];
+  for (const [id, mutate] of mutations) {
+    const item = releaseProfileFixture();
+    try {
+      const stamp = join(
+        item.prefixes[id],
+        id === "flint"
+          ? ".sagejs-flint-dependencies.json"
+          : id === "fflas"
+            ? ".sagejs-fflas-dependencies.json"
+            : id === "graph"
+              ? ".sagejs-igraph-1.0.1"
+              : ".sagejs-m4ri-dependencies.json",
+      );
+      const receipt = JSON.parse(readFileSync(stamp, "utf8"));
+      mutate(receipt);
+      rewriteDependencyReceipt(stamp, receipt, item.prefixes[id]);
+      assert.throws(
+        () => validateReleaseCpuProfile(releaseProfileOptions(item)),
+        /CPU profile|portable CPU profile/,
+      );
+    } finally {
+      rmSync(item.root, { recursive: true, force: true });
+    }
+  }
+});
+
 test("release CPU profile validates explicit Windows fallbacks", () => {
   const item = releaseProfileFixture();
   const selected = releaseProfile("win32", "x64");
   try {
     writeFixtureFile(item.prefixes.flint, "lib/flint.lib");
     writeFixtureFile(item.prefixes.flint, "lib/openblas.lib");
+    writeFixtureFile(item.prefixes.graph, "lib/igraph.lib");
+    const root = resolve(__dirname, "..");
+    const manifestSha256 = createHash("sha256").update(readFileSync(
+      join(root, "packages", "flint", "vcpkg.json"),
+    )).digest("hex");
+    const tripletSha256 = createHash("sha256").update(readFileSync(join(
+      root,
+      "packages",
+      "flint",
+      "scripts",
+      "triplets",
+      "x64-windows-static-md-release.cmake",
+    ))).digest("hex");
     writeNativeDependencyReceipt(
       join(item.prefixes.flint, ".sagejs-flint-dependencies.json"),
       stackReceiptExpectation(
@@ -727,10 +1051,10 @@ test("release CPU profile validates explicit Windows fallbacks", () => {
         {
           mathBuildProfile: selected,
           windows: {
-            manifestSha256: "c".repeat(64),
+            manifestSha256,
             openblasTarget: "GENERIC",
             triplet: "x64-windows-static-md-release",
-            tripletSha256: "d".repeat(64),
+            tripletSha256,
           },
         },
         { vcpkgInstalled: true },
@@ -751,6 +1075,7 @@ test("release CPU profile validates explicit Windows fallbacks", () => {
       item.prefixes.fflas,
     );
     for (const id of ["graph", "m4ri"]) {
+      const definition = SEA_NATIVE_DEPENDENCIES[id === "graph" ? "igraph" : id];
       const stamp = join(
         item.prefixes[id],
         id === "graph"
@@ -761,16 +1086,25 @@ test("release CPU profile validates explicit Windows fallbacks", () => {
         stamp,
         {
           build: id === "m4ri"
-            ? { cachePolicy: "unavailable", instructionPolicy: "unavailable" }
-            : { instructionPolicy: selected.cpuPolicy.baseline },
+            ? {
+                cachePolicy: "unavailable",
+                cflags: [],
+                configure: [],
+                instructionPolicy: "unavailable",
+              }
+            : {
+                cflags: [],
+                cxxflags: [],
+                instructionPolicy: selected.cpuPolicy.baseline,
+              },
           capability: id !== "m4ri",
-          dependency: {
-            name: id,
-            sha256: (id === "graph" ? "a" : "b").repeat(64),
-            version: "test",
+          dependency: definition.dependency,
+          interface: {
+            header: definition.interfaceHeader,
+            sha256: definition.interfaceSha256,
           },
           mathProfile: selected,
-          package: id,
+          package: id === "graph" ? "igraph" : id,
           toolchain: { compiler: "test" },
         },
         item.prefixes[id],
@@ -819,7 +1153,9 @@ test("release CPU profile rejects missing observed CPU evidence", () => {
 test("OpenBLAS make arguments come from the receipt-bearing profile", () => {
   const x64 = openBlasMakeOptions(releaseProfile("linux", "x64"));
   assert.ok(x64.includes("DYNAMIC_ARCH=1"));
-  assert.ok(x64.includes("DYNAMIC_LIST=NEHALEM SANDYBRIDGE HASWELL ZEN"));
+  assert.ok(x64.includes(
+    "DYNAMIC_LIST=OPTERON NEHALEM SANDYBRIDGE HASWELL ZEN",
+  ));
   assert.ok(x64.includes(
     "CFLAGS=-O3 -fPIC -march=x86-64 -mtune=generic",
   ));

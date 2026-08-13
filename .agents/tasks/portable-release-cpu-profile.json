@@ -11,6 +11,7 @@
   "claims": [
     "scripts/native-math-profile.cjs",
     "scripts/native-worktree-cache.cjs",
+    "tools/native-compiler.ts",
     "scripts/release-cpu-profile.cjs",
     "scripts/build-sea.cjs",
     "scripts/release-capabilities.cjs",

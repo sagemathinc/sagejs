@@ -7,7 +7,7 @@ processors may execute it safely.
 
 | Target | Compiler baseline | Optimized dispatch |
 |---|---|---|
-| Linux x64 | x86-64-v1 (`-march=x86-64 -mtune=generic`) | GMP fat binary; OpenBLAS `DYNAMIC_ARCH` with a Prescott fallback and selected newer kernels |
+| Linux x64 | x86-64-v1 (`-march=x86-64 -mtune=generic`) | GMP fat binary; OpenBLAS `DYNAMIC_ARCH` with an explicit SSE2 Opteron kernel, its implicit Prescott kernel, and selected newer kernels |
 | Linux arm64 | Armv8-A (`-march=armv8-a`) | OpenBLAS `DYNAMIC_ARCH` with an Armv8 fallback and selected Neoverse kernels |
 | macOS arm64 | Apple Silicon M1, selected by the macOS deployment target; no `-mcpu` | GMP `arm64 generic`; Apple Accelerate for FFLAS; FLINT's bundled OpenBLAS remains runtime-dispatched |
 | Windows x64 | native Windows x64 baseline | generic vcpkg OpenBLAS; no unsupported claim of Unix GMP fat dispatch |
@@ -20,10 +20,10 @@ x86-64-v1 instructions plus their documented x86-64 inline assembly.
 
 `scripts/native-math-profile.cjs` is the policy authority. Its fingerprint
 includes the target ABI, compiler identities, flags, dependency versions,
-dispatch lists, and policy. M4RI and igraph store complete dependency receipts;
-FLINT and FFLAS store the profile plus observed GMP configure evidence. On
-Apple Silicon, reuse is rejected unless GMP reports exactly `arm64 generic`—a
-mere absence of `-mcpu=native` is not sufficient evidence.
+dispatch lists, and policy. FLINT, FFLAS, M4RI, and igraph store complete,
+byte-bound dependency receipts, including the declared profile and observed
+build evidence. On Apple Silicon, reuse is rejected unless GMP reports exactly
+`arm64 generic`—a mere absence of `-mcpu=native` is not sufficient evidence.
 
 Run the release gate after building all native dependencies:
 

@@ -80,7 +80,12 @@ function portableTargetPolicy(platform, arch) {
 }
 
 function openBlasDynamicTargets(platform, arch) {
-  if (arch === "x64") return ["NEHALEM", "SANDYBRIDGE", "HASWELL", "ZEN"];
+  if (arch === "x64") {
+    // OpenBLAS itself prepends PRESCOTT, whose kernel requires SSE3. Include
+    // OPTERON explicitly so early AMD64 CPUs retain an SSE2 implementation
+    // instead of OpenBLAS aliasing that target to PRESCOTT.
+    return ["OPTERON", "NEHALEM", "SANDYBRIDGE", "HASWELL", "ZEN"];
+  }
   if (arch === "arm64") {
     return platform === "darwin"
       ? ["CORTEXA53", "NEOVERSEN1", "VORTEXM4"]
@@ -479,6 +484,8 @@ function expectedPortableDependencyDispatch(profile, accelerate) {
 function validatePortableReleaseCpuProfile(profile) {
   validateNativeMathBuildProfile(profile);
   const policy = portableTargetPolicy(profile.abi.platform, profile.abi.arch);
+  const accelerate = profile.cpuPolicy?.dependencyDispatch?.openblas ===
+    "apple-accelerate";
   if (
     profile.requestedProfile !== PORTABLE_PROFILE ||
     profile.effectiveProfile !== PORTABLE_PROFILE ||
@@ -493,59 +500,33 @@ function validatePortableReleaseCpuProfile(profile) {
   ) {
     throw new Error("native mathematics profile is not release CPU-portable");
   }
-  const expectedFlags = ["-O3", "-fPIC", ...policy.compilerFlags];
-  for (const flags of [
-    profile.buildOptions?.flint?.cflags,
-    profile.buildOptions?.mpfr?.cflags,
-    profile.buildOptions?.mpc?.cflags,
-    profile.buildOptions?.fflas?.cxxflags,
-  ]) {
-    if (JSON.stringify(flags) !== JSON.stringify(expectedFlags)) {
-      throw new Error("portable compiler baseline flags do not match the target policy");
+  const canonical = nativeMathBuildProfile({
+    arch: profile.abi.arch,
+    compiler: profile.compilers.c,
+    cxxCompiler: profile.compilers.cxx,
+    endianness: profile.abi.endianness,
+    environment: {},
+    platform: profile.abi.platform,
+    requestedProfile: PORTABLE_PROFILE,
+  });
+  const expected = accelerate
+    ? deriveNativeMathBuildProfile(canonical, (selected) => {
+        delete selected.dependencies.openblas;
+        delete selected.buildOptions.openblas;
+        selected.cpuPolicy.dependencyDispatch.openblas = "apple-accelerate";
+      })
+    : canonical;
+  for (const field of ["buildOptions", "cpuPolicy", "dependencies"]) {
+    if (JSON.stringify(profile[field]) !== JSON.stringify(expected[field])) {
+      throw new Error(`portable ${field} does not match the canonical target policy`);
     }
   }
-  if (
-    JSON.stringify(profile.buildOptions?.gmp?.cflags) !==
-      JSON.stringify([...expectedFlags, "-std=gnu17"])
-  ) {
-    throw new Error("portable GMP flags do not match the target policy");
-  }
-  const windowsTarget = profile.abi.platform === "win32";
-  const accelerate = profile.cpuPolicy?.dependencyDispatch?.openblas ===
-    "apple-accelerate";
   if (
     JSON.stringify(profile.cpuPolicy?.dependencyDispatch) !==
       JSON.stringify(expectedPortableDependencyDispatch(profile, accelerate)) ||
     (accelerate && profile.abi.platform !== "darwin")
   ) {
     throw new Error("portable dependency dispatch policy is not exact");
-  }
-  const expectedOpenBlasTargets = windowsTarget
-    ? []
-    : openBlasDynamicTargets(profile.abi.platform, profile.abi.arch);
-  if (
-    profile.buildOptions?.fflas?.archnative !== false ||
-    (
-      !windowsTarget &&
-      profile.abi.arch === "x64" &&
-      !profile.buildOptions?.gmp?.configure?.includes("--enable-fat")
-    ) ||
-    (accelerate
-      ? profile.buildOptions?.openblas !== undefined ||
-        profile.dependencies?.openblas !== undefined
-      : profile.buildOptions?.openblas?.dynamicArch !== !windowsTarget ||
-        JSON.stringify(profile.buildOptions?.openblas?.cflags) !==
-          JSON.stringify(expectedFlags) ||
-        profile.buildOptions?.openblas?.fallbackTarget !==
-          (windowsTarget
-            ? "GENERIC"
-            : profile.abi.arch === "x64"
-              ? "PRESCOTT"
-              : "ARMV8") ||
-        JSON.stringify(profile.buildOptions?.openblas?.dynamicList) !==
-          JSON.stringify(expectedOpenBlasTargets))
-  ) {
-    throw new Error("portable dependency dispatch policy is incomplete");
   }
   if (hasHostNativeFlag(nestedStrings(profile.buildOptions))) {
     throw new Error("portable profile contains a build-host CPU tuning flag");
@@ -613,9 +594,15 @@ function nativeMathBuildProvenance(repositoryRoot, options = {}) {
   let installed = null;
   if (existsSync(stampPath)) {
     try {
-      installed = JSON.parse(readFileSync(stampPath, "utf8"));
+      const {
+        readNativeDependencyReceipt,
+      } = require("./native-dependency-receipt.cjs");
+      installed = readNativeDependencyReceipt(stampPath, { prefix });
+      if (installed === null) {
+        installed = { error: "invalid or stale native dependency receipt" };
+      }
     } catch (error) {
-      installed = { error: `invalid build stamp: ${error.message || error}` };
+      installed = { error: `invalid dependency receipt: ${error.message || error}` };
     }
   }
   const installedFingerprint =

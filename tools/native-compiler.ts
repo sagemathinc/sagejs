@@ -124,8 +124,7 @@ function writeJson(value: unknown): void {
 function printNativeMathProfile(provenance: Record<string, any>): void {
   const selected = provenance.selected;
   const installed =
-    provenance.installed?.build?.mathBuildProfile ??
-    provenance.installed?.identity?.mathBuildProfile ??
+    provenance.installed?.mathProfile ??
     null;
   process.stdout.write("Native mathematics dependency profile\n");
   process.stdout.write(`  requested: ${selected.requestedProfile}\n`);
@@ -167,7 +166,7 @@ function printNativeMathProfile(provenance: Record<string, any>): void {
           provenance.installedMatchesSelected ? " (selected)" : " (different)"
         }\n`,
     );
-    const observed = provenance.installed.observed;
+    const observed = provenance.installed.build?.observed;
     if (observed?.flintFftSmall !== null && observed?.flintFftSmall !== undefined) {
       process.stdout.write(
         `  installed FLINT fft_small: ${observed.flintFftSmall ? "enabled" : "disabled"}\n`,

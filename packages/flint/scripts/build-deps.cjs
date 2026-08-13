@@ -171,12 +171,41 @@ function aggregateDependency(selected = dependencies) {
   };
 }
 
+function windowsDependencyAuthority() {
+  const manifest = digest(join(packageRoot, "vcpkg.json"));
+  const triplet = digest(join(
+    packageRoot,
+    "scripts",
+    "triplets",
+    `${windowsTriplet}.cmake`,
+  ));
+  return {
+    name: "vcpkg-flint-stack",
+    sha256: createHash("sha256")
+      .update(JSON.stringify({ manifest, triplet })).digest("hex"),
+    version: "vcpkg-manifest",
+  };
+}
+
+function selectedDependenciesForPlatform(platform, arch) {
+  const accelerators = platform === "linux" && arch === "x64";
+  return dependencies.filter(({ name }) => accelerators ||
+    (name !== "ffpoly" && name !== "smalljac"));
+}
+
 function receiptExpectation(configuration, observed, options = {}) {
   const platform = options.platform || process.platform;
   const profile = options.mathBuildProfile || mathBuildProfile;
   return {
     build: { configuration, observed },
-    dependency: aggregateDependency(options.dependencies),
+    dependency: platform === "win32"
+      ? windowsDependencyAuthority()
+      : aggregateDependency(
+          options.dependencies || selectedDependenciesForPlatform(
+            platform,
+            profile.abi.arch,
+          ),
+        ),
     deployment: platform === "darwin"
       ? { macos: options.macosDeploymentTarget || macosDeploymentTarget }
       : null,
