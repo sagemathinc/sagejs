@@ -12,7 +12,7 @@ const {
 } = require("node:fs");
 const { execFileSync } = require("node:child_process");
 const { tmpdir } = require("node:os");
-const { join, resolve } = require("node:path");
+const { dirname, join, resolve } = require("node:path");
 const test = require("node:test");
 
 const {
@@ -42,10 +42,13 @@ const {
   writeNativeDependencyReceipt,
 } = require("../scripts/native-dependency-receipt.cjs");
 const {
-  reusableBuildStamp: reusableFflasBuildStamp,
+  receiptExpectation: fflasReceiptExpectation,
+  reusableBuildReceipt: reusableFflasBuildReceipt,
 } = require("../packages/fflas/scripts/build-deps.cjs");
 const {
   openBlasMakeOptions,
+  receiptExpectation: flintReceiptExpectation,
+  reusableBuildReceipt: reusableFlintBuildReceipt,
 } = require("../packages/flint/scripts/build-deps.cjs");
 
 const compiler = (overrides = {}) => ({
@@ -254,13 +257,24 @@ test("portable release validation rejects host-tuned or forged profiles", () => 
   const selected = profile();
   for (const mutate of [
     (candidate) => candidate.buildOptions.flint.cflags.push("-march=native"),
+    (candidate) => candidate.buildOptions.gmp.cflags = [
+      "-O3",
+      "-fPIC",
+      "-march=haswell",
+      "-std=gnu17",
+    ],
+    (candidate) => candidate.buildOptions.openblas.cflags.push("-mtune=native"),
     (candidate) => candidate.buildOptions.openblas.dynamicList.pop(),
     (candidate) => { candidate.cpuPolicy.releaseEligible = false; },
+    (candidate) => { candidate.cpuPolicy.dependencyDispatch.gmp = "compiler-baseline"; },
+    (candidate) => { candidate.cpuPolicy.dependencyDispatch.extra = "forged"; },
+    (candidate) => { candidate.abi.wordBits = 32; },
+    (candidate) => { candidate.abi.endianness = "BE"; },
   ]) {
     const forged = deriveNativeMathBuildProfile(selected, mutate);
     assert.throws(
       () => validatePortableReleaseCpuProfile(forged),
-      /not release CPU-portable|baseline flags|dispatch policy|build-host CPU/,
+      /not release CPU-portable|baseline flags|GMP flags|dispatch policy|build-host CPU/,
     );
   }
 });
@@ -330,7 +344,7 @@ test("provenance distinguishes installed and selected build fingerprints", () =>
     mkdirSync(prefix, { recursive: true });
     writeFileSync(
       join(prefix, ".sagejs-flint-dependencies.json"),
-      `${JSON.stringify({ build: { mathBuildProfile: selected } })}\n`,
+      `${JSON.stringify({ mathProfile: selected })}\n`,
     );
     const matching = nativeMathBuildProvenance(directory, {
       arch: "x64",
@@ -572,6 +586,27 @@ function releaseProfile(platform = "linux", arch = "x64") {
   });
 }
 
+function writeFixtureFile(prefix, path, contents = path) {
+  const filename = join(prefix, path);
+  mkdirSync(dirname(filename), { recursive: true });
+  writeFileSync(filename, `${contents}\n`);
+}
+
+function stackReceiptExpectation(id, selected, configuration, observed) {
+  return {
+    build: { configuration, observed },
+    dependency: {
+      name: `${id}-stack`,
+      sha256: (id === "flint" ? "c" : "d").repeat(64),
+      version: "test",
+    },
+    interface: null,
+    mathProfile: selected,
+    package: id,
+    toolchain: { compiler: "test" },
+  };
+}
+
 function releaseProfileFixture() {
   const root = mkdtempSync(join(tmpdir(), "sagejs-release-cpu-"));
   const prefixes = Object.fromEntries(
@@ -587,19 +622,36 @@ function releaseProfileFixture() {
     hostCpu: "x86_64",
     mpnPath: ["x86_64", "fat", "x86_64", "generic"],
   };
-  writeFileSync(
+  for (const path of ["lib/libflint.a", "lib/libgmp.a", "lib/libopenblas.a"]) {
+    writeFixtureFile(prefixes.flint, path);
+  }
+  for (const path of [
+    "include/sagejs/fflas_matrix_ffi.h",
+    "lib/libgivaro.a",
+    "lib/libgmpxx.a",
+    "lib/libopenblas.a",
+  ]) {
+    writeFixtureFile(prefixes.fflas, path);
+  }
+  writeNativeDependencyReceipt(
     join(prefixes.flint, ".sagejs-flint-dependencies.json"),
-    `${JSON.stringify({
-      build: { mathBuildProfile: selected },
-      observed: { gmpConfigure },
-    })}\n`,
+    stackReceiptExpectation(
+      "flint",
+      selected,
+      { mathBuildProfile: selected },
+      { gmpConfigure },
+    ),
+    prefixes.flint,
   );
-  writeFileSync(
+  writeNativeDependencyReceipt(
     join(prefixes.fflas, ".sagejs-fflas-dependencies.json"),
-    `${JSON.stringify({
-      mathBuildProfile: selected,
-      observed: { gmpConfigure },
-    })}\n`,
+    stackReceiptExpectation(
+      "fflas",
+      selected,
+      { mathBuildProfile: selected },
+      { gmpConfigure },
+    ),
+    prefixes.fflas,
   );
   for (const id of ["graph", "m4ri"]) {
     const stamp = join(
@@ -665,10 +717,14 @@ test("release CPU profile validates explicit Windows fallbacks", () => {
   const item = releaseProfileFixture();
   const selected = releaseProfile("win32", "x64");
   try {
-    writeFileSync(
+    writeFixtureFile(item.prefixes.flint, "lib/flint.lib");
+    writeFixtureFile(item.prefixes.flint, "lib/openblas.lib");
+    writeNativeDependencyReceipt(
       join(item.prefixes.flint, ".sagejs-flint-dependencies.json"),
-      `${JSON.stringify({
-        build: {
+      stackReceiptExpectation(
+        "flint",
+        selected,
+        {
           mathBuildProfile: selected,
           windows: {
             manifestSha256: "c".repeat(64),
@@ -677,15 +733,22 @@ test("release CPU profile validates explicit Windows fallbacks", () => {
             tripletSha256: "d".repeat(64),
           },
         },
-      })}\n`,
+        { vcpkgInstalled: true },
+      ),
+      item.prefixes.flint,
     );
-    writeFileSync(
+    writeNativeDependencyReceipt(
       join(item.prefixes.fflas, ".sagejs-fflas-dependencies.json"),
-      `${JSON.stringify({
+      {
+        ...stackReceiptExpectation(
+          "fflas",
+          selected,
+          { mathBuildProfile: selected },
+          { capability: "unavailable" },
+        ),
         capability: false,
-        mathBuildProfile: selected,
-        platform: "win32",
-      })}\n`,
+      },
+      item.prefixes.fflas,
     );
     for (const id of ["graph", "m4ri"]) {
       const stamp = join(
@@ -717,6 +780,11 @@ test("release CPU profile validates explicit Windows fallbacks", () => {
       releaseProfileOptions(item, "win32"),
     );
     assert.equal(report.dependencies.flint.baseline, "windows-x64");
+    writeFixtureFile(item.prefixes.flint, "lib/openblas.lib", "tampered");
+    assert.throws(
+      () => validateReleaseCpuProfile(releaseProfileOptions(item, "win32")),
+      /installed output does not match its receipt/,
+    );
   } finally {
     rmSync(item.root, { recursive: true, force: true });
   }
@@ -729,9 +797,15 @@ test("release CPU profile rejects missing observed CPU evidence", () => {
       item.prefixes.flint,
       ".sagejs-flint-dependencies.json",
     );
-    writeFileSync(
+    writeNativeDependencyReceipt(
       flintStamp,
-      `${JSON.stringify({ build: { mathBuildProfile: item.selected } })}\n`,
+      stackReceiptExpectation(
+        "flint",
+        item.selected,
+        { mathBuildProfile: item.selected },
+        {},
+      ),
+      item.prefixes.flint,
     );
     assert.throws(
       () => validateReleaseCpuProfile(releaseProfileOptions(item)),
@@ -758,31 +832,81 @@ test("OpenBLAS make arguments come from the receipt-bearing profile", () => {
   assert.ok(appleArm.includes("CFLAGS=-O3 -fPIC"));
 });
 
+test("FLINT reuse requires a byte-exact dependency receipt", () => {
+  const selected = releaseProfile();
+  const expected = { mathBuildProfile: selected };
+  const observation = {
+    cflags: selected.buildOptions.gmp.cflags,
+    hostCpu: "x86_64",
+    mpnPath: ["x86_64", "fat", "x86_64", "generic"],
+  };
+  const root = mkdtempSync(join(tmpdir(), "sagejs-flint-receipt-"));
+  const stamp = join(root, ".sagejs-flint-dependencies.json");
+  try {
+    writeFixtureFile(root, "lib/libflint.a");
+    writeFixtureFile(root, "lib/libopenblas.a");
+    writeNativeDependencyReceipt(
+      stamp,
+      flintReceiptExpectation(expected, { gmpConfigure: observation }, {
+        mathBuildProfile: selected,
+        platform: "linux",
+      }),
+      root,
+    );
+    assert.equal(reusableFlintBuildReceipt(stamp, expected, root), true);
+    writeFixtureFile(root, "lib/libopenblas.a", "tampered");
+    assert.equal(reusableFlintBuildReceipt(stamp, expected, root), false);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
 test("FFLAS reuse requires receipted portable GMP configure evidence", () => {
   const selected = releaseProfile("darwin", "arm64");
-  const expected = { mathBuildProfile: selected, package: "fflas" };
+  const expected = {
+    macosDeploymentTarget: "13.0",
+    mathBuildProfile: selected,
+  };
   const observation = {
     cflags: ["-O3", "-fPIC", "-std=gnu17"],
     hostCpu: "aarch64",
     mpnPath: ["arm64", "generic"],
   };
-  assert.equal(
-    reusableFflasBuildStamp({
-      ...expected,
-      observed: { gmpConfigure: observation },
-    }, expected),
-    true,
-  );
-  assert.equal(reusableFflasBuildStamp(expected, expected), false);
-  assert.equal(
-    reusableFflasBuildStamp({
-      ...expected,
-      observed: {
-        gmpConfigure: { ...observation, mpnPath: ["arm64", "applem1"] },
-      },
-    }, expected),
-    false,
-  );
+  const root = mkdtempSync(join(tmpdir(), "sagejs-fflas-receipt-"));
+  const stamp = join(root, ".sagejs-fflas-dependencies.json");
+  try {
+    writeFixtureFile(root, "include/sagejs/fflas_matrix_ffi.h", "header");
+    writeFixtureFile(root, "lib/libgivaro.a");
+    writeNativeDependencyReceipt(
+      stamp,
+      fflasReceiptExpectation(expected, { gmpConfigure: observation }, {
+        macosDeploymentTarget: "13.0",
+        mathBuildProfile: selected,
+        platform: "darwin",
+      }),
+      root,
+    );
+    assert.equal(reusableFflasBuildReceipt(stamp, expected, root), true);
+    writeFixtureFile(root, "lib/libgivaro.a", "tampered");
+    assert.equal(reusableFflasBuildReceipt(stamp, expected, root), false);
+    writeNativeDependencyReceipt(
+      stamp,
+      fflasReceiptExpectation(expected, {
+        gmpConfigure: {
+          ...observation,
+          mpnPath: ["arm64", "applem1"],
+        },
+      }, {
+        macosDeploymentTarget: "13.0",
+        mathBuildProfile: selected,
+        platform: "darwin",
+      }),
+      root,
+    );
+    assert.equal(reusableFflasBuildReceipt(stamp, expected, root), false);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
 });
 
 test("dependency receipts reject extra fields and malformed output records", () => {

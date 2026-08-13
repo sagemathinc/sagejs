@@ -454,6 +454,28 @@ function nestedStrings(value) {
   return [];
 }
 
+function expectedPortableDependencyDispatch(profile, accelerate) {
+  const windowsTarget = profile.abi.platform === "win32";
+  return {
+    fflasFfpack: windowsTarget ? "unavailable" : "archnative-disabled",
+    flint: "compiler-baseline-plus-runtime-dispatched-dependencies",
+    gmp: windowsTarget
+      ? "vcpkg-generic-x64"
+      : profile.abi.arch === "x64"
+        ? "runtime-fat"
+        : "compiler-baseline",
+    igraph: "compiler-baseline",
+    m4ri: windowsTarget
+      ? "unavailable"
+      : "compiler-baseline-fixed-cache-model",
+    openblas: accelerate
+      ? "apple-accelerate"
+      : windowsTarget
+        ? "vcpkg-generic-x64"
+        : "runtime-dynamic",
+  };
+}
+
 function validatePortableReleaseCpuProfile(profile) {
   validateNativeMathBuildProfile(profile);
   const policy = portableTargetPolicy(profile.abi.platform, profile.abi.arch);
@@ -465,7 +487,9 @@ function validatePortableReleaseCpuProfile(profile) {
     profile.cpuPolicy?.schema !== PORTABLE_CPU_POLICY_SCHEMA ||
     profile.cpuPolicy?.releaseEligible !== true ||
     profile.cpuPolicy?.baseline !== policy.baseline ||
-    profile.cpuPolicy?.targetSelection !== policy.deployment
+    profile.cpuPolicy?.targetSelection !== policy.deployment ||
+    profile.abi?.wordBits !== 64 ||
+    profile.abi?.endianness !== "LE"
   ) {
     throw new Error("native mathematics profile is not release CPU-portable");
   }
@@ -480,9 +504,22 @@ function validatePortableReleaseCpuProfile(profile) {
       throw new Error("portable compiler baseline flags do not match the target policy");
     }
   }
+  if (
+    JSON.stringify(profile.buildOptions?.gmp?.cflags) !==
+      JSON.stringify([...expectedFlags, "-std=gnu17"])
+  ) {
+    throw new Error("portable GMP flags do not match the target policy");
+  }
   const windowsTarget = profile.abi.platform === "win32";
   const accelerate = profile.cpuPolicy?.dependencyDispatch?.openblas ===
     "apple-accelerate";
+  if (
+    JSON.stringify(profile.cpuPolicy?.dependencyDispatch) !==
+      JSON.stringify(expectedPortableDependencyDispatch(profile, accelerate)) ||
+    (accelerate && profile.abi.platform !== "darwin")
+  ) {
+    throw new Error("portable dependency dispatch policy is not exact");
+  }
   const expectedOpenBlasTargets = windowsTarget
     ? []
     : openBlasDynamicTargets(profile.abi.platform, profile.abi.arch);
@@ -494,8 +531,11 @@ function validatePortableReleaseCpuProfile(profile) {
       !profile.buildOptions?.gmp?.configure?.includes("--enable-fat")
     ) ||
     (accelerate
-      ? profile.buildOptions?.openblas !== undefined
+      ? profile.buildOptions?.openblas !== undefined ||
+        profile.dependencies?.openblas !== undefined
       : profile.buildOptions?.openblas?.dynamicArch !== !windowsTarget ||
+        JSON.stringify(profile.buildOptions?.openblas?.cflags) !==
+          JSON.stringify(expectedFlags) ||
         profile.buildOptions?.openblas?.fallbackTarget !==
           (windowsTarget
             ? "GENERIC"
@@ -579,10 +619,7 @@ function nativeMathBuildProvenance(repositoryRoot, options = {}) {
     }
   }
   const installedFingerprint =
-    installed?.build?.mathBuildProfile?.fingerprint ??
-    installed?.identity?.mathBuildProfile?.fingerprint ??
-    installed?.identity?.fingerprint ??
-    null;
+    installed?.mathProfile?.fingerprint ?? null;
   return stableJson({
     installed,
     installedMatchesSelected: installedFingerprint === selected.fingerprint,

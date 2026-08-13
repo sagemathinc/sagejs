@@ -469,6 +469,7 @@ function nativeArtifactSpecs(workspace, overrides = {}) {
   const descriptions = {
     flint: {
       dependencyInputs: [
+        "scripts/native-dependency-receipt.cjs",
         "scripts/native-math-profile.cjs",
         "packages/flint/scripts/build-deps.cjs",
         "packages/flint/scripts/triplets",
@@ -500,6 +501,7 @@ function nativeArtifactSpecs(workspace, overrides = {}) {
         ? [
           `${dependencyPrefix("flint", platform)}/lib/flint.lib`,
           `${dependencyPrefix("flint", platform)}/lib/openblas.lib`,
+          `${dependencyPrefix("flint", platform)}/.sagejs-flint-dependencies.json`,
         ]
         : [
           `${dependencyPrefix("flint", platform)}/lib/libflint.a`,
@@ -513,6 +515,7 @@ function nativeArtifactSpecs(workspace, overrides = {}) {
         ? "copy"
         : "shared-readonly",
       dependencyInputs: [
+        "scripts/native-dependency-receipt.cjs",
         "scripts/darwin-native.cjs",
         "scripts/native-math-profile.cjs",
         "packages/fflas/package.json",

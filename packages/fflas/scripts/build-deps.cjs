@@ -48,6 +48,11 @@ const {
   validateGmpConfigureObservation,
 } = require(join(repositoryRoot, "scripts", "native-math-profile.cjs"));
 const {
+  commandIdentity,
+  readNativeDependencyReceipt,
+  writeNativeDependencyReceipt,
+} = require(join(repositoryRoot, "scripts", "native-dependency-receipt.cjs"));
+const {
   appleAccelerateSdkInputs,
   fflasMathBuildProfile,
   macosDeploymentTarget: selectedMacosDeploymentTarget,
@@ -116,6 +121,67 @@ function blasIdentity() {
     };
   }
   return { provider: "openblas-from-sagejs-flint" };
+}
+
+function aggregateDependency(selected = dependencies) {
+  const sources = selected
+    .map(({ name, sha256, version }) => ({ name, sha256, version }))
+    .sort((left, right) => left.name.localeCompare(right.name));
+  return {
+    name: "fflas-stack",
+    sha256: createHash("sha256").update(JSON.stringify(sources)).digest("hex"),
+    version: NATIVE_MATH_DEPENDENCY_VERSIONS.fflasFfpack,
+  };
+}
+
+function receiptExpectation(configuration, observed, options = {}) {
+  const platform = options.platform || process.platform;
+  const profile = options.mathBuildProfile || mathBuildProfile;
+  return {
+    build: { configuration, observed },
+    capability: platform !== "win32",
+    dependency: aggregateDependency(options.dependencies),
+    deployment: platform === "darwin"
+      ? { macos: options.macosDeploymentTarget || macosDeploymentTarget }
+      : null,
+    interface: {
+      header: "include/sagejs/fflas_matrix_ffi.h",
+      sha256: digest(publicHeader),
+    },
+    mathProfile: profile,
+    package: "fflas",
+    toolchain: options.toolchain || {
+      build: platform === "win32" ? null : commandIdentity("make"),
+      compilers: profile.compilers,
+    },
+  };
+}
+
+function reusableBuildReceipt(stampPath, expectedConfiguration, targetPrefix = prefix) {
+  const receipt = readNativeDependencyReceipt(stampPath, {
+    prefix: targetPrefix,
+  });
+  if (receipt === null) return false;
+  try {
+    validateGmpConfigureObservation(
+      expectedConfiguration.mathBuildProfile,
+      receipt.build?.observed?.gmpConfigure,
+    );
+    return readNativeDependencyReceipt(stampPath, {
+      expectation: receiptExpectation(
+        expectedConfiguration,
+        receipt.build.observed,
+        {
+          mathBuildProfile: expectedConfiguration.mathBuildProfile,
+          macosDeploymentTarget: expectedConfiguration.macosDeploymentTarget,
+          platform: expectedConfiguration.mathBuildProfile.abi.platform,
+        },
+      ),
+      prefix: targetPrefix,
+    }) !== null;
+  } catch {
+    return false;
+  }
 }
 
 async function obtainArchive(dependency) {
@@ -337,13 +403,11 @@ async function buildDependencies() {
 
   if (process.platform === "win32") {
     mkdirSync(prefix, { recursive: true });
-    writeFileSync(
+    installHeader();
+    writeNativeDependencyReceipt(
       stampPath,
-      `${JSON.stringify({
-        capability: false,
-        mathBuildProfile,
-        platform: "win32",
-      }, null, 2)}\n`,
+      receiptExpectation(expectedStamp, { capability: "unavailable" }),
+      prefix,
     );
     process.stdout.write("FFLAS capability disabled on native Windows\n");
     return;
@@ -366,11 +430,7 @@ async function buildDependencies() {
       process.platform === "darwin" ? "Accelerate.tbd" : "libopenblas.a",
     )) &&
     existsSync(join(prefix, "include", "fflas-ffpack", "fflas-ffpack.h")) &&
-    existsSync(stampPath) &&
-    reusableBuildStamp(
-      JSON.parse(readFileSync(stampPath, "utf8")),
-      expectedStamp,
-    )
+    reusableBuildReceipt(stampPath, expectedStamp)
   ) {
     process.stdout.write(`Using FFLAS dependencies in ${prefix}\n`);
     return;
@@ -392,9 +452,10 @@ async function buildDependencies() {
   buildFflasFfpack(source("fflas-ffpack"));
   installHeader();
   makeFflasPrefixRelocatable();
-  writeFileSync(
+  writeNativeDependencyReceipt(
     stampPath,
-    `${JSON.stringify({ ...expectedStamp, observed: { gmpConfigure } }, null, 2)}\n`,
+    receiptExpectation(expectedStamp, { gmpConfigure }),
+    prefix,
   );
   process.stdout.write(`FFLAS dependencies installed in ${prefix}\n`);
 }
@@ -441,20 +502,8 @@ if (require.main === module) {
   });
 }
 
-function reusableBuildStamp(stamp, expected) {
-  if (stamp === null || typeof stamp !== "object") return false;
-  const declaration = { ...stamp };
-  delete declaration.observed;
-  if (JSON.stringify(declaration) !== JSON.stringify(expected)) return false;
-  try {
-    validateGmpConfigureObservation(
-      expected.mathBuildProfile,
-      stamp.observed?.gmpConfigure,
-    );
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-module.exports = { makeFflasPrefixRelocatable, reusableBuildStamp };
+module.exports = {
+  makeFflasPrefixRelocatable,
+  receiptExpectation,
+  reusableBuildReceipt,
+};

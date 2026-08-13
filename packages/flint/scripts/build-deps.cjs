@@ -34,6 +34,11 @@ const {
   parseGmpConfigureObservation,
   validateGmpConfigureObservation,
 } = require(join(repositoryRoot, "scripts", "native-math-profile.cjs"));
+const {
+  commandIdentity,
+  readNativeDependencyReceipt,
+  writeNativeDependencyReceipt,
+} = require(join(repositoryRoot, "scripts", "native-dependency-receipt.cjs"));
 const mathBuildProfile = nativeMathBuildProfile();
 const mathBuildOptions = mathBuildProfile.buildOptions;
 const buildRoot = join(packageRoot, ".native");
@@ -155,6 +160,65 @@ function patchWindowsFlintHeaders() {
   );
 }
 
+function aggregateDependency(selected = dependencies) {
+  const sources = selected
+    .map(({ name, sha256, version }) => ({ name, sha256, version }))
+    .sort((left, right) => left.name.localeCompare(right.name));
+  return {
+    name: "flint-stack",
+    sha256: createHash("sha256").update(JSON.stringify(sources)).digest("hex"),
+    version: NATIVE_MATH_DEPENDENCY_VERSIONS.flint,
+  };
+}
+
+function receiptExpectation(configuration, observed, options = {}) {
+  const platform = options.platform || process.platform;
+  const profile = options.mathBuildProfile || mathBuildProfile;
+  return {
+    build: { configuration, observed },
+    dependency: aggregateDependency(options.dependencies),
+    deployment: platform === "darwin"
+      ? { macos: options.macosDeploymentTarget || macosDeploymentTarget }
+      : null,
+    interface: null,
+    mathProfile: profile,
+    package: "flint",
+    toolchain: options.toolchain || {
+      build: platform === "win32"
+        ? { manager: "vcpkg", triplet: windowsTriplet }
+        : commandIdentity("make"),
+      compilers: profile.compilers,
+    },
+  };
+}
+
+function reusableBuildReceipt(stampPath, expectedConfiguration, targetPrefix = prefix) {
+  const receipt = readNativeDependencyReceipt(stampPath, {
+    prefix: targetPrefix,
+  });
+  if (receipt === null) return false;
+  try {
+    validateGmpConfigureObservation(
+      expectedConfiguration.mathBuildProfile,
+      receipt.build?.observed?.gmpConfigure,
+    );
+    return readNativeDependencyReceipt(stampPath, {
+      expectation: receiptExpectation(
+        expectedConfiguration,
+        receipt.build.observed,
+        {
+          mathBuildProfile: expectedConfiguration.mathBuildProfile,
+          macosDeploymentTarget: expectedConfiguration.macosDeploymentTarget,
+          platform: expectedConfiguration.mathBuildProfile.abi.platform,
+        },
+      ),
+      prefix: targetPrefix,
+    }) !== null;
+  } catch {
+    return false;
+  }
+}
+
 function buildWindowsDependencies() {
   if (process.arch !== "x64") {
     throw new Error("the native Windows FLINT backend currently requires x64");
@@ -222,25 +286,24 @@ function buildWindowsDependencies() {
   );
   patchWindowsFlintHeaders();
   const stampPath = join(prefix, ".sagejs-flint-dependencies.json");
-  writeFileSync(
+  const configuration = {
+    mathBuildProfile,
+    windows: {
+      manifestSha256: digest(join(packageRoot, "vcpkg.json")),
+      openblasTarget: "GENERIC",
+      triplet: windowsTriplet,
+      tripletSha256: digest(join(
+        packageRoot,
+        "scripts",
+        "triplets",
+        `${windowsTriplet}.cmake`,
+      )),
+    },
+  };
+  writeNativeDependencyReceipt(
     stampPath,
-    `${JSON.stringify({
-      build: {
-        mathBuildProfile,
-        windows: {
-          manifestSha256: digest(join(packageRoot, "vcpkg.json")),
-          openblasTarget: "GENERIC",
-          triplet: windowsTriplet,
-          tripletSha256: digest(join(
-            packageRoot,
-            "scripts",
-            "triplets",
-            `${windowsTriplet}.cmake`,
-          )),
-        },
-      },
-      observed: { vcpkgInstalled: true },
-    }, null, 2)}\n`,
+    receiptExpectation(configuration, { vcpkgInstalled: true }),
+    prefix,
   );
   process.stdout.write(`Native dependencies installed in ${prefix}\n`);
 }
@@ -479,19 +542,6 @@ function buildSmalljac(source) {
   installFiles(source, ["smalljac.h"], join(prefix, "include"));
 }
 
-function reusableBuildStamp(stamp, expected) {
-  if (JSON.stringify(stamp?.build) !== JSON.stringify(expected)) return false;
-  try {
-    validateGmpConfigureObservation(
-      expected.mathBuildProfile,
-      stamp.observed?.gmpConfigure,
-    );
-    return true;
-  } catch {
-    return false;
-  }
-}
-
 async function main() {
   if (process.platform === "win32") {
     buildWindowsDependencies();
@@ -540,11 +590,7 @@ async function main() {
     (!smalljacAccelerator ||
       (existsSync(join(prefix, "lib", "libff_poly.a")) &&
         existsSync(join(prefix, "lib", "libsmalljac.a")))) &&
-    existsSync(stampPath) &&
-    reusableBuildStamp(
-      JSON.parse(readFileSync(stampPath, "utf8")),
-      expectedBuild,
-    )
+    reusableBuildReceipt(stampPath, expectedBuild)
   ) {
     process.stdout.write(`Using native dependencies in ${prefix}\n`);
     return;
@@ -573,11 +619,12 @@ async function main() {
     buildFfpoly(source("ffpoly"));
     buildSmalljac(source("smalljac"));
   }
-  const buildStamp = {
-    build: expectedBuild,
-    observed: { ...flintObservedCapabilities(prefix), gmpConfigure },
-  };
-  writeFileSync(stampPath, `${JSON.stringify(buildStamp, null, 2)}\n`);
+  const observed = { ...flintObservedCapabilities(prefix), gmpConfigure };
+  writeNativeDependencyReceipt(
+    stampPath,
+    receiptExpectation(expectedBuild, observed),
+    prefix,
+  );
   process.stdout.write(`Native dependencies installed in ${prefix}\n`);
 }
 
@@ -588,4 +635,8 @@ if (require.main === module) {
   });
 }
 
-module.exports = { openBlasMakeOptions, reusableBuildStamp };
+module.exports = {
+  openBlasMakeOptions,
+  receiptExpectation,
+  reusableBuildReceipt,
+};

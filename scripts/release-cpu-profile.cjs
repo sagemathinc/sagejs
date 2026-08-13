@@ -38,6 +38,15 @@ function profileSummary(id, filename, profile) {
   };
 }
 
+function requireReceiptOutputs(id, receipt, paths) {
+  const files = new Map(receipt.outputs.files.map((file) => [file.path, file]));
+  for (const path of paths) {
+    if (files.get(path)?.type !== "file") {
+      throw new Error(`${id} dependency receipt does not bind ${path}`);
+    }
+  }
+}
+
 function validateReleaseCpuProfile(options = {}) {
   const root = resolve(options.root || join(__dirname, ".."));
   const target = options.target || { arch: arch(), platform: platform() };
@@ -53,8 +62,14 @@ function validateReleaseCpuProfile(options = {}) {
     graph: join(prefixes.graph, ".sagejs-igraph-1.0.1"),
     m4ri: join(prefixes.m4ri, ".sagejs-m4ri-dependencies.json"),
   };
-  const flint = readJson(filenames.flint);
-  const fflas = readJson(filenames.fflas);
+  const flint = validateNativeDependencyReceipt(readJson(filenames.flint), {
+    prefix: prefixes.flint,
+    stampPath: filenames.flint,
+  });
+  const fflas = validateNativeDependencyReceipt(readJson(filenames.fflas), {
+    prefix: prefixes.fflas,
+    stampPath: filenames.fflas,
+  });
   const graph = validateNativeDependencyReceipt(readJson(filenames.graph), {
     prefix: prefixes.graph,
     stampPath: filenames.graph,
@@ -64,11 +79,32 @@ function validateReleaseCpuProfile(options = {}) {
     stampPath: filenames.m4ri,
   });
   const profiles = {
-    fflas: fflas.mathBuildProfile,
-    flint: flint.build?.mathBuildProfile,
+    fflas: fflas.mathProfile,
+    flint: flint.mathProfile,
     graph: graph.mathProfile,
     m4ri: m4ri.mathProfile,
   };
+  requireReceiptOutputs(
+    "flint",
+    flint,
+    target.platform === "win32"
+      ? ["lib/flint.lib", "lib/openblas.lib"]
+      : ["lib/libflint.a", "lib/libgmp.a", "lib/libopenblas.a"],
+  );
+  requireReceiptOutputs(
+    "fflas",
+    fflas,
+    target.platform === "win32"
+      ? ["include/sagejs/fflas_matrix_ffi.h"]
+      : [
+          "include/sagejs/fflas_matrix_ffi.h",
+          "lib/libgivaro.a",
+          "lib/libgmpxx.a",
+          target.platform === "darwin"
+            ? "lib/Accelerate.tbd"
+            : "lib/libopenblas.a",
+        ],
+  );
   for (const [id, profile] of Object.entries(profiles)) {
     if (profile?.abi?.arch !== target.arch || profile?.abi?.platform !== target.platform) {
       throw new Error(`${id} native dependency receipt does not match ${target.platform}/${target.arch}`);
@@ -76,12 +112,16 @@ function validateReleaseCpuProfile(options = {}) {
   }
   if (target.platform === "win32") {
     if (
-      flint.build?.windows?.openblasTarget !== "GENERIC" ||
-      flint.build?.windows?.triplet !== "x64-windows-static-md-release" ||
-      !/^[0-9a-f]{64}$/.test(flint.build?.windows?.manifestSha256 ?? "") ||
-      !/^[0-9a-f]{64}$/.test(flint.build?.windows?.tripletSha256 ?? "") ||
+      flint.build?.configuration?.windows?.openblasTarget !== "GENERIC" ||
+      flint.build?.configuration?.windows?.triplet !==
+        "x64-windows-static-md-release" ||
+      !/^[0-9a-f]{64}$/.test(
+        flint.build?.configuration?.windows?.manifestSha256 ?? "",
+      ) ||
+      !/^[0-9a-f]{64}$/.test(
+        flint.build?.configuration?.windows?.tripletSha256 ?? "",
+      ) ||
       fflas.capability !== false ||
-      fflas.platform !== "win32" ||
       m4ri.capability !== false ||
       m4ri.build?.instructionPolicy !== "unavailable" ||
       m4ri.build?.cachePolicy !== "unavailable"
@@ -91,11 +131,11 @@ function validateReleaseCpuProfile(options = {}) {
   } else {
     validateGmpConfigureObservation(
       profiles.flint,
-      flint.observed?.gmpConfigure,
+      flint.build?.observed?.gmpConfigure,
     );
     validateGmpConfigureObservation(
       profiles.fflas,
-      fflas.observed?.gmpConfigure,
+      fflas.build?.observed?.gmpConfigure,
     );
     if (
       m4ri.build?.instructionPolicy !== profiles.m4ri.cpuPolicy.baseline ||
