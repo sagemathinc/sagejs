@@ -970,10 +970,15 @@ test("ordinary compiled imports preserve globals, closures, and cache identity",
         "",
       ].join("\n"),
     );
-    const result = spawnSync(join(root, "bin", "sagejs"), ["main.py"], {
-      cwd: directory,
-      encoding: "utf8",
-    });
+    const result = spawnSync(
+      process.execPath,
+      [join(root, "bin", "sagejs"), "main.py"],
+      {
+        cwd: directory,
+        encoding: "utf8",
+      },
+    );
+    assert.equal(result.error, undefined, result.error?.message);
     assert.equal(result.status, 0, result.stderr);
     assert.equal(
       result.stdout.trim(),

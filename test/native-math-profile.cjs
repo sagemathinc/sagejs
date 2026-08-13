@@ -210,18 +210,24 @@ test("native profile CLI exposes human and structured provenance", () => {
     ...process.env,
     SAGEJS_NATIVE_MATH_PROFILE: PORTABLE_PROFILE,
   };
-  const human = execFileSync(executable, ["native", "profile"], {
-    cwd: root,
-    encoding: "utf8",
-    env: environment,
-  });
+  const human = execFileSync(
+    process.execPath,
+    [executable, "native", "profile"],
+    {
+      cwd: root,
+      encoding: "utf8",
+      env: environment,
+    },
+  );
   assert.match(human, /Native mathematics dependency profile/);
   assert.match(human, /requested: portable/);
-  const structured = JSON.parse(execFileSync(
-    executable,
-    ["native", "profile", "--json"],
-    { cwd: root, encoding: "utf8", env: environment },
-  ));
+  const structured = JSON.parse(
+    execFileSync(
+      process.execPath,
+      [executable, "native", "profile", "--json"],
+      { cwd: root, encoding: "utf8", env: environment },
+    ),
+  );
   assert.equal(structured.selected.effectiveProfile, PORTABLE_PROFILE);
   assert.match(structured.selected.fingerprint, /^[a-f0-9]{64}$/);
   assert.equal(typeof structured.installedMatchesSelected, "boolean");

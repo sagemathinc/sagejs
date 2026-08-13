@@ -12,15 +12,17 @@ const {
   validateProfileDocument,
 } = require("../tools/math-dispatch/schema.cjs");
 const { parseDispatchSource } = require("../tools/math-dispatch/source-declarations.cjs");
+const { pythonExecutable } = require("../tools/python-executable.cjs");
 
 const root = resolve(__dirname, "..");
 
 test("CPython parses every dispatch authority", () => {
-  const result = require("node:child_process").spawnSync("python3", [
+  const result = require("node:child_process").spawnSync(pythonExecutable(), [
     "-m", "py_compile",
     join(root, "dispatch", "matrix.dispatch.py"),
     join(root, "dispatch", "profiles", "portable.dispatch.py"),
   ], { encoding: "utf8" });
+  assert.equal(result.error, undefined, result.error?.message);
   assert.equal(result.status, 0, result.stderr);
 });
 

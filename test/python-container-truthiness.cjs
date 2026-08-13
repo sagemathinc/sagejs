@@ -19,6 +19,7 @@ const {
 const {
   standaloneRuntimeRequirePrelude,
 } = require("../tools/standalone-library.cjs");
+const { pythonExecutable } = require("../tools/python-executable.cjs");
 
 const root = resolve(__dirname, "..");
 const parserOptions = {
@@ -208,7 +209,7 @@ test("Python truth testing is the safe OutputStream default", async () => {
       javascriptPath,
       standaloneRuntimeRequirePrelude() + javascript,
     );
-    cpython = spawnSync("python3", [pythonPath], {
+    cpython = spawnSync(pythonExecutable(), [pythonPath], {
       cwd: root,
       encoding: "utf8",
       timeout: 5_000,
@@ -227,7 +228,10 @@ test("Python truth testing is the safe OutputStream default", async () => {
   assert.equal(generated.error, undefined, generated.error?.message);
   assert.equal(generated.status, 0, `${generated.stdout}\n${generated.stderr}`);
   assert.equal(generated.stderr, "");
-  assert.equal(generated.stdout, cpython.stdout);
+  assert.equal(
+    generated.stdout.replaceAll("\r\n", "\n"),
+    cpython.stdout.replaceAll("\r\n", "\n"),
+  );
 });
 
 test("JavaScript truth testing remains an explicit escape hatch", async () => {

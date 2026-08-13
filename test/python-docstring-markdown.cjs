@@ -6,15 +6,13 @@ const { tmpdir } = require("node:os");
 const { join, resolve } = require("node:path");
 const { spawnSync } = require("node:child_process");
 const test = require("node:test");
+const { pythonExecutable } = require("../tools/python-executable.cjs");
 
 const root = resolve(__dirname, "..");
 const helper = join(root, "scripts", "python-docstring-markdown.py");
-const python =
-  process.env.SAGEJS_REFERENCE_PYTHON ??
-  (process.platform === "win32" ? "python" : "python3");
 
 function run(mode, filename) {
-  return spawnSync(python, [helper, mode], {
+  return spawnSync(pythonExecutable(), [helper, mode], {
     cwd: root,
     encoding: "utf8",
     input: JSON.stringify([filename]),

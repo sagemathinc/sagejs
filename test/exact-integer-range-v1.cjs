@@ -5,6 +5,7 @@ const assert = require("node:assert/strict");
 const { spawnSync } = require("node:child_process");
 
 const { createSage } = require("../dist/tools/kernel.js");
+const { pythonExecutable } = require("../tools/python-executable.cjs");
 
 async function main() {
   const session = await createSage();
@@ -39,9 +40,10 @@ async function main() {
       "]",
       "print(repr([cases, protocol]))",
     ].join("\n");
-    const cpython = spawnSync("python3", ["-c", pythonSource], {
+    const cpython = spawnSync(pythonExecutable(), ["-c", pythonSource], {
       encoding: "utf8",
     });
+    assert.equal(cpython.error, undefined, cpython.error?.message);
     assert.equal(cpython.status, 0, cpython.stderr);
 
     const sagePython = await session.evaluate(pythonSource);

@@ -2,6 +2,7 @@
 
 const unit = [
   "test/test-manifest.test.cjs",
+  "test/python-executable.cjs",
   "test/completer.cjs",
   "test/cowasm-landscape.cjs",
   "test/module-cache.cjs",

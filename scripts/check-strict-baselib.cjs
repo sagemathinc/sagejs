@@ -8,6 +8,7 @@ const {
   PositionEncoding,
   Workspace,
 } = require("@astral-sh/ruff-wasm-nodejs");
+const { pythonExecutable } = require("../tools/python-executable.cjs");
 
 const root = join(__dirname, "..");
 const pyrightConfigPath = join(root, "pyrightconfig.json");
@@ -20,13 +21,13 @@ for (const file of files) {
 }
 
 const pythonSyntax = spawnSync(
-  "python3",
+  pythonExecutable(),
   [
     "-c",
     [
       "import ast, pathlib, sys",
       "for filename in sys.argv[1:]:",
-      "    ast.parse(pathlib.Path(filename).read_text(), filename=filename)",
+      "    ast.parse(pathlib.Path(filename).read_text(encoding='utf-8'), filename=filename)",
     ].join("\n"),
     ...files,
   ],
