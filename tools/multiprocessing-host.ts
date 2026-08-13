@@ -15,6 +15,10 @@ interface EncodedFunction {
   source: string;
   bindings: Record<string, EncodedValue>;
   metadata: Record<string, EncodedValue>;
+  moduleGlobals: Record<string, string>;
+  module?: string;
+  name?: string;
+  publishInModule?: boolean;
 }
 
 type EncodedValue = SagePacket | EncodedFunction;
@@ -32,6 +36,8 @@ interface CallableSpec {
   name?: string;
   source: string;
   bindings?: Record<string, EncodedValue>;
+  moduleGlobals?: Record<string, string>;
+  publishInModule?: boolean;
 }
 
 interface RemoteError {
@@ -85,12 +91,7 @@ function serialization(): typeof import("./serialization") {
   return serializationModule ??= require("./serialization");
 }
 
-function referencedBindings(
-  callable: (...args: unknown[]) => unknown,
-  source: string,
-  ancestors: Set<unknown>,
-): Record<string, EncodedValue> {
-  const bindings: Record<string, EncodedValue> = {};
+function callableGlobals(callable: (...args: unknown[]) => unknown): unknown {
   let globals = Reflect.get(callable, "__globals__");
   if (globals === undefined) {
     const moduleName = Reflect.get(callable, "__module__");
@@ -107,38 +108,58 @@ function referencedBindings(
       globals = Reflect.get(baselibModules, moduleName);
     }
   }
+  return globals;
+}
+
+function lookupPythonGlobal(globals: unknown, pythonName: string): unknown {
   const getitem = Reflect.get(globalThis, "ρσ_getitem");
+  let value: unknown;
+  if (globals !== null && typeof globals === "object") {
+    if (Object.hasOwn(globals, pythonName)) {
+      value = Reflect.get(globals, pythonName);
+    }
+    const liveScope = Reflect.get(globals, "_scope");
+    if (
+      value === undefined &&
+      liveScope !== null &&
+      typeof liveScope === "object" &&
+      Object.hasOwn(liveScope, pythonName)
+    ) value = Reflect.get(liveScope, pythonName);
+    if (value === undefined && typeof getitem === "function") {
+      try {
+        value = Reflect.apply(getitem, undefined, [globals, pythonName]);
+      } catch {
+        // Missing dictionary keys are expected for absent module globals.
+      }
+    }
+  }
+  return value;
+}
+
+function referencedBindings(
+  callable: (...args: unknown[]) => unknown,
+  source: string,
+  ancestors: Set<unknown>,
+  moduleGlobals: Record<string, string>,
+): Record<string, EncodedValue> {
+  const bindings: Record<string, EncodedValue> = {};
+  const globals = callableGlobals(callable);
+  for (const [emittedName, pythonName] of Object.entries(moduleGlobals)) {
+    const value = lookupPythonGlobal(globals, pythonName);
+    if (value === undefined || value === callable) continue;
+    try {
+      bindings[emittedName] = encode(value, ancestors);
+    } catch {
+      // A genuinely unsupported dependency will fail precisely in the worker.
+    }
+  }
   const names =
     source.match(
       /[A-Za-z_$\u0370-\u03ff][A-Za-z0-9_$\u0370-\u03ff]*/g,
     ) ?? [];
   for (const name of new Set(names)) {
-    let value: unknown;
-    if (globals !== null && typeof globals === "object") {
-      // A Python module dictionary is also a JavaScript object with runtime
-      // implementation properties.  Looking through its prototype here can
-      // mistake property names in generated code (for example ``length`` or
-      // ``hasOwnProperty``) for Python globals and then try to serialize a
-      // native JavaScript function.  Only direct storage and the live lexical
-      // scope are candidates before consulting Python ``__getitem__``.
-      if (Object.hasOwn(globals, name)) value = Reflect.get(globals, name);
-      const liveScope = Reflect.get(globals, "_scope");
-      if (
-        value === undefined &&
-        liveScope !== null &&
-        typeof liveScope === "object" &&
-        Object.hasOwn(liveScope, name)
-      ) {
-        value = Reflect.get(liveScope, name);
-      }
-      if (value === undefined && typeof getitem === "function") {
-        try {
-          value = Reflect.apply(getitem, undefined, [globals, name]);
-        } catch {
-          // Missing dictionary keys are expected for local/property names.
-        }
-      }
-    }
+    const pythonName = moduleGlobals[name] ?? name;
+    let value = lookupPythonGlobal(globals, pythonName);
     if (
       value === undefined &&
       (name.startsWith("ρσ_kernel_") || name.includes("ρσ_const_"))
@@ -188,6 +209,9 @@ function encode(value: unknown, ancestors = new Set<unknown>()): EncodedValue {
         metadata[name] = encode(property, nestedAncestors);
       }
     }
+    const moduleGlobals = Reflect.get(value, "__sagejs_module_globals__") ?? {};
+    const module = Reflect.get(value, "__module__");
+    const name = Reflect.get(value, "__name__");
     return {
       __sagejs_multiprocessing__: "function",
       source,
@@ -195,8 +219,19 @@ function encode(value: unknown, ancestors = new Set<unknown>()): EncodedValue {
         value as (...args: unknown[]) => unknown,
         source,
         nestedAncestors,
+        moduleGlobals,
       ),
       metadata,
+      moduleGlobals,
+      module,
+      name,
+      publishInModule:
+        typeof module === "string" &&
+        typeof name === "string" &&
+        lookupPythonGlobal(
+            callableGlobals(value as (...args: unknown[]) => unknown),
+            name,
+          ) === value,
     };
   }
   return serialization().encodeForTransfer(value);
@@ -224,16 +259,27 @@ function callableSpec(callable: unknown): CallableSpec {
   const moduleValue = Reflect.get(callable, "__module__");
   const nameValue = Reflect.get(callable, "__name__");
   const source = Function.prototype.toString.call(callable);
+  const moduleGlobals = Reflect.get(callable, "__sagejs_module_globals__") ?? {};
   const bindings = referencedBindings(
     callable as (...args: unknown[]) => unknown,
     source,
     new Set([callable]),
+    moduleGlobals,
   );
+  const publishInModule =
+    typeof moduleValue === "string" &&
+    typeof nameValue === "string" &&
+    lookupPythonGlobal(
+        callableGlobals(callable as (...args: unknown[]) => unknown),
+        nameValue,
+      ) === callable;
   return {
     module: typeof moduleValue === "string" ? moduleValue : undefined,
     name: typeof nameValue === "string" ? nameValue : undefined,
     source,
     bindings,
+    moduleGlobals,
+    publishInModule,
   };
 }
 

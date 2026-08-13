@@ -549,6 +549,7 @@ class AST_Lambda(AST_Scope):
         "declared_globals": "[string*] names declared global directly in this function",
         "declared_nonlocals": "[string*] names declared nonlocal directly in this function",
         "scope_bindings": "[string*] names which can satisfy a nested nonlocal declaration",
+        "module_global_names": "[string*] free names resolved through the defining Python module",
     }
 
     def _walk(self, visitor):

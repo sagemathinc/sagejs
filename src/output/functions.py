@@ -75,7 +75,9 @@ def function_preamble(node, output, offset, javascript_name):
     fname = javascript_name or (
         output.make_python_name(node.name.name)
         if node.name and node.name.python_identifier
-        else node.name.name if node.name else anonfunc
+        else node.name.name
+        if node.name
+        else anonfunc
     )
     fname = output.make_name(fname)
 
@@ -85,8 +87,7 @@ def function_preamble(node, output, offset, javascript_name):
             if argument.python_identifier
             or (
                 node.python_lexical_hygiene
-                and
-                node.python_scope_bindings
+                and node.python_scope_bindings
                 and node.python_scope_bindings.indexOf(argument.name) is not -1
             )
             else output.make_name(argument.name)
@@ -428,7 +429,9 @@ def function_annotation(self, output, strip_first, name):
     fname = name or (
         output.make_python_name(self.name.name)
         if self.name and self.name.python_identifier
-        else self.name.name if self.name else anonfunc
+        else self.name.name
+        if self.name
+        else anonfunc
     )
     props = Object.create(None)
 
@@ -640,6 +643,20 @@ def function_annotation(self, output, strip_first, name):
         output.print(module_name)
 
     props.__module__ = module
+
+    if self.module_global_names and self.module_global_names.length:
+
+        def module_globals():
+            output.print("{")
+            for index, python_name in enumerate(self.module_global_names):
+                if index:
+                    output.comma()
+                output.print_string(output.make_python_name(python_name))
+                output.colon()
+                output.print_string(python_name)
+            output.print("}")
+
+        props.__sagejs_module_globals__ = module_globals
 
     for name in props:
         output.print(f"{fname}.{name} = ")

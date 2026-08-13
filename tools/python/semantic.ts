@@ -195,6 +195,23 @@ export class PythonAstSemanticAnalyzer {
       ...this.scanCallableBindings(body),
       ...parameters,
     ]).filter((name) => !globals.has(name) && !nonlocals.has(name)));
+    const moduleGlobalNames = new Set<string>();
+    this.walk(body, (node) => {
+      if (node instanceof this.compiler.AST_Scope) return true;
+      if (node instanceof this.compiler.AST_SymbolRef) {
+        if (
+          node.python_identifier &&
+          !ownBindings.has(node.name) &&
+          !nonlocals.has(node.name) &&
+          (
+            globals.has(node.name) ||
+            !enclosingFunctionBindings.some((bindings) => bindings.has(node.name))
+          )
+        ) moduleGlobalNames.add(node.name);
+      }
+      return false;
+    });
+    definition.module_global_names = [...moduleGlobalNames].sort();
     this.analyzeNestedScopes(
       body,
       [...enclosingFunctionBindings, ownBindings],
