@@ -9,7 +9,7 @@ const root = resolve(__dirname, "..");
 const sagejs = resolve(root, "bin", "sagejs");
 
 function run(source, environment = {}) {
-  const result = spawnSync(sagejs, ["--python"], {
+  const result = spawnSync(process.execPath, [sagejs, "--python"], {
     cwd: root,
     encoding: "utf8",
     input: source,

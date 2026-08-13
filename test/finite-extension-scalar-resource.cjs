@@ -7,6 +7,7 @@ const { tmpdir } = require("node:os");
 const { join, resolve } = require("node:path");
 const { spawnSync } = require("node:child_process");
 const test = require("node:test");
+const { pythonExecutable } = require("../tools/python-executable.cjs");
 
 const root = resolve(__dirname, "..");
 
@@ -156,7 +157,7 @@ test("scalar payload validation remains ordinary CPython", () => {
     "    else:",
     "        raise AssertionError('malformed SJFE payload accepted')",
   ].join("\n");
-  const result = spawnSync("python3", ["-c", source], {
+  const result = spawnSync(pythonExecutable(), ["-c", source], {
     cwd: root,
     encoding: "utf8",
   });

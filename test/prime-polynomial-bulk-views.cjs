@@ -15,7 +15,7 @@ function runSage(source) {
   try {
     const script = join(directory, "witness.py");
     writeFileSync(script, source);
-    const result = spawnSync(sagejs, [script], {
+    const result = spawnSync(process.execPath, [sagejs, script], {
       cwd: root,
       encoding: "utf8",
       timeout: 60_000,

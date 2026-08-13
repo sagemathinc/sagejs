@@ -5,12 +5,13 @@ const assert = require("node:assert/strict");
 const { join } = require("node:path");
 const { spawnSync } = require("node:child_process");
 const test = require("node:test");
+const { pythonExecutable } = require("../tools/python-executable.cjs");
 
 const root = join(__dirname, "..");
 const moduleDirectory = join(root, "src", "lib");
 
 function runPython(source) {
-  const result = spawnSync("python3", ["-c", source], {
+  const result = spawnSync(pythonExecutable(), ["-c", source], {
     cwd: root,
     encoding: "utf8",
     timeout: 120_000,

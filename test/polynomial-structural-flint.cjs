@@ -390,7 +390,7 @@ function fmpqValue(resource) {
 }
 
 function runKernel(scriptPath, environment) {
-  const result = spawnSync(resolve(root, "bin", "sagejs"), [scriptPath], {
+  const result = spawnSync(process.execPath, [resolve(root, "bin", "sagejs"), scriptPath], {
     cwd: root,
     encoding: "utf8",
     env: { ...process.env, ...environment },

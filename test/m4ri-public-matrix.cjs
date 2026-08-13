@@ -9,17 +9,66 @@ const { join, resolve } = require("node:path");
 const root = resolve(__dirname, "..");
 
 function runSage(source, environment = {}) {
-  const result = spawnSync(join(root, "bin", "sagejs"), ["--python"], {
-    cwd: root,
-    encoding: "utf8",
-    env: { ...process.env, SAGEJS_FORBID_MATRIX_NAPI: "1", ...environment },
-    input: source,
-  });
+  const result = spawnSync(
+    process.execPath,
+    [join(root, "bin", "sagejs"), "--python"],
+    {
+      cwd: root,
+      encoding: "utf8",
+      env: { ...process.env, SAGEJS_FORBID_MATRIX_NAPI: "1", ...environment },
+      input: source,
+    },
+  );
   assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`);
   return result.stdout.trim();
 }
 
-const publicScript = String.raw`
+const publicScript = process.platform === "win32"
+  ? String.raw`
+from sagejs_serialization import dumps, loads
+
+F = GF(2)
+A = matrix(F, 3, 4, [1,0,1,1, 0,1,1,0, 1,1,0,1])
+B = matrix(F, 3, 4, [0,1,0,1, 1,0,1,0, 1,0,1,1])
+assert not A._has_m4ri_matrix_resource()
+assert A[-1,-1] == 1
+old = A.list()
+try:
+    A[0,0] = "not a bit"
+    raise AssertionError("invalid mutation succeeded")
+except Exception:
+    pass
+assert A.list() == old
+A[0,0] = 0
+for value in [A+B, A-B, -A, A*1, A*0, A.transpose(), A*A.transpose()]:
+    assert not value._has_m4ri_matrix_resource()
+copy = A.__copy__()
+copy[0,0] = 1
+assert A[0,0] == 0 and copy[0,0] == 1
+assert A.rank() == 3
+try:
+    A.rank(algorithm="m4ri")
+    raise AssertionError("unavailable M4RI algorithm succeeded")
+except ValueError:
+    pass
+reduced = A.rref()
+assert not reduced._has_m4ri_matrix_resource()
+assert A * A.right_kernel_matrix().transpose() == 0
+Q = matrix(F, 2, 2, [1,1,1,0])
+assert Q.determinant() == 1
+inverse = Q.inverse()
+assert not inverse._has_m4ri_matrix_resource()
+assert Q * inverse == 1
+rhs = matrix(F, 2, 1, [1,0])
+solution = Q.solve_right(rhs)
+assert not solution._has_m4ri_matrix_resource()
+assert Q * solution == rhs
+restored = loads(dumps(A))
+assert not restored._has_m4ri_matrix_resource()
+assert restored == A
+print("m4ri-windows-fallback-ok")
+`
+  : String.raw`
 import sagejs.runtime as runtime
 from sagejs_serialization import dumps, loads
 
@@ -87,7 +136,12 @@ assert restored == A
 print("m4ri-public-ok")
 `;
 
-assert.equal(runSage(publicScript), "m4ri-public-ok");
+assert.equal(
+  runSage(publicScript),
+  process.platform === "win32"
+    ? "m4ri-windows-fallback-ok"
+    : "m4ri-public-ok",
+);
 
 const lifecycleScript = String.raw`
 F = GF(2)
@@ -117,12 +171,14 @@ assert not hasattr(A, "_prime_residues_cache")
 assert reduced_rank == rank
 print(multiply, rank_time, rref_time, reduced_rank_time, rank)
 `;
-const fields = runSage(benchmarkScript).split(/\s+/).map(Number);
-assert.equal(fields.length, 5);
-assert.ok(fields[0] < 0.1, `warm public M4RI multiply took ${fields[0]}s`);
-assert.ok(fields[1] < 0.1, `warm public M4RI rank took ${fields[1]}s`);
-assert.ok(fields[2] < 0.1, `warm public M4RI RREF took ${fields[2]}s`);
-assert.ok(fields[3] < 0.01, `cached RREF rank query took ${fields[3]}s`);
+if (process.platform !== "win32") {
+  const fields = runSage(benchmarkScript).split(/\s+/).map(Number);
+  assert.equal(fields.length, 5);
+  assert.ok(fields[0] < 0.1, `warm public M4RI multiply took ${fields[0]}s`);
+  assert.ok(fields[1] < 0.1, `warm public M4RI rank took ${fields[1]}s`);
+  assert.ok(fields[2] < 0.1, `warm public M4RI RREF took ${fields[2]}s`);
+  assert.ok(fields[3] < 0.01, `cached RREF rank query took ${fields[3]}s`);
+}
 
 // Keep a cheap JS timing witness so this file itself cannot accidentally
 // become a multi-second process-orchestration test outside mathematical work.

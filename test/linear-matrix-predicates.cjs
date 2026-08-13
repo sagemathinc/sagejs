@@ -160,7 +160,7 @@ prime = kernel_uint64_buffer(dense_prime_field_matrix_is_scalar_inferred, [4, 0,
 assert dense_prime_field_matrix_is_scalar_inferred(prime, 2, 2, 7)
 print('linear-matrix-predicates-fallback-ok')
 `;
-  const result = spawnSync(join(root, "bin", "sagejs"), ["--python"], {
+  const result = spawnSync(process.execPath, [join(root, "bin", "sagejs"), "--python"], {
     cwd: root,
     encoding: "utf8",
     env: {

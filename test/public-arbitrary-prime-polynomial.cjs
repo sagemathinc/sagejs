@@ -16,7 +16,7 @@ function run(source, environment = {}) {
   try {
     const program = join(directory, "check.py");
     writeFileSync(program, source);
-    const result = spawnSync(sagejs, [program], {
+    const result = spawnSync(process.execPath, [sagejs, program], {
       cwd: root,
       encoding: "utf8",
       env: {
@@ -130,7 +130,7 @@ const absentDirectory = mkdtempSync(join(tmpdir(), "sagejs-arbitrary-prime-absen
 try {
   const absentProgram = join(absentDirectory, "absent.py");
   writeFileSync(absentProgram, absent);
-  const failure = spawnSync(sagejs, [absentProgram], {
+  const failure = spawnSync(process.execPath, [sagejs, absentProgram], {
     cwd: root,
     encoding: "utf8",
     env: { ...process.env, SAGEJS_FORBID_POLYNOMIAL_NAPI: "0" },

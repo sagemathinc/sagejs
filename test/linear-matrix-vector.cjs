@@ -6,6 +6,7 @@ const { mkdtempSync, rmSync, writeFileSync } = require("node:fs");
 const { tmpdir } = require("node:os");
 const { resolve } = require("node:path");
 const { spawnSync } = require("node:child_process");
+const { pythonExecutable } = require("../tools/python-executable.cjs");
 
 const root = resolve(__dirname, "..");
 const sagejs = resolve(root, "bin", "sagejs");
@@ -137,7 +138,7 @@ print("cpython-matrix-vector-ok")
 `;
 
 assert.equal(
-  run("python3", ["-c", cpythonSource]),
+  run(pythonExecutable(), ["-c", cpythonSource]),
   "cpython-matrix-vector-ok",
 );
 

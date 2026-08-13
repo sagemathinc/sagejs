@@ -4,6 +4,7 @@
 const assert = require("node:assert/strict");
 const { readFileSync } = require("node:fs");
 const { spawnSync } = require("node:child_process");
+const { pythonExecutable } = require("../tools/python-executable.cjs");
 const { resolve } = require("node:path");
 
 const root = resolve(__dirname, "..");
@@ -287,7 +288,7 @@ assert g.entries == (one, QQ(2), QQ(4) / QQ(5), QQ(-2) / QQ(5))
 print("linear-decomposition-sagejs-ok")
 `;
 
-const result = spawnSync("python3", ["-"], {
+const result = spawnSync(pythonExecutable(), ["-"], {
   cwd: root,
   encoding: "utf8",
   input: source,
@@ -301,7 +302,7 @@ assert.equal(result.stdout.trim(), "linear-decomposition-contract-ok");
 
 console.log("linear decomposition reference contract passed");
 
-const sagejsResult = spawnSync(resolve(root, "bin", "sagejs"), ["-"], {
+const sagejsResult = spawnSync(process.execPath, [resolve(root, "bin", "sagejs"), "-"], {
   cwd: root,
   encoding: "utf8",
   input: sagejsSource,

@@ -38,7 +38,7 @@ const matrixFlintKernelSource = join(
 );
 
 function runSage(source, environment) {
-  const result = spawnSync(sagejs, ["--python"], {
+  const result = spawnSync(process.execPath, [sagejs, "--python"], {
     cwd: root,
     encoding: "utf8",
     env: { ...process.env, ...environment },
@@ -137,8 +137,9 @@ test("packed prime polynomial scalar evaluation is native and source-transparent
   const cache = mkdtempSync(join(tmpdir(), "sagejs-prime-poly-evaluate-"));
   try {
     const explanation = spawnSync(
-      sagejs,
+      process.execPath,
       [
+        sagejs,
         "native",
         "explain",
         kernelSource,
@@ -159,8 +160,8 @@ test("packed prime polynomial scalar evaluation is native and source-transparent
       matrixFlintKernelSource,
     ]) {
       const compilation = spawnSync(
-        sagejs,
-        ["native", "compile", source, "--cache-root", cache],
+        process.execPath,
+        [sagejs, "native", "compile", source, "--cache-root", cache],
         { cwd: root, encoding: "utf8", timeout: 60_000 },
       );
       if (compilation.error) throw compilation.error;

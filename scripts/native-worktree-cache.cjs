@@ -48,6 +48,7 @@ const {
 const { spawn, spawnSync } = require("node:child_process");
 const { git } = require("./parallel-lib.cjs");
 const { pnpmInvocation } = require("./pnpm-invocation.cjs");
+const { pythonExecutable } = require("../tools/python-executable.cjs");
 const { nativeMathBuildProfile } = require("./native-math-profile.cjs");
 const {
   appleAccelerateSdkInputs,
@@ -419,7 +420,7 @@ function nativeBuildIdentity(workspace, overrides = {}) {
         osRelease: operatingSystemRelease(),
         platform: process.platform,
       },
-      python: toolIdentity(process.env.PYTHON || "python3"),
+      python: toolIdentity(pythonExecutable()),
       vcpkg: externalVcpkg,
     },
     node: {

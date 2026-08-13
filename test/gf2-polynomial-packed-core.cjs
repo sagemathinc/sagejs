@@ -21,7 +21,7 @@ const kernelSource = join(
 const sage = process.env.SAGE_EXECUTABLE || "/home/user/sagelite/sage";
 
 function runSage(source, environment = {}) {
-  const result = spawnSync(sagejs, ["--python"], {
+  const result = spawnSync(process.execPath, [sagejs, "--python"], {
     cwd: root,
     encoding: "utf8",
     env: { ...process.env, ...environment },
@@ -158,8 +158,15 @@ test("packed GF(2) kernels compile source-transparently and match fallback", () 
   const cache = mkdtempSync(join(tmpdir(), "sagejs-gf2-packed-core-"));
   try {
     const explanation = spawnSync(
-      sagejs,
-      ["native", "explain", kernelSource, "--function", "gf2_packed_xor"],
+      process.execPath,
+      [
+        sagejs,
+        "native",
+        "explain",
+        kernelSource,
+        "--function",
+        "gf2_packed_xor",
+      ],
       { cwd: root, encoding: "utf8", timeout: 60_000 },
     );
     if (explanation.error) throw explanation.error;
@@ -170,8 +177,8 @@ test("packed GF(2) kernels compile source-transparently and match fallback", () 
     assert.match(explanation.stdout, /BitPolynomialView/);
 
     const compilation = spawnSync(
-      sagejs,
-      ["native", "compile", kernelSource, "--cache-root", cache],
+      process.execPath,
+      [sagejs, "native", "compile", kernelSource, "--cache-root", cache],
       { cwd: root, encoding: "utf8", timeout: 60_000 },
     );
     if (compilation.error) throw compilation.error;
@@ -210,8 +217,9 @@ test("selective packed kernels retain UInt64Buffer storage", () => {
   const cache = mkdtempSync(join(tmpdir(), "sagejs-gf2-packed-selective-"));
   try {
     const compilation = spawnSync(
-      sagejs,
+      process.execPath,
       [
+        sagejs,
         "native",
         "compile",
         kernelSource,
@@ -271,8 +279,9 @@ test("bit-length-only artifacts retain persistent UInt64Buffer storage", () => {
   const cache = mkdtempSync(join(tmpdir(), "sagejs-gf2-packed-bit-length-"));
   try {
     const compilation = spawnSync(
-      sagejs,
+      process.execPath,
       [
+        sagejs,
         "native",
         "compile",
         kernelSource,
