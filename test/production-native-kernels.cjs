@@ -22,6 +22,40 @@ const { NATIVE_ABI_VERSION } = require(
 const { NATIVE_KERNEL_ABI_VERSION } = require(
   "../dist/tools/runtime-bootstrap.js"
 );
+const { nativeLogicalSourceKey } = require(
+  "../dist/tools/runtime-bootstrap.js"
+);
+
+test("logical native source keys cover the full authoritative library", () => {
+  for (const [filename, expected] of [
+    [
+      "/checkout/src/lib/sagejs/linear_algebra/sparse_random_public.py",
+      "sagejs/linear_algebra/sparse_random_public.py",
+    ],
+    [
+      "C:\\checkout\\src\\lib\\sagejs\\kernels\\p1.py",
+      "sagejs/kernels/p1.py",
+    ],
+    [
+      "/__sagejs_sea__/lib/sagejs/kernels/matrix/dense_integer.py",
+      "sagejs/kernels/matrix/dense_integer.py",
+    ],
+    [
+      "/virtual/sagejs/linear_algebra/sparse_random_public.py",
+      "sagejs/linear_algebra/sparse_random_public.py",
+    ],
+  ]) {
+    assert.equal(nativeLogicalSourceKey(filename), expected);
+  }
+  for (const filename of [
+    "/outside/project.py",
+    "/checkout/src/lib/not_sagejs/module.py",
+    "/checkout/src/lib/sagejs/../private.py",
+    "/checkout/src/lib/sagejs/module.js",
+  ]) {
+    assert.equal(nativeLogicalSourceKey(filename), undefined);
+  }
+});
 
 function runWithCache(cache, source, required = true) {
   return spawnSync(

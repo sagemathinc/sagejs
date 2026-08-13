@@ -68,6 +68,42 @@ export function runtimeBootstrapFilename(
   return `sagejs/runtime-bootstrap-${mode}.js`;
 }
 
+export function nativeLogicalSourceKey(filename: string): string | undefined {
+  const normalized = filename.replaceAll("\\", "/");
+  let candidate: string | undefined;
+  for (const marker of ["/src/lib/", "/__sagejs_sea__/lib/"]) {
+    const index = normalized.lastIndexOf(marker);
+    if (index >= 0) candidate = normalized.slice(index + marker.length);
+  }
+  if (candidate === undefined) {
+    // Compiled/embedded Python filenames are not required to retain the
+    // checkout's `src/lib` prefix. The package root plus the source digest is
+    // the stable fallback identity for those virtual paths.
+    const marker = "/sagejs/";
+    const index = normalized.lastIndexOf(marker);
+    if (index >= 0) candidate = normalized.slice(index + 1);
+  }
+  if (
+    candidate === undefined ||
+    !candidate.startsWith("sagejs/") ||
+    !candidate.endsWith(".py")
+  ) {
+    return undefined;
+  }
+  const segments = candidate.split("/");
+  if (
+    segments.some(
+      (segment) =>
+        segment === "." ||
+        segment === ".." ||
+        !/^[A-Za-z0-9_.-]+$/.test(segment),
+    )
+  ) {
+    return undefined;
+  }
+  return candidate;
+}
+
 export function generateRuntimeBootstrapSource(
   compiler: Compiler,
   mode: RuntimeBootstrapMode,
@@ -277,16 +313,6 @@ export function runRuntimeBootstrap(
     sourceHash: string;
     nativeAbi: number;
     foreignDeclarations: NativeForeignDeclaration[];
-  };
-  const nativeLogicalSourceKey = (filename: string): string | undefined => {
-    const normalized = filename.replaceAll("\\", "/");
-    // Production source identities are relative to `src/lib`, not to the
-    // historical `sagejs.kernels` package.  Keep this broad enough for every
-    // compiled library module (for example `sagejs.linear_algebra`) while
-    // retaining the package root in the key so unrelated files cannot collide.
-    const marker = "/sagejs/";
-    const index = normalized.lastIndexOf(marker);
-    return index < 0 ? undefined : normalized.slice(index + 1);
   };
   const usableNativeCandidate = (candidate: unknown): boolean => {
     if (typeof candidate !== "function") return false;
