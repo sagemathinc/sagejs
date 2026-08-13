@@ -68,6 +68,7 @@ test("Container build uses GCC, partial static linking, and the portable math pr
     "utf8",
   );
   assert.match(containerfile, /CC=gcc CXX=g\+\+ \.\/configure .*--partly-static/);
+  assert.match(containerfile, /make -j"\$\(nproc\)" install/);
   assert.match(containerfile, /SAGEJS_NATIVE_MATH_PROFILE=portable/);
   assert.match(containerfile, /SAGEJS_FLINT_PREFIX=\/opt\/sagejs-native\/flint/);
   assert.match(containerfile, /LDFLAGS="-static-libgcc -static-libstdc\+\+"/);
