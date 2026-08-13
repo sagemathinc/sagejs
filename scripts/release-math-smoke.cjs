@@ -85,6 +85,15 @@ const requiredNativeWitnesses = Object.freeze([
   }),
 ]);
 
+function requiredNativeWitnessesForPlatform(platform = process.platform) {
+  // The native Windows release intentionally has no M4RI dependency yet. GF(2)
+  // semantics are still exercised by the shared program, but requiring the
+  // Unix-only backend would make a correct packed/compiler fallback fail its
+  // release gate.
+  return requiredNativeWitnesses.filter((witness) =>
+    platform !== "win32" || witness.name !== "binary-m4ri-resource");
+}
+
 const preservedEnvironment = new Set([
   "COMSPEC",
   "LANG",
@@ -310,7 +319,7 @@ function isNativeImplementation(implementation) {
   return nativeImplementations.has(implementation);
 }
 
-function classifyNativeSelections(selections) {
+function classifyNativeSelections(selections, options = {}) {
   const native = selections.filter(({ implementation }) =>
     nativeImplementations.has(implementation));
   const fallback = selections.filter(({ implementation }) =>
@@ -318,7 +327,9 @@ function classifyNativeSelections(selections) {
   const unknown = selections.filter(({ implementation }) =>
     !nativeImplementations.has(implementation) &&
     !fallbackImplementations.has(implementation));
-  const witnesses = requiredNativeWitnesses.map((witness) => {
+  const witnesses = requiredNativeWitnessesForPlatform(
+    options.platform,
+  ).map((witness) => {
     const observed = selections.some(({ operation, implementation }) =>
       operation === witness.operation &&
       witness.implementations.includes(implementation));
@@ -675,6 +686,7 @@ module.exports = {
   parseArguments,
   releaseEnvironment,
   requiredNativeWitnesses,
+  requiredNativeWitnessesForPlatform,
   runProcessTree,
   runSmoke,
   runnerFor,

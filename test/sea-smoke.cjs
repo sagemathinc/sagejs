@@ -356,7 +356,11 @@ try {
     });
     if (m4ri.error) throw m4ri.error;
     assert.equal(m4ri.status, 0, m4ri.stderr || m4ri.stdout);
-    assert.match(m4ri.stdout, /generated-m4ri-resource/);
+    if (process.platform === "win32") {
+      assert.doesNotMatch(m4ri.stdout, /generated-m4ri-resource/);
+    } else {
+      assert.match(m4ri.stdout, /generated-m4ri-resource/);
+    }
     assert.match(m4ri.stdout, /m4ri sea ok/);
   }
 } finally {

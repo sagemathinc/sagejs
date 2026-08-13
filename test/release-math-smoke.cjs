@@ -23,6 +23,7 @@ const {
   parseArguments,
   releaseEnvironment,
   requiredNativeWitnesses,
+  requiredNativeWitnessesForPlatform,
   runSmoke,
   runnerFor,
   terminateProcessTree,
@@ -122,6 +123,16 @@ test("release mathematics native capability classification fails closed", () => 
   ]);
   assert.equal(classified.status, "not-observed");
   assert.equal(classified.unknown.length, 1);
+  assert.equal(
+    requiredNativeWitnessesForPlatform("win32").some(
+      ({ name }) => name === "binary-m4ri-resource",
+    ),
+    false,
+  );
+  assert.equal(
+    classifyNativeSelections([], { platform: "win32" }).witnesses.length,
+    requiredNativeWitnesses.length - 1,
+  );
 });
 
 test("release mathematics smoke reports fallback and enforces named native witnesses", async (t) => {
