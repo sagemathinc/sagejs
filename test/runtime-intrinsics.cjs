@@ -96,9 +96,29 @@ const generated = compile(source);
 
 assert.match(generated, /ρσ_integer_bigint\(6\)/);
 assert.match(generated, /ρσ_operator_mul_exact/);
-assert.doesNotMatch(generated, /sagejs\.runtime/);
-assert.doesNotMatch(generated, /ρσ_modules\["sagejs\.runtime"\]/);
-assert.doesNotMatch(generated, /(?:\bvar\s+runtime\b|\bruntime\s*[.(])/);
+assert.match(
+  generated,
+  /var \$ρσ\$py\$runtime = ρσ_modules\["sagejs\.runtime"\]/,
+);
+assert.doesNotMatch(generated, /\$ρσ\$py\$runtime\s*[.(]/);
+
+const firstClassRuntime = compile(
+  "import sagejs.runtime as runtime\n" +
+    "call = getattr(runtime, 'ffi_call')\n" +
+    "names = dir(runtime)\n",
+);
+assert.match(
+  firstClassRuntime,
+  /var \$ρσ\$py\$runtime = ρσ_modules\["sagejs\.runtime"\]/,
+);
+assert.match(
+  firstClassRuntime,
+  /getattr\)\(ρσ_resolve_module_name\(\$ρσ\$py\$runtime[^;]+"ffi_call"\)/,
+);
+assert.match(
+  firstClassRuntime,
+  /dir\)\(ρσ_resolve_module_name\(\$ρσ\$py\$runtime/,
+);
 
 const nativeArgumentVectors = compile(
   "import sagejs.runtime as runtime\n" +
@@ -207,7 +227,11 @@ for (const [name, lowered] of publicManifest) {
     oneAttribute,
     new RegExp(`value = ${escapeRegExp(lowered)}`),
   );
-  assert.doesNotMatch(oneAttribute, /\bsage\b/);
+  assert.match(
+    oneAttribute,
+    /var \$ρσ\$py\$sage = ρσ_modules\["sagejs"\]/,
+  );
+  assert.doesNotMatch(oneAttribute, /\$ρσ\$py\$sage\s*[.(]/);
 }
 
 assert.throws(

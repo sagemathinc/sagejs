@@ -89,6 +89,16 @@ test("generated baselib gives every source file one lexical module", () => {
     generated,
     /globalThis\.__sagejs_baselib_modules__ = ρσ_baselib_modules;/,
   );
+  assert.match(
+    generated,
+    /ρσ_baselib_modules\["sagejs\.runtime"\] = \(function\(\) \{/,
+    "the intrinsic runtime must be one real lexical baselib module",
+  );
+  assert.match(
+    generated,
+    /ρσ_baselib_modules\["sagejs"\]\.runtime = ρσ_baselib_modules\["sagejs\.runtime"\]/,
+    "the canonical package must publish the same runtime module",
+  );
   const firstWrapper = generated.indexOf(" = (function() {");
   assert.ok(
     firstWrapper > 0,
@@ -115,6 +125,75 @@ test("generated baselib gives every source file one lexical module", () => {
   assert.doesNotMatch(
     readFileSync(join(root, "src", "baselib", "graphs.py"), "utf8"),
     /sorts before this module in the concatenated baselib build/,
+  );
+});
+
+test("sagejs.runtime is a complete canonical module namespace", async (t) => {
+  const session = await createSage({ mode: "python" });
+  t.after(() => session.close());
+  const runtimeNames = Object.keys(
+    require("../dist/tools/python/contract.js").SAGEJS_RUNTIME_INTRINSICS,
+  );
+
+  await session.evaluate(
+    "import sagejs.runtime as runtime\n" +
+      "import sagejs as sagejs\n" +
+      "import types\n" +
+      `runtime_names = ${JSON.stringify(runtimeNames)}`,
+  );
+  assert.equal(
+    (await session.evaluate(
+      "runtime.__name__, runtime.__package__, " +
+        "type(runtime) is types.ModuleType, isinstance(runtime, types.ModuleType)",
+    )).repr,
+    "('sagejs.runtime', 'sagejs', True, True)",
+  );
+  assert.equal(
+    (await session.evaluate(
+      "runtime is sagejs.runtime, " +
+        "runtime is __import__('sagejs.runtime', None, None, ['*']), " +
+        "runtime.__dict__ is vars(runtime)",
+    )).repr,
+    "(True, True, True)",
+  );
+  assert.equal(
+    (await session.evaluate(
+      "set(runtime_names).issubset(set(dir(runtime))), " +
+        "set(runtime_names).difference({'last_exception', 'undefined'})" +
+        ".issubset(set(runtime.__dict__.keys())), " +
+        "runtime.object.hasOwn(runtime, 'last_exception'), " +
+        "runtime.object.hasOwn(runtime, 'undefined')",
+    )).repr,
+    "(True, True, True, True)",
+  );
+  assert.equal(
+    (await session.evaluate(
+      "missing = [name for name in runtime_names " +
+        "if name not in ('last_exception', 'undefined') " +
+        "and not hasattr(runtime, name)]\n" +
+        "values = [getattr(runtime, name) for name in runtime_names " +
+        "if name not in ('last_exception', 'undefined')]\n" +
+        "missing, len(values)",
+    )).repr,
+    `([], ${runtimeNames.length - 2})`,
+  );
+  assert.equal(
+    (await session.evaluate(
+      "factory = getattr(runtime, 'uint64_buffer')\n" +
+        "packed = factory([1, 2, 3])\n" +
+        "(len(packed), packed[0], packed[2], " +
+        "getattr(runtime, 'ffi_call') is runtime.ffi_call, " +
+        "getattr(runtime, 'reflect') is runtime.reflect)",
+    )).repr,
+    "(3, 1, 3, True, True)",
+  );
+  assert.equal(
+    (await session.evaluate(
+      "[name for name in " +
+        "['process', 'Symbol', 'require', 'ρσ_modules'] " +
+        "if hasattr(runtime, name)]",
+    )).repr,
+    "[]",
   );
 });
 

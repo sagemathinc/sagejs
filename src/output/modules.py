@@ -1126,11 +1126,7 @@ def print_imports(container, output):
 
     for self in container.imports:
         if self.intrinsic:
-            if (
-                output.options.reuse_main_module
-                and self.target_module is "__main__"
-                and self.alias
-            ):
+            if self.alias:
                 local_name = self.alias.name
                 output.indent()
                 output.print("var ")
@@ -1140,12 +1136,24 @@ def print_imports(container, output):
                 output.space()
                 output.print("ρσ_modules[")
                 output.print_string(self.key)
-                output.print("] || (ρσ_modules[")
+                output.print("] || (globalThis.__sagejs_baselib_modules__ && ")
+                output.print("globalThis.__sagejs_baselib_modules__[")
                 output.print_string(self.key)
-                output.print("] = {__name__:")
-                output.print_string(self.key)
-                output.print("})")
+                output.print("])")
                 output.end_statement()
+                output.indent()
+                output.print("if (")
+                print_local_name(local_name)
+                output.print(" === undefined) throw new ImportError(")
+                output.print_string("No module named '" + self.key + "'")
+                output.print(")")
+                output.end_statement()
+            if (
+                output.options.reuse_main_module
+                and self.target_module is "__main__"
+                and self.alias
+            ):
+                local_name = self.alias.name
                 output.indent()
                 output.print("Object.defineProperty(ρσ_modules.__main__,")
                 output.print_string(local_name)

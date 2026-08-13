@@ -105,6 +105,31 @@ async function compile_baselib(PyLang, src_path) {
       supportsLexicalModuleMetadata = false;
     }
 
+    // `sagejs.runtime` is both a compiler intrinsic and a real Python module.
+    // Keep the immutable stage-zero path unchanged, then materialize its
+    // readable compatibility source in the converged lexical build.  It is
+    // deliberately outside facade ownership analysis because several public
+    // aliases name primitives owned by other baselib modules.
+    if (supportsLexicalModuleMetadata) {
+      const runtimeFilename = "sagejs/runtime.py";
+      const runtimePath = path.join(src_path, "baselib", runtimeFilename);
+      const raw = fs.readFileSync(runtimePath, "utf-8");
+      const ast = frontend.parse(raw, {
+        filename: runtimeFilename,
+        basedir: path.dirname(runtimePath),
+        intrinsic_package_shells: true,
+        scoped_flags: { bound_methods: true },
+        compiler_bootstrap: true,
+      });
+      modules.push({
+        ast,
+        filename: runtimeFilename,
+        moduleId: "sagejs.runtime",
+        exports: [...new Set(ast.exports.map((symbol) => symbol.name))],
+        references: [],
+      });
+    }
+
     if (!supportsLexicalModuleMetadata) {
       // The immutable bootstrap compiler predates intrinsic sagejs.runtime
       // imports and expands the compatibility package into every baselib
@@ -158,6 +183,7 @@ async function compile_baselib(PyLang, src_path) {
         if (module.filename === "errors.py") return 4;
         if (module.filename === "internal.py") return 5;
         if (module.filename === "str.py") return 6;
+        if (module.moduleId === "sagejs.runtime") return 8;
         return 7;
       };
       return priority(left) - priority(right);
@@ -172,6 +198,11 @@ async function compile_baselib(PyLang, src_path) {
     // currently being evaluated still uses its local namespace fallback.
     ans.pretty +=
       "globalThis.__sagejs_baselib_modules__ = ρσ_baselib_modules;\n";
+    ans.pretty +=
+      'ρσ_baselib_modules["sagejs"] = Object.create(null);\n' +
+      'Object.defineProperties(ρσ_baselib_modules["sagejs"],{' +
+      '__name__:{enumerable:true,value:"sagejs"},' +
+      '__package__:{enumerable:true,value:"sagejs"}});\n';
     // Match Python's sys.modules rule: publish every module object before its
     // body executes.  Cycles can therefore observe stable, partially
     // initialized namespaces instead of allocating a second module or
@@ -243,6 +274,9 @@ async function compile_baselib(PyLang, src_path) {
         }
       }
     });
+    ans.pretty +=
+      'ρσ_baselib_modules["sagejs"].runtime = ' +
+      'ρσ_baselib_modules["sagejs.runtime"];\n';
     ans.pretty += "ρσ_baselib_facade = null;\n";
   } finally {
     frontend?.close();
