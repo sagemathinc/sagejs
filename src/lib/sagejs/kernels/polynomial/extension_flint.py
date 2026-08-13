@@ -14,6 +14,7 @@ from sagejs.ffi.flint import (
     FqElement,
     FqPolynomial,
     fq_element_coordinate,
+    fq_element_extension_degree,
     fq_polynomial,
     fq_polynomial_add,
     fq_polynomial_coordinate,
@@ -63,6 +64,16 @@ def flint_extension_element_coordinate(
 ) -> uint64:
     """Return one checked power-basis coordinate."""
     return fq_element_coordinate(element, basis_index)
+
+
+@native
+def flint_extension_element_coordinate_sum(element: FqElement) -> int:
+    """Safely borrow and traverse one complete extension-field scalar."""
+    total = 0
+    extension_degree = fq_element_extension_degree(element)
+    for basis in range(extension_degree):
+        total += fq_element_coordinate(element, basis)
+    return total
 
 
 @native

@@ -57,6 +57,7 @@ const integration = [
   "test/ffi-resource-finalization-bootstrap.cjs",
   "test/extension-polynomial-resource-ffi.cjs",
   "test/extension-polynomial-resource-kernels.cjs",
+  "test/finite-extension-scalar-resource.cjs",
   "test/native-resource-basic-finalizer.cjs",
   "test/native-uint64-bitwise.cjs",
   "test/ffi-wasm-fmpz-resource-core.cjs",

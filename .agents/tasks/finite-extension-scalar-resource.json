@@ -19,7 +19,9 @@
     "src/lib/sagejs/kernels/polynomial/extension_flint.py",
     "test/finite-extension-scalar-resource.cjs",
     "test/extension-polynomial-resource-kernels.cjs",
+    "test/fixtures/native-ffi-flint-extension/witness.py",
     "test/ffi.cjs",
+    "test/node-test-manifest.cjs",
     "pyrightconfig.json",
     "architecture/native-boundaries.json",
     "architecture/native-kernels.json"

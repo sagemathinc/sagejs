@@ -64,6 +64,7 @@
     "src/lib/sagejs/polynomial_algorithms/cyclotomic_core.py",
     "src/lib/sagejs/polynomial_algorithms/exact_coefficient_bytes_contract.py",
     "src/lib/sagejs/polynomial_algorithms/extension_resource_contract.py",
+    "src/lib/sagejs/polynomial_algorithms/extension_scalar_resource.py",
     "src/lib/sagejs/polynomial_algorithms/arbitrary_prime_public.py",
     "src/lib/sagejs/polynomial_algorithms/invariants.py",
     "src/lib/sagejs/polynomial_algorithms/packed_prime_xgcd.py",

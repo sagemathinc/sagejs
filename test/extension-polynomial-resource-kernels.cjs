@@ -243,6 +243,7 @@ test("typed Python safely borrows and traverses an extension resource", async ()
     "flint_extension_polynomial_add",
     "flint_extension_polynomial_multiply",
     "flint_extension_element_coordinate",
+    "flint_extension_element_coordinate_sum",
     "flint_extension_polynomial_coordinate",
     "flint_extension_polynomial_coordinate_sum",
   ]) {

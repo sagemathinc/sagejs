@@ -8849,7 +8849,9 @@ def fq_element_mul(left: FqElement, right: FqElement) -> FqElement: ...
         allocates=True,
         raises=[RuntimeError],
     ),
-    result=Status(1, exception=RuntimeError, message="finite extension negation failed"),
+    result=Status(
+        1, exception=RuntimeError, message="finite extension negation failed"
+    ),
     wasm=False,
 )
 def fq_element_neg(source: FqElement) -> FqElement: ...
