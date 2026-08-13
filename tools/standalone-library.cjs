@@ -8,19 +8,120 @@
  * authoritative module resolver embeds one host-independent dependency set.
  */
 
-const MATRIX_STANDALONE_MODULES = Object.freeze([
-  "sagejs.linear_algebra.matrix_selection_public",
-  "sagejs.linear_algebra.matrix_vector_public",
-  "sagejs.linear_algebra.sparse_random",
-  "sagejs.linear_algebra.sparse_random_public",
-  "sagejs.kernels.matrix.dense_integer",
-  "sagejs.kernels.matrix.dense_integer_flint",
-  "sagejs.kernels.matrix.dense_prime_field",
-  "sagejs.kernels.matrix.dense_prime_field_flint",
-  "sagejs.kernels.matrix.dense_prime_field_fflas",
-  "sagejs.kernels.matrix.dense_rational",
-  "sagejs.kernels.matrix.dense_rational_flint",
-]);
+const { existsSync, readFileSync } = require("node:fs");
+const { join } = require("node:path");
+
+const TOOL_PARENT = join(__dirname, "..");
+const ROOT = existsSync(join(TOOL_PARENT, "src"))
+  ? TOOL_PARENT
+  : join(TOOL_PARENT, "..");
+const LIBRARY_DIRECTORY = join(ROOT, "src", "lib");
+
+function sourceFilenameForModule(name) {
+  const base = join(LIBRARY_DIRECTORY, ...name.split("."));
+  const moduleFilename = `${base}.py`;
+  if (existsSync(moduleFilename)) return moduleFilename;
+  const packageFilename = join(base, "__init__.py");
+  if (existsSync(packageFilename)) return packageFilename;
+  return undefined;
+}
+
+function resolveRelativeImport(importer, imported) {
+  if (!imported.startsWith(".")) return imported;
+  const level = imported.length - imported.replace(/^\.+/, "").length;
+  const suffix = imported.slice(level);
+  const importerSource = sourceFilenameForModule(importer);
+  let base = importerSource?.endsWith("/__init__.py")
+    ? importer
+    : importer.split(".").slice(0, -1).join(".");
+  for (let index = 1; index < level; index += 1) {
+    base = base.split(".").slice(0, -1).join(".");
+  }
+  return suffix ? `${base}.${suffix}` : base;
+}
+
+function pythonDynamicImports(source, importer) {
+  const names = new Set();
+  for (const match of source.matchAll(/__import__\(\s*["']([^"']+)["']/g)) {
+    names.add(resolveRelativeImport(importer, match[1]));
+  }
+  return [...names];
+}
+
+function pythonImports(source, importer) {
+  const names = new Set(pythonDynamicImports(source, importer));
+  for (const match of source.matchAll(
+    /^\s*from\s+([.\w]+)\s+import\s+(\([^)]*\)|[^\n#]+)/gm,
+  )) {
+    const parent = resolveRelativeImport(importer, match[1]);
+    names.add(parent);
+    const importedNames = match[2]
+      .replace(/[()]/g, "")
+      .replace(/#[^\n]*/g, "")
+      .split(",");
+    for (const item of importedNames) {
+      const child = item.trim().split(/\s+as\s+/)[0];
+      if (!child || child === "*") continue;
+      const childName = parent ? `${parent}.${child}` : child;
+      if (sourceFilenameForModule(childName)) names.add(childName);
+    }
+  }
+  for (const match of source.matchAll(/^\s*import\s+([^\n#]+)/gm)) {
+    for (const item of match[1].split(",")) {
+      const name = item.trim().split(/\s+as\s+/)[0];
+      if (name) names.add(resolveRelativeImport(importer, name));
+    }
+  }
+  return [...names];
+}
+
+function moduleParents(name) {
+  const parts = name.split(".");
+  const result = [];
+  for (let length = 1; length < parts.length; length += 1) {
+    const parent = parts.slice(0, length).join(".");
+    if (sourceFilenameForModule(parent)) result.push(parent);
+  }
+  return result;
+}
+
+function moduleClosure(roots) {
+  const found = new Set();
+  const pending = [...roots];
+  while (pending.length > 0) {
+    const name = pending.shift();
+    if (found.has(name)) continue;
+    const filename = sourceFilenameForModule(name);
+    if (!filename) continue;
+    found.add(name);
+    pending.push(...moduleParents(name));
+    const source = readFileSync(filename, "utf8");
+    for (const dependency of pythonImports(source, name)) {
+      if (dependency === "sagejs" || dependency.startsWith("sagejs.")) {
+        pending.push(dependency);
+      }
+    }
+  }
+  return [...found].sort();
+}
+
+function baselibLazyModules(filename) {
+  const source = readFileSync(join(ROOT, "src", "baselib", filename), "utf8");
+  return pythonDynamicImports(
+    source,
+    `sagejs._baselib.${filename.slice(0, -3)}`,
+  )
+    .filter((name) => sourceFilenameForModule(name) !== undefined)
+    .sort();
+}
+
+const BUILTINS_STANDALONE_MODULES = Object.freeze(
+  baselibLazyModules("builtins.py"),
+);
+
+const MATRIX_STANDALONE_MODULES = Object.freeze(
+  baselibLazyModules("matrix.py"),
+);
 
 const POLYNOMIAL_STANDALONE_MODULES = Object.freeze([
   "sagejs.kernels.polynomial.packed_integer",
@@ -30,53 +131,31 @@ const POLYNOMIAL_STANDALONE_MODULES = Object.freeze([
 ]);
 
 const BASELIB_STANDALONE_MODULES = Object.freeze([
-  ...MATRIX_STANDALONE_MODULES,
-  ...POLYNOMIAL_STANDALONE_MODULES,
+  ...new Set([
+    ...BUILTINS_STANDALONE_MODULES,
+    ...MATRIX_STANDALONE_MODULES,
+    ...POLYNOMIAL_STANDALONE_MODULES,
+  ]),
 ]);
 
 // Cache the complete static dependency closure as separate module artifacts.
 // The authoritative resolver still verifies these identities and source
-// hashes; this list avoids reparsing the same library graph for every explicit
-// standalone compilation.
-const BASELIB_STANDALONE_CACHE_MODULES = Object.freeze([
-  "sagejs",
-  "sagejs.ffi",
-  "sagejs.ffi.flint",
-  "sagejs.ffi.fflas",
-  "sagejs.linear_algebra",
-  "sagejs.linear_algebra.matrix_selection",
-  "sagejs.linear_algebra.matrix_selection_public",
-  "sagejs.linear_algebra.matrix_vector",
-  "sagejs.linear_algebra.matrix_vector_public",
-  "sagejs.linear_algebra.sparse_random",
-  "sagejs.linear_algebra.sparse_random_public",
-  "sagejs.kernels",
-  "sagejs.kernels.matrix",
-  "sagejs.kernels.matrix.dense_integer",
-  "sagejs.kernels.matrix.dense_integer_flint",
-  "sagejs.kernels.matrix.dense_prime_field",
-  "sagejs.kernels.matrix.dense_prime_field_flint",
-  "sagejs.kernels.matrix.dense_prime_field_fflas",
-  "sagejs.kernels.matrix.dense_rational",
-  "sagejs.kernels.matrix.dense_rational_flint",
-  "sagejs.kernels.polynomial",
-  "sagejs.kernels.polynomial.packed_integer",
-  "sagejs.kernels.polynomial.packed_flint",
-  "sagejs.kernels.polynomial.packed_prime_field",
-  "sagejs.kernels.polynomial.packed_rational",
-  "sagejs.native",
-]);
+// hashes; this avoids reparsing the same library graph for every explicit
+// standalone compilation without maintaining a second module list by hand.
+const BASELIB_STANDALONE_CACHE_MODULES = Object.freeze(
+  moduleClosure(BASELIB_STANDALONE_MODULES),
+);
 
 function baselibStandaloneImportPrelude(modules = BASELIB_STANDALONE_MODULES) {
-  return modules
-    .map((name) => `import ${name}\n`)
-    .join("");
+  return modules.map((name) => `import ${name}\n`).join("");
 }
 
 module.exports = {
   BASELIB_STANDALONE_CACHE_MODULES,
   BASELIB_STANDALONE_MODULES,
+  BUILTINS_STANDALONE_MODULES,
   MATRIX_STANDALONE_MODULES,
   POLYNOMIAL_STANDALONE_MODULES,
   baselibStandaloneImportPrelude,
+  moduleClosure,
 };

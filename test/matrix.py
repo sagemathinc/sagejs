@@ -540,7 +540,7 @@ except ZeroDivisionError:
 try:
     A * vector([1, 2, 3])
     assert False
-except ValueError:
+except TypeError:
     pass
 
 try:
