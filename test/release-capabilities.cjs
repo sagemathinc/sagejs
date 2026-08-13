@@ -22,6 +22,7 @@ const {
   SCHEMA,
   collectReleaseCapabilities,
   formatReleaseCapabilities,
+  nativeBinaryReceiptContract,
 } = require("../scripts/release-capabilities.cjs");
 const {
   canonicalJson,
@@ -259,6 +260,131 @@ function embeddedAssetDeclaration(assets) {
   };
 }
 
+function nativeBinaryReceipt(assets, target) {
+  const format = { darwin: "macho", linux: "elf", win32: "pe" }[
+    target.platform
+  ];
+  const entries = [
+    {
+      bytes: Buffer.from("fixture node template"),
+      label: "sea/node-template",
+      role: "executable-template",
+    },
+    ...Object.entries(assets)
+      .filter(([name]) => name.endsWith(".node"))
+      .map(([label, value]) => ({
+        bytes: bytes(value),
+        label,
+        role: "embedded-node-addon",
+      })),
+  ].sort((left, right) => left.label.localeCompare(right.label));
+  const files = entries.map((entry) => {
+    const common = {
+      dependencies: target.platform === "linux" ? ["libc.so.6"] : [],
+      format,
+      label: entry.label,
+      role: entry.role,
+      sha256: digestBytes(entry.bytes),
+      size: entry.bytes.length,
+      wordSize: 64,
+    };
+    if (format === "elf") {
+      return {
+        ...common,
+        architecture: target.arch,
+        endianness: "little",
+        glibcVersions: [target.libc.version],
+        interpreter: entry.label === "sea/node-template"
+          ? "/lib64/ld-linux-x86-64.so.2"
+          : null,
+        machine: target.arch === "arm64" ? 183 : 62,
+        maximumGlibc: target.libc.version,
+        osAbi: 0,
+        requiredSymbolVersions: [`GLIBC_${target.libc.version}`],
+        rpaths: [],
+        symbolVersionFamilies: {
+          GLIBC: {
+            maximum: target.libc.version,
+            versions: [target.libc.version],
+          },
+        },
+      };
+    }
+    if (format === "macho") {
+      return {
+        ...common,
+        architectures: [target.arch],
+        maximumMinimumMacos: "13.5.0",
+        rpaths: [],
+        universal: false,
+        slices: [{
+          architecture: target.arch,
+          declaredMinimumMacos: ["13.5.0"],
+          dependencies: [],
+          endianness: "little",
+          machine: 0x0100000c,
+          minimumMacos: "13.5.0",
+          rpaths: [],
+          wordSize: 64,
+        }],
+      };
+    }
+    return {
+      ...common,
+      architecture: target.arch,
+      delayDependencies: [],
+      machine: 0x8664,
+      subsystem: 3,
+    };
+  });
+  const aggregate = {
+    architectures: [target.arch],
+    dependencies: target.platform === "linux" ? ["libc.so.6"] : [],
+    formats: [format],
+    maximumGlibc: target.platform === "linux" ? target.libc.version : null,
+    maximumMinimumMacos: target.platform === "darwin" ? "13.5.0" : null,
+    maximumSymbolVersions: target.platform === "linux"
+      ? { GLIBC: target.libc.version }
+      : {},
+  };
+  const report = {
+    aggregate,
+    files,
+    inputSetSha256: digestBytes(JSON.stringify(files.map(
+      ({ label, role, sha256, size }) => ({ label, role, sha256, size }),
+    ))),
+    ok: true,
+    policy: {
+      architectures: [target.arch],
+      exactArchitectures: true,
+      format,
+      requiredLabels: files.map(({ label }) => label),
+    },
+    schema: "sagejs.native-binary-inspection-v1",
+    violations: [],
+  };
+  return {
+    nodeTemplateSha256: files.find(
+      ({ label }) => label === "sea/node-template",
+    ).sha256,
+    receipt: {
+      report,
+      reportSha256: digestBytes(canonicalJson(report)),
+      schema: "sagejs.native-binary-receipt/v1",
+    },
+  };
+}
+
+function refreshNativeBinaryReceipt(receipt) {
+  const files = [...receipt.report.files].sort((left, right) =>
+    left.label.localeCompare(right.label));
+  receipt.report.files = files;
+  receipt.report.inputSetSha256 = digestBytes(JSON.stringify(files.map(
+    ({ label, role, sha256, size }) => ({ label, role, sha256, size }),
+  )));
+  receipt.reportSha256 = digestBytes(canonicalJson(receipt.report));
+}
+
 function embedBuildManifest(assets, index, overrides = {}) {
   const nativeKernels = {
     authorityPath: "architecture/native-kernels.json",
@@ -271,6 +397,20 @@ function embedBuildManifest(assets, index, overrides = {}) {
     schema: "sagejs.native-kernel-receipt/v1",
     ...overrides.nativeKernels,
   };
+  const target = overrides.manifest?.target || buildManifest().target;
+  const nativeBinaries = nativeBinaryReceipt(assets, target);
+  overrides.mutateNativeBinaries?.(nativeBinaries.receipt);
+  const manifestToolchain = {
+    compiler: { id: "clang", version: "20.1.0" },
+    nativeMathProfile: mathProfile(),
+    node: "v22.22.2",
+    ...(overrides.manifest?.toolchain || {}),
+    nativeBinaries: nativeBinaries.receipt,
+    seaNode: {
+      executableSha256: nativeBinaries.nodeTemplateSha256,
+      version: "22.22.2",
+    },
+  };
   const manifest = buildManifest({
     capabilities: {
       artifact: {
@@ -282,6 +422,7 @@ function embedBuildManifest(assets, index, overrides = {}) {
       ...overrides.capabilities,
     },
     ...overrides.manifest,
+    toolchain: manifestToolchain,
   });
   assets[BUILD_MANIFEST_ASSET] = JSON.stringify(manifest);
   return manifest;
@@ -491,7 +632,13 @@ test("SEA identity, FFI, and native kernels require canonical receipts for exact
     embedAdapter(embeddedAssets, "igraph");
     embedAdapter(embeddedAssets, "m4ri");
     addKernelAssets(embeddedAssets, index);
-    embedBuildManifest(embeddedAssets, index);
+    const embeddedManifest = embedBuildManifest(embeddedAssets, index);
+    assert.equal(nativeBinaryReceiptContract(embeddedManifest, {
+      assets: new Set(Object.keys(embeddedAssets)),
+      bytes: (name) => Object.hasOwn(embeddedAssets, name)
+        ? bytes(embeddedAssets[name])
+        : null,
+    }), true);
 
     // A contradictory nearby architecture declaration is not SEA authority.
     write(
@@ -714,6 +861,63 @@ test("SEA receipt contract, target, compiler bytes, and source names fail closed
     assert.equal(capability(report, "typed-python-native-kernels").candidate, "unavailable");
   } finally {
     rmSync(item.directory, { recursive: true, force: true });
+  }
+});
+
+test("SEA native binary evidence rejects omitted, extra, tampered, and wrong-target reports", () => {
+  const mutations = [
+    (receipt) => {
+      receipt.report.files = receipt.report.files.filter(
+        ({ label }) => label !== "native/sagejs_flint_ffi.node",
+      );
+      receipt.report.policy.requiredLabels =
+        receipt.report.policy.requiredLabels.filter(
+          (label) => label !== "native/sagejs_flint_ffi.node",
+        );
+      refreshNativeBinaryReceipt(receipt);
+    },
+    (receipt) => {
+      const extra = structuredClone(receipt.report.files.find(
+        ({ label }) => label !== "sea/node-template",
+      ));
+      extra.label = "native/unaccounted.node";
+      receipt.report.files.push(extra);
+      receipt.report.policy.requiredLabels.push(extra.label);
+      receipt.report.policy.requiredLabels.sort((left, right) =>
+        left.localeCompare(right));
+      refreshNativeBinaryReceipt(receipt);
+    },
+    (receipt) => {
+      receipt.report.files[0].dependencies.push("libtampered.so");
+      // Deliberately retain the original report hash.
+    },
+    (receipt) => {
+      receipt.report.policy.architectures = ["arm64"];
+      receipt.report.aggregate.architectures = ["arm64"];
+      for (const file of receipt.report.files) file.architecture = "arm64";
+      refreshNativeBinaryReceipt(receipt);
+    },
+  ];
+  for (const mutateNativeBinaries of mutations) {
+    const item = fixture({ git: false, runtime: false });
+    try {
+      const index = kernelIndex();
+      const assets = { "compiler/compiler.js": "compiler" };
+      for (const id of ["flint", "fflas", "igraph", "m4ri"]) {
+        embedAdapter(assets, id);
+      }
+      addKernelAssets(assets, index);
+      embedBuildManifest(assets, index, { mutateNativeBinaries });
+      const report = collectReleaseCapabilities(fixedOptions(item, {
+        artifactKind: "single-executable",
+        embeddedAssets: assets,
+        git: { commit: null, dirty: null, present: false },
+      }));
+      assert.equal(report.buildReceipt.availability, "unavailable");
+      assert.equal(capability(report, "flint").candidate, "unavailable");
+    } finally {
+      rmSync(item.directory, { recursive: true, force: true });
+    }
   }
 });
 
