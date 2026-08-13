@@ -1,0 +1,84 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "rc-npm-install",
+  "title": "Rc Npm Install",
+  "lane": "integration",
+  "status": "active",
+  "owner": "user",
+  "objective": "Validate clean native npm installation, relocation, upgrade, uninstall, and operation without a source checkout or build toolchain.",
+  "base_commit": "950f0134dd51ca66776dc3d6290a5807cf3fd77f",
+  "claims": [
+    "scripts/test-npm-package.cjs",
+    "scripts/check-release.cjs",
+    "test/release-npm-install.cjs",
+    "bin/native-launcher.cjs",
+    "test/native-launcher.cjs",
+    "tools/resources.ts",
+    "test/npm-native-api-diagnostic.cjs"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "not-applicable",
+    "fallback": "not-applicable",
+    "oracles": [],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm architecture:check",
+    "pnpm test:portable",
+    "pnpm test:baselib:strict"
+  ],
+  "runs": [
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 5.434,
+      "started_at": "2026-08-13T20:24:34.284Z",
+      "commit": "950f0134dd51ca66776dc3d6290a5807cf3fd77f",
+      "workspace_fingerprint": "0b485a91cd0929473135c9c56f033cc689756b89eedc7177cf32b79ee4095cbb",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 14.308,
+      "started_at": "2026-08-13T20:24:43.568Z",
+      "commit": "950f0134dd51ca66776dc3d6290a5807cf3fd77f",
+      "workspace_fingerprint": "0b485a91cd0929473135c9c56f033cc689756b89eedc7177cf32b79ee4095cbb",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 19.451,
+      "started_at": "2026-08-13T20:25:01.863Z",
+      "commit": "950f0134dd51ca66776dc3d6290a5807cf3fd77f",
+      "workspace_fingerprint": "0b485a91cd0929473135c9c56f033cc689756b89eedc7177cf32b79ee4095cbb",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Replaced the shallow package smoke test with an eight-stage, registry-disconnected Linux x64 release proof. It installs the root archive without optional natives, verifies an actionable missing-platform diagnostic and compiler-free portable operation, adds the explicit platform archive, exercises the native SEA CLI and sagepython with exact ZZ/QQ mathematics, diagnoses the current programmatic native-API limitation, relocates the complete installation, checks explicit source override and corrupt-executable behavior, reinstalls after deleting all package-manager state, removes and reinstalls both public packages, and rejects a byte-corrupted archive. Published launchers now fail closed instead of accidentally entering an unusable source checkout when a supported native package is absent. Release metadata, helper behavior, and diagnostics have focused tests.",
+    "risks": [
+      "The current platform package is a self-contained CLI SEA, not a relocatable programmatic Node-addon distribution. The release test records that distinction explicitly: native CLI mathematics passes while the native JavaScript API produces an actionable diagnostic; portable programmatic operation remains available with SAGEJS_NATIVE_DISABLE=1.",
+      "The full archive lifecycle was executed on Linux x64. The validator is platform-parametric, but macOS arm64, Linux arm64, and Windows x64 require their release archives and CI hosts.",
+      "Portable validation is intentionally recorded as 270/271 here. Its only failure is the shared test-manifest ratchet because this lane does not own test/node-test-manifest.cjs; integration will register the two new tests and rerun it."
+    ],
+    "next_steps": [
+      "Cherry-pick this commit into integration, register test/release-npm-install.cjs and test/npm-native-api-diagnostic.cjs in test/node-test-manifest.cjs, rerun pnpm test:portable, and then mark the integrated task review.",
+      "Run scripts/test-npm-package.cjs against every platform archive in release CI, always with its root archive from the same release candidate.",
+      "After this RC, either publish relocatable native Node-addon assets for the programmatic API or formally define the platform packages as CLI-only."
+    ]
+  }
+}

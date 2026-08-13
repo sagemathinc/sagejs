@@ -2,7 +2,7 @@
 "use strict";
 
 const assert = require("node:assert/strict");
-const { readFileSync } = require("node:fs");
+const { existsSync, readFileSync } = require("node:fs");
 const { join, resolve } = require("node:path");
 
 const root = resolve(__dirname, "..");
@@ -34,6 +34,25 @@ assert.deepEqual(
 for (const name of names) {
   assert.equal(rootPackage.optionalDependencies[name], "workspace:*");
 }
+
+assert.deepEqual(rootPackage.bin, {
+  sagejs: "bin/sagejs",
+  "sagejs-jupyter": "bin/sagejs-jupyter",
+  sagepython: "bin/sagepython",
+});
+for (const filename of Object.values(rootPackage.bin)) {
+  assert.ok(existsSync(join(root, filename)), `missing public launcher ${filename}`);
+}
+for (const filename of ["bin", "dist", "index.cjs"]) {
+  assert.ok(
+    rootPackage.files.includes(filename),
+    `published source package must include ${filename}`,
+  );
+}
+assert.ok(
+  existsSync(join(root, "scripts", "test-npm-package.cjs")),
+  "release must retain the clean npm installation validator",
+);
 
 const tagIndex = process.argv.indexOf("--tag");
 if (tagIndex >= 0) {
