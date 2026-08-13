@@ -52,11 +52,13 @@ const unit = [
   "test/website.cjs",
   "test/audit-gaps.cjs",
   "test/standalone-library.cjs",
+  "test/sea-build-manifest.cjs",
 ];
 
 const integration = [
   "test/release-math-smoke.cjs",
   "test/release-macos-arm64.cjs",
+  "test/release-candidate-linux.cjs",
   "test/coverage-python-stdlib.cjs",
   "test/coverage-graphics3d.cjs",
   "test/coverage-graphs.cjs",

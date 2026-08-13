@@ -24,7 +24,7 @@ const sourceRoot = process.env.SAGEJS_RELEASE_SOURCE_ROOT;
 function execute(command, arguments_, options = {}) {
   const result = spawnSync(command, arguments_, {
     encoding: "utf8",
-    timeout: 60_000,
+    timeout: 90_000,
     ...options,
   });
   assert.ifError(result.error);

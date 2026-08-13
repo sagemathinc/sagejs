@@ -625,6 +625,8 @@ jobs:
             build/release/sagejs-macos-arm64.zip.sha256
             build/release/sagejs-macos-arm64.pkg
             build/release/sagejs-macos-arm64.pkg.sha256
+            build/release/sagejs-macos-arm64-benchmark.json
+            build/release/sagejs-macos-arm64-benchmark.json.sha256
             build/release/npm/sagejs-macos-arm64.tgz
           if-no-files-found: error
           retention-days: 14
