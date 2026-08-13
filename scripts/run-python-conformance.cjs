@@ -12,6 +12,7 @@ const {
   writeFileSync,
 } = require("node:fs");
 const { join, relative } = require("node:path");
+const { pythonExecutable } = require("../tools/python-executable.cjs");
 
 const root = join(__dirname, "..");
 const suiteRoot = join(root, "upstream-tests", "micropython");
@@ -49,8 +50,8 @@ produce byte-for-byte identical combined stdout/stderr.
 Options:
   --check                 Compare every outcome with the checked-in baseline
   --update-baseline       Replace the baseline with the current outcomes
-  --python PATH           Reference CPython (default: SAGEJS_REFERENCE_PYTHON
-                          or python3)
+  --python PATH           Reference CPython (default: SAGEJS_REFERENCE_PYTHON,
+                          PYTHON, or the host's standard Python command)
   --jobs N                Concurrent tests (default: host-dependent, at most 8)
   --timeout MS            Per-runtime timeout (default: 5000)
   --only REGEXP           Run only matching corpus-relative paths
@@ -74,7 +75,7 @@ function parseArguments(argv) {
   const options = {
     check: false,
     updateBaseline: false,
-    python: process.env.SAGEJS_REFERENCE_PYTHON || "python3",
+    python: pythonExecutable(),
     jobs: Math.max(1, Math.min(8, hostParallelism)),
     timeout: 5000,
     only: null,

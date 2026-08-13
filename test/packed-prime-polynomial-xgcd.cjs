@@ -262,7 +262,8 @@ test("packed GF(p)[x] xgcd is source-transparent and differential", () => {
   const witness = join(temporary, "witness.py");
   try {
     writeFileSync(witness, sageWitness);
-    const explanation = run(sagejs, [
+    const explanation = run(process.execPath, [
+      sagejs,
       "native",
       "explain",
       kernelSource,
@@ -273,14 +274,21 @@ test("packed GF(p)[x] xgcd is source-transparent and differential", () => {
     assert.match(explanation, /host-isolated core: yes/);
     assert.match(explanation, /0 callbacks inside core/);
 
-    run(sagejs, ["native", "compile", kernelSource, "--cache-root", cache]);
-    const native = run(sagejs, [witness], {
+    run(process.execPath, [
+      sagejs,
+      "native",
+      "compile",
+      kernelSource,
+      "--cache-root",
+      cache,
+    ]);
+    const native = run(process.execPath, [sagejs, witness], {
       env: {
         SAGEJS_NATIVE_CACHE_DIR: cache,
         SAGEJS_NATIVE_REQUIRED: "1",
       },
     });
-    const dynamic = run(sagejs, [witness], {
+    const dynamic = run(process.execPath, [sagejs, witness], {
       env: {
         SAGEJS_NATIVE_CACHE_DIR: cache,
         SAGEJS_NATIVE_DISABLE: "1",

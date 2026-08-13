@@ -4,6 +4,7 @@ const assert = require("node:assert/strict");
 const { spawnSync } = require("node:child_process");
 const { readFileSync } = require("node:fs");
 const { join } = require("node:path");
+const { pythonExecutable } = require("../tools/python-executable.cjs");
 
 const root = join(__dirname, "..");
 const cli = join(root, "bin", "sagejs");
@@ -66,7 +67,7 @@ for (const mode of ["--python", "--sage"]) {
 }
 assert.ok(sagejsPython);
 
-const python = process.env.PYTHON || "python3";
+const python = pythonExecutable();
 const numpyAvailable = run(python, ["-c", "import numpy"]);
 if (numpyAvailable.status === 0) {
   const cpython = run(python, [fixture]);

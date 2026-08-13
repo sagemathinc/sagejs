@@ -1005,8 +1005,9 @@ test("ordinary compiled imports preserve globals, closures, and cache identity",
 
     const cacheDirectory = join(directory, "module-cache");
     const compileResult = spawnSync(
-      join(root, "bin", "sagejs"),
+      process.execPath,
       [
+        join(root, "bin", "sagejs"),
         "compile",
         "--cache-dir",
         cacheDirectory,

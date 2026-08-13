@@ -6,6 +6,7 @@ const { mkdtempSync, rmSync, writeFileSync } = require("node:fs");
 const { tmpdir } = require("node:os");
 const { join, resolve } = require("node:path");
 const test = require("node:test");
+const { pythonExecutable } = require("../tools/python-executable.cjs");
 
 const createCompiler = require("..");
 const {
@@ -498,7 +499,7 @@ print(json.dumps([
 ]))
 `;
     const python = spawnSync(
-      process.env.SAGEJS_REFERENCE_PYTHON || process.env.PYTHON || "python3",
+      pythonExecutable(),
       [
         "-I",
         "-c",

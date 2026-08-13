@@ -1,0 +1,100 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "windows-cli-portability",
+  "title": "Windows CLI and CPython portability",
+  "lane": "integration",
+  "status": "active",
+  "owner": "user",
+  "objective": "Make portable and integration test/tool subprocess invocation work on native Windows by consistently launching Sage.js through Node and selecting CPython through the shared policy",
+  "base_commit": "347c3d475ee817fad27bb7da72a33006cfc9df74",
+  "claims": [
+    "scripts/native-worktree-cache.cjs",
+    "scripts/audit-python-grammar.cjs",
+    "scripts/run-python-conformance.cjs",
+    "test/compiled-module-isolation.cjs",
+    "test/gf2-polynomial-packed-core.cjs",
+    "test/finite-extension-scalar-resource.cjs",
+    "test/arbitrary-prime-polynomial-contract.cjs",
+    "test/linear-decomposition-contract.cjs",
+    "test/linear-vector-contract.cjs",
+    "test/linear-matrix-vector.cjs",
+    "test/native-uint64-bitwise.cjs",
+    "test/numpy-module.cjs",
+    "test/linear-matrix-selection.cjs",
+    "test/production-native-kernels.cjs",
+    "test/linear-matrix-predicates.cjs",
+    "test/m4ri-public-matrix.cjs",
+    "test/public-sparse-random.cjs",
+    "test/multiprocessing-module.cjs",
+    "test/linear-matrix-subspaces.cjs",
+    "test/polynomial-structural-flint.cjs",
+    "test/linear-combinatorial-invariants.cjs",
+    "test/large-prime-polynomial.cjs",
+    "test/prime-matrix-bulk-views-v1.cjs",
+    "test/prime-polynomial-bulk-views.cjs",
+    "test/public-exact-matrix-subspaces.cjs",
+    "test/packed-prime-polynomial-xgcd.cjs",
+    "test/polynomial-prime-evaluate.cjs",
+    "test/prime-polynomial-divrem.cjs",
+    "test/public-arbitrary-prime-polynomial.cjs"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "not-applicable",
+    "fallback": "not-applicable",
+    "oracles": [
+      "Focused Linux and native-Windows subprocess tests"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm architecture:check",
+    "pnpm test:portable",
+    "pnpm test:baselib:strict"
+  ],
+  "runs": [
+    {
+      "command": "node --test test/arbitrary-prime-polynomial-contract.cjs test/compiled-module-isolation.cjs test/finite-extension-scalar-resource.cjs test/gf2-polynomial-packed-core.cjs test/large-prime-polynomial.cjs test/linear-combinatorial-invariants.cjs test/linear-decomposition-contract.cjs test/linear-matrix-predicates.cjs test/linear-matrix-selection.cjs test/linear-matrix-subspaces.cjs test/linear-matrix-vector.cjs test/linear-vector-contract.cjs test/m4ri-public-matrix.cjs test/multiprocessing-module.cjs test/native-uint64-bitwise.cjs test/numpy-module.cjs test/packed-prime-polynomial-xgcd.cjs test/polynomial-prime-evaluate.cjs test/polynomial-structural-flint.cjs test/prime-matrix-bulk-views-v1.cjs test/prime-polynomial-bulk-views.cjs test/prime-polynomial-divrem.cjs test/production-native-kernels.cjs test/public-arbitrary-prime-polynomial.cjs test/public-exact-matrix-subspaces.cjs test/public-sparse-random.cjs",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 30.309,
+      "started_at": "2026-08-13T15:34:36.268Z",
+      "commit": "347c3d475ee817fad27bb7da72a33006cfc9df74",
+      "workspace_fingerprint": "a71ec2d99b47230649617797eee27cee0d730a5d7e92c594d29b7a4777fdf33a",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/prime-matrix-bulk-views-v1.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 7.843,
+      "started_at": "2026-08-13T15:35:12.746Z",
+      "commit": "347c3d475ee817fad27bb7da72a33006cfc9df74",
+      "workspace_fingerprint": "a71ec2d99b47230649617797eee27cee0d730a5d7e92c594d29b7a4777fdf33a",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node scripts/audit-python-grammar.cjs --check",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 226.815,
+      "started_at": "2026-08-13T15:35:31.492Z",
+      "commit": "347c3d475ee817fad27bb7da72a33006cfc9df74",
+      "workspace_fingerprint": "a71ec2d99b47230649617797eee27cee0d730a5d7e92c594d29b7a4777fdf33a",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "",
+    "risks": [],
+    "next_steps": []
+  }
+}

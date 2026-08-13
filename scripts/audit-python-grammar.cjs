@@ -10,6 +10,7 @@ const {
   writeFileSync,
 } = require("node:fs");
 const { join, relative } = require("node:path");
+const { pythonExecutable } = require("../tools/python-executable.cjs");
 
 const root = join(__dirname, "..");
 const baselinePath = join(root, "audits", "python-grammar.json");
@@ -215,7 +216,7 @@ for line in sys.stdin:
   const input = pythonRecords
     .map((record) => JSON.stringify({ id: record.id, source: record.source }))
     .join("\n");
-  const child = spawnSync(process.env.SAGEJS_REFERENCE_PYTHON || "python3", [
+  const child = spawnSync(pythonExecutable(), [
     "-c",
     program,
   ], {

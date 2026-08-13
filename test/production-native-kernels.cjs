@@ -24,22 +24,33 @@ const { NATIVE_KERNEL_ABI_VERSION } = require(
 );
 
 function runWithCache(cache, source, required = true) {
-  return spawnSync(join(root, "bin", "sagejs"), ["--python"], {
-    cwd: root,
-    encoding: "utf8",
-    env: {
-      ...process.env,
-      SAGEJS_NATIVE_CACHE_DIR: cache,
-      SAGEJS_NATIVE_REQUIRED: required ? "1" : "0",
+  return spawnSync(
+    process.execPath,
+    [join(root, "bin", "sagejs"), "--python"],
+    {
+      cwd: root,
+      encoding: "utf8",
+      env: {
+        ...process.env,
+        SAGEJS_NATIVE_CACHE_DIR: cache,
+        SAGEJS_NATIVE_REQUIRED: required ? "1" : "0",
+      },
+      input: source,
     },
-    input: source,
-  });
+  );
 }
 
 function compileIntoCache(cache, source) {
   return spawnSync(
-    join(root, "bin", "sagejs"),
-    ["native", "compile", source, "--cache-root", cache],
+    process.execPath,
+    [
+      join(root, "bin", "sagejs"),
+      "native",
+      "compile",
+      source,
+      "--cache-root",
+      cache,
+    ],
     { cwd: root, encoding: "utf8" },
   );
 }
@@ -125,16 +136,20 @@ test("all production native kernels are published and autoloadable", () => {
     "print(p1_gcd.nativeAvailable)",
     "",
   ].join("\n");
-  const result = spawnSync(join(root, "bin", "sagejs"), ["--python"], {
-    cwd: root,
-    encoding: "utf8",
-    env: {
-      ...process.env,
-      SAGEJS_NATIVE_CACHE_DIR: published,
-      SAGEJS_NATIVE_REQUIRED: "1",
+  const result = spawnSync(
+    process.execPath,
+    [join(root, "bin", "sagejs"), "--python"],
+    {
+      cwd: root,
+      encoding: "utf8",
+      env: {
+        ...process.env,
+        SAGEJS_NATIVE_CACHE_DIR: published,
+        SAGEJS_NATIVE_REQUIRED: "1",
+      },
+      input: program,
     },
-    input: program,
-  });
+  );
   assert.equal(result.status, 0, result.stderr);
   assert.equal(result.stdout.trim(), "True\nTrue\nTrue\nTrue\nTrue");
 });

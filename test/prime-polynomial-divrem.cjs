@@ -9,7 +9,7 @@ const root = join(__dirname, "..");
 const sagejs = join(root, "bin", "sagejs");
 
 function runSage(source, environment = {}) {
-  const result = spawnSync(sagejs, ["--python"], {
+  const result = spawnSync(process.execPath, [sagejs, "--python"], {
     cwd: root,
     encoding: "utf8",
     env: { ...process.env, ...environment },

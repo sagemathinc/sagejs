@@ -20,7 +20,10 @@ function run(executable, args, source, environment = {}) {
   const directory = mkdtempSync(join(tmpdir(), "sagejs-public-subspaces-"));
   try {
     let input = source;
-    if (executable === sagejs) {
+    if (
+      executable === sagejs ||
+      (executable === process.execPath && args[0] === sagejs)
+    ) {
       const script = join(directory, "witness.py");
       writeFileSync(script, source);
       args = [...args, script];
@@ -203,7 +206,7 @@ print("public-exact-matrix-subspaces-ok")
 for (const nativeDisabled of [false, true]) {
   test(`public exact subspaces preserve semantics (${nativeDisabled ? "dynamic" : "generated"})`, () => {
     assert.equal(
-      run(sagejs, ["--python"], witness, {
+      run(process.execPath, [sagejs, "--python"], witness, {
         SAGEJS_FORBID_MATRIX_NAPI: "1",
         SAGEJS_FORBID_ZZ_MATRIX_NAPI: "1",
         SAGEJS_FORBID_QQ_MATRIX_NAPI: "1",

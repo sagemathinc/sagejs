@@ -345,7 +345,7 @@ test("imported worker functions retain isolated live module cells", () => {
         "",
       ].join("\n"),
     );
-    const result = spawnSync(join(root, "bin", "sagejs"), ["main.py"], {
+    const result = spawnSync(process.execPath, [join(root, "bin", "sagejs"), "main.py"], {
       cwd: directory,
       encoding: "utf8",
       timeout: 120_000,
