@@ -35,7 +35,10 @@ removes dependence on the build image's newer C++ runtime. This is a small,
 upstream-supported build variation, not a Sage.js fork of Node.
 
 The source tarball, build image, runtime image, policy, and complete native input
-inspection are recorded in `linux-baseline-receipt.json`. The output is then
+inspection are recorded in `linux-baseline-receipt.json`. Full builds also
+retain and validate the selected portable mathematics profile: no host CPU
+identity or native compiler flag, fat GMP, and dynamic-architecture OpenBLAS.
+The output is then
 executed in digest-pinned minimal UBI 8 after proving that image does not have
 the `libatomic` package installed. It provides the target glibc, so this tests
 the exact missing-library case rather than merely trusting an ELF report.

@@ -157,5 +157,11 @@
     ],
     "maximumGlibc": "2.28"
   },
-  "nodeVersion": "26.7.0"
+  "nodeVersion": "26.7.0",
+  "runtimeProbe": {
+    "image": "registry.access.redhat.com/ubi8/ubi-minimal@sha256:cca75ce8294bd67a18520f72d58692e213428b14615d91800ad26b32860adb62",
+    "libatomicPackagePresent": false,
+    "exitStatus": 127,
+    "stderrContains": "error while loading shared libraries: libatomic.so.1"
+  }
 }

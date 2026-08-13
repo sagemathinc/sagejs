@@ -151,6 +151,21 @@ function validateReleaseInputs(directory) {
   return assertNativeInputs(inputs, policy);
 }
 
+function assertPortableMathProfile(profile) {
+  assert.equal(profile?.schema, "sagejs.native-math-profile-v1");
+  assert.equal(profile.effectiveProfile, "portable");
+  assert.equal(profile.requestedProfile, "portable");
+  assert.equal(profile.cpu, null);
+  assert.equal(profile.abi?.platform, "linux");
+  assert.equal(profile.abi?.arch, "x64");
+  assert.equal(profile.compilers?.c?.nativeFlag, null);
+  assert.equal(profile.compilers?.cxx?.nativeFlag, null);
+  assert.equal(profile.buildOptions?.gmp?.configure?.includes("--enable-fat"), true);
+  assert.equal(profile.buildOptions?.fflas?.gmpConfigure?.includes("--enable-fat"), true);
+  assert.equal(profile.buildOptions?.openblas?.dynamicArch, true);
+  return profile;
+}
+
 function copyContainerfile(context) {
   copyFileSync(join(__dirname, "Containerfile"), join(context, "Containerfile"));
 }
@@ -205,6 +220,11 @@ function buildReleaseInputs(options) {
     run(engine, ["cp", `${container}:/release-inputs/.`, extracted]);
 
     const report = validateReleaseInputs(extracted);
+    const mathProfile = options.allInputs
+      ? assertPortableMathProfile(
+          JSON.parse(readFileSync(join(extracted, "native-math-profile.json"), "utf8")),
+        )
+      : null;
     assertRuntimeOmitsLibatomic(engine);
     run(engine, [
       "run",
@@ -222,6 +242,7 @@ function buildReleaseInputs(options) {
       buildImage: BUILD_IMAGE,
       nodeSourceSha256: NODE_SOURCE_SHA256,
       nodeVersion: NODE_VERSION,
+      nativeMathProfile: mathProfile,
       policy: basename(POLICY_PATH),
       runtimeImage: RUNTIME_IMAGE,
       runtimeLibatomicPackagePresent: false,
@@ -277,6 +298,7 @@ module.exports = {
   NODE_VERSION,
   POLICY_PATH,
   RUNTIME_IMAGE,
+  assertPortableMathProfile,
   assertSafeOutputDirectory,
   assertRuntimeOmitsLibatomic,
   buildReleaseInputs,
