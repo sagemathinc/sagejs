@@ -1,0 +1,73 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "rc-signing-audit",
+  "title": "Rc Signing Audit",
+  "lane": "distribution",
+  "status": "review",
+  "owner": "user",
+  "objective": "Audit macOS and Windows signing/notarization plus publication/rollback, producing an exact human credential-gated checklist without using credentials.",
+  "base_commit": "950f0134dd51ca66776dc3d6290a5807cf3fd77f",
+  "claims": [
+    "WINDOWS.md",
+    "DISTRIBUTION.md"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "not-applicable",
+    "fallback": "not-applicable",
+    "oracles": [],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:portable",
+    "pnpm test:native",
+    "pnpm test:sea"
+  ],
+  "runs": [
+    {
+      "command": "bash -lc bash -n scripts/release-macos.sh && pnpm test:release && git diff --check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.76,
+      "started_at": "2026-08-13T19:53:11.447Z",
+      "commit": "950f0134dd51ca66776dc3d6290a5807cf3fd77f",
+      "workspace_fingerprint": "d9645460e9a119b77ab3aa2f2667257d9117d46627587ab605d0217e4d942fb1",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 25.194,
+      "started_at": "2026-08-13T19:54:37.362Z",
+      "commit": "950f0134dd51ca66776dc3d6290a5807cf3fd77f",
+      "workspace_fingerprint": "f19951968b037956b21b60c6f3de3f3378fae0ae5b51fba71d031e1bbff975af",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Audited the implemented macOS Developer ID/notarytool and Windows Authenticode/Azure Artifact Signing paths, plus the tagged GitHub and npm publication workflow. DISTRIBUTION.md now separates credential-free evidence, credential-gated automation, manual clean-machine acceptance, and unproved production signing; provides exact unsigned verification, macOS hardened-runtime/notarization/stapling, one-way publication, website, rollback, revocation, and secret-hygiene checklists. WINDOWS.md now gives an exact PFX/Azure verification and SmartScreen acceptance procedure. No credentials were accessed and no signature or notarization result is claimed.",
+    "risks": [
+      "No production Apple, Azure/PFX, npm, or GitHub credentialed tag was exercised, so the final signing and publication chain remains an evidence gate.",
+      "The tag workflow does not yet name a protected GitHub release Environment and its external actions use version tags rather than immutable commit SHAs.",
+      "The audited base archives have adjacent checksums but no consolidated release manifest; the parallel manifest lane may make that statement stale during integration.",
+      "The current macOS PKG installs only the executables under /usr/local/bin, has manual removal, and only the PKG can carry a stapled ticket; Windows SmartScreen reputation remains external to Authenticode.",
+      "pnpm test:portable was attempted after a standard build but failed in the isolated lane because current FLINT headers and addons were not installed; 265 of 271 tests passed and all six failures required that absent native prefix."
+    ],
+    "next_steps": [
+      "Reconcile the release-manifest wording after the rc-manifest lane lands.",
+      "Protect v* tags, add a maintainer-approved release Environment, and review or pin secret-bearing GitHub Actions before the first production tag.",
+      "Run the full portable, native, and SEA suites from the integrated release-candidate workspace where the native stack is already installed.",
+      "Perform a credentialed dry run without publication, then execute Gatekeeper and SmartScreen checks on ordinary clean target machines.",
+      "After all evidence is approved, publish from one annotated tag and test the public GitHub, npm, installer, Jupyter, and website paths in that order."
+    ]
+  }
+}

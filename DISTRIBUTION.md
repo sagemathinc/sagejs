@@ -133,6 +133,193 @@ surface visible. Calling a FLINT-backed operation produces a clear
 “built without the optional FLINT mathematics backend” error rather than
 silently changing its semantics.
 
+## Release candidate and credential gate
+
+The release process has four deliberately distinct states. Do not describe an
+artifact as a Sage.js release merely because it was built successfully.
+
+- **Implemented and credential-free:** `pnpm test:sea` builds both executables
+  and checks relocation, startup, Jupyter, and representative native
+  mathematics. CI packages unsigned Linux archives, checksums, and npm
+  tarballs. Branch and pull-request Windows artifacts are also unsigned test
+  artifacts.
+- **Implemented but credential-gated:** a `v*` workflow signs Windows
+  executables, signs Apple Silicon macOS executables, notarizes their ZIP and
+  PKG distributions, and refuses to publish if those jobs fail. The scripts are
+  [`scripts/sign-windows.ps1`](scripts/sign-windows.ps1) and
+  [`scripts/release-macos.sh`](scripts/release-macos.sh).
+- **Manual acceptance:** a maintainer must inspect the workflow, signatures,
+  checksums, and clean-machine behavior. CI cannot establish Gatekeeper or
+  SmartScreen behavior for every end-user download path.
+- **Not yet proved by this documentation audit:** a production tag using the
+  real Apple, Windows, npm, and GitHub credentials. Source-controlled release
+  automation is not evidence that the credentialed path has run successfully.
+
+The authoritative secret names and tag procedure are in
+[`RELEASING.md`](RELEASING.md). The following is the human approval checklist,
+not a second automation implementation.
+
+### 1. Freeze and verify unsigned inputs
+
+1. Choose one clean commit. Update the root package and all four native package
+   versions together, update release notes, refresh `pnpm-lock.yaml`, and run
+   `pnpm test:release -- --tag vX.Y.Z`. This checks that the intended tag and
+   every package version agree before the tag exists.
+2. Before the first production tag, protect `v*` tags with a repository
+   ruleset, put signing and publication behind a maintainer-approved GitHub
+   Environment, and restrict who can trigger or approve it. The current
+   workflow scopes job permissions but does not name a protected release
+   Environment. Review and preferably pin every action used by a secret-bearing
+   job to an immutable commit rather than relying only on a moving version tag.
+   Limit the npm token to the required `@sagemath` packages and keep GitHub,
+   Azure, and Apple identities least-privileged.
+3. Require the complete unprivileged CI matrix to pass at that exact commit,
+   including each platform's blocking portable/unit, integration, native, and
+   `pnpm test:sea` stages. The exact tier names differ slightly by job; review
+   the workflow rather than inferring coverage from one green status icon.
+4. Download every available CI artifact before creating a tag. Record its
+   workflow run, commit, platform, architecture, Node version, and native
+   mathematics profile. The current archives have adjacent checksums but do not
+   yet include one consolidated, machine-readable release manifest; retain the
+   workflow evidence until that manifest exists. Treat any generated capability
+   or provenance manifest as evidence to review, not as a substitute for tests.
+5. Verify each adjacent `.sha256` file using a second tool, inspect every
+   archive's file list and licenses, extract it into a new directory, and run:
+
+   ```sh
+   ./sagejs --version
+   ./sagepython --jupyter-kernel-self-test
+   printf 'factor(2026)\n' | ./sagejs
+   ```
+
+   Use the `.exe` names and PowerShell equivalents on Windows. A checksum
+   detects accidental corruption; because the checksum is distributed beside
+   the archive, platform signatures and the authenticated GitHub/npm channels
+   provide publisher identity.
+6. Review all generated manifests and checksums as release records. No secret,
+   private key, PFX/P12 file, notary API key, Keychain password, or unredacted
+   signing log belongs in an artifact, repository, shell history, or release
+   note.
+
+### 2. Approve the desktop signatures
+
+On macOS, confirm the Developer ID Application and Installer identities and the
+`notarytool` profile before running `pnpm release:macos`. The script applies the
+hardened runtime with [`scripts/macos-entitlements.plist`](scripts/macos-entitlements.plist),
+signs and executes both SEAs, signs the PKG, submits the ZIP and PKG to Apple,
+staples the PKG, and runs `codesign`, `pkgutil`, `stapler`, and `spctl` checks.
+The current release grants JIT, unsigned-executable-memory, and
+disabled-library-validation entitlements for V8 and extracted Node-API addons;
+inspect and justify the embedded entitlements on every release rather than
+copying them forward without review. A ZIP cannot itself carry a stapled
+ticket, so test it online after a normal browser download. Test the stapled PKG
+both online and offline. Full commands and clean-machine checks are in the
+macOS checklist below.
+
+On Windows, choose exactly one Authenticode path: Azure Artifact Signing or the
+temporary-PFX fallback. Both must use SHA-256 file and RFC 3161 timestamp
+digests, and both must pass
+`pwsh -File scripts/sign-windows.ps1 -VerifyOnly` before packaging. A trusted
+timestamp preserves the validity of a signature after ordinary certificate
+expiration; it does not rescue a signature made after compromise or revocation.
+Detailed verification and SmartScreen limitations are documented in
+[`WINDOWS.md`](WINDOWS.md).
+
+### 3. Publish in one direction
+
+1. Push an annotated `vX.Y.Z` tag only after the unsigned commit and signing
+   configuration are approved. The tag is the credentialed release trigger.
+   Do not move or overwrite a tag which users may already have consumed.
+2. Let all four platform jobs finish. The publish job must consume only their
+   downloaded artifacts, never a maintainer's local rebuild.
+3. The current workflow creates or updates the GitHub release and uploads the
+   direct archives, checksums, macOS PKG, and installer first. It then publishes
+   the four platform npm packages and finally `@sagemath/sagejs` under `latest`.
+   The public package is last because its exact optional dependencies must
+   already exist.
+4. Do not run a competing local `gh release upload` or `pnpm publish` while the
+   tag workflow is active. npm versions are immutable; a partially published
+   version cannot safely be rerun as though nothing happened.
+5. After publication, download from GitHub and install from the public npm
+   registry into clean directories. Compare checksums and executable hashes
+   with the workflow artifacts, repeat the mathematical/Jupyter smoke tests,
+   and inspect npm provenance.
+6. Only then update the website or announcement links. Check both pinned URLs
+   and `/releases/latest`, and test `install.sh` against the public assets on
+   Linux x64, Linux arm64, and Apple Silicon. Windows remains a manual archive
+   install until a Windows installer is implemented.
+
+### 4. Clean-machine acceptance
+
+Use ordinary, non-administrator accounts with no Node.js, pnpm, compiler, or
+Sage.js checkout. Download through the platform's normal browser so quarantine
+or Mark-of-the-Web metadata is present. Test first launch, second launch,
+`--version`, native factorization, Jupyter self-test and registration, paths
+containing spaces and non-ASCII characters, and uninstall/removal. Record the
+OS build and every security dialog. Never tell users to disable Gatekeeper,
+SmartScreen, antivirus, or signature checks to make a release work.
+
+### 5. Roll back without rewriting history
+
+- For an unpublished candidate, delete only the candidate artifacts and fix the
+  source before tagging.
+- For a published GitHub release, mark it clearly as withdrawn, remove unsafe
+  downloadable assets if necessary, and publish a new patch version. Do not
+  silently replace bytes behind an existing checksum or retarget its tag.
+- npm does not permit replacing a published version. Deprecate the affected
+  root and platform versions, move `latest` back to the last known-good root
+  version when compatible, and publish a fixed patch. Remember that deleting a
+  GitHub asset does not retract an npm tarball.
+- If a signing secret may have leaked, stop publication, revoke or rotate the
+  credential at Apple, the certificate authority, Azure, npm, and/or GitHub as
+  applicable, remove it from repository settings, and audit use. Revoking a
+  certificate or notarization credential has consequences beyond one file;
+  coordinate with the issuer instead of guessing that deleting a release is
+  equivalent to revocation.
+- Remove or redirect website download links only after the authoritative
+  GitHub/npm state is explicit. Preserve a short incident record containing
+  versions, hashes, affected channels, actions, and the replacement release.
+
+### macOS credentialed checklist
+
+This checklist is implemented for **macOS arm64** in CI. Although the local
+script recognizes x86-64, no macOS x64 CI job or npm platform package currently
+makes x86-64 a release target.
+
+1. On the signing machine, inspect identities with `security find-identity -v`
+   and verify the intended Team ID. Configure the notary profile with
+   `xcrun notarytool store-credentials`; never pass the private key or password
+   on a shared command line.
+2. Run `pnpm test:sea`, then `pnpm release:macos` without `--publish`. Use
+   `--skip-build` only for executables already produced and tested in the same
+   trusted workspace. `--skip-notarize` creates signed but unnotarized
+   developer artifacts and is never a public-release option.
+3. Save the `notarytool --wait` acceptance output or submission IDs. Inspect
+   Apple's status, and use `xcrun notarytool log SUBMISSION_ID` to investigate
+   any rejection instead of publishing around it. Inspect both executables with:
+
+   ```sh
+   codesign --verify --deep --strict --verbose=4 PATH
+   codesign --display --verbose=4 PATH
+   codesign --display --entitlements :- PATH
+   spctl --assess --type execute --verbose=4 PATH
+   ```
+
+4. Verify the installer with `pkgutil --check-signature`,
+   `xcrun stapler validate`, and `spctl --assess --type install --verbose=4`.
+   Confirm its identifier, version, install location, and payload before
+   allowing an administrator installation. The current PKG contains the two
+   executables under `/usr/local/bin`; licenses are in the ZIP distribution and
+   removal is currently manual, so release notes must say that plainly.
+5. Recompute SHA-256 for the ZIP and PKG. Download both from the eventual
+   GitHub release on a different clean Apple Silicon Mac. Open the quarantined
+   ZIP while online and launch both executables without a security bypass.
+   Install the stapled PKG once offline and once online, then run the same
+   native and Jupyter smoke tests from `/usr/local/bin`.
+6. Delete temporary Keychains, decoded P12/API-key files, and local notary
+   profiles that were created solely for the release. CI already uses an
+   ephemeral Keychain and runner, but maintainers must clean local state.
+
 ## Browser and WebAssembly
 
 The browser proof of concept executes the mathematics runtime inside a Web
