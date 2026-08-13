@@ -43,6 +43,14 @@ function temporaryRoot(t) {
   return { base, root };
 }
 
+function temporaryFamilyRoot(t, family) {
+  const base = mkdtempSync(join(tmpdir(), `sagejs-auto-${family}-cache-test-`));
+  t.after(() => rmSync(base, { recursive: true, force: true }));
+  const root = join(base, "sagejs", family);
+  mkdirSync(root, { recursive: true });
+  return { base, root };
+}
+
 function versionName(digit) {
   return digit.repeat(40);
 }
@@ -105,6 +113,7 @@ test("automatic cleanup only plans a standard, due, versioned module cache", (t)
   });
   assert.deepEqual(plan, {
     args: [workerPath, "--root", root, "--version", version],
+    family: "modules",
     root,
     version,
     workerPath,
@@ -136,6 +145,59 @@ test("automatic cleanup only plans a standard, due, versioned module cache", (t)
       environment,
       home: base,
       now: 100_000,
+    }),
+    undefined,
+  );
+});
+
+test("automatic cleanup plans and executes the standard dynamic cache", (t) => {
+  const { base, root } = temporaryFamilyRoot(t, "dynamic");
+  const current = versionName("a");
+  const expired = versionName("b");
+  const directory = addVersion(root, current, { ageDays: 0 });
+  addVersion(root, expired, { ageDays: 100 });
+  const environment = automaticEnvironment(base);
+  const plan = automaticModuleCacheCleanupPlan(directory, {
+    environment,
+    home: base,
+    workerPath: join(base, "worker.js"),
+  });
+  assert.equal(plan.family, "dynamic");
+  assert.equal(plan.root, root);
+  const result = runAutomaticModuleCacheCleanup({
+    currentVersion: current,
+    environment,
+    expectedRoot: root,
+    root,
+  });
+  assert.equal(result.status, "applied");
+  assert.deepEqual(result.report.removedVersions, [expired]);
+  assert.equal(existsSync(directory), true);
+});
+
+test("automatic cleanup ignores explicitly redirected dynamic caches", (t) => {
+  const { base, root } = temporaryFamilyRoot(t, "dynamic");
+  const version = versionName("d");
+  const directory = addVersion(root, version, { ageDays: 0 });
+  const environment = {
+    ...automaticEnvironment(base),
+    SAGEJS_DYNAMIC_CACHE_DIR: join(base, "explicit-dynamic"),
+  };
+  assert.equal(
+    automaticModuleCacheCleanupPlan(directory, {
+      environment,
+      home: base,
+    })?.root,
+    root,
+  );
+  // The automatic planner accepts only the standard XDG cache root. The
+  // explicit directory itself cannot be mistaken for that root.
+  const explicitDirectory = join(environment.SAGEJS_DYNAMIC_CACHE_DIR, version);
+  mkdirSync(explicitDirectory, { recursive: true });
+  assert.equal(
+    automaticModuleCacheCleanupPlan(explicitDirectory, {
+      environment,
+      home: base,
     }),
     undefined,
   );

@@ -45,6 +45,9 @@ export const DEFAULT_CACHE_POLICY: Readonly<CachePolicy> = Object.freeze({
   keepVersions: 5,
 });
 
+export const CACHE_FAMILIES = ["modules", "dynamic"] as const;
+export type CacheFamily = (typeof CACHE_FAMILIES)[number];
+
 export interface CacheVersionEntry {
   ageDays: number;
   bytes: number;
@@ -64,6 +67,7 @@ export interface CachePruneReport {
   deferredVersions?: string[];
   entries: CacheVersionEntry[];
   errors: Array<{ version: string; message: string }>;
+  family: CacheFamily;
   ignoredEntries: string[];
   policy: CachePolicy;
   reclaimedBytes: number;
@@ -80,6 +84,7 @@ export interface PruneCacheOptions {
   beforeRemove?: (entry: CacheVersionEntry) => void;
   currentVersions: string[];
   expectedRoot?: string;
+  family?: CacheFamily;
   now?: number;
   policy?: Partial<CachePolicy>;
   root?: string;
@@ -105,6 +110,24 @@ export function defaultModuleCacheRoot(
   return join(base, "sagejs", "modules");
 }
 
+export function defaultDynamicCacheRoot(
+  environment: NodeJS.ProcessEnv = process.env,
+  home: string = homedir(),
+): string {
+  const base = environment.XDG_CACHE_HOME || join(home, ".cache");
+  return join(base, "sagejs", "dynamic");
+}
+
+export function defaultVersionedCacheRoot(
+  family: CacheFamily,
+  environment: NodeJS.ProcessEnv = process.env,
+  home: string = homedir(),
+): string {
+  return family === "modules"
+    ? defaultModuleCacheRoot(environment, home)
+    : defaultDynamicCacheRoot(environment, home);
+}
+
 function samePath(left: string, right: string): boolean {
   const a = resolve(left);
   const b = resolve(right);
@@ -120,7 +143,7 @@ function validateCacheRoot(rootValue: string, expectedRootValue: string): string
     throw new Error(`cache prune refused unexpected root: ${root}`);
   }
   if (
-    basename(root).toLowerCase() !== "modules" ||
+    !CACHE_FAMILIES.includes(basename(root).toLowerCase() as CacheFamily) ||
     basename(dirname(root)).toLowerCase() !== "sagejs" ||
     root === parse(root).root ||
     dirname(root) === parse(root).root
@@ -214,11 +237,17 @@ function normalizedPolicy(overrides: Partial<CachePolicy> = {}): CachePolicy {
 function inspectCache(options: PruneCacheOptions): CachePruneReport {
   const now = options.now ?? Date.now();
   const policy = normalizedPolicy(options.policy);
-  const defaultRoot = defaultModuleCacheRoot();
+  const family = options.family ?? "modules";
+  const defaultRoot = defaultVersionedCacheRoot(family);
   const root = validateCacheRoot(
     options.root ?? defaultRoot,
     options.expectedRoot ?? defaultRoot,
   );
+  if (basename(root).toLowerCase() !== family) {
+    throw new Error(
+      `cache prune family ${family} does not match cache root: ${root}`,
+    );
+  }
   const currentVersions = [...new Set(options.currentVersions)];
   const current = new Set(currentVersions);
   const ignoredEntries: string[] = [];
@@ -230,6 +259,7 @@ function inspectCache(options: PruneCacheOptions): CachePruneReport {
       currentVersions,
       entries,
       errors: [],
+      family,
       ignoredEntries,
       policy,
       reclaimedBytes: 0,
@@ -319,6 +349,7 @@ function inspectCache(options: PruneCacheOptions): CachePruneReport {
     currentVersions,
     entries,
     errors: [],
+    family,
     ignoredEntries: ignoredEntries.sort(),
     policy,
     reclaimedBytes: 0,
@@ -481,6 +512,7 @@ function formatBytes(bytes: number): string {
 export interface CacheCliArguments {
   apply?: boolean;
   dry_run?: boolean;
+  family?: "all" | CacheFamily;
   files: string[];
   json?: boolean;
   keep?: string;
@@ -499,33 +531,40 @@ export async function runCacheCli(argv: CacheCliArguments): Promise<void> {
           "`sagejs cache status` or `sagejs cache prune`",
     );
   }
+  const families = argv.family && argv.family !== "all"
+    ? [argv.family]
+    : [...CACHE_FAMILIES];
   if (command === "status") {
-    const root = defaultModuleCacheRoot();
-    const automatic = readAutomaticModuleCacheCleanupState(root);
-    const output = {
-      automatic,
-      root,
-      state_file: join(root, AUTOMATIC_CACHE_STATE_FILENAME),
-    };
+    const output = Object.fromEntries(families.map((family) => {
+      const root = defaultVersionedCacheRoot(family);
+      return [family, {
+        automatic: readAutomaticModuleCacheCleanupState(root),
+        root,
+        state_file: join(root, AUTOMATIC_CACHE_STATE_FILENAME),
+      }];
+    }));
     if (argv.json) process.stdout.write(`${JSON.stringify(output, null, 2)}\n`);
     else {
-      process.stdout.write(`Module cache: ${root}\n`);
-      if (!automatic) {
-        process.stdout.write("Automatic cleanup: no completed attempt recorded.\n");
-      }
-      else {
-        const removed = automatic.last_removed_versions ?? 0;
-        const reclaimed = automatic.last_reclaimed_bytes ?? 0;
-        process.stdout.write(
-          `Automatic cleanup: ${automatic.last_status ?? "recorded"}; ` +
-          `last attempt ${new Date(automatic.last_attempt_ms).toISOString()}; ` +
-          `removed ${removed} version(s), ${formatBytes(reclaimed)}.\n` +
-          `Next attempt eligible ${new Date(
-            automatic.next_attempt_ms ?? automatic.last_attempt_ms,
-          ).toISOString()}.\n`,
-        );
-        if (automatic.last_error) {
-          process.stdout.write(`Last error: ${automatic.last_error}\n`);
+      for (const family of families) {
+        const { automatic, root } = output[family];
+        process.stdout.write(`${family === "modules" ? "Module" : "Dynamic code"} cache: ${root}\n`);
+        if (!automatic) {
+          process.stdout.write("Automatic cleanup: no completed attempt recorded.\n");
+        }
+        else {
+          const removed = automatic.last_removed_versions ?? 0;
+          const reclaimed = automatic.last_reclaimed_bytes ?? 0;
+          process.stdout.write(
+            `Automatic cleanup: ${automatic.last_status ?? "recorded"}; ` +
+            `last attempt ${new Date(automatic.last_attempt_ms).toISOString()}; ` +
+            `removed ${removed} version(s), ${formatBytes(reclaimed)}.\n` +
+            `Next attempt eligible ${new Date(
+              automatic.next_attempt_ms ?? automatic.last_attempt_ms,
+            ).toISOString()}.\n`,
+          );
+          if (automatic.last_error) {
+            process.stdout.write(`Last error: ${automatic.last_error}\n`);
+          }
         }
       }
     }
@@ -544,30 +583,55 @@ export async function runCacheCli(argv: CacheCliArguments): Promise<void> {
     ...(argv.max_size ? { maxBytes: parseByteSize(argv.max_size) } : {}),
   };
   const currentVersion = createCompiler().get_compiler_version();
-  const report = pruneModuleCache({
-    apply: argv.apply === true && argv.dry_run !== true,
-    currentVersions: [currentVersion],
-    policy,
-  });
+  const reports = Object.fromEntries(families.map((family) => [
+    family,
+    pruneModuleCache({
+      apply: argv.apply === true && argv.dry_run !== true,
+      currentVersions: [currentVersion],
+      family,
+      policy,
+    }),
+  ])) as Partial<Record<CacheFamily, CachePruneReport>>;
+  const report = {
+    applied: argv.apply === true && argv.dry_run !== true,
+    candidateBytes: Object.values(reports).reduce(
+      (sum, item) => sum + item!.candidateBytes,
+      0,
+    ),
+    families: reports,
+    reclaimedBytes: Object.values(reports).reduce(
+      (sum, item) => sum + item!.reclaimedBytes,
+      0,
+    ),
+    totalBytes: Object.values(reports).reduce(
+      (sum, item) => sum + item!.totalBytes,
+      0,
+    ),
+  };
   if (argv.json) {
     process.stdout.write(`${JSON.stringify(report, null, 2)}\n`);
   } else {
-    process.stdout.write(
-      `Module cache: ${report.root}\n` +
-      `Scanned ${report.entries.length} compiler version(s), ` +
-      `${formatBytes(report.totalBytes)} total.\n` +
-      `${report.applied ? "Removed" : "Would remove"} ` +
-      `${report.applied ? report.removedVersions.length : report.entries.filter((entry) => entry.reason).length} ` +
-      `version(s), ${formatBytes(report.applied ? report.reclaimedBytes : report.candidateBytes)}.\n`,
-    );
+    for (const family of families) {
+      const item = reports[family]!;
+      process.stdout.write(
+        `${family === "modules" ? "Module" : "Dynamic code"} cache: ${item.root}\n` +
+        `Scanned ${item.entries.length} compiler version(s), ` +
+        `${formatBytes(item.totalBytes)} total.\n` +
+        `${item.applied ? "Removed" : "Would remove"} ` +
+        `${item.applied ? item.removedVersions.length : item.entries.filter((entry) => entry.reason).length} ` +
+        `version(s), ${formatBytes(item.applied ? item.reclaimedBytes : item.candidateBytes)}.\n`,
+      );
+      if (item.skippedVersions.length > 0) {
+        process.stdout.write(
+          `Preserved ${item.skippedVersions.length} version(s) that changed or became active.\n`,
+        );
+      }
+    }
     if (!report.applied) {
       process.stdout.write("Dry run only; pass --apply to remove these versions.\n");
     }
-    if (report.skippedVersions.length > 0) {
-      process.stdout.write(
-        `Preserved ${report.skippedVersions.length} version(s) that changed or became active.\n`,
-      );
-    }
   }
-  if (report.errors.length > 0) process.exitCode = 1;
+  if (Object.values(reports).some((item) => item!.errors.length > 0)) {
+    process.exitCode = 1;
+  }
 }

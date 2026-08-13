@@ -32,6 +32,7 @@ export interface AutomaticCacheState {
 }
 
 export interface AutomaticCacheCleanupPlan {
+  family: "modules" | "dynamic";
   args: string[];
   root: string;
   version: string;
@@ -67,8 +68,12 @@ function positiveNumber(value: string | undefined, fallback: number): number | u
   return Number.isFinite(parsed) && parsed > 0 ? parsed : undefined;
 }
 
-function defaultRoot(environment: NodeJS.ProcessEnv, home: string): string {
-  return join(environment.XDG_CACHE_HOME || join(home, ".cache"), "sagejs", "modules");
+function defaultRoot(
+  family: "modules" | "dynamic",
+  environment: NodeJS.ProcessEnv,
+  home: string,
+): string {
+  return join(environment.XDG_CACHE_HOME || join(home, ".cache"), "sagejs", family);
 }
 
 function recentAutomaticAttempt(
@@ -139,7 +144,10 @@ export function automaticModuleCacheCleanupPlan(
   const version = basename(directory);
   const root = dirname(directory);
   if (!VERSION_PATTERN.test(version)) return undefined;
+  const family = basename(root).toLowerCase();
+  if (family !== "modules" && family !== "dynamic") return undefined;
   const expectedRoot = resolve(defaultRoot(
+    family,
     environment,
     options.home ?? homedir(),
   ));
@@ -163,6 +171,7 @@ export function automaticModuleCacheCleanupPlan(
   const workerPath = options.workerPath ?? join(__dirname, "cache-auto-worker.js");
   return {
     args: [workerPath, "--root", root, "--version", version],
+    family,
     root,
     version,
     workerPath,

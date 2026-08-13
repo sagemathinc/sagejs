@@ -14,7 +14,7 @@ import { basename, dirname, join, resolve } from "node:path";
 
 import {
   DEFAULT_CACHE_POLICY,
-  defaultModuleCacheRoot,
+  defaultVersionedCacheRoot,
   parseByteSize,
   pruneModuleCache,
   validateModuleCacheRoot,
@@ -354,6 +354,7 @@ export function runAutomaticModuleCacheCleanup(
     options.root,
     options.expectedRoot ?? options.root,
   );
+  const family = basename(root).toLowerCase() as "modules" | "dynamic";
   const now = options.now ?? Date.now();
   const configured = configuredPolicy(environment);
   const stateFilename = join(root, AUTOMATIC_CACHE_STATE_FILENAME);
@@ -389,6 +390,7 @@ export function runAutomaticModuleCacheCleanup(
         beforeRemove: options.beforeRemove,
         currentVersions: [options.currentVersion],
         expectedRoot: options.expectedRoot ?? root,
+        family,
         now,
         policy: configured.policy,
         root,
@@ -439,12 +441,17 @@ if (require.main === module) {
   try {
     const root = cliArgument("--root");
     const currentVersion = cliArgument("--version");
-    if (!root || !currentVersion || basename(resolve(root)) !== "modules") {
+    const family = root ? basename(resolve(root)).toLowerCase() : "";
+    if (
+      !root ||
+      !currentVersion ||
+      (family !== "modules" && family !== "dynamic")
+    ) {
       throw new Error("automatic cache cleanup requires an exact root and version");
     }
     runAutomaticModuleCacheCleanup({
       currentVersion,
-      expectedRoot: defaultModuleCacheRoot(),
+      expectedRoot: defaultVersionedCacheRoot(family),
       root,
     });
   } catch (_error) {

@@ -652,7 +652,7 @@ create_group(
   "<status|prune>",
   function () {
     /*
-Inspect or prune disposable compiler-versioned module caches. `prune` is a
+Inspect or prune disposable compiler-versioned module and dynamic-code caches. `prune` is a
 dry run by default; pass `--apply` to remove only versions allowed by the
 retention policy. The current compiler, newest retained versions, pinned
 versions, and versions leased by running Sage.js processes are always
@@ -685,6 +685,13 @@ opt("dry_run", "", "bool", false, function () {
 Explicitly request report-only mode. This is already the safe default.
 */
 });
+
+opt("family", "", "string", "all", function () {
+  /*
+Limit reporting or pruning to imported modules, dynamically compiled eval/exec
+fragments, or both cache families.
+*/
+}, ["all", "modules", "dynamic"]);
 
 opt("max_size", "", "string", "2GiB", function () {
   /*
