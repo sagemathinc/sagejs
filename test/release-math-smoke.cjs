@@ -2,7 +2,13 @@
 
 const assert = require("node:assert/strict");
 const { spawnSync } = require("node:child_process");
-const { mkdirSync, mkdtempSync, rmSync, writeFileSync } = require("node:fs");
+const {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  rmSync,
+  writeFileSync,
+} = require("node:fs");
 const { tmpdir } = require("node:os");
 const { join } = require("node:path");
 const test = require("node:test");
@@ -11,12 +17,43 @@ const root = join(__dirname, "..");
 const script = join(root, "scripts", "release-math-smoke.cjs");
 const {
   checkNames,
+  classifyNativeSelections,
   isNativeImplementation,
   nativeSelection,
   parseArguments,
+  releaseEnvironment,
+  requiredNativeWitnesses,
   runSmoke,
   runnerFor,
+  terminateProcessTree,
+  windowsTaskkill,
 } = require(script);
+
+function delay(milliseconds) {
+  return new Promise((resolvePromise) => setTimeout(resolvePromise, milliseconds));
+}
+
+function fakeSmokeSource(selections = []) {
+  return [
+    '"use strict";',
+    "if (process.argv.includes('--version')) {",
+    "  console.log('sagejs 0.0.0-test');",
+    "} else {",
+    `  for (const name of ${JSON.stringify(checkNames)}) ` +
+      "console.log('SAGEJS_RELEASE_CHECK ' + name);",
+    ...selections.map(({ operation, implementation }) =>
+      `  console.log(${JSON.stringify(
+        `[sagejs native] ${operation} -> ${implementation}`,
+      )});`),
+    "  console.log('SAGEJS_RELEASE_SMOKE_OK');",
+    "}",
+  ].join("\n");
+}
+
+function writeFakeRunner(rootDirectory, source) {
+  mkdirSync(join(rootDirectory, "bin"), { recursive: true });
+  writeFileSync(join(rootDirectory, "bin", "sagejs"), source);
+}
 
 test("release mathematics smoke is authoritative and practical", () => {
   const sourceRoot = process.env.SAGEJS_RELEASE_TEST_SOURCE_ROOT || root;
@@ -43,9 +80,21 @@ test("release mathematics smoke is authoritative and practical", () => {
   assert.match(report.verifier_node, /^v\d+/);
   assert.deepEqual(report.checks, checkNames);
   assert.ok(report.seconds <= 30);
-  assert.ok(["observed", "explicit-fallback"].includes(report.native.status));
+  assert.deepEqual(report.isolation, {
+    environment: "hermetic-v1",
+    fresh_cache: true,
+    fresh_home: true,
+  });
+  assert.ok([
+    "explicit-fallback",
+    "fallback-observed",
+    "not-observed",
+    "observed",
+  ].includes(report.native.status));
   assert.equal(report.native.observed, report.native.status === "observed");
   assert.ok(Array.isArray(report.native.selections));
+  assert.ok(Array.isArray(report.native.witnesses));
+  assert.ok(Array.isArray(report.native.unknown));
 });
 
 test("release mathematics native capability classification fails closed", () => {
@@ -62,35 +111,171 @@ test("release mathematics native capability classification fails closed", () => 
   assert.equal(isNativeImplementation("generated-flint-resource"), true);
   assert.equal(isNativeImplementation("dynamic-python-explicit"), false);
   assert.equal(isNativeImplementation("typed-python-dynamic-fallback"), false);
+  assert.equal(isNativeImplementation("not-native"), false);
+  assert.equal(isNativeImplementation("future-native-backend"), false);
   assert.equal(nativeSelection("ordinary program output"), undefined);
+  const classified = classifyNativeSelections([
+    {
+      operation: "Matrix.rank GF(97) 8x8",
+      implementation: "future-native-backend",
+    },
+  ]);
+  assert.equal(classified.status, "not-observed");
+  assert.equal(classified.unknown.length, 1);
 });
 
-test("release mathematics smoke reports fallback and enforces native", (t) => {
+test("release mathematics smoke reports fallback and enforces named native witnesses", async (t) => {
   const fakeRoot = mkdtempSync(join(tmpdir(), "sagejs-release-smoke-fake-"));
   t.after(() => rmSync(fakeRoot, { recursive: true, force: true }));
-  mkdirSync(join(fakeRoot, "bin"));
-  writeFileSync(
-    join(fakeRoot, "bin", "sagejs"),
-    [
-      '"use strict";',
-      "if (process.argv.includes('--version')) {",
-      "  console.log('sagejs 0.0.0-test');",
-      "} else {",
-      `  for (const name of ${JSON.stringify(checkNames)}) ` +
-        "console.log('SAGEJS_RELEASE_CHECK ' + name);",
-      "  console.log('[sagejs native] witness -> dynamic-python-explicit');",
-      "  console.log('SAGEJS_RELEASE_SMOKE_OK');",
-      "}",
-    ].join("\n"),
-  );
+  writeFakeRunner(fakeRoot, fakeSmokeSource([
+    { operation: "witness", implementation: "dynamic-python-explicit" },
+  ]));
   const options = parseArguments(["--source-root", fakeRoot]);
-  const report = runSmoke(options);
+  const report = await runSmoke(options);
   assert.equal(report.native.observed, false);
   assert.equal(report.native.status, "explicit-fallback");
-  assert.throws(
+  await assert.rejects(
     () => runSmoke({ ...options, requireNative: true }),
-    /no isolated\/resource native selection/,
+    /required native witnesses were missing/,
   );
+
+  const nativeSelections = requiredNativeWitnesses.map((witness) => ({
+    implementation: witness.implementations[0],
+    operation: witness.operation,
+  }));
+  writeFakeRunner(fakeRoot, fakeSmokeSource(nativeSelections));
+  const nativeReport = await runSmoke({ ...options, requireNative: true });
+  assert.equal(nativeReport.native.required_satisfied, true);
+  assert.ok(nativeReport.native.witnesses.every(({ observed }) => observed));
+
+  writeFakeRunner(fakeRoot, fakeSmokeSource([
+    ...nativeSelections,
+    { operation: "new operation", implementation: "future-native-backend" },
+  ]));
+  await assert.rejects(
+    () => runSmoke({ ...options, requireNative: true }),
+    /unclassified implementation names/,
+  );
+});
+
+test("release mathematics smoke creates a hermetic home and cache", async (t) => {
+  const fakeRoot = mkdtempSync(join(tmpdir(), "sagejs-release-smoke-env-"));
+  t.after(() => rmSync(fakeRoot, { recursive: true, force: true }));
+  writeFakeRunner(fakeRoot, [
+    '"use strict";',
+    "const { dirname, join } = require('node:path');",
+    "if (process.argv.includes('--version')) {",
+    "  console.log('sagejs 0.0.0-test');",
+    "} else {",
+    "  const runRoot = dirname(process.argv.at(-1));",
+    "  const forbidden = [",
+    "    'NODE_OPTIONS', 'NODE_PATH', 'SAGEJS_DYNAMIC_CACHE_DIR',",
+    "    'SAGEJS_NATIVE_CACHE_DIR', 'SAGEJS_NATIVE_DISABLE',",
+    "    'SAGEJS_NATIVE_MODE', 'SAGEJS_PRECOMPILED_MODULE_CACHE_DIR',",
+    "  ];",
+    "  if (forbidden.some((name) => process.env[name] !== undefined)) process.exit(71);",
+    "  if (process.env.HOME !== join(runRoot, 'home')) process.exit(72);",
+    "  if (process.env.USERPROFILE !== join(runRoot, 'home')) process.exit(73);",
+    "  if (process.env.XDG_CACHE_HOME !== join(runRoot, 'cache')) process.exit(74);",
+    "  if (process.env.SAGEJS_USE_SOURCE !== '1') process.exit(75);",
+    `  for (const name of ${JSON.stringify(checkNames)}) ` +
+      "console.log('SAGEJS_RELEASE_CHECK ' + name);",
+    "  console.log('SAGEJS_RELEASE_SMOKE_OK');",
+    "}",
+  ].join("\n"));
+  const contaminated = {
+    ...process.env,
+    NODE_OPTIONS: "--trace-warnings",
+    NODE_PATH: "/foreign/node_modules",
+    SAGEJS_DYNAMIC_CACHE_DIR: "/foreign/dynamic",
+    SAGEJS_NATIVE_CACHE_DIR: "/foreign/native",
+    SAGEJS_NATIVE_DISABLE: "1",
+    SAGEJS_NATIVE_MODE: "dynamic",
+    SAGEJS_PRECOMPILED_MODULE_CACHE_DIR: "/foreign/modules",
+  };
+  const report = await runSmoke({
+    ...parseArguments(["--source-root", fakeRoot]),
+    environment: contaminated,
+  });
+  assert.equal(report.native.status, "not-observed");
+
+  const scratch = mkdtempSync(join(tmpdir(), "sagejs-release-env-unit-"));
+  t.after(() => rmSync(scratch, { recursive: true, force: true }));
+  const environment = releaseEnvironment(
+    scratch,
+    runnerFor(parseArguments(["--executable", process.execPath])),
+    contaminated,
+  );
+  assert.equal(environment.NODE_OPTIONS, undefined);
+  assert.equal(environment.NODE_PATH, undefined);
+  assert.equal(environment.SAGEJS_NATIVE_CACHE_DIR, undefined);
+  assert.equal(environment.SAGEJS_USE_SOURCE, undefined);
+  assert.equal(environment.SAGEJS_NATIVE_TRACE, "1");
+  assert.equal(environment.SAGEJS_MODULE_CACHE_AUTO_CLEANUP, "0");
+  assert.deepEqual(
+    Object.keys(environment).filter((key) => key.startsWith("SAGEJS_")),
+    ["SAGEJS_MODULE_CACHE_AUTO_CLEANUP", "SAGEJS_NATIVE_TRACE"],
+  );
+});
+
+test("release mathematics timeout terminates launcher descendants", async (t) => {
+  const fakeRoot = mkdtempSync(join(tmpdir(), "sagejs-release-smoke-timeout-"));
+  const marker = join(fakeRoot, "descendant-survived");
+  t.after(() => rmSync(fakeRoot, { recursive: true, force: true }));
+  writeFakeRunner(fakeRoot, [
+    '"use strict";',
+    "const { spawn } = require('node:child_process');",
+    "if (process.argv.includes('--version')) {",
+    "  console.log('sagejs 0.0.0-test');",
+    "} else {",
+    "  spawn(process.execPath, ['-e', " + JSON.stringify(
+      `setTimeout(() => require('node:fs').writeFileSync(${JSON.stringify(marker)}, 'orphan'), 500); setTimeout(() => {}, 5000);`,
+    ) + "], { stdio: 'ignore' });",
+    "  setTimeout(() => {}, 5000);",
+    "}",
+  ].join("\n"));
+  await assert.rejects(
+    () => runSmoke({
+      ...parseArguments(["--source-root", fakeRoot]),
+      maxSeconds: 0.1,
+    }),
+    /release mathematics smoke timed out after 100ms/,
+  );
+  await delay(800);
+  assert.equal(existsSync(marker), false, "timed-out descendant survived");
+});
+
+test("Windows process-tree termination uses taskkill and fails closed", () => {
+  const calls = [];
+  const child = {
+    exitCode: null,
+    kill: () => calls.push(["fallback-kill"]),
+    pid: 1234,
+  };
+  const success = terminateProcessTree(child, {
+    environment: { SystemRoot: "C:\\Windows" },
+    platform: "win32",
+    spawnSyncImpl: (command, arguments_, options) => {
+      calls.push([command, arguments_, options]);
+      return { error: undefined, status: 0, stderr: "" };
+    },
+  });
+  assert.deepEqual(success, { method: "taskkill-/T-/F", ok: true });
+  assert.equal(calls[0][0], windowsTaskkill({ SystemRoot: "C:\\Windows" }));
+  assert.deepEqual(calls[0][1], ["/PID", "1234", "/T", "/F"]);
+
+  const failed = terminateProcessTree(child, {
+    environment: { SystemRoot: "C:\\Windows" },
+    platform: "win32",
+    spawnSyncImpl: () => ({
+      error: new Error("taskkill unavailable"),
+      status: null,
+      stderr: "",
+    }),
+  });
+  assert.equal(failed.ok, false);
+  assert.match(failed.detail, /taskkill unavailable/);
+  assert.deepEqual(calls.at(-1), ["fallback-kill"]);
 });
 
 test("release mathematics runner distinguishes source, npm, and SEA", () => {

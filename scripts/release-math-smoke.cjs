@@ -1,10 +1,16 @@
 #!/usr/bin/env node
 "use strict";
 
-const { mkdtempSync, readFileSync, rmSync, writeFileSync } = require("node:fs");
+const {
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} = require("node:fs");
 const { tmpdir } = require("node:os");
-const { basename, join, resolve } = require("node:path");
-const { spawnSync } = require("node:child_process");
+const { basename, join, resolve, win32 } = require("node:path");
+const { spawn, spawnSync } = require("node:child_process");
 
 const root = resolve(__dirname, "..");
 const checkNames = [
@@ -20,6 +26,78 @@ const checkNames = [
   "serialization-mutation",
   "lazy-native-witness",
 ];
+
+const nativeImplementations = new Set([
+  "declared-fflas-adapter",
+  "declared-fflas-isolated",
+  "declared-flint-adapter",
+  "declared-flint-isolated",
+  "generated-callee-owned-flint-resource",
+  "generated-flint-resource",
+  "generated-flint-resource-exact",
+  "generated-flint-resource-modular-certificate",
+  "generated-flint-resource-modular-inconclusive-exact",
+  "generated-m4ri-resource",
+  "typed-python+declared-flint-isolated",
+  "typed-python-isolated",
+  "typed-python-isolated-sparse",
+]);
+
+const explicitFallbackImplementations = new Set([
+  "dynamic-python-explicit",
+]);
+
+const fallbackImplementations = new Set([
+  ...explicitFallbackImplementations,
+  "dynamic-python+declared-flint-adapter",
+  "typed-python-dynamic-fallback",
+]);
+
+const requiredNativeWitnesses = Object.freeze([
+  Object.freeze({
+    name: "integer-flint-resource",
+    operation: "Matrix.determinant ZZ 2x2",
+    implementations: Object.freeze(["generated-flint-resource"]),
+  }),
+  Object.freeze({
+    name: "rational-flint-resource",
+    operation: "Matrix.rref QQ 2x2",
+    implementations: Object.freeze(["generated-flint-resource"]),
+  }),
+  Object.freeze({
+    name: "word-prime-declared-ffi",
+    operation: "Matrix.rank GF(97) 3x3",
+    implementations: Object.freeze([
+      "declared-flint-adapter",
+      "declared-flint-isolated",
+      "generated-flint-resource",
+    ]),
+  }),
+  Object.freeze({
+    name: "binary-m4ri-resource",
+    operation: "Matrix.inverse GF(2) 3x3",
+    implementations: Object.freeze(["generated-m4ri-resource"]),
+  }),
+  Object.freeze({
+    name: "lazy-typed-python",
+    operation: "Matrix.random_matrix GF(97) 8x8",
+    implementations: Object.freeze(["typed-python-isolated"]),
+  }),
+]);
+
+const preservedEnvironment = new Set([
+  "COMSPEC",
+  "LANG",
+  "LC_ALL",
+  "LC_CTYPE",
+  "PATH",
+  "PATHEXT",
+  "SYSTEMROOT",
+  "TZ",
+  "WINDIR",
+]);
+
+const outputLimitBytes = 4 * 1024 * 1024;
 
 // This is deliberately one ordinary Sage program. The exact same source runs
 // through a repository checkout, an installed npm package, and a SEA binary.
@@ -146,7 +224,7 @@ Options:
   --source-root PATH     Run PATH/bin/sagejs through the current Node.js
   --package-root PATH    Run the sagejs bin declared by PATH/package.json
   --executable PATH      Run a standalone Sage.js/SEA executable
-  --require-native       Fail unless an isolated/resource native path is observed
+  --require-native       Require every declared native witness and reject unknown routes
   --max-seconds N        Runtime budget (default: 30)
   --json                 Emit the result as JSON
   -h, --help             Show this help
@@ -229,15 +307,213 @@ function nativeSelection(line) {
 }
 
 function isNativeImplementation(implementation) {
-  return !/dynamic|fallback|unavailable|disabled/i.test(implementation) &&
-    /isolated|resource|flint|fflas|m4ri|native/i.test(implementation);
+  return nativeImplementations.has(implementation);
 }
 
-function targetVersion(runner, cwd) {
-  const probe = spawnSync(
+function classifyNativeSelections(selections) {
+  const native = selections.filter(({ implementation }) =>
+    nativeImplementations.has(implementation));
+  const fallback = selections.filter(({ implementation }) =>
+    fallbackImplementations.has(implementation));
+  const unknown = selections.filter(({ implementation }) =>
+    !nativeImplementations.has(implementation) &&
+    !fallbackImplementations.has(implementation));
+  const witnesses = requiredNativeWitnesses.map((witness) => {
+    const observed = selections.some(({ operation, implementation }) =>
+      operation === witness.operation &&
+      witness.implementations.includes(implementation));
+    return { ...witness, observed };
+  });
+  const requiredSatisfied = witnesses.every(({ observed }) => observed);
+  const explicitFallbackObserved = fallback.some(({ implementation }) =>
+    explicitFallbackImplementations.has(implementation));
+  const status = native.length > 0
+    ? "observed"
+    : explicitFallbackObserved
+      ? "explicit-fallback"
+      : fallback.length > 0
+        ? "fallback-observed"
+        : "not-observed";
+  return {
+    fallback,
+    native,
+    requiredSatisfied,
+    status,
+    unknown,
+    witnesses,
+  };
+}
+
+function releaseEnvironment(directory, runner, ambient = process.env) {
+  const environment = {};
+  for (const [key, value] of Object.entries(ambient)) {
+    if (value !== undefined && preservedEnvironment.has(key.toUpperCase())) {
+      environment[key] = value;
+    }
+  }
+  const home = join(directory, "home");
+  const cache = join(directory, "cache");
+  const temporary = join(directory, "tmp");
+  const appData = join(home, "AppData", "Roaming");
+  const localAppData = join(home, "AppData", "Local");
+  for (const path of [home, cache, temporary, appData, localAppData]) {
+    mkdirSync(path, { recursive: true });
+  }
+  Object.assign(environment, {
+    APPDATA: appData,
+    HOME: home,
+    LOCALAPPDATA: localAppData,
+    SAGEJS_MODULE_CACHE_AUTO_CLEANUP: "0",
+    SAGEJS_NATIVE_TRACE: "1",
+    TEMP: temporary,
+    TMP: temporary,
+    TMPDIR: temporary,
+    USERPROFILE: home,
+    XDG_CACHE_HOME: cache,
+  });
+  if (runner.kind === "source-checkout") {
+    // A source-checkout verification must not silently delegate to an optional
+    // platform SEA that happens to be installed in the workspace.
+    environment.SAGEJS_USE_SOURCE = "1";
+  }
+  return environment;
+}
+
+function windowsTaskkill(environment = process.env) {
+  const systemRoot = environment.SystemRoot || environment.SYSTEMROOT ||
+    environment.windir || environment.WINDIR || "C:\\Windows";
+  return win32.join(systemRoot, "System32", "taskkill.exe");
+}
+
+function terminateProcessTree(child, options = {}) {
+  const platform = options.platform || process.platform;
+  if (!Number.isInteger(child.pid) || child.pid <= 0) {
+    return { method: "unavailable", ok: false, detail: "child PID is unavailable" };
+  }
+  if (platform === "win32") {
+    const taskkill = options.spawnSyncImpl || spawnSync;
+    const result = taskkill(
+      windowsTaskkill(options.environment),
+      ["/PID", String(child.pid), "/T", "/F"],
+      { encoding: "utf8", timeout: 5_000, windowsHide: true },
+    );
+    if (!result.error && result.status === 0) {
+      return { method: "taskkill-/T-/F", ok: true };
+    }
+    try {
+      child.kill("SIGKILL");
+    } catch (_error) {}
+    return {
+      method: "taskkill-/T-/F",
+      ok: false,
+      detail: result.error?.message || result.stderr?.trim() ||
+        `taskkill exited with status ${result.status}`,
+    };
+  }
+  try {
+    // POSIX detached children lead their own process group. Kill the group so
+    // npm's JavaScript launcher and the SEA it starts cannot be separated by a
+    // timeout.
+    process.kill(-child.pid, "SIGKILL");
+    return { method: "posix-process-group", ok: true };
+  } catch (error) {
+    try {
+      child.kill("SIGKILL");
+    } catch (_childError) {}
+    return {
+      method: "posix-process-group",
+      ok: child.exitCode !== null,
+      detail: error.message,
+    };
+  }
+}
+
+function runProcessTree(command, arguments_, options) {
+  return new Promise((resolvePromise, rejectPromise) => {
+    let settled = false;
+    let terminalError;
+    let termination;
+    let terminationGrace;
+    let stdout = "";
+    let stderr = "";
+    let outputBytes = 0;
+    const child = spawn(command, arguments_, {
+      cwd: options.cwd,
+      detached: process.platform !== "win32",
+      env: options.env,
+      stdio: ["ignore", "pipe", "pipe"],
+      windowsHide: true,
+    });
+    const finish = (callback, value) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timeout);
+      clearTimeout(terminationGrace);
+      callback(value);
+    };
+    const stop = (error) => {
+      if (terminalError) return;
+      terminalError = error;
+      termination = terminateProcessTree(child);
+      if (!termination.ok) {
+        terminalError.message +=
+          `; process-tree termination could not be confirmed (${termination.detail})`;
+      }
+      terminationGrace = setTimeout(() => {
+        finish(
+          rejectPromise,
+          new Error(
+            `${terminalError.message}; the process tree did not exit within 5s`,
+          ),
+        );
+      }, 5_000);
+    };
+    const append = (stream, chunk) => {
+      const text = chunk.toString("utf8");
+      outputBytes += Buffer.byteLength(text);
+      if (stream === "stdout") stdout += text;
+      else stderr += text;
+      if (outputBytes > outputLimitBytes) {
+        const error = new Error(
+          `${options.label} exceeded the ${outputLimitBytes}-byte output limit`,
+        );
+        error.code = "ENOBUFS";
+        stop(error);
+      }
+    };
+    child.stdout.on("data", (chunk) => append("stdout", chunk));
+    child.stderr.on("data", (chunk) => append("stderr", chunk));
+    child.on("error", (error) => finish(rejectPromise, error));
+    child.on("close", (status, signal) => {
+      finish(resolvePromise, {
+        error: terminalError,
+        signal,
+        status,
+        stderr,
+        stdout,
+        termination,
+      });
+    });
+    const timeout = setTimeout(() => {
+      const error = new Error(
+        `${options.label} timed out after ${options.timeout}ms`,
+      );
+      error.code = "ETIMEDOUT";
+      stop(error);
+    }, options.timeout);
+  });
+}
+
+async function targetVersion(runner, cwd, environment) {
+  const probe = await runProcessTree(
     runner.command,
     [...runner.prefixArguments, "--version"],
-    { cwd, encoding: "utf8", timeout: 5_000 },
+    {
+      cwd,
+      env: environment,
+      label: "release candidate --version",
+      timeout: 5_000,
+    },
   );
   if (probe.error) throw probe.error;
   if (probe.status !== 0) {
@@ -253,26 +529,29 @@ function targetVersion(runner, cwd) {
   return version;
 }
 
-function runSmoke(options) {
+async function runSmoke(options) {
   const runner = runnerFor(options);
   const directory = mkdtempSync(join(tmpdir(), "sagejs-release-math-smoke-"));
   const source = join(directory, "release-math-smoke.sage");
   writeFileSync(source, sageProgram);
+  const environment = releaseEnvironment(
+    directory,
+    runner,
+    options.environment || process.env,
+  );
   let version;
   let started;
   let child;
   try {
-    version = targetVersion(runner, directory);
+    version = await targetVersion(runner, directory, environment);
     started = process.hrtime.bigint();
-    child = spawnSync(
+    child = await runProcessTree(
       runner.command,
       [...runner.prefixArguments, source],
       {
-        // A release artifact must not accidentally obtain modules or native
-        // libraries from the repository that launched this verifier.
         cwd: directory,
-        encoding: "utf8",
-        env: { ...process.env, SAGEJS_NATIVE_TRACE: "1" },
+        env: environment,
+        label: "release mathematics smoke",
         timeout: Math.ceil(options.maxSeconds * 1000),
       },
     );
@@ -306,12 +585,24 @@ function runSmoke(options) {
     throw new Error("release mathematics completion marker is missing");
   }
   const selections = lines.map(nativeSelection).filter(Boolean);
-  const nativeObserved = selections.some(({ implementation }) =>
-    isNativeImplementation(implementation));
-  if (options.requireNative && !nativeObserved) {
+  const classification = classifyNativeSelections(selections);
+  if (options.requireNative && classification.unknown.length > 0) {
     throw new Error(
-      "--require-native was set, but no isolated/resource native selection " +
-      `was observed; selections=${JSON.stringify(selections)}`,
+      "--require-native encountered unclassified implementation names: " +
+      JSON.stringify(classification.unknown),
+    );
+  }
+  if (options.requireNative && !classification.requiredSatisfied) {
+    const missing = classification.witnesses
+      .filter(({ observed }) => !observed)
+      .map(({ name, operation, implementations }) => ({
+        name,
+        operation,
+        implementations,
+      }));
+    throw new Error(
+      "--require-native was set, but required native witnesses were missing: " +
+      JSON.stringify(missing),
     );
   }
   return {
@@ -323,22 +614,30 @@ function runSmoke(options) {
     seconds: Number(seconds.toFixed(3)),
     budget_seconds: options.maxSeconds,
     checks: completed,
+    isolation: {
+      environment: "hermetic-v1",
+      fresh_cache: true,
+      fresh_home: true,
+    },
     native: {
       required: options.requireNative,
-      observed: nativeObserved,
-      status: nativeObserved ? "observed" : "explicit-fallback",
+      observed: classification.native.length > 0,
+      required_satisfied: classification.requiredSatisfied,
+      status: classification.status,
       selections,
+      unknown: classification.unknown,
+      witnesses: classification.witnesses,
     },
   };
 }
 
-function main(argv = process.argv.slice(2)) {
+async function main(argv = process.argv.slice(2)) {
   const options = parseArguments(argv);
   if (options.help) {
     process.stdout.write(usage());
     return;
   }
-  const result = runSmoke(options);
+  const result = await runSmoke(options);
   if (options.json) {
     process.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
     return;
@@ -357,24 +656,31 @@ function main(argv = process.argv.slice(2)) {
 }
 
 if (require.main === module) {
-  try {
-    main();
-  } catch (error) {
+  main().catch((error) => {
     console.error(`release-math-smoke: ${error.message}`);
     process.exitCode = 1;
-  }
+  });
 }
 
 module.exports = {
   checkNames,
+  classifyNativeSelections,
+  explicitFallbackImplementations,
+  fallbackImplementations,
   isNativeImplementation,
   main,
   nativeSelection,
+  nativeImplementations,
   packageBin,
   parseArguments,
+  releaseEnvironment,
+  requiredNativeWitnesses,
+  runProcessTree,
   runSmoke,
   runnerFor,
   sageProgram,
   targetVersion,
+  terminateProcessTree,
   usage,
+  windowsTaskkill,
 };
