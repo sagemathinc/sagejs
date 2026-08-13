@@ -2274,7 +2274,9 @@ test("generated binding.gyp pins portable C++17 settings on every host", () => {
   assert.deepEqual(windows.msvs_settings.VCCLCompilerTool, {
     AdditionalOptions: [
       "/Brepro",
-      "/pathmap:C:\\checkout=sagejs-source",
+      "/clang:-ffile-prefix-map=C:\\checkout=sagejs-source",
+      "/clang:-fdebug-prefix-map=C:\\checkout=sagejs-source",
+      "/clang:-fmacro-prefix-map=C:\\checkout=sagejs-source",
     ],
     ExceptionHandling: 1,
     LanguageStandard: "stdcpp17",
@@ -2404,7 +2406,9 @@ test("Windows native builds use a short disposable junction", () => {
       ).targets[0];
       const flags = windowsGyp.msvs_settings.VCCLCompilerTool.AdditionalOptions;
       assert.ok(
-        flags?.includes(`/pathmap:${aliasPath}=sagejs-native-build`),
+        flags?.includes(
+          `/clang:-ffile-prefix-map=${aliasPath}=sagejs-native-build`,
+        ),
       );
     } finally {
       workspace.close();
