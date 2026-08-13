@@ -12,6 +12,7 @@ const unit = [
   "test/release-cache-lifecycle.cjs",
   "test/release-capabilities.cjs",
   "test/release-manifest.cjs",
+  "test/release-native-binary-inspector.cjs",
   "test/release-npm-install.cjs",
   "test/native-math-profile.cjs",
   "test/math-dispatch-declarations.cjs",
