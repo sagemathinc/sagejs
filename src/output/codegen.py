@@ -36,7 +36,6 @@ from ast_types import (
     AST_Imports,
     AST_Infinity,
     AST_Lambda,
-    AST_Method,
     AST_ListComprehension,
     AST_LoopControl,
     AST_NaN,
@@ -825,17 +824,6 @@ def generate_code():
             if not self.python_identifier:
                 return False
             stack = output.stack()
-            for index in range(stack.length - 1, -1, -1):
-                scope = stack[index]
-                if (
-                    is_node_type(scope, AST_Method)
-                    and not scope["static"]
-                    and scope.argnames
-                    and scope.argnames[0].name is self.name
-                ):
-                    # Instance/class receivers are materialized as the
-                    # compiler-owned `this` alias, not an ordinary formal.
-                    return False
             if self.python_lexical_binding:
                 return True
             # Definition provenance survives module-output caching, whereas
@@ -1000,7 +988,6 @@ def generate_code():
                         is_node_type(scope, AST_Class)
                         and output.in_class_body
                         and self.name in scope.classvars
-                        and name == self.name
                     ):
                         class_namespace = scope
                     check_unbound = (
@@ -1033,6 +1020,11 @@ def generate_code():
                 if not python_binding:
                     check_unbound = True
                     module_name_fallback = True
+            if class_namespace:
+                # The class namespace has already provided the value.  It is
+                # not a module LOAD_NAME candidate, even in a reusable cell.
+                check_unbound = False
+                module_name_fallback = False
             if not module_scope:
                 for index in range(stack.length - 2, -1, -1):
                     candidate = stack[index]

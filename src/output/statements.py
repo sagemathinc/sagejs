@@ -125,7 +125,12 @@ def display_complex_body(node, is_toplevel, output, function_preamble):
         output.indent()
         output.print("var")
         output.space()
-        output.assign(node.argnames[0])
+        receiver = node.argnames[0]
+        output.assign(
+            output.make_python_name(receiver.name)
+            if receiver.python_identifier
+            else receiver
+        )
         output.print("this")
         output.semicolon()
         output.newline()
@@ -251,7 +256,7 @@ def print_with(self, output):
         output.end_statement()
         output.indent()
         if clause.alias:
-            output.assign(clause.alias.name)
+            output.assign(clause.alias)
         method_name = "__aenter__" if self.is_async else "__enter__"
         if self.is_async:
             print_await_expression(

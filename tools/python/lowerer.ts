@@ -275,7 +275,6 @@ export class PythonCstLowerer {
   private sourceNameIsLexicallyBound(name: string): boolean {
     for (let index = this.functionFrames.length - 1; index >= 0; index -= 1) {
       const frame = this.functionFrames[index];
-      if (frame.receiverAlias === name) return false;
       if (frame.globals.has(name)) return this.moduleBindings.has(name);
       if (frame.bindings.has(name) || frame.nonlocals.has(name)) return true;
     }
@@ -521,10 +520,19 @@ export class PythonCstLowerer {
     const selectedName = `ρσ_match_selected_${id}`;
     const symbol = (name: string, owner: SyntaxNode = node) =>
       this.make("AST_SymbolRef", owner, { name });
-    const assignment = (name: string, value: any, owner: SyntaxNode = node) =>
+    const assignment = (
+      name: string,
+      value: any,
+      owner: SyntaxNode = node,
+      pythonBinding = false,
+    ) =>
       this.make("AST_SimpleStatement", owner, {
         body: this.make("AST_Assign", owner, {
-          left: symbol(name, owner), operator: "=", right: value,
+          left: pythonBinding
+            ? this.pythonSymbol("AST_SymbolRef", owner, { name })
+            : symbol(name, owner),
+          operator: "=",
+          right: value,
         }),
       });
 
@@ -566,7 +574,7 @@ export class PythonCstLowerer {
           expression: symbol(resultName, clause),
           property: this.make("AST_String", clause, { value: name }),
           assignment: null,
-        }), clause));
+        }), clause, true));
       }
       const selected = assignment(
         selectedName,
@@ -863,7 +871,7 @@ export class PythonCstLowerer {
       clauses.push(this.make("AST_WithClause", item, {
         expression,
         alias: alias
-          ? this.make("AST_SymbolAlias", alias, { name: alias.text })
+          ? this.pythonSymbol("AST_SymbolAlias", alias, { name: alias.text })
           : null,
       }));
     }
@@ -907,7 +915,7 @@ export class PythonCstLowerer {
       }
       return this.make("AST_Except", clause, {
         argname: alias
-          ? this.make("AST_SymbolCatch", alias, { name: alias.text })
+          ? this.pythonSymbol("AST_SymbolCatch", alias, { name: alias.text })
           : null,
         errors,
         body: loweredBody,
@@ -1813,6 +1821,17 @@ export class PythonCstLowerer {
         return;
       }
       if (node.type === "lambda") return;
+      if (node.type === "sage_generator_assignment") {
+        this.addBindingTarget(this.field(node, "parent"), names);
+        for (const target of node.childrenForFieldName("additional_target")) {
+          this.addBindingTarget(target, names);
+        }
+        for (const target of node.childrenForFieldName("generator")) {
+          this.addBindingTarget(target, names);
+        }
+        scan(this.field(node, "value"));
+        return;
+      }
       if ([
         "list_comprehension", "set_comprehension", "dictionary_comprehension",
         "generator_expression",
@@ -2047,7 +2066,6 @@ export class PythonCstLowerer {
     const receiverAlias = isMethod && !methodDecoratorNames.includes("staticmethod")
       ? args[0]?.name ?? null
       : null;
-    if (receiverAlias && args[0]) args[0].python_identifier = false;
     const inherited = this.functionFrames.at(-1);
     const declaredGlobals = new Set(
       this.declaredNames(bodyNode, "global_statement"),

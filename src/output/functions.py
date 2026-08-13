@@ -59,7 +59,10 @@ def function_args(argnames, output, strip_first):
             for i, arg in enumerate((argnames.slice(1) if strip_first else argnames)):
                 if i:
                     output.comma()
-                arg.print(output)
+                if arg.python_identifier:
+                    output.print_python_name(arg.name)
+                else:
+                    arg.print(output)
 
     output.with_parens(f)
     output.space()

@@ -248,7 +248,7 @@ test("kernel cells share one live __main__ module namespace", async (t) => {
   );
   await assert.rejects(
     session.evaluate("dictionary_value"),
-    /dictionary_value.*not defined|NameError/,
+    /dictionary_value.*(?:not defined|referenced before assignment)|NameError/,
   );
   await session.evaluate(
     "restored = 1\n" +
@@ -360,8 +360,9 @@ test("kernel intrinsic aliases follow later Python bindings", async (t) => {
       "def comprehension_shadow():\n" +
       "    return [runtime.upper() for runtime in ['comprehension-shadow']]\n" +
       "class RuntimeContext:\n" +
-      "    def __enter__(self):\n" +
-      "        return 'with-shadow'\n" +
+      "    marker = 'with-shadow'\n" +
+      "    def __enter__(arbitrary_receiver):\n" +
+      "        return arbitrary_receiver.marker\n" +
       "    def __exit__(self, kind, value, traceback):\n" +
       "        return False\n" +
       "def with_shadow():\n" +
@@ -372,6 +373,16 @@ test("kernel intrinsic aliases follow later Python bindings", async (t) => {
       "        raise ValueError('exception-shadow')\n" +
       "    except ValueError as runtime:\n" +
       "        return runtime.args[0]\n" +
+      "def exception_target_is_deleted():\n" +
+      "    try:\n" +
+      "        raise ValueError('deleted-target')\n" +
+      "    except ValueError as caught:\n" +
+      "        pass\n" +
+      "    try:\n" +
+      "        caught\n" +
+      "    except NameError:\n" +
+      "        return True\n" +
+      "    return False\n" +
       "def match_shadow():\n" +
       "    match 'match-shadow':\n" +
       "        case runtime:\n" +
@@ -392,12 +403,12 @@ test("kernel intrinsic aliases follow later Python bindings", async (t) => {
     (await session.evaluate(
       "parameter_shadow('parameter-shadow'), local_shadow(), " +
         "closure_shadow(), comprehension_shadow(), with_shadow(), " +
-        "exception_shadow(), match_shadow(), ClassShadow.value, " +
+        "exception_shadow(), exception_target_is_deleted(), match_shadow(), ClassShadow.value, " +
         "ClassImport.value, nested_class_shadow()",
     )).repr,
     "('PARAMETER-SHADOW', 'LOCAL-SHADOW', 'CLOSURE-SHADOW', " +
       "['COMPREHENSION-SHADOW'], 'WITH-SHADOW', 'exception-shadow', " +
-      "'MATCH-SHADOW', 'CLASS-SHADOW', True, 'NESTED-CLASS-SHADOW')",
+      "True, 'MATCH-SHADOW', 'CLASS-SHADOW', True, 'NESTED-CLASS-SHADOW')",
   );
   await session.evaluate(
     "for runtime in ['loop-shadow']:\n" +
