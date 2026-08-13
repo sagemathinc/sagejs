@@ -1,0 +1,47 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "linux-glibc-baseline",
+  "title": "Linux x64 compatibility baseline",
+  "lane": "integration",
+  "status": "active",
+  "owner": "user",
+  "objective": "Define and prove a reproducible oldest-supported-glibc Linux x64 build baseline for Node 26 and Sage.js native mathematics, including an explicit libatomic policy and machine-checkable release-inspector inputs",
+  "base_commit": "6534668926dc9a88f1a21a2668f6beb25e574c38",
+  "claims": [
+    "scripts/linux-baseline/",
+    "docs/linux-release-baseline.md",
+    "test/linux-release-baseline.cjs"
+  ],
+  "dependencies": [],
+  "references": [
+    "https://github.com/nodejs/node/blob/v26.x/BUILDING.md",
+    "https://github.com/nodejs/docker-node"
+  ],
+  "architecture": {
+    "strategy": "external-library",
+    "fallback": "tested-capability",
+    "oracles": [
+      "ELF dependency and symbol-version inspection",
+      "minimal baseline container smoke"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "not-applicable",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm architecture:check",
+    "pnpm test:portable",
+    "pnpm test:baselib:strict"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "",
+    "risks": [],
+    "next_steps": []
+  }
+}

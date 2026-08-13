@@ -1,0 +1,52 @@
+ARG BUILD_IMAGE
+FROM ${BUILD_IMAGE} AS node-build
+
+ARG NODE_SOURCE_SHA256
+ARG NODE_VERSION
+ENV PATH=/opt/rh/gcc-toolset-14/root/usr/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+WORKDIR /build
+RUN curl --fail --location --retry 3 \
+      "https://nodejs.org/dist/v${NODE_VERSION}/node-v${NODE_VERSION}.tar.xz" \
+      --output node.tar.xz \
+ && printf '%s  %s\n' "${NODE_SOURCE_SHA256}" node.tar.xz | sha256sum --check --strict \
+ && tar -xJf node.tar.xz \
+ && cd "node-v${NODE_VERSION}" \
+ && CC=gcc CXX=g++ ./configure --prefix=/opt/sagejs-node --partly-static \
+ && make -j"$(nproc)" \
+ && make install \
+ && strip /opt/sagejs-node/bin/node \
+ && /opt/sagejs-node/bin/node --version
+
+FROM scratch AS node-artifact
+COPY --from=node-build /opt/sagejs-node/bin/node /release-inputs/node
+
+FROM ${BUILD_IMAGE} AS sagejs-build
+COPY --from=node-build /opt/sagejs-node /opt/sagejs-node
+ENV PATH=/opt/sagejs-node/bin:/opt/rh/gcc-toolset-14/root/usr/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+ENV CC=gcc
+ENV CXX=g++
+ENV LDFLAGS="-static-libgcc -static-libstdc++"
+ENV SAGEJS_NATIVE_MATH_PROFILE=portable
+WORKDIR /work/sagejs
+COPY sagejs.tar /tmp/sagejs.tar
+RUN tar -xf /tmp/sagejs.tar -C /work/sagejs \
+ && npm install --global pnpm@11.9.0 \
+ && pnpm install --frozen-lockfile \
+ && pnpm run build \
+ && pnpm --dir packages/flint build \
+ && pnpm --dir packages/fflas build \
+ && pnpm --dir packages/graph build \
+ && pnpm --dir packages/m4ri build \
+ && pnpm run python:precompile:run \
+ && pnpm run native:precompile:production \
+ && mkdir -p /release-inputs/addons \
+ && find packages dist node_modules -type f -name '*.node' -print0 \
+      | sort -z \
+      | while IFS= read -r -d '' addon; do \
+          name=$(printf '%s' "$addon" | sha256sum | cut -c1-16); \
+          cp "$addon" "/release-inputs/addons/${name}-$(basename "$addon")"; \
+        done \
+ && cp /opt/sagejs-node/bin/node /release-inputs/node
+
+FROM scratch AS release-inputs
+COPY --from=sagejs-build /release-inputs /release-inputs
