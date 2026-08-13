@@ -25,6 +25,7 @@ const {
   compileKernel,
   foreignCompilationInputs,
   generatedCxxLanguageSettings,
+  nativeBuildWorkspace,
 } = require("../tools/native-kernel/compiler.cjs");
 const {
   generateC,
@@ -34,6 +35,9 @@ const {
   generateExceptionShims,
 } = require("../tools/native-kernel/ffi-codegen.cjs");
 const { lowerSource } = require("../tools/native-kernel/ir.cjs");
+const {
+  removeLoadedNativeCache,
+} = require("./helpers/native-cache-cleanup.cjs");
 
 const root = join(__dirname, "..");
 const witness = join(root, "bench", "native-ffi-flint.py");
@@ -50,6 +54,45 @@ const polynomialWitness = join(
 test("native-boundary paths use repository separators on every host", () => {
   assert.equal(boundaryAudit.portablePath("ffi\\flint.ffi.py"), "ffi/flint.ffi.py");
   assert.equal(boundaryAudit.portablePath("ffi/flint.ffi.py"), "ffi/flint.ffi.py");
+});
+
+test("loaded native test caches defer Windows cleanup until DLL unload", () => {
+  const lock = Object.assign(new Error("loaded native addon"), {
+    code: "EPERM",
+  });
+  let spawned = null;
+  let unref = false;
+  assert.equal(
+    removeLoadedNativeCache("C:\\temporary\\native-cache", {
+      platform: "win32",
+      remove() {
+        throw lock;
+      },
+      spawnProcess(executable, args, options) {
+        spawned = { executable, args, options };
+        return { unref() { unref = true; } };
+      },
+    }),
+    "deferred",
+  );
+  assert.equal(spawned.executable, process.execPath);
+  assert.equal(spawned.args.at(-2), "C:\\temporary\\native-cache");
+  assert.equal(spawned.args.at(-1), String(process.pid));
+  assert.deepEqual(spawned.options, {
+    detached: true,
+    stdio: "ignore",
+    windowsHide: true,
+  });
+  assert.equal(unref, true);
+  assert.throws(
+    () => removeLoadedNativeCache("/temporary/native-cache", {
+      platform: "linux",
+      remove() {
+        throw lock;
+      },
+    }),
+    (error) => error === lock,
+  );
 });
 
 function runSage(args, input = undefined, env = {}) {
@@ -605,6 +648,12 @@ test("FFI v7 Python declarations lower deterministically to the checked JSON IR"
   const inspection = JSON.parse(runSage(["ffi", "explain", "igraph", "--json"]));
   assert.equal(inspection.source, "ffi/igraph.ffi.py");
   assert.equal(inspection.declaration, "ffi/igraph.ffi.json");
+  assert.equal(inspection.abi_catalog.declaration, "ffi/abi-types.json");
+  const difference = JSON.parse(runSage(["ffi", "diff", "igraph", "--json"]));
+  assert.equal(difference.source, "ffi/igraph.ffi.py");
+  assert.equal(difference.lowered, "ffi/igraph.ffi.json");
+  const checked = JSON.parse(runSage(["ffi", "check", "igraph", "--json"]));
+  assert.deepEqual(checked.source_declarations, ["ffi/igraph.ffi.py"]);
 });
 
 test("FFI v7 source parser is formatting-independent and reports source locations", async () => {
@@ -1742,7 +1791,7 @@ test("compiled owned resources agree with fallback and reject loop allocation", 
     assert.throws(() => module.dirichlet_summary(0n));
     assert.throws(() => module.dirichlet_summary.javascript(0n));
   } finally {
-    rmSync(temporary, { recursive: true, force: true });
+    removeLoadedNativeCache(temporary);
   }
   await assert.rejects(
     () => lowerSource(
@@ -1918,7 +1967,7 @@ function unreachableHolder() {
     );
     assert.equal(lifecycle.stdout, "owned-resource-lifecycle-ok");
   } finally {
-    rmSync(temporary, { recursive: true, force: true });
+    removeLoadedNativeCache(temporary);
   }
 });
 
@@ -1952,7 +2001,7 @@ test("borrowed igraph views lower without cleanup and agree across paths", async
       [5n, 10n, 4663669198664987395n],
     );
   } finally {
-    rmSync(temporary, { recursive: true, force: true });
+    removeLoadedNativeCache(temporary);
   }
 });
 
@@ -2012,7 +2061,7 @@ test("compiled packed matrix FFI agrees with fallback and supports aliasing", as
     assert.deepEqual(Array.from(failedOutput), [9n, 9n, 9n, 9n]);
     assert.deepEqual(module.flint_nmod_inverse.effects.externalWrites, ["output"]);
   } finally {
-    rmSync(temporary, { recursive: true, force: true });
+    removeLoadedNativeCache(temporary);
   }
 });
 
@@ -2176,14 +2225,74 @@ test("generated binding.gyp pins portable C++17 settings on every host", () => {
   });
 
   const windows = bindingGyp(ir, true, true, "win32").targets[0];
+  assert.equal(
+    windows.configurations.Release.msbuild_toolset,
+    "ClangCL",
+  );
   assert.deepEqual(windows.msvs_settings.VCCLCompilerTool, {
     ExceptionHandling: 1,
     LanguageStandard: "stdcpp17",
     Optimization: 3,
-    RuntimeTypeInfo: true,
+    RuntimeTypeInfo: "true",
     WarningLevel: 3,
   });
   assert.equal(windows.cflags_cc, undefined);
+
+  const exactWindows = bindingGyp({
+    foreignLibraries: [],
+    functions: [{ kernelKind: "integer" }],
+  }, true, false, "win32").targets[0];
+  assert.equal(
+    exactWindows.configurations.Release.msbuild_toolset,
+    "ClangCL",
+  );
+});
+
+test("Windows native builds use a short disposable junction", () => {
+  const temporary = mkdtempSync(join(tmpdir(), "sagejs-native-build-path-"));
+  try {
+    const outputPath = join(
+      temporary,
+      "source-local-cache-with-a-deliberately-long-name",
+      ".sagejs-native-kernels",
+      "a".repeat(64),
+    );
+    mkdirSync(outputPath, { recursive: true });
+    writeFileSync(join(outputPath, "witness.txt"), "junction-target\n");
+    const homeDirectory = join(temporary, "h");
+    const aliasRoot = join(homeDirectory, ".sagejs-native-build");
+    const workspace = nativeBuildWorkspace(outputPath, {
+      platform: "win32",
+      environment: {},
+      homeDirectory,
+    });
+    const aliasPath = workspace.directory;
+    try {
+      assert.ok(aliasPath.startsWith(aliasRoot));
+      assert.ok(aliasPath.length < outputPath.length);
+      assert.equal(
+        readFileSync(join(aliasPath, "witness.txt"), "utf8"),
+        "junction-target\n",
+      );
+      writeFileSync(join(aliasPath, "built.txt"), "built-through-alias\n");
+      assert.equal(
+        readFileSync(join(outputPath, "built.txt"), "utf8"),
+        "built-through-alias\n",
+      );
+    } finally {
+      workspace.close();
+      workspace.close();
+    }
+    assert.equal(existsSync(aliasPath), false);
+    assert.equal(existsSync(join(outputPath, "witness.txt")), true);
+
+    const direct = nativeBuildWorkspace(outputPath, { platform: "linux" });
+    assert.equal(direct.directory, outputPath);
+    direct.close();
+    assert.equal(existsSync(outputPath), true);
+  } finally {
+    rmSync(temporary, { recursive: true, force: true });
+  }
 });
 
 test("generated binding.gyp selects exact-platform link declarations", () => {
@@ -2353,7 +2462,7 @@ test("compiled packed slices agree with fallbacks and commit outputs transaction
     ), /invalid packed polynomial multiplication/);
     assert.deepEqual(Array.from(failedProduct), [81n, 82n, 83n, 84n]);
   } finally {
-    rmSync(temporary, { recursive: true, force: true });
+    removeLoadedNativeCache(temporary);
   }
 });
 
@@ -2380,7 +2489,7 @@ test("declared FLINT functions execute identically through native and fallback p
     assert.equal(module.flint_integer_gcd.effects.mayAllocate, true);
     assert.equal(module.flint_word_is_prime.effects.mayAllocate, false);
   } finally {
-    rmSync(temporary, { recursive: true, force: true });
+    removeLoadedNativeCache(temporary);
   }
 });
 

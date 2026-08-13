@@ -44,6 +44,7 @@ const {
   assertExactNativeCacheRoot,
   cleanupNativeCache,
   ensureNativeCompiler,
+  fflasUsesFlintPrefix,
   nativeArtifactSpecs,
   nativeCachePackages,
   nativeCacheProcessIdentity,
@@ -348,6 +349,55 @@ function makeFixtureWritable(path) {
     }
   }
 }
+
+test("native cache replaces vcpkg payload and status as one installation", () => {
+  const { cacheRoot, directory, workspace } = nativeCacheFixture();
+  const outputRoot = "build/vcpkg-installed";
+  const targetLibrary = `${outputRoot}/target/lib/flint.lib`;
+  const status = `${outputRoot}/vcpkg/status`;
+  const inputs = snapshot(workspace, ["source"]);
+  const spec = {
+    id: "vcpkg-dependencies",
+    key: nativeCacheHash(JSON.stringify(inputs)),
+    inputPaths: ["source"],
+    inputs,
+    outputRoots: [outputRoot],
+    requiredOutputs: [targetLibrary],
+    buildCommands: [],
+  };
+  try {
+    mkdirSync(dirname(join(workspace, targetLibrary)), { recursive: true });
+    mkdirSync(dirname(join(workspace, status)), { recursive: true });
+    writeFileSync(join(workspace, targetLibrary), "unverified library\n");
+    writeFileSync(join(workspace, status), "stale installed record\n");
+
+    const built = prepareNativeArtifact(workspace, cacheRoot, spec, {
+      build(current) {
+        assert.equal(existsSync(join(current, targetLibrary)), false);
+        assert.equal(existsSync(join(current, status)), false);
+        mkdirSync(dirname(join(current, targetLibrary)), { recursive: true });
+        mkdirSync(dirname(join(current, status)), { recursive: true });
+        writeFileSync(join(current, targetLibrary), "verified library\n");
+        writeFileSync(join(current, status), "verified installed record\n");
+      },
+    });
+    assert.equal(built.status, "built");
+
+    rmSync(join(workspace, outputRoot), { recursive: true, force: true });
+    const restored = restoreNativeArtifact(workspace, cacheRoot, spec);
+    assert.equal(restored.status, "restored");
+    assert.equal(
+      readFileSync(join(workspace, targetLibrary), "utf8"),
+      "verified library\n",
+    );
+    assert.equal(
+      readFileSync(join(workspace, status), "utf8"),
+      "verified installed record\n",
+    );
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
 
 function nativeMaintenanceFixture() {
   const temporaryRoot = realpathSync(tmpdir());
@@ -1301,6 +1351,41 @@ test("native production keys separate dependency and addon invalidation", () => 
   } finally {
     rmSync(directory, { recursive: true, force: true });
   }
+});
+
+test("Windows native specs keep vcpkg state atomic and FFLAS independent", () => {
+  const specs = nativeArtifactSpecs(resolve(__dirname, ".."), {
+    identity: {
+      native: { toolchain: "mock-windows" },
+      node: { abi: "mock-windows" },
+    },
+    platform: "win32",
+  });
+  const flint = specs.find(({ id }) => id === "flint-dependencies");
+  const fflas = specs.find(({ id }) => id === "fflas-dependencies");
+
+  assert.deepEqual(flint.outputRoots, [
+    "packages/flint/.native/vcpkg-installed",
+  ]);
+  assert.deepEqual(flint.requiredOutputs, [
+    "packages/flint/.native/vcpkg-installed/" +
+      "x64-windows-static-md-release/lib/flint.lib",
+    "packages/flint/.native/vcpkg-installed/" +
+      "x64-windows-static-md-release/lib/openblas.lib",
+  ]);
+  assert.ok(
+    flint.requiredOutputs.every((path) =>
+      path.startsWith(`${flint.outputRoots[0]}/`),
+    ),
+  );
+  assert.equal(
+    fflas.inputPaths.includes("packages/flint/scripts/build-deps.cjs"),
+    false,
+  );
+  assert.equal(fflas.materialization, "copy");
+  assert.equal(fflasUsesFlintPrefix("win32"), false);
+  assert.equal(fflasUsesFlintPrefix("darwin"), false);
+  assert.equal(fflasUsesFlintPrefix("linux"), true);
 });
 
 test("M4RI cache keys separate dependency and generated-addon inputs", () => {

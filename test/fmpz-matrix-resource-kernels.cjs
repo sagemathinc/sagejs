@@ -11,6 +11,9 @@ const { tmpdir } = require("node:os");
 const { join, resolve } = require("node:path");
 const { spawnSync } = require("node:child_process");
 const { compile } = require("@sagemath/sagejs/native");
+const {
+  removeLoadedNativeCache,
+} = require("./helpers/native-cache-cleanup.cjs");
 
 const root = resolve(__dirname, "..");
 const resourceSource = join(
@@ -505,7 +508,7 @@ print("fmpz-resource-kernel-equivalence-ok")
 
     console.log("fmpz matrix resource kernel tests passed");
   } finally {
-    rmSync(temporary, { recursive: true, force: true });
+    removeLoadedNativeCache(temporary);
   }
 })().catch((error) => {
   console.error(error.stack || error);

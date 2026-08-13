@@ -23,6 +23,9 @@ const {
 } = require("../tools/native-kernel/c-backend.cjs");
 const { auditKernels } = require("../tools/native-kernel/introspection.cjs");
 const { lowerSource } = require("../tools/native-kernel/ir.cjs");
+const {
+  removeLoadedNativeCache,
+} = require("./helpers/native-cache-cleanup.cjs");
 const nativeApi = require("@sagemath/sagejs/native");
 
 const root = join(__dirname, "..");
@@ -1679,11 +1682,10 @@ compileKernel({
     primeFieldSourceManifest.coreSourceMap[0].location,
     `${primeFieldSourcePath}:29:5`,
   );
-  assert.match(
+  assert.ok(
     readFileSync(
       join(primeFieldSourceKernel.outputPath, "kernel_core.c"), "utf8",
-    ),
-    new RegExp(`#line 29 ${JSON.stringify(primeFieldSourcePath)}`),
+    ).includes(`#line 29 ${JSON.stringify(primeFieldSourcePath)}`),
   );
   const primeFieldAddon = require(primeFieldKernel.addonPath);
   const primeFieldModule = require(primeFieldKernel.modulePath);
@@ -3298,7 +3300,7 @@ print(is_compiled(native_powmod))
   });
   assert.equal(restoredIntegerKernel.cached, true);
 } finally {
-  rmSync(temporary, { recursive: true, force: true });
+  removeLoadedNativeCache(temporary);
 }
 
 console.log(

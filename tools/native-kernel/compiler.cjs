@@ -11,8 +11,10 @@ const {
   realpathSync,
   rmSync,
   statSync,
+  symlinkSync,
   writeFileSync,
 } = require("node:fs");
+const { homedir } = require("node:os");
 const { dirname, join, resolve } = require("node:path");
 const { spawnSync } = require("node:child_process");
 const { lowerSource } = require("./ir.cjs");
@@ -59,6 +61,63 @@ const GENERATED_CXX_LANGUAGE_STANDARD = Object.freeze({
   msvc: "stdcpp17",
   xcode: "c++17",
 });
+
+let nativeBuildAliasSerial = 0;
+
+function nativeBuildWorkspace(outputPath, options = {}) {
+  const platform = options.platform || process.platform;
+  if (platform !== "win32") {
+    return Object.freeze({
+      directory: outputPath,
+      close() {},
+    });
+  }
+
+  // MSBuild still has path-length limits in code paths used by node-gyp, even
+  // when Windows long-path support is enabled.  A source-local cache under
+  // %TEMP% can therefore fail only because its content-addressed directory is
+  // long.  Build through a short, disposable junction while keeping the real
+  // artifact and discovery index in the caller-selected cache.
+  const environment = options.environment || process.env;
+  const homeDirectory = options.homeDirectory || homedir();
+  const aliasRoot = resolve(
+    environment.SAGEJS_NATIVE_WINDOWS_BUILD_ROOT ||
+      join(homeDirectory, ".sagejs-native-build"),
+  );
+  mkdirSync(aliasRoot, { recursive: true });
+  const targetIdentity = sha256(portablePath(outputPath)).slice(0, 12);
+  let aliasPath;
+  for (let attempt = 0; attempt < 32; attempt += 1) {
+    nativeBuildAliasSerial += 1;
+    const name = [
+      targetIdentity,
+      process.pid.toString(36),
+      nativeBuildAliasSerial.toString(36),
+    ].join("-");
+    const candidate = join(aliasRoot, name);
+    try {
+      symlinkSync(outputPath, candidate, "junction");
+      aliasPath = candidate;
+      break;
+    } catch (error) {
+      if (error?.code !== "EEXIST") throw error;
+    }
+  }
+  if (aliasPath === undefined) {
+    throw new Error(
+      `unable to allocate a short Windows native-build path in ${aliasRoot}`,
+    );
+  }
+  let closed = false;
+  return Object.freeze({
+    directory: aliasPath,
+    close() {
+      if (closed) return;
+      closed = true;
+      rmSync(aliasPath, { recursive: true, force: true });
+    },
+  });
+}
 
 function generatedCxxLanguageSettings(platform) {
   return Object.freeze({
@@ -570,9 +629,11 @@ function bindingGyp(
     ];
     target.configurations = {
       Release: {
-        ...(usesPrimeField || usesForeignLibraries
-          ? { msbuild_toolset: "ClangCL" }
-          : {}),
+        // Generated kernels share the FLINT/GMP representation headers even
+        // when their particular body has no direct foreign call.  Compile all
+        // Windows kernels with the same modern C frontend as the host addon;
+        // MSVC's C frontend cannot parse the C11 declarations in those headers.
+        msbuild_toolset: "ClangCL",
         msvs_settings: {
           VCCLCompilerTool: { RuntimeLibrary: 2 },
         },
@@ -586,7 +647,10 @@ function bindingGyp(
           ? {
             ExceptionHandling: 1,
             LanguageStandard: cxxLanguage.msvc,
-            RuntimeTypeInfo: true,
+            // GYP files are evaluated as Python dictionaries.  Keep this as
+            // the MSBuild string value rather than emitting JSON's `true`,
+            // which is not valid Python syntax on Windows.
+            RuntimeTypeInfo: "true",
           }
           : {}),
       },
@@ -810,10 +874,16 @@ async function compileKernel(options) {
   const nodeGyp = require.resolve("node-gyp/bin/node-gyp.js", {
     paths: [join(root, "packages", "flint")],
   });
-  const build = spawnSync(process.execPath, [nodeGyp, "rebuild"], {
-    cwd: outputPath,
-    encoding: "utf8",
-  });
+  const buildWorkspace = nativeBuildWorkspace(outputPath);
+  let build;
+  try {
+    build = spawnSync(process.execPath, [nodeGyp, "rebuild"], {
+      cwd: buildWorkspace.directory,
+      encoding: "utf8",
+    });
+  } finally {
+    buildWorkspace.close();
+  }
   if (build.status !== 0) {
     process.stderr.write(build.stdout);
     process.stderr.write(build.stderr);
@@ -858,4 +928,5 @@ module.exports = {
   bindingGyp,
   foreignCompilationInputs,
   generatedCxxLanguageSettings,
+  nativeBuildWorkspace,
 };

@@ -395,6 +395,7 @@ async function main() {
     process.env.SAGEJS_FLINT_PREFIX === undefined
   ) {
     const {
+      fflasUsesFlintPrefix,
       prepareNativeDependencies,
       restoreNativeDependencies,
     } = require("../../../scripts/native-worktree-cache.cjs");
@@ -405,8 +406,10 @@ async function main() {
       }
       return;
     }
-    const results = prepareNativeDependencies(repositoryRoot,
-      process.platform === "darwin" ? ["fflas"] : ["flint", "fflas"]);
+    const results = prepareNativeDependencies(
+      repositoryRoot,
+      fflasUsesFlintPrefix() ? ["flint", "fflas"] : ["fflas"],
+    );
     for (const result of results) {
       process.stdout.write(`Native cache ${result.id}: ${result.status}\n`);
     }

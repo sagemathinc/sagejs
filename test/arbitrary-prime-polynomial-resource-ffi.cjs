@@ -11,22 +11,34 @@ const { sanitizerEnvironment } = require("./helpers/sanitizers.cjs");
 const root = resolve(__dirname, "..");
 const prefix = resolve(
   process.env.SAGEJS_FLINT_PREFIX ||
-    join(root, "packages", "flint", ".native", "prefix"),
+    join(
+      root,
+      "packages",
+      "flint",
+      ".native",
+      process.platform === "win32"
+        ? join("vcpkg-installed", "x64-windows-static-md-release")
+        : "prefix",
+    ),
 );
 
 const temporary = mkdtempSync(join(tmpdir(), "sagejs-fmpz-mod-poly-"));
 const source = join(temporary, "witness.c");
-const executable = join(temporary, "witness");
+const executable = process.platform === "win32"
+  ? join(temporary, "build", "Release", "witness.exe")
+  : join(temporary, "witness");
 const sanitize = process.env.SAGEJS_FFI_SANITIZE === "1";
 const resultStressRounds = 4096;
 const aggregateStressRounds = 256;
 
-if (sanitize && process.platform === "darwin") {
+if (sanitize && ["darwin", "win32"].includes(process.platform)) {
   process.stdout.write(`${JSON.stringify({
     schema: "sagejs.ffi/arbitrary-prime-polynomial-resource-v1",
     capability: "sanitizers",
     supported: false,
-    reason: "Apple ASan lacks LeakSanitizer and static-FLINT lifecycle instrumentation exceeds the macOS CI budget",
+    reason: process.platform === "darwin"
+      ? "Apple ASan lacks LeakSanitizer and static-FLINT lifecycle instrumentation exceeds the macOS CI budget"
+      : "the native Windows lifecycle witness is not an ASan/UBSan configuration",
   })}\n`);
   rmSync(temporary, { recursive: true, force: true });
   process.exit(0);
@@ -337,16 +349,79 @@ int main(void)
 `,
 );
 
-const libraries = [
-  "libflint.a",
-  "libopenblas.a",
-  "libmpc.a",
-  "libmpfr.a",
-  "libgmp.a",
-].map((name) => join(prefix, "lib", name));
+function compileWindowsWitness() {
+  const builtins = spawnSync(process.execPath, [
+    join(
+      root,
+      "packages",
+      "flint",
+      "scripts",
+      "windows-clang-builtins.cjs",
+    ),
+  ], { cwd: root, encoding: "utf8", timeout: 30_000 });
+  assert.equal(
+    builtins.status,
+    0,
+    `unable to resolve Windows Clang builtins:\n${builtins.stdout}\n${builtins.stderr}`,
+  );
+  const libraries = [
+    "flint.lib",
+    "openblas.lib",
+    "mpc.lib",
+    "mpfr.lib",
+    "gmp.lib",
+    "pthreadVC3.lib",
+  ].map((name) => join(prefix, "lib", name));
+  libraries.push(builtins.stdout.trim());
+  writeFileSync(
+    join(temporary, "binding.gyp"),
+    `${JSON.stringify({
+      targets: [{
+        target_name: "witness",
+        type: "executable",
+        sources: ["witness.c"],
+        include_dirs: [
+          join(root, "packages", "flint", "include"),
+          join(prefix, "include"),
+        ],
+        defines: ["_CRT_SECURE_NO_WARNINGS"],
+        libraries,
+        configurations: {
+          Release: {
+            msbuild_toolset: "ClangCL",
+            msvs_settings: {
+              VCCLCompilerTool: { RuntimeLibrary: 2 },
+            },
+          },
+        },
+        msvs_settings: {
+          VCCLCompilerTool: {
+            Optimization: 2,
+            WarningLevel: 3,
+          },
+        },
+      }],
+    }, null, 2)}\n`,
+  );
+  const nodeGyp = require.resolve("node-gyp/bin/node-gyp.js", {
+    paths: [join(root, "packages", "flint")],
+  });
+  return spawnSync(process.execPath, [nodeGyp, "rebuild", "--release"], {
+    cwd: temporary,
+    encoding: "utf8",
+    timeout: 120_000,
+  });
+}
 
-try {
-  const compile = spawnSync(process.env.CC || "cc", [
+function compileUnixWitness() {
+  const libraries = [
+    "libflint.a",
+    "libopenblas.a",
+    "libmpc.a",
+    "libmpfr.a",
+    "libgmp.a",
+  ].map((name) => join(prefix, "lib", name));
+  return spawnSync(process.env.CC || "cc", [
     "-std=c11",
     "-O2",
     "-Wall",
@@ -367,6 +442,12 @@ try {
     "-o",
     executable,
   ], { cwd: root, encoding: "utf8", timeout: 120_000 });
+}
+
+try {
+  const compile = process.platform === "win32"
+    ? compileWindowsWitness()
+    : compileUnixWitness();
   assert.equal(
     compile.status,
     0,

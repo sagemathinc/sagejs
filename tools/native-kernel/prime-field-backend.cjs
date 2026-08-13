@@ -66,13 +66,31 @@ static inline unsigned int sagejs_prime_word_clz(ulong value)
 static inline ulong sagejs_prime_preinverse_prenorm(ulong divisor)
 {
 #if FLINT_BITS == 64
-#if defined(_MSC_VER)
+#if defined(_MSC_VER) && !defined(__clang__)
     unsigned __int64 remainder;
     return (ulong) _udiv128(
         (unsigned __int64) ~divisor,
         UINT64_MAX,
         (unsigned __int64) divisor,
         &remainder);
+#elif defined(_MSC_VER)
+    /* clang-cl's Windows linker does not provide __udivti3. */
+    ulong quotient = 0;
+    ulong remainder = ~divisor;
+    for (unsigned int bit = 0; bit < 64; bit++)
+    {
+        quotient <<= 1;
+        if (remainder >= (divisor >> 1))
+        {
+            remainder -= divisor - remainder - 1;
+            quotient |= 1;
+        }
+        else
+        {
+            remainder = (remainder << 1) | 1;
+        }
+    }
+    return quotient;
 #else
     const __uint128_t numerator =
         ((__uint128_t) ~divisor << 64) | (__uint128_t) UINT64_MAX;

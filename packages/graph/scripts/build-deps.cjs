@@ -50,6 +50,25 @@ const dependency = {
   archive: process.env.SAGEJS_IGRAPH_TARBALL,
 };
 
+function igraphLtoSetting(platform = process.platform) {
+  // MSVC's /GL archives contain compiler intermediate representation rather
+  // than ordinary COFF objects. The generated FFI adapter is linked with
+  // clang-cl/lld-link, which cannot consume those archive members.
+  return platform === "win32" ? "OFF" : "ON";
+}
+
+function expectedStamp(platform = process.platform) {
+  return `${JSON.stringify(
+    {
+      sha256: dependency.sha256,
+      lto: igraphLtoSetting(platform),
+      platform,
+    },
+    null,
+    2,
+  )}\n`;
+}
+
 function run(command, arguments_, options = {}) {
   process.stdout.write(`+ ${command} ${arguments_.join(" ")}\n`);
   const result = spawnSync(command, arguments_, {
@@ -123,7 +142,7 @@ function configureAndBuild(source) {
     "-DIGRAPH_INFOMAP_SUPPORT=OFF",
     "-DIGRAPH_GRAPHML_SUPPORT=OFF",
     "-DIGRAPH_OPENMP_SUPPORT=OFF",
-    "-DIGRAPH_ENABLE_LTO=ON",
+    `-DIGRAPH_ENABLE_LTO=${igraphLtoSetting()}`,
     "-DIGRAPH_USE_INTERNAL_ARPACK=ON",
     "-DIGRAPH_USE_INTERNAL_BLAS=ON",
     "-DIGRAPH_USE_INTERNAL_GMP=ON",
@@ -152,11 +171,11 @@ function configureAndBuild(source) {
     jobs,
   ]);
   mkdirSync(prefix, { recursive: true });
-  writeFileSync(stamp, `${dependency.sha256}\n`);
+  writeFileSync(stamp, expectedStamp());
 }
 
 async function main() {
-  if (existsSync(stamp)) {
+  if (existsSync(stamp) && readFileSync(stamp, "utf8") === expectedStamp()) {
     installSagejsHeader();
     process.stdout.write(`Reusing igraph ${dependency.version} from ${prefix}\n`);
     return;
@@ -171,7 +190,11 @@ async function main() {
   installSagejsHeader();
 }
 
-main().catch((error) => {
-  process.stderr.write(`${error.stack || error}\n`);
-  process.exitCode = 1;
-});
+if (require.main === module) {
+  main().catch((error) => {
+    process.stderr.write(`${error.stack || error}\n`);
+    process.exitCode = 1;
+  });
+}
+
+module.exports = { expectedStamp, igraphLtoSetting };

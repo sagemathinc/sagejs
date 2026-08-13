@@ -20,6 +20,9 @@ const { compile } = require(join(repositoryRoot, "tools", "native-kernel.cjs"));
 const m4ri = require(root);
 const manifest = require(join(root, "build", "generated-ffi", "manifest.json"));
 const generated = require(join(root, "build", "generated-ffi", manifest.addon));
+const {
+  removeLoadedNativeCache,
+} = require(join(repositoryRoot, "test", "helpers", "native-cache-cleanup.cjs"));
 
 function close(resource, closer) {
   closer(resource);
@@ -487,7 +490,7 @@ test("ordinary typed Python safely borrows and traverses M4RI resources", {
     assert.ok(functionIr);
     assert.equal(functionIr.foreignDependencies.length, 3);
   } finally {
-    rmSync(directory, { force: true, recursive: true });
+    removeLoadedNativeCache(directory);
   }
 });
 

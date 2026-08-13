@@ -22,6 +22,9 @@ const {
   lowerSource,
 } = require("../tools/native-kernel/ir.cjs");
 const {
+  removeLoadedNativeCache,
+} = require("./helpers/native-cache-cleanup.cjs");
+const {
   createPythonCompilerFrontend,
 } = require("../dist/tools/python/compiler-frontend.js");
 
@@ -529,6 +532,6 @@ print(json.dumps([
     ]);
     assert.deepEqual(native, cpython);
   } finally {
-    rmSync(directory, { recursive: true, force: true });
+    removeLoadedNativeCache(directory);
   }
 });

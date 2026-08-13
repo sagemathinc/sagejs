@@ -12,6 +12,9 @@ const { tmpdir } = require("node:os");
 const { join } = require("node:path");
 const { spawnSync } = require("node:child_process");
 const { compile } = require("@sagemath/sagejs/native");
+const {
+  removeLoadedNativeCache,
+} = require("./helpers/native-cache-cleanup.cjs");
 
 const root = join(__dirname, "..");
 const sourcePath = join(
@@ -494,7 +497,7 @@ print('trace-ok')
 
     console.log("dense rational matrix migration tests passed");
   } finally {
-    rmSync(temporary, { recursive: true, force: true });
+    removeLoadedNativeCache(temporary);
   }
 })().catch((error) => {
   console.error(error.stack || error);

@@ -231,8 +231,10 @@ print("extension-polynomial-resource-contract-ok")
 test("bulk extension-polynomial contract is CPython and Sage.js compatible", () => {
   const python = process.env.PYTHON ||
     (process.platform === "win32" ? "python" : "python3");
-  const pythonSource = `import sys\nsys.path.insert(0, ${JSON.stringify(
+  const pythonSource = `import os\nimport sys\nsys.path.append(${JSON.stringify(
     join(root, "src/lib"),
+  )})\nimport sagejs.polynomial_algorithms.extension_resource_contract as contract\nassert os.path.samefile(contract.__file__, ${JSON.stringify(
+    modulePath,
   )})\nfrom sagejs.polynomial_algorithms.extension_resource_contract import *\n${contractWitness}`;
   assert.equal(
     run(python, ["-I", "-c", pythonSource]),

@@ -14,6 +14,9 @@ const test = require("node:test");
 
 const declarations = require("../tools/ffi/declarations.cjs");
 const hostAdapters = require("../tools/ffi/host-adapters.cjs");
+const {
+  removeLoadedNativeCache,
+} = require("./helpers/native-cache-cleanup.cjs");
 
 const root = resolve(__dirname, "..");
 
@@ -568,7 +571,7 @@ test("resource and read-only UInt64Buffer aggregates compose safely", async () =
     } else {
       globalThis.__sagejs_runtime_require__ = previousRequire;
     }
-    rmSync(temporary, { recursive: true, force: true });
+    removeLoadedNativeCache(temporary);
   }
 });
 

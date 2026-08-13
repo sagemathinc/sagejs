@@ -19,6 +19,7 @@ const sourceDeclarations = require(
 };
 const boundaryAudit = require("../../tools/ffi/boundary-audit.cjs") as {
   createBoundarySnapshot(options?: { root?: string }): Record<string, unknown>;
+  portablePath(path: string): string;
   snapshotPath(root?: string): string;
   validateBoundarySnapshot(
     snapshot: Record<string, unknown>, options?: { root?: string },
@@ -90,20 +91,24 @@ interface FfiCliArguments {
   write?: boolean;
 }
 
+function repositoryPath(root: string, filename: string): string {
+  return boundaryAudit.portablePath(relative(root, filename));
+}
+
 function publicDescription(
   root: string, declaration: FfiDeclaration, source?: FfiSource,
 ) {
   return {
     schema: "sagejs.ffi/inspection-v1",
     identity: declaration.identity,
-    declaration: relative(root, declaration.filename),
+    declaration: repositoryPath(root, declaration.filename),
     source: declaration.sourceFilename === null
-      ? null : relative(root, declaration.sourceFilename),
+      ? null : repositoryPath(root, declaration.sourceFilename),
     source_map: source?.locations ?? null,
     library: declaration.library,
     abi_catalog: {
       schema: declaration.abiCatalog.schema,
-      declaration: relative(root, declaration.abiCatalog.filename),
+      declaration: repositoryPath(root, declaration.abiCatalog.filename),
       hash: declaration.abiCatalog.hash,
     },
     resources: declaration.resources,
@@ -232,8 +237,8 @@ export async function runFfiCompilerCli(argv: FfiCliArguments): Promise<void> {
         ? readFileSync(source.normalizedFilename, "utf8") : "";
       return {
         library: source.document.library.id,
-        source: relative(sourceRegistry.root, source.filename),
-        lowered: relative(sourceRegistry.root, source.normalizedFilename),
+        source: repositoryPath(sourceRegistry.root, source.filename),
+        lowered: repositoryPath(sourceRegistry.root, source.normalizedFilename),
         matches: actual === source.text,
         difference: firstDifference(source.text, actual),
       };
@@ -264,7 +269,9 @@ export async function runFfiCompilerCli(argv: FfiCliArguments): Promise<void> {
     for (const source of sources) {
       mkdirSync(dirname(source.normalizedFilename), { recursive: true });
       writeFileSync(source.normalizedFilename, source.text);
-      process.stdout.write(`${relative(sourceRegistry.root, source.normalizedFilename)}\n`);
+      process.stdout.write(
+        `${repositoryPath(sourceRegistry.root, source.normalizedFilename)}\n`,
+      );
     }
   } else {
     assertLowered(sources);
@@ -293,7 +300,7 @@ export async function runFfiCompilerCli(argv: FfiCliArguments): Promise<void> {
         libraries: libraries.map((item) => item.identity),
         functions: libraries.reduce((sum, item) => sum + item.functions.length, 0),
         source_declarations: sources.map((item) =>
-          relative(sourceRegistry.root, item.filename)),
+          repositoryPath(sourceRegistry.root, item.filename)),
         lowered: true,
         generated: true,
         native_boundaries: boundaryCount,
@@ -315,7 +322,7 @@ export async function runFfiCompilerCli(argv: FfiCliArguments): Promise<void> {
       )) {
         mkdirSync(dirname(filename), { recursive: true });
         writeFileSync(filename, declarations.generatePythonModule(declaration));
-        process.stdout.write(`${relative(registry.root, filename)}\n`);
+        process.stdout.write(`${repositoryPath(registry.root, filename)}\n`);
       }
       const hostPath = hostAdapters.generatedHostAdapterPath(
         registry.root, declaration,
@@ -325,7 +332,7 @@ export async function runFfiCompilerCli(argv: FfiCliArguments): Promise<void> {
         hostPath,
         hostAdapters.generatedHostAdapterSource(declaration),
       );
-      process.stdout.write(`${relative(registry.root, hostPath)}\n`);
+      process.stdout.write(`${repositoryPath(registry.root, hostPath)}\n`);
     }
     return;
   }

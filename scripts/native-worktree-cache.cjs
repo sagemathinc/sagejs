@@ -436,15 +436,30 @@ function nativeBuildIdentity(workspace, overrides = {}) {
   });
 }
 
-function dependencyPrefix(packageId) {
-  if (packageId === "flint" && process.platform === "win32") {
+function dependencyPrefix(packageId, platform = process.platform) {
+  if (packageId === "flint" && platform === "win32") {
     return "packages/flint/.native/vcpkg-installed/x64-windows-static-md-release";
   }
   return `packages/${packageId}/.native/prefix`;
 }
 
+function dependencyOutputRoot(packageId, platform = process.platform) {
+  if (packageId === "flint" && platform === "win32") {
+    // Vcpkg's target files, host-tool installation, and status database form
+    // one installation. Moving only the target triplet can leave the database
+    // claiming that files removed by the cache are still installed.
+    return "packages/flint/.native/vcpkg-installed";
+  }
+  return dependencyPrefix(packageId, platform);
+}
+
+function fflasUsesFlintPrefix(platform = process.platform) {
+  return platform === "linux";
+}
+
 function nativeArtifactSpecs(workspace, overrides = {}) {
   const identity = nativeBuildIdentity(workspace, overrides);
+  const platform = overrides.platform || process.platform;
   const baseMathProfile = overrides.mathProfile || nativeMathBuildProfile();
   const commonAddonInputs = [
     ...nativeCompilerInputPaths,
@@ -481,20 +496,20 @@ function nativeArtifactSpecs(workspace, overrides = {}) {
         "packages/flint/build/generated-ffi/sagejs_flint_ffi.node",
         "packages/flint/build/generated-ffi/manifest.json",
       ],
-      requiredDependencyOutputs: process.platform === "win32"
+      requiredDependencyOutputs: platform === "win32"
         ? [
-          `${dependencyPrefix("flint")}/lib/flint.lib`,
-          `${dependencyPrefix("flint")}/lib/openblas.lib`,
+          `${dependencyPrefix("flint", platform)}/lib/flint.lib`,
+          `${dependencyPrefix("flint", platform)}/lib/openblas.lib`,
         ]
         : [
-          `${dependencyPrefix("flint")}/lib/libflint.a`,
-          `${dependencyPrefix("flint")}/lib/libgmp.a`,
-          `${dependencyPrefix("flint")}/lib/libopenblas.a`,
-          `${dependencyPrefix("flint")}/.sagejs-flint-dependencies.json`,
+          `${dependencyPrefix("flint", platform)}/lib/libflint.a`,
+          `${dependencyPrefix("flint", platform)}/lib/libgmp.a`,
+          `${dependencyPrefix("flint", platform)}/lib/libopenblas.a`,
+          `${dependencyPrefix("flint", platform)}/.sagejs-flint-dependencies.json`,
         ],
     },
     fflas: {
-      dependencyMaterialization: process.platform === "win32"
+      dependencyMaterialization: platform === "win32"
         ? "copy"
         : "shared-readonly",
       dependencyInputs: [
@@ -503,8 +518,8 @@ function nativeArtifactSpecs(workspace, overrides = {}) {
         "packages/fflas/package.json",
         "packages/fflas/scripts/build-deps.cjs",
         "packages/fflas/include/sagejs/fflas_matrix_ffi.h",
-        ...(process.platform === "darwin"
-          ? [] : ["packages/flint/scripts/build-deps.cjs"]),
+        ...(fflasUsesFlintPrefix(platform)
+          ? ["packages/flint/scripts/build-deps.cjs"] : []),
       ],
       addonInputs: [
         "packages/fflas/package.json",
@@ -522,18 +537,18 @@ function nativeArtifactSpecs(workspace, overrides = {}) {
         "packages/fflas/build/generated-ffi/sagejs_fflas_ffi.node",
         "packages/fflas/build/generated-ffi/manifest.json",
       ],
-      requiredDependencyOutputs: process.platform === "win32"
+      requiredDependencyOutputs: platform === "win32"
         ? [
-          `${dependencyPrefix("fflas")}/.sagejs-fflas-dependencies.json`,
-          `${dependencyPrefix("fflas")}/include/sagejs/fflas_matrix_ffi.h`,
+          `${dependencyPrefix("fflas", platform)}/.sagejs-fflas-dependencies.json`,
+          `${dependencyPrefix("fflas", platform)}/include/sagejs/fflas_matrix_ffi.h`,
         ]
         : [
-          `${dependencyPrefix("fflas")}/lib/libgmpxx.a`,
-          `${dependencyPrefix("fflas")}/lib/libgivaro.a`,
-          `${dependencyPrefix("fflas")}/lib/${
-            process.platform === "darwin" ? "Accelerate.tbd" : "libopenblas.a"
+          `${dependencyPrefix("fflas", platform)}/lib/libgmpxx.a`,
+          `${dependencyPrefix("fflas", platform)}/lib/libgivaro.a`,
+          `${dependencyPrefix("fflas", platform)}/lib/${
+            platform === "darwin" ? "Accelerate.tbd" : "libopenblas.a"
           }`,
-          `${dependencyPrefix("fflas")}/.sagejs-fflas-dependencies.json`,
+          `${dependencyPrefix("fflas", platform)}/.sagejs-fflas-dependencies.json`,
         ],
       addonBuildCommands: [
         ["pnpm", ["--dir", "packages/fflas", "run", "build:ffi"]],
@@ -568,14 +583,14 @@ function nativeArtifactSpecs(workspace, overrides = {}) {
         "packages/graph/build/generated-ffi/manifest.json",
       ],
       requiredDependencyOutputs: [
-        process.platform === "win32"
-          ? `${dependencyPrefix("graph")}/lib/igraph.lib`
-          : `${dependencyPrefix("graph")}/lib/libigraph.a`,
-        `${dependencyPrefix("graph")}/.sagejs-igraph-1.0.1`,
+        platform === "win32"
+          ? `${dependencyPrefix("graph", platform)}/lib/igraph.lib`
+          : `${dependencyPrefix("graph", platform)}/lib/libigraph.a`,
+        `${dependencyPrefix("graph", platform)}/.sagejs-igraph-1.0.1`,
       ],
     },
     m4ri: {
-      dependencyMaterialization: process.platform === "win32"
+      dependencyMaterialization: platform === "win32"
         ? "copy"
         : "shared-readonly",
       dependencyInputs: [
@@ -599,15 +614,15 @@ function nativeArtifactSpecs(workspace, overrides = {}) {
         "packages/m4ri/build/generated-ffi/sagejs_m4ri_ffi.node",
         "packages/m4ri/build/generated-ffi/manifest.json",
       ],
-      requiredDependencyOutputs: process.platform === "win32"
+      requiredDependencyOutputs: platform === "win32"
         ? [
-          `${dependencyPrefix("m4ri")}/.sagejs-m4ri-dependencies.json`,
-          `${dependencyPrefix("m4ri")}/include/sagejs/m4ri_matrix_ffi.h`,
+          `${dependencyPrefix("m4ri", platform)}/.sagejs-m4ri-dependencies.json`,
+          `${dependencyPrefix("m4ri", platform)}/include/sagejs/m4ri_matrix_ffi.h`,
         ]
         : [
-          `${dependencyPrefix("m4ri")}/lib/libm4ri.a`,
-          `${dependencyPrefix("m4ri")}/.sagejs-m4ri-dependencies.json`,
-          `${dependencyPrefix("m4ri")}/include/sagejs/m4ri_matrix_ffi.h`,
+          `${dependencyPrefix("m4ri", platform)}/lib/libm4ri.a`,
+          `${dependencyPrefix("m4ri", platform)}/.sagejs-m4ri-dependencies.json`,
+          `${dependencyPrefix("m4ri", platform)}/include/sagejs/m4ri_matrix_ffi.h`,
         ],
       addonBuildCommands: [
         ["pnpm", ["--dir", "packages/m4ri", "run", "build:ffi"]],
@@ -629,7 +644,7 @@ function nativeArtifactSpecs(workspace, overrides = {}) {
     // otherwise compatible Node upgrade; the addon stage below includes it.
     const dependencyIdentity = identity.native ?? identity;
     const platformInputs = overrides.platformInputs?.[packageId] ??
-      (packageId === "fflas" && process.platform === "darwin" ? (() => {
+      (packageId === "fflas" && platform === "darwin" ? (() => {
         const { stub, cblasHeader } = appleAccelerateSdkInputs();
         return {
           accelerateStub: fileIdentity(stub),
@@ -643,6 +658,9 @@ function nativeArtifactSpecs(workspace, overrides = {}) {
         ? mathProfile
         : null,
       materialization: description.dependencyMaterialization,
+      ...(packageId === "flint" && platform === "win32"
+        ? { outputLayout: "complete-vcpkg-installation-v1" }
+        : {}),
       packageId,
       platformInputs,
       schema: nativeCacheSchema,
@@ -672,7 +690,7 @@ function nativeArtifactSpecs(workspace, overrides = {}) {
         inputPaths: description.dependencyInputs,
         inputs: dependencyInputs,
         platformInputs,
-        outputRoots: [dependencyPrefix(packageId)],
+        outputRoots: [dependencyOutputRoot(packageId, platform)],
         cleanupRoots: [
           `packages/${packageId}/.native/downloads`,
           `packages/${packageId}/.native/sources`,
@@ -1999,10 +2017,10 @@ function nativePackageCacheable(packageId) {
   if (process.env[`SAGEJS_${packageId.toUpperCase()}_PREFIX`] !== undefined) {
     return false;
   }
-  // FFLAS obtains OpenBLAS and its CBLAS headers from FLINT on Linux. Darwin
-  // uses only the selected SDK's Accelerate inputs and is independent of the
-  // FLINT prefix.
-  return packageId !== "fflas" || process.platform === "darwin" ||
+  // Only Linux FFLAS obtains OpenBLAS and its CBLAS headers from FLINT.
+  // Darwin uses Accelerate, while native Windows exposes a disabled
+  // capability stamp and the correct portable fallback.
+  return packageId !== "fflas" || !fflasUsesFlintPrefix() ||
     process.env.SAGEJS_FLINT_PREFIX === undefined;
 }
 
@@ -2020,7 +2038,7 @@ function prepareNativePackages(workspace, packageIds, options = {}) {
     preparedSpecs.add(spec.id);
   };
   for (const packageId of packageIds) {
-    if (packageId === "fflas" && process.platform !== "darwin" &&
+    if (packageId === "fflas" && fflasUsesFlintPrefix() &&
         nativePackageCacheable("flint")) {
       const flintPrerequisites = selectedNativeSpecs(
         workspace,
@@ -2104,6 +2122,7 @@ module.exports = {
   defaultNativeCacheRoot,
   discoverNativeCacheProtections,
   ensureNativeCompiler,
+  fflasUsesFlintPrefix,
   nativeArtifactSpecs,
   nativeCacheArtifactIds,
   nativeCachePackages,

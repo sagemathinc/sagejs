@@ -7,6 +7,9 @@ const { tmpdir } = require("node:os");
 const { join, resolve } = require("node:path");
 const { spawnSync } = require("node:child_process");
 const { compile } = require("@sagemath/sagejs/native");
+const {
+  removeLoadedNativeCache,
+} = require("./helpers/native-cache-cleanup.cjs");
 
 const root = resolve(__dirname, "..");
 const sourcePath = join(
@@ -366,7 +369,7 @@ print('linear-matrix-predicates-fallback-ok')
     assert.equal(runSage(temporary, true), nativeOutput);
     console.log("linear-matrix-predicates-ok");
   } finally {
-    rmSync(temporary, { recursive: true, force: true });
+    removeLoadedNativeCache(temporary);
   }
 })().catch((error) => {
   console.error(error);

@@ -13,6 +13,9 @@ const { join } = require("node:path");
 const { spawnSync } = require("node:child_process");
 const { compile } = require("@sagemath/sagejs/native");
 const flint = require("../packages/flint");
+const {
+  removeLoadedNativeCache,
+} = require("./helpers/native-cache-cleanup.cjs");
 
 const root = join(__dirname, "..");
 const sourcePath = join(
@@ -929,7 +932,7 @@ print("import-ok")
       /has no matching compiled artifact/,
     );
   } finally {
-    rmSync(temporary, { recursive: true, force: true });
+    removeLoadedNativeCache(temporary);
   }
   console.log(
     "Packed production Matrix, typed Python, declared FFI, mutation, and FLINT dense GF(p) oracles passed.",

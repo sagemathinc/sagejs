@@ -12,6 +12,9 @@ const { join, resolve } = require("node:path");
 const { spawnSync } = require("node:child_process");
 const test = require("node:test");
 const { compileKernel } = require("../tools/native-kernel/compiler.cjs");
+const {
+  removeLoadedNativeCache,
+} = require("./helpers/native-cache-cleanup.cjs");
 
 const root = resolve(__dirname, "..");
 const fixture = join(root, "test", "fixtures", "native-resource-finalizer");
@@ -110,7 +113,7 @@ def ffiMixedPrimeFieldFactor(
     `]));
     assert.deepEqual(result, { ok: true });
   } finally {
-    rmSync(directory, { recursive: true, force: true });
+    removeLoadedNativeCache(directory);
   }
 });
 
