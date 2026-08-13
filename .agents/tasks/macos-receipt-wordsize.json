@@ -1,0 +1,106 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "macos-receipt-wordsize",
+  "title": "Macos Receipt Wordsize",
+  "lane": "integration",
+  "status": "review",
+  "owner": "user",
+  "objective": "Validate Mach-O word size at its per-slice location so exact embedded macOS SEA receipts remain fail-closed and usable",
+  "base_commit": "9d7522ec8c0195bc41f4b2b2ccb6dfeefdc3eeff",
+  "claims": [
+    "scripts/release-capabilities.cjs",
+    "test/release-capabilities.cjs"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "not-applicable",
+    "fallback": "not-applicable",
+    "oracles": [],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm architecture:check",
+    "node --test test/release-capabilities.cjs",
+    "pnpm test:portable",
+    "pnpm test:baselib:strict"
+  ],
+  "runs": [
+    {
+      "command": "node --test test/release-capabilities.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.273,
+      "started_at": "2026-08-13T22:14:47.872Z",
+      "commit": "9d7522ec8c0195bc41f4b2b2ccb6dfeefdc3eeff",
+      "workspace_fingerprint": "4f9fa60525a2222fb676492a108f2d6ca271e497315fdf270c9d6e3212bf1e63",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 5.283,
+      "started_at": "2026-08-13T22:14:48.762Z",
+      "commit": "9d7522ec8c0195bc41f4b2b2ccb6dfeefdc3eeff",
+      "workspace_fingerprint": "4f9fa60525a2222fb676492a108f2d6ca271e497315fdf270c9d6e3212bf1e63",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/release-capabilities.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.283,
+      "started_at": "2026-08-13T22:23:05.923Z",
+      "commit": "9d7522ec8c0195bc41f4b2b2ccb6dfeefdc3eeff",
+      "workspace_fingerprint": "4f9fa60525a2222fb676492a108f2d6ca271e497315fdf270c9d6e3212bf1e63",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 5.46,
+      "started_at": "2026-08-13T22:23:06.803Z",
+      "commit": "9d7522ec8c0195bc41f4b2b2ccb6dfeefdc3eeff",
+      "workspace_fingerprint": "4f9fa60525a2222fb676492a108f2d6ca271e497315fdf270c9d6e3212bf1e63",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 14.347,
+      "started_at": "2026-08-13T22:23:20.031Z",
+      "commit": "9d7522ec8c0195bc41f4b2b2ccb6dfeefdc3eeff",
+      "workspace_fingerprint": "4f9fa60525a2222fb676492a108f2d6ca271e497315fdf270c9d6e3212bf1e63",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 20.526,
+      "started_at": "2026-08-13T22:24:11.087Z",
+      "commit": "9d7522ec8c0195bc41f4b2b2ccb6dfeefdc3eeff",
+      "workspace_fingerprint": "4f9fa60525a2222fb676492a108f2d6ca271e497315fdf270c9d6e3212bf1e63",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Validate native binary word size at the canonical location emitted by each inspector: top-level for ELF and PE, and on every slice for Mach-O. The receipt remains fail-closed for 32-bit or malformed reports while accepting real thin and universal 64-bit Mach-O reports that never had a top-level wordSize field.",
+    "risks": [
+      "Focused capability tests and architecture checks pass. The broader portable suite could not complete in this isolated worktree because unrelated FLINT native artifacts were absent and a shared cache test was interrupted; no failure implicated this validator-only change."
+    ],
+    "next_steps": [
+      "Integrate this narrow validator fix, rebuild the macOS SEA manifests without rebuilding native dependencies, and rerun capabilities plus clean-room release validation on Apple silicon."
+    ]
+  }
+}
