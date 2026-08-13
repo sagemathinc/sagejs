@@ -417,6 +417,9 @@ static inline int sagejs_fq_element_pow(
     sagejs_fq_element_t result, const sagejs_fq_element_t source,
     const fmpz_t exponent)
 {
+    fq_default_t inverse;
+    fmpz_t nonnegative_exponent;
+
     result->context = NULL;
     if (source->context == NULL ||
         (fmpz_sgn(exponent) < 0 &&
@@ -429,8 +432,23 @@ static inline int sagejs_fq_element_pow(
         return 0;
     }
     fq_default_init(result->value, result->context->value);
-    fq_default_pow(
-        result->value, source->value, exponent, result->context->value);
+    if (fmpz_sgn(exponent) < 0)
+    {
+        /* fq_default_pow requires a nonnegative exponent. */
+        fq_default_init(inverse, result->context->value);
+        fq_default_inv(inverse, source->value, result->context->value);
+        fmpz_init(nonnegative_exponent);
+        fmpz_neg(nonnegative_exponent, exponent);
+        fq_default_pow(result->value, inverse, nonnegative_exponent,
+            result->context->value);
+        fmpz_clear(nonnegative_exponent);
+        fq_default_clear(inverse, result->context->value);
+    }
+    else
+    {
+        fq_default_pow(
+            result->value, source->value, exponent, result->context->value);
+    }
     return 1;
 }
 

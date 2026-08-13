@@ -71,6 +71,8 @@ assert keep(a / b).coordinates() == (2, 0)
 assert keep(a ** -3).coordinates() == (2, 1)
 huge = (1 << 100) + 17
 assert keep(a ** huge) == keep(a ** (huge % 8))
+negative_huge = -((1 << 100) + 17)
+assert keep(a ** negative_huge) == keep(a ** (negative_huge % 8))
 
 for operation in [lambda: zero.inverse(), lambda: zero ** -1, lambda: a / zero]:
     try:
