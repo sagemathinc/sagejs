@@ -81,6 +81,7 @@
     "node bench/public-exact-matrix-subspaces.cjs --check",
     "pnpm ffi:check",
     "pnpm architecture:check",
+    "node packages/flint-wasm/test/browser-smoke.mjs --public-exact-subspaces",
     "pnpm test:portable",
     "pnpm test:baselib:strict",
     "pnpm --dir packages/flint test",
@@ -306,18 +307,168 @@
       "commit": "318d881e529e15d18187082873d168192bf50777",
       "workspace_fingerprint": "3316186384121121d166e6948c2da879cef539a01ecb1851b3a09350a11bacb7",
       "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/public-exact-matrix-subspaces.cjs --check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 33.616,
+      "started_at": "2026-08-13T00:00:01.066Z",
+      "commit": "e8825bacd3da7e864c6870864aa39a89652e6e04",
+      "workspace_fingerprint": "1d64399b2d3a4de0373dd394b47f3c819408c137e9a61e36c5998832fed2f038",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node packages/flint-wasm/test/browser-smoke.mjs --public-exact-subspaces",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 3.592,
+      "started_at": "2026-08-13T00:01:49.819Z",
+      "commit": "e8825bacd3da7e864c6870864aa39a89652e6e04",
+      "workspace_fingerprint": "1d64399b2d3a4de0373dd394b47f3c819408c137e9a61e36c5998832fed2f038",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/public-exact-matrix-subspaces.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 3.718,
+      "started_at": "2026-08-13T00:14:06.337Z",
+      "commit": "712d8f35a9783b9f176b8fecb11cfe268a32d0b1",
+      "workspace_fingerprint": "95445f8a2257acd4c5ed345483c17371d57946a264bd278753ac59c02231ab5f",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 14.83,
+      "started_at": "2026-08-13T00:14:10.714Z",
+      "commit": "712d8f35a9783b9f176b8fecb11cfe268a32d0b1",
+      "workspace_fingerprint": "95445f8a2257acd4c5ed345483c17371d57946a264bd278753ac59c02231ab5f",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/linear-matrix-subspaces.cjs test/public-exact-matrix-subspaces.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 3.591,
+      "started_at": "2026-08-13T00:16:34.872Z",
+      "commit": "712d8f35a9783b9f176b8fecb11cfe268a32d0b1",
+      "workspace_fingerprint": "95445f8a2257acd4c5ed345483c17371d57946a264bd278753ac59c02231ab5f",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --expose-gc --test test/exact-matrix-pivot-lifecycle.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.562,
+      "started_at": "2026-08-13T00:16:39.064Z",
+      "commit": "712d8f35a9783b9f176b8fecb11cfe268a32d0b1",
+      "workspace_fingerprint": "95445f8a2257acd4c5ed345483c17371d57946a264bd278753ac59c02231ab5f",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/exact-matrix-pivot-ffi.cjs test/ffi-wasm-m4ri-resource.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 4.748,
+      "started_at": "2026-08-13T00:16:42.258Z",
+      "commit": "712d8f35a9783b9f176b8fecb11cfe268a32d0b1",
+      "workspace_fingerprint": "95445f8a2257acd4c5ed345483c17371d57946a264bd278753ac59c02231ab5f",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/public-exact-matrix-subspaces.cjs --check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 33.615,
+      "started_at": "2026-08-13T00:16:51.303Z",
+      "commit": "712d8f35a9783b9f176b8fecb11cfe268a32d0b1",
+      "workspace_fingerprint": "95445f8a2257acd4c5ed345483c17371d57946a264bd278753ac59c02231ab5f",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm ffi:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.303,
+      "started_at": "2026-08-13T00:17:25.552Z",
+      "commit": "712d8f35a9783b9f176b8fecb11cfe268a32d0b1",
+      "workspace_fingerprint": "95445f8a2257acd4c5ed345483c17371d57946a264bd278753ac59c02231ab5f",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 14.589,
+      "started_at": "2026-08-13T00:17:28.478Z",
+      "commit": "712d8f35a9783b9f176b8fecb11cfe268a32d0b1",
+      "workspace_fingerprint": "95445f8a2257acd4c5ed345483c17371d57946a264bd278753ac59c02231ab5f",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 14.645,
+      "started_at": "2026-08-13T00:17:48.989Z",
+      "commit": "712d8f35a9783b9f176b8fecb11cfe268a32d0b1",
+      "workspace_fingerprint": "95445f8a2257acd4c5ed345483c17371d57946a264bd278753ac59c02231ab5f",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm --dir packages/flint test",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 4.149,
+      "started_at": "2026-08-13T00:18:04.262Z",
+      "commit": "712d8f35a9783b9f176b8fecb11cfe268a32d0b1",
+      "workspace_fingerprint": "95445f8a2257acd4c5ed345483c17371d57946a264bd278753ac59c02231ab5f",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm --dir packages/m4ri test",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 3.822,
+      "started_at": "2026-08-13T00:18:09.036Z",
+      "commit": "712d8f35a9783b9f176b8fecb11cfe268a32d0b1",
+      "workspace_fingerprint": "95445f8a2257acd4c5ed345483c17371d57946a264bd278753ac59c02231ab5f",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node packages/flint-wasm/test/browser-smoke.mjs --public-exact-subspaces",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 3.328,
+      "started_at": "2026-08-13T00:18:13.462Z",
+      "commit": "712d8f35a9783b9f176b8fecb11cfe268a32d0b1",
+      "workspace_fingerprint": "95445f8a2257acd4c5ed345483c17371d57946a264bd278753ac59c02231ab5f",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 62.065,
+      "started_at": "2026-08-13T00:18:39.606Z",
+      "commit": "712d8f35a9783b9f176b8fecb11cfe268a32d0b1",
+      "workspace_fingerprint": "95445f8a2257acd4c5ed345483c17371d57946a264bd278753ac59c02231ab5f",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {
-    "summary": "Public pivots, row spaces, row modules/images, column spaces, and column modules now use bounded pivot metadata plus one bulk selector over canonical ZZ, QQ, GF(2), and small GF(p) storage. Equal-ring exact operations forbid full host export; bases are immutable, preserve degenerate shapes, share pivot caches with echelon forms, and pass generated/dynamic, SageMath differential, lifecycle, sanitizer, and benchmark coverage. Exact pivot storage grows only with rank, and M4RI row selection is a generated declared resource operation.",
+    "summary": "Public pivots, row spaces, row modules/images, column spaces, and column modules now use bounded pivot metadata plus generated prefix-resource operations over canonical ZZ, QQ, GF(2), and small GF(p) storage. Equal-ring operations forbid full host export; bases are immutable, preserve degenerate shapes, and share pivot caches with echelon forms. Cross-ring embedded modules distinguish coefficient and coordinate rings, preserve their mathematical parent under vector arithmetic, and cover QQ/ZZ/modular conversion semantics against SageMath. Real Chromium/Wasm execution, native/dynamic behavior, lifecycle sanitizers, strict Python, and the restored 2 ms or 2x benchmark authority pass.",
     "risks": [
       "pnpm test:portable has an unrelated baseline failure in test/gf2-polynomial-packed-core.cjs: the two packed GF(2) polynomial semantic tests raise OverflowError for a uint64 shift count. The failure reproduces on current main and is assigned outside this lane; 214 of 216 portable tests pass.",
-      "The public resource paths are validated on linux-x64 and the M4RI resource surface executes through real Wasm. Native linux-arm64 and macos-arm64 validation remain integration responsibilities.",
-      "Cross-ring row_space intentionally materializes original generators. The common equal-ring path remains resource-direct; QQ viewed as a ZZ-module is differentially checked against SageMath."
+      "The public resource paths are validated on linux-x64 and execute through real Chromium/Wasm. Native linux-arm64 and macos-arm64 validation remain integration responsibilities.",
+      "Cross-ring row_space intentionally materializes original generators. The common equal-ring path remains resource-direct; embedded-module conversions and arithmetic are differentially checked against SageMath."
     ],
     "next_steps": [
-      "Obtain an independent semantic and architecture review before integration.",
       "Integrate after the unrelated GF(2) polynomial portable failure is repaired or explicitly baseline-waived.",
+      "Repeat the warmed benchmark on macOS ARM64 and a native SageMath installation; the local sagelite wrapper is an interactive CoWasm shell, not a scriptable native benchmark authority.",
       "Consider a generic caller-owned writable metadata slice only after another bounded-resource query needs the same compiler feature."
     ]
   }
