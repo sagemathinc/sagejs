@@ -1,0 +1,52 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "rc-macos-arm64",
+  "title": "Rc Macos Arm64",
+  "lane": "distribution",
+  "status": "active",
+  "owner": "user",
+  "objective": "Build and validate a relocatable unsigned macOS arm64 release candidate on m1, separating unsigned validation from credential-gated signing and notarization.",
+  "base_commit": "950f0134dd51ca66776dc3d6290a5807cf3fd77f",
+  "claims": [
+    "scripts/release-macos.sh",
+    "test/release-macos-arm64.cjs",
+    "bench/release-candidate-macos.cjs"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "not-applicable",
+    "fallback": "not-applicable",
+    "oracles": [],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "not-applicable",
+    "linux-arm64": "not-applicable",
+    "windows-x64": "not-applicable",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:portable",
+    "pnpm test:native",
+    "pnpm test:sea",
+    "bash -n scripts/release-macos.sh",
+    "node --check bench/release-candidate-macos.cjs",
+    "node --test test/release-macos-arm64.cjs"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "Added a credential-free unsigned macOS release-candidate path while preserving the Developer ID, installer, notarization, and publication path. The release command rejects dynamically non-relocatable Homebrew Node builders, validates ad-hoc signatures, creates and checksums a ZIP, then tests its extracted executables from a fresh home/cache and records exact builder, archive, Mach-O, content, and cold/warm benchmark provenance. An Apple M1 Max candidate built with the official Node.js v26.5.1 arm64 distribution passed the complete SEA suite and clean-room exact-mathematics validation.",
+    "risks": [
+      "The unsigned lane deliberately does not prove Developer ID signing, notarization, Gatekeeper assessment, or installer signing; those remain credential-gated release steps.",
+      "The official Node.js v26.5.1 binary sets a macOS 13.5 minimum deployment target, so this candidate does not support older macOS releases.",
+      "ZIP byte hashes may vary when input mtimes vary; the report makes this explicit and records a stable extracted-content manifest instead of claiming byte-for-byte reproducibility."
+    ],
+    "next_steps": [
+      "Register test/release-macos-arm64.cjs in the shared Node test manifest during integration.",
+      "Cherry-pick the lane commit after the independently owned standalone source-tree relocation fix.",
+      "Run the preserved signed path with SageMath, Inc. Apple credentials before publishing a macOS asset."
+    ]
+  }
+}
