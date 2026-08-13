@@ -92,6 +92,18 @@ assert integral_span.gen(0).parent() is integral_span
 assert integral_span.gen(0).base_ring() is ZZ
 assert integral_span.gen(0) in integral_span
 assert integral_span([QQ(1)/2, 0]) == integral_span.gen(0)
+x, y = integral_span.gens()
+for value, expected in [
+    (x + y, [QQ(1)/2, 1]),
+    (-x, [-QQ(1)/2, 0]),
+    (1 * x, [QQ(1)/2, 0]),
+    (2 * x, [1, 0]),
+    (x + x, [1, 0]),
+    (integral_span.zero() + x, [QQ(1)/2, 0]),
+]:
+    assert value.parent() is integral_span
+    assert value in integral_span
+    assert value == integral_span(expected)
 try:
     integral_span([QQ(1)/4, 0])
     raise AssertionError("strictly larger rational lattice element was accepted")
@@ -104,6 +116,12 @@ assert lifted_span.base_ring() is ZZ
 assert lifted_span.basis_matrix() == matrix(ZZ, [[1, 0], [0, 2]])
 assert lifted_span.gen(0).parent() is lifted_span
 assert lifted_span.gen(0) in lifted_span
+
+rational_lifted_span = matrix(GF(7), [[1, 2], [3, 4]]).row_space(base_ring=QQ)
+assert rational_lifted_span.base_ring() is QQ
+assert rational_lifted_span.basis_matrix() == identity_matrix(QQ, 2)
+assert rational_lifted_span.gen(0).parent() is rational_lifted_span
+assert rational_lifted_span.gen(0) in rational_lifted_span
 
 reduced_span = source.row_space(base_ring=GF(7))
 assert reduced_span.base_ring() is GF(7)
@@ -212,6 +230,18 @@ assert W.gen(0).parent() is W
 assert W.gen(0).base_ring() is ZZ
 assert W.gen(0) in W
 assert W([1/2, 0]) == W.gen(0)
+x, y = W.gens()
+for value, expected in [
+    (x + y, [1/2, 1]),
+    (-x, [-1/2, 0]),
+    (1 * x, [1/2, 0]),
+    (2 * x, [1, 0]),
+    (x + x, [1, 0]),
+    (W.zero() + x, [1/2, 0]),
+]:
+    assert value.parent() is W
+    assert value in W
+    assert value == W(expected)
 try:
     W([1/4, 0])
     raise AssertionError("strictly larger rational lattice element was accepted")
@@ -223,6 +253,12 @@ assert L.base_ring() is ZZ
 assert L.basis_matrix() == matrix(ZZ, [[1, 0], [0, 2]])
 assert L.gen(0).parent() is L
 assert L.gen(0) in L
+
+LQ = matrix(GF(7), [[1, 2], [3, 4]]).row_space(base_ring=QQ)
+assert LQ.base_ring() is QQ
+assert LQ.basis_matrix() == identity_matrix(QQ, 2)
+assert LQ.gen(0).parent() is LQ
+assert LQ.gen(0) in LQ
 
 R = A.row_space(base_ring=GF(7))
 assert R.base_ring() is GF(7)
