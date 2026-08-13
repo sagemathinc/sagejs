@@ -52,21 +52,5 @@
     "libatomicPackagePresent": false,
     "exitStatus": 0,
     "stdout": "v26.7.0"
-  },
-  "seaProbe": {
-    "sha256": "ac4723e01554de7001fc66db295390f588222d5fbdf66a0dfb3cf195fb4d3877",
-    "dependencies": [
-      "ld-linux-x86-64.so.2",
-      "libc.so.6",
-      "libdl.so.2",
-      "libm.so.6",
-      "libpthread.so.0"
-    ],
-    "maximumSymbolVersions": {
-      "GLIBC": "2.28"
-    },
-    "runtimeImage": "registry.access.redhat.com/ubi8/ubi-minimal@sha256:cca75ce8294bd67a18520f72d58692e213428b14615d91800ad26b32860adb62",
-    "exitStatus": 0,
-    "stdout": "gcc-node-sea-ok"
   }
 }

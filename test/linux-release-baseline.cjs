@@ -1,6 +1,8 @@
 "use strict";
 
 const assert = require("node:assert/strict");
+const { createHash } = require("node:crypto");
+const { spawnSync } = require("node:child_process");
 const {
   mkdirSync,
   mkdtempSync,
@@ -14,17 +16,27 @@ const test = require("node:test");
 
 const {
   BUILD_IMAGE,
+  GCC_PATH,
   NODE_CONFIGURE_ARGUMENTS,
   NODE_SOURCE_SHA256,
   NODE_VERSION,
   OUTPUT_SCHEMA,
+  PNPM_TARBALL_INTEGRITY,
+  PNPM_TARBALL_SHA512,
+  PNPM_TARBALL_URL,
+  PNPM_VERSION,
   POLICY_PATH,
   RUNTIME_IMAGE,
   assertPortableMathProfile,
   assertSafeOutputDirectory,
+  allocatePrivateImage,
+  exportGitArchive,
   parseArguments,
   publishReleaseOutput,
   releaseAuthorityIdentity,
+  removeOwnedImage,
+  resolveSourceCommit,
+  stageReleaseAuthority,
 } = require("../scripts/linux-baseline/release-inputs.cjs");
 
 test("Linux baseline pins Node source and both container images", () => {
@@ -32,10 +44,18 @@ test("Linux baseline pins Node source and both container images", () => {
   assert.match(NODE_SOURCE_SHA256, /^[0-9a-f]{64}$/);
   assert.match(BUILD_IMAGE, /manylinux_2_28_x86_64@sha256:[0-9a-f]{64}$/);
   assert.match(RUNTIME_IMAGE, /ubi8\/ubi-minimal@sha256:[0-9a-f]{64}$/);
+  assert.equal(GCC_PATH, "/opt/rh/gcc-toolset-14/root/usr/bin/gcc");
   assert.deepEqual(NODE_CONFIGURE_ARGUMENTS, [
     "--prefix=/opt/sagejs-node",
     "--partly-static",
   ]);
+  assert.equal(PNPM_VERSION, "11.9.0");
+  assert.equal(PNPM_TARBALL_URL, "https://registry.npmjs.org/pnpm/-/pnpm-11.9.0.tgz");
+  assert.match(PNPM_TARBALL_SHA512, /^[0-9a-f]{128}$/);
+  assert.equal(
+    PNPM_TARBALL_INTEGRITY,
+    `sha512-${Buffer.from(PNPM_TARBALL_SHA512, "hex").toString("base64")}`,
+  );
 });
 
 test("Linux baseline excludes libatomic and caps the complete ABI", () => {
@@ -88,12 +108,22 @@ test("the GCC Node 26 witness removes libatomic at the same glibc floor", () => 
   assert.equal(witness.runtimeProbe.libatomicPackagePresent, false);
   assert.equal(witness.runtimeProbe.exitStatus, 0);
   assert.equal(witness.runtimeProbe.stdout, `v${NODE_VERSION}`);
-  assert.match(witness.seaProbe.sha256, /^[0-9a-f]{64}$/);
-  assert.equal(witness.seaProbe.dependencies.includes("libatomic.so.1"), false);
-  assert.equal(witness.seaProbe.maximumSymbolVersions.GLIBC, "2.28");
-  assert.equal(witness.seaProbe.runtimeImage, RUNTIME_IMAGE);
-  assert.equal(witness.seaProbe.exitStatus, 0);
-  assert.equal(witness.seaProbe.stdout, "gcc-node-sea-ok");
+  assert.equal(witness.seaProbe, undefined);
+
+  for (const [name, path] of Object.entries({
+    containerfile: "scripts/linux-baseline/Containerfile",
+    policy: "scripts/linux-baseline/linux-x64-glibc-2.28-policy.json",
+    releaseDriver: "scripts/linux-baseline/release-inputs.cjs",
+  })) {
+    const bytes = spawnSync("git", ["show", `${witness.recipeCommit}:${path}`], {
+      encoding: null,
+    });
+    assert.equal(bytes.status, 0);
+    assert.equal(
+      createHash("sha256").update(bytes.stdout).digest("hex"),
+      witness.authority[name].sha256,
+    );
+  }
 });
 
 test("release receipts bind every authoritative recipe input", () => {
@@ -124,6 +154,134 @@ test("release receipts bind every authoritative recipe input", () => {
   } finally {
     rmSync(directory, { recursive: true, force: true });
   }
+});
+
+test("staged authority remains immutable when live inputs change", () => {
+  const directory = mkdtempSync(join(tmpdir(), "sagejs-linux-stage-test-"));
+  try {
+    const sources = join(directory, "sources");
+    const staged = join(directory, "staged");
+    mkdirSync(sources);
+    const containerfile = join(sources, "Containerfile");
+    const policy = join(sources, "policy.json");
+    const releaseDriver = join(sources, "driver.cjs");
+    writeFileSync(containerfile, "FROM scratch\n");
+    writeFileSync(policy, '{"format":"elf"}\n');
+    writeFileSync(releaseDriver, '"use strict";\n');
+    const sourceCommit = "a".repeat(40);
+    const authority = stageReleaseAuthority(staged, {
+      containerfile,
+      policy,
+      releaseDriver,
+      sourceCommit,
+    });
+    writeFileSync(containerfile, "FROM changed\n");
+    writeFileSync(policy, '{"format":"changed"}\n');
+    writeFileSync(releaseDriver, 'throw Error("changed");\n');
+    assert.equal(readFileSync(authority.paths.containerfile, "utf8"), "FROM scratch\n");
+    assert.deepEqual(JSON.parse(readFileSync(authority.paths.policy, "utf8")), {
+      format: "elf",
+    });
+    assert.equal(authority.sourceCommit, sourceCommit);
+    assert.deepEqual(
+      authority.identity,
+      releaseAuthorityIdentity(authority.paths),
+    );
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+test("source references resolve once to an immutable commit", () => {
+  const directory = mkdtempSync(join(tmpdir(), "sagejs-linux-ref-test-"));
+  try {
+    const git = (...arguments_) =>
+      spawnSync("git", arguments_, {
+        cwd: directory,
+        encoding: "utf8",
+        env: {
+          ...process.env,
+          GIT_AUTHOR_EMAIL: "test@example.invalid",
+          GIT_AUTHOR_NAME: "Test",
+          GIT_COMMITTER_EMAIL: "test@example.invalid",
+          GIT_COMMITTER_NAME: "Test",
+        },
+      });
+    assert.equal(git("init", "--quiet").status, 0);
+    writeFileSync(join(directory, "value"), "first\n");
+    assert.equal(git("add", "value").status, 0);
+    assert.equal(git("commit", "--quiet", "-m", "first").status, 0);
+    const first = resolveSourceCommit("HEAD", { root: directory });
+    writeFileSync(join(directory, "value"), "second\n");
+    assert.equal(git("commit", "--quiet", "-am", "second").status, 0);
+    const second = resolveSourceCommit("HEAD", { root: directory });
+    assert.notEqual(first, second);
+    assert.match(first, /^[0-9a-f]{40}$/);
+    const archive = join(directory, "first.tar");
+    exportGitArchive(first, archive, { root: directory });
+    const archived = spawnSync("tar", ["-xOf", archive, "value"], {
+      encoding: "utf8",
+    });
+    assert.equal(archived.status, 0);
+    assert.equal(archived.stdout, "first\n");
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+test("private image tags are unique and cleanup is ownership checked", () => {
+  const calls = [];
+  const values = [Buffer.alloc(24, 1), Buffer.alloc(24, 2)];
+  const spawn = (_engine, arguments_) => {
+    calls.push(arguments_);
+    if (arguments_[0] === "image" && arguments_[1] === "inspect") {
+      if (arguments_[2].endsWith(Buffer.alloc(24, 1).toString("hex"))) {
+        return { status: 0, stdout: "[]" };
+      }
+      return { status: 1, stdout: "" };
+    }
+    return { status: 0, stdout: "" };
+  };
+  const image = allocatePrivateImage("podman", {
+    randomBytes: () => values.shift(),
+    spawn,
+  });
+  assert.match(image.token, /^[0-9a-f]{48}$/);
+  assert.equal(calls.filter((call) => call[1] === "inspect").length, 2);
+
+  assert.equal(
+    removeOwnedImage("podman", image, {
+      spawn: (_engine, arguments_) =>
+        arguments_[1] === "inspect"
+          ? { status: 0, stdout: JSON.stringify([{ Config: { Labels: {} } }]) }
+          : assert.fail("unowned image must not be deleted"),
+    }),
+    false,
+  );
+  const ownedCalls = [];
+  assert.equal(
+    removeOwnedImage("podman", image, {
+      spawn: (_engine, arguments_) => {
+        ownedCalls.push(arguments_);
+        return arguments_[1] === "inspect"
+          ? {
+              status: 0,
+              stdout: JSON.stringify([
+                {
+                  Config: {
+                    Labels: {
+                      "org.sagemath.sagejs.linux-baseline.token": image.token,
+                    },
+                  },
+                },
+              ]),
+            }
+          : { status: 0, stdout: "" };
+      },
+    }),
+    true,
+  );
+  assert.equal(ownedCalls.some((call) => call[1] === "rm"), true);
 });
 
 test("release publication refuses unowned output and replaces owned output", () => {
@@ -181,6 +339,10 @@ test("Container build uses GCC, partial static linking, and the portable math pr
   assert.match(containerfile, /LDFLAGS="-static-libgcc -static-libstdc\+\+"/);
   assert.match(containerfile, /SOURCE_DATE_EPOCH=0/);
   assert.match(containerfile, /pnpm --dir packages\/m4ri build/);
+  assert.doesNotMatch(containerfile, /\bnpm install --global/);
+  assert.match(containerfile, /PNPM_TARBALL_SHA512/);
+  assert.match(containerfile, /sha512sum --check --strict/);
+  assert.match(containerfile, /\/opt\/sagejs-pnpm\/bin\/pnpm\.mjs/);
 });
 
 test("the runtime proof checks that libatomic is genuinely absent", () => {
@@ -202,7 +364,7 @@ test("scratch artifact extraction supplies an inert container command", () => {
   );
   assert.match(
     source,
-    /\["create", tag, "\/release-inputs\/node", "--version"\]/,
+    /\["create", image\.tag, "\/release-inputs\/node", "--version"\]/,
   );
 });
 
