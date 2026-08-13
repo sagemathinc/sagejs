@@ -27,7 +27,19 @@ export default function Completer(_compiler: Compiler) {
       const liveModuleNames = moduleNames.filter((name) =>
         Reflect.get(moduleNamespace, name) !== undefined
       );
-      return [...new Set(hostNames.concat(liveModuleNames, allKeywords))].sort();
+      // A present-but-undefined module member is a deleted Python binding.
+      // Do not make completion disagree with evaluation by exposing a
+      // same-named JavaScript host (or proxy-provided builtin) through it.
+      const visibleHostNames = hostNames.filter((name) =>
+        moduleNamespace == null ||
+        !Reflect.has(moduleNamespace, name) ||
+        Reflect.get(moduleNamespace, name) !== undefined
+      );
+      return [
+        ...new Set(
+          visibleHostNames.concat(liveModuleNames, allKeywords),
+        ),
+      ].sort();
     } catch (e) {
       console.log(e.stack || e.toString());
     }
@@ -37,9 +49,13 @@ export default function Completer(_compiler: Compiler) {
   function resolveExpression(expression: string): unknown {
     const [first, ...properties] = expression.split(".");
     const moduleNamespace = global.ρσ_modules?.__main__;
-    let value = moduleNamespace != null && Reflect.has(moduleNamespace, first)
-      ? Reflect.get(moduleNamespace, first)
-      : runInThisContext(first);
+    let value: any;
+    if (moduleNamespace != null && Reflect.has(moduleNamespace, first)) {
+      value = Reflect.get(moduleNamespace, first);
+      if (value === undefined) throw new ReferenceError(first);
+    } else {
+      value = runInThisContext(first);
+    }
     for (const property of properties) value = Reflect.get(value, property);
     return value;
   }
@@ -103,7 +119,10 @@ export default function Completer(_compiler: Compiler) {
     try {
       return [objectNames(resolveExpression(expression), prefix), prefix];
     } catch (_error) {
-      return [];
+      // Keep the completion protocol stable even when the expression is an
+      // unresolved/deleted Python name.  Callers still need the typed prefix
+      // in order to leave the editor buffer untouched.
+      return [[], prefix];
     }
   }
 

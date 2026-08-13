@@ -54,6 +54,10 @@ const source = [
   "",
   "example = Example();",
   "Object = Example();",
+  "object_before_delete = Object;",
+  "del Object;",
+  "list = Example();",
+  "del list;",
   "deleted = Example();",
   "del deleted;",
   'R = PolynomialRing(ZZ, "x");',
@@ -80,7 +84,8 @@ assert.equal(prefix, "");
 assert.ok(items.includes("dir"));
 assert.ok(items.includes("help"));
 assert.ok(items.includes("example"));
-assert.ok(items.includes("Object"));
+assert.ok(items.includes("object_before_delete"));
+assert.ok(!items.includes("Object"));
 assert.ok(!items.includes("deleted"));
 assert.ok(!items.some((name) => name.startsWith("ρσ")));
 assert.ok(!items.some((name) => name.startsWith("_builtins_")));
@@ -100,9 +105,15 @@ assert.ok(!items.some((name) => name.startsWith("ρσ")));
 assert.equal(prefix, "va");
 assert.deepEqual(items, ["value"]);
 
-[items, prefix] = completions("Object.va");
+[items, prefix] = completions("object_before_delete.va");
 assert.equal(prefix, "va");
 assert.deepEqual(items, ["value"]);
+
+[items, prefix] = completions("list.ap");
+assert.deepEqual([items, prefix], [[], "ap"]);
+
+[items, prefix] = completions("Object.va");
+assert.deepEqual([items, prefix], [[], "va"]);
 
 [items, prefix] = completions("deleted.");
 assert.deepEqual([items, prefix], [[], ""]);
