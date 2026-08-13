@@ -36,6 +36,11 @@ const {
   REPORT_SCHEMA: NATIVE_BINARY_REPORT_SCHEMA,
   assertNativeInputs,
 } = require("./release-native-binary-inspector.cjs");
+const {
+  createSeaNativeDependencyBindings,
+  readNativeDependencyReceipt,
+  seaNativeDependencyDefinitions,
+} = require("./native-dependency-receipt.cjs");
 
 const root = join(__dirname, "..");
 const outputDirectory = join(root, "build", "sea");
@@ -361,6 +366,42 @@ function nativeMathProfile(rootDirectory, target, options = {}) {
   }
 }
 
+function nativeDependencyReceiptAssets(rootDirectory, platform) {
+  const prefixes = {
+    igraph: process.env.SAGEJS_GRAPH_PREFIX || join(
+      rootDirectory,
+      "packages",
+      "graph",
+      ".native",
+      "prefix",
+    ),
+    m4ri: process.env.SAGEJS_M4RI_PREFIX || join(
+      rootDirectory,
+      "packages",
+      "m4ri",
+      ".native",
+      "prefix",
+    ),
+  };
+  const stampNames = {
+    igraph: ".sagejs-igraph-1.0.1",
+    m4ri: ".sagejs-m4ri-dependencies.json",
+  };
+  const assets = {};
+  for (const definition of seaNativeDependencyDefinitions(platform)) {
+    const prefix = prefixes[definition.id];
+    const stamp = join(prefix, stampNames[definition.id]);
+    if (readNativeDependencyReceipt(stamp, { prefix }) === null) {
+      throw new Error(
+        `${definition.id} native dependency receipt is missing, stale, or ` +
+          `does not describe its installed prefix: ${relative(rootDirectory, stamp)}`,
+      );
+    }
+    assets[definition.receiptAsset] = stamp;
+  }
+  return assets;
+}
+
 function stableJson(value) {
   if (Array.isArray(value)) return value.map(stableJson);
   if (value !== null && typeof value === "object") {
@@ -463,6 +504,16 @@ function createSeaBuildManifest(options) {
   const nativeKernels = options.withFlint
     ? productionKernelReceipt(options.root, options.assets)
     : null;
+  const mathProfile = options.withFlint
+    ? nativeMathProfile(options.root, target, options)
+    : null;
+  const nativeDependencies = options.withFlint
+    ? createSeaNativeDependencyBindings({
+        assets: options.assets,
+        mathProfile,
+        target,
+      })
+    : null;
   return createBuildManifest({
     capabilities: {
       artifact: {
@@ -473,6 +524,7 @@ function createSeaBuildManifest(options) {
         assets: embeddedAssets,
         schema: "sagejs.embedded-assets/v1",
       },
+      nativeDependencies,
       nativeKernels,
     },
     sagejsVersion: JSON.parse(
@@ -484,9 +536,7 @@ function createSeaBuildManifest(options) {
     target,
     toolchain: {
       esbuild: require("esbuild/package.json").version,
-      nativeMathProfile: options.withFlint
-        ? nativeMathProfile(options.root, target, options)
-        : null,
+      nativeMathProfile: mathProfile,
       nativeBinaries,
       seaNode: {
         executableSha256: sha256(options.seaNode),
@@ -858,6 +908,7 @@ function buildExecutable(name, withFlint, sourceIdentity) {
       assets["native/sagejs_m4ri_ffi.node"] = m4riFfiAddon;
       assets["native/sagejs_m4ri_ffi_manifest.json"] = m4riFfiManifest;
     }
+    Object.assign(assets, nativeDependencyReceiptAssets(root, builder.platform));
     Object.assign(assets, collectNativeKernelAssets());
   }
 
@@ -992,6 +1043,7 @@ module.exports = {
   nativeBinaryInputs,
   nativeBinaryPolicy,
   nativeBinaryReceipt,
+  nativeDependencyReceiptAssets,
   observeSeaBuilder,
   productionKernelReceipt,
   SEA_ASSEMBLY_POLICY,

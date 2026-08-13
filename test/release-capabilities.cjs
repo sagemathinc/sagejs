@@ -28,6 +28,9 @@ const {
   canonicalJson,
   createBuildManifest,
 } = require("../scripts/release-manifest.cjs");
+const {
+  createNativeDependencyReceipt,
+} = require("../scripts/native-dependency-receipt.cjs");
 
 const repositoryRoot = resolve(__dirname, "..");
 const script = join(repositoryRoot, "scripts", "release-capabilities.cjs");
@@ -235,6 +238,58 @@ function embedAdapter(assets, id) {
   if (definition.required) assets[definition.required] = `${id} base addon`;
 }
 
+function embedNativeDependencyReceipts(assets, target, profile = mathProfile()) {
+  const directory = mkdtempSync(join(tmpdir(), "sagejs-sea-dependency-"));
+  const bindings = {};
+  try {
+    for (const id of ["igraph", "m4ri"]) {
+      const prefix = join(directory, id);
+      const stamp = join(prefix, `.sagejs-${id}.json`);
+      write(join(prefix, "lib", `lib${id}.a`), `${id} archive`);
+      const receipt = createNativeDependencyReceipt(
+        {
+          build: { configuration: "fixture" },
+          dependency: {
+            name: id,
+            sha256: id === "igraph" ? "a".repeat(64) : "b".repeat(64),
+            version: "1.0",
+          },
+          deployment: null,
+          interface: null,
+          mathProfile: profile,
+          package: id,
+          toolchain: { compiler: "fixture" },
+        },
+        prefix,
+        stamp,
+      );
+      const receiptAsset = `native/dependencies/${id}-receipt.json`;
+      assets[receiptAsset] = JSON.stringify(receipt);
+      bindings[id] = {
+        assets: id === "igraph"
+          ? [
+              "native/sagejs_graph.node",
+              "native/sagejs_igraph_ffi.node",
+              "native/sagejs_igraph_ffi_manifest.json",
+            ]
+          : [
+              "native/sagejs_m4ri_ffi.node",
+              "native/sagejs_m4ri_ffi_manifest.json",
+            ],
+        package: id,
+        receiptAsset,
+        receiptIdentitySha256: receipt.identitySha256,
+      };
+    }
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+  return {
+    bindings,
+    schema: "sagejs.sea-native-dependency-bindings-v1",
+  };
+}
+
 function addKernelAssets(assets, index) {
   assets["native-kernels/index.json"] = JSON.stringify(index);
   for (const record of Object.values(index.logicalSources)) {
@@ -398,11 +453,14 @@ function embedBuildManifest(assets, index, overrides = {}) {
     ...overrides.nativeKernels,
   };
   const target = overrides.manifest?.target || buildManifest().target;
+  const profile = overrides.manifest?.toolchain?.nativeMathProfile || mathProfile();
+  const nativeDependencies = overrides.nativeDependencies ||
+    embedNativeDependencyReceipts(assets, target, profile);
   const nativeBinaries = nativeBinaryReceipt(assets, target);
   overrides.mutateNativeBinaries?.(nativeBinaries.receipt);
   const manifestToolchain = {
     compiler: { id: "clang", version: "20.1.0" },
-    nativeMathProfile: mathProfile(),
+    nativeMathProfile: profile,
     node: "v22.22.2",
     ...(overrides.manifest?.toolchain || {}),
     nativeBinaries: nativeBinaries.receipt,
@@ -418,6 +476,7 @@ function embedBuildManifest(assets, index, overrides = {}) {
         nativeMathematics: true,
       },
       embeddedAssets: embeddedAssetDeclaration(assets),
+      nativeDependencies,
       nativeKernels,
       ...overrides.capabilities,
     },
@@ -915,6 +974,58 @@ test("SEA native binary evidence rejects omitted, extra, tampered, and wrong-tar
       }));
       assert.equal(report.buildReceipt.availability, "unavailable");
       assert.equal(capability(report, "flint").candidate, "unavailable");
+    } finally {
+      rmSync(item.directory, { recursive: true, force: true });
+    }
+  }
+});
+
+test("SEA dependency bindings reject receipt tampering, omission, and profile drift", () => {
+  const cases = [
+    (assets, target) => {
+      const declaration = embedNativeDependencyReceipts(assets, target);
+      const asset = "native/dependencies/m4ri-receipt.json";
+      const receipt = JSON.parse(assets[asset]);
+      receipt.build.configuration = "tampered";
+      assets[asset] = JSON.stringify(receipt);
+      return declaration;
+    },
+    (assets, target) => {
+      const declaration = embedNativeDependencyReceipts(assets, target);
+      delete declaration.bindings.igraph;
+      return declaration;
+    },
+    (assets, target) => {
+      const declaration = embedNativeDependencyReceipts(assets, target);
+      delete assets["native/dependencies/igraph-receipt.json"];
+      return declaration;
+    },
+    (assets, target) => embedNativeDependencyReceipts(
+      assets,
+      target,
+      mathProfile("cpu-native"),
+    ),
+  ];
+  for (const dependencyMutation of cases) {
+    const item = fixture({ git: false, runtime: false });
+    try {
+      const index = kernelIndex();
+      const assets = { "compiler/compiler.js": "compiler" };
+      for (const id of ["flint", "fflas", "igraph", "m4ri"]) {
+        embedAdapter(assets, id);
+      }
+      addKernelAssets(assets, index);
+      const target = buildManifest().target;
+      const nativeDependencies = dependencyMutation(assets, target);
+      embedBuildManifest(assets, index, { nativeDependencies });
+      const report = collectReleaseCapabilities(fixedOptions(item, {
+        artifactKind: "single-executable",
+        embeddedAssets: assets,
+        git: { commit: null, dirty: null, present: false },
+      }));
+      assert.equal(report.buildReceipt.availability, "unavailable");
+      assert.equal(capability(report, "igraph").candidate, "unavailable");
+      assert.equal(capability(report, "m4ri").candidate, "unavailable");
     } finally {
       rmSync(item.directory, { recursive: true, force: true });
     }

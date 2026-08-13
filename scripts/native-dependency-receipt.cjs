@@ -21,6 +21,33 @@ const {
 
 const RECEIPT_SCHEMA = "sagejs.native-dependency-receipt-v1";
 const OUTPUT_SCHEMA = "sagejs.native-dependency-output-tree-v1";
+const SEA_BINDINGS_SCHEMA = "sagejs.sea-native-dependency-bindings-v1";
+const SEA_NATIVE_DEPENDENCIES = Object.freeze({
+  igraph: Object.freeze({
+    assets: Object.freeze([
+      "native/sagejs_graph.node",
+      "native/sagejs_igraph_ffi.node",
+      "native/sagejs_igraph_ffi_manifest.json",
+    ]),
+    package: "igraph",
+    receiptAsset: "native/dependencies/igraph-receipt.json",
+  }),
+  m4ri: Object.freeze({
+    assets: Object.freeze([
+      "native/sagejs_m4ri_ffi.node",
+      "native/sagejs_m4ri_ffi_manifest.json",
+    ]),
+    package: "m4ri",
+    receiptAsset: "native/dependencies/m4ri-receipt.json",
+  }),
+});
+
+function exactKeys(value, keys) {
+  return value !== null &&
+    typeof value === "object" &&
+    !Array.isArray(value) &&
+    Object.keys(value).sort().join(",") === [...keys].sort().join(",");
+}
 
 function sha256Bytes(bytes) {
   return createHash("sha256").update(bytes).digest("hex");
@@ -28,6 +55,12 @@ function sha256Bytes(bytes) {
 
 function canonicalJson(value) {
   return JSON.stringify(stableJson(value));
+}
+
+function seaNativeDependencyDefinitions(platform) {
+  return Object.entries(SEA_NATIVE_DEPENDENCIES)
+    .filter(([id]) => !(id === "m4ri" && platform === "win32"))
+    .map(([id, definition]) => ({ id, ...definition }));
 }
 
 function commandIdentity(command, arguments_ = ["--version"], environment = process.env) {
@@ -196,16 +229,70 @@ function createNativeDependencyReceipt(expectation, prefix, stampPath) {
 
 function validateNativeDependencyReceipt(receipt, options = {}) {
   if (
-    receipt === null ||
-    typeof receipt !== "object" ||
-    Array.isArray(receipt) ||
+    !exactKeys(receipt, [
+      "build",
+      "capability",
+      "dependency",
+      "identitySha256",
+      "interface",
+      "mathProfile",
+      "outputs",
+      "package",
+      "schema",
+      "target",
+      "toolchain",
+    ]) ||
     receipt.schema !== RECEIPT_SCHEMA ||
     !/^[0-9a-f]{64}$/.test(receipt.identitySha256 ?? "") ||
+    typeof receipt.capability !== "boolean" ||
+    !exactKeys(receipt.dependency, ["name", "sha256", "version"]) ||
+    typeof receipt.dependency.name !== "string" ||
+    receipt.dependency.name.length === 0 ||
+    typeof receipt.dependency.version !== "string" ||
+    receipt.dependency.version.length === 0 ||
+    !/^[0-9a-f]{64}$/.test(receipt.dependency.sha256 ?? "") ||
+    !/^[a-z0-9][a-z0-9-]*$/.test(receipt.package ?? "") ||
+    !exactKeys(receipt.target, [
+      "arch",
+      "deployment",
+      "endianness",
+      "platform",
+      "wordBits",
+    ]) ||
     receipt.outputs?.schema !== OUTPUT_SCHEMA ||
+    !exactKeys(receipt.outputs, ["files", "identitySha256", "schema"]) ||
     !Array.isArray(receipt.outputs?.files) ||
     !/^[0-9a-f]{64}$/.test(receipt.outputs?.identitySha256 ?? "")
   ) {
     throw new Error("native dependency receipt is invalid");
+  }
+  const outputPaths = new Set();
+  for (const file of receipt.outputs.files) {
+    const ordinary = file?.type === "file" &&
+      exactKeys(file, ["path", "sha256", "size", "type"]) &&
+      /^[0-9a-f]{64}$/.test(file.sha256 ?? "") &&
+      Number.isSafeInteger(file.size) &&
+      file.size >= 0;
+    const symlink = file?.type === "symlink" &&
+      exactKeys(file, ["path", "target", "type"]) &&
+      typeof file.target === "string" &&
+      file.target.length > 0 &&
+      !file.target.startsWith("/") &&
+      !/^[A-Za-z]:[\\/]/.test(file.target);
+    const pathValid = typeof file?.path === "string" &&
+      file.path.length > 0 &&
+      !file.path.startsWith("/") &&
+      !file.path.includes("\\") &&
+      !file.path.split("/").some((part) =>
+        part === "" || part === "." || part === "..");
+    if (
+      !pathValid ||
+      (!ordinary && !symlink) ||
+      outputPaths.has(file.path)
+    ) {
+      throw new Error("native dependency output receipt is invalid");
+    }
+    outputPaths.add(file.path);
   }
   validateMathProfile(receipt.mathProfile, receipt.target);
   const outputIdentity = sha256Bytes(canonicalJson(receipt.outputs.files));
@@ -234,6 +321,131 @@ function validateNativeDependencyReceipt(receipt, options = {}) {
     }
   }
   return receipt;
+}
+
+function validateSeaNativeDependencyReceipt(receipt, definition, options) {
+  validateNativeDependencyReceipt(receipt);
+  if (
+    receipt.capability !== true ||
+    receipt.package !== definition.package ||
+    canonicalJson(receipt.mathProfile) !== canonicalJson(options.mathProfile) ||
+    receipt.target.platform !== options.target.platform ||
+    receipt.target.arch !== options.target.arch ||
+    receipt.target.endianness !== options.target.endianness ||
+    receipt.target.wordBits !== options.target.wordBits
+  ) {
+    throw new Error(
+      `${definition.id} native dependency receipt does not match the SEA target`,
+    );
+  }
+  return receipt;
+}
+
+function createSeaNativeDependencyBindings(options) {
+  const bindings = {};
+  for (const definition of seaNativeDependencyDefinitions(options.target.platform)) {
+    const filename = options.assets[definition.receiptAsset];
+    if (typeof filename !== "string" || !existsSync(filename)) {
+      throw new Error(
+        `mathematics SEA omitted ${definition.receiptAsset}`,
+      );
+    }
+    for (const asset of definition.assets) {
+      if (typeof options.assets[asset] !== "string") {
+        throw new Error(
+          `${definition.id} dependency receipt does not cover missing SEA asset ${asset}`,
+        );
+      }
+    }
+    let receipt;
+    try {
+      receipt = JSON.parse(readFileSync(filename, "utf8"));
+      validateSeaNativeDependencyReceipt(receipt, definition, options);
+    } catch (error) {
+      throw new Error(
+        `${definition.id} SEA dependency receipt is invalid: ${error.message}`,
+        { cause: error },
+      );
+    }
+    bindings[definition.id] = {
+      assets: [...definition.assets],
+      package: definition.package,
+      receiptAsset: definition.receiptAsset,
+      receiptIdentitySha256: receipt.identitySha256,
+    };
+  }
+  return {
+    bindings,
+    schema: SEA_BINDINGS_SCHEMA,
+  };
+}
+
+function validateSeaNativeDependencyBindings(declaration, options) {
+  const definitions = seaNativeDependencyDefinitions(options.target.platform);
+  if (
+    !exactKeys(declaration, ["bindings", "schema"]) ||
+    declaration.schema !== SEA_BINDINGS_SCHEMA ||
+    !exactKeys(
+      declaration.bindings,
+      definitions.map(({ id }) => id),
+    )
+  ) {
+    throw new Error("SEA native dependency binding declaration is invalid");
+  }
+  const binaryLabels = options.binaryLabels === undefined
+    ? null
+    : new Set(options.binaryLabels);
+  for (const definition of definitions) {
+    const binding = declaration.bindings[definition.id];
+    if (
+      !exactKeys(binding, [
+        "assets",
+        "package",
+        "receiptAsset",
+        "receiptIdentitySha256",
+      ]) ||
+      canonicalJson(binding.assets) !== canonicalJson(definition.assets) ||
+      binding.package !== definition.package ||
+      binding.receiptAsset !== definition.receiptAsset ||
+      !/^[0-9a-f]{64}$/.test(binding.receiptIdentitySha256 ?? "")
+    ) {
+      throw new Error(`${definition.id} SEA dependency binding is invalid`);
+    }
+    for (const asset of [...definition.assets, definition.receiptAsset]) {
+      if (!options.assets.has(asset)) {
+        throw new Error(`${definition.id} SEA dependency asset is missing: ${asset}`);
+      }
+    }
+    if (
+      binaryLabels !== null &&
+      definition.assets.some((asset) =>
+        asset.endsWith(".node") && !binaryLabels.has(asset))
+    ) {
+      throw new Error(
+        `${definition.id} SEA dependency addon is absent from the binary receipt`,
+      );
+    }
+    const bytes = options.bytes(definition.receiptAsset);
+    if (bytes === null) {
+      throw new Error(`${definition.id} SEA dependency receipt bytes are missing`);
+    }
+    let receipt;
+    try {
+      receipt = JSON.parse(Buffer.from(bytes).toString("utf8"));
+      validateSeaNativeDependencyReceipt(receipt, definition, options);
+    } catch (error) {
+      throw new Error(
+        `${definition.id} embedded dependency receipt is invalid: ${error.message}`,
+        { cause: error },
+      );
+    }
+    if (receipt.identitySha256 !== binding.receiptIdentitySha256) {
+      throw new Error(
+        `${definition.id} embedded dependency receipt identity does not match its binding`,
+      );
+    }
+  }
+  return declaration;
 }
 
 function readNativeDependencyReceipt(stampPath, options = {}) {
@@ -267,12 +479,17 @@ function writeNativeDependencyReceipt(stampPath, expectation, prefix) {
 module.exports = {
   OUTPUT_SCHEMA,
   RECEIPT_SCHEMA,
+  SEA_BINDINGS_SCHEMA,
+  SEA_NATIVE_DEPENDENCIES,
   canonicalJson,
   commandIdentity,
+  createSeaNativeDependencyBindings,
   createNativeDependencyReceipt,
   nativeDependencyExpectation,
   outputTree,
   readNativeDependencyReceipt,
+  seaNativeDependencyDefinitions,
   validateNativeDependencyReceipt,
+  validateSeaNativeDependencyBindings,
   writeNativeDependencyReceipt,
 };
