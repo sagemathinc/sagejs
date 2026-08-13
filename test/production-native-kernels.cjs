@@ -143,19 +143,23 @@ test("all production native kernels are published and autoloadable", () => {
     assert.deepEqual(wrapper.foreignDeclarations, record.foreignDeclarations);
   }
 
-  const program = [
-    "from sagejs.kernels.matrix.dense_prime_field import dense_prime_field_matrix_add",
-    "from sagejs.kernels.matrix.dense_integer_flint import flint_dense_integer_resource_random_fill",
-    "from sagejs.kernels.matrix.dense_rational_flint import flint_dense_rational_matrix_import",
-    "from sagejs.kernels.polynomial.packed_flint import flint_byte_region_copy",
-    "from sagejs.kernels.p1 import p1_gcd",
-    "print(dense_prime_field_matrix_add.nativeAvailable)",
-    "print(flint_dense_integer_resource_random_fill.nativeAvailable)",
-    "print(flint_dense_rational_matrix_import.nativeAvailable)",
-    "print(flint_byte_region_copy.nativeAvailable)",
-    "print(p1_gcd.nativeAvailable)",
-    "",
-  ].join("\n");
+  // Exercise every declared production source, rather than a representative
+  // subset under `sagejs.kernels`.  This catches drift between the compiler's
+  // `src/lib`-relative source keys and runtime package paths.
+  const imports = [];
+  const checks = [];
+  for (const [kernelIndex, kernel] of production.entries()) {
+    const module = kernel.source
+      .slice("src/lib/".length, -".py".length)
+      .replaceAll("/", ".");
+    for (const [functionIndex, name] of kernel.functions.entries()) {
+      const alias = `_native_${kernelIndex}_${functionIndex}`;
+      imports.push(`from ${module} import ${name} as ${alias}`);
+      checks.push(`assert ${alias}.nativeAvailable`);
+    }
+  }
+  const program = [...imports, ...checks, 'print("all-production-native")', ""]
+    .join("\n");
   const result = spawnSync(
     process.execPath,
     [join(root, "bin", "sagejs"), "--python"],
@@ -171,7 +175,7 @@ test("all production native kernels are published and autoloadable", () => {
     },
   );
   assert.equal(result.status, 0, result.stderr);
-  assert.equal(result.stdout.trim(), "True\nTrue\nTrue\nTrue\nTrue");
+  assert.equal(result.stdout.trim(), "all-production-native");
 });
 
 test("stale FFI declaration metadata fails before a native wrapper loads", () => {

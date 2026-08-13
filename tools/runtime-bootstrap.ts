@@ -280,7 +280,11 @@ export function runRuntimeBootstrap(
   };
   const nativeLogicalSourceKey = (filename: string): string | undefined => {
     const normalized = filename.replaceAll("\\", "/");
-    const marker = "/sagejs/kernels/";
+    // Production source identities are relative to `src/lib`, not to the
+    // historical `sagejs.kernels` package.  Keep this broad enough for every
+    // compiled library module (for example `sagejs.linear_algebra`) while
+    // retaining the package root in the key so unrelated files cannot collide.
+    const marker = "/sagejs/";
     const index = normalized.lastIndexOf(marker);
     return index < 0 ? undefined : normalized.slice(index + 1);
   };
