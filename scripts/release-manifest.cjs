@@ -3,30 +3,36 @@
 
 const { createHash } = require("node:crypto");
 const {
-  createReadStream,
+  closeSync,
+  constants: fsConstants,
+  existsSync,
+  fstatSync,
   lstatSync,
+  linkSync,
+  mkdtempSync,
+  openSync,
   readFileSync,
+  readlinkSync,
+  readSync,
+  realpathSync,
+  rmSync,
   writeFileSync,
 } = require("node:fs");
 const { execFileSync } = require("node:child_process");
-const { arch, endianness, platform } = require("node:os");
 const {
   basename,
   dirname,
   isAbsolute,
+  join,
   relative,
   resolve,
   sep,
 } = require("node:path");
 
-const {
-  nativeMathBuildProfile,
-} = require("./native-math-profile.cjs");
-
-const SCHEMA = "sagejs.release-artifact-manifest-v1";
-const GENERATOR = "scripts/release-manifest.cjs";
-const SHA256_PATTERN = /^[0-9a-f]{64}$/;
-const COMMIT_PATTERN = /^[0-9a-f]{40}(?:[0-9a-f]{24})?$/;
+const BUILD_MANIFEST_SCHEMA = "sagejs.release-build-manifest-v1";
+const MANIFEST_SCHEMA = "sagejs.release-artifact-manifest-v2";
+const HASH_PATTERN = /^[0-9a-f]{64}$/;
+const GIT_PATTERN = /^[0-9a-f]{40}(?:[0-9a-f]{24})?$/;
 const KIND_PATTERN = /^[a-z0-9]+(?:[._-][a-z0-9]+)*$/;
 
 function stableJson(value) {
@@ -43,22 +49,12 @@ function canonicalJson(value) {
   return JSON.stringify(stableJson(value));
 }
 
-function serializeManifest(manifest) {
-  return `${JSON.stringify(stableJson(manifest), null, 2)}\n`;
+function serialize(value) {
+  return `${JSON.stringify(stableJson(value), null, 2)}\n`;
 }
 
-function sha256Text(value) {
+function sha256(value) {
   return createHash("sha256").update(value).digest("hex");
-}
-
-function sha256File(filename) {
-  return new Promise((accept, reject) => {
-    const hash = createHash("sha256");
-    const input = createReadStream(filename);
-    input.on("error", reject);
-    input.on("data", (chunk) => hash.update(chunk));
-    input.on("end", () => accept(hash.digest("hex")));
-  });
 }
 
 function assertPlainObject(value, label) {
@@ -74,14 +70,11 @@ function assertPlainObject(value, label) {
 
 function assertKeys(value, required, optional, label) {
   assertPlainObject(value, label);
-  const keys = Object.keys(value).sort();
   const allowed = new Set([...required, ...optional]);
   const missing = required.filter((key) => !(key in value));
-  const unexpected = keys.filter((key) => !allowed.has(key));
-  if (missing.length > 0) {
-    throw new Error(`${label} is missing ${missing.join(", ")}`);
-  }
-  if (unexpected.length > 0) {
+  const unexpected = Object.keys(value).filter((key) => !allowed.has(key));
+  if (missing.length) throw new Error(`${label} is missing ${missing.join(", ")}`);
+  if (unexpected.length) {
     throw new Error(`${label} has unexpected ${unexpected.join(", ")}`);
   }
 }
@@ -92,16 +85,14 @@ function assertString(value, label) {
   }
 }
 
-function assertJsonValue(value, label) {
+function assertJson(value, label) {
   const visit = (item) => {
     if (
       item === null ||
       typeof item === "string" ||
       typeof item === "boolean" ||
       (typeof item === "number" && Number.isFinite(item))
-    ) {
-      return;
-    }
+    ) return;
     if (Array.isArray(item)) {
       for (const child of item) visit(child);
       return;
@@ -120,34 +111,286 @@ function assertJsonValue(value, label) {
   }
 }
 
-function portableRelativePath(base, filename) {
-  const absoluteBase = resolve(base);
-  const absoluteFilename = resolve(filename);
-  const path = relative(absoluteBase, absoluteFilename);
-  if (
-    path.length === 0 ||
-    path === ".." ||
-    path.startsWith(`..${sep}`) ||
-    isAbsolute(path)
-  ) {
-    throw new Error(
-      `release artifact ${absoluteFilename} must be below manifest directory ` +
-        absoluteBase,
-    );
+function normalizeHash(value, label) {
+  assertString(value, label);
+  if (!HASH_PATTERN.test(value)) throw new Error(`${label} must be SHA-256`);
+  return value;
+}
+
+function normalizeGit(value, label) {
+  assertString(value, label);
+  if (!GIT_PATTERN.test(value)) {
+    throw new Error(`${label} must be a full Git object id`);
+  }
+  return value;
+}
+
+function portablePath(base, filename) {
+  const path = relative(resolve(base), resolve(filename));
+  if (!path || path === ".." || path.startsWith(`..${sep}`) || isAbsolute(path)) {
+    throw new Error(`artifact ${filename} must be below manifest directory ${base}`);
   }
   return path.replaceAll("\\", "/");
 }
 
-function validateArtifactPath(path, label) {
+function validatePortablePath(path, label) {
   assertString(path, label);
   if (
     path.includes("\\") ||
     path.startsWith("/") ||
     /^[A-Za-z]:/.test(path) ||
-    path.split("/").some((part) => part === "" || part === "." || part === "..")
-  ) {
-    throw new Error(`${label} must be a normalized relative portable path`);
+    path.split("/").some((part) => !part || part === "." || part === "..")
+  ) throw new Error(`${label} must be a normalized relative portable path`);
+}
+
+function samePath(left, right) {
+  left = resolve(left);
+  right = resolve(right);
+  return process.platform === "win32"
+    ? left.toLowerCase() === right.toLowerCase()
+    : left === right;
+}
+
+function directoryRealpath(directory, label) {
+  const absolute = resolve(directory);
+  const information = lstatSync(absolute);
+  if (!information.isDirectory() || information.isSymbolicLink()) {
+    throw new Error(`${label} must be a real directory, not a symlink or reparse point`);
   }
+  const real = realpathSync.native(absolute);
+  if (!samePath(real, absolute)) {
+    throw new Error(`${label} resolves outside its lexical path: ${absolute} -> ${real}`);
+  }
+  return real;
+}
+
+function containedExistingFile(root, filename, label) {
+  const realRoot = directoryRealpath(root, `${label} root`);
+  const absolute = resolve(filename);
+  const lexical = relative(realRoot, absolute);
+  if (!lexical || lexical === ".." || lexical.startsWith(`..${sep}`) || isAbsolute(lexical)) {
+    throw new Error(`${label} is outside ${realRoot}`);
+  }
+  const information = lstatSync(absolute, { bigint: true });
+  if (!information.isFile() || information.isSymbolicLink()) {
+    throw new Error(`${label} must be a regular non-symlink file: ${absolute}`);
+  }
+  const real = realpathSync.native(absolute);
+  if (!samePath(real, absolute)) {
+    throw new Error(`${label} resolves through a symlink or reparse point`);
+  }
+  return { absolute, information, realRoot };
+}
+
+function sameFile(left, right) {
+  return left.dev === right.dev && left.ino === right.ino;
+}
+
+function hashRegularFile(root, filename, label) {
+  const before = containedExistingFile(root, filename, label);
+  const nofollow = fsConstants.O_NOFOLLOW || 0;
+  const fd = openSync(before.absolute, fsConstants.O_RDONLY | nofollow);
+  try {
+    const openedBefore = fstatSync(fd, { bigint: true });
+    if (!openedBefore.isFile() || !sameFile(before.information, openedBefore)) {
+      throw new Error(`${label} changed before hashing`);
+    }
+    const digest = createHash("sha256");
+    const buffer = Buffer.allocUnsafe(1024 * 1024);
+    let bytes = 0;
+    while (true) {
+      const count = readSync(fd, buffer, 0, buffer.length, null);
+      if (count === 0) break;
+      bytes += count;
+      digest.update(buffer.subarray(0, count));
+    }
+    const openedAfter = fstatSync(fd, { bigint: true });
+    if (
+      !sameFile(openedBefore, openedAfter) ||
+      openedBefore.size !== openedAfter.size ||
+      openedBefore.mtimeNs !== openedAfter.mtimeNs ||
+      openedBefore.ctimeNs !== openedAfter.ctimeNs ||
+      BigInt(bytes) !== openedAfter.size
+    ) throw new Error(`${label} changed while hashing`);
+    // This closes the ordinary substitution windows around open(2): the same
+    // descriptor is inspected before and after streaming, then the pathname is
+    // matched back to that descriptor. It cannot make a hostile writable file
+    // immutable while reading it; release assembly must therefore run in a
+    // trusted build directory whose producers have stopped.
+    const pathnameAfter = lstatSync(before.absolute, { bigint: true });
+    if (
+      pathnameAfter.isSymbolicLink() ||
+      !pathnameAfter.isFile() ||
+      !sameFile(openedAfter, pathnameAfter) ||
+      pathnameAfter.size !== openedAfter.size ||
+      pathnameAfter.mtimeNs !== openedAfter.mtimeNs ||
+      pathnameAfter.ctimeNs !== openedAfter.ctimeNs ||
+      !samePath(realpathSync.native(before.absolute), before.absolute)
+    ) throw new Error(`${label} changed after hashing`);
+    const size = Number(openedAfter.size);
+    if (!Number.isSafeInteger(size)) throw new Error(`${label} is too large to manifest safely`);
+    return { sha256: digest.digest("hex"), size };
+  } finally {
+    closeSync(fd);
+  }
+}
+
+function validateTarget(target) {
+  assertKeys(
+    target,
+    ["arch", "endianness", "libc", "nodeAbi", "nodeNapi", "platform", "wordBits"],
+    [],
+    "build target",
+  );
+  for (const key of ["arch", "endianness", "nodeAbi", "nodeNapi", "platform"]) {
+    assertString(target[key], `build target ${key}`);
+  }
+  if (target.wordBits !== null && !Number.isSafeInteger(target.wordBits)) {
+    throw new Error("build target wordBits must be an integer or null");
+  }
+  if (target.libc !== null) {
+    assertKeys(target.libc, ["family", "version"], [], "build target libc");
+    assertString(target.libc.family, "build target libc family");
+    if (target.libc.version !== null) assertString(target.libc.version, "libc version");
+  }
+  const supported = new Set([
+    "darwin-arm64",
+    "linux-arm64",
+    "linux-x64",
+    "win32-x64",
+  ]);
+  const targetName = `${target.platform}-${target.arch}`;
+  if (!supported.has(targetName)) {
+    throw new Error(`unsupported Sage.js release target ${targetName}`);
+  }
+  if (target.endianness !== "LE" || target.wordBits !== 64) {
+    throw new Error(`${targetName} requires LE endianness and 64-bit words`);
+  }
+  if (target.platform === "linux" && target.libc?.family !== "glibc") {
+    throw new Error(`${targetName} requires explicit glibc identity`);
+  }
+  if (target.platform !== "linux" && target.libc !== null) {
+    throw new Error(`${targetName} must use null libc identity`);
+  }
+}
+
+function validateSource(source) {
+  assertKeys(
+    source,
+    ["commit", "contentSha256", "dirty", "kind", "tree"],
+    [],
+    "build source",
+  );
+  normalizeGit(source.commit, "build source commit");
+  normalizeHash(source.contentSha256, "build source contentSha256");
+  if (source.kind === "git-clean") {
+    if (source.dirty !== false) throw new Error("clean Git source dirty must be false");
+    normalizeGit(source.tree, "build source tree");
+  } else if (source.kind === "git-dirty") {
+    if (source.dirty !== true) throw new Error("dirty Git source dirty must be true");
+    normalizeGit(source.tree, "build source tree");
+  } else if (source.kind === "source-archive") {
+    if (source.dirty !== null || source.tree !== null) {
+      throw new Error("source archive dirty and tree states must be null");
+    }
+  } else throw new Error(`unsupported build source kind ${source.kind}`);
+}
+
+function buildManifestBody(buildManifest) {
+  return stableJson({
+    capabilities: buildManifest.capabilities,
+    sagejsVersion: buildManifest.sagejsVersion,
+    schema: buildManifest.schema,
+    source: buildManifest.source,
+    target: buildManifest.target,
+    toolchain: buildManifest.toolchain,
+  });
+}
+
+function validateBuildManifest(buildManifest) {
+  assertKeys(
+    buildManifest,
+    ["capabilities", "identitySha256", "sagejsVersion", "schema", "source", "target", "toolchain"],
+    [],
+    "build manifest",
+  );
+  if (buildManifest.schema !== BUILD_MANIFEST_SCHEMA) {
+    throw new Error(`unsupported build manifest schema ${buildManifest.schema}`);
+  }
+  assertString(buildManifest.sagejsVersion, "build manifest Sage.js version");
+  assertPlainObject(buildManifest.capabilities, "build manifest capabilities");
+  assertPlainObject(buildManifest.toolchain, "build manifest toolchain");
+  assertJson(buildManifest.capabilities, "build manifest capabilities");
+  assertJson(buildManifest.toolchain, "build manifest toolchain");
+  validateSource(buildManifest.source);
+  validateTarget(buildManifest.target);
+  normalizeHash(buildManifest.identitySha256, "build manifest identitySha256");
+  const expected = sha256(canonicalJson(buildManifestBody(buildManifest)));
+  if (buildManifest.identitySha256 !== expected) {
+    throw new Error("build manifest identity checksum mismatch");
+  }
+  return buildManifest;
+}
+
+function createBuildManifest(value) {
+  assertPlainObject(value, "build manifest input");
+  const body = stableJson({
+    capabilities: value.capabilities,
+    sagejsVersion: value.sagejsVersion,
+    schema: BUILD_MANIFEST_SCHEMA,
+    source: value.source,
+    target: value.target,
+    toolchain: value.toolchain,
+  });
+  return validateBuildManifest({
+    ...body,
+    identitySha256: sha256(canonicalJson(body)),
+  });
+}
+
+function parseCanonical(filename, validator, label) {
+  filename = resolve(filename);
+  const before = lstatSync(filename, { bigint: true });
+  if (
+    !before.isFile() ||
+    before.isSymbolicLink() ||
+    !samePath(realpathSync.native(filename), filename)
+  ) {
+    throw new Error(`${label} must be a regular file without symlink or reparse parents`);
+  }
+  const fd = openSync(filename, fsConstants.O_RDONLY | (fsConstants.O_NOFOLLOW || 0));
+  let contents;
+  try {
+    const openedBefore = fstatSync(fd, { bigint: true });
+    if (!sameFile(before, openedBefore)) throw new Error(`${label} changed before reading`);
+    contents = readFileSync(fd, "utf8");
+    const openedAfter = fstatSync(fd, { bigint: true });
+    const pathnameAfter = lstatSync(filename, { bigint: true });
+    if (
+      !sameFile(openedBefore, openedAfter) ||
+      openedBefore.size !== openedAfter.size ||
+      openedBefore.mtimeNs !== openedAfter.mtimeNs ||
+      openedBefore.ctimeNs !== openedAfter.ctimeNs ||
+      !sameFile(openedAfter, pathnameAfter) ||
+      pathnameAfter.size !== openedAfter.size ||
+      pathnameAfter.mtimeNs !== openedAfter.mtimeNs ||
+      pathnameAfter.ctimeNs !== openedAfter.ctimeNs ||
+      !samePath(realpathSync.native(filename), filename)
+    ) throw new Error(`${label} changed while reading`);
+  } finally {
+    closeSync(fd);
+  }
+  let value;
+  try {
+    value = JSON.parse(contents);
+  } catch (error) {
+    throw new Error(`cannot parse ${label} ${filename}: ${error.message || error}`);
+  }
+  validator(value);
+  if (contents !== serialize(value)) {
+    throw new Error(`${label} ${filename} is not in canonical generated form`);
+  }
+  return value;
 }
 
 function gitOutput(root, arguments_) {
@@ -155,465 +398,282 @@ function gitOutput(root, arguments_) {
     cwd: root,
     encoding: "utf8",
     stdio: ["ignore", "pipe", "pipe"],
-  }).trim();
+  });
 }
 
-function normalizeCommit(value, label = "source commit") {
-  assertString(value, label);
-  const commit = value.toLowerCase();
-  if (!COMMIT_PATTERN.test(commit)) {
-    throw new Error(`${label} must be a full 40- or 64-digit Git object id`);
+function gitSourceIdentity(root, options = {}) {
+  root = directoryRealpath(root, "Git source root");
+  const topLevel = resolve(gitOutput(root, ["rev-parse", "--show-toplevel"]).trim());
+  if (!samePath(root, topLevel)) {
+    throw new Error(`Git source root must be the repository top level ${topLevel}`);
   }
-  return commit;
-}
-
-function sourceIdentity(root, options = {}) {
-  const sourceRoot = resolve(root);
-  if (options.sourceArchive) {
-    if (options.requireClean) {
-      throw new Error(
-        "source archives have unknown dirty state and cannot require a clean tree",
-      );
-    }
-    return {
-      commit: normalizeCommit(options.sourceCommit),
-      dirty: null,
-      kind: "source-archive",
-      tree: null,
+  const commit = normalizeGit(gitOutput(root, ["rev-parse", "HEAD"]).trim(), "commit");
+  const tree = normalizeGit(gitOutput(root, ["rev-parse", "HEAD^{tree}"]).trim(), "tree");
+  const status = gitOutput(root, ["status", "--porcelain=v1", "--untracked-files=normal"]);
+  const dirty = status.length > 0;
+  if (dirty && !options.allowDirty) throw new Error("release build source is dirty");
+  let contentSha256;
+  if (dirty) {
+    const digestDirty = () => {
+      const trackedPatch = gitOutput(root, [
+        "diff",
+        "--binary",
+        "--no-ext-diff",
+        "--no-textconv",
+        "HEAD",
+        "--",
+        ".",
+      ]);
+      const untracked = gitOutput(root, [
+        "ls-files", "--others", "--exclude-standard", "-z",
+      ]).split("\0").filter(Boolean).sort();
+      const digest = createHash("sha256");
+      digest.update("sagejs.git-dirty-source-v1\0");
+      digest.update(commit);
+      digest.update("\0");
+      digest.update(trackedPatch);
+      for (const path of untracked) {
+        const filename = join(root, path);
+        const information = lstatSync(filename, { bigint: true });
+        const portable = path.replaceAll("\\", "/");
+        let contentHash;
+        let mode;
+        let size;
+        if (information.isFile() && !information.isSymbolicLink()) {
+          const artifact = hashRegularFile(root, filename, `untracked source ${path}`);
+          contentHash = artifact.sha256;
+          mode = information.mode & 0o111n ? "100755" : "100644";
+          size = artifact.size;
+        } else if (information.isSymbolicLink()) {
+          const lexicalParent = dirname(resolve(filename));
+          if (!samePath(realpathSync.native(lexicalParent), lexicalParent)) {
+            throw new Error(`untracked source ${path} has a symlinked parent`);
+          }
+          const target = readlinkSync(filename, { encoding: "buffer" });
+          contentHash = sha256(target);
+          mode = "120000";
+          size = target.length;
+          const after = lstatSync(filename, { bigint: true });
+          if (
+            !after.isSymbolicLink() ||
+            !sameFile(information, after) ||
+            information.mtimeNs !== after.mtimeNs ||
+            information.ctimeNs !== after.ctimeNs
+          ) throw new Error(`untracked source ${path} changed while hashing`);
+        } else {
+          throw new Error(`unsupported untracked source type ${path}`);
+        }
+        digest.update("\0");
+        digest.update(portable);
+        digest.update("\0");
+        digest.update(mode);
+        digest.update("\0");
+        digest.update(contentHash);
+        digest.update("\0");
+        digest.update(String(size));
+      }
+      return digest.digest("hex");
     };
-  }
-  let commit;
-  let tree;
-  let status;
-  try {
-    commit = normalizeCommit(gitOutput(sourceRoot, ["rev-parse", "HEAD"]));
-    tree = normalizeCommit(
-      gitOutput(sourceRoot, ["rev-parse", "HEAD^{tree}"]),
-      "source tree",
-    );
-    status = gitOutput(sourceRoot, [
-      "status",
-      "--porcelain=v1",
-      "--untracked-files=normal",
-    ]);
-  } catch (error) {
-    throw new Error(
-      `cannot inspect Git source at ${sourceRoot}; source archives require ` +
-        `--source-archive and --source-commit: ${error.message || error}`,
-    );
-  }
-  if (options.sourceCommit !== undefined) {
-    const expected = normalizeCommit(options.sourceCommit);
-    if (commit !== expected) {
-      throw new Error(`source commit mismatch: expected ${expected}, got ${commit}`);
+    contentSha256 = digestDirty();
+    if (digestDirty() !== contentSha256) {
+      throw new Error("dirty release source changed while recording identity");
     }
+  } else {
+    contentSha256 = sha256(`sagejs.git-tree-v1\0${tree}`);
   }
-  const source = {
-    commit,
-    dirty: status.length > 0,
-    kind: "git",
-    tree,
-  };
-  if (options.requireClean && source.dirty) {
-    throw new Error("release source is dirty");
+  const statusAfter = gitOutput(root, ["status", "--porcelain=v1", "--untracked-files=normal"]);
+  if (statusAfter !== status) {
+    throw new Error("release source changed while recording identity");
   }
-  return source;
+  return { commit, contentSha256, dirty, kind: dirty ? "git-dirty" : "git-clean", tree };
 }
 
-function detectedLibc(targetPlatform) {
-  if (targetPlatform !== "linux") return null;
-  const report = process.report?.getReport?.();
-  const version = report?.header?.glibcVersionRuntime;
-  return version
-    ? { family: "glibc", version: String(version) }
-    : { family: "unknown", version: null };
+function validateArtifact(artifact, label) {
+  assertKeys(artifact, ["kind", "path", "sha256", "size"], [], label);
+  assertString(artifact.kind, `${label} kind`);
+  if (!KIND_PATTERN.test(artifact.kind)) throw new Error(`${label} kind is invalid`);
+  validatePortablePath(artifact.path, `${label} path`);
+  normalizeHash(artifact.sha256, `${label} sha256`);
+  if (!Number.isSafeInteger(artifact.size) || artifact.size < 0) {
+    throw new Error(`${label} size must be a nonnegative safe integer`);
+  }
 }
 
-function targetIdentity(options = {}) {
-  const targetPlatform = options.platform || platform();
-  const targetArch = options.arch || arch();
-  const libc = options.libc === undefined
-    ? detectedLibc(targetPlatform)
-    : options.libc === null
-      ? null
-      : typeof options.libc === "string"
-        ? { family: options.libc, version: options.libcVersion || null }
-        : stableJson(options.libc);
+function releaseIdentity(manifest) {
   return stableJson({
-    arch: targetArch,
-    endianness: options.endianness || endianness(),
-    libc,
-    nodeAbi: String(options.nodeAbi || process.versions.modules || "unknown"),
-    nodeNapi: String(options.nodeNapi || process.versions.napi || "unknown"),
-    platform: targetPlatform,
-    wordBits: options.wordBits || (["x64", "arm64"].includes(targetArch) ? 64 : null),
+    artifacts: manifest.artifacts,
+    buildManifestIdentitySha256: manifest.buildManifest.identitySha256,
+    sagejsVersion: manifest.buildManifest.sagejsVersion,
+    schema: manifest.schema,
   });
 }
 
-function commandName(command) {
-  return basename(String(command).replaceAll("\\", "/"));
-}
-
-function inspectBuild(options, target) {
-  if (options.build !== undefined) {
-    assertPlainObject(options.build, "build provenance");
-    return stableJson(options.build);
-  }
-  const profile = nativeMathBuildProfile({
-    arch: target.arch,
-    environment: options.environment || process.env,
-    platform: target.platform,
-  });
-  for (const compiler of Object.values(profile.compilers)) {
-    compiler.command = commandName(compiler.command);
-    compiler.version = compiler.version
-      .split("\n")
-      .filter((line) => !/^InstalledDir:\s*/.test(line))
-      .join("\n");
-  }
-  // The native cache profile intentionally fingerprints the full compiler
-  // command, including a possible installation path. A release manifest
-  // instead fingerprints the normalized identity above so moving an otherwise
-  // identical toolchain does not change its reproducible provenance.
-  delete profile.fingerprint;
-  profile.fingerprint = sha256Text(canonicalJson(profile));
+function manifestBody(manifest) {
   return stableJson({
-    nativeMathProfile: profile,
-    node: {
-      modules: String(process.versions.modules || "unknown"),
-      napi: String(process.versions.napi || "unknown"),
-      version: process.version,
-    },
-  });
-}
-
-function creationProvenance(options, target) {
-  const provenance = {
-    build: inspectBuild(options, target),
-    generator: {
-      name: GENERATOR,
-      schemaVersion: 1,
-    },
-  };
-  const epochValue = options.sourceDateEpoch ?? options.environment?.SOURCE_DATE_EPOCH;
-  if (epochValue !== undefined) {
-    const epoch = Number(epochValue);
-    if (!Number.isSafeInteger(epoch) || epoch < 0) {
-      throw new Error("SOURCE_DATE_EPOCH must be a nonnegative safe integer");
-    }
-    provenance.createdAt = new Date(epoch * 1000).toISOString();
-    provenance.sourceDateEpoch = epoch;
-  }
-  return stableJson(provenance);
-}
-
-async function artifactIdentity(entry, manifestDirectory) {
-  assertPlainObject(entry, "artifact input");
-  assertString(entry.kind, "artifact kind");
-  if (!KIND_PATTERN.test(entry.kind)) {
-    throw new Error(`invalid artifact kind ${JSON.stringify(entry.kind)}`);
-  }
-  assertString(entry.file, "artifact filename");
-  const filename = resolve(entry.file);
-  const information = lstatSync(filename);
-  if (!information.isFile() || information.isSymbolicLink()) {
-    throw new Error(`release artifact must be a regular non-symlink file: ${filename}`);
-  }
-  return {
-    kind: entry.kind,
-    path: portableRelativePath(manifestDirectory, filename),
-    sha256: await sha256File(filename),
-    size: information.size,
-  };
-}
-
-function manifestBody(schema, identity, provenance) {
-  return stableJson({ identity, provenance, schema });
-}
-
-async function createManifest(options) {
-  assertPlainObject(options, "manifest options");
-  const root = resolve(options.root || resolve(__dirname, ".."));
-  const manifestDirectory = resolve(options.manifestDirectory || root);
-  const packageManifest = JSON.parse(
-    readFileSync(resolve(root, "package.json"), "utf8"),
-  );
-  assertString(packageManifest.version, "Sage.js package version");
-  const target = targetIdentity(options.target);
-  const artifacts = await Promise.all(
-    (options.artifacts || []).map(
-      (entry) => artifactIdentity(entry, manifestDirectory),
-    ),
-  );
-  const compare = (left, right) => left < right ? -1 : left > right ? 1 : 0;
-  artifacts.sort((left, right) =>
-    compare(left.path, right.path) || compare(left.kind, right.kind),
-  );
-  if (artifacts.length === 0) throw new Error("at least one artifact is required");
-  if (new Set(artifacts.map(({ path }) => path)).size !== artifacts.length) {
-    throw new Error("each release artifact path must be unique");
-  }
-  const capabilities = options.capabilities || {};
-  assertPlainObject(capabilities, "capabilities");
-  assertJsonValue(capabilities, "capabilities");
-  const identity = stableJson({
-    artifacts,
-    capabilities,
-    sagejsVersion: packageManifest.version,
-    source: sourceIdentity(root, options.source || {}),
-    target,
-  });
-  const provenance = creationProvenance(
-    {
-      build: options.build,
-      environment: options.environment || process.env,
-      sourceDateEpoch: options.sourceDateEpoch,
-    },
-    target,
-  );
-  const body = manifestBody(SCHEMA, identity, provenance);
-  return stableJson({
-    ...body,
-    integrity: {
-      identitySha256: sha256Text(canonicalJson(identity)),
-      manifestSha256: sha256Text(canonicalJson(body)),
-    },
+    artifacts: manifest.artifacts,
+    buildManifest: manifest.buildManifest,
+    packagingHostObservation: manifest.packagingHostObservation,
+    schema: manifest.schema,
   });
 }
 
 function validateManifest(manifest) {
   assertKeys(
     manifest,
-    ["schema", "identity", "integrity", "provenance"],
+    ["artifacts", "buildManifest", "integrity", "packagingHostObservation", "schema"],
     [],
     "manifest",
   );
-  if (manifest.schema !== SCHEMA) {
-    throw new Error(`unsupported manifest schema ${JSON.stringify(manifest.schema)}`);
+  if (manifest.schema !== MANIFEST_SCHEMA) {
+    throw new Error(`unsupported manifest schema ${manifest.schema}`);
   }
-  assertKeys(
-    manifest.identity,
-    ["artifacts", "capabilities", "sagejsVersion", "source", "target"],
-    [],
-    "manifest identity",
-  );
-  assertString(manifest.identity.sagejsVersion, "Sage.js version");
-  assertPlainObject(manifest.identity.capabilities, "capabilities");
-  assertJsonValue(manifest.identity.capabilities, "capabilities");
-  const source = manifest.identity.source;
-  assertKeys(source, ["commit", "dirty", "kind", "tree"], [], "source identity");
-  normalizeCommit(source.commit);
-  if (source.kind === "git") {
-    if (typeof source.dirty !== "boolean") {
-      throw new Error("Git source dirty state must be boolean");
-    }
-    normalizeCommit(source.tree, "source tree");
-  } else if (source.kind === "source-archive") {
-    if (source.dirty !== null || source.tree !== null) {
-      throw new Error("source archives must use null dirty and tree states");
-    }
-  } else {
-    throw new Error(`unsupported source kind ${JSON.stringify(source.kind)}`);
-  }
-  const target = manifest.identity.target;
-  assertKeys(
-    target,
-    ["arch", "endianness", "libc", "nodeAbi", "nodeNapi", "platform", "wordBits"],
-    [],
-    "target identity",
-  );
-  for (const key of ["arch", "endianness", "nodeAbi", "nodeNapi", "platform"]) {
-    assertString(target[key], `target ${key}`);
-  }
-  if (target.wordBits !== null && !Number.isSafeInteger(target.wordBits)) {
-    throw new Error("target wordBits must be an integer or null");
-  }
-  if (target.libc !== null) {
-    assertKeys(target.libc, ["family", "version"], [], "target libc");
-    assertString(target.libc.family, "target libc family");
-    if (target.libc.version !== null) {
-      assertString(target.libc.version, "target libc version");
-    }
-  }
-  if (!Array.isArray(manifest.identity.artifacts) || manifest.identity.artifacts.length === 0) {
+  validateBuildManifest(manifest.buildManifest);
+  if (!Array.isArray(manifest.artifacts) || manifest.artifacts.length === 0) {
     throw new Error("manifest must contain at least one artifact");
   }
-  const artifactPaths = new Set();
-  for (const [index, artifact] of manifest.identity.artifacts.entries()) {
-    const label = `artifact ${index}`;
-    assertKeys(artifact, ["kind", "path", "sha256", "size"], [], label);
-    assertString(artifact.kind, `${label} kind`);
-    if (!KIND_PATTERN.test(artifact.kind)) throw new Error(`${label} kind is invalid`);
-    validateArtifactPath(artifact.path, `${label} path`);
-    if (!SHA256_PATTERN.test(artifact.sha256)) {
-      throw new Error(`${label} SHA-256 is invalid`);
-    }
-    if (!Number.isSafeInteger(artifact.size) || artifact.size < 0) {
-      throw new Error(`${label} size must be a nonnegative safe integer`);
-    }
-    if (artifactPaths.has(artifact.path)) {
-      throw new Error(`duplicate artifact path ${artifact.path}`);
-    }
-    artifactPaths.add(artifact.path);
+  const paths = new Set();
+  for (const [index, artifact] of manifest.artifacts.entries()) {
+    validateArtifact(artifact, `artifact ${index}`);
+    if (paths.has(artifact.path)) throw new Error(`duplicate artifact ${artifact.path}`);
+    paths.add(artifact.path);
   }
-  assertKeys(manifest.integrity, ["identitySha256", "manifestSha256"], [], "integrity");
-  for (const [key, value] of Object.entries(manifest.integrity)) {
-    if (!SHA256_PATTERN.test(value)) throw new Error(`integrity ${key} is invalid`);
+  if (manifest.packagingHostObservation !== null) {
+    assertPlainObject(manifest.packagingHostObservation, "packaging host observation");
+    assertJson(manifest.packagingHostObservation, "packaging host observation");
   }
   assertKeys(
-    manifest.provenance,
-    ["build", "generator"],
-    ["createdAt", "sourceDateEpoch"],
-    "provenance",
-  );
-  assertPlainObject(manifest.provenance.build, "build provenance");
-  assertKeys(
-    manifest.provenance.generator,
-    ["name", "schemaVersion"],
+    manifest.integrity,
+    ["documentBodySha256", "releaseIdentitySha256"],
     [],
-    "manifest generator",
+    "manifest integrity",
   );
-  if (
-    manifest.provenance.generator.name !== GENERATOR ||
-    manifest.provenance.generator.schemaVersion !== 1
-  ) {
-    throw new Error("unrecognized manifest generator");
+  const releaseHash = sha256(canonicalJson(releaseIdentity(manifest)));
+  if (manifest.integrity.releaseIdentitySha256 !== releaseHash) {
+    throw new Error("release identity checksum mismatch");
   }
-  if ("sourceDateEpoch" in manifest.provenance) {
-    const epoch = manifest.provenance.sourceDateEpoch;
-    if (!Number.isSafeInteger(epoch) || epoch < 0) {
-      throw new Error("sourceDateEpoch must be a nonnegative safe integer");
-    }
-    if (manifest.provenance.createdAt !== new Date(epoch * 1000).toISOString()) {
-      throw new Error("createdAt does not match sourceDateEpoch");
-    }
-  } else if ("createdAt" in manifest.provenance) {
-    throw new Error("createdAt requires sourceDateEpoch");
-  }
-  const expectedIdentity = sha256Text(canonicalJson(manifest.identity));
-  if (manifest.integrity.identitySha256 !== expectedIdentity) {
-    throw new Error("manifest identity checksum mismatch");
-  }
-  const expectedManifest = sha256Text(canonicalJson(manifestBody(
-    manifest.schema,
-    manifest.identity,
-    manifest.provenance,
-  )));
-  if (manifest.integrity.manifestSha256 !== expectedManifest) {
-    throw new Error("manifest checksum mismatch");
+  const bodyHash = sha256(canonicalJson(manifestBody(manifest)));
+  if (manifest.integrity.documentBodySha256 !== bodyHash) {
+    throw new Error("manifest document body checksum mismatch");
   }
   return manifest;
+}
+
+function outputDirectory(filename) {
+  const directory = dirname(resolve(filename));
+  return directoryRealpath(directory, "manifest output directory");
+}
+
+function outputSafety(filename, artifactFiles = []) {
+  filename = resolve(filename);
+  const directory = outputDirectory(filename);
+  if (!samePath(dirname(filename), directory)) throw new Error("manifest output parent is not canonical");
+  for (const artifact of artifactFiles) {
+    if (samePath(artifact, filename)) throw new Error("manifest output cannot be an artifact");
+  }
+  if (existsSync(filename)) {
+    const information = lstatSync(filename);
+    if (information.isSymbolicLink() || !information.isFile()) {
+      throw new Error("manifest output must not be a symlink, reparse point, or directory");
+    }
+    if (!samePath(realpathSync.native(filename), filename)) {
+      throw new Error("manifest output resolves through a symlink or reparse point");
+    }
+    throw new Error("manifest output already exists; refusing non-atomic replacement");
+  }
+  return { directory, filename };
+}
+
+function atomicWrite(filename, value, artifactFiles = []) {
+  const safe = outputSafety(filename, artifactFiles);
+  const temporaryDirectory = mkdtempSync(join(safe.directory, ".sagejs-manifest-"));
+  const temporary = join(temporaryDirectory, basename(safe.filename));
+  try {
+    writeFileSync(temporary, serialize(value), { flag: "wx", mode: 0o644 });
+    outputSafety(safe.filename, artifactFiles);
+    // A same-filesystem hard link provides atomic publication only while the
+    // destination is absent. Unlike rename, it cannot overwrite a concurrent
+    // publisher that wins after outputSafety. The temporary inode remains
+    // private until the link succeeds and is removed in the finally block.
+    linkSync(temporary, safe.filename);
+  } finally {
+    rmSync(temporaryDirectory, { force: true, recursive: true });
+  }
+}
+
+function artifactFromInput(entry, manifestDirectory) {
+  assertPlainObject(entry, "artifact input");
+  assertString(entry.kind, "artifact kind");
+  if (!KIND_PATTERN.test(entry.kind)) throw new Error(`invalid artifact kind ${entry.kind}`);
+  assertString(entry.file, "artifact filename");
+  const path = portablePath(manifestDirectory, entry.file);
+  return { kind: entry.kind, path, ...hashRegularFile(manifestDirectory, entry.file, `artifact ${path}`) };
+}
+
+function createManifest(options) {
+  assertPlainObject(options, "manifest options");
+  const buildManifest = validateBuildManifest(structuredClone(options.buildManifest));
+  const manifestDirectory = directoryRealpath(options.manifestDirectory, "manifest directory");
+  const artifacts = (options.artifacts || []).map(
+    (entry) => artifactFromInput(entry, manifestDirectory),
+  );
+  if (!artifacts.length) throw new Error("at least one artifact is required");
+  artifacts.sort((left, right) => left.path < right.path ? -1 : left.path > right.path ? 1 : 0);
+  if (new Set(artifacts.map(({ path }) => path)).size !== artifacts.length) {
+    throw new Error("artifact paths must be unique");
+  }
+  const draft = stableJson({
+    artifacts,
+    buildManifest,
+    packagingHostObservation: options.packagingHostObservation ?? null,
+    schema: MANIFEST_SCHEMA,
+  });
+  return validateManifest({
+    ...draft,
+    integrity: {
+      documentBodySha256: sha256(canonicalJson(draft)),
+      releaseIdentitySha256: sha256(canonicalJson(releaseIdentity(draft))),
+    },
+  });
+}
+
+function readBuildManifest(filename) {
+  return parseCanonical(resolve(filename), validateBuildManifest, "build manifest");
 }
 
 function readManifest(filename) {
-  const contents = readFileSync(filename, "utf8");
-  let manifest;
-  try {
-    manifest = JSON.parse(contents);
-  } catch (error) {
-    throw new Error(`cannot parse release manifest ${filename}: ${error.message || error}`);
-  }
-  validateManifest(manifest);
-  if (contents !== serializeManifest(manifest)) {
-    throw new Error(
-      `release manifest ${filename} is not in canonical generated form`,
-    );
-  }
-  return manifest;
+  return parseCanonical(resolve(filename), validateManifest, "release manifest");
 }
 
-function verifySource(manifestIdentity, root, options = {}) {
-  const manifestSource = manifestIdentity.source;
-  if (manifestSource.kind === "source-archive") {
-    if (options.sourceCommit === undefined) {
-      throw new Error(
-        "source archive verification requires an independently supplied source commit",
-      );
-    }
-    const packageManifest = JSON.parse(
-      readFileSync(resolve(root, "package.json"), "utf8"),
-    );
-    if (packageManifest.version !== manifestIdentity.sagejsVersion) {
-      throw new Error(
-        `source archive version mismatch: expected ${manifestIdentity.sagejsVersion}, ` +
-          `got ${packageManifest.version}`,
-      );
-    }
-  }
-  const observed = sourceIdentity(root, {
-    sourceArchive: manifestSource.kind === "source-archive",
-    sourceCommit: options.sourceCommit,
-  });
-  if (canonicalJson(observed) !== canonicalJson(manifestSource)) {
-    throw new Error(
-      `source identity mismatch: expected ${canonicalJson(manifestSource)}, ` +
-        `got ${canonicalJson(observed)}`,
-    );
-  }
-}
-
-async function verifyManifest(manifest, options = {}) {
+function verifyManifest(manifest, options = {}) {
   validateManifest(manifest);
-  const manifestDirectory = resolve(options.manifestDirectory || ".");
-  for (const artifact of manifest.identity.artifacts) {
-    const filename = resolve(manifestDirectory, ...artifact.path.split("/"));
-    const expectedPrefix = `${manifestDirectory}${sep}`;
-    if (!filename.startsWith(expectedPrefix)) {
-      throw new Error(`artifact escapes manifest directory: ${artifact.path}`);
-    }
-    let information;
-    try {
-      information = lstatSync(filename);
-    } catch (error) {
-      throw new Error(`missing artifact ${artifact.path}: ${error.message || error}`);
-    }
-    if (!information.isFile() || information.isSymbolicLink()) {
-      throw new Error(`artifact is not a regular non-symlink file: ${artifact.path}`);
-    }
-    if (information.size !== artifact.size) {
-      throw new Error(
-        `artifact size mismatch for ${artifact.path}: expected ${artifact.size}, ` +
-          `got ${information.size}`,
-      );
-    }
-    const observedHash = await sha256File(filename);
-    if (observedHash !== artifact.sha256) {
-      throw new Error(`artifact SHA-256 mismatch for ${artifact.path}`);
+  const directory = directoryRealpath(options.manifestDirectory, "manifest directory");
+  for (const artifact of manifest.artifacts) {
+    const observed = hashRegularFile(
+      directory,
+      join(directory, ...artifact.path.split("/")),
+      `artifact ${artifact.path}`,
+    );
+    if (observed.size !== artifact.size) throw new Error(`artifact size mismatch for ${artifact.path}`);
+    if (observed.sha256 !== artifact.sha256) throw new Error(`artifact SHA-256 mismatch for ${artifact.path}`);
+  }
+  if (options.buildManifest) {
+    validateBuildManifest(options.buildManifest);
+    if (canonicalJson(options.buildManifest) !== canonicalJson(manifest.buildManifest)) {
+      throw new Error("build manifest mismatch");
     }
   }
-  if (options.sourceRoot !== undefined) {
-    verifySource(manifest.identity, options.sourceRoot, options);
-  }
-  if (
-    options.capabilities !== undefined &&
-    canonicalJson(options.capabilities) !== canonicalJson(manifest.identity.capabilities)
-  ) {
-    throw new Error("release capability mismatch");
-  }
-  return {
-    artifacts: manifest.identity.artifacts.length,
-    identitySha256: manifest.integrity.identitySha256,
-  };
+  return { artifacts: manifest.artifacts.length, releaseIdentitySha256: manifest.integrity.releaseIdentitySha256 };
 }
 
 function parseArguments(arguments_) {
   const [command, ...tokens] = arguments_;
-  if (!["create", "verify"].includes(command)) return { command };
   const values = { artifact: [] };
-  const booleanOptions = new Set(["require-clean", "source-archive"]);
   for (let index = 0; index < tokens.length; index += 1) {
     const token = tokens[index];
     if (!token.startsWith("--")) throw new Error(`unexpected argument ${token}`);
     const name = token.slice(2);
-    if (booleanOptions.has(name)) {
-      values[name] = true;
-      continue;
-    }
-    const value = tokens[index + 1];
-    if (value === undefined || value.startsWith("--")) {
-      throw new Error(`missing value for ${token}`);
-    }
-    index += 1;
+    const value = tokens[++index];
+    if (!value || value.startsWith("--")) throw new Error(`missing value for ${token}`);
     if (name === "artifact") values.artifact.push(value);
     else if (name in values) throw new Error(`duplicate option ${token}`);
     else values[name] = value;
@@ -621,140 +681,82 @@ function parseArguments(arguments_) {
   return { command, values };
 }
 
+function parseArtifact(value) {
+  const at = value.indexOf("=");
+  if (at <= 0 || at === value.length - 1) throw new Error("artifact must be KIND=FILE");
+  return { kind: value.slice(0, at), file: resolve(value.slice(at + 1)) };
+}
+
 function usage() {
   return [
     "Usage:",
-    "  node scripts/release-manifest.cjs create --output FILE \\",
-    "    --artifact KIND=FILE [--artifact KIND=FILE ...] \\",
-    "    [--capabilities FILE] [--source-root DIR] [--require-clean] \\",
-    "    [--source-archive --source-commit HASH] [--platform OS] [--arch ARCH]",
-    "  node scripts/release-manifest.cjs verify --manifest FILE \\",
-    "    [--capabilities FILE] [--source-root DIR] [--source-commit HASH]",
+    "  node scripts/release-manifest.cjs create --output FILE --build-manifest FILE \\",
+    "    --artifact KIND=FILE [--artifact KIND=FILE ...]",
+    "  node scripts/release-manifest.cjs verify --manifest FILE [--build-manifest FILE]",
   ].join("\n");
 }
 
-function readJsonFile(filename, label) {
-  try {
-    const value = JSON.parse(readFileSync(resolve(filename), "utf8"));
-    assertPlainObject(value, label);
-    return value;
-  } catch (error) {
-    throw new Error(`cannot read ${label} ${filename}: ${error.message || error}`);
-  }
-}
-
-function parseArtifact(value) {
-  const separator = value.indexOf("=");
-  if (separator <= 0 || separator === value.length - 1) {
-    throw new Error(`artifact must have KIND=FILE form, got ${JSON.stringify(value)}`);
-  }
-  return { kind: value.slice(0, separator), file: resolve(value.slice(separator + 1)) };
-}
-
-async function runCli(arguments_) {
+function runCli(arguments_) {
   const { command, values } = parseArguments(arguments_);
   if (command === "create") {
-    const allowed = new Set([
-      "arch",
-      "artifact",
-      "capabilities",
-      "libc",
-      "napi",
-      "node-abi",
-      "output",
-      "platform",
-      "require-clean",
-      "source-archive",
-      "source-commit",
-      "source-root",
-    ]);
-    const unexpected = Object.keys(values).filter((name) => !allowed.has(name));
-    if (unexpected.length > 0) {
-      throw new Error(`unexpected create option(s): ${unexpected.join(", ")}`);
+    const allowed = new Set(["artifact", "build-manifest", "output"]);
+    const unexpected = Object.keys(values).filter((key) => !allowed.has(key));
+    if (unexpected.length) throw new Error(`unexpected create options: ${unexpected.join(", ")}`);
+    if (!values.output || !values["build-manifest"]) {
+      throw new Error("create requires --output and --build-manifest");
     }
-    if (!values.output) throw new Error("create requires --output");
     const output = resolve(values.output);
-    const sourceRoot = resolve(values["source-root"] || resolve(__dirname, ".."));
-    const capabilities = values.capabilities
-      ? readJsonFile(values.capabilities, "capabilities")
-      : {};
-    const manifest = await createManifest({
-      artifacts: values.artifact.map(parseArtifact),
-      capabilities,
-      environment: process.env,
+    const artifacts = values.artifact.map(parseArtifact);
+    outputSafety(output, artifacts.map(({ file }) => file));
+    const manifest = createManifest({
+      artifacts,
+      buildManifest: readBuildManifest(values["build-manifest"]),
       manifestDirectory: dirname(output),
-      root: sourceRoot,
-      source: {
-        requireClean: Boolean(values["require-clean"]),
-        sourceArchive: Boolean(values["source-archive"]),
-        sourceCommit: values["source-commit"],
-      },
-      target: {
-        arch: values.arch,
-        libc: values.libc,
-        nodeAbi: values["node-abi"],
-        nodeNapi: values.napi,
-        platform: values.platform,
-      },
+      packagingHostObservation: null,
     });
-    writeFileSync(output, serializeManifest(manifest));
-    console.log(
-      `Created ${output} for ${manifest.identity.artifacts.length} artifact(s); ` +
-        `identity ${manifest.integrity.identitySha256}.`,
-    );
+    atomicWrite(output, manifest, artifacts.map(({ file }) => file));
+    console.log(`Created ${output}; release identity ${manifest.integrity.releaseIdentitySha256}.`);
     return manifest;
   }
   if (command === "verify") {
-    const allowed = new Set([
-      "artifact",
-      "capabilities",
-      "manifest",
-      "source-commit",
-      "source-root",
-    ]);
-    const unexpected = Object.keys(values).filter((name) => !allowed.has(name));
-    if (unexpected.length > 0) {
-      throw new Error(`unexpected verify option(s): ${unexpected.join(", ")}`);
-    }
-    if (values.artifact.length > 0) {
-      throw new Error("verify does not accept --artifact");
-    }
+    const allowed = new Set(["artifact", "build-manifest", "manifest"]);
+    const unexpected = Object.keys(values).filter((key) => !allowed.has(key));
+    if (unexpected.length || values.artifact.length) throw new Error("unexpected verify option");
     if (!values.manifest) throw new Error("verify requires --manifest");
     const filename = resolve(values.manifest);
-    const manifest = readManifest(filename);
-    const capabilities = values.capabilities
-      ? readJsonFile(values.capabilities, "capabilities")
-      : undefined;
-    const result = await verifyManifest(manifest, {
-      capabilities,
+    const result = verifyManifest(readManifest(filename), {
+      buildManifest: values["build-manifest"] ? readBuildManifest(values["build-manifest"]) : undefined,
       manifestDirectory: dirname(filename),
-      sourceCommit: values["source-commit"],
-      sourceRoot: values["source-root"],
     });
-    console.log(
-      `Verified ${result.artifacts} artifact(s); identity ${result.identitySha256}.`,
-    );
+    console.log(`Verified ${result.artifacts} artifact(s); release identity ${result.releaseIdentitySha256}.`);
     return result;
   }
   throw new Error(usage());
 }
 
 if (require.main === module) {
-  runCli(process.argv.slice(2)).catch((error) => {
+  try {
+    runCli(process.argv.slice(2));
+  } catch (error) {
     console.error(error.stack || error.message || error);
     process.exitCode = 1;
-  });
+  }
 }
 
 module.exports = {
-  SCHEMA,
+  BUILD_MANIFEST_SCHEMA,
+  MANIFEST_SCHEMA,
+  atomicWrite,
   canonicalJson,
+  createBuildManifest,
   createManifest,
+  gitSourceIdentity,
+  hashRegularFile,
+  readBuildManifest,
   readManifest,
   runCli,
-  serializeManifest,
-  sourceIdentity,
-  stableJson,
+  serialize,
+  validateBuildManifest,
   validateManifest,
   verifyManifest,
 };
