@@ -530,6 +530,15 @@ jobs:
           key: macos-arm64-fflas-${{ hashFiles('packages/fflas/scripts/build-deps.cjs', 'packages/fflas/scripts/native-prefix.cjs', 'packages/fflas/package.json', 'packages/flint/scripts/build-deps.cjs', 'packages/flint/package.json', 'packages/flint/binding.gyp') }}
           restore-keys: macos-arm64-fflas-
 
+      - name: Cache downloaded and compiled M4RI dependencies
+        uses: actions/cache@v6
+        with:
+          path: |
+            packages/m4ri/.native/downloads
+            packages/m4ri/.native/prefix
+          key: macos-arm64-m4ri-${{ hashFiles('packages/m4ri/scripts/build-deps.cjs', 'packages/m4ri/package.json', 'packages/flint/scripts/build-deps.cjs', 'packages/flint/package.json') }}
+          restore-keys: macos-arm64-m4ri-
+
       - name: Build the compiler and native mathematics stack
         env:
           SAGEJS_BUILD_JOBS: "6"
@@ -537,6 +546,7 @@ jobs:
           pnpm --dir packages/flint build
           pnpm --dir packages/fflas build
           pnpm --dir packages/graph build
+          pnpm --dir packages/m4ri build
           pnpm build
 
       - name: Enforce the development startup budget
