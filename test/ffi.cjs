@@ -26,6 +26,7 @@ const {
   foreignCompilationInputs,
   generatedCxxLanguageSettings,
   nativeBuildWorkspace,
+  nativePathMappings,
 } = require("../tools/native-kernel/compiler.cjs");
 const {
   generateC,
@@ -2180,6 +2181,17 @@ test("generated C++ shields convert actual exceptions to declared status", (t) =
 });
 
 test("generated binding.gyp pins portable C++17 settings on every host", () => {
+  const overlappingMappings = nativePathMappings(
+    { foreignLibraries: [] },
+    join(root, ".native-test-cache", "kernel"),
+  );
+  assert.ok(
+    overlappingMappings.findIndex(([physical]) => physical === root) <
+      overlappingMappings.findIndex(([physical]) =>
+        physical === join(root, ".native-test-cache", "kernel")
+      ),
+    "broad maps must precede specific maps because compilers use the last match",
+  );
   assert.deepEqual(generatedCxxLanguageSettings("linux"), {
     compilerFlag: "-std=c++17",
     msvc: null,
@@ -2286,6 +2298,58 @@ test("generated binding.gyp pins portable C++17 settings on every host", () => {
   );
 });
 
+test("compiler prefix maps give nested roots their most-specific role", (t) => {
+  if (process.platform === "win32") {
+    t.skip("the Windows /pathmap behavior is covered structurally");
+    return;
+  }
+  const compiler = process.env.CC || "cc";
+  if (spawnSync(compiler, ["--version"]).status !== 0) {
+    t.skip(`${compiler} is unavailable`);
+    return;
+  }
+  const temporary = mkdtempSync(join(tmpdir(), "sagejs-prefix-map-"));
+  try {
+    const nested = join(temporary, "semantic-kernel");
+    const source = join(nested, "witness.c");
+    const executable = join(temporary, "witness");
+    mkdirSync(nested, { recursive: true });
+    writeFileSync(
+      source,
+      "#include <stdio.h>\nint main(void) { puts(__FILE__); return 0; }\n",
+    );
+    const target = bindingGyp(
+      {
+        foreignLibraries: [],
+        functions: [{ kernelKind: "prime-field-matrix" }],
+      },
+      true,
+      false,
+      process.platform,
+      [
+        [temporary, "sagejs-broad"],
+        [nested, "sagejs-specific"],
+      ],
+    ).targets[0];
+    const prefixFlags = target.cflags.filter((flag) =>
+      flag.startsWith("-ffile-prefix-map=") ||
+      flag.startsWith("-fdebug-prefix-map=") ||
+      flag.startsWith("-fmacro-prefix-map=")
+    );
+    const build = spawnSync(
+      compiler,
+      [...prefixFlags, source, "-o", executable],
+      { encoding: "utf8" },
+    );
+    assert.equal(build.status, 0, `${build.stdout}\n${build.stderr}`);
+    const run = spawnSync(executable, [], { encoding: "utf8" });
+    assert.equal(run.status, 0, `${run.stdout}\n${run.stderr}`);
+    assert.equal(run.stdout.trim(), "sagejs-specific/witness.c");
+  } finally {
+    rmSync(temporary, { recursive: true, force: true });
+  }
+});
+
 test("Windows native builds use a short disposable junction", () => {
   const temporary = mkdtempSync(join(tmpdir(), "sagejs-native-build-path-"));
   try {
@@ -2316,6 +2380,31 @@ test("Windows native builds use a short disposable junction", () => {
       assert.equal(
         readFileSync(join(outputPath, "built.txt"), "utf8"),
         "built-through-alias\n",
+      );
+      const mappings = nativePathMappings(
+        { foreignLibraries: [] },
+        outputPath,
+        aliasPath,
+      );
+      const outputMap = mappings.find(([physical]) =>
+        physical === outputPath
+      );
+      const aliasMap = mappings.find(([physical]) => physical === aliasPath);
+      assert.deepEqual(outputMap, [outputPath, "sagejs-native-build"]);
+      assert.deepEqual(aliasMap, [aliasPath, "sagejs-native-build"]);
+      const windowsGyp = bindingGyp(
+        {
+          foreignLibraries: [],
+          functions: [{ kernelKind: "integer" }],
+        },
+        true,
+        false,
+        "win32",
+        mappings,
+      ).targets[0];
+      const flags = windowsGyp.msvs_settings.VCCLCompilerTool.AdditionalOptions;
+      assert.ok(
+        flags?.includes(`/pathmap:${aliasPath}=sagejs-native-build`),
       );
     } finally {
       workspace.close();

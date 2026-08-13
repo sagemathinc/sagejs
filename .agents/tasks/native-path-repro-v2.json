@@ -9,16 +9,20 @@
   "objective": "Make production native wrappers, addons, and indexes byte-identical across clean checkouts at different absolute roots while preserving exact inspectable provenance",
   "base_commit": "9d7522ec8c0195bc41f4b2b2ccb6dfeefdc3eeff",
   "claims": [
+    ".agents/lanes.json",
     "tools/native-kernel/c-backend.cjs",
     "tools/native-kernel/compiler.cjs",
     "tools/native-kernel/ffi-codegen.cjs",
+    "tools/native-kernel/js-backend.cjs",
     "tools/native-kernel/prime-field-backend.cjs",
     "tools/native-compiler.ts",
     "tools/cache.ts",
     "tools/cache-lease.ts",
     "scripts/build-production-native-kernels.cjs",
     "scripts/parallel-native-cache.cjs",
+    "scripts/verify-production-native-reproducibility.cjs",
     "test/production-native-kernels.cjs",
+    "test/ffi.cjs",
     "test/native-kernel.cjs",
     "test/parallel-native-cache.cjs",
     "TODO.md"
@@ -45,7 +49,38 @@
     "pnpm test:portable",
     "pnpm test:baselib:strict"
   ],
-  "runs": [],
+  "runs": [
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 5.419,
+      "started_at": "2026-08-13T22:32:32.285Z",
+      "commit": "d3227e5224cce75c0f3a09f11d18b13b901e0ad0",
+      "workspace_fingerprint": "6df98383621c63bac6052d9de2ec9612d27bf398da199f3148f80ed6a2e16d6d",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 14.618,
+      "started_at": "2026-08-13T22:32:38.316Z",
+      "commit": "d3227e5224cce75c0f3a09f11d18b13b901e0ad0",
+      "workspace_fingerprint": "6df98383621c63bac6052d9de2ec9612d27bf398da199f3148f80ed6a2e16d6d",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 61.282,
+      "started_at": "2026-08-13T22:32:57.012Z",
+      "commit": "d3227e5224cce75c0f3a09f11d18b13b901e0ad0",
+      "workspace_fingerprint": "6df98383621c63bac6052d9de2ec9612d27bf398da199f3148f80ed6a2e16d6d",
+      "platform": "linux-x64"
+    }
+  ],
   "handoff": {
     "summary": "",
     "risks": [],
