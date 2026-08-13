@@ -63,6 +63,13 @@
   publish logical-only native-kernel indexes, use deterministic prefix maps in
   compiled dependencies, bind assembly policy and dependency identities, and
   validate clean rebuilds on Linux x64 and macOS arm64.
+- Rebuild every mature static dependency with the same deterministic path-map
+  policy used for generated addons. This is required even after debug stripping:
+  the current `libflint.a` contributes `__FILE__` strings such as
+  `.native/sources/flint-3.6.0/src/fmpz_mat/charpoly.c` to linked production
+  addons, including the absolute worktree prefix where that archive was built.
+  Verify the rebuilt archives and every linked addon contain neither independent
+  checkout root; stripping final binaries cannot remove live read-only data.
 - Finish hermetic release-candidate validation: strict child-environment
   allowlists, deterministic archives, atomic publication, artifact-bound
   provenance, bounded caches, cleanup on failure, and clean install, upgrade,

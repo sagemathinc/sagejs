@@ -2200,7 +2200,22 @@ test("generated binding.gyp pins portable C++17 settings on every host", () => {
     foreignLibraries: [],
     functions: [{ kernelKind: "prime-field-matrix" }],
   };
-  const linux = bindingGyp(ir, true, true, "linux").targets[0];
+  const linux = bindingGyp(
+    ir,
+    true,
+    true,
+    "linux",
+    [["/checkout", "sagejs-source"]],
+  ).targets[0];
+  assert.ok(linux.cflags.includes(
+    "-ffile-prefix-map=/checkout=sagejs-source",
+  ));
+  assert.ok(linux.cflags.includes(
+    "-fdebug-prefix-map=/checkout=sagejs-source",
+  ));
+  assert.ok(linux.cflags.includes(
+    "-fmacro-prefix-map=/checkout=sagejs-source",
+  ));
   assert.deepEqual(linux["cflags_cc!"], ["-fno-exceptions", "-fno-rtti"]);
   assert.deepEqual(linux.cflags_cc, [
     "-std=c++17",
@@ -2209,7 +2224,16 @@ test("generated binding.gyp pins portable C++17 settings on every host", () => {
   ]);
   assert.equal(linux.xcode_settings, undefined);
 
-  const macos = bindingGyp(ir, true, true, "darwin").targets[0];
+  const macos = bindingGyp(
+    ir,
+    true,
+    true,
+    "darwin",
+    [["/checkout", "sagejs-source"]],
+  ).targets[0];
+  assert.ok(macos.cflags.includes(
+    "-ffile-prefix-map=/checkout=sagejs-source",
+  ));
   assert.deepEqual(macos.cflags_cc, [
     "-std=c++17",
     "-fexceptions",
@@ -2224,18 +2248,32 @@ test("generated binding.gyp pins portable C++17 settings on every host", () => {
       process.env.MACOSX_DEPLOYMENT_TARGET || "13.0",
   });
 
-  const windows = bindingGyp(ir, true, true, "win32").targets[0];
+  const windows = bindingGyp(
+    ir,
+    true,
+    true,
+    "win32",
+    [["C:\\checkout", "sagejs-source"]],
+  ).targets[0];
   assert.equal(
     windows.configurations.Release.msbuild_toolset,
     "ClangCL",
   );
   assert.deepEqual(windows.msvs_settings.VCCLCompilerTool, {
+    AdditionalOptions: [
+      "/Brepro",
+      "/pathmap:C:\\checkout=sagejs-source",
+    ],
     ExceptionHandling: 1,
     LanguageStandard: "stdcpp17",
     Optimization: 3,
     RuntimeTypeInfo: "true",
     WarningLevel: 3,
   });
+  assert.deepEqual(
+    windows.msvs_settings.VCLinkerTool.AdditionalOptions,
+    ["/Brepro"],
+  );
   assert.equal(windows.cflags_cc, undefined);
 
   const exactWindows = bindingGyp({

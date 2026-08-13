@@ -1,0 +1,54 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "native-path-repro-v2",
+  "title": "Native Path Repro V2",
+  "lane": "integration",
+  "status": "active",
+  "owner": "user",
+  "objective": "Make production native wrappers, addons, and indexes byte-identical across clean checkouts at different absolute roots while preserving exact inspectable provenance",
+  "base_commit": "9d7522ec8c0195bc41f4b2b2ccb6dfeefdc3eeff",
+  "claims": [
+    "tools/native-kernel/c-backend.cjs",
+    "tools/native-kernel/compiler.cjs",
+    "tools/native-kernel/ffi-codegen.cjs",
+    "tools/native-kernel/prime-field-backend.cjs",
+    "tools/native-compiler.ts",
+    "tools/cache.ts",
+    "tools/cache-lease.ts",
+    "scripts/build-production-native-kernels.cjs",
+    "scripts/parallel-native-cache.cjs",
+    "test/production-native-kernels.cjs",
+    "test/native-kernel.cjs",
+    "test/parallel-native-cache.cjs",
+    "TODO.md"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "compiler-infrastructure",
+    "fallback": "not-applicable",
+    "oracles": [
+      "two clean builds from distinct absolute roots compare byte-for-byte",
+      "strict production autoload and native compiler regression tests"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm architecture:check",
+    "pnpm test:portable",
+    "pnpm test:baselib:strict"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "",
+    "risks": [],
+    "next_steps": []
+  }
+}

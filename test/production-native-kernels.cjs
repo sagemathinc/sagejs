@@ -173,6 +173,15 @@ test("all production native kernels are published and autoloadable", () => {
     const wrapper = require(join(published, record.cacheKey, "index.cjs"));
     assert.equal(wrapper.cacheKey, record.cacheKey);
     assert.equal(wrapper.sourceHash, record.sourceHash);
+    assert.equal(wrapper.sourceIdentity, `src/lib/${sourceKey}`);
+    assert.deepEqual(wrapper.pathPolicy, {
+      schema: "sagejs.native-path-policy/v1",
+      sourceRoot: "sagejs-source",
+      buildRoot: "sagejs-native-build",
+      nativeSupportRoot: "sagejs-native-support",
+      foreignRoot: "sagejs-foreign",
+      sourceDateEpoch: "0",
+    });
     assert.equal(wrapper.nativeAbi, record.nativeAbi);
     assert.deepEqual(wrapper.foreignDeclarations, record.foreignDeclarations);
   }
