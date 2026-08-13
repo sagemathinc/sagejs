@@ -2,11 +2,14 @@
 "use strict";
 
 const assert = require("node:assert/strict");
-const { execFileSync } = require("node:child_process");
+const { execFileSync, spawnSync } = require("node:child_process");
 const {
   mkdirSync,
   mkdtempSync,
+  chmodSync,
+  readdirSync,
   readFileSync,
+  realpathSync,
   rmSync,
   symlinkSync,
   writeFileSync,
@@ -16,393 +19,405 @@ const { dirname, join, resolve } = require("node:path");
 const test = require("node:test");
 
 const {
+  createBuildManifest,
   createManifest,
+  gitSourceIdentity,
   readManifest,
-  serializeManifest,
-  sourceIdentity,
+  serialize,
   validateManifest,
   verifyManifest,
 } = require("../scripts/release-manifest.cjs");
 
-const REPOSITORY = resolve(__dirname, "..");
-const SCRIPT = join(REPOSITORY, "scripts", "release-manifest.cjs");
+const SCRIPT = resolve(__dirname, "../scripts/release-manifest.cjs");
 const COMMIT = "0123456789abcdef0123456789abcdef01234567";
-const OTHER_COMMIT = "89abcdef0123456789abcdef0123456789abcdef";
-const FIXED_BUILD = {
-  nativeMathProfile: {
-    effectiveProfile: "portable",
-    fingerprint: "fixed-profile",
-  },
-  node: { modules: "137", napi: "10", version: "v26.0.0" },
-};
-const FIXED_TARGET = {
-  arch: "x64",
-  endianness: "LE",
-  libc: { family: "glibc", version: "2.39" },
-  nodeAbi: "137",
-  nodeNapi: "10",
-  platform: "linux",
-  wordBits: 64,
-};
+const ARCHIVE_HASH = "a".repeat(64);
 
-function git(root, arguments_, options = {}) {
+function git(root, arguments_) {
   return execFileSync("git", arguments_, {
     cwd: root,
     encoding: "utf8",
     stdio: ["ignore", "pipe", "pipe"],
-    ...options,
   }).trim();
 }
 
 function layout() {
-  const directory = mkdtempSync(join(tmpdir(), "sagejs-release-manifest-"));
-  const source = join(directory, "source");
-  const release = join(directory, "release");
+  const root = mkdtempSync(join(realpathSync.native(tmpdir()), "sagejs-release-manifest-"));
+  const source = join(root, "source");
+  const release = join(root, "release");
   mkdirSync(source);
   mkdirSync(release);
   writeFileSync(join(source, "package.json"), '{"version":"0.2.0"}\n');
-  writeFileSync(join(source, "README.md"), "release source\n");
+  writeFileSync(join(source, "tracked.txt"), "tracked\n");
   git(source, ["init", "--quiet", "--initial-branch=main"]);
-  git(source, ["add", "package.json", "README.md"]);
-  git(source, [
-    "-c",
-    "user.name=Sage.js Test",
-    "-c",
-    "user.email=sagejs@example.invalid",
-    "commit",
-    "--quiet",
-    "-m",
-    "initial",
-  ]);
-  const artifacts = {
-    executable: join(release, "sagejs-linux-x64"),
-    package: join(release, "sagejs-linux-x64.tgz"),
-  };
-  writeFileSync(artifacts.executable, "native executable bytes\n");
-  writeFileSync(artifacts.package, "package archive bytes\n");
-  return {
-    artifacts,
-    cleanup: () => rmSync(directory, { force: true, recursive: true }),
-    directory,
-    release,
-    source,
-  };
+  git(source, ["add", "."]);
+  git(source, ["-c", "user.name=Sage.js Test", "-c", "user.email=test@example.invalid", "commit", "--quiet", "-m", "initial"]);
+  const executable = join(release, "sagejs-linux-x64");
+  const archive = join(release, "sagejs-linux-x64.tgz");
+  writeFileSync(executable, "executable bytes\n");
+  writeFileSync(archive, "archive bytes\n");
+  return { archive, cleanup: () => rmSync(root, { force: true, recursive: true }), executable, release, root, source };
 }
 
-function options(workspace, overrides = {}) {
+function archiveSource() {
+  return { commit: COMMIT, contentSha256: ARCHIVE_HASH, dirty: null, kind: "source-archive", tree: null };
+}
+
+function receipt(source = archiveSource(), overrides = {}) {
+  return createBuildManifest({
+    capabilities: {
+      flint: true,
+      graph: false,
+      nativeKernels: {
+        expected: 2,
+        indexIdentitySha256: "c".repeat(64),
+        logicalSources: [
+          "sagejs.kernels.matrix.dense_integer_matrix",
+          "sagejs.kernels.polynomial.exact_integer_polynomial",
+        ],
+      },
+    },
+    sagejsVersion: "0.2.0",
+    source,
+    target: {
+      arch: "x64",
+      endianness: "LE",
+      libc: { family: "glibc", version: "2.39" },
+      nodeAbi: "137",
+      nodeNapi: "10",
+      platform: "linux",
+      wordBits: 64,
+    },
+    toolchain: {
+      compiler: { id: "clang", version: "20.1.0" },
+      nativeMathProfile: { fingerprint: "math-profile-receipt" },
+      node: "v26.0.0",
+    },
+    ...overrides,
+  });
+}
+
+function manifestOptions(workspace, buildManifest = receipt(), overrides = {}) {
   return {
     artifacts: [
-      { file: workspace.artifacts.package, kind: "npm-package" },
-      { file: workspace.artifacts.executable, kind: "standalone-executable" },
+      { file: workspace.archive, kind: "npm-package" },
+      { file: workspace.executable, kind: "standalone-executable" },
     ],
-    build: FIXED_BUILD,
-    capabilities: {
-      graph: { available: false, reason: "not-built" },
-      mathematics: ["flint", "m4ri"],
-    },
-    environment: {},
+    buildManifest,
     manifestDirectory: workspace.release,
-    root: workspace.source,
-    target: FIXED_TARGET,
+    packagingHostObservation: null,
     ...overrides,
   };
 }
 
-test("manifest identity and output are stable across multiple artifacts", async () => {
+test("build identity is pre-artifact and release identity binds artifact set", () => {
   const workspace = layout();
   try {
-    const first = await createManifest(options(workspace));
-    const second = await createManifest(options(workspace, {
-      artifacts: [...options(workspace).artifacts].reverse(),
+    const buildManifest = receipt();
+    const first = createManifest(manifestOptions(workspace, buildManifest));
+    const second = createManifest({
+      ...manifestOptions(workspace, buildManifest),
+      artifacts: [...manifestOptions(workspace, buildManifest).artifacts].reverse(),
+    });
+    assert.equal(serialize(first), serialize(second));
+    assert.equal(first.schema, "sagejs.release-artifact-manifest-v2");
+    assert.equal(first.buildManifest.identitySha256, buildManifest.identitySha256);
+    assert.equal(serialize(buildManifest).includes("artifacts"), false);
+    writeFileSync(workspace.archive, "changed archive bytes\n");
+    const changed = createManifest(manifestOptions(workspace, buildManifest));
+    assert.equal(changed.buildManifest.identitySha256, first.buildManifest.identitySha256);
+    assert.notEqual(changed.integrity.releaseIdentitySha256, first.integrity.releaseIdentitySha256);
+    assert.deepEqual(first.artifacts.map(({ path }) => path), ["sagejs-linux-x64", "sagejs-linux-x64.tgz"]);
+  } finally {
+    workspace.cleanup();
+  }
+});
+
+test("packaging host observation is separate from release identity", () => {
+  const workspace = layout();
+  try {
+    const first = createManifest(manifestOptions(workspace, receipt()));
+    const observed = createManifest(manifestOptions(workspace, receipt(), {
+      packagingHostObservation: { hostname: "builder-17", platform: "darwin" },
     }));
-    assert.equal(serializeManifest(first), serializeManifest(second));
-    assert.equal(first.schema, "sagejs.release-artifact-manifest-v1");
-    assert.equal(first.identity.sagejsVersion, "0.2.0");
-    assert.equal(first.identity.source.kind, "git");
-    assert.equal(first.identity.source.dirty, false);
-    assert.match(first.identity.source.commit, /^[0-9a-f]{40}$/);
-    assert.deepEqual(
-      first.identity.artifacts.map(({ kind, path }) => ({ kind, path })),
-      [
-        { kind: "standalone-executable", path: "sagejs-linux-x64" },
-        { kind: "npm-package", path: "sagejs-linux-x64.tgz" },
-      ],
-    );
-    assert.equal(first.provenance.createdAt, undefined);
-    assert.equal(JSON.stringify(first).includes(workspace.directory), false);
-    const result = await verifyManifest(first, {
-      capabilities: options(workspace).capabilities,
-      manifestDirectory: workspace.release,
-      sourceRoot: workspace.source,
-    });
-    assert.equal(result.artifacts, 2);
-    assert.equal(result.identitySha256, first.integrity.identitySha256);
+    assert.equal(first.integrity.releaseIdentitySha256, observed.integrity.releaseIdentitySha256);
+    assert.notEqual(first.integrity.documentBodySha256, observed.integrity.documentBodySha256);
+    assert.equal(observed.buildManifest.target.platform, "linux");
+    assert.equal(observed.packagingHostObservation.platform, "darwin");
   } finally {
     workspace.cleanup();
   }
 });
 
-test("SOURCE_DATE_EPOCH adds reproducible creation provenance outside identity", async () => {
+test("artifact and manifest tampering fail closed", () => {
   const workspace = layout();
   try {
-    const withoutTime = await createManifest(options(workspace));
-    const withTime = await createManifest(options(workspace, {
-      sourceDateEpoch: 1_700_000_000,
-    }));
-    assert.equal(
-      withoutTime.integrity.identitySha256,
-      withTime.integrity.identitySha256,
-    );
-    assert.notEqual(
-      withoutTime.integrity.manifestSha256,
-      withTime.integrity.manifestSha256,
-    );
-    assert.equal(withTime.provenance.sourceDateEpoch, 1_700_000_000);
-    assert.equal(withTime.provenance.createdAt, "2023-11-14T22:13:20.000Z");
-    assert.equal(
-      serializeManifest(withTime),
-      serializeManifest(await createManifest(options(workspace, {
-        sourceDateEpoch: 1_700_000_000,
-      }))),
-    );
+    const manifest = createManifest(manifestOptions(workspace));
+    writeFileSync(workspace.executable, "different bytes\n");
+    assert.throws(() => verifyManifest(manifest, { manifestDirectory: workspace.release }), /size mismatch|SHA-256 mismatch/);
+    const identity = structuredClone(manifest);
+    identity.artifacts[0].size += 1;
+    assert.throws(() => validateManifest(identity), /release identity checksum mismatch/);
+    const document = structuredClone(manifest);
+    document.packagingHostObservation = { platform: "unknown" };
+    assert.throws(() => validateManifest(document), /document body checksum mismatch/);
+    const build = structuredClone(manifest);
+    build.buildManifest.toolchain.node = "tampered";
+    assert.throws(() => validateManifest(build), /build manifest identity checksum mismatch/);
   } finally {
     workspace.cleanup();
   }
 });
 
-test("toolchain provenance normalizes compiler installation paths", async () => {
-  const workspace = layout();
-  try {
-    const base = options(workspace);
-    delete base.build;
-    const first = await createManifest({
-      ...base,
-      environment: { CC: "/private/first/sagejs-test-cc" },
-    });
-    const second = await createManifest({
-      ...base,
-      environment: { CC: "/different/root/sagejs-test-cc" },
-    });
-    assert.deepEqual(first.provenance, second.provenance);
-    assert.equal(serializeManifest(first).includes("/private/first"), false);
-    assert.equal(serializeManifest(second).includes("/different/root"), false);
-    assert.equal(
-      first.provenance.build.nativeMathProfile.compilers.c.command,
-      "sagejs-test-cc",
-    );
-  } finally {
-    workspace.cleanup();
-  }
+test("source archives require a content digest, not only commit and version", () => {
+  assert.throws(
+    () => createBuildManifest({
+      ...receipt(),
+      source: { commit: COMMIT, dirty: null, kind: "source-archive", tree: null },
+    }),
+    /missing contentSha256/,
+  );
+  const first = receipt(archiveSource());
+  const second = receipt({ ...archiveSource(), contentSha256: "b".repeat(64) });
+  assert.notEqual(first.identitySha256, second.identitySha256);
 });
 
-test("verification fails closed for artifact and manifest tampering", async () => {
+test("clean Git is default and dirty identity binds tracked and untracked content", () => {
   const workspace = layout();
   try {
-    const manifest = await createManifest(options(workspace));
-    writeFileSync(workspace.artifacts.executable, "changed executable bytes\n");
-    await assert.rejects(
-      verifyManifest(manifest, { manifestDirectory: workspace.release }),
-      /artifact size mismatch/,
-    );
-    writeFileSync(workspace.artifacts.executable, "native executable byteX\n");
-    await assert.rejects(
-      verifyManifest(manifest, { manifestDirectory: workspace.release }),
-      /artifact SHA-256 mismatch/,
-    );
-    const changedIdentity = structuredClone(manifest);
-    changedIdentity.identity.capabilities.mathematics.push("unexpected");
-    assert.throws(() => validateManifest(changedIdentity), /identity checksum mismatch/);
-    const changedProvenance = structuredClone(manifest);
-    changedProvenance.provenance.build.node.version = "v99.0.0";
-    assert.throws(() => validateManifest(changedProvenance), /manifest checksum mismatch/);
-  } finally {
-    workspace.cleanup();
-  }
-});
-
-test("verification rejects non-regular substitution and capability mismatch", async () => {
-  const workspace = layout();
-  try {
-    const manifest = await createManifest(options(workspace));
-    rmSync(workspace.artifacts.package);
-    if (process.platform === "win32") {
-      mkdirSync(workspace.artifacts.package);
-    } else {
-      symlinkSync(workspace.artifacts.executable, workspace.artifacts.package);
+    const clean = gitSourceIdentity(workspace.source);
+    assert.equal(clean.kind, "git-clean");
+    assert.equal(clean.dirty, false);
+    writeFileSync(join(workspace.source, "tracked.txt"), "modified\n");
+    writeFileSync(join(workspace.source, "untracked.txt"), "first\n");
+    assert.throws(() => gitSourceIdentity(workspace.source), /source is dirty/);
+    const first = gitSourceIdentity(workspace.source, { allowDirty: true });
+    writeFileSync(join(workspace.source, "untracked.txt"), "second\n");
+    const second = gitSourceIdentity(workspace.source, { allowDirty: true });
+    assert.equal(first.kind, "git-dirty");
+    assert.notEqual(first.contentSha256, second.contentSha256);
+    writeFileSync(join(workspace.source, "untracked.txt"), "first\n");
+    assert.deepEqual(gitSourceIdentity(workspace.source, { allowDirty: true }), first);
+    if (process.platform !== "win32") {
+      const modeBefore = gitSourceIdentity(workspace.source, { allowDirty: true });
+      chmodSync(join(workspace.source, "untracked.txt"), 0o755);
+      const modeAfter = gitSourceIdentity(workspace.source, { allowDirty: true });
+      assert.notEqual(modeBefore.contentSha256, modeAfter.contentSha256);
     }
-    await assert.rejects(
-      verifyManifest(manifest, { manifestDirectory: workspace.release }),
-      /not a regular non-symlink file/,
-    );
-    rmSync(workspace.artifacts.package, { recursive: true });
-    writeFileSync(workspace.artifacts.package, "package archive bytes\n");
-    await assert.rejects(
-      verifyManifest(manifest, {
-        capabilities: { mathematics: [] },
-        manifestDirectory: workspace.release,
-      }),
-      /capability mismatch/,
-    );
   } finally {
     workspace.cleanup();
   }
 });
 
-test("malformed and noncanonical manifests are rejected before artifact access", async () => {
+test("Git source identity requires repository top level", () => {
   const workspace = layout();
   try {
-    const manifest = await createManifest(options(workspace));
-    for (const mutate of [
-      (value) => { value.unexpected = true; },
-      (value) => { value.identity.artifacts[0].path = "../escape"; },
-      (value) => { value.identity.artifacts[0].sha256 = "not-a-hash"; },
-      (value) => { value.identity.source.commit = "short"; },
-      (value) => { value.identity.source.dirty = null; },
-      (value) => { value.provenance.createdAt = "now"; },
-    ]) {
-      const malformed = structuredClone(manifest);
-      mutate(malformed);
-      assert.throws(() => validateManifest(malformed));
-    }
-    const filename = join(workspace.release, "invalid.json");
-    writeFileSync(filename, "{ definitely not JSON\n");
-    assert.throws(() => readManifest(filename), /cannot parse release manifest/);
+    const child = join(workspace.source, "child");
+    mkdirSync(child);
+    assert.throws(() => gitSourceIdentity(child), /repository top level/);
+  } finally {
+    workspace.cleanup();
+  }
+});
+
+test("dirty tracked identity disables configured text conversion", () => {
+  const workspace = layout();
+  try {
+    writeFileSync(join(workspace.source, ".gitattributes"), "tracked.txt diff=constant\n");
+    git(workspace.source, ["add", ".gitattributes"]);
+    git(workspace.source, ["-c", "user.name=Sage.js Test", "-c", "user.email=test@example.invalid", "commit", "--quiet", "-m", "attributes"]);
+    git(workspace.source, ["config", "diff.constant.textconv", "printf constant"]);
+    writeFileSync(join(workspace.source, "tracked.txt"), "first\n");
+    const first = gitSourceIdentity(workspace.source, { allowDirty: true });
+    writeFileSync(join(workspace.source, "tracked.txt"), "second\n");
+    const second = gitSourceIdentity(workspace.source, { allowDirty: true });
+    assert.notEqual(first.contentSha256, second.contentSha256);
+  } finally {
+    workspace.cleanup();
+  }
+});
+
+test("malformed targets and noncanonical sidecars are rejected", () => {
+  const workspace = layout();
+  try {
+    assert.throws(() => receipt(archiveSource(), {
+      target: { arch: "x64", platform: "linux" },
+    }), /missing endianness/);
+    assert.throws(() => receipt(archiveSource(), {
+      target: {
+        ...receipt().target,
+        endianness: "BE",
+      },
+    }), /requires LE endianness/);
+    assert.throws(() => receipt(archiveSource(), {
+      target: {
+        ...receipt().target,
+        arch: "arm64",
+        platform: "win32",
+      },
+    }), /unsupported Sage.js release target/);
+    assert.throws(
+      () => receipt({ ...archiveSource(), contentSha256: ARCHIVE_HASH.toUpperCase() }),
+      /must be SHA-256/,
+    );
+    const manifest = createManifest(manifestOptions(workspace));
+    const filename = join(workspace.release, "manifest.json");
     writeFileSync(filename, JSON.stringify(manifest));
     assert.throws(() => readManifest(filename), /not in canonical generated form/);
+    writeFileSync(filename, "{invalid\n");
+    assert.throws(() => readManifest(filename), /cannot parse/);
+    if (process.platform !== "win32") {
+      rmSync(filename);
+      const target = join(workspace.release, "target-manifest.json");
+      writeFileSync(target, serialize(manifest));
+      symlinkSync(target, filename);
+      assert.throws(() => readManifest(filename), /without symlink or reparse parents/);
+    }
   } finally {
     workspace.cleanup();
   }
 });
 
-test("Git dirty state is exact and can be required clean", async () => {
+test("CLI requires an explicit canonical build manifest", () => {
   const workspace = layout();
   try {
-    const cleanManifest = await createManifest(options(workspace));
-    writeFileSync(join(workspace.source, "untracked.txt"), "dirty\n");
-    assert.equal(sourceIdentity(workspace.source).dirty, true);
-    assert.throws(
-      () => sourceIdentity(workspace.source, { requireClean: true }),
-      /release source is dirty/,
-    );
-    const dirtyManifest = await createManifest(options(workspace));
-    assert.equal(dirtyManifest.identity.source.dirty, true);
-    await assert.rejects(
-      verifyManifest(cleanManifest, {
-        manifestDirectory: workspace.release,
-        sourceRoot: workspace.source,
-      }),
-      /source identity mismatch/,
-    );
-  } finally {
-    workspace.cleanup();
-  }
-});
-
-test("source archives require explicit commits and never claim a clean tree", async () => {
-  const workspace = layout();
-  try {
-    const archiveOptions = options(workspace, {
-      source: { sourceArchive: true, sourceCommit: COMMIT },
-    });
-    const manifest = await createManifest(archiveOptions);
-    assert.deepEqual(manifest.identity.source, {
-      commit: COMMIT,
-      dirty: null,
-      kind: "source-archive",
-      tree: null,
-    });
-    await assert.rejects(
-      verifyManifest(manifest, {
-        manifestDirectory: workspace.release,
-        sourceRoot: workspace.source,
-      }),
-      /independently supplied source commit/,
-    );
-    await verifyManifest(manifest, {
-      manifestDirectory: workspace.release,
-      sourceCommit: COMMIT,
-      sourceRoot: workspace.source,
-    });
-    await assert.rejects(
-      verifyManifest(manifest, {
-        manifestDirectory: workspace.release,
-        sourceCommit: OTHER_COMMIT,
-        sourceRoot: workspace.source,
-      }),
-      /source identity mismatch/,
-    );
-    await assert.rejects(
-      createManifest(options(workspace, { source: { sourceArchive: true } })),
-      /source commit must be a nonempty string/,
-    );
-    await assert.rejects(
-      createManifest(options(workspace, {
-        source: {
-          requireClean: true,
-          sourceArchive: true,
-          sourceCommit: COMMIT,
-        },
-      })),
-      /unknown dirty state and cannot require a clean tree/,
-    );
-    writeFileSync(join(workspace.source, "package.json"), '{"version":"9.9.9"}\n');
-    await assert.rejects(
-      verifyManifest(manifest, {
-        manifestDirectory: workspace.release,
-        sourceCommit: COMMIT,
-        sourceRoot: workspace.source,
-      }),
-      /source archive version mismatch/,
-    );
-  } finally {
-    workspace.cleanup();
-  }
-});
-
-test("CLI creates and verifies a portable manifest", () => {
-  const workspace = layout();
-  try {
-    const capabilities = join(workspace.release, "capabilities.json");
+    const buildManifest = join(workspace.release, "build-manifest.json");
     const manifest = join(workspace.release, "manifest.json");
-    writeFileSync(capabilities, '{"flint":true,"m4ri":false}\n');
-    const environment = { ...process.env, SOURCE_DATE_EPOCH: "1700000000" };
-    const created = execFileSync(
-      process.execPath,
-      [
-        SCRIPT,
-        "create",
-        "--output",
-        manifest,
-        "--source-root",
-        workspace.source,
-        "--require-clean",
-        "--capabilities",
-        capabilities,
-        "--artifact",
-        `standalone-executable=${workspace.artifacts.executable}`,
-        "--artifact",
-        `npm-package=${workspace.artifacts.package}`,
-      ],
-      { encoding: "utf8", env: environment },
+    writeFileSync(buildManifest, serialize(receipt()));
+    const missing = spawnSync(process.execPath, [SCRIPT, "create", "--output", manifest, "--artifact", `standalone=${workspace.executable}`], { encoding: "utf8" });
+    assert.notEqual(missing.status, 0);
+    assert.match(missing.stderr, /requires --output and --build-manifest/);
+    const created = execFileSync(process.execPath, [
+      SCRIPT, "create", "--output", manifest, "--build-manifest", buildManifest,
+      "--artifact", `standalone=${workspace.executable}`,
+      "--artifact", `npm-package=${workspace.archive}`,
+    ], { encoding: "utf8" });
+    assert.match(created, /release identity [0-9a-f]{64}/);
+    const verified = execFileSync(process.execPath, [SCRIPT, "verify", "--manifest", manifest, "--build-manifest", buildManifest], { encoding: "utf8" });
+    assert.match(verified, /Verified 2 artifact\(s\)/);
+  } finally {
+    workspace.cleanup();
+  }
+});
+
+test("manifest output cannot self-reference or replace unsafe paths", () => {
+  const workspace = layout();
+  try {
+    const buildManifest = join(workspace.release, "build-manifest.json");
+    const manifest = join(workspace.release, "manifest.json");
+    writeFileSync(buildManifest, serialize(receipt()));
+    writeFileSync(manifest, "self artifact\n");
+    let result = spawnSync(process.execPath, [SCRIPT, "create", "--output", manifest, "--build-manifest", buildManifest, "--artifact", `manifest=${manifest}`], { encoding: "utf8" });
+    assert.notEqual(result.status, 0);
+    assert.match(result.stderr, /output cannot be an artifact/);
+    rmSync(manifest);
+    if (process.platform === "win32") mkdirSync(manifest);
+    else symlinkSync(workspace.executable, manifest);
+    result = spawnSync(process.execPath, [SCRIPT, "create", "--output", manifest, "--build-manifest", buildManifest, "--artifact", `standalone=${workspace.executable}`], { encoding: "utf8" });
+    assert.notEqual(result.status, 0);
+    assert.match(result.stderr, /must not be a symlink, reparse point, or directory/);
+    if (process.platform !== "win32") {
+      assert.equal(readFileSync(workspace.executable, "utf8"), "executable bytes\n");
+    }
+  } finally {
+    workspace.cleanup();
+  }
+});
+
+test("CLI refuses to replace an existing ordinary manifest", () => {
+  const workspace = layout();
+  try {
+    const buildManifest = join(workspace.release, "build-manifest.json");
+    const manifest = join(workspace.release, "manifest.json");
+    writeFileSync(buildManifest, serialize(receipt()));
+    writeFileSync(manifest, "sentinel\n");
+    const result = spawnSync(process.execPath, [
+      SCRIPT, "create", "--output", manifest, "--build-manifest", buildManifest,
+      "--artifact", `standalone=${workspace.executable}`,
+    ], { encoding: "utf8" });
+    assert.notEqual(result.status, 0);
+    assert.match(result.stderr, /refusing non-atomic replacement/);
+    assert.equal(readFileSync(manifest, "utf8"), "sentinel\n");
+  } finally {
+    workspace.cleanup();
+  }
+});
+
+test("artifact symlink and symlinked manifest parents fail closed", () => {
+  const workspace = layout();
+  try {
+    if (process.platform !== "win32") {
+      const linkedArtifact = join(workspace.release, "linked-artifact");
+      symlinkSync(workspace.executable, linkedArtifact);
+      assert.throws(
+        () => createManifest(manifestOptions(workspace, receipt(), { artifacts: [{ file: linkedArtifact, kind: "linked" }] })),
+        /regular non-symlink file/,
+      );
+    }
+    const linkedRelease = join(workspace.root, "linked-release");
+    symlinkSync(
+      workspace.release,
+      linkedRelease,
+      process.platform === "win32" ? "junction" : "dir",
     );
-    assert.match(created, /Created .* for 2 artifact\(s\); identity [0-9a-f]{64}/);
-    const parsed = JSON.parse(readFileSync(manifest, "utf8"));
-    assert.equal(parsed.provenance.sourceDateEpoch, 1_700_000_000);
-    const verified = execFileSync(
-      process.execPath,
-      [
-        SCRIPT,
-        "verify",
-        "--manifest",
-        manifest,
-        "--source-root",
-        workspace.source,
-        "--capabilities",
-        capabilities,
-      ],
-      { encoding: "utf8" },
+    assert.throws(
+      () => createManifest(manifestOptions(workspace, receipt(), { manifestDirectory: linkedRelease })),
+      /real directory, not a symlink/,
     );
-    assert.match(verified, /Verified 2 artifact\(s\); identity [0-9a-f]{64}/);
+  } finally {
+    workspace.cleanup();
+  }
+});
+
+test("external sidecar verification remains simple", () => {
+  const workspace = layout();
+  try {
+    const buildManifest = receipt();
+    const manifest = createManifest(manifestOptions(workspace, buildManifest));
+    const result = verifyManifest(manifest, { buildManifest, manifestDirectory: workspace.release });
+    assert.equal(result.artifacts, 2);
+    assert.equal(result.releaseIdentitySha256, manifest.integrity.releaseIdentitySha256);
+    assert.throws(
+      () => verifyManifest(manifest, { buildManifest: receipt(archiveSource(), { capabilities: { flint: false } }), manifestDirectory: workspace.release }),
+      /build manifest mismatch/,
+    );
+  } finally {
+    workspace.cleanup();
+  }
+});
+
+test("successful CLI publication is canonical and leaves no temporary directory", () => {
+  const workspace = layout();
+  try {
+    const buildManifest = join(workspace.release, "build-manifest.json");
+    const manifest = join(workspace.release, "manifest.json");
+    writeFileSync(buildManifest, serialize(receipt()));
+    execFileSync(process.execPath, [
+      SCRIPT, "create", "--output", manifest, "--build-manifest", buildManifest,
+      "--artifact", `standalone=${workspace.executable}`,
+    ]);
+    const parsed = readManifest(manifest);
+    assert.equal(readFileSync(manifest, "utf8"), serialize(parsed));
+    assert.deepEqual(
+      readdirSync(workspace.release)
+        .filter((name) => name.startsWith(".sagejs-manifest-")),
+      [],
+    );
+  } finally {
+    workspace.cleanup();
+  }
+});
+
+test("build manifest is an immutable pre-artifact SEA input", () => {
+  const workspace = layout();
+  try {
+    const filename = join(workspace.release, "build-manifest.json");
+    const buildManifest = receipt();
+    writeFileSync(filename, serialize(buildManifest));
+    const parsed = require("../scripts/release-manifest.cjs").readBuildManifest(filename);
+    assert.deepEqual(parsed, buildManifest);
+    assert.equal(serialize(parsed).includes("artifacts"), false);
+    assert.equal(parsed.schema, "sagejs.release-build-manifest-v1");
+    assert.match(parsed.identitySha256, /^[0-9a-f]{64}$/);
   } finally {
     workspace.cleanup();
   }

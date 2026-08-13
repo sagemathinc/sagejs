@@ -151,16 +151,77 @@
       "commit": "950f0134dd51ca66776dc3d6290a5807cf3fd77f",
       "workspace_fingerprint": "25390d3c3387882b5413f3e46cc78083239514824d1097028fa427cdfcd164f6",
       "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/release-manifest.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.948,
+      "started_at": "2026-08-13T20:25:22.770Z",
+      "commit": "373288c307b0ea46080903b92a9167575235f0df",
+      "workspace_fingerprint": "0c800934810d555d038e4617cca5b1b7edb5b9323eb3dd72e766a39c371e38ed",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 5.421,
+      "started_at": "2026-08-13T20:25:24.346Z",
+      "commit": "373288c307b0ea46080903b92a9167575235f0df",
+      "workspace_fingerprint": "0c800934810d555d038e4617cca5b1b7edb5b9323eb3dd72e766a39c371e38ed",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 15.699,
+      "started_at": "2026-08-13T20:25:30.371Z",
+      "commit": "373288c307b0ea46080903b92a9167575235f0df",
+      "workspace_fingerprint": "0c800934810d555d038e4617cca5b1b7edb5b9323eb3dd72e766a39c371e38ed",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/release-manifest.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.053,
+      "started_at": "2026-08-13T20:26:31.035Z",
+      "commit": "373288c307b0ea46080903b92a9167575235f0df",
+      "workspace_fingerprint": "72e27a1066c513253de8b3b2df608972f1a9ced43d20b978cea9a93331861c29",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 5.361,
+      "started_at": "2026-08-13T20:26:32.715Z",
+      "commit": "373288c307b0ea46080903b92a9167575235f0df",
+      "workspace_fingerprint": "72e27a1066c513253de8b3b2df608972f1a9ced43d20b978cea9a93331861c29",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 14.872,
+      "started_at": "2026-08-13T20:26:38.678Z",
+      "commit": "373288c307b0ea46080903b92a9167575235f0df",
+      "workspace_fingerprint": "72e27a1066c513253de8b3b2df608972f1a9ced43d20b978cea9a93331861c29",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {
-    "summary": "Implemented a deterministic release artifact manifest creator and fail-closed verifier. The manifest separates reproducible artifact/source/target/capability identity from optional SOURCE_DATE_EPOCH creation provenance, streams SHA-256 checksums, records normalized Node/compiler/native-math build identity, and supports exact Git or explicit source-archive provenance. Nine focused tests cover stable output, multiple artifacts, normalized toolchain paths, artifact and manifest tampering, non-regular substitutions, malformed and noncanonical input, dirty Git sources, source archives, and the CLI.",
+    "summary": "Implemented two non-circular canonical authorities: an immutable sagejs.release-build-manifest-v1 suitable for embedding in a SEA before artifacts exist, and a separate sagejs.release-artifact-manifest-v2 binding that build identity to the final artifact set. Packaging consumes explicit target/toolchain/capability/source identity without inferring it from the packaging host. Verification uses opened-descriptor hashing with inode, size, nanosecond mtime and ctime rechecks; rejects symlink/reparse containment; publishes without overwrite through a same-filesystem exclusive hard link; and defaults Git release sources to clean while exactly binding explicitly allowed tracked, untracked, mode, and symlink changes. Fifteen focused tests cover identity separation, SEA input shape, artifact and sidecar tampering, dirty and archive sources, Git text conversion, malformed targets, canonical CLI flow, unsafe paths, and simple external verification.",
     "risks": [
       "pnpm test:portable reaches the expected shared integration boundary: test/test-manifest.test.cjs rejects the new test until test/release-manifest.cjs is registered in test/node-test-manifest.cjs. All preceding portable tests passed once deferred FLINT, M4RI, FFLAS, and graph adapters were provisioned."
     ],
     "next_steps": [
       "In the integration lane, add test/release-manifest.cjs to the unit array in test/node-test-manifest.cjs, then rerun pnpm test:portable.",
-      "Wire the manifest creator into the release artifact assembly lane and supply its authoritative capability report; signing and notarization can later cover the canonical manifest and artifact set."
+      "Wire release/build-manifest.json into SEA embedding and release artifact assembly. Capability authority should include the expected native-kernel count, logical sources, and embedded index identity; the schema deliberately accepts canonical producer-supplied capability JSON without hardcoding reporter logic.",
+      "Have Windows validation exercise the exclusive hard-link publication path and junction/reparse rejection before release publication; Linux exercised those semantics and macOS tests canonicalize its symlinked temporary root."
     ]
   }
 }
