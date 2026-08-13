@@ -154,7 +154,9 @@ function stageSeaInputs(name, seaNode, mainBundle, assets, options = {}) {
   rmSync(directory, { recursive: true, force: true });
   mkdirSync(directory, { recursive: true });
   const stagedAssets = {};
-  for (const [asset, filename] of Object.entries(assets)) {
+  for (const [asset, filename] of Object.entries(assets).sort(
+    ([left], [right]) => left.localeCompare(right),
+  )) {
     if (
       asset.startsWith("/") ||
       asset.split("/").some((part) => part === "" || part === "." || part === "..")
@@ -824,7 +826,7 @@ function buildExecutable(name, withFlint, sourceIdentity) {
 
     const configFilename = join(staged.directory, "sea-config.json");
     const relativeAssets = Object.fromEntries(
-      Object.keys(staged.assets).map((asset) => [asset, `assets/${asset}`]),
+      Object.keys(staged.assets).sort().map((asset) => [asset, `assets/${asset}`]),
     );
     writeFileSync(
       configFilename,

@@ -390,9 +390,10 @@ test("SEA inputs are copied into an immutable logical staging layout", () => {
       "sagejs",
       item.seaNode,
       item.mainBundle,
-      item.assets,
+      Object.fromEntries(Object.entries(item.assets).reverse()),
       { outputDirectory: stagingRoot },
     );
+    assert.deepEqual(Object.keys(staged.assets), Object.keys(item.assets).sort());
     assert.equal(readFileSync(staged.mainBundle, "utf8"), "main bundle bytes");
     assert.equal(readFileSync(staged.seaNode, "utf8"), "node template bytes");
     for (const [asset, filename] of Object.entries(staged.assets)) {
