@@ -49,6 +49,25 @@
   construction with the same semantics as Sage; list and tuple construction
   already work.
 
+## Release engineering
+
+- Build Linux release candidates on an explicit old-glibc baseline and audit
+  the top-level executable plus every embedded native addon. Treat undeclared
+  loader dependencies such as `libatomic.so.1` as release blockers: eliminate
+  them, link them statically, or ship and bind an auditable runtime library;
+  never assume a target host happens to have the package installed.
+- Preserve CPU-portable mathematics in official artifacts: GMP fat dispatch,
+  portable compiler flags, and runtime-selected optimized libraries must be
+  distinguished from opt-in CPU-native development builds in exact receipts.
+- Make native and SEA outputs independently reproducible across checkout paths:
+  publish logical-only native-kernel indexes, use deterministic prefix maps in
+  compiled dependencies, bind assembly policy and dependency identities, and
+  validate clean rebuilds on Linux x64 and macOS arm64.
+- Finish hermetic release-candidate validation: strict child-environment
+  allowlists, deterministic archives, atomic publication, artifact-bound
+  provenance, bounded caches, cleanup on failure, and clean install, upgrade,
+  corrupt-input, relocation, and exact-mathematics tests.
+
 ## Measurement and performance ergonomics
 
 - Move mathematical representation and algorithm crossover policy out of
