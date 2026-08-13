@@ -102,6 +102,7 @@ export async function createCompilerTestHarness(
       baselib_plain: baselib,
       beautify: true,
       keep_docstrings: true,
+      python_attributes: true,
       python_tuples: true,
       python_truthiness: true,
       private_scope: false,

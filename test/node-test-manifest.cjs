@@ -33,6 +33,7 @@ const unit = [
   "test/foreign-languages.cjs",
   "test/python-syntax-frontend.cjs",
   "test/python-cst-lowerer.cjs",
+  "test/compiler-source-fallback.cjs",
   "test/python-container-truthiness.cjs",
   "test/browser-compiler-frontend.cjs",
   "test/parallel-development.cjs",
@@ -43,6 +44,7 @@ const unit = [
   "test/pnpm-invocation.cjs",
   "test/website.cjs",
   "test/audit-gaps.cjs",
+  "test/standalone-library.cjs",
 ];
 
 const integration = [
