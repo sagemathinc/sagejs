@@ -27,6 +27,7 @@
     "macos-arm64": "required"
   },
   "validation": [
+    "node --test test/release-capabilities.cjs",
     "pnpm architecture:check",
     "pnpm test:portable",
     "pnpm test:baselib:strict"
@@ -101,19 +102,49 @@
       "commit": "c6d2c7123d8944920a914c7c3717dc056e061a13",
       "workspace_fingerprint": "eb1be6673347e9cefa4b0dfb905b62a13aac8d0d9c6c9d3be2615058177bd8bd",
       "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/release-capabilities.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.226,
+      "started_at": "2026-08-13T20:20:56.214Z",
+      "commit": "06f20e6dc4fe97ddf1d54312c709fb15f67b5a02",
+      "workspace_fingerprint": "2d205346a0a2b5c1101f2cd890f2ad25566b3cc530e5e3c6e4bd2289f4dff828",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 5.419,
+      "started_at": "2026-08-13T20:20:57.070Z",
+      "commit": "06f20e6dc4fe97ddf1d54312c709fb15f67b5a02",
+      "workspace_fingerprint": "2d205346a0a2b5c1101f2cd890f2ad25566b3cc530e5e3c6e4bd2289f4dff828",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 14.92,
+      "started_at": "2026-08-13T20:21:03.100Z",
+      "commit": "06f20e6dc4fe97ddf1d54312c709fb15f67b5a02",
+      "workspace_fingerprint": "2d205346a0a2b5c1101f2cd890f2ad25566b3cc530e5e3c6e4bd2289f4dff828",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {
-    "summary": "Added a standalone, observational release capability and provenance reporter with stable JSON and concise human output. It separates installed native state (compiled, bundled, unavailable), selected execution (native, fallback, compile-on-first-use, unavailable), and cold/warm readiness; checks generated adapter hashes without loading addons; reports source/package/SEA artifact context, version, Git provenance, host and Node ABI, selected-versus-installed native math profiles, and redacted cache locations. Nine focused tests cover clean and dirty source concepts, cold and warm caches, native-disable fallback, tampering, mathematical SEA assets, Windows M4RI fallback, profile mismatch, path privacy, read-only behavior, and standalone output.",
+    "summary": "Added a standalone stable runtime observation report with deterministic JSON serialization and concise human output. Static generated FFI and production-kernel evidence is reported only as a candidate: loadability and selection remain explicitly not-probed, and SAGEJS_NATIVE_DISABLE plus MODE/AUTOLOAD/REQUIRED/WARN settings are separately described as @native runtime policy. A production-kernel candidate requires the complete declared production set with valid records, wrappers, and addons; missing or partial caches retain only their same-source fallback candidate. Mutable checkout/package/host observations are separate from immutable artifact identity, which requires an explicit valid build manifest or a verified embedded build-manifest asset. Embedded FFI manifests are checked against embedded addon bytes, source adapters are hash-checked without loading, nearby SEA checkout state is ignored, and cache paths are redacted by default. Ten focused tests cover these boundaries, including actual native-disable semantics, other @native policy combinations, incomplete kernels, tampering, valid and invalid SEA identity, explicit package identity, Windows M4RI, privacy, and read-only behavior.",
     "risks": [
-      "Exact selected native-math fingerprints require compiler/toolchain probes, so this observational report intentionally compares effective profile names and labels the selection probe not-run.",
+      "Exact runtime-selected native-math fingerprints require compiler/toolchain probes, so this observational report labels the runtime selection probe not-run and only compares the effective requested profile with an observed immutable build or installed-prefix profile.",
       "Platform behavior is simulated in the focused corpus; integration should exercise the standalone report inside real Linux and macOS release artifacts.",
       "The full portable tier currently also needs native dependencies materialized in this isolated worktree."
     ],
     "next_steps": [
-      "The integration lane must register test/release-capabilities.cjs in test/node-test-manifest.cjs, which is outside this lane's claims, then record the portable-tier receipt.",
+      "The integration lane must register test/release-capabilities.cjs in test/node-test-manifest.cjs, which is outside this lane's claims, then run the portable tier with its native dependencies materialized.",
       "Wire collectReleaseCapabilities and formatReleaseCapabilities into the public release diagnostics command without changing their observational-only contract.",
-      "Run the report from clean npm and SEA artifacts and retain its JSON beside release checksums and provenance."
+      "Generate and embed sagejs.release-build-manifest-v1, then run the report from clean npm and SEA artifacts and retain its JSON beside release checksums and provenance."
     ]
   }
 }
