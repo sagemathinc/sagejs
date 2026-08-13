@@ -1,3 +1,8 @@
+# Sage.js source and generated authority are byte-reproducible across hosts.
+# Git may still detect binary files automatically; ordinary text is always LF,
+# including in Windows worktrees where a system Git enables core.autocrlf.
+* text=auto eol=lf
+
 # The vendored parser corpus includes intentional CR-only and CRLF files.
 upstream-tests/micropython/basics/* -text
 
