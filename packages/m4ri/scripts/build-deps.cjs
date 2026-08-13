@@ -73,6 +73,40 @@ const portableCacheBytes = Object.freeze({
   l3: 8 * 1024 * 1024,
 });
 
+const inheritedBuildEnvironment = Object.freeze([
+  "AR",
+  "ARFLAGS",
+  "AS",
+  "CC",
+  "C_INCLUDE_PATH",
+  "CONFIG_SITE",
+  "CPATH",
+  "DESTDIR",
+  "CPP",
+  "CPPFLAGS",
+  "LD",
+  "LDFLAGS",
+  "LIBRARY_PATH",
+  "MACOSX_DEPLOYMENT_TARGET",
+  "NM",
+  "OBJCOPY",
+  "PKG_CONFIG",
+  "PKG_CONFIG_LIBDIR",
+  "PKG_CONFIG_PATH",
+  "RANLIB",
+  "SDKROOT",
+  "SOURCE_DATE_EPOCH",
+  "STRIP",
+  "ZERO_AR_DATE",
+]);
+
+function selectedEnvironment(environment) {
+  return Object.fromEntries(inheritedBuildEnvironment.map((name) => [
+    name,
+    environment[name] ?? null,
+  ]));
+}
+
 function configureOptions(mathProfile) {
   const options = [...baseConfigureOptions];
   if (mathProfile.effectiveProfile === "portable") {
@@ -87,9 +121,10 @@ function configureOptions(mathProfile) {
 function expectedBuild(options = {}) {
   const platform = options.platform || process.platform;
   const arch = options.arch || process.arch;
+  const environment = options.environment || process.env;
   const mathProfile = options.mathProfile || nativeMathBuildProfile({
     arch,
-    environment: options.environment || process.env,
+    environment,
     platform,
   });
   const cflags = platform === "win32"
@@ -107,6 +142,7 @@ function expectedBuild(options = {}) {
           ? { kind: "fixed-portable", ...portableCacheBytes }
           : { kind: "configure-detected" },
       configure: platform === "win32" ? [] : configureOptions(mathProfile),
+      environment: selectedEnvironment(environment),
       instructionPolicy: platform === "win32"
         ? "unavailable"
         : mathProfile.effectiveProfile === "cpu-native"
@@ -228,6 +264,11 @@ async function buildDependencies() {
       process.stdout.write("Reusing disabled native Windows M4RI capability\n");
       return;
     }
+    if (process.env.SAGEJS_M4RI_PREFIX !== undefined && existsSync(prefix)) {
+      throw new Error(
+        `refusing to replace unreceipted or stale explicit M4RI prefix ${prefix}`,
+      );
+    }
     rmSync(prefix, { recursive: true, force: true });
     mkdirSync(prefix, { recursive: true });
     installHeader();
@@ -243,6 +284,11 @@ async function buildDependencies() {
     installHeader();
     process.stdout.write(`Reusing M4RI ${dependency.version} from ${prefix}\n`);
     return;
+  }
+  if (process.env.SAGEJS_M4RI_PREFIX !== undefined && existsSync(prefix)) {
+    throw new Error(
+      `refusing to replace unreceipted or stale explicit M4RI prefix ${prefix}`,
+    );
   }
   rmSync(prefix, { recursive: true, force: true });
   const archive = await obtainArchive();
@@ -300,4 +346,9 @@ if (require.main === module) {
   });
 }
 
-module.exports = { configureOptions, expectedBuild, portableCacheBytes };
+module.exports = {
+  configureOptions,
+  expectedBuild,
+  portableCacheBytes,
+  selectedEnvironment,
+};

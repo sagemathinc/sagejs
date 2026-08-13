@@ -7,6 +7,7 @@ const {
   configureOptions,
   expectedBuild,
   portableCacheBytes,
+  selectedEnvironment,
 } = require("../scripts/build-deps.cjs");
 const {
   CPU_NATIVE_PROFILE,
@@ -96,4 +97,22 @@ test("M4RI declaration binds deployment target and Windows capability", () => {
   assert.equal(windows.capability, false);
   assert.deepEqual(windows.build.cflags, []);
   assert.deepEqual(windows.build.configure, []);
+});
+
+test("M4RI declaration binds inherited build environment", () => {
+  const baseline = expectedBuild({
+    arch: "x64",
+    environment: { LDFLAGS: "-Wl,baseline" },
+    mathProfile: profile("linux"),
+    platform: "linux",
+  });
+  const changed = expectedBuild({
+    arch: "x64",
+    environment: { LDFLAGS: "-Wl,changed" },
+    mathProfile: profile("linux"),
+    platform: "linux",
+  });
+  assert.notDeepEqual(baseline.build.environment, changed.build.environment);
+  assert.equal(changed.build.environment.LDFLAGS, "-Wl,changed");
+  assert.equal(selectedEnvironment({}).CPPFLAGS, null);
 });

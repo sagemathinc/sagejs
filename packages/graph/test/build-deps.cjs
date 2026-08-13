@@ -7,6 +7,7 @@ const {
   cmakeOptions,
   expectedBuild,
   igraphLtoSetting,
+  selectedEnvironment,
 } = require("../scripts/build-deps.cjs");
 const {
   nativeMathBuildProfile,
@@ -37,6 +38,28 @@ test("igraph dependency LTO remains compatible with the generated linker", () =>
 
   assert.ok(cmakeOptions("win32").includes("-DIGRAPH_ENABLE_LTO=OFF"));
   assert.ok(cmakeOptions("linux").includes("-DIGRAPH_ENABLE_LTO=ON"));
+});
+
+test("igraph declaration binds inherited CMake and linker environment", () => {
+  const baseline = expectedBuild({
+    arch: "x64",
+    environment: { CMAKE_GENERATOR: "Ninja", LDFLAGS: "-Wl,baseline" },
+    mathProfile: profile("linux"),
+    platform: "linux",
+  });
+  const changed = expectedBuild({
+    arch: "x64",
+    environment: {
+      CMAKE_GENERATOR: "Unix Makefiles",
+      LDFLAGS: "-Wl,changed",
+    },
+    mathProfile: profile("linux"),
+    platform: "linux",
+  });
+  assert.notDeepEqual(baseline.build.environment, changed.build.environment);
+  assert.equal(changed.build.environment.CMAKE_GENERATOR, "Unix Makefiles");
+  assert.equal(changed.build.environment.LDFLAGS, "-Wl,changed");
+  assert.equal(selectedEnvironment({}).CMAKE_TOOLCHAIN_FILE, null);
 });
 
 test("igraph receipt declaration binds profile, target, source, and flags", () => {
