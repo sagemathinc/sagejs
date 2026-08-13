@@ -156,6 +156,7 @@ function cachedDependencyGeneration(root, cacheRoot, id, key) {
     : ".sagejs-m4ri-dependencies.json";
   const stamp = join(prefix, stampName);
   const receipt = dependencyReceipt(root, id, { prefix, stamp });
+  write(join(entry, "manifest.json"), "{}\n");
   chmodSync(stamp, 0o444);
   for (const directory of [
     prefix,
@@ -163,8 +164,8 @@ function cachedDependencyGeneration(root, cacheRoot, id, key) {
     dirname(dirname(prefix)),
     dirname(dirname(dirname(prefix))),
     join(entry, "payload"),
-    entry,
   ]) chmodSync(directory, 0o555);
+  chmodSync(entry, 0o700);
   return { entry, prefix, receipt, stamp, stampName };
 }
 
