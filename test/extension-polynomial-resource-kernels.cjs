@@ -167,8 +167,71 @@ test("all extension declarations are explicitly thread-affine", () => {
   const declaration = require(join(root, "ffi/flint.ffi.json"));
   const functions = declaration.functions.filter((item) =>
     item.id.startsWith("fq_"));
-  assert.equal(functions.length, 23);
+  assert.equal(functions.length, 29);
   assert.ok(functions.every((item) => item.effects.thread_safe === false));
+});
+
+test("generated extension scalars provide complete resource arithmetic", () => {
+  const flint = require(packagePath);
+  const context = flint.ffiFqContextCreate(
+    new BigUint64Array([1n, 0n, 1n]),
+    3n,
+    3n,
+  );
+  const value = flint.ffiFqElementCreate(
+    context,
+    new BigUint64Array([1n, 2n]),
+    2n,
+  );
+  const zero = flint.ffiFqElementCreate(
+    context,
+    new BigUint64Array([0n, 0n]),
+    2n,
+  );
+  const resources = [value, zero];
+  try {
+    const negative = flint.ffiFqElementNeg(value);
+    const inverse = flint.ffiFqElementInverse(value);
+    const signedPower = flint.ffiFqElementPow(value, -3n);
+    const hugePower = flint.ffiFqElementPow(value, (1n << 100n) + 17n);
+    resources.push(negative, inverse, signedPower, hugePower);
+    assert.equal(flint.ffiFqElementIsZero(zero), true);
+    assert.equal(flint.ffiFqElementIsOne(value), false);
+    const one = flint.ffiFqElementMul(value, inverse);
+    resources.push(one);
+    assert.equal(flint.ffiFqElementIsOne(one), true);
+    assert.throws(
+      () => flint.ffiFqElementInverse(zero),
+      /finite extension inverse failed/,
+    );
+    assert.throws(
+      () => flint.ffiFqElementPow(zero, -1n),
+      /finite extension power failed/,
+    );
+
+    const region = flint.ffiFqElementCoordinateBytes(value);
+    try {
+      const bytes = flint.ffiFlintByteRegionCopyBytes(region);
+      assert.equal(bytes.subarray(0, 4).toString(), "SJFE");
+      assert.equal(bytes[4], 1);
+      assert.equal(bytes.readBigUInt64LE(8), 2n);
+      assert.equal(bytes.readBigUInt64LE(16), 1n);
+      assert.equal(bytes.readBigUInt64LE(24), 2n);
+    } finally {
+      flint.ffiFlintByteRegionClose(region);
+    }
+
+    flint.ffiFqContextClose(context);
+    const retained = flint.ffiFqElementNeg(value);
+    resources.push(retained);
+    assert.equal(flint.ffiFqElementCoordinate(retained, 0n), 2n);
+    assert.equal(flint.ffiFqElementCoordinate(retained, 1n), 1n);
+  } finally {
+    for (const resource of resources.reverse()) {
+      flint.ffiFqElementClose(resource);
+    }
+    flint.ffiFqContextClose(context);
+  }
 });
 
 test("typed Python safely borrows and traverses an extension resource", async () => {

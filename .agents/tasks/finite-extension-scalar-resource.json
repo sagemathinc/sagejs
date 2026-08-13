@@ -1,0 +1,64 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "finite-extension-scalar-resource",
+  "title": "Generated finite-extension scalar resources",
+  "lane": "integration",
+  "status": "active",
+  "owner": "user",
+  "objective": "Implement a forced-generated standalone word-characteristic GF(p^n) scalar slice over generated FqContext/FqElement resources, covering construction, complete field arithmetic, canonical coordinates, hashing, serialization, deterministic lifecycle, and a borrowed typed-Python kernel without changing the public default or retaining legacy and generated scalar objects simultaneously.",
+  "base_commit": "01efae3f570f8dbd6f5e66e0de1873f041d18f97",
+  "claims": [
+    "ffi/flint.ffi.py",
+    "ffi/flint.ffi.json",
+    "packages/flint/include/sagejs/fq_polynomial_ffi.h",
+    "packages/flint/generated/ffi_host.py",
+    "src/baselib/sagejs/ffi/flint.py",
+    "src/lib/sagejs/ffi/flint.py",
+    "src/lib/sagejs/polynomial_algorithms/extension_scalar_resource.py",
+    "src/lib/sagejs/kernels/polynomial/extension_flint.py",
+    "test/finite-extension-scalar-resource.cjs",
+    "test/extension-polynomial-resource-kernels.cjs",
+    "test/ffi.cjs",
+    "pyrightconfig.json",
+    "architecture/native-boundaries.json",
+    "architecture/native-kernels.json"
+  ],
+  "dependencies": [],
+  "references": [
+    "ARCHITECTURE.md",
+    "FFI.md",
+    "src/lib/sagejs/polynomial_algorithms/extension_resource_contract.py"
+  ],
+  "architecture": {
+    "strategy": "external-library",
+    "fallback": "tested-capability",
+    "oracles": [
+      "FLINT fq_default exact arithmetic and canonical coordinate differential identities",
+      "ordinary CPython validation and codec tests",
+      "legacy Sage.js finite-extension scalar results under explicit differential tests"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "fallback",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm build",
+    "node --test test/finite-extension-scalar-resource.cjs test/extension-polynomial-resource-kernels.cjs",
+    "node test/ffi.cjs",
+    "pnpm ffi:lifecycle:fuzz",
+    "pnpm architecture:check",
+    "pnpm test:portable",
+    "pnpm test:baselib:strict"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "",
+    "risks": [],
+    "next_steps": []
+  }
+}
