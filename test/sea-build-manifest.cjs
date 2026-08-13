@@ -367,7 +367,7 @@ test("build identity binds ordinary runtime assets and the SEA main bundle", () 
     assert.notEqual(changedAsset.identitySha256, changedMain.identitySha256);
 
     const changedPolicy = createSeaBuildManifest(options(item, {
-      seaAssemblyPolicy: { ...SEA_ASSEMBLY_POLICY, useCodeCache: true },
+      seaAssemblyPolicy: { ...SEA_ASSEMBLY_POLICY, useCodeCache: false },
     }));
     assert.notEqual(changedMain.identitySha256, changedPolicy.identitySha256);
 
@@ -382,6 +382,15 @@ test("build identity binds ordinary runtime assets and the SEA main bundle", () 
   } finally {
     item.cleanup();
   }
+});
+
+test("SEA code caching is generated under deterministic V8 policy", () => {
+  assert.equal(SEA_ASSEMBLY_POLICY.useCodeCache, true);
+  assert.ok(SEA_ASSEMBLY_POLICY.builderArguments.includes("--predictable"));
+  assert.deepEqual(
+    SEA_ASSEMBLY_POLICY.builderArguments.slice(-2),
+    ["--build-sea", "sea-config.json"],
+  );
 });
 
 test("SEA inputs are copied into an immutable logical staging layout", () => {

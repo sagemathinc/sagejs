@@ -94,16 +94,16 @@ const m4riFfiAddon = join(
 );
 const m4riFfiManifest = join(dirname(m4riFfiAddon), "manifest.json");
 const SEA_ASSEMBLY_POLICY = Object.freeze({
-  builderArguments: ["--build-sea", "sea-config.json"],
+  builderArguments: [
+    "--predictable",
+    "--build-sea",
+    "sea-config.json",
+  ],
   disableExperimentalSEAWarning: true,
   mainBundleFormat: "commonjs",
   mainBundleTarget: "node22",
   schema: "sagejs.sea-assembly-policy/v1",
-  // Node 26's V8 code-cache serialization is not deterministic: identical
-  // inputs produce different executable bytes. Release artifacts must remain
-  // independently reproducible, so compile at startup until Node provides a
-  // deterministic cache format.
-  useCodeCache: false,
+  useCodeCache: true,
   useSnapshot: false,
 });
 
