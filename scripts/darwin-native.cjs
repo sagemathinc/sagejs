@@ -79,9 +79,22 @@ function fflasMathBuildProfile(profile, platform = process.platform) {
   return selected;
 }
 
+function main(arguments_ = process.argv.slice(2)) {
+  if (
+    arguments_.length !== 1 ||
+    arguments_[0] !== "--deployment-target"
+  ) {
+    throw new Error("usage: node scripts/darwin-native.cjs --deployment-target");
+  }
+  process.stdout.write(`${macosDeploymentTarget()}\n`);
+}
+
+if (require.main === module) main();
+
 module.exports = {
   appleAccelerateSdkInputs,
   defaultMacosDeploymentTarget,
   fflasMathBuildProfile,
   macosDeploymentTarget,
+  main,
 };

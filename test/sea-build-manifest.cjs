@@ -4,11 +4,14 @@ const assert = require("node:assert/strict");
 const { execFileSync } = require("node:child_process");
 const { createHash } = require("node:crypto");
 const {
+  chmodSync,
   existsSync,
   mkdirSync,
   mkdtempSync,
   readFileSync,
   rmSync,
+  symlinkSync,
+  unlinkSync,
   writeFileSync,
 } = require("node:fs");
 const { tmpdir } = require("node:os");
@@ -20,10 +23,12 @@ const {
   EMBEDDED_ADDON_ROLE,
   NODE_TEMPLATE_LABEL,
   NODE_TEMPLATE_ROLE,
+  nativeDependencyReceiptSource,
   productionKernelReceipt,
   SEA_ASSEMBLY_POLICY,
   stageSeaInputs,
   targetFromSeaBuilder,
+  validateNativeDependencyReceiptSources,
   withSeaBuildLock,
 } = require("../scripts/build-sea.cjs");
 const {
@@ -97,9 +102,9 @@ function builderObservation() {
   };
 }
 
-function dependencyReceipt(root, id) {
-  const prefix = join(root, "dependency-prefixes", id);
-  const stamp = join(prefix, `.sagejs-${id}-receipt.json`);
+function dependencyReceipt(root, id, options = {}) {
+  const prefix = options.prefix || join(root, "dependency-prefixes", id);
+  const stamp = options.stamp || join(prefix, `.sagejs-${id}-receipt.json`);
   const header = id === "igraph" ? "igraph_ffi.h" : "m4ri_matrix_ffi.h";
   const headerContents = readFileSync(join(
     __dirname,
@@ -139,6 +144,28 @@ function dependencyReceipt(root, id) {
   );
   write(stamp, `${JSON.stringify(receipt, null, 2)}\n`);
   return receipt;
+}
+
+function cachedDependencyGeneration(root, cacheRoot, id, key) {
+  const packageId = id === "igraph" ? "graph" : id;
+  const relativePrefix = join("packages", packageId, ".native", "prefix");
+  const entry = join(cacheRoot, `${packageId}-dependencies`, key);
+  const prefix = join(entry, "payload", relativePrefix);
+  const stampName = id === "igraph"
+    ? ".sagejs-igraph-1.0.1"
+    : ".sagejs-m4ri-dependencies.json";
+  const stamp = join(prefix, stampName);
+  const receipt = dependencyReceipt(root, id, { prefix, stamp });
+  chmodSync(stamp, 0o444);
+  for (const directory of [
+    prefix,
+    dirname(prefix),
+    dirname(dirname(prefix)),
+    dirname(dirname(dirname(prefix))),
+    join(entry, "payload"),
+    entry,
+  ]) chmodSync(directory, 0o555);
+  return { entry, prefix, receipt, stamp, stampName };
 }
 
 function nativeBinaryReport(item, glibc = "2.28") {
@@ -298,6 +325,7 @@ function fixture() {
       return [id, {
         identitySha256: JSON.parse(readFileSync(stamp, "utf8")).identitySha256,
         prefix,
+        prefixLink: prefix,
         stamp,
       }];
     })),
@@ -563,6 +591,107 @@ test("SEA inputs are copied into an immutable logical staging layout", () => {
     item.cleanup();
   }
 });
+
+test(
+  "dependency receipts stage through only exact immutable native-cache links",
+  { skip: process.platform === "win32" },
+  () => {
+    const root = mkdtempSync(join(tmpdir(), "sagejs-sea-cache-receipt-"));
+    const cacheRoot = join(root, "native-cache");
+    const installedPrefix = join(
+      root,
+      "packages",
+      "m4ri",
+      ".native",
+      "prefix",
+    );
+    mkdirSync(dirname(installedPrefix), { recursive: true });
+    mkdirSync(cacheRoot, { recursive: true });
+    const first = cachedDependencyGeneration(
+      root,
+      cacheRoot,
+      "m4ri",
+      "1".repeat(64),
+    );
+    const second = cachedDependencyGeneration(
+      root,
+      cacheRoot,
+      "m4ri",
+      "2".repeat(64),
+    );
+    symlinkSync(first.prefix, installedPrefix, "dir");
+    try {
+      const source = nativeDependencyReceiptSource(
+        root,
+        "m4ri",
+        installedPrefix,
+        first.stampName,
+        { cacheRoot },
+      );
+      assert.equal(source.prefix, first.prefix);
+      assert.equal(source.stamp, first.stamp);
+      const staged = stageSeaInputs(
+        "sagejs",
+        write(join(root, "node-template"), "node"),
+        write(join(root, "main.cjs"), "main"),
+        { "native/dependencies/m4ri-receipt.json": source.stamp },
+        { outputDirectory: join(root, "stage") },
+      );
+      assert.deepEqual(
+        readFileSync(staged.assets["native/dependencies/m4ri-receipt.json"]),
+        readFileSync(first.stamp),
+      );
+      const sources = {
+        m4ri: { identitySha256: first.receipt.identitySha256, ...source },
+      };
+      assert.deepEqual(validateNativeDependencyReceiptSources(sources), {
+        m4ri: first.receipt.identitySha256,
+      });
+
+      unlinkSync(installedPrefix);
+      symlinkSync(second.prefix, installedPrefix, "dir");
+      assert.throws(
+        () => validateNativeDependencyReceiptSources(sources),
+        /prefix changed during SEA assembly/,
+      );
+
+      unlinkSync(installedPrefix);
+      const escaped = join(root, "outside", "prefix");
+      dependencyReceipt(root, "m4ri", {
+        prefix: escaped,
+        stamp: join(escaped, first.stampName),
+      });
+      symlinkSync(escaped, installedPrefix, "dir");
+      assert.throws(
+        () => nativeDependencyReceiptSource(
+          root,
+          "m4ri",
+          installedPrefix,
+          first.stampName,
+          { cacheRoot },
+        ),
+        /not an exact content-addressed cache link/,
+      );
+
+      unlinkSync(installedPrefix);
+      symlinkSync(first.prefix, installedPrefix, "dir");
+      chmodSync(first.stamp, 0o644);
+      assert.throws(
+        () => nativeDependencyReceiptSource(
+          root,
+          "m4ri",
+          installedPrefix,
+          first.stampName,
+          { cacheRoot },
+        ),
+        /cache receipt is not immutable/,
+      );
+    } finally {
+      execFileSync("chmod", ["-R", "u+w", root]);
+      rmSync(root, { force: true, recursive: true });
+    }
+  },
+);
 
 test("one checkout cannot assemble overlapping SEA outputs", () => {
   const root = mkdtempSync(join(tmpdir(), "sagejs-sea-build-lock-"));
