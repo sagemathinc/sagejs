@@ -1,0 +1,55 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "sea-capabilities-cli",
+  "title": "SEA embedded capabilities CLI",
+  "lane": "compiler-runtime",
+  "status": "review",
+  "owner": "user",
+  "objective": "Expose authoritative release capability and build-receipt diagnostics inside relocated Sage.js SEA executables with real smoke coverage",
+  "base_commit": "354b0588e8d8d7ac98df8a7683a9cddae6cbbd5a",
+  "claims": [
+    "tools/sea-entry.ts",
+    "test/sea-smoke.cjs"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "not-applicable",
+    "fallback": "not-applicable",
+    "oracles": [],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm build",
+    "pnpm test:compiler",
+    "pnpm test:integration"
+  ],
+  "runs": [
+    {
+      "command": "pnpm exec tsc --noEmit --pretty false",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 4.051,
+      "started_at": "2026-08-13T21:28:04.735Z",
+      "commit": "354b0588e8d8d7ac98df8a7683a9cddae6cbbd5a",
+      "workspace_fingerprint": "81cc1ed544bbc520ae46572999efb2c0500f06508ca4c8b3da86ba78ba1c1014",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Added `capabilities` and `--capabilities` SEA commands which bundle the authoritative release reporter, validate the exact embedded receipt and asset set, fail closed when validation is unavailable, and refuse neighboring checkout authority. Real relocated sagepython SEA coverage plants fake package, Git, and kernel-cache state and proves it is ignored.",
+    "risks": [
+      "A repeated full SEA smoke reached and passed the capability assertions but later missed the unrelated 10-second cold-mpmath budget under severe concurrent build load; an earlier full relocated SEA smoke passed."
+    ],
+    "next_steps": [
+      "Integration should compare Linux/macOS sidecar build receipts exactly with `sagejs capabilities --json` and `sagepython capabilities --json`."
+    ]
+  }
+}

@@ -24,6 +24,7 @@ interface SeaArguments {
   import_path: string;
   mode:
     | "compile"
+    | "capabilities"
     | "docs"
     | "repl"
     | "jupyter-install"
@@ -53,6 +54,8 @@ interface SeaArguments {
   tag?: string;
   jupyter_args?: string[];
   pytest_args?: string[];
+  capability_json?: boolean;
+  capability_paths?: boolean;
 }
 
 function usage(): void {
@@ -61,6 +64,7 @@ function usage(): void {
 Run Sage.js from a self-contained executable. With no program, start a REPL.
 
   ${executable} docs <search|show|export|coverage> [query]
+  ${executable} capabilities [--json] [--paths]
   ${executable} pytest [pytest options] [paths]
   ${executable} --install-jupyter-kernel [--jupyter-kernel-mode sage|python]
 
@@ -101,6 +105,22 @@ function parseArguments(): SeaArguments {
     tokens: false,
   };
   const rawArguments = process.argv.slice(2);
+  if (
+    rawArguments[0] === "capabilities" ||
+    rawArguments[0] === "--capabilities"
+  ) {
+    args.mode = "capabilities";
+    for (const argument of rawArguments.slice(1)) {
+      if (argument === "--json") args.capability_json = true;
+      else if (argument === "--paths") args.capability_paths = true;
+      else {
+        throw new Error(
+          `unknown capabilities option ${JSON.stringify(argument)}`,
+        );
+      }
+    }
+    return args;
+  }
   if (rawArguments.includes("--jupyter-kernel-self-test")) {
     if (rawArguments.length !== 1) {
       throw new Error("--jupyter-kernel-self-test takes no other arguments");
@@ -264,6 +284,44 @@ const argv = parseArguments();
 const sageMode = argv.sage;
 
 async function main(): Promise<void> {
+  if (argv.mode === "capabilities") {
+    // This path is intentionally bundled from the authoritative release
+    // reporter.  Give it a nonexistent observation root so an executable
+    // placed beside a source checkout cannot borrow that checkout's package,
+    // cache, generated-adapter, or Git state.  The reporter obtains the build
+    // receipt and every capability byte from `node:sea` and verifies the exact
+    // embedded asset set before returning an available receipt.
+    const {
+      collectReleaseCapabilities,
+      formatReleaseCapabilities,
+    } = require("../../scripts/release-capabilities.cjs");
+    const report = collectReleaseCapabilities({
+      git: {
+        commit: null,
+        commonDirectory: null,
+        dirty: null,
+        present: false,
+      },
+      includePaths: argv.capability_paths === true,
+      root: `${process.execPath}.embedded-runtime`,
+    });
+    if (report.buildReceipt.availability !== "available") {
+      throw new Error(
+        `embedded Sage.js build receipt is ${report.buildReceipt.availability}: ` +
+          report.buildReceipt.reason,
+      );
+    }
+    report.runtimeObservation.package = {
+      name: "sagejs",
+      version: report.buildReceipt.manifest.sagejsVersion,
+    };
+    process.stdout.write(
+      argv.capability_json
+        ? `${JSON.stringify(report, null, 2)}\n`
+        : `${formatReleaseCapabilities(report)}\n`,
+    );
+    return;
+  }
   if (argv.mode === "jupyter-install") {
     const jupyter = await import("./jupyter-kernel.js");
     const jupyterArguments = argv.jupyter_args ?? [];
