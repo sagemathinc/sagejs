@@ -30,6 +30,8 @@ const {
 } = require("../scripts/release-manifest.cjs");
 const {
   createNativeDependencyReceipt,
+  seaNativeDependencyDefinitions,
+  validateSeaNativeDependencyBindings,
 } = require("../scripts/native-dependency-receipt.cjs");
 
 const repositoryRoot = resolve(__dirname, "..");
@@ -245,17 +247,35 @@ function embedNativeDependencyReceipts(assets, target, profile = mathProfile()) 
     for (const id of ["igraph", "m4ri"]) {
       const prefix = join(directory, id);
       const stamp = join(prefix, `.sagejs-${id}.json`);
-      write(join(prefix, "lib", `lib${id}.a`), `${id} archive`);
+      const header = id === "igraph" ? "igraph_ffi.h" : "m4ri_matrix_ffi.h";
+      const headerContents = readFileSync(join(
+        repositoryRoot,
+        "packages",
+        id === "igraph" ? "graph" : "m4ri",
+        "include",
+        "sagejs",
+        header,
+      ));
+      write(join(prefix, "include", "sagejs", header), headerContents);
+      write(
+        join(prefix, "lib", id === "igraph" ? "libigraph.a" : "libm4ri.a"),
+        `${id} archive`,
+      );
       const receipt = createNativeDependencyReceipt(
         {
           build: { configuration: "fixture" },
           dependency: {
             name: id,
-            sha256: id === "igraph" ? "a".repeat(64) : "b".repeat(64),
-            version: "1.0",
+            sha256: id === "igraph"
+              ? "969f2d7d22f67e788d8638c9a8c96615f50d7819c08978b3ef4a787bb6daa96c"
+              : "7e033ca1fd36be8861e2f67d9d124c398fc0d830209bb0226462485876346404",
+            version: id === "igraph" ? "1.0.1" : "20260122",
           },
           deployment: null,
-          interface: null,
+          interface: {
+            header: `include/sagejs/${header}`,
+            sha256: digestBytes(headerContents),
+          },
           mathProfile: profile,
           package: id,
           toolchain: { compiler: "fixture" },
@@ -276,6 +296,7 @@ function embedNativeDependencyReceipts(assets, target, profile = mathProfile()) 
               "native/sagejs_m4ri_ffi.node",
               "native/sagejs_m4ri_ffi_manifest.json",
             ],
+        dependency: { ...receipt.dependency },
         package: id,
         receiptAsset,
         receiptIdentitySha256: receipt.identitySha256,
@@ -288,6 +309,18 @@ function embedNativeDependencyReceipts(assets, target, profile = mathProfile()) 
     bindings,
     schema: "sagejs.sea-native-dependency-bindings-v1",
   };
+}
+
+function refreshEmbeddedDependency(assets, declaration, id, mutate) {
+  const binding = declaration.bindings[id];
+  const receipt = JSON.parse(assets[binding.receiptAsset]);
+  mutate(receipt, binding);
+  receipt.outputs.identitySha256 = digestBytes(canonicalJson(receipt.outputs.files));
+  const identity = { ...receipt };
+  delete identity.identitySha256;
+  receipt.identitySha256 = digestBytes(canonicalJson(identity));
+  binding.receiptIdentitySha256 = receipt.identitySha256;
+  assets[binding.receiptAsset] = JSON.stringify(receipt);
 }
 
 function addKernelAssets(assets, index) {
@@ -1005,6 +1038,54 @@ test("SEA dependency bindings reject receipt tampering, omission, and profile dr
       target,
       mathProfile("cpu-native"),
     ),
+    (assets, target) => {
+      const declaration = embedNativeDependencyReceipts(assets, target);
+      refreshEmbeddedDependency(assets, declaration, "igraph", (receipt, binding) => {
+        receipt.dependency = {
+          name: "substituted-igraph",
+          sha256: "a".repeat(64),
+          version: "0.0.1",
+        };
+        binding.dependency = { ...receipt.dependency };
+      });
+      return declaration;
+    },
+    (assets, target) => {
+      const declaration = embedNativeDependencyReceipts(assets, target);
+      refreshEmbeddedDependency(assets, declaration, "m4ri", (receipt) => {
+        receipt.outputs.files = [];
+      });
+      return declaration;
+    },
+    (assets, target) => {
+      const declaration = embedNativeDependencyReceipts(assets, target);
+      refreshEmbeddedDependency(assets, declaration, "igraph", (receipt) => {
+        receipt.target.deployment = { macos: "13.5" };
+      });
+      return declaration;
+    },
+    (assets, target) => {
+      const declaration = embedNativeDependencyReceipts(assets, target);
+      refreshEmbeddedDependency(assets, declaration, "m4ri", (receipt) => {
+        receipt.outputs.files.push({
+          path: "include/sagejs/escape",
+          target: "../../../outside",
+          type: "symlink",
+        });
+      });
+      return declaration;
+    },
+    (assets, target) => {
+      const declaration = embedNativeDependencyReceipts(assets, target);
+      refreshEmbeddedDependency(assets, declaration, "igraph", (receipt) => {
+        const header = receipt.outputs.files.find(
+          ({ path }) => path === "include/sagejs/igraph_ffi.h",
+        );
+        header.sha256 = "b".repeat(64);
+        receipt.interface.sha256 = header.sha256;
+      });
+      return declaration;
+    },
   ];
   for (const dependencyMutation of cases) {
     const item = fixture({ git: false, runtime: false });
@@ -1029,6 +1110,68 @@ test("SEA dependency bindings reject receipt tampering, omission, and profile dr
     } finally {
       rmSync(item.directory, { recursive: true, force: true });
     }
+  }
+});
+
+test("Darwin dependency receipts may not exceed the artifact deployment floor", () => {
+  const directory = mkdtempSync(join(tmpdir(), "sagejs-darwin-dependency-"));
+  try {
+    const target = {
+      arch: "arm64",
+      endianness: "LE",
+      platform: "darwin",
+      wordBits: 64,
+    };
+    const profile = mathProfile();
+    profile.abi = { ...target };
+    delete profile.fingerprint;
+    profile.fingerprint = digestBytes(canonicalJson(profile));
+    const embeddedAssets = {};
+    const declaration = { bindings: {}, schema: "sagejs.sea-native-dependency-bindings-v1" };
+    for (const definition of seaNativeDependencyDefinitions("darwin")) {
+      const prefix = join(directory, definition.id);
+      const stamp = join(prefix, ".receipt.json");
+      const headerContents = readFileSync(join(
+        repositoryRoot,
+        "packages",
+        definition.id === "igraph" ? "graph" : "m4ri",
+        definition.interfaceHeader.replace(/^include\//, "include/"),
+      ));
+      write(join(prefix, definition.interfaceHeader), headerContents);
+      for (const output of definition.requiredOutputs.unix) {
+        if (output !== definition.interfaceHeader) write(join(prefix, output), "archive");
+      }
+      const receipt = createNativeDependencyReceipt({
+        build: { configuration: "darwin fixture" },
+        dependency: definition.dependency,
+        deployment: { macos: "14.0" },
+        interface: {
+          header: definition.interfaceHeader,
+          sha256: digestBytes(headerContents),
+        },
+        mathProfile: profile,
+        package: definition.package,
+        toolchain: { compiler: "fixture" },
+      }, prefix, stamp);
+      embeddedAssets[definition.receiptAsset] = JSON.stringify(receipt);
+      for (const asset of definition.assets) embeddedAssets[asset] = "fixture";
+      declaration.bindings[definition.id] = {
+        assets: [...definition.assets],
+        dependency: { ...definition.dependency },
+        package: definition.package,
+        receiptAsset: definition.receiptAsset,
+        receiptIdentitySha256: receipt.identitySha256,
+      };
+    }
+    assert.throws(() => validateSeaNativeDependencyBindings(declaration, {
+      assets: new Set(Object.keys(embeddedAssets)),
+      bytes: (name) => bytes(embeddedAssets[name]),
+      mathProfile: profile,
+      maximumMinimumMacos: "13.5.0",
+      target,
+    }), /does not match the SEA target/);
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
   }
 });
 

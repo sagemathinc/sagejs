@@ -13,6 +13,8 @@ const {
   writeFileSync,
 } = require("node:fs");
 const { dirname, relative, resolve, sep } = require("node:path");
+const { dirname: portableDirname, normalize: normalizePortablePath } =
+  require("node:path").posix;
 const { spawnSync } = require("node:child_process");
 
 const {
@@ -29,16 +31,51 @@ const SEA_NATIVE_DEPENDENCIES = Object.freeze({
       "native/sagejs_igraph_ffi.node",
       "native/sagejs_igraph_ffi_manifest.json",
     ]),
+    dependency: Object.freeze({
+      name: "igraph",
+      sha256: "969f2d7d22f67e788d8638c9a8c96615f50d7819c08978b3ef4a787bb6daa96c",
+      version: "1.0.1",
+    }),
+    interfaceHeader: "include/sagejs/igraph_ffi.h",
+    interfaceSha256:
+      "4878a88c06653fcda08f6f6c4b5b121a84abbc95aa14cb45b4f2d7be3f8ec03b",
     package: "igraph",
     receiptAsset: "native/dependencies/igraph-receipt.json",
+    requiredOutputs: Object.freeze({
+      unix: Object.freeze([
+        "include/sagejs/igraph_ffi.h",
+        "lib/libigraph.a",
+      ]),
+      windows: Object.freeze([
+        "include/sagejs/igraph_ffi.h",
+        "lib/igraph.lib",
+      ]),
+    }),
   }),
   m4ri: Object.freeze({
     assets: Object.freeze([
       "native/sagejs_m4ri_ffi.node",
       "native/sagejs_m4ri_ffi_manifest.json",
     ]),
+    dependency: Object.freeze({
+      name: "m4ri",
+      sha256: "7e033ca1fd36be8861e2f67d9d124c398fc0d830209bb0226462485876346404",
+      version: "20260122",
+    }),
+    interfaceHeader: "include/sagejs/m4ri_matrix_ffi.h",
+    interfaceSha256:
+      "59a01877e5cb58f4c13272b1eb488467500a1d7a5879768706328b0bf20996eb",
     package: "m4ri",
     receiptAsset: "native/dependencies/m4ri-receipt.json",
+    requiredOutputs: Object.freeze({
+      unix: Object.freeze([
+        "include/sagejs/m4ri_matrix_ffi.h",
+        "lib/libm4ri.a",
+      ]),
+      windows: Object.freeze([
+        "include/sagejs/m4ri_matrix_ffi.h",
+      ]),
+    }),
   }),
 });
 
@@ -278,7 +315,15 @@ function validateNativeDependencyReceipt(receipt, options = {}) {
       typeof file.target === "string" &&
       file.target.length > 0 &&
       !file.target.startsWith("/") &&
-      !/^[A-Za-z]:[\\/]/.test(file.target);
+      !/^[A-Za-z]:[\\/]/.test(file.target) &&
+      (() => {
+        const destination = normalizePortablePath(
+          `${portableDirname(file.path)}/${file.target}`,
+        );
+        return destination !== ".." &&
+          !destination.startsWith("../") &&
+          !destination.startsWith("/");
+      })();
     const pathValid = typeof file?.path === "string" &&
       file.path.length > 0 &&
       !file.path.startsWith("/") &&
@@ -325,20 +370,53 @@ function validateNativeDependencyReceipt(receipt, options = {}) {
 
 function validateSeaNativeDependencyReceipt(receipt, definition, options) {
   validateNativeDependencyReceipt(receipt);
+  const requiredOutputs = definition.requiredOutputs[
+    options.target.platform === "win32" ? "windows" : "unix"
+  ];
+  const files = new Map(receipt.outputs.files.map((file) => [file.path, file]));
+  const interfaceFile = files.get(definition.interfaceHeader);
+  const interfaceValid = exactKeys(receipt.interface, ["header", "sha256"]) &&
+    receipt.interface.header === definition.interfaceHeader &&
+    receipt.interface.sha256 === definition.interfaceSha256 &&
+    interfaceFile?.type === "file" &&
+    interfaceFile.sha256 === receipt.interface.sha256;
+  const deploymentValid = options.target.platform === "darwin"
+    ? exactKeys(receipt.target.deployment, ["macos"]) &&
+      /^\d+(?:\.\d+){1,2}$/.test(receipt.target.deployment.macos) &&
+      typeof options.maximumMinimumMacos === "string" &&
+      compareNumericVersions(
+        receipt.target.deployment.macos,
+        options.maximumMinimumMacos,
+      ) <= 0
+    : receipt.target.deployment === null;
   if (
     receipt.capability !== true ||
     receipt.package !== definition.package ||
+    canonicalJson(receipt.dependency) !== canonicalJson(definition.dependency) ||
     canonicalJson(receipt.mathProfile) !== canonicalJson(options.mathProfile) ||
     receipt.target.platform !== options.target.platform ||
     receipt.target.arch !== options.target.arch ||
     receipt.target.endianness !== options.target.endianness ||
-    receipt.target.wordBits !== options.target.wordBits
+    receipt.target.wordBits !== options.target.wordBits ||
+    !deploymentValid ||
+    !interfaceValid ||
+    requiredOutputs.some((path) => files.get(path)?.type !== "file")
   ) {
     throw new Error(
       `${definition.id} native dependency receipt does not match the SEA target`,
     );
   }
   return receipt;
+}
+
+function compareNumericVersions(left, right) {
+  const a = left.split(".").map(Number);
+  const b = right.split(".").map(Number);
+  for (let index = 0; index < Math.max(a.length, b.length); index += 1) {
+    const difference = (a[index] ?? 0) - (b[index] ?? 0);
+    if (difference !== 0) return Math.sign(difference);
+  }
+  return 0;
 }
 
 function createSeaNativeDependencyBindings(options) {
@@ -367,8 +445,17 @@ function createSeaNativeDependencyBindings(options) {
         { cause: error },
       );
     }
+    if (
+      options.expectedReceiptIdentities !== undefined &&
+      receipt.identitySha256 !== options.expectedReceiptIdentities[definition.id]
+    ) {
+      throw new Error(
+        `${definition.id} staged dependency receipt changed after prefix validation`,
+      );
+    }
     bindings[definition.id] = {
       assets: [...definition.assets],
+      dependency: { ...definition.dependency },
       package: definition.package,
       receiptAsset: definition.receiptAsset,
       receiptIdentitySha256: receipt.identitySha256,
@@ -400,11 +487,13 @@ function validateSeaNativeDependencyBindings(declaration, options) {
     if (
       !exactKeys(binding, [
         "assets",
+        "dependency",
         "package",
         "receiptAsset",
         "receiptIdentitySha256",
       ]) ||
       canonicalJson(binding.assets) !== canonicalJson(definition.assets) ||
+      canonicalJson(binding.dependency) !== canonicalJson(definition.dependency) ||
       binding.package !== definition.package ||
       binding.receiptAsset !== definition.receiptAsset ||
       !/^[0-9a-f]{64}$/.test(binding.receiptIdentitySha256 ?? "")

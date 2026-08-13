@@ -4,7 +4,7 @@
   "id": "sea-dependency-receipts",
   "title": "Sea Dependency Receipts",
   "lane": "integration",
-  "status": "active",
+  "status": "review",
   "owner": "user",
   "objective": "Bind every embedded M4RI and igraph adapter and FFI manifest to an exact target-matched native dependency receipt and validate it fail-closed",
   "base_commit": "9c8726aa3ebaa4bc93e9a84a86c2a8a3215bbeb1",
@@ -14,7 +14,7 @@
     "scripts/native-dependency-receipt.cjs",
     "test/sea-build-manifest.cjs",
     "test/release-capabilities.cjs",
-    "test/native-dependency-receipt.cjs"
+    "test/native-math-profile.cjs"
   ],
   "dependencies": [],
   "references": [],
@@ -37,10 +37,45 @@
     "pnpm test:portable",
     "pnpm test:baselib:strict"
   ],
-  "runs": [],
+  "runs": [
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 5.294,
+      "started_at": "2026-08-13T22:21:21.137Z",
+      "commit": "e244beda286732f72e2806950a9e3788ce762fcf",
+      "workspace_fingerprint": "9822caf446212ba392f5a3ae438a434800f5e45a204f6a8ffde7e20dfcfc2cbf",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 14.427,
+      "started_at": "2026-08-13T22:21:27.048Z",
+      "commit": "e244beda286732f72e2806950a9e3788ce762fcf",
+      "workspace_fingerprint": "9822caf446212ba392f5a3ae438a434800f5e45a204f6a8ffde7e20dfcfc2cbf",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 20.286,
+      "started_at": "2026-08-13T22:21:42.095Z",
+      "commit": "e244beda286732f72e2806950a9e3788ce762fcf",
+      "workspace_fingerprint": "9822caf446212ba392f5a3ae438a434800f5e45a204f6a8ffde7e20dfcfc2cbf",
+      "platform": "linux-x64"
+    }
+  ],
   "handoff": {
-    "summary": "",
-    "risks": [],
-    "next_steps": []
+    "summary": "Embedded igraph and M4RI adapters are bound to exact, target-matched dependency receipts. Validation pins upstream source identity, public ABI header bytes, required installed outputs, native math profile, target ABI, deployment floor, and receipt identity; it revalidates the source prefix during SEA assembly to close staging races.",
+    "risks": [
+      "Receipts provide trusted-packager provenance, not cryptographic proof that a final addon linked only the declared prefix bytes; independent reproducible builds remain the stronger future check."
+    ],
+    "next_steps": [
+      "Integrate the two commits onto the shared release baseline and rerun the release-candidate gate with real Linux and macOS dependency receipts."
+    ]
   }
 }
