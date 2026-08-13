@@ -249,7 +249,7 @@ function createNativeExportInventory(options = {}) {
   for (const entry of exports) counts[entry.decision] = (counts[entry.decision] || 0) + 1;
   return {
     schema,
-    policy: relative(root, policy.filename),
+    policy: boundaryAudit.portablePath(relative(root, policy.filename)),
     counts: Object.fromEntries(Object.entries(counts).sort()),
     exports,
   };
