@@ -1815,6 +1815,8 @@ const nativeFunctions = { ${exports} };
 const nativeCompatibility = Object.freeze({
   cacheKey: ${jsString(options.cacheKey || "")},
   sourceHash: ${jsString(options.sourceHash || "")},
+  sourceIdentity: ${jsString(options.sourceIdentity || options.sourcePath || "")},
+  pathPolicy: Object.freeze(${JSON.stringify(options.pathPolicy || {})}),
   nativeAbi: ${Number(options.nativeAbi || 0)},
   foreignDeclarations: Object.freeze(${JSON.stringify(
     options.foreignDeclarations || [],
@@ -1838,7 +1840,7 @@ for (const fn of Object.values(nativeFunctions)) {
   fn.asUInt64Buffer = asUInt64Buffer;
 }
 const nativeRegister = globalThis.__sagejs_native_register__;
-if (typeof nativeRegister === "function") {
+if (${options.sourcePath ? "true" : "false"} && typeof nativeRegister === "function") {
   nativeRegister(
     ${jsString(options.sourcePath || "")},
     ${jsString(options.sourceHash || "")},
@@ -1854,6 +1856,8 @@ module.exports = {
   createUInt64Buffer,
   cacheKey: nativeCompatibility.cacheKey,
   sourceHash: nativeCompatibility.sourceHash,
+  sourceIdentity: nativeCompatibility.sourceIdentity,
+  pathPolicy: nativeCompatibility.pathPolicy,
   nativeAbi: nativeCompatibility.nativeAbi,
   foreignDeclarations: nativeCompatibility.foreignDeclarations,
   executionMode: compiledExecutionMode,

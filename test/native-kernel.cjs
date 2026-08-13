@@ -1041,18 +1041,11 @@ try {
   assert.match(initialHeader.sha256, /^[a-f0-9]{64}$/);
   assert.equal(
     initialHeader.path,
-    join(
-      root,
-      "packages",
-      "flint",
-      "include",
-      "sagejs",
-      "fmpq_matrix_ffi.h",
-    ).replaceAll("\\", "/"),
+    "source/packages/flint/include/sagejs/fmpq_matrix_ffi.h",
   );
   assert.equal(
     initialFlintInputs.includeOrder[0],
-    join(root, "packages", "flint", "include").replaceAll("\\", "/"),
+    "source/packages/flint/include",
   );
   const initialExternalHeader = initialFlintInputs.headers.find(
     (input) => input.name === "flint/ulong_extras.h",
@@ -1060,12 +1053,7 @@ try {
   assert.ok(initialExternalHeader);
   assert.equal(
     initialExternalHeader.path,
-    join(
-      foreignWitnessPrefix,
-      "include",
-      "flint",
-      "ulong_extras.h",
-    ).replaceAll("\\", "/"),
+    "foreign/flint/include/flint/ulong_extras.h",
   );
   assert.equal(
     initialForeignWitness.foreignInputs[0].libraries.length,
@@ -2378,6 +2366,52 @@ except Exception as error:
     sourceKey: "fixtures/native-integer-buffer.py",
     cacheRoot: integerCache,
   });
+  const relocatedRoot = join(temporary, "relocated-native-source");
+  const relocatedSource = join(relocatedRoot, "kernel.py");
+  const relocatedCache = join(relocatedRoot, "cache");
+  mkdirSync(relocatedRoot, { recursive: true });
+  copyFileSync(integerSourcePath, relocatedSource);
+  const relocatedIntegerKernel = await nativeApi.compile({
+    sourcePath: relocatedSource,
+    sourceKey: "fixtures/native-integer-buffer.py",
+    cacheRoot: relocatedCache,
+  });
+  assert.equal(relocatedIntegerKernel.cacheKey, integerKernel.cacheKey);
+  for (const relativeArtifact of [
+    "index.cjs",
+    "kernel.c",
+    "kernel_core.c",
+    "kernel_core.h",
+    "manifest.json",
+    join("build", "Release", "sagejs_native_kernel.node"),
+  ]) {
+    const original = readFileSync(join(integerKernel.outputPath, relativeArtifact));
+    const relocated = readFileSync(
+      join(relocatedIntegerKernel.outputPath, relativeArtifact),
+    );
+    assert.deepEqual(
+      relocated,
+      original,
+      `${relativeArtifact} must be independent of physical source/cache roots`,
+    );
+    for (const privateRoot of [integerSourcePath, relocatedRoot, integerCache]) {
+      assert.equal(
+        relocated.includes(Buffer.from(privateRoot)),
+        false,
+        `${relativeArtifact} disclosed ${privateRoot}`,
+      );
+    }
+  }
+  assert.equal(
+    JSON.parse(readFileSync(
+      join(relocatedIntegerKernel.outputPath, "manifest.json"),
+    )).sourceIdentity,
+    "src/lib/fixtures/native-integer-buffer.py",
+  );
+  assert.match(
+    readFileSync(relocatedIntegerKernel.coreSourcePath, "utf8"),
+    /#line \d+ "src\/lib\/fixtures\/native-integer-buffer\.py"/,
+  );
   assert.equal(typeof integerKernel.coreSourcePath, "string");
   assert.equal(typeof integerKernel.coreHeaderPath, "string");
   const emittedCore = readFileSync(integerKernel.coreSourcePath, "utf8");
@@ -3296,6 +3330,7 @@ print(is_compiled(native_powmod))
   ]);
   const restoredIntegerKernel = await nativeApi.compile({
     sourcePath: integerSourcePath,
+    sourceKey: "fixtures/native-integer-buffer.py",
     cacheRoot: integerCache,
   });
   assert.equal(restoredIntegerKernel.cached, true);

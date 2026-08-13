@@ -15,7 +15,7 @@ const {
   writeFileSync,
 } = require("node:fs");
 const { homedir } = require("node:os");
-const { dirname, join, resolve } = require("node:path");
+const { dirname, join, relative, resolve } = require("node:path");
 const { spawnSync } = require("node:child_process");
 const { lowerSource } = require("./ir.cjs");
 const {
@@ -60,6 +60,15 @@ const GENERATED_CXX_LANGUAGE_STANDARD = Object.freeze({
   compilerFlag: "-std=c++17",
   msvc: "stdcpp17",
   xcode: "c++17",
+});
+
+const NATIVE_PATH_POLICY = Object.freeze({
+  schema: "sagejs.native-path-policy/v1",
+  sourceRoot: "sagejs-source",
+  buildRoot: "sagejs-native-build",
+  nativeSupportRoot: "sagejs-native-support",
+  foreignRoot: "sagejs-foreign",
+  sourceDateEpoch: "0",
 });
 
 let nativeBuildAliasSerial = 0;
@@ -159,6 +168,22 @@ function portablePath(filename) {
   return resolve(filename).replaceAll("\\", "/");
 }
 
+function validatedSourceKey(sourceKey) {
+  if (sourceKey === undefined) return undefined;
+  if (
+    typeof sourceKey !== "string" ||
+    !/^[A-Za-z0-9_.-]+(?:\/[A-Za-z0-9_.-]+)*$/.test(sourceKey)
+  ) {
+    throw new TypeError(`invalid native kernel source key ${sourceKey}`);
+  }
+  return sourceKey;
+}
+
+function sourceIdentity(sourcePath, sourceKey) {
+  const key = validatedSourceKey(sourceKey);
+  return key === undefined ? portablePath(sourcePath) : `src/lib/${key}`;
+}
+
 function statIdentity(stat) {
   return [
     stat.dev,
@@ -199,7 +224,12 @@ function foreignInputDigestStore(cacheRoot) {
   return store;
 }
 
-function contentAddressedFile(filename, description, digestStore) {
+function contentAddressedFile(
+  filename,
+  description,
+  digestStore,
+  logicalPath = portablePath(filename),
+) {
   const absolute = resolve(filename);
   let before;
   try {
@@ -216,7 +246,13 @@ function contentAddressedFile(filename, description, digestStore) {
   const resolved = realpathSync(absolute);
   const identity = statIdentity(before);
   const cached = foreignInputDigestCache.get(resolved);
-  if (cached?.identity === identity) return cached.value;
+  if (cached?.identity === identity) {
+    return Object.freeze({
+      path: logicalPath,
+      bytes: cached.bytes,
+      sha256: cached.sha256,
+    });
+  }
   const persisted = digestStore?.files[portablePath(resolved)];
   const persistedDigest = persisted?.identity === identity &&
       typeof persisted.sha256 === "string" &&
@@ -232,12 +268,15 @@ function contentAddressedFile(filename, description, digestStore) {
     );
   }
   const value = Object.freeze({
-    path: portablePath(absolute),
-    resolvedPath: portablePath(resolved),
+    path: logicalPath,
     bytes: String(before.size),
     sha256: digest,
   });
-  foreignInputDigestCache.set(resolved, { identity, value });
+  foreignInputDigestCache.set(resolved, {
+    identity,
+    bytes: value.bytes,
+    sha256: value.sha256,
+  });
   if (digestStore !== undefined && persistedDigest === undefined) {
     digestStore.files[portablePath(resolved)] = {
       identity,
@@ -262,6 +301,79 @@ function uniquePaths(paths) {
     answer.push(absolute);
   }
   return answer;
+}
+
+function relativeWithin(filename, directory) {
+  const candidate = relative(resolve(directory), resolve(filename))
+    .replaceAll("\\", "/");
+  if (
+    candidate === "" ||
+    candidate === ".." ||
+    candidate.startsWith("../")
+  ) {
+    return candidate === "" ? "." : undefined;
+  }
+  return candidate;
+}
+
+function logicalCompilationPath(filename, ir) {
+  const libraries = [...(ir.foreignLibraries || [])]
+    .sort((left, right) => left.id.localeCompare(right.id));
+  for (const library of libraries) {
+    const within = relativeWithin(filename, foreignPrefix(library));
+    if (within !== undefined) return `foreign/${library.id}/${within}`;
+  }
+  const withinNativeSupport = relativeWithin(filename, nativePrefix);
+  if (withinNativeSupport !== undefined) {
+    return `foreign/native-support/${withinNativeSupport}`;
+  }
+  const withinSource = relativeWithin(filename, root);
+  if (withinSource !== undefined) return `source/${withinSource}`;
+  throw new Error(
+    "declared foreign compilation input has no reproducible logical role: " +
+      portablePath(filename),
+  );
+}
+
+function nativePathMappings(ir, outputPath) {
+  const entries = [
+    [outputPath, NATIVE_PATH_POLICY.buildRoot],
+    ...(ir.foreignLibraries || []).map((library) => [
+      foreignPrefix(library),
+      `${NATIVE_PATH_POLICY.foreignRoot}/${library.id}`,
+    ]),
+    [nativePrefix, NATIVE_PATH_POLICY.nativeSupportRoot],
+    [root, NATIVE_PATH_POLICY.sourceRoot],
+  ];
+  const seen = new Set();
+  return entries
+    .map(([physical, logical]) => [resolve(physical), logical])
+    .sort((left, right) => right[0].length - left[0].length)
+    .filter(([physical]) => {
+      const key = process.platform === "win32"
+        ? physical.toLowerCase()
+        : physical;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+}
+
+function unixPrefixMapFlags(pathMappings) {
+  return pathMappings.flatMap(([physical, logical]) => [
+    `-ffile-prefix-map=${physical}=${logical}`,
+    `-fdebug-prefix-map=${physical}=${logical}`,
+    `-fmacro-prefix-map=${physical}=${logical}`,
+  ]);
+}
+
+function windowsPathMapFlags(pathMappings) {
+  return [
+    "/Brepro",
+    ...pathMappings.map(([physical, logical]) =>
+      `/pathmap:${physical}=${logical}`
+    ),
+  ];
 }
 
 function writeDiscoveryIndex(
@@ -302,13 +414,7 @@ function writeDiscoveryIndex(
   };
   index.sources[sourcePath] = record;
   if (sourceKey !== undefined) {
-    if (
-      typeof sourceKey !== "string" ||
-      !/^[A-Za-z0-9_.-]+(?:\/[A-Za-z0-9_.-]+)*$/.test(sourceKey)
-    ) {
-      throw new TypeError(`invalid native kernel source key ${sourceKey}`);
-    }
-    index.logicalSources[sourceKey] = record;
+    index.logicalSources[validatedSourceKey(sourceKey)] = record;
   }
   writeFileSync(indexPath, `${JSON.stringify(index, null, 2)}\n`);
 }
@@ -479,6 +585,7 @@ function resolveDeclaredHeader(
   name,
   includeDirectories,
   digestStore,
+  ir,
 ) {
   if (typeof name !== "string" || name.length === 0 || name.includes("\0")) {
     throw new Error(`${library.id} declares an invalid native header name`);
@@ -493,6 +600,7 @@ function resolveDeclaredHeader(
             candidate,
             `${library.id} declared native header ${name}`,
             digestStore,
+            logicalCompilationPath(candidate, ir),
           ),
         };
       }
@@ -521,6 +629,7 @@ function resolveForeignCompilationInputs(ir, digestStore) {
                 name,
                 includeDirectories,
                 digestStore,
+                ir,
               ),
             )),
         );
@@ -532,13 +641,18 @@ function resolveForeignCompilationInputs(ir, digestStore) {
                 path,
                 `${library.id} declared native library ${name}`,
                 digestStore,
+                `foreign/${library.id}/lib/${name}`,
               ),
             })),
         );
         const value = {
           id: library.id,
-          prefix: portablePath(foreignPrefix(library)),
-          includeOrder: Object.freeze(includeDirectories.map(portablePath)),
+          prefix: `foreign/${library.id}`,
+          includeOrder: Object.freeze(
+            includeDirectories.map((directory) =>
+              logicalCompilationPath(directory, ir)
+            ),
+          ),
           headers,
           libraries,
         };
@@ -565,6 +679,7 @@ function bindingGyp(
   sourceBoundsChecked,
   hasExceptionShims = false,
   platform = process.platform,
+  pathMappings = [],
 ) {
   const usesPrimeField = ir.functions.some(
     (fn) => ["prime-field-matrix", "prime-field-source"].includes(fn.kernelKind),
@@ -643,6 +758,7 @@ function bindingGyp(
       VCCLCompilerTool: {
         Optimization: 3,
         WarningLevel: 3,
+        AdditionalOptions: windowsPathMapFlags(pathMappings),
         ...(hasExceptionShims
           ? {
             ExceptionHandling: 1,
@@ -654,6 +770,7 @@ function bindingGyp(
           }
           : {}),
       },
+      VCLinkerTool: { AdditionalOptions: ["/Brepro"] },
     };
   } else {
     target.libraries = [
@@ -676,6 +793,7 @@ function bindingGyp(
       "-Wextra",
       "-ffunction-sections",
       "-fdata-sections",
+      ...unixPrefixMapFlags(pathMappings),
     ];
     if (hasExceptionShims) {
       target["cflags_cc!"] = ["-fno-exceptions", "-fno-rtti"];
@@ -712,14 +830,15 @@ function bindingGyp(
 
 async function compileKernel(options) {
   const sourcePath = resolve(options.sourcePath);
-  const sourceKey = options.sourceKey;
+  const sourceKey = validatedSourceKey(options.sourceKey);
+  const canonicalSource = sourceIdentity(sourcePath, sourceKey);
   const source = readFileSync(sourcePath, "utf8");
   const sourceHash = sha256(source);
   const cacheRoot = resolve(
     options.cacheRoot ||
       join(dirname(sourcePath), ".sagejs-native-kernels"),
   );
-  const ir = await lowerSource(source, sourcePath, {
+  const ir = await lowerSource(source, canonicalSource, {
     functions: options.functions,
   });
   const foreignInputs = foreignCompilationInputs(ir, { cacheRoot });
@@ -733,7 +852,7 @@ async function compileKernel(options) {
   const tuning = usesSpecializedPrimeField ? primeFieldTuning() : null;
   const sourceBoundsChecked = usesSourcePrimeField ? sourceBoundsCheck() : null;
   const identity = {
-    sourcePath,
+    sourceIdentity: canonicalSource,
     source,
     ir,
     nativeAbi: NATIVE_ABI_VERSION,
@@ -742,10 +861,7 @@ async function compileKernel(options) {
     architecture: process.arch,
     nodeModulesAbi: process.versions.modules,
     toolchain: toolchainFingerprint(),
-    foreignToolchains: (ir.foreignLibraries || []).map((library) => ({
-      id: library.id,
-      prefix: foreignPrefix(library),
-    })),
+    pathPolicy: NATIVE_PATH_POLICY,
     foreignInputs,
     primeFieldTuning: tuning,
     sourceBoundsChecked,
@@ -832,7 +948,11 @@ async function compileKernel(options) {
   writeFileSync(
     join(outputPath, "binding.gyp"),
     `${JSON.stringify(bindingGyp(
-      ir, sourceBoundsChecked, exceptionShims !== null,
+      ir,
+      sourceBoundsChecked,
+      exceptionShims !== null,
+      process.platform,
+      nativePathMappings(ir, outputPath),
     ), null, 2)}\n`,
   );
   writeFileSync(
@@ -842,7 +962,12 @@ async function compileKernel(options) {
       primeFieldTuning: tuning,
       sourceBoundsChecked,
       sourceHash,
-      sourcePath,
+      // A production wrapper is relocatable and is registered by the checked
+      // runtime loader after source-hash and ABI validation. Development
+      // wrappers retain their convenient physical-path self-registration.
+      sourcePath: sourceKey === undefined ? sourcePath : "",
+      sourceIdentity: canonicalSource,
+      pathPolicy: NATIVE_PATH_POLICY,
       nativeAbi: compatibility.nativeAbi,
       foreignDeclarations: compatibility.foreignDeclarations,
     }),
@@ -858,7 +983,8 @@ async function compileKernel(options) {
         foreignInputs,
         primeFieldTuning: tuning,
         sourceBoundsChecked,
-        sourcePath,
+        sourceIdentity: canonicalSource,
+        pathPolicy: NATIVE_PATH_POLICY,
         cSourceMap,
         coreSourceMap,
         hostIsolation: artifacts.hostIsolation,
@@ -880,6 +1006,13 @@ async function compileKernel(options) {
     build = spawnSync(process.execPath, [nodeGyp, "rebuild"], {
       cwd: buildWorkspace.directory,
       encoding: "utf8",
+      env: {
+        ...process.env,
+        LC_ALL: "C",
+        SOURCE_DATE_EPOCH: NATIVE_PATH_POLICY.sourceDateEpoch,
+        TZ: "UTC",
+        ZERO_AR_DATE: "1",
+      },
     });
   } finally {
     buildWorkspace.close();
@@ -929,4 +1062,6 @@ module.exports = {
   foreignCompilationInputs,
   generatedCxxLanguageSettings,
   nativeBuildWorkspace,
+  nativePathMappings,
+  NATIVE_PATH_POLICY,
 };
