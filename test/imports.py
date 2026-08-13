@@ -9,6 +9,8 @@ from _import_one import (
 )
 from _import_two import toplevel_var2, toplevel_func2, TopLevel2 as TL2
 
+this = object()
+
 
 def AClass(x):
     return this

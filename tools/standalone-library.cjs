@@ -150,6 +150,16 @@ function baselibStandaloneImportPrelude(modules = BASELIB_STANDALONE_MODULES) {
   return modules.map((name) => `import ${name}\n`).join("");
 }
 
+function standaloneRuntimeRequirePrelude() {
+  return (
+    "var __sagejs_runtime_require__ = " +
+    "typeof globalThis.__sagejs_runtime_require__ === 'function' " +
+    "? globalThis.__sagejs_runtime_require__ " +
+    ": (typeof require === 'function' ? require : function(name) { " +
+    "throw new Error('native runtime module is unavailable: ' + name); });\n"
+  );
+}
+
 module.exports = {
   BASELIB_STANDALONE_CACHE_MODULES,
   BASELIB_STANDALONE_MODULES,
@@ -158,4 +168,5 @@ module.exports = {
   POLYNOMIAL_STANDALONE_MODULES,
   baselibStandaloneImportPrelude,
   moduleClosure,
+  standaloneRuntimeRequirePrelude,
 };

@@ -13,6 +13,9 @@ const {
 const { tmpdir } = require("node:os");
 const { join } = require("node:path");
 const { spawnSync } = require("node:child_process");
+const {
+  BASELIB_STANDALONE_CACHE_MODULES,
+} = require("../tools/standalone-library.cjs");
 
 const root = join(__dirname, "..");
 const cli = join(root, "bin", "sagejs");
@@ -41,10 +44,7 @@ const precompiledNumpyCache = join(
   "module-cache",
   "numpy.json",
 );
-const dottedPrecompiledModules = [
-  "sagejs.linear_algebra.sparse_random",
-  "sagejs.kernels.matrix.dense_integer",
-];
+const dottedPrecompiledModules = BASELIB_STANDALONE_CACHE_MODULES;
 
 mkdirSync(sourceDirectory);
 
@@ -92,7 +92,9 @@ try {
     );
     const obsolete = join(root, "dist", "module-cache", `${name}.json`);
     assert.ok(existsSync(canonical), `missing canonical cache for ${name}`);
-    assert.equal(existsSync(obsolete), false, `obsolete cache name for ${name}`);
+    if (obsolete !== canonical) {
+      assert.equal(existsSync(obsolete), false, `obsolete cache name for ${name}`);
+    }
     const cachedModule = JSON.parse(readFileSync(canonical, "utf8"));
     assert.ok(cachedModule.outputs["beautify:true keep_docstrings:false"]);
   }

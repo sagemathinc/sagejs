@@ -87,6 +87,14 @@ export async function createCompilerTestHarness(
       toplevel: undefined,
       basedir: testPath,
       libdir: join(srcPath, "lib"),
+      exact_integer_literals: true,
+      strict_python_scopes: true,
+      scoped_flags: {
+        dict_literals: true,
+        overload_getitem: true,
+        bound_methods: true,
+        sequential_definitions: true,
+      },
     };
     if (standalonePrelude) {
       parseOptions.precompiled_module_cache_dir = standardLibraryCacheDirectory(

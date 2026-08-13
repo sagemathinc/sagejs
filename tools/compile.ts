@@ -27,7 +27,10 @@ import { installNodeHost } from "./host";
 import { installNodeGraphicsSaveHook } from "./graphics-export";
 import { runRuntimeBootstrap } from "./runtime-bootstrap";
 import { createPythonCompilerFrontend } from "./python/compiler-frontend";
-import { baselibStandaloneImportPrelude } from "./standalone-library.cjs";
+import {
+  baselibStandaloneImportPrelude,
+  standaloneRuntimeRequirePrelude,
+} from "./standalone-library.cjs";
 
 // TODO
 type Parsed = any;
@@ -307,12 +310,7 @@ export default async function Compile({
     const baselib = readBaselibSource(
       join(lib_path, "baselib-plain-pretty.js"),
     );
-    const standaloneRuntimeRequire =
-      "var __sagejs_runtime_require__ = " +
-      "typeof globalThis.__sagejs_runtime_require__ === 'function' " +
-      "? globalThis.__sagejs_runtime_require__ " +
-      ": (typeof require === 'function' ? require : function(name) { " +
-      "throw new Error('native runtime module is unavailable: ' + name); });\n";
+    const standaloneRuntimeRequire = standaloneRuntimeRequirePrelude();
     outputOptions.baselib_plain = argv.sage
       ? standaloneRuntimeRequire +
         "globalThis.__sagejs_sage_mode__ = true;\n" +

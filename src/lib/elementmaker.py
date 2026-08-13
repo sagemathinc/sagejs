@@ -223,10 +223,8 @@ class ElementMaker:
 
     def __call__(self, tag, *children, **attributes):
         element = _call(self.document, "createElement", [tag])
-        for name in runtime.reflect.ownKeys(attributes):
-            if runtime.jstype(name) != "string":
-                continue
-            value = runtime.reflect.get(attributes, name)
+        for name in attributes:
+            value = attributes[name]
             html_name = str.replace(str.rstrip(name, "_"), "_", "-")
             if callable(value):
                 event_name = name[2:] if name.startswith("on") else name

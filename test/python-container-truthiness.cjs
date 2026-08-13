@@ -16,6 +16,9 @@ const { default: createCompiler } = require("../dist/tools/compiler.js");
 const {
   createPythonCompilerFrontend,
 } = require("../dist/tools/python/compiler-frontend.js");
+const {
+  standaloneRuntimeRequirePrelude,
+} = require("../tools/standalone-library.cjs");
 
 const root = resolve(__dirname, "..");
 const parserOptions = {
@@ -201,7 +204,10 @@ test("Python truth testing is the safe OutputStream default", async () => {
   let generated;
   try {
     writeFileSync(pythonPath, source);
-    writeFileSync(javascriptPath, javascript);
+    writeFileSync(
+      javascriptPath,
+      standaloneRuntimeRequirePrelude() + javascript,
+    );
     cpython = spawnSync("python3", [pythonPath], {
       cwd: root,
       encoding: "utf8",

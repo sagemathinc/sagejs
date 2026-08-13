@@ -8,17 +8,16 @@ eq = assrt.equal
 
 
 def dummy_elem_eq(a, b):
-    eq(jstype(a), jstype(b))
-    if jstype(a) == "string":
+    if isinstance(a, str):
         eq(a, b)
         return
-    eq(a.attributes.length, b.attributes.length)
-    eq(a.children.length, b.children.length)
-    eq(a.name, b.name)
+    eq(len(a.attributes), len(b["attributes"]))
+    eq(len(a.children), len(b["children"]))
+    eq(a.name, b["name"])
     for attr in a.attributes:
-        eq(a[attr], b[attr])
+        eq(a.attributes[attr], b["attributes"][attr])
     for i, child in enumerate(a.children):
-        dummy_elem_eq(child, b.children[i])
+        dummy_elem_eq(child, b["children"][i])
 
 
 q = E.div("text", id="1", class_="c", data_x="x")

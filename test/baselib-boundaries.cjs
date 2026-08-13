@@ -98,7 +98,20 @@ assert.match(
   generated,
   /FiniteField_pari_ffelt = ρσ_callable_instance_class_adapter\(FiniteField_pari_ffelt\)/,
 );
-assert.doesNotMatch(generated, /ρσ_modules\["sagejs\.runtime"\]/);
+assert.equal(
+  (
+    generated.match(
+      /ρσ_baselib_modules\["sagejs\.runtime"\] = \(function\(\) \{/g,
+    ) || []
+  ).length,
+  1,
+  "sagejs.runtime must be materialized as exactly one lexical module",
+);
+assert.match(
+  generated,
+  /ρσ_baselib_modules\["sagejs"\]\.runtime = ρσ_baselib_modules\["sagejs\.runtime"\]/,
+  "the canonical sagejs package must publish the runtime module",
+);
 assert.doesNotMatch(generated, /\bruntime\.(?:flint_backend|coercion_model)/);
 
 const algebraSource = readFileSync(

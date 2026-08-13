@@ -142,9 +142,9 @@ d2 = dict([[1, 2], [2, 3]], a="b")
 
 # access
 assrt.ok("foo" in d1)
-assrt.equal(d0.a, d0["a"])
+assrt.equal(d0["a"], "b")
 assrt.equal(d1["fun1"](), 5)
-assrt.equal(d1.fun2(3), 4)
+assrt.equal(d1["fun2"](3), 4)
 assrt.equal(len(d0), 3)
 assrt.equal(d2.get(1), 2)
 assrt.equal(d2.get("a"), "b")
@@ -155,7 +155,7 @@ assrt.equal(dict_get.__func__.__name__, "get")
 
 # assignment
 d1["bar"] += "!"
-assrt.equal(d1.bar, "baz!")
+assrt.equal(d1["bar"], "baz!")
 
 # nested comparisons
 x = 3
@@ -178,7 +178,7 @@ hash = {
     "bar": 1,
     "baz": 1,
 }
-assrt.deepEqual(Object.keys(hash), [k for k in hash])
+assrt.deepEqual(list(hash), [k for k in hash])
 
 a = {1: 2}
 b = {2: 1}

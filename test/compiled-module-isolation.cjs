@@ -99,6 +99,18 @@ test("generated baselib gives every source file one lexical module", () => {
     /ρσ_baselib_modules\["sagejs"\]\.runtime = ρσ_baselib_modules\["sagejs\.runtime"\]/,
     "the canonical package must publish the same runtime module",
   );
+  const runtimeModule = generated.slice(
+    generated.indexOf('ρσ_baselib_modules["sagejs.runtime"] = (function() {'),
+    generated.indexOf(
+      'ρσ_baselib_modules["sagejs"].runtime = ' +
+        'ρσ_baselib_modules["sagejs.runtime"]',
+    ),
+  );
+  assert.doesNotMatch(
+    runtimeModule,
+    /ρσ_baselib_facade\[/,
+    "runtime compatibility aliases must remain namespace-local",
+  );
   const firstWrapper = generated.indexOf(" = (function() {");
   assert.ok(
     firstWrapper > 0,
@@ -194,6 +206,13 @@ test("sagejs.runtime is a complete canonical module namespace", async (t) => {
         "if hasattr(runtime, name)]",
     )).repr,
     "[]",
+  );
+  assert.equal(
+    (await session.evaluate(
+      "map is not runtime.map, " +
+        "list(map(lambda value: value * value, [1, 2, 3]))",
+    )).repr,
+    "(True, [1, 4, 9])",
   );
 });
 

@@ -249,8 +249,9 @@ async function compile_baselib(PyLang, src_path) {
       outputOptions.baselib_module_id = module.moduleId;
       var output = new PyLang.OutputStream(outputOptions);
       module.ast.print(output);
+      const publishesFacade = module.moduleId !== "sagejs.runtime";
       const facadeAssignments = module.exports
-        .filter((name) => facadeNameSet.has(name))
+        .filter((name) => publishesFacade && facadeNameSet.has(name))
         .map(function (name) {
           const javascriptName = namingOutput.make_name(name);
           return (
@@ -267,7 +268,7 @@ async function compile_baselib(PyLang, src_path) {
         "\nreturn ρσ_modules.__main__;\n" +
         "})();\n";
       for (const name of module.exports) {
-        if (facadeNameSet.has(name)) {
+        if (publishesFacade && facadeNameSet.has(name)) {
           ans.pretty +=
             namingOutput.make_name(name) +
             " = ρσ_baselib_facade[" + JSON.stringify(name) + "];\n";
