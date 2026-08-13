@@ -60,15 +60,36 @@ def reference_format(values, rows, columns):
     return "\n".join(lines)
 
 
-def minimum_time(function):
-    best = 1000.0
-    for _ in range(3):
-        started = runtime.wall_time()
+def elapsed_per_call(function, repeats):
+    started = runtime.wall_time()
+    for _ in range(repeats):
         function()
-        elapsed = runtime.wall_time() - started
-        if elapsed < best:
-            best = elapsed
-    return best
+    return (runtime.wall_time() - started) / repeats
+
+
+def median(values):
+    ordered = sorted(values)
+    return ordered[len(ordered) // 2]
+
+
+def paired_times(small_function, large_function, repeats):
+    # Warm both paths before timing so JIT and allocation setup do not dominate
+    # these intentionally small structural primitives. Batched measurements
+    # dilute scheduler pauses, while alternating the order avoids consistently
+    # favoring either size under parallel test-tier load.
+    for _ in range(3):
+        small_function()
+        large_function()
+    small_times = []
+    large_times = []
+    for sample in range(7):
+        if sample % 2 == 0:
+            small_times.append(elapsed_per_call(small_function, repeats))
+            large_times.append(elapsed_per_call(large_function, repeats))
+        else:
+            large_times.append(elapsed_per_call(large_function, repeats))
+            small_times.append(elapsed_per_call(small_function, repeats))
+    return median(small_times), median(large_times)
 
 
 # Fixed byte patterns make the endianness contract visible and independent of
@@ -162,10 +183,12 @@ def format_small():
 def format_large():
     runtime.uint64_matrix_format(large, 500, 500)
 
-pack_small_seconds = minimum_time(pack_small)
-pack_large_seconds = minimum_time(pack_large)
-format_small_seconds = minimum_time(format_small)
-format_large_seconds = minimum_time(format_large)
+pack_small_seconds, pack_large_seconds = paired_times(
+    pack_small, pack_large, 64
+)
+format_small_seconds, format_large_seconds = paired_times(
+    format_small, format_large, 4
+)
 
 assert pack_large_seconds < 1.0, pack_large_seconds
 assert format_large_seconds < 1.0, format_large_seconds
@@ -202,4 +225,3 @@ try {
 } finally {
   rmSync(directory, { recursive: true, force: true });
 }
-
