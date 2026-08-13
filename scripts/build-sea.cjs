@@ -482,7 +482,15 @@ function nativeDependencyReceiptSource(
   }
   const entry = join(cacheRoot, `${packageId}-dependencies`, key);
   const payload = join(entry, "payload");
-  const directories = [entry, payload];
+  const entryInformation = lstatSync(entry);
+  if (
+    !entryInformation.isDirectory() ||
+    entryInformation.isSymbolicLink() ||
+    !sameFilesystemPath(realpathSync.native(entry), entry)
+  ) {
+    throw new Error(`${id} native dependency cache entry is not canonical`);
+  }
+  const directories = [payload];
   let current = payload;
   for (const component of workspaceComponents) {
     current = join(current, component);
