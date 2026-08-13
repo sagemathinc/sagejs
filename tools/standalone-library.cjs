@@ -50,8 +50,21 @@ function pythonDynamicImports(source, importer) {
 
 function pythonImports(source, importer) {
   const names = new Set(pythonDynamicImports(source, importer));
-  for (const match of source.matchAll(/^\s*from\s+([.\w]+)\s+import\s+/gm)) {
-    names.add(resolveRelativeImport(importer, match[1]));
+  for (const match of source.matchAll(
+    /^\s*from\s+([.\w]+)\s+import\s+(\([^)]*\)|[^\n#]+)/gm,
+  )) {
+    const parent = resolveRelativeImport(importer, match[1]);
+    names.add(parent);
+    const importedNames = match[2]
+      .replace(/[()]/g, "")
+      .replace(/#[^\n]*/g, "")
+      .split(",");
+    for (const item of importedNames) {
+      const child = item.trim().split(/\s+as\s+/)[0];
+      if (!child || child === "*") continue;
+      const childName = parent ? `${parent}.${child}` : child;
+      if (sourceFilenameForModule(childName)) names.add(childName);
+    }
   }
   for (const match of source.matchAll(/^\s*import\s+([^\n#]+)/gm)) {
     for (const item of match[1].split(",")) {
