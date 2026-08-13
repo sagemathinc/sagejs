@@ -7,7 +7,7 @@
   "status": "active",
   "owner": "user",
   "objective": "Define and machine-check the portable release CPU breadth contract across GMP, FLINT, OpenBLAS, FFLAS, M4RI, igraph, and generated native compilation without changing the Linux glibc/libatomic baseline",
-  "base_commit": "9c8726aa3ebaa4bc93e9a84a86c2a8a3215bbeb1",
+  "base_commit": "902f061d55040ca37180271c44c58b9d5ff6eb8b",
   "claims": [
     "scripts/native-math-profile.cjs",
     "scripts/native-worktree-cache.cjs",
