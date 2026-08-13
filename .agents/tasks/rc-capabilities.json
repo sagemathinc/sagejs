@@ -1,0 +1,89 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "rc-capabilities",
+  "title": "Rc Capabilities",
+  "lane": "integration",
+  "status": "active",
+  "owner": "user",
+  "objective": "Implement a machine-readable release capability and provenance report that distinguishes compiled, bundled, fallback, unavailable, cold, and warm state without triggering builds.",
+  "base_commit": "950f0134dd51ca66776dc3d6290a5807cf3fd77f",
+  "claims": [
+    "scripts/release-capabilities.cjs",
+    "test/release-capabilities.cjs"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "not-applicable",
+    "fallback": "not-applicable",
+    "oracles": [],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm architecture:check",
+    "pnpm test:portable",
+    "pnpm test:baselib:strict"
+  ],
+  "runs": [
+    {
+      "command": "node --test test/release-capabilities.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.012,
+      "started_at": "2026-08-13T19:54:08.222Z",
+      "commit": "950f0134dd51ca66776dc3d6290a5807cf3fd77f",
+      "workspace_fingerprint": "f5b9713eb827d35bd80d374fdf0d9803f7ef49b14d5a3a4e67505f3c4e420b6a",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 12.85,
+      "started_at": "2026-08-13T19:54:11.631Z",
+      "commit": "950f0134dd51ca66776dc3d6290a5807cf3fd77f",
+      "workspace_fingerprint": "f5b9713eb827d35bd80d374fdf0d9803f7ef49b14d5a3a4e67505f3c4e420b6a",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 24.364,
+      "started_at": "2026-08-13T19:54:25.474Z",
+      "commit": "950f0134dd51ca66776dc3d6290a5807cf3fd77f",
+      "workspace_fingerprint": "f5b9713eb827d35bd80d374fdf0d9803f7ef49b14d5a3a4e67505f3c4e420b6a",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 16.582,
+      "started_at": "2026-08-13T19:54:53.045Z",
+      "commit": "950f0134dd51ca66776dc3d6290a5807cf3fd77f",
+      "workspace_fingerprint": "f5b9713eb827d35bd80d374fdf0d9803f7ef49b14d5a3a4e67505f3c4e420b6a",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Added a standalone, observational release capability and provenance reporter with stable JSON and concise human output. It separates installed native state (compiled, bundled, unavailable), selected execution (native, fallback, compile-on-first-use, unavailable), and cold/warm readiness; checks generated adapter hashes without loading addons; reports source/package/SEA artifact context, version, Git provenance, host and Node ABI, selected-versus-installed native math profiles, and redacted cache locations. Nine focused tests cover clean and dirty source concepts, cold and warm caches, native-disable fallback, tampering, mathematical SEA assets, Windows M4RI fallback, profile mismatch, path privacy, read-only behavior, and standalone output.",
+    "risks": [
+      "Exact selected native-math fingerprints require compiler/toolchain probes, so this observational report intentionally compares effective profile names and labels the selection probe not-run.",
+      "Platform behavior is simulated in the focused corpus; integration should exercise the standalone report inside real Linux and macOS release artifacts.",
+      "The full portable tier currently also needs native dependencies materialized in this isolated worktree."
+    ],
+    "next_steps": [
+      "The integration lane must register test/release-capabilities.cjs in test/node-test-manifest.cjs, which is outside this lane's claims, then record the portable-tier receipt.",
+      "Wire collectReleaseCapabilities and formatReleaseCapabilities into the public release diagnostics command without changing their observational-only contract.",
+      "Run the report from clean npm and SEA artifacts and retain its JSON beside release checksums and provenance."
+    ]
+  }
+}
