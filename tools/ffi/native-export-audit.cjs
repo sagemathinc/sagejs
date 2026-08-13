@@ -145,26 +145,47 @@ function implementationCalls(source, start, end, ownSymbol) {
   return [...calls].sort();
 }
 
-function consumerLocations(root, files, packageId, exportName, registrationPath) {
+function relevantConsumerPackages(path, source) {
   const result = [];
-  const dot = new RegExp(`\\.${exportName}\\b`, "g");
-  const item = new RegExp(`\\[\\s*[\"']${exportName}[\"']\\s*\\]`, "g");
+  if (path.startsWith("packages/flint/") || path.startsWith("packages/flint-wasm/") ||
+      source.includes("flint_backend") || source.includes("@sagemath/sagejs-flint")) {
+    result.push("@sagemath/sagejs-flint");
+  }
+  if (path.startsWith("packages/graph/") || source.includes("graph_backend") ||
+      source.includes("@sagemath/sagejs-graph")) {
+    result.push("@sagemath/sagejs-graph");
+  }
+  return result;
+}
+
+function consumerLocationIndex(root, files, exports) {
+  const namesByPackage = new Map();
+  const result = new Map();
+  for (const item of exports) {
+    if (!namesByPackage.has(item.package)) namesByPackage.set(item.package, new Set());
+    namesByPackage.get(item.package).add(item.export);
+    result.set(`${item.package}:${item.export}`, []);
+  }
+  const dot = /\.([A-Za-z_][A-Za-z0-9_]*)\b/g;
+  const bracket = /\[\s*["']([A-Za-z_][A-Za-z0-9_]*)["']\s*\]/g;
   for (const path of files) {
-    if (!consumerExtensions.has(extname(path)) || path === registrationPath ||
+    if (!consumerExtensions.has(extname(path)) ||
         ignoredConsumerPrefixes.some((prefix) => path.startsWith(prefix))) continue;
     const source = readFileSync(join(root, path), "utf8");
-    const relevant = packageId.includes("sagejs-flint")
-      ? (path.startsWith("packages/flint/") || path.startsWith("packages/flint-wasm/") ||
-         source.includes("flint_backend") || source.includes("@sagemath/sagejs-flint"))
-      : (path.startsWith("packages/graph/") || source.includes("graph_backend") ||
-         source.includes("@sagemath/sagejs-graph"));
-    if (!relevant) continue;
-    const lines = new Set();
-    for (const pattern of [dot, item]) {
-      pattern.lastIndex = 0;
-      for (const match of source.matchAll(pattern)) lines.add(lineAt(source, match.index));
+    for (const packageId of relevantConsumerPackages(path, source)) {
+      const names = namesByPackage.get(packageId);
+      if (names === undefined) continue;
+      const found = new Set();
+      for (const pattern of [dot, bracket]) {
+        pattern.lastIndex = 0;
+        for (const match of source.matchAll(pattern)) {
+          if (names.has(match[1])) found.add(match[1]);
+        }
+      }
+      for (const exportName of found) {
+        result.get(`${packageId}:${exportName}`).push(path);
+      }
     }
-    if (lines.size > 0) result.push(path);
   }
   return result;
 }
@@ -177,6 +198,7 @@ function createNativeExportInventory(options = {}) {
   const policy = loadNativeExportPolicy({ root });
   const classified = validateNativeExportPolicy(policy, napi);
   const definitions = sourceDefinitions(root, files, classified);
+  const consumers = consumerLocationIndex(root, files, classified);
   for (const item of classified.filter((entry) =>
     policy.matrixExports.has(entry.export)
   )) {
@@ -218,7 +240,8 @@ function createNativeExportInventory(options = {}) {
       rationale: family.rationale,
       fallback: family.fallback,
       oracles: family.oracles,
-      consumers: consumerLocations(root, files, item.package, item.export, item.path),
+      consumers: consumers.get(`${item.package}:${item.export}`)
+        .filter((path) => path !== item.path),
       declared_ffi: item.declaration || null,
     };
   });
@@ -250,6 +273,7 @@ function validateNativeExportInventory(snapshot, options = {}) {
 }
 
 module.exports = {
+  consumerLocationIndex,
   createNativeExportInventory,
   inventoryPath,
   schema,
