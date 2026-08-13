@@ -59,3 +59,11 @@ test("empty startup has a distinct stricter regression budget", () => {
     startupDefaults(true, true).hardLimitMs < startupDefaults(true).hardLimitMs,
   );
 });
+
+test("reproducible SEA assembly has an explicit cold-compile budget", () => {
+  // Node 26's embedded V8 code cache is nondeterministic. Official SEAs compile
+  // their canonical main bundle at process startup instead, and retain a
+  // separately measured ratchet for that release invariant.
+  assert.equal(startupDefaults(true).budgetMs, 525);
+  assert.equal(startupDefaults(true, true).budgetMs, 375);
+});

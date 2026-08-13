@@ -20,13 +20,13 @@
       "reference_node_ms": 30
     },
     "sea-cli": {
-      "normalized_median_ms": 300,
+      "normalized_median_ms": 525,
       "hard_limit_ms": 1500,
       "samples": 11,
       "reference_node_ms": 30
     },
     "sea-cli-empty": {
-      "normalized_median_ms": 225,
+      "normalized_median_ms": 375,
       "hard_limit_ms": 1000,
       "samples": 11,
       "reference_node_ms": 30
