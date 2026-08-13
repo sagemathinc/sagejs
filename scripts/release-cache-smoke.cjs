@@ -69,8 +69,11 @@ function outputContents(workspace) {
 
 function runProcess(command, arguments_, options = {}) {
   return new Promise((resolveProcess, rejectProcess) => {
+    const timeoutMilliseconds = options.timeoutMilliseconds ?? 30_000;
+    const spawnOptions = { ...options };
+    delete spawnOptions.timeoutMilliseconds;
     const child = spawn(command, arguments_, {
-      ...options,
+      ...spawnOptions,
       stdio: ["ignore", "pipe", "pipe"],
     });
     let stdout = "";
@@ -79,8 +82,28 @@ function runProcess(command, arguments_, options = {}) {
     child.stderr.setEncoding("utf8");
     child.stdout.on("data", (chunk) => { stdout += chunk; });
     child.stderr.on("data", (chunk) => { stderr += chunk; });
-    child.once("error", rejectProcess);
+    let settled = false;
+    const timeout = setTimeout(() => {
+      if (settled) return;
+      // `child.kill()` is the cross-platform Node termination primitive; an
+      // explicit POSIX signal is not portable to native Windows.
+      child.kill();
+      rejectProcess(
+        new Error(
+          `${command} did not finish within ${timeoutMilliseconds} milliseconds`,
+        ),
+      );
+    }, timeoutMilliseconds);
+    child.once("error", (error) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timeout);
+      rejectProcess(error);
+    });
     child.once("close", (status, signal) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timeout);
       resolveProcess({ signal, status, stderr, stdout });
     });
   });
@@ -449,11 +472,15 @@ async function measuredScenario(name, callback) {
 }
 
 async function runReleaseCacheSmoke(options = {}) {
-  const ownsRoot = options.root === undefined;
-  const root = options.root === undefined
-    ? mkdtempSync(join(tmpdir(), "sagejs-release-cache-smoke-"))
-    : resolve(options.root);
-  mkdirSync(root, { recursive: true });
+  // Always allocate the scratch tree ourselves. Accepting a caller-selected
+  // root would make the destructive recovery fixtures unsafe when the path
+  // already contains unrelated files or traverses a symlink.
+  if (options.root !== undefined) {
+    throw new Error(
+      "release cache smoke does not accept a caller-owned root; use --keep-temp",
+    );
+  }
+  const root = mkdtempSync(join(tmpdir(), "sagejs-release-cache-smoke-"));
   const scenarios = [];
   const definitions = [
     ["public-user-cache-bounds", () => publicUserCacheScenario(root)],
@@ -467,7 +494,7 @@ async function runReleaseCacheSmoke(options = {}) {
     scenarios.push(await measuredScenario(name, callback));
   }
   const passed = scenarios.filter(({ status }) => status === "pass").length;
-  const preserve = options.keepTemporary === true || !ownsRoot;
+  const preserve = options.keepTemporary === true;
   if (!preserve) rmSync(root, { recursive: true, force: true });
   return {
     schema: reportSchema,
@@ -506,24 +533,16 @@ async function main(arguments_) {
   }
   if (arguments_.includes("--help")) {
     process.stdout.write(
-      "usage: release-cache-smoke.cjs [--json] [--keep-temp] [--root PATH]\n",
+      "usage: release-cache-smoke.cjs [--json] [--keep-temp]\n",
     );
     return;
   }
-  const known = new Set(["--json", "--keep-temp", "--root"]);
-  let root;
-  for (let index = 0; index < arguments_.length; index += 1) {
-    const argument = arguments_[index];
+  const known = new Set(["--json", "--keep-temp"]);
+  for (const argument of arguments_) {
     if (!known.has(argument)) throw new Error(`unknown option ${argument}`);
-    if (argument === "--root") {
-      index += 1;
-      if (index >= arguments_.length) throw new Error("--root needs a path");
-      root = arguments_[index];
-    }
   }
   const report = await runReleaseCacheSmoke({
     keepTemporary: arguments_.includes("--keep-temp"),
-    root,
   });
   if (arguments_.includes("--json")) {
     process.stdout.write(`${JSON.stringify(report, null, 2)}\n`);

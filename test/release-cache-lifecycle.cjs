@@ -49,3 +49,13 @@ test("release cache smoke is hermetic, bounded, recoverable, and safe", () => {
   assert.equal(concurrent.builds, 1);
   assert.deepEqual(concurrent.statuses, ["built", "restored"]);
 });
+
+test("release cache smoke rejects caller-owned scratch roots", () => {
+  const result = spawnSync(
+    process.execPath,
+    [script, "--root", resolve(root, "must-not-be-touched")],
+    { cwd: root, encoding: "utf8", timeout: 10_000 },
+  );
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /unknown option --root/);
+});
