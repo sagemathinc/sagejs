@@ -90,9 +90,9 @@
   "scripts": {
     "bootstrap": "node scripts/bootstrap.cjs",
     "build": "node scripts/build.cjs",
-    "build:sea": "pnpm --dir packages/flint build && pnpm --dir packages/fflas build && pnpm --dir packages/graph build && pnpm run build && pnpm run python:precompile:run && node scripts/build-sea.cjs --all",
+    "build:sea": "pnpm --dir packages/flint build && pnpm --dir packages/fflas build && pnpm --dir packages/graph build && pnpm --dir packages/m4ri build && pnpm run build && pnpm run python:precompile:run && node scripts/build-sea.cjs --all",
     "build:sea:python": "pnpm run build && pnpm run python:precompile:run && node scripts/build-sea.cjs --python",
-    "build:sea:math": "pnpm --dir packages/flint build && pnpm --dir packages/fflas build && pnpm --dir packages/graph build && pnpm run build && pnpm run python:precompile:run && node scripts/build-sea.cjs --with-flint",
+    "build:sea:math": "pnpm --dir packages/flint build && pnpm --dir packages/fflas build && pnpm --dir packages/graph build && pnpm --dir packages/m4ri build && pnpm run build && pnpm run python:precompile:run && node scripts/build-sea.cjs --with-flint",
     "release:macos": "bash scripts/release-macos.sh",
     "release:macos:signed": "bash scripts/release-macos.sh --skip-notarize",
     "release:windows:sign": "pwsh -File scripts/sign-windows.ps1",
