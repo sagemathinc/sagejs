@@ -2361,6 +2361,27 @@ except Exception as error:
     ["3", "True", "(3, 2)", "False", "True", "True"],
   );
   const integerCache = join(temporary, "integer-cache");
+  for (const invalidSourceKey of [
+    ".",
+    "..",
+    "./kernel.py",
+    "../kernel.py",
+    "a/../kernel.py",
+    "a\\kernel.py",
+    "C:/kernel.py",
+    "NUL.py",
+    "aux/file.py",
+    "trailing./file.py",
+  ]) {
+    await assert.rejects(
+      nativeApi.compile({
+        sourcePath: integerSourcePath,
+        sourceKey: invalidSourceKey,
+        cacheRoot: integerCache,
+      }),
+      /invalid native kernel source key/,
+    );
+  }
   const integerKernel = await nativeApi.compile({
     sourcePath: integerSourcePath,
     sourceKey: "fixtures/native-integer-buffer.py",
@@ -2394,7 +2415,12 @@ except Exception as error:
       original,
       `${relativeArtifact} must be independent of physical source/cache roots`,
     );
-    for (const privateRoot of [integerSourcePath, relocatedRoot, integerCache]) {
+    for (const privateRoot of [
+      root,
+      integerSourcePath,
+      relocatedRoot,
+      integerCache,
+    ]) {
       assert.equal(
         relocated.includes(Buffer.from(privateRoot)),
         false,

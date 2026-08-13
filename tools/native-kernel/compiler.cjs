@@ -170,9 +170,21 @@ function portablePath(filename) {
 
 function validatedSourceKey(sourceKey) {
   if (sourceKey === undefined) return undefined;
+  const components = typeof sourceKey === "string"
+    ? sourceKey.split("/")
+    : [];
+  const windowsReserved = /^(?:con|prn|aux|nul|com[1-9]|lpt[1-9])(?:\.|$)/i;
   if (
     typeof sourceKey !== "string" ||
-    !/^[A-Za-z0-9_.-]+(?:\/[A-Za-z0-9_.-]+)*$/.test(sourceKey)
+    !/^[A-Za-z0-9_.-]+(?:\/[A-Za-z0-9_.-]+)*$/.test(sourceKey) ||
+    /^[A-Za-z]:/.test(sourceKey) ||
+    components.some((component) =>
+      component === "." ||
+      component === ".." ||
+      component.endsWith(".") ||
+      component.endsWith(" ") ||
+      windowsReserved.test(component)
+    )
   ) {
     throw new TypeError(`invalid native kernel source key ${sourceKey}`);
   }
@@ -335,9 +347,10 @@ function logicalCompilationPath(filename, ir) {
   );
 }
 
-function nativePathMappings(ir, outputPath) {
+function nativePathMappings(ir, outputPath, buildDirectory = outputPath) {
   const entries = [
     [outputPath, NATIVE_PATH_POLICY.buildRoot],
+    [buildDirectory, NATIVE_PATH_POLICY.buildRoot],
     ...(ir.foreignLibraries || []).map((library) => [
       foreignPrefix(library),
       `${NATIVE_PATH_POLICY.foreignRoot}/${library.id}`,
@@ -348,7 +361,9 @@ function nativePathMappings(ir, outputPath) {
   const seen = new Set();
   return entries
     .map(([physical, logical]) => [resolve(physical), logical])
-    .sort((left, right) => right[0].length - left[0].length)
+    // GCC and Clang apply the last matching prefix map. Emit broad physical
+    // roots first and their more specific semantic roles last.
+    .sort((left, right) => left[0].length - right[0].length)
     .filter(([physical]) => {
       const key = process.platform === "win32"
         ? physical.toLowerCase()
@@ -945,64 +960,64 @@ async function compileKernel(options) {
     writeFileSync(shimSourcePath, exceptionShims.source);
     writeFileSync(shimHeaderPath, exceptionShims.header);
   }
-  writeFileSync(
-    join(outputPath, "binding.gyp"),
-    `${JSON.stringify(bindingGyp(
-      ir,
-      sourceBoundsChecked,
-      exceptionShims !== null,
-      process.platform,
-      nativePathMappings(ir, outputPath),
-    ), null, 2)}\n`,
-  );
-  writeFileSync(
-    modulePath,
-    generateJavaScript(ir, {
-      cacheKey,
-      primeFieldTuning: tuning,
-      sourceBoundsChecked,
-      sourceHash,
-      // A production wrapper is relocatable and is registered by the checked
-      // runtime loader after source-hash and ABI validation. Development
-      // wrappers retain their convenient physical-path self-registration.
-      sourcePath: sourceKey === undefined ? sourcePath : "",
-      sourceIdentity: canonicalSource,
-      pathPolicy: NATIVE_PATH_POLICY,
-      nativeAbi: compatibility.nativeAbi,
-      foreignDeclarations: compatibility.foreignDeclarations,
-    }),
-  );
-  writeFileSync(
-    manifestPath,
-    `${JSON.stringify(
-      {
-        cacheKey,
-        nativeAbi: NATIVE_ABI_VERSION,
-        sourceHash,
-        foreignDeclarations: compatibility.foreignDeclarations,
-        foreignInputs,
-        primeFieldTuning: tuning,
-        sourceBoundsChecked,
-        sourceIdentity: canonicalSource,
-        pathPolicy: NATIVE_PATH_POLICY,
-        cSourceMap,
-        coreSourceMap,
-        hostIsolation: artifacts.hostIsolation,
-        exceptionShields: exceptionShims === null ? [] :
-          exceptionShims.functions.map((fn) => fn.call_plan.declaration_id),
-        ir,
-      },
-      null,
-      2,
-    )}\n`,
-  );
-
-  const nodeGyp = require.resolve("node-gyp/bin/node-gyp.js", {
-    paths: [join(root, "packages", "flint")],
-  });
   const buildWorkspace = nativeBuildWorkspace(outputPath);
   let build;
   try {
+    writeFileSync(
+      join(outputPath, "binding.gyp"),
+      `${JSON.stringify(bindingGyp(
+        ir,
+        sourceBoundsChecked,
+        exceptionShims !== null,
+        process.platform,
+        nativePathMappings(ir, outputPath, buildWorkspace.directory),
+      ), null, 2)}\n`,
+    );
+    writeFileSync(
+      modulePath,
+      generateJavaScript(ir, {
+        cacheKey,
+        primeFieldTuning: tuning,
+        sourceBoundsChecked,
+        sourceHash,
+        // A production wrapper is relocatable and is registered by the checked
+        // runtime loader after source-hash and ABI validation. Development
+        // wrappers retain their convenient physical-path self-registration.
+        sourcePath: sourceKey === undefined ? sourcePath : "",
+        sourceIdentity: canonicalSource,
+        pathPolicy: NATIVE_PATH_POLICY,
+        nativeAbi: compatibility.nativeAbi,
+        foreignDeclarations: compatibility.foreignDeclarations,
+      }),
+    );
+    writeFileSync(
+      manifestPath,
+      `${JSON.stringify(
+        {
+          cacheKey,
+          nativeAbi: NATIVE_ABI_VERSION,
+          sourceHash,
+          foreignDeclarations: compatibility.foreignDeclarations,
+          foreignInputs,
+          primeFieldTuning: tuning,
+          sourceBoundsChecked,
+          sourceIdentity: canonicalSource,
+          pathPolicy: NATIVE_PATH_POLICY,
+          cSourceMap,
+          coreSourceMap,
+          hostIsolation: artifacts.hostIsolation,
+          exceptionShields: exceptionShims === null ? [] :
+            exceptionShims.functions.map((fn) => fn.call_plan.declaration_id),
+          ir,
+        },
+        null,
+        2,
+      )}\n`,
+    );
+
+    const nodeGyp = require.resolve("node-gyp/bin/node-gyp.js", {
+      paths: [join(root, "packages", "flint")],
+    });
     build = spawnSync(process.execPath, [nodeGyp, "rebuild"], {
       cwd: buildWorkspace.directory,
       encoding: "utf8",
