@@ -2,6 +2,8 @@
 
 const { buildSync } = require("esbuild");
 const {
+  chmodSync,
+  copyFileSync,
   existsSync,
   mkdirSync,
   readFileSync,
@@ -17,6 +19,7 @@ const {
   canonicalJson,
   createBuildManifest,
   gitSourceIdentity,
+  hashRegularFile,
   serialize,
 } = require("./release-manifest.cjs");
 const {
@@ -29,7 +32,6 @@ const {
 const root = join(__dirname, "..");
 const outputDirectory = join(root, "build", "sea");
 const bundle = join(outputDirectory, "entry.cjs");
-const configFilename = join(outputDirectory, "sea-config.json");
 const multiprocessingWorkerBundle = join(
   outputDirectory,
   "multiprocessing-worker.cjs",
@@ -87,6 +89,15 @@ const m4riFfiAddon = join(
   "sagejs_m4ri_ffi.node",
 );
 const m4riFfiManifest = join(dirname(m4riFfiAddon), "manifest.json");
+const SEA_ASSEMBLY_POLICY = Object.freeze({
+  builderArguments: ["--build-sea", "sea-config.json"],
+  disableExperimentalSEAWarning: true,
+  mainBundleFormat: "commonjs",
+  mainBundleTarget: "node22",
+  schema: "sagejs.sea-assembly-policy/v1",
+  useCodeCache: true,
+  useSnapshot: false,
+});
 
 const args = new Set(process.argv.slice(2));
 const standaloneModuleDefinition = JSON.stringify(
@@ -115,7 +126,61 @@ function sha256(filename) {
 }
 
 function assetReceipt(filename) {
-  return { sha256: sha256(filename), size: statSync(filename).size };
+  return hashRegularFile(dirname(filename), filename, "SEA input");
+}
+
+function sameReceipt(left, right) {
+  return left.sha256 === right.sha256 && left.size === right.size;
+}
+
+function stageRegularFile(source, destination, label) {
+  const before = hashRegularFile(dirname(source), source, label);
+  mkdirSync(dirname(destination), { recursive: true });
+  copyFileSync(source, destination);
+  chmodSync(destination, statSync(source).mode & 0o777);
+  const staged = hashRegularFile(dirname(destination), destination, `staged ${label}`);
+  const after = hashRegularFile(dirname(source), source, label);
+  if (!sameReceipt(before, staged) || !sameReceipt(before, after)) {
+    throw new Error(`${label} changed while staging`);
+  }
+  return destination;
+}
+
+function stageSeaInputs(name, seaNode, mainBundle, assets, options = {}) {
+  const directory = join(
+    options.outputDirectory || outputDirectory,
+    `.inputs-${name}`,
+  );
+  rmSync(directory, { recursive: true, force: true });
+  mkdirSync(directory, { recursive: true });
+  const stagedAssets = {};
+  for (const [asset, filename] of Object.entries(assets)) {
+    if (
+      asset.startsWith("/") ||
+      asset.split("/").some((part) => part === "" || part === "." || part === "..")
+    ) {
+      throw new Error(`invalid SEA asset name ${asset}`);
+    }
+    stagedAssets[asset] = stageRegularFile(
+      filename,
+      join(directory, "assets", ...asset.split("/")),
+      `SEA asset ${asset}`,
+    );
+  }
+  return {
+    assets: stagedAssets,
+    directory,
+    mainBundle: stageRegularFile(
+      mainBundle,
+      join(directory, "main.cjs"),
+      "SEA main bundle",
+    ),
+    seaNode: stageRegularFile(
+      seaNode,
+      join(directory, `node-template${executableSuffix}`),
+      "SEA Node template",
+    ),
+  };
 }
 
 function compareVersions(left, right) {
@@ -289,6 +354,18 @@ function productionKernelReceipt(rootDirectory, assets) {
     if (!/^[0-9a-f]{64}$/.test(record?.cacheKey || "")) {
       throw new Error(`production native-kernel ${source} has an invalid cache key`);
     }
+    if (!/^[0-9a-f]{64}$/.test(record?.sourceHash || "")) {
+      throw new Error(`production native-kernel ${source} has an invalid source hash`);
+    }
+    const sourceFilename = join(rootDirectory, "src", "lib", ...source.split("/"));
+    if (hashRegularFile(
+      rootDirectory,
+      sourceFilename,
+      `production kernel source ${source}`,
+    ).sha256 !==
+        record.sourceHash) {
+      throw new Error(`production native-kernel ${source} is stale`);
+    }
     for (const suffix of [
       "index.cjs",
       "build/Release/sagejs_native_kernel.node",
@@ -357,6 +434,9 @@ function createSeaBuildManifest(options) {
         version: observeSeaBuilder(options.seaNode, options).versions.node,
       },
       seaMain: assetReceipt(options.mainBundle),
+      seaAssembly: stableJson(
+        options.seaAssemblyPolicy || SEA_ASSEMBLY_POLICY,
+      ),
     },
   });
 }
@@ -722,69 +802,78 @@ function buildExecutable(name, withFlint, sourceIdentity) {
     Object.assign(assets, collectNativeKernelAssets());
   }
 
-  const buildManifestFilename = join(
-    outputDirectory,
-    `${name}-build-manifest.json`,
-  );
-  const buildManifest = createSeaBuildManifest({
-    assets,
-    mainBundle: bundle,
-    nativeExecutables: Object.entries(assets)
+  const buildManifestFilename = join(outputDirectory, `${name}-build-manifest.json`);
+  const staged = stageSeaInputs(name, seaNode, bundle, assets);
+  try {
+    const nativeExecutables = Object.entries(staged.assets)
       .filter(([asset]) => asset.endsWith(".node"))
-      .map(([, filename]) => filename),
-    root,
-    seaNode,
-    sourceIdentity,
-    withFlint,
-  });
-  writeFileSync(buildManifestFilename, serialize(buildManifest));
-  assets["release/build-manifest.json"] = buildManifestFilename;
+      .map(([, filename]) => filename);
+    const buildManifest = createSeaBuildManifest({
+      assets: staged.assets,
+      mainBundle: staged.mainBundle,
+      nativeExecutables,
+      root,
+      seaNode: staged.seaNode,
+      sourceIdentity,
+      withFlint,
+    });
+    const stagedManifest = join(staged.directory, "assets", "release", "build-manifest.json");
+    mkdirSync(dirname(stagedManifest), { recursive: true });
+    writeFileSync(stagedManifest, serialize(buildManifest));
+    staged.assets["release/build-manifest.json"] = stagedManifest;
 
-  writeFileSync(
-    configFilename,
-    `${JSON.stringify(
-      {
-        main: bundle,
-        output,
-        disableExperimentalSEAWarning: true,
-        // User snapshots currently add more deserialization time than the
-        // cached runtime saves, and cannot contain the compiler's vm.Context.
-        useSnapshot: false,
-        useCodeCache: true,
-        assets,
-      },
-      null,
-      2,
-    )}\n`,
-  );
-  execFileSync(seaNode, ["--build-sea", configFilename], {
-    cwd: root,
-    stdio: "inherit",
-  });
-  const observedAfterBuild = createSeaBuildManifest({
-    assets,
-    mainBundle: bundle,
-    nativeExecutables: Object.entries(assets)
-      .filter(([asset]) => asset.endsWith(".node"))
-      .map(([, filename]) => filename),
-    root,
-    seaNode,
-    sourceIdentity,
-    withFlint,
-  });
-  if (serialize(observedAfterBuild) !== serialize(buildManifest)) {
-    rmSync(output, { force: true });
-    throw new Error(`SEA inputs changed while building ${name}`);
-  }
-  if (process.platform === "darwin") {
-    execFileSync("codesign", ["--sign", "-", "--force", output], {
-      cwd: root,
+    const configFilename = join(staged.directory, "sea-config.json");
+    const relativeAssets = Object.fromEntries(
+      Object.keys(staged.assets).map((asset) => [asset, `assets/${asset}`]),
+    );
+    writeFileSync(
+      configFilename,
+      `${JSON.stringify(
+        {
+          main: "main.cjs",
+          output: `../${name}`,
+          disableExperimentalSEAWarning:
+            SEA_ASSEMBLY_POLICY.disableExperimentalSEAWarning,
+          // User snapshots currently add more deserialization time than the
+          // cached runtime saves, and cannot contain the compiler's vm.Context.
+          useSnapshot: SEA_ASSEMBLY_POLICY.useSnapshot,
+          useCodeCache: SEA_ASSEMBLY_POLICY.useCodeCache,
+          assets: relativeAssets,
+        },
+        null,
+        2,
+      )}\n`,
+    );
+    execFileSync(staged.seaNode, SEA_ASSEMBLY_POLICY.builderArguments, {
+      cwd: staged.directory,
       stdio: "inherit",
     });
+    const observedAfterBuild = createSeaBuildManifest({
+      assets: staged.assets,
+      mainBundle: staged.mainBundle,
+      nativeExecutables,
+      root,
+      seaNode: staged.seaNode,
+      sourceIdentity,
+      withFlint,
+    });
+    if (serialize(observedAfterBuild) !== serialize(buildManifest)) {
+      rmSync(output, { force: true });
+      throw new Error(`staged SEA inputs changed while building ${name}`);
+    }
+    writeFileSync(buildManifestFilename, serialize(buildManifest));
+    if (process.platform === "darwin") {
+      execFileSync("codesign", ["--sign", "-", "--force", output], {
+        cwd: root,
+        stdio: "inherit",
+      });
+    }
+    console.log(
+      `Built ${relative(root, output)} (${withFlint ? "with native mathematics" : "Python runtime"})`,
+    );
+  } finally {
+    rmSync(staged.directory, { recursive: true, force: true });
   }
-  console.log(
-    `Built ${relative(root, output)} (${withFlint ? "with native mathematics" : "Python runtime"})`,
-  );
 }
 
 function main() {
@@ -843,5 +932,8 @@ module.exports = {
   maximumRequiredGlibcAcross,
   observeSeaBuilder,
   productionKernelReceipt,
+  SEA_ASSEMBLY_POLICY,
+  stageRegularFile,
+  stageSeaInputs,
   targetFromSeaBuilder,
 };

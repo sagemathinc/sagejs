@@ -18,6 +18,8 @@ const {
   createSeaBuildManifest,
   maximumGlibcVersion,
   productionKernelReceipt,
+  SEA_ASSEMBLY_POLICY,
+  stageSeaInputs,
   targetFromSeaBuilder,
 } = require("../scripts/build-sea.cjs");
 const {
@@ -114,14 +116,16 @@ function fixture() {
       })),
     })}\n`,
   );
-  const logicalSources = Object.fromEntries(
-    sources.map((source, index) => [source, {
+  const logicalSources = Object.fromEntries(sources.map((source, index) => {
+    const contents = `# fixture kernel ${index}\n`;
+    write(join(root, "src", "lib", ...source.split("/")), contents);
+    return [source, {
       cacheKey: String(index + 1).repeat(64),
       foreignDeclarations: [],
       nativeAbi: 21,
-      sourceHash: String(index + 3).repeat(64),
-    }]),
-  );
+      sourceHash: sha256(contents),
+    }];
+  }));
   const assets = {
     "native/zeromq.node": write(join(root, "assets", "zeromq.node"), "zero"),
     "native/sagejs_flint_ffi.node": write(
@@ -289,6 +293,7 @@ test("mathematics SEA receipt binds authority, index, sources, and every native 
       sha256: sha256(readFileSync(item.mainBundle)),
       size: readFileSync(item.mainBundle).length,
     });
+    assert.deepEqual(first.toolchain.seaAssembly, SEA_ASSEMBLY_POLICY);
   } finally {
     item.cleanup();
   }
@@ -359,6 +364,11 @@ test("build identity binds ordinary runtime assets and the SEA main bundle", () 
     const changedMain = createSeaBuildManifest(options(item));
     assert.notEqual(changedAsset.identitySha256, changedMain.identitySha256);
 
+    const changedPolicy = createSeaBuildManifest(options(item, {
+      seaAssemblyPolicy: { ...SEA_ASSEMBLY_POLICY, useCodeCache: false },
+    }));
+    assert.notEqual(changedMain.identitySha256, changedPolicy.identitySha256);
+
     item.assets["release/build-manifest.json"] = write(
       join(item.root, "self.json"),
       "self reference excluded",
@@ -366,6 +376,52 @@ test("build identity binds ordinary runtime assets and the SEA main bundle", () 
     assert.equal(
       createSeaBuildManifest(options(item)).identitySha256,
       changedMain.identitySha256,
+    );
+  } finally {
+    item.cleanup();
+  }
+});
+
+test("SEA inputs are copied into an immutable logical staging layout", () => {
+  const item = fixture();
+  try {
+    const stagingRoot = join(item.root, "staging");
+    const staged = stageSeaInputs(
+      "sagejs",
+      item.seaNode,
+      item.mainBundle,
+      item.assets,
+      { outputDirectory: stagingRoot },
+    );
+    assert.equal(readFileSync(staged.mainBundle, "utf8"), "main bundle bytes");
+    assert.equal(readFileSync(staged.seaNode, "utf8"), "node template bytes");
+    for (const [asset, filename] of Object.entries(staged.assets)) {
+      assert.equal(
+        readFileSync(filename, "utf8"),
+        readFileSync(item.assets[asset], "utf8"),
+      );
+      assert.equal(
+        filename,
+        join(staged.directory, "assets", ...asset.split("/")),
+      );
+    }
+    writeFileSync(item.mainBundle, "source changed after staging");
+    assert.equal(readFileSync(staged.mainBundle, "utf8"), "main bundle bytes");
+  } finally {
+    item.cleanup();
+  }
+});
+
+test("production kernel receipt rejects a stale compiled source", () => {
+  const item = fixture();
+  try {
+    writeFileSync(
+      join(item.root, "src", "lib", ...item.sources[0].split("/")),
+      "# changed after native compilation\n",
+    );
+    assert.throws(
+      () => productionKernelReceipt(item.root, item.assets),
+      /is stale/,
     );
   } finally {
     item.cleanup();
