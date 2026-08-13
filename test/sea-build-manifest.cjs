@@ -365,7 +365,7 @@ test("build identity binds ordinary runtime assets and the SEA main bundle", () 
     assert.notEqual(changedAsset.identitySha256, changedMain.identitySha256);
 
     const changedPolicy = createSeaBuildManifest(options(item, {
-      seaAssemblyPolicy: { ...SEA_ASSEMBLY_POLICY, useCodeCache: false },
+      seaAssemblyPolicy: { ...SEA_ASSEMBLY_POLICY, useCodeCache: true },
     }));
     assert.notEqual(changedMain.identitySha256, changedPolicy.identitySha256);
 
