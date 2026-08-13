@@ -1,0 +1,45 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "sparse-random-compiler-regression",
+  "title": "Fix sparse random compiler regression",
+  "lane": "compiler-runtime",
+  "status": "active",
+  "owner": "user",
+  "objective": "Make sample_sparse_random_spec compile and execute correctly under the full compiler suite with a focused regression and no matrix-specific compiler hack.",
+  "base_commit": "bebee635777533035b92c671e4bc63f98f2eac2e",
+  "claims": [
+    "test/compiler.test.cjs",
+    "test/matrix.py",
+    "test/standalone-library.cjs",
+    "tools/"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "compiler-infrastructure",
+    "fallback": "same-source",
+    "oracles": [
+      "CPython semantics for iterable return values",
+      "existing compiler matrix differential suite"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm build",
+    "pnpm test:compiler",
+    "pnpm test:integration"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "",
+    "risks": [],
+    "next_steps": []
+  }
+}

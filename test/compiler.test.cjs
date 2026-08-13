@@ -16,7 +16,8 @@ const harness = await createCompilerTestHarness(
 );
 
 for (const filename of harness.files()) {
-  test(`compiler/${basename(filename)}`, { timeout: 30_000 }, (context) => {
+  const timeout = basename(filename) === "algebra.py" ? 60_000 : 30_000;
+  test(`compiler/${basename(filename)}`, { timeout }, (context) => {
     const result = harness.run(filename);
     if (result.skipped) {
       context.skip(

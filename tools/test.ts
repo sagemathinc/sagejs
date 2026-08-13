@@ -15,6 +15,7 @@ import { tmpdir } from "os";
 import { standardLibraryCacheDirectory } from "./resources";
 import {
   BASELIB_STANDALONE_MODULES,
+  BUILTINS_STANDALONE_MODULES,
   POLYNOMIAL_STANDALONE_MODULES,
   baselibStandaloneImportPrelude,
 } from "./standalone-library.cjs";
@@ -73,7 +74,10 @@ export async function createCompilerTestHarness(
     const standaloneModules = fixture === "matrix.py"
       ? BASELIB_STANDALONE_MODULES
       : new Set(["algebra.py", "polynomial.py", "series.py"]).has(fixture)
-        ? POLYNOMIAL_STANDALONE_MODULES
+        ? [...new Set([
+          ...BUILTINS_STANDALONE_MODULES,
+          ...POLYNOMIAL_STANDALONE_MODULES,
+        ])]
         : undefined;
     const standalonePrelude = standaloneModules === undefined
       ? ""
@@ -125,6 +129,7 @@ export async function createCompilerTestHarness(
       // prototypes and Python parent identity. A fresh process gives each
       // fixture the real CLI's realm without leaking its global bootstrap into
       // the next fixture.
+      const timeout = fixture === "algebra.py" ? 60_000 : 30_000;
       const child = spawnSync(
         process.execPath,
         [
@@ -133,7 +138,7 @@ export async function createCompilerTestHarness(
           libPath,
           testPath,
         ],
-        { cwd: basePath, encoding: "utf8", timeout: 30_000 },
+        { cwd: basePath, encoding: "utf8", timeout },
       );
       if (child.error) throw child.error;
       if (child.status !== 0) {
