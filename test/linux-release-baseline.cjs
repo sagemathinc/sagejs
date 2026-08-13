@@ -6,6 +6,7 @@ const test = require("node:test");
 
 const {
   BUILD_IMAGE,
+  NODE_CONFIGURE_ARGUMENTS,
   NODE_SOURCE_SHA256,
   NODE_VERSION,
   POLICY_PATH,
@@ -20,6 +21,10 @@ test("Linux baseline pins Node source and both container images", () => {
   assert.match(NODE_SOURCE_SHA256, /^[0-9a-f]{64}$/);
   assert.match(BUILD_IMAGE, /manylinux_2_28_x86_64@sha256:[0-9a-f]{64}$/);
   assert.match(RUNTIME_IMAGE, /ubi8\/ubi-minimal@sha256:[0-9a-f]{64}$/);
+  assert.deepEqual(NODE_CONFIGURE_ARGUMENTS, [
+    "--prefix=/opt/sagejs-node",
+    "--partly-static",
+  ]);
 });
 
 test("Linux baseline excludes libatomic and caps the complete ABI", () => {
@@ -47,6 +52,32 @@ test("the exact official Node 26 comparison demonstrates the libatomic gap", () 
   assert.equal(witness.runtimeProbe.libatomicPackagePresent, false);
   assert.equal(witness.runtimeProbe.exitStatus, 127);
   assert.match(witness.runtimeProbe.stderrContains, /libatomic\.so\.1/);
+});
+
+test("the GCC Node 26 witness removes libatomic at the same glibc floor", () => {
+  const witness = require(
+    "../scripts/linux-baseline/gcc-node-26.7.0-linux-x64.json"
+  );
+  assert.equal(witness.schema, "sagejs.linux-node-gcc-witness-v1");
+  assert.equal(witness.node.version, NODE_VERSION);
+  assert.equal(witness.node.sourceSha256, NODE_SOURCE_SHA256);
+  assert.deepEqual(witness.node.configureArguments, NODE_CONFIGURE_ARGUMENTS);
+  assert.equal(witness.build.image, BUILD_IMAGE);
+  assert.equal(witness.build.compiler.version, "14.2.1");
+  assert.match(witness.inspection.sha256, /^[0-9a-f]{64}$/);
+  assert.equal(witness.inspection.maximumSymbolVersions.GLIBC, "2.28");
+  assert.equal(witness.inspection.dependencies.includes("libatomic.so.1"), false);
+  assert.deepEqual(witness.inspection.rpaths, []);
+  assert.equal(witness.runtimeProbe.image, RUNTIME_IMAGE);
+  assert.equal(witness.runtimeProbe.libatomicPackagePresent, false);
+  assert.equal(witness.runtimeProbe.exitStatus, 0);
+  assert.equal(witness.runtimeProbe.stdout, `v${NODE_VERSION}`);
+  assert.match(witness.seaProbe.sha256, /^[0-9a-f]{64}$/);
+  assert.equal(witness.seaProbe.dependencies.includes("libatomic.so.1"), false);
+  assert.equal(witness.seaProbe.maximumSymbolVersions.GLIBC, "2.28");
+  assert.equal(witness.seaProbe.runtimeImage, RUNTIME_IMAGE);
+  assert.equal(witness.seaProbe.exitStatus, 0);
+  assert.equal(witness.seaProbe.stdout, "gcc-node-sea-ok");
 });
 
 test("Linux baseline command-line parsing is fail closed", () => {
@@ -82,7 +113,21 @@ test("the runtime proof checks that libatomic is genuinely absent", () => {
     "utf8",
   );
   assert.match(source, /"rpm", "-q", "libatomic"/);
-  assert.match(source, /runtimeLibatomicPackagePresent: false/);
+  assert.match(source, /libatomicPackagePresent: false/);
+  assert.match(source, /runtimeProbe/);
+  assert.match(source, /--build-sea/);
+  assert.match(source, /proveSeaTemplate/);
+});
+
+test("scratch artifact extraction supplies an inert container command", () => {
+  const source = readFileSync(
+    require("node:path").join(__dirname, "..", "scripts", "linux-baseline", "release-inputs.cjs"),
+    "utf8",
+  );
+  assert.match(
+    source,
+    /\["create", tag, "\/release-inputs\/node", "--version"\]/,
+  );
 });
 
 test("the full proof rejects host-tuned mathematics profiles", () => {
