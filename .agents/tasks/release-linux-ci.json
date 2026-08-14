@@ -1,0 +1,43 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "release-linux-ci",
+  "title": "Release Linux CI Authority",
+  "lane": "integration",
+  "status": "active",
+  "owner": "user",
+  "objective": "Replace provisional host Linux release packaging with architecture-selected glibc-floor baseline-to-SEA candidates and publish validated readiness and receipt evidence",
+  "base_commit": "81722e9cb0a63a8a49c8fadd66a3a10ae2760ff3",
+  "claims": [
+    ".github/workflows/ci.yml",
+    "scripts/prepare-release-publication.cjs",
+    "test/release-publication.cjs",
+    "test/release-workflow-protection.cjs"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "not-applicable",
+    "fallback": "not-applicable",
+    "oracles": [],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "not-applicable",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm architecture:check",
+    "pnpm test:portable",
+    "pnpm test:baselib:strict",
+    "node --test test/release-publication.cjs test/release-workflow-protection.cjs test/linux-release-baseline.cjs test/release-candidate-linux.cjs"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "",
+    "risks": [],
+    "next_steps": []
+  }
+}

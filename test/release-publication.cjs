@@ -64,6 +64,59 @@ function windowsArchive(root, archive, overrides = {}) {
   ]);
 }
 
+function writeLinuxEvidence(directory, platform) {
+  const prefix = `sagejs-${platform}`;
+  const archive = `${prefix}.tar.xz`;
+  const checksum = `${archive}.sha256`;
+  const reportName = `${prefix}.report.json`;
+  const architecture = platform === "linux-arm64" ? "arm64" : "x64";
+  const nodeSource = {
+    filename: "node-v26.7.0.tar.xz",
+    sha256: "e6b182cbeeab032d1082ca4ac4fe15e3a57de691d3bde78ecf8a761fd56ee356",
+    url: "https://nodejs.org/dist/v26.7.0/node-v26.7.0.tar.xz",
+    version: "26.7.0",
+  };
+  const receipt = (nativeMathematics) => ({
+    capabilities: { artifact: { nativeMathematics } },
+    sagejsVersion: VERSION,
+    source: { commit: COMMIT },
+    target: { arch: architecture, platform: "linux" },
+    toolchain: { seaNode: { source: nodeSource, version: "26.7.0" } },
+  });
+  const report = {
+    artifacts: {
+      archive: { sha256: sha256(join(directory, archive)) },
+    },
+    buildReceipts: {
+      baseline: {
+        nodeSource,
+        platform,
+        schema: "sagejs.linux-baseline-receipt-v1",
+        sourceCommit: COMMIT,
+      },
+      math: receipt(true),
+      python: receipt(false),
+    },
+    checks: { exactMathematics: true, installer: true },
+    schemaVersion: 2,
+  };
+  writeFileSync(join(directory, reportName), `${JSON.stringify(report)}\n`);
+  writeFileSync(
+    join(directory, checksum),
+    `${sha256(join(directory, archive))}  ${archive}\n`,
+  );
+  const artifacts = Object.fromEntries(
+    [archive, checksum, reportName].map((name) => [name, sha256(join(directory, name))]),
+  );
+  writeFileSync(
+    join(directory, `${prefix}.release.json`),
+    `${JSON.stringify({
+      artifacts,
+      schema: "sagejs.linux-release-readiness/v1",
+    })}\n`,
+  );
+}
+
 function fixture() {
   const root = mkdtempSync(join(tmpdir(), "sagejs-release-publication-"));
   const input = join(root, "input");
@@ -72,7 +125,7 @@ function fixture() {
     const directory = join(input, platform);
     mkdirSync(directory, { recursive: true });
     for (const path of policy.files) {
-      if (path.endsWith(".sha256")) continue;
+      if (path.endsWith(".sha256") || path.endsWith(".release.json")) continue;
       const filename = join(directory, path);
       mkdirSync(dirname(filename), { recursive: true });
       if (path === "sagejs-windows-x64-unsigned.zip") {
@@ -87,6 +140,7 @@ function fixture() {
         `${sha256(join(directory, target))}  ${target}\n`,
       );
     }
+    if (platform.startsWith("linux-")) writeLinuxEvidence(directory, platform);
   }
   const sourceArtifacts = Object.fromEntries(
     Object.keys(platforms).map((platform, index) => [
@@ -121,7 +175,7 @@ test("publication assembly accepts exactly four identity-bound platform artifact
     assert.equal(provenance.source.commit, COMMIT);
     assert.equal(provenance.source.workflowRun.id, 987654);
     assert.match(provenance.policy.windows, /^UNSIGNED:/);
-    assert.equal(provenance.artifacts.length, 13);
+    assert.equal(provenance.artifacts.length, 17);
     assert.equal(
       provenance.artifacts.find(({ path }) => path === "sagejs-windows-x64-unsigned.zip")
         .signature,
@@ -165,6 +219,37 @@ test("unexpected intermediate artifacts and checksum tampering fail closed", () 
     assert.throws(() => preparePublication(tampered.options), /SHA-256 mismatch/);
   } finally {
     tampered.cleanup();
+  }
+});
+
+test("Linux readiness evidence is source-bound and fail-closed", () => {
+  for (const [field, value, expected] of [
+    ["sourceCommit", "f".repeat(40), /baseline.*sourceCommit|strictEqual/],
+    ["platform", "linux-x64", /baseline.*platform|strictEqual/],
+  ]) {
+    const workspace = fixture();
+    try {
+      const platform = "linux-arm64";
+      const filename = join(
+        workspace.input,
+        platform,
+        `sagejs-${platform}.report.json`,
+      );
+      const report = JSON.parse(readFileSync(filename, "utf8"));
+      report.buildReceipts.baseline[field] = value;
+      writeFileSync(filename, `${JSON.stringify(report)}\n`);
+      const readinessFilename = join(
+        workspace.input,
+        platform,
+        `sagejs-${platform}.release.json`,
+      );
+      const readiness = JSON.parse(readFileSync(readinessFilename, "utf8"));
+      readiness.artifacts[`sagejs-${platform}.report.json`] = sha256(filename);
+      writeFileSync(readinessFilename, `${JSON.stringify(readiness)}\n`);
+      assert.throws(() => preparePublication(workspace.options), expected);
+    } finally {
+      workspace.cleanup();
+    }
   }
 });
 

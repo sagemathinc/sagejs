@@ -31,6 +31,8 @@ const platforms = {
     files: [
       "sagejs-linux-x64.tar.xz",
       "sagejs-linux-x64.tar.xz.sha256",
+      "sagejs-linux-x64.report.json",
+      "sagejs-linux-x64.release.json",
       "install.sh",
     ],
     checksums: [["sagejs-linux-x64.tar.xz", "sagejs-linux-x64.tar.xz.sha256"]],
@@ -40,6 +42,8 @@ const platforms = {
     files: [
       "sagejs-linux-arm64.tar.xz",
       "sagejs-linux-arm64.tar.xz.sha256",
+      "sagejs-linux-arm64.report.json",
+      "sagejs-linux-arm64.release.json",
     ],
     checksums: [["sagejs-linux-arm64.tar.xz", "sagejs-linux-arm64.tar.xz.sha256"]],
   },
@@ -141,6 +145,85 @@ function verifyChecksum(root, target, receipt) {
     throw new Error(`SHA-256 mismatch for ${target}: expected ${match[1]}, got ${actual}`);
   }
   return actual;
+}
+
+function readJson(filename, label) {
+  try {
+    return JSON.parse(readFileSync(filename, "utf8"));
+  } catch (error) {
+    throw new Error(`invalid ${label}: ${error.message}`);
+  }
+}
+
+function verifyLinuxReadiness(root, platform, { commit, version }) {
+  const prefix = `sagejs-${platform}`;
+  const archive = `${prefix}.tar.xz`;
+  const checksum = `${archive}.sha256`;
+  const reportName = `${prefix}.report.json`;
+  const readinessName = `${prefix}.release.json`;
+  const report = readJson(join(root, reportName), `${platform} release report`);
+  const readiness = readJson(
+    join(root, readinessName),
+    `${platform} readiness manifest`,
+  );
+  const expectedArtifacts = Object.fromEntries(
+    [archive, checksum, reportName].map((name) => [
+      name,
+      hashRegularFile(root, join(root, name), name).sha256,
+    ]),
+  );
+  const nodeSource = {
+    filename: "node-v26.7.0.tar.xz",
+    sha256: "e6b182cbeeab032d1082ca4ac4fe15e3a57de691d3bde78ecf8a761fd56ee356",
+    url: "https://nodejs.org/dist/v26.7.0/node-v26.7.0.tar.xz",
+    version: "26.7.0",
+  };
+  assert.deepEqual(readiness, {
+    artifacts: expectedArtifacts,
+    schema: "sagejs.linux-release-readiness/v1",
+  });
+  assert.equal(report.schemaVersion, 2, `${platform} report schema`);
+  assert.equal(report.artifacts?.archive?.sha256, expectedArtifacts[archive]);
+  assert.equal(
+    report.buildReceipts?.baseline?.schema,
+    "sagejs.linux-baseline-receipt-v1",
+    `${platform} baseline schema`,
+  );
+  assert.equal(
+    report.buildReceipts?.baseline?.platform,
+    platform,
+    `${platform} baseline platform`,
+  );
+  assert.equal(
+    report.buildReceipts?.baseline?.sourceCommit,
+    commit,
+    `${platform} baseline sourceCommit`,
+  );
+  assert.deepEqual(
+    report.buildReceipts?.baseline?.nodeSource,
+    nodeSource,
+    `${platform} baseline Node source`,
+  );
+  const architecture = platform === "linux-arm64" ? "arm64" : "x64";
+  for (const name of ["math", "python"]) {
+    const receipt = report.buildReceipts?.[name];
+    assert.equal(receipt?.sagejsVersion, version, `${platform} ${name} version`);
+    assert.equal(receipt?.source?.commit, commit, `${platform} ${name} source`);
+    assert.equal(receipt?.target?.platform, "linux", `${platform} ${name} target`);
+    assert.equal(receipt?.target?.arch, architecture, `${platform} ${name} architecture`);
+    assert.equal(receipt?.toolchain?.seaNode?.version, "26.7.0");
+    assert.deepEqual(
+      receipt?.toolchain?.seaNode?.source,
+      nodeSource,
+      `${platform} ${name} Node source`,
+    );
+  }
+  assert.ok(report.checks && Object.keys(report.checks).length > 0);
+  assert.equal(
+    Object.entries(report.checks).every(([, passed]) => passed === true),
+    true,
+    `${platform} release report contains a failed check`,
+  );
 }
 
 function zipEntry(archive, entry) {
@@ -280,6 +363,9 @@ function preparePublication(options) {
     const root = join(inputDirectory, platform);
     assert.deepEqual(regularFiles(root), [...policy.files].sort(), `${platform} artifact contents`);
     for (const [target, receipt] of policy.checksums) verifyChecksum(root, target, receipt);
+    if (platform.startsWith("linux-")) {
+      verifyLinuxReadiness(root, platform, { commit: options.commit, version });
+    }
     if (platform === "windows-x64") {
       verifyUnsignedWindowsArchive(join(root, "sagejs-windows-x64-unsigned.zip"), {
         commit: options.commit,
