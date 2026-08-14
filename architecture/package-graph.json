@@ -32,6 +32,21 @@
       "reference_node_ms": 30
     }
   },
+  "startup_budget_profiles": [
+    {
+      "platform": "linux",
+      "arch": "arm64",
+      "overrides": {
+        "development-cli": {
+          "normalized_median_ms": 425,
+          "evidence": [
+            "GitHub Actions job 94758445357: 380.1 ms normalized median",
+            "GitHub Actions job 94767636220: 387.4 ms normalized median"
+          ]
+        }
+      }
+    }
+  ],
   "packages": [
     {
       "id": "core-runtime",
