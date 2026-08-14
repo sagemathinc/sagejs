@@ -1148,12 +1148,19 @@ test("FFLAS installation metadata remains valid after relocating its builder pre
     renameSync(prefix, relocated);
     rmSync(builder, { recursive: true, force: true });
 
-    assert.equal(
-      execFileSync(join(relocated, "bin", "givaro-config"), {
-        encoding: "utf8",
-      }).trim(),
-      realpathSync(relocated),
+    const givaroConfig = join(relocated, "bin", "givaro-config");
+    const givaroConfigSource = readFileSync(givaroConfig, "utf8");
+    assert.match(
+      givaroConfigSource,
+      /^prefix=\$\(CDPATH= cd -- "\$\(dirname -- "\$0"\)\/\.\." && pwd -P\)$/m,
     );
+    assert.equal(givaroConfigSource.includes(prefix), false);
+    if (process.platform !== "win32") {
+      assert.equal(
+        execFileSync(givaroConfig, { encoding: "utf8" }).trim(),
+        realpathSync(relocated),
+      );
+    }
     const pkgconfig = readFileSync(
       join(relocated, "lib", "pkgconfig", "givaro.pc"),
       "utf8",
