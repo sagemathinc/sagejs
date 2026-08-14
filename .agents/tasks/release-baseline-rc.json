@@ -4,7 +4,7 @@
   "id": "release-baseline-rc",
   "title": "Release baseline consolidation",
   "lane": "integration",
-  "status": "active",
+  "status": "complete",
   "owner": "user",
   "objective": "Consolidate only reviewed release-critical changes onto the dense QQ release authority and publish a validated release candidate source branch without tagging or publishing artifacts",
   "base_commit": "e4018fd70bf2b9549b826e20d825e08bf43dafe5",
@@ -19,11 +19,11 @@
     "tools/runtime-bootstrap.ts",
     "tools/native-kernel/compiler.cjs",
     "test/",
-    "docs/"
-    ,"README.md"
-    ,"RELEASING.md"
-    ,"DISTRIBUTION.md"
-    ,"WINDOWS.md"
+    "docs/",
+    "README.md",
+    "RELEASING.md",
+    "DISTRIBUTION.md",
+    "WINDOWS.md"
   ],
   "dependencies": [],
   "references": [],
@@ -86,17 +86,47 @@
       "commit": "ff05b2b7bf203ead711c3601a805907804a0133f",
       "workspace_fingerprint": "4ad14b84ee1ac109d152a0484a2ad843041153a893e2b88bc2e622e8a0f7f723",
       "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/linux-release-baseline.cjs test/sea-build-manifest.cjs test/release-candidate-linux.cjs test/release-artifact-acceptance.cjs test/test-manifest.test.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.622,
+      "started_at": "2026-08-14T11:22:55.982Z",
+      "commit": "388f8cc7c72659bd9e51bf061ca3bced01f80092",
+      "workspace_fingerprint": "39ee6de4a943fecc35d11191410b89724140df864dbdee05a00a49440d92117f",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 5.82,
+      "started_at": "2026-08-14T11:22:58.237Z",
+      "commit": "388f8cc7c72659bd9e51bf061ca3bced01f80092",
+      "workspace_fingerprint": "39ee6de4a943fecc35d11191410b89724140df864dbdee05a00a49440d92117f",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm parallel:check -- --all",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.631,
+      "started_at": "2026-08-14T11:23:04.709Z",
+      "commit": "388f8cc7c72659bd9e51bf061ca3bced01f80092",
+      "workspace_fingerprint": "39ee6de4a943fecc35d11191410b89724140df864dbdee05a00a49440d92117f",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {
-    "summary": "Consolidated the reviewed dense-QQ release authority with the two GCC 13 arbitrary-prime polynomial fixes and the Windows clang-cl reproducible path-map fix. Reconciled stale machine-readable task authority: only already-integrated implementation lanes were closed, historical cross-lane shared claims were returned to integration ownership, one precise JavaScript-backend reproducibility claim was admitted, and the all-contract gate now passes 187 contracts without suppressing overlap detection. A live Windows x64 clang-cl witness accepted the three forwarded prefix maps and observed the logical __FILE__ path. The focused polynomial resource witness and complete FFI suite pass. Required architecture, portable, and strict-Python gates pass at ff05b2b7bf203ead711c3601a805907804a0133f after an ordinary build populated this fresh worktree's generated runtime caches.",
+    "summary": "Closed the independently reviewed intermediate release checkpoint after integrating the portable compiler fixes, Linux x64/arm64 glibc baseline and SEA authority, complete cross-platform artifact acceptance and licensing authority, Linux Node 26.7 Temporal/Rust source authority, macOS ZeroMQ source authority, and isolated prime host benchmarks. The current combined release-focused suite, architecture gate, and all-contract gate pass at 388f8cc7c72659bd9e51bf061ca3bced01f80092.",
     "risks": [
-      "The first portable receipt failed only because the no-install worktree had compiler/native cache artifacts but not the ordinary symbolic backend and module/runtime cache manifests; pnpm build populated those expected generated assets and the unchanged candidate then passed all 387 portable tests.",
-      "macOS ZeroMQ source rebuilding, release-license remediation, Linux ARM baseline authority, baseline-to-SEA assembly, startup instrumentation, and the unfinished compiler-core prologue are intentionally excluded and require their own reviewed integration."
+      "This is an intermediate source checkpoint, not the frozen release commit: first-party macOS packaging/signing workflow and canonical unsigned Windows packaging remain active reviewed lanes.",
+      "Native x64, arm64, macOS, and Windows final artifacts must still be rebuilt and accepted from the eventual frozen commit."
     ],
     "next_steps": [
-      "Use ff05b2b7bf203ead711c3601a805907804a0133f as the common source authority for current Linux x64, Linux arm64, macOS arm64, and Windows x64 platform validation.",
-      "Layer independently approved distribution fixes in follow-up integration commits without rewriting this baseline evidence."
+      "Rebase the shared FFLAS cache expectation and macOS workflow lanes on this closed checkpoint so their task claims can pass independently.",
+      "Complete and integrate macOS before rebasing the Windows lane, then open a new narrow final-integration contract only after both child claim sets are inactive."
     ]
   }
 }
