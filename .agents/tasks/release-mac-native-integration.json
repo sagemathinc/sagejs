@@ -1,0 +1,64 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "release-mac-native-integration",
+  "title": "Integrate Mac native portability",
+  "lane": "integration",
+  "status": "active",
+  "owner": "user",
+  "objective": "Integrate the independently reviewed Apple native identity, sanitizer capability, and dense-prime timing portability authority into a closed intermediate release checkpoint",
+  "base_commit": "0ae559238dd4b0a07b53dbd126630cf46a9c6aa0",
+  "claims": [
+    ".agents/tasks/release-mac-native-integration.json",
+    ".agents/tasks/mac-native-portability.json",
+    "packages/m4ri/test/test.cjs",
+    "test/dense-integer-modular-rank.cjs",
+    "test/dense-prime-structural.cjs",
+    "test/exact-matrix-pivot-ffi.cjs",
+    "test/exact-polynomial-factorization-resource.cjs",
+    "test/exact-polynomial-resource-ffi.cjs",
+    "test/exact-rational-matrix-polynomials.cjs",
+    "test/fmpq-resource-ops-lifecycle.cjs",
+    "test/fmpz-matrix-resource-ffi.cjs",
+    "test/fmpz-matrix-selector-lifecycle.cjs",
+    "test/polynomial-structural-flint.cjs",
+    "tools/ffi/lifecycle-fuzz.cjs",
+    "tools/native-kernel/compiler.cjs",
+    "tools/runtime-bootstrap.ts"
+  ],
+  "dependencies": [
+    "mac-native-portability"
+  ],
+  "references": [],
+  "architecture": {
+    "strategy": "compiler-infrastructure",
+    "fallback": "tested-capability",
+    "oracles": [
+      "Required-native execution across lexical macOS filesystem aliases retains one physical source identity",
+      "Darwin lifecycle witnesses preserve AddressSanitizer and UndefinedBehaviorSanitizer while disabling only unsupported leak detection",
+      "Repeated order-balanced dense-prime timing retains the absolute, legacy-relative, and scaling gates"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "not-applicable",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "node --test --test-reporter=spec --test-name-pattern=sanitizer lifecycle witnesses|native and disabled-native paths use the same declared pivot calls|sanitizers exercise façade allocation and destruction test/exact-matrix-pivot-ffi.cjs packages/m4ri/test/test.cjs",
+    "node test/dense-prime-structural.cjs",
+    "pnpm test:native",
+    "pnpm architecture:check",
+    "pnpm test:portable",
+    "pnpm test:baselib:strict",
+    "pnpm parallel:check -- --all"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "",
+    "risks": [],
+    "next_steps": []
+  }
+}
