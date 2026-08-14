@@ -24,6 +24,20 @@ const SCHEMA = "sagejs.release-publication-provenance-v1";
 const HASH = /^[0-9a-f]{64}$/;
 const COMMIT = /^[0-9a-f]{40}(?:[0-9a-f]{24})?$/;
 const VERSION = /^(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)(?:-[0-9A-Za-z.-]+)?$/;
+const LINUX_RELEASE_CHECKS = Object.freeze([
+  "artifactBoundBuildReceipts",
+  "cacheAndTemporaryBounds",
+  "corruptInstallRejected",
+  "deterministicReleaseArchive",
+  "exactMathematics",
+  "installer",
+  "installerUpgrade",
+  "m4riNativeWitness",
+  "nativeCapabilities",
+  "noAdjacentRuntime",
+  "noExternalNode",
+  "pythonRuntime",
+]);
 
 const platforms = {
   "linux-x64": {
@@ -218,9 +232,23 @@ function verifyLinuxReadiness(root, platform, { commit, version }) {
       `${platform} ${name} Node source`,
     );
   }
-  assert.ok(report.checks && Object.keys(report.checks).length > 0);
   assert.equal(
-    Object.entries(report.checks).every(([, passed]) => passed === true),
+    report.buildReceipts.math.capabilities?.artifact?.nativeMathematics,
+    true,
+    `${platform} mathematics SEA capability`,
+  );
+  assert.equal(
+    report.buildReceipts.python.capabilities?.artifact?.nativeMathematics,
+    false,
+    `${platform} Python SEA capability`,
+  );
+  assert.deepEqual(
+    Object.keys(report.checks || {}).sort(),
+    [...LINUX_RELEASE_CHECKS].sort(),
+    `${platform} release check inventory`,
+  );
+  assert.equal(
+    LINUX_RELEASE_CHECKS.every((name) => report.checks[name] === true),
     true,
     `${platform} release report contains a failed check`,
   );
