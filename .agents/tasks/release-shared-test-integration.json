@@ -4,7 +4,7 @@
   "id": "release-shared-test-integration",
   "title": "Integrate cross-platform FFLAS cache evidence",
   "lane": "integration",
-  "status": "active",
+  "status": "complete",
   "owner": "user",
   "objective": "Integrate the independently reviewed cross-platform FFLAS cache-provenance expectation and its physical Apple-silicon evidence into the closed intermediate release checkpoint",
   "base_commit": "18f5475a82297a2066462b732388406832a3449f",
@@ -31,12 +31,80 @@
   },
   "validation": [
     "node --test test/parallel-development.cjs",
+    "pnpm architecture:check",
+    "pnpm test:portable",
+    "pnpm test:baselib:strict",
     "pnpm parallel:check -- --all"
   ],
-  "runs": [],
+  "runs": [
+    {
+      "command": "node --test test/parallel-development.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 9.826,
+      "started_at": "2026-08-14T11:32:35.389Z",
+      "commit": "a56e12ee1d4ae532748f0a828e45d79e82737d93",
+      "workspace_fingerprint": "8d02be45256c063d845c43828b1b1507aa4ef27180fdb6a59ec1be01e0f10542",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm parallel:check -- --all",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 0.61,
+      "started_at": "2026-08-14T11:32:45.821Z",
+      "commit": "a56e12ee1d4ae532748f0a828e45d79e82737d93",
+      "workspace_fingerprint": "8d02be45256c063d845c43828b1b1507aa4ef27180fdb6a59ec1be01e0f10542",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 5.637,
+      "started_at": "2026-08-14T11:33:04.946Z",
+      "commit": "a56e12ee1d4ae532748f0a828e45d79e82737d93",
+      "workspace_fingerprint": "8d02be45256c063d845c43828b1b1507aa4ef27180fdb6a59ec1be01e0f10542",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 21.099,
+      "started_at": "2026-08-14T11:33:11.226Z",
+      "commit": "a56e12ee1d4ae532748f0a828e45d79e82737d93",
+      "workspace_fingerprint": "8d02be45256c063d845c43828b1b1507aa4ef27180fdb6a59ec1be01e0f10542",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 15.387,
+      "started_at": "2026-08-14T11:33:46.170Z",
+      "commit": "a56e12ee1d4ae532748f0a828e45d79e82737d93",
+      "workspace_fingerprint": "8d02be45256c063d845c43828b1b1507aa4ef27180fdb6a59ec1be01e0f10542",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm parallel:check -- --all",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.629,
+      "started_at": "2026-08-14T11:34:02.216Z",
+      "commit": "a56e12ee1d4ae532748f0a828e45d79e82737d93",
+      "workspace_fingerprint": "8d02be45256c063d845c43828b1b1507aa4ef27180fdb6a59ec1be01e0f10542",
+      "platform": "linux-x64"
+    }
+  ],
   "handoff": {
-    "summary": "",
-    "risks": [],
-    "next_steps": []
+    "summary": "Integrated the independently approved cross-platform FFLAS cache-provenance regression and its completed Linux plus physical Apple-silicon validation authority into the closed intermediate release checkpoint.",
+    "risks": [
+      "The first recorded all-contract run correctly rejected this integration task because its validation list initially omitted the mandatory integration-lane architecture, portable, and strict gates; the declaration was corrected, all three gates passed, and the final all-contract receipt passes."
+    ],
+    "next_steps": [
+      "Rebase the macOS release workflow lane on this closed checkpoint before its final rehearsal and handoff."
+    ]
   }
 }
