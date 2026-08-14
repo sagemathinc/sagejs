@@ -32,6 +32,7 @@ const {
 } = require("./release-manifest.cjs");
 const {
   EMBEDDED_ADDON_ROLE,
+  NODE_TEMPLATE_LABEL,
   NODE_TEMPLATE_ROLE,
 } = require("./build-sea.cjs");
 const { compareVersions } = require("./release-native-binary-inspector.cjs");
@@ -1112,6 +1113,7 @@ function canonicalDependencyList(value, location) {
     !Array.isArray(value) ||
     value.some((dependency) => typeof dependency !== "string" || !dependency) ||
     new Set(value).size !== value.length ||
+    new Set(value.map((dependency) => dependency.toUpperCase())).size !== value.length ||
     JSON.stringify(value) !== JSON.stringify(
       [...value].sort((left, right) => left.localeCompare(right)),
     )
@@ -1132,6 +1134,8 @@ function validateWindowsImportSemantics(report, label) {
     label + " Windows aggregate dependencies",
   );
   const embeddedAddons = [];
+  const nodeTemplates = [];
+  const labels = new Set();
   const perFileDependencies = [];
   for (const file of report.files) {
     if (
@@ -1141,8 +1145,23 @@ function validateWindowsImportSemantics(report, label) {
       typeof file.label !== "string" ||
       !file.label
     ) throw new Error(label + " has an invalid Windows native-binary file record");
+    const foldedLabel = file.label.toUpperCase();
+    if (labels.has(foldedLabel)) {
+      throw new Error(label + " has a duplicate Windows binary label: " + file.label);
+    }
+    labels.add(foldedLabel);
     if (file.role !== EMBEDDED_ADDON_ROLE && file.role !== NODE_TEMPLATE_ROLE) {
       throw new Error(label + " " + file.label + " has an unknown Windows binary role");
+    }
+    if (file.role === NODE_TEMPLATE_ROLE) {
+      nodeTemplates.push(file);
+      if (file.label !== NODE_TEMPLATE_LABEL) {
+        throw new Error(
+          label + " Windows Node template has unexpected label: " + file.label,
+        );
+      }
+    } else if (file.label === NODE_TEMPLATE_LABEL) {
+      throw new Error(label + " Windows Node template label has the wrong role");
     }
     const ordinary = canonicalDependencyList(
       file.dependencies,
@@ -1165,6 +1184,9 @@ function validateWindowsImportSemantics(report, label) {
     } else if (delaysNode) {
       throw new Error(label + " " + file.label + " unexpectedly delay-loads node.exe");
     }
+  }
+  if (nodeTemplates.length !== 1) {
+    throw new Error(label + " Windows report must contain exactly one Node template");
   }
   const expectedAggregate = [...new Set(perFileDependencies)]
     .sort((left, right) => left.localeCompare(right));
