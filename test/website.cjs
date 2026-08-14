@@ -100,15 +100,21 @@ test("distribution claims preserve the explicit unsigned Windows preview", () =>
 
   assert.ok(installers);
   assert.ok(signing);
-  assert.match(installers.summary, /explicit unsigned preview ZIP/i);
+  assert.equal(installers.state, "partial");
+  assert.match(installers.summary, /not yet published/i);
+  assert.match(installers.summary, /unsigned Windows preview ZIP/i);
+  assert.match(installers.coverage.summary, /npm v0\.1\.0 preview is available/i);
+  assert.match(installers.coverage.summary, /assets have not yet been published/i);
   assert.match(installers.target, /explicitly unsigned Windows preview/i);
   assert.ok(
-    installers.coverage.includes.includes("Windows x64 unsigned preview ZIP"),
+    installers.coverage.includes.includes("planned Windows x64 unsigned preview ZIP"),
   );
   assert.doesNotMatch(installers.target, /uniform signed artifacts/i);
 
-  assert.match(signing.coverage.label, /unsigned Windows preview/i);
-  assert.match(signing.summary, /not Authenticode-signed/i);
+  assert.match(signing.coverage.label, /unsigned Windows policy/i);
+  assert.match(signing.coverage.summary, /forthcoming Windows preview/i);
+  assert.match(signing.summary, /explicitly unsigned Windows x64 preview/i);
+  assert.match(signing.summary, /assets are not yet published/i);
   assert.match(
     signing.implementation,
     /explicit unsigned Windows archive policy/i,
@@ -127,17 +133,20 @@ test("distribution claims preserve the explicit unsigned Windows preview", () =>
   assert.match(releaseWorkflow, /sagejs-windows-x64-unsigned\.zip/);
 });
 
-test("install panel distinguishes the native v0.2 release from the npm preview", () => {
+test("install panel distinguishes the pending native v0.2 release from the npm preview", () => {
   assert.equal(packageMetadata.version, "0.2.0");
-  assert.match(html, /Native release v0\.2\.0/);
+  assert.match(html, /Native v0\.2\.0 binaries soon/);
+  assert.match(html, /not yet available from GitHub Releases/);
+  assert.match(html, /Planned v0\.2\.0 assets/);
   assert.match(html, /Linux x64\/arm64/);
   assert.match(html, /unsigned Windows x64 preview/);
   assert.match(html, /signed and notarized macOS arm64/);
   assert.match(html, /npm preview v0\.1\.0/);
-  assert.match(html, /native v0\.2\.0 releases use the installer above/);
+  assert.match(html, /separate from the forthcoming native v0\.2\.0 release/);
   assert.match(releaseGuide, /This release does not publish npm packages/);
+  assert.doesNotMatch(html, /releases\/latest\/download\/install\.sh/);
+  assert.doesNotMatch(html, /Native release v0\.2\.0/);
   assert.doesNotMatch(html, /Native preview v0\.1\.1/);
-  assert.doesNotMatch(html, /the unified v0\.2 release is next/);
 });
 
 test("verified examples form a searchable executable corpus", () => {
@@ -259,10 +268,10 @@ test("benchmark catalog inventories existing suites and future research cases", 
   assert.match(performancePilot.warning, /not a release baseline/i);
 });
 
-test("dashboard covers the three questions and both install paths", () => {
+test("dashboard covers the three questions and current/future install paths", () => {
   for (const id of ["install", "capabilities", "roadmap"]) assert.match(html, new RegExp(`id=["']${id}["']`));
   assert.match(html, /@sagemath\/sagejs/);
-  assert.match(html, /releases\/latest\/download\/install\.sh/);
+  assert.match(html, /github\.com\/sagemathinc\/sagejs\/releases/);
   assert.match(html, /--install-jupyter-kernel/);
   for (const hook of ["metric-total", "capability-list", "roadmap-columns", "area-filter", "example-search-results", "example-result-list", "competitive-audit", "audit-gap-count", "audit-existing-benchmarks", "performance-results", "performance-bars", "performance-table-body", "performance-warning", "performance-command"]) assert.match(html, new RegExp(`id=["']${hook}["']`));
 });
