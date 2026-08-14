@@ -4,7 +4,7 @@
   "id": "release-artifact-acceptance",
   "title": "Cross-platform release artifact acceptance",
   "lane": "integration",
-  "status": "active",
+  "status": "review",
   "owner": "user",
   "objective": "Verify every final release archive against exact source/build receipts, complete third-party license provenance, binary compatibility, relocation, mathematics, and platform signing policy before publication",
   "base_commit": "e4018fd70bf2b9549b826e20d825e08bf43dafe5",
@@ -226,16 +226,56 @@
       "commit": "673ac4a42b418875821b5f34879d9e58875b386f",
       "workspace_fingerprint": "46932724a82711c9d4f04cff3bfb8b6f368a3fbf68c9187e75424651db0ad132",
       "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/release-artifact-acceptance.cjs test/test-manifest.test.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.352,
+      "started_at": "2026-08-14T10:36:04.414Z",
+      "commit": "98858655b0ea8f78cdef5fc299e327431d790e06",
+      "workspace_fingerprint": "1fc5b291b12b59fa0e444dbdea3152f9c08ffba3b9c4c48c577951e5efda661b",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 5.722,
+      "started_at": "2026-08-14T10:36:05.428Z",
+      "commit": "98858655b0ea8f78cdef5fc299e327431d790e06",
+      "workspace_fingerprint": "1fc5b291b12b59fa0e444dbdea3152f9c08ffba3b9c4c48c577951e5efda661b",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 21.76,
+      "started_at": "2026-08-14T10:36:11.797Z",
+      "commit": "98858655b0ea8f78cdef5fc299e327431d790e06",
+      "workspace_fingerprint": "1fc5b291b12b59fa0e444dbdea3152f9c08ffba3b9c4c48c577951e5efda661b",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 15.52,
+      "started_at": "2026-08-14T10:36:34.210Z",
+      "commit": "98858655b0ea8f78cdef5fc299e327431d790e06",
+      "workspace_fingerprint": "1fc5b291b12b59fa0e444dbdea3152f9c08ffba3b9c4c48c577951e5efda661b",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {
-    "summary": "Added fail-closed final-host acceptance for all four release targets plus a complete digest-bound third-party source/license inventory, Node 26.7 builder authority, production npm notice corpus, safe archive preflight, native ABI checks, relocation and mathematics smoke, exact Apple publisher/package/benchmark binding, and explicit unsigned-Windows evidence.",
+    "summary": "Added fail-closed final-host acceptance for all four release targets plus a complete digest-bound third-party source/license inventory. Linux artifacts must retain the exact baseline, SEA artifact/executable, Node source, Temporal, and Rust 1.86 authorities. Rooted Windows fflate ZIPs are byte-preflighted and extracted without tar, and bind canonical unsigned metadata to real PE certificate-table evidence. macOS ditto ZIPs retain strict path/link/duplicate validation and exact Apple publisher, package payload, notarization, and benchmark bindings.",
     "risks": [
       "The final platform candidates still need to exercise target-only codesign, pkgutil, Gatekeeper, PE, Mach-O, and runtime checks after workflow integration.",
-      "The deliberately strict ZIP policy rejects streaming, ZIP64, non-ASCII paths, links, and ambiguous Unicode-path extras; release assemblers must use the reviewed simple archive layout."
+      "The deliberately strict ZIP policy accepts only ordinary stored/deflated members and macOS ditto's signed data descriptors; it rejects ZIP64, non-ASCII paths, links, duplicate or overlapping members, ambiguous Unicode-path extras, and archives expanding beyond 2 GiB."
     ],
     "next_steps": [
-      "Wire this gate into each platform build/signing job before artifact transport or publication.",
+      "Wire this gate into each platform build/signing job before artifact transport or publication and upload its canonical JSON plus SHA-256 sidecar.",
       "Make every archive ship both SEA build manifests, the complete licenses directory, and internal SHA256SUMS.",
       "Pass the signed macOS PKG and benchmark sidecars into acceptance and retain each canonical acceptance receipt as a release asset."
     ]
