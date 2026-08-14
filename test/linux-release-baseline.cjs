@@ -28,6 +28,7 @@ const {
   PLATFORM_CONFIGS,
   POLICY_PATH,
   RUNTIME_IMAGE,
+  assertNativeEngineArchitecture,
   assertPortableMathProfile,
   assertSafeOutputDirectory,
   allocatePrivateImage,
@@ -37,6 +38,7 @@ const {
   launchStagedRelease,
   parseArguments,
   platformConfig,
+  normalizeContainerArchitecture,
   publishReleaseOutput,
   releaseAuthorityIdentity,
   removeOwnedImage,
@@ -78,6 +80,59 @@ test("Linux baseline pins distinct native x64 and arm64 container authorities", 
   assert.notEqual(arm64.buildImage, x64.buildImage);
   assert.notEqual(arm64.runtimeImage, x64.runtimeImage);
   assert.throws(() => platformConfig("linux-riscv64"), /unsupported/);
+});
+
+test("Linux baseline rejects an emulated container engine before building", () => {
+  assert.equal(normalizeContainerArchitecture("x86_64"), "amd64");
+  assert.equal(normalizeContainerArchitecture("aarch64"), "arm64");
+  assert.throws(() => normalizeContainerArchitecture("riscv64"), /unsupported/);
+
+  const calls = [];
+  const native = assertNativeEngineArchitecture(
+    "podman",
+    platformConfig("linux-arm64"),
+    {
+      spawn: (_engine, arguments_) => {
+        calls.push(arguments_);
+        return {
+          status: 0,
+          stdout: JSON.stringify({ host: { arch: "aarch64" } }),
+          stderr: "",
+        };
+      },
+    },
+  );
+  assert.deepEqual(native, {
+    architecture: "arm64",
+    reportedArchitecture: "aarch64",
+    selectedPlatform: "linux/arm64",
+  });
+  assert.deepEqual(calls, [["info", "--format", "json"]]);
+
+  calls.length = 0;
+  assert.throws(
+    () =>
+      assertNativeEngineArchitecture(
+        "docker",
+        platformConfig("linux-arm64"),
+        {
+          spawn: (_engine, arguments_) => {
+            calls.push(arguments_);
+            return {
+              status: 0,
+              stdout: JSON.stringify({ Architecture: "amd64" }),
+              stderr: "",
+            };
+          },
+        },
+      ),
+    /refusing emulated linux\/arm64 release build on native linux\/amd64/,
+  );
+  assert.deepEqual(
+    calls,
+    [["info", "--format", "json"]],
+    "architecture mismatch must not launch a container build",
+  );
 });
 
 test("Linux baseline excludes libatomic and caps the complete ABI", () => {
@@ -506,12 +561,34 @@ test("Container build uses GCC, partial static linking, and the portable math pr
   assert.match(containerfile, /\/opt\/sagejs-pnpm\/bin\/pnpm\.mjs/);
 });
 
+test("every release container execution states the selected platform", () => {
+  const source = readFileSync(
+    require("node:path").join(
+      __dirname,
+      "..",
+      "scripts",
+      "linux-baseline",
+      "release-inputs.cjs",
+    ),
+    "utf8",
+  );
+  assert.match(source, /"build",\s*"--platform",\s*containerPlatform\(config\)/);
+  assert.match(source, /"create",\s*"--platform",\s*containerPlatform\(config\)/);
+  assert.equal(
+    [...source.matchAll(/"run",\s*"--rm",\s*"--platform",\s*containerPlatform\(config\)/g)]
+      .length,
+    4,
+    "all four runtime probes must state the selected platform",
+  );
+  assert.match(source, /containerEngine:\s*{\s*name: engine,\s*\.\.\.engineArchitecture/);
+});
+
 test("the runtime proof checks that libatomic is genuinely absent", () => {
   const source = readFileSync(
     require("node:path").join(__dirname, "..", "scripts", "linux-baseline", "release-inputs.cjs"),
     "utf8",
   );
-  assert.match(source, /"rpm", "-q", "libatomic"/);
+  assert.match(source, /"rpm",\s*"-q",\s*"libatomic"/);
   assert.match(source, /libatomicPackagePresent: false/);
   assert.match(source, /runtimeProbe/);
   assert.match(source, /--build-sea/);
@@ -525,7 +602,7 @@ test("scratch artifact extraction supplies an inert container command", () => {
   );
   assert.match(
     source,
-    /\["create", image\.tag, "\/release-inputs\/node", "--version"\]/,
+    /"create",\s*"--platform",\s*containerPlatform\(config\),\s*image\.tag,\s*"\/release-inputs\/node",\s*"--version"/,
   );
 });
 
