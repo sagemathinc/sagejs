@@ -4,7 +4,7 @@
   "id": "release-candidate-arm-fixtures",
   "title": "Portable Linux release-candidate fixtures",
   "lane": "distribution",
-  "status": "review",
+  "status": "active",
   "owner": "linux-arm64-release",
   "objective": "Make Linux release-candidate fixture tests architecture-neutral so native arm64 CI validates arm64 receipts, archive names, and Rust authority while preserving the exact x64 contract",
   "base_commit": "e981515c0f1e2d3ff284fe7f8d90af8c3ae70de1",
