@@ -4,7 +4,7 @@
   "id": "windows-release-package-acceptance",
   "title": "Windows static-CRT unsigned release packaging and acceptance",
   "lane": "integration",
-  "status": "active",
+  "status": "review",
   "owner": "user",
   "objective": "Build reproducible Windows x64 native artifacts with a self-contained static CRT, package an explicit unsigned release from official Node 26.7.0 inputs, and gate publication on native extracted-artifact acceptance",
   "base_commit": "494030a37b82adf42db02452ff6cbc0ff3444d4c",
@@ -16,7 +16,7 @@
     "packages/flint/binding.gyp",
     "packages/flint/scripts/build-deps.cjs",
     "packages/flint/scripts/native-prefix.cjs",
-    "packages/flint/scripts/triplets",
+    "packages/flint/scripts/triplets/",
     "packages/flint/scripts/vcpkg-ports/flint/portfile.cmake",
     "packages/flint/scripts/windows-vcpkg-authority.cjs",
     "packages/graph/binding.gyp",
@@ -108,11 +108,88 @@
       "commit": "b115283561e0140f7b48b3a098a2964016b7433f",
       "workspace_fingerprint": "95f0da23e600677e739eed26fd8271908d76313303e7ff28a2c11393d4a28f0b",
       "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 21.126,
+      "started_at": "2026-08-14T17:21:19.994Z",
+      "commit": "6ecc6f61e8db6f48a7c21df56873fa7851b09f04",
+      "workspace_fingerprint": "d51d6ef2d55d439dcc9f52f52438845adf1306c9f67e5563108034b24778bfc8",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 15.6,
+      "started_at": "2026-08-14T17:21:45.568Z",
+      "commit": "6ecc6f61e8db6f48a7c21df56873fa7851b09f04",
+      "workspace_fingerprint": "d51d6ef2d55d439dcc9f52f52438845adf1306c9f67e5563108034b24778bfc8",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm parallel:check -- --all",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.636,
+      "started_at": "2026-08-14T17:22:02.016Z",
+      "commit": "6ecc6f61e8db6f48a7c21df56873fa7851b09f04",
+      "workspace_fingerprint": "d51d6ef2d55d439dcc9f52f52438845adf1306c9f67e5563108034b24778bfc8",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/windows-static-runtime.cjs packages/graph/test/build-deps.cjs test/release-workflow-protection.cjs test/sea-build-manifest.cjs test/release-publication.cjs test/windows-release-zip.cjs test/native-math-profile.cjs test/parallel-development.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 10.438,
+      "started_at": "2026-08-14T17:45:05.456Z",
+      "commit": "6ecc6f61e8db6f48a7c21df56873fa7851b09f04",
+      "workspace_fingerprint": "d51d6ef2d55d439dcc9f52f52438845adf1306c9f67e5563108034b24778bfc8",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 5.666,
+      "started_at": "2026-08-14T17:45:23.252Z",
+      "commit": "6ecc6f61e8db6f48a7c21df56873fa7851b09f04",
+      "workspace_fingerprint": "d51d6ef2d55d439dcc9f52f52438845adf1306c9f67e5563108034b24778bfc8",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:changed -- --base 494030a37b82adf42db02452ff6cbc0ff3444d4c",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1375.102,
+      "started_at": "2026-08-14T17:46:00.486Z",
+      "commit": "6ecc6f61e8db6f48a7c21df56873fa7851b09f04",
+      "workspace_fingerprint": "d51d6ef2d55d439dcc9f52f52438845adf1306c9f67e5563108034b24778bfc8",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm parallel:check -- --all",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.599,
+      "started_at": "2026-08-14T18:09:40.216Z",
+      "commit": "6ecc6f61e8db6f48a7c21df56873fa7851b09f04",
+      "workspace_fingerprint": "d51d6ef2d55d439dcc9f52f52438845adf1306c9f67e5563108034b24778bfc8",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {
-    "summary": "",
-    "risks": [],
-    "next_steps": []
+    "summary": "Source implementation 6ecc6f61e8db6f48a7c21df56873fa7851b09f04 is pushed and exact-source validation is complete. The static-CRT policy, Release no-PDB policy, delay-load preservation, receipt/cache identities, unsigned publication contract, and Windows acceptance path pass the focused, architecture, changed-file, portable, strict-baselib, and parallel-contract gates. The earlier b115283 failed changed-file receipt remains recorded; the final 6ecc6f6 rerun passes in 1375.102 seconds.",
+    "risks": [
+      "The fresh native Windows build, SEA, binary-policy, two-root byte-reproducibility, canonical ZIP, and extracted-artifact acceptance proof is deliberately pending independent approval of this source closure.",
+      "The official Node 26.7.0 template retains its upstream CodeView record; first-party Release addons and kernels must prove zero CodeView/PDB output without mutating that template."
+    ],
+    "next_steps": [
+      "Obtain independent approval of this exact pushed closure.",
+      "Run the prepared fresh-prefix proof harness on the ready cocalc VM named windows at exact source 6ecc6f61e8db6f48a7c21df56873fa7851b09f04.",
+      "Preserve and independently review the native receipt, binary inventories, reproducibility evidence, canonical unsigned ZIP, and extracted acceptance JSON plus sidecar before integration."
+    ]
   }
 }
