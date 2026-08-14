@@ -50,6 +50,7 @@
     "node --test --test-reporter=spec --test-name-pattern=sanitizer lifecycle witnesses|native and disabled-native paths use the same declared pivot calls|sanitizers exercise façade allocation and destruction test/exact-matrix-pivot-ffi.cjs packages/m4ri/test/test.cjs",
     "node test/dense-prime-structural.cjs",
     "pnpm test:native",
+    "pnpm test:changed -- --base 0ae559238dd4b0a07b53dbd126630cf46a9c6aa0",
     "pnpm architecture:check",
     "pnpm test:portable",
     "pnpm test:baselib:strict",

@@ -4,7 +4,7 @@
   "id": "mac-native-portability",
   "title": "Mac native portability",
   "lane": "integration",
-  "status": "review",
+  "status": "complete",
   "owner": "user",
   "objective": "Make native compiler identity, sanitizer lifecycle witnesses, and dense-prime timing validation robust on real Apple systems without weakening required-native, sanitizer, absolute-performance, or legacy-relative gates.",
   "base_commit": "db6258674e6f191b8187c31e2231a45c73a5c5c6",
@@ -168,7 +168,7 @@
     ],
     "next_steps": [
       "Refresh the inherited website reference provenance on the consolidated integration baseline and rerun docs:check plus test:changed so the aggregate receipt becomes green without expanding this lane's claims.",
-      "Integrate the exact reviewed source and closure, then perform the frozen macOS release rehearsal, signing, notarization, and final artifact acceptance downstream."
+      "Perform the frozen macOS release rehearsal, signing, notarization, and final artifact acceptance downstream from the independently approved integrated checkpoint."
     ]
   }
 }
