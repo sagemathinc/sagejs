@@ -4,7 +4,7 @@
   "id": "website-prepublish-truth",
   "title": "Website Prepublish Truth",
   "lane": "documentation-compat",
-  "status": "active",
+  "status": "review",
   "owner": "user",
   "objective": "Make the pre-release Pages content truthful before immutable v0.2.0 assets exist, preserve explicit unsigned Windows preview and separate npm v0.1.0 status, bind the state with regression coverage, and document the post-release website-only flip",
   "base_commit": "769c7bbfd92ef0ae595c5dd9674e0702b7c4eb2c",
@@ -40,10 +40,94 @@
     "pnpm test:baselib:strict",
     "pnpm test:changed"
   ],
-  "runs": [],
+  "runs": [
+    {
+      "command": "node --test test/website.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.129,
+      "started_at": "2026-08-14T18:43:14.023Z",
+      "commit": "94bfadffd19718e8c07409a174790555d1e17823",
+      "workspace_fingerprint": "c13bdc3b04082c575922f3b0ef07eaed4b88f3dd6f29d1c495d00946bd32edb9",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm docs:generate",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 5.452,
+      "started_at": "2026-08-14T18:43:17.505Z",
+      "commit": "94bfadffd19718e8c07409a174790555d1e17823",
+      "workspace_fingerprint": "c13bdc3b04082c575922f3b0ef07eaed4b88f3dd6f29d1c495d00946bd32edb9",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm docs:generate",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 209.861,
+      "started_at": "2026-08-14T18:43:29.930Z",
+      "commit": "94bfadffd19718e8c07409a174790555d1e17823",
+      "workspace_fingerprint": "c13bdc3b04082c575922f3b0ef07eaed4b88f3dd6f29d1c495d00946bd32edb9",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm docs:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 219.776,
+      "started_at": "2026-08-14T18:47:09.437Z",
+      "commit": "94bfadffd19718e8c07409a174790555d1e17823",
+      "workspace_fingerprint": "c13bdc3b04082c575922f3b0ef07eaed4b88f3dd6f29d1c495d00946bd32edb9",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 24.251,
+      "started_at": "2026-08-14T18:50:53.436Z",
+      "commit": "94bfadffd19718e8c07409a174790555d1e17823",
+      "workspace_fingerprint": "c13bdc3b04082c575922f3b0ef07eaed4b88f3dd6f29d1c495d00946bd32edb9",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 14.272,
+      "started_at": "2026-08-14T18:51:21.404Z",
+      "commit": "94bfadffd19718e8c07409a174790555d1e17823",
+      "workspace_fingerprint": "c13bdc3b04082c575922f3b0ef07eaed4b88f3dd6f29d1c495d00946bd32edb9",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:changed",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1909.833,
+      "started_at": "2026-08-14T18:51:39.269Z",
+      "commit": "94bfadffd19718e8c07409a174790555d1e17823",
+      "workspace_fingerprint": "c13bdc3b04082c575922f3b0ef07eaed4b88f3dd6f29d1c495d00946bd32edb9",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:tutorial",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 241.673,
+      "started_at": "2026-08-14T19:23:35.215Z",
+      "commit": "94bfadffd19718e8c07409a174790555d1e17823",
+      "workspace_fingerprint": "c13bdc3b04082c575922f3b0ef07eaed4b88f3dd6f29d1c495d00946bd32edb9",
+      "platform": "linux-x64"
+    }
+  ],
   "handoff": {
-    "summary": "",
-    "risks": [],
+    "summary": "Changed the pre-release dashboard from premature v0.2.0 availability claims to an explicit imminent/unpublished state. npm v0.1.0 remains the only actionable install path, the native latest/download installer command is withheld until immutable assets exist, the release capabilities are partial, and the forthcoming Windows x64 archive remains explicitly unsigned with Authenticode future work. Regression coverage binds those claims. Generated documentation was byte-identical after regeneration, and the full website, documentation, portable, strict-baselib, changed-file, and 662-example tutorial gates passed.",
+    "risks": [
+      "The website deliberately understates native availability after v0.2.0 is published; the recorded website-only follow-up must run after independent verification of every immutable asset.",
+      "The first recorded docs:generate attempt failed with a WASI clang bus error while an independent reviewer briefly had an overlapping docs build. That failed receipt is preserved; the exact command then passed alone, followed by a separate passing docs:check and the broad passing test:changed gate."
+    ],
     "next_steps": [
       "Only after the immutable v0.2.0 GitHub release and every advertised asset have been independently verified, make a website-only follow-up that changes the native release wording from imminent to available/current, restores the checksum-verifying latest/download/install.sh command, updates the two release capability records and their regressions, and lets the resulting main-branch commit trigger GitHub Pages."
     ]
