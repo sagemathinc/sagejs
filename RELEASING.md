@@ -35,7 +35,8 @@ Configure two GitHub environments with deployment tag policy `v*`:
 
 Both environments require maintainer approval. If the only reviewer also
 starts the release, self-review prevention must remain off; add another trusted
-reviewer before enabling it.
+reviewer before enabling it. Administrator bypass is disabled, so the approval
+gate also applies to repository administrators.
 
 Protect `refs/tags/v*` against deletion and non-fast-forward changes. Do not
 move or reuse a tag. The workflow accepts exactly:
