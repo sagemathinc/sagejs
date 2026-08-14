@@ -1,0 +1,57 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "release-windows-portable-integration",
+  "title": "Integrate Windows portable stabilization",
+  "lane": "compiler-runtime",
+  "status": "active",
+  "owner": "user",
+  "objective": "Integrate the independently reviewed native-Windows portable test and cache-race stabilization authority into a closed intermediate release checkpoint",
+  "base_commit": "0835adb74593c43c6d2b6352151209cfe9319faa",
+  "claims": [
+    "tools/cache.ts",
+    "tools/cache-file.ts",
+    "tools/cache-auto.ts",
+    "tools/cache-auto-worker.ts",
+    "tools/runtime-bootstrap.ts",
+    "test/cache.cjs",
+    "test/linux-release-baseline.cjs",
+    "test/native-math-profile.cjs",
+    "test/parallel-development.cjs"
+  ],
+  "dependencies": [
+    "windows-portable-stabilization"
+  ],
+  "references": [],
+  "architecture": {
+    "strategy": "compiler-infrastructure",
+    "fallback": "not-applicable",
+    "oracles": [
+      "Exact native-Windows build, repeated cache stress, and heartbeat/FFLAS relocation receipts",
+      "Focused Linux release, native profile, cache, and parallel-development regression suite"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "not-applicable",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm build",
+    "pnpm test:compiler",
+    "pnpm test:integration",
+    "node --test --test-reporter=dot test/cache.cjs test/linux-release-baseline.cjs test/native-math-profile.cjs test/parallel-development.cjs",
+    "pnpm architecture:check",
+    "pnpm test:portable",
+    "pnpm test:baselib:strict",
+    "pnpm parallel:check -- --all"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "",
+    "risks": [],
+    "next_steps": []
+  }
+}
