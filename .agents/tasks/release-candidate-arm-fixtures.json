@@ -3,12 +3,13 @@
   "schema_version": 2,
   "id": "release-candidate-arm-fixtures",
   "title": "Portable Linux release-candidate fixtures",
-  "lane": "distribution",
+  "lane": "integration",
   "status": "active",
   "owner": "linux-arm64-release",
   "objective": "Make Linux release-candidate fixture tests architecture-neutral so native arm64 CI validates arm64 receipts, archive names, and Rust authority while preserving the exact x64 contract",
   "base_commit": "e981515c0f1e2d3ff284fe7f8d90af8c3ae70de1",
   "claims": [
+    "scripts/release-candidate-linux.cjs",
     "test/release-candidate-linux.cjs"
   ],
   "dependencies": [],
@@ -28,9 +29,9 @@
     "macos-arm64": "required"
   },
   "validation": [
+    "pnpm architecture:check",
     "pnpm test:portable",
-    "pnpm test:native",
-    "pnpm test:sea"
+    "pnpm test:baselib:strict"
   ],
   "runs": [
     {
@@ -50,6 +51,16 @@
       "seconds": 2.385,
       "started_at": "2026-08-14T13:23:40.227Z",
       "commit": "58517e728f72ea114d32f91c01148d2cd4f15f3d",
+      "workspace_fingerprint": "d451f17841305a4291144da6003c9366ded72758d5ee998d44f6248f6c26a658",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 24.96,
+      "started_at": "2026-08-14T13:24:24.045Z",
+      "commit": "97efe7de133c8551d1cfe6588be42a3ab4e609db",
       "workspace_fingerprint": "d451f17841305a4291144da6003c9366ded72758d5ee998d44f6248f6c26a658",
       "platform": "linux-x64"
     }
