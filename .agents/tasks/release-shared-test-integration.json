@@ -1,0 +1,42 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "release-shared-test-integration",
+  "title": "Integrate cross-platform FFLAS cache evidence",
+  "lane": "integration",
+  "status": "active",
+  "owner": "user",
+  "objective": "Integrate the independently reviewed cross-platform FFLAS cache-provenance expectation and its physical Apple-silicon evidence into the closed intermediate release checkpoint",
+  "base_commit": "18f5475a82297a2066462b732388406832a3449f",
+  "claims": [
+    ".agents/tasks/release-shared-test-integration.json",
+    ".agents/tasks/release-shared-test-drift.json",
+    "test/parallel-development.cjs"
+  ],
+  "dependencies": [
+    "release-shared-test-drift"
+  ],
+  "references": [],
+  "architecture": {
+    "strategy": "not-applicable",
+    "fallback": "not-applicable",
+    "oracles": [],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "node --test test/parallel-development.cjs",
+    "pnpm parallel:check -- --all"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "",
+    "risks": [],
+    "next_steps": []
+  }
+}
