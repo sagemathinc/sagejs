@@ -246,6 +246,19 @@
       "version": "26.7.0"
     },
     {
+      "id": "node-rust-crates",
+      "license": "crate-specific MIT OR Apache-2.0 OR Unicode-3.0 terms",
+      "notices": [
+        "NODE-26.7.0-RUST-CRATES-LICENSES.txt"
+      ],
+      "source": {
+        "kind": "archive",
+        "sha256": "e6b182cbeeab032d1082ca4ac4fe15e3a57de691d3bde78ecf8a761fd56ee356",
+        "url": "https://nodejs.org/dist/v26.7.0/node-v26.7.0.tar.xz"
+      },
+      "version": "Node 26.7.0 vendored set (46 crates)"
+    },
+    {
       "id": "npm-production-closure",
       "license": "multiple-open-source-licenses",
       "notices": [
@@ -354,6 +367,33 @@
         "url": "https://github.com/kovidgoyal/calibre/tree/master/src/pyj"
       },
       "version": "vendored"
+    },
+    {
+      "id": "rust-toolchain",
+      "license": "MIT OR Apache-2.0 AND bundled-third-party-terms",
+      "notices": [
+        "RUST-1.86.0-LICENSES.txt"
+      ],
+      "source": {
+        "kind": "platform-build-authorities",
+        "targets": {
+          "linux-arm64": {
+            "filename": "rust-1.86.0-aarch64-unknown-linux-gnu.tar.xz",
+            "sha256": "2b97d1e09a1d7fdbed748332879318ee7f41c008837f87ccb44ec045df0a8a1b",
+            "target": "aarch64-unknown-linux-gnu",
+            "url": "https://static.rust-lang.org/dist/2025-04-03/rust-1.86.0-aarch64-unknown-linux-gnu.tar.xz",
+            "version": "1.86.0"
+          },
+          "linux-x64": {
+            "filename": "rust-1.86.0-x86_64-unknown-linux-gnu.tar.xz",
+            "sha256": "6b448b3669e0c74f7f4b87da7da4868a552fcbba1f955032d8925ad2fffb3798",
+            "target": "x86_64-unknown-linux-gnu",
+            "url": "https://static.rust-lang.org/dist/2025-04-03/rust-1.86.0-x86_64-unknown-linux-gnu.tar.xz",
+            "version": "1.86.0"
+          }
+        }
+      },
+      "version": "1.86.0"
     },
     {
       "id": "smalljac",
@@ -509,6 +549,7 @@
     "MPMATH-BSD.txt": "c26cae81da4508e5e249985777a33821f183223ebb74d7f8cfbf90fe7eef2fb7",
     "NATIVE-MATHEMATICS-NOTICE.md": "d7603f7ca765a3c744de1c39fabbb27f8f5eca77998ec5a6973b080bf6094c5f",
     "NODE-26.7.0-LICENSE.txt": "5888dbb9a1d2b18f2c3e6c5f6af1b39de658372b402a0577b002777f14c62ace",
+    "NODE-26.7.0-RUST-CRATES-LICENSES.txt": "1a67fa10ef06789eb19d4e381ece55b015280c2202ca8e77726207a04a44d57e",
     "NPM-PRODUCTION-LICENSES.txt": "e7398308f71e9a49b271173878f002c5dbc357a835c31e00d4490db324fdb1f9",
     "NPM-PRODUCTION.json": "fb2b9a0a8f6d1819dbe92f2b7e3f940c9abc23462a9df618b1387439ada30cc7",
     "NUMPY-TS-MIT.txt": "6955c2e14256ebc773d63b92b263d9966428c213931d89d26892ba832d340211",
@@ -521,6 +562,7 @@
     "PSF-2.0.txt": "b160500215c566001a9e5f91fff779ea75cd01cc0b5518c31aadd1c18403fdd5",
     "PYJEON-STDLIB-APACHE-2.0-NOTICE.md": "93abb778b928802f3bc59af34ce5dbff50a39e78d65d7aa2f6f9f02b03ceee04",
     "PYLANG-BSD-3-CLAUSE.txt": "54a64e256378e818c46e9a8c2e4c868d2bcf34edffc92851debaa046f56902c4",
+    "RUST-1.86.0-LICENSES.txt": "34d230da65ce3cfb9e93228cd824962ff745f624cad095acd5ea18bc85da25d8",
     "TREE-SITTER-MACAULAY2-MIT.txt": "2e0110e07abef7c2548b26ec9d6969775617ca539a0dc8dbeeb14d6452c711d1",
     "TREE-SITTER-MAGMA-MIT.txt": "5317b6de5564af73a4a49d8513be5585839f51c5972f6c36678be983d033bb34",
     "TREE-SITTER-MATLAB-MIT.txt": "8673f5acd59bfb3bd129760a57f72092d5e3c01e05837532eac9497cf8006a46",
