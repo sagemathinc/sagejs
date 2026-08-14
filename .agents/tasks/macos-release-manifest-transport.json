@@ -107,7 +107,7 @@
       "platform": "linux-x64"
     },
     {
-      "command": "node --test test/release-macos-arm64.cjs",
+      "command": "env SAGEJS_RELEASE_MACOS_ARCHIVE=build/release/sagejs-macos-arm64.zip SAGEJS_RELEASE_MACOS_MINIMUM=13.5 SAGEJS_RELEASE_MACOS_SIGNATURE=adhoc SAGEJS_RELEASE_SOURCE_ROOT=/Volumes/sage/sagejs-release-macos-authority node --test test/release-macos-arm64.cjs",
       "result": "pass",
       "exit_code": 0,
       "seconds": 23.886,
