@@ -1,0 +1,60 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "release-mac-authority-integration",
+  "title": "Integrate first-party macOS release authority",
+  "lane": "integration",
+  "status": "active",
+  "owner": "user",
+  "objective": "Integrate the independently reviewed first-party macOS build, signing, notarization, acceptance, and publication authority as an intermediate source checkpoint while reserving the final frozen-source Mac rehearsal",
+  "base_commit": "b3491feaf8b0f96f21dbbbf5c1a1561da3ecfcb3",
+  "claims": [
+    ".agents/tasks/release-mac-authority-integration.json",
+    ".agents/tasks/macos-release-manifest-transport.json",
+    ".github/workflows/ci.yml",
+    "DISTRIBUTION.md",
+    "RELEASING.md",
+    "bench/release-candidate-macos.cjs",
+    "scripts/build-sea.cjs",
+    "scripts/macos-release-node-authority.cjs",
+    "scripts/prepare-release-publication.cjs",
+    "scripts/release-macos.sh",
+    "scripts/release-tag-policy.cjs",
+    "test/release-macos-arm64.cjs",
+    "test/release-publication.cjs",
+    "test/release-workflow-protection.cjs",
+    "test/sea-build-manifest.cjs"
+  ],
+  "dependencies": [
+    "macos-release-manifest-transport"
+  ],
+  "references": [],
+  "architecture": {
+    "strategy": "not-applicable",
+    "fallback": "not-applicable",
+    "oracles": [
+      "Exact signing-input member and digest regression",
+      "Exact ZIP member and internal SHA256SUMS regression"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "not-applicable",
+    "windows-x64": "not-applicable",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "node --test test/sea-build-manifest.cjs test/release-workflow-protection.cjs test/release-macos-arm64.cjs test/release-publication.cjs test/release-artifact-acceptance.cjs",
+    "pnpm architecture:check",
+    "pnpm test:portable",
+    "pnpm test:baselib:strict",
+    "pnpm parallel:check -- --all"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "",
+    "risks": [],
+    "next_steps": []
+  }
+}
