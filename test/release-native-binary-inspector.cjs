@@ -8,7 +8,12 @@ const { spawnSync } = require("node:child_process");
 const test = require("node:test");
 
 const {
+  EMBEDDED_ADDON_ROLE,
+  nativeBinaryInputs,
+} = require("../scripts/build-sea.cjs");
+const {
   BinaryFormatError,
+  EMBEDDED_NODE_ADDON_ROLE,
   NativeBinaryPolicyError,
   assertNativeInputs,
   compareVersions,
@@ -416,8 +421,11 @@ test("Windows embedded addons must delay-load node.exe", () => {
     ["missing.node", peFixture({ nodeLinkage: "missing" })],
     ["template.exe", peFixture({ nodeLinkage: "missing" })],
   ]);
+  assert.equal(EMBEDDED_ADDON_ROLE, EMBEDDED_NODE_ADDON_ROLE);
   const policy = { format: "pe", architectures: ["x64"] };
-  const input = (path, role = "embedded-addon") => [{ path, role }];
+  const input = (path) => nativeBinaryInputs(template, {
+    "native/test.node": path,
+  });
   assert.equal(inspectNativeInputs(input(delayed), policy).ok, true);
   for (const [path, ordinaryNodeDependency] of [
     [eager, true],
@@ -429,7 +437,7 @@ test("Windows embedded addons must delay-load node.exe", () => {
       {
         code: "windows-node-delay-load",
         delayedNodeDependency: false,
-        file: path.split(/[\\/]/).at(-1),
+        file: "native/test.node",
         message: ordinaryNodeDependency
           ? "embedded Windows addons must delay-load node.exe, not import it eagerly"
           : "embedded Windows addons must delay-load node.exe",
@@ -438,7 +446,13 @@ test("Windows embedded addons must delay-load node.exe", () => {
     ]);
   }
   assert.equal(
-    inspectNativeInputs(input(template, "sea-template"), policy).ok,
+    inspectNativeInputs([
+      {
+        label: "template.exe",
+        path: template,
+        role: "executable-template",
+      },
+    ], policy).ok,
     true,
   );
 });
