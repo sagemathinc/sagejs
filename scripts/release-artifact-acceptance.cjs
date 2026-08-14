@@ -1451,7 +1451,10 @@ function acceptReleaseArtifact(options, internals = {}) {
     );
     const descriptor = TARGETS[options.target];
     const internal = verifyInternalChecksums(distribution, descriptor);
-    if (descriptor.platform !== "win32") {
+    // Production acceptance already requires host === target. The second guard
+    // keeps the injected-host unit fixture portable on Windows, whose stat
+    // mode cannot represent the archived POSIX executable bits.
+    if (descriptor.platform !== "win32" && process.platform !== "win32") {
       for (const name of descriptor.executableNames) {
         if ((statSync(join(distribution, name)).mode & 0o111) !== 0o111) {
           throw new Error(`${name} does not retain all executable permission bits`);
