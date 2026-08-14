@@ -4,7 +4,7 @@
   "id": "website-release-consistency",
   "title": "Website release consistency",
   "lane": "documentation-compat",
-  "status": "active",
+  "status": "review",
   "owner": "user",
   "objective": "Align public website release claims and install guidance with the v0.2.0 native release, the separate npm preview, and the unsigned Windows preview contract while refreshing canonical generated reference provenance without changing release workflow or publication authority",
   "base_commit": "675fab5a8f61b2a49c3d9d774eda0c4cba21c249",
@@ -44,10 +44,89 @@
     "pnpm test:changed -- --base 675fab5a8f61b2a49c3d9d774eda0c4cba21c249",
     "pnpm parallel:check -- --all"
   ],
-  "runs": [],
+  "runs": [
+    {
+      "command": "pnpm docs:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 343.741,
+      "started_at": "2026-08-14T17:13:34.039Z",
+      "commit": "20296d99c271d37e445147adcc7109ecfb129d03",
+      "workspace_fingerprint": "0e7e7e45475d736ab7104f8bd3d84d216e7478703c03752e2189e6d54f00c8da",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:tutorial",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 254.474,
+      "started_at": "2026-08-14T17:19:22.346Z",
+      "commit": "20296d99c271d37e445147adcc7109ecfb129d03",
+      "workspace_fingerprint": "0e7e7e45475d736ab7104f8bd3d84d216e7478703c03752e2189e6d54f00c8da",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test --test-reporter=spec test/website.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.134,
+      "started_at": "2026-08-14T17:23:43.744Z",
+      "commit": "20296d99c271d37e445147adcc7109ecfb129d03",
+      "workspace_fingerprint": "0e7e7e45475d736ab7104f8bd3d84d216e7478703c03752e2189e6d54f00c8da",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 22.323,
+      "started_at": "2026-08-14T17:23:48.258Z",
+      "commit": "20296d99c271d37e445147adcc7109ecfb129d03",
+      "workspace_fingerprint": "0e7e7e45475d736ab7104f8bd3d84d216e7478703c03752e2189e6d54f00c8da",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 14.658,
+      "started_at": "2026-08-14T17:24:16.049Z",
+      "commit": "20296d99c271d37e445147adcc7109ecfb129d03",
+      "workspace_fingerprint": "0e7e7e45475d736ab7104f8bd3d84d216e7478703c03752e2189e6d54f00c8da",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:changed -- --base 675fab5a8f61b2a49c3d9d774eda0c4cba21c249",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 24.875,
+      "started_at": "2026-08-14T17:24:57.008Z",
+      "commit": "20296d99c271d37e445147adcc7109ecfb129d03",
+      "workspace_fingerprint": "0e7e7e45475d736ab7104f8bd3d84d216e7478703c03752e2189e6d54f00c8da",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm parallel:check -- --all",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.596,
+      "started_at": "2026-08-14T17:25:26.908Z",
+      "commit": "20296d99c271d37e445147adcc7109ecfb129d03",
+      "workspace_fingerprint": "0e7e7e45475d736ab7104f8bd3d84d216e7478703c03752e2189e6d54f00c8da",
+      "platform": "linux-x64"
+    }
+  ],
   "handoff": {
-    "summary": "",
-    "risks": [],
-    "next_steps": []
+    "summary": "Replayed only independently approved website source f5dec014211870e30ad95b842fc5b9392b60c794 onto exact independently approved closed compiler-integration base 675fab5a8f61b2a49c3d9d774eda0c4cba21c249 as 89641859a860e98bd0eca5eaf2ae82c820af40df; its stable patch ID and four non-contract source blobs remain identical to the approved authority. The blocked historical closure f18795d80587997a32fdbe0901c19fddfee01d61 was not replayed or represented as green. Exact source commit 20296d99c271d37e445147adcc7109ecfb129d03 also updates the install panel from stale v0.1.x and future-v0.2 claims to the v0.2.0 GitHub binary release: Linux x64/arm64, explicitly unsigned Windows x64 preview, signed and notarized macOS arm64, and the separate npm v0.1.0 preview with no npm publication in this release. Focused regressions bind those claims to package metadata, RELEASING.md, WINDOWS.md, and the checked release workflow. Canonical generated documentation remains limited to 75 line coordinates, 29 start-line coordinates, one current-source excerpt, and the derived reference HTML data hash. At one exact workspace fingerprint, docs generation/check passed; the formerly blocked full guided tutorial passed 662/662 including tour_rings 32/32; website passed 10/10; portable passed 455/455; strict baselib passed 101 modules with zero errors; exact-base changed-file tests passed 457/457; and all 222 task contracts passed.",
+    "risks": [
+      "Historical closure f18795d80587997a32fdbe0901c19fddfee01d61 remains valid failure evidence: its exact f5dec014 source produced 656 passes and six tour_rings failures before the separately reviewed compiler fix. The successor pass depends on preserving the reusable-main per-fragment sentinel integrated in base 675fab5a8f61b2a49c3d9d774eda0c4cba21c249.",
+      "The homepage wording announces the v0.2.0 GitHub binary release and therefore must not be deployed before the immutable public assets have passed post-publication verification; DISTRIBUTION.md requires website updates only after that verification. This lane does not change Pages deployment policy.",
+      "An initial local validation-wrapper invocation omitted the separator needed before a nested command containing `--`; it failed with ENOENT before running tests or writing a receipt. The corrected declared exact-base command is recorded as passing at the common source fingerprint."
+    ],
+    "next_steps": [
+      "Independently review exact source 20296d99c271d37e445147adcc7109ecfb129d03, every common-fingerprint receipt, historical-failure preservation, and this contract-only handoff before closing the lane.",
+      "Integrate the approved source and successor closure without replaying blocked f18795d80587997a32fdbe0901c19fddfee01d61, and sequence public website deployment after v0.2.0 release verification.",
+      "Keep Windows described as an explicitly unsigned preview and npm as outside this binary release until separate protected authorities and acceptance evidence change those states."
+    ]
   }
 }
