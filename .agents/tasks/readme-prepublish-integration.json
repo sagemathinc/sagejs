@@ -1,0 +1,55 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "readme-prepublish-integration",
+  "title": "Integrate prepublication README truth",
+  "lane": "integration",
+  "status": "active",
+  "owner": "baseline_resume2",
+  "objective": "Replay the independently approved README prepublication truth range onto the authoritative closed release baseline without tagging, publishing, deploying, or integrating Windows release work",
+  "base_commit": "fb6f4e36341838f7f4eac6c6c24fc1f4beba15d2",
+  "claims": [
+    ".agents/tasks/readme-prepublish-integration.json",
+    ".agents/tasks/readme-prepublish-truth.json",
+    "README.md",
+    "test/release-workflow-protection.cjs"
+  ],
+  "dependencies": [
+    "website-prepublish-integration",
+    "readme-prepublish-truth"
+  ],
+  "references": [
+    "Independently approved range fb6f4e36341838f7f4eac6c6c24fc1f4beba15d2..5ba9d30617b37ebcc31ba7e605c390c40b7d1f45",
+    "Source commit 5f14313436395207570a7d644b519a7a45db6e85; lifecycle-only closure 5ba9d30617b37ebcc31ba7e605c390c40b7d1f45"
+  ],
+  "architecture": {
+    "strategy": "not-applicable",
+    "fallback": "not-applicable",
+    "oracles": [
+      "Release workflow regression binds truthful unpublished GitHub and npm state",
+      "Exact-base changed-file selection and canonical documentation checks"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "not-applicable",
+    "windows-x64": "not-applicable",
+    "macos-arm64": "not-applicable"
+  },
+  "validation": [
+    "node --test test/release-workflow-protection.cjs",
+    "pnpm docs:check",
+    "pnpm architecture:check",
+    "pnpm test:portable",
+    "pnpm test:baselib:strict",
+    "pnpm test:changed -- --base fb6f4e36341838f7f4eac6c6c24fc1f4beba15d2",
+    "pnpm parallel:check -- --all"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "",
+    "risks": [],
+    "next_steps": []
+  }
+}
