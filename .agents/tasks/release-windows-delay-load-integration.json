@@ -93,6 +93,26 @@
       "commit": "6cef5e41105def4ce048bd9c66bb71abbc9a3c3c",
       "workspace_fingerprint": "abae55aeac17a52475481be11b5d395281809a141ecdc93c7000a62f3d785d19",
       "platform": "linux-x64"
+    },
+    {
+      "command": "node test/ffi.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 48.27,
+      "started_at": "2026-08-14T12:38:11.841Z",
+      "commit": "0f8eece946505f0c6aefbd35308e485575e9423a",
+      "workspace_fingerprint": "abae55aeac17a52475481be11b5d395281809a141ecdc93c7000a62f3d785d19",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node test/ffi.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 48.357,
+      "started_at": "2026-08-14T12:39:10.133Z",
+      "commit": "0f8eece946505f0c6aefbd35308e485575e9423a",
+      "workspace_fingerprint": "abae55aeac17a52475481be11b5d395281809a141ecdc93c7000a62f3d785d19",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {
