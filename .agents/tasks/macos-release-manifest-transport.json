@@ -10,6 +10,7 @@
   "base_commit": "3ee4c9d0749be992923f7e04d47c17f3646aea0d",
   "claims": [
     "scripts/release-macos.sh",
+    "scripts/build-sea.cjs",
     "scripts/macos-release-node-authority.cjs",
     "scripts/release-tag-policy.cjs",
     "scripts/prepare-release-publication.cjs",
@@ -19,7 +20,8 @@
     "RELEASING.md",
     "test/release-macos-arm64.cjs",
     "test/release-publication.cjs",
-    "test/release-workflow-protection.cjs"
+    "test/release-workflow-protection.cjs",
+    "test/sea-build-manifest.cjs"
   ],
   "dependencies": [],
   "references": [],

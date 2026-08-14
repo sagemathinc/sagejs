@@ -857,7 +857,15 @@ function seaNodeSourceFromEnvironment(environment = process.env) {
     Object.entries(names).map(([key, name]) => [key, environment[name]]),
   );
   assert.match(source.sha256, /^[0-9a-f]{64}$/);
-  assert.equal(source.filename, `node-v${source.version}.tar.xz`);
+  assert.match(source.version, /^\d+\.\d+\.\d+$/);
+  const escapedVersion = source.version.replaceAll(".", "\\.");
+  assert.match(
+    source.filename,
+    new RegExp(
+      `^node-v${escapedVersion}(?:-[a-z0-9]+-[a-z0-9]+)?\\.tar\\.xz$`,
+    ),
+    "SEA Node source filename is not an official source or distribution archive",
+  );
   assert.equal(
     source.url,
     `https://nodejs.org/dist/v${source.version}/${source.filename}`,
