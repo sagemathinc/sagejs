@@ -4,7 +4,7 @@
   "id": "linux-arm64-startup-profile",
   "title": "Declarative Linux ARM64 startup profile",
   "lane": "integration",
-  "status": "review",
+  "status": "complete",
   "owner": "user",
   "objective": "Select evidence-backed Linux ARM64 development startup budgets without relaxing generic budgets and reject malformed, duplicate, or unknown profile declarations.",
   "base_commit": "db6258674e6f191b8187c31e2231a45c73a5c5c6",
@@ -176,7 +176,8 @@
       "Startup timing remains host-sensitive; the profile is deliberately bounded by three independent 11-sample ARM receipts plus unchanged raw catastrophic ceilings."
     ],
     "next_steps": [
-      "Obtain final independent review of the closure commit and the exact da2e49c ARM production receipt before integration."
+      "Preserve the exact 500/275 ms development-only ARM64 calibration and both the retained b22 failure and da2 passing production receipt through release integration.",
+      "Re-exercise the startup budget on the final protected ARM64 artifact authority before release publication."
     ]
   }
 }
