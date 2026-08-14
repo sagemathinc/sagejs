@@ -291,6 +291,19 @@ assert.deepEqual(
   scalarFloatIr.functions.map((fn) => [fn.name, fn.kernelKind]),
   [["int_to_float", "float64"], ["float_abs", "float64"]],
 );
+const scalarFloatInitialize = scalarFloatAdapterC.slice(
+  scalarFloatAdapterC.indexOf("static napi_value initialize("),
+);
+const floatDelayLoadWarmup =
+  "napi_create_double(env, 0.0, &delay_load_warmup)";
+assert.match(scalarFloatInitialize, /#ifdef _WIN32/);
+assert.ok(scalarFloatInitialize.includes(floatDelayLoadWarmup));
+assert.ok(
+  scalarFloatInitialize.indexOf(floatDelayLoadWarmup) <
+    scalarFloatInitialize.indexOf("napi_define_properties"),
+  "Windows float delay-load warmup must precede exported property setup",
+);
+assert.doesNotMatch(integerAdapterC, /delay_load_warmup/);
 assert.match(scalarFloatC, /fabs\(/);
 assert.match(scalarFloatC, /\(double\)/);
 assert.deepEqual(
@@ -1156,6 +1169,7 @@ compileKernel({
   assert.equal(
     scalarFloatModule.int_to_float(1000000, 1, 4, 6, 7, 8, 9),
     35000000,
+    "the first native binary64 result after addon initialization is intact",
   );
   assert.equal(
     scalarFloatModule.int_to_float.javascript(1000000, 1, 4, 6, 7, 8, 9),

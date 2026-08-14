@@ -3017,7 +3017,21 @@ ${wrappers}
 
 static napi_value initialize(napi_env env, napi_value exports)
 {
-    napi_property_descriptor properties[] = {
+${floats.length > 0 ? `#ifdef _WIN32
+    napi_value delay_load_warmup;
+
+    /*
+     * Windows addons must retain node-gyp's delay-load hook so they can bind
+     * to a renamed Node SEA executable (sagejs.exe rather than node.exe).
+     * clang-cl/lld does not preserve the floating argument to the very first
+     * delayed napi_create_double call, so resolve that import once here and
+     * discard its deliberately irrelevant value.
+     */
+    if (!sagejs_native_check_napi(env,
+        napi_create_double(env, 0.0, &delay_load_warmup)))
+        return NULL;
+#endif
+` : ""}    napi_property_descriptor properties[] = {
 ${properties}
     };
     if (!sagejs_native_check_napi(env,
