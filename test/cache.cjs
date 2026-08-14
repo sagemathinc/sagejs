@@ -223,6 +223,30 @@ test("bounded cleanup preserves a concurrently publishing leased generation", as
   assert.equal(existsSync(directory), false);
 });
 
+test("cache scanning tolerates an entry removed after directory enumeration", (t) => {
+  const { root } = temporaryRoot(t);
+  const version = versionName("8");
+  const directory = addVersion(root, version, { ageDays: 100 });
+  const transient = join(directory, ".sagejs-publish-race.tmp");
+  writeFileSync(transient, "private publication");
+  let removed = false;
+
+  const report = pruneModuleCache({
+    beforeScanEntry(path) {
+      if (path !== transient) return;
+      require("node:fs").unlinkSync(path);
+      removed = true;
+    },
+    currentVersions: [version],
+    expectedRoot: root,
+    root,
+  });
+
+  assert.equal(removed, true);
+  assert.deepEqual(report.entries.map((entry) => entry.version), [version]);
+  assert.equal(report.entries[0].bytes, 16);
+});
+
 test("module-cache prune preserves current, recent, pinned, and leased versions", (t) => {
   const { root } = temporaryRoot(t);
   const current = versionName("a");
