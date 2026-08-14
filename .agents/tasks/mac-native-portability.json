@@ -1,0 +1,56 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "mac-native-portability",
+  "title": "Mac native portability",
+  "lane": "integration",
+  "status": "active",
+  "owner": "user",
+  "objective": "Make native compiler identity, sanitizer lifecycle witnesses, and dense-prime timing validation robust on real Apple systems without weakening required-native, sanitizer, absolute-performance, or legacy-relative gates.",
+  "base_commit": "e981515c0f1e2d3ff284fe7f8d90af8c3ae70de1",
+  "claims": [
+    "tools/native-kernel/compiler.cjs",
+    "tools/runtime-bootstrap.ts",
+    "test/native-kernel.cjs",
+    "test/dense-prime-structural.cjs",
+    "test/fmpz-matrix-selector-lifecycle.cjs",
+    "test/exact-polynomial-factorization-resource.cjs",
+    "test/dense-integer-modular-rank.cjs",
+    "test/fmpz-matrix-resource-ffi.cjs",
+    "test/exact-matrix-pivot-ffi.cjs",
+    "test/exact-rational-matrix-polynomials.cjs",
+    "test/fmpq-resource-ops-lifecycle.cjs",
+    "test/exact-polynomial-resource-ffi.cjs",
+    "test/polynomial-structural-flint.cjs",
+    "tools/ffi/lifecycle-fuzz.cjs"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "compiler-infrastructure",
+    "fallback": "tested-capability",
+    "oracles": [
+      "Required-native execution across a lexical /var alias matches the compiled physical source identity.",
+      "Darwin sanitizer witnesses retain AddressSanitizer and UndefinedBehaviorSanitizer while disabling only unsupported LeakSanitizer detection.",
+      "Dense-prime structural timing retains absolute and legacy-relative bounds under robust repeated sampling."
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm architecture:check",
+    "pnpm test:portable",
+    "pnpm test:baselib:strict"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "",
+    "risks": [],
+    "next_steps": []
+  }
+}

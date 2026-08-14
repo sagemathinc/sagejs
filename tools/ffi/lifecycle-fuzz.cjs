@@ -6,6 +6,7 @@ const { mkdtempSync, rmSync, writeFileSync } = require("node:fs");
 const { tmpdir } = require("node:os");
 const { join, resolve } = require("node:path");
 const { spawnSync } = require("node:child_process");
+const { sanitizerEnvironment } = require("../../test/helpers/sanitizers.cjs");
 
 const root = resolve(__dirname, "..", "..");
 const prefix = resolve(
@@ -367,10 +368,7 @@ try {
   ];
   run(compiler, args);
   const output = run(executable, [], {
-    env: {
-      ASAN_OPTIONS: "detect_leaks=1:halt_on_error=1:strict_string_checks=1",
-      UBSAN_OPTIONS: "halt_on_error=1:print_stacktrace=1",
-    },
+    env: sanitizerEnvironment({ strictStringChecks: true }),
   }).trim();
   const rationalSourcePath = join(temporary, "rational-lifecycle.c");
   const rationalExecutable = join(temporary, "rational-lifecycle");
@@ -386,10 +384,7 @@ try {
     "-o", rationalExecutable,
   ]);
   run(rationalExecutable, [], {
-    env: {
-      ASAN_OPTIONS: "detect_leaks=1:halt_on_error=1:strict_string_checks=1",
-      UBSAN_OPTIONS: "halt_on_error=1:print_stacktrace=1",
-    },
+    env: sanitizerEnvironment({ strictStringChecks: true }),
   });
   process.stdout.write(JSON.stringify({
     schema: "sagejs.ffi/lifecycle-fuzz-v1",

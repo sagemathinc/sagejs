@@ -3,9 +3,13 @@
 
 const assert = require("node:assert/strict");
 const {
+  mkdirSync,
   mkdtempSync,
+  readdirSync,
   readFileSync,
+  realpathSync,
   rmSync,
+  symlinkSync,
   writeFileSync,
 } = require("node:fs");
 const { tmpdir } = require("node:os");
@@ -13,6 +17,7 @@ const { join, resolve } = require("node:path");
 const { spawnSync } = require("node:child_process");
 const test = require("node:test");
 const { compile } = require("@sagemath/sagejs/native");
+const { sanitizerEnvironment } = require("./helpers/sanitizers.cjs");
 
 const root = resolve(__dirname, "..");
 const packagePath = join(root, "packages", "flint");
@@ -37,6 +42,44 @@ function run(command, args, options = {}) {
   );
   return result.stdout.trim();
 }
+
+function javascriptSources(directory) {
+  const answer = [];
+  for (const entry of readdirSync(directory, { withFileTypes: true })) {
+    const filename = join(directory, entry.name);
+    if (entry.isDirectory()) answer.push(...javascriptSources(filename));
+    else if (entry.isFile() && entry.name.endsWith(".cjs")) answer.push(filename);
+  }
+  return answer;
+}
+
+test("sanitizer lifecycle witnesses use the platform capability helper", () => {
+  const optionName = `ASAN_${"OPTIONS"}`;
+  const unsupportedRequest = `detect_${"leaks"}=1`;
+  const unguardedRequest = new RegExp(
+    `${optionName}\\s*:\\s*["'\\x60][^"'\\x60]*${unsupportedRequest}`,
+  );
+  const offenders = [];
+  for (const directory of [join(root, "test"), join(root, "tools", "ffi")]) {
+    for (const filename of javascriptSources(directory)) {
+      const source = readFileSync(filename, "utf8");
+      const match = unguardedRequest.exec(source);
+      if (match !== null) {
+        const line = source.slice(0, match.index).split("\n").length;
+        offenders.push(`${filename}:${line}`);
+      }
+    }
+  }
+  assert.deepEqual(offenders, []);
+  const environment = sanitizerEnvironment({ strictStringChecks: true });
+  assert.match(environment.ASAN_OPTIONS, /halt_on_error=1/);
+  assert.match(environment.ASAN_OPTIONS, /strict_string_checks=1/);
+  assert.match(environment.UBSAN_OPTIONS, /halt_on_error=1/);
+  assert.match(
+    environment.ASAN_OPTIONS,
+    new RegExp(`detect_leaks=${process.platform === "darwin" ? 0 : 1}`),
+  );
+});
 
 function decodePivots(bytes) {
   const buffer = Buffer.from(bytes);
@@ -237,9 +280,32 @@ print("exact-matrix-pivot-kernel-ok")
 test("native and disabled-native paths use the same declared pivot calls", async () => {
   const temporary = mkdtempSync(join(tmpdir(), "sagejs-exact-matrix-pivots-"));
   try {
-    const witnessPath = join(temporary, "pivot_witness.py");
+    const physicalDirectory = join(temporary, "physical-source");
+    const aliasDirectory = join(temporary, "source-alias");
+    mkdirSync(physicalDirectory);
+    symlinkSync(
+      physicalDirectory,
+      aliasDirectory,
+      process.platform === "win32" ? "junction" : "dir",
+    );
+    const witnessPath = join(aliasDirectory, "pivot_witness.py");
     writeFileSync(witnessPath, nativeWitness);
     const compiled = await compile({ sourcePath: witnessPath });
+    const physicalWitnessPath = realpathSync(witnessPath);
+    const manifest = JSON.parse(readFileSync(
+      join(compiled.outputPath, "manifest.json"),
+      "utf8",
+    ));
+    const discovery = JSON.parse(readFileSync(
+      join(compiled.outputPath, "..", "index.json"),
+      "utf8",
+    ));
+    assert.equal(
+      manifest.sourceIdentity,
+      resolve(physicalWitnessPath).replaceAll("\\", "/"),
+    );
+    assert.ok(discovery.sources[physicalWitnessPath]);
+    assert.equal(discovery.sources[resolve(witnessPath)], undefined);
     const core = readFileSync(compiled.coreSourcePath, "utf8");
     assert.match(core, /sagejs_fmpz_matrix_echelon_pivots/);
     assert.match(core, /sagejs_fmpq_matrix_echelon_pivots/);
@@ -258,7 +324,7 @@ test("native and disabled-native paths use the same declared pivot calls", async
     };
     assert.equal(
       run(process.execPath, [sagejs, "--python"], {
-        cwd: temporary,
+        cwd: aliasDirectory,
         env: { ...boundaryEnvironment, SAGEJS_NATIVE_REQUIRED: "1" },
         input: sageWitness(true),
       }),
@@ -266,7 +332,7 @@ test("native and disabled-native paths use the same declared pivot calls", async
     );
     assert.equal(
       run(process.execPath, [sagejs, "--python"], {
-        cwd: temporary,
+        cwd: aliasDirectory,
         env: { ...boundaryEnvironment, SAGEJS_NATIVE_DISABLE: "1" },
         input: sageWitness(false),
       }),
@@ -372,10 +438,7 @@ test("exact pivot resources pass sanitizer-backed lifecycle stress", {
     ]);
     assert.equal(
       run(executable, [], {
-        env: {
-          ASAN_OPTIONS: "detect_leaks=1:halt_on_error=1:strict_string_checks=1",
-          UBSAN_OPTIONS: "halt_on_error=1:print_stacktrace=1",
-        },
+        env: sanitizerEnvironment({ strictStringChecks: true }),
       }),
       "rounds=500",
     );

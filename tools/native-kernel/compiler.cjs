@@ -854,7 +854,11 @@ function bindingGyp(
 }
 
 async function compileKernel(options) {
-  const sourcePath = resolve(options.sourcePath);
+  // Use the physical source spelling everywhere the development cache records
+  // or registers a source.  macOS exposes `/var` through `/private/var`; using
+  // the caller's lexical spelling here while the runtime imports the physical
+  // spelling makes a valid required-native artifact look stale.
+  const sourcePath = realpathSync(resolve(options.sourcePath));
   const sourceKey = validatedSourceKey(options.sourceKey);
   const canonicalSource = sourceIdentity(sourcePath, sourceKey);
   const source = readFileSync(sourcePath, "utf8");

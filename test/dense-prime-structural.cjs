@@ -75,6 +75,33 @@ def minimum_time(function, repetitions=3):
     return answer
 
 
+def paired_scaling_ratio(large_function, medium_function, samples=7, batch=3):
+    """Return the median of repeated, order-balanced scaling samples."""
+    ratios = []
+    for sample in range(samples):
+        if sample % 2 == 0:
+            start = runtime.wall_time()
+            for _repeat in range(batch):
+                medium_function()
+            medium_seconds = runtime.wall_time() - start
+            start = runtime.wall_time()
+            for _repeat in range(batch):
+                large_function()
+            large_seconds = runtime.wall_time() - start
+        else:
+            start = runtime.wall_time()
+            for _repeat in range(batch):
+                large_function()
+            large_seconds = runtime.wall_time() - start
+            start = runtime.wall_time()
+            for _repeat in range(batch):
+                medium_function()
+            medium_seconds = runtime.wall_time() - start
+        ratios.append(large_seconds / medium_seconds)
+    ratios.sort()
+    return ratios[len(ratios) // 2]
+
+
 def exact_list(values):
     return [int(value) for value in values]
 
@@ -186,6 +213,10 @@ medium_unpack_seconds = minimum_time(
     lambda: medium_space._from_packed_residues(medium_payload, 4)
 )
 medium_format_seconds = minimum_time(lambda: medium.str())
+unpack_scaling_ratio = paired_scaling_ratio(
+    lambda: space._from_packed_residues(large_payload, 4),
+    lambda: medium_space._from_packed_residues(medium_payload, 4),
+)
 
 assert pack_seconds < 0.25, pack_seconds
 assert unpack_seconds < 0.25, unpack_seconds
@@ -207,13 +238,15 @@ assert pack_seconds < medium_pack_seconds * 3.5, (
     pack_seconds,
 )
 # Unpacking allocates and normalizes a fresh BigUint64Array. At these very
-# short timings, V8 allocation/GC scheduling makes the ratio noisier than the
-# pack and format paths. The absolute and legacy-relative gates above remain
-# the decisive regression guards; this bound catches genuinely superlinear
-# scaling without failing on a single sub-millisecond allocation sample.
-assert unpack_seconds < medium_unpack_seconds * 5.0, (
+# short timings, V8 allocation/GC scheduling makes an independently selected
+# pair of minima much noisier than the pack and format paths. The absolute and
+# legacy-relative gates above remain decisive; an order-balanced median of
+# batched ratios retains the secondary scaling guard without depending on one
+# exceptionally small denominator.
+assert unpack_scaling_ratio < 5.0, (
     medium_unpack_seconds,
     unpack_seconds,
+    unpack_scaling_ratio,
 )
 assert format_seconds < medium_format_seconds * 3.5, (
     medium_format_seconds,
