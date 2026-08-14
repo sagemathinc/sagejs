@@ -47,11 +47,35 @@
       "commit": "58fbc8f7501c28dd9b792c53a9db89e014d585c0",
       "workspace_fingerprint": "712b9e24779bed52aad3dd1b6e0f89a3c3c74ea4503068daea721bab4faa7bdf",
       "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 5.632,
+      "started_at": "2026-08-14T09:29:05.185Z",
+      "commit": "62427aa5086b12ec2e9b337795f7e9312f28e05f",
+      "workspace_fingerprint": "c4e8c18b631686a755bbb4c1275f903bce43a4cf7badb1ea46400c8f513bceee",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 21.209,
+      "started_at": "2026-08-14T09:29:14.861Z",
+      "commit": "62427aa5086b12ec2e9b337795f7e9312f28e05f",
+      "workspace_fingerprint": "c4e8c18b631686a755bbb4c1275f903bce43a4cf7badb1ea46400c8f513bceee",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {
-    "summary": "",
-    "risks": [],
-    "next_steps": []
+    "summary": "Builds both Linux SEAs inside the pinned manylinux baseline stage using the exact custom Node 26.7.0 and container-built native inputs; binds source, executable, sidecar, and every embedded addon byte into the baseline receipt; and requires that receipt during deterministic x64/arm64 candidate packaging.",
+    "risks": [
+      "The first full x64 and arm64 container builds remain the decisive end-to-end proof and are intentionally deferred until source integration freezes."
+    ],
+    "next_steps": [
+      "Integrate onto the consolidated release authority, run pinned manylinux builds on both native architectures, then run release-candidate-linux.cjs and independent receipt review."
+    ]
   }
 }
