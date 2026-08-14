@@ -38,10 +38,11 @@ compiler, package manager, or source checkout is needed on the target machine.
 
 After extracting manually, run `./sagejs` on macOS/Linux or `sagejs.exe` on
 Windows. Each archive has a neighboring `.sha256` file. Linux releases are
-built on Ubuntu 24.04. Windows executables are Authenticode-signed and intended
-for ordinary Windows 10/11 x64 systems. macOS executables use the hardened
-runtime, are Developer ID signed, and the downloadable ZIP and PKG are both
-submitted to Apple's notary service; the PKG also carries a stapled ticket.
+built against a glibc 2.28 compatibility floor. The initial Windows x64
+archive is explicitly **not Authenticode-signed**; verify its SHA-256 checksum
+before running it on Windows 10/11. macOS executables use the hardened runtime,
+are Developer ID signed, and the downloadable ZIP and PKG are both submitted
+to Apple's notary service; the PKG also carries a stapled ticket.
 
 ## Build the complete system from source
 
@@ -165,9 +166,11 @@ budgets are defined in
 
 Tagged releases publish ready-to-run `sagejs` and `sagepython` archives for
 Linux x64, Linux arm64, Windows x64, and Apple Silicon macOS. They require no
-Node.js, compiler, or package manager on the target machine. Release CI refuses
-to publish unsigned Windows or macOS binaries. A maintainer with Apple
-credentials can reproduce the signed, notarized macOS artifacts locally with:
+Node.js, compiler, or package manager on the target machine. The initial
+Windows artifact is deliberately named `sagejs-windows-x64-unsigned.zip` and
+contains both human- and machine-readable unsigned notices. Release CI refuses
+to publish an unsigned macOS binary. A maintainer with Apple credentials can
+reproduce the signed, notarized macOS artifacts locally with:
 
 ```sh
 pnpm release:macos
@@ -179,9 +182,9 @@ The command uses the same credential conventions as CoCalc's macOS release
 tooling: `SAGEJS_MACOS_SIGN_ID`, `SAGEJS_MACOS_INSTALLER_ID`, and
 `SAGEJS_MACOS_NOTARY_PROFILE` (default `notary-profile`). It creates a signed,
 notarized ZIP and a signed, notarized, stapled installer under `build/release`.
-[`RELEASING.md`](RELEASING.md) documents Apple, Windows, npm, and tag secrets
-and the complete release checklist. GitHub does not publish unsigned desktop
-artifacts or ask users to bypass platform security.
+[`RELEASING.md`](RELEASING.md) documents the protected Apple and stable-release
+environments, checksum/provenance contract, candidate tag, and complete release
+checklist. Sage.js never asks users to bypass platform security.
 
 The main contributor-facing directories are:
 

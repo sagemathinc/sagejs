@@ -17,10 +17,42 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  release-tag-policy:
+    name: Classify and validate the release tag
+    runs-on: ubuntu-24.04
+    outputs:
+      candidate: ${{ steps.policy.outputs.candidate }}
+      publish: ${{ steps.policy.outputs.publish }}
+    steps:
+      - name: Accept only stable or release-candidate version tags
+        id: policy
+        env:
+          REF_NAME: ${{ github.ref_name }}
+          REF_TYPE: ${{ github.ref_type }}
+        run: |
+          candidate=false
+          publish=false
+          if [[ "$REF_TYPE" == "tag" ]]; then
+            if [[ "$REF_NAME" =~ ^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]]; then
+              candidate=true
+              publish=true
+            elif [[ "$REF_NAME" =~ ^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)-rc\.([1-9][0-9]*)$ ]]; then
+              candidate=true
+            else
+              echo "Unsupported Sage.js tag: $REF_NAME" >&2
+              exit 1
+            fi
+          fi
+          echo "candidate=$candidate" >> "$GITHUB_OUTPUT"
+          echo "publish=$publish" >> "$GITHUB_OUTPUT"
+
   linux-x64:
     name: Linux x64 native, tests, and SEA
     runs-on: blacksmith-8vcpu-ubuntu-2404
     timeout-minutes: 60
+    outputs:
+      release-artifact-id: ${{ steps.upload-release.outputs.artifact-id }}
+      release-artifact-digest: ${{ steps.upload-release.outputs.artifact-digest }}
 
     steps:
       - name: Check out Sage.js and its test corpora
@@ -36,7 +68,7 @@ jobs:
       - name: Install Node.js
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
         with:
-          node-version: 26.5.1
+          node-version: 26.7.0
           cache: pnpm
 
       - name: Install the native toolchain
@@ -45,7 +77,7 @@ jobs:
           sudo apt-get install --yes build-essential cmake python3 python3-jupyter-client m4 xz-utils
 
       - name: Cache downloaded and compiled arithmetic dependencies
-        uses: actions/cache@v6
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: |
             packages/flint/.native/downloads
@@ -56,7 +88,7 @@ jobs:
             linux-x64-native-
 
       - name: Cache downloaded and compiled graph dependencies
-        uses: actions/cache@v6
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: |
             packages/graph/.native/downloads
@@ -65,7 +97,7 @@ jobs:
           restore-keys: linux-x64-graph-
 
       - name: Cache downloaded and compiled FFLAS dependencies
-        uses: actions/cache@v6
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: |
             packages/fflas/.native/downloads
@@ -168,14 +200,12 @@ jobs:
           cd build/release
           sha256sum sagejs-linux-x64.tar.xz > sagejs-linux-x64.tar.xz.sha256
 
-      - name: Package Linux x64 for npm and the shell installer
+      - name: Stage the shell installer
         run: |
-          pnpm package:native-npm linux-x64 build/sea/sagejs build/sea/sagepython
-          SAGEJS_SKIP_PREPACK=1 pnpm pack --out build/release/npm/sagejs.tgz
-          pnpm test:npm-package
           cp install.sh build/release/install.sh
 
       - name: Upload Linux x64 SEA artifacts
+        id: upload-release
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
           name: sagejs-linux-x64
@@ -183,8 +213,6 @@ jobs:
             build/release/sagejs-linux-x64.tar.xz
             build/release/sagejs-linux-x64.tar.xz.sha256
             build/release/install.sh
-            build/release/npm/sagejs.tgz
-            build/release/npm/sagejs-linux-x64.tgz
           if-no-files-found: error
           retention-days: 14
 
@@ -192,6 +220,9 @@ jobs:
     name: Linux arm64 native, tests, and SEA
     runs-on: blacksmith-8vcpu-ubuntu-2404-arm
     timeout-minutes: 90
+    outputs:
+      release-artifact-id: ${{ steps.upload-release.outputs.artifact-id }}
+      release-artifact-digest: ${{ steps.upload-release.outputs.artifact-digest }}
 
     steps:
       - name: Check out Sage.js and its test corpora
@@ -207,7 +238,7 @@ jobs:
       - name: Install Node.js
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
         with:
-          node-version: 26.5.1
+          node-version: 26.7.0
           cache: pnpm
 
       - name: Install the native toolchain
@@ -216,7 +247,7 @@ jobs:
           sudo apt-get install --yes build-essential cmake python3 m4 xz-utils
 
       - name: Cache downloaded and compiled arithmetic dependencies
-        uses: actions/cache@v6
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: |
             packages/flint/.native/downloads
@@ -227,7 +258,7 @@ jobs:
             linux-arm64-native-
 
       - name: Cache downloaded and compiled graph dependencies
-        uses: actions/cache@v6
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: |
             packages/graph/.native/downloads
@@ -236,7 +267,7 @@ jobs:
           restore-keys: linux-arm64-graph-
 
       - name: Cache downloaded and compiled FFLAS dependencies
-        uses: actions/cache@v6
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: |
             packages/fflas/.native/downloads
@@ -276,17 +307,14 @@ jobs:
           cd build/release
           sha256sum sagejs-linux-arm64.tar.xz > sagejs-linux-arm64.tar.xz.sha256
 
-      - name: Package Linux arm64 for npm
-        run: pnpm package:native-npm linux-arm64 build/sea/sagejs build/sea/sagepython
-
       - name: Upload Linux arm64 SEA artifacts
+        id: upload-release
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
           name: sagejs-linux-arm64
           path: |
             build/release/sagejs-linux-arm64.tar.xz
             build/release/sagejs-linux-arm64.tar.xz.sha256
-            build/release/npm/sagejs-linux-arm64.tgz
           if-no-files-found: error
           retention-days: 14
 
@@ -294,9 +322,9 @@ jobs:
     name: Windows x64 native, tests, and SEA
     runs-on: blacksmith-8vcpu-windows-2025
     timeout-minutes: 120
-    permissions:
-      contents: read
-      id-token: write
+    outputs:
+      release-artifact-id: ${{ steps.upload-release.outputs.artifact-id }}
+      release-artifact-digest: ${{ steps.upload-release.outputs.artifact-digest }}
 
     steps:
       - name: Check out Sage.js and its test corpora
@@ -312,11 +340,11 @@ jobs:
       - name: Install Node.js
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
         with:
-          node-version: 26.5.1
+          node-version: 26.7.0
           cache: pnpm
 
       - name: Install Python for node-gyp
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
         with:
           python-version: "3.13"
 
@@ -363,7 +391,7 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Cache vcpkg arithmetic dependencies
-        uses: actions/cache@v6
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: |
             packages/flint/.native/vcpkg
@@ -374,7 +402,7 @@ jobs:
             windows-x64-native-
 
       - name: Cache downloaded and compiled graph dependencies
-        uses: actions/cache@v6
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: |
             packages/graph/.native/downloads
@@ -412,33 +440,7 @@ jobs:
           SAGEJS_BUILD_JOBS: "8"
         run: pnpm test:sea
 
-      - name: Stage tested Windows SEA inputs for protected signing
-        if: startsWith(github.ref, 'refs/tags/v')
-        shell: pwsh
-        run: |
-          $input = "build/signing-input"
-          New-Item -ItemType Directory -Force $input | Out-Null
-          $hashes = foreach ($name in "sagejs.exe", "sagepython.exe") {
-            $hash = (Get-FileHash "build/sea/$name" -Algorithm SHA256).Hash.ToLower()
-            "$hash  $name"
-          }
-          $hashes | Set-Content "$input/sea.sha256"
-          Compress-Archive -Path build/sea/sagejs.exe,build/sea/sagepython.exe `
-            -DestinationPath "$input/tested-sea.zip"
-          $archiveHash = (Get-FileHash "$input/tested-sea.zip" -Algorithm SHA256).Hash.ToLower()
-          "$archiveHash  tested-sea.zip" | Set-Content "$input/tested-sea.zip.sha256"
-
-      - name: Upload tested Windows SEA inputs
-        if: startsWith(github.ref, 'refs/tags/v')
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
-        with:
-          name: sagejs-windows-x64-tested-sea
-          path: build/signing-input/
-          if-no-files-found: error
-          retention-days: 2
-
-      - name: Package the Windows x64 SEA distribution
-        if: ${{ !startsWith(github.ref, 'refs/tags/v') }}
+      - name: Package the explicitly unsigned Windows x64 SEA distribution
         shell: pwsh
         run: |
           $release = "build/release/sagejs-windows-x64"
@@ -446,140 +448,42 @@ jobs:
           Copy-Item build/sea/sagejs.exe,build/sea/sagepython.exe $release
           Copy-Item LICENSE,README.md,DISTRIBUTION.md $release
           Copy-Item licenses/* "$release/licenses"
-          Compress-Archive -Path "$release/*" -DestinationPath "build/release/sagejs-windows-x64.zip"
-          (Get-FileHash "build/release/sagejs-windows-x64.zip" -Algorithm SHA256).Hash.ToLower() +
-            "  sagejs-windows-x64.zip" |
-            Set-Content "build/release/sagejs-windows-x64.zip.sha256"
-
-      - name: Package Windows x64 for npm
-        if: ${{ !startsWith(github.ref, 'refs/tags/v') }}
-        run: pnpm package:native-npm windows-x64 build/sea/sagejs.exe build/sea/sagepython.exe
+          foreach ($executable in "sagejs.exe", "sagepython.exe") {
+            $signature = Get-AuthenticodeSignature "$release/$executable"
+            if ($signature.Status -ne "NotSigned") {
+              throw "$executable must be unsigned, got $($signature.Status)"
+            }
+          }
+          @'
+          These Windows executables are not Authenticode-signed.
+          Verify the published SHA-256 checksum before running them.
+          '@ | Set-Content "$release/UNSIGNED-WINDOWS.txt"
+          $version = (& node -p "require('./package.json').version").Trim()
+          $sourceCommit = (& git rev-parse HEAD).Trim()
+          if ($env:GITHUB_SHA -and $sourceCommit -ne $env:GITHUB_SHA) {
+            throw "Windows source $sourceCommit does not match workflow $env:GITHUB_SHA"
+          }
+          @{
+            schema = "sagejs.windows-release-manifest-v1"
+            target = "windows-x64"
+            version = $version
+            sourceCommit = $sourceCommit
+            signature = @{ scheme = "authenticode"; status = "unsigned" }
+          } | ConvertTo-Json -Depth 3 | Set-Content "$release/release.json"
+          $archive = "build/release/sagejs-windows-x64-unsigned.zip"
+          Compress-Archive -Path "$release/*" -DestinationPath $archive
+          (Get-FileHash $archive -Algorithm SHA256).Hash.ToLower() +
+            "  sagejs-windows-x64-unsigned.zip" |
+            Set-Content "$archive.sha256"
 
       - name: Upload Windows x64 SEA artifacts
-        if: ${{ !startsWith(github.ref, 'refs/tags/v') }}
+        id: upload-release
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
-          name: sagejs-windows-x64
+          name: sagejs-windows-x64-unsigned
           path: |
-            build/release/sagejs-windows-x64.zip
-            build/release/sagejs-windows-x64.zip.sha256
-            build/release/npm/sagejs-windows-x64.tgz
-          if-no-files-found: error
-          retention-days: 14
-
-  sign-windows-x64:
-    name: Sign Windows x64 release
-    if: startsWith(github.ref, 'refs/tags/v')
-    needs: windows-x64
-    runs-on: blacksmith-4vcpu-windows-2025
-    timeout-minutes: 30
-    environment: sagejs-signing
-    permissions:
-      contents: read
-      id-token: write
-
-    steps:
-      - name: Check out the exact tagged Sage.js source
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
-
-      - name: Install pnpm
-        uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6
-        with:
-          version: 11.9.0
-
-      - name: Install Node.js
-        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
-        with:
-          node-version: 26.5.1
-
-      - name: Download the tested Windows SEA inputs
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
-        with:
-          name: sagejs-windows-x64-tested-sea
-          path: build/signing-input
-
-      - name: Verify and restore the exact tested executables
-        shell: pwsh
-        run: |
-          function Assert-Hash([string]$Path, [string]$Receipt) {
-            $parts = (Get-Content $Receipt -Raw).Trim() -split '\s+', 2
-            if ($parts.Count -ne 2) { throw "Malformed SHA-256 receipt: $Receipt" }
-            $actual = (Get-FileHash $Path -Algorithm SHA256).Hash.ToLower()
-            if ($actual -ne $parts[0]) {
-              throw "SHA-256 mismatch for ${Path}: expected $($parts[0]), got $actual"
-            }
-          }
-          Assert-Hash "build/signing-input/tested-sea.zip" `
-            "build/signing-input/tested-sea.zip.sha256"
-          New-Item -ItemType Directory -Force build/sea | Out-Null
-          Expand-Archive -Path build/signing-input/tested-sea.zip `
-            -DestinationPath build/sea
-          foreach ($line in Get-Content build/signing-input/sea.sha256) {
-            $parts = $line.Trim() -split '\s+', 2
-            if ($parts.Count -ne 2) { throw "Malformed SEA SHA-256 receipt" }
-            $path = "build/sea/$($parts[1])"
-            $actual = (Get-FileHash $path -Algorithm SHA256).Hash.ToLower()
-            if ($actual -ne $parts[0]) {
-              throw "SHA-256 mismatch for ${path}: expected $($parts[0]), got $actual"
-            }
-          }
-
-      - name: Authenticate to Azure Artifact Signing
-        if: vars.SAGEJS_WINDOWS_SIGNING_MODE == 'azure'
-        uses: azure/login@f5d393ae46f8fde4be8b75f32e3fc50e654ad0ca # v3
-        with:
-          client-id: ${{ secrets.SAGEJS_AZURE_CLIENT_ID }}
-          tenant-id: ${{ secrets.SAGEJS_AZURE_TENANT_ID }}
-          subscription-id: ${{ secrets.SAGEJS_AZURE_SUBSCRIPTION_ID }}
-
-      - name: Sign with Azure Artifact Signing
-        if: vars.SAGEJS_WINDOWS_SIGNING_MODE == 'azure'
-        uses: azure/artifact-signing-action@c7ab2a863ab5f9a846ddb8265964877ef296ee82 # v2
-        with:
-          endpoint: ${{ vars.SAGEJS_ARTIFACT_SIGNING_ENDPOINT }}
-          signing-account-name: ${{ vars.SAGEJS_ARTIFACT_SIGNING_ACCOUNT }}
-          certificate-profile-name: ${{ vars.SAGEJS_ARTIFACT_SIGNING_PROFILE }}
-          files-folder: ${{ github.workspace }}\build\sea
-          files-folder-filter: exe
-          file-digest: SHA256
-          timestamp-rfc3161: http://timestamp.acs.microsoft.com
-          timestamp-digest: SHA256
-
-      - name: Verify Azure-signed Windows executables
-        if: vars.SAGEJS_WINDOWS_SIGNING_MODE == 'azure'
-        run: pwsh -File scripts/sign-windows.ps1 -VerifyOnly
-
-      - name: Authenticode-sign Windows executables with a PFX
-        if: vars.SAGEJS_WINDOWS_SIGNING_MODE != 'azure'
-        env:
-          SAGEJS_WINDOWS_CERTIFICATE_PFX_BASE64: ${{ secrets.SAGEJS_WINDOWS_CERTIFICATE_PFX_BASE64 }}
-          SAGEJS_WINDOWS_CERTIFICATE_PASSWORD: ${{ secrets.SAGEJS_WINDOWS_CERTIFICATE_PASSWORD }}
-        run: pnpm release:windows:sign
-
-      - name: Package the signed Windows x64 SEA distribution
-        shell: pwsh
-        run: |
-          $release = "build/release/sagejs-windows-x64"
-          New-Item -ItemType Directory -Force "$release/licenses" | Out-Null
-          Copy-Item build/sea/sagejs.exe,build/sea/sagepython.exe $release
-          Copy-Item LICENSE,README.md,DISTRIBUTION.md $release
-          Copy-Item licenses/* "$release/licenses"
-          Compress-Archive -Path "$release/*" -DestinationPath "build/release/sagejs-windows-x64.zip"
-          (Get-FileHash "build/release/sagejs-windows-x64.zip" -Algorithm SHA256).Hash.ToLower() +
-            "  sagejs-windows-x64.zip" |
-            Set-Content "build/release/sagejs-windows-x64.zip.sha256"
-
-      - name: Package signed Windows x64 for npm
-        run: pnpm package:native-npm windows-x64 build/sea/sagejs.exe build/sea/sagepython.exe
-
-      - name: Upload signed Windows x64 SEA artifacts
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
-        with:
-          name: sagejs-windows-x64
-          path: |
-            build/release/sagejs-windows-x64.zip
-            build/release/sagejs-windows-x64.zip.sha256
-            build/release/npm/sagejs-windows-x64.tgz
+            build/release/sagejs-windows-x64-unsigned.zip
+            build/release/sagejs-windows-x64-unsigned.zip.sha256
           if-no-files-found: error
           retention-days: 14
 
@@ -587,6 +491,9 @@ jobs:
     name: macOS arm64 native, tests, and SEA
     runs-on: blacksmith-6vcpu-macos-15
     timeout-minutes: 120
+    outputs:
+      signing-input-artifact-id: ${{ steps.upload-signing-input.outputs.artifact-id }}
+      signing-input-artifact-digest: ${{ steps.upload-signing-input.outputs.artifact-digest }}
 
     steps:
       - name: Check out Sage.js and its test corpora
@@ -602,7 +509,7 @@ jobs:
       - name: Install Node.js
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
         with:
-          node-version: 26.5.1
+          node-version: 26.7.0
           cache: pnpm
 
       - name: Install native build prerequisites
@@ -614,7 +521,7 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Cache downloaded and compiled arithmetic dependencies
-        uses: actions/cache@v6
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: |
             packages/flint/.native/downloads
@@ -625,7 +532,7 @@ jobs:
             macos-arm64-native-
 
       - name: Cache downloaded and compiled graph dependencies
-        uses: actions/cache@v6
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: |
             packages/graph/.native/downloads
@@ -634,7 +541,7 @@ jobs:
           restore-keys: macos-arm64-graph-
 
       - name: Cache downloaded and compiled FFLAS dependencies
-        uses: actions/cache@v6
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: |
             packages/fflas/.native/downloads
@@ -643,7 +550,7 @@ jobs:
           restore-keys: macos-arm64-fflas-
 
       - name: Cache downloaded and compiled M4RI dependencies
-        uses: actions/cache@v6
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: |
             packages/m4ri/.native/downloads
@@ -691,6 +598,7 @@ jobs:
 
       - name: Upload tested macOS SEA inputs
         if: startsWith(github.ref, 'refs/tags/v')
+        id: upload-signing-input
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
           name: sagejs-macos-arm64-tested-sea
@@ -700,11 +608,16 @@ jobs:
 
   sign-macos-arm64:
     name: Sign and notarize macOS arm64 release
-    if: startsWith(github.ref, 'refs/tags/v')
-    needs: macos-arm64
+    if: needs.release-tag-policy.outputs.candidate == 'true'
+    needs:
+      - release-tag-policy
+      - macos-arm64
     runs-on: blacksmith-6vcpu-macos-15
     timeout-minutes: 30
     environment: sagejs-signing
+    outputs:
+      release-artifact-id: ${{ steps.upload-release.outputs.artifact-id }}
+      release-artifact-digest: ${{ steps.upload-release.outputs.artifact-digest }}
     permissions:
       contents: read
 
@@ -720,20 +633,31 @@ jobs:
       - name: Install Node.js
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
         with:
-          node-version: 26.5.1
+          node-version: 26.7.0
 
       - name: Download the tested macOS SEA inputs
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
         with:
-          name: sagejs-macos-arm64-tested-sea
+          artifact-ids: ${{ needs.macos-arm64.outputs.signing-input-artifact-id }}
           path: build/signing-input
+          merge-multiple: true
 
       - name: Verify and restore the exact tested executables
         run: |
+          diff -u \
+            <(printf '%s\n' sea.sha256 tested-sea.tar tested-sea.tar.sha256) \
+            <(find build/signing-input -mindepth 1 -maxdepth 1 -type f \
+              -exec basename {} \; | sort)
           (
             cd build/signing-input
             shasum -a 256 -c tested-sea.tar.sha256
           )
+          members="$(tar -tf build/signing-input/tested-sea.tar)"
+          [[ "$members" == $'sagejs\nsagepython' ]] || {
+            echo "Unexpected or duplicate tested SEA tar member(s):" >&2
+            printf '%s\n' "$members" >&2
+            exit 1
+          }
           mkdir -p build/sea
           tar -C build/sea -xf build/signing-input/tested-sea.tar
           (
@@ -800,13 +724,8 @@ jobs:
           security delete-keychain "$KEYCHAIN" || true
           rm -f "$CERTIFICATE" "$API_KEY"
 
-      - name: Package macOS arm64 for npm
-        run: |
-          pnpm package:native-npm macos-arm64 \
-            build/release/sagejs-macos-arm64/sagejs \
-            build/release/sagejs-macos-arm64/sagepython
-
       - name: Upload signed macOS arm64 artifacts
+        id: upload-release
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
           name: sagejs-macos-arm64
@@ -817,72 +736,142 @@ jobs:
             build/release/sagejs-macos-arm64.pkg.sha256
             build/release/sagejs-macos-arm64-benchmark.json
             build/release/sagejs-macos-arm64-benchmark.json.sha256
-            build/release/npm/sagejs-macos-arm64.tgz
           if-no-files-found: error
           retention-days: 14
 
   publish-release:
-    name: Publish tagged GitHub and npm release
-    if: startsWith(github.ref, 'refs/tags/v')
+    name: Publish the stable GitHub binary release
+    if: needs.release-tag-policy.outputs.publish == 'true'
     needs:
+      - release-tag-policy
       - linux-x64
       - linux-arm64
-      - sign-windows-x64
+      - windows-x64
       - sign-macos-arm64
     runs-on: ubuntu-24.04
     environment: sagejs-release
     permissions:
       contents: write
-      id-token: write
 
     steps:
-      - name: Install pnpm
-        uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6
-        with:
-          version: 11.9.0
+      - name: Check out the exact stable tag
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
       - name: Install Node.js
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
         with:
-          node-version: 26.5.1
-          registry-url: https://registry.npmjs.org
+          node-version: 26.7.0
 
-      - name: Download the validated release artifacts
+      - name: Download the exact Linux x64 release artifact
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
         with:
-          path: release
+          artifact-ids: ${{ needs.linux-x64.outputs.release-artifact-id }}
+          path: release-input/linux-x64
           merge-multiple: true
 
-      - name: Create or update the GitHub release
+      - name: Download the exact Linux arm64 release artifact
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+        with:
+          artifact-ids: ${{ needs.linux-arm64.outputs.release-artifact-id }}
+          path: release-input/linux-arm64
+          merge-multiple: true
+
+      - name: Download the exact unsigned Windows x64 release artifact
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+        with:
+          artifact-ids: ${{ needs.windows-x64.outputs.release-artifact-id }}
+          path: release-input/windows-x64
+          merge-multiple: true
+
+      - name: Download the exact signed macOS arm64 release artifact
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+        with:
+          artifact-ids: ${{ needs.sign-macos-arm64.outputs.release-artifact-id }}
+          path: release-input/macos-arm64
+          merge-multiple: true
+
+      - name: Verify identities and assemble the publication set
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          [[ "$(git rev-parse HEAD)" == "$GITHUB_SHA" ]] || {
+            echo "Checked-out tag does not resolve to $GITHUB_SHA" >&2
+            exit 1
+          }
+          node scripts/check-release.cjs --tag "$TAG"
+          node scripts/prepare-release-publication.cjs \
+            --input release-input \
+            --output publication \
+            --tag "$TAG" \
+            --commit "$GITHUB_SHA" \
+            --repository "$GITHUB_REPOSITORY" \
+            --run-id "$GITHUB_RUN_ID" \
+            --run-attempt "$GITHUB_RUN_ATTEMPT" \
+            --source-artifact \
+              "linux-x64=${{ needs.linux-x64.outputs.release-artifact-id }}:${{ needs.linux-x64.outputs.release-artifact-digest }}" \
+            --source-artifact \
+              "linux-arm64=${{ needs.linux-arm64.outputs.release-artifact-id }}:${{ needs.linux-arm64.outputs.release-artifact-digest }}" \
+            --source-artifact \
+              "windows-x64=${{ needs.windows-x64.outputs.release-artifact-id }}:${{ needs.windows-x64.outputs.release-artifact-digest }}" \
+            --source-artifact \
+              "macos-arm64=${{ needs.sign-macos-arm64.outputs.release-artifact-id }}:${{ needs.sign-macos-arm64.outputs.release-artifact-digest }}"
+          (cd publication/assets && sha256sum -c SHA256SUMS)
+
+      - name: Write the human release notes
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          cat > publication/release-notes.md <<EOF
+          # Sage.js ${TAG}
+
+          This hardened, provenance-tracked Sage.js ${TAG} release provides open,
+          portable, high-performance software for research mathematics. It
+          contains the latest exact arithmetic, polynomial, matrix, graph,
+          number-theory, compiler, and Sage-compatible runtime work from the
+          tagged commit.
+
+          ## Supported binaries
+
+          - **Linux x64:** glibc 2.28 or newer.
+          - **Linux arm64:** Armv8-A, glibc 2.28 or newer.
+          - **Apple Silicon macOS:** macOS 13.5 or newer; Developer ID signed
+            and Apple-notarized ZIP and PKG.
+          - **Windows x64:** Windows 10/11; **not Authenticode-signed in this
+            release**. Verify its SHA-256 checksum before running it.
+
+          Every archive contains both the native-mathematics `sagejs`
+          executable and the lightweight `sagepython` runtime. No external
+          Node.js, Python, compiler, or Sage.js checkout is required.
+
+          Verify downloads with the adjacent `.sha256` files or the consolidated
+          `SHA256SUMS`. `release-provenance.json` binds every published file to
+          this commit and to the immutable GitHub Actions artifact IDs/digests.
+
+          This early release does not include Intel macOS, a signed Windows
+          executable, or npm publication. See the implementation dashboard for
+          the current Sage compatibility surface and known limitations.
+          EOF
+
+      - name: Create a private draft containing only the validated assets
         env:
           GH_TOKEN: ${{ github.token }}
           TAG: ${{ github.ref_name }}
         run: |
-          gh release view "$TAG" >/dev/null 2>&1 || \
-            gh release create "$TAG" --verify-tag --generate-notes
-          mapfile -t assets < <(find release -maxdepth 1 -type f -print | sort)
-          [[ ${#assets[@]} -gt 0 ]] || { echo "No release assets" >&2; exit 1; }
-          gh release upload "$TAG" "${assets[@]}" --clobber
-
-      - name: Publish the platform and public npm packages
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-          NPM_CONFIG_PROVENANCE: "true"
-        run: |
-          [[ -n "$NODE_AUTH_TOKEN" ]] || { echo "Missing NPM_TOKEN" >&2; exit 1; }
-          package_version="$(tar -xOzf release/npm/sagejs.tgz package/package.json | \
-            node -e "let text=''; process.stdin.on('data',x=>text+=x); process.stdin.on('end',()=>console.log(JSON.parse(text).version))")"
-          [[ "${GITHUB_REF_NAME}" == "v${package_version}" ]] || {
-            echo "Tag ${GITHUB_REF_NAME} does not match npm version ${package_version}" >&2
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            echo "Release $TAG already exists; refusing to replace immutable assets" >&2
             exit 1
-          }
-          pnpm publish release/npm/sagejs-linux-x64.tgz \
-            --access public --tag linux-x64 --ignore-scripts --no-git-checks
-          pnpm publish release/npm/sagejs-linux-arm64.tgz \
-            --access public --tag linux-arm64 --ignore-scripts --no-git-checks
-          pnpm publish release/npm/sagejs-windows-x64.tgz \
-            --access public --tag windows-x64 --ignore-scripts --no-git-checks
-          pnpm publish release/npm/sagejs-macos-arm64.tgz \
-            --access public --tag macos-arm64 --ignore-scripts --no-git-checks
-          pnpm publish release/npm/sagejs.tgz \
-            --access public --tag latest --ignore-scripts --no-git-checks
+          fi
+          mapfile -t assets < <(find publication/assets -maxdepth 1 -type f -print | sort)
+          [[ ${#assets[@]} -ge 4 ]] || { echo "Incomplete release asset set" >&2; exit 1; }
+          gh release create "$TAG" \
+            --draft \
+            --verify-tag \
+            --title "Sage.js $TAG" \
+            --notes-file publication/release-notes.md \
+            "${assets[@]}"
+
+      - name: Publish the complete stable release atomically from draft state
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+        run: gh release edit "$TAG" --draft=false --latest

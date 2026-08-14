@@ -20,44 +20,65 @@ function job(name) {
   return workflow.slice(start, next === -1 ? workflow.length : next);
 }
 
-test("platform builders never receive signing credentials", () => {
-  for (const name of ["windows-x64", "macos-arm64"]) {
+test("every release builder and consumer uses exact Node 26.7.0", () => {
+  const versions = [...workflow.matchAll(/node-version:\s+([^\s]+)/g)].map((match) => match[1]);
+  assert.ok(versions.length >= 6);
+  assert.deepEqual(new Set(versions), new Set(["26.7.0"]));
+});
+
+test("stable and release-candidate tags have distinct irreversible authority", () => {
+  const policy = job("release-tag-policy");
+  const macosSign = job("sign-macos-arm64");
+  const publish = job("publish-release");
+  assert.match(policy, /-rc\\\.\(\[1-9\]\[0-9\]\*\)/);
+  assert.match(policy, /candidate=true/);
+  assert.match(policy, /publish=true/);
+  assert.match(macosSign, /needs\.release-tag-policy\.outputs\.candidate == 'true'/);
+  assert.match(publish, /needs\.release-tag-policy\.outputs\.publish == 'true'/);
+  assert.match(publish, /environment: sagejs-release/);
+  assert.doesNotMatch(macosSign, /needs\.release-tag-policy\.outputs\.publish/);
+});
+
+test("platform builders never receive signing or publication credentials", () => {
+  for (const name of ["linux-x64", "linux-arm64", "windows-x64", "macos-arm64"]) {
     const source = job(name);
-    assert.doesNotMatch(source, /environment:\s+sagejs-signing/);
+    assert.doesNotMatch(source, /environment:\s+sagejs-(?:signing|release)/);
     assert.doesNotMatch(source, /\bsecrets\./);
   }
 });
 
-test("protected jobs sign the exact checksum-bound tested SEA inputs", () => {
-  const windowsBuild = job("windows-x64");
-  const windowsSign = job("sign-windows-x64");
-  assert.match(windowsBuild, /name: sagejs-windows-x64-tested-sea/);
-  assert.match(windowsBuild, /tested-sea\.zip\.sha256/);
-  assert.match(windowsSign, /if: startsWith\(github\.ref, 'refs\/tags\/v'\)/);
-  assert.match(windowsSign, /needs: windows-x64/);
-  assert.match(windowsSign, /environment: sagejs-signing/);
-  assert.match(windowsSign, /name: sagejs-windows-x64-tested-sea/);
-  assert.match(windowsSign, /Get-FileHash/);
-  assert.match(windowsSign, /SAGEJS_WINDOWS_CERTIFICATE_PFX_BASE64/);
-
-  const macosBuild = job("macos-arm64");
-  const macosSign = job("sign-macos-arm64");
-  assert.match(macosBuild, /name: sagejs-macos-arm64-tested-sea/);
-  assert.match(macosBuild, /tested-sea\.tar\.sha256/);
-  assert.match(macosSign, /if: startsWith\(github\.ref, 'refs\/tags\/v'\)/);
-  assert.match(macosSign, /needs: macos-arm64/);
-  assert.match(macosSign, /environment: sagejs-signing/);
-  assert.match(macosSign, /name: sagejs-macos-arm64-tested-sea/);
-  assert.match(macosSign, /shasum -a 256 -c tested-sea\.tar\.sha256/);
-  assert.match(macosSign, /SAGEJS_APPLE_CERTIFICATE_P12_BASE64/);
-  assert.match(macosSign, /pnpm release:macos -- --skip-build/);
+test("Windows is deliberately unsigned and bypasses the signing environment", () => {
+  const windows = job("windows-x64");
+  assert.equal(workflow.includes("  sign-windows-x64:\n"), false);
+  assert.match(windows, /Get-AuthenticodeSignature/);
+  assert.match(windows, /Status -ne "NotSigned"/);
+  assert.match(windows, /UNSIGNED-WINDOWS\.txt/);
+  assert.match(windows, /sagejs\.windows-release-manifest-v1/);
+  assert.match(windows, /scheme = "authenticode"; status = "unsigned"/);
+  assert.match(windows, /version = \$version/);
+  assert.match(windows, /sourceCommit = \$sourceCommit/);
+  assert.match(windows, /sourceCommit -ne \$env:GITHUB_SHA/);
+  assert.match(windows, /sagejs-windows-x64-unsigned\.zip/);
+  assert.match(windows, /id: upload-release/);
+  assert.doesNotMatch(workflow, /SAGEJS_WINDOWS_CERTIFICATE|artifact-signing-action|azure\/login/);
 });
 
-test("signing and publication credentials stay in their protected jobs", () => {
-  const windowsSign = job("sign-windows-x64");
+test("macOS signs the exact immutable tested input and notarizes it", () => {
+  const macosBuild = job("macos-arm64");
   const macosSign = job("sign-macos-arm64");
-  const publish = job("publish-release");
-
+  assert.match(macosBuild, /id: upload-signing-input/);
+  assert.match(macosBuild, /signing-input-artifact-id:/);
+  assert.match(macosSign, /environment: sagejs-signing/);
+  assert.match(
+    macosSign,
+    /artifact-ids: \$\{\{ needs\.macos-arm64\.outputs\.signing-input-artifact-id \}\}/,
+  );
+  assert.match(macosSign, /shasum -a 256 -c tested-sea\.tar\.sha256/);
+  assert.match(macosSign, /\$'sagejs\\nsagepython'/);
+  assert.match(macosSign, /Unexpected or duplicate tested SEA tar member/);
+  assert.match(macosSign, /pnpm release:macos -- --skip-build/);
+  assert.match(macosSign, /id: upload-release/);
+  assert.match(macosSign, /release-artifact-digest:/);
   for (const secret of [
     "SAGEJS_APPLE_CERTIFICATE_P12_BASE64",
     "SAGEJS_APPLE_CERTIFICATE_PASSWORD",
@@ -68,37 +89,46 @@ test("signing and publication credentials stay in their protected jobs", () => {
     assert.equal(workflow.split(`secrets.${secret}`).length - 1, 1);
     assert.match(macosSign, new RegExp(`secrets\\.${secret}`));
   }
-  for (const secret of [
-    "SAGEJS_WINDOWS_CERTIFICATE_PFX_BASE64",
-    "SAGEJS_WINDOWS_CERTIFICATE_PASSWORD",
-  ]) {
-    assert.equal(workflow.split(`secrets.${secret}`).length - 1, 1);
-    assert.match(windowsSign, new RegExp(`secrets\\.${secret}`));
-  }
-
-  assert.match(publish, /environment: sagejs-release/);
-  assert.match(publish, /sign-windows-x64/);
-  assert.match(publish, /sign-macos-arm64/);
-  assert.match(
-    publish,
-    /NODE_AUTH_TOKEN: \$\{\{ secrets\.NPM_TOKEN \}\}/,
-  );
-  assert.equal(workflow.split("secrets.NPM_TOKEN").length - 1, 1);
 });
 
-test("protected and artifact-transport actions are immutable", () => {
-  for (const name of [
-    "sign-windows-x64",
-    "sign-macos-arm64",
-    "publish-release",
-  ]) {
-    for (const line of job(name).split("\n")) {
-      if (!line.trimStart().startsWith("uses:")) continue;
-      assert.match(line, /@[0-9a-f]{40}(?:\s+#\s+v\d+)?$/);
-    }
+test("publication downloads only the four exact final artifact IDs", () => {
+  const publish = job("publish-release");
+  assert.match(publish, /- windows-x64/);
+  assert.match(publish, /- sign-macos-arm64/);
+  assert.doesNotMatch(publish, /sign-windows-x64/);
+  assert.equal(publish.split("uses: actions/download-artifact@").length - 1, 4);
+  for (const name of ["linux-x64", "linux-arm64", "windows-x64", "sign-macos-arm64"]) {
+    assert.match(
+      publish,
+      new RegExp(`artifact-ids: \\$\\{\\{ needs\\.${name.replaceAll("-", "\\-")}\\.outputs\\.release-artifact-id \\}\\}`),
+    );
+    assert.match(
+      publish,
+      new RegExp(`needs\\.${name.replaceAll("-", "\\-")}\\.outputs\\.release-artifact-digest`),
+    );
   }
+  assert.doesNotMatch(publish, /name:\s+sagejs-/);
+  assert.doesNotMatch(publish, /path:\s+release\s*$\n\s+merge-multiple:\s+true/m);
+  assert.match(publish, /prepare-release-publication\.cjs/);
+});
+
+test("stable publication is GitHub-only, explicit, immutable, and fail-closed", () => {
+  const publish = job("publish-release");
+  assert.match(publish, /node scripts\/check-release\.cjs --tag/);
+  assert.match(publish, /SHA256SUMS/);
+  assert.match(publish, /release-provenance\.json/);
+  assert.match(publish, /not Authenticode-signed/);
+  assert.match(publish, /--draft/);
+  assert.match(publish, /--verify-tag/);
+  assert.match(publish, /refusing to replace immutable assets/);
+  assert.doesNotMatch(publish, /--clobber|--generate-notes/);
+  assert.match(publish, /--draft=false --latest/);
+  assert.doesNotMatch(publish, /pnpm publish|npm publish|NPM_TOKEN|NODE_AUTH_TOKEN/);
+});
+
+test("every action that can influence release bytes is immutable", () => {
   for (const line of workflow.split("\n")) {
-    if (!/uses: actions\/(?:upload|download)-artifact@/.test(line)) continue;
-    assert.match(line, /@[0-9a-f]{40}\s+#\s+v\d+$/);
+    if (!line.trimStart().startsWith("uses:")) continue;
+    assert.match(line, /@[0-9a-f]{40}(?:\s+#\s+v[0-9.]+)?$/);
   }
 });

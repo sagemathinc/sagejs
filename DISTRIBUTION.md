@@ -156,20 +156,18 @@ artifact as a Sage.js release merely because it was built successfully.
 
 - **Implemented and credential-free:** `pnpm test:sea` builds both executables
   and checks relocation, startup, Jupyter, and representative native
-  mathematics. CI packages unsigned Linux archives, checksums, and npm
-  tarballs. Branch and pull-request Windows artifacts are also unsigned test
-  artifacts.
-- **Implemented but credential-gated:** a `v*` workflow signs Windows
-  executables, signs Apple Silicon macOS executables, notarizes their ZIP and
-  PKG distributions, and refuses to publish if those jobs fail. The scripts are
-  [`scripts/sign-windows.ps1`](scripts/sign-windows.ps1) and
-  [`scripts/release-macos.sh`](scripts/release-macos.sh).
+  mathematics. CI packages checksummed Linux archives. Windows artifacts are
+  deliberately unsigned in the initial release and carry explicit notices.
+- **Implemented and credential-gated:** a release tag signs Apple Silicon
+  macOS executables, notarizes their ZIP and PKG distributions, and refuses to
+  publish if that job fails. A `vX.Y.Z-rc.N` tag proves this protected path
+  without publishing; only exact stable `vX.Y.Z` can enter final publication.
 - **Manual acceptance:** a maintainer must inspect the workflow, signatures,
   checksums, and clean-machine behavior. CI cannot establish Gatekeeper or
   SmartScreen behavior for every end-user download path.
-- **Not yet proved by this documentation audit:** a production tag using the
-  real Apple, Windows, npm, and GitHub credentials. Source-controlled release
-  automation is not evidence that the credentialed path has run successfully.
+- **Not yet proved until the candidate workflow passes:** a production tag
+  using the real Apple and GitHub environments. Source-controlled automation
+  alone is not evidence that the credentialed path has run successfully.
 
 The authoritative secret names and tag procedure are in
 [`RELEASING.md`](RELEASING.md). The following is the human approval checklist,
@@ -185,21 +183,17 @@ not a second automation implementation.
    ruleset. Confirm that the tag-only signing job uses the protected
    `sagejs-signing` environment, that final publication uses the separate
    `sagejs-release` environment, and that both accept only `v*` tags and require
-   maintainer approval. Review and preferably pin every action used by a
-   secret-bearing job to an immutable commit rather than relying only on a
-   moving version tag.
-   Limit the npm token to the required `@sagemath` packages and keep GitHub,
-   Azure, and Apple identities least-privileged.
+   maintainer approval. Every action influencing release bytes is pinned to an
+   immutable commit rather than a moving version tag. Keep GitHub and Apple
+   identities least-privileged.
 3. Require the complete unprivileged CI matrix to pass at that exact commit,
    including each platform's blocking portable/unit, integration, native, and
    `pnpm test:sea` stages. The exact tier names differ slightly by job; review
    the workflow rather than inferring coverage from one green status icon.
-4. Download every available CI artifact before creating a tag. Record its
-   workflow run, commit, platform, architecture, Node version, and native
-   mathematics profile. The current archives have adjacent checksums but do not
-   yet include one consolidated, machine-readable release manifest; retain the
-   workflow evidence until that manifest exists. Treat any generated capability
-   or provenance manifest as evidence to review, not as a substitute for tests.
+4. Download every final CI artifact before creating a tag. Record its workflow
+   run, commit, platform, architecture, Node version, and native mathematics
+   profile. Review the per-platform readiness records and the consolidated
+   `release-provenance.json`; manifests are evidence, not a substitute for tests.
 5. Verify each adjacent `.sha256` file using a second tool, inspect every
    archive's file list and licenses, extract it into a new directory, and run:
 
@@ -211,8 +205,8 @@ not a second automation implementation.
 
    Use the `.exe` names and PowerShell equivalents on Windows. A checksum
    detects accidental corruption; because the checksum is distributed beside
-   the archive, platform signatures and the authenticated GitHub/npm channels
-   provide publisher identity.
+   the archive, Apple signatures where applicable and the authenticated GitHub
+   release channel provide publisher identity.
 6. Review all generated manifests and checksums as release records. No secret,
    private key, PFX/P12 file, notary API key, Keychain password, or unredacted
    signing log belongs in an artifact, repository, shell history, or release
@@ -233,14 +227,11 @@ ticket, so test it online after a normal browser download. Test the stapled PKG
 both online and offline. Full commands and clean-machine checks are in the
 macOS checklist below.
 
-On Windows, choose exactly one Authenticode path: Azure Artifact Signing or the
-temporary-PFX fallback. Both must use SHA-256 file and RFC 3161 timestamp
-digests, and both must pass
-`pwsh -File scripts/sign-windows.ps1 -VerifyOnly` before packaging. A trusted
-timestamp preserves the validity of a signature after ordinary certificate
-expiration; it does not rescue a signature made after compromise or revocation.
-Detailed verification and SmartScreen limitations are documented in
-[`WINDOWS.md`](WINDOWS.md).
+The initial Windows archive is intentionally not Authenticode-signed. Its
+filename ends in `-unsigned.zip`, its archive contains `UNSIGNED-WINDOWS.txt`
+and `release.json`, and CI asserts `Get-AuthenticodeSignature` reports
+`NotSigned`. Authenticode becomes a separate future release gate; do not imply
+SmartScreen publisher identity for this release. See [`WINDOWS.md`](WINDOWS.md).
 
 ### 3. Publish in one direction
 
@@ -249,18 +240,15 @@ Detailed verification and SmartScreen limitations are documented in
    Do not move or overwrite a tag which users may already have consumed.
 2. Let all four platform jobs finish. The publish job must consume only their
    downloaded artifacts, never a maintainer's local rebuild.
-3. The current workflow creates or updates the GitHub release and uploads the
-   direct archives, checksums, macOS PKG, and installer first. It then publishes
-   the four platform npm packages and finally `@sagemath/sagejs` under `latest`.
-   The public package is last because its exact optional dependencies must
-   already exist.
-4. Do not run a competing local `gh release upload` or `pnpm publish` while the
-   tag workflow is active. npm versions are immutable; a partially published
-   version cannot safely be rerun as though nothing happened.
-5. After publication, download from GitHub and install from the public npm
-   registry into clean directories. Compare checksums and executable hashes
-   with the workflow artifacts, repeat the mathematical/Jupyter smoke tests,
-   and inspect npm provenance.
+3. The workflow downloads only the exact final artifact IDs, verifies their
+   digests and allowlists, creates `SHA256SUMS` and release provenance, then
+   uploads the complete set to a private draft. It refuses existing releases
+   and never uses `--clobber`; the final operation makes the draft public.
+4. Do not run a competing local `gh release upload` while the tag workflow is
+   active. This release does not publish npm packages.
+5. After publication, download from GitHub into clean directories. Compare
+   checksums and executable hashes with the workflow artifacts, then repeat the
+   mathematical and Jupyter smoke tests.
 6. Only then update the website or announcement links. Check both pinned URLs
    and `/releases/latest`, and test `install.sh` against the public assets on
    Linux x64, Linux arm64, and Apple Silicon. Windows remains a manual archive
