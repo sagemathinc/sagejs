@@ -36,6 +36,7 @@ const buildRoot = join(root, "build", "zeromq-native");
 const selectionFilename = join(buildRoot, "selection.json");
 const SELECTION_SCHEMA = "sagejs.zeromq-native-selection-v1";
 const VCPKG_BASELINE = "608d1dbcd6969679f82b1ca6b89d58939c9b228e";
+const VCPKG_URL = "https://github.com/microsoft/vcpkg.git";
 const PROJECT_OPTIONS_SHA256 =
   ZEROMQ_SOURCE.projectOptionsSha256;
 const PROJECT_OPTIONS_URL =
@@ -254,6 +255,51 @@ function findAddon(directory) {
   return matches[0];
 }
 
+function preparePinnedVcpkg(home, environment) {
+  const repository = join(home, "vcpkg");
+  mkdirSync(repository, { recursive: true });
+  execFileSync("git", ["init", "--quiet", repository], {
+    env: environment,
+    stdio: "inherit",
+  });
+  execFileSync(
+    "git",
+    ["-C", repository, "remote", "add", "origin", VCPKG_URL],
+    {
+      env: environment,
+      stdio: "inherit",
+    },
+  );
+  execFileSync("git", [
+    "-C",
+    repository,
+    "fetch",
+    "--depth=1",
+    "origin",
+    VCPKG_BASELINE,
+  ], {
+    env: environment,
+    stdio: "inherit",
+  });
+  execFileSync("git", ["-C", repository, "checkout", "--detach", "FETCH_HEAD"], {
+    env: environment,
+    stdio: "inherit",
+  });
+  execFileSync(join(repository, "bootstrap-vcpkg.sh"), ["-disableMetrics"], {
+    cwd: repository,
+    env: environment,
+    stdio: "inherit",
+  });
+  const revision = execFileSync("git", ["-C", repository, "rev-parse", "HEAD"], {
+    encoding: "utf8",
+    env: environment,
+  }).trim();
+  if (revision !== VCPKG_BASELINE) {
+    throw new Error(`vcpkg checkout resolved to unexpected revision ${revision}`);
+  }
+  return repository;
+}
+
 function buildZeroMQDarwin(options = {}) {
   if (process.platform !== "darwin" && options.allowNonDarwin !== true) {
     throw new Error("the source-owned ZeroMQ addon must be built on macOS");
@@ -301,6 +347,7 @@ function buildZeroMQDarwin(options = {}) {
       projectOptionsSha256: PROJECT_OPTIONS_SHA256,
       tripletSha256: sha256Bytes(triplet),
       vcpkgBaseline: VCPKG_BASELINE,
+      vcpkgUrl: VCPKG_URL,
     },
     source: { ...ZEROMQ_SOURCE },
     target: {
@@ -375,6 +422,7 @@ function buildZeroMQDarwin(options = {}) {
     const binaryCache = join(buildRoot, "vcpkg-binary-cache", `${arch}-${deploymentTarget}`);
     mkdirSync(home, { recursive: true });
     mkdirSync(binaryCache, { recursive: true });
+    preparePinnedVcpkg(home, environment);
     const buildEnvironment = selectedBuildEnvironment(environment, {
       HOME: home,
       SDKROOT: sdkRoot,
@@ -449,6 +497,7 @@ module.exports = {
   buildZeroMQDarwin,
   darwinBuildToolEnvironment,
   patchProjectOptionsHash,
+  preparePinnedVcpkg,
   readZeroMQSelection,
   selectedBuildEnvironment,
   targetArchitecture,
