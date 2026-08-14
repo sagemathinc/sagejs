@@ -17,9 +17,11 @@ const test = require("node:test");
 
 const {
   acceptReleaseArtifact,
+  assertInstallerHasNoScripts,
   parseArguments,
   peCertificateTable,
   validateArchiveMembers,
+  validateBenchmarkStatistics,
   validateNativeReceipt,
   validateThirdPartyInventory,
   verifyChecksum,
@@ -408,6 +410,51 @@ test("PE certificate-table evidence distinguishes unsigned from signed bytes", (
       size: 8,
     });
   }));
+
+test("macOS installer acceptance rejects privileged package scripts", () =>
+  withTemporary((directory) => {
+    assert.doesNotThrow(() => assertInstallerHasNoScripts(directory, "<pkg-info/>"));
+    mkdirSync(join(directory, "Scripts"));
+    assert.throws(
+      () => assertInstallerHasNoScripts(directory, "<pkg-info/>"),
+      /privileged install scripts/,
+    );
+    rmSync(join(directory, "Scripts"), { recursive: true });
+    assert.throws(
+      () => assertInstallerHasNoScripts(directory, "<pkg-info><scripts/></pkg-info>"),
+      /privileged install scripts/,
+    );
+  }));
+
+test("macOS benchmark acceptance rejects empty and inconsistent samples", () => {
+  const statistics = (samples) => ({
+    maximum_ms: Math.max(...samples),
+    median_ms: [...samples].sort((left, right) => left - right)[Math.floor(samples.length / 2)],
+    minimum_ms: Math.min(...samples),
+    samples_ms: samples,
+  });
+  const valid = {
+    cold: statistics([4, 6, 5]),
+    process_startup: statistics([1, 3, 2]),
+    warm: statistics([2, 4, 3]),
+  };
+  assert.equal(validateBenchmarkStatistics(valid), 3);
+  assert.throws(
+    () => validateBenchmarkStatistics({ ...valid, cold: statistics([]) }),
+    /invalid cold samples/,
+  );
+  assert.throws(
+    () => validateBenchmarkStatistics({ ...valid, warm: statistics([1]) }),
+    /sample counts differ/,
+  );
+  assert.throws(
+    () => validateBenchmarkStatistics({
+      ...valid,
+      process_startup: { ...valid.process_startup, median_ms: 99 },
+    }),
+    /inconsistent process_startup statistics/,
+  );
+});
 
 test("final acceptance emits one checksum-bound canonical receipt", () =>
   withTemporary((directory) => {
