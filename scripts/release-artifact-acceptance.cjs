@@ -677,6 +677,10 @@ function validateLinuxBaselineMetadata(distribution, receipts, options) {
     !exactKeys(baseline.seaProbe, ["inspection", "observed", "stdout"]) ||
     baseline.seaProbe?.inspection?.schema !== "sagejs.native-binary-inspection-v1" ||
     baseline.seaProbe?.inspection?.ok !== true ||
+    !Array.isArray(baseline.seaProbe.inspection.violations) ||
+    baseline.seaProbe.inspection.violations.length !== 0 ||
+    !Array.isArray(baseline.seaProbe.inspection.aggregate?.dependencies) ||
+    baseline.seaProbe.inspection.aggregate.dependencies.length === 0 ||
     baseline.seaProbe.inspection.aggregate?.dependencies?.some(
       (dependency) => String(dependency).toLowerCase() === "libatomic.so.1",
     ) ||
