@@ -4,7 +4,7 @@
   "id": "release-baseline-rc",
   "title": "Release baseline consolidation",
   "lane": "integration",
-  "status": "review",
+  "status": "active",
   "owner": "user",
   "objective": "Consolidate only reviewed release-critical changes onto the dense QQ release authority and publish a validated release candidate source branch without tagging or publishing artifacts",
   "base_commit": "e4018fd70bf2b9549b826e20d825e08bf43dafe5",
@@ -16,7 +16,8 @@
     "packages/flint/include/sagejs/",
     "tools/runtime-bootstrap.ts",
     "tools/native-kernel/compiler.cjs",
-    "test/"
+    "test/",
+    "docs/"
   ],
   "dependencies": [],
   "references": [],

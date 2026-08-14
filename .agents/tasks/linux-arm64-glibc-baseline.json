@@ -4,7 +4,7 @@
   "id": "linux-arm64-glibc-baseline",
   "title": "Reproducible Linux arm64 glibc 2.28 release baseline",
   "lane": "integration",
-  "status": "active",
+  "status": "complete",
   "owner": "user",
   "objective": "Build and validate receipted Linux arm64 release inputs at the glibc 2.28 floor with portable CPU policy and no libatomic dependency",
   "base_commit": "e4018fd70bf2b9549b826e20d825e08bf43dafe5",
@@ -37,8 +37,12 @@
   ],
   "runs": [],
   "handoff": {
-    "summary": "",
-    "risks": [],
-    "next_steps": []
+    "summary": "Linux arm64 now has a separate immutable manylinux 2.28 release authority sharing the staged baseline driver with x64. The authority pins native arm64 build and runtime images, Node 26.7.0 source, the portable Armv8-A mathematics profile, and an arm64 ELF policy. Container architecture is queried before any build, emulation is rejected, every operation states its platform, and the selected and observed architectures are bound into the receipt. The policy and fail-closed command construction passed 19 focused host-independent tests and independent source review.",
+    "risks": [
+      "The native arm64 artifact build and execution proof is a separate release-candidate gate and was still running when this source authority was integrated."
+    ],
+    "next_steps": [
+      "Consume this authority from the shared baseline-to-SEA assembly and retain the native arm64 artifact proof beside the release receipt."
+    ]
   }
 }
