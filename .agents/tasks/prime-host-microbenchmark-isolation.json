@@ -4,7 +4,7 @@
   "id": "prime-host-microbenchmark-isolation",
   "title": "Separate fixed host microbenchmarks from correctness",
   "lane": "integration",
-  "status": "review",
+  "status": "complete",
   "owner": "user",
   "objective": "Keep prime matrix correctness unconditional while moving fixed absolute host microbenchmarks to an explicit continuously runnable command",
   "base_commit": "e1761830c8a809d79ce7e08e15ca4ff98d7a1a8a",
@@ -94,7 +94,7 @@
       "The preserved fixed-host ceilings are optimization targets, so benchmark evidence should be collected on an idle named host rather than interpreted as concurrent CI correctness."
     ],
     "next_steps": [
-      "Integrate the reviewed commit into the frozen release source.",
+      "Retain the reviewed split in the frozen release source.",
       "Retain idle linux-x64 and linux-arm64 benchmark measurements with the mathematical dispatch profile evidence."
     ]
   }
