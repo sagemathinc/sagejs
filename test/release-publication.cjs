@@ -23,6 +23,20 @@ const {
 
 const COMMIT = "0123456789abcdef0123456789abcdef01234567";
 const VERSION = "1.2.3";
+const LINUX_RELEASE_CHECKS = [
+  "artifactBoundBuildReceipts",
+  "cacheAndTemporaryBounds",
+  "corruptInstallRejected",
+  "deterministicReleaseArchive",
+  "exactMathematics",
+  "installer",
+  "installerUpgrade",
+  "m4riNativeWitness",
+  "nativeCapabilities",
+  "noAdjacentRuntime",
+  "noExternalNode",
+  "pythonRuntime",
+];
 
 function sha256(filename) {
   return createHash("sha256").update(readFileSync(filename)).digest("hex");
@@ -97,7 +111,7 @@ function writeLinuxEvidence(directory, platform) {
       math: receipt(true),
       python: receipt(false),
     },
-    checks: { exactMathematics: true, installer: true },
+    checks: Object.fromEntries(LINUX_RELEASE_CHECKS.map((name) => [name, true])),
     schemaVersion: 2,
   };
   writeFileSync(join(directory, reportName), `${JSON.stringify(report)}\n`);
@@ -237,6 +251,59 @@ test("Linux readiness evidence is source-bound and fail-closed", () => {
       );
       const report = JSON.parse(readFileSync(filename, "utf8"));
       report.buildReceipts.baseline[field] = value;
+      writeFileSync(filename, `${JSON.stringify(report)}\n`);
+      const readinessFilename = join(
+        workspace.input,
+        platform,
+        `sagejs-${platform}.release.json`,
+      );
+      const readiness = JSON.parse(readFileSync(readinessFilename, "utf8"));
+      readiness.artifacts[`sagejs-${platform}.report.json`] = sha256(filename);
+      writeFileSync(readinessFilename, `${JSON.stringify(readiness)}\n`);
+      assert.throws(() => preparePublication(workspace.options), expected);
+    } finally {
+      workspace.cleanup();
+    }
+  }
+});
+
+test("Linux release checks and capabilities are an exact ratchet", () => {
+  for (const [mutate, expected] of [
+    [
+      (report) => { delete report.checks.pythonRuntime; },
+      /release check inventory/,
+    ],
+    [
+      (report) => { report.checks.unreviewedCheck = true; },
+      /release check inventory/,
+    ],
+    [
+      (report) => { report.checks.exactMathematics = false; },
+      /contains a failed check/,
+    ],
+    [
+      (report) => {
+        report.buildReceipts.math.capabilities.artifact.nativeMathematics = false;
+      },
+      /mathematics SEA capability/,
+    ],
+    [
+      (report) => {
+        report.buildReceipts.python.capabilities.artifact.nativeMathematics = true;
+      },
+      /Python SEA capability/,
+    ],
+  ]) {
+    const workspace = fixture();
+    try {
+      const platform = "linux-x64";
+      const filename = join(
+        workspace.input,
+        platform,
+        `sagejs-${platform}.report.json`,
+      );
+      const report = JSON.parse(readFileSync(filename, "utf8"));
+      mutate(report);
       writeFileSync(filename, `${JSON.stringify(report)}\n`);
       const readinessFilename = join(
         workspace.input,
