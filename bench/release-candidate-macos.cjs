@@ -15,27 +15,35 @@ const { cpus, release, tmpdir, totalmem } = require("node:os");
 const { basename, join, resolve } = require("node:path");
 const { performance } = require("node:perf_hooks");
 const { spawnSync } = require("node:child_process");
+const { readBuildManifest } = require("../scripts/release-manifest.cjs");
+const {
+  validateMacosArm64SeaNode,
+} = require("../scripts/macos-release-node-authority.cjs");
 
 function usage(message) {
   if (message) process.stderr.write(`${message}\n`);
   process.stderr.write(
     "Usage: node bench/release-candidate-macos.cjs --archive FILE " +
-      "[--output FILE] [--samples N]\n",
+      "--build-manifest FILE [--output FILE] [--samples N]\n",
   );
   process.exit(2);
 }
 
 function parseArguments(arguments_) {
-  const options = { archive: "", output: "", samples: 5 };
+  const options = { archive: "", buildManifest: "", output: "", samples: 5 };
   for (let index = 0; index < arguments_.length; index += 1) {
     const argument = arguments_[index];
     if (argument === "--archive") options.archive = arguments_[++index] ?? "";
+    else if (argument === "--build-manifest") {
+      options.buildManifest = arguments_[++index] ?? "";
+    }
     else if (argument === "--output") options.output = arguments_[++index] ?? "";
     else if (argument === "--samples") options.samples = Number(arguments_[++index]);
     else if (argument === "--help" || argument === "-h") usage();
     else usage(`Unknown option: ${argument}`);
   }
   if (!options.archive) usage("--archive is required");
+  if (!options.buildManifest) usage("--build-manifest is required");
   if (!Number.isInteger(options.samples) || options.samples < 1 || options.samples > 30) {
     usage("--samples must be an integer from 1 through 30");
   }
@@ -186,13 +194,11 @@ if (process.platform !== "darwin" || process.arch !== "arm64") {
   throw new Error("the macOS release-candidate benchmark requires macOS arm64");
 }
 const archive = resolve(options.archive);
-const builderNode = process.env.SAGEJS_RELEASE_BUILDER_NODE || null;
-const builderNodeDependencies = builderNode
-  ? inspectCommand("otool", ["-L", builderNode])
-  : null;
-const builderNodeHash = builderNode
-  ? createHash("sha256").update(readFileSync(builderNode)).digest("hex")
-  : null;
+const buildReceipt = readBuildManifest(resolve(options.buildManifest));
+const {
+  node: builderNode,
+  source: builderNodeSource,
+} = validateMacosArm64SeaNode(buildReceipt);
 const temporary = mkdtempSync(join(tmpdir(), "sagejs-macos-benchmark-"));
 try {
   const extraction = join(temporary, "extracted");
@@ -267,24 +273,13 @@ try {
       total_memory_bytes: totalmem(),
     },
     builder: {
-      known: builderNode !== null,
-      node_version:
-        process.env.SAGEJS_RELEASE_NODE_VERSION ??
-        (builderNode === process.execPath ? process.version : null),
-      node_executable: builderNode ? basename(builderNode) : null,
-      node_sha256: builderNodeHash,
-      node_dynamic_dependencies: builderNodeDependencies?.available
-        ? builderNodeDependencies.output
-            .split("\n")
-            .slice(1)
-            .map((line) => line.trim())
-            .filter(Boolean)
-        : builderNodeDependencies,
-      node_distribution: process.env.SAGEJS_RELEASE_NODE_DISTRIBUTION
-        ? basename(process.env.SAGEJS_RELEASE_NODE_DISTRIBUTION)
-        : null,
-      node_distribution_sha256:
-        process.env.SAGEJS_RELEASE_NODE_DISTRIBUTION_SHA256 ?? null,
+      known: true,
+      node_version: builderNode.version,
+      node_executable: "authenticated SEA build input",
+      node_sha256: builderNode.executableSha256,
+      node_dynamic_dependencies: "recorded by the SEA native-binary receipt",
+      node_distribution: builderNodeSource.filename,
+      node_distribution_sha256: builderNodeSource.sha256,
     },
     validation_node: {
       version: process.version,
@@ -296,7 +291,9 @@ try {
     archive: basename(archive),
     archive_sha256: createHash("sha256").update(readFileSync(archive)).digest("hex"),
     packaging: {
-      recipe: "ditto -c -k --keepParent",
+      recipe:
+        "find sagejs-macos-arm64 -type f -print | LC_ALL=C sort | " +
+        "COPYFILE_DISABLE=1 /usr/bin/zip -X -q sagejs-macos-arm64.zip -@",
       byte_reproducible: false,
       contract:
         "The recipe and extracted-content manifest are reproducible; ZIP bytes " +

@@ -97,8 +97,12 @@ for command in "${required_commands[@]}"; do
     exit 2
   }
 done
+[[ -x /usr/bin/zip ]] || {
+  echo "Required system archive producer not found: /usr/bin/zip" >&2
+  exit 2
+}
 
-BUILDER_NODE="${SAGEJS_RELEASE_BUILDER_NODE:-}"
+BUILDER_NODE=""
 if [[ $SKIP_BUILD -eq 0 ]]; then
   BUILDER_NODE="$(command -v node)"
   NON_SYSTEM_NODE_LIBRARIES="$(
@@ -202,7 +206,12 @@ FACTOR_OUTPUT="$(printf 'factor(2026)\n' | "$DIST/sagejs")"
   shasum -a 256 -c SHA256SUMS
 )
 
-ditto -c -k --keepParent "$DIST" "$ARCHIVE"
+(
+  cd "$RELEASE_ROOT"
+  find "$(basename "$DIST")" -type f -print |
+    LC_ALL=C sort |
+    COPYFILE_DISABLE=1 /usr/bin/zip -X -q "$ARCHIVE" -@
+)
 (
   cd "$RELEASE_ROOT"
   shasum -a 256 "$(basename "$ARCHIVE")" > "$(basename "$ARCHIVE").sha256"
@@ -214,9 +223,10 @@ SAGEJS_RELEASE_MACOS_SIGNATURE="$([[ $UNSIGNED -eq 1 ]] && echo adhoc || echo de
 SAGEJS_RELEASE_SOURCE_ROOT="$ROOT" \
   node --test test/release-macos-arm64.cjs
 if [[ "$ARCH" == "arm64" ]]; then
-  SAGEJS_RELEASE_BUILDER_NODE="$BUILDER_NODE" \
-    node bench/release-candidate-macos.cjs \
-    --archive "$ARCHIVE" --output "$BENCHMARK_REPORT"
+  node bench/release-candidate-macos.cjs \
+    --archive "$ARCHIVE" \
+    --build-manifest build/sea/sagejs-build-manifest.json \
+    --output "$BENCHMARK_REPORT"
   (
     cd "$RELEASE_ROOT"
     shasum -a 256 "$(basename "$BENCHMARK_REPORT")" > \
@@ -264,7 +274,17 @@ if [[ -n "$PUBLISH_TAG" ]]; then
   if [[ "$ARCH" == "arm64" ]]; then
     RELEASE_ASSETS+=("$BENCHMARK_REPORT" "$BENCHMARK_REPORT.sha256")
   fi
-  gh release upload "$PUBLISH_TAG" "${RELEASE_ASSETS[@]}" --clobber
+  EXISTING_ASSETS="$(
+    gh release view "$PUBLISH_TAG" --json assets --jq '.assets[].name'
+  )"
+  for asset in "${RELEASE_ASSETS[@]}"; do
+    asset_name="$(basename "$asset")"
+    if grep -Fqx -- "$asset_name" <<< "$EXISTING_ASSETS"; then
+      echo "Release $PUBLISH_TAG already contains $asset_name; refusing to replace it" >&2
+      exit 1
+    fi
+  done
+  gh release upload "$PUBLISH_TAG" "${RELEASE_ASSETS[@]}"
 fi
 
 echo

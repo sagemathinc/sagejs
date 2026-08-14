@@ -3,15 +3,21 @@
   "schema_version": 2,
   "id": "macos-release-manifest-transport",
   "title": "Mac release manifest transport",
-  "lane": "distribution",
+  "lane": "integration",
   "status": "active",
   "owner": "user",
   "objective": "Carry both exact SEA build manifests through protected macOS signing and package them with an internally verified SHA256SUMS inventory",
-  "base_commit": "e1761830c8a809d79ce7e08e15ca4ff98d7a1a8a",
+  "base_commit": "3ee4c9d0749be992923f7e04d47c17f3646aea0d",
   "claims": [
     "scripts/release-macos.sh",
+    "scripts/macos-release-node-authority.cjs",
+    "scripts/prepare-release-publication.cjs",
+    "bench/release-candidate-macos.cjs",
     ".github/workflows/ci.yml",
+    "DISTRIBUTION.md",
+    "RELEASING.md",
     "test/release-macos-arm64.cjs",
+    "test/release-publication.cjs",
     "test/release-workflow-protection.cjs"
   ],
   "dependencies": [],
@@ -32,9 +38,9 @@
     "macos-arm64": "required"
   },
   "validation": [
+    "pnpm architecture:check",
     "pnpm test:portable",
-    "pnpm test:native",
-    "pnpm test:sea",
+    "pnpm test:baselib:strict",
     "node --test test/release-workflow-protection.cjs test/release-macos-arm64.cjs"
   ],
   "runs": [

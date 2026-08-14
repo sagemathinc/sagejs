@@ -24,6 +24,17 @@ const SCHEMA = "sagejs.release-publication-provenance-v1";
 const HASH = /^[0-9a-f]{64}$/;
 const COMMIT = /^[0-9a-f]{40}(?:[0-9a-f]{24})?$/;
 const VERSION = /^(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)(?:-[0-9A-Za-z.-]+)?$/;
+const ACCEPTANCE_SCHEMA = "sagejs.release-artifact-acceptance-v1";
+const ACCEPTANCE_CHECKS = Object.freeze([
+  "archiveContents",
+  "archiveSha256",
+  "buildReceiptBinding",
+  "exactMathematics",
+  "licenseAndSourceInventory",
+  "nativeDependencyClosure",
+  "relocatedRuntime",
+  "signaturePolicy",
+]);
 const LINUX_RELEASE_CHECKS = Object.freeze([
   "artifactBoundBuildReceipts",
   "cacheAndTemporaryBounds",
@@ -41,6 +52,8 @@ const LINUX_RELEASE_CHECKS = Object.freeze([
 
 const platforms = {
   "linux-x64": {
+    acceptanceSignature: "unsigned-not-applicable",
+    arch: "x64",
     signature: "unsigned-linux",
     files: [
       "sagejs-linux-x64.tar.xz",
@@ -48,24 +61,34 @@ const platforms = {
       "sagejs-linux-x64.report.json",
       "sagejs-linux-x64.release.json",
       "install.sh",
+      "sagejs-linux-x64-acceptance.json",
+      "sagejs-linux-x64-acceptance.json.sha256",
     ],
     checksums: [["sagejs-linux-x64.tar.xz", "sagejs-linux-x64.tar.xz.sha256"]],
   },
   "linux-arm64": {
+    acceptanceSignature: "unsigned-not-applicable",
+    arch: "arm64",
     signature: "unsigned-linux",
     files: [
       "sagejs-linux-arm64.tar.xz",
       "sagejs-linux-arm64.tar.xz.sha256",
       "sagejs-linux-arm64.report.json",
       "sagejs-linux-arm64.release.json",
+      "sagejs-linux-arm64-acceptance.json",
+      "sagejs-linux-arm64-acceptance.json.sha256",
     ],
     checksums: [["sagejs-linux-arm64.tar.xz", "sagejs-linux-arm64.tar.xz.sha256"]],
   },
   "windows-x64": {
+    acceptanceSignature: "explicitly-unsigned-authenticode",
+    arch: "x64",
     signature: "unsigned-windows",
     files: [
       "sagejs-windows-x64-unsigned.zip",
       "sagejs-windows-x64-unsigned.zip.sha256",
+      "sagejs-windows-x64-acceptance.json",
+      "sagejs-windows-x64-acceptance.json.sha256",
     ],
     checksums: [[
       "sagejs-windows-x64-unsigned.zip",
@@ -73,6 +96,8 @@ const platforms = {
     ]],
   },
   "macos-arm64": {
+    acceptanceSignature: "apple-developer-id",
+    arch: "arm64",
     signature: "developer-id-notarized",
     files: [
       "sagejs-macos-arm64.zip",
@@ -81,6 +106,8 @@ const platforms = {
       "sagejs-macos-arm64.pkg.sha256",
       "sagejs-macos-arm64-benchmark.json",
       "sagejs-macos-arm64-benchmark.json.sha256",
+      "sagejs-macos-arm64-acceptance.json",
+      "sagejs-macos-arm64-acceptance.json.sha256",
     ],
     checksums: [
       ["sagejs-macos-arm64.zip", "sagejs-macos-arm64.zip.sha256"],
@@ -167,6 +194,93 @@ function readJson(filename, label) {
   } catch (error) {
     throw new Error(`invalid ${label}: ${error.message}`);
   }
+}
+
+function verifyAcceptanceReceipt(root, platform, policy, { commit, version }) {
+  const name = `sagejs-${platform}-acceptance.json`;
+  const checksum = `${name}.sha256`;
+  verifyChecksum(root, name, checksum);
+  const contents = readFileSync(join(root, name), "utf8");
+  const receipt = readJson(join(root, name), `${platform} acceptance receipt`);
+  if (contents !== `${JSON.stringify(receipt, null, 2)}\n`) {
+    throw new Error(`${platform} acceptance receipt is not canonical JSON`);
+  }
+  const archive = policy.checksums[0][0];
+  const archiveSha256 = verifyChecksum(root, archive, policy.checksums[0][1]);
+  assert.equal(receipt.schema, ACCEPTANCE_SCHEMA, `${platform} acceptance schema`);
+  assert.equal(receipt.version, version, `${platform} accepted version`);
+  assert.equal(receipt.source?.commit, commit, `${platform} accepted source`);
+  assert.equal(receipt.target?.arch, policy.arch, `${platform} accepted architecture`);
+  assert.equal(
+    receipt.target?.platform,
+    platform.startsWith("linux-")
+      ? "linux"
+      : platform.startsWith("macos-")
+        ? "darwin"
+        : "win32",
+    `${platform} accepted platform`,
+  );
+  assert.equal(receipt.archive?.name, archive, `${platform} accepted archive`);
+  assert.equal(receipt.archive?.sha256, archiveSha256, `${platform} accepted archive digest`);
+  assert.equal(
+    receipt.archive?.size,
+    lstatSync(join(root, archive)).size,
+    `${platform} accepted archive size`,
+  );
+  assert.deepEqual(
+    Object.keys(receipt.checks || {}).sort(),
+    [...ACCEPTANCE_CHECKS].sort(),
+    `${platform} acceptance check inventory`,
+  );
+  assert.equal(
+    ACCEPTANCE_CHECKS.every((check) => receipt.checks[check] === true),
+    true,
+    `${platform} acceptance contains a failed check`,
+  );
+  assert.equal(
+    receipt.signatures?.mode,
+    policy.acceptanceSignature,
+    `${platform} accepted signature mode`,
+  );
+  if (platform === "macos-arm64") {
+    const [packageName, packageChecksum] = policy.checksums[1];
+    const [benchmarkName, benchmarkChecksum] = policy.checksums[2];
+    const packageSha256 = verifyChecksum(root, packageName, packageChecksum);
+    const benchmarkSha256 = verifyChecksum(root, benchmarkName, benchmarkChecksum);
+    assert.deepEqual(
+      Object.keys(receipt.signatures?.package || {}).sort(),
+      ["name", "sha256"],
+      "macos-arm64 accepted package binding",
+    );
+    assert.equal(
+      receipt.signatures.package.name,
+      packageName,
+      "macos-arm64 accepted package name",
+    );
+    assert.equal(
+      receipt.signatures.package.sha256,
+      packageSha256,
+      "macos-arm64 accepted package digest",
+    );
+    assert.deepEqual(
+      Object.keys(receipt.benchmark || {}).sort(),
+      ["benchmarkSha256", "reportSha256", "samples"],
+      "macos-arm64 accepted benchmark binding",
+    );
+    assert.equal(
+      receipt.benchmark.benchmarkSha256,
+      benchmarkSha256,
+      "macos-arm64 accepted benchmark digest",
+    );
+  } else {
+    assert.equal(receipt.benchmark, null, `${platform} must not claim benchmark evidence`);
+    assert.equal(
+      Object.hasOwn(receipt.signatures || {}, "package"),
+      false,
+      `${platform} must not claim package evidence`,
+    );
+  }
+  return receipt;
 }
 
 function verifyLinuxReadiness(root, platform, { commit, version }) {
@@ -391,6 +505,10 @@ function preparePublication(options) {
     const root = join(inputDirectory, platform);
     assert.deepEqual(regularFiles(root), [...policy.files].sort(), `${platform} artifact contents`);
     for (const [target, receipt] of policy.checksums) verifyChecksum(root, target, receipt);
+    verifyAcceptanceReceipt(root, platform, policy, {
+      commit: options.commit,
+      version,
+    });
     if (platform.startsWith("linux-")) {
       verifyLinuxReadiness(root, platform, { commit: options.commit, version });
     }
@@ -483,5 +601,6 @@ module.exports = {
   regularFiles,
   zipEntries,
   verifyUnsignedWindowsArchive,
+  verifyAcceptanceReceipt,
   verifyChecksum,
 };

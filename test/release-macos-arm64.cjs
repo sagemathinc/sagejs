@@ -17,6 +17,10 @@ const { basename, join, relative, resolve, sep } = require("node:path");
 const { spawnSync } = require("node:child_process");
 const test = require("node:test");
 const { performance } = require("node:perf_hooks");
+const {
+  OFFICIAL_MACOS_ARM64_NODE,
+  validateMacosArm64SeaNode,
+} = require("../scripts/macos-release-node-authority.cjs");
 
 const root = join(__dirname, "..");
 const archive = process.env.SAGEJS_RELEASE_MACOS_ARCHIVE;
@@ -118,6 +122,41 @@ test(
   },
 );
 
+test("the macOS benchmark accepts only the exact observed Node source authority", () => {
+  const receipt = {
+    toolchain: {
+      seaNode: {
+        executableSha256: "a".repeat(64),
+        source: { ...OFFICIAL_MACOS_ARM64_NODE },
+        version: "26.7.0",
+      },
+    },
+  };
+  assert.deepEqual(validateMacosArm64SeaNode(receipt), {
+    node: receipt.toolchain.seaNode,
+    source: receipt.toolchain.seaNode.source,
+  });
+  for (const [field, value] of [
+    ["filename", "node-v26.7.0.tar.xz"],
+    ["sha256", "b".repeat(64)],
+    ["url", "https://example.invalid/node.tar.xz"],
+    ["version", "26.7.1"],
+  ]) {
+    const changed = structuredClone(receipt);
+    changed.toolchain.seaNode.source[field] = value;
+    assert.throws(
+      () => validateMacosArm64SeaNode(changed),
+      /exact official Node 26\.7\.0 darwin-arm64 distribution/,
+    );
+  }
+  const changedExecutable = structuredClone(receipt);
+  changedExecutable.toolchain.seaNode.executableSha256 = "not-a-sha256";
+  assert.throws(
+    () => validateMacosArm64SeaNode(changedExecutable),
+    /exact official Node 26\.7\.0 darwin-arm64 distribution/,
+  );
+});
+
 test(
   "the macOS release packages tested manifests and a closed checksum inventory",
   () => {
@@ -131,6 +170,14 @@ test(
     assert.match(source, /build\/sea\/sagepython-build-manifest\.json/);
     assert.match(source, /find \. -type f ! -path \.\/SHA256SUMS/);
     assert.match(source, /shasum -a 256 -c SHA256SUMS/);
+    assert.match(source, /--build-manifest build\/sea\/sagejs-build-manifest\.json/);
+    assert.match(source, /find "\$\(basename "\$DIST"\)" -type f -print/);
+    assert.match(source, /LC_ALL=C sort/);
+    assert.match(source, /COPYFILE_DISABLE=1 \/usr\/bin\/zip -X -q "\$ARCHIVE" -@/);
+    assert.doesNotMatch(source, /ditto -c/);
+    assert.doesNotMatch(source, /SAGEJS_RELEASE_BUILDER_NODE/);
+    assert.doesNotMatch(source, /gh release upload[^\n]*--clobber/);
+    assert.match(source, /refusing to replace it/);
   },
 );
 

@@ -26,9 +26,12 @@ only after the complete asset upload succeeds.
 Configure two GitHub environments with deployment tag policy `v*`:
 
 - `sagejs-signing` contains only Apple signing and notarization credentials.
-  The unprivileged macOS job builds and tests with no secrets. A separate
-  protected job downloads that exact tested input, verifies it, signs and
-  notarizes it, and uploads the final artifact.
+  The unprivileged macOS job builds and tests with no secrets as broad CI
+  evidence. A separate protected first-party GitHub runner independently
+  downloads and hashes the official Node distribution, builds and tests the
+  exact tagged source, signs and notarizes those bytes, runs final native
+  artifact acceptance, and uploads the final artifact. It never signs bytes
+  produced on the third-party runner.
 - `sagejs-release` gates the final one-way transition from a private draft to a
   public stable GitHub release. It currently needs no secret beyond GitHub's
   environment-scoped approval and job token.
@@ -59,8 +62,10 @@ Store these five values in `sagejs-signing`, never as repository-wide secrets:
 - `SAGEJS_APPLE_NOTARY_KEY_ID`
 - `SAGEJS_APPLE_NOTARY_ISSUER_ID`
 
-Optionally set `SAGEJS_MACOS_SIGN_ID` and `SAGEJS_MACOS_INSTALLER_ID` when the
-certificate names differ from the defaults in `scripts/release-macos.sh`.
+The P12 must contain the expected Developer ID Application and Developer ID
+Installer identities for William STEIN and Apple team `BVF94G2MB4`. The
+protected job verifies both names after import and supplies them to
+`scripts/release-macos.sh`; there are no additional identity-name secrets.
 
 ### Export the Developer ID identities
 
@@ -135,9 +140,11 @@ gh secret list -R sagemathinc/sagejs -e sagejs-signing
 
 The signing job writes decoded credentials only under the ephemeral runner
 temporary directory, imports the identities into a temporary Keychain, and
-deletes both after use. It signs the two executables with the hardened runtime,
-signs the PKG, notarizes the ZIP and PKG, staples the PKG, and performs
-`codesign`, `pkgutil`, `stapler`, and `spctl` checks.
+deletes both after use. Before importing them it requires the checked-out
+commit, workflow SHA, and tag target to agree and requires the stable/RC base
+tag to equal all five package versions. It signs the two executables with the
+hardened runtime, signs the PKG, notarizes the ZIP and PKG, staples the PKG, and
+performs `codesign`, `pkgutil`, `stapler`, and `spctl` checks.
 
 ## Release procedure
 
@@ -155,13 +162,28 @@ signs the PKG, notarizes the ZIP and PKG, staples the PKG, and performs
    resulting signed/notarized macOS artifact and Apple submission result. No
    GitHub release is created for this tag.
 4. After correcting any candidate issue at a new commit/version as appropriate,
-   push the annotated stable `vX.Y.Z` tag. Approve `sagejs-signing`, then approve
-   `sagejs-release` only after all four final artifacts are green.
+   use maintainer credentials with repository administration-read permission to
+   recheck that immutable releases are enabled:
+
+   ```sh
+   test "$(gh api \
+     -H 'Accept: application/vnd.github+json' \
+     -H 'X-GitHub-Api-Version: 2026-03-10' \
+     repos/sagemathinc/sagejs/immutable-releases --jq .enabled)" = true
+   ```
+
+   Do not grant the workflow a long-lived administration token for this
+   operator preflight. Then push the annotated stable `vX.Y.Z` tag. Approve
+   `sagejs-signing`, and approve `sagejs-release` only after all four final
+   artifacts are green.
 5. The protected publication job verifies the stable tag/version agreement,
    source commit, upload-artifact IDs/digests, per-platform checksums, exact file
    sets, and explicit signature policies. It creates a new private draft and
    refuses to overwrite an existing release or asset. Its last operation makes
-   the complete draft public and marks it latest.
+   the complete draft public and marks it latest, then requires the public REST
+   record to report `immutable: true` and every asset's exact local SHA-256
+   digest. GitHub automatically creates the immutable release attestation;
+   retain it with the release records.
 6. Download every public asset on clean target machines. Recompute checksums,
    test normal browser-origin security metadata, and run `--version`, Jupyter
    self-test, and native factorization. Never instruct users to disable
@@ -176,8 +198,9 @@ artifacts, and cannot use `--clobber` to replace released bytes.
 If publication fails before the final step, the GitHub release remains a
 private draft. Inspect the failure and its assets. Delete that draft only when
 the exact tagged workflow is going to be rerun; never replace bytes in a public
-release. Once public, withdraw an unsafe version explicitly and publish a new
-patch release instead of moving its tag.
+release. Once public, its immutable release record, assets, tag, and attestation
+cannot be edited or deleted. Publish a security advisory or withdrawal notice,
+remove or redirect website links, and publish a corrected patch version.
 
 If a signing credential may have leaked, stop publication and rotate or revoke
 it through Apple and GitHub. Deleting a release is not credential revocation.

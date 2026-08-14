@@ -37,6 +37,16 @@ const LINUX_RELEASE_CHECKS = [
   "noExternalNode",
   "pythonRuntime",
 ];
+const ACCEPTANCE_CHECKS = [
+  "archiveContents",
+  "archiveSha256",
+  "buildReceiptBinding",
+  "exactMathematics",
+  "licenseAndSourceInventory",
+  "nativeDependencyClosure",
+  "relocatedRuntime",
+  "signaturePolicy",
+];
 
 function sha256(filename) {
   return createHash("sha256").update(readFileSync(filename)).digest("hex");
@@ -131,6 +141,56 @@ function writeLinuxEvidence(directory, platform) {
   );
 }
 
+function writeAcceptanceEvidence(directory, platform, policy) {
+  const archive = policy.checksums[0][0];
+  const name = `sagejs-${platform}-acceptance.json`;
+  const macos = platform === "macos-arm64";
+  const packageName = macos ? policy.checksums[1][0] : null;
+  const benchmarkName = macos ? policy.checksums[2][0] : null;
+  const receipt = {
+    archive: {
+      name: archive,
+      sha256: sha256(join(directory, archive)),
+      size: readFileSync(join(directory, archive)).length,
+    },
+    benchmark: macos
+      ? {
+          benchmarkSha256: sha256(join(directory, benchmarkName)),
+          reportSha256: "b".repeat(64),
+          samples: [{ milliseconds: 1 }],
+        }
+      : null,
+    checks: Object.fromEntries(ACCEPTANCE_CHECKS.map((check) => [check, true])),
+    schema: "sagejs.release-artifact-acceptance-v1",
+    signatures: {
+      mode: policy.acceptanceSignature,
+      ...(macos
+        ? {
+            package: {
+              name: packageName,
+              sha256: sha256(join(directory, packageName)),
+            },
+          }
+        : {}),
+    },
+    source: { commit: COMMIT },
+    target: {
+      arch: policy.arch,
+      platform: platform.startsWith("linux-")
+        ? "linux"
+        : platform.startsWith("macos-")
+          ? "darwin"
+          : "win32",
+    },
+    version: VERSION,
+  };
+  writeFileSync(join(directory, name), `${JSON.stringify(receipt, null, 2)}\n`);
+  writeFileSync(
+    join(directory, `${name}.sha256`),
+    `${sha256(join(directory, name))}  ${name}\n`,
+  );
+}
+
 function fixture() {
   const root = mkdtempSync(join(tmpdir(), "sagejs-release-publication-"));
   const input = join(root, "input");
@@ -155,6 +215,7 @@ function fixture() {
       );
     }
     if (platform.startsWith("linux-")) writeLinuxEvidence(directory, platform);
+    writeAcceptanceEvidence(directory, platform, policy);
   }
   const sourceArtifacts = Object.fromEntries(
     Object.keys(platforms).map((platform, index) => [
@@ -189,7 +250,7 @@ test("publication assembly accepts exactly four identity-bound platform artifact
     assert.equal(provenance.source.commit, COMMIT);
     assert.equal(provenance.source.workflowRun.id, 987654);
     assert.match(provenance.policy.windows, /^UNSIGNED:/);
-    assert.equal(provenance.artifacts.length, 17);
+    assert.equal(provenance.artifacts.length, 25);
     assert.equal(
       provenance.artifacts.find(({ path }) => path === "sagejs-windows-x64-unsigned.zip")
         .signature,
@@ -233,6 +294,77 @@ test("unexpected intermediate artifacts and checksum tampering fail closed", () 
     assert.throws(() => preparePublication(tampered.options), /SHA-256 mismatch/);
   } finally {
     tampered.cleanup();
+  }
+});
+
+test("publication requires source-bound passing native acceptance receipts", () => {
+  for (const [mutate, expected] of [
+    [
+      (receipt) => { receipt.source.commit = "f".repeat(40); },
+      /accepted source|strictEqual/,
+    ],
+    [
+      (receipt) => { receipt.archive.sha256 = "f".repeat(64); },
+      /accepted archive digest|strictEqual/,
+    ],
+    [
+      (receipt) => { receipt.archive.size += 1; },
+      /accepted archive size|strictEqual/,
+    ],
+    [
+      (receipt) => { receipt.checks.exactMathematics = false; },
+      /contains a failed check/,
+    ],
+    [
+      (receipt) => { receipt.signatures.mode = "unsigned-not-applicable"; },
+      /accepted signature mode|strictEqual/,
+    ],
+    [
+      (receipt) => { receipt.signatures.package.sha256 = "f".repeat(64); },
+      /accepted package digest|strictEqual/,
+    ],
+    [
+      (receipt) => { receipt.benchmark.benchmarkSha256 = "f".repeat(64); },
+      /accepted benchmark digest|strictEqual/,
+    ],
+  ]) {
+    const workspace = fixture();
+    try {
+      const platform = "macos-arm64";
+      const name = `sagejs-${platform}-acceptance.json`;
+      const filename = join(workspace.input, platform, name);
+      const receipt = JSON.parse(readFileSync(filename, "utf8"));
+      mutate(receipt);
+      writeFileSync(filename, `${JSON.stringify(receipt, null, 2)}\n`);
+      writeFileSync(
+        `${filename}.sha256`,
+        `${sha256(filename)}  ${name}\n`,
+      );
+      assert.throws(() => preparePublication(workspace.options), expected);
+    } finally {
+      workspace.cleanup();
+    }
+  }
+});
+
+test("publication rejects a mixed macOS package or benchmark with refreshed sidecars", () => {
+  for (const [name, expected] of [
+    ["sagejs-macos-arm64.pkg", /accepted package digest|strictEqual/],
+    ["sagejs-macos-arm64-benchmark.json", /accepted benchmark digest|strictEqual/],
+  ]) {
+    const workspace = fixture();
+    try {
+      const directory = join(workspace.input, "macos-arm64");
+      const filename = join(directory, name);
+      writeFileSync(filename, `${readFileSync(filename, "utf8")}mixed artifact\n`);
+      writeFileSync(
+        `${filename}.sha256`,
+        `${sha256(filename)}  ${name}\n`,
+      );
+      assert.throws(() => preparePublication(workspace.options), expected);
+    } finally {
+      workspace.cleanup();
+    }
   }
 });
 
@@ -335,6 +467,11 @@ test("Windows publication requires the explicit unsigned archive contract", () =
       `${archive}.sha256`,
       `${sha256(archive)}  sagejs-windows-x64-unsigned.zip\n`,
     );
+    writeAcceptanceEvidence(
+      join(workspace.input, "windows-x64"),
+      "windows-x64",
+      platforms["windows-x64"],
+    );
     assert.throws(() => preparePublication(workspace.options), /status: 'signed'/);
   } finally {
     workspace.cleanup();
@@ -364,6 +501,11 @@ test("Windows ZIP duplicate and traversal entries fail before publication", () =
       writeFileSync(
         `${archive}.sha256`,
         `${sha256(archive)}  sagejs-windows-x64-unsigned.zip\n`,
+      );
+      writeAcceptanceEvidence(
+        join(workspace.input, "windows-x64"),
+        "windows-x64",
+        platforms["windows-x64"],
       );
       assert.throws(() => preparePublication(workspace.options), expected);
     } finally {
