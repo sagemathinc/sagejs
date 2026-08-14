@@ -189,7 +189,7 @@ function windowsNativeBinaries(options = {}) {
     dependencies: [...input.dependencies]
       .sort((left, right) => left.localeCompare(right)),
     format: "pe",
-    label: "native/addon-" + index + ".node",
+    label: input.label ?? "native/addon-" + index + ".node",
     machine: 0x8664,
     role: EMBEDDED_ADDON_ROLE,
     sha256: String(index + 1).repeat(64),
@@ -197,20 +197,21 @@ function windowsNativeBinaries(options = {}) {
     subsystem: 2,
     wordSize: 64,
   }));
-  const template = {
+  const templateInputs = options.templates ?? [{}];
+  const templates = templateInputs.map((input, index) => ({
     architecture: "x64",
-    delayDependencies: [],
-    dependencies: ["KERNEL32.dll"],
+    delayDependencies: input.delayDependencies ?? [],
+    dependencies: input.dependencies ?? ["KERNEL32.dll"],
     format: "pe",
-    label: NODE_TEMPLATE_LABEL,
+    label: input.label ?? NODE_TEMPLATE_LABEL,
     machine: 0x8664,
-    role: NODE_TEMPLATE_ROLE,
-    sha256: "d".repeat(64),
-    size: 100,
+    role: input.role ?? NODE_TEMPLATE_ROLE,
+    sha256: String.fromCharCode("d".charCodeAt(0) + index).repeat(64),
+    size: 100 + index,
     subsystem: 3,
     wordSize: 64,
-  };
-  const files = [...addons, template]
+  }));
+  const files = [...addons, ...templates]
     .sort((left, right) => left.label.localeCompare(right.label));
   const computedDependencies = [...new Set(files.flatMap((file) => [
     ...file.dependencies,
@@ -978,6 +979,59 @@ test("Windows native acceptance requires delayed-only node.exe per embedded addo
       "sagepython",
     ).dependencies,
     ["KERNEL32.dll"],
+  );
+
+  assert.throws(
+    () => validateNativeReceipt(
+      windowsBuildReceipt({ templates: [] }),
+      options,
+      "sagejs",
+    ),
+    /must contain exactly one Node template/,
+  );
+  assert.throws(
+    () => validateNativeReceipt(
+      windowsBuildReceipt({ templates: [{}, {}] }),
+      options,
+      "sagejs",
+    ),
+    /duplicate Windows binary label/,
+  );
+  assert.throws(
+    () => validateNativeReceipt(
+      windowsBuildReceipt({ templates: [{ label: "sea/fake-template" }] }),
+      options,
+      "sagejs",
+    ),
+    /Node template has unexpected label/,
+  );
+  assert.throws(
+    () => validateNativeReceipt(
+      windowsBuildReceipt({
+        addons: [{
+          delayDependencies: ["node.exe"],
+          dependencies: ["KERNEL32.dll"],
+          label: NODE_TEMPLATE_LABEL,
+        }],
+        templates: [],
+      }),
+      options,
+      "sagejs",
+    ),
+    /Node template label has the wrong role/,
+  );
+  assert.throws(
+    () => validateNativeReceipt(
+      windowsBuildReceipt({
+        addons: [{
+          delayDependencies: ["NODE.EXE", "node.exe"],
+          dependencies: ["KERNEL32.dll"],
+        }],
+      }),
+      options,
+      "sagejs",
+    ),
+    /not a canonical dependency list/,
   );
 });
 
