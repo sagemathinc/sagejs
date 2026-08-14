@@ -4,7 +4,7 @@
   "id": "macos-release-manifest-transport",
   "title": "First-party macOS release authority",
   "lane": "integration",
-  "status": "review",
+  "status": "complete",
   "owner": "user",
   "objective": "Implement and validate a protected first-party workflow that can build, test, accept, sign, notarize, and package exact tagged Sage.js macOS arm64 source and supply provenance-bound artifacts to immutable publication",
   "base_commit": "29f5463e44d2a6143040fb126cdbf2c8ab4c5391",
@@ -126,7 +126,7 @@
       "The broad general Mac matrix job in run 31800656005 failed 12 shared portability tests after its native build and startup budget passed: six raw Apple leak-sanitizer witnesses, one noisy dense-prime timing ratio, one /var versus /private/var native source-identity mismatch, and four Linux archive fixtures that assumed x64 on arm64. These are assigned to downstream portability and Linux-arm lanes and do not weaken the independently successful first-party Mac release authority job."
     ],
     "next_steps": [
-      "Integrate the exact reviewed closure commit into the frozen shared release authority without weakening the source, artifact, or publication gates.",
+      "Rebase the Windows static-CRT, reproducibility, and canonical packaging work on the closed Mac source-authority checkpoint without weakening the source, artifact, or publication gates.",
       "After every shared portability, Windows static-CRT, and artifact-acceptance change is frozen, run a fresh credential-free first-party and general Mac rehearsal at the exact combined source; this implementation receipt is source-authority evidence, not that final freeze gate.",
       "Create a reviewed immutable release-candidate tag, approve its protected sagejs-signing job, and verify its signing, notarization, acceptance, benchmark, and publication receipts before creating any stable release tag."
     ]
