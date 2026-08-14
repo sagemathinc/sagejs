@@ -9,6 +9,7 @@ const {
   mkdirSync,
   mkdtempSync,
   readFileSync,
+  realpathSync,
   rmSync,
   symlinkSync,
   unlinkSync,
@@ -798,6 +799,61 @@ test(
     } finally {
       execFileSync("chmod", ["-R", "u+w", root]);
       rmSync(root, { force: true, recursive: true });
+    }
+  },
+);
+
+test(
+  "dependency receipt roots permit only an aliased ancestor",
+  { skip: process.platform === "win32" },
+  () => {
+    const parent = mkdtempSync(
+      join(realpathSync.native(tmpdir()), "sagejs-sea-cache-root-alias-"),
+    );
+    const actualParent = join(parent, "actual");
+    const aliasParent = join(parent, "alias");
+    const actualRoot = join(actualParent, "workspace");
+    const root = join(aliasParent, "workspace");
+    mkdirSync(actualRoot, { recursive: true });
+    symlinkSync(actualParent, aliasParent, "dir");
+    try {
+      const cacheRoot = join(root, "native-cache");
+      const installedPrefix = join(
+        root,
+        "packages",
+        "m4ri",
+        ".native",
+        "prefix",
+      );
+      mkdirSync(dirname(installedPrefix), { recursive: true });
+      mkdirSync(cacheRoot);
+      const cached = cachedDependencyGeneration(
+        root,
+        cacheRoot,
+        "m4ri",
+        "3".repeat(64),
+      );
+      symlinkSync(cached.prefix, installedPrefix, "dir");
+      const source = nativeDependencyReceiptSource(
+        root,
+        "m4ri",
+        installedPrefix,
+        cached.stampName,
+        { cacheRoot },
+      );
+      assert.equal(source.prefix, cached.prefix);
+      assert.deepEqual(
+        validateNativeDependencyReceiptSources({
+          m4ri: {
+            identitySha256: cached.receipt.identitySha256,
+            ...source,
+          },
+        }),
+        { m4ri: cached.receipt.identitySha256 },
+      );
+    } finally {
+      execFileSync("chmod", ["-R", "u+w", actualRoot]);
+      rmSync(parent, { force: true, recursive: true });
     }
   },
 );
