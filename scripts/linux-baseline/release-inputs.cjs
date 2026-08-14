@@ -142,6 +142,55 @@ function platformConfig(platform) {
   return config;
 }
 
+function containerPlatform(config) {
+  return `linux/${config.containerArchitecture}`;
+}
+
+function normalizeContainerArchitecture(value) {
+  const normalized = String(value || "").trim().toLowerCase();
+  if (["amd64", "x64", "x86_64"].includes(normalized)) return "amd64";
+  if (["arm64", "aarch64"].includes(normalized)) return "arm64";
+  throw new Error(`unsupported container engine architecture ${JSON.stringify(value)}`);
+}
+
+function assertNativeEngineArchitecture(engine, config, options = {}) {
+  const spawn = options.spawn || spawnSync;
+  const result = spawn(engine, ["info", "--format", "json"], {
+    encoding: "utf8",
+    stdio: ["ignore", "pipe", "pipe"],
+  });
+  if (result.error) throw result.error;
+  if (result.status !== 0) {
+    throw new Error(
+      `${engine} could not report its server architecture: ` +
+        `${result.stderr || result.stdout}`,
+    );
+  }
+  let report;
+  try {
+    report = JSON.parse(result.stdout);
+  } catch (error) {
+    throw new Error(`${engine} returned invalid JSON from info`, { cause: error });
+  }
+  const observed =
+    report.Architecture ??
+    report.architecture ??
+    report.Host?.Arch ??
+    report.host?.arch;
+  const architecture = normalizeContainerArchitecture(observed);
+  assert.equal(
+    architecture,
+    config.containerArchitecture,
+    `refusing emulated ${containerPlatform(config)} release build on native ` +
+      `linux/${architecture}`,
+  );
+  return {
+    architecture,
+    reportedArchitecture: observed,
+    selectedPlatform: containerPlatform(config),
+  };
+}
+
 function commandAvailable(command) {
   const result = spawnSync(command, ["--version"], { stdio: "ignore" });
   return !result.error && result.status === 0;
@@ -179,7 +228,16 @@ function run(command, arguments_, options = {}) {
 function assertRuntimeOmitsLibatomic(engine, config = platformConfig(DEFAULT_PLATFORM)) {
   const result = spawnSync(
     engine,
-    ["run", "--rm", config.runtimeImage, "rpm", "-q", "libatomic"],
+    [
+      "run",
+      "--rm",
+      "--platform",
+      containerPlatform(config),
+      config.runtimeImage,
+      "rpm",
+      "-q",
+      "libatomic",
+    ],
     { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] },
   );
   if (result.error) throw result.error;
@@ -202,10 +260,23 @@ function compilerIdentity(engine, config = platformConfig(DEFAULT_PLATFORM)) {
     `printf "version=%s\\n" "$(${GCC_PATH} -dumpfullversion -dumpversion)"`,
     `printf "target=%s\\n" "$(${GCC_PATH} -dumpmachine)"`,
   ].join("; ");
-  const output = run(engine, ["run", "--rm", config.buildImage, "sh", "-c", program], {
-    encoding: "utf8",
-    stdio: ["ignore", "pipe", "inherit"],
-  }).stdout;
+  const output = run(
+    engine,
+    [
+      "run",
+      "--rm",
+      "--platform",
+      containerPlatform(config),
+      config.buildImage,
+      "sh",
+      "-c",
+      program,
+    ],
+    {
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "inherit"],
+    },
+  ).stdout;
   return Object.fromEntries(
     output
       .trim()
@@ -368,11 +439,11 @@ function proveSeaTemplate(
   const directory = mkdtempSync(join(tmpdir(), "sagejs-linux-sea-"));
   try {
     const main = join(directory, "main.cjs");
-    const config = join(directory, "sea-config.json");
+    const configFile = join(directory, "sea-config.json");
     const executable = join(directory, "sagejs-sea-smoke");
     writeFileSync(main, 'console.log("sagejs-linux-sea-ok")\n');
     writeFileSync(
-      config,
+      configFile,
       `${JSON.stringify({
         main: "main.cjs",
         output: "sagejs-sea-smoke",
@@ -381,7 +452,7 @@ function proveSeaTemplate(
         useCodeCache: false,
       })}\n`,
     );
-    run(nodeExecutable, ["--build-sea", basename(config)], { cwd: directory });
+    run(nodeExecutable, ["--build-sea", basename(configFile)], { cwd: directory });
     const inspection = assertNoLibatomic(
       assertNativeInputs(
         [{ label: "sagejs-sea-smoke", path: executable, role: "sea-smoke" }],
@@ -392,6 +463,8 @@ function proveSeaTemplate(
     const stdout = run(engine, [
       "run",
       "--rm",
+      "--platform",
+      containerPlatform(config),
       "--volume",
       `${directory}:/candidate:ro,Z`,
       config.runtimeImage,
@@ -589,6 +662,7 @@ function buildReleaseInputs(options) {
   assertSafeOutputDirectory(options.output);
   const engine = selectEngine(options.engine);
   const config = platformConfig(options.platform);
+  const engineArchitecture = assertNativeEngineArchitecture(engine, config);
   const temporary = dirname(options.stagedContext);
   const context = options.stagedContext;
   const extracted = join(temporary, "extracted");
@@ -605,6 +679,8 @@ function buildReleaseInputs(options) {
     const target = options.allInputs ? "release-inputs" : "node-artifact";
     run(engine, [
       "build",
+      "--platform",
+      containerPlatform(config),
       "--file",
       authority.paths.containerfile,
       "--target",
@@ -628,10 +704,21 @@ function buildReleaseInputs(options) {
     // Scratch artifact stages have neither CMD nor ENTRYPOINT. Supplying a
     // harmless command makes both Docker and Podman create an extractable
     // container without changing or executing the candidate binary.
-    container = run(engine, ["create", image.tag, "/release-inputs/node", "--version"], {
-      encoding: "utf8",
-      stdio: ["ignore", "pipe", "inherit"],
-    }).stdout.trim();
+    container = run(
+      engine,
+      [
+        "create",
+        "--platform",
+        containerPlatform(config),
+        image.tag,
+        "/release-inputs/node",
+        "--version",
+      ],
+      {
+        encoding: "utf8",
+        stdio: ["ignore", "pipe", "inherit"],
+      },
+    ).stdout.trim();
     if (!container) throw new Error(`${engine} create did not return a container id`);
     run(engine, ["cp", `${container}:/release-inputs/.`, extracted]);
 
@@ -646,6 +733,8 @@ function buildReleaseInputs(options) {
     const runtimeProbe = run(engine, [
       "run",
       "--rm",
+      "--platform",
+      containerPlatform(config),
       "--volume",
       `${extracted}:/candidate:ro,Z`,
       config.runtimeImage,
@@ -667,6 +756,10 @@ function buildReleaseInputs(options) {
       authority: authority.identity,
       buildImage: config.buildImage,
       compiler: compilerIdentity(engine, config),
+      containerEngine: {
+        name: engine,
+        ...engineArchitecture,
+      },
       configureArguments: NODE_CONFIGURE_ARGUMENTS,
       nodeSourceSha256: NODE_SOURCE_SHA256,
       nodeVersion: NODE_VERSION,
@@ -741,6 +834,7 @@ module.exports = {
   RUNTIME_IMAGE,
   allocatePrivateImage,
   assertNoLibatomic,
+  assertNativeEngineArchitecture,
   assertPortableMathProfile,
   assertSafeOutputDirectory,
   assertRuntimeOmitsLibatomic,
@@ -752,6 +846,7 @@ module.exports = {
   loadStagedAuthority,
   parseArguments,
   platformConfig,
+  normalizeContainerArchitecture,
   publishReleaseOutput,
   releaseAuthorityIdentity,
   removeOwnedImage,
