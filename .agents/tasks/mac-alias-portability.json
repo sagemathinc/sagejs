@@ -4,7 +4,7 @@
   "id": "mac-alias-portability",
   "title": "Canonical macOS native cache aliases",
   "lane": "integration",
-  "status": "review",
+  "status": "complete",
   "owner": "user",
   "objective": "Accept canonical macOS ancestor aliases while preserving exact lstat cache-root and descendant safety, and make installed-package path assertions canonical.",
   "base_commit": "583256c92d5818307e400a8c8bb1a8fea2c2034a",
@@ -119,7 +119,7 @@
     "summary": "Native-cache maintenance now accepts a canonical ancestor alias such as macOS /var to /private/var only when requested and expected roots resolve to the same physical root. It lstat-rejects a symlink or non-directory at the declared final root, applies broad-root checks with Windows-aware path identity, and returns the physical root before all descendant traversal and deletion. The installed platform package assertion likewise compares Node's canonical resolution. Exact source 3795fb3249e2b0fc576b00592a1c6670bb15e750 passed independent source review, Linux x64 focused 3/3 and full 48/48 tests, release-cache lifecycle 2/2, all required lane commands, physical Apple M1 Max focused 3/3 plus release-cache lifecycle 2/2 after a clean build, and native Windows x64 focused 2/2 with the POSIX symlink fixture correctly skipped. Linux arm64 is not separately applicable: this path-only change has POSIX versus Windows behavior but no architecture-dependent branch or native code.",
     "risks": [],
     "next_steps": [
-      "Integrate this exact reviewed closure before reopening test/parallel-development.cjs for the queued Windows portability fix."
+      "Rebase the macOS release workflow and queued Windows portability work on the closed integration checkpoint before their final target-specific validation."
     ]
   }
 }
