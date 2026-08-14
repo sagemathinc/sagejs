@@ -1,0 +1,53 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "release-producer-claims-integration",
+  "title": "Integrate release producer claims",
+  "lane": "integration",
+  "status": "active",
+  "owner": "user",
+  "objective": "Integrate the independently reviewed Linux acceptance producer claims and immutable macOS publication documentation into a closed combined release checkpoint",
+  "base_commit": "03bd7b16f696303d7f35abe8c5fc83e7cc6833c6",
+  "claims": [
+    ".agents/tasks/release-producer-claims-integration.json",
+    ".agents/tasks/release-producer-claims-consistency.json",
+    ".github/workflows/ci.yml",
+    "README.md",
+    "test/release-workflow-protection.cjs"
+  ],
+  "dependencies": [
+    "release-producer-claims-consistency",
+    "release-mac-native-integration"
+  ],
+  "references": [],
+  "architecture": {
+    "strategy": "not-applicable",
+    "fallback": "not-applicable",
+    "oracles": [
+      "Workflow policy tests cross-check both Linux producer upload sets against the publication assembler allowlist",
+      "Release metadata tests bind final-host acceptance to exact version, source, checksum, signature, and glibc-floor authority"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "node --test test/release-workflow-protection.cjs test/release-publication.cjs test/release-artifact-acceptance.cjs test/release-tag-policy.cjs",
+    "pnpm test:release -- --tag v0.2.0",
+    "pnpm test:changed -- --base 03bd7b16f696303d7f35abe8c5fc83e7cc6833c6",
+    "pnpm architecture:check",
+    "pnpm test:portable",
+    "pnpm test:baselib:strict",
+    "pnpm parallel:check -- --all"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "",
+    "risks": [],
+    "next_steps": []
+  }
+}
