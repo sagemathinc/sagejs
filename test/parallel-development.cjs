@@ -1621,7 +1621,7 @@ test("dependency keys include explicit archivers and external vcpkg executables"
   }
 });
 
-test("a custom prefix skips only its package during cache restore", () => {
+test("a custom FLINT prefix preserves exact dependent cache provenance", () => {
   const directory = mkdtempSync(join(tmpdir(), "sagejs-native-prefix-test-"));
   const previous = process.env.SAGEJS_FLINT_PREFIX;
   try {
@@ -1635,7 +1635,12 @@ test("a custom prefix skips only its package during cache restore", () => {
       results.map(({ id, status }) => ({ id, status })),
       [
         { id: "flint", status: "skipped-custom-prefix" },
-        { id: "fflas", status: "skipped-custom-prefix" },
+        ...(fflasUsesFlintPrefix()
+          ? [{ id: "fflas", status: "skipped-custom-prefix" }]
+          : [
+              { id: "fflas-dependencies", status: "miss" },
+              { id: "fflas-addon", status: "miss" },
+            ]),
         { id: "graph-dependencies", status: "miss" },
         { id: "graph-addon", status: "miss" },
       ],
