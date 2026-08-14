@@ -20,9 +20,10 @@ bundled third-party terms are in `NODE-26.7.0-LICENSE.txt`; the inventory binds
 the exact builder authority for each platform. Linux builders use the pinned
 Node source archive; macOS and Windows use the pinned official binary archive.
 Node's Temporal implementation statically embeds 46 vendored Rust crates whose
-terms were not enumerated by the top-level Node license. Every `LICENSE*` file
-from the exact pinned source archive is retained, with crate identity and source
-digest, in `NODE-26.7.0-RUST-CRATES-LICENSES.txt`. Linux builds use an exact
+terms were not enumerated by the top-level Node license. Every reviewed license,
+copyright, copying, and notice file from the exact pinned source archive is
+retained, with crate identity and source digest, in
+`NODE-26.7.0-RUST-CRATES-LICENSES.txt`. Linux builds use an exact
 official Rust 1.86.0 toolchain solely to compile Node; it is not redistributed.
 Its source authorities and complete Rust/Cargo terms are recorded in
 `RUST-1.86.0-LICENSES.txt`.

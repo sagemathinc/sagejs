@@ -278,20 +278,25 @@ function validateArchiveMembers(entries, expectedRoot) {
   return [...seen].sort();
 }
 
-function validateZipExtra(bytes, start, length, name) {
+function validateZipExtra(bytes, start, length, name, location) {
   const end = start + length;
   let offset = start;
+  const seen = new Set();
   while (offset < end) {
     if (offset + 4 > end) throw new Error(`truncated ZIP extra field for ${name}`);
     const identifier = bytes.readUInt16LE(offset);
     const size = bytes.readUInt16LE(offset + 2);
     offset += 4;
     if (offset + size > end) throw new Error(`truncated ZIP extra field for ${name}`);
-    // ZIP64 and Unicode Path can change sizes or the extraction path relative
-    // to the canonical central/local metadata validated by this gate.
-    if (identifier === 0x0001 || identifier === 0x7075) {
-      throw new Error(`ambiguous ZIP extra field for ${name}`);
-    }
+    if (seen.has(identifier)) throw new Error(`duplicate ZIP extra field for ${name}`);
+    seen.add(identifier);
+    // macOS ditto emits the legacy Info-ZIP Unix timestamp/uid field with an
+    // eight-byte central payload and a twelve-byte local payload. It carries
+    // no path, file type, link target, or size override. No other extra-field
+    // semantics are part of the reviewed release producer contract.
+    const reviewedDittoUnix = identifier === 0x5855 &&
+      size === (location === "central" ? 8 : 12);
+    if (!reviewedDittoUnix) throw new Error(`unsupported ZIP extra field for ${name}`);
     offset += size;
   }
 }
@@ -341,7 +346,7 @@ function zipArchiveMembers(filename) {
     if (
       end > bytes.length ||
       memberDisk !== 0 ||
-      (flags & 0x1) !== 0 ||
+      ![0, 0x8].includes(flags) ||
       ![0, 8].includes(compression) ||
       compressedSize === 0xffffffff ||
       uncompressedSize === 0xffffffff ||
@@ -351,7 +356,7 @@ function zipArchiveMembers(filename) {
       throw new Error("truncated, encrypted, streamed, ZIP64, or non-ASCII ZIP member");
     }
     const name = nameBytes.toString("ascii");
-    validateZipExtra(bytes, offset + 46 + nameLength, extraLength, name);
+    validateZipExtra(bytes, offset + 46 + nameLength, extraLength, name, "central");
     if (
       localOffset + 30 > directoryOffset ||
       bytes.readUInt32LE(localOffset) !== 0x04034b50
@@ -379,7 +384,13 @@ function zipArchiveMembers(filename) {
       ) throw new Error(`invalid streamed ZIP descriptor for ${name}`);
       recordEnd += 16;
     }
-    validateZipExtra(bytes, localNameStart + localNameLength, localExtraLength, name);
+    validateZipExtra(
+      bytes,
+      localNameStart + localNameLength,
+      localExtraLength,
+      name,
+      "local",
+    );
     if (
       localFlags !== flags ||
       localCompression !== compression ||
@@ -658,7 +669,24 @@ function validateLinuxBaselineMetadata(distribution, receipts, options) {
   assert.equal(baseline.runtimeProbe?.observation?.node, `v${source.version}`);
   assert.equal(baseline.runtimeProbe?.observation?.temporal, "object");
   assert.equal(baseline.runtimeProbe?.exitStatus, 0);
-  assert.equal(baseline.seaProbe?.stdout, "sagejs-linux-sea-ok");
+  const seaProbeObservation = {
+    ok: "sagejs-linux-sea-ok",
+    temporal: "object",
+  };
+  if (
+    !exactKeys(baseline.seaProbe, ["inspection", "observed", "stdout"]) ||
+    baseline.seaProbe?.inspection?.schema !== "sagejs.native-binary-inspection-v1" ||
+    baseline.seaProbe?.inspection?.ok !== true ||
+    baseline.seaProbe.inspection.aggregate?.dependencies?.some(
+      (dependency) => String(dependency).toLowerCase() === "libatomic.so.1",
+    ) ||
+    baseline.seaProbe.stdout !== JSON.stringify(seaProbeObservation)
+  ) throw new Error("Linux baseline SEA Temporal probe is invalid");
+  assert.deepEqual(
+    baseline.seaProbe.observed,
+    seaProbeObservation,
+    "Linux baseline SEA Temporal observation differs",
+  );
   assert.equal(baseline.configureArguments.includes("--v8-enable-temporal-support"), true);
   assert.deepEqual(baseline.rustToolchain, rustToolchain, "Linux Rust authority differs");
   assert.deepEqual(
@@ -1558,6 +1586,7 @@ module.exports = {
   validateTargetMetadata,
   validateArchiveMember,
   validateArchiveMembers,
+  validateZipExtra,
   validateNativeReceipt,
   validateThirdPartyInventory,
   verifyChecksum,

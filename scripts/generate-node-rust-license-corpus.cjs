@@ -17,6 +17,16 @@ if (!source || !output) {
   throw new Error("expected Node deps/crates directory and output filename");
 }
 
+const REVIEWED_NOTICE_NAMES = new Set([
+  "COPYRIGHT",
+  "LICENSE",
+  "LICENSE-APACHE",
+  "LICENSE-Apache",
+  "LICENSE-MIT",
+  "LICENSE-UNICODE",
+  "LICENSE.txt",
+]);
+
 function sha256(value) {
   return createHash("sha256").update(value).digest("hex");
 }
@@ -38,12 +48,27 @@ const crates = readdirSync(join(source, "vendor"), { withFileTypes: true })
       throw new Error(`incomplete package identity in ${entry.name}`);
     }
     const notices = readdirSync(directory)
-      .filter((filename) => /^LICENSE/i.test(filename))
+      .filter((filename) => /^(?:COPYING|COPYRIGHT|LICENSE|NOTICE)/i.test(filename))
       .sort();
     if (notices.length === 0) throw new Error(`${entry.name} has no license file`);
+    for (const notice of notices) {
+      if (!REVIEWED_NOTICE_NAMES.has(notice)) {
+        throw new Error(`unreviewed notice filename ${entry.name}/${notice}`);
+      }
+    }
     return { directory, entry: entry.name, license, name, notices, version };
   })
   .sort((left, right) => left.name.localeCompare(right.name));
+
+const noticeCount = crates.reduce((sum, crate) => sum + crate.notices.length, 0);
+if (crates.length !== 46 || noticeCount !== 68) {
+  throw new Error(
+    `Node 26.7.0 Rust notice set drifted: ${crates.length} crates, ${noticeCount} notices`,
+  );
+}
+if (!crates.some((crate) =>
+  crate.entry === "utf8_iter-v1" && crate.notices.includes("COPYRIGHT")
+)) throw new Error("Node 26.7.0 utf8_iter COPYRIGHT notice is missing");
 
 const lines = [
   "Node.js 26.7.0 vendored Rust crate license corpus",
@@ -52,9 +77,9 @@ const lines = [
   "Source SHA-256: e6b182cbeeab032d1082ca4ac4fe15e3a57de691d3bde78ecf8a761fd56ee356",
   `Crates: ${crates.length}`,
   "",
-  "This file concatenates every LICENSE* file shipped in the pinned Node source",
-  "under deps/crates/vendor. The crate package identity and the exact source-file",
-  "digest precede each unmodified, LF-normalized license text.",
+  "This file concatenates every reviewed license, copyright, copying, and notice",
+  "file shipped in the pinned Node source under deps/crates/vendor. The crate",
+  "package identity and source-file digest precede each LF-normalized text.",
   "",
 ];
 

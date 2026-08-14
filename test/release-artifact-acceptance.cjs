@@ -30,6 +30,7 @@ const {
   validateNativeReceipt,
   validateTargetMetadata,
   validateThirdPartyInventory,
+  validateZipExtra,
   verifyChecksum,
   verifyInternalChecksums,
   zipArchiveMembers,
@@ -260,7 +261,11 @@ function writeLinuxBaselineMetadata(distribution, pair) {
       schema: "sagejs.linux-baseline-sea-artifacts-v1",
       sourceCommit: commit,
     },
-    seaProbe: { stdout: "sagejs-linux-sea-ok" },
+    seaProbe: {
+      inspection: pair.math.toolchain.nativeBinaries.report,
+      observed: { ok: "sagejs-linux-sea-ok", temporal: "object" },
+      stdout: '{"ok":"sagejs-linux-sea-ok","temporal":"object"}',
+    },
     sourceCommit: commit,
   };
   writeFileSync(
@@ -469,6 +474,21 @@ test("Linux archive metadata is required and binds baseline source and Node auth
     );
   });
   withTemporary((directory) => {
+    const { distribution, pair } = writeDistribution(directory);
+    const filename = join(distribution, "linux-baseline-receipt.json");
+    const baseline = JSON.parse(readFileSync(filename, "utf8"));
+    baseline.seaProbe.observed.temporal = "undefined";
+    writeFileSync(filename, `${JSON.stringify(baseline, null, 2)}\n`);
+    assert.throws(
+      () => validateTargetMetadata(distribution, pair, {
+        "expected-commit": commit,
+        "expected-version": version,
+        target: "linux-x64",
+      }),
+      /Temporal observation differs/,
+    );
+  });
+  withTemporary((directory) => {
     const { distribution } = writeDistribution(directory);
     rmSync(join(distribution, "linux-baseline-receipt.json"));
     assert.throws(
@@ -587,13 +607,31 @@ test("ZIP preflight binds each local header to its safe central entry", () =>
     eocd.writeUInt32LE(central.length, 12);
     eocd.writeUInt32LE(local.length, 16);
     const filename = join(directory, "valid.zip");
-    writeFileSync(filename, Buffer.concat([local, central, eocd]));
+    const valid = Buffer.concat([local, central, eocd]);
+    writeFileSync(filename, valid);
     assert.equal(zipArchiveMembers(filename)[0].name, name.toString("ascii"));
-    const changed = readFileSync(filename);
+    for (const unsupported of [0x40, 0x2000]) {
+      const changedFlags = Buffer.from(valid);
+      changedFlags.writeUInt16LE(unsupported, 6);
+      changedFlags.writeUInt16LE(unsupported, local.length + 8);
+      writeFileSync(filename, changedFlags);
+      assert.throws(() => zipArchiveMembers(filename), /encrypted, streamed/);
+    }
+    const changed = Buffer.from(valid);
     changed[30] = ".".charCodeAt(0);
     writeFileSync(filename, changed);
     assert.throws(() => zipArchiveMembers(filename), /local\/central ZIP metadata mismatch/);
   }));
+
+test("Node Rust corpus retains the utf8_iter copyright attribution", () => {
+  const corpus = readFileSync(
+    join(root, "licenses", "NODE-26.7.0-RUST-CRATES-LICENSES.txt"),
+    "utf8",
+  );
+  assert.match(corpus, /source file: deps\/crates\/vendor\/utf8_iter-v1\/COPYRIGHT/);
+  assert.match(corpus, /Copyright Mozilla Foundation/);
+  assert.match(corpus, /adapted from the\nCharIndices implementation/);
+});
 
 test("ZIP preflight accepts the rooted fflate Windows producer", () =>
   withTemporary((directory) => {
@@ -662,6 +700,25 @@ test("ZIP preflight accepts signed data descriptors and binds their sizes", () =
     writeFileSync(filename, changed);
     assert.throws(() => zipArchiveMembers(filename), /invalid streamed ZIP descriptor/);
   }));
+
+test("ZIP preflight rejects unreviewed Unix and semantic extra fields", () => {
+  const unknown = Buffer.alloc(4);
+  unknown.writeUInt16LE(0x756e, 0);
+  assert.throws(
+    () => validateZipExtra(unknown, 0, unknown.length, "candidate", "central"),
+    /unsupported ZIP extra field/,
+  );
+  const dittoCentral = Buffer.alloc(12);
+  dittoCentral.writeUInt16LE(0x5855, 0);
+  dittoCentral.writeUInt16LE(8, 2);
+  assert.doesNotThrow(
+    () => validateZipExtra(dittoCentral, 0, dittoCentral.length, "candidate", "central"),
+  );
+  assert.throws(
+    () => validateZipExtra(dittoCentral, 0, dittoCentral.length, "candidate", "local"),
+    /unsupported ZIP extra field/,
+  );
+});
 
 test("third-party inventory binds Node and every complete notice", () =>
   withTemporary((directory) => {
