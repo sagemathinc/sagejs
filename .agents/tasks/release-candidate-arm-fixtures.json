@@ -1,0 +1,52 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "release-candidate-arm-fixtures",
+  "title": "Portable Linux release-candidate fixtures",
+  "lane": "distribution",
+  "status": "active",
+  "owner": "linux-arm64-release",
+  "objective": "Make Linux release-candidate fixture tests architecture-neutral so native arm64 CI validates arm64 receipts, archive names, and Rust authority while preserving the exact x64 contract",
+  "base_commit": "e981515c0f1e2d3ff284fe7f8d90af8c3ae70de1",
+  "claims": [
+    "test/release-candidate-linux.cjs"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "not-applicable",
+    "fallback": "not-applicable",
+    "oracles": [
+      "Focused Node test suite on x64 and native arm64"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "not-applicable",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:portable",
+    "pnpm test:native",
+    "pnpm test:sea"
+  ],
+  "runs": [
+    {
+      "command": "node --test test/release-candidate-linux.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.097,
+      "started_at": "2026-08-14T13:22:48.123Z",
+      "commit": "e981515c0f1e2d3ff284fe7f8d90af8c3ae70de1",
+      "workspace_fingerprint": "dc032a9429d671370122c25385e9e258826130348967ceb3b71b4c8c773bcadc",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "",
+    "risks": [],
+    "next_steps": []
+  }
+}
