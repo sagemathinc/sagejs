@@ -4,7 +4,7 @@
   "id": "linux-baseline-sea-v2",
   "title": "Linux Baseline Sea V2",
   "lane": "integration",
-  "status": "active",
+  "status": "complete",
   "owner": "user",
   "objective": "Assemble and validate Linux SEA executables from the exact pinned manylinux baseline build",
   "base_commit": "b4d3552cbf5e6127c66f6b9e573ceffc04d8e662",
