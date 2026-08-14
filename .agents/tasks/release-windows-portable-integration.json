@@ -4,7 +4,7 @@
   "id": "release-windows-portable-integration",
   "title": "Integrate Windows portable stabilization",
   "lane": "integration",
-  "status": "review",
+  "status": "complete",
   "owner": "user",
   "objective": "Integrate the independently reviewed native-Windows portable test and cache-race stabilization authority into a closed intermediate release checkpoint",
   "base_commit": "0835adb74593c43c6d2b6352151209cfe9319faa",
@@ -134,13 +134,12 @@
     }
   ],
   "handoff": {
-    "summary": "Integrated the independently approved Windows portable stabilization closure 4837731dea6c437aaf2a475121f589a8a608961e in exact source order as patch-equivalent commits 763c7f3 through 27fe06a, with implementation authority ending at source commit cb11a887a98e13193a2bdca2814fd62233926a32. Bounded Windows-only cache publication and read retries preserve atomic replacement, cleanup tolerates only entries that vanish with ENOENT after enumeration, and cross-host release/native-cache fixtures retain their target semantics. The source task is complete, and the integration lane allowlist gained only tools/cache-auto.ts, tools/cache-auto-worker.ts, and tools/cache-file.ts so both task manifests and the exact shared implementation are claimed without weakening contract enforcement. One current workspace fingerprint passes the full build, compiler, integration, 117-test focused, architecture, 446-test portable, strict-Python, and 213-contract gates at a8eb45b8c878b091a8eb5690fc2ecc8288a8c365.",
+    "summary": "Integrated and independently reviewed the approved Windows portable stabilization closure 4837731dea6c437aaf2a475121f589a8a608961e in exact source order as patch-equivalent commits 763c7f3 through 27fe06a, with implementation authority ending at source commit cb11a887a98e13193a2bdca2814fd62233926a32. Bounded Windows-only cache publication and read retries preserve atomic replacement, cleanup tolerates only entries that vanish with ENOENT after enumeration, and cross-host release/native-cache fixtures retain their target semantics. The source task is complete, and the integration lane allowlist gained only tools/cache-auto.ts, tools/cache-auto-worker.ts, and tools/cache-file.ts so both task manifests and the exact shared implementation are claimed without weakening contract enforcement. One current workspace fingerprint passes the full build, compiler, integration, 117-test focused, architecture, 446-test portable, strict-Python, and 213-contract gates at a8eb45b8c878b091a8eb5690fc2ecc8288a8c365. Independent review at c96fd9903d63543408631ceb1298155bb8aebc93 confirmed origin, ordered patch equivalence, exact implementation bytes, the narrow policy delta, fresh receipts, focused and architecture gates, scoped and all-contract enforcement, and a clean worktree.",
     "risks": [
       "The exact native-Windows and physical Apple-silicon receipts belong to implementation source cb11a887a98e13193a2bdca2814fd62233926a32; final platform artifacts still require target-native rebuild and acceptance from the eventual frozen source commit.",
       "The separate Windows static-CRT and PDB/path reproducibility work is not waived or included in this intermediate portable checkpoint."
     ],
     "next_steps": [
-      "Obtain independent review of this exact intermediate checkpoint, including the three-file integration-lane policy delta, before marking the integration task complete.",
       "Integrate the exact independently approved Mac-native closure next, then the startup-profile closure, as separate intermediate checkpoints supplied by the release coordinator."
     ]
   }
