@@ -7,7 +7,7 @@
   "status": "active",
   "owner": "user",
   "objective": "Make native compiler identity, sanitizer lifecycle witnesses, and dense-prime timing validation robust on real Apple systems without weakening required-native, sanitizer, absolute-performance, or legacy-relative gates.",
-  "base_commit": "e981515c0f1e2d3ff284fe7f8d90af8c3ae70de1",
+  "base_commit": "db6258674e6f191b8187c31e2231a45c73a5c5c6",
   "claims": [
     "tools/native-kernel/compiler.cjs",
     "tools/runtime-bootstrap.ts",
