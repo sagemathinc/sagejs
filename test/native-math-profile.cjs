@@ -51,6 +51,7 @@ const {
   openBlasMakeOptions,
   receiptExpectation: flintReceiptExpectation,
   reusableBuildReceipt: reusableFlintBuildReceipt,
+  smalljacMakeOptions,
 } = require("../packages/flint/scripts/build-deps.cjs");
 const {
   configureOptions: m4riConfigureOptions,
@@ -204,6 +205,12 @@ test("portable policies encode Linux arm64 and Apple Silicon baselines", () => {
   assert.deepEqual(appleArm.buildOptions.flint.cflags, ["-O3", "-fPIC"]);
   assert.equal(appleArm.cpuPolicy.targetSelection, "macos-deployment-target");
   validatePortableReleaseCpuProfile(appleArm);
+});
+
+test("smalljac sees private dependency headers through explicit and implicit rules", () => {
+  const options = smalljacMakeOptions("/private/native", profile().buildOptions);
+  assert.ok(options.includes("CPPFLAGS=-I/private/native/include"));
+  assert.ok(options.includes("INCLUDES=-I/private/native/include"));
 });
 
 test("Apple Silicon GMP configure selection is captured and gated", () => {
