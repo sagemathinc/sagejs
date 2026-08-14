@@ -47,6 +47,29 @@ test("platform builders never receive signing or publication credentials", () =>
   }
 });
 
+test("Linux release artifacts come only from the receipted glibc-floor authority", () => {
+  for (const [name, output] of [
+    ["linux-x64", "build/linux-baseline"],
+    ["linux-arm64", "build/linux-baseline-linux-arm64"],
+  ]) {
+    const source = job(name);
+    assert.match(source, /fetch-depth: 0/);
+    assert.match(source, /release-inputs\.cjs/);
+    assert.match(source, new RegExp(`--platform ${name}`));
+    assert.match(source, /--all-inputs/);
+    assert.match(source, /--source-ref "\$GITHUB_SHA"/);
+    assert.match(source, new RegExp(`--output ${output.replaceAll("/", "\\/")}`));
+    assert.match(source, /release-candidate-linux\.cjs/);
+    assert.match(source, /linux-baseline-receipt\.json/);
+    assert.match(source, /sagejs-build-manifest\.json/);
+    assert.match(source, /sagepython-build-manifest\.json/);
+    assert.match(source, new RegExp(`sagejs-${name}\\.report\\.json`));
+    assert.match(source, new RegExp(`sagejs-${name}\\.release\\.json`));
+    assert.doesNotMatch(source, /cp build\/sea\/sagejs/);
+    assert.doesNotMatch(source, /tar -C build\/release/);
+  }
+});
+
 test("Windows is deliberately unsigned and bypasses the signing environment", () => {
   const windows = job("windows-x64");
   assert.equal(workflow.includes("  sign-windows-x64:\n"), false);

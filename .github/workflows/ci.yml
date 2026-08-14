@@ -48,8 +48,9 @@ jobs:
 
   linux-x64:
     name: Linux x64 native, tests, and SEA
+    needs: release-tag-policy
     runs-on: blacksmith-8vcpu-ubuntu-2404
-    timeout-minutes: 60
+    timeout-minutes: 120
     outputs:
       release-artifact-id: ${{ steps.upload-release.outputs.artifact-id }}
       release-artifact-digest: ${{ steps.upload-release.outputs.artifact-digest }}
@@ -58,6 +59,7 @@ jobs:
       - name: Check out Sage.js and its test corpora
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
+          fetch-depth: 0
           submodules: recursive
 
       - name: Install pnpm
@@ -190,21 +192,33 @@ jobs:
           unit, host integration, native, and SEA tests are blocking.
           EOF
 
-      - name: Package the Linux x64 SEA distribution
+      - name: Build the receipted glibc-floor Linux x64 release inputs
+        if: needs.release-tag-policy.outputs.candidate == 'true'
         run: |
-          mkdir -p build/release/sagejs-linux-x64/licenses
-          cp build/sea/sagejs build/sea/sagepython build/release/sagejs-linux-x64/
-          cp LICENSE README.md DISTRIBUTION.md build/release/sagejs-linux-x64/
-          cp licenses/* build/release/sagejs-linux-x64/licenses/
-          tar -C build/release -cJf build/release/sagejs-linux-x64.tar.xz sagejs-linux-x64
-          cd build/release
-          sha256sum sagejs-linux-x64.tar.xz > sagejs-linux-x64.tar.xz.sha256
+          node scripts/linux-baseline/release-inputs.cjs \
+            --platform linux-x64 \
+            --all-inputs \
+            --source-ref "$GITHUB_SHA" \
+            --output build/linux-baseline
+
+      - name: Validate and package the receipted Linux x64 release candidate
+        if: needs.release-tag-policy.outputs.candidate == 'true'
+        run: |
+          node scripts/release-candidate-linux.cjs \
+            --baseline-receipt build/linux-baseline/linux-baseline-receipt.json \
+            --math build/linux-baseline/sea/sagejs \
+            --python build/linux-baseline/sea/sagepython \
+            --math-receipt build/linux-baseline/sea/sagejs-build-manifest.json \
+            --python-receipt build/linux-baseline/sea/sagepython-build-manifest.json \
+            --release-directory build/release
 
       - name: Stage the shell installer
+        if: needs.release-tag-policy.outputs.candidate == 'true'
         run: |
           cp install.sh build/release/install.sh
 
       - name: Upload Linux x64 SEA artifacts
+        if: needs.release-tag-policy.outputs.candidate == 'true'
         id: upload-release
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
@@ -212,14 +226,17 @@ jobs:
           path: |
             build/release/sagejs-linux-x64.tar.xz
             build/release/sagejs-linux-x64.tar.xz.sha256
+            build/release/sagejs-linux-x64.report.json
+            build/release/sagejs-linux-x64.release.json
             build/release/install.sh
           if-no-files-found: error
           retention-days: 14
 
   linux-arm64:
     name: Linux arm64 native, tests, and SEA
+    needs: release-tag-policy
     runs-on: blacksmith-8vcpu-ubuntu-2404-arm
-    timeout-minutes: 90
+    timeout-minutes: 150
     outputs:
       release-artifact-id: ${{ steps.upload-release.outputs.artifact-id }}
       release-artifact-digest: ${{ steps.upload-release.outputs.artifact-digest }}
@@ -228,6 +245,7 @@ jobs:
       - name: Check out Sage.js and its test corpora
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
+          fetch-depth: 0
           submodules: recursive
 
       - name: Install pnpm
@@ -297,17 +315,28 @@ jobs:
           SAGEJS_BUILD_JOBS: "8"
         run: pnpm test:sea
 
-      - name: Package the Linux arm64 SEA distribution
+      - name: Build the receipted glibc-floor Linux arm64 release inputs
+        if: needs.release-tag-policy.outputs.candidate == 'true'
         run: |
-          mkdir -p build/release/sagejs-linux-arm64/licenses
-          cp build/sea/sagejs build/sea/sagepython build/release/sagejs-linux-arm64/
-          cp LICENSE README.md DISTRIBUTION.md build/release/sagejs-linux-arm64/
-          cp licenses/* build/release/sagejs-linux-arm64/licenses/
-          tar -C build/release -cJf build/release/sagejs-linux-arm64.tar.xz sagejs-linux-arm64
-          cd build/release
-          sha256sum sagejs-linux-arm64.tar.xz > sagejs-linux-arm64.tar.xz.sha256
+          node scripts/linux-baseline/release-inputs.cjs \
+            --platform linux-arm64 \
+            --all-inputs \
+            --source-ref "$GITHUB_SHA" \
+            --output build/linux-baseline-linux-arm64
+
+      - name: Validate and package the receipted Linux arm64 release candidate
+        if: needs.release-tag-policy.outputs.candidate == 'true'
+        run: |
+          node scripts/release-candidate-linux.cjs \
+            --baseline-receipt build/linux-baseline-linux-arm64/linux-baseline-receipt.json \
+            --math build/linux-baseline-linux-arm64/sea/sagejs \
+            --python build/linux-baseline-linux-arm64/sea/sagepython \
+            --math-receipt build/linux-baseline-linux-arm64/sea/sagejs-build-manifest.json \
+            --python-receipt build/linux-baseline-linux-arm64/sea/sagepython-build-manifest.json \
+            --release-directory build/release
 
       - name: Upload Linux arm64 SEA artifacts
+        if: needs.release-tag-policy.outputs.candidate == 'true'
         id: upload-release
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
@@ -315,6 +344,8 @@ jobs:
           path: |
             build/release/sagejs-linux-arm64.tar.xz
             build/release/sagejs-linux-arm64.tar.xz.sha256
+            build/release/sagejs-linux-arm64.report.json
+            build/release/sagejs-linux-arm64.release.json
           if-no-files-found: error
           retention-days: 14
 
