@@ -489,6 +489,21 @@ test("Linux archive metadata is required and binds baseline source and Node auth
     );
   });
   withTemporary((directory) => {
+    const { distribution, pair } = writeDistribution(directory);
+    const filename = join(distribution, "linux-baseline-receipt.json");
+    const baseline = JSON.parse(readFileSync(filename, "utf8"));
+    delete baseline.seaProbe.inspection.aggregate.dependencies;
+    writeFileSync(filename, `${JSON.stringify(baseline, null, 2)}\n`);
+    assert.throws(
+      () => validateTargetMetadata(distribution, pair, {
+        "expected-commit": commit,
+        "expected-version": version,
+        target: "linux-x64",
+      }),
+      /SEA Temporal probe is invalid/,
+    );
+  });
+  withTemporary((directory) => {
     const { distribution } = writeDistribution(directory);
     rmSync(join(distribution, "linux-baseline-receipt.json"));
     assert.throws(
