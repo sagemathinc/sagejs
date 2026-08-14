@@ -4,7 +4,7 @@
   "id": "release-website-docs-integration",
   "title": "Integrate website release documentation",
   "lane": "integration",
-  "status": "review",
+  "status": "complete",
   "owner": "user",
   "objective": "Integrate the independently approved website and generated-documentation successor into a closed intermediate release source checkpoint without deploying public content",
   "base_commit": "675fab5a8f61b2a49c3d9d774eda0c4cba21c249",
@@ -169,8 +169,8 @@
       "The generated reference diff remains intentionally large and is protected by canonical source-coordinate, content-hash, and derived-HTML checks."
     ],
     "next_steps": [
-      "Obtain independent review of the exact 675fab5a8f61b2a49c3d9d774eda0c4cba21c249..4080aade47642debc4cb0167e1fe5cc4b270c9fc integration range, corrected handoff, and exact-current successor receipts.",
-      "Close this integration task only after approval, then use its closure as the base for the independently approved release-source-policy integration."
+      "Independently approved for closure at 753cc460396b23ecc14bb2a46d1d75955cb21c58 after exact source/blob, range, receipt, cleanliness, and non-publication review.",
+      "Use this closed checkpoint as the base for the independently approved release-source-policy integration."
     ]
   }
 }
