@@ -30,6 +30,8 @@ const {
   PNPM_VERSION,
   PLATFORM_CONFIGS,
   POLICY_PATH,
+  RUST_RELEASE_DATE,
+  RUST_VERSION,
   RUNTIME_IMAGE,
   assertNativeEngineArchitecture,
   assertPortableMathProfile,
@@ -66,7 +68,10 @@ test("Linux baseline pins Node source and both container images", () => {
   assert.deepEqual(NODE_CONFIGURE_ARGUMENTS, [
     "--prefix=/opt/sagejs-node",
     "--partly-static",
+    "--v8-enable-temporal-support",
   ]);
+  assert.equal(RUST_VERSION, "1.86.0");
+  assert.equal(RUST_RELEASE_DATE, "2025-04-03");
   assert.equal(PNPM_VERSION, "11.9.0");
   assert.equal(PNPM_TARBALL_URL, "https://registry.npmjs.org/pnpm/-/pnpm-11.9.0.tgz");
   assert.match(PNPM_TARBALL_SHA512, /^[0-9a-f]{128}$/);
@@ -90,6 +95,7 @@ test("baseline SEA evidence binds executable manifests to inspected native bytes
       url: NODE_SOURCE_URL,
       version: NODE_VERSION,
     };
+    const rustToolchain = platformConfig("linux-x64").rustToolchain;
     const source = {
       commit: "a".repeat(40),
       dirty: false,
@@ -135,6 +141,7 @@ test("baseline SEA evidence binds executable manifests to inspected native bytes
         },
         seaNode: {
           executableSha256: digest(nodeBytes),
+          rustToolchain,
           source: nodeSource,
           version: "26.7.0",
         },
@@ -160,11 +167,13 @@ test("baseline SEA evidence binds executable manifests to inspected native bytes
       inspection,
       nodeSource,
       platform: "linux-x64",
+      rustToolchain,
       sourceCommit: source.commit,
     };
     const evidence = validateBaselineSeaArtifacts(directory, options);
     assert.equal(evidence.schema, "sagejs.linux-baseline-sea-artifacts-v1");
     assert.equal(evidence.executables.sagejs.embeddedAddons.length, 1);
+    assert.deepEqual(evidence.rustToolchain, rustToolchain);
     assert.throws(
       () => validateBaselineSeaArtifacts(directory, {
         ...options,
@@ -176,6 +185,16 @@ test("baseline SEA evidence binds executable manifests to inspected native bytes
         },
       }),
       /absent from baseline inspection/,
+    );
+    assert.throws(
+      () => validateBaselineSeaArtifacts(directory, {
+        ...options,
+        rustToolchain: {
+          ...rustToolchain,
+          sha256: "f".repeat(64),
+        },
+      }),
+      /Expected values to be strictly deep-equal/,
     );
   } finally {
     rmSync(directory, { recursive: true, force: true });
@@ -190,10 +209,28 @@ test("Linux baseline pins distinct native x64 and arm64 container authorities", 
   assert.equal(x64.containerArchitecture, "amd64");
   assert.match(x64.buildImage, /manylinux_2_28_x86_64@sha256:[0-9a-f]{64}$/);
   assert.match(x64.runtimeImage, /ubi8\/ubi-minimal@sha256:[0-9a-f]{64}$/);
+  assert.deepEqual(x64.rustToolchain, {
+    filename: "rust-1.86.0-x86_64-unknown-linux-gnu.tar.xz",
+    sha256: "6b448b3669e0c74f7f4b87da7da4868a552fcbba1f955032d8925ad2fffb3798",
+    target: "x86_64-unknown-linux-gnu",
+    url:
+      "https://static.rust-lang.org/dist/2025-04-03/" +
+      "rust-1.86.0-x86_64-unknown-linux-gnu.tar.xz",
+    version: "1.86.0",
+  });
   assert.equal(arm64.arch, "arm64");
   assert.equal(arm64.containerArchitecture, "arm64");
   assert.match(arm64.buildImage, /manylinux_2_28_aarch64@sha256:[0-9a-f]{64}$/);
   assert.match(arm64.runtimeImage, /ubi8\/ubi-minimal@sha256:[0-9a-f]{64}$/);
+  assert.deepEqual(arm64.rustToolchain, {
+    filename: "rust-1.86.0-aarch64-unknown-linux-gnu.tar.xz",
+    sha256: "2b97d1e09a1d7fdbed748332879318ee7f41c008837f87ccb44ec045df0a8a1b",
+    target: "aarch64-unknown-linux-gnu",
+    url:
+      "https://static.rust-lang.org/dist/2025-04-03/" +
+      "rust-1.86.0-aarch64-unknown-linux-gnu.tar.xz",
+    version: "1.86.0",
+  });
   assert.notEqual(arm64.buildImage, x64.buildImage);
   assert.notEqual(arm64.runtimeImage, x64.runtimeImage);
   assert.throws(() => platformConfig("linux-riscv64"), /unsupported/);
@@ -314,7 +351,15 @@ test("the GCC Node 26 witness removes libatomic at the same glibc floor", () => 
   }
   assert.equal(witness.node.version, NODE_VERSION);
   assert.equal(witness.node.sourceSha256, NODE_SOURCE_SHA256);
-  assert.deepEqual(witness.node.configureArguments, NODE_CONFIGURE_ARGUMENTS);
+  assert.deepEqual(witness.node.configureArguments, [
+    "--prefix=/opt/sagejs-node",
+    "--partly-static",
+  ]);
+  assert.equal(
+    witness.node.configureArguments.includes("--v8-enable-temporal-support"),
+    false,
+    "the historical prototype predates the release Temporal requirement",
+  );
   assert.equal(witness.build.image, BUILD_IMAGE);
   assert.equal(witness.build.compiler.version, "14.2.1");
   assert.match(witness.inspection.sha256, /^[0-9a-f]{64}$/);
@@ -670,7 +715,15 @@ test("Container build uses GCC, partial static linking, and the portable math pr
     require("node:path").join(__dirname, "..", "scripts", "linux-baseline", "Containerfile"),
     "utf8",
   );
-  assert.match(containerfile, /CC=gcc CXX=g\+\+ \.\/configure .*--partly-static/);
+  assert.match(containerfile, /CC=gcc CXX=g\+\+ \.\/configure/);
+  assert.match(containerfile, /--partly-static/);
+  assert.match(containerfile, /--v8-enable-temporal-support/);
+  assert.match(containerfile, /RUST_SOURCE_SHA256/);
+  assert.match(containerfile, /sha256sum --check --strict/);
+  assert.match(containerfile, /rustc --version \| grep -Fx/);
+  assert.match(containerfile, /cargo --version \| grep -Fx/);
+  assert.match(containerfile, /typeof Temporal !== "object"/);
+  assert.doesNotMatch(containerfile, /sh\.rustup\.rs|curl[^\n]*\|[^\n]*sh/);
   assert.match(containerfile, /make -j"\$\(nproc\)" install/);
   assert.match(containerfile, /SAGEJS_NATIVE_MATH_PROFILE=portable/);
   assert.match(containerfile, /SAGEJS_FLINT_PREFIX=\/opt\/sagejs-native\/flint/);
@@ -715,6 +768,8 @@ test("the runtime proof checks that libatomic is genuinely absent", () => {
   assert.match(source, /runtimeProbe/);
   assert.match(source, /--build-sea/);
   assert.match(source, /proveSeaTemplate/);
+  assert.match(source, /temporal:typeof Temporal/);
+  assert.match(source, /temporal:\s*"object"/);
 });
 
 test("scratch artifact extraction supplies an inert container command", () => {

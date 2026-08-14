@@ -7,22 +7,42 @@ ARG NODE_SOURCE_URL
 ARG NODE_VERSION
 ARG PNPM_TARBALL_SHA512
 ARG PNPM_TARBALL_URL
-ENV PATH=/opt/rh/gcc-toolset-14/root/usr/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+ARG RUST_SOURCE_FILENAME
+ARG RUST_SOURCE_SHA256
+ARG RUST_SOURCE_URL
+ARG RUST_TARGET
+ARG RUST_VERSION
+ENV PATH=/opt/sagejs-rust/bin:/opt/rh/gcc-toolset-14/root/usr/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 ENV LC_ALL=C
 ENV SOURCE_DATE_EPOCH=0
 ENV TZ=UTC
 WORKDIR /build
+RUN curl --fail --location --retry 3 \
+      "${RUST_SOURCE_URL}" \
+      --output rust.tar.xz \
+ && printf '%s  %s\n' "${RUST_SOURCE_SHA256}" rust.tar.xz | sha256sum --check --strict \
+ && tar -xJf rust.tar.xz \
+ && "./rust-${RUST_VERSION}-${RUST_TARGET}/install.sh" \
+      --prefix=/opt/sagejs-rust \
+      --disable-ldconfig \
+ && rustc --version | grep -Fx "rustc ${RUST_VERSION} (05f9846f8 2025-03-31)" \
+ && cargo --version | grep -Fx "cargo ${RUST_VERSION} (adf9b6ad1 2025-02-28)"
 RUN curl --fail --location --retry 3 \
       "${NODE_SOURCE_URL}" \
       --output node.tar.xz \
  && printf '%s  %s\n' "${NODE_SOURCE_SHA256}" node.tar.xz | sha256sum --check --strict \
  && tar -xJf node.tar.xz \
  && cd "node-v${NODE_VERSION}" \
- && CC=gcc CXX=g++ ./configure --prefix=/opt/sagejs-node --partly-static \
+ && CC=gcc CXX=g++ ./configure \
+      --prefix=/opt/sagejs-node \
+      --partly-static \
+      --v8-enable-temporal-support \
  && make -j"$(nproc)" \
  && make -j"$(nproc)" install \
  && strip /opt/sagejs-node/bin/node \
- && /opt/sagejs-node/bin/node --version
+ && /opt/sagejs-node/bin/node --version \
+ && /opt/sagejs-node/bin/node -e \
+      'if (typeof Temporal !== "object") throw new Error("Temporal is unavailable")'
 
 FROM scratch AS node-artifact
 COPY --from=node-build /opt/sagejs-node/bin/node /release-inputs/node
@@ -34,6 +54,11 @@ ARG NODE_SOURCE_URL
 ARG NODE_VERSION
 ARG PNPM_TARBALL_SHA512
 ARG PNPM_TARBALL_URL
+ARG RUST_SOURCE_FILENAME
+ARG RUST_SOURCE_SHA256
+ARG RUST_SOURCE_URL
+ARG RUST_TARGET
+ARG RUST_VERSION
 COPY --from=node-build /opt/sagejs-node /opt/sagejs-node
 ENV PATH=/opt/sagejs-node/bin:/opt/rh/gcc-toolset-14/root/usr/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 ENV CC=gcc
@@ -70,6 +95,11 @@ RUN tar -xf /tmp/sagejs.tar -C /work/sagejs \
       SAGEJS_SEA_NODE_SOURCE_SHA256="${NODE_SOURCE_SHA256}" \
       SAGEJS_SEA_NODE_SOURCE_URL="${NODE_SOURCE_URL}" \
       SAGEJS_SEA_NODE_SOURCE_VERSION="${NODE_VERSION}" \
+      SAGEJS_SEA_NODE_RUST_FILENAME="${RUST_SOURCE_FILENAME}" \
+      SAGEJS_SEA_NODE_RUST_SHA256="${RUST_SOURCE_SHA256}" \
+      SAGEJS_SEA_NODE_RUST_TARGET="${RUST_TARGET}" \
+      SAGEJS_SEA_NODE_RUST_URL="${RUST_SOURCE_URL}" \
+      SAGEJS_SEA_NODE_RUST_VERSION="${RUST_VERSION}" \
       node scripts/build-sea.cjs --all \
  && node test/sea-smoke.cjs \
  && mkdir -p /release-inputs/addons /release-inputs/sea \

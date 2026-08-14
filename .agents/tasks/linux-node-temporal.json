@@ -1,0 +1,49 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "linux-node-temporal",
+  "title": "Linux Node Temporal Authority",
+  "lane": "integration",
+  "status": "active",
+  "owner": "user",
+  "objective": "Pin Rust 1.86 for both Linux architectures, force Node 26.7 Temporal support, and bind/prove the exact toolchain in baseline and SEA receipts",
+  "base_commit": "3ee4c9d0749be992923f7e04d47c17f3646aea0d",
+  "claims": [
+    "scripts/linux-baseline/Containerfile",
+    "scripts/linux-baseline/release-inputs.cjs",
+    "scripts/linux-baseline/sea-artifacts.cjs",
+    "scripts/build-sea.cjs",
+    "scripts/release-candidate-linux.cjs",
+    "test/linux-release-baseline.cjs",
+    "test/sea-build-manifest.cjs",
+    "test/release-candidate-linux.cjs"
+  ],
+  "dependencies": [],
+  "references": [
+    "https://nodejs.org/dist/v26.7.0/node-v26.7.0.tar.xz",
+    "https://static.rust-lang.org/dist/2025-04-03/channel-rust-1.86.0.toml"
+  ],
+  "architecture": {
+    "strategy": "not-applicable",
+    "fallback": "not-applicable",
+    "oracles": [],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "not-applicable",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm architecture:check",
+    "pnpm test:portable",
+    "pnpm test:baselib:strict"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "",
+    "risks": [],
+    "next_steps": []
+  }
+}

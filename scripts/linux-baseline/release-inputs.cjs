@@ -40,6 +40,18 @@ const NODE_SOURCE_SHA256 =
 const NODE_SOURCE_FILENAME = `node-v${NODE_VERSION}.tar.xz`;
 const NODE_SOURCE_URL =
   `https://nodejs.org/dist/v${NODE_VERSION}/${NODE_SOURCE_FILENAME}`;
+const RUST_VERSION = "1.86.0";
+const RUST_RELEASE_DATE = "2025-04-03";
+function rustToolchain(target, sha256) {
+  const filename = `rust-${RUST_VERSION}-${target}.tar.xz`;
+  return Object.freeze({
+    filename,
+    sha256,
+    target,
+    url: `https://static.rust-lang.org/dist/${RUST_RELEASE_DATE}/${filename}`,
+    version: RUST_VERSION,
+  });
+}
 const PLATFORM_CONFIGS = Object.freeze({
   "linux-x64": Object.freeze({
     arch: "x64",
@@ -51,6 +63,10 @@ const PLATFORM_CONFIGS = Object.freeze({
     runtimeImage:
       "registry.access.redhat.com/ubi8/ubi-minimal@" +
       "sha256:cca75ce8294bd67a18520f72d58692e213428b14615d91800ad26b32860adb62",
+    rustToolchain: rustToolchain(
+      "x86_64-unknown-linux-gnu",
+      "6b448b3669e0c74f7f4b87da7da4868a552fcbba1f955032d8925ad2fffb3798",
+    ),
   }),
   "linux-arm64": Object.freeze({
     arch: "arm64",
@@ -62,6 +78,10 @@ const PLATFORM_CONFIGS = Object.freeze({
     runtimeImage:
       "registry.access.redhat.com/ubi8/ubi-minimal@" +
       "sha256:523ceff2d2063d7a44d406f09b9fc5fabaca7b534a877ba14c8f75c60500b11a",
+    rustToolchain: rustToolchain(
+      "aarch64-unknown-linux-gnu",
+      "2b97d1e09a1d7fdbed748332879318ee7f41c008837f87ccb44ec045df0a8a1b",
+    ),
   }),
 });
 const DEFAULT_PLATFORM = process.arch === "arm64" ? "linux-arm64" : "linux-x64";
@@ -90,6 +110,7 @@ const PNPM_TARBALL_INTEGRITY =
 const NODE_CONFIGURE_ARGUMENTS = Object.freeze([
   `--prefix=/opt/sagejs-node`,
   "--partly-static",
+  "--v8-enable-temporal-support",
 ]);
 
 function parseArguments(arguments_) {
@@ -448,7 +469,10 @@ function proveSeaTemplate(
     const main = join(directory, "main.cjs");
     const configFile = join(directory, "sea-config.json");
     const executable = join(directory, "sagejs-sea-smoke");
-    writeFileSync(main, 'console.log("sagejs-linux-sea-ok")\n');
+    writeFileSync(
+      main,
+      'console.log(JSON.stringify({ok:"sagejs-linux-sea-ok",temporal:typeof Temporal}))\n',
+    );
     writeFileSync(
       configFile,
       `${JSON.stringify({
@@ -480,8 +504,12 @@ function proveSeaTemplate(
       encoding: "utf8",
       stdio: ["ignore", "pipe", "inherit"],
     }).stdout.trim();
-    assert.equal(stdout, "sagejs-linux-sea-ok");
-    return { inspection, stdout };
+    const observed = JSON.parse(stdout);
+    assert.deepEqual(observed, {
+      ok: "sagejs-linux-sea-ok",
+      temporal: "object",
+    });
+    return { inspection, observed, stdout };
   } finally {
     rmSync(directory, { recursive: true, force: true });
   }
@@ -710,6 +738,16 @@ function buildReleaseInputs(options) {
       `PNPM_TARBALL_SHA512=${PNPM_TARBALL_SHA512}`,
       "--build-arg",
       `PNPM_TARBALL_URL=${PNPM_TARBALL_URL}`,
+      "--build-arg",
+      `RUST_SOURCE_FILENAME=${config.rustToolchain.filename}`,
+      "--build-arg",
+      `RUST_SOURCE_SHA256=${config.rustToolchain.sha256}`,
+      "--build-arg",
+      `RUST_SOURCE_URL=${config.rustToolchain.url}`,
+      "--build-arg",
+      `RUST_TARGET=${config.rustToolchain.target}`,
+      "--build-arg",
+      `RUST_VERSION=${config.rustToolchain.version}`,
       context,
     ]);
     // Scratch artifact stages have neither CMD nor ENTRYPOINT. Supplying a
@@ -750,12 +788,17 @@ function buildReleaseInputs(options) {
       `${extracted}:/candidate:ro,Z`,
       config.runtimeImage,
       "/candidate/node",
-      "--version",
+      "-e",
+      "process.stdout.write(JSON.stringify({node:process.version,temporal:typeof Temporal}))",
     ], {
       encoding: "utf8",
       stdio: ["ignore", "pipe", "inherit"],
     }).stdout.trim();
-    assert.equal(runtimeProbe, `v${NODE_VERSION}`);
+    const runtimeObservation = JSON.parse(runtimeProbe);
+    assert.deepEqual(runtimeObservation, {
+      node: `v${NODE_VERSION}`,
+      temporal: "object",
+    });
     const seaProbe = proveSeaTemplate(
       engine,
       join(extracted, "node"),
@@ -773,6 +816,7 @@ function buildReleaseInputs(options) {
               url: NODE_SOURCE_URL,
               version: NODE_VERSION,
             },
+            rustToolchain: config.rustToolchain,
             platform: options.platform,
             sourceCommit: authority.sourceCommit,
           },
@@ -794,6 +838,7 @@ function buildReleaseInputs(options) {
         url: NODE_SOURCE_URL,
         version: NODE_VERSION,
       },
+      rustToolchain: config.rustToolchain,
       pnpmDistribution: {
         integrity: PNPM_TARBALL_INTEGRITY,
         sha512: PNPM_TARBALL_SHA512,
@@ -807,6 +852,7 @@ function buildReleaseInputs(options) {
       runtimeProbe: {
         ...runtime,
         exitStatus: 0,
+        observation: runtimeObservation,
         stdout: runtimeProbe,
       },
       seaArtifacts,
@@ -858,6 +904,8 @@ module.exports = {
   NODE_SOURCE_FILENAME,
   NODE_SOURCE_URL,
   NODE_VERSION,
+  RUST_RELEASE_DATE,
+  RUST_VERSION,
   OUTPUT_SCHEMA,
   PNPM_TARBALL_INTEGRITY,
   PNPM_TARBALL_SHA512,

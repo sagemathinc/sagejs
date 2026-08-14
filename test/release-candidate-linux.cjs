@@ -43,6 +43,15 @@ const {
 
 const COMMIT = "0123456789abcdef0123456789abcdef01234567";
 const TREE = "89abcdef0123456789abcdef0123456789abcdef";
+const RUST_TOOLCHAIN = {
+  filename: "rust-1.86.0-x86_64-unknown-linux-gnu.tar.xz",
+  sha256: "6b448b3669e0c74f7f4b87da7da4868a552fcbba1f955032d8925ad2fffb3798",
+  target: "x86_64-unknown-linux-gnu",
+  url:
+    "https://static.rust-lang.org/dist/2025-04-03/" +
+    "rust-1.86.0-x86_64-unknown-linux-gnu.tar.xz",
+  version: "1.86.0",
+};
 
 function writeReceipts(directory, nativeMathProfile = undefined) {
   const target = {
@@ -82,7 +91,11 @@ function writeReceipts(directory, nativeMathProfile = undefined) {
     target,
     toolchain: {
       nativeMathProfile: nativeMathematics ? profile : null,
-      seaNode: { executableSha256: "b".repeat(64), version: "26.7.0" },
+      seaNode: {
+        executableSha256: "b".repeat(64),
+        rustToolchain: RUST_TOOLCHAIN,
+        version: "26.7.0",
+      },
     },
   });
   const mathReceipt = join(directory, "sagejs-build-manifest.json");
@@ -109,6 +122,8 @@ function writeBaselineReceipt(directory, files) {
       version: "26.7.0",
     },
     platform: "linux-x64",
+    runtimeProbe: { observation: { temporal: "object" } },
+    rustToolchain: RUST_TOOLCHAIN,
     schema: "sagejs.linux-baseline-receipt-v1",
     seaArtifacts: {
       artifacts,
@@ -119,9 +134,11 @@ function writeBaselineReceipt(directory, files) {
         version: "26.7.0",
       },
       platform: "linux-x64",
+      rustToolchain: RUST_TOOLCHAIN,
       schema: "sagejs.linux-baseline-sea-artifacts-v1",
       sourceCommit: COMMIT,
     },
+    seaProbe: { observed: { temporal: "object" } },
     sourceCommit: COMMIT,
   }, null, 2)}\n`);
   return baselineReceipt;
@@ -274,6 +291,34 @@ test("Linux release archive is deterministic and installer-compatible", () => {
     const first = packageReleaseCandidate(options, packagingInternals);
     const firstBytes = readFileSync(first.archive);
     const firstChecksum = readFileSync(first.archiveChecksum, "utf8");
+    const baselineBytes = readFileSync(receipts.baselineReceipt, "utf8");
+    const substitutedRust = JSON.parse(baselineBytes);
+    substitutedRust.rustToolchain.sha256 = "0".repeat(64);
+    writeFileSync(
+      receipts.baselineReceipt,
+      `${JSON.stringify(substitutedRust, null, 2)}\n`,
+    );
+    assert.throws(
+      () => packageReleaseCandidate(
+        { ...options, releaseDirectory: join(directory, "substituted-rust") },
+        packagingInternals,
+      ),
+      /unexpected Rust toolchain/,
+    );
+    const missingTemporal = JSON.parse(baselineBytes);
+    missingTemporal.seaProbe.observed.temporal = "undefined";
+    writeFileSync(
+      receipts.baselineReceipt,
+      `${JSON.stringify(missingTemporal, null, 2)}\n`,
+    );
+    assert.throws(
+      () => packageReleaseCandidate(
+        { ...options, releaseDirectory: join(directory, "missing-temporal") },
+        packagingInternals,
+      ),
+      /SEA runtime did not expose Temporal/,
+    );
+    writeFileSync(receipts.baselineReceipt, baselineBytes);
     process.umask(0o022);
     process.env.TAR_OPTIONS = "--exclude=LICENSE";
     process.env.XZ_OPT = "-9";
