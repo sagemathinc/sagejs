@@ -18,6 +18,10 @@
     "tools/native-kernel/compiler.cjs",
     "test/",
     "docs/"
+    ,"README.md"
+    ,"RELEASING.md"
+    ,"DISTRIBUTION.md"
+    ,"WINDOWS.md"
   ],
   "dependencies": [],
   "references": [],

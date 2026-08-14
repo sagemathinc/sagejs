@@ -4,7 +4,7 @@
   "id": "release-workflow-v1",
   "title": "Release Workflow V1",
   "lane": "integration",
-  "status": "active",
+  "status": "complete",
   "owner": "user",
   "objective": "Harden the tag-only four-platform release workflow for signed macOS, Linux x64/arm64, explicitly unsigned Windows, immutable artifacts, checksums, provenance, and fail-closed publication",
   "base_commit": "e4018fd70bf2b9549b826e20d825e08bf43dafe5",
@@ -40,8 +40,14 @@
   ],
   "runs": [],
   "handoff": {
-    "summary": "",
-    "risks": [],
-    "next_steps": []
+    "summary": "The tag-only GitHub release authority now separates release-candidate rehearsal from stable publication, pins every byte-influencing action and Node 26.7.0, consumes checksum-bound platform artifacts, verifies strict archive member allowlists, signs and notarizes only the protected macOS input, labels Windows explicitly unsigned, and assembles exactly four artifact IDs and digests into a private draft as the final operation. The strict publication assembler is GitHub-only and fails closed on duplicate, traversal, unexpected, or mismatched inputs. Focused workflow and publication policy tests passed 13 cases and the source authority received independent review.",
+    "risks": [
+      "Linux producer jobs remain explicitly provisional until the reviewed baseline-to-SEA producer interface supplies their final archive filenames and readiness receipts.",
+      "No release tag was created and no artifact was published by this source integration."
+    ],
+    "next_steps": [
+      "Resolve only the provisional Linux producer blocks after integrating the shared baseline-to-SEA authority.",
+      "Run a release-candidate tag rehearsal before approving a stable tag."
+    ]
   }
 }
