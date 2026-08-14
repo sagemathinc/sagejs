@@ -170,6 +170,13 @@ test("baseline SEA evidence binds executable manifests to inspected native bytes
       rustToolchain,
       sourceCommit: source.commit,
     };
+    if (process.platform === "win32") {
+      assert.throws(
+        () => validateBaselineSeaArtifacts(directory, options),
+        /sea\/sagejs is not executable/,
+      );
+      return;
+    }
     const evidence = validateBaselineSeaArtifacts(directory, options);
     assert.equal(evidence.schema, "sagejs.linux-baseline-sea-artifacts-v1");
     assert.equal(evidence.executables.sagejs.embeddedAddons.length, 1);
@@ -493,6 +500,7 @@ test("source references resolve once to an immutable commit", () => {
         },
       });
     assert.equal(git("init", "--quiet").status, 0);
+    assert.equal(git("config", "core.autocrlf", "false").status, 0);
     writeFileSync(join(directory, "value"), "first\n");
     assert.equal(git("add", "value").status, 0);
     assert.equal(git("commit", "--quiet", "-m", "first").status, 0);
@@ -556,7 +564,10 @@ test("the launcher executes staged driver bytes after the live file changes", ()
     });
     assert.equal(status, 0);
     assert.equal(readFileSync(releaseDriver, "utf8"), 'console.log("changed")\n');
-    assert.equal(stagedDriver.includes(".authority/release-inputs.cjs"), true);
+    assert.equal(
+      stagedDriver.endsWith(join(".authority", "release-inputs.cjs")),
+      true,
+    );
   } finally {
     rmSync(directory, { recursive: true, force: true });
   }

@@ -1,0 +1,42 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "windows-portable-stabilization",
+  "title": "Windows Portable Stabilization",
+  "lane": "compiler-runtime",
+  "status": "active",
+  "owner": "user",
+  "objective": "Fix exact Windows portable unit-test failures without weakening Linux release or native build semantics",
+  "base_commit": "583256c92d5818307e400a8c8bb1a8fea2c2034a",
+  "claims": [
+    "tools/cache-file.ts",
+    "test/cache.cjs",
+    "test/linux-release-baseline.cjs",
+    "test/native-math-profile.cjs"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "not-applicable",
+    "fallback": "not-applicable",
+    "oracles": [],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm build",
+    "pnpm test:compiler",
+    "pnpm test:integration"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "",
+    "risks": [],
+    "next_steps": []
+  }
+}

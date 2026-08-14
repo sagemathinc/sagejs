@@ -208,9 +208,11 @@ test("portable policies encode Linux arm64 and Apple Silicon baselines", () => {
 });
 
 test("smalljac sees private dependency headers through explicit and implicit rules", () => {
-  const options = smalljacMakeOptions("/private/native", profile().buildOptions);
-  assert.ok(options.includes("CPPFLAGS=-I/private/native/include"));
-  assert.ok(options.includes("INCLUDES=-I/private/native/include"));
+  const nativePrefix = resolve("/private/native");
+  const include = `-I${join(nativePrefix, "include")}`;
+  const options = smalljacMakeOptions(nativePrefix, profile().buildOptions);
+  assert.ok(options.includes(`CPPFLAGS=${include}`));
+  assert.ok(options.includes(`INCLUDES=${include}`));
 });
 
 test("Apple Silicon GMP configure selection is captured and gated", () => {

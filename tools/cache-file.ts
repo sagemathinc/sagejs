@@ -1,12 +1,48 @@
 import { randomBytes } from "node:crypto";
 import {
   closeSync,
+  lstatSync,
   openSync,
   renameSync,
   unlinkSync,
   writeFileSync,
 } from "node:fs";
 import { dirname, join } from "node:path";
+
+const renameRetrySignal = new Int32Array(new SharedArrayBuffer(4));
+
+function destinationIsRegularFile(filename: string): boolean {
+  try {
+    return lstatSync(filename).isFile();
+  } catch (_error) {
+    return false;
+  }
+}
+
+function publishTemporaryFile(temporary: string, filename: string): void {
+  for (let attempt = 0; ; attempt += 1) {
+    try {
+      renameSync(temporary, filename);
+      return;
+    } catch (error) {
+      const code = (error as NodeJS.ErrnoException)?.code;
+      const retryable = process.platform === "win32" &&
+        (code === "EACCES" || code === "EPERM") &&
+        attempt < 50 &&
+        destinationIsRegularFile(filename);
+      if (!retryable) throw error;
+      // Windows may briefly deny replacement while another process is reading
+      // the destination. Retrying the rename preserves atomic visibility;
+      // unlinking the destination would expose a cache miss to readers.
+      Atomics.wait(
+        renameRetrySignal,
+        0,
+        0,
+        Math.min(2 ** Math.min(attempt, 5), 32),
+      );
+    }
+  }
+}
 
 /**
  * Publish one disposable cache file without exposing a partially written value.
@@ -32,7 +68,7 @@ export function atomicWriteCacheFileSync(
     writeFileSync(descriptor, data);
     closeSync(descriptor);
     descriptor = undefined;
-    renameSync(temporary, filename);
+    publishTemporaryFile(temporary, filename);
   } catch (error) {
     if (descriptor !== undefined) {
       try {
