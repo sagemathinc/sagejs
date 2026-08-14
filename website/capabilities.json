@@ -703,18 +703,18 @@
       "id": "release-installers",
       "area": "Distribution",
       "feature": "npm and shell installation",
-      "state": "available",
+      "state": "partial",
       "quality": "tested",
       "coverage": {
         "level": "broad",
-        "label": "Packages, installers, and preview archives",
-        "summary": "Covers package-manager and standalone installation across the supported desktop targets. The current Windows x64 distribution is an explicitly unsigned preview ZIP verified by SHA-256.",
-        "includes": ["npm global install", "npm embedding package", "curl | sh installer", "Linux x64 / arm64", "macOS arm64", "Windows x64 unsigned preview ZIP", "SHA-256 verification", "relocatable SEA executables"]
+        "label": "Available npm preview and imminent native release",
+        "summary": "The separate npm v0.1.0 preview is available. Tested v0.2.0 native release workflows cover the supported desktop targets, but their immutable release assets have not yet been published.",
+        "includes": ["npm v0.1.0 global install", "npm v0.1.0 embedding package", "planned curl | sh installer", "planned Linux x64 / arm64 assets", "planned macOS arm64 asset", "planned Windows x64 unsigned preview ZIP", "SHA-256 verification", "relocatable SEA executables"]
       },
-      "summary": "Sage.js is installable from npm or with a curl-to-shell native installer on supported Unix targets; Windows x64 is distributed as an explicit unsigned preview ZIP.",
-      "implementation": "Meta-package plus platform packages for npm, a checksum-verifying native installer, and explicit checksum-bound preview archives.",
-      "evidence": "Package, relocation, and installer tests in release CI.",
-      "target": "Publish the current 0.2 series with signed and notarized macOS artifacts, an explicitly unsigned Windows preview, checksums, and automatic update guidance.",
+      "summary": "The separate npm v0.1.0 preview is installable now; native v0.2.0 binaries and the explicit unsigned Windows preview ZIP are not yet published.",
+      "implementation": "The existing npm preview plus tested workflows for a checksum-verifying native installer and explicit checksum-bound preview archives.",
+      "evidence": "Package, relocation, installer, and release-policy tests in CI; no v0.2.0 asset availability is claimed before publication.",
+      "target": "Publish v0.2.0 with signed and notarized macOS artifacts, an explicitly unsigned Windows preview, checksums, and automatic update guidance.",
       "priority": "now"
     },
     {
@@ -725,13 +725,13 @@
       "quality": "tested",
       "coverage": {
         "level": "focused",
-        "label": "Signed macOS and unsigned Windows preview",
-        "summary": "Apple signing and notarization use a protected release gate. The current Windows preview is deliberately unsigned and checksum/provenance verified while Authenticode remains future work.",
-        "includes": ["Apple Developer ID", "Apple notarization", "Windows unsigned preview policy", "Windows Authenticode planned", "protected environments", "release checksums", "artifact verification"]
+        "label": "Protected macOS gate and unsigned Windows policy",
+        "summary": "Apple signing and notarization use a protected release gate. The forthcoming Windows preview is deliberately unsigned and checksum/provenance verified while Authenticode remains future work.",
+        "includes": ["Apple Developer ID workflow", "Apple notarization workflow", "Windows unsigned preview policy", "Windows Authenticode planned", "protected environments", "release checksums", "artifact verification"]
       },
-      "summary": "macOS has a signing and notarization workflow; the current Windows x64 preview is not Authenticode-signed and instead carries explicit checksum and provenance evidence.",
+      "summary": "The v0.2.0 workflow requires signed and notarized macOS output and an explicitly unsigned Windows x64 preview, but those release assets are not yet published.",
       "implementation": "Apple Developer ID/notarization plus an explicit unsigned Windows archive policy, checksums, protected environments, and fail-closed CI release gates.",
-      "evidence": "Release CI enforces macOS signing requirements and rejects Windows preview executables unless Authenticode reports NotSigned.",
+      "evidence": "Release CI enforces macOS signing requirements and rejects Windows preview executables unless Authenticode reports NotSigned; publication remains pending.",
       "target": "Add Windows Authenticode later as a separate protected release gate without weakening verification of the initial unsigned preview.",
       "priority": "now"
     },

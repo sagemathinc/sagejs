@@ -1,0 +1,44 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "website-prepublish-truth",
+  "title": "Website Prepublish Truth",
+  "lane": "documentation-compat",
+  "status": "active",
+  "owner": "user",
+  "objective": "Make the pre-release Pages content truthful before immutable v0.2.0 assets exist, preserve explicit unsigned Windows preview and separate npm v0.1.0 status, bind the state with regression coverage, and document the post-release website-only flip",
+  "base_commit": "769c7bbfd92ef0ae595c5dd9674e0702b7c4eb2c",
+  "claims": [
+    "website/index.html",
+    "website/capabilities.json",
+    "website/reference-data.json",
+    "website/reference.html",
+    "test/website.cjs"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "not-applicable",
+    "fallback": "not-applicable",
+    "oracles": [
+      "docs generation/check and website regression tests"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "not-applicable",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm docs:check",
+    "pnpm test:tutorial"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "",
+    "risks": [],
+    "next_steps": []
+  }
+}
