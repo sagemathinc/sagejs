@@ -436,9 +436,9 @@ function buildZeroMQDarwin(options = {}) {
       "--package-directory",
       source,
       "--target-directory",
-      target,
+      relative(source, target),
       "--staging-directory",
-      staging,
+      relative(source, staging),
     ], {
       cwd: source,
       env: buildEnvironment,
