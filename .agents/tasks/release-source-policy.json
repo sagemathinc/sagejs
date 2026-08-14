@@ -4,7 +4,7 @@
   "id": "release-source-policy",
   "title": "Release Source Policy",
   "lane": "integration",
-  "status": "active",
+  "status": "review",
   "owner": "user",
   "objective": "Fail closed before release authority unless an annotated version tag peels to the workflow SHA and its commit is merged into origin/main",
   "base_commit": "8d18904b2bbd0860b89e6236d7b35346e3c9bba2",
@@ -42,12 +42,86 @@
     "pnpm test:changed -- --base 8d18904b2bbd0860b89e6236d7b35346e3c9bba2",
     "pnpm parallel:check -- --all"
   ],
-  "runs": [],
+  "runs": [
+    {
+      "command": "node --test test/release-source-policy.cjs test/release-workflow-protection.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.962,
+      "started_at": "2026-08-14T17:28:48.539Z",
+      "commit": "4d47036aa9c90d0d80c21cf0912de0c14719fbdf",
+      "workspace_fingerprint": "2c7140a2d15673769fe187195f2c60a915cf81863c8006173f53788bfcbda18f",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:release",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.548,
+      "started_at": "2026-08-14T17:28:53.221Z",
+      "commit": "4d47036aa9c90d0d80c21cf0912de0c14719fbdf",
+      "workspace_fingerprint": "2c7140a2d15673769fe187195f2c60a915cf81863c8006173f53788bfcbda18f",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 5.531,
+      "started_at": "2026-08-14T17:28:54.440Z",
+      "commit": "4d47036aa9c90d0d80c21cf0912de0c14719fbdf",
+      "workspace_fingerprint": "2c7140a2d15673769fe187195f2c60a915cf81863c8006173f53788bfcbda18f",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 14.892,
+      "started_at": "2026-08-14T17:29:04.296Z",
+      "commit": "4d47036aa9c90d0d80c21cf0912de0c14719fbdf",
+      "workspace_fingerprint": "2c7140a2d15673769fe187195f2c60a915cf81863c8006173f53788bfcbda18f",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 25.083,
+      "started_at": "2026-08-14T17:29:23.727Z",
+      "commit": "4d47036aa9c90d0d80c21cf0912de0c14719fbdf",
+      "workspace_fingerprint": "2c7140a2d15673769fe187195f2c60a915cf81863c8006173f53788bfcbda18f",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:changed -- --base 8d18904b2bbd0860b89e6236d7b35346e3c9bba2",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 257.876,
+      "started_at": "2026-08-14T17:29:54.401Z",
+      "commit": "4d47036aa9c90d0d80c21cf0912de0c14719fbdf",
+      "workspace_fingerprint": "2c7140a2d15673769fe187195f2c60a915cf81863c8006173f53788bfcbda18f",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm parallel:check -- --all",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.597,
+      "started_at": "2026-08-14T17:34:18.257Z",
+      "commit": "4d47036aa9c90d0d80c21cf0912de0c14719fbdf",
+      "workspace_fingerprint": "2c7140a2d15673769fe187195f2c60a915cf81863c8006173f53788bfcbda18f",
+      "platform": "linux-x64"
+    }
+  ],
   "handoff": {
-    "summary": "",
+    "summary": "Release-tag authority now checks full Git history before classification: pushed tag refs must be annotated objects, peel to the exact workflow SHA, and target a commit reachable from a freshly fetched origin/main dedicated ref. Five functional temporary-repository cases, workflow and README ratchets, the release gate, architecture, portable 458/458, strict Python, exact-base changed build plus unit 460/460, and all 220 parallel contracts pass at source commit 4d47036aa9c90d0d80c21cf0912de0c14719fbdf with workspace fingerprint 2c7140a2d15673769fe187195f2c60a915cf81863c8006173f53788bfcbda18f.",
     "risks": [
       "This repository-resident check protects the current workflow and operator path but cannot constrain an older or unmerged tag whose historical workflow omits or rewrites it; protected environment review and manual exact-tip verification remain mandatory, with external tag and branch governance as defense in depth."
     ],
-    "next_steps": []
+    "next_steps": [
+      "Integrate the source and closure commits onto the exact approved combined release baseline and rerun the affected policy, manifest, portable, and release gates at the integration fingerprint.",
+      "Before pushing a protected release tag, re-run the documented clean exact-origin/main-tip operator preflight and have the protected environment reviewer verify the annotated tag target."
+    ]
   }
 }
