@@ -27,7 +27,7 @@ test("the upstream project_options fetch is content authenticated", () => {
   const source = [
     "FetchContent_Declare(",
     "  _project_options",
-    "  URL https://github.com/aminya/project_options/archive/refs/tags/v0.41.0.zip",
+    "  URL https://github.com/aminya/project_options/archive/refs/tags/${PROJECT_OPTIONS_VERSION}.zip",
     ")",
     "",
   ].join("\n");
