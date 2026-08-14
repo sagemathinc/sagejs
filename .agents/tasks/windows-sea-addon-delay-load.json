@@ -4,7 +4,7 @@
   "id": "windows-sea-addon-delay-load",
   "title": "Windows SEA Native Addon Delay Loading",
   "lane": "integration",
-  "status": "active",
+  "status": "review",
   "owner": "user",
   "objective": "Make every compiler-generated Windows addon delay-load the current Node executable and reject embedded addons that eagerly import or omit node.exe",
   "base_commit": "2ce7cd775f3d33a4a1d7bf6b44f66a05ed1ea546",
@@ -27,19 +27,109 @@
   },
   "platforms": {
     "linux-x64": "required",
-    "linux-arm64": "required",
+    "linux-arm64": "not-applicable",
     "windows-x64": "required",
-    "macos-arm64": "required"
+    "macos-arm64": "not-applicable"
   },
   "validation": [
     "pnpm architecture:check",
     "pnpm test:portable",
-    "pnpm test:baselib:strict"
+    "pnpm test:baselib:strict",
+    "node test/ffi.cjs",
+    "node --test test/release-native-binary-inspector.cjs",
+    "powershell -NoProfile -ExecutionPolicy Bypass -File C:\\\\Users\\\\user\\\\evidence\\\\delay-load-8e77\\\\proof.ps1"
   ],
-  "runs": [],
+  "runs": [
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 5.372,
+      "started_at": "2026-08-14T12:09:04.105Z",
+      "commit": "8e77e00679f4716ae752b6b15a3746f78de5d5a6",
+      "workspace_fingerprint": "7c509b84c47618c05fc425da1e7a06aea6f56da4a72bba9beb2bbaed1f0a3424",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node test/ffi.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 54.761,
+      "started_at": "2026-08-14T12:09:59.899Z",
+      "commit": "8e77e00679f4716ae752b6b15a3746f78de5d5a6",
+      "workspace_fingerprint": "7c509b84c47618c05fc425da1e7a06aea6f56da4a72bba9beb2bbaed1f0a3424",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/release-native-binary-inspector.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.207,
+      "started_at": "2026-08-14T12:10:59.165Z",
+      "commit": "8e77e00679f4716ae752b6b15a3746f78de5d5a6",
+      "workspace_fingerprint": "7c509b84c47618c05fc425da1e7a06aea6f56da4a72bba9beb2bbaed1f0a3424",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 61.246,
+      "started_at": "2026-08-14T12:11:16.246Z",
+      "commit": "8e77e00679f4716ae752b6b15a3746f78de5d5a6",
+      "workspace_fingerprint": "7c509b84c47618c05fc425da1e7a06aea6f56da4a72bba9beb2bbaed1f0a3424",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 21.713,
+      "started_at": "2026-08-14T12:16:57.823Z",
+      "commit": "8e77e00679f4716ae752b6b15a3746f78de5d5a6",
+      "workspace_fingerprint": "7c509b84c47618c05fc425da1e7a06aea6f56da4a72bba9beb2bbaed1f0a3424",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 15.109,
+      "started_at": "2026-08-14T12:17:25.042Z",
+      "commit": "8e77e00679f4716ae752b6b15a3746f78de5d5a6",
+      "workspace_fingerprint": "7c509b84c47618c05fc425da1e7a06aea6f56da4a72bba9beb2bbaed1f0a3424",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "ssh windows $root=\"C:\\Users\\user\\sagejs-delay-load-proof\"; $e=\"C:\\Users\\user\\evidence\\delay-load-8e77\"; $sea=\"$root\\build\\sea\\sagejs.exe\"; $manifest=\"$sea-build-manifest.json\"; $expectedSource=\"8e77e00679f4716ae752b6b15a3746f78de5d5a6\"; $source=(git -C $root rev-parse HEAD); if($source -ne $expectedSource){ throw \"source mismatch: $source\" }; $m=Get-Content $manifest -Raw | ConvertFrom-Json; $addons=@($m.toolchain.nativeBinaries.report.files | Where-Object role -eq \"embedded-node-addon\"); $eager=@($addons | Where-Object { $_.dependencies -contains \"node.exe\" }); $missing=@($addons | Where-Object { $_.delayDependencies -notcontains \"node.exe\" }); if(-not $m.toolchain.nativeBinaries.report.ok -or @($m.toolchain.nativeBinaries.report.violations).Count -ne 0 -or $addons.Count -ne 23 -or $eager.Count -ne 0 -or $missing.Count -ne 0){ throw \"native binary policy failed: addons=$($addons.Count) eager=$($eager.Count) missing=$($missing.Count)\" }; $renamed=\"$e\\portable-math-host.exe\"; Copy-Item -Force $sea $renamed; $sha=(Get-FileHash -Algorithm SHA256 $sea).Hash; if((Get-FileHash -Algorithm SHA256 $renamed).Hash -ne $sha){ throw \"renamed byte mismatch\" }; $tests=@(@{Name=\"factor\"; Expected=\"2 * 1013\"},@{Name=\"matrix\"; Expected=\"[ 7 10]`n[15 22]\"},@{Name=\"graph\"; Expected=\"10 15\"}); foreach($exe in @($sea,$renamed)){ foreach($t in $tests){ $out=((& $exe \"$e\\$($t.Name).sage\") -join \"`n\").Trim(); if($LASTEXITCODE -ne 0 -or $out -ne $t.Expected){ throw \"$exe $($t.Name) failed: exit=$LASTEXITCODE output=$out\" }; Write-Output \"$([IO.Path]::GetFileName($exe)) $($t.Name): $out\" } }; Write-Output \"source=$source seaSha256=$sha addons=$($addons.Count) eager=0 missing=0 violations=0\"",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 9.03,
+      "started_at": "2026-08-14T12:22:38.815Z",
+      "commit": "8e77e00679f4716ae752b6b15a3746f78de5d5a6",
+      "workspace_fingerprint": "7c509b84c47618c05fc425da1e7a06aea6f56da4a72bba9beb2bbaed1f0a3424",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "powershell -NoProfile -ExecutionPolicy Bypass -File C:\\\\Users\\\\user\\\\evidence\\\\delay-load-8e77\\\\proof.ps1",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 7.877,
+      "started_at": "2026-08-14T12:24:26.880Z",
+      "commit": "8e77e00679f4716ae752b6b15a3746f78de5d5a6",
+      "workspace_fingerprint": "7c509b84c47618c05fc425da1e7a06aea6f56da4a72bba9beb2bbaed1f0a3424",
+      "platform": "win32-x64"
+    }
+  ],
   "handoff": {
-    "summary": "",
-    "risks": [],
-    "next_steps": []
+    "summary": "Enabled node-gyp's Windows delay-load hook for compiler-generated FFI and native-kernel addons, then made SEA binary inspection fail closed unless every production embedded-node-addon imports node.exe only through the delay table. Exact source 8e77e00679f4716ae752b6b15a3746f78de5d5a6 rebuilt on native Windows with official Node 26.7.0. Its manifest covers 23 embedded addons with zero eager node.exe imports, zero missing delayed imports, and zero violations. The 91E8C8D59FFCE239B3ED86280452496BA5AB75026FA0E12EC471FCFA6C98C016 SEA passes factorization, rational-matrix multiplication, and Petersen graph operations both as sagejs.exe and as a byte-identical portable-math-host.exe. Evidence is retained at C:\\Users\\user\\evidence\\delay-load-8e77.",
+    "risks": [
+      "This lane deliberately does not change the existing dynamic MSVC runtime dependencies or PE debug-path reproducibility; those are separate release hardening work.",
+      "The first portable-tier run lacked generated module/runtime caches and failed two cache-presence tests; after pnpm build generated them, the complete 437-test tier passed."
+    ],
+    "next_steps": [
+      "Integrate the independently source-approved delay-load commit and this closure receipt before changing shared Windows compiler/linker policy.",
+      "Base the static-CRT and PDBALTPATH reproducibility lane on this closure, preserve the per-file delayed-only node.exe ratchet, and rebuild the final frozen Windows candidate."
+    ]
   }
 }
