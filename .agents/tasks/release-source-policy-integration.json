@@ -4,7 +4,7 @@
   "id": "release-source-policy-integration",
   "title": "Integrate release source policy",
   "lane": "integration",
-  "status": "review",
+  "status": "complete",
   "owner": "user",
   "objective": "Integrate the independently approved release source-policy range onto the exact closed website baseline and close a validated intermediate release source checkpoint without tagging or publishing",
   "base_commit": "d4e7bfcf304824b2042eefa3a973b7f141f8af4e",
@@ -130,8 +130,8 @@
       "This integration neither pushes a release tag nor publishes, signs, notarizes, or assembles any release artifact."
     ],
     "next_steps": [
-      "Obtain independent review of exact integration source checkpoint 680dba1365377f02c9056b37bd4e3d04c1f08e18, replay provenance, final blob identity, range purity, and all same-fingerprint receipts.",
-      "Close this task only after approval; before any protected release tag, rerun the documented clean exact-origin/main-tip operator preflight and have the environment reviewer verify the annotated tag target."
+      "Independently approved for closure at 62a07b9ae0498cb4f1892d33a89b3a74bfc844fb after exact replay, blob, range, policy-semantics, receipt, cleanliness, and non-publication review.",
+      "Before any protected release tag, rerun the documented clean exact-origin/main-tip operator preflight and have the environment reviewer verify the annotated tag target."
     ]
   }
 }
