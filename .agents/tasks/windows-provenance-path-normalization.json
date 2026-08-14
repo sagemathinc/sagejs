@@ -1,0 +1,99 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "windows-provenance-path-normalization",
+  "title": "Canonical Windows native provenance paths",
+  "lane": "native-compiler",
+  "status": "complete",
+  "owner": "user",
+  "objective": "Make native source-provenance tests require the canonical slash-normalized Windows path while preserving exact source filename, line, column, and generated #line semantics",
+  "base_commit": "18f5475a82297a2066462b732388406832a3449f",
+  "claims": [
+    "test/native-kernel.cjs"
+  ],
+  "dependencies": [],
+  "references": [
+    "Real Windows exact-SHA transcript: C:\\Users\\user\\provenance-path-4f16-native-kernel.log"
+  ],
+  "architecture": {
+    "strategy": "not-applicable",
+    "fallback": "not-applicable",
+    "oracles": [
+      "Exact compiler manifest source map and generated #line directive on POSIX and Windows"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm architecture:check",
+    "pnpm test:baselib:strict",
+    "pnpm test:native"
+  ],
+  "runs": [
+    {
+      "command": "pnpm test:native",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 784.499,
+      "started_at": "2026-08-14T11:40:11.764Z",
+      "commit": "4f16a063899b5c953dadfe6ff6aa101dc79bcdbb",
+      "workspace_fingerprint": "6bc25cd81630d1268851d6dfe968a11219667996dd8d4e829142d7282583101b",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test --test-reporter=spec test/native-kernel.cjs",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 88.553,
+      "started_at": "2026-08-14T11:59:10.567Z",
+      "commit": "4f16a063899b5c953dadfe6ff6aa101dc79bcdbb",
+      "workspace_fingerprint": "6bc25cd81630d1268851d6dfe968a11219667996dd8d4e829142d7282583101b",
+      "platform": "win32-x64"
+    },
+    {
+      "command": "pnpm test:changed -- --base 18f5475a82297a2066462b732388406832a3449f",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 25.978,
+      "started_at": "2026-08-14T11:53:35.418Z",
+      "commit": "4f16a063899b5c953dadfe6ff6aa101dc79bcdbb",
+      "workspace_fingerprint": "6bc25cd81630d1268851d6dfe968a11219667996dd8d4e829142d7282583101b",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 5.499,
+      "started_at": "2026-08-14T11:54:25.705Z",
+      "commit": "4f16a063899b5c953dadfe6ff6aa101dc79bcdbb",
+      "workspace_fingerprint": "6bc25cd81630d1268851d6dfe968a11219667996dd8d4e829142d7282583101b",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 14.691,
+      "started_at": "2026-08-14T11:54:40.217Z",
+      "commit": "4f16a063899b5c953dadfe6ff6aa101dc79bcdbb",
+      "workspace_fingerprint": "6bc25cd81630d1268851d6dfe968a11219667996dd8d4e829142d7282583101b",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Integrated test-only provenance expectations binding the actual compiled manifest and generated C #line directive to the compiler's slash-normalized real source identity, exact filename, and 29:5 coordinates. Linux full native, architecture, strict-baselib, and changed-file unit validation pass on exact source commit 4f16a063899b5c953dadfe6ff6aa101dc79bcdbb. On native Windows with official Node 26.7, the exact 4f16 contract-wrapped focused run passed both corrected provenance assertions before failing a later unrelated assertion; the failed required-platform receipt is recorded above.",
+    "risks": [
+      "The recorded real Windows native-kernel run fails the pre-existing byte-reproducibility assertion near line 2433 because relocated PE output differs in timestamp/GUID/PDB/junction bytes; this is downstream of the passing provenance checks and is assigned to a separate lane."
+    ],
+    "next_steps": [
+      "Integrate ef46a3d33c65597a4a80f33c69ed22bee4824809 and 4f16a063899b5c953dadfe6ff6aa101dc79bcdbb in order after exact closure review.",
+      "Let the active /root/release_shared_test_drift agent's new windows-native-kernel-reproducibility task claim test/native-kernel.cjs after integration and resolve the Windows PE byte-reproducibility failure independently."
+    ]
+  }
+}

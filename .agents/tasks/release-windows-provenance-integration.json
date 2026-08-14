@@ -1,0 +1,120 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "release-windows-provenance-integration",
+  "title": "Integrate Windows native provenance evidence",
+  "lane": "integration",
+  "status": "complete",
+  "owner": "user",
+  "objective": "Integrate the independently reviewed Windows native source-provenance normalization and its explicit downstream PE reproducibility finding into a closed intermediate release checkpoint",
+  "base_commit": "2ce7cd775f3d33a4a1d7bf6b44f66a05ed1ea546",
+  "claims": [
+    ".agents/tasks/release-windows-provenance-integration.json",
+    ".agents/tasks/windows-provenance-path-normalization.json",
+    "test/native-kernel.cjs"
+  ],
+  "dependencies": [
+    "windows-provenance-path-normalization"
+  ],
+  "references": [],
+  "architecture": {
+    "strategy": "not-applicable",
+    "fallback": "not-applicable",
+    "oracles": [],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "not-applicable",
+    "windows-x64": "required",
+    "macos-arm64": "not-applicable"
+  },
+  "validation": [
+    "pnpm architecture:check",
+    "pnpm test:portable",
+    "pnpm test:baselib:strict",
+    "pnpm test:changed -- --base 2ce7cd775f3d33a4a1d7bf6b44f66a05ed1ea546",
+    "pnpm parallel:check -- --all"
+  ],
+  "runs": [
+    {
+      "command": "pnpm test:changed -- --base 2ce7cd775f3d33a4a1d7bf6b44f66a05ed1ea546",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 23.207,
+      "started_at": "2026-08-14T12:03:25.007Z",
+      "commit": "7e18e5989de87c20f0e2bf008b4fbf667a14b00f",
+      "workspace_fingerprint": "05b3a3ed9564de118f611e4cab999b561956fd2069394b088247ca02b395c1b4",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 5.647,
+      "started_at": "2026-08-14T12:03:48.814Z",
+      "commit": "7e18e5989de87c20f0e2bf008b4fbf667a14b00f",
+      "workspace_fingerprint": "05b3a3ed9564de118f611e4cab999b561956fd2069394b088247ca02b395c1b4",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 21.567,
+      "started_at": "2026-08-14T12:03:55.074Z",
+      "commit": "7e18e5989de87c20f0e2bf008b4fbf667a14b00f",
+      "workspace_fingerprint": "05b3a3ed9564de118f611e4cab999b561956fd2069394b088247ca02b395c1b4",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 14.812,
+      "started_at": "2026-08-14T12:04:17.293Z",
+      "commit": "7e18e5989de87c20f0e2bf008b4fbf667a14b00f",
+      "workspace_fingerprint": "05b3a3ed9564de118f611e4cab999b561956fd2069394b088247ca02b395c1b4",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm parallel:check -- --all",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.588,
+      "started_at": "2026-08-14T12:04:32.735Z",
+      "commit": "7e18e5989de87c20f0e2bf008b4fbf667a14b00f",
+      "workspace_fingerprint": "05b3a3ed9564de118f611e4cab999b561956fd2069394b088247ca02b395c1b4",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 14.289,
+      "started_at": "2026-08-14T12:04:40.612Z",
+      "commit": "7e18e5989de87c20f0e2bf008b4fbf667a14b00f",
+      "workspace_fingerprint": "05b3a3ed9564de118f611e4cab999b561956fd2069394b088247ca02b395c1b4",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm parallel:check -- --all",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.588,
+      "started_at": "2026-08-14T12:04:55.515Z",
+      "commit": "7e18e5989de87c20f0e2bf008b4fbf667a14b00f",
+      "workspace_fingerprint": "05b3a3ed9564de118f611e4cab999b561956fd2069394b088247ca02b395c1b4",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Integrated the independently approved Windows native source-provenance normalization and its exact Linux and Windows validation record into a closed intermediate release checkpoint.",
+    "risks": [
+      "The required Windows run deliberately remains recorded as failed because a later pre-existing PE byte-reproducibility assertion failed after both new provenance assertions passed; this checkpoint does not waive or solve that release blocker."
+    ],
+    "next_steps": [
+      "Rebase the dedicated Windows PE reproducibility lane on this closed checkpoint and require its independent source review plus real Windows proof before final release integration."
+    ]
+  }
+}

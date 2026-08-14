@@ -1666,15 +1666,35 @@ compileKernel({
     () => primeFieldSourceModule.source_uint64_floor_div(1n, 0n, 97n),
     /floor division by zero/,
   );
+  const canonicalPrimeFieldSourcePath = primeFieldSourcePath.replaceAll(
+    "\\",
+    "/",
+  );
   assert.equal(
     primeFieldSourceManifest.coreSourceMap[0].location,
-    `${primeFieldSourcePath}:29:5`,
+    `${canonicalPrimeFieldSourcePath}:29:5`,
+  );
+  const primeFieldCoreSource = readFileSync(
+    join(primeFieldSourceKernel.outputPath, "kernel_core.c"),
+    "utf8",
   );
   assert.ok(
-    readFileSync(
-      join(primeFieldSourceKernel.outputPath, "kernel_core.c"), "utf8",
-    ).includes(`#line 29 ${JSON.stringify(primeFieldSourcePath)}`),
+    primeFieldCoreSource.includes(
+      `#line 29 ${JSON.stringify(canonicalPrimeFieldSourcePath)}`,
+    ),
   );
+  if (primeFieldSourcePath.includes("\\")) {
+    assert.notEqual(
+      primeFieldSourceManifest.coreSourceMap[0].location,
+      `${primeFieldSourcePath}:29:5`,
+    );
+    assert.equal(
+      primeFieldCoreSource.includes(
+        `#line 29 ${JSON.stringify(primeFieldSourcePath)}`,
+      ),
+      false,
+    );
+  }
   const primeFieldAddon = require(primeFieldKernel.addonPath);
   const primeFieldModule = require(primeFieldKernel.modulePath);
   const primeFieldManifest = JSON.parse(
