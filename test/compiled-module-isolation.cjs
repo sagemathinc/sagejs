@@ -388,6 +388,57 @@ test("kernel cells share one live __main__ module namespace", async (t) => {
   assert.equal((await session.evaluate("runtime")).repr, "'shadowed'");
 });
 
+test("reusable __main__ distinguishes fresh bindings from deleted tombstones", async (t) => {
+  const sage = await createSage();
+  const python = await createSage({ mode: "python" });
+  t.after(() => Promise.all([sage.close(), python.close()]));
+
+  assert.equal(
+    (await sage.evaluate("reset('i')\ni = CC(i)\ni == CC.0")).repr,
+    "True",
+  );
+  await sage.evaluate("prior_value = 41");
+  assert.equal(
+    (await sage.evaluate("prior_value = prior_value + 1\nprior_value")).repr,
+    "42",
+  );
+  assert.equal(
+    (await python.evaluate("len = len([1, 2, 3])\nlen")).repr,
+    "3",
+  );
+
+  await sage.evaluate(
+    "import sagejs.runtime as low_level\n" +
+      "host_object = low_level.reflect.get(low_level.global_object, 'Object')\n" +
+      "Object = 'python-binding'",
+  );
+  await sage.evaluate("del Object");
+  await assert.rejects(
+    sage.evaluate("Object = Object"),
+    /Object.*(?:not defined|referenced before assignment)|NameError/,
+  );
+  assert.equal(
+    (await sage.evaluate(
+      "low_level.reflect.get(low_level.global_object, 'Object') is host_object",
+    )).repr,
+    "True",
+  );
+
+  await sage.evaluate(
+    "host_map = low_level.reflect.get(low_level.global_object, 'Map')",
+  );
+  await assert.rejects(
+    sage.evaluate("Map = 'python-binding'\ndel Map\nMap = Map"),
+    /Map.*(?:not defined|referenced before assignment)|NameError/,
+  );
+  assert.equal(
+    (await sage.evaluate(
+      "low_level.reflect.get(low_level.global_object, 'Map') is host_map",
+    )).repr,
+    "True",
+  );
+});
+
 test("class global declarations bypass the class and JavaScript hosts", async (t) => {
   const session = await createSage({ mode: "python" });
   t.after(() => session.close());
