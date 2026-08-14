@@ -101,12 +101,22 @@ function writeBaselineReceipt(directory, files) {
   ].map(([name, filename]) => [name, artifactMetadata(filename)]));
   writeFileSync(baselineReceipt, `${JSON.stringify({
     inspection: { aggregate: { dependencies: [] } },
-    nodeVersion: "26.7.0",
+    nodeSource: {
+      filename: "node-v26.7.0.tar.xz",
+      sha256: "f".repeat(64),
+      url: "https://nodejs.org/dist/v26.7.0/node-v26.7.0.tar.xz",
+      version: "26.7.0",
+    },
     platform: "linux-x64",
     schema: "sagejs.linux-baseline-receipt-v1",
     seaArtifacts: {
       artifacts,
-      nodeVersion: "26.7.0",
+      nodeSource: {
+        filename: "node-v26.7.0.tar.xz",
+        sha256: "f".repeat(64),
+        url: "https://nodejs.org/dist/v26.7.0/node-v26.7.0.tar.xz",
+        version: "26.7.0",
+      },
       platform: "linux-x64",
       schema: "sagejs.linux-baseline-sea-artifacts-v1",
       sourceCommit: COMMIT,

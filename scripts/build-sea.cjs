@@ -1,5 +1,6 @@
 "use strict";
 
+const assert = require("node:assert/strict");
 const { buildSync } = require("esbuild");
 const {
   closeSync,
@@ -749,6 +750,7 @@ function createSeaBuildManifest(options) {
       nativeBinaries,
       seaNode: {
         executableSha256: sha256(options.seaNode),
+        source: options.seaNodeSource ?? seaNodeSourceFromEnvironment(),
         version: observeSeaBuilder(options.seaNode, options).versions.node,
       },
       seaMain: assetReceipt(options.mainBundle),
@@ -757,6 +759,32 @@ function createSeaBuildManifest(options) {
       ),
     },
   });
+}
+
+function seaNodeSourceFromEnvironment(environment = process.env) {
+  const names = {
+    filename: "SAGEJS_SEA_NODE_SOURCE_FILENAME",
+    sha256: "SAGEJS_SEA_NODE_SOURCE_SHA256",
+    url: "SAGEJS_SEA_NODE_SOURCE_URL",
+    version: "SAGEJS_SEA_NODE_SOURCE_VERSION",
+  };
+  const present = Object.values(names).filter((name) => environment[name] !== undefined);
+  if (present.length === 0) return null;
+  assert.equal(
+    present.length,
+    Object.keys(names).length,
+    "SEA Node source identity is incomplete",
+  );
+  const source = Object.fromEntries(
+    Object.entries(names).map(([key, name]) => [key, environment[name]]),
+  );
+  assert.match(source.sha256, /^[0-9a-f]{64}$/);
+  assert.equal(source.filename, `node-v${source.version}.tar.xz`);
+  assert.equal(
+    source.url,
+    `https://nodejs.org/dist/v${source.version}/${source.filename}`,
+  );
+  return source;
 }
 
 function runtimeLibc() {
@@ -1265,6 +1293,7 @@ module.exports = {
   nativeDependencyReceiptSource,
   observeSeaBuilder,
   productionKernelReceipt,
+  seaNodeSourceFromEnvironment,
   SEA_ASSEMBLY_POLICY,
   stageRegularFile,
   stageSeaInputs,

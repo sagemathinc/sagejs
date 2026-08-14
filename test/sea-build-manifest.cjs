@@ -25,6 +25,7 @@ const {
   NODE_TEMPLATE_ROLE,
   nativeDependencyReceiptSource,
   productionKernelReceipt,
+  seaNodeSourceFromEnvironment,
   SEA_ASSEMBLY_POLICY,
   stageSeaInputs,
   targetFromSeaBuilder,
@@ -41,6 +42,36 @@ const {
 
 const COMMIT = "0123456789abcdef0123456789abcdef01234567";
 const TREE = "89abcdef0123456789abcdef0123456789abcdef";
+
+test("SEA Node source provenance is canonical and fail-closed", () => {
+  const source = {
+    SAGEJS_SEA_NODE_SOURCE_FILENAME: "node-v26.7.0.tar.xz",
+    SAGEJS_SEA_NODE_SOURCE_SHA256: "a".repeat(64),
+    SAGEJS_SEA_NODE_SOURCE_URL:
+      "https://nodejs.org/dist/v26.7.0/node-v26.7.0.tar.xz",
+    SAGEJS_SEA_NODE_SOURCE_VERSION: "26.7.0",
+  };
+  assert.deepEqual(seaNodeSourceFromEnvironment(source), {
+    filename: source.SAGEJS_SEA_NODE_SOURCE_FILENAME,
+    sha256: source.SAGEJS_SEA_NODE_SOURCE_SHA256,
+    url: source.SAGEJS_SEA_NODE_SOURCE_URL,
+    version: source.SAGEJS_SEA_NODE_SOURCE_VERSION,
+  });
+  assert.equal(seaNodeSourceFromEnvironment({}), null);
+  assert.throws(
+    () => seaNodeSourceFromEnvironment({
+      SAGEJS_SEA_NODE_SOURCE_VERSION: "26.7.0",
+    }),
+    /incomplete/,
+  );
+  assert.throws(
+    () => seaNodeSourceFromEnvironment({
+      ...source,
+      SAGEJS_SEA_NODE_SOURCE_URL: "https://example.invalid/node.tar.xz",
+    }),
+    /Expected values to be strictly equal/,
+  );
+});
 
 function sha256(value) {
   return createHash("sha256").update(value).digest("hex");
