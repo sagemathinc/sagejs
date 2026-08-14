@@ -71,6 +71,7 @@ const CONTAINERFILE_PATH = join(__dirname, "Containerfile");
 const INSPECTOR_PATH = STAGED_PROCESS
   ? join(__dirname, "release-native-binary-inspector.cjs")
   : join(__dirname, "..", "release-native-binary-inspector.cjs");
+const SEA_ARTIFACTS_PATH = join(__dirname, "sea-artifacts.cjs");
 const OUTPUT_MARKER = ".sagejs-linux-baseline-output.json";
 const OUTPUT_SCHEMA = "sagejs.linux-baseline-output-v1";
 const RECEIPT_SCHEMA = "sagejs.linux-baseline-receipt-v1";
@@ -296,6 +297,7 @@ function releaseAuthorityIdentity(options = {}) {
     policy: options.policy || config.policyPath,
     releaseDriver: options.releaseDriver || __filename,
     releaseInspector: options.releaseInspector || INSPECTOR_PATH,
+    seaArtifacts: options.seaArtifacts || SEA_ARTIFACTS_PATH,
   };
   return Object.fromEntries(
     Object.entries(files).map(([name, filename]) => [name, { sha256: sha256File(filename) }]),
@@ -318,6 +320,7 @@ function stageReleaseAuthority(directory, options = {}) {
     policy: options.policy || config.policyPath,
     releaseDriver: options.releaseDriver || __filename,
     releaseInspector: options.releaseInspector || INSPECTOR_PATH,
+    seaArtifacts: options.seaArtifacts || SEA_ARTIFACTS_PATH,
   };
   mkdirSync(directory);
   const paths = {};
@@ -346,6 +349,7 @@ function loadStagedAuthority(context, sourceCommit, platform = DEFAULT_PLATFORM)
     policy: join(directory, basename(config.policyPath)),
     releaseDriver: join(directory, "release-inputs.cjs"),
     releaseInspector: join(directory, "release-native-binary-inspector.cjs"),
+    seaArtifacts: join(directory, "sea-artifacts.cjs"),
     sourceCommit: join(directory, "source-commit"),
   };
   const stagedCommit = readFileSync(paths.sourceCommit, "utf8").trim();
@@ -751,6 +755,17 @@ function buildReleaseInputs(options) {
       authority.paths.policy,
       config,
     );
+    const seaArtifacts = options.allInputs
+      ? require(authority.paths.seaArtifacts).validateBaselineSeaArtifacts(
+          extracted,
+          {
+            inspection: report,
+            nodeVersion: NODE_VERSION,
+            platform: options.platform,
+            sourceCommit: authority.sourceCommit,
+          },
+        )
+      : null;
     const receipt = {
       schema: RECEIPT_SCHEMA,
       authority: authority.identity,
@@ -778,6 +793,7 @@ function buildReleaseInputs(options) {
         exitStatus: 0,
         stdout: runtimeProbe,
       },
+      seaArtifacts,
       seaProbe,
       requestedSourceRef: options.sourceRef,
       sourceCommit: authority.sourceCommit,

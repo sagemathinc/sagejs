@@ -4,6 +4,7 @@ const assert = require("node:assert/strict");
 const { createHash } = require("node:crypto");
 const { spawnSync } = require("node:child_process");
 const {
+  chmodSync,
   mkdirSync,
   mkdtempSync,
   readFileSync,
@@ -45,6 +46,9 @@ const {
   resolveSourceCommit,
   stageReleaseAuthority,
 } = require("../scripts/linux-baseline/release-inputs.cjs");
+const {
+  validateBaselineSeaArtifacts,
+} = require("../scripts/linux-baseline/sea-artifacts.cjs");
 
 test("Linux baseline pins Node source and both container images", () => {
   assert.equal(NODE_VERSION, "26.7.0");
@@ -63,6 +67,105 @@ test("Linux baseline pins Node source and both container images", () => {
     PNPM_TARBALL_INTEGRITY,
     `sha512-${Buffer.from(PNPM_TARBALL_SHA512, "hex").toString("base64")}`,
   );
+});
+
+test("baseline SEA evidence binds executable manifests to inspected native bytes", () => {
+  const directory = mkdtempSync(join(tmpdir(), "sagejs-baseline-sea-test-"));
+  try {
+    const sea = join(directory, "sea");
+    mkdirSync(sea);
+    const digest = (contents) => createHash("sha256").update(contents).digest("hex");
+    const nodeBytes = Buffer.from("node-template");
+    const addonBytes = Buffer.from("native-addon");
+    const source = {
+      commit: "a".repeat(40),
+      dirty: false,
+      kind: "git-clean",
+      tree: "b".repeat(40),
+    };
+    const nativeFile = (label, role, bytes) => ({
+      architecture: "x64",
+      dependencies: ["libc.so.6"],
+      label,
+      requiredSymbolVersions: ["GLIBC_2.28"],
+      role,
+      sha256: digest(bytes),
+      size: bytes.length,
+    });
+    const nodeFile = nativeFile("sea/node-template", "executable-template", nodeBytes);
+    const addonFile = nativeFile("native/addon.node", "embedded-node-addon", addonBytes);
+    const report = {
+      aggregate: {
+        dependencies: ["libc.so.6"],
+        maximumGlibc: "2.28",
+      },
+      files: [addonFile, nodeFile],
+      inputSetSha256: "c".repeat(64),
+      ok: true,
+      schema: "sagejs.native-binary-inspection-v1",
+    };
+    const manifest = (nativeMathematics) => ({
+      capabilities: {
+        artifact: { kind: "single-executable", nativeMathematics },
+      },
+      schema: "sagejs.release-build-manifest-v1",
+      source,
+      target: {
+        arch: "x64",
+        libc: { family: "glibc", version: "2.28" },
+        platform: "linux",
+      },
+      toolchain: {
+        nativeBinaries: {
+          report,
+          reportSha256: "d".repeat(64),
+        },
+        seaNode: {
+          executableSha256: digest(nodeBytes),
+          version: "26.7.0",
+        },
+      },
+    });
+    for (const [name, contents, mode] of [
+      ["sagejs", "math-sea", 0o755],
+      ["sagepython", "python-sea", 0o755],
+      ["sagejs-build-manifest.json", JSON.stringify(manifest(true)), 0o644],
+      ["sagepython-build-manifest.json", JSON.stringify(manifest(false)), 0o644],
+    ]) {
+      const filename = join(sea, name);
+      writeFileSync(filename, contents);
+      chmodSync(filename, mode);
+    }
+    const inspection = {
+      files: [
+        { ...nodeFile, label: "node" },
+        { ...addonFile, label: "addons/hash-addon.node" },
+      ],
+    };
+    const options = {
+      inspection,
+      nodeVersion: "26.7.0",
+      platform: "linux-x64",
+      sourceCommit: source.commit,
+    };
+    const evidence = validateBaselineSeaArtifacts(directory, options);
+    assert.equal(evidence.schema, "sagejs.linux-baseline-sea-artifacts-v1");
+    assert.equal(evidence.executables.sagejs.embeddedAddons.length, 1);
+    assert.throws(
+      () => validateBaselineSeaArtifacts(directory, {
+        ...options,
+        inspection: {
+          files: inspection.files.map((file) =>
+            file.label === "addons/hash-addon.node"
+              ? { ...file, sha256: "e".repeat(64) }
+              : file),
+        },
+      }),
+      /absent from baseline inspection/,
+    );
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
 });
 
 test("Linux baseline pins distinct native x64 and arm64 container authorities", () => {
@@ -233,6 +336,7 @@ test("release receipts bind every authoritative recipe input", () => {
     "policy",
     "releaseDriver",
     "releaseInspector",
+    "seaArtifacts",
   ]);
   for (const value of Object.values(identity)) {
     assert.match(value.sha256, /^[0-9a-f]{64}$/);
@@ -244,15 +348,18 @@ test("release receipts bind every authoritative recipe input", () => {
     const policy = join(directory, "policy.json");
     const releaseDriver = join(directory, "driver.cjs");
     const releaseInspector = join(directory, "inspector.cjs");
+    const seaArtifacts = join(directory, "sea-artifacts.cjs");
     writeFileSync(containerfile, "FROM scratch\n");
     writeFileSync(policy, "{}\n");
     writeFileSync(releaseDriver, '"use strict";\n');
     writeFileSync(releaseInspector, '"use strict";\n');
+    writeFileSync(seaArtifacts, '"use strict";\n');
     const before = releaseAuthorityIdentity({
       containerfile,
       policy,
       releaseDriver,
       releaseInspector,
+      seaArtifacts,
     });
     writeFileSync(policy, '{"tampered":true}\n');
     const after = releaseAuthorityIdentity({
@@ -260,6 +367,7 @@ test("release receipts bind every authoritative recipe input", () => {
       policy,
       releaseDriver,
       releaseInspector,
+      seaArtifacts,
     });
     assert.notEqual(before.policy.sha256, after.policy.sha256);
     assert.equal(before.containerfile.sha256, after.containerfile.sha256);

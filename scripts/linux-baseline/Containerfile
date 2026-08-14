@@ -59,7 +59,9 @@ RUN tar -xf /tmp/sagejs.tar -C /work/sagejs \
  && pnpm --dir packages/m4ri build \
  && pnpm run python:precompile:run \
  && pnpm run native:precompile:production \
- && mkdir -p /release-inputs/addons \
+ && SAGEJS_SEA_NODE=/opt/sagejs-node/bin/node node scripts/build-sea.cjs --all \
+ && node test/sea-smoke.cjs \
+ && mkdir -p /release-inputs/addons /release-inputs/sea \
  && node -e 'process.stdout.write(JSON.stringify(require("./scripts/native-math-profile.cjs").nativeMathBuildProfile(), null, 2) + "\\n")' \
       > /release-inputs/native-math-profile.json \
  && find packages dist node_modules -type f -name '*.node' -print0 \
@@ -68,6 +70,10 @@ RUN tar -xf /tmp/sagejs.tar -C /work/sagejs \
           name=$(printf '%s' "$addon" | sha256sum | cut -c1-16); \
           cp "$addon" "/release-inputs/addons/${name}-$(basename "$addon")"; \
         done \
+ && cp build/sea/sagejs build/sea/sagepython \
+      build/sea/sagejs-build-manifest.json \
+      build/sea/sagepython-build-manifest.json \
+      /release-inputs/sea/ \
  && cp /opt/sagejs-node/bin/node /release-inputs/node
 
 FROM scratch AS release-inputs
