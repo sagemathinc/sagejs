@@ -7,11 +7,15 @@ const test = require("node:test");
 const {
   classifyReleaseEvent,
 } = require("../scripts/release-tag-policy.cjs");
+const {
+  platforms: publicationPlatforms,
+} = require("../scripts/prepare-release-publication.cjs");
 
 const workflow = readFileSync(
   resolve(__dirname, "../.github/workflows/ci.yml"),
   "utf8",
 );
+const readme = readFileSync(resolve(__dirname, "../README.md"), "utf8");
 
 function job(name) {
   const marker = `  ${name}:\n`;
@@ -21,6 +25,19 @@ function job(name) {
   const nextJob = remainder.match(/\n  [A-Za-z0-9_-]+:\n/);
   const next = nextJob ? start + marker.length + nextJob.index : -1;
   return workflow.slice(start, next === -1 ? workflow.length : next);
+}
+
+function releaseUploadFiles(name) {
+  const source = job(name);
+  const upload = source.match(
+    /id: upload-release[\s\S]*?\n\s+path: \|\n((?:\s+build\/release\/[^\n]+\n)+)/,
+  );
+  assert.ok(upload, `missing release upload paths for ${name}`);
+  return upload[1]
+    .trim()
+    .split("\n")
+    .map((line) => line.trim().replace("build/release/", ""))
+    .sort();
 }
 
 test("every release builder and consumer uses exact Node 26.7.0", () => {
@@ -143,6 +160,44 @@ test("Linux release artifacts come only from the receipted glibc-floor authority
     assert.doesNotMatch(source, /cp build\/sea\/sagejs/);
     assert.doesNotMatch(source, /tar -C build\/release/);
   }
+});
+
+test("Linux final-host acceptance uploads exactly the publication allowlist", () => {
+  for (const name of ["linux-x64", "linux-arm64"]) {
+    const source = job(name);
+    const prefix = `sagejs-${name}`;
+    assert.match(source, /scripts\/release-artifact-acceptance\.cjs/);
+    assert.match(source, new RegExp(`--target ${name}`));
+    assert.match(source, new RegExp(`--archive build/release/${prefix}\\.tar\\.xz`));
+    assert.match(
+      source,
+      new RegExp(`--checksum build/release/${prefix}\\.tar\\.xz\\.sha256`),
+    );
+    assert.match(
+      source,
+      new RegExp(`--output build/release/${prefix}-acceptance\\.json`),
+    );
+    assert.match(source, /version="\$\(node -p 'require\("\.\/package\.json"\)\.version'\)"/);
+    assert.match(source, /commit="\$\(git rev-parse 'HEAD\^\{commit\}'\)"/);
+    assert.match(source, /\[\[ "\$commit" == "\$GITHUB_SHA" \]\]/);
+    assert.match(source, /--expected-version "\$version"/);
+    assert.match(source, /--expected-commit "\$commit"/);
+    assert.match(source, /--signature unsigned/);
+    assert.match(source, /--maximum-glibc 2\.28/);
+    assert.deepEqual(
+      releaseUploadFiles(name),
+      [...publicationPlatforms[name].files].sort(),
+    );
+  }
+});
+
+test("README keeps macOS publishing under the immutable protected workflow", () => {
+  assert.match(readme, /pnpm release:macos\n/);
+  assert.doesNotMatch(readme, /pnpm release:macos -- --/);
+  assert.doesNotMatch(readme, /pnpm release:macos[^\n]*--publish/);
+  assert.match(readme, /local reproduction path only/);
+  assert.match(readme, /created exclusively by the protected tag-triggered workflow/);
+  assert.match(readme, /immutable release assets cannot be replaced/);
 });
 
 test("Windows is deliberately unsigned and bypasses the signing environment", () => {
