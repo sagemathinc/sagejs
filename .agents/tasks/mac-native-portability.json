@@ -38,7 +38,7 @@
   },
   "platforms": {
     "linux-x64": "required",
-    "linux-arm64": "required",
+    "linux-arm64": "not-applicable",
     "windows-x64": "required",
     "macos-arm64": "required"
   },
