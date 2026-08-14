@@ -4,7 +4,7 @@
   "id": "release-arm-fixture-integration",
   "title": "Integrate cross-host release fixtures",
   "lane": "integration",
-  "status": "review",
+  "status": "complete",
   "owner": "user",
   "objective": "Integrate the independently reviewed architecture-aware Linux release fixture authority into a closed intermediate release checkpoint",
   "base_commit": "db6258674e6f191b8187c31e2231a45c73a5c5c6",
@@ -92,12 +92,11 @@
     }
   ],
   "handoff": {
-    "summary": "Integrated the independently approved cross-host release fixture closure 0a91fd85530dab0eb31aa8eb9818c3a5a9004f4e in source order, with the closure represented by patch-equivalent integration commit a74ab6e62d841a03813c89f6940c67adcb03f744. Linux release fixtures now select architecture-correct Node archives and preserve executable directory modes for Linux x64, Linux arm64, and macOS arm64 targets; the focused fixture suite, architecture gate, portable suite, strict-Python suite, and unweakened all-contract gate pass together at 5e32715c3dfdd0083ee4aec6fd99575082dffa1b.",
+    "summary": "Integrated and independently reviewed the approved cross-host release fixture closure 0a91fd85530dab0eb31aa8eb9818c3a5a9004f4e in source order, with the closure represented by patch-equivalent integration commit a74ab6e62d841a03813c89f6940c67adcb03f744. Linux release fixtures now select architecture-correct Node archives and preserve executable directory modes for Linux x64, Linux arm64, and macOS arm64 targets; the focused fixture suite, architecture gate, portable suite, strict-Python suite, and unweakened all-contract gate pass together at 5e32715c3dfdd0083ee4aec6fd99575082dffa1b. Independent review at b8bd1f402a85470034d84c6a26b351bdec2c70bb confirmed the complete approved source range is patch-equivalent and ordered, implementation bytes match the source closure, and fresh focused, architecture, portable, strict-Python, all-contract, and scoped task checks pass.",
     "risks": [
       "The source lane's native Linux arm64 and physical Apple-silicon evidence applies to its exact approved closure; final artifacts still require target-native rebuild and acceptance from the eventual frozen source commit."
     ],
     "next_steps": [
-      "Obtain independent review of this intermediate checkpoint before marking the integration contract complete.",
       "Integrate only exact independently approved portable, Mac-native, and startup-profile closures supplied by the release coordinator, preserving source order and separate intermediate checkpoints."
     ]
   }
