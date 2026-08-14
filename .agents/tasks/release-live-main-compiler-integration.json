@@ -1,0 +1,62 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "release-live-main-compiler-integration",
+  "title": "Integrate live main compiler semantics",
+  "lane": "integration",
+  "status": "active",
+  "owner": "user",
+  "objective": "Integrate the independently approved reusable __main__ LOAD_NAME correction into a closed intermediate release checkpoint",
+  "base_commit": "8d18904b2bbd0860b89e6236d7b35346e3c9bba2",
+  "claims": [
+    ".agents/lanes.json",
+    ".agents/tasks/release-live-main-compiler-integration.json",
+    ".agents/tasks/live-main-read-before-write.json",
+    "src/output/codegen.py",
+    "src/output/modules.py",
+    "test/compiled-module-isolation.cjs"
+  ],
+  "dependencies": [
+    "live-main-read-before-write",
+    "release-arm-startup-integration"
+  ],
+  "references": [
+    "Approved source lane 0ae559238dd4b0a07b53dbd126630cf46a9c6aa0..97af3a476d7c56426b04eb49be9a5b9ce5bea960",
+    "Corrected source authority 731ce693f7e10e2bf56260acbc9e367bdb99b318"
+  ],
+  "architecture": {
+    "strategy": "compiler-infrastructure",
+    "fallback": "tested-capability",
+    "oracles": [
+      "CPython module LOAD_NAME semantics for same-name reads before assignment",
+      "The live Sage __main__ namespace across reset, deletion, and subsequent reusable kernel fragments"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "not-applicable",
+    "windows-x64": "not-applicable",
+    "macos-arm64": "not-applicable"
+  },
+  "validation": [
+    "pnpm build",
+    "node --test --test-reporter=spec test/compiled-module-isolation.cjs",
+    "node --test --test-reporter=spec test/kernel.cjs",
+    "node scripts/run-sage-tutorial.cjs --file tour_rings",
+    "pnpm test:tutorial",
+    "pnpm test:compiler",
+    "pnpm test:integration",
+    "pnpm test:changed -- --base 8d18904b2bbd0860b89e6236d7b35346e3c9bba2",
+    "pnpm architecture:check",
+    "pnpm test:baselib:strict",
+    "pnpm test:portable",
+    "pnpm parallel:check -- --all"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "",
+    "risks": [],
+    "next_steps": []
+  }
+}
