@@ -1,0 +1,536 @@
+{
+  "dependencies": [
+    {
+      "id": "cortex-compute-engine",
+      "license": "MIT",
+      "notices": [
+        "CORTEX-COMPUTE-ENGINE-MIT.txt"
+      ],
+      "source": {
+        "integrity": "sha512-f6vTHSycBdNPbF6R5eT8j8vGgM10Lk6VVGzvkb0cABWy7I/CfUvYbmdO1ZFAcn67hYGOyULWQftwtUOYPkthCA==",
+        "kind": "npm",
+        "url": "https://registry.npmjs.org/@cortex-js/compute-engine/-/compute-engine-0.98.0.tgz"
+      },
+      "version": "0.98.0"
+    },
+    {
+      "id": "cpython-path-modules",
+      "license": "PSF-2.0",
+      "notices": [
+        "CPYTHON-PATH-NOTICE.md",
+        "PSF-2.0.txt"
+      ],
+      "source": {
+        "commit": "7b4165b3b07638d8aeab79a880c52f2b51c56f37",
+        "kind": "git",
+        "url": "https://github.com/python/cpython.git"
+      },
+      "version": "7b4165b3b076"
+    },
+    {
+      "id": "fflas-ffpack",
+      "license": "LGPL-2.1-or-later",
+      "notices": [
+        "FFLAS-FFPACK-LGPL-2.1-NOTICE.md",
+        "LGPL-2.1.txt"
+      ],
+      "source": {
+        "kind": "archive",
+        "sha256": "dafb4c0835824d28e4f823748579be6e4c8889c9570c6ce9cce1e186c3ebbb23",
+        "url": "https://github.com/linbox-team/fflas-ffpack/releases/download/v2.5.0/fflas-ffpack-2.5.0.tar.gz"
+      },
+      "version": "2.5.0"
+    },
+    {
+      "id": "fflate",
+      "license": "MIT",
+      "notices": [
+        "FFLATE-MIT.txt"
+      ],
+      "source": {
+        "integrity": "sha512-QieYf//cis6ywHNi5qW1+PXPQ4bC+XVJAtS4AXIML8P76GroEiOxm/oQtn1f02UkJY1+KsXMJcC+R2v/Eg4G3g==",
+        "kind": "npm",
+        "url": "https://registry.npmjs.org/fflate/-/fflate-0.7.5.tgz"
+      },
+      "version": "0.7.5"
+    },
+    {
+      "id": "ffpoly",
+      "license": "GPL-2.0-or-later",
+      "notices": [
+        "NATIVE-MATHEMATICS-NOTICE.md",
+        "GPL-2.0.txt"
+      ],
+      "source": {
+        "kind": "archive",
+        "sha256": "ffbe5c7f7ce077f3fedb530656b0f7ae95268cf23a38c9adfc3f654a65973b13",
+        "url": "https://github.com/sagemathinc/sagejs/releases/download/native-sources-1/ff_poly_v1.2.7.tar"
+      },
+      "version": "1.2.7"
+    },
+    {
+      "id": "flint",
+      "license": "LGPL-3.0-or-later",
+      "notices": [
+        "NATIVE-MATHEMATICS-NOTICE.md",
+        "LGPL-3.0.txt"
+      ],
+      "source": {
+        "kind": "archive",
+        "sha256": "b95e2c7792f5eea4a1c8d2d42c4098434756832e57a094b295eb5dfdc9b4c36b",
+        "url": "https://flintlib.org/download/flint-3.6.0.tar.gz"
+      },
+      "version": "3.6.0"
+    },
+    {
+      "id": "givaro",
+      "license": "CECILL-B",
+      "notices": [
+        "GIVARO-CECILL-B-NOTICE.md",
+        "CECILL-B.txt"
+      ],
+      "source": {
+        "kind": "archive",
+        "sha256": "53e9fb290deb0e20799c62d250d65c2226013d60b4cebe6b0b54c73000cb8fff",
+        "url": "https://github.com/linbox-team/givaro/releases/download/v4.2.2/givaro-4.2.2.tar.gz"
+      },
+      "version": "4.2.2"
+    },
+    {
+      "id": "gmp",
+      "license": "LGPL-3.0-or-later OR GPL-2.0-or-later",
+      "notices": [
+        "NATIVE-MATHEMATICS-NOTICE.md",
+        "LGPL-3.0.txt",
+        "GPL-2.0.txt"
+      ],
+      "source": {
+        "kind": "archive",
+        "sha256": "a3c2b80201b89e68616f4ad30bc66aee4927c3ce50e33929ca819d5c43538898",
+        "url": "https://gmplib.org/download/gmp/gmp-6.3.0.tar.xz"
+      },
+      "version": "6.3.0"
+    },
+    {
+      "id": "igraph",
+      "license": "GPL-2.0-or-later",
+      "notices": [
+        "IGRAPH-GPL-NOTICE.md",
+        "GPL-2.0.txt"
+      ],
+      "source": {
+        "kind": "archive",
+        "sha256": "969f2d7d22f67e788d8638c9a8c96615f50d7819c08978b3ef4a787bb6daa96c",
+        "url": "https://github.com/sagemathinc/sagejs/releases/download/native-sources-1/igraph-1.0.1.tar.gz"
+      },
+      "version": "1.0.1"
+    },
+    {
+      "id": "libsodium",
+      "license": "ISC",
+      "notices": [
+        "LIBSODIUM-1.0.20-LICENSE.txt"
+      ],
+      "source": {
+        "kind": "archive",
+        "sha256": "8e5aeca07a723a27bbecc3beef14b0068d37e7fc0e97f51b3f1c82d2a58005c1",
+        "url": "https://github.com/jedisct1/libsodium/archive/refs/tags/1.0.20-RELEASE.tar.gz"
+      },
+      "version": "1.0.20#3"
+    },
+    {
+      "id": "libzmq",
+      "license": "MPL-2.0",
+      "notices": [
+        "LIBZMQ-MPL-2.0-NOTICE.txt",
+        "LIBZMQ-4.3.5-LICENSE.txt",
+        "MPL-2.0.txt"
+      ],
+      "source": {
+        "kind": "archive",
+        "sha256": "6c972d1e6a91a0ecd79c3236f04cf0126f2f4dfbbad407d72b4606a7ba93f9c6",
+        "url": "https://github.com/zeromq/libzmq/archive/refs/tags/v4.3.5.tar.gz"
+      },
+      "version": "4.3.5#2"
+    },
+    {
+      "id": "m4ri",
+      "license": "GPL-2.0-or-later",
+      "notices": [
+        "NATIVE-MATHEMATICS-NOTICE.md",
+        "GPL-2.0.txt"
+      ],
+      "source": {
+        "kind": "archive",
+        "sha256": "7e033ca1fd36be8861e2f67d9d124c398fc0d830209bb0226462485876346404",
+        "url": "https://github.com/malb/m4ri/releases/download/20260122/m4ri-20260122.tar.gz"
+      },
+      "version": "20260122"
+    },
+    {
+      "id": "mpc",
+      "license": "LGPL-3.0-or-later",
+      "notices": [
+        "NATIVE-MATHEMATICS-NOTICE.md",
+        "LGPL-3.0.txt"
+      ],
+      "source": {
+        "kind": "archive",
+        "sha256": "91204cd32f164bd3b7c992d4a6a8ce6519511aadab30f78b6982d0bf8d73e931",
+        "url": "https://ftp.gnu.org/gnu/mpc/mpc-1.4.1.tar.xz"
+      },
+      "version": "1.4.1"
+    },
+    {
+      "id": "mpfr",
+      "license": "LGPL-3.0-or-later",
+      "notices": [
+        "NATIVE-MATHEMATICS-NOTICE.md",
+        "LGPL-3.0.txt"
+      ],
+      "source": {
+        "kind": "archive",
+        "sha256": "b67ba0383ef7e8a8563734e2e889ef5ec3c3b898a01d00fa0a6869ad81c6ce01",
+        "url": "https://ftp.gnu.org/gnu/mpfr/mpfr-4.2.2.tar.xz"
+      },
+      "version": "4.2.2"
+    },
+    {
+      "id": "mpmath",
+      "license": "BSD-3-Clause",
+      "notices": [
+        "MPMATH-BSD.txt"
+      ],
+      "source": {
+        "digestAuthority": "build-manifest.source.commit",
+        "kind": "release-source",
+        "url": "https://github.com/mpmath/mpmath"
+      },
+      "version": "vendored"
+    },
+    {
+      "id": "node",
+      "license": "MIT AND bundled-third-party-terms",
+      "notices": [
+        "NODE-26.7.0-LICENSE.txt"
+      ],
+      "source": {
+        "kind": "platform-build-authorities",
+        "targets": {
+          "linux-arm64": {
+            "filename": "node-v26.7.0.tar.xz",
+            "sha256": "e6b182cbeeab032d1082ca4ac4fe15e3a57de691d3bde78ecf8a761fd56ee356",
+            "url": "https://nodejs.org/dist/v26.7.0/node-v26.7.0.tar.xz",
+            "version": "26.7.0"
+          },
+          "linux-x64": {
+            "filename": "node-v26.7.0.tar.xz",
+            "sha256": "e6b182cbeeab032d1082ca4ac4fe15e3a57de691d3bde78ecf8a761fd56ee356",
+            "url": "https://nodejs.org/dist/v26.7.0/node-v26.7.0.tar.xz",
+            "version": "26.7.0"
+          },
+          "macos-arm64": {
+            "filename": "node-v26.7.0-darwin-arm64.tar.xz",
+            "sha256": "595d2f934e081b82961d1a5fd41c6dbd0c5a952d9e8be5b4566ab754426968d2",
+            "url": "https://nodejs.org/dist/v26.7.0/node-v26.7.0-darwin-arm64.tar.xz",
+            "version": "26.7.0"
+          },
+          "windows-x64": {
+            "filename": "node-v26.7.0-win-x64.zip",
+            "sha256": "d3bd72755141ed32bbcd841228ee81897c8a98d50dfa7dae2179399a0a7c90f8",
+            "url": "https://nodejs.org/dist/v26.7.0/node-v26.7.0-win-x64.zip",
+            "version": "26.7.0"
+          }
+        }
+      },
+      "version": "26.7.0"
+    },
+    {
+      "id": "npm-production-closure",
+      "license": "multiple-open-source-licenses",
+      "notices": [
+        "NPM-PRODUCTION-LICENSES.txt",
+        "NPM-PRODUCTION.json"
+      ],
+      "source": {
+        "digestAuthority": "build-manifest.source.commit",
+        "kind": "release-source",
+        "url": "https://github.com/sagemathinc/sagejs/blob/main/pnpm-lock.yaml"
+      },
+      "version": "pnpm-lock-v9"
+    },
+    {
+      "id": "numpy-ts",
+      "license": "MIT",
+      "notices": [
+        "NUMPY-TS-MIT.txt"
+      ],
+      "source": {
+        "integrity": "sha512-Cugxudyp9PKtQU64qfcdrh9hPCUfZSILtgZasg4AIK1D7hHCG4rVyOk3OYMYB4IUvAVW02tomsErmkFPRTNTgw==",
+        "kind": "npm",
+        "url": "https://registry.npmjs.org/numpy-ts/-/numpy-ts-1.6.0.tgz"
+      },
+      "version": "1.6.0"
+    },
+    {
+      "id": "odlyzko-zeta-data",
+      "license": "permission-notice",
+      "notices": [
+        "ODLYZKO-ZETA-NOTICE.md"
+      ],
+      "source": {
+        "digestAuthority": "build-manifest.source.commit",
+        "kind": "release-source",
+        "url": "https://www-users.cse.umn.edu/~odlyzko/zeta_tables/"
+      },
+      "version": "15000-row-prefix"
+    },
+    {
+      "id": "openblas",
+      "license": "BSD-3-Clause",
+      "notices": [
+        "OPENBLAS-BSD-3-CLAUSE.txt"
+      ],
+      "source": {
+        "kind": "archive",
+        "sha256": "6761af1d9f5d353ab4f0b7497be2643313b36c8f31caec0144bfef198e71e6ab",
+        "url": "https://github.com/OpenMathLib/OpenBLAS/releases/download/v0.3.33/OpenBLAS-0.3.33.tar.gz"
+      },
+      "version": "0.3.33"
+    },
+    {
+      "id": "playwright-core",
+      "license": "Apache-2.0",
+      "notices": [
+        "PLAYWRIGHT-APACHE-2.0.txt",
+        "PLAYWRIGHT-NOTICE.txt",
+        "PLAYWRIGHT-THIRD-PARTY-NOTICES.txt",
+        "NPM-PRODUCTION-LICENSES.txt",
+        "NPM-PRODUCTION.json"
+      ],
+      "source": {
+        "integrity": "sha512-nsNRyq0r2zsG8AcRHWknc9QRA5XCueC7gWMrs+Gx2tlZn9hcl8zudfh00lhJPY1DE7NmZ6bDsT9g2yey8mXljA==",
+        "kind": "npm",
+        "url": "https://registry.npmjs.org/playwright-core/-/playwright-core-1.62.0.tgz"
+      },
+      "version": "1.62.0"
+    },
+    {
+      "id": "plotly.js",
+      "license": "MIT",
+      "notices": [
+        "PLOTLY-MIT.txt"
+      ],
+      "source": {
+        "integrity": "sha512-IRWNnBJZmKss3URDnicBK2nvt/VTSi/MD1GnUscAYFjwSuN6g/CTde5R1UC0RYtblehj8rkT4BL8r05e/c8j5Q==",
+        "kind": "npm",
+        "url": "https://registry.npmjs.org/plotly.js-dist-min/-/plotly.js-dist-min-3.7.0.tgz"
+      },
+      "version": "3.7.0"
+    },
+    {
+      "id": "pyjeon-standard-library",
+      "license": "Apache-2.0",
+      "notices": [
+        "PYJEON-STDLIB-APACHE-2.0-NOTICE.md",
+        "APACHE-2.0.txt"
+      ],
+      "source": {
+        "digestAuthority": "build-manifest.source.commit",
+        "kind": "release-source",
+        "url": "https://github.com/sagemathinc/sagejs/tree/main/src/lib"
+      },
+      "version": "vendored"
+    },
+    {
+      "id": "pylang-lineage",
+      "license": "BSD-3-Clause",
+      "notices": [
+        "PYLANG-BSD-3-CLAUSE.txt"
+      ],
+      "source": {
+        "digestAuthority": "build-manifest.source.commit",
+        "kind": "release-source",
+        "url": "https://github.com/kovidgoyal/calibre/tree/master/src/pyj"
+      },
+      "version": "vendored"
+    },
+    {
+      "id": "smalljac",
+      "license": "GPL-2.0-or-later",
+      "notices": [
+        "NATIVE-MATHEMATICS-NOTICE.md",
+        "GPL-2.0.txt"
+      ],
+      "source": {
+        "kind": "archive",
+        "sha256": "5a145509e491bba19bf73d8104576083286bd35aea2a149c7c516e9ea5ca8ec7",
+        "url": "https://github.com/sagemathinc/sagejs/releases/download/native-sources-1/smalljac_v4.1.3.tar"
+      },
+      "version": "4.1.3"
+    },
+    {
+      "id": "tree-sitter-macaulay2",
+      "license": "MIT",
+      "notices": [
+        "TREE-SITTER-MACAULAY2-MIT.txt"
+      ],
+      "source": {
+        "integrity": "sha512-bYEJBUGeR7xUDuP9aMkKWtbBf37zd2QmGJoVt25rvsENVGfNYcieQ9M+mIFCtf/X1EYHWG4RbZDDS3fmSS5yBA==",
+        "kind": "npm",
+        "url": "https://registry.npmjs.org/tree-sitter-macaulay2/-/tree-sitter-macaulay2-4.0.1.tgz"
+      },
+      "version": "4.0.1"
+    },
+    {
+      "id": "tree-sitter-magma",
+      "license": "MIT",
+      "notices": [
+        "TREE-SITTER-MAGMA-MIT.txt"
+      ],
+      "source": {
+        "commit": "75b31f4695261967c7aa87d552d69805dc03c77b",
+        "kind": "git",
+        "url": "https://github.com/edgarcosta/tree-sitter-magma.git"
+      },
+      "version": "75b31f469526"
+    },
+    {
+      "id": "tree-sitter-matlab",
+      "license": "MIT",
+      "notices": [
+        "TREE-SITTER-MATLAB-MIT.txt"
+      ],
+      "source": {
+        "commit": "c9ef947ec67fb6b500d5def4f5e09b56990a9f91",
+        "kind": "git",
+        "url": "https://github.com/acristoffers/tree-sitter-matlab.git"
+      },
+      "version": "1.3.0-9-gc9ef947"
+    },
+    {
+      "id": "tree-sitter-python",
+      "license": "MIT",
+      "notices": [
+        "TREE-SITTER-PYTHON-MIT.txt"
+      ],
+      "source": {
+        "digestAuthority": "build-manifest.source.commit",
+        "kind": "release-source",
+        "url": "https://github.com/tree-sitter/tree-sitter-python"
+      },
+      "version": "vendored"
+    },
+    {
+      "id": "tree-sitter-sage",
+      "license": "MIT",
+      "notices": [
+        "TREE-SITTER-SAGE-MIT.txt"
+      ],
+      "source": {
+        "digestAuthority": "build-manifest.source.commit",
+        "kind": "release-source",
+        "url": "https://github.com/sagemathinc/tree-sitter-sage"
+      },
+      "version": "vendored"
+    },
+    {
+      "id": "tree-sitter-wolfram",
+      "license": "MIT",
+      "notices": [
+        "TREE-SITTER-WOLFRAM-MIT.txt"
+      ],
+      "source": {
+        "commit": "aec1c3ecdaf99fb918019adcfeb02765e10b51a8",
+        "kind": "git",
+        "url": "https://github.com/WolframResearch/tree-sitter-wolfram.git"
+      },
+      "version": "aec1c3ecdaf9"
+    },
+    {
+      "id": "unicode-namealiases-data",
+      "license": "Unicode-3.0",
+      "notices": [
+        "UNICODE-NAMEALIASES-NOTICE.md",
+        "UNICODE-LICENSE-V3.txt"
+      ],
+      "source": {
+        "kind": "file",
+        "sha256": "9bb54cd7b5509779f269fa60341bcbfca8da8f17d3c4999e44a5a51671d3c402",
+        "url": "https://www.unicode.org/Public/8.0.0/ucd/NameAliases.txt"
+      },
+      "version": "8.0.0"
+    },
+    {
+      "id": "web-tree-sitter",
+      "license": "MIT",
+      "notices": [
+        "WEB-TREE-SITTER-MIT.txt"
+      ],
+      "source": {
+        "integrity": "sha512-Q5Dm3YTIXSXuH6FxX6RuzX2Qwpc4DPGiYMU87Wg5Z8OIStiQFiUex4zMDc0vBTw78EphaYJacncJghCHzbZptg==",
+        "kind": "npm",
+        "url": "https://registry.npmjs.org/web-tree-sitter/-/web-tree-sitter-0.26.11.tgz"
+      },
+      "version": "0.26.11"
+    },
+    {
+      "id": "zeromq.js",
+      "license": "MIT",
+      "notices": [
+        "ZEROMQ-JS-MIT.txt",
+        "NPM-PRODUCTION-LICENSES.txt",
+        "NPM-PRODUCTION.json"
+      ],
+      "source": {
+        "integrity": "sha512-vWOrt19lvcXTxu5tiHXfEGQuldSlU+qZn2TT+4EbRQzaciWGwNZ99QQTolQOmcwVgZLodv+1QfC6UZs2PX/6pQ==",
+        "kind": "npm",
+        "url": "https://registry.npmjs.org/zeromq/-/zeromq-6.5.0.tgz"
+      },
+      "version": "6.5.0"
+    }
+  ],
+  "notices": {
+    "APACHE-2.0.txt": "8c6db340475136df3c1201d458fa5755698eace76e510471ecc9d857d6083dac",
+    "CECILL-B.txt": "9678f41ff81d57d81ade578f8eed616e8bb815efc79b233590916e27b179ee42",
+    "CORTEX-COMPUTE-ENGINE-MIT.txt": "f9270498fcb583f1a8aa4664e1986910d005303ff9c5cbab432bb4d1f292f225",
+    "CPYTHON-PATH-NOTICE.md": "e9f4910ec18a39cc2b3e794c864cdaf8d6ae563da27d9d8edbedb1c6e828585f",
+    "FFLAS-FFPACK-LGPL-2.1-NOTICE.md": "828d569a99d9d963254933f788bc52cf4961effdfcafe2a5d090cab37db6a2e5",
+    "FFLATE-MIT.txt": "09edb7d111972cbb9e4c633627d8f7ced76c5a0b88941238def940d930d2d336",
+    "GIVARO-CECILL-B-NOTICE.md": "8f9d3c2cfd3cf0f6b2945d1acd6403f67bcd221b3d92b8229fa92f0f0ee3f9fd",
+    "GPL-2.0.txt": "edaef632cbb643e4e7a221717a6c441a4c1a7c918e6e4d56debc3d8739b233f6",
+    "IGRAPH-GPL-NOTICE.md": "e23c20d9e059422d908d4ade61702503c9edf350f099b99c524ae8e7069b19b0",
+    "LGPL-2.1.txt": "20e50fe7aae3e56378ebf0417d9de904f55a0e61e4df315333e632a4d3555d95",
+    "LGPL-3.0.txt": "e3a994d82e644b03a792a930f574002658412f62407f5fee083f2555c5f23118",
+    "LIBSODIUM-1.0.20-LICENSE.txt": "f3938c0127d36ec88b9fb43c59556ab54c3bf12d61996b99cb8891fba07d99ba",
+    "LIBZMQ-4.3.5-LICENSE.txt": "393eaf2b92b3d49bea139e39b6fd205b6e99c499999986aec5554586a830dfdd",
+    "LIBZMQ-MPL-2.0-NOTICE.txt": "9890583faaf2a09474032d385afe3ab1694922a5349a86b720bef8f088973531",
+    "MPL-2.0.txt": "fab3dd6bdab226f1c08630b1dd917e11fcb4ec5e1e020e2c16f83a0a13863e85",
+    "MPMATH-BSD.txt": "c26cae81da4508e5e249985777a33821f183223ebb74d7f8cfbf90fe7eef2fb7",
+    "NATIVE-MATHEMATICS-NOTICE.md": "d7603f7ca765a3c744de1c39fabbb27f8f5eca77998ec5a6973b080bf6094c5f",
+    "NODE-26.7.0-LICENSE.txt": "5888dbb9a1d2b18f2c3e6c5f6af1b39de658372b402a0577b002777f14c62ace",
+    "NPM-PRODUCTION-LICENSES.txt": "e7398308f71e9a49b271173878f002c5dbc357a835c31e00d4490db324fdb1f9",
+    "NPM-PRODUCTION.json": "fb2b9a0a8f6d1819dbe92f2b7e3f940c9abc23462a9df618b1387439ada30cc7",
+    "NUMPY-TS-MIT.txt": "6955c2e14256ebc773d63b92b263d9966428c213931d89d26892ba832d340211",
+    "ODLYZKO-ZETA-NOTICE.md": "058fd4049129156b05a59058dfec8f2e88a433877ebbd98b97a4fab87bab9fb2",
+    "OPENBLAS-BSD-3-CLAUSE.txt": "fc239da73616d04dce1663d9f789bc822221d7df6a25e4139082d1802af8b1e9",
+    "PLAYWRIGHT-APACHE-2.0.txt": "7fab1461b41970ff376f1c9303a637076bfaaeb71cd12dd3a1c44aaf59a1a2b9",
+    "PLAYWRIGHT-NOTICE.txt": "6d602191187b35b9b01d2cffa01c8469c2c8d9de8a96f1bf868e0f264f51c81d",
+    "PLAYWRIGHT-THIRD-PARTY-NOTICES.txt": "a549d329bad8806fe279f0ecae0fc0270dec7e7c2dc8ec10f90e394f7c32b144",
+    "PLOTLY-MIT.txt": "8c45d9eaf50c2f72dd9c7ab9ef440788ba58a3538484b5c51c1f17d5128752e7",
+    "PSF-2.0.txt": "b160500215c566001a9e5f91fff779ea75cd01cc0b5518c31aadd1c18403fdd5",
+    "PYJEON-STDLIB-APACHE-2.0-NOTICE.md": "93abb778b928802f3bc59af34ce5dbff50a39e78d65d7aa2f6f9f02b03ceee04",
+    "PYLANG-BSD-3-CLAUSE.txt": "54a64e256378e818c46e9a8c2e4c868d2bcf34edffc92851debaa046f56902c4",
+    "TREE-SITTER-MACAULAY2-MIT.txt": "2e0110e07abef7c2548b26ec9d6969775617ca539a0dc8dbeeb14d6452c711d1",
+    "TREE-SITTER-MAGMA-MIT.txt": "5317b6de5564af73a4a49d8513be5585839f51c5972f6c36678be983d033bb34",
+    "TREE-SITTER-MATLAB-MIT.txt": "8673f5acd59bfb3bd129760a57f72092d5e3c01e05837532eac9497cf8006a46",
+    "TREE-SITTER-PYTHON-MIT.txt": "e1deebca3a3c07703079ca6c8859b27c2c8a0f0df5f05c58da358c41b73030cf",
+    "TREE-SITTER-SAGE-MIT.txt": "d724405ce238a22c0d35769c5a36b386ad5958192efe8bbb304fb2896254575f",
+    "TREE-SITTER-WOLFRAM-MIT.txt": "d0a92fb17936d0613a10a58c9ba6ca27c464c4ac92e31d7633125b3f15e68656",
+    "UNICODE-LICENSE-V3.txt": "d9a52140f486a859a52aad5a4574d11358028b24e5df81ea3f9a20a6dbcf8583",
+    "UNICODE-NAMEALIASES-NOTICE.md": "185b20739b8578fe3be37f8bb1df99079262563dd452c9bd130f98d7d8d7393c",
+    "WEB-TREE-SITTER-MIT.txt": "c5cfb43042b6b72045f4ba997834d0a7786d2793d91680868b5815b39f14fc78",
+    "ZEROMQ-JS-MIT.txt": "f820260512b536c89c9d618a45035fe31c725c866e0e67f4b4ff5b5b83e90b69"
+  },
+  "schema": "sagejs.third-party-inventory-v1"
+}

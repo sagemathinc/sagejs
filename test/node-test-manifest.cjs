@@ -14,6 +14,7 @@ const unit = [
   "test/release-manifest.cjs",
   "test/release-workflow-protection.cjs",
   "test/release-native-binary-inspector.cjs",
+  "test/release-artifact-acceptance.cjs",
   "test/linux-release-baseline.cjs",
   "test/release-npm-install.cjs",
   "test/native-math-profile.cjs",
