@@ -4,7 +4,7 @@
   "id": "release-artifact-acceptance",
   "title": "Cross-platform release artifact acceptance",
   "lane": "integration",
-  "status": "review",
+  "status": "complete",
   "owner": "user",
   "objective": "Verify every final release archive against exact source/build receipts, complete third-party license provenance, binary compatibility, relocation, mathematics, and platform signing policy before publication",
   "base_commit": "e4018fd70bf2b9549b826e20d825e08bf43dafe5",
@@ -349,7 +349,7 @@
     }
   ],
   "handoff": {
-    "summary": "Added fail-closed final-host acceptance for all four release targets plus a complete digest-bound third-party source/license inventory. Linux artifacts must retain the exact baseline, SEA artifact/executable, Node source, Temporal, and Rust 1.86 authorities. Rooted Windows fflate ZIPs are byte-preflighted and extracted without tar, and bind canonical unsigned metadata to real PE certificate-table evidence. macOS ditto ZIPs retain strict path/link/duplicate validation and exact Apple publisher, package payload, notarization, and benchmark bindings.",
+    "summary": "Integrated fail-closed final-host acceptance for all four release targets plus a complete digest-bound third-party source/license inventory. Linux artifacts must retain the exact baseline, SEA artifact/executable, Node source, Temporal, and Rust 1.86 authorities. Rooted Windows fflate ZIPs are byte-preflighted and extracted without tar, and bind canonical unsigned metadata to real PE certificate-table evidence. macOS ditto ZIPs retain strict path/link/duplicate validation and exact Apple publisher, package payload, notarization, and benchmark bindings.",
     "risks": [
       "The final platform candidates still need to exercise target-only codesign, pkgutil, Gatekeeper, PE, Mach-O, and runtime checks after workflow integration.",
       "The deliberately strict ZIP policy accepts only flags 0 or signed-descriptor flag 0x8, ordinary stored/deflated members, and macOS ditto's exact 0x5855 timestamp/uid field sizes; it rejects every other extra-field semantic, ZIP64, non-ASCII paths, links, duplicate or overlapping members, and archives expanding beyond 2 GiB."
