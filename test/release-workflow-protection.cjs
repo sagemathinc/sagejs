@@ -211,7 +211,8 @@ test("macOS builds trusted exact bytes before signing and notarization", () => {
       macosSign.indexOf("Import Apple release credentials"),
     "the trusted build must complete before any Apple secret is imported",
   );
-  assert.match(macosSign, /pnpm release:macos -- --skip-build/);
+  assert.match(macosSign, /pnpm release:macos --skip-build/);
+  assert.doesNotMatch(macosSign, /pnpm release:macos -- --/);
   assert.match(macosSign, /scripts\/release-artifact-acceptance\.cjs/);
   assert.match(macosSign, /--target macos-arm64/);
   assert.match(macosSign, /--signature apple-developer-id/);

@@ -715,7 +715,7 @@ jobs:
           df -h .
           pnpm run build:zeromq:darwin
           pnpm test:sea
-          pnpm release:macos -- --unsigned --skip-build
+          pnpm release:macos --unsigned --skip-build
           node - <<'NODE'
           const { preflightArchive } = require("./scripts/release-artifact-acceptance.cjs");
           const members = preflightArchive(
@@ -898,7 +898,7 @@ jobs:
       - name: Sign, notarize, and package macOS arm64
         env:
           SAGEJS_MACOS_NOTARY_PROFILE: sagejs-ci-notary
-        run: pnpm release:macos -- --skip-build
+        run: pnpm release:macos --skip-build
 
       - name: Remove temporary Apple signing material
         if: always() && steps.apple-credentials.outputs.keychain != ''

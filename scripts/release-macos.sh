@@ -34,7 +34,7 @@ while [[ $# -gt 0 ]]; do
       PUBLISH_TAG="$2"; shift 2 ;;
     -h|--help)
       cat <<'EOF'
-Usage: pnpm release:macos [-- --unsigned] [--skip-notarize] [--skip-build]
+Usage: pnpm release:macos [--unsigned] [--skip-notarize] [--skip-build]
                            [--publish TAG]
 
 Build and relocation-test both SEA executables, sign them with a Developer ID,
