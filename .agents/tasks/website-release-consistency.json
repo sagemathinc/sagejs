@@ -6,21 +6,25 @@
   "lane": "documentation-compat",
   "status": "active",
   "owner": "user",
-  "objective": "Align public website release claims with the unsigned Windows preview contract and refresh canonical generated reference provenance without changing release workflow or publication authority",
-  "base_commit": "0ae559238dd4b0a07b53dbd126630cf46a9c6aa0",
+  "objective": "Align public website release claims and install guidance with the v0.2.0 native release, the separate npm preview, and the unsigned Windows preview contract while refreshing canonical generated reference provenance without changing release workflow or publication authority",
+  "base_commit": "675fab5a8f61b2a49c3d9d774eda0c4cba21c249",
   "claims": [
     "website/capabilities.json",
+    "website/index.html",
     "test/website.cjs",
     "website/reference-data.json",
     "website/reference.html"
   ],
-  "dependencies": [],
+  "dependencies": [
+    "release-live-main-compiler-integration"
+  ],
   "references": [],
   "architecture": {
     "strategy": "not-applicable",
     "fallback": "not-applicable",
     "oracles": [
       "WINDOWS.md and the checked release workflow define Windows artifacts as an explicit unsigned preview",
+      "package.json defines project version v0.2.0 and RELEASING.md explicitly excludes npm publication from this binary release",
       "pnpm docs:generate is the sole authority for generated reference-data and derived reference HTML hashes"
     ],
     "exceptions": []
@@ -33,7 +37,12 @@
   },
   "validation": [
     "pnpm docs:check",
-    "pnpm test:tutorial"
+    "pnpm test:tutorial",
+    "node --test --test-reporter=spec test/website.cjs",
+    "pnpm test:portable",
+    "pnpm test:baselib:strict",
+    "pnpm test:changed -- --base 675fab5a8f61b2a49c3d9d774eda0c4cba21c249",
+    "pnpm parallel:check -- --all"
   ],
   "runs": [],
   "handoff": {

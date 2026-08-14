@@ -8,9 +8,13 @@ const test = require("node:test");
 const root = path.resolve(__dirname, "..");
 const website = path.join(root, "website");
 const windowsGuide = fs.readFileSync(path.join(root, "WINDOWS.md"), "utf8");
+const releaseGuide = fs.readFileSync(path.join(root, "RELEASING.md"), "utf8");
 const releaseWorkflow = fs.readFileSync(
   path.join(root, ".github", "workflows", "ci.yml"),
   "utf8",
+);
+const packageMetadata = JSON.parse(
+  fs.readFileSync(path.join(root, "package.json"), "utf8"),
 );
 const payload = JSON.parse(fs.readFileSync(path.join(website, "capabilities.json"), "utf8"));
 const examplePayload = JSON.parse(fs.readFileSync(path.join(website, "examples.json"), "utf8"));
@@ -121,6 +125,19 @@ test("distribution claims preserve the explicit unsigned Windows preview", () =>
   assert.match(releaseWorkflow, /Package the explicitly unsigned Windows x64/);
   assert.match(releaseWorkflow, /\$signature\.Status -ne "NotSigned"/);
   assert.match(releaseWorkflow, /sagejs-windows-x64-unsigned\.zip/);
+});
+
+test("install panel distinguishes the native v0.2 release from the npm preview", () => {
+  assert.equal(packageMetadata.version, "0.2.0");
+  assert.match(html, /Native release v0\.2\.0/);
+  assert.match(html, /Linux x64\/arm64/);
+  assert.match(html, /unsigned Windows x64 preview/);
+  assert.match(html, /signed and notarized macOS arm64/);
+  assert.match(html, /npm preview v0\.1\.0/);
+  assert.match(html, /native v0\.2\.0 releases use the installer above/);
+  assert.match(releaseGuide, /This release does not publish npm packages/);
+  assert.doesNotMatch(html, /Native preview v0\.1\.1/);
+  assert.doesNotMatch(html, /the unified v0\.2 release is next/);
 });
 
 test("verified examples form a searchable executable corpus", () => {
