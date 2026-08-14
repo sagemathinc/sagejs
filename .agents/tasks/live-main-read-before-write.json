@@ -41,7 +41,48 @@
     "pnpm architecture:check",
     "pnpm test:baselib:strict"
   ],
-  "runs": [],
+  "runs": [
+    {
+      "command": "pnpm build",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 225.133,
+      "started_at": "2026-08-14T15:39:25.107Z",
+      "commit": "8dba1290794783ca0afa73413657fba75f8f304e",
+      "workspace_fingerprint": "9b761b9f5460c7084f8bcd488c83fe9900f915e8b941971f7417e5bf18c8f278",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test --test-reporter=spec test/compiled-module-isolation.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 9.789,
+      "started_at": "2026-08-14T15:43:14.614Z",
+      "commit": "8dba1290794783ca0afa73413657fba75f8f304e",
+      "workspace_fingerprint": "9b761b9f5460c7084f8bcd488c83fe9900f915e8b941971f7417e5bf18c8f278",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test --test-reporter=spec test/kernel.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 5.869,
+      "started_at": "2026-08-14T15:43:30.414Z",
+      "commit": "8dba1290794783ca0afa73413657fba75f8f304e",
+      "workspace_fingerprint": "9b761b9f5460c7084f8bcd488c83fe9900f915e8b941971f7417e5bf18c8f278",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node scripts/run-sage-tutorial.cjs --file tour_rings",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.149,
+      "started_at": "2026-08-14T15:43:40.233Z",
+      "commit": "8dba1290794783ca0afa73413657fba75f8f304e",
+      "workspace_fingerprint": "9b761b9f5460c7084f8bcd488c83fe9900f915e8b941971f7417e5bf18c8f278",
+      "platform": "linux-x64"
+    }
+  ],
   "handoff": {
     "summary": "",
     "risks": [],

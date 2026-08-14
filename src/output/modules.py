@@ -550,14 +550,17 @@ def print_lexical_namespace_descriptor(
     )
     output.print(descriptor_prefix + "enumerable:")
     output.print("true" if enumerable else "false")
-    output.print(",get:()=>")
+    output.print(",get:")
     if reusable_main_binding:
+        output.print("((ρσ_reusable_main_captured)=>()=>")
         output.print("(")
         output.print(target_name)
-        output.print(" === ρσ_reusable_main_fresh ? void 0 : ")
+        output.print(" === ρσ_reusable_main_captured ? void 0 : ")
         output.print(target_name)
         output.print(")")
+        output.print(")(ρσ_reusable_main_fresh)")
     else:
+        output.print("()=>")
         output.print(target_name)
     if writable:
         # An arrow getter has no local `arguments` binding.  A setter must

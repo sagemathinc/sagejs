@@ -437,6 +437,16 @@ test("reusable __main__ distinguishes fresh bindings from deleted tombstones", a
     )).repr,
     "True",
   );
+
+  await assert.rejects(
+    sage.evaluate("fresh = does_not_exist"),
+    /does_not_exist.*(?:not defined|referenced before assignment)|NameError/,
+  );
+  await sage.evaluate("unrelated = 1");
+  await assert.rejects(
+    sage.evaluate("fresh"),
+    /fresh.*(?:not defined|referenced before assignment)|NameError/,
+  );
 });
 
 test("class global declarations bypass the class and JavaScript hosts", async (t) => {
