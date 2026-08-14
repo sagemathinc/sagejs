@@ -4,7 +4,7 @@
   "id": "website-release-consistency",
   "title": "Website release consistency",
   "lane": "documentation-compat",
-  "status": "review",
+  "status": "complete",
   "owner": "user",
   "objective": "Align public website release claims and install guidance with the v0.2.0 native release, the separate npm preview, and the unsigned Windows preview contract while refreshing canonical generated reference provenance without changing release workflow or publication authority",
   "base_commit": "675fab5a8f61b2a49c3d9d774eda0c4cba21c249",
