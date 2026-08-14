@@ -4,7 +4,7 @@
   "id": "readme-prepublish-integration",
   "title": "Integrate prepublication README truth",
   "lane": "integration",
-  "status": "active",
+  "status": "review",
   "owner": "baseline_resume2",
   "objective": "Replay the independently approved README prepublication truth range onto the authoritative closed release baseline without tagging, publishing, deploying, or integrating Windows release work",
   "base_commit": "fb6f4e36341838f7f4eac6c6c24fc1f4beba15d2",
@@ -46,10 +46,87 @@
     "pnpm test:changed -- --base fb6f4e36341838f7f4eac6c6c24fc1f4beba15d2",
     "pnpm parallel:check -- --all"
   ],
-  "runs": [],
+  "runs": [
+    {
+      "command": "node --test test/release-workflow-protection.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.124,
+      "started_at": "2026-08-14T20:52:47.447Z",
+      "commit": "cad339ebb81f62a83b348e95ef1af1a1dc30d32b",
+      "workspace_fingerprint": "2ac6b2ed7c127f8c275d289c3de8d43d07c7d87193e38dd84aaf1034f073e005",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 5.904,
+      "started_at": "2026-08-14T20:52:51.910Z",
+      "commit": "cad339ebb81f62a83b348e95ef1af1a1dc30d32b",
+      "workspace_fingerprint": "2ac6b2ed7c127f8c275d289c3de8d43d07c7d87193e38dd84aaf1034f073e005",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 21.482,
+      "started_at": "2026-08-14T20:53:02.434Z",
+      "commit": "cad339ebb81f62a83b348e95ef1af1a1dc30d32b",
+      "workspace_fingerprint": "2ac6b2ed7c127f8c275d289c3de8d43d07c7d87193e38dd84aaf1034f073e005",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 14.178,
+      "started_at": "2026-08-14T20:53:28.502Z",
+      "commit": "cad339ebb81f62a83b348e95ef1af1a1dc30d32b",
+      "workspace_fingerprint": "2ac6b2ed7c127f8c275d289c3de8d43d07c7d87193e38dd84aaf1034f073e005",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:changed -- --base fb6f4e36341838f7f4eac6c6c24fc1f4beba15d2",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 23.584,
+      "started_at": "2026-08-14T20:53:48.706Z",
+      "commit": "cad339ebb81f62a83b348e95ef1af1a1dc30d32b",
+      "workspace_fingerprint": "2ac6b2ed7c127f8c275d289c3de8d43d07c7d87193e38dd84aaf1034f073e005",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm docs:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 219.637,
+      "started_at": "2026-08-14T20:54:17.332Z",
+      "commit": "cad339ebb81f62a83b348e95ef1af1a1dc30d32b",
+      "workspace_fingerprint": "2ac6b2ed7c127f8c275d289c3de8d43d07c7d87193e38dd84aaf1034f073e005",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm parallel:check -- --all",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.589,
+      "started_at": "2026-08-14T20:58:07.329Z",
+      "commit": "cad339ebb81f62a83b348e95ef1af1a1dc30d32b",
+      "workspace_fingerprint": "2ac6b2ed7c127f8c275d289c3de8d43d07c7d87193e38dd84aaf1034f073e005",
+      "platform": "linux-x64"
+    }
+  ],
   "handoff": {
-    "summary": "",
-    "risks": [],
-    "next_steps": []
+    "summary": "Replayed the exact independently approved two-commit range fb6f4e36341838f7f4eac6c6c24fc1f4beba15d2..5ba9d30617b37ebcc31ba7e605c390c40b7d1f45 onto the authoritative closed release baseline. Both replayed commits have stable patch IDs identical to their source authorities, and the final README, release-workflow regression, and completed source task blobs are byte-identical to the approved endpoint. The completed source record honestly retains the failed broad changed-file run caused by the older origin/main comparison and incomplete optional native state, as well as the passing exact-base rerun. At exact replay checkpoint cad339ebb81f62a83b348e95ef1af1a1dc30d32b and common workspace fingerprint 2ac6b2ed7c127f8c275d289c3de8d43d07c7d87193e38dd84aaf1034f073e005, the focused release policy passed 15/15, architecture passed, portable passed 462/462, strict Python passed 101 modules with zero errors, exact-base changed tests passed 464/464, canonical documentation passed, and all 229 task contracts passed.",
+    "risks": [
+      "The truthful prepublication notice deliberately becomes stale after immutable v0.2.0 assets and checksums are published and verified; a separate post-release README update must restore the live installer command and current availability wording.",
+      "Windows static-CRT source work is not part of this checkpoint and remains gated on the terminal attempt3 proof, an evidence-bound lifecycle closure, and independent approval before replay."
+    ],
+    "next_steps": [
+      "Obtain independent review of the exact replay, content blobs, source evidence preservation, common-fingerprint receipts, and non-publication boundary, then close this integration with a lifecycle-only commit.",
+      "Only after the Windows source proof and lifecycle closure are independently approved, replay its complete range onto the resulting closed baseline."
+    ]
   }
 }
