@@ -4,7 +4,7 @@
   "id": "live-main-read-before-write",
   "title": "Live __main__ read before write",
   "lane": "compiler-runtime",
-  "status": "active",
+  "status": "review",
   "owner": "user",
   "objective": "Preserve Python module LOAD_NAME semantics in reusable kernel cells so a same-cell assignment RHS can read the prior live Sage global or builtin without host leakage or weakening deletion and uninitialized-name guards",
   "base_commit": "0ae559238dd4b0a07b53dbd126630cf46a9c6aa0",
@@ -81,11 +81,108 @@
       "commit": "8dba1290794783ca0afa73413657fba75f8f304e",
       "workspace_fingerprint": "9b761b9f5460c7084f8bcd488c83fe9900f915e8b941971f7417e5bf18c8f278",
       "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm build",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 219.419,
+      "started_at": "2026-08-14T15:52:49.395Z",
+      "commit": "731ce693f7e10e2bf56260acbc9e367bdb99b318",
+      "workspace_fingerprint": "1176c8661bf8af24119e991ddc4fbf32e46cc878010de3cf3cbc00d837b45cd0",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test --test-reporter=spec test/compiled-module-isolation.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 11.48,
+      "started_at": "2026-08-14T15:56:41.053Z",
+      "commit": "731ce693f7e10e2bf56260acbc9e367bdb99b318",
+      "workspace_fingerprint": "1176c8661bf8af24119e991ddc4fbf32e46cc878010de3cf3cbc00d837b45cd0",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test --test-reporter=spec test/kernel.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 5.511,
+      "started_at": "2026-08-14T15:56:53.202Z",
+      "commit": "731ce693f7e10e2bf56260acbc9e367bdb99b318",
+      "workspace_fingerprint": "1176c8661bf8af24119e991ddc4fbf32e46cc878010de3cf3cbc00d837b45cd0",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node scripts/run-sage-tutorial.cjs --file tour_rings",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.937,
+      "started_at": "2026-08-14T15:56:59.385Z",
+      "commit": "731ce693f7e10e2bf56260acbc9e367bdb99b318",
+      "workspace_fingerprint": "1176c8661bf8af24119e991ddc4fbf32e46cc878010de3cf3cbc00d837b45cd0",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:tutorial",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 241.171,
+      "started_at": "2026-08-14T15:57:07.514Z",
+      "commit": "731ce693f7e10e2bf56260acbc9e367bdb99b318",
+      "workspace_fingerprint": "1176c8661bf8af24119e991ddc4fbf32e46cc878010de3cf3cbc00d837b45cd0",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:compiler",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 46.812,
+      "started_at": "2026-08-14T16:01:15.854Z",
+      "commit": "731ce693f7e10e2bf56260acbc9e367bdb99b318",
+      "workspace_fingerprint": "1176c8661bf8af24119e991ddc4fbf32e46cc878010de3cf3cbc00d837b45cd0",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:integration",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 445.986,
+      "started_at": "2026-08-14T16:02:11.572Z",
+      "commit": "731ce693f7e10e2bf56260acbc9e367bdb99b318",
+      "workspace_fingerprint": "1176c8661bf8af24119e991ddc4fbf32e46cc878010de3cf3cbc00d837b45cd0",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 5.814,
+      "started_at": "2026-08-14T16:09:52.416Z",
+      "commit": "731ce693f7e10e2bf56260acbc9e367bdb99b318",
+      "workspace_fingerprint": "1176c8661bf8af24119e991ddc4fbf32e46cc878010de3cf3cbc00d837b45cd0",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 14.919,
+      "started_at": "2026-08-14T16:09:58.900Z",
+      "commit": "731ce693f7e10e2bf56260acbc9e367bdb99b318",
+      "workspace_fingerprint": "1176c8661bf8af24119e991ddc4fbf32e46cc878010de3cf3cbc00d837b45cd0",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {
-    "summary": "",
-    "risks": [],
-    "next_steps": []
+    "summary": "Restored module LOAD_NAME behavior for same-cell reads before assignment in reusable __main__ fragments without weakening deleted or uninitialized name isolation. New module bindings start with a unique fragment sentinel; code generation lets only that fresh state continue through the existing module/builtins/host resolution path, while a prior value is reused and an undefined tombstone remains authoritative. Each namespace getter captures the creating fragment's sentinel identity, so a later runInThisContext fragment cannot expose an older marker. Focused coverage exercises reset('i'); i = CC(i), a same-name Python builtin assignment, prior-cell value reuse, prior- and same-cell deletion without JavaScript host resurrection, and a failed fresh RHS across an unrelated later cell. Exact successor source 731ce693f7e10e2bf56260acbc9e367bdb99b318 passed the self-hosting build, compiled-module tests (15/15), kernel test, tour_rings (32/32), full tutorial corpus (662/662), compiler suite (15 pass and 17 historical skips), integration tier (439 pass and 3 expected skips), architecture checks, and strict baselib checks.",
+    "risks": [
+      "Do not integrate the earlier source commit 8dba1290794783ca0afa73413657fba75f8f304e by itself. Independent review found that its fixed top-level sentinel could leak an old marker after a later fragment replaced the global sentinel; successor 731ce693f7e10e2bf56260acbc9e367bdb99b318 captures the per-fragment identity in each getter and includes the exact three-cell regression.",
+      "Validation ran on Linux x64. The change is architecture-neutral compiler-generated JavaScript and does not add or alter a platform capability, native dependency, or fallback, so Linux arm64, Windows x64, and macOS arm64 are not applicable to this narrow semantic lane."
+    ],
+    "next_steps": [
+      "Integrate exact successor source 731ce693f7e10e2bf56260acbc9e367bdb99b318 and this closure together after independent closure review.",
+      "After compiler integration, rerun pnpm test:tutorial on the blocked website-release-consistency source and issue its successor closure with a fresh 662/662 receipt.",
+      "Rerun final aggregate compiler, integration, tutorial, and changed-file gates on the assembled release baseline."
+    ]
   }
 }
