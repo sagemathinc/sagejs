@@ -4,7 +4,7 @@
   "id": "readme-prepublish-truth",
   "title": "README prepublication truth",
   "lane": "integration",
-  "status": "review",
+  "status": "complete",
   "owner": "readme_prepublish_truth",
   "objective": "Make README release/install guidance truthful before v0.2.0 publication while preserving protected annotated-tag source policy and documenting the explicit post-release availability flip",
   "base_commit": "fb6f4e36341838f7f4eac6c6c24fc1f4beba15d2",
@@ -29,9 +29,12 @@
     "macos-arm64": "required"
   },
   "validation": [
+    "node --test test/release-workflow-protection.cjs",
+    "pnpm test:changed -- --base fb6f4e36341838f7f4eac6c6c24fc1f4beba15d2",
     "pnpm architecture:check",
     "pnpm test:portable",
-    "pnpm test:baselib:strict"
+    "pnpm test:baselib:strict",
+    "pnpm docs:check"
   ],
   "runs": [
     {
@@ -83,16 +86,86 @@
       "commit": "fb6f4e36341838f7f4eac6c6c24fc1f4beba15d2",
       "workspace_fingerprint": "12028875de34681a5cca128f6a241671340c0fa3afab7a85cd13aa0aa6f56cf6",
       "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/release-workflow-protection.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.126,
+      "started_at": "2026-08-14T20:29:36.142Z",
+      "commit": "5f14313436395207570a7d644b519a7a45db6e85",
+      "workspace_fingerprint": "6f1f1597b5d563190b68db592ebdf7376e26bc88f58b2a97a94d08f4c447388e",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 5.194,
+      "started_at": "2026-08-14T20:29:36.860Z",
+      "commit": "5f14313436395207570a7d644b519a7a45db6e85",
+      "workspace_fingerprint": "6f1f1597b5d563190b68db592ebdf7376e26bc88f58b2a97a94d08f4c447388e",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 21.818,
+      "started_at": "2026-08-14T20:29:42.652Z",
+      "commit": "5f14313436395207570a7d644b519a7a45db6e85",
+      "workspace_fingerprint": "6f1f1597b5d563190b68db592ebdf7376e26bc88f58b2a97a94d08f4c447388e",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 14.347,
+      "started_at": "2026-08-14T20:30:05.066Z",
+      "commit": "5f14313436395207570a7d644b519a7a45db6e85",
+      "workspace_fingerprint": "6f1f1597b5d563190b68db592ebdf7376e26bc88f58b2a97a94d08f4c447388e",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:changed",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 761.288,
+      "started_at": "2026-08-14T20:32:50.747Z",
+      "commit": "5f14313436395207570a7d644b519a7a45db6e85",
+      "workspace_fingerprint": "6f1f1597b5d563190b68db592ebdf7376e26bc88f58b2a97a94d08f4c447388e",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:changed -- --base fb6f4e36341838f7f4eac6c6c24fc1f4beba15d2",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 23.282,
+      "started_at": "2026-08-14T20:45:37.941Z",
+      "commit": "5f14313436395207570a7d644b519a7a45db6e85",
+      "workspace_fingerprint": "6f1f1597b5d563190b68db592ebdf7376e26bc88f58b2a97a94d08f4c447388e",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm docs:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 215.65,
+      "started_at": "2026-08-14T20:46:07.684Z",
+      "commit": "5f14313436395207570a7d644b519a7a45db6e85",
+      "workspace_fingerprint": "6f1f1597b5d563190b68db592ebdf7376e26bc88f58b2a97a94d08f4c447388e",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {
-    "summary": "Makes README availability truthful before v0.2.0 publication: identifies v0.1.1 as the older live GitHub preview, removes the nonexistent install.sh URL, marks the four-platform v0.2.0 contract as planned, pins the separate npm preview to v0.1.0, preserves protected annotated-tag/main-tip operator guidance, and adds a focused regression requiring a distinct post-release availability update.",
+    "summary": "Makes README availability truthful before v0.2.0 publication: identifies v0.1.1 as the older live GitHub preview, removes the nonexistent install.sh URL, marks the four-platform v0.2.0 contract as planned, pins the separate npm preview to v0.1.0, preserves protected annotated-tag/main-tip operator guidance, and adds a focused regression requiring a distinct post-release availability update. Independent review approved exact source commit 5f14313436395207570a7d644b519a7a45db6e85 after verifying the live GitHub and npm state, the exact diff, and all scoped gates.",
     "risks": [
       "The intentional prepublication notice becomes stale when v0.2.0 is published; it must remain until immutable assets and checksums are verified, then be replaced promptly by the explicit post-release README update.",
       "pnpm test:changed selected the full release-baseline delta against the older origin/main and failed in the integration tier because this fresh worktree restored FLINT/graph but not optional FFLAS/M4RI adapters or production kernels; it also recorded one 188-second sparse-witness timeout and timing noise. The focused release regression and every required lane check pass on the exact current workspace."
     ],
     "next_steps": [
-      "Obtain independent review and replay this exact narrow range onto the release baseline before any Windows integration replay.",
+      "Replay the exact independently approved narrow range and this lifecycle-only closure onto the release baseline before any Windows integration replay.",
       "Only after the immutable v0.2.0 assets and checksums are published and verified, make a separate README-only commit that replaces the prepublication notice with the live installer command and current availability text."
     ]
   }
