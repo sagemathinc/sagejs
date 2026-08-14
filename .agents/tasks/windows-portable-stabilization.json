@@ -4,7 +4,7 @@
   "id": "windows-portable-stabilization",
   "title": "Windows Portable Stabilization",
   "lane": "compiler-runtime",
-  "status": "review",
+  "status": "complete",
   "owner": "user",
   "objective": "Fix exact Windows portable unit-test failures without weakening Linux release or native build semantics",
   "base_commit": "db6258674e6f191b8187c31e2231a45c73a5c5c6",
@@ -230,8 +230,7 @@
       "The broader macOS CI failures previously classified as ASan capability, dense-prime timing, /var source identity, and Linux-x64 fixture assumptions remain separate from this lane."
     ],
     "next_steps": [
-      "Integrate the ordered range after db6258674e6f191b8187c31e2231a45c73a5c5c6 once this exact closure is approved.",
-      "Resume the separate Windows static-CRT and PDB reproducibility lane on the integrated portable checkpoint."
+      "Resume the separate Windows static-CRT and PDB reproducibility lane on the independently approved integrated portable checkpoint."
     ]
   }
 }
