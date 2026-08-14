@@ -827,6 +827,13 @@ function peCertificateTable(filename) {
   return { offset, size };
 }
 
+function assertInstallerHasNoScripts(expanded, packageInfo) {
+  if (
+    existsSync(join(expanded, "Scripts")) ||
+    /<(?:scripts|script|preinstall|postinstall)\b/i.test(packageInfo)
+  ) throw new Error("installer package contains privileged install scripts");
+}
+
 function verifyMacPackage(distribution, options) {
   const details = runChecked("pkgutil", ["--check-signature", options.package], {
     label: "macOS installer signature",
@@ -844,6 +851,7 @@ function verifyMacPackage(distribution, options) {
       label: "macOS installer payload expansion",
     });
     const packageInfo = readFileSync(join(expanded, "PackageInfo"), "utf8");
+    assertInstallerHasNoScripts(expanded, packageInfo);
     const header = packageInfo.match(/<pkg-info\b[^>]*>/)?.[0] || "";
     const attribute = (name) => header.match(new RegExp(`\\b${name}="([^"]*)"`))?.[1];
     if (
@@ -875,6 +883,31 @@ function verifyMacPackage(distribution, options) {
   }
 }
 
+function validateBenchmarkStatistics(report) {
+  const names = ["process_startup", "cold", "warm"];
+  let sampleCount;
+  for (const name of names) {
+    const statistics = report[name];
+    if (
+      !exactKeys(statistics, ["maximum_ms", "median_ms", "minimum_ms", "samples_ms"]) ||
+      !Array.isArray(statistics.samples_ms) ||
+      statistics.samples_ms.length === 0 ||
+      statistics.samples_ms.some((value) => !Number.isFinite(value) || value <= 0)
+    ) throw new Error(`macOS benchmark has invalid ${name} samples`);
+    if (sampleCount === undefined) sampleCount = statistics.samples_ms.length;
+    if (statistics.samples_ms.length !== sampleCount) {
+      throw new Error("macOS benchmark sample counts differ");
+    }
+    const ordered = [...statistics.samples_ms].sort((left, right) => left - right);
+    if (
+      statistics.minimum_ms !== ordered[0] ||
+      statistics.median_ms !== ordered[Math.floor(ordered.length / 2)] ||
+      statistics.maximum_ms !== ordered.at(-1)
+    ) throw new Error(`macOS benchmark has inconsistent ${name} statistics`);
+  }
+  return sampleCount;
+}
+
 function verifyMacBenchmark(distribution, archiveSha256, options) {
   const digest = verifyChecksum(options.benchmark, options["benchmark-checksum"]);
   const contents = readFileSync(options.benchmark, "utf8");
@@ -896,6 +929,7 @@ function verifyMacBenchmark(distribution, archiveSha256, options) {
     report.builder?.node_distribution !== nodeSource?.filename ||
     report.builder?.node_distribution_sha256 !== nodeSource?.sha256
   ) throw new Error("macOS benchmark does not identify this clean signed candidate");
+  const samples = validateBenchmarkStatistics(report);
   const expectedContent = visitFiles(distribution).map((path) => {
     const filename = join(distribution, ...path.split("/"));
     const status = statSync(filename);
@@ -912,7 +946,7 @@ function verifyMacBenchmark(distribution, archiveSha256, options) {
   return {
     benchmarkSha256: digest,
     reportSha256: sha256Text(canonicalJson(report)),
-    samples: report.process_startup?.samples_ms?.length,
+    samples,
   };
 }
 
@@ -1182,6 +1216,7 @@ module.exports = {
   RECEIPT_SCHEMA,
   TARGETS,
   acceptReleaseArtifact,
+  assertInstallerHasNoScripts,
   dependencyAllowed,
   extractArchive,
   isolatedEnvironment,
@@ -1189,6 +1224,7 @@ module.exports = {
   peCertificateTable,
   preflightArchive,
   tarArchiveMembers,
+  validateBenchmarkStatistics,
   validateBuildReceipts,
   validateArchiveMember,
   validateArchiveMembers,

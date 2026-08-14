@@ -58,9 +58,9 @@
   },
   "validation": [
     "node --test test/release-artifact-acceptance.cjs test/test-manifest.test.cjs",
-    "pnpm test:unit",
     "pnpm architecture:check",
-    "pnpm parallel:check"
+    "pnpm test:portable",
+    "pnpm test:baselib:strict"
   ],
   "runs": [
     {
@@ -81,6 +81,106 @@
       "started_at": "2026-08-14T09:46:32.518Z",
       "commit": "e4018fd70bf2b9549b826e20d825e08bf43dafe5",
       "workspace_fingerprint": "2dcf006c5eec0f7381636631773d7e74bb2b1d22580c6b5c3e3b71038b644886",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 14.395,
+      "started_at": "2026-08-14T09:47:58.536Z",
+      "commit": "094f5a083bc1347ef4761100e0550a19318410b7",
+      "workspace_fingerprint": "0cc726024697068f4d5f3187952eb23663d981f36f16a14eeddc3952f4c9b9e8",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 20.55,
+      "started_at": "2026-08-14T09:48:13.550Z",
+      "commit": "094f5a083bc1347ef4761100e0550a19318410b7",
+      "workspace_fingerprint": "0cc726024697068f4d5f3187952eb23663d981f36f16a14eeddc3952f4c9b9e8",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/release-artifact-acceptance.cjs test/test-manifest.test.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.184,
+      "started_at": "2026-08-14T09:49:29.222Z",
+      "commit": "094f5a083bc1347ef4761100e0550a19318410b7",
+      "workspace_fingerprint": "b768e579eb2f388ff84690fdfba446b9891eecb3bef992235f883959ee927727",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 5.361,
+      "started_at": "2026-08-14T09:49:30.013Z",
+      "commit": "094f5a083bc1347ef4761100e0550a19318410b7",
+      "workspace_fingerprint": "b768e579eb2f388ff84690fdfba446b9891eecb3bef992235f883959ee927727",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 14.746,
+      "started_at": "2026-08-14T09:49:35.991Z",
+      "commit": "094f5a083bc1347ef4761100e0550a19318410b7",
+      "workspace_fingerprint": "b768e579eb2f388ff84690fdfba446b9891eecb3bef992235f883959ee927727",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 22.895,
+      "started_at": "2026-08-14T09:49:51.359Z",
+      "commit": "094f5a083bc1347ef4761100e0550a19318410b7",
+      "workspace_fingerprint": "b768e579eb2f388ff84690fdfba446b9891eecb3bef992235f883959ee927727",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/release-artifact-acceptance.cjs test/test-manifest.test.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.196,
+      "started_at": "2026-08-14T09:50:48.345Z",
+      "commit": "094f5a083bc1347ef4761100e0550a19318410b7",
+      "workspace_fingerprint": "e8729e9c20afcba86c66a85465fc8bb239e4bb6a98b5c4087a5765af18f6679e",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 5.566,
+      "started_at": "2026-08-14T09:50:49.178Z",
+      "commit": "094f5a083bc1347ef4761100e0550a19318410b7",
+      "workspace_fingerprint": "e8729e9c20afcba86c66a85465fc8bb239e4bb6a98b5c4087a5765af18f6679e",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 14.847,
+      "started_at": "2026-08-14T09:50:55.376Z",
+      "commit": "094f5a083bc1347ef4761100e0550a19318410b7",
+      "workspace_fingerprint": "e8729e9c20afcba86c66a85465fc8bb239e4bb6a98b5c4087a5765af18f6679e",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 21.835,
+      "started_at": "2026-08-14T09:51:10.874Z",
+      "commit": "094f5a083bc1347ef4761100e0550a19318410b7",
+      "workspace_fingerprint": "e8729e9c20afcba86c66a85465fc8bb239e4bb6a98b5c4087a5765af18f6679e",
       "platform": "linux-x64"
     }
   ],
