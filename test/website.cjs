@@ -7,6 +7,11 @@ const test = require("node:test");
 
 const root = path.resolve(__dirname, "..");
 const website = path.join(root, "website");
+const windowsGuide = fs.readFileSync(path.join(root, "WINDOWS.md"), "utf8");
+const releaseWorkflow = fs.readFileSync(
+  path.join(root, ".github", "workflows", "ci.yml"),
+  "utf8",
+);
 const payload = JSON.parse(fs.readFileSync(path.join(website, "capabilities.json"), "utf8"));
 const examplePayload = JSON.parse(fs.readFileSync(path.join(website, "examples.json"), "utf8"));
 const html = fs.readFileSync(path.join(website, "index.html"), "utf8");
@@ -79,6 +84,43 @@ test("dashboard data has a stable, complete schema", () => {
     }
     if (capability.state === "planned") assert.equal(capability.quality, "planned", `${capability.id} planned state must not overclaim quality`);
   }
+});
+
+test("distribution claims preserve the explicit unsigned Windows preview", () => {
+  const installers = payload.capabilities.find(
+    (capability) => capability.id === "release-installers",
+  );
+  const signing = payload.capabilities.find(
+    (capability) => capability.id === "release-signing",
+  );
+
+  assert.ok(installers);
+  assert.ok(signing);
+  assert.match(installers.summary, /explicit unsigned preview ZIP/i);
+  assert.match(installers.target, /explicitly unsigned Windows preview/i);
+  assert.ok(
+    installers.coverage.includes.includes("Windows x64 unsigned preview ZIP"),
+  );
+  assert.doesNotMatch(installers.target, /uniform signed artifacts/i);
+
+  assert.match(signing.coverage.label, /unsigned Windows preview/i);
+  assert.match(signing.summary, /not Authenticode-signed/i);
+  assert.match(
+    signing.implementation,
+    /explicit unsigned Windows archive policy/i,
+  );
+  assert.match(signing.evidence, /Authenticode reports NotSigned/i);
+  assert.match(
+    signing.target,
+    /Authenticode later as a separate protected release gate/i,
+  );
+  assert.ok(signing.coverage.includes.includes("Windows Authenticode planned"));
+
+  assert.match(windowsGuide, /Initial release status: deliberately unsigned/i);
+  assert.match(windowsGuide, /sagejs-windows-x64-unsigned\.zip/);
+  assert.match(releaseWorkflow, /Package the explicitly unsigned Windows x64/);
+  assert.match(releaseWorkflow, /\$signature\.Status -ne "NotSigned"/);
+  assert.match(releaseWorkflow, /sagejs-windows-x64-unsigned\.zip/);
 });
 
 test("verified examples form a searchable executable corpus", () => {
