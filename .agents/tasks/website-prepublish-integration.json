@@ -4,7 +4,7 @@
   "id": "website-prepublish-integration",
   "title": "Integrate prepublication website truth",
   "lane": "integration",
-  "status": "review",
+  "status": "complete",
   "owner": "user",
   "objective": "Integrate the independently approved prepublication website state onto the authoritative closed release baseline without deploying the website, tagging, publishing, or changing Windows release work",
   "base_commit": "769c7bbfd92ef0ae595c5dd9674e0702b7c4eb2c",
@@ -150,7 +150,7 @@
       "This integration changes repository website source only. It does not deploy Pages, publish or tag a release, modify Windows release work, or expose an installer command for nonexistent immutable assets."
     ],
     "next_steps": [
-      "Obtain independent review of exact integration code checkpoint 7a9ed00c0181d8f55017259ecc71819e55f4bdae, replay and blob provenance, the source-task lifecycle-only delta, prepublication semantics, generated-file cleanliness, and all common-fingerprint receipts.",
+      "Independently approved for closure at 9f0d98169223507c0ba1bba7c623ea00dcafae1f after exact replay, blob, range, lifecycle-only delta, prepublication semantics, generated-file cleanliness, receipt, and non-publication review.",
       "Only after the immutable v0.2.0 GitHub release and every advertised asset have been independently verified, make a website-only follow-up that changes native wording from imminent to available/current, restores the checksum-verifying latest/download/install.sh command, updates the two release capability records and their regressions, and lets the resulting main-branch commit trigger GitHub Pages."
     ]
   }
