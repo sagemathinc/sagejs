@@ -244,6 +244,16 @@
       "commit": "1c9186369ad969d6df69cba7fff2525423111af2",
       "workspace_fingerprint": "2a90f56ade806308881b9b22efde41ea7a5aa83b7418843017b5fd491f31d060",
       "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm parallel:check -- --all",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.588,
+      "started_at": "2026-08-14T22:04:26.764Z",
+      "commit": "08fb3d96ce43051d6f71e5c247c659f77c336f94",
+      "workspace_fingerprint": "060b9c9158c091b0eaa778e00869913100ee58aaffde27f3b8c1992e05548773",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {
