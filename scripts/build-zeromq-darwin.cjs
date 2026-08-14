@@ -266,9 +266,14 @@ function buildZeroMQDarwin(options = {}) {
   const zeromqPackage = dirname(require.resolve("zeromq/package.json"));
   const packageRequire = createRequire(join(zeromqPackage, "package.json"));
   const cmakeTs = packageRequire.resolve("cmake-ts/build/main.js");
-  const cmakeTsPackage = packageRequire("cmake-ts/package.json");
-  const nodeAddonApiPackage = packageRequire("node-addon-api/package.json");
+  const cmakeTsPackageRoot = dirname(dirname(cmakeTs));
+  const cmakeTsPackage = JSON.parse(
+    readFileSync(join(cmakeTsPackageRoot, "package.json"), "utf8"),
+  );
   const nodeAddonApi = dirname(packageRequire.resolve("node-addon-api/package.json"));
+  const nodeAddonApiPackage = JSON.parse(
+    readFileSync(join(nodeAddonApi, "package.json"), "utf8"),
+  );
   const sdkRoot = execFileSync("xcrun", ["--sdk", "macosx", "--show-sdk-path"], {
     encoding: "utf8",
     env: environment,
@@ -362,7 +367,7 @@ function buildZeroMQDarwin(options = {}) {
     mkdirSync(overlay);
     writeFileSync(join(overlay, `${arch}-osx.cmake`), triplet);
     mkdirSync(join(source, "node_modules"));
-    symlinkSync(dirname(dirname(cmakeTs)), join(source, "node_modules", "cmake-ts"));
+    symlinkSync(cmakeTsPackageRoot, join(source, "node_modules", "cmake-ts"));
     symlinkSync(nodeAddonApi, join(source, "node_modules", "node-addon-api"));
     const home = join(work, "home");
     const target = join(work, "target");
