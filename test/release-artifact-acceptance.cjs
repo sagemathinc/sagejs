@@ -40,6 +40,11 @@ const {
   createBuildManifest,
   serialize,
 } = require("../scripts/release-manifest.cjs");
+const {
+  EMBEDDED_ADDON_ROLE,
+  NODE_TEMPLATE_LABEL,
+  NODE_TEMPLATE_ROLE,
+} = require("../scripts/build-sea.cjs");
 
 const root = join(__dirname, "..");
 const commit = "a".repeat(40);
@@ -128,7 +133,11 @@ function nativeBinaries(dependencies = ["libc.so.6", "libm.so.6"], glibc = "2.28
   };
 }
 
-function buildReceipt(nativeMathematics, binaries = nativeBinaries()) {
+function buildReceipt(
+  nativeMathematics,
+  binaries = nativeBinaries(),
+  receiptTarget = target(),
+) {
   return createBuildManifest({
     capabilities: {
       artifact: { kind: "single-executable", nativeMathematics },
@@ -140,7 +149,7 @@ function buildReceipt(nativeMathematics, binaries = nativeBinaries()) {
     },
     sagejsVersion: version,
     source: source(),
-    target: target(),
+    target: receiptTarget,
     toolchain: {
       nativeBinaries: binaries,
       nativeMathProfile: nativeMathematics
@@ -154,6 +163,91 @@ function buildReceipt(nativeMathematics, binaries = nativeBinaries()) {
       },
     },
   });
+}
+
+function windowsTarget() {
+  return {
+    arch: "x64",
+    endianness: "LE",
+    libc: null,
+    nodeAbi: "141",
+    nodeNapi: "10",
+    platform: "win32",
+    wordBits: 64,
+  };
+}
+
+function windowsNativeBinaries(options = {}) {
+  const addonInputs = options.addons ?? [{
+    delayDependencies: ["node.exe"],
+    dependencies: ["KERNEL32.dll"],
+  }];
+  const addons = addonInputs.map((input, index) => ({
+    architecture: "x64",
+    delayDependencies: [...input.delayDependencies]
+      .sort((left, right) => left.localeCompare(right)),
+    dependencies: [...input.dependencies]
+      .sort((left, right) => left.localeCompare(right)),
+    format: "pe",
+    label: "native/addon-" + index + ".node",
+    machine: 0x8664,
+    role: EMBEDDED_ADDON_ROLE,
+    sha256: String(index + 1).repeat(64),
+    size: index + 1,
+    subsystem: 2,
+    wordSize: 64,
+  }));
+  const template = {
+    architecture: "x64",
+    delayDependencies: [],
+    dependencies: ["KERNEL32.dll"],
+    format: "pe",
+    label: NODE_TEMPLATE_LABEL,
+    machine: 0x8664,
+    role: NODE_TEMPLATE_ROLE,
+    sha256: "d".repeat(64),
+    size: 100,
+    subsystem: 3,
+    wordSize: 64,
+  };
+  const files = [...addons, template]
+    .sort((left, right) => left.label.localeCompare(right.label));
+  const computedDependencies = [...new Set(files.flatMap((file) => [
+    ...file.dependencies,
+    ...file.delayDependencies,
+  ]))].sort((left, right) => left.localeCompare(right));
+  const report = {
+    aggregate: {
+      architectures: ["x64"],
+      dependencies: options.aggregateDependencies ?? computedDependencies,
+      formats: ["pe"],
+      maximumGlibc: null,
+      maximumMinimumMacos: null,
+      maximumSymbolVersions: {},
+    },
+    files,
+    inputSetSha256: hash(JSON.stringify(files.map(
+      ({ label, role, sha256, size }) => ({ label, role, sha256, size }),
+    ))),
+    ok: true,
+    policy: {
+      architectures: ["x64"],
+      exactArchitectures: true,
+      format: "pe",
+      requiredLabels: files.map(({ label }) => label),
+    },
+    schema: "sagejs.native-binary-inspection-v1",
+    violations: [],
+  };
+  return {
+    report,
+    reportSha256: hash(canonicalJson(report)),
+    schema: "sagejs.native-binary-receipt/v1",
+  };
+}
+
+function windowsBuildReceipt(options = {}) {
+  return buildReceipt(true, windowsNativeBinaries(options), windowsTarget());
 }
 
 function receipts() {
@@ -801,6 +895,109 @@ test("native dependency acceptance rejects libatomic and newer GLIBC", () => {
     ),
     /requires GLIBC 2.38/,
   );
+});
+
+test("Windows native acceptance requires delayed-only node.exe per embedded addon", () => {
+  const options = { target: "windows-x64" };
+  const accepted = validateNativeReceipt(
+    windowsBuildReceipt(),
+    options,
+    "sagejs",
+  );
+  assert.deepEqual(accepted.dependencies, ["KERNEL32.dll", "node.exe"]);
+
+  const eager = windowsBuildReceipt({
+    addons: [{
+      delayDependencies: [],
+      dependencies: ["KERNEL32.dll", "node.exe"],
+    }],
+  });
+  assert.throws(
+    () => validateNativeReceipt(eager, options, "sagejs"),
+    /eagerly imports node\.exe/,
+  );
+
+  const missing = windowsBuildReceipt({
+    addons: [{
+      delayDependencies: [],
+      dependencies: ["KERNEL32.dll"],
+    }],
+  });
+  assert.throws(
+    () => validateNativeReceipt(missing, options, "sagejs"),
+    /does not delay-load node\.exe/,
+  );
+
+  const mixed = windowsBuildReceipt({
+    addons: [{
+      delayDependencies: ["node.exe"],
+      dependencies: ["KERNEL32.dll", "node.exe"],
+    }],
+  });
+  assert.throws(
+    () => validateNativeReceipt(mixed, options, "sagejs"),
+    /eagerly imports node\.exe/,
+  );
+
+  const mixedAddons = windowsBuildReceipt({
+    addons: [
+      {
+        delayDependencies: ["node.exe"],
+        dependencies: ["KERNEL32.dll"],
+      },
+      {
+        delayDependencies: [],
+        dependencies: ["KERNEL32.dll"],
+      },
+    ],
+  });
+  assert.throws(
+    () => validateNativeReceipt(mixedAddons, options, "sagejs"),
+    /addon-1\.node does not delay-load node\.exe/,
+  );
+
+  const forgedAggregate = windowsBuildReceipt({
+    aggregateDependencies: ["KERNEL32.dll"],
+  });
+  assert.throws(
+    () => validateNativeReceipt(forgedAggregate, options, "sagejs"),
+    /aggregate dependencies differ from per-file imports/,
+  );
+  const forgedNode = windowsBuildReceipt({
+    addons: [],
+    aggregateDependencies: ["KERNEL32.dll", "node.exe"],
+  });
+  assert.throws(
+    () => validateNativeReceipt(forgedNode, options, "sagepython"),
+    /aggregate dependencies differ from per-file imports/,
+  );
+  assert.deepEqual(
+    validateNativeReceipt(
+      windowsBuildReceipt({ addons: [] }),
+      options,
+      "sagepython",
+    ).dependencies,
+    ["KERNEL32.dll"],
+  );
+});
+
+test("Windows delayed node.exe does not allow MSVC runtime redistributables", () => {
+  for (const runtime of [
+    "MSVCP140.dll",
+    "VCRUNTIME140.dll",
+    "VCRUNTIME140_1.dll",
+  ]) {
+    const receipt = windowsBuildReceipt({
+      addons: [{
+        delayDependencies: ["node.exe"],
+        dependencies: ["KERNEL32.dll", runtime],
+      }],
+    });
+    assert.throws(
+      () => validateNativeReceipt(receipt, { target: "windows-x64" }, "sagejs"),
+      new RegExp("non-system runtime dependencies: " + runtime),
+    );
+  }
 });
 
 test("PE certificate-table evidence distinguishes unsigned from signed bytes", () =>

@@ -1,0 +1,76 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "windows-acceptance-import-semantics",
+  "title": "Windows Acceptance Import Semantics",
+  "lane": "integration",
+  "status": "active",
+  "owner": "user",
+  "objective": "Validate Windows release artifacts using per-file PE import semantics while preserving static-CRT and security gates",
+  "base_commit": "b3491feaf8b0f96f21dbbbf5c1a1561da3ecfcb3",
+  "claims": [
+    "scripts/release-artifact-acceptance.cjs",
+    "test/release-artifact-acceptance.cjs"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "not-applicable",
+    "fallback": "not-applicable",
+    "oracles": [
+      "Production embedded-node-addon records require delayed-only node.exe imports",
+      "Final Windows artifacts reject all MSVC runtime DLL imports"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm architecture:check",
+    "pnpm test:portable",
+    "pnpm test:baselib:strict",
+    "node --test test/release-artifact-acceptance.cjs",
+    "pnpm test:changed"
+  ],
+  "runs": [
+    {
+      "command": "node --test test/release-artifact-acceptance.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.466,
+      "started_at": "2026-08-14T12:54:32.425Z",
+      "commit": "b3491feaf8b0f96f21dbbbf5c1a1561da3ecfcb3",
+      "workspace_fingerprint": "b9265cf66b3482b8a7ec8847693020d5a7be61eeb6aef94dbb6c2786aa500e3c",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 1.356,
+      "started_at": "2026-08-14T12:54:38.576Z",
+      "commit": "b3491feaf8b0f96f21dbbbf5c1a1561da3ecfcb3",
+      "workspace_fingerprint": "b9265cf66b3482b8a7ec8847693020d5a7be61eeb6aef94dbb6c2786aa500e3c",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 6.185,
+      "started_at": "2026-08-14T12:59:31.365Z",
+      "commit": "b3491feaf8b0f96f21dbbbf5c1a1561da3ecfcb3",
+      "workspace_fingerprint": "b9265cf66b3482b8a7ec8847693020d5a7be61eeb6aef94dbb6c2786aa500e3c",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "",
+    "risks": [],
+    "next_steps": []
+  }
+}

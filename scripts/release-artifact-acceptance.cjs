@@ -30,6 +30,10 @@ const {
   readBuildManifest,
   serialize,
 } = require("./release-manifest.cjs");
+const {
+  EMBEDDED_ADDON_ROLE,
+  NODE_TEMPLATE_ROLE,
+} = require("./build-sea.cjs");
 const { compareVersions } = require("./release-native-binary-inspector.cjs");
 
 const RECEIPT_SCHEMA = "sagejs.release-artifact-acceptance-v1";
@@ -1103,6 +1107,79 @@ function dependencyAllowed(dependency, target) {
     upper.startsWith("API-MS-WIN-") || upper.startsWith("EXT-MS-WIN-");
 }
 
+function canonicalDependencyList(value, location) {
+  if (
+    !Array.isArray(value) ||
+    value.some((dependency) => typeof dependency !== "string" || !dependency) ||
+    new Set(value).size !== value.length ||
+    JSON.stringify(value) !== JSON.stringify(
+      [...value].sort((left, right) => left.localeCompare(right)),
+    )
+  ) throw new Error(location + " is not a canonical dependency list");
+  return value;
+}
+
+function isNodeExecutable(dependency) {
+  return dependency.toUpperCase() === "NODE.EXE";
+}
+
+function validateWindowsImportSemantics(report, label) {
+  if (!Array.isArray(report.files) || report.files.length === 0) {
+    throw new Error(label + " Windows native-binary report has no files");
+  }
+  const aggregate = canonicalDependencyList(
+    report.aggregate?.dependencies,
+    label + " Windows aggregate dependencies",
+  );
+  const embeddedAddons = [];
+  const perFileDependencies = [];
+  for (const file of report.files) {
+    if (
+      file === null ||
+      typeof file !== "object" ||
+      file.format !== "pe" ||
+      typeof file.label !== "string" ||
+      !file.label
+    ) throw new Error(label + " has an invalid Windows native-binary file record");
+    if (file.role !== EMBEDDED_ADDON_ROLE && file.role !== NODE_TEMPLATE_ROLE) {
+      throw new Error(label + " " + file.label + " has an unknown Windows binary role");
+    }
+    const ordinary = canonicalDependencyList(
+      file.dependencies,
+      label + " " + file.label + " ordinary dependencies",
+    );
+    const delayed = canonicalDependencyList(
+      file.delayDependencies,
+      label + " " + file.label + " delay dependencies",
+    );
+    perFileDependencies.push(...ordinary, ...delayed);
+    if (ordinary.some(isNodeExecutable)) {
+      throw new Error(label + " " + file.label + " eagerly imports node.exe");
+    }
+    const delaysNode = delayed.some(isNodeExecutable);
+    if (file.role === EMBEDDED_ADDON_ROLE) {
+      embeddedAddons.push(file);
+      if (!delaysNode) {
+        throw new Error(label + " " + file.label + " does not delay-load node.exe");
+      }
+    } else if (delaysNode) {
+      throw new Error(label + " " + file.label + " unexpectedly delay-loads node.exe");
+    }
+  }
+  const expectedAggregate = [...new Set(perFileDependencies)]
+    .sort((left, right) => left.localeCompare(right));
+  if (JSON.stringify(aggregate) !== JSON.stringify(expectedAggregate)) {
+    throw new Error(
+      label + " Windows aggregate dependencies differ from per-file imports",
+    );
+  }
+  const aggregateHasNode = aggregate.some(isNodeExecutable);
+  if (aggregateHasNode !== (embeddedAddons.length > 0)) {
+    throw new Error(label + " Windows aggregate node.exe evidence is inconsistent");
+  }
+  return { aggregateHasNode, embeddedAddonCount: embeddedAddons.length };
+}
+
 function validateNativeReceipt(receipt, options, label) {
   const native = receipt.toolchain?.nativeBinaries;
   if (
@@ -1118,8 +1195,13 @@ function validateNativeReceipt(receipt, options, label) {
   const descriptor = TARGETS[options.target];
   assert.deepEqual(report.aggregate.formats, [descriptor.format]);
   assert.deepEqual(report.aggregate.architectures, [descriptor.arch]);
+  const windowsImports = descriptor.platform === "win32"
+    ? validateWindowsImportSemantics(report, label)
+    : null;
   const forbidden = report.aggregate.dependencies.filter(
-    (dependency) => !dependencyAllowed(dependency, options.target),
+    (dependency) =>
+      !(windowsImports?.aggregateHasNode && isNodeExecutable(dependency)) &&
+      !dependencyAllowed(dependency, options.target),
   );
   if (forbidden.length) {
     throw new Error(`${label} has non-system runtime dependencies: ${forbidden.join(", ")}`);
@@ -1592,6 +1674,7 @@ module.exports = {
   validateArchiveMembers,
   validateZipExtra,
   validateNativeReceipt,
+  validateWindowsImportSemantics,
   validateThirdPartyInventory,
   verifyChecksum,
   verifyInternalChecksums,
