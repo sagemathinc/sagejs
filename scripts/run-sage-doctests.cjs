@@ -12,6 +12,15 @@ function normalized(text) {
   return text.replaceAll("\r\n", "\n").replace(/[ \t]+$/gm, "").trimEnd();
 }
 
+function assertSilentWorkerSetup(output) {
+  const observed = normalized(output);
+  if (observed !== "") {
+    throw new Error(
+      `doctest random-seed setup produced unexpected output:\n${observed}`,
+    );
+  }
+}
+
 function ellipsisPattern(want) {
   return new RegExp(
     `^${want
@@ -161,6 +170,7 @@ async function worker() {
     ps1: "",
     ps2: "",
     sage: true,
+    setProcessExitCodeOnInputFailure: false,
   });
 
   if (request.randomSeed !== null && request.randomSeed !== undefined) {
@@ -168,6 +178,7 @@ async function worker() {
       "line", `set_random_seed(${JSON.stringify(request.randomSeed)})`);
     readline.emit("line", "");
     await repl.drain();
+    assertSilentWorkerSetup(output);
     output = "";
   }
 
@@ -419,6 +430,7 @@ if (process.argv[2] === "--worker") {
 }
 
 module.exports = {
+  assertSilentWorkerSetup,
   directiveSkipReason,
   matchesExample,
   matchesExpected,

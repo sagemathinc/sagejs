@@ -82,6 +82,8 @@ export interface Options {
   tokens?: boolean; // show very verbose tokens as parsed
   moduleCacheDir?: string | false;
   importDirs?: string[];
+  /** Set the host process exit code after an uncaught submitted input error. */
+  setProcessExitCodeOnInputFailure?: boolean;
 }
 
 export function defaultHistoryFile(
@@ -191,8 +193,10 @@ export default async function Repl(
 ): Promise<ReplController> {
   const options = replDefaults(options0);
   const interactiveInput = options.input?.isTTY === true;
+  const setProcessExitCodeOnInputFailure =
+    options.setProcessExitCodeOnInputFailure ?? !interactiveInput;
   function markUncaughtInputFailure(): void {
-    if (!interactiveInput) process.exitCode = 1;
+    if (setProcessExitCodeOnInputFailure) process.exitCode = 1;
   }
   const foreignLanguage = selectedForeignLanguage(options);
   const sourceLanguage =
