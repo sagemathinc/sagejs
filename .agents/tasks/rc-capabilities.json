@@ -4,7 +4,7 @@
   "id": "rc-capabilities",
   "title": "Rc Capabilities",
   "lane": "integration",
-  "status": "active",
+  "status": "complete",
   "owner": "user",
   "objective": "Implement a machine-readable release capability and provenance report that distinguishes compiled, bundled, declared fallback, unavailable, and cache-presence evidence without triggering builds or claiming unprobed usability.",
   "base_commit": "950f0134dd51ca66776dc3d6290a5807cf3fd77f",

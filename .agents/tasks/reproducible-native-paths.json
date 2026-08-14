@@ -4,7 +4,7 @@
   "id": "reproducible-native-paths",
   "title": "Reproducible Native Paths",
   "lane": "integration",
-  "status": "active",
+  "status": "complete",
   "owner": "user",
   "objective": "Publish production native-kernel metadata without checkout-local paths and define a safe path-remapping plan for release-native builds",
   "base_commit": "160313aad07cbf0f241c8cffde0b6b2bdace55cf",

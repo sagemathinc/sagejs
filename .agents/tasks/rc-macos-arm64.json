@@ -4,7 +4,7 @@
   "id": "rc-macos-arm64",
   "title": "Rc Macos Arm64",
   "lane": "distribution",
-  "status": "active",
+  "status": "complete",
   "owner": "user",
   "objective": "Build and validate a relocatable unsigned macOS arm64 release candidate on m1, separating unsigned validation from credential-gated signing and notarization.",
   "base_commit": "950f0134dd51ca66776dc3d6290a5807cf3fd77f",

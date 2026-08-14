@@ -4,7 +4,7 @@
   "id": "rc-math-smoke",
   "title": "Rc Math Smoke",
   "lane": "integration",
-  "status": "review",
+  "status": "complete",
   "owner": "user",
   "objective": "Create a fast authoritative release mathematics smoke corpus spanning ZZ, QQ, GF(p), GF(2), polynomials, extensions, graphs, and modular symbols.",
   "base_commit": "950f0134dd51ca66776dc3d6290a5807cf3fd77f",

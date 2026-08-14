@@ -4,7 +4,7 @@
   "id": "sea-capabilities-cli",
   "title": "SEA embedded capabilities CLI",
   "lane": "compiler-runtime",
-  "status": "review",
+  "status": "complete",
   "owner": "user",
   "objective": "Expose authoritative release capability and build-receipt diagnostics inside relocated Sage.js SEA executables with real smoke coverage",
   "base_commit": "160313a7a36d9e0861655f37fa0bf93f0365a93a",

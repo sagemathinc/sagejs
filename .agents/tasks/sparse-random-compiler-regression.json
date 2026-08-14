@@ -4,7 +4,7 @@
   "id": "sparse-random-compiler-regression",
   "title": "Fix sparse random compiler regression",
   "lane": "compiler-runtime",
-  "status": "active",
+  "status": "complete",
   "owner": "user",
   "objective": "Make sample_sparse_random_spec compile and execute correctly under the full compiler suite with a focused regression and no matrix-specific compiler hack.",
   "base_commit": "bebee635777533035b92c671e4bc63f98f2eac2e",

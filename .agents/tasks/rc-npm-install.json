@@ -4,7 +4,7 @@
   "id": "rc-npm-install",
   "title": "Rc Npm Install",
   "lane": "integration",
-  "status": "active",
+  "status": "complete",
   "owner": "user",
   "objective": "Validate clean native npm installation, relocation, upgrade, uninstall, and operation without a source checkout or build toolchain.",
   "base_commit": "950f0134dd51ca66776dc3d6290a5807cf3fd77f",

@@ -4,7 +4,7 @@
   "id": "piped-python-module-isolation-v1",
   "title": "Piped Python module isolation",
   "lane": "compiler-runtime",
-  "status": "active",
+  "status": "complete",
   "owner": "user",
   "objective": "Preserve one lexical __main__ namespace across blank-line-separated piped Python input while retaining compiled-module isolation and correct noninteractive failure status",
   "base_commit": "dcc1302a3f305b00a0e09ba25edee45ac2ee2bf1",

@@ -4,7 +4,7 @@
   "id": "linux-rc-hardening",
   "title": "Linux release candidate hardening",
   "lane": "integration",
-  "status": "active",
+  "status": "complete",
   "owner": "user",
   "objective": "Harden the Linux x64 release candidate packager and validator with hermetic deterministic environments, artifact-bound receipts, authoritative native mathematics smoke tests, complete cleanup, atomic publication, and upgrade/corruption failure coverage",
   "base_commit": "9c8726aa3ebaa4bc93e9a84a86c2a8a3215bbeb1",

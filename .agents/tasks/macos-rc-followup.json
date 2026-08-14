@@ -4,7 +4,7 @@
   "id": "macos-rc-followup",
   "title": "macOS RC Follow-up",
   "lane": "integration",
-  "status": "review",
+  "status": "complete",
   "owner": "user",
   "objective": "Stage attested native dependency receipts through immutable cache links and keep all macOS addon deployment targets consistent",
   "base_commit": "902f061c7ca7b5e535ceae86bc6fb63eec6b5281",

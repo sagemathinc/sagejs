@@ -1,0 +1,42 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "x64-gcc-polynomial",
+  "title": "X64 Gcc Polynomial",
+  "lane": "distribution",
+  "status": "complete",
+  "owner": "user",
+  "objective": "Make arbitrary-prime polynomial resource witnesses compile cleanly with GCC 13 under -Werror",
+  "base_commit": "e4018fd70bf2b9549b826e20d825e08bf43dafe5",
+  "claims": [
+    "packages/flint/include/sagejs/fmpz_mod_polynomial_ffi.h",
+    "test/arbitrary-prime-polynomial-resource-ffi.cjs"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "not-applicable",
+    "fallback": "not-applicable",
+    "oracles": [],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:portable",
+    "pnpm test:native",
+    "pnpm test:sea"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "Sealed normalized arbitrary-prime polynomial resources now answer zero tests and obtain their leading coefficient directly from the canonical FLINT representation. This avoids GCC 13 false stringop-overread diagnostics from unused array-typed context arguments. The originating Linux x64 lane passed ordinary GCC 13 execution and sanitizer-backed resource lifecycle witnesses before integration.",
+    "risks": [],
+    "next_steps": [
+      "Retain the arbitrary-prime polynomial resource witness in every supported native release build."
+    ]
+  }
+}

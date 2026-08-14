@@ -4,7 +4,7 @@
   "id": "finite-extension-scalar-resource",
   "title": "Generated finite-extension scalar resources",
   "lane": "integration",
-  "status": "review",
+  "status": "complete",
   "owner": "user",
   "objective": "Implement a forced-generated standalone word-characteristic GF(p^n) scalar slice over generated FqContext/FqElement resources, covering construction, complete field arithmetic, canonical coordinates, hashing, serialization, deterministic lifecycle, and a borrowed typed-Python kernel without changing the public default or retaining legacy and generated scalar objects simultaneously.",
   "base_commit": "01efae3f570f8dbd6f5e66e0de1873f041d18f97",

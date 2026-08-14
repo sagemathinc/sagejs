@@ -4,7 +4,7 @@
   "id": "rc-linux-artifact",
   "title": "Rc Linux Artifact",
   "lane": "integration",
-  "status": "active",
+  "status": "complete",
   "owner": "user",
   "objective": "Build and validate a relocatable unsigned Linux x64 release candidate from a clean environment, including cold/warm startup and native capability loading.",
   "base_commit": "2af149605c9d30b804a1e853a84597dffcf7db5f",

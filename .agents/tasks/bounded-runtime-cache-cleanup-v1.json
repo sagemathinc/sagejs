@@ -4,7 +4,7 @@
   "id": "bounded-runtime-cache-cleanup-v1",
   "title": "Bounded runtime cache cleanup",
   "lane": "compiler-runtime",
-  "status": "active",
+  "status": "complete",
   "owner": "user",
   "objective": "Extend lease-safe bounded automatic cache retention from compiled modules to dynamic eval/exec artifacts, with unified dry-run reporting and deterministic temporary-root tests",
   "base_commit": "01efae3f570f8dbd6f5e66e0de1873f041d18f97",

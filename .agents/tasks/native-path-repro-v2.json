@@ -4,7 +4,7 @@
   "id": "native-path-repro-v2",
   "title": "Native Path Repro V2",
   "lane": "integration",
-  "status": "review",
+  "status": "complete",
   "owner": "user",
   "objective": "Make production native wrappers, addons, and indexes byte-identical across clean checkouts at different absolute roots while preserving exact inspectable provenance",
   "base_commit": "9d7522ec8c0195bc41f4b2b2ccb6dfeefdc3eeff",

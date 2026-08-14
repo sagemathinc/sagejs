@@ -4,7 +4,7 @@
   "id": "windows-vcpkg-msys-source",
   "title": "Durable Windows vcpkg MSYS source",
   "lane": "distribution",
-  "status": "active",
+  "status": "complete",
   "owner": "user",
   "objective": "Make the pinned Windows FLINT bootstrap independent of garbage-collected MSYS2 package archives while retaining locked, verified dependency bytes.",
   "base_commit": "347c3d475ee817fad27bb7da72a33006cfc9df74",

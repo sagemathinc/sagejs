@@ -4,7 +4,7 @@
   "id": "portable-release-cpu-profile",
   "title": "Portable release CPU profile",
   "lane": "integration",
-  "status": "active",
+  "status": "complete",
   "owner": "user",
   "objective": "Define and machine-check the portable release CPU breadth contract across GMP, FLINT, OpenBLAS, FFLAS, M4RI, igraph, and generated native compilation without changing the Linux glibc/libatomic baseline",
   "base_commit": "e5ecfa51e6da2c6602c7996c896c479d743a4722",

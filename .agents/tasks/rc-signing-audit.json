@@ -4,7 +4,7 @@
   "id": "rc-signing-audit",
   "title": "Rc Signing Audit",
   "lane": "distribution",
-  "status": "review",
+  "status": "complete",
   "owner": "user",
   "objective": "Audit macOS and Windows signing/notarization plus publication/rollback, producing an exact human credential-gated checklist without using credentials.",
   "base_commit": "950f0134dd51ca66776dc3d6290a5807cf3fd77f",

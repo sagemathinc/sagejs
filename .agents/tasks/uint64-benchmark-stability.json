@@ -4,7 +4,7 @@
   "id": "uint64-benchmark-stability",
   "title": "Uint64 Benchmark Stability",
   "lane": "compiler-runtime",
-  "status": "active",
+  "status": "complete",
   "owner": "user",
   "objective": "Make the packed UInt64 structural performance regression gate statistically robust under parallel unit-tier load while preserving detection of nonlinear traversal regressions",
   "base_commit": "98fe61f593d80cbdf372971ec60eb9d2b400f9ee",
@@ -26,6 +26,9 @@
     "macos-arm64": "required"
   },
   "validation": [
+    "pnpm build",
+    "pnpm test:compiler",
+    "pnpm test:integration",
     "node test/uint64-structural-runtime.cjs"
   ],
   "runs": [

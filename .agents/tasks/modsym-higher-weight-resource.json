@@ -18,16 +18,6 @@
     "bench/native_p1_workload.py",
     "bench/compare-native-p1.cjs",
     "bench/NATIVE-COMPILER.md",
-    "architecture/native-boundaries.json",
-    "architecture/native-exports.json",
-    "architecture/native-kernels.json",
-    "architecture/package-graph.json",
-    "ffi/flint.ffi.json",
-    "ffi/flint.ffi.py",
-    "src/lib/sagejs/ffi/flint.py",
-    "src/baselib/sagejs/ffi/flint.py",
-    "packages/flint/generated/ffi_host.py",
-    "packages/flint/include/sagejs/fmpq_matrix_ffi.h",
     "test/ffi.cjs",
     "test/fmpq-resource-ops-lifecycle.cjs"
   ],
@@ -222,7 +212,7 @@
   "handoff": {
     "summary": "Production higher-weight Hecke matrices now return owned generated FmpqMatrix resources. The typed traversal performs each exact contribution through one generic declared FLINT add-scaled-entry operation, removing uniform limb capacities, retries, packed result export, and host rational reconstruction. Native and same-source dynamic results are differential against the legacy FLINT oracle across level 11 T_101 and signed level-1000 weight-4/6 cases. The complete public typed route measures 2.64 ms versus 1.85 ms for the oracle on the 16-vCPU AMD EPYC host, with only 640 KiB peak-RSS growth across the timed batch and sanitizer-backed resource lifecycle coverage.",
     "risks": [
-      "The modular slice required a generic shared FFI primitive, so the current lane checker cannot express the authorized cross-lane claims in one coherent task even though architecture checks pass.",
+      "The modular slice required a generic shared FFI primitive whose declarations, generated adapters, and architecture registries were integrated through the shared integration authority rather than retained as modular-forms lane claims.",
       "The declaration is marked wasm-compatible, but this lane did not rebuild the browser FLINT artifact."
     ],
     "next_steps": [

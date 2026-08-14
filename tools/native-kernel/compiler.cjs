@@ -385,9 +385,16 @@ function unixPrefixMapFlags(pathMappings) {
 function windowsPathMapFlags(pathMappings) {
   return [
     "/Brepro",
-    ...pathMappings.map(([physical, logical]) =>
-      `/pathmap:${physical}=${logical}`
-    ),
+    // Generated Windows kernels use the ClangCL MSBuild toolset. `/pathmap`
+    // is an MSVC-only option: clang-cl treats it as an input filename and the
+    // build fails before compiling anything. Forward Clang's three prefix-map
+    // options explicitly so source macros, diagnostics, and debug records all
+    // share the same checkout-independent identity as Unix builds.
+    ...pathMappings.flatMap(([physical, logical]) => [
+      `/clang:-ffile-prefix-map=${physical}=${logical}`,
+      `/clang:-fdebug-prefix-map=${physical}=${logical}`,
+      `/clang:-fmacro-prefix-map=${physical}=${logical}`,
+    ]),
   ];
 }
 

@@ -4,7 +4,7 @@
   "id": "windows-cli-portability",
   "title": "Windows CLI and CPython portability",
   "lane": "integration",
-  "status": "active",
+  "status": "complete",
   "owner": "user",
   "objective": "Make portable and integration test/tool subprocess invocation work on native Windows by consistently launching Sage.js through Node and selecting CPython through the shared policy",
   "base_commit": "347c3d475ee817fad27bb7da72a33006cfc9df74",

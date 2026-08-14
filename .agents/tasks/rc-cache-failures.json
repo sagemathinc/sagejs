@@ -4,7 +4,7 @@
   "id": "rc-cache-failures",
   "title": "Rc Cache Failures",
   "lane": "integration",
-  "status": "review",
+  "status": "complete",
   "owner": "user",
   "objective": "Validate bounded runtime/native caches and release failure behavior for unwritable, corrupt, interrupted, missing-compiler, and concurrent cases.",
   "base_commit": "950f0134dd51ca66776dc3d6290a5807cf3fd77f",

@@ -4,7 +4,7 @@
   "id": "binary-receipt-integration",
   "title": "Exact native binary release receipts",
   "lane": "integration",
-  "status": "review",
+  "status": "complete",
   "owner": "user",
   "objective": "Bind every SEA native executable to a validated target-specific binary compatibility receipt and make capability reporting reject incomplete or tampered evidence",
   "base_commit": "160313aad07cbf0f241c8cffde0b6b2bdace55cf",

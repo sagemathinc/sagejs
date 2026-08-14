@@ -4,7 +4,7 @@
   "id": "native-export-audit-perf",
   "title": "Index native export consumers once",
   "lane": "integration",
-  "status": "review",
+  "status": "complete",
   "owner": "user",
   "objective": "Preserve deterministic native export inventory semantics while eliminating repeated per-export repository reads and regex scans, with focused correctness tests and Linux/Windows performance evidence.",
   "base_commit": "347c3d475ee817fad27bb7da72a33006cfc9df74",

@@ -4,7 +4,7 @@
   "id": "rc-manifest",
   "title": "Rc Manifest",
   "lane": "integration",
-  "status": "active",
+  "status": "complete",
   "owner": "user",
   "objective": "Generate a deterministic release artifact manifest with checksums, commit/toolchain provenance, target identity, capabilities, and verification.",
   "base_commit": "950f0134dd51ca66776dc3d6290a5807cf3fd77f",

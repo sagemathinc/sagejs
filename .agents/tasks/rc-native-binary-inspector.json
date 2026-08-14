@@ -4,7 +4,7 @@
   "id": "rc-native-binary-inspector",
   "title": "Rc Native Binary Inspector",
   "lane": "integration",
-  "status": "active",
+  "status": "complete",
   "owner": "user",
   "objective": "Provide a portable release-time inspector for Linux ELF, macOS Mach-O, and Windows PE native SEA inputs, with explicit architecture, ABI/deployment, dependency, and rpath policy checks",
   "base_commit": "2b6d157ced00ba7f61ca7bddc92f8e5fb1497b07",

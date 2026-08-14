@@ -243,8 +243,7 @@ static inline int sagejs_fmpz_mod_polynomial_is_zero(
 {
     if (!polynomial->sealed)
         return 0;
-    fmpz_set_ui(result, (ulong) fmpz_mod_poly_is_zero(
-        polynomial->value, polynomial->context));
+    fmpz_set_ui(result, (ulong) (polynomial->value->length == 0));
     return 1;
 }
 
@@ -468,8 +467,7 @@ static inline int sagejs_fmpz_mod_polynomial_xgcd_resource(
     sagejs_fmpz_mod_polynomial_init_result(gcd, left);
     sagejs_fmpz_mod_polynomial_init_result(left_coefficient, left);
     sagejs_fmpz_mod_polynomial_init_result(right_coefficient, left);
-    if (fmpz_mod_poly_is_zero(left->value, left->context) &&
-        fmpz_mod_poly_is_zero(right->value, right->context))
+    if (left->value->length == 0 && right->value->length == 0)
     {
         fmpz_mod_poly_one(result->left_coefficient.value,
             result->left_coefficient.context);
@@ -553,15 +551,14 @@ static inline int sagejs_fmpz_mod_polynomial_factor_resource(
     sagejs_fmpz_mod_polynomial_factorization_t result,
     const sagejs_fmpz_mod_polynomial_t source)
 {
-    if (!source->sealed ||
-        fmpz_mod_poly_is_zero(source->value, source->context))
+    if (!source->sealed || source->value->length == 0)
         return 0;
     fmpz_mod_ctx_init(result->context,
         fmpz_mod_ctx_modulus(source->context));
     fmpz_mod_poly_factor_init(result->value, result->context);
     fmpz_init(result->unit);
-    fmpz_mod_poly_get_coeff_fmpz(result->unit, source->value,
-        fmpz_mod_poly_degree(source->value, source->context), source->context);
+    fmpz_set(result->unit,
+        source->value->coeffs + source->value->length - 1);
     fmpz_mod_poly_t monic;
     fmpz_mod_poly_init(monic, result->context);
     fmpz_mod_poly_make_monic(monic, source->value, result->context);
@@ -717,8 +714,7 @@ static inline int sagejs_fmpz_mod_polynomial_roots_resource(
     sagejs_fmpz_mod_polynomial_roots_t result,
     const sagejs_fmpz_mod_polynomial_t source)
 {
-    if (!source->sealed ||
-        fmpz_mod_poly_is_zero(source->value, source->context))
+    if (!source->sealed || source->value->length == 0)
         return 0;
     fmpz_mod_ctx_init(result->context,
         fmpz_mod_ctx_modulus(source->context));
