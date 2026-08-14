@@ -29,26 +29,6 @@ const {
 const nativeApi = require("@sagemath/sagejs/native");
 
 const root = join(__dirname, "..");
-
-function canonicalNativeSourcePath(filename) {
-  return filename.replaceAll("\\", "/");
-}
-
-const syntheticWindowsSourcePath =
-  String.raw`C:\Users\sagejs agent\src\native_prime_field_source.py`;
-assert.equal(
-  canonicalNativeSourcePath(syntheticWindowsSourcePath),
-  "C:/Users/sagejs agent/src/native_prime_field_source.py",
-);
-assert.equal(
-  `${canonicalNativeSourcePath(syntheticWindowsSourcePath)}:29:5`,
-  "C:/Users/sagejs agent/src/native_prime_field_source.py:29:5",
-);
-assert.equal(
-  canonicalNativeSourcePath("/home/user/sagejs/native_prime_field_source.py"),
-  "/home/user/sagejs/native_prime_field_source.py",
-);
-
 (async () => {
 const sourcePath = join(root, "bench", "native-kernel-input.sage");
 const mpmathSourcePath = join(root, "bench", "native-mpmath-kernel.sage");
@@ -1686,17 +1666,35 @@ compileKernel({
     () => primeFieldSourceModule.source_uint64_floor_div(1n, 0n, 97n),
     /floor division by zero/,
   );
+  const canonicalPrimeFieldSourcePath = primeFieldSourcePath.replaceAll(
+    "\\",
+    "/",
+  );
   assert.equal(
     primeFieldSourceManifest.coreSourceMap[0].location,
-    `${canonicalNativeSourcePath(primeFieldSourcePath)}:29:5`,
+    `${canonicalPrimeFieldSourcePath}:29:5`,
+  );
+  const primeFieldCoreSource = readFileSync(
+    join(primeFieldSourceKernel.outputPath, "kernel_core.c"),
+    "utf8",
   );
   assert.ok(
-    readFileSync(
-      join(primeFieldSourceKernel.outputPath, "kernel_core.c"), "utf8",
-    ).includes(
-      `#line 29 ${JSON.stringify(canonicalNativeSourcePath(primeFieldSourcePath))}`,
+    primeFieldCoreSource.includes(
+      `#line 29 ${JSON.stringify(canonicalPrimeFieldSourcePath)}`,
     ),
   );
+  if (primeFieldSourcePath.includes("\\")) {
+    assert.notEqual(
+      primeFieldSourceManifest.coreSourceMap[0].location,
+      `${primeFieldSourcePath}:29:5`,
+    );
+    assert.equal(
+      primeFieldCoreSource.includes(
+        `#line 29 ${JSON.stringify(primeFieldSourcePath)}`,
+      ),
+      false,
+    );
+  }
   const primeFieldAddon = require(primeFieldKernel.addonPath);
   const primeFieldModule = require(primeFieldKernel.modulePath);
   const primeFieldManifest = JSON.parse(
