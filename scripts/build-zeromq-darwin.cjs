@@ -24,7 +24,11 @@ const { execFileSync, spawnSync } = require("node:child_process");
 
 const { macosReleaseMinimum } = require("./darwin-native.cjs");
 const {
+  ZEROMQ_BUILD_FEATURES,
+  ZEROMQ_LINKED_PACKAGES,
   ZEROMQ_SOURCE,
+  ZEROMQ_VCPKG_BASELINE,
+  ZEROMQ_VCPKG_URL,
   canonicalJson,
   createRuntimeNativeDependencyReceipt,
   readRuntimeNativeDependencyReceipt,
@@ -35,8 +39,8 @@ const root = resolve(__dirname, "..");
 const buildRoot = join(root, "build", "zeromq-native");
 const selectionFilename = join(buildRoot, "selection.json");
 const SELECTION_SCHEMA = "sagejs.zeromq-native-selection-v1";
-const VCPKG_BASELINE = "608d1dbcd6969679f82b1ca6b89d58939c9b228e";
-const VCPKG_URL = "https://github.com/microsoft/vcpkg.git";
+const VCPKG_BASELINE = ZEROMQ_VCPKG_BASELINE;
+const VCPKG_URL = ZEROMQ_VCPKG_URL;
 const PROJECT_OPTIONS_SHA256 =
   ZEROMQ_SOURCE.projectOptionsSha256;
 const PROJECT_OPTIONS_URL =
@@ -46,6 +50,75 @@ const SOURCE_URL =
 
 function sha256File(filename) {
   return sha256Bytes(readFileSync(filename));
+}
+
+function parseVcpkgStatus(value) {
+  return value
+    .replaceAll("\r\n", "\n")
+    .split(/\n{2,}/)
+    .map((paragraph) => {
+      const fields = {};
+      for (const line of paragraph.split("\n")) {
+        if (line.trim() === "" || /^\s/.test(line)) continue;
+        const separator = line.indexOf(":");
+        if (separator <= 0) throw new Error("vcpkg status has an invalid field");
+        fields[line.slice(0, separator)] = line.slice(separator + 1).trim();
+      }
+      return fields;
+    })
+    .filter((fields) => Object.keys(fields).length > 0);
+}
+
+function resolvedLinkedPackages(status, architecture) {
+  const paragraphs = parseVcpkgStatus(status);
+  const actual = ZEROMQ_LINKED_PACKAGES.map((expected) => {
+    const entries = paragraphs.filter((entry) => entry.Package === expected.name);
+    const base = entries.filter((entry) => entry.Feature === undefined);
+    const features = entries
+      .filter((entry) => entry.Feature !== undefined)
+      .map((entry) => entry.Feature)
+      .sort();
+    if (
+      base.length !== 1 ||
+      entries.length !== 1 + expected.features.length ||
+      base[0].Status !== "install ok installed" ||
+      base[0].Architecture !== architecture ||
+      base[0].Version !== expected.version ||
+      Number(base[0]["Port-Version"] ?? 0) !== expected.portVersion ||
+      entries.some((entry) => entry.Architecture !== architecture)
+    ) throw new Error(`vcpkg did not resolve the audited ${expected.name} package`);
+    return {
+      features,
+      name: expected.name,
+      portVersion: Number(base[0]["Port-Version"] ?? 0),
+      version: base[0].Version,
+    };
+  });
+  if (canonicalJson(actual) !== canonicalJson(ZEROMQ_LINKED_PACKAGES)) {
+    throw new Error("vcpkg linked package resolution differs from authority");
+  }
+  return actual;
+}
+
+function findVcpkgStatus(directory) {
+  const matches = [];
+  const visit = (current) => {
+    for (const entry of readdirSync(current, { withFileTypes: true })) {
+      const filename = join(current, entry.name);
+      if (entry.isDirectory()) visit(filename);
+      else if (
+        entry.isFile() &&
+        entry.name === "status" &&
+        basename(current) === "vcpkg" &&
+        basename(dirname(current)) === "vcpkg_installed"
+      ) matches.push(filename);
+    }
+  };
+  visit(directory);
+  if (matches.length !== 1) {
+    throw new Error(`expected one vcpkg status database, found ${matches.length}`);
+  }
+  return matches[0];
 }
 
 function commandIdentity(command, arguments_ = ["--version"], environment = process.env) {
@@ -336,14 +409,11 @@ function buildZeroMQDarwin(options = {}) {
   const declaration = {
     build: {
       cmakePolicyVersionMinimum: "3.5",
-      features: {
-        curve: true,
-        draft: true,
-        noSyncResolve: false,
-        sodium: true,
-        websockets: false,
-        websocketsSecure: false,
-      },
+      features: { ...ZEROMQ_BUILD_FEATURES },
+      linkedPackages: ZEROMQ_LINKED_PACKAGES.map((entry) => ({
+        ...entry,
+        features: [...entry.features],
+      })),
       projectOptionsSha256: PROJECT_OPTIONS_SHA256,
       tripletSha256: sha256Bytes(triplet),
       vcpkgBaseline: VCPKG_BASELINE,
@@ -405,6 +475,10 @@ function buildZeroMQDarwin(options = {}) {
     if (sourcePackage.name !== "zeromq" || sourcePackage.version !== "6.5.0") {
       throw new Error("verified archive did not contain zeromq 6.5.0");
     }
+    if (sha256File(join(source, "vcpkg.json")) !==
+      ZEROMQ_SOURCE.vcpkgManifestSha256) {
+      throw new Error("verified archive has an unexpected vcpkg manifest");
+    }
     const cmakeLists = join(source, "CMakeLists.txt");
     writeFileSync(
       cmakeLists,
@@ -444,6 +518,10 @@ function buildZeroMQDarwin(options = {}) {
       env: buildEnvironment,
       stdio: "inherit",
     });
+    resolvedLinkedPackages(
+      readFileSync(findVcpkgStatus(target), "utf8"),
+      `${arch}-osx`,
+    );
     const builtAddon = findAddon(target);
     const temporaryArtifact = mkdtempSync(join(buildRoot, `.artifact-${key.slice(0, 12)}-`));
     try {
@@ -498,8 +576,10 @@ module.exports = {
   buildZeroMQDarwin,
   darwinBuildToolEnvironment,
   patchProjectOptionsHash,
+  parseVcpkgStatus,
   preparePinnedVcpkg,
   readZeroMQSelection,
+  resolvedLinkedPackages,
   selectedBuildEnvironment,
   targetArchitecture,
   tripletContents,

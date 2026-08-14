@@ -8,8 +8,12 @@ const test = require("node:test");
 
 const {
   ZEROMQ_ADDON_ASSET,
+  ZEROMQ_BUILD_FEATURES,
+  ZEROMQ_LINKED_PACKAGES,
   ZEROMQ_RECEIPT_ASSET,
   ZEROMQ_SOURCE,
+  ZEROMQ_VCPKG_BASELINE,
+  ZEROMQ_VCPKG_URL,
   createRuntimeNativeDependencyReceipt,
   createSeaRuntimeNativeDependencyBindings,
   validateRuntimeNativeDependencyReceipt,
@@ -19,8 +23,16 @@ const {
 function receipt(addon = Buffer.from("fixture addon")) {
   return createRuntimeNativeDependencyReceipt({
     build: {
-      features: { curve: true, draft: true },
-      vcpkgBaseline: "608d1dbcd6969679f82b1ca6b89d58939c9b228e",
+      cmakePolicyVersionMinimum: "3.5",
+      features: { ...ZEROMQ_BUILD_FEATURES },
+      linkedPackages: ZEROMQ_LINKED_PACKAGES.map((entry) => ({
+        ...entry,
+        features: [...entry.features],
+      })),
+      projectOptionsSha256: ZEROMQ_SOURCE.projectOptionsSha256,
+      tripletSha256: "a".repeat(64),
+      vcpkgBaseline: ZEROMQ_VCPKG_BASELINE,
+      vcpkgUrl: ZEROMQ_VCPKG_URL,
     },
     output: {
       sha256: require("node:crypto").createHash("sha256").update(addon).digest("hex"),

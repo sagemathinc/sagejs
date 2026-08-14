@@ -5,13 +5,87 @@ const { existsSync, readFileSync } = require("node:fs");
 
 const RECEIPT_SCHEMA = "sagejs.runtime-native-dependency-receipt-v1";
 const BINDINGS_SCHEMA = "sagejs.sea-runtime-native-dependency-bindings-v1";
+const ZEROMQ_VCPKG_BASELINE =
+  "608d1dbcd6969679f82b1ca6b89d58939c9b228e";
+const ZEROMQ_VCPKG_URL = "https://github.com/microsoft/vcpkg.git";
+const ZEROMQ_BUILD_FEATURES = Object.freeze({
+  curve: true,
+  draft: true,
+  noSyncResolve: false,
+  sodium: true,
+  websockets: false,
+  websocketsSecure: false,
+});
+const ZEROMQ_LINKED_PACKAGES = Object.freeze([
+  Object.freeze({
+    features: Object.freeze(["curve", "draft", "sodium"]),
+    name: "zeromq",
+    portVersion: 2,
+    version: "4.3.5",
+  }),
+  Object.freeze({
+    features: Object.freeze([]),
+    name: "libsodium",
+    portVersion: 3,
+    version: "1.0.20",
+  }),
+]);
+const ZEROMQ_LINKED_SOURCES = Object.freeze([
+  Object.freeze({
+    archiveSha256:
+      "6c972d1e6a91a0ecd79c3236f04cf0126f2f4dfbbad407d72b4606a7ba93f9c6",
+    archiveSha512:
+      "108d9c5fa761c111585c30f9c651ed92942dda0ac661155bca52cc7b6dbeb3d27b0dd994abde206eacfc3bc88d19ed24e45b291050c38469e34dca5f8c9a037d",
+    license: Object.freeze({
+      sha256:
+        "1f256ecad192880510e84ad60474eab7589218784b9a50bc7ceee34c2b91f1d5",
+      spdx: "MPL-2.0",
+    }),
+    name: "libzmq",
+    port: Object.freeze({
+      manifestSha256:
+        "7f4a690dc969072846cb7573a453b44597672351307cdd1c81216cac7aa8395f",
+      name: "zeromq",
+      portFileSha256:
+        "f6df781bc3958f71bdbc99bbca3427ff939b934c7272fd66f859f6f6255e2e88",
+      portVersion: 2,
+    }),
+    url: "https://github.com/zeromq/libzmq/archive/refs/tags/v4.3.5.tar.gz",
+    version: "4.3.5",
+  }),
+  Object.freeze({
+    archiveSha256:
+      "8e5aeca07a723a27bbecc3beef14b0068d37e7fc0e97f51b3f1c82d2a58005c1",
+    archiveSha512:
+      "477b9dc10d87ae3c83db3fc207b50b9fe39593684a59f164986cce32bdaba95db0df7dee32149bf9a23c5794354fce8241d88a9a4bd4bbf2630483cbbc378c2f",
+    license: Object.freeze({
+      sha256:
+        "43964d976a6db3fb986af689d05f8ca0e9971878bccae709750dac8fdc4a99cf",
+      spdx: "ISC",
+    }),
+    name: "libsodium",
+    port: Object.freeze({
+      manifestSha256:
+        "26cb2c94e958d3f9294f09d15f54757660c88add1eb9ce3147877abe42a73fb8",
+      name: "libsodium",
+      portFileSha256:
+        "513d4d04cd34e0c362d239c8d42394f3a3c3c9999898cc8d16bb965d595c8bc8",
+      portVersion: 3,
+    }),
+    url: "https://github.com/jedisct1/libsodium/archive/refs/tags/1.0.20-RELEASE.tar.gz",
+    version: "1.0.20",
+  }),
+]);
 const ZEROMQ_SOURCE = Object.freeze({
   archiveSha256:
     "330abac242c3a7b867773ec20056f8e5902ca390b405ceb3d600da1b82fdb81c",
   name: "zeromq",
+  linkedSources: ZEROMQ_LINKED_SOURCES,
   projectOptionsSha256:
     "79c068fa5c7746aae9353bf5548223ac9c44970f4f80ad0dc6bc593fb68063c9",
   url: "https://registry.npmjs.org/zeromq/-/zeromq-6.5.0.tgz",
+  vcpkgManifestSha256:
+    "03990d8c60264e4b2080623210eb4ea3a0a6d0ea2459fa9783fd0e4b375cb5af",
   version: "6.5.0",
 });
 const ZEROMQ_RECEIPT_ASSET = "native/dependencies/zeromq-receipt.json";
@@ -71,9 +145,11 @@ function validateRuntimeNativeDependencyReceipt(receipt, options = {}) {
     !/^[0-9a-f]{64}$/.test(receipt.identitySha256 ?? "") ||
     !exactKeys(receipt.source, [
       "archiveSha256",
+      "linkedSources",
       "name",
       "projectOptionsSha256",
       "url",
+      "vcpkgManifestSha256",
       "version",
     ]) ||
     canonicalJson(receipt.source) !== canonicalJson(ZEROMQ_SOURCE) ||
@@ -94,9 +170,25 @@ function validateRuntimeNativeDependencyReceipt(receipt, options = {}) {
     !/^[0-9a-f]{64}$/.test(receipt.output.sha256 ?? "") ||
     !Number.isSafeInteger(receipt.output.size) ||
     receipt.output.size <= 0 ||
-    receipt.build === null ||
-    typeof receipt.build !== "object" ||
-    Array.isArray(receipt.build) ||
+    !exactKeys(receipt.build, [
+      "cmakePolicyVersionMinimum",
+      "features",
+      "linkedPackages",
+      "projectOptionsSha256",
+      "tripletSha256",
+      "vcpkgBaseline",
+      "vcpkgUrl",
+    ]) ||
+    receipt.build.cmakePolicyVersionMinimum !== "3.5" ||
+    canonicalJson(receipt.build.features) !==
+      canonicalJson(ZEROMQ_BUILD_FEATURES) ||
+    canonicalJson(receipt.build.linkedPackages) !==
+      canonicalJson(ZEROMQ_LINKED_PACKAGES) ||
+    receipt.build.projectOptionsSha256 !==
+      ZEROMQ_SOURCE.projectOptionsSha256 ||
+    !/^[0-9a-f]{64}$/.test(receipt.build.tripletSha256 ?? "") ||
+    receipt.build.vcpkgBaseline !== ZEROMQ_VCPKG_BASELINE ||
+    receipt.build.vcpkgUrl !== ZEROMQ_VCPKG_URL ||
     receipt.toolchain === null ||
     typeof receipt.toolchain !== "object" ||
     Array.isArray(receipt.toolchain)
@@ -247,8 +339,13 @@ module.exports = {
   BINDINGS_SCHEMA,
   RECEIPT_SCHEMA,
   ZEROMQ_ADDON_ASSET,
+  ZEROMQ_BUILD_FEATURES,
   ZEROMQ_RECEIPT_ASSET,
+  ZEROMQ_LINKED_PACKAGES,
+  ZEROMQ_LINKED_SOURCES,
   ZEROMQ_SOURCE,
+  ZEROMQ_VCPKG_BASELINE,
+  ZEROMQ_VCPKG_URL,
   canonicalJson,
   compareNumericVersions,
   createRuntimeNativeDependencyReceipt,
