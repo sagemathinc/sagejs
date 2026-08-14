@@ -1,0 +1,60 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "release-source-policy-integration",
+  "title": "Integrate release source policy",
+  "lane": "integration",
+  "status": "active",
+  "owner": "user",
+  "objective": "Integrate the independently approved release source-policy range onto the exact closed website baseline and close a validated intermediate release source checkpoint without tagging or publishing",
+  "base_commit": "d4e7bfcf304824b2042eefa3a973b7f141f8af4e",
+  "claims": [
+    ".agents/tasks/release-source-policy-integration.json",
+    ".agents/tasks/release-source-policy.json",
+    ".github/workflows/ci.yml",
+    "README.md",
+    "scripts/release-source-policy.cjs",
+    "test/node-test-manifest.cjs",
+    "test/release-source-policy.cjs",
+    "test/release-workflow-protection.cjs"
+  ],
+  "dependencies": [
+    "release-source-policy",
+    "release-website-docs-integration"
+  ],
+  "references": [
+    "Independently approved source and closure range 8d18904b2bbd0860b89e6236d7b35346e3c9bba2..cea513ba5fba94f7d098b6aec1a611c3509810ce",
+    "Closed website integration baseline d4e7bfcf304824b2042eefa3a973b7f141f8af4e"
+  ],
+  "architecture": {
+    "strategy": "not-applicable",
+    "fallback": "not-applicable",
+    "oracles": [
+      "Functional temporary Git repositories cover annotated, lightweight, unmerged, mismatched, and merged-ancestor tag cases",
+      "Workflow ratchet tests bind the source-policy environment and full-history checkout",
+      "Range and blob audits preserve the independently approved implementation exactly"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "not-applicable",
+    "windows-x64": "not-applicable",
+    "macos-arm64": "not-applicable"
+  },
+  "validation": [
+    "node --test test/release-source-policy.cjs test/release-workflow-protection.cjs",
+    "pnpm test:release",
+    "pnpm test:portable",
+    "pnpm test:baselib:strict",
+    "pnpm test:changed -- --base d4e7bfcf304824b2042eefa3a973b7f141f8af4e",
+    "pnpm architecture:check",
+    "pnpm parallel:check -- --all"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "",
+    "risks": [],
+    "next_steps": []
+  }
+}
