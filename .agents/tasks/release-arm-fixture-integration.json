@@ -1,0 +1,48 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "release-arm-fixture-integration",
+  "title": "Integrate cross-host release fixtures",
+  "lane": "integration",
+  "status": "active",
+  "owner": "user",
+  "objective": "Integrate the independently reviewed architecture-aware Linux release fixture authority into a closed intermediate release checkpoint",
+  "base_commit": "db6258674e6f191b8187c31e2231a45c73a5c5c6",
+  "claims": [
+    ".agents/tasks/release-arm-fixture-integration.json",
+    ".agents/tasks/release-candidate-arm-fixtures.json",
+    "scripts/release-candidate-linux.cjs",
+    "test/release-candidate-linux.cjs"
+  ],
+  "dependencies": [
+    "release-candidate-arm-fixtures"
+  ],
+  "references": [],
+  "architecture": {
+    "strategy": "not-applicable",
+    "fallback": "not-applicable",
+    "oracles": [
+      "Focused release-candidate fixture suite with exact x64, Linux arm64, and macOS arm64 target receipts"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "not-applicable",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "node --test test/release-candidate-linux.cjs",
+    "pnpm architecture:check",
+    "pnpm test:portable",
+    "pnpm test:baselib:strict",
+    "pnpm parallel:check -- --all"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "",
+    "risks": [],
+    "next_steps": []
+  }
+}
