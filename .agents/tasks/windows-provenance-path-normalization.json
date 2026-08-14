@@ -4,7 +4,7 @@
   "id": "windows-provenance-path-normalization",
   "title": "Canonical Windows native provenance paths",
   "lane": "native-compiler",
-  "status": "review",
+  "status": "complete",
   "owner": "user",
   "objective": "Make native source-provenance tests require the canonical slash-normalized Windows path while preserving exact source filename, line, column, and generated #line semantics",
   "base_commit": "18f5475a82297a2066462b732388406832a3449f",
@@ -87,7 +87,7 @@
     }
   ],
   "handoff": {
-    "summary": "Test-only provenance expectations now bind the actual compiled manifest and generated C #line directive to the compiler's slash-normalized real source identity, exact filename, and 29:5 coordinates. Linux full native, architecture, strict-baselib, and changed-file unit validation pass on exact source commit 4f16a063899b5c953dadfe6ff6aa101dc79bcdbb. On native Windows with official Node 26.7, the exact 4f16 contract-wrapped focused run passed both corrected provenance assertions before failing a later unrelated assertion; the failed required-platform receipt is recorded above.",
+    "summary": "Integrated test-only provenance expectations binding the actual compiled manifest and generated C #line directive to the compiler's slash-normalized real source identity, exact filename, and 29:5 coordinates. Linux full native, architecture, strict-baselib, and changed-file unit validation pass on exact source commit 4f16a063899b5c953dadfe6ff6aa101dc79bcdbb. On native Windows with official Node 26.7, the exact 4f16 contract-wrapped focused run passed both corrected provenance assertions before failing a later unrelated assertion; the failed required-platform receipt is recorded above.",
     "risks": [
       "The recorded real Windows native-kernel run fails the pre-existing byte-reproducibility assertion near line 2433 because relocated PE output differs in timestamp/GUID/PDB/junction bytes; this is downstream of the passing provenance checks and is assigned to a separate lane."
     ],
