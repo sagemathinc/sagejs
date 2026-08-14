@@ -4,7 +4,7 @@
   "id": "release-producer-claims-integration",
   "title": "Integrate release producer claims",
   "lane": "integration",
-  "status": "active",
+  "status": "review",
   "owner": "user",
   "objective": "Integrate the independently reviewed Linux acceptance producer claims and immutable macOS publication documentation into a closed combined release checkpoint",
   "base_commit": "03bd7b16f696303d7f35abe8c5fc83e7cc6833c6",
@@ -44,10 +44,89 @@
     "pnpm test:baselib:strict",
     "pnpm parallel:check -- --all"
   ],
-  "runs": [],
+  "runs": [
+    {
+      "command": "node --test test/release-workflow-protection.cjs test/release-publication.cjs test/release-artifact-acceptance.cjs test/release-tag-policy.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.659,
+      "started_at": "2026-08-14T15:42:47.498Z",
+      "commit": "93021ec4bf7148fda8798be40ccf5aa385725468",
+      "workspace_fingerprint": "0efa38f3591e5fc8640ab5ac45f6fa4c50c45e53af2e213892feff3d826805b8",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:release -- --tag v0.2.0",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.54,
+      "started_at": "2026-08-14T15:42:50.791Z",
+      "commit": "93021ec4bf7148fda8798be40ccf5aa385725468",
+      "workspace_fingerprint": "0efa38f3591e5fc8640ab5ac45f6fa4c50c45e53af2e213892feff3d826805b8",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:changed -- --base 03bd7b16f696303d7f35abe8c5fc83e7cc6833c6",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 24.396,
+      "started_at": "2026-08-14T15:42:57.708Z",
+      "commit": "93021ec4bf7148fda8798be40ccf5aa385725468",
+      "workspace_fingerprint": "0efa38f3591e5fc8640ab5ac45f6fa4c50c45e53af2e213892feff3d826805b8",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 5.56,
+      "started_at": "2026-08-14T15:43:28.532Z",
+      "commit": "93021ec4bf7148fda8798be40ccf5aa385725468",
+      "workspace_fingerprint": "0efa38f3591e5fc8640ab5ac45f6fa4c50c45e53af2e213892feff3d826805b8",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 22.712,
+      "started_at": "2026-08-14T15:43:34.749Z",
+      "commit": "93021ec4bf7148fda8798be40ccf5aa385725468",
+      "workspace_fingerprint": "0efa38f3591e5fc8640ab5ac45f6fa4c50c45e53af2e213892feff3d826805b8",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 14.254,
+      "started_at": "2026-08-14T15:44:57.735Z",
+      "commit": "93021ec4bf7148fda8798be40ccf5aa385725468",
+      "workspace_fingerprint": "0efa38f3591e5fc8640ab5ac45f6fa4c50c45e53af2e213892feff3d826805b8",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm parallel:check -- --all",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.591,
+      "started_at": "2026-08-14T15:45:17.793Z",
+      "commit": "93021ec4bf7148fda8798be40ccf5aa385725468",
+      "workspace_fingerprint": "0efa38f3591e5fc8640ab5ac45f6fa4c50c45e53af2e213892feff3d826805b8",
+      "platform": "linux-x64"
+    }
+  ],
   "handoff": {
-    "summary": "",
-    "risks": [],
-    "next_steps": []
+    "summary": "Integrated the independently approved source range c8843e04e69742e94e2bbbb3400ff6d22d541288..a4ded7006b911fc5e7a9d2f99810556ed7a11119 in order as 849c049 and ba303e0 onto the closed Mac-native checkpoint 03bd7b16f696303d7f35abe8c5fc83e7cc6833c6. The two patches are range-equivalent and all four implementation blobs are exact. Both native Linux producers now run final-host acceptance against the exact archive and checksum with package-version, verified source-commit, unsigned-signature, and GLIBC 2.28 bindings; uploads include the acceptance receipt and sidecar, and policy tests ratchet their complete inventories to the publication assembler allowlist. README describes local macOS packaging as reproduction-only under the protected immutable tag workflow. Focused release tests passed 43/43; release metadata, exact-base changed-file unit 450/450, architecture, portable, strict baselib, and all-contract parallel checks passed at one integration fingerprint.",
+    "risks": [
+      "The source task's retained 216.999-second docs:check failure accurately records stale generated reference documentation. A separately assigned documentation-compat lane owns the website reference artifacts and final green docs gate; this integration neither claims nor edits them.",
+      "Raw actionlint 1.7.12 remains nonzero with the source baseline's eight inherited diagnostics. The source review established identical normalized diagnostic sets and separately checked both new Linux shell bodies with bash and ShellCheck; this integration does not claim the inherited workflow diagnostics are fixed.",
+      "Final validation still requires the protected candidate-tag workflow to execute Linux x64 and arm64 final-host acceptance. This intermediate integration did not create a tag or publish assets."
+    ],
+    "next_steps": [
+      "Obtain independent review of the exact combined checkpoint, including ordered range equivalence, implementation blob identity, preserved source evidence, current integration receipts, and scoped/all parallel checks.",
+      "After approval, close this integration task and provide the exact closed combined checkpoint to the Windows static/package lane.",
+      "Keep the separately assigned documentation-compat closure and final protected-tag artifact execution as later release gates."
+    ]
   }
 }
