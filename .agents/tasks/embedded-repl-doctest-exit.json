@@ -1,0 +1,43 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "embedded-repl-doctest-exit",
+  "title": "Embedded REPL doctest exit semantics",
+  "lane": "integration",
+  "status": "active",
+  "owner": "user",
+  "objective": "Let embedded doctest REPLs capture expected user exceptions without mutating the worker exit status while preserving piped CLI and internal failure exits.",
+  "base_commit": "b3491feaf8b0f96f21dbbbf5c1a1561da3ecfcb3",
+  "claims": [
+    "tools/repl.ts",
+    "scripts/run-sage-doctests.cjs",
+    "test/upstream-doctest-tools.cjs"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "compiler-infrastructure",
+    "fallback": "not-applicable",
+    "oracles": [
+      "Expected-exception and mismatched doctest fixtures plus existing piped CLI failure behavior"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "not-applicable",
+    "windows-x64": "not-applicable",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm architecture:check",
+    "pnpm test:portable",
+    "pnpm test:baselib:strict"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "",
+    "risks": [],
+    "next_steps": []
+  }
+}

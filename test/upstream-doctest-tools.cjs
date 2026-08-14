@@ -1,6 +1,14 @@
 "use strict";
 
 const assert = require("node:assert/strict");
+const { spawnSync } = require("node:child_process");
+const {
+  mkdtempSync,
+  rmSync,
+  writeFileSync,
+} = require("node:fs");
+const { tmpdir } = require("node:os");
+const { join, resolve } = require("node:path");
 const {
   extractSageDoctests,
   extractRstSageDoctests,
@@ -8,6 +16,7 @@ const {
   tripleQuotedStrings,
 } = require("../tools/sage-doctest-fixture.cjs");
 const {
+  assertSilentWorkerSetup,
   directiveSkipReason,
   matchesExample,
   matchesExpected,
@@ -80,6 +89,75 @@ assert.ok(
     "Traceback (most recent call last):\n...\nValueError: bad\n",
   ),
 );
+
+assert.doesNotThrow(() => assertSilentWorkerSetup("\n"));
+assert.throws(
+  () => assertSilentWorkerSetup("ValueError: seed setup failed\n"),
+  /random-seed setup produced unexpected output/,
+);
+
+const runner = resolve(__dirname, "../scripts/run-sage-doctests.cjs");
+const embeddedDirectory = mkdtempSync(
+  join(tmpdir(), "sagejs-embedded-doctest-exit-"),
+);
+try {
+  const expectedExceptionFixture = extractSageDoctests([
+    '"""',
+    "sage: raise ValueError('captured')",
+    "Traceback (most recent call last):",
+    "...",
+    "ValueError: captured",
+    '"""',
+    "",
+  ].join("\n"), {
+    repository: "https://example.invalid/sage.git",
+    revision: "expected-exception",
+    path: "src/sage/expected_exception.py",
+    license: "GPL-2.0-or-later",
+  });
+  const expectedFixturePath = join(embeddedDirectory, "expected.json");
+  writeFileSync(
+    expectedFixturePath,
+    `${JSON.stringify(expectedExceptionFixture)}\n`,
+  );
+  const expected = spawnSync(
+    process.execPath,
+    [runner, expectedFixturePath, "--random-seed", "embedded-exception"],
+    { cwd: resolve(__dirname, ".."), encoding: "utf8" },
+  );
+  assert.equal(expected.status, 0, expected.stderr || expected.stdout);
+  assert.match(expected.stdout, /Sage doctests: 1 passed/);
+
+  const mismatchedFixture = structuredClone(expectedExceptionFixture);
+  mismatchedFixture.groups[0].examples[0].want = [
+    "Traceback (most recent call last):",
+    "...",
+    "ValueError: different",
+    "",
+  ].join("\n");
+  const mismatchedFixturePath = join(embeddedDirectory, "mismatched.json");
+  writeFileSync(
+    mismatchedFixturePath,
+    `${JSON.stringify(mismatchedFixture)}\n`,
+  );
+  const mismatched = spawnSync(
+    process.execPath,
+    [runner, mismatchedFixturePath, "--random-seed", "embedded-mismatch"],
+    { cwd: resolve(__dirname, ".."), encoding: "utf8" },
+  );
+  assert.equal(mismatched.status, 1, mismatched.stderr || mismatched.stdout);
+  assert.match(mismatched.stdout, /Sage doctests: 0 passed.*1 failed/);
+
+  const internalFailure = spawnSync(
+    process.execPath,
+    [runner, "--worker"],
+    { cwd: resolve(__dirname, ".."), encoding: "utf8", input: "not-json" },
+  );
+  assert.equal(internalFailure.status, 1);
+  assert.match(internalFailure.stderr, /SyntaxError/);
+} finally {
+  rmSync(embeddedDirectory, { recursive: true, force: true });
+}
 assert.ok(!matchesExpected("6\n", "5\n"));
 assert.ok(matchesTolerance("1.00001\n", "1.0\n", 0.00002, 0));
 assert.ok(!matchesTolerance("1.01\n", "1.0\n", 0.00002, 0));
