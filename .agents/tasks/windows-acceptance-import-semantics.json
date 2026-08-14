@@ -4,7 +4,7 @@
   "id": "windows-acceptance-import-semantics",
   "title": "Windows Acceptance Import Semantics",
   "lane": "integration",
-  "status": "review",
+  "status": "complete",
   "owner": "user",
   "objective": "Validate Windows release artifacts using per-file PE import semantics while preserving static-CRT and security gates",
   "base_commit": "b3491feaf8b0f96f21dbbbf5c1a1561da3ecfcb3",
@@ -146,7 +146,6 @@
       "The first architecture receipt failed because the fresh worktree had no generated dist tree; after pnpm build established it, the current architecture receipt passes."
     ],
     "next_steps": [
-      "Integrate the independently source-approved exact f92e0b8 implementation and this receipt-only closure.",
       "Build the final Windows static-CRT candidate, then run full artifact acceptance to prove both executables, every embedded addon, the exact aggregate dependency set, ZIP security, licenses, checksums, and unsigned publication metadata."
     ]
   }

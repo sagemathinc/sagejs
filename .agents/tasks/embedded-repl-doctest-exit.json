@@ -4,7 +4,7 @@
   "id": "embedded-repl-doctest-exit",
   "title": "Embedded REPL doctest exit semantics",
   "lane": "integration",
-  "status": "review",
+  "status": "complete",
   "owner": "user",
   "objective": "Let embedded doctest REPLs capture expected user exceptions without mutating the worker exit status while preserving piped CLI and internal failure exits.",
   "base_commit": "e981515c0f1e2d3ff284fe7f8d90af8c3ae70de1",
@@ -184,7 +184,7 @@
       "The opt-out is intentionally available only to explicit REPL embedders; callers that disable it must retain their own output/error acceptance boundary."
     ],
     "next_steps": [
-      "Integrate the exact reviewed closure onto the shared release baseline and rerun the combined first-party release workflow."
+      "Retain these exit semantics through the remaining shared integrations and the final exact frozen-source first-party release workflow."
     ]
   }
 }
