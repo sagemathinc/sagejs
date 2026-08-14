@@ -1,0 +1,44 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "website-release-consistency",
+  "title": "Website release consistency",
+  "lane": "documentation-compat",
+  "status": "active",
+  "owner": "user",
+  "objective": "Align public website release claims with the unsigned Windows preview contract and refresh canonical generated reference provenance without changing release workflow or publication authority",
+  "base_commit": "0ae559238dd4b0a07b53dbd126630cf46a9c6aa0",
+  "claims": [
+    "website/capabilities.json",
+    "test/website.cjs",
+    "website/reference-data.json",
+    "website/reference.html"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "not-applicable",
+    "fallback": "not-applicable",
+    "oracles": [
+      "WINDOWS.md and the checked release workflow define Windows artifacts as an explicit unsigned preview",
+      "pnpm docs:generate is the sole authority for generated reference-data and derived reference HTML hashes"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "not-applicable",
+    "windows-x64": "not-applicable",
+    "macos-arm64": "not-applicable"
+  },
+  "validation": [
+    "pnpm docs:check",
+    "pnpm test:tutorial"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "",
+    "risks": [],
+    "next_steps": []
+  }
+}
