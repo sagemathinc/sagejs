@@ -44,6 +44,7 @@ const {
   relative,
   resolve,
   sep,
+  win32: windowsPath,
 } = require("node:path");
 const { spawn, spawnSync } = require("node:child_process");
 const { git } = require("./parallel-lib.cjs");
@@ -911,10 +912,28 @@ function quarantineCacheEntry(entry) {
   }
 }
 
-function sameNativeCachePath(left, right) {
-  return process.platform === "win32"
+function sameNativeCachePath(left, right, platform = process.platform) {
+  return platform === "win32"
     ? left.toLowerCase() === right.toLowerCase()
     : left === right;
+}
+
+function nativeCacheRootIsBroad(
+  cacheRoot,
+  broadRoots,
+  platform = process.platform,
+) {
+  const pathFunctions = platform === "win32" ? windowsPath : {
+    dirname,
+    parse,
+  };
+  return broadRoots.some((root) =>
+    sameNativeCachePath(cacheRoot, root, platform)
+  ) || sameNativeCachePath(
+    pathFunctions.dirname(cacheRoot),
+    pathFunctions.parse(cacheRoot).root,
+    platform,
+  );
 }
 
 function canonicalNativeCachePath(path) {
@@ -972,14 +991,13 @@ function assertExactNativeCacheRoot(
   }
   const filesystemRoot = parse(cacheRoot).root;
   const workspaceRoot = resolvedWorkspaceRoot(workspace);
-  const broadRoots = new Set([
+  const broadRoots = [
     canonicalNativeCachePath(filesystemRoot),
     canonicalNativeCachePath(resolve(homedir())),
     workspaceRoot,
-  ]);
+  ];
   if (
-    broadRoots.has(canonicalCacheRoot) ||
-    dirname(canonicalCacheRoot) === parse(canonicalCacheRoot).root ||
+    nativeCacheRootIsBroad(canonicalCacheRoot, broadRoots) ||
     basename(cacheRoot) === ""
   ) {
     throw new Error(`native-cache maintenance refused broad root: ${cacheRoot}`);
@@ -2146,6 +2164,7 @@ module.exports = {
   nativeCacheArtifactIds,
   nativeCachePackages,
   nativeCacheProcessIdentity,
+  nativeCacheRootIsBroad,
   nativeCacheStatus,
   prepareNativeArtifact,
   prepareNativeDependencies,

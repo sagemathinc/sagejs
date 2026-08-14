@@ -7,7 +7,7 @@
   "status": "active",
   "owner": "user",
   "objective": "Accept canonical macOS ancestor aliases while preserving exact lstat cache-root and descendant safety, and make installed-package path assertions canonical.",
-  "base_commit": "4432160e43a8cae6838e7a2b9dc745c4e0290d34",
+  "base_commit": "583256c92d5818307e400a8c8bb1a8fea2c2034a",
   "claims": [
     "scripts/native-worktree-cache.cjs",
     "test/parallel-development.cjs"
