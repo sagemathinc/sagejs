@@ -4,7 +4,7 @@
   "id": "release-artifact-acceptance",
   "title": "Cross-platform release artifact acceptance",
   "lane": "integration",
-  "status": "review",
+  "status": "active",
   "owner": "user",
   "objective": "Verify every final release archive against exact source/build receipts, complete third-party license provenance, binary compatibility, relocation, mathematics, and platform signing policy before publication",
   "base_commit": "e4018fd70bf2b9549b826e20d825e08bf43dafe5",
