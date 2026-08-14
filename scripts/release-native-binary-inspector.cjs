@@ -6,6 +6,7 @@ const { readFileSync, writeFileSync } = require("node:fs");
 const { basename } = require("node:path");
 
 const REPORT_SCHEMA = "sagejs.native-binary-inspection-v1";
+const EMBEDDED_NODE_ADDON_ROLE = "embedded-node-addon";
 
 class BinaryFormatError extends Error {
   constructor(message) {
@@ -751,7 +752,7 @@ function inspectNativeInputs(inputs, policy) {
         }
       }
     }
-    if (file.format === "pe" && file.role === "embedded-addon") {
+    if (file.format === "pe" && file.role === EMBEDDED_NODE_ADDON_ROLE) {
       const ordinaryNode = file.dependencies.some(
         (dependency) => dependency.toLowerCase() === "node.exe",
       );
@@ -895,6 +896,7 @@ function main() {
 
 module.exports = {
   BinaryFormatError,
+  EMBEDDED_NODE_ADDON_ROLE,
   NativeBinaryPolicyError,
   REPORT_SCHEMA,
   assertNativeInputs,
