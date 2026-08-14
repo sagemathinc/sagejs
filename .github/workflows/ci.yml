@@ -581,7 +581,8 @@ jobs:
             [Text.UTF8Encoding]::new($false)
           )
           $archive = "build/release/sagejs-windows-x64-unsigned.zip"
-          Compress-Archive -Path $release -DestinationPath $archive
+          node scripts/create-windows-release-zip.cjs $release $archive
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           (Get-FileHash $archive -Algorithm SHA256).Hash.ToLower() +
             "  sagejs-windows-x64-unsigned.zip" |
             Set-Content "$archive.sha256"

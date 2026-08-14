@@ -229,8 +229,11 @@ test("Windows is deliberately unsigned and bypasses the signing environment", ()
   assert.match(windows, /sagejs\.exe-build-manifest\.json/);
   assert.match(windows, /sagepython\.exe-build-manifest\.json/);
   assert.match(windows, /SHA256SUMS/);
-  assert.match(windows, /Compress-Archive -Path \$release -DestinationPath \$archive/);
-  assert.doesNotMatch(windows, /Compress-Archive -Path "\$release\/\*"/);
+  assert.match(
+    windows,
+    /node scripts\/create-windows-release-zip\.cjs \$release \$archive/,
+  );
+  assert.doesNotMatch(windows, /Compress-Archive/);
   assert.match(windows, /Expand-Archive -LiteralPath \$archive/);
   assert.match(windows, /release-artifact-acceptance\.cjs/);
   assert.match(windows, /--target windows-x64/);

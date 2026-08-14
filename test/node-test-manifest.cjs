@@ -15,6 +15,7 @@ const unit = [
   "test/release-manifest.cjs",
   "test/release-publication.cjs",
   "test/release-workflow-protection.cjs",
+  "test/windows-release-zip.cjs",
   "test/release-native-binary-inspector.cjs",
   "test/runtime-native-dependency-receipt.cjs",
   "test/release-artifact-acceptance.cjs",
