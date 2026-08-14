@@ -19,6 +19,10 @@ const {
   hashRegularFile,
   serialize,
 } = require("./release-manifest.cjs");
+const {
+  RECEIPT_SCHEMA: ARTIFACT_ACCEPTANCE_SCHEMA,
+  preflightArchive,
+} = require("./release-artifact-acceptance.cjs");
 
 const SCHEMA = "sagejs.release-publication-provenance-v1";
 const HASH = /^[0-9a-f]{64}$/;
@@ -383,31 +387,6 @@ function zipEntry(archive, entry) {
   return result.stdout;
 }
 
-function zipEntries(archive) {
-  const result = spawnSync("unzip", ["-Z1", archive], {
-    encoding: "utf8",
-    maxBuffer: 1024 * 1024,
-  });
-  if (result.error) throw result.error;
-  if (result.status !== 0) {
-    throw new Error(`cannot inspect ZIP ${archive}: ${result.stderr.trim()}`);
-  }
-  const entries = result.stdout.split(/\r?\n/).filter(Boolean);
-  if (new Set(entries).size !== entries.length) {
-    throw new Error("Windows archive contains duplicate entries");
-  }
-  for (const entry of entries) {
-    if (
-      entry.includes("\\") ||
-      entry.startsWith("/") ||
-      /^[A-Za-z]:/.test(entry) ||
-      entry.split("/").some((part, index, parts) =>
-        (!part && index !== parts.length - 1) || part === "." || part === "..")
-    ) throw new Error(`Windows archive contains unsafe path ${JSON.stringify(entry)}`);
-  }
-  return entries;
-}
-
 function releaseLicenseFiles() {
   const directory = resolve(__dirname, "../licenses");
   return readdirSync(directory).sort().map((name) => {
@@ -420,26 +399,28 @@ function releaseLicenseFiles() {
 }
 
 function verifyUnsignedWindowsArchive(archive, { commit, version }) {
-  const entries = zipEntries(archive);
-  const actualFiles = entries.filter((entry) => !entry.endsWith("/"));
+  const root = "sagejs-windows-x64";
   const expectedFiles = [
     "DISTRIBUTION.md",
     "LICENSE",
     "README.md",
+    "SHA256SUMS",
     "UNSIGNED-WINDOWS.txt",
     "release.json",
+    "sagejs-build-manifest.json",
     "sagejs.exe",
+    "sagepython-build-manifest.json",
     "sagepython.exe",
     ...releaseLicenseFiles(),
   ].sort();
-  assert.deepEqual(actualFiles.sort(), expectedFiles, "Windows archive file inventory");
-  const directories = entries.filter((entry) => entry.endsWith("/"));
-  if (directories.some((entry) => entry !== "licenses/")) {
-    throw new Error(`Windows archive contains unexpected directories: ${directories.join(", ")}`);
-  }
+  assert.deepEqual(
+    preflightArchive(archive, "windows-x64"),
+    expectedFiles.map((name) => `${root}/${name}`).sort(),
+    "Windows archive file inventory",
+  );
   let manifest;
   try {
-    manifest = JSON.parse(zipEntry(archive, "release.json"));
+    manifest = JSON.parse(zipEntry(archive, `${root}/release.json`));
   } catch (error) {
     throw new Error(`invalid Windows release.json: ${error.message}`);
   }
@@ -450,10 +431,61 @@ function verifyUnsignedWindowsArchive(archive, { commit, version }) {
     target: "windows-x64",
     version,
   });
-  const notice = zipEntry(archive, "UNSIGNED-WINDOWS.txt");
+  const notice = zipEntry(archive, `${root}/UNSIGNED-WINDOWS.txt`);
   if (!/not Authenticode-signed/i.test(notice) || !/SHA-256/i.test(notice)) {
     throw new Error("UNSIGNED-WINDOWS.txt must warn about Authenticode and SHA-256");
   }
+}
+
+function verifyWindowsAcceptance(root, { archiveSha256, commit, version }) {
+  const receiptName = "sagejs-windows-x64-acceptance.json";
+  const receiptSha256 = verifyChecksum(root, receiptName, `${receiptName}.sha256`);
+  const receipt = readJson(join(root, receiptName), "Windows acceptance receipt");
+  assert.equal(receipt.schema, ARTIFACT_ACCEPTANCE_SCHEMA, "Windows acceptance schema");
+  assert.deepEqual(receipt.archive, {
+    name: "sagejs-windows-x64-unsigned.zip",
+    sha256: archiveSha256,
+    size: lstatSync(join(root, "sagejs-windows-x64-unsigned.zip")).size,
+  });
+  assert.equal(receipt.version, version, "Windows accepted version");
+  assert.equal(receipt.source?.commit, commit, "Windows accepted source");
+  assert.equal(receipt.target?.platform, "win32", "Windows accepted platform");
+  assert.equal(receipt.target?.arch, "x64", "Windows accepted architecture");
+  assert.equal(
+    receipt.signatures?.mode,
+    "explicitly-unsigned-authenticode",
+    "Windows signature acceptance",
+  );
+  assert.deepEqual(
+    receipt.signatures?.executables,
+    ["sagejs.exe", "sagepython.exe"].map((executable) => ({
+      certificateTableOffset: 0,
+      certificateTableSize: 0,
+      executable,
+    })),
+    "Windows Authenticode evidence",
+  );
+  const requiredChecks = [
+    "archiveContents",
+    "archiveSha256",
+    "buildReceiptBinding",
+    "exactMathematics",
+    "licenseAndSourceInventory",
+    "nativeDependencyClosure",
+    "relocatedRuntime",
+    "signaturePolicy",
+  ];
+  assert.deepEqual(
+    Object.keys(receipt.checks || {}).sort(),
+    requiredChecks,
+    "Windows acceptance check inventory",
+  );
+  assert.equal(
+    requiredChecks.every((name) => receipt.checks[name] === true),
+    true,
+    "Windows acceptance contains a failed check",
+  );
+  return receiptSha256;
 }
 
 function assertEmptyOutput(directory) {
@@ -516,7 +548,13 @@ function preparePublication(options) {
       verifyLinuxReadiness(root, platform, { commit: options.commit, version });
     }
     if (platform === "windows-x64") {
-      verifyUnsignedWindowsArchive(join(root, "sagejs-windows-x64-unsigned.zip"), {
+      const archive = join(root, "sagejs-windows-x64-unsigned.zip");
+      verifyUnsignedWindowsArchive(archive, {
+        commit: options.commit,
+        version,
+      });
+      verifyWindowsAcceptance(root, {
+        archiveSha256: hashRegularFile(root, archive, basename(archive)).sha256,
         commit: options.commit,
         version,
       });
@@ -602,8 +640,8 @@ module.exports = {
   platforms,
   preparePublication,
   regularFiles,
-  zipEntries,
   verifyUnsignedWindowsArchive,
   verifyAcceptanceReceipt,
   verifyChecksum,
+  verifyWindowsAcceptance,
 };

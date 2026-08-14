@@ -12,7 +12,9 @@
     ".github/workflows/ci.yml",
     "scripts/build-sea.cjs",
     "scripts/create-windows-release-zip.cjs",
+    "scripts/prepare-release-publication.cjs",
     "test/node-test-manifest.cjs",
+    "test/release-publication.cjs",
     "test/sea-build-manifest.cjs",
     "test/release-workflow-protection.cjs",
     "test/windows-release-zip.cjs"

@@ -22,6 +22,9 @@ const {
   preparePublication,
   regularFiles,
 } = require("../scripts/prepare-release-publication.cjs");
+const {
+  createWindowsReleaseZip,
+} = require("../scripts/create-windows-release-zip.cjs");
 
 const COMMIT = "0123456789abcdef0123456789abcdef01234567";
 const VERSION = "1.2.3";
@@ -55,7 +58,9 @@ function sha256(filename) {
 }
 
 function windowsArchive(root, archive, overrides = {}) {
-  const directory = join(root, ".windows-archive");
+  const directory = join(root, "sagejs-windows-x64");
+  rmSync(directory, { force: true, recursive: true });
+  rmSync(archive, { force: true });
   mkdirSync(directory, { recursive: true });
   const manifest = {
     schema: "sagejs.windows-release-manifest-v1",
@@ -72,6 +77,17 @@ function windowsArchive(root, archive, overrides = {}) {
   );
   writeFileSync(join(directory, "sagejs.exe"), "sagejs exe\n");
   writeFileSync(join(directory, "sagepython.exe"), "sagepython exe\n");
+  for (const name of ["sagejs", "sagepython"]) {
+    writeFileSync(
+      join(directory, `${name}-build-manifest.json`),
+      `${JSON.stringify({
+        sagejsVersion: VERSION,
+        schema: "sagejs.release-build-manifest-v1",
+        source: { commit: COMMIT },
+        target: { arch: "x64", platform: "win32" },
+      })}\n`,
+    );
+  }
   for (const name of ["DISTRIBUTION.md", "LICENSE", "README.md"]) {
     writeFileSync(join(directory, name), readFileSync(join(__dirname, "..", name)));
   }
@@ -80,14 +96,22 @@ function windowsArchive(root, archive, overrides = {}) {
   for (const name of readdirSync(sourceLicenses)) {
     writeFileSync(join(directory, "licenses", name), readFileSync(join(sourceLicenses, name)));
   }
-  execFileSync("python3", [
-    "-c",
-    "import pathlib,sys,zipfile; root=pathlib.Path(sys.argv[2]); " +
-      "z=zipfile.ZipFile(sys.argv[1], 'w'); " +
-      "[z.write(p, p.relative_to(root)) for p in sorted(root.rglob('*'))]; z.close()",
-    archive,
-    directory,
-  ]);
+  const files = [];
+  const collect = (current, prefix = "") => {
+    for (const entry of readdirSync(current, { withFileTypes: true }).sort(
+      (left, right) => left.name < right.name ? -1 : left.name > right.name ? 1 : 0,
+    )) {
+      const relativeName = prefix ? `${prefix}/${entry.name}` : entry.name;
+      if (entry.isDirectory()) collect(join(current, entry.name), relativeName);
+      else files.push(relativeName);
+    }
+  };
+  collect(directory);
+  writeFileSync(
+    join(directory, "SHA256SUMS"),
+    `${files.map((name) => `${sha256(join(directory, ...name.split("/")))}  ${name}`).join("\n")}\n`,
+  );
+  createWindowsReleaseZip(directory, archive);
 }
 
 function writeLinuxEvidence(directory, platform) {
@@ -166,6 +190,15 @@ function writeAcceptanceEvidence(directory, platform, policy) {
     schema: "sagejs.release-artifact-acceptance-v1",
     signatures: {
       mode: policy.acceptanceSignature,
+      ...(platform === "windows-x64"
+        ? {
+            executables: ["sagejs.exe", "sagepython.exe"].map((executable) => ({
+              certificateTableOffset: 0,
+              certificateTableSize: 0,
+              executable,
+            })),
+          }
+        : {}),
       ...(macos
         ? {
             package: {
@@ -201,7 +234,11 @@ function fixture() {
     const directory = join(input, platform);
     mkdirSync(directory, { recursive: true });
     for (const path of policy.files) {
-      if (path.endsWith(".sha256") || path.endsWith(".release.json")) continue;
+      if (
+        path.endsWith(".sha256") ||
+        path.endsWith(".release.json") ||
+        path.endsWith("-acceptance.json")
+      ) continue;
       const filename = join(directory, path);
       mkdirSync(dirname(filename), { recursive: true });
       if (path === "sagejs-windows-x64-unsigned.zip") {
@@ -514,10 +551,35 @@ test("Windows publication requires the explicit unsigned archive contract", () =
   }
 });
 
+test("Windows publication requires exact native acceptance evidence", () => {
+  for (const mutate of [
+    (receipt) => { receipt.source.commit = "f".repeat(40); },
+    (receipt) => { delete receipt.checks.relocatedRuntime; },
+    (receipt) => { receipt.signatures.executables[0].certificateTableSize = 8; },
+  ]) {
+    const workspace = fixture();
+    try {
+      const directory = join(workspace.input, "windows-x64");
+      const name = "sagejs-windows-x64-acceptance.json";
+      const filename = join(directory, name);
+      const receipt = JSON.parse(readFileSync(filename, "utf8"));
+      mutate(receipt);
+      writeFileSync(filename, `${JSON.stringify(receipt)}\n`);
+      writeFileSync(
+        `${filename}.sha256`,
+        `${sha256(filename)}  ${name}\n`,
+      );
+      assert.throws(() => preparePublication(workspace.options));
+    } finally {
+      workspace.cleanup();
+    }
+  }
+});
+
 test("Windows ZIP duplicate and traversal entries fail before publication", () => {
   for (const [entry, expected] of [
-    ["release.json", /duplicate entries/],
-    ["../debug.pdb", /unsafe path/],
+    ["sagejs-windows-x64/release.json", /duplicate archive member/],
+    ["../debug.pdb", /unsafe archive member/],
   ]) {
     const workspace = fixture();
     try {
