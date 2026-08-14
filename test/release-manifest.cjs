@@ -411,7 +411,41 @@ test(
             kind: "standalone-executable",
           }],
         }),
-        /must be below manifest directory|escapes canonical root/,
+        /symlink or reparse parent/,
+      );
+
+      const internal = join(release, "internal");
+      mkdirSync(internal);
+      writeFileSync(join(internal, "internal.bin"), "internal\n");
+      symlinkSync(internal, join(release, "internal-link"), "dir");
+      assert.throws(
+        () => createManifest({
+          ...manifestOptions(
+            { archive: artifact, executable: artifact, release: aliasedRelease },
+            receipt(),
+          ),
+          artifacts: [{
+            file: join(aliasedRelease, "internal-link", "internal.bin"),
+            kind: "standalone-executable",
+          }],
+        }),
+        /symlink or reparse parent/,
+      );
+
+      const outsideAlias = join(root, "outside-alias");
+      symlinkSync(release, outsideAlias, "dir");
+      assert.throws(
+        () => createManifest({
+          ...manifestOptions(
+            { archive: artifact, executable: artifact, release: aliasedRelease },
+            receipt(),
+          ),
+          artifacts: [{
+            file: join(outsideAlias, "artifact.bin"),
+            kind: "standalone-executable",
+          }],
+        }),
+        /outside lexical root/,
       );
     } finally {
       rmSync(root, { force: true, recursive: true });
