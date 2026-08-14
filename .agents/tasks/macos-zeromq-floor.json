@@ -4,7 +4,7 @@
   "id": "macos-zeromq-floor",
   "title": "Macos Zeromq Floor",
   "lane": "integration",
-  "status": "active",
+  "status": "complete",
   "owner": "user",
   "objective": "Build and bind ZeroMQ for the declared macOS 13.5 release floor and fail closed when any embedded Mach-O slice exceeds it",
   "base_commit": "e4018fd70bf2b9549b826e20d825e08bf43dafe5",
@@ -53,8 +53,12 @@
   ],
   "runs": [],
   "handoff": {
-    "summary": "",
-    "risks": [],
-    "next_steps": []
+    "summary": "Integrated the independently reviewed macOS 13.5 ZeroMQ source-build authority, canonical containment checks, exact vcpkg source authentication, immutable native publication, resolved static libzmq/libsodium binding, and runtime dependency receipts. The original lane passed 33 focused tests locally and on the physical Apple-silicon M1 builder; the final provenance follow-up was also witnessed by a successful physical M1 source build.",
+    "risks": [
+      "Source authority is approved, but the final signed and notarized release artifact remains a downstream protected-workflow proof."
+    ],
+    "next_steps": [
+      "Run the final macOS arm64 tag candidate through the protected signing environment and retain its receipt, notarization, stapling, and minimum-OS evidence."
+    ]
   }
 }
