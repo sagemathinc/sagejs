@@ -82,6 +82,8 @@ export interface PruneCacheOptions {
   applyLimits?: Partial<CacheApplyLimits>;
   /** Test-only hook immediately before a planned candidate is rechecked. */
   beforeRemove?: (entry: CacheVersionEntry) => void;
+  /** Test-only hook after enumeration and before an entry is inspected. */
+  beforeScanEntry?: (path: string) => void;
   currentVersions: string[];
   expectedRoot?: string;
   family?: CacheFamily;
@@ -166,7 +168,10 @@ export function validateModuleCacheRoot(
   return validateCacheRoot(rootValue, expectedRootValue);
 }
 
-function scanDirectory(directory: string): ScannedDirectory {
+function scanDirectory(
+  directory: string,
+  beforeScanEntry?: (path: string) => void,
+): ScannedDirectory {
   const rootMetadata = lstatSync(directory);
   if (!rootMetadata.isDirectory() || rootMetadata.isSymbolicLink()) {
     throw new Error(`cache entry is not a real directory: ${directory}`);
@@ -178,7 +183,18 @@ function scanDirectory(directory: string): ScannedDirectory {
     const current = pending.pop()!;
     for (const name of readdirSync(current)) {
       const filename = join(current, name);
-      const metadata = lstatSync(filename);
+      beforeScanEntry?.(filename);
+      let metadata;
+      try {
+        metadata = lstatSync(filename);
+      } catch (error) {
+        // Directory enumeration is a snapshot. Atomic cache publishers remove
+        // their private temporary file after publication, so that file may no
+        // longer exist by the time cleanup inspects it. Every other failure is
+        // still fatal, including permission errors and unsafe entry types.
+        if ((error as NodeJS.ErrnoException).code === "ENOENT") continue;
+        throw error;
+      }
       if (metadata.isSymbolicLink()) {
         throw new Error(`cache prune refused symlinked entry: ${filename}`);
       }
@@ -280,7 +296,7 @@ function inspectCache(options: PruneCacheOptions): CachePruneReport {
       ignoredEntries.push(name);
       continue;
     }
-    const scanned = scanDirectory(path);
+    const scanned = scanDirectory(path, options.beforeScanEntry);
     entries.push({
       ageDays: Math.max(0, (now - scanned.newestMtimeMs) / DAY_MS),
       bytes: scanned.bytes,
