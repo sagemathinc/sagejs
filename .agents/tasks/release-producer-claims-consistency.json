@@ -4,7 +4,7 @@
   "id": "release-producer-claims-consistency",
   "title": "Release Producer Claims Consistency",
   "lane": "integration",
-  "status": "active",
+  "status": "review",
   "owner": "user",
   "objective": "Make Linux release producers emit the exact acceptance evidence required by publication policy and align macOS documentation with immutable workflow publishing.",
   "base_commit": "0ae559238dd4b0a07b53dbd126630cf46a9c6aa0",
@@ -32,16 +32,125 @@
   "validation": [
     "node --test test/release-workflow-protection.cjs test/release-publication.cjs test/release-artifact-acceptance.cjs test/release-tag-policy.cjs",
     "pnpm test:release -- --tag v0.2.0",
-    "pnpm docs:check",
     "pnpm architecture:check",
     "pnpm test:portable",
     "pnpm test:baselib:strict",
+    "pnpm test:changed -- --base 0ae559238dd4b0a07b53dbd126630cf46a9c6aa0",
     "pnpm parallel:check"
   ],
-  "runs": [],
+  "runs": [
+    {
+      "command": "node --test test/release-workflow-protection.cjs test/release-publication.cjs test/release-artifact-acceptance.cjs test/release-tag-policy.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.574,
+      "started_at": "2026-08-14T14:48:32.538Z",
+      "commit": "c8843e04e69742e94e2bbbb3400ff6d22d541288",
+      "workspace_fingerprint": "8470966891ca5784612d58a3c6b27163b59508ee6d5e1c43b5696689b0f22dda",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:release -- --tag v0.2.0",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.513,
+      "started_at": "2026-08-14T14:48:35.716Z",
+      "commit": "c8843e04e69742e94e2bbbb3400ff6d22d541288",
+      "workspace_fingerprint": "8470966891ca5784612d58a3c6b27163b59508ee6d5e1c43b5696689b0f22dda",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm docs:check",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 216.999,
+      "started_at": "2026-08-14T14:48:40.551Z",
+      "commit": "c8843e04e69742e94e2bbbb3400ff6d22d541288",
+      "workspace_fingerprint": "8470966891ca5784612d58a3c6b27163b59508ee6d5e1c43b5696689b0f22dda",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 5.313,
+      "started_at": "2026-08-14T14:52:46.914Z",
+      "commit": "c8843e04e69742e94e2bbbb3400ff6d22d541288",
+      "workspace_fingerprint": "8470966891ca5784612d58a3c6b27163b59508ee6d5e1c43b5696689b0f22dda",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 22.743,
+      "started_at": "2026-08-14T14:52:56.475Z",
+      "commit": "c8843e04e69742e94e2bbbb3400ff6d22d541288",
+      "workspace_fingerprint": "8470966891ca5784612d58a3c6b27163b59508ee6d5e1c43b5696689b0f22dda",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 21.531,
+      "started_at": "2026-08-14T14:55:55.316Z",
+      "commit": "c8843e04e69742e94e2bbbb3400ff6d22d541288",
+      "workspace_fingerprint": "8470966891ca5784612d58a3c6b27163b59508ee6d5e1c43b5696689b0f22dda",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 14.339,
+      "started_at": "2026-08-14T14:56:20.663Z",
+      "commit": "c8843e04e69742e94e2bbbb3400ff6d22d541288",
+      "workspace_fingerprint": "8470966891ca5784612d58a3c6b27163b59508ee6d5e1c43b5696689b0f22dda",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm parallel:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.573,
+      "started_at": "2026-08-14T14:56:38.946Z",
+      "commit": "c8843e04e69742e94e2bbbb3400ff6d22d541288",
+      "workspace_fingerprint": "8470966891ca5784612d58a3c6b27163b59508ee6d5e1c43b5696689b0f22dda",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:changed -- --base 0ae559238dd4b0a07b53dbd126630cf46a9c6aa0",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 23.975,
+      "started_at": "2026-08-14T14:57:05.972Z",
+      "commit": "c8843e04e69742e94e2bbbb3400ff6d22d541288",
+      "workspace_fingerprint": "8470966891ca5784612d58a3c6b27163b59508ee6d5e1c43b5696689b0f22dda",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm parallel:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.627,
+      "started_at": "2026-08-14T14:59:24.946Z",
+      "commit": "c8843e04e69742e94e2bbbb3400ff6d22d541288",
+      "workspace_fingerprint": "8470966891ca5784612d58a3c6b27163b59508ee6d5e1c43b5696689b0f22dda",
+      "platform": "linux-x64"
+    }
+  ],
   "handoff": {
-    "summary": "",
-    "risks": [],
-    "next_steps": []
+    "summary": "Source c8843e04e69742e94e2bbbb3400ff6d22d541288 makes both native Linux producers run final-host acceptance against the exact archive and checksum with package-version, verified source-commit, unsigned-signature, and GLIBC 2.28 bindings. Each producer uploads the generated acceptance receipt and sidecar, and the policy test compares its complete upload inventory with the publication assembler allowlist. README now documents local macOS packaging as reproduction-only under the protected immutable tag workflow. Independent source review approved the exact four-file committed scope. Focused release tests passed 43/43; release metadata, architecture, portable 448/448, strict baselib, changed-file unit 450/450, and parallel checks passed at one source fingerprint.",
+    "risks": [
+      "Raw actionlint 1.7.12 remains nonzero with exactly the baseline's eight inherited diagnostics: four custom Blacksmith runner labels, three diagnostics from the existing Windows PowerShell expression, and one existing macOS redirect style diagnostic. The current and base diagnostic sets are identical after line normalization; both new Linux acceptance bodies pass bash -n and ShellCheck.",
+      "The retained 216.999-second pnpm docs:check receipt honestly reproduces the baseline's stale generated reference-documentation failure. The separately assigned documentation-compat lane owns website/reference-data.json, website/reference.html, and the required green docs check; this lane does not claim or edit them.",
+      "The first portable receipt ran before this no-install worktree had native addons and failed on missing FLINT artifacts. After preparing the immutable native cache, the same source fingerprint passed all 448 portable tests."
+    ],
+    "next_steps": [
+      "Integrate source c8843e04e69742e94e2bbbb3400ff6d22d541288 while preserving these Linux steps and the exact upload-allowlist ratchet during the queued Windows workflow rebase.",
+      "Require the separate documentation-compat closure to make pnpm docs:check green before the final release checkpoint.",
+      "Exercise Linux x64 and arm64 final-host acceptance in the protected candidate-tag workflow; this lane did not create a tag or publish assets."
+    ]
   }
 }
