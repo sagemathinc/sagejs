@@ -7,7 +7,7 @@
   "status": "active",
   "owner": "user",
   "objective": "Build and bind ZeroMQ for the declared macOS 13.5 release floor and fail closed when any embedded Mach-O slice exceeds it",
-  "base_commit": "d791a0b4d0c935371885cd3606f4052ec3fe59c1",
+  "base_commit": "e4018fd70bf2b9549b826e20d825e08bf43dafe5",
   "claims": [
     ".github/workflows/ci.yml",
     "package.json",
