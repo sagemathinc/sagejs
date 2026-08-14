@@ -1,0 +1,44 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "linux-arm64-glibc-baseline",
+  "title": "Reproducible Linux arm64 glibc 2.28 release baseline",
+  "lane": "integration",
+  "status": "active",
+  "owner": "user",
+  "objective": "Build and validate receipted Linux arm64 release inputs at the glibc 2.28 floor with portable CPU policy and no libatomic dependency",
+  "base_commit": "e4018fd70bf2b9549b826e20d825e08bf43dafe5",
+  "claims": [
+    "scripts/linux-baseline/",
+    "test/linux-release-baseline.cjs",
+    "docs/linux-release-baseline.md"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "compiler-infrastructure",
+    "fallback": "not-applicable",
+    "oracles": [
+      "ELF symbol/dependency policy inspection",
+      "execution in pinned minimal glibc 2.28 arm64 runtime"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "not-applicable",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm architecture:check",
+    "pnpm test:portable",
+    "pnpm test:baselib:strict"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "",
+    "risks": [],
+    "next_steps": []
+  }
+}
