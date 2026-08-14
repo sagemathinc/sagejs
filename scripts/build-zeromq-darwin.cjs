@@ -463,8 +463,8 @@ function buildZeroMQDarwin(options = {}) {
       );
       chmodSync(finalAddon, 0o444);
       chmodSync(join(temporaryArtifact, "receipt.json"), 0o444);
-      chmodSync(temporaryArtifact, 0o555);
       renameSync(temporaryArtifact, artifactDirectory);
+      chmodSync(artifactDirectory, 0o555);
       writeJsonAtomic(selectionFilename, {
         addon: relative(buildRoot, addon),
         receipt: relative(buildRoot, receiptFilename),
@@ -472,6 +472,7 @@ function buildZeroMQDarwin(options = {}) {
         schema: SELECTION_SCHEMA,
       });
     } finally {
+      if (existsSync(temporaryArtifact)) chmodSync(temporaryArtifact, 0o755);
       rmSync(temporaryArtifact, { force: true, recursive: true });
     }
   } finally {
