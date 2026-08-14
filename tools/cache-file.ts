@@ -3,6 +3,7 @@ import {
   closeSync,
   lstatSync,
   openSync,
+  readFileSync,
   renameSync,
   unlinkSync,
   writeFileSync,
@@ -10,6 +11,21 @@ import {
 import { dirname, join } from "node:path";
 
 const renameRetrySignal = new Int32Array(new SharedArrayBuffer(4));
+
+function waitForWindowsFileAccess(attempt: number): void {
+  Atomics.wait(
+    renameRetrySignal,
+    0,
+    0,
+    Math.min(2 ** Math.min(attempt, 5), 32),
+  );
+}
+
+function transientWindowsAccessError(error: unknown): boolean {
+  const code = (error as NodeJS.ErrnoException)?.code;
+  return process.platform === "win32" &&
+    (code === "EACCES" || code === "EBUSY" || code === "EPERM");
+}
 
 function destinationIsRegularFile(filename: string): boolean {
   try {
@@ -25,21 +41,39 @@ function publishTemporaryFile(temporary: string, filename: string): void {
       renameSync(temporary, filename);
       return;
     } catch (error) {
-      const code = (error as NodeJS.ErrnoException)?.code;
-      const retryable = process.platform === "win32" &&
-        (code === "EACCES" || code === "EPERM") &&
+      const retryable = transientWindowsAccessError(error) &&
         attempt < 50 &&
         destinationIsRegularFile(filename);
       if (!retryable) throw error;
       // Windows may briefly deny replacement while another process is reading
       // the destination. Retrying the rename preserves atomic visibility;
       // unlinking the destination would expose a cache miss to readers.
-      Atomics.wait(
-        renameRetrySignal,
-        0,
-        0,
-        Math.min(2 ** Math.min(attempt, 5), 32),
-      );
+      waitForWindowsFileAccess(attempt);
+    }
+  }
+}
+
+/**
+ * Read a cache file that may be concurrently replaced by an atomic publisher.
+ *
+ * Windows can briefly deny a same-path open while committing the replacement.
+ * Retry only those transient access errors. A missing or malformed file still
+ * reaches the caller unchanged and remains an ordinary cache miss.
+ */
+export function readCacheFileSync(filename: string): Buffer;
+export function readCacheFileSync(filename: string, encoding: BufferEncoding): string;
+export function readCacheFileSync(
+  filename: string,
+  encoding?: BufferEncoding,
+): Buffer | string {
+  for (let attempt = 0; ; attempt += 1) {
+    try {
+      return encoding === undefined
+        ? readFileSync(filename)
+        : readFileSync(filename, encoding);
+    } catch (error) {
+      if (!transientWindowsAccessError(error) || attempt >= 50) throw error;
+      waitForWindowsFileAccess(attempt);
     }
   }
 }

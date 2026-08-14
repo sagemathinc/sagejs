@@ -2,7 +2,6 @@ import { spawn } from "node:child_process";
 import {
   existsSync,
   lstatSync,
-  readFileSync,
 } from "node:fs";
 import { homedir } from "node:os";
 import {
@@ -11,6 +10,8 @@ import {
   join,
   resolve,
 } from "node:path";
+
+import { readCacheFileSync } from "./cache-file";
 
 export const AUTOMATIC_CACHE_STATE_FILENAME = ".sagejs-auto-cleanup.json";
 export const AUTOMATIC_CACHE_STATE_SCHEMA = "sagejs.module-cache-auto-cleanup/v1";
@@ -110,7 +111,9 @@ function readAutomaticState(filename: string): AutomaticCacheState | undefined {
   if (!metadata.isFile() || metadata.isSymbolicLink()) {
     throw new Error("automatic cache cleanup refused unsafe state marker");
   }
-  const state = JSON.parse(readFileSync(filename, "utf8")) as AutomaticCacheState;
+  const state = JSON.parse(
+    readCacheFileSync(filename, "utf8"),
+  ) as AutomaticCacheState;
   if (
     state.schema !== AUTOMATIC_CACHE_STATE_SCHEMA ||
     !Number.isFinite(state.last_attempt_ms) ||

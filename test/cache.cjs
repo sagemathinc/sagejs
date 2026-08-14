@@ -27,6 +27,7 @@ const {
 } = require("../dist/tools/cache-lease.js");
 const {
   atomicWriteCacheFileSync,
+  readCacheFileSync,
 } = require("../dist/tools/cache-file.js");
 
 function temporaryRoot(t) {
@@ -124,7 +125,7 @@ test("cache files are atomically visible to concurrent readers and writers", asy
     settled = true;
   });
   while (!settled) {
-    const document = JSON.parse(readFileSync(filename, "utf8"));
+    const document = JSON.parse(readCacheFileSync(filename, "utf8"));
     assert.equal(Number.isInteger(document.writer), true);
     assert.equal(Number.isInteger(document.sequence), true);
     if (document.payload !== undefined) {
@@ -133,7 +134,7 @@ test("cache files are atomically visible to concurrent readers and writers", asy
     await new Promise((resolve) => setImmediate(resolve));
   }
   await completed;
-  JSON.parse(readFileSync(filename, "utf8"));
+  JSON.parse(readCacheFileSync(filename, "utf8"));
   assert.deepEqual(
     readdirSync(directory).filter((name) => name.startsWith(".sagejs-publish-")),
     [],

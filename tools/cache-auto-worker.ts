@@ -27,7 +27,10 @@ import {
   DEFAULT_AUTOMATIC_CACHE_INTERVAL_HOURS,
   DEFAULT_AUTOMATIC_CACHE_RETRY_HOURS,
 } from "./cache-auto";
-import { atomicWriteCacheFileSync } from "./cache-file";
+import {
+  atomicWriteCacheFileSync,
+  readCacheFileSync,
+} from "./cache-file";
 
 /*
  * Automatic policy overrides:
@@ -159,7 +162,9 @@ function readState(filename: string): AutomaticCacheState | undefined {
   if (!metadata.isFile() || metadata.isSymbolicLink()) {
     throw new Error("automatic cache cleanup refused unsafe state marker");
   }
-  const state = JSON.parse(readFileSync(filename, "utf8")) as AutomaticCacheState;
+  const state = JSON.parse(
+    readCacheFileSync(filename, "utf8"),
+  ) as AutomaticCacheState;
   if (
     state.schema !== AUTOMATIC_CACHE_STATE_SCHEMA ||
     !Number.isFinite(state.last_attempt_ms) ||
