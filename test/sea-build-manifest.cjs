@@ -95,6 +95,28 @@ test("SEA Node source provenance is canonical and fail-closed", () => {
     }),
     /not an official source or distribution archive/,
   );
+  const windows = {
+    SAGEJS_SEA_NODE_SOURCE_FILENAME: "node-v26.7.0-win-x64.zip",
+    SAGEJS_SEA_NODE_SOURCE_SHA256: "d3bd72755141ed32bbcd841228ee81897c8a98d50dfa7dae2179399a0a7c90f8",
+    SAGEJS_SEA_NODE_SOURCE_URL:
+      "https://nodejs.org/dist/v26.7.0/node-v26.7.0-win-x64.zip",
+    SAGEJS_SEA_NODE_SOURCE_VERSION: "26.7.0",
+  };
+  assert.deepEqual(seaNodeSourceFromEnvironment(windows), {
+    filename: windows.SAGEJS_SEA_NODE_SOURCE_FILENAME,
+    sha256: windows.SAGEJS_SEA_NODE_SOURCE_SHA256,
+    url: windows.SAGEJS_SEA_NODE_SOURCE_URL,
+    version: windows.SAGEJS_SEA_NODE_SOURCE_VERSION,
+  });
+  assert.throws(
+    () => seaNodeSourceFromEnvironment({
+      ...windows,
+      SAGEJS_SEA_NODE_SOURCE_FILENAME: "node-v26.7.0-win-x64.7z",
+      SAGEJS_SEA_NODE_SOURCE_URL:
+        "https://nodejs.org/dist/v26.7.0/node-v26.7.0-win-x64.7z",
+    }),
+    /not an official source or distribution archive/,
+  );
 });
 
 test("SEA Node Rust toolchain provenance is canonical and fail-closed", () => {

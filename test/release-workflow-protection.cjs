@@ -207,11 +207,37 @@ test("Windows is deliberately unsigned and bypasses the signing environment", ()
   assert.match(windows, /Status -ne "NotSigned"/);
   assert.match(windows, /UNSIGNED-WINDOWS\.txt/);
   assert.match(windows, /sagejs\.windows-release-manifest-v1/);
-  assert.match(windows, /scheme = "authenticode"; status = "unsigned"/);
-  assert.match(windows, /version = \$version/);
-  assert.match(windows, /sourceCommit = \$sourceCommit/);
+  assert.match(windows, /scheme:'authenticode',status:'unsigned'/);
+  assert.match(windows, /version:process\.argv\[2\]/);
+  assert.match(windows, /sourceCommit:process\.argv\[3\]/);
   assert.match(windows, /sourceCommit -ne \$env:GITHUB_SHA/);
   assert.match(windows, /sagejs-windows-x64-unsigned\.zip/);
+  assert.match(windows, /Authenticate the official Node 26\.7\.0 SEA builder/);
+  assert.match(windows, /Invoke-WebRequest -Uri \$source -OutFile \$archive/);
+  assert.match(windows, /Get-FileHash \$archive -Algorithm SHA256/);
+  assert.match(windows, /SAGEJS_SEA_NODE=\$builder/);
+  assert.match(windows, /SAGEJS_SEA_NODE_SOURCE_FILENAME: node-v26\.7\.0-win-x64\.zip/);
+  assert.match(
+    windows,
+    /SAGEJS_SEA_NODE_SOURCE_SHA256: d3bd72755141ed32bbcd841228ee81897c8a98d50dfa7dae2179399a0a7c90f8/,
+  );
+  assert.match(
+    windows,
+    /SAGEJS_SEA_NODE_SOURCE_URL: https:\/\/nodejs\.org\/dist\/v26\.7\.0\/node-v26\.7\.0-win-x64\.zip/,
+  );
+  assert.match(windows, /SAGEJS_SEA_NODE_SOURCE_VERSION: 26\.7\.0/);
+  assert.match(windows, /sagejs\.exe-build-manifest\.json/);
+  assert.match(windows, /sagepython\.exe-build-manifest\.json/);
+  assert.match(windows, /SHA256SUMS/);
+  assert.match(windows, /Compress-Archive -Path \$release -DestinationPath \$archive/);
+  assert.doesNotMatch(windows, /Compress-Archive -Path "\$release\/\*"/);
+  assert.match(windows, /Expand-Archive -LiteralPath \$archive/);
+  assert.match(windows, /release-artifact-acceptance\.cjs/);
+  assert.match(windows, /--target windows-x64/);
+  assert.match(windows, /--expected-commit \$env:GITHUB_SHA/);
+  assert.match(windows, /--signature unsigned/);
+  assert.match(windows, /sagejs-windows-x64-acceptance\.json/);
+  assert.match(windows, /sagejs-windows-x64-acceptance\.json\.sha256/);
   assert.match(windows, /id: upload-release/);
   assert.doesNotMatch(workflow, /SAGEJS_WINDOWS_CERTIFICATE|artifact-signing-action|azure\/login/);
 });

@@ -504,9 +504,32 @@ jobs:
       - name: Run native addon tests
         run: pnpm test:native
 
+      - name: Authenticate the official Node 26.7.0 SEA builder
+        shell: pwsh
+        run: |
+          $source = "https://nodejs.org/dist/v26.7.0/node-v26.7.0-win-x64.zip"
+          $archive = Join-Path $env:RUNNER_TEMP "node-v26.7.0-win-x64.zip"
+          $directory = Join-Path $env:RUNNER_TEMP "sagejs-sea-node"
+          Invoke-WebRequest -Uri $source -OutFile $archive
+          $digest = (Get-FileHash $archive -Algorithm SHA256).Hash.ToLower()
+          if ($digest -ne "d3bd72755141ed32bbcd841228ee81897c8a98d50dfa7dae2179399a0a7c90f8") {
+            throw "official Windows Node archive has unexpected SHA-256 $digest"
+          }
+          Expand-Archive -LiteralPath $archive -DestinationPath $directory
+          $builder = Join-Path $directory "node-v26.7.0-win-x64/node.exe"
+          if ((& $builder --version).Trim() -ne "v26.7.0") {
+            throw "official Windows Node archive has an unexpected executable"
+          }
+          "SAGEJS_SEA_NODE=$builder" | Out-File `
+            -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+
       - name: Build and relocation-test both Windows SEA executables
         env:
           SAGEJS_BUILD_JOBS: "8"
+          SAGEJS_SEA_NODE_SOURCE_FILENAME: node-v26.7.0-win-x64.zip
+          SAGEJS_SEA_NODE_SOURCE_SHA256: d3bd72755141ed32bbcd841228ee81897c8a98d50dfa7dae2179399a0a7c90f8
+          SAGEJS_SEA_NODE_SOURCE_URL: https://nodejs.org/dist/v26.7.0/node-v26.7.0-win-x64.zip
+          SAGEJS_SEA_NODE_SOURCE_VERSION: 26.7.0
         run: pnpm test:sea
 
       - name: Package the explicitly unsigned Windows x64 SEA distribution
@@ -515,6 +538,10 @@ jobs:
           $release = "build/release/sagejs-windows-x64"
           New-Item -ItemType Directory -Force "$release/licenses" | Out-Null
           Copy-Item build/sea/sagejs.exe,build/sea/sagepython.exe $release
+          Copy-Item build/sea/sagejs.exe-build-manifest.json `
+            "$release/sagejs-build-manifest.json"
+          Copy-Item build/sea/sagepython.exe-build-manifest.json `
+            "$release/sagepython-build-manifest.json"
           Copy-Item LICENSE,README.md,DISTRIBUTION.md $release
           Copy-Item licenses/* "$release/licenses"
           foreach ($executable in "sagejs.exe", "sagepython.exe") {
@@ -523,27 +550,64 @@ jobs:
               throw "$executable must be unsigned, got $($signature.Status)"
             }
           }
-          @'
-          These Windows executables are not Authenticode-signed.
-          Verify the published SHA-256 checksum before running them.
-          '@ | Set-Content "$release/UNSIGNED-WINDOWS.txt"
           $version = (& node -p "require('./package.json').version").Trim()
           $sourceCommit = (& git rev-parse HEAD).Trim()
           if ($env:GITHUB_SHA -and $sourceCommit -ne $env:GITHUB_SHA) {
             throw "Windows source $sourceCommit does not match workflow $env:GITHUB_SHA"
           }
-          @{
-            schema = "sagejs.windows-release-manifest-v1"
-            target = "windows-x64"
-            version = $version
-            sourceCommit = $sourceCommit
-            signature = @{ scheme = "authenticode"; status = "unsigned" }
-          } | ConvertTo-Json -Depth 3 | Set-Content "$release/release.json"
+          [IO.File]::WriteAllText(
+            (Join-Path (Resolve-Path $release).Path "UNSIGNED-WINDOWS.txt"),
+            "These Windows executables are not Authenticode-signed.`n" +
+              "Verify the published SHA-256 checksum before running them.`n",
+            [Text.UTF8Encoding]::new($false)
+          )
+          & node -e "const fs=require('node:fs'),{serialize}=require('./scripts/release-manifest.cjs');fs.writeFileSync(process.argv[1],serialize({schema:'sagejs.windows-release-manifest-v1',signature:{scheme:'authenticode',status:'unsigned'},sourceCommit:process.argv[3],target:'windows-x64',version:process.argv[2]}))" `
+            "$release/release.json" $version $sourceCommit
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $checksums = Get-ChildItem $release -File -Recurse |
+            ForEach-Object {
+              $relative = [IO.Path]::GetRelativePath($release, $_.FullName).Replace('\', '/')
+              $digest = (Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLower()
+              [PSCustomObject]@{
+                Path = $relative
+                Line = "${digest}  $relative"
+              }
+            } |
+            Sort-Object Path |
+            ForEach-Object { $_.Line }
+          [IO.File]::WriteAllText(
+            (Join-Path (Resolve-Path $release).Path "SHA256SUMS"),
+            (($checksums -join "`n") + "`n"),
+            [Text.UTF8Encoding]::new($false)
+          )
           $archive = "build/release/sagejs-windows-x64-unsigned.zip"
-          Compress-Archive -Path "$release/*" -DestinationPath $archive
+          Compress-Archive -Path $release -DestinationPath $archive
           (Get-FileHash $archive -Algorithm SHA256).Hash.ToLower() +
             "  sagejs-windows-x64-unsigned.zip" |
             Set-Content "$archive.sha256"
+
+      - name: Prove the extracted Windows release is unsigned and acceptable
+        shell: pwsh
+        run: |
+          $archive = "build/release/sagejs-windows-x64-unsigned.zip"
+          $extracted = "build/release/windows-unsigned-signature-check"
+          Expand-Archive -LiteralPath $archive -DestinationPath $extracted
+          foreach ($executable in "sagejs.exe", "sagepython.exe") {
+            $signature = Get-AuthenticodeSignature `
+              "$extracted/sagejs-windows-x64/$executable"
+            if ($signature.Status -ne "NotSigned") {
+              throw "extracted $executable must be unsigned, got $($signature.Status)"
+            }
+          }
+          $version = (& node -p "require('./package.json').version").Trim()
+          node scripts/release-artifact-acceptance.cjs `
+            --target windows-x64 `
+            --archive $archive `
+            --checksum "$archive.sha256" `
+            --output build/release/sagejs-windows-x64-acceptance.json `
+            --expected-version $version `
+            --expected-commit $env:GITHUB_SHA `
+            --signature unsigned
 
       - name: Upload Windows x64 SEA artifacts
         id: upload-release
@@ -553,6 +617,8 @@ jobs:
           path: |
             build/release/sagejs-windows-x64-unsigned.zip
             build/release/sagejs-windows-x64-unsigned.zip.sha256
+            build/release/sagejs-windows-x64-acceptance.json
+            build/release/sagejs-windows-x64-acceptance.json.sha256
           if-no-files-found: error
           retention-days: 14
 

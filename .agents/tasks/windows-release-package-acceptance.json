@@ -1,0 +1,75 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "windows-release-package-acceptance",
+  "title": "Windows unsigned release packaging and acceptance",
+  "lane": "integration",
+  "status": "active",
+  "owner": "user",
+  "objective": "Package an explicit unsigned Windows x64 release from official Node 26.7.0 inputs and gate publication on native extracted-artifact acceptance",
+  "base_commit": "ec023a69f7f3000a642583c4d1359623bea9c187",
+  "claims": [
+    ".github/workflows/ci.yml",
+    "scripts/build-sea.cjs",
+    "test/sea-build-manifest.cjs",
+    "test/release-workflow-protection.cjs"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "not-applicable",
+    "fallback": "not-applicable",
+    "oracles": [
+      "Native Windows extracted-artifact acceptance receipt"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm architecture:check",
+    "pnpm test:portable",
+    "pnpm test:baselib:strict"
+  ],
+  "runs": [
+    {
+      "command": "node --test test/sea-build-manifest.cjs test/release-workflow-protection.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.523,
+      "started_at": "2026-08-14T10:08:18.717Z",
+      "commit": "ec023a69f7f3000a642583c4d1359623bea9c187",
+      "workspace_fingerprint": "86f493f94ee6ec6fbdfe3f853d9f85875f3760675e46deba2e6f9e8b9ddab5ef",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 6.3,
+      "started_at": "2026-08-14T10:08:19.905Z",
+      "commit": "ec023a69f7f3000a642583c4d1359623bea9c187",
+      "workspace_fingerprint": "86f493f94ee6ec6fbdfe3f853d9f85875f3760675e46deba2e6f9e8b9ddab5ef",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 15.438,
+      "started_at": "2026-08-14T10:08:26.881Z",
+      "commit": "ec023a69f7f3000a642583c4d1359623bea9c187",
+      "workspace_fingerprint": "86f493f94ee6ec6fbdfe3f853d9f85875f3760675e46deba2e6f9e8b9ddab5ef",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "",
+    "risks": [],
+    "next_steps": []
+  }
+}
