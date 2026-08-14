@@ -30,6 +30,8 @@
     "macos-arm64": "required"
   },
   "validation": [
+    "node test/upstream-doctest-tools.cjs",
+    "node test/cli-smoke.cjs",
     "pnpm architecture:check",
     "pnpm test:portable",
     "pnpm test:baselib:strict"
@@ -144,6 +146,36 @@
       "commit": "5c64fbad374e829e3390d62cb6335529329f1c4c",
       "workspace_fingerprint": "e2b6d3dea6ec33035aefcc0fabd23e14ee724d8aac906a3577ed2130f711956a",
       "platform": "linux-x64"
+    },
+    {
+      "command": "node test/upstream-doctest-tools.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.614,
+      "started_at": "2026-08-14T13:20:32.974Z",
+      "commit": "3b381e34de91c267e39e1443ea4e17e83ed29bf1",
+      "workspace_fingerprint": "2a62b0eb3a6477c0f70a51d843c96ea65724a29364430488e199cb59f783b50d",
+      "platform": "darwin-arm64"
+    },
+    {
+      "command": "node test/cli-smoke.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 18.254,
+      "started_at": "2026-08-14T13:20:34.545Z",
+      "commit": "3b381e34de91c267e39e1443ea4e17e83ed29bf1",
+      "workspace_fingerprint": "2a62b0eb3a6477c0f70a51d843c96ea65724a29364430488e199cb59f783b50d",
+      "platform": "darwin-arm64"
+    },
+    {
+      "command": "pnpm docs:verify",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 150.053,
+      "started_at": "2026-08-14T13:20:53.778Z",
+      "commit": "3b381e34de91c267e39e1443ea4e17e83ed29bf1",
+      "workspace_fingerprint": "9255f74d25a0ca57fcdfdd6f68047f710458fd9b2a69dde5457a5bee89bb6035",
+      "platform": "darwin-arm64"
     }
   ],
   "handoff": {
