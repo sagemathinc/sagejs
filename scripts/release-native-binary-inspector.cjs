@@ -751,6 +751,28 @@ function inspectNativeInputs(inputs, policy) {
         }
       }
     }
+    if (file.format === "pe" && file.role === "embedded-addon") {
+      const ordinaryNode = file.dependencies.some(
+        (dependency) => dependency.toLowerCase() === "node.exe",
+      );
+      const delayedNode = file.delayDependencies.some(
+        (dependency) => dependency.toLowerCase() === "node.exe",
+      );
+      if (ordinaryNode || !delayedNode) {
+        addViolation(
+          violations,
+          file,
+          "windows-node-delay-load",
+          ordinaryNode
+            ? "embedded Windows addons must delay-load node.exe, not import it eagerly"
+            : "embedded Windows addons must delay-load node.exe",
+          {
+            ordinaryNodeDependency: ordinaryNode,
+            delayedNodeDependency: delayedNode,
+          },
+        );
+      }
+    }
 
     const dependencies = [
       ...file.dependencies,
