@@ -116,6 +116,12 @@ test("platform builders never receive signing or publication credentials", () =>
   }
 });
 
+test("platform test builders check out complete release history", () => {
+  for (const name of ["linux-x64", "linux-arm64", "windows-x64", "macos-arm64"]) {
+    assert.match(job(name), /fetch-depth: 0/);
+  }
+});
+
 test("Linux release artifacts come only from the receipted glibc-floor authority", () => {
   for (const [name, output] of [
     ["linux-x64", "build/linux-baseline"],
