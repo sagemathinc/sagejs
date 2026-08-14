@@ -4,7 +4,7 @@
   "id": "release-artifact-acceptance",
   "title": "Cross-platform release artifact acceptance",
   "lane": "integration",
-  "status": "active",
+  "status": "review",
   "owner": "user",
   "objective": "Verify every final release archive against exact source/build receipts, complete third-party license provenance, binary compatibility, relocation, mathematics, and platform signing policy before publication",
   "base_commit": "e4018fd70bf2b9549b826e20d825e08bf43dafe5",
@@ -305,6 +305,46 @@
       "started_at": "2026-08-14T10:42:39.423Z",
       "commit": "0315e699f01f7f7967fadd2fed2833f61e732c6f",
       "workspace_fingerprint": "6511f5f6ddb008b89c31044dfd94002d5f13bf98abb59c01cfedc084b0122b41",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/release-artifact-acceptance.cjs test/test-manifest.test.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.366,
+      "started_at": "2026-08-14T10:44:31.267Z",
+      "commit": "b7d5de774b6558c343cf33b7dc825498579963b2",
+      "workspace_fingerprint": "94c9f645acd45733285e2ccae843c235b38297366514ee0c0d7b34d5c1ef05ac",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 5.468,
+      "started_at": "2026-08-14T10:44:32.286Z",
+      "commit": "b7d5de774b6558c343cf33b7dc825498579963b2",
+      "workspace_fingerprint": "94c9f645acd45733285e2ccae843c235b38297366514ee0c0d7b34d5c1ef05ac",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 20.782,
+      "started_at": "2026-08-14T10:44:38.390Z",
+      "commit": "b7d5de774b6558c343cf33b7dc825498579963b2",
+      "workspace_fingerprint": "94c9f645acd45733285e2ccae843c235b38297366514ee0c0d7b34d5c1ef05ac",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 16.104,
+      "started_at": "2026-08-14T10:44:59.772Z",
+      "commit": "b7d5de774b6558c343cf33b7dc825498579963b2",
+      "workspace_fingerprint": "94c9f645acd45733285e2ccae843c235b38297366514ee0c0d7b34d5c1ef05ac",
       "platform": "linux-x64"
     }
   ],
