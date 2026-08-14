@@ -4,7 +4,7 @@
   "id": "readme-prepublish-integration",
   "title": "Integrate prepublication README truth",
   "lane": "integration",
-  "status": "review",
+  "status": "complete",
   "owner": "baseline_resume2",
   "objective": "Replay the independently approved README prepublication truth range onto the authoritative closed release baseline without tagging, publishing, deploying, or integrating Windows release work",
   "base_commit": "fb6f4e36341838f7f4eac6c6c24fc1f4beba15d2",
@@ -125,7 +125,7 @@
       "Windows static-CRT source work is not part of this checkpoint and remains gated on the terminal attempt3 proof, an evidence-bound lifecycle closure, and independent approval before replay."
     ],
     "next_steps": [
-      "Obtain independent review of the exact replay, content blobs, source evidence preservation, common-fingerprint receipts, and non-publication boundary, then close this integration with a lifecycle-only commit.",
+      "Independent review approved exact handoff 275c456a0964181471e86fbff25f665f4cfcb2b6 after verifying replay identities, final authority blobs, preserved source evidence, common-fingerprint receipts, current workspace identity, task checks, and the non-publication boundary.",
       "Only after the Windows source proof and lifecycle closure are independently approved, replay its complete range onto the resulting closed baseline."
     ]
   }
