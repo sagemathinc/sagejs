@@ -26,6 +26,7 @@ const {
   bootstrapBuildPlan,
   executeBuildPhase,
 } = require("../scripts/bootstrap.cjs");
+const { parseArguments: parseBuildArguments } = require("../scripts/build.cjs");
 
 test("a fresh FLINT build establishes the compiler before addon and FFI stages", () => {
   assert.deepEqual(
@@ -161,13 +162,31 @@ test("bootstrap publishes production kernels only after all native packages", ()
     });
   }
   assert.deepEqual(calls, [
-    ["pnpm", "run", "build"],
+    [
+      "node",
+      "scripts/build.cjs",
+      "--without-production-native-kernels",
+    ],
     ["pnpm", "--dir", "packages/flint", "build"],
     ["pnpm", "--dir", "packages/fflas", "build"],
     ["pnpm", "--dir", "packages/graph", "build"],
     ["pnpm", "--dir", "packages/m4ri", "build"],
     ["node", "scripts/build-production-native-kernels.cjs"],
   ]);
+});
+
+test("bootstrap compiler builds defer production kernels explicitly", () => {
+  assert.deepEqual(parseBuildArguments([]), {
+    withoutProductionNativeKernels: false,
+  });
+  assert.deepEqual(
+    parseBuildArguments(["--without-production-native-kernels"]),
+    { withoutProductionNativeKernels: true },
+  );
+  assert.throws(
+    () => parseBuildArguments(["--surprise"]),
+    /unknown build option: --surprise/,
+  );
 });
 
 test("the public FLINT build script selects the composite orchestrator", () => {

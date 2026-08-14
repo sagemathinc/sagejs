@@ -209,7 +209,7 @@ test("clean native and SEA build paths establish optional FFLAS first", () => {
     `${command} ${args.join(" ")}`
   );
   assert.deepEqual(commands, [
-    "pnpm run build",
+    "node scripts/build.cjs --without-production-native-kernels",
     "pnpm --dir packages/flint build",
     "pnpm --dir packages/fflas build",
     "pnpm --dir packages/graph build",
@@ -218,7 +218,10 @@ test("clean native and SEA build paths establish optional FFLAS first", () => {
   ]);
 
   const buildSource = readFileSync(join(root, "scripts", "build.cjs"), "utf8");
-  assert.match(buildSource, /generatedFlintAdapter\) && existsSync\(generatedFflasAdapter/);
+  assert.match(
+    buildSource,
+    /existsSync\(generatedFlintAdapter\)\s*&&\s*existsSync\(generatedFflasAdapter\)/,
+  );
 
   const sea = readFileSync(join(root, "scripts", "build-sea.cjs"), "utf8");
   assert.match(sea, /native\/sagejs_fflas_ffi\.node/);

@@ -168,8 +168,11 @@ function bootstrapBuildPlan() {
   return [
     {
       phase: "compiler",
-      command: "pnpm",
-      arguments: ["run", "build"],
+      command: "node",
+      arguments: [
+        "scripts/build.cjs",
+        "--without-production-native-kernels",
+      ],
     },
     {
       phase: "native",
