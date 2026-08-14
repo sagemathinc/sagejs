@@ -4,7 +4,7 @@
   "id": "release-website-docs-integration",
   "title": "Integrate website release documentation",
   "lane": "integration",
-  "status": "active",
+  "status": "review",
   "owner": "user",
   "objective": "Integrate the independently approved website and generated-documentation successor into a closed intermediate release source checkpoint without deploying public content",
   "base_commit": "675fab5a8f61b2a49c3d9d774eda0c4cba21c249",
@@ -50,10 +50,97 @@
     "pnpm architecture:check",
     "pnpm parallel:check -- --all"
   ],
-  "runs": [],
+  "runs": [
+    {
+      "command": "pnpm docs:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 233.602,
+      "started_at": "2026-08-14T17:30:39.361Z",
+      "commit": "4080aade47642debc4cb0167e1fe5cc4b270c9fc",
+      "workspace_fingerprint": "ff7fc7c584e656889670b27e9afcf6b270f2a0aed658bda3e2de96388dc388ac",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:tutorial",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 237.612,
+      "started_at": "2026-08-14T17:34:38.684Z",
+      "commit": "4080aade47642debc4cb0167e1fe5cc4b270c9fc",
+      "workspace_fingerprint": "ff7fc7c584e656889670b27e9afcf6b270f2a0aed658bda3e2de96388dc388ac",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test --test-reporter=spec test/website.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.151,
+      "started_at": "2026-08-14T17:38:44.329Z",
+      "commit": "4080aade47642debc4cb0167e1fe5cc4b270c9fc",
+      "workspace_fingerprint": "ff7fc7c584e656889670b27e9afcf6b270f2a0aed658bda3e2de96388dc388ac",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 21.579,
+      "started_at": "2026-08-14T17:38:49.059Z",
+      "commit": "4080aade47642debc4cb0167e1fe5cc4b270c9fc",
+      "workspace_fingerprint": "ff7fc7c584e656889670b27e9afcf6b270f2a0aed658bda3e2de96388dc388ac",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 13.775,
+      "started_at": "2026-08-14T17:44:34.484Z",
+      "commit": "4080aade47642debc4cb0167e1fe5cc4b270c9fc",
+      "workspace_fingerprint": "ff7fc7c584e656889670b27e9afcf6b270f2a0aed658bda3e2de96388dc388ac",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:changed -- --base 675fab5a8f61b2a49c3d9d774eda0c4cba21c249",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 29.365,
+      "started_at": "2026-08-14T17:44:53.499Z",
+      "commit": "4080aade47642debc4cb0167e1fe5cc4b270c9fc",
+      "workspace_fingerprint": "ff7fc7c584e656889670b27e9afcf6b270f2a0aed658bda3e2de96388dc388ac",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 5.182,
+      "started_at": "2026-08-14T17:45:29.040Z",
+      "commit": "4080aade47642debc4cb0167e1fe5cc4b270c9fc",
+      "workspace_fingerprint": "ff7fc7c584e656889670b27e9afcf6b270f2a0aed658bda3e2de96388dc388ac",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm parallel:check -- --all",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.59,
+      "started_at": "2026-08-14T17:45:37.558Z",
+      "commit": "4080aade47642debc4cb0167e1fe5cc4b270c9fc",
+      "workspace_fingerprint": "ff7fc7c584e656889670b27e9afcf6b270f2a0aed658bda3e2de96388dc388ac",
+      "platform": "linux-x64"
+    }
+  ],
   "handoff": {
-    "summary": "",
-    "risks": [],
-    "next_steps": []
+    "summary": "Integrated the independently approved website release-consistency successor onto the closed reusable-main compiler baseline. The exact code checkpoint 4080aade47642debc4cb0167e1fe5cc4b270c9fc passes canonical documentation generation, all 656 guided-tutorial examples, 9 website tests, 447 portable tests, strict Python checks with zero errors, the changed-file architecture and 457-test unit selection, standalone architecture validation, and all 223 parallel task contracts.",
+    "risks": [
+      "This checkpoint changes repository website source and generated reference data only; it does not deploy the website or publish release artifacts.",
+      "The generated reference diff remains intentionally large and is protected by canonical source-coordinate, content-hash, and derived-HTML checks."
+    ],
+    "next_steps": [
+      "Obtain independent review of the exact 675fab5a8f61b2a49c3d9d774eda0c4cba21c249..4080aade47642debc4cb0167e1fe5cc4b270c9fc integration range and this receipt.",
+      "Close this integration task only after approval, then use its closure as the base for the independently approved release-source-policy integration."
+    ]
   }
 }
