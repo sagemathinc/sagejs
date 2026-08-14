@@ -48,6 +48,7 @@ const {
   nativeArtifactSpecs,
   nativeCachePackages,
   nativeCacheProcessIdentity,
+  nativeCacheRootIsBroad,
   nativeCacheStatus,
   prepareNativeArtifact,
   restoreNativeArtifact,
@@ -633,10 +634,16 @@ test("native cache cleanup rejects broad, symlinked, and unexpected roots", {
 }, () => {
   const { cacheRoot, directory, workspace } = nativeMaintenanceFixture();
   const outside = join(directory, "outside");
+  const aliasedDirectory = join(directory, "aliased-directory");
+  const aliasedCacheRoot = join(
+    aliasedDirectory,
+    "sagejs-native-artifacts",
+  );
   const linkedRoot = join(directory, "linked-native-artifacts");
   try {
     mkdirSync(outside);
     writeFileSync(join(outside, "sentinel"), "preserve\n");
+    symlinkSync(directory, aliasedDirectory, "dir");
     symlinkSync(outside, linkedRoot, "dir");
     assert.throws(
       () => assertExactNativeCacheRoot(workspace, resolve("/"), resolve("/")),
@@ -655,6 +662,41 @@ test("native cache cleanup rejects broad, symlinked, and unexpected roots", {
         currentSpecs: [],
         expectedRoot: join(directory, "different-cache-root"),
       }),
+      /refused unexpected root/,
+    );
+    assert.equal(
+      assertExactNativeCacheRoot(workspace, aliasedCacheRoot, cacheRoot),
+      cacheRoot,
+    );
+    assert.equal(
+      nativeCacheStatus(workspace, aliasedCacheRoot, {
+        currentSpecs: [],
+        expectedRoot: cacheRoot,
+      }).safe,
+      true,
+    );
+    const aliasedGeneration = writeMaintenanceGeneration(
+      cacheRoot,
+      "flint-addon",
+      "a".repeat(64),
+    );
+    const aliasedCleanup = cleanupNativeCache(workspace, aliasedCacheRoot, {
+      apply: true,
+      currentSpecs: [],
+      expectedRoot: cacheRoot,
+      maxBytes: 1024 * 1024,
+      maxGenerations: 1,
+    });
+    assert.equal(aliasedCleanup.cache_root, cacheRoot);
+    assert.equal(aliasedCleanup.removed.generations.length, 1);
+    assert.equal(existsSync(aliasedGeneration), false);
+    rmSync(join(cacheRoot, "flint-addon"), { recursive: true });
+    assert.throws(
+      () => assertExactNativeCacheRoot(
+        workspace,
+        join(linkedRoot, "sagejs-native-artifacts"),
+        cacheRoot,
+      ),
       /refused unexpected root/,
     );
     assert.throws(
@@ -687,7 +729,7 @@ test("native cache cleanup rejects broad, symlinked, and unexpected roots", {
     });
     symlinkSync(outside, join(cacheRoot, "flint-addon"), "dir");
     assert.equal(
-      nativeCacheStatus(workspace, cacheRoot, {
+      nativeCacheStatus(workspace, aliasedCacheRoot, {
         currentSpecs: [],
         expectedRoot: cacheRoot,
       }).safe,
@@ -707,6 +749,26 @@ test("native cache cleanup rejects broad, symlinked, and unexpected roots", {
   } finally {
     rmSync(directory, { recursive: true, force: true });
   }
+});
+
+test("native cache broad-root matching follows Windows path casing", () => {
+  assert.equal(
+    nativeCacheRootIsBroad(
+      "c:\\USERS\\USER",
+      ["C:\\Users\\user"],
+      "win32",
+    ),
+    true,
+  );
+  assert.equal(nativeCacheRootIsBroad("c:\\cache", [], "win32"), true);
+  assert.equal(
+    nativeCacheRootIsBroad("c:\\cache\\sagejs-native-artifacts", [], "win32"),
+    false,
+  );
+  assert.equal(
+    nativeCacheRootIsBroad("c:\\USERS\\USER", ["C:\\Users\\user"], "linux"),
+    false,
+  );
 });
 
 test("native cache maintenance CLI emits JSON and never applies by default", () => {
@@ -940,7 +1002,7 @@ test("native compiler self-host bypasses an installed platform launcher", () => 
       require.resolve(`@sagemath/${packageName}/package.json`, {
         paths: [directory],
       }),
-      join(packageDirectory, "package.json"),
+      realpathSync(join(packageDirectory, "package.json")),
     );
 
     assert.equal(ensureNativeCompiler(directory, {

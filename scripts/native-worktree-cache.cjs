@@ -44,6 +44,7 @@ const {
   relative,
   resolve,
   sep,
+  win32: windowsPath,
 } = require("node:path");
 const { spawn, spawnSync } = require("node:child_process");
 const { git } = require("./parallel-lib.cjs");
@@ -911,10 +912,47 @@ function quarantineCacheEntry(entry) {
   }
 }
 
-function sameNativeCachePath(left, right) {
-  return process.platform === "win32"
+function sameNativeCachePath(left, right, platform = process.platform) {
+  return platform === "win32"
     ? left.toLowerCase() === right.toLowerCase()
     : left === right;
+}
+
+function nativeCacheRootIsBroad(
+  cacheRoot,
+  broadRoots,
+  platform = process.platform,
+) {
+  const pathFunctions = platform === "win32" ? windowsPath : {
+    dirname,
+    parse,
+  };
+  return broadRoots.some((root) =>
+    sameNativeCachePath(cacheRoot, root, platform)
+  ) || sameNativeCachePath(
+    pathFunctions.dirname(cacheRoot),
+    pathFunctions.parse(cacheRoot).root,
+    platform,
+  );
+}
+
+function canonicalNativeCachePath(path) {
+  let current = resolve(path);
+  const missing = [];
+  while (pathMetadata(current) === null) {
+    const parent = dirname(current);
+    if (parent === current) {
+      throw new Error(`native-cache maintenance cannot resolve root: ${path}`);
+    }
+    missing.unshift(basename(current));
+    current = parent;
+  }
+  if (missing.length !== 0 && !statSync(current).isDirectory()) {
+    throw new Error(
+      `native-cache maintenance root has a non-directory component: ${current}`,
+    );
+  }
+  return resolve(realpathSync(current), ...missing);
 }
 
 function assertExactNativeCacheRoot(
@@ -930,43 +968,41 @@ function assertExactNativeCacheRoot(
   }
   const cacheRoot = requestedRoot;
   const expected = resolve(expectedRoot);
-  if (!sameNativeCachePath(cacheRoot, expected)) {
+  // macOS exposes /var through the system-owned /private/var alias. Check the
+  // caller's final component before resolving such an ancestor, then use only
+  // the physical path for traversal and deletion so the alias cannot be raced.
+  const declaredRootMetadata = pathMetadata(cacheRoot);
+  if (declaredRootMetadata?.isSymbolicLink()) {
+    throw new Error(
+      `native-cache maintenance root has a symlinked component: ${cacheRoot}`,
+    );
+  }
+  if (declaredRootMetadata !== null && !declaredRootMetadata.isDirectory()) {
+    throw new Error(
+      `native-cache maintenance root has a non-directory component: ${cacheRoot}`,
+    );
+  }
+  const canonicalCacheRoot = canonicalNativeCachePath(cacheRoot);
+  const canonicalExpected = canonicalNativeCachePath(expected);
+  if (!sameNativeCachePath(canonicalCacheRoot, canonicalExpected)) {
     throw new Error(
       `native-cache maintenance refused unexpected root: ${cacheRoot}`,
     );
   }
   const filesystemRoot = parse(cacheRoot).root;
   const workspaceRoot = resolvedWorkspaceRoot(workspace);
-  const broadRoots = new Set([
-    filesystemRoot,
-    resolve(homedir()),
+  const broadRoots = [
+    canonicalNativeCachePath(filesystemRoot),
+    canonicalNativeCachePath(resolve(homedir())),
     workspaceRoot,
-  ]);
+  ];
   if (
-    broadRoots.has(cacheRoot) ||
-    dirname(cacheRoot) === filesystemRoot ||
+    nativeCacheRootIsBroad(canonicalCacheRoot, broadRoots) ||
     basename(cacheRoot) === ""
   ) {
     throw new Error(`native-cache maintenance refused broad root: ${cacheRoot}`);
   }
-  let current = filesystemRoot;
-  const suffix = relative(filesystemRoot, cacheRoot);
-  for (const component of suffix.split(sep).filter(Boolean)) {
-    current = join(current, component);
-    const metadata = pathMetadata(current);
-    if (metadata === null) break;
-    if (metadata.isSymbolicLink()) {
-      throw new Error(
-        `native-cache maintenance root has a symlinked component: ${current}`,
-      );
-    }
-    if (!metadata.isDirectory()) {
-      throw new Error(
-        `native-cache maintenance root has a non-directory component: ${current}`,
-      );
-    }
-  }
-  return cacheRoot;
+  return canonicalCacheRoot;
 }
 
 function cacheTreeUsage(path) {
@@ -2128,6 +2164,7 @@ module.exports = {
   nativeCacheArtifactIds,
   nativeCachePackages,
   nativeCacheProcessIdentity,
+  nativeCacheRootIsBroad,
   nativeCacheStatus,
   prepareNativeArtifact,
   prepareNativeDependencies,
