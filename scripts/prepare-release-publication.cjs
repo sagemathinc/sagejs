@@ -2,7 +2,6 @@
 "use strict";
 
 const assert = require("node:assert/strict");
-const { spawnSync } = require("node:child_process");
 const {
   copyFileSync,
   existsSync,
@@ -14,6 +13,7 @@ const {
   writeFileSync,
 } = require("node:fs");
 const { basename, dirname, join, relative, resolve, sep } = require("node:path");
+const { unzipSync } = require("fflate");
 
 const {
   hashRegularFile,
@@ -376,15 +376,13 @@ function verifyLinuxReadiness(root, platform, { commit, version }) {
 }
 
 function zipEntry(archive, entry) {
-  const result = spawnSync("unzip", ["-p", archive, entry], {
-    encoding: "utf8",
-    maxBuffer: 1024 * 1024,
+  const extracted = unzipSync(readFileSync(archive), {
+    filter: ({ name }) => name === entry,
   });
-  if (result.error) throw result.error;
-  if (result.status !== 0) {
-    throw new Error(`cannot read ${entry} from ${archive}: ${result.stderr.trim()}`);
+  if (!Object.hasOwn(extracted, entry) || Object.keys(extracted).length !== 1) {
+    throw new Error(`cannot read ${entry} from ${archive}`);
   }
-  return result.stdout;
+  return Buffer.from(extracted[entry]).toString("utf8");
 }
 
 function releaseLicenseFiles() {

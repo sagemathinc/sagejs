@@ -2,7 +2,6 @@
 
 const assert = require("node:assert/strict");
 const { createHash } = require("node:crypto");
-const { execFileSync } = require("node:child_process");
 const {
   mkdirSync,
   mkdtempSync,
@@ -15,6 +14,7 @@ const {
 const { tmpdir } = require("node:os");
 const { dirname, join } = require("node:path");
 const test = require("node:test");
+const { strToU8, zipSync } = require("fflate");
 
 const {
   SCHEMA,
@@ -112,6 +112,29 @@ function windowsArchive(root, archive, overrides = {}) {
     `${files.map((name) => `${sha256(join(directory, ...name.split("/")))}  ${name}`).join("\n")}\n`,
   );
   createWindowsReleaseZip(directory, archive);
+}
+
+function writeAdversarialZip(archive, entry) {
+  if (entry !== "sagejs-windows-x64/release.json") {
+    writeFileSync(archive, zipSync({ [entry]: strToU8("bad") }));
+    return;
+  }
+  const alternate = "sagejs-windows-x64/notices.json";
+  const duplicate = Buffer.from(entry, "ascii");
+  const original = Buffer.from(alternate, "ascii");
+  assert.equal(original.length, duplicate.length);
+  const bytes = Buffer.from(zipSync({
+    [entry]: strToU8("first"),
+    [alternate]: strToU8("second"),
+  }));
+  let replacements = 0;
+  for (let offset = bytes.indexOf(original); offset >= 0; offset = bytes.indexOf(original, offset)) {
+    duplicate.copy(bytes, offset);
+    offset += duplicate.length;
+    replacements += 1;
+  }
+  assert.equal(replacements, 2, "fixture must replace local and central ZIP names");
+  writeFileSync(archive, bytes);
 }
 
 function writeLinuxEvidence(directory, platform) {
@@ -588,14 +611,7 @@ test("Windows ZIP duplicate and traversal entries fail before publication", () =
         "windows-x64",
         "sagejs-windows-x64-unsigned.zip",
       );
-      execFileSync("python3", [
-        "-c",
-        "import sys,warnings,zipfile; warnings.filterwarnings('ignore'); " +
-          "z=zipfile.ZipFile(sys.argv[1], 'a'); " +
-          "z.writestr(sys.argv[2], b'bad'); z.close()",
-        archive,
-        entry,
-      ]);
+      writeAdversarialZip(archive, entry);
       writeFileSync(
         `${archive}.sha256`,
         `${sha256(archive)}  sagejs-windows-x64-unsigned.zip\n`,
