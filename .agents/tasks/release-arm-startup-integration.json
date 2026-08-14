@@ -4,7 +4,7 @@
   "id": "release-arm-startup-integration",
   "title": "Integrate Linux ARM64 startup profile",
   "lane": "integration",
-  "status": "review",
+  "status": "complete",
   "owner": "user",
   "objective": "Integrate the independently approved evidence-backed Linux ARM64 development startup profile into a closed intermediate release checkpoint",
   "base_commit": "494030a37b82adf42db02452ff6cbc0ff3444d4c",
@@ -109,14 +109,13 @@
     }
   ],
   "handoff": {
-    "summary": "Integrated the full independently approved source lane db6258674e6f191b8187c31e2231a45c73a5c5c6..5f1d7fe638c3763fc41289f8dc7b89dc20a48fad in order as ffc87c4, 89f2a05, and 0b6c705 onto exact closed baseline 494030a37b82adf42db02452ff6cbc0ff3444d4c. All three commits are range-equivalent and the package graph, startup checker, focused test, and initial source-task closure blobs are exact. Strict exact-target profile selection calibrates only Linux ARM64 development startup to 500 ms full and 275 ms empty; generic, x64, both SEA budgets, sample normalization, and raw ceilings remain unchanged. The source run array remains byte-identical, preserving the b22 425/225-calibration ARM failure and the da2 438.2/243.3 ms passing ARM production receipt. At one current integration fingerprint, focused startup tests passed 10/10, exact-base changed-file build/architecture/unit passed 454/454, standalone architecture passed, portable passed 452/452, strict baselib passed at zero errors, and all 219 parallel task contracts passed.",
+    "summary": "Integrated the full independently approved source lane db6258674e6f191b8187c31e2231a45c73a5c5c6..5f1d7fe638c3763fc41289f8dc7b89dc20a48fad in order as ffc87c4, 89f2a05, and 0b6c705 onto exact closed baseline 494030a37b82adf42db02452ff6cbc0ff3444d4c. All three commits are range-equivalent and the package graph, startup checker, focused test, and initial source-task closure blobs are exact. Strict exact-target profile selection calibrates only Linux ARM64 development startup to 500 ms full and 275 ms empty; generic, x64, both SEA budgets, sample normalization, and raw ceilings remain unchanged. The source run array remains byte-identical, preserving the b22 425/225-calibration ARM failure and the da2 438.2/243.3 ms passing ARM production receipt. At one current integration fingerprint, focused startup tests passed 10/10, exact-base changed-file build/architecture/unit passed 454/454, standalone architecture passed, portable passed 452/452, strict baselib passed at zero errors, and all 219 parallel task contracts passed. Independent review approved exact checkpoint 39218fce7c8765b826c41bffc352146cd98f6a10 after confirming 3/3 ordered range equivalence, exact implementation blobs, unchanged source receipt hash 560abecd with b22 failure and da2 pass, lifecycle-only source-task delta, current receipts, and clean focused/scoped/all checks.",
     "risks": [
       "Startup timing is host-sensitive. The integration validates exact profile selection, malformed configuration rejection, and unchanged fallback policy on Linux x64, while the preserved clean unloaded Linux ARM64 receipt remains the target-native timing authority.",
       "The final protected Linux ARM64 artifact authority must re-exercise the 11-sample production startup check before publication; this intermediate integration created no tag and published no artifact."
     ],
     "next_steps": [
-      "Obtain independent review of exact range equivalence, implementation blob identity, byte-identical source receipts, lifecycle-only source-task closure, and all current integration gates.",
-      "After approval, close this integration task and return its exact authoritative checkpoint for later sequencing with the independently progressing Windows static/package lane.",
+      "Return this exact authoritative checkpoint for later sequencing with the independently progressing Windows static/package lane.",
       "Retain the final target-native ARM64 startup execution as a protected release gate."
     ]
   }
