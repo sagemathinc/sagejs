@@ -66,6 +66,23 @@ test("stable and release-candidate tags have distinct irreversible authority", (
   );
 });
 
+test("release authority requires an annotated tag merged into fetched main", () => {
+  const policy = job("release-tag-policy");
+  assert.match(
+    policy,
+    /Check out the source that declares the release version[\s\S]*?fetch-depth: 0/,
+  );
+  assert.match(policy, /Require release tags to come from the main branch/);
+  assert.match(policy, /EVENT_NAME: \$\{\{ github\.event_name \}\}/);
+  assert.match(policy, /REF_TYPE: \$\{\{ github\.ref_type \}\}/);
+  assert.match(policy, /node scripts\/release-source-policy\.cjs/);
+  assert.ok(
+    policy.indexOf("node scripts/release-source-policy.cjs") <
+      policy.indexOf("node scripts/release-tag-policy.cjs"),
+    "source ancestry must be accepted before release authority is classified",
+  );
+});
+
 test("manual dispatch can never acquire release authority, even from a version tag", () => {
   for (const refName of ["v0.2.0", "v0.2.0-rc.1"]) {
     assert.deepEqual(
@@ -198,6 +215,11 @@ test("README keeps macOS publishing under the immutable protected workflow", () 
   assert.match(readme, /local reproduction path only/);
   assert.match(readme, /created exclusively by the protected tag-triggered workflow/);
   assert.match(readme, /immutable release assets cannot be replaced/);
+  assert.match(readme, /Release tags must be annotated/);
+  assert.match(readme, /git fetch --no-tags origin \+refs\/heads\/main/);
+  assert.match(readme, /HEAD\^\{commit\}/);
+  assert.match(readme, /refs\/remotes\/origin\/main\^\{commit\}/);
+  assert.match(readme, /git status --porcelain=v1/);
 });
 
 test("Windows is deliberately unsigned and bypasses the signing environment", () => {

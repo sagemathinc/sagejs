@@ -1,0 +1,46 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "release-source-policy",
+  "title": "Release Source Policy",
+  "lane": "integration",
+  "status": "active",
+  "owner": "user",
+  "objective": "Fail closed before release authority unless an annotated version tag peels to the workflow SHA and its commit is merged into origin/main",
+  "base_commit": "8d18904b2bbd0860b89e6236d7b35346e3c9bba2",
+  "claims": [
+    ".github/workflows/ci.yml",
+    "scripts/release-source-policy.cjs",
+    "test/release-source-policy.cjs",
+    "test/release-workflow-protection.cjs",
+    "README.md"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "not-applicable",
+    "fallback": "not-applicable",
+    "oracles": [
+      "Functional temporary Git repositories cover annotated, lightweight, unmerged, mismatched, and merged-ancestor tag cases",
+      "Workflow ratchet tests bind the source-policy environment and full-history checkout"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "not-applicable",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm architecture:check",
+    "pnpm test:portable",
+    "pnpm test:baselib:strict"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "",
+    "risks": [],
+    "next_steps": []
+  }
+}

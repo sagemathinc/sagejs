@@ -26,11 +26,19 @@ jobs:
     steps:
       - name: Check out the source that declares the release version
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          fetch-depth: 0
 
       - name: Install Node.js for version policy
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
         with:
           node-version: 26.7.0
+
+      - name: Require release tags to come from the main branch
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          REF_TYPE: ${{ github.ref_type }}
+        run: node scripts/release-source-policy.cjs
 
       - name: Accept only stable or release-candidate version tags
         id: policy

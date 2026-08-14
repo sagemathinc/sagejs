@@ -177,8 +177,19 @@ Linux x64, Linux arm64, Windows x64, and Apple Silicon macOS. They require no
 Node.js, compiler, or package manager on the target machine. The initial
 Windows artifact is deliberately named `sagejs-windows-x64-unsigned.zip` and
 contains both human- and machine-readable unsigned notices. Release CI refuses
-to publish an unsigned macOS binary. A maintainer with Apple credentials can
-reproduce the signed, notarized macOS artifacts locally with:
+to publish an unsigned macOS binary. Release tags must be annotated and point
+to a commit already merged into `origin/main`. Maintainers should additionally
+require a clean checkout at the exact remote tip immediately before creating a
+release tag:
+
+```sh
+git fetch --no-tags origin +refs/heads/main:refs/remotes/origin/main
+test "$(git rev-parse 'HEAD^{commit}')" = "$(git rev-parse 'refs/remotes/origin/main^{commit}')"
+test -z "$(git status --porcelain=v1)"
+```
+
+A maintainer with Apple credentials can reproduce the signed, notarized macOS
+artifacts locally with:
 
 ```sh
 pnpm release:macos
