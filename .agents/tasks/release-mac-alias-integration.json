@@ -4,7 +4,7 @@
   "id": "release-mac-alias-integration",
   "title": "Integrate macOS native-cache alias authority",
   "lane": "integration",
-  "status": "active",
+  "status": "complete",
   "owner": "user",
   "objective": "Integrate the independently reviewed macOS native-cache alias hardening and its Linux, Windows, and physical Apple-silicon evidence into a closed intermediate release checkpoint",
   "base_commit": "583256c92d5818307e400a8c8bb1a8fea2c2034a",
@@ -38,10 +38,73 @@
     "pnpm test:baselib:strict",
     "pnpm parallel:check -- --all"
   ],
-  "runs": [],
+  "runs": [
+    {
+      "command": "node --test test/parallel-development.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 9.677,
+      "started_at": "2026-08-14T12:26:52.912Z",
+      "commit": "fd29cbfb0e019bd97ba54fbabdb6b1fdf4b48519",
+      "workspace_fingerprint": "c00080f38034a57ef91b968065ecdf3c5057a4a976002d657ceccea81fd571a4",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/release-cache-lifecycle.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.056,
+      "started_at": "2026-08-14T12:27:06.037Z",
+      "commit": "fd29cbfb0e019bd97ba54fbabdb6b1fdf4b48519",
+      "workspace_fingerprint": "c00080f38034a57ef91b968065ecdf3c5057a4a976002d657ceccea81fd571a4",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 5.331,
+      "started_at": "2026-08-14T12:27:20.283Z",
+      "commit": "fd29cbfb0e019bd97ba54fbabdb6b1fdf4b48519",
+      "workspace_fingerprint": "c00080f38034a57ef91b968065ecdf3c5057a4a976002d657ceccea81fd571a4",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 20.739,
+      "started_at": "2026-08-14T12:27:31.321Z",
+      "commit": "fd29cbfb0e019bd97ba54fbabdb6b1fdf4b48519",
+      "workspace_fingerprint": "c00080f38034a57ef91b968065ecdf3c5057a4a976002d657ceccea81fd571a4",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 15.064,
+      "started_at": "2026-08-14T12:27:58.609Z",
+      "commit": "fd29cbfb0e019bd97ba54fbabdb6b1fdf4b48519",
+      "workspace_fingerprint": "c00080f38034a57ef91b968065ecdf3c5057a4a976002d657ceccea81fd571a4",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm parallel:check -- --all",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.587,
+      "started_at": "2026-08-14T12:28:17.973Z",
+      "commit": "fd29cbfb0e019bd97ba54fbabdb6b1fdf4b48519",
+      "workspace_fingerprint": "c00080f38034a57ef91b968065ecdf3c5057a4a976002d657ceccea81fd571a4",
+      "platform": "linux-x64"
+    }
+  ],
   "handoff": {
-    "summary": "",
+    "summary": "Integrated the independently approved macOS native-cache ancestor-alias hardening in exact source order, preserved Windows case-folded broad-root behavior, and carried the source lane's actual Linux x64, Windows x64, and physical Apple M1 validation into a closed intermediate release checkpoint.",
     "risks": [],
-    "next_steps": []
+    "next_steps": [
+      "Rebase the macOS release workflow and queued Windows portable stabilization lanes on this closed checkpoint before their final target-specific validation."
+    ]
   }
 }
