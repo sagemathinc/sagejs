@@ -4,7 +4,7 @@
   "id": "linux-node-temporal",
   "title": "Linux Node Temporal Authority",
   "lane": "integration",
-  "status": "review",
+  "status": "complete",
   "owner": "user",
   "objective": "Pin Rust 1.86 for both Linux architectures, force Node 26.7 Temporal support, and bind/prove the exact toolchain in baseline and SEA receipts",
   "base_commit": "3ee4c9d0749be992923f7e04d47c17f3646aea0d",
@@ -94,7 +94,7 @@
     }
   ],
   "handoff": {
-    "summary": "Pins and verifies the official Rust 1.86.0 Linux x64 and arm64 distributions, enables Temporal in the reproducible Node 26.7.0 manylinux build, proves Temporal in the build container, UBI 8 runtime, and an assembled SEA, and binds the Rust authority into baseline receipts, both SEA build identities, and Linux candidate validation.",
+    "summary": "Integrated the pinned and verified official Rust 1.86.0 Linux x64 and arm64 distributions, enabled Temporal in the reproducible Node 26.7.0 manylinux build, proved Temporal in the build container, UBI 8 runtime, and an assembled SEA, and bound the Rust authority into baseline receipts, both SEA build identities, and Linux candidate validation.",
     "risks": [
       "The broad portable tier initially failed because the fresh worktree lacked optional FLINT addons, FLINT headers, and generated runtime/module caches; after the ordinary bootstrap restored those products, all 430 portable tests passed. Both receipts are retained as environmental history.",
       "Native x64 and arm64 Node-stage proofs are release artifact gates and are still running independently on their respective machines.",
