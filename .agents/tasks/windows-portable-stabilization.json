@@ -7,14 +7,17 @@
   "status": "active",
   "owner": "user",
   "objective": "Fix exact Windows portable unit-test failures without weakening Linux release or native build semantics",
-  "base_commit": "583256c92d5818307e400a8c8bb1a8fea2c2034a",
+  "base_commit": "29f5463e44d2a6143040fb126cdbf2c8ab4c5391",
   "claims": [
     "tools/cache-file.ts",
     "test/cache.cjs",
     "test/linux-release-baseline.cjs",
-    "test/native-math-profile.cjs"
+    "test/native-math-profile.cjs",
+    "test/parallel-development.cjs"
   ],
-  "dependencies": [],
+  "dependencies": [
+    "mac-alias-portability"
+  ],
   "references": [],
   "architecture": {
     "strategy": "not-applicable",
@@ -24,14 +27,16 @@
   },
   "platforms": {
     "linux-x64": "required",
-    "linux-arm64": "required",
+    "linux-arm64": "not-applicable",
     "windows-x64": "required",
-    "macos-arm64": "required"
+    "macos-arm64": "not-applicable"
   },
   "validation": [
     "pnpm build",
     "pnpm test:compiler",
-    "pnpm test:integration"
+    "pnpm test:integration",
+    "pnpm architecture:check",
+    "pnpm test:changed -- --base 29f5463e44d2a6143040fb126cdbf2c8ab4c5391"
   ],
   "runs": [],
   "handoff": {
