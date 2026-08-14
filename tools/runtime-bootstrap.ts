@@ -12,7 +12,10 @@ import { dirname, join, resolve } from "path";
 import { Script } from "vm";
 
 import { markModuleCacheInUse } from "./cache-lease";
-import { atomicWriteCacheFileSync } from "./cache-file";
+import {
+  atomicWriteCacheFileSync,
+  readCacheFileSync,
+} from "./cache-file";
 import type { Compiler } from "./compiler";
 import dynamicCode from "./dynamic-code";
 import {
@@ -651,7 +654,7 @@ export function runRuntimeBootstrap(
       let cacheNeedsWrite = false;
       if (cacheFilename) {
         try {
-          const cached = JSON.parse(readResourceText(cacheFilename));
+          const cached = JSON.parse(readCacheFileSync(cacheFilename, "utf8"));
           if (
             cached.version === compiler.get_compiler_version() &&
             cached.signature === sourceHash &&

@@ -7,9 +7,12 @@
   "status": "active",
   "owner": "user",
   "objective": "Fix exact Windows portable unit-test failures without weakening Linux release or native build semantics",
-  "base_commit": "29f5463e44d2a6143040fb126cdbf2c8ab4c5391",
+  "base_commit": "b3491feaf8b0f96f21dbbbf5c1a1561da3ecfcb3",
   "claims": [
     "tools/cache-file.ts",
+    "tools/cache-auto.ts",
+    "tools/cache-auto-worker.ts",
+    "tools/runtime-bootstrap.ts",
     "test/cache.cjs",
     "test/linux-release-baseline.cjs",
     "test/native-math-profile.cjs",
@@ -36,9 +39,30 @@
     "pnpm test:compiler",
     "pnpm test:integration",
     "pnpm architecture:check",
-    "pnpm test:changed -- --base 29f5463e44d2a6143040fb126cdbf2c8ab4c5391"
+    "pnpm test:changed -- --base b3491feaf8b0f96f21dbbbf5c1a1561da3ecfcb3"
   ],
-  "runs": [],
+  "runs": [
+    {
+      "command": "pnpm build",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 224.83,
+      "started_at": "2026-08-14T12:31:47.440Z",
+      "commit": "72411772a89371f5377b2ca650118fdf26034d56",
+      "workspace_fingerprint": "9d5da8b42a0ab27e9b74591e7b4402c440d4ef7927316a6d05d749a68ec8fb96",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:compiler",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 46.81,
+      "started_at": "2026-08-14T12:35:37.811Z",
+      "commit": "72411772a89371f5377b2ca650118fdf26034d56",
+      "workspace_fingerprint": "9d5da8b42a0ab27e9b74591e7b4402c440d4ef7927316a6d05d749a68ec8fb96",
+      "platform": "linux-x64"
+    }
+  ],
   "handoff": {
     "summary": "",
     "risks": [],
