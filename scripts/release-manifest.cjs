@@ -34,6 +34,7 @@ const MANIFEST_SCHEMA = "sagejs.release-artifact-manifest-v2";
 const HASH_PATTERN = /^[0-9a-f]{64}$/;
 const GIT_PATTERN = /^[0-9a-f]{40}(?:[0-9a-f]{24})?$/;
 const KIND_PATTERN = /^[a-z0-9]+(?:[._-][a-z0-9]+)*$/;
+const DIRECTORY_AUTHORITY = Symbol("sagejs.release-directory-authority");
 
 function stableJson(value) {
   if (Array.isArray(value)) return value.map(stableJson);
@@ -126,9 +127,8 @@ function normalizeGit(value, label) {
 }
 
 function portablePath(base, filename) {
-  const root = directoryRealpath(base, "artifact manifest root");
-  const canonical = realpathSync.native(resolve(filename));
-  const path = relative(root, canonical);
+  const root = directoryAuthority(base, "artifact manifest root");
+  const path = lexicalContainedPath(root, filename, "artifact");
   if (!path || path === ".." || path.startsWith(`..${sep}`) || isAbsolute(path)) {
     throw new Error(`artifact ${filename} must be below manifest directory ${base}`);
   }
@@ -153,7 +153,7 @@ function samePath(left, right) {
     : left === right;
 }
 
-function directoryRealpath(directory, label) {
+function directoryIdentity(directory, label) {
   const absolute = resolve(directory);
   const information = lstatSync(absolute);
   if (!information.isDirectory() || information.isSymbolicLink()) {
@@ -163,27 +163,52 @@ function directoryRealpath(directory, label) {
   // system-owned tree canonicalizes below /private/var. Accept aliases in the
   // ancestors of the declared root, then enforce descendant containment
   // against this canonical root.
-  return realpathSync.native(absolute);
+  return {
+    [DIRECTORY_AUTHORITY]: true,
+    canonicalRoot: realpathSync.native(absolute),
+    lexicalRoot: absolute,
+  };
+}
+
+function directoryAuthority(directory, label) {
+  return directory?.[DIRECTORY_AUTHORITY] === true
+    ? directory
+    : directoryIdentity(directory, label);
+}
+
+function directoryRealpath(directory, label) {
+  return directoryAuthority(directory, label).canonicalRoot;
+}
+
+function lexicalContainedPath(root, filename, label) {
+  const absolute = resolve(filename);
+  const lexical = relative(root.lexicalRoot, absolute);
+  if (
+    !lexical ||
+    lexical === ".." ||
+    lexical.startsWith(`..${sep}`) ||
+    isAbsolute(lexical)
+  ) throw new Error(`${label} is outside lexical root ${root.lexicalRoot}`);
+  return lexical;
 }
 
 function containedExistingFile(root, filename, label) {
-  const realRoot = directoryRealpath(root, `${label} root`);
+  const authority = directoryAuthority(root, `${label} root`);
   const absolute = resolve(filename);
+  const lexical = lexicalContainedPath(authority, absolute, label);
   const information = lstatSync(absolute, { bigint: true });
   if (!information.isFile() || information.isSymbolicLink()) {
     throw new Error(`${label} must be a regular non-symlink file: ${absolute}`);
   }
   const real = realpathSync.native(absolute);
-  const canonical = relative(realRoot, real);
-  if (
-    !canonical ||
-    canonical === ".." ||
-    canonical.startsWith(`..${sep}`) ||
-    isAbsolute(canonical)
-  ) {
-    throw new Error(`${label} escapes canonical root ${realRoot}`);
+  const expectedCanonical = resolve(authority.canonicalRoot, lexical);
+  if (!samePath(real, expectedCanonical)) {
+    throw new Error(
+      `${label} resolves through a symlink or reparse parent: ` +
+        `${absolute} -> ${real}`,
+    );
   }
-  return { absolute, information, real, realRoot };
+  return { absolute, information, real, realRoot: authority.canonicalRoot };
 }
 
 function sameFile(left, right) {
@@ -566,13 +591,18 @@ function validateManifest(manifest) {
 
 function outputDirectory(filename) {
   const directory = dirname(resolve(filename));
-  return directoryRealpath(directory, "manifest output directory");
+  return directoryIdentity(directory, "manifest output directory");
 }
 
 function outputSafety(filename, artifactFiles = []) {
   filename = resolve(filename);
   const directory = outputDirectory(filename);
-  if (!samePath(directoryRealpath(dirname(filename), "manifest output parent"), directory)) {
+  if (
+    !samePath(
+      directoryRealpath(dirname(filename), "manifest output parent"),
+      directory.canonicalRoot,
+    )
+  ) {
     throw new Error("manifest output parent changed while checking safety");
   }
   for (const artifact of artifactFiles) {
@@ -583,12 +613,17 @@ function outputSafety(filename, artifactFiles = []) {
     if (information.isSymbolicLink() || !information.isFile()) {
       throw new Error("manifest output must not be a symlink, reparse point, or directory");
     }
-    if (!samePath(realpathSync.native(filename), join(directory, basename(filename)))) {
+    if (
+      !samePath(
+        realpathSync.native(filename),
+        join(directory.canonicalRoot, basename(filename)),
+      )
+    ) {
       throw new Error("manifest output resolves through a symlink or reparse point");
     }
     throw new Error("manifest output already exists; refusing non-atomic replacement");
   }
-  return { directory, filename };
+  return { directory: directory.canonicalRoot, filename };
 }
 
 function atomicWrite(filename, value, artifactFiles = []) {
@@ -620,7 +655,10 @@ function artifactFromInput(entry, manifestDirectory) {
 function createManifest(options) {
   assertPlainObject(options, "manifest options");
   const buildManifest = validateBuildManifest(structuredClone(options.buildManifest));
-  const manifestDirectory = directoryRealpath(options.manifestDirectory, "manifest directory");
+  const manifestDirectory = directoryIdentity(
+    options.manifestDirectory,
+    "manifest directory",
+  );
   const artifacts = (options.artifacts || []).map(
     (entry) => artifactFromInput(entry, manifestDirectory),
   );
@@ -654,11 +692,11 @@ function readManifest(filename) {
 
 function verifyManifest(manifest, options = {}) {
   validateManifest(manifest);
-  const directory = directoryRealpath(options.manifestDirectory, "manifest directory");
+  const directory = directoryIdentity(options.manifestDirectory, "manifest directory");
   for (const artifact of manifest.artifacts) {
     const observed = hashRegularFile(
       directory,
-      join(directory, ...artifact.path.split("/")),
+      join(directory.lexicalRoot, ...artifact.path.split("/")),
       `artifact ${artifact.path}`,
     );
     if (observed.size !== artifact.size) throw new Error(`artifact size mismatch for ${artifact.path}`);
