@@ -796,6 +796,8 @@ function createSeaBuildManifest(options) {
         nativeBinaries.report.aggregate.maximumMinimumMacos,
       target,
     });
+  const seaNodeRustToolchain =
+    options.seaNodeRustToolchain ?? seaNodeRustToolchainFromEnvironment();
   return createBuildManifest({
     capabilities: {
       artifact: {
@@ -823,6 +825,9 @@ function createSeaBuildManifest(options) {
       nativeBinaries,
       seaNode: {
         executableSha256: sha256(options.seaNode),
+        ...(seaNodeRustToolchain === null
+          ? {}
+          : { rustToolchain: seaNodeRustToolchain }),
         source: options.seaNodeSource ?? seaNodeSourceFromEnvironment(),
         version: observeSeaBuilder(options.seaNode, options).versions.node,
       },
@@ -858,6 +863,39 @@ function seaNodeSourceFromEnvironment(environment = process.env) {
     `https://nodejs.org/dist/v${source.version}/${source.filename}`,
   );
   return source;
+}
+
+function seaNodeRustToolchainFromEnvironment(environment = process.env) {
+  const names = {
+    filename: "SAGEJS_SEA_NODE_RUST_FILENAME",
+    sha256: "SAGEJS_SEA_NODE_RUST_SHA256",
+    target: "SAGEJS_SEA_NODE_RUST_TARGET",
+    url: "SAGEJS_SEA_NODE_RUST_URL",
+    version: "SAGEJS_SEA_NODE_RUST_VERSION",
+  };
+  const present = Object.values(names).filter((name) => environment[name] !== undefined);
+  if (present.length === 0) return null;
+  assert.equal(
+    present.length,
+    Object.keys(names).length,
+    "SEA Node Rust toolchain identity is incomplete",
+  );
+  const toolchain = Object.fromEntries(
+    Object.entries(names).map(([key, name]) => [key, environment[name]]),
+  );
+  assert.match(toolchain.sha256, /^[0-9a-f]{64}$/);
+  assert.equal(
+    toolchain.filename,
+    `rust-${toolchain.version}-${toolchain.target}.tar.xz`,
+  );
+  assert.match(
+    toolchain.url,
+    new RegExp(
+      `^https://static\\.rust-lang\\.org/dist/\\d{4}-\\d{2}-\\d{2}/` +
+        `${toolchain.filename.replaceAll(".", "\\.")}$`,
+    ),
+  );
+  return toolchain;
 }
 
 function runtimeLibc() {
@@ -1395,6 +1433,7 @@ module.exports = {
   observeSeaBuilder,
   productionKernelReceipt,
   seaNodeSourceFromEnvironment,
+  seaNodeRustToolchainFromEnvironment,
   SEA_ASSEMBLY_POLICY,
   stageRegularFile,
   stageSeaInputs,

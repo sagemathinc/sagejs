@@ -25,6 +25,9 @@ const { readBuildManifest } = require("./release-manifest.cjs");
 const {
   validateNativeMathBuildProfile,
 } = require("./native-math-profile.cjs");
+const {
+  platformConfig,
+} = require("./linux-baseline/release-inputs.cjs");
 
 const ROOT = resolve(__dirname, "..");
 const EXPECTED_PYTHON = "python-runtime-ok";
@@ -241,6 +244,21 @@ function validateBaselineReceipt(options, receipts) {
       baseline.nodeSource.filename,
   );
   assert.match(baseline.nodeSource?.sha256, /^[0-9a-f]{64}$/);
+  assert.deepEqual(
+    baseline.rustToolchain,
+    platformConfig(PLATFORM).rustToolchain,
+    "Linux baseline uses an unexpected Rust toolchain",
+  );
+  assert.deepEqual(
+    receipts.math.toolchain.seaNode.rustToolchain,
+    baseline.rustToolchain,
+    "mathematics SEA Rust toolchain mismatch",
+  );
+  assert.deepEqual(
+    receipts.python.toolchain.seaNode.rustToolchain,
+    baseline.rustToolchain,
+    "Python SEA Rust toolchain mismatch",
+  );
   assert.equal(
     baseline.inspection?.aggregate?.dependencies.some(
       (dependency) => dependency.toLowerCase() === "libatomic.so.1",
@@ -260,6 +278,20 @@ function validateBaselineReceipt(options, receipts) {
   );
   assert.equal(baseline.seaArtifacts?.sourceCommit, baseline.sourceCommit);
   assert.deepEqual(baseline.seaArtifacts?.nodeSource, baseline.nodeSource);
+  assert.deepEqual(
+    baseline.seaArtifacts?.rustToolchain,
+    baseline.rustToolchain,
+  );
+  assert.equal(
+    baseline.runtimeProbe?.observation?.temporal,
+    "object",
+    "Linux baseline Node runtime did not expose Temporal",
+  );
+  assert.equal(
+    baseline.seaProbe?.observed?.temporal,
+    "object",
+    "Linux baseline SEA runtime did not expose Temporal",
+  );
   assert.equal(baseline.seaArtifacts?.platform, baseline.platform);
   for (const [name, filename] of Object.entries(expected)) {
     const recorded = baseline.seaArtifacts.artifacts?.[name];

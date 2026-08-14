@@ -28,6 +28,7 @@ const {
   nativeDependencyReceiptSource,
   productionKernelReceipt,
   seaNodeSourceFromEnvironment,
+  seaNodeRustToolchainFromEnvironment,
   SEA_ASSEMBLY_POLICY,
   stageSeaInputs,
   targetFromSeaBuilder,
@@ -70,6 +71,47 @@ test("SEA Node source provenance is canonical and fail-closed", () => {
     () => seaNodeSourceFromEnvironment({
       ...source,
       SAGEJS_SEA_NODE_SOURCE_URL: "https://example.invalid/node.tar.xz",
+    }),
+    /Expected values to be strictly equal/,
+  );
+});
+
+test("SEA Node Rust toolchain provenance is canonical and fail-closed", () => {
+  const source = {
+    SAGEJS_SEA_NODE_RUST_FILENAME:
+      "rust-1.86.0-x86_64-unknown-linux-gnu.tar.xz",
+    SAGEJS_SEA_NODE_RUST_SHA256: "b".repeat(64),
+    SAGEJS_SEA_NODE_RUST_TARGET: "x86_64-unknown-linux-gnu",
+    SAGEJS_SEA_NODE_RUST_URL:
+      "https://static.rust-lang.org/dist/2025-04-03/" +
+      "rust-1.86.0-x86_64-unknown-linux-gnu.tar.xz",
+    SAGEJS_SEA_NODE_RUST_VERSION: "1.86.0",
+  };
+  assert.deepEqual(seaNodeRustToolchainFromEnvironment(source), {
+    filename: source.SAGEJS_SEA_NODE_RUST_FILENAME,
+    sha256: source.SAGEJS_SEA_NODE_RUST_SHA256,
+    target: source.SAGEJS_SEA_NODE_RUST_TARGET,
+    url: source.SAGEJS_SEA_NODE_RUST_URL,
+    version: source.SAGEJS_SEA_NODE_RUST_VERSION,
+  });
+  assert.equal(seaNodeRustToolchainFromEnvironment({}), null);
+  assert.throws(
+    () => seaNodeRustToolchainFromEnvironment({
+      SAGEJS_SEA_NODE_RUST_VERSION: "1.86.0",
+    }),
+    /incomplete/,
+  );
+  assert.throws(
+    () => seaNodeRustToolchainFromEnvironment({
+      ...source,
+      SAGEJS_SEA_NODE_RUST_URL: "https://example.invalid/rust.tar.xz",
+    }),
+    /did not match/,
+  );
+  assert.throws(
+    () => seaNodeRustToolchainFromEnvironment({
+      ...source,
+      SAGEJS_SEA_NODE_RUST_FILENAME: "rust-substitute.tar.xz",
     }),
     /Expected values to be strictly equal/,
   );
@@ -588,6 +630,35 @@ test("build identity binds ordinary runtime assets and the SEA main bundle", () 
       createSeaBuildManifest(options(item)).identitySha256,
       changedMain.identitySha256,
     );
+  } finally {
+    item.cleanup();
+  }
+});
+
+test("build identity binds the exact Rust toolchain used for Linux Node", () => {
+  const item = fixture();
+  try {
+    const rustToolchain = {
+      filename: "rust-1.86.0-x86_64-unknown-linux-gnu.tar.xz",
+      sha256: "b".repeat(64),
+      target: "x86_64-unknown-linux-gnu",
+      url:
+        "https://static.rust-lang.org/dist/2025-04-03/" +
+        "rust-1.86.0-x86_64-unknown-linux-gnu.tar.xz",
+      version: "1.86.0",
+    };
+    const first = createSeaBuildManifest(options(item, {
+      seaNodeRustToolchain: rustToolchain,
+    }));
+    assert.deepEqual(first.toolchain.seaNode.rustToolchain, rustToolchain);
+
+    const substituted = createSeaBuildManifest(options(item, {
+      seaNodeRustToolchain: {
+        ...rustToolchain,
+        sha256: "c".repeat(64),
+      },
+    }));
+    assert.notEqual(first.identitySha256, substituted.identitySha256);
   } finally {
     item.cleanup();
   }

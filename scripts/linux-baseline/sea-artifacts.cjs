@@ -50,7 +50,7 @@ function validateManifest(
   manifest,
   name,
   nativeMathematics,
-  { inspection, nodeSource, platform, sourceCommit },
+  { inspection, nodeSource, platform, rustToolchain, sourceCommit },
 ) {
   assert.equal(manifest.schema, BUILD_MANIFEST_SCHEMA);
   assert.equal(manifest.source?.commit, sourceCommit, `${name} source commit mismatch`);
@@ -69,6 +69,7 @@ function validateManifest(
   );
   assert.equal(manifest.toolchain?.seaNode?.version, nodeSource.version);
   assert.deepEqual(manifest.toolchain?.seaNode?.source, nodeSource);
+  assert.deepEqual(manifest.toolchain?.seaNode?.rustToolchain, rustToolchain);
 
   const report = manifest.toolchain?.nativeBinaries?.report;
   assert.equal(report?.schema, NATIVE_REPORT_SCHEMA);
@@ -157,6 +158,7 @@ function validateBaselineSeaArtifacts(directory, options) {
     executables: evidence,
     nodeSource: options.nodeSource,
     platform: options.platform,
+    rustToolchain: options.rustToolchain,
     schema: SEA_ARTIFACT_SCHEMA,
     sourceCommit: options.sourceCommit,
   };
