@@ -4,7 +4,7 @@
   "id": "release-producer-claims-consistency",
   "title": "Release Producer Claims Consistency",
   "lane": "integration",
-  "status": "review",
+  "status": "complete",
   "owner": "user",
   "objective": "Make Linux release producers emit the exact acceptance evidence required by publication policy and align macOS documentation with immutable workflow publishing.",
   "base_commit": "0ae559238dd4b0a07b53dbd126630cf46a9c6aa0",
@@ -148,7 +148,7 @@
       "The first portable receipt ran before this no-install worktree had native addons and failed on missing FLINT artifacts. After preparing the immutable native cache, the same source fingerprint passed all 448 portable tests."
     ],
     "next_steps": [
-      "Integrate source c8843e04e69742e94e2bbbb3400ff6d22d541288 while preserving these Linux steps and the exact upload-allowlist ratchet during the queued Windows workflow rebase.",
+      "Preserve these Linux steps and the exact upload-allowlist ratchet during the queued Windows workflow rebase from the independently approved integrated checkpoint.",
       "Require the separate documentation-compat closure to make pnpm docs:check green before the final release checkpoint.",
       "Exercise Linux x64 and arm64 final-host acceptance in the protected candidate-tag workflow; this lane did not create a tag or publish assets."
     ]
