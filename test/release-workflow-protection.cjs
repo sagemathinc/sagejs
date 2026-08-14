@@ -222,6 +222,17 @@ test("README keeps macOS publishing under the immutable protected workflow", () 
   assert.match(readme, /git status --porcelain=v1/);
 });
 
+test("README keeps unpublished v0.2 assets non-actionable", () => {
+  assert.match(readme, /Native v0\.2\.0 binaries are imminent, but they are \*\*not yet published\*\*/);
+  assert.match(readme, /latest published GitHub release[\s\S]*older v0\.1\.1 native preview/);
+  assert.match(readme, /does not contain the checksum-verifying `install\.sh`/);
+  assert.doesNotMatch(readme, /releases\/latest\/download\/install\.sh/);
+  assert.match(readme, /separate post-release README update must replace this notice/);
+  assert.match(readme, /npm package is the separate v0\.1\.0 preview/);
+  assert.match(readme, /@sagemath\/sagejs@0\.1\.0/);
+  assert.match(readme, /Publishing the native GitHub v0\.2\.0 release does not itself update npm/);
+});
+
 test("Windows is deliberately unsigned and bypasses the signing environment", () => {
   const windows = job("windows-x64");
   assert.equal(workflow.includes("  sign-windows-x64:\n"), false);
