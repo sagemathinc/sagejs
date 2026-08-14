@@ -126,7 +126,9 @@ function normalizeGit(value, label) {
 }
 
 function portablePath(base, filename) {
-  const path = relative(resolve(base), resolve(filename));
+  const root = directoryRealpath(base, "artifact manifest root");
+  const canonical = realpathSync.native(resolve(filename));
+  const path = relative(root, canonical);
   if (!path || path === ".." || path.startsWith(`..${sep}`) || isAbsolute(path)) {
     throw new Error(`artifact ${filename} must be below manifest directory ${base}`);
   }
@@ -157,29 +159,31 @@ function directoryRealpath(directory, label) {
   if (!information.isDirectory() || information.isSymbolicLink()) {
     throw new Error(`${label} must be a real directory, not a symlink or reparse point`);
   }
-  const real = realpathSync.native(absolute);
-  if (!samePath(real, absolute)) {
-    throw new Error(`${label} resolves outside its lexical path: ${absolute} -> ${real}`);
-  }
-  return real;
+  // macOS exposes temporary directories lexically below /var while the same
+  // system-owned tree canonicalizes below /private/var. Accept aliases in the
+  // ancestors of the declared root, then enforce descendant containment
+  // against this canonical root.
+  return realpathSync.native(absolute);
 }
 
 function containedExistingFile(root, filename, label) {
   const realRoot = directoryRealpath(root, `${label} root`);
   const absolute = resolve(filename);
-  const lexical = relative(realRoot, absolute);
-  if (!lexical || lexical === ".." || lexical.startsWith(`..${sep}`) || isAbsolute(lexical)) {
-    throw new Error(`${label} is outside ${realRoot}`);
-  }
   const information = lstatSync(absolute, { bigint: true });
   if (!information.isFile() || information.isSymbolicLink()) {
     throw new Error(`${label} must be a regular non-symlink file: ${absolute}`);
   }
   const real = realpathSync.native(absolute);
-  if (!samePath(real, absolute)) {
-    throw new Error(`${label} resolves through a symlink or reparse point`);
+  const canonical = relative(realRoot, real);
+  if (
+    !canonical ||
+    canonical === ".." ||
+    canonical.startsWith(`..${sep}`) ||
+    isAbsolute(canonical)
+  ) {
+    throw new Error(`${label} escapes canonical root ${realRoot}`);
   }
-  return { absolute, information, realRoot };
+  return { absolute, information, real, realRoot };
 }
 
 function sameFile(left, right) {
@@ -225,7 +229,7 @@ function hashRegularFile(root, filename, label) {
       pathnameAfter.size !== openedAfter.size ||
       pathnameAfter.mtimeNs !== openedAfter.mtimeNs ||
       pathnameAfter.ctimeNs !== openedAfter.ctimeNs ||
-      !samePath(realpathSync.native(before.absolute), before.absolute)
+      !samePath(realpathSync.native(before.absolute), before.real)
     ) throw new Error(`${label} changed after hashing`);
     const size = Number(openedAfter.size);
     if (!Number.isSafeInteger(size)) throw new Error(`${label} is too large to manifest safely`);
@@ -350,11 +354,13 @@ function createBuildManifest(value) {
 
 function parseCanonical(filename, validator, label) {
   filename = resolve(filename);
+  const canonicalParent = directoryRealpath(dirname(filename), `${label} parent`);
+  const canonicalFilename = join(canonicalParent, basename(filename));
   const before = lstatSync(filename, { bigint: true });
   if (
     !before.isFile() ||
     before.isSymbolicLink() ||
-    !samePath(realpathSync.native(filename), filename)
+    !samePath(realpathSync.native(filename), canonicalFilename)
   ) {
     throw new Error(`${label} must be a regular file without symlink or reparse parents`);
   }
@@ -375,7 +381,7 @@ function parseCanonical(filename, validator, label) {
       pathnameAfter.size !== openedAfter.size ||
       pathnameAfter.mtimeNs !== openedAfter.mtimeNs ||
       pathnameAfter.ctimeNs !== openedAfter.ctimeNs ||
-      !samePath(realpathSync.native(filename), filename)
+      !samePath(realpathSync.native(filename), canonicalFilename)
     ) throw new Error(`${label} changed while reading`);
   } finally {
     closeSync(fd);
@@ -566,7 +572,9 @@ function outputDirectory(filename) {
 function outputSafety(filename, artifactFiles = []) {
   filename = resolve(filename);
   const directory = outputDirectory(filename);
-  if (!samePath(dirname(filename), directory)) throw new Error("manifest output parent is not canonical");
+  if (!samePath(directoryRealpath(dirname(filename), "manifest output parent"), directory)) {
+    throw new Error("manifest output parent changed while checking safety");
+  }
   for (const artifact of artifactFiles) {
     if (samePath(artifact, filename)) throw new Error("manifest output cannot be an artifact");
   }
@@ -575,7 +583,7 @@ function outputSafety(filename, artifactFiles = []) {
     if (information.isSymbolicLink() || !information.isFile()) {
       throw new Error("manifest output must not be a symlink, reparse point, or directory");
     }
-    if (!samePath(realpathSync.native(filename), filename)) {
+    if (!samePath(realpathSync.native(filename), join(directory, basename(filename)))) {
       throw new Error("manifest output resolves through a symlink or reparse point");
     }
     throw new Error("manifest output already exists; refusing non-atomic replacement");

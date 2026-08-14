@@ -368,6 +368,57 @@ test("artifact symlink and symlinked manifest parents fail closed", () => {
   }
 });
 
+test(
+  "canonical root aliases are accepted but descendant symlink escapes are rejected",
+  { skip: process.platform === "win32" },
+  () => {
+    const root = mkdtempSync(
+      join(realpathSync.native(tmpdir()), "sagejs-release-root-alias-"),
+    );
+    try {
+      const actual = join(root, "actual");
+      const release = join(actual, "release");
+      const alias = join(root, "alias");
+      mkdirSync(release, { recursive: true });
+      symlinkSync(actual, alias, "dir");
+      const aliasedRelease = join(alias, "release");
+      const artifact = join(aliasedRelease, "artifact.bin");
+      writeFileSync(join(release, "artifact.bin"), "artifact\n");
+      const manifest = createManifest({
+        ...manifestOptions(
+          { archive: artifact, executable: artifact, release: aliasedRelease },
+          receipt(),
+        ),
+        artifacts: [{ file: artifact, kind: "standalone-executable" }],
+      });
+      assert.equal(manifest.artifacts[0].path, "artifact.bin");
+      const manifestFilename = join(release, "manifest.json");
+      writeFileSync(manifestFilename, serialize(manifest));
+      assert.deepEqual(readManifest(join(aliasedRelease, "manifest.json")), manifest);
+
+      const outside = join(root, "outside");
+      mkdirSync(outside);
+      writeFileSync(join(outside, "escaped.bin"), "escaped\n");
+      symlinkSync(outside, join(release, "escape"), "dir");
+      assert.throws(
+        () => createManifest({
+          ...manifestOptions(
+            { archive: artifact, executable: artifact, release: aliasedRelease },
+            receipt(),
+          ),
+          artifacts: [{
+            file: join(aliasedRelease, "escape", "escaped.bin"),
+            kind: "standalone-executable",
+          }],
+        }),
+        /must be below manifest directory|escapes canonical root/,
+      );
+    } finally {
+      rmSync(root, { force: true, recursive: true });
+    }
+  },
+);
+
 test("external sidecar verification remains simple", () => {
   const workspace = layout();
   try {
