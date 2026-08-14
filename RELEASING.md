@@ -5,14 +5,32 @@ GitHub and npm. The npm platform packages contain the same signed/notarized
 bytes as the direct archives; the public `@sagemath/sagejs` package is published
 last so its exact optional dependencies are already available.
 
-## Required GitHub secrets
+## Protected GitHub environments
 
-- `NPM_TOKEN`: an automation token allowed to publish public packages in the
-  `@sagemath` scope.
+Tagged releases use two protected environments whose deployment tag policy is
+exactly `v*`:
+
+- `sagejs-signing` holds Apple and Windows signing credentials. The unprivileged
+  platform jobs build and test executables without these credentials. Separate
+  tag-only signing jobs download checksummed tested inputs and receive the
+  environment secrets only after maintainer approval.
+- `sagejs-release` holds `NPM_TOKEN` and gates the final one-way GitHub/npm
+  publication job after every signed platform artifact is available.
+
+Both environments require a maintainer review. When the sole configured
+reviewer may also initiate a release, self-review prevention must remain off;
+add a second trusted reviewer before enabling it. Do not duplicate these values
+as repository-wide secrets.
+
+## Required environment secrets
+
+- In `sagejs-release`, `NPM_TOKEN` is an automation token allowed to publish
+  public packages in the `@sagemath` scope.
+- The remaining values belong to `sagejs-signing`.
 - The preferred Windows path is Azure Artifact Signing with the repository
-  variable `SAGEJS_WINDOWS_SIGNING_MODE=azure`; secrets
+  environment variable `SAGEJS_WINDOWS_SIGNING_MODE=azure`; secrets
   `SAGEJS_AZURE_CLIENT_ID`, `SAGEJS_AZURE_TENANT_ID`, and
-  `SAGEJS_AZURE_SUBSCRIPTION_ID`; and variables
+  `SAGEJS_AZURE_SUBSCRIPTION_ID`; and environment variables
   `SAGEJS_ARTIFACT_SIGNING_ENDPOINT`, `SAGEJS_ARTIFACT_SIGNING_ACCOUNT`, and
   `SAGEJS_ARTIFACT_SIGNING_PROFILE`. The Entra identity uses GitHub OIDC and
   needs the Artifact Signing Certificate Profile Signer role.
@@ -33,6 +51,30 @@ Secret signing material is written only under the ephemeral Actions runner
 temporary directory. The fallback Windows PFX is deleted immediately after
 signing; Azure Artifact Signing keeps its private key in the service, and the
 macOS runner itself is discarded after the job.
+
+### Configure Apple credentials from a trusted Mac
+
+Use Keychain Access to export the Developer ID Application and Developer ID
+Installer identities together as one password-protected PKCS#12 file. Generate
+an App Store Connect API key authorized for notarization and download its
+`AuthKey_*.p8` file. Then upload both files directly from the trusted Mac; do
+not copy them into the repository:
+
+```sh
+repo=sagemathinc/sagejs
+environment=sagejs-signing
+base64 < /path/to/sagejs-developer-id.p12 | tr -d '\n' | \
+  gh secret set SAGEJS_APPLE_CERTIFICATE_P12_BASE64 -R "$repo" -e "$environment"
+base64 < /path/to/AuthKey_KEYID.p8 | tr -d '\n' | \
+  gh secret set SAGEJS_APPLE_NOTARY_KEY_BASE64 -R "$repo" -e "$environment"
+gh secret set SAGEJS_APPLE_CERTIFICATE_PASSWORD -R "$repo" -e "$environment"
+gh secret set SAGEJS_APPLE_NOTARY_KEY_ID -R "$repo" -e "$environment"
+gh secret set SAGEJS_APPLE_NOTARY_ISSUER_ID -R "$repo" -e "$environment"
+```
+
+The final three commands prompt for their values without putting them on the
+command line. Confirm the resulting names, never their values, with
+`gh secret list -R sagemathinc/sagejs -e sagejs-signing`.
 
 ## Release checklist
 

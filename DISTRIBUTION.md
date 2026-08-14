@@ -182,11 +182,12 @@ not a second automation implementation.
    `pnpm test:release -- --tag vX.Y.Z`. This checks that the intended tag and
    every package version agree before the tag exists.
 2. Before the first production tag, protect `v*` tags with a repository
-   ruleset, put signing and publication behind a maintainer-approved GitHub
-   Environment, and restrict who can trigger or approve it. The current
-   workflow scopes job permissions but does not name a protected release
-   Environment. Review and preferably pin every action used by a secret-bearing
-   job to an immutable commit rather than relying only on a moving version tag.
+   ruleset. Confirm that the tag-only signing job uses the protected
+   `sagejs-signing` environment, that final publication uses the separate
+   `sagejs-release` environment, and that both accept only `v*` tags and require
+   maintainer approval. Review and preferably pin every action used by a
+   secret-bearing job to an immutable commit rather than relying only on a
+   moving version tag.
    Limit the npm token to the required `@sagemath` packages and keep GitHub,
    Azure, and Apple identities least-privileged.
 3. Require the complete unprivileged CI matrix to pass at that exact commit,
