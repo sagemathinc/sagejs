@@ -7,7 +7,7 @@
   "status": "active",
   "owner": "user",
   "objective": "Fix exact Windows portable unit-test failures without weakening Linux release or native build semantics",
-  "base_commit": "e981515c0f1e2d3ff284fe7f8d90af8c3ae70de1",
+  "base_commit": "db6258674e6f191b8187c31e2231a45c73a5c5c6",
   "claims": [
     "tools/cache.ts",
     "tools/cache-file.ts",
@@ -40,7 +40,7 @@
     "pnpm test:compiler",
     "pnpm test:integration",
     "pnpm architecture:check",
-    "pnpm test:changed -- --base e981515c0f1e2d3ff284fe7f8d90af8c3ae70de1"
+    "pnpm test:changed -- --base db6258674e6f191b8187c31e2231a45c73a5c5c6"
   ],
   "runs": [],
   "handoff": {
