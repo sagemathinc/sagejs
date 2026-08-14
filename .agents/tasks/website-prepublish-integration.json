@@ -1,0 +1,60 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "website-prepublish-integration",
+  "title": "Integrate prepublication website truth",
+  "lane": "integration",
+  "status": "active",
+  "owner": "user",
+  "objective": "Integrate the independently approved prepublication website state onto the authoritative closed release baseline without deploying the website, tagging, publishing, or changing Windows release work",
+  "base_commit": "769c7bbfd92ef0ae595c5dd9674e0702b7c4eb2c",
+  "claims": [
+    ".agents/tasks/website-prepublish-integration.json",
+    ".agents/tasks/website-prepublish-truth.json",
+    "test/website.cjs",
+    "website/capabilities.json",
+    "website/index.html"
+  ],
+  "dependencies": [
+    "release-source-policy-integration",
+    "release-website-docs-integration",
+    "website-prepublish-truth"
+  ],
+  "references": [
+    "Independently approved prepublication range 769c7bbfd92ef0ae595c5dd9674e0702b7c4eb2c..7d1acbed21ce7485ff50cf4ca16f8712780d5677",
+    "Post-immutable website availability flip remains a separate follow-up after all v0.2.0 assets are independently verified"
+  ],
+  "architecture": {
+    "strategy": "not-applicable",
+    "fallback": "not-applicable",
+    "oracles": [
+      "Website regressions bind imminent and unpublished native assets, actionable npm v0.1.0, and explicitly unsigned forthcoming Windows x64",
+      "Canonical documentation generation remains byte-identical",
+      "The full guided tutorial preserves the reusable-main compiler fix"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "not-applicable",
+    "windows-x64": "not-applicable",
+    "macos-arm64": "not-applicable"
+  },
+  "validation": [
+    "node --test test/website.cjs",
+    "pnpm docs:generate",
+    "pnpm docs:check",
+    "pnpm test:tutorial",
+    "pnpm test:portable",
+    "pnpm test:baselib:strict",
+    "pnpm test:changed -- --base 769c7bbfd92ef0ae595c5dd9674e0702b7c4eb2c",
+    "pnpm architecture:check",
+    "pnpm parallel:check -- --all"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "",
+    "risks": [],
+    "next_steps": []
+  }
+}
