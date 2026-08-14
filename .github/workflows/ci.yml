@@ -212,6 +212,25 @@ jobs:
         run: |
           cp install.sh build/release/install.sh
 
+      - name: Accept the exact Linux x64 release candidate
+        if: needs.release-tag-policy.outputs.candidate == 'true'
+        run: |
+          version="$(node -p 'require("./package.json").version')"
+          commit="$(git rev-parse 'HEAD^{commit}')"
+          [[ "$commit" == "$GITHUB_SHA" ]] || {
+            echo "Linux x64 acceptance checkout differs from $GITHUB_SHA" >&2
+            exit 1
+          }
+          node scripts/release-artifact-acceptance.cjs \
+            --target linux-x64 \
+            --archive build/release/sagejs-linux-x64.tar.xz \
+            --checksum build/release/sagejs-linux-x64.tar.xz.sha256 \
+            --output build/release/sagejs-linux-x64-acceptance.json \
+            --expected-version "$version" \
+            --expected-commit "$commit" \
+            --signature unsigned \
+            --maximum-glibc 2.28
+
       - name: Upload Linux x64 SEA artifacts
         if: needs.release-tag-policy.outputs.candidate == 'true'
         id: upload-release
@@ -224,6 +243,8 @@ jobs:
             build/release/sagejs-linux-x64.report.json
             build/release/sagejs-linux-x64.release.json
             build/release/install.sh
+            build/release/sagejs-linux-x64-acceptance.json
+            build/release/sagejs-linux-x64-acceptance.json.sha256
           if-no-files-found: error
           retention-days: 14
 
@@ -330,6 +351,25 @@ jobs:
             --python-receipt build/linux-baseline-linux-arm64/sea/sagepython-build-manifest.json \
             --release-directory build/release
 
+      - name: Accept the exact Linux arm64 release candidate
+        if: needs.release-tag-policy.outputs.candidate == 'true'
+        run: |
+          version="$(node -p 'require("./package.json").version')"
+          commit="$(git rev-parse 'HEAD^{commit}')"
+          [[ "$commit" == "$GITHUB_SHA" ]] || {
+            echo "Linux arm64 acceptance checkout differs from $GITHUB_SHA" >&2
+            exit 1
+          }
+          node scripts/release-artifact-acceptance.cjs \
+            --target linux-arm64 \
+            --archive build/release/sagejs-linux-arm64.tar.xz \
+            --checksum build/release/sagejs-linux-arm64.tar.xz.sha256 \
+            --output build/release/sagejs-linux-arm64-acceptance.json \
+            --expected-version "$version" \
+            --expected-commit "$commit" \
+            --signature unsigned \
+            --maximum-glibc 2.28
+
       - name: Upload Linux arm64 SEA artifacts
         if: needs.release-tag-policy.outputs.candidate == 'true'
         id: upload-release
@@ -341,6 +381,8 @@ jobs:
             build/release/sagejs-linux-arm64.tar.xz.sha256
             build/release/sagejs-linux-arm64.report.json
             build/release/sagejs-linux-arm64.release.json
+            build/release/sagejs-linux-arm64-acceptance.json
+            build/release/sagejs-linux-arm64-acceptance.json.sha256
           if-no-files-found: error
           retention-days: 14
 

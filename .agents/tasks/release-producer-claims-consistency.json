@@ -1,0 +1,47 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "release-producer-claims-consistency",
+  "title": "Release Producer Claims Consistency",
+  "lane": "integration",
+  "status": "active",
+  "owner": "user",
+  "objective": "Make Linux release producers emit the exact acceptance evidence required by publication policy and align macOS documentation with immutable workflow publishing.",
+  "base_commit": "0ae559238dd4b0a07b53dbd126630cf46a9c6aa0",
+  "claims": [
+    ".github/workflows/ci.yml",
+    "README.md",
+    "test/release-workflow-protection.cjs"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "not-applicable",
+    "fallback": "not-applicable",
+    "oracles": [
+      "Workflow policy tests cross-check Linux producer uploads against publication assembler allowlists and ratchet immutable publishing documentation."
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "node --test test/release-workflow-protection.cjs test/release-publication.cjs test/release-artifact-acceptance.cjs test/release-tag-policy.cjs",
+    "pnpm test:release -- --tag v0.2.0",
+    "pnpm docs:check",
+    "pnpm architecture:check",
+    "pnpm test:portable",
+    "pnpm test:baselib:strict",
+    "pnpm parallel:check"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "",
+    "risks": [],
+    "next_steps": []
+  }
+}

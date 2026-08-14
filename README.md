@@ -182,12 +182,13 @@ reproduce the signed, notarized macOS artifacts locally with:
 
 ```sh
 pnpm release:macos
-# Or also attach it to an existing release:
-pnpm release:macos -- --publish v0.2.0
 ```
 
-The command uses the same credential conventions as CoCalc's macOS release
-tooling: `SAGEJS_MACOS_SIGN_ID`, `SAGEJS_MACOS_INSTALLER_ID`, and
+This command is a local reproduction path only. Public release assets are
+created exclusively by the protected tag-triggered workflow; do not use local
+`--publish`, and immutable release assets cannot be replaced. The local command
+uses the same credential conventions as CoCalc's macOS release tooling:
+`SAGEJS_MACOS_SIGN_ID`, `SAGEJS_MACOS_INSTALLER_ID`, and
 `SAGEJS_MACOS_NOTARY_PROFILE` (default `notary-profile`). It creates a signed,
 notarized ZIP and a signed, notarized, stapled installer under `build/release`.
 [`RELEASING.md`](RELEASING.md) documents the protected Apple and stable-release
