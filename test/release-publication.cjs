@@ -9,6 +9,7 @@ const {
   readdirSync,
   readFileSync,
   rmSync,
+  symlinkSync,
   writeFileSync,
 } = require("node:fs");
 const { tmpdir } = require("node:os");
@@ -19,6 +20,7 @@ const {
   SCHEMA,
   platforms,
   preparePublication,
+  regularFiles,
 } = require("../scripts/prepare-release-publication.cjs");
 
 const COMMIT = "0123456789abcdef0123456789abcdef01234567";
@@ -273,6 +275,40 @@ test("publication assembly accepts exactly four identity-bound platform artifact
     assert.deepEqual(persisted, provenance);
   } finally {
     workspace.cleanup();
+  }
+});
+
+test("publication inventory accepts a real root beneath a canonical parent alias", (t) => {
+  const root = mkdtempSync(join(tmpdir(), "sagejs-release-parent-alias-"));
+  try {
+    const physicalParent = join(root, "physical");
+    const platformRoot = join(physicalParent, "platform");
+    const aliasParent = join(root, "alias");
+    mkdirSync(platformRoot, { recursive: true });
+    writeFileSync(join(platformRoot, "artifact"), "release artifact\n");
+    try {
+      symlinkSync(
+        physicalParent,
+        aliasParent,
+        process.platform === "win32" ? "junction" : "dir",
+      );
+    } catch (error) {
+      if (process.platform === "win32" && error.code === "EPERM") {
+        t.skip("creating a directory junction requires permission on this runner");
+        return;
+      }
+      throw error;
+    }
+    assert.deepEqual(regularFiles(join(aliasParent, "platform")), ["artifact"]);
+    const rootAlias = join(root, "platform-link");
+    symlinkSync(
+      platformRoot,
+      rootAlias,
+      process.platform === "win32" ? "junction" : "dir",
+    );
+    assert.throws(() => regularFiles(rootAlias), /must be a real directory/);
+  } finally {
+    rmSync(root, { force: true, recursive: true });
   }
 });
 

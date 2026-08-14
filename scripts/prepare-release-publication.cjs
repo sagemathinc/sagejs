@@ -152,9 +152,12 @@ function regularFiles(root) {
   if (!rootInformation.isDirectory() || rootInformation.isSymbolicLink()) {
     throw new Error(`input platform root must be a real directory: ${absoluteRoot}`);
   }
-  if (realpathSync.native(absoluteRoot) !== absoluteRoot) {
-    throw new Error(`input platform root resolves outside its lexical path: ${absoluteRoot}`);
-  }
+  // Canonicalize the directory before walking it.  In particular, macOS
+  // exposes /var through the system-owned /private/var alias, so a directory
+  // created by mkdtempSync(tmpdir()) has a different lexical and physical
+  // spelling even though the release root itself is not a symlink.  We still
+  // reject a symlink in the final path component above and every symlink below.
+  const physicalRoot = realpathSync.native(absoluteRoot);
   const files = [];
   const visit = (directory) => {
     for (const name of readdirSync(directory).sort()) {
@@ -165,13 +168,13 @@ function regularFiles(root) {
       }
       if (information.isDirectory()) visit(filename);
       else if (information.isFile()) {
-        files.push(relative(absoluteRoot, filename).split(sep).join("/"));
+        files.push(relative(physicalRoot, filename).split(sep).join("/"));
       } else {
         throw new Error(`release input must contain only ordinary files: ${filename}`);
       }
     }
   };
-  visit(absoluteRoot);
+  visit(physicalRoot);
   return files;
 }
 
