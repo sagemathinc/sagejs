@@ -4,7 +4,7 @@
   "id": "release-mac-native-integration",
   "title": "Integrate Mac native portability",
   "lane": "integration",
-  "status": "review",
+  "status": "complete",
   "owner": "user",
   "objective": "Integrate the independently reviewed Apple native identity, sanitizer capability, and dense-prime timing portability authority into a closed intermediate release checkpoint",
   "base_commit": "0ae559238dd4b0a07b53dbd126630cf46a9c6aa0",
@@ -139,7 +139,7 @@
     }
   ],
   "handoff": {
-    "summary": "Integrated the independently approved Mac native portability closure 02b26ff5faa4cb0384a1ed0b05f734baa32b57ab in exact source order as patch-equivalent commits b227925 through 9604d82, with implementation authority ending at source commit a48bd53610d6be40bc92f47aee7b117f6b8959a1. Development native compilation and runtime lookup now share physical source identity across macOS aliases; lifecycle witnesses use the shared platform sanitizer capability policy; and dense-prime unpack scaling uses repeated order-balanced samples without weakening absolute, legacy-relative, or scaling limits. The sole overlapping file, tools/runtime-bootstrap.ts, preserves both the earlier approved Windows transient cache-read authority and the Mac physical-source identity authority. The source task is complete with all original receipts intact. One integration fingerprint passes the sanitizer/pivot/M4RI focused suite, dense-prime structural gate, complete native suite, exact-base changed-file build/architecture/unit/compiler/integration/CLI aggregate, standalone architecture, 446-test portable, strict-Python, and 215-contract gates at c06f7b49fa82466ef2074b65de86b9cfea0a7ca9.",
+    "summary": "Integrated and independently reviewed the approved Mac native portability closure 02b26ff5faa4cb0384a1ed0b05f734baa32b57ab in exact source order as patch-equivalent commits b227925 through 9604d82, with implementation authority ending at source commit a48bd53610d6be40bc92f47aee7b117f6b8959a1. Development native compilation and runtime lookup now share physical source identity across macOS aliases; lifecycle witnesses use the shared platform sanitizer capability policy; and dense-prime unpack scaling uses repeated order-balanced samples without weakening absolute, legacy-relative, or scaling limits. The sole overlapping file, tools/runtime-bootstrap.ts, preserves both the earlier approved Windows transient cache-read authority and the Mac physical-source identity authority. The source task is complete with all original receipts intact. One integration fingerprint passes the sanitizer/pivot/M4RI focused suite, dense-prime structural gate, complete native suite, exact-base changed-file build/architecture/unit/compiler/integration/CLI aggregate, standalone architecture, 446-test portable, strict-Python, and 215-contract gates at c06f7b49fa82466ef2074b65de86b9cfea0a7ca9. Independent review at 2adc6e06f23b59955de0c64a39254fda5866011c confirmed all five ordered patches, every non-overlap blob, the exact combined runtime bootstrap, byte-identical retained source receipts including both failures, fresh scoped and all-contract checks, and a clean remote and worktree.",
     "risks": [
       "Physical Apple M1 Max and native Windows evidence belongs to exact implementation source a48bd53610d6be40bc92f47aee7b117f6b8959a1; the final frozen-source Mac build, signing, notarization, benchmark, and artifact acceptance remain required.",
       "The source task's failed pnpm test:changed receipt is intentionally preserved: its inherited stale website reference provenance is assigned to a separate lane. The integration-only exact-base changed-file aggregate passes because the Mac delta selects no docs gate; this does not claim the stale documentation was refreshed or clear the final docs gate.",
@@ -147,7 +147,6 @@
       "Linux arm64 remains not applicable because the implementation branches only on Darwin versus non-Darwin; Linux x64 covers the non-Darwin path and physical Apple silicon covers native arm64 plus the original Darwin failure mode."
     ],
     "next_steps": [
-      "Obtain independent review of this exact intermediate checkpoint before marking the Mac native integration task complete.",
       "Integrate the exact independently approved producer-claims closure supplied by the release coordinator, then provide the exact combined closed checkpoint for downstream Windows static packaging.",
       "Keep the separate website provenance refresh and final frozen-source Mac rehearsal as explicit downstream gates."
     ]
