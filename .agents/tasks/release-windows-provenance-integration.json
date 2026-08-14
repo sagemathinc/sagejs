@@ -1,0 +1,45 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "release-windows-provenance-integration",
+  "title": "Integrate Windows native provenance evidence",
+  "lane": "integration",
+  "status": "active",
+  "owner": "user",
+  "objective": "Integrate the independently reviewed Windows native source-provenance normalization and its explicit downstream PE reproducibility finding into a closed intermediate release checkpoint",
+  "base_commit": "2ce7cd775f3d33a4a1d7bf6b44f66a05ed1ea546",
+  "claims": [
+    ".agents/tasks/release-windows-provenance-integration.json",
+    ".agents/tasks/windows-provenance-path-normalization.json",
+    "test/native-kernel.cjs"
+  ],
+  "dependencies": [
+    "windows-provenance-path-normalization"
+  ],
+  "references": [],
+  "architecture": {
+    "strategy": "not-applicable",
+    "fallback": "not-applicable",
+    "oracles": [],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "not-applicable",
+    "windows-x64": "required",
+    "macos-arm64": "not-applicable"
+  },
+  "validation": [
+    "pnpm architecture:check",
+    "pnpm test:portable",
+    "pnpm test:baselib:strict",
+    "pnpm test:changed -- --base 2ce7cd775f3d33a4a1d7bf6b44f66a05ed1ea546",
+    "pnpm parallel:check -- --all"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "",
+    "risks": [],
+    "next_steps": []
+  }
+}
