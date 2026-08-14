@@ -4,7 +4,7 @@
   "id": "windows-sea-addon-delay-load",
   "title": "Windows SEA Native Addon Delay Loading",
   "lane": "integration",
-  "status": "review",
+  "status": "complete",
   "owner": "user",
   "objective": "Make every compiler-generated Windows addon delay-load the current Node executable and reject embedded addons that eagerly import or omit node.exe",
   "base_commit": "2ce7cd775f3d33a4a1d7bf6b44f66a05ed1ea546",
@@ -128,8 +128,7 @@
       "The first portable-tier run lacked generated module/runtime caches and failed two cache-presence tests; after pnpm build generated them, the complete 437-test tier passed."
     ],
     "next_steps": [
-      "Integrate the independently source-approved delay-load commit and this closure receipt before changing shared Windows compiler/linker policy.",
-      "Base the static-CRT and PDBALTPATH reproducibility lane on this closure, preserve the per-file delayed-only node.exe ratchet, and rebuild the final frozen Windows candidate."
+      "Base the static-CRT and PDBALTPATH reproducibility lane on the closed integration checkpoint, preserve the per-file delayed-only node.exe ratchet, and rebuild the final frozen Windows candidate."
     ]
   }
 }
