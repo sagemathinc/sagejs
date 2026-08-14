@@ -4,14 +4,13 @@
   "id": "mac-native-portability",
   "title": "Mac native portability",
   "lane": "integration",
-  "status": "active",
+  "status": "review",
   "owner": "user",
   "objective": "Make native compiler identity, sanitizer lifecycle witnesses, and dense-prime timing validation robust on real Apple systems without weakening required-native, sanitizer, absolute-performance, or legacy-relative gates.",
   "base_commit": "db6258674e6f191b8187c31e2231a45c73a5c5c6",
   "claims": [
     "tools/native-kernel/compiler.cjs",
     "tools/runtime-bootstrap.ts",
-    "test/native-kernel.cjs",
     "test/dense-prime-structural.cjs",
     "test/fmpz-matrix-selector-lifecycle.cjs",
     "test/exact-polynomial-factorization-resource.cjs",
@@ -48,10 +47,128 @@
     "pnpm test:portable",
     "pnpm test:baselib:strict"
   ],
-  "runs": [],
+  "runs": [
+    {
+      "command": "node --test --test-reporter=spec --test-name-pattern=sanitizer lifecycle witnesses|native and disabled-native paths use the same declared pivot calls|sanitizers exercise façade allocation and destruction test/exact-matrix-pivot-ffi.cjs packages/m4ri/test/test.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 5.73,
+      "started_at": "2026-08-14T13:56:01.827Z",
+      "commit": "a48bd53610d6be40bc92f47aee7b117f6b8959a1",
+      "workspace_fingerprint": "b58f2004e4c9e90f7922618470ff9a516e64bc6b62a0c364f1d013e4bc395714",
+      "platform": "darwin-arm64"
+    },
+    {
+      "command": "node test/dense-prime-structural.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 13.474,
+      "started_at": "2026-08-14T13:56:14.540Z",
+      "commit": "a48bd53610d6be40bc92f47aee7b117f6b8959a1",
+      "workspace_fingerprint": "b58f2004e4c9e90f7922618470ff9a516e64bc6b62a0c364f1d013e4bc395714",
+      "platform": "darwin-arm64"
+    },
+    {
+      "command": "node --test --test-reporter=spec --test-name-pattern=sanitizer lifecycle witnesses|native and disabled-native paths use the same declared pivot calls|sanitizers exercise façade allocation and destruction test/exact-matrix-pivot-ffi.cjs packages/m4ri/test/test.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 3.488,
+      "started_at": "2026-08-14T13:57:11.675Z",
+      "commit": "a48bd53610d6be40bc92f47aee7b117f6b8959a1",
+      "workspace_fingerprint": "b58f2004e4c9e90f7922618470ff9a516e64bc6b62a0c364f1d013e4bc395714",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node test/dense-prime-structural.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 27.72,
+      "started_at": "2026-08-14T13:57:19.914Z",
+      "commit": "a48bd53610d6be40bc92f47aee7b117f6b8959a1",
+      "workspace_fingerprint": "b58f2004e4c9e90f7922618470ff9a516e64bc6b62a0c364f1d013e4bc395714",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 23.348,
+      "started_at": "2026-08-14T13:57:51.682Z",
+      "commit": "a48bd53610d6be40bc92f47aee7b117f6b8959a1",
+      "workspace_fingerprint": "b58f2004e4c9e90f7922618470ff9a516e64bc6b62a0c364f1d013e4bc395714",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 5.85,
+      "started_at": "2026-08-14T13:58:21.890Z",
+      "commit": "a48bd53610d6be40bc92f47aee7b117f6b8959a1",
+      "workspace_fingerprint": "b58f2004e4c9e90f7922618470ff9a516e64bc6b62a0c364f1d013e4bc395714",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 16.154,
+      "started_at": "2026-08-14T13:58:33.238Z",
+      "commit": "a48bd53610d6be40bc92f47aee7b117f6b8959a1",
+      "workspace_fingerprint": "b58f2004e4c9e90f7922618470ff9a516e64bc6b62a0c364f1d013e4bc395714",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:changed",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 1762.057,
+      "started_at": "2026-08-14T14:06:10.259Z",
+      "commit": "a48bd53610d6be40bc92f47aee7b117f6b8959a1",
+      "workspace_fingerprint": "b58f2004e4c9e90f7922618470ff9a516e64bc6b62a0c364f1d013e4bc395714",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:cli",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 250.782,
+      "started_at": "2026-08-14T14:36:45.899Z",
+      "commit": "a48bd53610d6be40bc92f47aee7b117f6b8959a1",
+      "workspace_fingerprint": "b58f2004e4c9e90f7922618470ff9a516e64bc6b62a0c364f1d013e4bc395714",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test --test-reporter=spec --test-name-pattern=sanitizer lifecycle witnesses use the platform capability helper test/exact-matrix-pivot-ffi.cjs",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 0.248,
+      "started_at": "2026-08-14T14:04:51.034Z",
+      "commit": "a48bd53610d6be40bc92f47aee7b117f6b8959a1",
+      "workspace_fingerprint": "b58f2004e4c9e90f7922618470ff9a516e64bc6b62a0c364f1d013e4bc395714",
+      "platform": "win32-x64"
+    },
+    {
+      "command": "node --test --test-reporter=spec --test-name-pattern=sanitizer lifecycle witnesses use the platform capability helper test/exact-matrix-pivot-ffi.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 3.263,
+      "started_at": "2026-08-14T14:10:53.533Z",
+      "commit": "a48bd53610d6be40bc92f47aee7b117f6b8959a1",
+      "workspace_fingerprint": "b58f2004e4c9e90f7922618470ff9a516e64bc6b62a0c364f1d013e4bc395714",
+      "platform": "win32-x64"
+    }
+  ],
   "handoff": {
-    "summary": "",
-    "risks": [],
-    "next_steps": []
+    "summary": "At independently approved source a48bd53610d6be40bc92f47aee7b117f6b8959a1, development native compilation and runtime registration now use the same physical source identity across lexical filesystem aliases, with a required-native symlink regression proving manifest, discovery-index, and runtime agreement. Every affected FLINT and M4RI lifecycle witness uses the shared platform capability environment: Apple retains AddressSanitizer and UndefinedBehaviorSanitizer while disabling only unsupported LeakSanitizer detection, and a repository ratchet rejects new raw leak-enabling assignments across test, tools/ffi, and package-test trees. Dense-prime unpack scaling now uses seven order-balanced paired batches and their median while retaining the prior absolute, legacy-relative, and 5x scaling gates. Exact Linux x64 focused, portable, architecture, strict-Python, complete Node-manifest, native package, lifecycle-fuzz, and performance gates pass. A physical Apple M1 Max running macOS 26.4 passed the required-native alias plus sanitizer/M4RI witness and dense-prime structural timing at the exact source fingerprint. Native Windows x64 passed the non-Darwin sanitizer-policy ratchet at the same source fingerprint after the clean checkout was built. The unchanged test/native-kernel.cjs claim identified in review has been removed.",
+    "risks": [
+      "The exact pnpm test:changed receipt remains failed and must not be represented as an aggregate pass. Its build, architecture, 447/447 unit, compiler, 439-pass/3-skip integration, complete native, sanitizer, and absolute-performance stages passed; docs:check then failed because inherited website/reference-data.json provenance is stale, so the command stopped before test:cli. A generated-output comparison found docs/reference/api.md and both Prism assets byte-current; reference-data differs only in 75 line values, 29 start_line values, and one surrounding source excerpt, while reference.html differs only in the derived reference-data content hash. This lane changes none of src/baselib, docs/reference, website, or the reference-generation scripts relative to base db6258674e6f191b8187c31e2231a45c73a5c5c6. The separate pnpm test:cli receipt passes 886 tests with 3 intentional skips and closes only the final suite that test:changed did not reach; it does not clear the stale-docs failure.",
+      "The first native Windows x64 ratchet attempt is retained as a failed receipt: the fresh checkout had no dist/tools/compiler.js. After initializing its submodules and completing the exact-source build, the identical ratchet command passed; no production assertion failed in the first attempt.",
+      "A separate Linux arm64 host was not exercised. The changed implementation has Darwin-versus-non-Darwin behavior but no Linux architecture branch; Linux x64 covers the non-Darwin native path and the physical Apple M1 Max covers arm64 plus the original Darwin failure mode."
+    ],
+    "next_steps": [
+      "Refresh the inherited website reference provenance on the consolidated integration baseline and rerun docs:check plus test:changed so the aggregate receipt becomes green without expanding this lane's claims.",
+      "Integrate the exact reviewed source and closure, then perform the frozen macOS release rehearsal, signing, notarization, and final artifact acceptance downstream."
+    ]
   }
 }
