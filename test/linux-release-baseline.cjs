@@ -452,7 +452,15 @@ test("release publication refuses unowned output and replaces owned output", () 
 });
 
 test("Linux baseline command-line parsing is fail closed", () => {
-  assert.deepEqual(parseArguments(["--all-inputs", "--engine", "podman"]), {
+  assert.deepEqual(
+    parseArguments([
+      "--platform",
+      "linux-x64",
+      "--all-inputs",
+      "--engine",
+      "podman",
+    ]),
+    {
     allInputs: true,
     engine: "podman",
       keepImage: false,
@@ -461,7 +469,8 @@ test("Linux baseline command-line parsing is fail closed", () => {
     sourceCommit: undefined,
     sourceRef: "HEAD",
     stagedContext: undefined,
-  });
+    },
+  );
   assert.throws(() => parseArguments(["--engine", "lxc"]), /docker or podman/);
   assert.deepEqual(
     parseArguments(["--platform", "linux-arm64"]).platform,
@@ -534,14 +543,18 @@ test("the full proof rejects host-tuned mathematics profiles", () => {
       openblas: { dynamicArch: true },
     },
   };
-  assert.equal(assertPortableMathProfile(portable), portable);
+  const x64 = platformConfig("linux-x64");
+  assert.equal(assertPortableMathProfile(portable, x64), portable);
   assert.throws(
-    () => assertPortableMathProfile({ ...portable, cpu: { model: "builder" } }),
+    () => assertPortableMathProfile({ ...portable, cpu: { model: "builder" } }, x64),
     /Expected values to be strictly equal/,
   );
   const tuned = structuredClone(portable);
   tuned.buildOptions.gmp.cflags = ["-march=native"];
-  assert.throws(() => assertPortableMathProfile(tuned), /host CPU compiler flag/);
+  assert.throws(
+    () => assertPortableMathProfile(tuned, x64),
+    /host CPU compiler flag/,
+  );
 
   const arm = structuredClone(portable);
   arm.abi.arch = "arm64";
