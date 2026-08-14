@@ -4,7 +4,7 @@
   "id": "release-candidate-arm-fixtures",
   "title": "Portable Linux release-candidate fixtures",
   "lane": "integration",
-  "status": "active",
+  "status": "review",
   "owner": "linux-arm64-release",
   "objective": "Make Linux release-candidate fixture tests architecture-neutral so native arm64 CI validates arm64 receipts, archive names, and Rust authority while preserving the exact x64 contract",
   "base_commit": "db6258674e6f191b8187c31e2231a45c73a5c5c6",
@@ -123,16 +123,76 @@
       "commit": "b657627c278f028a62bc9d8d2a8e663e667bfb9c",
       "workspace_fingerprint": "73b8d88bfeac01d61a997b5c7970d9ca2cebdd5cd82602e3a72379084a699949",
       "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/release-candidate-linux.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.485,
+      "started_at": "2026-08-14T13:51:19.574Z",
+      "commit": "9c444d4e9954cf7ff2d2c133073c8ad950f7b84d",
+      "workspace_fingerprint": "49bb82765d8a1190007253bcee3ed2bc5715e78171eaaebde49a39401af52cc8",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 5.619,
+      "started_at": "2026-08-14T13:51:26.386Z",
+      "commit": "9c444d4e9954cf7ff2d2c133073c8ad950f7b84d",
+      "workspace_fingerprint": "49bb82765d8a1190007253bcee3ed2bc5715e78171eaaebde49a39401af52cc8",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 15.25,
+      "started_at": "2026-08-14T13:51:36.222Z",
+      "commit": "9c444d4e9954cf7ff2d2c133073c8ad950f7b84d",
+      "workspace_fingerprint": "49bb82765d8a1190007253bcee3ed2bc5715e78171eaaebde49a39401af52cc8",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 21.57,
+      "started_at": "2026-08-14T13:51:55.793Z",
+      "commit": "9c444d4e9954cf7ff2d2c133073c8ad950f7b84d",
+      "workspace_fingerprint": "49bb82765d8a1190007253bcee3ed2bc5715e78171eaaebde49a39401af52cc8",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "/home/user/node-official-26.7.0.Q6DufW/node-v26.7.0-linux-arm64/bin/node --test --test-reporter=spec test/release-candidate-linux.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2,
+      "started_at": "2026-08-14T13:51:12.000Z",
+      "commit": "9c444d4e9954cf7ff2d2c133073c8ad950f7b84d",
+      "workspace_fingerprint": "49bb82765d8a1190007253bcee3ed2bc5715e78171eaaebde49a39401af52cc8",
+      "platform": "linux-arm64"
+    },
+    {
+      "command": "/private/tmp/node-official-26.7.0.YcXH8H/node-v26.7.0-darwin-arm64/bin/node --test --test-reporter=spec test/release-candidate-linux.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 3,
+      "started_at": "2026-08-14T13:53:00.000Z",
+      "commit": "9c444d4e9954cf7ff2d2c133073c8ad950f7b84d",
+      "workspace_fingerprint": "49bb82765d8a1190007253bcee3ed2bc5715e78171eaaebde49a39401af52cc8",
+      "platform": "macos-arm64"
     }
   ],
   "handoff": {
-    "summary": "Linux release-candidate fixtures now derive the receipt target, official Rust authority, archive/checksum basename, readiness marker, and installer archive name from the supported host architecture. The suite retains literal x64 ratchets and adds literal arm64 ratchets. All 11 focused tests pass on both local Linux x64 and native Linux arm64 at exact commit 58517e728f72ea114d32f91c01148d2cd4f15f3d.",
+    "summary": "At exact source 9c444d4e9954cf7ff2d2c133073c8ad950f7b84d, Linux release-candidate fixtures derive receipt targets, official Rust provenance, archive/checksum names, readiness markers, and installer names from the supported architecture. Literal x64 and arm64 authority ratchets remain explicit. A parent-authorized test-only archive writer lets physical Darwin exercise the complete fixture with deterministic BSD tar while production Linux retains its exact fixed GNU tar command and environment. The focused suite passes 11/11 on Linux x64, native Linux arm64, and physical Darwin arm64 with Node 26.7.0. Architecture, portable (445/445), and strict baselib gates pass on the rebased source.",
     "risks": [
-      "The parallel runner records the invoking host as linux-x64 for the SSH validation receipt; the recorded command and captured test output identify the native bench-arm execution explicitly.",
-      "The broad pnpm test:changed run was stopped after unrelated optional-native-adapter failures; its unit tier passed 445/445 before those integration failures. The claimed one-file suite passed independently on both architectures."
+      "Darwin uses an explicit test-only BSD tar writer; both native Linux targets continue to exercise the unchanged production GNU tar path under hostile ambient PATH, TAR_OPTIONS, XZ_OPT, and umask values.",
+      "The structured target-host run objects were recorded from clean exact remote checkouts because the local parallel runner labels SSH commands with the invoking x64 host."
     ],
     "next_steps": [
-      "Integrate commit 58517e728f72ea114d32f91c01148d2cd4f15f3d into the shared release baseline and let the native macOS arm64 release-source job exercise the same architecture-aware fixtures."
+      "Review and integrate the closure commit into the shared release baseline, then let macOS and Linux release CI repeat the same focused architecture-specific fixtures."
     ]
   }
 }
