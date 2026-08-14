@@ -4,9 +4,9 @@
   "id": "linux-arm64-startup-profile",
   "title": "Declarative Linux ARM64 startup profile",
   "lane": "integration",
-  "status": "active",
+  "status": "review",
   "owner": "user",
-  "objective": "Select an evidence-backed Linux ARM64 development startup budget without relaxing generic budgets and reject malformed, duplicate, or unknown profile declarations.",
+  "objective": "Select evidence-backed Linux ARM64 development startup budgets without relaxing generic budgets and reject malformed, duplicate, or unknown profile declarations.",
   "base_commit": "db6258674e6f191b8187c31e2231a45c73a5c5c6",
   "claims": [
     "scripts/check-startup-budget.cjs",
@@ -16,7 +16,15 @@
   "dependencies": [],
   "references": [
     "GitHub Actions job 94758445357 normalized development-full startup 380.1 ms",
-    "GitHub Actions job 94767636220 normalized development-full startup 387.4 ms"
+    "GitHub Actions job 94758445357 normalized development-empty startup 215.7 ms",
+    "GitHub Actions job 94767636220 normalized development-full startup 387.4 ms",
+    "GitHub Actions job 94767636220 normalized development-empty startup 223.8 ms",
+    "bench-arm b22cf69cc1f7b5fd664bfa088e2700f46f4b95b5 normalized development-full startup 456.2 ms",
+    "bench-arm b22cf69cc1f7b5fd664bfa088e2700f46f4b95b5 normalized development-empty startup 251.9 ms",
+    "bench-arm da2e49c90d20c6f00867d888486aebb215f8134e normalized development-full startup 438.2 ms",
+    "bench-arm da2e49c90d20c6f00867d888486aebb215f8134e normalized development-empty startup 243.3 ms",
+    "/home/user/release-evidence/linux-arm64-startup-b22cf69/startup-receipt.txt",
+    "/home/user/release-evidence/linux-arm64-startup-da2e49c/startup-receipt.txt"
   ],
   "architecture": {
     "strategy": "not-applicable",
@@ -33,14 +41,142 @@
     "macos-arm64": "not-applicable"
   },
   "validation": [
+    "node --test test/startup-budget.cjs",
     "pnpm architecture:check",
     "pnpm test:portable",
-    "pnpm test:baselib:strict"
+    "pnpm test:baselib:strict",
+    "pnpm test:changed -- --base db6258674e6f191b8187c31e2231a45c73a5c5c6",
+    "env -u SAGEJS_STARTUP_SAMPLES -u SAGEJS_STARTUP_BUDGET_MS -u SAGEJS_STARTUP_REFERENCE_NODE_MS -u SAGEJS_STARTUP_HARD_LIMIT_MS -u SAGEJS_EMPTY_STARTUP_BUDGET_MS -u SAGEJS_EMPTY_STARTUP_HARD_LIMIT_MS NODE_ENV=production node scripts/check-startup-budget.cjs --samples 11"
   ],
-  "runs": [],
+  "runs": [
+    {
+      "command": "node --test test/startup-budget.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.116,
+      "started_at": "2026-08-14T13:47:46.282Z",
+      "commit": "b22cf69cc1f7b5fd664bfa088e2700f46f4b95b5",
+      "workspace_fingerprint": "7b4ab6afd23328c631c28741c065ac840f052e4c1f991880aadbb205663bc683",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 5.868,
+      "started_at": "2026-08-14T13:47:47.095Z",
+      "commit": "b22cf69cc1f7b5fd664bfa088e2700f46f4b95b5",
+      "workspace_fingerprint": "7b4ab6afd23328c631c28741c065ac840f052e4c1f991880aadbb205663bc683",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 16.198,
+      "started_at": "2026-08-14T13:47:53.687Z",
+      "commit": "b22cf69cc1f7b5fd664bfa088e2700f46f4b95b5",
+      "workspace_fingerprint": "7b4ab6afd23328c631c28741c065ac840f052e4c1f991880aadbb205663bc683",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 22.653,
+      "started_at": "2026-08-14T13:48:15.571Z",
+      "commit": "b22cf69cc1f7b5fd664bfa088e2700f46f4b95b5",
+      "workspace_fingerprint": "7b4ab6afd23328c631c28741c065ac840f052e4c1f991880aadbb205663bc683",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:changed -- --base db6258674e6f191b8187c31e2231a45c73a5c5c6",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 268.581,
+      "started_at": "2026-08-14T13:48:44.612Z",
+      "commit": "b22cf69cc1f7b5fd664bfa088e2700f46f4b95b5",
+      "workspace_fingerprint": "7b4ab6afd23328c631c28741c065ac840f052e4c1f991880aadbb205663bc683",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "env -u SAGEJS_STARTUP_SAMPLES -u SAGEJS_STARTUP_BUDGET_MS -u SAGEJS_STARTUP_REFERENCE_NODE_MS -u SAGEJS_STARTUP_HARD_LIMIT_MS -u SAGEJS_EMPTY_STARTUP_BUDGET_MS -u SAGEJS_EMPTY_STARTUP_HARD_LIMIT_MS NODE_ENV=production node scripts/check-startup-budget.cjs --samples 11",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 8.196,
+      "started_at": "2026-08-14T15:39:17.000Z",
+      "commit": "b22cf69cc1f7b5fd664bfa088e2700f46f4b95b5",
+      "workspace_fingerprint": "7b4ab6afd23328c631c28741c065ac840f052e4c1f991880aadbb205663bc683",
+      "platform": "linux-arm64"
+    },
+    {
+      "command": "node --test test/startup-budget.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.128,
+      "started_at": "2026-08-14T15:42:59.550Z",
+      "commit": "da2e49c90d20c6f00867d888486aebb215f8134e",
+      "workspace_fingerprint": "451d78f661c3f9baf374597bb76145f2480931f106cf612be44b19ed82c10f76",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 5.991,
+      "started_at": "2026-08-14T15:43:00.323Z",
+      "commit": "da2e49c90d20c6f00867d888486aebb215f8134e",
+      "workspace_fingerprint": "451d78f661c3f9baf374597bb76145f2480931f106cf612be44b19ed82c10f76",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 15.677,
+      "started_at": "2026-08-14T15:43:06.963Z",
+      "commit": "da2e49c90d20c6f00867d888486aebb215f8134e",
+      "workspace_fingerprint": "451d78f661c3f9baf374597bb76145f2480931f106cf612be44b19ed82c10f76",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 23.103,
+      "started_at": "2026-08-14T15:43:23.266Z",
+      "commit": "da2e49c90d20c6f00867d888486aebb215f8134e",
+      "workspace_fingerprint": "451d78f661c3f9baf374597bb76145f2480931f106cf612be44b19ed82c10f76",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:changed -- --base db6258674e6f191b8187c31e2231a45c73a5c5c6",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 248.541,
+      "started_at": "2026-08-14T15:44:02.499Z",
+      "commit": "da2e49c90d20c6f00867d888486aebb215f8134e",
+      "workspace_fingerprint": "451d78f661c3f9baf374597bb76145f2480931f106cf612be44b19ed82c10f76",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "env -u SAGEJS_STARTUP_SAMPLES -u SAGEJS_STARTUP_BUDGET_MS -u SAGEJS_STARTUP_REFERENCE_NODE_MS -u SAGEJS_STARTUP_HARD_LIMIT_MS -u SAGEJS_EMPTY_STARTUP_BUDGET_MS -u SAGEJS_EMPTY_STARTUP_HARD_LIMIT_MS NODE_ENV=production node scripts/check-startup-budget.cjs --samples 11",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 7.87,
+      "started_at": "2026-08-14T15:52:54.000Z",
+      "commit": "da2e49c90d20c6f00867d888486aebb215f8134e",
+      "workspace_fingerprint": "451d78f661c3f9baf374597bb76145f2480931f106cf612be44b19ed82c10f76",
+      "platform": "linux-arm64"
+    }
+  ],
   "handoff": {
-    "summary": "",
-    "risks": [],
-    "next_steps": []
+    "summary": "Added strict exact-target startup profiles and calibrated only Linux ARM64 development startup: 500 ms full and 275 ms empty preserve 9.60% and 9.17% headroom over the clean unloaded b22cf69 maxima, matching the original hosted-evidence margin. Generic and x64 budgets, both ARM SEA budgets, 11-sample normalization, and all raw ceilings remain unchanged. The retained first b22cf69 bench-arm receipt failed the earlier 425/225 calibration at 456.2/251.9 ms normalized; after the evidence-bound correction, the first and only clean unloaded da2e49c checker passed at 438.2/243.3 ms normalized with a 1.00x load factor. Exact-fingerprint Linux x64 focused, architecture, strict, portable (449/449), and changed-file (451/451) receipts pass.",
+    "risks": [
+      "Startup timing remains host-sensitive; the profile is deliberately bounded by three independent 11-sample ARM receipts plus unchanged raw catastrophic ceilings."
+    ],
+    "next_steps": [
+      "Obtain final independent review of the closure commit and the exact da2e49c ARM production receipt before integration."
+    ]
   }
 }
