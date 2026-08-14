@@ -4,7 +4,7 @@
   "id": "release-live-main-compiler-integration",
   "title": "Integrate live main compiler semantics",
   "lane": "integration",
-  "status": "review",
+  "status": "complete",
   "owner": "user",
   "objective": "Integrate the independently approved reusable __main__ LOAD_NAME correction into a closed intermediate release checkpoint",
   "base_commit": "8d18904b2bbd0860b89e6236d7b35346e3c9bba2",
@@ -176,14 +176,13 @@
     }
   ],
   "handoff": {
-    "summary": "Integrated the full independently approved source lane 0ae559238dd4b0a07b53dbd126630cf46a9c6aa0..97af3a476d7c56426b04eb49be9a5b9ce5bea960 in order onto exact closed baseline 8d18904b2bbd0860b89e6236d7b35346e3c9bba2. Source commits 8dba129, 731ce69, and 97af3a4 correspond patch-for-patch to integration commits 0a34f7f, e27e368, and fb6e214; the final production and regression-test blobs are byte-identical to corrected source authority 731ce693f7e10e2bf56260acbc9e367bdb99b318. A unique per-fragment sentinel now lets a freshly created reusable `__main__` binding continue through Python module/builtin lookup for its same-cell assignment RHS, while prior values remain reusable and deleted or failed bindings remain authoritative tombstones. At one exact integration checkpoint and workspace fingerprint, all 12 declared gates passed: self-hosting build; compiled-module isolation 15/15; kernel; `tour_rings` 32/32; tutorial corpus 662/662; compiler suite with 15 passing and 17 historical skips; integration tier with 440 passing and 3 expected skips; exact-base changed-file build/architecture/unit with 455/455 unit tests; standalone architecture; strict baselib at zero errors; portable with 453/453; and all 221 parallel task contracts. Independent review approved the integrated content and provenance at code checkpoint 64e88bdda7349ded2ce5d9de51c477743b3cb161 before the aggregate receipts were completed.",
+    "summary": "Integrated the full independently approved source lane 0ae559238dd4b0a07b53dbd126630cf46a9c6aa0..97af3a476d7c56426b04eb49be9a5b9ce5bea960 in order onto exact closed baseline 8d18904b2bbd0860b89e6236d7b35346e3c9bba2. Source commits 8dba129, 731ce69, and 97af3a4 correspond patch-for-patch to integration commits 0a34f7f, e27e368, and fb6e214; the final production and regression-test blobs are byte-identical to corrected source authority 731ce693f7e10e2bf56260acbc9e367bdb99b318. A unique per-fragment sentinel now lets a freshly created reusable `__main__` binding continue through Python module/builtin lookup for its same-cell assignment RHS, while prior values remain reusable and deleted or failed bindings remain authoritative tombstones. At one exact integration checkpoint and workspace fingerprint, all 12 declared gates passed: self-hosting build; compiled-module isolation 15/15; kernel; `tour_rings` 32/32; tutorial corpus 662/662; compiler suite with 15 passing and 17 historical skips; integration tier with 440 passing and 3 expected skips; exact-base changed-file build/architecture/unit with 455/455 unit tests; standalone architecture; strict baselib at zero errors; portable with 453/453; and all 221 parallel task contracts. Independent review approved the integrated content and provenance at code checkpoint 64e88bdda7349ded2ce5d9de51c477743b3cb161, then approved the complete receipt set and contract-only review handoff at exact checkpoint 31086af1bcab88b7ed36aac6e408fcbda351b258 after independently verifying source equivalence, counts, fingerprint identity, scope, and fresh all-contract validation.",
     "risks": [
       "Do not drop the per-fragment sentinel identity from e27e368/731ce69: the earlier fixed top-level sentinel could expose an old marker after a later reusable fragment replaced the global sentinel. The integrated three-cell regression is the exact guard for that failure.",
       "Validation ran on Linux x64. This narrow change emits architecture-neutral JavaScript and adds no native dependency or platform capability; final release validation must still exercise the frozen aggregate source on every publication platform.",
       "This checkpoint integrates only the approved compiler lane. The blocked website closure f18795d80587997a32fdbe0901c19fddfee01d61 was not integrated, and no release tag or artifact was created."
     ],
     "next_steps": [
-      "Obtain independent review of this committed handoff and exact 12-gate receipt set, then close the integration contract only after explicit approval.",
       "Provide the resulting exact closed compiler-integration SHA to the website consistency lane so it can rerun the full 662-example tutorial corpus and issue a successor closure.",
       "Rerun aggregate compiler, integration, tutorial, and platform gates on the eventual frozen release source."
     ]
