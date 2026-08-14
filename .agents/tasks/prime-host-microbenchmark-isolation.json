@@ -4,7 +4,7 @@
   "id": "prime-host-microbenchmark-isolation",
   "title": "Separate fixed host microbenchmarks from correctness",
   "lane": "integration",
-  "status": "active",
+  "status": "review",
   "owner": "user",
   "objective": "Keep prime matrix correctness unconditional while moving fixed absolute host microbenchmarks to an explicit continuously runnable command",
   "base_commit": "e1761830c8a809d79ce7e08e15ca4ff98d7a1a8a",
@@ -36,10 +36,66 @@
     "pnpm test:portable",
     "pnpm test:baselib:strict"
   ],
-  "runs": [],
+  "runs": [
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 5.472,
+      "started_at": "2026-08-14T09:59:28.824Z",
+      "commit": "0f35beb8900b234e84cd9164f5103ea7fc4fb35f",
+      "workspace_fingerprint": "1a66668b19a30e2a2daeda31a7f34dbd15c0158fd85bfffb98ca641f8262cfbe",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 14.815,
+      "started_at": "2026-08-14T09:59:39.099Z",
+      "commit": "0f35beb8900b234e84cd9164f5103ea7fc4fb35f",
+      "workspace_fingerprint": "1a66668b19a30e2a2daeda31a7f34dbd15c0158fd85bfffb98ca641f8262cfbe",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 21.523,
+      "started_at": "2026-08-14T09:59:58.420Z",
+      "commit": "0f35beb8900b234e84cd9164f5103ea7fc4fb35f",
+      "workspace_fingerprint": "1a66668b19a30e2a2daeda31a7f34dbd15c0158fd85bfffb98ca641f8262cfbe",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/prime-host-microbenchmark-gates.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.894,
+      "started_at": "2026-08-14T10:00:30.994Z",
+      "commit": "0f35beb8900b234e84cd9164f5103ea7fc4fb35f",
+      "workspace_fingerprint": "1a66668b19a30e2a2daeda31a7f34dbd15c0158fd85bfffb98ca641f8262cfbe",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/prime-host-boundaries.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 6.405,
+      "started_at": "2026-08-14T10:00:40.918Z",
+      "commit": "0f35beb8900b234e84cd9164f5103ea7fc4fb35f",
+      "workspace_fingerprint": "1a66668b19a30e2a2daeda31a7f34dbd15c0158fd85bfffb98ca641f8262cfbe",
+      "platform": "linux-x64"
+    }
+  ],
   "handoff": {
-    "summary": "",
-    "risks": [],
-    "next_steps": []
+    "summary": "Prime matrix semantic assertions remain unconditional in integration. Fixed absolute scalar, pivot, and SagePack timing targets now run only through node bench/prime-host-boundaries.cjs, which emits structured measurements. Adversarial integration tests prove that disabling native execution still fails the compiled-path oracle and that default serialization correctness runs while only its timing case is skipped.",
+    "risks": [
+      "The preserved fixed-host ceilings are optimization targets, so benchmark evidence should be collected on an idle named host rather than interpreted as concurrent CI correctness."
+    ],
+    "next_steps": [
+      "Integrate the reviewed commit into the frozen release source.",
+      "Retain idle linux-x64 and linux-arm64 benchmark measurements with the mathematical dispatch profile evidence."
+    ]
   }
 }
