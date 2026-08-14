@@ -1,0 +1,46 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "linux-arm64-startup-profile",
+  "title": "Declarative Linux ARM64 startup profile",
+  "lane": "integration",
+  "status": "active",
+  "owner": "user",
+  "objective": "Select an evidence-backed Linux ARM64 development startup budget without relaxing generic budgets and reject malformed, duplicate, or unknown profile declarations.",
+  "base_commit": "db6258674e6f191b8187c31e2231a45c73a5c5c6",
+  "claims": [
+    "scripts/check-startup-budget.cjs",
+    "architecture/package-graph.json",
+    "test/startup-budget.cjs"
+  ],
+  "dependencies": [],
+  "references": [
+    "GitHub Actions job 94758445357 normalized development-full startup 380.1 ms",
+    "GitHub Actions job 94767636220 normalized development-full startup 387.4 ms"
+  ],
+  "architecture": {
+    "strategy": "not-applicable",
+    "fallback": "not-applicable",
+    "oracles": [
+      "Profile-selection and adversarial configuration tests plus hosted ARM64 normalized startup receipts"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "not-applicable",
+    "macos-arm64": "not-applicable"
+  },
+  "validation": [
+    "pnpm architecture:check",
+    "pnpm test:portable",
+    "pnpm test:baselib:strict"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "",
+    "risks": [],
+    "next_steps": []
+  }
+}
