@@ -4,7 +4,7 @@
   "id": "website-prepublish-truth",
   "title": "Website Prepublish Truth",
   "lane": "documentation-compat",
-  "status": "review",
+  "status": "complete",
   "owner": "user",
   "objective": "Make the pre-release Pages content truthful before immutable v0.2.0 assets exist, preserve explicit unsigned Windows preview and separate npm v0.1.0 status, bind the state with regression coverage, and document the post-release website-only flip",
   "base_commit": "769c7bbfd92ef0ae595c5dd9674e0702b7c4eb2c",
