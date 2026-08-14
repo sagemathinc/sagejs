@@ -4,7 +4,7 @@
   "id": "release-source-policy-integration",
   "title": "Integrate release source policy",
   "lane": "integration",
-  "status": "active",
+  "status": "review",
   "owner": "user",
   "objective": "Integrate the independently approved release source-policy range onto the exact closed website baseline and close a validated intermediate release source checkpoint without tagging or publishing",
   "base_commit": "d4e7bfcf304824b2042eefa3a973b7f141f8af4e",
@@ -51,10 +51,87 @@
     "pnpm architecture:check",
     "pnpm parallel:check -- --all"
   ],
-  "runs": [],
+  "runs": [
+    {
+      "command": "node --test test/release-source-policy.cjs test/release-workflow-protection.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.845,
+      "started_at": "2026-08-14T17:54:33.189Z",
+      "commit": "680dba1365377f02c9056b37bd4e3d04c1f08e18",
+      "workspace_fingerprint": "ea5721a036855331d4230e29f4824aed2f1b220372606a97d104b6ee65b12584",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:release",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.535,
+      "started_at": "2026-08-14T17:54:39.678Z",
+      "commit": "680dba1365377f02c9056b37bd4e3d04c1f08e18",
+      "workspace_fingerprint": "ea5721a036855331d4230e29f4824aed2f1b220372606a97d104b6ee65b12584",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 25.699,
+      "started_at": "2026-08-14T17:54:48.785Z",
+      "commit": "680dba1365377f02c9056b37bd4e3d04c1f08e18",
+      "workspace_fingerprint": "ea5721a036855331d4230e29f4824aed2f1b220372606a97d104b6ee65b12584",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 14.857,
+      "started_at": "2026-08-14T17:55:20.351Z",
+      "commit": "680dba1365377f02c9056b37bd4e3d04c1f08e18",
+      "workspace_fingerprint": "ea5721a036855331d4230e29f4824aed2f1b220372606a97d104b6ee65b12584",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:changed -- --base d4e7bfcf304824b2042eefa3a973b7f141f8af4e",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 249.449,
+      "started_at": "2026-08-14T17:55:39.508Z",
+      "commit": "680dba1365377f02c9056b37bd4e3d04c1f08e18",
+      "workspace_fingerprint": "ea5721a036855331d4230e29f4824aed2f1b220372606a97d104b6ee65b12584",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 5.468,
+      "started_at": "2026-08-14T17:59:52.384Z",
+      "commit": "680dba1365377f02c9056b37bd4e3d04c1f08e18",
+      "workspace_fingerprint": "ea5721a036855331d4230e29f4824aed2f1b220372606a97d104b6ee65b12584",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm parallel:check -- --all",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.586,
+      "started_at": "2026-08-14T18:00:01.787Z",
+      "commit": "680dba1365377f02c9056b37bd4e3d04c1f08e18",
+      "workspace_fingerprint": "ea5721a036855331d4230e29f4824aed2f1b220372606a97d104b6ee65b12584",
+      "platform": "linux-x64"
+    }
+  ],
   "handoff": {
-    "summary": "",
-    "risks": [],
-    "next_steps": []
+    "summary": "Replayed only the independently approved release-source-policy range 8d18904b2bbd0860b89e6236d7b35346e3c9bba2..cea513ba5fba94f7d098b6aec1a611c3509810ce onto exact closed website baseline d4e7bfcf304824b2042eefa3a973b7f141f8af4e. All four replay commits have stable patch IDs identical to their authorities, all seven final implementation and source-closure blobs are byte-identical to cea513ba5fba94f7d098b6aec1a611c3509810ce, and the replay diff contains only those seven claimed paths. At exact code checkpoint 680dba1365377f02c9056b37bd4e3d04c1f08e18 and common workspace fingerprint ea5721a036855331d4230e29f4824aed2f1b220372606a97d104b6ee65b12584, focused policy and workflow tests passed 19/19, release metadata passed, portable passed 461/461, strict Python passed 101 modules with zero errors, the exact-base build and unit selection passed 463/463, architecture passed, and all 225 task contracts passed.",
+    "risks": [
+      "The repository-resident policy protects the current workflow and operator path but cannot constrain a historical or unmerged tag whose own workflow omits or rewrites the check; protected environment review and external tag and branch governance remain required defense in depth.",
+      "This integration neither pushes a release tag nor publishes, signs, notarizes, or assembles any release artifact."
+    ],
+    "next_steps": [
+      "Obtain independent review of exact integration source checkpoint 680dba1365377f02c9056b37bd4e3d04c1f08e18, replay provenance, final blob identity, range purity, and all same-fingerprint receipts.",
+      "Close this task only after approval; before any protected release tag, rerun the documented clean exact-origin/main-tip operator preflight and have the environment reviewer verify the annotated tag target."
+    ]
   }
 }
