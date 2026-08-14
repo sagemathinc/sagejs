@@ -56,6 +56,56 @@
       "commit": "e1761830c8a809d79ce7e08e15ca4ff98d7a1a8a",
       "workspace_fingerprint": "8e6f021b2f4d7d2747c7f3373109fca0964a3d5b598a4da1029e418f74665b24",
       "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 22.329,
+      "started_at": "2026-08-14T10:47:22.316Z",
+      "commit": "b367b506266eef51482751aa2a630724e9456ab6",
+      "workspace_fingerprint": "5b73e60dc00fa695904902472f35335b7cd3293fdfcc400c5f0586070083c5bd",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 21.642,
+      "started_at": "2026-08-14T10:48:40.820Z",
+      "commit": "b367b506266eef51482751aa2a630724e9456ab6",
+      "workspace_fingerprint": "5b73e60dc00fa695904902472f35335b7cd3293fdfcc400c5f0586070083c5bd",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/sea-build-manifest.cjs test/release-workflow-protection.cjs test/release-macos-arm64.cjs test/release-publication.cjs test/release-artifact-acceptance.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.497,
+      "started_at": "2026-08-14T10:49:10.971Z",
+      "commit": "b367b506266eef51482751aa2a630724e9456ab6",
+      "workspace_fingerprint": "5b73e60dc00fa695904902472f35335b7cd3293fdfcc400c5f0586070083c5bd",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 5.634,
+      "started_at": "2026-08-14T10:49:14.096Z",
+      "commit": "b367b506266eef51482751aa2a630724e9456ab6",
+      "workspace_fingerprint": "5b73e60dc00fa695904902472f35335b7cd3293fdfcc400c5f0586070083c5bd",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 15.357,
+      "started_at": "2026-08-14T10:49:20.375Z",
+      "commit": "b367b506266eef51482751aa2a630724e9456ab6",
+      "workspace_fingerprint": "5b73e60dc00fa695904902472f35335b7cd3293fdfcc400c5f0586070083c5bd",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {
