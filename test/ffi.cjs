@@ -2267,6 +2267,7 @@ test("generated binding.gyp pins portable C++17 settings on every host", () => {
     "win32",
     [["C:\\checkout", "sagejs-source"]],
   ).targets[0];
+  assert.equal(windows.win_delay_load_hook, "true");
   assert.equal(
     windows.configurations.Release.msbuild_toolset,
     "ClangCL",

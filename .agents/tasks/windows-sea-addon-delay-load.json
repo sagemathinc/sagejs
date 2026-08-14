@@ -1,0 +1,45 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "windows-sea-addon-delay-load",
+  "title": "Windows SEA Native Addon Delay Loading",
+  "lane": "integration",
+  "status": "active",
+  "owner": "user",
+  "objective": "Make every compiler-generated Windows addon delay-load the current Node executable and reject embedded addons that eagerly import or omit node.exe",
+  "base_commit": "2ce7cd775f3d33a4a1d7bf6b44f66a05ed1ea546",
+  "claims": [
+    "tools/native-kernel/compiler.cjs",
+    "scripts/release-native-binary-inspector.cjs",
+    "test/ffi.cjs",
+    "test/release-native-binary-inspector.cjs"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "compiler-infrastructure",
+    "fallback": "not-applicable",
+    "oracles": [
+      "PE import tables distinguish ordinary and delayed node.exe dependencies",
+      "Exact ff05 SEA succeeds unchanged when renamed node.exe"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm architecture:check",
+    "pnpm test:portable",
+    "pnpm test:baselib:strict"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "",
+    "risks": [],
+    "next_steps": []
+  }
+}

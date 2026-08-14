@@ -175,7 +175,10 @@ function universalMachoFixture(slices) {
   return result;
 }
 
-function peFixture({ machine = 0x8664 } = {}) {
+function peFixture({ machine = 0x8664, nodeLinkage = "delay" } = {}) {
+  if (!["delay", "eager", "missing"].includes(nodeLinkage)) {
+    throw new Error(`unsupported node linkage fixture: ${nodeLinkage}`);
+  }
   const peOffset = 0x80;
   const optionalSize = 240;
   const sectionOffset = peOffset + 4 + 20 + optionalSize;
@@ -196,16 +199,23 @@ function peFixture({ machine = 0x8664 } = {}) {
   buffer.writeUInt32LE(16, optional + 108);
   buffer.writeUInt32LE(0x1000, optional + 112 + 8);
   buffer.writeUInt32LE(40, optional + 112 + 12);
-  buffer.writeUInt32LE(0x1040, optional + 112 + 13 * 8);
-  buffer.writeUInt32LE(64, optional + 112 + 13 * 8 + 4);
+  if (nodeLinkage === "delay") {
+    buffer.writeUInt32LE(0x1040, optional + 112 + 13 * 8);
+    buffer.writeUInt32LE(64, optional + 112 + 13 * 8 + 4);
+  }
   buffer.write(".rdata", sectionOffset, "ascii");
   buffer.writeUInt32LE(0x400, sectionOffset + 8);
   buffer.writeUInt32LE(0x1000, sectionOffset + 12);
   buffer.writeUInt32LE(0x400, sectionOffset + 16);
   buffer.writeUInt32LE(rawOffset, sectionOffset + 20);
-  buffer.writeUInt32LE(0x1100, rawOffset + 12);
-  buffer.writeUInt32LE(1, rawOffset + 0x40);
-  buffer.writeUInt32LE(0x1110, rawOffset + 0x44);
+  buffer.writeUInt32LE(
+    nodeLinkage === "eager" ? 0x1110 : 0x1100,
+    rawOffset + 12,
+  );
+  if (nodeLinkage === "delay") {
+    buffer.writeUInt32LE(1, rawOffset + 0x40);
+    buffer.writeUInt32LE(0x1110, rawOffset + 0x44);
+  }
   buffer.write("KERNEL32.dll\0", rawOffset + 0x100, "ascii");
   buffer.write("node.exe\0", rawOffset + 0x110, "ascii");
   return buffer;
@@ -397,6 +407,40 @@ test("PE inspection reports architecture and ordinary plus delayed imports", () 
   assert.equal(report.architecture, "x64");
   assert.deepEqual(report.dependencies, ["KERNEL32.dll"]);
   assert.deepEqual(report.delayDependencies, ["node.exe"]);
+});
+
+test("Windows embedded addons must delay-load node.exe", () => {
+  const [delayed, eager, missing, template] = temporaryFiles([
+    ["delayed.node", peFixture()],
+    ["eager.node", peFixture({ nodeLinkage: "eager" })],
+    ["missing.node", peFixture({ nodeLinkage: "missing" })],
+    ["template.exe", peFixture({ nodeLinkage: "missing" })],
+  ]);
+  const policy = { format: "pe", architectures: ["x64"] };
+  const input = (path, role = "embedded-addon") => [{ path, role }];
+  assert.equal(inspectNativeInputs(input(delayed), policy).ok, true);
+  for (const [path, ordinaryNodeDependency] of [
+    [eager, true],
+    [missing, false],
+  ]) {
+    const report = inspectNativeInputs(input(path), policy);
+    assert.equal(report.ok, false);
+    assert.deepEqual(report.violations, [
+      {
+        code: "windows-node-delay-load",
+        delayedNodeDependency: false,
+        file: path.split(/[\\/]/).at(-1),
+        message: ordinaryNodeDependency
+          ? "embedded Windows addons must delay-load node.exe, not import it eagerly"
+          : "embedded Windows addons must delay-load node.exe",
+        ordinaryNodeDependency,
+      },
+    ]);
+  }
+  assert.equal(
+    inspectNativeInputs(input(template, "sea-template"), policy).ok,
+    true,
+  );
 });
 
 test("Windows dependency policy is case-insensitive and fail-closed", () => {

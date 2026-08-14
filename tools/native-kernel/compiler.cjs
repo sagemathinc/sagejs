@@ -729,7 +729,10 @@ function bindingGyp(
   const cxxLanguage = generatedCxxLanguageSettings(platform);
   const target = {
     target_name: "sagejs_native_kernel",
-    win_delay_load_hook: "false",
+    // A Windows addon imports the Node executable itself. Generated addons
+    // are also embedded in renamed SEAs, so that import must resolve through
+    // Node's delay-load hook instead of eagerly loading a separate node.exe.
+    win_delay_load_hook: platform === "win32" ? "true" : "false",
     sources: ["kernel.c", ...(hasExceptionShims ? ["ffi_shims.cc"] : [])],
     include_dirs: compilationIncludeDirectories(ir, platform),
     defines: [
