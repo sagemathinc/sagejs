@@ -1,0 +1,41 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "windows-provenance-path-normalization",
+  "title": "Canonical Windows native provenance paths",
+  "lane": "native-compiler",
+  "status": "active",
+  "owner": "user",
+  "objective": "Make native source-provenance tests require the canonical slash-normalized Windows path while preserving exact source filename, line, column, and generated #line semantics",
+  "base_commit": "18f5475a82297a2066462b732388406832a3449f",
+  "claims": [
+    "test/native-kernel.cjs"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "not-applicable",
+    "fallback": "not-applicable",
+    "oracles": [
+      "Exact compiler manifest source map and generated #line directive on POSIX and Windows"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm architecture:check",
+    "pnpm test:baselib:strict",
+    "pnpm test:native"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "",
+    "risks": [],
+    "next_steps": []
+  }
+}

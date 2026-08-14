@@ -29,6 +29,26 @@ const {
 const nativeApi = require("@sagemath/sagejs/native");
 
 const root = join(__dirname, "..");
+
+function canonicalNativeSourcePath(filename) {
+  return filename.replaceAll("\\", "/");
+}
+
+const syntheticWindowsSourcePath =
+  String.raw`C:\Users\sagejs agent\src\native_prime_field_source.py`;
+assert.equal(
+  canonicalNativeSourcePath(syntheticWindowsSourcePath),
+  "C:/Users/sagejs agent/src/native_prime_field_source.py",
+);
+assert.equal(
+  `${canonicalNativeSourcePath(syntheticWindowsSourcePath)}:29:5`,
+  "C:/Users/sagejs agent/src/native_prime_field_source.py:29:5",
+);
+assert.equal(
+  canonicalNativeSourcePath("/home/user/sagejs/native_prime_field_source.py"),
+  "/home/user/sagejs/native_prime_field_source.py",
+);
+
 (async () => {
 const sourcePath = join(root, "bench", "native-kernel-input.sage");
 const mpmathSourcePath = join(root, "bench", "native-mpmath-kernel.sage");
@@ -1668,12 +1688,14 @@ compileKernel({
   );
   assert.equal(
     primeFieldSourceManifest.coreSourceMap[0].location,
-    `${primeFieldSourcePath}:29:5`,
+    `${canonicalNativeSourcePath(primeFieldSourcePath)}:29:5`,
   );
   assert.ok(
     readFileSync(
       join(primeFieldSourceKernel.outputPath, "kernel_core.c"), "utf8",
-    ).includes(`#line 29 ${JSON.stringify(primeFieldSourcePath)}`),
+    ).includes(
+      `#line 29 ${JSON.stringify(canonicalNativeSourcePath(primeFieldSourcePath))}`,
+    ),
   );
   const primeFieldAddon = require(primeFieldKernel.addonPath);
   const primeFieldModule = require(primeFieldKernel.modulePath);
