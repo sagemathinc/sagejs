@@ -46,7 +46,17 @@ function collectRegularFiles(root, prefix = "") {
 }
 
 function createWindowsReleaseZip(directory, output) {
-  const root = realpathSync(resolve(directory));
+  const declaredRoot = resolve(directory);
+  const rootInformation = lstatSync(declaredRoot);
+  if (rootInformation.isSymbolicLink()) {
+    throw new Error(
+      "Windows release directory must not be a symbolic link or junction",
+    );
+  }
+  if (!rootInformation.isDirectory()) {
+    throw new Error("Windows release path must be a directory");
+  }
+  const root = realpathSync(declaredRoot);
   if (basename(root) !== DISTRIBUTION_NAME) {
     throw new Error(`Windows release directory must be named ${DISTRIBUTION_NAME}`);
   }

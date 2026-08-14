@@ -80,3 +80,36 @@ test("Windows release ZIPs reject links and replacement", () => {
     rmSync(workspace, { force: true, recursive: true });
   }
 });
+
+test("Windows release ZIPs reject a linked distribution root", (context) => {
+  const workspace = mkdtempSync(join(tmpdir(), "sagejs-windows-zip-root-link-"));
+  try {
+    const distribution = join(workspace, "physical", "sagejs-windows-x64");
+    const linkedDistribution = join(workspace, "alias", "sagejs-windows-x64");
+    mkdirSync(distribution, { recursive: true });
+    mkdirSync(join(workspace, "alias"));
+    writeFileSync(join(distribution, "sagejs.exe"), "math executable\n");
+    try {
+      symlinkSync(
+        distribution,
+        linkedDistribution,
+        process.platform === "win32" ? "junction" : "dir",
+      );
+    } catch (error) {
+      if (process.platform === "win32" && error.code === "EPERM") {
+        context.skip("creating a Windows junction requires unavailable privileges");
+        return;
+      }
+      throw error;
+    }
+    assert.throws(
+      () => createWindowsReleaseZip(
+        linkedDistribution,
+        join(workspace, "linked-root.zip"),
+      ),
+      /must not be a symbolic link or junction/,
+    );
+  } finally {
+    rmSync(workspace, { force: true, recursive: true });
+  }
+});
