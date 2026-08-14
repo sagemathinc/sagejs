@@ -4,7 +4,7 @@
   "id": "release-linux-ci",
   "title": "Release Linux CI Authority",
   "lane": "integration",
-  "status": "active",
+  "status": "complete",
   "owner": "user",
   "objective": "Replace provisional host Linux release packaging with architecture-selected glibc-floor baseline-to-SEA candidates and publish validated readiness and receipt evidence",
   "base_commit": "81722e9cb0a63a8a49c8fadd66a3a10ae2760ff3",
@@ -36,8 +36,12 @@
   ],
   "runs": [],
   "handoff": {
-    "summary": "",
-    "risks": [],
-    "next_steps": []
+    "summary": "Integrated the independently reviewed Linux CI producer authority. Candidate tags now build both SEAs inside the architecture-selected glibc-floor baseline, package only receipt-bound candidates, publish readiness reports, and require the complete named readiness-check ratchet before release assembly.",
+    "risks": [
+      "Source policy is approved, but final x64 and arm64 all-input builds remain downstream artifact proofs on their native runners."
+    ],
+    "next_steps": [
+      "Run the exact frozen release commit through both native Linux baseline builders and retain archive, sidecar, readiness, and ABI receipts."
+    ]
   }
 }
