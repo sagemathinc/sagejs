@@ -3,6 +3,7 @@
 
 const assert = require("node:assert/strict");
 const {
+  existsSync,
   mkdirSync,
   mkdtempSync,
   readdirSync,
@@ -60,7 +61,17 @@ test("sanitizer lifecycle witnesses use the platform capability helper", () => {
     `${optionName}\\s*:\\s*["'\\x60][^"'\\x60]*${unsupportedRequest}`,
   );
   const offenders = [];
-  for (const directory of [join(root, "test"), join(root, "tools", "ffi")]) {
+  const packageTestDirectories = readdirSync(join(root, "packages"), {
+    withFileTypes: true,
+  })
+    .filter((entry) => entry.isDirectory())
+    .map((entry) => join(root, "packages", entry.name, "test"))
+    .filter((directory) => existsSync(directory));
+  for (const directory of [
+    join(root, "test"),
+    join(root, "tools", "ffi"),
+    ...packageTestDirectories,
+  ]) {
     for (const filename of javascriptSources(directory)) {
       const source = readFileSync(filename, "utf8");
       const match = unguardedRequest.exec(source);

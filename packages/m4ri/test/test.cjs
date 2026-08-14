@@ -23,6 +23,12 @@ const generated = require(join(root, "build", "generated-ffi", manifest.addon));
 const {
   removeLoadedNativeCache,
 } = require(join(repositoryRoot, "test", "helpers", "native-cache-cleanup.cjs"));
+const { sanitizerEnvironment } = require(join(
+  repositoryRoot,
+  "test",
+  "helpers",
+  "sanitizers.cjs",
+));
 
 function close(resource, closer) {
   closer(resource);
@@ -574,7 +580,7 @@ int main(void) {
   assert.equal(compile.status, 0, `${compile.stdout}\n${compile.stderr}`);
   const run = spawnSync(executable, [], {
     encoding: "utf8",
-    env: { ...process.env, ASAN_OPTIONS: "detect_leaks=1:halt_on_error=1" },
+    env: sanitizerEnvironment(),
   });
   assert.equal(run.status, 0, `${run.stdout}\n${run.stderr}`);
 });
