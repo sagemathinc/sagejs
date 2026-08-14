@@ -21,6 +21,9 @@ const { join } = require("node:path");
 const test = require("node:test");
 const { createBuildManifest, serialize } = require("../scripts/release-manifest.cjs");
 const { nativeMathBuildProfile } = require("../scripts/native-math-profile.cjs");
+const {
+  platformConfig,
+} = require("../scripts/linux-baseline/release-inputs.cjs");
 
 const {
   artifactMetadata,
@@ -43,19 +46,30 @@ const {
 
 const COMMIT = "0123456789abcdef0123456789abcdef01234567";
 const TREE = "89abcdef0123456789abcdef0123456789abcdef";
-const RUST_TOOLCHAIN = {
-  filename: "rust-1.86.0-x86_64-unknown-linux-gnu.tar.xz",
-  sha256: "6b448b3669e0c74f7f4b87da7da4868a552fcbba1f955032d8925ad2fffb3798",
-  target: "x86_64-unknown-linux-gnu",
-  url:
-    "https://static.rust-lang.org/dist/2025-04-03/" +
-    "rust-1.86.0-x86_64-unknown-linux-gnu.tar.xz",
-  version: "1.86.0",
-};
+
+function releaseFixture(arch) {
+  assert.ok(
+    ["arm64", "x64"].includes(arch),
+    `unsupported fixture architecture ${arch}`,
+  );
+  const platform = `linux-${arch}`;
+  const distributionName = `sagejs-${platform}`;
+  return Object.freeze({
+    arch,
+    archiveName: `${distributionName}.tar.xz`,
+    distributionName,
+    platform,
+    readinessName: `${distributionName}.release.json`,
+    rustToolchain: platformConfig(platform).rustToolchain,
+  });
+}
+
+const FIXTURE = releaseFixture(process.arch);
+const RUST_TOOLCHAIN = FIXTURE.rustToolchain;
 
 function writeReceipts(directory, nativeMathProfile = undefined) {
   const target = {
-    arch: "x64",
+    arch: FIXTURE.arch,
     endianness: "LE",
     libc: { family: "glibc", version: "2.28" },
     nodeAbi: "141",
@@ -71,7 +85,7 @@ function writeReceipts(directory, nativeMathProfile = undefined) {
     tree: TREE,
   };
   const profile = nativeMathProfile || nativeMathBuildProfile({
-    arch: "x64",
+    arch: FIXTURE.arch,
     compiler: { command: "cc", nativeFlag: null, version: "fixture" },
     cxxCompiler: { command: "c++", nativeFlag: null, version: "fixture" },
     endianness: "LE",
@@ -121,7 +135,7 @@ function writeBaselineReceipt(directory, files) {
       url: "https://nodejs.org/dist/v26.7.0/node-v26.7.0.tar.xz",
       version: "26.7.0",
     },
-    platform: "linux-x64",
+    platform: FIXTURE.platform,
     runtimeProbe: { observation: { temporal: "object" } },
     rustToolchain: RUST_TOOLCHAIN,
     schema: "sagejs.linux-baseline-receipt-v1",
@@ -133,7 +147,7 @@ function writeBaselineReceipt(directory, files) {
         url: "https://nodejs.org/dist/v26.7.0/node-v26.7.0.tar.xz",
         version: "26.7.0",
       },
-      platform: "linux-x64",
+      platform: FIXTURE.platform,
       rustToolchain: RUST_TOOLCHAIN,
       schema: "sagejs.linux-baseline-sea-artifacts-v1",
       sourceCommit: COMMIT,
@@ -175,6 +189,20 @@ test("Linux release arguments have explicit artifact and sample controls", () =>
     /positive integer/,
   );
   assert.throws(() => parseArguments(["--unknown"]), /unknown argument/);
+});
+
+test("Linux release fixtures retain exact x64 and arm64 authorities", () => {
+  const x64 = releaseFixture("x64");
+  assert.equal(x64.archiveName, "sagejs-linux-x64.tar.xz");
+  assert.equal(x64.readinessName, "sagejs-linux-x64.release.json");
+  assert.equal(x64.rustToolchain.target, "x86_64-unknown-linux-gnu");
+
+  const arm64 = releaseFixture("arm64");
+  assert.equal(arm64.archiveName, "sagejs-linux-arm64.tar.xz");
+  assert.equal(arm64.readinessName, "sagejs-linux-arm64.release.json");
+  assert.equal(arm64.rustToolchain.target, "aarch64-unknown-linux-gnu");
+
+  assert.deepEqual(FIXTURE, releaseFixture(process.arch));
 });
 
 test("release timing median handles odd and even observations", () => {
@@ -325,7 +353,8 @@ test("Linux release archive is deterministic and installer-compatible", () => {
     const second = packageReleaseCandidate(options, packagingInternals);
     assert.deepEqual(readFileSync(second.archive), firstBytes);
     assert.equal(readFileSync(second.archiveChecksum, "utf8"), firstChecksum);
-    assert.match(firstChecksum, /^[0-9a-f]{64}  sagejs-linux-x64\.tar\.xz\n$/);
+    assert.match(firstChecksum, /^[0-9a-f]{64}  /);
+    assert.equal(firstChecksum.slice(66), `${FIXTURE.archiveName}\n`);
     assert.equal(readdirSync(options.releaseDirectory).some((name) =>
       name.startsWith(".sagejs-")), false);
   } finally {
@@ -432,10 +461,9 @@ test("atomic publication and reports leave only complete final files", () => {
     writeFileSync(source, "first archive\n");
     const published = publishReleaseCandidate(source, join(directory, "release"));
     assert.equal(readFileSync(published.archive, "utf8"), "first archive\n");
-    assert.match(
-      readFileSync(published.archiveChecksum, "utf8"),
-      /^[0-9a-f]{64}  sagejs-linux-x64\.tar\.xz\n$/,
-    );
+    const checksum = readFileSync(published.archiveChecksum, "utf8");
+    assert.match(checksum, /^[0-9a-f]{64}  /);
+    assert.equal(checksum.slice(66), `${FIXTURE.archiveName}\n`);
     writeFileSync(source, "second archive\n");
     publishReleaseCandidate(source, join(directory, "release"));
     assert.equal(readFileSync(published.archive, "utf8"), "second archive\n");
@@ -473,7 +501,7 @@ test("atomic publication and reports leave only complete final files", () => {
       /report destination failed/,
     );
     assert.equal(
-      existsSync(join(releaseDirectory, "sagejs-linux-x64.release.json")),
+      existsSync(join(releaseDirectory, FIXTURE.readinessName)),
       false,
       "failed publication retained a readiness marker",
     );
@@ -512,7 +540,7 @@ test("installer rejects corruption without damage and atomically upgrades", () =
 
     const corrupt = join(directory, "corrupt");
     mkdirSync(corrupt);
-    const archiveName = "sagejs-linux-x64.tar.xz";
+    const archiveName = FIXTURE.archiveName;
     copyFileSync(candidate.archive, join(corrupt, archiveName));
     writeFileSync(
       join(corrupt, `${archiveName}.sha256`),
