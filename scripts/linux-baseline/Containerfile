@@ -2,6 +2,8 @@ ARG BUILD_IMAGE
 FROM ${BUILD_IMAGE} AS node-build
 
 ARG NODE_SOURCE_SHA256
+ARG NODE_SOURCE_FILENAME
+ARG NODE_SOURCE_URL
 ARG NODE_VERSION
 ARG PNPM_TARBALL_SHA512
 ARG PNPM_TARBALL_URL
@@ -11,7 +13,7 @@ ENV SOURCE_DATE_EPOCH=0
 ENV TZ=UTC
 WORKDIR /build
 RUN curl --fail --location --retry 3 \
-      "https://nodejs.org/dist/v${NODE_VERSION}/node-v${NODE_VERSION}.tar.xz" \
+      "${NODE_SOURCE_URL}" \
       --output node.tar.xz \
  && printf '%s  %s\n' "${NODE_SOURCE_SHA256}" node.tar.xz | sha256sum --check --strict \
  && tar -xJf node.tar.xz \
@@ -26,6 +28,10 @@ FROM scratch AS node-artifact
 COPY --from=node-build /opt/sagejs-node/bin/node /release-inputs/node
 
 FROM ${BUILD_IMAGE} AS sagejs-build
+ARG NODE_SOURCE_FILENAME
+ARG NODE_SOURCE_SHA256
+ARG NODE_SOURCE_URL
+ARG NODE_VERSION
 ARG PNPM_TARBALL_SHA512
 ARG PNPM_TARBALL_URL
 COPY --from=node-build /opt/sagejs-node /opt/sagejs-node
@@ -59,7 +65,12 @@ RUN tar -xf /tmp/sagejs.tar -C /work/sagejs \
  && pnpm --dir packages/m4ri build \
  && pnpm run python:precompile:run \
  && pnpm run native:precompile:production \
- && SAGEJS_SEA_NODE=/opt/sagejs-node/bin/node node scripts/build-sea.cjs --all \
+ && SAGEJS_SEA_NODE=/opt/sagejs-node/bin/node \
+      SAGEJS_SEA_NODE_SOURCE_FILENAME="${NODE_SOURCE_FILENAME}" \
+      SAGEJS_SEA_NODE_SOURCE_SHA256="${NODE_SOURCE_SHA256}" \
+      SAGEJS_SEA_NODE_SOURCE_URL="${NODE_SOURCE_URL}" \
+      SAGEJS_SEA_NODE_SOURCE_VERSION="${NODE_VERSION}" \
+      node scripts/build-sea.cjs --all \
  && node test/sea-smoke.cjs \
  && mkdir -p /release-inputs/addons /release-inputs/sea \
  && node -e 'process.stdout.write(JSON.stringify(require("./scripts/native-math-profile.cjs").nativeMathBuildProfile(), null, 2) + "\\n")' \

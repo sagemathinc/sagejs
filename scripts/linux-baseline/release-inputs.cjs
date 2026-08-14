@@ -37,6 +37,9 @@ const ROOT = process.env.SAGEJS_LINUX_BASELINE_ROOT
 const NODE_VERSION = "26.7.0";
 const NODE_SOURCE_SHA256 =
   "e6b182cbeeab032d1082ca4ac4fe15e3a57de691d3bde78ecf8a761fd56ee356";
+const NODE_SOURCE_FILENAME = `node-v${NODE_VERSION}.tar.xz`;
+const NODE_SOURCE_URL =
+  `https://nodejs.org/dist/v${NODE_VERSION}/${NODE_SOURCE_FILENAME}`;
 const PLATFORM_CONFIGS = Object.freeze({
   "linux-x64": Object.freeze({
     arch: "x64",
@@ -698,6 +701,10 @@ function buildReleaseInputs(options) {
       "--build-arg",
       `NODE_SOURCE_SHA256=${NODE_SOURCE_SHA256}`,
       "--build-arg",
+      `NODE_SOURCE_FILENAME=${NODE_SOURCE_FILENAME}`,
+      "--build-arg",
+      `NODE_SOURCE_URL=${NODE_SOURCE_URL}`,
+      "--build-arg",
       `NODE_VERSION=${NODE_VERSION}`,
       "--build-arg",
       `PNPM_TARBALL_SHA512=${PNPM_TARBALL_SHA512}`,
@@ -760,7 +767,12 @@ function buildReleaseInputs(options) {
           extracted,
           {
             inspection: report,
-            nodeVersion: NODE_VERSION,
+            nodeSource: {
+              filename: NODE_SOURCE_FILENAME,
+              sha256: NODE_SOURCE_SHA256,
+              url: NODE_SOURCE_URL,
+              version: NODE_VERSION,
+            },
             platform: options.platform,
             sourceCommit: authority.sourceCommit,
           },
@@ -776,8 +788,12 @@ function buildReleaseInputs(options) {
         ...engineArchitecture,
       },
       configureArguments: NODE_CONFIGURE_ARGUMENTS,
-      nodeSourceSha256: NODE_SOURCE_SHA256,
-      nodeVersion: NODE_VERSION,
+      nodeSource: {
+        filename: NODE_SOURCE_FILENAME,
+        sha256: NODE_SOURCE_SHA256,
+        url: NODE_SOURCE_URL,
+        version: NODE_VERSION,
+      },
       pnpmDistribution: {
         integrity: PNPM_TARBALL_INTEGRITY,
         sha512: PNPM_TARBALL_SHA512,
@@ -839,6 +855,8 @@ module.exports = {
   IMAGE_OWNER_LABEL,
   NODE_CONFIGURE_ARGUMENTS,
   NODE_SOURCE_SHA256,
+  NODE_SOURCE_FILENAME,
+  NODE_SOURCE_URL,
   NODE_VERSION,
   OUTPUT_SCHEMA,
   PNPM_TARBALL_INTEGRITY,

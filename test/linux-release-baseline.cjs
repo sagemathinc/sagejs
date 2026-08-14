@@ -19,7 +19,9 @@ const {
   BUILD_IMAGE,
   GCC_PATH,
   NODE_CONFIGURE_ARGUMENTS,
+  NODE_SOURCE_FILENAME,
   NODE_SOURCE_SHA256,
+  NODE_SOURCE_URL,
   NODE_VERSION,
   OUTPUT_SCHEMA,
   PNPM_TARBALL_INTEGRITY,
@@ -53,6 +55,11 @@ const {
 test("Linux baseline pins Node source and both container images", () => {
   assert.equal(NODE_VERSION, "26.7.0");
   assert.match(NODE_SOURCE_SHA256, /^[0-9a-f]{64}$/);
+  assert.equal(NODE_SOURCE_FILENAME, "node-v26.7.0.tar.xz");
+  assert.equal(
+    NODE_SOURCE_URL,
+    "https://nodejs.org/dist/v26.7.0/node-v26.7.0.tar.xz",
+  );
   assert.match(BUILD_IMAGE, /manylinux_2_28_x86_64@sha256:[0-9a-f]{64}$/);
   assert.match(RUNTIME_IMAGE, /ubi8\/ubi-minimal@sha256:[0-9a-f]{64}$/);
   assert.equal(GCC_PATH, "/opt/rh/gcc-toolset-14/root/usr/bin/gcc");
@@ -77,6 +84,12 @@ test("baseline SEA evidence binds executable manifests to inspected native bytes
     const digest = (contents) => createHash("sha256").update(contents).digest("hex");
     const nodeBytes = Buffer.from("node-template");
     const addonBytes = Buffer.from("native-addon");
+    const nodeSource = {
+      filename: "node-v26.7.0.tar.xz",
+      sha256: NODE_SOURCE_SHA256,
+      url: NODE_SOURCE_URL,
+      version: NODE_VERSION,
+    };
     const source = {
       commit: "a".repeat(40),
       dirty: false,
@@ -122,6 +135,7 @@ test("baseline SEA evidence binds executable manifests to inspected native bytes
         },
         seaNode: {
           executableSha256: digest(nodeBytes),
+          source: nodeSource,
           version: "26.7.0",
         },
       },
@@ -144,7 +158,7 @@ test("baseline SEA evidence binds executable manifests to inspected native bytes
     };
     const options = {
       inspection,
-      nodeVersion: "26.7.0",
+      nodeSource,
       platform: "linux-x64",
       sourceCommit: source.commit,
     };

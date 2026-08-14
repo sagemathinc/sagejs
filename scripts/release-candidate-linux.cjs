@@ -223,8 +223,24 @@ function validateBaselineReceipt(options, receipts) {
   assert.equal(baseline.platform, PLATFORM);
   assert.equal(baseline.sourceCommit, receipts.math.source.commit);
   assert.equal(baseline.sourceCommit, receipts.python.source.commit);
-  assert.equal(baseline.nodeVersion, receipts.math.toolchain.seaNode.version);
-  assert.equal(baseline.nodeVersion, receipts.python.toolchain.seaNode.version);
+  assert.equal(
+    baseline.nodeSource?.version,
+    receipts.math.toolchain.seaNode.version,
+  );
+  assert.equal(
+    baseline.nodeSource?.version,
+    receipts.python.toolchain.seaNode.version,
+  );
+  assert.equal(
+    baseline.nodeSource?.filename,
+    `node-v${baseline.nodeSource.version}.tar.xz`,
+  );
+  assert.equal(
+    baseline.nodeSource?.url,
+    `https://nodejs.org/dist/v${baseline.nodeSource.version}/` +
+      baseline.nodeSource.filename,
+  );
+  assert.match(baseline.nodeSource?.sha256, /^[0-9a-f]{64}$/);
   assert.equal(
     baseline.inspection?.aggregate?.dependencies.some(
       (dependency) => dependency.toLowerCase() === "libatomic.so.1",
@@ -243,7 +259,7 @@ function validateBaselineReceipt(options, receipts) {
     "sagejs.linux-baseline-sea-artifacts-v1",
   );
   assert.equal(baseline.seaArtifacts?.sourceCommit, baseline.sourceCommit);
-  assert.equal(baseline.seaArtifacts?.nodeVersion, baseline.nodeVersion);
+  assert.deepEqual(baseline.seaArtifacts?.nodeSource, baseline.nodeSource);
   assert.equal(baseline.seaArtifacts?.platform, baseline.platform);
   for (const [name, filename] of Object.entries(expected)) {
     const recorded = baseline.seaArtifacts.artifacts?.[name];

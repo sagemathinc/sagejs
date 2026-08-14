@@ -1,0 +1,57 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "linux-baseline-sea-v2",
+  "title": "Linux Baseline Sea V2",
+  "lane": "integration",
+  "status": "active",
+  "owner": "user",
+  "objective": "Assemble and validate Linux SEA executables from the exact pinned manylinux baseline build",
+  "base_commit": "b4d3552cbf5e6127c66f6b9e573ceffc04d8e662",
+  "claims": [
+    "scripts/linux-baseline/Containerfile",
+    "scripts/linux-baseline/release-inputs.cjs",
+    "scripts/linux-baseline/sea-artifacts.cjs",
+    "scripts/build-sea.cjs",
+    "scripts/release-candidate-linux.cjs",
+    "test/linux-release-baseline.cjs",
+    "test/sea-build-manifest.cjs",
+    "test/release-candidate-linux.cjs"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "not-applicable",
+    "fallback": "not-applicable",
+    "oracles": [],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm architecture:check",
+    "pnpm test:portable",
+    "pnpm test:baselib:strict"
+  ],
+  "runs": [
+    {
+      "command": "pnpm architecture:check",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 1.05,
+      "started_at": "2026-08-14T09:22:20.867Z",
+      "commit": "58fbc8f7501c28dd9b792c53a9db89e014d585c0",
+      "workspace_fingerprint": "712b9e24779bed52aad3dd1b6e0f89a3c3c74ea4503068daea721bab4faa7bdf",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "",
+    "risks": [],
+    "next_steps": []
+  }
+}
