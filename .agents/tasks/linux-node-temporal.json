@@ -4,7 +4,7 @@
   "id": "linux-node-temporal",
   "title": "Linux Node Temporal Authority",
   "lane": "integration",
-  "status": "active",
+  "status": "review",
   "owner": "user",
   "objective": "Pin Rust 1.86 for both Linux architectures, force Node 26.7 Temporal support, and bind/prove the exact toolchain in baseline and SEA receipts",
   "base_commit": "3ee4c9d0749be992923f7e04d47c17f3646aea0d",
@@ -33,17 +33,77 @@
     "linux-x64": "required",
     "linux-arm64": "required",
     "windows-x64": "not-applicable",
-    "macos-arm64": "required"
+    "macos-arm64": "not-applicable"
   },
   "validation": [
+    "node --test test/linux-release-baseline.cjs test/sea-build-manifest.cjs test/release-candidate-linux.cjs",
     "pnpm architecture:check",
     "pnpm test:portable",
     "pnpm test:baselib:strict"
   ],
-  "runs": [],
+  "runs": [
+    {
+      "command": "node --test test/linux-release-baseline.cjs test/sea-build-manifest.cjs test/release-candidate-linux.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.474,
+      "started_at": "2026-08-14T10:27:20.230Z",
+      "commit": "02f29cf2336877ff12655894deaed0d7c64184fb",
+      "workspace_fingerprint": "4bcfa43977b47d18d3c24f3bc040e1d4e7f730cade291a416d89fb9fa26c0618",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 5.902,
+      "started_at": "2026-08-14T10:27:22.379Z",
+      "commit": "02f29cf2336877ff12655894deaed0d7c64184fb",
+      "workspace_fingerprint": "4bcfa43977b47d18d3c24f3bc040e1d4e7f730cade291a416d89fb9fa26c0618",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 15.765,
+      "started_at": "2026-08-14T10:27:28.936Z",
+      "commit": "02f29cf2336877ff12655894deaed0d7c64184fb",
+      "workspace_fingerprint": "4bcfa43977b47d18d3c24f3bc040e1d4e7f730cade291a416d89fb9fa26c0618",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 59.99,
+      "started_at": "2026-08-14T10:27:49.462Z",
+      "commit": "02f29cf2336877ff12655894deaed0d7c64184fb",
+      "workspace_fingerprint": "4bcfa43977b47d18d3c24f3bc040e1d4e7f730cade291a416d89fb9fa26c0618",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 21.862,
+      "started_at": "2026-08-14T10:47:05.216Z",
+      "commit": "02f29cf2336877ff12655894deaed0d7c64184fb",
+      "workspace_fingerprint": "4bcfa43977b47d18d3c24f3bc040e1d4e7f730cade291a416d89fb9fa26c0618",
+      "platform": "linux-x64"
+    }
+  ],
   "handoff": {
-    "summary": "",
-    "risks": [],
-    "next_steps": []
+    "summary": "Pins and verifies the official Rust 1.86.0 Linux x64 and arm64 distributions, enables Temporal in the reproducible Node 26.7.0 manylinux build, proves Temporal in the build container, UBI 8 runtime, and an assembled SEA, and binds the Rust authority into baseline receipts, both SEA build identities, and Linux candidate validation.",
+    "risks": [
+      "The broad portable tier initially failed because the fresh worktree lacked optional FLINT addons, FLINT headers, and generated runtime/module caches; after the ordinary bootstrap restored those products, all 430 portable tests passed. Both receipts are retained as environmental history.",
+      "Native x64 and arm64 Node-stage proofs are release artifact gates and are still running independently on their respective machines.",
+      "The final all-inputs Linux builds must be repeated from the frozen release commit so their receipts and executable manifests bind that exact source revision."
+    ],
+    "next_steps": [
+      "Integrate this source authority after independent review.",
+      "Retain the x64 and arm64 native Node-stage receipts as platform evidence.",
+      "Run the all-inputs baseline and candidate packager on both native Linux architectures after the release source commit is frozen."
+    ]
   }
 }
