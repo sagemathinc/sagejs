@@ -4,7 +4,7 @@
   "id": "release-artifact-acceptance",
   "title": "Cross-platform release artifact acceptance",
   "lane": "integration",
-  "status": "review",
+  "status": "complete",
   "owner": "user",
   "objective": "Verify every final release archive against exact source/build receipts, complete third-party license provenance, binary compatibility, relocation, mathematics, and platform signing policy before publication",
   "base_commit": "e4018fd70bf2b9549b826e20d825e08bf43dafe5",
@@ -225,7 +225,7 @@
     }
   ],
   "handoff": {
-    "summary": "Added fail-closed final-host acceptance for all four release targets plus a complete digest-bound third-party source/license inventory, Node 26.7 builder authority, production npm notice corpus, safe archive preflight, native ABI checks, relocation and mathematics smoke, exact Apple publisher/package/benchmark binding, and explicit unsigned-Windows evidence.",
+    "summary": "Integrated fail-closed final-host acceptance for all four release targets plus a complete digest-bound third-party source/license inventory, Node 26.7 builder authority, production npm notice corpus, safe archive preflight, native ABI checks, relocation and mathematics smoke, exact Apple publisher/package/benchmark binding, and explicit unsigned-Windows evidence.",
     "risks": [
       "The final platform candidates still need to exercise target-only codesign, pkgutil, Gatekeeper, PE, Mach-O, and runtime checks after workflow integration.",
       "The deliberately strict ZIP policy rejects streaming, ZIP64, non-ASCII paths, links, and ambiguous Unicode-path extras; release assemblers must use the reviewed simple archive layout."
