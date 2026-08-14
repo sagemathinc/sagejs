@@ -12,6 +12,7 @@
     ".github/workflows/ci.yml",
     "scripts/release-source-policy.cjs",
     "test/release-source-policy.cjs",
+    "test/node-test-manifest.cjs",
     "test/release-workflow-protection.cjs",
     "README.md"
   ],
@@ -28,19 +29,25 @@
   },
   "platforms": {
     "linux-x64": "required",
-    "linux-arm64": "required",
+    "linux-arm64": "not-applicable",
     "windows-x64": "not-applicable",
-    "macos-arm64": "required"
+    "macos-arm64": "not-applicable"
   },
   "validation": [
+    "node --test test/release-source-policy.cjs test/release-workflow-protection.cjs",
+    "pnpm test:release",
     "pnpm architecture:check",
     "pnpm test:portable",
-    "pnpm test:baselib:strict"
+    "pnpm test:baselib:strict",
+    "pnpm test:changed -- --base 8d18904b2bbd0860b89e6236d7b35346e3c9bba2",
+    "pnpm parallel:check -- --all"
   ],
   "runs": [],
   "handoff": {
     "summary": "",
-    "risks": [],
+    "risks": [
+      "This repository-resident check protects the current workflow and operator path but cannot constrain an older or unmerged tag whose historical workflow omits or rewrites it; protected environment review and manual exact-tip verification remain mandatory, with external tag and branch governance as defense in depth."
+    ],
     "next_steps": []
   }
 }
