@@ -1,0 +1,50 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "live-main-read-before-write",
+  "title": "Live __main__ read before write",
+  "lane": "compiler-runtime",
+  "status": "active",
+  "owner": "user",
+  "objective": "Preserve Python module LOAD_NAME semantics in reusable kernel cells so a same-cell assignment RHS can read the prior live Sage global or builtin without host leakage or weakening deletion and uninitialized-name guards",
+  "base_commit": "0ae559238dd4b0a07b53dbd126630cf46a9c6aa0",
+  "claims": [
+    "src/output/codegen.py",
+    "src/output/modules.py",
+    "test/compiled-module-isolation.cjs"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "compiler-infrastructure",
+    "fallback": "tested-capability",
+    "oracles": [
+      "CPython module LOAD_NAME semantics for same-name reads before assignment",
+      "The live Sage __main__ namespace across reset and subsequent kernel cells"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "not-applicable",
+    "windows-x64": "not-applicable",
+    "macos-arm64": "not-applicable"
+  },
+  "validation": [
+    "pnpm build",
+    "node --test --test-reporter=spec test/compiled-module-isolation.cjs",
+    "node --test --test-reporter=spec test/kernel.cjs",
+    "node scripts/run-sage-tutorial.cjs --file tour_rings",
+    "pnpm test:tutorial",
+    "pnpm test:compiler",
+    "pnpm test:integration",
+    "pnpm architecture:check",
+    "pnpm test:baselib:strict"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "",
+    "risks": [],
+    "next_steps": []
+  }
+}

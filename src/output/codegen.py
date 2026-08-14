@@ -961,6 +961,7 @@ def generate_code():
         class_namespace = None
         module_name_fallback = False
         module_scope = None
+        reusable_main_fresh_binding = False
         assignment_target = output.assignment_target or is_assignment_target()
         if is_node_type(self, AST_SymbolRef) and (
             not assignment_target
@@ -1044,6 +1045,13 @@ def generate_code():
                     if is_node_type(candidate, AST_Toplevel):
                         module_scope = candidate
                         break
+            reusable_main_fresh_binding = (
+                output.options.reuse_main_module
+                and module_name_fallback
+                and python_binding
+                and module_scope
+                and module_scope.module_id == "__main__"
+            )
         if class_namespace:
             output.print("(")
             class_namespace.name.print(output)
@@ -1071,7 +1079,13 @@ def generate_code():
             output.print("ρσ_check_unbound(")
         if module_name_fallback:
             output.print("ρσ_resolve_module_name(")
-        if (
+        if reusable_main_fresh_binding:
+            output.print("(")
+            output.print_name(name)
+            output.print(" === ρσ_reusable_main_fresh ? void 0 : ")
+            output.print_name(name)
+            output.print(")")
+        elif (
             output.options.reuse_main_module
             and check_unbound
             and self.python_identifier
@@ -1085,9 +1099,15 @@ def generate_code():
             output.print(JSON.stringify(self.name))
             output.comma()
             if module_scope:
+                if reusable_main_fresh_binding:
+                    output.print("(")
+                    output.print_name(name)
+                    output.print(" === ρσ_reusable_main_fresh ? null : ")
                 output.print("ρσ_modules[")
                 output.print(JSON.stringify(module_scope.module_id))
                 output.print("]")
+                if reusable_main_fresh_binding:
+                    output.print(")")
             else:
                 output.print("null")
             output.comma()

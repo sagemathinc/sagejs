@@ -453,6 +453,9 @@ def bind_module_namespace(module, output, hidden_names=None):
     # augmented assignment, deletion, and read-before-write semantics without
     # publishing Python bindings onto `globalThis`.
     if module_id == "__main__" and output.options.reuse_main_module:
+        output.indent()
+        output.print("var ρσ_reusable_main_fresh = Object.create(null)")
+        output.end_statement()
         for name in names:
             if not python_bindings[name]:
                 continue
@@ -466,6 +469,9 @@ def bind_module_namespace(module, output, hidden_names=None):
             output.print(" = ρσ_modules.__main__[")
             output.print_string(name)
             output.print("]")
+            output.print("; else ")
+            output.print_python_name(name)
+            output.print(" = ρσ_reusable_main_fresh")
             output.end_statement()
 
     output.indent()
@@ -490,6 +496,9 @@ def bind_module_namespace(module, output, hidden_names=None):
             True,
             True,
             bool(python_bindings[name]),
+            module_id == "__main__"
+            and output.options.reuse_main_module
+            and bool(python_bindings[name]),
         )
     wrote_property = names.length > 0
     for entry in hidden_names:
@@ -527,7 +536,13 @@ def bind_module_namespace(module, output, hidden_names=None):
 
 
 def print_lexical_namespace_descriptor(
-    output, name, descriptor_prefix, enumerable, writable, python_binding
+    output,
+    name,
+    descriptor_prefix,
+    enumerable,
+    writable,
+    python_binding,
+    reusable_main_binding=False,
 ):
     """Print an accessor without shadowing its module lexical binding."""
     target_name = (
@@ -536,7 +551,14 @@ def print_lexical_namespace_descriptor(
     output.print(descriptor_prefix + "enumerable:")
     output.print("true" if enumerable else "false")
     output.print(",get:()=>")
-    output.print(target_name)
+    if reusable_main_binding:
+        output.print("(")
+        output.print(target_name)
+        output.print(" === ρσ_reusable_main_fresh ? void 0 : ")
+        output.print(target_name)
+        output.print(")")
+    else:
+        output.print(target_name)
     if writable:
         # An arrow getter has no local `arguments` binding.  A setter must
         # have a parameter, but that parameter only needs to differ from the
