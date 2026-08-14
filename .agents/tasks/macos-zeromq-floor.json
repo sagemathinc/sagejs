@@ -7,8 +7,9 @@
   "status": "active",
   "owner": "user",
   "objective": "Build and bind ZeroMQ for the declared macOS 13.5 release floor and fail closed when any embedded Mach-O slice exceeds it",
-  "base_commit": "469f9360003326f58215c52ead32083a44547c3a",
+  "base_commit": "d791a0b4d0c935371885cd3606f4052ec3fe59c1",
   "claims": [
+    ".github/workflows/ci.yml",
     "package.json",
     "pnpm-lock.yaml",
     "scripts/build-zeromq-darwin.cjs",
@@ -22,6 +23,7 @@
     "test/runtime-native-dependency-receipt.cjs",
     "test/release-candidate-linux.cjs",
     "test/release-native-binary-inspector.cjs",
+    "test/release-workflow-protection.cjs",
     "test/release-capabilities.cjs",
     "test/release-macos-arm64.cjs",
     "test/sea-build-manifest.cjs",

@@ -673,7 +673,9 @@ jobs:
       - name: Build and relocation-test both macOS SEA executables
         env:
           SAGEJS_BUILD_JOBS: "6"
-        run: pnpm test:sea
+        run: |
+          pnpm run build:zeromq:darwin
+          pnpm test:sea
 
       - name: Stage tested macOS SEA inputs for protected signing
         if: startsWith(github.ref, 'refs/tags/v')

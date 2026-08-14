@@ -42,6 +42,8 @@ test("protected jobs sign the exact checksum-bound tested SEA inputs", () => {
 
   const macosBuild = job("macos-arm64");
   const macosSign = job("sign-macos-arm64");
+  assert.match(macosBuild, /pnpm run build:zeromq:darwin/);
+  assert.match(macosBuild, /pnpm test:sea/);
   assert.match(macosBuild, /name: sagejs-macos-arm64-tested-sea/);
   assert.match(macosBuild, /tested-sea\.tar\.sha256/);
   assert.match(macosSign, /if: startsWith\(github\.ref, 'refs\/tags\/v'\)/);
