@@ -4,7 +4,7 @@
   "id": "release-mac-authority-integration",
   "title": "Integrate first-party macOS release authority",
   "lane": "integration",
-  "status": "active",
+  "status": "complete",
   "owner": "user",
   "objective": "Integrate the independently reviewed first-party macOS build, signing, notarization, acceptance, and publication authority as an intermediate source checkpoint while reserving the final frozen-source Mac rehearsal",
   "base_commit": "b3491feaf8b0f96f21dbbbf5c1a1561da3ecfcb3",
@@ -51,10 +51,67 @@
     "pnpm test:baselib:strict",
     "pnpm parallel:check -- --all"
   ],
-  "runs": [],
+  "runs": [
+    {
+      "command": "node --test test/sea-build-manifest.cjs test/release-workflow-protection.cjs test/release-macos-arm64.cjs test/release-publication.cjs test/release-artifact-acceptance.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 3.736,
+      "started_at": "2026-08-14T13:07:58.155Z",
+      "commit": "219ac5c67cab188a02194697b09f1c71aa238d16",
+      "workspace_fingerprint": "29eb83120fa1ef31ffeb690730a0b3fc0c93e060c69f5daf2cf6e2a83b96505b",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 7.037,
+      "started_at": "2026-08-14T13:08:08.105Z",
+      "commit": "219ac5c67cab188a02194697b09f1c71aa238d16",
+      "workspace_fingerprint": "29eb83120fa1ef31ffeb690730a0b3fc0c93e060c69f5daf2cf6e2a83b96505b",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 28.18,
+      "started_at": "2026-08-14T13:08:20.542Z",
+      "commit": "219ac5c67cab188a02194697b09f1c71aa238d16",
+      "workspace_fingerprint": "29eb83120fa1ef31ffeb690730a0b3fc0c93e060c69f5daf2cf6e2a83b96505b",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 19.126,
+      "started_at": "2026-08-14T13:08:53.073Z",
+      "commit": "219ac5c67cab188a02194697b09f1c71aa238d16",
+      "workspace_fingerprint": "29eb83120fa1ef31ffeb690730a0b3fc0c93e060c69f5daf2cf6e2a83b96505b",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm parallel:check -- --all",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.697,
+      "started_at": "2026-08-14T13:09:16.357Z",
+      "commit": "219ac5c67cab188a02194697b09f1c71aa238d16",
+      "workspace_fingerprint": "29eb83120fa1ef31ffeb690730a0b3fc0c93e060c69f5daf2cf6e2a83b96505b",
+      "platform": "linux-x64"
+    }
+  ],
   "handoff": {
-    "summary": "",
-    "risks": [],
-    "next_steps": []
+    "summary": "Merged the independently approved first-party macOS release implementation and exact receipt closure with the newer shared Windows delay-load authority. Combined focused release tests, architecture, portable, strict-Python, and all-contract gates pass; the protected exact-source first-party Mac rehearsal succeeded and remains source-authority evidence only.",
+    "risks": [
+      "The broad pre-freeze CI matrix retained twelve independently classified shared portability failures; this checkpoint neither waives them nor claims final frozen-source Mac readiness.",
+      "Actual Developer ID signing and notarization remain gated on a reviewed immutable release-candidate tag and sagejs-signing environment approval."
+    ],
+    "next_steps": [
+      "Rebase and validate the Windows static-CRT, reproducibility, and canonical packaging lane on this closed Mac source-authority checkpoint.",
+      "After every shared and Windows source change is integrated, run a fresh first-party plus general Mac rehearsal as a separate exact frozen-source gate."
+    ]
   }
 }
