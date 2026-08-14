@@ -1,16 +1,21 @@
-# Linux x64 release baseline
+# Linux release baseline
 
-Sage.js Linux x64 release binaries target **glibc 2.28**. This matches the
+Sage.js Linux x64 and arm64 release binaries target **glibc 2.28**. This matches the
 oldest platform supported by official Node.js 26 binaries (RHEL 8, Debian 10,
 and Ubuntu 20.04-era systems) without pretending that a binary built on the
 developer's newer host is portable.
 
 CPU portability and operating-system portability are separate contracts:
 
-- GMP uses its fat x86-64 dispatcher, and OpenBLAS uses an explicit dynamic CPU
-  target list. Release inputs must use the portable native-mathematics profile.
+- On x64, GMP uses its fat dispatcher. On arm64, every compiled dependency uses
+  the Armv8-A baseline. OpenBLAS uses an explicit dynamic CPU target list on
+  both architectures. Release inputs must use the portable native-mathematics
+  profile and must not retain the builder CPU identity.
 - The Node template and every embedded `.node` addon must satisfy
-  [`linux-x64-glibc-2.28-policy.json`](../scripts/linux-baseline/linux-x64-glibc-2.28-policy.json).
+  the architecture-specific
+  [`linux-x64-glibc-2.28-policy.json`](../scripts/linux-baseline/linux-x64-glibc-2.28-policy.json)
+  or
+  [`linux-arm64-glibc-2.28-policy.json`](../scripts/linux-baseline/linux-arm64-glibc-2.28-policy.json).
   The policy caps GLIBC, GLIBCXX, CXXABI, and GCC symbol versions and allows only
   a small system dependency closure.
 
@@ -27,10 +32,10 @@ as [`official-node-26.7.0-linux-x64.json`](../scripts/linux-baseline/official-no
 It satisfies the selected symbol-version ceilings, but the dependency allowlist
 rejects it solely because of `libatomic.so.1`.
 
-The release template is therefore built from the exact Node source tarball with
+Each release template is therefore built natively from the exact Node source tarball with
 GCC and `--partly-static` inside a digest-pinned manylinux_2_28 image. Node only
-adds `-latomic` on Linux when it is built with Clang; GCC x86-64 emits the needed
-atomic operation without the external runtime. Partial static linking also
+adds `-latomic` on Linux when it is built with Clang; the selected GCC targets
+emit the needed atomic operations without the external runtime. Partial static linking also
 removes dependence on the build image's newer C++ runtime. This is a small,
 upstream-supported build variation, not a Sage.js fork of Node.
 
@@ -57,6 +62,14 @@ addon as one release input set:
 
 ```sh
 node scripts/linux-baseline/release-inputs.cjs --all-inputs --source-ref HEAD
+```
+
+The default platform follows the native host. It may be stated explicitly;
+emulation is not accepted as the release performance or compatibility witness:
+
+```sh
+node scripts/linux-baseline/release-inputs.cjs \
+  --platform linux-arm64 --all-inputs --source-ref HEAD
 ```
 
 The full mode intentionally accepts a committed Git tree, not an arbitrary

@@ -25,6 +25,7 @@ const {
   PNPM_TARBALL_SHA512,
   PNPM_TARBALL_URL,
   PNPM_VERSION,
+  PLATFORM_CONFIGS,
   POLICY_PATH,
   RUNTIME_IMAGE,
   assertPortableMathProfile,
@@ -35,6 +36,7 @@ const {
   exportGitArchive,
   launchStagedRelease,
   parseArguments,
+  platformConfig,
   publishReleaseOutput,
   releaseAuthorityIdentity,
   removeOwnedImage,
@@ -61,6 +63,23 @@ test("Linux baseline pins Node source and both container images", () => {
   );
 });
 
+test("Linux baseline pins distinct native x64 and arm64 container authorities", () => {
+  assert.deepEqual(Object.keys(PLATFORM_CONFIGS).sort(), ["linux-arm64", "linux-x64"]);
+  const x64 = platformConfig("linux-x64");
+  const arm64 = platformConfig("linux-arm64");
+  assert.equal(x64.arch, "x64");
+  assert.equal(x64.containerArchitecture, "amd64");
+  assert.match(x64.buildImage, /manylinux_2_28_x86_64@sha256:[0-9a-f]{64}$/);
+  assert.match(x64.runtimeImage, /ubi8\/ubi-minimal@sha256:[0-9a-f]{64}$/);
+  assert.equal(arm64.arch, "arm64");
+  assert.equal(arm64.containerArchitecture, "arm64");
+  assert.match(arm64.buildImage, /manylinux_2_28_aarch64@sha256:[0-9a-f]{64}$/);
+  assert.match(arm64.runtimeImage, /ubi8\/ubi-minimal@sha256:[0-9a-f]{64}$/);
+  assert.notEqual(arm64.buildImage, x64.buildImage);
+  assert.notEqual(arm64.runtimeImage, x64.runtimeImage);
+  assert.throws(() => platformConfig("linux-riscv64"), /unsupported/);
+});
+
 test("Linux baseline excludes libatomic and caps the complete ABI", () => {
   const policy = JSON.parse(readFileSync(POLICY_PATH, "utf8"));
   assert.equal(policy.format, "elf");
@@ -69,6 +88,19 @@ test("Linux baseline excludes libatomic and caps the complete ABI", () => {
   assert.equal(policy.maximumSymbolVersions.GLIBCXX, "3.4.25");
   assert.equal(policy.maximumSymbolVersions.CXXABI, "1.3.11");
   assert.equal(policy.allowedDependencies.includes("libatomic.so.1"), false);
+  assert.deepEqual(policy.allowedRpaths, []);
+});
+
+test("Linux arm64 baseline excludes libatomic and caps the complete ABI", () => {
+  const config = platformConfig("linux-arm64");
+  const policy = JSON.parse(readFileSync(config.policyPath, "utf8"));
+  assert.equal(policy.format, "elf");
+  assert.deepEqual(policy.architectures, ["arm64"]);
+  assert.equal(policy.maximumSymbolVersions.GLIBC, "2.28");
+  assert.equal(policy.maximumSymbolVersions.GLIBCXX, "3.4.25");
+  assert.equal(policy.maximumSymbolVersions.CXXABI, "1.3.11");
+  assert.equal(policy.allowedDependencies.includes("libatomic.so.1"), false);
+  assert.equal(policy.allowedDependencies.includes("ld-linux-aarch64.so.1"), true);
   assert.deepEqual(policy.allowedRpaths, []);
 });
 
@@ -423,13 +455,26 @@ test("Linux baseline command-line parsing is fail closed", () => {
   assert.deepEqual(parseArguments(["--all-inputs", "--engine", "podman"]), {
     allInputs: true,
     engine: "podman",
-    keepImage: false,
-    output: require("node:path").join(__dirname, "..", "build", "linux-baseline"),
+      keepImage: false,
+      output: require("node:path").join(__dirname, "..", "build", "linux-baseline"),
+      platform: "linux-x64",
     sourceCommit: undefined,
     sourceRef: "HEAD",
     stagedContext: undefined,
   });
   assert.throws(() => parseArguments(["--engine", "lxc"]), /docker or podman/);
+  assert.deepEqual(
+    parseArguments(["--platform", "linux-arm64"]).platform,
+    "linux-arm64",
+  );
+  assert.match(
+    parseArguments(["--platform", "linux-arm64"]).output,
+    /linux-baseline-linux-arm64$/,
+  );
+  assert.throws(
+    () => parseArguments(["--platform", "linux-riscv64"]),
+    /--platform must be one of/,
+  );
   assert.throws(() => parseArguments(["--unknown"]), /unknown argument/);
   assert.throws(() => assertSafeOutputDirectory("/"), /refusing broad/);
 });
@@ -497,4 +542,20 @@ test("the full proof rejects host-tuned mathematics profiles", () => {
   const tuned = structuredClone(portable);
   tuned.buildOptions.gmp.cflags = ["-march=native"];
   assert.throws(() => assertPortableMathProfile(tuned), /host CPU compiler flag/);
+
+  const arm = structuredClone(portable);
+  arm.abi.arch = "arm64";
+  arm.cpuPolicy = { baseline: "armv8-a" };
+  arm.buildOptions.gmp = {
+    cflags: ["-O3", "-fPIC", "-march=armv8-a"],
+    configure: ["--disable-shared", "--enable-static"],
+  };
+  arm.buildOptions.fflas = {
+    archnative: false,
+    gmpConfigure: ["--disable-shared", "--enable-static"],
+  };
+  assert.equal(
+    assertPortableMathProfile(arm, platformConfig("linux-arm64")),
+    arm,
+  );
 });

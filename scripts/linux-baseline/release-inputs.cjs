@@ -37,13 +37,36 @@ const ROOT = process.env.SAGEJS_LINUX_BASELINE_ROOT
 const NODE_VERSION = "26.7.0";
 const NODE_SOURCE_SHA256 =
   "e6b182cbeeab032d1082ca4ac4fe15e3a57de691d3bde78ecf8a761fd56ee356";
-const BUILD_IMAGE =
-  "quay.io/pypa/manylinux_2_28_x86_64@" +
-  "sha256:f854c50adf7b7a325bc4794316f3758d387a41d61f9e2ebca0f26c7dc8f761d4";
-const RUNTIME_IMAGE =
-  "registry.access.redhat.com/ubi8/ubi-minimal@" +
-  "sha256:cca75ce8294bd67a18520f72d58692e213428b14615d91800ad26b32860adb62";
-const POLICY_PATH = join(__dirname, "linux-x64-glibc-2.28-policy.json");
+const PLATFORM_CONFIGS = Object.freeze({
+  "linux-x64": Object.freeze({
+    arch: "x64",
+    buildImage:
+      "quay.io/pypa/manylinux_2_28_x86_64@" +
+      "sha256:f854c50adf7b7a325bc4794316f3758d387a41d61f9e2ebca0f26c7dc8f761d4",
+    containerArchitecture: "amd64",
+    policyPath: join(__dirname, "linux-x64-glibc-2.28-policy.json"),
+    runtimeImage:
+      "registry.access.redhat.com/ubi8/ubi-minimal@" +
+      "sha256:cca75ce8294bd67a18520f72d58692e213428b14615d91800ad26b32860adb62",
+  }),
+  "linux-arm64": Object.freeze({
+    arch: "arm64",
+    buildImage:
+      "quay.io/pypa/manylinux_2_28_aarch64@" +
+      "sha256:b9dd5b2d6885fae144119ac934978003bcc413087ea08f602a960257205ec246",
+    containerArchitecture: "arm64",
+    policyPath: join(__dirname, "linux-arm64-glibc-2.28-policy.json"),
+    runtimeImage:
+      "registry.access.redhat.com/ubi8/ubi-minimal@" +
+      "sha256:523ceff2d2063d7a44d406f09b9fc5fabaca7b534a877ba14c8f75c60500b11a",
+  }),
+});
+const DEFAULT_PLATFORM = process.arch === "arm64" ? "linux-arm64" : "linux-x64";
+// Retain the x64 exports for callers that consumed the original single-target
+// authority. New code selects a complete immutable platform configuration.
+const BUILD_IMAGE = PLATFORM_CONFIGS["linux-x64"].buildImage;
+const RUNTIME_IMAGE = PLATFORM_CONFIGS["linux-x64"].runtimeImage;
+const POLICY_PATH = PLATFORM_CONFIGS["linux-x64"].policyPath;
 const CONTAINERFILE_PATH = join(__dirname, "Containerfile");
 const INSPECTOR_PATH = STAGED_PROCESS
   ? join(__dirname, "release-native-binary-inspector.cjs")
@@ -70,7 +93,8 @@ function parseArguments(arguments_) {
     allInputs: false,
     engine: undefined,
     keepImage: false,
-    output: join(ROOT, "build", "linux-baseline"),
+    output: undefined,
+    platform: DEFAULT_PLATFORM,
     sourceRef: "HEAD",
     sourceCommit: undefined,
     stagedContext: undefined,
@@ -81,6 +105,7 @@ function parseArguments(arguments_) {
     else if (argument === "--engine") result.engine = arguments_[++index];
     else if (argument === "--keep-image") result.keepImage = true;
     else if (argument === "--output") result.output = resolve(arguments_[++index] ?? "");
+    else if (argument === "--platform") result.platform = arguments_[++index] ?? "";
     else if (argument === "--source-ref") result.sourceRef = arguments_[++index] ?? "";
     else if (argument === "--source-commit") result.sourceCommit = arguments_[++index] ?? "";
     else if (argument === "--staged-context") result.stagedContext = resolve(arguments_[++index] ?? "");
@@ -90,6 +115,16 @@ function parseArguments(arguments_) {
   if (result.engine && !["docker", "podman"].includes(result.engine)) {
     throw new Error("--engine must be docker or podman");
   }
+  if (!Object.hasOwn(PLATFORM_CONFIGS, result.platform)) {
+    throw new Error(
+      `--platform must be one of ${Object.keys(PLATFORM_CONFIGS).join(", ")}`,
+    );
+  }
+  result.output ||= join(
+    ROOT,
+    "build",
+    result.platform === "linux-x64" ? "linux-baseline" : `linux-baseline-${result.platform}`,
+  );
   if (!result.sourceRef) throw new Error("--source-ref must not be empty");
   if ((result.sourceCommit || result.stagedContext) && !STAGED_PROCESS) {
     throw new Error("internal staged arguments require the staged release process");
@@ -99,6 +134,12 @@ function parseArguments(arguments_) {
     if (!result.stagedContext) throw new Error("the staged release context is missing");
   }
   return result;
+}
+
+function platformConfig(platform) {
+  const config = PLATFORM_CONFIGS[platform];
+  if (!config) throw new Error(`unsupported Linux baseline platform ${platform}`);
+  return config;
 }
 
 function commandAvailable(command) {
@@ -135,10 +176,10 @@ function run(command, arguments_, options = {}) {
   return result;
 }
 
-function assertRuntimeOmitsLibatomic(engine) {
+function assertRuntimeOmitsLibatomic(engine, config = platformConfig(DEFAULT_PLATFORM)) {
   const result = spawnSync(
     engine,
-    ["run", "--rm", RUNTIME_IMAGE, "rpm", "-q", "libatomic"],
+    ["run", "--rm", config.runtimeImage, "rpm", "-q", "libatomic"],
     { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] },
   );
   if (result.error) throw result.error;
@@ -149,19 +190,19 @@ function assertRuntimeOmitsLibatomic(engine) {
     );
   }
   return {
-    image: RUNTIME_IMAGE,
+    image: config.runtimeImage,
     libatomicPackagePresent: false,
   };
 }
 
-function compilerIdentity(engine) {
+function compilerIdentity(engine, config = platformConfig(DEFAULT_PLATFORM)) {
   const program = [
     "set -eu",
     `printf "path=%s\\n" "${GCC_PATH}"`,
     `printf "version=%s\\n" "$(${GCC_PATH} -dumpfullversion -dumpversion)"`,
     `printf "target=%s\\n" "$(${GCC_PATH} -dumpmachine)"`,
   ].join("; ");
-  const output = run(engine, ["run", "--rm", BUILD_IMAGE, "sh", "-c", program], {
+  const output = run(engine, ["run", "--rm", config.buildImage, "sh", "-c", program], {
     encoding: "utf8",
     stdio: ["ignore", "pipe", "inherit"],
   }).stdout;
@@ -178,9 +219,10 @@ function sha256File(filename) {
 }
 
 function releaseAuthorityIdentity(options = {}) {
+  const config = platformConfig(options.platform || DEFAULT_PLATFORM);
   const files = {
     containerfile: options.containerfile || CONTAINERFILE_PATH,
-    policy: options.policy || POLICY_PATH,
+    policy: options.policy || config.policyPath,
     releaseDriver: options.releaseDriver || __filename,
     releaseInspector: options.releaseInspector || INSPECTOR_PATH,
   };
@@ -199,9 +241,10 @@ function resolveSourceCommit(sourceRef, options = {}) {
 }
 
 function stageReleaseAuthority(directory, options = {}) {
+  const config = platformConfig(options.platform || DEFAULT_PLATFORM);
   const sources = {
     containerfile: options.containerfile || CONTAINERFILE_PATH,
-    policy: options.policy || POLICY_PATH,
+    policy: options.policy || config.policyPath,
     releaseDriver: options.releaseDriver || __filename,
     releaseInspector: options.releaseInspector || INSPECTOR_PATH,
   };
@@ -218,17 +261,18 @@ function stageReleaseAuthority(directory, options = {}) {
   paths.sourceCommit = join(directory, "source-commit");
   writeFileSync(paths.sourceCommit, `${sourceCommit}\n`, { mode: 0o400 });
   return {
-    identity: releaseAuthorityIdentity(paths),
+    identity: releaseAuthorityIdentity({ ...paths, platform: options.platform }),
     paths,
     sourceCommit: readFileSync(paths.sourceCommit, "utf8").trim(),
   };
 }
 
-function loadStagedAuthority(context, sourceCommit) {
+function loadStagedAuthority(context, sourceCommit, platform = DEFAULT_PLATFORM) {
+  const config = platformConfig(platform);
   const directory = join(context, ".authority");
   const paths = {
     containerfile: join(directory, "Containerfile"),
-    policy: join(directory, "linux-x64-glibc-2.28-policy.json"),
+    policy: join(directory, basename(config.policyPath)),
     releaseDriver: join(directory, "release-inputs.cjs"),
     releaseInspector: join(directory, "release-native-binary-inspector.cjs"),
     sourceCommit: join(directory, "source-commit"),
@@ -236,7 +280,7 @@ function loadStagedAuthority(context, sourceCommit) {
   const stagedCommit = readFileSync(paths.sourceCommit, "utf8").trim();
   assert.equal(stagedCommit, sourceCommit);
   return {
-    identity: releaseAuthorityIdentity(paths),
+    identity: releaseAuthorityIdentity({ ...paths, platform }),
     paths,
     sourceCommit: stagedCommit,
   };
@@ -246,12 +290,14 @@ function launchStagedRelease(arguments_, options = {}) {
   const root = options.root || ROOT;
   const spawn = options.spawn || spawnSync;
   const sourceRef = parseArguments(arguments_).sourceRef || "HEAD";
+  const platform = parseArguments(arguments_).platform;
   const sourceCommit = resolveSourceCommit(sourceRef, { root });
   const temporary = mkdtempSync(join(tmpdir(), "sagejs-linux-baseline-launch-"));
   const context = join(temporary, "context");
   mkdirSync(context);
   const authority = stageReleaseAuthority(join(context, ".authority"), {
     ...(options.authoritySources || {}),
+    platform,
     sourceCommit,
   });
   try {
@@ -313,7 +359,12 @@ function removeOwnedImage(engine, image, options = {}) {
   return !removed.error && removed.status === 0;
 }
 
-function proveSeaTemplate(engine, nodeExecutable, policyPath = POLICY_PATH) {
+function proveSeaTemplate(
+  engine,
+  nodeExecutable,
+  policyPath = platformConfig(DEFAULT_PLATFORM).policyPath,
+  config = platformConfig(DEFAULT_PLATFORM),
+) {
   const directory = mkdtempSync(join(tmpdir(), "sagejs-linux-sea-"));
   try {
     const main = join(directory, "main.cjs");
@@ -343,7 +394,7 @@ function proveSeaTemplate(engine, nodeExecutable, policyPath = POLICY_PATH) {
       "--rm",
       "--volume",
       `${directory}:/candidate:ro,Z`,
-      RUNTIME_IMAGE,
+      config.runtimeImage,
       "/candidate/sagejs-sea-smoke",
     ], {
       encoding: "utf8",
@@ -393,7 +444,10 @@ function listNativeInputs(directory) {
   return inputs.sort((left, right) => left.label.localeCompare(right.label));
 }
 
-function validateReleaseInputs(directory, policyPath = POLICY_PATH) {
+function validateReleaseInputs(
+  directory,
+  policyPath = platformConfig(DEFAULT_PLATFORM).policyPath,
+) {
   const inputs = listNativeInputs(directory);
   assert.ok(inputs.some(({ label }) => label === "node"), "Node template is missing");
   const policy = JSON.parse(readFileSync(policyPath, "utf8"));
@@ -411,17 +465,26 @@ function assertNoLibatomic(report, label) {
   return report;
 }
 
-function assertPortableMathProfile(profile) {
+function assertPortableMathProfile(
+  profile,
+  config = platformConfig(DEFAULT_PLATFORM),
+) {
   assert.equal(profile?.schema, "sagejs.native-math-profile-v1");
   assert.equal(profile.effectiveProfile, "portable");
   assert.equal(profile.requestedProfile, "portable");
   assert.equal(profile.cpu, null);
   assert.equal(profile.abi?.platform, "linux");
-  assert.equal(profile.abi?.arch, "x64");
+  assert.equal(profile.abi?.arch, config.arch);
   assert.equal(profile.compilers?.c?.nativeFlag, null);
   assert.equal(profile.compilers?.cxx?.nativeFlag, null);
-  assert.equal(profile.buildOptions?.gmp?.configure?.includes("--enable-fat"), true);
-  assert.equal(profile.buildOptions?.fflas?.gmpConfigure?.includes("--enable-fat"), true);
+  if (config.arch === "x64") {
+    assert.equal(profile.buildOptions?.gmp?.configure?.includes("--enable-fat"), true);
+    assert.equal(profile.buildOptions?.fflas?.gmpConfigure?.includes("--enable-fat"), true);
+  } else {
+    assert.equal(profile.cpuPolicy?.baseline, "armv8-a");
+    assert.equal(profile.buildOptions?.gmp?.cflags?.includes("-march=armv8-a"), true);
+    assert.equal(profile.buildOptions?.fflas?.archnative, false);
+  }
   assert.equal(profile.buildOptions?.openblas?.dynamicArch, true);
   const buildTokens = [];
   const collectStrings = (value) => {
@@ -432,9 +495,12 @@ function assertPortableMathProfile(profile) {
     }
   };
   collectStrings(profile.buildOptions);
+  const cpuFlags = buildTokens.filter((token) =>
+    /^-(?:march|mcpu|mtune)(?:=|$)/.test(token),
+  );
   assert.deepEqual(
-    buildTokens.filter((token) => /^-(?:march|mcpu|mtune)(?:=|$)/.test(token)),
-    [],
+    [...new Set(cpuFlags)].sort(),
+    config.arch === "arm64" ? ["-march=armv8-a"] : [],
     "portable mathematics profile contains a host CPU compiler flag",
   );
   return profile;
@@ -522,10 +588,11 @@ function buildReleaseInputs(options) {
   }
   assertSafeOutputDirectory(options.output);
   const engine = selectEngine(options.engine);
+  const config = platformConfig(options.platform);
   const temporary = dirname(options.stagedContext);
   const context = options.stagedContext;
   const extracted = join(temporary, "extracted");
-  const authority = loadStagedAuthority(context, options.sourceCommit);
+  const authority = loadStagedAuthority(context, options.sourceCommit, options.platform);
   const image = allocatePrivateImage(engine);
   let container = null;
   try {
@@ -547,7 +614,7 @@ function buildReleaseInputs(options) {
       "--label",
       `${IMAGE_OWNER_LABEL}=${image.token}`,
       "--build-arg",
-      `BUILD_IMAGE=${BUILD_IMAGE}`,
+      `BUILD_IMAGE=${config.buildImage}`,
       "--build-arg",
       `NODE_SOURCE_SHA256=${NODE_SOURCE_SHA256}`,
       "--build-arg",
@@ -572,15 +639,16 @@ function buildReleaseInputs(options) {
     const mathProfile = options.allInputs
       ? assertPortableMathProfile(
           JSON.parse(readFileSync(join(extracted, "native-math-profile.json"), "utf8")),
+          config,
         )
       : null;
-    const runtime = assertRuntimeOmitsLibatomic(engine);
+    const runtime = assertRuntimeOmitsLibatomic(engine, config);
     const runtimeProbe = run(engine, [
       "run",
       "--rm",
       "--volume",
       `${extracted}:/candidate:ro,Z`,
-      RUNTIME_IMAGE,
+      config.runtimeImage,
       "/candidate/node",
       "--version",
     ], {
@@ -592,12 +660,13 @@ function buildReleaseInputs(options) {
       engine,
       join(extracted, "node"),
       authority.paths.policy,
+      config,
     );
     const receipt = {
       schema: RECEIPT_SCHEMA,
       authority: authority.identity,
-      buildImage: BUILD_IMAGE,
-      compiler: compilerIdentity(engine),
+      buildImage: config.buildImage,
+      compiler: compilerIdentity(engine, config),
       configureArguments: NODE_CONFIGURE_ARGUMENTS,
       nodeSourceSha256: NODE_SOURCE_SHA256,
       nodeVersion: NODE_VERSION,
@@ -609,7 +678,8 @@ function buildReleaseInputs(options) {
       },
       nativeMathProfile: mathProfile,
       policy: JSON.parse(readFileSync(authority.paths.policy, "utf8")),
-      runtimeImage: RUNTIME_IMAGE,
+      platform: options.platform,
+      runtimeImage: config.runtimeImage,
       runtimeProbe: {
         ...runtime,
         exitStatus: 0,
@@ -648,7 +718,8 @@ in a minimal UBI 8 container without libatomic. By default only Node is built.
   --all-inputs       Also build and inspect all Sage.js native addons
   --engine NAME      podman or docker (auto-detected by default)
   --keep-image       Retain the local intermediate image
-  --output PATH      Output directory (default: build/linux-baseline)
+  --output PATH      Output directory (default: build/linux-baseline-PLATFORM)
+  --platform NAME    linux-x64 or linux-arm64 (default: current host)
   --source-ref REF   Committed Git tree used by --all-inputs (default: HEAD)
 `);
 }
@@ -666,6 +737,7 @@ module.exports = {
   PNPM_TARBALL_URL,
   PNPM_VERSION,
   POLICY_PATH,
+  PLATFORM_CONFIGS,
   RUNTIME_IMAGE,
   allocatePrivateImage,
   assertNoLibatomic,
@@ -679,6 +751,7 @@ module.exports = {
   listNativeInputs,
   loadStagedAuthority,
   parseArguments,
+  platformConfig,
   publishReleaseOutput,
   releaseAuthorityIdentity,
   removeOwnedImage,
