@@ -48,6 +48,7 @@ const {
   nativeArtifactSpecs,
   nativeCachePackages,
   nativeCacheProcessIdentity,
+  nativeCacheRootIsBroad,
   nativeCacheStatus,
   prepareNativeArtifact,
   restoreNativeArtifact,
@@ -748,6 +749,26 @@ test("native cache cleanup rejects broad, symlinked, and unexpected roots", {
   } finally {
     rmSync(directory, { recursive: true, force: true });
   }
+});
+
+test("native cache broad-root matching follows Windows path casing", () => {
+  assert.equal(
+    nativeCacheRootIsBroad(
+      "c:\\USERS\\USER",
+      ["C:\\Users\\user"],
+      "win32",
+    ),
+    true,
+  );
+  assert.equal(nativeCacheRootIsBroad("c:\\cache", [], "win32"), true);
+  assert.equal(
+    nativeCacheRootIsBroad("c:\\cache\\sagejs-native-artifacts", [], "win32"),
+    false,
+  );
+  assert.equal(
+    nativeCacheRootIsBroad("c:\\USERS\\USER", ["C:\\Users\\user"], "linux"),
+    false,
+  );
 });
 
 test("native cache maintenance CLI emits JSON and never applies by default", () => {
