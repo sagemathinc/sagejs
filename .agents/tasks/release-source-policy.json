@@ -4,7 +4,7 @@
   "id": "release-source-policy",
   "title": "Release Source Policy",
   "lane": "integration",
-  "status": "review",
+  "status": "complete",
   "owner": "user",
   "objective": "Fail closed before release authority unless an annotated version tag peels to the workflow SHA and its commit is merged into origin/main",
   "base_commit": "8d18904b2bbd0860b89e6236d7b35346e3c9bba2",
