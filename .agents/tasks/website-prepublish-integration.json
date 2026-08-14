@@ -4,7 +4,7 @@
   "id": "website-prepublish-integration",
   "title": "Integrate prepublication website truth",
   "lane": "integration",
-  "status": "active",
+  "status": "review",
   "owner": "user",
   "objective": "Integrate the independently approved prepublication website state onto the authoritative closed release baseline without deploying the website, tagging, publishing, or changing Windows release work",
   "base_commit": "769c7bbfd92ef0ae595c5dd9674e0702b7c4eb2c",
@@ -51,10 +51,107 @@
     "pnpm architecture:check",
     "pnpm parallel:check -- --all"
   ],
-  "runs": [],
+  "runs": [
+    {
+      "command": "node --test test/website.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.144,
+      "started_at": "2026-08-14T19:32:04.696Z",
+      "commit": "7a9ed00c0181d8f55017259ecc71819e55f4bdae",
+      "workspace_fingerprint": "0ff9be412ef5a4ce955aebfdfac85711d707600a9aeabf0374705af080ad7e72",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm docs:generate",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 222.855,
+      "started_at": "2026-08-14T19:32:09.708Z",
+      "commit": "7a9ed00c0181d8f55017259ecc71819e55f4bdae",
+      "workspace_fingerprint": "0ff9be412ef5a4ce955aebfdfac85711d707600a9aeabf0374705af080ad7e72",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm docs:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 219.966,
+      "started_at": "2026-08-14T19:35:56.671Z",
+      "commit": "7a9ed00c0181d8f55017259ecc71819e55f4bdae",
+      "workspace_fingerprint": "0ff9be412ef5a4ce955aebfdfac85711d707600a9aeabf0374705af080ad7e72",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:tutorial",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 235.737,
+      "started_at": "2026-08-14T19:39:40.325Z",
+      "commit": "7a9ed00c0181d8f55017259ecc71819e55f4bdae",
+      "workspace_fingerprint": "0ff9be412ef5a4ce955aebfdfac85711d707600a9aeabf0374705af080ad7e72",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 21.725,
+      "started_at": "2026-08-14T19:43:44.164Z",
+      "commit": "7a9ed00c0181d8f55017259ecc71819e55f4bdae",
+      "workspace_fingerprint": "0ff9be412ef5a4ce955aebfdfac85711d707600a9aeabf0374705af080ad7e72",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 14.524,
+      "started_at": "2026-08-14T19:44:11.099Z",
+      "commit": "7a9ed00c0181d8f55017259ecc71819e55f4bdae",
+      "workspace_fingerprint": "0ff9be412ef5a4ce955aebfdfac85711d707600a9aeabf0374705af080ad7e72",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:changed -- --base 769c7bbfd92ef0ae595c5dd9674e0702b7c4eb2c",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 23.771,
+      "started_at": "2026-08-14T19:44:33.546Z",
+      "commit": "7a9ed00c0181d8f55017259ecc71819e55f4bdae",
+      "workspace_fingerprint": "0ff9be412ef5a4ce955aebfdfac85711d707600a9aeabf0374705af080ad7e72",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 5.583,
+      "started_at": "2026-08-14T19:45:02.476Z",
+      "commit": "7a9ed00c0181d8f55017259ecc71819e55f4bdae",
+      "workspace_fingerprint": "0ff9be412ef5a4ce955aebfdfac85711d707600a9aeabf0374705af080ad7e72",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm parallel:check -- --all",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.59,
+      "started_at": "2026-08-14T19:45:08.662Z",
+      "commit": "7a9ed00c0181d8f55017259ecc71819e55f4bdae",
+      "workspace_fingerprint": "0ff9be412ef5a4ce955aebfdfac85711d707600a9aeabf0374705af080ad7e72",
+      "platform": "linux-x64"
+    }
+  ],
   "handoff": {
-    "summary": "",
-    "risks": [],
-    "next_steps": []
+    "summary": "Replayed the independently approved prepublication website range 769c7bbfd92ef0ae595c5dd9674e0702b7c4eb2c..7d1acbed21ce7485ff50cf4ca16f8712780d5677 onto the exact authoritative closed baseline. All three replay commits have stable patch IDs identical to their authorities, and before lifecycle closure all four final range blobs matched 7d1acbed21ce7485ff50cf4ca16f8712780d5677 exactly. Because the approved source handoff remained in review state, the integration changed only that task status to complete; the three website and test content blobs remain byte-identical. The resulting website truthfully describes native v0.2.0 assets as imminent and unpublished, keeps npm v0.1.0 as the only actionable install path, withholds the native installer command, and preserves the forthcoming Windows x64 archive as explicitly unsigned. At exact code checkpoint 7a9ed00c0181d8f55017259ecc71819e55f4bdae and common workspace fingerprint 0ff9be412ef5a4ce955aebfdfac85711d707600a9aeabf0374705af080ad7e72, website tests passed 10/10, canonical docs generation and a separate docs check passed with no generated-file drift, the guided tutorial passed 662/662, portable passed 461/461, strict Python passed 101 modules with zero errors, exact-base changed tests passed 463/463, architecture passed, and all 227 task contracts passed.",
+    "risks": [
+      "The prepublication wording deliberately becomes stale after immutable v0.2.0 assets are published and independently verified; it must not be flipped early, but it must be followed up after verification.",
+      "This integration changes repository website source only. It does not deploy Pages, publish or tag a release, modify Windows release work, or expose an installer command for nonexistent immutable assets."
+    ],
+    "next_steps": [
+      "Obtain independent review of exact integration code checkpoint 7a9ed00c0181d8f55017259ecc71819e55f4bdae, replay and blob provenance, the source-task lifecycle-only delta, prepublication semantics, generated-file cleanliness, and all common-fingerprint receipts.",
+      "Only after the immutable v0.2.0 GitHub release and every advertised asset have been independently verified, make a website-only follow-up that changes native wording from imminent to available/current, restores the checksum-verifying latest/download/install.sh command, updates the two release capability records and their regressions, and lets the resulting main-branch commit trigger GitHub Pages."
+    ]
   }
 }
