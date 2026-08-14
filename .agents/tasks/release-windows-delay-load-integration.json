@@ -4,7 +4,7 @@
   "id": "release-windows-delay-load-integration",
   "title": "Integrate Windows SEA addon delay loading",
   "lane": "integration",
-  "status": "active",
+  "status": "complete",
   "owner": "user",
   "objective": "Integrate the independently reviewed Windows Node-addon delay-load policy and actual original-plus-renamed SEA mathematics proof into a closed intermediate release checkpoint",
   "base_commit": "29f5463e44d2a6143040fb126cdbf2c8ab4c5391",
@@ -43,10 +43,65 @@
     "node --test test/release-native-binary-inspector.cjs",
     "pnpm parallel:check -- --all"
   ],
-  "runs": [],
+  "runs": [
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 5.963,
+      "started_at": "2026-08-14T12:34:38.811Z",
+      "commit": "6cef5e41105def4ce048bd9c66bb71abbc9a3c3c",
+      "workspace_fingerprint": "abae55aeac17a52475481be11b5d395281809a141ecdc93c7000a62f3d785d19",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/release-native-binary-inspector.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.231,
+      "started_at": "2026-08-14T12:34:48.624Z",
+      "commit": "6cef5e41105def4ce048bd9c66bb71abbc9a3c3c",
+      "workspace_fingerprint": "abae55aeac17a52475481be11b5d395281809a141ecdc93c7000a62f3d785d19",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 23.816,
+      "started_at": "2026-08-14T12:35:26.973Z",
+      "commit": "6cef5e41105def4ce048bd9c66bb71abbc9a3c3c",
+      "workspace_fingerprint": "abae55aeac17a52475481be11b5d395281809a141ecdc93c7000a62f3d785d19",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 15.682,
+      "started_at": "2026-08-14T12:35:55.155Z",
+      "commit": "6cef5e41105def4ce048bd9c66bb71abbc9a3c3c",
+      "workspace_fingerprint": "abae55aeac17a52475481be11b5d395281809a141ecdc93c7000a62f3d785d19",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm parallel:check -- --all",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.594,
+      "started_at": "2026-08-14T12:36:19.926Z",
+      "commit": "6cef5e41105def4ce048bd9c66bb71abbc9a3c3c",
+      "workspace_fingerprint": "abae55aeac17a52475481be11b5d395281809a141ecdc93c7000a62f3d785d19",
+      "platform": "linux-x64"
+    }
+  ],
   "handoff": {
-    "summary": "",
-    "risks": [],
-    "next_steps": []
+    "summary": "Integrated the independently approved Windows addon delay-load implementation and exact Windows proof in source order. The production binary-policy ratchet now requires every embedded Node addon to import node.exe only through the PE delay table; the exact Windows SEA passed factorization, rational-matrix multiplication, and graph computation under both its original filename and a byte-identical renamed filename.",
+    "risks": [
+      "This intermediate checkpoint does not solve or waive the separate Windows static-CRT and PDB/path reproducibility blockers."
+    ],
+    "next_steps": [
+      "Rebase the static-CRT, PDB reproducibility, canonical Windows packaging, portable stabilization, doctest, and macOS release lanes on this closed intermediate checkpoint before final target validation."
+    ]
   }
 }
