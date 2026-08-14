@@ -22,6 +22,7 @@
     "test/fmpq-resource-ops-lifecycle.cjs",
     "test/exact-polynomial-resource-ffi.cjs",
     "test/polynomial-structural-flint.cjs",
+    "packages/m4ri/test/test.cjs",
     "tools/ffi/lifecycle-fuzz.cjs"
   ],
   "dependencies": [],
