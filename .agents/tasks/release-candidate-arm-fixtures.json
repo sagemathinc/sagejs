@@ -4,7 +4,7 @@
   "id": "release-candidate-arm-fixtures",
   "title": "Portable Linux release-candidate fixtures",
   "lane": "integration",
-  "status": "review",
+  "status": "complete",
   "owner": "linux-arm64-release",
   "objective": "Make Linux release-candidate fixture tests architecture-neutral so native arm64 CI validates arm64 receipts, archive names, and Rust authority while preserving the exact x64 contract",
   "base_commit": "db6258674e6f191b8187c31e2231a45c73a5c5c6",
@@ -102,7 +102,7 @@
       "The structured target-host run objects were recorded from clean exact remote checkouts because the local parallel runner labels SSH commands with the invoking x64 host."
     ],
     "next_steps": [
-      "Review and integrate the closure commit into the shared release baseline, then let macOS and Linux release CI repeat the same focused architecture-specific fixtures."
+      "Let macOS and Linux release CI repeat the integrated focused architecture-specific fixtures on the eventual frozen source."
     ]
   }
 }
