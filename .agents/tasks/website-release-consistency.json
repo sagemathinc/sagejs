@@ -4,7 +4,7 @@
   "id": "website-release-consistency",
   "title": "Website release consistency",
   "lane": "documentation-compat",
-  "status": "active",
+  "status": "blocked",
   "owner": "user",
   "objective": "Align public website release claims with the unsigned Windows preview contract and refresh canonical generated reference provenance without changing release workflow or publication authority",
   "base_commit": "0ae559238dd4b0a07b53dbd126630cf46a9c6aa0",
@@ -33,12 +33,73 @@
   },
   "validation": [
     "pnpm docs:check",
-    "pnpm test:tutorial"
+    "pnpm test:tutorial",
+    "node --test --test-reporter=spec test/website.cjs",
+    "pnpm test:portable",
+    "pnpm test:baselib:strict"
   ],
-  "runs": [],
+  "runs": [
+    {
+      "command": "pnpm docs:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 223.004,
+      "started_at": "2026-08-14T15:09:50.277Z",
+      "commit": "f5dec014211870e30ad95b842fc5b9392b60c794",
+      "workspace_fingerprint": "ef52c00b089a764e88556609a9fb342b9c1a23c702e03250f2f8c2bf82f7a956",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:tutorial",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 254.991,
+      "started_at": "2026-08-14T15:13:37.596Z",
+      "commit": "f5dec014211870e30ad95b842fc5b9392b60c794",
+      "workspace_fingerprint": "ef52c00b089a764e88556609a9fb342b9c1a23c702e03250f2f8c2bf82f7a956",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test --test-reporter=spec test/website.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.132,
+      "started_at": "2026-08-14T15:19:56.595Z",
+      "commit": "f5dec014211870e30ad95b842fc5b9392b60c794",
+      "workspace_fingerprint": "ef52c00b089a764e88556609a9fb342b9c1a23c702e03250f2f8c2bf82f7a956",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 22.836,
+      "started_at": "2026-08-14T15:20:00.334Z",
+      "commit": "f5dec014211870e30ad95b842fc5b9392b60c794",
+      "workspace_fingerprint": "ef52c00b089a764e88556609a9fb342b9c1a23c702e03250f2f8c2bf82f7a956",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 14.7,
+      "started_at": "2026-08-14T15:20:27.010Z",
+      "commit": "f5dec014211870e30ad95b842fc5b9392b60c794",
+      "workspace_fingerprint": "ef52c00b089a764e88556609a9fb342b9c1a23c702e03250f2f8c2bf82f7a956",
+      "platform": "linux-x64"
+    }
+  ],
   "handoff": {
-    "summary": "",
-    "risks": [],
-    "next_steps": []
+    "summary": "Corrected the website's Windows distribution claims to match the checked release contract: the Windows x64 preview ZIP is deliberately unsigned, checksum- and provenance-bound, and Authenticode remains a future separately gated state. Added a focused regression that reads WINDOWS.md and the release workflow as oracles without changing either authority. Reproduced pnpm docs:generate from exact base 0ae559238dd4b0a07b53dbd126630cf46a9c6aa0 and committed only its canonical reference-data and reference HTML output: 75 line fields, 29 start_line fields, one current-source excerpt, and the derived HTML data hash changed; no API content, signatures, documentation prose, Prism assets, workflow, README, or publication authority changed. Exact source commit f5dec014211870e30ad95b842fc5b9392b60c794 passed pnpm docs:check, the focused website suite (9/9), pnpm test:portable (447/447), and pnpm test:baselib:strict (zero errors).",
+    "risks": [
+      "The exact-source pnpm test:tutorial aggregate failed after 254.991 seconds with 656 passes and six failures, all in inherited src/doc/en/tutorial/tour_rings.rst examples at lines 77, 78, 81, 82, 84, and 86. The first failure is i = CC(i) raising ReferenceError: local variable 'i' referenced before assignment; the remaining five are direct cascades. This lane changes only website data, generated reference coordinates/hash, the focused website test, and its task contract, so it cannot correct or legitimately claim a pass for that runtime/compiler failure.",
+      "The public wording is consistent with the current explicitly unsigned Windows preview contract. A future Authenticode rollout must update the release authority and its acceptance evidence before changing these claims."
+    ],
+    "next_steps": [
+      "Integrate the source commit and this closure after the approved baseline checkpoint, then rerun the final aggregate gates on the assembled baseline.",
+      "Scope the inherited tour_rings local-before-assignment regression to a separate compiler/tutorial lane; preserve this failed receipt until that fix is independently validated.",
+      "Keep Windows artifacts described as unsigned preview archives until a distinct Authenticode gate and signed acceptance receipts exist."
+    ]
   }
 }
