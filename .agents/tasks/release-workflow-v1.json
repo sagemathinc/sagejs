@@ -12,6 +12,7 @@
     ".github/workflows/ci.yml",
     "test/release-workflow-protection.cjs",
     "test/release-publication.cjs",
+    "test/node-test-manifest.cjs",
     "scripts/prepare-release-publication.cjs",
     "RELEASING.md",
     "README.md",
@@ -36,12 +37,41 @@
   "validation": [
     "pnpm architecture:check",
     "pnpm test:portable",
-    "pnpm test:baselib:strict"
+    "pnpm test:baselib:strict",
+    "node --test test/release-publication.cjs test/release-workflow-protection.cjs",
+    "node scripts/check-release.cjs --tag v0.2.0"
   ],
-  "runs": [],
+  "runs": [
+    {
+      "command": "node --test test/release-publication.cjs test/release-workflow-protection.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.793,
+      "started_at": "2026-08-14T09:33:58.805Z",
+      "commit": "38cc705636a52a785c01dfe6f57f3d25db065285",
+      "workspace_fingerprint": "fa40ca82f4775d91986c5efff7a175c365a249497a5f310a7f342e7e03705dd9",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node scripts/check-release.cjs --tag v0.2.0",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.037,
+      "started_at": "2026-08-14T09:34:00.209Z",
+      "commit": "38cc705636a52a785c01dfe6f57f3d25db065285",
+      "workspace_fingerprint": "fa40ca82f4775d91986c5efff7a175c365a249497a5f310a7f342e7e03705dd9",
+      "platform": "linux-x64"
+    }
+  ],
   "handoff": {
-    "summary": "",
-    "risks": [],
-    "next_steps": []
+    "summary": "Established independently reviewed four-platform release authority: RC-only Apple credential rehearsal, stable-only protected GitHub publication, exact artifact ID/digest provenance, strict file/checksum policy, signed/notarized macOS, explicit unsigned Windows, and immutable action pins.",
+    "risks": [
+      "The provisional Linux workflow packaging blocks must be replaced by the separately approved glibc-floor baseline-to-SEA candidate invocation before any tag is created.",
+      "Real protected macOS signing/notarization and clean-machine Windows archive acceptance remain release-candidate gates."
+    ],
+    "next_steps": [
+      "Integrate the approved Linux baseline-to-SEA assembler and extend the publication allowlist to its readiness/report records.",
+      "Run v0.2.0-rc.1 through all four platforms and approve sagejs-signing; do not approve or run stable publication for the RC tag."
+    ]
   }
 }
