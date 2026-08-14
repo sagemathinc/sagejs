@@ -1,0 +1,47 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "release-workflow-v1",
+  "title": "Release Workflow V1",
+  "lane": "integration",
+  "status": "active",
+  "owner": "user",
+  "objective": "Harden the tag-only four-platform release workflow for signed macOS, Linux x64/arm64, explicitly unsigned Windows, immutable artifacts, checksums, provenance, and fail-closed publication",
+  "base_commit": "e4018fd70bf2b9549b826e20d825e08bf43dafe5",
+  "claims": [
+    ".github/workflows/ci.yml",
+    "test/release-workflow-protection.cjs",
+    "test/release-publication.cjs",
+    "scripts/prepare-release-publication.cjs",
+    "RELEASING.md",
+    "README.md",
+    "DISTRIBUTION.md",
+    "WINDOWS.md",
+    ".agents/lanes.json"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "not-applicable",
+    "fallback": "not-applicable",
+    "oracles": [],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm architecture:check",
+    "pnpm test:portable",
+    "pnpm test:baselib:strict"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "",
+    "risks": [],
+    "next_steps": []
+  }
+}

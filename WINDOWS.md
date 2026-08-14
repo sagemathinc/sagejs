@@ -58,147 +58,61 @@ initialization resolves that import once with an intentionally discarded
 value. The full native suite runs both under ordinary Node and from a relocated
 SEA to guard this subtle ABI boundary.
 
-## Release signing status
+## Initial release status: deliberately unsigned
 
-The native build, unsigned SEA relocation tests, packaging, checksum creation,
-and Authenticode verification script are implemented. Branch and pull-request
-CI archives are unsigned test artifacts. Only a `v*` workflow is intended to
-produce downloadable signed Windows executables.
+The initial public Windows artifact is
+`sagejs-windows-x64-unsigned.zip`. Its executables are **not
+Authenticode-signed**. GitHub Actions requires
+`Get-AuthenticodeSignature` to report `NotSigned` before packaging and includes:
 
-Two credential-gated signing paths exist:
+- `UNSIGNED-WINDOWS.txt`, telling users to verify SHA-256;
+- `release.json`, binding the version, full source commit, target, and explicit
+  `{ "scheme": "authenticode", "status": "unsigned" }` policy;
+- both executables, the source license, distribution/readme files, and the
+  exact third-party license inventory—no DLL, PDB, debug file, compiler output,
+  certificate, token, or build directory;
+- an adjacent `.sha256` receipt and an entry in the release-wide
+  `SHA256SUMS`/`release-provenance.json` records.
 
-1. **Azure Artifact Signing (preferred):** GitHub OIDC authenticates an Entra
-   identity, `azure/artifact-signing-action` signs both `.exe` files with
-   SHA-256 and an RFC 3161 timestamp, and `scripts/sign-windows.ps1 -VerifyOnly`
-   verifies and executes them. This path is configured but was not proved with
-   production credentials by the documentation audit. The Windows job already
-   grants the required `id-token: write` permission; a credentialed dry run is
-   the remaining evidence gate.
-2. **Exportable PFX fallback:** `scripts/sign-windows.ps1` decodes the PFX into
-   the ephemeral runner temporary directory, signs both SEAs with `signtool`,
-   verifies them, exercises version/Jupyter/native factorization, and deletes
-   the temporary file in `finally`. This is implemented but remains unproved
-   with the production certificate. Azure is preferable because its private
-   key does not enter a runner environment.
+The publication gate rejects duplicate ZIP entries, absolute or traversal
+paths, extra members, a mismatched version/commit, and any archive which does
+not state the unsigned policy. Checksums authenticate bytes received through
+the GitHub release; they do not establish a Windows publisher identity.
+SmartScreen may therefore warn. Never tell users to disable SmartScreen,
+antivirus, or checksum verification.
 
-Neither path guarantees a warning-free first launch. Authenticode establishes
-publisher identity and file integrity; Microsoft Defender SmartScreen also
-uses reputation and policy signals which can initially warn for a legitimate
-new publisher or uncommon download. Do not promise that signing instantly
-creates reputation, and never tell users to disable SmartScreen or antivirus.
+Authenticode via Azure Artifact Signing remains planned for a later release.
+When enabled, it will be a separate protected, tested release gate rather than
+a silent change to the unsigned artifact contract. The existing local
+`scripts/sign-windows.ps1` is development groundwork, not evidence that the
+published binary is signed.
 
-## Windows release checklist
+## Clean Windows 10/11 acceptance
 
-### Before any credential is exposed
+On an ordinary non-administrator Windows 10/11 x64 account with no Node.js,
+pnpm, Python, compiler, WSL, MSYS2, or Sage.js checkout:
 
-1. Select a clean, fully reviewed commit and make all package versions match.
-   Run `pnpm test:release`, then require the complete Windows `test:portable`,
-   `test:integration`, `test:native`, and `test:sea` jobs to pass at that exact
-   commit.
-2. Download the unsigned CI archive. Recompute its SHA-256 with
-   `Get-FileHash`, extract to a fresh path, and run both relocated executables:
+1. Download the ZIP through the normal browser path so Mark-of-the-Web and
+   SmartScreen behavior are real.
+2. Verify the published checksum independently:
 
    ```powershell
+   Get-FileHash .\sagejs-windows-x64-unsigned.zip -Algorithm SHA256
+   ```
+
+3. Confirm the archive name and notices say unsigned. Extract into a new
+   directory and run:
+
+   ```powershell
+   Get-AuthenticodeSignature .\sagejs.exe | Format-List Status
    .\sagejs.exe --version
    .\sagepython.exe --jupyter-kernel-self-test
    "factor(2026)" | .\sagejs.exe
    ```
 
-3. Inspect the archive's executables and licenses, and record the release
-   commit and native mathematics profile from the workflow. The current ZIP
-   has an adjacent checksum but no consolidated capability/provenance manifest;
-   inspect one if the candidate adds it. Verify that no DLL,
-   Node.js tree, compiler, PDB, certificate, key, token, or build directory was
-   accidentally packaged.
-4. Choose **one** signing mode. For Azure, verify the federated subject,
-   Certificate Profile Signer role, endpoint/account/profile variables,
-   `id-token: write` job permission, certificate publisher, and timestamp
-   service. For PFX, verify certificate subject, Enhanced Key Usage for code
-   signing, validity, chain, password secret, and timestamp service without
-   printing or exporting private material unnecessarily.
-
-### Sign and verify before packaging
-
-1. Sign `build/sea/sagejs.exe` and `build/sea/sagepython.exe`, never a copy
-   which differs from the SEA bytes that passed relocation tests. Require
-   SHA-256 file digest and SHA-256 RFC 3161 timestamp digest.
-2. Run the repository verifier:
-
-   ```powershell
-   pwsh -File scripts/sign-windows.ps1 -VerifyOnly
-   ```
-
-   It uses `signtool verify /pa /v` and then starts both signed executables,
-   runs the Jupyter self-test, and evaluates native factorization. Also record:
-
-   ```powershell
-   Get-AuthenticodeSignature build/sea/sagejs.exe | Format-List *
-   Get-AuthenticodeSignature build/sea/sagepython.exe | Format-List *
-   signtool verify /pa /all /v build\sea\sagejs.exe
-   signtool verify /pa /all /v build\sea\sagepython.exe
-   ```
-
-   Require `Status: Valid`, the expected publisher and chain, and a trusted RFC
-   3161 timestamp. A timestamp allows a valid signature to survive routine
-   certificate expiration; it is not a substitute for revocation after key
-   compromise.
-3. Package only those verified bytes. Recompute the ZIP checksum, extract the
-   finished ZIP elsewhere, compare both extracted executable hashes with the
-   signed inputs, rerun signature verification, and repeat the smoke tests.
-   The neighboring checksum detects transport corruption but is not itself an
-   Authenticode signature.
-
-### Clean Windows 10/11 acceptance
-
-1. Use an ordinary non-administrator account on a clean x64 machine with no
-   Node.js, pnpm, Python, Visual Studio, WSL, MSYS2, or Sage.js checkout.
-2. Download the ZIP through Edge or another normal browser so Mark of the Web
-   is present. Verify the SHA-256 and inspect Properties → Digital Signatures
-   before extraction. Confirm Windows displays the expected publisher.
-3. Extract under paths containing spaces and non-ASCII characters. Launch
-   `sagejs.exe` and `sagepython.exe` normally; record every SmartScreen,
-   Defender, firewall, or publisher dialog rather than bypassing it. Repeat
-   `--version`, factorization, Jupyter self-test and kernel registration.
-4. Repeat after reboot and without network access. Signing verification may
-   consult online revocation services, so record differences between online
-   and offline behavior. Test removal by deleting the extracted directory and
-   any explicitly installed Jupyter kernels or caches.
-5. Test both direct GitHub ZIP installation and a clean global npm installation
-   once published. Confirm the npm dispatcher selects
-   `@sagemath/sagejs-win32-x64` and the installed executable bytes retain the
-   same valid signatures.
-
-### Publish, withdraw, and protect secrets
-
-- The tag workflow publishes GitHub assets before npm, then the four native npm
-  packages, then the public package. Do not manually publish in parallel. Test
-  public downloads before linking them from the website.
-- If a signed candidate has not been tagged or published, discard it and fix
-  the source; its candidate version may be rebuilt, but the rejected hashes are
-  not releases. If it is public, withdraw unsafe GitHub assets, deprecate
-  immutable npm versions, move the npm `latest` tag back when compatible, and
-  publish a fixed patch without moving the original Git tag.
-- If a private key, PFX password, Azure identity, or token may have leaked,
-  stop the workflow, rotate or revoke it at the issuer, remove it from GitHub,
-  and audit its use. Certificate revocation can affect every binary signed by
-  that certificate; coordinate with Microsoft/Azure or the issuing CA rather
-  than assuming deletion of one ZIP revokes its executable signatures.
-- Keep PFX/P12 bytes, passwords, OIDC configuration, access tokens, and
-  unredacted signing logs out of source, artifacts, caches, issue comments, and
-  release notes. Restrict credential environments to protected tag jobs and
-  short-lived runners.
-
-The main exceptional dependency is ffpoly/smalljac. Its finite-field code uses
-GNU x86-64 inline assembly and assumes that C `unsigned long` is 64 bits.
-64-bit Windows uses the LLP64 data model, where `unsigned long` is 32 bits.
-The portable implementation must therefore use explicit-width types and
-compiler intrinsics or C—not merely translate assembler syntax.
-
-Smalljac is an optional acceleration backend, not the owner of the elliptic
-curve API. During bring-up, Windows may use the existing correct point-counting
-fallback while the native smalljac port proceeds. The capability and chosen
-backend must be observable and tested; Sage.js must never silently return a
-different mathematical result.
+4. Test first and second launch, paths containing spaces and non-ASCII
+   characters, and Jupyter registration/removal. Record the OS build and every
+   security dialog as acceptance evidence.
 
 ## CI stages
 
@@ -211,7 +125,8 @@ It covers all of these promotion criteria:
 4. native GMP/MPFR/MPC/OpenBLAS/FLINT addon build and tests;
 5. `sagepython.exe` and `sagejs.exe` construction;
 6. relocation tests from a clean temporary directory;
-7. release archive construction with licenses and SHA-256 checksum.
+7. release archive construction with licenses, manifest, unsigned assertion,
+   and SHA-256 checksum.
 
 Windows failures block merging exactly like Linux failures.
 
@@ -219,12 +134,11 @@ Windows failures block merging exactly like Linux failures.
 
 1. Keep the blocking clean-room Windows build, native tests, and relocated SEA
    smoke test green.
-2. Package `sagejs.exe` and `sagepython.exe` with licenses and checksums in
-   tagged releases.
-3. Port ffpoly/smalljac using `uint64_t` and portable compiler intrinsics, with
+2. Publish the explicit unsigned archive, licenses, provenance, and checksums.
+3. Complete Microsoft publisher validation, then add Authenticode as a new
+   protected gate with real clean-machine verification.
+4. Port ffpoly/smalljac using `uint64_t` and portable compiler intrinsics, with
    cross-platform correctness and performance benchmarks.
-4. Test the released archive on a normal Windows 11 laptop with no development
-   software installed.
 
 The Windows 11 laptop is the final consumer test, not the primary development
 host. Interactive porting should happen on a reproducible Windows Server VM;
