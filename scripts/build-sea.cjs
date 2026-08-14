@@ -402,6 +402,29 @@ function sameFilesystemPath(left, right) {
     : left === right;
 }
 
+function realDirectoryAuthority(directory, label) {
+  const lexicalRoot = resolve(directory);
+  const information = lstatSync(lexicalRoot);
+  if (!information.isDirectory() || information.isSymbolicLink()) {
+    throw new Error(`${label} must be a real directory`);
+  }
+  return {
+    canonicalRoot: realpathSync.native(lexicalRoot),
+    lexicalRoot,
+  };
+}
+
+function expectedCanonicalDescendant(authority, filename, label) {
+  const lexical = relative(authority.lexicalRoot, resolve(filename));
+  if (
+    lexical === "" ||
+    lexical === ".." ||
+    lexical.startsWith(`..${sep}`) ||
+    isAbsolute(lexical)
+  ) throw new Error(`${label} must be strictly inside ${authority.lexicalRoot}`);
+  return resolve(authority.canonicalRoot, lexical);
+}
+
 function nativeDependencyReceiptSource(
   rootDirectory,
   id,
@@ -422,15 +445,11 @@ function nativeDependencyReceiptSource(
     };
   }
 
-  const workspaceRoot = resolve(rootDirectory);
-  const workspaceInformation = lstatSync(workspaceRoot);
-  if (
-    !workspaceInformation.isDirectory() ||
-    workspaceInformation.isSymbolicLink() ||
-    !sameFilesystemPath(realpathSync.native(workspaceRoot), workspaceRoot)
-  ) {
-    throw new Error("native dependency workspace root must be a real directory");
-  }
+  const workspace = realDirectoryAuthority(
+    rootDirectory,
+    "native dependency workspace root",
+  );
+  const workspaceRoot = workspace.lexicalRoot;
   const workspaceRelativePrefix = relative(workspaceRoot, absolutePrefix);
   const workspaceComponents = workspaceRelativePrefix.split(sep);
   if (
@@ -453,7 +472,14 @@ function nativeDependencyReceiptSource(
     if (
       !information.isDirectory() ||
       information.isSymbolicLink() ||
-      !sameFilesystemPath(realpathSync.native(installedAncestor), installedAncestor)
+      !sameFilesystemPath(
+        realpathSync.native(installedAncestor),
+        expectedCanonicalDescendant(
+          workspace,
+          installedAncestor,
+          `${id} native dependency prefix ancestor`,
+        ),
+      )
     ) {
       throw new Error(
         `${id} native dependency prefix has a symlinked or non-directory ancestor`,
@@ -461,17 +487,11 @@ function nativeDependencyReceiptSource(
     }
   }
 
-  const cacheRoot = resolve(
+  const cache = realDirectoryAuthority(
     options.cacheRoot || defaultNativeCacheRoot(rootDirectory),
+    "native dependency cache root",
   );
-  const cacheInformation = lstatSync(cacheRoot);
-  if (
-    !cacheInformation.isDirectory() ||
-    cacheInformation.isSymbolicLink() ||
-    !sameFilesystemPath(realpathSync.native(cacheRoot), cacheRoot)
-  ) {
-    throw new Error("native dependency cache root must be a real directory");
-  }
+  const cacheRoot = cache.lexicalRoot;
   const linkedPrefix = resolve(
     dirname(absolutePrefix),
     readlinkSync(absolutePrefix),
@@ -496,7 +516,14 @@ function nativeDependencyReceiptSource(
     isAbsolute(cacheRelative) ||
     expected === null ||
     !sameFilesystemPath(linkedPrefix, expected) ||
-    !sameFilesystemPath(realpathSync.native(absolutePrefix), linkedPrefix)
+    !sameFilesystemPath(
+      realpathSync.native(absolutePrefix),
+      expectedCanonicalDescendant(
+        cache,
+        linkedPrefix,
+        `${id} native dependency cache target`,
+      ),
+    )
   ) {
     throw new Error(
       `${id} native dependency prefix is not an exact content-addressed cache link`,
@@ -508,7 +535,14 @@ function nativeDependencyReceiptSource(
   if (
     !entryInformation.isDirectory() ||
     entryInformation.isSymbolicLink() ||
-    !sameFilesystemPath(realpathSync.native(entry), entry)
+    !sameFilesystemPath(
+      realpathSync.native(entry),
+      expectedCanonicalDescendant(
+        cache,
+        entry,
+        `${id} native dependency cache entry`,
+      ),
+    )
   ) {
     throw new Error(`${id} native dependency cache entry is not canonical`);
   }
@@ -523,7 +557,14 @@ function nativeDependencyReceiptSource(
     if (
       !information.isDirectory() ||
       information.isSymbolicLink() ||
-      !sameFilesystemPath(realpathSync.native(current), current) ||
+      !sameFilesystemPath(
+        realpathSync.native(current),
+        expectedCanonicalDescendant(
+          cache,
+          current,
+          `${id} native dependency cache payload`,
+        ),
+      ) ||
       (process.platform !== "win32" && (information.mode & 0o222) !== 0)
     ) {
       throw new Error(`${id} native dependency cache payload is not immutable`);
@@ -534,7 +575,14 @@ function nativeDependencyReceiptSource(
   if (
     !stampInformation.isFile() ||
     stampInformation.isSymbolicLink() ||
-    !sameFilesystemPath(realpathSync.native(stamp), stamp) ||
+    !sameFilesystemPath(
+      realpathSync.native(stamp),
+      expectedCanonicalDescendant(
+        cache,
+        stamp,
+        `${id} native dependency cache receipt`,
+      ),
+    ) ||
     (process.platform !== "win32" && (stampInformation.mode & 0o222) !== 0)
   ) {
     throw new Error(`${id} native dependency cache receipt is not immutable`);
@@ -603,7 +651,7 @@ function validateNativeDependencyReceiptSources(sources) {
     if (
       !sameFilesystemPath(
         realpathSync.native(source.prefixLink),
-        source.prefix,
+        realpathSync.native(source.prefix),
       )
     ) {
       throw new Error(`${id} native dependency prefix changed during SEA assembly`);
