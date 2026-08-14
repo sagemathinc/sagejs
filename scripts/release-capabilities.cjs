@@ -1059,7 +1059,7 @@ function findInstalledMathProfile(root, target, environment) {
         "flint",
         ".native",
         "vcpkg-installed",
-        "x64-windows-static-md-release",
+        "x64-windows-static-release",
       )
     : join(root, "packages", "flint", ".native", "prefix");
   const prefix = resolve(environment.SAGEJS_FLINT_PREFIX || defaultPrefix);

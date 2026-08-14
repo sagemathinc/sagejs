@@ -17,7 +17,7 @@ const prefix = resolve(
       "flint",
       ".native",
       process.platform === "win32"
-        ? join("vcpkg-installed", "x64-windows-static-md-release")
+        ? join("vcpkg-installed", "x64-windows-static-release")
         : "prefix",
     ),
 );
@@ -390,7 +390,11 @@ function compileWindowsWitness() {
           Release: {
             msbuild_toolset: "ClangCL",
             msvs_settings: {
-              VCCLCompilerTool: { RuntimeLibrary: 2 },
+              VCCLCompilerTool: {
+                DebugInformationFormat: 0,
+                RuntimeLibrary: 0,
+              },
+              VCLinkerTool: { GenerateDebugInformation: "false" },
             },
           },
         },

@@ -2272,6 +2272,15 @@ test("generated binding.gyp pins portable C++17 settings on every host", () => {
     windows.configurations.Release.msbuild_toolset,
     "ClangCL",
   );
+  assert.deepEqual(
+    windows.configurations.Release.msvs_settings.VCCLCompilerTool,
+    { DebugInformationFormat: 0, RuntimeLibrary: 0 },
+  );
+  assert.deepEqual(
+    windows.configurations.Release.msvs_settings.VCLinkerTool,
+    { GenerateDebugInformation: "false" },
+  );
+  assert.equal(windows.configurations.Debug, undefined);
   assert.deepEqual(windows.msvs_settings.VCCLCompilerTool, {
     AdditionalOptions: [
       "/Brepro",
@@ -2298,6 +2307,11 @@ test("generated binding.gyp pins portable C++17 settings on every host", () => {
   assert.equal(
     exactWindows.configurations.Release.msbuild_toolset,
     "ClangCL",
+  );
+  assert.equal(
+    exactWindows.configurations.Release.msvs_settings
+      .VCCLCompilerTool.RuntimeLibrary,
+    0,
   );
 });
 

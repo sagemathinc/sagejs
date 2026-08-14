@@ -8,7 +8,7 @@ const defaultPrefix = process.platform === "win32"
       "..",
       ".native",
       "vcpkg-installed",
-      "x64-windows-static-md-release",
+      "x64-windows-static-release",
     )
   : join(__dirname, "..", ".native", "prefix");
 

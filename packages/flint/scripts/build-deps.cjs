@@ -39,10 +39,14 @@ const {
   readNativeDependencyReceipt,
   writeNativeDependencyReceipt,
 } = require(join(repositoryRoot, "scripts", "native-dependency-receipt.cjs"));
+const {
+  WINDOWS_VCPKG_TRIPLET,
+  windowsVcpkgAuthority,
+} = require("./windows-vcpkg-authority.cjs");
 const mathBuildProfile = nativeMathBuildProfile();
 const mathBuildOptions = mathBuildProfile.buildOptions;
 const buildRoot = join(packageRoot, ".native");
-const windowsTriplet = "x64-windows-static-md-release";
+const windowsTriplet = WINDOWS_VCPKG_TRIPLET;
 const defaultPrefix = process.platform === "win32"
   ? join(buildRoot, "vcpkg-installed", windowsTriplet)
   : join(buildRoot, "prefix");
@@ -172,19 +176,7 @@ function aggregateDependency(selected = dependencies) {
 }
 
 function windowsDependencyAuthority() {
-  const manifest = digest(join(packageRoot, "vcpkg.json"));
-  const triplet = digest(join(
-    packageRoot,
-    "scripts",
-    "triplets",
-    `${windowsTriplet}.cmake`,
-  ));
-  return {
-    name: "vcpkg-flint-stack",
-    sha256: createHash("sha256")
-      .update(JSON.stringify({ manifest, triplet })).digest("hex"),
-    version: "vcpkg-manifest",
-  };
+  return windowsVcpkgAuthority(packageRoot).dependency;
 }
 
 function selectedDependenciesForPlatform(platform, arch) {
@@ -315,18 +307,13 @@ function buildWindowsDependencies() {
   );
   patchWindowsFlintHeaders();
   const stampPath = join(prefix, ".sagejs-flint-dependencies.json");
+  const { dependency: _dependency, ...windowsAuthority } =
+    windowsVcpkgAuthority(packageRoot);
   const configuration = {
     mathBuildProfile,
     windows: {
-      manifestSha256: digest(join(packageRoot, "vcpkg.json")),
       openblasTarget: "GENERIC",
-      triplet: windowsTriplet,
-      tripletSha256: digest(join(
-        packageRoot,
-        "scripts",
-        "triplets",
-        `${windowsTriplet}.cmake`,
-      )),
+      ...windowsAuthority,
     },
   };
   writeNativeDependencyReceipt(

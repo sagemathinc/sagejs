@@ -24,6 +24,13 @@ const {
   configureOptions: m4riConfigureOptions,
   portableCacheBytes,
 } = require("../packages/m4ri/scripts/build-deps.cjs");
+const {
+  WINDOWS_VCPKG_TRIPLET,
+  windowsVcpkgAuthority,
+} = require("../packages/flint/scripts/windows-vcpkg-authority.cjs");
+const {
+  cmakeOptions: graphCmakeOptions,
+} = require("../packages/graph/scripts/build-deps.cjs");
 
 const REPORT_SCHEMA = "sagejs.release-cpu-profile-report-v1";
 const SOURCE_SHA256 = Object.freeze({
@@ -59,25 +66,7 @@ function digest(filename) {
 }
 
 function windowsFlintAuthority(root) {
-  const manifest = digest(join(root, "packages", "flint", "vcpkg.json"));
-  const triplet = digest(join(
-    root,
-    "packages",
-    "flint",
-    "scripts",
-    "triplets",
-    "x64-windows-static-md-release.cmake",
-  ));
-  return {
-    dependency: {
-      name: "vcpkg-flint-stack",
-      sha256: createHash("sha256")
-        .update(JSON.stringify({ manifest, triplet })).digest("hex"),
-      version: "vcpkg-manifest",
-    },
-    manifest,
-    triplet,
-  };
+  return windowsVcpkgAuthority(join(root, "packages", "flint"));
 }
 
 function readJson(filename) {
@@ -315,11 +304,16 @@ function validateReleaseCpuProfile(options = {}) {
     if (
       flint.build?.configuration?.windows?.openblasTarget !== "GENERIC" ||
       flint.build?.configuration?.windows?.triplet !==
-        "x64-windows-static-md-release" ||
+        WINDOWS_VCPKG_TRIPLET ||
       flint.build?.configuration?.windows?.manifestSha256 !==
-        windowsAuthority.manifest ||
+        windowsAuthority.manifestSha256 ||
+      flint.build?.configuration?.windows?.overlayPortsSha256 !==
+        windowsAuthority.overlayPortsSha256 ||
       flint.build?.configuration?.windows?.tripletSha256 !==
-        windowsAuthority.triplet ||
+        windowsAuthority.tripletSha256 ||
+      flint.build?.configuration?.windows?.buildType !== "release" ||
+      flint.build?.configuration?.windows?.crtLinkage !== "static" ||
+      flint.build?.configuration?.windows?.libraryLinkage !== "static" ||
       fflas.capability !== false ||
       graph.capability !== true ||
       m4ri.capability !== false ||
@@ -358,12 +352,15 @@ function validateReleaseCpuProfile(options = {}) {
       ? []
       : [...profiles.graph.buildOptions.fflas.cxxflags, "-DNDEBUG"],
     instructionPolicy: profiles.graph.cpuPolicy.baseline,
+    cmake: graphCmakeOptions(target.platform),
   };
   if (
     JSON.stringify(graph.build?.cflags) !==
       JSON.stringify(expectedGraphBuild.cflags) ||
     JSON.stringify(graph.build?.cxxflags) !==
       JSON.stringify(expectedGraphBuild.cxxflags) ||
+    JSON.stringify(graph.build?.cmake) !==
+      JSON.stringify(expectedGraphBuild.cmake) ||
     graph.build?.instructionPolicy !== expectedGraphBuild.instructionPolicy
   ) {
     throw new Error("igraph receipt does not implement its portable CPU profile");

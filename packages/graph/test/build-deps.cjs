@@ -43,6 +43,13 @@ test("igraph dependency LTO remains compatible with the generated linker", () =>
 
   assert.ok(cmakeOptions("win32").includes("-DIGRAPH_ENABLE_LTO=OFF"));
   assert.ok(cmakeOptions("linux").includes("-DIGRAPH_ENABLE_LTO=ON"));
+  assert.ok(cmakeOptions("win32").includes(
+    "-DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded",
+  ));
+  assert.equal(cmakeOptions("linux").some((option) =>
+    option.startsWith("-DCMAKE_MSVC_RUNTIME_LIBRARY=")), false);
+  assert.equal(cmakeOptions("darwin").some((option) =>
+    option.startsWith("-DCMAKE_MSVC_RUNTIME_LIBRARY=")), false);
 });
 
 test("igraph declaration binds inherited CMake and linker environment", () => {

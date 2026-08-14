@@ -389,7 +389,7 @@ jobs:
   windows-x64:
     name: Windows x64 native, tests, and SEA
     runs-on: blacksmith-8vcpu-windows-2025
-    timeout-minutes: 120
+    timeout-minutes: 180
     outputs:
       release-artifact-id: ${{ steps.upload-release.outputs.artifact-id }}
       release-artifact-digest: ${{ steps.upload-release.outputs.artifact-digest }}
@@ -465,10 +465,9 @@ jobs:
           path: |
             packages/flint/.native/vcpkg
             packages/flint/.native/vcpkg-installed
-          key: windows-x64-flint-${{ hashFiles('packages/flint/vcpkg.json', 'packages/flint/scripts/build-deps.cjs', 'packages/flint/scripts/triplets/*.cmake', 'packages/flint/scripts/vcpkg-ports/**/*', 'packages/flint/binding.gyp') }}
+          key: windows-x64-static-crt-flint-${{ hashFiles('packages/flint/vcpkg.json', 'packages/flint/scripts/build-deps.cjs', 'packages/flint/scripts/windows-vcpkg-authority.cjs', 'packages/flint/scripts/triplets/*.cmake', 'packages/flint/scripts/vcpkg-ports/**/*', 'packages/flint/binding.gyp') }}
           restore-keys: |
-            windows-x64-flint-
-            windows-x64-native-
+            windows-x64-static-crt-flint-
 
       - name: Cache downloaded and compiled graph dependencies
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
@@ -476,8 +475,8 @@ jobs:
           path: |
             packages/graph/.native/downloads
             packages/graph/.native/prefix
-          key: windows-x64-graph-${{ hashFiles('packages/graph/scripts/build-deps.cjs', 'packages/graph/package.json') }}
-          restore-keys: windows-x64-graph-
+          key: windows-x64-static-crt-graph-${{ hashFiles('packages/graph/scripts/build-deps.cjs', 'packages/graph/package.json') }}
+          restore-keys: windows-x64-static-crt-graph-
 
       - name: Build the compiler and native mathematics stack
         env:

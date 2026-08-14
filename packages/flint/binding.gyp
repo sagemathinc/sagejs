@@ -113,7 +113,13 @@
               "msbuild_toolset": "ClangCL",
               "msvs_settings": {
                 "VCCLCompilerTool": {
-                  "RuntimeLibrary": 2
+                  "AdditionalOptions": ["/Brepro"],
+                  "DebugInformationFormat": 0,
+                  "RuntimeLibrary": 0
+                },
+                "VCLinkerTool": {
+                  "AdditionalOptions": ["/Brepro"],
+                  "GenerateDebugInformation": "false"
                 }
               }
             }

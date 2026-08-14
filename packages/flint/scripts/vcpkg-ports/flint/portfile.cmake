@@ -23,7 +23,6 @@ if(VCPKG_TARGET_IS_WINDOWS)
             -DWITH_NTL=OFF
     )
     vcpkg_cmake_install()
-    vcpkg_copy_pdbs()
     vcpkg_cmake_config_fixup(CONFIG_PATH lib/cmake/flint)
 else()
     vcpkg_make_configure(

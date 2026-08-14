@@ -202,6 +202,12 @@ test("README keeps macOS publishing under the immutable protected workflow", () 
 
 test("Windows is deliberately unsigned and bypasses the signing environment", () => {
   const windows = job("windows-x64");
+  assert.match(windows, /timeout-minutes: 180/);
+  assert.match(windows, /key: windows-x64-static-crt-flint-/);
+  assert.match(windows, /restore-keys:\s+\|\s+windows-x64-static-crt-flint-/);
+  assert.doesNotMatch(windows, /windows-x64-native-/);
+  assert.match(windows, /key: windows-x64-static-crt-graph-/);
+  assert.match(windows, /restore-keys: windows-x64-static-crt-graph-/);
   assert.equal(workflow.includes("  sign-windows-x64:\n"), false);
   assert.match(windows, /Get-AuthenticodeSignature/);
   assert.match(windows, /Status -ne "NotSigned"/);

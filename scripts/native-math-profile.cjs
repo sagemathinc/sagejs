@@ -584,7 +584,7 @@ function nativeMathBuildProvenance(repositoryRoot, options = {}) {
         "flint",
         ".native",
         "vcpkg-installed",
-        "x64-windows-static-md-release",
+        "x64-windows-static-release",
       )
     : join(repositoryRoot, "packages", "flint", ".native", "prefix");
   const prefix = resolve(

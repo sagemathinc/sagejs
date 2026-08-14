@@ -996,7 +996,7 @@ try {
     "flint",
     ".native",
     process.platform === "win32"
-      ? join("vcpkg-installed", "x64-windows-static-md-release")
+      ? join("vcpkg-installed", "x64-windows-static-release")
       : "prefix",
   );
   const foreignWitnessPrefix = join(temporary, "foreign-input-prefix");

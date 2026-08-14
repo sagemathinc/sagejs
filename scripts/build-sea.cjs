@@ -366,7 +366,7 @@ function nativeMathProfile(rootDirectory, target, options = {}) {
           "flint",
           ".native",
           "vcpkg-installed",
-          "x64-windows-static-md-release",
+          "x64-windows-static-release",
         )
       : join(rootDirectory, "packages", "flint", ".native", "prefix");
     const prefix = process.env.SAGEJS_FLINT_PREFIX || defaultPrefix;

@@ -54,9 +54,15 @@ const {
   smalljacMakeOptions,
 } = require("../packages/flint/scripts/build-deps.cjs");
 const {
+  windowsVcpkgAuthority,
+} = require("../packages/flint/scripts/windows-vcpkg-authority.cjs");
+const {
   configureOptions: m4riConfigureOptions,
   portableCacheBytes,
 } = require("../packages/m4ri/scripts/build-deps.cjs");
+const {
+  cmakeOptions: graphCmakeOptions,
+} = require("../packages/graph/scripts/build-deps.cjs");
 
 const compiler = (overrides = {}) => ({
   command: "cc",
@@ -715,23 +721,9 @@ function stackReceiptExpectation(id, selected, configuration, observed) {
   };
   if (id === "flint" && selected.abi.platform === "win32") {
     const root = resolve(__dirname, "..");
-    const manifest = createHash("sha256").update(readFileSync(
-      join(root, "packages", "flint", "vcpkg.json"),
-    )).digest("hex");
-    const triplet = createHash("sha256").update(readFileSync(join(
-      root,
-      "packages",
-      "flint",
-      "scripts",
-      "triplets",
-      "x64-windows-static-md-release.cmake",
-    ))).digest("hex");
-    dependency = {
-      name: "vcpkg-flint-stack",
-      sha256: createHash("sha256")
-        .update(JSON.stringify({ manifest, triplet })).digest("hex"),
-      version: "vcpkg-manifest",
-    };
+    dependency = windowsVcpkgAuthority(
+      join(root, "packages", "flint"),
+    ).dependency;
   }
   const fflasHeader = join(
     resolve(__dirname, ".."),
@@ -862,6 +854,7 @@ function releaseProfileFixture() {
             }
           : {
               cflags: [...selected.buildOptions.flint.cflags, "-DNDEBUG"],
+              cmake: graphCmakeOptions(selected.abi.platform),
               cxxflags: [...selected.buildOptions.fflas.cxxflags, "-DNDEBUG"],
               instructionPolicy: selected.cpuPolicy.baseline,
             },
@@ -1041,17 +1034,8 @@ test("release CPU profile validates explicit Windows fallbacks", () => {
     writeFixtureFile(item.prefixes.flint, "lib/openblas.lib");
     writeFixtureFile(item.prefixes.graph, "lib/igraph.lib");
     const root = resolve(__dirname, "..");
-    const manifestSha256 = createHash("sha256").update(readFileSync(
-      join(root, "packages", "flint", "vcpkg.json"),
-    )).digest("hex");
-    const tripletSha256 = createHash("sha256").update(readFileSync(join(
-      root,
-      "packages",
-      "flint",
-      "scripts",
-      "triplets",
-      "x64-windows-static-md-release.cmake",
-    ))).digest("hex");
+    const { dependency: _dependency, ...windowsAuthority } =
+      windowsVcpkgAuthority(join(root, "packages", "flint"));
     writeNativeDependencyReceipt(
       join(item.prefixes.flint, ".sagejs-flint-dependencies.json"),
       stackReceiptExpectation(
@@ -1060,10 +1044,8 @@ test("release CPU profile validates explicit Windows fallbacks", () => {
         {
           mathBuildProfile: selected,
           windows: {
-            manifestSha256,
             openblasTarget: "GENERIC",
-            triplet: "x64-windows-static-md-release",
-            tripletSha256,
+            ...windowsAuthority,
           },
         },
         { vcpkgInstalled: true },
@@ -1103,6 +1085,7 @@ test("release CPU profile validates explicit Windows fallbacks", () => {
               }
             : {
                 cflags: [],
+                cmake: graphCmakeOptions(selected.abi.platform),
                 cxxflags: [],
                 instructionPolicy: selected.cpuPolicy.baseline,
               },

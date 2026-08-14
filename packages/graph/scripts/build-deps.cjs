@@ -148,6 +148,9 @@ function cmakeOptions(platform = process.platform) {
     "-DIGRAPH_USE_INTERNAL_GMP=ON",
     "-DIGRAPH_USE_INTERNAL_LAPACK=ON",
     "-DIGRAPH_USE_INTERNAL_PLFIT=ON",
+    ...(platform === "win32"
+      ? ["-DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded"]
+      : []),
   ];
 }
 

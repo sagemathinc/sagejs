@@ -26,9 +26,12 @@ const { generateJavaScript } = require("./js-backend.cjs");
 const { generateExceptionShims } = require("./ffi-codegen.cjs");
 const { declarationFiles } = require("../ffi/declarations.cjs");
 const { macosDeploymentTarget } = require("../../scripts/darwin-native.cjs");
+const {
+  WINDOWS_VCPKG_TRIPLET,
+} = require("../../packages/flint/scripts/windows-vcpkg-authority.cjs");
 
 const root = resolve(__dirname, "..", "..");
-const windowsTriplet = "x64-windows-static-md-release";
+const windowsTriplet = WINDOWS_VCPKG_TRIPLET;
 const nativePrefix = resolve(
   process.env.SAGEJS_FLINT_PREFIX ||
     (process.platform === "win32"
@@ -775,7 +778,11 @@ function bindingGyp(
         // MSVC's C frontend cannot parse the C11 declarations in those headers.
         msbuild_toolset: "ClangCL",
         msvs_settings: {
-          VCCLCompilerTool: { RuntimeLibrary: 2 },
+          VCCLCompilerTool: {
+            DebugInformationFormat: 0,
+            RuntimeLibrary: 0,
+          },
+          VCLinkerTool: { GenerateDebugInformation: "false" },
         },
       },
     };

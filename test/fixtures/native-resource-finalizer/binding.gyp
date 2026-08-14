@@ -15,6 +15,21 @@
       "xcode_settings": {
         "WARNING_CFLAGS": ["-Wall", "-Wextra", "-Werror"]
       },
+      "configurations": {
+        "Release": {
+          "msvs_settings": {
+            "VCCLCompilerTool": {
+              "AdditionalOptions": ["/Brepro"],
+              "DebugInformationFormat": 0,
+              "RuntimeLibrary": 0
+            },
+            "VCLinkerTool": {
+              "AdditionalOptions": ["/Brepro"],
+              "GenerateDebugInformation": "false"
+            }
+          }
+        }
+      },
       "msvs_settings": {
         "VCCLCompilerTool": {
           "WarningLevel": 4

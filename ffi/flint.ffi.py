@@ -42,7 +42,7 @@ flint = Library(
     dependencies=["GMP", "OpenBLAS", "pthreads"],
     prefix_environment="SAGEJS_FLINT_PREFIX",
     unix_default="packages/flint/.native/prefix",
-    windows_default="packages/flint/.native/vcpkg-installed/x64-windows-static-md-release",
+    windows_default="packages/flint/.native/vcpkg-installed/x64-windows-static-release",
     include_dirs=["include"],
     source_include_dirs=["packages/flint/include"],
 )

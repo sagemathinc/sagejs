@@ -439,7 +439,7 @@ function nativeBuildIdentity(workspace, overrides = {}) {
 
 function dependencyPrefix(packageId, platform = process.platform) {
   if (packageId === "flint" && platform === "win32") {
-    return "packages/flint/.native/vcpkg-installed/x64-windows-static-md-release";
+    return "packages/flint/.native/vcpkg-installed/x64-windows-static-release";
   }
   return `packages/${packageId}/.native/prefix`;
 }
@@ -473,6 +473,7 @@ function nativeArtifactSpecs(workspace, overrides = {}) {
         "scripts/native-dependency-receipt.cjs",
         "scripts/native-math-profile.cjs",
         "packages/flint/scripts/build-deps.cjs",
+        "packages/flint/scripts/windows-vcpkg-authority.cjs",
         "packages/flint/scripts/triplets",
         "packages/flint/scripts/vcpkg-ports",
         "packages/flint/vcpkg.json",
