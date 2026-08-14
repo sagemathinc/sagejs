@@ -13,8 +13,8 @@ permissions:
   contents: read
 
 concurrency:
-  group: sagejs-ci-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  group: sagejs-ci-${{ github.workflow }}-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name != 'push' || github.ref_type != 'tag' }}
 
 jobs:
   release-tag-policy:
@@ -35,27 +35,11 @@ jobs:
       - name: Accept only stable or release-candidate version tags
         id: policy
         env:
+          EVENT_NAME: ${{ github.event_name }}
           REF_NAME: ${{ github.ref_name }}
           REF_TYPE: ${{ github.ref_type }}
         run: |
-          candidate=false
-          publish=false
-          version="$(node -p 'require("./package.json").version')"
-          release_tag="v${version}"
-          if [[ "$REF_TYPE" == "tag" ]]; then
-            if [[ "$REF_NAME" == "$release_tag" ]]; then
-              candidate=true
-              publish=true
-            elif [[ "$REF_NAME" =~ ^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)-rc\.([1-9][0-9]*)$ ]] &&
-              [[ "${REF_NAME%-rc.*}" == "$release_tag" ]]; then
-              candidate=true
-            else
-              echo "Unsupported Sage.js tag $REF_NAME; expected $release_tag or $release_tag-rc.N" >&2
-              exit 1
-            fi
-          fi
-          echo "candidate=$candidate" >> "$GITHUB_OUTPUT"
-          echo "publish=$publish" >> "$GITHUB_OUTPUT"
+          node scripts/release-tag-policy.cjs >> "$GITHUB_OUTPUT"
 
   linux-x64:
     name: Linux x64 native, tests, and SEA
@@ -569,6 +553,7 @@ jobs:
           mkdir -p "$destination"
           tar -xJf "$archive" -C "$destination"
           sea_node="$destination/node-v26.7.0-darwin-arm64/bin/node"
+          [[ "$(uname -m)" == arm64 ]]
           [[ -f "$sea_node" && ! -L "$sea_node" && -x "$sea_node" ]]
           [[ "$("$sea_node" --version)" == v26.7.0 ]]
           [[ "$(lipo -archs "$sea_node")" == arm64 ]]
@@ -698,6 +683,7 @@ jobs:
           mkdir -p "$destination"
           tar -xJf "$archive" -C "$destination"
           sea_node="$destination/node-v26.7.0-darwin-arm64/bin/node"
+          [[ "$(uname -m)" == arm64 ]]
           [[ -f "$sea_node" && ! -L "$sea_node" && -x "$sea_node" ]]
           [[ "$("$sea_node" --version)" == v26.7.0 ]]
           [[ "$(lipo -archs "$sea_node")" == arm64 ]]
@@ -818,6 +804,7 @@ jobs:
           mkdir -p "$destination"
           tar -xJf "$archive" -C "$destination"
           sea_node="$destination/node-v26.7.0-darwin-arm64/bin/node"
+          [[ "$(uname -m)" == arm64 ]]
           [[ -f "$sea_node" && ! -L "$sea_node" && -x "$sea_node" ]]
           [[ "$("$sea_node" --version)" == v26.7.0 ]]
           [[ "$(lipo -archs "$sea_node")" == arm64 ]]

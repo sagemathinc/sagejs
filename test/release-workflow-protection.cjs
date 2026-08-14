@@ -4,6 +4,9 @@ const assert = require("node:assert/strict");
 const { readFileSync } = require("node:fs");
 const { resolve } = require("node:path");
 const test = require("node:test");
+const {
+  classifyReleaseEvent,
+} = require("../scripts/release-tag-policy.cjs");
 
 const workflow = readFileSync(
   resolve(__dirname, "../.github/workflows/ci.yml"),
@@ -30,17 +33,79 @@ test("stable and release-candidate tags have distinct irreversible authority", (
   const policy = job("release-tag-policy");
   const macosSign = job("sign-macos-arm64");
   const publish = job("publish-release");
-  assert.match(policy, /-rc\\\.\(\[1-9\]\[0-9\]\*\)/);
-  assert.match(policy, /version="\$\(node -p 'require\("\.\/package\.json"\)\.version'\)"/);
-  assert.match(policy, /release_tag="v\$\{version\}"/);
-  assert.match(policy, /"\$REF_NAME" == "\$release_tag"/);
-  assert.match(policy, /"\$\{REF_NAME%-rc\.\*\}" == "\$release_tag"/);
-  assert.match(policy, /candidate=true/);
-  assert.match(policy, /publish=true/);
+  assert.match(policy, /EVENT_NAME: \$\{\{ github\.event_name \}\}/);
+  assert.match(policy, /node scripts\/release-tag-policy\.cjs >> "\$GITHUB_OUTPUT"/);
   assert.match(macosSign, /needs\.release-tag-policy\.outputs\.candidate == 'true'/);
   assert.match(publish, /needs\.release-tag-policy\.outputs\.publish == 'true'/);
   assert.match(publish, /environment: sagejs-release/);
   assert.doesNotMatch(macosSign, /needs\.release-tag-policy\.outputs\.publish/);
+  assert.match(
+    workflow,
+    /group: sagejs-ci-\$\{\{ github\.workflow \}\}-\$\{\{ github\.event_name \}\}-\$\{\{ github\.ref \}\}/,
+  );
+  assert.match(
+    workflow,
+    /cancel-in-progress: \$\{\{ github\.event_name != 'push' \|\| github\.ref_type != 'tag' \}\}/,
+  );
+});
+
+test("manual dispatch can never acquire release authority, even from a version tag", () => {
+  for (const refName of ["v0.2.0", "v0.2.0-rc.1"]) {
+    assert.deepEqual(
+      classifyReleaseEvent({
+        eventName: "workflow_dispatch",
+        refName,
+        refType: "tag",
+        releaseVersion: "0.2.0",
+      }),
+      { candidate: false, publish: false },
+    );
+  }
+  assert.deepEqual(
+    classifyReleaseEvent({
+      eventName: "push",
+      refName: "v0.2.0-rc.1",
+      refType: "tag",
+      releaseVersion: "0.2.0",
+    }),
+    { candidate: true, publish: false },
+  );
+  assert.deepEqual(
+    classifyReleaseEvent({
+      eventName: "push",
+      refName: "v0.2.0",
+      refType: "tag",
+      releaseVersion: "0.2.0",
+    }),
+    { candidate: true, publish: true },
+  );
+  assert.deepEqual(
+    classifyReleaseEvent({
+      eventName: "push",
+      refName: "main",
+      refType: "branch",
+      releaseVersion: "0.2.0",
+    }),
+    { candidate: false, publish: false },
+  );
+  assert.throws(
+    () => classifyReleaseEvent({
+      eventName: "push",
+      refName: "v0.2.0-rc.0",
+      refType: "tag",
+      releaseVersion: "0.2.0",
+    }),
+    /unsupported Sage\.js tag/,
+  );
+  assert.throws(
+    () => classifyReleaseEvent({
+      eventName: "push",
+      refName: "v0.2.1",
+      refType: "tag",
+      releaseVersion: "0.2.0",
+    }),
+    /unsupported Sage\.js tag/,
+  );
 });
 
 test("platform builders never receive signing or publication credentials", () => {
@@ -110,6 +175,7 @@ test("macOS builds trusted exact bytes before signing and notarization", () => {
     assert.match(source, /curl --fail --location --proto '=https' --tlsv1\.2/);
     assert.match(source, /shasum -a 256 -c -/);
     assert.match(source, /sea_node="\$destination\/node-v26\.7\.0-darwin-arm64\/bin\/node"/);
+    assert.match(source, /"\$\(uname -m\)" == arm64/);
     assert.match(source, /! -L "\$sea_node"/);
     assert.match(source, /lipo -archs "\$sea_node"/);
     assert.match(source, /otool -L "\$sea_node"/);

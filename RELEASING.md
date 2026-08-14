@@ -41,6 +41,13 @@ starts the release, self-review prevention must remain off; add another trusted
 reviewer before enabling it. Administrator bypass is disabled, so the approval
 gate also applies to repository administrators.
 
+Approving `sagejs-signing` is also a code-execution trust decision. The
+protected first-party job builds and tests the approved tag before importing
+the step-scoped secrets, but tag-controlled build code could deliberately leave
+a process running until those credentials arrive. Review the exact tag and its
+full build/release script closure before approval; runner provenance alone does
+not make unreviewed source safe for signing credentials.
+
 Protect `refs/tags/v*` against deletion and non-fast-forward changes. Do not
 move or reuse a tag. The workflow accepts exactly:
 

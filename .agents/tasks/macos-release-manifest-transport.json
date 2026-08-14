@@ -11,6 +11,7 @@
   "claims": [
     "scripts/release-macos.sh",
     "scripts/macos-release-node-authority.cjs",
+    "scripts/release-tag-policy.cjs",
     "scripts/prepare-release-publication.cjs",
     "bench/release-candidate-macos.cjs",
     ".github/workflows/ci.yml",
