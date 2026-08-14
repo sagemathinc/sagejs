@@ -46,6 +46,16 @@
       "platform": "linux-x64"
     },
     {
+      "command": "node --test --test-reporter=spec test/native-kernel.cjs",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 88.553,
+      "started_at": "2026-08-14T11:59:10.567Z",
+      "commit": "4f16a063899b5c953dadfe6ff6aa101dc79bcdbb",
+      "workspace_fingerprint": "6bc25cd81630d1268851d6dfe968a11219667996dd8d4e829142d7282583101b",
+      "platform": "win32-x64"
+    },
+    {
       "command": "pnpm test:changed -- --base 18f5475a82297a2066462b732388406832a3449f",
       "result": "pass",
       "exit_code": 0,
@@ -77,13 +87,13 @@
     }
   ],
   "handoff": {
-    "summary": "Test-only provenance expectations now bind the actual compiled manifest and generated C #line directive to the compiler's slash-normalized real source identity, exact filename, and 29:5 coordinates. Linux full native, architecture, strict-baselib, and changed-file unit validation pass on exact source commit 4f16a063899b5c953dadfe6ff6aa101dc79bcdbb. On native Windows with official Node 26.7, the exact 4f16 test run progressed through and passed both corrected provenance assertions.",
+    "summary": "Test-only provenance expectations now bind the actual compiled manifest and generated C #line directive to the compiler's slash-normalized real source identity, exact filename, and 29:5 coordinates. Linux full native, architecture, strict-baselib, and changed-file unit validation pass on exact source commit 4f16a063899b5c953dadfe6ff6aa101dc79bcdbb. On native Windows with official Node 26.7, the exact 4f16 contract-wrapped focused run passed both corrected provenance assertions before failing a later unrelated assertion; the failed required-platform receipt is recorded above.",
     "risks": [
-      "The same real Windows native-kernel run later fails the pre-existing byte-reproducibility assertion near line 2433 because relocated PE output differs in timestamp/GUID/PDB/junction bytes; this is downstream of the passing provenance checks and is assigned to a separate lane."
+      "The recorded real Windows native-kernel run fails the pre-existing byte-reproducibility assertion near line 2433 because relocated PE output differs in timestamp/GUID/PDB/junction bytes; this is downstream of the passing provenance checks and is assigned to a separate lane."
     ],
     "next_steps": [
       "Integrate ef46a3d33c65597a4a80f33c69ed22bee4824809 and 4f16a063899b5c953dadfe6ff6aa101dc79bcdbb in order after exact closure review.",
-      "Let the release-shared-test-drift lane take the released test/native-kernel.cjs claim and resolve Windows PE byte reproducibility independently."
+      "Let the active /root/release_shared_test_drift agent's new windows-native-kernel-reproducibility task claim test/native-kernel.cjs after integration and resolve the Windows PE byte-reproducibility failure independently."
     ]
   }
 }
