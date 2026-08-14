@@ -462,6 +462,9 @@ function nativeBinaryReceipt(assets, target) {
       architectures: [target.arch],
       exactArchitectures: true,
       format,
+      ...(target.platform === "darwin"
+        ? { maximumMinimumMacos: "13.5" }
+        : {}),
       requiredLabels: files.map(({ label }) => label),
     },
     schema: "sagejs.native-binary-inspection-v1",
@@ -527,6 +530,7 @@ function embedBuildManifest(assets, index, overrides = {}) {
       embeddedAssets: embeddedAssetDeclaration(assets),
       nativeDependencies,
       nativeKernels,
+      runtimeNativeDependencies: null,
       ...overrides.capabilities,
     },
     ...overrides.manifest,

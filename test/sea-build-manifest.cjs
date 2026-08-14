@@ -23,6 +23,7 @@ const {
   EMBEDDED_ADDON_ROLE,
   NODE_TEMPLATE_LABEL,
   NODE_TEMPLATE_ROLE,
+  nativeBinaryPolicy,
   nativeDependencyReceiptSource,
   productionKernelReceipt,
   SEA_ASSEMBLY_POLICY,
@@ -392,6 +393,24 @@ test("Linux compatibility covers every embedded native addon", () => {
   } finally {
     item.cleanup();
   }
+});
+
+test("Darwin SEA policy records the declared release floor", () => {
+  const labels = ["native/zeromq.node", "sea/node-template"];
+  assert.deepEqual(
+    nativeBinaryPolicy(
+      { arch: "arm64", platform: "darwin" },
+      labels,
+      { SAGEJS_MACOS_RELEASE_MINIMUM: "13.5" },
+    ),
+    {
+      architectures: ["arm64"],
+      exactArchitectures: true,
+      format: "macho",
+      maximumMinimumMacos: "13.5",
+      requiredLabels: [...labels].sort(),
+    },
+  );
 });
 
 test("mathematics SEA receipt binds authority, index, sources, and every native byte", () => {

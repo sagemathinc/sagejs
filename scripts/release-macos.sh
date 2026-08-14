@@ -13,6 +13,16 @@ SKIP_NOTARIZE=0
 SKIP_BUILD=0
 UNSIGNED=0
 PUBLISH_TAG=""
+MACOS_RELEASE_MINIMUM="${SAGEJS_MACOS_RELEASE_MINIMUM:-13.5}"
+export SAGEJS_MACOS_RELEASE_MINIMUM="$MACOS_RELEASE_MINIMUM"
+export MACOSX_DEPLOYMENT_TARGET="$MACOS_RELEASE_MINIMUM"
+
+if ! command -v libtoolize >/dev/null && command -v brew >/dev/null; then
+  LIBTOOL_PREFIX="$(brew --prefix libtool 2>/dev/null || true)"
+  if [[ -n "$LIBTOOL_PREFIX" && -d "$LIBTOOL_PREFIX/libexec/gnubin" ]]; then
+    export PATH="$LIBTOOL_PREFIX/libexec/gnubin:$PATH"
+  fi
+fi
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -43,6 +53,7 @@ Configuration:
   SAGEJS_MACOS_INSTALLER_ID
   SAGEJS_MACOS_NOTARY_PROFILE
   SAGEJS_MACOS_ENTITLEMENTS
+  SAGEJS_MACOS_RELEASE_MINIMUM (default: 13.5)
 EOF
       exit 0
       ;;
@@ -73,7 +84,9 @@ fi
 
 required_commands=(codesign ditto lipo node otool shasum)
 if [[ $SKIP_BUILD -eq 0 ]]; then
-  required_commands+=(pnpm)
+  required_commands+=(
+    autoconf automake cmake curl libtoolize ninja pnpm tar xcrun
+  )
 fi
 if [[ $UNSIGNED -eq 0 ]]; then
   required_commands+=(pkgbuild pkgutil productsign spctl xcrun)
@@ -112,6 +125,7 @@ if [[ $SKIP_BUILD -eq 0 ]]; then
     exit 2
   fi
   echo "Building and relocation-testing macOS SEA executables"
+  node scripts/build-zeromq-darwin.cjs
   pnpm test:sea
 else
   [[ -x build/sea/sagejs && -x build/sea/sagepython ]] || {
@@ -180,6 +194,7 @@ ditto -c -k --keepParent "$DIST" "$ARCHIVE"
 )
 
 SAGEJS_RELEASE_MACOS_ARCHIVE="$ARCHIVE" \
+SAGEJS_RELEASE_MACOS_MINIMUM="$MACOS_RELEASE_MINIMUM" \
 SAGEJS_RELEASE_MACOS_SIGNATURE="$([[ $UNSIGNED -eq 1 ]] && echo adhoc || echo developer-id)" \
 SAGEJS_RELEASE_SOURCE_ROOT="$ROOT" \
   node --test test/release-macos-arm64.cjs

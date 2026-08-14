@@ -303,6 +303,12 @@ This checklist is implemented for **macOS arm64** in CI. Although the local
 script recognizes x86-64, no macOS x64 CI job or npm platform package currently
 makes x86-64 a release target.
 
+The release compatibility contract is macOS 13.5. The packaging command builds
+ZeroMQ and its vcpkg dependencies from checksum-pinned source for that floor,
+embeds the source/output receipt in both executables, and rejects any Mach-O
+slice declaring a newer minimum. Do not replace this with the bundled ZeroMQ
+prebuild or raise the floor merely to make an unaudited build pass.
+
 1. On the signing machine, inspect identities with `security find-identity -v`
    and verify the intended Team ID. Configure the notary profile with
    `xcrun notarytool store-credentials`; never pass the private key or password

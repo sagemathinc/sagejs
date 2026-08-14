@@ -75,6 +75,7 @@ function writeReceipts(directory, nativeMathProfile = undefined) {
       artifact: { kind: "single-executable", nativeMathematics },
       embeddedAssets: { assets: {}, schema: "sagejs.embedded-assets/v1" },
       nativeKernels: nativeMathematics ? { fixture: true } : null,
+      runtimeNativeDependencies: null,
     },
     sagejsVersion: require("../package.json").version,
     source,

@@ -1,0 +1,56 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "macos-zeromq-floor",
+  "title": "Macos Zeromq Floor",
+  "lane": "integration",
+  "status": "active",
+  "owner": "user",
+  "objective": "Build and bind ZeroMQ for the declared macOS 13.5 release floor and fail closed when any embedded Mach-O slice exceeds it",
+  "base_commit": "469f9360003326f58215c52ead32083a44547c3a",
+  "claims": [
+    "package.json",
+    "pnpm-lock.yaml",
+    "scripts/build-zeromq-darwin.cjs",
+    "scripts/build-sea.cjs",
+    "scripts/darwin-native.cjs",
+    "scripts/release-capabilities.cjs",
+    "scripts/release-macos.sh",
+    "scripts/release-native-binary-inspector.cjs",
+    "scripts/runtime-native-dependency-receipt.cjs",
+    "test/build-zeromq-darwin.cjs",
+    "test/runtime-native-dependency-receipt.cjs",
+    "test/release-candidate-linux.cjs",
+    "test/release-native-binary-inspector.cjs",
+    "test/release-capabilities.cjs",
+    "test/release-macos-arm64.cjs",
+    "test/sea-build-manifest.cjs",
+    "DISTRIBUTION.md",
+    "README.md"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "not-applicable",
+    "fallback": "not-applicable",
+    "oracles": [],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm architecture:check",
+    "pnpm test:portable",
+    "pnpm test:baselib:strict"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "",
+    "risks": [],
+    "next_steps": []
+  }
+}
