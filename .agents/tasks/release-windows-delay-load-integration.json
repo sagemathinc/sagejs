@@ -1,0 +1,52 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "release-windows-delay-load-integration",
+  "title": "Integrate Windows SEA addon delay loading",
+  "lane": "integration",
+  "status": "active",
+  "owner": "user",
+  "objective": "Integrate the independently reviewed Windows Node-addon delay-load policy and actual original-plus-renamed SEA mathematics proof into a closed intermediate release checkpoint",
+  "base_commit": "29f5463e44d2a6143040fb126cdbf2c8ab4c5391",
+  "claims": [
+    ".agents/tasks/release-windows-delay-load-integration.json",
+    ".agents/tasks/windows-sea-addon-delay-load.json",
+    "tools/native-kernel/compiler.cjs",
+    "scripts/release-native-binary-inspector.cjs",
+    "test/ffi.cjs",
+    "test/release-native-binary-inspector.cjs"
+  ],
+  "dependencies": [
+    "windows-sea-addon-delay-load"
+  ],
+  "references": [],
+  "architecture": {
+    "strategy": "compiler-infrastructure",
+    "fallback": "not-applicable",
+    "oracles": [
+      "PE import tables distinguish ordinary and delayed node.exe dependencies",
+      "The exact native Windows SEA passes representative mathematics before and after byte-identical renaming"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "not-applicable",
+    "windows-x64": "required",
+    "macos-arm64": "not-applicable"
+  },
+  "validation": [
+    "pnpm architecture:check",
+    "pnpm test:portable",
+    "pnpm test:baselib:strict",
+    "node test/ffi.cjs",
+    "node --test test/release-native-binary-inspector.cjs",
+    "pnpm parallel:check -- --all"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "",
+    "risks": [],
+    "next_steps": []
+  }
+}
