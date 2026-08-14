@@ -4,7 +4,7 @@
   "id": "live-main-read-before-write",
   "title": "Live __main__ read before write",
   "lane": "compiler-runtime",
-  "status": "review",
+  "status": "complete",
   "owner": "user",
   "objective": "Preserve Python module LOAD_NAME semantics in reusable kernel cells so a same-cell assignment RHS can read the prior live Sage global or builtin without host leakage or weakening deletion and uninitialized-name guards",
   "base_commit": "0ae559238dd4b0a07b53dbd126630cf46a9c6aa0",
@@ -180,9 +180,9 @@
       "Validation ran on Linux x64. The change is architecture-neutral compiler-generated JavaScript and does not add or alter a platform capability, native dependency, or fallback, so Linux arm64, Windows x64, and macOS arm64 are not applicable to this narrow semantic lane."
     ],
     "next_steps": [
-      "Integrate exact successor source 731ce693f7e10e2bf56260acbc9e367bdb99b318 and this closure together after independent closure review.",
+      "Preserve the ordered corrective source authority 731ce693f7e10e2bf56260acbc9e367bdb99b318 and its per-fragment sentinel regression through release integration.",
       "After compiler integration, rerun pnpm test:tutorial on the blocked website-release-consistency source and issue its successor closure with a fresh 662/662 receipt.",
-      "Rerun final aggregate compiler, integration, tutorial, and changed-file gates on the assembled release baseline."
+      "Rerun final aggregate compiler, integration, tutorial, and changed-file gates on the frozen release baseline."
     ]
   }
 }
