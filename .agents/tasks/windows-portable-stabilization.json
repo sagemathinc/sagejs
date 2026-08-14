@@ -46,6 +46,8 @@
     "pnpm test:integration",
     "node --test --test-reporter=dot test/cache.cjs test/linux-release-baseline.cjs test/native-math-profile.cjs test/parallel-development.cjs",
     "node --test --test-reporter=spec test/cache.cjs",
+    "cmd.exe /d /s /c pnpm.cmd build",
+    "node --test --test-reporter=spec --test-name-pattern=native cache heartbeat advances during a synchronous build|FFLAS installation metadata remains valid after relocating its builder prefix test/parallel-development.cjs",
     "pnpm architecture:check",
     "pnpm test:changed -- --base db6258674e6f191b8187c31e2231a45c73a5c5c6"
   ],
@@ -86,6 +88,96 @@
       "exit_code": 0,
       "seconds": 34.263,
       "started_at": "2026-08-14T13:45:36.575Z",
+      "commit": "cb11a887a98e13193a2bdca2814fd62233926a32",
+      "workspace_fingerprint": "abb06701664a9e4fd5dc77f60aed18c3826d0111e2288a5904374c3e47b4bf48",
+      "platform": "win32-x64"
+    },
+    {
+      "command": "cmd.exe /d /s /c pnpm.cmd build",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 260.629,
+      "started_at": "2026-08-14T14:07:24.189Z",
+      "commit": "cb11a887a98e13193a2bdca2814fd62233926a32",
+      "workspace_fingerprint": "abb06701664a9e4fd5dc77f60aed18c3826d0111e2288a5904374c3e47b4bf48",
+      "platform": "win32-x64"
+    },
+    {
+      "command": "node --test --test-reporter=spec test/cache.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 6.305,
+      "started_at": "2026-08-14T14:11:58.003Z",
+      "commit": "cb11a887a98e13193a2bdca2814fd62233926a32",
+      "workspace_fingerprint": "abb06701664a9e4fd5dc77f60aed18c3826d0111e2288a5904374c3e47b4bf48",
+      "platform": "win32-x64"
+    },
+    {
+      "command": "node --test --test-reporter=spec test/cache.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 6.597,
+      "started_at": "2026-08-14T14:12:05.317Z",
+      "commit": "cb11a887a98e13193a2bdca2814fd62233926a32",
+      "workspace_fingerprint": "abb06701664a9e4fd5dc77f60aed18c3826d0111e2288a5904374c3e47b4bf48",
+      "platform": "win32-x64"
+    },
+    {
+      "command": "node --test --test-reporter=spec test/cache.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 6.429,
+      "started_at": "2026-08-14T14:12:12.932Z",
+      "commit": "cb11a887a98e13193a2bdca2814fd62233926a32",
+      "workspace_fingerprint": "abb06701664a9e4fd5dc77f60aed18c3826d0111e2288a5904374c3e47b4bf48",
+      "platform": "win32-x64"
+    },
+    {
+      "command": "node --test --test-reporter=spec test/cache.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 6.564,
+      "started_at": "2026-08-14T14:12:20.425Z",
+      "commit": "cb11a887a98e13193a2bdca2814fd62233926a32",
+      "workspace_fingerprint": "abb06701664a9e4fd5dc77f60aed18c3826d0111e2288a5904374c3e47b4bf48",
+      "platform": "win32-x64"
+    },
+    {
+      "command": "node --test --test-reporter=spec test/cache.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 6.054,
+      "started_at": "2026-08-14T14:12:28.039Z",
+      "commit": "cb11a887a98e13193a2bdca2814fd62233926a32",
+      "workspace_fingerprint": "abb06701664a9e4fd5dc77f60aed18c3826d0111e2288a5904374c3e47b4bf48",
+      "platform": "win32-x64"
+    },
+    {
+      "command": "node --test --test-reporter=spec --test-name-pattern=native cache heartbeat advances during a synchronous build|FFLAS installation metadata remains valid after relocating its builder prefix test/parallel-development.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.351,
+      "started_at": "2026-08-14T14:12:42.986Z",
+      "commit": "cb11a887a98e13193a2bdca2814fd62233926a32",
+      "workspace_fingerprint": "abb06701664a9e4fd5dc77f60aed18c3826d0111e2288a5904374c3e47b4bf48",
+      "platform": "win32-x64"
+    },
+    {
+      "command": "node --test --test-reporter=spec --test-name-pattern=native cache heartbeat advances during a synchronous build|FFLAS installation metadata remains valid after relocating its builder prefix test/parallel-development.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.3,
+      "started_at": "2026-08-14T14:12:45.393Z",
+      "commit": "cb11a887a98e13193a2bdca2814fd62233926a32",
+      "workspace_fingerprint": "abb06701664a9e4fd5dc77f60aed18c3826d0111e2288a5904374c3e47b4bf48",
+      "platform": "win32-x64"
+    },
+    {
+      "command": "node --test --test-reporter=spec --test-name-pattern=native cache heartbeat advances during a synchronous build|FFLAS installation metadata remains valid after relocating its builder prefix test/parallel-development.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.436,
+      "started_at": "2026-08-14T14:12:47.740Z",
       "commit": "cb11a887a98e13193a2bdca2814fd62233926a32",
       "workspace_fingerprint": "abb06701664a9e4fd5dc77f60aed18c3826d0111e2288a5904374c3e47b4bf48",
       "platform": "win32-x64"
@@ -132,7 +224,7 @@
     }
   ],
   "handoff": {
-    "summary": "Fixes all six retained native-Windows portability failures and two subsequently reproduced cache races in implementation commits ddf11b9fb96bb271165d475a8aaa67849b7428a4, 7b01f95b7097f02b2b6c4e3c29f0bc3fd0d9819a, eeceec19673860fecb33e5de0658d3e81ef94c21, and 42464fc165dd18196b0530a621e43e75675ad314. Atomic cache publication and reads use bounded Windows-only transient-error retries without unlinking a live destination; cleanup ignores only an entry that vanishes with ENOENT after enumeration. Release and native-build fixtures preserve the exact target semantics while using host-native paths and line endings. At exact cb11a887a98e13193a2bdca2814fd62233926a32, the native Windows checkout on official Node.js 26.7.0 passed a clean build, five consecutive 19/19 cache runs, two consecutive three-test heartbeat/FFLAS runs, and the 117/117 focused suite; the physical Apple M1 cache suite passed 19/19. Exact Linux test:changed passed the build, 448-test unit, compiler, and 438-pass/0-fail/3-skip integration tiers, and the separately declared build, compiler, integration, focused, and architecture commands all pass.",
+    "summary": "Fixes all six retained native-Windows portability failures and two subsequently reproduced cache races in implementation commits ddf11b9fb96bb271165d475a8aaa67849b7428a4, 7b01f95b7097f02b2b6c4e3c29f0bc3fd0d9819a, eeceec19673860fecb33e5de0658d3e81ef94c21, and 42464fc165dd18196b0530a621e43e75675ad314. Atomic cache publication and reads use bounded Windows-only transient-error retries without unlinking a live destination; cleanup ignores only an entry that vanishes with ENOENT after enumeration. Release and native-build fixtures preserve the exact target semantics while using host-native paths and line endings. At exact cb11a887a98e13193a2bdca2814fd62233926a32, the detached native Windows proof at C:\\Users\\user\\sagejs-windows-portable-proof-cb11 prepended C:\\Users\\user\\toolchains\\node-v26.7.0-win-x64 to PATH and reported Node.js v26.7.0 plus the exact source SHA before validation. It passed a clean build and a structured build rerun, five consecutive 19/19 cache runs, three consecutive 2/2 heartbeat/FFLAS runs, and the 117/117 focused suite; the physical Apple M1 cache suite passed 19/19. Exact Linux test:changed passed the build, 448-test unit, compiler, and 438-pass/0-fail/3-skip integration tiers, and the separately declared build, compiler, integration, focused, and architecture commands all pass.",
     "risks": [
       "One earlier standalone Linux integration run encountered the unrelated fixed-host dense-integer timing gate; the exact test passed immediately in isolation and the final exact cb11 test:changed integration tier passed 438 tests with 3 skips and no failures.",
       "The broader macOS CI failures previously classified as ASan capability, dense-prime timing, /var source identity, and Linux-x64 fixture assumptions remain separate from this lane."
