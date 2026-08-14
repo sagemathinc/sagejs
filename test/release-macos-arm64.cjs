@@ -20,6 +20,7 @@ const { performance } = require("node:perf_hooks");
 const root = join(__dirname, "..");
 const archive = process.env.SAGEJS_RELEASE_MACOS_ARCHIVE;
 const expectedSignature = process.env.SAGEJS_RELEASE_MACOS_SIGNATURE;
+const expectedMinimum = process.env.SAGEJS_RELEASE_MACOS_MINIMUM;
 const sourceRoot = process.env.SAGEJS_RELEASE_SOURCE_ROOT;
 
 function execute(command, arguments_, options = {}) {
@@ -247,6 +248,29 @@ test(
       }
 
       const environment = isolatedEnvironment(temporary);
+
+      const capabilityReport = JSON.parse(
+        execute(sagejs, ["capabilities", "--json"], {
+          cwd: work,
+          env: environment,
+        }).stdout,
+      );
+      assert.equal(capabilityReport.buildReceipt.availability, "available");
+      const nativeReport = capabilityReport.buildReceipt.manifest
+        .toolchain.nativeBinaries.report;
+      assert.equal(
+        nativeReport.policy.maximumMinimumMacos,
+        expectedMinimum || "13.5",
+      );
+      assert.equal(
+        nativeReport.aggregate.maximumMinimumMacos,
+        expectedMinimum || "13.5",
+      );
+      assert.match(
+        capabilityReport.buildReceipt.manifest.capabilities
+          .runtimeNativeDependencies.bindings.zeromq.receiptIdentitySha256,
+        /^[0-9a-f]{64}$/,
+      );
 
       const pythonStarted = performance.now();
       const python = execute(sagepython, ["--jupyter-kernel-self-test"], {

@@ -41,6 +41,9 @@ const {
   readNativeDependencyReceipt,
   validateSeaNativeDependencyBindings,
 } = require("./native-dependency-receipt.cjs");
+const {
+  validateSeaRuntimeNativeDependencyBindings,
+} = require("./runtime-native-dependency-receipt.cjs");
 
 const SCHEMA = "sagejs.release-capabilities-v3";
 const BUILD_MANIFEST_ASSET = "release/build-manifest.json";
@@ -381,17 +384,21 @@ function nativeBinaryReceiptContract(buildManifest, embedded) {
     ...[...embedded.assets].filter((name) => name.endsWith(".node")),
   ].sort((left, right) => left.localeCompare(right));
   const policy = report.policy;
+  const policyKeys = [
+    "architectures",
+    "exactArchitectures",
+    "format",
+    "requiredLabels",
+    ...(target.platform === "darwin" ? ["maximumMinimumMacos"] : []),
+  ];
   if (
-    !exactKeys(policy, [
-      "architectures",
-      "exactArchitectures",
-      "format",
-      "requiredLabels",
-    ]) ||
+    !exactKeys(policy, policyKeys) ||
     JSON.stringify(policy.architectures) !== JSON.stringify([target.arch]) ||
     policy.exactArchitectures !== true ||
     policy.format !== expectedFormat ||
-    JSON.stringify(policy.requiredLabels) !== JSON.stringify(expectedLabels)
+    JSON.stringify(policy.requiredLabels) !== JSON.stringify(expectedLabels) ||
+    (target.platform === "darwin" &&
+      !/^\d+(?:\.\d+){1,2}$/.test(policy.maximumMinimumMacos ?? ""))
   ) return false;
   const files = [...report.files].sort((left, right) =>
     String(left?.label).localeCompare(String(right?.label)));
@@ -418,6 +425,19 @@ function nativeBinaryReceiptContract(buildManifest, embedded) {
       JSON.stringify([...binaryArchitectures(file)].sort()) !==
         JSON.stringify([target.arch])
     ) return false;
+    if (target.platform === "darwin") {
+      for (const slice of file.slices) {
+        const declared = maximumVersion(slice.declaredMinimumMacos);
+        if (
+          declared === null ||
+          slice.minimumMacos !== declared ||
+          compareVersions(
+            slice.minimumMacos,
+            policy.maximumMinimumMacos,
+          ) > 0
+        ) return false;
+      }
+    }
     if (file.label === NODE_TEMPLATE_LABEL) {
       if (file.sha256 !== buildManifest.toolchain?.seaNode?.executableSha256) {
         return false;
@@ -475,6 +495,11 @@ function nativeBinaryReceiptContract(buildManifest, embedded) {
     JSON.stringify(aggregate.maximumSymbolVersions) !==
       JSON.stringify(maximumSymbolVersions)
   ) return false;
+  if (
+    target.platform === "darwin" &&
+    (maximumMinimumMacos === null ||
+      compareVersions(maximumMinimumMacos, policy.maximumMinimumMacos) > 0)
+  ) return false;
   return target.platform !== "linux" ||
     (target.libc?.family === "glibc" && target.libc.version === maximumGlibc);
 }
@@ -487,6 +512,7 @@ function embeddedReceiptContract(buildManifest, embedded) {
     "embeddedAssets",
     "nativeDependencies",
     "nativeKernels",
+    "runtimeNativeDependencies",
   ])) {
     return false;
   }
@@ -514,6 +540,23 @@ function embeddedReceiptContract(buildManifest, embedded) {
     return false;
   }
   if (!nativeBinaryReceiptContract(buildManifest, embedded)) return false;
+  try {
+    validateSeaRuntimeNativeDependencyBindings(
+      capabilities.runtimeNativeDependencies,
+      {
+        assets: embedded.assets,
+        binaryLabels: buildManifest.toolchain.nativeBinaries.report.files
+          .map(({ label }) => label),
+        bytes: embedded.bytes,
+        maximumMinimumMacos:
+          buildManifest.toolchain.nativeBinaries.report.aggregate
+            .maximumMinimumMacos,
+        target: buildManifest.target,
+      },
+    );
+  } catch {
+    return false;
+  }
   const nativeProfile = buildManifest.toolchain.nativeMathProfile;
   if (!artifact.nativeMathematics) {
     if (

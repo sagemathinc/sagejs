@@ -9,16 +9,28 @@ const {
 } = require("./native-math-profile.cjs");
 
 const defaultMacosDeploymentTarget = "13.0";
+const defaultMacosReleaseMinimum = "13.5";
+
+function macosVersion(name, value) {
+  if (!/^[0-9]+(?:\.[0-9]+){1,2}$/.test(value)) {
+    throw new Error(
+      `${name} must be a macOS version, got ${JSON.stringify(value)}`,
+    );
+  }
+  return value;
+}
 
 function macosDeploymentTarget(environment = process.env) {
   const value = environment.MACOSX_DEPLOYMENT_TARGET ||
     defaultMacosDeploymentTarget;
-  if (!/^[0-9]+(?:\.[0-9]+){1,2}$/.test(value)) {
-    throw new Error(
-      `MACOSX_DEPLOYMENT_TARGET must be a macOS version, got ${JSON.stringify(value)}`,
-    );
-  }
-  return value;
+  return macosVersion("MACOSX_DEPLOYMENT_TARGET", value);
+}
+
+function macosReleaseMinimum(environment = process.env) {
+  return macosVersion(
+    "SAGEJS_MACOS_RELEASE_MINIMUM",
+    environment.SAGEJS_MACOS_RELEASE_MINIMUM || defaultMacosReleaseMinimum,
+  );
 }
 
 function macosSdkPath() {
@@ -99,7 +111,9 @@ if (require.main === module) main();
 module.exports = {
   appleAccelerateSdkInputs,
   defaultMacosDeploymentTarget,
+  defaultMacosReleaseMinimum,
   fflasMathBuildProfile,
   macosDeploymentTarget,
+  macosReleaseMinimum,
   main,
 };

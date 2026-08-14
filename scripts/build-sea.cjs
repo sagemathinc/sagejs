@@ -48,6 +48,16 @@ const {
 const {
   defaultNativeCacheRoot,
 } = require("./native-worktree-cache.cjs");
+const {
+  macosReleaseMinimum,
+} = require("./darwin-native.cjs");
+const {
+  createSeaRuntimeNativeDependencyBindings,
+  ZEROMQ_RECEIPT_ASSET,
+} = require("./runtime-native-dependency-receipt.cjs");
+const {
+  readZeroMQSelection,
+} = require("./build-zeromq-darwin.cjs");
 
 const root = join(__dirname, "..");
 const outputDirectory = join(root, "build", "sea");
@@ -267,7 +277,7 @@ function nativeBinaryInputs(seaNode, assets) {
   ];
 }
 
-function nativeBinaryPolicy(builder, labels) {
+function nativeBinaryPolicy(builder, labels, environment = process.env) {
   const formats = { darwin: "macho", linux: "elf", win32: "pe" };
   const format = formats[builder.platform];
   if (!format) throw new Error(`unsupported native binary platform ${builder.platform}`);
@@ -275,6 +285,9 @@ function nativeBinaryPolicy(builder, labels) {
     architectures: [builder.arch],
     exactArchitectures: true,
     format,
+    ...(builder.platform === "darwin"
+      ? { maximumMinimumMacos: macosReleaseMinimum(environment) }
+      : {}),
     requiredLabels: [...labels].sort((left, right) => left.localeCompare(right)),
   };
 }
@@ -284,7 +297,11 @@ function nativeBinaryReceipt(seaNode, assets, builder, options = {}) {
   const report = options.nativeBinaryReport === undefined
     ? assertNativeInputs(
         inputs,
-        nativeBinaryPolicy(builder, inputs.map(({ label }) => label)),
+        nativeBinaryPolicy(
+          builder,
+          inputs.map(({ label }) => label),
+          options.environment,
+        ),
       )
     : structuredClone(options.nativeBinaryReport);
   if (report?.schema !== NATIVE_BINARY_REPORT_SCHEMA) {
@@ -724,6 +741,13 @@ function createSeaBuildManifest(options) {
         target,
       })
     : null;
+  const runtimeNativeDependencies =
+    createSeaRuntimeNativeDependencyBindings({
+      assets: options.assets,
+      maximumMinimumMacos:
+        nativeBinaries.report.aggregate.maximumMinimumMacos,
+      target,
+    });
   return createBuildManifest({
     capabilities: {
       artifact: {
@@ -736,6 +760,7 @@ function createSeaBuildManifest(options) {
       },
       nativeDependencies,
       nativeKernels,
+      runtimeNativeDependencies,
     },
     sagejsVersion: JSON.parse(
       readFileSync(join(options.root, "package.json"), "utf8"),
@@ -823,6 +848,30 @@ function zeroMQAddonFilename() {
     );
   }
   return candidates[0].filename;
+}
+
+function zeroMQInputs(builder) {
+  if (builder.platform !== "darwin") {
+    return { addon: zeroMQAddonFilename(), receipt: null };
+  }
+  let selected;
+  try {
+    selected = readZeroMQSelection();
+  } catch (error) {
+    throw new Error(
+      "macOS SEA assembly requires the source-owned ZeroMQ addon; run " +
+        "`node scripts/build-zeromq-darwin.cjs` first",
+      { cause: error },
+    );
+  }
+  if (
+    selected.receipt.target.platform !== builder.platform ||
+    selected.receipt.target.arch !== builder.arch ||
+    selected.receipt.target.nodeNapi !== builder.versions.napi
+  ) {
+    throw new Error("source-owned ZeroMQ addon does not match the SEA builder");
+  }
+  return { addon: selected.addon, receipt: selected.receiptFilename };
 }
 
 function seaBuilderExecutable() {
@@ -1007,6 +1056,7 @@ function buildExecutable(name, withFlint, sourceIdentity) {
   }
   const seaNode = seaBuilderExecutable();
   const builder = observeSeaBuilder(seaNode);
+  const zeromq = zeroMQInputs(builder);
   if (
     withFlint &&
     builder.platform !== "win32" &&
@@ -1075,7 +1125,7 @@ function buildExecutable(name, withFlint, sourceIdentity) {
     ),
     "worker/multiprocessing-worker.cjs": multiprocessingWorkerBundle,
     "worker/kernel-worker.cjs": kernelWorkerBundle,
-    "native/zeromq.node": zeroMQAddonFilename(),
+    "native/zeromq.node": zeromq.addon,
     ...collectStandardLibraryAssets(),
     ...collectStandardLibraryCacheAssets(),
     ...collectJsonCacheAssets("lazy-module-cache"),
@@ -1132,6 +1182,9 @@ function buildExecutable(name, withFlint, sourceIdentity) {
       "tree-sitter-wolfram.wasm",
     ),
   };
+  if (zeromq.receipt !== null) {
+    assets[ZEROMQ_RECEIPT_ASSET] = zeromq.receipt;
+  }
   let nativeDependencySources;
   if (withFlint) {
     assets["native/sagejs_flint.node"] = flintAddon;

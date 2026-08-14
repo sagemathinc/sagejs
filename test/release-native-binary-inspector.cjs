@@ -325,6 +325,24 @@ test("Mach-O inspection preserves all universal slices and deployment targets", 
   assert.equal(report.maximumMinimumMacos, "13.5.0");
 });
 
+test("Mach-O policy rejects every slice above the declared release floor", () => {
+  const [compatible, tooNew] = temporaryFiles([
+    ["compatible.node", thinMachoFixture({ minimumMacos: "13.5" })],
+    ["too-new.node", thinMachoFixture({ minimumMacos: "14.0" })],
+  ]);
+  const policy = {
+    architectures: ["arm64"],
+    exactArchitectures: true,
+    format: "macho",
+    maximumMinimumMacos: "13.5",
+  };
+  assert.equal(inspectNativeInputs([compatible], policy).ok, true);
+  const report = inspectNativeInputs([tooNew], policy);
+  assert.equal(report.ok, false);
+  assert.equal(report.violations[0].code, "macos-deployment-target");
+  assert.match(report.violations[0].message, /macOS 14\.0\.0.*allowed 13\.5/);
+});
+
 test("macOS policy can require a genuinely fat, uniformly targeted input", () => {
   const universal = universalMachoFixture([
     {

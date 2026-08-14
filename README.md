@@ -43,6 +43,8 @@ archive is explicitly **not Authenticode-signed**; verify its SHA-256 checksum
 before running it on Windows 10/11. macOS executables use the hardened runtime,
 are Developer ID signed, and the downloadable ZIP and PKG are both submitted
 to Apple's notary service; the PKG also carries a stapled ticket.
+Apple Silicon release binaries declare macOS 13.5 as their compatibility floor;
+packaging inspects every embedded Mach-O slice and rejects a newer requirement.
 
 ## Build the complete system from source
 
@@ -89,6 +91,12 @@ builder; Sage.js detects that build, downloads the matching official Node
 archive, verifies it against Node's published SHA-256 manifest, and caches it
 solely for creating the standalone executable. Set `SAGEJS_SEA_NODE` to use a
 specific SEA-enabled Node executable instead.
+
+The macOS release command also rebuilds the ZeroMQ addon from its verified npm
+source instead of accepting the package's bundled prebuild. Its isolated vcpkg
+triplet carries the same macOS 13.5 target through ZeroMQ and libsodium. Release
+hosts therefore also need Homebrew `autoconf`, `automake`, `cmake`, `libtool`,
+and `ninja`.
 
 On Windows x64, install Git, Python 3, CMake, and Visual Studio 2022 Build
 Tools with the Desktop C++ workload, clang-cl, and the ClangCL MSBuild
