@@ -4,7 +4,7 @@
   "id": "windows-portable-stabilization",
   "title": "Windows Portable Stabilization",
   "lane": "compiler-runtime",
-  "status": "active",
+  "status": "review",
   "owner": "user",
   "objective": "Fix exact Windows portable unit-test failures without weakening Linux release or native build semantics",
   "base_commit": "db6258674e6f191b8187c31e2231a45c73a5c5c6",
@@ -22,7 +22,12 @@
   "dependencies": [
     "mac-alias-portability"
   ],
-  "references": [],
+  "references": [
+    "ddf11b9fb96bb271165d475a8aaa67849b7428a4",
+    "7b01f95b7097f02b2b6c4e3c29f0bc3fd0d9819a",
+    "eeceec19673860fecb33e5de0658d3e81ef94c21",
+    "42464fc165dd18196b0530a621e43e75675ad314"
+  ],
   "architecture": {
     "strategy": "not-applicable",
     "fallback": "not-applicable",
@@ -33,19 +38,108 @@
     "linux-x64": "required",
     "linux-arm64": "not-applicable",
     "windows-x64": "required",
-    "macos-arm64": "not-applicable"
+    "macos-arm64": "required"
   },
   "validation": [
     "pnpm build",
     "pnpm test:compiler",
     "pnpm test:integration",
+    "node --test --test-reporter=dot test/cache.cjs test/linux-release-baseline.cjs test/native-math-profile.cjs test/parallel-development.cjs",
+    "node --test --test-reporter=spec test/cache.cjs",
     "pnpm architecture:check",
     "pnpm test:changed -- --base db6258674e6f191b8187c31e2231a45c73a5c5c6"
   ],
-  "runs": [],
+  "runs": [
+    {
+      "command": "node --test --test-reporter=dot test/cache.cjs test/linux-release-baseline.cjs test/native-math-profile.cjs test/parallel-development.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 10.064,
+      "started_at": "2026-08-14T13:39:25.330Z",
+      "commit": "cb11a887a98e13193a2bdca2814fd62233926a32",
+      "workspace_fingerprint": "abb06701664a9e4fd5dc77f60aed18c3826d0111e2288a5904374c3e47b4bf48",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 5.837,
+      "started_at": "2026-08-14T13:39:39.850Z",
+      "commit": "cb11a887a98e13193a2bdca2814fd62233926a32",
+      "workspace_fingerprint": "abb06701664a9e4fd5dc77f60aed18c3826d0111e2288a5904374c3e47b4bf48",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:changed -- --base db6258674e6f191b8187c31e2231a45c73a5c5c6",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 673.044,
+      "started_at": "2026-08-14T13:39:58.608Z",
+      "commit": "cb11a887a98e13193a2bdca2814fd62233926a32",
+      "workspace_fingerprint": "abb06701664a9e4fd5dc77f60aed18c3826d0111e2288a5904374c3e47b4bf48",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test --test-reporter=dot test/cache.cjs test/linux-release-baseline.cjs test/native-math-profile.cjs test/parallel-development.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 34.263,
+      "started_at": "2026-08-14T13:45:36.575Z",
+      "commit": "cb11a887a98e13193a2bdca2814fd62233926a32",
+      "workspace_fingerprint": "abb06701664a9e4fd5dc77f60aed18c3826d0111e2288a5904374c3e47b4bf48",
+      "platform": "win32-x64"
+    },
+    {
+      "command": "node --test --test-reporter=spec test/cache.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.941,
+      "started_at": "2026-08-14T13:54:31.163Z",
+      "commit": "cb11a887a98e13193a2bdca2814fd62233926a32",
+      "workspace_fingerprint": "abb06701664a9e4fd5dc77f60aed18c3826d0111e2288a5904374c3e47b4bf48",
+      "platform": "darwin-arm64"
+    },
+    {
+      "command": "pnpm build",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 236.06,
+      "started_at": "2026-08-14T13:55:44.401Z",
+      "commit": "cb11a887a98e13193a2bdca2814fd62233926a32",
+      "workspace_fingerprint": "abb06701664a9e4fd5dc77f60aed18c3826d0111e2288a5904374c3e47b4bf48",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:compiler",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 50.076,
+      "started_at": "2026-08-14T14:02:39.860Z",
+      "commit": "cb11a887a98e13193a2bdca2814fd62233926a32",
+      "workspace_fingerprint": "abb06701664a9e4fd5dc77f60aed18c3826d0111e2288a5904374c3e47b4bf48",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:integration",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 391.934,
+      "started_at": "2026-08-14T14:03:41.950Z",
+      "commit": "cb11a887a98e13193a2bdca2814fd62233926a32",
+      "workspace_fingerprint": "abb06701664a9e4fd5dc77f60aed18c3826d0111e2288a5904374c3e47b4bf48",
+      "platform": "linux-x64"
+    }
+  ],
   "handoff": {
-    "summary": "",
-    "risks": [],
-    "next_steps": []
+    "summary": "Fixes all six retained native-Windows portability failures and two subsequently reproduced cache races in implementation commits ddf11b9fb96bb271165d475a8aaa67849b7428a4, 7b01f95b7097f02b2b6c4e3c29f0bc3fd0d9819a, eeceec19673860fecb33e5de0658d3e81ef94c21, and 42464fc165dd18196b0530a621e43e75675ad314. Atomic cache publication and reads use bounded Windows-only transient-error retries without unlinking a live destination; cleanup ignores only an entry that vanishes with ENOENT after enumeration. Release and native-build fixtures preserve the exact target semantics while using host-native paths and line endings. At exact cb11a887a98e13193a2bdca2814fd62233926a32, the native Windows checkout on official Node.js 26.7.0 passed a clean build, five consecutive 19/19 cache runs, two consecutive three-test heartbeat/FFLAS runs, and the 117/117 focused suite; the physical Apple M1 cache suite passed 19/19. Exact Linux test:changed passed the build, 448-test unit, compiler, and 438-pass/0-fail/3-skip integration tiers, and the separately declared build, compiler, integration, focused, and architecture commands all pass.",
+    "risks": [
+      "One earlier standalone Linux integration run encountered the unrelated fixed-host dense-integer timing gate; the exact test passed immediately in isolation and the final exact cb11 test:changed integration tier passed 438 tests with 3 skips and no failures.",
+      "The broader macOS CI failures previously classified as ASan capability, dense-prime timing, /var source identity, and Linux-x64 fixture assumptions remain separate from this lane."
+    ],
+    "next_steps": [
+      "Integrate the ordered range after db6258674e6f191b8187c31e2231a45c73a5c5c6 once this exact closure is approved.",
+      "Resume the separate Windows static-CRT and PDB reproducibility lane on the integrated portable checkpoint."
+    ]
   }
 }
