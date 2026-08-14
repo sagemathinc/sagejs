@@ -4,7 +4,7 @@
   "id": "release-mac-native-integration",
   "title": "Integrate Mac native portability",
   "lane": "integration",
-  "status": "active",
+  "status": "review",
   "owner": "user",
   "objective": "Integrate the independently reviewed Apple native identity, sanitizer capability, and dense-prime timing portability authority into a closed intermediate release checkpoint",
   "base_commit": "0ae559238dd4b0a07b53dbd126630cf46a9c6aa0",
@@ -56,10 +56,100 @@
     "pnpm test:baselib:strict",
     "pnpm parallel:check -- --all"
   ],
-  "runs": [],
+  "runs": [
+    {
+      "command": "node --test --test-reporter=spec --test-name-pattern=sanitizer lifecycle witnesses|native and disabled-native paths use the same declared pivot calls|sanitizers exercise façade allocation and destruction test/exact-matrix-pivot-ffi.cjs packages/m4ri/test/test.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 3.564,
+      "started_at": "2026-08-14T15:02:45.686Z",
+      "commit": "c06f7b49fa82466ef2074b65de86b9cfea0a7ca9",
+      "workspace_fingerprint": "f3932159706fd9ba985f3c1ba675c5bd197f8366d940be30f3d11a4e046211bb",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node test/dense-prime-structural.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 27.254,
+      "started_at": "2026-08-14T15:02:53.346Z",
+      "commit": "c06f7b49fa82466ef2074b65de86b9cfea0a7ca9",
+      "workspace_fingerprint": "f3932159706fd9ba985f3c1ba675c5bd197f8366d940be30f3d11a4e046211bb",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:native",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1011.656,
+      "started_at": "2026-08-14T15:03:28.378Z",
+      "commit": "c06f7b49fa82466ef2074b65de86b9cfea0a7ca9",
+      "workspace_fingerprint": "f3932159706fd9ba985f3c1ba675c5bd197f8366d940be30f3d11a4e046211bb",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:changed -- --base 0ae559238dd4b0a07b53dbd126630cf46a9c6aa0",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 918.524,
+      "started_at": "2026-08-14T15:20:27.777Z",
+      "commit": "c06f7b49fa82466ef2074b65de86b9cfea0a7ca9",
+      "workspace_fingerprint": "f3932159706fd9ba985f3c1ba675c5bd197f8366d940be30f3d11a4e046211bb",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 5.372,
+      "started_at": "2026-08-14T15:35:54.099Z",
+      "commit": "c06f7b49fa82466ef2074b65de86b9cfea0a7ca9",
+      "workspace_fingerprint": "f3932159706fd9ba985f3c1ba675c5bd197f8366d940be30f3d11a4e046211bb",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 21.04,
+      "started_at": "2026-08-14T15:36:06.488Z",
+      "commit": "c06f7b49fa82466ef2074b65de86b9cfea0a7ca9",
+      "workspace_fingerprint": "f3932159706fd9ba985f3c1ba675c5bd197f8366d940be30f3d11a4e046211bb",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 14.809,
+      "started_at": "2026-08-14T15:36:32.156Z",
+      "commit": "c06f7b49fa82466ef2074b65de86b9cfea0a7ca9",
+      "workspace_fingerprint": "f3932159706fd9ba985f3c1ba675c5bd197f8366d940be30f3d11a4e046211bb",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm parallel:check -- --all",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.635,
+      "started_at": "2026-08-14T15:36:47.581Z",
+      "commit": "c06f7b49fa82466ef2074b65de86b9cfea0a7ca9",
+      "workspace_fingerprint": "f3932159706fd9ba985f3c1ba675c5bd197f8366d940be30f3d11a4e046211bb",
+      "platform": "linux-x64"
+    }
+  ],
   "handoff": {
-    "summary": "",
-    "risks": [],
-    "next_steps": []
+    "summary": "Integrated the independently approved Mac native portability closure 02b26ff5faa4cb0384a1ed0b05f734baa32b57ab in exact source order as patch-equivalent commits b227925 through 9604d82, with implementation authority ending at source commit a48bd53610d6be40bc92f47aee7b117f6b8959a1. Development native compilation and runtime lookup now share physical source identity across macOS aliases; lifecycle witnesses use the shared platform sanitizer capability policy; and dense-prime unpack scaling uses repeated order-balanced samples without weakening absolute, legacy-relative, or scaling limits. The sole overlapping file, tools/runtime-bootstrap.ts, preserves both the earlier approved Windows transient cache-read authority and the Mac physical-source identity authority. The source task is complete with all original receipts intact. One integration fingerprint passes the sanitizer/pivot/M4RI focused suite, dense-prime structural gate, complete native suite, exact-base changed-file build/architecture/unit/compiler/integration/CLI aggregate, standalone architecture, 446-test portable, strict-Python, and 215-contract gates at c06f7b49fa82466ef2074b65de86b9cfea0a7ca9.",
+    "risks": [
+      "Physical Apple M1 Max and native Windows evidence belongs to exact implementation source a48bd53610d6be40bc92f47aee7b117f6b8959a1; the final frozen-source Mac build, signing, notarization, benchmark, and artifact acceptance remain required.",
+      "The source task's failed pnpm test:changed receipt is intentionally preserved: its inherited stale website reference provenance is assigned to a separate lane. The integration-only exact-base changed-file aggregate passes because the Mac delta selects no docs gate; this does not claim the stale documentation was refreshed or clear the final docs gate.",
+      "The source task's first unbuilt native-Windows ratchet failure is intentionally preserved alongside the later passing exact-source build and ratchet evidence.",
+      "Linux arm64 remains not applicable because the implementation branches only on Darwin versus non-Darwin; Linux x64 covers the non-Darwin path and physical Apple silicon covers native arm64 plus the original Darwin failure mode."
+    ],
+    "next_steps": [
+      "Obtain independent review of this exact intermediate checkpoint before marking the Mac native integration task complete.",
+      "Integrate the exact independently approved producer-claims closure supplied by the release coordinator, then provide the exact combined closed checkpoint for downstream Windows static packaging.",
+      "Keep the separate website provenance refresh and final frozen-source Mac rehearsal as explicit downstream gates."
+    ]
   }
 }
