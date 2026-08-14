@@ -1,0 +1,134 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "macos-release-manifest-transport",
+  "title": "First-party macOS release authority",
+  "lane": "integration",
+  "status": "review",
+  "owner": "user",
+  "objective": "Implement and validate a protected first-party workflow that can build, test, accept, sign, notarize, and package exact tagged Sage.js macOS arm64 source and supply provenance-bound artifacts to immutable publication",
+  "base_commit": "29f5463e44d2a6143040fb126cdbf2c8ab4c5391",
+  "claims": [
+    "scripts/release-macos.sh",
+    "scripts/build-sea.cjs",
+    "scripts/macos-release-node-authority.cjs",
+    "scripts/release-tag-policy.cjs",
+    "scripts/prepare-release-publication.cjs",
+    "bench/release-candidate-macos.cjs",
+    ".github/workflows/ci.yml",
+    "DISTRIBUTION.md",
+    "RELEASING.md",
+    "test/release-macos-arm64.cjs",
+    "test/release-publication.cjs",
+    "test/release-workflow-protection.cjs",
+    "test/sea-build-manifest.cjs"
+  ],
+  "dependencies": [],
+  "references": [
+    "Post-alias exact-source credential-free rehearsal (pre-freeze evidence): https://github.com/sagemathinc/sagejs/actions/runs/31800656005",
+    "Exact-source artifact 9219910952: sagejs-macos-arm64-first-party-rehearsal, 218672648 bytes, GitHub sha256:28f0735e07e76559bdb5c1907ec366f4d02e1014813e41f8945c4a18600fae8f; job 94767583401 succeeded",
+    "Clean-rebase predecessor rehearsal: https://github.com/sagemathinc/sagejs/actions/runs/31797724293",
+    "Predecessor artifact 9218594487: 218669820 bytes, GitHub sha256:e917ba75dfb50d1e04d60a8b7f8a1a3767df1c70d2964458feed2d1b367aa4c6, job 94758398785 succeeded",
+    "Predecessor contents: sagejs-macos-arm64.zip 220695142 bytes sha256:3db8a284ff7a9945ab322b7a22d1fdcd7ab9becfe762c292cfc66c48305d0399; benchmark sha256:dfe273576dd91ec24f09e3d77e4c53321a2f40cf7c527a9c2e0a95f17eab513e",
+    "Physical Apple M1 Max validation at /Volumes/sage/sagejs-release-macos-authority: canonical ZIP sha256:2c41235705ebcf0d9f9f4400b5d5c8d4cdd82a55b20311d7335544978ed3a9f7; benchmark sha256:3572bc19ac3742f8785df4d91a1f9d90d567bc944c1b0d0c3cd2725208be9491"
+  ],
+  "architecture": {
+    "strategy": "not-applicable",
+    "fallback": "not-applicable",
+    "oracles": [
+      "Exact signing-input member and digest regression",
+      "Exact ZIP member and internal SHA256SUMS regression"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "not-applicable",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm architecture:check",
+    "pnpm parallel:check -- --all",
+    "pnpm test:portable",
+    "pnpm test:baselib:strict",
+    "node --test test/sea-build-manifest.cjs test/release-workflow-protection.cjs test/release-macos-arm64.cjs test/release-publication.cjs test/release-artifact-acceptance.cjs",
+    "env SAGEJS_RELEASE_MACOS_ARCHIVE=build/release/sagejs-macos-arm64.zip SAGEJS_RELEASE_MACOS_MINIMUM=13.5 SAGEJS_RELEASE_MACOS_SIGNATURE=adhoc SAGEJS_RELEASE_SOURCE_ROOT=/Volumes/sage/sagejs-release-macos-authority node --test test/release-macos-arm64.cjs"
+  ],
+  "runs": [
+    {
+      "command": "node --test test/sea-build-manifest.cjs test/release-workflow-protection.cjs test/release-macos-arm64.cjs test/release-publication.cjs test/release-artifact-acceptance.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.662,
+      "started_at": "2026-08-14T12:29:48.744Z",
+      "commit": "6b6da1476fa061fcce291464dd4838b54c33ca17",
+      "workspace_fingerprint": "14e49fce7737f2260eda671a1b12281beb50c9b0954d794cabe3a2c801936222",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 5.923,
+      "started_at": "2026-08-14T12:29:57.217Z",
+      "commit": "6b6da1476fa061fcce291464dd4838b54c33ca17",
+      "workspace_fingerprint": "14e49fce7737f2260eda671a1b12281beb50c9b0954d794cabe3a2c801936222",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm parallel:check -- --all",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.595,
+      "started_at": "2026-08-14T12:30:03.752Z",
+      "commit": "6b6da1476fa061fcce291464dd4838b54c33ca17",
+      "workspace_fingerprint": "14e49fce7737f2260eda671a1b12281beb50c9b0954d794cabe3a2c801936222",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 15.328,
+      "started_at": "2026-08-14T12:30:04.956Z",
+      "commit": "6b6da1476fa061fcce291464dd4838b54c33ca17",
+      "workspace_fingerprint": "14e49fce7737f2260eda671a1b12281beb50c9b0954d794cabe3a2c801936222",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 21.624,
+      "started_at": "2026-08-14T12:30:23.741Z",
+      "commit": "6b6da1476fa061fcce291464dd4838b54c33ca17",
+      "workspace_fingerprint": "14e49fce7737f2260eda671a1b12281beb50c9b0954d794cabe3a2c801936222",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "env SAGEJS_RELEASE_MACOS_ARCHIVE=build/release/sagejs-macos-arm64.zip SAGEJS_RELEASE_MACOS_MINIMUM=13.5 SAGEJS_RELEASE_MACOS_SIGNATURE=adhoc SAGEJS_RELEASE_SOURCE_ROOT=/Volumes/sage/sagejs-release-macos-authority node --test test/release-macos-arm64.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 23.886,
+      "started_at": "2026-08-14T12:31:32.206Z",
+      "commit": "6b6da1476fa061fcce291464dd4838b54c33ca17",
+      "workspace_fingerprint": "14e49fce7737f2260eda671a1b12281beb50c9b0954d794cabe3a2c801936222",
+      "platform": "darwin-arm64"
+    }
+  ],
+  "handoff": {
+    "summary": "The protected first-party macos-15 authority fetches and verifies the exact official Node 26.7.0 darwin-arm64 archive, proves the tag target and package versions before credential import, derives both Developer ID identities from the five configured Apple secrets, builds and tests native Sage.js from the exact tag, accepts both SEAs, signs and notarizes the package, and emits exact artifact, benchmark, and publication receipts. The canonical ZIP carries both SEA manifests, licenses, provenance, and a complete internal SHA256SUMS inventory accepted by the production byte-level parser. Manual dispatches are credential-free, event-isolated rehearsals and cannot sign, publish, or cancel a genuine tag-push release. A physical Apple M1 Max revalidated the earlier accepted 207 MB canonical ZIP with exact 6b6da147 test authority: all six dynamic checks passed for arm64 executables, the macOS 13.5 floor, system dylibs only, relocation, clean-home startup, and mathematics. The first-party standard runner separately builds an exact-source artifact.",
+    "risks": [
+      "Actual Developer ID signing and Apple notarization remain intentionally unexercised until an immutable reviewed release-candidate tag receives approval in the sagejs-signing environment.",
+      "The protected job builds and tests tag-controlled source before importing credentials in the same runner; required environment approval of the exact immutable tag is therefore the source trust boundary. A future hardening can split the exact-tag build artifact from a fresh minimal signer.",
+      "The physical M1 artifact uses ad-hoc signatures and is validation evidence only, never a publishable release artifact.",
+      "The broad general Mac matrix job in run 31800656005 failed 12 shared portability tests after its native build and startup budget passed: six raw Apple leak-sanitizer witnesses, one noisy dense-prime timing ratio, one /var versus /private/var native source-identity mismatch, and four Linux archive fixtures that assumed x64 on arm64. These are assigned to downstream portability and Linux-arm lanes and do not weaken the independently successful first-party Mac release authority job."
+    ],
+    "next_steps": [
+      "Integrate the exact reviewed closure commit into the frozen shared release authority without weakening the source, artifact, or publication gates.",
+      "After every shared portability, Windows static-CRT, and artifact-acceptance change is frozen, run a fresh credential-free first-party and general Mac rehearsal at the exact combined source; this implementation receipt is source-authority evidence, not that final freeze gate.",
+      "Create a reviewed immutable release-candidate tag, approve its protected sagejs-signing job, and verify its signing, notarization, acceptance, benchmark, and publication receipts before creating any stable release tag."
+    ]
+  }
+}

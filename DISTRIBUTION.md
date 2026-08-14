@@ -237,7 +237,11 @@ SmartScreen publisher identity for this release. See [`WINDOWS.md`](WINDOWS.md).
 
 1. Push an annotated `vX.Y.Z` tag only after the unsigned commit and signing
    configuration are approved. The tag is the credentialed release trigger.
-   Do not move or overwrite a tag which users may already have consumed.
+   Immediately before pushing it, use maintainer administration-read
+   credentials to require `enabled: true` from GitHub's repository
+   `/immutable-releases` API as documented in [`RELEASING.md`](RELEASING.md).
+   Do not give the workflow an administration token. Do not move or overwrite
+   a tag which users may already have consumed.
 2. Let all four platform jobs finish. The publish job must consume only their
    downloaded artifacts, never a maintainer's local rebuild.
 3. The workflow downloads only the exact final artifact IDs, verifies their
@@ -247,8 +251,10 @@ SmartScreen publisher identity for this release. See [`WINDOWS.md`](WINDOWS.md).
 4. Do not run a competing local `gh release upload` while the tag workflow is
    active. This release does not publish npm packages.
 5. After publication, download from GitHub into clean directories. Compare
-   checksums and executable hashes with the workflow artifacts, then repeat the
-   mathematical and Jupyter smoke tests.
+   checksums and executable hashes with the workflow artifacts, verify the
+   public release reports `immutable: true` and exact asset SHA-256 digests,
+   retain GitHub's release attestation, then repeat the mathematical and
+   Jupyter smoke tests.
 6. Only then update the website or announcement links. Check both pinned URLs
    and `/releases/latest`, and test `install.sh` against the public assets on
    Linux x64, Linux arm64, and Apple Silicon. Windows remains a manual archive
@@ -268,9 +274,10 @@ SmartScreen, antivirus, or signature checks to make a release work.
 
 - For an unpublished candidate, delete only the candidate artifacts and fix the
   source before tagging.
-- For a published GitHub release, mark it clearly as withdrawn, remove unsafe
-  downloadable assets if necessary, and publish a new patch version. Do not
-  silently replace bytes behind an existing checksum or retarget its tag.
+- For a published immutable GitHub release, publish a security advisory or
+  withdrawal notice, remove or redirect website links, and publish a corrected
+  patch version. Its release record, assets, tag, and attestation are immutable;
+  do not plan incident response around deleting or replacing those bytes.
 - npm does not permit replacing a published version. Deprecate the affected
   root and platform versions, move `latest` back to the last known-good root
   version when compatible, and publish a fixed patch. Remember that deleting a

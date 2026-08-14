@@ -13,8 +13,8 @@ permissions:
   contents: read
 
 concurrency:
-  group: sagejs-ci-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  group: sagejs-ci-${{ github.workflow }}-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name != 'push' || github.ref_type != 'tag' }}
 
 jobs:
   release-tag-policy:
@@ -24,27 +24,22 @@ jobs:
       candidate: ${{ steps.policy.outputs.candidate }}
       publish: ${{ steps.policy.outputs.publish }}
     steps:
+      - name: Check out the source that declares the release version
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Install Node.js for version policy
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: 26.7.0
+
       - name: Accept only stable or release-candidate version tags
         id: policy
         env:
+          EVENT_NAME: ${{ github.event_name }}
           REF_NAME: ${{ github.ref_name }}
           REF_TYPE: ${{ github.ref_type }}
         run: |
-          candidate=false
-          publish=false
-          if [[ "$REF_TYPE" == "tag" ]]; then
-            if [[ "$REF_NAME" =~ ^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]]; then
-              candidate=true
-              publish=true
-            elif [[ "$REF_NAME" =~ ^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)-rc\.([1-9][0-9]*)$ ]]; then
-              candidate=true
-            else
-              echo "Unsupported Sage.js tag: $REF_NAME" >&2
-              exit 1
-            fi
-          fi
-          echo "candidate=$candidate" >> "$GITHUB_OUTPUT"
-          echo "publish=$publish" >> "$GITHUB_OUTPUT"
+          node scripts/release-tag-policy.cjs >> "$GITHUB_OUTPUT"
 
   linux-x64:
     name: Linux x64 native, tests, and SEA
@@ -361,6 +356,7 @@ jobs:
       - name: Check out Sage.js and its test corpora
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
+          fetch-depth: 0
           submodules: recursive
 
       - name: Install pnpm
@@ -522,14 +518,12 @@ jobs:
     name: macOS arm64 native, tests, and SEA
     runs-on: blacksmith-6vcpu-macos-15
     timeout-minutes: 120
-    outputs:
-      signing-input-artifact-id: ${{ steps.upload-signing-input.outputs.artifact-id }}
-      signing-input-artifact-digest: ${{ steps.upload-signing-input.outputs.artifact-digest }}
 
     steps:
       - name: Check out Sage.js and its test corpora
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
+          fetch-depth: 0
           submodules: recursive
 
       - name: Install pnpm
@@ -546,7 +540,41 @@ jobs:
       - name: Install native build prerequisites
         run: |
           brew untap aws/tap || true
-          brew install cmake m4 xz
+          brew install autoconf automake cmake libtool m4 ninja xz
+
+      - name: Materialize the exact official Node SEA authority
+        run: |
+          filename=node-v26.7.0-darwin-arm64.tar.xz
+          sha256=595d2f934e081b82961d1a5fd41c6dbd0c5a952d9e8be5b4566ab754426968d2
+          url="https://nodejs.org/dist/v26.7.0/$filename"
+          archive="$RUNNER_TEMP/$filename"
+          destination="$RUNNER_TEMP/official-node-26.7.0"
+          curl --fail --location --proto '=https' --tlsv1.2 \
+            --output "$archive" "$url"
+          printf '%s  %s\n' "$sha256" "$archive" | shasum -a 256 -c -
+          mkdir -p "$destination"
+          tar -xJf "$archive" -C "$destination"
+          sea_node="$destination/node-v26.7.0-darwin-arm64/bin/node"
+          [[ "$(uname -m)" == arm64 ]]
+          [[ -f "$sea_node" && ! -L "$sea_node" && -x "$sea_node" ]]
+          [[ "$("$sea_node" --version)" == v26.7.0 ]]
+          [[ "$(lipo -archs "$sea_node")" == arm64 ]]
+          unexpected_libraries="$(
+            otool -L "$sea_node" | tail -n +2 | awk '{print $1}' |
+              grep -Ev '^(/usr/lib/|/System/Library/)' || true
+          )"
+          [[ -z "$unexpected_libraries" ]] || {
+            echo "Official Node has unexpected dynamic dependencies:" >&2
+            printf '%s\n' "$unexpected_libraries" >&2
+            exit 1
+          }
+          {
+            echo "SAGEJS_SEA_NODE=$sea_node"
+            echo "SAGEJS_SEA_NODE_SOURCE_FILENAME=$filename"
+            echo "SAGEJS_SEA_NODE_SOURCE_SHA256=$sha256"
+            echo "SAGEJS_SEA_NODE_SOURCE_URL=$url"
+            echo "SAGEJS_SEA_NODE_SOURCE_VERSION=26.7.0"
+          } >> "$GITHUB_ENV"
 
       - name: Install the pinned dependency graph
         run: pnpm install --frozen-lockfile
@@ -615,48 +643,19 @@ jobs:
           pnpm run build:zeromq:darwin
           pnpm test:sea
 
-      - name: Stage tested macOS SEA inputs for protected signing
-        if: startsWith(github.ref, 'refs/tags/v')
-        run: |
-          mkdir -p build/signing-input
-          (
-            cd build/sea
-            shasum -a 256 sagejs sagepython > ../signing-input/sea.sha256
-            tar -cf ../signing-input/tested-sea.tar sagejs sagepython
-          )
-          (
-            cd build/signing-input
-            shasum -a 256 tested-sea.tar > tested-sea.tar.sha256
-          )
-
-      - name: Upload tested macOS SEA inputs
-        if: startsWith(github.ref, 'refs/tags/v')
-        id: upload-signing-input
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
-        with:
-          name: sagejs-macos-arm64-tested-sea
-          path: build/signing-input/
-          if-no-files-found: error
-          retention-days: 2
-
-  sign-macos-arm64:
-    name: Sign and notarize macOS arm64 release
-    if: needs.release-tag-policy.outputs.candidate == 'true'
-    needs:
-      - release-tag-policy
-      - macos-arm64
-    runs-on: blacksmith-6vcpu-macos-15
-    timeout-minutes: 30
-    environment: sagejs-signing
-    outputs:
-      release-artifact-id: ${{ steps.upload-release.outputs.artifact-id }}
-      release-artifact-digest: ${{ steps.upload-release.outputs.artifact-digest }}
+  macos-arm64-first-party-rehearsal:
+    name: First-party macOS arm64 release rehearsal
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: macos-15
+    timeout-minutes: 180
     permissions:
       contents: read
 
     steps:
-      - name: Check out the exact tagged Sage.js source
+      - name: Check out the exact rehearsal source
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          submodules: recursive
 
       - name: Install pnpm
         uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6
@@ -668,36 +667,179 @@ jobs:
         with:
           node-version: 26.7.0
 
-      - name: Download the tested macOS SEA inputs
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
-        with:
-          artifact-ids: ${{ needs.macos-arm64.outputs.signing-input-artifact-id }}
-          path: build/signing-input
-          merge-multiple: true
-
-      - name: Verify and restore the exact tested executables
+      - name: Install native build prerequisites
         run: |
-          diff -u \
-            <(printf '%s\n' sea.sha256 tested-sea.tar tested-sea.tar.sha256) \
-            <(find build/signing-input -mindepth 1 -maxdepth 1 -type f \
-              -exec basename {} \; | sort)
-          (
-            cd build/signing-input
-            shasum -a 256 -c tested-sea.tar.sha256
-          )
-          members="$(tar -tf build/signing-input/tested-sea.tar)"
-          [[ "$members" == $'sagejs\nsagepython' ]] || {
-            echo "Unexpected or duplicate tested SEA tar member(s):" >&2
-            printf '%s\n' "$members" >&2
+          brew untap aws/tap || true
+          brew install autoconf automake cmake libtool m4 ninja xz
+
+      - name: Materialize the exact official Node SEA authority
+        run: |
+          filename=node-v26.7.0-darwin-arm64.tar.xz
+          sha256=595d2f934e081b82961d1a5fd41c6dbd0c5a952d9e8be5b4566ab754426968d2
+          url="https://nodejs.org/dist/v26.7.0/$filename"
+          archive="$RUNNER_TEMP/$filename"
+          destination="$RUNNER_TEMP/official-node-26.7.0"
+          curl --fail --location --proto '=https' --tlsv1.2 \
+            --output "$archive" "$url"
+          printf '%s  %s\n' "$sha256" "$archive" | shasum -a 256 -c -
+          mkdir -p "$destination"
+          tar -xJf "$archive" -C "$destination"
+          sea_node="$destination/node-v26.7.0-darwin-arm64/bin/node"
+          [[ "$(uname -m)" == arm64 ]]
+          [[ -f "$sea_node" && ! -L "$sea_node" && -x "$sea_node" ]]
+          [[ "$("$sea_node" --version)" == v26.7.0 ]]
+          [[ "$(lipo -archs "$sea_node")" == arm64 ]]
+          unexpected_libraries="$(
+            otool -L "$sea_node" | tail -n +2 | awk '{print $1}' |
+              grep -Ev '^(/usr/lib/|/System/Library/)' || true
+          )"
+          [[ -z "$unexpected_libraries" ]] || {
+            echo "Official Node has unexpected dynamic dependencies:" >&2
+            printf '%s\n' "$unexpected_libraries" >&2
             exit 1
           }
-          mkdir -p build/sea
-          tar -C build/sea -xf build/signing-input/tested-sea.tar
-          (
-            cd build/sea
-            shasum -a 256 -c ../signing-input/sea.sha256
-          )
-          chmod 0755 build/sea/sagejs build/sea/sagepython
+          {
+            echo "SAGEJS_SEA_NODE=$sea_node"
+            echo "SAGEJS_SEA_NODE_SOURCE_FILENAME=$filename"
+            echo "SAGEJS_SEA_NODE_SOURCE_SHA256=$sha256"
+            echo "SAGEJS_SEA_NODE_SOURCE_URL=$url"
+            echo "SAGEJS_SEA_NODE_SOURCE_VERSION=26.7.0"
+          } >> "$GITHUB_ENV"
+
+      - name: Install the pinned dependency graph
+        run: pnpm install --frozen-lockfile
+
+      - name: Build and package a credential-free candidate
+        env:
+          SAGEJS_BUILD_JOBS: "3"
+        run: |
+          [[ "$(git rev-parse 'HEAD^{commit}')" == "$GITHUB_SHA" ]] || exit 1
+          df -h .
+          pnpm run build:zeromq:darwin
+          pnpm test:sea
+          pnpm release:macos --unsigned --skip-build
+          node - <<'NODE'
+          const { preflightArchive } = require("./scripts/release-artifact-acceptance.cjs");
+          const members = preflightArchive(
+            "build/release/sagejs-macos-arm64.zip",
+            "macos-arm64",
+          );
+          console.log(`Accepted production ZIP structure with ${members.length} members.`);
+          NODE
+          df -h .
+
+      - name: Upload the non-publishable rehearsal evidence
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: sagejs-macos-arm64-first-party-rehearsal
+          path: |
+            build/release/sagejs-macos-arm64.zip
+            build/release/sagejs-macos-arm64.zip.sha256
+            build/release/sagejs-macos-arm64-benchmark.json
+            build/release/sagejs-macos-arm64-benchmark.json.sha256
+          if-no-files-found: error
+          retention-days: 2
+
+  sign-macos-arm64:
+    name: Sign and notarize macOS arm64 release
+    if: needs.release-tag-policy.outputs.candidate == 'true'
+    needs:
+      - release-tag-policy
+      - macos-arm64
+    runs-on: macos-15
+    timeout-minutes: 180
+    environment: sagejs-signing
+    outputs:
+      release-artifact-id: ${{ steps.upload-release.outputs.artifact-id }}
+      release-artifact-digest: ${{ steps.upload-release.outputs.artifact-digest }}
+    permissions:
+      contents: read
+
+    steps:
+      - name: Check out the exact tagged Sage.js source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          submodules: recursive
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6
+        with:
+          version: 11.9.0
+
+      - name: Install Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: 26.7.0
+
+      - name: Bind protected signing to the exact tag and package version
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          [[ "$GITHUB_REF_TYPE" == tag ]] || {
+            echo "Protected macOS signing requires a tag event" >&2
+            exit 1
+          }
+          commit="$(git rev-parse 'HEAD^{commit}')"
+          tag_commit="$(git rev-parse "$GITHUB_REF^{commit}")"
+          [[ "$commit" == "$GITHUB_SHA" && "$tag_commit" == "$GITHUB_SHA" ]] || {
+            echo "Protected macOS checkout, tag, and workflow source differ" >&2
+            exit 1
+          }
+          release_tag="${TAG%-rc.*}"
+          node scripts/check-release.cjs --tag "$release_tag"
+
+      - name: Install native build prerequisites on the trusted runner
+        run: |
+          brew untap aws/tap || true
+          brew install autoconf automake cmake libtool m4 ninja xz
+
+      - name: Materialize the exact official Node SEA authority
+        run: |
+          filename=node-v26.7.0-darwin-arm64.tar.xz
+          sha256=595d2f934e081b82961d1a5fd41c6dbd0c5a952d9e8be5b4566ab754426968d2
+          url="https://nodejs.org/dist/v26.7.0/$filename"
+          archive="$RUNNER_TEMP/$filename"
+          destination="$RUNNER_TEMP/official-node-26.7.0"
+          curl --fail --location --proto '=https' --tlsv1.2 \
+            --output "$archive" "$url"
+          printf '%s  %s\n' "$sha256" "$archive" | shasum -a 256 -c -
+          mkdir -p "$destination"
+          tar -xJf "$archive" -C "$destination"
+          sea_node="$destination/node-v26.7.0-darwin-arm64/bin/node"
+          [[ "$(uname -m)" == arm64 ]]
+          [[ -f "$sea_node" && ! -L "$sea_node" && -x "$sea_node" ]]
+          [[ "$("$sea_node" --version)" == v26.7.0 ]]
+          [[ "$(lipo -archs "$sea_node")" == arm64 ]]
+          unexpected_libraries="$(
+            otool -L "$sea_node" | tail -n +2 | awk '{print $1}' |
+              grep -Ev '^(/usr/lib/|/System/Library/)' || true
+          )"
+          [[ -z "$unexpected_libraries" ]] || {
+            echo "Official Node has unexpected dynamic dependencies:" >&2
+            printf '%s\n' "$unexpected_libraries" >&2
+            exit 1
+          }
+          {
+            echo "SAGEJS_SEA_NODE=$sea_node"
+            echo "SAGEJS_SEA_NODE_SOURCE_FILENAME=$filename"
+            echo "SAGEJS_SEA_NODE_SOURCE_SHA256=$sha256"
+            echo "SAGEJS_SEA_NODE_SOURCE_URL=$url"
+            echo "SAGEJS_SEA_NODE_SOURCE_VERSION=26.7.0"
+          } >> "$GITHUB_ENV"
+
+      - name: Install the pinned dependency graph
+        run: pnpm install --frozen-lockfile
+
+      - name: Build and test the exact to-be-signed SEA bytes
+        env:
+          SAGEJS_BUILD_JOBS: "3"
+        run: |
+          [[ "$(git rev-parse 'HEAD^{commit}')" == "$GITHUB_SHA" ]] || {
+            echo "Protected macOS build checkout differs from $GITHUB_SHA" >&2
+            exit 1
+          }
+          pnpm run build:zeromq:darwin
+          pnpm test:sea
 
       - name: Import Apple release credentials
         id: apple-credentials
@@ -735,6 +877,21 @@ jobs:
             -k "$keychain_password" "$keychain"
           security list-keychains -d user -s "$keychain"
           security default-keychain -d user -s "$keychain"
+          application_identity='Developer ID Application: William STEIN (BVF94G2MB4)'
+          installer_identity='Developer ID Installer: William STEIN (BVF94G2MB4)'
+          identities="$(security find-identity -v "$keychain")"
+          grep -Fq -- "$application_identity" <<< "$identities" || {
+            echo "P12 does not contain the required Developer ID Application identity" >&2
+            exit 1
+          }
+          grep -Fq -- "$installer_identity" <<< "$identities" || {
+            echo "P12 does not contain the required Developer ID Installer identity" >&2
+            exit 1
+          }
+          {
+            echo "SAGEJS_MACOS_SIGN_ID=$application_identity"
+            echo "SAGEJS_MACOS_INSTALLER_ID=$installer_identity"
+          } >> "$GITHUB_ENV"
           xcrun notarytool store-credentials sagejs-ci-notary \
             --key "$api_key" \
             --key-id "$APPLE_NOTARY_KEY_ID" \
@@ -742,10 +899,8 @@ jobs:
 
       - name: Sign, notarize, and package macOS arm64
         env:
-          SAGEJS_MACOS_SIGN_ID: ${{ secrets.SAGEJS_MACOS_SIGN_ID }}
-          SAGEJS_MACOS_INSTALLER_ID: ${{ secrets.SAGEJS_MACOS_INSTALLER_ID }}
           SAGEJS_MACOS_NOTARY_PROFILE: sagejs-ci-notary
-        run: pnpm release:macos -- --skip-build
+        run: pnpm release:macos --skip-build
 
       - name: Remove temporary Apple signing material
         if: always() && steps.apple-credentials.outputs.keychain != ''
@@ -756,6 +911,28 @@ jobs:
         run: |
           security delete-keychain "$KEYCHAIN" || true
           rm -f "$CERTIFICATE" "$API_KEY"
+
+      - name: Accept the exact signed and notarized macOS candidate
+        run: |
+          version="$(node -p 'require("./package.json").version')"
+          commit="$(git rev-parse 'HEAD^{commit}')"
+          [[ "$commit" == "$GITHUB_SHA" ]] || {
+            echo "macOS acceptance checkout differs from $GITHUB_SHA" >&2
+            exit 1
+          }
+          node scripts/release-artifact-acceptance.cjs \
+            --target macos-arm64 \
+            --archive build/release/sagejs-macos-arm64.zip \
+            --checksum build/release/sagejs-macos-arm64.zip.sha256 \
+            --package build/release/sagejs-macos-arm64.pkg \
+            --package-checksum build/release/sagejs-macos-arm64.pkg.sha256 \
+            --benchmark build/release/sagejs-macos-arm64-benchmark.json \
+            --benchmark-checksum build/release/sagejs-macos-arm64-benchmark.json.sha256 \
+            --output build/release/sagejs-macos-arm64-acceptance.json \
+            --expected-version "$version" \
+            --expected-commit "$commit" \
+            --signature apple-developer-id \
+            --maximum-macos 13.5
 
       - name: Upload signed macOS arm64 artifacts
         id: upload-release
@@ -769,6 +946,8 @@ jobs:
             build/release/sagejs-macos-arm64.pkg.sha256
             build/release/sagejs-macos-arm64-benchmark.json
             build/release/sagejs-macos-arm64-benchmark.json.sha256
+            build/release/sagejs-macos-arm64-acceptance.json
+            build/release/sagejs-macos-arm64-acceptance.json.sha256
           if-no-files-found: error
           retention-days: 14
 
@@ -854,10 +1033,13 @@ jobs:
         env:
           TAG: ${{ github.ref_name }}
         run: |
-          cat > publication/release-notes.md <<EOF
-          # Sage.js ${TAG}
-
-          This hardened, provenance-tracked Sage.js ${TAG} release provides open,
+          [[ "$TAG" =~ ^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]] || {
+            echo "Stable release notes require a stable version tag: $TAG" >&2
+            exit 1
+          }
+          printf '# Sage.js %s\n\n' "$TAG" > publication/release-notes.md
+          cat >> publication/release-notes.md <<'EOF'
+          This hardened, provenance-tracked Sage.js release provides open,
           portable, high-performance software for research mathematics. It
           contains the latest exact arithmetic, polynomial, matrix, graph,
           number-theory, compiler, and Sage-compatible runtime work from the
@@ -908,3 +1090,48 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           TAG: ${{ github.ref_name }}
         run: gh release edit "$TAG" --draft=false --latest
+
+      - name: Verify the immutable public release and every asset digest
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          release_json="$RUNNER_TEMP/sagejs-published-release.json"
+          latest_json="$RUNNER_TEMP/sagejs-latest-release.json"
+          gh api \
+            -H 'Accept: application/vnd.github+json' \
+            -H 'X-GitHub-Api-Version: 2026-03-10' \
+            "repos/$GITHUB_REPOSITORY/releases/tags/$TAG" > "$release_json"
+          gh api \
+            -H 'Accept: application/vnd.github+json' \
+            -H 'X-GitHub-Api-Version: 2026-03-10' \
+            "repos/$GITHUB_REPOSITORY/releases/latest" > "$latest_json"
+          node - publication/assets "$TAG" "$release_json" "$latest_json" <<'NODE'
+          const assert = require("node:assert/strict");
+          const { createHash } = require("node:crypto");
+          const { readFileSync, readdirSync, statSync } = require("node:fs");
+          const { join } = require("node:path");
+          const directory = process.argv[2];
+          const tag = process.argv[3];
+          const release = JSON.parse(readFileSync(process.argv[4], "utf8"));
+          const latest = JSON.parse(readFileSync(process.argv[5], "utf8"));
+          assert.equal(release.tag_name, tag);
+          assert.equal(release.draft, false);
+          assert.equal(release.prerelease, false);
+          assert.equal(release.immutable, true);
+          assert.equal(latest.tag_name, tag, "published release is not GitHub latest");
+          const local = readdirSync(directory).sort();
+          const remote = [...release.assets].sort((left, right) =>
+            left.name.localeCompare(right.name),
+          );
+          assert.deepEqual(remote.map(({ name }) => name), local);
+          for (const asset of remote) {
+            const filename = join(directory, asset.name);
+            const digest = createHash("sha256")
+              .update(readFileSync(filename))
+              .digest("hex");
+            assert.equal(asset.state, "uploaded", `${asset.name} upload state`);
+            assert.equal(asset.size, statSync(filename).size, `${asset.name} size`);
+            assert.equal(asset.digest, `sha256:${digest}`, `${asset.name} digest`);
+          }
+          NODE

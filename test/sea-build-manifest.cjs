@@ -60,6 +60,18 @@ test("SEA Node source provenance is canonical and fail-closed", () => {
     url: source.SAGEJS_SEA_NODE_SOURCE_URL,
     version: source.SAGEJS_SEA_NODE_SOURCE_VERSION,
   });
+  const distribution = {
+    ...source,
+    SAGEJS_SEA_NODE_SOURCE_FILENAME: "node-v26.7.0-darwin-arm64.tar.xz",
+    SAGEJS_SEA_NODE_SOURCE_URL:
+      "https://nodejs.org/dist/v26.7.0/node-v26.7.0-darwin-arm64.tar.xz",
+  };
+  assert.deepEqual(seaNodeSourceFromEnvironment(distribution), {
+    filename: distribution.SAGEJS_SEA_NODE_SOURCE_FILENAME,
+    sha256: distribution.SAGEJS_SEA_NODE_SOURCE_SHA256,
+    url: distribution.SAGEJS_SEA_NODE_SOURCE_URL,
+    version: distribution.SAGEJS_SEA_NODE_SOURCE_VERSION,
+  });
   assert.equal(seaNodeSourceFromEnvironment({}), null);
   assert.throws(
     () => seaNodeSourceFromEnvironment({
@@ -73,6 +85,15 @@ test("SEA Node source provenance is canonical and fail-closed", () => {
       SAGEJS_SEA_NODE_SOURCE_URL: "https://example.invalid/node.tar.xz",
     }),
     /Expected values to be strictly equal/,
+  );
+  assert.throws(
+    () => seaNodeSourceFromEnvironment({
+      ...source,
+      SAGEJS_SEA_NODE_SOURCE_FILENAME: "../node-v26.7.0.tar.xz",
+      SAGEJS_SEA_NODE_SOURCE_URL:
+        "https://nodejs.org/dist/v26.7.0/../node-v26.7.0.tar.xz",
+    }),
+    /not an official source or distribution archive/,
   );
 });
 

@@ -4,6 +4,9 @@ const assert = require("node:assert/strict");
 const { readFileSync } = require("node:fs");
 const { resolve } = require("node:path");
 const test = require("node:test");
+const {
+  classifyReleaseEvent,
+} = require("../scripts/release-tag-policy.cjs");
 
 const workflow = readFileSync(
   resolve(__dirname, "../.github/workflows/ci.yml"),
@@ -30,13 +33,79 @@ test("stable and release-candidate tags have distinct irreversible authority", (
   const policy = job("release-tag-policy");
   const macosSign = job("sign-macos-arm64");
   const publish = job("publish-release");
-  assert.match(policy, /-rc\\\.\(\[1-9\]\[0-9\]\*\)/);
-  assert.match(policy, /candidate=true/);
-  assert.match(policy, /publish=true/);
+  assert.match(policy, /EVENT_NAME: \$\{\{ github\.event_name \}\}/);
+  assert.match(policy, /node scripts\/release-tag-policy\.cjs >> "\$GITHUB_OUTPUT"/);
   assert.match(macosSign, /needs\.release-tag-policy\.outputs\.candidate == 'true'/);
   assert.match(publish, /needs\.release-tag-policy\.outputs\.publish == 'true'/);
   assert.match(publish, /environment: sagejs-release/);
   assert.doesNotMatch(macosSign, /needs\.release-tag-policy\.outputs\.publish/);
+  assert.match(
+    workflow,
+    /group: sagejs-ci-\$\{\{ github\.workflow \}\}-\$\{\{ github\.event_name \}\}-\$\{\{ github\.ref \}\}/,
+  );
+  assert.match(
+    workflow,
+    /cancel-in-progress: \$\{\{ github\.event_name != 'push' \|\| github\.ref_type != 'tag' \}\}/,
+  );
+});
+
+test("manual dispatch can never acquire release authority, even from a version tag", () => {
+  for (const refName of ["v0.2.0", "v0.2.0-rc.1"]) {
+    assert.deepEqual(
+      classifyReleaseEvent({
+        eventName: "workflow_dispatch",
+        refName,
+        refType: "tag",
+        releaseVersion: "0.2.0",
+      }),
+      { candidate: false, publish: false },
+    );
+  }
+  assert.deepEqual(
+    classifyReleaseEvent({
+      eventName: "push",
+      refName: "v0.2.0-rc.1",
+      refType: "tag",
+      releaseVersion: "0.2.0",
+    }),
+    { candidate: true, publish: false },
+  );
+  assert.deepEqual(
+    classifyReleaseEvent({
+      eventName: "push",
+      refName: "v0.2.0",
+      refType: "tag",
+      releaseVersion: "0.2.0",
+    }),
+    { candidate: true, publish: true },
+  );
+  assert.deepEqual(
+    classifyReleaseEvent({
+      eventName: "push",
+      refName: "main",
+      refType: "branch",
+      releaseVersion: "0.2.0",
+    }),
+    { candidate: false, publish: false },
+  );
+  assert.throws(
+    () => classifyReleaseEvent({
+      eventName: "push",
+      refName: "v0.2.0-rc.0",
+      refType: "tag",
+      releaseVersion: "0.2.0",
+    }),
+    /unsupported Sage\.js tag/,
+  );
+  assert.throws(
+    () => classifyReleaseEvent({
+      eventName: "push",
+      refName: "v0.2.1",
+      refType: "tag",
+      releaseVersion: "0.2.0",
+    }),
+    /unsupported Sage\.js tag/,
+  );
 });
 
 test("platform builders never receive signing or publication credentials", () => {
@@ -44,6 +113,12 @@ test("platform builders never receive signing or publication credentials", () =>
     const source = job(name);
     assert.doesNotMatch(source, /environment:\s+sagejs-(?:signing|release)/);
     assert.doesNotMatch(source, /\bsecrets\./);
+  }
+});
+
+test("platform test builders check out complete release history", () => {
+  for (const name of ["linux-x64", "linux-arm64", "windows-x64", "macos-arm64"]) {
+    assert.match(job(name), /fetch-depth: 0/);
   }
 });
 
@@ -86,22 +161,70 @@ test("Windows is deliberately unsigned and bypasses the signing environment", ()
   assert.doesNotMatch(workflow, /SAGEJS_WINDOWS_CERTIFICATE|artifact-signing-action|azure\/login/);
 });
 
-test("macOS signs the exact immutable tested input and notarizes it", () => {
+test("macOS builds trusted exact bytes before signing and notarization", () => {
   const macosBuild = job("macos-arm64");
+  const rehearsal = job("macos-arm64-first-party-rehearsal");
   const macosSign = job("sign-macos-arm64");
-  assert.match(macosBuild, /pnpm run build:zeromq:darwin/);
-  assert.match(macosBuild, /pnpm test:sea/);
-  assert.match(macosBuild, /id: upload-signing-input/);
-  assert.match(macosBuild, /signing-input-artifact-id:/);
+  assert.match(macosBuild, /runs-on: blacksmith-6vcpu-macos-15/);
+  assert.match(macosSign, /runs-on: macos-15/);
+  assert.doesNotMatch(macosSign, /runs-on: blacksmith-/);
+  assert.match(macosSign, /timeout-minutes: 180/);
+  for (const tool of ["autoconf", "automake", "cmake", "libtool", "m4", "ninja", "xz"]) {
+    assert.match(macosBuild, new RegExp(`brew install [^\\n]*\\b${tool}\\b`));
+    assert.match(macosSign, new RegExp(`brew install [^\\n]*\\b${tool}\\b`));
+  }
+  for (const source of [macosBuild, rehearsal, macosSign]) {
+    assert.match(source, /Materialize the exact official Node SEA authority/);
+    assert.match(source, /filename=node-v26\.7\.0-darwin-arm64\.tar\.xz/);
+    assert.match(source, /sha256=595d2f934e081b82961d1a5fd41c6dbd0c5a952d9e8be5b4566ab754426968d2/);
+    assert.match(source, /url="https:\/\/nodejs\.org\/dist\/v26\.7\.0\/\$filename"/);
+    assert.match(source, /curl --fail --location --proto '=https' --tlsv1\.2/);
+    assert.match(source, /shasum -a 256 -c -/);
+    assert.match(source, /sea_node="\$destination\/node-v26\.7\.0-darwin-arm64\/bin\/node"/);
+    assert.match(source, /"\$\(uname -m\)" == arm64/);
+    assert.match(source, /! -L "\$sea_node"/);
+    assert.match(source, /lipo -archs "\$sea_node"/);
+    assert.match(source, /otool -L "\$sea_node"/);
+    assert.match(source, /echo "SAGEJS_SEA_NODE=\$sea_node"/);
+    assert.match(source, /echo "SAGEJS_SEA_NODE_SOURCE_SHA256=\$sha256"/);
+    assert.match(source, />> "\$GITHUB_ENV"/);
+    assert.match(source, /pnpm run build:zeromq:darwin/);
+    assert.match(source, /pnpm test:sea/);
+    assert.ok(
+      source.indexOf("Materialize the exact official Node SEA authority") <
+        source.indexOf("pnpm test:sea"),
+      "the verified official SEA Node must be selected before SEA assembly",
+    );
+  }
+  assert.doesNotMatch(macosBuild, /upload-signing-input|tested-sea/);
   assert.match(macosSign, /environment: sagejs-signing/);
-  assert.match(
-    macosSign,
-    /artifact-ids: \$\{\{ needs\.macos-arm64\.outputs\.signing-input-artifact-id \}\}/,
+  assert.match(macosSign, /submodules: recursive/);
+  assert.match(macosSign, /pnpm install --frozen-lockfile/);
+  assert.match(macosSign, /Bind protected signing to the exact tag and package version/);
+  assert.match(macosSign, /"\$GITHUB_REF_TYPE" == tag/);
+  assert.match(macosSign, /tag_commit="\$\(git rev-parse "\$GITHUB_REF\^\{commit\}"\)"/);
+  assert.match(macosSign, /"\$commit" == "\$GITHUB_SHA"/);
+  assert.match(macosSign, /"\$tag_commit" == "\$GITHUB_SHA"/);
+  assert.match(macosSign, /release_tag="\$\{TAG%-rc\.\*\}"/);
+  assert.match(macosSign, /scripts\/check-release\.cjs --tag "\$release_tag"/);
+  assert.match(macosSign, /Build and test the exact to-be-signed SEA bytes/);
+  assert.match(macosSign, /Protected macOS build checkout differs/);
+  assert.match(macosSign, /pnpm run build:zeromq:darwin/);
+  assert.match(macosSign, /pnpm test:sea/);
+  assert.doesNotMatch(macosSign, /download-artifact|tested-sea|signing-input/);
+  assert.ok(
+    macosSign.indexOf("Build and test the exact to-be-signed SEA bytes") <
+      macosSign.indexOf("Import Apple release credentials"),
+    "the trusted build must complete before any Apple secret is imported",
   );
-  assert.match(macosSign, /shasum -a 256 -c tested-sea\.tar\.sha256/);
-  assert.match(macosSign, /\$'sagejs\\nsagepython'/);
-  assert.match(macosSign, /Unexpected or duplicate tested SEA tar member/);
-  assert.match(macosSign, /pnpm release:macos -- --skip-build/);
+  assert.match(macosSign, /pnpm release:macos --skip-build/);
+  assert.doesNotMatch(macosSign, /pnpm release:macos -- --/);
+  assert.match(macosSign, /scripts\/release-artifact-acceptance\.cjs/);
+  assert.match(macosSign, /--target macos-arm64/);
+  assert.match(macosSign, /--signature apple-developer-id/);
+  assert.match(macosSign, /--maximum-macos 13\.5/);
+  assert.match(macosSign, /sagejs-macos-arm64-acceptance\.json/);
+  assert.match(macosSign, /sagejs-macos-arm64-acceptance\.json\.sha256/);
   assert.match(macosSign, /id: upload-release/);
   assert.match(macosSign, /release-artifact-digest:/);
   for (const secret of [
@@ -114,6 +237,12 @@ test("macOS signs the exact immutable tested input and notarizes it", () => {
     assert.equal(workflow.split(`secrets.${secret}`).length - 1, 1);
     assert.match(macosSign, new RegExp(`secrets\\.${secret}`));
   }
+  assert.doesNotMatch(macosSign, /secrets\.SAGEJS_MACOS_(?:SIGN|INSTALLER)_ID/);
+  assert.match(macosSign, /Developer ID Application: William STEIN \(BVF94G2MB4\)/);
+  assert.match(macosSign, /Developer ID Installer: William STEIN \(BVF94G2MB4\)/);
+  assert.match(macosSign, /security find-identity -v "\$keychain"/);
+  assert.match(macosSign, /P12 does not contain the required Developer ID Application identity/);
+  assert.match(macosSign, /P12 does not contain the required Developer ID Installer identity/);
 });
 
 test("publication downloads only the four exact final artifact IDs", () => {
@@ -148,7 +277,28 @@ test("stable publication is GitHub-only, explicit, immutable, and fail-closed", 
   assert.match(publish, /refusing to replace immutable assets/);
   assert.doesNotMatch(publish, /--clobber|--generate-notes/);
   assert.match(publish, /--draft=false --latest/);
+  assert.match(publish, /X-GitHub-Api-Version: 2026-03-10/);
+  assert.match(publish, /release\.immutable, true/);
+  assert.match(publish, /repos\/\$GITHUB_REPOSITORY\/releases\/latest/);
+  assert.match(publish, /latest\.tag_name, tag/);
+  assert.match(publish, /asset\.digest, `sha256:\$\{digest\}`/);
+  assert.match(publish, /remote\.map\(\(\{ name \}\) => name\), local/);
   assert.doesNotMatch(publish, /pnpm publish|npm publish|NPM_TOKEN|NODE_AUTH_TOKEN/);
+  assert.match(
+    publish,
+    /\[\[ "\$TAG" =~ \^v\(0\|\[1-9\]\[0-9\]\*\)\\\./,
+  );
+  assert.match(
+    publish,
+    /printf '# Sage\.js %s\\n\\n' "\$TAG" > publication\/release-notes\.md/,
+  );
+  assert.match(
+    publish,
+    /cat >> publication\/release-notes\.md <<'EOF'/,
+  );
+  assert.doesNotMatch(publish, /release-notes\.md <<EOF/);
+  assert.match(publish, /native-mathematics `sagejs`/);
+  assert.match(publish, /adjacent `\.sha256` files/);
 });
 
 test("every action that can influence release bytes is immutable", () => {
