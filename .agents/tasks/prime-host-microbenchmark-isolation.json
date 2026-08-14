@@ -1,0 +1,45 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "prime-host-microbenchmark-isolation",
+  "title": "Separate fixed host microbenchmarks from correctness",
+  "lane": "integration",
+  "status": "active",
+  "owner": "user",
+  "objective": "Keep prime matrix correctness unconditional while moving fixed absolute host microbenchmarks to an explicit continuously runnable command",
+  "base_commit": "e1761830c8a809d79ce7e08e15ca4ff98d7a1a8a",
+  "claims": [
+    "test/dense-prime-host-boundary.cjs",
+    "test/prime-matrix-serialization.cjs",
+    "test/prime-host-microbenchmark-gates.cjs",
+    "test/node-test-manifest.cjs",
+    "bench/prime-host-boundaries.cjs"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "not-applicable",
+    "fallback": "not-applicable",
+    "oracles": [
+      "Unconditional Sage/Python semantic assertions plus explicit fixed-host benchmark execution"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm architecture:check",
+    "pnpm test:portable",
+    "pnpm test:baselib:strict"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "",
+    "risks": [],
+    "next_steps": []
+  }
+}

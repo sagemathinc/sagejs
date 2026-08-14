@@ -11,6 +11,8 @@ const test = require("node:test");
 
 const root = resolve(__dirname, "..");
 const serialization = require("../dist/tools/serialization.js");
+const fixedHostMicrobenchmarksEnabled =
+  process.env.SAGEJS_RUN_FIXED_HOST_MICROBENCHMARKS === "1";
 
 function runSage(source) {
   const directory = mkdtempSync(join(tmpdir(), "sagejs-prime-sagepack-"));
@@ -223,8 +225,15 @@ test("custom codecs may still claim ordinary plain objects", () => {
   }
 });
 
-test("dense prime SagePack warm paths retain bulk performance", () => {
-  const fields = runSage(String.raw`
+test(
+  "dense prime SagePack warm paths retain bulk performance",
+  {
+    skip: fixedHostMicrobenchmarksEnabled
+      ? false
+      : "run node bench/prime-host-boundaries.cjs for fixed-host microbenchmarks",
+  },
+  () => {
+    const fields = runSage(String.raw`
 import sagejs.runtime as runtime
 from sagejs_serialization import dumps, loads
 
@@ -254,12 +263,25 @@ assert restored == source
 assert len(unpacked) == 500 * 500
 print(pack_time, unpack_time, serialize_time, deserialize_time)
 `)
-    .split(/\s+/)
-    .map(Number);
-  assert.equal(fields.length, 4);
-  const [pack, unpack, serialize, deserialize] = fields;
-  assert.ok(pack < 5, `uint64 pack took ${pack.toFixed(2)} ms`);
-  assert.ok(unpack < 5, `uint64 unpack took ${unpack.toFixed(2)} ms`);
-  assert.ok(serialize < 8, `SagePack serialization took ${serialize.toFixed(2)} ms`);
-  assert.ok(deserialize < 8, `SagePack deserialization took ${deserialize.toFixed(2)} ms`);
-});
+      .split(/\s+/)
+      .map(Number);
+    assert.equal(fields.length, 4);
+    const [pack, unpack, serialize, deserialize] = fields;
+    console.log(
+      JSON.stringify({
+        benchmark: "dense-prime-sagepack",
+        milliseconds: { pack, unpack, serialize, deserialize },
+      }),
+    );
+    assert.ok(pack < 5, `uint64 pack took ${pack.toFixed(2)} ms`);
+    assert.ok(unpack < 5, `uint64 unpack took ${unpack.toFixed(2)} ms`);
+    assert.ok(
+      serialize < 8,
+      `SagePack serialization took ${serialize.toFixed(2)} ms`,
+    );
+    assert.ok(
+      deserialize < 8,
+      `SagePack deserialization took ${deserialize.toFixed(2)} ms`,
+    );
+  },
+);
