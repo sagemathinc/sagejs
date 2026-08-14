@@ -519,7 +519,7 @@ function buildZeroMQDarwin(options = {}) {
       stdio: "inherit",
     });
     resolvedLinkedPackages(
-      readFileSync(findVcpkgStatus(target), "utf8"),
+      readFileSync(findVcpkgStatus(staging), "utf8"),
       `${arch}-osx`,
     );
     const builtAddon = findAddon(target);
