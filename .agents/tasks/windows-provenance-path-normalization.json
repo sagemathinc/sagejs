@@ -92,8 +92,7 @@
       "The recorded real Windows native-kernel run fails the pre-existing byte-reproducibility assertion near line 2433 because relocated PE output differs in timestamp/GUID/PDB/junction bytes; this is downstream of the passing provenance checks and is assigned to a separate lane."
     ],
     "next_steps": [
-      "Integrate ef46a3d33c65597a4a80f33c69ed22bee4824809 and 4f16a063899b5c953dadfe6ff6aa101dc79bcdbb in order after exact closure review.",
-      "Let the active /root/release_shared_test_drift agent's new windows-native-kernel-reproducibility task claim test/native-kernel.cjs after integration and resolve the Windows PE byte-reproducibility failure independently."
+      "Rebase the dedicated windows-native-kernel-reproducibility task on the closed integration checkpoint and resolve the downstream Windows PE byte-reproducibility failure independently."
     ]
   }
 }
