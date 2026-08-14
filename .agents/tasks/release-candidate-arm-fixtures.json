@@ -73,6 +73,56 @@
       "commit": "877ddf2a48e65a7c5d929345ef35091327192c04",
       "workspace_fingerprint": "b77f1a8a98977655286065f8174ff3f479b1bce5fa204969bbe562cbabbc0dac",
       "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/release-candidate-linux.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.588,
+      "started_at": "2026-08-14T13:41:43.276Z",
+      "commit": "b657627c278f028a62bc9d8d2a8e663e667bfb9c",
+      "workspace_fingerprint": "73b8d88bfeac01d61a997b5c7970d9ca2cebdd5cd82602e3a72379084a699949",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "ssh bench-arm cd /home/user/sagejs-worktrees/release-candidate-arm-fixtures && /home/user/node-official-26.7.0.Q6DufW/node-v26.7.0-linux-arm64/bin/node --test test/release-candidate-linux.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.437,
+      "started_at": "2026-08-14T13:41:59.736Z",
+      "commit": "b657627c278f028a62bc9d8d2a8e663e667bfb9c",
+      "workspace_fingerprint": "73b8d88bfeac01d61a997b5c7970d9ca2cebdd5cd82602e3a72379084a699949",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 5.678,
+      "started_at": "2026-08-14T13:42:08.050Z",
+      "commit": "b657627c278f028a62bc9d8d2a8e663e667bfb9c",
+      "workspace_fingerprint": "73b8d88bfeac01d61a997b5c7970d9ca2cebdd5cd82602e3a72379084a699949",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 15.373,
+      "started_at": "2026-08-14T13:42:17.555Z",
+      "commit": "b657627c278f028a62bc9d8d2a8e663e667bfb9c",
+      "workspace_fingerprint": "73b8d88bfeac01d61a997b5c7970d9ca2cebdd5cd82602e3a72379084a699949",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 22.194,
+      "started_at": "2026-08-14T13:42:38.069Z",
+      "commit": "b657627c278f028a62bc9d8d2a8e663e667bfb9c",
+      "workspace_fingerprint": "73b8d88bfeac01d61a997b5c7970d9ca2cebdd5cd82602e3a72379084a699949",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {

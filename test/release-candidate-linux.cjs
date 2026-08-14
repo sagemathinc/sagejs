@@ -73,11 +73,10 @@ function normalizeArchiveFixtureTimes(directory) {
   for (const entry of readdirSync(directory, { withFileTypes: true })) {
     const filename = join(directory, entry.name);
     if (entry.isDirectory()) normalizeArchiveFixtureTimes(filename);
-    else {
-      assert.equal(entry.isFile(), true, `unsupported fixture entry ${filename}`);
-    }
+    else if (!entry.isFile()) throw new Error(`unsupported fixture entry ${filename}`);
     utimesSync(filename, 0, 0);
   }
+  chmodSync(directory, 0o755);
   utimesSync(directory, 0, 0);
 }
 
@@ -107,7 +106,10 @@ function writeBsdTarFixture({ archive, distributionName, stagingDirectory }) {
     { cwd: __dirname, encoding: "utf8", env: fixedEnvironment() },
   );
   if (result.error) throw result.error;
-  assert.equal(result.status, 0, result.stderr || result.stdout);
+  if (result.status !== 0) {
+    const diagnostic = (result.stderr || result.stdout || "no diagnostic").slice(0, 4096);
+    throw new Error(`BSD tar fixture failed with status ${result.status}: ${diagnostic}`);
+  }
 }
 
 function fixturePackagingInternals(overrides = {}) {
@@ -410,7 +412,11 @@ test("Linux release archive is deterministic and installer-compatible", () => {
     process.env.TAR_OPTIONS = "--exclude=LICENSE";
     process.env.XZ_OPT = "-9";
     const second = packageReleaseCandidate(options, packagingInternals);
-    assert.deepEqual(readFileSync(second.archive), firstBytes);
+    assert.equal(
+      readFileSync(second.archive).equals(firstBytes),
+      true,
+      "deterministic archive bytes changed between equivalent builds",
+    );
     assert.equal(readFileSync(second.archiveChecksum, "utf8"), firstChecksum);
     assert.match(firstChecksum, /^[0-9a-f]{64}  /);
     assert.equal(firstChecksum.slice(66), `${FIXTURE.archiveName}\n`);
