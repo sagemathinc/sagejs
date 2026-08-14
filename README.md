@@ -20,31 +20,37 @@ The [implementation dashboard](https://sagemathinc.github.io/sagejs/) is the
 living map of what Sage.js provides, how strongly each capability is tested,
 and what is prioritized next.
 
-## Download a standalone executable
+## Standalone release status
 
-The [latest GitHub release](https://github.com/sagemathinc/sagejs/releases/latest)
-contains ready-to-run archives for Linux x64, Linux arm64, Windows x64, and
-Apple Silicon macOS. On macOS and Linux, the checksum-verifying installer is:
+Native v0.2.0 binaries are imminent, but they are **not yet published**. The
+[latest published GitHub release](https://github.com/sagemathinc/sagejs/releases/latest)
+is the older v0.1.1 native preview; it predates the v0.2.0 release contract and
+does not contain the checksum-verifying `install.sh` described by the current
+source. Build the complete system from source below, or use the separate
+published npm v0.1.0 preview, until v0.2.0 is announced.
 
-```sh
-curl -fsSL https://github.com/sagemathinc/sagejs/releases/latest/download/install.sh | sh
-```
+The planned v0.2.0 release has ready-to-run archives for Linux x64, Linux
+arm64, Windows x64, and Apple Silicon macOS. Its macOS/Linux installer will
+verify checksums and install into `~/.local/bin` by default, with
+`SAGEJS_INSTALL_DIR` selecting another directory. The archives include both
+`sagejs`, with the native mathematics stack, and `sagepython`, the lightweight
+Python-compatible runtime. No Node.js, Python, compiler, package manager, or
+source checkout is needed on the target machine.
 
-It installs into `~/.local/bin` by default. Set `SAGEJS_INSTALL_DIR` to choose
-another directory or `SAGEJS_VERSION=0.2.0` to pin a release. The archives
-include both `sagejs`, with the native mathematics stack, and
-`sagepython`, the lightweight Python-compatible runtime. No Node.js, Python,
-compiler, package manager, or source checkout is needed on the target machine.
+After extracting a v0.2.0 archive manually, run `./sagejs` on macOS/Linux or
+`sagejs.exe` on Windows. Each archive has a neighboring `.sha256` file. Linux
+releases are built against a glibc 2.28 compatibility floor. The initial
+Windows x64 archive is explicitly **not Authenticode-signed**; verify its
+SHA-256 checksum before running it on Windows 10/11. macOS executables use the
+hardened runtime, are Developer ID signed, and the downloadable ZIP and PKG
+are both submitted to Apple's notary service; the PKG also carries a stapled
+ticket. Apple Silicon release binaries declare macOS 13.5 as their
+compatibility floor; packaging inspects every embedded Mach-O slice and rejects
+a newer requirement.
 
-After extracting manually, run `./sagejs` on macOS/Linux or `sagejs.exe` on
-Windows. Each archive has a neighboring `.sha256` file. Linux releases are
-built against a glibc 2.28 compatibility floor. The initial Windows x64
-archive is explicitly **not Authenticode-signed**; verify its SHA-256 checksum
-before running it on Windows 10/11. macOS executables use the hardened runtime,
-are Developer ID signed, and the downloadable ZIP and PKG are both submitted
-to Apple's notary service; the PKG also carries a stapled ticket.
-Apple Silicon release binaries declare macOS 13.5 as their compatibility floor;
-packaging inspects every embedded Mach-O slice and rejects a newer requirement.
+After the immutable v0.2.0 assets and checksums have been published and
+verified, a separate post-release README update must replace this notice with
+the live installer command and current availability text.
 
 ## Build the complete system from source
 
@@ -172,15 +178,15 @@ workspace package graph, lazy-loading policy, source budgets, and startup
 budgets are defined in
 [`PACKAGE-ARCHITECTURE.md`](PACKAGE-ARCHITECTURE.md).
 
-Tagged releases publish ready-to-run `sagejs` and `sagepython` archives for
-Linux x64, Linux arm64, Windows x64, and Apple Silicon macOS. They require no
-Node.js, compiler, or package manager on the target machine. The initial
-Windows artifact is deliberately named `sagejs-windows-x64-unsigned.zip` and
-contains both human- and machine-readable unsigned notices. Release CI refuses
-to publish an unsigned macOS binary. Release tags must be annotated and point
-to a commit already merged into `origin/main`. Maintainers should additionally
-require a clean checkout at the exact remote tip immediately before creating a
-release tag:
+The forthcoming v0.2.0 release is planned to publish ready-to-run `sagejs` and
+`sagepython` archives for Linux x64, Linux arm64, Windows x64, and Apple Silicon
+macOS. They require no Node.js, compiler, or package manager on the target
+machine. The initial Windows artifact is deliberately named
+`sagejs-windows-x64-unsigned.zip` and contains both human- and machine-readable
+unsigned notices. Release CI refuses to publish an unsigned macOS binary.
+Release tags must be annotated and point to a commit already merged into
+`origin/main`. Maintainers should additionally require a clean checkout at the
+exact remote tip immediately before creating a release tag:
 
 ```sh
 git fetch --no-tags origin +refs/heads/main:refs/remotes/origin/main
@@ -292,29 +298,30 @@ language ecosystems.
 
 ## Install the published npm package
 
-Sage.js development after version 0.1 requires Node.js 22.22.2 or newer.
+The currently published npm package is the separate v0.1.0 preview, not the
+forthcoming native v0.2.0 release. Install that exact preview with:
 
 ```sh
-npm install --global @sagemath/sagejs
+npm install --global @sagemath/sagejs@0.1.0
 ```
 
 Or, with pnpm:
 
 ```sh
-pnpm add --global @sagemath/sagejs
+pnpm add --global @sagemath/sagejs@0.1.0
 ```
 
-The public package keeps the Sage.js library and embedding APIs, while its
-command-line launcher selects an optional package containing the native
-executable for the current operating system and architecture. This is the same
-artifact distributed on GitHub; normal CLI use does not require a compiler or
-local native build. A source-only fallback remains available for unsupported
-platforms and for Sage.js development. It can also be tried without a global
+This preview does not provide the planned v0.2.0 native archive selection or
+standalone executable. For current source capabilities, build the complete
+system from source. The npm preview can also be tried without a global
 installation:
 
 ```sh
-pnpm dlx @sagemath/sagejs
+pnpm dlx @sagemath/sagejs@0.1.0
 ```
+
+Publishing the native GitHub v0.2.0 release does not itself update npm.
+Sage.js development after version 0.1 requires Node.js 22.22.2 or newer.
 
 For portable deployment, Sage.js can produce a single native executable with
 the compiler and standard library embedded. A mathematics variant also embeds
