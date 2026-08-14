@@ -1,0 +1,99 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "release-artifact-acceptance",
+  "title": "Cross-platform release artifact acceptance",
+  "lane": "integration",
+  "status": "review",
+  "owner": "user",
+  "objective": "Verify every final release archive against exact source/build receipts, complete third-party license provenance, binary compatibility, relocation, mathematics, and platform signing policy before publication",
+  "base_commit": "e4018fd70bf2b9549b826e20d825e08bf43dafe5",
+  "claims": [
+    "scripts/release-artifact-acceptance.cjs",
+    "test/release-artifact-acceptance.cjs",
+    "test/node-test-manifest.cjs",
+    "licenses/THIRD-PARTY.json",
+    "licenses/README.md",
+    "licenses/GPL-2.0.txt",
+    "licenses/LGPL-2.1.txt",
+    "licenses/LGPL-3.0.txt",
+    "licenses/CECILL-B.txt",
+    "licenses/MPL-2.0.txt",
+    "licenses/NODE-26.7.0-LICENSE.txt",
+    "licenses/NATIVE-MATHEMATICS-NOTICE.md",
+    "licenses/MPMATH-BSD.txt",
+    "licenses/PLOTLY-MIT.txt",
+    "licenses/WEB-TREE-SITTER-MIT.txt",
+    "licenses/TREE-SITTER-PYTHON-MIT.txt",
+    "licenses/TREE-SITTER-SAGE-MIT.txt",
+    "licenses/FFLATE-MIT.txt",
+    "licenses/PLAYWRIGHT-APACHE-2.0.txt",
+    "licenses/PLAYWRIGHT-NOTICE.txt",
+    "licenses/PLAYWRIGHT-THIRD-PARTY-NOTICES.txt",
+    "licenses/LIBZMQ-4.3.5-LICENSE.txt",
+    "licenses/LIBSODIUM-1.0.20-LICENSE.txt",
+    "licenses/NPM-PRODUCTION-LICENSES.txt",
+    "licenses/NPM-PRODUCTION.json",
+    "licenses/PSF-2.0.txt",
+    "licenses/UNICODE-LICENSE-V3.txt",
+    "licenses/UNICODE-NAMEALIASES-NOTICE.md",
+    "licenses/APACHE-2.0.txt",
+    "licenses/PYJEON-STDLIB-APACHE-2.0-NOTICE.md"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "not-applicable",
+    "fallback": "not-applicable",
+    "oracles": [
+      "Synthetic tamper corpus and real platform release candidates"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "node --test test/release-artifact-acceptance.cjs test/test-manifest.test.cjs",
+    "pnpm test:unit",
+    "pnpm architecture:check",
+    "pnpm parallel:check"
+  ],
+  "runs": [
+    {
+      "command": "node --test test/release-artifact-acceptance.cjs test/test-manifest.test.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.185,
+      "started_at": "2026-08-14T09:46:31.713Z",
+      "commit": "e4018fd70bf2b9549b826e20d825e08bf43dafe5",
+      "workspace_fingerprint": "2dcf006c5eec0f7381636631773d7e74bb2b1d22580c6b5c3e3b71038b644886",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 5.367,
+      "started_at": "2026-08-14T09:46:32.518Z",
+      "commit": "e4018fd70bf2b9549b826e20d825e08bf43dafe5",
+      "workspace_fingerprint": "2dcf006c5eec0f7381636631773d7e74bb2b1d22580c6b5c3e3b71038b644886",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Added fail-closed final-host acceptance for all four release targets plus a complete digest-bound third-party source/license inventory, Node 26.7 builder authority, production npm notice corpus, safe archive preflight, native ABI checks, relocation and mathematics smoke, exact Apple publisher/package/benchmark binding, and explicit unsigned-Windows evidence.",
+    "risks": [
+      "The final platform candidates still need to exercise target-only codesign, pkgutil, Gatekeeper, PE, Mach-O, and runtime checks after workflow integration.",
+      "The deliberately strict ZIP policy rejects streaming, ZIP64, non-ASCII paths, links, and ambiguous Unicode-path extras; release assemblers must use the reviewed simple archive layout."
+    ],
+    "next_steps": [
+      "Wire this gate into each platform build/signing job before artifact transport or publication.",
+      "Make every archive ship both SEA build manifests, the complete licenses directory, and internal SHA256SUMS.",
+      "Pass the signed macOS PKG and benchmark sidecars into acceptance and retain each canonical acceptance receipt as a release asset."
+    ]
+  }
+}
