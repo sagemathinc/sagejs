@@ -527,6 +527,33 @@ function publishValidatedReleaseCandidate(
   }
 }
 
+function writeDeterministicArchive({
+  archive,
+  distributionName,
+  stagingDirectory,
+}) {
+  runChecked(
+    "tar",
+    [
+      "--sort=name",
+      "--mtime=@0",
+      "--owner=0",
+      "--group=0",
+      "--numeric-owner",
+      "--mode=u+rwX,go+rX,go-w",
+      "--pax-option=delete=atime,delete=ctime",
+      "-I",
+      "xz -6 --threads=1",
+      "-cf",
+      archive,
+      "-C",
+      stagingDirectory,
+      distributionName,
+    ],
+    { cwd: ROOT, env: fixedEnvironment() },
+  );
+}
+
 function packageReleaseCandidate(options, internals = {}) {
   options = withReceiptDefaults(options);
   assert.ok(options.baselineReceipt, "authoritative Linux baseline receipt is required");
@@ -583,26 +610,12 @@ function packageReleaseCandidate(options, internals = {}) {
     const stagedRelease = join(temporary, "release");
     mkdirSync(stagedRelease, { mode: 0o755 });
     const stagedArchive = join(stagedRelease, `${DISTRIBUTION_NAME}.tar.xz`);
-    runChecked(
-      "tar",
-      [
-        "--sort=name",
-        "--mtime=@0",
-        "--owner=0",
-        "--group=0",
-        "--numeric-owner",
-        "--mode=u+rwX,go+rX,go-w",
-        "--pax-option=delete=atime,delete=ctime",
-        "-I",
-        "xz -6 --threads=1",
-        "-cf",
-        stagedArchive,
-        "-C",
-        temporary,
-        DISTRIBUTION_NAME,
-      ],
-      { cwd: ROOT, env: fixedEnvironment() },
-    );
+    const archiveWriter = internals.writeArchive || writeDeterministicArchive;
+    archiveWriter({
+      archive: stagedArchive,
+      distributionName: DISTRIBUTION_NAME,
+      stagingDirectory: temporary,
+    });
     chmodSync(stagedArchive, 0o644);
     return publishReleaseCandidate(stagedArchive, options.releaseDirectory);
   } finally {

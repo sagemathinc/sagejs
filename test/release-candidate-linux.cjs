@@ -1,6 +1,7 @@
 "use strict";
 
 const assert = require("node:assert/strict");
+const { spawnSync } = require("node:child_process");
 const {
   chmodSync,
   copyFileSync,
@@ -14,6 +15,7 @@ const {
   rmSync,
   symlinkSync,
   unlinkSync,
+  utimesSync,
   writeFileSync,
 } = require("node:fs");
 const { tmpdir } = require("node:os");
@@ -66,6 +68,56 @@ function releaseFixture(arch) {
 
 const FIXTURE = releaseFixture(process.arch);
 const RUST_TOOLCHAIN = FIXTURE.rustToolchain;
+
+function normalizeArchiveFixtureTimes(directory) {
+  for (const entry of readdirSync(directory, { withFileTypes: true })) {
+    const filename = join(directory, entry.name);
+    if (entry.isDirectory()) normalizeArchiveFixtureTimes(filename);
+    else {
+      assert.equal(entry.isFile(), true, `unsupported fixture entry ${filename}`);
+    }
+    utimesSync(filename, 0, 0);
+  }
+  utimesSync(directory, 0, 0);
+}
+
+function writeBsdTarFixture({ archive, distributionName, stagingDirectory }) {
+  normalizeArchiveFixtureTimes(join(stagingDirectory, distributionName));
+  const result = spawnSync(
+    "/usr/bin/tar",
+    [
+      "--no-xattrs",
+      "--no-mac-metadata",
+      "--uid",
+      "0",
+      "--gid",
+      "0",
+      "--uname",
+      "root",
+      "--gname",
+      "root",
+      "--format",
+      "ustar",
+      "-cJf",
+      archive,
+      "-C",
+      stagingDirectory,
+      distributionName,
+    ],
+    { cwd: __dirname, encoding: "utf8", env: fixedEnvironment() },
+  );
+  if (result.error) throw result.error;
+  assert.equal(result.status, 0, result.stderr || result.stdout);
+}
+
+function fixturePackagingInternals(overrides = {}) {
+  return {
+    ...overrides,
+    ...(process.platform === "darwin"
+      ? { writeArchive: writeBsdTarFixture }
+      : {}),
+  };
+}
 
 function writeReceipts(directory, nativeMathProfile = undefined) {
   const target = {
@@ -203,6 +255,11 @@ test("Linux release fixtures retain exact x64 and arm64 authorities", () => {
   assert.equal(arm64.rustToolchain.target, "aarch64-unknown-linux-gnu");
 
   assert.deepEqual(FIXTURE, releaseFixture(process.arch));
+  assert.equal(
+    Object.hasOwn(fixturePackagingInternals(), "writeArchive"),
+    process.platform === "darwin",
+    "the non-production archive writer must be explicit and Darwin-only",
+  );
 });
 
 test("release timing median handles odd and even observations", () => {
@@ -285,6 +342,7 @@ test("Linux release archive is deterministic and installer-compatible", () => {
   const ambient = {
     BASH_ENV: process.env.BASH_ENV,
     ENV: process.env.ENV,
+    PATH: process.env.PATH,
     TAR_OPTIONS: process.env.TAR_OPTIONS,
     XZ_OPT: process.env.XZ_OPT,
   };
@@ -310,12 +368,13 @@ test("Linux release archive is deterministic and installer-compatible", () => {
     };
     process.env.BASH_ENV = join(directory, "hostile-bash-env");
     process.env.ENV = join(directory, "hostile-env");
+    process.env.PATH = join(directory, "hostile-path");
     process.env.TAR_OPTIONS = "--exclude=sagepython";
     process.env.XZ_OPT = "-0";
     process.umask(0o077);
-    const packagingInternals = {
+    const packagingInternals = fixturePackagingInternals({
       validateEmbeddedExecutable: () => ({ fixture: true }),
-    };
+    });
     const first = packageReleaseCandidate(options, packagingInternals);
     const firstBytes = readFileSync(first.archive);
     const firstChecksum = readFileSync(first.archiveChecksum, "utf8");
@@ -534,7 +593,9 @@ test("installer rejects corruption without damage and atomically upgrades", () =
         ...receipts,
         releaseDirectory: join(directory, "download"),
       },
-      { validateEmbeddedExecutable: () => ({ fixture: true }) },
+      fixturePackagingInternals({
+        validateEmbeddedExecutable: () => ({ fixture: true }),
+      }),
     );
     const installed = join(directory, "installed");
 
@@ -627,7 +688,9 @@ test("installer rejects corruption without damage and atomically upgrades", () =
         ...receipts,
         releaseDirectory: join(directory, "download"),
       },
-      { validateEmbeddedExecutable: () => ({ fixture: true }) },
+      fixturePackagingInternals({
+        validateEmbeddedExecutable: () => ({ fixture: true }),
+      }),
     );
     const interrupted = runInstaller(
       join(directory, "download"),
