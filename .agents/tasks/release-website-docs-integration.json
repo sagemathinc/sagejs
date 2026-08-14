@@ -1,0 +1,59 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "release-website-docs-integration",
+  "title": "Integrate website release documentation",
+  "lane": "integration",
+  "status": "active",
+  "owner": "user",
+  "objective": "Integrate the independently approved website and generated-documentation successor into a closed intermediate release source checkpoint without deploying public content",
+  "base_commit": "675fab5a8f61b2a49c3d9d774eda0c4cba21c249",
+  "claims": [
+    ".agents/lanes.json",
+    ".agents/tasks/release-website-docs-integration.json",
+    ".agents/tasks/website-release-consistency.json",
+    "test/website.cjs",
+    "website/"
+  ],
+  "dependencies": [
+    "website-release-consistency",
+    "release-live-main-compiler-integration"
+  ],
+  "references": [
+    "Approved successor lane 675fab5a8f61b2a49c3d9d774eda0c4cba21c249..ac0cf4a6d1e199718d60bf50caca80d3689ed33d",
+    "Historical blocked closure f18795d80587997a32fdbe0901c19fddfee01d61",
+    "Corrected website source authority 20296d99c271d37e445147adcc7109ecfb129d03"
+  ],
+  "architecture": {
+    "strategy": "not-applicable",
+    "fallback": "not-applicable",
+    "oracles": [
+      "Checked release policy defines Windows as explicitly unsigned and excludes npm publication from this binary release",
+      "Canonical documentation generation binds reference data, source coordinates, and derived HTML hashes",
+      "The closed reusable-main compiler integration restores the formerly blocked guided tutorial corpus"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "not-applicable",
+    "windows-x64": "not-applicable",
+    "macos-arm64": "not-applicable"
+  },
+  "validation": [
+    "pnpm docs:check",
+    "pnpm test:tutorial",
+    "node --test --test-reporter=spec test/website.cjs",
+    "pnpm test:portable",
+    "pnpm test:baselib:strict",
+    "pnpm test:changed -- --base 675fab5a8f61b2a49c3d9d774eda0c4cba21c249",
+    "pnpm architecture:check",
+    "pnpm parallel:check -- --all"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "",
+    "risks": [],
+    "next_steps": []
+  }
+}
