@@ -4,7 +4,7 @@
   "id": "windows-acceptance-import-semantics",
   "title": "Windows Acceptance Import Semantics",
   "lane": "integration",
-  "status": "active",
+  "status": "review",
   "owner": "user",
   "objective": "Validate Windows release artifacts using per-file PE import semantics while preserving static-CRT and security gates",
   "base_commit": "b3491feaf8b0f96f21dbbbf5c1a1561da3ecfcb3",
@@ -25,16 +25,16 @@
   },
   "platforms": {
     "linux-x64": "required",
-    "linux-arm64": "required",
+    "linux-arm64": "not-applicable",
     "windows-x64": "required",
-    "macos-arm64": "required"
+    "macos-arm64": "not-applicable"
   },
   "validation": [
     "pnpm architecture:check",
     "pnpm test:portable",
     "pnpm test:baselib:strict",
     "node --test test/release-artifact-acceptance.cjs",
-    "pnpm test:changed"
+    "pnpm test:changed -- --base b3491feaf8b0f96f21dbbbf5c1a1561da3ecfcb3"
   ],
   "runs": [
     {
@@ -66,11 +66,78 @@
       "commit": "b3491feaf8b0f96f21dbbbf5c1a1561da3ecfcb3",
       "workspace_fingerprint": "b9265cf66b3482b8a7ec8847693020d5a7be61eeb6aef94dbb6c2786aa500e3c",
       "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:changed",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 887.652,
+      "started_at": "2026-08-14T12:59:42.905Z",
+      "commit": "f92e0b8edb4afca2b2cebba72cd63f3b88e00593",
+      "workspace_fingerprint": "70c6aabf9ee69971bbd3e630618a3ad724c97cf357a22280530f8407696654b4",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/release-artifact-acceptance.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.434,
+      "started_at": "2026-08-14T13:14:43.545Z",
+      "commit": "f92e0b8edb4afca2b2cebba72cd63f3b88e00593",
+      "workspace_fingerprint": "70c6aabf9ee69971bbd3e630618a3ad724c97cf357a22280530f8407696654b4",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 5.887,
+      "started_at": "2026-08-14T13:14:47.968Z",
+      "commit": "f92e0b8edb4afca2b2cebba72cd63f3b88e00593",
+      "workspace_fingerprint": "70c6aabf9ee69971bbd3e630618a3ad724c97cf357a22280530f8407696654b4",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 21.822,
+      "started_at": "2026-08-14T13:14:58.149Z",
+      "commit": "f92e0b8edb4afca2b2cebba72cd63f3b88e00593",
+      "workspace_fingerprint": "70c6aabf9ee69971bbd3e630618a3ad724c97cf357a22280530f8407696654b4",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 16.103,
+      "started_at": "2026-08-14T13:15:24.600Z",
+      "commit": "f92e0b8edb4afca2b2cebba72cd63f3b88e00593",
+      "workspace_fingerprint": "70c6aabf9ee69971bbd3e630618a3ad724c97cf357a22280530f8407696654b4",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:changed -- --base b3491feaf8b0f96f21dbbbf5c1a1561da3ecfcb3",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 267.538,
+      "started_at": "2026-08-14T13:17:10.034Z",
+      "commit": "f92e0b8edb4afca2b2cebba72cd63f3b88e00593",
+      "workspace_fingerprint": "70c6aabf9ee69971bbd3e630618a3ad724c97cf357a22280530f8407696654b4",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {
-    "summary": "",
-    "risks": [],
-    "next_steps": []
+    "summary": "Final artifact acceptance now proves Windows PE imports per production file rather than trusting an aggregate dependency name. Every embedded-node-addon must delay-load node.exe and must not import it eagerly; exactly one executable-template must use the production sea/node-template label and must not import node.exe. Labels and dependencies are unique under Windows case folding, and the aggregate dependency set is recomputed exactly from canonical per-file ordinary and delayed imports before node.exe receives its narrow contextual allowance. MSVCP140.dll, VCRUNTIME140.dll, and VCRUNTIME140_1.dll remain forbidden. Adversarial report-shaped tests cover eager, missing, mixed, cross-addon, forged aggregate, absent/duplicate/mislabeled/wrong-role template, and case-fold duplicate evidence while the complete acceptance suite preserves archive checksum, ZIP security, license, metadata, and signing gates. Independent source review approved exact f92e0b8edb4afca2b2cebba72cd63f3b88e00593.",
+    "risks": [
+      "This is source validation authority, not a final Windows artifact receipt. The frozen Windows candidate must still be rebuilt with the separate static-CRT policy and pass full archive acceptance.",
+      "The initial default pnpm test:changed compared with an older origin/main, selected 178 inherited release and mathematics files, then failed unrelated production-kernel, optional-native-capability, timing, and concurrent-load tests in this fresh isolated worktree. The explicit task-base changed gate, claimed acceptance suite, architecture, portable, and strict gates all pass on exact f92e0b8.",
+      "The first architecture receipt failed because the fresh worktree had no generated dist tree; after pnpm build established it, the current architecture receipt passes."
+    ],
+    "next_steps": [
+      "Integrate the independently source-approved exact f92e0b8 implementation and this receipt-only closure.",
+      "Build the final Windows static-CRT candidate, then run full artifact acceptance to prove both executables, every embedded addon, the exact aggregate dependency set, ZIP security, licenses, checksums, and unsigned publication metadata."
+    ]
   }
 }
