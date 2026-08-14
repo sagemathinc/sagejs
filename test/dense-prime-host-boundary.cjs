@@ -8,6 +8,8 @@ const { tmpdir } = require("node:os");
 const { join, resolve } = require("node:path");
 
 const root = resolve(__dirname, "..");
+const fixedHostMicrobenchmarksEnabled =
+  process.env.SAGEJS_RUN_FIXED_HOST_MICROBENCHMARKS === "1";
 
 function runSage(source, environment = {}) {
   const directory = mkdtempSync(join(tmpdir(), "sagejs-prime-boundary-"));
@@ -166,23 +168,36 @@ for prime in [2, 97, 65521]:
     print(prime, values[0], values[1], values[2], values[3], values[4])
 `;
 
-const lines = runSage(performance).split("\n");
-assert.equal(lines.length, 3);
-for (const line of lines) {
-  const [prime, read, write, cached, rref, pivots] =
-    line.split(/\s+/).map(Number);
-  // These are regression ceilings, deliberately above the uncontended
-  // benchmark medians. The benchmark records the sharper optimization
-  // targets without making shared CI load a source of false failures.
-  const readLimit = prime === 2 ? 20e-6 : prime === 97 ? 18e-6 : 25e-6;
-  const writeLimit = 40e-6;
-  assert.ok(read < readLimit, `GF(${prime}) scalar read took ${read}s`);
-  assert.ok(write < writeLimit, `GF(${prime}) scalar write took ${write}s`);
-  assert.ok(cached < 10e-6, `GF(${prime}) cached pivots took ${cached}s`);
-  assert.ok(
-    pivots < rref * 1.2 + 0.0002,
-    `GF(${prime}) fresh pivots ${pivots}s versus RREF ${rref}s`,
-  );
+if (fixedHostMicrobenchmarksEnabled) {
+  const lines = runSage(performance).split("\n");
+  assert.equal(lines.length, 3);
+  for (const line of lines) {
+    const [prime, read, write, cached, rref, pivots] =
+      line.split(/\s+/).map(Number);
+    console.log(
+      JSON.stringify({
+        benchmark: "dense-prime-host-boundary",
+        prime,
+        seconds: { read, write, cachedPivots: cached, rref, pivots },
+      }),
+    );
+    // These are fixed-host optimization targets. They intentionally run only
+    // through the explicit benchmark command, where the machine can be idle
+    // and its measurements can be retained with the dispatch-profile data.
+    const readLimit = prime === 2 ? 20e-6 : prime === 97 ? 18e-6 : 25e-6;
+    const writeLimit = 40e-6;
+    assert.ok(read < readLimit, `GF(${prime}) scalar read took ${read}s`);
+    assert.ok(write < writeLimit, `GF(${prime}) scalar write took ${write}s`);
+    assert.ok(cached < 10e-6, `GF(${prime}) cached pivots took ${cached}s`);
+    assert.ok(
+      pivots < rref * 1.2 + 0.0002,
+      `GF(${prime}) fresh pivots ${pivots}s versus RREF ${rref}s`,
+    );
+  }
 }
 
-console.log("dense prime host-boundary tests passed");
+console.log(
+  fixedHostMicrobenchmarksEnabled
+    ? "dense prime host-boundary correctness and fixed-host microbenchmarks passed"
+    : "dense prime host-boundary correctness passed",
+);

@@ -92,6 +92,7 @@ const integration = [
   "test/fflas-dense-prime.cjs",
   "test/dense-prime-structural.cjs",
   "test/dense-prime-host-boundary.cjs",
+  "test/prime-host-microbenchmark-gates.cjs",
   "test/m4ri-public-matrix.cjs",
   "test/word-prime-matrix-resource-ffi.cjs",
   "test/nmod-matrix-resource-lifecycle.cjs",
