@@ -4,7 +4,7 @@
   "id": "release-windows-portable-integration",
   "title": "Integrate Windows portable stabilization",
   "lane": "integration",
-  "status": "active",
+  "status": "review",
   "owner": "user",
   "objective": "Integrate the independently reviewed native-Windows portable test and cache-race stabilization authority into a closed intermediate release checkpoint",
   "base_commit": "0835adb74593c43c6d2b6352151209cfe9319faa",
@@ -51,10 +51,97 @@
     "pnpm test:baselib:strict",
     "pnpm parallel:check -- --all"
   ],
-  "runs": [],
+  "runs": [
+    {
+      "command": "pnpm build",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 225.903,
+      "started_at": "2026-08-14T14:24:30.246Z",
+      "commit": "a8eb45b8c878b091a8eb5690fc2ecc8288a8c365",
+      "workspace_fingerprint": "121183e4411f3aac3d2765fb4af688a242d02f2092b0ed4681b9d73c9b0749ef",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:compiler",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 47.086,
+      "started_at": "2026-08-14T14:28:32.574Z",
+      "commit": "a8eb45b8c878b091a8eb5690fc2ecc8288a8c365",
+      "workspace_fingerprint": "121183e4411f3aac3d2765fb4af688a242d02f2092b0ed4681b9d73c9b0749ef",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:integration",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 416.377,
+      "started_at": "2026-08-14T14:29:25.812Z",
+      "commit": "a8eb45b8c878b091a8eb5690fc2ecc8288a8c365",
+      "workspace_fingerprint": "121183e4411f3aac3d2765fb4af688a242d02f2092b0ed4681b9d73c9b0749ef",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test --test-reporter=dot test/cache.cjs test/linux-release-baseline.cjs test/native-math-profile.cjs test/parallel-development.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 10.053,
+      "started_at": "2026-08-14T14:36:29.264Z",
+      "commit": "a8eb45b8c878b091a8eb5690fc2ecc8288a8c365",
+      "workspace_fingerprint": "121183e4411f3aac3d2765fb4af688a242d02f2092b0ed4681b9d73c9b0749ef",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 6.153,
+      "started_at": "2026-08-14T14:36:44.673Z",
+      "commit": "a8eb45b8c878b091a8eb5690fc2ecc8288a8c365",
+      "workspace_fingerprint": "121183e4411f3aac3d2765fb4af688a242d02f2092b0ed4681b9d73c9b0749ef",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 26.995,
+      "started_at": "2026-08-14T14:36:57.899Z",
+      "commit": "a8eb45b8c878b091a8eb5690fc2ecc8288a8c365",
+      "workspace_fingerprint": "121183e4411f3aac3d2765fb4af688a242d02f2092b0ed4681b9d73c9b0749ef",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 18.5,
+      "started_at": "2026-08-14T14:37:28.705Z",
+      "commit": "a8eb45b8c878b091a8eb5690fc2ecc8288a8c365",
+      "workspace_fingerprint": "121183e4411f3aac3d2765fb4af688a242d02f2092b0ed4681b9d73c9b0749ef",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm parallel:check -- --all",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.788,
+      "started_at": "2026-08-14T14:38:00.573Z",
+      "commit": "a8eb45b8c878b091a8eb5690fc2ecc8288a8c365",
+      "workspace_fingerprint": "121183e4411f3aac3d2765fb4af688a242d02f2092b0ed4681b9d73c9b0749ef",
+      "platform": "linux-x64"
+    }
+  ],
   "handoff": {
-    "summary": "",
-    "risks": [],
-    "next_steps": []
+    "summary": "Integrated the independently approved Windows portable stabilization closure 4837731dea6c437aaf2a475121f589a8a608961e in exact source order as patch-equivalent commits 763c7f3 through 27fe06a, with implementation authority ending at source commit cb11a887a98e13193a2bdca2814fd62233926a32. Bounded Windows-only cache publication and read retries preserve atomic replacement, cleanup tolerates only entries that vanish with ENOENT after enumeration, and cross-host release/native-cache fixtures retain their target semantics. The source task is complete, and the integration lane allowlist gained only tools/cache-auto.ts, tools/cache-auto-worker.ts, and tools/cache-file.ts so both task manifests and the exact shared implementation are claimed without weakening contract enforcement. One current workspace fingerprint passes the full build, compiler, integration, 117-test focused, architecture, 446-test portable, strict-Python, and 213-contract gates at a8eb45b8c878b091a8eb5690fc2ecc8288a8c365.",
+    "risks": [
+      "The exact native-Windows and physical Apple-silicon receipts belong to implementation source cb11a887a98e13193a2bdca2814fd62233926a32; final platform artifacts still require target-native rebuild and acceptance from the eventual frozen source commit.",
+      "The separate Windows static-CRT and PDB/path reproducibility work is not waived or included in this intermediate portable checkpoint."
+    ],
+    "next_steps": [
+      "Obtain independent review of this exact intermediate checkpoint, including the three-file integration-lane policy delta, before marking the integration task complete.",
+      "Integrate the exact independently approved Mac-native closure next, then the startup-profile closure, as separate intermediate checkpoints supplied by the release coordinator."
+    ]
   }
 }
